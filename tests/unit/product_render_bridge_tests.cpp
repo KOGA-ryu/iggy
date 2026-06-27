@@ -97,6 +97,71 @@ int main() {
   ok &= expect(bridge.items[2].stableName == "edit_floor_1",
                "preview stable name copied");
 
+  iggy3d::ProductPrimitiveDrawList physicsDrawList;
+  physicsDrawList.items.push_back(
+      drawItem(iggy3d::ProductPrimitiveDrawKind::PhysicsAabbDebug,
+               41,
+               "physics.aabb",
+               false));
+  physicsDrawList.items.push_back(
+      drawItem(iggy3d::ProductPrimitiveDrawKind::PhysicsContactNormalDebug,
+               42,
+               "physics.contact_normal",
+               false));
+  physicsDrawList.items.push_back(
+      drawItem(iggy3d::ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug,
+               43,
+               "physics.broadphase_pair",
+               false));
+  physicsDrawList.itemCount =
+      static_cast<std::uint64_t>(physicsDrawList.items.size());
+  physicsDrawList.physicsDebugVisible = true;
+  physicsDrawList.physicsDebugItemCount = 3U;
+  physicsDrawList.physicsAabbDebugCount = 1U;
+  physicsDrawList.physicsContactNormalDebugCount = 1U;
+  physicsDrawList.physicsBroadphasePairDebugCount = 1U;
+
+  iggy3d::ProductViewportFrame physicsFrame =
+      iggy3d::buildProductViewportFrame(physicsDrawList, {});
+  const iggy3d::ProductRenderBridgeFrame physicsBridge =
+      iggy3d::buildProductRenderBridgeFrame(&physicsDrawList, &physicsFrame, nullptr);
+  ok &= expect(physicsBridge.physicsDebugVisible,
+               "physics debug bridge visible copied");
+  ok &= expect(physicsBridge.physicsDebugItemCount == 3U,
+               "physics debug bridge aggregate count");
+  ok &= expect(physicsBridge.physicsAabbDebugCount == 1U,
+               "physics AABB bridge count");
+  ok &= expect(physicsBridge.physicsContactNormalDebugCount == 1U,
+               "physics contact normal bridge count");
+  ok &= expect(physicsBridge.physicsBroadphasePairDebugCount == 1U,
+               "physics broadphase pair bridge count");
+  ok &= expect(physicsBridge.targetItemCount == 0U,
+               "physics debug items are not target items");
+  ok &= expect(physicsBridge.items[0].kind ==
+                   iggy3d::ProductPrimitiveDrawKind::PhysicsAabbDebug,
+               "physics AABB bridge item kind copied");
+  ok &= expect(physicsBridge.items[1].kind ==
+                   iggy3d::ProductPrimitiveDrawKind::PhysicsContactNormalDebug,
+               "physics contact bridge item kind copied");
+  ok &= expect(physicsBridge.items[2].kind ==
+                   iggy3d::ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug,
+               "physics broadphase bridge item kind copied");
+
+  iggy3d::ProductPrimitiveDrawList framedOnlyPhysicsList = physicsDrawList;
+  framedOnlyPhysicsList.physicsDebugVisible = false;
+  framedOnlyPhysicsList.physicsDebugItemCount = 0U;
+  framedOnlyPhysicsList.physicsAabbDebugCount = 0U;
+  framedOnlyPhysicsList.physicsContactNormalDebugCount = 0U;
+  framedOnlyPhysicsList.physicsBroadphasePairDebugCount = 0U;
+  iggy3d::ProductViewportFrame framedOnlyPhysicsFrame =
+      iggy3d::buildProductViewportFrame(framedOnlyPhysicsList, {});
+  const iggy3d::ProductRenderBridgeFrame framedOnlyBridge =
+      iggy3d::buildProductRenderBridgeFrame(&framedOnlyPhysicsList,
+                                            &framedOnlyPhysicsFrame,
+                                            nullptr);
+  ok &= expect(framedOnlyBridge.physicsDebugItemCount == 3U,
+               "physics debug bridge can count framed items by kind");
+
   if (!ok) {
     return 1;
   }

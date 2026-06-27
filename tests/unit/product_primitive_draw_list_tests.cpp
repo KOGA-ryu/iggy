@@ -1,6 +1,7 @@
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 
 #include <iostream>
+#include <cmath>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,6 +20,31 @@ bool expect(bool condition, const char* message) {
     return false;
   }
   return true;
+}
+
+bool near(float lhs, float rhs) {
+  return std::fabs(lhs - rhs) <= 0.0001F;
+}
+
+bool expectVec3(iggy3d::Vec3 actual, iggy3d::Vec3 expected, const char* message) {
+  return expect(near(actual.x, expected.x) && near(actual.y, expected.y) &&
+                    near(actual.z, expected.z),
+                message);
+}
+
+bool expectAabb(iggy3d::Aabb3 actual,
+                iggy3d::Aabb3 expected,
+                const char* message) {
+  return expectVec3(actual.min, expected.min, message) &&
+         expectVec3(actual.max, expected.max, message);
+}
+
+bool expectColor(iggy3d::ProductPrimitiveColor actual,
+                 iggy3d::ProductPrimitiveColor expected,
+                 const char* message) {
+  return expect(actual.r == expected.r && actual.g == expected.g &&
+                    actual.b == expected.b,
+                message);
 }
 
 iggy3d::SceneItem sceneItem(iggy3d::SceneItemKind kind,
@@ -157,6 +183,104 @@ int main() {
       iggy3d::buildProductPrimitiveDrawList(&scene, &debug);
   ok &= expect(noDebugDrawItems.debugMarkerCount == 0U,
                "debug projection records alone do not claim drawn debug markers");
+
+  iggy3d::DebugProjectionResult physicsDebug;
+  iggy3d::DebugProjectionItem physicsAabb;
+  physicsAabb.kind = iggy3d::DebugProjectionKind::PhysicsAabb;
+  physicsAabb.actor = iggy3d::EntityId{41};
+  physicsAabb.hasBounds = true;
+  physicsAabb.worldBounds =
+      iggy3d::aabbFromCenterExtents({10.0F, 1.0F, 2.0F}, {1.0F, 2.0F, 3.0F});
+  physicsAabb.valueCode = "solid";
+  physicsDebug.items.push_back(physicsAabb);
+
+  iggy3d::DebugProjectionItem physicsContact;
+  physicsContact.kind = iggy3d::DebugProjectionKind::PhysicsContactNormal;
+  physicsContact.actor = iggy3d::EntityId{42};
+  physicsContact.hasWorldPoint = true;
+  physicsContact.worldPoint = {11.0F, 1.5F, 2.5F};
+  physicsContact.valueCode = "sensor";
+  physicsDebug.items.push_back(physicsContact);
+
+  iggy3d::DebugProjectionItem physicsPair;
+  physicsPair.kind = iggy3d::DebugProjectionKind::PhysicsBroadphasePair;
+  physicsPair.actor = iggy3d::EntityId{43};
+  physicsPair.hasWorldPoint = true;
+  physicsPair.worldPoint = {12.0F, 2.5F, 3.5F};
+  physicsPair.valueCode = "solid";
+  physicsDebug.items.push_back(physicsPair);
+
+  physicsDebug.items.push_back({});  // Non-physics projection item.
+  iggy3d::DebugProjectionItem missingAabb = physicsAabb;
+  missingAabb.hasBounds = false;
+  physicsDebug.items.push_back(missingAabb);
+  iggy3d::DebugProjectionItem missingContact = physicsContact;
+  missingContact.hasWorldPoint = false;
+  physicsDebug.items.push_back(missingContact);
+  iggy3d::DebugProjectionItem missingPair = physicsPair;
+  missingPair.hasWorldPoint = false;
+  physicsDebug.items.push_back(missingPair);
+
+  const iggy3d::ProductPrimitiveDrawList physicsDebugList =
+      iggy3d::buildProductPrimitiveDrawList(&scene, &physicsDebug);
+  ok &= expect(physicsDebugList.items.size() == 8U,
+               "physics debug appends three valid items after scene items");
+  ok &= expect(physicsDebugList.itemCount == 8U,
+               "physics debug items count in draw list");
+  ok &= expect(physicsDebugList.debugMarkerCount == 3U,
+               "physics debug items increment aggregate debug marker count");
+  ok &= expect(physicsDebugList.physicsDebugVisible,
+               "physics debug visible when items append");
+  ok &= expect(physicsDebugList.physicsDebugItemCount == 3U,
+               "physics debug aggregate item count");
+  ok &= expect(physicsDebugList.physicsAabbDebugCount == 1U,
+               "physics AABB debug count");
+  ok &= expect(physicsDebugList.physicsContactNormalDebugCount == 1U,
+               "physics contact normal debug count");
+  ok &= expect(physicsDebugList.physicsBroadphasePairDebugCount == 1U,
+               "physics broadphase pair debug count");
+  ok &= expect(physicsDebugList.items[4].kind ==
+                   iggy3d::ProductPrimitiveDrawKind::ObjectiveMarker,
+               "scene item order remains before physics debug");
+  const iggy3d::ProductPrimitiveDrawItem& aabbItem = physicsDebugList.items[5];
+  const iggy3d::ProductPrimitiveDrawItem& contactItem = physicsDebugList.items[6];
+  const iggy3d::ProductPrimitiveDrawItem& pairItem = physicsDebugList.items[7];
+  ok &= expect(aabbItem.kind == iggy3d::ProductPrimitiveDrawKind::PhysicsAabbDebug,
+               "physics AABB maps to product primitive kind");
+  ok &= expect(contactItem.kind ==
+                   iggy3d::ProductPrimitiveDrawKind::PhysicsContactNormalDebug,
+               "physics contact normal maps to product primitive kind");
+  ok &= expect(pairItem.kind ==
+                   iggy3d::ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug,
+               "physics broadphase pair maps to product primitive kind");
+  ok &= expect(aabbItem.entityId.value == 41U, "AABB actor id copied");
+  ok &= expect(aabbItem.stableName == "physics.aabb", "AABB fallback label");
+  ok &= expectVec3(aabbItem.worldPosition, {10.0F, 1.0F, 2.0F},
+                   "AABB position is bounds center");
+  ok &= expectAabb(aabbItem.worldBounds, physicsAabb.worldBounds,
+                   "AABB bounds copied");
+  ok &= expect(aabbItem.markerSize == 34.0F, "solid AABB marker size");
+  ok &= expectColor(aabbItem.color, {105, 205, 228}, "solid AABB color");
+  ok &= expect(contactItem.stableName == "physics.contact_normal",
+               "contact fallback label");
+  ok &= expectVec3(contactItem.worldPosition, physicsContact.worldPoint,
+                   "contact world point copied");
+  ok &= expectAabb(contactItem.worldBounds,
+                   iggy3d::aabbFromCenterExtents(physicsContact.worldPoint,
+                                                 {0.08F, 0.08F, 0.08F}),
+                   "contact point bounds");
+  ok &= expect(contactItem.markerSize == 18.0F, "contact marker size");
+  ok &= expectColor(contactItem.color, {245, 214, 96}, "sensor contact color");
+  ok &= expect(pairItem.stableName == "physics.broadphase_pair",
+               "pair fallback label");
+  ok &= expectVec3(pairItem.worldPosition, physicsPair.worldPoint,
+                   "pair world point copied");
+  ok &= expectAabb(pairItem.worldBounds,
+                   iggy3d::aabbFromCenterExtents(physicsPair.worldPoint,
+                                                 {0.10F, 0.10F, 0.10F}),
+                   "pair point bounds");
+  ok &= expect(pairItem.markerSize == 14.0F, "pair marker size");
+  ok &= expectColor(pairItem.color, {166, 184, 177}, "solid pair color");
 
   iggy3d::RoomAsset room;
   room.spatialSurfaces.push_back(walkableSurface("floor_flat", 0.0F));

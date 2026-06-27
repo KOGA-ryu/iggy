@@ -1,6 +1,7 @@
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -15,6 +16,16 @@
 
 namespace iggy3d {
 namespace {
+
+struct PhysicsDebugStyle {
+  ProductPrimitiveColor color;
+  float markerSize = 14.0F;
+};
+
+constexpr ProductPrimitiveColor kPhysicsDebugSensorColor{245, 214, 96};
+constexpr ProductPrimitiveColor kPhysicsAabbSolidColor{105, 205, 228};
+constexpr ProductPrimitiveColor kPhysicsContactNormalSolidColor{236, 118, 86};
+constexpr ProductPrimitiveColor kPhysicsBroadphasePairSolidColor{166, 184, 177};
 
 bool hasTag(const std::vector<std::string>& tags, std::string_view expected) {
   for (const std::string& tag : tags) {
@@ -84,9 +95,64 @@ ProductPrimitiveColor colorForRoomKind(ProductPrimitiveDrawKind kind) {
     case ProductPrimitiveDrawKind::DebugMarker:
     case ProductPrimitiveDrawKind::PlayerFocusIndicator:
     case ProductPrimitiveDrawKind::DoorMarker:
+    case ProductPrimitiveDrawKind::PhysicsAabbDebug:
+    case ProductPrimitiveDrawKind::PhysicsContactNormalDebug:
+    case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
       break;
   }
   return {112, 118, 120};
+}
+
+bool physicsDebugItemIsSensor(const DebugProjectionItem& item) {
+  return item.valueCode == "sensor" || (item.hasScalar && item.scalarValue > 0.5F);
+}
+
+std::string stableNameOrFallback(const DebugProjectionItem& item,
+                                 std::string_view fallback) {
+  // branch-gate: BG-1112
+  if (!item.labelCode.empty()) {
+    return item.labelCode;
+  }
+  return std::string(fallback);
+}
+
+PhysicsDebugStyle physicsAabbDebugStyle(bool sensor) {
+  constexpr std::array<PhysicsDebugStyle, 2U> styles{
+      PhysicsDebugStyle{kPhysicsAabbSolidColor, 34.0F},
+      PhysicsDebugStyle{kPhysicsDebugSensorColor, 28.0F},
+  };
+  return styles[static_cast<std::size_t>(sensor)];
+}
+
+PhysicsDebugStyle physicsContactNormalDebugStyle(bool sensor) {
+  constexpr std::array<PhysicsDebugStyle, 2U> styles{
+      PhysicsDebugStyle{kPhysicsContactNormalSolidColor, 18.0F},
+      PhysicsDebugStyle{kPhysicsDebugSensorColor, 18.0F},
+  };
+  return styles[static_cast<std::size_t>(sensor)];
+}
+
+PhysicsDebugStyle physicsBroadphasePairDebugStyle(bool sensor) {
+  constexpr std::array<PhysicsDebugStyle, 2U> styles{
+      PhysicsDebugStyle{kPhysicsBroadphasePairSolidColor, 14.0F},
+      PhysicsDebugStyle{kPhysicsDebugSensorColor, 14.0F},
+  };
+  return styles[static_cast<std::size_t>(sensor)];
+}
+
+ProductPrimitiveDrawItem basePhysicsDebugItem(
+    const DebugProjectionItem& debugItem,
+    ProductPrimitiveDrawKind kind,
+    std::string_view fallbackStableName,
+    PhysicsDebugStyle style) {
+  ProductPrimitiveDrawItem item;
+  item.kind = kind;
+  item.entityId = debugItem.actor;
+  item.stableName = stableNameOrFallback(debugItem, fallbackStableName);
+  item.visible = true;
+  item.color = style.color;
+  item.markerSize = style.markerSize;
+  return item;
 }
 
 ProductPrimitiveDrawItem itemFromWalkableSurface(const RoomSpatialSurface& surface) {
@@ -236,6 +302,24 @@ void updateCounts(ProductPrimitiveDrawList& list, const ProductPrimitiveDrawItem
       break;
     case ProductPrimitiveDrawKind::DebugMarker:
       ++list.debugMarkerCount;
+      break;
+    case ProductPrimitiveDrawKind::PhysicsAabbDebug:
+      ++list.debugMarkerCount;
+      ++list.physicsDebugItemCount;
+      ++list.physicsAabbDebugCount;
+      list.physicsDebugVisible = true;
+      break;
+    case ProductPrimitiveDrawKind::PhysicsContactNormalDebug:
+      ++list.debugMarkerCount;
+      ++list.physicsDebugItemCount;
+      ++list.physicsContactNormalDebugCount;
+      list.physicsDebugVisible = true;
+      break;
+    case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
+      ++list.debugMarkerCount;
+      ++list.physicsDebugItemCount;
+      ++list.physicsBroadphasePairDebugCount;
+      list.physicsDebugVisible = true;
       break;
     case ProductPrimitiveDrawKind::PlayerFocusIndicator:
       list.playerFocusIndicatorVisible = true;
@@ -442,6 +526,104 @@ void appendRoomEditorPlacementPreview(
   updateCounts(list, item);
 }
 
+void appendPhysicsAabbDebugItem(const DebugProjectionItem& debugItem,
+                                ProductPrimitiveDrawList& list) {
+  // branch-gate: BG-1112
+  if (!debugItem.hasBounds) {
+    return;
+  }
+
+  const bool sensor = physicsDebugItemIsSensor(debugItem);
+  ProductPrimitiveDrawItem item = basePhysicsDebugItem(
+      debugItem,
+      ProductPrimitiveDrawKind::PhysicsAabbDebug,
+      "physics.aabb",
+      physicsAabbDebugStyle(sensor));
+  item.worldBounds = debugItem.worldBounds;
+  item.worldPosition = center(item.worldBounds);
+  list.items.push_back(item);
+  updateCounts(list, item);
+}
+
+void appendPhysicsContactNormalDebugItem(const DebugProjectionItem& debugItem,
+                                         ProductPrimitiveDrawList& list) {
+  // branch-gate: BG-1112
+  if (!debugItem.hasWorldPoint) {
+    return;
+  }
+
+  const bool sensor = physicsDebugItemIsSensor(debugItem);
+  ProductPrimitiveDrawItem item = basePhysicsDebugItem(
+      debugItem,
+      ProductPrimitiveDrawKind::PhysicsContactNormalDebug,
+      "physics.contact_normal",
+      physicsContactNormalDebugStyle(sensor));
+  item.worldPosition = debugItem.worldPoint;
+  item.worldBounds =
+      aabbFromCenterExtents(item.worldPosition, {0.08F, 0.08F, 0.08F});
+  list.items.push_back(item);
+  updateCounts(list, item);
+}
+
+void appendPhysicsBroadphasePairDebugItem(const DebugProjectionItem& debugItem,
+                                          ProductPrimitiveDrawList& list) {
+  // branch-gate: BG-1112
+  if (!debugItem.hasWorldPoint) {
+    return;
+  }
+
+  const bool sensor = physicsDebugItemIsSensor(debugItem);
+  ProductPrimitiveDrawItem item = basePhysicsDebugItem(
+      debugItem,
+      ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug,
+      "physics.broadphase_pair",
+      physicsBroadphasePairDebugStyle(sensor));
+  item.worldPosition = debugItem.worldPoint;
+  item.worldBounds =
+      aabbFromCenterExtents(item.worldPosition, {0.10F, 0.10F, 0.10F});
+  list.items.push_back(item);
+  updateCounts(list, item);
+}
+
+void appendDebugProjectionItem(const DebugProjectionItem& debugItem,
+                               ProductPrimitiveDrawList& list) {
+  // branch-gate: BG-1112
+  switch (debugItem.kind) {
+    case DebugProjectionKind::PhysicsAabb:
+      appendPhysicsAabbDebugItem(debugItem, list);
+      return;
+    case DebugProjectionKind::PhysicsContactNormal:
+      appendPhysicsContactNormalDebugItem(debugItem, list);
+      return;
+    case DebugProjectionKind::PhysicsBroadphasePair:
+      appendPhysicsBroadphasePairDebugItem(debugItem, list);
+      return;
+    case DebugProjectionKind::TargetCandidate:
+    case DebugProjectionKind::ReachRadius:
+    case DebugProjectionKind::CommandRejected:
+    case DebugProjectionKind::ClockMode:
+    case DebugProjectionKind::CameraMode:
+    case DebugProjectionKind::ObjectiveState:
+    case DebugProjectionKind::StateHash:
+    case DebugProjectionKind::ReplayDivergence:
+    case DebugProjectionKind::RuntimeTelemetry:
+    case DebugProjectionKind::NpcBehavior:
+      return;
+  }
+}
+
+void appendDebugProjectionItems(const DebugProjectionResult* debug,
+                                ProductPrimitiveDrawList& list) {
+  // branch-gate: BG-1112
+  if (debug == nullptr) {
+    return;
+  }
+
+  for (const DebugProjectionItem& item : debug->items) {
+    appendDebugProjectionItem(item, list);
+  }
+}
+
 }  // namespace
 
 ProductPrimitiveDrawList buildProductPrimitiveDrawList(
@@ -451,7 +633,6 @@ ProductPrimitiveDrawList buildProductPrimitiveDrawList(
     const ProductActiveRoomCollisionState* activeRoomCollision,
     const ProductRoomEditorOverlay* roomEditorOverlay,
     const ProductRoomEditorPreviewOverlay* roomEditorPreviewOverlay) {
-  (void)debug;
   ProductPrimitiveDrawList list;
   list.gridVisible =
       scene != nullptr || activeRoom != nullptr ||
@@ -461,28 +642,30 @@ ProductPrimitiveDrawList buildProductPrimitiveDrawList(
   appendOpenDoorMarkers(activeRoom, activeRoomCollision, list);
   appendRoomEditorOverlay(roomEditorOverlay, list);
   appendRoomEditorPlacementPreview(roomEditorPreviewOverlay, list);
-  if (scene == nullptr) {
-    return list;
+
+  // branch-gate: BG-1112
+  if (scene != nullptr) {
+    list.roomVisible = list.roomVisible || scene->room.loaded || !scene->items.empty();
+    list.objectiveVisible = scene->pickupCount > 0 || scene->interactableCount > 0 ||
+                            scene->markerCount > 0 || scene->room.loaded;
+
+    for (const SceneItem& sceneItem : scene->items) {
+      if (!sceneItem.visible) {
+        continue;
+      }
+      ProductPrimitiveDrawItem item = itemFromSceneItem(sceneItem);
+      list.items.push_back(item);
+      updateCounts(list, item);
+
+      if (item.kind == ProductPrimitiveDrawKind::PlayerMarker) {
+        ProductPrimitiveDrawItem focus = playerFocusIndicatorFor(item);
+        list.items.push_back(focus);
+        updateCounts(list, focus);
+      }
+    }
   }
 
-  list.roomVisible = list.roomVisible || scene->room.loaded || !scene->items.empty();
-  list.objectiveVisible = scene->pickupCount > 0 || scene->interactableCount > 0 ||
-                          scene->markerCount > 0 || scene->room.loaded;
-
-  for (const SceneItem& sceneItem : scene->items) {
-    if (!sceneItem.visible) {
-      continue;
-    }
-    ProductPrimitiveDrawItem item = itemFromSceneItem(sceneItem);
-    list.items.push_back(item);
-    updateCounts(list, item);
-
-    if (item.kind == ProductPrimitiveDrawKind::PlayerMarker) {
-      ProductPrimitiveDrawItem focus = playerFocusIndicatorFor(item);
-      list.items.push_back(focus);
-      updateCounts(list, focus);
-    }
-  }
+  appendDebugProjectionItems(debug, list);
 
   return list;
 }

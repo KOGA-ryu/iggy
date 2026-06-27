@@ -13,6 +13,45 @@ bool isTargetItem(const ProductPrimitiveDrawItem& item) {
          item.interactable;
 }
 
+void countPhysicsDebugKind(ProductRenderBridgeFrame& bridge,
+                           ProductPrimitiveDrawKind kind) {
+  // branch-gate: BG-1113
+  switch (kind) {
+    case ProductPrimitiveDrawKind::PhysicsAabbDebug:
+      ++bridge.physicsDebugItemCount;
+      ++bridge.physicsAabbDebugCount;
+      bridge.physicsDebugVisible = true;
+      return;
+    case ProductPrimitiveDrawKind::PhysicsContactNormalDebug:
+      ++bridge.physicsDebugItemCount;
+      ++bridge.physicsContactNormalDebugCount;
+      bridge.physicsDebugVisible = true;
+      return;
+    case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
+      ++bridge.physicsDebugItemCount;
+      ++bridge.physicsBroadphasePairDebugCount;
+      bridge.physicsDebugVisible = true;
+      return;
+    case ProductPrimitiveDrawKind::PlayerMarker:
+    case ProductPrimitiveDrawKind::NpcMarker:
+    case ProductPrimitiveDrawKind::PickupMarker:
+    case ProductPrimitiveDrawKind::InteractableMarker:
+    case ProductPrimitiveDrawKind::ObjectiveMarker:
+    case ProductPrimitiveDrawKind::TacticalMarker:
+    case ProductPrimitiveDrawKind::DebugMarker:
+    case ProductPrimitiveDrawKind::PlayerFocusIndicator:
+    case ProductPrimitiveDrawKind::DoorMarker:
+    case ProductPrimitiveDrawKind::FloorTile:
+    case ProductPrimitiveDrawKind::ElevatedFloorTile:
+    case ProductPrimitiveDrawKind::RampTile:
+    case ProductPrimitiveDrawKind::BlockedSlopeTile:
+    case ProductPrimitiveDrawKind::WallTile:
+    case ProductPrimitiveDrawKind::RoomEditorCursor:
+    case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
+      return;
+  }
+}
+
 }  // namespace
 
 ProductRenderBridgeFrame buildProductRenderBridgeFrame(
@@ -30,8 +69,15 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
     bridge.playerVisible = drawList->playerVisible;
     bridge.objectiveVisible = drawList->objectiveVisible;
     bridge.targetIndicatorVisible = drawList->playerFocusIndicatorVisible;
+    bridge.physicsDebugVisible = drawList->physicsDebugVisible;
+    bridge.physicsDebugItemCount = drawList->physicsDebugItemCount;
+    bridge.physicsAabbDebugCount = drawList->physicsAabbDebugCount;
+    bridge.physicsContactNormalDebugCount = drawList->physicsContactNormalDebugCount;
+    bridge.physicsBroadphasePairDebugCount =
+        drawList->physicsBroadphasePairDebugCount;
   }
 
+  ProductRenderBridgeFrame framedPhysicsCounts;
   if (frame != nullptr) {
     bridge.projectionMode = frame->projectionMode;
     bridge.frameItemCount = static_cast<std::uint64_t>(frame->framedItems.size());
@@ -56,6 +102,7 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
       if (isTargetItem(item)) {
         ++bridge.targetItemCount;
       }
+      countPhysicsDebugKind(framedPhysicsCounts, item.kind);
       if (item.kind == ProductPrimitiveDrawKind::RoomEditorCursor) {
         ++bridge.roomEditorCursorCount;
         bridge.roomEditorCursorVisible = true;
@@ -66,6 +113,16 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
         bridge.roomEditorPlacementPreviewVisible = true;
       }
     }
+  }
+  // branch-gate: BG-1113
+  if (bridge.physicsDebugItemCount == 0U) {
+    bridge.physicsDebugVisible = framedPhysicsCounts.physicsDebugVisible;
+    bridge.physicsDebugItemCount = framedPhysicsCounts.physicsDebugItemCount;
+    bridge.physicsAabbDebugCount = framedPhysicsCounts.physicsAabbDebugCount;
+    bridge.physicsContactNormalDebugCount =
+        framedPhysicsCounts.physicsContactNormalDebugCount;
+    bridge.physicsBroadphasePairDebugCount =
+        framedPhysicsCounts.physicsBroadphasePairDebugCount;
   }
 
   if (feedback != nullptr) {

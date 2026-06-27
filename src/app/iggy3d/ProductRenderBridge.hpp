@@ -40,6 +40,11 @@ struct ProductRenderBridgeFrame {
   std::uint64_t roomEditorCursorCount = 0;
   bool roomEditorPlacementPreviewVisible = false;
   std::uint64_t roomEditorPlacementPreviewCount = 0;
+  bool physicsDebugVisible = false;
+  std::uint64_t physicsDebugItemCount = 0;
+  std::uint64_t physicsAabbDebugCount = 0;
+  std::uint64_t physicsContactNormalDebugCount = 0;
+  std::uint64_t physicsBroadphasePairDebugCount = 0;
   std::string projectionMode = "primitive_first_person";
   std::vector<ProductRenderBridgeItem> items;
 };
