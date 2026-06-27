@@ -45,7 +45,7 @@ target_sources(iggy3d
     src/app/iggy3d/ascii_room/ProductAsciiRoomEditing.cpp
     src/app/iggy3d/ascii_room/ProductAsciiRoomPackage.cpp
     src/app/iggy3d/ascii_room/ProductAsciiRoomPreview.cpp
-    src/app/iggy3d/gameplay/ProductGameplayController.cpp
+    src/app/iggy3d/gameplay/Controller.cpp
     src/app/iggy3d/gameplay/GameplayFeedback.cpp
     src/app/iggy3d/gameplay/ProjectionRefresh.cpp
     src/app/iggy3d/menu/ProductFrontendRouter.cpp

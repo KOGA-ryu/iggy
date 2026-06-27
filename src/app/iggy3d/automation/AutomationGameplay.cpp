@@ -7,7 +7,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductControllerActionMap.hpp"
 #include "app/iggy3d/ProductControllerActionRouting.hpp"
-#include "app/iggy3d/gameplay/ProductGameplayController.hpp"
+#include "app/iggy3d/gameplay/Controller.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/input/ActionState.hpp"

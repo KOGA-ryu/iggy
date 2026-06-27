@@ -3,7 +3,7 @@
 #include <cmath>
 
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
-#include "app/iggy3d/gameplay/ProductGameplayController.hpp"
+#include "app/iggy3d/gameplay/Controller.hpp"
 #include "app/input/ActionState.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/session/Session.hpp"

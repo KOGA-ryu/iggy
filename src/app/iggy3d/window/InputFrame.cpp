@@ -4,7 +4,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductCameraController.hpp"
 #include "app/iggy3d/ProductControllerActionRouting.hpp"
-#include "app/iggy3d/gameplay/ProductGameplayController.hpp"
+#include "app/iggy3d/gameplay/Controller.hpp"
 #include "app/iggy3d/ProductInteractionModeState.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
 #include "app/iggy3d/room_editor/ActionController.hpp"
