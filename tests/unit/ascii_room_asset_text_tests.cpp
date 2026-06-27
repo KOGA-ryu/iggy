@@ -1,5 +1,5 @@
-#include "app/iggy3d/AsciiRoomAssetText.hpp"
-#include "app/iggy3d/AsciiRoomToRoomAsset.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomAssetText.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomToRoomAsset.hpp"
 #include "content/assets/RoomAsset.hpp"
 
 #include <cmath>

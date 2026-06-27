@@ -1,4 +1,4 @@
-#include "app/iggy3d/AsciiRoomToRoomAsset.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomToRoomAsset.hpp"
 
 #include <algorithm>
 #include <cmath>

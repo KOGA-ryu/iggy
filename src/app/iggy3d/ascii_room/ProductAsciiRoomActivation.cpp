@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductAsciiRoomActivation.hpp"
+#include "app/iggy3d/ascii_room/ProductAsciiRoomActivation.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -7,8 +7,8 @@
 
 #include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
-#include "app/iggy3d/ProductAsciiRoomPackage.hpp"
-#include "app/iggy3d/ProductAsciiRoomPreview.hpp"
+#include "app/iggy3d/ascii_room/ProductAsciiRoomPackage.hpp"
+#include "app/iggy3d/ascii_room/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
 
 namespace iggy3d {

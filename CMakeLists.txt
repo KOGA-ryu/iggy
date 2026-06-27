@@ -25,12 +25,12 @@ target_sources(iggy3d
     src/app/CliParser.cpp
     src/app/PackageRuntimeLookup.cpp
     src/app/iggy3d/AppShell.cpp
-    src/app/iggy3d/AsciiRoomGrid.cpp
-    src/app/iggy3d/AsciiRoomSource.cpp
-    src/app/iggy3d/AsciiRoomToAuthoredRoom.cpp
-    src/app/iggy3d/AsciiRoomAssetText.cpp
-    src/app/iggy3d/AsciiRoomToEditableRoom.cpp
-    src/app/iggy3d/AsciiRoomToRoomAsset.cpp
+    src/app/iggy3d/ascii_room/AsciiRoomGrid.cpp
+    src/app/iggy3d/ascii_room/AsciiRoomSource.cpp
+    src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.cpp
+    src/app/iggy3d/ascii_room/AsciiRoomAssetText.cpp
+    src/app/iggy3d/ascii_room/AsciiRoomToEditableRoom.cpp
+    src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp
     src/app/iggy3d/world/DefaultWorldTemplate.cpp
     src/app/iggy3d/EditableRoomToAuthoredRoom.cpp
     src/app/iggy3d/FrontendActionExecutor.cpp
@@ -40,11 +40,11 @@ target_sources(iggy3d
     src/app/iggy3d/ProductBuiltinDungeon.cpp
     src/app/iggy3d/ProductCameraController.cpp
     src/app/iggy3d/ProductDungeonDraft.cpp
-    src/app/iggy3d/ProductAsciiRoomActivation.cpp
-    src/app/iggy3d/ProductAsciiRoomAuthoring.cpp
-    src/app/iggy3d/ProductAsciiRoomEditing.cpp
-    src/app/iggy3d/ProductAsciiRoomPackage.cpp
-    src/app/iggy3d/ProductAsciiRoomPreview.cpp
+    src/app/iggy3d/ascii_room/ProductAsciiRoomActivation.cpp
+    src/app/iggy3d/ascii_room/ProductAsciiRoomAuthoring.cpp
+    src/app/iggy3d/ascii_room/ProductAsciiRoomEditing.cpp
+    src/app/iggy3d/ascii_room/ProductAsciiRoomPackage.cpp
+    src/app/iggy3d/ascii_room/ProductAsciiRoomPreview.cpp
     src/app/iggy3d/gameplay/ProductGameplayController.cpp
     src/app/iggy3d/gameplay/ProductGameplayFeedback.cpp
     src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp

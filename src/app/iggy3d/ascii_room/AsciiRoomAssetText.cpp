@@ -1,4 +1,4 @@
-#include "app/iggy3d/AsciiRoomAssetText.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomAssetText.hpp"
 
 #include <iomanip>
 #include <sstream>

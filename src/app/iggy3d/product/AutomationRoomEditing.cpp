@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "app/frontend/FrontendState.hpp"
-#include "app/iggy3d/ProductAsciiRoomPreview.hpp"
+#include "app/iggy3d/ascii_room/ProductAsciiRoomPreview.hpp"
 #include "app/iggy3d/room_editor/ProductRoomAuthoringController.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorCursor.hpp"

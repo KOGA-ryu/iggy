@@ -4,10 +4,10 @@
 #include <string>
 #include <vector>
 
-#include "app/iggy3d/AsciiRoomAssetText.hpp"
-#include "app/iggy3d/AsciiRoomGrid.hpp"
-#include "app/iggy3d/AsciiRoomToAuthoredRoom.hpp"
-#include "app/iggy3d/AsciiRoomToRoomAsset.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomAssetText.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomGrid.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomToRoomAsset.hpp"
 
 namespace iggy3d {
 

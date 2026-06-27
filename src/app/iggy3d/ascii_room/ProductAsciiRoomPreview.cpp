@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductAsciiRoomPreview.hpp"
+#include "app/iggy3d/ascii_room/ProductAsciiRoomPreview.hpp"
 
 #include <cstdint>
 #include <string>

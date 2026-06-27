@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
+#include "app/iggy3d/ascii_room/ProductAsciiRoomAuthoring.hpp"
 #include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ProductActiveRoomState.hpp"
 #include "app/iggy3d/world/ProductPackageSessionSeed.hpp"

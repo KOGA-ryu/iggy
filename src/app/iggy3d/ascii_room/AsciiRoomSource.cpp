@@ -1,9 +1,9 @@
-#include "app/iggy3d/AsciiRoomSource.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomSource.hpp"
 
 #include <string>
 #include <utility>
 
-#include "app/iggy3d/AsciiRoomGrid.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomGrid.hpp"
 
 namespace iggy3d {
 namespace {

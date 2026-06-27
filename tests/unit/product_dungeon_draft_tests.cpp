@@ -3,7 +3,7 @@
 #include <iostream>
 #include <string_view>
 
-#include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
+#include "app/iggy3d/ascii_room/ProductAsciiRoomAuthoring.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 
 namespace {

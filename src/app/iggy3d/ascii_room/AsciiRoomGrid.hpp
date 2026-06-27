@@ -7,7 +7,7 @@
 #include <string_view>
 #include <vector>
 
-#include "app/iggy3d/AsciiRoomSource.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomSource.hpp"
 
 namespace iggy3d {
 

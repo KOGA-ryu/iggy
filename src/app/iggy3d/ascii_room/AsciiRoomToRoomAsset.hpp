@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "app/iggy3d/AsciiRoomToAuthoredRoom.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.hpp"
 #include "content/assets/RoomAsset.hpp"
 
 namespace iggy3d {

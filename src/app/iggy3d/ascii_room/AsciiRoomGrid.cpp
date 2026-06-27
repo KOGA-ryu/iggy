@@ -1,4 +1,4 @@
-#include "app/iggy3d/AsciiRoomGrid.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomGrid.hpp"
 
 #include <array>
 #include <utility>

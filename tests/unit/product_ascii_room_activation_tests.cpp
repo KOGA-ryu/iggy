@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductAsciiRoomActivation.hpp"
+#include "app/iggy3d/ascii_room/ProductAsciiRoomActivation.hpp"
 
 #include <cstdlib>
 #include <iostream>

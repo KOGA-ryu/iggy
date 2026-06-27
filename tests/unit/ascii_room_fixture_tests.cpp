@@ -1,4 +1,4 @@
-#include "app/iggy3d/AsciiRoomToAuthoredRoom.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.hpp"
 
 #include <cstdlib>
 #include <filesystem>

@@ -1,4 +1,4 @@
-#include "app/iggy3d/AsciiRoomToEditableRoom.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomToEditableRoom.hpp"
 
 #include <utility>
 

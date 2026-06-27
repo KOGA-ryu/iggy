@@ -3,7 +3,7 @@
 #include <string_view>
 #include <utility>
 
-#include "app/iggy3d/ProductAsciiRoomPackage.hpp"
+#include "app/iggy3d/ascii_room/ProductAsciiRoomPackage.hpp"
 #include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
 #include "content/FixtureScenarioLoader.hpp"
 #include "runtime/combat/CombatState.hpp"

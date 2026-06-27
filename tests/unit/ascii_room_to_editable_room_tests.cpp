@@ -1,6 +1,6 @@
-#include "app/iggy3d/AsciiRoomGrid.hpp"
-#include "app/iggy3d/AsciiRoomSource.hpp"
-#include "app/iggy3d/AsciiRoomToEditableRoom.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomGrid.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomSource.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomToEditableRoom.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "runtime/session/SessionState.hpp"
 
