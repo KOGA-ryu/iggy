@@ -6,7 +6,7 @@
 #include "app/iggy3d/ProductAppOperations.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
-#include "app/iggy3d/SaveBridge.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 
 namespace iggy3d {
 

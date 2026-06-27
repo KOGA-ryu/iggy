@@ -9,7 +9,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
-#include "app/iggy3d/SaveBridge.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 #include "runtime/session/Session.hpp"
 
 namespace iggy3d {

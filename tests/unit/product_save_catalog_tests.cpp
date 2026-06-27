@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "app/iggy3d/ProductSaveCatalog.hpp"
+#include "app/iggy3d/save/ProductSaveCatalog.hpp"
 
 namespace {
 

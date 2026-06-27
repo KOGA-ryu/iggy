@@ -13,7 +13,7 @@
 #include "app/iggy3d/ProductRoomEditorPreview.hpp"
 #include "app/iggy3d/ProductRoomEditingState.hpp"
 #include "app/iggy3d/ProductViewportState.hpp"
-#include "app/iggy3d/SaveBridge.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 #include "render/RenderDiagnostics.hpp"
 
 namespace iggy3d {

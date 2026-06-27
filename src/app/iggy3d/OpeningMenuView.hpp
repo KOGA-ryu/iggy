@@ -16,7 +16,7 @@
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductTopDownMapOverlay.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
-#include "app/iggy3d/SaveBridge.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
 struct SDL_Renderer;

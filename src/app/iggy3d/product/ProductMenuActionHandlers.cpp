@@ -11,7 +11,7 @@
 #include "app/iggy3d/ProductAppOperations.hpp"
 #include "app/iggy3d/ProductMenuTransitions.hpp"
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
-#include "app/iggy3d/ProductSaveFlow.hpp"
+#include "app/iggy3d/save/ProductSaveFlow.hpp"
 #include "app/iggy3d/product/Automation.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
 
