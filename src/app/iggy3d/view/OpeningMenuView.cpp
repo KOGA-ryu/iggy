@@ -17,7 +17,7 @@
 #include "projection/debug/DebugProjection.hpp"
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
-#include "app/iggy3d/ProductInteractionModeHud.hpp"
+#include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
@@ -367,7 +367,7 @@ void drawGameplayFeedback(SDL_Renderer& renderer,
 }
 
 void drawInteractionModeHud(SDL_Renderer& renderer,
-                            const ProductInteractionModeHud* hud) {
+                            const InteractionModeHud* hud) {
   // branch-gate: BG-1065
   if (hud == nullptr || !hud->visible) {
     return;
@@ -873,7 +873,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
                        std::uint64_t runtimeStateHash,
                        const ProductViewportFrame* frame,
                        const ProductGameplayFeedback* feedback,
-                       const ProductInteractionModeHud* interactionModeHud,
+                       const InteractionModeHud* interactionModeHud,
                        const TopDownMapOverlay* topDownMapOverlay,
                        const MovementDebugHud* movementHud,
                        const NpcBehaviorDebugHud* npcHud,
@@ -989,7 +989,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          std::uint64_t runtimeStateHash,
                                          const ProductViewportFrame* frame,
                                          const ProductGameplayFeedback* feedback,
-                                         const ProductInteractionModeHud* interactionModeHud,
+                                         const InteractionModeHud* interactionModeHud,
                                          const TopDownMapOverlay* topDownMapOverlay,
                                          const MovementDebugHud* movementHud,
                                          const NpcBehaviorDebugHud* npcHud,

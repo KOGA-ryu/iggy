@@ -8,7 +8,7 @@
 
 namespace iggy3d {
 
-struct ProductInteractionModeHud {
+struct InteractionModeHud {
   bool visible = false;
   std::string status = "interaction_mode_hud_hidden";
   std::string reasonCode = "interaction_mode_hud_hidden";
@@ -18,13 +18,13 @@ struct ProductInteractionModeHud {
   bool roomEditingReady = false;
 };
 
-struct ProductInteractionModeHudRequest {
+struct InteractionModeHudRequest {
   ProductInteractionMode mode = ProductInteractionMode::Player;
   bool gameplayActive = false;
   bool roomEditingReady = false;
 };
 
-ProductInteractionModeHud buildProductInteractionModeHud(
-    ProductInteractionModeHudRequest request);
+InteractionModeHud buildInteractionModeHud(
+    InteractionModeHudRequest request);
 
 }  // namespace iggy3d

@@ -1,32 +1,32 @@
-#include "app/iggy3d/ProductInteractionModeHud.hpp"
+#include "app/iggy3d/debug/InteractionModeHud.hpp"
 
 #include <array>
 
 namespace iggy3d {
 namespace {
 
-struct ProductInteractionModeHudDescriptor {
+struct InteractionModeHudDescriptor {
   ProductInteractionMode mode;
   std::string_view label;
   ProductFeedbackTone tone;
 };
 
-constexpr std::array<ProductInteractionModeHudDescriptor, 2> kModeHudDescriptors{
-    ProductInteractionModeHudDescriptor{
+constexpr std::array<InteractionModeHudDescriptor, 2> kModeHudDescriptors{
+    InteractionModeHudDescriptor{
         ProductInteractionMode::Player,
         "player",
         ProductFeedbackTone::Neutral,
     },
-    ProductInteractionModeHudDescriptor{
+    InteractionModeHudDescriptor{
         ProductInteractionMode::Creative,
         "creative",
         ProductFeedbackTone::Warn,
     },
 };
 
-const ProductInteractionModeHudDescriptor* descriptorFor(
+const InteractionModeHudDescriptor* descriptorFor(
     ProductInteractionMode mode) {
-  for (const ProductInteractionModeHudDescriptor& descriptor :
+  for (const InteractionModeHudDescriptor& descriptor :
        kModeHudDescriptors) {
     // branch-gate: BG-1064
     if (descriptor.mode == mode) {
@@ -38,12 +38,12 @@ const ProductInteractionModeHudDescriptor* descriptorFor(
 
 }  // namespace
 
-ProductInteractionModeHud buildProductInteractionModeHud(
-    ProductInteractionModeHudRequest request) {
-  ProductInteractionModeHud hud;
+InteractionModeHud buildInteractionModeHud(
+    InteractionModeHudRequest request) {
+  InteractionModeHud hud;
   hud.roomEditingReady = request.roomEditingReady;
 
-  const ProductInteractionModeHudDescriptor* descriptor =
+  const InteractionModeHudDescriptor* descriptor =
       descriptorFor(request.mode);
   // branch-gate: BG-1064
   if (descriptor == nullptr) {

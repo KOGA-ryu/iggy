@@ -254,8 +254,8 @@ void copyProductRoomEditorHud(ProductAppWindowState& window,
   window.roomEditorHudLineCount = hud.lineCount;
 }
 
-void copyProductInteractionModeHud(ProductAppWindowState& window,
-                                   const ProductInteractionModeHud& hud) {
+void copyInteractionModeHud(ProductAppWindowState& window,
+                                   const InteractionModeHud& hud) {
   window.interactionModeHudVisible = hud.visible;
   window.interactionModeHudStatus = hud.status;
   window.interactionModeHudReasonCode = hud.reasonCode;
@@ -473,13 +473,13 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   ProductAppWindowState& window = request.window;
   ProductGameplayProjectionFrame frame;
   frame.feedback = buildProductGameplayFeedback(window);
-  frame.interactionModeHud = buildProductInteractionModeHud(
-      ProductInteractionModeHudRequest{
+  frame.interactionModeHud = buildInteractionModeHud(
+      InteractionModeHudRequest{
           window.interactionMode,
           window.gameplayActive,
           window.roomEditing.ready,
       });
-  copyProductInteractionModeHud(window, frame.interactionModeHud);
+  copyInteractionModeHud(window, frame.interactionModeHud);
   frame.topDownMapOverlay = buildTopDownMapOverlay(
       TopDownMapOverlayRequest{request.rendererRequest,
                                       window.interactionMode,
@@ -563,13 +563,13 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.sceneItemCount = frame.scene.items.size();
   window.runtimeStateHash = request.activeSession->stateHash();
   frame.feedback = buildProductGameplayFeedback(window);
-  frame.interactionModeHud = buildProductInteractionModeHud(
-      ProductInteractionModeHudRequest{
+  frame.interactionModeHud = buildInteractionModeHud(
+      InteractionModeHudRequest{
           window.interactionMode,
           window.gameplayActive,
           window.roomEditing.ready,
       });
-  copyProductInteractionModeHud(window, frame.interactionModeHud);
+  copyInteractionModeHud(window, frame.interactionModeHud);
   frame.movementHud = buildMovementDebugHud(window,
                                                    request.developerToolsEnabled,
                                                    request.debugOverlayEnabled);

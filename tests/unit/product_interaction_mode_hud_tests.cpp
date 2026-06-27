@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductInteractionModeHud.hpp"
+#include "app/iggy3d/debug/InteractionModeHud.hpp"
 
 #include <iostream>
 
@@ -17,8 +17,8 @@ bool expect(bool condition, const char* message) {
 int main() {
   bool ok = true;
 
-  const iggy3d::ProductInteractionModeHud inactive =
-      iggy3d::buildProductInteractionModeHud({
+  const iggy3d::InteractionModeHud inactive =
+      iggy3d::buildInteractionModeHud({
           iggy3d::ProductInteractionMode::Player,
           false,
           false,
@@ -31,8 +31,8 @@ int main() {
   ok &= expect(inactive.mode == "player", "inactive mode copied");
   ok &= expect(inactive.label == "player", "inactive label copied");
 
-  const iggy3d::ProductInteractionModeHud player =
-      iggy3d::buildProductInteractionModeHud({
+  const iggy3d::InteractionModeHud player =
+      iggy3d::buildInteractionModeHud({
           iggy3d::ProductInteractionMode::Player,
           true,
           false,
@@ -47,8 +47,8 @@ int main() {
   ok &= expect(player.tone == iggy3d::ProductFeedbackTone::Neutral,
                "player neutral tone");
 
-  const iggy3d::ProductInteractionModeHud creative =
-      iggy3d::buildProductInteractionModeHud({
+  const iggy3d::InteractionModeHud creative =
+      iggy3d::buildInteractionModeHud({
           iggy3d::ProductInteractionMode::Creative,
           true,
           true,
@@ -62,8 +62,8 @@ int main() {
   ok &= expect(creative.tone == iggy3d::ProductFeedbackTone::Warn,
                "creative accent tone");
 
-  const iggy3d::ProductInteractionModeHud unknown =
-      iggy3d::buildProductInteractionModeHud({
+  const iggy3d::InteractionModeHud unknown =
+      iggy3d::buildInteractionModeHud({
           static_cast<iggy3d::ProductInteractionMode>(255U),
           true,
           true,
