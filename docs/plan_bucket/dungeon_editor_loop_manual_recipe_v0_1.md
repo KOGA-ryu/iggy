@@ -36,6 +36,12 @@ The helper configures a separate `build-vulkan` tree with
 command, and lists the readiness receipt fields to inspect. It does not launch a
 window unless you pass `--run`.
 
+The helper's launch command includes `--auto-new-world` by default. That is
+intentional for the current first-person renderer gate: it puts the product into
+gameplay so Vulkan receives a room mesh. A Vulkan starter-screen run can be
+logically on the Starter screen while drawing no visible menu yet; that is a
+starter/menu rendering gap, not an accepted first-person gameplay pass.
+
 The equivalent raw commands are:
 
 ```sh
@@ -70,7 +76,7 @@ The first save created by the current loop is:
 
 ## Window Launch
 
-Use this command for the main manual pass:
+Use this command for the main first-person renderer pass:
 
 ```sh
 build-vulkan/iggy3d \
@@ -78,7 +84,8 @@ build-vulkan/iggy3d \
   --renderer vulkan \
   --input auto \
   --save-root "$IGGY3D_EDITOR_SAVE_ROOT" \
-  --print-render-receipt
+  --print-render-receipt \
+  --auto-new-world
 ```
 
 Notes:
@@ -92,8 +99,10 @@ Notes:
   frame, and room-mesh backend path all ready.
 - `--renderer null` is diagnostic only. It uses the SDL top-down debug fallback
   and is not accepted first-person gameplay presentation.
-- `--input auto` enables keyboard/gamepad auto input selection. It does not
-  create a world or run the editor by itself.
+- `--auto-new-world` is included for the first-person renderer gate so gameplay
+  starts immediately and the Vulkan renderer receives an active room mesh.
+- `--input auto` enables keyboard/gamepad auto input selection. By itself it
+  does not create a world or run the editor.
 - `--print-render-receipt` prints state proof when the app exits.
 - Do not pass `--debug-overlay` for normal manual play. It enables movement/NPC
   debug panels that intentionally cover part of the view.
@@ -108,13 +117,29 @@ To have the helper launch the same command after building, run:
 tools/run_first_person_acceptance.sh --run
 ```
 
+To inspect the current Vulkan starter-screen diagnostic path instead, run:
+
+```sh
+tools/run_first_person_acceptance.sh --starter-menu --run
+```
+
+If that receipt remains on `frontend_screen=starter` with
+`product_vulkan_status=waiting_for_gameplay_room`, no first-person room frame
+has been submitted. Do not count that as visual gameplay acceptance.
+
 ## Full Manual Loop
 
 ### 1. Starter To New World
 
-1. Launch the app with the command above.
-2. On the Starter screen, select `New World` and confirm.
-   On an empty save root, New World is the current practical create path.
+The full product loop still starts conceptually at Starter -> New World, but the
+current Vulkan first-person renderer gate skips that UI with `--auto-new-world`.
+The starter/menu UI is currently visible through the SDL/null diagnostic path,
+not the accepted first-person Vulkan path.
+
+For the Vulkan first-person pass, launch with `--auto-new-world` and continue
+from gameplay. For menu-specific diagnosis, use the SDL/null fallback or the
+`--starter-menu` helper flag and inspect receipts; do not use that as
+first-person gameplay acceptance.
 
 ### 2. Create A Custom Draft Dungeon
 

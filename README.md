@@ -13,26 +13,25 @@ Startup script:
 set -eu
 
 cd ~/iggy3d
-cmake --build build --target iggy3d_app -j 8
-
-./build/iggy3d \
-  --window \
-  --input auto \
-  --save-root "$HOME/.iggy3d/saves" \
-  --print-render-receipt
+tools/run_first_person_acceptance.sh --run
 ```
 
 Use `--no-window --print-render-receipt` for routine receipt-only validation.
 Windowed launches are for manual inspection only.
 
-Normal interactive window launches open the starter menu first and suppress the
-demo world until a save is created or loaded. Use W/S or Up/Down to move between
-`Continue`, `New World`, `Load Save`, `Settings`, `Dev Tools`, and `Exit`; use
-Enter/Space or controller Cross to execute. Save files are plain `.iggy3d.save`
-files under `--save-root` and contain the runtime save envelope plus any authored
-room floors/walls from the in-game editor. Use `--auto-new-world` only for
-explicit scripted or developer launch paths that should enter gameplay without
-manual starter-menu selection.
+The first-person Vulkan acceptance helper configures `build-vulkan`, builds the
+product app, and launches with `--auto-new-world` so the renderer receives an
+active gameplay room mesh. The current Vulkan path does not render the starter
+menu yet; a run that remains on `frontend_screen=starter` with
+`product_vulkan_status=waiting_for_gameplay_room` has not submitted a
+first-person gameplay frame. Use the SDL/null diagnostic path for starter-menu
+inspection until Vulkan UI/menu rendering is wired.
+
+Save files are plain `.iggy3d.save` files under `--save-root` and contain the
+runtime save envelope plus any authored room floors/walls from the in-game
+editor. Use `--auto-new-world` only for explicit scripted, developer, or
+first-person acceptance launch paths that should enter gameplay without manual
+starter-menu selection.
 
 In gameplay, Esc opens the visible Pause Menu HUD: `Resume`, `Save`,
 `Save And Exit`, `Load Save`, `Settings`, `Dev Tools`, `Return To Title`, and

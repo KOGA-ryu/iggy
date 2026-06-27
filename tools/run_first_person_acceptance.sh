@@ -8,10 +8,15 @@ Usage: tools/run_first_person_acceptance.sh [options]
 Configures and builds the Vulkan-enabled product app, then prints the manual
 first-person acceptance launch command and receipt fields to inspect.
 
+The default launch command enters gameplay with --auto-new-world. The current
+Vulkan path does not render the starter menu yet, so a starter-screen run is a
+menu/UI diagnostic, not a first-person gameplay acceptance gate.
+
 Default behavior does not launch a window.
 
 Options:
   --run                 Launch the product window after configure/build.
+  --starter-menu        Do not add --auto-new-world. Diagnostic only.
   --build-dir PATH      Build directory. Default: build-vulkan
   --save-root PATH      Save root for the manual run. Default: $HOME/.iggy3d/saves
   --jobs N              Build parallelism. Default: $IGGY3D_JOBS or 8
@@ -33,11 +38,16 @@ build_dir="${repo_root}/build-vulkan"
 save_root="${HOME}/.iggy3d/saves"
 jobs="${IGGY3D_JOBS:-8}"
 run_window=0
+auto_new_world=1
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --run)
       run_window=1
+      shift
+      ;;
+    --starter-menu)
+      auto_new_world=0
       shift
       ;;
     --build-dir)
@@ -91,6 +101,9 @@ build_command=(cmake --build "${build_dir}" --target iggy3d_app -j "${jobs}")
 app_binary="${build_dir}/iggy3d"
 launch_command=("${app_binary}" --window --renderer vulkan --input auto
                 --save-root "${save_root}" --print-render-receipt)
+if [[ "${auto_new_world}" -eq 1 ]]; then
+  launch_command+=(--auto-new-world)
+fi
 
 echo "== Vulkan first-person acceptance setup =="
 echo "Repo: ${repo_root}"
@@ -104,9 +117,31 @@ echo "+ $(quote_command "${build_command[@]}")"
 echo
 echo "Manual launch command:"
 quote_command "${launch_command[@]}"
+if [[ "${auto_new_world}" -eq 1 ]]; then
+  cat <<'POLICY'
+
+Launch policy:
+  --auto-new-world is included so the Vulkan renderer receives an active gameplay
+  room mesh. Without it, the app can remain on the starter screen; the current
+  Vulkan path does not draw that menu yet.
+POLICY
+else
+  cat <<'POLICY'
+
+Launch policy:
+  --starter-menu was requested. This is diagnostic only for the current Vulkan
+  path: if the receipt remains on frontend_screen=starter with
+  product_vulkan_status=waiting_for_gameplay_room, no first-person room frame
+  has been submitted.
+POLICY
+fi
 echo
 cat <<'FIELDS'
 Readiness receipt fields to inspect:
+  auto_new_world=true
+  frontend_screen=gameplay
+  gameplay_active=true
+  active_room_loaded=true
   renderer_request=vulkan
   product_vulkan_backend_built=true
   product_vulkan_renderer_requested=true
@@ -122,9 +157,13 @@ Readiness receipt fields to inspect:
   top_down_map_purpose=minimap
 
 Blocker examples:
+  frontend_screen=starter
+  gameplay_active=false
+  active_room_loaded=false
   product_vulkan_backend_built=false
   product_vulkan_gameplay_status=product_vulkan_backend_unavailable
   product_vulkan_gameplay_status=product_vulkan_renderer_unavailable
+  product_vulkan_gameplay_status=product_vulkan_room_mesh_cpu_not_ready
   product_vulkan_gameplay_status=product_vulkan_frame_not_submitted
   product_vulkan_gameplay_status=product_vulkan_room_mesh_not_presented
 FIELDS
