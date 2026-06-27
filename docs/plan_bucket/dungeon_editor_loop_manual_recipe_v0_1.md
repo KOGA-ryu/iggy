@@ -148,7 +148,9 @@ draft paint inputs only.
 ### 3. See And Explore The Room
 
 After Create, gameplay should open. Visually check that the room is drawn in
-the first-person renderer and the compact mode HUD shows `MODE player`.
+the first-person renderer, the compact mode HUD shows `MODE player`, and any
+top-down map is secondary minimap/overview information rather than the main
+view.
 
 The renderer readiness receipt must show:
 
@@ -180,10 +182,11 @@ product_vulkan_room_mesh_backend_presented=false
 product_vulkan_gameplay_status=product_vulkan_room_mesh_not_presented
 ```
 
-Hard visual gate: if the window shows a top-down grid, `TOP-DOWN DEBUG
-FALLBACK`, or movement/NPC debug panels covering the play area, it is not the
-accepted first-person manual mode. That means the run is using the diagnostic
-SDL/null fallback or an explicit debug overlay.
+Hard visual gate: a compact `minimap` overlay is acceptable, but if the window
+shows a full-screen top-down grid, `TOP-DOWN DEBUG FALLBACK`, or movement/NPC
+debug panels covering the play area, it is not the accepted first-person manual
+mode. That means the run is using the diagnostic SDL/null fallback or an
+explicit debug overlay.
 
 In Player mode:
 
@@ -320,6 +323,10 @@ gameplay_active=true
 interaction_mode=player
 interaction_mode_hud_visible=true
 interaction_mode_hud_mode=player
+top_down_map_visible=true
+top_down_map_purpose=minimap
+top_down_map_size=compact
+top_down_map_status=top_down_map_ready
 world_setup_dungeon_draft_edit_mode=true
 world_setup_dungeon_draft_modified=true
 world_setup_dungeon_draft_cursor_row=1
@@ -345,6 +352,10 @@ While editing with a phantom preview:
 interaction_mode=creative
 interaction_mode_hud_visible=true
 interaction_mode_hud_mode=creative
+top_down_map_visible=true
+top_down_map_purpose=editor_overview
+top_down_map_size=editor
+top_down_map_status=top_down_map_ready
 room_editing_ready=true
 room_editor_overlay_visible=true
 room_editor_preview_visible=true
@@ -558,7 +569,8 @@ used to prove the same product path without launching a window.
   room-mesh frame-submit readiness; final visual acceptance is still a manual
   window/GPU observation using `--renderer vulkan`.
 - The SDL/null fallback is top-down diagnostic output. It must not be used as
-  first-person gameplay acceptance.
+  first-person gameplay acceptance. The intentional top-down product roles are
+  `minimap` in player gameplay and `editor_overview` while editing.
 - ASCII remains map/layout authoring only; it does not define behavior,
   profiles, or NPC truth.
 

@@ -14,6 +14,7 @@
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRoomEditorHud.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/ProductTopDownMapOverlay.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
 
@@ -67,6 +68,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductViewportFrame* frame,
                                          const ProductGameplayFeedback* feedback,
                                          const ProductInteractionModeHud* interactionModeHud,
+                                         const ProductTopDownMapOverlay* topDownMapOverlay,
                                          const ProductMovementDebugHud* movementHud,
                                          const ProductNpcBehaviorDebugHud* npcHud,
                                          const ProductRoomEditorHud* roomEditorHud,

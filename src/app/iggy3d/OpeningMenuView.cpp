@@ -3,6 +3,7 @@
 #if defined(IGGY3D_HAS_SDL3)
 #include <SDL3/SDL.h>
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <cmath>
@@ -465,6 +466,73 @@ void drawGrid(SDL_Renderer& renderer) {
   }
 }
 
+std::string_view topDownMapTitle(const ProductTopDownMapOverlay* overlay) {
+  // branch-gate: BG-1071
+  if (overlay == nullptr || overlay->purpose == "hidden") {
+    return "TOP-DOWN MAP";
+  }
+  // branch-gate: BG-1071
+  if (overlay->purpose == "minimap") {
+    return "MINIMAP";
+  }
+  // branch-gate: BG-1071
+  if (overlay->purpose == "editor_overview") {
+    return "EDITOR OVERVIEW";
+  }
+  return "TOP-DOWN DEBUG FALLBACK";
+}
+
+bool topDownMapUsesCompactLayout(const ProductTopDownMapOverlay* overlay) {
+  return overlay != nullptr && overlay->size == "compact";
+}
+
+ProductViewportFramedItem scaleFramedItemIntoMinimap(
+    const ProductViewportFramedItem& item) {
+  constexpr float kSourceWidth = 1280.0F;
+  constexpr float kSourceHeight = 720.0F;
+  constexpr float kMinimapX = 890.0F;
+  constexpr float kMinimapY = 116.0F;
+  constexpr float kMinimapWidth = 270.0F;
+  constexpr float kMinimapHeight = 126.0F;
+  constexpr float kMinimapScale = kMinimapWidth / kSourceWidth;
+  ProductViewportFramedItem scaled = item;
+  scaled.screenX = kMinimapX + item.screenX * kMinimapScale;
+  scaled.screenY = kMinimapY + item.screenY * (kMinimapHeight / kSourceHeight);
+  scaled.item.markerSize = std::max(3.0F, item.item.markerSize * kMinimapScale);
+  return scaled;
+}
+
+void drawTopDownMapPrimitives(SDL_Renderer& renderer,
+                              const ProductViewportFrame* frame,
+                              const ProductTopDownMapOverlay* overlay) {
+  // branch-gate: BG-1071
+  if (overlay == nullptr || !overlay->visible || frame == nullptr) {
+    return;
+  }
+
+  // branch-gate: BG-1071
+  if (topDownMapUsesCompactLayout(overlay)) {
+    setColor(renderer, 18, 24, 27);
+    fillRect(renderer, 874.0F, 74.0F, 318.0F, 190.0F);
+    setColor(renderer, 126, 201, 176);
+    drawText(renderer, topDownMapTitle(overlay), 890.0F, 86.0F, 2.0F);
+    setColor(renderer, 32, 48, 48);
+    fillRect(renderer, 890.0F, 116.0F, 270.0F, 126.0F);
+    for (const ProductViewportFramedItem& item : frame->framedItems) {
+      drawPrimitiveItem(renderer, scaleFramedItemIntoMinimap(item));
+    }
+    return;
+  }
+
+  // branch-gate: BG-1071
+  if (frame->gridVisible) {
+    drawGrid(renderer);
+  }
+  for (const ProductViewportFramedItem& item : frame->framedItems) {
+    drawPrimitiveItem(renderer, item);
+  }
+}
+
 void drawMenuRow(SDL_Renderer& renderer,
                  std::string_view label,
                  bool selected,
@@ -650,6 +718,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
                        const ProductViewportFrame* frame,
                        const ProductGameplayFeedback* feedback,
                        const ProductInteractionModeHud* interactionModeHud,
+                       const ProductTopDownMapOverlay* topDownMapOverlay,
                        const ProductMovementDebugHud* movementHud,
                        const ProductNpcBehaviorDebugHud* npcHud,
                        const ProductRoomEditorHud* roomEditorHud,
@@ -660,20 +729,12 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   setColor(renderer, 10, 16, 18);
   SDL_RenderClear(&renderer);
 
-  if (frame == nullptr || frame->gridVisible) {
-    drawGrid(renderer);
-  }
-
-  if (frame != nullptr) {
-    for (const ProductViewportFramedItem& item : frame->framedItems) {
-      drawPrimitiveItem(renderer, item);
-    }
-  }
+  drawTopDownMapPrimitives(renderer, frame, topDownMapOverlay);
 
   setColor(renderer, 226, 230, 211);
   drawText(renderer, "IGGY3D GAMEPLAY", 84.0F, 42.0F, 5.0F);
   setColor(renderer, 126, 201, 176);
-  drawText(renderer, "TOP-DOWN DEBUG FALLBACK", 88.0F, 104.0F, 3.0F);
+  drawText(renderer, topDownMapTitle(topDownMapOverlay), 88.0F, 104.0F, 3.0F);
   drawCameraHeading(renderer, cameraYawDegrees);
   drawInteractionModeHud(renderer, interactionModeHud);
   setColor(renderer, 166, 184, 177);
@@ -770,6 +831,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductViewportFrame* frame,
                                          const ProductGameplayFeedback* feedback,
                                          const ProductInteractionModeHud* interactionModeHud,
+                                         const ProductTopDownMapOverlay* topDownMapOverlay,
                                          const ProductMovementDebugHud* movementHud,
                                          const ProductNpcBehaviorDebugHud* npcHud,
                                          const ProductRoomEditorHud* roomEditorHud,
@@ -784,8 +846,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
   if (gameplayActive || frontend.screen == FrontendScreen::Gameplay) {
     state.cameraHeadingDrawn =
         drawGameplayPanel(renderer, runtimeStateHash, frame, feedback,
-                          interactionModeHud, movementHud, npcHud, roomEditorHud,
-                          sceneItemCount, debug, cameraYawDegrees,
+                          interactionModeHud, topDownMapOverlay, movementHud, npcHud,
+                          roomEditorHud, sceneItemCount, debug, cameraYawDegrees,
                           cameraPitchDegrees);
     SDL_RenderPresent(&renderer);
     state.textDrawn = true;

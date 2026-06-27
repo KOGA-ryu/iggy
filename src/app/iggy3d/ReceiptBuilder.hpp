@@ -37,6 +37,12 @@ struct ProductAppWindowState {
   std::string interactionModeHudReasonCode = "interaction_mode_hud_hidden";
   std::string interactionModeHudMode = "player";
   std::string interactionModeHudLabel = "player";
+  bool topDownMapVisible = false;
+  std::string topDownMapPurpose = "hidden";
+  std::string topDownMapSize = "hidden";
+  std::string topDownMapStatus = "top_down_map_hidden";
+  std::string topDownMapReasonCode = "top_down_map_hidden";
+  std::uint64_t topDownMapItemCount = 0;
   bool controllerModeToggleRequested = false;
   bool controllerModeToggleAccepted = false;
   std::string controllerModeToggleStatus = "interaction_mode_toggle_not_requested";

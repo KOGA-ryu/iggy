@@ -155,6 +155,12 @@ int main() {
                               "interaction_mode_hud_ready") &&
       iggy3d::smoke::hasField(fields, "interaction_mode_hud_mode", "player") &&
       iggy3d::smoke::hasField(fields, "interaction_mode_hud_label", "player") &&
+      iggy3d::smoke::hasField(fields, "top_down_map_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "top_down_map_purpose", "minimap") &&
+      iggy3d::smoke::hasField(fields, "top_down_map_size", "compact") &&
+      iggy3d::smoke::hasField(fields,
+                              "top_down_map_status",
+                              "top_down_map_ready") &&
       iggy3d::smoke::hasField(fields, "world_setup_title", "Loop Keep") &&
       iggy3d::smoke::hasField(fields, "world_setup_ascii_room_enabled",
                               "true") &&
@@ -509,6 +515,14 @@ int main() {
                               "interaction_mode_hud_ready") &&
       iggy3d::smoke::hasField(fields, "interaction_mode_hud_mode", "creative") &&
       iggy3d::smoke::hasField(fields, "interaction_mode_hud_label", "creative") &&
+      iggy3d::smoke::hasField(fields, "top_down_map_visible", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "top_down_map_purpose",
+                              "editor_overview") &&
+      iggy3d::smoke::hasField(fields, "top_down_map_size", "editor") &&
+      iggy3d::smoke::hasField(fields,
+                              "top_down_map_status",
+                              "top_down_map_ready") &&
       iggy3d::smoke::hasField(fields,
                               "automation_control_last_key",
                               "room_edit.start_active") &&

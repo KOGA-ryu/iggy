@@ -64,6 +64,7 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           request.projectionFrame.viewportFramePtr(),
                           &request.projectionFrame.feedback,
                           &request.projectionFrame.interactionModeHud,
+                          &request.projectionFrame.topDownMapOverlay,
                           &request.projectionFrame.movementHud,
                           &request.projectionFrame.npcBehaviorHud,
                           &request.projectionFrame.roomEditorHud,

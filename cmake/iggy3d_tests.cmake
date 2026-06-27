@@ -96,6 +96,11 @@ iggy3d_add_unit_test(product_interaction_mode_hud_tests
 set_tests_properties(product_interaction_mode_hud_tests PROPERTIES
   LABELS "unit;app;product;input;hud;iggy3d")
 
+iggy3d_add_unit_test(product_top_down_map_overlay_tests
+  tests/unit/product_top_down_map_overlay_tests.cpp)
+set_tests_properties(product_top_down_map_overlay_tests PROPERTIES
+  LABELS "unit;app;product;viewport;top_down_map;iggy3d")
+
 iggy3d_add_unit_test(product_automation_command_registry_tests
   tests/unit/product_automation_command_registry_tests.cpp)
 set_tests_properties(product_automation_command_registry_tests PROPERTIES

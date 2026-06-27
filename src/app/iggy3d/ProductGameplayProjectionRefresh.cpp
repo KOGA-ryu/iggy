@@ -214,6 +214,16 @@ void copyProductInteractionModeHud(ProductAppWindowState& window,
   window.interactionModeHudLabel = hud.label;
 }
 
+void copyProductTopDownMapOverlay(ProductAppWindowState& window,
+                                  const ProductTopDownMapOverlay& overlay) {
+  window.topDownMapVisible = overlay.visible;
+  window.topDownMapPurpose = overlay.purpose;
+  window.topDownMapSize = overlay.size;
+  window.topDownMapStatus = overlay.status;
+  window.topDownMapReasonCode = overlay.reasonCode;
+  window.topDownMapItemCount = overlay.itemCount;
+}
+
 void copyProductRoomEditorPreviewOverlay(
     ProductAppWindowState& window,
     const ProductRoomEditorPreviewOverlay& overlay) {
@@ -388,6 +398,13 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
           window.roomEditing.ready,
       });
   copyProductInteractionModeHud(window, frame.interactionModeHud);
+  frame.topDownMapOverlay = buildProductTopDownMapOverlay(
+      ProductTopDownMapOverlayRequest{request.rendererRequest,
+                                      window.interactionMode,
+                                      window.gameplayActive,
+                                      window.roomEditing.ready,
+                                      0U});
+  copyProductTopDownMapOverlay(window, frame.topDownMapOverlay);
   frame.movementHud = buildProductMovementDebugHud(window,
                                                    request.developerToolsEnabled,
                                                    request.debugOverlayEnabled);
@@ -441,6 +458,13 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                                  &window.activeRoomCollision,
                                                  &frame.roomEditorOverlay,
                                                  &frame.roomEditorPreviewOverlay);
+  frame.topDownMapOverlay = buildProductTopDownMapOverlay(
+      ProductTopDownMapOverlayRequest{request.rendererRequest,
+                                      window.interactionMode,
+                                      window.gameplayActive,
+                                      window.roomEditing.ready,
+                                      frame.drawList.itemCount});
+  copyProductTopDownMapOverlay(window, frame.topDownMapOverlay);
   frame.viewportFrame = buildProductViewportFrame(
       frame.drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
                                                 window.viewport.cameraPitchDegrees});
@@ -520,7 +544,8 @@ void refreshProductGameplayProjectionMetrics(
   const ProductGameplayProjectionFrame frame = buildProductGameplayProjectionFrame(
       ProductGameplayProjectionFrameRequest{request.activeSession, window,
                                             request.developerToolsEnabled,
-                                            request.debugOverlayEnabled});
+                                            request.debugOverlayEnabled,
+                                            request.rendererRequest});
   // branch-gate: BG-1025
   if (!frame.hasGameplayProjection) {
     window.sessionOutcome = "None";

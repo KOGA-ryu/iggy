@@ -67,3 +67,5 @@ BG-1066	src/app/frontend/PauseMenu.cpp	leave editor pause menu availability poli
 BG-1067	src/app/iggy3d/product/ProductMenuActionHandlers.cpp	leave editor pause action lifecycle policy	codex	2026-06-26
 BG-1068	src/app/iggy3d/ProductAppOptions.cpp	explicit product debug overlay option parsing	codex	2026-06-26
 BG-1069	src/app/iggy3d/ProductWindowRendererLifecycle.cpp	product Vulkan gameplay readiness gate policy	codex	2026-06-26
+BG-1070	src/app/iggy3d/ProductTopDownMapOverlay.cpp	product top-down map overlay purpose policy	codex	2026-06-26
+BG-1071	src/app/iggy3d/OpeningMenuView.cpp	product top-down map SDL layout policy	codex	2026-06-26

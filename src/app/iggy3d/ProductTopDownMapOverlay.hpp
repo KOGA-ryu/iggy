@@ -1,0 +1,31 @@
+#pragma once
+
+#include <cstdint>
+#include <string>
+
+#include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/ProductInteractionMode.hpp"
+
+namespace iggy3d {
+
+struct ProductTopDownMapOverlay {
+  bool visible = false;
+  std::string purpose = "hidden";
+  std::string size = "hidden";
+  std::string status = "top_down_map_hidden";
+  std::string reasonCode = "top_down_map_hidden";
+  std::uint64_t itemCount = 0;
+};
+
+struct ProductTopDownMapOverlayRequest {
+  ProductRendererRequest rendererRequest = ProductRendererRequest::Vulkan;
+  ProductInteractionMode interactionMode = ProductInteractionMode::Player;
+  bool gameplayActive = false;
+  bool roomEditingReady = false;
+  std::uint64_t itemCount = 0;
+};
+
+ProductTopDownMapOverlay buildProductTopDownMapOverlay(
+    ProductTopDownMapOverlayRequest request);
+
+}  // namespace iggy3d

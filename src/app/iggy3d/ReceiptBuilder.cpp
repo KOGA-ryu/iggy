@@ -108,6 +108,14 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.interactionModeHudMode);
   appendReceiptField(receipt, "interaction_mode_hud_label",
                      window.interactionModeHudLabel);
+  appendReceiptField(receipt, "top_down_map_visible", window.topDownMapVisible);
+  appendReceiptField(receipt, "top_down_map_purpose", window.topDownMapPurpose);
+  appendReceiptField(receipt, "top_down_map_size", window.topDownMapSize);
+  appendReceiptField(receipt, "top_down_map_status", window.topDownMapStatus);
+  appendReceiptField(receipt, "top_down_map_reason_code",
+                     window.topDownMapReasonCode);
+  appendReceiptField(receipt, "top_down_map_item_count",
+                     window.topDownMapItemCount);
   appendReceiptField(receipt,
                      "controller_mode_toggle_requested",
                      window.controllerModeToggleRequested);

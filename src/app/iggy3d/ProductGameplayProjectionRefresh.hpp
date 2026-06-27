@@ -11,6 +11,7 @@
 #include "app/iggy3d/ProductRenderBridge.hpp"
 #include "app/iggy3d/ProductRoomEditorHud.hpp"
 #include "app/iggy3d/ProductRoomEditorOverlay.hpp"
+#include "app/iggy3d/ProductTopDownMapOverlay.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "projection/debug/DebugProjection.hpp"
@@ -25,6 +26,7 @@ struct ProductGameplayProjectionRefreshRequest {
   ProductAppWindowState& window;
   bool developerToolsEnabled = false;
   bool debugOverlayEnabled = false;
+  ProductRendererRequest rendererRequest = ProductRendererRequest::Vulkan;
 };
 
 struct ProductGameplayProjectionFrameRequest {
@@ -32,6 +34,7 @@ struct ProductGameplayProjectionFrameRequest {
   ProductAppWindowState& window;
   bool developerToolsEnabled = false;
   bool debugOverlayEnabled = false;
+  ProductRendererRequest rendererRequest = ProductRendererRequest::Vulkan;
 };
 
 struct ProductGameplayProjectionFrame {
@@ -41,6 +44,7 @@ struct ProductGameplayProjectionFrame {
   ProductViewportFrame viewportFrame;
   ProductGameplayFeedback feedback;
   ProductInteractionModeHud interactionModeHud;
+  ProductTopDownMapOverlay topDownMapOverlay;
   ProductMovementDebugHud movementHud;
   ProductNpcBehaviorDebugHud npcBehaviorHud;
   ProductRoomEditorHud roomEditorHud;
