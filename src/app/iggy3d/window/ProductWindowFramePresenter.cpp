@@ -1,6 +1,6 @@
 #include "app/iggy3d/window/ProductWindowFramePresenter.hpp"
 
-#include "app/iggy3d/OpeningMenuView.hpp"
+#include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "render/FrameInput.hpp"
 
 namespace iggy3d {

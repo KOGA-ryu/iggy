@@ -1,4 +1,4 @@
-#include "app/iggy3d/OpeningMenuView.hpp"
+#include "app/iggy3d/view/OpeningMenuView.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
 #include <SDL3/SDL.h>

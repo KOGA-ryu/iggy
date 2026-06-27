@@ -1,6 +1,6 @@
 #include "app/iggy3d/window/ProductWindowInputFrame.hpp"
 
-#include "app/iggy3d/OpeningMenuView.hpp"
+#include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductCameraController.hpp"
 #include "app/iggy3d/ProductControllerActionRouting.hpp"

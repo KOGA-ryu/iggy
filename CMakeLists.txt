@@ -34,7 +34,7 @@ target_sources(iggy3d
     src/app/iggy3d/world/DefaultWorldTemplate.cpp
     src/app/iggy3d/EditableRoomToAuthoredRoom.cpp
     src/app/iggy3d/menu/FrontendActionExecutor.cpp
-    src/app/iggy3d/OpeningMenuView.cpp
+    src/app/iggy3d/view/OpeningMenuView.cpp
     src/app/iggy3d/gameplay/ProductActiveRoomCollision.cpp
     src/app/iggy3d/gameplay/ProductActiveRoomState.cpp
     src/app/iggy3d/ProductBuiltinDungeon.cpp

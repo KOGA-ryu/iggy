@@ -33,7 +33,7 @@ BG-1031	src/app/iggy3d/window/ProductWindowLoop.cpp	product window loop extracti
 BG-1032	src/app/iggy3d/gameplay/ProductGameplayTapeRunner.cpp	gameplay tape option flow extraction from AppShell	codex	2026-06-26
 BG-1033	src/app/iggy3d/automation/AutomationDispatch.cpp	automation app adapter extraction from AppShell	codex	2026-06-26
 BG-1034	src/app/iggy3d/room_editor/ProductRoomEditorHud.cpp	room editor HUD visibility and wall-tool proof	codex	2026-06-26
-BG-1035	src/app/iggy3d/OpeningMenuView.cpp	room editor HUD compact SDL drawing	codex	2026-06-26
+BG-1035	src/app/iggy3d/view/OpeningMenuView.cpp	room editor HUD compact SDL drawing	codex	2026-06-26
 BG-1036	src/app/iggy3d/room_editor/ProductRoomEditorActionController.cpp	room editor live delete undo redo input policy	codex	2026-06-26
 BG-1037	src/app/input/KeyboardInput.cpp	room editor keyboard action mapping table	codex	2026-06-26
 BG-1038	src/app/iggy3d/room/ProductRoomVisualProof.cpp	headless room visual proof raster artifact generation	codex	2026-06-26
@@ -62,13 +62,13 @@ BG-1061	src/app/iggy3d/window/ProductWindowInputFrame.cpp	product controller sam
 BG-1062	src/app/iggy3d/automation/AutomationGameplay.cpp	controller input automation sample sequence parsing	codex	2026-06-26
 BG-1063	src/app/iggy3d/window/ProductWindowInputFrame.cpp	live creative room editor mouse pick preview policy	codex	2026-06-26
 BG-1064	src/app/iggy3d/ProductInteractionModeHud.cpp	product interaction mode hud descriptor visibility policy	codex	2026-06-26
-BG-1065	src/app/iggy3d/OpeningMenuView.cpp	product interaction mode hud draw visibility policy	codex	2026-06-26
+BG-1065	src/app/iggy3d/view/OpeningMenuView.cpp	product interaction mode hud draw visibility policy	codex	2026-06-26
 BG-1066	src/app/frontend/PauseMenu.cpp	leave editor pause menu availability policy	codex	2026-06-26
 BG-1067	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	leave editor pause action lifecycle policy	codex	2026-06-26
 BG-1068	src/app/iggy3d/ProductAppOptions.cpp	explicit product debug overlay option parsing	codex	2026-06-26
 BG-1069	src/app/iggy3d/window/ProductWindowRendererLifecycle.cpp	product Vulkan gameplay readiness gate policy	codex	2026-06-26
 BG-1070	src/app/iggy3d/ProductTopDownMapOverlay.cpp	product top-down map overlay purpose policy	codex	2026-06-26
-BG-1071	src/app/iggy3d/OpeningMenuView.cpp	product top-down map SDL layout policy	codex	2026-06-26
+BG-1071	src/app/iggy3d/view/OpeningMenuView.cpp	product top-down map SDL layout policy	codex	2026-06-26
 BG-1072	src/app/iggy3d/window/ProductWindowFramePresenter.cpp	product Vulkan starter menu unsupported status policy	codex	2026-06-26
 BG-1073	src/app/iggy3d/menu/ProductUiDrawList.cpp	product starter UI draw-list guard and descriptor lookup policy	codex	2026-06-26
 BG-1074	src/app/iggy3d/window/ProductMouseCapturePolicy.cpp	product mouse capture gameplay ownership policy	codex	2026-06-27
