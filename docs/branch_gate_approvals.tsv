@@ -106,3 +106,4 @@ BG-1105	src/runtime/physics/PhysicsFrameStats.cpp	runtime physics frame stats ag
 BG-1106	src/runtime/physics/PhysicsDebugSnapshot.cpp	runtime physics debug snapshot validation and warning policy	codex	2026-06-27
 BG-1107	src/projection/debug/DebugProjection.cpp	projection physics debug HUD line status and warning policy	codex	2026-06-27
 BG-1108	src/app/iggy3d/ProductPhysicsDebugHud.cpp	product physics debug HUD gate and warning tone policy	codex	2026-06-27
+BG-1109	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	product physics debug projection packet routing policy	codex	2026-06-27

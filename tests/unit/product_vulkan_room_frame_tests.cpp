@@ -6,6 +6,7 @@
 #include "core/math/Vec3.hpp"
 #include "render/FrameInput.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
+#include "runtime/physics/PhysicsFrameStats.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -53,6 +54,36 @@ iggy3d::ProductAppWindowState makeGameplayWindow(
       iggy3d::activateProductAsciiRoomPreview(session, window);
   expect(activation.ok, "ascii room activation ok");
   return window;
+}
+
+iggy3d::PhysicsFrameStats makeReadyPlayerPhysicsStats() {
+  iggy3d::PhysicsFrameStats stats = iggy3d::buildPhysicsFrameStats();
+  stats.sourcePacketCount = 1U;
+  stats.playerBakedSurfaceCount = 6U;
+  stats.playerBakedColliderCount = 4U;
+  stats.playerSkippedSurfaceCount = 1U;
+  stats.playerIterationCount = 2U;
+  return stats;
+}
+
+iggy3d::PhysicsFrameStats makeWarningPlayerPhysicsStats() {
+  iggy3d::PhysicsFrameStats stats = makeReadyPlayerPhysicsStats();
+  stats.ok = false;
+  stats.status = iggy3d::PhysicsFrameStatsStatus::PacketFailed;
+  stats.reasonCode = iggy3d::physicsFrameStatsStatusName(stats.status);
+  stats.upstreamReasonCode = "physics_frame_stats_packet_failed";
+  stats.failedPacketCount = 1U;
+  return stats;
+}
+
+void seedPhysicsMovementStats(std::optional<iggy3d::Session>& session,
+                              const iggy3d::PhysicsFrameStats& stats) {
+  iggy3d::MovementResult movement;
+  movement.physicsFrameStatsAvailable = true;
+  movement.physicsFrameStats = stats;
+  iggy3d::SessionState& state = session->mutableStateForOwnedSystems();
+  state.transient.lastMovementResultAvailable = true;
+  state.transient.lastMovementResult = movement;
 }
 
 bool productGameplayBuildsFirstPersonRoomFrame() {
@@ -154,6 +185,176 @@ bool productGameplayBuildsFirstPersonRoomFrame() {
   ok = expect(frame.npcBehaviorHud.status == "not_requested",
               "NPC debug HUD not requested") &&
        ok;
+  ok = expect(!frame.physicsHud.visible, "physics debug HUD hidden") && ok;
+  ok = expect(frame.physicsHud.status == "not_requested",
+              "physics debug HUD not requested") &&
+       ok;
+  return ok;
+}
+
+bool productPhysicsDebugHudUnavailableWithoutMovementStats() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "physics unavailable session created")) {
+    return false;
+  }
+
+  const iggy3d::ProductGameplayProjectionFrame frame =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session, window, true, true, iggy3d::ProductRendererRequest::Vulkan});
+
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendState frontend;
+  iggy3d::FrontendSettings settings;
+  settings.devToolsEnabled = true;
+  settings.debugOverlayEnabled = true;
+  iggy3d::ProductSaveBridgeResult saves;
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options, world, frontend, settings, window, saves);
+
+  bool ok = true;
+  ok = expect(frame.debug.physicsDebugHudLines.empty(),
+              "no movement stats means no physics projection lines") &&
+       ok;
+  ok = expect(!frame.physicsHud.visible, "unavailable physics HUD hidden") && ok;
+  ok = expect(frame.physicsHud.status == "physics_debug_unavailable",
+              "unavailable physics HUD status") &&
+       ok;
+  ok = expect(frame.physicsHud.reasonCode == "physics_debug_unavailable",
+              "unavailable physics HUD reason") &&
+       ok;
+  ok = expect(window.physicsDebugHudDebugAvailable,
+              "window physics debug projection available") &&
+       ok;
+  ok = expect(window.physicsDebugHudLineCount == 0U,
+              "window physics debug line count zero") &&
+       ok;
+  ok = expect(window.physicsDebugHudStatus == "physics_debug_unavailable",
+              "window physics debug unavailable status") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_visible",
+                                      "false"),
+              "receipt physics debug hidden") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_line_count",
+                                      "0"),
+              "receipt physics debug line count") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_dev_tools_enabled",
+                                      "true"),
+              "receipt physics debug dev tools enabled") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_debug_overlay_enabled",
+                                      "true"),
+              "receipt physics debug overlay enabled") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_debug_available",
+                                      "true"),
+              "receipt physics debug projection available") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_status",
+                                      "physics_debug_unavailable"),
+              "receipt physics debug unavailable status") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_reason_code",
+                                      "physics_debug_unavailable"),
+              "receipt physics debug unavailable reason") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_has_warnings",
+                                      "false"),
+              "receipt physics debug warnings false") &&
+       ok;
+  return ok;
+}
+
+bool productPhysicsDebugHudReadyFromMovementStats() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "physics ready session created")) {
+    return false;
+  }
+  seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
+
+  const iggy3d::ProductGameplayProjectionFrame frame =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session, window, true, true, iggy3d::ProductRendererRequest::Vulkan});
+
+  bool ok = true;
+  ok = expect(frame.debug.physicsDebugHudLines.size() == 4U,
+              "ready physics projection line count") &&
+       ok;
+  ok = expect(frame.debug.physicsDebugHudLines[0] ==
+                  "PHYS packets=1 failed=0 bodies=0 colliders=0 contacts=0 sensors=0",
+              "ready physics summary line") &&
+       ok;
+  ok = expect(frame.debug.physicsDebugHudLines[3] ==
+                  "PHYS MOVE kin_iter=0 kin_hits=0 player_iter=2 "
+                  "player_hits=0 baked=4 skipped=1",
+              "ready physics movement line") &&
+       ok;
+  ok = expect(frame.physicsHud.visible, "ready physics HUD visible") && ok;
+  ok = expect(frame.physicsHud.status == "physics_debug_ready",
+              "ready physics HUD status") &&
+       ok;
+  ok = expect(frame.physicsHud.reasonCode == "physics_debug_ready",
+              "ready physics HUD reason") &&
+       ok;
+  ok = expect(frame.physicsHud.lineCount == 4U, "ready physics HUD line count") &&
+       ok;
+  ok = expect(!frame.physicsHud.hasWarnings, "ready physics HUD no warnings") &&
+       ok;
+  ok = expect(window.physicsDebugHudVisible, "window physics HUD visible") && ok;
+  ok = expect(window.physicsDebugHudLineCount == 4U,
+              "window physics HUD line count") &&
+       ok;
+  ok = expect(window.physicsDebugHudStatus == "physics_debug_ready",
+              "window physics HUD ready status") &&
+       ok;
+  ok = expect(!window.physicsDebugHudHasWarnings,
+              "window physics HUD no warnings") &&
+       ok;
+  return ok;
+}
+
+bool productPhysicsDebugHudWarningFromMovementStats() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "physics warning session created")) {
+    return false;
+  }
+  seedPhysicsMovementStats(session, makeWarningPlayerPhysicsStats());
+
+  const iggy3d::ProductGameplayProjectionFrame frame =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session, window, true, true, iggy3d::ProductRendererRequest::Vulkan});
+
+  bool ok = true;
+  ok = expect(frame.debug.physicsDebugHudLines.size() == 5U,
+              "warning physics projection line count") &&
+       ok;
+  ok = expect(frame.debug.physicsDebugHudLines[4] ==
+                  "PHYS WARN status=physics_debug_snapshot_stats_failed "
+                  "upstream=physics_frame_stats_packet_failed bp=0 pen=0 impulse=0",
+              "warning physics line") &&
+       ok;
+  ok = expect(frame.physicsHud.visible, "warning physics HUD visible") && ok;
+  ok = expect(frame.physicsHud.hasWarnings, "warning physics HUD has warnings") &&
+       ok;
+  ok = expect(window.physicsDebugHudHasWarnings,
+              "window physics HUD has warnings") &&
+       ok;
   return ok;
 }
 
@@ -251,6 +452,16 @@ bool productReceiptCarriesFirstPersonRoomPathProof() {
                                       "false"),
               "receipt NPC debug hidden") &&
        ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_visible",
+                                      "false"),
+              "receipt physics debug hidden") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "physics_debug_hud_status",
+                                      "not_requested"),
+              "receipt physics debug not requested") &&
+       ok;
   return ok;
 }
 
@@ -258,6 +469,9 @@ bool productReceiptCarriesFirstPersonRoomPathProof() {
 
 int main() {
   const bool ok = productGameplayBuildsFirstPersonRoomFrame() &&
+                  productPhysicsDebugHudUnavailableWithoutMovementStats() &&
+                  productPhysicsDebugHudReadyFromMovementStats() &&
+                  productPhysicsDebugHudWarningFromMovementStats() &&
                   productReceiptCarriesFirstPersonRoomPathProof();
   if (!ok) {
     return EXIT_FAILURE;

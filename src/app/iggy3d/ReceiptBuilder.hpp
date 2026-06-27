@@ -246,6 +246,12 @@ struct ProductAppWindowState {
   std::string npcBehaviorDebugHudStatus = "not_requested";
   std::string npcBehaviorDebugHudReasonCode = "not_requested";
   bool npcBehaviorDebugHudHasUnresolvedProfile = false;
+  bool physicsDebugHudVisible = false;
+  bool physicsDebugHudDebugAvailable = false;
+  std::uint64_t physicsDebugHudLineCount = 0;
+  std::string physicsDebugHudStatus = "not_requested";
+  std::string physicsDebugHudReasonCode = "not_requested";
+  bool physicsDebugHudHasWarnings = false;
   bool playerVisible = false;
   bool roomVisible = false;
   bool objectiveVisible = false;

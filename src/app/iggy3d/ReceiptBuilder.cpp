@@ -7,6 +7,7 @@
 #include "app/iggy3d/gameplay/ProductGameplayFeedback.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
+#include "app/iggy3d/ProductPhysicsDebugHud.hpp"
 #include "app/iggy3d/window/ProductWindowRendererLifecycle.hpp"
 
 namespace iggy3d {
@@ -45,6 +46,16 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
       static_cast<std::size_t>(window.npcBehaviorDebugHudLineCount),
       window.npcBehaviorDebugHudStatus,
       window.npcBehaviorDebugHudReasonCode,
+      {}};
+  const ProductPhysicsDebugHud physicsHud{
+      window.physicsDebugHudVisible,
+      settings.devToolsEnabled,
+      settings.debugOverlayEnabled,
+      window.physicsDebugHudDebugAvailable,
+      static_cast<std::size_t>(window.physicsDebugHudLineCount),
+      window.physicsDebugHudStatus,
+      window.physicsDebugHudReasonCode,
+      window.physicsDebugHudHasWarnings,
       {}};
   appendReceiptField(receipt, "app", "iggy3d");
   appendReceiptField(receipt, "app_surface", "product");
@@ -698,6 +709,22 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "npc_behavior_debug_hud_has_unresolved_profile",
                      window.npcBehaviorDebugHudHasUnresolvedProfile);
+  appendReceiptField(receipt, "physics_debug_hud_visible",
+                     physicsHud.visible);
+  appendReceiptField(receipt, "physics_debug_hud_line_count",
+                     static_cast<std::uint64_t>(physicsHud.lineCount));
+  appendReceiptField(receipt, "physics_debug_hud_dev_tools_enabled",
+                     physicsHud.developerToolsEnabled);
+  appendReceiptField(receipt, "physics_debug_hud_debug_overlay_enabled",
+                     physicsHud.debugOverlayEnabled);
+  appendReceiptField(receipt, "physics_debug_hud_debug_available",
+                     physicsHud.debugAvailable);
+  appendReceiptField(receipt, "physics_debug_hud_status",
+                     physicsHud.status);
+  appendReceiptField(receipt, "physics_debug_hud_reason_code",
+                     physicsHud.reasonCode);
+  appendReceiptField(receipt, "physics_debug_hud_has_warnings",
+                     physicsHud.hasWarnings);
   appendReceiptField(receipt, "gameplay_collision_surfaces_used",
                      window.gameplayCollisionSurfacesUsed);
   appendReceiptField(receipt, "gameplay_collision_surface_count",

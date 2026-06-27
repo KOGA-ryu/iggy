@@ -7,6 +7,7 @@
 #include "app/iggy3d/ProductInteractionModeHud.hpp"
 #include "app/iggy3d/ProductMovementDebugHud.hpp"
 #include "app/iggy3d/ProductNpcBehaviorDebugHud.hpp"
+#include "app/iggy3d/ProductPhysicsDebugHud.hpp"
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
 #include "app/iggy3d/ProductRenderBridge.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorHud.hpp"
@@ -47,6 +48,7 @@ struct ProductGameplayProjectionFrame {
   ProductTopDownMapOverlay topDownMapOverlay;
   ProductMovementDebugHud movementHud;
   ProductNpcBehaviorDebugHud npcBehaviorHud;
+  ProductPhysicsDebugHud physicsHud;
   ProductRoomEditorHud roomEditorHud;
   ProductRoomEditorOverlay roomEditorOverlay;
   ProductRoomEditorPreviewOverlay roomEditorPreviewOverlay;
@@ -67,6 +69,9 @@ DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
 
 void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
                              const ProductNpcBehaviorDebugHud& hud);
+
+void copyPhysicsDebugHud(ProductAppWindowState& window,
+                         const ProductPhysicsDebugHud& hud);
 
 void copyProductRoomEditorOverlay(ProductAppWindowState& window,
                                   const ProductRoomEditorOverlay& overlay);

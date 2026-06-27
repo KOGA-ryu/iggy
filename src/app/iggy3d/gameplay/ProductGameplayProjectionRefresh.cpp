@@ -8,6 +8,7 @@
 #include "render/vulkan/BufferImageResources.hpp"
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
+#include "runtime/physics/PhysicsDebugSnapshot.hpp"
 
 namespace iggy3d {
 
@@ -22,6 +23,20 @@ bool npcBehaviorHudHasUnresolvedProfile(const ProductNpcBehaviorDebugHud& hud) {
     }
   }
   return false;
+}
+
+void appendPhysicsDebugFromMovement(DebugProjectionResult& debug,
+                                    const SessionState& state) {
+  const MovementResult& movement = state.transient.lastMovementResult;
+  // branch-gate: BG-1109
+  if (!state.transient.lastMovementResultAvailable ||
+      !movement.physicsFrameStatsAvailable) {
+    return;
+  }
+
+  const PhysicsDebugSnapshot snapshot = buildPhysicsDebugSnapshot(
+      PhysicsDebugSnapshotRequest{&movement.physicsFrameStats, {}});
+  appendPhysicsDebugSnapshot(debug, snapshot);
 }
 
 void clearProductVulkanRoomMeshProof(ProductViewportState& viewport) {
@@ -166,6 +181,7 @@ DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
       {true, &state.world, &state.ai, &state.combat, &catalog,
        state.clock.tickIndex, 128});
   appendNpcBehaviorDebugSnapshot(debug, snapshot);
+  appendPhysicsDebugFromMovement(debug, state);
   return debug;
 }
 
@@ -178,6 +194,16 @@ void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
   window.npcBehaviorDebugHudReasonCode = hud.reasonCode;
   window.npcBehaviorDebugHudHasUnresolvedProfile =
       npcBehaviorHudHasUnresolvedProfile(hud);
+}
+
+void copyPhysicsDebugHud(ProductAppWindowState& window,
+                         const ProductPhysicsDebugHud& hud) {
+  window.physicsDebugHudVisible = hud.visible;
+  window.physicsDebugHudDebugAvailable = hud.debugAvailable;
+  window.physicsDebugHudLineCount = static_cast<std::uint64_t>(hud.lineCount);
+  window.physicsDebugHudStatus = hud.status;
+  window.physicsDebugHudReasonCode = hud.reasonCode;
+  window.physicsDebugHudHasWarnings = hud.hasWarnings;
 }
 
 void copyProductRoomEditorOverlay(ProductAppWindowState& window,
@@ -413,6 +439,10 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                       request.developerToolsEnabled,
                                       request.debugOverlayEnabled);
   copyNpcBehaviorDebugHud(window, frame.npcBehaviorHud);
+  frame.physicsHud = buildProductPhysicsDebugHud(nullptr, window.gameplayActive,
+                                                 request.developerToolsEnabled,
+                                                 request.debugOverlayEnabled);
+  copyPhysicsDebugHud(window, frame.physicsHud);
   frame.roomEditorOverlay =
       buildProductRoomEditorOverlay(window.roomEditorCursor, false);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
@@ -488,6 +518,10 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                                          request.developerToolsEnabled,
                                                          request.debugOverlayEnabled);
   copyNpcBehaviorDebugHud(window, frame.npcBehaviorHud);
+  frame.physicsHud = buildProductPhysicsDebugHud(&frame.debug, window.gameplayActive,
+                                                 request.developerToolsEnabled,
+                                                 request.debugOverlayEnabled);
+  copyPhysicsDebugHud(window, frame.physicsHud);
   frame.renderBridge =
       buildProductRenderBridgeFrame(&frame.drawList, &frame.viewportFrame,
                                     &frame.feedback);
