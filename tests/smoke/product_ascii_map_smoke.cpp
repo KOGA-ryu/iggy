@@ -78,6 +78,9 @@ int main() {
   const std::filesystem::path customEditorLeaveSaveRoot =
       iggy3d::smoke::cleanSaveRoot(
           "ascii_map_custom_draft_leave_editor_keeps_gameplay");
+  const std::filesystem::path customEditorLeavePauseSaveRoot =
+      iggy3d::smoke::cleanSaveRoot(
+          "ascii_map_custom_draft_leave_editor_pause_save");
   const std::filesystem::path customEditorMousePickSaveRoot =
       iggy3d::smoke::cleanSaveRoot(
           "ascii_map_custom_draft_editor_mouse_pick");
@@ -927,6 +930,221 @@ int main() {
                               "initial_world") &&
       iggy3d::smoke::hasField(fields, "product_vulkan_room_mesh_cpu_ready",
                               "true") &&
+      iggy3d::smoke::hasField(fields, "product_vulkan_room_wall_draw_count",
+                              "22") &&
+      iggy3d::smoke::positiveIntegerField(
+          fields, "product_vulkan_room_geometry_signature");
+
+  fields.clear();
+  const std::filesystem::path customEditorLeavePauseSaveFile =
+      customEditorLeavePauseSaveRoot / "save_001.iggy3d.save";
+  const bool saveAfterLeaveEditorEditedCustomDraftActiveRoom =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_custom_draft_leave_editor_pause_save",
+          "frontend.execute=true\n"
+          "world.title=Custom Draft\n"
+          "world.draft_cell=1,2,#\n"
+          "world.create=true\n"
+          "system.pause=true\n"
+          "menu.down=true\n"
+          "pause.execute=true\n"
+          "editor.input=editor.nudge_x_pos,editor.next_tool,editor.place\n"
+          "menu.back=true\n"
+          "frontend.select=leave_editor\n"
+          "menu.confirm=true\n"
+          "settings.back=true\n"
+          "pause.select=save\n"
+          "dev_tools.execute=true\n",
+          iggy3d::smoke::saveRootArg(customEditorLeavePauseSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "pause") &&
+      iggy3d::smoke::hasField(fields, "frontend_child_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "frontend_selected_action", "save") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_status",
+                              "interaction_mode_hud_ready") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_mode", "player") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_label", "player") &&
+      iggy3d::smoke::hasField(fields, "input_owner", "pause") &&
+      iggy3d::smoke::hasField(fields, "gameplay_input_suppressed", "true") &&
+      iggy3d::smoke::hasField(fields, "pause_menu_open", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editing_ready", "false") &&
+      iggy3d::smoke::hasField(fields, "room_editing_status",
+                              "product_room_editing_left") &&
+      iggy3d::smoke::hasField(fields, "room_editing_last_operation",
+                              "pause_leave_editor") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_last_operation_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_cursor_ready", "false") &&
+      iggy3d::smoke::hasField(fields, "room_editor_overlay_visible", "false") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_visible", "false") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_visible", "false") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "editable_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields, "active_room_authored_floor_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields, "active_room_authored_wall_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields, "active_room_collision_ready", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_query_surface_count",
+                              "182") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_walkable_surface_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_projectile_blocker_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields, "product_save_status",
+                              "product_save_written") &&
+      iggy3d::smoke::hasField(fields, "product_save_reason_code",
+                              "product_save_written") &&
+      iggy3d::smoke::hasField(fields, "product_save_durable_reason",
+                              "durable_save_file_written") &&
+      iggy3d::smoke::hasField(fields, "product_save_source", "pause_save") &&
+      iggy3d::smoke::hasField(fields, "product_save_save_id", "save_001") &&
+      iggy3d::smoke::hasField(fields, "product_save_session_saved", "true") &&
+      iggy3d::smoke::hasField(fields, "active_product_save_id", "save_001") &&
+      iggy3d::smoke::hasField(fields, "product_vulkan_room_mesh_cpu_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "product_vulkan_room_asset_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields, "product_vulkan_room_wall_draw_count",
+                              "22") &&
+      iggy3d::smoke::positiveIntegerField(
+          fields, "product_vulkan_room_geometry_signature") &&
+      std::filesystem::exists(customEditorLeavePauseSaveFile) &&
+      fileContains(customEditorLeavePauseSaveFile,
+                   "authoredRoom.id=custom_dungeon_draft\n") &&
+      fileContains(customEditorLeavePauseSaveFile,
+                   "authoredRoom.floor.count=58\n") &&
+      fileContains(customEditorLeavePauseSaveFile,
+                   "authoredRoom.wall.count=62\n") &&
+      fileContains(customEditorLeavePauseSaveFile, "edit_wall_1\n");
+
+  fields.clear();
+  const bool rebootLeaveEditorPauseSavedCustomDraftStarter =
+      saveAfterLeaveEditorEditedCustomDraftActiveRoom &&
+      iggy3d::smoke::runProductReceiptCase(
+          binary,
+          "ascii_map_custom_draft_leave_editor_pause_save_reboot_starter",
+          iggy3d::smoke::saveRootArg(customEditorLeavePauseSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "starter") &&
+      iggy3d::smoke::hasField(fields, "frontend_child_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_visible", "false") &&
+      iggy3d::smoke::hasField(fields, "input_owner", "starter") &&
+      iggy3d::smoke::hasField(fields, "save_count", "1") &&
+      iggy3d::smoke::hasField(fields, "compatible_save_count", "1") &&
+      iggy3d::smoke::hasField(fields, "product_save_status",
+                              "not_requested") &&
+      iggy3d::smoke::hasField(fields, "product_save_load_status",
+                              "not_requested") &&
+      std::filesystem::exists(customEditorLeavePauseSaveFile);
+
+  fields.clear();
+  const bool continueLeaveEditorPauseSavedCustomDraftActiveRoom =
+      rebootLeaveEditorPauseSavedCustomDraftStarter &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_custom_draft_leave_editor_pause_save_continue",
+          "frontend.select=continue\nfrontend.execute=true\n",
+          iggy3d::smoke::saveRootArg(customEditorLeavePauseSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "frontend_child_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_status",
+                              "interaction_mode_hud_ready") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_mode", "player") &&
+      iggy3d::smoke::hasField(fields, "input_owner", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_input_suppressed", "false") &&
+      iggy3d::smoke::hasField(fields, "room_editing_ready", "false") &&
+      iggy3d::smoke::hasField(fields, "room_editor_overlay_visible", "false") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_visible", "false") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_visible", "false") &&
+      iggy3d::smoke::hasField(fields, "save_count", "1") &&
+      iggy3d::smoke::hasField(fields, "compatible_save_count", "1") &&
+      iggy3d::smoke::hasField(fields, "product_save_load_status",
+                              "product_save_loaded") &&
+      iggy3d::smoke::hasField(fields, "product_save_load_reason_code",
+                              "product_save_loaded") &&
+      iggy3d::smoke::hasField(fields, "product_save_load_source",
+                              "continue") &&
+      iggy3d::smoke::hasField(fields, "product_save_load_save_id",
+                              "save_001") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_save_load_session_loaded",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_save_load_authored_room_present",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_save_load_authored_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_save_load_authored_floor_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_save_load_authored_wall_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields, "active_product_save_id", "save_001") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source",
+                              "saved_authored_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields, "active_room_authored_floor_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields, "active_room_authored_wall_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields, "active_room_collision_ready", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_query_surface_count",
+                              "182") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_walkable_surface_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_projectile_blocker_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields, "product_vulkan_room_mesh_cpu_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "product_vulkan_room_mesh_source",
+                              "scene_room_projection") &&
+      iggy3d::smoke::hasField(fields, "product_vulkan_room_asset_id",
+                              "custom_dungeon_draft") &&
       iggy3d::smoke::hasField(fields, "product_vulkan_room_wall_draw_count",
                               "22") &&
       iggy3d::smoke::positiveIntegerField(
@@ -2731,6 +2949,9 @@ int main() {
                       pauseEditCustomDraftActiveRoom &&
                       pauseEditorCursorPlaceWall &&
                       leaveEditorKeepsEditedRoomInGameplay &&
+                      saveAfterLeaveEditorEditedCustomDraftActiveRoom &&
+                      rebootLeaveEditorPauseSavedCustomDraftStarter &&
+                      continueLeaveEditorPauseSavedCustomDraftActiveRoom &&
                       editorMousePickMovesCursorOnly &&
                       editorPreviewShowsPhantomOnly &&
                       editorPreviewConfirmPlacesWall &&
@@ -2776,6 +2997,12 @@ int main() {
                          "custom draft pause editor cursor places wall") &&
                   expect(leaveEditorKeepsEditedRoomInGameplay,
                          "custom draft leave editor keeps gameplay room") &&
+                  expect(saveAfterLeaveEditorEditedCustomDraftActiveRoom,
+                         "custom draft leave editor pause save persists") &&
+                  expect(rebootLeaveEditorPauseSavedCustomDraftStarter,
+                         "custom draft leave editor pause save reboot starter") &&
+                  expect(continueLeaveEditorPauseSavedCustomDraftActiveRoom,
+                         "custom draft leave editor pause save continues") &&
                   expect(editorMousePickMovesCursorOnly,
                          "custom draft editor mouse pick moves cursor only") &&
                   expect(editorPreviewShowsPhantomOnly,
@@ -2845,6 +3072,18 @@ int main() {
             << (pauseEditorCursorPlaceWall ? "true" : "false") << "\n";
   std::cout << "leave_editor_keeps_edited_room_in_gameplay="
             << (leaveEditorKeepsEditedRoomInGameplay ? "true" : "false")
+            << "\n";
+  std::cout << "save_after_leave_editor_edited_custom_draft_active_room="
+            << (saveAfterLeaveEditorEditedCustomDraftActiveRoom ? "true"
+                                                                : "false")
+            << "\n";
+  std::cout << "reboot_leave_editor_pause_saved_custom_draft_starter="
+            << (rebootLeaveEditorPauseSavedCustomDraftStarter ? "true"
+                                                              : "false")
+            << "\n";
+  std::cout << "continue_leave_editor_pause_saved_custom_draft_active_room="
+            << (continueLeaveEditorPauseSavedCustomDraftActiveRoom ? "true"
+                                                                   : "false")
             << "\n";
   std::cout << "editor_mouse_pick_moves_cursor_only="
             << (editorMousePickMovesCursorOnly ? "true" : "false") << "\n";
