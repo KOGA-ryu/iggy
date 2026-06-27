@@ -49,7 +49,7 @@ target_sources(iggy3d
     src/app/iggy3d/gameplay/GameplayFeedback.cpp
     src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp
     src/app/iggy3d/menu/ProductFrontendRouter.cpp
-    src/app/iggy3d/gameplay/ProductGameplayTape.cpp
+    src/app/iggy3d/gameplay/Tape.cpp
     src/app/iggy3d/gameplay/ProductGameplayTapeRunner.cpp
     src/app/iggy3d/ProductControllerActionMap.cpp
     src/app/iggy3d/ProductControllerActionRouting.cpp
