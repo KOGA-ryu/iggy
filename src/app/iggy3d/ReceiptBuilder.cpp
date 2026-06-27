@@ -444,6 +444,25 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.roomEditorOverlayWorldY));
   appendReceiptField(receipt, "room_editor_overlay_world_z",
                      floatReceiptValue(window.roomEditorOverlayWorldZ));
+  appendReceiptField(receipt, "room_editor_preview_visible",
+                     window.roomEditorPreviewVisible);
+  appendReceiptField(receipt, "room_editor_preview_status",
+                     window.roomEditorPreviewStatus);
+  appendReceiptField(receipt, "room_editor_preview_reason_code",
+                     window.roomEditorPreviewReasonCode);
+  appendReceiptField(receipt, "room_editor_preview_candidate_id",
+                     window.roomEditorPreviewCandidateId);
+  appendReceiptField(receipt, "room_editor_preview_tool",
+                     window.roomEditorPreviewTool);
+  appendReceiptField(receipt, "room_editor_preview_grid_x",
+                     std::to_string(window.roomEditorPreviewGridX));
+  appendReceiptField(receipt, "room_editor_preview_grid_z",
+                     std::to_string(window.roomEditorPreviewGridZ));
+  appendReceiptField(receipt, "room_editor_preview_optimized_draw_delta",
+                     std::to_string(window.roomEditorPreviewOptimizedDrawDelta));
+  appendReceiptField(receipt, "room_editor_preview_optimized_triangle_delta",
+                     std::to_string(
+                         window.roomEditorPreviewOptimizedTriangleDelta));
   appendReceiptField(receipt, "room_editor_hud_visible",
                      window.roomEditorHudVisible);
   appendReceiptField(receipt, "room_editor_hud_status",
@@ -791,6 +810,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productDrawRoomEditorCursorVisible);
   appendReceiptField(receipt, "product_draw_room_editor_cursor_count",
                      window.viewport.productDrawRoomEditorCursorCount);
+  appendReceiptField(receipt, "product_draw_room_editor_preview_visible",
+                     window.viewport.productDrawRoomEditorPreviewVisible);
+  appendReceiptField(receipt, "product_draw_room_editor_preview_count",
+                     window.viewport.productDrawRoomEditorPreviewCount);
   appendReceiptField(receipt, "product_view_projection",
                      window.viewport.productViewProjection);
   appendReceiptField(receipt, "product_view_yaw_applied",
@@ -813,6 +836,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productRenderBridgeRoomEditorCursorVisible);
   appendReceiptField(receipt, "product_render_bridge_room_editor_cursor_count",
                      window.viewport.productRenderBridgeRoomEditorCursorCount);
+  appendReceiptField(receipt, "product_render_bridge_room_editor_preview_visible",
+                     window.viewport.productRenderBridgeRoomEditorPreviewVisible);
+  appendReceiptField(receipt, "product_render_bridge_room_editor_preview_count",
+                     window.viewport.productRenderBridgeRoomEditorPreviewCount);
   appendReceiptField(receipt, "product_feedback_bridge_ready",
                      window.viewport.productFeedbackBridgeReady);
   appendReceiptField(receipt, "product_feedback_bridge_line_count",

@@ -36,6 +36,8 @@ struct ProductViewportState {
   std::uint64_t productDrawWallTileCount = 0;
   bool productDrawRoomEditorCursorVisible = false;
   std::uint64_t productDrawRoomEditorCursorCount = 0;
+  bool productDrawRoomEditorPreviewVisible = false;
+  std::uint64_t productDrawRoomEditorPreviewCount = 0;
   std::string productViewProjection = "primitive_first_person";
   bool productViewYawApplied = false;
   bool productViewPitchApplied = false;
@@ -47,6 +49,8 @@ struct ProductViewportState {
   std::uint64_t productViewFrameTargetItemCount = 0;
   bool productRenderBridgeRoomEditorCursorVisible = false;
   std::uint64_t productRenderBridgeRoomEditorCursorCount = 0;
+  bool productRenderBridgeRoomEditorPreviewVisible = false;
+  std::uint64_t productRenderBridgeRoomEditorPreviewCount = 0;
   bool productFeedbackBridgeReady = false;
   std::uint64_t productFeedbackBridgeLineCount = 0;
   bool productVulkanRoomMeshCpuReady = false;

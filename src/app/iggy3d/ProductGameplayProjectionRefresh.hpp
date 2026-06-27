@@ -43,6 +43,7 @@ struct ProductGameplayProjectionFrame {
   ProductNpcBehaviorDebugHud npcBehaviorHud;
   ProductRoomEditorHud roomEditorHud;
   ProductRoomEditorOverlay roomEditorOverlay;
+  ProductRoomEditorPreviewOverlay roomEditorPreviewOverlay;
   ProductRenderBridgeFrame renderBridge;
   bool hasGameplayProjection = false;
   bool viewVisible = false;

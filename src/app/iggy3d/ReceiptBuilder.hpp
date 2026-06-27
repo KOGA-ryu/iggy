@@ -9,6 +9,7 @@
 #include "app/iggy3d/ProductActiveRoomState.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/ProductRoomEditorPreview.hpp"
 #include "app/iggy3d/ProductRoomEditingState.hpp"
 #include "app/iggy3d/ProductViewportState.hpp"
 #include "app/iggy3d/SaveBridge.hpp"
@@ -120,6 +121,17 @@ struct ProductAppWindowState {
   float roomEditorOverlayWorldX = 0.0F;
   float roomEditorOverlayWorldY = 0.0F;
   float roomEditorOverlayWorldZ = 0.0F;
+  bool roomEditorPreviewActive = false;
+  ProductRoomEditorPlacementPreviewResult roomEditorPlacementPreview;
+  bool roomEditorPreviewVisible = false;
+  std::string roomEditorPreviewStatus = "room_editor_preview_not_requested";
+  std::string roomEditorPreviewReasonCode = "room_editor_preview_not_requested";
+  std::string roomEditorPreviewCandidateId = "none";
+  std::string roomEditorPreviewTool = "floor";
+  std::int32_t roomEditorPreviewGridX = 0;
+  std::int32_t roomEditorPreviewGridZ = 0;
+  std::int64_t roomEditorPreviewOptimizedDrawDelta = 0;
+  std::int64_t roomEditorPreviewOptimizedTriangleDelta = 0;
   bool roomEditorHudVisible = false;
   std::string roomEditorHudStatus = "room_editor_hud_not_ready";
   std::string roomEditorHudReasonCode = "room_editor_hud_not_ready";

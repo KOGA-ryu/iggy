@@ -78,6 +78,9 @@ int main() {
   const std::filesystem::path customEditorMousePickSaveRoot =
       iggy3d::smoke::cleanSaveRoot(
           "ascii_map_custom_draft_editor_mouse_pick");
+  const std::filesystem::path customEditorPreviewSaveRoot =
+      iggy3d::smoke::cleanSaveRoot(
+          "ascii_map_custom_draft_editor_preview");
   const std::filesystem::path customEditorInputPlaceSaveRoot =
       iggy3d::smoke::cleanSaveRoot(
           "ascii_map_custom_draft_editor_input_place_wall");
@@ -864,6 +867,91 @@ int main() {
       iggy3d::smoke::hasField(
           fields, "product_render_bridge_room_editor_cursor_visible",
           "true");
+
+  fields.clear();
+  const bool editorPreviewShowsPhantomOnly =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_custom_draft_editor_preview",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.title=Custom Draft\n"
+          "world.draft_cell=1,2,#\n"
+          "world.create=true\n"
+          "system.pause=true\n"
+          "pause.select=edit_room\n"
+          "pause.execute=true\n"
+          "room_editor.move=right\n"
+          "room_editor.tool=wall\n"
+          "room_editor.preview=true\n",
+          iggy3d::smoke::saveRootArg(customEditorPreviewSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_key",
+                              "room_editor.preview") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_action",
+                              "room_editor.preview") &&
+      iggy3d::smoke::hasField(fields, "room_editing_ready", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_cursor_ready", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_grid_x", "1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_grid_z", "0") &&
+      iggy3d::smoke::hasField(fields, "room_editor_tool", "wall") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_status",
+                              "room_editor_preview_ready") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_reason_code",
+                              "room_editor_preview_ready") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_candidate_id",
+                              "edit_wall_1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_tool", "wall") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_grid_x", "1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_grid_z", "0") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_optimized_draw_delta", "1") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_optimized_triangle_delta", "12") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_draw_room_editor_preview_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_draw_room_editor_preview_count",
+                              "1") &&
+      iggy3d::smoke::hasField(
+          fields, "product_render_bridge_room_editor_preview_visible",
+          "true") &&
+      iggy3d::smoke::hasField(
+          fields, "product_render_bridge_room_editor_preview_count", "1") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "editable_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_floor_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_wall_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_query_surface_count",
+                              "180") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_walkable_surface_count",
+                              "58") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              "61") &&
+      iggy3d::smoke::hasField(fields, "product_save_status",
+                              "product_save_written") &&
+      iggy3d::smoke::hasField(fields, "product_save_source",
+                              "initial_world") &&
+      iggy3d::smoke::hasField(fields, "product_save_save_id", "save_001") &&
+      iggy3d::smoke::hasField(fields, "product_save_session_saved", "true");
 
   fields.clear();
   const bool editorInputCursorPlaceWall =
@@ -2066,6 +2154,7 @@ int main() {
                       pauseEditCustomDraftActiveRoom &&
                       pauseEditorCursorPlaceWall &&
                       editorMousePickMovesCursorOnly &&
+                      editorPreviewShowsPhantomOnly &&
                       editorInputCursorPlaceWall &&
                       saveAndExitEditorInputEditedCustomDraftActiveRoom &&
                       rebootEditorInputEditedCustomDraftStarter &&
@@ -2101,6 +2190,8 @@ int main() {
                          "custom draft pause editor cursor places wall") &&
                   expect(editorMousePickMovesCursorOnly,
                          "custom draft editor mouse pick moves cursor only") &&
+                  expect(editorPreviewShowsPhantomOnly,
+                         "custom draft editor preview shows phantom only") &&
                   expect(editorInputCursorPlaceWall,
                          "custom draft editor input places wall") &&
                   expect(editorInputDeleteWall,
@@ -2154,6 +2245,8 @@ int main() {
             << (pauseEditorCursorPlaceWall ? "true" : "false") << "\n";
   std::cout << "editor_mouse_pick_moves_cursor_only="
             << (editorMousePickMovesCursorOnly ? "true" : "false") << "\n";
+  std::cout << "editor_preview_shows_phantom_only="
+            << (editorPreviewShowsPhantomOnly ? "true" : "false") << "\n";
   std::cout << "editor_input_cursor_place_wall="
             << (editorInputCursorPlaceWall ? "true" : "false") << "\n";
   std::cout << "editor_input_delete_wall="

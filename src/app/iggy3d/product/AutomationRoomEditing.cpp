@@ -9,12 +9,43 @@
 #include "app/iggy3d/ProductRoomAuthoringController.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/ProductRoomEditorPreview.hpp"
 #include "app/iggy3d/ProductRoomEditingState.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/input/ActionState.hpp"
 #include "runtime/session/Session.hpp"
 
 namespace iggy3d {
+
+void clearProductRoomEditorPreview(ProductAppWindowState& window) {
+  window.roomEditorPreviewActive = false;
+  window.roomEditorPlacementPreview = {};
+  window.roomEditorPreviewVisible = false;
+  window.roomEditorPreviewStatus = "room_editor_preview_not_requested";
+  window.roomEditorPreviewReasonCode = "room_editor_preview_not_requested";
+  window.roomEditorPreviewCandidateId = "none";
+  window.roomEditorPreviewTool = "floor";
+  window.roomEditorPreviewGridX = 0;
+  window.roomEditorPreviewGridZ = 0;
+  window.roomEditorPreviewOptimizedDrawDelta = 0;
+  window.roomEditorPreviewOptimizedTriangleDelta = 0;
+}
+
+void recordProductRoomEditorPreviewResult(
+    ProductAppWindowState& window,
+    const ProductRoomEditorPlacementPreviewResult& result) {
+  window.roomEditorPreviewActive = true;
+  window.roomEditorPlacementPreview = result;
+  window.roomEditorPreviewVisible = result.ok;
+  window.roomEditorPreviewStatus = result.status;
+  window.roomEditorPreviewReasonCode = result.reasonCode;
+  window.roomEditorPreviewCandidateId = result.primitiveId;
+  window.roomEditorPreviewTool = result.tool;
+  window.roomEditorPreviewGridX = result.gridX;
+  window.roomEditorPreviewGridZ = result.gridZ;
+  window.roomEditorPreviewOptimizedDrawDelta = result.optimizedDrawDelta;
+  window.roomEditorPreviewOptimizedTriangleDelta = result.optimizedTriangleDelta;
+}
 
 void copyRoomEditingStateToWindow(ProductAppWindowState& window,
                                   const ProductRoomEditingState& state) {
@@ -23,6 +54,8 @@ void copyRoomEditingStateToWindow(ProductAppWindowState& window,
   if (state.ready) {
     window.activeRoom = state.activeRoom;
     window.activeRoomCollision = state.activeRoomCollision;
+  } else {
+    clearProductRoomEditorPreview(window);
   }
 }
 
@@ -36,6 +69,7 @@ void recordProductRoomEditingStart(ProductAppWindowState& window,
       productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Script);
   window.roomEditingLastOperationAccepted = result.ok;
   window.roomEditingLastPrimitiveId = "none";
+  clearProductRoomEditorPreview(window);
   copyRoomEditingStateToWindow(window, result.state);
   // branch-gate: BG-1006
   if (result.ok) {
@@ -63,6 +97,7 @@ void recordProductRoomEditingOperation(
   window.roomEditingLastPrimitiveId =
       result.edit.primitiveId.empty() ? std::string{"none"}
                                       : result.edit.primitiveId;
+  clearProductRoomEditorPreview(window);
   copyRoomEditingStateToWindow(window, result.state);
 }
 
@@ -77,6 +112,7 @@ void recordProductRoomEditorCursorResult(
   window.roomEditorLastOperation = std::string(operation);
   window.roomEditorLastOperationAccepted = result.ok;
   window.roomEditorLastPrimitiveId = "none";
+  clearProductRoomEditorPreview(window);
 }
 
 bool rejectProductRoomEditorNotReady(ProductAppWindowState& window,
@@ -106,6 +142,7 @@ void recordProductRoomEditorActionResult(
       operationOverride.empty() ? result.operation : std::string(operationOverride);
   window.roomEditorLastOperationAccepted = result.operationAccepted;
   window.roomEditorLastPrimitiveId = result.primitiveId;
+  clearProductRoomEditorPreview(window);
 
   // branch-gate: BG-1006
   if (result.status == "room_editor_command_applied") {
@@ -197,6 +234,16 @@ ProductRoomEditorActionResult applyProductRoomEditorMousePickAutomation(
   request.viewportConfig = viewportConfig;
   request.anchorWorld = anchorWorld;
   return applyProductRoomEditorMousePick(editing, request);
+}
+
+ProductRoomEditorPlacementPreviewResult buildProductRoomEditorPreviewAutomation(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor) {
+  ProductRoomEditorPlacementPreviewRequest request;
+  request.roomEditingReady = editing.ready;
+  request.cursor = cursor;
+  request.document = &editing.authoringSnapshot.document;
+  return buildProductRoomEditorPlacementPreview(request);
 }
 
 namespace {
@@ -541,6 +588,39 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       context.window.automationControlStatus = "command_failed";
     }
     // branch-gate: BG-1044
+    markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                          context.currentOwner(),
+                          result.ok ? "applied" : "failed");
+    return passRoomEditingAutomation(result.ok);
+  }
+
+  // branch-gate: BG-1049
+  if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorPreview) {
+    // branch-gate: BG-1049
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failRoomEditingAutomation();
+    }
+    // branch-gate: BG-1049
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                            context.currentOwner(), "ignored");
+      return passRoomEditingAutomation(true);
+    }
+    // branch-gate: BG-1049
+    if (!roomEditorReady(context, command, automationSpec.canonicalKey)) {
+      return failRoomEditingAutomation();
+    }
+
+    const ProductRoomEditorPlacementPreviewResult result =
+        buildProductRoomEditorPreviewAutomation(context.window.roomEditing,
+                                                context.window.roomEditorCursor);
+    recordProductRoomEditorPreviewResult(context.window, result);
+    // branch-gate: BG-1049
+    if (!result.ok) {
+      context.window.automationControlStatus = "command_failed";
+    }
+    // branch-gate: BG-1049
     markAutomationApplied(context.window, command, automationSpec.canonicalKey,
                           context.currentOwner(),
                           result.ok ? "applied" : "failed");

@@ -205,6 +205,27 @@ void copyProductRoomEditorHud(ProductAppWindowState& window,
   window.roomEditorHudLastPrimitiveId = hud.lastPrimitiveId;
 }
 
+void copyProductRoomEditorPreviewOverlay(
+    ProductAppWindowState& window,
+    const ProductRoomEditorPreviewOverlay& overlay) {
+  window.roomEditorPreviewVisible = overlay.visible;
+  // branch-gate: BG-1050
+  window.roomEditorPreviewStatus =
+      window.roomEditorPreviewActive ? window.roomEditorPlacementPreview.status
+                                     : overlay.status;
+  // branch-gate: BG-1050
+  window.roomEditorPreviewReasonCode =
+      window.roomEditorPreviewActive ? window.roomEditorPlacementPreview.reasonCode
+                                     : overlay.reasonCode;
+  window.roomEditorPreviewCandidateId = overlay.candidateId;
+  window.roomEditorPreviewTool = overlay.toolName;
+  window.roomEditorPreviewGridX = overlay.gridX;
+  window.roomEditorPreviewGridZ = overlay.gridZ;
+  window.roomEditorPreviewOptimizedDrawDelta = overlay.optimizedDrawDelta;
+  window.roomEditorPreviewOptimizedTriangleDelta =
+      overlay.optimizedTriangleDelta;
+}
+
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
                                     const SceneProjectionResult* scene,
                                     const DebugProjectionResult* debug,
@@ -236,6 +257,8 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawWallTileCount = 0;
     window.viewport.productDrawRoomEditorCursorVisible = false;
     window.viewport.productDrawRoomEditorCursorCount = 0;
+    window.viewport.productDrawRoomEditorPreviewVisible = false;
+    window.viewport.productDrawRoomEditorPreviewCount = 0;
     window.viewport.productViewProjection = "primitive_first_person";
     window.viewport.productViewYawApplied = false;
     window.viewport.productViewPitchApplied = false;
@@ -247,6 +270,8 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productViewFrameTargetItemCount = 0;
     window.viewport.productRenderBridgeRoomEditorCursorVisible = false;
     window.viewport.productRenderBridgeRoomEditorCursorCount = 0;
+    window.viewport.productRenderBridgeRoomEditorPreviewVisible = false;
+    window.viewport.productRenderBridgeRoomEditorPreviewCount = 0;
     window.viewport.productFeedbackBridgeReady = false;
     window.viewport.productFeedbackBridgeLineCount = 0;
     clearProductVulkanRoomMeshProof(window.viewport);
@@ -299,6 +324,10 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
         drawList->roomEditorCursorVisible;
     window.viewport.productDrawRoomEditorCursorCount =
         drawList->roomEditorCursorCount;
+    window.viewport.productDrawRoomEditorPreviewVisible =
+        drawList->roomEditorPlacementPreviewVisible;
+    window.viewport.productDrawRoomEditorPreviewCount =
+        drawList->roomEditorPlacementPreviewCount;
   }
   // branch-gate: BG-1025
   if (frame != nullptr) {
@@ -318,6 +347,10 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
         bridge->roomEditorCursorVisible;
     window.viewport.productRenderBridgeRoomEditorCursorCount =
         bridge->roomEditorCursorCount;
+    window.viewport.productRenderBridgeRoomEditorPreviewVisible =
+        bridge->roomEditorPlacementPreviewVisible;
+    window.viewport.productRenderBridgeRoomEditorPreviewCount =
+        bridge->roomEditorPlacementPreviewCount;
     window.viewport.productFeedbackBridgeReady = bridge->feedbackReady;
     window.viewport.productFeedbackBridgeLineCount = bridge->feedbackLineCount;
   }
@@ -339,6 +372,8 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.roomEditorOverlay =
       buildProductRoomEditorOverlay(window.roomEditorCursor, false);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
+  frame.roomEditorPreviewOverlay = buildProductRoomEditorPreviewOverlay(nullptr);
+  copyProductRoomEditorPreviewOverlay(window, frame.roomEditorPreviewOverlay);
   frame.roomEditorHud = buildProductRoomEditorHud(
       ProductRoomEditorHudRequest{window.roomEditing,
                                   window.roomEditorCursor,
@@ -362,6 +397,10 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.roomEditorOverlay =
       buildProductRoomEditorOverlay(window.roomEditorCursor, window.roomEditing.ready);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
+  // branch-gate: BG-1050
+  frame.roomEditorPreviewOverlay = buildProductRoomEditorPreviewOverlay(
+      window.roomEditorPreviewActive ? &window.roomEditorPlacementPreview : nullptr);
+  copyProductRoomEditorPreviewOverlay(window, frame.roomEditorPreviewOverlay);
   frame.roomEditorHud = buildProductRoomEditorHud(
       ProductRoomEditorHudRequest{window.roomEditing,
                                   window.roomEditorCursor,
@@ -373,7 +412,8 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.drawList = buildProductPrimitiveDrawList(&frame.scene, &frame.debug,
                                                  activeRoom,
                                                  &window.activeRoomCollision,
-                                                 &frame.roomEditorOverlay);
+                                                 &frame.roomEditorOverlay,
+                                                 &frame.roomEditorPreviewOverlay);
   frame.viewportFrame = buildProductViewportFrame(
       frame.drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
                                                 window.viewport.cameraPitchDegrees});

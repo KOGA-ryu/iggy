@@ -17,6 +17,7 @@ struct ProductRoomEditingStartResult;
 struct ProductRoomEditingOperationResult;
 struct ProductRoomEditorActionResult;
 struct ProductRoomEditorCursorResult;
+struct ProductRoomEditorPlacementPreviewResult;
 struct ProductAsciiRoomAuthoringRequest;
 struct ProductActiveRoomState;
 struct ProductRoomAuthoringStartFromAsciiRequest;
@@ -57,6 +58,12 @@ void recordProductRoomEditorActionResult(
     ProductAppWindowState& window,
     const ProductRoomEditorActionResult& result,
     std::string_view operationOverride = {});
+
+void clearProductRoomEditorPreview(ProductAppWindowState& window);
+
+void recordProductRoomEditorPreviewResult(
+    ProductAppWindowState& window,
+    const ProductRoomEditorPlacementPreviewResult& result);
 
 ProductRoomEditingStartResult startProductRoomEditAutomationFromAsciiDraft(
     ProductRoomAuthoringStartFromAsciiRequest request);

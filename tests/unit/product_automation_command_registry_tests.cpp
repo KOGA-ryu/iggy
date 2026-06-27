@@ -73,6 +73,10 @@ int main() {
              iggy3d::ProductAutomationCommandId::RoomEditorMousePick) ==
              "room_editor.mouse_pick",
          "room editor mouse pick command id name is stable");
+  expect(iggy3d::productAutomationCommandIdName(
+             iggy3d::ProductAutomationCommandId::RoomEditorPreview) ==
+             "room_editor.preview",
+         "room editor preview command id name is stable");
 
   expect(spec(registry, "automation.owner").category == Category::Owner,
          "owner command is registered");
@@ -102,6 +106,8 @@ int main() {
          "room editor command is registered");
   expect(spec(registry, "room_editor.mouse_pick").category == Category::RoomEditor,
          "room editor mouse pick command is registered");
+  expect(spec(registry, "room_editor.preview").category == Category::RoomEditor,
+         "room editor preview command is registered");
   expect(spec(registry, "game.move_x").category == Category::GameplayInput,
          "gameplay input command is registered");
   expect(spec(registry, "settings.tab").category == Category::Settings,
@@ -140,6 +146,10 @@ int main() {
          "add floor is a csv value");
   expect(spec(registry, "room_editor.mouse_pick").valueKind == Value::Csv,
          "mouse pick is a csv value");
+  expect(spec(registry, "room_editor.preview").valueKind == Value::Bool,
+         "room editor preview is a bool value");
+  expect(spec(registry, "room_editor.preview").ignoresFalseBool,
+         "room editor preview ignores false bool");
 
   const iggy3d::ProductMenuInputAutomationResult menuUp =
       iggy3d::resolveProductMenuInputAutomation("up");
@@ -345,6 +355,17 @@ int main() {
          "frontend room editor mouse pick dispatch id is stable");
   expect(mousePickDispatch.canonicalActionLabel == "room_editor.mouse_pick",
          "frontend room editor mouse pick dispatch label is canonical");
+
+  const iggy3d::ProductAutomationCommandDispatchResult previewDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "frontend.room_editor_preview"});
+  expect(previewDispatch.handled, "frontend room editor preview is dispatch-handled");
+  expect(previewDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::RoomEditorPreview,
+         "frontend room editor preview dispatch id is stable");
+  expect(previewDispatch.canonicalActionLabel == "room_editor.preview",
+         "frontend room editor preview dispatch label is canonical");
 
   const iggy3d::ProductAutomationCommandDispatchResult addWallDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(
