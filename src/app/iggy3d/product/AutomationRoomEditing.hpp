@@ -5,6 +5,8 @@
 #include <string_view>
 
 #include "app/frontend/MenuInput.hpp"
+#include "app/iggy3d/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/product/Automation.hpp"
 #include "app/input/InputAction.hpp"
 #include "app/input/InputRouter.hpp"
@@ -79,6 +81,23 @@ void markProductRoomEditorPreviewCleared(ProductAppWindowState& window,
 void recordProductRoomEditorPreviewResult(
     ProductAppWindowState& window,
     const ProductRoomEditorPlacementPreviewResult& result);
+
+Vec3 productRoomEditorMousePickAnchor(Session* activeSession);
+
+ProductViewportFrameConfig productRoomEditorMousePickViewportConfig(
+    const ProductAppWindowState& window);
+
+ProductRoomEditorActionResult applyProductRoomEditorMousePickAutomation(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor,
+    float screenX,
+    float screenY,
+    ProductViewportFrameConfig viewportConfig,
+    Vec3 anchorWorld);
+
+ProductRoomEditorPlacementPreviewResult buildProductRoomEditorPreviewAutomation(
+    const ProductRoomEditingState& editing,
+    ProductRoomEditorCursorState cursor);
 
 bool isProductRoomEditorPreviewInputAction(InputAction action);
 

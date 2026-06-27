@@ -1,6 +1,7 @@
 #pragma once
 
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
@@ -9,6 +10,7 @@
 #include "app/iggy3d/ProductControllerActionRouting.hpp"
 #include "app/iggy3d/ProductInteractionMode.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/input/GamepadInput.hpp"
 #include "app/input/KeyboardInput.hpp"
 #include "app/input/MouseInput.hpp"
@@ -58,6 +60,23 @@ struct ProductControllerSampleInputResult {
   std::string_view reasonCode = "controller_sample_not_processed";
 };
 
+struct ProductWindowEditorMousePickPreviewContext {
+  const FrontendState& frontend;
+  ProductAppWindowState& window;
+  MouseClick click;
+  ProductViewportFrameConfig viewportConfig;
+  Vec3 anchorWorld;
+};
+
+struct ProductWindowEditorMousePickPreviewResult {
+  bool handled = false;
+  bool picked = false;
+  bool previewBuilt = false;
+  bool accepted = false;
+  std::string status = "room_editor_mouse_pick_preview_not_requested";
+  std::string reasonCode = "room_editor_mouse_pick_preview_not_requested";
+};
+
 void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                             ProductAppWindowState& window);
 void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state);
@@ -65,5 +84,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context);
 ProductControllerSampleInputResult processProductControllerActionSample(
     ProductControllerSampleInputContext context,
     GamepadControllerActionSample sample);
+ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPreview(
+    ProductWindowEditorMousePickPreviewContext context);
 
 }  // namespace iggy3d

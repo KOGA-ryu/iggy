@@ -7,6 +7,7 @@
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductInteractionModeState.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
+#include "app/iggy3d/ProductRoomEditorPreview.hpp"
 #include "app/iggy3d/product/Automation.hpp"
 #include "app/iggy3d/product/AutomationRoomEditing.hpp"
 #include "app/iggy3d/product/ProductMenuInputRouter.hpp"
@@ -58,6 +59,13 @@ void recordProductWindowControllerActions(
     });
   }
   recordProductControllerActionRoutingResult(window, result);
+}
+
+bool productWindowEditorMousePickSurfaceReady(
+    const FrontendState& frontend,
+    const ProductAppWindowState& window) {
+  return frontend.screen == FrontendScreen::Gameplay && window.gameplayActive &&
+         !frontendBlocksGameplayInput(frontend);
 }
 
 ProductControllerSampleInputResult applyProductWindowInputActions(
@@ -171,6 +179,68 @@ ProductControllerSampleInputResult processProductControllerActionSample(
                                         context.inputSource);
 }
 
+ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPreview(
+    ProductWindowEditorMousePickPreviewContext context) {
+  ProductWindowEditorMousePickPreviewResult result;
+  // branch-gate: BG-1063
+  if (!context.click.clicked) {
+    return result;
+  }
+  // branch-gate: BG-1063
+  if (!productWindowEditorMousePickSurfaceReady(context.frontend,
+                                               context.window)) {
+    result.status = "room_editor_mouse_pick_preview_surface_blocked";
+    result.reasonCode = result.status;
+    return result;
+  }
+  // branch-gate: BG-1063
+  if (context.window.interactionMode != ProductInteractionMode::Creative) {
+    result.status = "room_editor_mouse_pick_preview_mode_blocked";
+    result.reasonCode = result.status;
+    return result;
+  }
+  // branch-gate: BG-1063
+  if (!context.window.roomEditing.ready) {
+    result.status = "room_editor_not_ready";
+    result.reasonCode = result.status;
+    return result;
+  }
+
+  const ProductRoomEditorActionResult pickResult =
+      applyProductRoomEditorMousePickAutomation(
+          context.window.roomEditing,
+          context.window.roomEditorCursor,
+          context.click.x,
+          context.click.y,
+          context.viewportConfig,
+          context.anchorWorld);
+  result.handled = true;
+  result.picked = pickResult.ok;
+  result.status = pickResult.status;
+  result.reasonCode = pickResult.reasonCode;
+  context.window.inputOwner = MenuOwner::Editor;
+  context.window.lastInputAction = InputAction::EditorPreviewPlacement;
+  context.window.lastInputAccepted = pickResult.ok;
+  context.window.gameplayInputSuppressed = true;
+  recordProductRoomEditorActionResult(context.window,
+                                      pickResult,
+                                      "room_editor.mouse_pick");
+  // branch-gate: BG-1063
+  if (!pickResult.ok) {
+    return result;
+  }
+
+  const ProductRoomEditorPlacementPreviewResult preview =
+      buildProductRoomEditorPreviewAutomation(context.window.roomEditing,
+                                              context.window.roomEditorCursor);
+  recordProductRoomEditorPreviewResult(context.window, preview);
+  result.previewBuilt = true;
+  result.accepted = preview.ok;
+  result.status = preview.status;
+  result.reasonCode = preview.reasonCode;
+  return result;
+}
+
 void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   ActionState actionState;
   ProductOpeningMenuInputContext menuContext{
@@ -236,6 +306,13 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     ActionState gameplayActions;
     // branch-gate: BG-1029
     if (context.window.roomEditing.ready) {
+      (void)processProductWindowEditorMousePickPreview({
+          context.frontend,
+          context.window,
+          click,
+          productRoomEditorMousePickViewportConfig(context.window),
+          productRoomEditorMousePickAnchor(&*context.activeSession),
+      });
       pollKeyboardRoomEditorActions(context.inputFrame.keyboard, gameplayActions);
       recordProductWindowControllerActions(
           context.frontend, context.window, context.inputFrame.controllerAction,

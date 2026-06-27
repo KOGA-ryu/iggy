@@ -1,0 +1,224 @@
+#include "app/frontend/FrontendState.hpp"
+#include "app/iggy3d/ProductRoomEditingState.hpp"
+#include "app/iggy3d/ProductWindowInputFrame.hpp"
+#include "app/iggy3d/product/AutomationRoomEditing.hpp"
+
+#include <iostream>
+#include <limits>
+#include <string_view>
+
+namespace {
+
+bool expect(bool condition, std::string_view message) {
+  if (!condition) {
+    std::cerr << "FAIL: " << message << '\n';
+  }
+  return condition;
+}
+
+iggy3d::ProductAsciiRoomAuthoringRequest smallRoomRequest() {
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceText =
+      "###\n"
+      "#P#\n"
+      "###\n";
+  request.roomId = "input_frame_room";
+  request.sourceName = "unit/input_frame_room.iggyroom.txt";
+  request.emitAssetText = false;
+  return request;
+}
+
+iggy3d::FrontendState gameplayFrontend() {
+  iggy3d::FrontendState frontend;
+  iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
+  return frontend;
+}
+
+iggy3d::ProductViewportFrameConfig simpleViewportConfig() {
+  iggy3d::ProductViewportFrameConfig config;
+  config.centerX = 100.0F;
+  config.centerY = 100.0F;
+  config.pixelsPerMeter = 100.0F;
+  return config;
+}
+
+iggy3d::ProductAppWindowState editingWindow(
+    iggy3d::ProductInteractionMode mode =
+        iggy3d::ProductInteractionMode::Creative) {
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.interactionMode = mode;
+
+  const iggy3d::ProductRoomEditingStartResult started =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
+  iggy3d::copyRoomEditingStateToWindow(window, started.state);
+  window.roomEditorCursorReady = true;
+  window.roomEditorCursor = {};
+  window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  return window;
+}
+
+iggy3d::ProductWindowEditorMousePickPreviewContext pickContext(
+    const iggy3d::FrontendState& frontend,
+    iggy3d::ProductAppWindowState& window,
+    iggy3d::MouseClick click) {
+  return {
+      frontend,
+      window,
+      click,
+      simpleViewportConfig(),
+      {},
+  };
+}
+
+iggy3d::MouseClick clickAt(float x, float y) {
+  iggy3d::MouseClick click;
+  click.clicked = true;
+  click.x = x;
+  click.y = y;
+  return click;
+}
+
+bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
+  const iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window = editingWindow();
+  const std::uint64_t initialFloors = window.roomEditing.documentFloorCount;
+  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+  const std::uint64_t initialWalkable =
+      window.roomEditing.collisionWalkableSurfaceCount;
+  const std::uint64_t initialBlockers =
+      window.roomEditing.collisionActorBlockerSurfaceCount;
+
+  const iggy3d::ProductWindowEditorMousePickPreviewResult result =
+      iggy3d::processProductWindowEditorMousePickPreview(
+          pickContext(frontend, window, clickAt(300.0F, 100.0F)));
+
+  return expect(result.handled, "creative mouse click handled") &&
+         expect(result.picked, "creative mouse click picked") &&
+         expect(result.previewBuilt, "creative mouse click built preview") &&
+         expect(result.accepted, "creative mouse click preview accepted") &&
+         expect(result.status == "room_editor_preview_ready",
+                "creative mouse preview status") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::Editor,
+                "creative mouse input owner editor") &&
+         expect(window.lastInputAction ==
+                    iggy3d::InputAction::EditorPreviewPlacement,
+                "creative mouse semantic action") &&
+         expect(window.lastInputAccepted, "creative mouse input accepted") &&
+         expect(window.gameplayInputSuppressed,
+                "creative mouse suppresses gameplay input") &&
+         expect(window.roomEditorStatus == "room_editor_mouse_pick_mapped",
+                "creative mouse pick status") &&
+         expect(window.roomEditorLastOperation == "room_editor.mouse_pick",
+                "creative mouse pick operation") &&
+         expect(window.roomEditorCursor.gridX == 2,
+                "creative mouse pick cursor x") &&
+         expect(window.roomEditorCursor.gridZ == 0,
+                "creative mouse pick cursor z") &&
+         expect(window.roomEditorCursor.selectedTool ==
+                    iggy3d::ProductRoomEditorTool::Wall,
+                "creative mouse pick preserves tool") &&
+         expect(window.roomEditorPreviewVisible,
+                "creative mouse preview visible") &&
+         expect(window.roomEditorPreviewStatus == "room_editor_preview_ready",
+                "creative mouse preview receipt status") &&
+         expect(window.roomEditorPreviewCandidateId == "edit_wall_1",
+                "creative mouse preview candidate") &&
+         expect(window.roomEditorPreviewTool == "wall",
+                "creative mouse preview tool") &&
+         expect(window.roomEditorPreviewGridX == 2,
+                "creative mouse preview grid x") &&
+         expect(window.roomEditorPreviewGridZ == 0,
+                "creative mouse preview grid z") &&
+         expect(window.roomEditing.documentFloorCount == initialFloors,
+                "creative mouse leaves floor count") &&
+         expect(window.roomEditing.documentWallCount == initialWalls,
+                "creative mouse leaves wall count") &&
+         expect(window.roomEditing.collisionWalkableSurfaceCount == initialWalkable,
+                "creative mouse leaves walkable collision") &&
+         expect(window.roomEditing.collisionActorBlockerSurfaceCount ==
+                    initialBlockers,
+                "creative mouse leaves blocker collision");
+}
+
+bool playerClickDoesNotRunEditorPickPreview() {
+  const iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window =
+      editingWindow(iggy3d::ProductInteractionMode::Player);
+  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+
+  const iggy3d::ProductWindowEditorMousePickPreviewResult result =
+      iggy3d::processProductWindowEditorMousePickPreview(
+          pickContext(frontend, window, clickAt(300.0F, 100.0F)));
+
+  return expect(!result.handled, "player mouse click not editor handled") &&
+         expect(!result.picked, "player mouse click not picked") &&
+         expect(!result.previewBuilt, "player mouse click no preview") &&
+         expect(!result.accepted, "player mouse click not accepted") &&
+         expect(result.status == "room_editor_mouse_pick_preview_mode_blocked",
+                "player mouse mode-blocked status") &&
+         expect(window.roomEditorCursor.gridX == 0,
+                "player mouse leaves cursor x") &&
+         expect(!window.roomEditorPreviewVisible,
+                "player mouse leaves preview hidden") &&
+         expect(window.roomEditing.documentWallCount == initialWalls,
+                "player mouse leaves wall count");
+}
+
+bool notReadyClickDoesNotMutateEditorState() {
+  const iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+
+  const iggy3d::ProductWindowEditorMousePickPreviewResult result =
+      iggy3d::processProductWindowEditorMousePickPreview(
+          pickContext(frontend, window, clickAt(300.0F, 100.0F)));
+
+  return expect(!result.handled, "not-ready mouse click not handled") &&
+         expect(result.status == "room_editor_not_ready",
+                "not-ready mouse click status") &&
+         expect(!window.roomEditing.ready, "not-ready leaves editing off") &&
+         expect(!window.roomEditorPreviewVisible,
+                "not-ready leaves preview hidden");
+}
+
+bool invalidClickPropagatesMousePickRejectionWithoutMutation() {
+  const iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window = editingWindow();
+  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+
+  const iggy3d::ProductWindowEditorMousePickPreviewResult result =
+      iggy3d::processProductWindowEditorMousePickPreview(
+          pickContext(frontend,
+                      window,
+                      clickAt(std::numeric_limits<float>::infinity(), 100.0F)));
+
+  return expect(result.handled, "invalid mouse click handled by editor") &&
+         expect(!result.picked, "invalid mouse click not picked") &&
+         expect(!result.previewBuilt, "invalid mouse click no preview") &&
+         expect(!result.accepted, "invalid mouse click not accepted") &&
+         expect(result.status == "room_editor_mouse_pick_invalid_input",
+                "invalid mouse pick status") &&
+         expect(window.roomEditorStatus ==
+                    "room_editor_mouse_pick_invalid_input",
+                "invalid mouse pick receipt status") &&
+         expect(!window.lastInputAccepted, "invalid mouse input not accepted") &&
+         expect(!window.roomEditorPreviewVisible,
+                "invalid mouse leaves preview hidden") &&
+         expect(window.roomEditing.documentWallCount == initialWalls,
+                "invalid mouse leaves wall count");
+}
+
+}  // namespace
+
+int main() {
+  const bool passed =
+      creativeClickPicksCursorAndBuildsPreviewWithoutMutation() &&
+      playerClickDoesNotRunEditorPickPreview() &&
+      notReadyClickDoesNotMutateEditorState() &&
+      invalidClickPropagatesMousePickRejectionWithoutMutation();
+  std::cout << "product_window_input_frame_tests="
+            << (passed ? "pass" : "fail") << '\n';
+  return passed ? 0 : 1;
+}

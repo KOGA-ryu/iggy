@@ -446,7 +446,9 @@ RoomEditorMousePickValue parseRoomEditorMousePickValue(std::string_view value) {
   return parsed;
 }
 
-Vec3 roomEditorMousePickAnchor(Session* activeSession) {
+}  // namespace
+
+Vec3 productRoomEditorMousePickAnchor(Session* activeSession) {
   // branch-gate: BG-1044
   if (activeSession == nullptr) {
     return {};
@@ -460,13 +462,15 @@ Vec3 roomEditorMousePickAnchor(Session* activeSession) {
   return {};
 }
 
-ProductViewportFrameConfig roomEditorMousePickViewportConfig(
+ProductViewportFrameConfig productRoomEditorMousePickViewportConfig(
     const ProductAppWindowState& window) {
   ProductViewportFrameConfig config;
   config.cameraYawDegrees = window.viewport.cameraYawDegrees;
   config.cameraPitchDegrees = window.viewport.cameraPitchDegrees;
   return config;
 }
+
+namespace {
 
 bool roomEditorReady(ProductAutomationRoomEditingContext& context,
                      const ProductAutomationCommand& command,
@@ -758,8 +762,8 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
             context.window.roomEditorCursor,
             pick.screenX,
             pick.screenY,
-            roomEditorMousePickViewportConfig(context.window),
-            roomEditorMousePickAnchor(context.activeSession));
+            productRoomEditorMousePickViewportConfig(context.window),
+            productRoomEditorMousePickAnchor(context.activeSession));
     recordProductRoomEditorActionResult(context.window, result,
                                         automationSpec.canonicalKey);
     // branch-gate: BG-1044

@@ -60,3 +60,4 @@ BG-1059	src/app/iggy3d/ProductWindowInputFrame.cpp	controller mode chord consume
 BG-1060	src/app/iggy3d/ProductControllerActionRouting.cpp	product controller action routing table emission policy	codex	2026-06-26
 BG-1061	src/app/iggy3d/ProductWindowInputFrame.cpp	product controller sample input application seam	codex	2026-06-26
 BG-1062	src/app/iggy3d/product/AutomationGameplay.cpp	controller input automation sample sequence parsing	codex	2026-06-26
+BG-1063	src/app/iggy3d/ProductWindowInputFrame.cpp	live creative room editor mouse pick preview policy	codex	2026-06-26
