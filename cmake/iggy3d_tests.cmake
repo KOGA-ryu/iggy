@@ -484,6 +484,11 @@ iggy3d_add_unit_test(physics_aabb_step_tests
 set_tests_properties(physics_aabb_step_tests PROPERTIES
   LABELS "unit;runtime;physics;aabb;step;iggy3d")
 
+iggy3d_add_unit_test(physics_aabb_lab_tests
+  tests/unit/physics_aabb_lab_tests.cpp)
+set_tests_properties(physics_aabb_lab_tests PROPERTIES
+  LABELS "unit;runtime;physics;aabb;lab;iggy3d")
+
 iggy3d_add_unit_test(physics_aabb_contact_tests
   tests/unit/physics_aabb_contact_tests.cpp)
 set_tests_properties(physics_aabb_contact_tests PROPERTIES
