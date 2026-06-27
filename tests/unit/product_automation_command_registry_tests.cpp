@@ -2,7 +2,7 @@
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
-#include "app/iggy3d/product/Automation.hpp"
+#include "app/iggy3d/automation/Automation.hpp"
 
 #include <filesystem>
 #include <fstream>

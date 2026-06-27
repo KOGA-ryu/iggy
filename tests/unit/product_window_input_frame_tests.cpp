@@ -1,7 +1,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditingState.hpp"
 #include "app/iggy3d/window/ProductWindowInputFrame.hpp"
-#include "app/iggy3d/product/AutomationRoomEditing.hpp"
+#include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 
 #include <iostream>
 #include <limits>

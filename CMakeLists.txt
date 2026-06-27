@@ -63,13 +63,13 @@ target_sources(iggy3d
     src/app/iggy3d/world/ProductPackageSessionSeed.cpp
     src/app/iggy3d/ProductAppOperations.cpp
     src/app/iggy3d/ProductAppOptions.cpp
-    src/app/iggy3d/product/Automation.cpp
-    src/app/iggy3d/product/AutomationControl.cpp
-    src/app/iggy3d/product/AutomationDispatch.cpp
-    src/app/iggy3d/product/AutomationGameplay.cpp
-    src/app/iggy3d/product/AutomationRoomEditing.cpp
-    src/app/iggy3d/product/AutomationSaveBrowser.cpp
-    src/app/iggy3d/product/AutomationSystem.cpp
+    src/app/iggy3d/automation/Automation.cpp
+    src/app/iggy3d/automation/AutomationControl.cpp
+    src/app/iggy3d/automation/AutomationDispatch.cpp
+    src/app/iggy3d/automation/AutomationGameplay.cpp
+    src/app/iggy3d/automation/AutomationRoomEditing.cpp
+    src/app/iggy3d/automation/AutomationSaveBrowser.cpp
+    src/app/iggy3d/automation/AutomationSystem.cpp
     src/app/iggy3d/menu/ProductMenuActionHandlers.cpp
     src/app/iggy3d/menu/ProductMenuInputRouter.cpp
     src/app/iggy3d/ProductPrimitiveDrawList.cpp

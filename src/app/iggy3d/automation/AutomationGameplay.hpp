@@ -1,24 +1,23 @@
 #pragma once
 
-#include "app/iggy3d/product/Automation.hpp"
+#include "app/iggy3d/automation/Automation.hpp"
 
 namespace iggy3d {
 
+class Session;
 struct FrontendState;
 struct ProductAppWindowState;
 
-struct ProductAutomationSystemContext {
+struct ProductAutomationGameplayContext {
   FrontendState& frontend;
   ProductAppWindowState& window;
+  Session* activeSession = nullptr;
   std::function<MenuOwner()> currentOwner;
-  std::function<bool(InputAction)> routeInput;
-  std::function<void()> returnToTitle;
-  std::function<void()> requestQuit;
 };
 
-ProductAutomationExecutionResult applyProductSystemAutomationCommand(
+ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
     const ProductAutomationCommand& command,
     const ProductAutomationCommandDispatchSpec& automationSpec,
-    ProductAutomationSystemContext& context);
+    ProductAutomationGameplayContext& context);
 
 }  // namespace iggy3d

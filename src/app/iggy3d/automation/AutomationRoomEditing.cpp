@@ -1,4 +1,4 @@
-#include "app/iggy3d/product/AutomationRoomEditing.hpp"
+#include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 
 #include <string>
 #include <string_view>

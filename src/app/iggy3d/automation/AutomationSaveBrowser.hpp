@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/iggy3d/product/Automation.hpp"
+#include "app/iggy3d/automation/Automation.hpp"
 
 namespace iggy3d {
 

@@ -1,7 +1,7 @@
 #include "app/iggy3d/ProductInteractionModeState.hpp"
 #include "app/iggy3d/menu/ProductMenuTransitions.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditingState.hpp"
-#include "app/iggy3d/product/AutomationRoomEditing.hpp"
+#include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 
 #include <array>
 #include <iostream>

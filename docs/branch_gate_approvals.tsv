@@ -1,19 +1,19 @@
 id	file	reason	approved_by	date
-BG-1001	src/app/iggy3d/product/Automation.cpp	control-file parser extraction for dungeon draft and automation readers	codex	2026-06-26
-BG-1002	src/app/iggy3d/product/Automation.cpp	common automation execution context extraction from AppShell	codex	2026-06-26
+BG-1001	src/app/iggy3d/automation/Automation.cpp	control-file parser extraction for dungeon draft and automation readers	codex	2026-06-26
+BG-1002	src/app/iggy3d/automation/Automation.cpp	common automation execution context extraction from AppShell	codex	2026-06-26
 BG-1003	src/app/iggy3d/AppShell.cpp	common automation execution delegation seam	codex	2026-06-26
-BG-1004	src/app/iggy3d/product/Automation.cpp	world setup and ASCII automation execution extraction from AppShell	codex	2026-06-26
+BG-1004	src/app/iggy3d/automation/Automation.cpp	world setup and ASCII automation execution extraction from AppShell	codex	2026-06-26
 BG-1005	src/app/iggy3d/AppShell.cpp	world setup automation execution delegation seam	codex	2026-06-26
-BG-1006	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editing automation execution extraction from AppShell	codex	2026-06-26
+BG-1006	src/app/iggy3d/automation/AutomationRoomEditing.cpp	room editing automation execution extraction from AppShell	codex	2026-06-26
 BG-1007	src/app/iggy3d/AppShell.cpp	room editing automation execution delegation seam	codex	2026-06-26
-BG-1008	src/app/iggy3d/product/AutomationSaveBrowser.cpp	save browser automation execution extraction from AppShell	codex	2026-06-26
+BG-1008	src/app/iggy3d/automation/AutomationSaveBrowser.cpp	save browser automation execution extraction from AppShell	codex	2026-06-26
 BG-1009	src/app/iggy3d/AppShell.cpp	save browser automation execution delegation seam	codex	2026-06-26
-BG-1010	src/app/iggy3d/product/AutomationGameplay.cpp	gameplay automation execution extraction from AppShell	codex	2026-06-26
+BG-1010	src/app/iggy3d/automation/AutomationGameplay.cpp	gameplay automation execution extraction from AppShell	codex	2026-06-26
 BG-1011	src/app/iggy3d/AppShell.cpp	gameplay automation execution delegation seam	codex	2026-06-26
-BG-1012	src/app/iggy3d/product/AutomationSystem.cpp	system and navigation automation execution extraction from AppShell	codex	2026-06-26
+BG-1012	src/app/iggy3d/automation/AutomationSystem.cpp	system and navigation automation execution extraction from AppShell	codex	2026-06-26
 BG-1013	src/app/iggy3d/AppShell.cpp	system and navigation automation execution delegation seam	codex	2026-06-26
-BG-1014	src/app/iggy3d/product/AutomationControl.cpp	automation control-file runner extraction from AppShell	codex	2026-06-26
-BG-1015	src/app/iggy3d/product/AutomationDispatch.cpp	automation command dispatcher extraction from AppShell	codex	2026-06-26
+BG-1014	src/app/iggy3d/automation/AutomationControl.cpp	automation control-file runner extraction from AppShell	codex	2026-06-26
+BG-1015	src/app/iggy3d/automation/AutomationDispatch.cpp	automation command dispatcher extraction from AppShell	codex	2026-06-26
 BG-1016	src/app/iggy3d/AppShell.cpp	automation dispatcher callback adapter seam	codex	2026-06-26
 BG-1017	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	pause menu action handler extraction from AppShell	codex	2026-06-26
 BG-1018	src/app/iggy3d/menu/ProductMenuActionHandlers.cpp	dev tools menu action handler extraction from AppShell	codex	2026-06-26
@@ -31,7 +31,7 @@ BG-1029	src/app/iggy3d/window/ProductWindowInputFrame.cpp	product window input f
 BG-1030	src/app/iggy3d/window/ProductWindowFramePresenter.cpp	product window frame presenter extraction from AppShell	codex	2026-06-26
 BG-1031	src/app/iggy3d/window/ProductWindowLoop.cpp	product window loop extraction from AppShell	codex	2026-06-26
 BG-1032	src/app/iggy3d/gameplay/ProductGameplayTapeRunner.cpp	gameplay tape option flow extraction from AppShell	codex	2026-06-26
-BG-1033	src/app/iggy3d/product/AutomationDispatch.cpp	automation app adapter extraction from AppShell	codex	2026-06-26
+BG-1033	src/app/iggy3d/automation/AutomationDispatch.cpp	automation app adapter extraction from AppShell	codex	2026-06-26
 BG-1034	src/app/iggy3d/room_editor/ProductRoomEditorHud.cpp	room editor HUD visibility and wall-tool proof	codex	2026-06-26
 BG-1035	src/app/iggy3d/OpeningMenuView.cpp	room editor HUD compact SDL drawing	codex	2026-06-26
 BG-1036	src/app/iggy3d/room_editor/ProductRoomEditorActionController.cpp	room editor live delete undo redo input policy	codex	2026-06-26
@@ -42,16 +42,16 @@ BG-1040	src/app/iggy3d/room_editor/ProductRoomEditorActionController.cpp	room ed
 BG-1041	src/app/iggy3d/room_editor/ProductRoomEditorActionController.cpp	room editor wall direction rotate input policy	codex	2026-06-26
 BG-1042	src/app/iggy3d/room_editor/ProductRoomEditorCursor.cpp	room editor wall direction clockwise cycle table	codex	2026-06-26
 BG-1043	src/app/iggy3d/room_editor/ProductRoomEditorCursor.cpp	pure room editor mouse grid pick validation	codex	2026-06-26
-BG-1044	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor mouse pick automation validation	codex	2026-06-26
+BG-1044	src/app/iggy3d/automation/AutomationRoomEditing.cpp	room editor mouse pick automation validation	codex	2026-06-26
 BG-1045	src/app/iggy3d/room_editor/ProductRoomEditorPreview.cpp	room editor phantom placement preview validation	codex	2026-06-26
 BG-1046	src/app/iggy3d/room_editor/ProductRoomEditorOverlay.cpp	room editor phantom placement preview overlay validation	codex	2026-06-26
 BG-1047	src/app/iggy3d/ProductPrimitiveDrawList.cpp	room editor phantom placement preview draw-list validation	codex	2026-06-26
 BG-1048	src/app/iggy3d/ProductRenderBridge.cpp	room editor phantom placement preview bridge count validation	codex	2026-06-26
-BG-1049	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor active phantom preview automation validation	codex	2026-06-26
+BG-1049	src/app/iggy3d/automation/AutomationRoomEditing.cpp	room editor active phantom preview automation validation	codex	2026-06-26
 BG-1050	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	room editor active phantom preview projection validation	codex	2026-06-26
-BG-1051	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor phantom preview confirm cancel validation	codex	2026-06-26
+BG-1051	src/app/iggy3d/automation/AutomationRoomEditing.cpp	room editor phantom preview confirm cancel validation	codex	2026-06-26
 BG-1052	src/app/iggy3d/gameplay/ProductGameplayProjectionRefresh.cpp	room editor cleared phantom preview receipt preservation	codex	2026-06-26
-BG-1054	src/app/iggy3d/product/AutomationRoomEditing.cpp	room editor physical phantom preview action dispatch	codex	2026-06-26
+BG-1054	src/app/iggy3d/automation/AutomationRoomEditing.cpp	room editor physical phantom preview action dispatch	codex	2026-06-26
 BG-1055	src/app/iggy3d/window/ProductWindowInputFrame.cpp	room editor physical phantom preview input routing	codex	2026-06-26
 BG-1056	src/app/iggy3d/ProductInteractionMode.cpp	product controller interaction mode chord policy	codex	2026-06-26
 BG-1057	src/app/iggy3d/ProductControllerActionMap.cpp	product controller action mapping table lookup policy	codex	2026-06-26
@@ -59,7 +59,7 @@ BG-1058	src/app/iggy3d/ProductInteractionModeState.cpp	product interaction mode 
 BG-1059	src/app/iggy3d/window/ProductWindowInputFrame.cpp	controller mode chord consumes gamepad action polling	codex	2026-06-26
 BG-1060	src/app/iggy3d/ProductControllerActionRouting.cpp	product controller action routing table emission policy	codex	2026-06-26
 BG-1061	src/app/iggy3d/window/ProductWindowInputFrame.cpp	product controller sample input application seam	codex	2026-06-26
-BG-1062	src/app/iggy3d/product/AutomationGameplay.cpp	controller input automation sample sequence parsing	codex	2026-06-26
+BG-1062	src/app/iggy3d/automation/AutomationGameplay.cpp	controller input automation sample sequence parsing	codex	2026-06-26
 BG-1063	src/app/iggy3d/window/ProductWindowInputFrame.cpp	live creative room editor mouse pick preview policy	codex	2026-06-26
 BG-1064	src/app/iggy3d/ProductInteractionModeHud.cpp	product interaction mode hud descriptor visibility policy	codex	2026-06-26
 BG-1065	src/app/iggy3d/OpeningMenuView.cpp	product interaction mode hud draw visibility policy	codex	2026-06-26

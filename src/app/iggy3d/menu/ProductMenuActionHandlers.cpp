@@ -12,8 +12,8 @@
 #include "app/iggy3d/menu/ProductMenuTransitions.hpp"
 #include "app/iggy3d/room_editor/ProductRoomAuthoringController.hpp"
 #include "app/iggy3d/save/ProductSaveFlow.hpp"
-#include "app/iggy3d/product/Automation.hpp"
-#include "app/iggy3d/product/AutomationRoomEditing.hpp"
+#include "app/iggy3d/automation/Automation.hpp"
+#include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 
 namespace iggy3d {
 namespace {

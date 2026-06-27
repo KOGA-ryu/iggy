@@ -10,7 +10,7 @@
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
-#include "app/iggy3d/product/Automation.hpp"
+#include "app/iggy3d/automation/Automation.hpp"
 #include "app/input/InputAction.hpp"
 #include "runtime/session/Session.hpp"
 

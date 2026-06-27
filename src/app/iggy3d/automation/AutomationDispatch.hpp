@@ -3,7 +3,7 @@
 #include <functional>
 #include <optional>
 
-#include "app/iggy3d/product/Automation.hpp"
+#include "app/iggy3d/automation/Automation.hpp"
 #include "app/input/InputRouter.hpp"
 #include "runtime/session/Session.hpp"
 

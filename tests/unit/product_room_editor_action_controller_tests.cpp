@@ -1,6 +1,6 @@
 #include "app/iggy3d/room_editor/ProductRoomEditorActionController.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
-#include "app/iggy3d/product/AutomationRoomEditing.hpp"
+#include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 
 #include <iostream>
 #include <string_view>

@@ -1,4 +1,4 @@
-#include "app/iggy3d/product/AutomationControl.hpp"
+#include "app/iggy3d/automation/AutomationControl.hpp"
 
 #include <vector>
 
