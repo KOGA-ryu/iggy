@@ -469,6 +469,11 @@ iggy3d_add_unit_test(physics_aabb_contact_tests
 set_tests_properties(physics_aabb_contact_tests PROPERTIES
   LABELS "unit;runtime;physics;aabb;contact;iggy3d")
 
+iggy3d_add_unit_test(physics_aabb_contact_solver_tests
+  tests/unit/physics_aabb_contact_solver_tests.cpp)
+set_tests_properties(physics_aabb_contact_solver_tests PROPERTIES
+  LABELS "unit;runtime;physics;aabb;contact_solver;iggy3d")
+
 iggy3d_add_unit_test(physics_broadphase_tests
   tests/unit/physics_broadphase_tests.cpp)
 set_tests_properties(physics_broadphase_tests PROPERTIES
