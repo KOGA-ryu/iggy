@@ -131,10 +131,9 @@ Then run this controller-focused manual path:
 2. Enter gameplay.
 3. In player mode, use the controller left stick to move the player. Player
    mode routes controller movement to gameplay movement.
-4. Open Pause and select `Edit Room`.
-5. Press and hold the mode chord `LT + RT + L3 + R3` once to switch to creative
-   mode. Release the chord after the mode changes.
-6. In creative mode, controller input routes to room-editor actions:
+4. Open Pause and select `Edit Room`. Entering room editing sets
+   `interaction_mode=creative`.
+5. In creative mode, controller input routes to room-editor actions:
 
 | Control | Creative room-editor behavior |
 | --- | --- |
@@ -146,12 +145,13 @@ Then run this controller-focused manual path:
 | Left shoulder | Cycle to previous tool |
 | Right shoulder | Cycle to next tool |
 
-7. Use the creative controls to preview and confirm at least one floor or wall
+6. Use the creative controls to preview and confirm at least one floor or wall
    edit.
-8. Press and hold `LT + RT + L3 + R3` again, after releasing it from the first
-   toggle, to return to player mode.
-9. In player mode, controller movement should control the player again instead
+7. Press and hold `LT + RT + L3 + R3` once to return to player mode.
+8. In player mode, controller movement should control the player again instead
    of the editor cursor.
+9. Press and release the chord again if you want to return to creative mode
+   during the same gameplay session.
 10. Save And Exit.
 11. Relaunch with the same `--save-root`.
 12. Select `Continue`.
@@ -199,11 +199,10 @@ build/iggy3d \
 
 2. Create and enter a dungeon world using the New World draft steps above.
 3. Open Pause and select `Edit Room`.
-4. Enter creative/editor mouse control:
-   - with a controller, press and release `LT + RT + L3 + R3`;
-   - without a controller, the keyboard editor controls still work once Edit
-     Room is active, but the live left-click pick-preview path specifically
-     requires `interaction_mode=creative`.
+4. Edit Room entry sets `interaction_mode=creative`, so creative/editor mouse
+   control is active immediately. The controller chord `LT + RT + L3 + R3`
+   remains available if you intentionally switch back to player mode and later
+   return to creative mode.
 5. Select the intended tool:
    - press `1` for Floor;
    - press `2` for Wall;
@@ -401,7 +400,8 @@ That smoke injects controller samples without SDL hardware or a real window:
 controller.input=left_stick_up
 controller.input=mode_chord
 controller.input=mode_chord,release,mode_chord
-controller.input=mode_chord,release,dpad_right
+room_edit.start_active=true
+controller.input=dpad_right
 ```
 
 It proves:
@@ -410,6 +410,8 @@ It proves:
 - `mode_chord` toggles `player -> creative` and records
   `controller_action_chord_consumed`;
 - release plus another `mode_chord` toggles `creative -> player`;
+- `room_edit.start_active=true` enters room editing in creative mode without a
+  controller chord;
 - creative room-editor surface maps controller d-pad movement to
   `editor.nudge_x` and moves the editor cursor;
 - starter surface blocks the chord with

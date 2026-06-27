@@ -1,4 +1,6 @@
 #include "app/iggy3d/ProductInteractionModeState.hpp"
+#include "app/iggy3d/ProductRoomEditingState.hpp"
+#include "app/iggy3d/product/AutomationRoomEditing.hpp"
 
 #include <array>
 #include <iostream>
@@ -24,6 +26,18 @@ iggy3d::ProductControllerModeChordSample fullChord() {
   };
 }
 
+iggy3d::ProductAsciiRoomAuthoringRequest smallRoomRequest() {
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceText =
+      "###\n"
+      "#P#\n"
+      "###\n";
+  request.roomId = "interaction_mode_room";
+  request.sourceName = "unit/interaction_mode_room.iggyroom.txt";
+  request.emitAssetText = false;
+  return request;
+}
+
 bool defaultStateIsPlayerMode() {
   const iggy3d::ProductAppWindowState window;
   return expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
@@ -37,6 +51,29 @@ bool defaultStateIsPlayerMode() {
                 "default toggle status") &&
          expect(window.controllerModeToggleSurface == "none",
                 "default toggle surface");
+}
+
+bool roomEditingStartSetsCreativeMode() {
+  iggy3d::ProductAppWindowState window;
+  const iggy3d::ProductRoomEditingStartResult started =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
+  iggy3d::recordProductRoomEditingStart(window, started, "unit_edit_room");
+
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendState frontend;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductSaveBridgeResult saves;
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options, world, frontend, settings, window,
+                                     saves);
+
+  return expect(started.ok, "room editing start accepted") &&
+         expect(window.roomEditing.ready, "room editing ready") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+                "room editing start sets creative mode") &&
+         expect(iggy3d::hasReceiptField(receipt, "interaction_mode", "creative"),
+                "room editing start receipt interaction mode");
 }
 
 bool gamepadSampleConversionIsStable() {
@@ -250,7 +287,8 @@ bool receiptFieldsExposeInteractionModeProof() {
 
 int main() {
   const bool ok =
-      defaultStateIsPlayerMode() && gamepadSampleConversionIsStable() &&
+      defaultStateIsPlayerMode() && roomEditingStartSetsCreativeMode() &&
+      gamepadSampleConversionIsStable() &&
       surfaceDerivationIsConservative() && gameplayChordTogglesAndLatches() &&
       roomEditorSurfaceAllowsToggle() && blockedSurfaceDoesNotToggle() &&
       receiptFieldsExposeInteractionModeProof();

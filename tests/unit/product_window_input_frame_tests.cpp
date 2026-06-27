@@ -42,17 +42,13 @@ iggy3d::ProductViewportFrameConfig simpleViewportConfig() {
   return config;
 }
 
-iggy3d::ProductAppWindowState editingWindow(
-    iggy3d::ProductInteractionMode mode =
-        iggy3d::ProductInteractionMode::Creative) {
+iggy3d::ProductAppWindowState editingWindow() {
   iggy3d::ProductAppWindowState window;
   window.gameplayActive = true;
-  window.interactionMode = mode;
 
   const iggy3d::ProductRoomEditingStartResult started =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
-  iggy3d::copyRoomEditingStateToWindow(window, started.state);
-  window.roomEditorCursorReady = true;
+  iggy3d::recordProductRoomEditingStart(window, started, "unit_edit_room");
   window.roomEditorCursor = {};
   window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
   return window;
@@ -94,6 +90,8 @@ bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
           pickContext(frontend, window, clickAt(300.0F, 100.0F)));
 
   return expect(result.handled, "creative mouse click handled") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+                "edit room entry keeps creative mode") &&
          expect(result.picked, "creative mouse click picked") &&
          expect(result.previewBuilt, "creative mouse click built preview") &&
          expect(result.accepted, "creative mouse click preview accepted") &&
@@ -143,8 +141,8 @@ bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
 
 bool playerClickDoesNotRunEditorPickPreview() {
   const iggy3d::FrontendState frontend = gameplayFrontend();
-  iggy3d::ProductAppWindowState window =
-      editingWindow(iggy3d::ProductInteractionMode::Player);
+  iggy3d::ProductAppWindowState window = editingWindow();
+  window.interactionMode = iggy3d::ProductInteractionMode::Player;
   const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
 
   const iggy3d::ProductWindowEditorMousePickPreviewResult result =

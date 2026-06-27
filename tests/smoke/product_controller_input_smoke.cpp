@@ -137,13 +137,14 @@ int main() {
           "controller_input_creative_editor",
           "frontend.select=new_world\nfrontend.execute=true\nworld.create=true\n"
           "room_edit.start_active=true\n"
-          "controller.input=mode_chord,release,dpad_right\n",
+          "controller.input=dpad_right\n",
           iggy3d::smoke::saveRootArg(creativeSaveRoot),
           fields,
           exitCode) &&
       exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
       iggy3d::smoke::automationApplied(fields) &&
-      iggy3d::smoke::hasField(fields, "interaction_mode", "creative") &&
+      toggleState(fields, "creative", "false", "false",
+                  "interaction_mode_chord_partial", "room_editor") &&
       controllerMappedTo(fields, "dpad_right", "creative", "room_editor",
                          "editor.nudge_x") &&
       iggy3d::smoke::hasField(fields, "input_owner", "editor") &&

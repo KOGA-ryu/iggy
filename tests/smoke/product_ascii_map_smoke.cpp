@@ -489,6 +489,7 @@ int main() {
       iggy3d::smoke::hasField(fields, "window_created", "false") &&
       iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "creative") &&
       iggy3d::smoke::hasField(fields,
                               "automation_control_last_key",
                               "room_edit.start_active") &&
@@ -588,6 +589,7 @@ int main() {
       iggy3d::smoke::hasField(fields, "frontend_selected_action",
                               "edit_room") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "creative") &&
       iggy3d::smoke::hasField(fields, "input_owner", "editor") &&
       iggy3d::smoke::hasField(fields, "gameplay_input_suppressed",
                               "true") &&
@@ -818,6 +820,7 @@ int main() {
       iggy3d::smoke::hasField(fields, "window_created", "false") &&
       iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode", "creative") &&
       iggy3d::smoke::hasField(fields, "automation_control_last_key",
                               "room_editor.mouse_pick") &&
       iggy3d::smoke::hasField(fields, "automation_control_last_action",
