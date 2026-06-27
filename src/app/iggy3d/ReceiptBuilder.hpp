@@ -37,6 +37,13 @@ struct ProductAppWindowState {
   std::string controllerModeToggleStatus = "interaction_mode_toggle_not_requested";
   std::string controllerModeToggleReasonCode = "interaction_mode_toggle_not_requested";
   std::string controllerModeToggleSurface = "none";
+  bool controllerActionMapped = false;
+  std::string controllerActionStatus = "controller_action_not_requested";
+  std::string controllerActionReasonCode = "controller_action_not_requested";
+  std::string controllerActionControl = "none";
+  std::string controllerActionMode = "player";
+  std::string controllerActionSurface = "none";
+  std::string controllerActionInputAction = "none";
   FrontendSettingsTab selectedSettingsTab = FrontendSettingsTab::None;
   bool runtimeSessionCreated = false;
   bool gameplayActive = false;

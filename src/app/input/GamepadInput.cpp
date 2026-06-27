@@ -148,6 +148,35 @@ GamepadControllerModeChordSample pollGamepadControllerModeChordSample(
 #endif
 }
 
+GamepadControllerActionSample pollGamepadControllerActionSample(
+    GamepadMenuState& state) {
+#if defined(IGGY3D_HAS_SDL3)
+  return {
+      normalizedAxis(state, SDL_GAMEPAD_AXIS_LEFTX),
+      -normalizedAxis(state, SDL_GAMEPAD_AXIS_LEFTY),
+      normalizedAxis(state, SDL_GAMEPAD_AXIS_RIGHTX),
+      -normalizedAxis(state, SDL_GAMEPAD_AXIS_RIGHTY),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_UP),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_DOWN),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_LEFT),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_RIGHT),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_SOUTH),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_EAST),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_WEST),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_NORTH),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER),
+      triggerDown(state, SDL_GAMEPAD_AXIS_LEFT_TRIGGER),
+      triggerDown(state, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_LEFT_STICK),
+      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_RIGHT_STICK),
+  };
+#else
+  (void)state;
+  return {};
+#endif
+}
+
 void pollGamepadGameplayActions(GamepadMenuState& state, ActionState& actions) {
 #if defined(IGGY3D_HAS_SDL3)
   if (!state.gamepadAvailable) {

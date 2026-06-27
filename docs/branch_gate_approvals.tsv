@@ -57,3 +57,4 @@ BG-1056	src/app/iggy3d/ProductInteractionMode.cpp	product controller interaction
 BG-1057	src/app/iggy3d/ProductControllerActionMap.cpp	product controller action mapping table lookup policy	codex	2026-06-26
 BG-1058	src/app/iggy3d/ProductInteractionModeState.cpp	product interaction mode surface derivation policy	codex	2026-06-26
 BG-1059	src/app/iggy3d/ProductWindowInputFrame.cpp	controller mode chord consumes gamepad action polling	codex	2026-06-26
+BG-1060	src/app/iggy3d/ProductControllerActionRouting.cpp	product controller action routing table emission policy	codex	2026-06-26

@@ -12,6 +12,16 @@ ProductControllerModeChordSample productControllerModeChordSampleFromGamepad(
   };
 }
 
+ProductControllerModeChordSample productControllerModeChordSampleFromGamepad(
+    GamepadControllerActionSample sample) {
+  return {
+      sample.leftTriggerDown,
+      sample.rightTriggerDown,
+      sample.leftStickPressDown,
+      sample.rightStickPressDown,
+  };
+}
+
 ProductInputSurface productInputSurfaceFor(const FrontendState& frontend,
                                            const ProductAppWindowState& window) {
   // branch-gate: BG-1058

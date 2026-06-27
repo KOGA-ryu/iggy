@@ -122,6 +122,11 @@ iggy3d_add_unit_test(product_controller_action_map_tests
 set_tests_properties(product_controller_action_map_tests PROPERTIES
   LABELS "unit;app;product;input;controller;action_map;iggy3d")
 
+iggy3d_add_unit_test(product_controller_action_routing_tests
+  tests/unit/product_controller_action_routing_tests.cpp)
+set_tests_properties(product_controller_action_routing_tests PROPERTIES
+  LABELS "unit;app;product;input;controller;action_routing;iggy3d")
+
 iggy3d_add_unit_test(product_movement_debug_hud_tests
   tests/unit/product_movement_debug_hud_tests.cpp)
 set_tests_properties(product_movement_debug_hud_tests PROPERTIES

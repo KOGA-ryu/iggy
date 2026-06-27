@@ -5,6 +5,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
+#include "app/iggy3d/ProductControllerActionRouting.hpp"
 #include "app/iggy3d/ProductInteractionMode.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/input/GamepadInput.hpp"
@@ -22,6 +23,7 @@ struct ProductWindowInputFrameState {
   MouseInputState mouse;
   GamepadMenuState gamepad;
   ProductControllerModeChordState controllerModeChord;
+  ProductControllerActionRoutingState controllerAction;
 };
 
 struct ProductWindowInputFrameContext {

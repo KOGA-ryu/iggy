@@ -16,6 +16,8 @@ struct ProductInteractionModeFrameToggleRequest {
 
 ProductControllerModeChordSample productControllerModeChordSampleFromGamepad(
     GamepadControllerModeChordSample sample);
+ProductControllerModeChordSample productControllerModeChordSampleFromGamepad(
+    GamepadControllerActionSample sample);
 ProductInputSurface productInputSurfaceFor(const FrontendState& frontend,
                                            const ProductAppWindowState& window);
 ProductInteractionModeToggleResult applyProductInteractionModeFrameToggle(

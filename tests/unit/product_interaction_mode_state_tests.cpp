@@ -42,7 +42,7 @@ bool defaultStateIsPlayerMode() {
 bool gamepadSampleConversionIsStable() {
   const iggy3d::ProductControllerModeChordSample sample =
       iggy3d::productControllerModeChordSampleFromGamepad(
-          {true, false, true, false});
+          iggy3d::GamepadControllerModeChordSample{true, false, true, false});
   return expect(sample.leftTriggerPressed, "left trigger converted") &&
          expect(!sample.rightTriggerPressed, "right trigger converted") &&
          expect(sample.leftStickPressed, "left stick press converted") &&

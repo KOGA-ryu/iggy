@@ -110,6 +110,20 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "controller_mode_toggle_surface",
                      window.controllerModeToggleSurface);
+  appendReceiptField(receipt, "controller_action_mapped",
+                     window.controllerActionMapped);
+  appendReceiptField(receipt, "controller_action_status",
+                     window.controllerActionStatus);
+  appendReceiptField(receipt, "controller_action_reason_code",
+                     window.controllerActionReasonCode);
+  appendReceiptField(receipt, "controller_action_control",
+                     window.controllerActionControl);
+  appendReceiptField(receipt, "controller_action_mode",
+                     window.controllerActionMode);
+  appendReceiptField(receipt, "controller_action_surface",
+                     window.controllerActionSurface);
+  appendReceiptField(receipt, "controller_action_input_action",
+                     window.controllerActionInputAction);
   appendReceiptField(receipt, "dev_tools_category",
                      frontendDevToolsCategoryName(frontend.devToolsCategory));
   appendReceiptField(receipt, "launch_action", window.launchAction);

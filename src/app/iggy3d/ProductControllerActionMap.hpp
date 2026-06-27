@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <span>
 #include <string_view>
 
@@ -7,6 +8,8 @@
 #include "app/input/InputAction.hpp"
 
 namespace iggy3d {
+
+inline constexpr std::size_t kProductControllerControlCount = 23;
 
 enum class ProductControllerControl : unsigned char {
   None = 0,

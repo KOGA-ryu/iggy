@@ -3,6 +3,7 @@
 #include "app/iggy3d/OpeningMenuView.hpp"
 #include "app/iggy3d/ProductActiveRoomCollision.hpp"
 #include "app/iggy3d/ProductCameraController.hpp"
+#include "app/iggy3d/ProductControllerActionRouting.hpp"
 #include "app/iggy3d/ProductGameplayController.hpp"
 #include "app/iggy3d/ProductInteractionModeState.hpp"
 #include "app/iggy3d/ProductRoomEditorActionController.hpp"
@@ -34,6 +35,28 @@ void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
                                       ProductRoomAuthoringInputSource::Hotkey);
     recordProductRoomEditorActionResult(window, result);
   }
+}
+
+void recordProductWindowControllerActions(
+    ProductWindowInputFrameContext& context,
+    const GamepadControllerActionSample& sample,
+    bool controllerModeChordRequested,
+    ActionState& actions) {
+  const ProductInputSurface surface =
+      productInputSurfaceFor(context.frontend, context.window);
+  ProductControllerActionRoutingResult result =
+      productControllerActionRoutingSkipped(
+          surface, context.window.interactionMode, "controller_action_chord_consumed");
+  if (!controllerModeChordRequested) {  // branch-gate: BG-1059
+    result = recordProductControllerMappedActions({
+        surface,
+        context.window.interactionMode,
+        sample,
+        context.inputFrame.controllerAction,
+        actions,
+    });
+  }
+  recordProductControllerActionRoutingResult(context.window, result);
 }
 
 }  // namespace
@@ -68,13 +91,14 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     }
   }
 
+  const GamepadControllerActionSample gamepadControllerSample =
+      pollGamepadControllerActionSample(context.inputFrame.gamepad);
   const ProductInteractionModeToggleResult modeToggle =
       applyProductInteractionModeFrameToggle({
           context.frontend,
           context.window,
           context.inputFrame.controllerModeChord,
-          productControllerModeChordSampleFromGamepad(
-              pollGamepadControllerModeChordSample(context.inputFrame.gamepad)),
+          productControllerModeChordSampleFromGamepad(gamepadControllerSample),
       });
   const bool controllerModeChordRequested = modeToggle.toggleRequested;
 
@@ -116,14 +140,14 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     // branch-gate: BG-1029
     if (context.window.roomEditing.ready) {
       pollKeyboardRoomEditorActions(context.inputFrame.keyboard, gameplayActions);
-      if (!controllerModeChordRequested) {  // branch-gate: BG-1059
-        pollGamepadRoomEditorActions(context.inputFrame.gamepad, gameplayActions);
-      }
+      recordProductWindowControllerActions(
+          context, gamepadControllerSample, controllerModeChordRequested,
+          gameplayActions);
     } else {
       pollKeyboardGameplayActions(context.inputFrame.keyboard, gameplayActions);
-      if (!controllerModeChordRequested) {  // branch-gate: BG-1059
-        pollGamepadGameplayActions(context.inputFrame.gamepad, gameplayActions);
-      }
+      recordProductWindowControllerActions(
+          context, gamepadControllerSample, controllerModeChordRequested,
+          gameplayActions);
       pollMouseGameplayActions(context.inputFrame.mouse, gameplayActions);
     }
 
