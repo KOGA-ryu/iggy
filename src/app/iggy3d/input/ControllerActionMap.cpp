@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductControllerActionMap.hpp"
+#include "app/iggy3d/input/ControllerActionMap.hpp"
 
 #include <algorithm>
 #include <array>

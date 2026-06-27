@@ -4,7 +4,7 @@
 #include <span>
 #include <string_view>
 
-#include "app/iggy3d/ProductInteractionMode.hpp"
+#include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/input/InputAction.hpp"
 
 namespace iggy3d {

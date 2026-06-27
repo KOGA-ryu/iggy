@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductInteractionModeState.hpp"
+#include "app/iggy3d/input/InteractionModeState.hpp"
 
 namespace iggy3d {
 

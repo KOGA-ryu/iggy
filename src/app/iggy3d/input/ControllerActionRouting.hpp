@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string_view>
 
-#include "app/iggy3d/ProductControllerActionMap.hpp"
+#include "app/iggy3d/input/ControllerActionMap.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/GamepadInput.hpp"

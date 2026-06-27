@@ -3,7 +3,7 @@
 #include <string>
 
 #include "app/frontend/MenuInput.hpp"
-#include "app/iggy3d/ProductInteractionMode.hpp"
+#include "app/iggy3d/input/InteractionMode.hpp"
 
 namespace iggy3d {
 

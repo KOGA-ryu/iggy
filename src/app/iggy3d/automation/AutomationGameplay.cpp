@@ -5,8 +5,8 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
-#include "app/iggy3d/ProductControllerActionMap.hpp"
-#include "app/iggy3d/ProductControllerActionRouting.hpp"
+#include "app/iggy3d/input/ControllerActionMap.hpp"
+#include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/gameplay/Controller.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"

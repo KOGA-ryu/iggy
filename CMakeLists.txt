@@ -51,11 +51,11 @@ target_sources(iggy3d
     src/app/iggy3d/menu/FrontendRouter.cpp
     src/app/iggy3d/gameplay/Tape.cpp
     src/app/iggy3d/gameplay/TapeRunner.cpp
-    src/app/iggy3d/ProductControllerActionMap.cpp
-    src/app/iggy3d/ProductControllerActionRouting.cpp
-    src/app/iggy3d/ProductInteractionMode.cpp
+    src/app/iggy3d/input/ControllerActionMap.cpp
+    src/app/iggy3d/input/ControllerActionRouting.cpp
+    src/app/iggy3d/input/InteractionMode.cpp
     src/app/iggy3d/debug/InteractionModeHud.cpp
-    src/app/iggy3d/ProductInteractionModeState.cpp
+    src/app/iggy3d/input/InteractionModeState.cpp
     src/app/iggy3d/menu/Transitions.cpp
     src/app/iggy3d/window/MouseCapturePolicy.cpp
     src/app/iggy3d/debug/MovementDebugHud.cpp
