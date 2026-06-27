@@ -181,6 +181,11 @@ iggy3d_add_unit_test(product_npc_behavior_debug_hud_tests
 set_tests_properties(product_npc_behavior_debug_hud_tests PROPERTIES
   LABELS "unit;app;product;npc;debug_hud;iggy3d")
 
+iggy3d_add_unit_test(product_physics_debug_hud_tests
+  tests/unit/product_physics_debug_hud_tests.cpp)
+set_tests_properties(product_physics_debug_hud_tests PROPERTIES
+  LABELS "unit;app;product;physics;debug_hud;iggy3d")
+
 iggy3d_add_unit_test(product_frontend_router_tests tests/unit/product_frontend_router_tests.cpp)
 set_tests_properties(product_frontend_router_tests PROPERTIES
   LABELS "unit;app;product;frontend;router;iggy3d")

@@ -60,6 +60,7 @@ target_sources(iggy3d
     src/app/iggy3d/window/ProductMouseCapturePolicy.cpp
     src/app/iggy3d/ProductMovementDebugHud.cpp
     src/app/iggy3d/ProductNpcBehaviorDebugHud.cpp
+    src/app/iggy3d/ProductPhysicsDebugHud.cpp
     src/app/iggy3d/world/ProductPackageSessionSeed.cpp
     src/app/iggy3d/ProductAppOperations.cpp
     src/app/iggy3d/ProductAppOptions.cpp
