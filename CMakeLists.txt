@@ -160,6 +160,7 @@ target_sources(iggy3d
     src/runtime/objective/ObjectiveSystem.cpp
     src/runtime/interaction/InteractionSystem.cpp
     src/runtime/object/ObjectTraits.cpp
+    src/runtime/physics/PhysicsAabbCollider.cpp
     src/runtime/physics/PhysicsBodyStore.cpp
     src/runtime/physics/PhysicsStep.cpp
     src/runtime/physics/PhysicsTypes.cpp

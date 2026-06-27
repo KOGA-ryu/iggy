@@ -450,6 +450,11 @@ iggy3d_add_unit_test(physics_body_store_tests tests/unit/physics_body_store_test
 set_tests_properties(physics_body_store_tests PROPERTIES
   LABELS "unit;runtime;physics;body_store;iggy3d")
 
+iggy3d_add_unit_test(physics_aabb_collider_tests
+  tests/unit/physics_aabb_collider_tests.cpp)
+set_tests_properties(physics_aabb_collider_tests PROPERTIES
+  LABELS "unit;runtime;physics;aabb;collider;iggy3d")
+
 iggy3d_add_unit_test(physics_step_tests tests/unit/physics_step_tests.cpp)
 set_tests_properties(physics_step_tests PROPERTIES
   LABELS "unit;runtime;physics;step;iggy3d")
