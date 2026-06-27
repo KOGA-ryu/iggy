@@ -93,3 +93,4 @@ BG-1092	src/runtime/physics/PhysicsAabbContactSolver.cpp	runtime physics AABB co
 BG-1093	src/runtime/physics/PhysicsBodyDeltaAccumulator.cpp	runtime physics body delta accumulator validation and apply policy	codex	2026-06-27
 BG-1094	src/runtime/physics/PhysicsColliderBake.cpp	runtime physics body shape material binding and AABB bake policy	codex	2026-06-27
 BG-1095	src/runtime/physics/PhysicsAabbCollisionBatch.cpp	runtime physics pure AABB collision batch pipeline policy	codex	2026-06-27
+BG-1096	src/runtime/physics/PhysicsAabbStep.cpp	runtime physics applied AABB step pipeline policy	codex	2026-06-27
