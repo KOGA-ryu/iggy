@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductRoomEditorHud.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorHud.hpp"
 
 #include <string>
 #include <utility>

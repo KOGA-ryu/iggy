@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorCursor.hpp"
 
 #include <array>
 #include <cmath>

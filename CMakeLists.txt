@@ -75,13 +75,13 @@ target_sources(iggy3d
     src/app/iggy3d/ProductPrimitiveDrawList.cpp
     src/app/iggy3d/ProductRenderBridge.cpp
     src/app/iggy3d/ProductRoomGeometryOptimization.cpp
-    src/app/iggy3d/ProductRoomAuthoringController.cpp
-    src/app/iggy3d/ProductRoomEditorActionController.cpp
-    src/app/iggy3d/ProductRoomEditorCursor.cpp
-    src/app/iggy3d/ProductRoomEditorHud.cpp
-    src/app/iggy3d/ProductRoomEditorOverlay.cpp
-    src/app/iggy3d/ProductRoomEditorPreview.cpp
-    src/app/iggy3d/ProductRoomEditingState.cpp
+    src/app/iggy3d/room_editor/ProductRoomAuthoringController.cpp
+    src/app/iggy3d/room_editor/ProductRoomEditorActionController.cpp
+    src/app/iggy3d/room_editor/ProductRoomEditorCursor.cpp
+    src/app/iggy3d/room_editor/ProductRoomEditorHud.cpp
+    src/app/iggy3d/room_editor/ProductRoomEditorOverlay.cpp
+    src/app/iggy3d/room_editor/ProductRoomEditorPreview.cpp
+    src/app/iggy3d/room_editor/ProductRoomEditingState.cpp
     src/app/iggy3d/ProductRoomVisualProof.cpp
     src/app/iggy3d/ProductScriptedGameplayDriver.cpp
     src/app/iggy3d/save/ProductSavedRoomMarkerBinding.cpp

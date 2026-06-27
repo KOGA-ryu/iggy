@@ -2,9 +2,9 @@
 #include "app/iggy3d/AsciiRoomSource.hpp"
 #include "app/iggy3d/AsciiRoomToEditableRoom.hpp"
 #include "app/iggy3d/ProductAsciiRoomAuthoring.hpp"
-#include "app/iggy3d/ProductRoomAuthoringController.hpp"
-#include "app/iggy3d/ProductRoomEditorActionController.hpp"
-#include "app/iggy3d/ProductRoomEditingState.hpp"
+#include "app/iggy3d/room_editor/ProductRoomAuthoringController.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorActionController.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditingState.hpp"
 
 #include <iostream>
 #include <string_view>

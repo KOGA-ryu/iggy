@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductRoomEditorPreview.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorPreview.hpp"
 
 #include <iostream>
 #include <limits>

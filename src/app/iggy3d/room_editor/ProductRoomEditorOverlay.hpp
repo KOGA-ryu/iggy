@@ -3,8 +3,8 @@
 #include <cstdint>
 #include <string>
 
-#include "app/iggy3d/ProductRoomEditorCursor.hpp"
-#include "app/iggy3d/ProductRoomEditorPreview.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorPreview.hpp"
 #include "core/math/Vec3.hpp"
 
 namespace iggy3d {

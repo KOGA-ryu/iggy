@@ -5,7 +5,7 @@
 #include <string_view>
 
 #include "app/frontend/MenuInput.hpp"
-#include "app/iggy3d/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorCursor.hpp"
 #include "app/iggy3d/ProductViewportFraming.hpp"
 #include "app/iggy3d/product/Automation.hpp"
 #include "app/input/InputAction.hpp"

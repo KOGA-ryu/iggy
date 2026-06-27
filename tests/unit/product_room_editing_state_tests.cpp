@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductRoomEditingState.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditingState.hpp"
 
 #include <cstdlib>
 #include <iostream>

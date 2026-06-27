@@ -1,4 +1,4 @@
-#include "app/iggy3d/ProductRoomEditorActionController.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorActionController.hpp"
 
 #include <cmath>
 #include <optional>

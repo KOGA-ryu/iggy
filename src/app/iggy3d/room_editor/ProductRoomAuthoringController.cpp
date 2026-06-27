@@ -1,9 +1,9 @@
-#include "app/iggy3d/ProductRoomAuthoringController.hpp"
+#include "app/iggy3d/room_editor/ProductRoomAuthoringController.hpp"
 
 #include <utility>
 
-#include "app/iggy3d/ProductRoomEditorActionController.hpp"
-#include "app/iggy3d/ProductRoomEditingState.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorActionController.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditingState.hpp"
 #include "app/input/ActionState.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "runtime/session/SessionState.hpp"

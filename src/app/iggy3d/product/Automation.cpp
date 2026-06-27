@@ -14,9 +14,9 @@
 #include "app/iggy3d/ProductBuiltinDungeon.hpp"
 #include "app/iggy3d/ProductDungeonDraft.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
-#include "app/iggy3d/ProductRoomAuthoringController.hpp"
-#include "app/iggy3d/ProductRoomEditorActionController.hpp"
-#include "app/iggy3d/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/room_editor/ProductRoomAuthoringController.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorActionController.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorCursor.hpp"
 
 namespace iggy3d {
 

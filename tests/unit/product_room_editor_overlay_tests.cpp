@@ -1,5 +1,5 @@
 #include "app/iggy3d/ProductPrimitiveDrawList.hpp"
-#include "app/iggy3d/ProductRoomEditorOverlay.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorOverlay.hpp"
 
 #include <cmath>
 #include <iostream>

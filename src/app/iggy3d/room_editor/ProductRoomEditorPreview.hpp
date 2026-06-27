@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-#include "app/iggy3d/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorCursor.hpp"
 #include "app/iggy3d/ProductRoomGeometryOptimization.hpp"
 #include "content/authoring/EditableRoomDocument.hpp"
 
