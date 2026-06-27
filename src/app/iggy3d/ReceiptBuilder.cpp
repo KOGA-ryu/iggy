@@ -592,6 +592,20 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.roomEditorHudLastOperationAccepted);
   appendReceiptField(receipt, "room_editor_hud_last_primitive_id",
                      window.roomEditorHudLastPrimitiveId);
+  appendReceiptField(receipt, "room_editor_hud_preview_active",
+                     window.roomEditorHudPreviewActive);
+  appendReceiptField(receipt, "room_editor_hud_preview_status",
+                     window.roomEditorHudPreviewStatus);
+  appendReceiptField(receipt, "room_editor_hud_preview_candidate_id",
+                     window.roomEditorHudPreviewCandidateId);
+  appendReceiptField(receipt, "room_editor_hud_preview_optimized_draw_delta",
+                     std::to_string(
+                         window.roomEditorHudPreviewOptimizedDrawDelta));
+  appendReceiptField(receipt, "room_editor_hud_preview_optimized_triangle_delta",
+                     std::to_string(
+                         window.roomEditorHudPreviewOptimizedTriangleDelta));
+  appendReceiptField(receipt, "room_editor_hud_line_count",
+                     std::to_string(window.roomEditorHudLineCount));
   appendReceiptField(receipt, "selected_save_id", window.selectedProductSaveId);
   appendReceiptField(receipt, "selected_save_enabled",
                      window.selectedProductSaveEnabled);

@@ -7,6 +7,7 @@
 
 #include "app/iggy3d/room_editor/ProductRoomEditingState.hpp"
 #include "app/iggy3d/room_editor/ProductRoomEditorCursor.hpp"
+#include "app/iggy3d/room_editor/ProductRoomEditorPreview.hpp"
 
 namespace iggy3d {
 
@@ -27,7 +28,12 @@ struct ProductRoomEditorHud {
   std::string lastOperation = "none";
   bool lastOperationAccepted = false;
   std::string lastPrimitiveId = "none";
-  std::array<ProductRoomEditorHudLine, 4> lines;
+  bool previewActive = false;
+  std::string previewStatus = "room_editor_preview_not_requested";
+  std::string previewCandidateId = "none";
+  std::int64_t previewOptimizedDrawDelta = 0;
+  std::int64_t previewOptimizedTriangleDelta = 0;
+  std::array<ProductRoomEditorHudLine, 6> lines;
   std::uint64_t lineCount = 0;
 };
 
@@ -38,6 +44,7 @@ struct ProductRoomEditorHudRequest {
   std::string_view lastOperation = "none";
   bool lastOperationAccepted = false;
   std::string_view lastPrimitiveId = "none";
+  const ProductRoomEditorPlacementPreviewResult* placementPreview = nullptr;
 };
 
 ProductRoomEditorHud buildProductRoomEditorHud(

@@ -470,11 +470,11 @@ void drawRoomEditorHud(SDL_Renderer& renderer,
   }
 
   setColor(renderer, 18, 24, 27);
-  fillRect(renderer, 88.0F, 410.0F, 500.0F, 120.0F);
+  fillRect(renderer, 88.0F, 388.0F, 560.0F, 180.0F);
   setColor(renderer, 245, 214, 96);
-  drawText(renderer, "ROOM EDITOR", 106.0F, 430.0F, 2.0F);
+  drawText(renderer, "ROOM EDITOR", 106.0F, 408.0F, 2.0F);
 
-  float y = 462.0F;
+  float y = 440.0F;
   std::uint64_t drawn = 0;
   for (const ProductRoomEditorHudLine& line : hud->lines) {
     // branch-gate: BG-1035
@@ -482,7 +482,7 @@ void drawRoomEditorHud(SDL_Renderer& renderer,
       continue;
     }
     // branch-gate: BG-1035
-    if (drawn >= 3U) {
+    if (drawn >= 6U) {
       break;
     }
     setColor(renderer, 166, 184, 177);

@@ -1,5 +1,7 @@
 #include "app/iggy3d/room_editor/ProductRoomEditorHud.hpp"
 
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -25,6 +27,12 @@ std::string_view resultName(bool accepted) {
   return kResultNames[accepted];
 }
 
+std::string signedNumber(std::int64_t value) {
+  std::ostringstream out;
+  out << std::showpos << value;
+  return out.str();
+}
+
 }  // namespace
 
 ProductRoomEditorHud buildProductRoomEditorHud(
@@ -39,6 +47,16 @@ ProductRoomEditorHud buildProductRoomEditorHud(
   hud.lastOperation = std::string(request.lastOperation);
   hud.lastOperationAccepted = request.lastOperationAccepted;
   hud.lastPrimitiveId = std::string(request.lastPrimitiveId);
+  // branch-gate: BG-1034
+  if (request.placementPreview != nullptr) {
+    hud.previewActive = true;
+    hud.previewStatus = request.placementPreview->status;
+    hud.previewCandidateId = request.placementPreview->primitiveId;
+    hud.previewOptimizedDrawDelta =
+        request.placementPreview->optimizedDrawDelta;
+    hud.previewOptimizedTriangleDelta =
+        request.placementPreview->optimizedTriangleDelta;
+  }
 
   // branch-gate: BG-1034
   if (!request.gameplayActive || !request.roomEditing.ready) {
@@ -55,6 +73,15 @@ ProductRoomEditorHud buildProductRoomEditorHud(
   // branch-gate: BG-1034
   if (request.cursor.selectedTool == ProductRoomEditorTool::Wall) {
     appendHudLine(hud, "WALL DIR " + hud.wallDirectionName);
+  }
+  // branch-gate: BG-1034
+  if (hud.previewActive) {
+    appendHudLine(hud, "PREVIEW " + hud.previewCandidateId + " " +
+                           hud.previewStatus);
+    appendHudLine(hud, "OPT DRAWS " +
+                           signedNumber(hud.previewOptimizedDrawDelta) +
+                           " TRIS " +
+                           signedNumber(hud.previewOptimizedTriangleDelta));
   }
   appendHudLine(hud, "LAST " + hud.lastOperation + " " +
                          std::string(resultName(hud.lastOperationAccepted)));

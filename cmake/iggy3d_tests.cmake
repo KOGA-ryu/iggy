@@ -301,6 +301,11 @@ iggy3d_add_unit_test(product_room_editor_overlay_tests
 set_tests_properties(product_room_editor_overlay_tests PROPERTIES
   LABELS "unit;app;product;room_editor;overlay;cursor;iggy3d")
 
+iggy3d_add_unit_test(product_room_editor_hud_tests
+  tests/unit/product_room_editor_hud_tests.cpp)
+set_tests_properties(product_room_editor_hud_tests PROPERTIES
+  LABELS "unit;app;product;room_editor;hud;preview;iggy3d")
+
 iggy3d_add_unit_test(product_room_editor_object_palette_tests
   tests/unit/product_room_editor_object_palette_tests.cpp)
 set_tests_properties(product_room_editor_object_palette_tests PROPERTIES

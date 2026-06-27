@@ -173,6 +173,12 @@ struct ProductAppWindowState {
   std::string roomEditorHudLastOperation = "none";
   bool roomEditorHudLastOperationAccepted = false;
   std::string roomEditorHudLastPrimitiveId = "none";
+  bool roomEditorHudPreviewActive = false;
+  std::string roomEditorHudPreviewStatus = "room_editor_preview_not_requested";
+  std::string roomEditorHudPreviewCandidateId = "none";
+  std::int64_t roomEditorHudPreviewOptimizedDrawDelta = 0;
+  std::int64_t roomEditorHudPreviewOptimizedTriangleDelta = 0;
+  std::uint64_t roomEditorHudLineCount = 0;
   ProductActiveRoomState activeRoom;
   ProductActiveRoomCollisionState activeRoomCollision;
   std::string productSaveStatus = "not_requested";

@@ -1304,6 +1304,18 @@ int main() {
           fields, "room_editor_preview_optimized_draw_delta", "1") &&
       iggy3d::smoke::hasField(
           fields, "room_editor_preview_optimized_triangle_delta", "12") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_line_count", "6") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_preview_active",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_preview_status",
+                              "room_editor_preview_ready") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_preview_candidate_id",
+                              "edit_wall_1") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_hud_preview_optimized_draw_delta", "1") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_hud_preview_optimized_triangle_delta", "12") &&
       iggy3d::smoke::hasField(fields,
                               "product_draw_room_editor_preview_visible",
                               "true") &&
