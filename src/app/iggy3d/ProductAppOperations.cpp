@@ -5,7 +5,7 @@
 
 #include "app/PackageRuntimeLookup.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
-#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/ascii_room/ProductAsciiRoomAuthoring.hpp"
 #include "app/iggy3d/ascii_room/ProductAsciiRoomPackage.hpp"

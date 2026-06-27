@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 
-#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/ascii_room/ProductAsciiRoomEditing.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"

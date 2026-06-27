@@ -2,7 +2,7 @@
 #include "app/iggy3d/ascii_room/AsciiRoomSource.hpp"
 #include "app/iggy3d/ascii_room/AsciiRoomToEditableRoom.hpp"
 #include "app/iggy3d/EditableRoomToAuthoredRoom.hpp"
-#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "runtime/save/SaveCodec.hpp"
 #include "runtime/save/SaveLoad.hpp"

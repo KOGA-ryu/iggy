@@ -6,7 +6,7 @@
 #include <string_view>
 
 #include "app/input/ActionState.hpp"
-#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/inventory/InventorySystem.hpp"

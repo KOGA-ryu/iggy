@@ -8,7 +8,7 @@
 #include <string_view>
 #include <vector>
 
-#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneItem.hpp"

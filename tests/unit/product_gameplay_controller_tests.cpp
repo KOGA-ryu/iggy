@@ -7,7 +7,7 @@
 #include <string_view>
 
 #include "app/iggy3d/ascii_room/ProductAsciiRoomActivation.hpp"
-#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/input/ActionState.hpp"
 #include "core/math/Vec3.hpp"
 #include "runtime/session/Session.hpp"

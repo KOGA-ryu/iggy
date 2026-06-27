@@ -1,5 +1,5 @@
 #include "app/iggy3d/ascii_room/ProductAsciiRoomAuthoring.hpp"
-#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/world/ProductPackageSessionSeed.hpp"
 #include "projection/scene/SceneProjection.hpp"

@@ -5,7 +5,7 @@
 #include "app/input/InputAction.hpp"
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
-#include "app/iggy3d/gameplay/ProductActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ProductInteractionMode.hpp"
