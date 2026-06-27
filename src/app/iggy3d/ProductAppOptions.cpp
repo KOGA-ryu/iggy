@@ -105,6 +105,11 @@ ProductAppOptionsParseResult parseProductAppOptions(int argc, char** argv) {
       result.options.printRenderReceipt = true;
       continue;
     }
+    // branch-gate: BG-1068
+    if (arg == "--debug-overlay") {
+      result.options.debugOverlay = true;
+      continue;
+    }
     if (arg == "--auto-new-world") {
       result.options.autoNewWorld = true;
       continue;
@@ -249,6 +254,7 @@ std::string productAppHelpText() {
          "  --auto-new-world\n"
          "  --scripted-gameplay-smoke\n"
          "  --print-render-receipt\n"
+         "  --debug-overlay\n"
          "  --dev-package-override <package.iggy3d.toml>\n"
          "  --dev-scenario <id>\n"
          "  --automation-control <path>\n"

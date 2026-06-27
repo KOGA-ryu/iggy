@@ -59,7 +59,7 @@ struct FrontendSettings {
   bool highContrast = false;
   bool reducedMotion = false;
   bool devToolsEnabled = true;
-  bool debugOverlayEnabled = true;
+  bool debugOverlayEnabled = false;
   bool rendererChangePending = false;
 };
 

@@ -64,7 +64,7 @@ FrontendSettings productFrontendSettingsFromOptions(const ProductAppOptions& opt
   settings.windowMode = settingsWindowModeFromOptions(options.windowMode);
   settings.cameraMode = FrontendCameraMode::FirstPerson;
   settings.devToolsEnabled = true;
-  settings.debugOverlayEnabled = true;
+  settings.debugOverlayEnabled = options.debugOverlay;
   return settings;
 }
 

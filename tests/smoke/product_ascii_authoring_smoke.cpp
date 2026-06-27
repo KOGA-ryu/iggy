@@ -1284,7 +1284,7 @@ int main() {
           "ascii_room.text=#######\\n#P..N.#\\n#.+.$.#\\n#..E..#\\n#######\\n\n"
           "ascii_room.activate=true\n"
           "game.move_x=1\n",
-          "",
+          "--debug-overlay",
           openMoveFields,
           openMoveExitCode);
 
@@ -1300,7 +1300,7 @@ int main() {
           "ascii_room.text=#######\\n#P..N.#\\n#.+.$.#\\n#..E..#\\n#######\\n\n"
           "ascii_room.activate=true\n"
           "game.move_y=-1\n",
-          "",
+          "--debug-overlay",
           wallMoveFields,
           wallMoveExitCode);
 
@@ -1316,7 +1316,7 @@ int main() {
           "ascii_room.text=#######\\n#P>..$#\\n#######\\n\n"
           "ascii_room.activate=true\n"
           "game.move_x=1\n",
-          "",
+          "--debug-overlay",
           rampMoveFields,
           rampMoveExitCode);
 
@@ -1332,7 +1332,7 @@ int main() {
           "ascii_room.text=#######\\n#P!..$#\\n#######\\n\n"
           "ascii_room.activate=true\n"
           "game.move_x=1\n",
-          "",
+          "--debug-overlay",
           steepMoveFields,
           steepMoveExitCode);
 

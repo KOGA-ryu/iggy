@@ -313,7 +313,8 @@ int main() {
           std::string{"--package "} +
               iggy3d::smoke::shellQuote(passiveNpcPackagePath) +
               " --auto-new-world --gameplay-tape " +
-              iggy3d::smoke::shellQuote(passiveNpcTapePath) + " " +
+              iggy3d::smoke::shellQuote(passiveNpcTapePath) +
+              " --debug-overlay " +
               iggy3d::smoke::saveRootArg(passiveNpcSaveRoot),
           passiveNpcFields,
           passiveNpcExitCode);
@@ -328,7 +329,8 @@ int main() {
           std::string{"--package "} +
               iggy3d::smoke::shellQuote(ghostNpcPackagePath) +
               " --auto-new-world --gameplay-tape " +
-              iggy3d::smoke::shellQuote(ghostNpcTapePath) + " " +
+              iggy3d::smoke::shellQuote(ghostNpcTapePath) +
+              " --debug-overlay " +
               iggy3d::smoke::saveRootArg(ghostNpcSaveRoot),
           ghostNpcFields,
           ghostNpcExitCode);

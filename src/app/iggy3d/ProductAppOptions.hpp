@@ -33,7 +33,7 @@ enum class ProductAppOptionStatus : std::uint8_t {
 };
 
 struct ProductAppOptions {
-  ProductRendererRequest renderer = ProductRendererRequest::Null;
+  ProductRendererRequest renderer = ProductRendererRequest::Vulkan;
   ProductWindowMode windowMode = ProductWindowMode::Window;
   ProductInputBackend inputBackend = ProductInputBackend::Auto;
   std::filesystem::path saveRoot;
@@ -46,6 +46,7 @@ struct ProductAppOptions {
   bool autoNewWorld = false;
   bool scriptedGameplaySmoke = false;
   bool printRenderReceipt = false;
+  bool debugOverlay = false;
   bool help = false;
 };
 

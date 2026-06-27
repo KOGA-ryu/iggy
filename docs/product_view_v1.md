@@ -12,21 +12,23 @@ The current product app starts on the starter/opening menu. Gameplay starts only
 after an explicit launch path such as `New World`, `Load Save`,
 `--auto-new-world`, or the scripted no-window gameplay smoke.
 
-Once gameplay is active, the first product gameplay surface is the SDL product
-view:
+Once gameplay is active, the accepted manual gameplay surface is the Vulkan
+renderer path. The SDL/null product view is a top-down diagnostic fallback and
+must not be presented as first-person gameplay acceptance:
 
-- first-person camera mode is the current product camera label;
-- the view is primitive-first-person framing, not true perspective rendering;
+- first-person camera mode remains the product camera state label;
+- the SDL/null fallback draws top-down primitive/debug framing;
 - runtime/session state remains gameplay truth;
 - scene/debug projection is derived proof from runtime state;
 - product draw/framing/feedback/bridge data is derived app view data;
 - renderer backends must not mutate runtime state, save state, replay state, or
   command truth.
 
-The old product-facing phrase `FIRST PERSON PROXY VIEW` is stale. The current
-user-facing label is `FIRST PERSON GAMEPLAY VIEW`. The word `proxy` may still
-appear in renderer or asset-roadmap docs when it refers to diagnosed fallback
-geometry, temporary renderer proof paths, or future asset migration notes.
+The old product-facing phrases `FIRST PERSON PROXY VIEW` and
+`FIRST PERSON GAMEPLAY VIEW` are stale for the SDL/null fallback. The current
+fallback label is `TOP-DOWN DEBUG FALLBACK`. The word `proxy` may still appear
+in renderer or asset-roadmap docs when it refers to diagnosed fallback geometry,
+temporary renderer proof paths, or future asset migration notes.
 
 ## Source-Truth Layers
 

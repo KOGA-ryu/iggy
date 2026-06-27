@@ -157,7 +157,7 @@ int main() {
           "continued_room_movement_continue_and_move",
           "frontend.select=continue\nfrontend.execute=true\n"
           "game.move_x=1\n",
-          iggy3d::smoke::saveRootArg(saveRoot),
+          iggy3d::smoke::saveRootArg(saveRoot) + " --debug-overlay",
           fields,
           exitCode) &&
       exitCode == 0 && continuedEditedRoomMovementBlocked(fields);

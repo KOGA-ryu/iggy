@@ -160,7 +160,8 @@ Each plan document must define:
     New World draft, gameplay/player mode, Edit Room/creative mode,
     preview/place floor or wall, Leave Editor, explicit Save, fresh Continue,
     controller player/creative acceptance, creative mouse pick-preview
-    acceptance, stable receipt fields, and headless PPM visual proof parity;
+    acceptance, Vulkan-first manual visual acceptance, explicit top-down null
+    fallback caveat, stable receipt fields, and headless PPM visual proof parity;
 - `selection_cursor_contract_v1.md`
   - crosshair versus mouse cursor selection authority, cursor state ownership,
     hit-test routing, and dev tools inspector wiring.

@@ -64,7 +64,7 @@ bool defaultsArePacketDefaults() {
          expect(settings.masterVolume == 1.0F, "default volume") &&
          expect(!settings.audioAvailable, "audio unavailable") &&
          expect(settings.devToolsEnabled, "dev tools enabled") &&
-         expect(settings.debugOverlayEnabled, "debug overlay enabled");
+         expect(!settings.debugOverlayEnabled, "debug overlay disabled by default");
 }
 
 bool restoreAndApplyStayFrontendOnly() {

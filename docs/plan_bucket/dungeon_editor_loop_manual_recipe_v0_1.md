@@ -31,6 +31,15 @@ From `/Users/kogaryu/iggy3d`:
 cmake --build build --target iggy3d_app -j 8
 ```
 
+First-person manual acceptance requires the app Vulkan backend to be present in
+the configured build. If `--renderer vulkan` exits with
+`product_vulkan_backend_unavailable`, reconfigure the build with Vulkan enabled
+before treating the run as a visual acceptance pass:
+
+```sh
+cmake -S . -B build -DIGGY3D_ENABLE_VULKAN=ON
+```
+
 The app binary is:
 
 ```sh
@@ -58,7 +67,7 @@ Use this command for the main manual pass:
 ```sh
 build/iggy3d \
   --window \
-  --renderer null \
+  --renderer vulkan \
   --input auto \
   --save-root "$IGGY3D_EDITOR_SAVE_ROOT" \
   --print-render-receipt
@@ -67,13 +76,16 @@ build/iggy3d \
 Notes:
 
 - `--window` opens the SDL product window.
-- `--renderer null` uses the current SDL fallback product drawing path and is
-  the stable manual recipe default.
-- Use `--renderer vulkan` only when intentionally checking the display-dependent
-  Vulkan backend path.
+- `--renderer vulkan` is the required visual/manual acceptance path for the
+  real first-person renderer. A `product_vulkan_backend_unavailable` receipt is
+  a build/configuration blocker, not an accepted fallback.
+- `--renderer null` is diagnostic only. It uses the SDL top-down debug fallback
+  and is not accepted first-person gameplay presentation.
 - `--input auto` enables keyboard/gamepad auto input selection. It does not
   create a world or run the editor by itself.
 - `--print-render-receipt` prints state proof when the app exits.
+- Do not pass `--debug-overlay` for normal manual play. It enables movement/NPC
+  debug panels that intentionally cover part of the view.
 - Do not add `--frames` for an interactive manual run.
 
 For a short receipt-only window sanity check, add `--frames 1`; that is not a
@@ -130,8 +142,13 @@ draft paint inputs only.
 
 ### 3. See And Explore The Room
 
-After Create, gameplay should open. Visually check that the room is drawn and
-the compact mode HUD shows `MODE player`.
+After Create, gameplay should open. Visually check that the room is drawn in
+the first-person renderer and the compact mode HUD shows `MODE player`.
+
+Hard visual gate: if the window shows a top-down grid, `TOP-DOWN DEBUG
+FALLBACK`, or movement/NPC debug panels covering the play area, it is not the
+accepted first-person manual mode. That means the run is using the diagnostic
+SDL/null fallback or an explicit debug overlay.
 
 In Player mode:
 
@@ -499,7 +516,10 @@ used to prove the same product path without launching a window.
   a documented guarantee for this loop.
 - Builder proof is deterministic and no-window. Manual controller/window
   validation is still user/controller-run hardware and display acceptance.
-- Vulkan screenshot/window proof remains separate and display-dependent.
+- Vulkan screenshot/window proof remains separate and display-dependent, but
+  manual first-person acceptance still uses `--renderer vulkan`.
+- The SDL/null fallback is top-down diagnostic output. It must not be used as
+  first-person gameplay acceptance.
 - ASCII remains map/layout authoring only; it does not define behavior,
   profiles, or NPC truth.
 

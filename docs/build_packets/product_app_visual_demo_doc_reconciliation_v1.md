@@ -125,7 +125,7 @@ Reason: source and tests still contain visual/package shell concepts, and these 
 
 ### Product View Terminology
 
-`FIRST PERSON PROXY VIEW` should not appear as the current user-facing label. It may remain only in docs that explicitly explain it as stale wording that has been replaced by Product View v1 / first-person gameplay view.
+`FIRST PERSON PROXY VIEW` should not appear as the current user-facing label. It may remain only in docs that explicitly explain it as stale wording; the SDL/null fallback now labels itself `TOP-DOWN DEBUG FALLBACK`, while first-person manual acceptance belongs to the Vulkan renderer path.
 
 `demo-only` and `proxy view` are acceptable only when:
 
