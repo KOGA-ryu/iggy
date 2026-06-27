@@ -7,7 +7,7 @@ struct SDL_Renderer;
 
 #include "app/iggy3d/ProductAppOptions.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
-#include "app/iggy3d/menu/ProductUiDrawList.hpp"
+#include "app/iggy3d/menu/DrawList.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "render/RendererApi.hpp"
 

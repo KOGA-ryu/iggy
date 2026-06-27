@@ -90,7 +90,7 @@ target_sources(iggy3d
     src/app/iggy3d/save/ProductSaveFlow.cpp
     src/app/iggy3d/world/ProductNpcProfileAssignment.cpp
     src/app/iggy3d/debug/TopDownMapOverlay.cpp
-    src/app/iggy3d/menu/ProductUiDrawList.cpp
+    src/app/iggy3d/menu/DrawList.cpp
     src/app/iggy3d/ProductViewportFraming.cpp
     src/app/iggy3d/window/FramePresenter.cpp
     src/app/iggy3d/window/InputFrame.cpp
