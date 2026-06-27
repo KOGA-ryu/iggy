@@ -409,6 +409,18 @@ int main() {
   expect(previewDispatch.canonicalActionLabel == "room_editor.preview",
          "frontend room editor preview dispatch label is canonical");
 
+  const iggy3d::ProductAutomationCommandDispatchResult previewPlaceDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "frontend.room_editor_preview_place"});
+  expect(previewPlaceDispatch.handled,
+         "frontend room editor preview place is dispatch-handled");
+  expect(previewPlaceDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::RoomEditorPreview,
+         "frontend room editor preview place dispatch id is stable");
+  expect(previewPlaceDispatch.canonicalActionLabel == "room_editor.preview",
+         "frontend room editor preview place dispatch label is canonical");
+
   const iggy3d::ProductAutomationCommandDispatchResult confirmDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(
           iggy3d::ProductAutomationCommandDispatchRequest{
@@ -421,6 +433,18 @@ int main() {
   expect(confirmDispatch.canonicalActionLabel == "room_editor.preview_confirm",
          "frontend room editor preview confirm dispatch label is canonical");
 
+  const iggy3d::ProductAutomationCommandDispatchResult confirmPlaceDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "room_editor.confirm_place"});
+  expect(confirmPlaceDispatch.handled,
+         "room editor confirm place is dispatch-handled");
+  expect(confirmPlaceDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::RoomEditorPreviewConfirm,
+         "room editor confirm place dispatch id is stable");
+  expect(confirmPlaceDispatch.canonicalActionLabel == "room_editor.preview_confirm",
+         "room editor confirm place dispatch label is canonical");
+
   const iggy3d::ProductAutomationCommandDispatchResult cancelDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(
           iggy3d::ProductAutomationCommandDispatchRequest{
@@ -432,6 +456,18 @@ int main() {
          "frontend room editor preview cancel dispatch id is stable");
   expect(cancelDispatch.canonicalActionLabel == "room_editor.preview_cancel",
          "frontend room editor preview cancel dispatch label is canonical");
+
+  const iggy3d::ProductAutomationCommandDispatchResult cancelPreviewDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "frontend.room_editor_cancel_preview"});
+  expect(cancelPreviewDispatch.handled,
+         "frontend room editor cancel preview is dispatch-handled");
+  expect(cancelPreviewDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::RoomEditorPreviewCancel,
+         "frontend room editor cancel preview dispatch id is stable");
+  expect(cancelPreviewDispatch.canonicalActionLabel == "room_editor.preview_cancel",
+         "frontend room editor cancel preview dispatch label is canonical");
 
   const iggy3d::ProductAutomationCommandDispatchResult addWallDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(

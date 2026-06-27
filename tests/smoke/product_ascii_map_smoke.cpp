@@ -1290,6 +1290,8 @@ int main() {
       iggy3d::smoke::hasField(fields, "room_editor_grid_x", "1") &&
       iggy3d::smoke::hasField(fields, "room_editor_grid_z", "0") &&
       iggy3d::smoke::hasField(fields, "room_editor_tool", "wall") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_pending",
+                              "true") &&
       iggy3d::smoke::hasField(fields, "room_editor_preview_visible", "true") &&
       iggy3d::smoke::hasField(fields, "room_editor_preview_status",
                               "room_editor_preview_ready") &&
@@ -1406,6 +1408,8 @@ int main() {
                               "true") &&
       iggy3d::smoke::hasField(fields, "room_editing_last_primitive_id",
                               "edit_wall_1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_pending",
+                              "false") &&
       iggy3d::smoke::hasField(fields, "room_editor_preview_visible",
                               "false") &&
       iggy3d::smoke::hasField(fields, "room_editor_preview_candidate_id",
@@ -1476,6 +1480,8 @@ int main() {
       iggy3d::smoke::hasField(fields, "room_editing_undo_depth", "0") &&
       iggy3d::smoke::hasField(fields, "room_editing_last_operation",
                               "pause_edit_room") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_pending",
+                              "false") &&
       iggy3d::smoke::hasField(fields, "room_editor_preview_visible",
                               "false") &&
       iggy3d::smoke::hasField(fields, "room_editor_preview_status",
@@ -1542,6 +1548,8 @@ int main() {
       iggy3d::smoke::hasField(fields, "room_editing_undo_depth", "0") &&
       iggy3d::smoke::hasField(fields, "room_editing_last_operation",
                               "pause_edit_room") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_pending",
+                              "false") &&
       iggy3d::smoke::hasField(fields, "room_editor_preview_visible",
                               "false") &&
       iggy3d::smoke::hasField(fields, "room_editor_preview_status",

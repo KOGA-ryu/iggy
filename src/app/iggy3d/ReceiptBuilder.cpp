@@ -554,6 +554,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.roomEditorOverlayWorldY));
   appendReceiptField(receipt, "room_editor_overlay_world_z",
                      floatReceiptValue(window.roomEditorOverlayWorldZ));
+  appendReceiptField(receipt, "room_editor_preview_pending",
+                     window.roomEditorPreviewActive);
   appendReceiptField(receipt, "room_editor_preview_visible",
                      window.roomEditorPreviewVisible);
   appendReceiptField(receipt, "room_editor_preview_status",
