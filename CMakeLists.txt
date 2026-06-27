@@ -43,7 +43,7 @@ target_sources(iggy3d
     src/app/iggy3d/ascii_room/ProductAsciiRoomActivation.cpp
     src/app/iggy3d/ascii_room/ProductAsciiRoomAuthoring.cpp
     src/app/iggy3d/ascii_room/ProductAsciiRoomEditing.cpp
-    src/app/iggy3d/ascii_room/ProductAsciiRoomPackage.cpp
+    src/app/iggy3d/ascii_room/Package.cpp
     src/app/iggy3d/ascii_room/ProductAsciiRoomPreview.cpp
     src/app/iggy3d/gameplay/Controller.cpp
     src/app/iggy3d/gameplay/GameplayFeedback.cpp

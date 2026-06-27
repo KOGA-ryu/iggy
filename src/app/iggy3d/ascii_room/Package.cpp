@@ -1,4 +1,4 @@
-#include "app/iggy3d/ascii_room/ProductAsciiRoomPackage.hpp"
+#include "app/iggy3d/ascii_room/Package.hpp"
 
 namespace iggy3d {
 
