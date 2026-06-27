@@ -474,6 +474,11 @@ iggy3d_add_unit_test(physics_aabb_collider_tests
 set_tests_properties(physics_aabb_collider_tests PROPERTIES
   LABELS "unit;runtime;physics;aabb;collider;iggy3d")
 
+iggy3d_add_unit_test(physics_aabb_collision_batch_tests
+  tests/unit/physics_aabb_collision_batch_tests.cpp)
+set_tests_properties(physics_aabb_collision_batch_tests PROPERTIES
+  LABELS "unit;runtime;physics;aabb;collision_batch;iggy3d")
+
 iggy3d_add_unit_test(physics_aabb_contact_tests
   tests/unit/physics_aabb_contact_tests.cpp)
 set_tests_properties(physics_aabb_contact_tests PROPERTIES

@@ -92,3 +92,4 @@ BG-1091	src/runtime/physics/PhysicsMaterialTraits.cpp	runtime physics material t
 BG-1092	src/runtime/physics/PhysicsAabbContactSolver.cpp	runtime physics AABB contact solver plan validation and delta policy	codex	2026-06-27
 BG-1093	src/runtime/physics/PhysicsBodyDeltaAccumulator.cpp	runtime physics body delta accumulator validation and apply policy	codex	2026-06-27
 BG-1094	src/runtime/physics/PhysicsColliderBake.cpp	runtime physics body shape material binding and AABB bake policy	codex	2026-06-27
+BG-1095	src/runtime/physics/PhysicsAabbCollisionBatch.cpp	runtime physics pure AABB collision batch pipeline policy	codex	2026-06-27

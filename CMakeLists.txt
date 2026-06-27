@@ -161,6 +161,7 @@ target_sources(iggy3d
     src/runtime/interaction/InteractionSystem.cpp
     src/runtime/object/ObjectTraits.cpp
     src/runtime/physics/PhysicsAabbCollider.cpp
+    src/runtime/physics/PhysicsAabbCollisionBatch.cpp
     src/runtime/physics/PhysicsAabbContact.cpp
     src/runtime/physics/PhysicsAabbContactSolver.cpp
     src/runtime/physics/PhysicsBodyDeltaAccumulator.cpp
