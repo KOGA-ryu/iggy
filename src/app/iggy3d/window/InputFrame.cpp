@@ -11,6 +11,7 @@
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
+#include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/input/ActionState.hpp"
@@ -411,15 +412,36 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       // branch-gate: BG-1029
       if (hit.area == OpeningMenuHitArea::StarterAction) {
         context.frontend.selectedAction = hit.action;
-        routeProductOpeningMenuInput(mouseClickAction(click), actionState, menuContext);
+        recordAction(actionState,
+                     mouseClickAction(click),
+                     true,
+                     true,
+                     false,
+                     1.0F);
+        (void)applyProductStarterMenuAction(
+            InputAction::MenuConfirm,
+            {context.frontend,
+             context.options,
+             context.saves,
+             context.settingsTab,
+             context.activeSession,
+             context.worldSetupDraft,
+             context.window,
+             context.closeRequested});
       // branch-gate: BG-1029
       } else if (hit.area == OpeningMenuHitArea::DevToolsCategory) {
         context.frontend.devToolsCategory = hit.devToolsCategory;
         context.frontend.status = "dev_tools_category_selected";
+      // branch-gate: BG-1142
+      } else if (hit.area == OpeningMenuHitArea::DevToolsBack) {
+        routeProductOpeningMenuInput(InputAction::MenuBack, actionState, menuContext);
       // branch-gate: BG-1029
       } else if (hit.area == OpeningMenuHitArea::SettingsTab) {
         context.settingsTab = hit.settingsTab;
         context.frontend.status = "settings_tab_selected";
+      // branch-gate: BG-1142
+      } else if (hit.area == OpeningMenuHitArea::SettingsBack) {
+        routeProductOpeningMenuInput(InputAction::MenuBack, actionState, menuContext);
       // branch-gate: BG-1029
       } else if (hit.area == OpeningMenuHitArea::NewWorldCreate) {
         routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState, menuContext);

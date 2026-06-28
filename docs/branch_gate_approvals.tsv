@@ -137,3 +137,6 @@ BG-1136	src/app/iggy3d/automation/Automation.cpp	world setup builtin dungeon sel
 BG-1137	src/app/iggy3d/Operations.cpp	world setup create selected dungeon receipt index policy	codex	2026-06-28
 BG-1138	src/app/iggy3d/window/InputFrame.cpp	new world mouse dungeon selector routing policy	codex	2026-06-28
 BG-1139	src/app/iggy3d/view/OpeningMenuView.cpp	new world mouse dungeon selector label visibility policy	codex	2026-06-28
+BG-1140	src/app/iggy3d/menu/ActionHandlers.cpp	starter delete save button confirmation routing policy	codex	2026-06-28
+BG-1141	src/app/iggy3d/view/OpeningMenuView.cpp	starter child panel button visibility and back hit-test policy	codex	2026-06-28
+BG-1142	src/app/iggy3d/window/InputFrame.cpp	starter child panel mouse back routing policy	codex	2026-06-28

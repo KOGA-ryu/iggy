@@ -316,6 +316,12 @@ ProductMenuActionResult handleStarterConfirm(ProductStarterMenuActionContext con
     frontend.status = "opening_menu_load_save_selected";
     return {true, true};
   }
+  // branch-gate: BG-1140
+  if (frontend.selectedAction == FrontendAction::Delete) {
+    initializeSelectedProductSaveSlot(context.saves.slots, window);
+    openProductSaveDeleteConfirmation(context.saves.slots, window, frontend);
+    return {true, true};
+  }
   // branch-gate: BG-1022
   if (frontend.selectedAction == FrontendAction::Settings) {
     frontend.childScreen = FrontendScreen::Settings;

@@ -777,6 +777,17 @@ void drawAsciiPreviewLines(SDL_Renderer& renderer,
   }
 }
 
+void drawStarterDetailPanel(SDL_Renderer& renderer) {
+  setColor(renderer, 226, 230, 211);
+  drawText(renderer, "START", 450.0F, 152.0F, 4.0F);
+  setColor(renderer, 166, 184, 177);
+  drawText(renderer, "SELECT A MENU ITEM", 452.0F, 210.0F, 2.0F);
+  drawText(renderer, "CONTINUE LOADS YOUR NEWEST SAVE", 452.0F, 272.0F, 2.0F);
+  drawText(renderer, "NEW WORLD OPENS THE DUNGEON SELECTOR", 452.0F, 314.0F, 2.0F);
+  drawText(renderer, "EXISTING SAVES OPENS SAVE SLOTS", 452.0F, 356.0F, 2.0F);
+  drawText(renderer, "SETTINGS AND DEV TOOLS OPEN PANELS", 452.0F, 398.0F, 2.0F);
+}
+
 void drawNewWorldPanel(SDL_Renderer& renderer,
                        const ProductWorldTemplate& world,
                        const ProductSaveBridgeResult& saves,
@@ -923,7 +934,8 @@ void drawDevToolsPanel(SDL_Renderer& renderer, FrontendDevToolsCategory selected
   drawText(renderer, "RUNTIME STATE", 850.0F, 272.0F, 2.0F);
   drawText(renderer, "INPUT OWNER", 850.0F, 304.0F, 2.0F);
   drawText(renderer, "RENDERER STATUS", 850.0F, 336.0F, 2.0F);
-  drawText(renderer, "READ ONLY V1", 850.0F, 394.0F, 2.0F);
+  setColor(renderer, 126, 201, 176);
+  drawText(renderer, "BACK", 850.0F, 394.0F, 2.0F);
 }
 
 void drawSettingsPanel(SDL_Renderer& renderer, FrontendSettingsTab selected) {
@@ -944,7 +956,8 @@ void drawSettingsPanel(SDL_Renderer& renderer, FrontendSettingsTab selected) {
   drawText(renderer, "INPUT AUTO", 850.0F, 272.0F, 2.0F);
   drawText(renderer, "LOOK 1.000", 850.0F, 304.0F, 2.0F);
   drawText(renderer, "CAMERA FIRST PERSON", 850.0F, 336.0F, 2.0F);
-  drawText(renderer, "APPLY RESTORE BACK", 850.0F, 394.0F, 2.0F);
+  setColor(renderer, 126, 201, 176);
+  drawText(renderer, "BACK", 850.0F, 394.0F, 2.0F);
 }
 
 bool drawGameplayPanel(SDL_Renderer& renderer,
@@ -1101,7 +1114,15 @@ OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, floa
     }
   }
 
+  // branch-gate: BG-1141
   if (frontend.childScreen == FrontendScreen::StarterDevTools) {
+    // branch-gate: BG-1141
+    if (x >= 830.0F && x <= 960.0F && y >= 382.0F && y <= 424.0F) {
+      OpeningMenuHitTestResult result;
+      result.hit = true;
+      result.area = OpeningMenuHitArea::DevToolsBack;
+      return result;
+    }
     float panelY = 230.0F;
     for (const FrontendDevToolsCategory category : devToolsCategoryOrder()) {
       if (x >= 430.0F && x <= 820.0F && y >= panelY - 12.0F && y <= panelY + 24.0F) {
@@ -1115,7 +1136,15 @@ OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, floa
     }
   }
 
+  // branch-gate: BG-1141
   if (frontend.childScreen == FrontendScreen::Settings) {
+    // branch-gate: BG-1141
+    if (x >= 830.0F && x <= 960.0F && y >= 382.0F && y <= 424.0F) {
+      OpeningMenuHitTestResult result;
+      result.hit = true;
+      result.area = OpeningMenuHitArea::SettingsBack;
+      return result;
+    }
     float panelY = 230.0F;
     for (const FrontendSettingsTab tab : settingsTabOrder()) {
       if (x >= 430.0F && x <= 820.0F && y >= panelY - 12.0F && y <= panelY + 24.0F) {
@@ -1205,7 +1234,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
   // branch-gate: BG-1121
   } else if (frontend.childScreen == FrontendScreen::DeleteConfirm) {
     drawDeleteConfirmPanel(renderer);
-  } else {
+  // branch-gate: BG-1141
+  } else if (frontend.childScreen == FrontendScreen::NewWorld) {
     drawNewWorldPanel(renderer,
                       world,
                       saves,
@@ -1214,6 +1244,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                       dungeonDraftModified,
                       dungeonDraftCursorRow,
                       dungeonDraftCursorColumn);
+  } else {
+    drawStarterDetailPanel(renderer);
   }
 
   setColor(renderer, 24, 30, 34);

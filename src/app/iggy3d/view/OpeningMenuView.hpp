@@ -49,6 +49,8 @@ enum class OpeningMenuHitArea {
   LoadSaveBack,
   DeleteConfirmConfirm,
   DeleteConfirmBack,
+  SettingsBack,
+  DevToolsBack,
 };
 
 struct OpeningMenuHitTestResult {

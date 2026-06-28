@@ -1,6 +1,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
@@ -84,6 +85,19 @@ iggy3d::MouseClick clickAt(float x, float y) {
   click.x = x;
   click.y = y;
   return click;
+}
+
+iggy3d::ProductSaveBridgeResult compatibleSaveBridge() {
+  iggy3d::SaveSlotPreview slot;
+  slot.id = "save_unit";
+  slot.enabled = true;
+  slot.compatibility = iggy3d::SaveSlotCompatibility::Compatible;
+  slot.displayTitle = "Unit Save";
+
+  iggy3d::ProductSaveBridgeResult saves;
+  saves.slots.slots.push_back(slot);
+  saves.slots.compatibleCount = 1U;
+  return saves;
 }
 
 bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
@@ -409,6 +423,44 @@ bool controllerEastCancelsPendingPreviewWithoutMutation() {
                 "east cancel leaves walls");
 }
 
+bool starterDeleteButtonOpensDeleteConfirmation() {
+  iggy3d::FrontendState frontend = starterFrontend();
+  frontend.selectedAction = iggy3d::FrontendAction::Delete;
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::WorldSetupDraft draft;
+  iggy3d::ProductAppWindowState window;
+  bool closeRequested = false;
+
+  const iggy3d::ProductMenuActionResult result =
+      iggy3d::applyProductStarterMenuAction(
+          iggy3d::InputAction::MenuConfirm,
+          {frontend,
+           options,
+           saves,
+           settingsTab,
+           activeSession,
+           draft,
+           window,
+           closeRequested});
+
+  return expect(result.handled, "starter delete handled") &&
+         expect(result.accepted, "starter delete accepted") &&
+         expect(frontend.childScreen == iggy3d::FrontendScreen::DeleteConfirm,
+                "starter delete opens confirmation") &&
+         expect(frontend.selectedAction == iggy3d::FrontendAction::Delete,
+                "starter delete selected action") &&
+         expect(window.saveDeleteConfirmationOpen,
+                "starter delete confirmation open") &&
+         expect(window.saveDeleteCandidateId == "save_unit",
+                "starter delete candidate id") &&
+         expect(window.selectedProductSaveId == "save_unit",
+                "starter delete selected save") &&
+         expect(!closeRequested, "starter delete does not close app");
+}
+
 bool starterHitTestUsesCanonicalActionRows() {
   const iggy3d::FrontendState frontend = starterFrontend();
   const iggy3d::OpeningMenuHitTestResult deleteHit =
@@ -455,6 +507,12 @@ bool childPanelHitTestsExposeMenuActions() {
       iggy3d::openingMenuActionAt(frontend, 452.0F, 508.0F);
   const iggy3d::OpeningMenuHitTestResult deleteBackHit =
       iggy3d::openingMenuActionAt(frontend, 760.0F, 508.0F);
+  frontend.childScreen = iggy3d::FrontendScreen::Settings;
+  const iggy3d::OpeningMenuHitTestResult settingsBackHit =
+      iggy3d::openingMenuActionAt(frontend, 850.0F, 394.0F);
+  frontend.childScreen = iggy3d::FrontendScreen::StarterDevTools;
+  const iggy3d::OpeningMenuHitTestResult devToolsBackHit =
+      iggy3d::openingMenuActionAt(frontend, 850.0F, 394.0F);
 
   return expect(createHit.hit, "new world create hit") &&
          expect(createHit.area == iggy3d::OpeningMenuHitArea::NewWorldCreate,
@@ -490,7 +548,13 @@ bool childPanelHitTestsExposeMenuActions() {
          expect(deleteBackHit.hit, "delete confirm back hit") &&
          expect(deleteBackHit.area ==
                     iggy3d::OpeningMenuHitArea::DeleteConfirmBack,
-                "delete confirm back area");
+                "delete confirm back area") &&
+         expect(settingsBackHit.hit, "settings back hit") &&
+         expect(settingsBackHit.area == iggy3d::OpeningMenuHitArea::SettingsBack,
+                "settings back area") &&
+         expect(devToolsBackHit.hit, "dev tools back hit") &&
+         expect(devToolsBackHit.area == iggy3d::OpeningMenuHitArea::DevToolsBack,
+                "dev tools back area");
 }
 
 bool menuClickNormalizationScalesWindowCoordinates() {
@@ -595,6 +659,7 @@ int main() {
       backCancelsPendingPreviewBeforePauseRoute() &&
       backWithoutPreviewFallsThroughPolicy() &&
       controllerEastCancelsPendingPreviewWithoutMutation() &&
+      starterDeleteButtonOpensDeleteConfirmation() &&
       starterHitTestUsesCanonicalActionRows() &&
       childPanelHitTestsExposeMenuActions() &&
       menuClickNormalizationScalesWindowCoordinates() &&
