@@ -120,7 +120,6 @@ InputActionGroup inputActionGroup(InputAction action) {
     case InputAction::SystemPause:
     case InputAction::SystemDevTools:
     case InputAction::SystemHardQuit:
-    case InputAction::MapMakerToggle:
     case InputAction::MovementTuningToggle:
       return InputActionGroup::System;
     case InputAction::PlayerMoveX:
@@ -135,6 +134,7 @@ InputActionGroup inputActionGroup(InputAction action) {
     case InputAction::PlayerAttack:
     case InputAction::PlayerCast:
     case InputAction::PlayerRetryOrReset:
+    case InputAction::MapMakerToggle:
       return InputActionGroup::Player;
     case InputAction::EditorToggle:
     case InputAction::EditorSelect:

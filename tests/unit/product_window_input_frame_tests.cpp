@@ -8,6 +8,7 @@
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
+#include "app/input/InputRouter.hpp"
 #include "content/assets/RoomAsset.hpp"
 #include "core/math/Transform3.hpp"
 #include "runtime/replay/StateHash.hpp"
@@ -1204,6 +1205,28 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   return enabledOk && disabledOk && ignoredOk;
 }
 
+bool mapMakerToggleRoutesAsGameplayOwnedInput() {
+  iggy3d::InputRoutingContext gameplayContext;
+  gameplayContext.owners.gameplay = true;
+  const iggy3d::InputRoutingResult gameplay =
+      iggy3d::routeInputAction(gameplayContext,
+                               iggy3d::InputAction::MapMakerToggle);
+
+  iggy3d::InputRoutingContext pauseContext;
+  pauseContext.owners.pause = true;
+  const iggy3d::InputRoutingResult pause =
+      iggy3d::routeInputAction(pauseContext,
+                               iggy3d::InputAction::MapMakerToggle);
+
+  return expect(iggy3d::inputActionGroup(iggy3d::InputAction::MapMakerToggle) ==
+                    iggy3d::InputActionGroup::Player,
+                "map maker toggle is gameplay input group") &&
+         expect(gameplay.owner == iggy3d::MenuOwner::Gameplay,
+                "map maker gameplay route owner") &&
+         expect(gameplay.accepted, "map maker accepted by gameplay owner") &&
+         expect(!pause.accepted, "map maker rejected by pause owner");
+}
+
 bool gameplaySettingsAdjustMovementTuningLive() {
   iggy3d::FrontendState frontend = starterFrontend();
   frontend.childScreen = iggy3d::FrontendScreen::Settings;
@@ -1278,6 +1301,7 @@ int main() {
       sdlFunctionKeyEventsMarkKeyboardStateConsumed() &&
       movementTuningGameplayInputIsLiveAndFocused() &&
       mapMakerToggleUsesGameplayOnlyCreativeMode() &&
+      mapMakerToggleRoutesAsGameplayOwnedInput() &&
       gameplaySettingsAdjustMovementTuningLive();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
