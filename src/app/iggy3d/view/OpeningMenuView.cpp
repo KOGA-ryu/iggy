@@ -799,7 +799,7 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
   setColor(renderer, 166, 184, 177);
   drawText(renderer,
            dungeonDraftEditMode
-               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+"
+               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C"
                : "UP DOWN SELECT DUNGEON   TAB EDIT   CONFIRM CREATE",
            452.0F,
            210.0F,

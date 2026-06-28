@@ -89,8 +89,8 @@ bool newWorldDraftHotkeysDriveDraftState() {
               "draft cursor column reaches two") &&
        ok;
 
-  const bool painted = iggy3d::applyDungeonDraftPaintGlyph(draft, window, '#');
-  ok = expect(painted, "number-key wall glyph paints draft cell") && ok;
+  const bool painted = iggy3d::applyDungeonDraftPaintGlyph(draft, window, 'C');
+  ok = expect(painted, "number-key crate glyph paints draft cell") && ok;
   ok = expect(window.worldSetupDungeonDraftModified,
               "painting marks dungeon draft modified") &&
        ok;
@@ -101,7 +101,7 @@ bool newWorldDraftHotkeysDriveDraftState() {
                   "dungeon_draft_cell_painted",
               "painting records stable draft paint reason") &&
        ok;
-  ok = expect(window.worldSetupDungeonDraftLastGlyph == "#",
+  ok = expect(window.worldSetupDungeonDraftLastGlyph == "C",
               "painting records last glyph") &&
        ok;
   ok = expect(window.worldSetupAsciiRoomId ==

@@ -17,7 +17,7 @@ struct KeyboardInputState {
   bool backWasDown = false;
   bool tabWasDown = false;
   bool devToggleWasDown = false;
-  std::array<bool, 7> asciiPaintWasDown{};
+  std::array<bool, 8> asciiPaintWasDown{};
   bool interactWasDown = false;
   bool retryWasDown = false;
   bool editorUpWasDown = false;
@@ -58,7 +58,7 @@ struct KeyboardRoomEditorInputSample {
 };
 
 struct KeyboardAsciiRoomPaintSample {
-  std::array<bool, 7> glyphDown{};
+  std::array<bool, 8> glyphDown{};
 };
 
 InputAction pollKeyboardMenuAction(KeyboardInputState& state);

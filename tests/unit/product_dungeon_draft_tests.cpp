@@ -57,6 +57,30 @@ bool paintingMarksDraftCustomAndBuilds() {
          expect(authored.wallCount == 61U, "wall count changed");
 }
 
+bool paintingCrateMarksDraftCustomAndBuildsObject() {
+  iggy3d::WorldSetupDraft draft =
+      iggy3d::makeProductDefaultWorldSetupDraft("seed_crate");
+  const iggy3d::ProductDungeonDraftOperationResult painted =
+      iggy3d::setProductDungeonDraftCell(draft, 1U, 2U, 'C');
+
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceText = draft.asciiRoomText;
+  request.roomId = draft.asciiRoomId;
+  request.sourceName = draft.asciiRoomSourceName;
+  const iggy3d::ProductAsciiRoomAuthoringResult authored =
+      iggy3d::buildProductAsciiRoomAuthoring(request);
+
+  return expect(iggy3d::isProductDungeonDraftGlyph('C'), "crate glyph valid") &&
+         expect(painted.ok, "paint crate ok") &&
+         expect(painted.modified, "paint crate modified") &&
+         expect(painted.glyph == 'C', "paint crate glyph") &&
+         expect(draft.asciiRoomId == "custom_dungeon_draft",
+                "crate custom room id") &&
+         expect(authored.ok, "crate authored ok") &&
+         expect(authored.floorCount == 59U, "crate keeps floor count") &&
+         expect(authored.objectCount == 1U, "crate object count");
+}
+
 bool paintingPlayerKeepsSingleSpawn() {
   iggy3d::WorldSetupDraft draft =
       iggy3d::makeProductDefaultWorldSetupDraft("seed_player");
@@ -89,6 +113,7 @@ bool invalidGlyphIsRejected() {
 int main() {
   const bool passed = cursorMovementClampsToDraftBounds() &&
                       paintingMarksDraftCustomAndBuilds() &&
+                      paintingCrateMarksDraftCustomAndBuildsObject() &&
                       paintingPlayerKeepsSingleSpawn() &&
                       invalidGlyphIsRejected();
   std::cout << "product_dungeon_draft_tests="
