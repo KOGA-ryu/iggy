@@ -349,6 +349,7 @@ ProductMenuActionResult confirmStarterContinue(ProductStarterMenuActionContext c
     frontend.status = "opening_menu_action_disabled";
     return {true, true};
   }
+  clearProductGameplayMovementTuning(window);
   launchProductContinueSave(
       context.options, productWorldTemplateFromOptions(context.options),
       context.saves, frontend, context.activeSession, window);
@@ -356,6 +357,7 @@ ProductMenuActionResult confirmStarterContinue(ProductStarterMenuActionContext c
 }
 
 ProductMenuActionResult confirmStarterExit(ProductStarterMenuActionContext context) {
+  clearProductGameplayMovementTuning(context.window);
   context.frontend.status = "opening_menu_exit_requested";
   context.closeRequested = true;
   return {true, true};
@@ -363,6 +365,7 @@ ProductMenuActionResult confirmStarterExit(ProductStarterMenuActionContext conte
 
 ProductMenuActionResult confirmStarterNewWorld(
     ProductStarterMenuActionContext context) {
+  clearProductGameplayMovementTuning(context.window);
   context.frontend.childScreen = FrontendScreen::NewWorld;
   context.frontend.selectedAction = FrontendAction::CreateAndEnter;
   context.frontend.status = "opening_menu_new_world_selected";
@@ -373,6 +376,7 @@ ProductMenuActionResult confirmStarterNewWorld(
 
 ProductMenuActionResult confirmStarterLoadSave(
     ProductStarterMenuActionContext context) {
+  clearProductGameplayMovementTuning(context.window);
   context.frontend.childScreen = FrontendScreen::LoadSave;
   initializeSelectedProductSaveSlot(context.saves.slots, context.window);
   context.frontend.status = "opening_menu_load_save_selected";
@@ -380,6 +384,7 @@ ProductMenuActionResult confirmStarterLoadSave(
 }
 
 ProductMenuActionResult confirmStarterDelete(ProductStarterMenuActionContext context) {
+  clearProductGameplayMovementTuning(context.window);
   initializeSelectedProductSaveSlot(context.saves.slots, context.window);
   openProductSaveDeleteConfirmation(context.saves.slots, context.window,
                                     context.frontend);
@@ -388,6 +393,7 @@ ProductMenuActionResult confirmStarterDelete(ProductStarterMenuActionContext con
 
 ProductMenuActionResult confirmStarterSettings(
     ProductStarterMenuActionContext context) {
+  clearProductGameplayMovementTuning(context.window);
   context.frontend.childScreen = FrontendScreen::Settings;
   context.settingsTab = FrontendSettingsTab::Input;
   context.frontend.status = "opening_menu_settings_selected";
@@ -396,6 +402,7 @@ ProductMenuActionResult confirmStarterSettings(
 
 ProductMenuActionResult confirmStarterDevTools(
     ProductStarterMenuActionContext context) {
+  clearProductGameplayMovementTuning(context.window);
   context.frontend.childScreen = FrontendScreen::StarterDevTools;
   context.frontend.devToolsOpen = true;
   context.frontend.devToolsCategory = FrontendDevToolsCategory::Session;

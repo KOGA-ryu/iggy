@@ -1505,6 +1505,60 @@ bool movementTuningGameplayInputIsLiveAndFocused() {
                 "movement tuning hidden after second F4");
 }
 
+bool movementTuningToggleIgnoresFrontendBlockedSurfaces() {
+  struct BlockedSurface {
+    iggy3d::FrontendScreen screen;
+    iggy3d::FrontendScreen childScreen;
+    const char* label;
+  };
+  constexpr BlockedSurface surfaces[] = {
+      {iggy3d::FrontendScreen::Starter,
+       iggy3d::FrontendScreen::Gameplay,
+       "starter"},
+      {iggy3d::FrontendScreen::Starter,
+       iggy3d::FrontendScreen::NewWorld,
+       "new-world"},
+      {iggy3d::FrontendScreen::Starter,
+       iggy3d::FrontendScreen::DeleteConfirm,
+       "delete-confirm"},
+      {iggy3d::FrontendScreen::Starter,
+       iggy3d::FrontendScreen::ExitConfirm,
+       "exit-confirm"},
+      {iggy3d::FrontendScreen::Settings,
+       iggy3d::FrontendScreen::Pause,
+       "pause-settings"},
+      {iggy3d::FrontendScreen::Pause,
+       iggy3d::FrontendScreen::Gameplay,
+       "pause"},
+      {iggy3d::FrontendScreen::DevOverlay,
+       iggy3d::FrontendScreen::Gameplay,
+       "dev-overlay"},
+  };
+
+  bool ok = true;
+  for (const BlockedSurface& surface : surfaces) {
+    iggy3d::FrontendState frontend = gameplayFrontend();
+    frontend.screen = surface.screen;
+    frontend.childScreen = surface.childScreen;
+    frontend.inputOwned = false;
+    iggy3d::ProductAppWindowState window;
+    window.gameplayActive = true;
+    window.gameplayMovementTuningVisible = true;
+
+    const iggy3d::ProductMovementTuningInputResult blocked =
+        iggy3d::applyProductWindowMovementTuningInput(
+            frontend, window, iggy3d::InputAction::MovementTuningToggle);
+    ok = expect(blocked.handled, surface.label) && ok;
+    ok = expect(!blocked.accepted, surface.label) && ok;
+    ok = expect(!window.gameplayMovementTuningVisible, surface.label) && ok;
+    ok = expect(window.gameplayMovementTuningStatus ==
+                    "movement_tuning_gameplay_inactive",
+                surface.label) &&
+         ok;
+  }
+  return ok;
+}
+
 bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
@@ -1715,6 +1769,7 @@ int main() {
       sdlFunctionKeyEventsMapToSystemActions() &&
       sdlFunctionKeyEventsMarkKeyboardStateConsumed() &&
       movementTuningGameplayInputIsLiveAndFocused() &&
+      movementTuningToggleIgnoresFrontendBlockedSurfaces() &&
       mapMakerToggleUsesGameplayOnlyCreativeMode() &&
       mapMakerToggleRoutesAsGameplayOwnedInput() &&
       gameplaySettingsAdjustMovementTuningLive();

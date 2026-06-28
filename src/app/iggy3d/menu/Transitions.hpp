@@ -15,6 +15,7 @@ void enterProductGameplayTransition(FrontendState& frontend,
                                     FrontendAction launchAction);
 
 void clearProductMapMakerMode(ProductAppWindowState& window);
+void clearProductGameplayMovementTuning(ProductAppWindowState& window);
 
 void openProductPauseTransition(FrontendState& frontend,
                                 ProductAppWindowState& window,

@@ -14,7 +14,9 @@
 #include "app/iggy3d/automation/Automation.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"
+#include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
@@ -51,6 +53,16 @@ static constexpr std::array kProductWindowFunctionKeyBindings{
                                     InputAction::MapMakerToggle,
                                     &KeyboardInputState::mapMakerToggleWasDown},
 };
+
+bool resolvedSurfaceAcceptsGameplayInput(const FrontendState& frontend,
+                                         const ProductAppWindowState& window) {
+  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(frontend, window));
+  return window.gameplayActive &&
+         surface.activeSurface == ProductFrontendSurface::Gameplay &&
+         surface.inputOwner == MenuOwner::Gameplay &&
+         !surface.gameplayInputSuppressed;
+}
 
 MouseClick productWindowMenuClickForHitTest(MouseClick click,
                                             const SdlWindow* sdlWindow) {
@@ -412,11 +424,14 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
     ProductAppWindowState& window,
     InputAction action) {
   ProductMovementTuningInputResult result;
+  const bool gameplaySurfaceActive =
+      resolvedSurfaceAcceptsGameplayInput(frontend, window);
   // branch-gate: BG-1212
   if (action == InputAction::MovementTuningToggle) {
     result.handled = true;
     // branch-gate: BG-1212
-    if (frontend.screen != FrontendScreen::Gameplay || !window.gameplayActive) {
+    if (!gameplaySurfaceActive) {
+      clearProductGameplayMovementTuning(window);
       result.status = "movement_tuning_gameplay_inactive";
       result.reasonCode = result.status;
       window.gameplayMovementTuningStatus = result.status;
@@ -437,8 +452,12 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
   }
 
   // branch-gate: BG-1212
-  if (frontend.screen != FrontendScreen::Gameplay ||
-      !window.gameplayMovementTuningVisible) {
+  if (!gameplaySurfaceActive && window.gameplayMovementTuningVisible) {
+    clearProductGameplayMovementTuning(window);
+  }
+
+  // branch-gate: BG-1212
+  if (!gameplaySurfaceActive || !window.gameplayMovementTuningVisible) {
     return result;
   }
 

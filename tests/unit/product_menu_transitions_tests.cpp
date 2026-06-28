@@ -23,6 +23,12 @@ void activateMapMaker(iggy3d::ProductAppWindowState& window) {
   window.mapMakerReasonCode = window.mapMakerStatus;
 }
 
+void showMovementTuning(iggy3d::ProductAppWindowState& window) {
+  window.gameplayMovementTuningVisible = true;
+  window.gameplayMovementTuningStatus = "movement_tuning_visible";
+  window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
+}
+
 }  // namespace
 
 int main() {
@@ -57,6 +63,7 @@ int main() {
                "gameplay launch preserves session");
 
   activateMapMaker(window);
+  showMovementTuning(window);
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::Resume);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Pause,
                "pause screen opened");
@@ -71,7 +78,10 @@ int main() {
                "pause returns interaction mode to player");
   ok &= expect(!window.viewport.creativeFlyActive,
                "pause clears creative fly active");
+  ok &= expect(!window.gameplayMovementTuningVisible,
+               "pause clears movement tuning");
 
+  showMovementTuning(window);
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   openProductPauseSettingsTransition(frontend, window, settingsTab);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Settings,
@@ -85,14 +95,20 @@ int main() {
   ok &= expect(!window.mapMakerActive, "settings keeps map maker cleared");
   ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                "settings keeps player interaction mode");
+  ok &= expect(!window.gameplayMovementTuningVisible,
+               "settings keeps movement tuning cleared");
 
+  showMovementTuning(window);
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::Settings);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Pause,
                "settings back returns to pause");
   ok &= expect(frontend.selectedAction == iggy3d::FrontendAction::Settings,
                "pause remembers settings row");
   ok &= expect(!window.mapMakerActive, "settings back keeps map maker cleared");
+  ok &= expect(!window.gameplayMovementTuningVisible,
+               "settings back keeps movement tuning cleared");
 
+  showMovementTuning(window);
   openProductPauseDevToolsTransition(frontend, window,
                                      iggy3d::FrontendDevToolsCategory::Session);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::DevOverlay,
@@ -102,6 +118,8 @@ int main() {
                "dev tools own input");
   ok &= expect(window.gameplayInputSuppressed, "dev tools suppress gameplay input");
   ok &= expect(!window.mapMakerActive, "dev tools keeps map maker cleared");
+  ok &= expect(!window.gameplayMovementTuningVisible,
+               "dev tools clears movement tuning");
 
   closeProductOverlayToGameplayTransition(frontend, window);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
@@ -114,9 +132,12 @@ int main() {
   ok &= expect(!window.mapMakerActive, "resume does not restore map maker");
   ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                "resume stays player mode");
+  ok &= expect(!window.gameplayMovementTuningVisible,
+               "resume does not restore movement tuning");
 
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::ReturnToTitle);
   activateMapMaker(window);
+  showMovementTuning(window);
   returnProductToTitleTransition(frontend, window);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Starter,
                "return to title opens starter");
@@ -130,6 +151,8 @@ int main() {
   ok &= expect(!window.mapMakerActive, "return to title clears map maker active");
   ok &= expect(!window.viewport.creativeFlyActive,
                "return to title clears creative fly active");
+  ok &= expect(!window.gameplayMovementTuningVisible,
+               "return to title clears movement tuning");
   ok &= expect(window.productTransitionReturnedToTitle,
                "return to title transition status");
   ok &= expect(!window.productTransitionSessionPreserved,

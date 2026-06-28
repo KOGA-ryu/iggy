@@ -32,9 +32,16 @@ void clearProductMapMakerMode(ProductAppWindowState& window) {
   window.mapMakerReasonCode = window.mapMakerStatus;
 }
 
+void clearProductGameplayMovementTuning(ProductAppWindowState& window) {
+  window.gameplayMovementTuningVisible = false;
+  window.gameplayMovementTuningStatus = "movement_tuning_hidden";
+  window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
+}
+
 void initializeProductStarterTransition(FrontendState& frontend,
                                         ProductAppWindowState& window,
                                         bool hasCompatibleSave) {
+  clearProductGameplayMovementTuning(window);
   completeFrontendBoot(frontend, true, true);
   frontend.screen = FrontendScreen::Starter;
   frontend.childScreen = FrontendScreen::Gameplay;
@@ -61,6 +68,7 @@ void openProductPauseTransition(FrontendState& frontend,
                                 ProductAppWindowState& window,
                                 FrontendAction selectedAction) {
   clearProductMapMakerMode(window);
+  clearProductGameplayMovementTuning(window);
   openFrontendPause(frontend, selectedAction);
   window.inputOwner = MenuOwner::Pause;
   window.gameplayInputSuppressed = true;
@@ -72,6 +80,7 @@ void openProductPauseSettingsTransition(FrontendState& frontend,
                                         ProductAppWindowState& window,
                                         FrontendSettingsTab& settingsTab) {
   clearProductMapMakerMode(window);
+  clearProductGameplayMovementTuning(window);
   frontend.screen = FrontendScreen::Settings;
   frontend.childScreen = FrontendScreen::Pause;
   settingsTab = FrontendSettingsTab::Input;
@@ -87,6 +96,7 @@ void openProductPauseDevToolsTransition(FrontendState& frontend,
                                         ProductAppWindowState& window,
                                         FrontendDevToolsCategory category) {
   clearProductMapMakerMode(window);
+  clearProductGameplayMovementTuning(window);
   openFrontendDevOverlay(frontend, category);
   frontend.status = "pause_dev_tools_selected";
   window.inputOwner = MenuOwner::DevTools;
@@ -109,6 +119,7 @@ void returnProductToTitleTransition(FrontendState& frontend,
   window.gameplayActive = false;
   window.runtimeSessionCreated = false;
   clearProductMapMakerMode(window);
+  clearProductGameplayMovementTuning(window);
   frontend.screen = FrontendScreen::Starter;
   frontend.childScreen = FrontendScreen::Gameplay;
   frontend.selectedAction = FrontendAction::NewWorld;

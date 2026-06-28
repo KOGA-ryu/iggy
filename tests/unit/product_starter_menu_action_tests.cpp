@@ -61,6 +61,13 @@ iggy3d::ProductMenuActionResult applyStarterAction(
       });
 }
 
+void showMovementTuning(StarterHarness& harness) {
+  harness.window.gameplayMovementTuningVisible = true;
+  harness.window.gameplayMovementTuningStatus = "movement_tuning_visible";
+  harness.window.gameplayMovementTuningReasonCode =
+      harness.window.gameplayMovementTuningStatus;
+}
+
 bool selectionAndBackAreStable() {
   StarterHarness harness;
 
@@ -112,6 +119,7 @@ bool disabledContinueStaysOnStarter() {
 bool childPanelActionsOpenExpectedSurfaces() {
   StarterHarness newWorld;
   newWorld.frontend.selectedAction = iggy3d::FrontendAction::NewWorld;
+  showMovementTuning(newWorld);
   const iggy3d::ProductMenuActionResult newWorldResult =
       applyStarterAction(newWorld, iggy3d::InputAction::MenuConfirm);
 
@@ -119,16 +127,19 @@ bool childPanelActionsOpenExpectedSurfaces() {
   loadSave.frontend.selectedAction = iggy3d::FrontendAction::LoadSave;
   loadSave.saves.slots.slots.push_back(compatibleSlot("save_unit"));
   loadSave.saves.slots.compatibleCount = 1U;
+  showMovementTuning(loadSave);
   const iggy3d::ProductMenuActionResult loadResult =
       applyStarterAction(loadSave, iggy3d::InputAction::MenuConfirm);
 
   StarterHarness settings;
   settings.frontend.selectedAction = iggy3d::FrontendAction::Settings;
+  showMovementTuning(settings);
   const iggy3d::ProductMenuActionResult settingsResult =
       applyStarterAction(settings, iggy3d::InputAction::MenuConfirm);
 
   StarterHarness devTools;
   devTools.frontend.selectedAction = iggy3d::FrontendAction::DevTools;
+  showMovementTuning(devTools);
   const iggy3d::ProductMenuActionResult devToolsResult =
       applyStarterAction(devTools, iggy3d::InputAction::MenuConfirm);
 
@@ -141,17 +152,23 @@ bool childPanelActionsOpenExpectedSurfaces() {
                 "new world selects create") &&
          expect(newWorld.window.worldSetupStatus == "world_setup_open",
                 "new world records draft state") &&
+         expect(!newWorld.window.gameplayMovementTuningVisible,
+                "new world clears movement tuning") &&
          expect(loadResult.handled && loadResult.accepted, "load accepted") &&
          expect(loadSave.frontend.childScreen == iggy3d::FrontendScreen::LoadSave,
                 "load child") &&
          expect(loadSave.window.selectedProductSaveId == "save_unit",
                 "load selected save") &&
+         expect(!loadSave.window.gameplayMovementTuningVisible,
+                "load clears movement tuning") &&
          expect(settingsResult.handled && settingsResult.accepted,
                 "settings accepted") &&
          expect(settings.frontend.childScreen == iggy3d::FrontendScreen::Settings,
                 "settings child") &&
          expect(settings.settingsTab == iggy3d::FrontendSettingsTab::Input,
                 "settings starts input tab") &&
+         expect(!settings.window.gameplayMovementTuningVisible,
+                "settings clears movement tuning") &&
          expect(devToolsResult.handled && devToolsResult.accepted,
                 "dev tools accepted") &&
          expect(devTools.frontend.childScreen ==
@@ -160,7 +177,9 @@ bool childPanelActionsOpenExpectedSurfaces() {
          expect(devTools.frontend.devToolsOpen, "dev tools open") &&
          expect(devTools.frontend.devToolsCategory ==
                     iggy3d::FrontendDevToolsCategory::Session,
-                "dev tools starts session");
+                "dev tools starts session") &&
+         expect(!devTools.window.gameplayMovementTuningVisible,
+                "dev tools clears movement tuning");
 }
 
 bool deleteAndExitActionsAreExplicitRows() {
@@ -168,11 +187,13 @@ bool deleteAndExitActionsAreExplicitRows() {
   deleteSave.frontend.selectedAction = iggy3d::FrontendAction::Delete;
   deleteSave.saves.slots.slots.push_back(compatibleSlot("save_unit"));
   deleteSave.saves.slots.compatibleCount = 1U;
+  showMovementTuning(deleteSave);
   const iggy3d::ProductMenuActionResult deleteResult =
       applyStarterAction(deleteSave, iggy3d::InputAction::MenuConfirm);
 
   StarterHarness exit;
   exit.frontend.selectedAction = iggy3d::FrontendAction::Exit;
+  showMovementTuning(exit);
   const iggy3d::ProductMenuActionResult exitResult =
       applyStarterAction(exit, iggy3d::InputAction::MenuConfirm);
 
@@ -185,9 +206,13 @@ bool deleteAndExitActionsAreExplicitRows() {
                 "delete confirmation open") &&
          expect(deleteSave.window.saveDeleteCandidateId == "save_unit",
                 "delete candidate") &&
+         expect(!deleteSave.window.gameplayMovementTuningVisible,
+                "delete clears movement tuning") &&
          expect(!deleteSave.closeRequested, "delete does not close") &&
          expect(exitResult.handled && exitResult.accepted, "exit accepted") &&
          expect(exit.closeRequested, "exit requests close") &&
+         expect(!exit.window.gameplayMovementTuningVisible,
+                "exit clears movement tuning") &&
          expect(exit.frontend.status == "opening_menu_exit_requested",
                 "exit status");
 }
