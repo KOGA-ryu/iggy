@@ -36,19 +36,19 @@ constexpr std::string_view kCourtyardVaultText =
 
 constexpr std::string_view kPhysicsFlatRoomText =
     "#######\n"
-    "#P....#\n"
+    "#P...E#\n"
     "#.....#\n"
     "#.....#\n"
     "#######\n";
 
 constexpr std::string_view kPhysicsWallCorridorText =
     "#########\n"
-    "#P......#\n"
+    "#P.....E#\n"
     "#########\n";
 
 constexpr std::string_view kPhysicsCornerSlideText =
     "########\n"
-    "#P.....#\n"
+    "#P....E#\n"
     "#####..#\n"
     "#......#\n"
     "########\n";

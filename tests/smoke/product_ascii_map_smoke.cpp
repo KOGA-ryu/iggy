@@ -50,6 +50,129 @@ bool fileContains(const std::filesystem::path& path, std::string_view needle) {
   return text.find(needle) != std::string::npos;
 }
 
+struct PhysicsDungeonSmokeExpectation {
+  std::string_view caseName;
+  std::string_view roomId;
+  std::string_view worldTitle;
+  std::string_view sourceName;
+  std::string_view width;
+  std::string_view height;
+  std::string_view floorCount;
+  std::string_view wallCount;
+  std::string_view markerCount;
+  std::string_view querySurfaceCount;
+  std::string_view walkableSurfaceCount;
+  std::string_view actorBlockerCount;
+  std::string_view projectileBlockerCount;
+};
+
+bool createPhysicsDungeonWorld(
+    const std::filesystem::path& binary,
+    const PhysicsDungeonSmokeExpectation& expected,
+    const std::filesystem::path& saveRoot,
+    iggy3d::smoke::ReceiptFields& fields,
+    int& exitCode) {
+  fields.clear();
+  std::string control = "frontend.select=new_world\nfrontend.execute=true\n";
+  control += "world.dungeon_id=";
+  control += expected.roomId;
+  control += "\nworld.create=true\n";
+
+  return iggy3d::smoke::runProductCase(
+             binary,
+             expected.caseName,
+             control,
+             iggy3d::smoke::saveRootArg(saveRoot),
+             fields,
+             exitCode) &&
+         exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+         iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+         iggy3d::smoke::hasField(fields, "window_created", "false") &&
+         iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+         iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+         iggy3d::smoke::hasField(fields, "world_setup_title",
+                                 expected.worldTitle) &&
+         iggy3d::smoke::hasField(fields, "world_setup_status",
+                                 "world_setup_create_requested") &&
+         iggy3d::smoke::hasField(fields, "world_setup_ascii_room_enabled",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields, "world_setup_ascii_room_id",
+                                 expected.roomId) &&
+         iggy3d::smoke::hasField(fields,
+                                 "world_setup_ascii_room_source_name",
+                                 expected.sourceName) &&
+         iggy3d::smoke::hasField(fields, "world_creation_status",
+                                 "world_creation_initial_save_written") &&
+         iggy3d::smoke::hasField(fields, "world_creation_world_title",
+                                 expected.worldTitle) &&
+         iggy3d::smoke::hasField(fields,
+                                 "world_creation_ascii_room_requested",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields, "world_creation_ascii_room_id",
+                                 expected.roomId) &&
+         iggy3d::smoke::hasField(fields,
+                                 "world_creation_ascii_room_source_name",
+                                 expected.sourceName) &&
+         iggy3d::smoke::hasField(fields,
+                                 "world_creation_initial_save_title",
+                                 expected.worldTitle) &&
+         iggy3d::smoke::hasField(fields, "ascii_room_preview_status",
+                                 "product_ascii_room_ready") &&
+         iggy3d::smoke::hasField(fields, "ascii_room_preview_room_id",
+                                 expected.roomId) &&
+         iggy3d::smoke::hasField(fields, "ascii_room_preview_width",
+                                 expected.width) &&
+         iggy3d::smoke::hasField(fields, "ascii_room_preview_height",
+                                 expected.height) &&
+         iggy3d::smoke::hasField(fields, "ascii_room_preview_floor_count",
+                                 expected.floorCount) &&
+         iggy3d::smoke::hasField(fields, "ascii_room_preview_wall_count",
+                                 expected.wallCount) &&
+         iggy3d::smoke::hasField(fields, "ascii_room_preview_marker_count",
+                                 expected.markerCount) &&
+         iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+         iggy3d::smoke::hasField(fields, "active_room_source", "ascii_room") &&
+         iggy3d::smoke::hasField(fields, "active_room_id", expected.roomId) &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_authored_floor_count",
+                                 expected.floorCount) &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_authored_wall_count",
+                                 expected.wallCount) &&
+         iggy3d::smoke::hasField(fields, "active_room_collision_ready",
+                                 "true") &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_collision_room_id",
+                                 expected.roomId) &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_collision_query_surface_count",
+                                 expected.querySurfaceCount) &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_collision_walkable_surface_count",
+                                 expected.walkableSurfaceCount) &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_collision_actor_blocker_count",
+                                 expected.actorBlockerCount) &&
+         iggy3d::smoke::hasField(
+             fields,
+             "active_room_collision_projectile_blocker_count",
+             expected.projectileBlockerCount) &&
+         std::filesystem::exists(saveRoot / "save_001.iggy3d.save") &&
+         fileContains(saveRoot / "save_001.iggy3d.save",
+                      std::string{"authoredRoom.id="} +
+                          std::string{expected.roomId} + "\n") &&
+         fileContains(saveRoot / "save_001.iggy3d.save",
+                      std::string{"authoredRoom.sourceFile="} +
+                          std::string{expected.sourceName} + "\n") &&
+         fileContains(saveRoot / "save_001.iggy3d.save",
+                      std::string{"authoredRoom.floor.count="} +
+                          std::string{expected.floorCount} + "\n") &&
+         fileContains(saveRoot / "save_001.iggy3d.save",
+                      std::string{"authoredRoom.wall.count="} +
+                          std::string{expected.wallCount} + "\n");
+}
+
 }  // namespace
 
 int main() {
@@ -62,6 +185,12 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("ascii_map_loop_keep_default");
   const std::filesystem::path selectedSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_gatehouse_selected");
+  const std::filesystem::path physicsFlatSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_physics_flat_room");
+  const std::filesystem::path physicsCorridorSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_physics_wall_corridor");
+  const std::filesystem::path physicsCornerSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_physics_corner_slide");
   const std::filesystem::path customSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft");
   const std::filesystem::path cursorPaintRejectedSaveRoot =
@@ -258,6 +387,78 @@ int main() {
                    "authoredRoom.id=gatehouse_ascii\n") &&
       fileContains(selectedSaveRoot / "save_001.iggy3d.save",
                    "authoredRoom.sourceFile=fixtures/rooms/ascii/gatehouse.iggyroom.txt\n");
+
+  static constexpr PhysicsDungeonSmokeExpectation kPhysicsFlatRoom{
+      "ascii_map_physics_flat_room_create",
+      "physics_flat_room",
+      "Physics Flat Room",
+      "fixtures/rooms/ascii/physics_flat_room.iggyroom.txt",
+      "7",
+      "5",
+      "15",
+      "20",
+      "2",
+      "55",
+      "15",
+      "20",
+      "20",
+  };
+  fields.clear();
+  const bool createPhysicsFlatRoomWorld =
+      appAvailable &&
+      createPhysicsDungeonWorld(binary,
+                                kPhysicsFlatRoom,
+                                physicsFlatSaveRoot,
+                                fields,
+                                exitCode);
+
+  static constexpr PhysicsDungeonSmokeExpectation kPhysicsWallCorridor{
+      "ascii_map_physics_wall_corridor_create",
+      "physics_wall_corridor",
+      "Physics Wall Corridor",
+      "fixtures/rooms/ascii/physics_wall_corridor.iggyroom.txt",
+      "9",
+      "3",
+      "7",
+      "20",
+      "2",
+      "47",
+      "7",
+      "20",
+      "20",
+  };
+  fields.clear();
+  const bool createPhysicsWallCorridorWorld =
+      appAvailable &&
+      createPhysicsDungeonWorld(binary,
+                                kPhysicsWallCorridor,
+                                physicsCorridorSaveRoot,
+                                fields,
+                                exitCode);
+
+  static constexpr PhysicsDungeonSmokeExpectation kPhysicsCornerSlide{
+      "ascii_map_physics_corner_slide_create",
+      "physics_corner_slide",
+      "Physics Corner Slide",
+      "fixtures/rooms/ascii/physics_corner_slide.iggyroom.txt",
+      "8",
+      "5",
+      "14",
+      "26",
+      "2",
+      "66",
+      "14",
+      "26",
+      "26",
+  };
+  fields.clear();
+  const bool createPhysicsCornerSlideWorld =
+      appAvailable &&
+      createPhysicsDungeonWorld(binary,
+                                kPhysicsCornerSlide,
+                                physicsCornerSaveRoot,
+                                fields,
+                                exitCode);
 
   fields.clear();
   const bool createCustomDraftWorld =
@@ -3088,6 +3289,9 @@ int main() {
                                           "product_vulkan_room_draw_count");
 
   const bool passed = createDefaultDungeonWorld && createSelectedDungeonWorld &&
+                      createPhysicsFlatRoomWorld &&
+                      createPhysicsWallCorridorWorld &&
+                      createPhysicsCornerSlideWorld &&
                       createCustomDraftWorld && cursorPaintRequiresEditMode &&
                       createCursorPaintDraftWorld &&
                       startCustomDraftActiveRoomEditing &&
@@ -3129,6 +3333,12 @@ int main() {
                          "default new world creates loop keep dungeon") &&
                   expect(createSelectedDungeonWorld,
                          "new world selector creates gatehouse dungeon") &&
+                  expect(createPhysicsFlatRoomWorld,
+                         "new world dungeon id creates physics flat room") &&
+                  expect(createPhysicsWallCorridorWorld,
+                         "new world dungeon id creates physics wall corridor") &&
+                  expect(createPhysicsCornerSlideWorld,
+                         "new world dungeon id creates physics corner slide") &&
                   expect(createCustomDraftWorld,
                          "new world custom draft creates edited dungeon") &&
                   expect(cursorPaintRequiresEditMode,
@@ -3206,6 +3416,12 @@ int main() {
             << (createDefaultDungeonWorld ? "true" : "false") << "\n";
   std::cout << "create_selected_dungeon_world="
             << (createSelectedDungeonWorld ? "true" : "false") << "\n";
+  std::cout << "create_physics_flat_room_world="
+            << (createPhysicsFlatRoomWorld ? "true" : "false") << "\n";
+  std::cout << "create_physics_wall_corridor_world="
+            << (createPhysicsWallCorridorWorld ? "true" : "false") << "\n";
+  std::cout << "create_physics_corner_slide_world="
+            << (createPhysicsCornerSlideWorld ? "true" : "false") << "\n";
   std::cout << "create_custom_draft_world="
             << (createCustomDraftWorld ? "true" : "false") << "\n";
   std::cout << "cursor_paint_requires_edit_mode="
