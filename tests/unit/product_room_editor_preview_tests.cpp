@@ -1,4 +1,5 @@
 #include "app/iggy3d/room_editor/Preview.hpp"
+#include "app/iggy3d/room/GeometryOptimization.hpp"
 
 #include <iostream>
 #include <limits>
@@ -120,6 +121,20 @@ bool floorPreviewDeltasDistinguishMergeAndIsolation() {
                 "adjacent floor candidate command kind") &&
          expect(adjacent.floorCountBefore == 1U, "adjacent floor before count") &&
          expect(adjacent.floorCountAfter == 2U, "adjacent floor after count") &&
+         expect(adjacent.before.optimizedDrawCount == 1U,
+                "adjacent floor before optimized draw count") &&
+         expect(adjacent.after.optimizedDrawCount == 1U,
+                "adjacent floor after optimized draw count") &&
+         expect(adjacent.before.optimizedTriangleCount == 2U,
+                "adjacent floor before optimized triangle count") &&
+         expect(adjacent.after.optimizedTriangleCount == 2U,
+                "adjacent floor after optimized triangle count") &&
+         expect(adjacent.after.drawCountAvoided -
+                    adjacent.before.drawCountAvoided == 1U,
+                "adjacent floor avoided draw delta") &&
+         expect(adjacent.after.triangleCountAvoided -
+                    adjacent.before.triangleCountAvoided == 2U,
+                "adjacent floor avoided triangle delta") &&
          expect(adjacent.floorSizeMeters.x == 1.0F &&
                     adjacent.floorSizeMeters.z == 1.0F,
                 "adjacent floor size facts") &&
@@ -133,6 +148,14 @@ bool floorPreviewDeltasDistinguishMergeAndIsolation() {
          expect(adjacentDocument.floors.size() == 1U,
                 "adjacent preview leaves document") &&
          expect(isolated.ok, "isolated floor preview accepted") &&
+         expect(isolated.before.optimizedDrawCount == 1U,
+                "isolated floor before optimized draw count") &&
+         expect(isolated.after.optimizedDrawCount == 2U,
+                "isolated floor after optimized draw count") &&
+         expect(isolated.before.optimizedTriangleCount == 2U,
+                "isolated floor before optimized triangle count") &&
+         expect(isolated.after.optimizedTriangleCount == 4U,
+                "isolated floor after optimized triangle count") &&
          expect(isolated.optimizedFloorRectDelta == 1,
                 "isolated floor rect delta") &&
          expect(isolated.optimizedDrawDelta == 1,
@@ -161,12 +184,31 @@ bool wallPreviewDeltasDistinguishMergeAndIsolation() {
   const iggy3d::ProductRoomEditorPlacementPreviewResult isolated =
       iggy3d::buildProductRoomEditorPlacementPreview(
           previewRequest(isolatedDocument, cursor));
+  iggy3d::EditableRoomDocument isolatedDryRun = isolatedDocument;
+  const iggy3d::RoomEditResult isolatedApplied =
+      iggy3d::applyRoomEditCommand(isolatedDryRun, isolated.candidateCommand);
+  const iggy3d::ProductRoomGeometryOptimizationReport isolatedDryRunReport =
+      iggy3d::buildProductRoomGeometryOptimizationReport(&isolatedDryRun);
 
   return expect(collinear.ok, "collinear wall preview accepted") &&
          expect(collinear.primitiveId == "edit_wall_1",
                 "collinear wall primitive id") &&
          expect(collinear.wallCountBefore == 1U, "collinear wall before count") &&
          expect(collinear.wallCountAfter == 2U, "collinear wall after count") &&
+         expect(collinear.before.optimizedDrawCount == 1U,
+                "collinear wall before optimized draw count") &&
+         expect(collinear.after.optimizedDrawCount == 1U,
+                "collinear wall after optimized draw count") &&
+         expect(collinear.before.optimizedTriangleCount == 12U,
+                "collinear wall before optimized triangle count") &&
+         expect(collinear.after.optimizedTriangleCount == 12U,
+                "collinear wall after optimized triangle count") &&
+         expect(collinear.after.drawCountAvoided -
+                    collinear.before.drawCountAvoided == 1U,
+                "collinear wall avoided draw delta") &&
+         expect(collinear.after.triangleCountAvoided -
+                    collinear.before.triangleCountAvoided == 12U,
+                "collinear wall avoided triangle delta") &&
          expect(collinear.optimizedWallRunDelta == 0,
                 "collinear wall run merges") &&
          expect(collinear.optimizedDrawDelta == 0,
@@ -177,6 +219,22 @@ bool wallPreviewDeltasDistinguishMergeAndIsolation() {
          expect(collinearDocument.walls.size() == 1U,
                 "collinear preview leaves document") &&
          expect(isolated.ok, "isolated wall preview accepted") &&
+         expect(isolatedApplied.status == iggy3d::RoomEditStatus::Applied,
+                "isolated wall dry-run applies") &&
+         expect(isolated.after.optimizedDrawCount ==
+                    isolatedDryRunReport.optimizedDrawCount,
+                "isolated wall after draw matches dry-run") &&
+         expect(isolated.after.optimizedTriangleCount ==
+                    isolatedDryRunReport.optimizedTriangleCount,
+                "isolated wall after triangles match dry-run") &&
+         expect(isolated.before.optimizedDrawCount == 1U,
+                "isolated wall before optimized draw count") &&
+         expect(isolated.after.optimizedDrawCount == 2U,
+                "isolated wall after optimized draw count") &&
+         expect(isolated.before.optimizedTriangleCount == 12U,
+                "isolated wall before optimized triangle count") &&
+         expect(isolated.after.optimizedTriangleCount == 24U,
+                "isolated wall after optimized triangle count") &&
          expect(isolated.optimizedWallRunDelta == 1,
                 "isolated wall run delta") &&
          expect(isolated.optimizedDrawDelta == 1,

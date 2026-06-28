@@ -570,6 +570,25 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      std::to_string(window.roomEditorPreviewGridX));
   appendReceiptField(receipt, "room_editor_preview_grid_z",
                      std::to_string(window.roomEditorPreviewGridZ));
+  appendReceiptField(receipt, "room_editor_preview_before_draw_count",
+                     std::to_string(window.roomEditorPreviewBeforeDrawCount));
+  appendReceiptField(receipt, "room_editor_preview_after_draw_count",
+                     std::to_string(window.roomEditorPreviewAfterDrawCount));
+  appendReceiptField(
+      receipt,
+      "room_editor_preview_avoided_draw_count_delta",
+      std::to_string(window.roomEditorPreviewAvoidedDrawCountDelta));
+  appendReceiptField(
+      receipt,
+      "room_editor_preview_before_triangle_count",
+      std::to_string(window.roomEditorPreviewBeforeTriangleCount));
+  appendReceiptField(receipt,
+                     "room_editor_preview_after_triangle_count",
+                     std::to_string(window.roomEditorPreviewAfterTriangleCount));
+  appendReceiptField(
+      receipt,
+      "room_editor_preview_avoided_triangle_count_delta",
+      std::to_string(window.roomEditorPreviewAvoidedTriangleCountDelta));
   appendReceiptField(receipt, "room_editor_preview_optimized_draw_delta",
                      std::to_string(window.roomEditorPreviewOptimizedDrawDelta));
   appendReceiptField(receipt, "room_editor_preview_optimized_triangle_delta",

@@ -1305,6 +1305,18 @@ int main() {
       iggy3d::smoke::hasField(fields, "room_editor_preview_tool", "wall") &&
       iggy3d::smoke::hasField(fields, "room_editor_preview_grid_x", "1") &&
       iggy3d::smoke::hasField(fields, "room_editor_preview_grid_z", "0") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editor_preview_before_draw_count", "33") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editor_preview_after_draw_count", "34") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_avoided_draw_count_delta", "0") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_before_triangle_count", "276") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_after_triangle_count", "288") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_avoided_triangle_count_delta", "0") &&
       iggy3d::smoke::hasField(
           fields, "room_editor_preview_optimized_draw_delta", "1") &&
       iggy3d::smoke::hasField(
@@ -1783,6 +1795,18 @@ int main() {
                               "false") &&
       iggy3d::smoke::hasField(fields, "room_editor_preview_status",
                               "room_editor_preview_cancelled") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editor_preview_before_draw_count", "0") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editor_preview_after_draw_count", "0") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_avoided_draw_count_delta", "0") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_before_triangle_count", "0") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_after_triangle_count", "0") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_avoided_triangle_count_delta", "0") &&
       iggy3d::smoke::hasField(fields,
                               "product_draw_room_editor_preview_count",
                               "0") &&

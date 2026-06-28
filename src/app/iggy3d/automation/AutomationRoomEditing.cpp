@@ -16,6 +16,14 @@
 #include "runtime/session/Session.hpp"
 
 namespace iggy3d {
+namespace {
+
+template <typename T>
+std::int64_t signedRoomEditorPreviewDelta(T before, T after) {
+  return static_cast<std::int64_t>(after) - static_cast<std::int64_t>(before);
+}
+
+}  // namespace
 
 void clearProductRoomEditorPreview(ProductAppWindowState& window) {
   window.roomEditorPreviewActive = false;
@@ -27,6 +35,12 @@ void clearProductRoomEditorPreview(ProductAppWindowState& window) {
   window.roomEditorPreviewTool = "floor";
   window.roomEditorPreviewGridX = 0;
   window.roomEditorPreviewGridZ = 0;
+  window.roomEditorPreviewBeforeDrawCount = 0;
+  window.roomEditorPreviewAfterDrawCount = 0;
+  window.roomEditorPreviewAvoidedDrawCountDelta = 0;
+  window.roomEditorPreviewBeforeTriangleCount = 0;
+  window.roomEditorPreviewAfterTriangleCount = 0;
+  window.roomEditorPreviewAvoidedTriangleCountDelta = 0;
   window.roomEditorPreviewOptimizedDrawDelta = 0;
   window.roomEditorPreviewOptimizedTriangleDelta = 0;
 }
@@ -50,6 +64,17 @@ void recordProductRoomEditorPreviewResult(
   window.roomEditorPreviewTool = result.tool;
   window.roomEditorPreviewGridX = result.gridX;
   window.roomEditorPreviewGridZ = result.gridZ;
+  window.roomEditorPreviewBeforeDrawCount = result.before.optimizedDrawCount;
+  window.roomEditorPreviewAfterDrawCount = result.after.optimizedDrawCount;
+  window.roomEditorPreviewAvoidedDrawCountDelta =
+      signedRoomEditorPreviewDelta(result.before.drawCountAvoided,
+                                   result.after.drawCountAvoided);
+  window.roomEditorPreviewBeforeTriangleCount =
+      result.before.optimizedTriangleCount;
+  window.roomEditorPreviewAfterTriangleCount = result.after.optimizedTriangleCount;
+  window.roomEditorPreviewAvoidedTriangleCountDelta =
+      signedRoomEditorPreviewDelta(result.before.triangleCountAvoided,
+                                   result.after.triangleCountAvoided);
   window.roomEditorPreviewOptimizedDrawDelta = result.optimizedDrawDelta;
   window.roomEditorPreviewOptimizedTriangleDelta = result.optimizedTriangleDelta;
 }

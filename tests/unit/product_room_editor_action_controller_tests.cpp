@@ -438,6 +438,22 @@ bool previewInputBuildsAndConfirmsThroughEditingState() {
                    "preview input activates preview") &&
             expect(window.roomEditorPreviewVisible,
                    "preview input visible") &&
+            expect(window.roomEditorPreviewBeforeDrawCount > 0U,
+                   "preview input before draw count copied") &&
+            expect(window.roomEditorPreviewAfterDrawCount ==
+                       static_cast<std::uint64_t>(
+                           static_cast<std::int64_t>(
+                               window.roomEditorPreviewBeforeDrawCount) +
+                           window.roomEditorPreviewOptimizedDrawDelta),
+                   "preview input after draw count matches delta") &&
+            expect(window.roomEditorPreviewBeforeTriangleCount > 0U,
+                   "preview input before triangle count copied") &&
+            expect(window.roomEditorPreviewAfterTriangleCount ==
+                       static_cast<std::uint64_t>(
+                           static_cast<std::int64_t>(
+                               window.roomEditorPreviewBeforeTriangleCount) +
+                           window.roomEditorPreviewOptimizedTriangleDelta),
+                   "preview input after triangle count matches delta") &&
             expect(window.roomEditing.documentWallCount == initialWalls,
                    "preview input leaves walls") &&
             expect(window.roomEditing.collisionActorBlockerSurfaceCount ==
@@ -504,6 +520,18 @@ bool previewInputCancelAndMissingConfirmDoNotMutate() {
                 "preview cancel operation") &&
          expect(!cancelWindow.roomEditorPreviewActive,
                 "preview cancel clears active") &&
+         expect(cancelWindow.roomEditorPreviewBeforeDrawCount == 0U,
+                "preview cancel clears before draw count") &&
+         expect(cancelWindow.roomEditorPreviewAfterDrawCount == 0U,
+                "preview cancel clears after draw count") &&
+         expect(cancelWindow.roomEditorPreviewAvoidedDrawCountDelta == 0,
+                "preview cancel clears avoided draw delta") &&
+         expect(cancelWindow.roomEditorPreviewBeforeTriangleCount == 0U,
+                "preview cancel clears before triangle count") &&
+         expect(cancelWindow.roomEditorPreviewAfterTriangleCount == 0U,
+                "preview cancel clears after triangle count") &&
+         expect(cancelWindow.roomEditorPreviewAvoidedTriangleCountDelta == 0,
+                "preview cancel clears avoided triangle delta") &&
          expect(cancelWindow.roomEditing.documentWallCount == initialWalls,
                 "preview cancel leaves walls") &&
          expect(cancelWindow.roomEditing.collisionActorBlockerSurfaceCount ==

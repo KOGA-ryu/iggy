@@ -161,6 +161,12 @@ struct ProductAppWindowState {
   std::string roomEditorPreviewTool = "floor";
   std::int32_t roomEditorPreviewGridX = 0;
   std::int32_t roomEditorPreviewGridZ = 0;
+  std::uint64_t roomEditorPreviewBeforeDrawCount = 0;
+  std::uint64_t roomEditorPreviewAfterDrawCount = 0;
+  std::int64_t roomEditorPreviewAvoidedDrawCountDelta = 0;
+  std::uint64_t roomEditorPreviewBeforeTriangleCount = 0;
+  std::uint64_t roomEditorPreviewAfterTriangleCount = 0;
+  std::int64_t roomEditorPreviewAvoidedTriangleCountDelta = 0;
   std::int64_t roomEditorPreviewOptimizedDrawDelta = 0;
   std::int64_t roomEditorPreviewOptimizedTriangleDelta = 0;
   bool roomEditorHudVisible = false;
