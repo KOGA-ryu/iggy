@@ -194,8 +194,16 @@ ProductPrimitiveDrawItem itemFromPropMesh(const RoomStaticMeshAsset& mesh) {
   // branch-gate: BG-1159
   item.color = mesh.role == "ledge" ? ProductPrimitiveColor{76, 132, 178}
                                     : colorForRoomKind(item.kind);
+  // branch-gate: BG-1190
+  if (mesh.materialId == "reset_zone_marker") {
+    item.color = {214, 74, 92};
+  }
   // branch-gate: BG-1159
   item.markerSize = mesh.role == "ledge" ? 52.0F : 42.0F;
+  // branch-gate: BG-1190
+  if (mesh.materialId == "reset_zone_marker") {
+    item.markerSize = 34.0F;
+  }
   return item;
 }
 

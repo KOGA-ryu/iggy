@@ -126,6 +126,10 @@ bool markerIsDoor(const AsciiRoomMarker& marker) {
   return marker.tag == "door" || marker.tag == "secret_door";
 }
 
+bool markerIsResetZone(const AsciiRoomMarker& marker) {
+  return marker.tag == "reset_zone";
+}
+
 RoomStaticMeshAsset doorMesh(const AsciiRoomMarker& marker,
                              const AsciiRoomToRoomAssetConfig& config) {
   RoomStaticMeshAsset mesh;
@@ -139,6 +143,22 @@ RoomStaticMeshAsset doorMesh(const AsciiRoomMarker& marker,
   mesh.sizeMeters = {config.tileSizeMeters,
                      config.wallHeightMeters,
                      config.tileSizeMeters};
+  return mesh;
+}
+
+RoomStaticMeshAsset resetZoneMesh(const AsciiRoomMarker& marker,
+                                  const AsciiRoomToRoomAssetConfig& config) {
+  RoomStaticMeshAsset mesh;
+  mesh.id = marker.id + "_marker";
+  mesh.meshId = "reset_zone_marker";
+  mesh.materialId = "reset_zone_marker";
+  mesh.role = "prop";
+  mesh.positionMeters = {static_cast<float>(marker.worldPosition.x),
+                         static_cast<float>(marker.worldPosition.y) + 0.03F,
+                         static_cast<float>(marker.worldPosition.z)};
+  mesh.sizeMeters = {config.tileSizeMeters * 0.72F,
+                     0.06F,
+                     config.tileSizeMeters * 0.72F};
   return mesh;
 }
 
@@ -482,6 +502,10 @@ AsciiRoomToRoomAssetResult buildRoomAssetFromAsciiRoom(
           doorBlockerSurface(marker, config));
       ++result.actorBlockerSurfaceCount;
       ++result.projectileBlockerSurfaceCount;
+    }
+    // branch-gate: BG-1189
+    if (markerIsResetZone(marker)) {
+      result.room.staticMeshes.push_back(resetZoneMesh(marker, config));
     }
   }
 

@@ -657,7 +657,7 @@ int main() {
       "274",
       "0",
       "0",
-      "2",
+      "16",
       "274",
       "274",
       "0",
@@ -680,11 +680,17 @@ int main() {
                               "product_draw_elevated_floor_tile_count",
                               "178") &&
       iggy3d::smoke::hasField(fields,
-                              "product_draw_room_geometry_count", "274") &&
+                              "product_draw_room_geometry_count", "288") &&
+      iggy3d::smoke::hasField(fields, "product_draw_prop_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "product_draw_prop_tile_count", "14") &&
+      iggy3d::smoke::hasField(fields, "product_render_bridge_prop_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "product_render_bridge_prop_tile_count",
+                              "14") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_mesh_cpu_ready", "true") &&
       iggy3d::smoke::hasField(fields,
-                              "product_vulkan_room_source_mesh_count", "274");
+                              "product_vulkan_room_source_mesh_count", "288");
 
   fields.clear();
   const bool createCustomDraftWorld =

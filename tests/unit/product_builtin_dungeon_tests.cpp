@@ -84,7 +84,7 @@ constexpr ExpectedDungeonCounts kExpectedDungeons[] = {
     {"object_crate_room", 7U, 5U, 15U, 20U, 1U, 2U, 57U, 15U, 21U, 21U},
     {"movement_gym", 45U, 23U, 776U, 259U, 10U, 5U, 1318U, 780U, 269U, 269U},
     {"slope_gym", 19U, 9U, 119U, 52U, 0U, 3U, 223U, 119U, 52U, 52U},
-    {"layered_jump_gym", 12U, 8U, 274U, 0U, 0U, 2U, 274U, 274U, 0U, 0U},
+    {"layered_jump_gym", 12U, 8U, 274U, 0U, 0U, 16U, 274U, 274U, 0U, 0U},
 };
 
 const ExpectedDungeonCounts* expectedCountsFor(std::string_view roomId) {
@@ -562,6 +562,8 @@ bool layeredJumpGymBuildsStackedFloors() {
                 "layered jump gym layer spacing") &&
          expect(authoring.floorCount == expected->floorCount,
                 "layered jump gym floor count") &&
+         expect(authoring.markerCount == expected->markerCount,
+                "layered jump gym marker count") &&
          expect(authoring.elevatedFloorCount == 178U,
                 "layered jump gym elevated floor count") &&
          expect(active.loaded, "layered jump gym loaded") &&
@@ -571,6 +573,12 @@ bool layeredJumpGymBuildsStackedFloors() {
                 "layered jump gym active floor count") &&
          expect(active.authoredWallCount == 0U,
                 "layered jump gym active wall count") &&
+         expect(active.authoredMarkerCount == expected->markerCount,
+                "layered jump gym active marker count") &&
+         expect(active.staticMeshCount == 288U,
+                "layered jump gym static mesh count") &&
+         expect(countMeshesWithRole(active.room, "prop") == 14U,
+                "layered jump gym reset zone prop count") &&
          expect(collision.ready, "layered jump gym collision ready") &&
          expect(collision.querySurfaceCount == expected->spatialSurfaceCount,
                 "layered jump gym collision surface count") &&

@@ -557,6 +557,7 @@ bool resetZoneGlyphBuildsResetAnchorAndWalkableFloor() {
   const auto result = buildInlineRoomAsset("######\n#P.RE#\n######\n");
   const auto* anchor = findAnchor(result.room, "marker_reset_zone_r1_c3");
   const auto* floor = findSurface(result.room, "floor_r1_c3_walkable");
+  const auto* mesh = findMesh(result.room, "marker_reset_zone_r1_c3_marker");
   return expect(result.ok, "reset zone room asset ok") &&
          expect(anchor != nullptr, "reset zone anchor exists") &&
          expect(anchor != nullptr && anchor->kind == "reset_zone",
@@ -567,7 +568,20 @@ bool resetZoneGlyphBuildsResetAnchorAndWalkableFloor() {
          expect(floor != nullptr, "reset zone keeps walkable floor") &&
          expect(floor != nullptr &&
                     floor->role == iggy3d::RoomSpatialSurfaceRole::Walkable,
-                "reset zone walkable role");
+                "reset zone walkable role") &&
+         expect(mesh != nullptr, "reset zone marker mesh exists") &&
+         expect(mesh != nullptr && mesh->role == "prop",
+                "reset zone marker prop role") &&
+         expect(mesh != nullptr && mesh->meshId == "reset_zone_marker",
+                "reset zone marker mesh id") &&
+         expect(mesh != nullptr && mesh->materialId == "reset_zone_marker",
+                "reset zone marker material id") &&
+         expect(mesh != nullptr && near(mesh->positionMeters.y, 0.08F),
+                "reset zone marker y") &&
+         expect(mesh != nullptr && near(mesh->sizeMeters.x, 0.72F),
+                "reset zone marker size x") &&
+         expect(mesh != nullptr && near(mesh->sizeMeters.y, 0.06F),
+                "reset zone marker size y");
 }
 
 bool invalidAuthoredResultRejectsWithoutPartialRoom() {

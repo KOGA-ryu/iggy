@@ -396,8 +396,81 @@ int main() {
       iggy3d::smoke::hasField(wallJumpFields, "product_draw_prop_tile_count",
                               "10");
 
+  const std::filesystem::path layeredResetSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("gameplay_controls_layered_jump_gym_reset");
+  iggy3d::smoke::ReceiptFields layeredResetFields;
+  int layeredResetExitCode = 77;
+  const bool layeredResetControlsPassed =
+      appBuilt && std::filesystem::exists(binary) &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "gameplay_controls_layered_jump_gym_reset",
+          "frontend.select=new_world\n"
+          "frontend.execute=true\n"
+          "world.dungeon_id=layered_jump_gym\n"
+          "world.create=true\n"
+          "gameplay.player_position=3,0.05,0\n"
+          "game.move_y=1\n",
+          iggy3d::smoke::saveRootArg(layeredResetSaveRoot),
+          layeredResetFields,
+          layeredResetExitCode) &&
+      layeredResetExitCode == 0 &&
+      iggy3d::smoke::productReceipt(layeredResetFields) &&
+      iggy3d::smoke::automationApplied(layeredResetFields) &&
+      iggy3d::smoke::hasField(layeredResetFields, "window_mode",
+                              "no_window") &&
+      iggy3d::smoke::hasField(layeredResetFields, "window_created",
+                              "false") &&
+      iggy3d::smoke::hasField(layeredResetFields, "frontend_screen",
+                              "gameplay") &&
+      iggy3d::smoke::hasField(layeredResetFields, "gameplay_active",
+                              "true") &&
+      iggy3d::smoke::hasField(layeredResetFields, "active_room_id",
+                              "layered_jump_gym") &&
+      iggy3d::smoke::hasField(layeredResetFields,
+                              "active_room_authored_marker_count", "16") &&
+      iggy3d::smoke::hasField(layeredResetFields,
+                              "automation_control_last_key", "game.move_y") &&
+      iggy3d::smoke::hasField(layeredResetFields,
+                              "automation_control_last_action",
+                              "game.move_y") &&
+      iggy3d::smoke::hasField(layeredResetFields,
+                              "automation_control_last_owner", "gameplay") &&
+      iggy3d::smoke::hasField(layeredResetFields, "gameplay_input_source",
+                              "automation") &&
+      iggy3d::smoke::hasField(layeredResetFields, "gameplay_input_used",
+                              "true") &&
+      iggy3d::smoke::hasField(layeredResetFields, "input_owner",
+                              "gameplay") &&
+      iggy3d::smoke::hasField(layeredResetFields,
+                              "gameplay_reset_triggered", "true") &&
+      iggy3d::smoke::hasField(layeredResetFields, "gameplay_reset_status",
+                              "reset") &&
+      iggy3d::smoke::hasField(layeredResetFields,
+                              "gameplay_reset_reason_code",
+                              "gameplay_reset_zone") &&
+      iggy3d::smoke::hasField(layeredResetFields,
+                              "gameplay_reset_spawn_anchor_id",
+                              "marker_player_spawn_r0_c0") &&
+      iggy3d::smoke::hasField(layeredResetFields,
+                              "gameplay_reset_source_anchor_id",
+                              "marker_reset_zone_r0_c3") &&
+      iggy3d::smoke::hasField(layeredResetFields, "gameplay_reset_start_y",
+                              "0.050") &&
+      iggy3d::smoke::hasField(layeredResetFields, "gameplay_reset_final_y",
+                              "0.050") &&
+      iggy3d::smoke::hasField(layeredResetFields, "product_draw_prop_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(layeredResetFields,
+                              "product_draw_prop_tile_count", "14") &&
+      iggy3d::smoke::hasField(layeredResetFields,
+                              "product_render_bridge_prop_visible", "true") &&
+      iggy3d::smoke::hasField(layeredResetFields,
+                              "product_render_bridge_prop_tile_count", "14");
+
   const bool passed =
-      scriptedControlsPassed && clamberControlsPassed && wallJumpControlsPassed;
+      scriptedControlsPassed && clamberControlsPassed && wallJumpControlsPassed &&
+      layeredResetControlsPassed;
 
   std::cout << "smoke=product_gameplay_controls\n";
   std::cout << "receipt_valid=" << (receiptValid ? "true" : "false") << "\n";
@@ -408,6 +481,10 @@ int main() {
   std::cout << "movement_gym_wall_jump="
             << (wallJumpControlsPassed ? "true" : "false") << "\n";
   std::cout << "movement_gym_wall_jump_exit_code=" << wallJumpExitCode << "\n";
+  std::cout << "layered_jump_gym_reset="
+            << (layeredResetControlsPassed ? "true" : "false") << "\n";
+  std::cout << "layered_jump_gym_reset_exit_code=" << layeredResetExitCode
+            << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result=" << (passed ? "pass" : (appBuilt ? "fail" : "skip")) << "\n";
   std::cout << "reason_code="
