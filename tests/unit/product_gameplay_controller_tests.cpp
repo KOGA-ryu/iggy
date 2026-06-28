@@ -53,6 +53,12 @@ bool nearlyEqual(float lhs, float rhs, float epsilon = 0.0001F) {
   return std::fabs(lhs - rhs) <= epsilon;
 }
 
+float horizontalDistance(iggy3d::Vec3 lhs, iggy3d::Vec3 rhs) {
+  const float deltaX = rhs.x - lhs.x;
+  const float deltaZ = rhs.z - lhs.z;
+  return std::sqrt(deltaX * deltaX + deltaZ * deltaZ);
+}
+
 iggy3d::ProductAppWindowState makeGameplayWindow(
     std::optional<iggy3d::Session>& session) {
   iggy3d::ProductAppWindowState window;
@@ -302,6 +308,17 @@ iggy3d::ActionState jumpActions() {
   return actions;
 }
 
+iggy3d::ActionState jumpForwardActions() {
+  iggy3d::ActionState actions = forwardMoveActions();
+  iggy3d::recordAction(actions,
+                       iggy3d::InputAction::PlayerJump,
+                       true,
+                       true,
+                       false,
+                       1.0F);
+  return actions;
+}
+
 iggy3d::ActionState dashActions(float moveX = 0.0F, float moveY = 0.0F) {
   iggy3d::ActionState actions = manualMoveActions(moveX, moveY);
   iggy3d::recordAction(actions,
@@ -509,6 +526,45 @@ bool productJumpRaisesPlayerAndRecordsProof() {
          expect(window.gameplayJumpVelocityMetersPerSecond <
                     kExpectedManualFirstPersonJumpImpulseMetersPerSecond,
                 "jump velocity reduced by gravity");
+}
+
+bool productJumpCanMoveForwardInSameFrame() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "jump move session created")) {
+    return false;
+  }
+
+  const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpForwardActions(),
+                                      window,
+                                      "unit/gameplay_controller_jump_forward");
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+
+  return expect(window.gameplayJumpRequested, "jump forward jump requested") &&
+         expect(window.gameplayJumpAccepted, "jump forward jump accepted") &&
+         expect(window.gameplayJumpActive, "jump forward remains airborne") &&
+         expect(window.gameplayJumpStatus == "airborne",
+                "jump forward jump airborne") &&
+         expect(window.gameplayMovementAttempted,
+                "jump forward movement attempted") &&
+         expect(window.gameplayMovementStatus == "moved",
+                "jump forward movement status") &&
+         expect(window.gameplayMovementDebugAvailable,
+                "jump forward movement debug") &&
+         expect(window.gameplayMovementReasonCode == "airborne_manual_move",
+                "jump forward movement reason") &&
+         expect(window.gameplayMovementPolicyBand == "airborne",
+                "jump forward movement policy") &&
+         expect(!window.gameplayCommandSubmitted,
+                "jump forward avoids grounded command") &&
+         expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
+                            kExpectedManualFirstPersonStepMeters),
+                "jump forward horizontal step") &&
+         expect(final.y > start.y, "jump forward raises y") &&
+         expect(final.z < start.z, "jump forward moves z") &&
+         expect(nearlyEqual(final.x, start.x), "jump forward keeps x");
 }
 
 bool productJumpUsesClamberTraversalWhenCandidateIsLocal() {
@@ -737,6 +793,7 @@ bool productDashMovesForwardAndRecordsProof() {
                                       window,
                                       "unit/gameplay_controller_dash");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+  const float appliedDistance = horizontalDistance(start, final);
 
   return expect(window.gameplayDashRequested, "dash requested") &&
          expect(window.gameplayDashAccepted, "dash accepted") &&
@@ -749,18 +806,18 @@ bool productDashMovesForwardAndRecordsProof() {
                             kExpectedManualFirstPersonDashDistanceMeters),
                 "dash distance proof") &&
          expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
-                            kExpectedManualFirstPersonDashDistanceMeters),
-                "dash movement distance") &&
+                            appliedDistance),
+                "dash movement distance matches applied movement") &&
+         expect(window.gameplayMovementHorizontalDistanceMeters <=
+                    kExpectedManualFirstPersonDashDistanceMeters,
+                "dash movement distance within requested dash") &&
          expect(window.gameplayDashCooldownRemainingSeconds > 0.0F,
                 "dash cooldown set") &&
          expect(nearlyEqual(window.gameplayDashDirectionX, 0.0F),
                 "dash direction x") &&
          expect(nearlyEqual(window.gameplayDashDirectionZ, -1.0F),
                 "dash direction z") &&
-         expect(nearlyEqual(final.x - start.x, 0.0F), "dash x unchanged") &&
-         expect(nearlyEqual(final.z - start.z,
-                            -kExpectedManualFirstPersonDashDistanceMeters),
-                "dash moves camera forward");
+         expect(nearlyEqual(final.x - start.x, 0.0F), "dash x unchanged");
 }
 
 bool productDashUsesMoveIntentDirection() {
@@ -776,15 +833,19 @@ bool productDashUsesMoveIntentDirection() {
                                       window,
                                       "unit/gameplay_controller_dash_right");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+  const float appliedDistance = horizontalDistance(start, final);
 
   return expect(window.gameplayDashAccepted, "dash right accepted") &&
          expect(nearlyEqual(window.gameplayDashDirectionX, 1.0F),
                 "dash right direction x") &&
          expect(nearlyEqual(window.gameplayDashDirectionZ, 0.0F),
                 "dash right direction z") &&
-         expect(nearlyEqual(final.x - start.x,
-                            kExpectedManualFirstPersonDashDistanceMeters),
-                "dash right moves x") &&
+         expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
+                            appliedDistance),
+                "dash right distance matches applied movement") &&
+         expect(window.gameplayMovementHorizontalDistanceMeters <=
+                    kExpectedManualFirstPersonDashDistanceMeters,
+                "dash right distance within requested dash") &&
          expect(nearlyEqual(final.z - start.z, 0.0F), "dash right z unchanged");
 }
 
@@ -926,6 +987,7 @@ int main() {
                   productMoveNormalizesDiagonalToTunedStep() &&
                   productSprintUsesSprintProfileAndStep() &&
                   productJumpRaisesPlayerAndRecordsProof() &&
+                  productJumpCanMoveForwardInSameFrame() &&
                   productJumpUsesClamberTraversalWhenCandidateIsLocal() &&
                   productJumpUsesWallJumpWhenAirborneNearWall() &&
                   productJumpRejectsWallJumpNearGenericWall() &&

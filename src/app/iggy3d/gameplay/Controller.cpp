@@ -722,6 +722,77 @@ Vec3 manualFirstPersonMoveDelta(float moveX,
   return (right * moveX + forward * moveY) * (scale * stepMeters);
 }
 
+void recordProductAirborneMovementDebug(ProductAppWindowState& window,
+                                        Vec3 start,
+                                        Vec3 finalPosition) {
+  const MovementTravelFacts facts =
+      computeMovementTravelFacts(start, finalPosition);
+  window.gameplayMovementDebugAvailable = true;
+  window.gameplayMovementReasonCode = "airborne_manual_move";
+  window.gameplayMovementBlockedReason = "movement_ok";
+  window.gameplayMovementHitSurfaceId = "none";
+  window.gameplayMovementGroundSnapApplied = false;
+  window.gameplayMovementClamped = false;
+  window.gameplayMovementSlid = false;
+  window.gameplayMovementCollisionSweepCount = 0;
+  window.gameplayMovementPolicyBand = "airborne";
+  window.gameplayMovementSlopeTravelDirection =
+      movementTravelDirectionName(facts.direction);
+  window.gameplayMovementSlopeAngleDegrees = 0.0F;
+  window.gameplayMovementSpeedMultiplier = 1.0F;
+  window.gameplayMovementStartX = start.x;
+  window.gameplayMovementStartY = start.y;
+  window.gameplayMovementStartZ = start.z;
+  window.gameplayMovementFinalX = finalPosition.x;
+  window.gameplayMovementFinalY = finalPosition.y;
+  window.gameplayMovementFinalZ = finalPosition.z;
+  window.gameplayMovementHorizontalDistanceMeters = facts.horizontalDistanceMeters;
+  window.gameplayMovementVerticalDeltaMeters = facts.verticalDeltaMeters;
+  window.gameplayMovementGradePercent = facts.gradePercent;
+}
+
+void submitProductAirborneMove(Session& session,
+                               ProductAppWindowState& window,
+                               const EntityState& actor,
+                               float moveX,
+                               float moveY,
+                               bool sprinting,
+                               std::string_view source) {
+  window.gameplayInputUsed = true;
+  window.gameplayInputSource = std::string{source};
+  window.gameplayCommandSubmitted = false;
+  window.gameplayCommandKind = "move";
+  window.gameplayCommandAccepted = false;
+  window.gameplayCommandStatus = "airborne";
+  window.gameplayReachGate = "not_attempted";
+  window.gameplayLastRejection = "none";
+  window.gameplayTickAdvanced = false;
+  window.gameplayMovementAttempted = true;
+  window.gameplayMovementBlocked = false;
+  recordProductMovementProfile(window, sprinting);
+
+  const Vec3 start = actor.transform.position;
+  const Vec3 finalPosition =
+      start +
+      manualFirstPersonMoveDelta(moveX,
+                                 moveY,
+                                 window.viewport.cameraYawDegrees,
+                                 sprinting);
+  // branch-gate: BG-1161
+  if (!setProductPlayerPosition(session, actor.id, finalPosition)) {
+    window.gameplayMovementBlocked = true;
+    window.gameplayMovementStatus = "mutation_failed";
+    window.gameplayCommandStatus = "mutation_failed";
+    window.gameplayMovementReasonCode = "airborne_manual_move_mutation_failed";
+    return;
+  }
+
+  window.gameplayMovementStatus = "moved";
+  window.playerPositionChanged = true;
+  recordProductAirborneMovementDebug(window, start, finalPosition);
+  window.runtimeStateHash = session.stateHash();
+}
+
 bool productMovementDebugChangedPosition(const ProductAppWindowState& window) {
   if (!window.gameplayMovementDebugAvailable) {
     return false;
@@ -1020,6 +1091,13 @@ void submitProductMove(Session& session,
     return;
   }
   recordProductMovementProfile(window, sprinting);
+  // Jump/fall owns vertical motion. While airborne, apply manual X/Z intent
+  // directly so holding movement with jump does not get snapped back to ground.
+  // branch-gate: BG-1161
+  if (window.gameplayJumpActive) {
+    submitProductAirborneMove(session, window, *actor, moveX, moveY, sprinting, source);
+    return;
+  }
   Vec3 destination = actor->transform.position;
   destination = destination + manualFirstPersonMoveDelta(
                                   moveX,
