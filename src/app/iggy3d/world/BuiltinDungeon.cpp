@@ -83,7 +83,7 @@ constexpr std::string_view kObjectCrateRoomText =
 
 constexpr std::string_view kMovementGymText =
     "###################\n"
-    "#P....C....L.....E#\n"
+    "#P.CK......L.....E#\n"
     "#.................#\n"
     "#.....C......L....#\n"
     "###################\n";

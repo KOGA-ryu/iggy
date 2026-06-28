@@ -81,7 +81,7 @@ constexpr ExpectedDungeonCounts kExpectedDungeons[] = {
     {"physics_wall_corridor", 9U, 5U, 14U, 31U, 0U, 4U, 76U, 14U, 31U, 31U},
     {"physics_corner_slide", 8U, 5U, 14U, 26U, 0U, 3U, 66U, 14U, 26U, 26U},
     {"object_crate_room", 7U, 5U, 15U, 20U, 1U, 2U, 57U, 15U, 21U, 21U},
-    {"movement_gym", 19U, 5U, 51U, 44U, 4U, 2U, 149U, 53U, 48U, 48U},
+    {"movement_gym", 19U, 5U, 51U, 44U, 4U, 3U, 149U, 53U, 48U, 48U},
 };
 
 const ExpectedDungeonCounts* expectedCountsFor(std::string_view roomId) {
@@ -406,7 +406,7 @@ bool movementGymBuildsScaledJumpAndClamberObjects() {
   const iggy3d::SpatialSurfaceSet* surfaces =
       iggy3d::productActiveRoomCollisionSurfaces(collision);
   const iggy3d::RoomStaticMeshAsset* crate =
-      findMesh(active.room, "object_crate_r1_c6");
+      findMesh(active.room, "object_crate_r1_c3");
   const iggy3d::RoomStaticMeshAsset* ledge =
       findMesh(active.room, "object_clamber_ledge_r1_c11");
   const iggy3d::MovementTraversalSlotRegistry slots =

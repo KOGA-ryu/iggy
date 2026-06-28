@@ -326,6 +326,14 @@ int main() {
       std::filesystem::temp_directory_path() /
       ("iggy3d_product_gameplay_tape_" +
        iggy3d::smoke::uniqueCaseToken("object_crate_tape.txt"));
+  const std::filesystem::path movementGymControlPath =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_product_gameplay_tape_" +
+       iggy3d::smoke::uniqueCaseToken("movement_gym_control.txt"));
+  const std::filesystem::path movementGymTapePath =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_product_gameplay_tape_" +
+       iggy3d::smoke::uniqueCaseToken("movement_gym_tape.txt"));
   const std::filesystem::path saveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape");
   const std::filesystem::path physicsSaveRoot =
@@ -338,6 +346,8 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("gameplay_tape_physics_corner_slide");
   const std::filesystem::path objectCrateSaveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape_object_crate_room");
+  const std::filesystem::path movementGymSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("gameplay_tape_movement_gym");
   const std::filesystem::path wallSaveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape_wall_collision");
   const std::filesystem::path npcSaveRoot =
@@ -445,6 +455,16 @@ int main() {
   const bool objectCrateTapeGenerated =
       iggy3d::smoke::writeTextFile(objectCrateTapePath,
                                    "move marker_exit_r1_c4\n");
+  const bool movementGymControlGenerated = iggy3d::smoke::writeTextFile(
+      movementGymControlPath,
+      "frontend.select=new_world\n"
+      "frontend.execute=true\n"
+      "world.dungeon_id=movement_gym\n"
+      "gameplay.physics_movement=true\n"
+      "world.create=true\n");
+  const bool movementGymTapeGenerated =
+      iggy3d::smoke::writeTextFile(movementGymTapePath,
+                                   "move marker_key_r1_c4\n");
 
   int exitCode = 77;
   iggy3d::smoke::ReceiptFields fields;
@@ -538,6 +558,21 @@ int main() {
               iggy3d::smoke::saveRootArg(objectCrateSaveRoot),
           objectCrateFields,
           objectCrateExitCode);
+
+  int movementGymExitCode = 77;
+  iggy3d::smoke::ReceiptFields movementGymFields;
+  const bool movementGymReceiptValid =
+      appAvailable && movementGymControlGenerated && movementGymTapeGenerated &&
+      iggy3d::smoke::runProductReceiptCase(
+          binary,
+          "product_gameplay_tape_movement_gym",
+          std::string{"--automation-control "} +
+              iggy3d::smoke::shellQuote(movementGymControlPath) +
+              " --debug-overlay --gameplay-tape " +
+              iggy3d::smoke::shellQuote(movementGymTapePath) + " " +
+              iggy3d::smoke::saveRootArg(movementGymSaveRoot),
+          movementGymFields,
+          movementGymExitCode);
 
   int wallExitCode = 77;
   iggy3d::smoke::ReceiptFields wallFields;
@@ -905,6 +940,62 @@ int main() {
           "product_render_bridge_physics_contact_normal_debug_count") &&
       iggy3d::smoke::hasField(objectCrateFields, "session_outcome", "None");
 
+  const bool movementGymCollisionPassed =
+      movementGymExitCode == 0 && movementGymReceiptValid &&
+      selectedPhysicsRoomTapePassed(movementGymFields,
+                                    "movement_gym",
+                                    "149",
+                                    "marker_key_r1_c4") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "active_room_authored_object_count",
+                              "4") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "active_room_authored_marker_count",
+                              "3") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "active_room_collision_walkable_surface_count",
+                              "53") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "active_room_collision_actor_blocker_count",
+                              "48") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "active_room_collision_projectile_blocker_count",
+                              "48") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "product_draw_prop_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "product_draw_prop_tile_count",
+                              "4") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "product_render_bridge_prop_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "product_render_bridge_prop_tile_count",
+                              "4") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "gameplay_movement_status",
+                              "moved") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "gameplay_movement_blocked",
+                              "false") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "gameplay_movement_clamped",
+                              "true") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "gameplay_movement_slid",
+                              "false") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "gameplay_movement_hit_surface_id",
+                              "object_crate_r1_c3_actor_blocker") &&
+      iggy3d::smoke::positiveIntegerField(
+          movementGymFields,
+          "product_draw_physics_contact_normal_debug_count") &&
+      iggy3d::smoke::positiveIntegerField(
+          movementGymFields,
+          "product_render_bridge_physics_contact_normal_debug_count") &&
+      iggy3d::smoke::hasField(movementGymFields, "session_outcome", "None");
+
   const bool wallPassed =
       wallExitCode == 0 && wallReceiptValid &&
       iggy3d::smoke::productReceipt(wallFields) &&
@@ -1234,6 +1325,14 @@ int main() {
                          "object crate room receipt valid") &&
                   expect(objectCrateCollisionPassed,
                          "product selectable object crate collision pass") &&
+                  expect(movementGymControlGenerated,
+                         "movement gym control generated") &&
+                  expect(movementGymTapeGenerated,
+                         "movement gym tape generated") &&
+                  expect(movementGymReceiptValid,
+                         "movement gym receipt valid") &&
+                  expect(movementGymCollisionPassed,
+                         "product selectable movement gym collision pass") &&
                   expect(wallReceiptValid, "wall receipt valid") &&
                   expect(wallPassed, "product package wall collision pass") &&
                   expect(npcReceiptValid, "npc receipt valid") &&
@@ -1257,6 +1356,8 @@ int main() {
             << (physicsCornerReceiptValid ? "true" : "false") << "\n";
   std::cout << "object_crate_room_receipt_valid="
             << (objectCrateReceiptValid ? "true" : "false") << "\n";
+  std::cout << "movement_gym_receipt_valid="
+            << (movementGymReceiptValid ? "true" : "false") << "\n";
   std::cout << "wall_receipt_valid=" << (wallReceiptValid ? "true" : "false") << "\n";
   std::cout << "npc_receipt_valid=" << (npcReceiptValid ? "true" : "false") << "\n";
   std::cout << "passive_npc_receipt_valid="
