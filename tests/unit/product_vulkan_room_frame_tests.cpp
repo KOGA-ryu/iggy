@@ -249,6 +249,10 @@ bool productGameplayBuildsFirstPersonRoomFrame() {
   ok = expect(frame.physicsHud.status == "not_requested",
               "physics debug HUD not requested") &&
        ok;
+  ok = expect(!frame.positionHud.visible, "position HUD hidden by default") && ok;
+  ok = expect(frame.positionHud.status == "not_requested",
+              "position HUD default not requested") &&
+       ok;
   return ok;
 }
 
@@ -310,6 +314,15 @@ bool productGameplayDefaultOverlayKeepsDebugHudsCleanWithData() {
   ok = expect(!frame.drawList.physicsDebugVisible,
               "default overlay hides physics debug geometry") &&
        ok;
+  ok = expect(!frame.positionHud.visible,
+              "default overlay hides position HUD") &&
+       ok;
+  ok = expect(frame.positionHud.debugAvailable,
+              "hidden position HUD keeps projection availability") &&
+       ok;
+  ok = expect(frame.positionHud.status == "not_requested",
+              "hidden position HUD status is gated") &&
+       ok;
   ok = expect(iggy3d::hasReceiptField(receipt,
                                       "movement_debug_hud_visible",
                                       "false"),
@@ -344,6 +357,16 @@ bool productGameplayDefaultOverlayKeepsDebugHudsCleanWithData() {
                                       "physics_debug_hud_status",
                                       "not_requested"),
               "receipt clean physics HUD status") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "position_hud_visible",
+                                      "false"),
+              "receipt position HUD hidden") &&
+       ok;
+  ok = expect(iggy3d::hasReceiptField(receipt,
+                                      "position_hud_status",
+                                      "not_requested"),
+              "receipt position HUD not requested") &&
        ok;
   return ok;
 }
@@ -479,6 +502,23 @@ bool productPhysicsDebugHudReadyFromMovementStats() {
        ok;
   ok = expect(!window.physicsDebugHudHasWarnings,
               "window physics HUD no warnings") &&
+       ok;
+  ok = expect(frame.positionHud.visible, "ready position HUD visible") && ok;
+  ok = expect(frame.positionHud.status == "position_hud_ready",
+              "ready position HUD status") &&
+       ok;
+  ok = expect(frame.positionHud.playerPositionAvailable,
+              "ready position HUD has player position") &&
+       ok;
+  ok = expect(frame.positionHud.lines.size() == 3U,
+              "ready position HUD line count") &&
+       ok;
+  ok = expect(window.positionHudVisible, "window position HUD visible") && ok;
+  ok = expect(window.positionHudLineCount == 3U,
+              "window position HUD line count") &&
+       ok;
+  ok = expect(window.positionHudFacing == "north",
+              "window position HUD facing") &&
        ok;
   return ok;
 }

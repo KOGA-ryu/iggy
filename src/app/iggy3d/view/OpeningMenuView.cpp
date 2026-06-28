@@ -21,6 +21,7 @@
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
+#include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/view/ViewportFraming.hpp"
@@ -537,6 +538,34 @@ void drawRoomEditorHud(SDL_Renderer& renderer,
   }
 }
 
+void drawPositionHud(SDL_Renderer& renderer,
+                     const PositionHud* hud) {
+  // branch-gate: BG-1192
+  if (hud == nullptr || !hud->visible) {
+    return;
+  }
+
+  setColor(renderer, 14, 21, 23);
+  fillRect(renderer, 88.0F, 572.0F, 360.0F, 54.0F);
+
+  float y = 582.0F;
+  std::uint64_t drawn = 0;
+  for (const PositionHudLine& line : hud->lines) {
+    // branch-gate: BG-1192
+    if (!line.visible) {
+      continue;
+    }
+    // branch-gate: BG-1192
+    if (drawn >= 3U) {
+      break;
+    }
+    setColor(renderer, 226, 230, 211);
+    drawText(renderer, line.text, 100.0F, y, 1.0F);
+    y += 16.0F;
+    ++drawn;
+  }
+}
+
 std::string roundedDegrees(float value) {
   return std::to_string(static_cast<int>(std::lround(value)));
 }
@@ -1039,6 +1068,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
                        const MovementDebugHud* movementHud,
                        const NpcBehaviorDebugHud* npcHud,
                        const PhysicsDebugHud* physicsHud,
+                       const PositionHud* positionHud,
                        const ProductRoomEditorHud* roomEditorHud,
                        std::size_t sceneItemCount,
                        const DebugProjectionResult* debug,
@@ -1066,6 +1096,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   drawNpcBehaviorDebugHud(renderer, npcHud);
   drawPhysicsDebugHud(renderer, physicsHud);
   drawRoomEditorHud(renderer, roomEditorHud);
+  drawPositionHud(renderer, positionHud);
   drawGameplayFeedback(renderer, feedback);
   drawText(renderer, "RUNTIME OWNS GAME STATE", 88.0F, 630.0F, 2.0F);
   drawText(renderer, "STATE HASH", 480.0F, 630.0F, 2.0F);
@@ -1252,6 +1283,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const MovementDebugHud* movementHud,
                                          const NpcBehaviorDebugHud* npcHud,
                                          const PhysicsDebugHud* physicsHud,
+                                         const PositionHud* positionHud,
                                          const ProductRoomEditorHud* roomEditorHud,
                                          std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,
@@ -1265,8 +1297,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
     state.cameraHeadingDrawn =
         drawGameplayPanel(renderer, runtimeStateHash, frame, feedback,
                           interactionModeHud, topDownMapOverlay, movementHud, npcHud,
-                          physicsHud, roomEditorHud, sceneItemCount, debug, cameraYawDegrees,
-                          cameraPitchDegrees);
+                          physicsHud, positionHud, roomEditorHud, sceneItemCount, debug,
+                          cameraYawDegrees, cameraPitchDegrees);
     SDL_RenderPresent(&renderer);
     state.textDrawn = true;
     return state;

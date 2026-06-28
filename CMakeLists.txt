@@ -61,6 +61,7 @@ target_sources(iggy3d
     src/app/iggy3d/debug/MovementDebugHud.cpp
     src/app/iggy3d/debug/NpcBehaviorDebugHud.cpp
     src/app/iggy3d/debug/PhysicsDebugHud.cpp
+    src/app/iggy3d/debug/PositionHud.cpp
     src/app/iggy3d/world/PackageSessionSeed.cpp
     src/app/iggy3d/Operations.cpp
     src/app/iggy3d/Options.cpp

@@ -189,3 +189,5 @@ BG-1188	src/app/iggy3d/gameplay/Controller.cpp	product ledge fall move fallback 
 BG-1189	src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp	ASCII reset zone visible marker mesh policy	codex	2026-06-28
 BG-1190	src/app/iggy3d/view/PrimitiveDrawList.cpp	product primitive reset zone prop styling policy	codex	2026-06-28
 BG-1191	src/runtime/collision/CollisionQuery.cpp	collision ground height at-or-below stacked floor policy	codex	2026-06-28
+BG-1192	src/app/iggy3d/view/OpeningMenuView.cpp	compact position HUD draw visibility and row cap policy	codex	2026-06-28
+BG-1193	src/app/iggy3d/debug/PositionHud.cpp	compact position HUD model validation and facing bucket policy	codex	2026-06-28

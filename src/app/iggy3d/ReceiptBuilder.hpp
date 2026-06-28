@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/input/InputAction.hpp"
@@ -273,6 +275,22 @@ struct ProductAppWindowState {
   std::string physicsDebugHudStatus = "not_requested";
   std::string physicsDebugHudReasonCode = "not_requested";
   bool physicsDebugHudHasWarnings = false;
+  bool positionHudVisible = false;
+  bool positionHudDebugAvailable = false;
+  std::uint64_t positionHudLineCount = 0;
+  std::string positionHudStatus = "not_requested";
+  std::string positionHudReasonCode = "not_requested";
+  bool positionHudPlayerPositionAvailable = false;
+  float positionHudWorldX = 0.0F;
+  float positionHudWorldY = 0.0F;
+  float positionHudWorldZ = 0.0F;
+  std::int64_t positionHudGridX = 0;
+  std::int64_t positionHudGridY = 0;
+  std::int64_t positionHudGridZ = 0;
+  std::int64_t positionHudLayerIndex = 0;
+  std::string positionHudFacing = "north";
+  float positionHudYawDegrees = 0.0F;
+  float positionHudPitchDegrees = 0.0F;
   bool playerVisible = false;
   bool roomVisible = false;
   bool objectiveVisible = false;

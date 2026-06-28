@@ -221,6 +221,26 @@ void copyPhysicsDebugHud(ProductAppWindowState& window,
   window.physicsDebugHudHasWarnings = hud.hasWarnings;
 }
 
+void copyPositionHud(ProductAppWindowState& window,
+                     const PositionHud& hud) {
+  window.positionHudVisible = hud.visible;
+  window.positionHudDebugAvailable = hud.debugAvailable;
+  window.positionHudLineCount = static_cast<std::uint64_t>(hud.lineCount);
+  window.positionHudStatus = hud.status;
+  window.positionHudReasonCode = hud.reasonCode;
+  window.positionHudPlayerPositionAvailable = hud.playerPositionAvailable;
+  window.positionHudWorldX = hud.worldX;
+  window.positionHudWorldY = hud.worldY;
+  window.positionHudWorldZ = hud.worldZ;
+  window.positionHudGridX = hud.gridX;
+  window.positionHudGridY = hud.gridY;
+  window.positionHudGridZ = hud.gridZ;
+  window.positionHudLayerIndex = hud.layerIndex;
+  window.positionHudFacing = hud.facing;
+  window.positionHudYawDegrees = hud.yawDegrees;
+  window.positionHudPitchDegrees = hud.pitchDegrees;
+}
+
 void copyProductRoomEditorOverlay(ProductAppWindowState& window,
                                   const ProductRoomEditorOverlay& overlay) {
   window.roomEditorOverlayVisible = overlay.visible;
@@ -507,6 +527,15 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                                  request.developerToolsEnabled,
                                                  request.debugOverlayEnabled);
   copyPhysicsDebugHud(window, frame.physicsHud);
+  frame.positionHud = buildPositionHud(
+      PositionHudRequest{nullptr,
+                         window.gameplayActive,
+                         window.roomEditing.ready,
+                         request.developerToolsEnabled,
+                         request.debugOverlayEnabled,
+                         window.viewport.cameraYawDegrees,
+                         window.viewport.cameraPitchDegrees});
+  copyPositionHud(window, frame.positionHud);
   frame.roomEditorOverlay =
       buildProductRoomEditorOverlay(window.roomEditorCursor, false);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
@@ -590,6 +619,15 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                                  request.developerToolsEnabled,
                                                  request.debugOverlayEnabled);
   copyPhysicsDebugHud(window, frame.physicsHud);
+  frame.positionHud = buildPositionHud(
+      PositionHudRequest{&frame.scene,
+                         window.gameplayActive,
+                         window.roomEditing.ready,
+                         request.developerToolsEnabled,
+                         request.debugOverlayEnabled,
+                         window.viewport.cameraYawDegrees,
+                         window.viewport.cameraPitchDegrees});
+  copyPositionHud(window, frame.positionHud);
   frame.renderBridge =
       buildProductRenderBridgeFrame(&frame.drawList, &frame.viewportFrame,
                                     &frame.feedback);

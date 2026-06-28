@@ -909,6 +909,38 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      physicsHud.reasonCode);
   appendReceiptField(receipt, "physics_debug_hud_has_warnings",
                      physicsHud.hasWarnings);
+  appendReceiptField(receipt, "position_hud_visible",
+                     window.positionHudVisible);
+  appendReceiptField(receipt, "position_hud_line_count",
+                     window.positionHudLineCount);
+  appendReceiptField(receipt, "position_hud_debug_available",
+                     window.positionHudDebugAvailable);
+  appendReceiptField(receipt, "position_hud_status",
+                     window.positionHudStatus);
+  appendReceiptField(receipt, "position_hud_reason_code",
+                     window.positionHudReasonCode);
+  appendReceiptField(receipt, "position_hud_player_position_available",
+                     window.positionHudPlayerPositionAvailable);
+  appendReceiptField(receipt, "position_hud_world_x",
+                     floatReceiptValue(window.positionHudWorldX));
+  appendReceiptField(receipt, "position_hud_world_y",
+                     floatReceiptValue(window.positionHudWorldY));
+  appendReceiptField(receipt, "position_hud_world_z",
+                     floatReceiptValue(window.positionHudWorldZ));
+  appendReceiptField(receipt, "position_hud_grid_x",
+                     std::to_string(window.positionHudGridX));
+  appendReceiptField(receipt, "position_hud_grid_y",
+                     std::to_string(window.positionHudGridY));
+  appendReceiptField(receipt, "position_hud_grid_z",
+                     std::to_string(window.positionHudGridZ));
+  appendReceiptField(receipt, "position_hud_layer_index",
+                     std::to_string(window.positionHudLayerIndex));
+  appendReceiptField(receipt, "position_hud_facing",
+                     window.positionHudFacing);
+  appendReceiptField(receipt, "position_hud_yaw_degrees",
+                     floatReceiptValue(window.positionHudYawDegrees));
+  appendReceiptField(receipt, "position_hud_pitch_degrees",
+                     floatReceiptValue(window.positionHudPitchDegrees));
   appendReceiptField(receipt, "gameplay_collision_surfaces_used",
                      window.gameplayCollisionSurfacesUsed);
   appendReceiptField(receipt, "gameplay_collision_surface_count",

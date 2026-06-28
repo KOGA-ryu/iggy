@@ -13,6 +13,7 @@
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
+#include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/Options.hpp"
@@ -89,6 +90,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const MovementDebugHud* movementHud,
                                          const NpcBehaviorDebugHud* npcHud,
                                          const PhysicsDebugHud* physicsHud,
+                                         const PositionHud* positionHud,
                                          const ProductRoomEditorHud* roomEditorHud,
                                          std::size_t sceneItemCount,
                                          const DebugProjectionResult* debug,

@@ -8,6 +8,7 @@
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
+#include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/view/RenderBridge.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
@@ -48,6 +49,7 @@ struct ProductGameplayProjectionFrame {
   MovementDebugHud movementHud;
   NpcBehaviorDebugHud npcBehaviorHud;
   PhysicsDebugHud physicsHud;
+  PositionHud positionHud;
   ProductRoomEditorHud roomEditorHud;
   ProductRoomEditorOverlay roomEditorOverlay;
   ProductRoomEditorPreviewOverlay roomEditorPreviewOverlay;

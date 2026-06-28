@@ -214,6 +214,7 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           &request.projectionFrame.movementHud,
                           &request.projectionFrame.npcBehaviorHud,
                           &request.projectionFrame.physicsHud,
+                          &request.projectionFrame.positionHud,
                           &request.projectionFrame.roomEditorHud,
                           request.projectionFrame.sceneItemCount,
                           request.projectionFrame.debugPtr(),

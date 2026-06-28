@@ -173,6 +173,8 @@ int main() {
       hasField(fields, "npc_behavior_debug_hud_status", "not_requested") &&
       hasField(fields, "physics_debug_hud_visible", "false") &&
       hasField(fields, "physics_debug_hud_status", "not_requested") &&
+      hasField(fields, "position_hud_visible", "false") &&
+      hasField(fields, "position_hud_status", "not_requested") &&
       hasField(fields,
                "gameplay_movement_profile",
                std::string{tuning.walkProfile}) &&
@@ -454,6 +456,10 @@ int main() {
                               "true") &&
       iggy3d::smoke::hasField(layeredWalkFields,
                               "gameplay_movement_final_y", "0.000") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "position_hud_visible",
+                              "false") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "position_hud_status",
+                              "not_requested") &&
       iggy3d::smoke::hasField(layeredWalkFields, "player_position_changed",
                               "true");
 
