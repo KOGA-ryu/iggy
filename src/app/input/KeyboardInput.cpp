@@ -22,6 +22,12 @@ struct KeyboardRoomEditorActionBinding {
   float value;
 };
 
+struct KeyboardMenuActionBinding {
+  bool KeyboardMenuInputSample::* down = nullptr;
+  bool KeyboardInputState::* wasDown = nullptr;
+  NeutralInput input = NeutralInput::None;
+};
+
 constexpr std::array kKeyboardRoomEditorActionBindings{
     KeyboardRoomEditorActionBinding{&KeyboardRoomEditorInputSample::upDown,
                                     &KeyboardInputState::editorUpWasDown,
@@ -96,6 +102,45 @@ constexpr std::array kKeyboardRoomEditorActionBindings{
                                     1.0F},
 };
 
+static constexpr std::array kKeyboardMenuActionBindings{
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::debugOverlayDown,
+                              &KeyboardInputState::debugOverlayWasDown,
+                              NeutralInput::KeyF3},
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::movementTuningToggleDown,
+                              &KeyboardInputState::movementTuningToggleWasDown,
+                              NeutralInput::KeyF4},
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::devToggleDown,
+                              &KeyboardInputState::devToggleWasDown,
+                              NeutralInput::KeyF1},
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::devCollisionOverlayDown,
+                              &KeyboardInputState::devCollisionOverlayWasDown,
+                              NeutralInput::KeyF2},
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::mapMakerToggleDown,
+                              &KeyboardInputState::mapMakerToggleWasDown,
+                              NeutralInput::KeyM},
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::upDown,
+                              &KeyboardInputState::upWasDown,
+                              NeutralInput::KeyUp},
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::downDown,
+                              &KeyboardInputState::downWasDown,
+                              NeutralInput::KeyDown},
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::leftDown,
+                              &KeyboardInputState::leftWasDown,
+                              NeutralInput::KeyLeft},
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::rightDown,
+                              &KeyboardInputState::rightWasDown,
+                              NeutralInput::KeyRight},
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::confirmDown,
+                              &KeyboardInputState::confirmWasDown,
+                              NeutralInput::KeyEnter},
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::backDown,
+                              &KeyboardInputState::backWasDown,
+                              NeutralInput::KeyEscape},
+    KeyboardMenuActionBinding{&KeyboardMenuInputSample::tabDown,
+                              &KeyboardInputState::tabWasDown,
+                              NeutralInput::KeyTab},
+};
+
 #if defined(IGGY3D_HAS_SDL3)
 bool keyDown(const bool* keys, SDL_Scancode scanCode) {
   return keys != nullptr && keys[scanCode];
@@ -104,66 +149,39 @@ bool keyDown(const bool* keys, SDL_Scancode scanCode) {
 
 }  // namespace
 
+InputAction recordKeyboardMenuAction(KeyboardInputState& state,
+                                     const KeyboardMenuInputSample& sample) {
+  InputAction action = InputAction::None;
+  for (const KeyboardMenuActionBinding& binding : kKeyboardMenuActionBindings) {
+    const bool down = sample.*binding.down;
+    // branch-gate: BG-1037
+    if (action == InputAction::None && down && !(state.*binding.wasDown)) {
+      action = actionForInput(binding.input);
+    }
+  }
+  for (const KeyboardMenuActionBinding& binding : kKeyboardMenuActionBindings) {
+    state.*binding.wasDown = sample.*binding.down;
+  }
+  return action;
+}
+
 InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
 #if defined(IGGY3D_HAS_SDL3)
   const bool* keys = SDL_GetKeyboardState(nullptr);
-  const bool upDown = keyDown(keys, SDL_SCANCODE_UP) || keyDown(keys, SDL_SCANCODE_W);
-  const bool downDown = keyDown(keys, SDL_SCANCODE_DOWN) || keyDown(keys, SDL_SCANCODE_S);
-  const bool leftDown = keyDown(keys, SDL_SCANCODE_LEFT) || keyDown(keys, SDL_SCANCODE_A);
-  const bool rightDown = keyDown(keys, SDL_SCANCODE_RIGHT) || keyDown(keys, SDL_SCANCODE_D);
-  const bool confirmDown = keyDown(keys, SDL_SCANCODE_RETURN) || keyDown(keys, SDL_SCANCODE_SPACE);
-  const bool backDown = keyDown(keys, SDL_SCANCODE_ESCAPE);
-  const bool tabDown = keyDown(keys, SDL_SCANCODE_TAB);
-  const bool devToggleDown = keyDown(keys, SDL_SCANCODE_F1);
-  const bool devCollisionOverlayDown = keyDown(keys, SDL_SCANCODE_F2);
-  const bool debugOverlayDown = keyDown(keys, SDL_SCANCODE_F3);
-  const bool movementTuningToggleDown = keyDown(keys, SDL_SCANCODE_F4);
-  const bool mapMakerToggleDown = keyDown(keys, SDL_SCANCODE_M);
-
-  InputAction action = InputAction::None;
-  // branch-gate: BG-1037
-  if (debugOverlayDown && !state.debugOverlayWasDown) {
-    action = actionForInput(NeutralInput::KeyF3);
-  // branch-gate: BG-1212
-  } else if (movementTuningToggleDown && !state.movementTuningToggleWasDown) {
-    action = actionForInput(NeutralInput::KeyF4);
-  } else if (devToggleDown && !state.devToggleWasDown) {  // branch-gate: BG-1037
-    action = actionForInput(NeutralInput::KeyF1);
-  // branch-gate: BG-1037
-  } else if (devCollisionOverlayDown && !state.devCollisionOverlayWasDown) {
-    action = actionForInput(NeutralInput::KeyF2);
-  } else if (mapMakerToggleDown && !state.mapMakerToggleWasDown) {  // branch-gate: BG-1205
-    action = actionForInput(NeutralInput::KeyM);
-  } else if (upDown && !state.upWasDown) {  // branch-gate: BG-1037
-    action = actionForInput(NeutralInput::KeyUp);
-  } else if (downDown && !state.downWasDown) {
-    action = actionForInput(NeutralInput::KeyDown);
-  } else if (leftDown && !state.leftWasDown) {
-    action = actionForInput(NeutralInput::KeyLeft);
-  } else if (rightDown && !state.rightWasDown) {
-    action = actionForInput(NeutralInput::KeyRight);
-  } else if (confirmDown && !state.confirmWasDown) {
-    action = actionForInput(keyDown(keys, SDL_SCANCODE_RETURN) ? NeutralInput::KeyEnter
-                                                                : NeutralInput::KeySpace);
-  } else if (backDown && !state.backWasDown) {
-    action = actionForInput(NeutralInput::KeyEscape);
-  } else if (tabDown && !state.tabWasDown) {
-    action = actionForInput(NeutralInput::KeyTab);
-  }
-
-  state.upWasDown = upDown;
-  state.downWasDown = downDown;
-  state.leftWasDown = leftDown;
-  state.rightWasDown = rightDown;
-  state.confirmWasDown = confirmDown;
-  state.backWasDown = backDown;
-  state.tabWasDown = tabDown;
-  state.devToggleWasDown = devToggleDown;
-  state.devCollisionOverlayWasDown = devCollisionOverlayDown;
-  state.debugOverlayWasDown = debugOverlayDown;
-  state.movementTuningToggleWasDown = movementTuningToggleDown;
-  state.mapMakerToggleWasDown = mapMakerToggleDown;
-  return action;
+  KeyboardMenuInputSample sample;
+  sample.upDown = keyDown(keys, SDL_SCANCODE_UP) || keyDown(keys, SDL_SCANCODE_W);
+  sample.downDown = keyDown(keys, SDL_SCANCODE_DOWN) || keyDown(keys, SDL_SCANCODE_S);
+  sample.leftDown = keyDown(keys, SDL_SCANCODE_LEFT) || keyDown(keys, SDL_SCANCODE_A);
+  sample.rightDown = keyDown(keys, SDL_SCANCODE_RIGHT) || keyDown(keys, SDL_SCANCODE_D);
+  sample.confirmDown = keyDown(keys, SDL_SCANCODE_RETURN) || keyDown(keys, SDL_SCANCODE_SPACE);
+  sample.backDown = keyDown(keys, SDL_SCANCODE_ESCAPE);
+  sample.tabDown = keyDown(keys, SDL_SCANCODE_TAB);
+  sample.devToggleDown = keyDown(keys, SDL_SCANCODE_F1);
+  sample.devCollisionOverlayDown = keyDown(keys, SDL_SCANCODE_F2);
+  sample.debugOverlayDown = keyDown(keys, SDL_SCANCODE_F3);
+  sample.movementTuningToggleDown = keyDown(keys, SDL_SCANCODE_F4);
+  sample.mapMakerToggleDown = keyDown(keys, SDL_SCANCODE_M);
+  return recordKeyboardMenuAction(state, sample);
 #else
   (void)state;
   return InputAction::None;

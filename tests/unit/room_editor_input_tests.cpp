@@ -91,6 +91,148 @@ int main() {
   }
 
   {
+    struct MenuKeyCase {
+      bool iggy3d::KeyboardMenuInputSample::* down;
+      iggy3d::InputAction expected;
+      std::string_view message;
+    };
+
+    constexpr std::array cases{
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::debugOverlayDown,
+                    iggy3d::InputAction::DevDebugOverlay,
+                    "keyboard menu F3 emits debug overlay"},
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::movementTuningToggleDown,
+                    iggy3d::InputAction::MovementTuningToggle,
+                    "keyboard menu F4 emits movement tuning toggle"},
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::devToggleDown,
+                    iggy3d::InputAction::DevToggle,
+                    "keyboard menu F1 emits dev toggle"},
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::devCollisionOverlayDown,
+                    iggy3d::InputAction::DevCollisionOverlay,
+                    "keyboard menu F2 emits collision overlay toggle"},
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::mapMakerToggleDown,
+                    iggy3d::InputAction::MapMakerToggle,
+                    "keyboard menu M emits map maker toggle"},
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::upDown,
+                    iggy3d::InputAction::MenuUp,
+                    "keyboard menu up emits menu up"},
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::downDown,
+                    iggy3d::InputAction::MenuDown,
+                    "keyboard menu down emits menu down"},
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::leftDown,
+                    iggy3d::InputAction::MenuLeft,
+                    "keyboard menu left emits menu left"},
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::rightDown,
+                    iggy3d::InputAction::MenuRight,
+                    "keyboard menu right emits menu right"},
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::confirmDown,
+                    iggy3d::InputAction::MenuConfirm,
+                    "keyboard menu confirm emits menu confirm"},
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::backDown,
+                    iggy3d::InputAction::MenuBack,
+                    "keyboard menu back emits menu back"},
+        MenuKeyCase{&iggy3d::KeyboardMenuInputSample::tabDown,
+                    iggy3d::InputAction::MenuNextTab,
+                    "keyboard menu tab emits next tab"},
+    };
+
+    for (const MenuKeyCase& testCase : cases) {
+      iggy3d::KeyboardInputState keyboard;
+      iggy3d::KeyboardMenuInputSample sample;
+      sample.*testCase.down = true;
+      const iggy3d::InputAction first =
+          iggy3d::recordKeyboardMenuAction(keyboard, sample);
+      const iggy3d::InputAction held =
+          iggy3d::recordKeyboardMenuAction(keyboard, sample);
+      sample.*testCase.down = false;
+      const iggy3d::InputAction released =
+          iggy3d::recordKeyboardMenuAction(keyboard, sample);
+      sample.*testCase.down = true;
+      const iggy3d::InputAction pressedAgain =
+          iggy3d::recordKeyboardMenuAction(keyboard, sample);
+
+      ok = expect(first == testCase.expected, testCase.message) && ok;
+      ok = expect(held == iggy3d::InputAction::None,
+                  "keyboard menu held key does not repeat") &&
+           ok;
+      ok = expect(released == iggy3d::InputAction::None,
+                  "keyboard menu release emits no action") &&
+           ok;
+      ok = expect(pressedAgain == testCase.expected,
+                  "keyboard menu re-press emits after release") &&
+           ok;
+    }
+  }
+
+  {
+    iggy3d::KeyboardInputState keyboard;
+    iggy3d::KeyboardMenuInputSample sample;
+    sample.debugOverlayDown = true;
+    sample.movementTuningToggleDown = true;
+    sample.devToggleDown = true;
+    sample.devCollisionOverlayDown = true;
+    sample.mapMakerToggleDown = true;
+    sample.upDown = true;
+    sample.downDown = true;
+    sample.leftDown = true;
+    sample.rightDown = true;
+    sample.confirmDown = true;
+    sample.backDown = true;
+    sample.tabDown = true;
+    ok = expect(iggy3d::recordKeyboardMenuAction(keyboard, sample) ==
+                    iggy3d::InputAction::DevDebugOverlay,
+                "keyboard menu poller preserves F3 top priority") &&
+         ok;
+
+    sample.debugOverlayDown = false;
+    ok = expect(iggy3d::recordKeyboardMenuAction(keyboard, sample) ==
+                    iggy3d::InputAction::None,
+                "keyboard menu lower-priority held keys stay consumed") &&
+         ok;
+
+    sample = {};
+    ok = expect(iggy3d::recordKeyboardMenuAction(keyboard, sample) ==
+                    iggy3d::InputAction::None,
+                "keyboard menu all-key release emits nothing") &&
+         ok;
+
+    sample.movementTuningToggleDown = true;
+    sample.devToggleDown = true;
+    ok = expect(iggy3d::recordKeyboardMenuAction(keyboard, sample) ==
+                    iggy3d::InputAction::MovementTuningToggle,
+                "keyboard menu F4 outranks F1") &&
+         ok;
+
+    sample = {};
+    iggy3d::recordKeyboardMenuAction(keyboard, sample);
+    sample.devToggleDown = true;
+    sample.devCollisionOverlayDown = true;
+    ok = expect(iggy3d::recordKeyboardMenuAction(keyboard, sample) ==
+                    iggy3d::InputAction::DevToggle,
+                "keyboard menu F1 outranks distinct F2") &&
+         ok;
+
+    sample = {};
+    iggy3d::recordKeyboardMenuAction(keyboard, sample);
+    sample.upDown = true;
+    sample.downDown = true;
+    ok = expect(iggy3d::recordKeyboardMenuAction(keyboard, sample) ==
+                    iggy3d::InputAction::MenuUp,
+                "keyboard menu up outranks down") &&
+         ok;
+
+    sample = {};
+    iggy3d::recordKeyboardMenuAction(keyboard, sample);
+    sample.confirmDown = true;
+    sample.backDown = true;
+    sample.tabDown = true;
+    ok = expect(iggy3d::recordKeyboardMenuAction(keyboard, sample) ==
+                    iggy3d::InputAction::MenuConfirm,
+                "keyboard menu confirm outranks back and tab") &&
+         ok;
+  }
+
+  {
     constexpr std::array<char, iggy3d::kKeyboardAsciiRoomPaintGlyphCount> expectedGlyphs = {
         '#', '.', 'P', 'K', '$', 'E', '+', 'C', '^', 'v', '<', '>', 'R'};
     for (std::size_t index = 0; index < expectedGlyphs.size(); ++index) {

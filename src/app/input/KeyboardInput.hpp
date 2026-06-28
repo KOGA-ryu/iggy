@@ -70,6 +70,23 @@ struct KeyboardAsciiRoomPaintSample {
   std::array<bool, kKeyboardAsciiRoomPaintGlyphCount> glyphDown{};
 };
 
+struct KeyboardMenuInputSample {
+  bool debugOverlayDown = false;
+  bool movementTuningToggleDown = false;
+  bool devToggleDown = false;
+  bool devCollisionOverlayDown = false;
+  bool mapMakerToggleDown = false;
+  bool upDown = false;
+  bool downDown = false;
+  bool leftDown = false;
+  bool rightDown = false;
+  bool confirmDown = false;
+  bool backDown = false;
+  bool tabDown = false;
+};
+
+InputAction recordKeyboardMenuAction(KeyboardInputState& state,
+                                     const KeyboardMenuInputSample& sample);
 InputAction pollKeyboardMenuAction(KeyboardInputState& state);
 char recordKeyboardAsciiRoomPaintGlyph(KeyboardInputState& state,
                                        const KeyboardAsciiRoomPaintSample& sample);
