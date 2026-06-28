@@ -84,6 +84,7 @@ constexpr ExpectedDungeonCounts kExpectedDungeons[] = {
     {"object_crate_room", 7U, 5U, 15U, 20U, 1U, 2U, 57U, 15U, 21U, 21U},
     {"movement_gym", 45U, 23U, 776U, 259U, 10U, 5U, 1318U, 780U, 269U, 269U},
     {"slope_gym", 19U, 9U, 119U, 52U, 0U, 3U, 223U, 119U, 52U, 52U},
+    {"layered_jump_gym", 12U, 8U, 274U, 0U, 0U, 2U, 274U, 274U, 0U, 0U},
 };
 
 const ExpectedDungeonCounts* expectedCountsFor(std::string_view roomId) {
@@ -201,7 +202,7 @@ bool catalogExposesSelectableDungeons() {
   const bool previousReturnsLoopKeep =
       draft.asciiRoomId == "loop_keep_ascii" && draft.worldName == "Loop Keep";
 
-  return expect(catalog.size() == 10U, "catalog size") &&
+  return expect(catalog.size() == 11U, "catalog size") &&
          expect(startsOnLoopKeep, "default starts loop keep") &&
          expect(nextOk, "next select ok") &&
          expect(nextIsGatehouse, "next selects gatehouse") &&
@@ -231,6 +232,9 @@ bool catalogExposesSelectableDungeons() {
          expect(iggy3d::findProductBuiltinDungeonByRoomId(
                     "slope_gym") != nullptr,
                 "find slope gym") &&
+         expect(iggy3d::findProductBuiltinDungeonByRoomId(
+                    "layered_jump_gym") != nullptr,
+                "find layered jump gym") &&
          expect(iggy3d::findProductBuiltinDungeonByRoomId("missing") == nullptr,
                 "missing dungeon absent");
 }
@@ -536,6 +540,46 @@ bool slopeGymBuildsRampSurfaces() {
                 "slope gym gentle normal");
 }
 
+bool layeredJumpGymBuildsStackedFloors() {
+  const ExpectedDungeonCounts* expected = expectedCountsFor("layered_jump_gym");
+  const iggy3d::ProductBuiltinDungeonDefinition* dungeon =
+      iggy3d::findProductBuiltinDungeonByRoomId("layered_jump_gym");
+  const iggy3d::ProductAsciiRoomAuthoringResult authoring =
+      dungeon == nullptr ? iggy3d::ProductAsciiRoomAuthoringResult{}
+                         : buildDungeonAuthoring(*dungeon);
+  const iggy3d::ProductActiveRoomState active =
+      buildDungeonActiveRoom("layered_jump_gym");
+  const iggy3d::ProductActiveRoomCollisionState collision =
+      iggy3d::buildProductActiveRoomCollision(active);
+
+  return expect(expected != nullptr, "layered jump gym expected counts") &&
+         expect(authoring.ok, "layered jump gym authoring ok") &&
+         expect(authoring.source.hasLayerDirectives,
+                "layered jump gym source layers") &&
+         expect(authoring.source.layers.size() == 3U,
+                "layered jump gym layer count") &&
+         expect(authoring.source.layerFloorSpacingMeters == 4.0F,
+                "layered jump gym layer spacing") &&
+         expect(authoring.floorCount == expected->floorCount,
+                "layered jump gym floor count") &&
+         expect(authoring.elevatedFloorCount == 178U,
+                "layered jump gym elevated floor count") &&
+         expect(active.loaded, "layered jump gym loaded") &&
+         expect(active.roomId == "layered_jump_gym",
+                "layered jump gym room id") &&
+         expect(active.authoredFloorCount == expected->floorCount,
+                "layered jump gym active floor count") &&
+         expect(active.authoredWallCount == 0U,
+                "layered jump gym active wall count") &&
+         expect(collision.ready, "layered jump gym collision ready") &&
+         expect(collision.querySurfaceCount == expected->spatialSurfaceCount,
+                "layered jump gym collision surface count") &&
+         expect(collision.walkableSurfaceCount == expected->walkableSurfaceCount,
+                "layered jump gym walkable surface count") &&
+         expect(collision.actorBlockerSurfaceCount == 0U,
+                "layered jump gym actor blocker count");
+}
+
 bool physicsPlannerUsesTestRooms() {
   const iggy3d::PlayerPhysicsMovePlannerResult flat =
       planMoveInRoom("physics_flat_room",
@@ -577,6 +621,7 @@ int main() {
                       objectCrateRoomBuildsVisiblePropAndCollision() &&
                       movementGymBuildsScaledJumpAndClamberObjects() &&
                       slopeGymBuildsRampSurfaces() &&
+                      layeredJumpGymBuildsStackedFloors() &&
                       physicsPlannerUsesTestRooms();
   std::cout << "product_builtin_dungeon_tests="
             << (passed ? "pass" : "fail") << '\n';

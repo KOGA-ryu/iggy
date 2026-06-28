@@ -223,6 +223,8 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("ascii_map_movement_gym");
   const std::filesystem::path slopeGymSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_slope_gym");
+  const std::filesystem::path layeredJumpGymSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_layered_jump_gym");
   const std::filesystem::path externalFileSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_external_file");
   const std::filesystem::path externalAsciiRoomPath =
@@ -644,6 +646,45 @@ int main() {
                               "product_vulkan_room_mesh_cpu_ready", "true") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_source_mesh_count", "171");
+
+  static constexpr PhysicsDungeonSmokeExpectation kLayeredJumpGym{
+      "ascii_map_layered_jump_gym_create",
+      "layered_jump_gym",
+      "Layered Jump Gym",
+      "fixtures/rooms/ascii/layered_jump_gym.iggyroom.txt",
+      "12",
+      "8",
+      "274",
+      "0",
+      "0",
+      "2",
+      "274",
+      "274",
+      "0",
+      "0",
+  };
+  fields.clear();
+  const bool createLayeredJumpGymWorld =
+      appAvailable &&
+      createPhysicsDungeonWorld(binary,
+                                kLayeredJumpGym,
+                                layeredJumpGymSaveRoot,
+                                fields,
+                                exitCode) &&
+      iggy3d::smoke::hasField(fields,
+                              "ascii_room_preview_elevated_floor_count",
+                              "178") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_ramp_count",
+                              "0") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_draw_elevated_floor_tile_count",
+                              "178") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_draw_room_geometry_count", "274") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_mesh_cpu_ready", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_source_mesh_count", "274");
 
   fields.clear();
   const bool createCustomDraftWorld =
@@ -3843,6 +3884,7 @@ int main() {
                       createObjectCrateRoomWorld &&
                       createMovementGymWorld &&
                       createSlopeGymWorld &&
+                      createLayeredJumpGymWorld &&
                       createCustomDraftWorld && cursorPaintRequiresEditMode &&
                       createCursorPaintDraftWorld &&
                       createCursorCratePaintDraftWorld &&
@@ -3902,6 +3944,8 @@ int main() {
                          "new world dungeon id creates movement gym") &&
                   expect(createSlopeGymWorld,
                          "new world dungeon id creates slope gym") &&
+                  expect(createLayeredJumpGymWorld,
+                         "new world dungeon id creates layered jump gym") &&
                   expect(createCustomDraftWorld,
                          "new world custom draft creates edited dungeon") &&
                   expect(cursorPaintRequiresEditMode,
@@ -4001,6 +4045,8 @@ int main() {
             << (createMovementGymWorld ? "true" : "false") << "\n";
   std::cout << "create_slope_gym_world="
             << (createSlopeGymWorld ? "true" : "false") << "\n";
+  std::cout << "create_layered_jump_gym_world="
+            << (createLayeredJumpGymWorld ? "true" : "false") << "\n";
   std::cout << "create_custom_draft_world="
             << (createCustomDraftWorld ? "true" : "false") << "\n";
   std::cout << "cursor_paint_requires_edit_mode="

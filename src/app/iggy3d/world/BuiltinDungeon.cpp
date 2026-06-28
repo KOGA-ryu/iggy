@@ -119,7 +119,36 @@ constexpr std::string_view kSlopeGymText =
     "#.................#\n"
     "###################\n";
 
-constexpr std::array<ProductBuiltinDungeonDefinition, 10> kCatalog = {{
+constexpr std::string_view kLayeredJumpGymText =
+    "floor1\n"
+    "P...........\n"
+    "............\n"
+    "............\n"
+    "............\n"
+    "............\n"
+    "............\n"
+    "............\n"
+    "............\n"
+    "floor2\n"
+    "...  .......\n"
+    "............\n"
+    "............\n"
+    "...  .......\n"
+    "...  .......\n"
+    "............\n"
+    "............\n"
+    ".......  ...\n"
+    "floor3\n"
+    "............\n"
+    "...  .......\n"
+    "...  .......\n"
+    "............\n"
+    "............\n"
+    "......  ....\n"
+    "............\n"
+    "..........E.\n";
+
+constexpr std::array<ProductBuiltinDungeonDefinition, 11> kCatalog = {{
     ProductBuiltinDungeonDefinition{
         "Loop Keep",
         "loop_keep_ascii",
@@ -179,6 +208,12 @@ constexpr std::array<ProductBuiltinDungeonDefinition, 10> kCatalog = {{
         "slope_gym",
         "fixtures/rooms/ascii/slope_gym.iggyroom.txt",
         kSlopeGymText,
+    },
+    ProductBuiltinDungeonDefinition{
+        "Layered Jump Gym",
+        "layered_jump_gym",
+        "fixtures/rooms/ascii/layered_jump_gym.iggyroom.txt",
+        kLayeredJumpGymText,
     },
 }};
 
