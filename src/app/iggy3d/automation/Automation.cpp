@@ -4,6 +4,7 @@
 #include <array>
 #include <charconv>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 
@@ -434,6 +435,8 @@ ProductAutomationCommandRegistry makeProductAutomationCommandRegistry() {
       {"world.ascii_room_id", {"world_setup.ascii_room_id"},
        Category::WorldSetup, Value::String, true, false, "new_world"},
       {"world.ascii_room_source_name", {"world_setup.ascii_room_source_name"},
+       Category::WorldSetup, Value::String, true, false, "new_world"},
+      {"world.ascii_room_file", {"world_setup.ascii_room_file"},
        Category::WorldSetup, Value::String, true, false, "new_world"},
 
       {"world.draft_edit_mode", {"world_setup.draft_edit_mode"},
@@ -1269,6 +1272,31 @@ bool selectDungeonDraftPaintGlyph(ProductAppWindowState& window, char glyph) {
   return true;
 }
 
+std::string readAutomationTextFile(std::string_view path) {
+  std::ifstream input{std::string(path)};
+  // branch-gate: BG-1165
+  if (!input) {
+    return {};
+  }
+  return std::string((std::istreambuf_iterator<char>(input)),
+                     std::istreambuf_iterator<char>());
+}
+
+std::string titleFromAutomationAsciiRoomPath(std::string_view path) {
+  std::string title = std::filesystem::path(std::string(path)).stem().string();
+  // branch-gate: BG-1165
+  if (title.empty()) {
+    return std::string{"Custom Draft"};
+  }
+  for (char& ch : title) {
+    // branch-gate: BG-1165
+    if (ch == '_' || ch == '-') {
+      ch = ' ';
+    }
+  }
+  return title;
+}
+
 void markAutomationApplied(ProductAppWindowState& window,
                            const ProductAutomationCommand& command,
                            std::string_view action,
@@ -1716,6 +1744,50 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     context.window.worldSetupStatus =
         "world_setup_ascii_room_source_name_updated";
     markAutomationApplied(context.window, command, "world.ascii_room_source_name",
+                          context.currentOwner(), "applied");
+    return {true, true};
+  }
+
+  // branch-gate: BG-1165
+  if (canonicalKey == "world.ascii_room_file") {
+    // branch-gate: BG-1165
+    if (context.frontend.childScreen != FrontendScreen::NewWorld) {
+      context.window.automationControlStatus = "owner_unavailable";
+      markAutomationApplied(context.window, command, "world.ascii_room_file",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    }
+    const ProductNonEmptyStringAutomationResult asciiRoomFile =
+        resolveProductNonEmptyStringAutomation(value);
+    const auto fail = [&]() -> ProductAutomationExecutionResult {
+      context.window.automationControlStatus = "invalid_value";
+      markAutomationApplied(context.window, command, "world.ascii_room_file",
+                            context.currentOwner(), "failed");
+      return {true, false};
+    };
+    // branch-gate: BG-1165
+    if (!asciiRoomFile.valid) {
+      return fail();
+    }
+    const std::string asciiRoomText =
+        readAutomationTextFile(asciiRoomFile.value);
+    // branch-gate: BG-1165
+    if (asciiRoomText.empty()) {
+      return fail();
+    }
+    context.worldSetupDraft.worldName =
+        titleFromAutomationAsciiRoomPath(asciiRoomFile.value);
+    context.worldSetupDraft.asciiRoomEnabled = true;
+    context.worldSetupDraft.asciiRoomId =
+        std::string(productCustomDungeonRoomId());
+    context.worldSetupDraft.asciiRoomSourceName = std::string(asciiRoomFile.value);
+    context.worldSetupDraft.asciiRoomText = asciiRoomText;
+    context.window.worldSetupDungeonDraftModified = false;
+    context.window.worldSetupDungeonDraftEditMode = false;
+    resetDungeonDraftWindowCursor(context.worldSetupDraft, context.window);
+    recordWorldSetupDraftState(context.worldSetupDraft, context.window);
+    context.window.worldSetupStatus = "world_setup_ascii_room_file_loaded";
+    markAutomationApplied(context.window, command, "world.ascii_room_file",
                           context.currentOwner(), "applied");
     return {true, true};
   }

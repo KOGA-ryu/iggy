@@ -115,6 +115,9 @@ int main() {
          "frontend execute command is registered");
   expect(spec(registry, "world.title").category == Category::WorldSetup,
          "world setup command is registered");
+  expect(spec(registry, "world.ascii_room_file").category ==
+             Category::WorldSetup,
+         "world ascii room file command is registered");
   expect(spec(registry, "world.draft_cell").category == Category::DungeonDraft,
          "dungeon draft command is registered");
   expect(spec(registry, "ascii_room.build").category == Category::AsciiRoom,
@@ -168,6 +171,8 @@ int main() {
   expectCanonical(registry, "pause.select", "frontend.select");
   expectCanonical(registry, "pause.execute", "frontend.execute");
   expectCanonical(registry, "world_setup.draft_paint", "world.draft_paint");
+  expectCanonical(registry, "world_setup.ascii_room_file",
+                  "world.ascii_room_file");
   expectCanonical(registry, "frontend.draft_move", "world.draft_move");
   expectCanonical(registry, "frontend.game_attack", "game.attack");
   expectCanonical(registry, "frontend.game_jump", "gameplay.jump");

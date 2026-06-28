@@ -223,6 +223,10 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("ascii_map_movement_gym");
   const std::filesystem::path slopeGymSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_slope_gym");
+  const std::filesystem::path externalFileSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_external_file");
+  const std::filesystem::path externalAsciiRoomPath =
+      externalFileSaveRoot / "external_slope_room.iggyroom.txt";
   const std::filesystem::path customSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft");
   const std::filesystem::path cursorPaintRejectedSaveRoot =
@@ -3717,6 +3721,110 @@ int main() {
       iggy3d::smoke::positiveIntegerField(fields,
                                           "product_vulkan_room_draw_count");
 
+  std::filesystem::create_directories(externalAsciiRoomPath.parent_path());
+  {
+    std::ofstream externalRoom{externalAsciiRoomPath};
+    externalRoom << "*5\n"
+                    "###############\n"
+                    "#P.>>>>111...E#\n"
+                    "#..0000111....#\n"
+                    "###############\n";
+  }
+
+  fields.clear();
+  const std::string externalSourceName = externalAsciiRoomPath.string();
+  const std::string createExternalFileControl =
+      std::string{"frontend.select=new_world\nfrontend.execute=true\n"} +
+      "world.ascii_room_file=" + externalSourceName + "\n"
+      "world.title=External File Room\n"
+      "world.create=true\n";
+  const bool createExternalFileWorld =
+      appAvailable &&
+      iggy3d::smoke::runProductCase(binary,
+                                    "ascii_map_external_file_create",
+                                    createExternalFileControl,
+                                    iggy3d::smoke::saveRootArg(
+                                        externalFileSaveRoot),
+                                    fields,
+                                    exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "world_setup_title",
+                              "External File Room") &&
+      iggy3d::smoke::hasField(fields, "world_setup_status",
+                              "world_setup_create_requested") &&
+      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_enabled",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_ascii_room_source_name",
+                              externalSourceName) &&
+      iggy3d::smoke::hasField(fields, "world_creation_world_title",
+                              "External File Room") &&
+      iggy3d::smoke::hasField(fields, "world_creation_ascii_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "world_creation_ascii_room_source_name",
+                              externalSourceName) &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_status",
+                              "product_ascii_room_ready") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_source_name",
+                              externalSourceName) &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_width", "15") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_height", "4") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_floor_count", "26") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_wall_count", "34") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_object_count", "0") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_marker_count", "2") &&
+      iggy3d::smoke::hasField(fields,
+                              "ascii_room_preview_elevated_floor_count",
+                              "6") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_ramp_count", "4") &&
+      iggy3d::smoke::hasField(fields,
+                              "ascii_room_preview_blocked_slope_count", "0") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "ascii_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id",
+                              "custom_dungeon_draft") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_floor_count", "26") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_authored_wall_count", "34") &&
+      iggy3d::smoke::hasField(fields, "active_room_collision_ready", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_query_surface_count",
+                              "94") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_walkable_surface_count",
+                              "26") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              "34") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_projectile_blocker_count",
+                              "34") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_draw_elevated_floor_tile_count", "6") &&
+      iggy3d::smoke::hasField(fields, "product_draw_room_geometry_count",
+                              "60") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_mesh_cpu_ready", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_source_mesh_count", "60") &&
+      std::filesystem::exists(externalFileSaveRoot / "save_001.iggy3d.save") &&
+      fileContains(externalFileSaveRoot / "save_001.iggy3d.save",
+                   "authoredRoom.id=custom_dungeon_draft\n") &&
+      fileContains(externalFileSaveRoot / "save_001.iggy3d.save",
+                   std::string{"authoredRoom.sourceFile="} +
+                       externalSourceName + "\n");
+
   const bool passed = createDefaultDungeonWorld && createSelectedDungeonWorld &&
                       createPhysicsFlatRoomWorld &&
                       createLargeFlatRoomWorld &&
@@ -3762,7 +3870,8 @@ int main() {
                       rebootLiveEditedCustomDraftStarter &&
                       continueSaveAndExitLiveEditedCustomDraftActiveRoom &&
                       createMapWorld &&
-                      continueMapWorld;
+                      continueMapWorld &&
+                      createExternalFileWorld;
   const bool ok = expect(appAvailable, "product app exists") &&
                   expect(mapAvailable, "loop keep map fixture exists") &&
                   expect(createDefaultDungeonWorld,
@@ -3858,7 +3967,9 @@ int main() {
                   expect(continueSaveAndExitLiveEditedCustomDraftActiveRoom,
                          "custom draft active room live edit save-exit continues") &&
                   expect(createMapWorld, "create map world") &&
-                  expect(continueMapWorld, "continue map world");
+                  expect(continueMapWorld, "continue map world") &&
+                  expect(createExternalFileWorld,
+                         "create external ASCII room file world");
 
   std::cout << "smoke=product_ascii_map\n";
   std::cout << "map_path=" << kMapPath << "\n";
@@ -3985,6 +4096,8 @@ int main() {
             << "\n";
   std::cout << "continue_map_world=" << (continueMapWorld ? "true" : "false")
             << "\n";
+  std::cout << "create_external_file_world="
+            << (createExternalFileWorld ? "true" : "false") << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result=" << (passed && ok ? "pass" : (appAvailable ? "fail" : "skip"))
             << "\n";
