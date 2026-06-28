@@ -926,6 +926,39 @@ bool productFallThroughHoleLandsOnLowerWalkableFloor() {
                 "hole fall ground y");
 }
 
+bool productMoveOffUpperFloorStartsFallingImmediately() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "move off floor session created")) {
+    return false;
+  }
+
+  setLayeredFloorActiveRoom(window, *session);
+  setPlayerPosition(*session, {1.34F, 4.0F, 0.0F});
+  iggy3d::applyProductGameplayActions(*session,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      window,
+                                      "unit/gameplay_controller_move_off_floor",
+                                      activeSurfaces(window));
+
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+  return expect(window.gameplayMovementAttempted, "move off floor attempted") &&
+         expect(window.playerPositionChanged, "move off floor moved") &&
+         expect(final.x > 1.35F, "move off floor leaves upper footprint") &&
+         expect(window.gameplayJumpActive,
+                "move off floor starts falling immediately") &&
+         expect(window.gameplayJumpStatus == "falling",
+                "move off floor falling status") &&
+         expect(window.gameplayJumpReasonCode == "gameplay_jump_falling",
+                "move off floor falling reason") &&
+         expect(window.gameplayMovementReasonCode == "grounded_ledge_fall",
+                "move off floor movement reason") &&
+         expect(nearlyEqual(window.gameplayJumpGroundY, 0.0F),
+                "move off floor targets lower floor") &&
+         expect(nearlyEqual(final.y, 4.0F),
+                "move off floor starts fall from upper y");
+}
+
 bool productResetZoneReturnsPlayerToSpawn() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -1206,6 +1239,7 @@ int main() {
                   productJumpFallsAndLands() &&
                   productJumpLandsOnElevatedWalkableFloor() &&
                   productFallThroughHoleLandsOnLowerWalkableFloor() &&
+                  productMoveOffUpperFloorStartsFallingImmediately() &&
                   productResetZoneReturnsPlayerToSpawn() &&
                   productFallOutBelowLowestFloorReturnsPlayerToSpawn() &&
                   productDashMovesForwardAndRecordsProof() &&

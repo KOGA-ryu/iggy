@@ -152,6 +152,10 @@ Vec3 manualFirstPersonDirection(float moveX, float moveY, float yawDegrees);
 void advanceProductJump(Session& session,
                         ProductAppWindowState& window,
                         const SpatialSurfaceSet* collisionSurfaces);
+void recordProductJumpPosition(ProductAppWindowState& window,
+                               float groundY,
+                               float startY,
+                               float finalY);
 
 TargetQueryResult queryProductGameplayTarget(const Session& session, CommandKind kind) {
   const EntityId actor = productPlayerActor(session);
@@ -440,6 +444,35 @@ bool applyProductGameplayResetIfNeeded(Session& session,
         session, window, "gameplay_reset_fall_out", nullptr);
   }
   return false;
+}
+
+bool beginProductFallIfUnsupported(Session& session,
+                                   ProductAppWindowState& window,
+                                   const SpatialSurfaceSet* collisionSurfaces) {
+  const EntityState* groundedEntity = productPlayerEntity(session);
+  // branch-gate: BG-1173
+  if (groundedEntity == nullptr ||
+      collisionSurfaces == nullptr ||
+      playerHasNearbyGround(collisionSurfaces, groundedEntity->transform.position)) {
+    return false;
+  }
+  window.gameplayJumpRequested = false;
+  window.gameplayJumpAccepted = false;
+  window.gameplayJumpActive = true;
+  window.gameplayJumpVelocityMetersPerSecond = 0.0F;
+  float groundY = groundedEntity->transform.position.y;
+  findHighestWalkableGroundAtOrBelow(
+      collisionSurfaces,
+      groundedEntity->transform.position,
+      groundedEntity->transform.position.y,
+      groundY);
+  recordProductJumpPosition(window,
+                            groundY,
+                            groundedEntity->transform.position.y,
+                            groundedEntity->transform.position.y);
+  window.gameplayJumpStatus = "falling";
+  window.gameplayJumpReasonCode = "gameplay_jump_falling";
+  return true;
 }
 
 void recordProductJumpPosition(ProductAppWindowState& window,
@@ -735,30 +768,10 @@ void advanceProductJump(Session& session,
   if (applyProductGameplayResetIfNeeded(session, window, collisionSurfaces)) {
     return;
   }
-  if (!window.gameplayJumpActive) {
-    const EntityState* groundedEntity = productPlayerEntity(session);
-    // branch-gate: BG-1173
-    if (groundedEntity == nullptr ||
-        collisionSurfaces == nullptr ||
-        playerHasNearbyGround(collisionSurfaces, groundedEntity->transform.position)) {
-      return;
-    }
-    window.gameplayJumpRequested = false;
-    window.gameplayJumpAccepted = false;
-    window.gameplayJumpActive = true;
-    window.gameplayJumpVelocityMetersPerSecond = 0.0F;
-    float groundY = groundedEntity->transform.position.y;
-    findHighestWalkableGroundAtOrBelow(
-        collisionSurfaces,
-        groundedEntity->transform.position,
-        groundedEntity->transform.position.y,
-        groundY);
-    recordProductJumpPosition(window,
-                              groundY,
-                              groundedEntity->transform.position.y,
-                              groundedEntity->transform.position.y);
-    window.gameplayJumpStatus = "falling";
-    window.gameplayJumpReasonCode = "gameplay_jump_falling";
+  // branch-gate: BG-1173
+  if (!window.gameplayJumpActive &&
+      !beginProductFallIfUnsupported(session, window, collisionSurfaces)) {
+    return;
   }
 
   const EntityId actor = productPlayerActor(session);
@@ -1021,6 +1034,35 @@ void recordProductAirborneMovementDebug(ProductAppWindowState& window,
   window.gameplayMovementGradePercent = facts.gradePercent;
 }
 
+void recordProductLedgeFallMovementDebug(ProductAppWindowState& window,
+                                         Vec3 start,
+                                         Vec3 finalPosition) {
+  const MovementTravelFacts facts =
+      computeMovementTravelFacts(start, finalPosition);
+  window.gameplayMovementDebugAvailable = true;
+  window.gameplayMovementReasonCode = "grounded_ledge_fall";
+  window.gameplayMovementBlockedReason = "movement_ok";
+  window.gameplayMovementHitSurfaceId = "none";
+  window.gameplayMovementGroundSnapApplied = false;
+  window.gameplayMovementClamped = false;
+  window.gameplayMovementSlid = false;
+  window.gameplayMovementCollisionSweepCount = 0;
+  window.gameplayMovementPolicyBand = "falling";
+  window.gameplayMovementSlopeTravelDirection =
+      movementTravelDirectionName(facts.direction);
+  window.gameplayMovementSlopeAngleDegrees = 0.0F;
+  window.gameplayMovementSpeedMultiplier = 1.0F;
+  window.gameplayMovementStartX = start.x;
+  window.gameplayMovementStartY = start.y;
+  window.gameplayMovementStartZ = start.z;
+  window.gameplayMovementFinalX = finalPosition.x;
+  window.gameplayMovementFinalY = finalPosition.y;
+  window.gameplayMovementFinalZ = finalPosition.z;
+  window.gameplayMovementHorizontalDistanceMeters = facts.horizontalDistanceMeters;
+  window.gameplayMovementVerticalDeltaMeters = facts.verticalDeltaMeters;
+  window.gameplayMovementGradePercent = facts.gradePercent;
+}
+
 void submitProductAirborneMove(Session& session,
                                ProductAppWindowState& window,
                                const EntityState& actor,
@@ -1263,6 +1305,48 @@ StatusResult tickProductGameplayCommand(Session& session,
   return session.tickWithOptions(SessionTickOptions{collisionSurfaces, true});
 }
 
+bool applyProductLedgeFallMoveFallback(Session& session,
+                                       ProductAppWindowState& window,
+                                       const CommandRecord& command,
+                                       Vec3 before,
+                                       const SpatialSurfaceSet* collisionSurfaces) {
+  const bool ledgeBlockedReason =
+      window.gameplayMovementBlockedReason == "no_walkable_ground" ||
+      window.gameplayMovementBlockedReason == "slope_rejected";
+  // branch-gate: BG-1188
+  if (window.gameplayJumpActive ||
+      command.kind != CommandKind::Move ||
+      !command.payload.target.hasPoint ||
+      !ledgeBlockedReason ||
+      !playerHasNearbyGround(collisionSurfaces, before)) {
+    return false;
+  }
+
+  Vec3 finalPosition = command.payload.target.point;
+  finalPosition.y = before.y;
+  float destinationGroundY = before.y;
+  const bool hasDestinationGround =
+      findHighestWalkableGroundAtOrBelow(
+          collisionSurfaces, finalPosition, before.y, destinationGroundY);
+  // branch-gate: BG-1188
+  if (hasDestinationGround &&
+      destinationGroundY >= before.y - kGameplayGroundContactToleranceMeters) {
+    return false;
+  }
+  // branch-gate: BG-1188
+  if (!setProductPlayerPosition(session, command.actor, finalPosition)) {
+    return false;
+  }
+
+  window.playerPositionChanged = true;
+  window.gameplayMovementBlocked = false;
+  window.gameplayMovementStatus = "moved";
+  recordProductLedgeFallMovementDebug(window, before, finalPosition);
+  beginProductFallIfUnsupported(session, window, collisionSurfaces);
+  window.runtimeStateHash = session.stateHash();
+  return true;
+}
+
 void submitProductGameplayCommand(Session& session,
                                   ProductAppWindowState& window,
                                   CommandRecord command,
@@ -1338,6 +1422,13 @@ void submitProductGameplayCommand(Session& session,
     } else {
       window.gameplayMovementBlocked = true;
       window.gameplayMovementStatus = "blocked";
+    }
+    const bool ledgeFallFallbackApplied =
+        applyProductLedgeFallMoveFallback(
+            session, window, command, before, collisionSurfaces);
+    // branch-gate: BG-1187
+    if (!ledgeFallFallbackApplied && !window.gameplayJumpActive) {
+      beginProductFallIfUnsupported(session, window, collisionSurfaces);
     }
   }
   window.runtimeStateHash = session.stateHash();

@@ -184,3 +184,5 @@ BG-1183	src/app/iggy3d/gameplay/Controller.cpp	product gameplay reset missing co
 BG-1184	src/app/iggy3d/gameplay/Controller.cpp	product gameplay reset missing floor guard	codex	2026-06-28
 BG-1185	src/app/iggy3d/gameplay/Controller.cpp	product gameplay reset spawn receipt fallback policy	codex	2026-06-28
 BG-1186	src/app/iggy3d/gameplay/Controller.cpp	product gameplay reset source receipt fallback policy	codex	2026-06-28
+BG-1187	src/app/iggy3d/gameplay/Controller.cpp	product grounded movement starts falling after unsupported move	codex	2026-06-28
+BG-1188	src/app/iggy3d/gameplay/Controller.cpp	product ledge fall move fallback policy	codex	2026-06-28
