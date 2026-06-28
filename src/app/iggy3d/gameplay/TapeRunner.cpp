@@ -9,6 +9,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "runtime/ai/AiState.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
+#include "runtime/movement/MovementSystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
 #include "runtime/session/Session.hpp"
 #include "runtime/world/WorldState.hpp"
@@ -267,6 +268,59 @@ bool lastMovementHasPhysicsStats(const Session& session) {
          session.state().transient.lastMovementResult.physicsFrameStatsAvailable;
 }
 
+void recordProductGameplayTapeMovementDebug(
+    const Session& session,
+    const ProductGameplayTapeRunResult& run,
+    ProductAppWindowState& window) {
+  const SessionTransientState& transient = session.state().transient;
+  // branch-gate: BG-1120
+  if (!transient.lastMovementResultAvailable) {
+    return;
+  }
+
+  const MovementResult& movement = transient.lastMovementResult;
+  window.gameplayMovementDebugAvailable = true;
+  // branch-gate: BG-1120
+  window.gameplayMovementReasonCode =
+      movement.reasonCode.empty() ? movementBlockedReasonName(movement.blocked)
+                                  : movement.reasonCode;
+  window.gameplayMovementBlockedReason =
+      movementBlockedReasonName(movement.blocked);
+  // branch-gate: BG-1120
+  window.gameplayMovementHitSurfaceId =
+      movement.hitSurfaceId.empty() ? "none" : movement.hitSurfaceId;
+  window.gameplayMovementGroundSnapApplied = movement.groundSnapApplied;
+  window.gameplayMovementClamped = movement.movementClamped;
+  window.gameplayMovementSlid = movement.movementSlid;
+  window.gameplayMovementCollisionSweepCount = movement.collisionSweepCount;
+  // branch-gate: BG-1120
+  window.gameplayMovementPolicyBand =
+      movement.movementPolicyBand.empty() ? "none" : movement.movementPolicyBand;
+  window.gameplayMovementSlopeTravelDirection = movement.slopeTravelDirection;
+  window.gameplayMovementSlopeAngleDegrees = movement.slopeAngleDegrees;
+  window.gameplayMovementSpeedMultiplier = movement.speedMultiplier;
+  window.gameplayMovementStartX = movement.start.x;
+  window.gameplayMovementStartY = movement.start.y;
+  window.gameplayMovementStartZ = movement.start.z;
+  window.gameplayMovementFinalX = movement.finalPosition.x;
+  window.gameplayMovementFinalY = movement.finalPosition.y;
+  window.gameplayMovementFinalZ = movement.finalPosition.z;
+  window.gameplayMovementHorizontalDistanceMeters =
+      movement.horizontalDistanceMeters;
+  window.gameplayMovementVerticalDeltaMeters = movement.verticalDeltaMeters;
+  window.gameplayMovementGradePercent = movement.gradePercent;
+
+  // branch-gate: BG-1120
+  if (run.lastAction == "move") {
+    window.gameplayMovementAttempted = true;
+    window.gameplayMovementBlocked =
+        movement.blocked != MovementBlockedReason::None;
+    // branch-gate: BG-1120
+    window.gameplayMovementStatus =
+        window.gameplayMovementBlocked ? "blocked" : "moved";
+  }
+}
+
 StatusResult tickProductGameplayTape(Session& session,
                                      const SpatialSurfaceSet* collisionSurfaces,
                                      bool usePhysicsMovePlanner) {
@@ -510,6 +564,12 @@ void runProductGameplayTapeFromOptions(
           &request.window.activeRoomCollision,
           request.window.physicsMovementPlannerEnabled});
   recordProductGameplayTapeRun(run, request.window);
+  // branch-gate: BG-1120
+  if (request.activeSession.has_value()) {
+    recordProductGameplayTapeMovementDebug(*request.activeSession,
+                                           run,
+                                           request.window);
+  }
   recordProductPhysicsMovementPlannerTickProof(
       request.window,
       request.window.physicsMovementPlannerEnabled,

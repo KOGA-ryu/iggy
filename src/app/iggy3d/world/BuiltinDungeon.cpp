@@ -36,21 +36,23 @@ constexpr std::string_view kCourtyardVaultText =
 
 constexpr std::string_view kPhysicsFlatRoomText =
     "#######\n"
-    "#P...E#\n"
+    "#P.K.E#\n"
     "#.....#\n"
     "#.....#\n"
     "#######\n";
 
 constexpr std::string_view kPhysicsWallCorridorText =
     "#########\n"
-    "#P.....E#\n"
+    "#PK....E#\n"
+    "#########\n"
+    "#K......#\n"
     "#########\n";
 
 constexpr std::string_view kPhysicsCornerSlideText =
     "########\n"
     "#P....E#\n"
     "#####..#\n"
-    "#......#\n"
+    "#..K...#\n"
     "########\n";
 
 constexpr std::array<ProductBuiltinDungeonDefinition, 6> kCatalog = {{

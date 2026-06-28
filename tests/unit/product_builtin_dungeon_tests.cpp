@@ -74,9 +74,9 @@ constexpr ExpectedDungeonCounts kExpectedDungeons[] = {
     {"loop_keep_ascii", 17U, 7U, 59U, 60U, 5U, 180U, 59U, 61U, 61U},
     {"gatehouse_ascii", 11U, 7U, 33U, 44U, 5U, 122U, 33U, 45U, 45U},
     {"courtyard_vault_ascii", 13U, 7U, 46U, 45U, 5U, 137U, 46U, 46U, 46U},
-    {"physics_flat_room", 7U, 5U, 15U, 20U, 2U, 55U, 15U, 20U, 20U},
-    {"physics_wall_corridor", 9U, 3U, 7U, 20U, 2U, 47U, 7U, 20U, 20U},
-    {"physics_corner_slide", 8U, 5U, 14U, 26U, 2U, 66U, 14U, 26U, 26U},
+    {"physics_flat_room", 7U, 5U, 15U, 20U, 3U, 55U, 15U, 20U, 20U},
+    {"physics_wall_corridor", 9U, 5U, 14U, 31U, 4U, 76U, 14U, 31U, 31U},
+    {"physics_corner_slide", 8U, 5U, 14U, 26U, 3U, 66U, 14U, 26U, 26U},
 };
 
 const ExpectedDungeonCounts* expectedCountsFor(std::string_view roomId) {

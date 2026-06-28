@@ -117,3 +117,4 @@ BG-1116	src/runtime/physics/PhysicsKernelBenchmark.cpp	runtime physics kernel be
 BG-1117	src/runtime/physics/PhysicsKernelBenchmarkJson.cpp	runtime physics kernel benchmark JSON serialization policy	codex	2026-06-27
 BG-1118	apps/iggy3d_physics_kernel_bench/main.cpp	physics kernel benchmark CLI parsing and output policy	codex	2026-06-27
 BG-1119	src/app/iggy3d/view/OpeningMenuView.cpp	product first-person primitive viewport and top-down overlay draw policy	codex	2026-06-27
+BG-1120	src/app/iggy3d/gameplay/TapeRunner.cpp	product gameplay tape movement receipt mirror policy	codex	2026-06-27
