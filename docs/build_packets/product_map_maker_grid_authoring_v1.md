@@ -8,6 +8,52 @@ tools, bake/export, and save durability.
 This packet is implementation-facing. Use it as the first reference before
 building map-maker features.
 
+## Current Visual Checkpoint
+
+Status: paused/deferred after the first visible prototype.
+
+Observed problem in the real app:
+
+- Pressing `M` currently behaves like it is crossing the pause/menu input path:
+  gameplay pauses, mouse capture releases, and pressing `M` again resumes.
+- That is not acceptable map-maker behavior. `M` should enter or exit creative
+  authoring mode while gameplay view and mouse capture remain owned by the
+  gameplay window.
+- The prototype grid/cube work is useful rendering proof only. It is not a
+  complete creative-mode UX.
+
+Expected next behavior:
+
+- `M` toggles creative/map-maker mode without opening pause/menu flow.
+- Mouse capture stays active while in creative mode.
+- Creative mode has a visible UI selection area plus a toolbelt.
+- The toolbelt owns the active creative asset/tool, for example:
+  - select `1m cube`;
+  - later select dot/point, line, wall, floor, prop, radius line, etc.
+- The selected tool drives the preview object. The current hardcoded cube
+  preview becomes the default selected tool, not a hidden temporary.
+
+Do not keep stacking renderer-only prototypes until this input/UI ownership
+work is repaired. The next slice should fix ownership and visible selection
+first.
+
+Current TODO owner files:
+
+- `src/app/input/InputBindings.cpp`
+  - `M` is currently a global neutral binding. It needs gameplay/creative
+    ownership rules so it does not trip pause/menu behavior.
+- `src/app/iggy3d/menu/ActionHandlers.cpp`
+  - `MapMakerToggle` currently lives in `applyProductSystemPauseMenuAction`.
+    Move the toggle to a gameplay-owned creative-mode transition path.
+- `src/app/iggy3d/window/InputFrame.cpp`
+  - Creative fly currently consumes movement after routing, but mode entry and
+    toolbelt input ownership are not modeled here.
+- `src/app/iggy3d/map_maker/Presentation.hpp`
+  - Add a real toolbelt/HUD model for selected creative asset/tool.
+- `src/app/iggy3d/gameplay/ProjectionRefresh.cpp`
+  - Render the selected tool preview from the map-maker model, not from a
+    hardcoded cube.
+
 ## Product Direction
 
 - Normal gameplay remains player movement with gravity, collision, jump, dash,

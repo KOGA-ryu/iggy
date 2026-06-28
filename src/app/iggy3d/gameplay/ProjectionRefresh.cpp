@@ -401,6 +401,8 @@ ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
   return grid;
 }
 
+// TODO(map-maker): Build these transient meshes from a selected tool/asset
+// model instead of hardcoded grid/cube prototype state.
 Vec3 mapMakerDotSizeFor(const ProductMapMakerGridDot& dot,
                         float pitchMeters) {
   const float minorSize = std::clamp(pitchMeters * 0.08F, 0.04F, 0.10F);

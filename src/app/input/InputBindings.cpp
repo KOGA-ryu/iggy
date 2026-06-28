@@ -35,6 +35,9 @@ const std::vector<InputBinding>& defaultInputBindings() {
       {NeutralInput::KeyF1, InputAction::DevToggle, 1.0F},
       {NeutralInput::KeyF2, InputAction::DevToggle, 1.0F},
       {NeutralInput::KeyF3, InputAction::DevDebugOverlay, 1.0F},
+      // TODO(map-maker): Move this behind gameplay-owned creative-mode routing so
+      // it cannot trip pause/menu ownership or release mouse capture. See
+      // docs/build_packets/product_map_maker_grid_authoring_v1.md.
       {NeutralInput::KeyM, InputAction::MapMakerToggle, 1.0F},
       {NeutralInput::KeyE, InputAction::PlayerInteract, 1.0F},
       {NeutralInput::KeyR, InputAction::PlayerRetryOrReset, 1.0F},

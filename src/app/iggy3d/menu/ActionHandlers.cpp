@@ -579,6 +579,9 @@ ProductMenuActionResult applyProductStarterMenuAction(
 ProductMenuActionResult applyProductSystemPauseMenuAction(
     InputAction action,
     ProductSystemPauseMenuActionContext context) {
+  // TODO(map-maker): This toggle should not be owned by system/pause menu
+  // handling. Route it through gameplay creative-mode ownership so `M` keeps
+  // gameplay active and mouse capture bound.
   // branch-gate: BG-1205
   if (action == InputAction::MapMakerToggle) {
     // branch-gate: BG-1205

@@ -9,6 +9,9 @@
 
 namespace iggy3d {
 
+// TODO(map-maker): Replace the hardcoded cube preview with a visible toolbelt
+// model that exposes the selected creative asset/tool and preview parameters.
+// See docs/build_packets/product_map_maker_grid_authoring_v1.md.
 struct ProductMapMakerGridOverlay {
   bool visible = false;
   std::string status = "map_maker_grid_disabled";

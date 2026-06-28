@@ -235,6 +235,9 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
     applyProductCameraActions(acceptedGameplayActions, window.viewport, *settings,
                               inputSource);
   }
+  // TODO(map-maker): Creative mode needs its own toolbelt/input owner here.
+  // Movement is consumed for creative fly, but selected asset/tool input is not
+  // modeled yet.
   // branch-gate: BG-1205
   if (window.interactionMode == ProductInteractionMode::Creative) {
     applyProductWindowCreativeFlyActions(window, activeSession,
