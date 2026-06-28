@@ -991,6 +991,8 @@ bool sdlFunctionKeyEventsMapToSystemActions() {
   f3.f3Pressed = true;
   iggy3d::SdlWindowEventState f4;
   f4.f4Pressed = true;
+  iggy3d::SdlWindowEventState m;
+  m.mPressed = true;
   iggy3d::SdlWindowEventState f1f3;
   f1f3.f1Pressed = true;
   f1f3.f3Pressed = true;
@@ -1010,6 +1012,9 @@ bool sdlFunctionKeyEventsMapToSystemActions() {
 	         expect(iggy3d::productWindowFunctionKeyAction(f4) ==
 	                    iggy3d::InputAction::MovementTuningToggle,
 	                "F4 event maps to movement tuning") &&
+         expect(iggy3d::productWindowFunctionKeyAction(m) ==
+                    iggy3d::InputAction::MapMakerToggle,
+                "M event maps to map maker toggle") &&
 	         expect(iggy3d::productWindowFunctionKeyAction(f1f3) ==
 	                    iggy3d::InputAction::DevDebugOverlay,
 	                "F3 overlay event wins over dev panel toggle");
@@ -1024,17 +1029,21 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
       expect(!keyboard.debugOverlayWasDown,
 	             "no F-key leaves debug overlay unconsumed") &&
       expect(!keyboard.movementTuningToggleWasDown,
-             "no F-key leaves movement tuning unconsumed");
+             "no F-key leaves movement tuning unconsumed") &&
+      expect(!keyboard.mapMakerToggleWasDown,
+             "no M key leaves map maker unconsumed");
 
   iggy3d::SdlWindowEventState f2;
   f2.f2Pressed = true;
   iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, f2);
 	  const bool f2Ok =
 	      expect(keyboard.devToggleWasDown, "F2 event consumes dev toggle state") &&
-	      expect(!keyboard.debugOverlayWasDown,
+      expect(!keyboard.debugOverlayWasDown,
 	             "F2 event does not consume debug overlay state") &&
       expect(!keyboard.movementTuningToggleWasDown,
-             "F2 event does not consume movement tuning state");
+             "F2 event does not consume movement tuning state") &&
+      expect(!keyboard.mapMakerToggleWasDown,
+             "F2 event does not consume map maker state");
 
   keyboard = {};
   iggy3d::SdlWindowEventState f3;
@@ -1046,7 +1055,9 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
 	      expect(keyboard.debugOverlayWasDown,
 	             "F3 event consumes debug overlay state") &&
       expect(!keyboard.movementTuningToggleWasDown,
-             "F3 event does not consume movement tuning state");
+             "F3 event does not consume movement tuning state") &&
+      expect(!keyboard.mapMakerToggleWasDown,
+             "F3 event does not consume map maker state");
 
   keyboard = {};
   iggy3d::SdlWindowEventState f4;
@@ -1058,9 +1069,25 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
       expect(!keyboard.debugOverlayWasDown,
              "F4 event does not consume debug overlay state") &&
       expect(keyboard.movementTuningToggleWasDown,
-             "F4 event consumes movement tuning state");
+             "F4 event consumes movement tuning state") &&
+      expect(!keyboard.mapMakerToggleWasDown,
+             "F4 event does not consume map maker state");
 
-	  return noneOk && f2Ok && f3Ok && f4Ok;
+  keyboard = {};
+  iggy3d::SdlWindowEventState m;
+  m.mPressed = true;
+  iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, m);
+  const bool mOk =
+      expect(!keyboard.devToggleWasDown,
+             "M event does not consume dev toggle state") &&
+      expect(!keyboard.debugOverlayWasDown,
+             "M event does not consume debug overlay state") &&
+      expect(!keyboard.movementTuningToggleWasDown,
+             "M event does not consume movement tuning state") &&
+      expect(keyboard.mapMakerToggleWasDown,
+             "M event consumes map maker state");
+
+	  return noneOk && f2Ok && f3Ok && f4Ok && mOk;
 }
 
 bool movementTuningGameplayInputIsLiveAndFocused() {

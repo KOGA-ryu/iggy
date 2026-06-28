@@ -701,6 +701,10 @@ InputAction productWindowFunctionKeyAction(const SdlWindowEventState& eventState
   if (eventState.f1Pressed || eventState.f2Pressed) {
     return InputAction::DevToggle;
   }
+  // branch-gate: BG-1215
+  if (eventState.mPressed) {
+    return InputAction::MapMakerToggle;
+  }
   return InputAction::None;
 }
 
@@ -718,6 +722,10 @@ void recordProductWindowFunctionKeyKeyboardState(
   // branch-gate: BG-1212
   if (eventState.f4Pressed) {
     keyboard.movementTuningToggleWasDown = true;
+  }
+  // branch-gate: BG-1215
+  if (eventState.mPressed) {
+    keyboard.mapMakerToggleWasDown = true;
   }
 }
 

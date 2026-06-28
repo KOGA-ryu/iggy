@@ -32,6 +32,7 @@ struct SdlWindowEventState {
   bool f2Pressed = false;
   bool f3Pressed = false;
   bool f4Pressed = false;
+  bool mPressed = false;
   std::uint32_t windowWidth = 0;
   std::uint32_t windowHeight = 0;
   std::uint32_t drawableWidth = 0;

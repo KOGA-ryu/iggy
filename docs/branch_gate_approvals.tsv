@@ -204,3 +204,4 @@ BG-1211	src/app/iggy3d/view/OpeningMenuView.cpp	product gameplay settings tuning
 BG-1212	src/app/iggy3d/window/InputFrame.cpp	product gameplay direct movement tuning HUD and input focus policy	codex	2026-06-28
 BG-1213	src/app/iggy3d/window/FramePresenter.cpp	product gameplay movement tuning Vulkan UI overlay policy	codex	2026-06-28
 BG-1214	src/app/iggy3d/window/FramePresenter.cpp	product gameplay dev tools Vulkan UI overlay policy	codex	2026-06-28
+BG-1215	src/app/iggy3d/window/InputFrame.cpp	product gameplay map maker SDL key event routing policy	codex	2026-06-28
