@@ -544,6 +544,19 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                  1.0F);
     keyboardMenuAction = InputAction::None;
   }
+  const ProductMenuActionResult mapMakerInput =
+      applyProductGameplayMapMakerToggleAction(
+          keyboardMenuAction, {context.frontend, context.window});
+  // branch-gate: BG-1216
+  if (mapMakerInput.handled) {
+    recordAction(actionState,
+                 keyboardMenuAction,
+                 true,
+                 mapMakerInput.accepted,
+                 false,
+                 1.0F);
+    keyboardMenuAction = InputAction::None;
+  }
   routeProductWindowMenuInput(keyboardMenuAction, actionState, menuContext);
   // branch-gate: BG-1029
   if (context.frontend.childScreen == FrontendScreen::NewWorld) {

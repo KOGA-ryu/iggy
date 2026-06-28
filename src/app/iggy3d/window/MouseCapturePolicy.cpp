@@ -30,7 +30,8 @@ ProductMouseCapturePolicy buildProductMouseCapturePolicy(
     return policy;
   }
   // branch-gate: BG-1074
-  if (request.interactionMode != ProductInteractionMode::Player) {
+  if (request.interactionMode != ProductInteractionMode::Player &&
+      request.interactionMode != ProductInteractionMode::Creative) {
     policy.reasonCode = "mouse_capture_mode_blocked";
     policy.mode = "gameplay_released";
     return policy;

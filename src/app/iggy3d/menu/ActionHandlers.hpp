@@ -74,6 +74,11 @@ struct ProductSystemPauseMenuActionContext {
   FrontendSettings* settings = nullptr;
 };
 
+struct ProductGameplayMapMakerToggleActionContext {
+  FrontendState& frontend;
+  ProductAppWindowState& window;
+};
+
 struct ProductMenuActionResult {
   bool handled = false;
   bool accepted = false;
@@ -114,5 +119,9 @@ ProductMenuActionResult applyProductStarterMenuAction(
 ProductMenuActionResult applyProductSystemPauseMenuAction(
     InputAction action,
     ProductSystemPauseMenuActionContext context);
+
+ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
+    InputAction action,
+    ProductGameplayMapMakerToggleActionContext context);
 
 }  // namespace iggy3d

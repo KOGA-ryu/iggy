@@ -615,12 +615,9 @@ ProductMenuActionResult applyProductStarterMenuAction(
   return handleStarterConfirm(context);
 }
 
-ProductMenuActionResult applyProductSystemPauseMenuAction(
+ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
     InputAction action,
-    ProductSystemPauseMenuActionContext context) {
-  // TODO(map-maker): This toggle should not be owned by system/pause menu
-  // handling. Route it through gameplay creative-mode ownership so `M` keeps
-  // gameplay active and mouse capture bound.
+    ProductGameplayMapMakerToggleActionContext context) {
   // branch-gate: BG-1205
   if (action == InputAction::MapMakerToggle) {
     // branch-gate: BG-1205
@@ -652,6 +649,13 @@ ProductMenuActionResult applyProductSystemPauseMenuAction(
     context.frontend.status = context.window.mapMakerStatus;
     return {true, true};
   }
+
+  return {false, false};
+}
+
+ProductMenuActionResult applyProductSystemPauseMenuAction(
+    InputAction action,
+    ProductSystemPauseMenuActionContext context) {
   if (action == InputAction::DevDebugOverlay) {  // branch-gate: BG-1124
     // branch-gate: BG-1124
     if (context.settings == nullptr) {

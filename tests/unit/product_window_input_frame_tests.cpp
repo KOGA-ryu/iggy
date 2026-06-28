@@ -1151,16 +1151,16 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
   window.gameplayActive = true;
-  bool closeRequested = false;
-  iggy3d::FrontendSettings settings;
 
   const iggy3d::ProductMenuActionResult enabled =
-      iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::applyProductGameplayMapMakerToggleAction(
           iggy3d::InputAction::MapMakerToggle,
-          {frontend, window, closeRequested, &settings});
+          {frontend, window});
   const bool enabledOk =
       expect(enabled.handled, "map maker toggle handled") &&
       expect(enabled.accepted, "map maker toggle accepted") &&
+      expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
+             "map maker toggle keeps gameplay screen") &&
       expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
              "map maker toggle enters creative") &&
       expect(window.mapMakerActive, "map maker active") &&
@@ -1170,12 +1170,14 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
              "map maker frontend status");
 
   const iggy3d::ProductMenuActionResult disabled =
-      iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::applyProductGameplayMapMakerToggleAction(
           iggy3d::InputAction::MapMakerToggle,
-          {frontend, window, closeRequested, &settings});
+          {frontend, window});
   const bool disabledOk =
       expect(disabled.handled, "map maker disable handled") &&
       expect(disabled.accepted, "map maker disable accepted") &&
+      expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
+             "map maker disable keeps gameplay screen") &&
       expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
              "map maker toggle returns player") &&
       expect(!window.mapMakerActive, "map maker inactive") &&
@@ -1187,9 +1189,9 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   iggy3d::FrontendState starter = starterFrontend();
   iggy3d::ProductAppWindowState inactiveWindow;
   const iggy3d::ProductMenuActionResult ignored =
-      iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::applyProductGameplayMapMakerToggleAction(
           iggy3d::InputAction::MapMakerToggle,
-          {starter, inactiveWindow, closeRequested, &settings});
+          {starter, inactiveWindow});
   const bool ignoredOk =
       expect(ignored.handled, "inactive map maker toggle handled") &&
       expect(!ignored.accepted, "inactive map maker toggle rejected") &&
