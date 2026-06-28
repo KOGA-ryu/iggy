@@ -102,6 +102,10 @@ ProductRoomEditorPlacementPreviewResult buildProductRoomEditorPreviewAutomation(
     const ProductRoomEditingState& editing,
     ProductRoomEditorCursorState cursor);
 
+ProductRoomEditingOperationResult confirmProductRoomEditorPreviewAutomation(
+    ProductRoomEditingState& editing,
+    const ProductRoomEditorPlacementPreviewResult& preview);
+
 bool isProductRoomEditorPreviewInputAction(InputAction action);
 
 ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputAction(

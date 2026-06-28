@@ -159,9 +159,9 @@ bool creativeGameplayMappingsAreStable() {
          expectMapped(iggy3d::ProductInputSurface::Gameplay,
                       iggy3d::ProductInteractionMode::Creative,
                       iggy3d::ProductControllerControl::SouthButton,
-                      iggy3d::InputAction::EditorConfirmPreview,
+                      iggy3d::InputAction::EditorPlace,
                       1.0F,
-                      "creative south button maps to confirm preview") &&
+                      "creative south button maps to editor place") &&
          expectMapped(iggy3d::ProductInputSurface::Gameplay,
                       iggy3d::ProductInteractionMode::Creative,
                       iggy3d::ProductControllerControl::EastButton,
@@ -198,9 +198,9 @@ bool roomEditorSurfaceUsesEditorMappings() {
          expectMapped(iggy3d::ProductInputSurface::RoomEditor,
                       iggy3d::ProductInteractionMode::Creative,
                       iggy3d::ProductControllerControl::SouthButton,
-                      iggy3d::InputAction::EditorConfirmPreview,
+                      iggy3d::InputAction::EditorPlace,
                       1.0F,
-                      "room editor creative mode uses editor confirm");
+                      "room editor creative mode uses editor place");
 }
 
 bool blockedSurfacesStayUnmapped() {
@@ -242,7 +242,7 @@ bool playerAndCreativeDifferForSameControl() {
          expect(creative.mapped, "creative south button mapped") &&
          expect(player.action == iggy3d::InputAction::PlayerInteract,
                 "player south action") &&
-         expect(creative.action == iggy3d::InputAction::EditorConfirmPreview,
+         expect(creative.action == iggy3d::InputAction::EditorPlace,
                 "creative south action");
 }
 

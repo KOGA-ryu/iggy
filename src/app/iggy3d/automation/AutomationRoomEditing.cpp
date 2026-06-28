@@ -322,6 +322,19 @@ ProductRoomEditorPreviewInputResult baseProductRoomEditorPreviewInputResult(
   return result;
 }
 
+bool productRoomEditorPreviewMatchesCursor(const ProductAppWindowState& window) {
+  const ProductRoomEditorPlacementPreviewResult& preview =
+      window.roomEditorPlacementPreview;
+  const ProductRoomEditorCursorState& cursor = window.roomEditorCursor;
+  return window.roomEditorPreviewActive && preview.ok &&
+         preview.candidateCommandReady && preview.gridX == cursor.gridX &&
+         preview.gridZ == cursor.gridZ &&
+         preview.storyIndex == cursor.storyIndex &&
+         preview.tool == productRoomEditorToolName(cursor.selectedTool) &&
+         preview.wallDirection ==
+             productRoomEditorDirectionName(cursor.wallDirection);
+}
+
 void recordProductRoomEditorPreviewInputReceipt(
     ProductAppWindowState& window,
     const ProductRoomEditorPreviewInputResult& result) {
@@ -368,8 +381,7 @@ ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputConfirm(
   ProductRoomEditorPreviewInputResult result =
       baseProductRoomEditorPreviewInputResult(action);
   // branch-gate: BG-1054
-  if (!window.roomEditorPreviewActive || !window.roomEditorPlacementPreview.ok ||
-      !window.roomEditorPlacementPreview.candidateCommandReady) {
+  if (!productRoomEditorPreviewMatchesCursor(window)) {
     markProductRoomEditorPreviewCleared(window,
                                         "room_editor_preview_confirm_missing");
     result.status = "room_editor_preview_confirm_missing";
@@ -401,6 +413,16 @@ ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputConfirm(
   return result;
 }
 
+ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputPlace(
+    ProductAppWindowState& window,
+    InputAction action) {
+  // branch-gate: BG-1054
+  if (productRoomEditorPreviewMatchesCursor(window)) {
+    return applyProductRoomEditorPreviewInputConfirm(window, action);
+  }
+  return applyProductRoomEditorPreviewInputBuild(window, action);
+}
+
 ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputCancel(
     ProductAppWindowState& window,
     InputAction action) {
@@ -417,6 +439,8 @@ ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputCancel(
 
 bool isProductRoomEditorPreviewInputAction(InputAction action) {
   switch (action) {  // branch-gate: BG-1054
+    case InputAction::EditorPlace:
+    case InputAction::EditorApply:
     case InputAction::EditorPreviewPlacement:
     case InputAction::EditorConfirmPreview:
     case InputAction::EditorCancelPreview:
@@ -441,6 +465,10 @@ ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputAction(
   }
 
   switch (action) {  // branch-gate: BG-1054
+    case InputAction::EditorPlace:
+      return applyProductRoomEditorPreviewInputPlace(window, action);
+    case InputAction::EditorApply:
+      return applyProductRoomEditorPreviewInputConfirm(window, action);
     case InputAction::EditorPreviewPlacement:
       return applyProductRoomEditorPreviewInputBuild(window, action);
     case InputAction::EditorConfirmPreview:

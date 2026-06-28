@@ -208,6 +208,105 @@ bool invalidClickPropagatesMousePickRejectionWithoutMutation() {
                 "invalid mouse leaves wall count");
 }
 
+bool controllerSouthStagesThenConfirmsPlacement() {
+  const iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window = editingWindow();
+  window.roomEditorCursor.gridX = 1;
+  iggy3d::Session session;
+  iggy3d::ProductControllerModeChordState chord;
+  iggy3d::ProductControllerActionRoutingState routing;
+  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+
+  const iggy3d::GamepadControllerActionSample south =
+      iggy3d::productControllerActionSampleForControl(
+          iggy3d::ProductControllerControl::SouthButton);
+  const iggy3d::ProductControllerSampleInputResult staged =
+      iggy3d::processProductControllerActionSample(
+          {frontend, window, &session, chord, routing, nullptr, "unit"}, south);
+
+  const bool firstOk =
+      expect(staged.actionApplied, "first south action applied") &&
+      expect(staged.actionAccepted, "first south stages accepted preview") &&
+      expect(window.lastInputAction == iggy3d::InputAction::EditorPlace,
+             "first south routes to editor place") &&
+      expect(window.roomEditorStatus == "room_editor_preview_ready",
+             "first south stages preview") &&
+      expect(window.roomEditorLastOperation == "editor.place",
+             "first south operation is editor place") &&
+      expect(window.roomEditorPreviewActive, "first south preview pending") &&
+      expect(window.roomEditorPreviewVisible, "first south preview visible") &&
+      expect(window.roomEditorPreviewCandidateId == "edit_wall_1",
+             "first south candidate id") &&
+      expect(window.roomEditing.documentWallCount == initialWalls,
+             "first south does not mutate walls");
+
+  (void)iggy3d::processProductControllerActionSample(
+      {frontend, window, &session, chord, routing, nullptr, "unit"},
+      iggy3d::GamepadControllerActionSample{});
+  const iggy3d::ProductControllerSampleInputResult confirmed =
+      iggy3d::processProductControllerActionSample(
+          {frontend, window, &session, chord, routing, nullptr, "unit"}, south);
+
+  return firstOk &&
+         expect(confirmed.actionApplied, "second south action applied") &&
+         expect(confirmed.actionAccepted, "second south confirms preview") &&
+         expect(window.lastInputAction == iggy3d::InputAction::EditorPlace,
+                "second south routes to editor place") &&
+         expect(window.roomEditorStatus == "room_editor_preview_confirmed",
+                "second south confirm status") &&
+         expect(window.roomEditorLastOperation == "editor.place",
+                "second south operation is editor place") &&
+         expect(!window.roomEditorPreviewActive,
+                "second south clears pending preview") &&
+         expect(!window.roomEditorPreviewVisible,
+                "second south hides preview") &&
+         expect(window.roomEditorLastPrimitiveId == "edit_wall_1",
+                "second south primitive id") &&
+         expect(window.roomEditing.documentWallCount == initialWalls + 1U,
+                "second south mutates walls") &&
+         expect(window.roomEditingLastOperation == "editor.place",
+                "second south editing operation") &&
+         expect(window.roomEditingLastOperationAccepted,
+                "second south editing accepted");
+}
+
+bool controllerMoveInvalidatesPendingPreview() {
+  const iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window = editingWindow();
+  iggy3d::Session session;
+  iggy3d::ProductControllerModeChordState chord;
+  iggy3d::ProductControllerActionRoutingState routing;
+  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+
+  (void)iggy3d::processProductControllerActionSample(
+      {frontend, window, &session, chord, routing, nullptr, "unit"},
+      iggy3d::productControllerActionSampleForControl(
+          iggy3d::ProductControllerControl::SouthButton));
+  (void)iggy3d::processProductControllerActionSample(
+      {frontend, window, &session, chord, routing, nullptr, "unit"},
+      iggy3d::GamepadControllerActionSample{});
+  const iggy3d::ProductControllerSampleInputResult moved =
+      iggy3d::processProductControllerActionSample(
+          {frontend, window, &session, chord, routing, nullptr, "unit"},
+          iggy3d::productControllerActionSampleForControl(
+              iggy3d::ProductControllerControl::DpadRight));
+
+  return expect(moved.actionApplied, "dpad move action applied") &&
+         expect(moved.actionAccepted, "dpad move accepted") &&
+         expect(window.lastInputAction == iggy3d::InputAction::EditorNudgeX,
+                "dpad right routes to nudge x") &&
+         expect(window.roomEditorCursor.gridX == 1,
+                "dpad right moves cursor") &&
+         expect(window.roomEditorStatus == "room_editor_cursor_moved",
+                "dpad move cursor status") &&
+         expect(!window.roomEditorPreviewActive,
+                "dpad move clears pending preview") &&
+         expect(!window.roomEditorPreviewVisible,
+                "dpad move hides preview") &&
+         expect(window.roomEditing.documentWallCount == initialWalls,
+                "dpad move does not mutate walls");
+}
+
 }  // namespace
 
 int main() {
@@ -215,7 +314,9 @@ int main() {
       creativeClickPicksCursorAndBuildsPreviewWithoutMutation() &&
       playerClickDoesNotRunEditorPickPreview() &&
       notReadyClickDoesNotMutateEditorState() &&
-      invalidClickPropagatesMousePickRejectionWithoutMutation();
+      invalidClickPropagatesMousePickRejectionWithoutMutation() &&
+      controllerSouthStagesThenConfirmsPlacement() &&
+      controllerMoveInvalidatesPendingPreview();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;
