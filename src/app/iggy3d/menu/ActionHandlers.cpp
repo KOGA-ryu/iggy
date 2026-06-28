@@ -207,6 +207,14 @@ bool isPreviousBuiltinDungeonAction(InputAction action) {
   return action == InputAction::MenuUp || action == InputAction::MenuLeft;
 }
 
+char selectedDungeonDraftGlyph(const ProductAppWindowState& window) {
+  // branch-gate: BG-1147
+  if (window.worldSetupDungeonDraftSelectedGlyph.empty()) {
+    return '.';
+  }
+  return window.worldSetupDungeonDraftSelectedGlyph.front();
+}
+
 ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& context) {
   FrontendState& frontend = context.frontend;
   ProductAppWindowState& window = context.window;
@@ -530,6 +538,13 @@ ProductMenuActionResult applyProductNewWorldMenuAction(
   }
   // branch-gate: BG-1021
   if (action == InputAction::MenuConfirm) {
+    // branch-gate: BG-1147
+    if (window.worldSetupDungeonDraftEditMode) {
+      const bool painted = applyDungeonDraftPaintGlyph(
+          worldSetupDraft, window, selectedDungeonDraftGlyph(window));
+      frontend.status = window.worldSetupDungeonDraftStatus;
+      return {true, painted};
+    }
     launchProductNewWorld(context.options, worldSetupDraft, frontend,
                           context.activeSession, window);
     return {true, true};

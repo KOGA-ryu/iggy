@@ -143,3 +143,7 @@ BG-1142	src/app/iggy3d/window/InputFrame.cpp	starter child panel mouse back rout
 BG-1143	src/app/iggy3d/menu/DrawList.cpp	new world starter child UI draw-list rendering policy	codex	2026-06-28
 BG-1144	src/app/iggy3d/menu/DrawList.cpp	new world ASCII draft preview and cursor draw-list policy	codex	2026-06-28
 BG-1145	src/app/iggy3d/view/OpeningMenuView.cpp	new world SDL ASCII draft cursor preview policy	codex	2026-06-28
+BG-1146	src/app/iggy3d/automation/Automation.cpp	build map selected paint glyph automation policy	codex	2026-06-28
+BG-1147	src/app/iggy3d/menu/ActionHandlers.cpp	build map confirm paints selected glyph policy	codex	2026-06-28
+BG-1148	src/app/iggy3d/menu/DrawList.cpp	build map selected paint tool draw-list label policy	codex	2026-06-28
+BG-1149	src/app/iggy3d/view/OpeningMenuView.cpp	build map selected paint tool SDL label policy	codex	2026-06-28

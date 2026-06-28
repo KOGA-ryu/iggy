@@ -371,6 +371,34 @@ std::string lastGlyphText(const std::string& glyph) {
   return "LAST " + glyph;
 }
 
+std::string selectedGlyphText(const std::string& glyph) {
+  // branch-gate: BG-1148
+  if (glyph.empty()) {
+    return "TOOL . FLOOR";
+  }
+  const char selected = glyph.front();
+  // branch-gate: BG-1148
+  switch (selected) {
+    case '#':
+      return "TOOL # WALL";
+    case '.':
+      return "TOOL . FLOOR";
+    case 'P':
+      return "TOOL P PLAYER";
+    case 'K':
+      return "TOOL K KEY";
+    case '$':
+      return "TOOL $ PICKUP";
+    case 'E':
+      return "TOOL E EXIT";
+    case '+':
+      return "TOOL + RAMP";
+    case 'C':
+      return "TOOL C CRATE";
+  }
+  return "TOOL " + glyph;
+}
+
 void emitAsciiDraftRows(ProductUiDrawList& list,
                         const WorldSetupDraft& draft,
                         const ProductUiDrawListRequest& request) {
@@ -411,7 +439,7 @@ void emitNewWorldContent(ProductUiDrawList& list,
            {452.0F, 210.0F, 700.0F, 26.0F},
            makeStarterSemanticId("content.new_world.instructions"),
            request.dungeonDraftEditMode
-               ? "EDIT MODE   ARROWS MOVE   PAINT 1# 2. 3P 4K 5$ 6E 7+ 8C"
+               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C SELECT   ENTER PAINT"
                : "UP DOWN SELECT TEMPLATE   TAB EDIT   CONFIRM BUILD");
   // branch-gate: BG-1143
   if (draft == nullptr) {
@@ -492,7 +520,12 @@ void emitNewWorldContent(ProductUiDrawList& list,
            "ASCII PREVIEW");
   emitText(list,
            ProductUiTone::TextMuted,
-           {1038.0F, 468.0F, 170.0F, 26.0F},
+           {1030.0F, 446.0F, 170.0F, 22.0F},
+           makeStarterSemanticId("content.new_world.selected_glyph"),
+           selectedGlyphText(request.dungeonDraftSelectedGlyph));
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {1030.0F, 468.0F, 170.0F, 22.0F},
            makeStarterSemanticId("content.new_world.last_glyph"),
            lastGlyphText(request.dungeonDraftLastGlyph));
   emitAsciiDraftRows(list, *draft, request);

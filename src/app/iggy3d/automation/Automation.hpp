@@ -363,6 +363,7 @@ void resetDungeonDraftWindowCursor(const WorldSetupDraft& draft,
 bool applyDungeonDraftPaintGlyph(WorldSetupDraft& worldSetupDraft,
                                  ProductAppWindowState& window,
                                  char glyph);
+bool selectDungeonDraftPaintGlyph(ProductAppWindowState& window, char glyph);
 
 ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     const ProductAutomationCommand& command,

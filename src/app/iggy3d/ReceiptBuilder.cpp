@@ -250,6 +250,9 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      "world_setup_dungeon_draft_reason_code",
                      window.worldSetupDungeonDraftReasonCode);
   appendReceiptField(receipt,
+                     "world_setup_dungeon_draft_selected_glyph",
+                     window.worldSetupDungeonDraftSelectedGlyph);
+  appendReceiptField(receipt,
                      "world_setup_dungeon_draft_last_glyph",
                      window.worldSetupDungeonDraftLastGlyph);
   appendReceiptField(receipt, "world_creation_status", window.worldCreationStatus);

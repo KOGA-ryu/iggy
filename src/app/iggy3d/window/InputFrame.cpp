@@ -377,7 +377,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     const char paintGlyph = pollKeyboardAsciiRoomPaintGlyph(context.inputFrame.keyboard);
     // branch-gate: BG-1029
     if (paintGlyph != '\0') {
-      applyDungeonDraftPaintGlyph(context.worldSetupDraft, context.window, paintGlyph);
+      selectDungeonDraftPaintGlyph(context.window, paintGlyph);
     }
   }
 

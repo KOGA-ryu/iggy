@@ -1238,6 +1238,25 @@ bool applyDungeonDraftPaintGlyph(WorldSetupDraft& worldSetupDraft,
   return painted.ok;
 }
 
+bool selectDungeonDraftPaintGlyph(ProductAppWindowState& window, char glyph) {
+  // branch-gate: BG-1146
+  if (!window.worldSetupDungeonDraftEditMode) {
+    window.worldSetupDungeonDraftStatus = "dungeon_draft_edit_mode_off";
+    window.worldSetupDungeonDraftReasonCode = "dungeon_draft_edit_mode_off";
+    return false;
+  }
+  // branch-gate: BG-1146
+  if (!isProductDungeonDraftGlyph(glyph)) {
+    window.worldSetupDungeonDraftStatus = "dungeon_draft_invalid_glyph";
+    window.worldSetupDungeonDraftReasonCode = "dungeon_draft_invalid_glyph";
+    return false;
+  }
+  window.worldSetupDungeonDraftSelectedGlyph = std::string(1U, glyph);
+  window.worldSetupDungeonDraftStatus = "dungeon_draft_paint_tool_selected";
+  window.worldSetupDungeonDraftReasonCode = "dungeon_draft_paint_tool_selected";
+  return true;
+}
+
 void markAutomationApplied(ProductAppWindowState& window,
                            const ProductAutomationCommand& command,
                            std::string_view action,
@@ -1401,7 +1420,10 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
                             context.currentOwner(), "failed");
       return {true, false};
     }
+    const bool editMode = context.window.worldSetupDungeonDraftEditMode;
+    context.window.worldSetupDungeonDraftEditMode = false;
     const bool routed = context.routeInput(InputAction::MenuConfirm);
+    context.window.worldSetupDungeonDraftEditMode = editMode;
     markAutomationApplied(context.window, command,
                           inputActionName(InputAction::MenuConfirm),
                           context.window.automationControlLastOwner,

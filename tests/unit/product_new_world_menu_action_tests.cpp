@@ -89,8 +89,21 @@ bool newWorldDraftHotkeysDriveDraftState() {
               "draft cursor column reaches two") &&
        ok;
 
-  const bool painted = iggy3d::applyDungeonDraftPaintGlyph(draft, window, 'C');
-  ok = expect(painted, "number-key crate glyph paints draft cell") && ok;
+  const bool selected = iggy3d::selectDungeonDraftPaintGlyph(window, 'C');
+  ok = expect(selected, "number-key crate glyph selects paint tool") && ok;
+  ok = expect(window.worldSetupDungeonDraftSelectedGlyph == "C",
+              "painting records selected glyph") &&
+       ok;
+  ok = expect(!window.worldSetupDungeonDraftModified,
+              "selecting paint tool does not mutate draft") &&
+       ok;
+
+  const iggy3d::ProductMenuActionResult paint = applyNewWorldAction(
+      iggy3d::InputAction::MenuConfirm, frontend, options, activeSession, draft,
+      window);
+  ok = expect(paint.handled && paint.accepted,
+              "confirm paints selected glyph in edit mode") &&
+       ok;
   ok = expect(window.worldSetupDungeonDraftModified,
               "painting marks dungeon draft modified") &&
        ok;

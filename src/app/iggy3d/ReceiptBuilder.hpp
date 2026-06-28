@@ -82,6 +82,7 @@ struct ProductAppWindowState {
   std::uint64_t worldSetupDungeonDraftCursorColumn = 0;
   std::string worldSetupDungeonDraftStatus = "not_requested";
   std::string worldSetupDungeonDraftReasonCode = "not_requested";
+  std::string worldSetupDungeonDraftSelectedGlyph = ".";
   std::string worldSetupDungeonDraftLastGlyph = "none";
   std::string worldCreationStatus = "not_requested";
   std::string worldCreationReasonCode = "not_requested";

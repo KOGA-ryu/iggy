@@ -191,6 +191,7 @@ bool newWorldEditModeShowsCursorPaletteAndLastGlyph() {
                                              true,
                                              1U,
                                              2U,
+                                             "C",
                                              "C"});
   const iggy3d::ProductUiPrimitive* instructions =
       findPrimitive(list, "starter.content.new_world.instructions");
@@ -198,6 +199,8 @@ bool newWorldEditModeShowsCursorPaletteAndLastGlyph() {
       findPrimitive(list, "starter.content.new_world.draft_value");
   const iggy3d::ProductUiPrimitive* cursorValue =
       findPrimitive(list, "starter.content.new_world.cursor_value");
+  const iggy3d::ProductUiPrimitive* selectedGlyph =
+      findPrimitive(list, "starter.content.new_world.selected_glyph");
   const iggy3d::ProductUiPrimitive* lastGlyph =
       findPrimitive(list, "starter.content.new_world.last_glyph");
   const iggy3d::ProductUiPrimitive* asciiRow =
@@ -207,12 +210,14 @@ bool newWorldEditModeShowsCursorPaletteAndLastGlyph() {
   bool ok = true;
   ok &= expect(instructions != nullptr &&
                    instructions->text ==
-                       "EDIT MODE   ARROWS MOVE   PAINT 1# 2. 3P 4K 5$ 6E 7+ 8C",
+                       "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C SELECT   ENTER PAINT",
                "new world edit instructions show paint keys");
   ok &= expect(draftValue != nullptr && draftValue->text == "CUSTOM",
                "new world edit draft value");
   ok &= expect(cursorValue != nullptr && cursorValue->text == "1,2",
                "new world edit cursor value");
+  ok &= expect(selectedGlyph != nullptr && selectedGlyph->text == "TOOL C CRATE",
+               "new world edit selected glyph");
   ok &= expect(lastGlyph != nullptr && lastGlyph->text == "LAST C",
                "new world edit last glyph");
   ok &= expect(asciiRow != nullptr && asciiRow->text.find("[") != std::string::npos,

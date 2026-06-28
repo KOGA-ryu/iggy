@@ -30,6 +30,33 @@ namespace {
 
 using GlyphRows = std::array<std::uint8_t, 7>;
 
+std::string selectedDraftGlyphLabel(const std::string& glyph) {
+  // branch-gate: BG-1149
+  if (glyph.empty()) {
+    return "TOOL . FLOOR";
+  }
+  // branch-gate: BG-1149
+  switch (glyph.front()) {
+    case '#':
+      return "TOOL # WALL";
+    case '.':
+      return "TOOL . FLOOR";
+    case 'P':
+      return "TOOL P PLAYER";
+    case 'K':
+      return "TOOL K KEY";
+    case '$':
+      return "TOOL $ PICKUP";
+    case 'E':
+      return "TOOL E EXIT";
+    case '+':
+      return "TOOL + RAMP";
+    case 'C':
+      return "TOOL C CRATE";
+  }
+  return "TOOL " + glyph;
+}
+
 GlyphRows glyphFor(char c) {
   switch (static_cast<char>(std::toupper(static_cast<unsigned char>(c)))) {
     case 'A':
@@ -812,6 +839,7 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
                        bool dungeonDraftModified,
                        std::uint64_t dungeonDraftCursorRow,
                        std::uint64_t dungeonDraftCursorColumn,
+                       const std::string& dungeonDraftSelectedGlyph,
                        const std::string& dungeonDraftLastGlyph) {
   const std::size_t selectedIndex =
       productBuiltinDungeonIndexForRoomId(draft.asciiRoomId);
@@ -827,7 +855,7 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
   setColor(renderer, 166, 184, 177);
   drawText(renderer,
            dungeonDraftEditMode
-               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C"
+               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C SELECT   ENTER PAINT"
                : "UP DOWN SELECT TEMPLATE   TAB EDIT   CONFIRM BUILD",
            452.0F,
            210.0F,
@@ -856,6 +884,11 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
   drawText(renderer, "SAVES", 850.0F, 416.0F, 2.0F);
   drawText(renderer, std::to_string(saves.slots.slots.size()), 940.0F, 416.0F, 2.0F);
   drawText(renderer, "ASCII PREVIEW", 850.0F, 468.0F, 2.0F);
+  drawText(renderer,
+           selectedDraftGlyphLabel(dungeonDraftSelectedGlyph),
+           1040.0F,
+           446.0F,
+           2.0F);
   drawText(renderer,
            dungeonDraftLastGlyph.empty() ? "LAST none"
                                          : "LAST " + dungeonDraftLastGlyph,
@@ -1200,6 +1233,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          bool dungeonDraftModified,
                                          std::uint64_t dungeonDraftCursorRow,
                                          std::uint64_t dungeonDraftCursorColumn,
+                                         const std::string& dungeonDraftSelectedGlyph,
                                          const std::string& dungeonDraftLastGlyph,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
@@ -1274,6 +1308,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                       dungeonDraftModified,
                       dungeonDraftCursorRow,
                       dungeonDraftCursorColumn,
+                      dungeonDraftSelectedGlyph,
                       dungeonDraftLastGlyph);
   } else {
     drawStarterDetailPanel(renderer);

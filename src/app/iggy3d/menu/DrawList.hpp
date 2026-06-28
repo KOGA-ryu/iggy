@@ -82,6 +82,7 @@ struct ProductUiDrawListRequest {
   bool dungeonDraftModified = false;
   std::uint64_t dungeonDraftCursorRow = 0;
   std::uint64_t dungeonDraftCursorColumn = 0;
+  std::string dungeonDraftSelectedGlyph = ".";
   std::string dungeonDraftLastGlyph = "none";
 };
 

@@ -166,6 +166,7 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
            request.window.worldSetupDungeonDraftModified,
            request.window.worldSetupDungeonDraftCursorRow,
            request.window.worldSetupDungeonDraftCursorColumn,
+           request.window.worldSetupDungeonDraftSelectedGlyph,
            request.window.worldSetupDungeonDraftLastGlyph});
       recordProductVulkanMenuUiDrawList(request.window, "starter", menuUi);
       const SdlDrawableExtent drawableExtent = request.sdlWindow.drawableExtent();
@@ -202,6 +203,7 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           request.window.worldSetupDungeonDraftModified,
                           request.window.worldSetupDungeonDraftCursorRow,
                           request.window.worldSetupDungeonDraftCursorColumn,
+                          request.window.worldSetupDungeonDraftSelectedGlyph,
                           request.window.worldSetupDungeonDraftLastGlyph,
                           request.window.gameplayActive,
                           request.window.runtimeStateHash,
