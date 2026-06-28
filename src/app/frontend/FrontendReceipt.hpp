@@ -19,8 +19,8 @@ struct FrontendReceiptFields {
   bool inputOwned = true;
   FrontendScreen childScreen = FrontendScreen::Gameplay;
   FrontendAction disabledAction = FrontendAction::None;
-  bool pauseMenuOpen = false;
-  bool devToolsOpen = false;
+  bool pauseOpen = false;
+  bool devToolsVisible = false;
   FrontendDevToolsCategory devToolsCategory = FrontendDevToolsCategory::None;
   std::string settingsInputBackend = "keyboard";
   std::string settingsLookSensitivity = "1.000";

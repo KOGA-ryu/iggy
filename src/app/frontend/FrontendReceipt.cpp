@@ -12,8 +12,8 @@ FrontendReceiptFields receiptFieldsFromFrontendState(const FrontendState& state)
   fields.inputOwned = frontendBlocksGameplayInput(state);
   fields.childScreen = state.childScreen;
   fields.disabledAction = state.disabledAction;
-  fields.pauseMenuOpen = frontendPauseMenuOpen(state);
-  fields.devToolsOpen = frontendDevToolsOpen(state);
+  fields.pauseOpen = frontendPauseMenuOpen(state);
+  fields.devToolsVisible = frontendDevToolsOpen(state);
   fields.devToolsCategory = state.devToolsCategory;
   return fields;
 }
@@ -34,8 +34,8 @@ void appendFrontendReceiptFields(RenderReceipt& receipt,
                          : frontendScreenName(fields.childScreen));
   appendReceiptField(receipt, "frontend_disabled_action",
                      frontendActionName(fields.disabledAction));
-  appendReceiptField(receipt, "pause_menu_open", fields.pauseMenuOpen);
-  appendReceiptField(receipt, "dev_tools_open", fields.devToolsOpen);
+  appendReceiptField(receipt, "pause_menu_open", fields.pauseOpen);
+  appendReceiptField(receipt, "dev_tools_open", fields.devToolsVisible);
   appendReceiptField(receipt, "dev_tools_category",
                      frontendDevToolsCategoryName(fields.devToolsCategory));
   appendReceiptField(receipt, "settings_input_backend", fields.settingsInputBackend);

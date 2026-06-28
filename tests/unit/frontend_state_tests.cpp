@@ -145,35 +145,29 @@ bool menuAndConfirmScreensBlockGameplay() {
   return ok;
 }
 
-bool openPredicatesIgnoreStaleMirrorFlags() {
-  iggy3d::FrontendState staleStarter;
-  staleStarter.screen = iggy3d::FrontendScreen::Starter;
-  staleStarter.childScreen = iggy3d::FrontendScreen::Gameplay;
-  staleStarter.pauseMenuOpen = true;
-  staleStarter.devToolsOpen = true;
-  bool ok = expect(!iggy3d::frontendPauseMenuOpen(staleStarter),
-                   "stale starter pause flag ignored") &&
-            expect(!iggy3d::frontendDevToolsOpen(staleStarter),
-                   "stale starter dev flag ignored");
+bool openPredicatesDeriveFromScreenState() {
+  iggy3d::FrontendState starter;
+  starter.screen = iggy3d::FrontendScreen::Starter;
+  starter.childScreen = iggy3d::FrontendScreen::Gameplay;
+  bool ok = expect(!iggy3d::frontendPauseMenuOpen(starter),
+                   "starter pause closed") &&
+            expect(!iggy3d::frontendDevToolsOpen(starter),
+                   "starter dev closed");
 
-  iggy3d::FrontendState stalePause;
-  stalePause.screen = iggy3d::FrontendScreen::Pause;
-  stalePause.childScreen = iggy3d::FrontendScreen::Gameplay;
-  stalePause.pauseMenuOpen = false;
-  stalePause.devToolsOpen = true;
-  ok = expect(iggy3d::frontendPauseMenuOpen(stalePause),
+  iggy3d::FrontendState pause;
+  pause.screen = iggy3d::FrontendScreen::Pause;
+  pause.childScreen = iggy3d::FrontendScreen::Gameplay;
+  ok = expect(iggy3d::frontendPauseMenuOpen(pause),
               "pause derives open from screen") &&
-       expect(!iggy3d::frontendDevToolsOpen(stalePause),
-              "pause ignores stale dev flag") && ok;
+       expect(!iggy3d::frontendDevToolsOpen(pause),
+              "pause dev tools closed") && ok;
 
-  iggy3d::FrontendState staleDevTools;
-  staleDevTools.screen = iggy3d::FrontendScreen::DevOverlay;
-  staleDevTools.childScreen = iggy3d::FrontendScreen::Gameplay;
-  staleDevTools.pauseMenuOpen = true;
-  staleDevTools.devToolsOpen = false;
-  ok = expect(!iggy3d::frontendPauseMenuOpen(staleDevTools),
-              "dev tools ignores stale pause flag") &&
-       expect(iggy3d::frontendDevToolsOpen(staleDevTools),
+  iggy3d::FrontendState devTools;
+  devTools.screen = iggy3d::FrontendScreen::DevOverlay;
+  devTools.childScreen = iggy3d::FrontendScreen::Gameplay;
+  ok = expect(!iggy3d::frontendPauseMenuOpen(devTools),
+              "dev tools pause closed") &&
+       expect(iggy3d::frontendDevToolsOpen(devTools),
               "dev tools derives open from screen") && ok;
 
   iggy3d::FrontendState starterDevTools;
@@ -227,7 +221,7 @@ int main() {
   const bool ok = bootTransitionsOnlyWhenReady() && overlaysAreSeparateStates() &&
                   pauseSettingsAndDevToolsBlockGameplay() &&
                   menuAndConfirmScreensBlockGameplay() &&
-                  openPredicatesIgnoreStaleMirrorFlags() &&
+                  openPredicatesDeriveFromScreenState() &&
                   returnToTitleSuppressesGameplay() &&
                   stableNamesArePacketNames();
   return ok ? 0 : 1;

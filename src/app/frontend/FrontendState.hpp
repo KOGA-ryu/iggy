@@ -69,10 +69,6 @@ struct FrontendState {
   bool launchRequested = false;
   bool returnToTitleRequested = false;
   bool inputOwned = true;
-  // Deprecated compatibility fields. Use frontendPauseMenuOpen() and
-  // frontendDevToolsOpen() for live/proof decisions.
-  bool pauseMenuOpen = false;
-  bool devToolsOpen = false;
   std::string_view status = "frontend_boot_pending";
 };
 

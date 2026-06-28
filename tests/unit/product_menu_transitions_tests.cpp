@@ -103,8 +103,6 @@ int main() {
   ok &= expect(window.productTransitionStatus == "starter_ready",
                "starter transition status");
   iggy3d::FrontendSettings settings;
-  frontend.pauseMenuOpen = true;
-  frontend.devToolsOpen = true;
   iggy3d::ProductAppWindowState staleStarterWindow = window;
   staleStarterWindow.gameplayActive = true;
   staleStarterWindow.runtimeSessionCreated = true;
@@ -168,8 +166,6 @@ int main() {
   showCollisionOverlay(window);
   settings.debugOverlayEnabled = true;
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::Resume);
-  frontend.pauseMenuOpen = false;
-  frontend.devToolsOpen = true;
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Pause,
                "pause screen opened");
   ok &= expect(iggy3d::frontendPauseMenuOpen(frontend), "pause menu open");
@@ -211,8 +207,6 @@ int main() {
   showMovementTuning(window);
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   openProductPauseSettingsTransition(frontend, window, settingsTab);
-  frontend.pauseMenuOpen = true;
-  frontend.devToolsOpen = true;
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Settings,
                "settings opened from pause");
   ok &= expect(frontend.childScreen == iggy3d::FrontendScreen::Pause,
@@ -260,8 +254,6 @@ int main() {
   showMovementTuning(window);
   openProductPauseDevToolsTransition(frontend, window,
                                      iggy3d::FrontendDevToolsCategory::Session);
-  frontend.pauseMenuOpen = true;
-  frontend.devToolsOpen = false;
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::DevOverlay,
                "dev overlay opened");
   ok &= expect(iggy3d::frontendDevToolsOpen(frontend), "dev tools open");
