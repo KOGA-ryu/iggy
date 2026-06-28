@@ -20,6 +20,18 @@
 namespace iggy3d {
 namespace {
 
+MouseClick productWindowMenuClickForHitTest(MouseClick click,
+                                            const SdlWindow* sdlWindow) {
+  // branch-gate: BG-1123
+  if (sdlWindow == nullptr) {
+    return click;
+  }
+  const SdlWindowEventState& eventState = sdlWindow->eventState();
+  return normalizeProductWindowMenuClick(click,
+                                         eventState.windowWidth,
+                                         eventState.windowHeight);
+}
+
 void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
                                          const ActionState& actions) {
   for (const ActionStateEntry& entry : actions.entries) {
@@ -202,6 +214,23 @@ void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
   window.gamepadMapping = state.gamepad.gamepadAvailable ? "sdl_gamepad" : "unavailable";
 }
 
+MouseClick normalizeProductWindowMenuClick(MouseClick click,
+                                           std::uint32_t windowWidth,
+                                           std::uint32_t windowHeight,
+                                           std::uint32_t virtualWidth,
+                                           std::uint32_t virtualHeight) {
+  // branch-gate: BG-1123
+  if (!click.clicked || windowWidth == 0U || windowHeight == 0U ||
+      virtualWidth == 0U || virtualHeight == 0U) {
+    return click;
+  }
+  click.x = click.x * static_cast<float>(virtualWidth) /
+            static_cast<float>(windowWidth);
+  click.y = click.y * static_cast<float>(virtualHeight) /
+            static_cast<float>(windowHeight);
+  return click;
+}
+
 void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                           SdlWindow* sdlWindow,
                                           ProductAppWindowState* window) {
@@ -372,8 +401,10 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   const MouseClick click = pollMouseClick(context.inputFrame.mouse);
   // branch-gate: BG-1029
   if (click.clicked) {
+    const MouseClick menuClick =
+        productWindowMenuClickForHitTest(click, context.sdlWindow);
     const OpeningMenuHitTestResult hit =
-        openingMenuActionAt(context.frontend, click.x, click.y);
+        openingMenuActionAt(context.frontend, menuClick.x, menuClick.y);
     // branch-gate: BG-1029
     if (hit.hit) {
       context.window.mouseMenuSelectUsed = true;

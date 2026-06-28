@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -81,6 +82,11 @@ struct ProductWindowEditorMousePickPreviewResult {
 
 void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                             ProductAppWindowState& window);
+MouseClick normalizeProductWindowMenuClick(MouseClick click,
+                                           std::uint32_t windowWidth,
+                                           std::uint32_t windowHeight,
+                                           std::uint32_t virtualWidth = 1280U,
+                                           std::uint32_t virtualHeight = 720U);
 void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                           SdlWindow* sdlWindow = nullptr,
                                           ProductAppWindowState* window = nullptr);

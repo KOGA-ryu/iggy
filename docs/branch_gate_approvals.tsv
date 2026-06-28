@@ -120,3 +120,5 @@ BG-1119	src/app/iggy3d/view/OpeningMenuView.cpp	product first-person primitive v
 BG-1120	src/app/iggy3d/gameplay/TapeRunner.cpp	product gameplay tape movement receipt mirror policy	codex	2026-06-27
 BG-1121	src/app/iggy3d/view/OpeningMenuView.cpp	opening menu child panel SDL draw and hit-test policy	codex	2026-06-28
 BG-1122	src/app/iggy3d/window/InputFrame.cpp	opening menu child panel mouse click routing policy	codex	2026-06-28
+BG-1123	src/app/iggy3d/window/InputFrame.cpp	opening menu real-window coordinate normalization policy	codex	2026-06-28
+BG-1124	src/app/iggy3d/menu/ActionHandlers.cpp	physical dev-tools toggle routing policy	codex	2026-06-28

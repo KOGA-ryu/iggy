@@ -1,4 +1,5 @@
 #include "app/frontend/FrontendState.hpp"
+#include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
@@ -480,6 +481,95 @@ bool childPanelHitTestsExposeMenuActions() {
                 "delete confirm back area");
 }
 
+bool menuClickNormalizationScalesWindowCoordinates() {
+  const iggy3d::MouseClick scaled =
+      iggy3d::normalizeProductWindowMenuClick(clickAt(226.0F, 254.0F),
+                                              640U,
+                                              360U);
+  const iggy3d::MouseClick unchanged =
+      iggy3d::normalizeProductWindowMenuClick(clickAt(452.0F, 508.0F),
+                                              0U,
+                                              360U);
+  iggy3d::FrontendState frontend = starterFrontend();
+  frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
+  const iggy3d::OpeningMenuHitTestResult createHit =
+      iggy3d::openingMenuActionAt(frontend, scaled.x, scaled.y);
+
+  return expect(scaled.clicked, "scaled click remains clicked") &&
+         expect(scaled.x == 452.0F, "scaled click x") &&
+         expect(scaled.y == 508.0F, "scaled click y") &&
+         expect(createHit.hit, "scaled click hits create") &&
+         expect(createHit.area == iggy3d::OpeningMenuHitArea::NewWorldCreate,
+                "scaled click create area") &&
+         expect(unchanged.x == 452.0F, "zero window leaves x") &&
+         expect(unchanged.y == 508.0F, "zero window leaves y");
+}
+
+bool devToggleOpensAndClosesDevToolsSurfaces() {
+  {
+    iggy3d::FrontendState frontend = starterFrontend();
+    iggy3d::ProductAppWindowState window;
+    bool closeRequested = false;
+    const iggy3d::ProductMenuActionResult opened =
+        iggy3d::applyProductSystemPauseMenuAction(
+            iggy3d::InputAction::DevToggle,
+            {frontend, window, closeRequested});
+    const bool openedChild =
+        frontend.childScreen == iggy3d::FrontendScreen::StarterDevTools;
+    const bool openedFlag = frontend.devToolsOpen;
+    const iggy3d::MenuOwner openedOwner = window.inputOwner;
+    const iggy3d::ProductMenuActionResult closed =
+        iggy3d::applyProductSystemPauseMenuAction(
+            iggy3d::InputAction::DevToggle,
+            {frontend, window, closeRequested});
+    const bool starterOk =
+        expect(opened.handled, "starter dev toggle handled") &&
+        expect(opened.accepted, "starter dev toggle accepted") &&
+        expect(openedChild, "starter dev toggle opens child") &&
+        expect(openedFlag, "starter dev tools open") &&
+        expect(openedOwner == iggy3d::MenuOwner::DevTools,
+               "starter dev toggle owner") &&
+        expect(frontend.childScreen == iggy3d::FrontendScreen::Gameplay,
+               "starter dev toggle closes child") &&
+        expect(closed.handled, "starter dev close handled") &&
+        expect(closed.accepted, "starter dev close accepted") &&
+        expect(!frontend.devToolsOpen, "starter dev tools closed") &&
+        expect(!closeRequested, "dev toggle does not close window");
+    if (!starterOk) {
+      return false;
+    }
+  }
+
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  const iggy3d::ProductMenuActionResult opened =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::DevToggle,
+          {frontend, window, closeRequested});
+  const bool openedOk =
+      expect(opened.handled, "gameplay dev toggle handled") &&
+      expect(opened.accepted, "gameplay dev toggle accepted") &&
+      expect(frontend.screen == iggy3d::FrontendScreen::DevOverlay,
+             "gameplay dev toggle opens overlay") &&
+      expect(frontend.devToolsOpen, "gameplay dev tools open") &&
+      expect(window.inputOwner == iggy3d::MenuOwner::DevTools,
+             "gameplay dev toggle owner");
+  const iggy3d::ProductMenuActionResult closed =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::DevToggle,
+          {frontend, window, closeRequested});
+  return openedOk &&
+         expect(closed.handled, "gameplay dev close handled") &&
+         expect(closed.accepted, "gameplay dev close accepted") &&
+         expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
+                "gameplay dev toggle closes overlay") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "gameplay dev close owner") &&
+         expect(!closeRequested, "gameplay dev toggle no close");
+}
+
 }  // namespace
 
 int main() {
@@ -494,7 +584,9 @@ int main() {
       backWithoutPreviewFallsThroughPolicy() &&
       controllerEastCancelsPendingPreviewWithoutMutation() &&
       starterHitTestUsesCanonicalActionRows() &&
-      childPanelHitTestsExposeMenuActions();
+      childPanelHitTestsExposeMenuActions() &&
+      menuClickNormalizationScalesWindowCoordinates() &&
+      devToggleOpensAndClosesDevToolsSurfaces();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;

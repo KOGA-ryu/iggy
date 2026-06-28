@@ -16,6 +16,7 @@ struct KeyboardInputState {
   bool confirmWasDown = false;
   bool backWasDown = false;
   bool tabWasDown = false;
+  bool devToggleWasDown = false;
   std::array<bool, 7> asciiPaintWasDown{};
   bool interactWasDown = false;
   bool retryWasDown = false;

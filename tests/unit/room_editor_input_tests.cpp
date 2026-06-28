@@ -60,6 +60,14 @@ int main() {
                     iggy3d::InputAction::MenuConfirm,
                 "keyboard Space emits menu confirm") &&
          ok;
+    ok = expect(iggy3d::neutralInputName(iggy3d::NeutralInput::KeyF2) ==
+                    "key.f2",
+                "keyboard F2 name") &&
+         ok;
+    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyF2) ==
+                    iggy3d::InputAction::DevToggle,
+                "keyboard F2 emits dev toggle") &&
+         ok;
   }
 
   {

@@ -34,6 +34,8 @@ std::string_view neutralInputName(NeutralInput input) {
       return "key.shift_tab";
     case NeutralInput::KeyF1:
       return "key.f1";
+    case NeutralInput::KeyF2:
+      return "key.f2";
     case NeutralInput::KeyE:
       return "key.e";
     case NeutralInput::KeyR:

@@ -1,6 +1,5 @@
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 
-#include <array>
 #include <cstddef>
 #include <optional>
 #include <string_view>
@@ -47,14 +46,7 @@ FrontendAction nextPauseSelection(FrontendAction current, InputAction action) {
 }
 
 FrontendAction nextStarterSelection(FrontendAction current, InputAction action) {
-  const std::array<FrontendAction, 6> actions = {
-      FrontendAction::Continue,
-      FrontendAction::NewWorld,
-      FrontendAction::LoadSave,
-      FrontendAction::Settings,
-      FrontendAction::DevTools,
-      FrontendAction::Exit,
-  };
+  const auto& actions = starterActionOrder();
 
   std::size_t index = 0;
   // branch-gate: BG-1022
@@ -126,6 +118,43 @@ void closeStarterDevTools(FrontendState& frontend, ProductAppWindowState&) {
   frontend.childScreen = FrontendScreen::Gameplay;
   frontend.devToolsOpen = false;
   frontend.status = "dev_tools_closed";
+}
+
+void openStarterDevTools(FrontendState& frontend, ProductAppWindowState& window) {
+  frontend.childScreen = FrontendScreen::StarterDevTools;
+  frontend.devToolsOpen = true;
+  frontend.devToolsCategory = FrontendDevToolsCategory::Session;
+  frontend.status = "opening_menu_dev_tools_selected";
+  window.inputOwner = MenuOwner::DevTools;
+  window.gameplayInputSuppressed = true;
+}
+
+ProductMenuActionResult applyProductDevToggleMenuAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window) {
+  // branch-gate: BG-1124
+  if (frontend.screen == FrontendScreen::DevOverlay) {
+    closeProductOverlayToGameplayTransition(frontend, window);
+    return {true, true};
+  }
+  // branch-gate: BG-1124
+  if (frontend.screen == FrontendScreen::Gameplay && window.gameplayActive) {
+    openProductPauseDevToolsTransition(frontend, window,
+                                       FrontendDevToolsCategory::Session);
+    return {true, true};
+  }
+  // branch-gate: BG-1124
+  if (frontend.screen == FrontendScreen::Starter &&
+      frontend.childScreen == FrontendScreen::StarterDevTools) {
+    closeStarterDevTools(frontend, window);
+    return {true, true};
+  }
+  // branch-gate: BG-1124
+  if (frontend.screen == FrontendScreen::Starter) {
+    openStarterDevTools(frontend, window);
+    return {true, true};
+  }
+  return {true, false};
 }
 
 ProductMenuActionResult applyDevToolsMenuAction(
@@ -529,6 +558,10 @@ ProductMenuActionResult applyProductStarterMenuAction(
 ProductMenuActionResult applyProductSystemPauseMenuAction(
     InputAction action,
     ProductSystemPauseMenuActionContext context) {
+  // branch-gate: BG-1124
+  if (action == InputAction::DevToggle || action == InputAction::SystemDevTools) {
+    return applyProductDevToggleMenuAction(context.frontend, context.window);
+  }
   // branch-gate: BG-1023
   if (action != InputAction::SystemPause) {
     return {false, false};
