@@ -206,6 +206,8 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("ascii_map_gatehouse_selected");
   const std::filesystem::path physicsFlatSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_physics_flat_room");
+  const std::filesystem::path largeFlatSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_large_flat_room");
   const std::filesystem::path physicsCorridorSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_physics_wall_corridor");
   const std::filesystem::path physicsCornerSaveRoot =
@@ -442,6 +444,31 @@ int main() {
                                 fields,
                                 exitCode);
 
+  static constexpr PhysicsDungeonSmokeExpectation kLargeFlatRoom{
+      "ascii_map_large_flat_room_create",
+      "large_flat_room",
+      "Large Flat Room",
+      "fixtures/rooms/ascii/large_flat_room.iggyroom.txt",
+      "31",
+      "17",
+      "435",
+      "92",
+      "0",
+      "2",
+      "619",
+      "435",
+      "92",
+      "92",
+  };
+  fields.clear();
+  const bool createLargeFlatRoomWorld =
+      appAvailable &&
+      createPhysicsDungeonWorld(binary,
+                                kLargeFlatRoom,
+                                largeFlatSaveRoot,
+                                fields,
+                                exitCode);
+
   static constexpr PhysicsDungeonSmokeExpectation kPhysicsWallCorridor{
       "ascii_map_physics_wall_corridor_create",
       "physics_wall_corridor",
@@ -532,8 +559,8 @@ int main() {
                               "world_setup_create_requested") &&
       iggy3d::smoke::hasField(fields, "world_setup_dungeon_title",
                               kObjectCrateRoom.worldTitle) &&
-      iggy3d::smoke::hasField(fields, "world_setup_dungeon_index", "7") &&
-      iggy3d::smoke::hasField(fields, "world_setup_dungeon_count", "7") &&
+      iggy3d::smoke::hasField(fields, "world_setup_dungeon_index", "8") &&
+      iggy3d::smoke::hasField(fields, "world_setup_dungeon_count", "8") &&
       iggy3d::smoke::hasField(fields, "world_setup_ascii_room_enabled",
                               "true") &&
       iggy3d::smoke::hasField(fields, "world_setup_ascii_room_id",
@@ -3685,6 +3712,7 @@ int main() {
 
   const bool passed = createDefaultDungeonWorld && createSelectedDungeonWorld &&
                       createPhysicsFlatRoomWorld &&
+                      createLargeFlatRoomWorld &&
                       createPhysicsWallCorridorWorld &&
                       createPhysicsCornerSlideWorld &&
                       createObjectCrateRoomWorld &&
@@ -3734,6 +3762,8 @@ int main() {
                          "new world selector creates gatehouse dungeon") &&
                   expect(createPhysicsFlatRoomWorld,
                          "new world dungeon id creates physics flat room") &&
+                  expect(createLargeFlatRoomWorld,
+                         "new world dungeon id creates large flat room") &&
                   expect(createPhysicsWallCorridorWorld,
                          "new world dungeon id creates physics wall corridor") &&
                   expect(createPhysicsCornerSlideWorld,
@@ -3825,6 +3855,8 @@ int main() {
             << (createSelectedDungeonWorld ? "true" : "false") << "\n";
   std::cout << "create_physics_flat_room_world="
             << (createPhysicsFlatRoomWorld ? "true" : "false") << "\n";
+  std::cout << "create_large_flat_room_world="
+            << (createLargeFlatRoomWorld ? "true" : "false") << "\n";
   std::cout << "create_physics_wall_corridor_world="
             << (createPhysicsWallCorridorWorld ? "true" : "false") << "\n";
   std::cout << "create_physics_corner_slide_world="

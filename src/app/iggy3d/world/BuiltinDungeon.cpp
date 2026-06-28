@@ -41,6 +41,25 @@ constexpr std::string_view kPhysicsFlatRoomText =
     "#.....#\n"
     "#######\n";
 
+constexpr std::string_view kLargeFlatRoomText =
+    "###############################\n"
+    "#P...........................E#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "#.............................#\n"
+    "###############################\n";
+
 constexpr std::string_view kPhysicsWallCorridorText =
     "#########\n"
     "#PK....E#\n"
@@ -62,7 +81,7 @@ constexpr std::string_view kObjectCrateRoomText =
     "#.....#\n"
     "#######\n";
 
-constexpr std::array<ProductBuiltinDungeonDefinition, 7> kCatalog = {{
+constexpr std::array<ProductBuiltinDungeonDefinition, 8> kCatalog = {{
     ProductBuiltinDungeonDefinition{
         "Loop Keep",
         "loop_keep_ascii",
@@ -86,6 +105,12 @@ constexpr std::array<ProductBuiltinDungeonDefinition, 7> kCatalog = {{
         "physics_flat_room",
         "fixtures/rooms/ascii/physics_flat_room.iggyroom.txt",
         kPhysicsFlatRoomText,
+    },
+    ProductBuiltinDungeonDefinition{
+        "Large Flat Room",
+        "large_flat_room",
+        "fixtures/rooms/ascii/large_flat_room.iggyroom.txt",
+        kLargeFlatRoomText,
     },
     ProductBuiltinDungeonDefinition{
         "Physics Wall Corridor",

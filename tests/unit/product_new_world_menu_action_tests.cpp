@@ -164,10 +164,10 @@ bool manualDungeonSelectorCanCreateObjectCrateRoom() {
   ok = expect(window.worldSetupDungeonTitle == "Object Crate Room",
               "window mirrors selected dungeon title") &&
        ok;
-  ok = expect(window.worldSetupDungeonIndex == 7U,
+  ok = expect(window.worldSetupDungeonIndex == 8U,
               "window mirrors selected dungeon index") &&
        ok;
-  ok = expect(window.worldSetupDungeonCount == 7U,
+  ok = expect(window.worldSetupDungeonCount == 8U,
               "window mirrors selected dungeon count") &&
        ok;
   ok = expect(window.worldSetupAsciiRoomId == "object_crate_room",
@@ -190,10 +190,10 @@ bool manualDungeonSelectorCanCreateObjectCrateRoom() {
   ok = expect(window.worldSetupDungeonTitle == "Object Crate Room",
               "created receipt keeps dungeon title") &&
        ok;
-  ok = expect(window.worldSetupDungeonIndex == 7U,
+  ok = expect(window.worldSetupDungeonIndex == 8U,
               "created receipt keeps dungeon index") &&
        ok;
-  ok = expect(window.worldSetupDungeonCount == 7U,
+  ok = expect(window.worldSetupDungeonCount == 8U,
               "created receipt keeps dungeon count") &&
        ok;
   ok = expect(window.worldCreationAsciiRoomId == "object_crate_room",
