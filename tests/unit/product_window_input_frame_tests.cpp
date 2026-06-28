@@ -1531,7 +1531,32 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
       expect(inactiveWindow.mapMakerStatus == "map_maker_gameplay_inactive",
              "inactive map maker status");
 
-  return enabledOk && disabledOk && ignoredOk;
+  iggy3d::FrontendState pause = gameplayFrontend();
+  pause.screen = iggy3d::FrontendScreen::Pause;
+  pause.childScreen = iggy3d::FrontendScreen::Gameplay;
+  iggy3d::ProductAppWindowState blockedWindow;
+  blockedWindow.gameplayActive = true;
+  blockedWindow.mapMakerActive = true;
+  blockedWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  blockedWindow.viewport.creativeFlyActive = true;
+  const iggy3d::ProductMenuActionResult blocked =
+      iggy3d::applyProductGameplayMapMakerToggleAction(
+          iggy3d::InputAction::MapMakerToggle,
+          {pause, blockedWindow});
+  const bool blockedOk =
+      expect(blocked.handled, "pause map maker toggle handled") &&
+      expect(!blocked.accepted, "pause map maker toggle rejected") &&
+      expect(!blockedWindow.mapMakerActive,
+             "pause map maker toggle clears stale active state") &&
+      expect(blockedWindow.interactionMode ==
+                 iggy3d::ProductInteractionMode::Player,
+             "pause map maker toggle returns player mode") &&
+      expect(!blockedWindow.viewport.creativeFlyActive,
+             "pause map maker toggle clears creative fly") &&
+      expect(blockedWindow.mapMakerStatus == "map_maker_gameplay_inactive",
+             "pause map maker inactive status");
+
+  return enabledOk && disabledOk && ignoredOk && blockedOk;
 }
 
 bool mapMakerToggleRoutesAsGameplayOwnedInput() {

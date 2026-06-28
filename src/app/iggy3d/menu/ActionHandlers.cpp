@@ -196,14 +196,19 @@ ProductMenuActionResult applyProductDevToggleMenuAction(
   return {true, false};
 }
 
-bool canToggleDevDebugOverlay(const FrontendState& frontend,
-                              const ProductAppWindowState& window) {
+bool resolvedSurfaceAcceptsGameplayInput(const FrontendState& frontend,
+                                         const ProductAppWindowState& window) {
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
   return window.gameplayActive &&
          surface.activeSurface == ProductFrontendSurface::Gameplay &&
          surface.inputOwner == MenuOwner::Gameplay &&
          !surface.gameplayInputSuppressed;
+}
+
+bool canToggleDevDebugOverlay(const FrontendState& frontend,
+                              const ProductAppWindowState& window) {
+  return resolvedSurfaceAcceptsGameplayInput(frontend, window);
 }
 
 ProductMenuActionResult applyDevToolsMenuAction(
@@ -660,8 +665,8 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
   // branch-gate: BG-1205
   if (action == InputAction::MapMakerToggle) {
     // branch-gate: BG-1205
-    if (context.frontend.screen != FrontendScreen::Gameplay ||
-        !context.window.gameplayActive) {
+    if (!resolvedSurfaceAcceptsGameplayInput(context.frontend, context.window)) {
+      clearProductMapMakerMode(context.window);
       context.frontend.status = "map_maker_toggle_ignored";
       context.window.mapMakerStatus = "map_maker_gameplay_inactive";
       context.window.mapMakerReasonCode = context.window.mapMakerStatus;

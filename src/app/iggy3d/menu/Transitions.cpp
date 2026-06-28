@@ -21,6 +21,17 @@ void setTransition(ProductAppWindowState& window,
 
 }  // namespace
 
+void clearProductMapMakerMode(ProductAppWindowState& window) {
+  window.mapMakerActive = false;
+  window.interactionMode = ProductInteractionMode::Player;
+  window.viewport.creativeFlyActive = false;
+  window.viewport.creativeFlyStatus = "creative_fly_not_requested";
+  window.viewport.creativeFlyReasonCode = window.viewport.creativeFlyStatus;
+  window.viewport.creativeFlySpeedMetersPerSecond = 0.0F;
+  window.mapMakerStatus = "map_maker_inactive";
+  window.mapMakerReasonCode = window.mapMakerStatus;
+}
+
 void initializeProductStarterTransition(FrontendState& frontend,
                                         ProductAppWindowState& window,
                                         bool hasCompatibleSave) {
@@ -49,6 +60,7 @@ void enterProductGameplayTransition(FrontendState& frontend,
 void openProductPauseTransition(FrontendState& frontend,
                                 ProductAppWindowState& window,
                                 FrontendAction selectedAction) {
+  clearProductMapMakerMode(window);
   openFrontendPause(frontend, selectedAction);
   window.inputOwner = MenuOwner::Pause;
   window.gameplayInputSuppressed = true;
@@ -59,6 +71,7 @@ void openProductPauseTransition(FrontendState& frontend,
 void openProductPauseSettingsTransition(FrontendState& frontend,
                                         ProductAppWindowState& window,
                                         FrontendSettingsTab& settingsTab) {
+  clearProductMapMakerMode(window);
   frontend.screen = FrontendScreen::Settings;
   frontend.childScreen = FrontendScreen::Pause;
   settingsTab = FrontendSettingsTab::Input;
@@ -73,6 +86,7 @@ void openProductPauseSettingsTransition(FrontendState& frontend,
 void openProductPauseDevToolsTransition(FrontendState& frontend,
                                         ProductAppWindowState& window,
                                         FrontendDevToolsCategory category) {
+  clearProductMapMakerMode(window);
   openFrontendDevOverlay(frontend, category);
   frontend.status = "pause_dev_tools_selected";
   window.inputOwner = MenuOwner::DevTools;
@@ -94,7 +108,7 @@ void returnProductToTitleTransition(FrontendState& frontend,
                                     ProductAppWindowState& window) {
   window.gameplayActive = false;
   window.runtimeSessionCreated = false;
-  window.interactionMode = ProductInteractionMode::Player;
+  clearProductMapMakerMode(window);
   frontend.screen = FrontendScreen::Starter;
   frontend.childScreen = FrontendScreen::Gameplay;
   frontend.selectedAction = FrontendAction::NewWorld;
