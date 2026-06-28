@@ -1,4 +1,5 @@
 #include "app/frontend/FrontendState.hpp"
+#include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
@@ -8,6 +9,7 @@
 
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <string_view>
 
 namespace {
@@ -63,6 +65,26 @@ iggy3d::ProductAppWindowState editingWindow() {
   iggy3d::recordProductRoomEditingStart(window, started, "unit_edit_room");
   window.roomEditorCursor = {};
   window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  return window;
+}
+
+iggy3d::ProductAppWindowState gameplayWindow(
+    std::optional<iggy3d::Session>& session) {
+  iggy3d::ProductAppWindowState window;
+  window.asciiRoomDraftText =
+      "#######\n"
+      "#.....#\n"
+      "#..P..#\n"
+      "#.....#\n"
+      "#..$.E#\n"
+      "#######\n";
+  window.asciiRoomDraftRoomId = "input_frame_gameplay_room";
+  window.asciiRoomDraftSourceName =
+      "unit/input_frame_gameplay_room.iggyroom.txt";
+  const iggy3d::ProductAsciiRoomActivationResult activated =
+      iggy3d::activateProductAsciiRoomPreview(session, window);
+  expect(activated.ok, "input frame gameplay activation ok");
+  window.interactionMode = iggy3d::ProductInteractionMode::Player;
   return window;
 }
 
@@ -423,6 +445,42 @@ bool controllerEastCancelsPendingPreviewWithoutMutation() {
                 "east cancel leaves walls");
 }
 
+bool controllerSouthJumpsInGameplayPlayerMode() {
+  const iggy3d::FrontendState frontend = gameplayFrontend();
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = gameplayWindow(session);
+  if (!expect(session.has_value(), "controller jump session created")) {
+    return false;
+  }
+  iggy3d::ProductControllerModeChordState chord;
+  iggy3d::ProductControllerActionRoutingState routing;
+
+  const iggy3d::ProductControllerSampleInputResult jumped =
+      iggy3d::processProductControllerActionSample(
+          {frontend, window, &*session, chord, routing, nullptr, "unit"},
+          iggy3d::productControllerActionSampleForControl(
+              iggy3d::ProductControllerControl::SouthButton));
+
+  return expect(jumped.actionApplied, "gameplay south action applied") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "gameplay south owner gameplay") &&
+         expect(window.lastInputAccepted, "gameplay south input accepted") &&
+         expect(!window.gameplayInputSuppressed,
+                "gameplay south does not suppress gameplay") &&
+         expect(window.lastInputAction == iggy3d::InputAction::PlayerJump,
+                "gameplay south routes to jump") &&
+         expect(window.controllerActionInputAction == "game.jump",
+                "gameplay south records jump input action") &&
+         expect(window.gameplayJumpRequested,
+                "gameplay south requests jump") &&
+         expect(window.gameplayJumpAccepted, "gameplay south accepts jump") &&
+         expect(window.gameplayJumpActive, "gameplay south jump remains active") &&
+         expect(window.gameplayJumpStatus == "airborne",
+                "gameplay south jump airborne status") &&
+         expect(window.gameplayJumpReasonCode == "gameplay_jump_airborne",
+                "gameplay south jump airborne reason");
+}
+
 bool starterDeleteButtonOpensDeleteConfirmation() {
   iggy3d::FrontendState frontend = starterFrontend();
   frontend.selectedAction = iggy3d::FrontendAction::Delete;
@@ -659,6 +717,7 @@ int main() {
       backCancelsPendingPreviewBeforePauseRoute() &&
       backWithoutPreviewFallsThroughPolicy() &&
       controllerEastCancelsPendingPreviewWithoutMutation() &&
+      controllerSouthJumpsInGameplayPlayerMode() &&
       starterDeleteButtonOpensDeleteConfirmation() &&
       starterHitTestUsesCanonicalActionRows() &&
       childPanelHitTestsExposeMenuActions() &&

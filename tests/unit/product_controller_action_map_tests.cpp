@@ -132,9 +132,15 @@ bool playerGameplayMappingsAreStable() {
          expectMapped(iggy3d::ProductInputSurface::Gameplay,
                       iggy3d::ProductInteractionMode::Player,
                       iggy3d::ProductControllerControl::SouthButton,
+                      iggy3d::InputAction::PlayerJump,
+                      1.0F,
+                      "player south button maps to jump") &&
+         expectMapped(iggy3d::ProductInputSurface::Gameplay,
+                      iggy3d::ProductInteractionMode::Player,
+                      iggy3d::ProductControllerControl::WestButton,
                       iggy3d::InputAction::PlayerInteract,
                       1.0F,
-                      "player south button maps to interact");
+                      "player west button maps to interact");
 }
 
 bool creativeGameplayMappingsAreStable() {
@@ -240,7 +246,7 @@ bool playerAndCreativeDifferForSameControl() {
 
   return expect(player.mapped, "player south button mapped") &&
          expect(creative.mapped, "creative south button mapped") &&
-         expect(player.action == iggy3d::InputAction::PlayerInteract,
+         expect(player.action == iggy3d::InputAction::PlayerJump,
                 "player south action") &&
          expect(creative.action == iggy3d::InputAction::EditorPlace,
                 "creative south action");

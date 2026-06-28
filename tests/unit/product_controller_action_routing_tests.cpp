@@ -139,10 +139,10 @@ bool heldEditorControlDoesNotRepeat() {
 
   return expect(first.mapped, "first editor button mapped") &&
          expectSingleAction(firstActions,
-                            iggy3d::InputAction::EditorConfirmPreview,
+                            iggy3d::InputAction::EditorPlace,
                             true,
                             1.0F,
-                            "first editor button records confirm") &&
+                            "first editor button records place") &&
          expect(!held.mapped, "held editor button not remapped") &&
          expect(held.status == "controller_action_held",
                 "held editor button status") &&
