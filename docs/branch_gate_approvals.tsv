@@ -133,3 +133,5 @@ BG-1132	src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp	authored object block
 BG-1133	src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp	authored object actor blocker surface bake policy	codex	2026-06-28
 BG-1134	src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp	authored object projectile blocker surface bake policy	codex	2026-06-28
 BG-1135	src/runtime/save/SaveCodec.cpp	backward-compatible authored room object decode policy	codex	2026-06-28
+BG-1136	src/app/iggy3d/automation/Automation.cpp	world setup builtin dungeon selector receipt index policy	codex	2026-06-28
+BG-1137	src/app/iggy3d/Operations.cpp	world setup create selected dungeon receipt index policy	codex	2026-06-28

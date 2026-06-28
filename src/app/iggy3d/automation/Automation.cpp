@@ -1135,6 +1135,16 @@ bool resolveProductSaveBrowserBoolAutomation(std::string_view value,
 void recordWorldSetupDraftState(const WorldSetupDraft& draft,
                                 ProductAppWindowState& window) {
   window.worldSetupTitle = draft.worldName;
+  window.worldSetupDungeonTitle = draft.worldName;
+  window.worldSetupDungeonCount = productBuiltinDungeonCatalog().size();
+  const std::size_t dungeonIndex =
+      productBuiltinDungeonIndexForRoomId(draft.asciiRoomId);
+  window.worldSetupDungeonIndex = 0;
+  // branch-gate: BG-1136
+  if (dungeonIndex < productBuiltinDungeonCatalog().size()) {
+    window.worldSetupDungeonIndex =
+        static_cast<std::uint64_t>(dungeonIndex + 1U);
+  }
   window.worldSetupAsciiRoomEnabled = draft.asciiRoomEnabled;
   window.worldSetupAsciiRoomTextPresent = !draft.asciiRoomText.empty();
   // branch-gate: BG-1004

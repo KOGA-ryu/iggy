@@ -509,14 +509,99 @@ int main() {
   fields.clear();
   const bool createObjectCrateRoomWorld =
       appAvailable &&
-      createPhysicsDungeonWorld(binary,
-                                kObjectCrateRoom,
-                                objectCrateRoomSaveRoot,
-                                fields,
-                                exitCode) &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_object_crate_room_menu_create",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "menu.left=true\n"
+          "world.create=true\n",
+          iggy3d::smoke::saveRootArg(objectCrateRoomSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(fields, "world_setup_title",
+                              kObjectCrateRoom.worldTitle) &&
+      iggy3d::smoke::hasField(fields, "world_setup_status",
+                              "world_setup_create_requested") &&
+      iggy3d::smoke::hasField(fields, "world_setup_dungeon_title",
+                              kObjectCrateRoom.worldTitle) &&
+      iggy3d::smoke::hasField(fields, "world_setup_dungeon_index", "7") &&
+      iggy3d::smoke::hasField(fields, "world_setup_dungeon_count", "7") &&
+      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_enabled",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_id",
+                              kObjectCrateRoom.roomId) &&
+      iggy3d::smoke::hasField(fields,
+                              "world_setup_ascii_room_source_name",
+                              kObjectCrateRoom.sourceName) &&
+      iggy3d::smoke::hasField(fields, "world_creation_status",
+                              "world_creation_initial_save_written") &&
+      iggy3d::smoke::hasField(fields, "world_creation_world_title",
+                              kObjectCrateRoom.worldTitle) &&
+      iggy3d::smoke::hasField(fields,
+                              "world_creation_ascii_room_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "world_creation_ascii_room_id",
+                              kObjectCrateRoom.roomId) &&
+      iggy3d::smoke::hasField(fields,
+                              "world_creation_ascii_room_source_name",
+                              kObjectCrateRoom.sourceName) &&
+      iggy3d::smoke::hasField(fields,
+                              "world_creation_initial_save_title",
+                              kObjectCrateRoom.worldTitle) &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_status",
+                              "product_ascii_room_ready") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_room_id",
+                              kObjectCrateRoom.roomId) &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_width",
+                              kObjectCrateRoom.width) &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_height",
+                              kObjectCrateRoom.height) &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_floor_count",
+                              kObjectCrateRoom.floorCount) &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_wall_count",
+                              kObjectCrateRoom.wallCount) &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_object_count",
+                              kObjectCrateRoom.objectCount) &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "ascii_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_id",
+                              kObjectCrateRoom.roomId) &&
+      iggy3d::smoke::hasField(fields, "active_room_authored_floor_count",
+                              kObjectCrateRoom.floorCount) &&
+      iggy3d::smoke::hasField(fields, "active_room_authored_wall_count",
+                              kObjectCrateRoom.wallCount) &&
+      iggy3d::smoke::hasField(fields, "active_room_authored_object_count",
+                              kObjectCrateRoom.objectCount) &&
+      iggy3d::smoke::hasField(fields, "active_room_collision_ready", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_query_surface_count",
+                              kObjectCrateRoom.querySurfaceCount) &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_walkable_surface_count",
+                              kObjectCrateRoom.walkableSurfaceCount) &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              kObjectCrateRoom.actorBlockerCount) &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_projectile_blocker_count",
+                              kObjectCrateRoom.projectileBlockerCount) &&
       iggy3d::smoke::hasField(fields, "active_room_static_mesh_count", "36") &&
+      iggy3d::smoke::hasField(fields, "product_draw_prop_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "product_draw_prop_tile_count", "1") &&
       iggy3d::smoke::hasField(fields, "product_draw_room_geometry_count",
                               "36") &&
+      iggy3d::smoke::hasField(fields, "product_render_bridge_prop_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "product_render_bridge_prop_tile_count",
+                              "1") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_mesh_cpu_ready", "true") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_source_mesh_count", "36");
 

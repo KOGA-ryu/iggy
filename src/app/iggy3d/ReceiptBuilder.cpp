@@ -211,6 +211,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "world_setup_title", window.worldSetupTitle);
   appendReceiptField(receipt, "world_setup_status", window.worldSetupStatus);
   appendReceiptField(receipt,
+                     "world_setup_dungeon_title",
+                     window.worldSetupDungeonTitle);
+  appendReceiptField(receipt,
+                     "world_setup_dungeon_index",
+                     window.worldSetupDungeonIndex);
+  appendReceiptField(receipt,
+                     "world_setup_dungeon_count",
+                     window.worldSetupDungeonCount);
+  appendReceiptField(receipt,
                      "world_setup_ascii_room_enabled",
                      window.worldSetupAsciiRoomEnabled);
   appendReceiptField(receipt,

@@ -69,6 +69,9 @@ struct ProductAppWindowState {
   std::string packageLoadStatus = "not_requested";
   std::string worldSetupTitle = "New World";
   std::string worldSetupStatus = "not_requested";
+  std::string worldSetupDungeonTitle = "none";
+  std::uint64_t worldSetupDungeonIndex = 0;
+  std::uint64_t worldSetupDungeonCount = 0;
   bool worldSetupAsciiRoomEnabled = false;
   bool worldSetupAsciiRoomTextPresent = false;
   std::string worldSetupAsciiRoomId = "world_setup_room";

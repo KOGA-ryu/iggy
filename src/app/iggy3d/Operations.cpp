@@ -11,6 +11,7 @@
 #include "app/iggy3d/ascii_room/Package.hpp"
 #include "app/iggy3d/ascii_room/Preview.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/world/PackageSessionSeed.hpp"
 #include "app/iggy3d/save/RoomMarkerBinding.hpp"
@@ -137,6 +138,16 @@ ProductWorldCreationResult prepareProductWorldCreationFromDraft(
     const WorldSetupDraft& draft,
     ProductAppWindowState& window) {
   window.worldSetupTitle = draft.worldName;
+  window.worldSetupDungeonTitle = draft.worldName;
+  window.worldSetupDungeonCount = productBuiltinDungeonCatalog().size();
+  const std::size_t dungeonIndex =
+      productBuiltinDungeonIndexForRoomId(draft.asciiRoomId);
+  window.worldSetupDungeonIndex = 0;
+  // branch-gate: BG-1137
+  if (dungeonIndex < productBuiltinDungeonCatalog().size()) {
+    window.worldSetupDungeonIndex =
+        static_cast<std::uint64_t>(dungeonIndex + 1U);
+  }
   window.worldSetupAsciiRoomEnabled = draft.asciiRoomEnabled;
   window.worldSetupAsciiRoomTextPresent = !draft.asciiRoomText.empty();
   window.worldSetupAsciiRoomId =
