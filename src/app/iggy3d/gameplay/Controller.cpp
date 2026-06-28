@@ -1,12 +1,15 @@
 #include "app/iggy3d/gameplay/Controller.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstddef>
 #include <string>
 #include <string_view>
 
 #include "app/input/ActionState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
@@ -22,23 +25,6 @@
 namespace iggy3d {
 namespace {
 
-constexpr std::string_view kManualFirstPersonMovementProfile = "manual_first_person";
-constexpr std::string_view kManualFirstPersonSprintMovementProfile =
-    "manual_first_person_sprint";
-constexpr float kManualFirstPersonMaxSpeedMetersPerSecond = 1.6F;
-constexpr float kManualFirstPersonSprintMaxSpeedMetersPerSecond = 3.2F;
-constexpr float kManualFirstPersonInputStepSeconds = 1.0F / 60.0F;
-constexpr float kManualFirstPersonJumpImpulseMetersPerSecond = 5.8F;
-constexpr float kManualFirstPersonGravityMetersPerSecondSquared = 18.0F;
-constexpr float kManualFirstPersonWallJumpProbeMeters = 0.58F;
-constexpr float kManualFirstPersonWallJumpPushMeters = 1.20F;
-constexpr float kManualFirstPersonWallJumpRiseMeters = 0.45F;
-constexpr float kManualFirstPersonWallJumpMinAirborneHeightMeters = 0.20F;
-constexpr std::string_view kManualFirstPersonDashMovementProfile =
-    "manual_first_person_dash";
-constexpr float kManualFirstPersonDashSpeedMetersPerSecond = 9.5F;
-constexpr float kManualFirstPersonDashDurationSeconds = 0.18F;
-constexpr float kManualFirstPersonDashCooldownSeconds = 0.45F;
 constexpr float kPi = 3.14159265358979323846F;
 
 struct ProductInteractionOutcomeSnapshot {
@@ -190,15 +176,17 @@ void clearProductMovementDebug(ProductAppWindowState& window) {
 }
 
 float manualFirstPersonMaxSpeedMetersPerSecond(bool sprinting) {
-  // branch-gate: BG-1151
-  return sprinting ? kManualFirstPersonSprintMaxSpeedMetersPerSecond
-                   : kManualFirstPersonMaxSpeedMetersPerSecond;
+  const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
+  const std::array<float, 2U> speeds{tuning.walkSpeedMetersPerSecond,
+                                     tuning.sprintSpeedMetersPerSecond};
+  return speeds[static_cast<std::size_t>(sprinting)];
 }
 
 std::string_view manualFirstPersonMovementProfile(bool sprinting) {
-  // branch-gate: BG-1151
-  return sprinting ? kManualFirstPersonSprintMovementProfile
-                   : kManualFirstPersonMovementProfile;
+  const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
+  const std::array<std::string_view, 2U> profiles{tuning.walkProfile,
+                                                  tuning.sprintProfile};
+  return profiles[static_cast<std::size_t>(sprinting)];
 }
 
 void recordProductMovementProfile(ProductAppWindowState& window, bool sprinting) {
@@ -325,6 +313,7 @@ bool isNearVerticalSurface(Vec3 position,
                            const CollisionSurfaceView& surface,
                            Vec3& awayNormal,
                            float& distanceSq) {
+  const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
   // branch-gate: BG-1157
   if (!actorBlockingSurface(surface) || surface.opening ||
       surface.role != CollisionSurfaceRole::Blocker ||
@@ -364,16 +353,15 @@ bool isNearVerticalSurface(Vec3 position,
   }
 
   distanceSq = fromSurfaceSq;
-  return distanceSq <= kManualFirstPersonWallJumpProbeMeters *
-                           kManualFirstPersonWallJumpProbeMeters;
+  return distanceSq <= tuning.wallJumpProbeMeters * tuning.wallJumpProbeMeters;
 }
 
 const CollisionSurfaceView* findWallJumpSurface(const SpatialSurfaceSet& surfaces,
                                                 Vec3 position,
                                                 Vec3& awayNormal) {
+  const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
   const CollisionSurfaceView* best = nullptr;
-  float bestDistanceSq = kManualFirstPersonWallJumpProbeMeters *
-                         kManualFirstPersonWallJumpProbeMeters;
+  float bestDistanceSq = tuning.wallJumpProbeMeters * tuning.wallJumpProbeMeters;
   for (const CollisionSurfaceView& surface : surfaces.surfaces()) {
     Vec3 candidateNormal;
     float candidateDistanceSq = 0.0F;
@@ -425,6 +413,7 @@ void recordProductWallJumpTraversalProof(ProductAppWindowState& window,
 }
 
 bool tryProductWallJump(Session& session, ProductAppWindowState& window) {
+  const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
   const SpatialSurfaceSet* surfaces =
       productActiveRoomCollisionSurfaces(window.activeRoomCollision);
   const EntityId actor = productPlayerActor(session);
@@ -437,7 +426,7 @@ bool tryProductWallJump(Session& session, ProductAppWindowState& window) {
   const Vec3 start = entity->transform.position;
   // branch-gate: BG-1157
   if (!window.gameplayJumpActive &&
-      start.y <= kManualFirstPersonWallJumpMinAirborneHeightMeters) {
+      start.y <= tuning.wallJumpMinAirborneHeightMeters) {
     return false;
   }
 
@@ -449,8 +438,8 @@ bool tryProductWallJump(Session& session, ProductAppWindowState& window) {
     return false;
   }
 
-  Vec3 finalPosition = start + awayNormal * kManualFirstPersonWallJumpPushMeters;
-  finalPosition.y = start.y + kManualFirstPersonWallJumpRiseMeters;
+  Vec3 finalPosition = start + awayNormal * tuning.wallJumpPushMeters;
+  finalPosition.y = start.y + tuning.wallJumpRiseMeters;
   // branch-gate: BG-1157
   if (!setProductPlayerPosition(session, actor, finalPosition)) {
     return false;
@@ -460,7 +449,7 @@ bool tryProductWallJump(Session& session, ProductAppWindowState& window) {
   window.gameplayJumpAccepted = true;
   window.gameplayJumpActive = true;
   window.gameplayJumpVelocityMetersPerSecond =
-      kManualFirstPersonJumpImpulseMetersPerSecond;
+      tuning.jumpImpulseMetersPerSecond;
   recordProductJumpPosition(window, 0.0F, start.y, finalPosition.y);
   window.gameplayJumpStatus = "wall_jump";
   window.gameplayJumpReasonCode = "gameplay_jump_wall_jump";
@@ -511,6 +500,7 @@ bool tryProductTraversalJump(Session& session, ProductAppWindowState& window) {
 }
 
 void advanceProductJump(Session& session, ProductAppWindowState& window) {
+  const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
   // branch-gate: BG-1153
   if (!window.gameplayJumpActive) {
     return;
@@ -529,14 +519,14 @@ void advanceProductJump(Session& session, ProductAppWindowState& window) {
 
   const float previousY = entity->transform.position.y;
   const float nextVelocity = window.gameplayJumpVelocityMetersPerSecond -
-                             kManualFirstPersonGravityMetersPerSecondSquared *
-                                 kManualFirstPersonInputStepSeconds;
+                             tuning.gravityMetersPerSecondSquared *
+                                 tuning.inputStepSeconds;
   float nextY = previousY +
                 window.gameplayJumpVelocityMetersPerSecond *
-                    kManualFirstPersonInputStepSeconds -
-                0.5F * kManualFirstPersonGravityMetersPerSecondSquared *
-                    kManualFirstPersonInputStepSeconds *
-                    kManualFirstPersonInputStepSeconds;
+                    tuning.inputStepSeconds -
+                0.5F * tuning.gravityMetersPerSecondSquared *
+                    tuning.inputStepSeconds *
+                    tuning.inputStepSeconds;
   bool landed = false;
   // branch-gate: BG-1153
   if (nextY <= window.gameplayJumpGroundY && nextVelocity <= 0.0F) {
@@ -575,6 +565,7 @@ void advanceProductJump(Session& session, ProductAppWindowState& window) {
 void submitProductJump(Session& session,
                        ProductAppWindowState& window,
                        std::string_view source) {
+  const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
   clearProductTargetProof(window);
   clearProductOutcomeProof(window);
   window.gameplayInputUsed = true;
@@ -614,7 +605,7 @@ void submitProductJump(Session& session,
   window.gameplayJumpAccepted = true;
   window.gameplayJumpActive = true;
   window.gameplayJumpVelocityMetersPerSecond =
-      kManualFirstPersonJumpImpulseMetersPerSecond;
+      tuning.jumpImpulseMetersPerSecond;
   recordProductJumpPosition(window, groundY, groundY, groundY);
   window.gameplayJumpStatus = "accepted";
   window.gameplayJumpReasonCode = "gameplay_jump_accepted";
@@ -637,6 +628,7 @@ Vec3 manualFirstPersonDirection(float moveX, float moveY, float yawDegrees) {
 }
 
 void advanceProductDashCooldown(ProductAppWindowState& window) {
+  const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
   // branch-gate: BG-1155
   if (window.gameplayDashCooldownRemainingSeconds <= 0.0F) {
     window.gameplayDashCooldownRemainingSeconds = 0.0F;
@@ -645,7 +637,7 @@ void advanceProductDashCooldown(ProductAppWindowState& window) {
   window.gameplayDashCooldownRemainingSeconds =
       std::max(0.0F,
                window.gameplayDashCooldownRemainingSeconds -
-                   kManualFirstPersonInputStepSeconds);
+                   tuning.inputStepSeconds);
 }
 
 void rejectProductDash(ProductAppWindowState& window,
@@ -663,6 +655,7 @@ void submitProductDash(Session& session,
                        float moveY,
                        std::string_view source,
                        const SpatialSurfaceSet* collisionSurfaces) {
+  const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
   clearProductTargetProof(window);
   clearProductOutcomeProof(window);
   window.gameplayInputUsed = true;
@@ -684,25 +677,23 @@ void submitProductDash(Session& session,
 
   const Vec3 direction =
       manualFirstPersonDirection(moveX, moveY, window.viewport.cameraYawDegrees);
-  const float dashDistance = kManualFirstPersonDashSpeedMetersPerSecond *
-                             kManualFirstPersonDashDurationSeconds;
+  const float dashDistance = tuning.dashSpeedMetersPerSecond *
+                             tuning.dashDurationSeconds;
   Vec3 destination = actor->transform.position + direction * dashDistance;
   destination.y = actor->transform.position.y;
 
   window.gameplayDashAccepted = true;
   window.gameplayDashStatus = "accepted";
   window.gameplayDashReasonCode = "gameplay_dash_accepted";
-  window.gameplayDashSpeedMetersPerSecond =
-      kManualFirstPersonDashSpeedMetersPerSecond;
+  window.gameplayDashSpeedMetersPerSecond = tuning.dashSpeedMetersPerSecond;
   window.gameplayDashDistanceMeters = dashDistance;
   window.gameplayDashCooldownRemainingSeconds =
-      kManualFirstPersonDashCooldownSeconds;
+      tuning.dashCooldownSeconds;
   window.gameplayDashDirectionX = direction.x;
   window.gameplayDashDirectionZ = direction.z;
-  window.gameplayMovementProfile =
-      std::string{kManualFirstPersonDashMovementProfile};
+  window.gameplayMovementProfile = std::string{tuning.dashProfile};
   window.gameplayMovementMaxSpeedMetersPerSecond =
-      kManualFirstPersonDashSpeedMetersPerSecond;
+      tuning.dashSpeedMetersPerSecond;
 
   CommandRecord command;
   command.playerSlot = 0;
@@ -718,10 +709,11 @@ Vec3 manualFirstPersonMoveDelta(float moveX,
                                 float moveY,
                                 float yawDegrees,
                                 bool sprinting) {
+  const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
   const float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
   const float scale = 1.0F / std::max(1.0F, magnitude);
   const float stepMeters = manualFirstPersonMaxSpeedMetersPerSecond(sprinting) *
-                           kManualFirstPersonInputStepSeconds;
+                           tuning.inputStepSeconds;
   const float yawRadians = yawDegrees * kPi / 180.0F;
   const float cosYaw = std::cos(yawRadians);
   const float sinYaw = std::sin(yawRadians);

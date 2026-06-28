@@ -8,6 +8,7 @@
 
 #include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/input/ActionState.hpp"
 #include "content/assets/RoomAsset.hpp"
 #include "core/math/Transform3.hpp"
@@ -19,14 +20,27 @@
 
 namespace {
 
-constexpr float kExpectedManualFirstPersonSpeedMetersPerSecond = 1.6F;
-constexpr float kExpectedManualFirstPersonSprintSpeedMetersPerSecond = 3.2F;
+constexpr std::string_view kExpectedManualFirstPersonProfile =
+    iggy3d::kProductGameplayMovementTuning.walkProfile;
+constexpr std::string_view kExpectedManualFirstPersonSprintProfile =
+    iggy3d::kProductGameplayMovementTuning.sprintProfile;
+constexpr std::string_view kExpectedManualFirstPersonDashProfile =
+    iggy3d::kProductGameplayMovementTuning.dashProfile;
+constexpr float kExpectedManualFirstPersonSpeedMetersPerSecond =
+    iggy3d::kProductGameplayMovementTuning.walkSpeedMetersPerSecond;
+constexpr float kExpectedManualFirstPersonSprintSpeedMetersPerSecond =
+    iggy3d::kProductGameplayMovementTuning.sprintSpeedMetersPerSecond;
 constexpr float kExpectedManualFirstPersonStepMeters =
-    kExpectedManualFirstPersonSpeedMetersPerSecond / 60.0F;
+    kExpectedManualFirstPersonSpeedMetersPerSecond *
+    iggy3d::kProductGameplayMovementTuning.inputStepSeconds;
 constexpr float kExpectedManualFirstPersonSprintStepMeters =
-    kExpectedManualFirstPersonSprintSpeedMetersPerSecond / 60.0F;
-constexpr float kExpectedManualFirstPersonJumpImpulseMetersPerSecond = 5.8F;
-constexpr float kExpectedManualFirstPersonDashDistanceMeters = 9.5F * 0.18F;
+    kExpectedManualFirstPersonSprintSpeedMetersPerSecond *
+    iggy3d::kProductGameplayMovementTuning.inputStepSeconds;
+constexpr float kExpectedManualFirstPersonJumpImpulseMetersPerSecond =
+    iggy3d::kProductGameplayMovementTuning.jumpImpulseMetersPerSecond;
+constexpr float kExpectedManualFirstPersonDashDistanceMeters =
+    iggy3d::kProductGameplayMovementTuning.dashSpeedMetersPerSecond *
+    iggy3d::kProductGameplayMovementTuning.dashDurationSeconds;
 
 bool expect(bool condition, std::string_view message) {
   if (!condition) {
@@ -356,7 +370,7 @@ bool productMoveUsesTunedManualStep() {
          expect(window.physicsMovementPlannerStatus ==
                     "physics_movement_planner_disabled",
                 "default physics planner status") &&
-         expect(window.gameplayMovementProfile == "manual_first_person",
+         expect(window.gameplayMovementProfile == kExpectedManualFirstPersonProfile,
                 "manual movement profile") &&
          expect(nearlyEqual(window.gameplayMovementMaxSpeedMetersPerSecond,
                             kExpectedManualFirstPersonSpeedMetersPerSecond),
@@ -425,7 +439,7 @@ bool productMoveNormalizesDiagonalToTunedStep() {
   return expect(window.gameplayCommandAccepted, "diagonal move accepted") &&
          expect(window.gameplayMovementStatus == "moved",
                 "diagonal movement status") &&
-         expect(window.gameplayMovementProfile == "manual_first_person",
+         expect(window.gameplayMovementProfile == kExpectedManualFirstPersonProfile,
                 "diagonal movement profile") &&
          expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
                             kExpectedManualFirstPersonStepMeters),
@@ -451,7 +465,8 @@ bool productSprintUsesSprintProfileAndStep() {
   return expect(window.gameplayCommandAccepted, "sprint move accepted") &&
          expect(window.gameplayMovementStatus == "moved",
                 "sprint movement status") &&
-         expect(window.gameplayMovementProfile == "manual_first_person_sprint",
+         expect(window.gameplayMovementProfile ==
+                    kExpectedManualFirstPersonSprintProfile,
                 "sprint movement profile") &&
          expect(nearlyEqual(window.gameplayMovementMaxSpeedMetersPerSecond,
                             kExpectedManualFirstPersonSprintSpeedMetersPerSecond),
@@ -728,7 +743,7 @@ bool productDashMovesForwardAndRecordsProof() {
          expect(window.gameplayDashStatus == "accepted", "dash status") &&
          expect(window.gameplayDashReasonCode == "gameplay_dash_accepted",
                 "dash reason") &&
-         expect(window.gameplayMovementProfile == "manual_first_person_dash",
+         expect(window.gameplayMovementProfile == kExpectedManualFirstPersonDashProfile,
                 "dash movement profile") &&
          expect(nearlyEqual(window.gameplayDashDistanceMeters,
                             kExpectedManualFirstPersonDashDistanceMeters),

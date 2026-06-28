@@ -7,6 +7,7 @@
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -306,8 +307,10 @@ struct ProductAppWindowState {
   float gameplayMovementHorizontalDistanceMeters = 0.0F;
   float gameplayMovementVerticalDeltaMeters = 0.0F;
   float gameplayMovementGradePercent = 0.0F;
-  std::string gameplayMovementProfile = "manual_first_person";
-  float gameplayMovementMaxSpeedMetersPerSecond = 1.6F;
+  std::string gameplayMovementProfile =
+      std::string{kProductGameplayMovementTuning.walkProfile};
+  float gameplayMovementMaxSpeedMetersPerSecond =
+      kProductGameplayMovementTuning.walkSpeedMetersPerSecond;
   bool gameplayJumpRequested = false;
   bool gameplayJumpAccepted = false;
   bool gameplayJumpActive = false;

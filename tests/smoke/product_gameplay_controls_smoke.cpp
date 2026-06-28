@@ -1,10 +1,14 @@
 #include "AutomationSmokeSupport.hpp"
 
+#include "app/iggy3d/gameplay/MovementTuning.hpp"
+
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <string>
 
 #if defined(__unix__) || defined(__APPLE__)
@@ -68,6 +72,12 @@ bool hasField(const std::map<std::string, std::string>& fields,
   return found != fields.end() && found->second == value;
 }
 
+std::string fixed3(float value) {
+  std::ostringstream out;
+  out << std::fixed << std::setprecision(3) << value;
+  return out.str();
+}
+
 bool positiveIntegerField(const std::map<std::string, std::string>& fields,
                           const std::string& key) {
   const auto found = fields.find(key);
@@ -95,6 +105,8 @@ int main() {
   const std::filesystem::path binary;
 #endif
 
+  const iggy3d::ProductGameplayMovementTuning& tuning =
+      iggy3d::productGameplayMovementTuning();
   const std::filesystem::path output = "/tmp/iggy3d_product_gameplay_controls.out";
   const std::filesystem::path saveRoot =
       "/tmp/iggy3d_product_gameplay_controls_saves";
@@ -161,8 +173,12 @@ int main() {
       hasField(fields, "npc_behavior_debug_hud_status", "not_requested") &&
       hasField(fields, "physics_debug_hud_visible", "false") &&
       hasField(fields, "physics_debug_hud_status", "not_requested") &&
-      hasField(fields, "gameplay_movement_profile", "manual_first_person") &&
-      hasField(fields, "gameplay_movement_max_speed_mps", "1.600") &&
+      hasField(fields,
+               "gameplay_movement_profile",
+               std::string{tuning.walkProfile}) &&
+      hasField(fields,
+               "gameplay_movement_max_speed_mps",
+               fixed3(tuning.walkSpeedMetersPerSecond)) &&
       hasField(fields, "target_discovered", "false") &&
       hasField(fields, "gameplay_reach_gate", "not_attempted") &&
       hasField(fields, "attack_executed", "false") &&
@@ -341,11 +357,11 @@ int main() {
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_reason_code",
                               "gameplay_jump_wall_jump") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_velocity_mps",
-                              "5.800") &&
+                              fixed3(tuning.jumpImpulseMetersPerSecond)) &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_start_y",
                               "0.800") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_final_y",
-                              "1.250") &&
+                              fixed3(0.8F + tuning.wallJumpRiseMeters)) &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_requested",
                               "true") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_consumed",
@@ -370,9 +386,9 @@ int main() {
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_x",
                               "8.000") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_y",
-                              "1.250") &&
+                              fixed3(0.8F + tuning.wallJumpRiseMeters)) &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_z",
-                              "1.850") &&
+                              fixed3(0.65F + tuning.wallJumpPushMeters)) &&
       iggy3d::smoke::hasField(wallJumpFields, "player_position_changed",
                               "true") &&
       iggy3d::smoke::hasField(wallJumpFields, "product_draw_prop_visible",
