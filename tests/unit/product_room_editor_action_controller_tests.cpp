@@ -83,8 +83,9 @@ bool toolActionsChangeDeterministically() {
       result.editing, result.cursor,
       action(iggy3d::InputAction::EditorPreviousTool));
   return expect(result.ok, "previous tool accepted") &&
-         expect(result.cursor.selectedTool == iggy3d::ProductRoomEditorTool::Floor,
-                "previous tool returns floor") && ok;
+         expect(result.cursor.selectedTool == iggy3d::ProductRoomEditorTool::Object,
+                "previous tool follows shared cycle to object") &&
+         ok;
 }
 
 bool directToolActionsSelectWithoutMutation() {
@@ -206,6 +207,40 @@ bool placeAppliesThroughEditingState() {
          expect(result.editing.collisionActorBlockerSurfaceCount ==
                     initialWalls + 1U,
                 "actor blocker incremented");
+}
+
+bool objectPlaceAppliesThroughEditingState() {
+  iggy3d::ProductRoomEditingState editing =
+      iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Object;
+  cursor.gridX = 2;
+  const std::uint64_t initialObjects = editing.documentObjectCount;
+  const std::uint64_t initialBlockers =
+      editing.collisionActorBlockerSurfaceCount;
+  const std::uint64_t initialProjectileBlockers =
+      editing.collisionProjectileBlockerSurfaceCount;
+
+  const iggy3d::ProductRoomEditorActionResult result =
+      iggy3d::applyProductRoomEditorAction(
+          editing, cursor, action(iggy3d::InputAction::EditorPlace));
+  return expect(result.ok, "object place accepted") &&
+         expect(result.status == "room_editor_command_applied",
+                "object place status") &&
+         expect(result.operation == "editor.place", "object place operation") &&
+         expect(result.operationAccepted, "object place operation accepted") &&
+         expect(result.primitiveId == "edit_object_1",
+                "object place primitive") &&
+         expect(result.editing.documentObjectCount == initialObjects + 1U,
+                "object count incremented") &&
+         expect(result.editing.authoringSnapshot.projectedPropMeshCount == 1U,
+                "prop projection incremented") &&
+         expect(result.editing.collisionActorBlockerSurfaceCount ==
+                    initialBlockers + 1U,
+                "object actor blocker incremented") &&
+         expect(result.editing.collisionProjectileBlockerSurfaceCount ==
+                    initialProjectileBlockers + 1U,
+                "object projectile blocker incremented");
 }
 
 bool deleteUndoRedoApplyThroughEditingState() {
@@ -572,6 +607,7 @@ int main() {
                   directToolActionsSelectWithoutMutation() &&
                   wallDirectionRotateActionsAreDeterministic() &&
                   placeAppliesThroughEditingState() &&
+                  objectPlaceAppliesThroughEditingState() &&
                   deleteUndoRedoApplyThroughEditingState() &&
                   floorDeleteUndoRedoApplyThroughEditingState() &&
                   deleteMissingTargetIsStable() &&

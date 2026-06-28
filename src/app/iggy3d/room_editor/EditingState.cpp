@@ -8,6 +8,7 @@ namespace {
 void fillCounts(ProductRoomEditingState& state) {
   state.documentFloorCount = state.authoringSnapshot.documentFloorCount;
   state.documentWallCount = state.authoringSnapshot.documentWallCount;
+  state.documentObjectCount = state.authoringSnapshot.documentObjectCount;
   state.activeRoomStaticMeshCount = state.activeRoom.staticMeshCount;
   state.activeRoomSpatialSurfaceCount = state.activeRoom.spatialSurfaceCount;
   state.activeRoomAuthoredFloorCount = state.activeRoom.authoredFloorCount;

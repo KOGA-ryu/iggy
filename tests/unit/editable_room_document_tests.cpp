@@ -40,6 +40,19 @@ iggy3d::EditableRoomWall wallPrimitive() {
   return wall;
 }
 
+iggy3d::EditableRoomObject objectPrimitive() {
+  iggy3d::EditableRoomObject object;
+  object.id = "object_1";
+  object.assetId = "wood_crate_proxy";
+  object.storyIndex = 0;
+  object.positionMeters = {1.5F, 0.4F, -0.5F};
+  object.sizeMeters = {0.8F, 0.8F, 0.8F};
+  object.yawDegrees = 45.0F;
+  object.blocksActor = true;
+  object.blocksProjectile = true;
+  return object;
+}
+
 const iggy3d::RoomStaticMeshAsset* findMesh(const iggy3d::RoomAsset& room,
                                             std::string_view id) {
   for (const iggy3d::RoomStaticMeshAsset& mesh : room.staticMeshes) {
@@ -82,6 +95,91 @@ bool sessionAddsDeletesAndRestoresPrimitives() {
          expect(undoRestoredWall, "undo restored wall") &&
          expect(redoDelete.status == iggy3d::RoomEditStatus::RedoApplied, "redo delete") &&
          expect(redoRemovedWall, "redo removed wall");
+}
+
+bool objectCommandsBakePropMeshAndBlockerSurfaces() {
+  iggy3d::EditableRoomSession session;
+  const iggy3d::RoomEditResult addObject =
+      session.submit(iggy3d::addObjectCommand(objectPrimitive()));
+  const iggy3d::EditableRoomObject* object =
+      iggy3d::findEditableObject(session.document(), "object_1");
+  const bool storedObjectOk =
+      object != nullptr && object->assetId == "wood_crate_proxy";
+  const iggy3d::RoomBakeResult bake = iggy3d::bakeEditableRoomDocument(session.document());
+  const iggy3d::RoomStaticMeshAsset* mesh = findMesh(bake.room, "object_1");
+
+  bool actorSurface = false;
+  bool projectileSurface = false;
+  for (const iggy3d::RoomSpatialSurface& surface : bake.room.spatialSurfaces) {
+    if (surface.id == "object_1_actor_blocker") {
+      actorSurface = surface.sourceStaticMeshId == "object_1" &&
+                     surface.role == iggy3d::RoomSpatialSurfaceRole::Blocker &&
+                     surface.shape == iggy3d::RoomSpatialSurfaceShape::Box &&
+                     surface.blocksActor && !surface.blocksProjectile &&
+                     surface.collisionMask.size() == 1U &&
+                     surface.collisionMask.front() == "actor";
+    }
+    if (surface.id == "object_1_projectile_blocker") {
+      projectileSurface =
+          surface.sourceStaticMeshId == "object_1" &&
+          surface.role == iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker &&
+          surface.shape == iggy3d::RoomSpatialSurfaceShape::Box &&
+          !surface.blocksActor && surface.blocksProjectile &&
+          surface.collisionMask.size() == 1U &&
+          surface.collisionMask.front() == "projectile";
+    }
+  }
+
+  const iggy3d::RoomEditResult moveObject =
+      session.submit(iggy3d::moveObjectCommand("object_1", {0.5F, 0.0F, 1.0F}));
+  const iggy3d::EditableRoomObject* movedObject =
+      iggy3d::findEditableObject(session.document(), "object_1");
+  const bool movedObjectOk = movedObject != nullptr &&
+                             nearly(movedObject->positionMeters.x, 2.0F) &&
+                             nearly(movedObject->positionMeters.y, 0.4F) &&
+                             nearly(movedObject->positionMeters.z, 0.5F);
+  const iggy3d::RoomEditResult badMove =
+      session.submit(iggy3d::setObjectPositionCommand("object_1",
+                                                      {2.0F, 0.4F, NAN}));
+  const iggy3d::RoomEditResult deleteObject =
+      session.submit(iggy3d::deleteObjectCommand("object_1"));
+
+  return expect(addObject.status == iggy3d::RoomEditStatus::Applied,
+                "object add applied") &&
+         expect(object != nullptr, "object stored") &&
+         expect(storedObjectOk, "object asset id stored") &&
+         expect(bake.ok, "object bake ok") &&
+         expect(bake.room.staticMeshes.size() == 1U, "object mesh count") &&
+         expect(bake.room.spatialSurfaces.size() == 2U, "object surface count") &&
+         expect(mesh != nullptr, "object mesh exists") &&
+         expect(mesh != nullptr && mesh->role == "prop", "object mesh role") &&
+         expect(mesh != nullptr && mesh->meshId == "wood_crate_proxy",
+                "object mesh id") &&
+         expect(mesh != nullptr && mesh->materialId == "wood_crate_proxy",
+                "object material id") &&
+         expect(mesh != nullptr && nearly(mesh->positionMeters.x, 1.5F),
+                "object mesh position x") &&
+         expect(mesh != nullptr && nearly(mesh->sizeMeters.x, 0.8F),
+                "object mesh size x") &&
+         expect(actorSurface, "object actor blocker") &&
+         expect(projectileSurface, "object projectile blocker") &&
+         expect(moveObject.status == iggy3d::RoomEditStatus::Applied,
+                "object move applied") &&
+         expect(movedObjectOk, "object move updates position") &&
+         expect(badMove.status == iggy3d::RoomEditStatus::InvalidGeometry,
+                "object bad move rejected") &&
+         expect(deleteObject.status == iggy3d::RoomEditStatus::Applied,
+                "object delete applied") &&
+         expect(deleteObject.affectedRuntimeIds.size() == 3U,
+                "object delete affected ids") &&
+         expect(deleteObject.affectedRuntimeIds[0] == "object_1",
+                "object affected mesh") &&
+         expect(deleteObject.affectedRuntimeIds[1] == "object_1_actor_blocker",
+                "object affected actor blocker") &&
+         expect(deleteObject.affectedRuntimeIds[2] ==
+                    "object_1_projectile_blocker",
+                "object affected projectile blocker") &&
+         expect(session.document().objects.empty(), "object removed");
 }
 
 bool semanticsBakeIntoRuntimeSurfaces() {
@@ -248,10 +346,20 @@ bool nextEditableCountersIgnoreNonMatchingIds() {
   wall.id = "edit_wall_bad";
   document.walls.push_back(wall);
 
+  iggy3d::EditableRoomObject object = objectPrimitive();
+  object.id = "edit_object_5";
+  document.objects.push_back(object);
+  object.id = "object_misc_99";
+  document.objects.push_back(object);
+  object.id = "edit_object_bad";
+  document.objects.push_back(object);
+
   return expect(iggy3d::nextEditableFloorIndex(document) == 8U,
                 "floor counter from numeric suffix") &&
          expect(iggy3d::nextEditableWallIndex(document) == 13U,
-                "wall counter from numeric suffix");
+                "wall counter from numeric suffix") &&
+         expect(iggy3d::nextEditableObjectIndex(document) == 6U,
+                "object counter from numeric suffix");
 }
 
 bool lockedHiddenAndProjectileSemanticsAreStable() {
@@ -441,6 +549,7 @@ bool lockedTransformsRejectedAndHiddenTransformsAllowed() {
 
 int main() {
   const bool ok = sessionAddsDeletesAndRestoresPrimitives() &&
+                  objectCommandsBakePropMeshAndBlockerSurfaces() &&
                   semanticsBakeIntoRuntimeSurfaces() &&
                   wallBakePreservesSegmentMetadataAndSurfaceCounts() &&
                   validationRejectsAmbiguousWallGeometryAndBadTags() &&

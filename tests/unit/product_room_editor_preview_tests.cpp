@@ -284,6 +284,68 @@ bool wallDirectionAndCandidateFactsAreStable() {
          expect(document.walls.empty(), "candidate facts leave document");
 }
 
+bool objectPreviewDryRunsWithoutDocumentMutation() {
+  iggy3d::EditableRoomDocument document;
+  document.floors.push_back(floor("floor_1", 0.0F, 0.0F));
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Object;
+  cursor.gridX = 2;
+  cursor.gridZ = -1;
+
+  const iggy3d::ProductRoomEditorPlacementPreviewResult result =
+      iggy3d::buildProductRoomEditorPlacementPreview(
+          previewRequest(document, cursor));
+  iggy3d::EditableRoomDocument dryRun = document;
+  const iggy3d::RoomEditResult applied =
+      iggy3d::applyRoomEditCommand(dryRun, result.candidateCommand);
+  const iggy3d::ProductRoomGeometryOptimizationReport dryRunReport =
+      iggy3d::buildProductRoomGeometryOptimizationReport(&dryRun);
+
+  return expect(result.ok, "object preview accepted") &&
+         expect(result.tool == "object", "object preview tool") &&
+         expect(result.primitiveId == "edit_object_1",
+                "object preview primitive id") &&
+         expect(result.candidateCommandReady, "object candidate ready") &&
+         expect(result.candidateCommand.kind ==
+                    iggy3d::RoomEditCommandKind::AddObject,
+                "object candidate command kind") &&
+         expect(result.candidateCommand.object.assetId == "wood_crate_proxy",
+                "object candidate asset id") &&
+         expect(result.objectAssetId == "wood_crate_proxy",
+                "object preview asset id") &&
+         expect(result.objectCountBefore == 0U, "object before count") &&
+         expect(result.objectCountAfter == 1U, "object after count") &&
+         expect(result.before.optimizedDrawCount == 1U,
+                "object before optimized draw count") &&
+         expect(result.after.optimizedDrawCount == 2U,
+                "object after optimized draw count") &&
+         expect(result.before.optimizedTriangleCount == 2U,
+                "object before optimized triangle count") &&
+         expect(result.after.optimizedTriangleCount == 14U,
+                "object after optimized triangle count") &&
+         expect(result.optimizedDrawDelta == 1,
+                "object optimized draw delta") &&
+         expect(result.optimizedTriangleDelta == 12,
+                "object optimized triangle delta") &&
+         expect(result.objectSizeMeters.x == 0.8F &&
+                    result.objectSizeMeters.y == 0.8F &&
+                    result.objectSizeMeters.z == 0.8F,
+                "object preview size") &&
+         expect(result.worldCenter.x == 2.0F && result.worldCenter.y == 0.4F &&
+                    result.worldCenter.z == -1.0F,
+                "object preview world center") &&
+         expect(document.objects.empty(), "object preview leaves document") &&
+         expect(applied.status == iggy3d::RoomEditStatus::Applied,
+                "object dry-run applies") &&
+         expect(dryRun.objects.size() == 1U, "object dry-run mutates copy") &&
+         expect(result.after.optimizedDrawCount ==
+                    dryRunReport.optimizedDrawCount,
+                "object after draw matches dry-run") &&
+         expect(result.after.optimizedTriangleCount ==
+                    dryRunReport.optimizedTriangleCount,
+                "object after triangles matches dry-run");
+}
+
 bool duplicateCandidateRejectsWithEditReason() {
   iggy3d::EditableRoomDocument document;
   document.floors.push_back(floor("edit_floor_0", 0.0F, 0.0F));
@@ -318,6 +380,7 @@ int main() {
                   floorPreviewDeltasDistinguishMergeAndIsolation() &&
                   wallPreviewDeltasDistinguishMergeAndIsolation() &&
                   wallDirectionAndCandidateFactsAreStable() &&
+                  objectPreviewDryRunsWithoutDocumentMutation() &&
                   duplicateCandidateRejectsWithEditReason();
   return ok ? 0 : 1;
 }

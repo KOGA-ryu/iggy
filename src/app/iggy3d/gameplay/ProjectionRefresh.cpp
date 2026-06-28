@@ -343,6 +343,8 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawRampTileCount = 0;
     window.viewport.productDrawBlockedSlopeTileCount = 0;
     window.viewport.productDrawWallTileCount = 0;
+    window.viewport.productDrawPropVisible = false;
+    window.viewport.productDrawPropTileCount = 0;
     window.viewport.productDrawRoomEditorCursorVisible = false;
     window.viewport.productDrawRoomEditorCursorCount = 0;
     window.viewport.productDrawRoomEditorPreviewVisible = false;
@@ -364,6 +366,8 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productRenderBridgeRoomEditorCursorCount = 0;
     window.viewport.productRenderBridgeRoomEditorPreviewVisible = false;
     window.viewport.productRenderBridgeRoomEditorPreviewCount = 0;
+    window.viewport.productRenderBridgePropVisible = false;
+    window.viewport.productRenderBridgePropTileCount = 0;
     window.viewport.productRenderBridgePhysicsDebugVisible = false;
     window.viewport.productRenderBridgePhysicsDebugItemCount = 0;
     window.viewport.productRenderBridgePhysicsAabbDebugCount = 0;
@@ -416,6 +420,8 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawBlockedSlopeTileCount =
         drawList->blockedSlopeTileCount;
     window.viewport.productDrawWallTileCount = drawList->wallTileCount;
+    window.viewport.productDrawPropVisible = drawList->propTileCount > 0U;
+    window.viewport.productDrawPropTileCount = drawList->propTileCount;
     window.viewport.productDrawRoomEditorCursorVisible =
         drawList->roomEditorCursorVisible;
     window.viewport.productDrawRoomEditorCursorCount =
@@ -455,6 +461,8 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
         bridge->roomEditorPlacementPreviewVisible;
     window.viewport.productRenderBridgeRoomEditorPreviewCount =
         bridge->roomEditorPlacementPreviewCount;
+    window.viewport.productRenderBridgePropVisible = bridge->propVisible;
+    window.viewport.productRenderBridgePropTileCount = bridge->propTileCount;
     window.viewport.productRenderBridgePhysicsDebugVisible =
         bridge->physicsDebugVisible;
     window.viewport.productRenderBridgePhysicsDebugItemCount =

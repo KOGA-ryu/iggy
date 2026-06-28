@@ -97,8 +97,21 @@ EditableRoomWall* findEditableWallMutable(EditableRoomDocument& document,
   return nullptr;
 }
 
+EditableRoomObject* findEditableObjectMutable(EditableRoomDocument& document,
+                                              const std::string& id) {
+  for (EditableRoomObject& object : document.objects) {
+    // branch-gate: BG-1125
+    if (object.id == id) {
+      return &object;
+    }
+  }
+  return nullptr;
+}
+
 bool primitiveIdExists(const EditableRoomDocument& document, const std::string& id) {
-  return findEditableFloor(document, id) != nullptr || findEditableWall(document, id) != nullptr;
+  return findEditableFloor(document, id) != nullptr ||
+         findEditableWall(document, id) != nullptr ||
+         findEditableObject(document, id) != nullptr;
 }
 
 RoomEditResult makeEditResult(RoomEditStatus status, std::string primitiveId = {}) {
@@ -127,6 +140,13 @@ bool validateWall(const EditableRoomWall& wall) {
          std::isfinite(wall.thicknessMeters) && wall.heightMeters > kEpsilon &&
          wall.thicknessMeters > kEpsilon && isAxisAlignedWall(wall) &&
          validateSemantics(wall.semantics);
+}
+
+bool validateObject(const EditableRoomObject& object) {
+  return validId(object.id) && hasText(object.assetId) &&
+         isFinite(object.positionMeters) && isFinite(object.sizeMeters) &&
+         std::isfinite(object.yawDegrees) && object.sizeMeters.x > kEpsilon &&
+         object.sizeMeters.y > kEpsilon && object.sizeMeters.z > kEpsilon;
 }
 
 bool nearlyZero(float value) {
@@ -168,6 +188,11 @@ Aabb3 wallBounds(const EditableRoomWall& wall) {
                       wall.bottomY + wall.heightMeters,
                       runsAlongX ? maxZ + wall.thicknessMeters * 0.5F : maxZ};
   return makeAabb3(minPoint, maxPoint);
+}
+
+Aabb3 objectBounds(const EditableRoomObject& object) {
+  return aabbFromCenterExtents(object.positionMeters,
+                               object.sizeMeters * 0.5F);
 }
 
 std::vector<Vec3> topFacePoints(const Aabb3& bounds) {
@@ -233,6 +258,17 @@ RoomStaticMeshAsset makeWallMesh(const EditableRoomWall& wall) {
   mesh.wallBottomY = wall.bottomY;
   mesh.wallHeightMeters = wall.heightMeters;
   mesh.wallThicknessMeters = wall.thicknessMeters;
+  return mesh;
+}
+
+RoomStaticMeshAsset makeObjectMesh(const EditableRoomObject& object) {
+  RoomStaticMeshAsset mesh;
+  mesh.id = object.id;
+  mesh.meshId = object.assetId;
+  mesh.materialId = object.assetId;
+  mesh.role = "prop";
+  mesh.positionMeters = object.positionMeters;
+  mesh.sizeMeters = object.sizeMeters;
   return mesh;
 }
 
@@ -315,6 +351,25 @@ void appendWallRuntime(RoomAsset& room, const EditableRoomWall& wall) {
   if (containsString(wall.semantics.traversalTags, "clamber")) {
     room.spatialSurfaces.push_back(
         makeWalkableSurface(wall.id + "_top_walkable", wall.id, bounds, wall.semantics));
+  }
+}
+
+void appendObjectRuntime(RoomAsset& room, const EditableRoomObject& object) {
+  const Aabb3 bounds = objectBounds(object);
+  const Vec3 normal{0.0F, 0.0F, 1.0F};
+  room.staticMeshes.push_back(makeObjectMesh(object));
+  // branch-gate: BG-1125
+  if (object.blocksActor) {
+    EditableRoomSemantics semantics;
+    semantics.materialId = object.assetId;
+    semantics.blocksActor = true;
+    room.spatialSurfaces.push_back(makeActorBlockerSurface(
+        object.id + "_actor_blocker", object.id, bounds, normal, semantics));
+  }
+  // branch-gate: BG-1125
+  if (object.blocksProjectile) {
+    room.spatialSurfaces.push_back(makeProjectileBlockerSurface(
+        object.id + "_projectile_blocker", object.id, bounds, normal));
   }
 }
 
@@ -454,11 +509,53 @@ RoomEditCommand setWallThicknessCommand(std::string id, float thicknessMeters) {
   return command;
 }
 
+RoomEditCommand addObjectCommand(EditableRoomObject object) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::AddObject;
+  command.object = std::move(object);
+  return command;
+}
+
+RoomEditCommand deleteObjectCommand(std::string id) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::DeleteObject;
+  command.targetId = std::move(id);
+  return command;
+}
+
+RoomEditCommand moveObjectCommand(std::string id, Vec3 deltaMeters) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::MoveObject;
+  command.targetId = std::move(id);
+  command.deltaMeters = deltaMeters;
+  return command;
+}
+
+RoomEditCommand setObjectPositionCommand(std::string id, Vec3 positionMeters) {
+  RoomEditCommand command;
+  command.kind = RoomEditCommandKind::MoveObject;
+  command.targetId = std::move(id);
+  command.positionMeters = positionMeters;
+  command.useStart = true;
+  return command;
+}
+
 const EditableRoomFloor* findEditableFloor(const EditableRoomDocument& document,
                                            const std::string& id) {
   for (const EditableRoomFloor& floor : document.floors) {
     if (floor.id == id) {
       return &floor;
+    }
+  }
+  return nullptr;
+}
+
+const EditableRoomObject* findEditableObject(const EditableRoomDocument& document,
+                                             const std::string& id) {
+  for (const EditableRoomObject& object : document.objects) {
+    // branch-gate: BG-1125
+    if (object.id == id) {
+      return &object;
     }
   }
   return nullptr;
@@ -496,17 +593,32 @@ std::vector<std::string> runtimeIdsForEditableWall(const EditableRoomWall& wall)
   return ids;
 }
 
+std::vector<std::string> runtimeIdsForEditableObject(const EditableRoomObject& object) {
+  std::vector<std::string> ids{object.id};
+  // branch-gate: BG-1125
+  if (object.blocksActor) {
+    ids.push_back(object.id + "_actor_blocker");
+  }
+  // branch-gate: BG-1125
+  if (object.blocksProjectile) {
+    ids.push_back(object.id + "_projectile_blocker");
+  }
+  return ids;
+}
+
 std::uint64_t nextEditableIndexForPrefix(const EditableRoomDocument& document,
                                          std::string_view prefix,
                                          bool floors) {
   std::uint64_t maxSuffix = 0;
   const auto scanId = [&](std::string_view id) {
+    // branch-gate: BG-1125
     if (!id.starts_with(prefix) || id.size() == prefix.size()) {
       return;
     }
     std::uint64_t suffix = 0;
     for (std::size_t index = prefix.size(); index < id.size(); ++index) {
       const char c = id[index];
+      // branch-gate: BG-1125
       if (c < '0' || c > '9') {
         return;
       }
@@ -527,12 +639,43 @@ std::uint64_t nextEditableIndexForPrefix(const EditableRoomDocument& document,
   return maxSuffix + 1U;
 }
 
+std::uint64_t nextEditableObjectIndexForPrefix(
+    const EditableRoomDocument& document,
+    std::string_view prefix) {
+  std::uint64_t maxSuffix = 0;
+  const auto scanId = [&](std::string_view id) {
+    // branch-gate: BG-1125
+    if (!id.starts_with(prefix) || id.size() == prefix.size()) {
+      return;
+    }
+    std::uint64_t suffix = 0;
+    for (std::size_t index = prefix.size(); index < id.size(); ++index) {
+      const char c = id[index];
+      // branch-gate: BG-1125
+      if (c < '0' || c > '9') {
+        return;
+      }
+      suffix = suffix * 10U + static_cast<std::uint64_t>(c - '0');
+    }
+    maxSuffix = std::max(maxSuffix, suffix);
+  };
+
+  for (const EditableRoomObject& object : document.objects) {
+    scanId(object.id);
+  }
+  return maxSuffix + 1U;
+}
+
 std::uint64_t nextEditableFloorIndex(const EditableRoomDocument& document) {
   return nextEditableIndexForPrefix(document, "edit_floor_", true);
 }
 
 std::uint64_t nextEditableWallIndex(const EditableRoomDocument& document) {
   return nextEditableIndexForPrefix(document, "edit_wall_", false);
+}
+
+std::uint64_t nextEditableObjectIndex(const EditableRoomDocument& document) {
+  return nextEditableObjectIndexForPrefix(document, "edit_object_");
 }
 
 RoomEditResult applyRoomEditCommand(EditableRoomDocument& document,
@@ -778,6 +921,76 @@ RoomEditResult applyRoomEditCommand(EditableRoomDocument& document,
       result.affectedRuntimeIds = runtimeIdsForEditableWall(*wall);
       return result;
     }
+
+    case RoomEditCommandKind::AddObject:
+      // branch-gate: BG-1125
+      if (!validateObject(command.object)) {
+        return makeEditResult(RoomEditStatus::InvalidPrimitive, command.object.id);
+      }
+      // branch-gate: BG-1125
+      if (primitiveIdExists(document, command.object.id)) {
+        return makeEditResult(RoomEditStatus::DuplicateId, command.object.id);
+      }
+      document.objects.push_back(command.object);
+      return makeEditResult(RoomEditStatus::Applied, command.object.id);
+
+    case RoomEditCommandKind::DeleteObject: {
+      EditableRoomObject* object =
+          findEditableObjectMutable(document, command.targetId);
+      // branch-gate: BG-1125
+      if (object == nullptr) {
+        return makeEditResult(RoomEditStatus::MissingPrimitive, command.targetId);
+      }
+      // branch-gate: BG-1125
+      if (object->locked) {
+        return makeEditResult(RoomEditStatus::LockedPrimitive, command.targetId);
+      }
+      RoomEditResult result =
+          makeEditResult(RoomEditStatus::Applied, command.targetId);
+      result.affectedRuntimeIds = runtimeIdsForEditableObject(*object);
+      std::erase_if(document.objects,
+                    [&](const EditableRoomObject& item) {
+                      return item.id == command.targetId;
+                    });
+      return result;
+    }
+
+    case RoomEditCommandKind::MoveObject: {
+      EditableRoomObject* object =
+          findEditableObjectMutable(document, command.targetId);
+      // branch-gate: BG-1125
+      if (object == nullptr) {
+        return makeEditResult(RoomEditStatus::MissingPrimitive, command.targetId);
+      }
+      // branch-gate: BG-1125
+      if (object->locked) {
+        return makeEditResult(RoomEditStatus::LockedPrimitive, command.targetId);
+      }
+      EditableRoomObject next = *object;
+      // branch-gate: BG-1125
+      if (command.useStart) {
+        // branch-gate: BG-1125
+        if (!isFinite(command.positionMeters)) {
+          return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+        }
+        next.positionMeters = command.positionMeters;
+      } else {
+        // branch-gate: BG-1125
+        if (!isFinite(command.deltaMeters)) {
+          return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+        }
+        next.positionMeters = next.positionMeters + command.deltaMeters;
+      }
+      // branch-gate: BG-1125
+      if (!validateObject(next)) {
+        return makeEditResult(RoomEditStatus::InvalidGeometry, command.targetId);
+      }
+      *object = next;
+      RoomEditResult result =
+          makeEditResult(RoomEditStatus::Applied, command.targetId);
+      result.affectedRuntimeIds = runtimeIdsForEditableObject(*object);
+      return result;
+    }
   }
   return makeEditResult(RoomEditStatus::InvalidCommand);
 }
@@ -808,6 +1021,14 @@ RoomBakeResult bakeEditableRoomDocument(const EditableRoomDocument& document) {
       return result;
     }
     appendWallRuntime(result.room, wall);
+  }
+  for (const EditableRoomObject& object : document.objects) {
+    // branch-gate: BG-1125
+    if (!validateObject(object)) {
+      result.reasonCode = "room_bake_invalid_object";
+      return result;
+    }
+    appendObjectRuntime(result.room, object);
   }
 
   result.ok = true;
@@ -873,6 +1094,12 @@ const char* roomEditCommandKindName(RoomEditCommandKind kind) {
       return "set_wall_height";
     case RoomEditCommandKind::SetWallThickness:
       return "set_wall_thickness";
+    case RoomEditCommandKind::AddObject:
+      return "add_object";
+    case RoomEditCommandKind::DeleteObject:
+      return "delete_object";
+    case RoomEditCommandKind::MoveObject:
+      return "move_object";
   }
   return "add_floor";
 }

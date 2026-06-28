@@ -219,6 +219,12 @@ int main() {
   const std::filesystem::path customEditorPreviewConfirmSaveRoot =
       iggy3d::smoke::cleanSaveRoot(
           "ascii_map_custom_draft_editor_preview_confirm");
+  const std::filesystem::path customEditorObjectPreviewSaveRoot =
+      iggy3d::smoke::cleanSaveRoot(
+          "ascii_map_custom_draft_editor_object_preview");
+  const std::filesystem::path customEditorObjectPreviewConfirmSaveRoot =
+      iggy3d::smoke::cleanSaveRoot(
+          "ascii_map_custom_draft_editor_object_preview_confirm");
   const std::filesystem::path customEditorPreviewCancelSaveRoot =
       iggy3d::smoke::cleanSaveRoot(
           "ascii_map_custom_draft_editor_preview_cancel");
@@ -1657,6 +1663,162 @@ int main() {
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_wall_draw_count",
                               "22");
+
+	  fields.clear();
+  const bool editorObjectPreviewShowsPhantomOnly =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_custom_draft_editor_object_preview",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.title=Custom Draft\n"
+          "world.draft_cell=1,2,#\n"
+          "world.create=true\n"
+          "system.pause=true\n"
+          "pause.select=edit_room\n"
+          "pause.execute=true\n"
+          "room_editor.move=right\n"
+          "room_editor.tool=object\n"
+          "room_editor.preview=true\n",
+          iggy3d::smoke::saveRootArg(customEditorObjectPreviewSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_key",
+                              "room_editor.preview") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_action",
+                              "room_editor.preview") &&
+      iggy3d::smoke::hasField(fields, "room_editing_ready", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editing_object_count", "0") &&
+      iggy3d::smoke::hasField(fields, "room_editor_tool", "object") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_pending",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_status",
+                              "room_editor_preview_ready") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_candidate_id",
+                              "edit_object_1") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_tool", "object") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editor_preview_before_draw_count", "33") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editor_preview_after_draw_count", "34") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_optimized_draw_delta", "1") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_before_triangle_count", "276") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_after_triangle_count", "288") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editor_preview_optimized_triangle_delta", "12") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_tool", "object") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_line_count", "6") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_preview_active",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_preview_candidate_id",
+                              "edit_object_1") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_draw_room_editor_preview_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_draw_room_editor_preview_count",
+                              "1") &&
+      iggy3d::smoke::hasField(
+          fields, "product_render_bridge_room_editor_preview_visible",
+          "true") &&
+      iggy3d::smoke::hasField(
+          fields, "product_render_bridge_room_editor_preview_count", "1") &&
+      iggy3d::smoke::hasField(fields, "product_draw_prop_visible", "false") &&
+      iggy3d::smoke::hasField(fields, "product_draw_prop_tile_count", "0") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_static_mesh_count", "119") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_query_surface_count",
+                              "180") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              "61");
+
+  fields.clear();
+  const bool editorPreviewConfirmPlacesObject =
+      appAvailable && mapAvailable &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "ascii_map_custom_draft_editor_object_preview_confirm",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.title=Custom Draft\n"
+          "world.draft_cell=1,2,#\n"
+          "world.create=true\n"
+          "system.pause=true\n"
+          "pause.select=edit_room\n"
+          "pause.execute=true\n"
+          "room_editor.move=right\n"
+          "room_editor.tool=object\n"
+          "room_editor.preview=true\n"
+          "room_editor.preview_confirm=true\n",
+          iggy3d::smoke::saveRootArg(customEditorObjectPreviewConfirmSaveRoot),
+          fields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
+      iggy3d::smoke::automationApplied(fields) &&
+      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(fields, "window_created", "false") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_key",
+                              "room_editor.preview_confirm") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_action",
+                              "room_editor.preview_confirm") &&
+      iggy3d::smoke::hasField(fields, "automation_control_last_owner",
+                              "editor") &&
+      iggy3d::smoke::hasField(fields, "room_editor_tool", "object") &&
+      iggy3d::smoke::hasField(fields, "room_editing_last_operation",
+                              "room_editor.preview_confirm") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_last_operation_status",
+                              "product_room_editing_edit_applied") &&
+      iggy3d::smoke::hasField(fields,
+                              "room_editing_last_operation_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "room_editing_last_primitive_id",
+                              "edit_object_1") &&
+      iggy3d::smoke::hasField(fields, "room_editing_object_count", "1") &&
+      iggy3d::smoke::hasField(fields, "room_editing_active_room_static_mesh_count",
+                              "120") &&
+      iggy3d::smoke::hasField(fields, "room_editing_collision_surface_count",
+                              "182") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editing_collision_actor_blocker_count", "62") &&
+      iggy3d::smoke::hasField(
+          fields, "room_editing_collision_projectile_blocker_count", "62") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_pending",
+                              "false") &&
+      iggy3d::smoke::hasField(fields, "room_editor_preview_visible",
+                              "false") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "room_editor_hud_line_count", "4") &&
+      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
+      iggy3d::smoke::hasField(fields, "active_room_source", "editable_room") &&
+      iggy3d::smoke::hasField(fields, "active_room_static_mesh_count", "120") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_query_surface_count",
+                              "182") &&
+      iggy3d::smoke::hasField(fields,
+                              "active_room_collision_actor_blocker_count",
+                              "62") &&
+      iggy3d::smoke::hasField(fields, "product_draw_prop_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "product_draw_prop_tile_count", "1") &&
+      iggy3d::smoke::hasField(fields, "product_render_bridge_prop_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "product_render_bridge_prop_tile_count",
+                              "1") &&
+      iggy3d::smoke::hasField(fields, "product_draw_room_geometry_count",
+                              "120") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_source_mesh_count",
+                              "120");
 
   fields.clear();
   const bool editorPreviewCancelKeepsRoom =
@@ -3304,6 +3466,8 @@ int main() {
                       editorMousePickMovesCursorOnly &&
                       editorPreviewShowsPhantomOnly &&
                       editorPreviewConfirmPlacesWall &&
+                      editorObjectPreviewShowsPhantomOnly &&
+                      editorPreviewConfirmPlacesObject &&
                       editorPreviewCancelKeepsRoom &&
                       editorPreviewConfirmRequiresPreview &&
                       editorInputPreviewConfirmPlacesWall &&
@@ -3365,6 +3529,10 @@ int main() {
                          "custom draft editor preview shows phantom only") &&
                   expect(editorPreviewConfirmPlacesWall,
                          "custom draft editor preview confirm places wall") &&
+                  expect(editorObjectPreviewShowsPhantomOnly,
+                         "custom draft editor object preview shows phantom only") &&
+                  expect(editorPreviewConfirmPlacesObject,
+                         "custom draft editor preview confirm places object") &&
                   expect(editorPreviewCancelKeepsRoom,
                          "custom draft editor preview cancel keeps room") &&
                   expect(editorPreviewConfirmRequiresPreview,
@@ -3453,9 +3621,14 @@ int main() {
             << (editorMousePickMovesCursorOnly ? "true" : "false") << "\n";
   std::cout << "editor_preview_shows_phantom_only="
             << (editorPreviewShowsPhantomOnly ? "true" : "false") << "\n";
-  std::cout << "editor_preview_confirm_places_wall="
-            << (editorPreviewConfirmPlacesWall ? "true" : "false") << "\n";
-  std::cout << "editor_preview_cancel_keeps_room="
+	  std::cout << "editor_preview_confirm_places_wall="
+	            << (editorPreviewConfirmPlacesWall ? "true" : "false") << "\n";
+  std::cout << "editor_object_preview_shows_phantom_only="
+            << (editorObjectPreviewShowsPhantomOnly ? "true" : "false")
+            << "\n";
+  std::cout << "editor_preview_confirm_places_object="
+            << (editorPreviewConfirmPlacesObject ? "true" : "false") << "\n";
+	  std::cout << "editor_preview_cancel_keeps_room="
             << (editorPreviewCancelKeepsRoom ? "true" : "false") << "\n";
   std::cout << "editor_preview_confirm_requires_preview="
             << (editorPreviewConfirmRequiresPreview ? "true" : "false")

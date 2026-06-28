@@ -143,6 +143,18 @@ std::optional<RoomEditCommand> buildDeleteCommand(
       }
       return std::nullopt;
     }
+    case ProductRoomEditorTool::Object: {
+      const EditableRoomObject& targetObject = target.command->object;
+      for (const EditableRoomObject& object : document.objects) {
+        // branch-gate: BG-1036
+        if (object.storyIndex == cursor.storyIndex &&
+            samePoint(object.positionMeters, targetObject.positionMeters)) {
+          primitiveId = object.id;
+          return deleteObjectCommand(object.id);
+        }
+      }
+      return std::nullopt;
+    }
   }
   return std::nullopt;
 }

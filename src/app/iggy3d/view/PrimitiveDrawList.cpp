@@ -82,6 +82,8 @@ ProductPrimitiveColor colorForRoomKind(ProductPrimitiveDrawKind kind) {
       return {184, 82, 74};
     case ProductPrimitiveDrawKind::WallTile:
       return {76, 86, 92};
+    case ProductPrimitiveDrawKind::PropTile:
+      return {151, 102, 58};
     case ProductPrimitiveDrawKind::RoomEditorCursor:
       return {245, 214, 96};
     case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
@@ -179,6 +181,18 @@ ProductPrimitiveDrawItem itemFromWallMesh(const RoomStaticMeshAsset& mesh) {
   item.visible = true;
   item.color = colorForRoomKind(item.kind);
   item.markerSize = 62.0F;
+  return item;
+}
+
+ProductPrimitiveDrawItem itemFromPropMesh(const RoomStaticMeshAsset& mesh) {
+  ProductPrimitiveDrawItem item;
+  item.kind = ProductPrimitiveDrawKind::PropTile;
+  item.stableName = mesh.id;
+  item.worldPosition = mesh.positionMeters;
+  item.worldBounds = aabbFromCenterExtents(mesh.positionMeters, mesh.sizeMeters * 0.5F);
+  item.visible = true;
+  item.color = colorForRoomKind(item.kind);
+  item.markerSize = 42.0F;
   return item;
 }
 
@@ -349,6 +363,11 @@ void updateCounts(ProductPrimitiveDrawList& list, const ProductPrimitiveDrawItem
       ++list.wallTileCount;
       list.roomVisible = true;
       break;
+    case ProductPrimitiveDrawKind::PropTile:
+      ++list.roomGeometryCount;
+      ++list.propTileCount;
+      list.roomVisible = true;
+      break;
     case ProductPrimitiveDrawKind::RoomEditorCursor:
       ++list.roomEditorCursorCount;
       list.roomEditorCursorVisible = true;
@@ -447,12 +466,17 @@ void appendRoomGeometry(const RoomAsset* room, ProductPrimitiveDrawList& list) {
   }
 
   for (const RoomStaticMeshAsset& mesh : room->staticMeshes) {
-    if (mesh.role != "wall") {
-      continue;
+    if (mesh.role == "wall") {
+      ProductPrimitiveDrawItem item = itemFromWallMesh(mesh);
+      list.items.push_back(item);
+      updateCounts(list, item);
     }
-    ProductPrimitiveDrawItem item = itemFromWallMesh(mesh);
-    list.items.push_back(item);
-    updateCounts(list, item);
+    // branch-gate: BG-1128
+    if (mesh.role == "prop") {
+      ProductPrimitiveDrawItem item = itemFromPropMesh(mesh);
+      list.items.push_back(item);
+      updateCounts(list, item);
+    }
   }
 }
 
@@ -510,12 +534,21 @@ void appendRoomEditorPlacementPreview(
   item.color = colorForRoomKind(item.kind);
   // branch-gate: BG-1047
   item.markerSize = overlay->tool == ProductRoomEditorTool::Wall ? 58.0F : 52.0F;
+  // branch-gate: BG-1047
+  if (overlay->tool == ProductRoomEditorTool::Object) {
+    item.markerSize = 46.0F;
+  }
 
   // branch-gate: BG-1047
   if (overlay->tool == ProductRoomEditorTool::Wall) {
     item.worldPosition = previewWallCenter(*overlay);
     item.worldBounds =
         aabbFromCenterExtents(item.worldPosition, previewWallExtents(*overlay) * 0.5F);
+  // branch-gate: BG-1128
+  } else if (overlay->tool == ProductRoomEditorTool::Object) {
+    item.worldPosition = overlay->worldPosition;
+    item.worldBounds =
+        aabbFromCenterExtents(item.worldPosition, overlay->objectSizeMeters * 0.5F);
   } else {
     item.worldPosition = overlay->worldPosition;
     item.worldBounds =

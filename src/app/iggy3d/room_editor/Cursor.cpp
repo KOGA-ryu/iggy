@@ -42,6 +42,10 @@ std::string nextWallId(const EditableRoomDocument& document) {
   return "edit_wall_" + std::to_string(nextEditableWallIndex(document));
 }
 
+std::string nextObjectId(const EditableRoomDocument& document) {
+  return "edit_object_" + std::to_string(nextEditableObjectIndex(document));
+}
+
 bool fillWallEdge(ProductRoomEditorCursorState state,
                   Vec3& startMeters,
                   Vec3& endMeters) {
@@ -163,6 +167,32 @@ ProductRoomEditorCursorResult buildWallCommand(ProductRoomEditorCursorState stat
   return result;
 }
 
+ProductRoomEditorCursorResult buildObjectCommand(ProductRoomEditorCursorState state,
+                                                 const EditableRoomDocument& document) {
+  EditableRoomObject object;
+  object.id = nextObjectId(document);
+  object.assetId = state.selectedObjectAssetId.empty() ? "wood_crate_proxy"
+                                                       : state.selectedObjectAssetId;
+  object.storyIndex = state.storyIndex;
+  object.sizeMeters = {0.8F, 0.8F, 0.8F};
+  object.positionMeters = {static_cast<float>(state.gridX) * state.cellSizeMeters,
+                           object.sizeMeters.y * 0.5F,
+                           static_cast<float>(state.gridZ) * state.cellSizeMeters};
+  object.yawDegrees = 0.0F;
+  object.blocksActor = true;
+  object.blocksProjectile = true;
+
+  // branch-gate: BG-1126
+  if (!finiteVec3(object.positionMeters) || !finiteVec3(object.sizeMeters)) {
+    return cursorResult(state, false, "room_editor_invalid_geometry");
+  }
+
+  ProductRoomEditorCursorResult result =
+      cursorResult(state, true, "room_editor_command_built");
+  result.command = addObjectCommand(std::move(object));
+  return result;
+}
+
 }  // namespace
 
 std::string_view productRoomEditorToolName(ProductRoomEditorTool tool) {
@@ -171,6 +201,8 @@ std::string_view productRoomEditorToolName(ProductRoomEditorTool tool) {
       return "floor";
     case ProductRoomEditorTool::Wall:
       return "wall";
+    case ProductRoomEditorTool::Object:
+      return "object";
   }
   return "unknown";
 }
@@ -216,6 +248,9 @@ ProductRoomEditorCursorResult cycleProductRoomEditorTool(
       state.selectedTool = ProductRoomEditorTool::Wall;
       return cursorResult(state, true, "room_editor_tool_changed");
     case ProductRoomEditorTool::Wall:
+      state.selectedTool = ProductRoomEditorTool::Object;
+      return cursorResult(state, true, "room_editor_tool_changed");
+    case ProductRoomEditorTool::Object:
       state.selectedTool = ProductRoomEditorTool::Floor;
       return cursorResult(state, true, "room_editor_tool_changed");
   }
@@ -228,6 +263,7 @@ ProductRoomEditorCursorResult setProductRoomEditorTool(
   switch (tool) {
     case ProductRoomEditorTool::Floor:
     case ProductRoomEditorTool::Wall:
+    case ProductRoomEditorTool::Object:
       state.selectedTool = tool;
       return cursorResult(state, true, "room_editor_tool_changed");
   }
@@ -274,6 +310,8 @@ ProductRoomEditorCursorResult buildProductRoomEditorPlaceCommand(
       return buildFloorCommand(state, *document);
     case ProductRoomEditorTool::Wall:
       return buildWallCommand(state, *document);
+    case ProductRoomEditorTool::Object:
+      return buildObjectCommand(state, *document);
   }
   return cursorResult(state, false, "room_editor_invalid_tool");
 }

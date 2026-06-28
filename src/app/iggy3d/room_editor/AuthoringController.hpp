@@ -32,11 +32,13 @@ struct ProductRoomAuthoringSnapshot {
   SceneRoomProjection roomProjection;
   std::uint64_t documentFloorCount = 0;
   std::uint64_t documentWallCount = 0;
+  std::uint64_t documentObjectCount = 0;
   std::uint64_t roomStaticMeshCount = 0;
   std::uint64_t roomSpatialSurfaceCount = 0;
   std::uint64_t projectedMeshCount = 0;
   std::uint64_t projectedFloorMeshCount = 0;
   std::uint64_t projectedWallMeshCount = 0;
+  std::uint64_t projectedPropMeshCount = 0;
   std::uint64_t undoDepth = 0;
   std::uint64_t redoDepth = 0;
 };

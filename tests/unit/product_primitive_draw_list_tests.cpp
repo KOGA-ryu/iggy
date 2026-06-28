@@ -88,6 +88,17 @@ iggy3d::RoomStaticMeshAsset wallMesh(const char* id, float x) {
   return mesh;
 }
 
+iggy3d::RoomStaticMeshAsset propMesh(const char* id, float x) {
+  iggy3d::RoomStaticMeshAsset mesh;
+  mesh.id = id;
+  mesh.meshId = "wood_crate_proxy";
+  mesh.materialId = "wood_crate_proxy";
+  mesh.role = "prop";
+  mesh.positionMeters = {x, 0.4F, 0.0F};
+  mesh.sizeMeters = {0.8F, 0.8F, 0.8F};
+  return mesh;
+}
+
 iggy3d::RoomStaticMeshAsset doorMesh(const char* id, float x) {
   iggy3d::RoomStaticMeshAsset mesh;
   mesh.id = id;
@@ -291,19 +302,21 @@ int main() {
   room.spatialSurfaces.push_back(
       walkableSurface("floor_blocked", 3.0F, {"walkable", "blocked_slope"}));
   room.staticMeshes.push_back(wallMesh("wall_1", 4.0F));
+  room.staticMeshes.push_back(propMesh("crate_1", 5.0F));
 
   const iggy3d::ProductPrimitiveDrawList roomList =
       iggy3d::buildProductPrimitiveDrawList(nullptr, nullptr, &room);
   ok &= expect(roomList.gridVisible, "room geometry shows grid");
   ok &= expect(roomList.roomVisible, "room geometry marks room visible");
-  ok &= expect(roomList.items.size() == 5U, "room geometry item count");
-  ok &= expect(roomList.itemCount == 5U, "room geometry draw count");
-  ok &= expect(roomList.roomGeometryCount == 5U, "room geometry count");
+  ok &= expect(roomList.items.size() == 6U, "room geometry item count");
+  ok &= expect(roomList.itemCount == 6U, "room geometry draw count");
+  ok &= expect(roomList.roomGeometryCount == 6U, "room geometry count");
   ok &= expect(roomList.floorTileCount == 1U, "floor tile count");
   ok &= expect(roomList.elevatedFloorTileCount == 1U, "elevated tile count");
   ok &= expect(roomList.rampTileCount == 1U, "ramp tile count");
   ok &= expect(roomList.blockedSlopeTileCount == 1U, "blocked slope tile count");
   ok &= expect(roomList.wallTileCount == 1U, "wall tile count");
+  ok &= expect(roomList.propTileCount == 1U, "prop tile count");
   ok &= expect(roomList.items[0].kind == iggy3d::ProductPrimitiveDrawKind::FloorTile,
                "flat floor kind");
   ok &= expect(roomList.items[1].kind ==
@@ -316,6 +329,19 @@ int main() {
                "blocked slope kind");
   ok &= expect(roomList.items[4].kind == iggy3d::ProductPrimitiveDrawKind::WallTile,
                "wall kind");
+  ok &= expect(roomList.items[5].kind == iggy3d::ProductPrimitiveDrawKind::PropTile,
+               "prop kind");
+  ok &= expect(roomList.items[5].stableName == "crate_1", "prop stable name");
+  ok &= expectVec3(roomList.items[5].worldPosition, {5.0F, 0.4F, 0.0F},
+                   "prop position");
+  ok &= expectAabb(roomList.items[5].worldBounds,
+                   iggy3d::aabbFromCenterExtents({5.0F, 0.4F, 0.0F},
+                                                 {0.4F, 0.4F, 0.4F}),
+                   "prop bounds");
+  ok &= expectColor(roomList.items[5].color, {151, 102, 58},
+                    "prop color");
+  ok &= expect(roomList.items[5].markerSize == 42.0F,
+               "prop marker size");
   ok &= expect(roomList.items[2].color.g > roomList.items[0].color.g,
                "ramp receives distinct color");
 
@@ -400,14 +426,16 @@ int main() {
                                             nullptr,
                                             &cursorOverlay,
                                             &previewOverlay);
-  ok &= expect(previewRoomList.itemCount == 7U,
+  ok &= expect(previewRoomList.itemCount == 8U,
                "room plus cursor plus preview item count");
-  ok &= expect(previewRoomList.roomGeometryCount == 5U,
+  ok &= expect(previewRoomList.roomGeometryCount == 6U,
                "preview does not affect room geometry count");
   ok &= expect(previewRoomList.floorTileCount == 1U,
                "preview does not affect real floor tile count");
   ok &= expect(previewRoomList.wallTileCount == 1U,
                "preview does not affect real wall tile count");
+  ok &= expect(previewRoomList.propTileCount == 1U,
+               "preview does not affect real prop tile count");
   ok &= expect(previewRoomList.roomEditorCursorCount == 1U,
                "cursor overlay remains separate");
   ok &= expect(previewRoomList.roomEditorPlacementPreviewCount == 1U,

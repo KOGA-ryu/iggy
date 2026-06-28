@@ -268,6 +268,8 @@ bool parseProductRoomEditorTool(std::string_view value,
           "floor", ProductRoomEditorTool::Floor},
       AutomationParserRow<ProductRoomEditorTool>{
           "wall", ProductRoomEditorTool::Wall},
+      AutomationParserRow<ProductRoomEditorTool>{
+          "object", ProductRoomEditorTool::Object},
   };
   return parseAutomationTableValue(value, rows, out);
 }

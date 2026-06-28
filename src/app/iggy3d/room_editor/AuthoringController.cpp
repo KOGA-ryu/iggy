@@ -76,6 +76,7 @@ ProductRoomAuthoringSnapshot buildProductRoomAuthoringSnapshot(
   snapshot.document = session.document();
   snapshot.documentFloorCount = snapshot.document.floors.size();
   snapshot.documentWallCount = snapshot.document.walls.size();
+  snapshot.documentObjectCount = snapshot.document.objects.size();
   snapshot.undoDepth = session.undoDepth();
   snapshot.redoDepth = session.redoDepth();
 
@@ -99,6 +100,8 @@ ProductRoomAuthoringSnapshot buildProductRoomAuthoringSnapshot(
       countProjectedMeshesWithRole(snapshot.roomProjection, "floor");
   snapshot.projectedWallMeshCount =
       countProjectedMeshesWithRole(snapshot.roomProjection, "wall");
+  snapshot.projectedPropMeshCount =
+      countProjectedMeshesWithRole(snapshot.roomProjection, "prop");
 
   if (!snapshot.roomProjection.loaded) {
     snapshot.ready = false;

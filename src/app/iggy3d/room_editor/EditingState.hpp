@@ -20,6 +20,7 @@ struct ProductRoomEditingState {
   ProductActiveRoomCollisionState activeRoomCollision;
   std::uint64_t documentFloorCount = 0;
   std::uint64_t documentWallCount = 0;
+  std::uint64_t documentObjectCount = 0;
   std::uint64_t activeRoomStaticMeshCount = 0;
   std::uint64_t activeRoomSpatialSurfaceCount = 0;
   std::uint64_t activeRoomAuthoredFloorCount = 0;

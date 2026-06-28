@@ -32,6 +32,7 @@ enum class ProductPrimitiveDrawKind : std::uint8_t {
   RampTile,
   BlockedSlopeTile,
   WallTile,
+  PropTile,
   RoomEditorCursor,
   RoomEditorPlacementPreview,
   PhysicsAabbDebug,
@@ -85,6 +86,7 @@ struct ProductPrimitiveDrawList {
   std::uint64_t rampTileCount = 0;
   std::uint64_t blockedSlopeTileCount = 0;
   std::uint64_t wallTileCount = 0;
+  std::uint64_t propTileCount = 0;
   bool roomEditorCursorVisible = false;
   std::uint64_t roomEditorCursorCount = 0;
   bool roomEditorPlacementPreviewVisible = false;

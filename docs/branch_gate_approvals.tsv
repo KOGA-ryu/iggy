@@ -122,3 +122,8 @@ BG-1121	src/app/iggy3d/view/OpeningMenuView.cpp	opening menu child panel SDL dra
 BG-1122	src/app/iggy3d/window/InputFrame.cpp	opening menu child panel mouse click routing policy	codex	2026-06-28
 BG-1123	src/app/iggy3d/window/InputFrame.cpp	opening menu real-window coordinate normalization policy	codex	2026-06-28
 BG-1124	src/app/iggy3d/menu/ActionHandlers.cpp	physical dev-tools toggle routing policy	codex	2026-06-28
+BG-1125	src/content/authoring/EditableRoomDocument.cpp	editable room static object primitive validation and bake policy	codex	2026-06-28
+BG-1126	src/app/iggy3d/room_editor/Cursor.cpp	room editor object placement command geometry validation policy	codex	2026-06-28
+BG-1127	src/app/iggy3d/room_editor/Presentation.cpp	room editor object tool HUD presentation policy	codex	2026-06-28
+BG-1128	src/app/iggy3d/view/PrimitiveDrawList.cpp	product prop and object preview draw-list mapping policy	codex	2026-06-28
+BG-1129	src/app/iggy3d/view/RenderBridge.cpp	product prop render bridge count policy	codex	2026-06-28

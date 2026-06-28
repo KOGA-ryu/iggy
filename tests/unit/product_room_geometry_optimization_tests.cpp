@@ -45,6 +45,19 @@ iggy3d::EditableRoomWall wall(std::string id,
   return out;
 }
 
+iggy3d::EditableRoomObject object(std::string id,
+                                  float x,
+                                  float y,
+                                  float z,
+                                  std::string assetId = "wood_crate_proxy") {
+  iggy3d::EditableRoomObject out;
+  out.id = std::move(id);
+  out.assetId = std::move(assetId);
+  out.positionMeters = {x, y, z};
+  out.sizeMeters = {0.8F, 0.8F, 0.8F};
+  return out;
+}
+
 }  // namespace
 
 int main() {
@@ -66,6 +79,7 @@ int main() {
     iggy3d::EditableRoomDocument document;
     document.floors.push_back(floor("floor_1", 0.0F, 0.0F));
     document.walls.push_back(wall("wall_1", 0.0F, 0.0F, 1.0F, 0.0F));
+    document.objects.push_back(object("object_1", 1.0F, 0.4F, 1.0F));
     const auto report = iggy3d::buildProductRoomGeometryOptimizationReport(&document);
     ok = expect(report.ok, "single document report ok") && ok;
     ok = expect(report.status == "product_room_geometry_optimization_ready",
@@ -73,14 +87,18 @@ int main() {
          ok;
     ok = expect(report.sourceFloorCount == 1, "single source floor count") && ok;
     ok = expect(report.sourceWallCount == 1, "single source wall count") && ok;
-    ok = expect(report.naiveDrawCount == 2, "single naive draw count") && ok;
-    ok = expect(report.naiveTriangleCount == 14, "single naive triangle count") &&
+    ok = expect(report.sourceObjectCount == 1, "single source object count") && ok;
+    ok = expect(report.naiveDrawCount == 3, "single naive draw count") && ok;
+    ok = expect(report.naiveTriangleCount == 26, "single naive triangle count") &&
          ok;
     ok = expect(report.optimizedFloorRectCount == 1,
                 "single optimized floor rect count") &&
          ok;
     ok = expect(report.optimizedWallRunCount == 1,
                 "single optimized wall run count") &&
+         ok;
+    ok = expect(report.optimizedObjectDrawCount == 1,
+                "single optimized object draw count") &&
          ok;
     ok = expect(report.drawCountAvoided == 0, "single draw avoided") && ok;
     ok = expect(report.triangleCountAvoided == 0, "single triangle avoided") && ok;

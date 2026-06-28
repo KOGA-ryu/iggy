@@ -13,6 +13,7 @@ namespace iggy3d {
 enum class ProductRoomEditorTool : std::uint8_t {
   Floor,
   Wall,
+  Object,
 };
 
 enum class ProductRoomEditorDirection : std::uint8_t {
@@ -29,6 +30,7 @@ struct ProductRoomEditorCursorState {
   float cellSizeMeters = 1.0F;
   ProductRoomEditorTool selectedTool = ProductRoomEditorTool::Floor;
   ProductRoomEditorDirection wallDirection = ProductRoomEditorDirection::Up;
+  std::string selectedObjectAssetId = "wood_crate_proxy";
 };
 
 struct ProductRoomEditorCursorResult {

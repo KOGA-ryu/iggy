@@ -32,6 +32,7 @@ bool isFloorKind(ProductPrimitiveDrawKind kind) {
     case ProductPrimitiveDrawKind::BlockedSlopeTile:
       return true;
     case ProductPrimitiveDrawKind::WallTile:
+    case ProductPrimitiveDrawKind::PropTile:
     case ProductPrimitiveDrawKind::PlayerMarker:
     case ProductPrimitiveDrawKind::NpcMarker:
     case ProductPrimitiveDrawKind::PickupMarker:

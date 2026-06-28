@@ -154,11 +154,59 @@ bool readyHudShowsPlacementPreviewFacts() {
                 "preview hud triangle impact line");
 }
 
+bool objectToolHudShowsSelectedAssetAndPreviewImpact() {
+  const iggy3d::ProductRoomEditingState editing = readyEditing();
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Object;
+  cursor.selectedObjectAssetId = "wood_crate_proxy";
+  cursor.gridX = 2;
+  cursor.gridZ = -1;
+  iggy3d::ProductRoomEditorPlacementPreviewResult preview;
+  preview.ok = true;
+  preview.status = "room_editor_preview_ready";
+  preview.reasonCode = preview.status;
+  preview.primitiveId = "edit_object_1";
+  preview.tool = "object";
+  preview.objectAssetId = "wood_crate_proxy";
+  preview.before.optimizedDrawCount = 33;
+  preview.after.optimizedDrawCount = 34;
+  preview.before.optimizedTriangleCount = 276;
+  preview.after.optimizedTriangleCount = 288;
+  preview.optimizedDrawDelta = 1;
+  preview.optimizedTriangleDelta = 12;
+
+  const iggy3d::ProductRoomEditorHud hud = iggy3d::buildProductRoomEditorHud({
+      editing,
+      cursor,
+      true,
+      "editor.preview",
+      true,
+      "edit_object_1",
+      &preview,
+  });
+
+  return expect(hud.visible, "object hud visible") &&
+         expect(hud.toolName == "object", "object hud tool") &&
+         expect(hud.lineCount == 6U, "object preview hud line count") &&
+         expect(hud.lines[0].text == "EDITOR TOOL object",
+                "object hud tool line") &&
+         expect(hud.lines[2].text == "OBJECT wood_crate_proxy",
+                "object hud asset line") &&
+         expect(hud.lines[3].text ==
+                    "PREVIEW edit_object_1 room_editor_preview_ready",
+                "object hud preview line") &&
+         expect(hud.lines[4].text == "DRAW 33 -> 34 (+1)",
+                "object hud draw line") &&
+         expect(hud.lines[5].text == "TRIS 276 -> 288 (+12)",
+                "object hud triangle line");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = notReadyHidesHudButCopiesFacts() &&
                   readyHudWithoutPreviewShowsCursorAndLastOperation() &&
-                  readyHudShowsPlacementPreviewFacts();
+                  readyHudShowsPlacementPreviewFacts() &&
+                  objectToolHudShowsSelectedAssetAndPreviewImpact();
   return ok ? 0 : 1;
 }

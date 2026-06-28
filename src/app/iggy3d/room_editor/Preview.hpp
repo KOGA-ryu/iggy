@@ -29,6 +29,8 @@ struct ProductRoomEditorPlacementPreviewResult {
   std::int32_t storyIndex = 0;
   Vec3 worldCenter;
   Vec3 floorSizeMeters;
+  Vec3 objectSizeMeters;
+  std::string objectAssetId = "none";
   Vec3 wallStartMeters;
   Vec3 wallEndMeters;
   float wallBottomY = 0.0F;
@@ -40,6 +42,8 @@ struct ProductRoomEditorPlacementPreviewResult {
   std::uint64_t floorCountAfter = 0;
   std::uint64_t wallCountBefore = 0;
   std::uint64_t wallCountAfter = 0;
+  std::uint64_t objectCountBefore = 0;
+  std::uint64_t objectCountAfter = 0;
   std::int64_t optimizedDrawDelta = 0;
   std::int64_t optimizedTriangleDelta = 0;
   std::int64_t optimizedFloorRectDelta = 0;

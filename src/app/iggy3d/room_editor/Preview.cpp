@@ -29,8 +29,11 @@ ProductRoomEditorPlacementPreviewResult basePreviewResult(
         static_cast<std::uint64_t>(request.document->floors.size());
     result.wallCountBefore =
         static_cast<std::uint64_t>(request.document->walls.size());
+    result.objectCountBefore =
+        static_cast<std::uint64_t>(request.document->objects.size());
     result.floorCountAfter = result.floorCountBefore;
     result.wallCountAfter = result.wallCountBefore;
+    result.objectCountAfter = result.objectCountBefore;
     result.before = buildProductRoomGeometryOptimizationReport(request.document);
     result.after = result.before;
   }
@@ -59,6 +62,12 @@ void copyCandidateFacts(ProductRoomEditorPlacementPreviewResult& result,
                             (command.wall.startMeters.z + command.wall.endMeters.z) *
                                 0.5F};
       break;
+    case RoomEditCommandKind::AddObject:
+      result.primitiveId = command.object.id;
+      result.objectAssetId = command.object.assetId;
+      result.worldCenter = command.object.positionMeters;
+      result.objectSizeMeters = command.object.sizeMeters;
+      break;
     case RoomEditCommandKind::DeleteFloor:
     case RoomEditCommandKind::SetFloorSemantics:
     case RoomEditCommandKind::MoveFloor:
@@ -70,6 +79,8 @@ void copyCandidateFacts(ProductRoomEditorPlacementPreviewResult& result,
     case RoomEditCommandKind::RotateWall90:
     case RoomEditCommandKind::SetWallHeight:
     case RoomEditCommandKind::SetWallThickness:
+    case RoomEditCommandKind::DeleteObject:
+    case RoomEditCommandKind::MoveObject:
       break;
   }
 }
@@ -138,6 +149,7 @@ ProductRoomEditorPlacementPreviewResult buildProductRoomEditorPlacementPreview(
   copyCandidateFacts(result, *cursor.command);
   result.floorCountAfter = static_cast<std::uint64_t>(dryRun.floors.size());
   result.wallCountAfter = static_cast<std::uint64_t>(dryRun.walls.size());
+  result.objectCountAfter = static_cast<std::uint64_t>(dryRun.objects.size());
   result.after = buildProductRoomGeometryOptimizationReport(&dryRun);
   fillOptimizationDeltas(result);
   return result;

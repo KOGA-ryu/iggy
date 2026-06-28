@@ -61,6 +61,10 @@ Vec3 midpoint(Vec3 a, Vec3 b) {
 
 ProductRoomEditorTool toolFromPreview(const ProductRoomEditorPlacementPreviewResult& preview) {
   // branch-gate: BG-1046
+  if (preview.tool == "object") {
+    return ProductRoomEditorTool::Object;
+  }
+  // branch-gate: BG-1046
   if (preview.tool == "wall") {
     return ProductRoomEditorTool::Wall;
   }
@@ -179,6 +183,8 @@ ProductRoomEditorPreviewOverlay buildProductRoomEditorPreviewOverlay(
   overlay.storyIndex = preview->storyIndex;
   overlay.worldPosition = preview->worldCenter;
   overlay.floorSizeMeters = preview->floorSizeMeters;
+  overlay.objectSizeMeters = preview->objectSizeMeters;
+  overlay.objectAssetId = preview->objectAssetId;
   overlay.wallStartMeters = preview->wallStartMeters;
   overlay.wallEndMeters = preview->wallEndMeters;
   overlay.wallBottomY = preview->wallBottomY;
@@ -250,6 +256,10 @@ ProductRoomEditorHud buildProductRoomEditorHud(
   // branch-gate: BG-1034
   if (request.cursor.selectedTool == ProductRoomEditorTool::Wall) {
     appendHudLine(hud, "WALL DIR " + hud.wallDirectionName);
+  }
+  // branch-gate: BG-1127
+  if (request.cursor.selectedTool == ProductRoomEditorTool::Object) {
+    appendHudLine(hud, "OBJECT " + request.cursor.selectedObjectAssetId);
   }
   // branch-gate: BG-1034
   if (hud.previewActive) {

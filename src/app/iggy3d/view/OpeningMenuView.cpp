@@ -289,6 +289,16 @@ void drawRoomTile(SDL_Renderer& renderer, const ProductViewportFramedItem& frame
       fillRect(renderer, x - half, y - half, 5.0F, size);
       fillRect(renderer, x + half - 5.0F, y - half, 5.0F, size);
       return;
+    case ProductPrimitiveDrawKind::PropTile:
+      setColor(renderer, 198, 142, 82);
+      fillRect(renderer, x - half + 8.0F, y - half + 8.0F, size - 16.0F,
+               size - 16.0F);
+      setColor(renderer, 88, 58, 34);
+      SDL_RenderLine(&renderer, x - half + 8.0F, y - half + 8.0F,
+                     x + half - 8.0F, y + half - 8.0F);
+      SDL_RenderLine(&renderer, x + half - 8.0F, y - half + 8.0F,
+                     x - half + 8.0F, y + half - 8.0F);
+      return;
     case ProductPrimitiveDrawKind::FloorTile:
     case ProductPrimitiveDrawKind::PlayerMarker:
     case ProductPrimitiveDrawKind::NpcMarker:
@@ -529,6 +539,7 @@ void drawPrimitiveItem(SDL_Renderer& renderer, const ProductViewportFramedItem& 
     case ProductPrimitiveDrawKind::RampTile:
     case ProductPrimitiveDrawKind::BlockedSlopeTile:
     case ProductPrimitiveDrawKind::WallTile:
+    case ProductPrimitiveDrawKind::PropTile:
       drawRoomTile(renderer, framed);
       return;
     case ProductPrimitiveDrawKind::PlayerMarker:

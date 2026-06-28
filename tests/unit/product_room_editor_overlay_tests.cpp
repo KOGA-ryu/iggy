@@ -209,6 +209,52 @@ bool wallPreviewOverlayCarriesEdgeAndDeltaFacts() {
                 "wall preview triangle delta");
 }
 
+bool objectPreviewOverlayCarriesPropFacts() {
+  iggy3d::EditableRoomDocument document;
+  iggy3d::ProductRoomEditorCursorState cursor;
+  cursor.gridX = -2;
+  cursor.gridZ = 3;
+  cursor.selectedTool = iggy3d::ProductRoomEditorTool::Object;
+  const iggy3d::ProductRoomEditorPlacementPreviewResult preview =
+      previewFor(cursor, document);
+  const iggy3d::ProductRoomEditorPreviewOverlay overlay =
+      iggy3d::buildProductRoomEditorPreviewOverlay(&preview);
+  const iggy3d::ProductPrimitiveDrawList list =
+      iggy3d::buildProductPrimitiveDrawList(nullptr, nullptr, nullptr, nullptr,
+                                            nullptr, &overlay);
+
+  return expect(overlay.visible, "object preview visible") &&
+         expect(overlay.candidateId == "edit_object_1",
+                "object preview candidate") &&
+         expect(overlay.tool == iggy3d::ProductRoomEditorTool::Object,
+                "object preview tool") &&
+         expect(overlay.toolName == "object", "object preview tool name") &&
+         expect(overlay.objectAssetId == "wood_crate_proxy",
+                "object preview asset") &&
+         expect(near(overlay.worldPosition.x, -2.0F),
+                "object preview world x") &&
+         expect(near(overlay.worldPosition.y, 0.4F),
+                "object preview world y") &&
+         expect(near(overlay.worldPosition.z, 3.0F),
+                "object preview world z") &&
+         expect(near(overlay.objectSizeMeters.x, 0.8F),
+                "object preview size x") &&
+         expect(overlay.optimizedDrawDelta == 1,
+                "object preview draw delta") &&
+         expect(overlay.optimizedTriangleDelta == 12,
+                "object preview triangle delta") &&
+         expect(list.itemCount == 1U, "object preview draw count") &&
+         expect(list.items[0].kind ==
+                    iggy3d::ProductPrimitiveDrawKind::RoomEditorPlacementPreview,
+                "object preview draw kind") &&
+         expect(near(list.items[0].worldBounds.min.x, -2.4F),
+                "object preview bounds min x") &&
+         expect(near(list.items[0].worldBounds.max.y, 0.8F),
+                "object preview bounds max y") &&
+         expect(near(list.items[0].markerSize, 46.0F),
+                "object preview marker size");
+}
+
 }  // namespace
 
 int main() {
@@ -217,6 +263,7 @@ int main() {
                   invalidCellSizeRejects() && drawListAppendIsDeterministic() &&
                   previewOverlayHiddenForMissingAndRejectedPreview() &&
                   floorPreviewOverlayCarriesCandidateFacts() &&
-                  wallPreviewOverlayCarriesEdgeAndDeltaFacts();
+                  wallPreviewOverlayCarriesEdgeAndDeltaFacts() &&
+                  objectPreviewOverlayCarriesPropFacts();
   return ok ? 0 : 1;
 }

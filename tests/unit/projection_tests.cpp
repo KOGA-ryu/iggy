@@ -61,6 +61,14 @@ iggy3d::RoomAsset floorWallProjectionRoom() {
   wall.sizeMeters = {1.0F, 1.0F, 0.1F};
   room.staticMeshes.push_back(wall);
 
+  iggy3d::RoomStaticMeshAsset prop;
+  prop.id = "crate_r1_c2";
+  prop.role = "prop";
+  prop.materialId = "wood_crate_proxy";
+  prop.positionMeters = {2.0F, 0.4F, 2.0F};
+  prop.sizeMeters = {0.8F, 0.8F, 0.8F};
+  room.staticMeshes.push_back(prop);
+
   iggy3d::RoomStaticMeshAsset door;
   door.id = "door_panel";
   door.role = "opening";
@@ -508,6 +516,7 @@ bool activeRoomProjectionCarriesFloorAndWallMeshes() {
 
   const iggy3d::SceneRoomMeshItem* floor = nullptr;
   const iggy3d::SceneRoomMeshItem* wall = nullptr;
+  const iggy3d::SceneRoomMeshItem* prop = nullptr;
   const iggy3d::SceneRoomMeshItem* opening = nullptr;
   for (const iggy3d::SceneRoomMeshItem& mesh : projection.room.meshes) {
     if (mesh.id == "floor_r1_c1") {
@@ -515,6 +524,9 @@ bool activeRoomProjectionCarriesFloorAndWallMeshes() {
     }
     if (mesh.id == "wall_r0_c1") {
       wall = &mesh;
+    }
+    if (mesh.id == "crate_r1_c2") {
+      prop = &mesh;
     }
     if (mesh.id == "door_panel") {
       opening = &mesh;
@@ -526,14 +538,14 @@ bool activeRoomProjectionCarriesFloorAndWallMeshes() {
          expect(projection.room.version == 7U, "room version") &&
          expect(projection.room.sourceToml == "inline_ascii_room", "room source") &&
          expect(projection.room.sourceSubset == "floor_wall_slice", "room subset") &&
-         expect(projection.room.staticMeshCount == 3U, "source mesh count") &&
-         expect(projection.room.materialCount == 2U, "projected material count") &&
+         expect(projection.room.staticMeshCount == 4U, "source mesh count") &&
+         expect(projection.room.materialCount == 3U, "projected material count") &&
          expect(projection.room.anchorCount == 2U, "anchor count") &&
-         expect(projection.room.meshes.size() == 2U, "floor wall mesh count") &&
+         expect(projection.room.meshes.size() == 3U, "floor wall prop mesh count") &&
          expect(projection.room.floorVisible, "floor visible") &&
          expect(projection.room.wallVisible, "wall visible") &&
          expect(!projection.room.openingVisible, "opening deferred") &&
-         expect(!projection.room.propVisible, "prop deferred") &&
+         expect(projection.room.propVisible, "prop visible") &&
          expect(projection.room.keyAnchorVisible, "key anchor visible") &&
          expect(projection.room.dummyAnchorVisible, "dummy anchor visible") &&
          expect(floor != nullptr && floor->role == "floor", "floor projected") &&
@@ -550,6 +562,14 @@ bool activeRoomProjectionCarriesFloorAndWallMeshes() {
          expect(wall != nullptr &&
                     iggy3d::nearlyEqual(wall->size, iggy3d::Vec3{1.0F, 1.0F, 0.1F}),
                 "wall size") &&
+         expect(prop != nullptr && prop->role == "prop", "prop projected") &&
+         expect(prop != nullptr &&
+                    iggy3d::nearlyEqual(prop->position,
+                                        iggy3d::Vec3{2.0F, 0.4F, 2.0F}),
+                "prop position") &&
+         expect(prop != nullptr &&
+                    iggy3d::nearlyEqual(prop->size, iggy3d::Vec3{0.8F, 0.8F, 0.8F}),
+                "prop size") &&
          expect(opening == nullptr, "opening not projected yet");
 }
 

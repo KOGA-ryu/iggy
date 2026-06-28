@@ -42,6 +42,19 @@ struct EditableRoomWall {
   bool hidden = false;
 };
 
+struct EditableRoomObject {
+  std::string id;
+  std::string assetId = "wood_crate_proxy";
+  std::int32_t storyIndex = 0;
+  Vec3 positionMeters;
+  Vec3 sizeMeters = {0.8F, 0.8F, 0.8F};
+  float yawDegrees = 0.0F;
+  bool blocksActor = true;
+  bool blocksProjectile = true;
+  bool locked = false;
+  bool hidden = false;
+};
+
 struct EditableRoomDocument {
   std::string id = "editable_room";
   std::uint32_t version = 1;
@@ -50,6 +63,7 @@ struct EditableRoomDocument {
   std::string sourceSubset = "authoring";
   std::vector<EditableRoomFloor> floors;
   std::vector<EditableRoomWall> walls;
+  std::vector<EditableRoomObject> objects;
 };
 
 enum class RoomEditCommandKind : std::uint8_t {
@@ -66,12 +80,16 @@ enum class RoomEditCommandKind : std::uint8_t {
   RotateWall90,
   SetWallHeight,
   SetWallThickness,
+  AddObject,
+  DeleteObject,
+  MoveObject,
 };
 
 struct RoomEditCommand {
   RoomEditCommandKind kind = RoomEditCommandKind::AddFloor;
   EditableRoomFloor floor;
   EditableRoomWall wall;
+  EditableRoomObject object;
   std::string targetId;
   EditableRoomSemantics semantics;
   Vec3 deltaMeters;
@@ -130,16 +148,24 @@ RoomEditCommand stretchWallEndCommand(std::string id, Vec3 endMeters);
 RoomEditCommand rotateWall90Command(std::string id, bool left);
 RoomEditCommand setWallHeightCommand(std::string id, float heightMeters);
 RoomEditCommand setWallThicknessCommand(std::string id, float thicknessMeters);
+RoomEditCommand addObjectCommand(EditableRoomObject object);
+RoomEditCommand deleteObjectCommand(std::string id);
+RoomEditCommand moveObjectCommand(std::string id, Vec3 deltaMeters);
+RoomEditCommand setObjectPositionCommand(std::string id, Vec3 positionMeters);
 
 const EditableRoomFloor* findEditableFloor(const EditableRoomDocument& document,
                                            const std::string& id);
 const EditableRoomWall* findEditableWall(const EditableRoomDocument& document,
                                          const std::string& id);
+const EditableRoomObject* findEditableObject(const EditableRoomDocument& document,
+                                             const std::string& id);
 
 std::vector<std::string> runtimeIdsForEditableFloor(const EditableRoomFloor& floor);
 std::vector<std::string> runtimeIdsForEditableWall(const EditableRoomWall& wall);
+std::vector<std::string> runtimeIdsForEditableObject(const EditableRoomObject& object);
 std::uint64_t nextEditableFloorIndex(const EditableRoomDocument& document);
 std::uint64_t nextEditableWallIndex(const EditableRoomDocument& document);
+std::uint64_t nextEditableObjectIndex(const EditableRoomDocument& document);
 
 RoomEditResult applyRoomEditCommand(EditableRoomDocument& document,
                                     const RoomEditCommand& command);

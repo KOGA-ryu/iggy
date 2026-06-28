@@ -40,6 +40,8 @@ struct ProductRenderBridgeFrame {
   std::uint64_t roomEditorCursorCount = 0;
   bool roomEditorPlacementPreviewVisible = false;
   std::uint64_t roomEditorPlacementPreviewCount = 0;
+  bool propVisible = false;
+  std::uint64_t propTileCount = 0;
   bool physicsDebugVisible = false;
   std::uint64_t physicsDebugItemCount = 0;
   std::uint64_t physicsAabbDebugCount = 0;

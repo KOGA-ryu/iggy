@@ -348,6 +348,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.roomEditing.documentFloorCount);
   appendReceiptField(receipt, "room_editing_wall_count",
                      window.roomEditing.documentWallCount);
+  appendReceiptField(receipt, "room_editing_object_count",
+                     window.roomEditing.documentObjectCount);
   appendReceiptField(receipt, "room_editing_active_room_loaded",
                      window.roomEditing.activeRoom.loaded);
   appendReceiptField(receipt, "room_editing_active_room_static_mesh_count",
@@ -981,6 +983,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productDrawBlockedSlopeTileCount);
   appendReceiptField(receipt, "product_draw_wall_tile_count",
                      window.viewport.productDrawWallTileCount);
+  appendReceiptField(receipt, "product_draw_prop_visible",
+                     window.viewport.productDrawPropVisible);
+  appendReceiptField(receipt, "product_draw_prop_tile_count",
+                     window.viewport.productDrawPropTileCount);
   appendReceiptField(receipt, "product_draw_room_editor_cursor_visible",
                      window.viewport.productDrawRoomEditorCursorVisible);
   appendReceiptField(receipt, "product_draw_room_editor_cursor_count",
@@ -1024,6 +1030,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productRenderBridgeRoomEditorPreviewVisible);
   appendReceiptField(receipt, "product_render_bridge_room_editor_preview_count",
                      window.viewport.productRenderBridgeRoomEditorPreviewCount);
+  appendReceiptField(receipt, "product_render_bridge_prop_visible",
+                     window.viewport.productRenderBridgePropVisible);
+  appendReceiptField(receipt, "product_render_bridge_prop_tile_count",
+                     window.viewport.productRenderBridgePropTileCount);
   appendReceiptField(receipt, "product_render_bridge_physics_debug_visible",
                      window.viewport.productRenderBridgePhysicsDebugVisible);
   appendReceiptField(receipt, "product_render_bridge_physics_debug_item_count",

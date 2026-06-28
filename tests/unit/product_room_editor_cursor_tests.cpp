@@ -67,6 +67,9 @@ iggy3d::EditableRoomDocument documentWithExistingEditorIds() {
   iggy3d::EditableRoomWall wall;
   wall.id = "edit_wall_12";
   document.walls.push_back(wall);
+  iggy3d::EditableRoomObject object;
+  object.id = "edit_object_5";
+  document.objects.push_back(object);
   return document;
 }
 
@@ -80,6 +83,8 @@ bool defaultCursorStateIsStable() {
                 "default tool") &&
          expect(state.wallDirection == iggy3d::ProductRoomEditorDirection::Up,
                 "default wall direction") &&
+         expect(state.selectedObjectAssetId == "wood_crate_proxy",
+                "default object asset") &&
          expect(iggy3d::productRoomEditorToolName(state.selectedTool) ==
                     "floor",
                 "default tool name") &&
@@ -127,8 +132,17 @@ bool toolCycleAndWallDirectionAreDeterministic() {
                    "cycled to wall");
 
   changed = iggy3d::cycleProductRoomEditorTool(changed.state);
+  ok = expect(changed.state.selectedTool == iggy3d::ProductRoomEditorTool::Object,
+              "cycled to object") &&
+       expect(iggy3d::productRoomEditorToolName(changed.state.selectedTool) ==
+                  "object",
+              "object tool name") &&
+       ok;
+
+  changed = iggy3d::cycleProductRoomEditorTool(changed.state);
   ok = expect(changed.state.selectedTool == iggy3d::ProductRoomEditorTool::Floor,
-              "cycled to floor") && ok;
+              "cycled to floor") &&
+       ok;
 
   changed = iggy3d::setProductRoomEditorTool(
       changed.state, iggy3d::ProductRoomEditorTool::Wall);
@@ -242,6 +256,43 @@ bool wallCommandUsesCursorEdgeAndNextDocumentId() {
                 "wall projectile blocker");
 }
 
+bool objectCommandUsesCursorAndDefaultAsset() {
+  iggy3d::ProductRoomEditorCursorState state;
+  state.gridX = -2;
+  state.gridZ = 3;
+  state.storyIndex = 1;
+  state.cellSizeMeters = 2.0F;
+  state.selectedTool = iggy3d::ProductRoomEditorTool::Object;
+
+  const iggy3d::EditableRoomDocument document = documentWithExistingEditorIds();
+  const iggy3d::ProductRoomEditorCursorResult result =
+      iggy3d::buildProductRoomEditorPlaceCommand(state, &document);
+
+  return expect(result.ok, "object command ok") &&
+         expect(result.command.has_value(), "object command present") &&
+         expect(result.command->kind == iggy3d::RoomEditCommandKind::AddObject,
+                "object command kind") &&
+         expect(result.command->object.id == "edit_object_6", "object id") &&
+         expect(result.command->object.assetId == "wood_crate_proxy",
+                "object asset id") &&
+         expect(result.command->object.storyIndex == 1, "object story") &&
+         expect(near(result.command->object.positionMeters.x, -4.0F),
+                "object position x") &&
+         expect(near(result.command->object.positionMeters.y, 0.4F),
+                "object position y") &&
+         expect(near(result.command->object.positionMeters.z, 6.0F),
+                "object position z") &&
+         expect(near(result.command->object.sizeMeters.x, 0.8F),
+                "object size x") &&
+         expect(near(result.command->object.sizeMeters.y, 0.8F),
+                "object size y") &&
+         expect(near(result.command->object.sizeMeters.z, 0.8F),
+                "object size z") &&
+         expect(result.command->object.blocksActor, "object actor blocker") &&
+         expect(result.command->object.blocksProjectile,
+                "object projectile blocker");
+}
+
 bool cursorCommandsApplyThroughProductRoomEditingState() {
   iggy3d::ProductRoomEditingState editing =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
@@ -272,6 +323,19 @@ bool cursorCommandsApplyThroughProductRoomEditingState() {
                 *wall.command)
           : iggy3d::ProductRoomEditingOperationResult{};
 
+  state.selectedTool = iggy3d::ProductRoomEditorTool::Object;
+  state.gridX = 4;
+  const iggy3d::ProductRoomEditorCursorResult object =
+      iggy3d::buildProductRoomEditorPlaceCommand(
+          state, &editing.authoringSnapshot.document);
+  const iggy3d::ProductRoomEditingOperationResult addObject =
+      object.command.has_value()
+          ? iggy3d::applyProductRoomEditingCommand(
+                editing,
+                iggy3d::ProductRoomAuthoringInputSource::Hotkey,
+                *object.command)
+          : iggy3d::ProductRoomEditingOperationResult{};
+
   return expect(floor.ok, "floor build ok") &&
          expect(addFloor.accepted, "floor apply accepted") &&
          expect(addFloor.edit.primitiveId == "edit_floor_1",
@@ -282,12 +346,17 @@ bool cursorCommandsApplyThroughProductRoomEditingState() {
          expect(addWall.accepted, "wall apply accepted") &&
          expect(addWall.edit.primitiveId == "edit_wall_1",
                 "wall primitive id") &&
+         expect(object.ok, "object build ok") &&
+         expect(addObject.accepted, "object apply accepted") &&
+         expect(addObject.edit.primitiveId == "edit_object_1",
+                "object primitive id") &&
          expect(editing.documentFloorCount == 2U, "final floor count") &&
          expect(editing.documentWallCount == 9U, "final wall count") &&
+         expect(editing.documentObjectCount == 1U, "final object count") &&
          expect(editing.activeRoomCollision.ready, "final collision ready") &&
          expect(editing.collisionWalkableSurfaceCount == 2U,
                 "final walkable count") &&
-         expect(editing.collisionActorBlockerSurfaceCount == 9U,
+         expect(editing.collisionActorBlockerSurfaceCount == 10U,
                 "final actor blocker count");
 }
 
@@ -457,6 +526,7 @@ int main() {
                   toolCycleAndWallDirectionAreDeterministic() &&
                   floorCommandUsesCursorAndNextDocumentId() &&
                   wallCommandUsesCursorEdgeAndNextDocumentId() &&
+                  objectCommandUsesCursorAndDefaultAsset() &&
                   cursorCommandsApplyThroughProductRoomEditingState() &&
                   invalidCursorRejectsWithoutEditingMutation() &&
                   mousePickMapsViewportClicksToGrid() &&

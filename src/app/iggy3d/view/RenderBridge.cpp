@@ -46,6 +46,7 @@ void countPhysicsDebugKind(ProductRenderBridgeFrame& bridge,
     case ProductPrimitiveDrawKind::RampTile:
     case ProductPrimitiveDrawKind::BlockedSlopeTile:
     case ProductPrimitiveDrawKind::WallTile:
+    case ProductPrimitiveDrawKind::PropTile:
     case ProductPrimitiveDrawKind::RoomEditorCursor:
     case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
       return;
@@ -75,9 +76,12 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
     bridge.physicsContactNormalDebugCount = drawList->physicsContactNormalDebugCount;
     bridge.physicsBroadphasePairDebugCount =
         drawList->physicsBroadphasePairDebugCount;
+    bridge.propVisible = drawList->propTileCount > 0U;
+    bridge.propTileCount = drawList->propTileCount;
   }
 
   ProductRenderBridgeFrame framedPhysicsCounts;
+  std::uint64_t framedPropTileCount = 0;
   if (frame != nullptr) {
     bridge.projectionMode = frame->projectionMode;
     bridge.frameItemCount = static_cast<std::uint64_t>(frame->framedItems.size());
@@ -112,7 +116,16 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
         ++bridge.roomEditorPlacementPreviewCount;
         bridge.roomEditorPlacementPreviewVisible = true;
       }
+      // branch-gate: BG-1129
+      if (item.kind == ProductPrimitiveDrawKind::PropTile) {
+        ++framedPropTileCount;
+      }
     }
+  }
+  // branch-gate: BG-1048
+  if (bridge.propTileCount == 0U) {
+    bridge.propTileCount = framedPropTileCount;
+    bridge.propVisible = framedPropTileCount > 0U;
   }
   // branch-gate: BG-1113
   if (bridge.physicsDebugItemCount == 0U) {

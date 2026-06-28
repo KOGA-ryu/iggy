@@ -38,6 +38,8 @@ struct ProductRoomEditorPreviewOverlay {
   std::int32_t storyIndex = 0;
   Vec3 worldPosition;
   Vec3 floorSizeMeters;
+  Vec3 objectSizeMeters;
+  std::string objectAssetId = "none";
   Vec3 wallStartMeters;
   Vec3 wallEndMeters;
   float wallBottomY = 0.0F;

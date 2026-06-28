@@ -17,6 +17,7 @@ constexpr float kEpsilon = 0.0001F;
 constexpr float kQuantizeScale = 10000.0F;
 constexpr std::uint64_t kFloorTrianglesPerRect = 2;
 constexpr std::uint64_t kWallTrianglesPerRun = 12;
+constexpr std::uint64_t kObjectTrianglesPerBox = 12;
 
 std::int64_t q(float value) {
   return static_cast<std::int64_t>(std::llround(value * kQuantizeScale));
@@ -313,17 +314,23 @@ ProductRoomGeometryOptimizationReport buildProductRoomGeometryOptimizationReport
   report.reasonCode = report.status;
   report.sourceFloorCount = static_cast<std::uint64_t>(document->floors.size());
   report.sourceWallCount = static_cast<std::uint64_t>(document->walls.size());
-  report.naiveDrawCount = report.sourceFloorCount + report.sourceWallCount;
+  report.sourceObjectCount = static_cast<std::uint64_t>(document->objects.size());
+  report.naiveDrawCount =
+      report.sourceFloorCount + report.sourceWallCount + report.sourceObjectCount;
   report.naiveTriangleCount = report.sourceFloorCount * kFloorTrianglesPerRect +
-                              report.sourceWallCount * kWallTrianglesPerRun;
+                              report.sourceWallCount * kWallTrianglesPerRun +
+                              report.sourceObjectCount * kObjectTrianglesPerBox;
 
   report.optimizedFloorRectCount = estimateFloorRectangles(*document);
   report.optimizedWallRunCount = estimateWallRuns(*document);
+  report.optimizedObjectDrawCount = report.sourceObjectCount;
   report.optimizedDrawCount =
-      report.optimizedFloorRectCount + report.optimizedWallRunCount;
+      report.optimizedFloorRectCount + report.optimizedWallRunCount +
+      report.optimizedObjectDrawCount;
   report.optimizedTriangleCount =
       report.optimizedFloorRectCount * kFloorTrianglesPerRect +
-      report.optimizedWallRunCount * kWallTrianglesPerRun;
+      report.optimizedWallRunCount * kWallTrianglesPerRun +
+      report.optimizedObjectDrawCount * kObjectTrianglesPerBox;
   report.drawCountAvoided =
       saturatingAvoided(report.naiveDrawCount, report.optimizedDrawCount);
   report.triangleCountAvoided =

@@ -162,10 +162,14 @@ bool recordProductRoomEditingLeave(ProductAppWindowState& window,
   window.viewport.productDrawRoomEditorCursorCount = 0;
   window.viewport.productDrawRoomEditorPreviewVisible = false;
   window.viewport.productDrawRoomEditorPreviewCount = 0;
+  window.viewport.productDrawPropVisible = false;
+  window.viewport.productDrawPropTileCount = 0;
   window.viewport.productRenderBridgeRoomEditorCursorVisible = false;
   window.viewport.productRenderBridgeRoomEditorCursorCount = 0;
   window.viewport.productRenderBridgeRoomEditorPreviewVisible = false;
   window.viewport.productRenderBridgeRoomEditorPreviewCount = 0;
+  window.viewport.productRenderBridgePropVisible = false;
+  window.viewport.productRenderBridgePropTileCount = 0;
   return true;
 }
 

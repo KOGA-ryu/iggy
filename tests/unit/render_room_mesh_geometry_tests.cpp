@@ -139,6 +139,21 @@ iggy3d::SceneRoomMeshItem wallMesh(std::string id,
   return mesh;
 }
 
+iggy3d::SceneRoomMeshItem propMesh(std::string id,
+                                   float x,
+                                   float y,
+                                   float z,
+                                   std::string materialId = "wood_crate_proxy",
+                                   iggy3d::Vec3 size = {0.8F, 0.8F, 0.8F}) {
+  iggy3d::SceneRoomMeshItem mesh;
+  mesh.id = std::move(id);
+  mesh.role = "prop";
+  mesh.materialId = std::move(materialId);
+  mesh.position = {x, y, z};
+  mesh.size = size;
+  return mesh;
+}
+
 iggy3d::SceneRoomMeshItem wallSegmentMesh(std::string id,
                                           iggy3d::Vec3 start,
                                           iggy3d::Vec3 end,
@@ -721,6 +736,26 @@ bool roomGeometrySignatureTracksAsciiRoomShape() {
                 "geometry signature changes");
 }
 
+bool propMeshesUseGenericBoxGeometry() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      propMesh("crate_1", 1.0F, 0.4F, -1.0F),
+  });
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room);
+
+  return expect(geometry.ready, "prop geometry ready") &&
+         expect(geometry.sourceRoomStaticMeshCount == 1U,
+                "prop source mesh count") &&
+         expect(geometry.indexedDraws.size() == 1U, "prop draw count") &&
+         expect(geometry.vertices.size() == 8U, "prop vertex count") &&
+         expect(geometry.indices.size() == 72U, "prop index count") &&
+         expect(geometry.roomFloorDrawCount == 0U, "prop no floor draw count") &&
+         expect(geometry.roomWallDrawCount == 0U, "prop no wall draw count") &&
+         expect(countVerticesWithColor(geometry.vertices, 0.45F, 0.28F, 0.12F) ==
+                    8U,
+                "prop vertex color count");
+}
+
 bool emptyProjectionDoesNotBuildRoomGeometry() {
   const iggy3d::SceneRoomProjection empty;
   const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
@@ -754,6 +789,7 @@ int main() {
   ok = wallWithoutSegmentUsesFallbackBoxPath() && ok;
   ok = wallSegmentEndpointChangesGeometrySignature() && ok;
   ok = roomGeometrySignatureTracksAsciiRoomShape() && ok;
+  ok = propMeshesUseGenericBoxGeometry() && ok;
   ok = emptyProjectionDoesNotBuildRoomGeometry() && ok;
   return ok ? 0 : 1;
 }
