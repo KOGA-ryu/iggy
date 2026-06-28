@@ -502,16 +502,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                      true,
                      false,
                      1.0F);
-        (void)applyProductStarterMenuAction(
-            InputAction::MenuConfirm,
-            {context.frontend,
-             context.options,
-             context.saves,
-             context.settingsTab,
-             context.activeSession,
-             context.worldSetupDraft,
-             context.window,
-             context.closeRequested});
+        routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
+                                     menuContext);
       // branch-gate: BG-1029
       } else if (hit.area == OpeningMenuHitArea::DevToolsCategory) {
         context.frontend.devToolsCategory = hit.devToolsCategory;

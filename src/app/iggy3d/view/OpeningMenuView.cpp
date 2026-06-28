@@ -12,6 +12,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/frontend/FrontendState.hpp"
@@ -32,6 +33,26 @@ namespace iggy3d {
 namespace {
 
 using GlyphRows = std::array<std::uint8_t, 7>;
+
+bool usesPauseMenuRows(const FrontendState& frontend) {
+  // branch-gate: BG-1029
+  return frontend.screen == FrontendScreen::Pause ||
+         frontend.childScreen == FrontendScreen::Pause;
+}
+
+const std::vector<FrontendAction>& menuActionOrderForFrontend(
+    const FrontendState& frontend) {
+  // branch-gate: BG-1029
+  if (usesPauseMenuRows(frontend)) {
+    return pauseActionOrder();
+  }
+  return starterActionOrder();
+}
+
+std::string_view menuTitleForFrontend(const FrontendState& frontend) {
+  // branch-gate: BG-1029
+  return usesPauseMenuRows(frontend) ? "PAUSE MENU" : "OPENING MENU";
+}
 
 std::string selectedDraftGlyphLabel(const std::string& glyph) {
   // branch-gate: BG-1149
@@ -1188,7 +1209,7 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
 
 OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, float x, float y) {
   float rowY = 150.0F;
-  for (const FrontendAction action : starterActionOrder()) {
+  for (const FrontendAction action : menuActionOrderForFrontend(frontend)) {
     const bool hitX = x >= 30.0F && x <= 370.0F;
     const bool hitY = y >= rowY - 14.0F && y <= rowY + 38.0F;
     if (hitX && hitY) {
@@ -1367,8 +1388,9 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductSaveBridgeResult& saves) {
   OpeningMenuViewState state;
   SDL_SetRenderDrawBlendMode(&renderer, SDL_BLENDMODE_BLEND);
+  (void)gameplayActive;
 
-  if (gameplayActive || frontend.screen == FrontendScreen::Gameplay) {
+  if (frontend.screen == FrontendScreen::Gameplay) {
     state.cameraHeadingDrawn =
         drawGameplayPanel(renderer, runtimeStateHash, frame, feedback,
                           interactionModeHud, topDownMapOverlay, movementHud, npcHud,
@@ -1387,7 +1409,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
   setColor(renderer, 231, 236, 214);
   drawText(renderer, "IGGY3D", 46.0F, 34.0F, 5.0F);
   setColor(renderer, 126, 201, 176);
-  drawText(renderer, "OPENING MENU", 330.0F, 44.0F, 3.0F);
+  drawText(renderer, menuTitleForFrontend(frontend), 330.0F, 44.0F, 3.0F);
 
   setColor(renderer, 27, 33, 37);
   fillRect(renderer, 0.0F, 92.0F, 390.0F, 556.0F);
@@ -1395,8 +1417,10 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
   fillRect(renderer, 390.0F, 92.0F, 890.0F, 556.0F);
 
   float y = 150.0F;
-  for (const FrontendAction action : starterActionOrder()) {
-    const bool enabled = action != FrontendAction::Continue || saves.slots.compatibleCount > 0;
+  for (const FrontendAction action : menuActionOrderForFrontend(frontend)) {
+    const bool enabled = usesPauseMenuRows(frontend) ||
+                         action != FrontendAction::Continue ||
+                         saves.slots.compatibleCount > 0;
     drawMenuRow(renderer, frontendActionName(action), action == frontend.selectedAction, enabled,
                 62.0F, y);
     y += 52.0F;

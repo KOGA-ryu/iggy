@@ -708,6 +708,64 @@ bool starterHitTestUsesCanonicalActionRows() {
                 "exit starter hit action");
 }
 
+bool pauseHitTestUsesPauseActionRows() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  const iggy3d::ProductMenuActionResult paused =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::SystemPause,
+          {frontend, window, closeRequested});
+
+  const iggy3d::OpeningMenuHitTestResult resumeHit =
+      iggy3d::openingMenuActionAt(frontend, 62.0F, 150.0F);
+  const iggy3d::OpeningMenuHitTestResult settingsHit =
+      iggy3d::openingMenuActionAt(frontend, 62.0F, 462.0F);
+
+  return expect(paused.handled, "system pause handled") &&
+         expect(paused.accepted, "system pause accepted") &&
+         expect(frontend.screen == iggy3d::FrontendScreen::Pause,
+                "system pause opens pause screen") &&
+         expect(resumeHit.hit, "pause resume row hit") &&
+         expect(resumeHit.action == iggy3d::FrontendAction::Resume,
+                "pause first row is resume") &&
+         expect(settingsHit.hit, "pause settings row hit") &&
+         expect(settingsHit.area == iggy3d::OpeningMenuHitArea::StarterAction,
+                "pause settings row uses menu action area") &&
+         expect(settingsHit.action == iggy3d::FrontendAction::Settings,
+                "pause settings row maps to settings");
+}
+
+bool pauseSettingsConfirmOpensSettingsPanel() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppOptions options;
+
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
+  frontend.selectedAction = iggy3d::FrontendAction::Settings;
+  const iggy3d::ProductMenuActionResult opened =
+      iggy3d::applyProductPauseMenuAction(
+          iggy3d::InputAction::MenuConfirm,
+          {frontend, options, settingsTab, activeSession, window, closeRequested});
+
+  return expect(opened.handled, "pause settings confirm handled") &&
+         expect(opened.accepted, "pause settings confirm accepted") &&
+         expect(frontend.screen == iggy3d::FrontendScreen::Settings,
+                "pause settings confirm opens settings screen") &&
+         expect(frontend.childScreen == iggy3d::FrontendScreen::Pause,
+                "pause settings preserves pause parent") &&
+         expect(settingsTab == iggy3d::FrontendSettingsTab::Input,
+                "pause settings starts on input tab") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::Settings,
+                "pause settings input owner");
+}
+
 bool childPanelHitTestsExposeMenuActions() {
   iggy3d::FrontendState frontend = starterFrontend();
   frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
@@ -1101,6 +1159,8 @@ int main() {
       controllerSouthJumpsFromClamberedWallTop() &&
       starterDeleteButtonOpensDeleteConfirmation() &&
       starterHitTestUsesCanonicalActionRows() &&
+      pauseHitTestUsesPauseActionRows() &&
+      pauseSettingsConfirmOpensSettingsPanel() &&
       childPanelHitTestsExposeMenuActions() &&
       menuClickNormalizationScalesWindowCoordinates() &&
       devToggleOpensAndClosesDevToolsSurfaces() &&
