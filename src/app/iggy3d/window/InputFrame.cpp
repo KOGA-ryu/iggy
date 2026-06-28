@@ -39,6 +39,38 @@ struct OpeningMenuNavigationHitRow {
   InputAction action = InputAction::None;
 };
 
+using ProductWindowTopLevelToggleHandler = ProductWindowTopLevelToggleResult (*)(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings* settings,
+    bool* closeRequested);
+
+struct ProductWindowTopLevelToggleRow {
+  InputAction action = InputAction::None;
+  ProductWindowTopLevelToggleHandler handler = nullptr;
+  const char* eligibility = "";
+};
+
+ProductWindowTopLevelToggleResult dispatchProductWindowSystemToggleAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings* settings,
+    bool* closeRequested);
+ProductWindowTopLevelToggleResult dispatchProductWindowMovementTuningToggleAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings* settings,
+    bool* closeRequested);
+ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings* settings,
+    bool* closeRequested);
+
 static constexpr std::array kProductWindowFunctionKeyBindings{
     ProductWindowFunctionKeyBinding{&SdlWindowEventState::f3Pressed,
                                     InputAction::DevDebugOverlay,
@@ -57,6 +89,24 @@ static constexpr std::array kProductWindowFunctionKeyBindings{
     ProductWindowFunctionKeyBinding{&SdlWindowEventState::mPressed,
                                     InputAction::MapMakerToggle,
                                     &KeyboardInputState::mapMakerToggleWasDown},
+};
+
+static constexpr std::array kProductWindowTopLevelToggleRows{
+    ProductWindowTopLevelToggleRow{InputAction::DevDebugOverlay,
+                                   dispatchProductWindowSystemToggleAction,
+                                   "gameplay_owned"},
+    ProductWindowTopLevelToggleRow{InputAction::MovementTuningToggle,
+                                   dispatchProductWindowMovementTuningToggleAction,
+                                   "gameplay_owned"},
+    ProductWindowTopLevelToggleRow{InputAction::DevToggle,
+                                   dispatchProductWindowSystemToggleAction,
+                                   "screen_aware_overlay"},
+    ProductWindowTopLevelToggleRow{InputAction::DevCollisionOverlay,
+                                   dispatchProductWindowSystemToggleAction,
+                                   "screen_aware_overlay"},
+    ProductWindowTopLevelToggleRow{InputAction::MapMakerToggle,
+                                   dispatchProductWindowMapMakerToggleAction,
+                                   "gameplay_owned"},
 };
 
 static constexpr std::array kOpeningMenuNavigationHitRows{
@@ -409,6 +459,42 @@ void routeProductWindowMenuInput(InputAction inputAction,
   routeProductOpeningMenuInput(inputAction, actionState, context);
 }
 
+ProductWindowTopLevelToggleResult dispatchProductWindowSystemToggleAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings* settings,
+    bool* closeRequested) {
+  bool ignoredCloseRequested = false;
+  bool& closeTarget =
+      closeRequested == nullptr ? ignoredCloseRequested : *closeRequested;  // branch-gate: BG-1194
+  const ProductMenuActionResult menuResult = applyProductSystemPauseMenuAction(
+      action, {frontend, window, closeTarget, settings});
+  return {menuResult.handled, menuResult.accepted, action};
+}
+
+ProductWindowTopLevelToggleResult dispatchProductWindowMovementTuningToggleAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings*,
+    bool*) {
+  const ProductMovementTuningInputResult tuningResult =
+      applyProductWindowMovementTuningInput(frontend, window, action);
+  return {tuningResult.handled, tuningResult.accepted, action};
+}
+
+ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings*,
+    bool*) {
+  const ProductMenuActionResult mapMakerResult =
+      applyProductGameplayMapMakerToggleAction(action, {frontend, window});
+  return {mapMakerResult.handled, mapMakerResult.accepted, action};
+}
+
 }  // namespace
 
 void dispatchProductOpeningMenuMouseHit(
@@ -609,6 +695,21 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
   return result;
 }
 
+ProductWindowTopLevelToggleResult dispatchProductWindowTopLevelToggleAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings* settings,
+    bool* closeRequested) {
+  for (const ProductWindowTopLevelToggleRow& row : kProductWindowTopLevelToggleRows) {
+    // branch-gate: BG-1194
+    if (row.action == action) {
+      return row.handler(frontend, window, action, settings, closeRequested);
+    }
+  }
+  return {};
+}
+
 ProductMovementTuningInputResult applyProductWindowMovementTuningHeldInput(
     FrontendState& frontend,
     ProductAppWindowState& window,
@@ -777,29 +878,18 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   if (keyboardMenuAction == InputAction::None) {
     keyboardMenuAction = pollKeyboardMenuAction(context.inputFrame.keyboard);
   }
-  const ProductMovementTuningInputResult tuningInput =
-      applyProductWindowMovementTuningInput(context.frontend,
-                                            context.window,
-                                            keyboardMenuAction);
-  // branch-gate: BG-1212
-  if (tuningInput.handled) {
+  const ProductWindowTopLevelToggleResult topLevelToggle =
+      dispatchProductWindowTopLevelToggleAction(context.frontend,
+                                                context.window,
+                                                keyboardMenuAction,
+                                                &context.settings,
+                                                &context.closeRequested);
+  // branch-gate: BG-1194
+  if (topLevelToggle.handled) {
     recordAction(actionState,
-                 keyboardMenuAction,
+                 topLevelToggle.action,
                  true,
-                 tuningInput.accepted,
-                 false,
-                 1.0F);
-    keyboardMenuAction = InputAction::None;
-  }
-  const ProductMenuActionResult mapMakerInput =
-      applyProductGameplayMapMakerToggleAction(
-          keyboardMenuAction, {context.frontend, context.window});
-  // branch-gate: BG-1216
-  if (mapMakerInput.handled) {
-    recordAction(actionState,
-                 keyboardMenuAction,
-                 true,
-                 mapMakerInput.accepted,
+                 topLevelToggle.accepted,
                  false,
                  1.0F);
     keyboardMenuAction = InputAction::None;
@@ -829,16 +919,18 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   // branch-gate: BG-1029
   if (gamepadAction != InputAction::None) {
     context.window.gamepadMenuSelectUsed = true;
-    const ProductMovementTuningInputResult gamepadTuningInput =
-        applyProductWindowMovementTuningInput(context.frontend,
-                                              context.window,
-                                              gamepadAction);
-    // branch-gate: BG-1212
-    if (gamepadTuningInput.handled) {
+    const ProductWindowTopLevelToggleResult gamepadToggle =
+        dispatchProductWindowTopLevelToggleAction(context.frontend,
+                                                  context.window,
+                                                  gamepadAction,
+                                                  &context.settings,
+                                                  &context.closeRequested);
+    // branch-gate: BG-1194
+    if (gamepadToggle.handled) {
       recordAction(actionState,
-                   gamepadAction,
+                   gamepadToggle.action,
                    true,
-                   gamepadTuningInput.accepted,
+                   gamepadToggle.accepted,
                    false,
                    1.0F);
     } else {

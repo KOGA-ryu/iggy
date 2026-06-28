@@ -101,6 +101,12 @@ struct ProductMovementTuningInputResult {
   std::string reasonCode = "movement_tuning_input_not_handled";
 };
 
+struct ProductWindowTopLevelToggleResult {
+  bool handled = false;
+  bool accepted = false;
+  InputAction action = InputAction::None;
+};
+
 void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                             ProductAppWindowState& window);
 MouseClick normalizeProductWindowMenuClick(MouseClick click,
@@ -126,6 +132,12 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
     FrontendState& frontend,
     ProductAppWindowState& window,
     InputAction action);
+ProductWindowTopLevelToggleResult dispatchProductWindowTopLevelToggleAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings* settings = nullptr,
+    bool* closeRequested = nullptr);
 ProductMovementTuningInputResult applyProductWindowMovementTuningHeldInput(
     FrontendState& frontend,
     ProductAppWindowState& window,

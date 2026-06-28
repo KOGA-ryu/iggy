@@ -1520,9 +1520,20 @@ bool sdlFunctionKeyEventsMapToSystemActions() {
   iggy3d::SdlWindowEventState f1f3;
   f1f3.f1Pressed = true;
   f1f3.f3Pressed = true;
+  iggy3d::SdlWindowEventState f3f4m;
+  f3f4m.f3Pressed = true;
+  f3f4m.f4Pressed = true;
+  f3f4m.mPressed = true;
+  iggy3d::SdlWindowEventState f4f1m;
+  f4f1m.f4Pressed = true;
+  f4f1m.f1Pressed = true;
+  f4f1m.mPressed = true;
   iggy3d::SdlWindowEventState f1f2;
   f1f2.f1Pressed = true;
   f1f2.f2Pressed = true;
+  iggy3d::SdlWindowEventState f2m;
+  f2m.f2Pressed = true;
+  f2m.mPressed = true;
 
   return expect(iggy3d::productWindowFunctionKeyAction(none) ==
                     iggy3d::InputAction::None,
@@ -1545,9 +1556,18 @@ bool sdlFunctionKeyEventsMapToSystemActions() {
          expect(iggy3d::productWindowFunctionKeyAction(f1f3) ==
                     iggy3d::InputAction::DevDebugOverlay,
                 "F3 overlay event wins over dev panel toggle") &&
+         expect(iggy3d::productWindowFunctionKeyAction(f3f4m) ==
+                    iggy3d::InputAction::DevDebugOverlay,
+                "F3 wins over F4 and M in function key priority") &&
+         expect(iggy3d::productWindowFunctionKeyAction(f4f1m) ==
+                    iggy3d::InputAction::MovementTuningToggle,
+                "F4 wins over F1 and M in function key priority") &&
          expect(iggy3d::productWindowFunctionKeyAction(f1f2) ==
                     iggy3d::InputAction::DevToggle,
-                "F1 wins over F2 in one-frame function key priority");
+                "F1 wins over F2 in one-frame function key priority") &&
+         expect(iggy3d::productWindowFunctionKeyAction(f2m) ==
+                    iggy3d::InputAction::DevCollisionOverlay,
+                "F2 wins over M in function key priority");
 }
 
 bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
@@ -1642,6 +1662,150 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
              "F1+F2 event does not consume debug overlay state");
 
   return noneOk && f2Ok && f3Ok && f4Ok && mOk && f1f2Ok;
+}
+
+bool topLevelToggleFunnelPreservesPolicies() {
+  iggy3d::FrontendSettings settings;
+  bool closeRequested = false;
+
+  iggy3d::FrontendState gameplay = gameplayFrontend();
+  iggy3d::ProductAppWindowState gameplayWindow;
+  gameplayWindow.gameplayActive = true;
+  const iggy3d::ProductWindowTopLevelToggleResult debug =
+      iggy3d::dispatchProductWindowTopLevelToggleAction(
+          gameplay,
+          gameplayWindow,
+          iggy3d::InputAction::DevDebugOverlay,
+          &settings,
+          &closeRequested);
+  const bool debugOk =
+      expect(debug.handled, "top-level F3 handled") &&
+      expect(debug.accepted, "top-level F3 accepted in gameplay") &&
+      expect(debug.action == iggy3d::InputAction::DevDebugOverlay,
+             "top-level F3 records action") &&
+      expect(settings.debugOverlayEnabled, "top-level F3 toggles debug setting");
+
+  iggy3d::FrontendState starter = starterFrontend();
+  iggy3d::ProductAppWindowState starterWindow;
+  settings.debugOverlayEnabled = false;
+  const iggy3d::ProductWindowTopLevelToggleResult blockedDebug =
+      iggy3d::dispatchProductWindowTopLevelToggleAction(
+          starter,
+          starterWindow,
+          iggy3d::InputAction::DevDebugOverlay,
+          &settings,
+          &closeRequested);
+  const bool blockedDebugOk =
+      expect(blockedDebug.handled, "top-level starter F3 handled") &&
+      expect(!blockedDebug.accepted, "top-level starter F3 rejected") &&
+      expect(!settings.debugOverlayEnabled,
+             "top-level starter F3 leaves debug setting unchanged");
+
+  iggy3d::FrontendState tuningFrontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState tuningWindow;
+  tuningWindow.gameplayActive = true;
+  const iggy3d::ProductWindowTopLevelToggleResult tuning =
+      iggy3d::dispatchProductWindowTopLevelToggleAction(
+          tuningFrontend,
+          tuningWindow,
+          iggy3d::InputAction::MovementTuningToggle,
+          &settings,
+          &closeRequested);
+  const bool tuningOk =
+      expect(tuning.handled, "top-level F4 handled") &&
+      expect(tuning.accepted, "top-level F4 accepted in gameplay") &&
+      expect(tuningWindow.gameplayMovementTuningVisible,
+             "top-level F4 shows movement tuning");
+
+  iggy3d::FrontendState pause = gameplayFrontend();
+  pause.screen = iggy3d::FrontendScreen::Pause;
+  pause.childScreen = iggy3d::FrontendScreen::Gameplay;
+  iggy3d::ProductAppWindowState pauseWindow;
+  pauseWindow.gameplayActive = true;
+  pauseWindow.gameplayMovementTuningVisible = true;
+  const iggy3d::ProductWindowTopLevelToggleResult blockedTuning =
+      iggy3d::dispatchProductWindowTopLevelToggleAction(
+          pause,
+          pauseWindow,
+          iggy3d::InputAction::MovementTuningToggle,
+          &settings,
+          &closeRequested);
+  const bool blockedTuningOk =
+      expect(blockedTuning.handled, "top-level pause F4 handled") &&
+      expect(!blockedTuning.accepted, "top-level pause F4 rejected") &&
+      expect(!pauseWindow.gameplayMovementTuningVisible,
+             "top-level pause F4 clears stale tuning");
+
+  iggy3d::FrontendState devTools = starterFrontend();
+  iggy3d::ProductAppWindowState devWindow;
+  const iggy3d::ProductWindowTopLevelToggleResult dev =
+      iggy3d::dispatchProductWindowTopLevelToggleAction(
+          devTools,
+          devWindow,
+          iggy3d::InputAction::DevToggle,
+          &settings,
+          &closeRequested);
+  const bool devOk =
+      expect(dev.handled, "top-level F1 handled") &&
+      expect(dev.accepted, "top-level F1 accepted") &&
+      expect(devTools.devToolsOpen, "top-level F1 opens dev tools");
+
+  iggy3d::FrontendState collision = gameplayFrontend();
+  iggy3d::ProductAppWindowState collisionWindow;
+  collisionWindow.gameplayActive = true;
+  settings.debugOverlayEnabled = false;
+  const iggy3d::ProductWindowTopLevelToggleResult f2 =
+      iggy3d::dispatchProductWindowTopLevelToggleAction(
+          collision,
+          collisionWindow,
+          iggy3d::InputAction::DevCollisionOverlay,
+          &settings,
+          &closeRequested);
+  const bool f2Ok =
+      expect(f2.handled, "top-level F2 handled") &&
+      expect(f2.accepted, "top-level F2 accepted") &&
+      expect(collisionWindow.devCollisionOverlayVisible,
+             "top-level F2 toggles collision overlay") &&
+      expect(!settings.debugOverlayEnabled,
+             "top-level F2 does not mutate debug setting");
+
+  iggy3d::FrontendState mapMaker = gameplayFrontend();
+  iggy3d::ProductAppWindowState mapMakerWindow;
+  mapMakerWindow.gameplayActive = true;
+  const iggy3d::ProductWindowTopLevelToggleResult m =
+      iggy3d::dispatchProductWindowTopLevelToggleAction(
+          mapMaker,
+          mapMakerWindow,
+          iggy3d::InputAction::MapMakerToggle,
+          &settings,
+          &closeRequested);
+  const bool mOk =
+      expect(m.handled, "top-level M handled") &&
+      expect(m.accepted, "top-level M accepted in gameplay") &&
+      expect(mapMakerWindow.mapMakerActive, "top-level M enables map maker");
+
+  iggy3d::FrontendState pauseMapMaker = gameplayFrontend();
+  pauseMapMaker.screen = iggy3d::FrontendScreen::Pause;
+  pauseMapMaker.childScreen = iggy3d::FrontendScreen::Gameplay;
+  iggy3d::ProductAppWindowState pauseMapWindow;
+  pauseMapWindow.gameplayActive = true;
+  pauseMapWindow.mapMakerActive = true;
+  pauseMapWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  const iggy3d::ProductWindowTopLevelToggleResult blockedM =
+      iggy3d::dispatchProductWindowTopLevelToggleAction(
+          pauseMapMaker,
+          pauseMapWindow,
+          iggy3d::InputAction::MapMakerToggle,
+          &settings,
+          &closeRequested);
+  const bool blockedMOk =
+      expect(blockedM.handled, "top-level pause M handled") &&
+      expect(!blockedM.accepted, "top-level pause M rejected") &&
+      expect(!pauseMapWindow.mapMakerActive,
+             "top-level pause M clears stale map maker");
+
+  return debugOk && blockedDebugOk && tuningOk && blockedTuningOk && devOk &&
+         f2Ok && mOk && blockedMOk;
 }
 
 bool movementTuningGameplayInputIsLiveAndFocused() {
@@ -2170,6 +2334,7 @@ int main() {
       collisionOverlayActionTogglesDistinctWindowState() &&
       sdlFunctionKeyEventsMapToSystemActions() &&
       sdlFunctionKeyEventsMarkKeyboardStateConsumed() &&
+      topLevelToggleFunnelPreservesPolicies() &&
       movementTuningGameplayInputIsLiveAndFocused() &&
       movementTuningSingleLeftRightPressAppliesOneStep() &&
       movementTuningHeldRightRepeatsAfterDelay() &&
