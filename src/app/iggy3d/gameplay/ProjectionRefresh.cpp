@@ -368,8 +368,7 @@ Vec3 mapMakerAnchorFor(ProductAppWindowState& window,
 ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
     ProductAppWindowState& window,
     const SceneProjectionResult& scene) {
-  const bool active = window.gameplayActive &&
-                      window.interactionMode == ProductInteractionMode::Creative;
+  const bool active = window.gameplayActive && window.mapMakerActive;
   window.mapMakerActive = active;
   // branch-gate: BG-1205
   window.mapMakerStatus = active ? "map_maker_active" : "map_maker_inactive";

@@ -628,12 +628,10 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
       context.window.mapMakerReasonCode = context.window.mapMakerStatus;
       return {true, false};
     }
-    const bool enable =
-        context.window.interactionMode != ProductInteractionMode::Creative;
-    // branch-gate: BG-1205
-    context.window.interactionMode =
-        enable ? ProductInteractionMode::Creative : ProductInteractionMode::Player;
+    const bool enable = !context.window.mapMakerActive;
     context.window.mapMakerActive = enable;
+    context.window.inputOwner = MenuOwner::Gameplay;
+    context.window.gameplayInputSuppressed = false;
     // branch-gate: BG-1205
     context.window.mapMakerStatus =
         enable ? "map_maker_enabled" : "map_maker_disabled";

@@ -240,7 +240,7 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
   // Movement is consumed for creative fly, but selected asset/tool input is not
   // modeled yet.
   // branch-gate: BG-1205
-  if (window.interactionMode == ProductInteractionMode::Creative) {
+  if (window.mapMakerActive) {
     applyProductWindowCreativeFlyActions(window, activeSession,
                                          acceptedGameplayActions);
     result.actionApplied = !acceptedGameplayActions.entries.empty();

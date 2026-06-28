@@ -2,6 +2,7 @@
 #include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
+#include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
@@ -1163,8 +1164,15 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
       expect(enabled.accepted, "map maker toggle accepted") &&
       expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
              "map maker toggle keeps gameplay screen") &&
-      expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
-             "map maker toggle enters creative") &&
+      expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+             "map maker toggle keeps gameplay interaction mode") &&
+      expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+             "map maker toggle keeps gameplay owner") &&
+      expect(!window.gameplayInputSuppressed,
+             "map maker toggle does not suppress gameplay input") &&
+      expect(iggy3d::productInputOwnerFor(frontend, window) ==
+                 iggy3d::MenuOwner::Gameplay,
+             "map maker toggle owner derives as gameplay") &&
       expect(window.mapMakerActive, "map maker active") &&
       expect(window.mapMakerStatus == "map_maker_enabled",
              "map maker enabled status") &&
@@ -1181,7 +1189,9 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
       expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
              "map maker disable keeps gameplay screen") &&
       expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
-             "map maker toggle returns player") &&
+             "map maker toggle leaves gameplay interaction mode") &&
+      expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+             "map maker disable keeps gameplay owner") &&
       expect(!window.mapMakerActive, "map maker inactive") &&
       expect(window.mapMakerStatus == "map_maker_disabled",
              "map maker disabled status") &&

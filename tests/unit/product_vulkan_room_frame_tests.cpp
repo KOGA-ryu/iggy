@@ -975,13 +975,14 @@ bool vulkanGameplayFrameCarriesDevToolsOverlay() {
                 "dev tools primitive count includes text");
 }
 
-bool creativeMapMakerFrameCarriesGridOverlay() {
+bool gameplayMapMakerFrameCarriesGridOverlay() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
   if (!expect(session.has_value(), "map maker frame session created")) {
     return false;
   }
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.interactionMode = iggy3d::ProductInteractionMode::Player;
+  window.mapMakerActive = true;
   window.viewport.creativeFlyAnchorValid = true;
   window.viewport.creativeFlyPositionMeters = {0.0F, 2.0F, 0.0F};
 
@@ -1083,7 +1084,7 @@ int main() {
                   vulkanGameplayFrameCarriesPositionHudUiOverlay() &&
                   vulkanGameplayFrameCarriesMovementTuningUiOverlay() &&
                   vulkanGameplayFrameCarriesDevToolsOverlay() &&
-                  creativeMapMakerFrameCarriesGridOverlay();
+                  gameplayMapMakerFrameCarriesGridOverlay();
   if (!ok) {
     return EXIT_FAILURE;
   }
