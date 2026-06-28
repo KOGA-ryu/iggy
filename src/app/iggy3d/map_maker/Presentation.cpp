@@ -45,6 +45,7 @@ ProductMapMakerGridOverlay buildProductMapMakerGridOverlay(
   overlay.pitchMeters = snapshot.pitchMeters;
   overlay.majorStepMeters = snapshot.majorStepMeters;
   overlay.planeY = snapshot.planeY;
+  overlay.layerCount = snapshot.layerCount;
   overlay.dotCount = snapshot.dotCount;
   overlay.majorDotCount = snapshot.majorDotCount;
   // branch-gate: BG-1205
@@ -96,7 +97,7 @@ ProductMapMakerHud buildProductMapMakerHud(
   std::ostringstream line;
   line << "MAP grid=" << formatMeters(grid.pitchMeters)
        << "m major=" << formatMeters(grid.majorStepMeters)
-       << "m y=" << formatMeters(grid.planeY);
+       << "m layers=" << grid.layerCount;
   // branch-gate: BG-1206
   if (cube.visible) {
     line << " cube=1m";

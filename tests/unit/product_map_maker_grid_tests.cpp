@@ -49,9 +49,10 @@ bool readyGridBuildsStableDots() {
   config.pitchMeters = 1.0F;
   config.majorStepMeters = 2.0F;
   config.extentXMeters = 2.0F;
+  config.extentYMeters = 2.0F;
   config.extentZMeters = 2.0F;
   config.planeY = 4.0F;
-  config.anchorWorld = {0.0F, 9.0F, 0.0F};
+  config.anchorWorld = {0.0F, 0.0F, 0.0F};
 
   const iggy3d::ProductMapMakerGridSnapshot grid =
       iggy3d::buildProductMapMakerGridSnapshot(config);
@@ -59,15 +60,16 @@ bool readyGridBuildsStableDots() {
   return expect(grid.ok, "grid ok") &&
          expect(grid.visible, "grid visible") &&
          expect(grid.reasonCode == "map_maker_grid_ready", "grid ready") &&
-         expect(grid.dotCount == 9U, "3x3 dot count") &&
+         expect(grid.layerCount == 3U, "three layer count") &&
+         expect(grid.dotCount == 27U, "3x3x3 dot count") &&
          expect(grid.majorDotCount == 1U, "major dot count") &&
-         expect(grid.dots.size() == 9U, "dot vector count") &&
-         expect(vecNear(grid.dots.front().worldPosition, {-1.0F, 4.0F, -1.0F}),
-                "first dot row-major") &&
-         expect(vecNear(grid.dots[4].worldPosition, {0.0F, 4.0F, 0.0F}),
+         expect(grid.dots.size() == 27U, "dot vector count") &&
+         expect(vecNear(grid.dots.front().worldPosition, {-1.0F, -1.0F, -1.0F}),
+                "first dot layer row-major") &&
+         expect(vecNear(grid.dots[13].worldPosition, {0.0F, 0.0F, 0.0F}),
                 "center dot") &&
-         expect(grid.dots[4].major, "center is major") &&
-         expect(vecNear(grid.dots.back().worldPosition, {1.0F, 4.0F, 1.0F}),
+         expect(grid.dots[13].major, "center is major") &&
+         expect(vecNear(grid.dots.back().worldPosition, {1.0F, 1.0F, 1.0F}),
                 "last dot row-major");
 }
 

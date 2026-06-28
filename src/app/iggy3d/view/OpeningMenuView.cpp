@@ -601,7 +601,6 @@ void drawPrimitiveItem(SDL_Renderer& renderer, const ProductViewportFramedItem& 
       drawPhysicsBroadphasePairDebugMarker(renderer, framed);
       return;
     case ProductPrimitiveDrawKind::MapMakerGridDot:
-      drawMarker(renderer, framed);
       return;
     case ProductPrimitiveDrawKind::MapMakerCubePreview:
       drawRoomTile(renderer, framed);

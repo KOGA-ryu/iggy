@@ -52,6 +52,7 @@ bool isValidProductMapMakerGridConfig(const ProductMapMakerGridConfig& config) {
   return finitePositive(config.pitchMeters) &&
          finitePositive(config.majorStepMeters) &&
          finitePositive(config.extentXMeters) &&
+         finitePositive(config.extentYMeters) &&
          finitePositive(config.extentZMeters) &&
          std::isfinite(config.planeY) &&
          finiteVec3(config.anchorWorld);
@@ -92,23 +93,30 @@ ProductMapMakerGridSnapshot buildProductMapMakerGridSnapshot(
   }
 
   const float halfX = config.extentXMeters * 0.5F;
+  const float halfY = config.extentYMeters * 0.5F;
   const float halfZ = config.extentZMeters * 0.5F;
   const float minX = snapDown(config.anchorWorld.x - halfX, config.pitchMeters);
   const float maxX = snapUp(config.anchorWorld.x + halfX, config.pitchMeters);
+  const float minY = snapDown(config.anchorWorld.y - halfY, config.pitchMeters);
+  const float maxY = snapUp(config.anchorWorld.y + halfY, config.pitchMeters);
   const float minZ = snapDown(config.anchorWorld.z - halfZ, config.pitchMeters);
   const float maxZ = snapUp(config.anchorWorld.z + halfZ, config.pitchMeters);
 
-  for (float z = minZ; z <= maxZ + kEpsilon; z += config.pitchMeters) {
-    for (float x = minX; x <= maxX + kEpsilon; x += config.pitchMeters) {
-      ProductMapMakerGridDot dot;
-      dot.worldPosition = {x, config.planeY, z};
-      dot.major = nearMultiple(x, config.majorStepMeters) &&
-                  nearMultiple(z, config.majorStepMeters);
-      snapshot.dots.push_back(dot);
-      ++snapshot.dotCount;
-      // branch-gate: BG-1205
-      if (dot.major) {
-        ++snapshot.majorDotCount;
+  for (float y = minY; y <= maxY + kEpsilon; y += config.pitchMeters) {
+    ++snapshot.layerCount;
+    for (float z = minZ; z <= maxZ + kEpsilon; z += config.pitchMeters) {
+      for (float x = minX; x <= maxX + kEpsilon; x += config.pitchMeters) {
+        ProductMapMakerGridDot dot;
+        dot.worldPosition = {x, y, z};
+        dot.major = nearMultiple(x, config.majorStepMeters) &&
+                    nearMultiple(y, config.majorStepMeters) &&
+                    nearMultiple(z, config.majorStepMeters);
+        snapshot.dots.push_back(dot);
+        ++snapshot.dotCount;
+        // branch-gate: BG-1205
+        if (dot.major) {
+          ++snapshot.majorDotCount;
+        }
       }
     }
   }

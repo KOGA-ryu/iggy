@@ -20,6 +20,7 @@ struct ProductMapMakerGridConfig {
   float pitchMeters = 1.0F;
   float majorStepMeters = 5.0F;
   float extentXMeters = 40.0F;
+  float extentYMeters = 8.0F;
   float extentZMeters = 40.0F;
   float planeY = 0.0F;
   Vec3 anchorWorld;
@@ -38,6 +39,7 @@ struct ProductMapMakerGridSnapshot {
   float pitchMeters = 1.0F;
   float majorStepMeters = 5.0F;
   float planeY = 0.0F;
+  std::uint64_t layerCount = 0;
   std::uint64_t dotCount = 0;
   std::uint64_t majorDotCount = 0;
   std::vector<ProductMapMakerGridDot> dots;

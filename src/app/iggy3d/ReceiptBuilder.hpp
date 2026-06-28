@@ -44,6 +44,7 @@ struct ProductAppWindowState {
   float mapMakerGridPitchMeters = 1.0F;
   float mapMakerGridMajorStepMeters = 5.0F;
   float mapMakerGridPlaneY = 0.0F;
+  std::uint64_t mapMakerGridLayerCount = 0;
   std::uint64_t mapMakerGridDotCount = 0;
   std::uint64_t mapMakerGridMajorDotCount = 0;
   bool interactionModeHudVisible = false;

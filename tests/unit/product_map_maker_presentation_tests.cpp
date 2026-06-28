@@ -23,6 +23,7 @@ iggy3d::ProductMapMakerGridSnapshot readyGrid() {
   config.pitchMeters = 0.5F;
   config.majorStepMeters = 5.0F;
   config.extentXMeters = 1.0F;
+  config.extentYMeters = 1.0F;
   config.extentZMeters = 1.0F;
   config.planeY = 2.0F;
   return iggy3d::buildProductMapMakerGridSnapshot(config);
@@ -40,6 +41,7 @@ bool overlayCopiesReadyGridOnly() {
   return expect(overlay.visible, "ready overlay visible") &&
          expect(overlay.status == "map_maker_grid_ready", "overlay status") &&
          expect(overlay.pitchMeters == 0.5F, "pitch copied") &&
+         expect(overlay.layerCount == grid.layerCount, "layer count copied") &&
          expect(overlay.dotCount == grid.dotCount, "dot count copied") &&
          expect(overlay.dots.size() == grid.dots.size(), "dots copied") &&
          expect(!hiddenOverlay.visible, "hidden overlay not visible") &&
@@ -59,7 +61,7 @@ bool hudShowsCompactGridLineWhenActive() {
          expect(active.lineCount == 1U, "active line count") &&
          expect(active.lines.size() == 1U, "active vector count") &&
          expect(active.lines[0].visible, "active line visible") &&
-         expect(active.lines[0].text == "MAP grid=0.5m major=5m y=2",
+         expect(active.lines[0].text == "MAP grid=0.5m major=5m layers=3",
                 "active line text");
 }
 
@@ -86,7 +88,8 @@ bool cubePreviewSnapsOneMeterCubeInFrontOfCamera() {
          expect(near(cube.centerWorld.y, 2.5F), "cube sits on grid plane") &&
          expect(near(cube.centerWorld.z, 0.0F), "cube snapped z") &&
          expect(hud.lines.size() == 1U, "hud one line with cube") &&
-         expect(hud.lines[0].text == "MAP grid=0.5m major=5m y=2 cube=1m",
+         expect(hud.lines[0].text ==
+                    "MAP grid=0.5m major=5m layers=3 cube=1m",
                 "hud cube text");
 }
 

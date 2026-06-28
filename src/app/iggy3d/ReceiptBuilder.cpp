@@ -165,6 +165,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.mapMakerGridMajorStepMeters));
   appendReceiptField(receipt, "map_maker_grid_plane_y",
                      floatReceiptValue(window.mapMakerGridPlaneY));
+  appendReceiptField(receipt, "map_maker_grid_layer_count",
+                     window.mapMakerGridLayerCount);
   appendReceiptField(receipt, "map_maker_grid_dot_count",
                      window.mapMakerGridDotCount);
   appendReceiptField(receipt, "map_maker_grid_major_dot_count",

@@ -1,5 +1,6 @@
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <string>
@@ -394,9 +395,45 @@ ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
   window.mapMakerGridPitchMeters = grid.pitchMeters;
   window.mapMakerGridMajorStepMeters = grid.majorStepMeters;
   window.mapMakerGridPlaneY = grid.planeY;
+  window.mapMakerGridLayerCount = grid.layerCount;
   window.mapMakerGridDotCount = grid.dotCount;
   window.mapMakerGridMajorDotCount = grid.majorDotCount;
   return grid;
+}
+
+Vec3 mapMakerDotSizeFor(const ProductMapMakerGridDot& dot,
+                        float pitchMeters) {
+  const float minorSize = std::clamp(pitchMeters * 0.08F, 0.04F, 0.10F);
+  const float majorSize = std::clamp(pitchMeters * 0.14F, 0.07F, 0.16F);
+  // branch-gate: BG-1207
+  const float size = dot.major ? majorSize : minorSize;
+  return {size, size, size};
+}
+
+void appendMapMakerGridDotsToScene(const ProductMapMakerGridSnapshot& grid,
+                                   SceneProjectionResult& scene) {
+  // branch-gate: BG-1207
+  if (!grid.visible || grid.dots.empty()) {
+    return;
+  }
+  scene.room.meshes.reserve(scene.room.meshes.size() + grid.dots.size());
+  std::uint64_t index = 0;
+  for (const ProductMapMakerGridDot& dot : grid.dots) {
+    SceneRoomMeshItem mesh;
+    // branch-gate: BG-1207
+    mesh.id = dot.major ? "map_maker.grid_major_dot_" : "map_maker.grid_dot_";
+    mesh.id += std::to_string(index);
+    mesh.role = "grid";
+    // branch-gate: BG-1207
+    mesh.materialId = dot.major ? "map_maker_grid_major_dot"
+                                : "map_maker_grid_dot";
+    mesh.position = dot.worldPosition;
+    mesh.size = mapMakerDotSizeFor(dot, grid.pitchMeters);
+    scene.room.meshes.push_back(std::move(mesh));
+    ++index;
+  }
+  scene.room.staticMeshCount = scene.room.meshes.size();
+  scene.room.loaded = true;
 }
 
 void appendMapMakerCubePreviewToScene(const ProductMapMakerCubePreview& cube,
@@ -504,6 +541,7 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.mapMakerGridVisible = false;
     window.mapMakerGridStatus = "map_maker_grid_disabled";
     window.mapMakerGridReasonCode = window.mapMakerGridStatus;
+    window.mapMakerGridLayerCount = 0;
     window.mapMakerGridDotCount = 0;
     window.mapMakerGridMajorDotCount = 0;
     return;
@@ -692,6 +730,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.mapMakerGrid = buildMapMakerGridForFrame(window, frame.scene);
   frame.mapMakerGridOverlay =
       buildProductMapMakerGridOverlay(frame.mapMakerGrid);
+  appendMapMakerGridDotsToScene(frame.mapMakerGrid, frame.scene);
   frame.cameraAnchorOverrideAvailable =
       window.mapMakerActive && window.viewport.creativeFlyAnchorValid;
   frame.cameraAnchorOverrideMeters = window.viewport.creativeFlyPositionMeters;

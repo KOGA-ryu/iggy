@@ -884,7 +884,11 @@ bool creativeMapMakerFrameCarriesGridOverlay() {
   const iggy3d::FrameInput& frameInput =
       iggy3d::refreshProductVulkanGameplayFrameInput(vulkanFrame);
   bool cubeMeshProjected = false;
+  std::uint64_t gridMeshCount = 0;
   for (const iggy3d::SceneRoomMeshItem& mesh : projection.scene.room.meshes) {
+    if (mesh.role == "grid") {
+      ++gridMeshCount;
+    }
     if (mesh.id == "map_maker.unit_cube_preview" &&
         mesh.role == "prop" &&
         nearlyEqual(mesh.size.x, 1.0F) &&
@@ -897,8 +901,12 @@ bool creativeMapMakerFrameCarriesGridOverlay() {
   return expect(projection.mapMakerGrid.visible, "map maker grid visible") &&
          expect(projection.mapMakerGrid.dotCount > 0U,
                 "map maker grid dot count positive") &&
+         expect(projection.mapMakerGrid.layerCount > 1U,
+                "map maker grid has vertical layers") &&
          expect(projection.mapMakerGridOverlay.visible,
                 "map maker overlay visible") &&
+         expect(gridMeshCount == projection.mapMakerGrid.dotCount,
+                "map maker grid projected as 3D dot meshes") &&
          expect(projection.mapMakerCubePreview.visible,
                 "map maker cube preview visible") &&
          expect(cubeMeshProjected, "map maker cube projected as prop mesh") &&
@@ -922,6 +930,8 @@ bool creativeMapMakerFrameCarriesGridOverlay() {
                 "map maker render bridge cube count") &&
          expect(window.mapMakerActive, "map maker window active") &&
          expect(window.mapMakerGridVisible, "map maker window grid visible") &&
+         expect(window.mapMakerGridLayerCount == projection.mapMakerGrid.layerCount,
+                "map maker window layer count") &&
          expect(window.viewport.productDrawMapMakerGridVisible,
                 "map maker draw receipt visible") &&
          expect(window.viewport.productDrawMapMakerCubePreviewVisible,
