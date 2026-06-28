@@ -93,6 +93,8 @@ std::string_view productAutomationCommandIdName(
       std::string_view{"game.move_y"},
       std::string_view{"game.attack"},
       std::string_view{"game.interact"},
+      std::string_view{"gameplay.jump"},
+      std::string_view{"gameplay.player_position"},
       std::string_view{"gameplay.physics_movement"},
       std::string_view{"controller.input"},
       std::string_view{"frontend.execute"},
@@ -517,6 +519,10 @@ ProductAutomationCommandRegistry makeProductAutomationCommandRegistry() {
        Value::Bool, true, true, "gameplay"},
       {"game.interact", {"frontend.game_interact"}, Category::GameplayInput,
        Value::Bool, true, true, "gameplay"},
+      {"gameplay.jump", {"game.jump", "frontend.game_jump"},
+       Category::GameplayInput, Value::Bool, true, true, "gameplay"},
+      {"gameplay.player_position", {"game.player_position"},
+       Category::GameplayInput, Value::Csv, true, false, "gameplay"},
       {"gameplay.physics_movement", {"frontend.physics_movement"},
        Category::GameplayInput, Value::Bool, true, false, "gameplay"},
       {"controller.input", {"controller.sample"}, Category::ControllerInput,
@@ -624,6 +630,12 @@ const ProductAutomationCommandDispatchSpec& findProductAutomationCommandDispatch
       ProductAutomationCommandDispatchSpec{
           true, "game.interact", Id::GameplayInteract, Category::GameplayInput,
           Value::Bool, InputAction::PlayerInteract},
+      ProductAutomationCommandDispatchSpec{
+          true, "gameplay.jump", Id::GameplayJump, Category::GameplayInput,
+          Value::Bool, InputAction::PlayerJump},
+      ProductAutomationCommandDispatchSpec{
+          true, "gameplay.player_position", Id::GameplayPlayerPosition,
+          Category::GameplayInput, Value::Csv, InputAction::None},
       ProductAutomationCommandDispatchSpec{
           true, "gameplay.physics_movement", Id::GameplayPhysicsMovement,
           Category::GameplayInput, Value::Bool, InputAction::None},

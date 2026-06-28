@@ -90,6 +90,14 @@ int main() {
              "controller.input",
          "controller input command id name is stable");
   expect(iggy3d::productAutomationCommandIdName(
+             iggy3d::ProductAutomationCommandId::GameplayJump) ==
+             "gameplay.jump",
+         "gameplay jump command id name is stable");
+  expect(iggy3d::productAutomationCommandIdName(
+             iggy3d::ProductAutomationCommandId::GameplayPlayerPosition) ==
+             "gameplay.player_position",
+         "gameplay player position command id name is stable");
+  expect(iggy3d::productAutomationCommandIdName(
              iggy3d::ProductAutomationCommandId::GameplayPhysicsMovement) ==
              "gameplay.physics_movement",
          "gameplay physics movement command id name is stable");
@@ -132,6 +140,11 @@ int main() {
          "room editor preview cancel command is registered");
   expect(spec(registry, "game.move_x").category == Category::GameplayInput,
          "gameplay input command is registered");
+  expect(spec(registry, "gameplay.jump").category == Category::GameplayInput,
+         "gameplay jump command is registered");
+  expect(spec(registry, "gameplay.player_position").category ==
+             Category::GameplayInput,
+         "gameplay player position command is registered");
   expect(spec(registry, "gameplay.physics_movement").category ==
              Category::GameplayInput,
          "gameplay physics movement command is registered");
@@ -157,6 +170,8 @@ int main() {
   expectCanonical(registry, "world_setup.draft_paint", "world.draft_paint");
   expectCanonical(registry, "frontend.draft_move", "world.draft_move");
   expectCanonical(registry, "frontend.game_attack", "game.attack");
+  expectCanonical(registry, "frontend.game_jump", "gameplay.jump");
+  expectCanonical(registry, "game.player_position", "gameplay.player_position");
   expectCanonical(registry, "frontend.physics_movement",
                   "gameplay.physics_movement");
   expectCanonical(registry, "controller.sample", "controller.input");
@@ -190,6 +205,12 @@ int main() {
          "room editor preview cancel ignores false bool");
   expect(spec(registry, "controller.input").valueKind == Value::Action,
          "controller input is an action sequence value");
+  expect(spec(registry, "gameplay.jump").valueKind == Value::Bool,
+         "gameplay jump is a bool value");
+  expect(spec(registry, "gameplay.jump").ignoresFalseBool,
+         "gameplay jump ignores false bool");
+  expect(spec(registry, "gameplay.player_position").valueKind == Value::Csv,
+         "gameplay player position is a csv value");
   expect(spec(registry, "gameplay.physics_movement").valueKind == Value::Bool,
          "gameplay physics movement is a bool value");
 
@@ -501,6 +522,31 @@ int main() {
   expect(physicsMovementDispatch.canonicalActionLabel ==
              "gameplay.physics_movement",
          "physics movement dispatch label is canonical");
+
+  const iggy3d::ProductAutomationCommandDispatchResult gameplayJumpDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "frontend.game_jump"});
+  expect(gameplayJumpDispatch.handled,
+         "frontend gameplay jump alias is dispatch-handled");
+  expect(gameplayJumpDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::GameplayJump,
+         "gameplay jump dispatch id is stable");
+  expect(gameplayJumpDispatch.canonicalActionLabel == "gameplay.jump",
+         "gameplay jump dispatch label is canonical");
+
+  const iggy3d::ProductAutomationCommandDispatchResult playerPositionDispatch =
+      iggy3d::resolveProductAutomationCommandDispatch(
+          iggy3d::ProductAutomationCommandDispatchRequest{
+              &registry, "game.player_position"});
+  expect(playerPositionDispatch.handled,
+         "game player position alias is dispatch-handled");
+  expect(playerPositionDispatch.spec.commandId ==
+             iggy3d::ProductAutomationCommandId::GameplayPlayerPosition,
+         "game player position dispatch id is stable");
+  expect(playerPositionDispatch.canonicalActionLabel ==
+             "gameplay.player_position",
+         "game player position dispatch label is canonical");
 
   const iggy3d::ProductAutomationCommandDispatchResult menuDispatch =
       iggy3d::resolveProductAutomationCommandDispatch(

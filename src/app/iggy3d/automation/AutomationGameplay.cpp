@@ -2,6 +2,7 @@
 
 #include <array>
 #include <algorithm>
+#include <cmath>
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
@@ -12,6 +13,7 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
+#include "runtime/world/WorldState.hpp"
 #include "runtime/session/Session.hpp"
 
 namespace iggy3d {
@@ -69,6 +71,81 @@ bool applyGameplayActionState(ProductAutomationGameplayContext& context,
          context.window.gameplayTickAdvanced;
 }
 
+bool applyGameplayJumpActionState(ProductAutomationGameplayContext& context,
+                                  const ActionState& actions) {
+  InputRoutingContext routingContext;
+  routingContext.owners.gameplay = true;
+  const InputRoutingResult routed =
+      routeInputAction(routingContext, InputAction::PlayerJump);
+  context.window.inputOwner = routed.owner;
+  context.window.lastInputAction = routed.action;
+  context.window.lastInputAccepted = routed.accepted;
+  context.window.gameplayInputSuppressed = routed.gameplaySuppressed;
+  // branch-gate: BG-1010
+  if (!routed.accepted) {
+    return false;
+  }
+
+  applyProductGameplayActions(
+      *context.activeSession, actions, context.window, "automation",
+      productActiveRoomCollisionSurfaces(context.window.activeRoomCollision));
+  return context.window.gameplayJumpRequested &&
+         (context.window.gameplayJumpAccepted ||
+          context.window.gameplayTraversalConsumed);
+}
+
+bool parseGameplayPosition(std::string_view value, Vec3& out) {
+  const std::vector<std::string_view> fields = splitProductAutomationCsv(value);
+  // branch-gate: BG-1010
+  if (fields.size() != 3U) {
+    return false;
+  }
+  Vec3 parsed;
+  // branch-gate: BG-1010
+  if (!parseProductAutomationFloat(fields[0], parsed.x) ||
+      !parseProductAutomationFloat(fields[1], parsed.y) ||
+      !parseProductAutomationFloat(fields[2], parsed.z)) {
+    return false;
+  }
+  // branch-gate: BG-1010
+  if (!std::isfinite(parsed.x) || !std::isfinite(parsed.y) ||
+      !std::isfinite(parsed.z)) {
+    return false;
+  }
+  out = parsed;
+  return true;
+}
+
+bool applyAutomationGameplayPlayerPosition(
+    ProductAutomationGameplayContext& context,
+    const Vec3& position) {
+  // branch-gate: BG-1010
+  if (!gameplayAutomationReady(context)) {
+    return false;
+  }
+
+  SessionState& state = context.activeSession->mutableStateForOwnedSystems();
+  const EntityId actor = state.players.actorForSlot(0);
+  const EntityState* entity = state.world.findById(actor);
+  // branch-gate: BG-1010
+  if (entity == nullptr) {
+    return false;
+  }
+
+  Transform3 transform = entity->transform;
+  transform.position = position;
+  const WorldMutationResult mutation = state.world.updateTransform(actor, transform);
+  // branch-gate: BG-1010
+  if (mutation.status != WorldStatus::Ok) {
+    return false;
+  }
+
+  state.currentStateHash = computeStateHash(state);
+  context.window.runtimeStateHash = context.activeSession->stateHash();
+  context.window.playerPositionChanged = true;
+  return true;
+}
+
 bool applyAutomationGameplayAxis(ProductAutomationGameplayContext& context,
                                  InputAction action,
                                  float value) {
@@ -92,6 +169,17 @@ bool applyAutomationGameplayButton(ProductAutomationGameplayContext& context,
   ActionState actions;
   recordAction(actions, action, true, true, false, 1.0F);
   return applyGameplayActionState(context, action, actions);
+}
+
+bool applyAutomationGameplayJump(ProductAutomationGameplayContext& context) {
+  // branch-gate: BG-1010
+  if (!gameplayAutomationReady(context)) {
+    return false;
+  }
+
+  ActionState actions;
+  recordAction(actions, InputAction::PlayerJump, true, true, false, 1.0F);
+  return applyGameplayJumpActionState(context, actions);
 }
 
 bool parseControllerInputToken(std::string_view token,
@@ -178,6 +266,24 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
     return passGameplayAutomation(true);
   }
 
+  // branch-gate: BG-1010
+  if (automationSpec.commandId ==
+      ProductAutomationCommandId::GameplayPlayerPosition) {
+    Vec3 position;
+    // branch-gate: BG-1010
+    if (!parseGameplayPosition(value, position)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failGameplayAutomation();
+    }
+    const bool positioned =
+        applyAutomationGameplayPlayerPosition(context, position);
+    markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                          context.currentOwner(),
+                          // branch-gate: BG-1010
+                          positioned ? "applied" : "failed");
+    return passGameplayAutomation(positioned);
+  }
+
   // branch-gate: BG-1062
   if (automationSpec.commandId == ProductAutomationCommandId::ControllerInput) {
     const bool processed = applyControllerInputSequence(context, value);
@@ -248,6 +354,28 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
                           // branch-gate: BG-1010
                           executed ? "applied" : "failed");
     return passGameplayAutomation(executed);
+  }
+
+  // branch-gate: BG-1010
+  if (automationSpec.commandId == ProductAutomationCommandId::GameplayJump) {
+    bool boolValue = false;
+    // branch-gate: BG-1010
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failGameplayAutomation();
+    }
+    // branch-gate: BG-1010
+    if (!boolValue) {
+      markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                            context.currentOwner(), "ignored");
+      return passGameplayAutomation(true);
+    }
+    const bool jumped = applyAutomationGameplayJump(context);
+    markAutomationApplied(context.window, command, inputActionName(InputAction::PlayerJump),
+                          context.currentOwner(),
+                          // branch-gate: BG-1010
+                          jumped ? "applied" : "failed");
+    return passGameplayAutomation(jumped);
   }
 
   return unhandledGameplayAutomation();

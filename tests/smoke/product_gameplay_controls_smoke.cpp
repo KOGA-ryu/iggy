@@ -1,3 +1,5 @@
+#include "AutomationSmokeSupport.hpp"
+
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -110,7 +112,7 @@ int main() {
 
   std::map<std::string, std::string> fields;
   const bool receiptValid = parseReceiptFile(output, fields);
-  const bool passed =
+  const bool scriptedControlsPassed =
       exitCode == 0 && receiptValid && hasField(fields, "app", "iggy3d") &&
       hasField(fields, "frontend_screen", "gameplay") &&
       hasField(fields, "scripted_gameplay_smoke", "true") &&
@@ -204,9 +206,100 @@ int main() {
       positiveIntegerField(fields, "debug_item_count") &&
       hasField(fields, "result", "pass");
 
+  const std::filesystem::path clamberSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("gameplay_controls_movement_gym_clamber");
+  iggy3d::smoke::ReceiptFields clamberFields;
+  int clamberExitCode = 77;
+  const bool clamberControlsPassed =
+      appBuilt && std::filesystem::exists(binary) &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "gameplay_controls_movement_gym_clamber",
+          "frontend.select=new_world\n"
+          "frontend.execute=true\n"
+          "world.dungeon_id=movement_gym\n"
+          "world.create=true\n"
+          "gameplay.player_position=11,0,2.2\n"
+          "gameplay.jump=true\n",
+          iggy3d::smoke::saveRootArg(clamberSaveRoot),
+          clamberFields,
+          clamberExitCode) &&
+      clamberExitCode == 0 && iggy3d::smoke::productReceipt(clamberFields) &&
+      iggy3d::smoke::automationApplied(clamberFields) &&
+      iggy3d::smoke::hasField(clamberFields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(clamberFields, "window_created", "false") &&
+      iggy3d::smoke::hasField(clamberFields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(clamberFields, "active_room_id",
+                              "movement_gym") &&
+      iggy3d::smoke::hasField(clamberFields, "automation_control_last_key",
+                              "gameplay.jump") &&
+      iggy3d::smoke::hasField(clamberFields, "automation_control_last_action",
+                              "game.jump") &&
+      iggy3d::smoke::hasField(clamberFields, "automation_control_last_owner",
+                              "gameplay") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_input_source",
+                              "automation") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_input_used", "true") &&
+      iggy3d::smoke::hasField(clamberFields, "input_owner", "gameplay") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_input_suppressed",
+                              "false") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_jump_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_jump_accepted",
+                              "false") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_jump_active",
+                              "false") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_jump_status",
+                              "traversal") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_jump_reason_code",
+                              "traversal_intent_applied") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_consumed",
+                              "true") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_mechanic",
+                              "clamber") &&
+      iggy3d::smoke::hasField(
+          clamberFields,
+          "gameplay_traversal_slot_id",
+          "object_clamber_ledge_r1_c11:object_clamber_ledge_r1_c11_walkable_top") &&
+      iggy3d::smoke::hasField(clamberFields,
+                              "gameplay_traversal_target_id",
+                              "object_clamber_ledge_r1_c11") &&
+      iggy3d::smoke::hasField(
+          clamberFields,
+          "gameplay_traversal_landing_surface_id",
+          "object_clamber_ledge_r1_c11_walkable_top") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_start_x",
+                              "11.000") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_start_y",
+                              "0.000") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_start_z",
+                              "2.200") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_final_x",
+                              "11.000") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_final_y",
+                              "1.700") &&
+      iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_final_z",
+                              "1.000") &&
+      iggy3d::smoke::hasField(clamberFields, "player_position_changed",
+                              "true") &&
+      iggy3d::smoke::hasField(clamberFields, "product_draw_prop_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(clamberFields, "product_draw_prop_tile_count",
+                              "4");
+
+  const bool passed = scriptedControlsPassed && clamberControlsPassed;
+
   std::cout << "smoke=product_gameplay_controls\n";
   std::cout << "receipt_valid=" << (receiptValid ? "true" : "false") << "\n";
   std::cout << "actual_exit_code=" << exitCode << "\n";
+  std::cout << "movement_gym_clamber="
+            << (clamberControlsPassed ? "true" : "false") << "\n";
+  std::cout << "movement_gym_clamber_exit_code=" << clamberExitCode << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result=" << (passed ? "pass" : (appBuilt ? "fail" : "skip")) << "\n";
   std::cout << "reason_code="
