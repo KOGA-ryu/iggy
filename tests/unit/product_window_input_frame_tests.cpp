@@ -694,7 +694,6 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
   if (!expect(session.has_value(), "map maker movement session created")) {
     return false;
   }
-  window.mapMakerActive = true;
   window.mapMakerStatus = "map_maker_enabled";
   window.mapMakerReasonCode = window.mapMakerStatus;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
@@ -732,7 +731,8 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
                 "map maker movement keeps controller fly mapping") &&
          expect(!window.gameplayInputSuppressed,
                 "map maker movement does not suppress gameplay input") &&
-         expect(window.mapMakerActive, "map maker remains active") &&
+         expect(iggy3d::productMapMakerLiveForWindow(frontend, window),
+                "map maker remains live") &&
          expect(window.viewport.creativeFlyActive,
                 "map maker movement activates creative fly") &&
          expect(window.viewport.creativeFlyStatus == "creative_fly_applied",
@@ -1793,14 +1793,14 @@ bool topLevelToggleFunnelPreservesPolicies() {
   const bool mOk =
       expect(m.handled, "top-level M handled") &&
       expect(m.accepted, "top-level M accepted in gameplay") &&
-      expect(mapMakerWindow.mapMakerActive, "top-level M enables map maker");
+      expect(iggy3d::productMapMakerLiveForWindow(mapMaker, mapMakerWindow),
+             "top-level M enables map maker");
 
   iggy3d::FrontendState pauseMapMaker = gameplayFrontend();
   pauseMapMaker.screen = iggy3d::FrontendScreen::Pause;
   pauseMapMaker.childScreen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState pauseMapWindow;
   pauseMapWindow.gameplayActive = true;
-  pauseMapWindow.mapMakerActive = true;
   pauseMapWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const iggy3d::ProductWindowTopLevelToggleResult blockedM =
       iggy3d::dispatchProductWindowTopLevelToggleAction(
@@ -1812,8 +1812,9 @@ bool topLevelToggleFunnelPreservesPolicies() {
   const bool blockedMOk =
       expect(blockedM.handled, "top-level pause M handled") &&
       expect(!blockedM.accepted, "top-level pause M rejected") &&
-      expect(!pauseMapWindow.mapMakerActive,
-             "top-level pause M clears stale map maker");
+      expect(!iggy3d::productMapMakerLiveForWindow(pauseMapMaker,
+                                                   pauseMapWindow),
+             "top-level pause M clears map maker live state");
 
   return debugOk && blockedDebugOk && tuningOk && blockedTuningOk && devOk &&
          f2Ok && mOk && blockedMOk;
@@ -2155,7 +2156,6 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
       expect(iggy3d::productInputOwnerFor(frontend, window) ==
                  iggy3d::MenuOwner::Gameplay,
              "map maker toggle owner derives as gameplay") &&
-      expect(window.mapMakerActive, "map maker active") &&
       expect(iggy3d::productMapMakerLiveForWindow(frontend, window),
              "map maker live derives from creative gameplay") &&
       expect(window.mapMakerStatus == "map_maker_enabled",
@@ -2176,7 +2176,6 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
              "map maker disable returns to player interaction mode") &&
       expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
              "map maker disable keeps gameplay owner") &&
-      expect(!window.mapMakerActive, "map maker inactive") &&
       expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
              "map maker live false in player mode") &&
       expect(window.mapMakerStatus == "map_maker_disabled",
@@ -2204,7 +2203,6 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   pause.childScreen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState blockedWindow;
   blockedWindow.gameplayActive = true;
-  blockedWindow.mapMakerActive = true;
   blockedWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
   blockedWindow.viewport.creativeFlyActive = true;
   const iggy3d::ProductMenuActionResult blocked =
@@ -2214,8 +2212,6 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   const bool blockedOk =
       expect(blocked.handled, "pause map maker toggle handled") &&
       expect(!blocked.accepted, "pause map maker toggle rejected") &&
-      expect(!blockedWindow.mapMakerActive,
-             "pause map maker toggle clears stale active state") &&
       expect(blockedWindow.interactionMode ==
                  iggy3d::ProductInteractionMode::Player,
              "pause map maker toggle returns player mode") &&
@@ -2228,11 +2224,10 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
 
   iggy3d::ProductAppWindowState staleWindow;
   staleWindow.gameplayActive = true;
-  staleWindow.mapMakerActive = true;
   staleWindow.interactionMode = iggy3d::ProductInteractionMode::Player;
   const bool staleCacheOk =
       expect(!iggy3d::productMapMakerLiveForWindow(frontend, staleWindow),
-             "stale active cache without creative mode is not live");
+             "player mode is not map maker live");
 
   return enabledOk && disabledOk && ignoredOk && blockedOk && staleCacheOk;
 }

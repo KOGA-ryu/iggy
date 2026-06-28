@@ -56,15 +56,15 @@ ProductMapMakerGridOverlay buildProductMapMakerGridOverlay(
 }
 
 ProductMapMakerCubePreview buildProductMapMakerCubePreview(
-    bool mapMakerActive,
+    bool mapMakerLive,
     Vec3 anchorWorld,
     float cameraYawDegrees,
     const ProductMapMakerGridSnapshot& grid) {
   ProductMapMakerCubePreview cube;
   // branch-gate: BG-1206
-  if (!mapMakerActive || !grid.ok) {
-    cube.status = mapMakerActive ? "map_maker_cube_missing_grid"
-                                 : "map_maker_cube_disabled";
+  if (!mapMakerLive || !grid.ok) {
+    cube.status = mapMakerLive ? "map_maker_cube_missing_grid"
+                               : "map_maker_cube_disabled";
     cube.reasonCode = cube.status;
     return cube;
   }
@@ -84,13 +84,13 @@ ProductMapMakerCubePreview buildProductMapMakerCubePreview(
 }
 
 ProductMapMakerHud buildProductMapMakerHud(
-    bool mapMakerActive,
+    bool mapMakerLive,
     const ProductMapMakerGridSnapshot& grid,
     const ProductMapMakerCubePreview& cube) {
   ProductMapMakerHud hud;
-  hud.visible = mapMakerActive;
+  hud.visible = mapMakerLive;
   // branch-gate: BG-1205
-  if (!mapMakerActive) {
+  if (!mapMakerLive) {
     return hud;
   }
 

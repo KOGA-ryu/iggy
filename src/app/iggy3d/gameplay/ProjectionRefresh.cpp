@@ -392,7 +392,6 @@ ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
     const SceneProjectionResult& scene,
     bool mapMakerLive) {
   const bool active = window.gameplayActive && mapMakerLive;
-  window.mapMakerActive = active;
   // branch-gate: BG-1205
   window.mapMakerStatus = active ? "map_maker_active" : "map_maker_inactive";
   window.mapMakerReasonCode = window.mapMakerStatus;
@@ -559,7 +558,6 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.creativeFlyStatus = "creative_fly_not_requested";
     window.viewport.creativeFlyReasonCode = window.viewport.creativeFlyStatus;
     window.viewport.creativeFlySpeedMetersPerSecond = 0.0F;
-    window.mapMakerActive = false;
     window.mapMakerStatus = "map_maker_inactive";
     window.mapMakerReasonCode = window.mapMakerStatus;
     window.mapMakerGridVisible = false;

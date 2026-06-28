@@ -1,4 +1,5 @@
 #include "app/iggy3d/menu/Transitions.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 
 #include <iostream>
 
@@ -13,7 +14,6 @@ bool expect(bool condition, const char* message) {
 }
 
 void activateMapMaker(iggy3d::ProductAppWindowState& window) {
-  window.mapMakerActive = true;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.viewport.creativeFlyActive = true;
   window.viewport.creativeFlyStatus = "creative_fly_applied";
@@ -154,7 +154,6 @@ int main() {
   ok &= expectReceiptField(gameplayReceipt, "dev_tools_open", "false",
                            "gameplay receipt dev tools closed");
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.mapMakerActive = false;
   const iggy3d::RenderReceipt creativeGameplayReceipt =
       receiptFor(frontend, settings, window);
   ok &= expectReceiptField(creativeGameplayReceipt, "map_maker_active", "true",
@@ -174,7 +173,8 @@ int main() {
   ok &= expect(window.gameplayInputSuppressed, "pause suppresses gameplay input");
   ok &= expect(window.productTransitionSessionPreserved,
                "pause keeps session active");
-  ok &= expect(!window.mapMakerActive, "pause clears map maker active");
+  ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
+               "pause clears map maker live state");
   ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                "pause returns interaction mode to player");
   ok &= expect(!window.viewport.creativeFlyActive,
@@ -197,7 +197,6 @@ int main() {
                            "pause receipt derives pause open");
   ok &= expectReceiptField(pauseReceipt, "dev_tools_open", "false",
                            "pause receipt derives dev tools closed");
-  window.mapMakerActive = true;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const iggy3d::RenderReceipt stalePauseMapMakerReceipt =
       receiptFor(frontend, settings, window);
@@ -215,7 +214,8 @@ int main() {
                "settings opens input tab");
   ok &= expect(window.inputOwner == iggy3d::MenuOwner::Settings,
                "settings owns input");
-  ok &= expect(!window.mapMakerActive, "settings keeps map maker cleared");
+  ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
+               "settings keeps map maker inactive");
   ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                "settings keeps player interaction mode");
   ok &= expect(!window.gameplayMovementTuningVisible,
@@ -234,7 +234,6 @@ int main() {
                            "settings receipt derives pause closed");
   ok &= expectReceiptField(settingsReceipt, "dev_tools_open", "false",
                            "settings receipt derives dev tools closed");
-  window.mapMakerActive = true;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const iggy3d::RenderReceipt staleSettingsMapMakerReceipt =
       receiptFor(frontend, settings, window);
@@ -247,7 +246,8 @@ int main() {
                "settings back returns to pause");
   ok &= expect(frontend.selectedAction == iggy3d::FrontendAction::Settings,
                "pause remembers settings row");
-  ok &= expect(!window.mapMakerActive, "settings back keeps map maker cleared");
+  ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
+               "settings back keeps map maker inactive");
   ok &= expect(!window.gameplayMovementTuningVisible,
                "settings back keeps movement tuning cleared");
 
@@ -260,7 +260,8 @@ int main() {
   ok &= expect(window.inputOwner == iggy3d::MenuOwner::DevTools,
                "dev tools own input");
   ok &= expect(window.gameplayInputSuppressed, "dev tools suppress gameplay input");
-  ok &= expect(!window.mapMakerActive, "dev tools keeps map maker cleared");
+  ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
+               "dev tools keeps map maker inactive");
   ok &= expect(!window.gameplayMovementTuningVisible,
                "dev tools clears movement tuning");
   const iggy3d::RenderReceipt devToolsReceipt =
@@ -277,7 +278,6 @@ int main() {
                            "dev tools receipt derives pause closed");
   ok &= expectReceiptField(devToolsReceipt, "dev_tools_open", "true",
                            "dev tools receipt derives dev tools open");
-  window.mapMakerActive = true;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const iggy3d::RenderReceipt staleDevToolsMapMakerReceipt =
       receiptFor(frontend, settings, window);
@@ -293,14 +293,14 @@ int main() {
                "resume restores gameplay owner");
   ok &= expect(window.productTransitionReturnedToGameplay,
                "resume transition status");
-  ok &= expect(!window.mapMakerActive, "resume does not restore map maker");
+  ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
+               "resume does not restore map maker");
   ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                "resume stays player mode");
   ok &= expect(!window.gameplayMovementTuningVisible,
                "resume does not restore movement tuning");
   window.roomEditing.ready = true;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.mapMakerActive = true;
   window.inputOwner = iggy3d::MenuOwner::Gameplay;
   window.gameplayInputSuppressed = false;
   const iggy3d::RenderReceipt editorReceipt =
@@ -332,7 +332,8 @@ int main() {
                "return to title restores starter owner");
   ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                "return to title resets interaction mode");
-  ok &= expect(!window.mapMakerActive, "return to title clears map maker active");
+  ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
+               "return to title clears map maker live state");
   ok &= expect(!window.viewport.creativeFlyActive,
                "return to title clears creative fly active");
   ok &= expect(!window.gameplayMovementTuningVisible,

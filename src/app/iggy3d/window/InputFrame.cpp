@@ -353,7 +353,6 @@ ProductCreativeFlyResult applyProductWindowCreativeFlyActions(
   window.viewport.creativeFlyStatus = fly.reasonCode;
   window.viewport.creativeFlyReasonCode = fly.reasonCode;
   window.viewport.creativeFlySpeedMetersPerSecond = fly.speedMetersPerSecond;
-  window.mapMakerActive = true;
   window.mapMakerStatus = "map_maker_active";
   window.mapMakerReasonCode = window.mapMakerStatus;
   // branch-gate: BG-1205

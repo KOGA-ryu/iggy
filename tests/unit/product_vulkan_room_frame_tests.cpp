@@ -1,6 +1,7 @@
 #include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
@@ -1201,7 +1202,6 @@ bool roomEditorSurfaceShowsEditorHudOnly() {
   seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
   window.roomEditing.ready = true;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.mapMakerActive = true;
   window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
   window.roomEditorCursor.wallDirection = iggy3d::ProductRoomEditorDirection::Right;
   window.roomEditorCursor.gridX = 2;
@@ -1236,7 +1236,7 @@ bool roomEditorSurfaceShowsEditorHudOnly() {
                 "editor creative mode hides map maker grid") &&
          expect(!projection.mapMakerHud.visible,
                 "editor creative mode hides map maker HUD") &&
-         expect(!window.mapMakerActive,
+         expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
                 "editor creative mode does not report map maker live") &&
          expect(projection.physicsHud.lineCount == 4U,
                 "editor hidden physics HUD keeps line count") &&
@@ -1261,14 +1261,21 @@ bool gameplayMapMakerFrameCarriesGridOverlay() {
     return false;
   }
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.mapMakerActive = false;
   window.viewport.creativeFlyAnchorValid = true;
   window.viewport.creativeFlyPositionMeters = {0.0F, 2.0F, 0.0F};
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Gameplay;
+  frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
 
   const iggy3d::ProductGameplayProjectionFrame projection =
       iggy3d::buildProductGameplayProjectionFrame(
           iggy3d::ProductGameplayProjectionFrameRequest{
-              session, window, false, false, iggy3d::ProductRendererRequest::Vulkan});
+              session,
+              window,
+              false,
+              false,
+              iggy3d::ProductRendererRequest::Vulkan,
+              frontend});
   iggy3d::applyGameplayProjectionMetrics(window,
                                          projection.scenePtr(),
                                          projection.debugPtr(),
@@ -1331,7 +1338,8 @@ bool gameplayMapMakerFrameCarriesGridOverlay() {
                 "map maker render bridge cube visible") &&
          expect(projection.renderBridge.mapMakerCubePreviewCount == 1U,
                 "map maker render bridge cube count") &&
-         expect(window.mapMakerActive, "map maker window active") &&
+         expect(iggy3d::productMapMakerLiveForWindow(frontend, window),
+                "map maker window live") &&
          expect(window.mapMakerGridVisible, "map maker window grid visible") &&
          expect(window.mapMakerGridLayerCount == projection.mapMakerGrid.layerCount,
                 "map maker window layer count") &&

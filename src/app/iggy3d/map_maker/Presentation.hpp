@@ -48,12 +48,12 @@ struct ProductMapMakerHud {
 ProductMapMakerGridOverlay buildProductMapMakerGridOverlay(
     const ProductMapMakerGridSnapshot& snapshot);
 ProductMapMakerCubePreview buildProductMapMakerCubePreview(
-    bool mapMakerActive,
+    bool mapMakerLive,
     Vec3 anchorWorld,
     float cameraYawDegrees,
     const ProductMapMakerGridSnapshot& grid);
 ProductMapMakerHud buildProductMapMakerHud(
-    bool mapMakerActive,
+    bool mapMakerLive,
     const ProductMapMakerGridSnapshot& grid,
     const ProductMapMakerCubePreview& cube = {});
 

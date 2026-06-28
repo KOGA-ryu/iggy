@@ -22,7 +22,6 @@ void setTransition(ProductAppWindowState& window,
 }  // namespace
 
 void clearProductMapMakerMode(ProductAppWindowState& window) {
-  window.mapMakerActive = false;
   window.interactionMode = ProductInteractionMode::Player;
   window.viewport.creativeFlyActive = false;
   window.viewport.creativeFlyStatus = "creative_fly_not_requested";

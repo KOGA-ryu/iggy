@@ -35,9 +35,6 @@ struct ProductAppWindowState {
   std::string gamepadName = "unavailable";
   std::string gamepadMapping = "unavailable";
   ProductInteractionMode interactionMode = ProductInteractionMode::Player;
-  // Deprecated compatibility cache. Use productMapMakerLiveForWindow() for
-  // proof/render/input policy decisions.
-  bool mapMakerActive = false;
   std::string mapMakerStatus = "map_maker_inactive";
   std::string mapMakerReasonCode = "map_maker_inactive";
   bool mapMakerGridVisible = false;
