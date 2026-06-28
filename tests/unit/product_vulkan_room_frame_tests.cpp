@@ -52,6 +52,24 @@ std::size_t countDebugKind(const iggy3d::DebugProjectionResult& debug,
   return count;
 }
 
+struct VulkanUiCounts {
+  std::uint64_t rectCount = 0;
+  std::uint64_t textGlyphCount = 0;
+  std::uint64_t textGlyphQuadCount = 0;
+  std::uint64_t primitiveCount = 0;
+  bool visible = false;
+};
+
+VulkanUiCounts uiCountsFor(const iggy3d::FrameInput& frame) {
+  return VulkanUiCounts{
+      frame.ui.rectCount,
+      frame.ui.textGlyphCount,
+      frame.ui.textGlyphQuadCount,
+      frame.ui.primitiveCount,
+      frame.ui.visible,
+  };
+}
+
 iggy3d::PhysicsAabbCollider debugCollider(iggy3d::PhysicsBodyId bodyId,
                                           iggy3d::Vec3 center,
                                           iggy3d::Vec3 halfExtents) {
@@ -165,6 +183,16 @@ bool productGameplayBuildsFirstPersonRoomFrame() {
       iggy3d::makeProductVulkanFrame(frame.scene, frame.debug, 9U, 1280U, 720U,
                                      window.viewport.cameraYawDegrees,
                                      window.viewport.cameraPitchDegrees);
+  iggy3d::ProductVulkanGameplayFrame gameplayFrame =
+      iggy3d::buildProductVulkanGameplayFrame(
+          frame,
+          10U,
+          1280U,
+          720U,
+          window.viewport.cameraYawDegrees,
+          window.viewport.cameraPitchDegrees);
+  const iggy3d::FrameInput& gameplayFrameInput =
+      iggy3d::refreshProductVulkanGameplayFrameInput(gameplayFrame);
   const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
       iggy3d::vulkan::buildRoomMeshCpuGeometry(renderFrame.projections.scene->room);
   const iggy3d::Mat4 expectedClipFromWorld =
@@ -188,6 +216,18 @@ bool productGameplayBuildsFirstPersonRoomFrame() {
   ok = expect(iggy3d::validateFrameInput(renderFrame) ==
                   iggy3d::FrameInputStatus::Valid,
               "frame input validates") &&
+       ok;
+  ok = expect(iggy3d::validateFrameInput(gameplayFrameInput) ==
+                  iggy3d::FrameInputStatus::Valid,
+              "gameplay frame with HUD UI validates") &&
+       ok;
+  ok = expect(gameplayFrameInput.ui.visible, "baseline Vulkan HUD UI visible") &&
+       ok;
+  ok = expect(gameplayFrameInput.ui.rectCount >= 4U,
+              "baseline Vulkan HUD panels visible") &&
+       ok;
+  ok = expect(gameplayFrameInput.ui.textGlyphCount > 0U,
+              "baseline Vulkan HUD text visible") &&
        ok;
   ok = expect(iggy3d::isFinite(renderFrame.camera.worldEye), "finite eye") && ok;
   ok = expect(iggy3d::isFinite(renderFrame.camera.worldForward), "finite forward") &&
@@ -833,23 +873,26 @@ bool vulkanGameplayFrameCarriesPositionHudUiOverlay() {
   const iggy3d::FrameInput& hiddenFrame =
       iggy3d::refreshProductVulkanGameplayFrameInput(hidden);
 
+  const VulkanUiCounts visibleUi = uiCountsFor(visibleFrame);
+  const VulkanUiCounts hiddenUi = uiCountsFor(hiddenFrame);
+
   return expect(visibleProjection.positionHud.visible,
                 "position hud projection visible") &&
-         expect(visibleFrame.ui.visible, "position hud ui visible") &&
-         expect(visibleFrame.ui.rectCount == 1U,
-                "position hud ui background rect") &&
-         expect(visibleFrame.ui.textGlyphCount > 0U,
+         expect(visibleUi.visible, "position hud ui visible") &&
+         expect(visibleUi.rectCount > hiddenUi.rectCount,
+                "position hud adds background rect") &&
+         expect(visibleUi.textGlyphCount > hiddenUi.textGlyphCount,
                 "position hud ui text glyph count") &&
-         expect(visibleFrame.ui.textGlyphQuadCount > visibleFrame.ui.textGlyphCount,
+         expect(visibleUi.textGlyphQuadCount > visibleUi.textGlyphCount,
                 "position hud ui glyph quads") &&
-         expect(visibleFrame.ui.primitiveCount > visibleFrame.ui.rectCount,
+         expect(visibleUi.primitiveCount > visibleUi.rectCount,
                 "position hud ui primitive count") &&
          expect(!hiddenProjection.positionHud.visible,
                 "hidden position hud projection hidden") &&
-         expect(!hiddenFrame.ui.visible, "hidden position hud has no vulkan ui") &&
-         expect(hiddenFrame.ui.rectCount == 0U, "hidden position hud no rects") &&
-         expect(hiddenFrame.ui.textGlyphQuadCount == 0U,
-                "hidden position hud no glyph quads");
+         expect(hiddenUi.visible, "baseline HUD UI remains visible") &&
+         expect(hiddenUi.rectCount > 0U, "baseline HUD rects remain visible") &&
+         expect(hiddenUi.textGlyphQuadCount > 0U,
+                "baseline HUD glyph quads remain visible");
 }
 
 bool vulkanGameplayFrameCarriesMovementTuningUiOverlay() {
@@ -894,22 +937,20 @@ bool vulkanGameplayFrameCarriesMovementTuningUiOverlay() {
           window.gameplayMovementTuningVisible);
   const iggy3d::FrameInput& visibleFrame =
       iggy3d::refreshProductVulkanGameplayFrameInput(visible);
+  const VulkanUiCounts hiddenUi = uiCountsFor(hiddenFrame);
+  const VulkanUiCounts visibleUi = uiCountsFor(visibleFrame);
 
-  return expect(!hiddenFrame.ui.visible,
-                "hidden movement tuning has no vulkan ui") &&
-         expect(hiddenFrame.ui.rectCount == 0U,
-                "hidden movement tuning no rects") &&
-         expect(hiddenFrame.ui.textGlyphQuadCount == 0U,
-                "hidden movement tuning no glyph quads") &&
-         expect(visibleFrame.ui.visible,
+  return expect(hiddenUi.visible,
+                "baseline HUD UI visible without movement tuning") &&
+         expect(visibleUi.visible,
                 "movement tuning vulkan ui visible") &&
-         expect(visibleFrame.ui.rectCount >= 2U,
-                "movement tuning background and selected row rects") &&
-         expect(visibleFrame.ui.textGlyphCount > 0U,
+         expect(visibleUi.rectCount >= hiddenUi.rectCount + 2U,
+                "movement tuning adds background and selected row rects") &&
+         expect(visibleUi.textGlyphCount > hiddenUi.textGlyphCount,
                 "movement tuning text glyph count") &&
-         expect(visibleFrame.ui.textGlyphQuadCount > visibleFrame.ui.textGlyphCount,
+         expect(visibleUi.textGlyphQuadCount > visibleUi.textGlyphCount,
                 "movement tuning glyph quads") &&
-         expect(visibleFrame.ui.primitiveCount > visibleFrame.ui.rectCount,
+         expect(visibleUi.primitiveCount > visibleUi.rectCount,
                 "movement tuning primitive count includes text");
 }
 
@@ -956,23 +997,89 @@ bool vulkanGameplayFrameCarriesDevToolsOverlay() {
           iggy3d::FrontendDevToolsCategory::Movement);
   const iggy3d::FrameInput& visibleFrame =
       iggy3d::refreshProductVulkanGameplayFrameInput(visible);
+  const VulkanUiCounts hiddenUi = uiCountsFor(hiddenFrame);
+  const VulkanUiCounts visibleUi = uiCountsFor(visibleFrame);
 
-  return expect(!hiddenFrame.ui.visible,
-                "hidden dev tools has no vulkan ui") &&
-         expect(hiddenFrame.ui.rectCount == 0U,
-                "hidden dev tools no rects") &&
-         expect(hiddenFrame.ui.textGlyphQuadCount == 0U,
-                "hidden dev tools no glyph quads") &&
-         expect(visibleFrame.ui.visible,
+  return expect(hiddenUi.visible,
+                "baseline HUD UI visible without dev tools") &&
+         expect(visibleUi.visible,
                 "dev tools vulkan ui visible") &&
-         expect(visibleFrame.ui.rectCount >= 2U,
-                "dev tools panel and selected row rects") &&
-         expect(visibleFrame.ui.textGlyphCount > 0U,
+         expect(visibleUi.rectCount >= hiddenUi.rectCount + 2U,
+                "dev tools adds panel and selected row rects") &&
+         expect(visibleUi.textGlyphCount > hiddenUi.textGlyphCount,
                 "dev tools text glyph count") &&
-         expect(visibleFrame.ui.textGlyphQuadCount > visibleFrame.ui.textGlyphCount,
+         expect(visibleUi.textGlyphQuadCount > visibleUi.textGlyphCount,
                 "dev tools glyph quads") &&
-         expect(visibleFrame.ui.primitiveCount > visibleFrame.ui.rectCount,
+         expect(visibleUi.primitiveCount > visibleUi.rectCount,
                 "dev tools primitive count includes text");
+}
+
+bool vulkanGameplayFrameCarriesDebugHudUiParity() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "debug HUD parity session created")) {
+    return false;
+  }
+  seedMovementDebugFacts(window);
+  seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
+
+  const iggy3d::ProductGameplayProjectionFrame hiddenProjection =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session, window, true, false, iggy3d::ProductRendererRequest::Vulkan});
+  iggy3d::ProductVulkanGameplayFrame hidden =
+      iggy3d::buildProductVulkanGameplayFrame(
+          hiddenProjection,
+          18U,
+          1280U,
+          720U,
+          window.viewport.cameraYawDegrees,
+          window.viewport.cameraPitchDegrees);
+  const VulkanUiCounts hiddenUi =
+      uiCountsFor(iggy3d::refreshProductVulkanGameplayFrameInput(hidden));
+
+  const iggy3d::ProductGameplayProjectionFrame visibleProjection =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session, window, true, true, iggy3d::ProductRendererRequest::Vulkan});
+  iggy3d::ProductVulkanGameplayFrame visible =
+      iggy3d::buildProductVulkanGameplayFrame(
+          visibleProjection,
+          19U,
+          1280U,
+          720U,
+          window.viewport.cameraYawDegrees,
+          window.viewport.cameraPitchDegrees);
+  const VulkanUiCounts visibleUi =
+      uiCountsFor(iggy3d::refreshProductVulkanGameplayFrameInput(visible));
+
+  return expect(!hiddenProjection.movementHud.visible,
+                "debug off hides movement HUD model") &&
+         expect(!hiddenProjection.npcBehaviorHud.visible,
+                "debug off hides NPC HUD model") &&
+         expect(!hiddenProjection.physicsHud.visible,
+                "debug off hides physics HUD model") &&
+         expect(visibleProjection.movementHud.visible,
+                "debug on movement HUD model visible") &&
+         expect(!visibleProjection.movementHud.lines.empty(),
+                "debug on movement HUD has lines") &&
+         expect(visibleProjection.npcBehaviorHud.visible,
+                "debug on NPC HUD model visible") &&
+         expect(!visibleProjection.npcBehaviorHud.lines.empty(),
+                "debug on NPC HUD has lines") &&
+         expect(visibleProjection.physicsHud.visible,
+                "debug on physics HUD model visible") &&
+         expect(!visibleProjection.physicsHud.lines.empty(),
+                "debug on physics HUD has lines") &&
+         expect(visibleProjection.positionHud.visible,
+                "debug on position HUD still visible") &&
+         expect(visibleUi.visible, "debug HUD Vulkan UI visible") &&
+         expect(visibleUi.rectCount >= hiddenUi.rectCount + 4U,
+                "debug HUDs add movement NPC physics and position panels") &&
+         expect(visibleUi.textGlyphCount > hiddenUi.textGlyphCount,
+                "debug HUDs add Vulkan text") &&
+         expect(visibleUi.primitiveCount > hiddenUi.primitiveCount,
+                "debug HUDs add Vulkan primitives");
 }
 
 bool gameplayMapMakerFrameCarriesGridOverlay() {
@@ -1082,6 +1189,7 @@ int main() {
                   productPhysicsDebugGeometryRequiresDebugOverlayGate() &&
                   productReceiptCarriesFirstPersonRoomPathProof() &&
                   vulkanGameplayFrameCarriesPositionHudUiOverlay() &&
+                  vulkanGameplayFrameCarriesDebugHudUiParity() &&
                   vulkanGameplayFrameCarriesMovementTuningUiOverlay() &&
                   vulkanGameplayFrameCarriesDevToolsOverlay() &&
                   gameplayMapMakerFrameCarriesGridOverlay();

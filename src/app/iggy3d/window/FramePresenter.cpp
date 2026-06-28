@@ -143,6 +143,241 @@ void appendGameplayHudText(ProductVulkanGameplayFrame& frame,
                               layout.quads.end());
 }
 
+void appendHudPanel(ProductVulkanGameplayFrame& frame,
+                    float virtualX,
+                    float virtualY,
+                    float virtualWidth,
+                    float virtualHeight,
+                    std::uint32_t viewportWidth,
+                    std::uint32_t viewportHeight,
+                    float r = 14.0F / 255.0F,
+                    float g = 21.0F / 255.0F,
+                    float b = 23.0F / 255.0F,
+                    float a = 1.0F) {
+  frame.rects.push_back(RenderUiRect{
+      scaledHudOffset(virtualX, viewportWidth, kVirtualViewportWidth),
+      scaledHudOffset(virtualY, viewportHeight, kVirtualViewportHeight),
+      scaledHudExtent(virtualWidth, viewportWidth, kVirtualViewportWidth),
+      scaledHudExtent(virtualHeight, viewportHeight, kVirtualViewportHeight),
+      r,
+      g,
+      b,
+      a,
+  });
+}
+
+void appendInteractionModeHudUi(ProductVulkanGameplayFrame& frame,
+                                const InteractionModeHud& hud,
+                                std::uint32_t viewportWidth,
+                                std::uint32_t viewportHeight) {
+  // branch-gate: BG-1065
+  if (!hud.visible || viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+  appendHudPanel(frame, 862.0F, 238.0F, 328.0F, 34.0F, viewportWidth,
+                 viewportHeight, 18.0F / 255.0F, 24.0F / 255.0F,
+                 27.0F / 255.0F);
+  appendGameplayHudText(frame, "MODE", 878.0F, 248.0F, viewportWidth,
+                        viewportHeight);
+  appendGameplayHudText(frame, hud.label, 970.0F, 248.0F, viewportWidth,
+                        viewportHeight);
+}
+
+void appendGameplayFeedbackUi(ProductVulkanGameplayFrame& frame,
+                              const GameplayFeedback& feedback,
+                              std::uint32_t viewportWidth,
+                              std::uint32_t viewportHeight) {
+  // branch-gate: BG-1030
+  if (!feedback.visible || viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+  appendHudPanel(frame, 860.0F, 410.0F, 330.0F, 150.0F, viewportWidth,
+                 viewportHeight, 18.0F / 255.0F, 24.0F / 255.0F,
+                 27.0F / 255.0F);
+  appendGameplayHudText(frame, "ACTION FEEDBACK", 878.0F, 430.0F,
+                        viewportWidth, viewportHeight);
+  float virtualY = 462.0F;
+  for (const GameplayFeedbackLine& line : feedback.lines) {
+    // branch-gate: BG-1030
+    if (!line.visible) {
+      continue;
+    }
+    appendGameplayHudText(frame, line.label, 878.0F, virtualY, viewportWidth,
+                          viewportHeight);
+    appendGameplayHudText(frame, line.value, 1010.0F, virtualY, viewportWidth,
+                          viewportHeight);
+    virtualY += 24.0F;
+  }
+}
+
+std::string_view vulkanTopDownMapTitle(const TopDownMapOverlay& overlay) {
+  // branch-gate: BG-1071
+  if (overlay.purpose == "minimap") {
+    return "MINIMAP";
+  }
+  // branch-gate: BG-1071
+  if (overlay.purpose == "editor_overview") {
+    return "EDITOR OVERVIEW";
+  }
+  // branch-gate: BG-1071
+  if (overlay.purpose == "hidden") {
+    return "TOP-DOWN MAP";
+  }
+  return "TOP-DOWN DEBUG FALLBACK";
+}
+
+void appendTopDownMapOverlayUi(ProductVulkanGameplayFrame& frame,
+                               const TopDownMapOverlay& overlay,
+                               std::uint32_t viewportWidth,
+                               std::uint32_t viewportHeight) {
+  // branch-gate: BG-1071
+  if (!overlay.visible || viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+  // branch-gate: BG-1071
+  if (overlay.size == "compact") {
+    appendHudPanel(frame, 874.0F, 74.0F, 318.0F, 190.0F, viewportWidth,
+                   viewportHeight, 18.0F / 255.0F, 24.0F / 255.0F,
+                   27.0F / 255.0F);
+    appendHudPanel(frame, 890.0F, 116.0F, 270.0F, 126.0F, viewportWidth,
+                   viewportHeight, 32.0F / 255.0F, 48.0F / 255.0F,
+                   48.0F / 255.0F);
+    appendGameplayHudText(frame, vulkanTopDownMapTitle(overlay), 890.0F,
+                          86.0F, viewportWidth, viewportHeight);
+    appendGameplayHudText(frame, "ITEMS", 902.0F, 132.0F, viewportWidth,
+                          viewportHeight);
+    appendGameplayHudText(frame, std::to_string(overlay.itemCount), 996.0F,
+                          132.0F, viewportWidth, viewportHeight);
+    return;
+  }
+  appendHudPanel(frame, 80.0F, 130.0F, 1120.0F, 480.0F, viewportWidth,
+                 viewportHeight, 32.0F / 255.0F, 48.0F / 255.0F,
+                 48.0F / 255.0F);
+  appendGameplayHudText(frame, vulkanTopDownMapTitle(overlay), 100.0F, 150.0F,
+                        viewportWidth, viewportHeight);
+  appendGameplayHudText(frame, "ITEMS", 100.0F, 184.0F, viewportWidth,
+                        viewportHeight);
+  appendGameplayHudText(frame, std::to_string(overlay.itemCount), 194.0F,
+                        184.0F, viewportWidth, viewportHeight);
+}
+
+void appendMovementDebugHudUi(ProductVulkanGameplayFrame& frame,
+                              const MovementDebugHud& hud,
+                              std::uint32_t viewportWidth,
+                              std::uint32_t viewportHeight) {
+  // branch-gate: BG-1030
+  if (!hud.visible || viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+  appendHudPanel(frame, 92.0F, 146.0F, 500.0F, 190.0F, viewportWidth,
+                 viewportHeight);
+  appendGameplayHudText(frame, "MOVEMENT DEBUG", 108.0F, 164.0F,
+                        viewportWidth, viewportHeight);
+  float virtualY = 198.0F;
+  for (const MovementDebugHudLine& line : hud.lines) {
+    // branch-gate: BG-1030
+    if (!line.visible) {
+      continue;
+    }
+    appendGameplayHudText(frame, line.label, 108.0F, virtualY, viewportWidth,
+                          viewportHeight);
+    appendGameplayHudText(frame, line.value, 226.0F, virtualY, viewportWidth,
+                          viewportHeight);
+    virtualY += 22.0F;
+  }
+}
+
+void appendNpcBehaviorDebugHudUi(ProductVulkanGameplayFrame& frame,
+                                 const NpcBehaviorDebugHud& hud,
+                                 std::uint32_t viewportWidth,
+                                 std::uint32_t viewportHeight) {
+  // branch-gate: BG-1030
+  if (!hud.visible || viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+  appendHudPanel(frame, 700.0F, 146.0F, 490.0F, 220.0F, viewportWidth,
+                 viewportHeight);
+  appendGameplayHudText(frame, "NPC DEBUG", 716.0F, 164.0F, viewportWidth,
+                        viewportHeight);
+  float virtualY = 198.0F;
+  std::uint64_t drawn = 0U;
+  for (const NpcBehaviorDebugHudLine& line : hud.lines) {
+    // branch-gate: BG-1030
+    if (!line.visible) {
+      continue;
+    }
+    // branch-gate: BG-1030
+    if (drawn >= 8U) {
+      break;
+    }
+    appendGameplayHudText(frame, line.text, 716.0F, virtualY, viewportWidth,
+                          viewportHeight);
+    virtualY += 20.0F;
+    ++drawn;
+  }
+}
+
+void appendPhysicsDebugHudUi(ProductVulkanGameplayFrame& frame,
+                             const PhysicsDebugHud& hud,
+                             std::uint32_t viewportWidth,
+                             std::uint32_t viewportHeight) {
+  // branch-gate: BG-1110
+  if (!hud.visible || viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+  appendHudPanel(frame, 92.0F, 360.0F, 720.0F, 150.0F, viewportWidth,
+                 viewportHeight);
+  appendGameplayHudText(frame, "PHYSICS DEBUG", 108.0F, 378.0F,
+                        viewportWidth, viewportHeight);
+  float virtualY = 408.0F;
+  std::uint64_t drawn = 0U;
+  for (const PhysicsDebugHudLine& line : hud.lines) {
+    // branch-gate: BG-1110
+    if (!line.visible) {
+      continue;
+    }
+    // branch-gate: BG-1110
+    if (drawn >= 5U) {
+      break;
+    }
+    appendGameplayHudText(frame, line.text, 108.0F, virtualY, viewportWidth,
+                          viewportHeight);
+    virtualY += 20.0F;
+    ++drawn;
+  }
+}
+
+void appendRoomEditorHudUi(ProductVulkanGameplayFrame& frame,
+                           const ProductRoomEditorHud& hud,
+                           std::uint32_t viewportWidth,
+                           std::uint32_t viewportHeight) {
+  // branch-gate: BG-1035
+  if (!hud.visible || viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+  appendHudPanel(frame, 88.0F, 388.0F, 560.0F, 180.0F, viewportWidth,
+                 viewportHeight, 18.0F / 255.0F, 24.0F / 255.0F,
+                 27.0F / 255.0F);
+  appendGameplayHudText(frame, "ROOM EDITOR", 106.0F, 408.0F, viewportWidth,
+                        viewportHeight);
+  float virtualY = 440.0F;
+  std::uint64_t drawn = 0U;
+  for (const ProductRoomEditorHudLine& line : hud.lines) {
+    // branch-gate: BG-1035
+    if (!line.visible) {
+      continue;
+    }
+    // branch-gate: BG-1035
+    if (drawn >= 6U) {
+      break;
+    }
+    appendGameplayHudText(frame, line.text, 106.0F, virtualY, viewportWidth,
+                          viewportHeight);
+    virtualY += 20.0F;
+    ++drawn;
+  }
+}
+
 void appendPositionHudUi(ProductVulkanGameplayFrame& frame,
                          const PositionHud& hud,
                          std::uint32_t viewportWidth,
@@ -657,8 +892,24 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
                                        projectionFrame.cameraAnchorOverrideMeters);
   appendMapMakerCubePreviewUi(frame, projectionFrame.viewportFrame, viewportWidth,
                               viewportHeight);
+  appendTopDownMapOverlayUi(frame, projectionFrame.topDownMapOverlay,
+                            viewportWidth, viewportHeight);
   appendMapMakerHudUi(frame, projectionFrame.mapMakerHud, viewportWidth,
                       viewportHeight);
+  appendInteractionModeHudUi(frame,
+                             projectionFrame.interactionModeHud,
+                             viewportWidth,
+                             viewportHeight);
+  appendMovementDebugHudUi(frame, projectionFrame.movementHud, viewportWidth,
+                           viewportHeight);
+  appendNpcBehaviorDebugHudUi(frame,
+                              projectionFrame.npcBehaviorHud,
+                              viewportWidth,
+                              viewportHeight);
+  appendPhysicsDebugHudUi(frame, projectionFrame.physicsHud, viewportWidth,
+                          viewportHeight);
+  appendRoomEditorHudUi(frame, projectionFrame.roomEditorHud, viewportWidth,
+                        viewportHeight);
   appendPositionHudUi(frame, projectionFrame.positionHud, viewportWidth, viewportHeight);
   appendMovementTuningHudUi(frame,
                             movementTuning,
@@ -671,6 +922,8 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
                           devToolsCategory,
                           viewportWidth,
                           viewportHeight);
+  appendGameplayFeedbackUi(frame, projectionFrame.feedback, viewportWidth,
+                           viewportHeight);
   return frame;
 }
 
