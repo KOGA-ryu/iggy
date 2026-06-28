@@ -201,3 +201,4 @@ BG-1208	src/app/iggy3d/gameplay/MovementTuning.hpp	product gameplay movement tun
 BG-1209	src/app/iggy3d/menu/ActionHandlers.cpp	product settings movement tuning adjustment direction policy	codex	2026-06-28
 BG-1210	src/app/iggy3d/view/OpeningMenuView.cpp	product gameplay movement tuning slider draw policy	codex	2026-06-28
 BG-1211	src/app/iggy3d/view/OpeningMenuView.cpp	product gameplay settings tuning panel selection policy	codex	2026-06-28
+BG-1212	src/app/iggy3d/window/InputFrame.cpp	product gameplay direct movement tuning HUD and input focus policy	codex	2026-06-28

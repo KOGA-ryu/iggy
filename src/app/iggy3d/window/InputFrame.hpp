@@ -81,6 +81,13 @@ struct ProductWindowEditorMousePickPreviewResult {
   std::string reasonCode = "room_editor_mouse_pick_preview_not_requested";
 };
 
+struct ProductMovementTuningInputResult {
+  bool handled = false;
+  bool accepted = false;
+  std::string status = "movement_tuning_input_not_handled";
+  std::string reasonCode = "movement_tuning_input_not_handled";
+};
+
 void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                             ProductAppWindowState& window);
 MouseClick normalizeProductWindowMenuClick(MouseClick click,
@@ -97,6 +104,10 @@ void recordProductWindowFunctionKeyKeyboardState(
     KeyboardInputState& keyboard,
     const SdlWindowEventState& eventState);
 bool cancelProductRoomEditorPendingPreviewFromBack(ProductAppWindowState& window);
+ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action);
 ProductControllerSampleInputResult processProductControllerActionSample(
     ProductControllerSampleInputContext context,
     GamepadControllerActionSample sample);

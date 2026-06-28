@@ -116,12 +116,16 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
   const bool tabDown = keyDown(keys, SDL_SCANCODE_TAB);
   const bool devToggleDown = keyDown(keys, SDL_SCANCODE_F1) || keyDown(keys, SDL_SCANCODE_F2);
   const bool debugOverlayDown = keyDown(keys, SDL_SCANCODE_F3);
+  const bool movementTuningToggleDown = keyDown(keys, SDL_SCANCODE_F4);
   const bool mapMakerToggleDown = keyDown(keys, SDL_SCANCODE_M);
 
   InputAction action = InputAction::None;
   // branch-gate: BG-1037
   if (debugOverlayDown && !state.debugOverlayWasDown) {
     action = actionForInput(NeutralInput::KeyF3);
+  // branch-gate: BG-1212
+  } else if (movementTuningToggleDown && !state.movementTuningToggleWasDown) {
+    action = actionForInput(NeutralInput::KeyF4);
   } else if (devToggleDown && !state.devToggleWasDown) {  // branch-gate: BG-1037
     action = actionForInput(keyDown(keys, SDL_SCANCODE_F2) ? NeutralInput::KeyF2
                                                             : NeutralInput::KeyF1);
@@ -153,6 +157,7 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
   state.tabWasDown = tabDown;
   state.devToggleWasDown = devToggleDown;
   state.debugOverlayWasDown = debugOverlayDown;
+  state.movementTuningToggleWasDown = movementTuningToggleDown;
   state.mapMakerToggleWasDown = mapMakerToggleDown;
   return action;
 #else

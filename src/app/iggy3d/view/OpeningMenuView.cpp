@@ -34,6 +34,8 @@ namespace {
 
 using GlyphRows = std::array<std::uint8_t, 7>;
 
+std::string fixedFloat(float value, int precision);
+
 bool usesPauseMenuRows(const FrontendState& frontend) {
   // branch-gate: BG-1029
   return frontend.screen == FrontendScreen::Pause ||
@@ -586,6 +588,50 @@ void drawPositionHud(SDL_Renderer& renderer,
     }
     setColor(renderer, 226, 230, 211);
     drawText(renderer, line.text, 100.0F, y, 1.0F);
+    y += 16.0F;
+    ++drawn;
+  }
+}
+
+void drawGameplayMovementTuningHud(
+    SDL_Renderer& renderer,
+    const ProductGameplayMovementTuning& tuning,
+    ProductGameplayMovementTuningField selectedField,
+    bool visible) {
+  // branch-gate: BG-1212
+  if (!visible) {
+    return;
+  }
+
+  setColor(renderer, 14, 21, 23);
+  fillRect(renderer, 820.0F, 410.0F, 384.0F, 168.0F);
+  setColor(renderer, 245, 214, 96);
+  drawText(renderer, "MOVEMENT TUNING", 838.0F, 426.0F, 2.0F);
+  setColor(renderer, 166, 184, 177);
+  drawText(renderer, "F4 HIDE  ENTER/UP/DOWN FIELD", 838.0F, 456.0F, 1.0F);
+  drawText(renderer, "LEFT/RIGHT VALUE", 838.0F, 472.0F, 1.0F);
+
+  float y = 498.0F;
+  std::uint64_t drawn = 0U;
+  for (const ProductGameplayMovementTuningFieldDescriptor& descriptor :
+       kProductGameplayMovementTuningFields) {
+    // branch-gate: BG-1212
+    if (drawn >= 7U) {
+      break;
+    }
+    const bool selected = descriptor.field == selectedField;
+    // branch-gate: BG-1212
+    setColor(renderer,
+             selected ? 245 : 166,  // branch-gate: BG-1212
+             selected ? 214 : 184,  // branch-gate: BG-1212
+             selected ? 96 : 177);  // branch-gate: BG-1212
+    const float value = tuning.*(descriptor.value);
+    const std::string row =
+        std::string{selected ? "> " : "  "} +  // branch-gate: BG-1212
+        std::string{descriptor.label} + " " +
+        fixedFloat(value,
+                   descriptor.step < 0.05F ? 2 : 1);  // branch-gate: BG-1212
+    drawText(renderer, row, 838.0F, y, 1.0F);
     y += 16.0F;
     ++drawn;
   }
@@ -1164,6 +1210,9 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
                        const PhysicsDebugHud* physicsHud,
                        const PositionHud* positionHud,
                        const ProductRoomEditorHud* roomEditorHud,
+                       const ProductGameplayMovementTuning& movementTuning,
+                       ProductGameplayMovementTuningField movementTuningField,
+                       bool movementTuningVisible,
                        std::size_t sceneItemCount,
                        const DebugProjectionResult* debug,
                        float cameraYawDegrees,
@@ -1191,6 +1240,10 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   drawPhysicsDebugHud(renderer, physicsHud);
   drawRoomEditorHud(renderer, roomEditorHud);
   drawPositionHud(renderer, positionHud);
+  drawGameplayMovementTuningHud(renderer,
+                                movementTuning,
+                                movementTuningField,
+                                movementTuningVisible);
   drawGameplayFeedback(renderer, feedback);
   drawText(renderer, "RUNTIME OWNS GAME STATE", 88.0F, 630.0F, 2.0F);
   drawText(renderer, "STATE HASH", 480.0F, 630.0F, 2.0F);
@@ -1363,6 +1416,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          FrontendSettingsTab selectedSettingsTab,
                                          const ProductGameplayMovementTuning& movementTuning,
                                          ProductGameplayMovementTuningField movementTuningField,
+                                         bool movementTuningVisible,
                                          const WorldSetupDraft& worldSetupDraft,
                                          bool dungeonDraftEditMode,
                                          bool dungeonDraftModified,
@@ -1394,7 +1448,9 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
     state.cameraHeadingDrawn =
         drawGameplayPanel(renderer, runtimeStateHash, frame, feedback,
                           interactionModeHud, topDownMapOverlay, movementHud, npcHud,
-                          physicsHud, positionHud, roomEditorHud, sceneItemCount, debug,
+                          physicsHud, positionHud, roomEditorHud,
+                          movementTuning, movementTuningField, movementTuningVisible,
+                          sceneItemCount, debug,
                           cameraYawDegrees, cameraPitchDegrees);
     SDL_RenderPresent(&renderer);
     state.textDrawn = true;

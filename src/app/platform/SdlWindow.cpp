@@ -124,6 +124,7 @@ void SdlWindow::pollEvents() {
   eventState_.f1Pressed = false;
   eventState_.f2Pressed = false;
   eventState_.f3Pressed = false;
+  eventState_.f4Pressed = false;
 
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
@@ -151,6 +152,8 @@ void SdlWindow::pollEvents() {
                               event.key.scancode == SDL_SCANCODE_F2;
       eventState_.f3Pressed = eventState_.f3Pressed ||
                               event.key.scancode == SDL_SCANCODE_F3;
+      eventState_.f4Pressed = eventState_.f4Pressed ||
+                              event.key.scancode == SDL_SCANCODE_F4;
     }
   }
   refreshExtents();

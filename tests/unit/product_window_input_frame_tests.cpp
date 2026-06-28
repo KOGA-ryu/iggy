@@ -989,6 +989,8 @@ bool sdlFunctionKeyEventsMapToSystemActions() {
   f2.f2Pressed = true;
   iggy3d::SdlWindowEventState f3;
   f3.f3Pressed = true;
+  iggy3d::SdlWindowEventState f4;
+  f4.f4Pressed = true;
   iggy3d::SdlWindowEventState f1f3;
   f1f3.f1Pressed = true;
   f1f3.f3Pressed = true;
@@ -1002,12 +1004,15 @@ bool sdlFunctionKeyEventsMapToSystemActions() {
          expect(iggy3d::productWindowFunctionKeyAction(f2) ==
                     iggy3d::InputAction::DevToggle,
                 "F2 event maps to dev toggle") &&
-         expect(iggy3d::productWindowFunctionKeyAction(f3) ==
-                    iggy3d::InputAction::DevDebugOverlay,
-                "F3 event maps to debug overlay") &&
-         expect(iggy3d::productWindowFunctionKeyAction(f1f3) ==
-                    iggy3d::InputAction::DevDebugOverlay,
-                "F3 overlay event wins over dev panel toggle");
+	         expect(iggy3d::productWindowFunctionKeyAction(f3) ==
+	                    iggy3d::InputAction::DevDebugOverlay,
+	                "F3 event maps to debug overlay") &&
+	         expect(iggy3d::productWindowFunctionKeyAction(f4) ==
+	                    iggy3d::InputAction::MovementTuningToggle,
+	                "F4 event maps to movement tuning") &&
+	         expect(iggy3d::productWindowFunctionKeyAction(f1f3) ==
+	                    iggy3d::InputAction::DevDebugOverlay,
+	                "F3 overlay event wins over dev panel toggle");
 }
 
 bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
@@ -1017,27 +1022,102 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
   const bool noneOk =
       expect(!keyboard.devToggleWasDown, "no F-key leaves dev toggle unconsumed") &&
       expect(!keyboard.debugOverlayWasDown,
-             "no F-key leaves debug overlay unconsumed");
+	             "no F-key leaves debug overlay unconsumed") &&
+      expect(!keyboard.movementTuningToggleWasDown,
+             "no F-key leaves movement tuning unconsumed");
 
   iggy3d::SdlWindowEventState f2;
   f2.f2Pressed = true;
   iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, f2);
-  const bool f2Ok =
-      expect(keyboard.devToggleWasDown, "F2 event consumes dev toggle state") &&
-      expect(!keyboard.debugOverlayWasDown,
-             "F2 event does not consume debug overlay state");
+	  const bool f2Ok =
+	      expect(keyboard.devToggleWasDown, "F2 event consumes dev toggle state") &&
+	      expect(!keyboard.debugOverlayWasDown,
+	             "F2 event does not consume debug overlay state") &&
+      expect(!keyboard.movementTuningToggleWasDown,
+             "F2 event does not consume movement tuning state");
 
   keyboard = {};
   iggy3d::SdlWindowEventState f3;
   f3.f3Pressed = true;
   iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, f3);
-  const bool f3Ok =
-      expect(!keyboard.devToggleWasDown,
-             "F3 event does not consume dev toggle state") &&
-      expect(keyboard.debugOverlayWasDown,
-             "F3 event consumes debug overlay state");
+	  const bool f3Ok =
+	      expect(!keyboard.devToggleWasDown,
+	             "F3 event does not consume dev toggle state") &&
+	      expect(keyboard.debugOverlayWasDown,
+	             "F3 event consumes debug overlay state") &&
+      expect(!keyboard.movementTuningToggleWasDown,
+             "F3 event does not consume movement tuning state");
 
-  return noneOk && f2Ok && f3Ok;
+  keyboard = {};
+  iggy3d::SdlWindowEventState f4;
+  f4.f4Pressed = true;
+  iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, f4);
+  const bool f4Ok =
+      expect(!keyboard.devToggleWasDown,
+             "F4 event does not consume dev toggle state") &&
+      expect(!keyboard.debugOverlayWasDown,
+             "F4 event does not consume debug overlay state") &&
+      expect(keyboard.movementTuningToggleWasDown,
+             "F4 event consumes movement tuning state");
+
+	  return noneOk && f2Ok && f3Ok && f4Ok;
+}
+
+bool movementTuningGameplayInputIsLiveAndFocused() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  const float originalWalk = window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+
+  const iggy3d::ProductMovementTuningInputResult shown =
+      iggy3d::applyProductWindowMovementTuningInput(
+          frontend, window, iggy3d::InputAction::MovementTuningToggle);
+  const bool showOk =
+      expect(shown.handled, "movement tuning toggle handled") &&
+      expect(shown.accepted, "movement tuning toggle accepted") &&
+      expect(window.gameplayMovementTuningVisible,
+             "movement tuning visible after F4") &&
+      expect(window.gameplayMovementTuningStatus == "movement_tuning_visible",
+             "movement tuning visible status");
+
+  const iggy3d::ProductMovementTuningInputResult increased =
+      iggy3d::applyProductWindowMovementTuningInput(
+          frontend, window, iggy3d::InputAction::MenuRight);
+  const bool increaseOk =
+      expect(increased.handled, "movement tuning right handled") &&
+      expect(increased.accepted, "movement tuning right accepted") &&
+      expect(window.gameplayMovementTuning.walkSpeedMetersPerSecond > originalWalk,
+             "movement tuning right increases walk");
+
+  const iggy3d::ProductMovementTuningInputResult previous =
+      iggy3d::applyProductWindowMovementTuningInput(
+          frontend, window, iggy3d::InputAction::MenuUp);
+  const bool previousOk =
+      expect(previous.handled, "movement tuning up handled") &&
+      expect(previous.accepted, "movement tuning up accepted") &&
+      expect(window.gameplayMovementTuningSelectedField ==
+                 iggy3d::ProductGameplayMovementTuningField::DashCooldown,
+             "movement tuning up wraps to previous field");
+
+  const iggy3d::ProductMovementTuningInputResult next =
+      iggy3d::applyProductWindowMovementTuningInput(
+          frontend, window, iggy3d::InputAction::MenuDown);
+  const bool nextOk =
+      expect(next.handled, "movement tuning down handled") &&
+      expect(next.accepted, "movement tuning down accepted") &&
+      expect(window.gameplayMovementTuningSelectedField ==
+                 iggy3d::ProductGameplayMovementTuningField::WalkSpeed,
+             "movement tuning down returns to walk field");
+
+  const iggy3d::ProductMovementTuningInputResult hidden =
+      iggy3d::applyProductWindowMovementTuningInput(
+          frontend, window, iggy3d::InputAction::MovementTuningToggle);
+
+  return showOk && increaseOk && previousOk && nextOk &&
+         expect(hidden.handled, "movement tuning hide handled") &&
+         expect(hidden.accepted, "movement tuning hide accepted") &&
+         expect(!window.gameplayMovementTuningVisible,
+                "movement tuning hidden after second F4");
 }
 
 bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
@@ -1167,6 +1247,7 @@ int main() {
       debugOverlayActionTogglesRuntimeOverlaySetting() &&
       sdlFunctionKeyEventsMapToSystemActions() &&
       sdlFunctionKeyEventsMarkKeyboardStateConsumed() &&
+      movementTuningGameplayInputIsLiveAndFocused() &&
       mapMakerToggleUsesGameplayOnlyCreativeMode() &&
       gameplaySettingsAdjustMovementTuningLive();
   std::cout << "product_window_input_frame_tests="

@@ -24,6 +24,7 @@ enum class NeutralInput : std::uint8_t {
   KeyF1,
   KeyF2,
   KeyF3,
+  KeyF4,
   KeyM,
   KeyE,
   KeyR,

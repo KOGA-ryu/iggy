@@ -5,6 +5,7 @@
 #include "app/iggy3d/view/CameraController.hpp"
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/gameplay/Controller.hpp"
+#include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/map_maker/CreativeFly.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
@@ -337,6 +338,80 @@ bool cancelProductRoomEditorPendingPreviewFromBack(ProductAppWindowState& window
   return cancelled.ok;
 }
 
+ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action) {
+  ProductMovementTuningInputResult result;
+  // branch-gate: BG-1212
+  if (action == InputAction::MovementTuningToggle) {
+    result.handled = true;
+    // branch-gate: BG-1212
+    if (frontend.screen != FrontendScreen::Gameplay || !window.gameplayActive) {
+      result.status = "movement_tuning_gameplay_inactive";
+      result.reasonCode = result.status;
+      window.gameplayMovementTuningStatus = result.status;
+      window.gameplayMovementTuningReasonCode = result.reasonCode;
+      frontend.status = result.status;
+      return result;
+    }
+
+    window.gameplayMovementTuningVisible = !window.gameplayMovementTuningVisible;
+    result.accepted = true;
+    result.status = window.gameplayMovementTuningVisible ? "movement_tuning_visible"
+                                                         : "movement_tuning_hidden";
+    result.reasonCode = result.status;
+    window.gameplayMovementTuningStatus = result.status;
+    window.gameplayMovementTuningReasonCode = result.reasonCode;
+    frontend.status = result.status;
+    return result;
+  }
+
+  // branch-gate: BG-1212
+  if (frontend.screen != FrontendScreen::Gameplay ||
+      !window.gameplayMovementTuningVisible) {
+    return result;
+  }
+
+  // branch-gate: BG-1212
+  if (action == InputAction::MenuConfirm || action == InputAction::MenuDown) {
+    window.gameplayMovementTuningSelectedField =
+        nextProductGameplayMovementTuningField(
+            window.gameplayMovementTuningSelectedField);
+    result.handled = true;
+    result.accepted = true;
+    result.status = "movement_tuning_field_selected";
+  } else if (action == InputAction::MenuUp) {  // branch-gate: BG-1212
+    window.gameplayMovementTuningSelectedField =
+        previousProductGameplayMovementTuningField(
+            window.gameplayMovementTuningSelectedField);
+    result.handled = true;
+    result.accepted = true;
+    result.status = "movement_tuning_field_selected";
+  // branch-gate: BG-1212
+  } else if (action == InputAction::MenuLeft ||
+             action == InputAction::MenuRight) {
+    const int direction =
+        action == InputAction::MenuLeft ? -1 : 1;  // branch-gate: BG-1212
+    (void)adjustProductGameplayMovementTuning(
+        window.gameplayMovementTuning,
+        window.gameplayMovementTuningSelectedField,
+        direction);
+    result.handled = true;
+    result.accepted = true;
+    result.status = "movement_tuning_adjusted";
+  }
+
+  // branch-gate: BG-1212
+  if (result.handled) {
+    result.reasonCode = result.status;
+    window.gameplayMovementTuningStatus = result.status;
+    window.gameplayMovementTuningReasonCode = result.reasonCode;
+    frontend.status = result.status;
+  }
+  return result;
+}
+
 ProductControllerSampleInputResult processProductControllerActionSample(
     ProductControllerSampleInputContext context,
     GamepadControllerActionSample sample) {
@@ -454,6 +529,20 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   // branch-gate: BG-1194
   if (keyboardMenuAction == InputAction::None) {
     keyboardMenuAction = pollKeyboardMenuAction(context.inputFrame.keyboard);
+  }
+  const ProductMovementTuningInputResult tuningInput =
+      applyProductWindowMovementTuningInput(context.frontend,
+                                            context.window,
+                                            keyboardMenuAction);
+  // branch-gate: BG-1212
+  if (tuningInput.handled) {
+    recordAction(actionState,
+                 keyboardMenuAction,
+                 true,
+                 tuningInput.accepted,
+                 false,
+                 1.0F);
+    keyboardMenuAction = InputAction::None;
   }
   routeProductWindowMenuInput(keyboardMenuAction, actionState, menuContext);
   // branch-gate: BG-1029
@@ -580,7 +669,10 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
           gamepadControllerSample, controllerModeChordRequested,
           gameplayActions);
     } else {
-      pollKeyboardGameplayActions(context.inputFrame.keyboard, gameplayActions);
+      // branch-gate: BG-1212
+      if (!context.window.gameplayMovementTuningVisible) {
+        pollKeyboardGameplayActions(context.inputFrame.keyboard, gameplayActions);
+      }
       recordProductWindowControllerActions(
           context.frontend, context.window, context.inputFrame.controllerAction,
           gamepadControllerSample, controllerModeChordRequested,
@@ -601,6 +693,10 @@ InputAction productWindowFunctionKeyAction(const SdlWindowEventState& eventState
   if (eventState.f3Pressed) {
     return InputAction::DevDebugOverlay;
   }
+  // branch-gate: BG-1212
+  if (eventState.f4Pressed) {
+    return InputAction::MovementTuningToggle;
+  }
   // branch-gate: BG-1194
   if (eventState.f1Pressed || eventState.f2Pressed) {
     return InputAction::DevToggle;
@@ -618,6 +714,10 @@ void recordProductWindowFunctionKeyKeyboardState(
   // branch-gate: BG-1194
   if (eventState.f3Pressed) {
     keyboard.debugOverlayWasDown = true;
+  }
+  // branch-gate: BG-1212
+  if (eventState.f4Pressed) {
+    keyboard.movementTuningToggleWasDown = true;
   }
 }
 

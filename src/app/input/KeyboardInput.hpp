@@ -21,6 +21,7 @@ struct KeyboardInputState {
   bool tabWasDown = false;
   bool devToggleWasDown = false;
   bool debugOverlayWasDown = false;
+  bool movementTuningToggleWasDown = false;
   bool mapMakerToggleWasDown = false;
   std::array<bool, kKeyboardAsciiRoomPaintGlyphCount> asciiPaintWasDown{};
   bool jumpWasDown = false;

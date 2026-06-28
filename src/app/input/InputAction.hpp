@@ -21,6 +21,7 @@ enum class InputAction : std::uint8_t {
   SystemDevTools,
   SystemHardQuit,
   MapMakerToggle,
+  MovementTuningToggle,
 
   PlayerMoveX,
   PlayerMoveY,

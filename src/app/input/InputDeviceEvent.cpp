@@ -38,6 +38,8 @@ std::string_view neutralInputName(NeutralInput input) {
       return "key.f2";
     case NeutralInput::KeyF3:
       return "key.f3";
+    case NeutralInput::KeyF4:
+      return "key.f4";
     case NeutralInput::KeyM:
       return "key.m";
     case NeutralInput::KeyE:

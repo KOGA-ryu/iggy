@@ -345,6 +345,7 @@ struct ProductAppWindowState {
       productGameplayMovementTuning();
   ProductGameplayMovementTuningField gameplayMovementTuningSelectedField =
       ProductGameplayMovementTuningField::WalkSpeed;
+  bool gameplayMovementTuningVisible = false;
   std::string gameplayMovementTuningStatus = "movement_tuning_ready";
   std::string gameplayMovementTuningReasonCode = "movement_tuning_ready";
   bool gameplayJumpRequested = false;

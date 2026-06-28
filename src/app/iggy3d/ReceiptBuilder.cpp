@@ -138,6 +138,9 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "gameplay_movement_tuning_reason_code",
                      window.gameplayMovementTuningReasonCode);
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_visible",
+                     window.gameplayMovementTuningVisible);
   appendReceiptField(
       receipt,
       "gameplay_movement_tuning_selected_field",

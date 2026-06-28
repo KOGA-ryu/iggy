@@ -384,6 +384,7 @@ ProductRoomEditorActionResult applyProductRoomEditorAction(
     case InputAction::SystemDevTools:
     case InputAction::SystemHardQuit:
     case InputAction::MapMakerToggle:
+    case InputAction::MovementTuningToggle:
     case InputAction::PlayerMoveX:
     case InputAction::PlayerMoveY:
     case InputAction::PlayerLookX:
