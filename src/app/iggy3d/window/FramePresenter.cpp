@@ -7,6 +7,7 @@
 #include <sstream>
 #include <string>
 
+#include "app/frontend/DevToolsMenu.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "render/FrameInput.hpp"
@@ -268,6 +269,98 @@ void appendMovementTuningHudUi(
   }
 }
 
+void appendDevToolsOverlayUi(ProductVulkanGameplayFrame& frame,
+                             bool visible,
+                             FrontendDevToolsCategory selectedCategory,
+                             std::uint32_t viewportWidth,
+                             std::uint32_t viewportHeight) {
+  // branch-gate: BG-1214
+  if (!visible || viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+
+  frame.rects.push_back(RenderUiRect{
+      scaledHudOffset(414.0F, viewportWidth, kVirtualViewportWidth),
+      scaledHudOffset(100.0F, viewportHeight, kVirtualViewportHeight),
+      scaledHudExtent(760.0F, viewportWidth, kVirtualViewportWidth),
+      scaledHudExtent(438.0F, viewportHeight, kVirtualViewportHeight),
+      14.0F / 255.0F,
+      21.0F / 255.0F,
+      23.0F / 255.0F,
+      1.0F,
+  });
+  appendGameplayHudText(frame,
+                        "DEV TOOLS",
+                        450.0F,
+                        128.0F,
+                        viewportWidth,
+                        viewportHeight);
+  appendGameplayHudText(frame,
+                        "F1/F2 CLOSE  UP/DOWN CATEGORY",
+                        452.0F,
+                        185.0F,
+                        viewportWidth,
+                        viewportHeight);
+
+  float virtualY = 230.0F;
+  for (const FrontendDevToolsCategory category : devToolsCategoryOrder()) {
+    const bool selected = category == selectedCategory;
+    // branch-gate: BG-1214
+    if (selected) {
+      frame.rects.push_back(RenderUiRect{
+          scaledHudOffset(444.0F, viewportWidth, kVirtualViewportWidth),
+          scaledHudOffset(virtualY - 6.0F, viewportHeight, kVirtualViewportHeight),
+          scaledHudExtent(320.0F, viewportWidth, kVirtualViewportWidth),
+          scaledHudExtent(26.0F, viewportHeight, kVirtualViewportHeight),
+          63.0F / 255.0F,
+          71.0F / 255.0F,
+          58.0F / 255.0F,
+          1.0F,
+      });
+    }
+    std::string row = selected ? "> " : "  ";  // branch-gate: BG-1214
+    row += devToolsCategoryLabel(category);
+    appendGameplayHudText(frame,
+                          row,
+                          458.0F,
+                          virtualY,
+                          viewportWidth,
+                          viewportHeight);
+    virtualY += 34.0F;
+  }
+
+  appendGameplayHudText(frame,
+                        "READOUTS",
+                        850.0F,
+                        230.0F,
+                        viewportWidth,
+                        viewportHeight);
+  appendGameplayHudText(frame,
+                        "RUNTIME STATE",
+                        850.0F,
+                        272.0F,
+                        viewportWidth,
+                        viewportHeight);
+  appendGameplayHudText(frame,
+                        "INPUT OWNER",
+                        850.0F,
+                        304.0F,
+                        viewportWidth,
+                        viewportHeight);
+  appendGameplayHudText(frame,
+                        "RENDERER STATUS",
+                        850.0F,
+                        336.0F,
+                        viewportWidth,
+                        viewportHeight);
+  appendGameplayHudText(frame,
+                        "BACK",
+                        850.0F,
+                        394.0F,
+                        viewportWidth,
+                        viewportHeight);
+}
+
 void appendMapMakerCubePreviewUi(ProductVulkanGameplayFrame& frame,
                                   const ProductViewportFrame& viewportFrame,
                                   std::uint32_t viewportWidth,
@@ -398,7 +491,10 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
           request.window.viewport.cameraPitchDegrees,
           request.window.gameplayMovementTuning,
           request.window.gameplayMovementTuningSelectedField,
-          request.window.gameplayMovementTuningVisible);
+          request.window.gameplayMovementTuningVisible,
+          request.frontend.screen == FrontendScreen::DevOverlay &&
+              request.frontend.devToolsOpen,
+          request.frontend.devToolsCategory);
       const RenderSubmitResult submit =
           request.renderer.vulkanRenderer.submitFrame(
               refreshProductVulkanGameplayFrameInput(renderFrame));
@@ -550,7 +646,9 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
     float cameraPitchDegrees,
     const ProductGameplayMovementTuning& movementTuning,
     ProductGameplayMovementTuningField movementTuningField,
-    bool movementTuningVisible) {
+    bool movementTuningVisible,
+    bool devToolsOverlayVisible,
+    FrontendDevToolsCategory devToolsCategory) {
   ProductVulkanGameplayFrame frame;
   frame.frame = makeProductVulkanFrame(projectionFrame.scene, projectionFrame.debug,
                                        frameIndex, viewportWidth, viewportHeight,
@@ -568,6 +666,11 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
                             movementTuningVisible,
                             viewportWidth,
                             viewportHeight);
+  appendDevToolsOverlayUi(frame,
+                          devToolsOverlayVisible,
+                          devToolsCategory,
+                          viewportWidth,
+                          viewportHeight);
   return frame;
 }
 

@@ -71,7 +71,9 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
         productGameplayMovementTuning(),
     ProductGameplayMovementTuningField movementTuningField =
         ProductGameplayMovementTuningField::WalkSpeed,
-    bool movementTuningVisible = false);
+    bool movementTuningVisible = false,
+    bool devToolsOverlayVisible = false,
+    FrontendDevToolsCategory devToolsCategory = FrontendDevToolsCategory::Session);
 const FrameInput& refreshProductVulkanGameplayFrameInput(
     ProductVulkanGameplayFrame& gameplayFrame);
 void presentProductWindowFrame(ProductWindowFramePresenterRequest request);
