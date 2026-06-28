@@ -84,6 +84,67 @@ bool pauseSettingsAndDevToolsBlockGameplay() {
   return ok;
 }
 
+bool menuAndConfirmScreensBlockGameplay() {
+  struct BlockingCase {
+    iggy3d::FrontendScreen screen;
+    iggy3d::FrontendScreen childScreen;
+    const char* name;
+  };
+  constexpr BlockingCase cases[] = {
+      {iggy3d::FrontendScreen::BootStatus,
+       iggy3d::FrontendScreen::Gameplay,
+       "boot"},
+      {iggy3d::FrontendScreen::Starter,
+       iggy3d::FrontendScreen::Gameplay,
+       "starter"},
+      {iggy3d::FrontendScreen::NewWorld,
+       iggy3d::FrontendScreen::Gameplay,
+       "new world"},
+      {iggy3d::FrontendScreen::LoadSave,
+       iggy3d::FrontendScreen::Gameplay,
+       "load save"},
+      {iggy3d::FrontendScreen::Settings,
+       iggy3d::FrontendScreen::Pause,
+       "pause settings"},
+      {iggy3d::FrontendScreen::StarterDevTools,
+       iggy3d::FrontendScreen::Gameplay,
+       "starter dev tools"},
+      {iggy3d::FrontendScreen::Pause,
+       iggy3d::FrontendScreen::Gameplay,
+       "pause"},
+      {iggy3d::FrontendScreen::DevOverlay,
+       iggy3d::FrontendScreen::Gameplay,
+       "dev overlay"},
+      {iggy3d::FrontendScreen::ExitConfirm,
+       iggy3d::FrontendScreen::Gameplay,
+       "exit confirm"},
+      {iggy3d::FrontendScreen::DeleteConfirm,
+       iggy3d::FrontendScreen::Gameplay,
+       "delete confirm"},
+  };
+
+  bool ok = true;
+  for (const BlockingCase& testCase : cases) {
+    iggy3d::FrontendState state;
+    state.screen = testCase.screen;
+    state.childScreen = testCase.childScreen;
+    state.inputOwned = false;
+    ok = expect(iggy3d::frontendBlocksGameplayInput(state), testCase.name) &&
+         ok;
+  }
+
+  iggy3d::FrontendState gameplay;
+  iggy3d::enterFrontendGameplay(gameplay, iggy3d::FrontendAction::CreateAndEnter);
+  ok = expect(!iggy3d::frontendBlocksGameplayInput(gameplay),
+              "active gameplay does not block") &&
+       ok;
+  gameplay.inputOwned = true;
+  ok = expect(iggy3d::frontendBlocksGameplayInput(gameplay),
+              "input-owned gameplay blocks") &&
+       ok;
+  return ok;
+}
+
 bool returnToTitleSuppressesGameplay() {
   iggy3d::FrontendState state;
   iggy3d::completeFrontendBoot(state, true, true);
@@ -126,6 +187,7 @@ bool stableNamesArePacketNames() {
 int main() {
   const bool ok = bootTransitionsOnlyWhenReady() && overlaysAreSeparateStates() &&
                   pauseSettingsAndDevToolsBlockGameplay() &&
+                  menuAndConfirmScreensBlockGameplay() &&
                   returnToTitleSuppressesGameplay() &&
                   stableNamesArePacketNames();
   return ok ? 0 : 1;

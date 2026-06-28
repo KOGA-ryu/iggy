@@ -604,6 +604,43 @@ bool controllerSouthJumpsInGameplayPlayerMode() {
                 "gameplay south jump airborne reason");
 }
 
+bool controllerSouthDoesNotJumpWhenFrontendBlocksGameplay() {
+  auto blockedJump = [](iggy3d::FrontendScreen screen,
+                        iggy3d::FrontendScreen childScreen,
+                        const char* label) {
+    iggy3d::FrontendState frontend = gameplayFrontend();
+    frontend.screen = screen;
+    frontend.childScreen = childScreen;
+    frontend.inputOwned = false;
+    std::optional<iggy3d::Session> session;
+    iggy3d::ProductAppWindowState window = gameplayWindow(session);
+    if (!expect(session.has_value(), label)) {
+      return false;
+    }
+    iggy3d::ProductControllerModeChordState chord;
+    iggy3d::ProductControllerActionRoutingState routing;
+
+    const iggy3d::ProductControllerSampleInputResult blocked =
+        iggy3d::processProductControllerActionSample(
+            {frontend, window, &*session, chord, routing, nullptr, "unit"},
+            iggy3d::productControllerActionSampleForControl(
+                iggy3d::ProductControllerControl::SouthButton));
+
+    return expect(blocked.processed, label) &&
+           expect(!blocked.actionApplied, label) &&
+           expect(!blocked.actionAccepted, label) &&
+           expect(!window.gameplayJumpRequested, label) &&
+           expect(!window.gameplayCommandSubmitted, label);
+  };
+
+  return blockedJump(iggy3d::FrontendScreen::Settings,
+                     iggy3d::FrontendScreen::Pause,
+                     "settings blocks controller jump") &&
+         blockedJump(iggy3d::FrontendScreen::DeleteConfirm,
+                     iggy3d::FrontendScreen::Gameplay,
+                     "delete confirm blocks controller jump");
+}
+
 bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   std::optional<iggy3d::Session> session;
@@ -1661,6 +1698,7 @@ int main() {
       backWithoutPreviewFallsThroughPolicy() &&
       controllerEastCancelsPendingPreviewWithoutMutation() &&
       controllerSouthJumpsInGameplayPlayerMode() &&
+      controllerSouthDoesNotJumpWhenFrontendBlocksGameplay() &&
       mapMakerMovementStaysGameplayOwnedAndDoesNotPause() &&
       controllerSouthJumpsFromClamberedWallTop() &&
       starterDeleteButtonOpensDeleteConfirmation() &&

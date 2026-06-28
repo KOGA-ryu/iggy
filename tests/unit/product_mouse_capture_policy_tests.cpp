@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 
+#include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "render/RenderDiagnostics.hpp"
@@ -191,6 +192,58 @@ bool policyCases() {
   return ok;
 }
 
+iggy3d::ProductMouseCapturePolicy policyForFrontend(
+    iggy3d::FrontendState frontend,
+    iggy3d::MenuOwner owner) {
+  frontend.inputOwned = false;
+  return iggy3d::buildProductMouseCapturePolicy({
+      true,
+      iggy3d::ProductInteractionMode::Player,
+      owner,
+      iggy3d::frontendBlocksGameplayInput(frontend),
+      true,
+      true,
+  });
+}
+
+bool frontendBlockedSurfacesReleaseMouseCapture() {
+  iggy3d::FrontendState settings;
+  settings.screen = iggy3d::FrontendScreen::Settings;
+  settings.childScreen = iggy3d::FrontendScreen::Pause;
+  const iggy3d::ProductMouseCapturePolicy settingsPolicy =
+      policyForFrontend(settings, iggy3d::MenuOwner::Settings);
+
+  iggy3d::FrontendState deleteConfirm;
+  deleteConfirm.screen = iggy3d::FrontendScreen::DeleteConfirm;
+  deleteConfirm.childScreen = iggy3d::FrontendScreen::Gameplay;
+  const iggy3d::ProductMouseCapturePolicy deletePolicy =
+      policyForFrontend(deleteConfirm, iggy3d::MenuOwner::Starter);
+
+  iggy3d::FrontendState exitConfirm;
+  exitConfirm.screen = iggy3d::FrontendScreen::ExitConfirm;
+  exitConfirm.childScreen = iggy3d::FrontendScreen::Gameplay;
+  const iggy3d::ProductMouseCapturePolicy exitPolicy =
+      policyForFrontend(exitConfirm, iggy3d::MenuOwner::Starter);
+
+  iggy3d::FrontendState gameplay;
+  iggy3d::enterFrontendGameplay(gameplay, iggy3d::FrontendAction::CreateAndEnter);
+  const iggy3d::ProductMouseCapturePolicy gameplayPolicy =
+      policyForFrontend(gameplay, iggy3d::MenuOwner::Gameplay);
+
+  return expect(!settingsPolicy.requested, "settings mouse capture released") &&
+         expect(settingsPolicy.reasonCode == "mouse_capture_frontend_blocked",
+                "settings mouse capture blocked reason") &&
+         expect(!deletePolicy.requested, "delete confirm mouse capture released") &&
+         expect(deletePolicy.reasonCode == "mouse_capture_frontend_blocked",
+                "delete confirm mouse capture blocked reason") &&
+         expect(!exitPolicy.requested, "exit confirm mouse capture released") &&
+         expect(exitPolicy.reasonCode == "mouse_capture_frontend_blocked",
+                "exit confirm mouse capture blocked reason") &&
+         expect(gameplayPolicy.requested, "gameplay mouse capture requested") &&
+         expect(gameplayPolicy.reasonCode == "mouse_capture_gameplay_mouselook",
+                "gameplay mouse capture reason");
+}
+
 bool receiptCarriesMouseCaptureProof() {
   iggy3d::ProductAppOptions options;
   iggy3d::ProductWorldTemplate world = iggy3d::defaultProductWorldTemplate();
@@ -232,7 +285,8 @@ bool receiptCarriesMouseCaptureProof() {
 }  // namespace
 
 int main() {
-  const bool ok = policyCases() && receiptCarriesMouseCaptureProof();
+  const bool ok = policyCases() && frontendBlockedSurfacesReleaseMouseCapture() &&
+                  receiptCarriesMouseCaptureProof();
   if (!ok) {
     return EXIT_FAILURE;
   }

@@ -215,9 +215,16 @@ void closeFrontendOverlayToGameplay(FrontendState& state) {
 }
 
 bool frontendBlocksGameplayInput(const FrontendState& state) {
-  return state.inputOwned || state.screen == FrontendScreen::Starter ||
-         state.screen == FrontendScreen::Pause || state.screen == FrontendScreen::DevOverlay ||
-         state.screen == FrontendScreen::BootStatus;
+  return state.inputOwned || state.screen == FrontendScreen::BootStatus ||
+         state.screen == FrontendScreen::Starter ||
+         state.screen == FrontendScreen::NewWorld ||
+         state.screen == FrontendScreen::LoadSave ||
+         state.screen == FrontendScreen::Settings ||
+         state.screen == FrontendScreen::StarterDevTools ||
+         state.screen == FrontendScreen::Pause ||
+         state.screen == FrontendScreen::DevOverlay ||
+         state.screen == FrontendScreen::ExitConfirm ||
+         state.screen == FrontendScreen::DeleteConfirm;
 }
 
 }  // namespace iggy3d
