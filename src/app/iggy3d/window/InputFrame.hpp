@@ -23,6 +23,8 @@ class SdlWindow;
 struct SdlWindowEventState;
 struct ProductSaveBridgeResult;
 struct WorldSetupDraft;
+struct OpeningMenuHitTestResult;
+struct ProductOpeningMenuInputContext;
 
 struct ProductWindowInputFrameState {
   KeyboardInputState keyboard;
@@ -98,6 +100,11 @@ MouseClick normalizeProductWindowMenuClick(MouseClick click,
 void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                           SdlWindow* sdlWindow = nullptr,
                                           ProductAppWindowState* window = nullptr);
+void dispatchProductOpeningMenuMouseHit(
+    const OpeningMenuHitTestResult& hit,
+    const MouseClick& click,
+    ActionState& actionState,
+    ProductOpeningMenuInputContext context);
 void processProductWindowInputFrame(ProductWindowInputFrameContext context);
 InputAction productWindowFunctionKeyAction(const SdlWindowEventState& eventState);
 void recordProductWindowFunctionKeyKeyboardState(

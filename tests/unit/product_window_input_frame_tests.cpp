@@ -18,6 +18,7 @@
 #include <iostream>
 #include <limits>
 #include <optional>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -243,6 +244,42 @@ iggy3d::ProductSaveBridgeResult compatibleSaveBridge() {
   saves.slots.slots.push_back(slot);
   saves.slots.compatibleCount = 1U;
   return saves;
+}
+
+struct MouseDispatchHarness {
+  iggy3d::FrontendState frontend = starterFrontend();
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::ProductAppOptions options;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::WorldSetupDraft draft =
+      iggy3d::makeDefaultWorldSetupDraft("mouse_dispatch_seed");
+  iggy3d::ProductAppWindowState window;
+  bool closeRequested = false;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ActionState actionState;
+  iggy3d::MouseClick click = clickAt(452.0F, 508.0F);
+
+  iggy3d::ProductOpeningMenuInputContext context() {
+    return {
+        frontend,
+        saves,
+        options,
+        settingsTab,
+        activeSession,
+        draft,
+        window,
+        closeRequested,
+        &settings,
+    };
+  }
+};
+
+iggy3d::OpeningMenuHitTestResult hitArea(iggy3d::OpeningMenuHitArea area) {
+  iggy3d::OpeningMenuHitTestResult hit;
+  hit.hit = true;
+  hit.area = area;
+  return hit;
 }
 
 bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
@@ -1009,6 +1046,157 @@ bool childPanelHitTestsExposeMenuActions() {
                 "dev tools back area");
 }
 
+bool openingMenuMouseDispatchRoutesStarterAndSettingsHits() {
+  MouseDispatchHarness starter;
+  iggy3d::OpeningMenuHitTestResult starterHit =
+      hitArea(iggy3d::OpeningMenuHitArea::StarterAction);
+  starterHit.action = iggy3d::FrontendAction::Settings;
+  iggy3d::dispatchProductOpeningMenuMouseHit(starterHit,
+                                             starter.click,
+                                             starter.actionState,
+                                             starter.context());
+  const bool starterOk =
+      expect(starter.frontend.childScreen == iggy3d::FrontendScreen::Settings,
+             "mouse starter action opens settings") &&
+      expect(starter.settingsTab == iggy3d::FrontendSettingsTab::Input,
+             "mouse starter settings tab") &&
+      expect(starter.window.lastInputAccepted,
+             "mouse starter action accepted");
+
+  MouseDispatchHarness settings;
+  settings.frontend = gameplayFrontend();
+  settings.frontend.screen = iggy3d::FrontendScreen::Settings;
+  settings.frontend.childScreen = iggy3d::FrontendScreen::Pause;
+  settings.window.gameplayActive = true;
+  settings.settingsTab = iggy3d::FrontendSettingsTab::Input;
+  iggy3d::OpeningMenuHitTestResult tabHit =
+      hitArea(iggy3d::OpeningMenuHitArea::SettingsTab);
+  tabHit.settingsTab = iggy3d::FrontendSettingsTab::Controls;
+  iggy3d::dispatchProductOpeningMenuMouseHit(tabHit,
+                                             settings.click,
+                                             settings.actionState,
+                                             settings.context());
+  const bool tabOk =
+      expect(settings.settingsTab == iggy3d::FrontendSettingsTab::Controls,
+             "mouse settings tab selected") &&
+      expect(settings.frontend.status == "settings_tab_selected",
+             "mouse settings tab status");
+
+  iggy3d::dispatchProductOpeningMenuMouseHit(
+      hitArea(iggy3d::OpeningMenuHitArea::SettingsBack),
+      settings.click,
+      settings.actionState,
+      settings.context());
+  return starterOk && tabOk &&
+         expect(settings.frontend.screen == iggy3d::FrontendScreen::Pause,
+                "mouse settings back returns pause") &&
+         expect(settings.window.inputOwner == iggy3d::MenuOwner::Pause,
+                "mouse settings back owner pause");
+}
+
+bool openingMenuMouseDispatchRoutesNewWorldNavigationRows() {
+  MouseDispatchHarness harness;
+  harness.frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
+  iggy3d::recordWorldSetupDraftState(harness.draft, harness.window);
+  const std::string initialDungeonId = harness.draft.asciiRoomId;
+
+  iggy3d::dispatchProductOpeningMenuMouseHit(
+      hitArea(iggy3d::OpeningMenuHitArea::NewWorldNextDungeon),
+      harness.click,
+      harness.actionState,
+      harness.context());
+  const bool nextOk =
+      expect(harness.draft.asciiRoomId != initialDungeonId,
+             "mouse next dungeon changes draft") &&
+      expect(harness.frontend.status == "new_world_dungeon_selection_changed",
+             "mouse next dungeon status");
+  const std::string nextDungeonId = harness.draft.asciiRoomId;
+
+  iggy3d::dispatchProductOpeningMenuMouseHit(
+      hitArea(iggy3d::OpeningMenuHitArea::NewWorldPreviousDungeon),
+      harness.click,
+      harness.actionState,
+      harness.context());
+  const bool previousOk =
+      expect(harness.draft.asciiRoomId != nextDungeonId,
+             "mouse previous dungeon changes draft") &&
+      expect(harness.window.worldSetupStatus == "world_setup_dungeon_selected",
+             "mouse previous dungeon window status");
+
+  iggy3d::dispatchProductOpeningMenuMouseHit(
+      hitArea(iggy3d::OpeningMenuHitArea::NewWorldBack),
+      harness.click,
+      harness.actionState,
+      harness.context());
+  return nextOk && previousOk &&
+         expect(harness.frontend.childScreen == iggy3d::FrontendScreen::Gameplay,
+                "mouse new world back closes child");
+}
+
+bool openingMenuMouseDispatchRoutesLoadSaveRows() {
+  MouseDispatchHarness slot;
+  slot.frontend.childScreen = iggy3d::FrontendScreen::LoadSave;
+  iggy3d::OpeningMenuHitTestResult slotHit =
+      hitArea(iggy3d::OpeningMenuHitArea::LoadSaveSlot);
+  slotHit.saveSlotIndex = 0U;
+  iggy3d::dispatchProductOpeningMenuMouseHit(slotHit,
+                                             slot.click,
+                                             slot.actionState,
+                                             slot.context());
+  const bool slotOk =
+      expect(slot.window.selectedProductSaveId == "save_unit",
+             "mouse load slot selects save") &&
+      expect(slot.frontend.status == "load_save_selection_changed",
+             "mouse load slot status");
+
+  MouseDispatchHarness deleteSave;
+  deleteSave.frontend.childScreen = iggy3d::FrontendScreen::LoadSave;
+  iggy3d::OpeningMenuHitTestResult deleteSlotHit =
+      hitArea(iggy3d::OpeningMenuHitArea::LoadSaveSlot);
+  deleteSlotHit.saveSlotIndex = 0U;
+  iggy3d::dispatchProductOpeningMenuMouseHit(deleteSlotHit,
+                                             deleteSave.click,
+                                             deleteSave.actionState,
+                                             deleteSave.context());
+  iggy3d::dispatchProductOpeningMenuMouseHit(
+      hitArea(iggy3d::OpeningMenuHitArea::LoadSaveDelete),
+      deleteSave.click,
+      deleteSave.actionState,
+      deleteSave.context());
+  const bool deleteOk =
+      expect(deleteSave.frontend.selectedAction == iggy3d::FrontendAction::Delete,
+             "mouse load delete selected action") &&
+      expect(deleteSave.frontend.childScreen ==
+                 iggy3d::FrontendScreen::DeleteConfirm,
+             "mouse load delete opens confirm") &&
+      expect(deleteSave.window.saveDeleteConfirmationOpen,
+             "mouse load delete confirmation open");
+
+  MouseDispatchHarness back;
+  back.frontend.childScreen = iggy3d::FrontendScreen::LoadSave;
+  iggy3d::dispatchProductOpeningMenuMouseHit(
+      hitArea(iggy3d::OpeningMenuHitArea::LoadSaveBack),
+      back.click,
+      back.actionState,
+      back.context());
+  return slotOk && deleteOk &&
+         expect(back.frontend.childScreen == iggy3d::FrontendScreen::Gameplay,
+                "mouse load back closes child") &&
+         expect(back.frontend.status == "load_save_closed",
+                "mouse load back status");
+}
+
+bool openingMenuMouseDispatchReportsUnhandledHitArea() {
+  MouseDispatchHarness harness;
+  iggy3d::dispatchProductOpeningMenuMouseHit(
+      hitArea(iggy3d::OpeningMenuHitArea::None),
+      harness.click,
+      harness.actionState,
+      harness.context());
+  return expect(harness.frontend.status == "opening_menu_hit_area_unhandled",
+                "unhandled mouse hit status");
+}
+
 bool menuClickNormalizationScalesWindowCoordinates() {
   const iggy3d::MouseClick scaled =
       iggy3d::normalizeProductWindowMenuClick(clickAt(226.0F, 254.0F),
@@ -1761,6 +1949,10 @@ int main() {
       pauseSettingsConfirmOpensSettingsPanel() &&
       pauseSettingsInputDispatchRoutesToSettings() &&
       childPanelHitTestsExposeMenuActions() &&
+      openingMenuMouseDispatchRoutesStarterAndSettingsHits() &&
+      openingMenuMouseDispatchRoutesNewWorldNavigationRows() &&
+      openingMenuMouseDispatchRoutesLoadSaveRows() &&
+      openingMenuMouseDispatchReportsUnhandledHitArea() &&
       menuClickNormalizationScalesWindowCoordinates() &&
       devToggleOpensAndClosesDevToolsSurfaces() &&
       debugOverlayActionTogglesRuntimeOverlaySetting() &&

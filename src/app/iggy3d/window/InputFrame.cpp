@@ -34,6 +34,11 @@ struct ProductWindowFunctionKeyBinding {
   bool KeyboardInputState::* wasDown = nullptr;
 };
 
+struct OpeningMenuNavigationHitRow {
+  OpeningMenuHitArea area = OpeningMenuHitArea::None;
+  InputAction action = InputAction::None;
+};
+
 static constexpr std::array kProductWindowFunctionKeyBindings{
     ProductWindowFunctionKeyBinding{&SdlWindowEventState::f3Pressed,
                                     InputAction::DevDebugOverlay,
@@ -54,6 +59,27 @@ static constexpr std::array kProductWindowFunctionKeyBindings{
                                     &KeyboardInputState::mapMakerToggleWasDown},
 };
 
+static constexpr std::array kOpeningMenuNavigationHitRows{
+    OpeningMenuNavigationHitRow{OpeningMenuHitArea::DevToolsBack,
+                                InputAction::MenuBack},
+    OpeningMenuNavigationHitRow{OpeningMenuHitArea::SettingsBack,
+                                InputAction::MenuBack},
+    OpeningMenuNavigationHitRow{OpeningMenuHitArea::NewWorldCreate,
+                                InputAction::MenuConfirm},
+    OpeningMenuNavigationHitRow{OpeningMenuHitArea::NewWorldBack,
+                                InputAction::MenuBack},
+    OpeningMenuNavigationHitRow{OpeningMenuHitArea::NewWorldPreviousDungeon,
+                                InputAction::MenuLeft},
+    OpeningMenuNavigationHitRow{OpeningMenuHitArea::NewWorldNextDungeon,
+                                InputAction::MenuRight},
+    OpeningMenuNavigationHitRow{OpeningMenuHitArea::LoadSaveBack,
+                                InputAction::MenuBack},
+    OpeningMenuNavigationHitRow{OpeningMenuHitArea::DeleteConfirmConfirm,
+                                InputAction::MenuConfirm},
+    OpeningMenuNavigationHitRow{OpeningMenuHitArea::DeleteConfirmBack,
+                                InputAction::MenuBack},
+};
+
 bool resolvedSurfaceAcceptsGameplayInput(const FrontendState& frontend,
                                          const ProductAppWindowState& window) {
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
@@ -62,6 +88,16 @@ bool resolvedSurfaceAcceptsGameplayInput(const FrontendState& frontend,
          surface.activeSurface == ProductFrontendSurface::Gameplay &&
          surface.inputOwner == MenuOwner::Gameplay &&
          !surface.gameplayInputSuppressed;
+}
+
+InputAction openingMenuNavigationActionFor(OpeningMenuHitArea area) {
+  for (const OpeningMenuNavigationHitRow& row : kOpeningMenuNavigationHitRows) {
+    // branch-gate: BG-1029
+    if (row.area == area) {
+      return row.action;
+    }
+  }
+  return InputAction::None;
 }
 
 MouseClick productWindowMenuClickForHitTest(MouseClick click,
@@ -360,6 +396,65 @@ void routeProductWindowMenuInput(InputAction inputAction,
 }
 
 }  // namespace
+
+void dispatchProductOpeningMenuMouseHit(
+    const OpeningMenuHitTestResult& hit,
+    const MouseClick& click,
+    ActionState& actionState,
+    ProductOpeningMenuInputContext context) {
+  const InputAction navigationAction = openingMenuNavigationActionFor(hit.area);
+  // branch-gate: BG-1029
+  if (navigationAction != InputAction::None) {
+    routeProductOpeningMenuInput(navigationAction, actionState, context);
+    return;
+  }
+
+  // branch-gate: BG-1029
+  switch (hit.area) {
+    case OpeningMenuHitArea::StarterAction:
+      context.frontend.selectedAction = hit.action;
+      recordAction(actionState,
+                   mouseClickAction(click),
+                   true,
+                   true,
+                   false,
+                   1.0F);
+      routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
+                                   context);
+      return;
+    case OpeningMenuHitArea::DevToolsCategory:
+      context.frontend.devToolsCategory = hit.devToolsCategory;
+      context.frontend.status = "dev_tools_category_selected";
+      return;
+    case OpeningMenuHitArea::SettingsTab:
+      context.settingsTab = hit.settingsTab;
+      context.frontend.status = "settings_tab_selected";
+      return;
+    case OpeningMenuHitArea::LoadSaveSlot:
+      // branch-gate: BG-1122
+      if (hit.saveSlotIndex < context.saves.slots.slots.size()) {
+        (void)selectProductSaveSlotById(
+            context.saves.slots,
+            context.saves.slots.slots[hit.saveSlotIndex].id,
+            context.window);
+        context.frontend.status = "load_save_selection_changed";
+      }
+      return;
+    case OpeningMenuHitArea::LoadSaveLoad:
+      context.frontend.selectedAction = FrontendAction::LoadSave;
+      routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
+                                   context);
+      return;
+    case OpeningMenuHitArea::LoadSaveDelete:
+      context.frontend.selectedAction = FrontendAction::Delete;
+      routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
+                                   context);
+      return;
+    default:
+      context.frontend.status = "opening_menu_hit_area_unhandled";
+      return;
+  }
+}
 
 void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                             ProductAppWindowState& window) {
@@ -683,71 +778,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     // branch-gate: BG-1029
     if (hit.hit) {
       context.window.mouseMenuSelectUsed = true;
-      // branch-gate: BG-1029
-      if (hit.area == OpeningMenuHitArea::StarterAction) {
-        context.frontend.selectedAction = hit.action;
-        recordAction(actionState,
-                     mouseClickAction(click),
-                     true,
-                     true,
-                     false,
-                     1.0F);
-        routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
-                                     menuContext);
-      // branch-gate: BG-1029
-      } else if (hit.area == OpeningMenuHitArea::DevToolsCategory) {
-        context.frontend.devToolsCategory = hit.devToolsCategory;
-        context.frontend.status = "dev_tools_category_selected";
-      // branch-gate: BG-1142
-      } else if (hit.area == OpeningMenuHitArea::DevToolsBack) {
-        routeProductOpeningMenuInput(InputAction::MenuBack, actionState, menuContext);
-      // branch-gate: BG-1029
-      } else if (hit.area == OpeningMenuHitArea::SettingsTab) {
-        context.settingsTab = hit.settingsTab;
-        context.frontend.status = "settings_tab_selected";
-      // branch-gate: BG-1142
-      } else if (hit.area == OpeningMenuHitArea::SettingsBack) {
-        routeProductOpeningMenuInput(InputAction::MenuBack, actionState, menuContext);
-      // branch-gate: BG-1029
-      } else if (hit.area == OpeningMenuHitArea::NewWorldCreate) {
-        routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState, menuContext);
-      // branch-gate: BG-1029
-      } else if (hit.area == OpeningMenuHitArea::NewWorldBack) {
-        routeProductOpeningMenuInput(InputAction::MenuBack, actionState, menuContext);
-      // branch-gate: BG-1138
-      } else if (hit.area == OpeningMenuHitArea::NewWorldPreviousDungeon) {
-        routeProductOpeningMenuInput(InputAction::MenuLeft, actionState, menuContext);
-      // branch-gate: BG-1138
-      } else if (hit.area == OpeningMenuHitArea::NewWorldNextDungeon) {
-        routeProductOpeningMenuInput(InputAction::MenuRight, actionState, menuContext);
-      // branch-gate: BG-1029
-      } else if (hit.area == OpeningMenuHitArea::LoadSaveSlot) {
-        // branch-gate: BG-1122
-        if (hit.saveSlotIndex < context.saves.slots.slots.size()) {
-          (void)selectProductSaveSlotById(
-              context.saves.slots,
-              context.saves.slots.slots[hit.saveSlotIndex].id,
-              context.window);
-          context.frontend.status = "load_save_selection_changed";
-        }
-      // branch-gate: BG-1029
-      } else if (hit.area == OpeningMenuHitArea::LoadSaveLoad) {
-        context.frontend.selectedAction = FrontendAction::LoadSave;
-        routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState, menuContext);
-      // branch-gate: BG-1029
-      } else if (hit.area == OpeningMenuHitArea::LoadSaveDelete) {
-        context.frontend.selectedAction = FrontendAction::Delete;
-        routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState, menuContext);
-      // branch-gate: BG-1029
-      } else if (hit.area == OpeningMenuHitArea::LoadSaveBack) {
-        routeProductOpeningMenuInput(InputAction::MenuBack, actionState, menuContext);
-      // branch-gate: BG-1029
-      } else if (hit.area == OpeningMenuHitArea::DeleteConfirmConfirm) {
-        routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState, menuContext);
-      // branch-gate: BG-1029
-      } else if (hit.area == OpeningMenuHitArea::DeleteConfirmBack) {
-        routeProductOpeningMenuInput(InputAction::MenuBack, actionState, menuContext);
-      }
+      dispatchProductOpeningMenuMouseHit(hit, click, actionState, menuContext);
     }
   }
 
