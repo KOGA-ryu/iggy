@@ -799,7 +799,7 @@ void drawStarterDetailPanel(SDL_Renderer& renderer) {
   setColor(renderer, 166, 184, 177);
   drawText(renderer, "SELECT A MENU ITEM", 452.0F, 210.0F, 2.0F);
   drawText(renderer, "CONTINUE LOADS YOUR NEWEST SAVE", 452.0F, 272.0F, 2.0F);
-  drawText(renderer, "NEW WORLD OPENS THE DUNGEON SELECTOR", 452.0F, 314.0F, 2.0F);
+  drawText(renderer, "BUILD MAP OPENS THE TEMPLATE EDITOR", 452.0F, 314.0F, 2.0F);
   drawText(renderer, "EXISTING SAVES OPENS SAVE SLOTS", 452.0F, 356.0F, 2.0F);
   drawText(renderer, "SETTINGS AND DEV TOOLS OPEN PANELS", 452.0F, 398.0F, 2.0F);
 }
@@ -823,16 +823,16 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
           : std::string{"CUSTOM"};
 
   setColor(renderer, 226, 230, 211);
-  drawText(renderer, "NEW WORLD", 450.0F, 152.0F, 4.0F);
+  drawText(renderer, "MAP BUILDER", 450.0F, 152.0F, 4.0F);
   setColor(renderer, 166, 184, 177);
   drawText(renderer,
            dungeonDraftEditMode
                ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C"
-               : "UP DOWN SELECT DUNGEON   TAB EDIT   CONFIRM CREATE",
+               : "UP DOWN SELECT TEMPLATE   TAB EDIT   CONFIRM BUILD",
            452.0F,
            210.0F,
            2.0F);
-  drawText(renderer, "DUNGEON", 452.0F, 260.0F, 2.0F);
+  drawText(renderer, "TEMPLATE", 452.0F, 260.0F, 2.0F);
   drawText(renderer, draft.worldName, 452.0F, 289.0F, 2.0F);
   drawText(renderer, "SELECTED", 714.0F, 260.0F, 2.0F);
   drawText(renderer, selectionLabel, 714.0F, 289.0F, 2.0F);
@@ -871,8 +871,8 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
                         dungeonDraftCursorColumn);
   setColor(renderer, 126, 201, 176);
   drawText(renderer,
-           dungeonDraftEditMode ? "TAB EXIT EDIT   CONFIRM CREATE" :
-                                  "CONFIRM TO CREATE",
+           dungeonDraftEditMode ? "TAB EXIT EDIT   CONFIRM BUILD" :
+                                  "CONFIRM TO BUILD",
            452.0F,
            508.0F,
            2.0F);

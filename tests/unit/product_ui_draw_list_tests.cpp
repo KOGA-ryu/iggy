@@ -100,8 +100,8 @@ bool selectedNewWorldGetsHighlightAndStableCoordinates() {
                "new world x coordinate");
   ok &= expect(highlight != nullptr && highlight->rect.y == 194.0F,
                "new world y coordinate");
-  ok &= expect(label != nullptr && label->text == "New World",
-               "new world label text");
+  ok &= expect(label != nullptr && label->text == "Build Map",
+               "build map label text");
   ok &= expect(list.selectedAction == "new_world", "selected new world code");
   return ok;
 }
@@ -158,8 +158,8 @@ bool newWorldChildScreenBuildsReadySelectorSurface() {
                "new world ready status");
   ok &= expect(list.reasonCode == "product_ui_draw_list_ready",
                "new world ready reason");
-  ok &= expect(title != nullptr && title->text == "NEW WORLD",
-               "new world title");
+  ok &= expect(title != nullptr && title->text == "MAP BUILDER",
+               "map builder title");
   ok &= expect(dungeon != nullptr && dungeon->text == "Loop Keep",
                "new world dungeon value");
   ok &= expect(room != nullptr && room->text == "loop_keep_ascii",
@@ -218,7 +218,7 @@ bool newWorldEditModeShowsCursorPaletteAndLastGlyph() {
   ok &= expect(asciiRow != nullptr && asciiRow->text.find("[") != std::string::npos,
                "new world edit ascii row marks cursor");
   ok &= expect(create != nullptr &&
-                   create->text == "TAB EXIT EDIT   CONFIRM CREATE",
+                   create->text == "TAB EXIT EDIT   CONFIRM BUILD",
                "new world edit create text");
   return ok;
 }

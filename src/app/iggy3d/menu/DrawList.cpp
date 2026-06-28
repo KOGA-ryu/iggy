@@ -405,14 +405,14 @@ void emitNewWorldContent(ProductUiDrawList& list,
            ProductUiTone::TextPrimary,
            {452.0F, 150.0F, 360.0F, 42.0F},
            makeStarterSemanticId("content.new_world.title"),
-           "NEW WORLD");
+           "MAP BUILDER");
   emitText(list,
            ProductUiTone::TextMuted,
            {452.0F, 210.0F, 700.0F, 26.0F},
            makeStarterSemanticId("content.new_world.instructions"),
            request.dungeonDraftEditMode
                ? "EDIT MODE   ARROWS MOVE   PAINT 1# 2. 3P 4K 5$ 6E 7+ 8C"
-               : "UP DOWN SELECT DUNGEON   TAB EDIT   CONFIRM CREATE");
+               : "UP DOWN SELECT TEMPLATE   TAB EDIT   CONFIRM BUILD");
   // branch-gate: BG-1143
   if (draft == nullptr) {
     emitText(list,
@@ -427,7 +427,7 @@ void emitNewWorldContent(ProductUiDrawList& list,
            ProductUiTone::TextMuted,
            {452.0F, 260.0F, 180.0F, 26.0F},
            makeStarterSemanticId("content.new_world.dungeon_label"),
-           "DUNGEON");
+           "TEMPLATE");
   emitText(list,
            ProductUiTone::TextPrimary,
            {452.0F, 289.0F, 360.0F, 26.0F},
@@ -500,8 +500,8 @@ void emitNewWorldContent(ProductUiDrawList& list,
            ProductUiTone::Accent,
            {452.0F, 508.0F, 260.0F, 26.0F},
            makeStarterSemanticId("content.new_world.create"),
-           request.dungeonDraftEditMode ? "TAB EXIT EDIT   CONFIRM CREATE"
-                                        : "CONFIRM TO CREATE",
+           request.dungeonDraftEditMode ? "TAB EXIT EDIT   CONFIRM BUILD"
+                                        : "CONFIRM TO BUILD",
            FrontendAction::CreateAndEnter,
            false,
            true);

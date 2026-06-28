@@ -169,7 +169,7 @@ std::string_view starterActionLabel(FrontendAction action) {
     case FrontendAction::Continue:
       return "Continue";
     case FrontendAction::NewWorld:
-      return "New World";
+      return "Build Map";
     case FrontendAction::LoadSave:
       return "Existing Saves";
     case FrontendAction::Delete:
