@@ -256,12 +256,13 @@ void recordProductMouseCaptureResult(ProductAppWindowState& window,
 void updateProductWindowMouseCapture(const FrontendState& frontend,
                                      ProductAppWindowState& window,
                                      SdlWindow* sdlWindow) {
-  const MenuOwner owner = productInputOwnerFor(frontend, window);
+  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(frontend, window));
   const ProductMouseCapturePolicy policy = buildProductMouseCapturePolicy({
       window.gameplayActive,
       window.interactionMode,
-      owner,
-      frontendBlocksGameplayInput(frontend),
+      surface.inputOwner,
+      surface.gameplayInputSuppressed,
       productWindowFocused(sdlWindow),
       sdlWindow != nullptr,
   });

@@ -9,6 +9,7 @@
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 
 namespace iggy3d {
@@ -70,6 +71,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductAppWindowState& window,
                                      const ProductSaveBridgeResult& saves) {
   RenderReceipt receipt;
+  const ProductActiveSurfaceFrame activeSurface = resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(frontend, window));
   const GameplayFeedback feedback = buildGameplayFeedback(window);
   const ProductVulkanGameplayReadiness vulkanGameplayReadiness =
       evaluateProductVulkanGameplayReadiness(window);
@@ -1347,10 +1350,23 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      feedback.combatFeedbackVisible);
   appendReceiptField(receipt, "product_feedback_interaction_visible",
                      feedback.interactionFeedbackVisible);
-  appendReceiptField(receipt, "input_owner", menuOwnerName(window.inputOwner));
+  appendReceiptField(receipt, "active_surface",
+                     productFrontendSurfaceName(activeSurface.activeSurface));
+  appendReceiptField(receipt, "active_parent_surface",
+                     productFrontendSurfaceName(activeSurface.parentSurface));
+  appendReceiptField(receipt, "input_surface",
+                     productInputSurfaceName(activeSurface.inputSurface));
+  appendReceiptField(receipt, "input_owner",
+                     menuOwnerName(activeSurface.inputOwner));
+  appendReceiptField(receipt, "active_surface_status", activeSurface.status);
+  appendReceiptField(receipt,
+                     "active_surface_mouse_capture_policy",
+                     productActiveMouseCapturePolicyName(
+                         activeSurface.mouseCapturePolicy));
   appendReceiptField(receipt, "input_action_last", inputActionName(window.lastInputAction));
   appendReceiptField(receipt, "input_action_accepted", window.lastInputAccepted);
-  appendReceiptField(receipt, "gameplay_input_suppressed", window.gameplayInputSuppressed);
+  appendReceiptField(receipt, "gameplay_input_suppressed",
+                     activeSurface.gameplayInputSuppressed);
   appendReceiptField(receipt, "automation_control_requested",
                      window.automationControlRequested);
   appendReceiptField(receipt, "automation_control_loaded",

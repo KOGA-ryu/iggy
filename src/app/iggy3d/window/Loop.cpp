@@ -6,6 +6,7 @@
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
@@ -29,11 +30,13 @@ const char* productWindowTitle(const ProductAppWindowState& window) {
 
 void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
                                       ProductAppWindowState& window) {
+  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(frontend, window));
   const ProductMouseCapturePolicy policy = buildProductMouseCapturePolicy({
       window.gameplayActive,
       window.interactionMode,
-      window.inputOwner,
-      frontendBlocksGameplayInput(frontend),
+      surface.inputOwner,
+      surface.gameplayInputSuppressed,
       true,
       false,
   });
@@ -53,10 +56,10 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
   const bool useVulkanRenderer =
       productWindowRendererUsesVulkan(request.options.renderer);
   window.productVulkanRendererRequested = useVulkanRenderer;
-  window.inputOwner = productInputOwnerFor(request.frontend, window);
-  window.gameplayInputSuppressed =
-      frontendBlocksGameplayInput(request.frontend) ||
-      menuOwnerBlocksGameplay(window.inputOwner);
+  const ProductActiveSurfaceFrame activeSurface = resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(request.frontend, window));
+  window.inputOwner = activeSurface.inputOwner;
+  window.gameplayInputSuppressed = activeSurface.gameplayInputSuppressed;
   // branch-gate: BG-1031
   if (!window.requested) {
     recordNoWindowMouseCapturePolicy(request.frontend, window);

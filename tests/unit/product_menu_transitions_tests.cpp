@@ -68,6 +68,23 @@ void showRoomEditorTransients(iggy3d::ProductAppWindowState& window) {
   window.viewport.productDrawRoomEditorPreviewCount = 1;
 }
 
+iggy3d::RenderReceipt receiptFor(const iggy3d::FrontendState& frontend,
+                                 const iggy3d::FrontendSettings& settings,
+                                 const iggy3d::ProductAppWindowState& window) {
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::ProductSaveBridgeResult saves;
+  return iggy3d::buildProductAppReceipt(options, world, frontend, settings, window,
+                                        saves);
+}
+
+bool expectReceiptField(const iggy3d::RenderReceipt& receipt,
+                        const char* key,
+                        const char* value,
+                        const char* message) {
+  return expect(iggy3d::hasReceiptField(receipt, key, value), message);
+}
+
 }  // namespace
 
 int main() {
@@ -85,6 +102,23 @@ int main() {
   ok &= expect(window.gameplayInputSuppressed, "starter suppresses gameplay input");
   ok &= expect(window.productTransitionStatus == "starter_ready",
                "starter transition status");
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductAppWindowState staleStarterWindow = window;
+  staleStarterWindow.gameplayActive = true;
+  staleStarterWindow.runtimeSessionCreated = true;
+  staleStarterWindow.inputOwner = iggy3d::MenuOwner::Gameplay;
+  staleStarterWindow.gameplayInputSuppressed = false;
+  const iggy3d::RenderReceipt staleStarterReceipt =
+      receiptFor(frontend, settings, staleStarterWindow);
+  ok &= expectReceiptField(staleStarterReceipt, "active_surface", "starter",
+                           "stale starter receipt active surface");
+  ok &= expectReceiptField(staleStarterReceipt, "input_surface", "starter",
+                           "stale starter receipt input surface");
+  ok &= expectReceiptField(staleStarterReceipt, "input_owner", "starter",
+                           "stale starter receipt owner");
+  ok &= expectReceiptField(staleStarterReceipt, "gameplay_input_suppressed",
+                           "true",
+                           "stale starter receipt suppresses gameplay");
 
   window.gameplayActive = true;
   window.runtimeSessionCreated = true;
@@ -100,11 +134,21 @@ int main() {
                "gameplay transition returned to gameplay");
   ok &= expect(window.productTransitionSessionPreserved,
                "gameplay launch preserves session");
+  const iggy3d::RenderReceipt gameplayReceipt =
+      receiptFor(frontend, settings, window);
+  ok &= expectReceiptField(gameplayReceipt, "active_surface", "gameplay",
+                           "gameplay receipt active surface");
+  ok &= expectReceiptField(gameplayReceipt, "input_surface", "gameplay",
+                           "gameplay receipt input surface");
+  ok &= expectReceiptField(gameplayReceipt, "input_owner", "gameplay",
+                           "gameplay receipt owner");
+  ok &= expectReceiptField(gameplayReceipt, "gameplay_input_suppressed",
+                           "false",
+                           "gameplay receipt unsuppressed");
 
   activateMapMaker(window);
   showMovementTuning(window);
   showCollisionOverlay(window);
-  iggy3d::FrontendSettings settings;
   settings.debugOverlayEnabled = true;
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::Resume);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Pause,
@@ -126,6 +170,14 @@ int main() {
                "pause preserves debug overlay setting");
   ok &= expect(window.devCollisionOverlayVisible,
                "pause preserves collision overlay state");
+  const iggy3d::RenderReceipt pauseReceipt =
+      receiptFor(frontend, settings, window);
+  ok &= expectReceiptField(pauseReceipt, "active_surface", "pause",
+                           "pause receipt active surface");
+  ok &= expectReceiptField(pauseReceipt, "input_owner", "pause",
+                           "pause receipt owner");
+  ok &= expectReceiptField(pauseReceipt, "gameplay_input_suppressed", "true",
+                           "pause receipt suppresses gameplay");
 
   showMovementTuning(window);
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
@@ -143,6 +195,16 @@ int main() {
                "settings keeps player interaction mode");
   ok &= expect(!window.gameplayMovementTuningVisible,
                "settings keeps movement tuning cleared");
+  const iggy3d::RenderReceipt settingsReceipt =
+      receiptFor(frontend, settings, window);
+  ok &= expectReceiptField(settingsReceipt, "active_surface", "settings",
+                           "settings receipt active surface");
+  ok &= expectReceiptField(settingsReceipt, "input_surface", "settings",
+                           "settings receipt input surface");
+  ok &= expectReceiptField(settingsReceipt, "input_owner", "settings",
+                           "settings receipt owner");
+  ok &= expectReceiptField(settingsReceipt, "gameplay_input_suppressed", "true",
+                           "settings receipt suppresses gameplay");
 
   showMovementTuning(window);
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::Settings);
@@ -166,6 +228,16 @@ int main() {
   ok &= expect(!window.mapMakerActive, "dev tools keeps map maker cleared");
   ok &= expect(!window.gameplayMovementTuningVisible,
                "dev tools clears movement tuning");
+  const iggy3d::RenderReceipt devToolsReceipt =
+      receiptFor(frontend, settings, window);
+  ok &= expectReceiptField(devToolsReceipt, "active_surface", "dev_tools",
+                           "dev tools receipt active surface");
+  ok &= expectReceiptField(devToolsReceipt, "input_surface", "dev_tools",
+                           "dev tools receipt input surface");
+  ok &= expectReceiptField(devToolsReceipt, "input_owner", "dev_tools",
+                           "dev tools receipt owner");
+  ok &= expectReceiptField(devToolsReceipt, "gameplay_input_suppressed", "true",
+                           "dev tools receipt suppresses gameplay");
 
   closeProductOverlayToGameplayTransition(frontend, window);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
@@ -180,6 +252,19 @@ int main() {
                "resume stays player mode");
   ok &= expect(!window.gameplayMovementTuningVisible,
                "resume does not restore movement tuning");
+  window.roomEditing.ready = true;
+  window.inputOwner = iggy3d::MenuOwner::Gameplay;
+  window.gameplayInputSuppressed = false;
+  const iggy3d::RenderReceipt editorReceipt =
+      receiptFor(frontend, settings, window);
+  ok &= expectReceiptField(editorReceipt, "active_surface", "editor",
+                           "editor receipt active surface");
+  ok &= expectReceiptField(editorReceipt, "input_surface", "room_editor",
+                           "editor receipt input surface");
+  ok &= expectReceiptField(editorReceipt, "input_owner", "editor",
+                           "editor receipt owner");
+  ok &= expectReceiptField(editorReceipt, "gameplay_input_suppressed", "true",
+                           "editor receipt suppresses gameplay");
 
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::ReturnToTitle);
   activateMapMaker(window);
@@ -233,12 +318,16 @@ int main() {
                "return to title transition status");
   ok &= expect(!window.productTransitionSessionPreserved,
                "return to title does not preserve session");
-  iggy3d::ProductAppOptions options;
-  iggy3d::ProductWorldTemplate world;
-  iggy3d::ProductSaveBridgeResult saves;
   const iggy3d::RenderReceipt receipt =
-      iggy3d::buildProductAppReceipt(options, world, frontend, settings, window,
-                                     saves);
+      receiptFor(frontend, settings, window);
+  ok &= expectReceiptField(receipt, "active_surface", "starter",
+                           "return title receipt active surface");
+  ok &= expectReceiptField(receipt, "input_surface", "starter",
+                           "return title receipt input surface");
+  ok &= expectReceiptField(receipt, "input_owner", "starter",
+                           "return title receipt owner");
+  ok &= expectReceiptField(receipt, "gameplay_input_suppressed", "true",
+                           "return title receipt suppresses gameplay");
   ok &= expect(iggy3d::hasReceiptField(receipt,
                                        "settings_debug_overlay_enabled",
                                        "false"),
