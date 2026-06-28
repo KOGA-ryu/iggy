@@ -9,6 +9,7 @@
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/world/DungeonDraft.hpp"
 #include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
 #include "app/iggy3d/save/Flow.hpp"
@@ -193,6 +194,16 @@ ProductMenuActionResult applyProductDevToggleMenuAction(
     return {true, true};
   }
   return {true, false};
+}
+
+bool canToggleDevDebugOverlay(const FrontendState& frontend,
+                              const ProductAppWindowState& window) {
+  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(frontend, window));
+  return window.gameplayActive &&
+         surface.activeSurface == ProductFrontendSurface::Gameplay &&
+         surface.inputOwner == MenuOwner::Gameplay &&
+         !surface.gameplayInputSuppressed;
 }
 
 ProductMenuActionResult applyDevToolsMenuAction(
@@ -686,6 +697,11 @@ ProductMenuActionResult applyProductSystemPauseMenuAction(
     InputAction action,
     ProductSystemPauseMenuActionContext context) {
   if (action == InputAction::DevDebugOverlay) {  // branch-gate: BG-1124
+    // branch-gate: BG-1124
+    if (!canToggleDevDebugOverlay(context.frontend, context.window)) {
+      context.frontend.status = "debug_overlay_gameplay_inactive";
+      return {true, false};
+    }
     // branch-gate: BG-1124
     if (context.settings == nullptr) {
       return {true, false};

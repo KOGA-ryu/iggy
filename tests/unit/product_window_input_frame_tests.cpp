@@ -1110,6 +1110,114 @@ bool debugOverlayActionTogglesRuntimeOverlaySetting() {
                 "debug overlay missing settings does not mutate unrelated state");
 }
 
+bool debugOverlayActionIgnoresFrontendBlockedSurfaces() {
+  {
+    iggy3d::FrontendState frontend = starterFrontend();
+    iggy3d::ProductAppWindowState window;
+    iggy3d::FrontendSettings settings;
+    settings.debugOverlayEnabled = false;
+    bool closeRequested = false;
+
+    const iggy3d::ProductMenuActionResult blocked =
+        iggy3d::applyProductSystemPauseMenuAction(
+            iggy3d::InputAction::DevDebugOverlay,
+            {frontend, window, closeRequested, &settings});
+    const bool starterOk =
+        expect(blocked.handled, "starter F3 handled") &&
+        expect(!blocked.accepted, "starter F3 rejected") &&
+        expect(!settings.debugOverlayEnabled, "starter F3 does not enable debug") &&
+        expect(frontend.status == "debug_overlay_gameplay_inactive",
+               "starter F3 inactive status") &&
+        expect(!closeRequested, "starter F3 does not close window");
+    if (!starterOk) {
+      return false;
+    }
+  }
+
+  {
+    iggy3d::FrontendState frontend = starterFrontend();
+    frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
+    iggy3d::ProductAppWindowState window;
+    window.gameplayActive = true;
+    iggy3d::FrontendSettings settings;
+    settings.debugOverlayEnabled = false;
+    bool closeRequested = false;
+
+    const iggy3d::ProductMenuActionResult blocked =
+        iggy3d::applyProductSystemPauseMenuAction(
+            iggy3d::InputAction::DevDebugOverlay,
+            {frontend, window, closeRequested, &settings});
+    const bool newWorldOk =
+        expect(blocked.handled, "new-world F3 handled") &&
+        expect(!blocked.accepted, "new-world F3 rejected") &&
+        expect(!settings.debugOverlayEnabled,
+               "new-world F3 does not enable debug") &&
+        expect(frontend.status == "debug_overlay_gameplay_inactive",
+               "new-world F3 inactive status");
+    if (!newWorldOk) {
+      return false;
+    }
+  }
+
+  {
+    iggy3d::FrontendState frontend = gameplayFrontend();
+    frontend.screen = iggy3d::FrontendScreen::Settings;
+    frontend.childScreen = iggy3d::FrontendScreen::Pause;
+    iggy3d::ProductAppWindowState window;
+    window.gameplayActive = true;
+    iggy3d::FrontendSettings settings;
+    settings.debugOverlayEnabled = false;
+    bool closeRequested = false;
+
+    const iggy3d::ProductMenuActionResult blocked =
+        iggy3d::applyProductSystemPauseMenuAction(
+            iggy3d::InputAction::DevDebugOverlay,
+            {frontend, window, closeRequested, &settings});
+    const bool pauseSettingsOk =
+        expect(blocked.handled, "pause-settings F3 handled") &&
+        expect(!blocked.accepted, "pause-settings F3 rejected") &&
+        expect(!settings.debugOverlayEnabled,
+               "pause-settings F3 does not enable debug") &&
+        expect(frontend.status == "debug_overlay_gameplay_inactive",
+               "pause-settings F3 inactive status");
+    if (!pauseSettingsOk) {
+      return false;
+    }
+  }
+
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  const iggy3d::ProductMenuActionResult opened =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::DevToggle,
+          {frontend, window, closeRequested});
+  iggy3d::FrontendSettings settings;
+  settings.debugOverlayEnabled = false;
+  const iggy3d::ProductMenuActionResult blocked =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::DevDebugOverlay,
+          {frontend, window, closeRequested, &settings});
+  const bool blockedOk =
+      expect(opened.handled, "dev-tools F1 open handled") &&
+      expect(opened.accepted, "dev-tools F1 open accepted") &&
+      expect(blocked.handled, "dev-tools F3 handled") &&
+      expect(!blocked.accepted, "dev-tools F3 rejected") &&
+      expect(!settings.debugOverlayEnabled,
+             "dev-tools F3 does not enable debug") &&
+      expect(frontend.status == "debug_overlay_gameplay_inactive",
+             "dev-tools F3 inactive status");
+  const iggy3d::ProductMenuActionResult closed =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::DevToggle,
+          {frontend, window, closeRequested, &settings});
+
+  return blockedOk &&
+         expect(closed.handled, "dev-tools F1 close handled") &&
+         expect(closed.accepted, "dev-tools F1 close accepted");
+}
+
 bool collisionOverlayActionTogglesDistinctWindowState() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
@@ -1539,6 +1647,7 @@ int main() {
       menuClickNormalizationScalesWindowCoordinates() &&
       devToggleOpensAndClosesDevToolsSurfaces() &&
       debugOverlayActionTogglesRuntimeOverlaySetting() &&
+      debugOverlayActionIgnoresFrontendBlockedSurfaces() &&
       collisionOverlayActionTogglesDistinctWindowState() &&
       sdlFunctionKeyEventsMapToSystemActions() &&
       sdlFunctionKeyEventsMarkKeyboardStateConsumed() &&
