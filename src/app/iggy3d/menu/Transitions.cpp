@@ -102,8 +102,6 @@ void applyReturnProductToTitleTransition(FrontendState& frontend,
   frontend.selectedAction = FrontendAction::NewWorld;
   frontend.returnToTitleRequested = true;
   frontend.inputOwned = true;
-  frontend.pauseMenuOpen = false;
-  frontend.devToolsOpen = false;
   frontend.status = "returned_to_title";
   window.inputOwner = MenuOwner::Starter;
   window.gameplayInputSuppressed = true;

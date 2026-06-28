@@ -109,8 +109,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "frontend_launch_requested", frontend.launchRequested);
   appendReceiptField(receipt, "frontend_return_to_title_requested",
                      frontend.returnToTitleRequested);
-  appendReceiptField(receipt, "pause_menu_open", frontend.pauseMenuOpen);
-  appendReceiptField(receipt, "dev_tools_open", frontend.devToolsOpen);
+  appendReceiptField(receipt, "pause_menu_open",
+                     frontendPauseMenuOpen(frontend));
+  appendReceiptField(receipt, "dev_tools_open",
+                     frontendDevToolsOpen(frontend));
   appendReceiptField(receipt, "starter_world_suppressed", !window.gameplayActive);
   appendReceiptField(receipt, "auto_new_world", options.autoNewWorld);
   appendReceiptField(receipt, "renderer_request", productRendererRequestName(options.renderer));

@@ -12,8 +12,8 @@ FrontendReceiptFields receiptFieldsFromFrontendState(const FrontendState& state)
   fields.inputOwned = frontendBlocksGameplayInput(state);
   fields.childScreen = state.childScreen;
   fields.disabledAction = state.disabledAction;
-  fields.pauseMenuOpen = state.pauseMenuOpen;
-  fields.devToolsOpen = state.devToolsOpen;
+  fields.pauseMenuOpen = frontendPauseMenuOpen(state);
+  fields.devToolsOpen = frontendDevToolsOpen(state);
   fields.devToolsCategory = state.devToolsCategory;
   return fields;
 }

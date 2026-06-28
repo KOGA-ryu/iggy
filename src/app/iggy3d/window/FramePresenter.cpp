@@ -728,7 +728,7 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
           request.window.gameplayMovementTuningSelectedField,
           request.window.gameplayMovementTuningVisible,
           request.frontend.screen == FrontendScreen::DevOverlay &&
-              request.frontend.devToolsOpen,
+              frontendDevToolsOpen(request.frontend),
           request.frontend.devToolsCategory);
       const RenderSubmitResult submit =
           request.renderer.vulkanRenderer.submitFrame(

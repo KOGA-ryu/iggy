@@ -103,6 +103,8 @@ int main() {
   ok &= expect(window.productTransitionStatus == "starter_ready",
                "starter transition status");
   iggy3d::FrontendSettings settings;
+  frontend.pauseMenuOpen = true;
+  frontend.devToolsOpen = true;
   iggy3d::ProductAppWindowState staleStarterWindow = window;
   staleStarterWindow.gameplayActive = true;
   staleStarterWindow.runtimeSessionCreated = true;
@@ -119,6 +121,10 @@ int main() {
   ok &= expectReceiptField(staleStarterReceipt, "gameplay_input_suppressed",
                            "true",
                            "stale starter receipt suppresses gameplay");
+  ok &= expectReceiptField(staleStarterReceipt, "pause_menu_open", "false",
+                           "stale starter receipt derives pause closed");
+  ok &= expectReceiptField(staleStarterReceipt, "dev_tools_open", "false",
+                           "stale starter receipt derives dev tools closed");
 
   window.gameplayActive = true;
   window.runtimeSessionCreated = true;
@@ -145,15 +151,21 @@ int main() {
   ok &= expectReceiptField(gameplayReceipt, "gameplay_input_suppressed",
                            "false",
                            "gameplay receipt unsuppressed");
+  ok &= expectReceiptField(gameplayReceipt, "pause_menu_open", "false",
+                           "gameplay receipt pause closed");
+  ok &= expectReceiptField(gameplayReceipt, "dev_tools_open", "false",
+                           "gameplay receipt dev tools closed");
 
   activateMapMaker(window);
   showMovementTuning(window);
   showCollisionOverlay(window);
   settings.debugOverlayEnabled = true;
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::Resume);
+  frontend.pauseMenuOpen = false;
+  frontend.devToolsOpen = true;
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Pause,
                "pause screen opened");
-  ok &= expect(frontend.pauseMenuOpen, "pause menu open");
+  ok &= expect(iggy3d::frontendPauseMenuOpen(frontend), "pause menu open");
   ok &= expect(window.inputOwner == iggy3d::MenuOwner::Pause,
                "pause owns input");
   ok &= expect(window.gameplayInputSuppressed, "pause suppresses gameplay input");
@@ -178,10 +190,16 @@ int main() {
                            "pause receipt owner");
   ok &= expectReceiptField(pauseReceipt, "gameplay_input_suppressed", "true",
                            "pause receipt suppresses gameplay");
+  ok &= expectReceiptField(pauseReceipt, "pause_menu_open", "true",
+                           "pause receipt derives pause open");
+  ok &= expectReceiptField(pauseReceipt, "dev_tools_open", "false",
+                           "pause receipt derives dev tools closed");
 
   showMovementTuning(window);
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   openProductPauseSettingsTransition(frontend, window, settingsTab);
+  frontend.pauseMenuOpen = true;
+  frontend.devToolsOpen = true;
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Settings,
                "settings opened from pause");
   ok &= expect(frontend.childScreen == iggy3d::FrontendScreen::Pause,
@@ -205,6 +223,10 @@ int main() {
                            "settings receipt owner");
   ok &= expectReceiptField(settingsReceipt, "gameplay_input_suppressed", "true",
                            "settings receipt suppresses gameplay");
+  ok &= expectReceiptField(settingsReceipt, "pause_menu_open", "false",
+                           "settings receipt derives pause closed");
+  ok &= expectReceiptField(settingsReceipt, "dev_tools_open", "false",
+                           "settings receipt derives dev tools closed");
 
   showMovementTuning(window);
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::Settings);
@@ -219,9 +241,11 @@ int main() {
   showMovementTuning(window);
   openProductPauseDevToolsTransition(frontend, window,
                                      iggy3d::FrontendDevToolsCategory::Session);
+  frontend.pauseMenuOpen = true;
+  frontend.devToolsOpen = false;
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::DevOverlay,
                "dev overlay opened");
-  ok &= expect(frontend.devToolsOpen, "dev tools open");
+  ok &= expect(iggy3d::frontendDevToolsOpen(frontend), "dev tools open");
   ok &= expect(window.inputOwner == iggy3d::MenuOwner::DevTools,
                "dev tools own input");
   ok &= expect(window.gameplayInputSuppressed, "dev tools suppress gameplay input");
@@ -238,6 +262,10 @@ int main() {
                            "dev tools receipt owner");
   ok &= expectReceiptField(devToolsReceipt, "gameplay_input_suppressed", "true",
                            "dev tools receipt suppresses gameplay");
+  ok &= expectReceiptField(devToolsReceipt, "pause_menu_open", "false",
+                           "dev tools receipt derives pause closed");
+  ok &= expectReceiptField(devToolsReceipt, "dev_tools_open", "true",
+                           "dev tools receipt derives dev tools open");
 
   closeProductOverlayToGameplayTransition(frontend, window);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
@@ -328,6 +356,10 @@ int main() {
                            "return title receipt owner");
   ok &= expectReceiptField(receipt, "gameplay_input_suppressed", "true",
                            "return title receipt suppresses gameplay");
+  ok &= expectReceiptField(receipt, "pause_menu_open", "false",
+                           "return title receipt derives pause closed");
+  ok &= expectReceiptField(receipt, "dev_tools_open", "false",
+                           "return title receipt derives dev tools closed");
   ok &= expect(iggy3d::hasReceiptField(receipt,
                                        "settings_debug_overlay_enabled",
                                        "false"),

@@ -149,6 +149,17 @@ const std::vector<FrontendDevToolsCategory>& devToolsCategoryOrder() {
   return categories;
 }
 
+bool frontendPauseMenuOpen(const FrontendState& state) {
+  return state.screen == FrontendScreen::Pause;
+}
+
+bool frontendDevToolsOpen(const FrontendState& state) {
+  return state.screen == FrontendScreen::DevOverlay ||
+         state.screen == FrontendScreen::StarterDevTools ||
+         (state.screen == FrontendScreen::Starter &&
+          state.childScreen == FrontendScreen::StarterDevTools);
+}
+
 void completeFrontendBoot(FrontendState& state, bool packageReady, bool saveScanComplete) {
   state.bootScanComplete = true;
   state.packageReady = packageReady;
@@ -171,8 +182,6 @@ void enterFrontendGameplay(FrontendState& state, FrontendAction launchAction) {
   state.childScreen = FrontendScreen::Gameplay;
   state.selectedAction = launchAction;
   state.launchRequested = true;
-  state.pauseMenuOpen = false;
-  state.devToolsOpen = false;
   state.inputOwned = false;
   if (launchAction == FrontendAction::Load || launchAction == FrontendAction::LoadSave ||
       launchAction == FrontendAction::Continue) {
@@ -186,8 +195,6 @@ void openFrontendPause(FrontendState& state, FrontendAction selectedAction) {
   state.screen = FrontendScreen::Pause;
   state.childScreen = FrontendScreen::Gameplay;
   state.selectedAction = selectedAction;
-  state.pauseMenuOpen = true;
-  state.devToolsOpen = false;
   state.inputOwned = true;
   state.status = "pause_menu_ready";
 }
@@ -199,8 +206,6 @@ void openFrontendDevOverlay(FrontendState& state, FrontendDevToolsCategory categ
   state.devToolsCategory = category == FrontendDevToolsCategory::None
                                ? FrontendDevToolsCategory::Session
                                : category;
-  state.pauseMenuOpen = false;
-  state.devToolsOpen = true;
   state.inputOwned = true;
   state.status = "dev_overlay_ready";
 }
@@ -208,8 +213,6 @@ void openFrontendDevOverlay(FrontendState& state, FrontendDevToolsCategory categ
 void closeFrontendOverlayToGameplay(FrontendState& state) {
   state.screen = FrontendScreen::Gameplay;
   state.childScreen = FrontendScreen::Gameplay;
-  state.pauseMenuOpen = false;
-  state.devToolsOpen = false;
   state.inputOwned = false;
   state.status = "frontend_gameplay_active";
 }

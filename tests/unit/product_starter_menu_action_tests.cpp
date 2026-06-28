@@ -174,7 +174,8 @@ bool childPanelActionsOpenExpectedSurfaces() {
          expect(devTools.frontend.childScreen ==
                     iggy3d::FrontendScreen::StarterDevTools,
                 "dev tools child") &&
-         expect(devTools.frontend.devToolsOpen, "dev tools open") &&
+         expect(iggy3d::frontendDevToolsOpen(devTools.frontend),
+                "dev tools open") &&
          expect(devTools.frontend.devToolsCategory ==
                     iggy3d::FrontendDevToolsCategory::Session,
                 "dev tools starts session") &&

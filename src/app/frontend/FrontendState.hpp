@@ -69,6 +69,8 @@ struct FrontendState {
   bool launchRequested = false;
   bool returnToTitleRequested = false;
   bool inputOwned = true;
+  // Deprecated compatibility fields. Use frontendPauseMenuOpen() and
+  // frontendDevToolsOpen() for live/proof decisions.
   bool pauseMenuOpen = false;
   bool devToolsOpen = false;
   std::string_view status = "frontend_boot_pending";
@@ -82,6 +84,8 @@ const std::vector<FrontendAction>& starterActionOrder();
 const std::vector<FrontendAction>& pauseActionOrder();
 const std::vector<FrontendDevToolsCategory>& devToolsCategoryOrder();
 
+bool frontendPauseMenuOpen(const FrontendState& state);
+bool frontendDevToolsOpen(const FrontendState& state);
 void completeFrontendBoot(FrontendState& state, bool packageReady, bool saveScanComplete);
 void enterFrontendGameplay(FrontendState& state, FrontendAction launchAction);
 void openFrontendPause(FrontendState& state, FrontendAction selectedAction);

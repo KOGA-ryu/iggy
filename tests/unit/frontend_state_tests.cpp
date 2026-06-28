@@ -35,13 +35,13 @@ bool overlaysAreSeparateStates() {
             expect(!iggy3d::frontendBlocksGameplayInput(state), "gameplay does not block");
   iggy3d::openFrontendPause(state, iggy3d::FrontendAction::SaveAndExit);
   ok = expect(state.screen == iggy3d::FrontendScreen::Pause, "pause is separate") &&
-       expect(state.pauseMenuOpen, "pause open") &&
-       expect(!state.devToolsOpen, "dev closed in pause") &&
+       expect(iggy3d::frontendPauseMenuOpen(state), "pause open") &&
+       expect(!iggy3d::frontendDevToolsOpen(state), "dev closed in pause") &&
        expect(iggy3d::frontendBlocksGameplayInput(state), "pause blocks gameplay") && ok;
   iggy3d::openFrontendDevOverlay(state, iggy3d::FrontendDevToolsCategory::Session);
   ok = expect(state.screen == iggy3d::FrontendScreen::DevOverlay, "dev overlay screen") &&
-       expect(state.devToolsOpen, "dev overlay open") &&
-       expect(!state.pauseMenuOpen, "pause closed for dev overlay") &&
+       expect(iggy3d::frontendDevToolsOpen(state), "dev overlay open") &&
+       expect(!iggy3d::frontendPauseMenuOpen(state), "pause closed for dev overlay") &&
        expect(iggy3d::frontendBlocksGameplayInput(state), "dev overlay blocks gameplay") && ok;
   iggy3d::closeFrontendOverlayToGameplay(state);
   ok = expect(state.screen == iggy3d::FrontendScreen::Gameplay, "closed to gameplay") &&
@@ -75,7 +75,7 @@ bool pauseSettingsAndDevToolsBlockGameplay() {
   iggy3d::openFrontendDevOverlay(state, iggy3d::FrontendDevToolsCategory::Renderer);
   ok = expect(state.screen == iggy3d::FrontendScreen::DevOverlay,
               "dev tools from pause") &&
-       expect(state.devToolsOpen, "dev overlay open") &&
+       expect(iggy3d::frontendDevToolsOpen(state), "dev overlay open") &&
        expect(iggy3d::frontendBlocksGameplayInput(state),
               "dev tools block gameplay") && ok;
   iggy3d::closeFrontendOverlayToGameplay(state);
@@ -145,6 +145,45 @@ bool menuAndConfirmScreensBlockGameplay() {
   return ok;
 }
 
+bool openPredicatesIgnoreStaleMirrorFlags() {
+  iggy3d::FrontendState staleStarter;
+  staleStarter.screen = iggy3d::FrontendScreen::Starter;
+  staleStarter.childScreen = iggy3d::FrontendScreen::Gameplay;
+  staleStarter.pauseMenuOpen = true;
+  staleStarter.devToolsOpen = true;
+  bool ok = expect(!iggy3d::frontendPauseMenuOpen(staleStarter),
+                   "stale starter pause flag ignored") &&
+            expect(!iggy3d::frontendDevToolsOpen(staleStarter),
+                   "stale starter dev flag ignored");
+
+  iggy3d::FrontendState stalePause;
+  stalePause.screen = iggy3d::FrontendScreen::Pause;
+  stalePause.childScreen = iggy3d::FrontendScreen::Gameplay;
+  stalePause.pauseMenuOpen = false;
+  stalePause.devToolsOpen = true;
+  ok = expect(iggy3d::frontendPauseMenuOpen(stalePause),
+              "pause derives open from screen") &&
+       expect(!iggy3d::frontendDevToolsOpen(stalePause),
+              "pause ignores stale dev flag") && ok;
+
+  iggy3d::FrontendState staleDevTools;
+  staleDevTools.screen = iggy3d::FrontendScreen::DevOverlay;
+  staleDevTools.childScreen = iggy3d::FrontendScreen::Gameplay;
+  staleDevTools.pauseMenuOpen = true;
+  staleDevTools.devToolsOpen = false;
+  ok = expect(!iggy3d::frontendPauseMenuOpen(staleDevTools),
+              "dev tools ignores stale pause flag") &&
+       expect(iggy3d::frontendDevToolsOpen(staleDevTools),
+              "dev tools derives open from screen") && ok;
+
+  iggy3d::FrontendState starterDevTools;
+  starterDevTools.screen = iggy3d::FrontendScreen::Starter;
+  starterDevTools.childScreen = iggy3d::FrontendScreen::StarterDevTools;
+  ok = expect(iggy3d::frontendDevToolsOpen(starterDevTools),
+              "starter child dev tools derives open from child screen") && ok;
+  return ok;
+}
+
 bool returnToTitleSuppressesGameplay() {
   iggy3d::FrontendState state;
   iggy3d::completeFrontendBoot(state, true, true);
@@ -188,6 +227,7 @@ int main() {
   const bool ok = bootTransitionsOnlyWhenReady() && overlaysAreSeparateStates() &&
                   pauseSettingsAndDevToolsBlockGameplay() &&
                   menuAndConfirmScreensBlockGameplay() &&
+                  openPredicatesIgnoreStaleMirrorFlags() &&
                   returnToTitleSuppressesGameplay() &&
                   stableNamesArePacketNames();
   return ok ? 0 : 1;

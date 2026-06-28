@@ -34,7 +34,6 @@ ProductFrontendActionResult executeProductFrontendAction(FrontendState& state,
       break;
     case FrontendAction::DevTools:
       result.status = "frontend_dev_tools_opened";
-      state.devToolsOpen = true;
       state.childScreen = FrontendScreen::StarterDevTools;
       break;
     case FrontendAction::Back:

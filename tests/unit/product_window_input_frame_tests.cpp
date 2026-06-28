@@ -1245,7 +1245,7 @@ bool devToggleOpensAndClosesDevToolsSurfaces() {
             {frontend, window, closeRequested});
     const bool openedChild =
         frontend.childScreen == iggy3d::FrontendScreen::StarterDevTools;
-    const bool openedFlag = frontend.devToolsOpen;
+    const bool openedFlag = iggy3d::frontendDevToolsOpen(frontend);
     const iggy3d::MenuOwner openedOwner = window.inputOwner;
     const iggy3d::ProductMenuActionResult closed =
         iggy3d::applyProductSystemPauseMenuAction(
@@ -1262,7 +1262,8 @@ bool devToggleOpensAndClosesDevToolsSurfaces() {
                "starter dev toggle closes child") &&
         expect(closed.handled, "starter dev close handled") &&
         expect(closed.accepted, "starter dev close accepted") &&
-        expect(!frontend.devToolsOpen, "starter dev tools closed") &&
+        expect(!iggy3d::frontendDevToolsOpen(frontend),
+               "starter dev tools closed") &&
         expect(!closeRequested, "dev toggle does not close window");
     if (!starterOk) {
       return false;
@@ -1282,7 +1283,8 @@ bool devToggleOpensAndClosesDevToolsSurfaces() {
       expect(opened.accepted, "gameplay dev toggle accepted") &&
       expect(frontend.screen == iggy3d::FrontendScreen::DevOverlay,
              "gameplay dev toggle opens overlay") &&
-      expect(frontend.devToolsOpen, "gameplay dev tools open") &&
+      expect(iggy3d::frontendDevToolsOpen(frontend),
+             "gameplay dev tools open") &&
       expect(window.inputOwner == iggy3d::MenuOwner::DevTools,
              "gameplay dev toggle owner");
   const iggy3d::ProductMenuActionResult closed =
@@ -1318,7 +1320,8 @@ bool debugOverlayActionTogglesRuntimeOverlaySetting() {
              "debug overlay enabled status") &&
       expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
              "debug overlay does not open dev screen") &&
-      expect(!frontend.devToolsOpen, "debug overlay does not open dev tools") &&
+      expect(!iggy3d::frontendDevToolsOpen(frontend),
+             "debug overlay does not open dev tools") &&
       expect(!closeRequested, "debug overlay does not close window");
 
   const iggy3d::ProductMenuActionResult disabled =
@@ -1479,7 +1482,7 @@ bool collisionOverlayActionTogglesDistinctWindowState() {
              "collision overlay does not toggle debug overlay setting") &&
       expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
              "collision overlay keeps gameplay screen") &&
-      expect(!frontend.devToolsOpen,
+      expect(!iggy3d::frontendDevToolsOpen(frontend),
              "collision overlay does not open dev tools") &&
       expect(!closeRequested, "collision overlay does not close window");
 
@@ -1505,7 +1508,8 @@ bool collisionOverlayActionTogglesDistinctWindowState() {
   return enabledOk && disabledOk &&
          expect(devTools.handled, "dev toggle after collision handled") &&
          expect(devTools.accepted, "dev toggle after collision accepted") &&
-         expect(frontend.devToolsOpen, "dev toggle still opens dev tools") &&
+         expect(iggy3d::frontendDevToolsOpen(frontend),
+                "dev toggle still opens dev tools") &&
          expect(!window.devCollisionOverlayVisible,
                 "dev toggle does not toggle collision overlay");
 }
@@ -1753,7 +1757,8 @@ bool topLevelToggleFunnelPreservesPolicies() {
   const bool devOk =
       expect(dev.handled, "top-level F1 handled") &&
       expect(dev.accepted, "top-level F1 accepted") &&
-      expect(devTools.devToolsOpen, "top-level F1 opens dev tools");
+      expect(iggy3d::frontendDevToolsOpen(devTools),
+             "top-level F1 opens dev tools");
 
   iggy3d::FrontendState collision = gameplayFrontend();
   iggy3d::ProductAppWindowState collisionWindow;

@@ -1136,21 +1136,17 @@ bool gameplayDebugHudsHideOnMenuSurfaces() {
   struct SurfaceCase {
     iggy3d::FrontendScreen screen;
     iggy3d::FrontendScreen childScreen;
-    bool devToolsOpen;
     const char* label;
   };
   constexpr SurfaceCase surfaces[] = {
       {iggy3d::FrontendScreen::Pause,
        iggy3d::FrontendScreen::Gameplay,
-       false,
        "pause"},
       {iggy3d::FrontendScreen::Settings,
        iggy3d::FrontendScreen::Pause,
-       false,
        "pause-settings"},
       {iggy3d::FrontendScreen::DevOverlay,
        iggy3d::FrontendScreen::Gameplay,
-       true,
        "dev-tools"},
   };
 
@@ -1166,7 +1162,6 @@ bool gameplayDebugHudsHideOnMenuSurfaces() {
     iggy3d::FrontendState frontend;
     frontend.screen = surface.screen;
     frontend.childScreen = surface.childScreen;
-    frontend.devToolsOpen = surface.devToolsOpen;
 
     const iggy3d::ProductGameplayProjectionFrame projection =
         iggy3d::buildProductGameplayProjectionFrame(

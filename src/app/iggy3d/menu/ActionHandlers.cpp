@@ -155,13 +155,11 @@ void closeDevOverlayToGameplay(FrontendState& frontend,
 
 void closeStarterDevTools(FrontendState& frontend, ProductAppWindowState&) {
   frontend.childScreen = FrontendScreen::Gameplay;
-  frontend.devToolsOpen = false;
   frontend.status = "dev_tools_closed";
 }
 
 void openStarterDevTools(FrontendState& frontend, ProductAppWindowState& window) {
   frontend.childScreen = FrontendScreen::StarterDevTools;
-  frontend.devToolsOpen = true;
   frontend.devToolsCategory = FrontendDevToolsCategory::Session;
   frontend.status = "opening_menu_dev_tools_selected";
   window.inputOwner = MenuOwner::DevTools;
@@ -406,7 +404,6 @@ ProductMenuActionResult confirmStarterDevTools(
     ProductStarterMenuActionContext context) {
   clearProductGameplayMovementTuning(context.window);
   context.frontend.childScreen = FrontendScreen::StarterDevTools;
-  context.frontend.devToolsOpen = true;
   context.frontend.devToolsCategory = FrontendDevToolsCategory::Session;
   context.frontend.status = "opening_menu_dev_tools_selected";
   return {true, true};
