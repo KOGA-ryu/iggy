@@ -78,6 +78,8 @@ bool roomEditingStartSetsCreativeMode() {
 }
 
 bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
+  iggy3d::FrontendState frontend;
+  iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
   iggy3d::ProductAppWindowState window;
   window.gameplayActive = true;
   const iggy3d::ProductRoomEditingStartResult started =
@@ -96,7 +98,7 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
       window.activeRoomCollision.querySurfaceCount;
 
   const bool left =
-      iggy3d::recordProductRoomEditingLeave(window, "unit_leave_editor");
+      iggy3d::recordProductRoomEditingLeave(frontend, window, "unit_leave_editor");
 
   return expect(started.ok, "room editing start accepted for leave") &&
          expect(left, "room editing leave accepted") &&
@@ -129,11 +131,13 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
 }
 
 bool roomEditingLeaveRejectsWhenNotReady() {
+  iggy3d::FrontendState frontend;
+  iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Player;
 
   const bool left =
-      iggy3d::recordProductRoomEditingLeave(window, "unit_leave_editor");
+      iggy3d::recordProductRoomEditingLeave(frontend, window, "unit_leave_editor");
 
   return expect(!left, "not-ready leave rejected") &&
          expect(!window.roomEditing.ready, "not-ready leave keeps editing off") &&

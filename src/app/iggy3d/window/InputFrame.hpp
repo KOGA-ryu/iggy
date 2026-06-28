@@ -127,7 +127,9 @@ InputAction productWindowFunctionKeyAction(const SdlWindowEventState& eventState
 void recordProductWindowFunctionKeyKeyboardState(
     KeyboardInputState& keyboard,
     const SdlWindowEventState& eventState);
-bool cancelProductRoomEditorPendingPreviewFromBack(ProductAppWindowState& window);
+bool cancelProductRoomEditorPendingPreviewFromBack(
+    const FrontendState& frontend,
+    ProductAppWindowState& window);
 ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
     FrontendState& frontend,
     ProductAppWindowState& window,

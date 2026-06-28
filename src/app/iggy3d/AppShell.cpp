@@ -116,7 +116,7 @@ int runProductApp(int argc, char** argv) {
   FrontendSettingsTab automationSettingsTab = FrontendSettingsTab::None;
   bool automationCloseRequested = false;
   ProductAutomationControlContext automationControlContext{
-      options.automationControlPath, window, automationSettingsTab,
+      options.automationControlPath, frontend, window, automationSettingsTab,
       [&frontend, &saves, &options, &automationSettingsTab, &activeSession,
        &worldSetupDraft, &window, &settings, &automationCloseRequested](
           const ProductAutomationCommand& command) {
@@ -128,9 +128,6 @@ int runProductApp(int argc, char** argv) {
                          automationCloseRequested});
       },
       [&frontend, &window]() { return productInputOwnerFor(frontend, window); },
-      [&frontend](MenuOwner owner) {
-        return frontendBlocksGameplayInput(frontend) || menuOwnerBlocksGameplay(owner);
-      },
   };
   applyProductAutomationControl(automationControlContext);
   if (!automationCloseRequested) {

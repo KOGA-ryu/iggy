@@ -524,6 +524,7 @@ bool controllerMoveInvalidatesPendingPreview() {
 }
 
 bool backCancelsPendingPreviewBeforePauseRoute() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
   const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
   window.roomEditorCursor.gridX = 1;
@@ -538,7 +539,7 @@ bool backCancelsPendingPreviewBeforePauseRoute() {
              "back test stage leaves walls");
 
   const bool cancelled =
-      iggy3d::cancelProductRoomEditorPendingPreviewFromBack(window);
+      iggy3d::cancelProductRoomEditorPendingPreviewFromBack(frontend, window);
 
   return stageOk && expect(cancelled, "back cancels pending preview") &&
          expect(window.inputOwner == iggy3d::MenuOwner::Editor,
@@ -560,11 +561,12 @@ bool backCancelsPendingPreviewBeforePauseRoute() {
 }
 
 bool backWithoutPreviewFallsThroughPolicy() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
   const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
 
   const bool cancelled =
-      iggy3d::cancelProductRoomEditorPendingPreviewFromBack(window);
+      iggy3d::cancelProductRoomEditorPendingPreviewFromBack(frontend, window);
 
   return expect(!cancelled, "back without preview not consumed") &&
          expect(window.roomEditing.ready, "back without preview keeps editor ready") &&

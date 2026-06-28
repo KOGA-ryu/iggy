@@ -3,6 +3,8 @@
 #include <string>
 #include <utility>
 
+#include "app/iggy3d/menu/FrontendRouter.hpp"
+
 namespace iggy3d {
 namespace {
 
@@ -102,8 +104,7 @@ void applyReturnProductToTitleTransition(FrontendState& frontend,
   frontend.returnToTitleRequested = true;
   frontend.inputOwned = true;
   frontend.status = "returned_to_title";
-  window.inputOwner = MenuOwner::Starter;
-  window.gameplayInputSuppressed = true;
+  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "return_to_title", "returned_to_title", false, true, false);
 }
 
@@ -118,8 +119,7 @@ void initializeProductStarterTransition(FrontendState& frontend,
       hasCompatibleSave ? FrontendAction::Continue : FrontendAction::NewWorld;
   frontend.status = "opening_menu_ready";
   frontend.inputOwned = true;
-  window.inputOwner = MenuOwner::Starter;
-  window.gameplayInputSuppressed = true;
+  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "startup", "starter_ready", false, false, false);
 }
 
@@ -128,8 +128,7 @@ void enterProductGameplayTransition(FrontendState& frontend,
                                     FrontendAction launchAction) {
   enterFrontendGameplay(frontend, launchAction);
   frontend.status = "gameplay_active";
-  window.inputOwner = MenuOwner::Gameplay;
-  window.gameplayInputSuppressed = false;
+  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "launch_gameplay", "gameplay_active", true, false, true);
 }
 
@@ -138,8 +137,7 @@ void openProductPauseTransition(FrontendState& frontend,
                                 FrontendAction selectedAction) {
   clearProductMenuOwnedTransientModes(window);
   openFrontendPause(frontend, selectedAction);
-  window.inputOwner = MenuOwner::Pause;
-  window.gameplayInputSuppressed = true;
+  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "open_pause", "pause_ready", false, false,
                 window.gameplayActive);
 }
@@ -153,8 +151,7 @@ void openProductPauseSettingsTransition(FrontendState& frontend,
   settingsTab = FrontendSettingsTab::Input;
   frontend.inputOwned = true;
   frontend.status = "pause_settings_selected";
-  window.inputOwner = MenuOwner::Settings;
-  window.gameplayInputSuppressed = true;
+  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "open_settings", "settings_from_pause", false, false,
                 window.gameplayActive);
 }
@@ -165,8 +162,7 @@ void openProductPauseDevToolsTransition(FrontendState& frontend,
   clearProductMenuOwnedTransientModes(window);
   openFrontendDevOverlay(frontend, category);
   frontend.status = "pause_dev_tools_selected";
-  window.inputOwner = MenuOwner::DevTools;
-  window.gameplayInputSuppressed = true;
+  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "open_dev_tools", "dev_overlay_from_pause", false, false,
                 window.gameplayActive);
 }
@@ -174,8 +170,7 @@ void openProductPauseDevToolsTransition(FrontendState& frontend,
 void closeProductOverlayToGameplayTransition(FrontendState& frontend,
                                              ProductAppWindowState& window) {
   closeFrontendOverlayToGameplay(frontend);
-  window.inputOwner = MenuOwner::Gameplay;
-  window.gameplayInputSuppressed = false;
+  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "resume_gameplay", "gameplay_resumed", true, false,
                 window.gameplayActive);
 }

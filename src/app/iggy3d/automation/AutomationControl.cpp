@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 
 namespace iggy3d {
@@ -47,9 +48,7 @@ void applyProductAutomationControl(ProductAutomationControlContext& context) {
     context.window.automationControlLastResult = "none";
   }
   context.window.selectedSettingsTab = context.settingsTab;
-  context.window.inputOwner = context.currentOwner();
-  context.window.gameplayInputSuppressed =
-      context.gameplaySuppressed(context.window.inputOwner);
+  syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
 }
 
 }  // namespace iggy3d

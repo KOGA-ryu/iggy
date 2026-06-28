@@ -676,6 +676,85 @@ bool activeSurfaceWindowContextPreservesLegacyGameplayGate() {
                 "window editor input surface");
 }
 
+bool inputOwnerCacheSyncUsesResolvedActiveSurface() {
+  struct CacheCase {
+    iggy3d::FrontendScreen screen = iggy3d::FrontendScreen::Starter;
+    iggy3d::FrontendScreen child = iggy3d::FrontendScreen::Gameplay;
+    bool gameplayActive = false;
+    bool roomEditorReady = false;
+    iggy3d::MenuOwner expectedOwner = iggy3d::MenuOwner::None;
+    bool expectedSuppressed = true;
+    const char* label = "";
+  };
+
+  constexpr CacheCase cases[] = {
+      {iggy3d::FrontendScreen::Starter,
+       iggy3d::FrontendScreen::Gameplay,
+       false,
+       false,
+       iggy3d::MenuOwner::Starter,
+       true,
+       "starter"},
+      {iggy3d::FrontendScreen::Gameplay,
+       iggy3d::FrontendScreen::Gameplay,
+       true,
+       false,
+       iggy3d::MenuOwner::Gameplay,
+       false,
+       "gameplay"},
+      {iggy3d::FrontendScreen::Settings,
+       iggy3d::FrontendScreen::Pause,
+       true,
+       false,
+       iggy3d::MenuOwner::Settings,
+       true,
+       "pause-settings"},
+      {iggy3d::FrontendScreen::DevOverlay,
+       iggy3d::FrontendScreen::Gameplay,
+       true,
+       false,
+       iggy3d::MenuOwner::DevTools,
+       true,
+       "devtools"},
+      {iggy3d::FrontendScreen::Gameplay,
+       iggy3d::FrontendScreen::Gameplay,
+       true,
+       true,
+       iggy3d::MenuOwner::Editor,
+       true,
+       "editor"},
+  };
+
+  bool ok = true;
+  for (const CacheCase& row : cases) {
+    iggy3d::FrontendState frontend;
+    frontend.screen = row.screen;
+    frontend.childScreen = row.child;
+    iggy3d::ProductAppWindowState window;
+    window.gameplayActive = row.gameplayActive;
+    window.roomEditing.ready = row.roomEditorReady;
+    window.inputOwner = iggy3d::MenuOwner::Gameplay;
+    window.gameplayInputSuppressed = false;
+
+    const iggy3d::ProductActiveSurfaceFrame surface =
+        iggy3d::syncProductWindowInputOwnerFromActiveSurface(frontend, window);
+    const std::string prefix = std::string(row.label) + " cache sync ";
+    ok = expect(surface.inputOwner == row.expectedOwner,
+                (prefix + "surface owner").c_str()) &&
+         ok;
+    ok = expect(surface.gameplayInputSuppressed == row.expectedSuppressed,
+                (prefix + "surface suppression").c_str()) &&
+         ok;
+    ok = expect(window.inputOwner == row.expectedOwner,
+                (prefix + "window owner").c_str()) &&
+         ok;
+    ok = expect(window.gameplayInputSuppressed == row.expectedSuppressed,
+                (prefix + "window suppression").c_str()) &&
+         ok;
+  }
+  return ok;
+}
+
 bool starterRootDelegatesNewWorld() {
   const auto model =
       iggy3d::buildStarterScreenModel(0U, iggy3d::FrontendAction::NewWorld);
@@ -1555,6 +1634,7 @@ int main() {
                   activeMouseCapturePolicyNamesAreStable() &&
                   activeSurfaceMatrixCoversCurrentRoutes() &&
                   activeSurfaceWindowContextPreservesLegacyGameplayGate() &&
+                  inputOwnerCacheSyncUsesResolvedActiveSurface() &&
                   starterRootDelegatesNewWorld() &&
                   starterRootContinueDelegatesLaunchWhenCompatible() &&
                   starterRootContinueReportsDisabledWithoutCompatibleSave() &&

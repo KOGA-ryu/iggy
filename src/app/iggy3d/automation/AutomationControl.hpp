@@ -8,15 +8,16 @@
 namespace iggy3d {
 
 struct ProductAppWindowState;
+struct FrontendState;
 enum class FrontendSettingsTab : int;
 
 struct ProductAutomationControlContext {
   const std::filesystem::path& automationControlPath;
+  FrontendState& frontend;
   ProductAppWindowState& window;
   FrontendSettingsTab& settingsTab;
   std::function<bool(const ProductAutomationCommand&)> applyCommand;
   std::function<MenuOwner()> currentOwner;
-  std::function<bool(MenuOwner)> gameplaySuppressed;
 };
 
 void applyProductAutomationControl(ProductAutomationControlContext& context);

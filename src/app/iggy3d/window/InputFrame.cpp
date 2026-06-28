@@ -381,10 +381,9 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
   routingContext.owners.gameplay = true;
   for (const ActionStateEntry& entry : gameplayActions.entries) {
     const InputRoutingResult routed = routeInputAction(routingContext, entry.action);
-    window.inputOwner = routed.owner;
     window.lastInputAction = routed.action;
     window.lastInputAccepted = routed.accepted;
-    window.gameplayInputSuppressed = routed.gameplaySuppressed;
+    syncProductWindowInputOwnerFromActiveSurface(frontend, window);
     // branch-gate: BG-1061
     if (routed.accepted && routed.owner == MenuOwner::Editor &&
         inputActionGroup(entry.action) == InputActionGroup::Editor) {
@@ -449,7 +448,8 @@ void routeProductWindowMenuInput(InputAction inputAction,
                                  ProductOpeningMenuInputContext context) {
   // branch-gate: BG-1029
   if (inputAction == InputAction::MenuBack &&
-      cancelProductRoomEditorPendingPreviewFromBack(context.window)) {
+      cancelProductRoomEditorPendingPreviewFromBack(context.frontend,
+                                                    context.window)) {
     recordAction(actionState,
                  InputAction::EditorCancelPreview,
                  true,
@@ -601,7 +601,9 @@ void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
   shutdownGamepadMenuState(state.gamepad);
 }
 
-bool cancelProductRoomEditorPendingPreviewFromBack(ProductAppWindowState& window) {
+bool cancelProductRoomEditorPendingPreviewFromBack(
+    const FrontendState& frontend,
+    ProductAppWindowState& window) {
   // branch-gate: BG-1055
   if (!window.roomEditing.ready || !window.roomEditorPreviewActive) {
     return false;
@@ -609,10 +611,9 @@ bool cancelProductRoomEditorPendingPreviewFromBack(ProductAppWindowState& window
   const ProductRoomEditorPreviewInputResult cancelled =
       applyProductRoomEditorPreviewInputAction(window,
                                               InputAction::EditorCancelPreview);
-  window.inputOwner = MenuOwner::Editor;
   window.lastInputAction = InputAction::EditorCancelPreview;
   window.lastInputAccepted = cancelled.ok;
-  window.gameplayInputSuppressed = true;
+  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   return cancelled.ok;
 }
 
@@ -839,10 +840,9 @@ ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPre
   result.picked = pickResult.ok;
   result.status = pickResult.status;
   result.reasonCode = pickResult.reasonCode;
-  context.window.inputOwner = MenuOwner::Editor;
   context.window.lastInputAction = InputAction::EditorPreviewPlacement;
   context.window.lastInputAccepted = pickResult.ok;
-  context.window.gameplayInputSuppressed = true;
+  syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
   recordProductRoomEditorActionResult(context.window,
                                       pickResult,
                                       "room_editor.mouse_pick");

@@ -12,6 +12,7 @@
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/input/ActionState.hpp"
 #include "runtime/session/Session.hpp"
 
@@ -116,7 +117,8 @@ void recordProductRoomEditingStart(ProductAppWindowState& window,
   }
 }
 
-bool recordProductRoomEditingLeave(ProductAppWindowState& window,
+bool recordProductRoomEditingLeave(const FrontendState& frontend,
+                                   ProductAppWindowState& window,
                                    std::string_view operation) {
   window.roomEditingLastOperation = std::string(operation);
   window.roomEditingLastPrimitiveId = "none";
@@ -140,8 +142,7 @@ bool recordProductRoomEditingLeave(ProductAppWindowState& window,
       productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Script);
   window.roomEditingLastOperationAccepted = true;
   window.interactionMode = ProductInteractionMode::Player;
-  window.inputOwner = MenuOwner::Gameplay;
-  window.gameplayInputSuppressed = false;
+  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   window.roomEditorCursorReady = false;
   window.roomEditorStatus = "room_editor_not_ready";
   window.roomEditorReasonCode = "room_editor_not_ready";
@@ -722,10 +723,10 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
 
       const InputRoutingResult routed = context.routeEditorInput(editorAction);
       lastOwner = routed.owner;
-      context.window.inputOwner = routed.owner;
       context.window.lastInputAction = routed.action;
       context.window.lastInputAccepted = routed.accepted;
-      context.window.gameplayInputSuppressed = routed.gameplaySuppressed;
+      syncProductWindowInputOwnerFromActiveSurface(context.frontend,
+                                                  context.window);
       // branch-gate: BG-1006
       if (!routed.accepted || routed.owner != MenuOwner::Editor) {
         context.window.automationControlStatus = "owner_unavailable";

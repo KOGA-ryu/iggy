@@ -9,6 +9,7 @@
 #include "app/iggy3d/input/ControllerActionMap.hpp"
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/gameplay/Controller.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/input/ActionState.hpp"
@@ -54,10 +55,9 @@ bool applyGameplayActionState(ProductAutomationGameplayContext& context,
   InputRoutingContext routingContext;
   routingContext.owners.gameplay = true;
   const InputRoutingResult routed = routeInputAction(routingContext, action);
-  context.window.inputOwner = routed.owner;
   context.window.lastInputAction = routed.action;
   context.window.lastInputAccepted = routed.accepted;
-  context.window.gameplayInputSuppressed = routed.gameplaySuppressed;
+  syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
   // branch-gate: BG-1010
   if (!routed.accepted) {
     return false;
@@ -77,10 +77,9 @@ bool applyGameplayJumpActionState(ProductAutomationGameplayContext& context,
   routingContext.owners.gameplay = true;
   const InputRoutingResult routed =
       routeInputAction(routingContext, InputAction::PlayerJump);
-  context.window.inputOwner = routed.owner;
   context.window.lastInputAction = routed.action;
   context.window.lastInputAccepted = routed.accepted;
-  context.window.gameplayInputSuppressed = routed.gameplaySuppressed;
+  syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
   // branch-gate: BG-1010
   if (!routed.accepted) {
     return false;

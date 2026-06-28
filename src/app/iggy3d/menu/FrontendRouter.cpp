@@ -360,6 +360,22 @@ bool productMapMakerLiveForWindow(const FrontendState& frontend,
          !surface.gameplayInputSuppressed;
 }
 
+void syncProductWindowInputOwnerFromActiveSurface(
+    ProductAppWindowState& window,
+    const ProductActiveSurfaceFrame& surface) {
+  window.inputOwner = surface.inputOwner;
+  window.gameplayInputSuppressed = surface.gameplayInputSuppressed;
+}
+
+ProductActiveSurfaceFrame syncProductWindowInputOwnerFromActiveSurface(
+    const FrontendState& frontend,
+    ProductAppWindowState& window) {
+  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(frontend, window));
+  syncProductWindowInputOwnerFromActiveSurface(window, surface);
+  return surface;
+}
+
 ProductFrontendOwnerDecision chooseProductFrontendOwner(
     const ProductFrontendRouteContext& context) {
   const FrontendState& frontend = context.frontend;

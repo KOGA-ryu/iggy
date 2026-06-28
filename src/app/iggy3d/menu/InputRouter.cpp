@@ -209,11 +209,9 @@ void routeProductOpeningMenuInput(InputAction inputAction,
   InputRoutingContext routingContext;
   routingContext.owners = menuOwnerStateForActiveOwner(surface.inputOwner);
   const InputRoutingResult routed = routeInputAction(routingContext, inputAction);
-  context.window.inputOwner = routed.owner;
   context.window.lastInputAction = routed.action;
   context.window.lastInputAccepted = routed.accepted;
-  context.window.gameplayInputSuppressed =
-      surface.gameplayInputSuppressed || routed.gameplaySuppressed;
+  syncProductWindowInputOwnerFromActiveSurface(context.window, surface);
   // branch-gate: BG-1024
   if (routed.accepted) {
     applyProductOpeningMenuAction(routed.action, context);

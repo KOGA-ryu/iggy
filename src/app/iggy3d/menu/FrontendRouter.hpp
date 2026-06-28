@@ -126,6 +126,12 @@ ProductActiveSurfaceFrame resolveProductActiveSurface(
     const ProductActiveSurfaceContext& context);
 bool productMapMakerLiveForWindow(const FrontendState& frontend,
                                   const ProductAppWindowState& window);
+void syncProductWindowInputOwnerFromActiveSurface(
+    ProductAppWindowState& window,
+    const ProductActiveSurfaceFrame& surface);
+ProductActiveSurfaceFrame syncProductWindowInputOwnerFromActiveSurface(
+    const FrontendState& frontend,
+    ProductAppWindowState& window);
 
 ProductFrontendOwnerDecision chooseProductFrontendOwner(
     const ProductFrontendRouteContext& context);

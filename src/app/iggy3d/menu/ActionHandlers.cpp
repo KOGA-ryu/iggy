@@ -162,8 +162,7 @@ void openStarterDevTools(FrontendState& frontend, ProductAppWindowState& window)
   frontend.childScreen = FrontendScreen::StarterDevTools;
   frontend.devToolsCategory = FrontendDevToolsCategory::Session;
   frontend.status = "opening_menu_dev_tools_selected";
-  window.inputOwner = MenuOwner::DevTools;
-  window.gameplayInputSuppressed = true;
+  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
 }
 
 ProductMenuActionResult applyProductDevToggleMenuAction(
@@ -290,7 +289,8 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
   }
   // branch-gate: BG-1017
   if (frontend.selectedAction == FrontendAction::LeaveEditor) {  // branch-gate: BG-1067
-    const bool left = recordProductRoomEditingLeave(window, "pause_leave_editor");
+    const bool left =
+        recordProductRoomEditingLeave(frontend, window, "pause_leave_editor");
     frontend.status =
         left ? "pause_leave_editor_requested" : "pause_leave_editor_failed";  // branch-gate: BG-1067
     // branch-gate: BG-1017
@@ -683,8 +683,7 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
     // branch-gate: BG-1205
     context.window.interactionMode =
         enable ? ProductInteractionMode::Creative : ProductInteractionMode::Player;
-    context.window.inputOwner = MenuOwner::Gameplay;
-    context.window.gameplayInputSuppressed = false;
+    syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
     // branch-gate: BG-1205
     context.window.mapMakerStatus =
         enable ? "map_maker_enabled" : "map_maker_disabled";
