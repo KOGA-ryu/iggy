@@ -122,6 +122,7 @@ SpatialSurfaceSet buildSpatialSurfaceSet(const RoomAsset& room, Vec3 worldOffset
     view.hasProjectileMask = contains(surface.collisionMask, "projectile");
     view.opening = surface.role == RoomSpatialSurfaceRole::Opening;
     view.runtimeOwnerStableName = surface.runtimeOwnerStableName;
+    view.traversalTags = surface.traversalTags;
     set.surfaces_.push_back(view);
   }
   return set;

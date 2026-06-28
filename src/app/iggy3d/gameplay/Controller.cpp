@@ -300,6 +300,16 @@ bool actorBlockingSurface(const CollisionSurfaceView& surface) {
   return surface.blocksActor || surface.hasActorMask;
 }
 
+bool hasTraversalTag(const CollisionSurfaceView& surface, std::string_view expected) {
+  for (const std::string& tag : surface.traversalTags) {
+    // branch-gate: BG-1157
+    if (tag == expected) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool horizontalNormal(Vec3 normal, Vec3& out) {
   normal.y = 0.0F;
   const float lenSq = lengthSquared(normal);
@@ -318,6 +328,7 @@ bool isNearVerticalSurface(Vec3 position,
   // branch-gate: BG-1157
   if (!actorBlockingSurface(surface) || surface.opening ||
       surface.role != CollisionSurfaceRole::Blocker ||
+      !hasTraversalTag(surface, "wall_jump") ||
       !isValid(surface.bounds)) {
     return false;
   }

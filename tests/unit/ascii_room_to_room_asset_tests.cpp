@@ -537,6 +537,22 @@ bool ledgeObjectBuildsClamberMeshAndSurfaces() {
                 "ledge traversal slot id");
 }
 
+bool wallJumpGlyphBuildsTaggedActorBlockerSurface() {
+  const auto result = buildInlineRoomAsset("#####\n#P.E#\n##J##\n");
+  const auto* actor = findSurface(result.room, "wall_r2_c2_actor_blocker");
+  return expect(result.ok, "wall jump room asset ok") &&
+         expect(actor != nullptr, "wall jump actor surface exists") &&
+         expect(actor != nullptr &&
+                    actor->role == iggy3d::RoomSpatialSurfaceRole::Blocker,
+                "wall jump actor role") &&
+         expect(actor != nullptr && actor->blocksActor,
+                "wall jump actor blocks actor") &&
+         expect(actor != nullptr && hasTag(actor->traversalTags, "blocker"),
+                "wall jump actor blocker tag") &&
+         expect(actor != nullptr && hasTag(actor->traversalTags, "wall_jump"),
+                "wall jump actor traversal tag");
+}
+
 bool invalidAuthoredResultRejectsWithoutPartialRoom() {
   iggy3d::AsciiRoomAuthoredRoomResult invalid;
   invalid.ok = false;
@@ -580,6 +596,7 @@ int main() {
   ok = terrainSurfacesPreserveHeightAndSlope() && ok;
   ok = crateObjectBuildsPropMeshAndBlockerSurfaces() && ok;
   ok = ledgeObjectBuildsClamberMeshAndSurfaces() && ok;
+  ok = wallJumpGlyphBuildsTaggedActorBlockerSurface() && ok;
   ok = invalidAuthoredResultRejectsWithoutPartialRoom() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

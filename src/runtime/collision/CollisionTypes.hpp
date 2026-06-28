@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "core/math/Aabb3.hpp"
 #include "core/math/Vec3.hpp"
@@ -51,6 +52,7 @@ struct CollisionSurfaceView {
   bool hasProjectileMask = false;
   bool opening = false;
   std::string runtimeOwnerStableName;
+  std::vector<std::string> traversalTags;
 };
 
 struct CollisionQueryResult {

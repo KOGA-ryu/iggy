@@ -48,6 +48,7 @@ struct AsciiRoomGlyphInfo {
   float riseMeters = 0.0F;
   std::string_view objectAssetId;
   Vec3 objectSizeMeters = {0.8F, 0.8F, 0.8F};
+  std::string_view traversalTag = "";
 };
 
 struct AsciiRoomCell {
@@ -64,6 +65,7 @@ struct AsciiRoomCell {
   float elevationMeters = 0.0F;
   float riseMeters = 0.0F;
   Vec3 objectSizeMeters = {0.8F, 0.8F, 0.8F};
+  std::string traversalTag;
   std::size_t sourceOffset = 0;
 };
 

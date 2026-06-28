@@ -69,11 +69,16 @@ SaveAuthoredRoomSemanticsRecord floorSemantics(const AsciiRoomCell& cell) {
   return semantics;
 }
 
-SaveAuthoredRoomSemanticsRecord wallSemantics() {
+SaveAuthoredRoomSemanticsRecord wallSemantics(const AsciiRoomCell& cell) {
   SaveAuthoredRoomSemanticsRecord semantics;
   semantics.materialId = "debug_wall";
   semantics.traversalTags = {"clamber_candidate"};
   semantics.gameplayTags = {"wall"};
+  // branch-gate: BG-1158
+  if (!cell.traversalTag.empty()) {
+    appendUnique(semantics.traversalTags, cell.traversalTag);
+    appendUnique(semantics.gameplayTags, cell.traversalTag);
+  }
   semantics.walkable = false;
   semantics.blocksActor = true;
   semantics.blocksProjectile = true;
@@ -256,7 +261,7 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
       wall.bottomY = 0.0F;
       wall.heightMeters = config.wallHeightMeters;
       wall.thicknessMeters = config.wallThicknessMeters;
-      wall.semantics = wallSemantics();
+      wall.semantics = wallSemantics(cell);
       wall.locked = false;
       wall.hidden = false;
       result.authoredRoom.walls.push_back(std::move(wall));

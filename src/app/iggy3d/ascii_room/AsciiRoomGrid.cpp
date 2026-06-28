@@ -8,9 +8,12 @@ namespace {
 
 constexpr float kElevationStepMeters = 0.5F;
 
-constexpr std::array<AsciiRoomGlyphInfo, 24> kGlyphs{{
+constexpr std::array<AsciiRoomGlyphInfo, 25> kGlyphs{{
     {'#', AsciiRoomCellKind::Wall, false, true, true, "",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'J', AsciiRoomCellKind::Wall, false, true, true, "",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, "",
+     {0.8F, 0.8F, 0.8F}, "wall_jump"},
     {'.', AsciiRoomCellKind::Floor, true, false, false, "",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
     {' ', AsciiRoomCellKind::Floor, true, false, false, "",
@@ -181,6 +184,7 @@ AsciiRoomGridBuildResult buildAsciiRoomGrid(const AsciiRoomSource& source) {
       cell.elevationMeters = info->elevationMeters;
       cell.riseMeters = info->riseMeters;
       cell.objectSizeMeters = info->objectSizeMeters;
+      cell.traversalTag = std::string(info->traversalTag);
       cell.sourceOffset = asciiRoomSourceOffset(source, row, column);
       hasWalkable = hasWalkable || cell.walkable;
       if (cell.kind == AsciiRoomCellKind::PlayerSpawn) {

@@ -57,6 +57,18 @@ const iggy3d::AsciiRoomTerrainSurface* findTerrainSurface(
   return nullptr;
 }
 
+const iggy3d::SaveAuthoredRoomWallRecord* findWall(
+    const iggy3d::AsciiRoomAuthoredRoomResult& result,
+    std::string_view wallId) {
+  for (const iggy3d::SaveAuthoredRoomWallRecord& wall :
+       result.authoredRoom.walls) {
+    if (wall.id == wallId) {
+      return &wall;
+    }
+  }
+  return nullptr;
+}
+
 bool hasTag(const std::vector<std::string>& tags, std::string_view expected) {
   for (const std::string& tag : tags) {
     if (tag == expected) {
@@ -138,6 +150,30 @@ bool wallRecordMatchesDefaultConfig() {
          expect(wall.semantics.blocksProjectile, "wall blocks projectile") &&
          expect(!wall.locked, "wall unlocked") &&
          expect(!wall.hidden, "wall visible");
+}
+
+bool wallJumpGlyphAddsExplicitTraversalTag() {
+  const iggy3d::AsciiRoomSource source =
+      iggy3d::parseAsciiRoomSource("#####\n#P.E#\n##J##\n");
+  const iggy3d::AsciiRoomGridBuildResult grid = iggy3d::buildAsciiRoomGrid(source);
+  const auto result = iggy3d::compileAsciiRoomToAuthoredRoom(grid.grid);
+  const iggy3d::SaveAuthoredRoomWallRecord* wall =
+      findWall(result, "wall_r2_c2");
+  return expect(result.ok, "wall jump authored compile ok") &&
+         expect(wall != nullptr, "wall jump wall id") &&
+         expect(wall != nullptr &&
+                    hasTag(wall->semantics.traversalTags, "clamber_candidate"),
+                "wall jump keeps clamber candidate") &&
+         expect(wall != nullptr &&
+                    hasTag(wall->semantics.traversalTags, "wall_jump"),
+                "wall jump traversal tag") &&
+         expect(wall != nullptr &&
+                    hasTag(wall->semantics.gameplayTags, "wall_jump"),
+                "wall jump gameplay tag") &&
+         expect(wall != nullptr && wall->semantics.blocksActor,
+                "wall jump blocks actor") &&
+         expect(wall != nullptr && wall->semantics.blocksProjectile,
+                "wall jump blocks projectile");
 }
 
 bool customConfigChangesGeneratedDimensionsAndPositions() {
@@ -359,6 +395,7 @@ int main() {
   ok = canonicalMapCompilesToExpectedCountsAndSourceFields() && ok;
   ok = floorRecordMatchesDefaultConfig() && ok;
   ok = wallRecordMatchesDefaultConfig() && ok;
+  ok = wallJumpGlyphAddsExplicitTraversalTag() && ok;
   ok = customConfigChangesGeneratedDimensionsAndPositions() && ok;
   ok = markerRecordsAreDeterministicSidecars() && ok;
   ok = doorAndSecretDoorGenerateFloorAndMarkerOnly() && ok;

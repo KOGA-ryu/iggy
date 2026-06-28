@@ -54,10 +54,13 @@ bool glyphMappingsMatchContract() {
     float elevationMeters = 0.0F;
     float riseMeters = 0.0F;
     std::string_view objectAssetId;
+    std::string_view traversalTag = "";
   };
   const Expected expected[] = {
       {'#', iggy3d::AsciiRoomCellKind::Wall, false, true, true, "",
        iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'J', iggy3d::AsciiRoomCellKind::Wall, false, true, true, "",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, "", "wall_jump"},
       {'.', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
        iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
       {' ', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
@@ -123,6 +126,8 @@ bool glyphMappingsMatchContract() {
     ok = expect(info->riseMeters == item.riseMeters, "glyph rise") && ok;
     ok = expect(info->objectAssetId == item.objectAssetId,
                 "glyph object asset") && ok;
+    ok = expect(info->traversalTag == item.traversalTag,
+                "glyph traversal tag") && ok;
   }
   return ok;
 }
@@ -142,6 +147,24 @@ bool crateGlyphCreatesWalkableObjectCell() {
          expect(crate != nullptr && crate->markerTag.empty(), "crate no marker") &&
          expect(crate != nullptr && crate->objectAssetId == "wood_crate_proxy",
                 "crate object asset");
+}
+
+bool wallJumpGlyphCreatesAuthoredWallCell() {
+  const auto source = iggy3d::parseAsciiRoomSource("#####\n#P.E#\n##J##\n");
+  const auto result = iggy3d::buildAsciiRoomGrid(source);
+  const iggy3d::AsciiRoomCell* wall = iggy3d::asciiRoomCellAt(result.grid, 2, 2);
+  return expect(result.ok, "wall jump glyph grid ok") &&
+         expect(result.grid.wallCount == 12U, "wall jump wall count") &&
+         expect(wall != nullptr, "wall jump cell exists") &&
+         expect(wall != nullptr && wall->glyph == 'J', "wall jump glyph") &&
+         expect(wall != nullptr && !wall->walkable, "wall jump not walkable") &&
+         expect(wall != nullptr && wall->kind == iggy3d::AsciiRoomCellKind::Wall,
+                "wall jump wall kind") &&
+         expect(wall != nullptr && wall->blocksActor, "wall jump blocks actor") &&
+         expect(wall != nullptr && wall->blocksProjectile,
+                "wall jump blocks projectile") &&
+         expect(wall != nullptr && wall->traversalTag == "wall_jump",
+                "wall jump traversal tag");
 }
 
 bool terrainGlyphFacts() {
@@ -241,6 +264,7 @@ int main() {
   ok = canonicalMapFacts() && ok;
   ok = glyphMappingsMatchContract() && ok;
   ok = crateGlyphCreatesWalkableObjectCell() && ok;
+  ok = wallJumpGlyphCreatesAuthoredWallCell() && ok;
   ok = terrainGlyphFacts() && ok;
   ok = missingPlayerSpawnFails() && ok;
   ok = multiplePlayerSpawnsFail() && ok;

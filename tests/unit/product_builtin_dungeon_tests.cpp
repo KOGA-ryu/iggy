@@ -7,6 +7,7 @@
 #include <iterator>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
@@ -96,6 +97,25 @@ const ExpectedDungeonCounts* expectedCountsFor(std::string_view roomId) {
 bool startsWith(std::string_view text, std::string_view prefix) {
   return text.size() >= prefix.size() &&
          text.substr(0U, prefix.size()) == prefix;
+}
+
+bool hasTag(const std::vector<std::string>& tags, std::string_view expected) {
+  for (const std::string& tag : tags) {
+    if (tag == expected) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const iggy3d::RoomSpatialSurface* findSurface(const iggy3d::RoomAsset& room,
+                                              std::string_view id) {
+  for (const iggy3d::RoomSpatialSurface& surface : room.spatialSurfaces) {
+    if (surface.id == id) {
+      return &surface;
+    }
+  }
+  return nullptr;
 }
 
 iggy3d::ProductAsciiRoomAuthoringResult buildDungeonAuthoring(
@@ -409,6 +429,8 @@ bool movementGymBuildsScaledJumpAndClamberObjects() {
       findMesh(active.room, "object_crate_r1_c3");
   const iggy3d::RoomStaticMeshAsset* ledge =
       findMesh(active.room, "object_clamber_ledge_r1_c11");
+  const iggy3d::RoomSpatialSurface* wallJump =
+      findSurface(active.room, "wall_r0_c8_actor_blocker");
   const iggy3d::MovementTraversalSlotRegistry slots =
       iggy3d::buildMovementTraversalSlotRegistry(active.room, iggy3d::Vec3{});
 
@@ -438,6 +460,10 @@ bool movementGymBuildsScaledJumpAndClamberObjects() {
                 "ledge eye height lower bound") &&
          expect(ledge == nullptr || ledge->sizeMeters.y < 1.71F,
                 "ledge eye height upper bound") &&
+         expect(wallJump != nullptr, "movement gym wall jump surface") &&
+         expect(wallJump == nullptr ||
+                    hasTag(wallJump->traversalTags, "wall_jump"),
+                "movement gym wall jump tag") &&
          expect(collision.ready, "movement gym collision ready") &&
          expect(collision.querySurfaceCount == expected->spatialSurfaceCount,
                 "movement gym query surface count") &&
