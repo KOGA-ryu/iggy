@@ -78,6 +78,11 @@ struct ProductUiDrawListRequest {
   std::uint32_t virtualWidth = 1280;
   std::uint32_t virtualHeight = 720;
   const WorldSetupDraft* worldSetupDraft = nullptr;
+  bool dungeonDraftEditMode = false;
+  bool dungeonDraftModified = false;
+  std::uint64_t dungeonDraftCursorRow = 0;
+  std::uint64_t dungeonDraftCursorColumn = 0;
+  std::string dungeonDraftLastGlyph = "none";
 };
 
 std::string_view productUiPrimitiveKindName(ProductUiPrimitiveKind kind);

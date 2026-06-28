@@ -141,3 +141,5 @@ BG-1140	src/app/iggy3d/menu/ActionHandlers.cpp	starter delete save button confir
 BG-1141	src/app/iggy3d/view/OpeningMenuView.cpp	starter child panel button visibility and back hit-test policy	codex	2026-06-28
 BG-1142	src/app/iggy3d/window/InputFrame.cpp	starter child panel mouse back routing policy	codex	2026-06-28
 BG-1143	src/app/iggy3d/menu/DrawList.cpp	new world starter child UI draw-list rendering policy	codex	2026-06-28
+BG-1144	src/app/iggy3d/menu/DrawList.cpp	new world ASCII draft preview and cursor draw-list policy	codex	2026-06-28
+BG-1145	src/app/iggy3d/view/OpeningMenuView.cpp	new world SDL ASCII draft cursor preview policy	codex	2026-06-28

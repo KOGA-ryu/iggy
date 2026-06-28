@@ -760,7 +760,10 @@ void drawPanelRow(SDL_Renderer& renderer,
 void drawAsciiPreviewLines(SDL_Renderer& renderer,
                            std::string_view text,
                            float x,
-                           float y) {
+                           float y,
+                           bool showCursor,
+                           std::uint64_t cursorRow,
+                           std::uint64_t cursorColumn) {
   std::size_t lineStart = 0;
   std::size_t row = 0;
   while (lineStart < text.size() && row < 8U) {
@@ -770,7 +773,20 @@ void drawAsciiPreviewLines(SDL_Renderer& renderer,
     }
     const std::string_view line = text.substr(lineStart, lineEnd - lineStart);
     if (!line.empty()) {
-      drawText(renderer, line, x, y + static_cast<float>(row) * 22.0F, 1.6F);
+      std::string rowText(line);
+      // branch-gate: BG-1145
+      if (showCursor && row == cursorRow && cursorColumn < line.size()) {
+        rowText.clear();
+        rowText.append(line.substr(0U, static_cast<std::size_t>(cursorColumn)));
+        rowText.push_back('[');
+        rowText.push_back(line[static_cast<std::size_t>(cursorColumn)]);
+        rowText.push_back(']');
+        rowText.append(line.substr(static_cast<std::size_t>(cursorColumn) + 1U));
+        setColor(renderer, 126, 201, 176);
+      } else {
+        setColor(renderer, 226, 230, 211);
+      }
+      drawText(renderer, rowText, x, y + static_cast<float>(row) * 22.0F, 1.6F);
     }
     lineStart = lineEnd + 1U;
     ++row;
@@ -795,7 +811,8 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
                        bool dungeonDraftEditMode,
                        bool dungeonDraftModified,
                        std::uint64_t dungeonDraftCursorRow,
-                       std::uint64_t dungeonDraftCursorColumn) {
+                       std::uint64_t dungeonDraftCursorColumn,
+                       const std::string& dungeonDraftLastGlyph) {
   const std::size_t selectedIndex =
       productBuiltinDungeonIndexForRoomId(draft.asciiRoomId);
   const std::size_t dungeonCount = productBuiltinDungeonCatalog().size();
@@ -839,7 +856,19 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
   drawText(renderer, "SAVES", 850.0F, 416.0F, 2.0F);
   drawText(renderer, std::to_string(saves.slots.slots.size()), 940.0F, 416.0F, 2.0F);
   drawText(renderer, "ASCII PREVIEW", 850.0F, 468.0F, 2.0F);
-  drawAsciiPreviewLines(renderer, draft.asciiRoomText, 850.0F, 500.0F);
+  drawText(renderer,
+           dungeonDraftLastGlyph.empty() ? "LAST none"
+                                         : "LAST " + dungeonDraftLastGlyph,
+           1040.0F,
+           468.0F,
+           2.0F);
+  drawAsciiPreviewLines(renderer,
+                        draft.asciiRoomText,
+                        850.0F,
+                        500.0F,
+                        dungeonDraftEditMode,
+                        dungeonDraftCursorRow,
+                        dungeonDraftCursorColumn);
   setColor(renderer, 126, 201, 176);
   drawText(renderer,
            dungeonDraftEditMode ? "TAB EXIT EDIT   CONFIRM CREATE" :
@@ -1171,6 +1200,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          bool dungeonDraftModified,
                                          std::uint64_t dungeonDraftCursorRow,
                                          std::uint64_t dungeonDraftCursorColumn,
+                                         const std::string& dungeonDraftLastGlyph,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
                                          const ProductViewportFrame* frame,
@@ -1243,7 +1273,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                       dungeonDraftEditMode,
                       dungeonDraftModified,
                       dungeonDraftCursorRow,
-                      dungeonDraftCursorColumn);
+                      dungeonDraftCursorColumn,
+                      dungeonDraftLastGlyph);
   } else {
     drawStarterDetailPanel(renderer);
   }

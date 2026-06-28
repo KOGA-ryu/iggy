@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "app/frontend/StarterScreen.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
@@ -325,7 +326,81 @@ std::string selectionLabelFor(const WorldSetupDraft& draft) {
          std::to_string(dungeonCount);
 }
 
-void emitNewWorldContent(ProductUiDrawList& list, const WorldSetupDraft* draft) {
+std::vector<std::string_view> asciiPreviewRows(std::string_view text) {
+  std::vector<std::string_view> rows;
+  std::size_t lineStart = 0;
+  while (lineStart < text.size() && rows.size() < 8U) {
+    std::size_t lineEnd = text.find('\n', lineStart);
+    // branch-gate: BG-1144
+    if (lineEnd == std::string_view::npos) {
+      lineEnd = text.size();
+    }
+    const std::string_view line = text.substr(lineStart, lineEnd - lineStart);
+    // branch-gate: BG-1144
+    if (!line.empty()) {
+      rows.push_back(line);
+    }
+    lineStart = lineEnd + 1U;
+  }
+  return rows;
+}
+
+std::string cursorAnnotatedAsciiRow(std::string_view line,
+                                    std::uint64_t row,
+                                    std::uint64_t cursorRow,
+                                    std::uint64_t cursorColumn) {
+  // branch-gate: BG-1144
+  if (row != cursorRow || cursorColumn >= line.size()) {
+    return std::string(line);
+  }
+  std::string annotated;
+  annotated.reserve(line.size() + 2U);
+  annotated.append(line.substr(0U, static_cast<std::size_t>(cursorColumn)));
+  annotated.push_back('[');
+  annotated.push_back(line[static_cast<std::size_t>(cursorColumn)]);
+  annotated.push_back(']');
+  annotated.append(line.substr(static_cast<std::size_t>(cursorColumn) + 1U));
+  return annotated;
+}
+
+std::string lastGlyphText(const std::string& glyph) {
+  // branch-gate: BG-1144
+  if (glyph.empty() || glyph == "none") {
+    return "LAST none";
+  }
+  return "LAST " + glyph;
+}
+
+void emitAsciiDraftRows(ProductUiDrawList& list,
+                        const WorldSetupDraft& draft,
+                        const ProductUiDrawListRequest& request) {
+  const std::vector<std::string_view> rows = asciiPreviewRows(draft.asciiRoomText);
+  float rowY = 500.0F;
+  for (std::size_t row = 0; row < rows.size(); ++row) {
+    // branch-gate: BG-1144
+    const std::string rowText =
+        request.dungeonDraftEditMode
+            ? cursorAnnotatedAsciiRow(rows[row],
+                                      static_cast<std::uint64_t>(row),
+                                      request.dungeonDraftCursorRow,
+                                      request.dungeonDraftCursorColumn)
+            : std::string(rows[row]);
+    emitText(list,
+             // branch-gate: BG-1144
+             request.dungeonDraftEditMode && row == request.dungeonDraftCursorRow
+                 ? ProductUiTone::Accent
+                 : ProductUiTone::TextPrimary,
+             {850.0F, rowY, 360.0F, 22.0F},
+             makeStarterSemanticId("content.new_world.ascii_row_" +
+                                   std::to_string(row)),
+             rowText);
+    rowY += 22.0F;
+  }
+}
+
+void emitNewWorldContent(ProductUiDrawList& list,
+                         const ProductUiDrawListRequest& request) {
+  const WorldSetupDraft* draft = request.worldSetupDraft;
   emitText(list,
            ProductUiTone::TextPrimary,
            {452.0F, 150.0F, 360.0F, 42.0F},
@@ -335,7 +410,9 @@ void emitNewWorldContent(ProductUiDrawList& list, const WorldSetupDraft* draft) 
            ProductUiTone::TextMuted,
            {452.0F, 210.0F, 700.0F, 26.0F},
            makeStarterSemanticId("content.new_world.instructions"),
-           "UP DOWN SELECT DUNGEON   TAB EDIT   CONFIRM CREATE");
+           request.dungeonDraftEditMode
+               ? "EDIT MODE   ARROWS MOVE   PAINT 1# 2. 3P 4K 5$ 6E 7+ 8C"
+               : "UP DOWN SELECT DUNGEON   TAB EDIT   CONFIRM CREATE");
   // branch-gate: BG-1143
   if (draft == nullptr) {
     emitText(list,
@@ -363,9 +440,31 @@ void emitNewWorldContent(ProductUiDrawList& list, const WorldSetupDraft* draft) 
            "SELECTED");
   emitText(list,
            ProductUiTone::TextPrimary,
-           {714.0F, 289.0F, 170.0F, 26.0F},
+           {714.0F, 289.0F, 150.0F, 26.0F},
            makeStarterSemanticId("content.new_world.selection_value"),
            selectionLabelFor(*draft));
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {714.0F, 338.0F, 170.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.draft_label"),
+           "DRAFT");
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {714.0F, 367.0F, 150.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.draft_value"),
+           // branch-gate: BG-1144
+           request.dungeonDraftModified ? "CUSTOM" : "TEMPLATE");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {714.0F, 416.0F, 170.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.cursor_label"),
+           "CURSOR");
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {714.0F, 445.0F, 150.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.cursor_value"),
+           std::to_string(request.dungeonDraftCursorRow) + "," +
+               std::to_string(request.dungeonDraftCursorColumn));
   emitText(list,
            ProductUiTone::TextMuted,
            {452.0F, 338.0F, 180.0F, 26.0F},
@@ -387,10 +486,22 @@ void emitNewWorldContent(ProductUiDrawList& list, const WorldSetupDraft* draft) 
            makeStarterSemanticId("content.new_world.source_value"),
            draft->asciiRoomSourceName);
   emitText(list,
+           ProductUiTone::TextMuted,
+           {850.0F, 468.0F, 190.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.ascii_preview_label"),
+           "ASCII PREVIEW");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {1038.0F, 468.0F, 170.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.last_glyph"),
+           lastGlyphText(request.dungeonDraftLastGlyph));
+  emitAsciiDraftRows(list, *draft, request);
+  emitText(list,
            ProductUiTone::Accent,
            {452.0F, 508.0F, 260.0F, 26.0F},
            makeStarterSemanticId("content.new_world.create"),
-           "CONFIRM TO CREATE",
+           request.dungeonDraftEditMode ? "TAB EXIT EDIT   CONFIRM CREATE"
+                                        : "CONFIRM TO CREATE",
            FrontendAction::CreateAndEnter,
            false,
            true);
@@ -475,7 +586,7 @@ ProductUiDrawList buildProductStarterUiDrawList(
   emitStarterRows(list, model);
   // branch-gate: BG-1143
   if (context == ProductStarterUiContext::NewWorld) {
-    emitNewWorldContent(list, request.worldSetupDraft);
+    emitNewWorldContent(list, request);
   } else {
     emitStarterStatus(list, frontend, context);
   }

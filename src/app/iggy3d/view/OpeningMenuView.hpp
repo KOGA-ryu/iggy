@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
@@ -77,6 +78,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          bool dungeonDraftModified,
                                          std::uint64_t dungeonDraftCursorRow,
                                          std::uint64_t dungeonDraftCursorColumn,
+                                         const std::string& dungeonDraftLastGlyph,
                                          bool gameplayActive,
                                          std::uint64_t runtimeStateHash,
                                          const ProductViewportFrame* frame,

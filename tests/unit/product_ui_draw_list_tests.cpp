@@ -1,6 +1,7 @@
 #include "app/iggy3d/menu/DrawList.hpp"
 
 #include <iostream>
+#include <string>
 #include <string_view>
 
 #include "app/frontend/StarterScreen.hpp"
@@ -148,6 +149,8 @@ bool newWorldChildScreenBuildsReadySelectorSurface() {
       findPrimitive(list, "starter.content.new_world.source_value");
   const iggy3d::ProductUiPrimitive* create =
       findPrimitive(list, "starter.content.new_world.create");
+  const iggy3d::ProductUiPrimitive* asciiRow =
+      findPrimitive(list, "starter.content.new_world.ascii_row_0");
   bool ok = true;
   ok &= expect(list.ready, "new world draw-list ready");
   ok &= expect(!list.partial, "new world not partial");
@@ -167,6 +170,56 @@ bool newWorldChildScreenBuildsReadySelectorSurface() {
   ok &= expect(create != nullptr &&
                    create->action == iggy3d::FrontendAction::CreateAndEnter,
                "new world create action");
+  ok &= expect(asciiRow != nullptr && asciiRow->text == "#################",
+               "new world ascii preview row");
+  return ok;
+}
+
+bool newWorldEditModeShowsCursorPaletteAndLastGlyph() {
+  iggy3d::FrontendState frontend =
+      starterFrontend(iggy3d::FrontendAction::NewWorld);
+  frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
+  iggy3d::WorldSetupDraft draft =
+      iggy3d::makeProductDefaultWorldSetupDraft("seed_new_world_edit_ui");
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductStarterUiDrawList({&frontend,
+                                             0U,
+                                             1280U,
+                                             720U,
+                                             &draft,
+                                             true,
+                                             true,
+                                             1U,
+                                             2U,
+                                             "C"});
+  const iggy3d::ProductUiPrimitive* instructions =
+      findPrimitive(list, "starter.content.new_world.instructions");
+  const iggy3d::ProductUiPrimitive* draftValue =
+      findPrimitive(list, "starter.content.new_world.draft_value");
+  const iggy3d::ProductUiPrimitive* cursorValue =
+      findPrimitive(list, "starter.content.new_world.cursor_value");
+  const iggy3d::ProductUiPrimitive* lastGlyph =
+      findPrimitive(list, "starter.content.new_world.last_glyph");
+  const iggy3d::ProductUiPrimitive* asciiRow =
+      findPrimitive(list, "starter.content.new_world.ascii_row_1");
+  const iggy3d::ProductUiPrimitive* create =
+      findPrimitive(list, "starter.content.new_world.create");
+  bool ok = true;
+  ok &= expect(instructions != nullptr &&
+                   instructions->text ==
+                       "EDIT MODE   ARROWS MOVE   PAINT 1# 2. 3P 4K 5$ 6E 7+ 8C",
+               "new world edit instructions show paint keys");
+  ok &= expect(draftValue != nullptr && draftValue->text == "CUSTOM",
+               "new world edit draft value");
+  ok &= expect(cursorValue != nullptr && cursorValue->text == "1,2",
+               "new world edit cursor value");
+  ok &= expect(lastGlyph != nullptr && lastGlyph->text == "LAST C",
+               "new world edit last glyph");
+  ok &= expect(asciiRow != nullptr && asciiRow->text.find("[") != std::string::npos,
+               "new world edit ascii row marks cursor");
+  ok &= expect(create != nullptr &&
+                   create->text == "TAB EXIT EDIT   CONFIRM CREATE",
+               "new world edit create text");
   return ok;
 }
 
@@ -221,6 +274,7 @@ int main() {
   ok &= selectedNewWorldGetsHighlightAndStableCoordinates();
   ok &= disabledSaveRowsAreRepresentedWithoutCompatibleSaves();
   ok &= newWorldChildScreenBuildsReadySelectorSurface();
+  ok &= newWorldEditModeShowsCursorPaletteAndLastGlyph();
   ok &= nonWorldChildScreenIsRepresentedAsPartialStarterSurface();
   ok &= invalidContextRejectsWithoutRendererTypes();
   if (!ok) {

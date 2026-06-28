@@ -161,7 +161,12 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
            request.saves.slots.compatibleCount,
            1280U,
            720U,
-           &request.worldSetupDraft});
+           &request.worldSetupDraft,
+           request.window.worldSetupDungeonDraftEditMode,
+           request.window.worldSetupDungeonDraftModified,
+           request.window.worldSetupDungeonDraftCursorRow,
+           request.window.worldSetupDungeonDraftCursorColumn,
+           request.window.worldSetupDungeonDraftLastGlyph});
       recordProductVulkanMenuUiDrawList(request.window, "starter", menuUi);
       const SdlDrawableExtent drawableExtent = request.sdlWindow.drawableExtent();
       // branch-gate: BG-1072
@@ -197,6 +202,7 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           request.window.worldSetupDungeonDraftModified,
                           request.window.worldSetupDungeonDraftCursorRow,
                           request.window.worldSetupDungeonDraftCursorColumn,
+                          request.window.worldSetupDungeonDraftLastGlyph,
                           request.window.gameplayActive,
                           request.window.runtimeStateHash,
                           request.projectionFrame.viewportFramePtr(),
