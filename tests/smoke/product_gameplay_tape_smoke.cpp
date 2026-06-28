@@ -944,35 +944,35 @@ int main() {
       movementGymExitCode == 0 && movementGymReceiptValid &&
       selectedPhysicsRoomTapePassed(movementGymFields,
                                     "movement_gym",
-                                    "149",
+                                    "1318",
                                     "marker_key_r1_c4") &&
       iggy3d::smoke::hasField(movementGymFields,
                               "active_room_authored_object_count",
-                              "4") &&
+                              "10") &&
       iggy3d::smoke::hasField(movementGymFields,
                               "active_room_authored_marker_count",
-                              "3") &&
+                              "5") &&
       iggy3d::smoke::hasField(movementGymFields,
                               "active_room_collision_walkable_surface_count",
-                              "53") &&
+                              "780") &&
       iggy3d::smoke::hasField(movementGymFields,
                               "active_room_collision_actor_blocker_count",
-                              "48") &&
+                              "269") &&
       iggy3d::smoke::hasField(movementGymFields,
                               "active_room_collision_projectile_blocker_count",
-                              "48") &&
+                              "269") &&
       iggy3d::smoke::hasField(movementGymFields,
                               "product_draw_prop_visible",
                               "true") &&
       iggy3d::smoke::hasField(movementGymFields,
                               "product_draw_prop_tile_count",
-                              "4") &&
+                              "10") &&
       iggy3d::smoke::hasField(movementGymFields,
                               "product_render_bridge_prop_visible",
                               "true") &&
       iggy3d::smoke::hasField(movementGymFields,
                               "product_render_bridge_prop_tile_count",
-                              "4") &&
+                              "10") &&
       iggy3d::smoke::hasField(movementGymFields,
                               "gameplay_movement_status",
                               "moved") &&

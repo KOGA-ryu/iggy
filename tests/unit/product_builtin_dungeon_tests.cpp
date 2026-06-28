@@ -82,7 +82,7 @@ constexpr ExpectedDungeonCounts kExpectedDungeons[] = {
     {"physics_wall_corridor", 9U, 5U, 14U, 31U, 0U, 4U, 76U, 14U, 31U, 31U},
     {"physics_corner_slide", 8U, 5U, 14U, 26U, 0U, 3U, 66U, 14U, 26U, 26U},
     {"object_crate_room", 7U, 5U, 15U, 20U, 1U, 2U, 57U, 15U, 21U, 21U},
-    {"movement_gym", 19U, 5U, 51U, 44U, 4U, 3U, 149U, 53U, 48U, 48U},
+    {"movement_gym", 45U, 23U, 776U, 259U, 10U, 5U, 1318U, 780U, 269U, 269U},
 };
 
 const ExpectedDungeonCounts* expectedCountsFor(std::string_view roomId) {
@@ -428,9 +428,9 @@ bool movementGymBuildsScaledJumpAndClamberObjects() {
   const iggy3d::RoomStaticMeshAsset* crate =
       findMesh(active.room, "object_crate_r1_c3");
   const iggy3d::RoomStaticMeshAsset* ledge =
-      findMesh(active.room, "object_clamber_ledge_r1_c11");
+      findMesh(active.room, "object_clamber_ledge_r5_c25");
   const iggy3d::RoomSpatialSurface* wallJump =
-      findSurface(active.room, "wall_r0_c8_actor_blocker");
+      findSurface(active.room, "wall_r1_c31_actor_blocker");
   const iggy3d::MovementTraversalSlotRegistry slots =
       iggy3d::buildMovementTraversalSlotRegistry(active.room, iggy3d::Vec3{});
 
@@ -441,12 +441,12 @@ bool movementGymBuildsScaledJumpAndClamberObjects() {
                 "movement gym floor count") &&
          expect(active.authoredWallCount == expected->wallCount,
                 "movement gym wall count") &&
-         expect(active.authoredObjectCount == 4U,
+         expect(active.authoredObjectCount == expected->objectCount,
                 "movement gym authored objects") &&
-         expect(active.staticMeshCount == 99U, "movement gym static meshes") &&
-         expect(countMeshesWithRole(active.room, "prop") == 2U,
+         expect(active.staticMeshCount > 1000U, "movement gym static meshes") &&
+         expect(countMeshesWithRole(active.room, "prop") == 6U,
                 "movement gym crate props") &&
-         expect(countMeshesWithRole(active.room, "ledge") == 2U,
+         expect(countMeshesWithRole(active.room, "ledge") == 4U,
                 "movement gym clamber ledges") &&
          expect(crate != nullptr, "movement gym crate mesh") &&
          expect(crate == nullptr || crate->role == "prop", "crate role") &&
@@ -465,18 +465,24 @@ bool movementGymBuildsScaledJumpAndClamberObjects() {
                     hasTag(wallJump->traversalTags, "wall_jump"),
                 "movement gym wall jump tag") &&
          expect(collision.ready, "movement gym collision ready") &&
-         expect(collision.querySurfaceCount == expected->spatialSurfaceCount,
-                "movement gym query surface count") &&
-         expect(collision.walkableSurfaceCount == expected->walkableSurfaceCount,
-                "movement gym walkable count") &&
-         expect(collision.actorBlockerSurfaceCount ==
-                    expected->actorBlockerSurfaceCount,
-                "movement gym actor blockers") &&
-         expect(collision.projectileBlockerSurfaceCount ==
-                    expected->projectileBlockerSurfaceCount,
-                "movement gym projectile blockers") &&
+         expectEqual(collision.querySurfaceCount,
+                     expected->spatialSurfaceCount,
+                     active.roomId,
+                     "movement gym query surface count") &&
+         expectEqual(collision.walkableSurfaceCount,
+                     expected->walkableSurfaceCount,
+                     active.roomId,
+                     "movement gym walkable count") &&
+         expectEqual(collision.actorBlockerSurfaceCount,
+                     expected->actorBlockerSurfaceCount,
+                     active.roomId,
+                     "movement gym actor blockers") &&
+         expectEqual(collision.projectileBlockerSurfaceCount,
+                     expected->projectileBlockerSurfaceCount,
+                     active.roomId,
+                     "movement gym projectile blockers") &&
          expect(surfaces != nullptr, "movement gym collision pointer") &&
-         expect(slots.slots.size() == 2U, "movement gym clamber slots");
+         expect(slots.slots.size() == 4U, "movement gym clamber slots");
 }
 
 bool physicsPlannerUsesTestRooms() {

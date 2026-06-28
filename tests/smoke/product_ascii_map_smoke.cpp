@@ -563,17 +563,17 @@ int main() {
       "movement_gym",
       "Movement Gym",
       "fixtures/rooms/ascii/movement_gym.iggyroom.txt",
-      "19",
+      "45",
+      "23",
+      "776",
+      "259",
+      "10",
       "5",
-      "51",
-      "44",
-      "4",
-      "3",
-      "149",
-      "53",
-      "48",
-      "48",
-      "4",
+      "1318",
+      "780",
+      "269",
+      "269",
+      "10",
   };
   fields.clear();
   const bool createMovementGymWorld =
@@ -583,19 +583,19 @@ int main() {
                                 movementGymSaveRoot,
                                 fields,
                                 exitCode) &&
-      iggy3d::smoke::hasField(fields, "active_room_static_mesh_count", "99") &&
+      iggy3d::smoke::hasField(fields, "active_room_static_mesh_count", "1045") &&
       iggy3d::smoke::hasField(fields, "product_draw_prop_visible", "true") &&
-      iggy3d::smoke::hasField(fields, "product_draw_prop_tile_count", "4") &&
+      iggy3d::smoke::hasField(fields, "product_draw_prop_tile_count", "10") &&
       iggy3d::smoke::hasField(fields, "product_draw_room_geometry_count",
-                              "101") &&
+                              "1049") &&
       iggy3d::smoke::hasField(fields, "product_render_bridge_prop_visible",
                               "true") &&
       iggy3d::smoke::hasField(fields, "product_render_bridge_prop_tile_count",
-                              "4") &&
+                              "10") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_mesh_cpu_ready", "true") &&
       iggy3d::smoke::hasField(fields,
-                              "product_vulkan_room_source_mesh_count", "99");
+                              "product_vulkan_room_source_mesh_count", "1045");
 
   fields.clear();
   const bool createCustomDraftWorld =

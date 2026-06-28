@@ -235,7 +235,7 @@ int main() {
           "frontend.execute=true\n"
           "world.dungeon_id=movement_gym\n"
           "world.create=true\n"
-          "gameplay.player_position=11,0,2.2\n"
+          "gameplay.player_position=25,0,6.2\n"
           "gameplay.jump=true\n",
           iggy3d::smoke::saveRootArg(clamberSaveRoot),
           clamberFields,
@@ -281,32 +281,32 @@ int main() {
       iggy3d::smoke::hasField(
           clamberFields,
           "gameplay_traversal_slot_id",
-          "object_clamber_ledge_r1_c11:object_clamber_ledge_r1_c11_walkable_top") &&
+          "object_clamber_ledge_r5_c25:object_clamber_ledge_r5_c25_walkable_top") &&
       iggy3d::smoke::hasField(clamberFields,
                               "gameplay_traversal_target_id",
-                              "object_clamber_ledge_r1_c11") &&
+                              "object_clamber_ledge_r5_c25") &&
       iggy3d::smoke::hasField(
           clamberFields,
           "gameplay_traversal_landing_surface_id",
-          "object_clamber_ledge_r1_c11_walkable_top") &&
+          "object_clamber_ledge_r5_c25_walkable_top") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_start_x",
-                              "11.000") &&
+                              "25.000") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_start_y",
                               "0.000") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_start_z",
-                              "2.200") &&
+                              "6.200") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_final_x",
-                              "11.000") &&
+                              "25.000") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_final_y",
                               "1.700") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_final_z",
-                              "1.000") &&
+                              "5.000") &&
       iggy3d::smoke::hasField(clamberFields, "player_position_changed",
                               "true") &&
       iggy3d::smoke::hasField(clamberFields, "product_draw_prop_visible",
                               "true") &&
       iggy3d::smoke::hasField(clamberFields, "product_draw_prop_tile_count",
-                              "4");
+                              "10");
 
   const std::filesystem::path wallJumpSaveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_controls_movement_gym_wall_jump");
@@ -321,7 +321,7 @@ int main() {
           "frontend.execute=true\n"
           "world.dungeon_id=movement_gym\n"
           "world.create=true\n"
-          "gameplay.player_position=8,0.8,0.65\n"
+          "gameplay.player_position=31,0.8,1.65\n"
           "gameplay.jump=true\n",
           iggy3d::smoke::saveRootArg(wallJumpSaveRoot),
           wallJumpFields,
@@ -371,30 +371,30 @@ int main() {
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_mechanic",
                               "wall_jump") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_slot_id",
-                              "wall_r0_c8_actor_blocker") &&
+                              "wall_r2_c31_actor_blocker") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_target_id",
-                              "wall_r0_c8_actor_blocker") &&
+                              "wall_r2_c31_actor_blocker") &&
       iggy3d::smoke::hasField(wallJumpFields,
                               "gameplay_traversal_landing_surface_id",
-                              "wall_r0_c8_actor_blocker") &&
+                              "wall_r2_c31_actor_blocker") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_start_x",
-                              "8.000") &&
+                              "31.000") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_start_y",
                               "0.800") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_start_z",
-                              "0.650") &&
+                              "1.650") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_x",
-                              "8.000") &&
+                              "31.000") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_y",
                               fixed3(0.8F + tuning.wallJumpRiseMeters)) &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_z",
-                              fixed3(0.65F + tuning.wallJumpPushMeters)) &&
+                              fixed3(1.65F - tuning.wallJumpPushMeters)) &&
       iggy3d::smoke::hasField(wallJumpFields, "player_position_changed",
                               "true") &&
       iggy3d::smoke::hasField(wallJumpFields, "product_draw_prop_visible",
                               "true") &&
       iggy3d::smoke::hasField(wallJumpFields, "product_draw_prop_tile_count",
-                              "4");
+                              "10");
 
   const bool passed =
       scriptedControlsPassed && clamberControlsPassed && wallJumpControlsPassed;
