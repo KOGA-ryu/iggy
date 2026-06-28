@@ -20,6 +20,7 @@
 namespace iggy3d {
 
 class SdlWindow;
+struct SdlWindowEventState;
 struct ProductSaveBridgeResult;
 struct WorldSetupDraft;
 
@@ -91,6 +92,7 @@ void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                           SdlWindow* sdlWindow = nullptr,
                                           ProductAppWindowState* window = nullptr);
 void processProductWindowInputFrame(ProductWindowInputFrameContext context);
+InputAction productWindowFunctionKeyAction(const SdlWindowEventState& eventState);
 bool cancelProductRoomEditorPendingPreviewFromBack(ProductAppWindowState& window);
 ProductControllerSampleInputResult processProductControllerActionSample(
     ProductControllerSampleInputContext context,

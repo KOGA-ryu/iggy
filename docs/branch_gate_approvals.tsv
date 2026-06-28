@@ -191,3 +191,5 @@ BG-1190	src/app/iggy3d/view/PrimitiveDrawList.cpp	product primitive reset zone p
 BG-1191	src/runtime/collision/CollisionQuery.cpp	collision ground height at-or-below stacked floor policy	codex	2026-06-28
 BG-1192	src/app/iggy3d/view/OpeningMenuView.cpp	compact position HUD draw visibility and row cap policy	codex	2026-06-28
 BG-1193	src/app/iggy3d/debug/PositionHud.cpp	compact position HUD model validation and facing bucket policy	codex	2026-06-28
+BG-1194	src/app/iggy3d/window/InputFrame.cpp	SDL function-key event routing preference policy	codex	2026-06-28
+BG-1195	src/app/platform/SdlWindow.cpp	SDL function-key keydown capture policy	codex	2026-06-28

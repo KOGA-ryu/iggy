@@ -121,6 +121,9 @@ SdlMouseCaptureResult SdlWindow::setRelativeMouseMode(bool enabled) {
 void SdlWindow::pollEvents() {
   eventState_.resized = false;
   eventState_.restored = false;
+  eventState_.f1Pressed = false;
+  eventState_.f2Pressed = false;
+  eventState_.f3Pressed = false;
 
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
@@ -141,6 +144,13 @@ void SdlWindow::pollEvents() {
       eventState_.focused = true;
     } else if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST) {
       eventState_.focused = false;
+    } else if (event.type == SDL_EVENT_KEY_DOWN && !event.key.repeat) {  // branch-gate: BG-1195
+      eventState_.f1Pressed = eventState_.f1Pressed ||
+                              event.key.scancode == SDL_SCANCODE_F1;
+      eventState_.f2Pressed = eventState_.f2Pressed ||
+                              event.key.scancode == SDL_SCANCODE_F2;
+      eventState_.f3Pressed = eventState_.f3Pressed ||
+                              event.key.scancode == SDL_SCANCODE_F3;
     }
   }
   refreshExtents();

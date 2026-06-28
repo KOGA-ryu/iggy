@@ -369,9 +369,17 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       context.frontend, context.saves, context.options, context.settingsTab,
       context.activeSession, context.worldSetupDraft, context.window,
       context.closeRequested, &context.settings};
-  routeProductWindowMenuInput(pollKeyboardMenuAction(context.inputFrame.keyboard),
-                              actionState,
-                              menuContext);
+  InputAction functionKeyAction = InputAction::None;
+  // branch-gate: BG-1194
+  if (context.sdlWindow != nullptr) {
+    functionKeyAction = productWindowFunctionKeyAction(context.sdlWindow->eventState());
+  }
+  InputAction keyboardMenuAction = functionKeyAction;
+  // branch-gate: BG-1194
+  if (keyboardMenuAction == InputAction::None) {
+    keyboardMenuAction = pollKeyboardMenuAction(context.inputFrame.keyboard);
+  }
+  routeProductWindowMenuInput(keyboardMenuAction, actionState, menuContext);
   // branch-gate: BG-1029
   if (context.frontend.childScreen == FrontendScreen::NewWorld) {
     const char paintGlyph = pollKeyboardAsciiRoomPaintGlyph(context.inputFrame.keyboard);
@@ -518,6 +526,18 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   updateProductWindowMouseCapture(context.frontend,
                                   context.window,
                                   context.sdlWindow);
+}
+
+InputAction productWindowFunctionKeyAction(const SdlWindowEventState& eventState) {
+  // branch-gate: BG-1194
+  if (eventState.f3Pressed) {
+    return InputAction::DevDebugOverlay;
+  }
+  // branch-gate: BG-1194
+  if (eventState.f1Pressed || eventState.f2Pressed) {
+    return InputAction::DevToggle;
+  }
+  return InputAction::None;
 }
 
 }  // namespace iggy3d

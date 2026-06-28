@@ -28,6 +28,9 @@ struct SdlWindowEventState {
   bool minimized = false;
   bool restored = false;
   bool focused = true;
+  bool f1Pressed = false;
+  bool f2Pressed = false;
+  bool f3Pressed = false;
   std::uint32_t windowWidth = 0;
   std::uint32_t windowHeight = 0;
   std::uint32_t drawableWidth = 0;

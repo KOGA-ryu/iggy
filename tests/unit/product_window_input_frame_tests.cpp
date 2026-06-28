@@ -6,6 +6,7 @@
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
+#include "app/platform/SdlWindow.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 #include "content/assets/RoomAsset.hpp"
 #include "core/math/Transform3.hpp"
@@ -922,6 +923,35 @@ bool debugOverlayActionTogglesRuntimeOverlaySetting() {
                 "debug overlay missing settings does not mutate unrelated state");
 }
 
+bool sdlFunctionKeyEventsMapToSystemActions() {
+  iggy3d::SdlWindowEventState none;
+  iggy3d::SdlWindowEventState f1;
+  f1.f1Pressed = true;
+  iggy3d::SdlWindowEventState f2;
+  f2.f2Pressed = true;
+  iggy3d::SdlWindowEventState f3;
+  f3.f3Pressed = true;
+  iggy3d::SdlWindowEventState f1f3;
+  f1f3.f1Pressed = true;
+  f1f3.f3Pressed = true;
+
+  return expect(iggy3d::productWindowFunctionKeyAction(none) ==
+                    iggy3d::InputAction::None,
+                "no function key maps to no action") &&
+         expect(iggy3d::productWindowFunctionKeyAction(f1) ==
+                    iggy3d::InputAction::DevToggle,
+                "F1 event maps to dev toggle") &&
+         expect(iggy3d::productWindowFunctionKeyAction(f2) ==
+                    iggy3d::InputAction::DevToggle,
+                "F2 event maps to dev toggle") &&
+         expect(iggy3d::productWindowFunctionKeyAction(f3) ==
+                    iggy3d::InputAction::DevDebugOverlay,
+                "F3 event maps to debug overlay") &&
+         expect(iggy3d::productWindowFunctionKeyAction(f1f3) ==
+                    iggy3d::InputAction::DevDebugOverlay,
+                "F3 overlay event wins over dev panel toggle");
+}
+
 }  // namespace
 
 int main() {
@@ -942,7 +972,8 @@ int main() {
       childPanelHitTestsExposeMenuActions() &&
       menuClickNormalizationScalesWindowCoordinates() &&
       devToggleOpensAndClosesDevToolsSurfaces() &&
-      debugOverlayActionTogglesRuntimeOverlaySetting();
+      debugOverlayActionTogglesRuntimeOverlaySetting() &&
+      sdlFunctionKeyEventsMapToSystemActions();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;
