@@ -9,6 +9,7 @@
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/Options.hpp"
+#include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
@@ -65,7 +66,12 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
     std::uint32_t viewportWidth,
     std::uint32_t viewportHeight,
     float cameraYawDegrees,
-    float cameraPitchDegrees);
+    float cameraPitchDegrees,
+    const ProductGameplayMovementTuning& movementTuning =
+        productGameplayMovementTuning(),
+    ProductGameplayMovementTuningField movementTuningField =
+        ProductGameplayMovementTuningField::WalkSpeed,
+    bool movementTuningVisible = false);
 const FrameInput& refreshProductVulkanGameplayFrameInput(
     ProductVulkanGameplayFrame& gameplayFrame);
 void presentProductWindowFrame(ProductWindowFramePresenterRequest request);

@@ -3,6 +3,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <iomanip>
+#include <sstream>
+#include <string>
 
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
@@ -116,6 +119,29 @@ std::uint32_t scaledHudExtent(float virtualValue,
   return static_cast<std::uint32_t>(std::max(1L, scaled));
 }
 
+std::string fixedHudFloat(float value, int precision) {
+  std::ostringstream stream;
+  stream << std::fixed << std::setprecision(precision) << value;
+  return stream.str();
+}
+
+void appendGameplayHudText(ProductVulkanGameplayFrame& frame,
+                           std::string_view text,
+                           float virtualX,
+                           float virtualY,
+                           std::uint32_t viewportWidth,
+                           std::uint32_t viewportHeight) {
+  const DebugHudLayoutResult layout = layoutDebugHudTextAt(
+      text,
+      scaledHudOffset(virtualX, viewportWidth, kVirtualViewportWidth),
+      scaledHudOffset(virtualY, viewportHeight, kVirtualViewportHeight),
+      viewportWidth,
+      viewportHeight);
+  frame.textGlyphCount += layout.glyphCount;
+  frame.textGlyphQuads.insert(frame.textGlyphQuads.end(), layout.quads.begin(),
+                              layout.quads.end());
+}
+
 void appendPositionHudUi(ProductVulkanGameplayFrame& frame,
                          const PositionHud& hud,
                          std::uint32_t viewportWidth,
@@ -158,6 +184,86 @@ void appendPositionHudUi(ProductVulkanGameplayFrame& frame,
     frame.textGlyphQuads.insert(frame.textGlyphQuads.end(), layout.quads.begin(),
                                 layout.quads.end());
     textY += lineStep;
+    ++drawn;
+  }
+}
+
+void appendMovementTuningHudUi(
+    ProductVulkanGameplayFrame& frame,
+    const ProductGameplayMovementTuning& tuning,
+    ProductGameplayMovementTuningField selectedField,
+    bool visible,
+    std::uint32_t viewportWidth,
+    std::uint32_t viewportHeight) {
+  // branch-gate: BG-1213
+  if (!visible || viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+
+  frame.rects.push_back(RenderUiRect{
+      scaledHudOffset(820.0F, viewportWidth, kVirtualViewportWidth),
+      scaledHudOffset(410.0F, viewportHeight, kVirtualViewportHeight),
+      scaledHudExtent(384.0F, viewportWidth, kVirtualViewportWidth),
+      scaledHudExtent(168.0F, viewportHeight, kVirtualViewportHeight),
+      14.0F / 255.0F,
+      21.0F / 255.0F,
+      23.0F / 255.0F,
+      1.0F,
+  });
+
+  appendGameplayHudText(frame,
+                        "MOVEMENT TUNING",
+                        838.0F,
+                        426.0F,
+                        viewportWidth,
+                        viewportHeight);
+  appendGameplayHudText(frame,
+                        "F4 HIDE  ENTER/UP/DOWN FIELD",
+                        838.0F,
+                        456.0F,
+                        viewportWidth,
+                        viewportHeight);
+  appendGameplayHudText(frame,
+                        "LEFT/RIGHT VALUE",
+                        838.0F,
+                        472.0F,
+                        viewportWidth,
+                        viewportHeight);
+
+  float virtualY = 498.0F;
+  std::uint64_t drawn = 0U;
+  for (const ProductGameplayMovementTuningFieldDescriptor& descriptor :
+       kProductGameplayMovementTuningFields) {
+    // branch-gate: BG-1213
+    if (drawn >= 7U) {
+      break;
+    }
+    const bool selected = descriptor.field == selectedField;
+    // branch-gate: BG-1213
+    if (selected) {
+      frame.rects.push_back(RenderUiRect{
+          scaledHudOffset(834.0F, viewportWidth, kVirtualViewportWidth),
+          scaledHudOffset(virtualY - 2.0F, viewportHeight, kVirtualViewportHeight),
+          scaledHudExtent(348.0F, viewportWidth, kVirtualViewportWidth),
+          scaledHudExtent(14.0F, viewportHeight, kVirtualViewportHeight),
+          63.0F / 255.0F,
+          71.0F / 255.0F,
+          58.0F / 255.0F,
+          1.0F,
+      });
+    }
+    std::string row = selected ? "> " : "  ";  // branch-gate: BG-1213
+    row += descriptor.label;
+    row += " ";
+    row += fixedHudFloat(tuning.*(descriptor.value),
+                         descriptor.step < 0.05F ? 2 : 1);  // branch-gate: BG-1213
+    appendGameplayHudText(frame,
+                          row,
+                          838.0F,
+                          virtualY,
+                          viewportWidth,
+                          viewportHeight);
+    virtualY += 16.0F;
     ++drawn;
   }
 }
@@ -289,7 +395,10 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
           request.projectionFrame, request.window.framesPresented + 1U,
           drawableExtent.width, drawableExtent.height,
           request.window.viewport.cameraYawDegrees,
-          request.window.viewport.cameraPitchDegrees);
+          request.window.viewport.cameraPitchDegrees,
+          request.window.gameplayMovementTuning,
+          request.window.gameplayMovementTuningSelectedField,
+          request.window.gameplayMovementTuningVisible);
       const RenderSubmitResult submit =
           request.renderer.vulkanRenderer.submitFrame(
               refreshProductVulkanGameplayFrameInput(renderFrame));
@@ -438,7 +547,10 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
     std::uint32_t viewportWidth,
     std::uint32_t viewportHeight,
     float cameraYawDegrees,
-    float cameraPitchDegrees) {
+    float cameraPitchDegrees,
+    const ProductGameplayMovementTuning& movementTuning,
+    ProductGameplayMovementTuningField movementTuningField,
+    bool movementTuningVisible) {
   ProductVulkanGameplayFrame frame;
   frame.frame = makeProductVulkanFrame(projectionFrame.scene, projectionFrame.debug,
                                        frameIndex, viewportWidth, viewportHeight,
@@ -450,6 +562,12 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
   appendMapMakerHudUi(frame, projectionFrame.mapMakerHud, viewportWidth,
                       viewportHeight);
   appendPositionHudUi(frame, projectionFrame.positionHud, viewportWidth, viewportHeight);
+  appendMovementTuningHudUi(frame,
+                            movementTuning,
+                            movementTuningField,
+                            movementTuningVisible,
+                            viewportWidth,
+                            viewportHeight);
   return frame;
 }
 

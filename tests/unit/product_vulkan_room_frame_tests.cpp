@@ -852,6 +852,67 @@ bool vulkanGameplayFrameCarriesPositionHudUiOverlay() {
                 "hidden position hud no glyph quads");
 }
 
+bool vulkanGameplayFrameCarriesMovementTuningUiOverlay() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "movement tuning vulkan session created")) {
+    return false;
+  }
+
+  const iggy3d::ProductGameplayProjectionFrame projection =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session, window, false, false, iggy3d::ProductRendererRequest::Vulkan});
+
+  iggy3d::ProductVulkanGameplayFrame hidden =
+      iggy3d::buildProductVulkanGameplayFrame(
+          projection,
+          14U,
+          1280U,
+          720U,
+          0.0F,
+          0.0F,
+          window.gameplayMovementTuning,
+          window.gameplayMovementTuningSelectedField,
+          false);
+  const iggy3d::FrameInput& hiddenFrame =
+      iggy3d::refreshProductVulkanGameplayFrameInput(hidden);
+
+  window.gameplayMovementTuningVisible = true;
+  window.gameplayMovementTuningSelectedField =
+      iggy3d::ProductGameplayMovementTuningField::JumpImpulse;
+  iggy3d::ProductVulkanGameplayFrame visible =
+      iggy3d::buildProductVulkanGameplayFrame(
+          projection,
+          15U,
+          1280U,
+          720U,
+          0.0F,
+          0.0F,
+          window.gameplayMovementTuning,
+          window.gameplayMovementTuningSelectedField,
+          window.gameplayMovementTuningVisible);
+  const iggy3d::FrameInput& visibleFrame =
+      iggy3d::refreshProductVulkanGameplayFrameInput(visible);
+
+  return expect(!hiddenFrame.ui.visible,
+                "hidden movement tuning has no vulkan ui") &&
+         expect(hiddenFrame.ui.rectCount == 0U,
+                "hidden movement tuning no rects") &&
+         expect(hiddenFrame.ui.textGlyphQuadCount == 0U,
+                "hidden movement tuning no glyph quads") &&
+         expect(visibleFrame.ui.visible,
+                "movement tuning vulkan ui visible") &&
+         expect(visibleFrame.ui.rectCount >= 2U,
+                "movement tuning background and selected row rects") &&
+         expect(visibleFrame.ui.textGlyphCount > 0U,
+                "movement tuning text glyph count") &&
+         expect(visibleFrame.ui.textGlyphQuadCount > visibleFrame.ui.textGlyphCount,
+                "movement tuning glyph quads") &&
+         expect(visibleFrame.ui.primitiveCount > visibleFrame.ui.rectCount,
+                "movement tuning primitive count includes text");
+}
+
 bool creativeMapMakerFrameCarriesGridOverlay() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -958,6 +1019,7 @@ int main() {
                   productPhysicsDebugGeometryRequiresDebugOverlayGate() &&
                   productReceiptCarriesFirstPersonRoomPathProof() &&
                   vulkanGameplayFrameCarriesPositionHudUiOverlay() &&
+                  vulkanGameplayFrameCarriesMovementTuningUiOverlay() &&
                   creativeMapMakerFrameCarriesGridOverlay();
   if (!ok) {
     return EXIT_FAILURE;
