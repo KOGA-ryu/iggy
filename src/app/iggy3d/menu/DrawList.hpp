@@ -9,6 +9,8 @@
 
 namespace iggy3d {
 
+struct WorldSetupDraft;
+
 enum class ProductUiPrimitiveKind : std::uint8_t {
   Panel,
   Rect,
@@ -75,6 +77,7 @@ struct ProductUiDrawListRequest {
   std::uint64_t compatibleSaveCount = 0;
   std::uint32_t virtualWidth = 1280;
   std::uint32_t virtualHeight = 720;
+  const WorldSetupDraft* worldSetupDraft = nullptr;
 };
 
 std::string_view productUiPrimitiveKindName(ProductUiPrimitiveKind kind);

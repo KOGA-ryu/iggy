@@ -4,6 +4,7 @@
 #include <string_view>
 
 #include "app/frontend/StarterScreen.hpp"
+#include "app/iggy3d/world/BuiltinDungeon.hpp"
 
 namespace {
 
@@ -129,10 +130,50 @@ bool disabledSaveRowsAreRepresentedWithoutCompatibleSaves() {
   return ok;
 }
 
-bool childScreenIsRepresentedAsPartialStarterSurface() {
+bool newWorldChildScreenBuildsReadySelectorSurface() {
   iggy3d::FrontendState frontend =
       starterFrontend(iggy3d::FrontendAction::NewWorld);
   frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
+  iggy3d::WorldSetupDraft draft =
+      iggy3d::makeProductDefaultWorldSetupDraft("seed_new_world_ui");
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductStarterUiDrawList({&frontend, 0U, 1280U, 720U, &draft});
+  const iggy3d::ProductUiPrimitive* title =
+      findPrimitive(list, "starter.content.new_world.title");
+  const iggy3d::ProductUiPrimitive* dungeon =
+      findPrimitive(list, "starter.content.new_world.dungeon_value");
+  const iggy3d::ProductUiPrimitive* room =
+      findPrimitive(list, "starter.content.new_world.room_id_value");
+  const iggy3d::ProductUiPrimitive* source =
+      findPrimitive(list, "starter.content.new_world.source_value");
+  const iggy3d::ProductUiPrimitive* create =
+      findPrimitive(list, "starter.content.new_world.create");
+  bool ok = true;
+  ok &= expect(list.ready, "new world draw-list ready");
+  ok &= expect(!list.partial, "new world not partial");
+  ok &= expect(list.status == "product_ui_draw_list_ready",
+               "new world ready status");
+  ok &= expect(list.reasonCode == "product_ui_draw_list_ready",
+               "new world ready reason");
+  ok &= expect(title != nullptr && title->text == "NEW WORLD",
+               "new world title");
+  ok &= expect(dungeon != nullptr && dungeon->text == "Loop Keep",
+               "new world dungeon value");
+  ok &= expect(room != nullptr && room->text == "loop_keep_ascii",
+               "new world room id value");
+  ok &= expect(source != nullptr &&
+                   source->text == "fixtures/rooms/ascii/loop_keep.iggyroom.txt",
+               "new world source value");
+  ok &= expect(create != nullptr &&
+                   create->action == iggy3d::FrontendAction::CreateAndEnter,
+               "new world create action");
+  return ok;
+}
+
+bool nonWorldChildScreenIsRepresentedAsPartialStarterSurface() {
+  iggy3d::FrontendState frontend =
+      starterFrontend(iggy3d::FrontendAction::Settings);
+  frontend.childScreen = iggy3d::FrontendScreen::Settings;
   const iggy3d::ProductUiDrawList list =
       iggy3d::buildProductStarterUiDrawList({&frontend, 0U, 1280U, 720U});
   const iggy3d::ProductUiPrimitive* child =
@@ -143,7 +184,7 @@ bool childScreenIsRepresentedAsPartialStarterSurface() {
                 "child partial status") &&
          expect(list.reasonCode == "starter_child_panel_not_modeled",
                 "child partial reason") &&
-         expect(child != nullptr && child->text == "new_world",
+         expect(child != nullptr && child->text == "settings",
                 "child screen text");
 }
 
@@ -179,7 +220,8 @@ int main() {
   ok &= starterRootDrawListContainsHeaderAndRowsInOrder();
   ok &= selectedNewWorldGetsHighlightAndStableCoordinates();
   ok &= disabledSaveRowsAreRepresentedWithoutCompatibleSaves();
-  ok &= childScreenIsRepresentedAsPartialStarterSurface();
+  ok &= newWorldChildScreenBuildsReadySelectorSurface();
+  ok &= nonWorldChildScreenIsRepresentedAsPartialStarterSurface();
   ok &= invalidContextRejectsWithoutRendererTypes();
   if (!ok) {
     return 1;

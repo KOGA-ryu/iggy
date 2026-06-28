@@ -6,6 +6,8 @@
 #include <string_view>
 
 #include "app/frontend/StarterScreen.hpp"
+#include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/world/BuiltinDungeon.hpp"
 
 namespace iggy3d {
 namespace {
@@ -26,6 +28,7 @@ constexpr float kFooterHeight = 72.0F;
 
 enum class ProductStarterUiContext {
   Root,
+  NewWorld,
   ChildPartial,
   UnsupportedScreen,
   MissingFrontend,
@@ -80,13 +83,20 @@ constexpr std::array<ProductUiToneDescriptor, 9> kToneDescriptors{
     ProductUiToneDescriptor{ProductUiTone::Status, "status", {0.50F, 0.56F, 0.53F, 1.0F}},
 };
 
-constexpr std::array<ProductStarterUiBuildDescriptor, 2> kStarterUiBuildDescriptors{
+constexpr std::array<ProductStarterUiBuildDescriptor, 3> kStarterUiBuildDescriptors{
     ProductStarterUiBuildDescriptor{
         ProductStarterUiContext::Root,
         false,
         "product_ui_draw_list_ready",
         "product_ui_draw_list_ready",
         "starter root menu ready",
+    },
+    ProductStarterUiBuildDescriptor{
+        ProductStarterUiContext::NewWorld,
+        false,
+        "product_ui_draw_list_ready",
+        "product_ui_draw_list_ready",
+        "new world selector ready",
     },
     ProductStarterUiBuildDescriptor{
         ProductStarterUiContext::ChildPartial,
@@ -154,6 +164,10 @@ ProductStarterUiContext starterUiContextFor(const ProductUiDrawListRequest& requ
   // branch-gate: BG-1073
   if (request.frontend->screen != FrontendScreen::Starter) {
     return ProductStarterUiContext::UnsupportedScreen;
+  }
+  // branch-gate: BG-1143
+  if (request.frontend->childScreen == FrontendScreen::NewWorld) {
+    return ProductStarterUiContext::NewWorld;
   }
   // branch-gate: BG-1073
   if (request.frontend->childScreen != FrontendScreen::Gameplay) {
@@ -299,6 +313,107 @@ void emitStarterStatus(ProductUiDrawList& list,
            frontendScreenName(frontend.childScreen));
 }
 
+std::string selectionLabelFor(const WorldSetupDraft& draft) {
+  const std::size_t dungeonCount = productBuiltinDungeonCatalog().size();
+  const std::size_t selectedIndex =
+      productBuiltinDungeonIndexForRoomId(draft.asciiRoomId);
+  // branch-gate: BG-1143
+  if (selectedIndex >= dungeonCount) {
+    return "CUSTOM";
+  }
+  return std::to_string(selectedIndex + 1U) + " / " +
+         std::to_string(dungeonCount);
+}
+
+void emitNewWorldContent(ProductUiDrawList& list, const WorldSetupDraft* draft) {
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {452.0F, 150.0F, 360.0F, 42.0F},
+           makeStarterSemanticId("content.new_world.title"),
+           "NEW WORLD");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {452.0F, 210.0F, 700.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.instructions"),
+           "UP DOWN SELECT DUNGEON   TAB EDIT   CONFIRM CREATE");
+  // branch-gate: BG-1143
+  if (draft == nullptr) {
+    emitText(list,
+             ProductUiTone::Status,
+             {452.0F, 272.0F, 620.0F, 26.0F},
+             makeStarterSemanticId("content.new_world.unavailable"),
+             "WORLD SETUP DRAFT UNAVAILABLE");
+    return;
+  }
+
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {452.0F, 260.0F, 180.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.dungeon_label"),
+           "DUNGEON");
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {452.0F, 289.0F, 360.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.dungeon_value"),
+           draft->worldName);
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {714.0F, 260.0F, 170.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.selection_label"),
+           "SELECTED");
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {714.0F, 289.0F, 170.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.selection_value"),
+           selectionLabelFor(*draft));
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {452.0F, 338.0F, 180.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.room_id_label"),
+           "ASCII ROOM");
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {452.0F, 367.0F, 360.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.room_id_value"),
+           draft->asciiRoomId);
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {452.0F, 416.0F, 180.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.source_label"),
+           "MAP SOURCE");
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {452.0F, 445.0F, 520.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.source_value"),
+           draft->asciiRoomSourceName);
+  emitText(list,
+           ProductUiTone::Accent,
+           {452.0F, 508.0F, 260.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.create"),
+           "CONFIRM TO CREATE",
+           FrontendAction::CreateAndEnter,
+           false,
+           true);
+  emitText(list,
+           ProductUiTone::Accent,
+           {452.0F, 556.0F, 90.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.prev"),
+           "PREV");
+  emitText(list,
+           ProductUiTone::Accent,
+           {570.0F, 556.0F, 90.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.next"),
+           "NEXT");
+  emitText(list,
+           ProductUiTone::Accent,
+           {850.0F, 508.0F, 100.0F, 26.0F},
+           makeStarterSemanticId("content.new_world.back"),
+           "BACK",
+           FrontendAction::Back,
+           false,
+           true);
+}
+
 ProductUiDrawList rejectedList(const ProductUiDrawListRequest& request,
                                std::string_view status,
                                std::string_view reasonCode) {
@@ -358,7 +473,12 @@ ProductUiDrawList buildProductStarterUiDrawList(
 
   emitStarterFrame(list);
   emitStarterRows(list, model);
-  emitStarterStatus(list, frontend, context);
+  // branch-gate: BG-1143
+  if (context == ProductStarterUiContext::NewWorld) {
+    emitNewWorldContent(list, request.worldSetupDraft);
+  } else {
+    emitStarterStatus(list, frontend, context);
+  }
   list.primitiveCount = list.primitives.size();
   return list;
 }

@@ -157,7 +157,11 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
     // branch-gate: BG-1072
     if (request.frontend.screen == FrontendScreen::Starter) {
       const ProductUiDrawList menuUi = buildProductStarterUiDrawList(
-          {&request.frontend, request.saves.slots.compatibleCount, 1280U, 720U});
+          {&request.frontend,
+           request.saves.slots.compatibleCount,
+           1280U,
+           720U,
+           &request.worldSetupDraft});
       recordProductVulkanMenuUiDrawList(request.window, "starter", menuUi);
       const SdlDrawableExtent drawableExtent = request.sdlWindow.drawableExtent();
       // branch-gate: BG-1072

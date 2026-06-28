@@ -140,3 +140,4 @@ BG-1139	src/app/iggy3d/view/OpeningMenuView.cpp	new world mouse dungeon selector
 BG-1140	src/app/iggy3d/menu/ActionHandlers.cpp	starter delete save button confirmation routing policy	codex	2026-06-28
 BG-1141	src/app/iggy3d/view/OpeningMenuView.cpp	starter child panel button visibility and back hit-test policy	codex	2026-06-28
 BG-1142	src/app/iggy3d/window/InputFrame.cpp	starter child panel mouse back routing policy	codex	2026-06-28
+BG-1143	src/app/iggy3d/menu/DrawList.cpp	new world starter child UI draw-list rendering policy	codex	2026-06-28
