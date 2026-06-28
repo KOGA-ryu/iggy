@@ -154,3 +154,6 @@ BG-1153	src/app/iggy3d/gameplay/Controller.cpp	product manual first-person jump 
 BG-1154	src/app/input/KeyboardInput.cpp	keyboard dash action polling policy	codex	2026-06-28
 BG-1155	src/app/iggy3d/gameplay/Controller.cpp	product manual first-person dash command policy	codex	2026-06-28
 BG-1156	src/app/iggy3d/gameplay/Controller.cpp	product jump-triggered traversal clamber policy	codex	2026-06-28
+BG-1157	src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp	ASCII clamber ledge object top-surface bake policy	codex	2026-06-28
+BG-1158	src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.cpp	ASCII clamber ledge glyph semantics policy	codex	2026-06-28
+BG-1159	src/app/iggy3d/view/PrimitiveDrawList.cpp	Product primitive ledge draw styling policy	codex	2026-06-28

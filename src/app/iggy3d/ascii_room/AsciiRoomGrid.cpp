@@ -8,7 +8,7 @@ namespace {
 
 constexpr float kElevationStepMeters = 0.5F;
 
-constexpr std::array<AsciiRoomGlyphInfo, 23> kGlyphs{{
+constexpr std::array<AsciiRoomGlyphInfo, 24> kGlyphs{{
     {'#', AsciiRoomCellKind::Wall, false, true, true, "",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
     {'.', AsciiRoomCellKind::Floor, true, false, false, "",
@@ -55,6 +55,9 @@ constexpr std::array<AsciiRoomGlyphInfo, 23> kGlyphs{{
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
     {'C', AsciiRoomCellKind::Floor, true, false, false, "",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, "wood_crate_proxy"},
+    {'L', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, "movement_clamber_ledge_proxy",
+     {2.0F, 1.7F, 1.0F}},
     {'E', AsciiRoomCellKind::Exit, true, false, false, "exit",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
     {'?', AsciiRoomCellKind::Inspect, true, false, false, "inspect",
@@ -177,6 +180,7 @@ AsciiRoomGridBuildResult buildAsciiRoomGrid(const AsciiRoomSource& source) {
       cell.terrainKind = info->terrainKind;
       cell.elevationMeters = info->elevationMeters;
       cell.riseMeters = info->riseMeters;
+      cell.objectSizeMeters = info->objectSizeMeters;
       cell.sourceOffset = asciiRoomSourceOffset(source, row, column);
       hasWalkable = hasWalkable || cell.walkable;
       if (cell.kind == AsciiRoomCellKind::PlayerSpawn) {

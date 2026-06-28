@@ -191,8 +191,11 @@ ProductPrimitiveDrawItem itemFromPropMesh(const RoomStaticMeshAsset& mesh) {
   item.worldPosition = mesh.positionMeters;
   item.worldBounds = aabbFromCenterExtents(mesh.positionMeters, mesh.sizeMeters * 0.5F);
   item.visible = true;
-  item.color = colorForRoomKind(item.kind);
-  item.markerSize = 42.0F;
+  // branch-gate: BG-1159
+  item.color = mesh.role == "ledge" ? ProductPrimitiveColor{76, 132, 178}
+                                    : colorForRoomKind(item.kind);
+  // branch-gate: BG-1159
+  item.markerSize = mesh.role == "ledge" ? 52.0F : 42.0F;
   return item;
 }
 
@@ -472,7 +475,7 @@ void appendRoomGeometry(const RoomAsset* room, ProductPrimitiveDrawList& list) {
       updateCounts(list, item);
     }
     // branch-gate: BG-1128
-    if (mesh.role == "prop") {
+    if (mesh.role == "prop" || mesh.role == "ledge") {
       ProductPrimitiveDrawItem item = itemFromPropMesh(mesh);
       list.items.push_back(item);
       updateCounts(list, item);

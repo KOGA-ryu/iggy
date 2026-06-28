@@ -259,6 +259,41 @@ bool crateGlyphGeneratesDurableAuthoredObject() {
                 "crate source proof");
 }
 
+bool ledgeGlyphGeneratesScaledClamberObject() {
+  const auto source =
+      iggy3d::parseAsciiRoomSource("#####\n#PLE#\n#####\n",
+                                   "ledge_room.iggyroom.txt");
+  const auto grid = iggy3d::buildAsciiRoomGrid(source);
+  const auto result = iggy3d::compileAsciiRoomToAuthoredRoom(grid.grid);
+  const auto& object = result.authoredRoom.objects.front();
+  return expect(result.ok, "ledge compile ok") &&
+         expect(result.authoredRoom.floors.size() == 3U,
+                "ledge emits floor under object") &&
+         expect(result.authoredRoom.objects.size() == 1U,
+                "ledge object count") &&
+         expect(result.objectCount == 1U, "ledge result object count") &&
+         expect(object.id == "object_clamber_ledge_r1_c2",
+                "ledge object id") &&
+         expect(object.assetId == "movement_clamber_ledge_proxy",
+                "ledge asset id") &&
+         expect(near(object.positionMeters.x, 0.0), "ledge x") &&
+         expect(near(object.positionMeters.y, 0.85), "ledge y") &&
+         expect(near(object.positionMeters.z, 0.0), "ledge z") &&
+         expect(near(object.sizeMeters.x, 2.0), "ledge size x") &&
+         expect(near(object.sizeMeters.y, 1.7), "ledge eye height") &&
+         expect(near(object.sizeMeters.z, 1.0), "ledge size z") &&
+         expect(object.semantics.materialId == "movement_clamber_ledge_proxy",
+                "ledge material") &&
+         expect(hasTag(object.semantics.traversalTags, "clamber"),
+                "ledge clamber traversal") &&
+         expect(hasTag(object.semantics.gameplayTags, "ledge"),
+                "ledge gameplay") &&
+         expect(object.glyph == "L", "ledge glyph") &&
+         expect(object.row == 1U && object.column == 2U, "ledge row col") &&
+         expect(object.sourceLine == 2U && object.sourceColumn == 3U,
+                "ledge source proof");
+}
+
 bool terrainGlyphsCompileToSurfaceFacts() {
   const auto source =
       iggy3d::parseAsciiRoomSource("######\n#P1>!#\n######\n");
@@ -328,6 +363,7 @@ int main() {
   ok = markerRecordsAreDeterministicSidecars() && ok;
   ok = doorAndSecretDoorGenerateFloorAndMarkerOnly() && ok;
   ok = crateGlyphGeneratesDurableAuthoredObject() && ok;
+  ok = ledgeGlyphGeneratesScaledClamberObject() && ok;
   ok = terrainGlyphsCompileToSurfaceFacts() && ok;
   ok = invalidGridRejectsDeterministically() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

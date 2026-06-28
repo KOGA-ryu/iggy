@@ -143,9 +143,7 @@ bool manualDungeonSelectorCanCreateObjectCrateRoom() {
                        iggy3d::productBuiltinDungeonCatalog().size(),
                    "selector count mirrors catalog");
 
-  for (std::size_t step = 1U;
-       step < iggy3d::productBuiltinDungeonCatalog().size();
-       ++step) {
+  while (draft.asciiRoomId != "object_crate_room") {
     const iggy3d::ProductMenuActionResult right = applyNewWorldAction(
         iggy3d::InputAction::MenuRight, frontend, options, activeSession, draft,
         window);
@@ -167,7 +165,8 @@ bool manualDungeonSelectorCanCreateObjectCrateRoom() {
   ok = expect(window.worldSetupDungeonIndex == 8U,
               "window mirrors selected dungeon index") &&
        ok;
-  ok = expect(window.worldSetupDungeonCount == 8U,
+  ok = expect(window.worldSetupDungeonCount ==
+                  iggy3d::productBuiltinDungeonCatalog().size(),
               "window mirrors selected dungeon count") &&
        ok;
   ok = expect(window.worldSetupAsciiRoomId == "object_crate_room",
@@ -193,7 +192,8 @@ bool manualDungeonSelectorCanCreateObjectCrateRoom() {
   ok = expect(window.worldSetupDungeonIndex == 8U,
               "created receipt keeps dungeon index") &&
        ok;
-  ok = expect(window.worldSetupDungeonCount == 8U,
+  ok = expect(window.worldSetupDungeonCount ==
+                  iggy3d::productBuiltinDungeonCatalog().size(),
               "created receipt keeps dungeon count") &&
        ok;
   ok = expect(window.worldCreationAsciiRoomId == "object_crate_room",
@@ -218,10 +218,79 @@ bool manualDungeonSelectorCanCreateObjectCrateRoom() {
   return ok;
 }
 
+bool manualDungeonSelectorCanCreateMovementGym() {
+  iggy3d::FrontendState frontend;
+  frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
+  iggy3d::ProductAppOptions options =
+      makeTestOptions("new_world_movement_gym_selector_tests");
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::WorldSetupDraft draft =
+      iggy3d::makeProductDefaultWorldSetupDraft("seed_new_world_movement_gym");
+  iggy3d::ProductAppWindowState window;
+  iggy3d::recordWorldSetupDraftState(draft, window);
+
+  const iggy3d::ProductMenuActionResult left = applyNewWorldAction(
+      iggy3d::InputAction::MenuLeft, frontend, options, activeSession, draft,
+      window);
+
+  bool ok = expect(left.handled && left.accepted,
+                   "selector left wraps to movement gym");
+  ok = expect(draft.worldName == "Movement Gym",
+              "selector reaches movement gym title") &&
+       ok;
+  ok = expect(draft.asciiRoomId == "movement_gym",
+              "selector reaches movement gym room id") &&
+       ok;
+  ok = expect(window.worldSetupDungeonTitle == "Movement Gym",
+              "window mirrors movement gym title") &&
+       ok;
+  ok = expect(window.worldSetupDungeonIndex ==
+                  iggy3d::productBuiltinDungeonCatalog().size(),
+              "window mirrors movement gym index") &&
+       ok;
+  ok = expect(window.worldSetupDungeonCount ==
+                  iggy3d::productBuiltinDungeonCatalog().size(),
+              "window mirrors movement gym count") &&
+       ok;
+
+  const iggy3d::ProductMenuActionResult confirm = applyNewWorldAction(
+      iggy3d::InputAction::MenuConfirm, frontend, options, activeSession, draft,
+      window);
+
+  ok = expect(confirm.handled && confirm.accepted,
+              "confirm creates movement gym") &&
+       ok;
+  ok = expect(activeSession.has_value(), "movement gym session created") && ok;
+  ok = expect(frontend.childScreen == iggy3d::FrontendScreen::Gameplay,
+              "movement gym enters gameplay") &&
+       ok;
+  ok = expect(window.worldCreationAsciiRoomId == "movement_gym",
+              "movement gym created room id") &&
+       ok;
+  ok = expect(window.activeRoom.loaded, "movement gym active room loaded") && ok;
+  ok = expect(window.activeRoom.roomId == "movement_gym",
+              "movement gym active room id") &&
+       ok;
+  ok = expect(window.activeRoom.authoredObjectCount == 4U,
+              "movement gym authored object count") &&
+       ok;
+  ok = expect(window.activeRoom.staticMeshCount == 99U,
+              "movement gym static mesh count") &&
+       ok;
+  ok = expect(window.activeRoomCollision.ready,
+              "movement gym collision ready") &&
+       ok;
+  ok = expect(window.activeRoomCollision.walkableSurfaceCount == 53U,
+              "movement gym ledge top walkable surface count") &&
+       ok;
+  return ok;
+}
+
 }  // namespace
 
 int main() {
   const bool ok = newWorldDraftHotkeysDriveDraftState() &&
-                  manualDungeonSelectorCanCreateObjectCrateRoom();
+                  manualDungeonSelectorCanCreateObjectCrateRoom() &&
+                  manualDungeonSelectorCanCreateMovementGym();
   return ok ? 0 : 1;
 }

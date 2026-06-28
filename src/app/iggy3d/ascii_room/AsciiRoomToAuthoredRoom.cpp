@@ -83,8 +83,14 @@ SaveAuthoredRoomSemanticsRecord wallSemantics() {
 SaveAuthoredRoomSemanticsRecord objectSemantics(std::string_view assetId) {
   SaveAuthoredRoomSemanticsRecord semantics;
   semantics.materialId = std::string(assetId);
-  semantics.traversalTags = {"object", "prop", "crate"};
-  semantics.gameplayTags = {"object", "prop", "crate"};
+  // branch-gate: BG-1158
+  if (assetId == "movement_clamber_ledge_proxy") {
+    semantics.traversalTags = {"object", "prop", "ledge", "clamber"};
+    semantics.gameplayTags = {"object", "prop", "ledge", "clamber"};
+  } else {
+    semantics.traversalTags = {"object", "prop", "crate"};
+    semantics.gameplayTags = {"object", "prop", "crate"};
+  }
   semantics.walkable = false;
   semantics.blocksActor = true;
   semantics.blocksProjectile = true;
@@ -94,6 +100,14 @@ SaveAuthoredRoomSemanticsRecord objectSemantics(std::string_view assetId) {
 std::string cellId(std::string_view prefix, const AsciiRoomCell& cell) {
   return std::string(prefix) + "_r" + std::to_string(cell.row) + "_c" +
          std::to_string(cell.column);
+}
+
+std::string_view objectCellIdPrefix(const AsciiRoomCell& cell) {
+  // branch-gate: BG-1158
+  if (cell.objectAssetId == "movement_clamber_ledge_proxy") {
+    return "object_clamber_ledge";
+  }
+  return "object_crate";
 }
 
 std::vector<Vec3> terrainTopFacePoints(const AsciiRoomCell& cell,
@@ -251,13 +265,13 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
     // branch-gate: BG-1131
     if (!cell.objectAssetId.empty()) {
       SaveAuthoredRoomObjectRecord object;
-      object.id = cellId("object_crate", cell);
+      object.id = cellId(objectCellIdPrefix(cell), cell);
       object.assetId = cell.objectAssetId;
       object.storyIndex = config.storyIndex;
       object.positionMeters = {static_cast<float>(center.x),
-                               cell.elevationMeters + 0.4F,
+                               cell.elevationMeters + cell.objectSizeMeters.y / 2.0F,
                                static_cast<float>(center.z)};
-      object.sizeMeters = {0.8F, 0.8F, 0.8F};
+      object.sizeMeters = cell.objectSizeMeters;
       object.yawDegrees = 0.0F;
       object.semantics = objectSemantics(object.assetId);
       object.locked = false;

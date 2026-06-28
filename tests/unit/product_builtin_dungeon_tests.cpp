@@ -12,6 +12,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "runtime/player/PlayerPhysicsMovePlanner.hpp"
+#include "runtime/movement/MovementTraversalSlots.hpp"
 
 namespace {
 
@@ -80,6 +81,7 @@ constexpr ExpectedDungeonCounts kExpectedDungeons[] = {
     {"physics_wall_corridor", 9U, 5U, 14U, 31U, 0U, 4U, 76U, 14U, 31U, 31U},
     {"physics_corner_slide", 8U, 5U, 14U, 26U, 0U, 3U, 66U, 14U, 26U, 26U},
     {"object_crate_room", 7U, 5U, 15U, 20U, 1U, 2U, 57U, 15U, 21U, 21U},
+    {"movement_gym", 19U, 5U, 51U, 44U, 4U, 2U, 149U, 53U, 48U, 48U},
 };
 
 const ExpectedDungeonCounts* expectedCountsFor(std::string_view roomId) {
@@ -178,7 +180,7 @@ bool catalogExposesSelectableDungeons() {
   const bool previousReturnsLoopKeep =
       draft.asciiRoomId == "loop_keep_ascii" && draft.worldName == "Loop Keep";
 
-  return expect(catalog.size() == 8U, "catalog size") &&
+  return expect(catalog.size() == 9U, "catalog size") &&
          expect(startsOnLoopKeep, "default starts loop keep") &&
          expect(nextOk, "next select ok") &&
          expect(nextIsGatehouse, "next selects gatehouse") &&
@@ -202,6 +204,9 @@ bool catalogExposesSelectableDungeons() {
          expect(iggy3d::findProductBuiltinDungeonByRoomId(
                     "object_crate_room") != nullptr,
                 "find object crate room") &&
+         expect(iggy3d::findProductBuiltinDungeonByRoomId(
+                    "movement_gym") != nullptr,
+                "find movement gym") &&
          expect(iggy3d::findProductBuiltinDungeonByRoomId("missing") == nullptr,
                 "missing dungeon absent");
 }
@@ -344,6 +349,16 @@ std::size_t countMeshesWithRole(const iggy3d::RoomAsset& room,
   return count;
 }
 
+const iggy3d::RoomStaticMeshAsset* findMesh(const iggy3d::RoomAsset& room,
+                                            std::string_view id) {
+  for (const iggy3d::RoomStaticMeshAsset& mesh : room.staticMeshes) {
+    if (mesh.id == id) {
+      return &mesh;
+    }
+  }
+  return nullptr;
+}
+
 bool objectCrateRoomBuildsVisiblePropAndCollision() {
   const ExpectedDungeonCounts* expected = expectedCountsFor("object_crate_room");
   const iggy3d::ProductActiveRoomState active =
@@ -380,6 +395,62 @@ bool objectCrateRoomBuildsVisiblePropAndCollision() {
                     expected->projectileBlockerSurfaceCount,
                 "object projectile blocker count") &&
          expect(surfaces != nullptr, "object collision pointer");
+}
+
+bool movementGymBuildsScaledJumpAndClamberObjects() {
+  const ExpectedDungeonCounts* expected = expectedCountsFor("movement_gym");
+  const iggy3d::ProductActiveRoomState active =
+      buildDungeonActiveRoom("movement_gym");
+  const iggy3d::ProductActiveRoomCollisionState collision =
+      iggy3d::buildProductActiveRoomCollision(active);
+  const iggy3d::SpatialSurfaceSet* surfaces =
+      iggy3d::productActiveRoomCollisionSurfaces(collision);
+  const iggy3d::RoomStaticMeshAsset* crate =
+      findMesh(active.room, "object_crate_r1_c6");
+  const iggy3d::RoomStaticMeshAsset* ledge =
+      findMesh(active.room, "object_clamber_ledge_r1_c11");
+  const iggy3d::MovementTraversalSlotRegistry slots =
+      iggy3d::buildMovementTraversalSlotRegistry(active.room, iggy3d::Vec3{});
+
+  return expect(expected != nullptr, "movement gym expected counts") &&
+         expect(active.loaded, "movement gym loaded") &&
+         expect(active.roomId == "movement_gym", "movement gym room id") &&
+         expect(active.authoredFloorCount == expected->floorCount,
+                "movement gym floor count") &&
+         expect(active.authoredWallCount == expected->wallCount,
+                "movement gym wall count") &&
+         expect(active.authoredObjectCount == 4U,
+                "movement gym authored objects") &&
+         expect(active.staticMeshCount == 99U, "movement gym static meshes") &&
+         expect(countMeshesWithRole(active.room, "prop") == 2U,
+                "movement gym crate props") &&
+         expect(countMeshesWithRole(active.room, "ledge") == 2U,
+                "movement gym clamber ledges") &&
+         expect(crate != nullptr, "movement gym crate mesh") &&
+         expect(crate == nullptr || crate->role == "prop", "crate role") &&
+         expect(crate == nullptr || crate->sizeMeters.y > 0.79F,
+                "crate waist height lower bound") &&
+         expect(crate == nullptr || crate->sizeMeters.y < 0.81F,
+                "crate waist height upper bound") &&
+         expect(ledge != nullptr, "movement gym ledge mesh") &&
+         expect(ledge == nullptr || ledge->role == "ledge", "ledge role") &&
+         expect(ledge == nullptr || ledge->sizeMeters.y > 1.69F,
+                "ledge eye height lower bound") &&
+         expect(ledge == nullptr || ledge->sizeMeters.y < 1.71F,
+                "ledge eye height upper bound") &&
+         expect(collision.ready, "movement gym collision ready") &&
+         expect(collision.querySurfaceCount == expected->spatialSurfaceCount,
+                "movement gym query surface count") &&
+         expect(collision.walkableSurfaceCount == expected->walkableSurfaceCount,
+                "movement gym walkable count") &&
+         expect(collision.actorBlockerSurfaceCount ==
+                    expected->actorBlockerSurfaceCount,
+                "movement gym actor blockers") &&
+         expect(collision.projectileBlockerSurfaceCount ==
+                    expected->projectileBlockerSurfaceCount,
+                "movement gym projectile blockers") &&
+         expect(surfaces != nullptr, "movement gym collision pointer") &&
+         expect(slots.slots.size() == 2U, "movement gym clamber slots");
 }
 
 bool physicsPlannerUsesTestRooms() {
@@ -421,6 +492,7 @@ int main() {
                       loopKeepCountsRemainStable() &&
                       physicsRoomsBuildCollisionSurfaces() &&
                       objectCrateRoomBuildsVisiblePropAndCollision() &&
+                      movementGymBuildsScaledJumpAndClamberObjects() &&
                       physicsPlannerUsesTestRooms();
   std::cout << "product_builtin_dungeon_tests="
             << (passed ? "pass" : "fail") << '\n';

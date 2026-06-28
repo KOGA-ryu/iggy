@@ -20,6 +20,10 @@ bool near(float lhs, float rhs) {
   return std::fabs(lhs - rhs) <= 0.0001F;
 }
 
+bool hasTag(const std::vector<std::string>& tags, std::string_view expected) {
+  return std::find(tags.begin(), tags.end(), expected) != tags.end();
+}
+
 Vec3 midpoint(const SaveAuthoredRoomWallRecord& wall) {
   return {(wall.startMeters.x + wall.endMeters.x) / 2.0F,
           wall.bottomY + wall.heightMeters / 2.0F,
@@ -111,7 +115,8 @@ RoomStaticMeshAsset objectMesh(const SaveAuthoredRoomObjectRecord& object) {
   mesh.id = object.id;
   mesh.meshId = object.assetId;
   mesh.materialId = object.assetId;
-  mesh.role = "prop";
+  // branch-gate: BG-1157
+  mesh.role = hasTag(object.semantics.traversalTags, "clamber") ? "ledge" : "prop";
   mesh.positionMeters = object.positionMeters;
   mesh.sizeMeters = object.sizeMeters;
   return mesh;
@@ -230,6 +235,32 @@ RoomSpatialSurface objectActorBlockerSurface(
   }
   surface.collisionMask = {"actor"};
   surface.blocksActor = true;
+  surface.blocksProjectile = false;
+  surface.runtimeOwnerStableName = object.id;
+  return surface;
+}
+
+RoomSpatialSurface objectWalkableTopSurface(
+    const SaveAuthoredRoomObjectRecord& object) {
+  const float halfX = object.sizeMeters.x / 2.0F;
+  const float halfZ = object.sizeMeters.z / 2.0F;
+  const float topY = object.positionMeters.y + object.sizeMeters.y / 2.0F;
+
+  RoomSpatialSurface surface;
+  surface.id = object.id + "_walkable_top";
+  surface.sourceStaticMeshId = object.id;
+  surface.shape = RoomSpatialSurfaceShape::Plane;
+  surface.role = RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {object.positionMeters.x - halfX, topY, object.positionMeters.z - halfZ},
+      {object.positionMeters.x + halfX, topY, object.positionMeters.z - halfZ},
+      {object.positionMeters.x + halfX, topY, object.positionMeters.z + halfZ},
+      {object.positionMeters.x - halfX, topY, object.positionMeters.z + halfZ},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable", "clamber"};
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = false;
   surface.blocksProjectile = false;
   surface.runtimeOwnerStableName = object.id;
   return surface;
@@ -421,6 +452,11 @@ AsciiRoomToRoomAssetResult buildRoomAssetFromAsciiRoom(
 
   for (const SaveAuthoredRoomObjectRecord& object : authored.authoredRoom.objects) {
     result.room.staticMeshes.push_back(objectMesh(object));
+    // branch-gate: BG-1157
+    if (hasTag(object.semantics.traversalTags, "clamber")) {
+      result.room.spatialSurfaces.push_back(objectWalkableTopSurface(object));
+      ++result.walkableSurfaceCount;
+    }
     // branch-gate: BG-1133
     if (object.semantics.blocksActor) {
       result.room.spatialSurfaces.push_back(objectActorBlockerSurface(object));

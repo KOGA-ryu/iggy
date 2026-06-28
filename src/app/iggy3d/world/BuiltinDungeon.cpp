@@ -81,7 +81,14 @@ constexpr std::string_view kObjectCrateRoomText =
     "#.....#\n"
     "#######\n";
 
-constexpr std::array<ProductBuiltinDungeonDefinition, 8> kCatalog = {{
+constexpr std::string_view kMovementGymText =
+    "###################\n"
+    "#P....C....L.....E#\n"
+    "#.................#\n"
+    "#.....C......L....#\n"
+    "###################\n";
+
+constexpr std::array<ProductBuiltinDungeonDefinition, 9> kCatalog = {{
     ProductBuiltinDungeonDefinition{
         "Loop Keep",
         "loop_keep_ascii",
@@ -129,6 +136,12 @@ constexpr std::array<ProductBuiltinDungeonDefinition, 8> kCatalog = {{
         "object_crate_room",
         "fixtures/rooms/ascii/object_crate_room.iggyroom.txt",
         kObjectCrateRoomText,
+    },
+    ProductBuiltinDungeonDefinition{
+        "Movement Gym",
+        "movement_gym",
+        "fixtures/rooms/ascii/movement_gym.iggyroom.txt",
+        kMovementGymText,
     },
 }};
 

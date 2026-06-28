@@ -65,6 +65,7 @@ struct PhysicsDungeonSmokeExpectation {
   std::string_view walkableSurfaceCount;
   std::string_view actorBlockerCount;
   std::string_view projectileBlockerCount;
+  std::string_view propTileCount = {};
 };
 
 bool createPhysicsDungeonWorld(
@@ -183,13 +184,17 @@ bool createPhysicsDungeonWorld(
          (expected.objectCount == "0" ||
           (iggy3d::smoke::hasField(fields, "product_draw_prop_visible", "true") &&
            iggy3d::smoke::hasField(fields, "product_draw_prop_tile_count",
-                                   expected.objectCount) &&
+                                   expected.propTileCount.empty()
+                                       ? expected.objectCount
+                                       : expected.propTileCount) &&
            iggy3d::smoke::hasField(fields,
                                    "product_render_bridge_prop_visible",
                                    "true") &&
            iggy3d::smoke::hasField(fields,
                                    "product_render_bridge_prop_tile_count",
-                                   expected.objectCount)));
+                                   expected.propTileCount.empty()
+                                       ? expected.objectCount
+                                       : expected.propTileCount)));
 }
 
 }  // namespace
@@ -214,6 +219,8 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("ascii_map_physics_corner_slide");
   const std::filesystem::path objectCrateRoomSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_object_crate_room");
+  const std::filesystem::path movementGymSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_movement_gym");
   const std::filesystem::path customSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft");
   const std::filesystem::path cursorPaintRejectedSaveRoot =
@@ -538,101 +545,57 @@ int main() {
   fields.clear();
   const bool createObjectCrateRoomWorld =
       appAvailable &&
-      iggy3d::smoke::runProductCase(
-          binary,
-          "ascii_map_object_crate_room_menu_create",
-          "frontend.select=new_world\nfrontend.execute=true\n"
-          "menu.left=true\n"
-          "world.create=true\n",
-          iggy3d::smoke::saveRootArg(objectCrateRoomSaveRoot),
-          fields,
-          exitCode) &&
-      exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
-      iggy3d::smoke::automationApplied(fields) &&
-      iggy3d::smoke::hasField(fields, "window_mode", "no_window") &&
-      iggy3d::smoke::hasField(fields, "window_created", "false") &&
-      iggy3d::smoke::hasField(fields, "frontend_screen", "gameplay") &&
-      iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
-      iggy3d::smoke::hasField(fields, "world_setup_title",
-                              kObjectCrateRoom.worldTitle) &&
-      iggy3d::smoke::hasField(fields, "world_setup_status",
-                              "world_setup_create_requested") &&
-      iggy3d::smoke::hasField(fields, "world_setup_dungeon_title",
-                              kObjectCrateRoom.worldTitle) &&
-      iggy3d::smoke::hasField(fields, "world_setup_dungeon_index", "8") &&
-      iggy3d::smoke::hasField(fields, "world_setup_dungeon_count", "8") &&
-      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_enabled",
-                              "true") &&
-      iggy3d::smoke::hasField(fields, "world_setup_ascii_room_id",
-                              kObjectCrateRoom.roomId) &&
-      iggy3d::smoke::hasField(fields,
-                              "world_setup_ascii_room_source_name",
-                              kObjectCrateRoom.sourceName) &&
-      iggy3d::smoke::hasField(fields, "world_creation_status",
-                              "world_creation_initial_save_written") &&
-      iggy3d::smoke::hasField(fields, "world_creation_world_title",
-                              kObjectCrateRoom.worldTitle) &&
-      iggy3d::smoke::hasField(fields,
-                              "world_creation_ascii_room_requested",
-                              "true") &&
-      iggy3d::smoke::hasField(fields, "world_creation_ascii_room_id",
-                              kObjectCrateRoom.roomId) &&
-      iggy3d::smoke::hasField(fields,
-                              "world_creation_ascii_room_source_name",
-                              kObjectCrateRoom.sourceName) &&
-      iggy3d::smoke::hasField(fields,
-                              "world_creation_initial_save_title",
-                              kObjectCrateRoom.worldTitle) &&
-      iggy3d::smoke::hasField(fields, "ascii_room_preview_status",
-                              "product_ascii_room_ready") &&
-      iggy3d::smoke::hasField(fields, "ascii_room_preview_room_id",
-                              kObjectCrateRoom.roomId) &&
-      iggy3d::smoke::hasField(fields, "ascii_room_preview_width",
-                              kObjectCrateRoom.width) &&
-      iggy3d::smoke::hasField(fields, "ascii_room_preview_height",
-                              kObjectCrateRoom.height) &&
-      iggy3d::smoke::hasField(fields, "ascii_room_preview_floor_count",
-                              kObjectCrateRoom.floorCount) &&
-      iggy3d::smoke::hasField(fields, "ascii_room_preview_wall_count",
-                              kObjectCrateRoom.wallCount) &&
-      iggy3d::smoke::hasField(fields, "ascii_room_preview_object_count",
-                              kObjectCrateRoom.objectCount) &&
-      iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
-      iggy3d::smoke::hasField(fields, "active_room_source", "ascii_room") &&
-      iggy3d::smoke::hasField(fields, "active_room_id",
-                              kObjectCrateRoom.roomId) &&
-      iggy3d::smoke::hasField(fields, "active_room_authored_floor_count",
-                              kObjectCrateRoom.floorCount) &&
-      iggy3d::smoke::hasField(fields, "active_room_authored_wall_count",
-                              kObjectCrateRoom.wallCount) &&
-      iggy3d::smoke::hasField(fields, "active_room_authored_object_count",
-                              kObjectCrateRoom.objectCount) &&
-      iggy3d::smoke::hasField(fields, "active_room_collision_ready", "true") &&
-      iggy3d::smoke::hasField(fields,
-                              "active_room_collision_query_surface_count",
-                              kObjectCrateRoom.querySurfaceCount) &&
-      iggy3d::smoke::hasField(fields,
-                              "active_room_collision_walkable_surface_count",
-                              kObjectCrateRoom.walkableSurfaceCount) &&
-      iggy3d::smoke::hasField(fields,
-                              "active_room_collision_actor_blocker_count",
-                              kObjectCrateRoom.actorBlockerCount) &&
-      iggy3d::smoke::hasField(fields,
-                              "active_room_collision_projectile_blocker_count",
-                              kObjectCrateRoom.projectileBlockerCount) &&
+      createPhysicsDungeonWorld(binary,
+                                kObjectCrateRoom,
+                                objectCrateRoomSaveRoot,
+                                fields,
+                                exitCode) &&
       iggy3d::smoke::hasField(fields, "active_room_static_mesh_count", "36") &&
-      iggy3d::smoke::hasField(fields, "product_draw_prop_visible", "true") &&
-      iggy3d::smoke::hasField(fields, "product_draw_prop_tile_count", "1") &&
       iggy3d::smoke::hasField(fields, "product_draw_room_geometry_count",
                               "36") &&
-      iggy3d::smoke::hasField(fields, "product_render_bridge_prop_visible",
-                              "true") &&
-      iggy3d::smoke::hasField(fields, "product_render_bridge_prop_tile_count",
-                              "1") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_mesh_cpu_ready", "true") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_source_mesh_count", "36");
+
+  static constexpr PhysicsDungeonSmokeExpectation kMovementGym{
+      "ascii_map_movement_gym_create",
+      "movement_gym",
+      "Movement Gym",
+      "fixtures/rooms/ascii/movement_gym.iggyroom.txt",
+      "19",
+      "5",
+      "51",
+      "44",
+      "4",
+      "2",
+      "149",
+      "53",
+      "48",
+      "48",
+      "4",
+  };
+  fields.clear();
+  const bool createMovementGymWorld =
+      appAvailable &&
+      createPhysicsDungeonWorld(binary,
+                                kMovementGym,
+                                movementGymSaveRoot,
+                                fields,
+                                exitCode) &&
+      iggy3d::smoke::hasField(fields, "active_room_static_mesh_count", "99") &&
+      iggy3d::smoke::hasField(fields, "product_draw_prop_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "product_draw_prop_tile_count", "4") &&
+      iggy3d::smoke::hasField(fields, "product_draw_room_geometry_count",
+                              "101") &&
+      iggy3d::smoke::hasField(fields, "product_render_bridge_prop_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(fields, "product_render_bridge_prop_tile_count",
+                              "4") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_mesh_cpu_ready", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_source_mesh_count", "99");
 
   fields.clear();
   const bool createCustomDraftWorld =
@@ -3716,6 +3679,7 @@ int main() {
                       createPhysicsWallCorridorWorld &&
                       createPhysicsCornerSlideWorld &&
                       createObjectCrateRoomWorld &&
+                      createMovementGymWorld &&
                       createCustomDraftWorld && cursorPaintRequiresEditMode &&
                       createCursorPaintDraftWorld &&
                       createCursorCratePaintDraftWorld &&
@@ -3770,6 +3734,8 @@ int main() {
                          "new world dungeon id creates physics corner slide") &&
                   expect(createObjectCrateRoomWorld,
                          "new world dungeon id creates object crate room") &&
+                  expect(createMovementGymWorld,
+                         "new world dungeon id creates movement gym") &&
                   expect(createCustomDraftWorld,
                          "new world custom draft creates edited dungeon") &&
                   expect(cursorPaintRequiresEditMode,
@@ -3863,6 +3829,8 @@ int main() {
             << (createPhysicsCornerSlideWorld ? "true" : "false") << "\n";
   std::cout << "create_object_crate_room_world="
             << (createObjectCrateRoomWorld ? "true" : "false") << "\n";
+  std::cout << "create_movement_gym_world="
+            << (createMovementGymWorld ? "true" : "false") << "\n";
   std::cout << "create_custom_draft_world="
             << (createCustomDraftWorld ? "true" : "false") << "\n";
   std::cout << "cursor_paint_requires_edit_mode="

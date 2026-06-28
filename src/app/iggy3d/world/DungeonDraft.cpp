@@ -85,6 +85,7 @@ bool isProductDungeonDraftGlyph(char glyph) {
     case 'E':
     case '+':
     case 'C':
+    case 'L':
       return true;
   }
   return false;

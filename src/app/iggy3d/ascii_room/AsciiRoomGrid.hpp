@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "app/iggy3d/ascii_room/AsciiRoomSource.hpp"
+#include "core/math/Vec3.hpp"
 
 namespace iggy3d {
 
@@ -46,6 +47,7 @@ struct AsciiRoomGlyphInfo {
   float elevationMeters = 0.0F;
   float riseMeters = 0.0F;
   std::string_view objectAssetId;
+  Vec3 objectSizeMeters = {0.8F, 0.8F, 0.8F};
 };
 
 struct AsciiRoomCell {
@@ -61,6 +63,7 @@ struct AsciiRoomCell {
   AsciiRoomTerrainKind terrainKind = AsciiRoomTerrainKind::Flat;
   float elevationMeters = 0.0F;
   float riseMeters = 0.0F;
+  Vec3 objectSizeMeters = {0.8F, 0.8F, 0.8F};
   std::size_t sourceOffset = 0;
 };
 

@@ -1,4 +1,5 @@
 #include "app/iggy3d/ascii_room/AsciiRoomToRoomAsset.hpp"
+#include "runtime/movement/MovementTraversalSlots.hpp"
 
 #include <cmath>
 #include <cstdlib>
@@ -475,6 +476,67 @@ bool crateObjectBuildsPropMeshAndBlockerSurfaces() {
                 "crate projectile tag");
 }
 
+bool ledgeObjectBuildsClamberMeshAndSurfaces() {
+  const auto result = buildInlineRoomAsset("#####\n#PLE#\n#####\n");
+  const auto* ledge = findMesh(result.room, "object_clamber_ledge_r1_c2");
+  const auto* top =
+      findSurface(result.room, "object_clamber_ledge_r1_c2_walkable_top");
+  const auto* actor =
+      findSurface(result.room, "object_clamber_ledge_r1_c2_actor_blocker");
+  const auto* projectile =
+      findSurface(result.room, "object_clamber_ledge_r1_c2_projectile_blocker");
+  const iggy3d::MovementTraversalSlotRegistry slots =
+      iggy3d::buildMovementTraversalSlotRegistry(result.room,
+                                                 iggy3d::Vec3{});
+
+  return expect(result.ok, "ledge room asset ok") &&
+         expect(result.room.staticMeshes.size() == 16U,
+                "ledge static mesh count") &&
+         expect(result.room.spatialSurfaces.size() == 30U,
+                "ledge spatial surface count") &&
+         expect(result.walkableSurfaceCount == 4U,
+                "ledge walkable surface count") &&
+         expect(result.actorBlockerSurfaceCount == 13U,
+                "ledge actor blocker count") &&
+         expect(result.projectileBlockerSurfaceCount == 13U,
+                "ledge projectile blocker count") &&
+         expect(ledge != nullptr, "ledge mesh exists") &&
+         expect(ledge != nullptr &&
+                    ledge->meshId == "movement_clamber_ledge_proxy",
+                "ledge mesh id") &&
+         expect(ledge != nullptr && ledge->role == "ledge", "ledge role") &&
+         expect(ledge != nullptr && near(ledge->positionMeters.y, 0.85F),
+                "ledge center y") &&
+         expect(ledge != nullptr && near(ledge->sizeMeters.x, 2.0F),
+                "ledge size x") &&
+         expect(ledge != nullptr && near(ledge->sizeMeters.y, 1.7F),
+                "ledge eye height") &&
+         expect(ledge != nullptr && near(ledge->sizeMeters.z, 1.0F),
+                "ledge size z") &&
+         expect(top != nullptr, "ledge top surface exists") &&
+         expect(top != nullptr &&
+                    top->role == iggy3d::RoomSpatialSurfaceRole::Walkable,
+                "ledge top walkable role") &&
+         expect(top != nullptr && near(top->pointsMeters[0].y, 1.7F),
+                "ledge top y") &&
+         expect(top != nullptr && hasTag(top->traversalTags, "clamber"),
+                "ledge top clamber tag") &&
+         expect(actor != nullptr, "ledge actor surface exists") &&
+         expect(actor != nullptr &&
+                    actor->sourceStaticMeshId == "object_clamber_ledge_r1_c2",
+                "ledge actor source") &&
+         expect(actor != nullptr && near(actor->pointsMeters[6].y, 1.7F),
+                "ledge actor max y") &&
+         expect(actor != nullptr && hasTag(actor->traversalTags, "clamber"),
+                "ledge actor clamber tag") &&
+         expect(projectile != nullptr, "ledge projectile surface exists") &&
+         expect(slots.slots.size() == 1U, "ledge traversal slot count") &&
+         expect(!slots.slots.empty() &&
+                    slots.slots[0].slotId ==
+                        "object_clamber_ledge_r1_c2:object_clamber_ledge_r1_c2_walkable_top",
+                "ledge traversal slot id");
+}
+
 bool invalidAuthoredResultRejectsWithoutPartialRoom() {
   iggy3d::AsciiRoomAuthoredRoomResult invalid;
   invalid.ok = false;
@@ -517,6 +579,7 @@ int main() {
   ok = authoredZRunningWallPreservesSegmentAndSurfaceExtents() && ok;
   ok = terrainSurfacesPreserveHeightAndSlope() && ok;
   ok = crateObjectBuildsPropMeshAndBlockerSurfaces() && ok;
+  ok = ledgeObjectBuildsClamberMeshAndSurfaces() && ok;
   ok = invalidAuthoredResultRejectsWithoutPartialRoom() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
