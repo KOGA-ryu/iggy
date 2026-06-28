@@ -166,6 +166,29 @@ iggy3d::RoomSpatialSurface wallJumpBlockerSurface(bool authoredWallJump = true) 
   return surface;
 }
 
+iggy3d::RoomSpatialSurface layeredWalkableFloorSurface(std::string_view id,
+                                                       float y,
+                                                       float minX,
+                                                       float maxX,
+                                                       float minZ,
+                                                       float maxZ) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::string(id);
+  surface.sourceStaticMeshId = std::string(id) + "_mesh";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {minX, y, minZ},
+      {maxX, y, minZ},
+      {maxX, y, maxZ},
+      {minX, y, maxZ},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable"};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
 iggy3d::RoomAsset makeProductClamberRoom() {
   iggy3d::RoomAsset room;
   room.id = "product_clamber_test";
@@ -217,6 +240,33 @@ iggy3d::RoomAsset makeProductWallJumpRoom(bool authoredWallJump = true) {
   return room;
 }
 
+iggy3d::RoomAsset makeProductLayeredFloorRoom() {
+  iggy3d::RoomAsset room;
+  room.id = "product_layered_floor_test";
+
+  iggy3d::RoomStaticMeshAsset lower;
+  lower.id = "lower_floor_mesh";
+  lower.meshId = "floor";
+  lower.role = "floor";
+  lower.positionMeters = {0.0F, 0.0F, 0.0F};
+  lower.sizeMeters = {12.0F, 0.1F, 12.0F};
+  room.staticMeshes.push_back(lower);
+
+  iggy3d::RoomStaticMeshAsset upper;
+  upper.id = "upper_floor_mesh";
+  upper.meshId = "floor";
+  upper.role = "floor";
+  upper.positionMeters = {0.0F, 4.0F, 0.0F};
+  upper.sizeMeters = {2.0F, 0.1F, 2.0F};
+  room.staticMeshes.push_back(upper);
+
+  room.spatialSurfaces.push_back(
+      layeredWalkableFloorSurface("lower_floor", 0.0F, -6.0F, 6.0F, -6.0F, 6.0F));
+  room.spatialSurfaces.push_back(
+      layeredWalkableFloorSurface("upper_floor", 4.0F, -1.0F, 1.0F, -1.0F, 1.0F));
+  return room;
+}
+
 void setPlayerPosition(iggy3d::Session& session, iggy3d::Vec3 position) {
   iggy3d::SessionState& state = session.mutableStateForOwnedSystems();
   const iggy3d::EntityId actor = state.players.actorForSlot(0);
@@ -263,6 +313,23 @@ void setWallJumpActiveRoom(iggy3d::ProductAppWindowState& window,
   window.activeRoom.spatialSurfaceCount = window.activeRoom.room.spatialSurfaces.size();
   window.activeRoom.walkableSurfaceCount = 1U;
   window.activeRoom.actorBlockerSurfaceCount = 1U;
+  window.activeRoomCollision =
+      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
+}
+
+void setLayeredFloorActiveRoom(iggy3d::ProductAppWindowState& window,
+                               const iggy3d::Session& session) {
+  window.activeRoom.loaded = true;
+  window.activeRoom.status = "loaded";
+  window.activeRoom.reasonCode = "active_room_loaded";
+  window.activeRoom.source = "unit";
+  window.activeRoom.roomId = "product_layered_floor_test";
+  window.activeRoom.sourceName = "unit/product_layered_floor_test";
+  window.activeRoom.room = makeProductLayeredFloorRoom();
+  window.activeRoom.staticMeshCount = window.activeRoom.room.staticMeshes.size();
+  window.activeRoom.spatialSurfaceCount = window.activeRoom.room.spatialSurfaces.size();
+  window.activeRoom.walkableSurfaceCount = 2U;
+  window.activeRoom.actorBlockerSurfaceCount = 0U;
   window.activeRoomCollision =
       iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
 }
@@ -780,6 +847,71 @@ bool productJumpFallsAndLands() {
                 "landed height zero");
 }
 
+bool productJumpLandsOnElevatedWalkableFloor() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "elevated landing session created")) {
+    return false;
+  }
+
+  setLayeredFloorActiveRoom(window, *session);
+  setPlayerPosition(*session, {0.0F, 5.2F, 0.0F});
+  window.gameplayJumpActive = true;
+  window.gameplayJumpVelocityMetersPerSecond = -1.0F;
+  window.gameplayJumpGroundY = 0.0F;
+  window.gameplayJumpStartY = 5.2F;
+
+  for (int tick = 0; tick < 50 && window.gameplayJumpActive; ++tick) {
+    iggy3d::applyProductGameplayActions(*session,
+                                        noActions(),
+                                        window,
+                                        "unit/gameplay_controller_elevated_land",
+                                        activeSurfaces(window));
+  }
+
+  const float finalY = playerEntity(*session)->transform.position.y;
+  return expect(!window.gameplayJumpActive, "elevated landing inactive") &&
+         expect(window.gameplayJumpStatus == "landed", "elevated landing status") &&
+         expect(nearlyEqual(finalY, 4.0F), "elevated landing y") &&
+         expect(nearlyEqual(window.gameplayJumpGroundY, 4.0F),
+                "elevated landing ground y") &&
+         expect(nearlyEqual(window.gameplayJumpFinalY, 4.0F),
+                "elevated landing proof y");
+}
+
+bool productFallThroughHoleLandsOnLowerWalkableFloor() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "hole fall session created")) {
+    return false;
+  }
+
+  setLayeredFloorActiveRoom(window, *session);
+  setPlayerPosition(*session, {3.0F, 4.0F, 0.0F});
+
+  bool observedFall = false;
+  for (int tick = 0; tick < 80; ++tick) {
+    iggy3d::applyProductGameplayActions(*session,
+                                        noActions(),
+                                        window,
+                                        "unit/gameplay_controller_hole_fall",
+                                        activeSurfaces(window));
+    observedFall = observedFall || playerEntity(*session)->transform.position.y < 4.0F;
+    if (!window.gameplayJumpActive &&
+        nearlyEqual(playerEntity(*session)->transform.position.y, 0.0F)) {
+      break;
+    }
+  }
+
+  const float finalY = playerEntity(*session)->transform.position.y;
+  return expect(observedFall, "hole fall observed downward motion") &&
+         expect(!window.gameplayJumpActive, "hole fall inactive after landing") &&
+         expect(window.gameplayJumpStatus == "landed", "hole fall landed status") &&
+         expect(nearlyEqual(finalY, 0.0F), "hole fall lands on lower floor") &&
+         expect(nearlyEqual(window.gameplayJumpGroundY, 0.0F),
+                "hole fall ground y");
+}
+
 bool productDashMovesForwardAndRecordsProof() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -993,6 +1125,8 @@ int main() {
                   productJumpRejectsWallJumpNearGenericWall() &&
                   productJumpRejectsDoubleJumpWhileAirborne() &&
                   productJumpFallsAndLands() &&
+                  productJumpLandsOnElevatedWalkableFloor() &&
+                  productFallThroughHoleLandsOnLowerWalkableFloor() &&
                   productDashMovesForwardAndRecordsProof() &&
                   productDashUsesMoveIntentDirection() &&
                   productDashRejectsDuringCooldown() &&

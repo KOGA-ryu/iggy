@@ -26,6 +26,8 @@ namespace iggy3d {
 namespace {
 
 constexpr float kPi = 3.14159265358979323846F;
+constexpr float kGameplayGroundFootprintToleranceMeters = 0.35F;
+constexpr float kGameplayGroundContactToleranceMeters = 0.12F;
 
 struct ProductInteractionOutcomeSnapshot {
   EntityId target;
@@ -144,6 +146,9 @@ void submitProductGameplayCommand(Session& session,
                                   CommandRecord command,
                                   const SpatialSurfaceSet* collisionSurfaces);
 Vec3 manualFirstPersonDirection(float moveX, float moveY, float yawDegrees);
+void advanceProductJump(Session& session,
+                        ProductAppWindowState& window,
+                        const SpatialSurfaceSet* collisionSurfaces);
 
 TargetQueryResult queryProductGameplayTarget(const Session& session, CommandKind kind) {
   const EntityId actor = productPlayerActor(session);
@@ -212,6 +217,80 @@ bool setProductPlayerPosition(Session& session, EntityId actor, const Vec3& posi
   }
   state.currentStateHash = computeStateHash(state);
   return true;
+}
+
+bool surfaceContainsXZ(const CollisionSurfaceView& surface,
+                       Vec3 position,
+                       float toleranceMeters) {
+  return position.x >= surface.bounds.min.x - toleranceMeters &&
+         position.x <= surface.bounds.max.x + toleranceMeters &&
+         position.z >= surface.bounds.min.z - toleranceMeters &&
+         position.z <= surface.bounds.max.z + toleranceMeters;
+}
+
+bool walkableSurfaceHeightAt(const CollisionSurfaceView& surface,
+                             Vec3 position,
+                             float& heightMeters) {
+  // branch-gate: BG-1169
+  if (surface.role != CollisionSurfaceRole::Walkable ||
+      std::fabs(surface.normal.y) <= 0.0001F ||
+      !surfaceContainsXZ(surface, position, kGameplayGroundFootprintToleranceMeters)) {
+    return false;
+  }
+
+  const float height =
+      surface.planePoint.y -
+      ((surface.normal.x * (position.x - surface.planePoint.x)) +
+       (surface.normal.z * (position.z - surface.planePoint.z))) /
+          surface.normal.y;
+  // branch-gate: BG-1170
+  if (!std::isfinite(height)) {
+    return false;
+  }
+  heightMeters = height;
+  return true;
+}
+
+bool findHighestWalkableGroundAtOrBelow(const SpatialSurfaceSet* surfaces,
+                                        Vec3 position,
+                                        float maxY,
+                                        float& groundY) {
+  // branch-gate: BG-1171
+  if (surfaces == nullptr) {
+    return false;
+  }
+
+  bool found = false;
+  float bestY = 0.0F;
+  for (const CollisionSurfaceView& surface : surfaces->surfaces()) {
+    float height = 0.0F;
+    // branch-gate: BG-1169
+    if (!walkableSurfaceHeightAt(surface, position, height) ||
+        height > maxY + kGameplayGroundContactToleranceMeters) {
+      continue;
+    }
+    // branch-gate: BG-1172
+    if (!found || height > bestY) {
+      found = true;
+      bestY = height;
+    }
+  }
+  // branch-gate: BG-1171
+  if (!found) {
+    return false;
+  }
+  groundY = bestY;
+  return true;
+}
+
+bool playerHasNearbyGround(const SpatialSurfaceSet* surfaces, Vec3 position) {
+  float groundY = 0.0F;
+  return findHighestWalkableGroundAtOrBelow(
+             surfaces,
+             position,
+             position.y + kGameplayGroundContactToleranceMeters,
+             groundY) &&
+         std::fabs(position.y - groundY) <= kGameplayGroundContactToleranceMeters;
 }
 
 void recordProductJumpPosition(ProductAppWindowState& window,
@@ -499,11 +578,34 @@ bool tryProductTraversalJump(Session& session, ProductAppWindowState& window) {
   return result.consumedInput;
 }
 
-void advanceProductJump(Session& session, ProductAppWindowState& window) {
+void advanceProductJump(Session& session,
+                        ProductAppWindowState& window,
+                        const SpatialSurfaceSet* collisionSurfaces) {
   const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
-  // branch-gate: BG-1153
   if (!window.gameplayJumpActive) {
-    return;
+    const EntityState* groundedEntity = productPlayerEntity(session);
+    // branch-gate: BG-1173
+    if (groundedEntity == nullptr ||
+        collisionSurfaces == nullptr ||
+        playerHasNearbyGround(collisionSurfaces, groundedEntity->transform.position)) {
+      return;
+    }
+    window.gameplayJumpRequested = false;
+    window.gameplayJumpAccepted = false;
+    window.gameplayJumpActive = true;
+    window.gameplayJumpVelocityMetersPerSecond = 0.0F;
+    float groundY = groundedEntity->transform.position.y;
+    findHighestWalkableGroundAtOrBelow(
+        collisionSurfaces,
+        groundedEntity->transform.position,
+        groundedEntity->transform.position.y,
+        groundY);
+    recordProductJumpPosition(window,
+                              groundY,
+                              groundedEntity->transform.position.y,
+                              groundedEntity->transform.position.y);
+    window.gameplayJumpStatus = "falling";
+    window.gameplayJumpReasonCode = "gameplay_jump_falling";
   }
 
   const EntityId actor = productPlayerActor(session);
@@ -528,9 +630,19 @@ void advanceProductJump(Session& session, ProductAppWindowState& window) {
                     tuning.inputStepSeconds *
                     tuning.inputStepSeconds;
   bool landed = false;
-  // branch-gate: BG-1153
-  if (nextY <= window.gameplayJumpGroundY && nextVelocity <= 0.0F) {
-    nextY = window.gameplayJumpGroundY;
+  float landingY = window.gameplayJumpGroundY;
+  const bool collisionLanding =
+      nextVelocity <= 0.0F &&
+      findHighestWalkableGroundAtOrBelow(
+          collisionSurfaces,
+          entity->transform.position,
+          previousY,
+          landingY) &&
+      nextY <= landingY + kGameplayGroundContactToleranceMeters;
+  if ((collisionSurfaces == nullptr && nextY <= window.gameplayJumpGroundY &&
+       nextVelocity <= 0.0F) ||
+      collisionLanding) {
+    nextY = landingY;
     landed = true;
   }
 
@@ -550,10 +662,12 @@ void advanceProductJump(Session& session, ProductAppWindowState& window) {
   window.gameplayJumpActive = !landed;
   // branch-gate: BG-1153
   window.gameplayJumpVelocityMetersPerSecond = landed ? 0.0F : nextVelocity;
-  recordProductJumpPosition(window,
-                            window.gameplayJumpGroundY,
-                            window.gameplayJumpStartY,
-                            nextY);
+  const std::array<float, 2U> groundProofYs{window.gameplayJumpGroundY, landingY};
+  recordProductJumpPosition(
+      window,
+      groundProofYs[static_cast<std::size_t>(landed || collisionLanding)],
+      window.gameplayJumpStartY,
+      nextY);
   // branch-gate: BG-1153
   window.gameplayJumpStatus = landed ? "landed" : "airborne";
   // branch-gate: BG-1153
@@ -609,7 +723,9 @@ void submitProductJump(Session& session,
   recordProductJumpPosition(window, groundY, groundY, groundY);
   window.gameplayJumpStatus = "accepted";
   window.gameplayJumpReasonCode = "gameplay_jump_accepted";
-  advanceProductJump(session, window);
+  advanceProductJump(session,
+                     window,
+                     productActiveRoomCollisionSurfaces(window.activeRoomCollision));
 }
 
 Vec3 manualFirstPersonDirection(float moveX, float moveY, float yawDegrees) {
@@ -1193,7 +1309,7 @@ void applyProductGameplayActions(Session& session,
   if (actionWasPressed(actions, InputAction::PlayerJump)) {
     submitProductJump(session, window, source);
   } else {
-    advanceProductJump(session, window);
+    advanceProductJump(session, window, collisionSurfaces);
   }
   // branch-gate: BG-1155
   if (actionWasPressed(actions, InputAction::PlayerDash)) {

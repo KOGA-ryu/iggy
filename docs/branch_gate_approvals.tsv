@@ -166,3 +166,9 @@ BG-1165	src/app/iggy3d/automation/Automation.cpp	external ASCII room file automa
 BG-1166	src/app/iggy3d/ascii_room/AsciiRoomSource.cpp	ASCII room floor layer source parsing policy	codex	2026-06-28
 BG-1167	src/app/iggy3d/ascii_room/AsciiRoomGrid.cpp	ASCII room layered grid hole and elevation policy	codex	2026-06-28
 BG-1168	src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.cpp	ASCII room layered authored id and story policy	codex	2026-06-28
+BG-1169	src/app/iggy3d/gameplay/Controller.cpp	product walkable floor sampling filter policy	codex	2026-06-28
+BG-1170	src/app/iggy3d/gameplay/Controller.cpp	product walkable floor finite height guard policy	codex	2026-06-28
+BG-1171	src/app/iggy3d/gameplay/Controller.cpp	product walkable floor missing surface guard policy	codex	2026-06-28
+BG-1172	src/app/iggy3d/gameplay/Controller.cpp	product highest floor selection policy	codex	2026-06-28
+BG-1173	src/app/iggy3d/gameplay/Controller.cpp	product grounded state starts falling policy	codex	2026-06-28
+BG-1174	src/app/iggy3d/gameplay/Controller.cpp	product jump ground proof surface policy	codex	2026-06-28
