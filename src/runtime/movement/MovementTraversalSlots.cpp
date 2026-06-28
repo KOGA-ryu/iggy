@@ -371,13 +371,6 @@ MovementTraversalAffordanceRegistry buildMovementTraversalAffordanceRegistry(
                        "legacy_name_fallback",
                        false);
     }
-    if ((mesh.role == "ledge" || mesh.role == "wall") && hasText(mesh.id, "clamber")) {
-      appendAffordance(registry,
-                       MovementTraversalSlotKind::Clamber,
-                       mesh.id,
-                       "legacy_name_fallback",
-                       false);
-    }
   }
 
   return registry;

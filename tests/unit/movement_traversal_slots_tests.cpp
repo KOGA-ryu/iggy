@@ -68,6 +68,17 @@ iggy3d::RoomAsset makeRoom() {
   return room;
 }
 
+iggy3d::RoomAsset makeLegacyNamedClamberRoom() {
+  iggy3d::RoomAsset room = makeRoom();
+  room.id = "legacy_named_clamber_slot_test";
+  room.staticMeshes[0].id = "legacy_clamber_wall";
+  room.spatialSurfaces[0].sourceStaticMeshId = "legacy_clamber_wall";
+  room.spatialSurfaces[0].traversalTags = {"walkable"};
+  room.spatialSurfaces[1].sourceStaticMeshId = "legacy_clamber_wall";
+  room.spatialSurfaces[1].traversalTags = {"blocker"};
+  return room;
+}
+
 iggy3d::RoomAsset makeWireRoom() {
   iggy3d::RoomAsset room;
   room.id = "wire_slot_test";
@@ -143,6 +154,14 @@ bool registryBuildsMeasuredClamberSlot() {
                 "ledge height") &&
          expect(slot.usableWidthMeters > 1.99F && slot.usableWidthMeters < 2.01F,
                 "usable width");
+}
+
+bool clamberRequiresAuthoredSurfaceTags() {
+  const iggy3d::RoomAsset room = makeLegacyNamedClamberRoom();
+  const iggy3d::MovementTraversalSlotRegistry registry =
+      iggy3d::buildMovementTraversalSlotRegistry(room, {});
+  return expect(registry.affordances.empty(), "legacy clamber no affordance") &&
+         expect(registry.slots.empty(), "legacy clamber no slots");
 }
 
 bool registryBuildsWireWalkSlot() {
@@ -313,7 +332,9 @@ bool selectorGatesByRangeFacingAndHeight() {
 }  // namespace
 
 int main() {
-  const bool ok = registryBuildsMeasuredClamberSlot() && registryBuildsWireWalkSlot() &&
+  const bool ok = registryBuildsMeasuredClamberSlot() &&
+                  clamberRequiresAuthoredSurfaceTags() &&
+                  registryBuildsWireWalkSlot() &&
                   authoredAffordanceTagsBuildSlotsWithoutMagicNames() &&
                   authoredAffordanceSuppressesLegacyNameFallback() &&
                   authoredAffordanceRequiresMatchingMeshRole() &&
