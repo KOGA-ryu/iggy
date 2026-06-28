@@ -114,7 +114,8 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
   const bool confirmDown = keyDown(keys, SDL_SCANCODE_RETURN) || keyDown(keys, SDL_SCANCODE_SPACE);
   const bool backDown = keyDown(keys, SDL_SCANCODE_ESCAPE);
   const bool tabDown = keyDown(keys, SDL_SCANCODE_TAB);
-  const bool devToggleDown = keyDown(keys, SDL_SCANCODE_F1) || keyDown(keys, SDL_SCANCODE_F2);
+  const bool devToggleDown = keyDown(keys, SDL_SCANCODE_F1);
+  const bool devCollisionOverlayDown = keyDown(keys, SDL_SCANCODE_F2);
   const bool debugOverlayDown = keyDown(keys, SDL_SCANCODE_F3);
   const bool movementTuningToggleDown = keyDown(keys, SDL_SCANCODE_F4);
   const bool mapMakerToggleDown = keyDown(keys, SDL_SCANCODE_M);
@@ -127,8 +128,10 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
   } else if (movementTuningToggleDown && !state.movementTuningToggleWasDown) {
     action = actionForInput(NeutralInput::KeyF4);
   } else if (devToggleDown && !state.devToggleWasDown) {  // branch-gate: BG-1037
-    action = actionForInput(keyDown(keys, SDL_SCANCODE_F2) ? NeutralInput::KeyF2
-                                                            : NeutralInput::KeyF1);
+    action = actionForInput(NeutralInput::KeyF1);
+  // branch-gate: BG-1037
+  } else if (devCollisionOverlayDown && !state.devCollisionOverlayWasDown) {
+    action = actionForInput(NeutralInput::KeyF2);
   } else if (mapMakerToggleDown && !state.mapMakerToggleWasDown) {  // branch-gate: BG-1205
     action = actionForInput(NeutralInput::KeyM);
   } else if (upDown && !state.upWasDown) {  // branch-gate: BG-1037
@@ -156,6 +159,7 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
   state.backWasDown = backDown;
   state.tabWasDown = tabDown;
   state.devToggleWasDown = devToggleDown;
+  state.devCollisionOverlayWasDown = devCollisionOverlayDown;
   state.debugOverlayWasDown = debugOverlayDown;
   state.movementTuningToggleWasDown = movementTuningToggleDown;
   state.mapMakerToggleWasDown = mapMakerToggleDown;

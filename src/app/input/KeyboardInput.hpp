@@ -20,6 +20,7 @@ struct KeyboardInputState {
   bool backWasDown = false;
   bool tabWasDown = false;
   bool devToggleWasDown = false;
+  bool devCollisionOverlayWasDown = false;
   bool debugOverlayWasDown = false;
   bool movementTuningToggleWasDown = false;
   bool mapMakerToggleWasDown = false;

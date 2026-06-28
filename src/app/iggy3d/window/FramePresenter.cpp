@@ -296,7 +296,7 @@ void appendDevToolsOverlayUi(ProductVulkanGameplayFrame& frame,
                         viewportWidth,
                         viewportHeight);
   appendGameplayHudText(frame,
-                        "F1/F2 CLOSE  UP/DOWN CATEGORY",
+                        "F1 CLOSE  UP/DOWN CATEGORY",
                         452.0F,
                         185.0F,
                         viewportWidth,

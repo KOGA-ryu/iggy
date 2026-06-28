@@ -696,6 +696,18 @@ ProductMenuActionResult applyProductSystemPauseMenuAction(
                                   : "debug_overlay_disabled";
     return {true, true};
   }
+  if (action == InputAction::DevCollisionOverlay) {  // branch-gate: BG-1124
+    context.window.devCollisionOverlayVisible =
+        !context.window.devCollisionOverlayVisible;
+    context.window.devCollisionOverlayStatus =
+        context.window.devCollisionOverlayVisible
+            ? "dev_collision_overlay_enabled"
+            : "dev_collision_overlay_hidden";
+    context.window.devCollisionOverlayReasonCode =
+        context.window.devCollisionOverlayStatus;
+    context.frontend.status = context.window.devCollisionOverlayStatus;
+    return {true, true};
+  }
   // branch-gate: BG-1124
   if (action == InputAction::DevToggle || action == InputAction::SystemDevTools) {
     return applyProductDevToggleMenuAction(context.frontend, context.window);

@@ -60,31 +60,35 @@ int main() {
                     iggy3d::InputAction::MenuConfirm,
                 "keyboard Space emits menu confirm") &&
          ok;
+    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyF1) ==
+                    iggy3d::InputAction::DevToggle,
+                "keyboard F1 emits dev toggle") &&
+         ok;
     ok = expect(iggy3d::neutralInputName(iggy3d::NeutralInput::KeyF2) ==
                     "key.f2",
                 "keyboard F2 name") &&
          ok;
     ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyF2) ==
-                    iggy3d::InputAction::DevToggle,
-                "keyboard F2 emits dev toggle") &&
+                    iggy3d::InputAction::DevCollisionOverlay,
+                "keyboard F2 emits collision overlay toggle") &&
          ok;
     ok = expect(iggy3d::neutralInputName(iggy3d::NeutralInput::KeyF3) ==
                     "key.f3",
                 "keyboard F3 name") &&
          ok;
-	    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyF3) ==
-	                    iggy3d::InputAction::DevDebugOverlay,
-	                "keyboard F3 emits debug overlay toggle") &&
-	         ok;
-	    ok = expect(iggy3d::neutralInputName(iggy3d::NeutralInput::KeyF4) ==
-	                    "key.f4",
-	                "keyboard F4 name") &&
-	         ok;
-	    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyF4) ==
-	                    iggy3d::InputAction::MovementTuningToggle,
-	                "keyboard F4 emits movement tuning toggle") &&
-	         ok;
-	  }
+    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyF3) ==
+                    iggy3d::InputAction::DevDebugOverlay,
+                "keyboard F3 emits debug overlay toggle") &&
+         ok;
+    ok = expect(iggy3d::neutralInputName(iggy3d::NeutralInput::KeyF4) ==
+                    "key.f4",
+                "keyboard F4 name") &&
+         ok;
+    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyF4) ==
+                    iggy3d::InputAction::MovementTuningToggle,
+                "keyboard F4 emits movement tuning toggle") &&
+         ok;
+  }
 
   {
     constexpr std::array<char, iggy3d::kKeyboardAsciiRoomPaintGlyphCount> expectedGlyphs = {

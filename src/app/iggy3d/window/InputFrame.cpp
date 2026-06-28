@@ -26,6 +26,32 @@
 namespace iggy3d {
 namespace {
 
+struct ProductWindowFunctionKeyBinding {
+  bool SdlWindowEventState::* pressed = nullptr;
+  InputAction action = InputAction::None;
+  bool KeyboardInputState::* wasDown = nullptr;
+};
+
+static constexpr std::array kProductWindowFunctionKeyBindings{
+    ProductWindowFunctionKeyBinding{&SdlWindowEventState::f3Pressed,
+                                    InputAction::DevDebugOverlay,
+                                    &KeyboardInputState::debugOverlayWasDown},
+    ProductWindowFunctionKeyBinding{
+        &SdlWindowEventState::f4Pressed,
+        InputAction::MovementTuningToggle,
+        &KeyboardInputState::movementTuningToggleWasDown},
+    ProductWindowFunctionKeyBinding{&SdlWindowEventState::f1Pressed,
+                                    InputAction::DevToggle,
+                                    &KeyboardInputState::devToggleWasDown},
+    ProductWindowFunctionKeyBinding{
+        &SdlWindowEventState::f2Pressed,
+        InputAction::DevCollisionOverlay,
+        &KeyboardInputState::devCollisionOverlayWasDown},
+    ProductWindowFunctionKeyBinding{&SdlWindowEventState::mPressed,
+                                    InputAction::MapMakerToggle,
+                                    &KeyboardInputState::mapMakerToggleWasDown},
+};
+
 MouseClick productWindowMenuClickForHitTest(MouseClick click,
                                             const SdlWindow* sdlWindow) {
   // branch-gate: BG-1123
@@ -745,21 +771,12 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
 }
 
 InputAction productWindowFunctionKeyAction(const SdlWindowEventState& eventState) {
-  // branch-gate: BG-1194
-  if (eventState.f3Pressed) {
-    return InputAction::DevDebugOverlay;
-  }
-  // branch-gate: BG-1212
-  if (eventState.f4Pressed) {
-    return InputAction::MovementTuningToggle;
-  }
-  // branch-gate: BG-1194
-  if (eventState.f1Pressed || eventState.f2Pressed) {
-    return InputAction::DevToggle;
-  }
-  // branch-gate: BG-1215
-  if (eventState.mPressed) {
-    return InputAction::MapMakerToggle;
+  for (const ProductWindowFunctionKeyBinding& binding :
+       kProductWindowFunctionKeyBindings) {
+    // branch-gate: BG-1194
+    if (eventState.*(binding.pressed)) {
+      return binding.action;
+    }
   }
   return InputAction::None;
 }
@@ -767,21 +784,12 @@ InputAction productWindowFunctionKeyAction(const SdlWindowEventState& eventState
 void recordProductWindowFunctionKeyKeyboardState(
     KeyboardInputState& keyboard,
     const SdlWindowEventState& eventState) {
-  // branch-gate: BG-1194
-  if (eventState.f1Pressed || eventState.f2Pressed) {
-    keyboard.devToggleWasDown = true;
-  }
-  // branch-gate: BG-1194
-  if (eventState.f3Pressed) {
-    keyboard.debugOverlayWasDown = true;
-  }
-  // branch-gate: BG-1212
-  if (eventState.f4Pressed) {
-    keyboard.movementTuningToggleWasDown = true;
-  }
-  // branch-gate: BG-1215
-  if (eventState.mPressed) {
-    keyboard.mapMakerToggleWasDown = true;
+  for (const ProductWindowFunctionKeyBinding& binding :
+       kProductWindowFunctionKeyBindings) {
+    // branch-gate: BG-1194
+    if (eventState.*(binding.pressed)) {
+      keyboard.*(binding.wasDown) = true;
+    }
   }
 }
 

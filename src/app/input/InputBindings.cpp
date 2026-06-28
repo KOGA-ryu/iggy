@@ -33,7 +33,7 @@ const std::vector<InputBinding>& defaultInputBindings() {
       {NeutralInput::KeyTab, InputAction::MenuNextTab, 1.0F},
       {NeutralInput::KeyShiftTab, InputAction::MenuPreviousTab, 1.0F},
       {NeutralInput::KeyF1, InputAction::DevToggle, 1.0F},
-      {NeutralInput::KeyF2, InputAction::DevToggle, 1.0F},
+      {NeutralInput::KeyF2, InputAction::DevCollisionOverlay, 1.0F},
       {NeutralInput::KeyF3, InputAction::DevDebugOverlay, 1.0F},
       {NeutralInput::KeyF4, InputAction::MovementTuningToggle, 1.0F},
       {NeutralInput::KeyM, InputAction::MapMakerToggle, 1.0F},

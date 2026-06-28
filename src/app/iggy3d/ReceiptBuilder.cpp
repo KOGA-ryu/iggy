@@ -133,6 +133,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "settings_debug_overlay_enabled",
                      settings.debugOverlayEnabled);
   appendReceiptField(receipt,
+                     "dev_collision_overlay_visible",
+                     window.devCollisionOverlayVisible);
+  appendReceiptField(receipt,
+                     "dev_collision_overlay_status",
+                     window.devCollisionOverlayStatus);
+  appendReceiptField(receipt,
+                     "dev_collision_overlay_reason_code",
+                     window.devCollisionOverlayReasonCode);
+  appendReceiptField(receipt,
                      "gameplay_movement_tuning_status",
                      window.gameplayMovementTuningStatus);
   appendReceiptField(receipt,

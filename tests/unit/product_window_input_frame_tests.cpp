@@ -1110,6 +1110,60 @@ bool debugOverlayActionTogglesRuntimeOverlaySetting() {
                 "debug overlay missing settings does not mutate unrelated state");
 }
 
+bool collisionOverlayActionTogglesDistinctWindowState() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  iggy3d::FrontendSettings settings;
+  bool closeRequested = false;
+
+  const iggy3d::ProductMenuActionResult enabled =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::DevCollisionOverlay,
+          {frontend, window, closeRequested, &settings});
+  const bool enabledOk =
+      expect(enabled.handled, "collision overlay enable handled") &&
+      expect(enabled.accepted, "collision overlay enable accepted") &&
+      expect(window.devCollisionOverlayVisible,
+             "collision overlay window flag enabled") &&
+      expect(window.devCollisionOverlayStatus ==
+                 "dev_collision_overlay_enabled",
+             "collision overlay enabled status") &&
+      expect(!settings.debugOverlayEnabled,
+             "collision overlay does not toggle debug overlay setting") &&
+      expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
+             "collision overlay keeps gameplay screen") &&
+      expect(!frontend.devToolsOpen,
+             "collision overlay does not open dev tools") &&
+      expect(!closeRequested, "collision overlay does not close window");
+
+  const iggy3d::ProductMenuActionResult disabled =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::DevCollisionOverlay,
+          {frontend, window, closeRequested, &settings});
+  const bool disabledOk =
+      expect(disabled.handled, "collision overlay disable handled") &&
+      expect(disabled.accepted, "collision overlay disable accepted") &&
+      expect(!window.devCollisionOverlayVisible,
+             "collision overlay window flag hidden") &&
+      expect(window.devCollisionOverlayStatus ==
+                 "dev_collision_overlay_hidden",
+             "collision overlay hidden status") &&
+      expect(!settings.debugOverlayEnabled,
+             "collision overlay disabled leaves debug overlay unchanged");
+
+  const iggy3d::ProductMenuActionResult devTools =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::DevToggle,
+          {frontend, window, closeRequested, &settings});
+  return enabledOk && disabledOk &&
+         expect(devTools.handled, "dev toggle after collision handled") &&
+         expect(devTools.accepted, "dev toggle after collision accepted") &&
+         expect(frontend.devToolsOpen, "dev toggle still opens dev tools") &&
+         expect(!window.devCollisionOverlayVisible,
+                "dev toggle does not toggle collision overlay");
+}
+
 bool sdlFunctionKeyEventsMapToSystemActions() {
   iggy3d::SdlWindowEventState none;
   iggy3d::SdlWindowEventState f1;
@@ -1125,6 +1179,9 @@ bool sdlFunctionKeyEventsMapToSystemActions() {
   iggy3d::SdlWindowEventState f1f3;
   f1f3.f1Pressed = true;
   f1f3.f3Pressed = true;
+  iggy3d::SdlWindowEventState f1f2;
+  f1f2.f1Pressed = true;
+  f1f2.f2Pressed = true;
 
   return expect(iggy3d::productWindowFunctionKeyAction(none) ==
                     iggy3d::InputAction::None,
@@ -1133,20 +1190,23 @@ bool sdlFunctionKeyEventsMapToSystemActions() {
                     iggy3d::InputAction::DevToggle,
                 "F1 event maps to dev toggle") &&
          expect(iggy3d::productWindowFunctionKeyAction(f2) ==
-                    iggy3d::InputAction::DevToggle,
-                "F2 event maps to dev toggle") &&
-	         expect(iggy3d::productWindowFunctionKeyAction(f3) ==
-	                    iggy3d::InputAction::DevDebugOverlay,
-	                "F3 event maps to debug overlay") &&
-	         expect(iggy3d::productWindowFunctionKeyAction(f4) ==
-	                    iggy3d::InputAction::MovementTuningToggle,
-	                "F4 event maps to movement tuning") &&
+                    iggy3d::InputAction::DevCollisionOverlay,
+                "F2 event maps to collision overlay") &&
+         expect(iggy3d::productWindowFunctionKeyAction(f3) ==
+                    iggy3d::InputAction::DevDebugOverlay,
+                "F3 event maps to debug overlay") &&
+         expect(iggy3d::productWindowFunctionKeyAction(f4) ==
+                    iggy3d::InputAction::MovementTuningToggle,
+                "F4 event maps to movement tuning") &&
          expect(iggy3d::productWindowFunctionKeyAction(m) ==
                     iggy3d::InputAction::MapMakerToggle,
                 "M event maps to map maker toggle") &&
-	         expect(iggy3d::productWindowFunctionKeyAction(f1f3) ==
-	                    iggy3d::InputAction::DevDebugOverlay,
-	                "F3 overlay event wins over dev panel toggle");
+         expect(iggy3d::productWindowFunctionKeyAction(f1f3) ==
+                    iggy3d::InputAction::DevDebugOverlay,
+                "F3 overlay event wins over dev panel toggle") &&
+         expect(iggy3d::productWindowFunctionKeyAction(f1f2) ==
+                    iggy3d::InputAction::DevToggle,
+                "F1 wins over F2 in one-frame function key priority");
 }
 
 bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
@@ -1155,8 +1215,10 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
   iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, none);
   const bool noneOk =
       expect(!keyboard.devToggleWasDown, "no F-key leaves dev toggle unconsumed") &&
+      expect(!keyboard.devCollisionOverlayWasDown,
+             "no F-key leaves collision overlay unconsumed") &&
       expect(!keyboard.debugOverlayWasDown,
-	             "no F-key leaves debug overlay unconsumed") &&
+             "no F-key leaves debug overlay unconsumed") &&
       expect(!keyboard.movementTuningToggleWasDown,
              "no F-key leaves movement tuning unconsumed") &&
       expect(!keyboard.mapMakerToggleWasDown,
@@ -1165,10 +1227,13 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
   iggy3d::SdlWindowEventState f2;
   f2.f2Pressed = true;
   iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, f2);
-	  const bool f2Ok =
-	      expect(keyboard.devToggleWasDown, "F2 event consumes dev toggle state") &&
+  const bool f2Ok =
+      expect(!keyboard.devToggleWasDown,
+             "F2 event does not consume dev toggle state") &&
+      expect(keyboard.devCollisionOverlayWasDown,
+             "F2 event consumes collision overlay state") &&
       expect(!keyboard.debugOverlayWasDown,
-	             "F2 event does not consume debug overlay state") &&
+             "F2 event does not consume debug overlay state") &&
       expect(!keyboard.movementTuningToggleWasDown,
              "F2 event does not consume movement tuning state") &&
       expect(!keyboard.mapMakerToggleWasDown,
@@ -1178,11 +1243,13 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
   iggy3d::SdlWindowEventState f3;
   f3.f3Pressed = true;
   iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, f3);
-	  const bool f3Ok =
-	      expect(!keyboard.devToggleWasDown,
-	             "F3 event does not consume dev toggle state") &&
-	      expect(keyboard.debugOverlayWasDown,
-	             "F3 event consumes debug overlay state") &&
+  const bool f3Ok =
+      expect(!keyboard.devToggleWasDown,
+             "F3 event does not consume dev toggle state") &&
+      expect(!keyboard.devCollisionOverlayWasDown,
+             "F3 event does not consume collision overlay state") &&
+      expect(keyboard.debugOverlayWasDown,
+             "F3 event consumes debug overlay state") &&
       expect(!keyboard.movementTuningToggleWasDown,
              "F3 event does not consume movement tuning state") &&
       expect(!keyboard.mapMakerToggleWasDown,
@@ -1195,6 +1262,8 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
   const bool f4Ok =
       expect(!keyboard.devToggleWasDown,
              "F4 event does not consume dev toggle state") &&
+      expect(!keyboard.devCollisionOverlayWasDown,
+             "F4 event does not consume collision overlay state") &&
       expect(!keyboard.debugOverlayWasDown,
              "F4 event does not consume debug overlay state") &&
       expect(keyboard.movementTuningToggleWasDown,
@@ -1209,6 +1278,8 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
   const bool mOk =
       expect(!keyboard.devToggleWasDown,
              "M event does not consume dev toggle state") &&
+      expect(!keyboard.devCollisionOverlayWasDown,
+             "M event does not consume collision overlay state") &&
       expect(!keyboard.debugOverlayWasDown,
              "M event does not consume debug overlay state") &&
       expect(!keyboard.movementTuningToggleWasDown,
@@ -1216,7 +1287,20 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
       expect(keyboard.mapMakerToggleWasDown,
              "M event consumes map maker state");
 
-	  return noneOk && f2Ok && f3Ok && f4Ok && mOk;
+  keyboard = {};
+  iggy3d::SdlWindowEventState f1f2;
+  f1f2.f1Pressed = true;
+  f1f2.f2Pressed = true;
+  iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, f1f2);
+  const bool f1f2Ok =
+      expect(keyboard.devToggleWasDown,
+             "F1+F2 event consumes dev toggle state") &&
+      expect(keyboard.devCollisionOverlayWasDown,
+             "F1+F2 event consumes collision overlay state") &&
+      expect(!keyboard.debugOverlayWasDown,
+             "F1+F2 event does not consume debug overlay state");
+
+  return noneOk && f2Ok && f3Ok && f4Ok && mOk && f1f2Ok;
 }
 
 bool movementTuningGameplayInputIsLiveAndFocused() {
@@ -1455,6 +1539,7 @@ int main() {
       menuClickNormalizationScalesWindowCoordinates() &&
       devToggleOpensAndClosesDevToolsSurfaces() &&
       debugOverlayActionTogglesRuntimeOverlaySetting() &&
+      collisionOverlayActionTogglesDistinctWindowState() &&
       sdlFunctionKeyEventsMapToSystemActions() &&
       sdlFunctionKeyEventsMarkKeyboardStateConsumed() &&
       movementTuningGameplayInputIsLiveAndFocused() &&

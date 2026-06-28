@@ -58,6 +58,9 @@ struct ProductAppWindowState {
   std::string topDownMapStatus = "top_down_map_hidden";
   std::string topDownMapReasonCode = "top_down_map_hidden";
   std::uint64_t topDownMapItemCount = 0;
+  bool devCollisionOverlayVisible = false;
+  std::string devCollisionOverlayStatus = "dev_collision_overlay_hidden";
+  std::string devCollisionOverlayReasonCode = "dev_collision_overlay_hidden";
   bool mouseCaptureRequested = false;
   bool mouseCaptureActive = false;
   std::string mouseCaptureStatus = "mouse_capture_not_requested";
