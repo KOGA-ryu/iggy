@@ -152,64 +152,105 @@ AsciiRoomGridBuildResult buildAsciiRoomGrid(const AsciiRoomSource& source) {
   AsciiRoomGridBuildResult result;
   result.grid.width = source.width;
   result.grid.height = source.height;
-  result.grid.cells.reserve(source.width * source.height);
+  // branch-gate: BG-1167
+  result.grid.layerCount = source.hasLayerDirectives ? source.layers.size() : 1U;
+  result.grid.layerFloorSpacingMeters = source.layerFloorSpacingMeters;
+  result.grid.cells.reserve(source.width * source.height * result.grid.layerCount);
 
   bool hasWalkable = false;
-  for (std::size_t row = 0; row < source.rows.size(); ++row) {
-    for (std::size_t column = 0; column < source.rows[row].size(); ++column) {
-      const char glyph = source.rows[row][column];
-      const std::optional<AsciiRoomGlyphInfo> info = asciiRoomGlyphInfo(glyph);
-      if (!info.has_value()) {
-        result.status = "ascii_room_unknown_glyph";
-        result.reasonCode = result.status;
-        result.diagnostics.push_back(diagnostic(result.status,
-                                                "unknown ASCII room glyph",
-                                                row,
-                                                column,
-                                                glyph));
+  const auto appendCells = [&](std::size_t layerIndex,
+                               std::int32_t storyIndex,
+                               const std::vector<std::string>& rows) {
+    for (std::size_t row = 0; row < rows.size(); ++row) {
+      for (std::size_t column = 0; column < rows[row].size(); ++column) {
+        const char glyph = rows[row][column];
+        // branch-gate: BG-1167
+        if (source.hasLayerDirectives && glyph == ' ') {
+          continue;
+        }
+        const std::optional<AsciiRoomGlyphInfo> info = asciiRoomGlyphInfo(glyph);
+        // branch-gate: BG-1167
+        if (!info.has_value()) {
+          result.status = "ascii_room_unknown_glyph";
+          result.reasonCode = result.status;
+          result.diagnostics.push_back(diagnostic(result.status,
+                                                  "unknown ASCII room glyph",
+                                                  row,
+                                                  column,
+                                                  glyph));
+          return;
+        }
+
+        AsciiRoomCell cell;
+        cell.layerIndex = layerIndex;
+        cell.storyIndex = storyIndex;
+        cell.row = row;
+        cell.column = column;
+        cell.glyph = glyph;
+        cell.kind = info->kind;
+        cell.walkable = info->walkable;
+        cell.blocksActor = info->blocksActor;
+        cell.blocksProjectile = info->blocksProjectile;
+        cell.markerTag = std::string(info->markerTag);
+        cell.objectAssetId = std::string(info->objectAssetId);
+        cell.terrainKind = info->terrainKind;
+        cell.elevationMeters = info->elevationMeters +
+                               static_cast<float>(storyIndex) *
+                                   source.layerFloorSpacingMeters;
+        cell.riseMeters = info->riseMeters;
+        cell.objectSizeMeters = info->objectSizeMeters;
+        cell.traversalTag = std::string(info->traversalTag);
+        cell.sourceOffset = asciiRoomSourceOffset(source, layerIndex, row, column);
+        hasWalkable = hasWalkable || cell.walkable;
+        if (cell.kind == AsciiRoomCellKind::PlayerSpawn) {
+          ++result.grid.playerSpawnCount;
+        }
+        if (!cell.markerTag.empty()) {
+          ++result.grid.markerCount;
+        }
+        // branch-gate: BG-1130
+        if (!cell.objectAssetId.empty()) {
+          ++result.grid.objectCount;
+        }
+        // branch-gate: BG-1167
+        if (cell.kind == AsciiRoomCellKind::Wall) {
+          ++result.grid.wallCount;
+        // branch-gate: BG-1167
+        } else if (cell.walkable) {
+          ++result.grid.floorCount;
+          // branch-gate: BG-1167
+          if (cell.terrainKind == AsciiRoomTerrainKind::BlockedSteepEast) {
+            ++result.grid.blockedSlopeCount;
+          // branch-gate: BG-1167
+          } else if (asciiRoomTerrainIsRamp(cell.terrainKind)) {
+            ++result.grid.rampCount;
+          // branch-gate: BG-1167
+          } else if (cell.elevationMeters > 0.0F) {
+            ++result.grid.elevatedFloorCount;
+          }
+        }
+        result.grid.cells.push_back(std::move(cell));
+      }
+    }
+  };
+
+  // branch-gate: BG-1167
+  if (source.hasLayerDirectives) {
+    for (std::size_t layerIndex = 0; layerIndex < source.layers.size();
+         ++layerIndex) {
+      appendCells(layerIndex,
+                  source.layers[layerIndex].storyIndex,
+                  source.layers[layerIndex].rows);
+      // branch-gate: BG-1167
+      if (result.status != "ascii_room_ok") {
         return result;
       }
-
-      AsciiRoomCell cell;
-      cell.row = row;
-      cell.column = column;
-      cell.glyph = glyph;
-      cell.kind = info->kind;
-      cell.walkable = info->walkable;
-      cell.blocksActor = info->blocksActor;
-      cell.blocksProjectile = info->blocksProjectile;
-      cell.markerTag = std::string(info->markerTag);
-      cell.objectAssetId = std::string(info->objectAssetId);
-      cell.terrainKind = info->terrainKind;
-      cell.elevationMeters = info->elevationMeters;
-      cell.riseMeters = info->riseMeters;
-      cell.objectSizeMeters = info->objectSizeMeters;
-      cell.traversalTag = std::string(info->traversalTag);
-      cell.sourceOffset = asciiRoomSourceOffset(source, row, column);
-      hasWalkable = hasWalkable || cell.walkable;
-      if (cell.kind == AsciiRoomCellKind::PlayerSpawn) {
-        ++result.grid.playerSpawnCount;
-      }
-      if (!cell.markerTag.empty()) {
-        ++result.grid.markerCount;
-      }
-      // branch-gate: BG-1130
-      if (!cell.objectAssetId.empty()) {
-        ++result.grid.objectCount;
-      }
-      if (cell.kind == AsciiRoomCellKind::Wall) {
-        ++result.grid.wallCount;
-      } else if (cell.walkable) {
-        ++result.grid.floorCount;
-        if (cell.terrainKind == AsciiRoomTerrainKind::BlockedSteepEast) {
-          ++result.grid.blockedSlopeCount;
-        } else if (asciiRoomTerrainIsRamp(cell.terrainKind)) {
-          ++result.grid.rampCount;
-        } else if (cell.elevationMeters > 0.0F) {
-          ++result.grid.elevatedFloorCount;
-        }
-      }
-      result.grid.cells.push_back(std::move(cell));
+    }
+  } else {
+    appendCells(0U, 0, source.rows);
+    // branch-gate: BG-1167
+    if (result.status != "ascii_room_ok") {
+      return result;
     }
   }
 
@@ -241,11 +282,20 @@ AsciiRoomGridBuildResult buildAsciiRoomGrid(const AsciiRoomSource& source) {
 const AsciiRoomCell* asciiRoomCellAt(const AsciiRoomGrid& grid,
                                      std::size_t row,
                                      std::size_t column) {
-  if (row >= grid.height || column >= grid.width) {
-    return nullptr;
+  return asciiRoomCellAt(grid, 0U, row, column);
+}
+
+const AsciiRoomCell* asciiRoomCellAt(const AsciiRoomGrid& grid,
+                                     std::size_t layerIndex,
+                                     std::size_t row,
+                                     std::size_t column) {
+  for (const AsciiRoomCell& cell : grid.cells) {
+    if (cell.layerIndex == layerIndex && cell.row == row &&
+        cell.column == column) {
+      return &cell;
+    }
   }
-  const std::size_t index = row * grid.width + column;
-  return index < grid.cells.size() ? &grid.cells[index] : nullptr;
+  return nullptr;
 }
 
 AsciiRoomWorldPosition asciiRoomCellCenter(std::size_t row,

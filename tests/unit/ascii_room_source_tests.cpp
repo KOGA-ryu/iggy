@@ -85,6 +85,40 @@ bool invalidScaleDirectiveRejects() {
          expect(!source.diagnostics.empty(), "invalid scale diagnostic");
 }
 
+bool floorLayersParseWithFourMeterSpacing() {
+  const iggy3d::AsciiRoomSource source = iggy3d::parseAsciiRoomSource(
+      "floor1\n"
+      "P...\n"
+      "....\n"
+      "floor2\n"
+      "..  \n"
+      "....\n");
+  return expect(source.status == "ascii_room_ok", "layer source ok") &&
+         expect(source.hasLayerDirectives, "layer directives present") &&
+         expect(source.layerFloorSpacingMeters == 4.0F, "layer spacing") &&
+         expect(source.width == 4U, "layer width") &&
+         expect(source.height == 2U, "layer height") &&
+         expect(source.layers.size() == 2U, "layer count") &&
+         expect(source.layers[0].name == "floor1", "floor1 name") &&
+         expect(source.layers[0].storyIndex == 0, "floor1 story") &&
+         expect(source.layers[1].name == "floor2", "floor2 name") &&
+         expect(source.layers[1].storyIndex == 1, "floor2 story") &&
+         expect(source.layers[1].rows[0] == "..  ", "layer spaces preserved");
+}
+
+bool floorLayerSizeMismatchRejects() {
+  const iggy3d::AsciiRoomSource source = iggy3d::parseAsciiRoomSource(
+      "floor1\n"
+      "P...\n"
+      "....\n"
+      "floor2\n"
+      "...\n"
+      "....\n");
+  return expect(source.status == "ascii_room_layer_size_mismatch",
+                "layer size mismatch status") &&
+         expect(!source.diagnostics.empty(), "layer mismatch diagnostic");
+}
+
 }  // namespace
 
 int main() {
@@ -97,5 +131,7 @@ int main() {
   ok = sourceOffsetIsZeroBasedAndNormalized() && ok;
   ok = scaleDirectiveIsParsedAndStrippedFromRows() && ok;
   ok = invalidScaleDirectiveRejects() && ok;
+  ok = floorLayersParseWithFourMeterSpacing() && ok;
+  ok = floorLayerSizeMismatchRejects() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

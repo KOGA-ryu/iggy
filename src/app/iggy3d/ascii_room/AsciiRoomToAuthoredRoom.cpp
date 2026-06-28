@@ -103,6 +103,12 @@ SaveAuthoredRoomSemanticsRecord objectSemantics(std::string_view assetId) {
 }
 
 std::string cellId(std::string_view prefix, const AsciiRoomCell& cell) {
+  // branch-gate: BG-1168
+  if (cell.layerIndex > 0U) {
+    return std::string(prefix) + "_floor" +
+           std::to_string(static_cast<int>(cell.storyIndex) + 1) + "_r" +
+           std::to_string(cell.row) + "_c" + std::to_string(cell.column);
+  }
   return std::string(prefix) + "_r" + std::to_string(cell.row) + "_c" +
          std::to_string(cell.column);
 }
@@ -113,6 +119,11 @@ std::string_view objectCellIdPrefix(const AsciiRoomCell& cell) {
     return "object_clamber_ledge";
   }
   return "object_crate";
+}
+
+std::int32_t cellStoryIndex(const AsciiRoomCell& cell,
+                            const AsciiRoomCompileConfig& config) {
+  return config.storyIndex + cell.storyIndex;
 }
 
 std::vector<Vec3> terrainTopFacePoints(const AsciiRoomCell& cell,
@@ -225,7 +236,7 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
     if (cell.walkable) {
       SaveAuthoredRoomFloorRecord floor;
       floor.id = cellId("floor", cell);
-      floor.storyIndex = config.storyIndex;
+      floor.storyIndex = cellStoryIndex(cell, config);
       floor.centerMeters = {static_cast<float>(center.x),
                             cell.elevationMeters - config.floorThicknessMeters / 2.0F,
                             static_cast<float>(center.z)};
@@ -251,14 +262,14 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
     if (cell.kind == AsciiRoomCellKind::Wall) {
       SaveAuthoredRoomWallRecord wall;
       wall.id = cellId("wall", cell);
-      wall.storyIndex = config.storyIndex;
+      wall.storyIndex = cellStoryIndex(cell, config);
       wall.startMeters = {static_cast<float>(center.x) - config.tileSizeMeters / 2.0F,
-                          0.0F,
+                          cell.elevationMeters,
                           static_cast<float>(center.z)};
       wall.endMeters = {static_cast<float>(center.x) + config.tileSizeMeters / 2.0F,
-                        0.0F,
+                        cell.elevationMeters,
                         static_cast<float>(center.z)};
-      wall.bottomY = 0.0F;
+      wall.bottomY = cell.elevationMeters;
       wall.heightMeters = config.wallHeightMeters;
       wall.thicknessMeters = config.wallThicknessMeters;
       wall.semantics = wallSemantics(cell);
@@ -272,7 +283,7 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
       SaveAuthoredRoomObjectRecord object;
       object.id = cellId(objectCellIdPrefix(cell), cell);
       object.assetId = cell.objectAssetId;
-      object.storyIndex = config.storyIndex;
+      object.storyIndex = cellStoryIndex(cell, config);
       object.positionMeters = {static_cast<float>(center.x),
                                cell.elevationMeters + cell.objectSizeMeters.y / 2.0F,
                                static_cast<float>(center.z)};
@@ -291,8 +302,7 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
 
     if (!cell.markerTag.empty()) {
       AsciiRoomMarker marker;
-      marker.id = "marker_" + cell.markerTag + "_r" + std::to_string(cell.row) +
-                  "_c" + std::to_string(cell.column);
+      marker.id = cellId("marker_" + cell.markerTag, cell);
       marker.tag = cell.markerTag;
       marker.glyph = cell.glyph;
       marker.row = cell.row;

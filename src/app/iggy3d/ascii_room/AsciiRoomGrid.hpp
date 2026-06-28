@@ -52,6 +52,8 @@ struct AsciiRoomGlyphInfo {
 };
 
 struct AsciiRoomCell {
+  std::size_t layerIndex = 0;
+  std::int32_t storyIndex = 0;
   std::size_t row = 0;
   std::size_t column = 0;
   char glyph = '\0';
@@ -72,6 +74,8 @@ struct AsciiRoomCell {
 struct AsciiRoomGrid {
   std::size_t width = 0;
   std::size_t height = 0;
+  std::size_t layerCount = 1;
+  float layerFloorSpacingMeters = 4.0F;
   std::vector<AsciiRoomCell> cells;
   std::size_t playerSpawnCount = 0;
   std::size_t markerCount = 0;
@@ -103,6 +107,10 @@ bool asciiRoomTerrainIsRamp(AsciiRoomTerrainKind kind);
 std::optional<AsciiRoomGlyphInfo> asciiRoomGlyphInfo(char glyph);
 AsciiRoomGridBuildResult buildAsciiRoomGrid(const AsciiRoomSource& source);
 const AsciiRoomCell* asciiRoomCellAt(const AsciiRoomGrid& grid,
+                                     std::size_t row,
+                                     std::size_t column);
+const AsciiRoomCell* asciiRoomCellAt(const AsciiRoomGrid& grid,
+                                     std::size_t layerIndex,
                                      std::size_t row,
                                      std::size_t column);
 AsciiRoomWorldPosition asciiRoomCellCenter(std::size_t row,

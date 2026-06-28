@@ -376,6 +376,34 @@ bool terrainGlyphsCompileToSurfaceFacts() {
                 "blocked sidecar normal");
 }
 
+bool layeredFloorsCompileToStackedAuthoredFloors() {
+  const auto source = iggy3d::parseAsciiRoomSource(
+      "floor1\n"
+      "P...\n"
+      "....\n"
+      "floor2\n"
+      "..  \n"
+      "....\n");
+  const auto grid = iggy3d::buildAsciiRoomGrid(source);
+  const auto result = iggy3d::compileAsciiRoomToAuthoredRoom(grid.grid);
+  const auto& lower = result.authoredRoom.floors.front();
+  const auto& upper = result.authoredRoom.floors[8];
+  return expect(result.ok, "layered authored compile ok") &&
+         expect(result.authoredRoom.floors.size() == 14U,
+                "layered authored floor count") &&
+         expect(result.floorCount == 14U, "layered result floor count") &&
+         expect(lower.id == "floor_r0_c0", "lower id") &&
+         expect(lower.storyIndex == 0, "lower story") &&
+         expect(near(lower.centerMeters.y, -0.05), "lower center y") &&
+         expect(upper.id == "floor_floor2_r0_c0", "upper id") &&
+         expect(upper.storyIndex == 1, "upper story") &&
+         expect(near(upper.centerMeters.y, 3.95), "upper center y") &&
+         expect(near(upper.sizeMeters.x, 1.0), "upper size x") &&
+         expect(near(upper.sizeMeters.z, 1.0), "upper size z") &&
+         expect(findTerrainSurface(result, "floor_floor2_r0_c0") != nullptr,
+                "upper terrain sidecar");
+}
+
 bool invalidGridRejectsDeterministically() {
   const iggy3d::AsciiRoomGrid empty;
   const auto result = iggy3d::compileAsciiRoomToAuthoredRoom(empty);
@@ -402,6 +430,7 @@ int main() {
   ok = crateGlyphGeneratesDurableAuthoredObject() && ok;
   ok = ledgeGlyphGeneratesScaledClamberObject() && ok;
   ok = terrainGlyphsCompileToSurfaceFacts() && ok;
+  ok = layeredFloorsCompileToStackedAuthoredFloors() && ok;
   ok = invalidGridRejectsDeterministically() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

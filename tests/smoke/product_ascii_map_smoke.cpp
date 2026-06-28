@@ -3724,11 +3724,21 @@ int main() {
   std::filesystem::create_directories(externalAsciiRoomPath.parent_path());
   {
     std::ofstream externalRoom{externalAsciiRoomPath};
-    externalRoom << "*5\n"
-                    "###############\n"
-                    "#P.>>>>111...E#\n"
-                    "#..0000111....#\n"
-                    "###############\n";
+    externalRoom << "floor1\n"
+                    "P.......\n"
+                    "........\n"
+                    "........\n"
+                    "........\n"
+                    "floor2\n"
+                    "...  ...\n"
+                    "........\n"
+                    "........\n"
+                    "...  ...\n"
+                    "floor3\n"
+                    "........\n"
+                    "...  ...\n"
+                    "...  ...\n"
+                    "......E.\n";
   }
 
   fields.clear();
@@ -3777,16 +3787,16 @@ int main() {
                               "custom_dungeon_draft") &&
       iggy3d::smoke::hasField(fields, "ascii_room_preview_source_name",
                               externalSourceName) &&
-      iggy3d::smoke::hasField(fields, "ascii_room_preview_width", "15") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_width", "8") &&
       iggy3d::smoke::hasField(fields, "ascii_room_preview_height", "4") &&
-      iggy3d::smoke::hasField(fields, "ascii_room_preview_floor_count", "26") &&
-      iggy3d::smoke::hasField(fields, "ascii_room_preview_wall_count", "34") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_floor_count", "88") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_wall_count", "0") &&
       iggy3d::smoke::hasField(fields, "ascii_room_preview_object_count", "0") &&
       iggy3d::smoke::hasField(fields, "ascii_room_preview_marker_count", "2") &&
       iggy3d::smoke::hasField(fields,
                               "ascii_room_preview_elevated_floor_count",
-                              "6") &&
-      iggy3d::smoke::hasField(fields, "ascii_room_preview_ramp_count", "4") &&
+                              "56") &&
+      iggy3d::smoke::hasField(fields, "ascii_room_preview_ramp_count", "0") &&
       iggy3d::smoke::hasField(fields,
                               "ascii_room_preview_blocked_slope_count", "0") &&
       iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
@@ -3794,30 +3804,30 @@ int main() {
       iggy3d::smoke::hasField(fields, "active_room_id",
                               "custom_dungeon_draft") &&
       iggy3d::smoke::hasField(fields,
-                              "active_room_authored_floor_count", "26") &&
+                              "active_room_authored_floor_count", "88") &&
       iggy3d::smoke::hasField(fields,
-                              "active_room_authored_wall_count", "34") &&
+                              "active_room_authored_wall_count", "0") &&
       iggy3d::smoke::hasField(fields, "active_room_collision_ready", "true") &&
       iggy3d::smoke::hasField(fields,
                               "active_room_collision_query_surface_count",
-                              "94") &&
+                              "88") &&
       iggy3d::smoke::hasField(fields,
                               "active_room_collision_walkable_surface_count",
-                              "26") &&
+                              "88") &&
       iggy3d::smoke::hasField(fields,
                               "active_room_collision_actor_blocker_count",
-                              "34") &&
+                              "0") &&
       iggy3d::smoke::hasField(fields,
                               "active_room_collision_projectile_blocker_count",
-                              "34") &&
+                              "0") &&
       iggy3d::smoke::hasField(fields,
-                              "product_draw_elevated_floor_tile_count", "6") &&
+                              "product_draw_elevated_floor_tile_count", "56") &&
       iggy3d::smoke::hasField(fields, "product_draw_room_geometry_count",
-                              "60") &&
+                              "88") &&
       iggy3d::smoke::hasField(fields,
                               "product_vulkan_room_mesh_cpu_ready", "true") &&
       iggy3d::smoke::hasField(fields,
-                              "product_vulkan_room_source_mesh_count", "60") &&
+                              "product_vulkan_room_source_mesh_count", "88") &&
       std::filesystem::exists(externalFileSaveRoot / "save_001.iggy3d.save") &&
       fileContains(externalFileSaveRoot / "save_001.iggy3d.save",
                    "authoredRoom.id=custom_dungeon_draft\n") &&

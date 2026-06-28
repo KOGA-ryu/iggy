@@ -203,6 +203,35 @@ bool terrainGlyphFacts() {
                 "terrain ramp helper");
 }
 
+bool layeredFloorsSkipSpaceHolesAndApplyFourMeterHeight() {
+  const auto source = iggy3d::parseAsciiRoomSource(
+      "floor1\n"
+      "P...\n"
+      "....\n"
+      "floor2\n"
+      "..  \n"
+      "....\n");
+  const auto result = iggy3d::buildAsciiRoomGrid(source);
+  const iggy3d::AsciiRoomCell* lower = iggy3d::asciiRoomCellAt(result.grid, 0, 0);
+  const iggy3d::AsciiRoomCell* upper = iggy3d::asciiRoomCellAt(result.grid, 1, 0, 0);
+  const iggy3d::AsciiRoomCell* upperHole =
+      iggy3d::asciiRoomCellAt(result.grid, 1, 0, 2);
+  return expect(result.ok, "layered grid ok") &&
+         expect(result.grid.layerCount == 2U, "layered grid count") &&
+         expect(result.grid.width == 4U, "layered grid width") &&
+         expect(result.grid.height == 2U, "layered grid height") &&
+         expect(result.grid.floorCount == 14U, "layered floor count") &&
+         expect(result.grid.elevatedFloorCount == 6U,
+                "layered elevated floor count") &&
+         expect(lower != nullptr && lower->storyIndex == 0, "lower story") &&
+         expect(lower != nullptr && lower->elevationMeters == 0.0F,
+                "lower elevation") &&
+         expect(upper != nullptr && upper->storyIndex == 1, "upper story") &&
+         expect(upper != nullptr && upper->elevationMeters == 4.0F,
+                "upper elevation") &&
+         expect(upperHole == nullptr, "upper layer space is hole");
+}
+
 bool missingPlayerSpawnFails() {
   const auto source = iggy3d::parseAsciiRoomSource("###\n#.#\n###");
   const auto result = iggy3d::buildAsciiRoomGrid(source);
@@ -266,6 +295,7 @@ int main() {
   ok = crateGlyphCreatesWalkableObjectCell() && ok;
   ok = wallJumpGlyphCreatesAuthoredWallCell() && ok;
   ok = terrainGlyphFacts() && ok;
+  ok = layeredFloorsSkipSpaceHolesAndApplyFourMeterHeight() && ok;
   ok = missingPlayerSpawnFails() && ok;
   ok = multiplePlayerSpawnsFail() && ok;
   ok = exactlyOnePlayerSpawnSucceeds() && ok;

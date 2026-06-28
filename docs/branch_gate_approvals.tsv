@@ -163,3 +163,6 @@ BG-1162	src/app/iggy3d/ascii_room/AsciiRoomSource.cpp	ASCII room scale directive
 BG-1163	src/app/iggy3d/ascii_room/AsciiRoomSource.cpp	ASCII room optional leading scale directive policy	codex	2026-06-28
 BG-1164	src/app/iggy3d/ascii_room/AsciiRoomSource.cpp	ASCII room invalid scale diagnostic policy	codex	2026-06-28
 BG-1165	src/app/iggy3d/automation/Automation.cpp	external ASCII room file automation load policy	codex	2026-06-28
+BG-1166	src/app/iggy3d/ascii_room/AsciiRoomSource.cpp	ASCII room floor layer source parsing policy	codex	2026-06-28
+BG-1167	src/app/iggy3d/ascii_room/AsciiRoomGrid.cpp	ASCII room layered grid hole and elevation policy	codex	2026-06-28
+BG-1168	src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.cpp	ASCII room layered authored id and story policy	codex	2026-06-28
