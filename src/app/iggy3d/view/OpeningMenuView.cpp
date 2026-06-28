@@ -825,6 +825,69 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
            452.0F,
            508.0F,
            2.0F);
+  drawText(renderer, "BACK", 850.0F, 508.0F, 2.0F);
+}
+
+void drawLoadSavePanel(SDL_Renderer& renderer,
+                       const ProductSaveBridgeResult& saves) {
+  setColor(renderer, 226, 230, 211);
+  drawText(renderer, "LOAD SAVE", 450.0F, 152.0F, 4.0F);
+  setColor(renderer, 166, 184, 177);
+  drawText(renderer, "UP DOWN SELECT SAVE   CONFIRM LOAD", 452.0F, 210.0F, 2.0F);
+  drawText(renderer, "SLOTS", 452.0F, 260.0F, 2.0F);
+  drawText(renderer, std::to_string(saves.slots.slots.size()), 558.0F, 260.0F, 2.0F);
+  drawText(renderer, "COMPATIBLE", 714.0F, 260.0F, 2.0F);
+  drawText(renderer, std::to_string(saves.slots.compatibleCount), 910.0F, 260.0F, 2.0F);
+
+  float slotY = 318.0F;
+  const std::size_t visibleSlotCount =
+      std::min<std::size_t>(saves.slots.slots.size(), 5U);
+  // branch-gate: BG-1121
+  if (visibleSlotCount == 0U) {
+    drawText(renderer, "NO COMPATIBLE SAVES", 452.0F, slotY, 2.0F);
+  }
+  for (std::size_t i = 0; i < visibleSlotCount; ++i) {
+    const SaveSlotPreview& slot = saves.slots.slots[i];
+    // branch-gate: BG-1121
+    if (slot.enabled) {
+      setColor(renderer, 174, 190, 182);
+    } else {
+      setColor(renderer, 106, 118, 116);
+    }
+    // branch-gate: BG-1121
+    drawText(renderer, slot.displayTitle.empty() ? slot.id : slot.displayTitle,
+             452.0F,
+             slotY,
+             2.0F);
+    // branch-gate: BG-1121
+    drawText(renderer,
+             slot.enabled ? "READY" : slot.reason,
+             850.0F,
+             slotY,
+             2.0F);
+    slotY += 38.0F;
+  }
+
+  setColor(renderer, 126, 201, 176);
+  drawText(renderer, "LOAD SELECTED", 452.0F, 548.0F, 2.0F);
+  drawText(renderer, "DELETE SELECTED", 690.0F, 548.0F, 2.0F);
+  drawText(renderer, "BACK", 1010.0F, 548.0F, 2.0F);
+}
+
+void drawDeleteConfirmPanel(SDL_Renderer& renderer) {
+  setColor(renderer, 226, 230, 211);
+  drawText(renderer, "DELETE SAVE", 450.0F, 152.0F, 4.0F);
+  setColor(renderer, 166, 184, 177);
+  drawText(renderer, "THIS MOVES THE SAVE TO DELETED SAVES", 452.0F, 210.0F, 2.0F);
+  drawText(renderer, "SAVE", 452.0F, 260.0F, 2.0F);
+  drawText(renderer, "SELECTED SAVE", 452.0F, 292.0F, 2.0F);
+  drawText(renderer, "STATUS", 452.0F, 350.0F, 2.0F);
+  drawText(renderer, "CONFIRM OPEN", 452.0F, 382.0F, 2.0F);
+
+  setColor(renderer, 236, 118, 86);
+  drawText(renderer, "CONFIRM DELETE", 452.0F, 508.0F, 2.0F);
+  setColor(renderer, 126, 201, 176);
+  drawText(renderer, "BACK", 760.0F, 508.0F, 2.0F);
 }
 
 void drawDevToolsPanel(SDL_Renderer& renderer, FrontendDevToolsCategory selected) {
@@ -922,16 +985,8 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
 }  // namespace
 
 OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, float x, float y) {
-  const std::array<FrontendAction, 6> rows = {
-      FrontendAction::Continue,
-      FrontendAction::NewWorld,
-      FrontendAction::LoadSave,
-      FrontendAction::Settings,
-      FrontendAction::DevTools,
-      FrontendAction::Exit,
-  };
   float rowY = 150.0F;
-  for (const FrontendAction action : rows) {
+  for (const FrontendAction action : starterActionOrder()) {
     const bool hitX = x >= 30.0F && x <= 370.0F;
     const bool hitY = y >= rowY - 14.0F && y <= rowY + 38.0F;
     if (hitX && hitY) {
@@ -942,6 +997,79 @@ OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, floa
       return result;
     }
     rowY += 52.0F;
+  }
+
+  // branch-gate: BG-1121
+  if (frontend.childScreen == FrontendScreen::NewWorld) {
+    // branch-gate: BG-1121
+    if (x >= 430.0F && x <= 760.0F && y >= 490.0F && y <= 536.0F) {
+      OpeningMenuHitTestResult result;
+      result.hit = true;
+      result.area = OpeningMenuHitArea::NewWorldCreate;
+      return result;
+    }
+    // branch-gate: BG-1121
+    if (x >= 830.0F && x <= 960.0F && y >= 490.0F && y <= 536.0F) {
+      OpeningMenuHitTestResult result;
+      result.hit = true;
+      result.area = OpeningMenuHitArea::NewWorldBack;
+      return result;
+    }
+  }
+
+  // branch-gate: BG-1121
+  if (frontend.childScreen == FrontendScreen::LoadSave) {
+    float slotY = 318.0F;
+    for (std::size_t i = 0; i < 5U; ++i) {
+      // branch-gate: BG-1121
+      if (x >= 430.0F && x <= 1120.0F && y >= slotY - 12.0F && y <= slotY + 24.0F) {
+        OpeningMenuHitTestResult result;
+        result.hit = true;
+        result.area = OpeningMenuHitArea::LoadSaveSlot;
+        result.saveSlotIndex = i;
+        return result;
+      }
+      slotY += 38.0F;
+    }
+    // branch-gate: BG-1121
+    if (x >= 430.0F && x <= 650.0F && y >= 530.0F && y <= 578.0F) {
+      OpeningMenuHitTestResult result;
+      result.hit = true;
+      result.area = OpeningMenuHitArea::LoadSaveLoad;
+      return result;
+    }
+    // branch-gate: BG-1121
+    if (x >= 668.0F && x <= 955.0F && y >= 530.0F && y <= 578.0F) {
+      OpeningMenuHitTestResult result;
+      result.hit = true;
+      result.area = OpeningMenuHitArea::LoadSaveDelete;
+      return result;
+    }
+    // branch-gate: BG-1121
+    if (x >= 990.0F && x <= 1110.0F && y >= 530.0F && y <= 578.0F) {
+      OpeningMenuHitTestResult result;
+      result.hit = true;
+      result.area = OpeningMenuHitArea::LoadSaveBack;
+      return result;
+    }
+  }
+
+  // branch-gate: BG-1121
+  if (frontend.childScreen == FrontendScreen::DeleteConfirm) {
+    // branch-gate: BG-1121
+    if (x >= 430.0F && x <= 720.0F && y >= 490.0F && y <= 536.0F) {
+      OpeningMenuHitTestResult result;
+      result.hit = true;
+      result.area = OpeningMenuHitArea::DeleteConfirmConfirm;
+      return result;
+    }
+    // branch-gate: BG-1121
+    if (x >= 740.0F && x <= 865.0F && y >= 490.0F && y <= 536.0F) {
+      OpeningMenuHitTestResult result;
+      result.hit = true;
+      result.area = OpeningMenuHitArea::DeleteConfirmBack;
+      return result;
+    }
   }
 
   if (frontend.childScreen == FrontendScreen::StarterDevTools) {
@@ -1029,16 +1157,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
   setColor(renderer, 18, 22, 25);
   fillRect(renderer, 390.0F, 92.0F, 890.0F, 556.0F);
 
-  const std::array<FrontendAction, 6> rows = {
-      FrontendAction::Continue,
-      FrontendAction::NewWorld,
-      FrontendAction::LoadSave,
-      FrontendAction::Settings,
-      FrontendAction::DevTools,
-      FrontendAction::Exit,
-  };
   float y = 150.0F;
-  for (const FrontendAction action : rows) {
+  for (const FrontendAction action : starterActionOrder()) {
     const bool enabled = action != FrontendAction::Continue || saves.slots.compatibleCount > 0;
     drawMenuRow(renderer, frontendActionName(action), action == frontend.selectedAction, enabled,
                 62.0F, y);
@@ -1050,6 +1170,12 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
     drawDevToolsPanel(renderer, frontend.devToolsCategory);
   } else if (frontend.childScreen == FrontendScreen::Settings) {
     drawSettingsPanel(renderer, selectedSettingsTab);
+  // branch-gate: BG-1121
+  } else if (frontend.childScreen == FrontendScreen::LoadSave) {
+    drawLoadSavePanel(renderer, saves);
+  // branch-gate: BG-1121
+  } else if (frontend.childScreen == FrontendScreen::DeleteConfirm) {
+    drawDeleteConfirmPanel(renderer);
   } else {
     drawNewWorldPanel(renderer,
                       world,

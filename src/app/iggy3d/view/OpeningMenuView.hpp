@@ -39,6 +39,14 @@ enum class OpeningMenuHitArea {
   StarterAction,
   SettingsTab,
   DevToolsCategory,
+  NewWorldCreate,
+  NewWorldBack,
+  LoadSaveSlot,
+  LoadSaveLoad,
+  LoadSaveDelete,
+  LoadSaveBack,
+  DeleteConfirmConfirm,
+  DeleteConfirmBack,
 };
 
 struct OpeningMenuHitTestResult {
@@ -47,6 +55,7 @@ struct OpeningMenuHitTestResult {
   FrontendAction action = FrontendAction::None;
   FrontendSettingsTab settingsTab = FrontendSettingsTab::None;
   FrontendDevToolsCategory devToolsCategory = FrontendDevToolsCategory::None;
+  std::size_t saveSlotIndex = 0;
 };
 
 OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend,

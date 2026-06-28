@@ -12,6 +12,7 @@
 #include "app/iggy3d/automation/Automation.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"
+#include "app/iggy3d/Operations.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
 #include "app/platform/SdlWindow.hpp"
@@ -379,6 +380,10 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       // branch-gate: BG-1029
       if (hit.area == OpeningMenuHitArea::StarterAction) {
         context.frontend.selectedAction = hit.action;
+        // branch-gate: BG-1122
+        if (context.frontend.screen == FrontendScreen::Starter) {
+          context.frontend.childScreen = FrontendScreen::Gameplay;
+        }
         routeProductOpeningMenuInput(mouseClickAction(click), actionState, menuContext);
       // branch-gate: BG-1029
       } else if (hit.area == OpeningMenuHitArea::DevToolsCategory) {
@@ -388,6 +393,39 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       } else if (hit.area == OpeningMenuHitArea::SettingsTab) {
         context.settingsTab = hit.settingsTab;
         context.frontend.status = "settings_tab_selected";
+      // branch-gate: BG-1029
+      } else if (hit.area == OpeningMenuHitArea::NewWorldCreate) {
+        routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState, menuContext);
+      // branch-gate: BG-1029
+      } else if (hit.area == OpeningMenuHitArea::NewWorldBack) {
+        routeProductOpeningMenuInput(InputAction::MenuBack, actionState, menuContext);
+      // branch-gate: BG-1029
+      } else if (hit.area == OpeningMenuHitArea::LoadSaveSlot) {
+        // branch-gate: BG-1122
+        if (hit.saveSlotIndex < context.saves.slots.slots.size()) {
+          (void)selectProductSaveSlotById(
+              context.saves.slots,
+              context.saves.slots.slots[hit.saveSlotIndex].id,
+              context.window);
+          context.frontend.status = "load_save_selection_changed";
+        }
+      // branch-gate: BG-1029
+      } else if (hit.area == OpeningMenuHitArea::LoadSaveLoad) {
+        context.frontend.selectedAction = FrontendAction::LoadSave;
+        routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState, menuContext);
+      // branch-gate: BG-1029
+      } else if (hit.area == OpeningMenuHitArea::LoadSaveDelete) {
+        context.frontend.selectedAction = FrontendAction::Delete;
+        routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState, menuContext);
+      // branch-gate: BG-1029
+      } else if (hit.area == OpeningMenuHitArea::LoadSaveBack) {
+        routeProductOpeningMenuInput(InputAction::MenuBack, actionState, menuContext);
+      // branch-gate: BG-1029
+      } else if (hit.area == OpeningMenuHitArea::DeleteConfirmConfirm) {
+        routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState, menuContext);
+      // branch-gate: BG-1029
+      } else if (hit.area == OpeningMenuHitArea::DeleteConfirmBack) {
+        routeProductOpeningMenuInput(InputAction::MenuBack, actionState, menuContext);
       }
     }
   }

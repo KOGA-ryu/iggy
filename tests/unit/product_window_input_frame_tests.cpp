@@ -1,5 +1,6 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
+#include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 
@@ -31,6 +32,15 @@ iggy3d::ProductAsciiRoomAuthoringRequest smallRoomRequest() {
 iggy3d::FrontendState gameplayFrontend() {
   iggy3d::FrontendState frontend;
   iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
+  return frontend;
+}
+
+iggy3d::FrontendState starterFrontend() {
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Starter;
+  frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
+  frontend.selectedAction = iggy3d::FrontendAction::Continue;
+  frontend.status = "starter_screen_ready";
   return frontend;
 }
 
@@ -398,6 +408,78 @@ bool controllerEastCancelsPendingPreviewWithoutMutation() {
                 "east cancel leaves walls");
 }
 
+bool starterHitTestUsesCanonicalActionRows() {
+  const iggy3d::FrontendState frontend = starterFrontend();
+  const iggy3d::OpeningMenuHitTestResult deleteHit =
+      iggy3d::openingMenuActionAt(frontend, 62.0F, 306.0F);
+  const iggy3d::OpeningMenuHitTestResult exitHit =
+      iggy3d::openingMenuActionAt(frontend, 62.0F, 462.0F);
+
+  return expect(deleteHit.hit, "delete starter row hit") &&
+         expect(deleteHit.area == iggy3d::OpeningMenuHitArea::StarterAction,
+                "delete starter hit area") &&
+         expect(deleteHit.action == iggy3d::FrontendAction::Delete,
+                "delete starter hit action") &&
+         expect(exitHit.hit, "exit starter row hit") &&
+         expect(exitHit.area == iggy3d::OpeningMenuHitArea::StarterAction,
+                "exit starter hit area") &&
+         expect(exitHit.action == iggy3d::FrontendAction::Exit,
+                "exit starter hit action");
+}
+
+bool childPanelHitTestsExposeMenuActions() {
+  iggy3d::FrontendState frontend = starterFrontend();
+  frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
+  const iggy3d::OpeningMenuHitTestResult createHit =
+      iggy3d::openingMenuActionAt(frontend, 452.0F, 508.0F);
+  const iggy3d::OpeningMenuHitTestResult newWorldBackHit =
+      iggy3d::openingMenuActionAt(frontend, 850.0F, 508.0F);
+
+  frontend.childScreen = iggy3d::FrontendScreen::LoadSave;
+  const iggy3d::OpeningMenuHitTestResult slotHit =
+      iggy3d::openingMenuActionAt(frontend, 452.0F, 356.0F);
+  const iggy3d::OpeningMenuHitTestResult loadHit =
+      iggy3d::openingMenuActionAt(frontend, 452.0F, 548.0F);
+  const iggy3d::OpeningMenuHitTestResult deleteHit =
+      iggy3d::openingMenuActionAt(frontend, 690.0F, 548.0F);
+  const iggy3d::OpeningMenuHitTestResult loadBackHit =
+      iggy3d::openingMenuActionAt(frontend, 1010.0F, 548.0F);
+
+  frontend.childScreen = iggy3d::FrontendScreen::DeleteConfirm;
+  const iggy3d::OpeningMenuHitTestResult confirmDeleteHit =
+      iggy3d::openingMenuActionAt(frontend, 452.0F, 508.0F);
+  const iggy3d::OpeningMenuHitTestResult deleteBackHit =
+      iggy3d::openingMenuActionAt(frontend, 760.0F, 508.0F);
+
+  return expect(createHit.hit, "new world create hit") &&
+         expect(createHit.area == iggy3d::OpeningMenuHitArea::NewWorldCreate,
+                "new world create area") &&
+         expect(newWorldBackHit.hit, "new world back hit") &&
+         expect(newWorldBackHit.area == iggy3d::OpeningMenuHitArea::NewWorldBack,
+                "new world back area") &&
+         expect(slotHit.hit, "load save slot hit") &&
+         expect(slotHit.area == iggy3d::OpeningMenuHitArea::LoadSaveSlot,
+                "load save slot area") &&
+         expect(slotHit.saveSlotIndex == 1U, "load save slot index") &&
+         expect(loadHit.hit, "load selected hit") &&
+         expect(loadHit.area == iggy3d::OpeningMenuHitArea::LoadSaveLoad,
+                "load selected area") &&
+         expect(deleteHit.hit, "delete selected hit") &&
+         expect(deleteHit.area == iggy3d::OpeningMenuHitArea::LoadSaveDelete,
+                "delete selected area") &&
+         expect(loadBackHit.hit, "load save back hit") &&
+         expect(loadBackHit.area == iggy3d::OpeningMenuHitArea::LoadSaveBack,
+                "load save back area") &&
+         expect(confirmDeleteHit.hit, "confirm delete hit") &&
+         expect(confirmDeleteHit.area ==
+                    iggy3d::OpeningMenuHitArea::DeleteConfirmConfirm,
+                "confirm delete area") &&
+         expect(deleteBackHit.hit, "delete confirm back hit") &&
+         expect(deleteBackHit.area ==
+                    iggy3d::OpeningMenuHitArea::DeleteConfirmBack,
+                "delete confirm back area");
+}
+
 }  // namespace
 
 int main() {
@@ -410,7 +492,9 @@ int main() {
       controllerMoveInvalidatesPendingPreview() &&
       backCancelsPendingPreviewBeforePauseRoute() &&
       backWithoutPreviewFallsThroughPolicy() &&
-      controllerEastCancelsPendingPreviewWithoutMutation();
+      controllerEastCancelsPendingPreviewWithoutMutation() &&
+      starterHitTestUsesCanonicalActionRows() &&
+      childPanelHitTestsExposeMenuActions();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;
