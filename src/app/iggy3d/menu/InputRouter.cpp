@@ -3,20 +3,8 @@
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 
-#include <array>
-
 namespace iggy3d {
 namespace {
-
-using OpeningMenuDispatchPredicate = bool (*)(
-    const ProductOpeningMenuInputContext&);
-using OpeningMenuDispatchHandler = void (*)(InputAction,
-                                            ProductOpeningMenuInputContext);
-
-struct OpeningMenuDispatchRow {
-  OpeningMenuDispatchPredicate matches = nullptr;
-  OpeningMenuDispatchHandler handler = nullptr;
-};
 
 MenuOwnerState menuOwnerStateForActiveOwner(MenuOwner owner) {
   MenuOwnerState state;
@@ -44,40 +32,6 @@ MenuOwnerState menuOwnerStateForActiveOwner(MenuOwner owner) {
       break;
   }
   return state;
-}
-
-bool dispatchMatchesPause(const ProductOpeningMenuInputContext& context) {
-  return context.frontend.screen == FrontendScreen::Pause;
-}
-
-bool dispatchMatchesDevOverlay(const ProductOpeningMenuInputContext& context) {
-  return context.frontend.screen == FrontendScreen::DevOverlay;
-}
-
-bool dispatchMatchesStarterDevTools(
-    const ProductOpeningMenuInputContext& context) {
-  return context.frontend.childScreen == FrontendScreen::StarterDevTools;
-}
-
-bool dispatchMatchesSettings(const ProductOpeningMenuInputContext& context) {
-  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
-      productActiveSurfaceContextForWindow(context.frontend, context.window));
-  return surface.activeSurface == ProductFrontendSurface::Settings &&
-         surface.inputOwner == MenuOwner::Settings;
-}
-
-bool dispatchMatchesDeleteConfirm(
-    const ProductOpeningMenuInputContext& context) {
-  return context.frontend.childScreen == FrontendScreen::DeleteConfirm &&
-         context.window.saveDeleteConfirmationOpen;
-}
-
-bool dispatchMatchesNewWorld(const ProductOpeningMenuInputContext& context) {
-  return context.frontend.childScreen == FrontendScreen::NewWorld;
-}
-
-bool dispatchMatchesLoadSave(const ProductOpeningMenuInputContext& context) {
-  return context.frontend.childScreen == FrontendScreen::LoadSave;
 }
 
 void dispatchPauseAction(InputAction action,
@@ -113,6 +67,36 @@ void dispatchDeleteConfirmAction(InputAction action,
       action, {context.frontend, context.options, context.window});
 }
 
+void dispatchExitConfirmAction(InputAction action,
+                               ProductOpeningMenuInputContext context) {
+  // branch-gate: BG-1024
+  if (action == InputAction::MenuBack) {
+    context.frontend.childScreen = FrontendScreen::Gameplay;
+    context.frontend.status = "exit_confirm_cancelled";
+    return;
+  }
+  // branch-gate: BG-1024
+  if (action == InputAction::MenuConfirm) {
+    context.frontend.status = "opening_menu_exit_requested";
+    context.closeRequested = true;
+  }
+}
+
+void dispatchConfirmDialogAction(const ProductActiveSurfaceFrame& surface,
+                                 InputAction action,
+                                 ProductOpeningMenuInputContext context) {
+  // branch-gate: BG-1024
+  if (surface.inputSurface == ProductInputSurface::SaveBrowser &&
+      context.window.saveDeleteConfirmationOpen) {
+    dispatchDeleteConfirmAction(action, context);
+    return;
+  }
+  // branch-gate: BG-1024
+  if (surface.inputSurface == ProductInputSurface::Starter) {
+    dispatchExitConfirmAction(action, context);
+  }
+}
+
 void dispatchNewWorldAction(InputAction action,
                             ProductOpeningMenuInputContext context) {
   ProductNewWorldMenuActionContext newWorldContext{
@@ -138,6 +122,46 @@ void dispatchStarterAction(InputAction action,
   (void)applyProductStarterMenuAction(action, starterContext);
 }
 
+void dispatchOpeningMenuActionForSurface(
+    const ProductActiveSurfaceFrame& surface,
+    InputAction action,
+    ProductOpeningMenuInputContext context) {
+  // branch-gate: BG-1024
+  switch (surface.activeSurface) {
+    case ProductFrontendSurface::Pause:
+      dispatchPauseAction(action, context);
+      return;
+    case ProductFrontendSurface::DevTools:
+      // branch-gate: BG-1024
+      if (surface.parentOwner == MenuOwner::Starter) {
+        dispatchStarterDevToolsAction(action, context);
+        return;
+      }
+      dispatchDevOverlayAction(action, context);
+      return;
+    case ProductFrontendSurface::Settings:
+      dispatchSettingsAction(action, context);
+      return;
+    case ProductFrontendSurface::ConfirmDialog:
+      dispatchConfirmDialogAction(surface, action, context);
+      return;
+    case ProductFrontendSurface::WorldSetup:
+      dispatchNewWorldAction(action, context);
+      return;
+    case ProductFrontendSurface::SaveSelector:
+      dispatchLoadSaveAction(action, context);
+      return;
+    case ProductFrontendSurface::Starter:
+      dispatchStarterAction(action, context);
+      return;
+    case ProductFrontendSurface::None:
+    case ProductFrontendSurface::BootStatus:
+    case ProductFrontendSurface::Gameplay:
+    case ProductFrontendSurface::Editor:
+      return;
+  }
+}
+
 }  // namespace
 
 MenuOwner productInputOwnerFor(const FrontendState& frontend,
@@ -159,26 +183,9 @@ void applyProductOpeningMenuAction(InputAction action,
     return;
   }
 
-  static constexpr std::array kDispatchRows{
-      OpeningMenuDispatchRow{dispatchMatchesPause, dispatchPauseAction},
-      OpeningMenuDispatchRow{dispatchMatchesDevOverlay, dispatchDevOverlayAction},
-      OpeningMenuDispatchRow{dispatchMatchesStarterDevTools,
-                             dispatchStarterDevToolsAction},
-      OpeningMenuDispatchRow{dispatchMatchesSettings, dispatchSettingsAction},
-      OpeningMenuDispatchRow{dispatchMatchesDeleteConfirm,
-                             dispatchDeleteConfirmAction},
-      OpeningMenuDispatchRow{dispatchMatchesNewWorld, dispatchNewWorldAction},
-      OpeningMenuDispatchRow{dispatchMatchesLoadSave, dispatchLoadSaveAction},
-  };
-
-  for (const OpeningMenuDispatchRow& row : kDispatchRows) {
-    if (row.matches(context)) {
-      row.handler(action, context);
-      return;
-    }
-  }
-
-  dispatchStarterAction(action, context);
+  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(context.frontend, context.window));
+  dispatchOpeningMenuActionForSurface(surface, action, context);
 }
 
 void routeProductOpeningMenuInput(InputAction inputAction,
@@ -189,16 +196,16 @@ void routeProductOpeningMenuInput(InputAction inputAction,
     return;
   }
 
+  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(context.frontend, context.window));
   // branch-gate: BG-1024
-  if (context.frontend.screen == FrontendScreen::Gameplay &&
+  if (surface.activeSurface == ProductFrontendSurface::Gameplay &&
       inputAction == InputAction::MenuBack) {
     inputAction = InputAction::SystemPause;
   }
 
   recordAction(actionState, inputAction, true, true, false, 1.0F);
 
-  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
-      productActiveSurfaceContextForWindow(context.frontend, context.window));
   InputRoutingContext routingContext;
   routingContext.owners = menuOwnerStateForActiveOwner(surface.inputOwner);
   const InputRoutingResult routed = routeInputAction(routingContext, inputAction);

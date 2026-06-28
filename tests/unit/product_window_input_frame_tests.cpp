@@ -965,6 +965,258 @@ bool pauseSettingsInputDispatchRoutesToSettings() {
                 "pause settings input dispatch accepted");
 }
 
+bool starterSettingsInputDispatchRoutesToSettings() {
+  iggy3d::FrontendState frontend = starterFrontend();
+  frontend.childScreen = iggy3d::FrontendScreen::Settings;
+  const iggy3d::FrontendAction selectedBefore = frontend.selectedAction;
+  iggy3d::ProductAppWindowState window;
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::WorldSetupDraft draft;
+  iggy3d::ActionState actionState;
+  iggy3d::FrontendSettings settings;
+
+  iggy3d::routeProductOpeningMenuInput(
+      iggy3d::InputAction::MenuDown,
+      actionState,
+      {frontend,
+       saves,
+       options,
+       settingsTab,
+       activeSession,
+       draft,
+       window,
+       closeRequested,
+       settings});
+
+  return expect(settingsTab == iggy3d::FrontendSettingsTab::Controls,
+                "starter settings dispatch advances settings tab") &&
+         expect(frontend.selectedAction == selectedBefore,
+                "starter settings dispatch does not move starter row") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::Settings,
+                "starter settings dispatch owner") &&
+         expect(window.lastInputAccepted, "starter settings dispatch accepted");
+}
+
+bool pauseInputDispatchRoutesToPauseHandler() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::WorldSetupDraft draft;
+  iggy3d::ActionState actionState;
+  iggy3d::FrontendSettings settings;
+
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
+  iggy3d::routeProductOpeningMenuInput(
+      iggy3d::InputAction::MenuDown,
+      actionState,
+      {frontend,
+       saves,
+       options,
+       settingsTab,
+       activeSession,
+       draft,
+       window,
+       closeRequested,
+       settings});
+
+  return expect(frontend.selectedAction == iggy3d::FrontendAction::EditRoom,
+                "pause dispatch advances pause selection") &&
+         expect(frontend.status == "pause_menu_selection_changed",
+                "pause dispatch status") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::Pause,
+                "pause dispatch owner");
+}
+
+bool devOverlayInputDispatchRoutesToDevToolsHandler() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::WorldSetupDraft draft;
+  iggy3d::ActionState actionState;
+  iggy3d::FrontendSettings settings;
+
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::DevToggle, {frontend, window, closeRequested});
+  iggy3d::routeProductOpeningMenuInput(
+      iggy3d::InputAction::MenuDown,
+      actionState,
+      {frontend,
+       saves,
+       options,
+       settingsTab,
+       activeSession,
+       draft,
+       window,
+       closeRequested,
+       settings});
+
+  return expect(frontend.devToolsCategory ==
+                    iggy3d::FrontendDevToolsCategory::Input,
+                "dev overlay dispatch advances devtools category") &&
+         expect(frontend.status == "dev_overlay_selection_changed",
+                "dev overlay dispatch status") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::DevTools,
+                "dev overlay dispatch owner");
+}
+
+bool confirmDialogDispatchDoesNotFallThroughToStarter() {
+  {
+    iggy3d::FrontendState frontend = starterFrontend();
+    frontend.childScreen = iggy3d::FrontendScreen::DeleteConfirm;
+    frontend.selectedAction = iggy3d::FrontendAction::Continue;
+    iggy3d::ProductAppWindowState window;
+    window.saveDeleteConfirmationOpen = true;
+    bool closeRequested = false;
+    iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+    std::optional<iggy3d::Session> activeSession;
+    iggy3d::ProductAppOptions options;
+    iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+    iggy3d::WorldSetupDraft draft;
+    iggy3d::ActionState actionState;
+    iggy3d::FrontendSettings settings;
+
+    iggy3d::routeProductOpeningMenuInput(
+        iggy3d::InputAction::MenuBack,
+        actionState,
+        {frontend,
+         saves,
+         options,
+         settingsTab,
+         activeSession,
+         draft,
+         window,
+         closeRequested,
+         settings});
+    const bool deleteOk =
+        expect(frontend.childScreen == iggy3d::FrontendScreen::LoadSave,
+               "delete confirm back returns to save browser") &&
+        expect(!window.saveDeleteConfirmationOpen,
+               "delete confirm back cancels delete") &&
+        expect(frontend.status == "save_delete_cancelled",
+               "delete confirm back status") &&
+        expect(!activeSession.has_value(),
+               "delete confirm back does not launch starter continue");
+    if (!deleteOk) {
+      return false;
+    }
+  }
+
+  iggy3d::FrontendState frontend = starterFrontend();
+  frontend.childScreen = iggy3d::FrontendScreen::ExitConfirm;
+  frontend.selectedAction = iggy3d::FrontendAction::Continue;
+  iggy3d::ProductAppWindowState window;
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::WorldSetupDraft draft;
+  iggy3d::ActionState actionState;
+  iggy3d::FrontendSettings settings;
+
+  iggy3d::routeProductOpeningMenuInput(
+      iggy3d::InputAction::MenuConfirm,
+      actionState,
+      {frontend,
+       saves,
+       options,
+       settingsTab,
+       activeSession,
+       draft,
+       window,
+       closeRequested,
+       settings});
+
+  return expect(closeRequested, "exit confirm requests close") &&
+         expect(frontend.status == "opening_menu_exit_requested",
+                "exit confirm status") &&
+         expect(!activeSession.has_value(),
+                "exit confirm does not launch starter continue");
+}
+
+bool gameplayAndEditorSurfacesDoNotFallThroughToStarter() {
+  {
+    iggy3d::FrontendState frontend = gameplayFrontend();
+    frontend.selectedAction = iggy3d::FrontendAction::Continue;
+    iggy3d::ProductAppWindowState window;
+    window.gameplayActive = true;
+    bool closeRequested = false;
+    iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+    std::optional<iggy3d::Session> activeSession;
+    iggy3d::ProductAppOptions options;
+    iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+    iggy3d::WorldSetupDraft draft;
+    iggy3d::ActionState actionState;
+    iggy3d::FrontendSettings settings;
+
+    iggy3d::routeProductOpeningMenuInput(
+        iggy3d::InputAction::MenuDown,
+        actionState,
+        {frontend,
+         saves,
+         options,
+         settingsTab,
+         activeSession,
+         draft,
+         window,
+         closeRequested,
+         settings});
+    const bool gameplayOk =
+        expect(frontend.selectedAction == iggy3d::FrontendAction::Continue,
+               "gameplay menu action does not move starter selection") &&
+        expect(!activeSession.has_value(),
+               "gameplay menu action does not launch starter flow");
+    if (!gameplayOk) {
+      return false;
+    }
+  }
+
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  frontend.selectedAction = iggy3d::FrontendAction::Continue;
+  iggy3d::ProductAppWindowState window = editingWindow();
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::WorldSetupDraft draft;
+  iggy3d::ActionState actionState;
+  iggy3d::FrontendSettings settings;
+
+  iggy3d::routeProductOpeningMenuInput(
+      iggy3d::InputAction::MenuDown,
+      actionState,
+      {frontend,
+       saves,
+       options,
+       settingsTab,
+       activeSession,
+       draft,
+       window,
+       closeRequested,
+       settings});
+
+  return expect(frontend.selectedAction == iggy3d::FrontendAction::Continue,
+                "editor menu action does not move starter selection") &&
+         expect(!activeSession.has_value(),
+                "editor menu action does not launch starter flow");
+}
+
 bool childPanelHitTestsExposeMenuActions() {
   iggy3d::FrontendState frontend = starterFrontend();
   frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
@@ -2342,6 +2594,11 @@ int main() {
       pauseHitTestUsesPauseActionRows() &&
       pauseSettingsConfirmOpensSettingsPanel() &&
       pauseSettingsInputDispatchRoutesToSettings() &&
+      starterSettingsInputDispatchRoutesToSettings() &&
+      pauseInputDispatchRoutesToPauseHandler() &&
+      devOverlayInputDispatchRoutesToDevToolsHandler() &&
+      confirmDialogDispatchDoesNotFallThroughToStarter() &&
+      gameplayAndEditorSurfacesDoNotFallThroughToStarter() &&
       childPanelHitTestsExposeMenuActions() &&
       openingMenuMouseDispatchRoutesStarterAndSettingsHits() &&
       openingMenuMouseDispatchRoutesNewWorldNavigationRows() &&
