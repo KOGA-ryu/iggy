@@ -30,6 +30,10 @@ constexpr float kManualFirstPersonSprintMaxSpeedMetersPerSecond = 3.2F;
 constexpr float kManualFirstPersonInputStepSeconds = 1.0F / 60.0F;
 constexpr float kManualFirstPersonJumpImpulseMetersPerSecond = 5.8F;
 constexpr float kManualFirstPersonGravityMetersPerSecondSquared = 18.0F;
+constexpr float kManualFirstPersonWallJumpProbeMeters = 0.58F;
+constexpr float kManualFirstPersonWallJumpPushMeters = 1.20F;
+constexpr float kManualFirstPersonWallJumpRiseMeters = 0.45F;
+constexpr float kManualFirstPersonWallJumpMinAirborneHeightMeters = 0.20F;
 constexpr std::string_view kManualFirstPersonDashMovementProfile =
     "manual_first_person_dash";
 constexpr float kManualFirstPersonDashSpeedMetersPerSecond = 9.5F;
@@ -292,6 +296,168 @@ void recordProductTraversalProof(ProductAppWindowState& window,
   window.gameplayTraversalFinalZ = result.traversal.finalPosition.z;
 }
 
+bool actorBlockingSurface(const CollisionSurfaceView& surface) {
+  return surface.blocksActor || surface.hasActorMask;
+}
+
+bool horizontalNormal(Vec3 normal, Vec3& out) {
+  normal.y = 0.0F;
+  const float lenSq = lengthSquared(normal);
+  // branch-gate: BG-1157
+  if (!isFinite(normal) || lenSq <= 0.0001F) {
+    return false;
+  }
+  out = normal / std::sqrt(lenSq);
+  return true;
+}
+
+bool isNearVerticalSurface(Vec3 position,
+                           const CollisionSurfaceView& surface,
+                           Vec3& awayNormal,
+                           float& distanceSq) {
+  // branch-gate: BG-1157
+  if (!actorBlockingSurface(surface) || surface.opening ||
+      surface.role != CollisionSurfaceRole::Blocker ||
+      !isValid(surface.bounds)) {
+    return false;
+  }
+
+  Vec3 normal;
+  // branch-gate: BG-1157
+  if (!horizontalNormal(surface.normal, normal)) {
+    return false;
+  }
+
+  const float verticalSlack = 0.35F;
+  // branch-gate: BG-1157
+  if (position.y < surface.bounds.min.y - verticalSlack ||
+      position.y > surface.bounds.max.y + verticalSlack) {
+    return false;
+  }
+
+  const float clampedX =
+      std::clamp(position.x, surface.bounds.min.x, surface.bounds.max.x);
+  const float clampedZ =
+      std::clamp(position.z, surface.bounds.min.z, surface.bounds.max.z);
+  const Vec3 nearest{clampedX, position.y, clampedZ};
+  Vec3 fromSurface = position - nearest;
+  fromSurface.y = 0.0F;
+  const float fromSurfaceSq = lengthSquared(fromSurface);
+  // branch-gate: BG-1157
+  if (fromSurfaceSq > 0.0001F) {
+    awayNormal = fromSurface / std::sqrt(fromSurfaceSq);
+  } else {
+    const Vec3 centerToPlayer = position - center(surface.bounds);
+    // branch-gate: BG-1157
+    awayNormal = dot(centerToPlayer, normal) < 0.0F ? normal * -1.0F : normal;
+  }
+
+  distanceSq = fromSurfaceSq;
+  return distanceSq <= kManualFirstPersonWallJumpProbeMeters *
+                           kManualFirstPersonWallJumpProbeMeters;
+}
+
+const CollisionSurfaceView* findWallJumpSurface(const SpatialSurfaceSet& surfaces,
+                                                Vec3 position,
+                                                Vec3& awayNormal) {
+  const CollisionSurfaceView* best = nullptr;
+  float bestDistanceSq = kManualFirstPersonWallJumpProbeMeters *
+                         kManualFirstPersonWallJumpProbeMeters;
+  for (const CollisionSurfaceView& surface : surfaces.surfaces()) {
+    Vec3 candidateNormal;
+    float candidateDistanceSq = 0.0F;
+    // branch-gate: BG-1157
+    if (!isNearVerticalSurface(position, surface, candidateNormal,
+                               candidateDistanceSq)) {
+      continue;
+    }
+    // branch-gate: BG-1157
+    if (best != nullptr && candidateDistanceSq >= bestDistanceSq) {
+      continue;
+    }
+    best = &surface;
+    bestDistanceSq = candidateDistanceSq;
+    awayNormal = candidateNormal;
+  }
+  return best;
+}
+
+void recordProductWallJumpTraversalProof(ProductAppWindowState& window,
+                                         const CollisionSurfaceView& surface,
+                                         Vec3 start,
+                                         Vec3 finalPosition) {
+  window.gameplayTraversalRequested = true;
+  window.gameplayTraversalConsumed = true;
+  window.gameplayTraversalAccepted = true;
+  window.gameplayTraversalFallbackJumpAllowed = false;
+  window.gameplayTraversalStatus = "traversal_intent_applied";
+  window.gameplayTraversalReasonCode = "traversal_intent_applied";
+  window.gameplayTraversalMechanic = "wall_jump";
+  window.gameplayTraversalSlotId = "wall_jump";
+  window.gameplayTraversalLandingSurfaceId = "wall_jump_surface";
+  // branch-gate: BG-1157
+  if (!surface.id.empty()) {
+    window.gameplayTraversalSlotId = surface.id;
+    window.gameplayTraversalLandingSurfaceId = surface.id;
+  }
+  window.gameplayTraversalTargetId = window.gameplayTraversalSlotId;
+  // branch-gate: BG-1157
+  if (!surface.runtimeOwnerStableName.empty()) {
+    window.gameplayTraversalTargetId = surface.runtimeOwnerStableName;
+  }
+  window.gameplayTraversalStartX = start.x;
+  window.gameplayTraversalStartY = start.y;
+  window.gameplayTraversalStartZ = start.z;
+  window.gameplayTraversalFinalX = finalPosition.x;
+  window.gameplayTraversalFinalY = finalPosition.y;
+  window.gameplayTraversalFinalZ = finalPosition.z;
+}
+
+bool tryProductWallJump(Session& session, ProductAppWindowState& window) {
+  const SpatialSurfaceSet* surfaces =
+      productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+  const EntityId actor = productPlayerActor(session);
+  const EntityState* entity = session.state().world.findById(actor);
+  // branch-gate: BG-1157
+  if (surfaces == nullptr || entity == nullptr) {
+    return false;
+  }
+
+  const Vec3 start = entity->transform.position;
+  // branch-gate: BG-1157
+  if (!window.gameplayJumpActive &&
+      start.y <= kManualFirstPersonWallJumpMinAirborneHeightMeters) {
+    return false;
+  }
+
+  Vec3 awayNormal;
+  const CollisionSurfaceView* surface =
+      findWallJumpSurface(*surfaces, start, awayNormal);
+  // branch-gate: BG-1157
+  if (surface == nullptr) {
+    return false;
+  }
+
+  Vec3 finalPosition = start + awayNormal * kManualFirstPersonWallJumpPushMeters;
+  finalPosition.y = start.y + kManualFirstPersonWallJumpRiseMeters;
+  // branch-gate: BG-1157
+  if (!setProductPlayerPosition(session, actor, finalPosition)) {
+    return false;
+  }
+
+  recordProductWallJumpTraversalProof(window, *surface, start, finalPosition);
+  window.gameplayJumpAccepted = true;
+  window.gameplayJumpActive = true;
+  window.gameplayJumpVelocityMetersPerSecond =
+      kManualFirstPersonJumpImpulseMetersPerSecond;
+  recordProductJumpPosition(window, 0.0F, start.y, finalPosition.y);
+  window.gameplayJumpStatus = "wall_jump";
+  window.gameplayJumpReasonCode = "gameplay_jump_wall_jump";
+  window.playerPositionChanged = true;
+  window.runtimeStateHash = session.stateHash();
+  return true;
+}
+
 bool tryProductTraversalJump(Session& session, ProductAppWindowState& window) {
   clearProductTraversalProof(window);
   const SpatialSurfaceSet* surfaces =
@@ -403,6 +569,11 @@ void submitProductJump(Session& session,
     window.gameplayJumpStatus = window.gameplayTraversalAccepted ? "traversal"
                                                                  : "traversal_rejected";
     window.gameplayJumpReasonCode = window.gameplayTraversalReasonCode;
+    return;
+  }
+
+  // branch-gate: BG-1157
+  if (tryProductWallJump(session, window)) {
     return;
   }
 

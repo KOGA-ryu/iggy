@@ -292,7 +292,96 @@ int main() {
       iggy3d::smoke::hasField(clamberFields, "product_draw_prop_tile_count",
                               "4");
 
-  const bool passed = scriptedControlsPassed && clamberControlsPassed;
+  const std::filesystem::path wallJumpSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("gameplay_controls_movement_gym_wall_jump");
+  iggy3d::smoke::ReceiptFields wallJumpFields;
+  int wallJumpExitCode = 77;
+  const bool wallJumpControlsPassed =
+      appBuilt && std::filesystem::exists(binary) &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "gameplay_controls_movement_gym_wall_jump",
+          "frontend.select=new_world\n"
+          "frontend.execute=true\n"
+          "world.dungeon_id=movement_gym\n"
+          "world.create=true\n"
+          "gameplay.player_position=8,0.8,0.65\n"
+          "gameplay.jump=true\n",
+          iggy3d::smoke::saveRootArg(wallJumpSaveRoot),
+          wallJumpFields,
+          wallJumpExitCode) &&
+      wallJumpExitCode == 0 && iggy3d::smoke::productReceipt(wallJumpFields) &&
+      iggy3d::smoke::automationApplied(wallJumpFields) &&
+      iggy3d::smoke::hasField(wallJumpFields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(wallJumpFields, "window_created", "false") &&
+      iggy3d::smoke::hasField(wallJumpFields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(wallJumpFields, "active_room_id",
+                              "movement_gym") &&
+      iggy3d::smoke::hasField(wallJumpFields, "automation_control_last_key",
+                              "gameplay.jump") &&
+      iggy3d::smoke::hasField(wallJumpFields, "automation_control_last_action",
+                              "game.jump") &&
+      iggy3d::smoke::hasField(wallJumpFields, "automation_control_last_owner",
+                              "gameplay") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_input_source",
+                              "automation") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_input_used", "true") &&
+      iggy3d::smoke::hasField(wallJumpFields, "input_owner", "gameplay") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_input_suppressed",
+                              "false") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_active",
+                              "true") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_status",
+                              "wall_jump") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_reason_code",
+                              "gameplay_jump_wall_jump") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_velocity_mps",
+                              "5.800") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_start_y",
+                              "0.800") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_jump_final_y",
+                              "1.250") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_requested",
+                              "true") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_consumed",
+                              "true") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_accepted",
+                              "true") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_mechanic",
+                              "wall_jump") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_slot_id",
+                              "wall_r0_c8_actor_blocker") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_target_id",
+                              "wall_r0_c8_actor_blocker") &&
+      iggy3d::smoke::hasField(wallJumpFields,
+                              "gameplay_traversal_landing_surface_id",
+                              "wall_r0_c8_actor_blocker") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_start_x",
+                              "8.000") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_start_y",
+                              "0.800") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_start_z",
+                              "0.650") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_x",
+                              "8.000") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_y",
+                              "1.250") &&
+      iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_z",
+                              "1.850") &&
+      iggy3d::smoke::hasField(wallJumpFields, "player_position_changed",
+                              "true") &&
+      iggy3d::smoke::hasField(wallJumpFields, "product_draw_prop_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(wallJumpFields, "product_draw_prop_tile_count",
+                              "4");
+
+  const bool passed =
+      scriptedControlsPassed && clamberControlsPassed && wallJumpControlsPassed;
 
   std::cout << "smoke=product_gameplay_controls\n";
   std::cout << "receipt_valid=" << (receiptValid ? "true" : "false") << "\n";
@@ -300,6 +389,9 @@ int main() {
   std::cout << "movement_gym_clamber="
             << (clamberControlsPassed ? "true" : "false") << "\n";
   std::cout << "movement_gym_clamber_exit_code=" << clamberExitCode << "\n";
+  std::cout << "movement_gym_wall_jump="
+            << (wallJumpControlsPassed ? "true" : "false") << "\n";
+  std::cout << "movement_gym_wall_jump_exit_code=" << wallJumpExitCode << "\n";
   std::cout << "window_launch_count=0\n";
   std::cout << "result=" << (passed ? "pass" : (appBuilt ? "fail" : "skip")) << "\n";
   std::cout << "reason_code="

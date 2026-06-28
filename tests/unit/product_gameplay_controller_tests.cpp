@@ -122,6 +122,25 @@ iggy3d::RoomSpatialSurface clamberBlockerSurface() {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface wallJumpBlockerSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "wall_jump_wall_actor_blocker";
+  surface.sourceStaticMeshId = "wall_jump_wall";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {
+      {2.0F, 0.0F, -0.5F},
+      {4.0F, 0.0F, -0.5F},
+      {4.0F, 2.4F, 0.5F},
+      {2.0F, 2.4F, 0.5F},
+  };
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  surface.runtimeOwnerStableName = "wall_jump_wall";
+  return surface;
+}
+
 iggy3d::RoomAsset makeProductClamberRoom() {
   iggy3d::RoomAsset room;
   room.id = "product_clamber_test";
@@ -145,6 +164,31 @@ iggy3d::RoomAsset makeProductClamberRoom() {
   room.spatialSurfaces.push_back(clamberFloorSurface());
   room.spatialSurfaces.push_back(clamberTopSurface());
   room.spatialSurfaces.push_back(clamberBlockerSurface());
+  return room;
+}
+
+iggy3d::RoomAsset makeProductWallJumpRoom() {
+  iggy3d::RoomAsset room;
+  room.id = "product_wall_jump_test";
+
+  iggy3d::RoomStaticMeshAsset floor;
+  floor.id = "floor_mesh";
+  floor.meshId = "floor";
+  floor.role = "floor";
+  floor.positionMeters = {0.0F, 0.0F, 0.0F};
+  floor.sizeMeters = {20.0F, 0.1F, 20.0F};
+  room.staticMeshes.push_back(floor);
+
+  iggy3d::RoomStaticMeshAsset wall;
+  wall.id = "wall_jump_wall";
+  wall.meshId = "wall";
+  wall.role = "wall";
+  wall.positionMeters = {3.0F, 1.2F, 0.0F};
+  wall.sizeMeters = {2.0F, 2.4F, 1.0F};
+  room.staticMeshes.push_back(wall);
+
+  room.spatialSurfaces.push_back(clamberFloorSurface());
+  room.spatialSurfaces.push_back(wallJumpBlockerSurface());
   return room;
 }
 
@@ -175,6 +219,23 @@ void setClamberActiveRoom(iggy3d::ProductAppWindowState& window,
   window.activeRoom.staticMeshCount = window.activeRoom.room.staticMeshes.size();
   window.activeRoom.spatialSurfaceCount = window.activeRoom.room.spatialSurfaces.size();
   window.activeRoom.walkableSurfaceCount = 2U;
+  window.activeRoom.actorBlockerSurfaceCount = 1U;
+  window.activeRoomCollision =
+      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
+}
+
+void setWallJumpActiveRoom(iggy3d::ProductAppWindowState& window,
+                           const iggy3d::Session& session) {
+  window.activeRoom.loaded = true;
+  window.activeRoom.status = "loaded";
+  window.activeRoom.reasonCode = "active_room_loaded";
+  window.activeRoom.source = "unit";
+  window.activeRoom.roomId = "product_wall_jump_test";
+  window.activeRoom.sourceName = "unit/product_wall_jump_test";
+  window.activeRoom.room = makeProductWallJumpRoom();
+  window.activeRoom.staticMeshCount = window.activeRoom.room.staticMeshes.size();
+  window.activeRoom.spatialSurfaceCount = window.activeRoom.room.spatialSurfaces.size();
+  window.activeRoom.walkableSurfaceCount = 1U;
   window.activeRoom.actorBlockerSurfaceCount = 1U;
   window.activeRoomCollision =
       iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
@@ -487,6 +548,61 @@ bool productJumpUsesClamberTraversalWhenCandidateIsLocal() {
          expect(final.y > start.y, "clamber raises player");
 }
 
+bool productJumpUsesWallJumpWhenAirborneNearWall() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "wall jump session created")) {
+    return false;
+  }
+
+  setPlayerPosition(*session, {3.0F, 0.80F, 0.65F});
+  setWallJumpActiveRoom(window, *session);
+  const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
+
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpActions(),
+                                      window,
+                                      "unit/gameplay_controller_wall_jump");
+
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+  return expect(window.gameplayJumpRequested, "wall jump requested") &&
+         expect(window.gameplayJumpAccepted, "wall jump accepted") &&
+         expect(window.gameplayJumpActive, "wall jump leaves jump active") &&
+         expect(window.gameplayJumpStatus == "wall_jump",
+                "wall jump status") &&
+         expect(window.gameplayJumpReasonCode == "gameplay_jump_wall_jump",
+                "wall jump reason") &&
+         expect(window.gameplayTraversalRequested, "wall jump traversal requested") &&
+         expect(window.gameplayTraversalConsumed, "wall jump consumed input") &&
+         expect(window.gameplayTraversalAccepted, "wall jump traversal accepted") &&
+         expect(!window.gameplayTraversalFallbackJumpAllowed,
+                "wall jump no fallback") &&
+         expect(window.gameplayTraversalMechanic == "wall_jump",
+                "wall jump mechanic proof") &&
+         expect(window.gameplayTraversalSlotId == "wall_jump_wall_actor_blocker",
+                "wall jump slot proof") &&
+         expect(window.gameplayTraversalTargetId == "wall_jump_wall",
+                "wall jump target proof") &&
+         expect(window.gameplayTraversalLandingSurfaceId ==
+                    "wall_jump_wall_actor_blocker",
+                "wall jump landing proof") &&
+         expect(window.playerPositionChanged, "wall jump changed player position") &&
+         expect(nearlyEqual(window.gameplayTraversalStartX, start.x),
+                "wall jump start x") &&
+         expect(nearlyEqual(window.gameplayTraversalStartY, start.y),
+                "wall jump start y") &&
+         expect(nearlyEqual(window.gameplayTraversalStartZ, start.z),
+                "wall jump start z") &&
+         expect(nearlyEqual(window.gameplayTraversalFinalX, final.x),
+                "wall jump final x") &&
+         expect(nearlyEqual(window.gameplayTraversalFinalY, final.y),
+                "wall jump final y") &&
+         expect(nearlyEqual(window.gameplayTraversalFinalZ, final.z),
+                "wall jump final z") &&
+         expect(final.y > start.y, "wall jump raises player") &&
+         expect(final.z > start.z, "wall jump pushes away from wall");
+}
+
 bool productJumpRejectsDoubleJumpWhileAirborne() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -757,6 +873,7 @@ int main() {
                   productSprintUsesSprintProfileAndStep() &&
                   productJumpRaisesPlayerAndRecordsProof() &&
                   productJumpUsesClamberTraversalWhenCandidateIsLocal() &&
+                  productJumpUsesWallJumpWhenAirborneNearWall() &&
                   productJumpRejectsDoubleJumpWhileAirborne() &&
                   productJumpFallsAndLands() &&
                   productDashMovesForwardAndRecordsProof() &&
