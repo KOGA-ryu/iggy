@@ -389,8 +389,9 @@ Vec3 mapMakerAnchorFor(ProductAppWindowState& window,
 
 ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
     ProductAppWindowState& window,
-    const SceneProjectionResult& scene) {
-  const bool active = window.gameplayActive && window.mapMakerActive;
+    const SceneProjectionResult& scene,
+    bool mapMakerLive) {
+  const bool active = window.gameplayActive && mapMakerLive;
   window.mapMakerActive = active;
   // branch-gate: BG-1205
   window.mapMakerStatus = active ? "map_maker_active" : "map_maker_inactive";
@@ -754,20 +755,23 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
       request.activeSession->state(),
       request.developerToolsEnabled,
       request.debugOverlayEnabled && hudSurface.gameplayHudVisible);
-  frame.mapMakerGrid = buildMapMakerGridForFrame(window, frame.scene);
+  const bool mapMakerLive =
+      productMapMakerLiveForWindow(request.frontend, window);
+  frame.mapMakerGrid = buildMapMakerGridForFrame(window, frame.scene,
+                                                 mapMakerLive);
   frame.mapMakerGridOverlay =
       buildProductMapMakerGridOverlay(frame.mapMakerGrid);
   appendMapMakerGridDotsToScene(frame.mapMakerGrid, frame.scene);
   frame.cameraAnchorOverrideAvailable =
-      window.mapMakerActive && window.viewport.creativeFlyAnchorValid;
+      mapMakerLive && window.viewport.creativeFlyAnchorValid;
   frame.cameraAnchorOverrideMeters = window.viewport.creativeFlyPositionMeters;
   frame.mapMakerCubePreview = buildProductMapMakerCubePreview(
-      window.mapMakerActive,
+      mapMakerLive,
       frame.cameraAnchorOverrideMeters,
       window.viewport.cameraYawDegrees,
       frame.mapMakerGrid);
   appendMapMakerCubePreviewToScene(frame.mapMakerCubePreview, frame.scene);
-  frame.mapMakerHud = buildProductMapMakerHud(window.mapMakerActive,
+  frame.mapMakerHud = buildProductMapMakerHud(mapMakerLive,
                                               frame.mapMakerGrid,
                                               frame.mapMakerCubePreview);
   frame.roomEditorOverlay =

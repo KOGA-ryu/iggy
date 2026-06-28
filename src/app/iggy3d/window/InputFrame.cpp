@@ -206,9 +206,9 @@ void recordProductWindowControllerActions(
     ActionState& actions) {
   const ProductInputSurface surface = productInputSurfaceFor(frontend, window);
   // branch-gate: BG-1205
+  const bool mapMakerLive = productMapMakerLiveForWindow(frontend, window);
   const ProductInteractionMode actionMode =
-      window.mapMakerActive ? ProductInteractionMode::Player
-                            : window.interactionMode;
+      mapMakerLive ? ProductInteractionMode::Player : window.interactionMode;
   ProductControllerActionRoutingResult result =
       productControllerActionRoutingSkipped(
           surface, actionMode, "controller_action_chord_consumed");
@@ -364,6 +364,7 @@ ProductCreativeFlyResult applyProductWindowCreativeFlyActions(
 }
 
 ProductControllerSampleInputResult applyProductWindowInputActions(
+    const FrontendState& frontend,
     ProductAppWindowState& window,
     Session* activeSession,
     const FrontendSettings* settings,
@@ -417,7 +418,8 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
   bool mapMakerActionApplied = false;
   bool mapMakerActionAccepted = false;
   ActionState gameplayActionsForSession = acceptedGameplayActions;
-  if (window.mapMakerActive) {
+  const bool mapMakerLive = productMapMakerLiveForWindow(frontend, window);
+  if (mapMakerLive) {
     const ProductCreativeFlyResult fly =
         applyProductWindowCreativeFlyActions(window, activeSession,
                                              acceptedGameplayActions);
@@ -436,7 +438,7 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
                                 inputSource, collisionSurfaces);
     result.actionApplied = !acceptedGameplayActions.entries.empty();
     result.actionAccepted = window.gameplayCommandAccepted || mapMakerActionAccepted;
-  } else if (window.mapMakerActive) {  // branch-gate: BG-1205
+  } else if (mapMakerLive) {  // branch-gate: BG-1205
     result.actionApplied = mapMakerActionApplied;
     result.actionAccepted = mapMakerActionAccepted;
   }
@@ -791,7 +793,8 @@ ProductControllerSampleInputResult processProductControllerActionSample(
     return result;
   }
 
-  return applyProductWindowInputActions(context.window,
+  return applyProductWindowInputActions(context.frontend,
+                                        context.window,
                                         context.activeSession,
                                         context.settings,
                                         controllerActions,
@@ -1005,7 +1008,9 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
           gameplayActions);
       pollMouseGameplayActions(context.inputFrame.mouse, gameplayActions);
     }
-    (void)applyProductWindowInputActions(context.window, &*context.activeSession,
+    (void)applyProductWindowInputActions(context.frontend,
+                                         context.window,
+                                         &*context.activeSession,
                                          &context.settings, gameplayActions,
                                          "action_map");
   }

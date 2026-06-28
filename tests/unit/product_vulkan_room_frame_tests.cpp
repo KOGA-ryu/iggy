@@ -1200,6 +1200,8 @@ bool roomEditorSurfaceShowsEditorHudOnly() {
   seedMovementDebugFacts(window);
   seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
   window.roomEditing.ready = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.mapMakerActive = true;
   window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
   window.roomEditorCursor.wallDirection = iggy3d::ProductRoomEditorDirection::Right;
   window.roomEditorCursor.gridX = 2;
@@ -1230,6 +1232,12 @@ bool roomEditorSurfaceShowsEditorHudOnly() {
                 "editor surface hides NPC debug HUD") &&
          expect(!projection.physicsHud.visible,
                 "editor surface hides physics HUD") &&
+         expect(!projection.mapMakerGrid.visible,
+                "editor creative mode hides map maker grid") &&
+         expect(!projection.mapMakerHud.visible,
+                "editor creative mode hides map maker HUD") &&
+         expect(!window.mapMakerActive,
+                "editor creative mode does not report map maker live") &&
          expect(projection.physicsHud.lineCount == 4U,
                 "editor hidden physics HUD keeps line count") &&
          expect(projection.debug.physicsDebugHudLines.size() == 4U,
@@ -1252,8 +1260,8 @@ bool gameplayMapMakerFrameCarriesGridOverlay() {
   if (!expect(session.has_value(), "map maker frame session created")) {
     return false;
   }
-  window.interactionMode = iggy3d::ProductInteractionMode::Player;
-  window.mapMakerActive = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.mapMakerActive = false;
   window.viewport.creativeFlyAnchorValid = true;
   window.viewport.creativeFlyPositionMeters = {0.0F, 2.0F, 0.0F};
 

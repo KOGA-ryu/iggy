@@ -73,6 +73,7 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   RenderReceipt receipt;
   const ProductActiveSurfaceFrame activeSurface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
+  const bool mapMakerLive = productMapMakerLiveForWindow(frontend, window);
   const GameplayFeedback feedback = buildGameplayFeedback(window);
   const ProductVulkanGameplayReadiness vulkanGameplayReadiness =
       evaluateProductVulkanGameplayReadiness(window);
@@ -205,7 +206,7 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gamepad_menu_select_used", window.gamepadMenuSelectUsed);
   appendReceiptField(receipt, "interaction_mode",
                      productInteractionModeName(window.interactionMode));
-  appendReceiptField(receipt, "map_maker_active", window.mapMakerActive);
+  appendReceiptField(receipt, "map_maker_active", mapMakerLive);
   appendReceiptField(receipt, "map_maker_status", window.mapMakerStatus);
   appendReceiptField(receipt, "map_maker_reason_code",
                      window.mapMakerReasonCode);

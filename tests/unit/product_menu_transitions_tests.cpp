@@ -155,6 +155,13 @@ int main() {
                            "gameplay receipt pause closed");
   ok &= expectReceiptField(gameplayReceipt, "dev_tools_open", "false",
                            "gameplay receipt dev tools closed");
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.mapMakerActive = false;
+  const iggy3d::RenderReceipt creativeGameplayReceipt =
+      receiptFor(frontend, settings, window);
+  ok &= expectReceiptField(creativeGameplayReceipt, "map_maker_active", "true",
+                           "creative gameplay receipt derives map maker live");
+  window.interactionMode = iggy3d::ProductInteractionMode::Player;
 
   activateMapMaker(window);
   showMovementTuning(window);
@@ -194,6 +201,12 @@ int main() {
                            "pause receipt derives pause open");
   ok &= expectReceiptField(pauseReceipt, "dev_tools_open", "false",
                            "pause receipt derives dev tools closed");
+  window.mapMakerActive = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  const iggy3d::RenderReceipt stalePauseMapMakerReceipt =
+      receiptFor(frontend, settings, window);
+  ok &= expectReceiptField(stalePauseMapMakerReceipt, "map_maker_active", "false",
+                           "stale pause receipt derives map maker inactive");
 
   showMovementTuning(window);
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
@@ -227,6 +240,12 @@ int main() {
                            "settings receipt derives pause closed");
   ok &= expectReceiptField(settingsReceipt, "dev_tools_open", "false",
                            "settings receipt derives dev tools closed");
+  window.mapMakerActive = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  const iggy3d::RenderReceipt staleSettingsMapMakerReceipt =
+      receiptFor(frontend, settings, window);
+  ok &= expectReceiptField(staleSettingsMapMakerReceipt, "map_maker_active", "false",
+                           "stale settings receipt derives map maker inactive");
 
   showMovementTuning(window);
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::Settings);
@@ -266,6 +285,13 @@ int main() {
                            "dev tools receipt derives pause closed");
   ok &= expectReceiptField(devToolsReceipt, "dev_tools_open", "true",
                            "dev tools receipt derives dev tools open");
+  window.mapMakerActive = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  const iggy3d::RenderReceipt staleDevToolsMapMakerReceipt =
+      receiptFor(frontend, settings, window);
+  ok &= expectReceiptField(staleDevToolsMapMakerReceipt, "map_maker_active", "false",
+                           "stale dev tools receipt derives map maker inactive");
+  iggy3d::clearProductMapMakerMode(window);
 
   closeProductOverlayToGameplayTransition(frontend, window);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
@@ -281,6 +307,8 @@ int main() {
   ok &= expect(!window.gameplayMovementTuningVisible,
                "resume does not restore movement tuning");
   window.roomEditing.ready = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.mapMakerActive = true;
   window.inputOwner = iggy3d::MenuOwner::Gameplay;
   window.gameplayInputSuppressed = false;
   const iggy3d::RenderReceipt editorReceipt =
@@ -293,6 +321,8 @@ int main() {
                            "editor receipt owner");
   ok &= expectReceiptField(editorReceipt, "gameplay_input_suppressed", "true",
                            "editor receipt suppresses gameplay");
+  ok &= expectReceiptField(editorReceipt, "map_maker_active", "false",
+                           "editor creative receipt derives map maker inactive");
 
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::ReturnToTitle);
   activateMapMaker(window);

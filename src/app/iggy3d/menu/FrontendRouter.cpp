@@ -350,6 +350,16 @@ ProductActiveSurfaceFrame resolveProductActiveSurface(
   return frame;
 }
 
+bool productMapMakerLiveForWindow(const FrontendState& frontend,
+                                  const ProductAppWindowState& window) {
+  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(frontend, window));
+  return window.interactionMode == ProductInteractionMode::Creative &&
+         surface.activeSurface == ProductFrontendSurface::Gameplay &&
+         surface.inputOwner == MenuOwner::Gameplay &&
+         !surface.gameplayInputSuppressed;
+}
+
 ProductFrontendOwnerDecision chooseProductFrontendOwner(
     const ProductFrontendRouteContext& context) {
   const FrontendState& frontend = context.frontend;

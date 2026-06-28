@@ -678,7 +678,8 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
       context.window.mapMakerReasonCode = context.window.mapMakerStatus;
       return {true, false};
     }
-    const bool enable = !context.window.mapMakerActive;
+    const bool enable =
+        !productMapMakerLiveForWindow(context.frontend, context.window);
     context.window.mapMakerActive = enable;
     // branch-gate: BG-1205
     context.window.interactionMode =
