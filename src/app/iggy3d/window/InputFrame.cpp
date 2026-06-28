@@ -20,6 +20,9 @@
 #include "app/input/InputRouter.hpp"
 #include "app/platform/SdlWindow.hpp"
 
+#include <algorithm>
+#include <array>
+
 namespace iggy3d {
 namespace {
 
@@ -155,9 +158,36 @@ void ensureCreativeFlyAnchor(ProductAppWindowState& window,
   window.viewport.creativeFlyAnchorValid = true;
 }
 
-void applyProductWindowCreativeFlyActions(ProductAppWindowState& window,
-                                          const Session* activeSession,
-                                          const ActionState& actions) {
+bool mapMakerConsumesGameplayAction(InputAction action) {
+  constexpr std::array kConsumedActions{
+      InputAction::PlayerMoveX,
+      InputAction::PlayerMoveY,
+      InputAction::PlayerJump,
+      InputAction::PlayerCrouch,
+      InputAction::PlayerSprint,
+      InputAction::PlayerDash,
+  };
+  return std::find(kConsumedActions.begin(), kConsumedActions.end(), action) !=
+         kConsumedActions.end();
+}
+
+ActionState gameplayActionsAfterMapMakerConsumesMovement(
+    const ActionState& actions) {
+  ActionState filtered;
+  for (const ActionStateEntry& entry : actions.entries) {
+    // branch-gate: BG-1205
+    if (!mapMakerConsumesGameplayAction(entry.action)) {
+      recordAction(filtered, entry.action, entry.down, entry.pressed,
+                   entry.released, entry.value);
+    }
+  }
+  return filtered;
+}
+
+ProductCreativeFlyResult applyProductWindowCreativeFlyActions(
+    ProductAppWindowState& window,
+    const Session* activeSession,
+    const ActionState& actions) {
   ensureCreativeFlyAnchor(window, activeSession);
   ProductCreativeFlyConfig config;
   config.enabled = true;
@@ -187,6 +217,7 @@ void applyProductWindowCreativeFlyActions(ProductAppWindowState& window,
   if (fly.applied) {
     window.viewport.creativeFlyPositionMeters = fly.finalPositionMeters;
   }
+  return fly;
 }
 
 ProductControllerSampleInputResult applyProductWindowInputActions(
@@ -240,23 +271,31 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
   // Movement is consumed for creative fly, but selected asset/tool input is not
   // modeled yet.
   // branch-gate: BG-1205
+  bool mapMakerActionApplied = false;
+  bool mapMakerActionAccepted = false;
+  ActionState gameplayActionsForSession = acceptedGameplayActions;
   if (window.mapMakerActive) {
-    applyProductWindowCreativeFlyActions(window, activeSession,
-                                         acceptedGameplayActions);
-    result.actionApplied = !acceptedGameplayActions.entries.empty();
-    result.actionAccepted = result.actionApplied;
-    window.gameplayCommandAccepted = false;
-    window.gameplayCommandStatus = "creative_fly_owns_movement";
-    return result;
+    const ProductCreativeFlyResult fly =
+        applyProductWindowCreativeFlyActions(window, activeSession,
+                                             acceptedGameplayActions);
+    mapMakerActionApplied = !acceptedGameplayActions.entries.empty();
+    mapMakerActionAccepted =
+        mapMakerActionApplied &&
+        (fly.applied || fly.reasonCode == "creative_fly_no_input");
+    gameplayActionsForSession =
+        gameplayActionsAfterMapMakerConsumesMovement(acceptedGameplayActions);
   }
   // branch-gate: BG-1061
   if (activeSession != nullptr) {
     const SpatialSurfaceSet* collisionSurfaces =
         productActiveRoomCollisionSurfaces(window.activeRoomCollision);
-    applyProductGameplayActions(*activeSession, acceptedGameplayActions, window,
+    applyProductGameplayActions(*activeSession, gameplayActionsForSession, window,
                                 inputSource, collisionSurfaces);
     result.actionApplied = !acceptedGameplayActions.entries.empty();
-    result.actionAccepted = window.gameplayCommandAccepted;
+    result.actionAccepted = window.gameplayCommandAccepted || mapMakerActionAccepted;
+  } else if (window.mapMakerActive) {  // branch-gate: BG-1205
+    result.actionApplied = mapMakerActionApplied;
+    result.actionAccepted = mapMakerActionAccepted;
   }
   return result;
 }

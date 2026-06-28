@@ -604,6 +604,64 @@ bool controllerSouthJumpsInGameplayPlayerMode() {
                 "gameplay south jump airborne reason");
 }
 
+bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = gameplayWindow(session);
+  if (!expect(session.has_value(), "map maker movement session created")) {
+    return false;
+  }
+  window.mapMakerActive = true;
+  window.mapMakerStatus = "map_maker_enabled";
+  window.mapMakerReasonCode = window.mapMakerStatus;
+
+  const iggy3d::EntityId actor = session->state().players.actorForSlot(0);
+  const iggy3d::EntityState* beforePlayer = session->state().world.findById(actor);
+  if (!expect(beforePlayer != nullptr, "map maker movement player exists")) {
+    return false;
+  }
+  const iggy3d::Vec3 beforePosition = beforePlayer->transform.position;
+  iggy3d::ProductControllerModeChordState chord;
+  iggy3d::ProductControllerActionRoutingState routing;
+
+  const iggy3d::ProductControllerSampleInputResult moved =
+      iggy3d::processProductControllerActionSample(
+          {frontend, window, &*session, chord, routing, nullptr, "unit"},
+          iggy3d::productControllerActionSampleForControl(
+              iggy3d::ProductControllerControl::LeftStickUp));
+  const iggy3d::EntityState* afterPlayer = session->state().world.findById(actor);
+  if (!expect(afterPlayer != nullptr, "map maker movement player remains")) {
+    return false;
+  }
+
+  return expect(moved.actionApplied, "map maker movement action applied") &&
+         expect(moved.actionAccepted, "map maker movement action accepted") &&
+         expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
+                "map maker movement keeps gameplay screen") &&
+         expect(frontend.screen != iggy3d::FrontendScreen::Pause,
+                "map maker movement does not open pause") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "map maker movement owner gameplay") &&
+         expect(!window.gameplayInputSuppressed,
+                "map maker movement does not suppress gameplay input") &&
+         expect(window.mapMakerActive, "map maker remains active") &&
+         expect(window.viewport.creativeFlyActive,
+                "map maker movement activates creative fly") &&
+         expect(window.viewport.creativeFlyStatus == "creative_fly_applied",
+                "map maker movement applies creative fly") &&
+         expect(window.viewport.creativeFlyAnchorValid,
+                "map maker movement has creative anchor") &&
+         expect(window.viewport.creativeFlyPositionMeters.z < beforePosition.z,
+                "map maker movement advances creative camera forward") &&
+         expect(iggy3d::nearlyEqual(beforePosition,
+                                    afterPlayer->transform.position),
+                "map maker movement does not move player body") &&
+         expect(!window.gameplayCommandSubmitted,
+                "map maker movement does not submit player move command") &&
+         expect(window.gameplayCommandStatus != "creative_fly_owns_movement",
+                "map maker movement avoids pause-like owner status");
+}
+
 bool controllerSouthJumpsFromClamberedWallTop() {
   const iggy3d::FrontendState frontend = gameplayFrontend();
   std::optional<iggy3d::Session> session;
@@ -1318,6 +1376,7 @@ int main() {
       backWithoutPreviewFallsThroughPolicy() &&
       controllerEastCancelsPendingPreviewWithoutMutation() &&
       controllerSouthJumpsInGameplayPlayerMode() &&
+      mapMakerMovementStaysGameplayOwnedAndDoesNotPause() &&
       controllerSouthJumpsFromClamberedWallTop() &&
       starterDeleteButtonOpensDeleteConfirmation() &&
       starterHitTestUsesCanonicalActionRows() &&
