@@ -89,9 +89,9 @@ bool newWorldDraftHotkeysDriveDraftState() {
               "draft cursor column reaches two") &&
        ok;
 
-  const bool selected = iggy3d::selectDungeonDraftPaintGlyph(window, 'C');
-  ok = expect(selected, "number-key crate glyph selects paint tool") && ok;
-  ok = expect(window.worldSetupDungeonDraftSelectedGlyph == "C",
+  const bool selected = iggy3d::selectDungeonDraftPaintGlyph(window, '>');
+  ok = expect(selected, "ramp glyph selects paint tool") && ok;
+  ok = expect(window.worldSetupDungeonDraftSelectedGlyph == ">",
               "painting records selected glyph") &&
        ok;
   ok = expect(!window.worldSetupDungeonDraftModified,
@@ -114,7 +114,7 @@ bool newWorldDraftHotkeysDriveDraftState() {
                   "dungeon_draft_cell_painted",
               "painting records stable draft paint reason") &&
        ok;
-  ok = expect(window.worldSetupDungeonDraftLastGlyph == "C",
+  ok = expect(window.worldSetupDungeonDraftLastGlyph == ">",
               "painting records last glyph") &&
        ok;
   ok = expect(window.worldSetupAsciiRoomId ==
@@ -229,12 +229,23 @@ bool manualDungeonSelectorCanCreateMovementGym() {
   iggy3d::ProductAppWindowState window;
   iggy3d::recordWorldSetupDraftState(draft, window);
 
-  const iggy3d::ProductMenuActionResult left = applyNewWorldAction(
-      iggy3d::InputAction::MenuLeft, frontend, options, activeSession, draft,
-      window);
-
-  bool ok = expect(left.handled && left.accepted,
-                   "selector left wraps to movement gym");
+  bool selected = false;
+  bool ok = true;
+  for (std::size_t index = 0;
+       index < iggy3d::productBuiltinDungeonCatalog().size();
+       ++index) {
+    if (draft.asciiRoomId == "movement_gym") {
+      selected = true;
+      break;
+    }
+    const iggy3d::ProductMenuActionResult next = applyNewWorldAction(
+        iggy3d::InputAction::MenuRight, frontend, options, activeSession, draft,
+        window);
+    ok = expect(next.handled && next.accepted,
+                "selector advances toward movement gym") &&
+         ok;
+  }
+  ok = expect(selected, "selector reaches movement gym") && ok;
   ok = expect(draft.worldName == "Movement Gym",
               "selector reaches movement gym title") &&
        ok;
@@ -245,7 +256,7 @@ bool manualDungeonSelectorCanCreateMovementGym() {
               "window mirrors movement gym title") &&
        ok;
   ok = expect(window.worldSetupDungeonIndex ==
-                  iggy3d::productBuiltinDungeonCatalog().size(),
+                  iggy3d::productBuiltinDungeonIndexForRoomId("movement_gym") + 1U,
               "window mirrors movement gym index") &&
        ok;
   ok = expect(window.worldSetupDungeonCount ==
@@ -271,16 +282,16 @@ bool manualDungeonSelectorCanCreateMovementGym() {
   ok = expect(window.activeRoom.roomId == "movement_gym",
               "movement gym active room id") &&
        ok;
-  ok = expect(window.activeRoom.authoredObjectCount == 4U,
+  ok = expect(window.activeRoom.authoredObjectCount == 10U,
               "movement gym authored object count") &&
        ok;
-  ok = expect(window.activeRoom.staticMeshCount == 99U,
+  ok = expect(window.activeRoom.staticMeshCount == 1045U,
               "movement gym static mesh count") &&
        ok;
   ok = expect(window.activeRoomCollision.ready,
               "movement gym collision ready") &&
        ok;
-  ok = expect(window.activeRoomCollision.walkableSurfaceCount == 53U,
+  ok = expect(window.activeRoomCollision.walkableSurfaceCount == 780U,
               "movement gym ledge top walkable surface count") &&
        ok;
   return ok;

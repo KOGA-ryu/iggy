@@ -105,6 +105,33 @@ bool paintingLedgeMarksDraftCustomAndBuildsClamberObject() {
          expect(authored.objectCount == 1U, "ledge object count");
 }
 
+bool paintingRampMarksDraftCustomAndBuildsRamp() {
+  iggy3d::WorldSetupDraft draft =
+      iggy3d::makeProductDefaultWorldSetupDraft("seed_ramp");
+  const iggy3d::ProductDungeonDraftOperationResult painted =
+      iggy3d::setProductDungeonDraftCell(draft, 1U, 2U, '>');
+
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceText = draft.asciiRoomText;
+  request.roomId = draft.asciiRoomId;
+  request.sourceName = draft.asciiRoomSourceName;
+  const iggy3d::ProductAsciiRoomAuthoringResult authored =
+      iggy3d::buildProductAsciiRoomAuthoring(request);
+
+  return expect(iggy3d::isProductDungeonDraftGlyph('^'), "ramp north glyph valid") &&
+         expect(iggy3d::isProductDungeonDraftGlyph('v'), "ramp south glyph valid") &&
+         expect(iggy3d::isProductDungeonDraftGlyph('<'), "ramp west glyph valid") &&
+         expect(iggy3d::isProductDungeonDraftGlyph('>'), "ramp east glyph valid") &&
+         expect(painted.ok, "paint ramp ok") &&
+         expect(painted.modified, "paint ramp modified") &&
+         expect(painted.glyph == '>', "paint ramp glyph") &&
+         expect(draft.asciiRoomId == "custom_dungeon_draft",
+                "ramp custom room id") &&
+         expect(authored.ok, "ramp authored ok") &&
+         expect(authored.floorCount == 59U, "ramp keeps floor count") &&
+         expect(authored.rampCount == 1U, "ramp authored count");
+}
+
 bool paintingPlayerKeepsSingleSpawn() {
   iggy3d::WorldSetupDraft draft =
       iggy3d::makeProductDefaultWorldSetupDraft("seed_player");
@@ -139,6 +166,7 @@ int main() {
                       paintingMarksDraftCustomAndBuilds() &&
                       paintingCrateMarksDraftCustomAndBuildsObject() &&
                       paintingLedgeMarksDraftCustomAndBuildsClamberObject() &&
+                      paintingRampMarksDraftCustomAndBuildsRamp() &&
                       paintingPlayerKeepsSingleSpawn() &&
                       invalidGlyphIsRejected();
   std::cout << "product_dungeon_draft_tests="

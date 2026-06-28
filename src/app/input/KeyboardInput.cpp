@@ -12,8 +12,8 @@
 namespace iggy3d {
 namespace {
 
-constexpr std::array<char, 8> kAsciiRoomPaintGlyphs = {'#', '.', 'P', 'K',
-                                                       '$', 'E', '+', 'C'};
+constexpr std::array<char, kKeyboardAsciiRoomPaintGlyphCount> kAsciiRoomPaintGlyphs = {
+    '#', '.', 'P', 'K', '$', 'E', '+', 'C', '^', 'v', '<', '>'};
 
 struct KeyboardRoomEditorActionBinding {
   bool KeyboardRoomEditorInputSample::* down;
@@ -171,7 +171,7 @@ char recordKeyboardAsciiRoomPaintGlyph(KeyboardInputState& state,
 char pollKeyboardAsciiRoomPaintGlyph(KeyboardInputState& state) {
 #if defined(IGGY3D_HAS_SDL3)
   const bool* keys = SDL_GetKeyboardState(nullptr);
-  constexpr std::array<SDL_Scancode, 8> kScanCodes = {
+  constexpr std::array<SDL_Scancode, kKeyboardAsciiRoomPaintGlyphCount> kScanCodes = {
       SDL_SCANCODE_1,
       SDL_SCANCODE_2,
       SDL_SCANCODE_3,
@@ -180,6 +180,10 @@ char pollKeyboardAsciiRoomPaintGlyph(KeyboardInputState& state) {
       SDL_SCANCODE_6,
       SDL_SCANCODE_7,
       SDL_SCANCODE_8,
+      SDL_SCANCODE_9,
+      SDL_SCANCODE_0,
+      SDL_SCANCODE_MINUS,
+      SDL_SCANCODE_EQUALS,
   };
   KeyboardAsciiRoomPaintSample sample;
   for (std::size_t index = 0; index < kScanCodes.size(); ++index) {

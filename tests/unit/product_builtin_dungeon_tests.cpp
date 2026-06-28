@@ -83,6 +83,7 @@ constexpr ExpectedDungeonCounts kExpectedDungeons[] = {
     {"physics_corner_slide", 8U, 5U, 14U, 26U, 0U, 3U, 66U, 14U, 26U, 26U},
     {"object_crate_room", 7U, 5U, 15U, 20U, 1U, 2U, 57U, 15U, 21U, 21U},
     {"movement_gym", 45U, 23U, 776U, 259U, 10U, 5U, 1318U, 780U, 269U, 269U},
+    {"slope_gym", 19U, 9U, 119U, 52U, 0U, 3U, 223U, 119U, 52U, 52U},
 };
 
 const ExpectedDungeonCounts* expectedCountsFor(std::string_view roomId) {
@@ -200,7 +201,7 @@ bool catalogExposesSelectableDungeons() {
   const bool previousReturnsLoopKeep =
       draft.asciiRoomId == "loop_keep_ascii" && draft.worldName == "Loop Keep";
 
-  return expect(catalog.size() == 9U, "catalog size") &&
+  return expect(catalog.size() == 10U, "catalog size") &&
          expect(startsOnLoopKeep, "default starts loop keep") &&
          expect(nextOk, "next select ok") &&
          expect(nextIsGatehouse, "next selects gatehouse") &&
@@ -227,6 +228,9 @@ bool catalogExposesSelectableDungeons() {
          expect(iggy3d::findProductBuiltinDungeonByRoomId(
                     "movement_gym") != nullptr,
                 "find movement gym") &&
+         expect(iggy3d::findProductBuiltinDungeonByRoomId(
+                    "slope_gym") != nullptr,
+                "find slope gym") &&
          expect(iggy3d::findProductBuiltinDungeonByRoomId("missing") == nullptr,
                 "missing dungeon absent");
 }
@@ -485,6 +489,53 @@ bool movementGymBuildsScaledJumpAndClamberObjects() {
          expect(slots.slots.size() == 4U, "movement gym clamber slots");
 }
 
+bool slopeGymBuildsRampSurfaces() {
+  const ExpectedDungeonCounts* expected = expectedCountsFor("slope_gym");
+  const iggy3d::ProductBuiltinDungeonDefinition* dungeon =
+      iggy3d::findProductBuiltinDungeonByRoomId("slope_gym");
+  const iggy3d::ProductAsciiRoomAuthoringResult authoring =
+      dungeon == nullptr ? iggy3d::ProductAsciiRoomAuthoringResult{}
+                         : buildDungeonAuthoring(*dungeon);
+  const iggy3d::ProductActiveRoomState active =
+      buildDungeonActiveRoom("slope_gym");
+  const iggy3d::ProductActiveRoomCollisionState collision =
+      iggy3d::buildProductActiveRoomCollision(active);
+  const iggy3d::RoomSpatialSurface* ramp =
+      findSurface(active.room, "floor_r1_c6_walkable");
+
+  return expect(expected != nullptr, "slope gym expected counts") &&
+         expect(authoring.ok, "slope gym authoring ok") &&
+         expect(authoring.source.hasTileScaleDirective,
+                "slope gym scale directive") &&
+         expect(authoring.source.tileScaleMeters == 5.0F,
+                "slope gym scale value") &&
+         expect(authoring.rampCount == 24U, "slope gym ramp count") &&
+         expect(authoring.elevatedFloorCount == 20U,
+                "slope gym elevated count") &&
+         expect(active.loaded, "slope gym loaded") &&
+         expect(active.roomId == "slope_gym", "slope gym room id") &&
+         expect(active.authoredFloorCount == expected->floorCount,
+                "slope gym floor count") &&
+         expect(active.authoredWallCount == expected->wallCount,
+                "slope gym wall count") &&
+         expect(collision.ready, "slope gym collision ready") &&
+         expect(collision.querySurfaceCount == expected->spatialSurfaceCount,
+                "slope gym query surface count") &&
+         expect(ramp != nullptr, "slope gym ramp surface") &&
+         expect(ramp == nullptr || hasTag(ramp->traversalTags, "ramp"),
+                "slope gym ramp tag") &&
+         expect(ramp == nullptr || hasTag(ramp->traversalTags, "terrain_ramp_east"),
+                "slope gym ramp east tag") &&
+         expect(ramp == nullptr || ramp->pointsMeters.size() == 4U,
+                "slope gym ramp points") &&
+         expect(ramp == nullptr || ramp->pointsMeters[0].y == 0.0F,
+                "slope gym ramp low point") &&
+         expect(ramp == nullptr || ramp->pointsMeters[1].y == 0.5F,
+                "slope gym ramp high point") &&
+         expect(ramp == nullptr || ramp->normal.y > 0.99F,
+                "slope gym gentle normal");
+}
+
 bool physicsPlannerUsesTestRooms() {
   const iggy3d::PlayerPhysicsMovePlannerResult flat =
       planMoveInRoom("physics_flat_room",
@@ -525,6 +576,7 @@ int main() {
                       physicsRoomsBuildCollisionSurfaces() &&
                       objectCrateRoomBuildsVisiblePropAndCollision() &&
                       movementGymBuildsScaledJumpAndClamberObjects() &&
+                      slopeGymBuildsRampSurfaces() &&
                       physicsPlannerUsesTestRooms();
   std::cout << "product_builtin_dungeon_tests="
             << (passed ? "pass" : "fail") << '\n';

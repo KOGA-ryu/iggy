@@ -1,12 +1,15 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 
 #include "app/input/InputAction.hpp"
 
 namespace iggy3d {
 
 struct ActionState;
+
+inline constexpr std::size_t kKeyboardAsciiRoomPaintGlyphCount = 12U;
 
 struct KeyboardInputState {
   bool upWasDown = false;
@@ -17,7 +20,7 @@ struct KeyboardInputState {
   bool backWasDown = false;
   bool tabWasDown = false;
   bool devToggleWasDown = false;
-  std::array<bool, 8> asciiPaintWasDown{};
+  std::array<bool, kKeyboardAsciiRoomPaintGlyphCount> asciiPaintWasDown{};
   bool jumpWasDown = false;
   bool dashWasDown = false;
   bool interactWasDown = false;
@@ -60,7 +63,7 @@ struct KeyboardRoomEditorInputSample {
 };
 
 struct KeyboardAsciiRoomPaintSample {
-  std::array<bool, 8> glyphDown{};
+  std::array<bool, kKeyboardAsciiRoomPaintGlyphCount> glyphDown{};
 };
 
 InputAction pollKeyboardMenuAction(KeyboardInputState& state);

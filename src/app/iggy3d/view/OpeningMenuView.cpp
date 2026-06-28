@@ -50,9 +50,17 @@ std::string selectedDraftGlyphLabel(const std::string& glyph) {
     case 'E':
       return "TOOL E EXIT";
     case '+':
-      return "TOOL + RAMP";
+      return "TOOL + DOOR";
     case 'C':
       return "TOOL C CRATE";
+    case '^':
+      return "TOOL ^ RAMP N";
+    case 'v':
+      return "TOOL v RAMP S";
+    case '<':
+      return "TOOL < RAMP W";
+    case '>':
+      return "TOOL > RAMP E";
   }
   return "TOOL " + glyph;
 }
@@ -855,7 +863,7 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
   setColor(renderer, 166, 184, 177);
   drawText(renderer,
            dungeonDraftEditMode
-               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C SELECT   ENTER PAINT"
+               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C 9^ 0v -< => SELECT"
                : "UP DOWN SELECT TEMPLATE   TAB EDIT   CONFIRM BUILD",
            452.0F,
            210.0F,

@@ -191,8 +191,8 @@ bool newWorldEditModeShowsCursorPaletteAndLastGlyph() {
                                              true,
                                              1U,
                                              2U,
-                                             "C",
-                                             "C"});
+                                             ">",
+                                             ">"});
   const iggy3d::ProductUiPrimitive* instructions =
       findPrimitive(list, "starter.content.new_world.instructions");
   const iggy3d::ProductUiPrimitive* draftValue =
@@ -210,15 +210,15 @@ bool newWorldEditModeShowsCursorPaletteAndLastGlyph() {
   bool ok = true;
   ok &= expect(instructions != nullptr &&
                    instructions->text ==
-                       "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C SELECT   ENTER PAINT",
+                       "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C 9^ 0v -< => SELECT",
                "new world edit instructions show paint keys");
   ok &= expect(draftValue != nullptr && draftValue->text == "CUSTOM",
                "new world edit draft value");
   ok &= expect(cursorValue != nullptr && cursorValue->text == "1,2",
                "new world edit cursor value");
-  ok &= expect(selectedGlyph != nullptr && selectedGlyph->text == "TOOL C CRATE",
+  ok &= expect(selectedGlyph != nullptr && selectedGlyph->text == "TOOL > RAMP E",
                "new world edit selected glyph");
-  ok &= expect(lastGlyph != nullptr && lastGlyph->text == "LAST C",
+  ok &= expect(lastGlyph != nullptr && lastGlyph->text == "LAST >",
                "new world edit last glyph");
   ok &= expect(asciiRow != nullptr && asciiRow->text.find("[") != std::string::npos,
                "new world edit ascii row marks cursor");
