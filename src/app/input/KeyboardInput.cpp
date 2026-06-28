@@ -115,11 +115,13 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
   const bool backDown = keyDown(keys, SDL_SCANCODE_ESCAPE);
   const bool tabDown = keyDown(keys, SDL_SCANCODE_TAB);
   const bool devToggleDown = keyDown(keys, SDL_SCANCODE_F1) || keyDown(keys, SDL_SCANCODE_F2);
+  const bool debugOverlayDown = keyDown(keys, SDL_SCANCODE_F3);
 
   InputAction action = InputAction::None;
   // branch-gate: BG-1037
-  if (devToggleDown && !state.devToggleWasDown) {
-    // branch-gate: BG-1037
+  if (debugOverlayDown && !state.debugOverlayWasDown) {
+    action = actionForInput(NeutralInput::KeyF3);
+  } else if (devToggleDown && !state.devToggleWasDown) {  // branch-gate: BG-1037
     action = actionForInput(keyDown(keys, SDL_SCANCODE_F2) ? NeutralInput::KeyF2
                                                             : NeutralInput::KeyF1);
   } else if (upDown && !state.upWasDown) {  // branch-gate: BG-1037
@@ -147,6 +149,7 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
   state.backWasDown = backDown;
   state.tabWasDown = tabDown;
   state.devToggleWasDown = devToggleDown;
+  state.debugOverlayWasDown = debugOverlayDown;
   return action;
 #else
   (void)state;

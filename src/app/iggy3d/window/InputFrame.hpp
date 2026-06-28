@@ -39,7 +39,7 @@ struct ProductWindowInputFrameContext {
   std::optional<Session>& activeSession;
   WorldSetupDraft& worldSetupDraft;
   ProductAppWindowState& window;
-  const FrontendSettings& settings;
+  FrontendSettings& settings;
   ProductWindowInputFrameState& inputFrame;
   bool& closeRequested;
   SdlWindow* sdlWindow = nullptr;

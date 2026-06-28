@@ -579,6 +579,17 @@ ProductMenuActionResult applyProductStarterMenuAction(
 ProductMenuActionResult applyProductSystemPauseMenuAction(
     InputAction action,
     ProductSystemPauseMenuActionContext context) {
+  if (action == InputAction::DevDebugOverlay) {  // branch-gate: BG-1124
+    // branch-gate: BG-1124
+    if (context.settings == nullptr) {
+      return {true, false};
+    }
+    context.settings->debugOverlayEnabled = !context.settings->debugOverlayEnabled;
+    context.frontend.status = context.settings->debugOverlayEnabled
+                                  ? "debug_overlay_enabled"
+                                  : "debug_overlay_disabled";
+    return {true, true};
+  }
   // branch-gate: BG-1124
   if (action == InputAction::DevToggle || action == InputAction::SystemDevTools) {
     return applyProductDevToggleMenuAction(context.frontend, context.window);

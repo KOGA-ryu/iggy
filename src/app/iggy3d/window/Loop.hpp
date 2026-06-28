@@ -20,7 +20,7 @@ struct ProductWindowLoopRequest {
   std::optional<Session>& activeSession;
   WorldSetupDraft& worldSetupDraft;
   ProductAppWindowState window;
-  const FrontendSettings& settings;
+  FrontendSettings& settings;
   const ProductSaveBridgeResult& saves;
 };
 

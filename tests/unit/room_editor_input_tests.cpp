@@ -68,6 +68,14 @@ int main() {
                     iggy3d::InputAction::DevToggle,
                 "keyboard F2 emits dev toggle") &&
          ok;
+    ok = expect(iggy3d::neutralInputName(iggy3d::NeutralInput::KeyF3) ==
+                    "key.f3",
+                "keyboard F3 name") &&
+         ok;
+    ok = expect(iggy3d::actionForInput(iggy3d::NeutralInput::KeyF3) ==
+                    iggy3d::InputAction::DevDebugOverlay,
+                "keyboard F3 emits debug overlay toggle") &&
+         ok;
   }
 
   {

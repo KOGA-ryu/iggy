@@ -336,6 +336,9 @@ bool noWindowGameplayReportsMouseCaptureNotApplied() {
                 "no-window mouse capture mode") &&
          expect(result.mouseCaptureInputOwner == "gameplay",
                 "no-window mouse capture owner") &&
+         expect(iggy3d::hasReceiptField(receipt, "settings_debug_overlay_enabled",
+                                        "false"),
+                "receipt records debug overlay setting") &&
          expect(iggy3d::hasReceiptField(receipt, "mouse_capture_requested",
                                         "false"),
                 "no-window receipt capture requested") &&

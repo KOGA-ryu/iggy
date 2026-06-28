@@ -873,6 +873,55 @@ bool devToggleOpensAndClosesDevToolsSurfaces() {
          expect(!closeRequested, "gameplay dev toggle no close");
 }
 
+bool debugOverlayActionTogglesRuntimeOverlaySetting() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  iggy3d::FrontendSettings settings;
+  bool closeRequested = false;
+
+  const iggy3d::ProductMenuActionResult enabled =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::DevDebugOverlay,
+          {frontend, window, closeRequested, &settings});
+  const bool enabledOk =
+      expect(enabled.handled, "debug overlay enable handled") &&
+      expect(enabled.accepted, "debug overlay enable accepted") &&
+      expect(settings.debugOverlayEnabled, "debug overlay setting enabled") &&
+      expect(frontend.status == "debug_overlay_enabled",
+             "debug overlay enabled status") &&
+      expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
+             "debug overlay does not open dev screen") &&
+      expect(!frontend.devToolsOpen, "debug overlay does not open dev tools") &&
+      expect(!closeRequested, "debug overlay does not close window");
+
+  const iggy3d::ProductMenuActionResult disabled =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::DevDebugOverlay,
+          {frontend, window, closeRequested, &settings});
+  const bool disabledOk =
+      expect(disabled.handled, "debug overlay disable handled") &&
+      expect(disabled.accepted, "debug overlay disable accepted") &&
+      expect(!settings.debugOverlayEnabled, "debug overlay setting disabled") &&
+      expect(frontend.status == "debug_overlay_disabled",
+             "debug overlay disabled status") &&
+      expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
+             "debug overlay disable keeps gameplay screen");
+
+  iggy3d::FrontendSettings missingSettings;
+  missingSettings.debugOverlayEnabled = false;
+  const iggy3d::ProductMenuActionResult missing =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::DevDebugOverlay,
+          {frontend, window, closeRequested});
+
+  return enabledOk && disabledOk &&
+         expect(missing.handled, "debug overlay missing settings handled") &&
+         expect(!missing.accepted, "debug overlay missing settings rejected") &&
+         expect(!missingSettings.debugOverlayEnabled,
+                "debug overlay missing settings does not mutate unrelated state");
+}
+
 }  // namespace
 
 int main() {
@@ -892,7 +941,8 @@ int main() {
       starterHitTestUsesCanonicalActionRows() &&
       childPanelHitTestsExposeMenuActions() &&
       menuClickNormalizationScalesWindowCoordinates() &&
-      devToggleOpensAndClosesDevToolsSurfaces();
+      devToggleOpensAndClosesDevToolsSurfaces() &&
+      debugOverlayActionTogglesRuntimeOverlaySetting();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;

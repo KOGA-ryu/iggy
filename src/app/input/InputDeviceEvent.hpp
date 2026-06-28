@@ -23,6 +23,7 @@ enum class NeutralInput : std::uint8_t {
   KeyShiftTab,
   KeyF1,
   KeyF2,
+  KeyF3,
   KeyE,
   KeyR,
 

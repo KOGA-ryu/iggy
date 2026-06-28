@@ -40,7 +40,8 @@ void applyProductOpeningMenuAction(InputAction action,
   const ProductMenuActionResult systemPause =
       applyProductSystemPauseMenuAction(
           action,
-          {context.frontend, context.window, context.closeRequested});
+          {context.frontend, context.window, context.closeRequested,
+           context.settings});
   // branch-gate: BG-1024
   if (systemPause.handled) {
     return;

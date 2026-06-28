@@ -90,7 +90,7 @@ int runProductApp(int argc, char** argv) {
   const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
   ProductSaveBridgeResult saves =
       scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
-  const FrontendSettings settings = productFrontendSettingsFromOptions(options);
+  FrontendSettings settings = productFrontendSettingsFromOptions(options);
   std::optional<Session> activeSession;
   // branch-gate: BG-1026
   WorldSetupDraft worldSetupDraft = options.devPackageOverride.empty()

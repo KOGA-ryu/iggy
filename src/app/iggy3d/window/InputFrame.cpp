@@ -368,7 +368,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   ProductOpeningMenuInputContext menuContext{
       context.frontend, context.saves, context.options, context.settingsTab,
       context.activeSession, context.worldSetupDraft, context.window,
-      context.closeRequested};
+      context.closeRequested, &context.settings};
   routeProductWindowMenuInput(pollKeyboardMenuAction(context.inputFrame.keyboard),
                               actionState,
                               menuContext);

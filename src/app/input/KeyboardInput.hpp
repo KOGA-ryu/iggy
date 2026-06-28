@@ -20,6 +20,7 @@ struct KeyboardInputState {
   bool backWasDown = false;
   bool tabWasDown = false;
   bool devToggleWasDown = false;
+  bool debugOverlayWasDown = false;
   std::array<bool, kKeyboardAsciiRoomPaintGlyphCount> asciiPaintWasDown{};
   bool jumpWasDown = false;
   bool dashWasDown = false;

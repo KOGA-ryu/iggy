@@ -34,6 +34,7 @@ const std::vector<InputBinding>& defaultInputBindings() {
       {NeutralInput::KeyShiftTab, InputAction::MenuPreviousTab, 1.0F},
       {NeutralInput::KeyF1, InputAction::DevToggle, 1.0F},
       {NeutralInput::KeyF2, InputAction::DevToggle, 1.0F},
+      {NeutralInput::KeyF3, InputAction::DevDebugOverlay, 1.0F},
       {NeutralInput::KeyE, InputAction::PlayerInteract, 1.0F},
       {NeutralInput::KeyR, InputAction::PlayerRetryOrReset, 1.0F},
       {NeutralInput::MouseLeft, InputAction::MenuConfirm, 1.0F},

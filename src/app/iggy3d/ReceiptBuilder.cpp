@@ -130,6 +130,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "settings_invert_look", settings.invertLook);
   appendReceiptField(receipt, "settings_developer_tools_enabled",
                      settings.devToolsEnabled);
+  appendReceiptField(receipt, "settings_debug_overlay_enabled",
+                     settings.debugOverlayEnabled);
   appendReceiptField(receipt, "window_requested", window.requested);
   appendReceiptField(receipt, "window_shell", window.sdlAvailable ? "sdl3" : "unavailable");
   appendReceiptField(receipt, "window_created", window.created);

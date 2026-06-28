@@ -71,6 +71,7 @@ struct ProductSystemPauseMenuActionContext {
   FrontendState& frontend;
   ProductAppWindowState& window;
   bool& closeRequested;
+  FrontendSettings* settings = nullptr;
 };
 
 struct ProductMenuActionResult {
