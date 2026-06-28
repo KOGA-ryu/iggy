@@ -235,7 +235,7 @@ int main() {
           "frontend.execute=true\n"
           "world.dungeon_id=movement_gym\n"
           "world.create=true\n"
-          "gameplay.player_position=25,0,6.2\n"
+          "gameplay.player_position=250,0,51.2\n"
           "gameplay.jump=true\n",
           iggy3d::smoke::saveRootArg(clamberSaveRoot),
           clamberFields,
@@ -290,17 +290,17 @@ int main() {
           "gameplay_traversal_landing_surface_id",
           "object_clamber_ledge_r5_c25_walkable_top") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_start_x",
-                              "25.000") &&
+                              "250.000") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_start_y",
                               "0.000") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_start_z",
-                              "6.200") &&
+                              "51.200") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_final_x",
-                              "25.000") &&
+                              "250.000") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_final_y",
                               "1.700") &&
       iggy3d::smoke::hasField(clamberFields, "gameplay_traversal_final_z",
-                              "5.000") &&
+                              "50.000") &&
       iggy3d::smoke::hasField(clamberFields, "player_position_changed",
                               "true") &&
       iggy3d::smoke::hasField(clamberFields, "product_draw_prop_visible",
@@ -321,7 +321,7 @@ int main() {
           "frontend.execute=true\n"
           "world.dungeon_id=movement_gym\n"
           "world.create=true\n"
-          "gameplay.player_position=31,0.8,1.65\n"
+          "gameplay.player_position=310,0.8,19.65\n"
           "gameplay.jump=true\n",
           iggy3d::smoke::saveRootArg(wallJumpSaveRoot),
           wallJumpFields,
@@ -378,17 +378,17 @@ int main() {
                               "gameplay_traversal_landing_surface_id",
                               "wall_r2_c31_actor_blocker") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_start_x",
-                              "31.000") &&
+                              "310.000") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_start_y",
                               "0.800") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_start_z",
-                              "1.650") &&
+                              "19.650") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_x",
-                              "31.000") &&
+                              "310.000") &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_y",
                               fixed3(0.8F + tuning.wallJumpRiseMeters)) &&
       iggy3d::smoke::hasField(wallJumpFields, "gameplay_traversal_final_z",
-                              fixed3(1.65F - tuning.wallJumpPushMeters)) &&
+                              fixed3(19.65F - tuning.wallJumpPushMeters)) &&
       iggy3d::smoke::hasField(wallJumpFields, "player_position_changed",
                               "true") &&
       iggy3d::smoke::hasField(wallJumpFields, "product_draw_prop_visible",

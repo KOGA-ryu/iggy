@@ -62,6 +62,29 @@ bool sourceOffsetIsZeroBasedAndNormalized() {
                 "source offset row column");
 }
 
+bool scaleDirectiveIsParsedAndStrippedFromRows() {
+  const iggy3d::AsciiRoomSource source =
+      iggy3d::parseAsciiRoomSource("*5\n###\n#P#\n###\n");
+  return expect(source.status == "ascii_room_ok", "scale source ok") &&
+         expect(source.hasTileScaleDirective, "scale directive present") &&
+         expect(source.tileScaleMeters == 5.0F, "scale value") &&
+         expect(source.width == 3U, "scale width") &&
+         expect(source.height == 3U, "scale height") &&
+         expect(source.rows.front() == "###", "scale row stripped") &&
+         expect(iggy3d::asciiRoomSourceOffset(source, 1, 1) == 8U,
+                "scale source offset");
+}
+
+bool invalidScaleDirectiveRejects() {
+  const iggy3d::AsciiRoomSource source =
+      iggy3d::parseAsciiRoomSource("*0\n###\n#P#\n###\n");
+  return expect(source.status == "ascii_room_invalid_scale",
+                "invalid scale status") &&
+         expect(source.reasonCode == "ascii_room_invalid_scale",
+                "invalid scale reason") &&
+         expect(!source.diagnostics.empty(), "invalid scale diagnostic");
+}
+
 }  // namespace
 
 int main() {
@@ -72,5 +95,7 @@ int main() {
   ok = unknownGlyphRejectsWithPosition() && ok;
   ok = raggedRowsReject() && ok;
   ok = sourceOffsetIsZeroBasedAndNormalized() && ok;
+  ok = scaleDirectiveIsParsedAndStrippedFromRows() && ok;
+  ok = invalidScaleDirectiveRejects() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

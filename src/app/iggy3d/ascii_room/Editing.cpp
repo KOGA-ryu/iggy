@@ -15,9 +15,10 @@ std::string resolvedSourceName(const ProductAsciiRoomAuthoringRequest& request) 
 }
 
 AsciiRoomCompileConfig compileConfigFor(
-    const ProductAsciiRoomAuthoringRequest& request) {
+    const ProductAsciiRoomAuthoringRequest& request,
+    const AsciiRoomSource& source) {
   AsciiRoomCompileConfig config;
-  config.tileSizeMeters = request.tileSizeMeters;
+  config.tileSizeMeters = request.tileSizeMeters * source.tileScaleMeters;
   config.floorThicknessMeters = request.floorThicknessMeters;
   config.wallHeightMeters = request.wallHeightMeters;
   config.wallThicknessMeters = request.wallThicknessMeters;
@@ -86,7 +87,8 @@ ProductAsciiRoomEditingResult buildProductAsciiRoomEditing(
   }
 
   result.editableRoom =
-      buildEditableRoomFromAsciiRoom(result.grid.grid, compileConfigFor(request));
+      buildEditableRoomFromAsciiRoom(result.grid.grid,
+                                     compileConfigFor(request, result.source));
   if (!result.editableRoom.ok) {
     result.diagnostics = result.editableRoom.diagnostics;
     const std::string status = result.editableRoom.status;

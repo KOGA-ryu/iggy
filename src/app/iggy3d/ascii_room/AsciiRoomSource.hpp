@@ -22,6 +22,9 @@ struct AsciiRoomSource {
   std::vector<std::string> rows;
   std::size_t width = 0;
   std::size_t height = 0;
+  float tileScaleMeters = 1.0F;
+  bool hasTileScaleDirective = false;
+  std::size_t layoutSourceOffset = 0;
   std::string status = "ascii_room_ok";
   std::string reasonCode = "ascii_room_ok";
   std::vector<AsciiRoomDiagnostic> diagnostics;

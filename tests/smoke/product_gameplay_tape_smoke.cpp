@@ -940,12 +940,24 @@ int main() {
           "product_render_bridge_physics_contact_normal_debug_count") &&
       iggy3d::smoke::hasField(objectCrateFields, "session_outcome", "None");
 
-  const bool movementGymCollisionPassed =
+  const bool movementGymScaledRoomPassed =
       movementGymExitCode == 0 && movementGymReceiptValid &&
-      selectedPhysicsRoomTapePassed(movementGymFields,
-                                    "movement_gym",
-                                    "1318",
-                                    "marker_key_r1_c4") &&
+      iggy3d::smoke::productReceipt(movementGymFields) &&
+      iggy3d::smoke::hasField(movementGymFields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(movementGymFields, "window_created", "false") &&
+      iggy3d::smoke::hasField(movementGymFields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(movementGymFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(movementGymFields, "active_room_id",
+                              "movement_gym") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "active_room_collision_ready",
+                              "true") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "active_room_collision_room_id",
+                              "movement_gym") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "active_room_collision_query_surface_count",
+                              "1318") &&
       iggy3d::smoke::hasField(movementGymFields,
                               "active_room_authored_object_count",
                               "10") &&
@@ -974,26 +986,23 @@ int main() {
                               "product_render_bridge_prop_tile_count",
                               "10") &&
       iggy3d::smoke::hasField(movementGymFields,
-                              "gameplay_movement_status",
-                              "moved") &&
+                              "gameplay_tape_status",
+                              "gameplay_tape_command_rejected") &&
       iggy3d::smoke::hasField(movementGymFields,
-                              "gameplay_movement_blocked",
-                              "false") &&
+                              "gameplay_tape_failed_rejection",
+                              "movement_too_far") &&
       iggy3d::smoke::hasField(movementGymFields,
-                              "gameplay_movement_clamped",
+                              "gameplay_tape_failed_target",
+                              "marker_key_r1_c4") &&
+      iggy3d::smoke::hasField(movementGymFields,
+                              "physics_movement_planner_enabled",
                               "true") &&
       iggy3d::smoke::hasField(movementGymFields,
-                              "gameplay_movement_slid",
+                              "physics_movement_planner_used",
                               "false") &&
       iggy3d::smoke::hasField(movementGymFields,
-                              "gameplay_movement_hit_surface_id",
-                              "object_crate_r1_c3_actor_blocker") &&
-      iggy3d::smoke::positiveIntegerField(
-          movementGymFields,
-          "product_draw_physics_contact_normal_debug_count") &&
-      iggy3d::smoke::positiveIntegerField(
-          movementGymFields,
-          "product_render_bridge_physics_contact_normal_debug_count") &&
+                              "gameplay_movement_status",
+                              "not_requested") &&
       iggy3d::smoke::hasField(movementGymFields, "session_outcome", "None");
 
   const bool wallPassed =
@@ -1331,8 +1340,8 @@ int main() {
                          "movement gym tape generated") &&
                   expect(movementGymReceiptValid,
                          "movement gym receipt valid") &&
-                  expect(movementGymCollisionPassed,
-                         "product selectable movement gym collision pass") &&
+                  expect(movementGymScaledRoomPassed,
+                         "product selectable scaled movement gym pass") &&
                   expect(wallReceiptValid, "wall receipt valid") &&
                   expect(wallPassed, "product package wall collision pass") &&
                   expect(npcReceiptValid, "npc receipt valid") &&

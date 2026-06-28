@@ -16,9 +16,10 @@ std::string resolvedSourceName(const ProductAsciiRoomAuthoringRequest& request) 
 }
 
 AsciiRoomCompileConfig compileConfigFor(
-    const ProductAsciiRoomAuthoringRequest& request) {
+    const ProductAsciiRoomAuthoringRequest& request,
+    const AsciiRoomSource& source) {
   AsciiRoomCompileConfig config;
-  config.tileSizeMeters = request.tileSizeMeters;
+  config.tileSizeMeters = request.tileSizeMeters * source.tileScaleMeters;
   config.floorThicknessMeters = request.floorThicknessMeters;
   config.wallHeightMeters = request.wallHeightMeters;
   config.wallThicknessMeters = request.wallThicknessMeters;
@@ -31,13 +32,14 @@ AsciiRoomCompileConfig compileConfigFor(
 }
 
 AsciiRoomToRoomAssetConfig roomAssetConfigFor(
-    const ProductAsciiRoomAuthoringRequest& request) {
+    const ProductAsciiRoomAuthoringRequest& request,
+    const AsciiRoomSource& source) {
   AsciiRoomToRoomAssetConfig config;
   config.roomId = resolvedRoomId(request);
   config.sourceName = resolvedSourceName(request);
   config.sourceSubset =
       request.sourceSubset.empty() ? "ascii_room_authoring" : request.sourceSubset;
-  config.tileSizeMeters = request.tileSizeMeters;
+  config.tileSizeMeters = request.tileSizeMeters * source.tileScaleMeters;
   config.wallHeightMeters = request.wallHeightMeters;
   return config;
 }
@@ -98,7 +100,8 @@ ProductAsciiRoomAuthoringResult buildProductAsciiRoomAuthoring(
   }
 
   result.authoredRoom =
-      compileAsciiRoomToAuthoredRoom(result.grid.grid, compileConfigFor(request));
+      compileAsciiRoomToAuthoredRoom(result.grid.grid,
+                                     compileConfigFor(request, result.source));
   if (!result.authoredRoom.ok) {
     copyDiagnosticState(result.authoredRoom.diagnostics, result);
     const std::string status = result.authoredRoom.status;
@@ -107,7 +110,8 @@ ProductAsciiRoomAuthoringResult buildProductAsciiRoomAuthoring(
   }
 
   result.roomAsset =
-      buildRoomAssetFromAsciiRoom(result.authoredRoom, roomAssetConfigFor(request));
+      buildRoomAssetFromAsciiRoom(result.authoredRoom,
+                                  roomAssetConfigFor(request, result.source));
   if (!result.roomAsset.ok) {
     copyDiagnosticState(result.roomAsset.diagnostics, result);
     const std::string status = result.roomAsset.status;

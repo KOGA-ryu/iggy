@@ -159,3 +159,6 @@ BG-1158	src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.cpp	ASCII clamber ledg
 BG-1159	src/app/iggy3d/view/PrimitiveDrawList.cpp	Product primitive ledge draw styling policy	codex	2026-06-28
 BG-1160	src/app/iggy3d/gameplay/Controller.cpp	clamber height rejection jump fallback policy	codex	2026-06-28
 BG-1161	src/app/iggy3d/gameplay/Controller.cpp	product airborne manual movement policy	codex	2026-06-28
+BG-1162	src/app/iggy3d/ascii_room/AsciiRoomSource.cpp	ASCII room scale directive numeric validation policy	codex	2026-06-28
+BG-1163	src/app/iggy3d/ascii_room/AsciiRoomSource.cpp	ASCII room optional leading scale directive policy	codex	2026-06-28
+BG-1164	src/app/iggy3d/ascii_room/AsciiRoomSource.cpp	ASCII room invalid scale diagnostic policy	codex	2026-06-28

@@ -140,6 +140,36 @@ bool carriesCrateObjectToProductResult() {
                 "crate parsed spatial surfaces");
 }
 
+bool scaleDirectiveChangesAuthoredTileSize() {
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceText =
+      "*5\n"
+      "#####\n"
+      "#P.E#\n"
+      "#####\n";
+  request.sourceName = "inline/scaled_room.iggyroom.txt";
+  request.roomId = "scaled_room_product";
+
+  const iggy3d::ProductAsciiRoomAuthoringResult result =
+      iggy3d::buildProductAsciiRoomAuthoring(request);
+  const auto& floor = result.authoredRoom.authoredRoom.floors.front();
+
+  return expect(result.ok, "scaled product result ok") &&
+         expect(result.source.hasTileScaleDirective, "scaled directive present") &&
+         expect(result.source.tileScaleMeters == 5.0F, "scaled directive value") &&
+         expect(result.width == 5U, "scaled layout width") &&
+         expect(result.height == 3U, "scaled layout height") &&
+         expect(result.floorCount == 3U, "scaled floor count") &&
+         expect(result.wallCount == 12U, "scaled wall count") &&
+         expect(floor.id == "floor_r1_c1", "scaled floor id") &&
+         expect(floor.sizeMeters.x == 5.0F, "scaled floor size x") &&
+         expect(floor.sizeMeters.z == 5.0F, "scaled floor size z") &&
+         expect(floor.centerMeters.x == -5.0F, "scaled floor center x") &&
+         expect(floor.centerMeters.z == 0.0F, "scaled floor center z") &&
+         expect(result.roomAsset.room.staticMeshes.front().sizeMeters.x == 5.0F,
+                "scaled room mesh size x");
+}
+
 bool forwardsGridValidationFailure() {
   iggy3d::ProductAsciiRoomAuthoringRequest request;
   request.sourceText =
@@ -203,6 +233,7 @@ int main() {
   const bool ok = buildsProductOwnedAuthoringResult() &&
                   carriesTerrainCountsToProductResult() &&
                   carriesCrateObjectToProductResult() &&
+                  scaleDirectiveChangesAuthoredTileSize() &&
                   forwardsGridValidationFailure() &&
                   forwardsAssetTextFailureAfterRoomBuild() &&
                   supportsSkippingAssetTextForLiveEditing();
