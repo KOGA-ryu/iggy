@@ -952,6 +952,36 @@ bool sdlFunctionKeyEventsMapToSystemActions() {
                 "F3 overlay event wins over dev panel toggle");
 }
 
+bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
+  iggy3d::KeyboardInputState keyboard;
+  iggy3d::SdlWindowEventState none;
+  iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, none);
+  const bool noneOk =
+      expect(!keyboard.devToggleWasDown, "no F-key leaves dev toggle unconsumed") &&
+      expect(!keyboard.debugOverlayWasDown,
+             "no F-key leaves debug overlay unconsumed");
+
+  iggy3d::SdlWindowEventState f2;
+  f2.f2Pressed = true;
+  iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, f2);
+  const bool f2Ok =
+      expect(keyboard.devToggleWasDown, "F2 event consumes dev toggle state") &&
+      expect(!keyboard.debugOverlayWasDown,
+             "F2 event does not consume debug overlay state");
+
+  keyboard = {};
+  iggy3d::SdlWindowEventState f3;
+  f3.f3Pressed = true;
+  iggy3d::recordProductWindowFunctionKeyKeyboardState(keyboard, f3);
+  const bool f3Ok =
+      expect(!keyboard.devToggleWasDown,
+             "F3 event does not consume dev toggle state") &&
+      expect(keyboard.debugOverlayWasDown,
+             "F3 event consumes debug overlay state");
+
+  return noneOk && f2Ok && f3Ok;
+}
+
 }  // namespace
 
 int main() {
@@ -973,7 +1003,8 @@ int main() {
       menuClickNormalizationScalesWindowCoordinates() &&
       devToggleOpensAndClosesDevToolsSurfaces() &&
       debugOverlayActionTogglesRuntimeOverlaySetting() &&
-      sdlFunctionKeyEventsMapToSystemActions();
+      sdlFunctionKeyEventsMapToSystemActions() &&
+      sdlFunctionKeyEventsMarkKeyboardStateConsumed();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;

@@ -372,7 +372,10 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   InputAction functionKeyAction = InputAction::None;
   // branch-gate: BG-1194
   if (context.sdlWindow != nullptr) {
-    functionKeyAction = productWindowFunctionKeyAction(context.sdlWindow->eventState());
+    const SdlWindowEventState& eventState = context.sdlWindow->eventState();
+    functionKeyAction = productWindowFunctionKeyAction(eventState);
+    recordProductWindowFunctionKeyKeyboardState(context.inputFrame.keyboard,
+                                                eventState);
   }
   InputAction keyboardMenuAction = functionKeyAction;
   // branch-gate: BG-1194
@@ -538,6 +541,19 @@ InputAction productWindowFunctionKeyAction(const SdlWindowEventState& eventState
     return InputAction::DevToggle;
   }
   return InputAction::None;
+}
+
+void recordProductWindowFunctionKeyKeyboardState(
+    KeyboardInputState& keyboard,
+    const SdlWindowEventState& eventState) {
+  // branch-gate: BG-1194
+  if (eventState.f1Pressed || eventState.f2Pressed) {
+    keyboard.devToggleWasDown = true;
+  }
+  // branch-gate: BG-1194
+  if (eventState.f3Pressed) {
+    keyboard.debugOverlayWasDown = true;
+  }
 }
 
 }  // namespace iggy3d

@@ -93,6 +93,9 @@ void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                           ProductAppWindowState* window = nullptr);
 void processProductWindowInputFrame(ProductWindowInputFrameContext context);
 InputAction productWindowFunctionKeyAction(const SdlWindowEventState& eventState);
+void recordProductWindowFunctionKeyKeyboardState(
+    KeyboardInputState& keyboard,
+    const SdlWindowEventState& eventState);
 bool cancelProductRoomEditorPendingPreviewFromBack(ProductAppWindowState& window);
 ProductControllerSampleInputResult processProductControllerActionSample(
     ProductControllerSampleInputContext context,
