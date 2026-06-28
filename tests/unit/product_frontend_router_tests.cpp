@@ -5,7 +5,9 @@
 #include "app/frontend/SaveBrowser.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/StarterScreen.hpp"
+#include "app/iggy3d/ReceiptBuilder.hpp"
 
+#include <array>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -24,6 +26,21 @@ iggy3d::ProductFrontendRouteContext contextFor(iggy3d::FrontendScreen screen,
   iggy3d::ProductFrontendRouteContext context;
   context.frontend.screen = screen;
   context.frontend.childScreen = child;
+  return context;
+}
+
+iggy3d::ProductActiveSurfaceContext activeSurfaceContextFor(
+    iggy3d::FrontendScreen screen,
+    iggy3d::FrontendScreen child,
+    bool gameplayActive = false,
+    bool hasActiveSession = false,
+    bool roomEditorReady = false) {
+  iggy3d::ProductActiveSurfaceContext context;
+  context.frontend.screen = screen;
+  context.frontend.childScreen = child;
+  context.gameplayActive = gameplayActive;
+  context.hasActiveSession = hasActiveSession;
+  context.roomEditorReady = roomEditorReady;
   return context;
 }
 
@@ -294,6 +311,369 @@ bool gameplayRequiresActiveSession() {
                 "missing session unavailable") &&
          expect(missingDecision.status == "product_frontend_gameplay_unavailable",
                 "missing session status");
+}
+
+bool activeMouseCapturePolicyNamesAreStable() {
+  return expect(iggy3d::productActiveMouseCapturePolicyName(
+                    iggy3d::ProductActiveMouseCapturePolicy::Released) ==
+                    "released",
+                "released mouse capture policy name") &&
+         expect(iggy3d::productActiveMouseCapturePolicyName(
+                    iggy3d::ProductActiveMouseCapturePolicy::RelativeGameplay) ==
+                    "relative_gameplay",
+                "relative gameplay mouse capture policy name");
+}
+
+bool activeSurfaceMatrixCoversCurrentRoutes() {
+  struct ActiveSurfaceCase {
+    const char* name = "";
+    iggy3d::FrontendScreen screen = iggy3d::FrontendScreen::BootStatus;
+    iggy3d::FrontendScreen child = iggy3d::FrontendScreen::Gameplay;
+    bool gameplayActive = false;
+    bool hasActiveSession = false;
+    bool roomEditorReady = false;
+    iggy3d::ProductFrontendSurface activeSurface =
+        iggy3d::ProductFrontendSurface::None;
+    iggy3d::ProductFrontendSurface parentSurface =
+        iggy3d::ProductFrontendSurface::None;
+    iggy3d::ProductInputSurface inputSurface = iggy3d::ProductInputSurface::None;
+    iggy3d::MenuOwner inputOwner = iggy3d::MenuOwner::None;
+    iggy3d::MenuOwner parentOwner = iggy3d::MenuOwner::None;
+    bool gameplayInputSuppressed = true;
+    iggy3d::ProductActiveMouseCapturePolicy mouseCapturePolicy =
+        iggy3d::ProductActiveMouseCapturePolicy::Released;
+    bool acceptsMenuActions = false;
+    bool acceptsPlayerActions = false;
+    bool acceptsEditorActions = false;
+  };
+
+  constexpr std::array cases{
+      ActiveSurfaceCase{
+          "boot_status",
+          iggy3d::FrontendScreen::BootStatus,
+          iggy3d::FrontendScreen::Gameplay,
+          false,
+          false,
+          false,
+          iggy3d::ProductFrontendSurface::BootStatus,
+          iggy3d::ProductFrontendSurface::None,
+          iggy3d::ProductInputSurface::None,
+          iggy3d::MenuOwner::None,
+          iggy3d::MenuOwner::None,
+          true,
+      },
+      ActiveSurfaceCase{
+          "starter_root",
+          iggy3d::FrontendScreen::Starter,
+          iggy3d::FrontendScreen::Gameplay,
+          false,
+          false,
+          false,
+          iggy3d::ProductFrontendSurface::Starter,
+          iggy3d::ProductFrontendSurface::None,
+          iggy3d::ProductInputSurface::Starter,
+          iggy3d::MenuOwner::Starter,
+          iggy3d::MenuOwner::None,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "starter_world_setup",
+          iggy3d::FrontendScreen::Starter,
+          iggy3d::FrontendScreen::NewWorld,
+          false,
+          false,
+          false,
+          iggy3d::ProductFrontendSurface::WorldSetup,
+          iggy3d::ProductFrontendSurface::Starter,
+          iggy3d::ProductInputSurface::WorldSetup,
+          iggy3d::MenuOwner::Starter,
+          iggy3d::MenuOwner::Starter,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "starter_save_selector",
+          iggy3d::FrontendScreen::Starter,
+          iggy3d::FrontendScreen::LoadSave,
+          false,
+          false,
+          false,
+          iggy3d::ProductFrontendSurface::SaveSelector,
+          iggy3d::ProductFrontendSurface::Starter,
+          iggy3d::ProductInputSurface::SaveBrowser,
+          iggy3d::MenuOwner::Starter,
+          iggy3d::MenuOwner::Starter,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "starter_delete_confirm",
+          iggy3d::FrontendScreen::Starter,
+          iggy3d::FrontendScreen::DeleteConfirm,
+          false,
+          false,
+          false,
+          iggy3d::ProductFrontendSurface::ConfirmDialog,
+          iggy3d::ProductFrontendSurface::Starter,
+          iggy3d::ProductInputSurface::SaveBrowser,
+          iggy3d::MenuOwner::Starter,
+          iggy3d::MenuOwner::Starter,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "starter_exit_confirm",
+          iggy3d::FrontendScreen::Starter,
+          iggy3d::FrontendScreen::ExitConfirm,
+          false,
+          false,
+          false,
+          iggy3d::ProductFrontendSurface::ConfirmDialog,
+          iggy3d::ProductFrontendSurface::Starter,
+          iggy3d::ProductInputSurface::Starter,
+          iggy3d::MenuOwner::Starter,
+          iggy3d::MenuOwner::Starter,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "starter_settings",
+          iggy3d::FrontendScreen::Starter,
+          iggy3d::FrontendScreen::Settings,
+          false,
+          false,
+          false,
+          iggy3d::ProductFrontendSurface::Settings,
+          iggy3d::ProductFrontendSurface::Starter,
+          iggy3d::ProductInputSurface::Settings,
+          iggy3d::MenuOwner::Settings,
+          iggy3d::MenuOwner::Starter,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "starter_dev_tools",
+          iggy3d::FrontendScreen::Starter,
+          iggy3d::FrontendScreen::StarterDevTools,
+          false,
+          false,
+          false,
+          iggy3d::ProductFrontendSurface::DevTools,
+          iggy3d::ProductFrontendSurface::Starter,
+          iggy3d::ProductInputSurface::DevTools,
+          iggy3d::MenuOwner::DevTools,
+          iggy3d::MenuOwner::Starter,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "pause_root",
+          iggy3d::FrontendScreen::Pause,
+          iggy3d::FrontendScreen::Gameplay,
+          true,
+          true,
+          false,
+          iggy3d::ProductFrontendSurface::Pause,
+          iggy3d::ProductFrontendSurface::None,
+          iggy3d::ProductInputSurface::Pause,
+          iggy3d::MenuOwner::Pause,
+          iggy3d::MenuOwner::None,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "pause_save_selector",
+          iggy3d::FrontendScreen::Pause,
+          iggy3d::FrontendScreen::LoadSave,
+          true,
+          true,
+          false,
+          iggy3d::ProductFrontendSurface::SaveSelector,
+          iggy3d::ProductFrontendSurface::Pause,
+          iggy3d::ProductInputSurface::SaveBrowser,
+          iggy3d::MenuOwner::Pause,
+          iggy3d::MenuOwner::Pause,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "pause_delete_confirm",
+          iggy3d::FrontendScreen::Pause,
+          iggy3d::FrontendScreen::DeleteConfirm,
+          true,
+          true,
+          false,
+          iggy3d::ProductFrontendSurface::ConfirmDialog,
+          iggy3d::ProductFrontendSurface::Pause,
+          iggy3d::ProductInputSurface::SaveBrowser,
+          iggy3d::MenuOwner::Pause,
+          iggy3d::MenuOwner::Pause,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "pause_settings",
+          iggy3d::FrontendScreen::Settings,
+          iggy3d::FrontendScreen::Pause,
+          true,
+          true,
+          false,
+          iggy3d::ProductFrontendSurface::Settings,
+          iggy3d::ProductFrontendSurface::Pause,
+          iggy3d::ProductInputSurface::Settings,
+          iggy3d::MenuOwner::Settings,
+          iggy3d::MenuOwner::Pause,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "dev_overlay",
+          iggy3d::FrontendScreen::DevOverlay,
+          iggy3d::FrontendScreen::Gameplay,
+          true,
+          true,
+          false,
+          iggy3d::ProductFrontendSurface::DevTools,
+          iggy3d::ProductFrontendSurface::Gameplay,
+          iggy3d::ProductInputSurface::DevTools,
+          iggy3d::MenuOwner::DevTools,
+          iggy3d::MenuOwner::Gameplay,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+      },
+      ActiveSurfaceCase{
+          "gameplay",
+          iggy3d::FrontendScreen::Gameplay,
+          iggy3d::FrontendScreen::Gameplay,
+          true,
+          true,
+          false,
+          iggy3d::ProductFrontendSurface::Gameplay,
+          iggy3d::ProductFrontendSurface::None,
+          iggy3d::ProductInputSurface::Gameplay,
+          iggy3d::MenuOwner::Gameplay,
+          iggy3d::MenuOwner::None,
+          false,
+          iggy3d::ProductActiveMouseCapturePolicy::RelativeGameplay,
+          false,
+          true,
+      },
+      ActiveSurfaceCase{
+          "room_editor",
+          iggy3d::FrontendScreen::Gameplay,
+          iggy3d::FrontendScreen::Gameplay,
+          true,
+          true,
+          true,
+          iggy3d::ProductFrontendSurface::Editor,
+          iggy3d::ProductFrontendSurface::Gameplay,
+          iggy3d::ProductInputSurface::RoomEditor,
+          iggy3d::MenuOwner::Editor,
+          iggy3d::MenuOwner::Gameplay,
+          true,
+          iggy3d::ProductActiveMouseCapturePolicy::Released,
+          true,
+          false,
+          true,
+      },
+      ActiveSurfaceCase{
+          "gameplay_without_session",
+          iggy3d::FrontendScreen::Gameplay,
+          iggy3d::FrontendScreen::Gameplay,
+          true,
+          false,
+          false,
+          iggy3d::ProductFrontendSurface::None,
+          iggy3d::ProductFrontendSurface::None,
+          iggy3d::ProductInputSurface::None,
+          iggy3d::MenuOwner::None,
+          iggy3d::MenuOwner::None,
+          true,
+      },
+  };
+
+  bool ok = true;
+  for (const ActiveSurfaceCase& row : cases) {
+    const iggy3d::ProductActiveSurfaceFrame frame =
+        iggy3d::resolveProductActiveSurface(activeSurfaceContextFor(
+            row.screen,
+            row.child,
+            row.gameplayActive,
+            row.hasActiveSession,
+            row.roomEditorReady));
+    const std::string prefix = std::string(row.name) + " ";
+    ok = expect(frame.activeSurface == row.activeSurface,
+                (prefix + "active surface").c_str()) &&
+         ok;
+    ok = expect(frame.parentSurface == row.parentSurface,
+                (prefix + "parent surface").c_str()) &&
+         ok;
+    ok = expect(frame.inputSurface == row.inputSurface,
+                (prefix + "input surface").c_str()) &&
+         ok;
+    ok = expect(frame.inputOwner == row.inputOwner,
+                (prefix + "input owner").c_str()) &&
+         ok;
+    ok = expect(frame.parentOwner == row.parentOwner,
+                (prefix + "parent owner").c_str()) &&
+         ok;
+    ok = expect(frame.gameplayInputSuppressed == row.gameplayInputSuppressed,
+                (prefix + "suppression").c_str()) &&
+         ok;
+    ok = expect(frame.mouseCapturePolicy == row.mouseCapturePolicy,
+                (prefix + "mouse capture policy").c_str()) &&
+         ok;
+    ok = expect(frame.acceptsSystemActions,
+                (prefix + "system actions").c_str()) &&
+         ok;
+    ok = expect(frame.acceptsMenuActions == row.acceptsMenuActions,
+                (prefix + "menu actions").c_str()) &&
+         ok;
+    ok = expect(frame.acceptsPlayerActions == row.acceptsPlayerActions,
+                (prefix + "player actions").c_str()) &&
+         ok;
+    ok = expect(frame.acceptsEditorActions == row.acceptsEditorActions,
+                (prefix + "editor actions").c_str()) &&
+         ok;
+  }
+  return ok;
+}
+
+bool activeSurfaceWindowContextPreservesLegacyGameplayGate() {
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Gameplay;
+  frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
+
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  const auto gameplay = iggy3d::resolveProductActiveSurface(
+      iggy3d::productActiveSurfaceContextForWindow(frontend, window));
+
+  window.roomEditing.ready = true;
+  const auto editor = iggy3d::resolveProductActiveSurface(
+      iggy3d::productActiveSurfaceContextForWindow(frontend, window));
+
+  return expect(gameplay.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "window gameplay owner") &&
+         expect(gameplay.inputSurface == iggy3d::ProductInputSurface::Gameplay,
+                "window gameplay input surface") &&
+         expect(editor.inputOwner == iggy3d::MenuOwner::Editor,
+                "window editor owner") &&
+         expect(editor.inputSurface == iggy3d::ProductInputSurface::RoomEditor,
+                "window editor input surface");
 }
 
 bool starterRootDelegatesNewWorld() {
@@ -1171,7 +1551,11 @@ int main() {
   const bool ok = surfaceNamesAreStable() && bootStatusSuppressesWithoutOwner() &&
                   starterRootOwnsInput() && starterChildrenWinBeforeStarter() &&
                   pauseSettingsAndOverlaysOwnInput() &&
-                  gameplayRequiresActiveSession() && starterRootDelegatesNewWorld() &&
+                  gameplayRequiresActiveSession() &&
+                  activeMouseCapturePolicyNamesAreStable() &&
+                  activeSurfaceMatrixCoversCurrentRoutes() &&
+                  activeSurfaceWindowContextPreservesLegacyGameplayGate() &&
+                  starterRootDelegatesNewWorld() &&
                   starterRootContinueDelegatesLaunchWhenCompatible() &&
                   starterRootContinueReportsDisabledWithoutCompatibleSave() &&
                   starterRootDelegatesSettingsAndDevTools() &&

@@ -7,9 +7,11 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/MenuInput.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/input/InteractionMode.hpp"
 
 namespace iggy3d {
 
+struct ProductAppWindowState;
 struct StarterScreenModel;
 struct SettingsRouteContext;
 struct PauseMenuModel;
@@ -28,6 +30,11 @@ enum class ProductFrontendSurface : std::uint8_t {
   Starter,
   Gameplay,
   Editor,
+};
+
+enum class ProductActiveMouseCapturePolicy : std::uint8_t {
+  Released,
+  RelativeGameplay,
 };
 
 struct ProductFrontendRouteContext {
@@ -50,6 +57,29 @@ struct ProductFrontendOwnerDecision {
   bool modelAvailable = true;
   std::string_view modelName = "none";
   std::string_view status = "product_frontend_owner_ready";
+};
+
+struct ProductActiveSurfaceContext {
+  FrontendState frontend;
+  bool gameplayActive = false;
+  bool hasActiveSession = false;
+  bool roomEditorReady = false;
+};
+
+struct ProductActiveSurfaceFrame {
+  ProductFrontendSurface activeSurface = ProductFrontendSurface::None;
+  ProductFrontendSurface parentSurface = ProductFrontendSurface::None;
+  ProductInputSurface inputSurface = ProductInputSurface::None;
+  MenuOwner inputOwner = MenuOwner::None;
+  MenuOwner parentOwner = MenuOwner::None;
+  bool gameplayInputSuppressed = true;
+  ProductActiveMouseCapturePolicy mouseCapturePolicy =
+      ProductActiveMouseCapturePolicy::Released;
+  bool acceptsMenuActions = false;
+  bool acceptsSystemActions = true;
+  bool acceptsPlayerActions = false;
+  bool acceptsEditorActions = false;
+  std::string_view status = "product_active_surface_ready";
 };
 
 struct ProductFrontendRouteFrame {
@@ -85,6 +115,15 @@ struct ProductFrontendRouteSummary {
 };
 
 std::string_view productFrontendSurfaceName(ProductFrontendSurface surface);
+std::string_view productActiveMouseCapturePolicyName(
+    ProductActiveMouseCapturePolicy policy);
+
+ProductActiveSurfaceContext productActiveSurfaceContextForWindow(
+    const FrontendState& frontend,
+    const ProductAppWindowState& window);
+
+ProductActiveSurfaceFrame resolveProductActiveSurface(
+    const ProductActiveSurfaceContext& context);
 
 ProductFrontendOwnerDecision chooseProductFrontendOwner(
     const ProductFrontendRouteContext& context);

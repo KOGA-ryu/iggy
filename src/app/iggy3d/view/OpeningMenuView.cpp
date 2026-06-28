@@ -25,6 +25,7 @@
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/view/ViewportFraming.hpp"
@@ -1260,7 +1261,16 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
 
 }  // namespace
 
+ProductFrontendSurface openingMenuDetailSurfaceFor(
+    const FrontendState& frontend) {
+  ProductActiveSurfaceContext context;
+  context.frontend = frontend;
+  return resolveProductActiveSurface(context).activeSurface;
+}
+
 OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, float x, float y) {
+  const ProductFrontendSurface detailSurface =
+      openingMenuDetailSurfaceFor(frontend);
   float rowY = 150.0F;
   for (const FrontendAction action : menuActionOrderForFrontend(frontend)) {
     const bool hitX = x >= 30.0F && x <= 370.0F;
@@ -1385,7 +1395,7 @@ OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, floa
   }
 
   // branch-gate: BG-1141
-  if (frontend.childScreen == FrontendScreen::Settings) {
+  if (detailSurface == ProductFrontendSurface::Settings) {
     // branch-gate: BG-1141
     if (x >= 830.0F && x <= 960.0F && y >= 382.0F && y <= 424.0F) {
       OpeningMenuHitTestResult result;
@@ -1483,9 +1493,11 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
     ++state.rowCount;
   }
 
+  const ProductFrontendSurface detailSurface =
+      openingMenuDetailSurfaceFor(frontend);
   if (frontend.childScreen == FrontendScreen::StarterDevTools) {
     drawDevToolsPanel(renderer, frontend.devToolsCategory);
-  } else if (frontend.childScreen == FrontendScreen::Settings) {
+  } else if (detailSurface == ProductFrontendSurface::Settings) {
     drawSettingsPanel(renderer,
                       selectedSettingsTab,
                       movementTuning,

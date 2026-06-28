@@ -18,6 +18,7 @@
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/Options.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/debug/TopDownMapOverlay.hpp"
 #include "app/iggy3d/view/ViewportFraming.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
@@ -68,6 +69,8 @@ struct OpeningMenuHitTestResult {
 OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend,
                                              float x,
                                              float y);
+ProductFrontendSurface openingMenuDetailSurfaceFor(
+    const FrontendState& frontend);
 
 #if defined(IGGY3D_HAS_SDL3)
 OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,

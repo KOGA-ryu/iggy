@@ -1,5 +1,6 @@
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 
+#include <array>
 #include <cstddef>
 #include <optional>
 #include <string_view>
@@ -18,11 +19,18 @@ namespace iggy3d {
 namespace {
 
 using DevToolsBackHandler = void (*)(FrontendState&, ProductAppWindowState&);
+using StarterConfirmHandler = ProductMenuActionResult (*)(
+    ProductStarterMenuActionContext);
 
 struct DevToolsMenuActionConfig {
   std::string_view selectionChangedStatus;
   std::string_view confirmStatus;
   DevToolsBackHandler backHandler = nullptr;
+};
+
+struct StarterConfirmActionRow {
+  FrontendAction action = FrontendAction::None;
+  StarterConfirmHandler handler = nullptr;
 };
 
 FrontendAction nextPauseSelection(FrontendAction current, InputAction action) {
@@ -317,65 +325,85 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
   return {true, true};
 }
 
-ProductMenuActionResult handleStarterConfirm(ProductStarterMenuActionContext context) {
+ProductMenuActionResult confirmStarterContinue(ProductStarterMenuActionContext context) {
   FrontendState& frontend = context.frontend;
   ProductAppWindowState& window = context.window;
-  // branch-gate: BG-1022
-  if (frontend.selectedAction == FrontendAction::Continue) {
-    // branch-gate: BG-1022
-    if (context.saves.slots.compatibleCount == 0) {
-      frontend.status = "opening_menu_action_disabled";
-      return {true, true};
+
+  if (context.saves.slots.compatibleCount == 0) {
+    frontend.status = "opening_menu_action_disabled";
+    return {true, true};
+  }
+  launchProductContinueSave(
+      context.options, productWorldTemplateFromOptions(context.options),
+      context.saves, frontend, context.activeSession, window);
+  return {true, true};
+}
+
+ProductMenuActionResult confirmStarterExit(ProductStarterMenuActionContext context) {
+  context.frontend.status = "opening_menu_exit_requested";
+  context.closeRequested = true;
+  return {true, true};
+}
+
+ProductMenuActionResult confirmStarterNewWorld(
+    ProductStarterMenuActionContext context) {
+  context.frontend.childScreen = FrontendScreen::NewWorld;
+  context.frontend.selectedAction = FrontendAction::CreateAndEnter;
+  context.frontend.status = "opening_menu_new_world_selected";
+  recordWorldSetupDraftState(context.worldSetupDraft, context.window);
+  context.window.worldSetupStatus = "world_setup_open";
+  return {true, true};
+}
+
+ProductMenuActionResult confirmStarterLoadSave(
+    ProductStarterMenuActionContext context) {
+  context.frontend.childScreen = FrontendScreen::LoadSave;
+  initializeSelectedProductSaveSlot(context.saves.slots, context.window);
+  context.frontend.status = "opening_menu_load_save_selected";
+  return {true, true};
+}
+
+ProductMenuActionResult confirmStarterDelete(ProductStarterMenuActionContext context) {
+  initializeSelectedProductSaveSlot(context.saves.slots, context.window);
+  openProductSaveDeleteConfirmation(context.saves.slots, context.window,
+                                    context.frontend);
+  return {true, true};
+}
+
+ProductMenuActionResult confirmStarterSettings(
+    ProductStarterMenuActionContext context) {
+  context.frontend.childScreen = FrontendScreen::Settings;
+  context.settingsTab = FrontendSettingsTab::Input;
+  context.frontend.status = "opening_menu_settings_selected";
+  return {true, true};
+}
+
+ProductMenuActionResult confirmStarterDevTools(
+    ProductStarterMenuActionContext context) {
+  context.frontend.childScreen = FrontendScreen::StarterDevTools;
+  context.frontend.devToolsOpen = true;
+  context.frontend.devToolsCategory = FrontendDevToolsCategory::Session;
+  context.frontend.status = "opening_menu_dev_tools_selected";
+  return {true, true};
+}
+
+ProductMenuActionResult handleStarterConfirm(ProductStarterMenuActionContext context) {
+  static constexpr std::array kStarterConfirmActions{
+      StarterConfirmActionRow{FrontendAction::Continue, confirmStarterContinue},
+      StarterConfirmActionRow{FrontendAction::Exit, confirmStarterExit},
+      StarterConfirmActionRow{FrontendAction::NewWorld, confirmStarterNewWorld},
+      StarterConfirmActionRow{FrontendAction::LoadSave, confirmStarterLoadSave},
+      StarterConfirmActionRow{FrontendAction::Delete, confirmStarterDelete},
+      StarterConfirmActionRow{FrontendAction::Settings, confirmStarterSettings},
+      StarterConfirmActionRow{FrontendAction::DevTools, confirmStarterDevTools},
+  };
+
+  for (const StarterConfirmActionRow& row : kStarterConfirmActions) {
+    if (context.frontend.selectedAction == row.action) {
+      return row.handler(context);
     }
-    launchProductContinueSave(
-        context.options, productWorldTemplateFromOptions(context.options),
-        context.saves, frontend, context.activeSession, window);
-    return {true, true};
   }
-  // branch-gate: BG-1022
-  if (frontend.selectedAction == FrontendAction::Exit) {
-    frontend.status = "opening_menu_exit_requested";
-    context.closeRequested = true;
-    return {true, true};
-  }
-  // branch-gate: BG-1022
-  if (frontend.selectedAction == FrontendAction::NewWorld) {
-    frontend.childScreen = FrontendScreen::NewWorld;
-    frontend.selectedAction = FrontendAction::CreateAndEnter;
-    frontend.status = "opening_menu_new_world_selected";
-    recordWorldSetupDraftState(context.worldSetupDraft, window);
-    window.worldSetupStatus = "world_setup_open";
-    return {true, true};
-  }
-  // branch-gate: BG-1022
-  if (frontend.selectedAction == FrontendAction::LoadSave) {
-    frontend.childScreen = FrontendScreen::LoadSave;
-    initializeSelectedProductSaveSlot(context.saves.slots, window);
-    frontend.status = "opening_menu_load_save_selected";
-    return {true, true};
-  }
-  // branch-gate: BG-1140
-  if (frontend.selectedAction == FrontendAction::Delete) {
-    initializeSelectedProductSaveSlot(context.saves.slots, window);
-    openProductSaveDeleteConfirmation(context.saves.slots, window, frontend);
-    return {true, true};
-  }
-  // branch-gate: BG-1022
-  if (frontend.selectedAction == FrontendAction::Settings) {
-    frontend.childScreen = FrontendScreen::Settings;
-    context.settingsTab = FrontendSettingsTab::Input;
-    frontend.status = "opening_menu_settings_selected";
-    return {true, true};
-  }
-  // branch-gate: BG-1022
-  if (frontend.selectedAction == FrontendAction::DevTools) {
-    frontend.childScreen = FrontendScreen::StarterDevTools;
-    frontend.devToolsOpen = true;
-    frontend.devToolsCategory = FrontendDevToolsCategory::Session;
-    frontend.status = "opening_menu_dev_tools_selected";
-    return {true, true};
-  }
-  frontend.status = "opening_menu_action_selected";
+  context.frontend.status = "opening_menu_action_selected";
   return {true, true};
 }
 

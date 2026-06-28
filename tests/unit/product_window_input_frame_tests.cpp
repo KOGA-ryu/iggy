@@ -826,10 +826,55 @@ bool pauseSettingsConfirmOpensSettingsPanel() {
                 "pause settings confirm opens settings screen") &&
          expect(frontend.childScreen == iggy3d::FrontendScreen::Pause,
                 "pause settings preserves pause parent") &&
+         expect(iggy3d::openingMenuDetailSurfaceFor(frontend) ==
+                    iggy3d::ProductFrontendSurface::Settings,
+                "pause settings renders settings detail surface") &&
          expect(settingsTab == iggy3d::FrontendSettingsTab::Input,
                 "pause settings starts on input tab") &&
          expect(window.inputOwner == iggy3d::MenuOwner::Settings,
                 "pause settings input owner");
+}
+
+bool pauseSettingsInputDispatchRoutesToSettings() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::WorldSetupDraft draft;
+  iggy3d::ActionState actionState;
+
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
+  frontend.selectedAction = iggy3d::FrontendAction::Settings;
+  (void)iggy3d::applyProductPauseMenuAction(
+      iggy3d::InputAction::MenuConfirm,
+      {frontend, options, settingsTab, activeSession, window, closeRequested});
+
+  const iggy3d::FrontendAction selectedBefore = frontend.selectedAction;
+  iggy3d::routeProductOpeningMenuInput(
+      iggy3d::InputAction::MenuDown,
+      actionState,
+      {frontend,
+       saves,
+       options,
+       settingsTab,
+       activeSession,
+       draft,
+       window,
+       closeRequested});
+
+  return expect(settingsTab == iggy3d::FrontendSettingsTab::Controls,
+                "pause settings input dispatch advances settings tab") &&
+         expect(frontend.selectedAction == selectedBefore,
+                "pause settings input dispatch does not move starter row") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::Settings,
+                "pause settings input dispatch owner") &&
+         expect(window.lastInputAccepted,
+                "pause settings input dispatch accepted");
 }
 
 bool childPanelHitTestsExposeMenuActions() {
@@ -862,6 +907,13 @@ bool childPanelHitTestsExposeMenuActions() {
   frontend.childScreen = iggy3d::FrontendScreen::Settings;
   const iggy3d::OpeningMenuHitTestResult settingsBackHit =
       iggy3d::openingMenuActionAt(frontend, 850.0F, 394.0F);
+  frontend.screen = iggy3d::FrontendScreen::Settings;
+  frontend.childScreen = iggy3d::FrontendScreen::Pause;
+  const iggy3d::OpeningMenuHitTestResult pauseSettingsBackHit =
+      iggy3d::openingMenuActionAt(frontend, 850.0F, 394.0F);
+  const iggy3d::OpeningMenuHitTestResult pauseSettingsTabHit =
+      iggy3d::openingMenuActionAt(frontend, 452.0F, 264.0F);
+  frontend.screen = iggy3d::FrontendScreen::Starter;
   frontend.childScreen = iggy3d::FrontendScreen::StarterDevTools;
   const iggy3d::OpeningMenuHitTestResult devToolsBackHit =
       iggy3d::openingMenuActionAt(frontend, 850.0F, 394.0F);
@@ -904,6 +956,17 @@ bool childPanelHitTestsExposeMenuActions() {
          expect(settingsBackHit.hit, "settings back hit") &&
          expect(settingsBackHit.area == iggy3d::OpeningMenuHitArea::SettingsBack,
                 "settings back area") &&
+         expect(pauseSettingsBackHit.hit, "pause settings back hit") &&
+         expect(pauseSettingsBackHit.area ==
+                    iggy3d::OpeningMenuHitArea::SettingsBack,
+                "pause settings back area") &&
+         expect(pauseSettingsTabHit.hit, "pause settings tab hit") &&
+         expect(pauseSettingsTabHit.area ==
+                    iggy3d::OpeningMenuHitArea::SettingsTab,
+                "pause settings tab area") &&
+         expect(pauseSettingsTabHit.settingsTab ==
+                    iggy3d::FrontendSettingsTab::Controls,
+                "pause settings tab target") &&
          expect(devToolsBackHit.hit, "dev tools back hit") &&
          expect(devToolsBackHit.area == iggy3d::OpeningMenuHitArea::DevToolsBack,
                 "dev tools back area");
@@ -1387,6 +1450,7 @@ int main() {
       starterHitTestUsesCanonicalActionRows() &&
       pauseHitTestUsesPauseActionRows() &&
       pauseSettingsConfirmOpensSettingsPanel() &&
+      pauseSettingsInputDispatchRoutesToSettings() &&
       childPanelHitTestsExposeMenuActions() &&
       menuClickNormalizationScalesWindowCoordinates() &&
       devToggleOpensAndClosesDevToolsSurfaces() &&

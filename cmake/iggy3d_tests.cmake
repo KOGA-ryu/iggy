@@ -219,6 +219,11 @@ iggy3d_add_unit_test(product_menu_transitions_tests tests/unit/product_menu_tran
 set_tests_properties(product_menu_transitions_tests PROPERTIES
   LABELS "unit;app;product;frontend;transitions;iggy3d")
 
+iggy3d_add_unit_test(product_starter_menu_action_tests
+  tests/unit/product_starter_menu_action_tests.cpp)
+set_tests_properties(product_starter_menu_action_tests PROPERTIES
+  LABELS "unit;app;product;frontend;starter;actions;iggy3d")
+
 iggy3d_add_unit_test(product_new_world_menu_action_tests
   tests/unit/product_new_world_menu_action_tests.cpp)
 set_tests_properties(product_new_world_menu_action_tests PROPERTIES
