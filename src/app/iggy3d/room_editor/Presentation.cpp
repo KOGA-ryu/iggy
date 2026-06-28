@@ -109,6 +109,14 @@ std::string signedNumber(std::int64_t value) {
   return out.str();
 }
 
+std::string countImpactLine(std::string_view label,
+                            std::uint64_t before,
+                            std::uint64_t after,
+                            std::int64_t delta) {
+  return std::string(label) + " " + std::to_string(before) + " -> " +
+         std::to_string(after) + " (" + signedNumber(delta) + ")";
+}
+
 }  // namespace
 
 ProductRoomEditorOverlay buildProductRoomEditorOverlay(
@@ -213,6 +221,14 @@ ProductRoomEditorHud buildProductRoomEditorHud(
     hud.previewActive = true;
     hud.previewStatus = request.placementPreview->status;
     hud.previewCandidateId = request.placementPreview->primitiveId;
+    hud.previewBeforeDrawCount =
+        request.placementPreview->before.optimizedDrawCount;
+    hud.previewAfterDrawCount =
+        request.placementPreview->after.optimizedDrawCount;
+    hud.previewBeforeTriangleCount =
+        request.placementPreview->before.optimizedTriangleCount;
+    hud.previewAfterTriangleCount =
+        request.placementPreview->after.optimizedTriangleCount;
     hud.previewOptimizedDrawDelta =
         request.placementPreview->optimizedDrawDelta;
     hud.previewOptimizedTriangleDelta =
@@ -239,10 +255,17 @@ ProductRoomEditorHud buildProductRoomEditorHud(
   if (hud.previewActive) {
     appendHudLine(hud, "PREVIEW " + hud.previewCandidateId + " " +
                            hud.previewStatus);
-    appendHudLine(hud, "OPT DRAWS " +
-                           signedNumber(hud.previewOptimizedDrawDelta) +
-                           " TRIS " +
-                           signedNumber(hud.previewOptimizedTriangleDelta));
+    appendHudLine(hud,
+                  countImpactLine("DRAW",
+                                  hud.previewBeforeDrawCount,
+                                  hud.previewAfterDrawCount,
+                                  hud.previewOptimizedDrawDelta));
+    appendHudLine(hud,
+                  countImpactLine("TRIS",
+                                  hud.previewBeforeTriangleCount,
+                                  hud.previewAfterTriangleCount,
+                                  hud.previewOptimizedTriangleDelta));
+    return hud;
   }
   appendHudLine(hud, "LAST " + hud.lastOperation + " " +
                          std::string(resultName(hud.lastOperationAccepted)));

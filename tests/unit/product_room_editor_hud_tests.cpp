@@ -1,6 +1,7 @@
 #include "app/iggy3d/room_editor/Presentation.hpp"
 
 #include <iostream>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -37,6 +38,10 @@ bool notReadyHidesHudButCopiesFacts() {
   preview.status = "room_editor_preview_ready";
   preview.reasonCode = preview.status;
   preview.primitiveId = "edit_wall_1";
+  preview.before.optimizedDrawCount = 33;
+  preview.after.optimizedDrawCount = 34;
+  preview.before.optimizedTriangleCount = 276;
+  preview.after.optimizedTriangleCount = 288;
   preview.optimizedDrawDelta = 1;
   preview.optimizedTriangleDelta = 12;
 
@@ -56,6 +61,10 @@ bool notReadyHidesHudButCopiesFacts() {
          expect(hud.previewActive, "not ready copies preview active") &&
          expect(hud.previewCandidateId == "edit_wall_1",
                 "not ready copies preview candidate") &&
+         expect(hud.previewBeforeDrawCount == 33U,
+                "not ready copies preview before draw") &&
+         expect(hud.previewAfterDrawCount == 34U,
+                "not ready copies preview after draw") &&
          expect(hud.lineCount == 0U, "not ready emits no lines");
 }
 
@@ -85,7 +94,11 @@ bool readyHudWithoutPreviewShowsCursorAndLastOperation() {
          expect(hud.lines[2].text == "WALL DIR up",
                 "ready hud wall direction line") &&
          expect(hud.lines[3].text == "LAST editor.place accepted",
-                "ready hud last operation line");
+                "ready hud last operation line") &&
+         expect(hud.lines[3].text.find("DRAW ") == std::string::npos,
+                "ready hud omits draw impact without preview") &&
+         expect(hud.lines[3].text.find("TRIS ") == std::string::npos,
+                "ready hud omits triangle impact without preview");
 }
 
 bool readyHudShowsPlacementPreviewFacts() {
@@ -96,6 +109,10 @@ bool readyHudShowsPlacementPreviewFacts() {
   preview.status = "room_editor_preview_ready";
   preview.reasonCode = preview.status;
   preview.primitiveId = "edit_wall_1";
+  preview.before.optimizedDrawCount = 33;
+  preview.after.optimizedDrawCount = 34;
+  preview.before.optimizedTriangleCount = 276;
+  preview.after.optimizedTriangleCount = 288;
   preview.optimizedDrawDelta = 1;
   preview.optimizedTriangleDelta = 12;
 
@@ -115,6 +132,14 @@ bool readyHudShowsPlacementPreviewFacts() {
                 "preview hud status") &&
          expect(hud.previewCandidateId == "edit_wall_1",
                 "preview hud candidate") &&
+         expect(hud.previewBeforeDrawCount == 33U,
+                "preview hud before draw count") &&
+         expect(hud.previewAfterDrawCount == 34U,
+                "preview hud after draw count") &&
+         expect(hud.previewBeforeTriangleCount == 276U,
+                "preview hud before triangle count") &&
+         expect(hud.previewAfterTriangleCount == 288U,
+                "preview hud after triangle count") &&
          expect(hud.previewOptimizedDrawDelta == 1,
                 "preview hud draw delta") &&
          expect(hud.previewOptimizedTriangleDelta == 12,
@@ -123,10 +148,10 @@ bool readyHudShowsPlacementPreviewFacts() {
          expect(hud.lines[3].text ==
                     "PREVIEW edit_wall_1 room_editor_preview_ready",
                 "preview hud preview line") &&
-         expect(hud.lines[4].text == "OPT DRAWS +1 TRIS +12",
-                "preview hud optimization line") &&
-         expect(hud.lines[5].text == "LAST editor.preview accepted",
-                "preview hud last line");
+         expect(hud.lines[4].text == "DRAW 33 -> 34 (+1)",
+                "preview hud draw impact line") &&
+         expect(hud.lines[5].text == "TRIS 276 -> 288 (+12)",
+                "preview hud triangle impact line");
 }
 
 }  // namespace

@@ -70,6 +70,10 @@ struct ProductRoomEditorHud {
   bool previewActive = false;
   std::string previewStatus = "room_editor_preview_not_requested";
   std::string previewCandidateId = "none";
+  std::uint64_t previewBeforeDrawCount = 0;
+  std::uint64_t previewAfterDrawCount = 0;
+  std::uint64_t previewBeforeTriangleCount = 0;
+  std::uint64_t previewAfterTriangleCount = 0;
   std::int64_t previewOptimizedDrawDelta = 0;
   std::int64_t previewOptimizedTriangleDelta = 0;
   std::array<ProductRoomEditorHudLine, 6> lines;
