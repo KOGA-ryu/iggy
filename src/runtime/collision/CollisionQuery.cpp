@@ -256,6 +256,49 @@ CollisionQueryResult sampleSurfaceHeight(const SpatialSurfaceSet& surfaces,
   return result;
 }
 
+CollisionQueryResult sampleSurfaceHeightAtOrBelow(
+    const SpatialSurfaceSet& surfaces,
+    Vec3 worldPoint,
+    float maxHeightMeters,
+    float footprintToleranceMeters) {
+  // branch-gate: BG-1191
+  if (surfaces.empty()) {
+    return emptySetResult();
+  }
+  // branch-gate: BG-1191
+  if (!isFinite(worldPoint) || !std::isfinite(maxHeightMeters) ||
+      !std::isfinite(footprintToleranceMeters) ||
+      footprintToleranceMeters < 0.0F) {
+    return invalidResult();
+  }
+  CollisionQueryResult result = emptyResult();
+  for (const CollisionSurfaceView& surface : surfaces.surfaces()) {
+    ++result.checkedSurfaceCount;
+    // branch-gate: BG-1191
+    if (surface.role != CollisionSurfaceRole::Walkable) {
+      continue;
+    }
+    ++result.blockingSurfaceCount;
+    // branch-gate: BG-1191
+    if (!expandedContainsXZ(surface.bounds, worldPoint, footprintToleranceMeters) ||
+        std::fabs(surface.normal.y) <= kEpsilon) {
+      continue;
+    }
+    const float height = surface.planePoint.y -
+                         ((surface.normal.x * (worldPoint.x - surface.planePoint.x)) +
+                          (surface.normal.z * (worldPoint.z - surface.planePoint.z))) /
+                             surface.normal.y;
+    // branch-gate: BG-1191
+    if (!std::isfinite(height) || height > maxHeightMeters + kEpsilon ||
+        !betterHeight(height, surface.id, result)) {
+      continue;
+    }
+    Vec3 point{worldPoint.x, height, worldPoint.z};
+    fillHit(result, surface, point, 0.0F, 0.0F);
+  }
+  return result;
+}
+
 CollisionQueryResult sampleSurfaceNormal(const SpatialSurfaceSet& surfaces,
                                          Vec3 worldPoint,
                                          float footprintToleranceMeters) {

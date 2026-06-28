@@ -396,6 +396,67 @@ int main() {
       iggy3d::smoke::hasField(wallJumpFields, "product_draw_prop_tile_count",
                               "10");
 
+  const std::filesystem::path layeredWalkSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("gameplay_controls_layered_jump_gym_walk");
+  iggy3d::smoke::ReceiptFields layeredWalkFields;
+  int layeredWalkExitCode = 77;
+  const bool layeredWalkControlsPassed =
+      appBuilt && std::filesystem::exists(binary) &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "gameplay_controls_layered_jump_gym_walk",
+          "frontend.select=new_world\n"
+          "frontend.execute=true\n"
+          "world.dungeon_id=layered_jump_gym\n"
+          "world.create=true\n"
+          "game.move_y=1\n",
+          iggy3d::smoke::saveRootArg(layeredWalkSaveRoot),
+          layeredWalkFields,
+          layeredWalkExitCode) &&
+      layeredWalkExitCode == 0 &&
+      iggy3d::smoke::productReceipt(layeredWalkFields) &&
+      iggy3d::smoke::automationApplied(layeredWalkFields) &&
+      iggy3d::smoke::hasField(layeredWalkFields, "window_mode",
+                              "no_window") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "window_created",
+                              "false") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "frontend_screen",
+                              "gameplay") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "gameplay_active",
+                              "true") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "active_room_id",
+                              "layered_jump_gym") &&
+      iggy3d::smoke::hasField(layeredWalkFields,
+                              "automation_control_last_key", "game.move_y") &&
+      iggy3d::smoke::hasField(layeredWalkFields,
+                              "automation_control_last_action",
+                              "game.move_y") &&
+      iggy3d::smoke::hasField(layeredWalkFields,
+                              "automation_control_last_owner", "gameplay") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "gameplay_input_source",
+                              "automation") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "gameplay_input_used",
+                              "true") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "input_owner",
+                              "gameplay") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "gameplay_movement_status",
+                              "moved") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "gameplay_movement_blocked",
+                              "false") &&
+      iggy3d::smoke::hasField(layeredWalkFields,
+                              "gameplay_movement_reason_code",
+                              "movement_ok") &&
+      iggy3d::smoke::hasField(layeredWalkFields,
+                              "gameplay_movement_blocked_reason",
+                              "movement_ok") &&
+      iggy3d::smoke::hasField(layeredWalkFields,
+                              "gameplay_movement_ground_snap_applied",
+                              "true") &&
+      iggy3d::smoke::hasField(layeredWalkFields,
+                              "gameplay_movement_final_y", "0.000") &&
+      iggy3d::smoke::hasField(layeredWalkFields, "player_position_changed",
+                              "true");
+
   const std::filesystem::path layeredResetSaveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_controls_layered_jump_gym_reset");
   iggy3d::smoke::ReceiptFields layeredResetFields;
@@ -470,6 +531,7 @@ int main() {
 
   const bool passed =
       scriptedControlsPassed && clamberControlsPassed && wallJumpControlsPassed &&
+      layeredWalkControlsPassed &&
       layeredResetControlsPassed;
 
   std::cout << "smoke=product_gameplay_controls\n";
@@ -481,6 +543,10 @@ int main() {
   std::cout << "movement_gym_wall_jump="
             << (wallJumpControlsPassed ? "true" : "false") << "\n";
   std::cout << "movement_gym_wall_jump_exit_code=" << wallJumpExitCode << "\n";
+  std::cout << "layered_jump_gym_walk="
+            << (layeredWalkControlsPassed ? "true" : "false") << "\n";
+  std::cout << "layered_jump_gym_walk_exit_code=" << layeredWalkExitCode
+            << "\n";
   std::cout << "layered_jump_gym_reset="
             << (layeredResetControlsPassed ? "true" : "false") << "\n";
   std::cout << "layered_jump_gym_reset_exit_code=" << layeredResetExitCode

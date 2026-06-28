@@ -103,6 +103,16 @@ Vec3 horizontalIntent(Vec3 intent) {
   return {intent.x, 0.0F, intent.z};
 }
 
+CollisionQueryResult sampleMovementGroundAtOrBelow(const SpatialSurfaceSet& surfaces,
+                                                   Vec3 candidate,
+                                                   const MovementParams& params) {
+  return sampleSurfaceHeightAtOrBelow(
+      surfaces,
+      candidate,
+      candidate.y + params.groundSnapMeters,
+      std::max(params.radiusMeters, 0.001F));
+}
+
 bool validMovementParams(const MovementParams& params) {
   return std::isfinite(params.maxSpeedMetersPerSecond) && params.maxSpeedMetersPerSecond >= 0.0F &&
          std::isfinite(params.radiusMeters) && params.radiusMeters > 0.0F &&
@@ -151,7 +161,7 @@ bool snapToGround(const SpatialSurfaceSet& surfaces,
                   Vec3& snapped,
                   SlopeSample& slope) {
   const CollisionQueryResult ground =
-      sampleSurfaceHeight(surfaces, candidate, std::max(params.radiusMeters, 0.001F));
+      sampleMovementGroundAtOrBelow(surfaces, candidate, params);
   if (ground.status != CollisionQueryStatus::Hit) {
     return false;
   }
@@ -270,9 +280,7 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
   }
 
   const CollisionQueryResult ground =
-      sampleSurfaceHeight(*context.collisionSurfaces,
-                          finalPosition,
-                          std::max(params.radiusMeters, 0.001F));
+      sampleMovementGroundAtOrBelow(*context.collisionSurfaces, finalPosition, params);
   // branch-gate: BG-1102
   if (ground.status != CollisionQueryStatus::Hit) {
     return blockedPhysicsResult(
@@ -456,9 +464,9 @@ MovementResult executeMovement(MovementSystemContext& context, const MovementReq
     SlopeSample slope;
     if (!snapToGround(*context.collisionSurfaces, params, request.destination, snapped, slope)) {
       const CollisionQueryResult ground =
-          sampleSurfaceHeight(*context.collisionSurfaces,
-                              request.destination,
-                              std::max(params.radiusMeters, 0.001F));
+          sampleMovementGroundAtOrBelow(*context.collisionSurfaces,
+                                        request.destination,
+                                        params);
       if (ground.status != CollisionQueryStatus::Hit) {
         return blockedCollisionAwareResult(request,
                                            start,
@@ -546,7 +554,7 @@ MovementResult executeKinematicMovement(MovementSystemContext& context,
   }
 
   const CollisionQueryResult currentGround =
-      sampleSurfaceHeight(*context.collisionSurfaces, start, request.params.radiusMeters);
+      sampleMovementGroundAtOrBelow(*context.collisionSurfaces, start, request.params);
   if (currentGround.status != CollisionQueryStatus::Hit) {
     return blockedKinematicResult(request, start, MovementBlockedReason::NoWalkableGround);
   }

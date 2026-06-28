@@ -49,6 +49,24 @@ iggy3d::RoomSpatialSurface makeBlocker(std::string_view id) {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface makeWalkableFloor(std::string_view id, float y) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::string(id);
+  surface.sourceStaticMeshId = "synthetic_floor";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {-2.0F, y, -2.0F},
+      {2.0F, y, -2.0F},
+      {2.0F, y, 2.0F},
+      {-2.0F, y, 2.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable"};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
 bool firstRoomHeightAndNormalQueries() {
   const iggy3d::SpatialSurfaceSet surfaces = loadFirstRoomSurfaceSet();
   const iggy3d::Vec3 spawn{10.0F * 0.3048F, 2.0F, 9.0F * 0.3048F};
@@ -102,6 +120,32 @@ bool offsetSurfaceSetAlignsPlayerSpawnToOrigin() {
          expect(height.surfaceId == "spawn_floor_walkable", "offset floor id") &&
          expect(centerStride.status == iggy3d::CollisionQueryStatus::NoHit,
                 "offset center stride is not wall blocked");
+}
+
+bool atOrBelowHeightQueryIgnoresHigherStackedFloors() {
+  iggy3d::RoomAsset room;
+  room.id = "stacked_floor_query_room";
+  room.spatialSurfaces.push_back(makeWalkableFloor("lower_floor", 0.0F));
+  room.spatialSurfaces.push_back(makeWalkableFloor("upper_floor", 8.0F));
+  const iggy3d::SpatialSurfaceSet surfaces = iggy3d::buildSpatialSurfaceSet(room);
+
+  const iggy3d::CollisionQueryResult unconstrained =
+      iggy3d::sampleSurfaceHeight(surfaces, {0.0F, 0.05F, 0.0F});
+  const iggy3d::CollisionQueryResult constrained =
+      iggy3d::sampleSurfaceHeightAtOrBelow(surfaces,
+                                           {0.0F, 0.05F, 0.0F},
+                                           0.65F);
+
+  return expect(unconstrained.status == iggy3d::CollisionQueryStatus::Hit,
+                "stacked unconstrained hit") &&
+         expect(unconstrained.surfaceId == "upper_floor",
+                "stacked unconstrained highest floor") &&
+         expect(constrained.status == iggy3d::CollisionQueryStatus::Hit,
+                "stacked constrained hit") &&
+         expect(constrained.surfaceId == "lower_floor",
+                "stacked constrained lower floor") &&
+         expect(approx(constrained.heightMeters, 0.0F),
+                "stacked constrained height");
 }
 
 bool actorQueriesRespectWallOpeningAndProjectileOnlyBlocker() {
@@ -201,6 +245,7 @@ bool deterministicTieOrderingUsesStableId() {
 int main() {
   const bool ok = firstRoomHeightAndNormalQueries() &&
                   offsetSurfaceSetAlignsPlayerSpawnToOrigin() &&
+                  atOrBelowHeightQueryIgnoresHigherStackedFloors() &&
                   actorQueriesRespectWallOpeningAndProjectileOnlyBlocker() &&
                   projectileQueriesRespectProjectileBlockers() &&
                   overlapQueriesAreValueResults() &&

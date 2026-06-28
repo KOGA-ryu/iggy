@@ -11,6 +11,12 @@ CollisionQueryResult sampleSurfaceHeight(const SpatialSurfaceSet& surfaces,
                                          Vec3 worldPoint,
                                          float footprintToleranceMeters = 0.001F);
 
+CollisionQueryResult sampleSurfaceHeightAtOrBelow(
+    const SpatialSurfaceSet& surfaces,
+    Vec3 worldPoint,
+    float maxHeightMeters,
+    float footprintToleranceMeters = 0.001F);
+
 CollisionQueryResult sampleSurfaceNormal(const SpatialSurfaceSet& surfaces,
                                          Vec3 worldPoint,
                                          float footprintToleranceMeters = 0.001F);

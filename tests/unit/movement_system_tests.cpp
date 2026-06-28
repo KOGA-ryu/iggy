@@ -53,6 +53,14 @@ iggy3d::RoomSpatialSurface floorSurface(std::string_view id = "floor",
   return surface;
 }
 
+iggy3d::RoomSpatialSurface floorSurfaceAt(std::string_view id, float y) {
+  iggy3d::RoomSpatialSurface surface = floorSurface(id);
+  for (iggy3d::Vec3& point : surface.pointsMeters) {
+    point.y = y;
+  }
+  return surface;
+}
+
 iggy3d::RoomSpatialSurface slopeSurface(std::string_view id, float degrees) {
   const float radians = degrees * 3.14159265358979323846F / 180.0F;
   const float slope = std::tan(radians);
@@ -445,6 +453,31 @@ bool acceptedMoveWithCollisionSnapsToWalkableGround() {
                 "collision move mutated world");
 }
 
+bool acceptedMoveWithStackedFloorsUsesCurrentLayer() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.05F, 0.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces =
+      makeSurfaceSet({floorSurfaceAt("lower_floor", 0.0F),
+                      floorSurfaceAt("upper_floor", 8.0F)});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces};
+
+  const iggy3d::MovementResult result =
+      iggy3d::executeMovement(context, moveRequest({1.0F, 0.05F, 0.0F}));
+
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None,
+                "stacked legacy move accepted") &&
+         expect(result.reasonCode == std::string_view{"movement_ok"},
+                "stacked legacy reason") &&
+         expect(result.groundSnapApplied, "stacked legacy ground snapped") &&
+         expect(result.movementPolicyBand == "flat", "stacked legacy band") &&
+         expect(result.finalPosition.y < 0.01F, "stacked legacy stays lower") &&
+         expect(result.finalPosition.x > 0.99F && result.finalPosition.x < 1.01F,
+                "stacked legacy x moved") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    {1.0F, 0.0F, 0.0F}),
+                "stacked legacy mutated lower");
+}
+
 bool acceptedMoveWithCollisionBlocksWallWithoutMutation() {
   iggy3d::WorldState world = makeWorldAt({0.0F, 0.0F, 1.0F});
   iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
@@ -509,6 +542,32 @@ bool physicsPlannerClearMoveOverFloorSnapsAndMutates() {
          expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
                                     {1.0F, 0.0F, 0.0F}),
                 "physics clear mutated world");
+}
+
+bool physicsPlannerStackedFloorsUsesCurrentLayer() {
+  iggy3d::WorldState world = makeWorldAt({0.0F, 0.05F, 0.0F});
+  iggy3d::RuntimeConfig config = iggy3d::makeDefaultRuntimeConfig();
+  const iggy3d::SpatialSurfaceSet surfaces =
+      makeSurfaceSet({floorSurfaceAt("lower_floor", 0.0F),
+                      floorSurfaceAt("upper_floor", 8.0F)});
+  iggy3d::MovementSystemContext context{&world, &config, &surfaces, true};
+
+  const iggy3d::MovementResult result =
+      iggy3d::executeMovement(context, moveRequest({1.0F, 0.05F, 0.0F}));
+
+  return expect(result.blocked == iggy3d::MovementBlockedReason::None,
+                "stacked physics move accepted") &&
+         expect(result.reasonCode == std::string_view{"movement_ok"},
+                "stacked physics reason") &&
+         expect(result.physicsFrameStatsAvailable,
+                "stacked physics stats available") &&
+         expect(result.groundSnapApplied, "stacked physics ground snapped") &&
+         expect(result.finalPosition.y < 0.01F, "stacked physics stays lower") &&
+         expect(result.finalPosition.x > 0.99F && result.finalPosition.x < 1.01F,
+                "stacked physics x moved") &&
+         expect(iggy3d::nearlyEqual(world.findById({1})->transform.position,
+                                    {1.0F, 0.0F, 0.0F}),
+                "stacked physics mutated lower");
 }
 
 bool physicsPlannerWallMoveClampsAndMutatesPartial() {
@@ -649,8 +708,10 @@ int main() {
                   kinematicModerateSlopeReportsDirectionalGrade() &&
                   kinematicMissingSurfacesAndInvalidParamsDoNotMutate() &&
                   acceptedMoveWithCollisionSnapsToWalkableGround() &&
+                  acceptedMoveWithStackedFloorsUsesCurrentLayer() &&
                   acceptedMoveWithCollisionBlocksWallWithoutMutation() &&
                   physicsPlannerClearMoveOverFloorSnapsAndMutates() &&
+                  physicsPlannerStackedFloorsUsesCurrentLayer() &&
                   physicsPlannerWallMoveClampsAndMutatesPartial() &&
                   physicsPlannerDiagonalWallMoveSlides() &&
                   physicsPlannerSkipsProjectileOnlyBlocker() &&
