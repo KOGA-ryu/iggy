@@ -195,3 +195,4 @@ BG-1194	src/app/iggy3d/window/InputFrame.cpp	SDL function-key event routing pref
 BG-1195	src/app/platform/SdlWindow.cpp	SDL function-key keydown capture policy	codex	2026-06-28
 BG-1196	src/app/iggy3d/window/FramePresenter.cpp	Vulkan position HUD UI overlay projection policy	codex	2026-06-28
 BG-1205	src/app/iggy3d/map_maker	Grid.cpp	product map-maker creative fly and grid overlay policy	codex	2026-06-28
+BG-1206	src/app/iggy3d/map_maker/Presentation.cpp	product map-maker unit cube preview projection policy	codex	2026-06-28

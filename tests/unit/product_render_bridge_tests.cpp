@@ -189,11 +189,18 @@ int main() {
   major.markerSize = 13.0F;
   mapMakerDrawList.items.push_back(minor);
   mapMakerDrawList.items.push_back(major);
+  mapMakerDrawList.items.push_back(
+      drawItem(iggy3d::ProductPrimitiveDrawKind::MapMakerCubePreview,
+               0,
+               "map_maker.unit_cube_preview",
+               false));
   mapMakerDrawList.itemCount =
       static_cast<std::uint64_t>(mapMakerDrawList.items.size());
   mapMakerDrawList.mapMakerGridVisible = true;
   mapMakerDrawList.mapMakerGridDotCount = 2U;
   mapMakerDrawList.mapMakerMajorGridDotCount = 1U;
+  mapMakerDrawList.mapMakerCubePreviewVisible = true;
+  mapMakerDrawList.mapMakerCubePreviewCount = 1U;
   iggy3d::ProductViewportFrame mapMakerFrame =
       iggy3d::buildProductViewportFrame(mapMakerDrawList, {});
   const iggy3d::ProductRenderBridgeFrame mapMakerBridge =
@@ -206,11 +213,18 @@ int main() {
                "map maker bridge dot count");
   ok &= expect(mapMakerBridge.mapMakerMajorGridDotCount == 1U,
                "map maker bridge major dot count");
+  ok &= expect(mapMakerBridge.mapMakerCubePreviewVisible,
+               "map maker bridge cube visible");
+  ok &= expect(mapMakerBridge.mapMakerCubePreviewCount == 1U,
+               "map maker bridge cube count");
   ok &= expect(mapMakerBridge.targetItemCount == 0U,
                "map maker dots are not target items");
   ok &= expect(mapMakerBridge.items[0].kind ==
                    iggy3d::ProductPrimitiveDrawKind::MapMakerGridDot,
                "map maker bridge item kind copied");
+  ok &= expect(mapMakerBridge.items[2].kind ==
+                   iggy3d::ProductPrimitiveDrawKind::MapMakerCubePreview,
+               "map maker bridge cube kind copied");
 
   if (!ok) {
     return 1;

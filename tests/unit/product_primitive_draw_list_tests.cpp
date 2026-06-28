@@ -480,6 +480,9 @@ int main() {
   mapMakerGrid.majorDotCount = 1U;
   mapMakerGrid.dots.push_back({{1.0F, 0.0F, -3.0F}, false});
   mapMakerGrid.dots.push_back({{5.0F, 0.0F, -5.0F}, true});
+  iggy3d::ProductMapMakerCubePreview mapMakerCube;
+  mapMakerCube.visible = true;
+  mapMakerCube.centerWorld = {2.0F, 0.5F, -3.0F};
   const iggy3d::ProductPrimitiveDrawList mapMakerList =
       iggy3d::buildProductPrimitiveDrawList(nullptr,
                                             nullptr,
@@ -487,7 +490,8 @@ int main() {
                                             nullptr,
                                             nullptr,
                                             nullptr,
-                                            &mapMakerGrid);
+                                            &mapMakerGrid,
+                                            &mapMakerCube);
   ok &= expect(mapMakerList.gridVisible, "map maker grid contributes grid visible");
   ok &= expect(mapMakerList.mapMakerGridVisible,
                "map maker primitive grid visible");
@@ -495,10 +499,14 @@ int main() {
                "map maker dot count");
   ok &= expect(mapMakerList.mapMakerMajorGridDotCount == 1U,
                "map maker major dot count");
+  ok &= expect(mapMakerList.mapMakerCubePreviewVisible,
+               "map maker cube preview visible");
+  ok &= expect(mapMakerList.mapMakerCubePreviewCount == 1U,
+               "map maker cube preview count");
   ok &= expect(mapMakerList.roomGeometryCount == 0U,
-               "map maker dots are not room geometry");
+               "map maker overlay is not real room geometry");
   ok &= expect(mapMakerList.targetMarkerCount == 0U,
-               "map maker dots are not targets");
+               "map maker overlay is not targets");
   ok &= expect(mapMakerList.items[0].kind ==
                    iggy3d::ProductPrimitiveDrawKind::MapMakerGridDot,
                "map maker dot kind");
@@ -508,6 +516,14 @@ int main() {
                "map maker major stable name");
   ok &= expect(mapMakerList.items[1].markerSize > mapMakerList.items[0].markerSize,
                "map maker major marker larger");
+  ok &= expect(mapMakerList.items[2].kind ==
+                   iggy3d::ProductPrimitiveDrawKind::MapMakerCubePreview,
+               "map maker cube kind");
+  ok &= expect(mapMakerList.items[2].stableName == "map_maker.unit_cube_preview",
+               "map maker cube stable name");
+  ok &= expect(mapMakerList.items[2].worldBounds.min.y == 0.0F &&
+                   mapMakerList.items[2].worldBounds.max.y == 1.0F,
+               "map maker cube one meter bounds");
 
   if (!ok) {
     return 1;

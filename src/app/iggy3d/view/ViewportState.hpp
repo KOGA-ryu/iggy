@@ -55,6 +55,8 @@ struct ProductViewportState {
   bool productDrawMapMakerGridVisible = false;
   std::uint64_t productDrawMapMakerGridDotCount = 0;
   std::uint64_t productDrawMapMakerMajorGridDotCount = 0;
+  bool productDrawMapMakerCubePreviewVisible = false;
+  std::uint64_t productDrawMapMakerCubePreviewCount = 0;
   std::string productViewProjection = "primitive_first_person";
   bool productViewYawApplied = false;
   bool productViewPitchApplied = false;
@@ -77,6 +79,8 @@ struct ProductViewportState {
   bool productRenderBridgeMapMakerGridVisible = false;
   std::uint64_t productRenderBridgeMapMakerGridDotCount = 0;
   std::uint64_t productRenderBridgeMapMakerMajorGridDotCount = 0;
+  bool productRenderBridgeMapMakerCubePreviewVisible = false;
+  std::uint64_t productRenderBridgeMapMakerCubePreviewCount = 0;
   bool productFeedbackBridgeReady = false;
   std::uint64_t productFeedbackBridgeLineCount = 0;
   bool productVulkanRoomMeshCpuReady = false;

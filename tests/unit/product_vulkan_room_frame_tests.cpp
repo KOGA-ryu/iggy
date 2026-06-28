@@ -883,12 +883,25 @@ bool creativeMapMakerFrameCarriesGridOverlay() {
           window.viewport.cameraPitchDegrees);
   const iggy3d::FrameInput& frameInput =
       iggy3d::refreshProductVulkanGameplayFrameInput(vulkanFrame);
+  bool cubeMeshProjected = false;
+  for (const iggy3d::SceneRoomMeshItem& mesh : projection.scene.room.meshes) {
+    if (mesh.id == "map_maker.unit_cube_preview" &&
+        mesh.role == "prop" &&
+        nearlyEqual(mesh.size.x, 1.0F) &&
+        nearlyEqual(mesh.size.y, 1.0F) &&
+        nearlyEqual(mesh.size.z, 1.0F)) {
+      cubeMeshProjected = true;
+    }
+  }
 
   return expect(projection.mapMakerGrid.visible, "map maker grid visible") &&
          expect(projection.mapMakerGrid.dotCount > 0U,
                 "map maker grid dot count positive") &&
          expect(projection.mapMakerGridOverlay.visible,
                 "map maker overlay visible") &&
+         expect(projection.mapMakerCubePreview.visible,
+                "map maker cube preview visible") &&
+         expect(cubeMeshProjected, "map maker cube projected as prop mesh") &&
          expect(projection.mapMakerHud.visible, "map maker hud visible") &&
          expect(projection.cameraAnchorOverrideAvailable,
                 "map maker camera override available") &&
@@ -897,14 +910,26 @@ bool creativeMapMakerFrameCarriesGridOverlay() {
          expect(projection.drawList.mapMakerGridDotCount ==
                     projection.mapMakerGrid.dotCount,
                 "map maker draw-list dot count") &&
+         expect(projection.drawList.mapMakerCubePreviewVisible,
+                "map maker draw-list cube visible") &&
+         expect(projection.drawList.mapMakerCubePreviewCount == 1U,
+                "map maker draw-list cube count") &&
          expect(projection.renderBridge.mapMakerGridVisible,
                 "map maker render bridge visible") &&
+         expect(projection.renderBridge.mapMakerCubePreviewVisible,
+                "map maker render bridge cube visible") &&
+         expect(projection.renderBridge.mapMakerCubePreviewCount == 1U,
+                "map maker render bridge cube count") &&
          expect(window.mapMakerActive, "map maker window active") &&
          expect(window.mapMakerGridVisible, "map maker window grid visible") &&
          expect(window.viewport.productDrawMapMakerGridVisible,
                 "map maker draw receipt visible") &&
+         expect(window.viewport.productDrawMapMakerCubePreviewVisible,
+                "map maker cube draw receipt visible") &&
          expect(window.viewport.productRenderBridgeMapMakerGridVisible,
                 "map maker bridge receipt visible") &&
+         expect(window.viewport.productRenderBridgeMapMakerCubePreviewVisible,
+                "map maker cube bridge receipt visible") &&
          expect(frameInput.ui.visible, "map maker vulkan UI visible") &&
          expect(frameInput.ui.rectCount > 0U, "map maker vulkan rects") &&
          expect(frameInput.ui.textGlyphCount > 0U,

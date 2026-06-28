@@ -194,6 +194,53 @@ void appendMapMakerGridUi(ProductVulkanGameplayFrame& frame,
   }
 }
 
+void appendMapMakerCubePreviewUi(ProductVulkanGameplayFrame& frame,
+                                  const ProductViewportFrame& viewportFrame,
+                                  std::uint32_t viewportWidth,
+                                  std::uint32_t viewportHeight) {
+  // branch-gate: BG-1206
+  if (viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+  for (const ProductViewportFramedItem& framed : viewportFrame.framedItems) {
+    // branch-gate: BG-1206
+    if (!framed.onScreen ||
+        framed.item.kind != ProductPrimitiveDrawKind::MapMakerCubePreview) {
+      continue;
+    }
+    const float size = std::clamp(framed.item.markerSize, 18.0F, 72.0F);
+    frame.rects.push_back(RenderUiRect{
+        scaledHudOffset(framed.screenX - size * 0.5F, viewportWidth,
+                        kVirtualViewportWidth),
+        scaledHudOffset(framed.screenY - size * 0.5F, viewportHeight,
+                        kVirtualViewportHeight),
+        scaledHudExtent(size, viewportWidth, kVirtualViewportWidth),
+        scaledHudExtent(size, viewportHeight, kVirtualViewportHeight),
+        static_cast<float>(framed.item.color.r) / 255.0F,
+        static_cast<float>(framed.item.color.g) / 255.0F,
+        static_cast<float>(framed.item.color.b) / 255.0F,
+        1.0F,
+    });
+    // branch-gate: BG-1206
+    if (size > 12.0F) {
+      const float inset = 4.0F;
+      frame.rects.push_back(RenderUiRect{
+          scaledHudOffset(framed.screenX - size * 0.5F + inset, viewportWidth,
+                          kVirtualViewportWidth),
+          scaledHudOffset(framed.screenY - size * 0.5F + inset, viewportHeight,
+                          kVirtualViewportHeight),
+          scaledHudExtent(size - inset * 2.0F, viewportWidth, kVirtualViewportWidth),
+          scaledHudExtent(size - inset * 2.0F, viewportHeight,
+                          kVirtualViewportHeight),
+          48.0F / 255.0F,
+          65.0F / 255.0F,
+          72.0F / 255.0F,
+          0.92F,
+      });
+    }
+  }
+}
+
 void appendMapMakerHudUi(ProductVulkanGameplayFrame& frame,
                          const ProductMapMakerHud& hud,
                          std::uint32_t viewportWidth,
@@ -429,6 +476,8 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
                                        projectionFrame.cameraAnchorOverrideMeters);
   appendMapMakerGridUi(frame, projectionFrame.viewportFrame, viewportWidth,
                        viewportHeight);
+  appendMapMakerCubePreviewUi(frame, projectionFrame.viewportFrame, viewportWidth,
+                              viewportHeight);
   appendMapMakerHudUi(frame, projectionFrame.mapMakerHud, viewportWidth,
                       viewportHeight);
   appendPositionHudUi(frame, projectionFrame.positionHud, viewportWidth, viewportHeight);

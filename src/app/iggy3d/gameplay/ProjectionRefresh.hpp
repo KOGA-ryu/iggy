@@ -53,6 +53,7 @@ struct ProductGameplayProjectionFrame {
   PositionHud positionHud;
   ProductMapMakerGridSnapshot mapMakerGrid;
   ProductMapMakerGridOverlay mapMakerGridOverlay;
+  ProductMapMakerCubePreview mapMakerCubePreview;
   ProductMapMakerHud mapMakerHud;
   ProductRoomEditorHud roomEditorHud;
   ProductRoomEditorOverlay roomEditorOverlay;

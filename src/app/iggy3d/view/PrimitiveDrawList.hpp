@@ -12,6 +12,7 @@
 namespace iggy3d {
 
 struct DebugProjectionResult;
+struct ProductMapMakerCubePreview;
 struct ProductMapMakerGridOverlay;
 struct ProductActiveRoomCollisionState;
 struct ProductRoomEditorOverlay;
@@ -40,6 +41,7 @@ enum class ProductPrimitiveDrawKind : std::uint8_t {
   PhysicsContactNormalDebug,
   PhysicsBroadphasePairDebug,
   MapMakerGridDot,
+  MapMakerCubePreview,
 };
 
 struct ProductPrimitiveColor {
@@ -101,6 +103,8 @@ struct ProductPrimitiveDrawList {
   bool mapMakerGridVisible = false;
   std::uint64_t mapMakerGridDotCount = 0;
   std::uint64_t mapMakerMajorGridDotCount = 0;
+  bool mapMakerCubePreviewVisible = false;
+  std::uint64_t mapMakerCubePreviewCount = 0;
 };
 
 ProductPrimitiveDrawList buildProductPrimitiveDrawList(
@@ -110,6 +114,7 @@ ProductPrimitiveDrawList buildProductPrimitiveDrawList(
     const ProductActiveRoomCollisionState* activeRoomCollision = nullptr,
     const ProductRoomEditorOverlay* roomEditorOverlay = nullptr,
     const ProductRoomEditorPreviewOverlay* roomEditorPreviewOverlay = nullptr,
-    const ProductMapMakerGridOverlay* mapMakerGridOverlay = nullptr);
+    const ProductMapMakerGridOverlay* mapMakerGridOverlay = nullptr,
+    const ProductMapMakerCubePreview* mapMakerCubePreview = nullptr);
 
 }  // namespace iggy3d

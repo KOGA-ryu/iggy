@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include "app/iggy3d/gameplay/TapeRunner.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
@@ -398,6 +399,24 @@ ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
   return grid;
 }
 
+void appendMapMakerCubePreviewToScene(const ProductMapMakerCubePreview& cube,
+                                      SceneProjectionResult& scene) {
+  // branch-gate: BG-1206
+  if (!cube.visible) {
+    return;
+  }
+  SceneRoomMeshItem mesh;
+  mesh.id = cube.stableName;
+  mesh.role = "prop";
+  mesh.materialId = "map_maker_unit_cube";
+  mesh.position = cube.centerWorld;
+  mesh.size = cube.sizeMeters;
+  scene.room.meshes.push_back(std::move(mesh));
+  scene.room.staticMeshCount = scene.room.meshes.size();
+  scene.room.propVisible = true;
+  scene.room.loaded = true;
+}
+
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
                                     const SceneProjectionResult* scene,
                                     const DebugProjectionResult* debug,
@@ -440,6 +459,8 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawMapMakerGridVisible = false;
     window.viewport.productDrawMapMakerGridDotCount = 0;
     window.viewport.productDrawMapMakerMajorGridDotCount = 0;
+    window.viewport.productDrawMapMakerCubePreviewVisible = false;
+    window.viewport.productDrawMapMakerCubePreviewCount = 0;
     window.viewport.productViewProjection = "primitive_first_person";
     window.viewport.productViewYawApplied = false;
     window.viewport.productViewPitchApplied = false;
@@ -462,6 +483,8 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productRenderBridgeMapMakerGridVisible = false;
     window.viewport.productRenderBridgeMapMakerGridDotCount = 0;
     window.viewport.productRenderBridgeMapMakerMajorGridDotCount = 0;
+    window.viewport.productRenderBridgeMapMakerCubePreviewVisible = false;
+    window.viewport.productRenderBridgeMapMakerCubePreviewCount = 0;
     window.viewport.productFeedbackBridgeReady = false;
     window.viewport.productFeedbackBridgeLineCount = 0;
     clearProductVulkanRoomMeshProof(window.viewport);
@@ -546,6 +569,10 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
         drawList->mapMakerGridDotCount;
     window.viewport.productDrawMapMakerMajorGridDotCount =
         drawList->mapMakerMajorGridDotCount;
+    window.viewport.productDrawMapMakerCubePreviewVisible =
+        drawList->mapMakerCubePreviewVisible;
+    window.viewport.productDrawMapMakerCubePreviewCount =
+        drawList->mapMakerCubePreviewCount;
   }
   // branch-gate: BG-1025
   if (frame != nullptr) {
@@ -585,6 +612,10 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
         bridge->mapMakerGridDotCount;
     window.viewport.productRenderBridgeMapMakerMajorGridDotCount =
         bridge->mapMakerMajorGridDotCount;
+    window.viewport.productRenderBridgeMapMakerCubePreviewVisible =
+        bridge->mapMakerCubePreviewVisible;
+    window.viewport.productRenderBridgeMapMakerCubePreviewCount =
+        bridge->mapMakerCubePreviewCount;
     window.viewport.productFeedbackBridgeReady = bridge->feedbackReady;
     window.viewport.productFeedbackBridgeLineCount = bridge->feedbackLineCount;
   }
@@ -661,11 +692,18 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.mapMakerGrid = buildMapMakerGridForFrame(window, frame.scene);
   frame.mapMakerGridOverlay =
       buildProductMapMakerGridOverlay(frame.mapMakerGrid);
-  frame.mapMakerHud = buildProductMapMakerHud(window.mapMakerActive,
-                                              frame.mapMakerGrid);
   frame.cameraAnchorOverrideAvailable =
       window.mapMakerActive && window.viewport.creativeFlyAnchorValid;
   frame.cameraAnchorOverrideMeters = window.viewport.creativeFlyPositionMeters;
+  frame.mapMakerCubePreview = buildProductMapMakerCubePreview(
+      window.mapMakerActive,
+      frame.cameraAnchorOverrideMeters,
+      window.viewport.cameraYawDegrees,
+      frame.mapMakerGrid);
+  appendMapMakerCubePreviewToScene(frame.mapMakerCubePreview, frame.scene);
+  frame.mapMakerHud = buildProductMapMakerHud(window.mapMakerActive,
+                                              frame.mapMakerGrid,
+                                              frame.mapMakerCubePreview);
   frame.roomEditorOverlay =
       buildProductRoomEditorOverlay(window.roomEditorCursor, window.roomEditing.ready);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
@@ -687,7 +725,8 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                                  &window.activeRoomCollision,
                                                  &frame.roomEditorOverlay,
                                                  &frame.roomEditorPreviewOverlay,
-                                                 &frame.mapMakerGridOverlay);
+                                                 &frame.mapMakerGridOverlay,
+                                                 &frame.mapMakerCubePreview);
   frame.topDownMapOverlay = buildTopDownMapOverlay(
       TopDownMapOverlayRequest{request.rendererRequest,
                                       window.interactionMode,

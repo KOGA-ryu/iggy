@@ -1,5 +1,6 @@
 #include "app/iggy3d/map_maker/Presentation.hpp"
 
+#include <cmath>
 #include <iostream>
 
 namespace {
@@ -10,6 +11,10 @@ bool expect(bool condition, const char* message) {
     return false;
   }
   return true;
+}
+
+bool near(float lhs, float rhs) {
+  return std::fabs(lhs - rhs) <= 0.001F;
 }
 
 iggy3d::ProductMapMakerGridSnapshot readyGrid() {
@@ -58,11 +63,39 @@ bool hudShowsCompactGridLineWhenActive() {
                 "active line text");
 }
 
+bool cubePreviewSnapsOneMeterCubeInFrontOfCamera() {
+  const iggy3d::ProductMapMakerGridSnapshot grid = readyGrid();
+  const iggy3d::ProductMapMakerCubePreview inactive =
+      iggy3d::buildProductMapMakerCubePreview(false, {0.0F, 2.0F, 0.0F}, 90.0F, grid);
+  const iggy3d::ProductMapMakerCubePreview cube =
+      iggy3d::buildProductMapMakerCubePreview(true, {0.1F, 2.0F, 0.2F}, 90.0F, grid);
+  const iggy3d::ProductMapMakerHud hud =
+      iggy3d::buildProductMapMakerHud(true, grid, cube);
+
+  return expect(!inactive.visible, "inactive cube hidden") &&
+         expect(inactive.reasonCode == "map_maker_cube_disabled",
+                "inactive cube reason") &&
+         expect(cube.visible, "cube visible") &&
+         expect(cube.status == "map_maker_cube_ready", "cube ready") &&
+         expect(cube.stableName == "map_maker.unit_cube_preview",
+                "cube stable name") &&
+         expect(near(cube.sizeMeters.x, 1.0F) && near(cube.sizeMeters.y, 1.0F) &&
+                    near(cube.sizeMeters.z, 1.0F),
+                "cube is one meter") &&
+         expect(near(cube.centerWorld.x, 3.0F), "cube snapped x") &&
+         expect(near(cube.centerWorld.y, 2.5F), "cube sits on grid plane") &&
+         expect(near(cube.centerWorld.z, 0.0F), "cube snapped z") &&
+         expect(hud.lines.size() == 1U, "hud one line with cube") &&
+         expect(hud.lines[0].text == "MAP grid=0.5m major=5m y=2 cube=1m",
+                "hud cube text");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = overlayCopiesReadyGridOnly() &&
-                  hudShowsCompactGridLineWhenActive();
+                  hudShowsCompactGridLineWhenActive() &&
+                  cubePreviewSnapsOneMeterCubeInFrontOfCamera();
   if (!ok) {
     return 1;
   }

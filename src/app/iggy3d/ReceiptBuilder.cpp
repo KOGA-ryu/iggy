@@ -1183,6 +1183,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.viewport.productDrawMapMakerGridDotCount);
   appendReceiptField(receipt, "product_draw_map_maker_major_grid_dot_count",
                      window.viewport.productDrawMapMakerMajorGridDotCount);
+  appendReceiptField(receipt, "product_draw_map_maker_cube_preview_visible",
+                     window.viewport.productDrawMapMakerCubePreviewVisible);
+  appendReceiptField(receipt, "product_draw_map_maker_cube_preview_count",
+                     window.viewport.productDrawMapMakerCubePreviewCount);
   appendReceiptField(receipt, "product_view_projection",
                      window.viewport.productViewProjection);
   appendReceiptField(receipt, "product_view_yaw_applied",
@@ -1231,6 +1235,14 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "product_render_bridge_map_maker_major_grid_dot_count",
                      window.viewport.productRenderBridgeMapMakerMajorGridDotCount);
+  appendReceiptField(
+      receipt,
+      "product_render_bridge_map_maker_cube_preview_visible",
+      window.viewport.productRenderBridgeMapMakerCubePreviewVisible);
+  appendReceiptField(
+      receipt,
+      "product_render_bridge_map_maker_cube_preview_count",
+      window.viewport.productRenderBridgeMapMakerCubePreviewCount);
   appendReceiptField(receipt, "product_feedback_bridge_ready",
                      window.viewport.productFeedbackBridgeReady);
   appendReceiptField(receipt, "product_feedback_bridge_line_count",

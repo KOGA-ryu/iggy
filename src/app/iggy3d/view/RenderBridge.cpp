@@ -50,6 +50,7 @@ void countPhysicsDebugKind(ProductRenderBridgeFrame& bridge,
     case ProductPrimitiveDrawKind::RoomEditorCursor:
     case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
     case ProductPrimitiveDrawKind::MapMakerGridDot:
+    case ProductPrimitiveDrawKind::MapMakerCubePreview:
       return;
   }
 }
@@ -80,6 +81,8 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
     bridge.mapMakerGridVisible = drawList->mapMakerGridVisible;
     bridge.mapMakerGridDotCount = drawList->mapMakerGridDotCount;
     bridge.mapMakerMajorGridDotCount = drawList->mapMakerMajorGridDotCount;
+    bridge.mapMakerCubePreviewVisible = drawList->mapMakerCubePreviewVisible;
+    bridge.mapMakerCubePreviewCount = drawList->mapMakerCubePreviewCount;
     bridge.propVisible = drawList->propTileCount > 0U;
     bridge.propTileCount = drawList->propTileCount;
   }
@@ -88,6 +91,7 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
   std::uint64_t framedPropTileCount = 0;
   std::uint64_t framedMapMakerGridDotCount = 0;
   std::uint64_t framedMapMakerMajorGridDotCount = 0;
+  std::uint64_t framedMapMakerCubePreviewCount = 0;
   if (frame != nullptr) {
     bridge.projectionMode = frame->projectionMode;
     bridge.frameItemCount = static_cast<std::uint64_t>(frame->framedItems.size());
@@ -134,6 +138,10 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
           ++framedMapMakerMajorGridDotCount;
         }
       }
+      // branch-gate: BG-1206
+      if (item.kind == ProductPrimitiveDrawKind::MapMakerCubePreview) {
+        ++framedMapMakerCubePreviewCount;
+      }
     }
   }
   // branch-gate: BG-1048
@@ -156,6 +164,11 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
     bridge.mapMakerGridDotCount = framedMapMakerGridDotCount;
     bridge.mapMakerMajorGridDotCount = framedMapMakerMajorGridDotCount;
     bridge.mapMakerGridVisible = framedMapMakerGridDotCount > 0U;
+  }
+  // branch-gate: BG-1206
+  if (bridge.mapMakerCubePreviewCount == 0U) {
+    bridge.mapMakerCubePreviewCount = framedMapMakerCubePreviewCount;
+    bridge.mapMakerCubePreviewVisible = framedMapMakerCubePreviewCount > 0U;
   }
 
   if (feedback != nullptr) {

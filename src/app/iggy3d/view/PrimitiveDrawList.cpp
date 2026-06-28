@@ -102,6 +102,7 @@ ProductPrimitiveColor colorForRoomKind(ProductPrimitiveDrawKind kind) {
     case ProductPrimitiveDrawKind::PhysicsContactNormalDebug:
     case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
     case ProductPrimitiveDrawKind::MapMakerGridDot:
+    case ProductPrimitiveDrawKind::MapMakerCubePreview:
       break;
   }
   return {112, 118, 120};
@@ -398,6 +399,11 @@ void updateCounts(ProductPrimitiveDrawList& list, const ProductPrimitiveDrawItem
         ++list.mapMakerMajorGridDotCount;
       }
       break;
+    case ProductPrimitiveDrawKind::MapMakerCubePreview:
+      ++list.debugMarkerCount;
+      ++list.mapMakerCubePreviewCount;
+      list.mapMakerCubePreviewVisible = true;
+      break;
   }
 }
 
@@ -608,6 +614,26 @@ void appendMapMakerGridOverlay(const ProductMapMakerGridOverlay* overlay,
   }
 }
 
+void appendMapMakerCubePreview(const ProductMapMakerCubePreview* preview,
+                               ProductPrimitiveDrawList& list) {
+  // branch-gate: BG-1206
+  if (preview == nullptr || !preview->visible) {
+    return;
+  }
+
+  ProductPrimitiveDrawItem item;
+  item.kind = ProductPrimitiveDrawKind::MapMakerCubePreview;
+  item.stableName = preview->stableName;
+  item.worldPosition = preview->centerWorld;
+  item.worldBounds =
+      aabbFromCenterExtents(preview->centerWorld, preview->sizeMeters * 0.5F);
+  item.visible = true;
+  item.color = {126, 221, 186};
+  item.markerSize = 54.0F;
+  list.items.push_back(item);
+  updateCounts(list, item);
+}
+
 void appendPhysicsAabbDebugItem(const DebugProjectionItem& debugItem,
                                 ProductPrimitiveDrawList& list) {
   // branch-gate: BG-1112
@@ -715,18 +741,21 @@ ProductPrimitiveDrawList buildProductPrimitiveDrawList(
     const ProductActiveRoomCollisionState* activeRoomCollision,
     const ProductRoomEditorOverlay* roomEditorOverlay,
     const ProductRoomEditorPreviewOverlay* roomEditorPreviewOverlay,
-    const ProductMapMakerGridOverlay* mapMakerGridOverlay) {
+    const ProductMapMakerGridOverlay* mapMakerGridOverlay,
+    const ProductMapMakerCubePreview* mapMakerCubePreview) {
   ProductPrimitiveDrawList list;
   list.gridVisible =
       scene != nullptr || activeRoom != nullptr ||
       (roomEditorOverlay != nullptr && roomEditorOverlay->visible) ||
       (roomEditorPreviewOverlay != nullptr && roomEditorPreviewOverlay->visible) ||
-      (mapMakerGridOverlay != nullptr && mapMakerGridOverlay->visible);
+      (mapMakerGridOverlay != nullptr && mapMakerGridOverlay->visible) ||
+      (mapMakerCubePreview != nullptr && mapMakerCubePreview->visible);
   appendRoomGeometry(activeRoom, list);
   appendOpenDoorMarkers(activeRoom, activeRoomCollision, list);
   appendRoomEditorOverlay(roomEditorOverlay, list);
   appendRoomEditorPlacementPreview(roomEditorPreviewOverlay, list);
   appendMapMakerGridOverlay(mapMakerGridOverlay, list);
+  appendMapMakerCubePreview(mapMakerCubePreview, list);
 
   // branch-gate: BG-1112
   if (scene != nullptr) {

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "app/iggy3d/map_maker/Grid.hpp"
+#include "core/math/Vec3.hpp"
 
 namespace iggy3d {
 
@@ -20,6 +21,15 @@ struct ProductMapMakerGridOverlay {
   std::vector<ProductMapMakerGridDot> dots;
 };
 
+struct ProductMapMakerCubePreview {
+  bool visible = false;
+  std::string status = "map_maker_cube_disabled";
+  std::string reasonCode = "map_maker_cube_disabled";
+  std::string stableName = "map_maker.unit_cube_preview";
+  Vec3 centerWorld;
+  Vec3 sizeMeters{1.0F, 1.0F, 1.0F};
+};
+
 struct ProductMapMakerHudLine {
   std::string text;
   bool visible = false;
@@ -33,8 +43,14 @@ struct ProductMapMakerHud {
 
 ProductMapMakerGridOverlay buildProductMapMakerGridOverlay(
     const ProductMapMakerGridSnapshot& snapshot);
+ProductMapMakerCubePreview buildProductMapMakerCubePreview(
+    bool mapMakerActive,
+    Vec3 anchorWorld,
+    float cameraYawDegrees,
+    const ProductMapMakerGridSnapshot& grid);
 ProductMapMakerHud buildProductMapMakerHud(
     bool mapMakerActive,
-    const ProductMapMakerGridSnapshot& grid);
+    const ProductMapMakerGridSnapshot& grid,
+    const ProductMapMakerCubePreview& cube = {});
 
 }  // namespace iggy3d

@@ -50,6 +50,8 @@ struct ProductRenderBridgeFrame {
   bool mapMakerGridVisible = false;
   std::uint64_t mapMakerGridDotCount = 0;
   std::uint64_t mapMakerMajorGridDotCount = 0;
+  bool mapMakerCubePreviewVisible = false;
+  std::uint64_t mapMakerCubePreviewCount = 0;
   std::string projectionMode = "primitive_first_person";
   std::vector<ProductRenderBridgeItem> items;
 };
