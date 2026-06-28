@@ -49,6 +49,7 @@ void countPhysicsDebugKind(ProductRenderBridgeFrame& bridge,
     case ProductPrimitiveDrawKind::PropTile:
     case ProductPrimitiveDrawKind::RoomEditorCursor:
     case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
+    case ProductPrimitiveDrawKind::MapMakerGridDot:
       return;
   }
 }
@@ -76,12 +77,17 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
     bridge.physicsContactNormalDebugCount = drawList->physicsContactNormalDebugCount;
     bridge.physicsBroadphasePairDebugCount =
         drawList->physicsBroadphasePairDebugCount;
+    bridge.mapMakerGridVisible = drawList->mapMakerGridVisible;
+    bridge.mapMakerGridDotCount = drawList->mapMakerGridDotCount;
+    bridge.mapMakerMajorGridDotCount = drawList->mapMakerMajorGridDotCount;
     bridge.propVisible = drawList->propTileCount > 0U;
     bridge.propTileCount = drawList->propTileCount;
   }
 
   ProductRenderBridgeFrame framedPhysicsCounts;
   std::uint64_t framedPropTileCount = 0;
+  std::uint64_t framedMapMakerGridDotCount = 0;
+  std::uint64_t framedMapMakerMajorGridDotCount = 0;
   if (frame != nullptr) {
     bridge.projectionMode = frame->projectionMode;
     bridge.frameItemCount = static_cast<std::uint64_t>(frame->framedItems.size());
@@ -120,6 +126,14 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
       if (item.kind == ProductPrimitiveDrawKind::PropTile) {
         ++framedPropTileCount;
       }
+      // branch-gate: BG-1205
+      if (item.kind == ProductPrimitiveDrawKind::MapMakerGridDot) {
+        ++framedMapMakerGridDotCount;
+        // branch-gate: BG-1205
+        if (item.markerSize > 10.0F) {
+          ++framedMapMakerMajorGridDotCount;
+        }
+      }
     }
   }
   // branch-gate: BG-1048
@@ -136,6 +150,12 @@ ProductRenderBridgeFrame buildProductRenderBridgeFrame(
         framedPhysicsCounts.physicsContactNormalDebugCount;
     bridge.physicsBroadphasePairDebugCount =
         framedPhysicsCounts.physicsBroadphasePairDebugCount;
+  }
+  // branch-gate: BG-1205
+  if (bridge.mapMakerGridDotCount == 0U) {
+    bridge.mapMakerGridDotCount = framedMapMakerGridDotCount;
+    bridge.mapMakerMajorGridDotCount = framedMapMakerMajorGridDotCount;
+    bridge.mapMakerGridVisible = framedMapMakerGridDotCount > 0U;
   }
 
   if (feedback != nullptr) {

@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/map_maker/Presentation.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -472,6 +473,41 @@ int main() {
                "preview overlay draw kind");
   ok &= expect(previewRoomList.items.back().stableName == "edit_floor_1",
                "preview overlay stable name");
+
+  iggy3d::ProductMapMakerGridOverlay mapMakerGrid;
+  mapMakerGrid.visible = true;
+  mapMakerGrid.dotCount = 2U;
+  mapMakerGrid.majorDotCount = 1U;
+  mapMakerGrid.dots.push_back({{1.0F, 0.0F, -3.0F}, false});
+  mapMakerGrid.dots.push_back({{5.0F, 0.0F, -5.0F}, true});
+  const iggy3d::ProductPrimitiveDrawList mapMakerList =
+      iggy3d::buildProductPrimitiveDrawList(nullptr,
+                                            nullptr,
+                                            nullptr,
+                                            nullptr,
+                                            nullptr,
+                                            nullptr,
+                                            &mapMakerGrid);
+  ok &= expect(mapMakerList.gridVisible, "map maker grid contributes grid visible");
+  ok &= expect(mapMakerList.mapMakerGridVisible,
+               "map maker primitive grid visible");
+  ok &= expect(mapMakerList.mapMakerGridDotCount == 2U,
+               "map maker dot count");
+  ok &= expect(mapMakerList.mapMakerMajorGridDotCount == 1U,
+               "map maker major dot count");
+  ok &= expect(mapMakerList.roomGeometryCount == 0U,
+               "map maker dots are not room geometry");
+  ok &= expect(mapMakerList.targetMarkerCount == 0U,
+               "map maker dots are not targets");
+  ok &= expect(mapMakerList.items[0].kind ==
+                   iggy3d::ProductPrimitiveDrawKind::MapMakerGridDot,
+               "map maker dot kind");
+  ok &= expect(mapMakerList.items[0].stableName == "map_maker.grid_dot",
+               "map maker minor stable name");
+  ok &= expect(mapMakerList.items[1].stableName == "map_maker.grid_major_dot",
+               "map maker major stable name");
+  ok &= expect(mapMakerList.items[1].markerSize > mapMakerList.items[0].markerSize,
+               "map maker major marker larger");
 
   if (!ok) {
     return 1;

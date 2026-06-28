@@ -3,6 +3,8 @@
 #include <string>
 #include <cstdint>
 
+#include "core/math/Vec3.hpp"
+
 namespace iggy3d {
 
 struct ProductViewportState {
@@ -15,6 +17,12 @@ struct ProductViewportState {
   float cameraYawDegrees = 0.0F;
   float cameraPitchDegrees = 0.0F;
   bool cameraHeadingVisible = false;
+  bool creativeFlyAnchorValid = false;
+  Vec3 creativeFlyPositionMeters;
+  bool creativeFlyActive = false;
+  float creativeFlySpeedMetersPerSecond = 0.0F;
+  std::string creativeFlyStatus = "creative_fly_not_requested";
+  std::string creativeFlyReasonCode = "creative_fly_not_requested";
   bool productDrawGridVisible = false;
   bool productDrawPlayerVisible = false;
   bool productDrawRoomVisible = false;
@@ -44,6 +52,9 @@ struct ProductViewportState {
   std::uint64_t productDrawPhysicsDebugItemCount = 0;
   std::uint64_t productDrawPhysicsAabbDebugCount = 0;
   std::uint64_t productDrawPhysicsContactNormalDebugCount = 0;
+  bool productDrawMapMakerGridVisible = false;
+  std::uint64_t productDrawMapMakerGridDotCount = 0;
+  std::uint64_t productDrawMapMakerMajorGridDotCount = 0;
   std::string productViewProjection = "primitive_first_person";
   bool productViewYawApplied = false;
   bool productViewPitchApplied = false;
@@ -63,6 +74,9 @@ struct ProductViewportState {
   std::uint64_t productRenderBridgePhysicsDebugItemCount = 0;
   std::uint64_t productRenderBridgePhysicsAabbDebugCount = 0;
   std::uint64_t productRenderBridgePhysicsContactNormalDebugCount = 0;
+  bool productRenderBridgeMapMakerGridVisible = false;
+  std::uint64_t productRenderBridgeMapMakerGridDotCount = 0;
+  std::uint64_t productRenderBridgeMapMakerMajorGridDotCount = 0;
   bool productFeedbackBridgeReady = false;
   std::uint64_t productFeedbackBridgeLineCount = 0;
   bool productVulkanRoomMeshCpuReady = false;

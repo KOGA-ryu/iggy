@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/map_maker/Presentation.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneItem.hpp"
@@ -100,6 +101,7 @@ ProductPrimitiveColor colorForRoomKind(ProductPrimitiveDrawKind kind) {
     case ProductPrimitiveDrawKind::PhysicsAabbDebug:
     case ProductPrimitiveDrawKind::PhysicsContactNormalDebug:
     case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
+    case ProductPrimitiveDrawKind::MapMakerGridDot:
       break;
   }
   return {112, 118, 120};
@@ -387,6 +389,15 @@ void updateCounts(ProductPrimitiveDrawList& list, const ProductPrimitiveDrawItem
       ++list.roomEditorPlacementPreviewCount;
       list.roomEditorPlacementPreviewVisible = true;
       break;
+    case ProductPrimitiveDrawKind::MapMakerGridDot:
+      ++list.debugMarkerCount;
+      ++list.mapMakerGridDotCount;
+      list.mapMakerGridVisible = true;
+      // branch-gate: BG-1205
+      if (item.markerSize > 10.0F) {
+        ++list.mapMakerMajorGridDotCount;
+      }
+      break;
   }
 }
 
@@ -570,6 +581,33 @@ void appendRoomEditorPlacementPreview(
   updateCounts(list, item);
 }
 
+void appendMapMakerGridOverlay(const ProductMapMakerGridOverlay* overlay,
+                               ProductPrimitiveDrawList& list) {
+  // branch-gate: BG-1205
+  if (overlay == nullptr || !overlay->visible || overlay->dots.empty()) {
+    return;
+  }
+
+  for (const ProductMapMakerGridDot& dot : overlay->dots) {
+    ProductPrimitiveDrawItem item;
+    item.kind = ProductPrimitiveDrawKind::MapMakerGridDot;
+    // branch-gate: BG-1205
+    item.stableName =
+        dot.major ? "map_maker.grid_major_dot" : "map_maker.grid_dot";
+    item.worldPosition = dot.worldPosition;
+    item.worldBounds =
+        aabbFromCenterExtents(dot.worldPosition, {0.035F, 0.035F, 0.035F});
+    item.visible = true;
+    // branch-gate: BG-1205
+    item.color = dot.major ? ProductPrimitiveColor{136, 184, 226}
+                           : ProductPrimitiveColor{86, 130, 172};
+    // branch-gate: BG-1205
+    item.markerSize = dot.major ? 13.0F : 8.0F;
+    list.items.push_back(item);
+    updateCounts(list, item);
+  }
+}
+
 void appendPhysicsAabbDebugItem(const DebugProjectionItem& debugItem,
                                 ProductPrimitiveDrawList& list) {
   // branch-gate: BG-1112
@@ -676,16 +714,19 @@ ProductPrimitiveDrawList buildProductPrimitiveDrawList(
     const RoomAsset* activeRoom,
     const ProductActiveRoomCollisionState* activeRoomCollision,
     const ProductRoomEditorOverlay* roomEditorOverlay,
-    const ProductRoomEditorPreviewOverlay* roomEditorPreviewOverlay) {
+    const ProductRoomEditorPreviewOverlay* roomEditorPreviewOverlay,
+    const ProductMapMakerGridOverlay* mapMakerGridOverlay) {
   ProductPrimitiveDrawList list;
   list.gridVisible =
       scene != nullptr || activeRoom != nullptr ||
       (roomEditorOverlay != nullptr && roomEditorOverlay->visible) ||
-      (roomEditorPreviewOverlay != nullptr && roomEditorPreviewOverlay->visible);
+      (roomEditorPreviewOverlay != nullptr && roomEditorPreviewOverlay->visible) ||
+      (mapMakerGridOverlay != nullptr && mapMakerGridOverlay->visible);
   appendRoomGeometry(activeRoom, list);
   appendOpenDoorMarkers(activeRoom, activeRoomCollision, list);
   appendRoomEditorOverlay(roomEditorOverlay, list);
   appendRoomEditorPlacementPreview(roomEditorPreviewOverlay, list);
+  appendMapMakerGridOverlay(mapMakerGridOverlay, list);
 
   // branch-gate: BG-1112
   if (scene != nullptr) {

@@ -149,6 +149,26 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gamepad_menu_select_used", window.gamepadMenuSelectUsed);
   appendReceiptField(receipt, "interaction_mode",
                      productInteractionModeName(window.interactionMode));
+  appendReceiptField(receipt, "map_maker_active", window.mapMakerActive);
+  appendReceiptField(receipt, "map_maker_status", window.mapMakerStatus);
+  appendReceiptField(receipt, "map_maker_reason_code",
+                     window.mapMakerReasonCode);
+  appendReceiptField(receipt, "map_maker_grid_visible",
+                     window.mapMakerGridVisible);
+  appendReceiptField(receipt, "map_maker_grid_status",
+                     window.mapMakerGridStatus);
+  appendReceiptField(receipt, "map_maker_grid_reason_code",
+                     window.mapMakerGridReasonCode);
+  appendReceiptField(receipt, "map_maker_grid_pitch_meters",
+                     floatReceiptValue(window.mapMakerGridPitchMeters));
+  appendReceiptField(receipt, "map_maker_grid_major_step_meters",
+                     floatReceiptValue(window.mapMakerGridMajorStepMeters));
+  appendReceiptField(receipt, "map_maker_grid_plane_y",
+                     floatReceiptValue(window.mapMakerGridPlaneY));
+  appendReceiptField(receipt, "map_maker_grid_dot_count",
+                     window.mapMakerGridDotCount);
+  appendReceiptField(receipt, "map_maker_grid_major_dot_count",
+                     window.mapMakerGridMajorDotCount);
   appendReceiptField(receipt, "interaction_mode_hud_visible",
                      window.interactionModeHudVisible);
   appendReceiptField(receipt, "interaction_mode_hud_status",
@@ -1081,6 +1101,23 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.viewport.cameraPitchDegrees));
   appendReceiptField(receipt, "camera_heading_visible",
                      window.viewport.cameraHeadingVisible);
+  appendReceiptField(receipt, "creative_fly_active",
+                     window.viewport.creativeFlyActive);
+  appendReceiptField(receipt, "creative_fly_status",
+                     window.viewport.creativeFlyStatus);
+  appendReceiptField(receipt, "creative_fly_reason_code",
+                     window.viewport.creativeFlyReasonCode);
+  appendReceiptField(receipt, "creative_fly_speed_mps",
+                     floatReceiptValue(
+                         window.viewport.creativeFlySpeedMetersPerSecond));
+  appendReceiptField(receipt, "creative_fly_anchor_valid",
+                     window.viewport.creativeFlyAnchorValid);
+  appendReceiptField(receipt, "creative_fly_world_x",
+                     floatReceiptValue(window.viewport.creativeFlyPositionMeters.x));
+  appendReceiptField(receipt, "creative_fly_world_y",
+                     floatReceiptValue(window.viewport.creativeFlyPositionMeters.y));
+  appendReceiptField(receipt, "creative_fly_world_z",
+                     floatReceiptValue(window.viewport.creativeFlyPositionMeters.z));
   appendReceiptField(receipt, "product_draw_item_count",
                      window.viewport.productDrawItemCount);
   appendReceiptField(receipt, "product_draw_grid_visible",
@@ -1140,6 +1177,12 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "product_draw_physics_contact_normal_debug_count",
                      window.viewport.productDrawPhysicsContactNormalDebugCount);
+  appendReceiptField(receipt, "product_draw_map_maker_grid_visible",
+                     window.viewport.productDrawMapMakerGridVisible);
+  appendReceiptField(receipt, "product_draw_map_maker_grid_dot_count",
+                     window.viewport.productDrawMapMakerGridDotCount);
+  appendReceiptField(receipt, "product_draw_map_maker_major_grid_dot_count",
+                     window.viewport.productDrawMapMakerMajorGridDotCount);
   appendReceiptField(receipt, "product_view_projection",
                      window.viewport.productViewProjection);
   appendReceiptField(receipt, "product_view_yaw_applied",
@@ -1181,6 +1224,13 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
       receipt,
       "product_render_bridge_physics_contact_normal_debug_count",
       window.viewport.productRenderBridgePhysicsContactNormalDebugCount);
+  appendReceiptField(receipt, "product_render_bridge_map_maker_grid_visible",
+                     window.viewport.productRenderBridgeMapMakerGridVisible);
+  appendReceiptField(receipt, "product_render_bridge_map_maker_grid_dot_count",
+                     window.viewport.productRenderBridgeMapMakerGridDotCount);
+  appendReceiptField(receipt,
+                     "product_render_bridge_map_maker_major_grid_dot_count",
+                     window.viewport.productRenderBridgeMapMakerMajorGridDotCount);
   appendReceiptField(receipt, "product_feedback_bridge_ready",
                      window.viewport.productFeedbackBridgeReady);
   appendReceiptField(receipt, "product_feedback_bridge_line_count",

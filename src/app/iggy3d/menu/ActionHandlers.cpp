@@ -579,6 +579,37 @@ ProductMenuActionResult applyProductStarterMenuAction(
 ProductMenuActionResult applyProductSystemPauseMenuAction(
     InputAction action,
     ProductSystemPauseMenuActionContext context) {
+  // branch-gate: BG-1205
+  if (action == InputAction::MapMakerToggle) {
+    // branch-gate: BG-1205
+    if (context.frontend.screen != FrontendScreen::Gameplay ||
+        !context.window.gameplayActive) {
+      context.frontend.status = "map_maker_toggle_ignored";
+      context.window.mapMakerStatus = "map_maker_gameplay_inactive";
+      context.window.mapMakerReasonCode = context.window.mapMakerStatus;
+      return {true, false};
+    }
+    const bool enable =
+        context.window.interactionMode != ProductInteractionMode::Creative;
+    // branch-gate: BG-1205
+    context.window.interactionMode =
+        enable ? ProductInteractionMode::Creative : ProductInteractionMode::Player;
+    context.window.mapMakerActive = enable;
+    // branch-gate: BG-1205
+    context.window.mapMakerStatus =
+        enable ? "map_maker_enabled" : "map_maker_disabled";
+    context.window.mapMakerReasonCode = context.window.mapMakerStatus;
+    context.window.viewport.creativeFlyActive = enable;
+    // branch-gate: BG-1205
+    if (!enable) {
+      context.window.viewport.creativeFlyStatus = "creative_fly_not_requested";
+      context.window.viewport.creativeFlyReasonCode =
+          context.window.viewport.creativeFlyStatus;
+      context.window.viewport.creativeFlySpeedMetersPerSecond = 0.0F;
+    }
+    context.frontend.status = context.window.mapMakerStatus;
+    return {true, true};
+  }
   if (action == InputAction::DevDebugOverlay) {  // branch-gate: BG-1124
     // branch-gate: BG-1124
     if (context.settings == nullptr) {

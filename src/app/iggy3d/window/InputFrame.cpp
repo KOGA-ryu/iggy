@@ -5,6 +5,7 @@
 #include "app/iggy3d/view/CameraController.hpp"
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/gameplay/Controller.hpp"
+#include "app/iggy3d/map_maker/CreativeFly.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
 #include "app/iggy3d/room_editor/ActionController.hpp"
@@ -128,6 +129,65 @@ void updateProductWindowMouseCapture(const FrontendState& frontend,
   recordProductMouseCaptureResult(window, policy, &platform);
 }
 
+Vec3 activePlayerPositionOrOrigin(const Session* activeSession) {
+  // branch-gate: BG-1205
+  if (activeSession == nullptr) {
+    return {};
+  }
+  const EntityId playerActor = activeSession->state().players.actorForSlot(0);
+  const EntityState* player = activeSession->state().world.findById(playerActor);
+  // branch-gate: BG-1205
+  if (player == nullptr) {
+    return {};
+  }
+  return player->transform.position;
+}
+
+void ensureCreativeFlyAnchor(ProductAppWindowState& window,
+                             const Session* activeSession) {
+  // branch-gate: BG-1205
+  if (window.viewport.creativeFlyAnchorValid) {
+    return;
+  }
+  window.viewport.creativeFlyPositionMeters =
+      activePlayerPositionOrOrigin(activeSession);
+  window.viewport.creativeFlyAnchorValid = true;
+}
+
+void applyProductWindowCreativeFlyActions(ProductAppWindowState& window,
+                                          const Session* activeSession,
+                                          const ActionState& actions) {
+  ensureCreativeFlyAnchor(window, activeSession);
+  ProductCreativeFlyConfig config;
+  config.enabled = true;
+  ProductCreativeFlyInput input;
+  input.moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
+  input.moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
+  // branch-gate: BG-1205
+  const float flyUp = actionIsDown(actions, InputAction::PlayerJump) ? 1.0F : 0.0F;
+  // branch-gate: BG-1205
+  const float flyDown =
+      actionIsDown(actions, InputAction::PlayerCrouch) ? 1.0F : 0.0F;
+  input.moveZ = flyUp - flyDown;
+  input.sprinting = actionIsDown(actions, InputAction::PlayerSprint);
+  input.cameraYawDegrees = window.viewport.cameraYawDegrees;
+  input.cameraPitchDegrees = window.viewport.cameraPitchDegrees;
+  const ProductCreativeFlyResult fly =
+      applyProductCreativeFlyInput(config, input,
+                                   window.viewport.creativeFlyPositionMeters);
+  window.viewport.creativeFlyActive = true;
+  window.viewport.creativeFlyStatus = fly.reasonCode;
+  window.viewport.creativeFlyReasonCode = fly.reasonCode;
+  window.viewport.creativeFlySpeedMetersPerSecond = fly.speedMetersPerSecond;
+  window.mapMakerActive = true;
+  window.mapMakerStatus = "map_maker_active";
+  window.mapMakerReasonCode = window.mapMakerStatus;
+  // branch-gate: BG-1205
+  if (fly.applied) {
+    window.viewport.creativeFlyPositionMeters = fly.finalPositionMeters;
+  }
+}
+
 ProductControllerSampleInputResult applyProductWindowInputActions(
     ProductAppWindowState& window,
     Session* activeSession,
@@ -174,6 +234,16 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
   if (settings != nullptr) {
     applyProductCameraActions(acceptedGameplayActions, window.viewport, *settings,
                               inputSource);
+  }
+  // branch-gate: BG-1205
+  if (window.interactionMode == ProductInteractionMode::Creative) {
+    applyProductWindowCreativeFlyActions(window, activeSession,
+                                         acceptedGameplayActions);
+    result.actionApplied = !acceptedGameplayActions.entries.empty();
+    result.actionAccepted = result.actionApplied;
+    window.gameplayCommandAccepted = false;
+    window.gameplayCommandStatus = "creative_fly_owns_movement";
+    return result;
   }
   // branch-gate: BG-1061
   if (activeSession != nullptr) {

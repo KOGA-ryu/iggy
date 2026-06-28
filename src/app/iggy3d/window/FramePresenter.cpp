@@ -162,6 +162,74 @@ void appendPositionHudUi(ProductVulkanGameplayFrame& frame,
   }
 }
 
+void appendMapMakerGridUi(ProductVulkanGameplayFrame& frame,
+                          const ProductViewportFrame& viewportFrame,
+                          std::uint32_t viewportWidth,
+                          std::uint32_t viewportHeight) {
+  // branch-gate: BG-1205
+  if (viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+  for (const ProductViewportFramedItem& framed : viewportFrame.framedItems) {
+    // branch-gate: BG-1205
+    if (!framed.onScreen ||
+        framed.item.kind != ProductPrimitiveDrawKind::MapMakerGridDot) {
+      continue;
+    }
+    const bool major = framed.item.markerSize > 10.0F;
+    // branch-gate: BG-1205
+    const float size = major ? 6.0F : 3.0F;
+    frame.rects.push_back(RenderUiRect{
+        scaledHudOffset(framed.screenX - size * 0.5F, viewportWidth,
+                        kVirtualViewportWidth),
+        scaledHudOffset(framed.screenY - size * 0.5F, viewportHeight,
+                        kVirtualViewportHeight),
+        scaledHudExtent(size, viewportWidth, kVirtualViewportWidth),
+        scaledHudExtent(size, viewportHeight, kVirtualViewportHeight),
+        static_cast<float>(framed.item.color.r) / 255.0F,
+        static_cast<float>(framed.item.color.g) / 255.0F,
+        static_cast<float>(framed.item.color.b) / 255.0F,
+        1.0F,
+    });
+  }
+}
+
+void appendMapMakerHudUi(ProductVulkanGameplayFrame& frame,
+                         const ProductMapMakerHud& hud,
+                         std::uint32_t viewportWidth,
+                         std::uint32_t viewportHeight) {
+  // branch-gate: BG-1205
+  if (!hud.visible || viewportWidth == 0U || viewportHeight == 0U) {
+    return;
+  }
+  frame.rects.push_back(RenderUiRect{
+      scaledHudOffset(88.0F, viewportWidth, kVirtualViewportWidth),
+      scaledHudOffset(636.0F, viewportHeight, kVirtualViewportHeight),
+      scaledHudExtent(300.0F, viewportWidth, kVirtualViewportWidth),
+      scaledHudExtent(26.0F, viewportHeight, kVirtualViewportHeight),
+      14.0F / 255.0F,
+      21.0F / 255.0F,
+      23.0F / 255.0F,
+      1.0F,
+  });
+  const std::int32_t textX =
+      scaledHudOffset(100.0F, viewportWidth, kVirtualViewportWidth);
+  std::int32_t textY =
+      scaledHudOffset(644.0F, viewportHeight, kVirtualViewportHeight);
+  for (const ProductMapMakerHudLine& line : hud.lines) {
+    // branch-gate: BG-1205
+    if (!line.visible) {
+      continue;
+    }
+    const DebugHudLayoutResult layout =
+        layoutDebugHudTextAt(line.text, textX, textY, viewportWidth, viewportHeight);
+    frame.textGlyphCount += layout.glyphCount;
+    frame.textGlyphQuads.insert(frame.textGlyphQuads.end(), layout.quads.begin(),
+                                layout.quads.end());
+    break;
+  }
+}
+
 FrameInput starterMenuFrameInput(const ProductVulkanMenuFrameRequest& request) {
   FrameInput frame;
   frame.viewport = {request.drawableWidth,
@@ -356,7 +424,13 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
   ProductVulkanGameplayFrame frame;
   frame.frame = makeProductVulkanFrame(projectionFrame.scene, projectionFrame.debug,
                                        frameIndex, viewportWidth, viewportHeight,
-                                       cameraYawDegrees, cameraPitchDegrees);
+                                       cameraYawDegrees, cameraPitchDegrees,
+                                       projectionFrame.cameraAnchorOverrideAvailable,
+                                       projectionFrame.cameraAnchorOverrideMeters);
+  appendMapMakerGridUi(frame, projectionFrame.viewportFrame, viewportWidth,
+                       viewportHeight);
+  appendMapMakerHudUi(frame, projectionFrame.mapMakerHud, viewportWidth,
+                      viewportHeight);
   appendPositionHudUi(frame, projectionFrame.positionHud, viewportWidth, viewportHeight);
   return frame;
 }

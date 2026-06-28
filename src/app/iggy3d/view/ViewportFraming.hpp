@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
+#include "core/math/Vec3.hpp"
 
 namespace iggy3d {
 
@@ -13,6 +14,8 @@ struct ProductViewportFrameConfig {
   float pixelsPerMeter = 92.0F;
   float centerX = 640.0F;
   float centerY = 394.0F;
+  bool cameraAnchorOverrideAvailable = false;
+  Vec3 cameraAnchorOverrideMeters;
 };
 
 struct ProductViewportFramedItem {

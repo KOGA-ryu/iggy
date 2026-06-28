@@ -28,6 +28,8 @@ std::string_view inputActionName(InputAction action) {
       return "dev.toggle";
     case InputAction::SystemHardQuit:
       return "system.quit_chord";
+    case InputAction::MapMakerToggle:
+      return "map_maker.toggle";
     case InputAction::PlayerMoveX:
       return "game.move_x";
     case InputAction::PlayerMoveY:
@@ -116,6 +118,7 @@ InputActionGroup inputActionGroup(InputAction action) {
     case InputAction::SystemPause:
     case InputAction::SystemDevTools:
     case InputAction::SystemHardQuit:
+    case InputAction::MapMakerToggle:
       return InputActionGroup::System;
     case InputAction::PlayerMoveX:
     case InputAction::PlayerMoveY:

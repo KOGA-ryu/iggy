@@ -174,6 +174,44 @@ int main() {
   ok &= expect(framedOnlyBridge.physicsDebugItemCount == 3U,
                "physics debug bridge can count framed items by kind");
 
+  iggy3d::ProductPrimitiveDrawList mapMakerDrawList;
+  iggy3d::ProductPrimitiveDrawItem minor =
+      drawItem(iggy3d::ProductPrimitiveDrawKind::MapMakerGridDot,
+               0,
+               "map_maker.grid_dot",
+               false);
+  minor.markerSize = 8.0F;
+  iggy3d::ProductPrimitiveDrawItem major =
+      drawItem(iggy3d::ProductPrimitiveDrawKind::MapMakerGridDot,
+               0,
+               "map_maker.grid_major_dot",
+               false);
+  major.markerSize = 13.0F;
+  mapMakerDrawList.items.push_back(minor);
+  mapMakerDrawList.items.push_back(major);
+  mapMakerDrawList.itemCount =
+      static_cast<std::uint64_t>(mapMakerDrawList.items.size());
+  mapMakerDrawList.mapMakerGridVisible = true;
+  mapMakerDrawList.mapMakerGridDotCount = 2U;
+  mapMakerDrawList.mapMakerMajorGridDotCount = 1U;
+  iggy3d::ProductViewportFrame mapMakerFrame =
+      iggy3d::buildProductViewportFrame(mapMakerDrawList, {});
+  const iggy3d::ProductRenderBridgeFrame mapMakerBridge =
+      iggy3d::buildProductRenderBridgeFrame(&mapMakerDrawList,
+                                            &mapMakerFrame,
+                                            nullptr);
+  ok &= expect(mapMakerBridge.mapMakerGridVisible,
+               "map maker bridge visible copied");
+  ok &= expect(mapMakerBridge.mapMakerGridDotCount == 2U,
+               "map maker bridge dot count");
+  ok &= expect(mapMakerBridge.mapMakerMajorGridDotCount == 1U,
+               "map maker bridge major dot count");
+  ok &= expect(mapMakerBridge.targetItemCount == 0U,
+               "map maker dots are not target items");
+  ok &= expect(mapMakerBridge.items[0].kind ==
+                   iggy3d::ProductPrimitiveDrawKind::MapMakerGridDot,
+               "map maker bridge item kind copied");
+
   if (!ok) {
     return 1;
   }

@@ -350,6 +350,7 @@ void drawRoomTile(SDL_Renderer& renderer, const ProductViewportFramedItem& frame
     case ProductPrimitiveDrawKind::PhysicsAabbDebug:
     case ProductPrimitiveDrawKind::PhysicsContactNormalDebug:
     case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
+    case ProductPrimitiveDrawKind::MapMakerGridDot:
       break;
   }
 }
@@ -597,6 +598,9 @@ void drawPrimitiveItem(SDL_Renderer& renderer, const ProductViewportFramedItem& 
       return;
     case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
       drawPhysicsBroadphasePairDebugMarker(renderer, framed);
+      return;
+    case ProductPrimitiveDrawKind::MapMakerGridDot:
+      drawMarker(renderer, framed);
       return;
     case ProductPrimitiveDrawKind::FloorTile:
     case ProductPrimitiveDrawKind::ElevatedFloorTile:

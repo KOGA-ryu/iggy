@@ -852,6 +852,65 @@ bool vulkanGameplayFrameCarriesPositionHudUiOverlay() {
                 "hidden position hud no glyph quads");
 }
 
+bool creativeMapMakerFrameCarriesGridOverlay() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "map maker frame session created")) {
+    return false;
+  }
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.viewport.creativeFlyAnchorValid = true;
+  window.viewport.creativeFlyPositionMeters = {0.0F, 2.0F, 0.0F};
+
+  const iggy3d::ProductGameplayProjectionFrame projection =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session, window, false, false, iggy3d::ProductRendererRequest::Vulkan});
+  iggy3d::applyGameplayProjectionMetrics(window,
+                                         projection.scenePtr(),
+                                         projection.debugPtr(),
+                                         projection.drawListPtr(),
+                                         projection.viewportFramePtr(),
+                                         projection.renderBridgePtr(),
+                                         projection.viewVisible);
+  iggy3d::ProductVulkanGameplayFrame vulkanFrame =
+      iggy3d::buildProductVulkanGameplayFrame(
+          projection,
+          14U,
+          1280U,
+          720U,
+          window.viewport.cameraYawDegrees,
+          window.viewport.cameraPitchDegrees);
+  const iggy3d::FrameInput& frameInput =
+      iggy3d::refreshProductVulkanGameplayFrameInput(vulkanFrame);
+
+  return expect(projection.mapMakerGrid.visible, "map maker grid visible") &&
+         expect(projection.mapMakerGrid.dotCount > 0U,
+                "map maker grid dot count positive") &&
+         expect(projection.mapMakerGridOverlay.visible,
+                "map maker overlay visible") &&
+         expect(projection.mapMakerHud.visible, "map maker hud visible") &&
+         expect(projection.cameraAnchorOverrideAvailable,
+                "map maker camera override available") &&
+         expect(projection.drawList.mapMakerGridVisible,
+                "map maker draw-list visible") &&
+         expect(projection.drawList.mapMakerGridDotCount ==
+                    projection.mapMakerGrid.dotCount,
+                "map maker draw-list dot count") &&
+         expect(projection.renderBridge.mapMakerGridVisible,
+                "map maker render bridge visible") &&
+         expect(window.mapMakerActive, "map maker window active") &&
+         expect(window.mapMakerGridVisible, "map maker window grid visible") &&
+         expect(window.viewport.productDrawMapMakerGridVisible,
+                "map maker draw receipt visible") &&
+         expect(window.viewport.productRenderBridgeMapMakerGridVisible,
+                "map maker bridge receipt visible") &&
+         expect(frameInput.ui.visible, "map maker vulkan UI visible") &&
+         expect(frameInput.ui.rectCount > 0U, "map maker vulkan rects") &&
+         expect(frameInput.ui.textGlyphCount > 0U,
+                "map maker hud vulkan text");
+}
+
 }  // namespace
 
 int main() {
@@ -863,7 +922,8 @@ int main() {
                   productPhysicsDebugGeometryFromMovementStatsWhenGatedOn() &&
                   productPhysicsDebugGeometryRequiresDebugOverlayGate() &&
                   productReceiptCarriesFirstPersonRoomPathProof() &&
-                  vulkanGameplayFrameCarriesPositionHudUiOverlay();
+                  vulkanGameplayFrameCarriesPositionHudUiOverlay() &&
+                  creativeMapMakerFrameCarriesGridOverlay();
   if (!ok) {
     return EXIT_FAILURE;
   }

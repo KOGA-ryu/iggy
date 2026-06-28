@@ -334,6 +334,70 @@ const ProductRoomEditorPlacementPreviewResult* activeRoomEditorPlacementPreview(
   return nullptr;
 }
 
+Vec3 playerAnchorFromScene(const SceneProjectionResult& scene, bool& found) {
+  for (const SceneItem& item : scene.items) {
+    // branch-gate: BG-1205
+    if (item.kind == SceneItemKind::Player || item.stableName == "player") {
+      found = true;
+      return item.transform.position;
+    }
+  }
+  found = false;
+  return {};
+}
+
+Vec3 mapMakerAnchorFor(ProductAppWindowState& window,
+                       const SceneProjectionResult& scene) {
+  // branch-gate: BG-1205
+  if (window.viewport.creativeFlyAnchorValid) {
+    return window.viewport.creativeFlyPositionMeters;
+  }
+  bool playerFound = false;
+  const Vec3 playerPosition = playerAnchorFromScene(scene, playerFound);
+  // branch-gate: BG-1205
+  if (playerFound) {
+    window.viewport.creativeFlyPositionMeters = playerPosition;
+    window.viewport.creativeFlyAnchorValid = true;
+    return playerPosition;
+  }
+  return {};
+}
+
+ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
+    ProductAppWindowState& window,
+    const SceneProjectionResult& scene) {
+  const bool active = window.gameplayActive &&
+                      window.interactionMode == ProductInteractionMode::Creative;
+  window.mapMakerActive = active;
+  // branch-gate: BG-1205
+  window.mapMakerStatus = active ? "map_maker_active" : "map_maker_inactive";
+  window.mapMakerReasonCode = window.mapMakerStatus;
+  // branch-gate: BG-1205
+  if (!active) {
+    window.viewport.creativeFlyActive = false;
+    window.viewport.creativeFlyStatus = "creative_fly_not_requested";
+    window.viewport.creativeFlyReasonCode = window.viewport.creativeFlyStatus;
+    window.viewport.creativeFlySpeedMetersPerSecond = 0.0F;
+  }
+  const Vec3 anchor = mapMakerAnchorFor(window, scene);
+  ProductMapMakerGridConfig config;
+  config.enabled = active;
+  config.anchorWorld = anchor;
+  config.planeY = std::floor(anchor.y);
+  const ProductMapMakerGridSnapshot grid =
+      buildProductMapMakerGridSnapshot(config);
+  window.mapMakerGridVisible = grid.visible;
+  window.mapMakerGridStatus =
+      std::string(productMapMakerGridStatusName(grid.status));
+  window.mapMakerGridReasonCode = grid.reasonCode;
+  window.mapMakerGridPitchMeters = grid.pitchMeters;
+  window.mapMakerGridMajorStepMeters = grid.majorStepMeters;
+  window.mapMakerGridPlaneY = grid.planeY;
+  window.mapMakerGridDotCount = grid.dotCount;
+  window.mapMakerGridMajorDotCount = grid.majorDotCount;
+  return grid;
+}
+
 void applyGameplayProjectionMetrics(ProductAppWindowState& window,
                                     const SceneProjectionResult* scene,
                                     const DebugProjectionResult* debug,
@@ -373,6 +437,9 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productDrawPhysicsDebugItemCount = 0;
     window.viewport.productDrawPhysicsAabbDebugCount = 0;
     window.viewport.productDrawPhysicsContactNormalDebugCount = 0;
+    window.viewport.productDrawMapMakerGridVisible = false;
+    window.viewport.productDrawMapMakerGridDotCount = 0;
+    window.viewport.productDrawMapMakerMajorGridDotCount = 0;
     window.viewport.productViewProjection = "primitive_first_person";
     window.viewport.productViewYawApplied = false;
     window.viewport.productViewPitchApplied = false;
@@ -392,6 +459,9 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productRenderBridgePhysicsDebugItemCount = 0;
     window.viewport.productRenderBridgePhysicsAabbDebugCount = 0;
     window.viewport.productRenderBridgePhysicsContactNormalDebugCount = 0;
+    window.viewport.productRenderBridgeMapMakerGridVisible = false;
+    window.viewport.productRenderBridgeMapMakerGridDotCount = 0;
+    window.viewport.productRenderBridgeMapMakerMajorGridDotCount = 0;
     window.viewport.productFeedbackBridgeReady = false;
     window.viewport.productFeedbackBridgeLineCount = 0;
     clearProductVulkanRoomMeshProof(window.viewport);
@@ -401,6 +471,18 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.roomVisible = false;
     window.objectiveVisible = false;
     window.rendererMutatedRuntime = false;
+    window.viewport.creativeFlyActive = false;
+    window.viewport.creativeFlyStatus = "creative_fly_not_requested";
+    window.viewport.creativeFlyReasonCode = window.viewport.creativeFlyStatus;
+    window.viewport.creativeFlySpeedMetersPerSecond = 0.0F;
+    window.mapMakerActive = false;
+    window.mapMakerStatus = "map_maker_inactive";
+    window.mapMakerReasonCode = window.mapMakerStatus;
+    window.mapMakerGridVisible = false;
+    window.mapMakerGridStatus = "map_maker_grid_disabled";
+    window.mapMakerGridReasonCode = window.mapMakerGridStatus;
+    window.mapMakerGridDotCount = 0;
+    window.mapMakerGridMajorDotCount = 0;
     return;
   }
 
@@ -458,6 +540,12 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
         drawList->physicsAabbDebugCount;
     window.viewport.productDrawPhysicsContactNormalDebugCount =
         drawList->physicsContactNormalDebugCount;
+    window.viewport.productDrawMapMakerGridVisible =
+        drawList->mapMakerGridVisible;
+    window.viewport.productDrawMapMakerGridDotCount =
+        drawList->mapMakerGridDotCount;
+    window.viewport.productDrawMapMakerMajorGridDotCount =
+        drawList->mapMakerMajorGridDotCount;
   }
   // branch-gate: BG-1025
   if (frame != nullptr) {
@@ -491,6 +579,12 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
         bridge->physicsAabbDebugCount;
     window.viewport.productRenderBridgePhysicsContactNormalDebugCount =
         bridge->physicsContactNormalDebugCount;
+    window.viewport.productRenderBridgeMapMakerGridVisible =
+        bridge->mapMakerGridVisible;
+    window.viewport.productRenderBridgeMapMakerGridDotCount =
+        bridge->mapMakerGridDotCount;
+    window.viewport.productRenderBridgeMapMakerMajorGridDotCount =
+        bridge->mapMakerMajorGridDotCount;
     window.viewport.productFeedbackBridgeReady = bridge->feedbackReady;
     window.viewport.productFeedbackBridgeLineCount = bridge->feedbackLineCount;
   }
@@ -564,6 +658,14 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
       request.activeSession->state(),
       request.developerToolsEnabled,
       request.debugOverlayEnabled);
+  frame.mapMakerGrid = buildMapMakerGridForFrame(window, frame.scene);
+  frame.mapMakerGridOverlay =
+      buildProductMapMakerGridOverlay(frame.mapMakerGrid);
+  frame.mapMakerHud = buildProductMapMakerHud(window.mapMakerActive,
+                                              frame.mapMakerGrid);
+  frame.cameraAnchorOverrideAvailable =
+      window.mapMakerActive && window.viewport.creativeFlyAnchorValid;
+  frame.cameraAnchorOverrideMeters = window.viewport.creativeFlyPositionMeters;
   frame.roomEditorOverlay =
       buildProductRoomEditorOverlay(window.roomEditorCursor, window.roomEditing.ready);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
@@ -584,7 +686,8 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                                  activeRoom,
                                                  &window.activeRoomCollision,
                                                  &frame.roomEditorOverlay,
-                                                 &frame.roomEditorPreviewOverlay);
+                                                 &frame.roomEditorPreviewOverlay,
+                                                 &frame.mapMakerGridOverlay);
   frame.topDownMapOverlay = buildTopDownMapOverlay(
       TopDownMapOverlayRequest{request.rendererRequest,
                                       window.interactionMode,
@@ -593,8 +696,14 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                       frame.drawList.itemCount});
   copyTopDownMapOverlay(window, frame.topDownMapOverlay);
   frame.viewportFrame = buildProductViewportFrame(
-      frame.drawList, ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
-                                                window.viewport.cameraPitchDegrees});
+      frame.drawList,
+      ProductViewportFrameConfig{window.viewport.cameraYawDegrees,
+                                 window.viewport.cameraPitchDegrees,
+                                 92.0F,
+                                 640.0F,
+                                 394.0F,
+                                 frame.cameraAnchorOverrideAvailable,
+                                 frame.cameraAnchorOverrideMeters});
   frame.hasGameplayProjection = true;
   frame.viewVisible = true;
   frame.sceneItemCount = frame.scene.items.size();
@@ -640,7 +749,9 @@ FrameInput makeProductVulkanFrame(const SceneProjectionResult& scene,
                                   std::uint32_t viewportWidth,
                                   std::uint32_t viewportHeight,
                                   float cameraYawDegrees,
-                                  float cameraPitchDegrees) {
+                                  float cameraPitchDegrees,
+                                  bool cameraAnchorOverrideAvailable,
+                                  Vec3 cameraAnchorOverrideMeters) {
   constexpr float kPi = 3.14159265358979323846F;
   constexpr float kEyeHeightMeters = 1.7F;
   FrameInput frame;
@@ -656,6 +767,10 @@ FrameInput makeProductVulkanFrame(const SceneProjectionResult& scene,
       eye = item.transform.position + Vec3{0.0F, kEyeHeightMeters, 0.0F};
       break;
     }
+  }
+  // branch-gate: BG-1205
+  if (cameraAnchorOverrideAvailable) {
+    eye = cameraAnchorOverrideMeters + Vec3{0.0F, kEyeHeightMeters, 0.0F};
   }
   const float yaw = cameraYawDegrees * kPi / 180.0F;
   const float pitch = cameraPitchDegrees * kPi / 180.0F;

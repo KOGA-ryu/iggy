@@ -56,6 +56,9 @@ target_sources(iggy3d
     src/app/iggy3d/input/InteractionMode.cpp
     src/app/iggy3d/debug/InteractionModeHud.cpp
     src/app/iggy3d/input/InteractionModeState.cpp
+    src/app/iggy3d/map_maker/CreativeFly.cpp
+    src/app/iggy3d/map_maker/Grid.cpp
+    src/app/iggy3d/map_maker/Presentation.cpp
     src/app/iggy3d/menu/Transitions.cpp
     src/app/iggy3d/window/MouseCapturePolicy.cpp
     src/app/iggy3d/debug/MovementDebugHud.cpp

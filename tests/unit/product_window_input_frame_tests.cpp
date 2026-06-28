@@ -982,6 +982,61 @@ bool sdlFunctionKeyEventsMarkKeyboardStateConsumed() {
   return noneOk && f2Ok && f3Ok;
 }
 
+bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  iggy3d::FrontendSettings settings;
+
+  const iggy3d::ProductMenuActionResult enabled =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::MapMakerToggle,
+          {frontend, window, closeRequested, &settings});
+  const bool enabledOk =
+      expect(enabled.handled, "map maker toggle handled") &&
+      expect(enabled.accepted, "map maker toggle accepted") &&
+      expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+             "map maker toggle enters creative") &&
+      expect(window.mapMakerActive, "map maker active") &&
+      expect(window.mapMakerStatus == "map_maker_enabled",
+             "map maker enabled status") &&
+      expect(frontend.status == "map_maker_enabled",
+             "map maker frontend status");
+
+  const iggy3d::ProductMenuActionResult disabled =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::MapMakerToggle,
+          {frontend, window, closeRequested, &settings});
+  const bool disabledOk =
+      expect(disabled.handled, "map maker disable handled") &&
+      expect(disabled.accepted, "map maker disable accepted") &&
+      expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+             "map maker toggle returns player") &&
+      expect(!window.mapMakerActive, "map maker inactive") &&
+      expect(window.mapMakerStatus == "map_maker_disabled",
+             "map maker disabled status") &&
+      expect(!window.viewport.creativeFlyActive,
+             "map maker disable clears creative fly active");
+
+  iggy3d::FrontendState starter = starterFrontend();
+  iggy3d::ProductAppWindowState inactiveWindow;
+  const iggy3d::ProductMenuActionResult ignored =
+      iggy3d::applyProductSystemPauseMenuAction(
+          iggy3d::InputAction::MapMakerToggle,
+          {starter, inactiveWindow, closeRequested, &settings});
+  const bool ignoredOk =
+      expect(ignored.handled, "inactive map maker toggle handled") &&
+      expect(!ignored.accepted, "inactive map maker toggle rejected") &&
+      expect(inactiveWindow.interactionMode ==
+                 iggy3d::ProductInteractionMode::Player,
+             "inactive map maker preserves player mode") &&
+      expect(inactiveWindow.mapMakerStatus == "map_maker_gameplay_inactive",
+             "inactive map maker status");
+
+  return enabledOk && disabledOk && ignoredOk;
+}
+
 }  // namespace
 
 int main() {
@@ -1004,7 +1059,8 @@ int main() {
       devToggleOpensAndClosesDevToolsSurfaces() &&
       debugOverlayActionTogglesRuntimeOverlaySetting() &&
       sdlFunctionKeyEventsMapToSystemActions() &&
-      sdlFunctionKeyEventsMarkKeyboardStateConsumed();
+      sdlFunctionKeyEventsMarkKeyboardStateConsumed() &&
+      mapMakerToggleUsesGameplayOnlyCreativeMode();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;

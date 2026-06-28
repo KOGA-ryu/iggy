@@ -47,6 +47,7 @@ bool isFloorKind(ProductPrimitiveDrawKind kind) {
     case ProductPrimitiveDrawKind::PhysicsAabbDebug:
     case ProductPrimitiveDrawKind::PhysicsContactNormalDebug:
     case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
+    case ProductPrimitiveDrawKind::MapMakerGridDot:
       return false;
   }
   return false;

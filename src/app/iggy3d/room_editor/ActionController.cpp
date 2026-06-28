@@ -383,6 +383,7 @@ ProductRoomEditorActionResult applyProductRoomEditorAction(
     case InputAction::SystemPause:
     case InputAction::SystemDevTools:
     case InputAction::SystemHardQuit:
+    case InputAction::MapMakerToggle:
     case InputAction::PlayerMoveX:
     case InputAction::PlayerMoveY:
     case InputAction::PlayerLookX:

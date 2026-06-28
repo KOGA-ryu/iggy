@@ -48,7 +48,12 @@ ProductViewportFrame buildProductViewportFrame(const ProductPrimitiveDrawList& d
   frame.yawApplied = config.cameraYawDegrees != 0.0F;
   frame.pitchApplied = config.cameraPitchDegrees != 0.0F;
 
-  const Vec3 anchor = cameraAnchorFor(drawList, frame.playerAnchorFound);
+  Vec3 anchor = cameraAnchorFor(drawList, frame.playerAnchorFound);
+  // branch-gate: BG-1205
+  if (config.cameraAnchorOverrideAvailable) {
+    anchor = config.cameraAnchorOverrideMeters;
+    frame.playerAnchorFound = true;
+  }
   const float yawRadians = config.cameraYawDegrees * kPi / 180.0F;
   const float cosYaw = std::cos(yawRadians);
   const float sinYaw = std::sin(yawRadians);

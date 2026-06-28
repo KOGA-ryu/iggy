@@ -35,6 +35,17 @@ struct ProductAppWindowState {
   std::string gamepadName = "unavailable";
   std::string gamepadMapping = "unavailable";
   ProductInteractionMode interactionMode = ProductInteractionMode::Player;
+  bool mapMakerActive = false;
+  std::string mapMakerStatus = "map_maker_inactive";
+  std::string mapMakerReasonCode = "map_maker_inactive";
+  bool mapMakerGridVisible = false;
+  std::string mapMakerGridStatus = "map_maker_grid_disabled";
+  std::string mapMakerGridReasonCode = "map_maker_grid_disabled";
+  float mapMakerGridPitchMeters = 1.0F;
+  float mapMakerGridMajorStepMeters = 5.0F;
+  float mapMakerGridPlaneY = 0.0F;
+  std::uint64_t mapMakerGridDotCount = 0;
+  std::uint64_t mapMakerGridMajorDotCount = 0;
   bool interactionModeHudVisible = false;
   std::string interactionModeHudStatus = "interaction_mode_hud_hidden";
   std::string interactionModeHudReasonCode = "interaction_mode_hud_hidden";

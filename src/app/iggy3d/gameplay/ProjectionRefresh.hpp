@@ -13,6 +13,7 @@
 #include "app/iggy3d/view/RenderBridge.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/debug/TopDownMapOverlay.hpp"
+#include "app/iggy3d/map_maker/Presentation.hpp"
 #include "app/iggy3d/view/ViewportFraming.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "projection/debug/DebugProjection.hpp"
@@ -50,10 +51,15 @@ struct ProductGameplayProjectionFrame {
   NpcBehaviorDebugHud npcBehaviorHud;
   PhysicsDebugHud physicsHud;
   PositionHud positionHud;
+  ProductMapMakerGridSnapshot mapMakerGrid;
+  ProductMapMakerGridOverlay mapMakerGridOverlay;
+  ProductMapMakerHud mapMakerHud;
   ProductRoomEditorHud roomEditorHud;
   ProductRoomEditorOverlay roomEditorOverlay;
   ProductRoomEditorPreviewOverlay roomEditorPreviewOverlay;
   ProductRenderBridgeFrame renderBridge;
+  bool cameraAnchorOverrideAvailable = false;
+  Vec3 cameraAnchorOverrideMeters;
   bool hasGameplayProjection = false;
   bool viewVisible = false;
   std::size_t sceneItemCount = 0;
@@ -99,7 +105,9 @@ FrameInput makeProductVulkanFrame(const SceneProjectionResult& scene,
                                   std::uint32_t viewportWidth,
                                   std::uint32_t viewportHeight,
                                   float cameraYawDegrees,
-                                  float cameraPitchDegrees);
+                                  float cameraPitchDegrees,
+                                  bool cameraAnchorOverrideAvailable = false,
+                                  Vec3 cameraAnchorOverrideMeters = {});
 
 void refreshProductGameplayProjectionMetrics(
     const ProductGameplayProjectionRefreshRequest& request);

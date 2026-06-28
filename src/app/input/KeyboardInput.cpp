@@ -116,6 +116,7 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
   const bool tabDown = keyDown(keys, SDL_SCANCODE_TAB);
   const bool devToggleDown = keyDown(keys, SDL_SCANCODE_F1) || keyDown(keys, SDL_SCANCODE_F2);
   const bool debugOverlayDown = keyDown(keys, SDL_SCANCODE_F3);
+  const bool mapMakerToggleDown = keyDown(keys, SDL_SCANCODE_M);
 
   InputAction action = InputAction::None;
   // branch-gate: BG-1037
@@ -124,6 +125,8 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
   } else if (devToggleDown && !state.devToggleWasDown) {  // branch-gate: BG-1037
     action = actionForInput(keyDown(keys, SDL_SCANCODE_F2) ? NeutralInput::KeyF2
                                                             : NeutralInput::KeyF1);
+  } else if (mapMakerToggleDown && !state.mapMakerToggleWasDown) {  // branch-gate: BG-1205
+    action = actionForInput(NeutralInput::KeyM);
   } else if (upDown && !state.upWasDown) {  // branch-gate: BG-1037
     action = actionForInput(NeutralInput::KeyUp);
   } else if (downDown && !state.downWasDown) {
@@ -150,6 +153,7 @@ InputAction pollKeyboardMenuAction(KeyboardInputState& state) {
   state.tabWasDown = tabDown;
   state.devToggleWasDown = devToggleDown;
   state.debugOverlayWasDown = debugOverlayDown;
+  state.mapMakerToggleWasDown = mapMakerToggleDown;
   return action;
 #else
   (void)state;
@@ -248,12 +252,16 @@ void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions
     recordAction(actions, InputAction::PlayerSprint, true, false, false, 1.0F);
   }
   // branch-gate: BG-1152
-  if (jumpDown && !state.jumpWasDown) {
-    recordAction(actions, InputAction::PlayerJump, true, true, false, 1.0F);
+  if (jumpDown) {
+    recordAction(actions, InputAction::PlayerJump, true, !state.jumpWasDown, false, 1.0F);
   }
   // branch-gate: BG-1154
   if (dashDown && !state.dashWasDown) {
     recordAction(actions, InputAction::PlayerDash, true, true, false, 1.0F);
+  }
+  // branch-gate: BG-1205
+  if (dashDown) {
+    recordAction(actions, InputAction::PlayerCrouch, true, false, false, 1.0F);
   }
   if (interactDown && !state.interactWasDown) {
     recordAction(actions, InputAction::PlayerInteract, true, true, false, 1.0F);

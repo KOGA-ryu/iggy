@@ -47,6 +47,9 @@ struct ProductRenderBridgeFrame {
   std::uint64_t physicsAabbDebugCount = 0;
   std::uint64_t physicsContactNormalDebugCount = 0;
   std::uint64_t physicsBroadphasePairDebugCount = 0;
+  bool mapMakerGridVisible = false;
+  std::uint64_t mapMakerGridDotCount = 0;
+  std::uint64_t mapMakerMajorGridDotCount = 0;
   std::string projectionMode = "primitive_first_person";
   std::vector<ProductRenderBridgeItem> items;
 };
