@@ -34,7 +34,26 @@ constexpr std::string_view kCourtyardVaultText =
     "#....K......#\n"
     "#############\n";
 
-constexpr std::array<ProductBuiltinDungeonDefinition, 3> kCatalog = {{
+constexpr std::string_view kPhysicsFlatRoomText =
+    "#######\n"
+    "#P....#\n"
+    "#.....#\n"
+    "#.....#\n"
+    "#######\n";
+
+constexpr std::string_view kPhysicsWallCorridorText =
+    "#########\n"
+    "#P......#\n"
+    "#########\n";
+
+constexpr std::string_view kPhysicsCornerSlideText =
+    "########\n"
+    "#P.....#\n"
+    "#####..#\n"
+    "#......#\n"
+    "########\n";
+
+constexpr std::array<ProductBuiltinDungeonDefinition, 6> kCatalog = {{
     ProductBuiltinDungeonDefinition{
         "Loop Keep",
         "loop_keep_ascii",
@@ -52,6 +71,24 @@ constexpr std::array<ProductBuiltinDungeonDefinition, 3> kCatalog = {{
         "courtyard_vault_ascii",
         "fixtures/rooms/ascii/courtyard_vault.iggyroom.txt",
         kCourtyardVaultText,
+    },
+    ProductBuiltinDungeonDefinition{
+        "Physics Flat Room",
+        "physics_flat_room",
+        "fixtures/rooms/ascii/physics_flat_room.iggyroom.txt",
+        kPhysicsFlatRoomText,
+    },
+    ProductBuiltinDungeonDefinition{
+        "Physics Wall Corridor",
+        "physics_wall_corridor",
+        "fixtures/rooms/ascii/physics_wall_corridor.iggyroom.txt",
+        kPhysicsWallCorridorText,
+    },
+    ProductBuiltinDungeonDefinition{
+        "Physics Corner Slide",
+        "physics_corner_slide",
+        "fixtures/rooms/ascii/physics_corner_slide.iggyroom.txt",
+        kPhysicsCornerSlideText,
     },
 }};
 
