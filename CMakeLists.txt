@@ -121,6 +121,7 @@ target_sources(iggy3d
     src/app/input/ActionState.cpp
     src/app/input/GamepadSystemControls.cpp
     src/app/input/InputAction.cpp
+    src/app/input/InputActionRegistry.cpp
     src/app/input/InputBindings.cpp
     src/app/input/InputDeviceEvent.cpp
     src/app/input/InputRouter.cpp

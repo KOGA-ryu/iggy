@@ -8,6 +8,7 @@
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
+#include "app/input/InputActionRegistry.hpp"
 #include "app/input/InputRouter.hpp"
 #include "content/assets/RoomAsset.hpp"
 #include "core/math/Transform3.hpp"
@@ -1221,6 +1222,25 @@ bool mapMakerToggleRoutesAsGameplayOwnedInput() {
   return expect(iggy3d::inputActionGroup(iggy3d::InputAction::MapMakerToggle) ==
                     iggy3d::InputActionGroup::Player,
                 "map maker toggle is gameplay input group") &&
+         expect(iggy3d::inputActionFeatureName(
+                    iggy3d::InputAction::MapMakerToggle) == "map_maker",
+                "map maker toggle feature metadata") &&
+         expect(iggy3d::inputActionOwnerName(
+                    iggy3d::InputAction::MapMakerToggle) == "gameplay",
+                "map maker toggle owner metadata") &&
+         expect(iggy3d::inputActionHandledBeforeMenu(
+                    iggy3d::InputAction::MapMakerToggle),
+                "map maker toggle is pre-menu gameplay action") &&
+         expect(iggy3d::inputActionKeepsGameplayActive(
+                    iggy3d::InputAction::MapMakerToggle),
+                "map maker toggle keeps gameplay active") &&
+         expect(iggy3d::inputActionFeatureName(
+                    iggy3d::InputAction::MovementTuningToggle) ==
+                    "movement_tuning",
+                "movement tuning toggle feature metadata") &&
+         expect(iggy3d::inputActionOwnerName(
+                    iggy3d::InputAction::DevToggle) == "overlay",
+                "dev toggle owner metadata") &&
          expect(gameplay.owner == iggy3d::MenuOwner::Gameplay,
                 "map maker gameplay route owner") &&
          expect(gameplay.accepted, "map maker accepted by gameplay owner") &&
