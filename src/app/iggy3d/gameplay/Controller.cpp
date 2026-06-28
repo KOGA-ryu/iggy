@@ -21,7 +21,10 @@ namespace iggy3d {
 namespace {
 
 constexpr std::string_view kManualFirstPersonMovementProfile = "manual_first_person";
+constexpr std::string_view kManualFirstPersonSprintMovementProfile =
+    "manual_first_person_sprint";
 constexpr float kManualFirstPersonMaxSpeedMetersPerSecond = 1.6F;
+constexpr float kManualFirstPersonSprintMaxSpeedMetersPerSecond = 3.2F;
 constexpr float kManualFirstPersonInputStepSeconds = 1.0F / 60.0F;
 constexpr float kPi = 3.14159265358979323846F;
 
@@ -165,23 +168,39 @@ void clearProductMovementDebug(ProductAppWindowState& window) {
   window.gameplayMovementGradePercent = 0.0F;
 }
 
-void recordProductMovementProfile(ProductAppWindowState& window) {
-  window.gameplayMovementProfile = std::string{kManualFirstPersonMovementProfile};
-  window.gameplayMovementMaxSpeedMetersPerSecond =
-      kManualFirstPersonMaxSpeedMetersPerSecond;
+float manualFirstPersonMaxSpeedMetersPerSecond(bool sprinting) {
+  // branch-gate: BG-1151
+  return sprinting ? kManualFirstPersonSprintMaxSpeedMetersPerSecond
+                   : kManualFirstPersonMaxSpeedMetersPerSecond;
 }
 
-Vec3 manualFirstPersonMoveDelta(float moveX, float moveY, float yawDegrees) {
+std::string_view manualFirstPersonMovementProfile(bool sprinting) {
+  // branch-gate: BG-1151
+  return sprinting ? kManualFirstPersonSprintMovementProfile
+                   : kManualFirstPersonMovementProfile;
+}
+
+void recordProductMovementProfile(ProductAppWindowState& window, bool sprinting) {
+  window.gameplayMovementProfile =
+      std::string{manualFirstPersonMovementProfile(sprinting)};
+  window.gameplayMovementMaxSpeedMetersPerSecond =
+      manualFirstPersonMaxSpeedMetersPerSecond(sprinting);
+}
+
+Vec3 manualFirstPersonMoveDelta(float moveX,
+                                float moveY,
+                                float yawDegrees,
+                                bool sprinting) {
   const float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
   const float scale = 1.0F / std::max(1.0F, magnitude);
-  constexpr float kStepMeters = kManualFirstPersonMaxSpeedMetersPerSecond *
-                                kManualFirstPersonInputStepSeconds;
+  const float stepMeters = manualFirstPersonMaxSpeedMetersPerSecond(sprinting) *
+                           kManualFirstPersonInputStepSeconds;
   const float yawRadians = yawDegrees * kPi / 180.0F;
   const float cosYaw = std::cos(yawRadians);
   const float sinYaw = std::sin(yawRadians);
   const Vec3 forward{sinYaw, 0.0F, -cosYaw};
   const Vec3 right{cosYaw, 0.0F, sinYaw};
-  return (right * moveX + forward * moveY) * (scale * kStepMeters);
+  return (right * moveX + forward * moveY) * (scale * stepMeters);
 }
 
 bool productMovementDebugChangedPosition(const ProductAppWindowState& window) {
@@ -468,6 +487,7 @@ void submitProductMove(Session& session,
                        ProductAppWindowState& window,
                        float moveX,
                        float moveY,
+                       bool sprinting,
                        std::string_view source,
                        const SpatialSurfaceSet* collisionSurfaces) {
   clearProductTargetProof(window);
@@ -480,10 +500,13 @@ void submitProductMove(Session& session,
   if (moveX == 0.0F && moveY == 0.0F) {
     return;
   }
-  recordProductMovementProfile(window);
+  recordProductMovementProfile(window, sprinting);
   Vec3 destination = actor->transform.position;
   destination = destination + manualFirstPersonMoveDelta(
-                                  moveX, moveY, window.viewport.cameraYawDegrees);
+                                  moveX,
+                                  moveY,
+                                  window.viewport.cameraYawDegrees,
+                                  sprinting);
 
   CommandRecord command;
   command.playerSlot = 0;
@@ -567,8 +590,10 @@ void applyProductGameplayActions(Session& session,
                                  const SpatialSurfaceSet* collisionSurfaces) {
   const float moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
   const float moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
+  const bool sprinting = actionIsDown(actions, InputAction::PlayerSprint);
   if (moveX != 0.0F || moveY != 0.0F) {
-    submitProductMove(session, window, moveX, moveY, source, collisionSurfaces);
+    submitProductMove(session, window, moveX, moveY, sprinting, source,
+                      collisionSurfaces);
   }
   if (actionWasPressed(actions, InputAction::PlayerInteract)) {
     submitProductTargetCommand(session, window, CommandKind::Interact, source,

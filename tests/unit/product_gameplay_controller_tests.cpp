@@ -16,8 +16,11 @@
 namespace {
 
 constexpr float kExpectedManualFirstPersonSpeedMetersPerSecond = 1.6F;
+constexpr float kExpectedManualFirstPersonSprintSpeedMetersPerSecond = 3.2F;
 constexpr float kExpectedManualFirstPersonStepMeters =
     kExpectedManualFirstPersonSpeedMetersPerSecond / 60.0F;
+constexpr float kExpectedManualFirstPersonSprintStepMeters =
+    kExpectedManualFirstPersonSprintSpeedMetersPerSecond / 60.0F;
 
 bool expect(bool condition, std::string_view message) {
   if (!condition) {
@@ -65,7 +68,9 @@ iggy3d::ActionState forwardMoveActions() {
   return actions;
 }
 
-iggy3d::ActionState manualMoveActions(float moveX, float moveY) {
+iggy3d::ActionState manualMoveActions(float moveX,
+                                      float moveY,
+                                      bool sprinting = false) {
   iggy3d::ActionState actions;
   if (moveX != 0.0F) {
     iggy3d::recordAction(actions, iggy3d::InputAction::PlayerMoveX, true, false,
@@ -74,6 +79,14 @@ iggy3d::ActionState manualMoveActions(float moveX, float moveY) {
   if (moveY != 0.0F) {
     iggy3d::recordAction(actions, iggy3d::InputAction::PlayerMoveY, true, false,
                          false, moveY);
+  }
+  if (sprinting) {
+    iggy3d::recordAction(actions,
+                         iggy3d::InputAction::PlayerSprint,
+                         true,
+                         false,
+                         false,
+                         1.0F);
   }
   return actions;
 }
@@ -209,6 +222,37 @@ bool productMoveNormalizesDiagonalToTunedStep() {
          expect(final.z < start.z, "diagonal includes forward movement");
 }
 
+bool productSprintUsesSprintProfileAndStep() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "sprint session created")) {
+    return false;
+  }
+
+  const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
+  iggy3d::applyProductGameplayActions(*session,
+                                      manualMoveActions(0.0F, 1.0F, true),
+                                      window,
+                                      "unit/gameplay_controller_sprint");
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+
+  return expect(window.gameplayCommandAccepted, "sprint move accepted") &&
+         expect(window.gameplayMovementStatus == "moved",
+                "sprint movement status") &&
+         expect(window.gameplayMovementProfile == "manual_first_person_sprint",
+                "sprint movement profile") &&
+         expect(nearlyEqual(window.gameplayMovementMaxSpeedMetersPerSecond,
+                            kExpectedManualFirstPersonSprintSpeedMetersPerSecond),
+                "sprint movement speed") &&
+         expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
+                            kExpectedManualFirstPersonSprintStepMeters),
+                "sprint horizontal distance is sprint step") &&
+         expect(nearlyEqual(final.x - start.x, 0.0F), "sprint x unchanged") &&
+         expect(nearlyEqual(final.z - start.z,
+                            -kExpectedManualFirstPersonSprintStepMeters),
+                "sprint moves forward by sprint step");
+}
+
 bool defaultOffMoveWithCollisionSurfacesUsesLegacyPath() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -316,6 +360,7 @@ int main() {
                   productWasdUsesCameraRelativeYawZero() &&
                   productMoveUsesCameraYaw() &&
                   productMoveNormalizesDiagonalToTunedStep() &&
+                  productSprintUsesSprintProfileAndStep() &&
                   defaultOffMoveWithCollisionSurfacesUsesLegacyPath() &&
                   optInMoveWithCollisionSurfacesUsesPhysicsPlanner() &&
                   optInMoveWithoutCollisionSurfacesRecordsNoSurfaces();

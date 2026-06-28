@@ -27,6 +27,7 @@ enum class InputAction : std::uint8_t {
   PlayerLookY,
   PlayerJump,
   PlayerCrouch,
+  PlayerSprint,
   PlayerDash,
   PlayerInteract,
   PlayerAttack,

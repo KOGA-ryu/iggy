@@ -40,6 +40,8 @@ std::string_view inputActionName(InputAction action) {
       return "game.jump";
     case InputAction::PlayerCrouch:
       return "game.crouch";
+    case InputAction::PlayerSprint:
+      return "game.sprint";
     case InputAction::PlayerDash:
       return "game.dash";
     case InputAction::PlayerInteract:
@@ -121,6 +123,7 @@ InputActionGroup inputActionGroup(InputAction action) {
     case InputAction::PlayerLookY:
     case InputAction::PlayerJump:
     case InputAction::PlayerCrouch:
+    case InputAction::PlayerSprint:
     case InputAction::PlayerDash:
     case InputAction::PlayerInteract:
     case InputAction::PlayerAttack:

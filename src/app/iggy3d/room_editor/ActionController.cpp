@@ -389,6 +389,7 @@ ProductRoomEditorActionResult applyProductRoomEditorAction(
     case InputAction::PlayerLookY:
     case InputAction::PlayerJump:
     case InputAction::PlayerCrouch:
+    case InputAction::PlayerSprint:
     case InputAction::PlayerDash:
     case InputAction::PlayerInteract:
     case InputAction::PlayerAttack:
