@@ -135,3 +135,5 @@ BG-1134	src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp	authored object proje
 BG-1135	src/runtime/save/SaveCodec.cpp	backward-compatible authored room object decode policy	codex	2026-06-28
 BG-1136	src/app/iggy3d/automation/Automation.cpp	world setup builtin dungeon selector receipt index policy	codex	2026-06-28
 BG-1137	src/app/iggy3d/Operations.cpp	world setup create selected dungeon receipt index policy	codex	2026-06-28
+BG-1138	src/app/iggy3d/window/InputFrame.cpp	new world mouse dungeon selector routing policy	codex	2026-06-28
+BG-1139	src/app/iggy3d/view/OpeningMenuView.cpp	new world mouse dungeon selector label visibility policy	codex	2026-06-28

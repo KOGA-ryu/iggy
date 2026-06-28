@@ -411,10 +411,6 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       // branch-gate: BG-1029
       if (hit.area == OpeningMenuHitArea::StarterAction) {
         context.frontend.selectedAction = hit.action;
-        // branch-gate: BG-1122
-        if (context.frontend.screen == FrontendScreen::Starter) {
-          context.frontend.childScreen = FrontendScreen::Gameplay;
-        }
         routeProductOpeningMenuInput(mouseClickAction(click), actionState, menuContext);
       // branch-gate: BG-1029
       } else if (hit.area == OpeningMenuHitArea::DevToolsCategory) {
@@ -430,6 +426,12 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       // branch-gate: BG-1029
       } else if (hit.area == OpeningMenuHitArea::NewWorldBack) {
         routeProductOpeningMenuInput(InputAction::MenuBack, actionState, menuContext);
+      // branch-gate: BG-1138
+      } else if (hit.area == OpeningMenuHitArea::NewWorldPreviousDungeon) {
+        routeProductOpeningMenuInput(InputAction::MenuLeft, actionState, menuContext);
+      // branch-gate: BG-1138
+      } else if (hit.area == OpeningMenuHitArea::NewWorldNextDungeon) {
+        routeProductOpeningMenuInput(InputAction::MenuRight, actionState, menuContext);
       // branch-gate: BG-1029
       } else if (hit.area == OpeningMenuHitArea::LoadSaveSlot) {
         // branch-gate: BG-1122

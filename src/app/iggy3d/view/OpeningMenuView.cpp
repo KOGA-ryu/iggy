@@ -836,6 +836,10 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
            452.0F,
            508.0F,
            2.0F);
+  // branch-gate: BG-1139
+  drawText(renderer, dungeonDraftEditMode ? "" : "PREV", 452.0F, 556.0F, 2.0F);
+  // branch-gate: BG-1139
+  drawText(renderer, dungeonDraftEditMode ? "" : "NEXT", 570.0F, 556.0F, 2.0F);
   drawText(renderer, "BACK", 850.0F, 508.0F, 2.0F);
 }
 
@@ -1024,6 +1028,20 @@ OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, floa
       OpeningMenuHitTestResult result;
       result.hit = true;
       result.area = OpeningMenuHitArea::NewWorldBack;
+      return result;
+    }
+    // branch-gate: BG-1121
+    if (x >= 430.0F && x <= 540.0F && y >= 542.0F && y <= 586.0F) {
+      OpeningMenuHitTestResult result;
+      result.hit = true;
+      result.area = OpeningMenuHitArea::NewWorldPreviousDungeon;
+      return result;
+    }
+    // branch-gate: BG-1121
+    if (x >= 550.0F && x <= 680.0F && y >= 542.0F && y <= 586.0F) {
+      OpeningMenuHitTestResult result;
+      result.hit = true;
+      result.area = OpeningMenuHitArea::NewWorldNextDungeon;
       return result;
     }
   }

@@ -435,6 +435,10 @@ bool childPanelHitTestsExposeMenuActions() {
       iggy3d::openingMenuActionAt(frontend, 452.0F, 508.0F);
   const iggy3d::OpeningMenuHitTestResult newWorldBackHit =
       iggy3d::openingMenuActionAt(frontend, 850.0F, 508.0F);
+  const iggy3d::OpeningMenuHitTestResult newWorldPreviousHit =
+      iggy3d::openingMenuActionAt(frontend, 452.0F, 556.0F);
+  const iggy3d::OpeningMenuHitTestResult newWorldNextHit =
+      iggy3d::openingMenuActionAt(frontend, 570.0F, 556.0F);
 
   frontend.childScreen = iggy3d::FrontendScreen::LoadSave;
   const iggy3d::OpeningMenuHitTestResult slotHit =
@@ -458,6 +462,14 @@ bool childPanelHitTestsExposeMenuActions() {
          expect(newWorldBackHit.hit, "new world back hit") &&
          expect(newWorldBackHit.area == iggy3d::OpeningMenuHitArea::NewWorldBack,
                 "new world back area") &&
+         expect(newWorldPreviousHit.hit, "new world previous dungeon hit") &&
+         expect(newWorldPreviousHit.area ==
+                    iggy3d::OpeningMenuHitArea::NewWorldPreviousDungeon,
+                "new world previous dungeon area") &&
+         expect(newWorldNextHit.hit, "new world next dungeon hit") &&
+         expect(newWorldNextHit.area ==
+                    iggy3d::OpeningMenuHitArea::NewWorldNextDungeon,
+                "new world next dungeon area") &&
          expect(slotHit.hit, "load save slot hit") &&
          expect(slotHit.area == iggy3d::OpeningMenuHitArea::LoadSaveSlot,
                 "load save slot area") &&

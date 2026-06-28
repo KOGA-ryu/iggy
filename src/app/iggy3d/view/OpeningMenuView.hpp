@@ -41,6 +41,8 @@ enum class OpeningMenuHitArea {
   DevToolsCategory,
   NewWorldCreate,
   NewWorldBack,
+  NewWorldPreviousDungeon,
+  NewWorldNextDungeon,
   LoadSaveSlot,
   LoadSaveLoad,
   LoadSaveDelete,
