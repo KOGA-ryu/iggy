@@ -11,6 +11,7 @@
 #include "runtime/command/Command.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/movement/MovementSystem.hpp"
+#include "runtime/movement/MovementTraversal.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
 #include "runtime/replay/StateHash.hpp"
 #include "runtime/session/Session.hpp"
@@ -152,6 +153,7 @@ void submitProductGameplayCommand(Session& session,
                                   ProductAppWindowState& window,
                                   CommandRecord command,
                                   const SpatialSurfaceSet* collisionSurfaces);
+Vec3 manualFirstPersonDirection(float moveX, float moveY, float yawDegrees);
 
 TargetQueryResult queryProductGameplayTarget(const Session& session, CommandKind kind) {
   const EntityId actor = productPlayerActor(session);
@@ -239,6 +241,90 @@ void rejectProductJump(ProductAppWindowState& window,
   window.gameplayJumpReasonCode = std::string{reason};
 }
 
+void clearProductTraversalProof(ProductAppWindowState& window) {
+  window.gameplayTraversalRequested = false;
+  window.gameplayTraversalConsumed = false;
+  window.gameplayTraversalAccepted = false;
+  window.gameplayTraversalFallbackJumpAllowed = false;
+  window.gameplayTraversalStatus = "not_requested";
+  window.gameplayTraversalReasonCode = "not_requested";
+  window.gameplayTraversalMechanic = "none";
+  window.gameplayTraversalSlotId = "none";
+  window.gameplayTraversalTargetId = "none";
+  window.gameplayTraversalLandingSurfaceId = "none";
+  window.gameplayTraversalStartX = 0.0F;
+  window.gameplayTraversalStartY = 0.0F;
+  window.gameplayTraversalStartZ = 0.0F;
+  window.gameplayTraversalFinalX = 0.0F;
+  window.gameplayTraversalFinalY = 0.0F;
+  window.gameplayTraversalFinalZ = 0.0F;
+}
+
+void recordProductTraversalProof(ProductAppWindowState& window,
+                                 const TraversalIntentResult& result) {
+  window.gameplayTraversalRequested = result.requested;
+  window.gameplayTraversalConsumed = result.consumedInput;
+  window.gameplayTraversalAccepted = result.accepted;
+  window.gameplayTraversalFallbackJumpAllowed = result.fallbackJumpAllowed;
+  window.gameplayTraversalStatus = traversalIntentStatusName(result.status);
+  // branch-gate: BG-1156
+  window.gameplayTraversalReasonCode =
+      result.reasonCode == nullptr ? "unknown" : result.reasonCode;
+  // branch-gate: BG-1156
+  window.gameplayTraversalMechanic =
+      result.traversalAttempted ? traversalMechanicName(result.selectedMechanic)
+                                : "none";
+  // branch-gate: BG-1156
+  window.gameplayTraversalSlotId =
+      result.traversal.slotId.empty() ? "none" : result.traversal.slotId;
+  // branch-gate: BG-1156
+  window.gameplayTraversalTargetId =
+      result.traversal.targetId.empty() ? "none" : result.traversal.targetId;
+  // branch-gate: BG-1156
+  window.gameplayTraversalLandingSurfaceId =
+      result.traversal.landingSurfaceId.empty() ? "none"
+                                                : result.traversal.landingSurfaceId;
+  window.gameplayTraversalStartX = result.traversal.start.x;
+  window.gameplayTraversalStartY = result.traversal.start.y;
+  window.gameplayTraversalStartZ = result.traversal.start.z;
+  window.gameplayTraversalFinalX = result.traversal.finalPosition.x;
+  window.gameplayTraversalFinalY = result.traversal.finalPosition.y;
+  window.gameplayTraversalFinalZ = result.traversal.finalPosition.z;
+}
+
+bool tryProductTraversalJump(Session& session, ProductAppWindowState& window) {
+  clearProductTraversalProof(window);
+  const SpatialSurfaceSet* surfaces =
+      productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+  // branch-gate: BG-1156
+  if (!window.activeRoom.loaded || surfaces == nullptr) {
+    return false;
+  }
+
+  TraversalIntentRequest request;
+  request.actor = productPlayerActor(session);
+  request.jumpPressed = true;
+  request.forward = manualFirstPersonDirection(0.0F,
+                                               1.0F,
+                                               window.viewport.cameraYawDegrees);
+  request.room = &window.activeRoom.room;
+  request.collisionSurfaces = surfaces;
+
+  SessionState& state = session.mutableStateForOwnedSystems();
+  const TraversalIntentResult result = executeTraversalIntent(state.world, request);
+  recordProductTraversalProof(window, result);
+  // branch-gate: BG-1156
+  if (result.traversalAttempted) {
+    state.currentStateHash = computeStateHash(state);
+    window.runtimeStateHash = session.stateHash();
+  }
+  // branch-gate: BG-1156
+  if (result.accepted) {
+    window.playerPositionChanged = true;
+  }
+  return result.consumedInput;
+}
+
 void advanceProductJump(Session& session, ProductAppWindowState& window) {
   // branch-gate: BG-1153
   if (!window.gameplayJumpActive) {
@@ -309,6 +395,16 @@ void submitProductJump(Session& session,
   window.gameplayInputUsed = true;
   window.gameplayInputSource = std::string{source};
   window.gameplayJumpRequested = true;
+
+  // branch-gate: BG-1156
+  if (tryProductTraversalJump(session, window)) {
+    window.gameplayJumpAccepted = false;
+    // branch-gate: BG-1156
+    window.gameplayJumpStatus = window.gameplayTraversalAccepted ? "traversal"
+                                                                 : "traversal_rejected";
+    window.gameplayJumpReasonCode = window.gameplayTraversalReasonCode;
+    return;
+  }
 
   // branch-gate: BG-1153
   if (window.gameplayJumpActive) {

@@ -9,8 +9,12 @@
 #include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/input/ActionState.hpp"
+#include "content/assets/RoomAsset.hpp"
+#include "core/math/Transform3.hpp"
 #include "core/math/Vec3.hpp"
+#include "runtime/replay/StateHash.hpp"
 #include "runtime/session/Session.hpp"
+#include "runtime/session/SessionState.hpp"
 #include "runtime/world/WorldState.hpp"
 
 namespace {
@@ -61,6 +65,119 @@ const iggy3d::EntityState* playerEntity(const iggy3d::Session& session) {
 const iggy3d::SpatialSurfaceSet* activeSurfaces(
     const iggy3d::ProductAppWindowState& window) {
   return iggy3d::productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+}
+
+iggy3d::RoomSpatialSurface clamberFloorSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "floor";
+  surface.sourceStaticMeshId = "floor_mesh";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {-10.0F, 0.0F, -10.0F},
+      {10.0F, 0.0F, -10.0F},
+      {10.0F, 0.0F, 10.0F},
+      {-10.0F, 0.0F, 10.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable", "clamber"};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface clamberTopSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "clamber_top";
+  surface.sourceStaticMeshId = "clamber_block";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {2.0F, 1.0F, -1.5F},
+      {4.0F, 1.0F, -1.5F},
+      {4.0F, 1.0F, -0.5F},
+      {2.0F, 1.0F, -0.5F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable"};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface clamberBlockerSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "clamber_blocker";
+  surface.sourceStaticMeshId = "clamber_block";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {
+      {2.0F, 0.0F, -1.5F},
+      {4.0F, 0.0F, -1.5F},
+      {4.0F, 1.0F, -0.5F},
+      {2.0F, 1.0F, -0.5F},
+  };
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.traversalTags = {"blocker", "clamber"};
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  return surface;
+}
+
+iggy3d::RoomAsset makeProductClamberRoom() {
+  iggy3d::RoomAsset room;
+  room.id = "product_clamber_test";
+
+  iggy3d::RoomStaticMeshAsset floor;
+  floor.id = "floor_mesh";
+  floor.meshId = "floor";
+  floor.role = "floor";
+  floor.positionMeters = {0.0F, 0.0F, 0.0F};
+  floor.sizeMeters = {20.0F, 0.1F, 20.0F};
+  room.staticMeshes.push_back(floor);
+
+  iggy3d::RoomStaticMeshAsset block;
+  block.id = "clamber_block";
+  block.meshId = "block";
+  block.role = "ledge";
+  block.positionMeters = {3.0F, 0.5F, -1.0F};
+  block.sizeMeters = {2.0F, 1.0F, 1.0F};
+  room.staticMeshes.push_back(block);
+
+  room.spatialSurfaces.push_back(clamberFloorSurface());
+  room.spatialSurfaces.push_back(clamberTopSurface());
+  room.spatialSurfaces.push_back(clamberBlockerSurface());
+  return room;
+}
+
+void setPlayerPosition(iggy3d::Session& session, iggy3d::Vec3 position) {
+  iggy3d::SessionState& state = session.mutableStateForOwnedSystems();
+  const iggy3d::EntityId actor = state.players.actorForSlot(0);
+  const iggy3d::EntityState* player = state.world.findById(actor);
+  if (!expect(player != nullptr, "player exists for reposition")) {
+    return;
+  }
+  iggy3d::Transform3 transform = player->transform;
+  transform.position = position;
+  const iggy3d::WorldMutationResult mutation =
+      state.world.updateTransform(actor, transform);
+  expect(mutation.status == iggy3d::WorldStatus::Ok, "player reposition ok");
+  state.currentStateHash = iggy3d::computeStateHash(state);
+}
+
+void setClamberActiveRoom(iggy3d::ProductAppWindowState& window,
+                          const iggy3d::Session& session) {
+  window.activeRoom.loaded = true;
+  window.activeRoom.status = "loaded";
+  window.activeRoom.reasonCode = "active_room_loaded";
+  window.activeRoom.source = "unit";
+  window.activeRoom.roomId = "product_clamber_test";
+  window.activeRoom.sourceName = "unit/product_clamber_test";
+  window.activeRoom.room = makeProductClamberRoom();
+  window.activeRoom.staticMeshCount = window.activeRoom.room.staticMeshes.size();
+  window.activeRoom.spatialSurfaceCount = window.activeRoom.room.spatialSurfaces.size();
+  window.activeRoom.walkableSurfaceCount = 2U;
+  window.activeRoom.actorBlockerSurfaceCount = 1U;
+  window.activeRoomCollision =
+      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
 }
 
 iggy3d::ActionState forwardMoveActions() {
@@ -310,6 +427,64 @@ bool productJumpRaisesPlayerAndRecordsProof() {
          expect(window.gameplayJumpVelocityMetersPerSecond <
                     kExpectedManualFirstPersonJumpImpulseMetersPerSecond,
                 "jump velocity reduced by gravity");
+}
+
+bool productJumpUsesClamberTraversalWhenCandidateIsLocal() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "clamber session created")) {
+    return false;
+  }
+
+  setPlayerPosition(*session, {3.0F, 0.0F, 0.10F});
+  setClamberActiveRoom(window, *session);
+  window.viewport.cameraYawDegrees = 0.0F;
+  const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
+
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpActions(),
+                                      window,
+                                      "unit/gameplay_controller_clamber");
+
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+  return expect(window.gameplayJumpRequested, "clamber jump requested") &&
+         expect(!window.gameplayJumpAccepted, "clamber skips jump arc") &&
+         expect(!window.gameplayJumpActive, "clamber leaves jump inactive") &&
+         expect(window.gameplayJumpStatus == "traversal",
+                "clamber jump status") &&
+         expect(window.gameplayJumpReasonCode == "traversal_intent_applied",
+                "clamber jump reason") &&
+         expect(window.gameplayTraversalRequested, "clamber requested") &&
+         expect(window.gameplayTraversalConsumed, "clamber consumed input") &&
+         expect(window.gameplayTraversalAccepted, "clamber accepted") &&
+         expect(!window.gameplayTraversalFallbackJumpAllowed,
+                "clamber no jump fallback") &&
+         expect(window.gameplayTraversalStatus == "traversal_intent_applied",
+                "clamber traversal status") &&
+         expect(window.gameplayTraversalReasonCode == "traversal_intent_applied",
+                "clamber traversal reason") &&
+         expect(window.gameplayTraversalMechanic == "clamber",
+                "clamber mechanic proof") &&
+         expect(window.gameplayTraversalSlotId == "clamber_block:clamber_top",
+                "clamber slot proof") &&
+         expect(window.gameplayTraversalTargetId == "clamber_block",
+                "clamber target proof") &&
+         expect(window.gameplayTraversalLandingSurfaceId == "clamber_top",
+                "clamber landing proof") &&
+         expect(window.playerPositionChanged, "clamber changed player position") &&
+         expect(nearlyEqual(window.gameplayTraversalStartX, start.x),
+                "clamber start x") &&
+         expect(nearlyEqual(window.gameplayTraversalStartY, start.y),
+                "clamber start y") &&
+         expect(nearlyEqual(window.gameplayTraversalStartZ, start.z),
+                "clamber start z") &&
+         expect(nearlyEqual(window.gameplayTraversalFinalX, final.x),
+                "clamber final x") &&
+         expect(nearlyEqual(window.gameplayTraversalFinalY, final.y),
+                "clamber final y") &&
+         expect(nearlyEqual(window.gameplayTraversalFinalZ, final.z),
+                "clamber final z") &&
+         expect(final.y > start.y, "clamber raises player");
 }
 
 bool productJumpRejectsDoubleJumpWhileAirborne() {
@@ -581,6 +756,7 @@ int main() {
                   productMoveNormalizesDiagonalToTunedStep() &&
                   productSprintUsesSprintProfileAndStep() &&
                   productJumpRaisesPlayerAndRecordsProof() &&
+                  productJumpUsesClamberTraversalWhenCandidateIsLocal() &&
                   productJumpRejectsDoubleJumpWhileAirborne() &&
                   productJumpFallsAndLands() &&
                   productDashMovesForwardAndRecordsProof() &&

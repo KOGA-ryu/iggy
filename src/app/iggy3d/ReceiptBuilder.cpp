@@ -787,6 +787,38 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.gameplayJumpFinalY));
   appendReceiptField(receipt, "gameplay_jump_height_meters",
                      floatReceiptValue(window.gameplayJumpHeightMeters));
+  appendReceiptField(receipt, "gameplay_traversal_requested",
+                     window.gameplayTraversalRequested);
+  appendReceiptField(receipt, "gameplay_traversal_consumed",
+                     window.gameplayTraversalConsumed);
+  appendReceiptField(receipt, "gameplay_traversal_accepted",
+                     window.gameplayTraversalAccepted);
+  appendReceiptField(receipt, "gameplay_traversal_fallback_jump_allowed",
+                     window.gameplayTraversalFallbackJumpAllowed);
+  appendReceiptField(receipt, "gameplay_traversal_status",
+                     window.gameplayTraversalStatus);
+  appendReceiptField(receipt, "gameplay_traversal_reason_code",
+                     window.gameplayTraversalReasonCode);
+  appendReceiptField(receipt, "gameplay_traversal_mechanic",
+                     window.gameplayTraversalMechanic);
+  appendReceiptField(receipt, "gameplay_traversal_slot_id",
+                     window.gameplayTraversalSlotId);
+  appendReceiptField(receipt, "gameplay_traversal_target_id",
+                     window.gameplayTraversalTargetId);
+  appendReceiptField(receipt, "gameplay_traversal_landing_surface_id",
+                     window.gameplayTraversalLandingSurfaceId);
+  appendReceiptField(receipt, "gameplay_traversal_start_x",
+                     floatReceiptValue(window.gameplayTraversalStartX));
+  appendReceiptField(receipt, "gameplay_traversal_start_y",
+                     floatReceiptValue(window.gameplayTraversalStartY));
+  appendReceiptField(receipt, "gameplay_traversal_start_z",
+                     floatReceiptValue(window.gameplayTraversalStartZ));
+  appendReceiptField(receipt, "gameplay_traversal_final_x",
+                     floatReceiptValue(window.gameplayTraversalFinalX));
+  appendReceiptField(receipt, "gameplay_traversal_final_y",
+                     floatReceiptValue(window.gameplayTraversalFinalY));
+  appendReceiptField(receipt, "gameplay_traversal_final_z",
+                     floatReceiptValue(window.gameplayTraversalFinalZ));
   appendReceiptField(receipt, "gameplay_dash_requested",
                      window.gameplayDashRequested);
   appendReceiptField(receipt, "gameplay_dash_accepted",
