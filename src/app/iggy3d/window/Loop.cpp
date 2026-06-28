@@ -113,7 +113,8 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
     const ProductGameplayProjectionFrame projectionFrame =
         buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{
             request.activeSession, window, request.settings.devToolsEnabled,
-            request.settings.debugOverlayEnabled, request.options.renderer});
+            request.settings.debugOverlayEnabled, request.options.renderer,
+            request.frontend});
 
     presentProductWindowFrame(ProductWindowFramePresenterRequest{
         request.options, request.world, request.frontend, settingsTab,

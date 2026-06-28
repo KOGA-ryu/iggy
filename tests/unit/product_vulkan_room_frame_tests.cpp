@@ -1082,6 +1082,125 @@ bool vulkanGameplayFrameCarriesDebugHudUiParity() {
                 "debug HUDs add Vulkan primitives");
 }
 
+bool gameplayDebugHudsHideOnMenuSurfaces() {
+  struct SurfaceCase {
+    iggy3d::FrontendScreen screen;
+    iggy3d::FrontendScreen childScreen;
+    bool devToolsOpen;
+    const char* label;
+  };
+  constexpr SurfaceCase surfaces[] = {
+      {iggy3d::FrontendScreen::Pause,
+       iggy3d::FrontendScreen::Gameplay,
+       false,
+       "pause"},
+      {iggy3d::FrontendScreen::Settings,
+       iggy3d::FrontendScreen::Pause,
+       false,
+       "pause-settings"},
+      {iggy3d::FrontendScreen::DevOverlay,
+       iggy3d::FrontendScreen::Gameplay,
+       true,
+       "dev-tools"},
+  };
+
+  bool ok = true;
+  for (const SurfaceCase& surface : surfaces) {
+    std::optional<iggy3d::Session> session;
+    iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+    if (!expect(session.has_value(), surface.label)) {
+      return false;
+    }
+    seedMovementDebugFacts(window);
+    seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
+    iggy3d::FrontendState frontend;
+    frontend.screen = surface.screen;
+    frontend.childScreen = surface.childScreen;
+    frontend.devToolsOpen = surface.devToolsOpen;
+
+    const iggy3d::ProductGameplayProjectionFrame projection =
+        iggy3d::buildProductGameplayProjectionFrame(
+            iggy3d::ProductGameplayProjectionFrameRequest{
+                session,
+                window,
+                true,
+                true,
+                iggy3d::ProductRendererRequest::Vulkan,
+                frontend});
+
+    ok = expect(!projection.movementHud.visible, surface.label) && ok;
+    ok = expect(!projection.npcBehaviorHud.visible, surface.label) && ok;
+    ok = expect(!projection.physicsHud.visible, surface.label) && ok;
+    ok = expect(!projection.positionHud.visible, surface.label) && ok;
+    ok = expect(projection.positionHud.debugAvailable, surface.label) && ok;
+    ok = expect(projection.physicsHud.lineCount == 4U, surface.label) && ok;
+    ok = expect(projection.debug.physicsDebugHudLines.size() == 4U,
+                surface.label) &&
+         ok;
+    ok = expect(!projection.drawList.physicsDebugVisible, surface.label) && ok;
+    ok = expect(!window.positionHudVisible, surface.label) && ok;
+    ok = expect(window.positionHudDebugAvailable, surface.label) && ok;
+    ok = expect(!window.physicsDebugHudVisible, surface.label) && ok;
+    ok = expect(window.physicsDebugHudLineCount == 4U, surface.label) && ok;
+  }
+  return ok;
+}
+
+bool roomEditorSurfaceShowsEditorHudOnly() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "room editor surface session created")) {
+    return false;
+  }
+  seedMovementDebugFacts(window);
+  seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
+  window.roomEditing.ready = true;
+  window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  window.roomEditorCursor.wallDirection = iggy3d::ProductRoomEditorDirection::Right;
+  window.roomEditorCursor.gridX = 2;
+  window.roomEditorCursor.gridZ = 3;
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Gameplay;
+  frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
+
+  const iggy3d::ProductGameplayProjectionFrame projection =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session,
+              window,
+              true,
+              true,
+              iggy3d::ProductRendererRequest::Vulkan,
+              frontend});
+
+  return expect(projection.roomEditorHud.visible,
+                "editor surface shows room editor HUD") &&
+         expect(projection.roomEditorOverlay.visible,
+                "editor surface shows room editor overlay") &&
+         expect(!projection.positionHud.visible,
+                "editor surface hides position HUD") &&
+         expect(!projection.movementHud.visible,
+                "editor surface hides movement debug HUD") &&
+         expect(!projection.npcBehaviorHud.visible,
+                "editor surface hides NPC debug HUD") &&
+         expect(!projection.physicsHud.visible,
+                "editor surface hides physics HUD") &&
+         expect(projection.physicsHud.lineCount == 4U,
+                "editor hidden physics HUD keeps line count") &&
+         expect(projection.debug.physicsDebugHudLines.size() == 4U,
+                "editor surface preserves physics debug lines") &&
+         expect(!projection.drawList.physicsDebugVisible,
+                "editor surface hides physics debug geometry") &&
+         expect(window.roomEditorHudVisible,
+                "editor window records room editor HUD visible") &&
+         expect(window.roomEditorOverlayVisible,
+                "editor window records room editor overlay visible") &&
+         expect(!window.positionHudVisible,
+                "editor window records position HUD hidden") &&
+         expect(window.positionHudDebugAvailable,
+                "editor hidden position HUD keeps projection availability");
+}
+
 bool gameplayMapMakerFrameCarriesGridOverlay() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -1190,6 +1309,8 @@ int main() {
                   productReceiptCarriesFirstPersonRoomPathProof() &&
                   vulkanGameplayFrameCarriesPositionHudUiOverlay() &&
                   vulkanGameplayFrameCarriesDebugHudUiParity() &&
+                  gameplayDebugHudsHideOnMenuSurfaces() &&
+                  roomEditorSurfaceShowsEditorHudOnly() &&
                   vulkanGameplayFrameCarriesMovementTuningUiOverlay() &&
                   vulkanGameplayFrameCarriesDevToolsOverlay() &&
                   gameplayMapMakerFrameCarriesGridOverlay();

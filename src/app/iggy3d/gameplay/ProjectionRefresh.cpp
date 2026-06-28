@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "app/iggy3d/gameplay/TapeRunner.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
@@ -25,6 +26,27 @@ bool npcBehaviorHudHasUnresolvedProfile(const NpcBehaviorDebugHud& hud) {
     }
   }
   return false;
+}
+
+struct ProductHudSurfacePolicy {
+  bool gameplayHudVisible = false;
+  bool roomEditorHudVisible = false;
+};
+
+ProductHudSurfacePolicy productHudSurfacePolicy(
+    const FrontendState& frontend,
+    const ProductAppWindowState& window) {
+  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(frontend, window));
+  ProductHudSurfacePolicy policy;
+  policy.gameplayHudVisible =
+      surface.activeSurface == ProductFrontendSurface::Gameplay &&
+      surface.inputOwner == MenuOwner::Gameplay &&
+      !surface.gameplayInputSuppressed;
+  policy.roomEditorHudVisible =
+      surface.activeSurface == ProductFrontendSurface::Editor &&
+      surface.inputOwner == MenuOwner::Editor;
+  return policy;
 }
 
 void appendPhysicsDebugFromMovement(DebugProjectionResult& debug,
@@ -664,37 +686,41 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
     const ProductGameplayProjectionFrameRequest& request) {
   ProductAppWindowState& window = request.window;
   ProductGameplayProjectionFrame frame;
+  const ProductHudSurfacePolicy hudSurface =
+      productHudSurfacePolicy(request.frontend, window);
   frame.feedback = buildGameplayFeedback(window);
   frame.interactionModeHud = buildInteractionModeHud(
       InteractionModeHudRequest{
           window.interactionMode,
-          window.gameplayActive,
-          window.roomEditing.ready,
+          hudSurface.gameplayHudVisible || hudSurface.roomEditorHudVisible,
+          hudSurface.roomEditorHudVisible,
       });
   copyInteractionModeHud(window, frame.interactionModeHud);
   frame.topDownMapOverlay = buildTopDownMapOverlay(
       TopDownMapOverlayRequest{request.rendererRequest,
                                       window.interactionMode,
-                                      window.gameplayActive,
-                                      window.roomEditing.ready,
+                                      hudSurface.gameplayHudVisible ||
+                                          hudSurface.roomEditorHudVisible,
+                                      hudSurface.roomEditorHudVisible,
                                       0U});
   copyTopDownMapOverlay(window, frame.topDownMapOverlay);
   frame.movementHud = buildMovementDebugHud(window,
                                                    request.developerToolsEnabled,
-                                                   request.debugOverlayEnabled);
+                                                   request.debugOverlayEnabled &&
+                                                       hudSurface.gameplayHudVisible);
   frame.npcBehaviorHud =
-      buildNpcBehaviorDebugHud(nullptr, window.gameplayActive,
+      buildNpcBehaviorDebugHud(nullptr, hudSurface.gameplayHudVisible,
                                       request.developerToolsEnabled,
                                       request.debugOverlayEnabled);
   copyNpcBehaviorDebugHud(window, frame.npcBehaviorHud);
-  frame.physicsHud = buildPhysicsDebugHud(nullptr, window.gameplayActive,
+  frame.physicsHud = buildPhysicsDebugHud(nullptr, hudSurface.gameplayHudVisible,
                                                  request.developerToolsEnabled,
                                                  request.debugOverlayEnabled);
   copyPhysicsDebugHud(window, frame.physicsHud);
   frame.positionHud = buildPositionHud(
       PositionHudRequest{nullptr,
-                         window.gameplayActive,
-                         window.roomEditing.ready,
+                         hudSurface.gameplayHudVisible,
+                         false,
                          request.developerToolsEnabled,
                          request.debugOverlayEnabled,
                          window.viewport.cameraYawDegrees,
@@ -708,7 +734,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.roomEditorHud = buildProductRoomEditorHud(
       ProductRoomEditorHudRequest{window.roomEditing,
                                   window.roomEditorCursor,
-                                  window.gameplayActive,
+                                  hudSurface.roomEditorHudVisible,
                                   window.roomEditorLastOperation,
                                   window.roomEditorLastOperationAccepted,
                                   window.roomEditorLastPrimitiveId,
@@ -727,7 +753,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.debug = buildProductDebugProjectionWithNpcBehavior(
       request.activeSession->state(),
       request.developerToolsEnabled,
-      request.debugOverlayEnabled);
+      request.debugOverlayEnabled && hudSurface.gameplayHudVisible);
   frame.mapMakerGrid = buildMapMakerGridForFrame(window, frame.scene);
   frame.mapMakerGridOverlay =
       buildProductMapMakerGridOverlay(frame.mapMakerGrid);
@@ -745,7 +771,8 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                               frame.mapMakerGrid,
                                               frame.mapMakerCubePreview);
   frame.roomEditorOverlay =
-      buildProductRoomEditorOverlay(window.roomEditorCursor, window.roomEditing.ready);
+      buildProductRoomEditorOverlay(window.roomEditorCursor,
+                                    hudSurface.roomEditorHudVisible);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
   // branch-gate: BG-1050
   frame.roomEditorPreviewOverlay = buildProductRoomEditorPreviewOverlay(
@@ -754,7 +781,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.roomEditorHud = buildProductRoomEditorHud(
       ProductRoomEditorHudRequest{window.roomEditing,
                                   window.roomEditorCursor,
-                                  window.gameplayActive,
+                                  hudSurface.roomEditorHudVisible,
                                   window.roomEditorLastOperation,
                                   window.roomEditorLastOperationAccepted,
                                   window.roomEditorLastPrimitiveId,
@@ -770,8 +797,9 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.topDownMapOverlay = buildTopDownMapOverlay(
       TopDownMapOverlayRequest{request.rendererRequest,
                                       window.interactionMode,
-                                      window.gameplayActive,
-                                      window.roomEditing.ready,
+                                      hudSurface.gameplayHudVisible ||
+                                          hudSurface.roomEditorHudVisible,
+                                      hudSurface.roomEditorHudVisible,
                                       frame.drawList.itemCount});
   copyTopDownMapOverlay(window, frame.topDownMapOverlay);
   frame.viewportFrame = buildProductViewportFrame(
@@ -791,26 +819,28 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.interactionModeHud = buildInteractionModeHud(
       InteractionModeHudRequest{
           window.interactionMode,
-          window.gameplayActive,
-          window.roomEditing.ready,
+          hudSurface.gameplayHudVisible || hudSurface.roomEditorHudVisible,
+          hudSurface.roomEditorHudVisible,
       });
   copyInteractionModeHud(window, frame.interactionModeHud);
   frame.movementHud = buildMovementDebugHud(window,
                                                    request.developerToolsEnabled,
-                                                   request.debugOverlayEnabled);
+                                                   request.debugOverlayEnabled &&
+                                                       hudSurface.gameplayHudVisible);
   frame.npcBehaviorHud = buildNpcBehaviorDebugHud(&frame.debug,
-                                                         window.gameplayActive,
+                                                         hudSurface.gameplayHudVisible,
                                                          request.developerToolsEnabled,
                                                          request.debugOverlayEnabled);
   copyNpcBehaviorDebugHud(window, frame.npcBehaviorHud);
-  frame.physicsHud = buildPhysicsDebugHud(&frame.debug, window.gameplayActive,
+  frame.physicsHud = buildPhysicsDebugHud(&frame.debug,
+                                                 hudSurface.gameplayHudVisible,
                                                  request.developerToolsEnabled,
                                                  request.debugOverlayEnabled);
   copyPhysicsDebugHud(window, frame.physicsHud);
   frame.positionHud = buildPositionHud(
       PositionHudRequest{&frame.scene,
-                         window.gameplayActive,
-                         window.roomEditing.ready,
+                         hudSurface.gameplayHudVisible,
+                         false,
                          request.developerToolsEnabled,
                          request.debugOverlayEnabled,
                          window.viewport.cameraYawDegrees,
@@ -879,7 +909,8 @@ void refreshProductGameplayProjectionMetrics(
       ProductGameplayProjectionFrameRequest{request.activeSession, window,
                                             request.developerToolsEnabled,
                                             request.debugOverlayEnabled,
-                                            request.rendererRequest});
+                                            request.rendererRequest,
+                                            request.frontend});
   // branch-gate: BG-1025
   if (!frame.hasGameplayProjection) {
     window.sessionOutcome = "None";

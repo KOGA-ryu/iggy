@@ -147,7 +147,7 @@ int runProductApp(int argc, char** argv) {
       ProductGameplayProjectionRefreshRequest{activeSession, window,
                                               settings.devToolsEnabled,
                                               settings.debugOverlayEnabled,
-                                              options.renderer});
+                                              options.renderer, frontend});
 
   if (options.printRenderReceipt) {
     std::cout << formatRenderReceipt(

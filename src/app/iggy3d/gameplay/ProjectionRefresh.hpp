@@ -9,6 +9,7 @@
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
+#include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/view/RenderBridge.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
@@ -29,6 +30,13 @@ struct ProductGameplayProjectionRefreshRequest {
   bool developerToolsEnabled = false;
   bool debugOverlayEnabled = false;
   ProductRendererRequest rendererRequest = ProductRendererRequest::Vulkan;
+  FrontendState frontend = [] {
+    FrontendState state;
+    state.screen = FrontendScreen::Gameplay;
+    state.childScreen = FrontendScreen::Gameplay;
+    state.status = "gameplay_active";
+    return state;
+  }();
 };
 
 struct ProductGameplayProjectionFrameRequest {
@@ -37,6 +45,13 @@ struct ProductGameplayProjectionFrameRequest {
   bool developerToolsEnabled = false;
   bool debugOverlayEnabled = false;
   ProductRendererRequest rendererRequest = ProductRendererRequest::Vulkan;
+  FrontendState frontend = [] {
+    FrontendState state;
+    state.screen = FrontendScreen::Gameplay;
+    state.childScreen = FrontendScreen::Gameplay;
+    state.status = "gameplay_active";
+    return state;
+  }();
 };
 
 struct ProductGameplayProjectionFrame {
