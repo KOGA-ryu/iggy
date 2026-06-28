@@ -67,13 +67,17 @@ void recordProductWindowControllerActions(
     bool controllerModeChordRequested,
     ActionState& actions) {
   const ProductInputSurface surface = productInputSurfaceFor(frontend, window);
+  // branch-gate: BG-1205
+  const ProductInteractionMode actionMode =
+      window.mapMakerActive ? ProductInteractionMode::Player
+                            : window.interactionMode;
   ProductControllerActionRoutingResult result =
       productControllerActionRoutingSkipped(
-          surface, window.interactionMode, "controller_action_chord_consumed");
+          surface, actionMode, "controller_action_chord_consumed");
   if (!controllerModeChordRequested) {  // branch-gate: BG-1059
     result = recordProductControllerMappedActions({
         surface,
-        window.interactionMode,
+        actionMode,
         sample,
         controllerAction,
         actions,

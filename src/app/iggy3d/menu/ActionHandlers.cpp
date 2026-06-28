@@ -630,6 +630,9 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
     }
     const bool enable = !context.window.mapMakerActive;
     context.window.mapMakerActive = enable;
+    // branch-gate: BG-1205
+    context.window.interactionMode =
+        enable ? ProductInteractionMode::Creative : ProductInteractionMode::Player;
     context.window.inputOwner = MenuOwner::Gameplay;
     context.window.gameplayInputSuppressed = false;
     // branch-gate: BG-1205

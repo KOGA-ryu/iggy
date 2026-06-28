@@ -614,6 +614,7 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
   window.mapMakerActive = true;
   window.mapMakerStatus = "map_maker_enabled";
   window.mapMakerReasonCode = window.mapMakerStatus;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
 
   const iggy3d::EntityId actor = session->state().players.actorForSlot(0);
   const iggy3d::EntityState* beforePlayer = session->state().world.findById(actor);
@@ -642,6 +643,10 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
                 "map maker movement does not open pause") &&
          expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
                 "map maker movement owner gameplay") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+                "map maker movement remains creative mode") &&
+         expect(window.controllerActionMode == "player",
+                "map maker movement keeps controller fly mapping") &&
          expect(!window.gameplayInputSuppressed,
                 "map maker movement does not suppress gameplay input") &&
          expect(window.mapMakerActive, "map maker remains active") &&
@@ -1222,8 +1227,8 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
       expect(enabled.accepted, "map maker toggle accepted") &&
       expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
              "map maker toggle keeps gameplay screen") &&
-      expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
-             "map maker toggle keeps gameplay interaction mode") &&
+      expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+             "map maker toggle enters creative interaction mode") &&
       expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
              "map maker toggle keeps gameplay owner") &&
       expect(!window.gameplayInputSuppressed,
@@ -1247,7 +1252,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
       expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
              "map maker disable keeps gameplay screen") &&
       expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
-             "map maker toggle leaves gameplay interaction mode") &&
+             "map maker disable returns to player interaction mode") &&
       expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
              "map maker disable keeps gameplay owner") &&
       expect(!window.mapMakerActive, "map maker inactive") &&
