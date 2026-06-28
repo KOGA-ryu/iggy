@@ -26,12 +26,23 @@ struct WorldSetupDraft;
 struct OpeningMenuHitTestResult;
 struct ProductOpeningMenuInputContext;
 
+struct ProductMovementTuningRepeatPolicy {
+  std::uint32_t initialDelayFrames = 12U;
+  std::uint32_t repeatIntervalFrames = 4U;
+};
+
+struct ProductMovementTuningRepeatState {
+  int heldDirection = 0;
+  std::uint32_t heldFrames = 0U;
+};
+
 struct ProductWindowInputFrameState {
   KeyboardInputState keyboard;
   MouseInputState mouse;
   GamepadMenuState gamepad;
   ProductControllerModeChordState controllerModeChord;
   ProductControllerActionRoutingState controllerAction;
+  ProductMovementTuningRepeatState movementTuningRepeat;
 };
 
 struct ProductWindowInputFrameContext {
@@ -115,6 +126,13 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
     FrontendState& frontend,
     ProductAppWindowState& window,
     InputAction action);
+ProductMovementTuningInputResult applyProductWindowMovementTuningHeldInput(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    ProductMovementTuningRepeatState& repeat,
+    bool leftDown,
+    bool rightDown,
+    ProductMovementTuningRepeatPolicy policy = {});
 ProductControllerSampleInputResult processProductControllerActionSample(
     ProductControllerSampleInputContext context,
     GamepadControllerActionSample sample);

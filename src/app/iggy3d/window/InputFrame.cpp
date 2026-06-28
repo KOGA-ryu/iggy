@@ -100,6 +100,20 @@ InputAction openingMenuNavigationActionFor(OpeningMenuHitArea area) {
   return InputAction::None;
 }
 
+InputAction movementTuningHeldAdjustmentAction(bool leftDown, bool rightDown) {
+  // branch-gate: BG-1212
+  if (leftDown == rightDown) {
+    return InputAction::None;
+  }
+  // branch-gate: BG-1212
+  return leftDown ? InputAction::MenuLeft : InputAction::MenuRight;
+}
+
+void resetMovementTuningRepeat(ProductMovementTuningRepeatState& repeat) {
+  repeat.heldDirection = 0;
+  repeat.heldFrames = 0U;
+}
+
 MouseClick productWindowMenuClickForHitTest(MouseClick click,
                                             const SdlWindow* sdlWindow) {
   // branch-gate: BG-1123
@@ -595,6 +609,56 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
   return result;
 }
 
+ProductMovementTuningInputResult applyProductWindowMovementTuningHeldInput(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    ProductMovementTuningRepeatState& repeat,
+    bool leftDown,
+    bool rightDown,
+    ProductMovementTuningRepeatPolicy policy) {
+  ProductMovementTuningInputResult result;
+  const bool gameplaySurfaceActive =
+      resolvedSurfaceAcceptsGameplayInput(frontend, window);
+  // branch-gate: BG-1212
+  if (!gameplaySurfaceActive || !window.gameplayMovementTuningVisible) {
+    resetMovementTuningRepeat(repeat);
+    // branch-gate: BG-1212
+    if (!gameplaySurfaceActive && window.gameplayMovementTuningVisible) {
+      (void)applyProductWindowMovementTuningInput(frontend,
+                                                  window,
+                                                  InputAction::None);
+    }
+    return result;
+  }
+
+  const InputAction action = movementTuningHeldAdjustmentAction(leftDown, rightDown);
+  // branch-gate: BG-1212
+  if (action == InputAction::None) {
+    resetMovementTuningRepeat(repeat);
+    return result;
+  }
+
+  const int direction =
+      action == InputAction::MenuLeft ? -1 : 1;  // branch-gate: BG-1212
+  // branch-gate: BG-1212
+  if (repeat.heldDirection != direction) {
+    repeat.heldDirection = direction;
+    repeat.heldFrames = 1U;
+    return result;
+  }
+
+  ++repeat.heldFrames;
+  const std::uint32_t interval =
+      std::max<std::uint32_t>(1U, policy.repeatIntervalFrames);
+  // branch-gate: BG-1212
+  if (repeat.heldFrames < policy.initialDelayFrames ||
+      (repeat.heldFrames - policy.initialDelayFrames) % interval != 0U) {
+    return result;
+  }
+
+  return applyProductWindowMovementTuningInput(frontend, window, action);
+}
+
 ProductControllerSampleInputResult processProductControllerActionSample(
     ProductControllerSampleInputContext context,
     GamepadControllerActionSample sample) {
@@ -765,7 +829,44 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   // branch-gate: BG-1029
   if (gamepadAction != InputAction::None) {
     context.window.gamepadMenuSelectUsed = true;
-    routeProductWindowMenuInput(gamepadAction, actionState, menuContext);
+    const ProductMovementTuningInputResult gamepadTuningInput =
+        applyProductWindowMovementTuningInput(context.frontend,
+                                              context.window,
+                                              gamepadAction);
+    // branch-gate: BG-1212
+    if (gamepadTuningInput.handled) {
+      recordAction(actionState,
+                   gamepadAction,
+                   true,
+                   gamepadTuningInput.accepted,
+                   false,
+                   1.0F);
+    } else {
+      routeProductWindowMenuInput(gamepadAction, actionState, menuContext);
+    }
+  }
+
+  const bool tuningLeftHeld =
+      context.inputFrame.keyboard.leftWasDown || context.inputFrame.gamepad.leftWasDown;
+  const bool tuningRightHeld =
+      context.inputFrame.keyboard.rightWasDown || context.inputFrame.gamepad.rightWasDown;
+  const InputAction heldTuningAction =
+      movementTuningHeldAdjustmentAction(tuningLeftHeld, tuningRightHeld);
+  const ProductMovementTuningInputResult heldTuningInput =
+      applyProductWindowMovementTuningHeldInput(
+          context.frontend,
+          context.window,
+          context.inputFrame.movementTuningRepeat,
+          tuningLeftHeld,
+          tuningRightHeld);
+  // branch-gate: BG-1212
+  if (heldTuningInput.handled) {
+    recordAction(actionState,
+                 heldTuningAction,
+                 true,
+                 heldTuningInput.accepted,
+                 false,
+                 1.0F);
   }
 
   const MouseClick click = pollMouseClick(context.inputFrame.mouse);

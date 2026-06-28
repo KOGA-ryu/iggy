@@ -15,6 +15,7 @@
 #include "core/math/Transform3.hpp"
 #include "runtime/replay/StateHash.hpp"
 
+#include <cmath>
 #include <iostream>
 #include <limits>
 #include <optional>
@@ -28,6 +29,13 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool expectNear(float actual,
+                float expected,
+                std::string_view message,
+                float epsilon = 0.0001F) {
+  return expect(std::fabs(actual - expected) < epsilon, message);
 }
 
 iggy3d::ProductAsciiRoomAuthoringRequest smallRoomRequest() {
@@ -1693,6 +1701,208 @@ bool movementTuningGameplayInputIsLiveAndFocused() {
                 "movement tuning hidden after second F4");
 }
 
+bool movementTuningSingleLeftRightPressAppliesOneStep() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.gameplayMovementTuningVisible = true;
+  const auto& descriptor = iggy3d::productGameplayMovementTuningFieldDescriptor(
+      window.gameplayMovementTuningSelectedField);
+  const float originalWalk = window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+
+  const iggy3d::ProductMovementTuningInputResult right =
+      iggy3d::applyProductWindowMovementTuningInput(
+          frontend, window, iggy3d::InputAction::MenuRight);
+  const float increasedWalk = window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+  const iggy3d::ProductMovementTuningInputResult left =
+      iggy3d::applyProductWindowMovementTuningInput(
+          frontend, window, iggy3d::InputAction::MenuLeft);
+
+  return expect(right.handled, "movement tuning right single press handled") &&
+         expect(right.accepted, "movement tuning right single press accepted") &&
+         expectNear(increasedWalk,
+                    originalWalk + descriptor.step,
+                    "movement tuning right single press applies one step") &&
+         expect(left.handled, "movement tuning left single press handled") &&
+         expect(left.accepted, "movement tuning left single press accepted") &&
+         expectNear(window.gameplayMovementTuning.walkSpeedMetersPerSecond,
+                    originalWalk,
+                    "movement tuning left single press applies one step");
+}
+
+bool movementTuningHeldRightRepeatsAfterDelay() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.gameplayMovementTuningVisible = true;
+  iggy3d::ProductMovementTuningRepeatState repeat;
+  constexpr iggy3d::ProductMovementTuningRepeatPolicy policy{3U, 2U};
+  const auto& descriptor = iggy3d::productGameplayMovementTuningFieldDescriptor(
+      window.gameplayMovementTuningSelectedField);
+  const float originalWalk = window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+
+  const iggy3d::ProductMovementTuningInputResult fresh =
+      iggy3d::applyProductWindowMovementTuningInput(
+          frontend, window, iggy3d::InputAction::MenuRight);
+  const iggy3d::ProductMovementTuningInputResult held1 =
+      iggy3d::applyProductWindowMovementTuningHeldInput(
+          frontend, window, repeat, false, true, policy);
+  const iggy3d::ProductMovementTuningInputResult held2 =
+      iggy3d::applyProductWindowMovementTuningHeldInput(
+          frontend, window, repeat, false, true, policy);
+  const float beforeRepeat = window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+  const iggy3d::ProductMovementTuningInputResult held3 =
+      iggy3d::applyProductWindowMovementTuningHeldInput(
+          frontend, window, repeat, false, true, policy);
+  const float firstRepeat = window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+  const iggy3d::ProductMovementTuningInputResult held4 =
+      iggy3d::applyProductWindowMovementTuningHeldInput(
+          frontend, window, repeat, false, true, policy);
+  const iggy3d::ProductMovementTuningInputResult held5 =
+      iggy3d::applyProductWindowMovementTuningHeldInput(
+          frontend, window, repeat, false, true, policy);
+
+  return expect(fresh.handled, "movement tuning fresh right handled") &&
+         expect(fresh.accepted, "movement tuning fresh right accepted") &&
+         expect(!held1.handled, "movement tuning hold frame one waits") &&
+         expect(!held2.handled, "movement tuning hold frame two waits") &&
+         expectNear(beforeRepeat,
+                    originalWalk + descriptor.step,
+                    "movement tuning hold waits through initial delay") &&
+         expect(held3.handled, "movement tuning hold repeats at delay") &&
+         expect(held3.accepted, "movement tuning delayed repeat accepted") &&
+         expectNear(firstRepeat,
+                    originalWalk + descriptor.step * 2.0F,
+                    "movement tuning first repeat applies existing step") &&
+         expect(!held4.handled, "movement tuning interval frame waits") &&
+         expect(held5.handled, "movement tuning repeats at interval") &&
+         expectNear(window.gameplayMovementTuning.walkSpeedMetersPerSecond,
+                    originalWalk + descriptor.step * 3.0F,
+                    "movement tuning interval repeat applies existing step");
+}
+
+bool movementTuningHeldRepeatReleaseResetsTiming() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.gameplayMovementTuningVisible = true;
+  iggy3d::ProductMovementTuningRepeatState repeat;
+  constexpr iggy3d::ProductMovementTuningRepeatPolicy policy{2U, 1U};
+  const auto& descriptor = iggy3d::productGameplayMovementTuningFieldDescriptor(
+      window.gameplayMovementTuningSelectedField);
+  const float originalWalk = window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+
+  (void)iggy3d::applyProductWindowMovementTuningInput(
+      frontend, window, iggy3d::InputAction::MenuRight);
+  (void)iggy3d::applyProductWindowMovementTuningHeldInput(
+      frontend, window, repeat, false, true, policy);
+  const iggy3d::ProductMovementTuningInputResult repeated =
+      iggy3d::applyProductWindowMovementTuningHeldInput(
+          frontend, window, repeat, false, true, policy);
+  const float afterRepeat = window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+  const iggy3d::ProductMovementTuningInputResult release =
+      iggy3d::applyProductWindowMovementTuningHeldInput(
+          frontend, window, repeat, false, false, policy);
+  const bool releaseReset = repeat.heldDirection == 0 && repeat.heldFrames == 0U;
+  const iggy3d::ProductMovementTuningInputResult pressAgain =
+      iggy3d::applyProductWindowMovementTuningHeldInput(
+          frontend, window, repeat, false, true, policy);
+  const float afterPressAgain =
+      window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+
+  return expect(repeated.handled, "movement tuning held repeat before release") &&
+         expectNear(afterRepeat,
+                    originalWalk + descriptor.step * 2.0F,
+                    "movement tuning held repeat applies second step") &&
+         expect(!release.handled, "movement tuning release emits no repeat") &&
+         expect(releaseReset, "movement tuning release resets repeat state") &&
+         expect(!pressAgain.handled,
+                "movement tuning press after release waits before repeat") &&
+         expectNear(afterPressAgain,
+                    afterRepeat,
+                    "movement tuning press after release does not repeat early");
+}
+
+bool movementTuningHeldConflictDoesNotAdjust() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.gameplayMovementTuningVisible = true;
+  iggy3d::ProductMovementTuningRepeatState repeat;
+  constexpr iggy3d::ProductMovementTuningRepeatPolicy policy{1U, 1U};
+  const float originalWalk = window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+
+  const iggy3d::ProductMovementTuningInputResult conflict =
+      iggy3d::applyProductWindowMovementTuningHeldInput(
+          frontend, window, repeat, true, true, policy);
+  const iggy3d::ProductMovementTuningInputResult rightAfterConflict =
+      iggy3d::applyProductWindowMovementTuningHeldInput(
+          frontend, window, repeat, false, true, policy);
+
+  return expect(!conflict.handled,
+                "movement tuning left+right conflict emits no repeat") &&
+         expect(repeat.heldDirection == 1 && repeat.heldFrames == 1U,
+                "movement tuning right restarts after conflict") &&
+         expect(!rightAfterConflict.handled,
+                "movement tuning right after conflict waits one frame") &&
+         expectNear(window.gameplayMovementTuning.walkSpeedMetersPerSecond,
+                    originalWalk,
+                    "movement tuning conflict does not adjust value");
+}
+
+bool movementTuningHeldRepeatBlockedByMenuSurface() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  frontend.screen = iggy3d::FrontendScreen::Pause;
+  frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.gameplayMovementTuningVisible = true;
+  iggy3d::ProductMovementTuningRepeatState repeat;
+  repeat.heldDirection = 1;
+  repeat.heldFrames = 12U;
+  constexpr iggy3d::ProductMovementTuningRepeatPolicy policy{1U, 1U};
+  const float originalWalk = window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+
+  const iggy3d::ProductMovementTuningInputResult blocked =
+      iggy3d::applyProductWindowMovementTuningHeldInput(
+          frontend, window, repeat, false, true, policy);
+
+  return expect(!blocked.handled, "movement tuning blocked hold not handled") &&
+         expect(!blocked.accepted, "movement tuning blocked hold not accepted") &&
+         expectNear(window.gameplayMovementTuning.walkSpeedMetersPerSecond,
+                    originalWalk,
+                    "movement tuning blocked hold does not adjust value") &&
+         expect(!window.gameplayMovementTuningVisible,
+                "movement tuning blocked hold clears stale overlay") &&
+         expect(repeat.heldDirection == 0 && repeat.heldFrames == 0U,
+                "movement tuning blocked hold resets repeat state");
+}
+
+bool keyboardMenuLeftRightRemainEdgeTriggered() {
+  iggy3d::KeyboardInputState keyboard;
+  iggy3d::KeyboardMenuInputSample sample;
+  sample.rightDown = true;
+  const iggy3d::InputAction first =
+      iggy3d::recordKeyboardMenuAction(keyboard, sample);
+  const iggy3d::InputAction held =
+      iggy3d::recordKeyboardMenuAction(keyboard, sample);
+  sample.rightDown = false;
+  const iggy3d::InputAction released =
+      iggy3d::recordKeyboardMenuAction(keyboard, sample);
+  sample.leftDown = true;
+  const iggy3d::InputAction left =
+      iggy3d::recordKeyboardMenuAction(keyboard, sample);
+
+  return expect(first == iggy3d::InputAction::MenuRight,
+                "keyboard menu right first edge emits") &&
+         expect(held == iggy3d::InputAction::None,
+                "keyboard menu right hold remains edge-triggered") &&
+         expect(released == iggy3d::InputAction::None,
+                "keyboard menu right release emits nothing") &&
+         expect(left == iggy3d::InputAction::MenuLeft,
+                "keyboard menu left fresh edge still emits");
+}
+
 bool movementTuningToggleIgnoresFrontendBlockedSurfaces() {
   struct BlockedSurface {
     iggy3d::FrontendScreen screen;
@@ -1961,6 +2171,12 @@ int main() {
       sdlFunctionKeyEventsMapToSystemActions() &&
       sdlFunctionKeyEventsMarkKeyboardStateConsumed() &&
       movementTuningGameplayInputIsLiveAndFocused() &&
+      movementTuningSingleLeftRightPressAppliesOneStep() &&
+      movementTuningHeldRightRepeatsAfterDelay() &&
+      movementTuningHeldRepeatReleaseResetsTiming() &&
+      movementTuningHeldConflictDoesNotAdjust() &&
+      movementTuningHeldRepeatBlockedByMenuSurface() &&
+      keyboardMenuLeftRightRemainEdgeTriggered() &&
       movementTuningToggleIgnoresFrontendBlockedSurfaces() &&
       mapMakerToggleUsesGameplayOnlyCreativeMode() &&
       mapMakerToggleRoutesAsGameplayOwnedInput() &&
