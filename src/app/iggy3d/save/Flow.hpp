@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
@@ -34,6 +35,14 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     FrontendState& frontend,
     std::optional<Session>& activeSession,
     ProductAppWindowState& window);
+
+ProductPauseSaveFlowResult executeProductPauseSaveFlow(
+    ProductPauseSaveFlowKind kind,
+    const ProductAppOptions& options,
+    FrontendState& frontend,
+    std::optional<Session>& activeSession,
+    ProductAppWindowState& window,
+    FrontendSettings& settings);
 
 std::string_view productPauseSaveFlowKindName(ProductPauseSaveFlowKind kind);
 

@@ -17,14 +17,7 @@ struct PauseSaveFlowConfig {
   bool returnToTitleOnSuccess;
 };
 
-using TransitionApply = void (*)(FrontendState&, ProductAppWindowState&);
 using SessionApply = void (*)(std::optional<Session>&);
-
-void keepFrontend(FrontendState&, ProductAppWindowState&) {}
-
-void returnFrontendToTitle(FrontendState& frontend, ProductAppWindowState& window) {
-  returnProductToTitleTransition(frontend, window);
-}
 
 void keepSession(std::optional<Session>&) {}
 
@@ -66,10 +59,6 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
           true,
       },
   };
-  static constexpr std::array<TransitionApply, 2U> transitionAppliers{
-      keepFrontend,
-      returnFrontendToTitle,
-  };
   static constexpr std::array<SessionApply, 2U> sessionAppliers{
       keepSession,
       resetSession,
@@ -96,8 +85,25 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
 
   frontend.status = result.frontendStatus;
   window.launchStatus = result.launchStatus;
-  transitionAppliers[result.returnedToTitle](frontend, window);
+  if (result.returnedToTitle) {  // branch-gate: BG-1017
+    returnProductToTitleTransition(frontend, window);
+  }
   sessionAppliers[result.sessionReset](activeSession);
+  return result;
+}
+
+ProductPauseSaveFlowResult executeProductPauseSaveFlow(
+    ProductPauseSaveFlowKind kind,
+    const ProductAppOptions& options,
+    FrontendState& frontend,
+    std::optional<Session>& activeSession,
+    ProductAppWindowState& window,
+    FrontendSettings& settings) {
+  ProductPauseSaveFlowResult result =
+      executeProductPauseSaveFlow(kind, options, frontend, activeSession, window);
+  if (result.returnedToTitle) {  // branch-gate: BG-1017
+    clearProductGameplayOnlyModes(window, settings);
+  }
   return result;
 }
 

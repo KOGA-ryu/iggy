@@ -38,10 +38,82 @@ void clearProductGameplayMovementTuning(ProductAppWindowState& window) {
   window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
 }
 
+void clearProductMenuOwnedTransientModes(ProductAppWindowState& window) {
+  clearProductMapMakerMode(window);
+  clearProductGameplayMovementTuning(window);
+}
+
+void clearProductRoomEditorTransientModes(ProductAppWindowState& window) {
+  window.roomEditorCursorReady = false;
+  window.roomEditorOverlayVisible = false;
+  window.roomEditorOverlayStatus = "room_editor_overlay_not_ready";
+  window.roomEditorOverlayReasonCode = window.roomEditorOverlayStatus;
+  window.roomEditorOverlayItemCount = 0;
+  window.roomEditorPreviewActive = false;
+  window.roomEditorPlacementPreview = {};
+  window.roomEditorPreviewVisible = false;
+  window.roomEditorPreviewStatus = "room_editor_preview_not_requested";
+  window.roomEditorPreviewReasonCode = window.roomEditorPreviewStatus;
+  window.roomEditorPreviewCandidateId = "none";
+  window.roomEditorPreviewTool = "floor";
+  window.roomEditorPreviewGridX = 0;
+  window.roomEditorPreviewGridZ = 0;
+  window.roomEditorPreviewBeforeDrawCount = 0;
+  window.roomEditorPreviewAfterDrawCount = 0;
+  window.roomEditorPreviewAvoidedDrawCountDelta = 0;
+  window.roomEditorPreviewBeforeTriangleCount = 0;
+  window.roomEditorPreviewAfterTriangleCount = 0;
+  window.roomEditorPreviewAvoidedTriangleCountDelta = 0;
+  window.roomEditorPreviewOptimizedDrawDelta = 0;
+  window.roomEditorPreviewOptimizedTriangleDelta = 0;
+  window.roomEditorHudVisible = false;
+  window.roomEditorHudStatus = "room_editor_hud_not_ready";
+  window.roomEditorHudReasonCode = window.roomEditorHudStatus;
+  window.roomEditorHudPreviewActive = false;
+  window.roomEditorHudPreviewStatus = "room_editor_preview_not_requested";
+  window.roomEditorHudPreviewCandidateId = "none";
+  window.roomEditorHudPreviewOptimizedDrawDelta = 0;
+  window.roomEditorHudPreviewOptimizedTriangleDelta = 0;
+  window.roomEditorHudLineCount = 0;
+  window.viewport.productDrawRoomEditorCursorVisible = false;
+  window.viewport.productDrawRoomEditorCursorCount = 0;
+  window.viewport.productDrawRoomEditorPreviewVisible = false;
+  window.viewport.productDrawRoomEditorPreviewCount = 0;
+}
+
+void clearProductGameplayOnlyModes(ProductAppWindowState& window) {
+  clearProductMenuOwnedTransientModes(window);
+  window.devCollisionOverlayVisible = false;
+  window.devCollisionOverlayStatus = "dev_collision_overlay_hidden";
+  window.devCollisionOverlayReasonCode = window.devCollisionOverlayStatus;
+  clearProductRoomEditorTransientModes(window);
+}
+
+void clearProductGameplayOnlyModes(ProductAppWindowState& window,
+                                   FrontendSettings& settings) {
+  clearProductGameplayOnlyModes(window);
+  settings.debugOverlayEnabled = false;
+}
+
+void applyReturnProductToTitleTransition(FrontendState& frontend,
+                                         ProductAppWindowState& window) {
+  frontend.screen = FrontendScreen::Starter;
+  frontend.childScreen = FrontendScreen::Gameplay;
+  frontend.selectedAction = FrontendAction::NewWorld;
+  frontend.returnToTitleRequested = true;
+  frontend.inputOwned = true;
+  frontend.pauseMenuOpen = false;
+  frontend.devToolsOpen = false;
+  frontend.status = "returned_to_title";
+  window.inputOwner = MenuOwner::Starter;
+  window.gameplayInputSuppressed = true;
+  setTransition(window, "return_to_title", "returned_to_title", false, true, false);
+}
+
 void initializeProductStarterTransition(FrontendState& frontend,
                                         ProductAppWindowState& window,
                                         bool hasCompatibleSave) {
-  clearProductGameplayMovementTuning(window);
+  clearProductGameplayOnlyModes(window);
   completeFrontendBoot(frontend, true, true);
   frontend.screen = FrontendScreen::Starter;
   frontend.childScreen = FrontendScreen::Gameplay;
@@ -67,8 +139,7 @@ void enterProductGameplayTransition(FrontendState& frontend,
 void openProductPauseTransition(FrontendState& frontend,
                                 ProductAppWindowState& window,
                                 FrontendAction selectedAction) {
-  clearProductMapMakerMode(window);
-  clearProductGameplayMovementTuning(window);
+  clearProductMenuOwnedTransientModes(window);
   openFrontendPause(frontend, selectedAction);
   window.inputOwner = MenuOwner::Pause;
   window.gameplayInputSuppressed = true;
@@ -79,8 +150,7 @@ void openProductPauseTransition(FrontendState& frontend,
 void openProductPauseSettingsTransition(FrontendState& frontend,
                                         ProductAppWindowState& window,
                                         FrontendSettingsTab& settingsTab) {
-  clearProductMapMakerMode(window);
-  clearProductGameplayMovementTuning(window);
+  clearProductMenuOwnedTransientModes(window);
   frontend.screen = FrontendScreen::Settings;
   frontend.childScreen = FrontendScreen::Pause;
   settingsTab = FrontendSettingsTab::Input;
@@ -95,8 +165,7 @@ void openProductPauseSettingsTransition(FrontendState& frontend,
 void openProductPauseDevToolsTransition(FrontendState& frontend,
                                         ProductAppWindowState& window,
                                         FrontendDevToolsCategory category) {
-  clearProductMapMakerMode(window);
-  clearProductGameplayMovementTuning(window);
+  clearProductMenuOwnedTransientModes(window);
   openFrontendDevOverlay(frontend, category);
   frontend.status = "pause_dev_tools_selected";
   window.inputOwner = MenuOwner::DevTools;
@@ -118,19 +187,17 @@ void returnProductToTitleTransition(FrontendState& frontend,
                                     ProductAppWindowState& window) {
   window.gameplayActive = false;
   window.runtimeSessionCreated = false;
-  clearProductMapMakerMode(window);
-  clearProductGameplayMovementTuning(window);
-  frontend.screen = FrontendScreen::Starter;
-  frontend.childScreen = FrontendScreen::Gameplay;
-  frontend.selectedAction = FrontendAction::NewWorld;
-  frontend.returnToTitleRequested = true;
-  frontend.inputOwned = true;
-  frontend.pauseMenuOpen = false;
-  frontend.devToolsOpen = false;
-  frontend.status = "returned_to_title";
-  window.inputOwner = MenuOwner::Starter;
-  window.gameplayInputSuppressed = true;
-  setTransition(window, "return_to_title", "returned_to_title", false, true, false);
+  clearProductGameplayOnlyModes(window);
+  applyReturnProductToTitleTransition(frontend, window);
+}
+
+void returnProductToTitleTransition(FrontendState& frontend,
+                                    ProductAppWindowState& window,
+                                    FrontendSettings& settings) {
+  window.gameplayActive = false;
+  window.runtimeSessionCreated = false;
+  clearProductGameplayOnlyModes(window, settings);
+  applyReturnProductToTitleTransition(frontend, window);
 }
 
 }  // namespace iggy3d

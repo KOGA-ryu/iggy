@@ -84,7 +84,8 @@ void dispatchPauseAction(InputAction action,
                          ProductOpeningMenuInputContext context) {
   ProductPauseMenuActionContext pauseContext{
       context.frontend, context.options, context.settingsTab,
-      context.activeSession, context.window, context.closeRequested};
+      context.activeSession, context.window, context.closeRequested,
+      context.settings};
   (void)applyProductPauseMenuAction(action, pauseContext);
 }
 
@@ -152,7 +153,7 @@ void applyProductOpeningMenuAction(InputAction action,
       applyProductSystemPauseMenuAction(
           action,
           {context.frontend, context.window, context.closeRequested,
-           context.settings});
+           &context.settings});
   // branch-gate: BG-1024
   if (systemPause.handled) {
     return;

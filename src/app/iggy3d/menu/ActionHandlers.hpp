@@ -21,6 +21,7 @@ struct ProductPauseMenuActionContext {
   std::optional<Session>& activeSession;
   ProductAppWindowState& window;
   bool& closeRequested;
+  FrontendSettings& settings;
 };
 
 struct ProductDevToolsMenuActionContext {

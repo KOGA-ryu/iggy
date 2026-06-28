@@ -315,19 +315,21 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
   // branch-gate: BG-1017
   if (frontend.selectedAction == FrontendAction::Save) {
     executeProductPauseSaveFlow(ProductPauseSaveFlowKind::Save, context.options,
-                                frontend, context.activeSession, window);
+                                frontend, context.activeSession, window,
+                                context.settings);
     return {true, true};
   }
   // branch-gate: BG-1017
   if (frontend.selectedAction == FrontendAction::SaveAndExit) {
     executeProductPauseSaveFlow(ProductPauseSaveFlowKind::SaveAndExit,
                                 context.options, frontend,
-                                context.activeSession, window);
+                                context.activeSession, window,
+                                context.settings);
     return {true, true};
   }
   // branch-gate: BG-1017
   if (frontend.selectedAction == FrontendAction::ReturnToTitle) {
-    returnProductToTitleTransition(frontend, window);
+    returnProductToTitleTransition(frontend, window, context.settings);
     context.activeSession.reset();
     return {true, true};
   }

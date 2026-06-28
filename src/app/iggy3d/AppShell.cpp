@@ -118,11 +118,12 @@ int runProductApp(int argc, char** argv) {
   ProductAutomationControlContext automationControlContext{
       options.automationControlPath, window, automationSettingsTab,
       [&frontend, &saves, &options, &automationSettingsTab, &activeSession,
-       &worldSetupDraft, &window, &automationCloseRequested](
+       &worldSetupDraft, &window, &settings, &automationCloseRequested](
           const ProductAutomationCommand& command) {
         return applyProductAutomationAppCommand(
             command, ProductAutomationAppContext{
-                         frontend, saves, options, automationSettingsTab,
+                         frontend, saves, options, settings,
+                         automationSettingsTab,
                          activeSession, worldSetupDraft, window,
                          automationCloseRequested});
       },

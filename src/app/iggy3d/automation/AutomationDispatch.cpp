@@ -28,6 +28,7 @@ bool returnIfHandled(const ProductAutomationExecutionResult& execution,
 bool routeAutomationInput(FrontendState& frontend,
                           const ProductSaveBridgeResult& saves,
                           const ProductAppOptions& options,
+                          FrontendSettings& settings,
                           FrontendSettingsTab& settingsTab,
                           std::optional<Session>& activeSession,
                           WorldSetupDraft& worldSetupDraft,
@@ -37,7 +38,7 @@ bool routeAutomationInput(FrontendState& frontend,
   ActionState actionState;
   ProductOpeningMenuInputContext menuContext{
       frontend, saves, options, settingsTab, activeSession, worldSetupDraft,
-      window, closeRequested};
+      window, closeRequested, settings};
   routeProductOpeningMenuInput(action, actionState, menuContext);
   window.automationControlLastOwner = productInputOwnerFor(frontend, window);
   return window.lastInputAccepted || action == InputAction::None;
@@ -162,7 +163,8 @@ bool applyProductAutomationAppCommand(const ProductAutomationCommand& command,
       },
       [&context](InputAction action) {
         return routeAutomationInput(context.frontend, context.saves,
-                                    context.options, context.settingsTab,
+                                    context.options, context.settings,
+                                    context.settingsTab,
                                     context.activeSession, context.worldSetupDraft,
                                     context.window, action, context.closeRequested);
       },
@@ -183,7 +185,8 @@ bool applyProductAutomationAppCommand(const ProductAutomationCommand& command,
         return routeInputAction(routingContext, action);
       },
       [&context]() {
-        returnProductToTitleTransition(context.frontend, context.window);
+        returnProductToTitleTransition(context.frontend, context.window,
+                                       context.settings);
         context.activeSession.reset();
       },
       [&context]() { context.closeRequested = true; },

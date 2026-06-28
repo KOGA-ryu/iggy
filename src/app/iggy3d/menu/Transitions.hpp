@@ -16,6 +16,10 @@ void enterProductGameplayTransition(FrontendState& frontend,
 
 void clearProductMapMakerMode(ProductAppWindowState& window);
 void clearProductGameplayMovementTuning(ProductAppWindowState& window);
+void clearProductMenuOwnedTransientModes(ProductAppWindowState& window);
+void clearProductGameplayOnlyModes(ProductAppWindowState& window);
+void clearProductGameplayOnlyModes(ProductAppWindowState& window,
+                                   FrontendSettings& settings);
 
 void openProductPauseTransition(FrontendState& frontend,
                                 ProductAppWindowState& window,
@@ -34,5 +38,8 @@ void closeProductOverlayToGameplayTransition(FrontendState& frontend,
 
 void returnProductToTitleTransition(FrontendState& frontend,
                                     ProductAppWindowState& window);
+void returnProductToTitleTransition(FrontendState& frontend,
+                                    ProductAppWindowState& window,
+                                    FrontendSettings& settings);
 
 }  // namespace iggy3d

@@ -29,6 +29,45 @@ void showMovementTuning(iggy3d::ProductAppWindowState& window) {
   window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
 }
 
+void showCollisionOverlay(iggy3d::ProductAppWindowState& window) {
+  window.devCollisionOverlayVisible = true;
+  window.devCollisionOverlayStatus = "dev_collision_overlay_enabled";
+  window.devCollisionOverlayReasonCode = window.devCollisionOverlayStatus;
+}
+
+void showRoomEditorTransients(iggy3d::ProductAppWindowState& window) {
+  window.roomEditing.ready = true;
+  window.roomEditorCursorReady = true;
+  window.roomEditorOverlayVisible = true;
+  window.roomEditorOverlayStatus = "room_editor_overlay_visible";
+  window.roomEditorOverlayReasonCode = window.roomEditorOverlayStatus;
+  window.roomEditorOverlayItemCount = 3;
+  window.roomEditorPreviewActive = true;
+  window.roomEditorPlacementPreview.ok = true;
+  window.roomEditorPreviewVisible = true;
+  window.roomEditorPreviewStatus = "room_editor_preview_ready";
+  window.roomEditorPreviewReasonCode = window.roomEditorPreviewStatus;
+  window.roomEditorPreviewCandidateId = "preview_floor";
+  window.roomEditorPreviewTool = "wall";
+  window.roomEditorPreviewGridX = 4;
+  window.roomEditorPreviewGridZ = 5;
+  window.roomEditorPreviewBeforeDrawCount = 7;
+  window.roomEditorPreviewAfterDrawCount = 8;
+  window.roomEditorPreviewOptimizedDrawDelta = 1;
+  window.roomEditorHudVisible = true;
+  window.roomEditorHudStatus = "room_editor_hud_visible";
+  window.roomEditorHudReasonCode = window.roomEditorHudStatus;
+  window.roomEditorHudPreviewActive = true;
+  window.roomEditorHudPreviewStatus = "room_editor_preview_ready";
+  window.roomEditorHudPreviewCandidateId = "preview_floor";
+  window.roomEditorHudPreviewOptimizedDrawDelta = 1;
+  window.roomEditorHudLineCount = 4;
+  window.viewport.productDrawRoomEditorCursorVisible = true;
+  window.viewport.productDrawRoomEditorCursorCount = 1;
+  window.viewport.productDrawRoomEditorPreviewVisible = true;
+  window.viewport.productDrawRoomEditorPreviewCount = 1;
+}
+
 }  // namespace
 
 int main() {
@@ -64,6 +103,9 @@ int main() {
 
   activateMapMaker(window);
   showMovementTuning(window);
+  showCollisionOverlay(window);
+  iggy3d::FrontendSettings settings;
+  settings.debugOverlayEnabled = true;
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::Resume);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Pause,
                "pause screen opened");
@@ -80,6 +122,10 @@ int main() {
                "pause clears creative fly active");
   ok &= expect(!window.gameplayMovementTuningVisible,
                "pause clears movement tuning");
+  ok &= expect(settings.debugOverlayEnabled,
+               "pause preserves debug overlay setting");
+  ok &= expect(window.devCollisionOverlayVisible,
+               "pause preserves collision overlay state");
 
   showMovementTuning(window);
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
@@ -138,7 +184,10 @@ int main() {
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::ReturnToTitle);
   activateMapMaker(window);
   showMovementTuning(window);
-  returnProductToTitleTransition(frontend, window);
+  showCollisionOverlay(window);
+  showRoomEditorTransients(window);
+  settings.debugOverlayEnabled = true;
+  returnProductToTitleTransition(frontend, window, settings);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Starter,
                "return to title opens starter");
   ok &= expect(frontend.returnToTitleRequested, "return to title requested");
@@ -153,10 +202,61 @@ int main() {
                "return to title clears creative fly active");
   ok &= expect(!window.gameplayMovementTuningVisible,
                "return to title clears movement tuning");
+  ok &= expect(!settings.debugOverlayEnabled,
+               "return to title clears debug overlay setting");
+  ok &= expect(!window.devCollisionOverlayVisible,
+               "return to title clears collision overlay");
+  ok &= expect(window.devCollisionOverlayStatus == "dev_collision_overlay_hidden",
+               "return to title collision overlay status hidden");
+  ok &= expect(window.roomEditing.ready,
+               "return to title preserves room editing document");
+  ok &= expect(!window.roomEditorCursorReady,
+               "return to title clears room editor cursor transient");
+  ok &= expect(!window.roomEditorOverlayVisible,
+               "return to title clears room editor overlay");
+  ok &= expect(!window.roomEditorPreviewActive,
+               "return to title clears room editor preview active");
+  ok &= expect(!window.roomEditorPreviewVisible,
+               "return to title clears room editor preview visible");
+  ok &= expect(window.roomEditorPreviewStatus ==
+                   "room_editor_preview_not_requested",
+               "return to title clears room editor preview status");
+  ok &= expect(!window.roomEditorHudVisible,
+               "return to title clears room editor hud");
+  ok &= expect(window.roomEditorHudStatus == "room_editor_hud_not_ready",
+               "return to title room editor hud hidden status");
+  ok &= expect(!window.viewport.productDrawRoomEditorCursorVisible,
+               "return to title clears room editor cursor draw");
+  ok &= expect(!window.viewport.productDrawRoomEditorPreviewVisible,
+               "return to title clears room editor preview draw");
   ok &= expect(window.productTransitionReturnedToTitle,
                "return to title transition status");
   ok &= expect(!window.productTransitionSessionPreserved,
                "return to title does not preserve session");
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::ProductSaveBridgeResult saves;
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options, world, frontend, settings, window,
+                                     saves);
+  ok &= expect(iggy3d::hasReceiptField(receipt,
+                                       "settings_debug_overlay_enabled",
+                                       "false"),
+               "receipt debug overlay disabled");
+  ok &= expect(iggy3d::hasReceiptField(receipt,
+                                       "dev_collision_overlay_visible",
+                                       "false"),
+               "receipt collision overlay hidden");
+  ok &= expect(iggy3d::hasReceiptField(receipt,
+                                       "gameplay_movement_tuning_visible",
+                                       "false"),
+               "receipt movement tuning hidden");
+  ok &= expect(iggy3d::hasReceiptField(receipt, "map_maker_active", "false"),
+               "receipt map maker inactive");
+  ok &= expect(iggy3d::hasReceiptField(receipt,
+                                       "room_editor_hud_visible",
+                                       "false"),
+               "receipt room editor hud hidden");
 
   if (!ok) {
     return 1;

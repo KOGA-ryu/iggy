@@ -278,7 +278,7 @@ struct MouseDispatchHarness {
         draft,
         window,
         closeRequested,
-        &settings,
+        settings,
     };
   }
 };
@@ -893,6 +893,7 @@ bool pauseSettingsConfirmOpensSettingsPanel() {
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppOptions options;
+  iggy3d::FrontendSettings settings;
 
   (void)iggy3d::applyProductSystemPauseMenuAction(
       iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
@@ -900,7 +901,8 @@ bool pauseSettingsConfirmOpensSettingsPanel() {
   const iggy3d::ProductMenuActionResult opened =
       iggy3d::applyProductPauseMenuAction(
           iggy3d::InputAction::MenuConfirm,
-          {frontend, options, settingsTab, activeSession, window, closeRequested});
+          {frontend, options, settingsTab, activeSession, window, closeRequested,
+           settings});
 
   return expect(opened.handled, "pause settings confirm handled") &&
          expect(opened.accepted, "pause settings confirm accepted") &&
@@ -928,13 +930,15 @@ bool pauseSettingsInputDispatchRoutesToSettings() {
   iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
   iggy3d::WorldSetupDraft draft;
   iggy3d::ActionState actionState;
+  iggy3d::FrontendSettings settings;
 
   (void)iggy3d::applyProductSystemPauseMenuAction(
       iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
   frontend.selectedAction = iggy3d::FrontendAction::Settings;
   (void)iggy3d::applyProductPauseMenuAction(
       iggy3d::InputAction::MenuConfirm,
-      {frontend, options, settingsTab, activeSession, window, closeRequested});
+      {frontend, options, settingsTab, activeSession, window, closeRequested,
+       settings});
 
   const iggy3d::FrontendAction selectedBefore = frontend.selectedAction;
   iggy3d::routeProductOpeningMenuInput(
@@ -947,7 +951,8 @@ bool pauseSettingsInputDispatchRoutesToSettings() {
        activeSession,
        draft,
        window,
-       closeRequested});
+       closeRequested,
+       settings});
 
   return expect(settingsTab == iggy3d::FrontendSettingsTab::Controls,
                 "pause settings input dispatch advances settings tab") &&

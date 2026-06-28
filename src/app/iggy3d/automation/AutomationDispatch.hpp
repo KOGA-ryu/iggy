@@ -3,6 +3,7 @@
 #include <functional>
 #include <optional>
 
+#include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
 #include "app/input/InputRouter.hpp"
 #include "runtime/session/Session.hpp"
@@ -33,6 +34,7 @@ struct ProductAutomationAppContext {
   FrontendState& frontend;
   const ProductSaveBridgeResult& saves;
   const ProductAppOptions& options;
+  FrontendSettings& settings;
   FrontendSettingsTab& settingsTab;
   std::optional<Session>& activeSession;
   WorldSetupDraft& worldSetupDraft;

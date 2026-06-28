@@ -25,7 +25,7 @@ struct ProductOpeningMenuInputContext {
   WorldSetupDraft& worldSetupDraft;
   ProductAppWindowState& window;
   bool& closeRequested;
-  FrontendSettings* settings = nullptr;
+  FrontendSettings& settings;
 };
 
 MenuOwner productInputOwnerFor(const FrontendState& frontend,
