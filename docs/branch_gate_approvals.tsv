@@ -151,3 +151,5 @@ BG-1150	src/app/input/KeyboardInput.cpp	keyboard sprint action polling policy	co
 BG-1151	src/app/iggy3d/gameplay/Controller.cpp	manual first-person sprint profile selection policy	codex	2026-06-28
 BG-1152	src/app/input/KeyboardInput.cpp	keyboard jump action polling policy	codex	2026-06-28
 BG-1153	src/app/iggy3d/gameplay/Controller.cpp	product manual first-person jump rejection policy	codex	2026-06-28
+BG-1154	src/app/input/KeyboardInput.cpp	keyboard dash action polling policy	codex	2026-06-28
+BG-1155	src/app/iggy3d/gameplay/Controller.cpp	product manual first-person dash command policy	codex	2026-06-28

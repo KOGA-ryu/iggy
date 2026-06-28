@@ -29,6 +29,11 @@ constexpr float kManualFirstPersonSprintMaxSpeedMetersPerSecond = 3.2F;
 constexpr float kManualFirstPersonInputStepSeconds = 1.0F / 60.0F;
 constexpr float kManualFirstPersonJumpImpulseMetersPerSecond = 5.8F;
 constexpr float kManualFirstPersonGravityMetersPerSecondSquared = 18.0F;
+constexpr std::string_view kManualFirstPersonDashMovementProfile =
+    "manual_first_person_dash";
+constexpr float kManualFirstPersonDashSpeedMetersPerSecond = 9.5F;
+constexpr float kManualFirstPersonDashDurationSeconds = 0.18F;
+constexpr float kManualFirstPersonDashCooldownSeconds = 0.45F;
 constexpr float kPi = 3.14159265358979323846F;
 
 struct ProductInteractionOutcomeSnapshot {
@@ -143,6 +148,10 @@ const EntityState* productPlayerEntity(const Session& session) {
 
 void clearProductTargetProof(ProductAppWindowState& window);
 void clearProductOutcomeProof(ProductAppWindowState& window);
+void submitProductGameplayCommand(Session& session,
+                                  ProductAppWindowState& window,
+                                  CommandRecord command,
+                                  const SpatialSurfaceSet* collisionSurfaces);
 
 TargetQueryResult queryProductGameplayTarget(const Session& session, CommandKind kind) {
   const EntityId actor = productPlayerActor(session);
@@ -324,6 +333,99 @@ void submitProductJump(Session& session,
   window.gameplayJumpStatus = "accepted";
   window.gameplayJumpReasonCode = "gameplay_jump_accepted";
   advanceProductJump(session, window);
+}
+
+Vec3 manualFirstPersonDirection(float moveX, float moveY, float yawDegrees) {
+  const float yawRadians = yawDegrees * kPi / 180.0F;
+  const float cosYaw = std::cos(yawRadians);
+  const float sinYaw = std::sin(yawRadians);
+  const Vec3 forward{sinYaw, 0.0F, -cosYaw};
+  const Vec3 right{cosYaw, 0.0F, sinYaw};
+  const Vec3 raw = right * moveX + forward * moveY;
+  const float magnitude = std::sqrt(raw.x * raw.x + raw.z * raw.z);
+  // branch-gate: BG-1155
+  if (magnitude <= 0.0001F) {
+    return forward;
+  }
+  return raw * (1.0F / magnitude);
+}
+
+void advanceProductDashCooldown(ProductAppWindowState& window) {
+  // branch-gate: BG-1155
+  if (window.gameplayDashCooldownRemainingSeconds <= 0.0F) {
+    window.gameplayDashCooldownRemainingSeconds = 0.0F;
+    return;
+  }
+  window.gameplayDashCooldownRemainingSeconds =
+      std::max(0.0F,
+               window.gameplayDashCooldownRemainingSeconds -
+                   kManualFirstPersonInputStepSeconds);
+}
+
+void rejectProductDash(ProductAppWindowState& window,
+                       std::string_view status,
+                       std::string_view reason) {
+  window.gameplayDashRequested = true;
+  window.gameplayDashAccepted = false;
+  window.gameplayDashStatus = std::string{status};
+  window.gameplayDashReasonCode = std::string{reason};
+}
+
+void submitProductDash(Session& session,
+                       ProductAppWindowState& window,
+                       float moveX,
+                       float moveY,
+                       std::string_view source,
+                       const SpatialSurfaceSet* collisionSurfaces) {
+  clearProductTargetProof(window);
+  clearProductOutcomeProof(window);
+  window.gameplayInputUsed = true;
+  window.gameplayInputSource = std::string{source};
+  window.gameplayDashRequested = true;
+
+  // branch-gate: BG-1155
+  if (window.gameplayDashCooldownRemainingSeconds > 0.0F) {
+    rejectProductDash(window, "cooldown", "gameplay_dash_cooldown");
+    return;
+  }
+
+  const EntityState* actor = productPlayerEntity(session);
+  // branch-gate: BG-1155
+  if (actor == nullptr) {
+    rejectProductDash(window, "missing_player", "gameplay_dash_missing_player");
+    return;
+  }
+
+  const Vec3 direction =
+      manualFirstPersonDirection(moveX, moveY, window.viewport.cameraYawDegrees);
+  const float dashDistance = kManualFirstPersonDashSpeedMetersPerSecond *
+                             kManualFirstPersonDashDurationSeconds;
+  Vec3 destination = actor->transform.position + direction * dashDistance;
+  destination.y = actor->transform.position.y;
+
+  window.gameplayDashAccepted = true;
+  window.gameplayDashStatus = "accepted";
+  window.gameplayDashReasonCode = "gameplay_dash_accepted";
+  window.gameplayDashSpeedMetersPerSecond =
+      kManualFirstPersonDashSpeedMetersPerSecond;
+  window.gameplayDashDistanceMeters = dashDistance;
+  window.gameplayDashCooldownRemainingSeconds =
+      kManualFirstPersonDashCooldownSeconds;
+  window.gameplayDashDirectionX = direction.x;
+  window.gameplayDashDirectionZ = direction.z;
+  window.gameplayMovementProfile =
+      std::string{kManualFirstPersonDashMovementProfile};
+  window.gameplayMovementMaxSpeedMetersPerSecond =
+      kManualFirstPersonDashSpeedMetersPerSecond;
+
+  CommandRecord command;
+  command.playerSlot = 0;
+  command.actor = actor->id;
+  command.kind = CommandKind::Move;
+  command.source = CommandSource::LocalPlayer;
+  command.payload.target.hasPoint = true;
+  command.payload.target.point = destination;
+  submitProductGameplayCommand(session, window, command, collisionSurfaces);
 }
 
 Vec3 manualFirstPersonMoveDelta(float moveX,
@@ -730,11 +832,17 @@ void applyProductGameplayActions(Session& session,
   const float moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
   const float moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
   const bool sprinting = actionIsDown(actions, InputAction::PlayerSprint);
+  advanceProductDashCooldown(window);
   // branch-gate: BG-1153
   if (actionWasPressed(actions, InputAction::PlayerJump)) {
     submitProductJump(session, window, source);
   } else {
     advanceProductJump(session, window);
+  }
+  // branch-gate: BG-1155
+  if (actionWasPressed(actions, InputAction::PlayerDash)) {
+    submitProductDash(session, window, moveX, moveY, source, collisionSurfaces);
+    return;
   }
   if (moveX != 0.0F || moveY != 0.0F) {
     submitProductMove(session, window, moveX, moveY, sprinting, source,

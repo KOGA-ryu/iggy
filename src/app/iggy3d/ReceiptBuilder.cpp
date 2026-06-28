@@ -787,6 +787,23 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.gameplayJumpFinalY));
   appendReceiptField(receipt, "gameplay_jump_height_meters",
                      floatReceiptValue(window.gameplayJumpHeightMeters));
+  appendReceiptField(receipt, "gameplay_dash_requested",
+                     window.gameplayDashRequested);
+  appendReceiptField(receipt, "gameplay_dash_accepted",
+                     window.gameplayDashAccepted);
+  appendReceiptField(receipt, "gameplay_dash_status", window.gameplayDashStatus);
+  appendReceiptField(receipt, "gameplay_dash_reason_code",
+                     window.gameplayDashReasonCode);
+  appendReceiptField(receipt, "gameplay_dash_speed_mps",
+                     floatReceiptValue(window.gameplayDashSpeedMetersPerSecond));
+  appendReceiptField(receipt, "gameplay_dash_distance_meters",
+                     floatReceiptValue(window.gameplayDashDistanceMeters));
+  appendReceiptField(receipt, "gameplay_dash_cooldown_remaining_seconds",
+                     floatReceiptValue(window.gameplayDashCooldownRemainingSeconds));
+  appendReceiptField(receipt, "gameplay_dash_direction_x",
+                     floatReceiptValue(window.gameplayDashDirectionX));
+  appendReceiptField(receipt, "gameplay_dash_direction_z",
+                     floatReceiptValue(window.gameplayDashDirectionZ));
   appendReceiptField(receipt, "movement_debug_hud_visible", movementHud.visible);
   appendReceiptField(receipt, "movement_debug_hud_line_count",
                      static_cast<std::uint64_t>(movementHud.lines.size()));

@@ -19,6 +19,7 @@ struct KeyboardInputState {
   bool devToggleWasDown = false;
   std::array<bool, 8> asciiPaintWasDown{};
   bool jumpWasDown = false;
+  bool dashWasDown = false;
   bool interactWasDown = false;
   bool retryWasDown = false;
   bool editorUpWasDown = false;

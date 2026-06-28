@@ -318,6 +318,15 @@ struct ProductAppWindowState {
   float gameplayJumpStartY = 0.0F;
   float gameplayJumpFinalY = 0.0F;
   float gameplayJumpHeightMeters = 0.0F;
+  bool gameplayDashRequested = false;
+  bool gameplayDashAccepted = false;
+  std::string gameplayDashStatus = "not_requested";
+  std::string gameplayDashReasonCode = "not_requested";
+  float gameplayDashSpeedMetersPerSecond = 0.0F;
+  float gameplayDashDistanceMeters = 0.0F;
+  float gameplayDashCooldownRemainingSeconds = 0.0F;
+  float gameplayDashDirectionX = 0.0F;
+  float gameplayDashDirectionZ = 0.0F;
   bool gameplayCollisionSurfacesUsed = false;
   std::uint64_t gameplayCollisionSurfaceCount = 0;
   std::string gameplayTickReasonCode = "not_requested";

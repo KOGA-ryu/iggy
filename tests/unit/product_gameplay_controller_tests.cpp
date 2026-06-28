@@ -22,6 +22,7 @@ constexpr float kExpectedManualFirstPersonStepMeters =
 constexpr float kExpectedManualFirstPersonSprintStepMeters =
     kExpectedManualFirstPersonSprintSpeedMetersPerSecond / 60.0F;
 constexpr float kExpectedManualFirstPersonJumpImpulseMetersPerSecond = 5.8F;
+constexpr float kExpectedManualFirstPersonDashDistanceMeters = 9.5F * 0.18F;
 
 bool expect(bool condition, std::string_view message) {
   if (!condition) {
@@ -96,6 +97,17 @@ iggy3d::ActionState jumpActions() {
   iggy3d::ActionState actions;
   iggy3d::recordAction(actions,
                        iggy3d::InputAction::PlayerJump,
+                       true,
+                       true,
+                       false,
+                       1.0F);
+  return actions;
+}
+
+iggy3d::ActionState dashActions(float moveX = 0.0F, float moveY = 0.0F) {
+  iggy3d::ActionState actions = manualMoveActions(moveX, moveY);
+  iggy3d::recordAction(actions,
+                       iggy3d::InputAction::PlayerDash,
                        true,
                        true,
                        false,
@@ -367,6 +379,99 @@ bool productJumpFallsAndLands() {
                 "landed height zero");
 }
 
+bool productDashMovesForwardAndRecordsProof() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "dash session created")) {
+    return false;
+  }
+
+  const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
+  iggy3d::applyProductGameplayActions(*session,
+                                      dashActions(),
+                                      window,
+                                      "unit/gameplay_controller_dash");
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+
+  return expect(window.gameplayDashRequested, "dash requested") &&
+         expect(window.gameplayDashAccepted, "dash accepted") &&
+         expect(window.gameplayDashStatus == "accepted", "dash status") &&
+         expect(window.gameplayDashReasonCode == "gameplay_dash_accepted",
+                "dash reason") &&
+         expect(window.gameplayMovementProfile == "manual_first_person_dash",
+                "dash movement profile") &&
+         expect(nearlyEqual(window.gameplayDashDistanceMeters,
+                            kExpectedManualFirstPersonDashDistanceMeters),
+                "dash distance proof") &&
+         expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
+                            kExpectedManualFirstPersonDashDistanceMeters),
+                "dash movement distance") &&
+         expect(window.gameplayDashCooldownRemainingSeconds > 0.0F,
+                "dash cooldown set") &&
+         expect(nearlyEqual(window.gameplayDashDirectionX, 0.0F),
+                "dash direction x") &&
+         expect(nearlyEqual(window.gameplayDashDirectionZ, -1.0F),
+                "dash direction z") &&
+         expect(nearlyEqual(final.x - start.x, 0.0F), "dash x unchanged") &&
+         expect(nearlyEqual(final.z - start.z,
+                            -kExpectedManualFirstPersonDashDistanceMeters),
+                "dash moves camera forward");
+}
+
+bool productDashUsesMoveIntentDirection() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "dash right session created")) {
+    return false;
+  }
+
+  const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
+  iggy3d::applyProductGameplayActions(*session,
+                                      dashActions(1.0F, 0.0F),
+                                      window,
+                                      "unit/gameplay_controller_dash_right");
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+
+  return expect(window.gameplayDashAccepted, "dash right accepted") &&
+         expect(nearlyEqual(window.gameplayDashDirectionX, 1.0F),
+                "dash right direction x") &&
+         expect(nearlyEqual(window.gameplayDashDirectionZ, 0.0F),
+                "dash right direction z") &&
+         expect(nearlyEqual(final.x - start.x,
+                            kExpectedManualFirstPersonDashDistanceMeters),
+                "dash right moves x") &&
+         expect(nearlyEqual(final.z - start.z, 0.0F), "dash right z unchanged");
+}
+
+bool productDashRejectsDuringCooldown() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "dash cooldown session created")) {
+    return false;
+  }
+
+  iggy3d::applyProductGameplayActions(*session,
+                                      dashActions(),
+                                      window,
+                                      "unit/gameplay_controller_dash");
+  const iggy3d::Vec3 afterFirst = playerEntity(*session)->transform.position;
+  iggy3d::applyProductGameplayActions(*session,
+                                      dashActions(),
+                                      window,
+                                      "unit/gameplay_controller_dash_again");
+  const iggy3d::Vec3 afterSecond = playerEntity(*session)->transform.position;
+
+  return expect(window.gameplayDashRequested, "cooldown dash requested") &&
+         expect(!window.gameplayDashAccepted, "cooldown dash rejected") &&
+         expect(window.gameplayDashStatus == "cooldown", "cooldown dash status") &&
+         expect(window.gameplayDashReasonCode == "gameplay_dash_cooldown",
+                "cooldown dash reason") &&
+         expect(window.gameplayDashCooldownRemainingSeconds > 0.0F,
+                "cooldown remains") &&
+         expect(nearlyEqual(afterFirst.x, afterSecond.x), "cooldown no x move") &&
+         expect(nearlyEqual(afterFirst.z, afterSecond.z), "cooldown no z move");
+}
+
 bool defaultOffMoveWithCollisionSurfacesUsesLegacyPath() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -478,6 +583,9 @@ int main() {
                   productJumpRaisesPlayerAndRecordsProof() &&
                   productJumpRejectsDoubleJumpWhileAirborne() &&
                   productJumpFallsAndLands() &&
+                  productDashMovesForwardAndRecordsProof() &&
+                  productDashUsesMoveIntentDirection() &&
+                  productDashRejectsDuringCooldown() &&
                   defaultOffMoveWithCollisionSurfacesUsesLegacyPath() &&
                   optInMoveWithCollisionSurfacesUsesPhysicsPlanner() &&
                   optInMoveWithoutCollisionSurfacesRecordsNoSurfaces();

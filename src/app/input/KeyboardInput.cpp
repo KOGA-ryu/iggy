@@ -206,6 +206,8 @@ void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions
   const bool interactDown = keyDown(keys, SDL_SCANCODE_E);
   const bool retryDown = keyDown(keys, SDL_SCANCODE_R);
   const bool jumpDown = keyDown(keys, SDL_SCANCODE_SPACE);
+  const bool dashDown =
+      keyDown(keys, SDL_SCANCODE_LCTRL) || keyDown(keys, SDL_SCANCODE_RCTRL);
   const bool sprintDown =
       keyDown(keys, SDL_SCANCODE_LSHIFT) || keyDown(keys, SDL_SCANCODE_RSHIFT);
 
@@ -241,6 +243,10 @@ void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions
   if (jumpDown && !state.jumpWasDown) {
     recordAction(actions, InputAction::PlayerJump, true, true, false, 1.0F);
   }
+  // branch-gate: BG-1154
+  if (dashDown && !state.dashWasDown) {
+    recordAction(actions, InputAction::PlayerDash, true, true, false, 1.0F);
+  }
   if (interactDown && !state.interactWasDown) {
     recordAction(actions, InputAction::PlayerInteract, true, true, false, 1.0F);
   }
@@ -249,6 +255,7 @@ void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions
   }
 
   state.jumpWasDown = jumpDown;
+  state.dashWasDown = dashDown;
   state.interactWasDown = interactDown;
   state.retryWasDown = retryDown;
 #else
