@@ -489,6 +489,14 @@ bool tryProductTraversalJump(Session& session, ProductAppWindowState& window) {
 
   SessionState& state = session.mutableStateForOwnedSystems();
   const TraversalIntentResult result = executeTraversalIntent(state.world, request);
+  // If the player is already on top of a clamberable wall, the clamber slot is
+  // height-rejected. Do not consume jump in that state; let normal jump run.
+  // branch-gate: BG-1160
+  if (result.status == TraversalIntentStatus::TraversalRejected &&
+      result.selectedMechanic == TraversalMechanic::Clamber &&
+      result.traversal.status == TraversalStatus::HeightRejected) {
+    return false;
+  }
   recordProductTraversalProof(window, result);
   // branch-gate: BG-1156
   if (result.traversalAttempted) {

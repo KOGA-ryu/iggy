@@ -157,3 +157,4 @@ BG-1156	src/app/iggy3d/gameplay/Controller.cpp	product jump-triggered traversal 
 BG-1157	src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp	ASCII clamber ledge object top-surface bake policy	codex	2026-06-28
 BG-1158	src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.cpp	ASCII clamber ledge glyph semantics policy	codex	2026-06-28
 BG-1159	src/app/iggy3d/view/PrimitiveDrawList.cpp	Product primitive ledge draw styling policy	codex	2026-06-28
+BG-1160	src/app/iggy3d/gameplay/Controller.cpp	clamber height rejection jump fallback policy	codex	2026-06-28

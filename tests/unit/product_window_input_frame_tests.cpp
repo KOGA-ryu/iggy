@@ -1,11 +1,15 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/ascii_room/Activation.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
+#include "content/assets/RoomAsset.hpp"
+#include "core/math/Transform3.hpp"
+#include "runtime/replay/StateHash.hpp"
 
 #include <iostream>
 #include <limits>
@@ -66,6 +70,121 @@ iggy3d::ProductAppWindowState editingWindow() {
   window.roomEditorCursor = {};
   window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
   return window;
+}
+
+iggy3d::RoomSpatialSurface inputFrameClamberFloorSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "floor";
+  surface.sourceStaticMeshId = "floor_mesh";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {-10.0F, 0.0F, -10.0F},
+      {10.0F, 0.0F, -10.0F},
+      {10.0F, 0.0F, 10.0F},
+      {-10.0F, 0.0F, 10.0F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable", "clamber"};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface inputFrameClamberTopSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "clamber_top";
+  surface.sourceStaticMeshId = "clamber_block";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Plane;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Walkable;
+  surface.pointsMeters = {
+      {2.0F, 1.0F, -1.5F},
+      {4.0F, 1.0F, -1.5F},
+      {4.0F, 1.0F, -0.5F},
+      {2.0F, 1.0F, -0.5F},
+  };
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = {"walkable"};
+  surface.collisionMask = {"actor"};
+  return surface;
+}
+
+iggy3d::RoomSpatialSurface inputFrameClamberBlockerSurface() {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = "clamber_blocker";
+  surface.sourceStaticMeshId = "clamber_block";
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {
+      {2.0F, 0.0F, -1.5F},
+      {4.0F, 0.0F, -1.5F},
+      {4.0F, 1.0F, -0.5F},
+      {2.0F, 1.0F, -0.5F},
+  };
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.traversalTags = {"blocker", "clamber"};
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  return surface;
+}
+
+iggy3d::RoomAsset inputFrameClamberRoom() {
+  iggy3d::RoomAsset room;
+  room.id = "input_frame_clamber_test";
+
+  iggy3d::RoomStaticMeshAsset floor;
+  floor.id = "floor_mesh";
+  floor.meshId = "floor";
+  floor.role = "floor";
+  floor.positionMeters = {0.0F, 0.0F, 0.0F};
+  floor.sizeMeters = {20.0F, 0.1F, 20.0F};
+  room.staticMeshes.push_back(floor);
+
+  iggy3d::RoomStaticMeshAsset block;
+  block.id = "clamber_block";
+  block.meshId = "block";
+  block.role = "ledge";
+  block.positionMeters = {3.0F, 0.5F, -1.0F};
+  block.sizeMeters = {2.0F, 1.0F, 1.0F};
+  room.staticMeshes.push_back(block);
+
+  room.spatialSurfaces.push_back(inputFrameClamberFloorSurface());
+  room.spatialSurfaces.push_back(inputFrameClamberTopSurface());
+  room.spatialSurfaces.push_back(inputFrameClamberBlockerSurface());
+  return room;
+}
+
+void setInputFramePlayerPosition(iggy3d::Session& session, iggy3d::Vec3 position) {
+  iggy3d::SessionState& state = session.mutableStateForOwnedSystems();
+  const iggy3d::EntityId actor = state.players.actorForSlot(0);
+  const iggy3d::EntityState* player = state.world.findById(actor);
+  if (!expect(player != nullptr, "input frame player exists for reposition")) {
+    return;
+  }
+  iggy3d::Transform3 transform = player->transform;
+  transform.position = position;
+  const iggy3d::WorldMutationResult mutation =
+      state.world.updateTransform(actor, transform);
+  expect(mutation.status == iggy3d::WorldStatus::Ok,
+         "input frame player reposition ok");
+  state.currentStateHash = iggy3d::computeStateHash(state);
+}
+
+void setInputFrameClamberActiveRoom(iggy3d::ProductAppWindowState& window,
+                                    const iggy3d::Session& session) {
+  window.activeRoom.loaded = true;
+  window.activeRoom.status = "loaded";
+  window.activeRoom.reasonCode = "active_room_loaded";
+  window.activeRoom.source = "unit";
+  window.activeRoom.roomId = "input_frame_clamber_test";
+  window.activeRoom.sourceName = "unit/input_frame_clamber_test";
+  window.activeRoom.room = inputFrameClamberRoom();
+  window.activeRoom.staticMeshCount = window.activeRoom.room.staticMeshes.size();
+  window.activeRoom.spatialSurfaceCount =
+      window.activeRoom.room.spatialSurfaces.size();
+  window.activeRoom.walkableSurfaceCount = 2U;
+  window.activeRoom.actorBlockerSurfaceCount = 1U;
+  window.activeRoomCollision =
+      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
 }
 
 iggy3d::ProductAppWindowState gameplayWindow(
@@ -481,6 +600,56 @@ bool controllerSouthJumpsInGameplayPlayerMode() {
                 "gameplay south jump airborne reason");
 }
 
+bool controllerSouthJumpsFromClamberedWallTop() {
+  const iggy3d::FrontendState frontend = gameplayFrontend();
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = gameplayWindow(session);
+  if (!expect(session.has_value(), "clamber jump session created")) {
+    return false;
+  }
+  setInputFramePlayerPosition(*session, {3.0F, 0.0F, 0.10F});
+  setInputFrameClamberActiveRoom(window, *session);
+  window.viewport.cameraYawDegrees = 0.0F;
+  iggy3d::ProductControllerModeChordState chord;
+  iggy3d::ProductControllerActionRoutingState routing;
+  const iggy3d::GamepadControllerActionSample south =
+      iggy3d::productControllerActionSampleForControl(
+          iggy3d::ProductControllerControl::SouthButton);
+
+  const iggy3d::ProductControllerSampleInputResult clambered =
+      iggy3d::processProductControllerActionSample(
+          {frontend, window, &*session, chord, routing, nullptr, "unit"}, south);
+  const float clamberTopY = session->state()
+                                .world.findById(session->state().players.actorForSlot(0))
+                                ->transform.position.y;
+  (void)iggy3d::processProductControllerActionSample(
+      {frontend, window, &*session, chord, routing, nullptr, "unit"},
+      iggy3d::GamepadControllerActionSample{});
+  const iggy3d::ProductControllerSampleInputResult jumped =
+      iggy3d::processProductControllerActionSample(
+          {frontend, window, &*session, chord, routing, nullptr, "unit"}, south);
+  const float finalY = session->state()
+                           .world.findById(session->state().players.actorForSlot(0))
+                           ->transform.position.y;
+
+  return expect(clambered.actionApplied, "wall top first south action applied") &&
+         expect(window.controllerActionInputAction == "game.jump",
+                "wall top second south records jump action") &&
+         expect(window.lastInputAction == iggy3d::InputAction::PlayerJump,
+                "wall top second south routes to jump") &&
+         expect(jumped.actionApplied, "wall top second south action applied") &&
+         expect(window.gameplayJumpRequested, "wall top jump requested") &&
+         expect(window.gameplayJumpAccepted, "wall top jump accepted") &&
+         expect(window.gameplayJumpActive, "wall top jump active") &&
+         expect(window.gameplayJumpStatus == "airborne",
+                "wall top jump airborne") &&
+         expect(window.gameplayJumpReasonCode == "gameplay_jump_airborne",
+                "wall top jump reason") &&
+         expect(window.gameplayJumpGroundY == clamberTopY,
+                "wall top jump uses clamber top as ground") &&
+         expect(finalY > clamberTopY, "wall top jump raises player");
+}
+
 bool starterDeleteButtonOpensDeleteConfirmation() {
   iggy3d::FrontendState frontend = starterFrontend();
   frontend.selectedAction = iggy3d::FrontendAction::Delete;
@@ -718,6 +887,7 @@ int main() {
       backWithoutPreviewFallsThroughPolicy() &&
       controllerEastCancelsPendingPreviewWithoutMutation() &&
       controllerSouthJumpsInGameplayPlayerMode() &&
+      controllerSouthJumpsFromClamberedWallTop() &&
       starterDeleteButtonOpensDeleteConfirmation() &&
       starterHitTestUsesCanonicalActionRows() &&
       childPanelHitTestsExposeMenuActions() &&
