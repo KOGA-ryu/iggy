@@ -21,6 +21,7 @@ constexpr float kExpectedManualFirstPersonStepMeters =
     kExpectedManualFirstPersonSpeedMetersPerSecond / 60.0F;
 constexpr float kExpectedManualFirstPersonSprintStepMeters =
     kExpectedManualFirstPersonSprintSpeedMetersPerSecond / 60.0F;
+constexpr float kExpectedManualFirstPersonJumpImpulseMetersPerSecond = 5.8F;
 
 bool expect(bool condition, std::string_view message) {
   if (!condition) {
@@ -89,6 +90,21 @@ iggy3d::ActionState manualMoveActions(float moveX,
                          1.0F);
   }
   return actions;
+}
+
+iggy3d::ActionState jumpActions() {
+  iggy3d::ActionState actions;
+  iggy3d::recordAction(actions,
+                       iggy3d::InputAction::PlayerJump,
+                       true,
+                       true,
+                       false,
+                       1.0F);
+  return actions;
+}
+
+iggy3d::ActionState noActions() {
+  return {};
 }
 
 bool runManualMove(float moveX,
@@ -253,6 +269,104 @@ bool productSprintUsesSprintProfileAndStep() {
                 "sprint moves forward by sprint step");
 }
 
+bool productJumpRaisesPlayerAndRecordsProof() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "jump session created")) {
+    return false;
+  }
+
+  const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpActions(),
+                                      window,
+                                      "unit/gameplay_controller_jump");
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+
+  return expect(window.gameplayJumpRequested, "jump requested") &&
+         expect(window.gameplayJumpAccepted, "jump accepted") &&
+         expect(window.gameplayJumpActive, "jump remains active after first step") &&
+         expect(window.gameplayJumpStatus == "airborne", "jump airborne status") &&
+         expect(window.gameplayJumpReasonCode == "gameplay_jump_airborne",
+                "jump airborne reason") &&
+         expect(window.playerPositionChanged, "jump changed player position") &&
+         expect(final.y > start.y, "jump raises player y") &&
+         expect(nearlyEqual(window.gameplayJumpGroundY, start.y), "jump ground y") &&
+         expect(nearlyEqual(window.gameplayJumpStartY, start.y), "jump start y") &&
+         expect(nearlyEqual(window.gameplayJumpFinalY, final.y), "jump final y") &&
+         expect(window.gameplayJumpHeightMeters > 0.0F, "jump height positive") &&
+         expect(window.gameplayJumpVelocityMetersPerSecond <
+                    kExpectedManualFirstPersonJumpImpulseMetersPerSecond,
+                "jump velocity reduced by gravity");
+}
+
+bool productJumpRejectsDoubleJumpWhileAirborne() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "double jump session created")) {
+    return false;
+  }
+
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpActions(),
+                                      window,
+                                      "unit/gameplay_controller_jump");
+  const float firstY = playerEntity(*session)->transform.position.y;
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpActions(),
+                                      window,
+                                      "unit/gameplay_controller_double_jump");
+  const float secondY = playerEntity(*session)->transform.position.y;
+
+  return expect(window.gameplayJumpRequested, "double jump requested") &&
+         expect(!window.gameplayJumpAccepted, "double jump rejected") &&
+         expect(window.gameplayJumpActive, "double jump still airborne") &&
+         expect(window.gameplayJumpStatus == "already_airborne",
+                "double jump status") &&
+         expect(window.gameplayJumpReasonCode ==
+                    "gameplay_jump_already_airborne",
+                "double jump reason") &&
+         expect(nearlyEqual(firstY, secondY), "double jump does not add height");
+}
+
+bool productJumpFallsAndLands() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "landing session created")) {
+    return false;
+  }
+
+  const float groundY = playerEntity(*session)->transform.position.y;
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpActions(),
+                                      window,
+                                      "unit/gameplay_controller_jump");
+  bool observedAirborneHeight = window.gameplayJumpHeightMeters > 0.0F;
+  for (int tick = 0; tick < 80; ++tick) {
+    iggy3d::applyProductGameplayActions(*session,
+                                        noActions(),
+                                        window,
+                                        "unit/gameplay_controller_jump_tick");
+    observedAirborneHeight =
+        observedAirborneHeight || window.gameplayJumpHeightMeters > 0.0F;
+  }
+  const float finalY = playerEntity(*session)->transform.position.y;
+
+  return expect(observedAirborneHeight, "landing observed airborne height") &&
+         expect(!window.gameplayJumpActive, "jump no longer active") &&
+         expect(window.gameplayJumpStatus == "landed", "jump landed status") &&
+         expect(window.gameplayJumpReasonCode == "gameplay_jump_landed",
+                "jump landed reason") &&
+         expect(nearlyEqual(window.gameplayJumpVelocityMetersPerSecond, 0.0F),
+                "landed velocity zero") &&
+         expect(nearlyEqual(window.gameplayJumpGroundY, groundY), "land ground") &&
+         expect(nearlyEqual(finalY, groundY), "landed player y") &&
+         expect(nearlyEqual(window.gameplayJumpFinalY, groundY),
+                "landed final proof y") &&
+         expect(nearlyEqual(window.gameplayJumpHeightMeters, 0.0F),
+                "landed height zero");
+}
+
 bool defaultOffMoveWithCollisionSurfacesUsesLegacyPath() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -361,6 +475,9 @@ int main() {
                   productMoveUsesCameraYaw() &&
                   productMoveNormalizesDiagonalToTunedStep() &&
                   productSprintUsesSprintProfileAndStep() &&
+                  productJumpRaisesPlayerAndRecordsProof() &&
+                  productJumpRejectsDoubleJumpWhileAirborne() &&
+                  productJumpFallsAndLands() &&
                   defaultOffMoveWithCollisionSurfacesUsesLegacyPath() &&
                   optInMoveWithCollisionSurfacesUsesPhysicsPlanner() &&
                   optInMoveWithoutCollisionSurfacesRecordsNoSurfaces();

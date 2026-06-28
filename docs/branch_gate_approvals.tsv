@@ -149,3 +149,5 @@ BG-1148	src/app/iggy3d/menu/DrawList.cpp	build map selected paint tool draw-list
 BG-1149	src/app/iggy3d/view/OpeningMenuView.cpp	build map selected paint tool SDL label policy	codex	2026-06-28
 BG-1150	src/app/input/KeyboardInput.cpp	keyboard sprint action polling policy	codex	2026-06-28
 BG-1151	src/app/iggy3d/gameplay/Controller.cpp	manual first-person sprint profile selection policy	codex	2026-06-28
+BG-1152	src/app/input/KeyboardInput.cpp	keyboard jump action polling policy	codex	2026-06-28
+BG-1153	src/app/iggy3d/gameplay/Controller.cpp	product manual first-person jump rejection policy	codex	2026-06-28

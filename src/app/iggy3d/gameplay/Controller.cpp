@@ -12,6 +12,7 @@
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/movement/MovementSystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
+#include "runtime/replay/StateHash.hpp"
 #include "runtime/session/Session.hpp"
 #include "runtime/targeting/ReachQuery.hpp"
 #include "runtime/targeting/TargetQuery.hpp"
@@ -26,6 +27,8 @@ constexpr std::string_view kManualFirstPersonSprintMovementProfile =
 constexpr float kManualFirstPersonMaxSpeedMetersPerSecond = 1.6F;
 constexpr float kManualFirstPersonSprintMaxSpeedMetersPerSecond = 3.2F;
 constexpr float kManualFirstPersonInputStepSeconds = 1.0F / 60.0F;
+constexpr float kManualFirstPersonJumpImpulseMetersPerSecond = 5.8F;
+constexpr float kManualFirstPersonGravityMetersPerSecondSquared = 18.0F;
 constexpr float kPi = 3.14159265358979323846F;
 
 struct ProductInteractionOutcomeSnapshot {
@@ -138,6 +141,9 @@ const EntityState* productPlayerEntity(const Session& session) {
   return session.state().world.findById(actor);
 }
 
+void clearProductTargetProof(ProductAppWindowState& window);
+void clearProductOutcomeProof(ProductAppWindowState& window);
+
 TargetQueryResult queryProductGameplayTarget(const Session& session, CommandKind kind) {
   const EntityId actor = productPlayerActor(session);
   return queryTarget(TargetQueryRequest{&session.state().world, actor, false, {},
@@ -185,6 +191,139 @@ void recordProductMovementProfile(ProductAppWindowState& window, bool sprinting)
       std::string{manualFirstPersonMovementProfile(sprinting)};
   window.gameplayMovementMaxSpeedMetersPerSecond =
       manualFirstPersonMaxSpeedMetersPerSecond(sprinting);
+}
+
+bool setProductPlayerPosition(Session& session, EntityId actor, const Vec3& position) {
+  SessionState& state = session.mutableStateForOwnedSystems();
+  const EntityState* entity = state.world.findById(actor);
+  // branch-gate: BG-1153
+  if (entity == nullptr) {
+    return false;
+  }
+  Transform3 transform = entity->transform;
+  transform.position = position;
+  const WorldMutationResult mutation = state.world.updateTransform(actor, transform);
+  // branch-gate: BG-1153
+  if (mutation.status != WorldStatus::Ok) {
+    return false;
+  }
+  state.currentStateHash = computeStateHash(state);
+  return true;
+}
+
+void recordProductJumpPosition(ProductAppWindowState& window,
+                               float groundY,
+                               float startY,
+                               float finalY) {
+  window.gameplayJumpGroundY = groundY;
+  window.gameplayJumpStartY = startY;
+  window.gameplayJumpFinalY = finalY;
+  window.gameplayJumpHeightMeters = std::max(0.0F, finalY - groundY);
+}
+
+void rejectProductJump(ProductAppWindowState& window,
+                       std::string_view status,
+                       std::string_view reason) {
+  window.gameplayJumpRequested = true;
+  window.gameplayJumpAccepted = false;
+  window.gameplayJumpStatus = std::string{status};
+  window.gameplayJumpReasonCode = std::string{reason};
+}
+
+void advanceProductJump(Session& session, ProductAppWindowState& window) {
+  // branch-gate: BG-1153
+  if (!window.gameplayJumpActive) {
+    return;
+  }
+
+  const EntityId actor = productPlayerActor(session);
+  const EntityState* entity = session.state().world.findById(actor);
+  // branch-gate: BG-1153
+  if (entity == nullptr) {
+    window.gameplayJumpActive = false;
+    window.gameplayJumpVelocityMetersPerSecond = 0.0F;
+    window.gameplayJumpStatus = "missing_player";
+    window.gameplayJumpReasonCode = "gameplay_jump_missing_player";
+    return;
+  }
+
+  const float previousY = entity->transform.position.y;
+  const float nextVelocity = window.gameplayJumpVelocityMetersPerSecond -
+                             kManualFirstPersonGravityMetersPerSecondSquared *
+                                 kManualFirstPersonInputStepSeconds;
+  float nextY = previousY +
+                window.gameplayJumpVelocityMetersPerSecond *
+                    kManualFirstPersonInputStepSeconds -
+                0.5F * kManualFirstPersonGravityMetersPerSecondSquared *
+                    kManualFirstPersonInputStepSeconds *
+                    kManualFirstPersonInputStepSeconds;
+  bool landed = false;
+  // branch-gate: BG-1153
+  if (nextY <= window.gameplayJumpGroundY && nextVelocity <= 0.0F) {
+    nextY = window.gameplayJumpGroundY;
+    landed = true;
+  }
+
+  Vec3 position = entity->transform.position;
+  position.y = nextY;
+  // branch-gate: BG-1153
+  if (!setProductPlayerPosition(session, actor, position)) {
+    window.gameplayJumpActive = false;
+    window.gameplayJumpVelocityMetersPerSecond = 0.0F;
+    window.gameplayJumpStatus = "mutation_failed";
+    window.gameplayJumpReasonCode = "gameplay_jump_mutation_failed";
+    return;
+  }
+
+  window.playerPositionChanged =
+      window.playerPositionChanged || std::fabs(previousY - nextY) > 0.0001F;
+  window.gameplayJumpActive = !landed;
+  // branch-gate: BG-1153
+  window.gameplayJumpVelocityMetersPerSecond = landed ? 0.0F : nextVelocity;
+  recordProductJumpPosition(window,
+                            window.gameplayJumpGroundY,
+                            window.gameplayJumpStartY,
+                            nextY);
+  // branch-gate: BG-1153
+  window.gameplayJumpStatus = landed ? "landed" : "airborne";
+  // branch-gate: BG-1153
+  window.gameplayJumpReasonCode =
+      landed ? "gameplay_jump_landed" : "gameplay_jump_airborne";
+  window.runtimeStateHash = session.stateHash();
+}
+
+void submitProductJump(Session& session,
+                       ProductAppWindowState& window,
+                       std::string_view source) {
+  clearProductTargetProof(window);
+  clearProductOutcomeProof(window);
+  window.gameplayInputUsed = true;
+  window.gameplayInputSource = std::string{source};
+  window.gameplayJumpRequested = true;
+
+  // branch-gate: BG-1153
+  if (window.gameplayJumpActive) {
+    rejectProductJump(window, "already_airborne",
+                      "gameplay_jump_already_airborne");
+    return;
+  }
+
+  const EntityState* actor = productPlayerEntity(session);
+  // branch-gate: BG-1153
+  if (actor == nullptr) {
+    rejectProductJump(window, "missing_player", "gameplay_jump_missing_player");
+    return;
+  }
+
+  const float groundY = actor->transform.position.y;
+  window.gameplayJumpAccepted = true;
+  window.gameplayJumpActive = true;
+  window.gameplayJumpVelocityMetersPerSecond =
+      kManualFirstPersonJumpImpulseMetersPerSecond;
+  recordProductJumpPosition(window, groundY, groundY, groundY);
+  window.gameplayJumpStatus = "accepted";
+  window.gameplayJumpReasonCode = "gameplay_jump_accepted";
+  advanceProductJump(session, window);
 }
 
 Vec3 manualFirstPersonMoveDelta(float moveX,
@@ -591,6 +730,12 @@ void applyProductGameplayActions(Session& session,
   const float moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
   const float moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
   const bool sprinting = actionIsDown(actions, InputAction::PlayerSprint);
+  // branch-gate: BG-1153
+  if (actionWasPressed(actions, InputAction::PlayerJump)) {
+    submitProductJump(session, window, source);
+  } else {
+    advanceProductJump(session, window);
+  }
   if (moveX != 0.0F || moveY != 0.0F) {
     submitProductMove(session, window, moveX, moveY, sprinting, source,
                       collisionSurfaces);

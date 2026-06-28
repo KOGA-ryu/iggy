@@ -769,6 +769,24 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.gameplayMovementProfile);
   appendReceiptField(receipt, "gameplay_movement_max_speed_mps",
                      floatReceiptValue(window.gameplayMovementMaxSpeedMetersPerSecond));
+  appendReceiptField(receipt, "gameplay_jump_requested",
+                     window.gameplayJumpRequested);
+  appendReceiptField(receipt, "gameplay_jump_accepted",
+                     window.gameplayJumpAccepted);
+  appendReceiptField(receipt, "gameplay_jump_active", window.gameplayJumpActive);
+  appendReceiptField(receipt, "gameplay_jump_status", window.gameplayJumpStatus);
+  appendReceiptField(receipt, "gameplay_jump_reason_code",
+                     window.gameplayJumpReasonCode);
+  appendReceiptField(receipt, "gameplay_jump_velocity_mps",
+                     floatReceiptValue(window.gameplayJumpVelocityMetersPerSecond));
+  appendReceiptField(receipt, "gameplay_jump_ground_y",
+                     floatReceiptValue(window.gameplayJumpGroundY));
+  appendReceiptField(receipt, "gameplay_jump_start_y",
+                     floatReceiptValue(window.gameplayJumpStartY));
+  appendReceiptField(receipt, "gameplay_jump_final_y",
+                     floatReceiptValue(window.gameplayJumpFinalY));
+  appendReceiptField(receipt, "gameplay_jump_height_meters",
+                     floatReceiptValue(window.gameplayJumpHeightMeters));
   appendReceiptField(receipt, "movement_debug_hud_visible", movementHud.visible);
   appendReceiptField(receipt, "movement_debug_hud_line_count",
                      static_cast<std::uint64_t>(movementHud.lines.size()));

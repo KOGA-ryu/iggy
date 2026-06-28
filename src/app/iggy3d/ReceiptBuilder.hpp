@@ -308,6 +308,16 @@ struct ProductAppWindowState {
   float gameplayMovementGradePercent = 0.0F;
   std::string gameplayMovementProfile = "manual_first_person";
   float gameplayMovementMaxSpeedMetersPerSecond = 1.6F;
+  bool gameplayJumpRequested = false;
+  bool gameplayJumpAccepted = false;
+  bool gameplayJumpActive = false;
+  std::string gameplayJumpStatus = "not_requested";
+  std::string gameplayJumpReasonCode = "not_requested";
+  float gameplayJumpVelocityMetersPerSecond = 0.0F;
+  float gameplayJumpGroundY = 0.0F;
+  float gameplayJumpStartY = 0.0F;
+  float gameplayJumpFinalY = 0.0F;
+  float gameplayJumpHeightMeters = 0.0F;
   bool gameplayCollisionSurfacesUsed = false;
   std::uint64_t gameplayCollisionSurfaceCount = 0;
   std::string gameplayTickReasonCode = "not_requested";
