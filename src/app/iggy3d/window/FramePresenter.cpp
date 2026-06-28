@@ -346,6 +346,8 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           request.world,
                           request.frontend,
                           request.settingsTab,
+                          request.window.gameplayMovementTuning,
+                          request.window.gameplayMovementTuningSelectedField,
                           request.worldSetupDraft,
                           request.window.worldSetupDungeonDraftEditMode,
                           request.window.worldSetupDungeonDraftModified,

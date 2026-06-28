@@ -8,6 +8,7 @@
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 #include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
@@ -74,6 +75,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductWorldTemplate& world,
                                          const FrontendState& frontend,
                                          FrontendSettingsTab selectedSettingsTab,
+                                         const ProductGameplayMovementTuning& movementTuning,
+                                         ProductGameplayMovementTuningField movementTuningField,
                                          const WorldSetupDraft& worldSetupDraft,
                                          bool dungeonDraftEditMode,
                                          bool dungeonDraftModified,

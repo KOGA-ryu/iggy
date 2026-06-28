@@ -109,6 +109,36 @@ FrontendSettingsTab nextSettingsSelection(FrontendSettingsTab current,
   return tabs[index];
 }
 
+ProductMenuActionResult applyGameplayMovementTuningAction(
+    InputAction action,
+    ProductAppWindowState& window,
+    FrontendState& frontend) {
+  // branch-gate: BG-1206
+  if (action == InputAction::MenuConfirm) {
+    window.gameplayMovementTuningSelectedField =
+        nextProductGameplayMovementTuningField(
+            window.gameplayMovementTuningSelectedField);
+    window.gameplayMovementTuningStatus = "movement_tuning_field_selected";
+    window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
+    frontend.status = window.gameplayMovementTuningStatus;
+    return {true, true};
+  }
+  // branch-gate: BG-1206
+  if (action == InputAction::MenuLeft || action == InputAction::MenuRight) {
+    // branch-gate: BG-1209
+    const int direction = action == InputAction::MenuLeft ? -1 : 1;
+    (void)adjustProductGameplayMovementTuning(
+        window.gameplayMovementTuning,
+        window.gameplayMovementTuningSelectedField,
+        direction);
+    window.gameplayMovementTuningStatus = "movement_tuning_adjusted";
+    window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
+    frontend.status = window.gameplayMovementTuningStatus;
+    return {true, true};
+  }
+  return {false, false};
+}
+
 void closeDevOverlayToGameplay(FrontendState& frontend,
                                ProductAppWindowState& window) {
   closeProductOverlayToGameplayTransition(frontend, window);
@@ -400,6 +430,15 @@ ProductMenuActionResult applyProductSettingsMenuAction(
     InputAction action,
     ProductSettingsMenuActionContext context) {
   FrontendState& frontend = context.frontend;
+  // branch-gate: BG-1206
+  if (context.settingsTab == FrontendSettingsTab::Gameplay) {
+    const ProductMenuActionResult tuning =
+        applyGameplayMovementTuningAction(action, context.window, frontend);
+    // branch-gate: BG-1206
+    if (tuning.handled) {
+      return tuning;
+    }
+  }
   // branch-gate: BG-1019
   if (action == InputAction::MenuUp || action == InputAction::MenuDown) {
     context.settingsTab = nextSettingsSelection(context.settingsTab, action);

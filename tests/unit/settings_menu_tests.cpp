@@ -1,4 +1,5 @@
 #include "app/frontend/SettingsMenu.hpp"
+#include "app/iggy3d/gameplay/MovementTuning.hpp"
 
 #include <iostream>
 #include <string_view>
@@ -106,9 +107,34 @@ bool settingsRowsHaveUsefulState() {
          expect(!audio.enabled, "audio disabled without audio system") &&
          expect(audio.disabledReason == "audio_unavailable",
                 "audio disabled reason") &&
-         expect(!gameplay.enabled, "gameplay read only") &&
-         expect(gameplay.disabledReason == "read_only_v1",
-                "gameplay read only reason");
+         expect(gameplay.enabled, "gameplay runtime tuning enabled") &&
+         expect(gameplay.disabledReason == "none",
+                "gameplay runtime tuning reason");
+}
+
+bool movementTuningFieldDescriptorsAreStable() {
+  iggy3d::ProductGameplayMovementTuning tuning =
+      iggy3d::productGameplayMovementTuning();
+  const float walk = tuning.walkSpeedMetersPerSecond;
+  const float adjusted = iggy3d::adjustProductGameplayMovementTuning(
+      tuning, iggy3d::ProductGameplayMovementTuningField::WalkSpeed, 1);
+  return expect(iggy3d::productGameplayMovementTuningFieldCount() == 7U,
+                "movement tuning field count") &&
+         expect(iggy3d::productGameplayMovementTuningFieldName(
+                    iggy3d::ProductGameplayMovementTuningField::WalkSpeed) ==
+                    "walk_speed_mps",
+                "walk speed field name") &&
+         expect(iggy3d::nextProductGameplayMovementTuningField(
+                    iggy3d::ProductGameplayMovementTuningField::WalkSpeed) ==
+                    iggy3d::ProductGameplayMovementTuningField::SprintSpeed,
+                "next movement tuning field") &&
+         expect(iggy3d::previousProductGameplayMovementTuningField(
+                    iggy3d::ProductGameplayMovementTuningField::WalkSpeed) ==
+                    iggy3d::ProductGameplayMovementTuningField::DashCooldown,
+                "previous movement tuning wraps") &&
+         expect(adjusted > walk, "walk tuning increments") &&
+         expect(tuning.walkSpeedMetersPerSecond == adjusted,
+                "walk tuning stores increment");
 }
 
 bool settingsTabNavigationClamps() {
@@ -269,6 +295,7 @@ int main() {
   const bool ok = settingsTabOrderIsExact() && settingsNamesAreStable() &&
                   defaultsArePacketDefaults() && restoreAndApplyStayFrontendOnly() &&
                   settingsRowsHaveUsefulState() && settingsTabNavigationClamps() &&
+                  movementTuningFieldDescriptorsAreStable() &&
                   settingsApplyRoutesArePure() &&
                   settingsRestoreAndBackRoutesArePure() &&
                   invalidAndUnsupportedSettingsRoutesAreIgnored();

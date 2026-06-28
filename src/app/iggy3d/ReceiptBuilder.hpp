@@ -341,6 +341,12 @@ struct ProductAppWindowState {
       std::string{kProductGameplayMovementTuning.walkProfile};
   float gameplayMovementMaxSpeedMetersPerSecond =
       kProductGameplayMovementTuning.walkSpeedMetersPerSecond;
+  ProductGameplayMovementTuning gameplayMovementTuning =
+      productGameplayMovementTuning();
+  ProductGameplayMovementTuningField gameplayMovementTuningSelectedField =
+      ProductGameplayMovementTuningField::WalkSpeed;
+  std::string gameplayMovementTuningStatus = "movement_tuning_ready";
+  std::string gameplayMovementTuningReasonCode = "movement_tuning_ready";
   bool gameplayJumpRequested = false;
   bool gameplayJumpAccepted = false;
   bool gameplayJumpActive = false;

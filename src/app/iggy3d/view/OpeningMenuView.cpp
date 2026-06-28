@@ -8,6 +8,8 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <string_view>
 
@@ -815,6 +817,62 @@ std::string_view settingsTabLabel(FrontendSettingsTab tab) {
   return "None";
 }
 
+std::string fixedFloat(float value, int precision) {
+  std::ostringstream stream;
+  stream << std::fixed << std::setprecision(precision) << value;
+  return stream.str();
+}
+
+std::string sliderBar(float value, float minValue, float maxValue) {
+  constexpr int kSegments = 12;
+  // branch-gate: BG-1210
+  const float normalized =
+      maxValue <= minValue ? 0.0F : (value - minValue) / (maxValue - minValue);
+  const int filled = std::clamp(
+      static_cast<int>(std::lround(std::clamp(normalized, 0.0F, 1.0F) *
+                                   static_cast<float>(kSegments))),
+      0,
+      kSegments);
+  std::string bar = "[";
+  for (int index = 0; index < kSegments; ++index) {
+    // branch-gate: BG-1210
+    bar += index < filled ? '#' : '.';
+  }
+  bar += "]";
+  return bar;
+}
+
+void drawMovementTuningRows(
+    SDL_Renderer& renderer,
+    const ProductGameplayMovementTuning& tuning,
+    ProductGameplayMovementTuningField selectedField) {
+  setColor(renderer, 126, 201, 176);
+  drawText(renderer, "MOVEMENT TUNING", 790.0F, 230.0F, 2.0F);
+  setColor(renderer, 166, 184, 177);
+  drawText(renderer, "LEFT RIGHT ADJUST", 790.0F, 258.0F, 1.0F);
+  drawText(renderer, "ENTER NEXT FIELD", 790.0F, 274.0F, 1.0F);
+
+  float y = 304.0F;
+  for (const ProductGameplayMovementTuningFieldDescriptor& descriptor :
+       kProductGameplayMovementTuningFields) {
+    const float value = tuning.*(descriptor.value);
+    const bool selected = descriptor.field == selectedField;
+    const std::array<std::uint8_t, 2U> red{166, 245};
+    const std::array<std::uint8_t, 2U> green{184, 214};
+    const std::array<std::uint8_t, 2U> blue{177, 96};
+    const std::size_t colorIndex = static_cast<std::size_t>(selected);
+    setColor(renderer, red[colorIndex], green[colorIndex], blue[colorIndex]);
+    // branch-gate: BG-1210
+    const std::string row =
+        std::string{selected ? "> " : "  "} + std::string{descriptor.label} +
+        // branch-gate: BG-1210
+        " " + fixedFloat(value, descriptor.step < 0.05F ? 2 : 1) + " " +
+        sliderBar(value, descriptor.minValue, descriptor.maxValue);
+    drawText(renderer, row, 790.0F, y, 1.0F);
+    y += 20.0F;
+  }
+}
+
 void drawPanelRow(SDL_Renderer& renderer,
                   std::string_view label,
                   bool selected,
@@ -1044,7 +1102,10 @@ void drawDevToolsPanel(SDL_Renderer& renderer, FrontendDevToolsCategory selected
   drawText(renderer, "BACK", 850.0F, 394.0F, 2.0F);
 }
 
-void drawSettingsPanel(SDL_Renderer& renderer, FrontendSettingsTab selected) {
+void drawSettingsPanel(SDL_Renderer& renderer,
+                       FrontendSettingsTab selected,
+                       const ProductGameplayMovementTuning& movementTuning,
+                       ProductGameplayMovementTuningField movementTuningField) {
   setColor(renderer, 226, 230, 211);
   drawText(renderer, "SETTINGS", 450.0F, 128.0F, 4.0F);
   setColor(renderer, 166, 184, 177);
@@ -1056,12 +1117,17 @@ void drawSettingsPanel(SDL_Renderer& renderer, FrontendSettingsTab selected) {
     y += 34.0F;
   }
 
-  setColor(renderer, 126, 201, 176);
-  drawText(renderer, "CURRENT", 850.0F, 230.0F, 2.0F);
-  setColor(renderer, 166, 184, 177);
-  drawText(renderer, "INPUT AUTO", 850.0F, 272.0F, 2.0F);
-  drawText(renderer, "LOOK 1.000", 850.0F, 304.0F, 2.0F);
-  drawText(renderer, "CAMERA FIRST PERSON", 850.0F, 336.0F, 2.0F);
+  // branch-gate: BG-1211
+  if (selected == FrontendSettingsTab::Gameplay) {
+    drawMovementTuningRows(renderer, movementTuning, movementTuningField);
+  } else {
+    setColor(renderer, 126, 201, 176);
+    drawText(renderer, "CURRENT", 850.0F, 230.0F, 2.0F);
+    setColor(renderer, 166, 184, 177);
+    drawText(renderer, "INPUT AUTO", 850.0F, 272.0F, 2.0F);
+    drawText(renderer, "LOOK 1.000", 850.0F, 304.0F, 2.0F);
+    drawText(renderer, "CAMERA FIRST PERSON", 850.0F, 336.0F, 2.0F);
+  }
   setColor(renderer, 126, 201, 176);
   drawText(renderer, "BACK", 850.0F, 394.0F, 2.0F);
 }
@@ -1274,6 +1340,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const ProductWorldTemplate& world,
                                          const FrontendState& frontend,
                                          FrontendSettingsTab selectedSettingsTab,
+                                         const ProductGameplayMovementTuning& movementTuning,
+                                         ProductGameplayMovementTuningField movementTuningField,
                                          const WorldSetupDraft& worldSetupDraft,
                                          bool dungeonDraftEditMode,
                                          bool dungeonDraftModified,
@@ -1338,7 +1406,10 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
   if (frontend.childScreen == FrontendScreen::StarterDevTools) {
     drawDevToolsPanel(renderer, frontend.devToolsCategory);
   } else if (frontend.childScreen == FrontendScreen::Settings) {
-    drawSettingsPanel(renderer, selectedSettingsTab);
+    drawSettingsPanel(renderer,
+                      selectedSettingsTab,
+                      movementTuning,
+                      movementTuningField);
   // branch-gate: BG-1121
   } else if (frontend.childScreen == FrontendScreen::LoadSave) {
     drawLoadSavePanel(renderer, saves);

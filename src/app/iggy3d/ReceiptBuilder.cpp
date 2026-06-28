@@ -132,6 +132,45 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      settings.devToolsEnabled);
   appendReceiptField(receipt, "settings_debug_overlay_enabled",
                      settings.debugOverlayEnabled);
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_status",
+                     window.gameplayMovementTuningStatus);
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_reason_code",
+                     window.gameplayMovementTuningReasonCode);
+  appendReceiptField(
+      receipt,
+      "gameplay_movement_tuning_selected_field",
+      productGameplayMovementTuningFieldName(
+          window.gameplayMovementTuningSelectedField));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_walk_speed_mps",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.walkSpeedMetersPerSecond));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_sprint_speed_mps",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.sprintSpeedMetersPerSecond));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_jump_impulse_mps",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.jumpImpulseMetersPerSecond));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_gravity_mps2",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.gravityMetersPerSecondSquared));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_dash_speed_mps",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.dashSpeedMetersPerSecond));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_dash_duration_s",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.dashDurationSeconds));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_dash_cooldown_s",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.dashCooldownSeconds));
   appendReceiptField(receipt, "window_requested", window.requested);
   appendReceiptField(receipt, "window_shell", window.sdlAvailable ? "sdl3" : "unavailable");
   appendReceiptField(receipt, "window_created", window.created);

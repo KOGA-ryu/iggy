@@ -1037,6 +1037,53 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   return enabledOk && disabledOk && ignoredOk;
 }
 
+bool gameplaySettingsAdjustMovementTuningLive() {
+  iggy3d::FrontendState frontend = starterFrontend();
+  frontend.childScreen = iggy3d::FrontendScreen::Settings;
+  iggy3d::ProductAppWindowState window;
+  iggy3d::FrontendSettingsTab tab = iggy3d::FrontendSettingsTab::Gameplay;
+  const float originalWalk = window.gameplayMovementTuning.walkSpeedMetersPerSecond;
+
+  const iggy3d::ProductMenuActionResult increased =
+      iggy3d::applyProductSettingsMenuAction(
+          iggy3d::InputAction::MenuRight,
+          {frontend, tab, window});
+  const bool increasedOk =
+      expect(increased.handled, "movement tuning right handled") &&
+      expect(increased.accepted, "movement tuning right accepted") &&
+      expect(window.gameplayMovementTuning.walkSpeedMetersPerSecond > originalWalk,
+             "movement tuning increased walk speed") &&
+      expect(window.gameplayMovementTuningStatus == "movement_tuning_adjusted",
+             "movement tuning adjusted status");
+
+  const iggy3d::ProductMenuActionResult cycled =
+      iggy3d::applyProductSettingsMenuAction(
+          iggy3d::InputAction::MenuConfirm,
+          {frontend, tab, window});
+  const bool cycledOk =
+      expect(cycled.handled, "movement tuning confirm handled") &&
+      expect(cycled.accepted, "movement tuning confirm accepted") &&
+      expect(window.gameplayMovementTuningSelectedField ==
+                 iggy3d::ProductGameplayMovementTuningField::SprintSpeed,
+             "movement tuning selected sprint field") &&
+      expect(window.gameplayMovementTuningStatus ==
+                 "movement_tuning_field_selected",
+             "movement tuning selected status");
+
+  const float originalSprint =
+      window.gameplayMovementTuning.sprintSpeedMetersPerSecond;
+  const iggy3d::ProductMenuActionResult decreased =
+      iggy3d::applyProductSettingsMenuAction(
+          iggy3d::InputAction::MenuLeft,
+          {frontend, tab, window});
+  return increasedOk && cycledOk &&
+         expect(decreased.handled, "movement tuning left handled") &&
+         expect(decreased.accepted, "movement tuning left accepted") &&
+         expect(window.gameplayMovementTuning.sprintSpeedMetersPerSecond <
+                    originalSprint,
+                "movement tuning decreased sprint speed");
+}
+
 }  // namespace
 
 int main() {
@@ -1060,7 +1107,8 @@ int main() {
       debugOverlayActionTogglesRuntimeOverlaySetting() &&
       sdlFunctionKeyEventsMapToSystemActions() &&
       sdlFunctionKeyEventsMarkKeyboardStateConsumed() &&
-      mapMakerToggleUsesGameplayOnlyCreativeMode();
+      mapMakerToggleUsesGameplayOnlyCreativeMode() &&
+      gameplaySettingsAdjustMovementTuningLive();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;

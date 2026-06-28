@@ -210,8 +210,8 @@ SettingsRowModel defaultSettingsRowModel(FrontendSettingsTab tab,
       model.persistence = "runtime_only";
       break;
     case FrontendSettingsTab::Gameplay:
-      model.enabled = false;
-      model.disabledReason = "read_only_v1";
+      model.enabled = true;
+      model.disabledReason = "none";
       model.persistence = "runtime_only";
       break;
     case FrontendSettingsTab::None:

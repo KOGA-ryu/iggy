@@ -197,3 +197,7 @@ BG-1196	src/app/iggy3d/window/FramePresenter.cpp	Vulkan position HUD UI overlay 
 BG-1205	src/app/iggy3d/map_maker	Grid.cpp	product map-maker creative fly and grid overlay policy	codex	2026-06-28
 BG-1206	src/app/iggy3d/map_maker/Presentation.cpp	product map-maker unit cube preview projection policy	codex	2026-06-28
 BG-1207	src/app/iggy3d/gameplay/ProjectionRefresh.cpp	product map-maker 3D dot mesh lattice projection policy	codex	2026-06-28
+BG-1208	src/app/iggy3d/gameplay/MovementTuning.hpp	product gameplay movement tuning field index and wrap policy	codex	2026-06-28
+BG-1209	src/app/iggy3d/menu/ActionHandlers.cpp	product settings movement tuning adjustment direction policy	codex	2026-06-28
+BG-1210	src/app/iggy3d/view/OpeningMenuView.cpp	product gameplay movement tuning slider draw policy	codex	2026-06-28
+BG-1211	src/app/iggy3d/view/OpeningMenuView.cpp	product gameplay settings tuning panel selection policy	codex	2026-06-28

@@ -578,6 +578,34 @@ bool productSprintUsesSprintProfileAndStep() {
                 "sprint moves forward by sprint step");
 }
 
+bool productMoveUsesRuntimeTunedWindowSpeed() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "runtime tuned session created")) {
+    return false;
+  }
+
+  window.gameplayMovementTuning.walkSpeedMetersPerSecond = 1.2F;
+  const float expectedStep =
+      window.gameplayMovementTuning.walkSpeedMetersPerSecond *
+      window.gameplayMovementTuning.inputStepSeconds;
+  const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
+  iggy3d::applyProductGameplayActions(*session,
+                                      manualMoveActions(0.0F, 1.0F),
+                                      window,
+                                      "unit/gameplay_controller_runtime_tuning");
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+
+  return expect(window.gameplayCommandAccepted, "runtime tuned move accepted") &&
+         expect(nearlyEqual(window.gameplayMovementMaxSpeedMetersPerSecond, 1.2F),
+                "runtime tuned speed proof") &&
+         expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
+                            expectedStep),
+                "runtime tuned horizontal distance") &&
+         expect(nearlyEqual(final.z - start.z, -expectedStep),
+                "runtime tuned final z");
+}
+
 bool productJumpRaisesPlayerAndRecordsProof() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -836,7 +864,16 @@ bool productJumpFallsAndLands() {
                                       window,
                                       "unit/gameplay_controller_jump");
   bool observedAirborneHeight = window.gameplayJumpHeightMeters > 0.0F;
-  for (int tick = 0; tick < 80; ++tick) {
+  const int landingTickBudget = static_cast<int>(std::ceil(
+                                    2.0F *
+                                    window.gameplayMovementTuning
+                                        .jumpImpulseMetersPerSecond /
+                                    window.gameplayMovementTuning
+                                        .gravityMetersPerSecondSquared /
+                                    window.gameplayMovementTuning
+                                        .inputStepSeconds)) +
+                                10;
+  for (int tick = 0; tick < landingTickBudget; ++tick) {
     iggy3d::applyProductGameplayActions(*session,
                                         noActions(),
                                         window,
@@ -1064,6 +1101,27 @@ bool productDashMovesForwardAndRecordsProof() {
          expect(nearlyEqual(final.x - start.x, 0.0F), "dash x unchanged");
 }
 
+bool productDashUsesRuntimeTunedWindowDistance() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "runtime tuned dash session created")) {
+    return false;
+  }
+
+  window.gameplayMovementTuning.dashSpeedMetersPerSecond = 4.0F;
+  window.gameplayMovementTuning.dashDurationSeconds = 0.25F;
+  iggy3d::applyProductGameplayActions(*session,
+                                      dashActions(),
+                                      window,
+                                      "unit/gameplay_controller_runtime_dash");
+
+  return expect(window.gameplayDashAccepted, "runtime tuned dash accepted") &&
+         expect(nearlyEqual(window.gameplayDashSpeedMetersPerSecond, 4.0F),
+                "runtime tuned dash speed") &&
+         expect(nearlyEqual(window.gameplayDashDistanceMeters, 1.0F),
+                "runtime tuned dash distance");
+}
+
 bool productDashUsesMoveIntentDirection() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -1230,6 +1288,7 @@ int main() {
                   productMoveUsesCameraYaw() &&
                   productMoveNormalizesDiagonalToTunedStep() &&
                   productSprintUsesSprintProfileAndStep() &&
+                  productMoveUsesRuntimeTunedWindowSpeed() &&
                   productJumpRaisesPlayerAndRecordsProof() &&
                   productJumpCanMoveForwardInSameFrame() &&
                   productJumpUsesClamberTraversalWhenCandidateIsLocal() &&
@@ -1243,6 +1302,7 @@ int main() {
                   productResetZoneReturnsPlayerToSpawn() &&
                   productFallOutBelowLowestFloorReturnsPlayerToSpawn() &&
                   productDashMovesForwardAndRecordsProof() &&
+                  productDashUsesRuntimeTunedWindowDistance() &&
                   productDashUsesMoveIntentDirection() &&
                   productDashRejectsDuringCooldown() &&
                   defaultOffMoveWithCollisionSurfacesUsesLegacyPath() &&
