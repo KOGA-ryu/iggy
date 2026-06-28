@@ -173,6 +173,23 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
   return result;
 }
 
+void routeProductWindowMenuInput(InputAction inputAction,
+                                 ActionState& actionState,
+                                 ProductOpeningMenuInputContext context) {
+  // branch-gate: BG-1029
+  if (inputAction == InputAction::MenuBack &&
+      cancelProductRoomEditorPendingPreviewFromBack(context.window)) {
+    recordAction(actionState,
+                 InputAction::EditorCancelPreview,
+                 true,
+                 true,
+                 false,
+                 1.0F);
+    return;
+  }
+  routeProductOpeningMenuInput(inputAction, actionState, context);
+}
+
 }  // namespace
 
 void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
@@ -199,6 +216,21 @@ void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
     }
   }
   shutdownGamepadMenuState(state.gamepad);
+}
+
+bool cancelProductRoomEditorPendingPreviewFromBack(ProductAppWindowState& window) {
+  // branch-gate: BG-1055
+  if (!window.roomEditing.ready || !window.roomEditorPreviewActive) {
+    return false;
+  }
+  const ProductRoomEditorPreviewInputResult cancelled =
+      applyProductRoomEditorPreviewInputAction(window,
+                                              InputAction::EditorCancelPreview);
+  window.inputOwner = MenuOwner::Editor;
+  window.lastInputAction = InputAction::EditorCancelPreview;
+  window.lastInputAccepted = cancelled.ok;
+  window.gameplayInputSuppressed = true;
+  return cancelled.ok;
 }
 
 ProductControllerSampleInputResult processProductControllerActionSample(
@@ -306,8 +338,9 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       context.frontend, context.saves, context.options, context.settingsTab,
       context.activeSession, context.worldSetupDraft, context.window,
       context.closeRequested};
-  routeProductOpeningMenuInput(pollKeyboardMenuAction(context.inputFrame.keyboard),
-                               actionState, menuContext);
+  routeProductWindowMenuInput(pollKeyboardMenuAction(context.inputFrame.keyboard),
+                              actionState,
+                              menuContext);
   // branch-gate: BG-1029
   if (context.frontend.childScreen == FrontendScreen::NewWorld) {
     const char paintGlyph = pollKeyboardAsciiRoomPaintGlyph(context.inputFrame.keyboard);
@@ -332,7 +365,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   // branch-gate: BG-1029
   if (gamepadAction != InputAction::None) {
     context.window.gamepadMenuSelectUsed = true;
-    routeProductOpeningMenuInput(gamepadAction, actionState, menuContext);
+    routeProductWindowMenuInput(gamepadAction, actionState, menuContext);
   }
 
   const MouseClick click = pollMouseClick(context.inputFrame.mouse);

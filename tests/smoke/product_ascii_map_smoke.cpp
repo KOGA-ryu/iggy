@@ -1752,7 +1752,7 @@ int main() {
           "system.pause=true\n"
           "pause.select=edit_room\n"
           "pause.execute=true\n"
-          "editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.preview,editor.preview_cancel\n",
+          "editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.place,editor.preview_cancel\n",
           iggy3d::smoke::saveRootArg(
               customEditorInputPreviewCancelSaveRoot),
           fields,

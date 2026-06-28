@@ -85,6 +85,7 @@ void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                           SdlWindow* sdlWindow = nullptr,
                                           ProductAppWindowState* window = nullptr);
 void processProductWindowInputFrame(ProductWindowInputFrameContext context);
+bool cancelProductRoomEditorPendingPreviewFromBack(ProductAppWindowState& window);
 ProductControllerSampleInputResult processProductControllerActionSample(
     ProductControllerSampleInputContext context,
     GamepadControllerActionSample sample);

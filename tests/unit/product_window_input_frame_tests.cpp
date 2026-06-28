@@ -307,6 +307,97 @@ bool controllerMoveInvalidatesPendingPreview() {
                 "dpad move does not mutate walls");
 }
 
+bool backCancelsPendingPreviewBeforePauseRoute() {
+  iggy3d::ProductAppWindowState window = editingWindow();
+  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+  window.roomEditorCursor.gridX = 1;
+
+  const iggy3d::ProductRoomEditorPreviewInputResult staged =
+      iggy3d::applyProductRoomEditorPreviewInputAction(
+          window, iggy3d::InputAction::EditorPlace);
+  const bool stageOk =
+      expect(staged.ok, "back test stages preview") &&
+      expect(window.roomEditorPreviewActive, "back test preview active") &&
+      expect(window.roomEditing.documentWallCount == initialWalls,
+             "back test stage leaves walls");
+
+  const bool cancelled =
+      iggy3d::cancelProductRoomEditorPendingPreviewFromBack(window);
+
+  return stageOk && expect(cancelled, "back cancels pending preview") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::Editor,
+                "back cancel owner editor") &&
+         expect(window.lastInputAction == iggy3d::InputAction::EditorCancelPreview,
+                "back cancel records editor cancel action") &&
+         expect(window.lastInputAccepted, "back cancel input accepted") &&
+         expect(window.gameplayInputSuppressed,
+                "back cancel suppresses gameplay input") &&
+         expect(window.roomEditorStatus == "room_editor_preview_cancelled",
+                "back cancel status") &&
+         expect(window.roomEditorLastOperation == "editor.preview_cancel",
+                "back cancel operation") &&
+         expect(!window.roomEditorPreviewActive,
+                "back cancel clears pending preview") &&
+         expect(!window.roomEditorPreviewVisible, "back cancel hides preview") &&
+         expect(window.roomEditing.documentWallCount == initialWalls,
+                "back cancel leaves walls");
+}
+
+bool backWithoutPreviewFallsThroughPolicy() {
+  iggy3d::ProductAppWindowState window = editingWindow();
+  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+
+  const bool cancelled =
+      iggy3d::cancelProductRoomEditorPendingPreviewFromBack(window);
+
+  return expect(!cancelled, "back without preview not consumed") &&
+         expect(window.roomEditing.ready, "back without preview keeps editor ready") &&
+         expect(!window.roomEditorPreviewActive,
+                "back without preview leaves preview inactive") &&
+         expect(window.roomEditing.documentWallCount == initialWalls,
+                "back without preview leaves walls");
+}
+
+bool controllerEastCancelsPendingPreviewWithoutMutation() {
+  const iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window = editingWindow();
+  window.roomEditorCursor.gridX = 1;
+  iggy3d::Session session;
+  iggy3d::ProductControllerModeChordState chord;
+  iggy3d::ProductControllerActionRoutingState routing;
+  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+
+  const iggy3d::ProductControllerSampleInputResult staged =
+      iggy3d::processProductControllerActionSample(
+          {frontend, window, &session, chord, routing, nullptr, "unit"},
+          iggy3d::productControllerActionSampleForControl(
+              iggy3d::ProductControllerControl::SouthButton));
+  (void)iggy3d::processProductControllerActionSample(
+      {frontend, window, &session, chord, routing, nullptr, "unit"},
+      iggy3d::GamepadControllerActionSample{});
+  const iggy3d::ProductControllerSampleInputResult cancelled =
+      iggy3d::processProductControllerActionSample(
+          {frontend, window, &session, chord, routing, nullptr, "unit"},
+          iggy3d::productControllerActionSampleForControl(
+              iggy3d::ProductControllerControl::EastButton));
+
+  return expect(staged.actionApplied, "east cancel test stages action") &&
+         expect(staged.actionAccepted, "east cancel test stages preview") &&
+         expect(cancelled.actionApplied, "east cancel action applied") &&
+         expect(cancelled.actionAccepted, "east cancel action accepted") &&
+         expect(window.lastInputAction == iggy3d::InputAction::EditorCancelPreview,
+                "east cancel routes to editor cancel preview") &&
+         expect(window.roomEditorStatus == "room_editor_preview_cancelled",
+                "east cancel status") &&
+         expect(window.roomEditorLastOperation == "editor.preview_cancel",
+                "east cancel operation") &&
+         expect(!window.roomEditorPreviewActive,
+                "east cancel clears pending preview") &&
+         expect(!window.roomEditorPreviewVisible, "east cancel hides preview") &&
+         expect(window.roomEditing.documentWallCount == initialWalls,
+                "east cancel leaves walls");
+}
+
 }  // namespace
 
 int main() {
@@ -316,7 +407,10 @@ int main() {
       notReadyClickDoesNotMutateEditorState() &&
       invalidClickPropagatesMousePickRejectionWithoutMutation() &&
       controllerSouthStagesThenConfirmsPlacement() &&
-      controllerMoveInvalidatesPendingPreview();
+      controllerMoveInvalidatesPendingPreview() &&
+      backCancelsPendingPreviewBeforePauseRoute() &&
+      backWithoutPreviewFallsThroughPolicy() &&
+      controllerEastCancelsPendingPreviewWithoutMutation();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;
