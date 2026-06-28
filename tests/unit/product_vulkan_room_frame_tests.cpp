@@ -1,5 +1,6 @@
 #include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
+#include "app/iggy3d/window/FramePresenter.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "core/math/Mat4.hpp"
@@ -805,6 +806,52 @@ bool productReceiptCarriesFirstPersonRoomPathProof() {
   return ok;
 }
 
+bool vulkanGameplayFrameCarriesPositionHudUiOverlay() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "position hud vulkan session created")) {
+    return false;
+  }
+
+  const iggy3d::ProductGameplayProjectionFrame visibleProjection =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session, window, true, true, iggy3d::ProductRendererRequest::Vulkan});
+  iggy3d::ProductVulkanGameplayFrame visible =
+      iggy3d::buildProductVulkanGameplayFrame(visibleProjection, 12U, 1280U,
+                                              720U, 15.0F, -2.0F);
+  const iggy3d::FrameInput& visibleFrame =
+      iggy3d::refreshProductVulkanGameplayFrameInput(visible);
+
+  const iggy3d::ProductGameplayProjectionFrame hiddenProjection =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session, window, true, false, iggy3d::ProductRendererRequest::Vulkan});
+  iggy3d::ProductVulkanGameplayFrame hidden =
+      iggy3d::buildProductVulkanGameplayFrame(hiddenProjection, 13U, 1280U,
+                                              720U, 15.0F, -2.0F);
+  const iggy3d::FrameInput& hiddenFrame =
+      iggy3d::refreshProductVulkanGameplayFrameInput(hidden);
+
+  return expect(visibleProjection.positionHud.visible,
+                "position hud projection visible") &&
+         expect(visibleFrame.ui.visible, "position hud ui visible") &&
+         expect(visibleFrame.ui.rectCount == 1U,
+                "position hud ui background rect") &&
+         expect(visibleFrame.ui.textGlyphCount > 0U,
+                "position hud ui text glyph count") &&
+         expect(visibleFrame.ui.textGlyphQuadCount > visibleFrame.ui.textGlyphCount,
+                "position hud ui glyph quads") &&
+         expect(visibleFrame.ui.primitiveCount > visibleFrame.ui.rectCount,
+                "position hud ui primitive count") &&
+         expect(!hiddenProjection.positionHud.visible,
+                "hidden position hud projection hidden") &&
+         expect(!hiddenFrame.ui.visible, "hidden position hud has no vulkan ui") &&
+         expect(hiddenFrame.ui.rectCount == 0U, "hidden position hud no rects") &&
+         expect(hiddenFrame.ui.textGlyphQuadCount == 0U,
+                "hidden position hud no glyph quads");
+}
+
 }  // namespace
 
 int main() {
@@ -815,7 +862,8 @@ int main() {
                   productPhysicsDebugHudWarningFromMovementStats() &&
                   productPhysicsDebugGeometryFromMovementStatsWhenGatedOn() &&
                   productPhysicsDebugGeometryRequiresDebugOverlayGate() &&
-                  productReceiptCarriesFirstPersonRoomPathProof();
+                  productReceiptCarriesFirstPersonRoomPathProof() &&
+                  vulkanGameplayFrameCarriesPositionHudUiOverlay();
   if (!ok) {
     return EXIT_FAILURE;
   }

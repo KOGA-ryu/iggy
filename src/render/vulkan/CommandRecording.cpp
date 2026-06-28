@@ -492,6 +492,10 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
   }
   recordOverlayRects(info.commandBuffer, info.projectileOverlayRects,
                      info.projectileOverlayRectCount);
+  recordOverlayRects(info.commandBuffer, info.uiOverlayRects,
+                     info.uiOverlayRectCount);
+  recordHudGlyphQuads(info.commandBuffer, info.uiTextGlyphQuads,
+                      info.uiTextGlyphQuadCount);
   recordHudGlyphQuads(info.commandBuffer, info.debugHudQuads, info.debugHudQuadCount);
   createInfo_.deviceFunctions.cmdEndRendering(info.commandBuffer);
 
@@ -578,6 +582,10 @@ CommandRecordResult CommandRecording::recordFirstRoomFrame(
   appendReceiptField(result.receipt, "indexed_draw_count",
                      static_cast<std::uint64_t>(indexedDrawCount));
   appendReceiptField(result.receipt, "index_count", static_cast<std::uint64_t>(info.indexCount));
+  appendReceiptField(result.receipt, "ui_overlay_rect_count",
+                     static_cast<std::uint64_t>(info.uiOverlayRectCount));
+  appendReceiptField(result.receipt, "ui_text_glyph_quad_count",
+                     static_cast<std::uint64_t>(info.uiTextGlyphQuadCount));
   appendReceiptField(result.receipt, "capture_copy_recorded",
                      info.captureEnabled && info.captureBuffer != VK_NULL_HANDLE);
   return result;

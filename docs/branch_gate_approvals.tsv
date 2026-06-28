@@ -193,3 +193,4 @@ BG-1192	src/app/iggy3d/view/OpeningMenuView.cpp	compact position HUD draw visibi
 BG-1193	src/app/iggy3d/debug/PositionHud.cpp	compact position HUD model validation and facing bucket policy	codex	2026-06-28
 BG-1194	src/app/iggy3d/window/InputFrame.cpp	SDL function-key event routing preference policy	codex	2026-06-28
 BG-1195	src/app/platform/SdlWindow.cpp	SDL function-key keydown capture policy	codex	2026-06-28
+BG-1196	src/app/iggy3d/window/FramePresenter.cpp	Vulkan position HUD UI overlay projection policy	codex	2026-06-28

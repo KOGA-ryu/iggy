@@ -75,6 +75,10 @@ struct FirstRoomFrameRecordInfo {
   VkDeviceSize captureBufferSize = 0;
   const OverlayRect* projectileOverlayRects = nullptr;
   std::size_t projectileOverlayRectCount = 0;
+  const OverlayRect* uiOverlayRects = nullptr;
+  std::size_t uiOverlayRectCount = 0;
+  const DebugHudGlyphQuad* uiTextGlyphQuads = nullptr;
+  std::size_t uiTextGlyphQuadCount = 0;
   const DebugHudGlyphQuad* debugHudQuads = nullptr;
   std::size_t debugHudQuadCount = 0;
 };

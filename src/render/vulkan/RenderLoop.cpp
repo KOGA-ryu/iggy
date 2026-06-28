@@ -545,6 +545,10 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     }
     recordInfo.projectileOverlayRects = projectileOverlay.rects.data();
     recordInfo.projectileOverlayRectCount = projectileOverlay.rects.size();
+    recordInfo.uiOverlayRects = uiOverlayRects.data();
+    recordInfo.uiOverlayRectCount = uiOverlayRects.size();
+    recordInfo.uiTextGlyphQuads = frame.ui.textGlyphQuads;
+    recordInfo.uiTextGlyphQuadCount = frame.ui.textGlyphQuadCount;
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
     recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);
@@ -599,6 +603,10 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
     }
     recordInfo.projectileOverlayRects = projectileOverlay.rects.data();
     recordInfo.projectileOverlayRectCount = projectileOverlay.rects.size();
+    recordInfo.uiOverlayRects = uiOverlayRects.data();
+    recordInfo.uiOverlayRectCount = uiOverlayRects.size();
+    recordInfo.uiTextGlyphQuads = frame.ui.textGlyphQuads;
+    recordInfo.uiTextGlyphQuadCount = frame.ui.textGlyphQuadCount;
     recordInfo.debugHudQuads = debugHud.quads.data();
     recordInfo.debugHudQuadCount = debugHud.quads.size();
     recordResult = createInfo_.commandRecording->recordFirstRoomFrame(recordInfo);

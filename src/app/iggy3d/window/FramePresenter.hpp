@@ -35,6 +35,13 @@ struct ProductVulkanMenuFrame {
   std::uint64_t textGlyphCount = 0;
 };
 
+struct ProductVulkanGameplayFrame {
+  FrameInput frame;
+  std::vector<RenderUiRect> rects;
+  std::vector<DebugHudGlyphQuad> textGlyphQuads;
+  std::uint64_t textGlyphCount = 0;
+};
+
 struct ProductWindowFramePresenterRequest {
   const ProductAppOptions& options;
   const ProductWorldTemplate& world;
@@ -52,6 +59,15 @@ ProductVulkanMenuFrame buildProductVulkanStarterMenuFrame(
     const ProductVulkanMenuFrameRequest& request);
 const FrameInput& refreshProductVulkanMenuFrameInput(
     ProductVulkanMenuFrame& menuFrame);
+ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
+    const ProductGameplayProjectionFrame& projectionFrame,
+    std::uint64_t frameIndex,
+    std::uint32_t viewportWidth,
+    std::uint32_t viewportHeight,
+    float cameraYawDegrees,
+    float cameraPitchDegrees);
+const FrameInput& refreshProductVulkanGameplayFrameInput(
+    ProductVulkanGameplayFrame& gameplayFrame);
 void presentProductWindowFrame(ProductWindowFramePresenterRequest request);
 
 }  // namespace iggy3d
