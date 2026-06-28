@@ -318,6 +318,14 @@ int main() {
       std::filesystem::temp_directory_path() /
       ("iggy3d_product_gameplay_tape_" +
        iggy3d::smoke::uniqueCaseToken("physics_corner_tape.txt"));
+  const std::filesystem::path objectCrateControlPath =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_product_gameplay_tape_" +
+       iggy3d::smoke::uniqueCaseToken("object_crate_control.txt"));
+  const std::filesystem::path objectCrateTapePath =
+      std::filesystem::temp_directory_path() /
+      ("iggy3d_product_gameplay_tape_" +
+       iggy3d::smoke::uniqueCaseToken("object_crate_tape.txt"));
   const std::filesystem::path saveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape");
   const std::filesystem::path physicsSaveRoot =
@@ -328,6 +336,8 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("gameplay_tape_physics_wall_corridor");
   const std::filesystem::path physicsCornerSaveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape_physics_corner_slide");
+  const std::filesystem::path objectCrateSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("gameplay_tape_object_crate_room");
   const std::filesystem::path wallSaveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_tape_wall_collision");
   const std::filesystem::path npcSaveRoot =
@@ -425,6 +435,16 @@ int main() {
   const bool physicsCornerTapeGenerated =
       iggy3d::smoke::writeTextFile(physicsCornerTapePath,
                                    "move marker_key_r3_c3\n");
+  const bool objectCrateControlGenerated = iggy3d::smoke::writeTextFile(
+      objectCrateControlPath,
+      "frontend.select=new_world\n"
+      "frontend.execute=true\n"
+      "world.dungeon_id=object_crate_room\n"
+      "gameplay.physics_movement=true\n"
+      "world.create=true\n");
+  const bool objectCrateTapeGenerated =
+      iggy3d::smoke::writeTextFile(objectCrateTapePath,
+                                   "move marker_exit_r1_c4\n");
 
   int exitCode = 77;
   iggy3d::smoke::ReceiptFields fields;
@@ -503,6 +523,21 @@ int main() {
               iggy3d::smoke::saveRootArg(physicsCornerSaveRoot),
           physicsCornerFields,
           physicsCornerExitCode);
+
+  int objectCrateExitCode = 77;
+  iggy3d::smoke::ReceiptFields objectCrateFields;
+  const bool objectCrateReceiptValid =
+      appAvailable && objectCrateControlGenerated && objectCrateTapeGenerated &&
+      iggy3d::smoke::runProductReceiptCase(
+          binary,
+          "product_gameplay_tape_object_crate_room",
+          std::string{"--automation-control "} +
+              iggy3d::smoke::shellQuote(objectCrateControlPath) +
+              " --debug-overlay --gameplay-tape " +
+              iggy3d::smoke::shellQuote(objectCrateTapePath) + " " +
+              iggy3d::smoke::saveRootArg(objectCrateSaveRoot),
+          objectCrateFields,
+          objectCrateExitCode);
 
   int wallExitCode = 77;
   iggy3d::smoke::ReceiptFields wallFields;
@@ -822,6 +857,53 @@ int main() {
           physicsCornerFields,
           "product_render_bridge_physics_contact_normal_debug_count") &&
       iggy3d::smoke::hasField(physicsCornerFields, "session_outcome", "None");
+
+  const bool objectCrateCollisionPassed =
+      objectCrateExitCode == 0 && objectCrateReceiptValid &&
+      selectedPhysicsRoomTapePassed(objectCrateFields,
+                                    "object_crate_room",
+                                    "57",
+                                    "marker_exit_r1_c4") &&
+      iggy3d::smoke::hasField(objectCrateFields,
+                              "active_room_authored_object_count",
+                              "1") &&
+      iggy3d::smoke::hasField(objectCrateFields,
+                              "active_room_collision_actor_blocker_count",
+                              "21") &&
+      iggy3d::smoke::hasField(objectCrateFields,
+                              "active_room_collision_projectile_blocker_count",
+                              "21") &&
+      iggy3d::smoke::hasField(objectCrateFields,
+                              "product_draw_prop_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(objectCrateFields,
+                              "product_draw_prop_tile_count",
+                              "1") &&
+      iggy3d::smoke::hasField(objectCrateFields,
+                              "product_render_bridge_prop_visible",
+                              "true") &&
+      iggy3d::smoke::hasField(objectCrateFields,
+                              "product_render_bridge_prop_tile_count",
+                              "1") &&
+      iggy3d::smoke::hasField(objectCrateFields,
+                              "gameplay_movement_status",
+                              "moved") &&
+      iggy3d::smoke::hasField(objectCrateFields,
+                              "gameplay_movement_blocked",
+                              "false") &&
+      iggy3d::smoke::hasField(objectCrateFields,
+                              "gameplay_movement_clamped",
+                              "true") &&
+      iggy3d::smoke::hasField(objectCrateFields,
+                              "gameplay_movement_hit_surface_id",
+                              "object_crate_r1_c3_actor_blocker") &&
+      iggy3d::smoke::positiveIntegerField(
+          objectCrateFields,
+          "product_draw_physics_contact_normal_debug_count") &&
+      iggy3d::smoke::positiveIntegerField(
+          objectCrateFields,
+          "product_render_bridge_physics_contact_normal_debug_count") &&
+      iggy3d::smoke::hasField(objectCrateFields, "session_outcome", "None");
 
   const bool wallPassed =
       wallExitCode == 0 && wallReceiptValid &&
@@ -1144,6 +1226,14 @@ int main() {
                          "physics corner slide receipt valid") &&
                   expect(physicsCornerSlidePassed,
                          "product selectable physics corner slide movement pass") &&
+                  expect(objectCrateControlGenerated,
+                         "object crate room control generated") &&
+                  expect(objectCrateTapeGenerated,
+                         "object crate room tape generated") &&
+                  expect(objectCrateReceiptValid,
+                         "object crate room receipt valid") &&
+                  expect(objectCrateCollisionPassed,
+                         "product selectable object crate collision pass") &&
                   expect(wallReceiptValid, "wall receipt valid") &&
                   expect(wallPassed, "product package wall collision pass") &&
                   expect(npcReceiptValid, "npc receipt valid") &&
@@ -1165,6 +1255,8 @@ int main() {
             << (physicsCorridorReceiptValid ? "true" : "false") << "\n";
   std::cout << "physics_corner_slide_receipt_valid="
             << (physicsCornerReceiptValid ? "true" : "false") << "\n";
+  std::cout << "object_crate_room_receipt_valid="
+            << (objectCrateReceiptValid ? "true" : "false") << "\n";
   std::cout << "wall_receipt_valid=" << (wallReceiptValid ? "true" : "false") << "\n";
   std::cout << "npc_receipt_valid=" << (npcReceiptValid ? "true" : "false") << "\n";
   std::cout << "passive_npc_receipt_valid="
