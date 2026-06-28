@@ -1,4 +1,5 @@
 #include "app/iggy3d/ascii_room/Activation.hpp"
+#include "app/frontend/DevToolsMenu.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
@@ -6,6 +7,7 @@
 #include "core/math/Mat4.hpp"
 #include "core/math/Vec3.hpp"
 #include "render/FrameInput.hpp"
+#include "render/debug/DebugHudText.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 #include "runtime/physics/PhysicsAabbCollider.hpp"
 #include "runtime/physics/PhysicsFrameStats.hpp"
@@ -68,6 +70,38 @@ VulkanUiCounts uiCountsFor(const iggy3d::FrameInput& frame) {
       frame.ui.primitiveCount,
       frame.ui.visible,
   };
+}
+
+bool containsText(std::string_view haystack, std::string_view needle) {
+  return haystack.find(needle) != std::string_view::npos;
+}
+
+bool glyphQuadMatches(const iggy3d::DebugHudGlyphQuad& lhs,
+                      const iggy3d::DebugHudGlyphQuad& rhs) {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.width == rhs.width &&
+         lhs.height == rhs.height && lhs.source == rhs.source;
+}
+
+bool frameContainsGlyphQuad(
+    const std::vector<iggy3d::DebugHudGlyphQuad>& quads,
+    const iggy3d::DebugHudGlyphQuad& expected) {
+  for (const iggy3d::DebugHudGlyphQuad& quad : quads) {
+    if (glyphQuadMatches(quad, expected)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool frameContainsGlyphLayout(
+    const iggy3d::ProductVulkanGameplayFrame& frame,
+    const iggy3d::DebugHudLayoutResult& expected) {
+  for (const iggy3d::DebugHudGlyphQuad& quad : expected.quads) {
+    if (!frameContainsGlyphQuad(frame.textGlyphQuads, quad)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 iggy3d::PhysicsAabbCollider debugCollider(iggy3d::PhysicsBodyId bodyId,
@@ -999,6 +1033,9 @@ bool vulkanGameplayFrameCarriesDevToolsOverlay() {
       iggy3d::refreshProductVulkanGameplayFrameInput(visible);
   const VulkanUiCounts hiddenUi = uiCountsFor(hiddenFrame);
   const VulkanUiCounts visibleUi = uiCountsFor(visibleFrame);
+  const std::string_view hint = iggy3d::devToolsFunctionKeyHintLabel();
+  const iggy3d::DebugHudLayoutResult expectedHint =
+      iggy3d::layoutDebugHudTextAt(hint, 452, 185, 1280U, 720U);
 
   return expect(hiddenUi.visible,
                 "baseline HUD UI visible without dev tools") &&
@@ -1011,7 +1048,20 @@ bool vulkanGameplayFrameCarriesDevToolsOverlay() {
          expect(visibleUi.textGlyphQuadCount > visibleUi.textGlyphCount,
                 "dev tools glyph quads") &&
          expect(visibleUi.primitiveCount > visibleUi.rectCount,
-                "dev tools primitive count includes text");
+                "dev tools primitive count includes text") &&
+         expect(containsText(hint, "F1 CLOSE"), "dev tools hint has F1 close") &&
+         expect(containsText(hint, "F2 COLLISION"),
+                "dev tools hint has F2 collision") &&
+         expect(containsText(hint, "F3 DEBUG HUD"),
+                "dev tools hint has F3 debug HUD") &&
+         expect(containsText(hint, "F4 TUNING"),
+                "dev tools hint has F4 tuning") &&
+         expect(!containsText(hint, "F1/F2"), "dev tools hint avoids F1/F2") &&
+         expect(!containsText(hint, "F2 CLOSE"),
+                "dev tools hint does not say F2 closes") &&
+         expect(expectedHint.glyphCount > 0U, "dev tools hint glyphs expected") &&
+         expect(frameContainsGlyphLayout(visible, expectedHint),
+                "dev tools hint glyphs rendered");
 }
 
 bool vulkanGameplayFrameCarriesDebugHudUiParity() {

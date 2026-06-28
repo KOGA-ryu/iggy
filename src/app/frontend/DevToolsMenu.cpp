@@ -150,6 +150,10 @@ std::string_view devToolsCategoryLabel(FrontendDevToolsCategory category) {
   return "None";
 }
 
+std::string_view devToolsFunctionKeyHintLabel() {
+  return "F1 CLOSE  F2 COLLISION  F3 DEBUG HUD  F4 TUNING";
+}
+
 std::uint64_t devToolsReadoutCount(FrontendDevToolsCategory category) {
   switch (category) {
     case FrontendDevToolsCategory::Session:

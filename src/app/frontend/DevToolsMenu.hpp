@@ -23,6 +23,7 @@ FrontendRouteResult routeDevToolsAction(const DevToolsMenuModel& model,
                                         MenuOwner parentOwner,
                                         FrontendAction action);
 std::string_view devToolsCategoryLabel(FrontendDevToolsCategory category);
+std::string_view devToolsFunctionKeyHintLabel();
 std::uint64_t devToolsReadoutCount(FrontendDevToolsCategory category);
 
 }  // namespace iggy3d

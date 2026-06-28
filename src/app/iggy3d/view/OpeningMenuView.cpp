@@ -1152,7 +1152,7 @@ void drawDevToolsPanel(SDL_Renderer& renderer, FrontendDevToolsCategory selected
   setColor(renderer, 226, 230, 211);
   drawText(renderer, "DEV TOOLS", 450.0F, 128.0F, 4.0F);
   setColor(renderer, 166, 184, 177);
-  drawText(renderer, "SELECT A DIAGNOSTIC CATEGORY", 452.0F, 185.0F, 2.0F);
+  drawText(renderer, devToolsFunctionKeyHintLabel(), 452.0F, 185.0F, 2.0F);
 
   float y = 230.0F;
   for (const FrontendDevToolsCategory category : devToolsCategoryOrder()) {
