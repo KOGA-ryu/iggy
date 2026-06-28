@@ -28,6 +28,9 @@ namespace {
 constexpr float kPi = 3.14159265358979323846F;
 constexpr float kGameplayGroundFootprintToleranceMeters = 0.35F;
 constexpr float kGameplayGroundContactToleranceMeters = 0.12F;
+constexpr float kGameplayResetBelowLowestFloorMeters = 6.0F;
+constexpr float kGameplayResetZoneRadiusMeters = 0.70F;
+constexpr float kGameplayResetZoneVerticalToleranceMeters = 1.20F;
 
 struct ProductInteractionOutcomeSnapshot {
   EntityId target;
@@ -291,6 +294,152 @@ bool playerHasNearbyGround(const SpatialSurfaceSet* surfaces, Vec3 position) {
              position.y + kGameplayGroundContactToleranceMeters,
              groundY) &&
          std::fabs(position.y - groundY) <= kGameplayGroundContactToleranceMeters;
+}
+
+float horizontalDistanceSquared(Vec3 lhs, Vec3 rhs) {
+  const float dx = lhs.x - rhs.x;
+  const float dz = lhs.z - rhs.z;
+  return dx * dx + dz * dz;
+}
+
+const RoomAnchorAsset* findRoomAnchorByKind(const ProductAppWindowState& window,
+                                            std::string_view kind) {
+  for (const RoomAnchorAsset& anchor : window.activeRoom.room.anchors) {
+    // branch-gate: BG-1175
+    if (anchor.kind == kind) {
+      return &anchor;
+    }
+  }
+  return nullptr;
+}
+
+bool findLowestWalkableFloorY(const SpatialSurfaceSet* surfaces, float& floorY) {
+  // branch-gate: BG-1183
+  if (surfaces == nullptr) {
+    return false;
+  }
+
+  bool found = false;
+  float lowest = 0.0F;
+  for (const CollisionSurfaceView& surface : surfaces->surfaces()) {
+    // branch-gate: BG-1176
+    if (surface.role != CollisionSurfaceRole::Walkable ||
+        std::fabs(surface.normal.y) <= 0.0001F) {
+      continue;
+    }
+    const float candidate = surface.planePoint.y;
+    // branch-gate: BG-1177
+    if (!std::isfinite(candidate)) {
+      continue;
+    }
+    // branch-gate: BG-1178
+    if (!found || candidate < lowest) {
+      found = true;
+      lowest = candidate;
+    }
+  }
+  // branch-gate: BG-1184
+  if (!found) {
+    return false;
+  }
+  floorY = lowest;
+  return true;
+}
+
+const RoomAnchorAsset* findResetZoneAt(const ProductAppWindowState& window,
+                                       Vec3 position) {
+  const float radiusSq =
+      kGameplayResetZoneRadiusMeters * kGameplayResetZoneRadiusMeters;
+  for (const RoomAnchorAsset& anchor : window.activeRoom.room.anchors) {
+    // branch-gate: BG-1179
+    if (anchor.kind != "reset_zone") {
+      continue;
+    }
+    // branch-gate: BG-1179
+    if (horizontalDistanceSquared(position, anchor.positionMeters) > radiusSq ||
+        std::fabs(position.y - anchor.positionMeters.y) >
+            kGameplayResetZoneVerticalToleranceMeters) {
+      continue;
+    }
+    return &anchor;
+  }
+  return nullptr;
+}
+
+void recordProductGameplayReset(ProductAppWindowState& window,
+                                std::string_view reason,
+                                const RoomAnchorAsset& spawn,
+                                const RoomAnchorAsset* source,
+                                float startY,
+                                float finalY) {
+  window.gameplayResetTriggered = true;
+  window.gameplayResetStatus = "reset";
+  window.gameplayResetReasonCode = std::string(reason);
+  // branch-gate: BG-1185
+  window.gameplayResetSpawnAnchorId = spawn.id.empty() ? "spawn" : spawn.id;
+  // branch-gate: BG-1186
+  window.gameplayResetSourceAnchorId =
+      source == nullptr || source->id.empty() ? "none" : source->id;
+  window.gameplayResetStartY = startY;
+  window.gameplayResetFinalY = finalY;
+}
+
+bool resetProductPlayerToSpawn(Session& session,
+                               ProductAppWindowState& window,
+                               std::string_view reason,
+                               const RoomAnchorAsset* source) {
+  const EntityId actor = productPlayerActor(session);
+  const EntityState* entity = session.state().world.findById(actor);
+  const RoomAnchorAsset* spawn = findRoomAnchorByKind(window, "spawn");
+  // branch-gate: BG-1180
+  if (entity == nullptr || spawn == nullptr) {
+    return false;
+  }
+  const float startY = entity->transform.position.y;
+  // branch-gate: BG-1180
+  if (!setProductPlayerPosition(session, actor, spawn->positionMeters)) {
+    return false;
+  }
+  recordProductGameplayReset(
+      window, reason, *spawn, source, startY, spawn->positionMeters.y);
+  window.gameplayJumpActive = false;
+  window.gameplayJumpVelocityMetersPerSecond = 0.0F;
+  window.gameplayJumpStatus = "reset";
+  window.gameplayJumpReasonCode = std::string(reason);
+  window.playerPositionChanged = true;
+  window.runtimeStateHash = session.stateHash();
+  return true;
+}
+
+bool applyProductGameplayResetIfNeeded(Session& session,
+                                       ProductAppWindowState& window,
+                                       const SpatialSurfaceSet* surfaces) {
+  const EntityState* entity = productPlayerEntity(session);
+  // branch-gate: BG-1181
+  if (entity == nullptr || !window.activeRoom.loaded) {
+    return false;
+  }
+
+  const RoomAnchorAsset* resetZone =
+      findResetZoneAt(window, entity->transform.position);
+  // branch-gate: BG-1179
+  if (resetZone != nullptr) {
+    return resetProductPlayerToSpawn(
+        session, window, "gameplay_reset_zone", resetZone);
+  }
+
+  float lowestFloorY = 0.0F;
+  // branch-gate: BG-1176
+  if (!findLowestWalkableFloorY(surfaces, lowestFloorY)) {
+    return false;
+  }
+  // branch-gate: BG-1181
+  if (entity->transform.position.y <
+      lowestFloorY - kGameplayResetBelowLowestFloorMeters) {
+    return resetProductPlayerToSpawn(
+        session, window, "gameplay_reset_fall_out", nullptr);
+  }
+  return false;
 }
 
 void recordProductJumpPosition(ProductAppWindowState& window,
@@ -582,6 +731,10 @@ void advanceProductJump(Session& session,
                         ProductAppWindowState& window,
                         const SpatialSurfaceSet* collisionSurfaces) {
   const ProductGameplayMovementTuning& tuning = productGameplayMovementTuning();
+  // branch-gate: BG-1181
+  if (applyProductGameplayResetIfNeeded(session, window, collisionSurfaces)) {
+    return;
+  }
   if (!window.gameplayJumpActive) {
     const EntityState* groundedEntity = productPlayerEntity(session);
     // branch-gate: BG-1173
@@ -674,6 +827,7 @@ void advanceProductJump(Session& session,
   window.gameplayJumpReasonCode =
       landed ? "gameplay_jump_landed" : "gameplay_jump_airborne";
   window.runtimeStateHash = session.stateHash();
+  applyProductGameplayResetIfNeeded(session, window, collisionSurfaces);
 }
 
 void submitProductJump(Session& session,

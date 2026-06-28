@@ -264,6 +264,20 @@ iggy3d::RoomAsset makeProductLayeredFloorRoom() {
       layeredWalkableFloorSurface("lower_floor", 0.0F, -6.0F, 6.0F, -6.0F, 6.0F));
   room.spatialSurfaces.push_back(
       layeredWalkableFloorSurface("upper_floor", 4.0F, -1.0F, 1.0F, -1.0F, 1.0F));
+
+  iggy3d::RoomAnchorAsset spawn;
+  spawn.id = "marker_player_spawn_r0_c0";
+  spawn.kind = "spawn";
+  spawn.runtimeStableName = spawn.id;
+  spawn.positionMeters = {0.0F, 0.05F, 0.0F};
+  room.anchors.push_back(spawn);
+
+  iggy3d::RoomAnchorAsset reset;
+  reset.id = "marker_reset_zone_r0_c1";
+  reset.kind = "reset_zone";
+  reset.runtimeStableName = reset.id;
+  reset.positionMeters = {5.0F, 0.05F, 5.0F};
+  room.anchors.push_back(reset);
   return room;
 }
 
@@ -912,6 +926,71 @@ bool productFallThroughHoleLandsOnLowerWalkableFloor() {
                 "hole fall ground y");
 }
 
+bool productResetZoneReturnsPlayerToSpawn() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "reset zone session created")) {
+    return false;
+  }
+
+  setLayeredFloorActiveRoom(window, *session);
+  setPlayerPosition(*session, {5.0F, 0.05F, 5.0F});
+  iggy3d::applyProductGameplayActions(*session,
+                                      noActions(),
+                                      window,
+                                      "unit/gameplay_controller_reset_zone",
+                                      activeSurfaces(window));
+
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+  return expect(window.gameplayResetTriggered, "reset zone triggered") &&
+         expect(window.gameplayResetStatus == "reset",
+                "reset zone status") &&
+         expect(window.gameplayResetReasonCode == "gameplay_reset_zone",
+                "reset zone reason") &&
+         expect(window.gameplayResetSpawnAnchorId == "marker_player_spawn_r0_c0",
+                "reset zone spawn anchor") &&
+         expect(window.gameplayResetSourceAnchorId == "marker_reset_zone_r0_c1",
+                "reset zone source anchor") &&
+         expect(!window.gameplayJumpActive, "reset zone clears jump") &&
+         expect(nearlyEqual(final.x, 0.0F), "reset zone final x") &&
+         expect(nearlyEqual(final.y, 0.05F), "reset zone final y") &&
+         expect(nearlyEqual(final.z, 0.0F), "reset zone final z");
+}
+
+bool productFallOutBelowLowestFloorReturnsPlayerToSpawn() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "fall reset session created")) {
+    return false;
+  }
+
+  setLayeredFloorActiveRoom(window, *session);
+  setPlayerPosition(*session, {2.0F, -7.0F, 0.0F});
+  iggy3d::applyProductGameplayActions(*session,
+                                      noActions(),
+                                      window,
+                                      "unit/gameplay_controller_fall_reset",
+                                      activeSurfaces(window));
+
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+  return expect(window.gameplayResetTriggered, "fall reset triggered") &&
+         expect(window.gameplayResetStatus == "reset", "fall reset status") &&
+         expect(window.gameplayResetReasonCode == "gameplay_reset_fall_out",
+                "fall reset reason") &&
+         expect(window.gameplayResetSpawnAnchorId == "marker_player_spawn_r0_c0",
+                "fall reset spawn anchor") &&
+         expect(window.gameplayResetSourceAnchorId == "none",
+                "fall reset source none") &&
+         expect(nearlyEqual(window.gameplayResetStartY, -7.0F),
+                "fall reset start y") &&
+         expect(nearlyEqual(window.gameplayResetFinalY, 0.05F),
+                "fall reset final proof y") &&
+         expect(!window.gameplayJumpActive, "fall reset clears jump") &&
+         expect(nearlyEqual(final.x, 0.0F), "fall reset final x") &&
+         expect(nearlyEqual(final.y, 0.05F), "fall reset final y") &&
+         expect(nearlyEqual(final.z, 0.0F), "fall reset final z");
+}
+
 bool productDashMovesForwardAndRecordsProof() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -1127,6 +1206,8 @@ int main() {
                   productJumpFallsAndLands() &&
                   productJumpLandsOnElevatedWalkableFloor() &&
                   productFallThroughHoleLandsOnLowerWalkableFloor() &&
+                  productResetZoneReturnsPlayerToSpawn() &&
+                  productFallOutBelowLowestFloorReturnsPlayerToSpawn() &&
                   productDashMovesForwardAndRecordsProof() &&
                   productDashUsesMoveIntentDirection() &&
                   productDashRejectsDuringCooldown() &&

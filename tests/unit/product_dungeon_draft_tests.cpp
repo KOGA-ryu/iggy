@@ -132,6 +132,31 @@ bool paintingRampMarksDraftCustomAndBuildsRamp() {
          expect(authored.rampCount == 1U, "ramp authored count");
 }
 
+bool paintingResetZoneMarksDraftCustomAndBuildsMarker() {
+  iggy3d::WorldSetupDraft draft =
+      iggy3d::makeProductDefaultWorldSetupDraft("seed_reset_zone");
+  const iggy3d::ProductDungeonDraftOperationResult painted =
+      iggy3d::setProductDungeonDraftCell(draft, 1U, 2U, 'R');
+
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceText = draft.asciiRoomText;
+  request.roomId = draft.asciiRoomId;
+  request.sourceName = draft.asciiRoomSourceName;
+  const iggy3d::ProductAsciiRoomAuthoringResult authored =
+      iggy3d::buildProductAsciiRoomAuthoring(request);
+
+  return expect(iggy3d::isProductDungeonDraftGlyph('R'),
+                "reset zone glyph valid") &&
+         expect(painted.ok, "paint reset zone ok") &&
+         expect(painted.modified, "paint reset zone modified") &&
+         expect(painted.glyph == 'R', "paint reset zone glyph") &&
+         expect(draft.asciiRoomId == "custom_dungeon_draft",
+                "reset zone custom room id") &&
+         expect(authored.ok, "reset zone authored ok") &&
+         expect(authored.floorCount == 59U, "reset zone keeps floor count") &&
+         expect(authored.markerCount == 6U, "reset zone marker count");
+}
+
 bool paintingPlayerKeepsSingleSpawn() {
   iggy3d::WorldSetupDraft draft =
       iggy3d::makeProductDefaultWorldSetupDraft("seed_player");
@@ -167,6 +192,7 @@ int main() {
                       paintingCrateMarksDraftCustomAndBuildsObject() &&
                       paintingLedgeMarksDraftCustomAndBuildsClamberObject() &&
                       paintingRampMarksDraftCustomAndBuildsRamp() &&
+                      paintingResetZoneMarksDraftCustomAndBuildsMarker() &&
                       paintingPlayerKeepsSingleSpawn() &&
                       invalidGlyphIsRejected();
   std::cout << "product_dungeon_draft_tests="

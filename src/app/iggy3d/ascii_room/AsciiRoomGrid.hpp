@@ -24,6 +24,7 @@ enum class AsciiRoomCellKind {
   Key,
   Trap,
   Exit,
+  ResetZone,
   Inspect,
 };
 

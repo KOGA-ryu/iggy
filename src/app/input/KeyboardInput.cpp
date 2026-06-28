@@ -13,7 +13,7 @@ namespace iggy3d {
 namespace {
 
 constexpr std::array<char, kKeyboardAsciiRoomPaintGlyphCount> kAsciiRoomPaintGlyphs = {
-    '#', '.', 'P', 'K', '$', 'E', '+', 'C', '^', 'v', '<', '>'};
+    '#', '.', 'P', 'K', '$', 'E', '+', 'C', '^', 'v', '<', '>', 'R'};
 
 struct KeyboardRoomEditorActionBinding {
   bool KeyboardRoomEditorInputSample::* down;
@@ -184,6 +184,7 @@ char pollKeyboardAsciiRoomPaintGlyph(KeyboardInputState& state) {
       SDL_SCANCODE_0,
       SDL_SCANCODE_MINUS,
       SDL_SCANCODE_EQUALS,
+      SDL_SCANCODE_R,
   };
   KeyboardAsciiRoomPaintSample sample;
   for (std::size_t index = 0; index < kScanCodes.size(); ++index) {

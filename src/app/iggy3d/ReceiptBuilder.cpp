@@ -787,6 +787,20 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.gameplayJumpFinalY));
   appendReceiptField(receipt, "gameplay_jump_height_meters",
                      floatReceiptValue(window.gameplayJumpHeightMeters));
+  appendReceiptField(receipt, "gameplay_reset_triggered",
+                     window.gameplayResetTriggered);
+  appendReceiptField(receipt, "gameplay_reset_status",
+                     window.gameplayResetStatus);
+  appendReceiptField(receipt, "gameplay_reset_reason_code",
+                     window.gameplayResetReasonCode);
+  appendReceiptField(receipt, "gameplay_reset_spawn_anchor_id",
+                     window.gameplayResetSpawnAnchorId);
+  appendReceiptField(receipt, "gameplay_reset_source_anchor_id",
+                     window.gameplayResetSourceAnchorId);
+  appendReceiptField(receipt, "gameplay_reset_start_y",
+                     floatReceiptValue(window.gameplayResetStartY));
+  appendReceiptField(receipt, "gameplay_reset_final_y",
+                     floatReceiptValue(window.gameplayResetFinalY));
   appendReceiptField(receipt, "gameplay_traversal_requested",
                      window.gameplayTraversalRequested);
   appendReceiptField(receipt, "gameplay_traversal_consumed",

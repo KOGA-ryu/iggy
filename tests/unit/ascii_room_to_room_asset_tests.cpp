@@ -553,6 +553,23 @@ bool wallJumpGlyphBuildsTaggedActorBlockerSurface() {
                 "wall jump actor traversal tag");
 }
 
+bool resetZoneGlyphBuildsResetAnchorAndWalkableFloor() {
+  const auto result = buildInlineRoomAsset("######\n#P.RE#\n######\n");
+  const auto* anchor = findAnchor(result.room, "marker_reset_zone_r1_c3");
+  const auto* floor = findSurface(result.room, "floor_r1_c3_walkable");
+  return expect(result.ok, "reset zone room asset ok") &&
+         expect(anchor != nullptr, "reset zone anchor exists") &&
+         expect(anchor != nullptr && anchor->kind == "reset_zone",
+                "reset zone anchor kind") &&
+         expect(anchor != nullptr &&
+                    anchor->runtimeStableName == "marker_reset_zone_r1_c3",
+                "reset zone stable name") &&
+         expect(floor != nullptr, "reset zone keeps walkable floor") &&
+         expect(floor != nullptr &&
+                    floor->role == iggy3d::RoomSpatialSurfaceRole::Walkable,
+                "reset zone walkable role");
+}
+
 bool invalidAuthoredResultRejectsWithoutPartialRoom() {
   iggy3d::AsciiRoomAuthoredRoomResult invalid;
   invalid.ok = false;
@@ -597,6 +614,7 @@ int main() {
   ok = crateObjectBuildsPropMeshAndBlockerSurfaces() && ok;
   ok = ledgeObjectBuildsClamberMeshAndSurfaces() && ok;
   ok = wallJumpGlyphBuildsTaggedActorBlockerSurface() && ok;
+  ok = resetZoneGlyphBuildsResetAnchorAndWalkableFloor() && ok;
   ok = invalidAuthoredResultRejectsWithoutPartialRoom() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

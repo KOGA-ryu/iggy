@@ -72,7 +72,7 @@ int main() {
 
   {
     constexpr std::array<char, iggy3d::kKeyboardAsciiRoomPaintGlyphCount> expectedGlyphs = {
-        '#', '.', 'P', 'K', '$', 'E', '+', 'C', '^', 'v', '<', '>'};
+        '#', '.', 'P', 'K', '$', 'E', '+', 'C', '^', 'v', '<', '>', 'R'};
     for (std::size_t index = 0; index < expectedGlyphs.size(); ++index) {
       iggy3d::KeyboardInputState keyboard;
       iggy3d::KeyboardAsciiRoomPaintSample sample;

@@ -172,3 +172,15 @@ BG-1171	src/app/iggy3d/gameplay/Controller.cpp	product walkable floor missing su
 BG-1172	src/app/iggy3d/gameplay/Controller.cpp	product highest floor selection policy	codex	2026-06-28
 BG-1173	src/app/iggy3d/gameplay/Controller.cpp	product grounded state starts falling policy	codex	2026-06-28
 BG-1174	src/app/iggy3d/gameplay/Controller.cpp	product jump ground proof surface policy	codex	2026-06-28
+BG-1175	src/app/iggy3d/gameplay/Controller.cpp	product gameplay spawn anchor lookup policy	codex	2026-06-28
+BG-1176	src/app/iggy3d/gameplay/Controller.cpp	product gameplay lowest floor sampling policy	codex	2026-06-28
+BG-1177	src/app/iggy3d/gameplay/Controller.cpp	product gameplay reset floor finite guard policy	codex	2026-06-28
+BG-1178	src/app/iggy3d/gameplay/Controller.cpp	product gameplay lowest floor selection policy	codex	2026-06-28
+BG-1179	src/app/iggy3d/gameplay/Controller.cpp	product gameplay reset-zone trigger policy	codex	2026-06-28
+BG-1180	src/app/iggy3d/gameplay/Controller.cpp	product gameplay reset-to-spawn mutation policy	codex	2026-06-28
+BG-1181	src/app/iggy3d/gameplay/Controller.cpp	product gameplay fall-out reset policy	codex	2026-06-28
+BG-1182	src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp	ASCII reset-zone anchor kind mapping policy	codex	2026-06-28
+BG-1183	src/app/iggy3d/gameplay/Controller.cpp	product gameplay reset missing collision surfaces guard	codex	2026-06-28
+BG-1184	src/app/iggy3d/gameplay/Controller.cpp	product gameplay reset missing floor guard	codex	2026-06-28
+BG-1185	src/app/iggy3d/gameplay/Controller.cpp	product gameplay reset spawn receipt fallback policy	codex	2026-06-28
+BG-1186	src/app/iggy3d/gameplay/Controller.cpp	product gameplay reset source receipt fallback policy	codex	2026-06-28

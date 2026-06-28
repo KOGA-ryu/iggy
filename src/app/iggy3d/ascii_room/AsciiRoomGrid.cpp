@@ -8,7 +8,7 @@ namespace {
 
 constexpr float kElevationStepMeters = 0.5F;
 
-constexpr std::array<AsciiRoomGlyphInfo, 25> kGlyphs{{
+constexpr std::array<AsciiRoomGlyphInfo, 26> kGlyphs{{
     {'#', AsciiRoomCellKind::Wall, false, true, true, "",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
     {'J', AsciiRoomCellKind::Wall, false, true, true, "",
@@ -55,6 +55,8 @@ constexpr std::array<AsciiRoomGlyphInfo, 25> kGlyphs{{
     {'K', AsciiRoomCellKind::Key, true, false, false, "key",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
     {'T', AsciiRoomCellKind::Trap, true, false, false, "trap",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'R', AsciiRoomCellKind::ResetZone, true, false, false, "reset_zone",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
     {'C', AsciiRoomCellKind::Floor, true, false, false, "",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, "wood_crate_proxy"},
@@ -111,6 +113,7 @@ std::string_view asciiRoomCellKindName(AsciiRoomCellKind kind) {
     case AsciiRoomCellKind::Key: return "key";
     case AsciiRoomCellKind::Trap: return "trap";
     case AsciiRoomCellKind::Exit: return "exit";
+    case AsciiRoomCellKind::ResetZone: return "reset_zone";
     case AsciiRoomCellKind::Inspect: return "inspect";
   }
   return "floor";

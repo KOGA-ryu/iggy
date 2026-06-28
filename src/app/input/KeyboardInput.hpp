@@ -9,7 +9,7 @@ namespace iggy3d {
 
 struct ActionState;
 
-inline constexpr std::size_t kKeyboardAsciiRoomPaintGlyphCount = 12U;
+inline constexpr std::size_t kKeyboardAsciiRoomPaintGlyphCount = 13U;
 
 struct KeyboardInputState {
   bool upWasDown = false;

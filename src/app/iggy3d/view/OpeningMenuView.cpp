@@ -863,7 +863,7 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
   setColor(renderer, 166, 184, 177);
   drawText(renderer,
            dungeonDraftEditMode
-               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C 9^ 0v -< => SELECT"
+               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C R=RESET 9^ 0v -< => SELECT"
                : "UP DOWN SELECT TEMPLATE   TAB EDIT   CONFIRM BUILD",
            452.0F,
            210.0F,

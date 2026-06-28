@@ -333,6 +333,10 @@ std::string anchorKindForMarkerTag(std::string_view tag) {
   if (tag == "trap") {
     return "trap";
   }
+  // branch-gate: BG-1182
+  if (tag == "reset_zone") {
+    return "reset_zone";
+  }
   if (tag == "exit") {
     return "exit";
   }

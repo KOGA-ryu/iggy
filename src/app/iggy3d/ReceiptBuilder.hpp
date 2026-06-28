@@ -321,6 +321,13 @@ struct ProductAppWindowState {
   float gameplayJumpStartY = 0.0F;
   float gameplayJumpFinalY = 0.0F;
   float gameplayJumpHeightMeters = 0.0F;
+  bool gameplayResetTriggered = false;
+  std::string gameplayResetStatus = "not_requested";
+  std::string gameplayResetReasonCode = "not_requested";
+  std::string gameplayResetSpawnAnchorId = "none";
+  std::string gameplayResetSourceAnchorId = "none";
+  float gameplayResetStartY = 0.0F;
+  float gameplayResetFinalY = 0.0F;
   bool gameplayTraversalRequested = false;
   bool gameplayTraversalConsumed = false;
   bool gameplayTraversalAccepted = false;

@@ -210,7 +210,7 @@ bool newWorldEditModeShowsCursorPaletteAndLastGlyph() {
   bool ok = true;
   ok &= expect(instructions != nullptr &&
                    instructions->text ==
-                       "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C 9^ 0v -< => SELECT",
+                       "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C R=RESET 9^ 0v -< => SELECT",
                "new world edit instructions show paint keys");
   ok &= expect(draftValue != nullptr && draftValue->text == "CUSTOM",
                "new world edit draft value");

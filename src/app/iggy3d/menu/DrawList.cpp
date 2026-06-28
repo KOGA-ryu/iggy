@@ -447,7 +447,7 @@ void emitNewWorldContent(ProductUiDrawList& list,
            {452.0F, 210.0F, 700.0F, 26.0F},
            makeStarterSemanticId("content.new_world.instructions"),
            request.dungeonDraftEditMode
-               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C 9^ 0v -< => SELECT"
+               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C R=RESET 9^ 0v -< => SELECT"
                : "UP DOWN SELECT TEMPLATE   TAB EDIT   CONFIRM BUILD");
   // branch-gate: BG-1143
   if (draft == nullptr) {
