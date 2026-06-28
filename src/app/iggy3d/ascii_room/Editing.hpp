@@ -27,9 +27,11 @@ struct ProductAsciiRoomEditingResult {
   std::size_t height = 0;
   std::size_t floorCount = 0;
   std::size_t wallCount = 0;
+  std::size_t objectCount = 0;
   std::size_t markerCount = 0;
   std::size_t documentFloorCount = 0;
   std::size_t documentWallCount = 0;
+  std::size_t documentObjectCount = 0;
   std::size_t projectedMeshCount = 0;
   std::size_t projectedFloorMeshCount = 0;
   std::size_t projectedWallMeshCount = 0;

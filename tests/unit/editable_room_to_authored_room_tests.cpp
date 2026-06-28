@@ -76,14 +76,31 @@ iggy3d::EditableRoomWall editedWall() {
   return wall;
 }
 
+iggy3d::EditableRoomObject editedObject() {
+  iggy3d::EditableRoomObject object;
+  object.id = "authored_object_1";
+  object.assetId = "wood_crate_proxy";
+  object.storyIndex = 4;
+  object.positionMeters = {0.5F, 0.4F, -0.5F};
+  object.sizeMeters = {0.8F, 0.8F, 0.8F};
+  object.yawDegrees = 45.0F;
+  object.blocksActor = true;
+  object.blocksProjectile = true;
+  object.locked = true;
+  object.hidden = false;
+  return object;
+}
+
 bool convertsEditableDocumentToAuthoredRoomSection() {
   iggy3d::EditableRoomDocument document = editableDocumentFromAscii();
   document.floors.clear();
   document.walls.clear();
+  document.objects.clear();
   document.source = "iggy3d.editor";
   document.sourceSubset = "editable_room_authoring";
   document.floors.push_back(editedFloor());
   document.walls.push_back(editedWall());
+  document.objects.push_back(editedObject());
 
   const iggy3d::EditableRoomToAuthoredRoomResult result =
       iggy3d::buildAuthoredRoomFromEditableRoomDocument(document);
@@ -105,6 +122,7 @@ bool convertsEditableDocumentToAuthoredRoomSection() {
                 "authored source subset") &&
          expect(result.floorCount == 1U, "authored floor count") &&
          expect(result.wallCount == 1U, "authored wall count") &&
+         expect(result.objectCount == 1U, "authored object count") &&
          expect(result.markerCount == 0U, "authored marker count") &&
          expect(result.authoredRoom.floors[0].id == "authored_floor_1",
                 "authored floor id") &&
@@ -149,13 +167,37 @@ bool convertsEditableDocumentToAuthoredRoomSection() {
          expect(!result.authoredRoom.walls[0].locked,
                 "authored wall unlocked") &&
          expect(result.authoredRoom.walls[0].hidden,
-                "authored wall hidden");
+                "authored wall hidden") &&
+         expect(result.authoredRoom.objects[0].id == "authored_object_1",
+                "authored object id") &&
+         expect(result.authoredRoom.objects[0].assetId == "wood_crate_proxy",
+                "authored object asset") &&
+         expect(result.authoredRoom.objects[0].storyIndex == 4,
+                "authored object story") &&
+         expect(result.authoredRoom.objects[0].positionMeters.y == 0.4F,
+                "authored object y") &&
+         expect(result.authoredRoom.objects[0].sizeMeters.x == 0.8F,
+                "authored object size") &&
+         expect(result.authoredRoom.objects[0].yawDegrees == 45.0F,
+                "authored object yaw") &&
+         expect(result.authoredRoom.objects[0].semantics.materialId ==
+                    "wood_crate_proxy",
+                "authored object material") &&
+         expect(result.authoredRoom.objects[0].semantics.blocksActor,
+                "authored object actor blocker") &&
+         expect(result.authoredRoom.objects[0].semantics.blocksProjectile,
+                "authored object projectile blocker") &&
+         expect(result.authoredRoom.objects[0].locked,
+                "authored object locked") &&
+         expect(!result.authoredRoom.objects[0].hidden,
+                "authored object visible");
 }
 
 bool convertedAuthoredRoomSurvivesSaveCodecAndActiveRoomRebuild() {
   iggy3d::EditableRoomDocument document = editableDocumentFromAscii();
   document.floors.push_back(editedFloor());
   document.walls.push_back(editedWall());
+  document.objects.push_back(editedObject());
   const iggy3d::EditableRoomToAuthoredRoomResult authored =
       iggy3d::buildAuthoredRoomFromEditableRoomDocument(document);
 
@@ -187,6 +229,10 @@ bool convertedAuthoredRoomSurvivesSaveCodecAndActiveRoomRebuild() {
                     "authoredRoom.wall.8.id=authored_wall_1\n") !=
                     std::string::npos,
                 "edited wall encoded") &&
+         expect(encoded.encodedText.find(
+                    "authoredRoom.object.0.id=authored_object_1\n") !=
+                    std::string::npos,
+                "edited object encoded") &&
          expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
                 "save decode ok") &&
          expect(decoded.envelope.authoredRoom.present,
@@ -195,17 +241,21 @@ bool convertedAuthoredRoomSurvivesSaveCodecAndActiveRoomRebuild() {
                 "decoded floor count") &&
          expect(decoded.envelope.authoredRoom.walls.size() == 9U,
                 "decoded wall count") &&
+         expect(decoded.envelope.authoredRoom.objects.size() == 1U,
+                "decoded object count") &&
          expect(active.loaded, "active room from decoded authored loaded") &&
          expect(active.hasAuthoredRoom, "active room authored present") &&
          expect(active.authoredFloorCount == 2U,
                 "active authored floor count") &&
          expect(active.authoredWallCount == 9U,
                 "active authored wall count") &&
-         expect(active.staticMeshCount == 11U, "active static mesh count") &&
-         expect(active.spatialSurfaceCount == 20U,
+         expect(active.authoredObjectCount == 1U,
+                "active authored object count") &&
+         expect(active.staticMeshCount == 12U, "active static mesh count") &&
+         expect(active.spatialSurfaceCount == 22U,
                 "active surface count") &&
          expect(collision.ready, "decoded active collision ready") &&
-         expect(collision.querySurfaceCount == 20U,
+         expect(collision.querySurfaceCount == 22U,
                 "decoded collision surface count");
 }
 

@@ -25,6 +25,7 @@ struct ProductRoomEditingState {
   std::uint64_t activeRoomSpatialSurfaceCount = 0;
   std::uint64_t activeRoomAuthoredFloorCount = 0;
   std::uint64_t activeRoomAuthoredWallCount = 0;
+  std::uint64_t activeRoomAuthoredObjectCount = 0;
   std::uint64_t collisionQuerySurfaceCount = 0;
   std::uint64_t collisionWalkableSurfaceCount = 0;
   std::uint64_t collisionActorBlockerSurfaceCount = 0;

@@ -53,38 +53,55 @@ bool glyphMappingsMatchContract() {
     iggy3d::AsciiRoomTerrainKind terrainKind = iggy3d::AsciiRoomTerrainKind::Flat;
     float elevationMeters = 0.0F;
     float riseMeters = 0.0F;
+    std::string_view objectAssetId;
   };
   const Expected expected[] = {
-      {'#', iggy3d::AsciiRoomCellKind::Wall, false, true, true, ""},
-      {'.', iggy3d::AsciiRoomCellKind::Floor, true, false, false, ""},
-      {' ', iggy3d::AsciiRoomCellKind::Floor, true, false, false, ""},
-      {'0', iggy3d::AsciiRoomCellKind::Floor, true, false, false, ""},
+      {'#', iggy3d::AsciiRoomCellKind::Wall, false, true, true, "",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'.', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {' ', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'0', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
       {'1', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
-       iggy3d::AsciiRoomTerrainKind::Flat, 0.5F, 0.0F},
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.5F, 0.0F, ""},
       {'2', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
-       iggy3d::AsciiRoomTerrainKind::Flat, 1.0F, 0.0F},
+       iggy3d::AsciiRoomTerrainKind::Flat, 1.0F, 0.0F, ""},
       {'3', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
-       iggy3d::AsciiRoomTerrainKind::Flat, 1.5F, 0.0F},
+       iggy3d::AsciiRoomTerrainKind::Flat, 1.5F, 0.0F, ""},
       {'^', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
-       iggy3d::AsciiRoomTerrainKind::RampNorth, 0.25F, 0.5F},
+       iggy3d::AsciiRoomTerrainKind::RampNorth, 0.25F, 0.5F, ""},
       {'v', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
-       iggy3d::AsciiRoomTerrainKind::RampSouth, 0.25F, 0.5F},
+       iggy3d::AsciiRoomTerrainKind::RampSouth, 0.25F, 0.5F, ""},
       {'<', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
-       iggy3d::AsciiRoomTerrainKind::RampWest, 0.25F, 0.5F},
+       iggy3d::AsciiRoomTerrainKind::RampWest, 0.25F, 0.5F, ""},
       {'>', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
-       iggy3d::AsciiRoomTerrainKind::RampEast, 0.25F, 0.5F},
+       iggy3d::AsciiRoomTerrainKind::RampEast, 0.25F, 0.5F, ""},
       {'!', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
-       iggy3d::AsciiRoomTerrainKind::BlockedSteepEast, 0.5F, 1.0F},
-      {'+', iggy3d::AsciiRoomCellKind::Door, true, false, false, "door"},
-      {'s', iggy3d::AsciiRoomCellKind::SecretDoor, true, false, false, "secret_door"},
-      {'P', iggy3d::AsciiRoomCellKind::PlayerSpawn, true, false, false, "player_spawn"},
-      {'N', iggy3d::AsciiRoomCellKind::NpcSpawn, true, false, false, "npc_spawn"},
-      {'M', iggy3d::AsciiRoomCellKind::MonsterSpawn, true, false, false, "monster_spawn"},
-      {'$', iggy3d::AsciiRoomCellKind::Treasure, true, false, false, "treasure"},
-      {'K', iggy3d::AsciiRoomCellKind::Key, true, false, false, "key"},
-      {'T', iggy3d::AsciiRoomCellKind::Trap, true, false, false, "trap"},
-      {'E', iggy3d::AsciiRoomCellKind::Exit, true, false, false, "exit"},
-      {'?', iggy3d::AsciiRoomCellKind::Inspect, true, false, false, "inspect"},
+       iggy3d::AsciiRoomTerrainKind::BlockedSteepEast, 0.5F, 1.0F, ""},
+      {'+', iggy3d::AsciiRoomCellKind::Door, true, false, false, "door",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'s', iggy3d::AsciiRoomCellKind::SecretDoor, true, false, false, "secret_door",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'P', iggy3d::AsciiRoomCellKind::PlayerSpawn, true, false, false, "player_spawn",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'N', iggy3d::AsciiRoomCellKind::NpcSpawn, true, false, false, "npc_spawn",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'M', iggy3d::AsciiRoomCellKind::MonsterSpawn, true, false, false, "monster_spawn",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'$', iggy3d::AsciiRoomCellKind::Treasure, true, false, false, "treasure",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'K', iggy3d::AsciiRoomCellKind::Key, true, false, false, "key",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'T', iggy3d::AsciiRoomCellKind::Trap, true, false, false, "trap",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'C', iggy3d::AsciiRoomCellKind::Floor, true, false, false, "",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, "wood_crate_proxy"},
+      {'E', iggy3d::AsciiRoomCellKind::Exit, true, false, false, "exit",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'?', iggy3d::AsciiRoomCellKind::Inspect, true, false, false, "inspect",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
   };
 
   bool ok = true;
@@ -104,8 +121,27 @@ bool glyphMappingsMatchContract() {
     ok = expect(info->elevationMeters == item.elevationMeters,
                 "glyph elevation") && ok;
     ok = expect(info->riseMeters == item.riseMeters, "glyph rise") && ok;
+    ok = expect(info->objectAssetId == item.objectAssetId,
+                "glyph object asset") && ok;
   }
   return ok;
+}
+
+bool crateGlyphCreatesWalkableObjectCell() {
+  const auto source = iggy3d::parseAsciiRoomSource("#####\n#PCE#\n#####\n");
+  const auto result = iggy3d::buildAsciiRoomGrid(source);
+  const iggy3d::AsciiRoomCell* crate = iggy3d::asciiRoomCellAt(result.grid, 1, 2);
+  return expect(result.ok, "crate glyph grid ok") &&
+         expect(result.grid.floorCount == 3U, "crate floor count") &&
+         expect(result.grid.objectCount == 1U, "crate object count") &&
+         expect(crate != nullptr, "crate cell exists") &&
+         expect(crate != nullptr && crate->glyph == 'C', "crate glyph") &&
+         expect(crate != nullptr && crate->walkable, "crate walkable") &&
+         expect(crate != nullptr && crate->kind == iggy3d::AsciiRoomCellKind::Floor,
+                "crate floor kind") &&
+         expect(crate != nullptr && crate->markerTag.empty(), "crate no marker") &&
+         expect(crate != nullptr && crate->objectAssetId == "wood_crate_proxy",
+                "crate object asset");
 }
 
 bool terrainGlyphFacts() {
@@ -204,6 +240,7 @@ int main() {
   bool ok = true;
   ok = canonicalMapFacts() && ok;
   ok = glyphMappingsMatchContract() && ok;
+  ok = crateGlyphCreatesWalkableObjectCell() && ok;
   ok = terrainGlyphFacts() && ok;
   ok = missingPlayerSpawnFails() && ok;
   ok = multiplePlayerSpawnsFail() && ok;

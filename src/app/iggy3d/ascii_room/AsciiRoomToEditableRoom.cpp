@@ -44,6 +44,21 @@ EditableRoomWall editableWallFrom(const SaveAuthoredRoomWallRecord& wall) {
   return out;
 }
 
+EditableRoomObject editableObjectFrom(const SaveAuthoredRoomObjectRecord& object) {
+  EditableRoomObject out;
+  out.id = object.id;
+  out.assetId = object.assetId;
+  out.storyIndex = object.storyIndex;
+  out.positionMeters = object.positionMeters;
+  out.sizeMeters = object.sizeMeters;
+  out.yawDegrees = object.yawDegrees;
+  out.blocksActor = object.semantics.blocksActor;
+  out.blocksProjectile = object.semantics.blocksProjectile;
+  out.locked = object.locked;
+  out.hidden = object.hidden;
+  return out;
+}
+
 void copyAuthoredMetadata(const SaveAuthoredRoomSection& authored,
                           EditableRoomDocument& document) {
   document.id = authored.id.empty() ? "ascii_room" : authored.id;
@@ -68,6 +83,10 @@ EditableRoomDocument buildEditableRoomDocumentFromAuthoredRoom(
   for (const SaveAuthoredRoomWallRecord& wall : authoredRoom.walls) {
     document.walls.push_back(editableWallFrom(wall));
   }
+  document.objects.reserve(authoredRoom.objects.size());
+  for (const SaveAuthoredRoomObjectRecord& object : authoredRoom.objects) {
+    document.objects.push_back(editableObjectFrom(object));
+  }
   return document;
 }
 
@@ -78,6 +97,7 @@ AsciiRoomToEditableRoomResult buildEditableRoomFromAsciiRoom(
   result.authoredRoom = compileAsciiRoomToAuthoredRoom(grid, config);
   result.floorCount = result.authoredRoom.floorCount;
   result.wallCount = result.authoredRoom.wallCount;
+  result.objectCount = result.authoredRoom.objectCount;
   result.markerCount = result.authoredRoom.markerCount;
 
   if (!result.authoredRoom.ok) {

@@ -59,6 +59,7 @@ struct PhysicsDungeonSmokeExpectation {
   std::string_view height;
   std::string_view floorCount;
   std::string_view wallCount;
+  std::string_view objectCount;
   std::string_view markerCount;
   std::string_view querySurfaceCount;
   std::string_view walkableSurfaceCount;
@@ -129,6 +130,8 @@ bool createPhysicsDungeonWorld(
                                  expected.floorCount) &&
          iggy3d::smoke::hasField(fields, "ascii_room_preview_wall_count",
                                  expected.wallCount) &&
+         iggy3d::smoke::hasField(fields, "ascii_room_preview_object_count",
+                                 expected.objectCount) &&
          iggy3d::smoke::hasField(fields, "ascii_room_preview_marker_count",
                                  expected.markerCount) &&
          iggy3d::smoke::hasField(fields, "active_room_loaded", "true") &&
@@ -140,6 +143,9 @@ bool createPhysicsDungeonWorld(
          iggy3d::smoke::hasField(fields,
                                  "active_room_authored_wall_count",
                                  expected.wallCount) &&
+         iggy3d::smoke::hasField(fields,
+                                 "active_room_authored_object_count",
+                                 expected.objectCount) &&
          iggy3d::smoke::hasField(fields, "active_room_collision_ready",
                                  "true") &&
          iggy3d::smoke::hasField(fields,
@@ -170,7 +176,20 @@ bool createPhysicsDungeonWorld(
                           std::string{expected.floorCount} + "\n") &&
          fileContains(saveRoot / "save_001.iggy3d.save",
                       std::string{"authoredRoom.wall.count="} +
-                          std::string{expected.wallCount} + "\n");
+                          std::string{expected.wallCount} + "\n") &&
+         fileContains(saveRoot / "save_001.iggy3d.save",
+                      std::string{"authoredRoom.object.count="} +
+                          std::string{expected.objectCount} + "\n") &&
+         (expected.objectCount == "0" ||
+          (iggy3d::smoke::hasField(fields, "product_draw_prop_visible", "true") &&
+           iggy3d::smoke::hasField(fields, "product_draw_prop_tile_count",
+                                   expected.objectCount) &&
+           iggy3d::smoke::hasField(fields,
+                                   "product_render_bridge_prop_visible",
+                                   "true") &&
+           iggy3d::smoke::hasField(fields,
+                                   "product_render_bridge_prop_tile_count",
+                                   expected.objectCount)));
 }
 
 }  // namespace
@@ -191,6 +210,8 @@ int main() {
       iggy3d::smoke::cleanSaveRoot("ascii_map_physics_wall_corridor");
   const std::filesystem::path physicsCornerSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_physics_corner_slide");
+  const std::filesystem::path objectCrateRoomSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("ascii_map_object_crate_room");
   const std::filesystem::path customSaveRoot =
       iggy3d::smoke::cleanSaveRoot("ascii_map_custom_draft");
   const std::filesystem::path cursorPaintRejectedSaveRoot =
@@ -403,6 +424,7 @@ int main() {
       "5",
       "15",
       "20",
+      "0",
       "3",
       "55",
       "15",
@@ -427,6 +449,7 @@ int main() {
       "5",
       "14",
       "31",
+      "0",
       "4",
       "76",
       "14",
@@ -451,6 +474,7 @@ int main() {
       "5",
       "14",
       "26",
+      "0",
       "3",
       "66",
       "14",
@@ -465,6 +489,36 @@ int main() {
                                 physicsCornerSaveRoot,
                                 fields,
                                 exitCode);
+
+  static constexpr PhysicsDungeonSmokeExpectation kObjectCrateRoom{
+      "ascii_map_object_crate_room_create",
+      "object_crate_room",
+      "Object Crate Room",
+      "fixtures/rooms/ascii/object_crate_room.iggyroom.txt",
+      "7",
+      "5",
+      "15",
+      "20",
+      "1",
+      "2",
+      "57",
+      "15",
+      "21",
+      "21",
+  };
+  fields.clear();
+  const bool createObjectCrateRoomWorld =
+      appAvailable &&
+      createPhysicsDungeonWorld(binary,
+                                kObjectCrateRoom,
+                                objectCrateRoomSaveRoot,
+                                fields,
+                                exitCode) &&
+      iggy3d::smoke::hasField(fields, "active_room_static_mesh_count", "36") &&
+      iggy3d::smoke::hasField(fields, "product_draw_room_geometry_count",
+                              "36") &&
+      iggy3d::smoke::hasField(fields,
+                              "product_vulkan_room_source_mesh_count", "36");
 
   fields.clear();
   const bool createCustomDraftWorld =
@@ -3454,6 +3508,7 @@ int main() {
                       createPhysicsFlatRoomWorld &&
                       createPhysicsWallCorridorWorld &&
                       createPhysicsCornerSlideWorld &&
+                      createObjectCrateRoomWorld &&
                       createCustomDraftWorld && cursorPaintRequiresEditMode &&
                       createCursorPaintDraftWorld &&
                       startCustomDraftActiveRoomEditing &&
@@ -3503,6 +3558,8 @@ int main() {
                          "new world dungeon id creates physics wall corridor") &&
                   expect(createPhysicsCornerSlideWorld,
                          "new world dungeon id creates physics corner slide") &&
+                  expect(createObjectCrateRoomWorld,
+                         "new world dungeon id creates object crate room") &&
                   expect(createCustomDraftWorld,
                          "new world custom draft creates edited dungeon") &&
                   expect(cursorPaintRequiresEditMode,
@@ -3590,6 +3647,8 @@ int main() {
             << (createPhysicsWallCorridorWorld ? "true" : "false") << "\n";
   std::cout << "create_physics_corner_slide_world="
             << (createPhysicsCornerSlideWorld ? "true" : "false") << "\n";
+  std::cout << "create_object_crate_room_world="
+            << (createObjectCrateRoomWorld ? "true" : "false") << "\n";
   std::cout << "create_custom_draft_world="
             << (createCustomDraftWorld ? "true" : "false") << "\n";
   std::cout << "cursor_paint_requires_edit_mode="

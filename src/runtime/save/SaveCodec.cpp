@@ -824,6 +824,25 @@ private:
       lineBool(p + "locked", wall.locked);
       lineBool(p + "hidden", wall.hidden);
     }
+    line("authoredRoom.object.count", unsignedText(envelope_.authoredRoom.objects.size()));
+    for (std::size_t index = 0; index < envelope_.authoredRoom.objects.size(); ++index) {
+      const SaveAuthoredRoomObjectRecord& object = envelope_.authoredRoom.objects[index];
+      const std::string p = "authoredRoom.object." + std::to_string(index) + ".";
+      lineString(p + "id", object.id);
+      lineString(p + "assetId", object.assetId);
+      line(p + "storyIndex", std::to_string(object.storyIndex));
+      line(p + "positionMeters", formatVec3(object.positionMeters));
+      line(p + "sizeMeters", formatVec3(object.sizeMeters));
+      line(p + "yawDegrees", formatFloat(object.yawDegrees));
+      writeAuthoredRoomSemantics(p + "semantics.", object.semantics);
+      lineBool(p + "locked", object.locked);
+      lineBool(p + "hidden", object.hidden);
+      lineString(p + "glyph", object.glyph);
+      line(p + "row", unsignedText(object.row));
+      line(p + "column", unsignedText(object.column));
+      line(p + "sourceLine", unsignedText(object.sourceLine));
+      line(p + "sourceColumn", unsignedText(object.sourceColumn));
+    }
     line("authoredRoom.marker.count", unsignedText(envelope_.authoredRoom.markers.size()));
     for (std::size_t index = 0; index < envelope_.authoredRoom.markers.size(); ++index) {
       const SaveAuthoredRoomMarkerRecord& marker = envelope_.authoredRoom.markers[index];
@@ -1333,6 +1352,30 @@ private:
       readAuthoredRoomSemantics(p + "semantics.", wall.semantics);
       readBool(p + "locked", wall.locked);
       readBool(p + "hidden", wall.hidden);
+    }
+    // branch-gate: BG-1135
+    if (nextKeyIs("authoredRoom.object.count")) {
+      std::uint64_t objectCount = 0;
+      readUnsigned("authoredRoom.object.count", objectCount);
+      envelope_.authoredRoom.objects.resize(static_cast<std::size_t>(objectCount));
+      for (std::size_t index = 0; index < envelope_.authoredRoom.objects.size(); ++index) {
+        SaveAuthoredRoomObjectRecord& object = envelope_.authoredRoom.objects[index];
+        const std::string p = "authoredRoom.object." + std::to_string(index) + ".";
+        readString(p + "id", object.id);
+        readString(p + "assetId", object.assetId);
+        readI32(p + "storyIndex", object.storyIndex);
+        readVec3(p + "positionMeters", object.positionMeters);
+        readVec3(p + "sizeMeters", object.sizeMeters);
+        readFloat(p + "yawDegrees", object.yawDegrees);
+        readAuthoredRoomSemantics(p + "semantics.", object.semantics);
+        readBool(p + "locked", object.locked);
+        readBool(p + "hidden", object.hidden);
+        readString(p + "glyph", object.glyph);
+        readUnsigned(p + "row", object.row);
+        readUnsigned(p + "column", object.column);
+        readUnsigned(p + "sourceLine", object.sourceLine);
+        readUnsigned(p + "sourceColumn", object.sourceColumn);
+      }
     }
     if (!nextKeyIs("authoredRoom.marker.count")) {
       return;

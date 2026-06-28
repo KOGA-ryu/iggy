@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -56,6 +57,15 @@ const iggy3d::AsciiRoomTerrainSurface* findTerrainSurface(
   return nullptr;
 }
 
+bool hasTag(const std::vector<std::string>& tags, std::string_view expected) {
+  for (const std::string& tag : tags) {
+    if (tag == expected) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool canonicalMapCompilesToExpectedCountsAndSourceFields() {
   const auto result = compileCanonical();
   return expect(result.ok, "canonical compile ok") &&
@@ -72,9 +82,11 @@ bool canonicalMapCompilesToExpectedCountsAndSourceFields() {
          expect(result.authoredRoom.walls.size() == 20U, "wall count") &&
          expect(result.authoredRoom.markers.size() == 5U,
                 "authored marker count") &&
+         expect(result.authoredRoom.objects.empty(), "no authored objects") &&
          expect(result.markers.size() == 5U, "marker count") &&
          expect(result.floorCount == 15U, "result floor count") &&
          expect(result.wallCount == 20U, "result wall count") &&
+         expect(result.objectCount == 0U, "result object count") &&
          expect(result.markerCount == 5U, "result marker count");
 }
 
@@ -205,6 +217,48 @@ bool doorAndSecretDoorGenerateFloorAndMarkerOnly() {
          expect(findMarker(result, "secret_door") != nullptr, "secret door marker");
 }
 
+bool crateGlyphGeneratesDurableAuthoredObject() {
+  const auto source =
+      iggy3d::parseAsciiRoomSource("#####\n#PCE#\n#####\n",
+                                   "crate_room.iggyroom.txt");
+  const auto grid = iggy3d::buildAsciiRoomGrid(source);
+  const auto result = iggy3d::compileAsciiRoomToAuthoredRoom(grid.grid);
+  const auto& object = result.authoredRoom.objects.front();
+  return expect(result.ok, "crate compile ok") &&
+         expect(result.authoredRoom.floors.size() == 3U,
+                "crate emits floor under object") &&
+         expect(result.authoredRoom.objects.size() == 1U,
+                "crate object count") &&
+         expect(result.objectCount == 1U, "crate result object count") &&
+         expect(object.id == "object_crate_r1_c2", "crate object id") &&
+         expect(object.assetId == "wood_crate_proxy", "crate asset id") &&
+         expect(object.storyIndex == 0, "crate story") &&
+         expect(near(object.positionMeters.x, 0.0), "crate x") &&
+         expect(near(object.positionMeters.y, 0.4), "crate y") &&
+         expect(near(object.positionMeters.z, 0.0), "crate z") &&
+         expect(near(object.sizeMeters.x, 0.8), "crate size x") &&
+         expect(near(object.sizeMeters.y, 0.8), "crate size y") &&
+         expect(near(object.sizeMeters.z, 0.8), "crate size z") &&
+         expect(object.yawDegrees == 0.0F, "crate yaw") &&
+         expect(object.semantics.materialId == "wood_crate_proxy",
+                "crate material") &&
+         expect(!object.semantics.walkable, "crate not walkable") &&
+         expect(object.semantics.blocksActor, "crate blocks actor") &&
+         expect(object.semantics.blocksProjectile, "crate blocks projectile") &&
+         expect(hasTag(object.semantics.traversalTags, "object"),
+                "crate object traversal") &&
+         expect(hasTag(object.semantics.traversalTags, "prop"),
+                "crate prop traversal") &&
+         expect(hasTag(object.semantics.traversalTags, "crate"),
+                "crate traversal") &&
+         expect(hasTag(object.semantics.gameplayTags, "crate"),
+                "crate gameplay") &&
+         expect(object.glyph == "C", "crate glyph") &&
+         expect(object.row == 1U && object.column == 2U, "crate row col") &&
+         expect(object.sourceLine == 2U && object.sourceColumn == 3U,
+                "crate source proof");
+}
+
 bool terrainGlyphsCompileToSurfaceFacts() {
   const auto source =
       iggy3d::parseAsciiRoomSource("######\n#P1>!#\n######\n");
@@ -273,6 +327,7 @@ int main() {
   ok = customConfigChangesGeneratedDimensionsAndPositions() && ok;
   ok = markerRecordsAreDeterministicSidecars() && ok;
   ok = doorAndSecretDoorGenerateFloorAndMarkerOnly() && ok;
+  ok = crateGlyphGeneratesDurableAuthoredObject() && ok;
   ok = terrainGlyphsCompileToSurfaceFacts() && ok;
   ok = invalidGridRejectsDeterministically() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

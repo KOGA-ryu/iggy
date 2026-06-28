@@ -181,6 +181,48 @@ bool bakedEditableRoomProjectsFloorAndWallMeshes() {
                 "projection source mesh count");
 }
 
+bool asciiCrateSurvivesEditableConversionAndBake() {
+  const iggy3d::AsciiRoomGrid grid = buildGrid(
+      "#####\n"
+      "#PCE#\n"
+      "#####\n");
+  const iggy3d::AsciiRoomToEditableRoomResult result =
+      iggy3d::buildEditableRoomFromAsciiRoom(grid, compileConfig());
+  const iggy3d::EditableRoomObject* object =
+      iggy3d::findEditableObject(result.document, "object_crate_r1_c2");
+  const iggy3d::RoomBakeResult bake =
+      iggy3d::bakeEditableRoomDocument(result.document);
+  iggy3d::SessionState state;
+  const iggy3d::SceneProjectionResult projection =
+      iggy3d::buildSceneProjection(state, &bake.room);
+
+  return expect(result.ok, "crate editable result ok") &&
+         expect(result.objectCount == 1U, "crate editable object count") &&
+         expect(result.document.objects.size() == 1U,
+                "crate document object count") &&
+         expect(object != nullptr, "crate editable object exists") &&
+         expect(object != nullptr && object->assetId == "wood_crate_proxy",
+                "crate editable asset") &&
+         expect(object != nullptr && object->blocksActor,
+                "crate editable blocks actor") &&
+         expect(object != nullptr && object->blocksProjectile,
+                "crate editable blocks projectile") &&
+         expect(object != nullptr && object->positionMeters.y == 0.4F,
+                "crate editable y") &&
+         expect(object != nullptr && object->sizeMeters.x == 0.8F,
+                "crate editable size") &&
+         expect(bake.ok, "crate editable bake ok") &&
+         expect(countRoomMeshesWithRole(bake.room, "prop") == 1U,
+                "crate baked prop count") &&
+         expect(bake.room.spatialSurfaces.size() ==
+                    result.floorCount + result.wallCount * 2U + 2U,
+                "crate baked blocker surfaces") &&
+         expect(projection.room.loaded, "crate projection loaded") &&
+         expect(projection.room.propVisible, "crate projection prop visible") &&
+         expect(countProjectedMeshesWithRole(projection.room, "prop") == 1U,
+                "crate projected prop count");
+}
+
 bool editCommandsChangeBakedProjectionCounts() {
   const iggy3d::AsciiRoomGrid grid = buildGrid(
       "###\n"
@@ -278,6 +320,7 @@ int main() {
   ok = asciiGridBuildsEditableFloorsAndWalls() && ok;
   ok = editableDocumentBakesBackToRoomAsset() && ok;
   ok = bakedEditableRoomProjectsFloorAndWallMeshes() && ok;
+  ok = asciiCrateSurvivesEditableConversionAndBake() && ok;
   ok = editCommandsChangeBakedProjectionCounts() && ok;
   ok = invalidGridForwardsAuthoredRoomFailure() && ok;
   return ok ? 0 : 1;

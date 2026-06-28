@@ -8,42 +8,57 @@ namespace {
 
 constexpr float kElevationStepMeters = 0.5F;
 
-constexpr std::array<AsciiRoomGlyphInfo, 22> kGlyphs{{
-    {'#', AsciiRoomCellKind::Wall, false, true, true, ""},
-    {'.', AsciiRoomCellKind::Floor, true, false, false, ""},
-    {' ', AsciiRoomCellKind::Floor, true, false, false, ""},
+constexpr std::array<AsciiRoomGlyphInfo, 23> kGlyphs{{
+    {'#', AsciiRoomCellKind::Wall, false, true, true, "",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'.', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {' ', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
     {'0', AsciiRoomCellKind::Floor, true, false, false, "",
-     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F},
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
     {'1', AsciiRoomCellKind::Floor, true, false, false, "",
-     AsciiRoomTerrainKind::Flat, kElevationStepMeters, 0.0F},
+     AsciiRoomTerrainKind::Flat, kElevationStepMeters, 0.0F, ""},
     {'2', AsciiRoomCellKind::Floor, true, false, false, "",
-     AsciiRoomTerrainKind::Flat, kElevationStepMeters * 2.0F, 0.0F},
+     AsciiRoomTerrainKind::Flat, kElevationStepMeters * 2.0F, 0.0F, ""},
     {'3', AsciiRoomCellKind::Floor, true, false, false, "",
-     AsciiRoomTerrainKind::Flat, kElevationStepMeters * 3.0F, 0.0F},
+     AsciiRoomTerrainKind::Flat, kElevationStepMeters * 3.0F, 0.0F, ""},
     {'^', AsciiRoomCellKind::Floor, true, false, false, "",
      AsciiRoomTerrainKind::RampNorth, kElevationStepMeters / 2.0F,
-     kElevationStepMeters},
+     kElevationStepMeters, ""},
     {'v', AsciiRoomCellKind::Floor, true, false, false, "",
      AsciiRoomTerrainKind::RampSouth, kElevationStepMeters / 2.0F,
-     kElevationStepMeters},
+     kElevationStepMeters, ""},
     {'<', AsciiRoomCellKind::Floor, true, false, false, "",
      AsciiRoomTerrainKind::RampWest, kElevationStepMeters / 2.0F,
-     kElevationStepMeters},
+     kElevationStepMeters, ""},
     {'>', AsciiRoomCellKind::Floor, true, false, false, "",
      AsciiRoomTerrainKind::RampEast, kElevationStepMeters / 2.0F,
-     kElevationStepMeters},
+     kElevationStepMeters, ""},
     {'!', AsciiRoomCellKind::Floor, true, false, false, "",
-     AsciiRoomTerrainKind::BlockedSteepEast, kElevationStepMeters, 1.0F},
-    {'+', AsciiRoomCellKind::Door, true, false, false, "door"},
-    {'s', AsciiRoomCellKind::SecretDoor, true, false, false, "secret_door"},
-    {'P', AsciiRoomCellKind::PlayerSpawn, true, false, false, "player_spawn"},
-    {'N', AsciiRoomCellKind::NpcSpawn, true, false, false, "npc_spawn"},
-    {'M', AsciiRoomCellKind::MonsterSpawn, true, false, false, "monster_spawn"},
-    {'$', AsciiRoomCellKind::Treasure, true, false, false, "treasure"},
-    {'K', AsciiRoomCellKind::Key, true, false, false, "key"},
-    {'T', AsciiRoomCellKind::Trap, true, false, false, "trap"},
-    {'E', AsciiRoomCellKind::Exit, true, false, false, "exit"},
-    {'?', AsciiRoomCellKind::Inspect, true, false, false, "inspect"},
+     AsciiRoomTerrainKind::BlockedSteepEast, kElevationStepMeters, 1.0F, ""},
+    {'+', AsciiRoomCellKind::Door, true, false, false, "door",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'s', AsciiRoomCellKind::SecretDoor, true, false, false, "secret_door",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'P', AsciiRoomCellKind::PlayerSpawn, true, false, false, "player_spawn",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'N', AsciiRoomCellKind::NpcSpawn, true, false, false, "npc_spawn",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'M', AsciiRoomCellKind::MonsterSpawn, true, false, false, "monster_spawn",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'$', AsciiRoomCellKind::Treasure, true, false, false, "treasure",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'K', AsciiRoomCellKind::Key, true, false, false, "key",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'T', AsciiRoomCellKind::Trap, true, false, false, "trap",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'C', AsciiRoomCellKind::Floor, true, false, false, "",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, "wood_crate_proxy"},
+    {'E', AsciiRoomCellKind::Exit, true, false, false, "exit",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'?', AsciiRoomCellKind::Inspect, true, false, false, "inspect",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
 }};
 
 AsciiRoomDiagnostic diagnostic(std::string reason,
@@ -158,6 +173,7 @@ AsciiRoomGridBuildResult buildAsciiRoomGrid(const AsciiRoomSource& source) {
       cell.blocksActor = info->blocksActor;
       cell.blocksProjectile = info->blocksProjectile;
       cell.markerTag = std::string(info->markerTag);
+      cell.objectAssetId = std::string(info->objectAssetId);
       cell.terrainKind = info->terrainKind;
       cell.elevationMeters = info->elevationMeters;
       cell.riseMeters = info->riseMeters;
@@ -168,6 +184,10 @@ AsciiRoomGridBuildResult buildAsciiRoomGrid(const AsciiRoomSource& source) {
       }
       if (!cell.markerTag.empty()) {
         ++result.grid.markerCount;
+      }
+      // branch-gate: BG-1130
+      if (!cell.objectAssetId.empty()) {
+        ++result.grid.objectCount;
       }
       if (cell.kind == AsciiRoomCellKind::Wall) {
         ++result.grid.wallCount;

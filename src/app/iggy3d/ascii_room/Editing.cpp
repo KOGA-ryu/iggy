@@ -34,9 +34,11 @@ void copyCounts(ProductAsciiRoomEditingResult& result) {
   result.height = result.source.height;
   result.floorCount = result.editableRoom.floorCount;
   result.wallCount = result.editableRoom.wallCount;
+  result.objectCount = result.editableRoom.objectCount;
   result.markerCount = result.editableRoom.markerCount;
   result.documentFloorCount = result.snapshot.documentFloorCount;
   result.documentWallCount = result.snapshot.documentWallCount;
+  result.documentObjectCount = result.snapshot.documentObjectCount;
   result.projectedMeshCount = result.snapshot.projectedMeshCount;
   result.projectedFloorMeshCount = result.snapshot.projectedFloorMeshCount;
   result.projectedWallMeshCount = result.snapshot.projectedWallMeshCount;

@@ -45,6 +45,7 @@ struct AsciiRoomGlyphInfo {
   AsciiRoomTerrainKind terrainKind = AsciiRoomTerrainKind::Flat;
   float elevationMeters = 0.0F;
   float riseMeters = 0.0F;
+  std::string_view objectAssetId;
 };
 
 struct AsciiRoomCell {
@@ -56,6 +57,7 @@ struct AsciiRoomCell {
   bool blocksActor = false;
   bool blocksProjectile = false;
   std::string markerTag;
+  std::string objectAssetId;
   AsciiRoomTerrainKind terrainKind = AsciiRoomTerrainKind::Flat;
   float elevationMeters = 0.0F;
   float riseMeters = 0.0F;
@@ -68,6 +70,7 @@ struct AsciiRoomGrid {
   std::vector<AsciiRoomCell> cells;
   std::size_t playerSpawnCount = 0;
   std::size_t markerCount = 0;
+  std::size_t objectCount = 0;
   std::size_t floorCount = 0;
   std::size_t wallCount = 0;
   std::size_t elevatedFloorCount = 0;

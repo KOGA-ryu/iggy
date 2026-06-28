@@ -50,6 +50,7 @@ void fillAuthoredCounts(ProductActiveRoomState& state) {
   state.hasAuthoredRoom = state.authoredRoom.present;
   state.authoredFloorCount = sizeReceiptValue(state.authoredRoom.floors.size());
   state.authoredWallCount = sizeReceiptValue(state.authoredRoom.walls.size());
+  state.authoredObjectCount = sizeReceiptValue(state.authoredRoom.objects.size());
   state.authoredMarkerCount = sizeReceiptValue(state.authoredRoom.markers.size());
 }
 
@@ -143,6 +144,7 @@ ProductActiveRoomState buildProductActiveRoomFromSavedAuthoredRoom(
   authored.authoredRoom = authoredRoom;
   authored.floorCount = authoredRoom.floors.size();
   authored.wallCount = authoredRoom.walls.size();
+  authored.objectCount = authoredRoom.objects.size();
 
   AsciiRoomToRoomAssetConfig config;
   config.roomId = state.roomId;

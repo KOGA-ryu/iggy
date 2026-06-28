@@ -519,6 +519,26 @@ bool authoredRoomSectionRoundTripsThroughSaveCodec() {
   wall.locked = true;
   wall.hidden = true;
   saved.envelope.authoredRoom.walls.push_back(wall);
+  iggy3d::SaveAuthoredRoomObjectRecord object;
+  object.id = "object_crate_r2_c3";
+  object.assetId = "wood_crate_proxy";
+  object.storyIndex = 3;
+  object.positionMeters = {3.0F, 0.4F, 2.0F};
+  object.sizeMeters = {0.8F, 0.8F, 0.8F};
+  object.yawDegrees = 90.0F;
+  object.semantics.materialId = "wood_crate_proxy";
+  object.semantics.blocksActor = true;
+  object.semantics.blocksProjectile = true;
+  object.semantics.traversalTags = {"object", "prop", "crate"};
+  object.semantics.gameplayTags = {"object", "prop", "crate"};
+  object.locked = true;
+  object.hidden = true;
+  object.glyph = "C";
+  object.row = 2;
+  object.column = 3;
+  object.sourceLine = 3;
+  object.sourceColumn = 4;
+  saved.envelope.authoredRoom.objects.push_back(object);
   iggy3d::SaveAuthoredRoomMarkerRecord marker;
   marker.id = "marker_treasure_r2_c4";
   marker.tag = "treasure";
@@ -546,6 +566,10 @@ bool authoredRoomSectionRoundTripsThroughSaveCodec() {
                     "authoredRoom.marker.0.id=marker_treasure_r2_c4\n") !=
                     std::string::npos,
                 "authored marker encoded") &&
+         expect(encoded.encodedText.find(
+                    "authoredRoom.object.0.id=object_crate_r2_c3\n") !=
+                    std::string::npos,
+                "authored object encoded") &&
          expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "authored decode status") &&
          expect(decoded.envelope.authoredRoom.present, "authored present decoded") &&
          expect(decoded.envelope.authoredRoom.floors.size() == 1U, "authored floor count") &&
@@ -596,6 +620,41 @@ bool authoredRoomSectionRoundTripsThroughSaveCodec() {
                 "authored wall gameplay tag") &&
          expect(decoded.envelope.authoredRoom.walls[0].locked, "authored wall locked") &&
          expect(decoded.envelope.authoredRoom.walls[0].hidden, "authored wall hidden") &&
+         expect(decoded.envelope.authoredRoom.objects.size() == 1U,
+                "authored object count") &&
+         expect(decoded.envelope.authoredRoom.objects[0].id == "object_crate_r2_c3",
+                "authored object id") &&
+         expect(decoded.envelope.authoredRoom.objects[0].assetId == "wood_crate_proxy",
+                "authored object asset") &&
+         expect(decoded.envelope.authoredRoom.objects[0].storyIndex == 3,
+                "authored object story") &&
+         expect(decoded.envelope.authoredRoom.objects[0].positionMeters.y == 0.4F,
+                "authored object y") &&
+         expect(decoded.envelope.authoredRoom.objects[0].sizeMeters.x == 0.8F,
+                "authored object size") &&
+         expect(decoded.envelope.authoredRoom.objects[0].yawDegrees == 90.0F,
+                "authored object yaw") &&
+         expect(decoded.envelope.authoredRoom.objects[0].semantics.blocksActor,
+                "authored object actor blocker") &&
+         expect(decoded.envelope.authoredRoom.objects[0].semantics.blocksProjectile,
+                "authored object projectile blocker") &&
+         expect(decoded.envelope.authoredRoom.objects[0].semantics.traversalTags[2] ==
+                    "crate",
+                "authored object traversal tag") &&
+         expect(decoded.envelope.authoredRoom.objects[0].glyph == "C",
+                "authored object glyph") &&
+         expect(decoded.envelope.authoredRoom.objects[0].row == 2U,
+                "authored object row") &&
+         expect(decoded.envelope.authoredRoom.objects[0].column == 3U,
+                "authored object column") &&
+         expect(decoded.envelope.authoredRoom.objects[0].sourceLine == 3U,
+                "authored object source line") &&
+         expect(decoded.envelope.authoredRoom.objects[0].sourceColumn == 4U,
+                "authored object source column") &&
+         expect(decoded.envelope.authoredRoom.objects[0].locked,
+                "authored object locked") &&
+         expect(decoded.envelope.authoredRoom.objects[0].hidden,
+                "authored object hidden") &&
          expect(decoded.envelope.authoredRoom.markers.size() == 1U,
                 "authored marker count") &&
          expect(decoded.envelope.authoredRoom.markers[0].id ==

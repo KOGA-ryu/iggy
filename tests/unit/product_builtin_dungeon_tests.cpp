@@ -63,6 +63,7 @@ struct ExpectedDungeonCounts {
   std::uint64_t height = 0U;
   std::uint64_t floorCount = 0U;
   std::uint64_t wallCount = 0U;
+  std::uint64_t objectCount = 0U;
   std::uint64_t markerCount = 0U;
   std::uint64_t spatialSurfaceCount = 0U;
   std::uint64_t walkableSurfaceCount = 0U;
@@ -71,12 +72,13 @@ struct ExpectedDungeonCounts {
 };
 
 constexpr ExpectedDungeonCounts kExpectedDungeons[] = {
-    {"loop_keep_ascii", 17U, 7U, 59U, 60U, 5U, 180U, 59U, 61U, 61U},
-    {"gatehouse_ascii", 11U, 7U, 33U, 44U, 5U, 122U, 33U, 45U, 45U},
-    {"courtyard_vault_ascii", 13U, 7U, 46U, 45U, 5U, 137U, 46U, 46U, 46U},
-    {"physics_flat_room", 7U, 5U, 15U, 20U, 3U, 55U, 15U, 20U, 20U},
-    {"physics_wall_corridor", 9U, 5U, 14U, 31U, 4U, 76U, 14U, 31U, 31U},
-    {"physics_corner_slide", 8U, 5U, 14U, 26U, 3U, 66U, 14U, 26U, 26U},
+    {"loop_keep_ascii", 17U, 7U, 59U, 60U, 0U, 5U, 180U, 59U, 61U, 61U},
+    {"gatehouse_ascii", 11U, 7U, 33U, 44U, 0U, 5U, 122U, 33U, 45U, 45U},
+    {"courtyard_vault_ascii", 13U, 7U, 46U, 45U, 0U, 5U, 137U, 46U, 46U, 46U},
+    {"physics_flat_room", 7U, 5U, 15U, 20U, 0U, 3U, 55U, 15U, 20U, 20U},
+    {"physics_wall_corridor", 9U, 5U, 14U, 31U, 0U, 4U, 76U, 14U, 31U, 31U},
+    {"physics_corner_slide", 8U, 5U, 14U, 26U, 0U, 3U, 66U, 14U, 26U, 26U},
+    {"object_crate_room", 7U, 5U, 15U, 20U, 1U, 2U, 57U, 15U, 21U, 21U},
 };
 
 const ExpectedDungeonCounts* expectedCountsFor(std::string_view roomId) {
@@ -175,7 +177,7 @@ bool catalogExposesSelectableDungeons() {
   const bool previousReturnsLoopKeep =
       draft.asciiRoomId == "loop_keep_ascii" && draft.worldName == "Loop Keep";
 
-  return expect(catalog.size() == 6U, "catalog size") &&
+  return expect(catalog.size() == 7U, "catalog size") &&
          expect(startsOnLoopKeep, "default starts loop keep") &&
          expect(nextOk, "next select ok") &&
          expect(nextIsGatehouse, "next selects gatehouse") &&
@@ -193,6 +195,9 @@ bool catalogExposesSelectableDungeons() {
          expect(iggy3d::findProductBuiltinDungeonByRoomId(
                     "physics_corner_slide") != nullptr,
                 "find physics corner slide") &&
+         expect(iggy3d::findProductBuiltinDungeonByRoomId(
+                    "object_crate_room") != nullptr,
+                "find object crate room") &&
          expect(iggy3d::findProductBuiltinDungeonByRoomId("missing") == nullptr,
                 "missing dungeon absent");
 }
@@ -230,6 +235,11 @@ bool embeddedDungeonsMatchFixturesAndBuild() {
                        dungeon.roomId,
                        "wall count") &&
            ok;
+      ok = expectEqual(result.objectCount,
+                       expected->objectCount,
+                       dungeon.roomId,
+                       "object count") &&
+           ok;
       ok = expectEqual(result.markerCount,
                        expected->markerCount,
                        dungeon.roomId,
@@ -258,6 +268,7 @@ bool loopKeepCountsRemainStable() {
          expect(result.height == 7U, "height") &&
          expect(result.floorCount == 59U, "floor count") &&
          expect(result.wallCount == 60U, "wall count") &&
+         expect(result.objectCount == 0U, "object count") &&
          expect(result.markerCount == 5U, "marker count") &&
          expect(result.anchorCount == 5U, "anchor count");
 }
@@ -283,6 +294,9 @@ bool physicsRoomsBuildCollisionSurfaces() {
          ok;
     ok = expect(active.authoredWallCount == expected.wallCount,
                 "physics authored wall count") &&
+         ok;
+    ok = expect(active.authoredObjectCount == expected.objectCount,
+                "physics authored object count") &&
          ok;
     ok = expect(collision.ready, "physics collision ready") && ok;
     ok = expect(collision.roomId == expected.roomId,
@@ -313,6 +327,55 @@ bool physicsRoomsBuildCollisionSurfaces() {
     ok = expect(surfaces != nullptr, "physics collision pointer") && ok;
   }
   return ok;
+}
+
+std::size_t countMeshesWithRole(const iggy3d::RoomAsset& room,
+                                std::string_view role) {
+  std::size_t count = 0;
+  for (const iggy3d::RoomStaticMeshAsset& mesh : room.staticMeshes) {
+    if (mesh.role == role) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+bool objectCrateRoomBuildsVisiblePropAndCollision() {
+  const ExpectedDungeonCounts* expected = expectedCountsFor("object_crate_room");
+  const iggy3d::ProductActiveRoomState active =
+      buildDungeonActiveRoom("object_crate_room");
+  const iggy3d::ProductActiveRoomCollisionState collision =
+      iggy3d::buildProductActiveRoomCollision(active);
+  const iggy3d::SpatialSurfaceSet* surfaces =
+      iggy3d::productActiveRoomCollisionSurfaces(collision);
+
+  return expect(expected != nullptr, "object room expected counts") &&
+         expect(active.loaded, "object active room loaded") &&
+         expect(active.roomId == "object_crate_room", "object active room id") &&
+         expect(active.authoredFloorCount == expected->floorCount,
+                "object authored floor count") &&
+         expect(active.authoredWallCount == expected->wallCount,
+                "object authored wall count") &&
+         expect(active.authoredObjectCount == 1U,
+                "object authored object count") &&
+         expect(active.authoredMarkerCount == expected->markerCount,
+                "object authored marker count") &&
+         expect(active.staticMeshCount == 36U, "object static mesh count") &&
+         expect(countMeshesWithRole(active.room, "prop") == 1U,
+                "object prop mesh count") &&
+         expect(collision.ready, "object collision ready") &&
+         expect(collision.querySurfaceCount == expected->spatialSurfaceCount,
+                "object collision surface count") &&
+         expect(collision.walkableSurfaceCount ==
+                    expected->walkableSurfaceCount,
+                "object walkable surface count") &&
+         expect(collision.actorBlockerSurfaceCount ==
+                    expected->actorBlockerSurfaceCount,
+                "object actor blocker count") &&
+         expect(collision.projectileBlockerSurfaceCount ==
+                    expected->projectileBlockerSurfaceCount,
+                "object projectile blocker count") &&
+         expect(surfaces != nullptr, "object collision pointer");
 }
 
 bool physicsPlannerUsesTestRooms() {
@@ -353,6 +416,7 @@ int main() {
                       embeddedDungeonsMatchFixturesAndBuild() &&
                       loopKeepCountsRemainStable() &&
                       physicsRoomsBuildCollisionSurfaces() &&
+                      objectCrateRoomBuildsVisiblePropAndCollision() &&
                       physicsPlannerUsesTestRooms();
   std::cout << "product_builtin_dungeon_tests="
             << (passed ? "pass" : "fail") << '\n';

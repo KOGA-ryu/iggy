@@ -106,6 +106,17 @@ RoomStaticMeshAsset wallMesh(const SaveAuthoredRoomWallRecord& wall,
   return mesh;
 }
 
+RoomStaticMeshAsset objectMesh(const SaveAuthoredRoomObjectRecord& object) {
+  RoomStaticMeshAsset mesh;
+  mesh.id = object.id;
+  mesh.meshId = object.assetId;
+  mesh.materialId = object.assetId;
+  mesh.role = "prop";
+  mesh.positionMeters = object.positionMeters;
+  mesh.sizeMeters = object.sizeMeters;
+  return mesh;
+}
+
 bool markerIsDoor(const AsciiRoomMarker& marker) {
   return marker.tag == "door" || marker.tag == "secret_door";
 }
@@ -182,6 +193,62 @@ RoomSpatialSurface projectileBlockerSurface(const SaveAuthoredRoomWallRecord& wa
   surface.collisionMask = {"projectile"};
   surface.blocksActor = false;
   surface.blocksProjectile = true;
+  return surface;
+}
+
+std::vector<Vec3> objectBoxPoints(const SaveAuthoredRoomObjectRecord& object) {
+  const float halfX = object.sizeMeters.x / 2.0F;
+  const float halfY = object.sizeMeters.y / 2.0F;
+  const float halfZ = object.sizeMeters.z / 2.0F;
+  const float minX = object.positionMeters.x - halfX;
+  const float maxX = object.positionMeters.x + halfX;
+  const float minY = object.positionMeters.y - halfY;
+  const float maxY = object.positionMeters.y + halfY;
+  const float minZ = object.positionMeters.z - halfZ;
+  const float maxZ = object.positionMeters.z + halfZ;
+  return {{minX, minY, minZ}, {maxX, minY, minZ}, {maxX, minY, maxZ},
+          {minX, minY, maxZ}, {minX, maxY, minZ}, {maxX, maxY, minZ},
+          {maxX, maxY, maxZ}, {minX, maxY, maxZ}};
+}
+
+RoomSpatialSurface objectActorBlockerSurface(
+    const SaveAuthoredRoomObjectRecord& object) {
+  RoomSpatialSurface surface;
+  surface.id = object.id + "_actor_blocker";
+  surface.sourceStaticMeshId = object.id;
+  surface.shape = RoomSpatialSurfaceShape::Box;
+  surface.role = RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = objectBoxPoints(object);
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.traversalTags = {"blocker"};
+  for (const std::string& tag : object.semantics.traversalTags) {
+    // branch-gate: BG-1132
+    if (std::find(surface.traversalTags.begin(), surface.traversalTags.end(), tag) ==
+        surface.traversalTags.end()) {
+      surface.traversalTags.push_back(tag);
+    }
+  }
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  surface.blocksProjectile = false;
+  surface.runtimeOwnerStableName = object.id;
+  return surface;
+}
+
+RoomSpatialSurface objectProjectileBlockerSurface(
+    const SaveAuthoredRoomObjectRecord& object) {
+  RoomSpatialSurface surface;
+  surface.id = object.id + "_projectile_blocker";
+  surface.sourceStaticMeshId = object.id;
+  surface.shape = RoomSpatialSurfaceShape::Box;
+  surface.role = RoomSpatialSurfaceRole::ProjectileBlocker;
+  surface.pointsMeters = objectBoxPoints(object);
+  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.traversalTags = {"projectile_blocker", "object", "prop"};
+  surface.collisionMask = {"projectile"};
+  surface.blocksActor = false;
+  surface.blocksProjectile = true;
+  surface.runtimeOwnerStableName = object.id;
   return surface;
 }
 
@@ -348,6 +415,21 @@ AsciiRoomToRoomAssetResult buildRoomAssetFromAsciiRoom(
     }
     if (wallBlocksProjectile(wall)) {
       result.room.spatialSurfaces.push_back(projectileBlockerSurface(wall));
+      ++result.projectileBlockerSurfaceCount;
+    }
+  }
+
+  for (const SaveAuthoredRoomObjectRecord& object : authored.authoredRoom.objects) {
+    result.room.staticMeshes.push_back(objectMesh(object));
+    // branch-gate: BG-1133
+    if (object.semantics.blocksActor) {
+      result.room.spatialSurfaces.push_back(objectActorBlockerSurface(object));
+      ++result.actorBlockerSurfaceCount;
+    }
+    // branch-gate: BG-1134
+    if (object.semantics.blocksProjectile) {
+      result.room.spatialSurfaces.push_back(
+          objectProjectileBlockerSurface(object));
       ++result.projectileBlockerSurfaceCount;
     }
   }

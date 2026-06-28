@@ -24,6 +24,7 @@ struct ProductActiveRoomState {
   bool hasAuthoredRoom = false;
   std::uint64_t authoredFloorCount = 0;
   std::uint64_t authoredWallCount = 0;
+  std::uint64_t authoredObjectCount = 0;
   std::uint64_t authoredMarkerCount = 0;
   std::uint64_t staticMeshCount = 0;
   std::uint64_t anchorCount = 0;

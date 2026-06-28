@@ -13,6 +13,7 @@ void fillCounts(ProductRoomEditingState& state) {
   state.activeRoomSpatialSurfaceCount = state.activeRoom.spatialSurfaceCount;
   state.activeRoomAuthoredFloorCount = state.activeRoom.authoredFloorCount;
   state.activeRoomAuthoredWallCount = state.activeRoom.authoredWallCount;
+  state.activeRoomAuthoredObjectCount = state.activeRoom.authoredObjectCount;
   state.collisionQuerySurfaceCount = state.activeRoomCollision.querySurfaceCount;
   state.collisionWalkableSurfaceCount = state.activeRoomCollision.walkableSurfaceCount;
   state.collisionActorBlockerSurfaceCount =

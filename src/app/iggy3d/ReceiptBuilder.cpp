@@ -288,6 +288,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.asciiRoomPreviewFloorCount);
   appendReceiptField(receipt, "ascii_room_preview_wall_count",
                      window.asciiRoomPreviewWallCount);
+  appendReceiptField(receipt, "ascii_room_preview_object_count",
+                     window.asciiRoomPreviewObjectCount);
   appendReceiptField(receipt, "ascii_room_preview_marker_count",
                      window.asciiRoomPreviewMarkerCount);
   appendReceiptField(receipt, "ascii_room_preview_elevated_floor_count",
@@ -360,6 +362,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.roomEditing.activeRoomAuthoredFloorCount);
   appendReceiptField(receipt, "room_editing_authored_wall_count",
                      window.roomEditing.activeRoomAuthoredWallCount);
+  appendReceiptField(receipt, "room_editing_authored_object_count",
+                     window.roomEditing.activeRoomAuthoredObjectCount);
   appendReceiptField(receipt, "room_editing_collision_ready",
                      window.roomEditing.activeRoomCollision.ready);
   appendReceiptField(receipt, "room_editing_collision_surface_count",
@@ -402,6 +406,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.activeRoom.authoredFloorCount);
   appendReceiptField(receipt, "active_room_authored_wall_count",
                      window.activeRoom.authoredWallCount);
+  appendReceiptField(receipt, "active_room_authored_object_count",
+                     window.activeRoom.authoredObjectCount);
   appendReceiptField(receipt, "active_room_authored_marker_count",
                      window.activeRoom.authoredMarkerCount);
   appendReceiptField(receipt, "active_room_static_mesh_count",
@@ -478,6 +484,9 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "product_save_load_authored_wall_count",
                      window.productSaveLoadAuthoredWallCount);
+  appendReceiptField(receipt,
+                     "product_save_load_authored_object_count",
+                     window.productSaveLoadAuthoredObjectCount);
   appendReceiptField(receipt,
                      "product_save_load_authored_marker_count",
                      window.productSaveLoadAuthoredMarkerCount);

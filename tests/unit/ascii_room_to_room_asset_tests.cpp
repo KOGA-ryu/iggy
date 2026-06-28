@@ -402,6 +402,79 @@ bool terrainSurfacesPreserveHeightAndSlope() {
                 "blocked slope tag");
 }
 
+bool crateObjectBuildsPropMeshAndBlockerSurfaces() {
+  const auto result = buildInlineRoomAsset("#####\n#PCE#\n#####\n");
+  const auto* prop = findMesh(result.room, "object_crate_r1_c2");
+  const auto* actor =
+      findSurface(result.room, "object_crate_r1_c2_actor_blocker");
+  const auto* projectile =
+      findSurface(result.room, "object_crate_r1_c2_projectile_blocker");
+  return expect(result.ok, "crate room asset ok") &&
+         expect(result.room.staticMeshes.size() == 16U,
+                "crate static mesh count") &&
+         expect(result.room.spatialSurfaces.size() == 29U,
+                "crate spatial surface count") &&
+         expect(result.walkableSurfaceCount == 3U,
+                "crate walkable surface count") &&
+         expect(result.actorBlockerSurfaceCount == 13U,
+                "crate actor blocker count") &&
+         expect(result.projectileBlockerSurfaceCount == 13U,
+                "crate projectile blocker count") &&
+         expect(prop != nullptr, "crate prop mesh exists") &&
+         expect(prop != nullptr && prop->meshId == "wood_crate_proxy",
+                "crate mesh id") &&
+         expect(prop != nullptr && prop->materialId == "wood_crate_proxy",
+                "crate material id") &&
+         expect(prop != nullptr && prop->role == "prop", "crate prop role") &&
+         expect(prop != nullptr && near(prop->positionMeters.x, 0.0F),
+                "crate prop x") &&
+         expect(prop != nullptr && near(prop->positionMeters.y, 0.4F),
+                "crate prop y") &&
+         expect(prop != nullptr && near(prop->positionMeters.z, 0.0F),
+                "crate prop z") &&
+         expect(prop != nullptr && near(prop->sizeMeters.x, 0.8F),
+                "crate prop size x") &&
+         expect(prop != nullptr && near(prop->sizeMeters.y, 0.8F),
+                "crate prop size y") &&
+         expect(actor != nullptr, "crate actor surface exists") &&
+         expect(actor != nullptr && actor->sourceStaticMeshId == "object_crate_r1_c2",
+                "crate actor source mesh") &&
+         expect(actor != nullptr && actor->role == iggy3d::RoomSpatialSurfaceRole::Blocker,
+                "crate actor role") &&
+         expect(actor != nullptr && actor->pointsMeters.size() == 8U,
+                "crate actor point count") &&
+         expect(actor != nullptr && near(actor->pointsMeters[0].x, -0.4F),
+                "crate actor min x") &&
+         expect(actor != nullptr && near(actor->pointsMeters[0].y, 0.0F),
+                "crate actor min y") &&
+         expect(actor != nullptr && near(actor->pointsMeters[6].y, 0.8F),
+                "crate actor max y") &&
+         expect(actor != nullptr && actor->runtimeOwnerStableName ==
+                                     "object_crate_r1_c2",
+                "crate actor owner") &&
+         expect(actor != nullptr && actor->blocksActor,
+                "crate actor blocks actor") &&
+         expect(actor != nullptr && !actor->blocksProjectile,
+                "crate actor projectile pass") &&
+         expect(actor != nullptr && hasTag(actor->traversalTags, "crate"),
+                "crate actor traversal tag") &&
+         expect(projectile != nullptr, "crate projectile surface exists") &&
+         expect(projectile != nullptr &&
+                    projectile->role ==
+                        iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker,
+                "crate projectile role") &&
+         expect(projectile != nullptr && projectile->runtimeOwnerStableName ==
+                                          "object_crate_r1_c2",
+                "crate projectile owner") &&
+         expect(projectile != nullptr && !projectile->blocksActor,
+                "crate projectile actor pass") &&
+         expect(projectile != nullptr && projectile->blocksProjectile,
+                "crate projectile blocks projectile") &&
+         expect(projectile != nullptr &&
+                    hasTag(projectile->traversalTags, "projectile_blocker"),
+                "crate projectile tag");
+}
+
 bool invalidAuthoredResultRejectsWithoutPartialRoom() {
   iggy3d::AsciiRoomAuthoredRoomResult invalid;
   invalid.ok = false;
@@ -443,6 +516,7 @@ int main() {
   ok = representativeWallMeshAndSurfacesMatch() && ok;
   ok = authoredZRunningWallPreservesSegmentAndSurfaceExtents() && ok;
   ok = terrainSurfacesPreserveHeightAndSlope() && ok;
+  ok = crateObjectBuildsPropMeshAndBlockerSurfaces() && ok;
   ok = invalidAuthoredResultRejectsWithoutPartialRoom() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

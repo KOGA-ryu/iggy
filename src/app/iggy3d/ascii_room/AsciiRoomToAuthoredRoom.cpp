@@ -80,6 +80,17 @@ SaveAuthoredRoomSemanticsRecord wallSemantics() {
   return semantics;
 }
 
+SaveAuthoredRoomSemanticsRecord objectSemantics(std::string_view assetId) {
+  SaveAuthoredRoomSemanticsRecord semantics;
+  semantics.materialId = std::string(assetId);
+  semantics.traversalTags = {"object", "prop", "crate"};
+  semantics.gameplayTags = {"object", "prop", "crate"};
+  semantics.walkable = false;
+  semantics.blocksActor = true;
+  semantics.blocksProjectile = true;
+  return semantics;
+}
+
 std::string cellId(std::string_view prefix, const AsciiRoomCell& cell) {
   return std::string(prefix) + "_r" + std::to_string(cell.row) + "_c" +
          std::to_string(cell.column);
@@ -237,6 +248,28 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
       result.authoredRoom.walls.push_back(std::move(wall));
     }
 
+    // branch-gate: BG-1131
+    if (!cell.objectAssetId.empty()) {
+      SaveAuthoredRoomObjectRecord object;
+      object.id = cellId("object_crate", cell);
+      object.assetId = cell.objectAssetId;
+      object.storyIndex = config.storyIndex;
+      object.positionMeters = {static_cast<float>(center.x),
+                               cell.elevationMeters + 0.4F,
+                               static_cast<float>(center.z)};
+      object.sizeMeters = {0.8F, 0.8F, 0.8F};
+      object.yawDegrees = 0.0F;
+      object.semantics = objectSemantics(object.assetId);
+      object.locked = false;
+      object.hidden = false;
+      object.glyph = std::string(1, cell.glyph);
+      object.row = static_cast<std::uint32_t>(cell.row);
+      object.column = static_cast<std::uint32_t>(cell.column);
+      object.sourceLine = static_cast<std::uint32_t>(cell.row + 1U);
+      object.sourceColumn = static_cast<std::uint32_t>(cell.column + 1U);
+      result.authoredRoom.objects.push_back(std::move(object));
+    }
+
     if (!cell.markerTag.empty()) {
       AsciiRoomMarker marker;
       marker.id = "marker_" + cell.markerTag + "_r" + std::to_string(cell.row) +
@@ -267,6 +300,7 @@ AsciiRoomAuthoredRoomResult compileAsciiRoomToAuthoredRoom(
 
   result.floorCount = result.authoredRoom.floors.size();
   result.wallCount = result.authoredRoom.walls.size();
+  result.objectCount = result.authoredRoom.objects.size();
   result.markerCount = result.markers.size();
   result.elevatedFloorCount = grid.elevatedFloorCount;
   result.rampCount = grid.rampCount;

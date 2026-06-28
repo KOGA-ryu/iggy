@@ -61,6 +61,7 @@ void recordProductAsciiRoomPreview(std::string_view sourceName,
   window.asciiRoomPreviewHeight = sizeReceiptValue(result.height);
   window.asciiRoomPreviewFloorCount = sizeReceiptValue(result.floorCount);
   window.asciiRoomPreviewWallCount = sizeReceiptValue(result.wallCount);
+  window.asciiRoomPreviewObjectCount = sizeReceiptValue(result.objectCount);
   window.asciiRoomPreviewMarkerCount = sizeReceiptValue(result.markerCount);
   window.asciiRoomPreviewElevatedFloorCount =
       sizeReceiptValue(result.elevatedFloorCount);

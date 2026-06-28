@@ -49,6 +49,7 @@ bool buildsProductOwnedAuthoringResult() {
          expect(result.height == 5U, "height") &&
          expect(result.floorCount == 15U, "floor count") &&
          expect(result.wallCount == 20U, "wall count") &&
+         expect(result.objectCount == 0U, "object count") &&
          expect(result.markerCount == 5U, "marker count") &&
          expect(result.elevatedFloorCount == 0U, "flat elevated count") &&
          expect(result.rampCount == 0U, "flat ramp count") &&
@@ -88,6 +89,7 @@ bool carriesTerrainCountsToProductResult() {
   return expect(result.ok, "terrain product result ok") &&
          expect(result.floorCount == 4U, "terrain floor count") &&
          expect(result.wallCount == 14U, "terrain wall count") &&
+         expect(result.objectCount == 0U, "terrain object count") &&
          expect(result.markerCount == 1U, "terrain marker count") &&
          expect(result.elevatedFloorCount == 1U, "terrain elevated count") &&
          expect(result.rampCount == 1U, "terrain ramp count") &&
@@ -99,6 +101,43 @@ bool carriesTerrainCountsToProductResult() {
          expect(parsed.ok, "terrain asset text parses") &&
          expect(parsed.room.spatialSurfaces.size() == 32U,
                 "terrain parsed spatial surfaces");
+}
+
+bool carriesCrateObjectToProductResult() {
+  iggy3d::ProductAsciiRoomAuthoringRequest request;
+  request.sourceText =
+      "#####\n"
+      "#PCE#\n"
+      "#####\n";
+  request.sourceName = "inline/crate_room.iggyroom.txt";
+  request.roomId = "crate_room_product";
+
+  const iggy3d::ProductAsciiRoomAuthoringResult result =
+      iggy3d::buildProductAsciiRoomAuthoring(request);
+  const iggy3d::RoomAssetParseResult parsed =
+      iggy3d::parseRoomAssetText(result.assetText.text);
+
+  return expect(result.ok, "crate product result ok") &&
+         expect(result.floorCount == 3U, "crate floor count") &&
+         expect(result.wallCount == 12U, "crate wall count") &&
+         expect(result.objectCount == 1U, "crate object count") &&
+         expect(result.markerCount == 2U, "crate marker count") &&
+         expect(result.staticMeshCount == 16U, "crate static mesh count") &&
+         expect(result.anchorCount == 2U, "crate anchor count") &&
+         expect(result.spatialSurfaceCount == 29U,
+                "crate spatial surface count") &&
+         expect(result.authoredRoom.authoredRoom.objects.size() == 1U,
+                "crate authored object count") &&
+         expect(result.authoredRoom.authoredRoom.objects[0].id ==
+                    "object_crate_r1_c2",
+                "crate authored object id") &&
+         expect(result.roomAsset.room.staticMeshes[15].role == "prop",
+                "crate room asset prop role") &&
+         expect(parsed.ok, "crate asset text parses") &&
+         expect(parsed.room.staticMeshes.size() == 16U,
+                "crate parsed mesh count") &&
+         expect(parsed.room.spatialSurfaces.size() == 29U,
+                "crate parsed spatial surfaces");
 }
 
 bool forwardsGridValidationFailure() {
@@ -163,6 +202,7 @@ bool supportsSkippingAssetTextForLiveEditing() {
 int main() {
   const bool ok = buildsProductOwnedAuthoringResult() &&
                   carriesTerrainCountsToProductResult() &&
+                  carriesCrateObjectToProductResult() &&
                   forwardsGridValidationFailure() &&
                   forwardsAssetTextFailureAfterRoomBuild() &&
                   supportsSkippingAssetTextForLiveEditing();

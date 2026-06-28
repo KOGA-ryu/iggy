@@ -105,6 +105,7 @@ struct ProductAppWindowState {
   std::uint64_t asciiRoomPreviewHeight = 0;
   std::uint64_t asciiRoomPreviewFloorCount = 0;
   std::uint64_t asciiRoomPreviewWallCount = 0;
+  std::uint64_t asciiRoomPreviewObjectCount = 0;
   std::uint64_t asciiRoomPreviewMarkerCount = 0;
   std::uint64_t asciiRoomPreviewElevatedFloorCount = 0;
   std::uint64_t asciiRoomPreviewRampCount = 0;
@@ -204,6 +205,7 @@ struct ProductAppWindowState {
   std::string productSaveLoadAuthoredRoomId = "none";
   std::uint64_t productSaveLoadAuthoredFloorCount = 0;
   std::uint64_t productSaveLoadAuthoredWallCount = 0;
+  std::uint64_t productSaveLoadAuthoredObjectCount = 0;
   std::uint64_t productSaveLoadAuthoredMarkerCount = 0;
   std::string savedMarkerBindStatus = "not_requested";
   std::string savedMarkerBindReasonCode = "not_requested";

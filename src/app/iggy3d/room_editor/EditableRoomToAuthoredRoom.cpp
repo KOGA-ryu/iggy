@@ -42,6 +42,25 @@ SaveAuthoredRoomWallRecord authoredWallFrom(const EditableRoomWall& wall) {
   return out;
 }
 
+SaveAuthoredRoomObjectRecord authoredObjectFrom(const EditableRoomObject& object) {
+  SaveAuthoredRoomObjectRecord out;
+  out.id = object.id;
+  out.assetId = object.assetId;
+  out.storyIndex = object.storyIndex;
+  out.positionMeters = object.positionMeters;
+  out.sizeMeters = object.sizeMeters;
+  out.yawDegrees = object.yawDegrees;
+  out.semantics.materialId = object.assetId;
+  out.semantics.traversalTags = {"object", "prop"};
+  out.semantics.gameplayTags = {"object", "prop"};
+  out.semantics.walkable = false;
+  out.semantics.blocksActor = object.blocksActor;
+  out.semantics.blocksProjectile = object.blocksProjectile;
+  out.locked = object.locked;
+  out.hidden = object.hidden;
+  return out;
+}
+
 }  // namespace
 
 EditableRoomToAuthoredRoomResult buildAuthoredRoomFromEditableRoomDocument(
@@ -65,9 +84,14 @@ EditableRoomToAuthoredRoomResult buildAuthoredRoomFromEditableRoomDocument(
   for (const EditableRoomWall& wall : document.walls) {
     result.authoredRoom.walls.push_back(authoredWallFrom(wall));
   }
+  result.authoredRoom.objects.reserve(document.objects.size());
+  for (const EditableRoomObject& object : document.objects) {
+    result.authoredRoom.objects.push_back(authoredObjectFrom(object));
+  }
 
   result.floorCount = result.authoredRoom.floors.size();
   result.wallCount = result.authoredRoom.walls.size();
+  result.objectCount = result.authoredRoom.objects.size();
   result.markerCount = result.authoredRoom.markers.size();
   result.ok = true;
   result.status = "editable_room_authored_ready";

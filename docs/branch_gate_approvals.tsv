@@ -127,3 +127,9 @@ BG-1126	src/app/iggy3d/room_editor/Cursor.cpp	room editor object placement comma
 BG-1127	src/app/iggy3d/room_editor/Presentation.cpp	room editor object tool HUD presentation policy	codex	2026-06-28
 BG-1128	src/app/iggy3d/view/PrimitiveDrawList.cpp	product prop and object preview draw-list mapping policy	codex	2026-06-28
 BG-1129	src/app/iggy3d/view/RenderBridge.cpp	product prop render bridge count policy	codex	2026-06-28
+BG-1130	src/app/iggy3d/ascii_room/AsciiRoomGrid.cpp	ASCII object glyph metadata count policy	codex	2026-06-28
+BG-1131	src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.cpp	ASCII crate glyph authored object emission policy	codex	2026-06-28
+BG-1132	src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp	authored object blocker traversal tag de-duplication policy	codex	2026-06-28
+BG-1133	src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp	authored object actor blocker surface bake policy	codex	2026-06-28
+BG-1134	src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp	authored object projectile blocker surface bake policy	codex	2026-06-28
+BG-1135	src/runtime/save/SaveCodec.cpp	backward-compatible authored room object decode policy	codex	2026-06-28
