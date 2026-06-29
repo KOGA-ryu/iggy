@@ -209,9 +209,12 @@ void recordProductWindowControllerActions(
   const bool mapMakerLive = productMapMakerLiveForWindow(frontend, window);
   const ProductInteractionMode actionMode =
       mapMakerLive ? ProductInteractionMode::Player : window.interactionMode;
+  const ProductInteractionMode proofMode =
+      // branch-gate: BG-1059
+      controllerModeChordRequested ? window.interactionMode : actionMode;
   ProductControllerActionRoutingResult result =
       productControllerActionRoutingSkipped(
-          surface, actionMode, "controller_action_chord_consumed");
+          surface, proofMode, "controller_action_chord_consumed");
   if (!controllerModeChordRequested) {  // branch-gate: BG-1059
     result = recordProductControllerMappedActions({
         surface,

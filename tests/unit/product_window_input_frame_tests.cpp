@@ -752,6 +752,42 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
                 "map maker movement avoids pause-like owner status");
 }
 
+bool controllerChordToggleRecordsCreativeConsumption() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = gameplayWindow(session);
+  if (!expect(session.has_value(), "chord toggle session created")) {
+    return false;
+  }
+
+  iggy3d::ProductControllerModeChordState chord;
+  iggy3d::ProductControllerActionRoutingState routing;
+  const iggy3d::ProductControllerSampleInputResult toggled =
+      iggy3d::processProductControllerActionSample(
+          {frontend, window, &*session, chord, routing, nullptr, "unit"},
+          iggy3d::productControllerModeChordActionSample());
+
+  return expect(toggled.processed, "chord toggle processed") &&
+         expect(!toggled.actionApplied, "chord toggle emits no gameplay action") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+                "chord toggle enters creative mode") &&
+         expect(window.controllerModeToggleRequested,
+                "chord toggle requested") &&
+         expect(window.controllerModeToggleAccepted,
+                "chord toggle accepted") &&
+         expect(window.controllerModeToggleStatus == "interaction_mode_toggled",
+                "chord toggle status") &&
+         expect(window.controllerActionStatus ==
+                    "controller_action_chord_consumed",
+                "chord toggle consumes controller action") &&
+         expect(window.controllerActionMode == "creative",
+                "chord toggle records post-toggle mode") &&
+         expect(window.controllerActionSurface == "gameplay",
+                "chord toggle surface gameplay") &&
+         expect(window.controllerActionInputAction == "none",
+                "chord toggle no mapped action");
+}
+
 bool controllerSouthJumpsFromClamberedWallTop() {
   const iggy3d::FrontendState frontend = gameplayFrontend();
   std::optional<iggy3d::Session> session;
@@ -2590,6 +2626,7 @@ int main() {
       controllerSouthJumpsInGameplayPlayerMode() &&
       controllerSouthDoesNotJumpWhenFrontendBlocksGameplay() &&
       mapMakerMovementStaysGameplayOwnedAndDoesNotPause() &&
+      controllerChordToggleRecordsCreativeConsumption() &&
       controllerSouthJumpsFromClamberedWallTop() &&
       starterDeleteButtonOpensDeleteConfirmation() &&
       starterHitTestUsesCanonicalActionRows() &&
