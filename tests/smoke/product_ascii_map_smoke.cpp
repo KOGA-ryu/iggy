@@ -1511,9 +1511,9 @@ int main() {
       iggy3d::smoke::hasField(fields, "frontend_selected_action", "save") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "true") &&
       iggy3d::smoke::hasField(fields, "interaction_mode", "player") &&
-      iggy3d::smoke::hasField(fields, "interaction_mode_hud_visible", "true") &&
+      iggy3d::smoke::hasField(fields, "interaction_mode_hud_visible", "false") &&
       iggy3d::smoke::hasField(fields, "interaction_mode_hud_status",
-                              "interaction_mode_hud_ready") &&
+                              "interaction_mode_hud_hidden") &&
       iggy3d::smoke::hasField(fields, "interaction_mode_hud_mode", "player") &&
       iggy3d::smoke::hasField(fields, "interaction_mode_hud_label", "player") &&
       iggy3d::smoke::hasField(fields, "input_owner", "pause") &&

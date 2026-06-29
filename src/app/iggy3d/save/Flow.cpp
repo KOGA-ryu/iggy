@@ -83,7 +83,7 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
   result.returnedToTitle = result.write.ok && config.returnToTitleOnSuccess;
   result.sessionReset = result.returnedToTitle;
 
-  frontend.status = result.frontendStatus;
+  frontend.status = frontendStatuses[result.write.ok];
   window.launchStatus = result.launchStatus;
   if (result.returnedToTitle) {  // branch-gate: BG-1017
     returnProductToTitleTransition(frontend, window);

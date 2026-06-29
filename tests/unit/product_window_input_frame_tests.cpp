@@ -1255,6 +1255,72 @@ bool gameplayAndEditorSurfacesDoNotFallThroughToStarter() {
                 "editor menu action does not launch starter flow");
 }
 
+bool editorBackOpensPauseWithoutLeavingEditor() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window = editingWindow();
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::WorldSetupDraft draft;
+  iggy3d::ActionState actionState;
+  iggy3d::FrontendSettings settings;
+
+  iggy3d::routeProductOpeningMenuInput(
+      iggy3d::InputAction::MenuBack,
+      actionState,
+      {frontend,
+       saves,
+       options,
+       settingsTab,
+       activeSession,
+       draft,
+       window,
+       closeRequested,
+       settings});
+
+  return expect(frontend.screen == iggy3d::FrontendScreen::Pause,
+                "editor back opens pause") &&
+         expect(frontend.selectedAction == iggy3d::FrontendAction::Resume,
+                "editor back starts pause on resume") &&
+         expect(window.roomEditing.ready,
+                "editor back keeps room editing ready for leave action") &&
+         expect(window.inputOwner == iggy3d::MenuOwner::Pause,
+                "editor back routes input owner to pause") &&
+         expect(window.lastInputAction == iggy3d::InputAction::SystemPause,
+                "editor back records system pause action") &&
+         expect(window.lastInputAccepted,
+                "editor back system pause accepted");
+}
+
+bool pauseSaveFlowLeavesStableFrontendStatus() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppOptions options;
+  iggy3d::FrontendSettings settings;
+
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
+  frontend.selectedAction = iggy3d::FrontendAction::Save;
+  const iggy3d::ProductMenuActionResult saved =
+      iggy3d::applyProductPauseMenuAction(
+          iggy3d::InputAction::MenuConfirm,
+          {frontend, options, settingsTab, activeSession, window, closeRequested,
+           settings});
+
+  return expect(saved.handled, "pause save handled") &&
+         expect(saved.accepted, "pause save accepted") &&
+         expect(frontend.status == "pause_save_failed",
+                "pause save failure status remains stable") &&
+         expect(window.launchStatus == "product_save_session_missing",
+                "pause save failure launch status");
+}
+
 bool childPanelHitTestsExposeMenuActions() {
   iggy3d::FrontendState frontend = starterFrontend();
   frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
@@ -2638,6 +2704,8 @@ int main() {
       devOverlayInputDispatchRoutesToDevToolsHandler() &&
       confirmDialogDispatchDoesNotFallThroughToStarter() &&
       gameplayAndEditorSurfacesDoNotFallThroughToStarter() &&
+      editorBackOpensPauseWithoutLeavingEditor() &&
+      pauseSaveFlowLeavesStableFrontendStatus() &&
       childPanelHitTestsExposeMenuActions() &&
       openingMenuMouseDispatchRoutesStarterAndSettingsHits() &&
       openingMenuMouseDispatchRoutesNewWorldNavigationRows() &&

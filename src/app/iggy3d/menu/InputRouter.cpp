@@ -199,7 +199,8 @@ void routeProductOpeningMenuInput(InputAction inputAction,
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(context.frontend, context.window));
   // branch-gate: BG-1024
-  if (surface.activeSurface == ProductFrontendSurface::Gameplay &&
+  if ((surface.activeSurface == ProductFrontendSurface::Gameplay ||
+       surface.activeSurface == ProductFrontendSurface::Editor) &&
       inputAction == InputAction::MenuBack) {
     inputAction = InputAction::SystemPause;
   }
