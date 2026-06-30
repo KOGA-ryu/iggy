@@ -107,8 +107,10 @@ struct ProductWallRunStatusDescriptor {
   std::string_view hudLabel = "wall run inactive";
 };
 
-inline constexpr std::array<ProductWallRunStatusDescriptor, 14U>
+inline constexpr std::array<ProductWallRunStatusDescriptor, 16U>
     kProductWallRunStatusDescriptors{{
+        {"wall_run_not_checked", "wall run not checked"},
+        {"wall_run_candidate", "wall run candidate"},
         {"wall_run_active", "wall run active"},
         {"wall_run_started", "wall run started"},
         {"wall_run_expired", "wall run expired"},

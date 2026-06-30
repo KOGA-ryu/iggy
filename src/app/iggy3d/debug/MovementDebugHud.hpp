@@ -9,6 +9,7 @@
 namespace iggy3d {
 
 struct ProductAppWindowState;
+struct ProductMovementProofPacket;
 
 struct MovementDebugHudLine {
   std::string label;
@@ -52,6 +53,12 @@ struct MovementDebugHud {
 
 MovementDebugHud buildMovementDebugHud(
     const ProductAppWindowState& window,
+    bool developerToolsEnabled,
+    bool debugOverlayEnabled);
+
+MovementDebugHud buildMovementDebugHud(
+    const ProductMovementProofPacket& proof,
+    bool gameplayActive,
     bool developerToolsEnabled,
     bool debugOverlayEnabled);
 

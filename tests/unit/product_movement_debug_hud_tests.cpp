@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 
+#include "app/iggy3d/gameplay/MovementProof.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 
 namespace {
@@ -113,12 +114,137 @@ bool movementTuningReceiptRowsUseDescriptorTable() {
   return ok;
 }
 
+bool movementProofPacketCopiesWindowProof() {
+  iggy3d::ProductAppWindowState window = movedWindow();
+  window.gameplayMovementAttempted = true;
+  window.gameplayMovementBlocked = true;
+  window.gameplayMovementStatus = "blocked";
+  window.gameplayMovementReasonCode = "blocked_by_collision";
+  window.gameplayMovementBlockedReason = "blocked_by_collision";
+  window.gameplayMovementHitSurfaceId = "wall_r0_c1_actor_blocker";
+  window.gameplayMovementClamped = true;
+  window.gameplayMovementSlid = true;
+  window.gameplayMovementCollisionSweepCount = 2U;
+  window.gameplayMovementSlopeAngleDegrees = 12.5F;
+  window.gameplayMovementHorizontalDistanceMeters = 0.75F;
+  window.gameplayMovementVerticalDeltaMeters = -0.25F;
+  window.gameplayMovementGroundVelocityX = 1.25F;
+  window.gameplayMovementGroundVelocityZ = -0.5F;
+  window.gameplayMovementState =
+      iggy3d::ProductGameplayMovementState::WallRunning;
+  window.gameplayMovementGrounded = false;
+  window.gameplayMovementHorizontalSpeedMetersPerSecond = 5.5F;
+  window.gameplayJumpVelocityMetersPerSecond = -1.75F;
+  window.gameplayMovementGradePercent = -3.0F;
+  window.gameplayMovementProfile = "manual_first_person_sprint";
+  window.gameplayMovementMaxSpeedMetersPerSecond = 6.2F;
+  window.gameplayWallRunCandidateAvailable = true;
+  window.gameplayWallRunCandidateStatus = "wall_run_candidate";
+  window.gameplayWallRunCandidateReasonCode = "wall_run_candidate";
+  window.gameplayWallRunActive = true;
+  window.gameplayWallRunStatus = "wall_run_active";
+  window.gameplayWallRunReasonCode = "wall_run_started";
+  window.gameplayWallRunSide = "left";
+  window.gameplayWallRunSurfaceId = "wall_r0_c1_actor_blocker";
+  window.gameplayWallRunNormalX = 1.0F;
+  window.gameplayWallRunNormalY = 0.0F;
+  window.gameplayWallRunNormalZ = 0.0F;
+  window.gameplayWallRunRemainingSeconds = 0.42F;
+  window.gameplayWallRunDurationSeconds = 0.75F;
+  window.gameplayWallRunGravityMultiplier = 0.25F;
+  window.gameplayWallRunSpeedMultiplier = 1.1F;
+
+  const iggy3d::ProductMovementProofPacket proof =
+      iggy3d::buildProductMovementProofPacket(window);
+  return expect(proof.attempted, "proof movement attempted") &&
+         expect(proof.blocked, "proof movement blocked") &&
+         expect(proof.status == "blocked", "proof movement status") &&
+         expect(proof.reasonCode == "blocked_by_collision",
+                "proof movement reason") &&
+         expect(proof.hitSurfaceId == "wall_r0_c1_actor_blocker",
+                "proof hit surface") &&
+         expect(proof.movementClamped, "proof clamped") &&
+         expect(proof.movementSlid, "proof slid") &&
+         expect(proof.collisionSweepCount == 2U, "proof sweep count") &&
+         expect(proof.state == iggy3d::ProductGameplayMovementState::WallRunning,
+                "proof state enum") &&
+         expect(proof.stateName == "wall_running", "proof state name") &&
+         expect(proof.stateHudLabel == "wall running", "proof state label") &&
+         expect(!proof.grounded, "proof grounded") &&
+         expect(proof.horizontalSpeedMetersPerSecond == 5.5F,
+                "proof horizontal speed") &&
+         expect(proof.verticalVelocityMetersPerSecond == -1.75F,
+                "proof vertical velocity") &&
+         expect(proof.wallRunCandidateAvailable,
+                "proof wall-run candidate") &&
+         expect(proof.wallRunActive, "proof wall-run active") &&
+         expect(proof.wallRunReasonCode == "wall_run_started",
+                "proof wall-run reason") &&
+         expect(proof.wallRunReasonHudLabel == "wall run started",
+                "proof wall-run label") &&
+         expect(proof.wallRunSurfaceId == "wall_r0_c1_actor_blocker",
+                "proof wall-run surface") &&
+         expect(proof.wallRunRemainingSeconds == 0.42F,
+                "proof wall-run remaining") &&
+         expect(proof.wallRunGravityMultiplier == 0.25F,
+                "proof wall-run gravity") &&
+         expect(proof.profile == "manual_first_person_sprint",
+                "proof movement profile");
+}
+
+bool movementProofFeedsReceiptAndHudConsistently() {
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendState frontend;
+  iggy3d::FrontendSettings settings;
+  settings.devToolsEnabled = true;
+  settings.debugOverlayEnabled = true;
+  iggy3d::ProductAppWindowState window = movedWindow();
+  iggy3d::ProductSaveBridgeResult saves;
+  window.gameplayMovementState =
+      iggy3d::ProductGameplayMovementState::WallRunning;
+  window.gameplayWallRunActive = true;
+  window.gameplayWallRunStatus = "wall_run_active";
+  window.gameplayWallRunReasonCode = "wall_run_started";
+  window.gameplayWallRunSide = "left";
+  window.gameplayWallRunSurfaceId = "wall_r0_c1_actor_blocker";
+  window.gameplayWallRunRemainingSeconds = 0.500F;
+
+  const iggy3d::ProductMovementProofPacket proof =
+      iggy3d::buildProductMovementProofPacket(window);
+  const iggy3d::MovementDebugHud hud =
+      iggy3d::buildMovementDebugHud(proof, true, true, true);
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options, world, frontend, settings, window, saves);
+
+  return expect(hud.movementState == proof.stateName,
+                "hud state from proof") &&
+         expect(hud.wallRunStatus == proof.wallRunStatus,
+                "hud wall-run status from proof") &&
+         expect(hasLine(hud, "STATE", "wall running h3.300 v0.000"),
+                "hud state line from proof label") &&
+         expect(hasLine(hud,
+                        "WALLRUN",
+                        "active left wall r0 c1 actor blocker wall run started t0.500 h3.300"),
+                "hud wall-run line from proof label") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "movement_state",
+                                        proof.stateName),
+                "receipt movement state from proof") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "wall_run_reason_code",
+                                        proof.wallRunReasonCode),
+                "receipt wall-run reason from proof");
+}
+
 }  // namespace
 
 int main() {
   bool ok = true;
 
   ok &= movementTuningReceiptRowsUseDescriptorTable();
+  ok &= movementProofPacketCopiesWindowProof();
+  ok &= movementProofFeedsReceiptAndHudConsistently();
 
   iggy3d::ProductAppWindowState inactive = movedWindow();
   inactive.gameplayActive = false;

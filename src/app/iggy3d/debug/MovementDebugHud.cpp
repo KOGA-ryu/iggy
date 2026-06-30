@@ -4,6 +4,7 @@
 #include <string_view>
 #include <utility>
 
+#include "app/iggy3d/gameplay/MovementProof.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 
 namespace iggy3d {
@@ -32,48 +33,36 @@ std::string codeDisplay(std::string_view value) {
   return out;
 }
 
-std::string finalPositionDisplay(const ProductAppWindowState& window) {
-  return "x" + fixed3(window.gameplayMovementFinalX) +
-         " y" + fixed3(window.gameplayMovementFinalY) +
-         " z" + fixed3(window.gameplayMovementFinalZ);
+std::string finalPositionDisplay(const ProductMovementProofPacket& proof) {
+  return "x" + fixed3(proof.finalX) +
+         " y" + fixed3(proof.finalY) +
+         " z" + fixed3(proof.finalZ);
 }
 
-std::string movementStateDisplay(const ProductAppWindowState& window) {
-  return std::string{productGameplayMovementStateHudLabel(
-             window.gameplayMovementState)} +
-         " h" + fixed3(window.gameplayMovementHorizontalSpeedMetersPerSecond) +
-         " v" + fixed3(window.gameplayJumpVelocityMetersPerSecond);
+std::string movementStateDisplay(const ProductMovementProofPacket& proof) {
+  return proof.stateHudLabel +
+         " h" + fixed3(proof.horizontalSpeedMetersPerSecond) +
+         " v" + fixed3(proof.verticalVelocityMetersPerSecond);
 }
 
-std::string wallRunStatusDisplay(std::string_view status) {
-  const ProductWallRunStatusDescriptor* descriptor =
-      findProductWallRunStatusDescriptor(status);
-  // branch-gate: BG-1157
-  if (descriptor != nullptr) {
-    return std::string{descriptor->hudLabel};
-  }
-  return codeDisplay(status);
+std::string wallRunDisplay(const ProductMovementProofPacket& proof) {
+  return (proof.wallRunActive ? std::string{"active "}
+                              : std::string{"cand "}) +  // branch-gate: BG-1157
+         codeDisplay(proof.wallRunSide) +
+         " " + codeDisplay(proof.wallRunSurfaceId) +
+         " " + proof.wallRunReasonHudLabel +
+         " t" + fixed3(proof.wallRunRemainingSeconds) +
+         " h" + fixed3(proof.wallRunApproachSpeedMetersPerSecond);
 }
 
-std::string wallRunDisplay(const ProductAppWindowState& window) {
-  // branch-gate: BG-1157
-  return (window.gameplayWallRunActive ? std::string{"active "}
-                                       : std::string{"cand "}) +
-         codeDisplay(window.gameplayWallRunSide) +
-         " " + codeDisplay(window.gameplayWallRunSurfaceId) +
-         " " + wallRunStatusDisplay(window.gameplayWallRunReasonCode) +
-         " t" + fixed3(window.gameplayWallRunRemainingSeconds) +
-         " h" + fixed3(window.gameplayWallRunApproachSpeedMetersPerSecond);
-}
-
-FeedbackTone statusTone(const ProductAppWindowState& window) {
-  if (window.gameplayMovementBlocked) {
+FeedbackTone statusTone(const ProductMovementProofPacket& proof) {
+  if (proof.blocked) {
     return FeedbackTone::Warn;
   }
-  if (window.gameplayMovementStatus == "moved") {
+  if (proof.status == "moved") {
     return FeedbackTone::Pass;
   }
-  if (window.gameplayMovementStatus == "tick_failed") {
+  if (proof.status == "tick_failed") {
     return FeedbackTone::Fail;
   }
   return FeedbackTone::Neutral;
@@ -93,60 +82,69 @@ MovementDebugHud buildMovementDebugHud(
     const ProductAppWindowState& window,
     bool developerToolsEnabled,
     bool debugOverlayEnabled) {
+  const ProductMovementProofPacket proof =
+      buildProductMovementProofPacket(window);
+  return buildMovementDebugHud(proof,
+                               window.gameplayActive,
+                               developerToolsEnabled,
+                               debugOverlayEnabled);
+}
+
+MovementDebugHud buildMovementDebugHud(
+    const ProductMovementProofPacket& proof,
+    bool gameplayActive,
+    bool developerToolsEnabled,
+    bool debugOverlayEnabled) {
   MovementDebugHud hud;
   hud.developerToolsEnabled = developerToolsEnabled;
   hud.debugOverlayEnabled = debugOverlayEnabled;
-  hud.debugAvailable = window.gameplayMovementDebugAvailable;
-  hud.blocked = window.gameplayMovementBlocked;
-  hud.movementState =
-      std::string{productGameplayMovementStateName(window.gameplayMovementState)};
-  hud.blockedReason = window.gameplayMovementBlockedReason;
-  hud.hitSurfaceId = window.gameplayMovementHitSurfaceId;
-  hud.policyBand = window.gameplayMovementPolicyBand;
-  hud.slopeTravelDirection = window.gameplayMovementSlopeTravelDirection;
-  hud.groundSnapApplied = window.gameplayMovementGroundSnapApplied;
-  hud.movementClamped = window.gameplayMovementClamped;
-  hud.collisionSweepCount = window.gameplayMovementCollisionSweepCount;
-  hud.speedMultiplier = window.gameplayMovementSpeedMultiplier;
-  hud.horizontalSpeedMetersPerSecond =
-      window.gameplayMovementHorizontalSpeedMetersPerSecond;
-  hud.verticalVelocityMetersPerSecond = window.gameplayJumpVelocityMetersPerSecond;
-  hud.wallRunCandidateAvailable = window.gameplayWallRunCandidateAvailable;
-  hud.wallRunCandidateStatus = window.gameplayWallRunCandidateStatus;
-  hud.wallRunSide = window.gameplayWallRunSide;
-  hud.wallRunSurfaceId = window.gameplayWallRunSurfaceId;
+  hud.debugAvailable = proof.debugAvailable;
+  hud.blocked = proof.blocked;
+  hud.movementState = proof.stateName;
+  hud.blockedReason = proof.blockedReason;
+  hud.hitSurfaceId = proof.hitSurfaceId;
+  hud.policyBand = proof.policyBand;
+  hud.slopeTravelDirection = proof.slopeTravelDirection;
+  hud.groundSnapApplied = proof.groundSnapApplied;
+  hud.movementClamped = proof.movementClamped;
+  hud.collisionSweepCount = proof.collisionSweepCount;
+  hud.speedMultiplier = proof.speedMultiplier;
+  hud.horizontalSpeedMetersPerSecond = proof.horizontalSpeedMetersPerSecond;
+  hud.verticalVelocityMetersPerSecond = proof.verticalVelocityMetersPerSecond;
+  hud.wallRunCandidateAvailable = proof.wallRunCandidateAvailable;
+  hud.wallRunCandidateStatus = proof.wallRunCandidateStatus;
+  hud.wallRunSide = proof.wallRunSide;
+  hud.wallRunSurfaceId = proof.wallRunSurfaceId;
   hud.wallRunApproachSpeedMetersPerSecond =
-      window.gameplayWallRunApproachSpeedMetersPerSecond;
-  hud.wallRunActive = window.gameplayWallRunActive;
-  hud.wallRunStatus = window.gameplayWallRunStatus;
-  hud.wallRunRemainingSeconds = window.gameplayWallRunRemainingSeconds;
-  hud.finalX = window.gameplayMovementFinalX;
-  hud.finalY = window.gameplayMovementFinalY;
-  hud.finalZ = window.gameplayMovementFinalZ;
-  hud.visible = window.gameplayActive && developerToolsEnabled && debugOverlayEnabled;
+      proof.wallRunApproachSpeedMetersPerSecond;
+  hud.wallRunActive = proof.wallRunActive;
+  hud.wallRunStatus = proof.wallRunStatus;
+  hud.wallRunRemainingSeconds = proof.wallRunRemainingSeconds;
+  hud.finalX = proof.finalX;
+  hud.finalY = proof.finalY;
+  hud.finalZ = proof.finalZ;
+  hud.visible = gameplayActive && developerToolsEnabled && debugOverlayEnabled;
 
   if (!hud.visible) {
     return hud;
   }
 
-  hud.status = window.gameplayMovementStatus;
-  hud.reasonCode = window.gameplayMovementReasonCode;
+  hud.status = proof.status;
+  hud.reasonCode = proof.reasonCode;
 
   // branch-gate: BG-1161
   const FeedbackTone wallRunTone =
-      window.gameplayWallRunActive || window.gameplayWallRunCandidateAvailable
+      proof.wallRunActive || proof.wallRunCandidateAvailable
           ? FeedbackTone::Pass
           : FeedbackTone::Neutral;
-  addLine(hud, "STATUS", codeDisplay(hud.status), statusTone(window));
-  addLine(hud, "STATE", movementStateDisplay(window), FeedbackTone::Neutral);
-  addLine(hud, "WALLRUN", wallRunDisplay(window), wallRunTone);
+  addLine(hud, "STATUS", codeDisplay(hud.status), statusTone(proof));
+  addLine(hud, "STATE", movementStateDisplay(proof), FeedbackTone::Neutral);
+  addLine(hud, "WALLRUN", wallRunDisplay(proof), wallRunTone);
   addLine(hud, "REASON", codeDisplay(hud.reasonCode),
-          window.gameplayMovementBlocked ? FeedbackTone::Warn
-                                         : FeedbackTone::Neutral);
+          proof.blocked ? FeedbackTone::Warn : FeedbackTone::Neutral);
   addLine(hud, "HIT", codeDisplay(hud.hitSurfaceId),
-          window.gameplayMovementBlocked ? FeedbackTone::Warn
-                                         : FeedbackTone::Neutral);
-  addLine(hud, "POS", finalPositionDisplay(window), FeedbackTone::Neutral);
+          proof.blocked ? FeedbackTone::Warn : FeedbackTone::Neutral);
+  addLine(hud, "POS", finalPositionDisplay(proof), FeedbackTone::Neutral);
   addLine(hud, "SLOPE", codeDisplay(hud.policyBand), FeedbackTone::Neutral);
   addLine(hud, "SPEED", fixed3(hud.speedMultiplier), FeedbackTone::Neutral);
   addLine(hud, "SNAP", boolDisplay(hud.groundSnapApplied), FeedbackTone::Neutral);

@@ -6,6 +6,7 @@
 
 #include "app/frontend/FrontendReceipt.hpp"
 #include "app/iggy3d/gameplay/GameplayFeedback.hpp"
+#include "app/iggy3d/gameplay/MovementProof.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
@@ -75,11 +76,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
       productActiveSurfaceContextForWindow(frontend, window));
   const bool mapMakerLive = productMapMakerLiveForWindow(frontend, window);
   const GameplayFeedback feedback = buildGameplayFeedback(window);
+  const ProductMovementProofPacket movementProof =
+      buildProductMovementProofPacket(window);
   const ProductVulkanGameplayReadiness vulkanGameplayReadiness =
       evaluateProductVulkanGameplayReadiness(window);
   const MovementDebugHud movementHud =
-      buildMovementDebugHud(window, settings.devToolsEnabled,
-                                   settings.debugOverlayEnabled);
+      buildMovementDebugHud(movementProof,
+                            window.gameplayActive,
+                            settings.devToolsEnabled,
+                            settings.debugOverlayEnabled);
   const NpcBehaviorDebugHud npcBehaviorHud{
       window.npcBehaviorDebugHudVisible,
       settings.devToolsEnabled,
@@ -790,106 +795,105 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.gameplayTickReasonCode);
   appendReceiptField(receipt, "player_position_changed", window.playerPositionChanged);
   appendReceiptField(receipt, "gameplay_movement_attempted",
-                     window.gameplayMovementAttempted);
+                     movementProof.attempted);
   appendReceiptField(receipt, "gameplay_movement_blocked",
-                     window.gameplayMovementBlocked);
+                     movementProof.blocked);
   appendReceiptField(receipt, "gameplay_movement_status",
-                     window.gameplayMovementStatus);
+                     movementProof.status);
   appendReceiptField(receipt, "gameplay_movement_debug_available",
-                     window.gameplayMovementDebugAvailable);
+                     movementProof.debugAvailable);
   appendReceiptField(receipt, "gameplay_movement_reason_code",
-                     window.gameplayMovementReasonCode);
+                     movementProof.reasonCode);
   appendReceiptField(receipt, "gameplay_movement_blocked_reason",
-                     window.gameplayMovementBlockedReason);
+                     movementProof.blockedReason);
   appendReceiptField(receipt, "gameplay_movement_hit_surface_id",
-                     window.gameplayMovementHitSurfaceId);
+                     movementProof.hitSurfaceId);
   appendReceiptField(receipt, "gameplay_movement_ground_snap_applied",
-                     window.gameplayMovementGroundSnapApplied);
+                     movementProof.groundSnapApplied);
   appendReceiptField(receipt, "gameplay_movement_clamped",
-                     window.gameplayMovementClamped);
+                     movementProof.movementClamped);
   appendReceiptField(receipt, "gameplay_movement_slid",
-                     window.gameplayMovementSlid);
+                     movementProof.movementSlid);
   appendReceiptField(receipt, "gameplay_movement_collision_sweep_count",
-                     window.gameplayMovementCollisionSweepCount);
+                     movementProof.collisionSweepCount);
   appendReceiptField(receipt, "gameplay_movement_policy_band",
-                     window.gameplayMovementPolicyBand);
+                     movementProof.policyBand);
   appendReceiptField(receipt, "gameplay_movement_slope_travel_direction",
-                     window.gameplayMovementSlopeTravelDirection);
+                     movementProof.slopeTravelDirection);
   appendReceiptField(receipt, "gameplay_movement_slope_angle_degrees",
-                     floatReceiptValue(window.gameplayMovementSlopeAngleDegrees));
+                     floatReceiptValue(movementProof.slopeAngleDegrees));
   appendReceiptField(receipt, "gameplay_movement_speed_multiplier",
-                     floatReceiptValue(window.gameplayMovementSpeedMultiplier));
+                     floatReceiptValue(movementProof.speedMultiplier));
   appendReceiptField(receipt, "gameplay_movement_start_x",
-                     floatReceiptValue(window.gameplayMovementStartX));
+                     floatReceiptValue(movementProof.startX));
   appendReceiptField(receipt, "gameplay_movement_start_y",
-                     floatReceiptValue(window.gameplayMovementStartY));
+                     floatReceiptValue(movementProof.startY));
   appendReceiptField(receipt, "gameplay_movement_start_z",
-                     floatReceiptValue(window.gameplayMovementStartZ));
+                     floatReceiptValue(movementProof.startZ));
   appendReceiptField(receipt, "gameplay_movement_final_x",
-                     floatReceiptValue(window.gameplayMovementFinalX));
+                     floatReceiptValue(movementProof.finalX));
   appendReceiptField(receipt, "gameplay_movement_final_y",
-                     floatReceiptValue(window.gameplayMovementFinalY));
+                     floatReceiptValue(movementProof.finalY));
   appendReceiptField(receipt, "gameplay_movement_final_z",
-                     floatReceiptValue(window.gameplayMovementFinalZ));
+                     floatReceiptValue(movementProof.finalZ));
   appendReceiptField(receipt, "gameplay_movement_horizontal_distance_meters",
-                     floatReceiptValue(window.gameplayMovementHorizontalDistanceMeters));
+                     floatReceiptValue(movementProof.horizontalDistanceMeters));
   appendReceiptField(receipt, "gameplay_movement_vertical_delta_meters",
-                     floatReceiptValue(window.gameplayMovementVerticalDeltaMeters));
+                     floatReceiptValue(movementProof.verticalDeltaMeters));
   appendReceiptField(receipt, "gameplay_movement_ground_velocity_x",
-                     floatReceiptValue(window.gameplayMovementGroundVelocityX));
+                     floatReceiptValue(movementProof.groundVelocityX));
   appendReceiptField(receipt, "gameplay_movement_ground_velocity_z",
-                     floatReceiptValue(window.gameplayMovementGroundVelocityZ));
+                     floatReceiptValue(movementProof.groundVelocityZ));
   appendReceiptField(receipt, "gameplay_movement_state",
-                     productGameplayMovementStateName(window.gameplayMovementState));
+                     movementProof.stateName);
   appendReceiptField(receipt, "movement_state",
-                     productGameplayMovementStateName(window.gameplayMovementState));
+                     movementProof.stateName);
   appendReceiptField(receipt, "movement_grounded",
-                     window.gameplayMovementGrounded);
+                     movementProof.grounded);
   appendReceiptField(receipt, "movement_vertical_velocity_mps",
-                     floatReceiptValue(window.gameplayJumpVelocityMetersPerSecond));
+                     floatReceiptValue(movementProof.verticalVelocityMetersPerSecond));
   appendReceiptField(receipt, "movement_horizontal_speed_mps",
-                     floatReceiptValue(
-                         window.gameplayMovementHorizontalSpeedMetersPerSecond));
+                     floatReceiptValue(movementProof.horizontalSpeedMetersPerSecond));
   appendReceiptField(receipt, "movement_hit_surface_id",
-                     window.gameplayMovementHitSurfaceId);
+                     movementProof.hitSurfaceId);
   appendReceiptField(receipt, "wall_run_candidate_available",
-                     window.gameplayWallRunCandidateAvailable);
+                     movementProof.wallRunCandidateAvailable);
   appendReceiptField(receipt, "wall_run_candidate_status",
-                     window.gameplayWallRunCandidateStatus);
+                     movementProof.wallRunCandidateStatus);
   appendReceiptField(receipt, "wall_run_candidate_reason_code",
-                     window.gameplayWallRunCandidateReasonCode);
-  appendReceiptField(receipt, "wall_run_side", window.gameplayWallRunSide);
+                     movementProof.wallRunCandidateReasonCode);
+  appendReceiptField(receipt, "wall_run_side", movementProof.wallRunSide);
   appendReceiptField(receipt, "wall_run_surface_id",
-                     window.gameplayWallRunSurfaceId);
+                     movementProof.wallRunSurfaceId);
   appendReceiptField(receipt, "wall_run_normal_x",
-                     floatReceiptValue(window.gameplayWallRunNormalX));
+                     floatReceiptValue(movementProof.wallRunNormalX));
   appendReceiptField(receipt, "wall_run_normal_y",
-                     floatReceiptValue(window.gameplayWallRunNormalY));
+                     floatReceiptValue(movementProof.wallRunNormalY));
   appendReceiptField(receipt, "wall_run_normal_z",
-                     floatReceiptValue(window.gameplayWallRunNormalZ));
+                     floatReceiptValue(movementProof.wallRunNormalZ));
   appendReceiptField(receipt, "wall_run_approach_speed_mps",
                      floatReceiptValue(
-                         window.gameplayWallRunApproachSpeedMetersPerSecond));
+                         movementProof.wallRunApproachSpeedMetersPerSecond));
   appendReceiptField(receipt, "wall_run_active",
-                     window.gameplayWallRunActive);
+                     movementProof.wallRunActive);
   appendReceiptField(receipt, "wall_run_status",
-                     window.gameplayWallRunStatus);
+                     movementProof.wallRunStatus);
   appendReceiptField(receipt, "wall_run_reason_code",
-                     window.gameplayWallRunReasonCode);
+                     movementProof.wallRunReasonCode);
   appendReceiptField(receipt, "wall_run_remaining_s",
-                     floatReceiptValue(window.gameplayWallRunRemainingSeconds));
+                     floatReceiptValue(movementProof.wallRunRemainingSeconds));
   appendReceiptField(receipt, "wall_run_duration_s",
-                     floatReceiptValue(window.gameplayWallRunDurationSeconds));
+                     floatReceiptValue(movementProof.wallRunDurationSeconds));
   appendReceiptField(receipt, "wall_run_gravity_multiplier",
-                     floatReceiptValue(window.gameplayWallRunGravityMultiplier));
+                     floatReceiptValue(movementProof.wallRunGravityMultiplier));
   appendReceiptField(receipt, "wall_run_speed_multiplier",
-                     floatReceiptValue(window.gameplayWallRunSpeedMultiplier));
+                     floatReceiptValue(movementProof.wallRunSpeedMultiplier));
   appendReceiptField(receipt, "gameplay_movement_grade_percent",
-                     floatReceiptValue(window.gameplayMovementGradePercent));
+                     floatReceiptValue(movementProof.gradePercent));
   appendReceiptField(receipt, "gameplay_movement_profile",
-                     window.gameplayMovementProfile);
+                     movementProof.profile);
   appendReceiptField(receipt, "gameplay_movement_max_speed_mps",
-                     floatReceiptValue(window.gameplayMovementMaxSpeedMetersPerSecond));
+                     floatReceiptValue(movementProof.maxSpeedMetersPerSecond));
   appendReceiptField(receipt, "gameplay_jump_requested",
                      window.gameplayJumpRequested);
   appendReceiptField(receipt, "gameplay_jump_accepted",
