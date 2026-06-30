@@ -120,7 +120,7 @@ bool movementTuningFieldDescriptorsAreStable() {
       tuning, iggy3d::ProductGameplayMovementTuningField::WalkSpeed, 1);
   const float invert = iggy3d::adjustProductGameplayMovementTuning(
       tuning, iggy3d::ProductGameplayMovementTuningField::InvertLook, 1);
-  return expect(iggy3d::productGameplayMovementTuningFieldCount() == 12U,
+  return expect(iggy3d::productGameplayMovementTuningFieldCount() == 16U,
                 "movement tuning field count") &&
          expect(iggy3d::productGameplayMovementTuningFieldName(
                     iggy3d::ProductGameplayMovementTuningField::WalkSpeed) ==

@@ -605,14 +605,14 @@ void drawGameplayMovementTuningHud(
   }
 
   setColor(renderer, 14, 21, 23);
-  fillRect(renderer, 820.0F, 410.0F, 384.0F, 288.0F);
+  fillRect(renderer, 820.0F, 330.0F, 384.0F, 368.0F);
   setColor(renderer, 245, 214, 96);
-  drawText(renderer, "MOVEMENT TUNING", 838.0F, 426.0F, 2.0F);
+  drawText(renderer, "MOVEMENT TUNING", 838.0F, 346.0F, 2.0F);
   setColor(renderer, 166, 184, 177);
-  drawText(renderer, "F4 HIDE  ENTER/UP/DOWN FIELD", 838.0F, 456.0F, 1.0F);
-  drawText(renderer, "LEFT/RIGHT VALUE", 838.0F, 472.0F, 1.0F);
+  drawText(renderer, "F4 HIDE  ENTER/UP/DOWN FIELD", 838.0F, 376.0F, 1.0F);
+  drawText(renderer, "LEFT/RIGHT VALUE", 838.0F, 392.0F, 1.0F);
 
-  float y = 498.0F;
+  float y = 418.0F;
   std::uint64_t drawn = 0U;
   for (const ProductGameplayMovementTuningFieldDescriptor& descriptor :
        kProductGameplayMovementTuningFields) {

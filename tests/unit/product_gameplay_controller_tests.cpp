@@ -415,6 +415,17 @@ iggy3d::ActionState noActions() {
   return {};
 }
 
+iggy3d::ActionState releaseJumpActions() {
+  iggy3d::ActionState actions;
+  iggy3d::recordAction(actions,
+                       iggy3d::InputAction::PlayerJump,
+                       false,
+                       false,
+                       true,
+                       0.0F);
+  return actions;
+}
+
 bool runManualMove(float moveX,
                    float moveY,
                    float yawDegrees,
@@ -862,6 +873,186 @@ bool productJumpAirControlScalesAirborneMove() {
                 "air control tuned horizontal distance") &&
          expect(nearlyEqual(final.z - start.z, -expectedStep),
                 "air control tuned final z");
+}
+
+bool productJumpWithinCoyoteWindowSucceedsAfterLeavingGround() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "coyote jump session created")) {
+    return false;
+  }
+
+  setLayeredFloorActiveRoom(window, *session);
+  setPlayerPosition(*session, {1.34F, 4.0F, 0.0F});
+  iggy3d::applyProductGameplayActions(*session,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      window,
+                                      "unit/gameplay_controller_coyote_leave",
+                                      activeSurfaces(window));
+  const bool falling = window.gameplayJumpActive &&
+                       window.gameplayJumpStatus == "falling";
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpActions(),
+                                      window,
+                                      "unit/gameplay_controller_coyote_jump",
+                                      activeSurfaces(window));
+
+  return expect(falling, "coyote setup starts falling") &&
+         expect(window.gameplayJumpAccepted, "coyote jump accepted") &&
+         expect(window.gameplayJumpActive, "coyote jump active") &&
+         expect(window.gameplayJumpCoyoteSecondsRemaining == 0.0F,
+                "coyote jump consumes timer") &&
+         expect(window.gameplayJumpVelocityMetersPerSecond > 0.0F,
+                "coyote jump has upward velocity");
+}
+
+bool productJumpOutsideCoyoteWindowRejectsAndBuffers() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "expired coyote session created")) {
+    return false;
+  }
+
+  setLayeredFloorActiveRoom(window, *session);
+  setPlayerPosition(*session, {1.34F, 4.0F, 0.0F});
+  iggy3d::applyProductGameplayActions(*session,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      window,
+                                      "unit/gameplay_controller_coyote_expire_leave",
+                                      activeSurfaces(window));
+  for (int frame = 0; frame < 8; ++frame) {
+    iggy3d::applyProductGameplayActions(
+        *session,
+        noActions(),
+        window,
+        "unit/gameplay_controller_coyote_expire_tick",
+        activeSurfaces(window));
+  }
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpActions(),
+                                      window,
+                                      "unit/gameplay_controller_coyote_expired",
+                                      activeSurfaces(window));
+
+  return expect(!window.gameplayJumpAccepted,
+                "expired coyote jump rejected") &&
+         expect(window.gameplayJumpStatus == "already_airborne",
+                "expired coyote jump status") &&
+         expect(window.gameplayJumpBufferSecondsRemaining > 0.0F,
+                "expired coyote jump is buffered");
+}
+
+bool productBufferedJumpFiresOnLanding() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "buffered jump session created")) {
+    return false;
+  }
+
+  setPlayerPosition(*session, {0.0F, 0.01F, 0.0F});
+  window.gameplayJumpActive = true;
+  window.gameplayJumpVelocityMetersPerSecond = -1.0F;
+  window.gameplayJumpGroundY = 0.0F;
+  window.gameplayJumpStartY = 0.01F;
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpActions(),
+                                      window,
+                                      "unit/gameplay_controller_buffer_press");
+  const bool buffered = window.gameplayJumpBufferSecondsRemaining > 0.0F;
+  iggy3d::applyProductGameplayActions(*session,
+                                      noActions(),
+                                      window,
+                                      "unit/gameplay_controller_buffer_land");
+
+  return expect(buffered, "jump press buffered before landing") &&
+         expect(window.gameplayJumpAccepted, "buffered jump accepted on landing") &&
+         expect(window.gameplayJumpActive, "buffered jump leaves player airborne") &&
+         expect(window.gameplayJumpBufferSecondsRemaining == 0.0F,
+                "buffered jump consumes buffer") &&
+         expect(window.gameplayJumpVelocityMetersPerSecond > 0.0F,
+                "buffered jump has upward velocity");
+}
+
+bool productEarlyJumpReleaseCutsJumpHeight() {
+  std::optional<iggy3d::Session> heldSession;
+  iggy3d::ProductAppWindowState heldWindow = makeGameplayWindow(heldSession);
+  std::optional<iggy3d::Session> cutSession;
+  iggy3d::ProductAppWindowState cutWindow = makeGameplayWindow(cutSession);
+  if (!expect(heldSession.has_value() && cutSession.has_value(),
+              "jump cut sessions created")) {
+    return false;
+  }
+
+  iggy3d::applyProductGameplayActions(*heldSession,
+                                      jumpActions(),
+                                      heldWindow,
+                                      "unit/gameplay_controller_jump_held");
+  iggy3d::applyProductGameplayActions(*cutSession,
+                                      jumpActions(),
+                                      cutWindow,
+                                      "unit/gameplay_controller_jump_cut_start");
+  iggy3d::applyProductGameplayActions(*cutSession,
+                                      releaseJumpActions(),
+                                      cutWindow,
+                                      "unit/gameplay_controller_jump_cut_release");
+  float heldMaxY = playerEntity(*heldSession)->transform.position.y;
+  float cutMaxY = playerEntity(*cutSession)->transform.position.y;
+  for (int frame = 0; frame < 20; ++frame) {
+    iggy3d::applyProductGameplayActions(*heldSession,
+                                        noActions(),
+                                        heldWindow,
+                                        "unit/gameplay_controller_jump_held_tick");
+    iggy3d::applyProductGameplayActions(*cutSession,
+                                        noActions(),
+                                        cutWindow,
+                                        "unit/gameplay_controller_jump_cut_tick");
+    heldMaxY = std::max(heldMaxY, playerEntity(*heldSession)->transform.position.y);
+    cutMaxY = std::max(cutMaxY, playerEntity(*cutSession)->transform.position.y);
+  }
+
+  return expect(cutWindow.gameplayJumpCutApplied,
+                "early release applies jump cut") &&
+         expect(cutMaxY < heldMaxY, "early release produces lower jump");
+}
+
+bool productFallGravityMultiplierDescendsFaster() {
+  std::optional<iggy3d::Session> normalSession;
+  iggy3d::ProductAppWindowState normalWindow = makeGameplayWindow(normalSession);
+  std::optional<iggy3d::Session> fastSession;
+  iggy3d::ProductAppWindowState fastWindow = makeGameplayWindow(fastSession);
+  if (!expect(normalSession.has_value() && fastSession.has_value(),
+              "fall multiplier sessions created")) {
+    return false;
+  }
+
+  setPlayerPosition(*normalSession, {0.0F, 3.0F, 0.0F});
+  setPlayerPosition(*fastSession, {0.0F, 3.0F, 0.0F});
+  normalWindow.gameplayJumpActive = true;
+  normalWindow.gameplayJumpVelocityMetersPerSecond = 0.0F;
+  normalWindow.gameplayJumpGroundY = 0.0F;
+  normalWindow.gameplayJumpStartY = 3.0F;
+  normalWindow.gameplayMovementTuning.fallGravityMultiplier = 1.0F;
+  fastWindow.gameplayJumpActive = true;
+  fastWindow.gameplayJumpVelocityMetersPerSecond = 0.0F;
+  fastWindow.gameplayJumpGroundY = 0.0F;
+  fastWindow.gameplayJumpStartY = 3.0F;
+  fastWindow.gameplayMovementTuning.fallGravityMultiplier = 3.0F;
+
+  iggy3d::applyProductGameplayActions(*normalSession,
+                                      noActions(),
+                                      normalWindow,
+                                      "unit/gameplay_controller_fall_normal");
+  iggy3d::applyProductGameplayActions(*fastSession,
+                                      noActions(),
+                                      fastWindow,
+                                      "unit/gameplay_controller_fall_fast");
+
+  return expect(playerEntity(*fastSession)->transform.position.y <
+                    playerEntity(*normalSession)->transform.position.y,
+                "higher fall multiplier descends farther") &&
+         expect(fastWindow.gameplayJumpVelocityMetersPerSecond <
+                    normalWindow.gameplayJumpVelocityMetersPerSecond,
+                "higher fall multiplier has lower velocity");
 }
 
 bool productJumpUsesClamberTraversalWhenCandidateIsLocal() {
@@ -1485,6 +1676,11 @@ int main() {
                   productJumpRaisesPlayerAndRecordsProof() &&
                   productJumpCanMoveForwardInSameFrame() &&
                   productJumpAirControlScalesAirborneMove() &&
+                  productJumpWithinCoyoteWindowSucceedsAfterLeavingGround() &&
+                  productJumpOutsideCoyoteWindowRejectsAndBuffers() &&
+                  productBufferedJumpFiresOnLanding() &&
+                  productEarlyJumpReleaseCutsJumpHeight() &&
+                  productFallGravityMultiplierDescendsFaster() &&
                   productJumpUsesClamberTraversalWhenCandidateIsLocal() &&
                   productJumpUsesWallJumpWhenAirborneNearWall() &&
                   productJumpRejectsWallJumpNearGenericWall() &&

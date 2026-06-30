@@ -2727,6 +2727,10 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.gameplayMovementGroundVelocityX = 1.5F;
   window.gameplayMovementGroundVelocityZ = -2.0F;
+  window.gameplayJumpCoyoteSecondsRemaining = 0.08F;
+  window.gameplayJumpBufferSecondsRemaining = 0.06F;
+  window.gameplayJumpHeld = true;
+  window.gameplayJumpCutApplied = true;
   iggy3d::ActionState actions;
   iggy3d::recordAction(actions,
                        iggy3d::InputAction::EditorNudgeX,
@@ -2749,7 +2753,12 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
                 "editor input accepted") &&
          expect(window.gameplayMovementGroundVelocityX == 0.0F &&
                     window.gameplayMovementGroundVelocityZ == 0.0F,
-                "editor input clears retained ground velocity");
+                "editor input clears retained ground velocity") &&
+         expect(window.gameplayJumpCoyoteSecondsRemaining == 0.0F &&
+                    window.gameplayJumpBufferSecondsRemaining == 0.0F &&
+                    !window.gameplayJumpHeld &&
+                    !window.gameplayJumpCutApplied,
+                "editor input clears jump timing");
 }
 
 }  // namespace

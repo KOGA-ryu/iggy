@@ -403,6 +403,10 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   if (window.roomEditing.ready) {
     window.gameplayMovementGroundVelocityX = 0.0F;
     window.gameplayMovementGroundVelocityZ = 0.0F;
+    window.gameplayJumpCoyoteSecondsRemaining = 0.0F;
+    window.gameplayJumpBufferSecondsRemaining = 0.0F;
+    window.gameplayJumpHeld = false;
+    window.gameplayJumpCutApplied = false;
   }
 
   // branch-gate: BG-1061

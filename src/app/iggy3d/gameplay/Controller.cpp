@@ -156,6 +156,7 @@ void recordProductJumpPosition(ProductAppWindowState& window,
                                float groundY,
                                float startY,
                                float finalY);
+void clearProductJumpTiming(ProductAppWindowState& window);
 
 TargetQueryResult queryProductGameplayTarget(const Session& session, CommandKind kind) {
   const EntityId actor = productPlayerActor(session);
@@ -412,6 +413,7 @@ bool resetProductPlayerToSpawn(Session& session,
       window, reason, *spawn, source, startY, spawn->positionMeters.y);
   window.gameplayJumpActive = false;
   window.gameplayJumpVelocityMetersPerSecond = 0.0F;
+  clearProductJumpTiming(window);
   window.gameplayJumpStatus = "reset";
   window.gameplayJumpReasonCode = std::string(reason);
   window.playerPositionChanged = true;
@@ -464,6 +466,10 @@ bool beginProductFallIfUnsupported(Session& session,
   window.gameplayJumpAccepted = false;
   window.gameplayJumpActive = true;
   window.gameplayJumpVelocityMetersPerSecond = 0.0F;
+  window.gameplayJumpCoyoteSecondsRemaining =
+      window.gameplayMovementTuning.coyoteTimeSeconds;
+  window.gameplayJumpCutApplied = false;
+  window.gameplayJumpHeld = false;
   float groundY = groundedEntity->transform.position.y;
   findHighestWalkableGroundAtOrBelow(
       collisionSurfaces,
@@ -489,6 +495,13 @@ void recordProductJumpPosition(ProductAppWindowState& window,
   window.gameplayJumpHeightMeters = std::max(0.0F, finalY - groundY);
 }
 
+void clearProductJumpTiming(ProductAppWindowState& window) {
+  window.gameplayJumpCoyoteSecondsRemaining = 0.0F;
+  window.gameplayJumpBufferSecondsRemaining = 0.0F;
+  window.gameplayJumpHeld = false;
+  window.gameplayJumpCutApplied = false;
+}
+
 void rejectProductJump(ProductAppWindowState& window,
                        std::string_view status,
                        std::string_view reason) {
@@ -496,6 +509,71 @@ void rejectProductJump(ProductAppWindowState& window,
   window.gameplayJumpAccepted = false;
   window.gameplayJumpStatus = std::string{status};
   window.gameplayJumpReasonCode = std::string{reason};
+}
+
+bool productJumpBufferLive(const ProductAppWindowState& window) {
+  return window.gameplayJumpBufferSecondsRemaining > 0.0F;
+}
+
+void bufferProductJump(ProductAppWindowState& window) {
+  window.gameplayJumpBufferSecondsRemaining =
+      window.gameplayMovementTuning.jumpBufferSeconds;
+}
+
+void beginProductJumpArc(Session& session,
+                         ProductAppWindowState& window,
+                         const EntityState& actor,
+                         float groundY,
+                         std::string_view reason) {
+  const ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
+  window.gameplayJumpAccepted = true;
+  window.gameplayJumpActive = true;
+  window.gameplayJumpVelocityMetersPerSecond =
+      tuning.jumpImpulseMetersPerSecond;
+  window.gameplayJumpCoyoteSecondsRemaining = 0.0F;
+  window.gameplayJumpBufferSecondsRemaining = 0.0F;
+  window.gameplayJumpHeld = true;
+  window.gameplayJumpCutApplied = false;
+  recordProductJumpPosition(window, groundY, actor.transform.position.y,
+                            actor.transform.position.y);
+  window.gameplayJumpStatus = "accepted";
+  window.gameplayJumpReasonCode = std::string{reason};
+  advanceProductJump(session,
+                     window,
+                     productActiveRoomCollisionSurfaces(window.activeRoomCollision));
+}
+
+bool tryProductCoyoteJump(Session& session, ProductAppWindowState& window) {
+  // branch-gate: BG-1153
+  if (!window.gameplayJumpActive ||
+      window.gameplayJumpCoyoteSecondsRemaining <= 0.0F) {
+    return false;
+  }
+  const EntityState* actor = productPlayerEntity(session);
+  // branch-gate: BG-1153
+  if (actor == nullptr) {
+    rejectProductJump(window, "missing_player", "gameplay_jump_missing_player");
+    return true;
+  }
+  beginProductJumpArc(session,
+                      window,
+                      *actor,
+                      window.gameplayJumpGroundY,
+                      "gameplay_jump_coyote");
+  return true;
+}
+
+void applyProductJumpReleaseCut(ProductAppWindowState& window) {
+  ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
+  window.gameplayJumpHeld = false;
+  // branch-gate: BG-1153
+  if (!window.gameplayJumpActive || window.gameplayJumpCutApplied ||
+      window.gameplayJumpVelocityMetersPerSecond <= 0.0F) {
+    return;
+  }
+  const float multiplier = std::clamp(tuning.jumpCutMultiplier, 0.1F, 1.0F);
+  window.gameplayJumpVelocityMetersPerSecond *= multiplier;
+  window.gameplayJumpCutApplied = true;
 }
 
 void clearProductTraversalProof(ProductAppWindowState& window) {
@@ -768,6 +846,11 @@ void advanceProductJump(Session& session,
                         ProductAppWindowState& window,
                         const SpatialSurfaceSet* collisionSurfaces) {
   const ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
+  const float dt = std::max(0.0F, tuning.inputStepSeconds);
+  window.gameplayJumpBufferSecondsRemaining =
+      std::max(0.0F, window.gameplayJumpBufferSecondsRemaining - dt);
+  window.gameplayJumpCoyoteSecondsRemaining =
+      std::max(0.0F, window.gameplayJumpCoyoteSecondsRemaining - dt);
   // branch-gate: BG-1181
   if (applyProductGameplayResetIfNeeded(session, window, collisionSurfaces)) {
     return;
@@ -790,15 +873,18 @@ void advanceProductJump(Session& session,
   }
 
   const float previousY = entity->transform.position.y;
-  const float nextVelocity = window.gameplayJumpVelocityMetersPerSecond -
-                             tuning.gravityMetersPerSecondSquared *
-                                 tuning.inputStepSeconds;
+  const float gravityMultiplier =
+      window.gameplayJumpVelocityMetersPerSecond <= 0.0F
+          ? tuning.fallGravityMultiplier
+          : 1.0F;  // branch-gate: BG-1153
+  const float gravity =
+      tuning.gravityMetersPerSecondSquared *
+      std::clamp(gravityMultiplier, 1.0F, 4.0F);
+  const float nextVelocity =
+      window.gameplayJumpVelocityMetersPerSecond - gravity * dt;
   float nextY = previousY +
-                window.gameplayJumpVelocityMetersPerSecond *
-                    tuning.inputStepSeconds -
-                0.5F * tuning.gravityMetersPerSecondSquared *
-                    tuning.inputStepSeconds *
-                    tuning.inputStepSeconds;
+                window.gameplayJumpVelocityMetersPerSecond * dt -
+                0.5F * gravity * dt * dt;
   bool landed = false;
   float landingY = window.gameplayJumpGroundY;
   const bool collisionLanding =
@@ -832,6 +918,12 @@ void advanceProductJump(Session& session,
   window.gameplayJumpActive = !landed;
   // branch-gate: BG-1153
   window.gameplayJumpVelocityMetersPerSecond = landed ? 0.0F : nextVelocity;
+  // branch-gate: BG-1153
+  if (landed) {
+    window.gameplayJumpCoyoteSecondsRemaining = 0.0F;
+    window.gameplayJumpHeld = false;
+    window.gameplayJumpCutApplied = false;
+  }
   const std::array<float, 2U> groundProofYs{window.gameplayJumpGroundY, landingY};
   recordProductJumpPosition(
       window,
@@ -844,13 +936,25 @@ void advanceProductJump(Session& session,
   window.gameplayJumpReasonCode =
       landed ? "gameplay_jump_landed" : "gameplay_jump_airborne";
   window.runtimeStateHash = session.stateHash();
+  // branch-gate: BG-1153
+  if (landed && productJumpBufferLive(window)) {
+    const EntityState* landedEntity = productPlayerEntity(session);
+    // branch-gate: BG-1153
+    if (landedEntity != nullptr) {
+      beginProductJumpArc(session,
+                          window,
+                          *landedEntity,
+                          landingY,
+                          "gameplay_jump_buffered");
+      return;
+    }
+  }
   applyProductGameplayResetIfNeeded(session, window, collisionSurfaces);
 }
 
 void submitProductJump(Session& session,
                        ProductAppWindowState& window,
                        std::string_view source) {
-  const ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
   clearProductTargetProof(window);
   clearProductOutcomeProof(window);
   window.gameplayInputUsed = true;
@@ -874,6 +978,11 @@ void submitProductJump(Session& session,
 
   // branch-gate: BG-1153
   if (window.gameplayJumpActive) {
+    // branch-gate: BG-1153
+    if (tryProductCoyoteJump(session, window)) {
+      return;
+    }
+    bufferProductJump(window);
     rejectProductJump(window, "already_airborne",
                       "gameplay_jump_already_airborne");
     return;
@@ -886,17 +995,11 @@ void submitProductJump(Session& session,
     return;
   }
 
-  const float groundY = actor->transform.position.y;
-  window.gameplayJumpAccepted = true;
-  window.gameplayJumpActive = true;
-  window.gameplayJumpVelocityMetersPerSecond =
-      tuning.jumpImpulseMetersPerSecond;
-  recordProductJumpPosition(window, groundY, groundY, groundY);
-  window.gameplayJumpStatus = "accepted";
-  window.gameplayJumpReasonCode = "gameplay_jump_accepted";
-  advanceProductJump(session,
-                     window,
-                     productActiveRoomCollisionSurfaces(window.activeRoomCollision));
+  beginProductJumpArc(session,
+                      window,
+                      *actor,
+                      actor->transform.position.y,
+                      "gameplay_jump_accepted");
 }
 
 Vec3 manualFirstPersonDirection(float moveX, float moveY, float yawDegrees) {
@@ -1644,11 +1747,17 @@ void applyProductGameplayActions(Session& session,
   const float moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
   const float moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
   const bool sprinting = actionIsDown(actions, InputAction::PlayerSprint);
+  const bool jumpPressed = actionWasPressed(actions, InputAction::PlayerJump);
+  const bool jumpReleased = actionWasReleased(actions, InputAction::PlayerJump);
   advanceProductDashCooldown(window);
   // branch-gate: BG-1153
-  if (actionWasPressed(actions, InputAction::PlayerJump)) {
+  if (jumpPressed) {
     submitProductJump(session, window, source);
   } else {
+    // branch-gate: BG-1153
+    if (jumpReleased) {
+      applyProductJumpReleaseCut(window);
+    }
     advanceProductJump(session, window, collisionSurfaces);
   }
   // branch-gate: BG-1155

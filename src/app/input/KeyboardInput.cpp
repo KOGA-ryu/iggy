@@ -281,6 +281,8 @@ void pollKeyboardGameplayActions(KeyboardInputState& state, ActionState& actions
   // branch-gate: BG-1152
   if (jumpDown) {
     recordAction(actions, InputAction::PlayerJump, true, !state.jumpWasDown, false, 1.0F);
+  } else if (state.jumpWasDown) {  // branch-gate: BG-1152
+    recordAction(actions, InputAction::PlayerJump, false, false, true, 0.0F);
   }
   // branch-gate: BG-1154
   if (dashDown && !state.dashWasDown) {

@@ -192,6 +192,22 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(
                          window.gameplayMovementTuning.gravityMetersPerSecondSquared));
   appendReceiptField(receipt,
+                     "gameplay_movement_tuning_coyote_time_s",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.coyoteTimeSeconds));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_jump_buffer_s",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.jumpBufferSeconds));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_jump_cut_multiplier",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.jumpCutMultiplier));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_fall_gravity_multiplier",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.fallGravityMultiplier));
+  appendReceiptField(receipt,
                      "gameplay_movement_tuning_look_sensitivity",
                      floatReceiptValue(
                          window.gameplayMovementTuning.lookSensitivity));
@@ -886,6 +902,13 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.gameplayJumpReasonCode);
   appendReceiptField(receipt, "gameplay_jump_velocity_mps",
                      floatReceiptValue(window.gameplayJumpVelocityMetersPerSecond));
+  appendReceiptField(receipt, "gameplay_jump_coyote_seconds_remaining",
+                     floatReceiptValue(window.gameplayJumpCoyoteSecondsRemaining));
+  appendReceiptField(receipt, "gameplay_jump_buffer_seconds_remaining",
+                     floatReceiptValue(window.gameplayJumpBufferSecondsRemaining));
+  appendReceiptField(receipt, "gameplay_jump_held", window.gameplayJumpHeld);
+  appendReceiptField(receipt, "gameplay_jump_cut_applied",
+                     window.gameplayJumpCutApplied);
   appendReceiptField(receipt, "gameplay_jump_ground_y",
                      floatReceiptValue(window.gameplayJumpGroundY));
   appendReceiptField(receipt, "gameplay_jump_start_y",

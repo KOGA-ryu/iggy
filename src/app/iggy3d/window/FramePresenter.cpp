@@ -438,9 +438,9 @@ void appendMovementTuningHudUi(
 
   frame.rects.push_back(RenderUiRect{
       scaledHudOffset(820.0F, viewportWidth, kVirtualViewportWidth),
-      scaledHudOffset(410.0F, viewportHeight, kVirtualViewportHeight),
+      scaledHudOffset(330.0F, viewportHeight, kVirtualViewportHeight),
       scaledHudExtent(384.0F, viewportWidth, kVirtualViewportWidth),
-      scaledHudExtent(288.0F, viewportHeight, kVirtualViewportHeight),
+      scaledHudExtent(368.0F, viewportHeight, kVirtualViewportHeight),
       14.0F / 255.0F,
       21.0F / 255.0F,
       23.0F / 255.0F,
@@ -450,23 +450,23 @@ void appendMovementTuningHudUi(
   appendGameplayHudText(frame,
                         "MOVEMENT TUNING",
                         838.0F,
-                        426.0F,
+                        346.0F,
                         viewportWidth,
                         viewportHeight);
   appendGameplayHudText(frame,
                         "F4 HIDE  ENTER/UP/DOWN FIELD",
                         838.0F,
-                        456.0F,
+                        376.0F,
                         viewportWidth,
                         viewportHeight);
   appendGameplayHudText(frame,
                         "LEFT/RIGHT VALUE",
                         838.0F,
-                        472.0F,
+                        392.0F,
                         viewportWidth,
                         viewportHeight);
 
-  float virtualY = 498.0F;
+  float virtualY = 418.0F;
   std::uint64_t drawn = 0U;
   for (const ProductGameplayMovementTuningFieldDescriptor& descriptor :
        kProductGameplayMovementTuningFields) {

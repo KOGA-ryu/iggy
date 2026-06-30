@@ -44,10 +44,18 @@ void clearProductGameplayGroundVelocity(ProductAppWindowState& window) {
   window.gameplayMovementGroundVelocityZ = 0.0F;
 }
 
+void clearProductGameplayJumpTiming(ProductAppWindowState& window) {
+  window.gameplayJumpCoyoteSecondsRemaining = 0.0F;
+  window.gameplayJumpBufferSecondsRemaining = 0.0F;
+  window.gameplayJumpHeld = false;
+  window.gameplayJumpCutApplied = false;
+}
+
 void clearProductMenuOwnedTransientModes(ProductAppWindowState& window) {
   clearProductMapMakerMode(window);
   clearProductGameplayMovementTuning(window);
   clearProductGameplayGroundVelocity(window);
+  clearProductGameplayJumpTiming(window);
 }
 
 void clearProductRoomEditorTransientModes(ProductAppWindowState& window) {

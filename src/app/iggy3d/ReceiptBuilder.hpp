@@ -358,6 +358,10 @@ struct ProductAppWindowState {
   std::string gameplayJumpStatus = "not_requested";
   std::string gameplayJumpReasonCode = "not_requested";
   float gameplayJumpVelocityMetersPerSecond = 0.0F;
+  float gameplayJumpCoyoteSecondsRemaining = 0.0F;
+  float gameplayJumpBufferSecondsRemaining = 0.0F;
+  bool gameplayJumpHeld = false;
+  bool gameplayJumpCutApplied = false;
   float gameplayJumpGroundY = 0.0F;
   float gameplayJumpStartY = 0.0F;
   float gameplayJumpFinalY = 0.0F;

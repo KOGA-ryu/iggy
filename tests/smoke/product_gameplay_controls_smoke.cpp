@@ -191,6 +191,18 @@ int main() {
                "gameplay_movement_tuning_air_control",
                fixed3(tuning.airControlMultiplier)) &&
       hasField(fields,
+               "gameplay_movement_tuning_coyote_time_s",
+               fixed3(tuning.coyoteTimeSeconds)) &&
+      hasField(fields,
+               "gameplay_movement_tuning_jump_buffer_s",
+               fixed3(tuning.jumpBufferSeconds)) &&
+      hasField(fields,
+               "gameplay_movement_tuning_jump_cut_multiplier",
+               fixed3(tuning.jumpCutMultiplier)) &&
+      hasField(fields,
+               "gameplay_movement_tuning_fall_gravity_multiplier",
+               fixed3(tuning.fallGravityMultiplier)) &&
+      hasField(fields,
                "gameplay_movement_tuning_look_sensitivity",
                fixed3(tuning.lookSensitivity)) &&
       hasField(fields,

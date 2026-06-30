@@ -16,6 +16,10 @@ enum class ProductGameplayMovementTuningField : std::uint8_t {
   AirControl,
   JumpImpulse,
   Gravity,
+  CoyoteTime,
+  JumpBuffer,
+  JumpCutMultiplier,
+  FallGravityMultiplier,
   LookSensitivity,
   InvertLook,
   DashSpeed,
@@ -43,6 +47,10 @@ struct ProductGameplayMovementTuning {
 
   float jumpImpulseMetersPerSecond = 15.8F;
   float gravityMetersPerSecondSquared = 18.0F;
+  float coyoteTimeSeconds = 0.10F;
+  float jumpBufferSeconds = 0.10F;
+  float jumpCutMultiplier = 0.50F;
+  float fallGravityMultiplier = 1.60F;
 
   float lookSensitivity = 1.0F;
   float invertLookEnabled = 0.0F;
@@ -76,7 +84,7 @@ struct ProductGameplayMovementTuningFieldDescriptor {
   float step = 0.1F;
 };
 
-inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 12U>
+inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 16U>
     kProductGameplayMovementTuningFields{{
         {ProductGameplayMovementTuningField::WalkSpeed,
          "walk_speed_mps",
@@ -134,6 +142,38 @@ inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 12U>
          1.0F,
          40.0F,
          0.5F},
+        {ProductGameplayMovementTuningField::CoyoteTime,
+         "coyote_time_s",
+         "COYOTE",
+         &ProductGameplayMovementTuning::coyoteTimeSeconds,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.0F,
+         0.25F,
+         0.01F},
+        {ProductGameplayMovementTuningField::JumpBuffer,
+         "jump_buffer_s",
+         "BUFFER",
+         &ProductGameplayMovementTuning::jumpBufferSeconds,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.0F,
+         0.25F,
+         0.01F},
+        {ProductGameplayMovementTuningField::JumpCutMultiplier,
+         "jump_cut_multiplier",
+         "CUT",
+         &ProductGameplayMovementTuning::jumpCutMultiplier,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.1F,
+         1.0F,
+         0.05F},
+        {ProductGameplayMovementTuningField::FallGravityMultiplier,
+         "fall_gravity_multiplier",
+         "FALL",
+         &ProductGameplayMovementTuning::fallGravityMultiplier,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         1.0F,
+         4.0F,
+         0.1F},
         {ProductGameplayMovementTuningField::LookSensitivity,
          "look_sensitivity",
          "LOOK",
