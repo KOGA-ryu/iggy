@@ -64,6 +64,16 @@ bool runCommand(const std::filesystem::path& binary,
   return true;
 }
 
+bool runShellCommand(const std::string& command,
+                     const std::filesystem::path& stdoutPath,
+                     const std::filesystem::path& stderrPath,
+                     int& exitCode) {
+  const std::string redirected = command + " > " + shellQuote(stdoutPath) +
+                                 " 2> " + shellQuote(stderrPath);
+  exitCode = exitCodeFromSystem(std::system(redirected.c_str()));
+  return true;
+}
+
 bool suiteSmoke(const std::filesystem::path& binary) {
   const std::filesystem::path stdoutPath =
       "/tmp/iggy3d_product_frame_metrics_suite.json";
@@ -136,6 +146,127 @@ bool outputFileSmoke(const std::filesystem::path& binary) {
          contains(text, "\"projection_or_frame_build_ns\": 0");
 }
 
+bool reportToolSmoke(const std::filesystem::path& binary) {
+  const std::filesystem::path suitePath =
+      "/tmp/iggy3d_product_frame_metrics_report_suite.json";
+  const std::filesystem::path singlePath =
+      "/tmp/iggy3d_product_frame_metrics_report_single.json";
+  const std::filesystem::path stdoutPath =
+      "/tmp/iggy3d_product_frame_metrics_report_stdout.txt";
+  const std::filesystem::path stderrPath =
+      "/tmp/iggy3d_product_frame_metrics_report_stderr.txt";
+  int exitCode = 1;
+  std::string text;
+
+  runCommand(binary,
+             "--scenario all --frames 4 --debug-overlay both --no-timing "
+             "--output " +
+                 shellQuote(suitePath),
+             stdoutPath,
+             stderrPath,
+             exitCode);
+  if (exitCode != 0 || !std::filesystem::exists(suitePath)) {
+    return false;
+  }
+
+  runCommand(binary,
+             "--scenario movement_wall_run_corridor --frames 4 --no-timing "
+             "--output " +
+                 shellQuote(singlePath),
+             stdoutPath,
+             stderrPath,
+             exitCode);
+  if (exitCode != 0 || !std::filesystem::exists(singlePath)) {
+    return false;
+  }
+
+  runShellCommand("python3 tools/product_frame_metrics_report.py " +
+                      shellQuote(suitePath),
+                  stdoutPath,
+                  stderrPath,
+                  exitCode);
+  if (exitCode != 0 || !readTextFile(stdoutPath, text) ||
+      !contains(text, "# Product Frame Metrics Report") ||
+      !contains(text, "| scenario | debug_overlay | frames | total_ns |") ||
+      !contains(text, "movement_wall_run_corridor") ||
+      !contains(text, "draw_item_count_max")) {
+    return false;
+  }
+
+  runShellCommand("python3 tools/product_frame_metrics_report.py --format csv " +
+                      shellQuote(singlePath),
+                  stdoutPath,
+                  stderrPath,
+                  exitCode);
+  if (exitCode != 0 || !readTextFile(stdoutPath, text) ||
+      !contains(text,
+                "scenario,debug_overlay,frames,total_ns,"
+                "projection_or_frame_build_ns") ||
+      !contains(text, "movement_wall_run_corridor,False,4,0,0")) {
+    return false;
+  }
+
+  runShellCommand("python3 tools/product_frame_metrics_report.py " +
+                      shellQuote(suitePath) + " --baseline " +
+                      shellQuote(suitePath),
+                  stdoutPath,
+                  stderrPath,
+                  exitCode);
+  if (exitCode != 0 || !readTextFile(stdoutPath, text) ||
+      !contains(text, "## Comparison") ||
+      !contains(text, "total_ns_delta") ||
+      !contains(text, "| default_gameplay | False | 0 | 0 | 0 |") ||
+      !contains(text, "| movement_wall_run_corridor | True | 0 | 0 | 0 |")) {
+    return false;
+  }
+
+  runShellCommand("python3 tools/product_frame_metrics_report.py --format csv " +
+                      shellQuote(suitePath) + " --baseline " +
+                      shellQuote(suitePath),
+                  stdoutPath,
+                  stderrPath,
+                  exitCode);
+  if (exitCode != 0 || !readTextFile(stdoutPath, text) ||
+      !contains(text,
+                "scenario,debug_overlay,total_ns_delta,"
+                "projection_or_frame_build_ns_delta") ||
+      !contains(text, "default_gameplay,False,0,0,0,0,0,0,0,0,0,0,0,0,0,0,same") ||
+      !contains(text,
+                "movement_wall_run_corridor,True,0,0,0,0,0,0,0,0,0,0,0,0,0,0,same")) {
+    return false;
+  }
+
+  const std::filesystem::path unknownPath =
+      "/tmp/iggy3d_product_frame_metrics_unknown_schema.json";
+  {
+    std::ofstream out(unknownPath);
+    out << "{\"schema\":\"unknown.schema\"}\n";
+  }
+  runShellCommand("python3 tools/product_frame_metrics_report.py " +
+                      shellQuote(unknownPath),
+                  stdoutPath,
+                  stderrPath,
+                  exitCode);
+  if (exitCode == 0 || !readTextFile(stderrPath, text) ||
+      !contains(text, "unknown schema")) {
+    return false;
+  }
+
+  const std::filesystem::path malformedPath =
+      "/tmp/iggy3d_product_frame_metrics_malformed.json";
+  {
+    std::ofstream out(malformedPath);
+    out << "{";
+  }
+  runShellCommand("python3 tools/product_frame_metrics_report.py " +
+                      shellQuote(malformedPath),
+                  stdoutPath,
+                  stderrPath,
+                  exitCode);
+  return exitCode != 0 && readTextFile(stderrPath, text) &&
+         contains(text, "malformed json");
+}
+
 }  // namespace
 
 int main() {
@@ -149,7 +280,7 @@ int main() {
 
   const bool ok = toolBuilt && std::filesystem::exists(binary) &&
                   suiteSmoke(binary) && wallRunSmoke(binary) &&
-                  outputFileSmoke(binary);
+                  outputFileSmoke(binary) && reportToolSmoke(binary);
   if (!ok) {
     std::cerr << "product_frame_metrics_cli_smoke failed\n";
     std::cerr << "tool_built=" << (toolBuilt ? "true" : "false") << "\n";
