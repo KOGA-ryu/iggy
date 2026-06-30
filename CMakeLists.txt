@@ -285,6 +285,11 @@ if(IGGY3D_BUILD_TOOLS)
     apps/iggy3d_physics_kernel_bench/main.cpp)
   target_link_libraries(iggy3d_physics_kernel_bench PRIVATE iggy3d)
   iggy3d_apply_warnings(iggy3d_physics_kernel_bench)
+
+  add_executable(iggy3d_product_frame_metrics
+    tools/iggy3d_product_frame_metrics/main.cpp)
+  target_link_libraries(iggy3d_product_frame_metrics PRIVATE iggy3d)
+  iggy3d_apply_warnings(iggy3d_product_frame_metrics)
 endif()
 
 include(cmake/iggy3d_install.cmake)

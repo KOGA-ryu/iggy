@@ -922,6 +922,23 @@ if(TARGET iggy3d_physics_kernel_bench)
     LABELS "smoke;runtime;physics;kernel_benchmark;cli;iggy3d")
 endif()
 
+if(TARGET iggy3d_product_frame_metrics)
+  add_executable(product_frame_metrics_cli_smoke
+    tests/smoke/product_frame_metrics_cli_smoke.cpp)
+  target_link_libraries(product_frame_metrics_cli_smoke PRIVATE iggy3d)
+  iggy3d_apply_warnings(product_frame_metrics_cli_smoke)
+  target_compile_definitions(product_frame_metrics_cli_smoke
+    PRIVATE
+      IGGY3D_PRODUCT_FRAME_METRICS_PATH="$<TARGET_FILE:iggy3d_product_frame_metrics>")
+  add_dependencies(product_frame_metrics_cli_smoke
+    iggy3d_product_frame_metrics)
+  add_test(NAME product_frame_metrics_cli_smoke
+           COMMAND "$<TARGET_FILE:product_frame_metrics_cli_smoke>")
+  set_tests_properties(product_frame_metrics_cli_smoke PROPERTIES
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    LABELS "smoke;product;metrics;cli;iggy3d")
+endif()
+
 if(IGGY3D_ENABLE_VULKAN_SMOKE)
   function(iggy3d_add_vulkan_backend_smoke_sources target_name)
     if(NOT IGGY3D_BUILD_VULKAN_BACKEND)
