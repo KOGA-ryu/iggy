@@ -206,3 +206,4 @@ BG-1213	src/app/iggy3d/window/FramePresenter.cpp	product gameplay movement tunin
 BG-1214	src/app/iggy3d/window/FramePresenter.cpp	product gameplay dev tools Vulkan UI overlay policy	codex	2026-06-28
 BG-1215	src/app/iggy3d/window/InputFrame.cpp	product gameplay map maker SDL key event routing policy	codex	2026-06-28
 BG-1216	src/app/iggy3d/window/InputFrame.cpp	product gameplay map maker input ownership before menu routing policy	codex	2026-06-28
+BG-1217	src/app/iggy3d/menu/DrawList.cpp	starter child panel shared UI draw-list surface dispatch policy	codex	2026-06-30

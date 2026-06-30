@@ -1,13 +1,17 @@
 #include "app/iggy3d/menu/DrawList.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "app/frontend/DevToolsMenu.hpp"
+#include "app/frontend/SaveBrowser.hpp"
 #include "app/frontend/StarterScreen.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 
 namespace iggy3d {
@@ -30,6 +34,10 @@ constexpr float kFooterHeight = 72.0F;
 enum class ProductStarterUiContext {
   Root,
   NewWorld,
+  LoadSave,
+  DeleteConfirm,
+  Settings,
+  DevTools,
   ChildPartial,
   UnsupportedScreen,
   MissingFrontend,
@@ -84,7 +92,7 @@ constexpr std::array<ProductUiToneDescriptor, 9> kToneDescriptors{
     ProductUiToneDescriptor{ProductUiTone::Status, "status", {0.50F, 0.56F, 0.53F, 1.0F}},
 };
 
-constexpr std::array<ProductStarterUiBuildDescriptor, 3> kStarterUiBuildDescriptors{
+constexpr std::array<ProductStarterUiBuildDescriptor, 7> kStarterUiBuildDescriptors{
     ProductStarterUiBuildDescriptor{
         ProductStarterUiContext::Root,
         false,
@@ -100,11 +108,39 @@ constexpr std::array<ProductStarterUiBuildDescriptor, 3> kStarterUiBuildDescript
         "new world selector ready",
     },
     ProductStarterUiBuildDescriptor{
+        ProductStarterUiContext::LoadSave,
+        false,
+        "product_ui_draw_list_ready",
+        "product_ui_draw_list_ready",
+        "save slot selector ready",
+    },
+    ProductStarterUiBuildDescriptor{
+        ProductStarterUiContext::DeleteConfirm,
+        false,
+        "product_ui_draw_list_ready",
+        "product_ui_draw_list_ready",
+        "delete confirmation ready",
+    },
+    ProductStarterUiBuildDescriptor{
+        ProductStarterUiContext::Settings,
+        false,
+        "product_ui_draw_list_ready",
+        "product_ui_draw_list_ready",
+        "settings panel ready",
+    },
+    ProductStarterUiBuildDescriptor{
+        ProductStarterUiContext::DevTools,
+        false,
+        "product_ui_draw_list_ready",
+        "product_ui_draw_list_ready",
+        "dev tools panel ready",
+    },
+    ProductStarterUiBuildDescriptor{
         ProductStarterUiContext::ChildPartial,
         true,
         "product_ui_draw_list_partial",
-        "starter_child_panel_not_modeled",
-        "starter child panel pending shared ui draw-list",
+        "starter_child_panel_unsupported",
+        "unsupported starter child panel",
     },
 };
 
@@ -166,15 +202,28 @@ ProductStarterUiContext starterUiContextFor(const ProductUiDrawListRequest& requ
   if (request.frontend->screen != FrontendScreen::Starter) {
     return ProductStarterUiContext::UnsupportedScreen;
   }
-  // branch-gate: BG-1143
-  if (request.frontend->childScreen == FrontendScreen::NewWorld) {
-    return ProductStarterUiContext::NewWorld;
+  // branch-gate: BG-1217
+  switch (request.frontend->childScreen) {
+    case FrontendScreen::Gameplay:
+      return ProductStarterUiContext::Root;
+    case FrontendScreen::NewWorld:
+      return ProductStarterUiContext::NewWorld;
+    case FrontendScreen::LoadSave:
+      return ProductStarterUiContext::LoadSave;
+    case FrontendScreen::DeleteConfirm:
+      return ProductStarterUiContext::DeleteConfirm;
+    case FrontendScreen::Settings:
+      return ProductStarterUiContext::Settings;
+    case FrontendScreen::StarterDevTools:
+      return ProductStarterUiContext::DevTools;
+    case FrontendScreen::BootStatus:
+    case FrontendScreen::Starter:
+    case FrontendScreen::Pause:
+    case FrontendScreen::DevOverlay:
+    case FrontendScreen::ExitConfirm:
+      return ProductStarterUiContext::ChildPartial;
   }
-  // branch-gate: BG-1073
-  if (request.frontend->childScreen != FrontendScreen::Gameplay) {
-    return ProductStarterUiContext::ChildPartial;
-  }
-  return ProductStarterUiContext::Root;
+  return ProductStarterUiContext::ChildPartial;
 }
 
 std::string makeStarterSemanticId(std::string_view suffix) {
@@ -566,6 +615,295 @@ void emitNewWorldContent(ProductUiDrawList& list,
            true);
 }
 
+std::string saveSlotTitle(const SaveSlotRingItem& item) {
+  // branch-gate: BG-1073
+  return item.title.empty() ? item.id : item.title;
+}
+
+std::string saveSlotStatusText(const SaveSlotRingItem& item) {
+  // branch-gate: BG-1073
+  return item.enabled ? "READY" : item.status;
+}
+
+void emitLoadSaveAction(ProductUiDrawList& list,
+                        const SaveSlotActionSpec& action,
+                        float x,
+                        ProductUiTone tone) {
+  emitText(list,
+           // branch-gate: BG-1073
+           action.enabled ? tone : ProductUiTone::Disabled,
+           {x, 548.0F, 240.0F, 26.0F},
+           makeStarterSemanticId("content.load_save.action." +
+                                 std::string(frontendActionName(action.action))),
+           action.label,
+           action.action,
+           false,
+           action.enabled);
+}
+
+void emitLoadSaveContent(ProductUiDrawList& list,
+                         const ProductUiDrawListRequest& request) {
+  const FrontendState& frontend = *request.frontend;
+  const SaveSlotList emptySlots;
+  const SaveSlotList& slots =
+      // branch-gate: BG-1073
+      request.saves == nullptr ? emptySlots : request.saves->slots;
+  const SaveBrowserModel browser =
+      buildSaveBrowserModel(slots,
+                            "",
+                            frontend.saveBrowserMode);
+  const bool deleteMode =
+      frontend.saveBrowserMode == FrontendSaveBrowserMode::Delete;
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {450.0F, 152.0F, 360.0F, 42.0F},
+           makeStarterSemanticId("content.load_save.title"),
+           // branch-gate: BG-1073
+           deleteMode ? "DELETE WORLD" : "LOAD MAP");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {452.0F, 210.0F, 700.0F, 26.0F},
+           makeStarterSemanticId("content.load_save.instructions"),
+           // branch-gate: BG-1073
+           deleteMode ? "UP DOWN SELECT WORLD   CONFIRM DELETE"
+                      : "UP DOWN SELECT MAP   CONFIRM LOAD");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {452.0F, 260.0F, 100.0F, 26.0F},
+           makeStarterSemanticId("content.load_save.slots_label"),
+           "SLOTS");
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {558.0F, 260.0F, 120.0F, 26.0F},
+           makeStarterSemanticId("content.load_save.slots_value"),
+           std::to_string(slots.slots.size()));
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {714.0F, 260.0F, 180.0F, 26.0F},
+           makeStarterSemanticId("content.load_save.compatible_label"),
+           "COMPATIBLE");
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {910.0F, 260.0F, 120.0F, 26.0F},
+           makeStarterSemanticId("content.load_save.compatible_value"),
+           std::to_string(slots.compatibleCount));
+
+  float slotY = 318.0F;
+  const std::size_t visibleSlotCount =
+      std::min<std::size_t>(browser.ring.items.size(), 5U);
+  // branch-gate: BG-1073
+  if (visibleSlotCount == 0U) {
+    emitText(list,
+             ProductUiTone::TextMuted,
+             {452.0F, slotY, 360.0F, 26.0F},
+             makeStarterSemanticId("content.load_save.empty"),
+             "NO COMPATIBLE SAVES");
+  }
+  for (std::size_t i = 0; i < visibleSlotCount; ++i) {
+    const SaveSlotRingItem& item = browser.ring.items[i];
+    const bool selected = i == static_cast<std::size_t>(browser.ring.selectedIndex);
+    emitText(list,
+             // branch-gate: BG-1073
+             item.enabled ? ProductUiTone::TextPrimary : ProductUiTone::Disabled,
+             {452.0F, slotY, 360.0F, 26.0F},
+             makeStarterSemanticId("content.load_save.slot_" +
+                                   std::to_string(i) + ".title"),
+             saveSlotTitle(item),
+             FrontendAction::None,
+             selected,
+             item.enabled);
+    emitText(list,
+             // branch-gate: BG-1073
+             item.enabled ? ProductUiTone::TextMuted : ProductUiTone::Disabled,
+             {850.0F, slotY, 260.0F, 26.0F},
+             makeStarterSemanticId("content.load_save.slot_" +
+                                   std::to_string(i) + ".status"),
+             saveSlotStatusText(item),
+             FrontendAction::None,
+             selected,
+             item.enabled);
+    slotY += 38.0F;
+  }
+
+  // branch-gate: BG-1073
+  if (deleteMode) {
+    emitLoadSaveAction(list, browser.actions[0], 452.0F, ProductUiTone::Accent);
+    emitLoadSaveAction(list, browser.actions[1], 760.0F, ProductUiTone::Accent);
+  } else {
+    emitLoadSaveAction(list, browser.actions[0], 452.0F, ProductUiTone::Accent);
+    emitLoadSaveAction(list, browser.actions[1], 690.0F, ProductUiTone::Accent);
+    emitLoadSaveAction(list, browser.actions[2], 1010.0F, ProductUiTone::Accent);
+  }
+}
+
+void emitDeleteConfirmContent(ProductUiDrawList& list) {
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {450.0F, 152.0F, 360.0F, 42.0F},
+           makeStarterSemanticId("content.delete_confirm.title"),
+           "DELETE MAP");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {452.0F, 210.0F, 620.0F, 26.0F},
+           makeStarterSemanticId("content.delete_confirm.instructions"),
+           "THIS MOVES THE MAP TO DELETED MAPS");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {452.0F, 260.0F, 180.0F, 26.0F},
+           makeStarterSemanticId("content.delete_confirm.map_label"),
+           "MAP");
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {452.0F, 292.0F, 320.0F, 26.0F},
+           makeStarterSemanticId("content.delete_confirm.map_value"),
+           "SELECTED MAP");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {452.0F, 350.0F, 180.0F, 26.0F},
+           makeStarterSemanticId("content.delete_confirm.status_label"),
+           "STATUS");
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {452.0F, 382.0F, 320.0F, 26.0F},
+           makeStarterSemanticId("content.delete_confirm.status_value"),
+           "CONFIRM OPEN");
+  emitText(list,
+           ProductUiTone::Accent,
+           {452.0F, 508.0F, 260.0F, 26.0F},
+           makeStarterSemanticId("content.delete_confirm.confirm"),
+           "CONFIRM DELETE",
+           FrontendAction::Delete,
+           false,
+           true);
+  emitText(list,
+           ProductUiTone::Accent,
+           {760.0F, 508.0F, 100.0F, 26.0F},
+           makeStarterSemanticId("content.delete_confirm.back"),
+           "BACK",
+           FrontendAction::Back,
+           false,
+           true);
+}
+
+void emitSettingsContent(ProductUiDrawList& list,
+                         FrontendSettingsTab selectedTab) {
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {450.0F, 128.0F, 360.0F, 42.0F},
+           makeStarterSemanticId("content.settings.title"),
+           "SETTINGS");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {452.0F, 185.0F, 520.0F, 26.0F},
+           makeStarterSemanticId("content.settings.instructions"),
+           "SELECT A SETTINGS CATEGORY");
+
+  float y = 230.0F;
+  for (const FrontendSettingsTab tab : settingsTabOrder()) {
+    const bool selected = tab == selectedTab;
+    emitText(list,
+             // branch-gate: BG-1073
+             selected ? ProductUiTone::Accent : ProductUiTone::TextMuted,
+             {458.0F, y, 280.0F, 26.0F},
+             makeStarterSemanticId("content.settings.tab." +
+                                   std::string(frontendSettingsTabName(tab))),
+             frontendSettingsTabName(tab),
+             FrontendAction::None,
+             selected,
+             true);
+    y += 34.0F;
+  }
+
+  emitText(list,
+           ProductUiTone::Accent,
+           {850.0F, 230.0F, 180.0F, 26.0F},
+           makeStarterSemanticId("content.settings.current_label"),
+           "CURRENT");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {850.0F, 272.0F, 300.0F, 26.0F},
+           makeStarterSemanticId("content.settings.current_input"),
+           "INPUT AUTO");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {850.0F, 304.0F, 300.0F, 26.0F},
+           makeStarterSemanticId("content.settings.current_look"),
+           "LOOK 1.000");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {850.0F, 336.0F, 300.0F, 26.0F},
+           makeStarterSemanticId("content.settings.current_camera"),
+           "CAMERA FIRST PERSON");
+  emitText(list,
+           ProductUiTone::Accent,
+           {850.0F, 394.0F, 100.0F, 26.0F},
+           makeStarterSemanticId("content.settings.back"),
+           "BACK",
+           FrontendAction::Back,
+           false,
+           true);
+}
+
+void emitDevToolsContent(ProductUiDrawList& list,
+                         FrontendDevToolsCategory selectedCategory) {
+  const DevToolsMenuModel model = buildDevToolsMenuModel(selectedCategory);
+  emitText(list,
+           ProductUiTone::TextPrimary,
+           {450.0F, 128.0F, 360.0F, 42.0F},
+           makeStarterSemanticId("content.dev_tools.title"),
+           "DEV TOOLS");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {452.0F, 185.0F, 760.0F, 26.0F},
+           makeStarterSemanticId("content.dev_tools.function_keys"),
+           devToolsFunctionKeyHintLabel());
+
+  float y = 230.0F;
+  for (const FrontendDevToolsCategory category : model.categories) {
+    const bool selected = category == model.selected;
+    emitText(list,
+             // branch-gate: BG-1073
+             selected ? ProductUiTone::Accent : ProductUiTone::TextMuted,
+             {458.0F, y, 280.0F, 26.0F},
+             makeStarterSemanticId("content.dev_tools.category." +
+                                   std::string(frontendDevToolsCategoryName(category))),
+             devToolsCategoryLabel(category),
+             FrontendAction::None,
+             selected,
+             true);
+    y += 34.0F;
+  }
+
+  emitText(list,
+           ProductUiTone::Accent,
+           {850.0F, 230.0F, 180.0F, 26.0F},
+           makeStarterSemanticId("content.dev_tools.readouts_label"),
+           "READOUTS");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {850.0F, 272.0F, 300.0F, 26.0F},
+           makeStarterSemanticId("content.dev_tools.runtime_state"),
+           "RUNTIME STATE");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {850.0F, 304.0F, 300.0F, 26.0F},
+           makeStarterSemanticId("content.dev_tools.input_owner"),
+           "INPUT OWNER");
+  emitText(list,
+           ProductUiTone::TextMuted,
+           {850.0F, 336.0F, 300.0F, 26.0F},
+           makeStarterSemanticId("content.dev_tools.renderer_status"),
+           "RENDERER STATUS");
+  emitText(list,
+           ProductUiTone::Accent,
+           {850.0F, 394.0F, 100.0F, 26.0F},
+           makeStarterSemanticId("content.dev_tools.back"),
+           "BACK",
+           FrontendAction::Back,
+           false,
+           true);
+}
+
 ProductUiDrawList rejectedList(const ProductUiDrawListRequest& request,
                                std::string_view status,
                                std::string_view reasonCode) {
@@ -625,11 +963,29 @@ ProductUiDrawList buildProductStarterUiDrawList(
 
   emitStarterFrame(list);
   emitStarterRows(list, model);
-  // branch-gate: BG-1143
-  if (context == ProductStarterUiContext::NewWorld) {
-    emitNewWorldContent(list, request);
-  } else {
-    emitStarterStatus(list, frontend, context);
+  // branch-gate: BG-1217
+  switch (context) {
+    case ProductStarterUiContext::NewWorld:
+      emitNewWorldContent(list, request);
+      break;
+    case ProductStarterUiContext::LoadSave:
+      emitLoadSaveContent(list, request);
+      break;
+    case ProductStarterUiContext::DeleteConfirm:
+      emitDeleteConfirmContent(list);
+      break;
+    case ProductStarterUiContext::Settings:
+      emitSettingsContent(list, request.settingsTab);
+      break;
+    case ProductStarterUiContext::DevTools:
+      emitDevToolsContent(list, frontend.devToolsCategory);
+      break;
+    case ProductStarterUiContext::Root:
+    case ProductStarterUiContext::ChildPartial:
+    case ProductStarterUiContext::UnsupportedScreen:
+    case ProductStarterUiContext::MissingFrontend:
+      emitStarterStatus(list, frontend, context);
+      break;
   }
   list.primitiveCount = list.primitives.size();
   return list;

@@ -6,9 +6,11 @@
 #include <vector>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/frontend/SettingsMenu.hpp"
 
 namespace iggy3d {
 
+struct ProductSaveBridgeResult;
 struct WorldSetupDraft;
 
 enum class ProductUiPrimitiveKind : std::uint8_t {
@@ -84,6 +86,8 @@ struct ProductUiDrawListRequest {
   std::uint64_t dungeonDraftCursorColumn = 0;
   std::string dungeonDraftSelectedGlyph = ".";
   std::string dungeonDraftLastGlyph = "none";
+  FrontendSettingsTab settingsTab = FrontendSettingsTab::Input;
+  const ProductSaveBridgeResult* saves = nullptr;
 };
 
 std::string_view productUiPrimitiveKindName(ProductUiPrimitiveKind kind);

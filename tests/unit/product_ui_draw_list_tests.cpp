@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "app/frontend/StarterScreen.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 
 namespace {
@@ -35,6 +36,18 @@ iggy3d::FrontendState starterFrontend(iggy3d::FrontendAction selected) {
   frontend.selectedAction = selected;
   frontend.status = "starter_screen_ready";
   return frontend;
+}
+
+iggy3d::ProductSaveBridgeResult oneSlotSaves() {
+  iggy3d::ProductSaveBridgeResult saves;
+  iggy3d::SaveSlotPreview slot;
+  slot.id = "movement_gym";
+  slot.displayTitle = "Movement Gym";
+  slot.enabled = true;
+  slot.reason = "compatible";
+  saves.slots.slots.push_back(slot);
+  saves.slots.compatibleCount = 1U;
+  return saves;
 }
 
 bool starterRootDrawListContainsHeaderAndRowsInOrder() {
@@ -228,22 +241,138 @@ bool newWorldEditModeShowsCursorPaletteAndLastGlyph() {
   return ok;
 }
 
-bool nonWorldChildScreenIsRepresentedAsPartialStarterSurface() {
+bool loadSaveChildScreenBuildsSharedSelectorSurface() {
   iggy3d::FrontendState frontend =
-      starterFrontend(iggy3d::FrontendAction::Settings);
-  frontend.childScreen = iggy3d::FrontendScreen::Settings;
+      starterFrontend(iggy3d::FrontendAction::LoadSave);
+  frontend.childScreen = iggy3d::FrontendScreen::LoadSave;
+  frontend.saveBrowserMode = iggy3d::FrontendSaveBrowserMode::Load;
+  iggy3d::ProductSaveBridgeResult saves = oneSlotSaves();
+  iggy3d::ProductUiDrawListRequest request;
+  request.frontend = &frontend;
+  request.compatibleSaveCount = saves.slots.compatibleCount;
+  request.saves = &saves;
   const iggy3d::ProductUiDrawList list =
-      iggy3d::buildProductStarterUiDrawList({&frontend, 0U, 1280U, 720U});
-  const iggy3d::ProductUiPrimitive* child =
-      findPrimitive(list, "starter.content.child_screen");
-  return expect(list.ready, "child partial is ready") &&
-         expect(list.partial, "child partial flag") &&
-         expect(list.status == "product_ui_draw_list_partial",
-                "child partial status") &&
-         expect(list.reasonCode == "starter_child_panel_not_modeled",
-                "child partial reason") &&
-         expect(child != nullptr && child->text == "settings",
-                "child screen text");
+      iggy3d::buildProductStarterUiDrawList(request);
+  const iggy3d::ProductUiPrimitive* title =
+      findPrimitive(list, "starter.content.load_save.title");
+  const iggy3d::ProductUiPrimitive* slot =
+      findPrimitive(list, "starter.content.load_save.slot_0.title");
+  const iggy3d::ProductUiPrimitive* load =
+      findPrimitive(list, "starter.content.load_save.action.load");
+  const iggy3d::ProductUiPrimitive* del =
+      findPrimitive(list, "starter.content.load_save.action.delete");
+  const iggy3d::ProductUiPrimitive* back =
+      findPrimitive(list, "starter.content.load_save.action.back");
+  bool ok = true;
+  ok &= expect(list.ready, "load save ready");
+  ok &= expect(!list.partial, "load save not partial");
+  ok &= expect(list.status == "product_ui_draw_list_ready",
+               "load save ready status");
+  ok &= expect(list.reasonCode == "product_ui_draw_list_ready",
+               "load save ready reason");
+  ok &= expect(title != nullptr && title->text == "LOAD MAP",
+               "load save title");
+  ok &= expect(slot != nullptr && slot->text == "Movement Gym",
+               "load save slot title");
+  ok &= expect(load != nullptr && load->action == iggy3d::FrontendAction::Load,
+               "load action primitive");
+  ok &= expect(del != nullptr && del->action == iggy3d::FrontendAction::Delete,
+               "delete action primitive");
+  ok &= expect(back != nullptr && back->action == iggy3d::FrontendAction::Back,
+               "back action primitive");
+  return ok;
+}
+
+bool deleteModeChildScreenBuildsDeleteWorldSurface() {
+  iggy3d::FrontendState frontend =
+      starterFrontend(iggy3d::FrontendAction::Delete);
+  frontend.childScreen = iggy3d::FrontendScreen::LoadSave;
+  frontend.saveBrowserMode = iggy3d::FrontendSaveBrowserMode::Delete;
+  iggy3d::ProductSaveBridgeResult saves = oneSlotSaves();
+  iggy3d::ProductUiDrawListRequest request;
+  request.frontend = &frontend;
+  request.compatibleSaveCount = saves.slots.compatibleCount;
+  request.saves = &saves;
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductStarterUiDrawList(request);
+  const iggy3d::ProductUiPrimitive* title =
+      findPrimitive(list, "starter.content.load_save.title");
+  const iggy3d::ProductUiPrimitive* del =
+      findPrimitive(list, "starter.content.load_save.action.delete");
+  const iggy3d::ProductUiPrimitive* back =
+      findPrimitive(list, "starter.content.load_save.action.back");
+  bool ok = true;
+  ok &= expect(list.ready, "delete selector ready");
+  ok &= expect(!list.partial, "delete selector not partial");
+  ok &= expect(title != nullptr && title->text == "DELETE WORLD",
+               "delete selector title");
+  ok &= expect(del != nullptr && del->text == "DELETE SELECTED",
+               "delete selected action");
+  ok &= expect(back != nullptr && back->text == "BACK",
+               "delete selector back action");
+  return ok;
+}
+
+bool deleteConfirmChildScreenBuildsSharedConfirmSurface() {
+  iggy3d::FrontendState frontend =
+      starterFrontend(iggy3d::FrontendAction::Delete);
+  frontend.childScreen = iggy3d::FrontendScreen::DeleteConfirm;
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductStarterUiDrawList({&frontend, 1U, 1280U, 720U});
+  const iggy3d::ProductUiPrimitive* title =
+      findPrimitive(list, "starter.content.delete_confirm.title");
+  const iggy3d::ProductUiPrimitive* confirm =
+      findPrimitive(list, "starter.content.delete_confirm.confirm");
+  bool ok = true;
+  ok &= expect(list.ready, "delete confirm ready");
+  ok &= expect(!list.partial, "delete confirm not partial");
+  ok &= expect(title != nullptr && title->text == "DELETE MAP",
+               "delete confirm title");
+  ok &= expect(confirm != nullptr &&
+                   confirm->action == iggy3d::FrontendAction::Delete,
+               "delete confirm action");
+  return ok;
+}
+
+bool settingsAndDevToolsChildScreensAreModeled() {
+  iggy3d::FrontendState settings =
+      starterFrontend(iggy3d::FrontendAction::Settings);
+  settings.childScreen = iggy3d::FrontendScreen::Settings;
+  iggy3d::ProductUiDrawListRequest settingsRequest;
+  settingsRequest.frontend = &settings;
+  settingsRequest.settingsTab = iggy3d::FrontendSettingsTab::Gameplay;
+  const iggy3d::ProductUiDrawList settingsList =
+      iggy3d::buildProductStarterUiDrawList(settingsRequest);
+
+  iggy3d::FrontendState devTools =
+      starterFrontend(iggy3d::FrontendAction::DevTools);
+  devTools.childScreen = iggy3d::FrontendScreen::StarterDevTools;
+  devTools.devToolsCategory = iggy3d::FrontendDevToolsCategory::Movement;
+  const iggy3d::ProductUiDrawList devToolsList =
+      iggy3d::buildProductStarterUiDrawList({&devTools, 0U, 1280U, 720U});
+
+  const iggy3d::ProductUiPrimitive* settingsTitle =
+      findPrimitive(settingsList, "starter.content.settings.title");
+  const iggy3d::ProductUiPrimitive* gameplayTab =
+      findPrimitive(settingsList, "starter.content.settings.tab.gameplay");
+  const iggy3d::ProductUiPrimitive* devToolsTitle =
+      findPrimitive(devToolsList, "starter.content.dev_tools.title");
+  const iggy3d::ProductUiPrimitive* movementCategory =
+      findPrimitive(devToolsList, "starter.content.dev_tools.category.movement");
+  bool ok = true;
+  ok &= expect(settingsList.ready, "settings draw list ready");
+  ok &= expect(!settingsList.partial, "settings draw list not partial");
+  ok &= expect(settingsTitle != nullptr && settingsTitle->text == "SETTINGS",
+               "settings title");
+  ok &= expect(gameplayTab != nullptr && gameplayTab->selected,
+               "settings selected tab");
+  ok &= expect(devToolsList.ready, "dev tools draw list ready");
+  ok &= expect(!devToolsList.partial, "dev tools draw list not partial");
+  ok &= expect(devToolsTitle != nullptr && devToolsTitle->text == "DEV TOOLS",
+               "dev tools title");
+  ok &= expect(movementCategory != nullptr && movementCategory->selected,
+               "dev tools selected category");
+  return ok;
 }
 
 bool invalidContextRejectsWithoutRendererTypes() {
@@ -280,7 +409,10 @@ int main() {
   ok &= disabledSaveRowsAreRepresentedWithoutCompatibleSaves();
   ok &= newWorldChildScreenBuildsReadySelectorSurface();
   ok &= newWorldEditModeShowsCursorPaletteAndLastGlyph();
-  ok &= nonWorldChildScreenIsRepresentedAsPartialStarterSurface();
+  ok &= loadSaveChildScreenBuildsSharedSelectorSurface();
+  ok &= deleteModeChildScreenBuildsDeleteWorldSurface();
+  ok &= deleteConfirmChildScreenBuildsSharedConfirmSurface();
+  ok &= settingsAndDevToolsChildScreensAreModeled();
   ok &= invalidContextRejectsWithoutRendererTypes();
   if (!ok) {
     return 1;
