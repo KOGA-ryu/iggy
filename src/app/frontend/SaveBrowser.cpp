@@ -25,17 +25,6 @@ SaveSlotRingItem ringItemFromSaveSlot(const SaveSlotPreview& slot) {
   return item;
 }
 
-std::string_view selectedActionDisabledReason(const SaveBrowserModel& model,
-                                              FrontendAction action) {
-  for (const SaveSlotActionSpec& spec : model.actions) {
-    // branch-gate: BG-1020
-    if (spec.action == action) {
-      return spec.disabledReason;
-    }
-  }
-  return "not_save_browser_action";
-}
-
 SaveSlotActionSpec makeBackActionSpec() {
   return SaveSlotActionSpec{
       FrontendAction::Back,
@@ -106,75 +95,6 @@ void copySelectedPresentation(SaveBrowserModel& model, const SaveSlotPreview& sl
   model.selectedSnapshotAvailable = slot.snapshotAvailable;
   model.selectedSnapshotFallback = slot.snapshotFallback;
   model.selectedSnapshotStatus = slot.snapshotStatus;
-}
-
-bool validSaveBrowserParent(MenuOwner parentOwner) {
-  return parentOwner == MenuOwner::Starter || parentOwner == MenuOwner::Pause;
-}
-
-FrontendScreen saveBrowserParentScreen(MenuOwner parentOwner) {
-  return parentOwner == MenuOwner::Pause ? FrontendScreen::Pause
-                                         : FrontendScreen::Starter;
-}
-
-const SaveSlotActionSpec* saveSlotActionSpecFor(const SaveBrowserModel& model,
-                                                FrontendAction action) {
-  for (const SaveSlotActionSpec& spec : model.actions) {
-    if (spec.action == action) {
-      return &spec;
-    }
-  }
-  return nullptr;
-}
-
-std::string_view loadDisabledReason(const SaveBrowserModel& model) {
-  const std::string_view reason =
-      selectedActionDisabledReason(model, FrontendAction::Load);
-  // branch-gate: BG-1020
-  return reason == "none" ? model.status : reason;
-}
-
-std::string_view deleteDisabledReason(const SaveBrowserModel& model) {
-  const std::string_view reason =
-      selectedActionDisabledReason(model, FrontendAction::Delete);
-  // branch-gate: BG-1020
-  return reason == "none" ? model.status : reason;
-}
-
-FrontendRouteResult ignoredSaveBrowserRoute(MenuOwner parentOwner,
-                                            FrontendAction action,
-                                            std::string_view status) {
-  const bool validParent = validSaveBrowserParent(parentOwner);
-  FrontendRouteResult result = makeIgnoredFrontendRouteResult(
-      // branch-gate: BG-1020
-      validParent ? parentOwner : MenuOwner::None,
-      // branch-gate: BG-1020
-      validParent ? saveBrowserParentScreen(parentOwner) : FrontendScreen::BootStatus,
-      // branch-gate: BG-1020
-      validParent ? FrontendScreen::LoadSave : FrontendScreen::Gameplay,
-      action);
-  result.gameplayInputSuppressed = true;
-  result.status = status;
-  result.receiptReason = status;
-  return result;
-}
-
-FrontendRouteResult acceptedSaveBrowserRoute(MenuOwner owner,
-                                             FrontendScreen nextScreen,
-                                             FrontendScreen nextChildScreen,
-                                             FrontendTransitionRequest transition,
-                                             bool gameplayInputSuppressed,
-                                             std::string_view status,
-                                             FrontendAction action) {
-  return makeAcceptedFrontendRouteResult(owner,
-                                         nextScreen,
-                                         nextChildScreen,
-                                         transition,
-                                         false,
-                                         gameplayInputSuppressed,
-                                         status,
-                                         status,
-                                         action);
 }
 
 }  // namespace
@@ -270,80 +190,6 @@ SaveBrowserModel buildSaveBrowserModel(const SaveSlotList& slots,
                                            : "save_browser_selection_missing";
   model.actions = buildSaveSlotActionSpecs(model.mode, model.ring, model.status);
   return model;
-}
-
-FrontendRouteResult routeSaveBrowserAction(const SaveBrowserModel& model,
-                                           MenuOwner parentOwner,
-                                           FrontendAction action) {
-  if (!validSaveBrowserParent(parentOwner)) {
-    return ignoredSaveBrowserRoute(parentOwner, action, "save_browser_invalid_parent");
-  }
-
-  const SaveSlotActionSpec* spec = saveSlotActionSpecFor(model, action);
-  switch (action) {
-    case FrontendAction::Back:
-      return acceptedSaveBrowserRoute(parentOwner,
-                                      saveBrowserParentScreen(parentOwner),
-                                      FrontendScreen::Gameplay,
-                                      FrontendTransitionRequest::None,
-                                      true,
-                                      parentOwner == MenuOwner::Pause
-                                          ? "save_browser_closed_to_pause"
-                                          : "save_browser_closed_to_starter",
-                                      action);
-    case FrontendAction::Load:
-      // branch-gate: BG-1020
-      if (spec == nullptr) {
-        return ignoredSaveBrowserRoute(parentOwner, action, "not_save_browser_action");
-      }
-      // branch-gate: BG-1020
-      if (!spec->enabled) {
-        return ignoredSaveBrowserRoute(parentOwner, action, loadDisabledReason(model));
-      }
-      return acceptedSaveBrowserRoute(MenuOwner::Gameplay,
-                                      FrontendScreen::Gameplay,
-                                      FrontendScreen::Gameplay,
-                                      FrontendTransitionRequest::LaunchGameplay,
-                                      false,
-                                      "save_browser_load_requested",
-                                      action);
-    case FrontendAction::Delete:
-      // branch-gate: BG-1020
-      if (spec == nullptr) {
-        return ignoredSaveBrowserRoute(parentOwner, action, "not_save_browser_action");
-      }
-      // branch-gate: BG-1020
-      if (!spec->enabled) {
-        return ignoredSaveBrowserRoute(parentOwner, action, deleteDisabledReason(model));
-      }
-      return acceptedSaveBrowserRoute(parentOwner,
-                                      saveBrowserParentScreen(parentOwner),
-                                      FrontendScreen::DeleteConfirm,
-                                      FrontendTransitionRequest::None,
-                                      true,
-                                      "save_browser_delete_confirm_requested",
-                                      action);
-    case FrontendAction::None:
-    case FrontendAction::Continue:
-    case FrontendAction::NewWorld:
-    case FrontendAction::LoadSave:
-    case FrontendAction::Settings:
-    case FrontendAction::DevTools:
-    case FrontendAction::Exit:
-    case FrontendAction::CreateAndEnter:
-    case FrontendAction::Apply:
-    case FrontendAction::RestoreDefaults:
-    case FrontendAction::Resume:
-    case FrontendAction::EditRoom:
-    case FrontendAction::LeaveEditor:
-    case FrontendAction::Save:
-    case FrontendAction::SaveAndExit:
-    case FrontendAction::ReturnToTitle:
-    case FrontendAction::ExitGame:
-      return ignoredSaveBrowserRoute(parentOwner, action, "not_save_browser_action");
-  }
-
-  return ignoredSaveBrowserRoute(parentOwner, action, "not_save_browser_action");
 }
 
 }  // namespace iggy3d

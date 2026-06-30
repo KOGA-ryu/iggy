@@ -5,7 +5,7 @@
 #include <string_view>
 #include <vector>
 
-#include "app/frontend/FrontendRoute.hpp"
+#include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SaveSlotModel.hpp"
 
 namespace iggy3d {
@@ -72,9 +72,5 @@ SaveBrowserModel buildSaveBrowserModel(const SaveSlotList& slots,
                                        std::string_view selectedSaveId,
                                        FrontendSaveBrowserMode mode =
                                            FrontendSaveBrowserMode::Load);
-
-FrontendRouteResult routeSaveBrowserAction(const SaveBrowserModel& model,
-                                           MenuOwner parentOwner,
-                                           FrontendAction action);
 
 }  // namespace iggy3d
