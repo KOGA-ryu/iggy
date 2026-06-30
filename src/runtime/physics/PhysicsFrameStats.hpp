@@ -6,8 +6,6 @@
 
 namespace iggy3d {
 
-struct PhysicsAabbCollisionBatchResult;
-struct PhysicsAabbStepResult;
 struct PhysicsBroadphaseResult;
 struct PhysicsKinematicMotorResult;
 struct PlayerPhysicsMovePlannerResult;
@@ -72,11 +70,6 @@ std::string_view physicsFrameStatsStatusName(PhysicsFrameStatsStatus status);
 PhysicsFrameStats buildPhysicsFrameStats();
 void accumulatePhysicsBroadphaseStats(PhysicsFrameStats& stats,
                                       const PhysicsBroadphaseResult& result);
-void accumulatePhysicsCollisionBatchStats(
-    PhysicsFrameStats& stats,
-    const PhysicsAabbCollisionBatchResult& result);
-void accumulatePhysicsAabbStepStats(PhysicsFrameStats& stats,
-                                    const PhysicsAabbStepResult& result);
 void accumulatePhysicsKinematicMotorStats(
     PhysicsFrameStats& stats,
     const PhysicsKinematicMotorResult& result);

@@ -17,7 +17,6 @@
 namespace iggy3d {
 
 struct NpcBehaviorDebugSnapshot;
-struct PhysicsAabbCollisionBatchResult;
 struct PhysicsDebugSnapshot;
 
 enum class DebugProjectionKind : std::uint8_t {
@@ -95,10 +94,6 @@ void appendNpcBehaviorDebugSnapshot(DebugProjectionResult& result,
                                     const NpcBehaviorDebugSnapshot& snapshot);
 void appendPhysicsDebugSnapshot(DebugProjectionResult& result,
                                 const PhysicsDebugSnapshot& snapshot);
-void appendPhysicsCollisionBatchDebugProjection(
-    DebugProjectionResult& result,
-    const PhysicsAabbCollisionBatchResult& batch,
-    const PhysicsDebugGeometryProjectionConfig& config = {});
 void appendPlayerPhysicsMovePlannerDebugProjection(
     DebugProjectionResult& result,
     const PlayerPhysicsMovePlannerDebugProjectionRequest& request,

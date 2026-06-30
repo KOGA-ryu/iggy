@@ -482,16 +482,6 @@ iggy3d_add_unit_test(physics_body_store_tests tests/unit/physics_body_store_test
 set_tests_properties(physics_body_store_tests PROPERTIES
   LABELS "unit;runtime;physics;body_store;iggy3d")
 
-iggy3d_add_unit_test(physics_body_delta_accumulator_tests
-  tests/unit/physics_body_delta_accumulator_tests.cpp)
-set_tests_properties(physics_body_delta_accumulator_tests PROPERTIES
-  LABELS "unit;runtime;physics;body_delta;iggy3d")
-
-iggy3d_add_unit_test(physics_collider_bake_tests
-  tests/unit/physics_collider_bake_tests.cpp)
-set_tests_properties(physics_collider_bake_tests PROPERTIES
-  LABELS "unit;runtime;physics;collider_bake;iggy3d")
-
 iggy3d_add_unit_test(physics_collision_queries_tests
   tests/unit/physics_collision_queries_tests.cpp)
 set_tests_properties(physics_collision_queries_tests PROPERTIES
@@ -541,21 +531,6 @@ iggy3d_add_unit_test(physics_aabb_collider_tests
 set_tests_properties(physics_aabb_collider_tests PROPERTIES
   LABELS "unit;runtime;physics;aabb;collider;iggy3d")
 
-iggy3d_add_unit_test(physics_aabb_collision_batch_tests
-  tests/unit/physics_aabb_collision_batch_tests.cpp)
-set_tests_properties(physics_aabb_collision_batch_tests PROPERTIES
-  LABELS "unit;runtime;physics;aabb;collision_batch;iggy3d")
-
-iggy3d_add_unit_test(physics_aabb_step_tests
-  tests/unit/physics_aabb_step_tests.cpp)
-set_tests_properties(physics_aabb_step_tests PROPERTIES
-  LABELS "unit;runtime;physics;aabb;step;iggy3d")
-
-iggy3d_add_unit_test(physics_aabb_lab_tests
-  tests/unit/physics_aabb_lab_tests.cpp)
-set_tests_properties(physics_aabb_lab_tests PROPERTIES
-  LABELS "unit;runtime;physics;aabb;lab;iggy3d")
-
 iggy3d_add_unit_test(physics_aabb_contact_tests
   tests/unit/physics_aabb_contact_tests.cpp)
 set_tests_properties(physics_aabb_contact_tests PROPERTIES
@@ -570,10 +545,6 @@ iggy3d_add_unit_test(physics_broadphase_tests
   tests/unit/physics_broadphase_tests.cpp)
 set_tests_properties(physics_broadphase_tests PROPERTIES
   LABELS "unit;runtime;physics;broadphase;aabb;iggy3d")
-
-iggy3d_add_unit_test(physics_step_tests tests/unit/physics_step_tests.cpp)
-set_tests_properties(physics_step_tests PROPERTIES
-  LABELS "unit;runtime;physics;step;iggy3d")
 
 iggy3d_add_unit_test(session_tick_tests tests/unit/session_tick_tests.cpp)
 set_tests_properties(session_tick_tests PROPERTIES LABELS "unit;runtime;session;iggy3d")

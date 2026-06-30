@@ -7,7 +7,7 @@
 #include <string_view>
 
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
-#include "runtime/physics/PhysicsAabbCollisionBatch.hpp"
+#include "runtime/physics/PhysicsAabbCollider.hpp"
 #include "runtime/physics/PhysicsDebugSnapshot.hpp"
 #include "runtime/world/EntityState.hpp"
 
@@ -135,11 +135,6 @@ float sensorScalar(bool sensor) {
   return kValues[static_cast<std::size_t>(sensor)];
 }
 
-Vec3 physicsAabbPairMidpoint(const PhysicsAabbCollider& first,
-                             const PhysicsAabbCollider& second) {
-  return (center(first.bounds) + center(second.bounds)) * 0.5F;
-}
-
 EntityId physicsBodyDebugEntityId(PhysicsBodyId id) {
   return EntityId{static_cast<std::uint64_t>(id.value)};
 }
@@ -255,88 +250,6 @@ void appendRuntimeDebugHudLines(DebugProjectionResult& result,
         fixed3(snapshot.traversalSlotUsableWidthMeters) + " r " +
         fixed3(snapshot.traversalSlotStartRangeMeters) + " dot " +
         fixed3(snapshot.traversalSlotFacingDot));
-  }
-}
-
-void appendPhysicsAabbDebugItems(DebugProjectionResult& result,
-                                 const PhysicsAabbCollisionBatchResult& batch,
-                                 std::size_t maxAabbs) {
-  std::size_t emitted = 0U;
-  for (const PhysicsAabbCollider& collider : batch.colliders) {
-    // branch-gate: BG-1111
-    if (emitted >= maxAabbs) {
-      break;
-    }
-
-    DebugProjectionItem item;
-    item.kind = DebugProjectionKind::PhysicsAabb;
-    item.actor = physicsBodyDebugEntityId(collider.bodyId);
-    item.hasBounds = true;
-    item.worldBounds = collider.bounds;
-    item.hasScalar = true;
-    item.scalarValue = sensorScalar(collider.sensor);
-    item.labelCode = "physics.aabb";
-    item.valueCode = sensorValueCode(collider.sensor);
-    result.items.push_back(std::move(item));
-    ++emitted;
-  }
-}
-
-void appendPhysicsContactNormalDebugItems(
-    DebugProjectionResult& result,
-    const PhysicsAabbCollisionBatchResult& batch,
-    std::size_t maxContacts) {
-  std::size_t emitted = 0U;
-  for (const PhysicsAabbContact& contact : batch.contacts) {
-    // branch-gate: BG-1111
-    if (emitted >= maxContacts) {
-      break;
-    }
-
-    DebugProjectionItem item;
-    item.kind = DebugProjectionKind::PhysicsContactNormal;
-    item.actor = physicsBodyDebugEntityId(contact.firstBodyId);
-    item.target = physicsBodyDebugEntityId(contact.secondBodyId);
-    item.hasWorldPoint = true;
-    item.worldPoint = contact.pointMeters;
-    item.hasScalar = true;
-    item.scalarValue = contact.penetrationMeters;
-    item.labelCode = "physics.contact_normal";
-    item.valueCode = sensorValueCode(contact.includesSensor);
-    result.items.push_back(std::move(item));
-    ++emitted;
-  }
-}
-
-void appendPhysicsBroadphasePairDebugItems(
-    DebugProjectionResult& result,
-    const PhysicsAabbCollisionBatchResult& batch,
-    std::size_t maxPairs) {
-  std::size_t emitted = 0U;
-  for (const PhysicsBroadphasePair& pair : batch.broadphasePairs) {
-    // branch-gate: BG-1111
-    if (emitted >= maxPairs) {
-      break;
-    }
-
-    DebugProjectionItem item;
-    item.kind = DebugProjectionKind::PhysicsBroadphasePair;
-    item.actor = physicsBodyDebugEntityId(pair.firstBodyId);
-    item.target = physicsBodyDebugEntityId(pair.secondBodyId);
-    // branch-gate: BG-1111
-    if (pair.firstColliderIndex < batch.colliders.size() &&
-        pair.secondColliderIndex < batch.colliders.size()) {
-      item.hasWorldPoint = true;
-      item.worldPoint = physicsAabbPairMidpoint(
-          batch.colliders[pair.firstColliderIndex],
-          batch.colliders[pair.secondColliderIndex]);
-    }
-    item.hasScalar = true;
-    item.scalarValue = sensorScalar(pair.includesSensor);
-    item.labelCode = "physics.broadphase_pair";
-    item.valueCode = sensorValueCode(pair.includesSensor);
-    result.items.push_back(std::move(item));
-    ++emitted;
   }
 }
 
@@ -516,28 +429,6 @@ void appendPhysicsDebugSnapshot(DebugProjectionResult& result,
         " bp=" + bit(snapshot.hasBroadphasePressure) +
         " pen=" + bit(snapshot.hasPenetrationWarning) +
         " impulse=" + bit(snapshot.hasImpulseWarning));
-  }
-}
-
-void appendPhysicsCollisionBatchDebugProjection(
-    DebugProjectionResult& result,
-    const PhysicsAabbCollisionBatchResult& batch,
-    const PhysicsDebugGeometryProjectionConfig& config) {
-  // branch-gate: BG-1111
-  if (!batch.ok) {
-    return;
-  }
-  // branch-gate: BG-1111
-  if (config.includeAabbs) {
-    appendPhysicsAabbDebugItems(result, batch, config.maxAabbs);
-  }
-  // branch-gate: BG-1111
-  if (config.includeContacts) {
-    appendPhysicsContactNormalDebugItems(result, batch, config.maxContacts);
-  }
-  // branch-gate: BG-1111
-  if (config.includeBroadphasePairs) {
-    appendPhysicsBroadphasePairDebugItems(result, batch, config.maxPairs);
   }
 }
 

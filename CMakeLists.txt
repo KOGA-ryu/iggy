@@ -159,14 +159,10 @@ target_sources(iggy3d
     src/runtime/interaction/InteractionSystem.cpp
     src/runtime/object/ObjectTraits.cpp
     src/runtime/physics/PhysicsAabbCollider.cpp
-    src/runtime/physics/PhysicsAabbCollisionBatch.cpp
-    src/runtime/physics/PhysicsAabbStep.cpp
     src/runtime/physics/PhysicsAabbContact.cpp
     src/runtime/physics/PhysicsAabbContactSolver.cpp
-    src/runtime/physics/PhysicsBodyDeltaAccumulator.cpp
     src/runtime/physics/PhysicsBodyStore.cpp
     src/runtime/physics/PhysicsBroadphase.cpp
-    src/runtime/physics/PhysicsColliderBake.cpp
     src/runtime/physics/PhysicsCollisionQueries.cpp
     src/runtime/physics/PhysicsDebugSnapshot.cpp
     src/runtime/physics/PhysicsFrameStats.cpp
@@ -176,7 +172,6 @@ target_sources(iggy3d
     src/runtime/physics/PhysicsMaterialTraits.cpp
     src/runtime/physics/PhysicsShapeStore.cpp
     src/runtime/physics/PhysicsSpatialSurfaceColliderBake.cpp
-    src/runtime/physics/PhysicsStep.cpp
     src/runtime/physics/PhysicsTypes.cpp
     src/runtime/session/SessionTick.cpp
     src/runtime/session/SessionRunner.cpp

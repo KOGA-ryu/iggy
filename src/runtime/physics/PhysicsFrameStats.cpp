@@ -4,8 +4,6 @@
 #include <array>
 #include <cmath>
 
-#include "runtime/physics/PhysicsAabbCollisionBatch.hpp"
-#include "runtime/physics/PhysicsAabbStep.hpp"
 #include "runtime/physics/PhysicsBroadphase.hpp"
 #include "runtime/physics/PhysicsKinematicMotor.hpp"
 #include "runtime/player/PlayerPhysicsMovePlanner.hpp"
@@ -61,68 +59,6 @@ void recordPacketOutcome(PhysicsFrameStats& stats,
   }
 }
 
-bool addFinite(float value, float& total, float& maximum) {
-  // branch-gate: BG-1105
-  if (!std::isfinite(value)) {
-    return false;
-  }
-  total += value;
-  maximum = std::max(maximum, value);
-  return true;
-}
-
-bool maxFinite(float value, float& maximum) {
-  // branch-gate: BG-1105
-  if (!std::isfinite(value)) {
-    return false;
-  }
-  maximum = std::max(maximum, value);
-  return true;
-}
-
-bool accumulateCollisionBatchFields(
-    PhysicsFrameStats& stats,
-    const PhysicsAabbCollisionBatchResult& result) {
-  stats.bindingCount += result.bindingCount;
-  stats.colliderCount += result.colliderCount;
-  stats.broadphasePairCount += result.broadphasePairCount;
-  stats.contactCount += result.contactCount;
-  stats.sensorContactCount += result.sensorContactCount;
-  stats.solvePlanCount += result.solvePlanCount;
-  stats.accumulatedPlanCount += result.accumulatedPlanCount;
-  stats.skippedNoOpPlanCount += result.skippedNoOpPlanCount;
-
-  bool finite = true;
-  for (const PhysicsAabbContact& contact : result.contacts) {
-    finite = maxFinite(contact.penetrationMeters,
-                       stats.maxPenetrationMeters) &&
-             finite;
-  }
-  for (const PhysicsAabbContactSolvePlan& plan : result.solvePlans) {
-    // branch-gate: BG-1105
-    if (plan.positionCorrectionApplied) {
-      ++stats.positionCorrectionAppliedCount;
-    }
-    // branch-gate: BG-1105
-    if (plan.velocityImpulseApplied) {
-      ++stats.velocityImpulseAppliedCount;
-    }
-    // branch-gate: BG-1105
-    if (plan.frictionImpulseApplied) {
-      ++stats.frictionImpulseAppliedCount;
-    }
-    finite = addFinite(plan.normalImpulseMagnitude,
-                       stats.totalNormalImpulseMagnitude,
-                       stats.maxNormalImpulseMagnitude) &&
-             finite;
-    finite = addFinite(plan.frictionImpulseMagnitude,
-                       stats.totalFrictionImpulseMagnitude,
-                       stats.maxFrictionImpulseMagnitude) &&
-             finite;
-  }
-  return finite;
-}
-
 }  // namespace
 
 std::string_view physicsFrameStatsStatusName(PhysicsFrameStatsStatus status) {
@@ -151,23 +87,6 @@ void accumulatePhysicsBroadphaseStats(PhysicsFrameStats& stats,
       result.duplicatePairRejectedCount;
   stats.broadphaseOverlappingPairCount += result.overlappingPairCount;
   recordPacketOutcome(stats, result.ok, result.reasonCode, false);
-}
-
-void accumulatePhysicsCollisionBatchStats(
-    PhysicsFrameStats& stats,
-    const PhysicsAabbCollisionBatchResult& result) {
-  const bool finite = accumulateCollisionBatchFields(stats, result);
-  recordPacketOutcome(stats, result.ok, result.reasonCode, !finite);
-}
-
-void accumulatePhysicsAabbStepStats(PhysicsFrameStats& stats,
-                                    const PhysicsAabbStepResult& result) {
-  stats.bodyCount += result.bodyCount;
-  stats.appliedPositionCount += result.appliedPositionCount;
-  stats.appliedVelocityCount += result.appliedVelocityCount;
-  const bool finite =
-      accumulateCollisionBatchFields(stats, result.collisionBatch);
-  recordPacketOutcome(stats, result.ok, result.reasonCode, !finite);
 }
 
 void accumulatePhysicsKinematicMotorStats(
