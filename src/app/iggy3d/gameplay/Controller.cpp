@@ -2155,6 +2155,173 @@ void submitProductTargetCommand(Session& session,
   }
 }
 
+struct ProductGameplayInputIntent {
+  float moveX = 0.0F;
+  float moveY = 0.0F;
+  bool sprinting = false;
+  bool jumpPressed = false;
+  bool jumpReleased = false;
+  bool dashPressed = false;
+  bool interactPressed = false;
+  bool attackPressed = false;
+  bool resetPressed = false;
+};
+
+ProductGameplayInputIntent sampleProductGameplayInputIntent(
+    const ActionState& actions) {
+  ProductGameplayInputIntent intent;
+  intent.moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
+  intent.moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
+  intent.sprinting = actionIsDown(actions, InputAction::PlayerSprint);
+  intent.jumpPressed = actionWasPressed(actions, InputAction::PlayerJump);
+  intent.jumpReleased = actionWasReleased(actions, InputAction::PlayerJump);
+  intent.dashPressed = actionWasPressed(actions, InputAction::PlayerDash);
+  intent.interactPressed = actionWasPressed(actions, InputAction::PlayerInteract);
+  intent.attackPressed = actionWasPressed(actions, InputAction::PlayerAttack);
+  intent.resetPressed =
+      actionWasPressed(actions, InputAction::PlayerRetryOrReset);
+  return intent;
+}
+
+bool productGameplayIntentHasMovement(
+    const ProductGameplayInputIntent& intent,
+    const ProductAppWindowState& window) {
+  return intent.moveX != 0.0F || intent.moveY != 0.0F ||
+         horizontalVelocityActive(window);
+}
+
+void updateProductJumpTimingPhase(Session& session,
+                                  ProductAppWindowState& window,
+                                  const ProductGameplayInputIntent& intent,
+                                  std::string_view source,
+                                  const SpatialSurfaceSet* collisionSurfaces) {
+  advanceProductDashCooldown(window);
+  // branch-gate: BG-1153
+  if (intent.jumpPressed) {
+    // branch-gate: BG-1157
+    if (window.gameplayWallRunActive) {
+      clearProductWallRunActiveProof(window, "wall_run_exit_jump");
+    }
+    submitProductJump(session, window, source);
+    return;
+  }
+
+  // branch-gate: BG-1153
+  if (intent.jumpReleased) {
+    applyProductJumpReleaseCut(window);
+  }
+  advanceProductJump(session, window, collisionSurfaces);
+}
+
+void resolveProductWallRunCandidatePhase(
+    const Session& session,
+    ProductAppWindowState& window,
+    const SpatialSurfaceSet* collisionSurfaces) {
+  updateProductWallRunCandidateProof(session, window, collisionSurfaces);
+}
+
+void applyProductActiveMovementStatePhase(
+    ProductAppWindowState& window,
+    const ProductGameplayInputIntent& intent) {
+  updateProductWallRunActiveProof(window, intent.moveX, intent.moveY);
+  // branch-gate: BG-1157
+  if (intent.jumpPressed) {
+    clearProductWallRunActiveProof(window, "wall_run_exit_jump");
+  }
+}
+
+void publishProductMovementProofPhase(
+    const Session& session,
+    ProductAppWindowState& window,
+    const ProductGameplayInputIntent& intent,
+    const SpatialSurfaceSet* collisionSurfaces) {
+  updateProductMovementStateProof(window);
+  resolveProductWallRunCandidatePhase(session, window, collisionSurfaces);
+  applyProductActiveMovementStatePhase(window, intent);
+  updateProductMovementStateProof(window);
+}
+
+bool applyProductDashPhase(Session& session,
+                           ProductAppWindowState& window,
+                           const ProductGameplayInputIntent& intent,
+                           std::string_view source,
+                           const SpatialSurfaceSet* collisionSurfaces) {
+  // branch-gate: BG-1155
+  if (!intent.dashPressed) {
+    return false;
+  }
+  submitProductDash(session,
+                    window,
+                    intent.moveX,
+                    intent.moveY,
+                    source,
+                    collisionSurfaces);
+  publishProductMovementProofPhase(session, window, intent, collisionSurfaces);
+  return true;
+}
+
+void updateProductRetainedHorizontalVelocityPhase(
+    Session& session,
+    ProductAppWindowState& window,
+    const ProductGameplayInputIntent& intent,
+    std::string_view source,
+    const SpatialSurfaceSet* collisionSurfaces) {
+  // branch-gate: BG-1161
+  if (!productGameplayIntentHasMovement(intent, window)) {
+    return;
+  }
+  submitProductMove(session,
+                    window,
+                    intent.moveX,
+                    intent.moveY,
+                    intent.sprinting,
+                    source,
+                    collisionSurfaces);
+}
+
+void applyProductTargetActionPhase(Session& session,
+                                   ProductAppWindowState& window,
+                                   const ProductGameplayInputIntent& intent,
+                                   std::string_view source,
+                                   const SpatialSurfaceSet* collisionSurfaces) {
+  // branch-gate: BG-1155
+  if (intent.interactPressed) {
+    submitProductTargetCommand(session,
+                               window,
+                               CommandKind::Interact,
+                               source,
+                               collisionSurfaces);
+  }
+  // branch-gate: BG-1155
+  if (intent.attackPressed) {
+    submitProductTargetCommand(session,
+                               window,
+                               CommandKind::Attack,
+                               source,
+                               collisionSurfaces);
+  }
+}
+
+void applyProductResetActionPhase(Session& session,
+                                  ProductAppWindowState& window,
+                                  const ProductGameplayInputIntent& intent,
+                                  std::string_view source) {
+  // branch-gate: BG-1155
+  if (!intent.resetPressed) {
+    return;
+  }
+  const SessionResetResult reset = session.resetToBaseline();
+  clearProductTargetProof(window);
+  clearProductOutcomeProof(window);
+  window.gameplayInputUsed = true;
+  window.gameplayInputSource = std::string(source);
+  window.gameplayCommandKind = "reset";
+  window.gameplayCommandSubmitted = true;
+  window.gameplayCommandAccepted = reset.reset;
+  window.gameplayCommandStatus = reset.reset ? "accepted" : "rejected";  // branch-gate: BG-1155
+  window.runtimeStateHash = session.stateHash();
+}
+
 }  // namespace
 
 void applyProductGameplayActions(Session& session,
@@ -2162,71 +2329,19 @@ void applyProductGameplayActions(Session& session,
                                  ProductAppWindowState& window,
                                  std::string_view source,
                                  const SpatialSurfaceSet* collisionSurfaces) {
-  const float moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
-  const float moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
-  const bool sprinting = actionIsDown(actions, InputAction::PlayerSprint);
-  const bool jumpPressed = actionWasPressed(actions, InputAction::PlayerJump);
-  const bool jumpReleased = actionWasReleased(actions, InputAction::PlayerJump);
-  advanceProductDashCooldown(window);
-  // branch-gate: BG-1153
-  if (jumpPressed) {
-    // branch-gate: BG-1157
-    if (window.gameplayWallRunActive) {
-      clearProductWallRunActiveProof(window, "wall_run_exit_jump");
-    }
-    submitProductJump(session, window, source);
-  } else {
-    // branch-gate: BG-1153
-    if (jumpReleased) {
-      applyProductJumpReleaseCut(window);
-    }
-    advanceProductJump(session, window, collisionSurfaces);
-  }
-  // branch-gate: BG-1155
-  if (actionWasPressed(actions, InputAction::PlayerDash)) {
-    submitProductDash(session, window, moveX, moveY, source, collisionSurfaces);
-    updateProductMovementStateProof(window);
-    updateProductWallRunCandidateProof(session, window, collisionSurfaces);
-    updateProductWallRunActiveProof(window, moveX, moveY);
-    // branch-gate: BG-1157
-    if (jumpPressed) {
-      clearProductWallRunActiveProof(window, "wall_run_exit_jump");
-    }
-    updateProductMovementStateProof(window);
+  const ProductGameplayInputIntent intent =
+      sampleProductGameplayInputIntent(actions);
+  updateProductJumpTimingPhase(session, window, intent, source, collisionSurfaces);
+  if (applyProductDashPhase(
+          session, window, intent, source, collisionSurfaces)) {
     return;
   }
-  if (moveX != 0.0F || moveY != 0.0F || horizontalVelocityActive(window)) {
-    submitProductMove(session, window, moveX, moveY, sprinting, source,
-                      collisionSurfaces);
-  }
-  if (actionWasPressed(actions, InputAction::PlayerInteract)) {
-    submitProductTargetCommand(session, window, CommandKind::Interact, source,
-                               collisionSurfaces);
-  }
-  if (actionWasPressed(actions, InputAction::PlayerAttack)) {
-    submitProductTargetCommand(session, window, CommandKind::Attack, source,
-                               collisionSurfaces);
-  }
-  if (actionWasPressed(actions, InputAction::PlayerRetryOrReset)) {
-    const SessionResetResult reset = session.resetToBaseline();
-    clearProductTargetProof(window);
-    clearProductOutcomeProof(window);
-    window.gameplayInputUsed = true;
-    window.gameplayInputSource = std::string(source);
-    window.gameplayCommandKind = "reset";
-    window.gameplayCommandSubmitted = true;
-    window.gameplayCommandAccepted = reset.reset;
-    window.gameplayCommandStatus = reset.reset ? "accepted" : "rejected";
-    window.runtimeStateHash = session.stateHash();
-  }
-  updateProductMovementStateProof(window);
-  updateProductWallRunCandidateProof(session, window, collisionSurfaces);
-  updateProductWallRunActiveProof(window, moveX, moveY);
-  // branch-gate: BG-1157
-  if (jumpPressed) {
-    clearProductWallRunActiveProof(window, "wall_run_exit_jump");
-  }
-  updateProductMovementStateProof(window);
+  updateProductRetainedHorizontalVelocityPhase(
+      session, window, intent, source, collisionSurfaces);
+  applyProductTargetActionPhase(
+      session, window, intent, source, collisionSurfaces);
+  applyProductResetActionPhase(session, window, intent, source);
+  publishProductMovementProofPhase(session, window, intent, collisionSurfaces);
 }
 
 }  // namespace iggy3d
