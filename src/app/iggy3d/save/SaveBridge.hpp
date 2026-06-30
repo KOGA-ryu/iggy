@@ -160,6 +160,13 @@ struct ProductSaveMutationResult {
 // this.
 std::string productSaveTimestampNowUtc();
 
+// Mint a fresh, unique world id of the form "world_NNNN" by scanning the active
+// and deleted save roots for the highest existing world_<number> and returning
+// the next one (an empty root yields "world_0001"). World ids are set once at
+// creation and preserved across re-saves by writeProductSessionSaveDurably, so
+// this keeps each world's lineage distinct without reusing a deleted world's id.
+std::string nextProductWorldId(const std::filesystem::path& saveRoot);
+
 ProductSaveBridgeResult scanProductSaves(const std::filesystem::path& saveRoot,
                                          std::string_view packageId,
                                          std::string_view scenarioId);

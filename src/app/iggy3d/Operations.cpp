@@ -163,15 +163,15 @@ ProductWorldCreationResult prepareProductWorldCreationFromDraft(
 
   // createdAtUtc/savedAtUtc seed for the initial save: a real UTC timestamp so
   // the catalog's newest-first ordering and Continue policy reflect real
-  // creation/save recency across worlds (replaces a fixed literal that made
-  // every world's timestamp identical). worldId uniqueness is a follow-on
-  // (Phase 2); the value is preserved across re-saves by carry-forward.
+  // creation/save recency across worlds. The world id is minted unique per
+  // world (the first world in an empty save root is world_0001) and preserved
+  // across re-saves by carry-forward in the durable writer.
   ProductWorldCreationResult creation = prepareProductWorldCreation(
       makeProductWorldCreationInput(setup.createRequest,
                                     world,
                                     options.saveRoot,
                                     productSaveTimestampNowUtc(),
-                                    "world_0001"));
+                                    nextProductWorldId(options.saveRoot)));
   window.worldCreationStatus = std::string(creation.status);
   window.worldCreationReasonCode = std::string(creation.reasonCode);
   window.worldCreationWorldId =

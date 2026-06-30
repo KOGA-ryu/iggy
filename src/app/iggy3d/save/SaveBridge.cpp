@@ -1,6 +1,8 @@
 #include "app/iggy3d/save/SaveBridge.hpp"
 
+#include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <ctime>
 
 #include "app/iggy3d/save/CatalogProjector.hpp"
@@ -278,6 +280,53 @@ std::string productSaveTimestampNowUtc() {
     return "";
   }
   return std::string(buffer);
+}
+
+namespace {
+
+std::uint64_t maxWorldIdNumber(const ProductSaveCatalog& catalog) {
+  constexpr std::string_view kPrefix = "world_";
+  std::uint64_t maxNumber = 0;
+  for (const ProductSaveCatalogEntry& entry : catalog.entries) {
+    if (entry.worldId.size() <= kPrefix.size() ||
+        entry.worldId.compare(0, kPrefix.size(), kPrefix) != 0) {
+      continue;
+    }
+    std::uint64_t value = 0;
+    bool allDigits = true;
+    for (std::size_t index = kPrefix.size(); index < entry.worldId.size();
+         ++index) {
+      const char character = entry.worldId[index];
+      if (character < '0' || character > '9') {
+        allDigits = false;
+        break;
+      }
+      value = value * 10U + static_cast<std::uint64_t>(character - '0');
+    }
+    if (allDigits) {
+      maxNumber = std::max(maxNumber, value);
+    }
+  }
+  return maxNumber;
+}
+
+std::string formatWorldId(std::uint64_t number) {
+  std::string digits = std::to_string(number);
+  std::string padding(digits.size() < 4U ? 4U - digits.size() : 0U, '0');
+  return "world_" + padding + digits;
+}
+
+}  // namespace
+
+std::string nextProductWorldId(const std::filesystem::path& saveRoot) {
+  // World id collection is compatibility-independent: scan with empty
+  // package/scenario so every existing world_<n> contributes, then take the
+  // highest across active and deleted saves and return the next.
+  const std::uint64_t activeMax =
+      maxWorldIdNumber(scanProductSaves(saveRoot, "", "").catalog.catalog);
+  const std::uint64_t deletedMax =
+      maxWorldIdNumber(scanDeletedProductSaves(saveRoot, "", "").catalog.catalog);
+  return formatWorldId(std::max(activeMax, deletedMax) + 1U);
 }
 
 std::string_view productSaveMutationStatusName(ProductSaveMutationStatus status) {
