@@ -214,6 +214,15 @@ int main() {
       hasField(fields,
                "gameplay_movement_tuning_wall_run_max_normal_y",
                fixed3(tuning.wallRunMaxWallNormalY)) &&
+      hasField(fields,
+               "gameplay_movement_tuning_wall_run_duration_s",
+               fixed3(tuning.wallRunDurationSeconds)) &&
+      hasField(fields,
+               "gameplay_movement_tuning_wall_run_gravity_multiplier",
+               fixed3(tuning.wallRunGravityMultiplier)) &&
+      hasField(fields,
+               "gameplay_movement_tuning_wall_run_speed_multiplier",
+               fixed3(tuning.wallRunSpeedMultiplier)) &&
       hasField(fields, "target_discovered", "false") &&
       hasField(fields, "gameplay_reach_gate", "not_attempted") &&
       hasField(fields, "attack_executed", "false") &&

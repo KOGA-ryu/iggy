@@ -45,9 +45,13 @@ std::string movementStateDisplay(const ProductAppWindowState& window) {
 }
 
 std::string wallRunDisplay(const ProductAppWindowState& window) {
-  return codeDisplay(window.gameplayWallRunSide) +
+  // branch-gate: BG-1157
+  return (window.gameplayWallRunActive ? std::string{"active "}
+                                       : std::string{"cand "}) +
+         codeDisplay(window.gameplayWallRunSide) +
          " " + codeDisplay(window.gameplayWallRunSurfaceId) +
-         " " + codeDisplay(window.gameplayWallRunCandidateReasonCode) +
+         " " + codeDisplay(window.gameplayWallRunReasonCode) +
+         " t" + fixed3(window.gameplayWallRunRemainingSeconds) +
          " h" + fixed3(window.gameplayWallRunApproachSpeedMetersPerSecond);
 }
 
@@ -102,6 +106,9 @@ MovementDebugHud buildMovementDebugHud(
   hud.wallRunSurfaceId = window.gameplayWallRunSurfaceId;
   hud.wallRunApproachSpeedMetersPerSecond =
       window.gameplayWallRunApproachSpeedMetersPerSecond;
+  hud.wallRunActive = window.gameplayWallRunActive;
+  hud.wallRunStatus = window.gameplayWallRunStatus;
+  hud.wallRunRemainingSeconds = window.gameplayWallRunRemainingSeconds;
   hud.finalX = window.gameplayMovementFinalX;
   hud.finalY = window.gameplayMovementFinalY;
   hud.finalZ = window.gameplayMovementFinalZ;
@@ -116,8 +123,9 @@ MovementDebugHud buildMovementDebugHud(
 
   // branch-gate: BG-1161
   const FeedbackTone wallRunTone =
-      window.gameplayWallRunCandidateAvailable ? FeedbackTone::Pass
-                                               : FeedbackTone::Neutral;
+      window.gameplayWallRunActive || window.gameplayWallRunCandidateAvailable
+          ? FeedbackTone::Pass
+          : FeedbackTone::Neutral;
   addLine(hud, "STATUS", codeDisplay(hud.status), statusTone(window));
   addLine(hud, "STATE", movementStateDisplay(window), FeedbackTone::Neutral);
   addLine(hud, "WALLRUN", wallRunDisplay(window), wallRunTone);

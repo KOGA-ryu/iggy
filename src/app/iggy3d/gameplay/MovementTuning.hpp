@@ -27,6 +27,9 @@ enum class ProductGameplayMovementTuningField : std::uint8_t {
   DashCooldown,
   WallRunMinSpeed,
   WallRunMaxNormalY,
+  WallRunDuration,
+  WallRunGravityMultiplier,
+  WallRunSpeedMultiplier,
 };
 
 enum class ProductGameplayMovementTuningFieldKind : std::uint8_t {
@@ -41,6 +44,7 @@ enum class ProductGameplayMovementState : std::uint8_t {
   Rising,
   Falling,
   AirborneControl,
+  WallRunning,
   BlockedOrSliding,
 };
 
@@ -60,6 +64,8 @@ constexpr std::string_view productGameplayMovementStateName(
       return "falling";
     case ProductGameplayMovementState::AirborneControl:
       return "airborne_control";
+    case ProductGameplayMovementState::WallRunning:
+      return "wall_running";
     case ProductGameplayMovementState::BlockedOrSliding:
       return "blocked_or_sliding";
   }
@@ -95,6 +101,9 @@ struct ProductGameplayMovementTuning {
 
   float wallRunMinSpeedMetersPerSecond = 2.0F;
   float wallRunMaxWallNormalY = 0.25F;
+  float wallRunDurationSeconds = 0.75F;
+  float wallRunGravityMultiplier = 0.25F;
+  float wallRunSpeedMultiplier = 1.0F;
 
   float wallJumpProbeMeters = 0.58F;
   float wallJumpPushMeters = 1.20F;
@@ -121,7 +130,7 @@ struct ProductGameplayMovementTuningFieldDescriptor {
   float step = 0.1F;
 };
 
-inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 18U>
+inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 21U>
     kProductGameplayMovementTuningFields{{
         {ProductGameplayMovementTuningField::WalkSpeed,
          "walk_speed_mps",
@@ -266,6 +275,30 @@ inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 18U>
          ProductGameplayMovementTuningFieldKind::Scalar,
          0.0F,
          1.0F,
+         0.05F},
+        {ProductGameplayMovementTuningField::WallRunDuration,
+         "wall_run_duration_s",
+         "WALLRUN DUR",
+         &ProductGameplayMovementTuning::wallRunDurationSeconds,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.1F,
+         2.0F,
+         0.05F},
+        {ProductGameplayMovementTuningField::WallRunGravityMultiplier,
+         "wall_run_gravity_multiplier",
+         "WALLRUN GRAV",
+         &ProductGameplayMovementTuning::wallRunGravityMultiplier,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.0F,
+         1.0F,
+         0.05F},
+        {ProductGameplayMovementTuningField::WallRunSpeedMultiplier,
+         "wall_run_speed_multiplier",
+         "WALLRUN SPD*",
+         &ProductGameplayMovementTuning::wallRunSpeedMultiplier,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.25F,
+         2.0F,
          0.05F},
     }};
 

@@ -1322,6 +1322,224 @@ bool productWallRunCandidateDoesNotChangeMovementOutput() {
                 "wall-run candidate does not change final z");
 }
 
+void seedAirborneWallRunSetup(iggy3d::Session& session,
+                              iggy3d::ProductAppWindowState& window) {
+  setPlayerPosition(session, {3.0F, 0.80F, 0.65F});
+  setWallJumpActiveRoom(window, session);
+  window.gameplayJumpActive = true;
+  window.gameplayJumpVelocityMetersPerSecond = -1.0F;
+  window.gameplayJumpGroundY = 0.0F;
+  window.gameplayJumpStartY = 0.80F;
+  window.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond = 0.5F;
+}
+
+bool enterWallRun(iggy3d::Session& session,
+                  iggy3d::ProductAppWindowState& window) {
+  iggy3d::applyProductGameplayActions(session,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      window,
+                                      "unit/gameplay_controller_wall_run_enter",
+                                      activeSurfaces(window));
+  return window.gameplayWallRunActive;
+}
+
+bool productWallRunCandidateEntersActiveState() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "wall-run active session created")) {
+    return false;
+  }
+
+  seedAirborneWallRunSetup(*session, window);
+  const bool entered = enterWallRun(*session, window);
+
+  return expect(entered, "wall-run enters active state") &&
+         expect(window.gameplayMovementState ==
+                    iggy3d::ProductGameplayMovementState::WallRunning,
+                "wall-run movement state") &&
+         expect(window.gameplayWallRunStatus == "wall_run_active",
+                "wall-run active status") &&
+         expect(window.gameplayWallRunReasonCode == "wall_run_started",
+                "wall-run start reason") &&
+         expect(window.gameplayWallRunRemainingSeconds > 0.0F,
+                "wall-run remaining time");
+}
+
+bool productWallRunReducesFallingAgainstNormalAirborneFall() {
+  std::optional<iggy3d::Session> wallSession;
+  iggy3d::ProductAppWindowState wallWindow = makeGameplayWindow(wallSession);
+  std::optional<iggy3d::Session> normalSession;
+  iggy3d::ProductAppWindowState normalWindow = makeGameplayWindow(normalSession);
+  if (!expect(wallSession.has_value() && normalSession.has_value(),
+              "wall-run fall comparison sessions created")) {
+    return false;
+  }
+
+  seedAirborneWallRunSetup(*wallSession, wallWindow);
+  seedAirborneWallRunSetup(*normalSession, normalWindow);
+  normalWindow.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond = 10.0F;
+  const bool entered = enterWallRun(*wallSession, wallWindow);
+  iggy3d::applyProductGameplayActions(*normalSession,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      normalWindow,
+                                      "unit/gameplay_controller_wall_run_normal_setup",
+                                      activeSurfaces(normalWindow));
+  const float wallStartY = playerEntity(*wallSession)->transform.position.y;
+  const float normalStartY = playerEntity(*normalSession)->transform.position.y;
+  iggy3d::applyProductGameplayActions(*wallSession,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      wallWindow,
+                                      "unit/gameplay_controller_wall_run_fall_scaled",
+                                      activeSurfaces(wallWindow));
+  iggy3d::applyProductGameplayActions(*normalSession,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      normalWindow,
+                                      "unit/gameplay_controller_wall_run_fall_normal",
+                                      activeSurfaces(normalWindow));
+
+  const float wallFall =
+      wallStartY - playerEntity(*wallSession)->transform.position.y;
+  const float normalFall =
+      normalStartY - playerEntity(*normalSession)->transform.position.y;
+  return expect(entered, "wall-run fall comparison enters") &&
+         expect(wallFall < normalFall, "wall-run reduces falling") &&
+         expect(wallWindow.gameplayJumpVelocityMetersPerSecond >
+                    normalWindow.gameplayJumpVelocityMetersPerSecond,
+                "wall-run keeps vertical velocity higher");
+}
+
+bool productWallRunMovesAlongWallTangentOnly() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "wall-run tangent session created")) {
+    return false;
+  }
+
+  seedAirborneWallRunSetup(*session, window);
+  const bool entered = enterWallRun(*session, window);
+  const iggy3d::Vec3 before = playerEntity(*session)->transform.position;
+  iggy3d::applyProductGameplayActions(*session,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      window,
+                                      "unit/gameplay_controller_wall_run_tangent",
+                                      activeSurfaces(window));
+  const iggy3d::Vec3 after = playerEntity(*session)->transform.position;
+
+  return expect(entered, "wall-run tangent enters") &&
+         expect(after.x > before.x, "wall-run progresses along wall tangent") &&
+         expect(nearlyEqual(after.z, before.z),
+                "wall-run does not push into wall normal");
+}
+
+bool productWallRunTimerExpiryExits() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "wall-run timer session created")) {
+    return false;
+  }
+
+  seedAirborneWallRunSetup(*session, window);
+  window.gameplayMovementTuning.wallRunDurationSeconds = 0.1F;
+  const bool entered = enterWallRun(*session, window);
+  for (int frame = 0; frame < 10 && window.gameplayWallRunActive; ++frame) {
+    iggy3d::applyProductGameplayActions(
+        *session,
+        manualMoveActions(1.0F, 0.0F),
+        window,
+        "unit/gameplay_controller_wall_run_timer",
+        activeSurfaces(window));
+  }
+
+  return expect(entered, "wall-run timer enters") &&
+         expect(!window.gameplayWallRunActive, "wall-run timer exits") &&
+         expect(window.gameplayWallRunReasonCode == "wall_run_expired",
+                "wall-run timer expiry reason");
+}
+
+bool productWallRunInputStopExits() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "wall-run input stop session created")) {
+    return false;
+  }
+
+  seedAirborneWallRunSetup(*session, window);
+  const bool entered = enterWallRun(*session, window);
+  iggy3d::applyProductGameplayActions(*session,
+                                      noActions(),
+                                      window,
+                                      "unit/gameplay_controller_wall_run_input_stop",
+                                      activeSurfaces(window));
+
+  return expect(entered, "wall-run input stop enters") &&
+         expect(!window.gameplayWallRunActive, "wall-run input stop exits") &&
+         expect(window.gameplayWallRunReasonCode == "wall_run_input_stopped",
+                "wall-run input stop reason");
+}
+
+bool productWallRunJumpInputExits() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "wall-run jump exit session created")) {
+    return false;
+  }
+
+  seedAirborneWallRunSetup(*session, window);
+  const bool entered = enterWallRun(*session, window);
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpActions(),
+                                      window,
+                                      "unit/gameplay_controller_wall_run_jump_exit",
+                                      activeSurfaces(window));
+
+  return expect(entered, "wall-run jump exit enters") &&
+         expect(!window.gameplayWallRunActive, "wall-run jump exits") &&
+         expect(window.gameplayWallRunReasonCode == "wall_run_exit_jump",
+                "wall-run jump exit reason");
+}
+
+bool productWallRunTuningChangesGravityAndDuration() {
+  std::optional<iggy3d::Session> slowSession;
+  iggy3d::ProductAppWindowState slowWindow = makeGameplayWindow(slowSession);
+  std::optional<iggy3d::Session> fastSession;
+  iggy3d::ProductAppWindowState fastWindow = makeGameplayWindow(fastSession);
+  if (!expect(slowSession.has_value() && fastSession.has_value(),
+              "wall-run tuning sessions created")) {
+    return false;
+  }
+
+  seedAirborneWallRunSetup(*slowSession, slowWindow);
+  seedAirborneWallRunSetup(*fastSession, fastWindow);
+  slowWindow.gameplayMovementTuning.wallRunGravityMultiplier = 0.1F;
+  slowWindow.gameplayMovementTuning.wallRunDurationSeconds = 0.5F;
+  fastWindow.gameplayMovementTuning.wallRunGravityMultiplier = 0.8F;
+  fastWindow.gameplayMovementTuning.wallRunDurationSeconds = 1.0F;
+  const bool slowEntered = enterWallRun(*slowSession, slowWindow);
+  const bool fastEntered = enterWallRun(*fastSession, fastWindow);
+  const float slowStartY = playerEntity(*slowSession)->transform.position.y;
+  const float fastStartY = playerEntity(*fastSession)->transform.position.y;
+  iggy3d::applyProductGameplayActions(*slowSession,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      slowWindow,
+                                      "unit/gameplay_controller_wall_run_gravity_slow",
+                                      activeSurfaces(slowWindow));
+  iggy3d::applyProductGameplayActions(*fastSession,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      fastWindow,
+                                      "unit/gameplay_controller_wall_run_gravity_fast",
+                                      activeSurfaces(fastWindow));
+  const float slowFall =
+      slowStartY - playerEntity(*slowSession)->transform.position.y;
+  const float fastFall =
+      fastStartY - playerEntity(*fastSession)->transform.position.y;
+
+  return expect(slowEntered && fastEntered, "wall-run tuning enters") &&
+         expect(slowFall < fastFall, "wall-run gravity tuning changes fall") &&
+         expect(fastWindow.gameplayWallRunDurationSeconds >
+                    slowWindow.gameplayWallRunDurationSeconds,
+                "wall-run duration tuning recorded");
+}
+
 bool productJumpUsesClamberTraversalWhenCandidateIsLocal() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -1956,6 +2174,13 @@ int main() {
                   productWallRunCandidateRejectsNoWallContact() &&
                   productWallRunMinSpeedTuningControlsCandidateThreshold() &&
                   productWallRunCandidateDoesNotChangeMovementOutput() &&
+                  productWallRunCandidateEntersActiveState() &&
+                  productWallRunReducesFallingAgainstNormalAirborneFall() &&
+                  productWallRunMovesAlongWallTangentOnly() &&
+                  productWallRunTimerExpiryExits() &&
+                  productWallRunInputStopExits() &&
+                  productWallRunJumpInputExits() &&
+                  productWallRunTuningChangesGravityAndDuration() &&
                   productJumpUsesClamberTraversalWhenCandidateIsLocal() &&
                   productJumpUsesWallJumpWhenAirborneNearWall() &&
                   productJumpRejectsWallJumpNearGenericWall() &&

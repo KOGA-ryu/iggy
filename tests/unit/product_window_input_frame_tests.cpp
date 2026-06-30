@@ -2209,7 +2209,7 @@ bool movementTuningGameplayInputIsLiveAndFocused() {
       expect(previous.handled, "movement tuning up handled") &&
       expect(previous.accepted, "movement tuning up accepted") &&
       expect(window.gameplayMovementTuningSelectedField ==
-                 iggy3d::ProductGameplayMovementTuningField::WallRunMaxNormalY,
+                 iggy3d::ProductGameplayMovementTuningField::WallRunSpeedMultiplier,
              "movement tuning up wraps to previous field");
 
   const iggy3d::ProductMovementTuningInputResult next =
@@ -2730,6 +2730,10 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
   window.gameplayMovementHorizontalSpeedMetersPerSecond = 2.5F;
   window.gameplayMovementState =
       iggy3d::ProductGameplayMovementState::MovingGrounded;
+  window.gameplayWallRunActive = true;
+  window.gameplayWallRunStatus = "wall_run_active";
+  window.gameplayWallRunReasonCode = "wall_run_active";
+  window.gameplayWallRunRemainingSeconds = 0.5F;
   window.gameplayJumpCoyoteSecondsRemaining = 0.08F;
   window.gameplayJumpBufferSecondsRemaining = 0.06F;
   window.gameplayJumpHeld = true;
@@ -2762,6 +2766,9 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
          expect(window.gameplayMovementState ==
                     iggy3d::ProductGameplayMovementState::IdleGrounded,
                 "editor input resets movement state proof") &&
+         expect(!window.gameplayWallRunActive &&
+                    window.gameplayWallRunRemainingSeconds == 0.0F,
+                "editor input clears wall-run active proof") &&
          expect(window.gameplayJumpCoyoteSecondsRemaining == 0.0F &&
                     window.gameplayJumpBufferSecondsRemaining == 0.0F &&
                     !window.gameplayJumpHeld &&

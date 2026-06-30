@@ -95,7 +95,7 @@ int main() {
                "moved state display");
   ok &= expect(hasLine(moved,
                        "WALLRUN",
-                       "none none wall run grounded h3.300"),
+                       "cand none none wall run inactive t0.000 h3.300"),
                "moved wall-run display");
   ok &= expect(hasLine(moved, "REASON", "movement ok"), "moved reason display");
   ok &= expect(hasLine(moved, "HIT", "none"), "moved hit display");
@@ -116,8 +116,12 @@ int main() {
   blocked.gameplayWallRunCandidateAvailable = true;
   blocked.gameplayWallRunCandidateStatus = "wall_run_candidate";
   blocked.gameplayWallRunCandidateReasonCode = "wall_run_candidate";
+  blocked.gameplayWallRunActive = true;
+  blocked.gameplayWallRunStatus = "wall_run_active";
+  blocked.gameplayWallRunReasonCode = "wall_run_active";
   blocked.gameplayWallRunSide = "left";
   blocked.gameplayWallRunSurfaceId = "wall_r0_c1_actor_blocker";
+  blocked.gameplayWallRunRemainingSeconds = 0.500F;
   const iggy3d::MovementDebugHud blockedHud =
       iggy3d::buildMovementDebugHud(blocked, true, true);
   ok &= expect(blockedHud.visible, "blocked hud visible");
@@ -126,12 +130,13 @@ int main() {
                "blocked hud state");
   ok &= expect(blockedHud.wallRunCandidateAvailable,
                "blocked hud wall-run candidate");
+  ok &= expect(blockedHud.wallRunActive, "blocked hud wall-run active");
   ok &= expect(blockedHud.hitSurfaceId == "wall_r0_c1_actor_blocker", "blocked hit id");
   ok &= expect(hasLine(blockedHud, "STATE", "blocked or sliding h3.300 v0.000"),
                "blocked state display");
   ok &= expect(hasLine(blockedHud,
                        "WALLRUN",
-                       "left wall r0 c1 actor blocker wall run candidate h3.300"),
+                       "active left wall r0 c1 actor blocker wall run active t0.500 h3.300"),
                "blocked wall-run display");
   ok &= expect(hasLine(blockedHud, "STATUS", "blocked"), "blocked status line");
   ok &= expect(hasLine(blockedHud, "REASON", "blocked by collision"),

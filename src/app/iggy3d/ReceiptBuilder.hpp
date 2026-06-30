@@ -353,6 +353,13 @@ struct ProductAppWindowState {
   float gameplayWallRunNormalY = 0.0F;
   float gameplayWallRunNormalZ = 0.0F;
   float gameplayWallRunApproachSpeedMetersPerSecond = 0.0F;
+  bool gameplayWallRunActive = false;
+  std::string gameplayWallRunStatus = "wall_run_inactive";
+  std::string gameplayWallRunReasonCode = "wall_run_inactive";
+  float gameplayWallRunRemainingSeconds = 0.0F;
+  float gameplayWallRunDurationSeconds = 0.0F;
+  float gameplayWallRunGravityMultiplier = 1.0F;
+  float gameplayWallRunSpeedMultiplier = 1.0F;
   float gameplayMovementGradePercent = 0.0F;
   std::string gameplayMovementProfile =
       std::string{kProductGameplayMovementTuning.walkProfile};

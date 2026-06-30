@@ -414,6 +414,13 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
     window.gameplayWallRunNormalY = 0.0F;
     window.gameplayWallRunNormalZ = 0.0F;
     window.gameplayWallRunApproachSpeedMetersPerSecond = 0.0F;
+    window.gameplayWallRunActive = false;
+    window.gameplayWallRunStatus = "wall_run_inactive";
+    window.gameplayWallRunReasonCode = window.gameplayWallRunStatus;
+    window.gameplayWallRunRemainingSeconds = 0.0F;
+    window.gameplayWallRunDurationSeconds = 0.0F;
+    window.gameplayWallRunGravityMultiplier = 1.0F;
+    window.gameplayWallRunSpeedMultiplier = 1.0F;
     // branch-gate: BG-1061
     if (!window.gameplayJumpActive) {
       window.gameplayMovementGrounded = true;

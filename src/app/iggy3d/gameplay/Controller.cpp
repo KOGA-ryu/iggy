@@ -220,6 +220,17 @@ void clearProductWallRunCandidateProof(ProductAppWindowState& window,
   window.gameplayWallRunApproachSpeedMetersPerSecond = 0.0F;
 }
 
+void clearProductWallRunActiveProof(ProductAppWindowState& window,
+                                    std::string_view reason) {
+  window.gameplayWallRunActive = false;
+  window.gameplayWallRunStatus = std::string{reason};
+  window.gameplayWallRunReasonCode = std::string{reason};
+  window.gameplayWallRunRemainingSeconds = 0.0F;
+  window.gameplayWallRunDurationSeconds = 0.0F;
+  window.gameplayWallRunGravityMultiplier = 1.0F;
+  window.gameplayWallRunSpeedMultiplier = 1.0F;
+}
+
 void updateProductMovementStateProof(ProductAppWindowState& window) {
   window.gameplayMovementHorizontalSpeedMetersPerSecond =
       productHorizontalMovementSpeedMetersPerSecond(window);
@@ -240,6 +251,11 @@ void updateProductMovementStateProof(ProductAppWindowState& window) {
 
   // branch-gate: BG-1153
   if (window.gameplayJumpActive) {
+    // branch-gate: BG-1157
+    if (window.gameplayWallRunActive) {
+      window.gameplayMovementState = ProductGameplayMovementState::WallRunning;
+      return;
+    }
     // branch-gate: BG-1161
     if (window.gameplayMovementReasonCode == "airborne_manual_move" &&
         window.gameplayMovementHorizontalDistanceMeters >
@@ -920,6 +936,115 @@ bool productMovementDebugAlongWall(const ProductAppWindowState& window,
   return std::fabs(dot(travel, tangent)) >= kWallRunAlongWallDotThreshold;
 }
 
+bool wallRunProofNormal(const ProductAppWindowState& window, Vec3& normal) {
+  normal = {window.gameplayWallRunNormalX, 0.0F, window.gameplayWallRunNormalZ};
+  const float lenSq = lengthSquared(normal);
+  // branch-gate: BG-1157
+  if (!isFinite(normal) || lenSq <= 0.0001F) {
+    return false;
+  }
+  normal = normal / std::sqrt(lenSq);
+  return true;
+}
+
+bool wallRunTangentDirection(const ProductAppWindowState& window,
+                             float moveX,
+                             float moveY,
+                             Vec3& direction) {
+  Vec3 normal;
+  // branch-gate: BG-1157
+  if (!wallRunProofNormal(window, normal)) {
+    return false;
+  }
+  const Vec3 desired =
+      manualFirstPersonDirection(moveX, moveY, window.viewport.cameraYawDegrees);
+  const Vec3 tangent{-normal.z, 0.0F, normal.x};
+  const float tangentDot = dot(desired, tangent);
+  // branch-gate: BG-1157
+  if (std::fabs(tangentDot) < kWallRunAlongWallDotThreshold) {
+    return false;
+  }
+  // branch-gate: BG-1157
+  direction = tangentDot >= 0.0F ? tangent : tangent * -1.0F;
+  return true;
+}
+
+void recordProductWallRunProof(ProductAppWindowState& window,
+                               std::string_view status,
+                               std::string_view reason) {
+  window.gameplayWallRunStatus = std::string{status};
+  window.gameplayWallRunReasonCode = std::string{reason};
+  window.gameplayWallRunDurationSeconds =
+      std::clamp(window.gameplayMovementTuning.wallRunDurationSeconds, 0.1F, 2.0F);
+  window.gameplayWallRunGravityMultiplier =
+      std::clamp(window.gameplayMovementTuning.wallRunGravityMultiplier, 0.0F, 1.0F);
+  window.gameplayWallRunSpeedMultiplier =
+      std::clamp(window.gameplayMovementTuning.wallRunSpeedMultiplier, 0.25F, 2.0F);
+}
+
+void updateProductWallRunActiveProof(ProductAppWindowState& window,
+                                     float moveX,
+                                     float moveY) {
+  const bool hasMoveInput = moveX != 0.0F || moveY != 0.0F;
+  // branch-gate: BG-1157
+  if (window.gameplayWallRunActive && !window.gameplayJumpActive) {
+    clearProductWallRunActiveProof(window, "wall_run_landed");
+    return;
+  }
+  // branch-gate: BG-1157
+  if (window.gameplayWallRunActive && !hasMoveInput) {
+    clearProductWallRunActiveProof(window, "wall_run_input_stopped");
+    return;
+  }
+  Vec3 tangent;
+  // branch-gate: BG-1157
+  if (window.gameplayWallRunActive &&
+      !wallRunTangentDirection(window, moveX, moveY, tangent)) {
+    clearProductWallRunActiveProof(window, "wall_run_input_away");
+    return;
+  }
+  // branch-gate: BG-1157
+  if (window.gameplayWallRunActive &&
+      !window.gameplayWallRunCandidateAvailable) {
+    clearProductWallRunActiveProof(
+        window, window.gameplayWallRunCandidateReasonCode);
+    return;
+  }
+  // branch-gate: BG-1157
+  if (!window.gameplayWallRunActive &&
+      (!window.gameplayWallRunCandidateAvailable || !hasMoveInput)) {
+    clearProductWallRunActiveProof(window, "wall_run_inactive");
+    return;
+  }
+  // branch-gate: BG-1157
+  if (!window.gameplayWallRunActive &&
+      !wallRunTangentDirection(window, moveX, moveY, tangent)) {
+    clearProductWallRunActiveProof(window, "wall_run_input_away");
+    return;
+  }
+
+  const float dt = std::max(0.0F, window.gameplayMovementTuning.inputStepSeconds);
+  // branch-gate: BG-1157
+  if (!window.gameplayWallRunActive) {
+    window.gameplayWallRunActive = true;
+    window.gameplayWallRunRemainingSeconds =
+        std::clamp(window.gameplayMovementTuning.wallRunDurationSeconds,
+                   0.1F,
+                   2.0F);
+    recordProductWallRunProof(window, "wall_run_active", "wall_run_started");
+    return;
+  }
+
+  window.gameplayWallRunRemainingSeconds =
+      std::max(0.0F, window.gameplayWallRunRemainingSeconds - dt);
+  // branch-gate: BG-1157
+  if (window.gameplayWallRunRemainingSeconds <= 0.0F) {
+    clearProductWallRunActiveProof(window, "wall_run_expired");
+    return;
+  }
+  recordProductWallRunProof(window, "wall_run_active", "wall_run_active");
+}
+
 void updateProductWallRunCandidateProof(const Session& session,
                                         ProductAppWindowState& window,
                                         const SpatialSurfaceSet* collisionSurfaces) {
@@ -1142,13 +1267,18 @@ void advanceProductJump(Session& session,
   }
 
   const float previousY = entity->transform.position.y;
-  const float gravityMultiplier =
-      window.gameplayJumpVelocityMetersPerSecond <= 0.0F
-          ? tuning.fallGravityMultiplier
-          : 1.0F;  // branch-gate: BG-1153
+  float gravityMultiplier = 1.0F;
+  // branch-gate: BG-1153
+  if (window.gameplayJumpVelocityMetersPerSecond <= 0.0F) {
+    // branch-gate: BG-1157
+    gravityMultiplier =
+        window.gameplayWallRunActive
+            ? std::clamp(tuning.wallRunGravityMultiplier, 0.0F, 1.0F)
+            : tuning.fallGravityMultiplier;
+  }
   const float gravity =
       tuning.gravityMetersPerSecondSquared *
-      std::clamp(gravityMultiplier, 1.0F, 4.0F);
+      std::clamp(gravityMultiplier, 0.0F, 4.0F);
   const float nextVelocity =
       window.gameplayJumpVelocityMetersPerSecond - gravity * dt;
   float nextY = previousY +
@@ -1189,6 +1319,7 @@ void advanceProductJump(Session& session,
   window.gameplayJumpVelocityMetersPerSecond = landed ? 0.0F : nextVelocity;
   // branch-gate: BG-1153
   if (landed) {
+    clearProductWallRunActiveProof(window, "wall_run_landed");
     window.gameplayJumpCoyoteSecondsRemaining = 0.0F;
     window.gameplayJumpHeld = false;
     window.gameplayJumpCutApplied = false;
@@ -1544,7 +1675,7 @@ void submitProductAirborneMove(Session& session,
   recordProductMovementProfile(window, sprinting);
 
   const Vec3 start = actor.transform.position;
-  const Vec3 finalPosition =
+  Vec3 finalPosition =
       start +
       manualFirstPersonMoveDelta(moveX,
                                  moveY,
@@ -1552,6 +1683,24 @@ void submitProductAirborneMove(Session& session,
                                  sprinting,
                                  window.gameplayMovementTuning,
                                  window.gameplayMovementTuning.airControlMultiplier);
+  // branch-gate: BG-1157
+  if (window.gameplayWallRunActive) {
+    Vec3 wallRunDirection;
+    // branch-gate: BG-1157
+    if (wallRunTangentDirection(window, moveX, moveY, wallRunDirection)) {
+      const float speed =
+          manualFirstPersonMaxSpeedMetersPerSecond(window.gameplayMovementTuning,
+                                                   sprinting) *
+          std::clamp(window.gameplayMovementTuning.wallRunSpeedMultiplier,
+                     0.25F,
+                     2.0F);
+      finalPosition = start + wallRunDirection *
+                                  (speed *
+                                   window.gameplayMovementTuning.inputStepSeconds);
+    } else {
+      clearProductWallRunActiveProof(window, "wall_run_input_away");
+    }
+  }
   // branch-gate: BG-1161
   if (!setProductPlayerPosition(session, actor.id, finalPosition)) {
     window.gameplayMovementBlocked = true;
@@ -2021,6 +2170,10 @@ void applyProductGameplayActions(Session& session,
   advanceProductDashCooldown(window);
   // branch-gate: BG-1153
   if (jumpPressed) {
+    // branch-gate: BG-1157
+    if (window.gameplayWallRunActive) {
+      clearProductWallRunActiveProof(window, "wall_run_exit_jump");
+    }
     submitProductJump(session, window, source);
   } else {
     // branch-gate: BG-1153
@@ -2034,6 +2187,12 @@ void applyProductGameplayActions(Session& session,
     submitProductDash(session, window, moveX, moveY, source, collisionSurfaces);
     updateProductMovementStateProof(window);
     updateProductWallRunCandidateProof(session, window, collisionSurfaces);
+    updateProductWallRunActiveProof(window, moveX, moveY);
+    // branch-gate: BG-1157
+    if (jumpPressed) {
+      clearProductWallRunActiveProof(window, "wall_run_exit_jump");
+    }
+    updateProductMovementStateProof(window);
     return;
   }
   if (moveX != 0.0F || moveY != 0.0F || horizontalVelocityActive(window)) {
@@ -2062,6 +2221,12 @@ void applyProductGameplayActions(Session& session,
   }
   updateProductMovementStateProof(window);
   updateProductWallRunCandidateProof(session, window, collisionSurfaces);
+  updateProductWallRunActiveProof(window, moveX, moveY);
+  // branch-gate: BG-1157
+  if (jumpPressed) {
+    clearProductWallRunActiveProof(window, "wall_run_exit_jump");
+  }
+  updateProductMovementStateProof(window);
 }
 
 }  // namespace iggy3d
