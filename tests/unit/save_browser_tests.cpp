@@ -45,10 +45,8 @@ bool emptyBrowserBuildsEmptySelector() {
   const iggy3d::SaveSlotList slots;
   const iggy3d::SaveBrowserModel model = iggy3d::buildSaveBrowserModel(slots, "");
   return expect(model.selectedSaveId == "none", "empty selected id") &&
-         expect(model.selectorResult.selectedId == "none", "empty selector id") &&
-         expect(model.selectorItems.empty(), "empty selector items") &&
-         expect(!model.loadEnabled, "empty load disabled") &&
-         expect(!model.deleteEnabled, "empty delete disabled") &&
+         expect(model.ring.empty, "empty ring") &&
+         expect(model.ring.items.empty(), "empty ring items") &&
          expect(model.status == "save_browser_empty", "empty status");
 }
 
@@ -58,18 +56,11 @@ bool compatibleSaveMapsToSelectorAndEnablesActions() {
   slots.compatibleCount = 1;
   const iggy3d::SaveBrowserModel model =
       iggy3d::buildSaveBrowserModel(slots, "save_001");
-  return expect(model.selectorItems.size() == 1U, "selector item count") &&
-         expect(model.selectorItems.front().id == "save_001", "selector item id") &&
-         expect(model.selectorItems.front().kind == "save", "selector item kind") &&
-         expect(model.selectorItems.front().title == "Title save_001",
-                "selector title") &&
-         expect(!model.selectorItems.front().snapshotRef.empty(), "selector snapshot") &&
-         expect(model.selectorItems.front().timestamp == "file_time_100",
-                "selector timestamp") &&
-         expect(model.selectorItems.front().enabled, "selector enabled") &&
-         expect(model.selectorResult.selectedId == "save_001", "selected id") &&
-         expect(model.loadEnabled, "load enabled") &&
-         expect(model.deleteEnabled, "delete enabled") &&
+  return expect(model.ring.items.size() == 1U, "ring item count") &&
+         expect(model.ring.selectedSlotId == "save_001", "ring selected id") &&
+         expect(model.ring.items.front().title == "Title save_001",
+                "ring item title") &&
+         expect(model.ring.selectedEnabled, "ring selected enabled") &&
          expect(model.selectedTitle == "Title save_001", "selected title") &&
          expect(model.selectedTimestamp == "file_time_100", "selected timestamp") &&
          expect(model.selectedSnapshotAvailable, "selected snapshot available") &&
@@ -184,12 +175,10 @@ bool corruptSaveMapsDisabledReasonAndCannotLoad() {
   slots.corruptCount = 1;
   const iggy3d::SaveBrowserModel model =
       iggy3d::buildSaveBrowserModel(slots, "save_bad");
-  return expect(model.selectorItems.size() == 1U, "corrupt selector item count") &&
-         expect(!model.selectorItems.front().enabled, "corrupt selector disabled") &&
-         expect(model.selectorItems.front().disabledReason == "save_file_decode_failed",
+  return expect(model.ring.items.size() == 1U, "corrupt ring item count") &&
+         expect(!model.ring.selectedEnabled, "corrupt ring selected disabled") &&
+         expect(model.ring.selectedStatus == "save_file_decode_failed",
                 "corrupt disabled reason") &&
-         expect(!model.loadEnabled, "corrupt load disabled") &&
-         expect(model.deleteEnabled, "corrupt delete preserved") &&
          expect(model.selectedTitle == "Title save_bad", "corrupt selected title") &&
          expect(model.selectedSnapshotFallback, "corrupt snapshot fallback") &&
          expect(model.selectedSnapshotStatus == "missing", "corrupt snapshot status") &&
@@ -202,11 +191,9 @@ bool missingSelectionReportsMissing() {
   slots.slots.push_back(compatibleSlot("save_001"));
   const iggy3d::SaveBrowserModel model =
       iggy3d::buildSaveBrowserModel(slots, "save_missing");
-  return expect(model.selectorItems.size() == 1U, "missing selector item count") &&
-         expect(model.selectorResult.selectedId == "save_001",
-                "missing selector falls back to first") &&
-         expect(!model.loadEnabled, "missing load disabled") &&
-         expect(!model.deleteEnabled, "missing delete disabled") &&
+  return expect(model.ring.items.size() == 1U, "missing ring item count") &&
+         expect(model.ring.selectedSlotId == "save_001",
+                "missing ring falls back to first") &&
          expect(model.selectedTitle == "none", "missing selected title") &&
          expect(model.status == "save_browser_selection_missing", "missing status");
 }

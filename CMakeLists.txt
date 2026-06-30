@@ -33,7 +33,6 @@ target_sources(iggy3d
     src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp
     src/app/iggy3d/world/DefaultWorldTemplate.cpp
     src/app/iggy3d/room_editor/EditableRoomToAuthoredRoom.cpp
-    src/app/iggy3d/menu/FrontendActionExecutor.cpp
     src/app/iggy3d/view/OpeningMenuView.cpp
     src/app/iggy3d/gameplay/ActiveRoomCollision.cpp
     src/app/iggy3d/gameplay/ActiveRoomState.cpp
@@ -109,11 +108,9 @@ target_sources(iggy3d
     src/app/frontend/FrontendState.cpp
     src/app/frontend/FrontendRoute.cpp
     src/app/frontend/MenuInput.cpp
-    src/app/frontend/ConfirmDialog.cpp
     src/app/frontend/PauseMenu.cpp
     src/app/frontend/SaveBrowser.cpp
     src/app/frontend/StarterScreen.cpp
-    src/app/frontend/VerticalFadedSelector.cpp
     src/app/frontend/WorldSetupModel.cpp
     src/app/frontend/SaveSlotModel.cpp
     src/app/frontend/SettingsMenu.cpp
