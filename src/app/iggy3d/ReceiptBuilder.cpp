@@ -161,93 +161,25 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
       "gameplay_movement_tuning_selected_field",
       productGameplayMovementTuningFieldName(
           window.gameplayMovementTuningSelectedField));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_walk_speed_mps",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.walkSpeedMetersPerSecond));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_sprint_speed_mps",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.sprintSpeedMetersPerSecond));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_ground_acceleration_mps2",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning
-                             .groundAccelerationMetersPerSecondSquared));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_ground_deceleration_mps2",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning
-                             .groundDecelerationMetersPerSecondSquared));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_air_control",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.airControlMultiplier));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_jump_impulse_mps",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.jumpImpulseMetersPerSecond));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_gravity_mps2",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.gravityMetersPerSecondSquared));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_coyote_time_s",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.coyoteTimeSeconds));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_jump_buffer_s",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.jumpBufferSeconds));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_jump_cut_multiplier",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.jumpCutMultiplier));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_fall_gravity_multiplier",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.fallGravityMultiplier));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_look_sensitivity",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.lookSensitivity));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_invert_look",
-                     productGameplayMovementTuningInvertLook(
-                         window.gameplayMovementTuning));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_dash_speed_mps",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.dashSpeedMetersPerSecond));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_dash_duration_s",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.dashDurationSeconds));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_dash_cooldown_s",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.dashCooldownSeconds));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_wall_run_min_speed_mps",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning
-                             .wallRunMinSpeedMetersPerSecond));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_wall_run_max_normal_y",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.wallRunMaxWallNormalY));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_wall_run_duration_s",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.wallRunDurationSeconds));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_wall_run_gravity_multiplier",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.wallRunGravityMultiplier));
-  appendReceiptField(receipt,
-                     "gameplay_movement_tuning_wall_run_speed_multiplier",
-                     floatReceiptValue(
-                         window.gameplayMovementTuning.wallRunSpeedMultiplier));
+  for (const ProductGameplayMovementTuningFieldDescriptor& descriptor :
+       kProductGameplayMovementTuningFields) {
+    const std::string receiptKey =
+        "gameplay_movement_tuning_" + std::string{descriptor.name};
+    // branch-gate: BG-1208
+    if (descriptor.kind == ProductGameplayMovementTuningFieldKind::Toggle) {
+      appendReceiptField(
+          receipt,
+          receiptKey,
+          productGameplayMovementTuningFieldValue(
+              window.gameplayMovementTuning, descriptor.field) >= 0.5F);
+    } else {
+      appendReceiptField(
+          receipt,
+          receiptKey,
+          floatReceiptValue(productGameplayMovementTuningFieldValue(
+              window.gameplayMovementTuning, descriptor.field)));
+    }
+  }
   appendReceiptField(receipt, "window_requested", window.requested);
   appendReceiptField(receipt, "window_shell", window.sdlAvailable ? "sdl3" : "unavailable");
   appendReceiptField(receipt, "window_created", window.created);

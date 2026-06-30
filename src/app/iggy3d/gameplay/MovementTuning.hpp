@@ -48,28 +48,93 @@ enum class ProductGameplayMovementState : std::uint8_t {
   BlockedOrSliding,
 };
 
+struct ProductGameplayMovementStateDescriptor {
+  ProductGameplayMovementState state = ProductGameplayMovementState::IdleGrounded;
+  std::string_view name = "idle_grounded";
+  std::string_view hudLabel = "idle grounded";
+};
+
+inline constexpr std::array<ProductGameplayMovementStateDescriptor, 8U>
+    kProductGameplayMovementStateDescriptors{{
+        {ProductGameplayMovementState::IdleGrounded,
+         "idle_grounded",
+         "idle grounded"},
+        {ProductGameplayMovementState::MovingGrounded,
+         "moving_grounded",
+         "moving grounded"},
+        {ProductGameplayMovementState::Jumping, "jumping", "jumping"},
+        {ProductGameplayMovementState::Rising, "rising", "rising"},
+        {ProductGameplayMovementState::Falling, "falling", "falling"},
+        {ProductGameplayMovementState::AirborneControl,
+         "airborne_control",
+         "airborne control"},
+        {ProductGameplayMovementState::WallRunning,
+         "wall_running",
+         "wall running"},
+        {ProductGameplayMovementState::BlockedOrSliding,
+         "blocked_or_sliding",
+         "blocked or sliding"},
+    }};
+
+constexpr std::size_t productGameplayMovementStateDescriptorCount() {
+  return kProductGameplayMovementStateDescriptors.size();
+}
+
+constexpr std::size_t productGameplayMovementStateIndex(
+    ProductGameplayMovementState state) {
+  const std::size_t index = static_cast<std::size_t>(state);
+  return index < productGameplayMovementStateDescriptorCount() ? index : 0U;  // branch-gate: BG-1161
+}
+
+constexpr const ProductGameplayMovementStateDescriptor&
+productGameplayMovementStateDescriptor(ProductGameplayMovementState state) {
+  return kProductGameplayMovementStateDescriptors[
+      productGameplayMovementStateIndex(state)];
+}
+
 constexpr std::string_view productGameplayMovementStateName(
     ProductGameplayMovementState state) {
-  // branch-gate: BG-1161
-  switch (state) {
-    case ProductGameplayMovementState::IdleGrounded:
-      return "idle_grounded";
-    case ProductGameplayMovementState::MovingGrounded:
-      return "moving_grounded";
-    case ProductGameplayMovementState::Jumping:
-      return "jumping";
-    case ProductGameplayMovementState::Rising:
-      return "rising";
-    case ProductGameplayMovementState::Falling:
-      return "falling";
-    case ProductGameplayMovementState::AirborneControl:
-      return "airborne_control";
-    case ProductGameplayMovementState::WallRunning:
-      return "wall_running";
-    case ProductGameplayMovementState::BlockedOrSliding:
-      return "blocked_or_sliding";
+  return productGameplayMovementStateDescriptor(state).name;
+}
+
+constexpr std::string_view productGameplayMovementStateHudLabel(
+    ProductGameplayMovementState state) {
+  return productGameplayMovementStateDescriptor(state).hudLabel;
+}
+
+struct ProductWallRunStatusDescriptor {
+  std::string_view key = "wall_run_inactive";
+  std::string_view hudLabel = "wall run inactive";
+};
+
+inline constexpr std::array<ProductWallRunStatusDescriptor, 14U>
+    kProductWallRunStatusDescriptors{{
+        {"wall_run_active", "wall run active"},
+        {"wall_run_started", "wall run started"},
+        {"wall_run_expired", "wall run expired"},
+        {"wall_run_input_stopped", "wall run input stopped"},
+        {"wall_run_input_away", "wall run input away"},
+        {"wall_run_inactive", "wall run inactive"},
+        {"wall_run_landed", "wall run landed"},
+        {"wall_run_exit_jump", "wall run exit jump"},
+        {"wall_run_grounded", "wall run grounded"},
+        {"wall_run_low_speed", "wall run low speed"},
+        {"wall_run_no_surfaces", "wall run no surfaces"},
+        {"wall_run_missing_player", "wall run missing player"},
+        {"wall_run_no_wall_contact", "wall run no wall contact"},
+        {"wall_run_not_along_wall", "wall run not along wall"},
+    }};
+
+constexpr const ProductWallRunStatusDescriptor* findProductWallRunStatusDescriptor(
+    std::string_view key) {
+  for (const ProductWallRunStatusDescriptor& descriptor :
+       kProductWallRunStatusDescriptors) {
+    // branch-gate: BG-1157
+    if (descriptor.key == key) {
+      return &descriptor;
+    }
   }
-  return "unknown";
+  return nullptr;
 }
 
 struct ProductGameplayMovementTuning {

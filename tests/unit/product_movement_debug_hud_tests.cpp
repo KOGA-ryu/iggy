@@ -1,6 +1,7 @@
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 
 #include <iostream>
+#include <string>
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
 
@@ -51,10 +52,73 @@ iggy3d::ProductAppWindowState movedWindow() {
   return window;
 }
 
+std::size_t receiptFieldCount(const iggy3d::RenderReceipt& receipt,
+                              const std::string& key) {
+  std::size_t count = 0U;
+  for (const iggy3d::RenderReceiptField& field : receipt.fields) {
+    if (field.key == key) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+bool receiptHasSingleField(const iggy3d::RenderReceipt& receipt,
+                           const std::string& key,
+                           const char* value) {
+  return receiptFieldCount(receipt, key) == 1U &&
+         iggy3d::hasReceiptField(receipt, key, value);
+}
+
+bool movementTuningReceiptRowsUseDescriptorTable() {
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendState frontend;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductAppWindowState window;
+  iggy3d::ProductSaveBridgeResult saves;
+  window.gameplayMovementTuning.walkSpeedMetersPerSecond = 4.25F;
+  window.gameplayMovementTuning.invertLookEnabled = 1.0F;
+  window.gameplayMovementTuning.wallRunDurationSeconds = 1.25F;
+  window.gameplayMovementTuningSelectedField =
+      iggy3d::ProductGameplayMovementTuningField::WallRunDuration;
+
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options, world, frontend, settings, window, saves);
+  bool ok =
+      expect(receiptHasSingleField(receipt,
+                                   "gameplay_movement_tuning_selected_field",
+                                   "wall_run_duration_s"),
+             "receipt selected tuning field") &&
+      expect(receiptHasSingleField(receipt,
+                                   "gameplay_movement_tuning_walk_speed_mps",
+                                   "4.250"),
+             "receipt walk speed tuning field") &&
+      expect(receiptHasSingleField(receipt,
+                                   "gameplay_movement_tuning_invert_look",
+                                   "true"),
+             "receipt invert tuning field") &&
+      expect(receiptHasSingleField(receipt,
+                                   "gameplay_movement_tuning_wall_run_duration_s",
+                                   "1.250"),
+             "receipt wall-run duration tuning field");
+
+  for (const iggy3d::ProductGameplayMovementTuningFieldDescriptor& descriptor :
+       iggy3d::kProductGameplayMovementTuningFields) {
+    const std::string key =
+        "gameplay_movement_tuning_" + std::string{descriptor.name};
+    ok = expect(receiptFieldCount(receipt, key) == 1U,
+                "receipt tuning descriptor key emitted once") && ok;
+  }
+  return ok;
+}
+
 }  // namespace
 
 int main() {
   bool ok = true;
+
+  ok &= movementTuningReceiptRowsUseDescriptorTable();
 
   iggy3d::ProductAppWindowState inactive = movedWindow();
   inactive.gameplayActive = false;
@@ -138,6 +202,9 @@ int main() {
                        "WALLRUN",
                        "active left wall r0 c1 actor blocker wall run active t0.500 h3.300"),
                "blocked wall-run display");
+  ok &= expect(iggy3d::findProductWallRunStatusDescriptor(
+                   blocked.gameplayWallRunReasonCode) != nullptr,
+               "blocked wall-run status descriptor");
   ok &= expect(hasLine(blockedHud, "STATUS", "blocked"), "blocked status line");
   ok &= expect(hasLine(blockedHud, "REASON", "blocked by collision"),
                "blocked reason display");

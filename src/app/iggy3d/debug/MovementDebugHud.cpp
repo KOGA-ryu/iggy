@@ -39,9 +39,20 @@ std::string finalPositionDisplay(const ProductAppWindowState& window) {
 }
 
 std::string movementStateDisplay(const ProductAppWindowState& window) {
-  return codeDisplay(productGameplayMovementStateName(window.gameplayMovementState)) +
+  return std::string{productGameplayMovementStateHudLabel(
+             window.gameplayMovementState)} +
          " h" + fixed3(window.gameplayMovementHorizontalSpeedMetersPerSecond) +
          " v" + fixed3(window.gameplayJumpVelocityMetersPerSecond);
+}
+
+std::string wallRunStatusDisplay(std::string_view status) {
+  const ProductWallRunStatusDescriptor* descriptor =
+      findProductWallRunStatusDescriptor(status);
+  // branch-gate: BG-1157
+  if (descriptor != nullptr) {
+    return std::string{descriptor->hudLabel};
+  }
+  return codeDisplay(status);
 }
 
 std::string wallRunDisplay(const ProductAppWindowState& window) {
@@ -50,7 +61,7 @@ std::string wallRunDisplay(const ProductAppWindowState& window) {
                                        : std::string{"cand "}) +
          codeDisplay(window.gameplayWallRunSide) +
          " " + codeDisplay(window.gameplayWallRunSurfaceId) +
-         " " + codeDisplay(window.gameplayWallRunReasonCode) +
+         " " + wallRunStatusDisplay(window.gameplayWallRunReasonCode) +
          " t" + fixed3(window.gameplayWallRunRemainingSeconds) +
          " h" + fixed3(window.gameplayWallRunApproachSpeedMetersPerSecond);
 }

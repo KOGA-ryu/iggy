@@ -2,6 +2,7 @@
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
 
 #include <iostream>
+#include <set>
 #include <string_view>
 
 namespace {
@@ -140,6 +141,86 @@ bool movementTuningFieldDescriptorsAreStable() {
          expect(invert == 1.0F, "invert tuning toggles on") &&
          expect(iggy3d::productGameplayMovementTuningInvertLook(tuning),
                 "invert tuning bool helper");
+}
+
+bool movementTuningFieldDescriptorKeysAreUnique() {
+  std::set<std::string_view> names;
+  std::set<std::string_view> labels;
+  for (const iggy3d::ProductGameplayMovementTuningFieldDescriptor& descriptor :
+       iggy3d::kProductGameplayMovementTuningFields) {
+    const bool insertedName = names.insert(descriptor.name).second;
+    const bool insertedLabel = labels.insert(descriptor.label).second;
+    const float defaultValue = iggy3d::productGameplayMovementTuningFieldValue(
+        iggy3d::productGameplayMovementTuning(), descriptor.field);
+    if (!expect(insertedName, "movement tuning field name unique") ||
+        !expect(insertedLabel, "movement tuning field label unique") ||
+        !expect(!descriptor.name.empty(), "movement tuning field name nonempty") ||
+        !expect(!descriptor.label.empty(), "movement tuning field label nonempty") ||
+        !expect(defaultValue >= descriptor.minValue &&
+                    defaultValue <= descriptor.maxValue,
+                "movement tuning default within descriptor range")) {
+      return false;
+    }
+  }
+  return expect(names.size() == iggy3d::productGameplayMovementTuningFieldCount(),
+                "movement tuning field names cover table");
+}
+
+bool movementStateDescriptorsAreStable() {
+  std::set<std::string_view> names;
+  std::set<std::string_view> labels;
+  for (const iggy3d::ProductGameplayMovementStateDescriptor& descriptor :
+       iggy3d::kProductGameplayMovementStateDescriptors) {
+    const bool insertedName = names.insert(descriptor.name).second;
+    const bool insertedLabel = labels.insert(descriptor.hudLabel).second;
+    if (!expect(insertedName, "movement state name unique") ||
+        !expect(insertedLabel, "movement state label unique") ||
+        !expect(!descriptor.name.empty(), "movement state name nonempty") ||
+        !expect(!descriptor.hudLabel.empty(), "movement state label nonempty") ||
+        !expect(iggy3d::productGameplayMovementStateName(descriptor.state) ==
+                    descriptor.name,
+                "movement state name descriptor lookup") ||
+        !expect(iggy3d::productGameplayMovementStateHudLabel(descriptor.state) ==
+                    descriptor.hudLabel,
+                "movement state label descriptor lookup")) {
+      return false;
+    }
+  }
+  return expect(names.size() ==
+                    iggy3d::productGameplayMovementStateDescriptorCount(),
+                "movement state descriptors cover table") &&
+         expect(iggy3d::productGameplayMovementStateName(
+                    iggy3d::ProductGameplayMovementState::WallRunning) ==
+                    "wall_running",
+                "wall running state name stable") &&
+         expect(iggy3d::productGameplayMovementStateHudLabel(
+                    iggy3d::ProductGameplayMovementState::BlockedOrSliding) ==
+                    "blocked or sliding",
+                "blocked state hud label stable");
+}
+
+bool wallRunStatusDescriptorsAreStable() {
+  std::set<std::string_view> keys;
+  for (const iggy3d::ProductWallRunStatusDescriptor& descriptor :
+       iggy3d::kProductWallRunStatusDescriptors) {
+    const bool insertedKey = keys.insert(descriptor.key).second;
+    if (!expect(insertedKey, "wall-run status key unique") ||
+        !expect(!descriptor.key.empty(), "wall-run status key nonempty") ||
+        !expect(!descriptor.hudLabel.empty(), "wall-run status label nonempty") ||
+        !expect(iggy3d::findProductWallRunStatusDescriptor(descriptor.key) ==
+                    &descriptor,
+                "wall-run status descriptor lookup")) {
+      return false;
+    }
+  }
+  const iggy3d::ProductWallRunStatusDescriptor* active =
+      iggy3d::findProductWallRunStatusDescriptor("wall_run_active");
+  const iggy3d::ProductWallRunStatusDescriptor* unknown =
+      iggy3d::findProductWallRunStatusDescriptor("wall_run_future_status");
+  return expect(active != nullptr, "wall-run active descriptor present") &&
+         expect(active->hudLabel == "wall run active",
+                "wall-run active label stable") &&
+         expect(unknown == nullptr, "unknown wall-run status not mapped");
 }
 
 bool settingsTabNavigationClamps() {
@@ -301,6 +382,9 @@ int main() {
                   defaultsArePacketDefaults() && restoreAndApplyStayFrontendOnly() &&
                   settingsRowsHaveUsefulState() && settingsTabNavigationClamps() &&
                   movementTuningFieldDescriptorsAreStable() &&
+                  movementTuningFieldDescriptorKeysAreUnique() &&
+                  movementStateDescriptorsAreStable() &&
+                  wallRunStatusDescriptorsAreStable() &&
                   settingsApplyRoutesArePure() &&
                   settingsRestoreAndBackRoutesArePure() &&
                   invalidAndUnsupportedSettingsRoutesAreIgnored();
