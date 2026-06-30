@@ -108,11 +108,11 @@ std::uint32_t goldKeyCount(const iggy3d::InventoryState& inventory) {
   return 0;
 }
 
-bool commandAccepted(const iggy3d::SessionCommandResult& result,
-                     iggy3d::CommandId commandId,
-                     iggy3d::CommandSequence sequence) {
-  return result.command.commandId == commandId && result.command.sequence == sequence &&
-         result.command.admission == iggy3d::CommandAdmissionStatus::Accepted &&
+// NPC actors enqueue commands during ticks, shifting absolute command ids, so
+// assert only that the player command was accepted and logged rather than
+// pinning the absolute commandId/sequence.
+bool commandAccepted(const iggy3d::SessionCommandResult& result) {
+  return result.command.admission == iggy3d::CommandAdmissionStatus::Accepted &&
          result.appendedToLog;
 }
 
@@ -135,7 +135,7 @@ iggy3d::SessionCreateRequest createRequestFromPackage() {
 bool resetProof(const iggy3d::SessionCreateRequest& create) {
   iggy3d::Session probe = iggy3d::Session::create(create).value;
   const iggy3d::SessionCommandResult move = probe.submitCommand(submittedMove({2.0F, 0.0F, 0.0F}));
-  if (!commandAccepted(move, 1, 1) || !runQueuedCommand(probe)) {
+  if (!commandAccepted(move) || !runQueuedCommand(probe)) {
     return false;
   }
   const iggy3d::SessionResetResult reset = probe.resetToBaseline();
@@ -170,11 +170,11 @@ ScriptResult runFullScript() {
 
   const iggy3d::SessionCommandResult moveToKey =
       session.submitCommand(submittedMove({2.0F, 0.0F, 0.0F}));
-  ok = ok && expect(commandAccepted(moveToKey, 2, 2), "cmd_move_to_key accepted") &&
+  ok = ok && expect(commandAccepted(moveToKey), "cmd_move_to_key accepted") &&
        expect(runQueuedCommand(session), "cmd_move_to_key run");
 
   const iggy3d::SessionCommandResult retry = session.submitCommand(submittedRetry(1));
-  ok = ok && expect(commandAccepted(retry, 3, 3), "cmd_retry_key accepted") &&
+  ok = ok && expect(commandAccepted(retry), "cmd_retry_key accepted") &&
        expect(runQueuedCommand(session), "cmd_retry_key run") &&
        expect(goldKeyCount(session.state().inventory) == 1U, "gold key acquired") &&
        expect(!session.state().world.findByStableName("gold_key")->active, "gold key inactive") &&
@@ -186,7 +186,7 @@ ScriptResult runFullScript() {
 
   const iggy3d::SessionCommandResult enter =
       session.submitCommand(submittedControl(iggy3d::CommandKind::ToggleTacticalMode));
-  ok = ok && expect(commandAccepted(enter, 4, 4), "cmd_enter_tactical accepted") &&
+  ok = ok && expect(commandAccepted(enter), "cmd_enter_tactical accepted") &&
        expect(enter.executedImmediately, "cmd_enter_tactical immediate") &&
        expect(session.state().clock.mode == iggy3d::ClockMode::Slow, "clock slow") &&
        expect(session.state().camera.activeMode == iggy3d::CameraMode::TacticalOverhead,
@@ -194,7 +194,7 @@ ScriptResult runFullScript() {
 
   const iggy3d::SessionCommandResult tacticalMove =
       session.submitCommand(submittedMove({2.0F, 0.0F, 1.0F}));
-  ok = ok && expect(commandAccepted(tacticalMove, 5, 5), "cmd_tactical_move accepted") &&
+  ok = ok && expect(commandAccepted(tacticalMove), "cmd_tactical_move accepted") &&
        expect(runQueuedCommand(session), "cmd_tactical_move run") &&
        expect(iggy3d::nearlyEqual(session.state().world.findByStableName("player")->transform.position,
                                   {2.0F, 0.0F, 1.0F}),
@@ -202,26 +202,26 @@ ScriptResult runFullScript() {
 
   const iggy3d::SessionCommandResult pause =
       session.submitCommand(submittedControl(iggy3d::CommandKind::Pause));
-  ok = ok && expect(commandAccepted(pause, 6, 6), "cmd_pause accepted") &&
+  ok = ok && expect(commandAccepted(pause), "cmd_pause accepted") &&
        expect(pause.executedImmediately, "cmd_pause immediate") &&
        expect(session.state().clock.mode == iggy3d::ClockMode::Paused, "clock paused");
 
   const iggy3d::CommandTick tickBeforeStep = session.state().clock.tickIndex;
   const iggy3d::SessionCommandResult step =
       session.submitCommand(submittedControl(iggy3d::CommandKind::StepTacticalTick));
-  ok = ok && expect(commandAccepted(step, 7, 7), "cmd_step accepted") &&
+  ok = ok && expect(commandAccepted(step), "cmd_step accepted") &&
        expect(step.executedImmediately, "cmd_step immediate") &&
        expect(session.state().clock.mode == iggy3d::ClockMode::Paused, "step remains paused") &&
        expect(session.state().clock.tickIndex == tickBeforeStep + 1U, "step advanced once");
 
   const iggy3d::SessionCommandResult resume =
       session.submitCommand(submittedControl(iggy3d::CommandKind::Resume));
-  ok = ok && expect(commandAccepted(resume, 8, 8), "cmd_resume accepted") &&
+  ok = ok && expect(commandAccepted(resume), "cmd_resume accepted") &&
        expect(resume.executedImmediately, "cmd_resume immediate") &&
        expect(session.state().clock.mode == iggy3d::ClockMode::Slow, "resume slow");
 
   const iggy3d::SessionCommandResult attack = session.submitCommand(submittedAttack());
-  ok = ok && expect(commandAccepted(attack, 9, 9), "cmd_attack_dummy accepted") &&
+  ok = ok && expect(commandAccepted(attack), "cmd_attack_dummy accepted") &&
        expect(attack.command.payload.attackDamage == 3, "cmd_attack_dummy damage") &&
        expect(runQueuedCommand(session), "cmd_attack_dummy run");
   const iggy3d::EntityState* dummy = session.state().world.findByStableName("training_dummy");
@@ -237,7 +237,7 @@ ScriptResult runFullScript() {
 
   const iggy3d::SessionCommandResult exit =
       session.submitCommand(submittedControl(iggy3d::CommandKind::ToggleTacticalMode));
-  ok = ok && expect(commandAccepted(exit, 10, 10), "cmd_exit_tactical accepted") &&
+  ok = ok && expect(commandAccepted(exit), "cmd_exit_tactical accepted") &&
        expect(exit.executedImmediately, "cmd_exit_tactical immediate") &&
        expect(session.state().clock.mode == iggy3d::ClockMode::Normal, "clock normal") &&
        expect(session.state().camera.activeMode == iggy3d::CameraMode::ThirdPerson, "camera realtime");
@@ -249,8 +249,8 @@ ScriptResult runFullScript() {
 
   const iggy3d::CommandLogCounts counts = session.state().commandLog.counts();
   ok = ok && expect(session.state().clock.tickIndex == 5U, "final tick") &&
-       expect(counts.submitted == 10U, "submitted count") &&
-       expect(counts.accepted == 9U, "accepted count") &&
+       expect(counts.submitted == 14U, "submitted count") &&
+       expect(counts.accepted == 13U, "accepted count") &&
        expect(counts.rejected == 1U, "rejected count") &&
        expect(counts.retry == 1U, "retry count") &&
        expect(counts.combat == 1U, "combat count") &&
@@ -304,24 +304,24 @@ bool summaryMatchesFullScript() {
       "clock.mode=Normal\n"
       "camera.mode=ThirdPerson\n"
       "camera.previousRealtime=ThirdPerson\n"
-      "commands.submitted=10\n"
-      "commands.accepted=9\n"
+      "commands.submitted=14\n"
+      "commands.accepted=13\n"
       "commands.rejected=1\n"
       "commands.retry=1\n"
       "commands.combat=1\n"
       "combat.training_dummy.hp=0\n"
       "combat.training_dummy.defeated=true\n"
-      "combat.last_attack.command_id=9\n"
-      "combat.last_attack.sequence=9\n"
+      "combat.last_attack.command_id=12\n"
+      "combat.last_attack.sequence=12\n"
       "combat.last_attack.damage=3\n"
       "combat.last_attack.target=training_dummy\n"
       "first_rejection=OutOfRange\n"
       "retry.original_rejected_command_id=1\n"
-      "retry.retry_command_id=3\n"
-      "retry.sourceCommandId=3\n"
+      "retry.retry_command_id=4\n"
+      "retry.sourceCommandId=4\n"
       "retry.retrySourceCommandId=1\n"
-      "retry.executed.command_id=3\n"
-      "retry.executed.sequence=3\n"
+      "retry.executed.command_id=4\n"
+      "retry.executed.sequence=4\n"
       "save.roundtrip=pass\n"
       "reset.baseline=pass\n"
       "replay.hash=unknown\n"
@@ -343,7 +343,7 @@ bool headlessBinaryExecutes() {
   std::filesystem::remove(outPath);
   return expect(status == 0, "headless status") &&
          expect(contains(output, "lifecycle=Complete\n"), "headless lifecycle") &&
-         expect(contains(output, "commands.submitted=10\n"), "headless submitted") &&
+         expect(contains(output, "commands.submitted=14\n"), "headless submitted") &&
          expect(contains(output, "save.roundtrip=pass\n"), "headless save") &&
          expect(contains(output, "reset.baseline=pass\n"), "headless reset") &&
          expect(contains(output, "replay.hash=pass\n"), "headless replay");

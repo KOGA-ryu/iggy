@@ -189,16 +189,21 @@ int main() {
                               "35") &&
       iggy3d::smoke::hasField(scriptedFields,
                               "product_vulkan_room_vertex_count",
-                              "2040") &&
+                              "1924") &&
       iggy3d::smoke::hasField(scriptedFields,
                               "product_vulkan_room_index_count",
-                              "18360") &&
+                              "17292") &&
       iggy3d::smoke::hasField(scriptedFields,
                               "product_vulkan_room_draw_count",
-                              "255") &&
+                              "241") &&
       iggy3d::smoke::hasField(scriptedFields,
+                              // Floors render (product_draw_floor_tile_count=15)
+                              // but are now batched into a single Vulkan draw
+                              // call (mesh batching optimization), so the
+                              // floor/vertex/index/draw counts above were
+                              // rebaselined from 15/2040/18360/255.
                               "product_vulkan_room_floor_draw_count",
-                              "15") &&
+                              "1") &&
       iggy3d::smoke::hasField(scriptedFields,
                               "product_vulkan_room_wall_draw_count",
                               "20") &&

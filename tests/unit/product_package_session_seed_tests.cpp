@@ -459,6 +459,10 @@ bool explicitNpcAssignmentOverridesScenarioAiActors() {
 bool authoredScenarioAiActorsPreserveAndMapThroughSessionCreate() {
   iggy3d::PackageLoadResult package =
       loadPackageFixture("fixtures/demos/first_room/package.iggy3d.toml");
+  // first_room now authors training_dummy=passive in the fixture; clear and
+  // re-author here so this test exercises an explicit assignment independent of
+  // the fixture's contents (rather than duplicating the actor).
+  package.scenario.aiActors.clear();
   package.scenario.aiActors.push_back({"training_dummy", "passive"});
 
   const iggy3d::ProductPackageSessionSeedResult result =
@@ -492,6 +496,9 @@ bool authoredScenarioAiActorsPreserveAndMapThroughSessionCreate() {
 bool authoredScenarioGuardAnchorsPreserveAndMapThroughSessionCreate() {
   iggy3d::PackageLoadResult package =
       loadPackageFixture("fixtures/demos/first_room/package.iggy3d.toml");
+  // Drop the fixture's authored training_dummy=passive profile so this guard-
+  // anchor test exercises the default behavior profile it asserts below.
+  package.scenario.aiActors.clear();
   package.scenario.aiGuardAnchors.push_back(
       {"training_dummy", "tactical_marker_alpha", 6.0F, 1.0F, 0.25F});
 

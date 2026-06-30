@@ -129,7 +129,12 @@ int main() {
           "system.pause=true\n"
           "menu.down=true\n"
           "pause.execute=true\n"
-          "editor.input=editor.nudge_x_pos,editor.next_tool,editor.place\n"
+          // Place the wall in the cell the player moves into (one step +x and
+          // +z from the cursor origin) so the restored collision actually
+          // blocks the continued move. Two-step placement: the first place
+          // stages a preview, the second confirms/commits it.
+          "editor.input=editor.nudge_x_pos,editor.nudge_z_pos,editor.next_tool,"
+          "editor.place,editor.place\n"
           "menu.back=true\n"
           "pause.select=save_and_exit\n"
           "menu.confirm=true\n",

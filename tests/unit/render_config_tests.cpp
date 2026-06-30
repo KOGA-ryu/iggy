@@ -39,9 +39,21 @@ bool backendAndRequirementConflictsAreDiagnosed() {
   const iggy3d::RendererConfigResult validationResult =
       iggy3d::resolveRendererConfig(validation);
 
-  return expect(vulkanResult.outcome == iggy3d::RenderOutcome::Unsupported, "vulkan outcome") &&
-         expect(vulkanResult.reason.code == "renderer_config_backend_unavailable",
-                "vulkan unavailable") &&
+  // The Vulkan-request outcome depends on whether the backend was compiled in:
+  // a Vulkan-enabled build resolves to Ok (config resolution is compile-time,
+  // not a device probe); a Vulkan-less build reports the backend unavailable.
+#if defined(IGGY3D_ENABLE_VULKAN) && IGGY3D_ENABLE_VULKAN
+  const bool vulkanOutcomeOk =
+      expect(vulkanResult.outcome == iggy3d::RenderOutcome::Ok, "vulkan outcome") &&
+      expect(vulkanResult.reason.code == "renderer_config_ok", "vulkan available");
+#else
+  const bool vulkanOutcomeOk =
+      expect(vulkanResult.outcome == iggy3d::RenderOutcome::Unsupported, "vulkan outcome") &&
+      expect(vulkanResult.reason.code == "renderer_config_backend_unavailable",
+             "vulkan unavailable");
+#endif
+
+  return vulkanOutcomeOk &&
          expect(requiredNullResult.reason.code == "renderer_config_conflict",
                 "required null conflict") &&
          expect(validationResult.reason.code == "renderer_config_validation_without_vulkan",

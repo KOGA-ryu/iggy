@@ -72,6 +72,10 @@ faction_id = 2
 hit_points = 3
 max_hit_points = 3
 
+[[ai_actors]]
+actor = "training_dummy"
+behavior_profile_id = "passive"
+
 [[objectives]]
 id = "collect_gold_key"
 initial_status = "Active"

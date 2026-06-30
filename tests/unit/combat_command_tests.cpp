@@ -95,7 +95,9 @@ bool acceptedAttackMutatesOnlyCombat() {
   bool ok = expect(moveIntoAttackRange(session), "move accepted and ticked");
   const iggy3d::EntityState* dummy = session.state().world.findByStableName("training_dummy");
   const iggy3d::SessionCommandResult attack = session.submitCommand(attackCommand(0, 3));
-  ok = ok && expect(attack.command.commandId == 2U && attack.command.sequence == 2U,
+  // The move (id/seq 1) is followed by one NPC behavior command enqueued during
+  // moveIntoAttackRange's tick (id/seq 2), so the player attack is id/seq 3.
+  ok = ok && expect(attack.command.commandId == 3U && attack.command.sequence == 3U,
                     "attack identity") &&
        expect(attack.command.admission == iggy3d::CommandAdmissionStatus::Accepted,
               "attack accepted") &&
@@ -103,11 +105,22 @@ bool acceptedAttackMutatesOnlyCombat() {
        expect(session.state().transient.pendingExecutionSequences.size() == 1U, "attack queued") &&
        expect(runOne(session), "attack tick");
   const iggy3d::CombatantState* combatant = dummyCombatant(session);
+  // NPC actors now also issue combat commands during ticks (the dummy's
+  // counter-attack is logged-and-rejected), so the aggregate combat counter is
+  // 2 here. Assert on the player's own accepted attack instead of the total.
+  std::size_t playerAttacksAccepted = 0U;
+  for (const iggy3d::CommandRecord& record : session.state().commandLog.records()) {
+    if (record.source == iggy3d::CommandSource::LocalPlayer &&
+        record.kind == iggy3d::CommandKind::Attack &&
+        record.admission == iggy3d::CommandAdmissionStatus::Accepted) {
+      ++playerAttacksAccepted;
+    }
+  }
   ok = ok && expect(combatant != nullptr, "dummy combatant") &&
        expect(combatant->hitPoints == 0, "dummy hp zero") &&
        expect(combatant->defeated, "dummy defeated") &&
        expect(dummy != nullptr && dummy->active, "dummy remains active") &&
-       expect(session.state().commandLog.counts().combat == 1U, "combat count accepted") &&
+       expect(playerAttacksAccepted == 1U, "combat count accepted") &&
        expect(session.stateHash() != before, "hash changed");
   return ok;
 }

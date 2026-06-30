@@ -103,9 +103,20 @@ const iggy3d::CombatantState* combatantFor(const iggy3d::SessionState& state,
   return nullptr;
 }
 
-const iggy3d::CommandRecord* lastCommand(const iggy3d::Session& session) {
-  const auto& records = session.state().commandLog.records();
-  return records.empty() ? nullptr : &records.back();
+// NPC actors enqueue commands during ticks, so the player's cast is no longer
+// guaranteed to be the last log record; locate it by kind instead.
+template <typename Records>
+auto findLastCastAbility(const Records& records) -> decltype(&records.front()) {
+  for (auto it = records.rbegin(); it != records.rend(); ++it) {
+    if (it->kind == iggy3d::CommandKind::CastAbility) {
+      return &*it;
+    }
+  }
+  return nullptr;
+}
+
+const iggy3d::CommandRecord* playerCastCommand(const iggy3d::Session& session) {
+  return findLastCastAbility(session.state().commandLog.records());
 }
 
 iggy3d::SpatialSurfaceSet projectileWallSurfaceSet() {
@@ -311,18 +322,19 @@ bool saveLoadPreservesAbilityCommandPayload() {
       decoded.envelope, decoded.envelope.metadata.packageId, decoded.envelope.metadata.scenarioId};
   const iggy3d::LoadStateResult loadedResult =
       iggy3d::loadEncodedSaveIntoSession(loaded, saved.encodedSaveText, compatibility);
-  const iggy3d::CommandRecord* loadedCommand = lastCommand(loaded);
+  const iggy3d::CommandRecord* loadedCommand = playerCastCommand(loaded);
+  const auto* decodedCast = findLastCastAbility(decoded.envelope.commandLog.records);
 
   return expect(saved.status == iggy3d::SaveLoadStatus::Ok, "save ok") &&
          expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "decode ok") &&
-         expect(!decoded.envelope.commandLog.records.empty(), "decoded command exists") &&
-         expect(decoded.envelope.commandLog.records.back().kind == iggy3d::CommandKind::CastAbility,
+         expect(decodedCast != nullptr, "decoded command exists") &&
+         expect(decodedCast != nullptr && decodedCast->kind == iggy3d::CommandKind::CastAbility,
                 "decoded command kind") &&
-         expect(decoded.envelope.commandLog.records.back().ability ==
-                    iggy3d::CommandAbilityKind::ArcaneBolt,
+         expect(decodedCast != nullptr &&
+                    decodedCast->ability == iggy3d::CommandAbilityKind::ArcaneBolt,
                 "decoded ability id") &&
-         expect(iggy3d::nearlyEqual(decoded.envelope.commandLog.records.back().abilityDirection,
-                                    {0.0F, 0.0F, -1.0F}),
+         expect(decodedCast != nullptr &&
+                    iggy3d::nearlyEqual(decodedCast->abilityDirection, {0.0F, 0.0F, -1.0F}),
                 "decoded ability direction") &&
          expect(loadedResult.status == iggy3d::SaveLoadStatus::Ok, "load ok") &&
          expect(loadedCommand != nullptr, "loaded command exists") &&

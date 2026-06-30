@@ -151,7 +151,9 @@ int main() {
           "system.pause=true\n"
           "menu.down=true\n"
           "pause.execute=true\n"
-          "editor.input=editor.nudge_x_pos,editor.place\n"
+          // Two-step editor placement: the first place stages a preview, the
+          // second confirms/commits it.
+          "editor.input=editor.nudge_x_pos,editor.place,editor.place\n"
           "menu.back=true\n"
           "pause.select=save_and_exit\n"
           "menu.confirm=true\n",

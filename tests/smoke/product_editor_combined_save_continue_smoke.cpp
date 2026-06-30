@@ -154,7 +154,10 @@ int main() {
           "system.pause=true\n"
           "menu.down=true\n"
           "pause.execute=true\n"
-          "editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.place,editor.select_floor_tool,editor.place\n"
+          // Two-step editor placement: each place is staged then confirmed by a
+          // second place (tool changes between commits re-stage a fresh preview).
+          "editor.input=editor.nudge_x_pos,editor.select_wall_tool,editor.place,"
+          "editor.place,editor.select_floor_tool,editor.place,editor.place\n"
           "menu.back=true\n"
           "pause.select=save_and_exit\n"
           "menu.confirm=true\n",
