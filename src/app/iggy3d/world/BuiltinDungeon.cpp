@@ -298,10 +298,6 @@ std::size_t productBuiltinDungeonIndexForRoomId(std::string_view roomId) {
   return kNotFound;
 }
 
-std::string_view productBuiltinDungeonWorldTitle() {
-  return productDefaultBuiltinDungeon().worldTitle;
-}
-
 std::string_view productBuiltinDungeonRoomId() {
   return productDefaultBuiltinDungeon().roomId;
 }

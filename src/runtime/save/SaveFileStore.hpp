@@ -236,6 +236,5 @@ SaveFileDurableWriteResult writeSessionSaveFileDurably(
     const SaveFileDurableWriteRequest& request);
 SaveFileReadResult readSaveFile(const std::filesystem::path& path);
 bool deleteSaveFile(const std::filesystem::path& path);
-std::filesystem::path defaultSaveFileRoot();
 
 }  // namespace iggy3d

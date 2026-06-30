@@ -212,10 +212,6 @@ RenderReceipt DebugValidation::destroyMessenger(VkInstance instance) {
   return receipt;
 }
 
-const DebugValidationCounters& DebugValidation::counters() const {
-  return counters_;
-}
-
 #if defined(IGGY3D_HAS_VULKAN)
 void DebugValidation::recordMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
                                     VkDebugUtilsMessageTypeFlagsEXT messageType,

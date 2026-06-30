@@ -208,10 +208,6 @@ bool parseLayeredRows(AsciiRoomSource& source) {
 
 }  // namespace
 
-std::string_view asciiRoomDiagnosticSeverityError() {
-  return "error";
-}
-
 AsciiRoomSource parseAsciiRoomSource(std::string_view text,
                                      std::string sourceName) {
   AsciiRoomSource source;

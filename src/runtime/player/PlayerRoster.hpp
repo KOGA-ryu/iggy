@@ -32,8 +32,6 @@ public:
   std::size_t size() const;
 
   PlayerRosterResult addSlot(PlayerSlot slot);
-  PlayerRosterResult upsertSlot(PlayerSlot slot);
-  PlayerRosterResult rebindActor(PlayerSlotId slotId, EntityId actor);
 
   const PlayerSlot* findSlot(PlayerSlotId slotId) const;
   EntityId actorForSlot(PlayerSlotId slotId) const;

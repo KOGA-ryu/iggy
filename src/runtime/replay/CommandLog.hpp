@@ -90,8 +90,6 @@ public:
   void reset(CommandLogResetPolicy policy);
 
   CommandLogFindResult findById(CommandId commandId) const;
-  CommandLogFindResult findRejectedById(CommandId commandId) const;
-  const CommandRecord* latestRejected() const;
 
   CommandLogCounts counts() const;
 

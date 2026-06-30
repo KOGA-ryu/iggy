@@ -95,7 +95,6 @@ public:
   RenderReceipt destroyBuffer(VulkanBufferAllocation& buffer);
   RenderReceipt destroyImage(VulkanImageAllocation& image);
 
-  AllocationBudgetSnapshot budgetSnapshot() const;
   const std::vector<NamedAllocation>& allocations() const;
   bool ready() const;
 

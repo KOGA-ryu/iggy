@@ -140,38 +140,6 @@ const char* vkResultName(VkResult result) {
   }
 }
 
-const char* vulkanCallContextName(VulkanCallContext context) {
-  switch (context) {
-    case VulkanCallContext::InstanceCreate:
-      return "instance_create";
-    case VulkanCallContext::SurfaceCreate:
-      return "surface_create";
-    case VulkanCallContext::PhysicalDeviceEnumerate:
-      return "physical_device_enumerate";
-    case VulkanCallContext::DeviceCreate:
-      return "device_create";
-    case VulkanCallContext::QueueRetrieve:
-      return "queue_retrieve";
-    case VulkanCallContext::FunctionLoad:
-      return "function_load";
-    case VulkanCallContext::AcquireImage:
-      return "acquire_image";
-    case VulkanCallContext::Present:
-      return "present";
-    case VulkanCallContext::QueueSubmit:
-      return "queue_submit";
-    case VulkanCallContext::FenceWait:
-      return "fence_wait";
-    case VulkanCallContext::MemoryAllocate:
-      return "memory_allocate";
-    case VulkanCallContext::ShaderModuleCreate:
-      return "shader_module_create";
-    case VulkanCallContext::Unknown:
-      return "unknown";
-  }
-  return "unknown";
-}
-
 std::vector<std::string_view> packet4VulkanResultReasonCodes() {
   return {"vk_success",
           "vk_not_ready",

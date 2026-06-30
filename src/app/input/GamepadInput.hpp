@@ -72,14 +72,11 @@ struct GamepadControllerActionSample {
 void initializeGamepadMenuState(GamepadMenuState& state);
 void shutdownGamepadMenuState(GamepadMenuState& state);
 InputAction pollGamepadMenuAction(GamepadMenuState& state);
-GamepadControllerModeChordSample pollGamepadControllerModeChordSample(
-    GamepadMenuState& state);
 GamepadControllerActionSample pollGamepadControllerActionSample(
     GamepadMenuState& state);
 void pollGamepadGameplayActions(GamepadMenuState& state, ActionState& actions);
 void recordGamepadRoomEditorActions(GamepadMenuState& state,
                                     const GamepadRoomEditorInputSample& sample,
                                     ActionState& actions);
-void pollGamepadRoomEditorActions(GamepadMenuState& state, ActionState& actions);
 
 }  // namespace iggy3d

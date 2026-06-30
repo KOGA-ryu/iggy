@@ -102,7 +102,6 @@ struct AsciiRoomWorldPosition {
   double z = 0.0;
 };
 
-std::string_view asciiRoomCellKindName(AsciiRoomCellKind kind);
 std::string_view asciiRoomTerrainKindName(AsciiRoomTerrainKind kind);
 bool asciiRoomTerrainIsRamp(AsciiRoomTerrainKind kind);
 std::optional<AsciiRoomGlyphInfo> asciiRoomGlyphInfo(char glyph);

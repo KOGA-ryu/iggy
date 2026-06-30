@@ -135,39 +135,6 @@ FrontendRouteResult routeStarterBackFromChild(FrontendScreen childScreen) {
                                              : FrontendAction::Back);
 }
 
-FrontendScreen starterChildScreenForAction(FrontendAction action) {
-  switch (action) {
-    case FrontendAction::NewWorld:
-      return FrontendScreen::NewWorld;
-    case FrontendAction::LoadSave:
-      return FrontendScreen::LoadSave;
-    case FrontendAction::Delete:
-      return FrontendScreen::LoadSave;
-    case FrontendAction::Settings:
-      return FrontendScreen::Settings;
-    case FrontendAction::DevTools:
-      return FrontendScreen::StarterDevTools;
-    case FrontendAction::Exit:
-      return FrontendScreen::ExitConfirm;
-    case FrontendAction::Continue:
-    case FrontendAction::None:
-    case FrontendAction::CreateAndEnter:
-    case FrontendAction::Load:
-    case FrontendAction::Back:
-    case FrontendAction::Apply:
-    case FrontendAction::RestoreDefaults:
-    case FrontendAction::Resume:
-    case FrontendAction::EditRoom:
-    case FrontendAction::LeaveEditor:
-    case FrontendAction::Save:
-    case FrontendAction::SaveAndExit:
-    case FrontendAction::ReturnToTitle:
-    case FrontendAction::ExitGame:
-      return FrontendScreen::Starter;
-  }
-  return FrontendScreen::Starter;
-}
-
 std::string_view starterActionLabel(FrontendAction action) {
   switch (action) {
     case FrontendAction::Continue:

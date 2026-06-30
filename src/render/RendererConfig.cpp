@@ -93,16 +93,6 @@ std::string_view rendererModeName(RendererMode mode) {
   return "auto";
 }
 
-std::string_view rendererRequirementName(RendererRequirement requirement) {
-  switch (requirement) {
-    case RendererRequirement::Optional:
-      return "optional";
-    case RendererRequirement::Required:
-      return "required";
-  }
-  return "optional";
-}
-
 std::string_view validationModeName(ValidationMode mode) {
   switch (mode) {
     case ValidationMode::Off:

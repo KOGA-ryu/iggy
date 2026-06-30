@@ -27,14 +27,6 @@ void resetSession(std::optional<Session>& activeSession) {
 
 }  // namespace
 
-std::string_view productPauseSaveFlowKindName(ProductPauseSaveFlowKind kind) {
-  static constexpr std::array names{
-      std::string_view{"pause_save"},
-      std::string_view{"pause_save_and_exit"},
-  };
-  return names[static_cast<std::size_t>(kind)];
-}
-
 ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     ProductPauseSaveFlowKind kind,
     const ProductAppOptions& options,

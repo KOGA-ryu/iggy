@@ -316,10 +316,6 @@ const VulkanQueueFamilySelection& InstanceDeviceSurface::queues() const {
   return queues_;
 }
 
-const VulkanDeviceIdentity& InstanceDeviceSurface::selectedDevice() const {
-  return selectedDevice_;
-}
-
 const VulkanFunctionTables& InstanceDeviceSurface::functions() const {
   return functions_;
 }

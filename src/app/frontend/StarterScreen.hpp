@@ -29,7 +29,6 @@ StarterScreenModel buildStarterScreenModel(std::uint64_t compatibleSaveCount,
 FrontendRouteResult routeStarterAction(const StarterScreenModel& model,
                                        FrontendAction action);
 FrontendRouteResult routeStarterBackFromChild(FrontendScreen childScreen);
-FrontendScreen starterChildScreenForAction(FrontendAction action);
 std::string_view starterActionLabel(FrontendAction action);
 std::string_view starterActionCommand(FrontendAction action);
 std::string_view starterActionDisabledReason(FrontendAction action,

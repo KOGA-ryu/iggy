@@ -21,10 +21,7 @@ struct InputBinding {
   float scale = 1.0F;
 };
 
-std::string_view inputDeviceKindName(InputDeviceKind device);
 const std::vector<InputBinding>& defaultInputBindings();
 InputAction actionForInput(NeutralInput input);
-InputAction actionForDeviceEvent(const InputDeviceEvent& event);
-NeutralInput neutralInputFromName(std::string_view control);
 
 }  // namespace iggy3d

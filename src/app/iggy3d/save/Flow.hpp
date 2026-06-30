@@ -44,6 +44,4 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     ProductAppWindowState& window,
     FrontendSettings& settings);
 
-std::string_view productPauseSaveFlowKindName(ProductPauseSaveFlowKind kind);
-
 }  // namespace iggy3d

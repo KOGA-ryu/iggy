@@ -71,10 +71,6 @@ std::string_view productCustomDungeonRoomId() {
   return kCustomRoomId;
 }
 
-std::string_view productCustomDungeonSourceName() {
-  return kCustomSourceName;
-}
-
 bool isProductDungeonDraftGlyph(char glyph) {
   switch (glyph) {
     case '#':

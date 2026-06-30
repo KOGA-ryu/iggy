@@ -278,10 +278,6 @@ VkDeviceSize FrameCapture::bufferSizeBytes() const {
   return readback_.sizeBytes;
 }
 
-VkExtent2D FrameCapture::extent() const {
-  return extent_;
-}
-
 bool FrameCapture::ready() const {
   return ready_ && readback_.buffer != VK_NULL_HANDLE && readback_.allocation.memory != VK_NULL_HANDLE;
 }

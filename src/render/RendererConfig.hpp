@@ -61,7 +61,6 @@ struct RendererConfigResult {
 
 RendererConfigResult resolveRendererConfig(const RendererConfig& input);
 std::string_view rendererModeName(RendererMode mode);
-std::string_view rendererRequirementName(RendererRequirement requirement);
 std::string_view validationModeName(ValidationMode mode);
 std::string_view debugLabelsModeName(DebugLabelsMode mode);
 std::string_view presentModeRequestName(PresentModeRequest mode);

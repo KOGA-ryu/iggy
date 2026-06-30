@@ -728,11 +728,4 @@ bool deleteSaveFile(const std::filesystem::path& path) {
   return std::filesystem::remove(path, error) && !error;
 }
 
-std::filesystem::path defaultSaveFileRoot() {
-  if (const char* home = std::getenv("HOME")) {
-    return std::filesystem::path(home) / ".iggy3d" / "saves";
-  }
-  return std::filesystem::path(".iggy3d") / "saves";
-}
-
 }  // namespace iggy3d

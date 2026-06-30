@@ -36,7 +36,6 @@ public:
 
   const VulkanBootstrapHandles& handles() const;
   const VulkanQueueFamilySelection& queues() const;
-  const VulkanDeviceIdentity& selectedDevice() const;
   const VulkanFunctionTables& functions() const;
   bool ready() const;
 

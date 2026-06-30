@@ -106,7 +106,6 @@ public:
 
   const FirstRoomGeometryResources& geometry() const;
   const DepthResourceRecord& depth() const;
-  const VulkanMemoryAllocator& allocator() const;
   bool ready() const;
 
 private:

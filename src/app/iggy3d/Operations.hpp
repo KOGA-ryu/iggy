@@ -18,9 +18,7 @@ namespace iggy3d {
 
 enum class ProductSaveFlowOperation {
   None,
-  Load,
   Delete,
-  Recover,
 };
 
 struct ProductSaveFlowRequest {

@@ -4,10 +4,6 @@
 
 namespace iggy3d {
 
-enum class RuntimeMetricsResetPolicy : std::uint8_t {
-  ClearOnReset,
-};
-
 struct RuntimeMetrics {
   std::uint64_t ticksRun = 0;
   std::uint64_t commandsSubmitted = 0;

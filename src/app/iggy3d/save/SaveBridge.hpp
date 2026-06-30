@@ -182,7 +182,6 @@ ProductSaveSoftDeleteResult softDeleteProductSave(
     const ProductSaveSoftDeleteRequest& request);
 ProductSaveRecoverResult recoverProductSave(
     const ProductSaveRecoverRequest& request);
-std::string_view productSaveMutationStatusName(ProductSaveMutationStatus status);
 ProductSaveMutationResult softDeleteProductSaveAndRefresh(
     const ProductSaveMutationRequest& request);
 ProductSaveMutationResult recoverProductSaveAndRefresh(

@@ -59,7 +59,6 @@ struct VulkanResultMapping {
 
 VulkanResultMapping mapVkResult(VkResult result, VulkanCallContext context);
 const char* vkResultName(VkResult result);
-const char* vulkanCallContextName(VulkanCallContext context);
 
 std::vector<std::string_view> packet4VulkanResultReasonCodes();
 std::vector<std::string_view> packet4VulkanStartupReasonCodes();

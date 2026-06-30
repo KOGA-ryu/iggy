@@ -53,7 +53,6 @@ public:
 
   VkBuffer buffer() const;
   VkDeviceSize bufferSizeBytes() const;
-  VkExtent2D extent() const;
   bool ready() const;
   NormalizedCapture readMappedRgba() const;
 

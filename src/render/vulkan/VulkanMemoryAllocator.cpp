@@ -279,16 +279,6 @@ RenderReceipt VulkanMemoryAllocator::destroyImage(VulkanImageAllocation& image) 
   return receipt;
 }
 
-AllocationBudgetSnapshot VulkanMemoryAllocator::budgetSnapshot() const {
-  AllocationBudgetSnapshot snapshot;
-  snapshot.budgetAvailable = false;
-  snapshot.allocationCount = static_cast<std::uint32_t>(allocations_.size());
-  for (const NamedAllocation& allocation : allocations_) {
-    snapshot.heapUsageBytes += allocation.sizeBytes;
-  }
-  return snapshot;
-}
-
 const std::vector<NamedAllocation>& VulkanMemoryAllocator::allocations() const {
   return allocations_;
 }

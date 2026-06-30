@@ -132,8 +132,6 @@ CliParseResult parseCommandLine(std::vector<std::string_view> args) {
         return fail(result, AppConfigStatus::InvalidCameraMode, "cli.invalid_camera_mode",
                     "invalid camera mode");
       }
-    } else if (arg == "--strict") {
-      result.config.strict = true;
     } else if (arg == "--verbose" || arg == "-v") {
       result.config.verbose = true;
     } else {
@@ -151,7 +149,7 @@ CliParseResult parseCommandLine(std::vector<std::string_view> args) {
 
 std::string_view cliHelpText() {
   return "iggy3d options: --demo --validate-package --replay --help -h --version --package "
-         "--fixture --save --load --replay-path --summary --camera --strict --verbose -v";
+         "--fixture --save --load --replay-path --summary --camera --verbose -v";
 }
 
 std::string_view cliVersionText() {

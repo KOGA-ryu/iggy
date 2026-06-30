@@ -100,25 +100,6 @@ AsciiRoomGridBuildResult rejected(const AsciiRoomSource& source,
 
 }  // namespace
 
-std::string_view asciiRoomCellKindName(AsciiRoomCellKind kind) {
-  switch (kind) {
-    case AsciiRoomCellKind::Floor: return "floor";
-    case AsciiRoomCellKind::Wall: return "wall";
-    case AsciiRoomCellKind::Door: return "door";
-    case AsciiRoomCellKind::SecretDoor: return "secret_door";
-    case AsciiRoomCellKind::PlayerSpawn: return "player_spawn";
-    case AsciiRoomCellKind::NpcSpawn: return "npc_spawn";
-    case AsciiRoomCellKind::MonsterSpawn: return "monster_spawn";
-    case AsciiRoomCellKind::Treasure: return "treasure";
-    case AsciiRoomCellKind::Key: return "key";
-    case AsciiRoomCellKind::Trap: return "trap";
-    case AsciiRoomCellKind::Exit: return "exit";
-    case AsciiRoomCellKind::ResetZone: return "reset_zone";
-    case AsciiRoomCellKind::Inspect: return "inspect";
-  }
-  return "floor";
-}
-
 std::string_view asciiRoomTerrainKindName(AsciiRoomTerrainKind kind) {
   switch (kind) {
     case AsciiRoomTerrainKind::Flat: return "flat";

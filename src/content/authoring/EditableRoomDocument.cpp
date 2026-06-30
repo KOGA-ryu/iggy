@@ -420,15 +420,6 @@ RoomEditCommand moveFloorCommand(std::string id, Vec3 deltaMeters) {
   return command;
 }
 
-RoomEditCommand setFloorPositionCommand(std::string id, Vec3 positionMeters) {
-  RoomEditCommand command;
-  command.kind = RoomEditCommandKind::MoveFloor;
-  command.targetId = std::move(id);
-  command.positionMeters = positionMeters;
-  command.useStart = true;
-  return command;
-}
-
 RoomEditCommand resizeFloorCommand(std::string id, Vec3 sizeMeters) {
   RoomEditCommand command;
   command.kind = RoomEditCommandKind::ResizeFloor;
@@ -1064,44 +1055,6 @@ const char* roomEditStatusName(RoomEditStatus status) {
       return "room_edit_nothing_to_redo";
   }
   return "room_edit_invalid_command";
-}
-
-const char* roomEditCommandKindName(RoomEditCommandKind kind) {
-  switch (kind) {
-    case RoomEditCommandKind::AddFloor:
-      return "add_floor";
-    case RoomEditCommandKind::DeleteFloor:
-      return "delete_floor";
-    case RoomEditCommandKind::SetFloorSemantics:
-      return "set_floor_semantics";
-    case RoomEditCommandKind::MoveFloor:
-      return "move_floor";
-    case RoomEditCommandKind::ResizeFloor:
-      return "resize_floor";
-    case RoomEditCommandKind::AddWall:
-      return "add_wall";
-    case RoomEditCommandKind::DeleteWall:
-      return "delete_wall";
-    case RoomEditCommandKind::SetWallSemantics:
-      return "set_wall_semantics";
-    case RoomEditCommandKind::MoveWall:
-      return "move_wall";
-    case RoomEditCommandKind::StretchWall:
-      return "stretch_wall";
-    case RoomEditCommandKind::RotateWall90:
-      return "rotate_wall_90";
-    case RoomEditCommandKind::SetWallHeight:
-      return "set_wall_height";
-    case RoomEditCommandKind::SetWallThickness:
-      return "set_wall_thickness";
-    case RoomEditCommandKind::AddObject:
-      return "add_object";
-    case RoomEditCommandKind::DeleteObject:
-      return "delete_object";
-    case RoomEditCommandKind::MoveObject:
-      return "move_object";
-  }
-  return "add_floor";
 }
 
 EditableRoomSession::EditableRoomSession(EditableRoomDocument document)

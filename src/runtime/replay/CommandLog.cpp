@@ -233,23 +233,6 @@ CommandLogFindResult CommandLog::findById(CommandId commandId) const {
   return {};
 }
 
-CommandLogFindResult CommandLog::findRejectedById(CommandId commandId) const {
-  CommandLogFindResult found = findById(commandId);
-  if (found.record == nullptr || found.record->admission != CommandAdmissionStatus::Rejected) {
-    return {};
-  }
-  return found;
-}
-
-const CommandRecord* CommandLog::latestRejected() const {
-  for (auto it = records_.rbegin(); it != records_.rend(); ++it) {
-    if (it->admission == CommandAdmissionStatus::Rejected) {
-      return &*it;
-    }
-  }
-  return nullptr;
-}
-
 CommandLogCounts CommandLog::counts() const {
   CommandLogCounts counts;
   for (const CommandRecord& record : records_) {

@@ -133,21 +133,6 @@ InputAction pollGamepadMenuAction(GamepadMenuState& state) {
 #endif
 }
 
-GamepadControllerModeChordSample pollGamepadControllerModeChordSample(
-    GamepadMenuState& state) {
-#if defined(IGGY3D_HAS_SDL3)
-  return {
-      triggerDown(state, SDL_GAMEPAD_AXIS_LEFT_TRIGGER),
-      triggerDown(state, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER),
-      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_LEFT_STICK),
-      gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_RIGHT_STICK),
-  };
-#else
-  (void)state;
-  return {};
-#endif
-}
-
 GamepadControllerActionSample pollGamepadControllerActionSample(
     GamepadMenuState& state) {
 #if defined(IGGY3D_HAS_SDL3)
@@ -249,27 +234,6 @@ void recordGamepadRoomEditorActions(GamepadMenuState& state,
   state.editorPlaceWasDown = sample.placeDown;
   state.editorNextToolWasDown = sample.nextToolDown;
   state.editorPreviousToolWasDown = sample.previousToolDown;
-}
-
-void pollGamepadRoomEditorActions(GamepadMenuState& state, ActionState& actions) {
-#if defined(IGGY3D_HAS_SDL3)
-  if (!state.gamepadAvailable) {
-    return;
-  }
-
-  GamepadRoomEditorInputSample sample;
-  sample.upDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_UP);
-  sample.downDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_DOWN);
-  sample.leftDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
-  sample.rightDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
-  sample.placeDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_SOUTH);
-  sample.nextToolDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_RIGHT_SHOULDER);
-  sample.previousToolDown = gamepadButtonDown(state, SDL_GAMEPAD_BUTTON_LEFT_SHOULDER);
-  recordGamepadRoomEditorActions(state, sample, actions);
-#else
-  (void)state;
-  (void)actions;
-#endif
 }
 
 }  // namespace iggy3d

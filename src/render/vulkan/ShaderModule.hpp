@@ -58,7 +58,6 @@ struct ShaderModuleResult {
 
 std::string_view shaderStageName(ShaderStage stage);
 std::string_view shaderStageFileExtension(ShaderStage stage);
-VkShaderStageFlagBits shaderStageFlag(ShaderStage stage);
 bool shaderEntryPointValid(std::string_view entryPoint);
 bool spirvBytesWellFormed(const std::vector<std::uint8_t>& bytes);
 std::string formatShaderArtifactHash(const std::vector<std::uint8_t>& bytes);

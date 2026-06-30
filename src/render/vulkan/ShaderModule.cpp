@@ -92,16 +92,6 @@ std::string_view shaderStageFileExtension(ShaderStage stage) {
   return ".vert.spv";
 }
 
-VkShaderStageFlagBits shaderStageFlag(ShaderStage stage) {
-  switch (stage) {
-    case ShaderStage::Vertex:
-      return VK_SHADER_STAGE_VERTEX_BIT;
-    case ShaderStage::Fragment:
-      return VK_SHADER_STAGE_FRAGMENT_BIT;
-  }
-  return VK_SHADER_STAGE_VERTEX_BIT;
-}
-
 bool shaderEntryPointValid(std::string_view entryPoint) {
   return entryPoint == "main";
 }

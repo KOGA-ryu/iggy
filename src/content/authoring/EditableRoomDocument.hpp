@@ -137,7 +137,6 @@ RoomEditCommand addFloorCommand(EditableRoomFloor floor);
 RoomEditCommand deleteFloorCommand(std::string id);
 RoomEditCommand setFloorSemanticsCommand(std::string id, EditableRoomSemantics semantics);
 RoomEditCommand moveFloorCommand(std::string id, Vec3 deltaMeters);
-RoomEditCommand setFloorPositionCommand(std::string id, Vec3 positionMeters);
 RoomEditCommand resizeFloorCommand(std::string id, Vec3 sizeMeters);
 RoomEditCommand addWallCommand(EditableRoomWall wall);
 RoomEditCommand deleteWallCommand(std::string id);
@@ -171,7 +170,6 @@ RoomEditResult applyRoomEditCommand(EditableRoomDocument& document,
                                     const RoomEditCommand& command);
 RoomBakeResult bakeEditableRoomDocument(const EditableRoomDocument& document);
 const char* roomEditStatusName(RoomEditStatus status);
-const char* roomEditCommandKindName(RoomEditCommandKind kind);
 
 class EditableRoomSession {
  public:

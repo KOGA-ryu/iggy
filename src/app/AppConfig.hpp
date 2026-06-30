@@ -40,7 +40,6 @@ struct AppConfig {
   std::filesystem::path expectedSummaryPath;
   RuntimeConfig runtimeConfig;
   CameraMode requestedRealtimeCamera = CameraMode::ThirdPerson;
-  bool strict = false;
   bool verbose = false;
   bool printHelp = false;
   bool printVersion = false;

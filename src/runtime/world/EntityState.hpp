@@ -61,8 +61,4 @@ inline bool isValidEntityKind(EntityKind kind) {
          kind == EntityKind::Marker || kind == EntityKind::Npc;
 }
 
-inline bool hasValidEntityIdentity(const EntityState& entity) {
-  return isValid(entity.id) && !entity.stableName.empty() && isValidEntityKind(entity.kind);
-}
-
 }  // namespace iggy3d

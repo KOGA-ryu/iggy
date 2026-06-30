@@ -45,8 +45,6 @@ void recordProductVulkanRendererReady(ProductAppWindowState& window,
                                       const RendererApi& renderer);
 void recordProductVulkanSubmit(ProductAppWindowState& window,
                                const RenderSubmitResult& submit);
-void recordProductVulkanMenuUnsupported(ProductAppWindowState& window,
-                                        std::string_view menuSurface);
 void recordProductVulkanMenuUiDrawList(ProductAppWindowState& window,
                                        std::string_view menuSurface,
                                        const ProductUiDrawList& uiDrawList);

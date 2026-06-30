@@ -87,13 +87,4 @@ SaveSlotList buildSaveSlotListFromCatalog(const ProductSaveCatalog& catalog) {
   return list;
 }
 
-SaveBrowserModel buildSaveBrowserModelFromCatalog(
-    const ProductSaveCatalog& catalog,
-    std::string_view selectedSaveId,
-    FrontendSaveBrowserMode mode) {
-  return buildSaveBrowserModel(buildSaveSlotListFromCatalog(catalog),
-                               selectedSaveId,
-                               mode);
-}
-
 }  // namespace iggy3d

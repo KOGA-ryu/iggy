@@ -329,24 +329,6 @@ std::string nextProductWorldId(const std::filesystem::path& saveRoot) {
   return formatWorldId(std::max(activeMax, deletedMax) + 1U);
 }
 
-std::string_view productSaveMutationStatusName(ProductSaveMutationStatus status) {
-  // branch-gate: BG-1218
-  switch (status) {
-    case ProductSaveMutationStatus::Succeeded:
-      return "succeeded";
-    case ProductSaveMutationStatus::SaveNotFound:
-      return "save_not_found";
-    case ProductSaveMutationStatus::NotActiveSave:
-      return "not_active_save";
-    case ProductSaveMutationStatus::FileOperationFailed:
-      return "file_operation_failed";
-    case ProductSaveMutationStatus::SnapshotMoveFailed:
-      return "snapshot_move_failed";
-    case ProductSaveMutationStatus::DecodeFailedAfterMutation:
-      return "decode_failed_after_mutation";
-  }
-  return "file_operation_failed";
-}
 
 ProductSaveBridgeResult scanProductSaves(const std::filesystem::path& saveRoot,
                                          std::string_view packageId,

@@ -30,7 +30,6 @@ struct ProductDungeonDraftOperationResult {
 };
 
 std::string_view productCustomDungeonRoomId();
-std::string_view productCustomDungeonSourceName();
 bool isProductDungeonDraftGlyph(char glyph);
 std::size_t productDungeonDraftRowCount(std::string_view asciiRoomText);
 std::size_t productDungeonDraftColumnCount(std::string_view asciiRoomText);

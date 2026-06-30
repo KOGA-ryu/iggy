@@ -2,20 +2,6 @@
 
 namespace iggy3d {
 
-std::string_view inputDeviceKindName(InputDeviceKind device) {
-  switch (device) {
-    case InputDeviceKind::Keyboard:
-      return "keyboard";
-    case InputDeviceKind::Mouse:
-      return "mouse";
-    case InputDeviceKind::Gamepad:
-      return "gamepad";
-    case InputDeviceKind::Automation:
-      return "automation";
-  }
-  return "keyboard";
-}
-
 const std::vector<InputBinding>& defaultInputBindings() {
   static const std::vector<InputBinding> bindings = {
       {NeutralInput::KeyW, InputAction::PlayerMoveY, 1.0F},
@@ -77,49 +63,6 @@ InputAction actionForInput(NeutralInput input) {
     }
   }
   return InputAction::None;
-}
-
-InputAction actionForDeviceEvent(const InputDeviceEvent& event) {
-  return actionForInput(event.input);
-}
-
-NeutralInput neutralInputFromName(std::string_view control) {
-  for (const InputBinding& binding : defaultInputBindings()) {
-    if (neutralInputName(binding.input) == control) {
-      return binding.input;
-    }
-  }
-  if (control == "menu.up") {
-    return NeutralInput::AutomationMenuUp;
-  }
-  if (control == "menu.down") {
-    return NeutralInput::AutomationMenuDown;
-  }
-  if (control == "menu.confirm") {
-    return NeutralInput::AutomationMenuConfirm;
-  }
-  if (control == "menu.back") {
-    return NeutralInput::AutomationMenuBack;
-  }
-  if (control == "system.pause") {
-    return NeutralInput::AutomationPause;
-  }
-  if (control == "dev.toggle" || control == "system.dev_tools") {
-    return NeutralInput::AutomationDevTools;
-  }
-  if (control == "system.quit_chord" || control == "system.hard_quit") {
-    return NeutralInput::AutomationHardQuit;
-  }
-  if (control == "game.interact" || control == "player.interact") {
-    return NeutralInput::AutomationInteract;
-  }
-  if (control == "game.attack" || control == "player.attack") {
-    return NeutralInput::AutomationAttack;
-  }
-  if (control == "game.retry_or_reset" || control == "player.retry_or_reset") {
-    return NeutralInput::AutomationRetryOrReset;
-  }
-  return NeutralInput::None;
 }
 
 }  // namespace iggy3d

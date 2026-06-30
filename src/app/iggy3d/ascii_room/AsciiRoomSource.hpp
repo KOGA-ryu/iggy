@@ -41,7 +41,6 @@ struct AsciiRoomSource {
   std::vector<AsciiRoomDiagnostic> diagnostics;
 };
 
-std::string_view asciiRoomDiagnosticSeverityError();
 AsciiRoomSource parseAsciiRoomSource(std::string_view text,
                                      std::string sourceName = {});
 std::size_t asciiRoomSourceOffset(const AsciiRoomSource& source,

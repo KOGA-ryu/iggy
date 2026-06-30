@@ -89,48 +89,6 @@ PlayerRosterResult PlayerRoster::addSlot(PlayerSlot slot) {
   return result(PlayerRosterStatus::Ok, slots_.back().id, index);
 }
 
-PlayerRosterResult PlayerRoster::upsertSlot(PlayerSlot slot) {
-  if (!isValidPlayerSlotId(slot.id)) {
-    return result(PlayerRosterStatus::InvalidSlotId, slot.id);
-  }
-  auto existing = findSlotIterator(slots_, slot.id);
-  const bool replace = existing != slots_.end();
-  const PlayerRosterStatus status = validateSlotForWrite(slots_, slot, replace);
-  if (status != PlayerRosterStatus::Ok) {
-    return result(status, slot.id);
-  }
-  if (replace) {
-    const std::size_t index = static_cast<std::size_t>(existing - slots_.begin());
-    *existing = std::move(slot);
-    return result(PlayerRosterStatus::Ok, slots_[index].id, index);
-  }
-  const std::size_t index = slots_.size();
-  slots_.push_back(std::move(slot));
-  return result(PlayerRosterStatus::Ok, slots_.back().id, index);
-}
-
-PlayerRosterResult PlayerRoster::rebindActor(PlayerSlotId slotId, EntityId actor) {
-  if (!isValidPlayerSlotId(slotId)) {
-    return result(PlayerRosterStatus::InvalidSlotId, slotId);
-  }
-  auto existing = findSlotIterator(slots_, slotId);
-  if (existing == slots_.end()) {
-    return result(PlayerRosterStatus::MissingSlot, slotId);
-  }
-  if (!isActorControllingSlotKind(existing->kind)) {
-    return result(PlayerRosterStatus::InvalidSlotKind, slotId);
-  }
-  if (!isValid(actor)) {
-    return result(PlayerRosterStatus::InvalidActor, slotId);
-  }
-  if (actorBoundToDifferentSlot(slots_, actor, slotId)) {
-    return result(PlayerRosterStatus::ActorAlreadyBound, slotId);
-  }
-  const std::size_t index = static_cast<std::size_t>(existing - slots_.begin());
-  existing->actor = actor;
-  return result(PlayerRosterStatus::Ok, slotId, index);
-}
-
 const PlayerSlot* PlayerRoster::findSlot(PlayerSlotId slotId) const {
   const auto found = findSlotIterator(slots_, slotId);
   return found == slots_.end() ? nullptr : &*found;

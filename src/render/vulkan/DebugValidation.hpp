@@ -58,7 +58,6 @@ public:
   DebugValidationPlan buildPlan(const DebugValidationConfig& config);
   RenderReceipt createMessenger(VkInstance instance, const DebugValidationPlan& plan);
   RenderReceipt destroyMessenger(VkInstance instance);
-  const DebugValidationCounters& counters() const;
 
 #if defined(IGGY3D_HAS_VULKAN)
   void recordMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severity,

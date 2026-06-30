@@ -1209,10 +1209,6 @@ const DepthResourceRecord& BufferImageResources::depth() const {
   return depth_;
 }
 
-const VulkanMemoryAllocator& BufferImageResources::allocator() const {
-  return allocator_;
-}
-
 bool BufferImageResources::ready() const {
   return ready_;
 }

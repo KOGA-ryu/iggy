@@ -22,7 +22,6 @@ const ProductBuiltinDungeonDefinition* findProductBuiltinDungeonByRoomId(
     std::string_view roomId);
 std::size_t productBuiltinDungeonIndexForRoomId(std::string_view roomId);
 
-std::string_view productBuiltinDungeonWorldTitle();
 std::string_view productBuiltinDungeonRoomId();
 std::string_view productBuiltinDungeonSourceName();
 std::string_view productBuiltinDungeonAsciiRoomText();

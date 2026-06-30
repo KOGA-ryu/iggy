@@ -457,12 +457,8 @@ std::string_view productSaveFlowOperationName(ProductSaveFlowOperation operation
   switch (operation) {
     case ProductSaveFlowOperation::None:
       return "none";
-    case ProductSaveFlowOperation::Load:
-      return "load";
     case ProductSaveFlowOperation::Delete:
       return "delete";
-    case ProductSaveFlowOperation::Recover:
-      return "recover";
   }
   return "none";
 }
