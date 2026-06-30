@@ -94,6 +94,13 @@ bool positiveIntegerField(const std::map<std::string, std::string>& fields,
   return value > 0ULL;
 }
 
+bool nonNoneField(const std::map<std::string, std::string>& fields,
+                  const std::string& key) {
+  const auto found = fields.find(key);
+  return found != fields.end() && !found->second.empty() &&
+         found->second != "none";
+}
+
 }  // namespace
 
 int main() {
@@ -440,6 +447,84 @@ int main() {
       iggy3d::smoke::hasField(wallJumpFields, "product_draw_prop_tile_count",
                               "10");
 
+  const std::filesystem::path wallRunSaveRoot =
+      iggy3d::smoke::cleanSaveRoot("gameplay_controls_wall_run_corridor");
+  iggy3d::smoke::ReceiptFields wallRunFields;
+  int wallRunExitCode = 77;
+  const bool wallRunControlsPassed =
+      appBuilt && std::filesystem::exists(binary) &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "gameplay_controls_wall_run_corridor",
+          "frontend.select=new_world\n"
+          "frontend.execute=true\n"
+          "world.dungeon_id=movement_wall_run_corridor\n"
+          "world.create=true\n"
+          "gameplay.player_position=0,0,9.65\n"
+          "gameplay.jump=true\n"
+          "game.move_x=1\n",
+          iggy3d::smoke::saveRootArg(wallRunSaveRoot),
+          wallRunFields,
+          wallRunExitCode) &&
+      wallRunExitCode == 0 && iggy3d::smoke::productReceipt(wallRunFields) &&
+      iggy3d::smoke::hasField(wallRunFields, "window_mode", "no_window") &&
+      iggy3d::smoke::hasField(wallRunFields, "window_created", "false") &&
+      iggy3d::smoke::hasField(wallRunFields, "frontend_screen", "gameplay") &&
+      iggy3d::smoke::hasField(wallRunFields, "gameplay_active", "true") &&
+      iggy3d::smoke::hasField(wallRunFields, "world_setup_dungeon_title",
+                              "Wall Run Corridor") &&
+      iggy3d::smoke::hasField(wallRunFields, "active_room_id",
+                              "movement_wall_run_corridor") &&
+      iggy3d::smoke::hasField(wallRunFields,
+                              "active_room_collision_ready", "true") &&
+      iggy3d::smoke::hasField(wallRunFields,
+                              "active_room_collision_query_surface_count",
+                              "200") &&
+      iggy3d::smoke::hasField(wallRunFields,
+                              "active_room_collision_walkable_surface_count",
+                              "88") &&
+      iggy3d::smoke::hasField(wallRunFields,
+                              "active_room_collision_actor_blocker_count",
+                              "56") &&
+      iggy3d::smoke::hasField(wallRunFields, "automation_control_loaded",
+                              "true") &&
+      iggy3d::smoke::hasField(wallRunFields, "automation_control_line_count",
+                              "7") &&
+      iggy3d::smoke::hasField(wallRunFields, "automation_control_last_key",
+                              "game.move_x") &&
+      iggy3d::smoke::hasField(wallRunFields, "automation_control_last_action",
+                              "game.move_x") &&
+      iggy3d::smoke::hasField(wallRunFields, "automation_control_last_owner",
+                              "gameplay") &&
+      iggy3d::smoke::hasField(wallRunFields, "gameplay_input_source",
+                              "automation") &&
+      iggy3d::smoke::hasField(wallRunFields, "gameplay_input_used", "true") &&
+      iggy3d::smoke::hasField(wallRunFields, "input_owner", "gameplay") &&
+      iggy3d::smoke::hasField(wallRunFields, "gameplay_movement_status",
+                              "moved") &&
+      iggy3d::smoke::hasField(wallRunFields, "gameplay_movement_state",
+                              "wall_running") &&
+      iggy3d::smoke::hasField(wallRunFields, "movement_state",
+                              "wall_running") &&
+      iggy3d::smoke::hasField(wallRunFields,
+                              "wall_run_candidate_available", "true") &&
+      iggy3d::smoke::hasField(wallRunFields, "wall_run_candidate_status",
+                              "wall_run_candidate") &&
+      iggy3d::smoke::hasField(wallRunFields, "wall_run_active", "true") &&
+      iggy3d::smoke::hasField(wallRunFields, "wall_run_status",
+                              "wall_run_active") &&
+      iggy3d::smoke::hasField(wallRunFields, "wall_run_reason_code",
+                              "wall_run_started") &&
+      nonNoneField(wallRunFields, "wall_run_surface_id") &&
+      iggy3d::smoke::hasField(wallRunFields, "wall_run_remaining_s",
+                              fixed3(tuning.wallRunDurationSeconds)) &&
+      iggy3d::smoke::hasField(wallRunFields, "wall_run_gravity_multiplier",
+                              fixed3(tuning.wallRunGravityMultiplier)) &&
+      iggy3d::smoke::hasField(wallRunFields, "product_vulkan_room_asset_id",
+                              "movement_wall_run_corridor") &&
+      iggy3d::smoke::hasField(wallRunFields, "product_draw_room_visible",
+                              "true");
+
   const std::filesystem::path layeredWalkSaveRoot =
       iggy3d::smoke::cleanSaveRoot("gameplay_controls_layered_jump_gym_walk");
   iggy3d::smoke::ReceiptFields layeredWalkFields;
@@ -579,7 +664,7 @@ int main() {
 
   const bool passed =
       scriptedControlsPassed && clamberControlsPassed && wallJumpControlsPassed &&
-      layeredWalkControlsPassed &&
+      wallRunControlsPassed && layeredWalkControlsPassed &&
       layeredResetControlsPassed;
 
   std::cout << "smoke=product_gameplay_controls\n";
@@ -591,6 +676,9 @@ int main() {
   std::cout << "movement_gym_wall_jump="
             << (wallJumpControlsPassed ? "true" : "false") << "\n";
   std::cout << "movement_gym_wall_jump_exit_code=" << wallJumpExitCode << "\n";
+  std::cout << "wall_run_corridor="
+            << (wallRunControlsPassed ? "true" : "false") << "\n";
+  std::cout << "wall_run_corridor_exit_code=" << wallRunExitCode << "\n";
   std::cout << "layered_jump_gym_walk="
             << (layeredWalkControlsPassed ? "true" : "false") << "\n";
   std::cout << "layered_jump_gym_walk_exit_code=" << layeredWalkExitCode

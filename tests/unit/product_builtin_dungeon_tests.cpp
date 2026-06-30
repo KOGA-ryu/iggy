@@ -83,6 +83,7 @@ constexpr ExpectedDungeonCounts kExpectedDungeons[] = {
     {"physics_corner_slide", 8U, 5U, 14U, 26U, 0U, 3U, 66U, 14U, 26U, 26U},
     {"object_crate_room", 7U, 5U, 15U, 20U, 1U, 2U, 57U, 15U, 21U, 21U},
     {"movement_gym", 45U, 23U, 776U, 259U, 10U, 5U, 1318U, 780U, 269U, 269U},
+    {"movement_wall_run_corridor", 24U, 6U, 88U, 56U, 0U, 2U, 200U, 88U, 56U, 56U},
     {"slope_gym", 19U, 9U, 119U, 52U, 0U, 3U, 223U, 119U, 52U, 52U},
     {"layered_jump_gym", 12U, 8U, 274U, 0U, 0U, 16U, 274U, 274U, 0U, 0U},
 };
@@ -202,7 +203,7 @@ bool catalogExposesSelectableDungeons() {
   const bool previousReturnsLoopKeep =
       draft.asciiRoomId == "loop_keep_ascii" && draft.worldName == "Loop Keep";
 
-  return expect(catalog.size() == 11U, "catalog size") &&
+  return expect(catalog.size() == 12U, "catalog size") &&
          expect(startsOnLoopKeep, "default starts loop keep") &&
          expect(nextOk, "next select ok") &&
          expect(nextIsGatehouse, "next selects gatehouse") &&
@@ -229,6 +230,9 @@ bool catalogExposesSelectableDungeons() {
          expect(iggy3d::findProductBuiltinDungeonByRoomId(
                     "movement_gym") != nullptr,
                 "find movement gym") &&
+         expect(iggy3d::findProductBuiltinDungeonByRoomId(
+                    "movement_wall_run_corridor") != nullptr,
+                "find movement wall run corridor") &&
          expect(iggy3d::findProductBuiltinDungeonByRoomId(
                     "slope_gym") != nullptr,
                 "find slope gym") &&
@@ -493,6 +497,51 @@ bool movementGymBuildsScaledJumpAndClamberObjects() {
          expect(slots.slots.size() == 4U, "movement gym clamber slots");
 }
 
+bool wallRunCorridorBuildsLongRunnableWallCollision() {
+  const ExpectedDungeonCounts* expected =
+      expectedCountsFor("movement_wall_run_corridor");
+  const iggy3d::ProductActiveRoomState active =
+      buildDungeonActiveRoom("movement_wall_run_corridor");
+  const iggy3d::ProductActiveRoomCollisionState collision =
+      iggy3d::buildProductActiveRoomCollision(active);
+  const iggy3d::SpatialSurfaceSet* surfaces =
+      iggy3d::productActiveRoomCollisionSurfaces(collision);
+  const iggy3d::RoomSpatialSurface* longWall =
+      findSurface(active.room, "wall_r0_c10_actor_blocker");
+
+  return expect(expected != nullptr, "wall run corridor expected counts") &&
+         expect(active.loaded, "wall run corridor loaded") &&
+         expect(active.roomId == "movement_wall_run_corridor",
+                "wall run corridor room id") &&
+         expect(active.authoredFloorCount == expected->floorCount,
+                "wall run corridor floor count") &&
+         expect(active.authoredWallCount == expected->wallCount,
+                "wall run corridor wall count") &&
+         expect(active.authoredMarkerCount == expected->markerCount,
+                "wall run corridor marker count") &&
+         expect(collision.ready, "wall run corridor collision ready") &&
+         expectEqual(collision.querySurfaceCount,
+                     expected->spatialSurfaceCount,
+                     active.roomId,
+                     "wall run corridor query surface count") &&
+         expectEqual(collision.walkableSurfaceCount,
+                     expected->walkableSurfaceCount,
+                     active.roomId,
+                     "wall run corridor walkable count") &&
+         expectEqual(collision.actorBlockerSurfaceCount,
+                     expected->actorBlockerSurfaceCount,
+                     active.roomId,
+                     "wall run corridor actor blockers") &&
+         expectEqual(collision.projectileBlockerSurfaceCount,
+                     expected->projectileBlockerSurfaceCount,
+                     active.roomId,
+                     "wall run corridor projectile blockers") &&
+         expect(longWall != nullptr, "wall run corridor long wall surface") &&
+         expect(longWall == nullptr || longWall->blocksActor,
+                "wall run corridor long wall blocks actors") &&
+         expect(surfaces != nullptr, "wall run corridor collision pointer");
+}
+
 bool slopeGymBuildsRampSurfaces() {
   const ExpectedDungeonCounts* expected = expectedCountsFor("slope_gym");
   const iggy3d::ProductBuiltinDungeonDefinition* dungeon =
@@ -628,6 +677,7 @@ int main() {
                       physicsRoomsBuildCollisionSurfaces() &&
                       objectCrateRoomBuildsVisiblePropAndCollision() &&
                       movementGymBuildsScaledJumpAndClamberObjects() &&
+                      wallRunCorridorBuildsLongRunnableWallCollision() &&
                       slopeGymBuildsRampSurfaces() &&
                       layeredJumpGymBuildsStackedFloors() &&
                       physicsPlannerUsesTestRooms();
