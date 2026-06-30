@@ -241,6 +241,11 @@ iggy3d_add_unit_test(product_save_catalog_tests tests/unit/product_save_catalog_
 set_tests_properties(product_save_catalog_tests PROPERTIES
   LABELS "unit;app;product;save;catalog;iggy3d")
 
+iggy3d_add_unit_test(product_save_delete_executor_tests
+  tests/unit/product_save_delete_executor_tests.cpp)
+set_tests_properties(product_save_delete_executor_tests PROPERTIES
+  LABELS "unit;app;product;save;delete;iggy3d")
+
 iggy3d_add_unit_test(product_package_session_seed_tests tests/unit/product_package_session_seed_tests.cpp)
 set_tests_properties(product_package_session_seed_tests PROPERTIES
   LABELS "unit;app;product;package;session_seed;iggy3d")
