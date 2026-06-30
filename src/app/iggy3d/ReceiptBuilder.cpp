@@ -170,6 +170,14 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(
                          window.gameplayMovementTuning.sprintSpeedMetersPerSecond));
   appendReceiptField(receipt,
+                     "gameplay_movement_tuning_ground_response",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.groundResponseMultiplier));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_air_control",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.airControlMultiplier));
+  appendReceiptField(receipt,
                      "gameplay_movement_tuning_jump_impulse_mps",
                      floatReceiptValue(
                          window.gameplayMovementTuning.jumpImpulseMetersPerSecond));
@@ -177,6 +185,14 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      "gameplay_movement_tuning_gravity_mps2",
                      floatReceiptValue(
                          window.gameplayMovementTuning.gravityMetersPerSecondSquared));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_look_sensitivity",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.lookSensitivity));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_invert_look",
+                     productGameplayMovementTuningInvertLook(
+                         window.gameplayMovementTuning));
   appendReceiptField(receipt,
                      "gameplay_movement_tuning_dash_speed_mps",
                      floatReceiptValue(

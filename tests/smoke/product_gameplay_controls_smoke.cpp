@@ -181,6 +181,18 @@ int main() {
       hasField(fields,
                "gameplay_movement_max_speed_mps",
                fixed3(tuning.walkSpeedMetersPerSecond)) &&
+      hasField(fields,
+               "gameplay_movement_tuning_ground_response",
+               fixed3(tuning.groundResponseMultiplier)) &&
+      hasField(fields,
+               "gameplay_movement_tuning_air_control",
+               fixed3(tuning.airControlMultiplier)) &&
+      hasField(fields,
+               "gameplay_movement_tuning_look_sensitivity",
+               fixed3(tuning.lookSensitivity)) &&
+      hasField(fields,
+               "gameplay_movement_tuning_invert_look",
+               "false") &&
       hasField(fields, "target_discovered", "false") &&
       hasField(fields, "gameplay_reach_gate", "not_attempted") &&
       hasField(fields, "attack_executed", "false") &&

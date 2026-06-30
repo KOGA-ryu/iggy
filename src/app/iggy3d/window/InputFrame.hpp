@@ -150,6 +150,13 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningHeldInput(
 ProductControllerSampleInputResult processProductControllerActionSample(
     ProductControllerSampleInputContext context,
     GamepadControllerActionSample sample);
+ProductControllerSampleInputResult applyProductWindowInputActions(
+    const FrontendState& frontend,
+    ProductAppWindowState& window,
+    Session* activeSession,
+    const FrontendSettings* settings,
+    const ActionState& gameplayActions,
+    std::string_view inputSource);
 ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPreview(
     ProductWindowEditorMousePickPreviewContext context);
 

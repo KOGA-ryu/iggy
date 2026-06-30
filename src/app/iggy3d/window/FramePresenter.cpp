@@ -440,7 +440,7 @@ void appendMovementTuningHudUi(
       scaledHudOffset(820.0F, viewportWidth, kVirtualViewportWidth),
       scaledHudOffset(410.0F, viewportHeight, kVirtualViewportHeight),
       scaledHudExtent(384.0F, viewportWidth, kVirtualViewportWidth),
-      scaledHudExtent(168.0F, viewportHeight, kVirtualViewportHeight),
+      scaledHudExtent(232.0F, viewportHeight, kVirtualViewportHeight),
       14.0F / 255.0F,
       21.0F / 255.0F,
       23.0F / 255.0F,
@@ -471,7 +471,7 @@ void appendMovementTuningHudUi(
   for (const ProductGameplayMovementTuningFieldDescriptor& descriptor :
        kProductGameplayMovementTuningFields) {
     // branch-gate: BG-1213
-    if (drawn >= 7U) {
+    if (drawn >= productGameplayMovementTuningFieldCount()) {
       break;
     }
     const bool selected = descriptor.field == selectedField;
@@ -491,8 +491,13 @@ void appendMovementTuningHudUi(
     std::string row = selected ? "> " : "  ";  // branch-gate: BG-1213
     row += descriptor.label;
     row += " ";
-    row += fixedHudFloat(tuning.*(descriptor.value),
-                         descriptor.step < 0.05F ? 2 : 1);  // branch-gate: BG-1213
+    // branch-gate: BG-1213
+    if (descriptor.kind == ProductGameplayMovementTuningFieldKind::Toggle) {
+      row += (tuning.*(descriptor.value) >= 0.5F ? "ON" : "OFF");
+    } else {
+      row += fixedHudFloat(tuning.*(descriptor.value),
+                           descriptor.step < 0.05F ? 2 : 1);  // branch-gate: BG-1213
+    }
     appendGameplayHudText(frame,
                           row,
                           838.0F,

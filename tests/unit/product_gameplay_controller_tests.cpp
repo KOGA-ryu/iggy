@@ -606,6 +606,34 @@ bool productMoveUsesRuntimeTunedWindowSpeed() {
                 "runtime tuned final z");
 }
 
+bool productMoveUsesRuntimeTunedGroundResponse() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "runtime tuned response session created")) {
+    return false;
+  }
+
+  window.gameplayMovementTuning.groundResponseMultiplier = 0.5F;
+  const float expectedStep =
+      window.gameplayMovementTuning.walkSpeedMetersPerSecond *
+      window.gameplayMovementTuning.inputStepSeconds *
+      window.gameplayMovementTuning.groundResponseMultiplier;
+  const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
+  iggy3d::applyProductGameplayActions(*session,
+                                      manualMoveActions(0.0F, 1.0F),
+                                      window,
+                                      "unit/gameplay_controller_response_tuning");
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+
+  return expect(window.gameplayCommandAccepted,
+                "runtime response tuned move accepted") &&
+         expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
+                            expectedStep),
+                "runtime response tuned horizontal distance") &&
+         expect(nearlyEqual(final.z - start.z, -expectedStep),
+                "runtime response tuned final z");
+}
+
 bool productJumpRaisesPlayerAndRecordsProof() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -674,6 +702,36 @@ bool productJumpCanMoveForwardInSameFrame() {
          expect(final.y > start.y, "jump forward raises y") &&
          expect(final.z < start.z, "jump forward moves z") &&
          expect(nearlyEqual(final.x, start.x), "jump forward keeps x");
+}
+
+bool productJumpAirControlScalesAirborneMove() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "air control tuned session created")) {
+    return false;
+  }
+
+  window.gameplayMovementTuning.airControlMultiplier = 0.25F;
+  const float expectedStep =
+      window.gameplayMovementTuning.walkSpeedMetersPerSecond *
+      window.gameplayMovementTuning.inputStepSeconds *
+      window.gameplayMovementTuning.airControlMultiplier;
+  const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
+  iggy3d::applyProductGameplayActions(*session,
+                                      jumpForwardActions(),
+                                      window,
+                                      "unit/gameplay_controller_air_control");
+  const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
+
+  return expect(window.gameplayJumpAccepted,
+                "air control tuned jump accepted") &&
+         expect(window.gameplayMovementAttempted,
+                "air control tuned movement attempted") &&
+         expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
+                            expectedStep),
+                "air control tuned horizontal distance") &&
+         expect(nearlyEqual(final.z - start.z, -expectedStep),
+                "air control tuned final z");
 }
 
 bool productJumpUsesClamberTraversalWhenCandidateIsLocal() {
@@ -1289,8 +1347,10 @@ int main() {
                   productMoveNormalizesDiagonalToTunedStep() &&
                   productSprintUsesSprintProfileAndStep() &&
                   productMoveUsesRuntimeTunedWindowSpeed() &&
+                  productMoveUsesRuntimeTunedGroundResponse() &&
                   productJumpRaisesPlayerAndRecordsProof() &&
                   productJumpCanMoveForwardInSameFrame() &&
+                  productJumpAirControlScalesAirborneMove() &&
                   productJumpUsesClamberTraversalWhenCandidateIsLocal() &&
                   productJumpUsesWallJumpWhenAirborneNearWall() &&
                   productJumpRejectsWallJumpNearGenericWall() &&

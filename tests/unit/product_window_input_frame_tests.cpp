@@ -2676,6 +2676,51 @@ bool gameplaySettingsAdjustMovementTuningLive() {
                 "movement tuning decreased sprint speed");
 }
 
+bool movementTuningLookValuesDriveCameraInput() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.gameplayMovementTuning.lookSensitivity = 2.0F;
+  window.gameplayMovementTuning.invertLookEnabled = 1.0F;
+  iggy3d::FrontendSettings settings;
+  settings.lookSensitivity = 0.25F;
+  settings.invertLook = false;
+  iggy3d::ActionState actions;
+  iggy3d::recordAction(actions,
+                       iggy3d::InputAction::PlayerLookX,
+                       true,
+                       true,
+                       false,
+                       1.0F);
+  iggy3d::recordAction(actions,
+                       iggy3d::InputAction::PlayerLookY,
+                       true,
+                       true,
+                       false,
+                       1.0F);
+
+  const iggy3d::ProductControllerSampleInputResult result =
+      iggy3d::applyProductWindowInputActions(frontend,
+                                             window,
+                                             nullptr,
+                                             &settings,
+                                             actions,
+                                             "unit/look_tuning");
+
+  return expect(result.processed, "look tuning input processed") &&
+         expect(window.viewport.lookInputUsed, "look tuning used look input") &&
+         expectNear(window.viewport.cameraYawDegrees,
+                    12.0F,
+                    "look tuning sensitivity scales yaw") &&
+         expectNear(window.viewport.cameraPitchDegrees,
+                    8.0F,
+                    "look tuning invert flips pitch positive") &&
+         expect(settings.lookSensitivity == 0.25F,
+                "look tuning leaves settings object unchanged") &&
+         expect(!settings.invertLook,
+                "look tuning leaves invert setting unchanged");
+}
+
 }  // namespace
 
 int main() {
@@ -2729,7 +2774,8 @@ int main() {
       movementTuningToggleIgnoresFrontendBlockedSurfaces() &&
       mapMakerToggleUsesGameplayOnlyCreativeMode() &&
       mapMakerToggleRoutesAsGameplayOwnedInput() &&
-      gameplaySettingsAdjustMovementTuningLive();
+      gameplaySettingsAdjustMovementTuningLive() &&
+      movementTuningLookValuesDriveCameraInput();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;

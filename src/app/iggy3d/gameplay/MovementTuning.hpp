@@ -11,11 +11,20 @@ namespace iggy3d {
 enum class ProductGameplayMovementTuningField : std::uint8_t {
   WalkSpeed,
   SprintSpeed,
+  GroundResponse,
+  AirControl,
   JumpImpulse,
   Gravity,
+  LookSensitivity,
+  InvertLook,
   DashSpeed,
   DashDuration,
   DashCooldown,
+};
+
+enum class ProductGameplayMovementTuningFieldKind : std::uint8_t {
+  Scalar,
+  Toggle,
 };
 
 struct ProductGameplayMovementTuning {
@@ -26,10 +35,15 @@ struct ProductGameplayMovementTuning {
   // Player feel tuning lives here. Adjust these values when testing movement.
   float walkSpeedMetersPerSecond = 3.3F;
   float sprintSpeedMetersPerSecond = 6.2F;
+  float groundResponseMultiplier = 1.0F;
+  float airControlMultiplier = 1.0F;
   float inputStepSeconds = 1.0F / 60.0F;
 
   float jumpImpulseMetersPerSecond = 15.8F;
   float gravityMetersPerSecondSquared = 18.0F;
+
+  float lookSensitivity = 1.0F;
+  float invertLookEnabled = 0.0F;
 
   float dashSpeedMetersPerSecond = 18.5F;
   float dashDurationSeconds = 0.18F;
@@ -53,17 +67,20 @@ struct ProductGameplayMovementTuningFieldDescriptor {
   std::string_view label = "WALK";
   float ProductGameplayMovementTuning::* value =
       &ProductGameplayMovementTuning::walkSpeedMetersPerSecond;
+  ProductGameplayMovementTuningFieldKind kind =
+      ProductGameplayMovementTuningFieldKind::Scalar;
   float minValue = 0.1F;
   float maxValue = 12.0F;
   float step = 0.1F;
 };
 
-inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 7U>
+inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 11U>
     kProductGameplayMovementTuningFields{{
         {ProductGameplayMovementTuningField::WalkSpeed,
          "walk_speed_mps",
          "WALK",
          &ProductGameplayMovementTuning::walkSpeedMetersPerSecond,
+         ProductGameplayMovementTuningFieldKind::Scalar,
          0.1F,
          12.0F,
          0.1F},
@@ -71,13 +88,31 @@ inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 7U>
          "sprint_speed_mps",
          "SPRINT",
          &ProductGameplayMovementTuning::sprintSpeedMetersPerSecond,
+         ProductGameplayMovementTuningFieldKind::Scalar,
          0.1F,
          18.0F,
          0.1F},
+        {ProductGameplayMovementTuningField::GroundResponse,
+         "ground_response",
+         "RESPONSE",
+         &ProductGameplayMovementTuning::groundResponseMultiplier,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.25F,
+         2.0F,
+         0.05F},
+        {ProductGameplayMovementTuningField::AirControl,
+         "air_control",
+         "AIR CTRL",
+         &ProductGameplayMovementTuning::airControlMultiplier,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.0F,
+         2.0F,
+         0.05F},
         {ProductGameplayMovementTuningField::JumpImpulse,
          "jump_impulse_mps",
          "JUMP",
          &ProductGameplayMovementTuning::jumpImpulseMetersPerSecond,
+         ProductGameplayMovementTuningFieldKind::Scalar,
          0.1F,
          24.0F,
          0.1F},
@@ -85,13 +120,31 @@ inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 7U>
          "gravity_mps2",
          "GRAV",
          &ProductGameplayMovementTuning::gravityMetersPerSecondSquared,
+         ProductGameplayMovementTuningFieldKind::Scalar,
          1.0F,
          40.0F,
          0.5F},
+        {ProductGameplayMovementTuningField::LookSensitivity,
+         "look_sensitivity",
+         "LOOK",
+         &ProductGameplayMovementTuning::lookSensitivity,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.1F,
+         4.0F,
+         0.1F},
+        {ProductGameplayMovementTuningField::InvertLook,
+         "invert_look",
+         "INVERT Y",
+         &ProductGameplayMovementTuning::invertLookEnabled,
+         ProductGameplayMovementTuningFieldKind::Toggle,
+         0.0F,
+         1.0F,
+         1.0F},
         {ProductGameplayMovementTuningField::DashSpeed,
          "dash_speed_mps",
          "DASH",
          &ProductGameplayMovementTuning::dashSpeedMetersPerSecond,
+         ProductGameplayMovementTuningFieldKind::Scalar,
          0.1F,
          40.0F,
          0.5F},
@@ -99,6 +152,7 @@ inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 7U>
          "dash_duration_s",
          "DASHDUR",
          &ProductGameplayMovementTuning::dashDurationSeconds,
+         ProductGameplayMovementTuningFieldKind::Scalar,
          0.02F,
          1.0F,
          0.02F},
@@ -106,6 +160,7 @@ inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 7U>
          "dash_cooldown_s",
          "DASHCD",
          &ProductGameplayMovementTuning::dashCooldownSeconds,
+         ProductGameplayMovementTuningFieldKind::Scalar,
          0.0F,
          3.0F,
          0.05F},
@@ -146,6 +201,11 @@ inline float productGameplayMovementTuningFieldValue(
   return tuning.*(descriptor.value);
 }
 
+inline bool productGameplayMovementTuningInvertLook(
+    const ProductGameplayMovementTuning& tuning) {
+  return tuning.invertLookEnabled >= 0.5F;
+}
+
 constexpr ProductGameplayMovementTuningField nextProductGameplayMovementTuningField(
     ProductGameplayMovementTuningField field) {
   const std::size_t next =
@@ -169,6 +229,11 @@ inline float adjustProductGameplayMovementTuning(
     int direction) {
   const auto& descriptor = productGameplayMovementTuningFieldDescriptor(field);
   float& value = tuning.*(descriptor.value);
+  // branch-gate: BG-1208
+  if (descriptor.kind == ProductGameplayMovementTuningFieldKind::Toggle) {
+    value = value >= 0.5F ? 0.0F : 1.0F;  // branch-gate: BG-1208
+    return value;
+  }
   value = std::clamp(value + descriptor.step * static_cast<float>(direction),
                      descriptor.minValue,
                      descriptor.maxValue);

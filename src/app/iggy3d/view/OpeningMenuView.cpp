@@ -605,7 +605,7 @@ void drawGameplayMovementTuningHud(
   }
 
   setColor(renderer, 14, 21, 23);
-  fillRect(renderer, 820.0F, 410.0F, 384.0F, 168.0F);
+  fillRect(renderer, 820.0F, 410.0F, 384.0F, 232.0F);
   setColor(renderer, 245, 214, 96);
   drawText(renderer, "MOVEMENT TUNING", 838.0F, 426.0F, 2.0F);
   setColor(renderer, 166, 184, 177);
@@ -617,7 +617,7 @@ void drawGameplayMovementTuningHud(
   for (const ProductGameplayMovementTuningFieldDescriptor& descriptor :
        kProductGameplayMovementTuningFields) {
     // branch-gate: BG-1212
-    if (drawn >= 7U) {
+    if (drawn >= productGameplayMovementTuningFieldCount()) {
       break;
     }
     const bool selected = descriptor.field == selectedField;
@@ -627,11 +627,16 @@ void drawGameplayMovementTuningHud(
              selected ? 214 : 184,  // branch-gate: BG-1212
              selected ? 96 : 177);  // branch-gate: BG-1212
     const float value = tuning.*(descriptor.value);
-    const std::string row =
+    std::string row =
         std::string{selected ? "> " : "  "} +  // branch-gate: BG-1212
-        std::string{descriptor.label} + " " +
-        fixedFloat(value,
-                   descriptor.step < 0.05F ? 2 : 1);  // branch-gate: BG-1212
+        std::string{descriptor.label} + " ";
+    // branch-gate: BG-1212
+    if (descriptor.kind == ProductGameplayMovementTuningFieldKind::Toggle) {
+      row += value >= 0.5F ? "ON" : "OFF";
+    } else {
+      row += fixedFloat(value,
+                        descriptor.step < 0.05F ? 2 : 1);  // branch-gate: BG-1212
+    }
     drawText(renderer, row, 838.0F, y, 1.0F);
     y += 16.0F;
     ++drawn;
@@ -931,11 +936,17 @@ void drawMovementTuningRows(
     const std::size_t colorIndex = static_cast<std::size_t>(selected);
     setColor(renderer, red[colorIndex], green[colorIndex], blue[colorIndex]);
     // branch-gate: BG-1210
-    const std::string row =
+    std::string row =
         std::string{selected ? "> " : "  "} + std::string{descriptor.label} +
-        // branch-gate: BG-1210
-        " " + fixedFloat(value, descriptor.step < 0.05F ? 2 : 1) + " " +
-        sliderBar(value, descriptor.minValue, descriptor.maxValue);
+        " ";
+    // branch-gate: BG-1210
+    if (descriptor.kind == ProductGameplayMovementTuningFieldKind::Toggle) {
+      row += value >= 0.5F ? "ON " : "OFF ";
+    } else {
+      // branch-gate: BG-1210
+      row += fixedFloat(value, descriptor.step < 0.05F ? 2 : 1) + " ";
+    }
+    row += sliderBar(value, descriptor.minValue, descriptor.maxValue);
     drawText(renderer, row, 790.0F, y, 1.0F);
     y += 20.0F;
   }

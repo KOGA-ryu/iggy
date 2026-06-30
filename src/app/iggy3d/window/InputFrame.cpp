@@ -365,7 +365,7 @@ ProductCreativeFlyResult applyProductWindowCreativeFlyActions(
   return fly;
 }
 
-ProductControllerSampleInputResult applyProductWindowInputActions(
+ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
     const FrontendState& frontend,
     ProductAppWindowState& window,
     Session* activeSession,
@@ -409,7 +409,13 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
 
   // branch-gate: BG-1061
   if (settings != nullptr) {
-    applyProductCameraActions(acceptedGameplayActions, window.viewport, *settings,
+    FrontendSettings movementTunedSettings = *settings;
+    movementTunedSettings.lookSensitivity =
+        window.gameplayMovementTuning.lookSensitivity;
+    movementTunedSettings.invertLook =
+        productGameplayMovementTuningInvertLook(window.gameplayMovementTuning);
+    applyProductCameraActions(acceptedGameplayActions, window.viewport,
+                              movementTunedSettings,
                               inputSource);
   }
   // TODO(map-maker): Creative mode needs its own toolbelt/input owner here.
@@ -501,6 +507,21 @@ ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
 }
 
 }  // namespace
+
+ProductControllerSampleInputResult applyProductWindowInputActions(
+    const FrontendState& frontend,
+    ProductAppWindowState& window,
+    Session* activeSession,
+    const FrontendSettings* settings,
+    const ActionState& gameplayActions,
+    std::string_view inputSource) {
+  return applyProductWindowInputActionsImpl(frontend,
+                                            window,
+                                            activeSession,
+                                            settings,
+                                            gameplayActions,
+                                            inputSource);
+}
 
 void dispatchProductOpeningMenuMouseHit(
     const OpeningMenuHitTestResult& hit,

@@ -118,7 +118,9 @@ bool movementTuningFieldDescriptorsAreStable() {
   const float walk = tuning.walkSpeedMetersPerSecond;
   const float adjusted = iggy3d::adjustProductGameplayMovementTuning(
       tuning, iggy3d::ProductGameplayMovementTuningField::WalkSpeed, 1);
-  return expect(iggy3d::productGameplayMovementTuningFieldCount() == 7U,
+  const float invert = iggy3d::adjustProductGameplayMovementTuning(
+      tuning, iggy3d::ProductGameplayMovementTuningField::InvertLook, 1);
+  return expect(iggy3d::productGameplayMovementTuningFieldCount() == 11U,
                 "movement tuning field count") &&
          expect(iggy3d::productGameplayMovementTuningFieldName(
                     iggy3d::ProductGameplayMovementTuningField::WalkSpeed) ==
@@ -134,7 +136,10 @@ bool movementTuningFieldDescriptorsAreStable() {
                 "previous movement tuning wraps") &&
          expect(adjusted > walk, "walk tuning increments") &&
          expect(tuning.walkSpeedMetersPerSecond == adjusted,
-                "walk tuning stores increment");
+                "walk tuning stores increment") &&
+         expect(invert == 1.0F, "invert tuning toggles on") &&
+         expect(iggy3d::productGameplayMovementTuningInvertLook(tuning),
+                "invert tuning bool helper");
 }
 
 bool settingsTabNavigationClamps() {

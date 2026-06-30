@@ -996,12 +996,14 @@ Vec3 manualFirstPersonMoveDelta(float moveX,
                                 float moveY,
                                 float yawDegrees,
                                 bool sprinting,
-                                const ProductGameplayMovementTuning& tuning) {
+                                const ProductGameplayMovementTuning& tuning,
+                                float responseMultiplier) {
   const float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
   const float scale = 1.0F / std::max(1.0F, magnitude);
   const float stepMeters =
       manualFirstPersonMaxSpeedMetersPerSecond(tuning, sprinting) *
-                           tuning.inputStepSeconds;
+      tuning.inputStepSeconds *
+      std::clamp(responseMultiplier, 0.0F, 4.0F);
   const float yawRadians = yawDegrees * kPi / 180.0F;
   const float cosYaw = std::cos(yawRadians);
   const float sinYaw = std::sin(yawRadians);
@@ -1095,7 +1097,8 @@ void submitProductAirborneMove(Session& session,
                                  moveY,
                                  window.viewport.cameraYawDegrees,
                                  sprinting,
-                                 window.gameplayMovementTuning);
+                                 window.gameplayMovementTuning,
+                                 window.gameplayMovementTuning.airControlMultiplier);
   // branch-gate: BG-1161
   if (!setProductPlayerPosition(session, actor.id, finalPosition)) {
     window.gameplayMovementBlocked = true;
@@ -1471,7 +1474,8 @@ void submitProductMove(Session& session,
                                   moveY,
                                   window.viewport.cameraYawDegrees,
                                   sprinting,
-                                  window.gameplayMovementTuning);
+                                  window.gameplayMovementTuning,
+                                  window.gameplayMovementTuning.groundResponseMultiplier);
 
   CommandRecord command;
   command.playerSlot = 0;
