@@ -4,7 +4,6 @@
 #include <string>
 #include <utility>
 
-#include "app/frontend/FrontendReceipt.hpp"
 #include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 #include "app/iggy3d/gameplay/MovementProof.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"

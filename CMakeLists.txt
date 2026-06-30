@@ -84,11 +84,9 @@ target_sources(iggy3d
     src/app/iggy3d/room_editor/AuthoringController.cpp
     src/app/iggy3d/room_editor/ActionController.cpp
     src/app/iggy3d/room_editor/Cursor.cpp
-    src/app/iggy3d/room_editor/ObjectPalette.cpp
     src/app/iggy3d/room_editor/Presentation.cpp
     src/app/iggy3d/room_editor/Preview.cpp
     src/app/iggy3d/room_editor/EditingState.cpp
-    src/app/iggy3d/room/VisualProof.cpp
     src/app/iggy3d/gameplay/ScriptedDriver.cpp
     src/app/iggy3d/save/RoomMarkerBinding.cpp
     src/app/iggy3d/save/Catalog.cpp
@@ -115,11 +113,8 @@ target_sources(iggy3d
     src/app/frontend/SaveSlotModel.cpp
     src/app/frontend/SettingsMenu.cpp
     src/app/frontend/DevToolsMenu.cpp
-    src/app/frontend/FrontendReceipt.cpp
-    src/app/input/AutomationInput.cpp
     src/app/input/GamepadInput.cpp
     src/app/input/ActionState.cpp
-    src/app/input/GamepadSystemControls.cpp
     src/app/input/InputAction.cpp
     src/app/input/InputActionRegistry.cpp
     src/app/input/InputBindings.cpp

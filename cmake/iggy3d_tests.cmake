@@ -332,11 +332,6 @@ iggy3d_add_unit_test(product_room_editor_hud_tests
 set_tests_properties(product_room_editor_hud_tests PROPERTIES
   LABELS "unit;app;product;room_editor;hud;preview;iggy3d")
 
-iggy3d_add_unit_test(product_room_editor_object_palette_tests
-  tests/unit/product_room_editor_object_palette_tests.cpp)
-set_tests_properties(product_room_editor_object_palette_tests PROPERTIES
-  LABELS "unit;app;product;room_editor;object;palette;iggy3d")
-
 iggy3d_add_unit_test(product_room_editor_preview_tests
   tests/unit/product_room_editor_preview_tests.cpp)
 set_tests_properties(product_room_editor_preview_tests PROPERTIES
@@ -351,11 +346,6 @@ iggy3d_add_unit_test(product_room_editing_state_tests
   tests/unit/product_room_editing_state_tests.cpp)
 set_tests_properties(product_room_editing_state_tests PROPERTIES
   LABELS "unit;app;product;ascii_room;authoring;editable_room;controller;active_room;collision;iggy3d")
-
-iggy3d_add_unit_test(product_room_visual_proof_tests
-  tests/unit/product_room_visual_proof_tests.cpp)
-set_tests_properties(product_room_visual_proof_tests PROPERTIES
-  LABELS "unit;app;product;room_visual_proof;draw_list;iggy3d")
 
 iggy3d_add_unit_test(ascii_room_fixture_tests tests/unit/ascii_room_fixture_tests.cpp)
 set_tests_properties(ascii_room_fixture_tests PROPERTIES
@@ -399,10 +389,6 @@ set_tests_properties(clock_tests PROPERTIES LABELS "unit;runtime;clock;iggy3d")
 
 iggy3d_add_unit_test(camera_mode_policy_tests tests/unit/camera_mode_policy_tests.cpp)
 set_tests_properties(camera_mode_policy_tests PROPERTIES LABELS "unit;runtime;camera;iggy3d")
-
-iggy3d_add_unit_test(gamepad_system_controls_tests tests/unit/gamepad_system_controls_tests.cpp)
-set_tests_properties(gamepad_system_controls_tests PROPERTIES
-  LABELS "unit;app;input;gamepad;iggy3d")
 
 iggy3d_add_unit_test(command_admission_tests tests/unit/command_admission_tests.cpp)
 set_tests_properties(command_admission_tests PROPERTIES LABELS "unit;runtime;command;iggy3d")
@@ -769,10 +755,6 @@ set_tests_properties(package_runtime_lookup_tests PROPERTIES LABELS "unit;render
     product_ascii_map_smoke
     tests/smoke/product_ascii_map_smoke.cpp
     "ascii_room;map;world_setup;save;load")
-  iggy3d_add_product_app_automation_smoke(
-    product_room_visual_proof_smoke
-    tests/smoke/product_room_visual_proof_smoke.cpp
-    "ascii_room;map;save;load;visual_proof")
   iggy3d_add_product_app_automation_smoke(
     product_continued_room_movement_smoke
     tests/smoke/product_continued_room_movement_smoke.cpp
