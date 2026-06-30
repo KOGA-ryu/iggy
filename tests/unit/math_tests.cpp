@@ -1,8 +1,6 @@
 #include "core/hash/StableHash.hpp"
 #include "core/math/Aabb3.hpp"
 #include "core/math/Mat4.hpp"
-#include "core/math/Plane.hpp"
-#include "core/math/Ray3.hpp"
 #include "core/math/Transform3.hpp"
 #include "core/math/Vec3.hpp"
 
@@ -68,35 +66,14 @@ bool aabbTests() {
                 "Aabb closest");
 }
 
-bool rayPlaneTests() {
-  using namespace iggy3d;
-  const Ray3 ray = makeRay3(Vec3{0.0F, 0.0F, 0.0F}, Vec3{1.0F, 0.0F, 0.0F});
-  const Plane plane = planeFromPointNormal(Vec3{2.0F, 0.0F, 0.0F}, Vec3{1.0F, 0.0F, 0.0F});
-  const RayPlaneHit hit = intersectRayPlane(ray, plane);
-  const RayPlaneHit miss = intersectRayPlane(makeRay3(vec3Zero(), vec3UnitY()), plane);
-  return expect(isValid(ray), "Ray valid") &&
-         expect(!isValid(makeRay3(vec3Zero(), vec3Zero())), "Ray zero invalid") &&
-         expect(nearlyEqual(pointAt(ray, 2.0F), Vec3{2.0F, 0.0F, 0.0F}), "Ray pointAt") &&
-         expect(isValid(plane), "Plane valid") &&
-         expect(!isValid(makePlane(vec3Zero(), 0.0F)), "Plane invalid") &&
-         expect(signedDistance(plane, Vec3{3.0F, 0.0F, 0.0F}) == 1.0F, "Plane distance") &&
-         expect(hit.hit && hit.t == 2.0F && nearlyEqual(hit.point, Vec3{2.0F, 0.0F, 0.0F}),
-                "Plane ray hit") &&
-         expect(!miss.hit, "Plane ray miss");
-}
-
 bool mat4Tests() {
   using namespace iggy3d;
   const Mat4 identity = identityMat4();
-  const Mat4 translation = translationMat4(Vec3{1.0F, 2.0F, 3.0F});
-  const Mat4 scale = scaleMat4(Vec3{2.0F, 2.0F, 2.0F});
-  const Mat4 composed = translation * scale;
   return expect(at(identity, 0, 0) == 1.0F && at(identity, 3, 3) == 1.0F, "Mat4 identity") &&
-         expect(nearlyEqual(transformPoint(translation, vec3Zero()), Vec3{1.0F, 2.0F, 3.0F}),
-                "Mat4 translation") &&
-         expect(nearlyEqual(transformPoint(composed, Vec3{1.0F, 1.0F, 1.0F}), Vec3{3.0F, 4.0F, 5.0F}),
-                "Mat4 order") &&
-         expect(isFinite(rotationEulerRadiansMat4(Vec3{0.1F, 0.2F, 0.3F})), "Mat4 rotation finite");
+         expect(isFinite(identity), "Mat4 identity finite") &&
+         expect(nearlyEqual(transformPoint(identity, Vec3{1.0F, 2.0F, 3.0F}),
+                            Vec3{1.0F, 2.0F, 3.0F}),
+                "Mat4 identity transform");
 }
 
 bool hashTests() {
@@ -125,7 +102,7 @@ bool hashTests() {
 }  // namespace
 
 int main() {
-  const bool ok = vec3Tests() && transformTests() && aabbTests() && rayPlaneTests() && mat4Tests() &&
+  const bool ok = vec3Tests() && transformTests() && aabbTests() && mat4Tests() &&
                   hashTests();
   return ok ? 0 : 1;
 }

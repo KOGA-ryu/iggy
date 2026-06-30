@@ -15,41 +15,6 @@ Mat4 identityMat4() {
             0.0F, 0.0F, 0.0F, 0.0F, 1.0F}}};
 }
 
-Mat4 translationMat4(Vec3 translation) {
-  Mat4 result = identityMat4();
-  result.m[indexOf(0, 3)] = translation.x;
-  result.m[indexOf(1, 3)] = translation.y;
-  result.m[indexOf(2, 3)] = translation.z;
-  return result;
-}
-
-Mat4 scaleMat4(Vec3 scale) {
-  Mat4 result = identityMat4();
-  result.m[indexOf(0, 0)] = scale.x;
-  result.m[indexOf(1, 1)] = scale.y;
-  result.m[indexOf(2, 2)] = scale.z;
-  return result;
-}
-
-Mat4 rotationEulerRadiansMat4(Vec3 rotationEulerRadians) {
-  const float pitch = rotationEulerRadians.x;
-  const float yaw = rotationEulerRadians.y;
-  const float roll = rotationEulerRadians.z;
-  const float cp = std::cos(pitch);
-  const float sp = std::sin(pitch);
-  const float cy = std::cos(yaw);
-  const float sy = std::sin(yaw);
-  const float cr = std::cos(roll);
-  const float sr = std::sin(roll);
-  Mat4 rollMatrix = {{{cr, -sr, 0.0F, 0.0F, sr, cr, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F,
-                       0.0F, 0.0F, 0.0F, 0.0F, 1.0F}}};
-  Mat4 pitchMatrix = {{{1.0F, 0.0F, 0.0F, 0.0F, 0.0F, cp, -sp, 0.0F, 0.0F, sp,
-                        cp, 0.0F, 0.0F, 0.0F, 0.0F, 1.0F}}};
-  Mat4 yawMatrix = {{{cy, 0.0F, sy, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, -sy, 0.0F, cy,
-                      0.0F, 0.0F, 0.0F, 0.0F, 1.0F}}};
-  return yawMatrix * (pitchMatrix * rollMatrix);
-}
-
 Mat4 operator*(const Mat4& lhs, const Mat4& rhs) {
   Mat4 out{{{}}};
   for (std::uint32_t row = 0; row < 4U; ++row) {
