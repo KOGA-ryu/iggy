@@ -30,6 +30,7 @@ struct ProductSaveCatalogEntry {
   std::string savedStateHashHex;
   std::uint64_t authoredFloorCount = 0;
   std::uint64_t authoredWallCount = 0;
+  std::uint64_t authoredObjectCount = 0;
   std::uint64_t authoredMarkerCount = 0;
   std::filesystem::path snapshotPath;
   std::string snapshotStatus = "missing";

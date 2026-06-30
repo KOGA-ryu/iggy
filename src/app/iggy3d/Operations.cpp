@@ -615,8 +615,14 @@ void executeProductSaveRecover(const ProductAppOptions& options,
     return;
   }
 
-  const ProductSaveRecoverResult recovered =
-      recoverProductSave({options.saveRoot, recoverId});
+  const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
+  const ProductSaveMutationResult mutation = recoverProductSaveAndRefresh({
+      options.saveRoot,
+      recoverId,
+      world.packageId,
+      world.scenarioId,
+  });
+  const ProductSaveRecoverResult& recovered = mutation.recover;
   window.saveRecoverStatus = recovered.status;
   window.saveRecoverReasonCode = recovered.reasonCode;
   window.saveRecoverExecuted = recovered.ok;
@@ -624,16 +630,11 @@ void executeProductSaveRecover(const ProductAppOptions& options,
   window.saveRecoverSnapshotRecovered = recovered.snapshotRecovered;
   window.saveRecoverSnapshotMissing = recovered.snapshotMissing;
 
-  const ProductSaveBridgeResult deletedAfter =
-      scanDeletedProductSavesForOptions(options);
-  recordDeletedProductSaveSlots(deletedAfter, window);
+  recordDeletedProductSaveSlots(mutation.deletedSaves, window);
   if (recovered.ok) {
     window.deletedSaveBrowserOpen = false;
-    recordSelectedDeletedProductSaveSlot(deletedAfter.slots, nullptr, window);
-    const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
-    const ProductSaveBridgeResult activeAfter =
-        scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
-    selectProductSaveSlotById(activeAfter.slots, recovered.saveId, window);
+    recordSelectedDeletedProductSaveSlot(mutation.deletedSaves.slots, nullptr, window);
+    selectProductSaveSlotById(mutation.activeSaves.slots, recovered.saveId, window);
   }
 
   frontend.childScreen = FrontendScreen::LoadSave;
@@ -754,8 +755,14 @@ ProductSaveFlowResult executeProductSaveSoftDelete(
     return flow;
   }
 
-  const ProductSaveSoftDeleteResult deleted =
-      softDeleteProductSave({options.saveRoot, window.saveDeleteCandidateId});
+  const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
+  const ProductSaveMutationResult mutation = softDeleteProductSaveAndRefresh({
+      options.saveRoot,
+      window.saveDeleteCandidateId,
+      world.packageId,
+      world.scenarioId,
+  });
+  const ProductSaveSoftDeleteResult& deleted = mutation.softDelete;
   window.saveDeleteStatus = deleted.status;
   window.saveDeleteReasonCode = deleted.reasonCode;
   window.saveDeleteExecuted = deleted.ok;
@@ -768,22 +775,13 @@ ProductSaveFlowResult executeProductSaveSoftDelete(
   if (deleted.ok) {
     window.selectedProductSaveEnabled = false;
     window.selectedProductSaveStatus = "missing";
-    // Live refresh: the file is gone on disk, but `saves` is the in-memory
-    // catalog that Continue, the Load list, and the receipt `save_count` all
-    // read. Without re-scanning it, the deleted map stays visible until the
-    // next app launch. We re-scan and re-clamp the selection here, mirroring
-    // `executeProductSaveRecover` above -- the delete path was simply one
-    // branch short of the recover path's treatment.
-    const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
-    saves = scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
+    saves = mutation.activeSaves;
     initializeSelectedProductSaveSlot(saves.slots, window);
   }
-  const ProductSaveBridgeResult deletedAfter =
-      scanDeletedProductSavesForOptions(options);
-  recordDeletedProductSaveSlots(deletedAfter, window);
+  recordDeletedProductSaveSlots(mutation.deletedSaves, window);
   flow.activeCountAfter = static_cast<std::uint64_t>(saves.slots.slots.size());
   flow.deletedCountAfter =
-      static_cast<std::uint64_t>(deletedAfter.slots.slots.size());
+      static_cast<std::uint64_t>(mutation.deletedSaves.slots.slots.size());
   flow.selectedSlotAfter = window.selectedProductSaveId;
   frontend.childScreen = FrontendScreen::LoadSave;
   frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;

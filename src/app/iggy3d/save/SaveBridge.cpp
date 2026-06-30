@@ -1,25 +1,263 @@
 #include "app/iggy3d/save/SaveBridge.hpp"
 
+#include <chrono>
+
+#include "app/iggy3d/save/CatalogProjector.hpp"
+#include "runtime/save/SaveCodec.hpp"
+
 namespace iggy3d {
+namespace {
+
+std::string timestampLabelForPath(const std::filesystem::path& path) {
+  std::error_code error;
+  const auto writeTime = std::filesystem::last_write_time(path, error);
+  // branch-gate: BG-1218
+  if (error) {
+    return "unknown";
+  }
+  const auto seconds =
+      std::chrono::duration_cast<std::chrono::seconds>(writeTime.time_since_epoch())
+          .count();
+  return "file_time_" + std::to_string(seconds);
+}
+
+void populateSnapshotInfo(ProductSaveCatalogEntry& entry) {
+  entry.snapshotPath = saveSnapshotPathForFilePath(entry.path);
+  entry.snapshotAvailable = false;
+  entry.snapshotStatus = "missing";
+
+  std::error_code error;
+  // branch-gate: BG-1218
+  if (!std::filesystem::exists(entry.snapshotPath, error)) {
+    // branch-gate: BG-1218
+    entry.snapshotStatus = error ? "unavailable" : "missing";
+    return;
+  }
+  // branch-gate: BG-1218
+  if (!std::filesystem::is_regular_file(entry.snapshotPath, error)) {
+    entry.snapshotStatus = "unavailable";
+    return;
+  }
+  const auto size = std::filesystem::file_size(entry.snapshotPath, error);
+  // branch-gate: BG-1218
+  if (error) {
+    entry.snapshotStatus = "unavailable";
+    return;
+  }
+  // branch-gate: BG-1218
+  if (size == 0U) {
+    entry.snapshotStatus = "empty";
+    return;
+  }
+  entry.snapshotAvailable = true;
+  entry.snapshotStatus = "available";
+}
+
+std::string compatibilityReason(std::string_view packageId,
+                                std::string_view scenarioId,
+                                std::string_view expectedPackageId,
+                                std::string_view expectedScenarioId) {
+  // branch-gate: BG-1218
+  if (!expectedPackageId.empty() && packageId != expectedPackageId) {
+    return "incompatible_package";
+  }
+  // branch-gate: BG-1218
+  if (!expectedScenarioId.empty() && scenarioId != expectedScenarioId) {
+    return "incompatible_scenario";
+  }
+  return "compatible";
+}
+
+ProductSaveCatalogEntry baseCatalogEntryForPath(
+    const std::filesystem::path& path,
+    ProductSaveCatalogLocation location) {
+  ProductSaveCatalogEntry entry;
+  entry.saveId = saveFileIdFromPath(path);
+  entry.path = path;
+  entry.location = location;
+  entry.deleted = location == ProductSaveCatalogLocation::Deleted;
+  // branch-gate: BG-1218
+  entry.displayTitle = entry.saveId.empty() ? "save" : entry.saveId;
+  entry.savedAtUtc = timestampLabelForPath(path);
+  populateSnapshotInfo(entry);
+  return entry;
+}
+
+ProductSaveCatalogEntry catalogEntryForSavePath(
+    const std::filesystem::path& path,
+    ProductSaveCatalogLocation location,
+    std::string_view expectedPackageId,
+    std::string_view expectedScenarioId) {
+  ProductSaveCatalogEntry entry = baseCatalogEntryForPath(path, location);
+  const SaveFileReadResult read = readSaveFile(path);
+  // branch-gate: BG-1218
+  if (!read.ok) {
+    entry.corrupt = true;
+    entry.compatible = false;
+    entry.loadable = false;
+    entry.recoverable = false;
+    entry.disabledReason = read.reason;
+    return entry;
+  }
+
+  const SaveDecodeResult decoded = decodeSaveEnvelope(read.encodedText);
+  // branch-gate: BG-1218
+  if (decoded.status != SaveCodecStatus::Ok) {
+    entry.corrupt = true;
+    entry.compatible = false;
+    entry.loadable = false;
+    entry.recoverable = false;
+    entry.disabledReason = "save_file_decode_failed";
+    return entry;
+  }
+
+  entry.packageId = decoded.envelope.metadata.packageId;
+  entry.scenarioId = decoded.envelope.metadata.scenarioId;
+  entry.currentTick = decoded.envelope.session.currentTick;
+  entry.savedStateHashHex = decoded.envelope.metadata.savedStateHashHex;
+  entry.worldId = decoded.envelope.metadata.worldId;
+  entry.worldTitle = decoded.envelope.metadata.worldTitle;
+  entry.saveTitle = decoded.envelope.metadata.saveTitle;
+  entry.saveType = decoded.envelope.metadata.saveType;
+  entry.createdAtUtc = decoded.envelope.metadata.createdAtUtc;
+  // branch-gate: BG-1218
+  if (!decoded.envelope.metadata.savedAtUtc.empty()) {
+    entry.savedAtUtc = decoded.envelope.metadata.savedAtUtc;
+  }
+  entry.authoredFloorCount =
+      static_cast<std::uint64_t>(decoded.envelope.authoredRoom.floors.size());
+  entry.authoredWallCount =
+      static_cast<std::uint64_t>(decoded.envelope.authoredRoom.walls.size());
+  entry.authoredObjectCount =
+      static_cast<std::uint64_t>(decoded.envelope.authoredRoom.objects.size());
+  entry.authoredMarkerCount =
+      static_cast<std::uint64_t>(decoded.envelope.authoredRoom.markers.size());
+
+  const std::string reason =
+      compatibilityReason(entry.packageId,
+                          entry.scenarioId,
+                          expectedPackageId,
+                          expectedScenarioId);
+  entry.compatible = reason == "compatible";
+  entry.corrupt = false;
+  entry.loadable =
+      location == ProductSaveCatalogLocation::Active && entry.compatible;
+  entry.recoverable =
+      location == ProductSaveCatalogLocation::Deleted && entry.compatible;
+  // branch-gate: BG-1218
+  entry.disabledReason = entry.compatible ? "none" : reason;
+  return entry;
+}
+
+ProductSaveCatalogBuildResult scanProductSaveCatalog(
+    const std::filesystem::path& scanRoot,
+    ProductSaveCatalogLocation location,
+    std::string_view packageId,
+    std::string_view scenarioId) {
+  std::vector<ProductSaveCatalogEntry> entries;
+  for (const std::filesystem::path& path : listSaveFilePaths(scanRoot)) {
+    entries.push_back(catalogEntryForSavePath(path, location, packageId, scenarioId));
+  }
+  return buildProductSaveCatalog(std::move(entries));
+}
+
+ProductSaveBridgeResult bridgeResultFromCatalog(
+    const std::filesystem::path& scanRoot,
+    ProductSaveCatalogBuildResult catalog,
+    std::string_view status) {
+  ProductSaveBridgeResult result;
+  result.saveRoot = scanRoot;
+  result.catalog = std::move(catalog);
+  result.slots = buildSaveSlotListFromCatalog(result.catalog.catalog);
+  result.status = status;
+  return result;
+}
+
+ProductSaveMutationStatus mutationStatusForSoftDelete(
+    const ProductSaveSoftDeleteResult& result) {
+  // branch-gate: BG-1218
+  if (result.ok) {
+    return ProductSaveMutationStatus::Succeeded;
+  }
+  // branch-gate: BG-1218
+  if (result.reasonCode == "product_save_delete_id_missing" ||
+      result.reasonCode == "soft_delete_source_missing") {
+    return ProductSaveMutationStatus::SaveNotFound;
+  }
+  // branch-gate: BG-1218
+  if (result.reasonCode == "soft_delete_snapshot_move_failed") {
+    return ProductSaveMutationStatus::SnapshotMoveFailed;
+  }
+  return ProductSaveMutationStatus::FileOperationFailed;
+}
+
+ProductSaveMutationStatus mutationStatusForRecover(
+    const ProductSaveRecoverResult& result) {
+  // branch-gate: BG-1218
+  if (result.ok) {
+    return ProductSaveMutationStatus::Succeeded;
+  }
+  // branch-gate: BG-1218
+  if (result.reasonCode == "product_save_recover_id_missing" ||
+      result.reasonCode == "recover_save_source_missing") {
+    return ProductSaveMutationStatus::SaveNotFound;
+  }
+  // branch-gate: BG-1218
+  if (result.reasonCode == "recover_save_target_exists") {
+    return ProductSaveMutationStatus::NotActiveSave;
+  }
+  // branch-gate: BG-1218
+  if (result.reasonCode == "recover_save_snapshot_move_failed") {
+    return ProductSaveMutationStatus::SnapshotMoveFailed;
+  }
+  return ProductSaveMutationStatus::FileOperationFailed;
+}
+
+}  // namespace
+
+std::string_view productSaveMutationStatusName(ProductSaveMutationStatus status) {
+  // branch-gate: BG-1218
+  switch (status) {
+    case ProductSaveMutationStatus::Succeeded:
+      return "succeeded";
+    case ProductSaveMutationStatus::SaveNotFound:
+      return "save_not_found";
+    case ProductSaveMutationStatus::NotActiveSave:
+      return "not_active_save";
+    case ProductSaveMutationStatus::FileOperationFailed:
+      return "file_operation_failed";
+    case ProductSaveMutationStatus::SnapshotMoveFailed:
+      return "snapshot_move_failed";
+    case ProductSaveMutationStatus::DecodeFailedAfterMutation:
+      return "decode_failed_after_mutation";
+  }
+  return "file_operation_failed";
+}
 
 ProductSaveBridgeResult scanProductSaves(const std::filesystem::path& saveRoot,
                                          std::string_view packageId,
                                          std::string_view scenarioId) {
-  ProductSaveBridgeResult result;
-  result.saveRoot = saveRoot;
-  result.slots = buildSaveSlotList(saveRoot, packageId, scenarioId);
-  return result;
+  return bridgeResultFromCatalog(
+      saveRoot,
+      scanProductSaveCatalog(saveRoot,
+                             ProductSaveCatalogLocation::Active,
+                             packageId,
+                             scenarioId),
+      "save_bridge_ready");
 }
 
 ProductSaveBridgeResult scanDeletedProductSaves(
     const std::filesystem::path& saveRoot,
     std::string_view packageId,
     std::string_view scenarioId) {
-  ProductSaveBridgeResult result;
-  result.saveRoot = saveRoot / "deleted";
-  result.slots = buildSaveSlotList(result.saveRoot, packageId, scenarioId);
-  result.status = "deleted_save_bridge_ready";
-  return result;
+  const std::filesystem::path deletedRoot = deletedSaveDirectory(saveRoot);
+  return bridgeResultFromCatalog(
+      deletedRoot,
+      scanProductSaveCatalog(deletedRoot,
+                             ProductSaveCatalogLocation::Deleted,
+                             packageId,
+                             scenarioId),
+      "deleted_save_bridge_ready");
 }
 
 ProductSaveWriteResult writeProductSessionSaveDurably(
@@ -231,6 +469,38 @@ ProductSaveRecoverResult recoverProductSave(
   result.ok = true;
   result.status = "product_save_recovered";
   result.reasonCode = "product_save_recovered";
+  return result;
+}
+
+ProductSaveMutationResult softDeleteProductSaveAndRefresh(
+    const ProductSaveMutationRequest& request) {
+  ProductSaveMutationResult result;
+  // branch-gate: BG-1218
+  result.affectedSaveId = request.saveId.empty() ? "none" : request.saveId;
+  result.softDelete = softDeleteProductSave({request.saveRoot, request.saveId});
+  result.ok = result.softDelete.ok;
+  result.status = mutationStatusForSoftDelete(result.softDelete);
+  result.reasonCode = result.softDelete.reasonCode;
+  result.activeSaves =
+      scanProductSaves(request.saveRoot, request.packageId, request.scenarioId);
+  result.deletedSaves =
+      scanDeletedProductSaves(request.saveRoot, request.packageId, request.scenarioId);
+  return result;
+}
+
+ProductSaveMutationResult recoverProductSaveAndRefresh(
+    const ProductSaveMutationRequest& request) {
+  ProductSaveMutationResult result;
+  // branch-gate: BG-1218
+  result.affectedSaveId = request.saveId.empty() ? "none" : request.saveId;
+  result.recover = recoverProductSave({request.saveRoot, request.saveId});
+  result.ok = result.recover.ok;
+  result.status = mutationStatusForRecover(result.recover);
+  result.reasonCode = result.recover.reasonCode;
+  result.activeSaves =
+      scanProductSaves(request.saveRoot, request.packageId, request.scenarioId);
+  result.deletedSaves =
+      scanDeletedProductSaves(request.saveRoot, request.packageId, request.scenarioId);
   return result;
 }
 

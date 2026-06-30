@@ -202,6 +202,10 @@ std::filesystem::path saveFileTempPathForId(const std::filesystem::path& root,
                                             std::string_view attemptToken);
 std::filesystem::path saveSnapshotPathForId(const std::filesystem::path& root,
                                             std::string_view id);
+std::filesystem::path saveSnapshotPathForFilePath(
+    const std::filesystem::path& path);
+std::string saveFileIdFromPath(const std::filesystem::path& path);
+std::filesystem::path deletedSaveDirectory(const std::filesystem::path& root);
 std::filesystem::path deletedSaveFilePathForId(const std::filesystem::path& root,
                                                std::string_view id);
 std::filesystem::path deletedSaveSnapshotPathForId(
@@ -224,6 +228,8 @@ SaveFileRecoverPlan planRecoverDeletedSaveFile(const std::filesystem::path& root
 SaveFileSoftDeleteResult softDeleteSaveFile(const SaveFileSoftDeletePlan& plan);
 SaveFileRecoverResult recoverDeletedSaveFile(const SaveFileRecoverPlan& plan);
 
+std::vector<std::filesystem::path> listSaveFilePaths(
+    const std::filesystem::path& root);
 std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root);
 SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request);
 SaveFileDurableWriteResult writeSessionSaveFileDurably(

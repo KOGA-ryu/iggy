@@ -18,15 +18,6 @@ bool hasSaveFileExtension(const std::filesystem::path& path) {
          filename.ends_with(kSaveFileExtension);
 }
 
-std::string idFromPath(const std::filesystem::path& path) {
-  std::string filename = path.filename().string();
-  if (filename.size() > kSaveFileExtension.size() &&
-      filename.ends_with(kSaveFileExtension)) {
-    filename.erase(filename.size() - kSaveFileExtension.size());
-  }
-  return filename.empty() ? "save" : filename;
-}
-
 std::string makeSaveId(std::size_t index) {
   std::ostringstream output;
   output << "save_";
@@ -39,7 +30,7 @@ std::string makeSaveId(std::size_t index) {
 SaveFileRecord recordFromEnvelope(const std::filesystem::path& path,
                                   const SaveEnvelope& envelope) {
   SaveFileRecord record;
-  record.id = idFromPath(path);
+  record.id = saveFileIdFromPath(path);
   record.path = path;
   record.packageId = envelope.metadata.packageId;
   record.scenarioId = envelope.metadata.scenarioId;
@@ -92,15 +83,36 @@ std::filesystem::path saveSnapshotPathForId(const std::filesystem::path& root,
   return root / (std::string(id) + ".snapshot.png");
 }
 
+std::filesystem::path saveSnapshotPathForFilePath(
+    const std::filesystem::path& path) {
+  return saveSnapshotPathForId(path.parent_path(), saveFileIdFromPath(path));
+}
+
+std::string saveFileIdFromPath(const std::filesystem::path& path) {
+  std::string filename = path.filename().string();
+  // branch-gate: BG-1219
+  if (filename.size() > kSaveFileExtension.size() &&
+      filename.ends_with(kSaveFileExtension)) {
+    filename.erase(filename.size() - kSaveFileExtension.size());
+  }
+  // branch-gate: BG-1219
+  return filename.empty() ? "save" : filename;
+}
+
+std::filesystem::path deletedSaveDirectory(const std::filesystem::path& root) {
+  return root / "deleted";
+}
+
 std::filesystem::path deletedSaveFilePathForId(const std::filesystem::path& root,
                                                std::string_view id) {
-  return root / "deleted" / (std::string(id) + std::string(kSaveFileExtension));
+  return deletedSaveDirectory(root) /
+         (std::string(id) + std::string(kSaveFileExtension));
 }
 
 std::filesystem::path deletedSaveSnapshotPathForId(
     const std::filesystem::path& root,
     std::string_view id) {
-  return root / "deleted" / (std::string(id) + ".snapshot.png");
+  return deletedSaveDirectory(root) / (std::string(id) + ".snapshot.png");
 }
 
 SaveFileDurableWritePlan planDurableSaveFileWrite(
@@ -428,18 +440,28 @@ SaveFileRecoverResult recoverDeletedSaveFile(const SaveFileRecoverPlan& plan) {
   return result;
 }
 
-std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root) {
-  std::vector<SaveFileRecord> records;
+std::vector<std::filesystem::path> listSaveFilePaths(
+    const std::filesystem::path& root) {
+  std::vector<std::filesystem::path> paths;
   std::error_code error;
   if (!std::filesystem::exists(root, error) || !std::filesystem::is_directory(root, error)) {
-    return records;
+    return paths;
   }
   for (const std::filesystem::directory_entry& entry :
        std::filesystem::directory_iterator(root, error)) {
     if (error || !entry.is_regular_file(error) || !hasSaveFileExtension(entry.path())) {
       continue;
     }
-    const SaveFileReadResult read = readSaveFile(entry.path());
+    paths.push_back(entry.path());
+  }
+  std::sort(paths.begin(), paths.end());
+  return paths;
+}
+
+std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root) {
+  std::vector<SaveFileRecord> records;
+  for (const std::filesystem::path& path : listSaveFilePaths(root)) {
+    const SaveFileReadResult read = readSaveFile(path);
     if (read.ok) {
       records.push_back(read.record);
     }

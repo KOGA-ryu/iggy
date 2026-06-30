@@ -5,8 +5,6 @@
 #include <string>
 #include <vector>
 
-#include "runtime/save/SaveFileStore.hpp"
-
 namespace iggy3d {
 
 enum class SaveSlotCompatibility {
@@ -47,11 +45,5 @@ struct SaveSlotList {
 };
 
 std::string_view saveSlotCompatibilityName(SaveSlotCompatibility compatibility);
-SaveSlotPreview previewFromSaveFileRecord(const SaveFileRecord& record,
-                                          std::string_view expectedPackageId,
-                                          std::string_view expectedScenarioId);
-SaveSlotList buildSaveSlotList(const std::filesystem::path& root,
-                               std::string_view expectedPackageId,
-                               std::string_view expectedScenarioId);
 
 }  // namespace iggy3d

@@ -1,4 +1,4 @@
-#include "app/frontend/SaveSlotModel.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 #include "content/PackageLoader.hpp"
 #include "runtime/save/SaveFileStore.hpp"
 #include "runtime/session/Session.hpp"
@@ -63,8 +63,11 @@ bool compatibleSavePreviewIncludesMetadata() {
   request.state = &session.state();
   request.authoredRoom = &authoredRoom;
   const iggy3d::SaveFileWriteResult written = iggy3d::writeSessionSaveFile(request);
-  const iggy3d::SaveSlotList slots = iggy3d::buildSaveSlotList(
-      root, "iggy3d.movement_playground", "movement_playground.runtime_loop");
+  const iggy3d::SaveSlotList slots =
+      iggy3d::scanProductSaves(root,
+                               "iggy3d.movement_playground",
+                               "movement_playground.runtime_loop")
+          .slots;
 
   return expect(written.ok, "save written") && expect(slots.slots.size() == 1U, "one slot") &&
          expect(slots.compatibleCount == 1U, "compatible count") &&
@@ -103,8 +106,11 @@ bool sidecarSnapshotUpdatesPresentationOnly() {
     std::ofstream output(root / "save_011.snapshot.png");
     output << "not a real png but enough for presentation sidecar\n";
   }
-  const iggy3d::SaveSlotList slots = iggy3d::buildSaveSlotList(
-      root, "iggy3d.movement_playground", "movement_playground.runtime_loop");
+  const iggy3d::SaveSlotList slots =
+      iggy3d::scanProductSaves(root,
+                               "iggy3d.movement_playground",
+                               "movement_playground.runtime_loop")
+          .slots;
 
   return expect(written.ok, "snapshot save written") &&
          expect(slots.slots.size() == 1U, "snapshot one slot") &&
@@ -128,8 +134,11 @@ bool emptySidecarFallsBackWithoutDisablingSave() {
   {
     std::ofstream output(root / "save_012.snapshot.png");
   }
-  const iggy3d::SaveSlotList slots = iggy3d::buildSaveSlotList(
-      root, "iggy3d.movement_playground", "movement_playground.runtime_loop");
+  const iggy3d::SaveSlotList slots =
+      iggy3d::scanProductSaves(root,
+                               "iggy3d.movement_playground",
+                               "movement_playground.runtime_loop")
+          .slots;
 
   return expect(written.ok, "empty snapshot save written") &&
          expect(slots.slots.size() == 1U, "empty snapshot one slot") &&
@@ -150,8 +159,11 @@ bool corruptSaveIsVisibleDisabledRow() {
     std::ofstream output(root / "save_999.snapshot.png");
     output << "sidecar remains presentation-only\n";
   }
-  const iggy3d::SaveSlotList slots = iggy3d::buildSaveSlotList(
-      root, "iggy3d.movement_playground", "movement_playground.runtime_loop");
+  const iggy3d::SaveSlotList slots =
+      iggy3d::scanProductSaves(root,
+                               "iggy3d.movement_playground",
+                               "movement_playground.runtime_loop")
+          .slots;
   return expect(slots.slots.size() == 1U, "one corrupt slot") &&
          expect(slots.compatibleCount == 0U, "no compatible corrupt") &&
          expect(slots.corruptCount == 1U, "corrupt counted") &&
@@ -181,11 +193,14 @@ bool deterministicOrdering() {
       return expect(false, "ordered save write");
     }
   }
-  const iggy3d::SaveSlotList slots = iggy3d::buildSaveSlotList(
-      root, "iggy3d.movement_playground", "movement_playground.runtime_loop");
+  const iggy3d::SaveSlotList slots =
+      iggy3d::scanProductSaves(root,
+                               "iggy3d.movement_playground",
+                               "movement_playground.runtime_loop")
+          .slots;
   return expect(slots.slots.size() == 2U, "two ordered slots") &&
-         expect(slots.slots[0].id == "save_001", "save_001 first") &&
-         expect(slots.slots[1].id == "save_020", "save_020 second");
+         expect(slots.slots[0].id == "save_020", "save_020 first by catalog sort") &&
+         expect(slots.slots[1].id == "save_001", "save_001 second by catalog sort");
 }
 
 }  // namespace

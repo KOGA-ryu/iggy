@@ -207,3 +207,6 @@ BG-1214	src/app/iggy3d/window/FramePresenter.cpp	product gameplay dev tools Vulk
 BG-1215	src/app/iggy3d/window/InputFrame.cpp	product gameplay map maker SDL key event routing policy	codex	2026-06-28
 BG-1216	src/app/iggy3d/window/InputFrame.cpp	product gameplay map maker input ownership before menu routing policy	codex	2026-06-28
 BG-1217	src/app/iggy3d/menu/DrawList.cpp	starter child panel shared UI draw-list surface dispatch policy	codex	2026-06-30
+BG-1218	src/app/iggy3d/save/SaveBridge.cpp	product save catalog scan and projection validation policy	codex	2026-06-30
+BG-1219	src/runtime/save/SaveFileStore.cpp	save file path listing and id extraction policy	codex	2026-06-30
+BG-1220	src/app/iggy3d/save/CatalogProjector.cpp	product save catalog to frontend slot projection policy	codex	2026-06-30

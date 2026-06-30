@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "app/frontend/SaveSlotModel.hpp"
+#include "app/iggy3d/save/Catalog.hpp"
 #include "runtime/save/SaveFileStore.hpp"
 #include "runtime/session/Session.hpp"
 
@@ -13,6 +14,7 @@ namespace iggy3d {
 
 struct ProductSaveBridgeResult {
   std::filesystem::path saveRoot;
+  ProductSaveCatalogBuildResult catalog;
   SaveSlotList slots;
   std::string_view status = "save_bridge_ready";
 };
@@ -123,6 +125,33 @@ struct ProductSaveRecoverResult {
   bool snapshotTargetExisted = false;
 };
 
+enum class ProductSaveMutationStatus : std::uint8_t {
+  Succeeded,
+  SaveNotFound,
+  NotActiveSave,
+  FileOperationFailed,
+  SnapshotMoveFailed,
+  DecodeFailedAfterMutation,
+};
+
+struct ProductSaveMutationRequest {
+  std::filesystem::path saveRoot;
+  std::string saveId;
+  std::string packageId;
+  std::string scenarioId;
+};
+
+struct ProductSaveMutationResult {
+  bool ok = false;
+  ProductSaveMutationStatus status = ProductSaveMutationStatus::FileOperationFailed;
+  std::string reasonCode = "not_requested";
+  std::string affectedSaveId = "none";
+  ProductSaveBridgeResult activeSaves;
+  ProductSaveBridgeResult deletedSaves;
+  ProductSaveSoftDeleteResult softDelete;
+  ProductSaveRecoverResult recover;
+};
+
 ProductSaveBridgeResult scanProductSaves(const std::filesystem::path& saveRoot,
                                          std::string_view packageId,
                                          std::string_view scenarioId);
@@ -138,5 +167,10 @@ ProductSaveSoftDeleteResult softDeleteProductSave(
     const ProductSaveSoftDeleteRequest& request);
 ProductSaveRecoverResult recoverProductSave(
     const ProductSaveRecoverRequest& request);
+std::string_view productSaveMutationStatusName(ProductSaveMutationStatus status);
+ProductSaveMutationResult softDeleteProductSaveAndRefresh(
+    const ProductSaveMutationRequest& request);
+ProductSaveMutationResult recoverProductSaveAndRefresh(
+    const ProductSaveMutationRequest& request);
 
 }  // namespace iggy3d

@@ -93,6 +93,7 @@ target_sources(iggy3d
     src/app/iggy3d/gameplay/ScriptedDriver.cpp
     src/app/iggy3d/save/RoomMarkerBinding.cpp
     src/app/iggy3d/save/Catalog.cpp
+    src/app/iggy3d/save/CatalogProjector.cpp
     src/app/iggy3d/save/Flow.cpp
     src/app/iggy3d/world/NpcProfileAssignment.cpp
     src/app/iggy3d/debug/TopDownMapOverlay.cpp
