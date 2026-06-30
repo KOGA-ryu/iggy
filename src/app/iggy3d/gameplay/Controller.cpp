@@ -207,28 +207,113 @@ float productHorizontalMovementSpeedMetersPerSecond(
   return std::max(retainedSpeed, debugSpeed);
 }
 
-void clearProductWallRunCandidateProof(ProductAppWindowState& window,
-                                       std::string_view reason) {
-  window.gameplayWallRunCandidateAvailable = false;
-  window.gameplayWallRunCandidateStatus = std::string{reason};
-  window.gameplayWallRunCandidateReasonCode = std::string{reason};
-  window.gameplayWallRunSide = "none";
-  window.gameplayWallRunSurfaceId = "none";
-  window.gameplayWallRunNormalX = 0.0F;
-  window.gameplayWallRunNormalY = 0.0F;
-  window.gameplayWallRunNormalZ = 0.0F;
-  window.gameplayWallRunApproachSpeedMetersPerSecond = 0.0F;
+struct ProductWallRunCandidateEvaluationResult {
+  bool available = false;
+  std::string status = "wall_run_not_checked";
+  std::string reasonCode = "wall_run_not_checked";
+  std::string side = "none";
+  std::string surfaceId = "none";
+  Vec3 normal{0.0F, 0.0F, 0.0F};
+  float approachSpeedMetersPerSecond = 0.0F;
+};
+
+struct ProductWallRunActiveEvaluationResult {
+  bool active = false;
+  std::string status = "wall_run_inactive";
+  std::string reasonCode = "wall_run_inactive";
+  float remainingSeconds = 0.0F;
+  float durationSeconds = 0.0F;
+  float gravityMultiplier = 1.0F;
+  float speedMultiplier = 1.0F;
+};
+
+struct ProductWallRunEvaluationRequest {
+  const Session& session;
+  const ProductAppWindowState& window;
+  const SpatialSurfaceSet* collisionSurfaces = nullptr;
+  float moveX = 0.0F;
+  float moveY = 0.0F;
+  bool jumpPressed = false;
+};
+
+struct ProductWallRunEvaluationResult {
+  ProductWallRunCandidateEvaluationResult candidate;
+  ProductWallRunActiveEvaluationResult active;
+};
+
+ProductWallRunCandidateEvaluationResult productWallRunCandidateRejected(
+    std::string_view reason) {
+  ProductWallRunCandidateEvaluationResult result;
+  result.status = std::string{reason};
+  result.reasonCode = std::string{reason};
+  return result;
+}
+
+ProductWallRunActiveEvaluationResult productWallRunActiveRejected(
+    std::string_view reason) {
+  ProductWallRunActiveEvaluationResult result;
+  result.status = std::string{reason};
+  result.reasonCode = std::string{reason};
+  return result;
+}
+
+ProductWallRunActiveEvaluationResult productWallRunActiveRecorded(
+    const ProductAppWindowState& window,
+    std::string_view status,
+    std::string_view reason,
+    float remainingSeconds) {
+  ProductWallRunActiveEvaluationResult result;
+  result.active = true;
+  result.status = std::string{status};
+  result.reasonCode = std::string{reason};
+  result.remainingSeconds = remainingSeconds;
+  result.durationSeconds =
+      std::clamp(window.gameplayMovementTuning.wallRunDurationSeconds, 0.1F, 2.0F);
+  result.gravityMultiplier =
+      std::clamp(window.gameplayMovementTuning.wallRunGravityMultiplier, 0.0F, 1.0F);
+  result.speedMultiplier =
+      std::clamp(window.gameplayMovementTuning.wallRunSpeedMultiplier, 0.25F, 2.0F);
+  return result;
+}
+
+void publishProductWallRunCandidateEvaluation(
+    ProductAppWindowState& window,
+    const ProductWallRunCandidateEvaluationResult& result) {
+  window.gameplayWallRunCandidateAvailable = result.available;
+  window.gameplayWallRunCandidateStatus = result.status;
+  window.gameplayWallRunCandidateReasonCode = result.reasonCode;
+  window.gameplayWallRunSide = result.side;
+  window.gameplayWallRunSurfaceId = result.surfaceId;
+  window.gameplayWallRunNormalX = result.normal.x;
+  window.gameplayWallRunNormalY = result.normal.y;
+  window.gameplayWallRunNormalZ = result.normal.z;
+  window.gameplayWallRunApproachSpeedMetersPerSecond =
+      result.approachSpeedMetersPerSecond;
+}
+
+void publishProductWallRunActiveEvaluation(
+    ProductAppWindowState& window,
+    const ProductWallRunActiveEvaluationResult& result) {
+  window.gameplayWallRunActive = result.active;
+  window.gameplayWallRunStatus = result.status;
+  window.gameplayWallRunReasonCode = result.reasonCode;
+  window.gameplayWallRunRemainingSeconds = result.remainingSeconds;
+  window.gameplayWallRunDurationSeconds = result.durationSeconds;
+  window.gameplayWallRunGravityMultiplier = result.gravityMultiplier;
+  window.gameplayWallRunSpeedMultiplier = result.speedMultiplier;
+}
+
+void publishProductWallRunEvaluation(
+    ProductAppWindowState& window,
+    const ProductWallRunEvaluationResult& result) {
+  publishProductWallRunCandidateEvaluation(window, result.candidate);
+  publishProductWallRunActiveEvaluation(window, result.active);
 }
 
 void clearProductWallRunActiveProof(ProductAppWindowState& window,
                                     std::string_view reason) {
-  window.gameplayWallRunActive = false;
-  window.gameplayWallRunStatus = std::string{reason};
-  window.gameplayWallRunReasonCode = std::string{reason};
-  window.gameplayWallRunRemainingSeconds = 0.0F;
-  window.gameplayWallRunDurationSeconds = 0.0F;
-  window.gameplayWallRunGravityMultiplier = 1.0F;
-  window.gameplayWallRunSpeedMultiplier = 1.0F;
+  publishProductWallRunActiveEvaluation(
+      window, productWallRunActiveRejected(reason));
 }
 
 void updateProductMovementStateProof(ProductAppWindowState& window) {
@@ -947,15 +1032,18 @@ bool wallRunProofNormal(const ProductAppWindowState& window, Vec3& normal) {
   return true;
 }
 
-bool wallRunTangentDirection(const ProductAppWindowState& window,
-                             float moveX,
-                             float moveY,
-                             Vec3& direction) {
-  Vec3 normal;
+bool wallRunTangentDirectionFromNormal(const ProductAppWindowState& window,
+                                       Vec3 normal,
+                                       float moveX,
+                                       float moveY,
+                                       Vec3& direction) {
+  normal.y = 0.0F;
+  const float lenSq = lengthSquared(normal);
   // branch-gate: BG-1157
-  if (!wallRunProofNormal(window, normal)) {
+  if (!isFinite(normal) || lenSq <= 0.0001F) {
     return false;
   }
+  normal = normal / std::sqrt(lenSq);
   const Vec3 desired =
       manualFirstPersonDirection(moveX, moveY, window.viewport.cameraYawDegrees);
   const Vec3 tangent{-normal.z, 0.0F, normal.x};
@@ -969,153 +1057,156 @@ bool wallRunTangentDirection(const ProductAppWindowState& window,
   return true;
 }
 
-void recordProductWallRunProof(ProductAppWindowState& window,
-                               std::string_view status,
-                               std::string_view reason) {
-  window.gameplayWallRunStatus = std::string{status};
-  window.gameplayWallRunReasonCode = std::string{reason};
-  window.gameplayWallRunDurationSeconds =
-      std::clamp(window.gameplayMovementTuning.wallRunDurationSeconds, 0.1F, 2.0F);
-  window.gameplayWallRunGravityMultiplier =
-      std::clamp(window.gameplayMovementTuning.wallRunGravityMultiplier, 0.0F, 1.0F);
-  window.gameplayWallRunSpeedMultiplier =
-      std::clamp(window.gameplayMovementTuning.wallRunSpeedMultiplier, 0.25F, 2.0F);
+bool wallRunTangentDirection(const ProductAppWindowState& window,
+                             float moveX,
+                             float moveY,
+                             Vec3& direction) {
+  Vec3 normal;
+  // branch-gate: BG-1157
+  if (!wallRunProofNormal(window, normal)) {
+    return false;
+  }
+  return wallRunTangentDirectionFromNormal(
+      window, normal, moveX, moveY, direction);
 }
 
-void updateProductWallRunActiveProof(ProductAppWindowState& window,
-                                     float moveX,
-                                     float moveY) {
-  const bool hasMoveInput = moveX != 0.0F || moveY != 0.0F;
+ProductWallRunActiveEvaluationResult evaluateProductWallRunActiveWithoutJumpExit(
+    const ProductWallRunEvaluationRequest& request,
+    const ProductWallRunCandidateEvaluationResult& candidate) {
+  const ProductAppWindowState& window = request.window;
+  const bool hasMoveInput = request.moveX != 0.0F || request.moveY != 0.0F;
   // branch-gate: BG-1157
   if (window.gameplayWallRunActive && !window.gameplayJumpActive) {
-    clearProductWallRunActiveProof(window, "wall_run_landed");
-    return;
+    return productWallRunActiveRejected("wall_run_landed");
   }
   // branch-gate: BG-1157
   if (window.gameplayWallRunActive && !hasMoveInput) {
-    clearProductWallRunActiveProof(window, "wall_run_input_stopped");
-    return;
+    return productWallRunActiveRejected("wall_run_input_stopped");
   }
   Vec3 tangent;
   // branch-gate: BG-1157
   if (window.gameplayWallRunActive &&
-      !wallRunTangentDirection(window, moveX, moveY, tangent)) {
-    clearProductWallRunActiveProof(window, "wall_run_input_away");
-    return;
+      !wallRunTangentDirectionFromNormal(
+          window, candidate.normal, request.moveX, request.moveY, tangent)) {
+    return productWallRunActiveRejected("wall_run_input_away");
   }
   // branch-gate: BG-1157
-  if (window.gameplayWallRunActive &&
-      !window.gameplayWallRunCandidateAvailable) {
-    clearProductWallRunActiveProof(
-        window, window.gameplayWallRunCandidateReasonCode);
-    return;
+  if (window.gameplayWallRunActive && !candidate.available) {
+    return productWallRunActiveRejected(candidate.reasonCode);
   }
   // branch-gate: BG-1157
-  if (!window.gameplayWallRunActive &&
-      (!window.gameplayWallRunCandidateAvailable || !hasMoveInput)) {
-    clearProductWallRunActiveProof(window, "wall_run_inactive");
-    return;
+  if (!window.gameplayWallRunActive && (!candidate.available || !hasMoveInput)) {
+    return productWallRunActiveRejected("wall_run_inactive");
   }
   // branch-gate: BG-1157
   if (!window.gameplayWallRunActive &&
-      !wallRunTangentDirection(window, moveX, moveY, tangent)) {
-    clearProductWallRunActiveProof(window, "wall_run_input_away");
-    return;
+      !wallRunTangentDirectionFromNormal(
+          window, candidate.normal, request.moveX, request.moveY, tangent)) {
+    return productWallRunActiveRejected("wall_run_input_away");
   }
 
   const float dt = std::max(0.0F, window.gameplayMovementTuning.inputStepSeconds);
   // branch-gate: BG-1157
   if (!window.gameplayWallRunActive) {
-    window.gameplayWallRunActive = true;
-    window.gameplayWallRunRemainingSeconds =
+    const float remaining =
         std::clamp(window.gameplayMovementTuning.wallRunDurationSeconds,
                    0.1F,
                    2.0F);
-    recordProductWallRunProof(window, "wall_run_active", "wall_run_started");
-    return;
+    ProductWallRunActiveEvaluationResult result =
+        productWallRunActiveRecorded(
+            window, "wall_run_active", "wall_run_started", remaining);
+    return result;
   }
 
-  window.gameplayWallRunRemainingSeconds =
+  const float remaining =
       std::max(0.0F, window.gameplayWallRunRemainingSeconds - dt);
   // branch-gate: BG-1157
-  if (window.gameplayWallRunRemainingSeconds <= 0.0F) {
-    clearProductWallRunActiveProof(window, "wall_run_expired");
-    return;
+  if (remaining <= 0.0F) {
+    return productWallRunActiveRejected("wall_run_expired");
   }
-  recordProductWallRunProof(window, "wall_run_active", "wall_run_active");
+  ProductWallRunActiveEvaluationResult result =
+      productWallRunActiveRecorded(
+          window, "wall_run_active", "wall_run_active", remaining);
+  return result;
 }
 
-void updateProductWallRunCandidateProof(const Session& session,
-                                        ProductAppWindowState& window,
-                                        const SpatialSurfaceSet* collisionSurfaces) {
-  window.gameplayWallRunApproachSpeedMetersPerSecond =
+ProductWallRunCandidateEvaluationResult evaluateProductWallRunCandidate(
+    const ProductWallRunEvaluationRequest& request) {
+  const ProductAppWindowState& window = request.window;
+  ProductWallRunCandidateEvaluationResult result;
+  result.approachSpeedMetersPerSecond =
       window.gameplayMovementHorizontalSpeedMetersPerSecond;
 
   // branch-gate: BG-1153
   if (!window.gameplayJumpActive) {
-    clearProductWallRunCandidateProof(window, "wall_run_grounded");
-    return;
+    return productWallRunCandidateRejected("wall_run_grounded");
   }
   const float minSpeed =
       std::max(0.0F, window.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond);
   // branch-gate: BG-1161
   if (window.gameplayMovementHorizontalSpeedMetersPerSecond < minSpeed) {
-    clearProductWallRunCandidateProof(window, "wall_run_low_speed");
-    window.gameplayWallRunApproachSpeedMetersPerSecond =
+    result = productWallRunCandidateRejected("wall_run_low_speed");
+    result.approachSpeedMetersPerSecond =
         window.gameplayMovementHorizontalSpeedMetersPerSecond;
-    return;
+    return result;
   }
   // branch-gate: BG-1157
-  if (collisionSurfaces == nullptr) {
-    clearProductWallRunCandidateProof(window, "wall_run_no_surfaces");
-    return;
+  if (request.collisionSurfaces == nullptr) {
+    return productWallRunCandidateRejected("wall_run_no_surfaces");
   }
-  const EntityState* actor = productPlayerEntity(session);
+  const EntityState* actor = productPlayerEntity(request.session);
   // branch-gate: BG-1153
   if (actor == nullptr) {
-    clearProductWallRunCandidateProof(window, "wall_run_missing_player");
-    return;
+    return productWallRunCandidateRejected("wall_run_missing_player");
   }
 
   Vec3 awayNormal;
   const CollisionSurfaceView* surface =
-      findWallRunSurface(*collisionSurfaces,
+      findWallRunSurface(*request.collisionSurfaces,
                          actor->transform.position,
                          awayNormal,
                          window.gameplayMovementTuning);
   // branch-gate: BG-1157
   if (surface == nullptr) {
-    clearProductWallRunCandidateProof(window, "wall_run_no_wall_contact");
-    window.gameplayWallRunApproachSpeedMetersPerSecond =
+    result = productWallRunCandidateRejected("wall_run_no_wall_contact");
+    result.approachSpeedMetersPerSecond =
         window.gameplayMovementHorizontalSpeedMetersPerSecond;
-    return;
+    return result;
   }
   // branch-gate: BG-1161
   if (!productMovementDebugAlongWall(window, awayNormal)) {
-    clearProductWallRunCandidateProof(window, "wall_run_not_along_wall");
-    window.gameplayWallRunSurfaceId = surface->id.empty() ? "wall_run_surface"
-                                                          : surface->id;
-    window.gameplayWallRunNormalX = awayNormal.x;
-    window.gameplayWallRunNormalY = surface->normal.y;
-    window.gameplayWallRunNormalZ = awayNormal.z;
-    window.gameplayWallRunApproachSpeedMetersPerSecond =
+    result = productWallRunCandidateRejected("wall_run_not_along_wall");
+    // branch-gate: BG-1157
+    result.surfaceId = surface->id.empty() ? "wall_run_surface" : surface->id;
+    result.normal = {awayNormal.x, surface->normal.y, awayNormal.z};
+    result.approachSpeedMetersPerSecond =
         window.gameplayMovementHorizontalSpeedMetersPerSecond;
-    return;
+    return result;
   }
 
-  window.gameplayWallRunCandidateAvailable = true;
-  window.gameplayWallRunCandidateStatus = "wall_run_candidate";
-  window.gameplayWallRunCandidateReasonCode = "wall_run_candidate";
-  window.gameplayWallRunSide =
-      wallRunSideName(awayNormal, window.viewport.cameraYawDegrees);
+  result.available = true;
+  result.status = "wall_run_candidate";
+  result.reasonCode = "wall_run_candidate";
+  result.side = wallRunSideName(awayNormal, window.viewport.cameraYawDegrees);
   // branch-gate: BG-1157
-  window.gameplayWallRunSurfaceId =
-      surface->id.empty() ? "wall_run_surface" : surface->id;
-  window.gameplayWallRunNormalX = awayNormal.x;
-  window.gameplayWallRunNormalY = surface->normal.y;
-  window.gameplayWallRunNormalZ = awayNormal.z;
-  window.gameplayWallRunApproachSpeedMetersPerSecond =
+  result.surfaceId = surface->id.empty() ? "wall_run_surface" : surface->id;
+  result.normal = {awayNormal.x, surface->normal.y, awayNormal.z};
+  result.approachSpeedMetersPerSecond =
       window.gameplayMovementHorizontalSpeedMetersPerSecond;
+  return result;
+}
+
+ProductWallRunEvaluationResult evaluateProductWallRun(
+    const ProductWallRunEvaluationRequest& request) {
+  ProductWallRunEvaluationResult result;
+  result.candidate = evaluateProductWallRunCandidate(request);
+  result.active = evaluateProductWallRunActiveWithoutJumpExit(
+      request, result.candidate);
+  // branch-gate: BG-1157
+  if (request.jumpPressed) {
+    result.active = productWallRunActiveRejected("wall_run_exit_jump");
+  }
+  return result;
 }
 
 void recordProductWallJumpTraversalProof(ProductAppWindowState& window,
@@ -2213,21 +2304,20 @@ void updateProductJumpTimingPhase(Session& session,
   advanceProductJump(session, window, collisionSurfaces);
 }
 
-void resolveProductWallRunCandidatePhase(
+ProductWallRunEvaluationResult resolveProductWallRunCandidatePhase(
     const Session& session,
-    ProductAppWindowState& window,
+    const ProductAppWindowState& window,
+    const ProductGameplayInputIntent& intent,
     const SpatialSurfaceSet* collisionSurfaces) {
-  updateProductWallRunCandidateProof(session, window, collisionSurfaces);
+  return evaluateProductWallRun(ProductWallRunEvaluationRequest{
+      session, window, collisionSurfaces, intent.moveX, intent.moveY,
+      intent.jumpPressed});
 }
 
 void applyProductActiveMovementStatePhase(
     ProductAppWindowState& window,
-    const ProductGameplayInputIntent& intent) {
-  updateProductWallRunActiveProof(window, intent.moveX, intent.moveY);
-  // branch-gate: BG-1157
-  if (intent.jumpPressed) {
-    clearProductWallRunActiveProof(window, "wall_run_exit_jump");
-  }
+    const ProductWallRunEvaluationResult& wallRun) {
+  publishProductWallRunEvaluation(window, wallRun);
 }
 
 void publishProductMovementProofPhase(
@@ -2236,8 +2326,9 @@ void publishProductMovementProofPhase(
     const ProductGameplayInputIntent& intent,
     const SpatialSurfaceSet* collisionSurfaces) {
   updateProductMovementStateProof(window);
-  resolveProductWallRunCandidatePhase(session, window, collisionSurfaces);
-  applyProductActiveMovementStatePhase(window, intent);
+  const ProductWallRunEvaluationResult wallRun =
+      resolveProductWallRunCandidatePhase(session, window, intent, collisionSurfaces);
+  applyProductActiveMovementStatePhase(window, wallRun);
   updateProductMovementStateProof(window);
 }
 
