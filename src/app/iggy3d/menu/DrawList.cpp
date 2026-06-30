@@ -650,7 +650,7 @@ void emitLoadSaveContent(ProductUiDrawList& list,
       request.saves == nullptr ? emptySlots : request.saves->slots;
   const SaveBrowserModel browser =
       buildSaveBrowserModel(slots,
-                            "",
+                            request.selectedSaveId,
                             frontend.saveBrowserMode);
   const bool deleteMode =
       frontend.saveBrowserMode == FrontendSaveBrowserMode::Delete;

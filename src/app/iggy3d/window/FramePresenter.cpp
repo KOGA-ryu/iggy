@@ -769,6 +769,7 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
           request.window.worldSetupDungeonDraftLastGlyph;
       uiRequest.settingsTab = request.settingsTab;
       uiRequest.saves = &request.saves;
+      uiRequest.selectedSaveId = request.window.selectedProductSaveId;
       const ProductUiDrawList menuUi = buildProductStarterUiDrawList(uiRequest);
       recordProductVulkanMenuUiDrawList(request.window, "starter", menuUi);
       const SdlDrawableExtent drawableExtent = request.sdlWindow.drawableExtent();

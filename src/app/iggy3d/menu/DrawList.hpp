@@ -88,6 +88,10 @@ struct ProductUiDrawListRequest {
   std::string dungeonDraftLastGlyph = "none";
   FrontendSettingsTab settingsTab = FrontendSettingsTab::Input;
   const ProductSaveBridgeResult* saves = nullptr;
+  // The currently selected save id tracked by the input layer. Threaded into
+  // the save-browser model so the drawn row highlight matches the row the
+  // player navigated to instead of always defaulting to the first slot.
+  std::string selectedSaveId;
 };
 
 std::string_view productUiPrimitiveKindName(ProductUiPrimitiveKind kind);

@@ -402,9 +402,55 @@ bool invalidContextRejectsWithoutRendererTypes() {
 
 }  // namespace
 
+bool loadSaveDrawListHighlightsSelectedSlot() {
+  iggy3d::FrontendState frontend =
+      starterFrontend(iggy3d::FrontendAction::LoadSave);
+  frontend.childScreen = iggy3d::FrontendScreen::LoadSave;
+  frontend.saveBrowserMode = iggy3d::FrontendSaveBrowserMode::Load;
+
+  iggy3d::ProductSaveBridgeResult saves;
+  iggy3d::SaveSlotPreview first;
+  first.id = "save_001";
+  first.displayTitle = "First Map";
+  first.enabled = true;
+  first.reason = "compatible";
+  iggy3d::SaveSlotPreview second;
+  second.id = "save_002";
+  second.displayTitle = "Second Map";
+  second.enabled = true;
+  second.reason = "compatible";
+  saves.slots.slots.push_back(first);
+  saves.slots.slots.push_back(second);
+  saves.slots.compatibleCount = 2U;
+
+  iggy3d::ProductUiDrawListRequest request;
+  request.frontend = &frontend;
+  request.compatibleSaveCount = saves.slots.compatibleCount;
+  request.saves = &saves;
+  // The input layer has the player on the SECOND map; the drawn highlight must
+  // follow it instead of defaulting to slot 0.
+  request.selectedSaveId = "save_002";
+
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductStarterUiDrawList(request);
+  const iggy3d::ProductUiPrimitive* slot0 =
+      findPrimitive(list, "starter.content.load_save.slot_0.title");
+  const iggy3d::ProductUiPrimitive* slot1 =
+      findPrimitive(list, "starter.content.load_save.slot_1.title");
+  bool ok = true;
+  ok &= expect(slot0 != nullptr && slot0->text == "First Map", "first slot title");
+  ok &= expect(slot1 != nullptr && slot1->text == "Second Map", "second slot title");
+  ok &= expect(slot0 != nullptr && !slot0->selected,
+               "unselected slot is not highlighted");
+  ok &= expect(slot1 != nullptr && slot1->selected,
+               "selected save id highlights its row");
+  return ok;
+}
+
 int main() {
   bool ok = true;
   ok &= starterRootDrawListContainsHeaderAndRowsInOrder();
+  ok &= loadSaveDrawListHighlightsSelectedSlot();
   ok &= selectedNewWorldGetsHighlightAndStableCoordinates();
   ok &= disabledSaveRowsAreRepresentedWithoutCompatibleSaves();
   ok &= newWorldChildScreenBuildsReadySelectorSurface();
