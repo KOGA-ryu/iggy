@@ -50,13 +50,20 @@ Follow-on hazards to grep right before removing: the orphaned support structs, t
 ## Batch 3 — test-only code + its tests (DROPS COVERAGE — needs owner sign-off)
 Each has no production caller but a live test; removal edits/deletes that test. Some are
 plausibly-intended API. Split into per-cluster PRs.
-- **3a physics island (biggest win, own PR):** delete `PhysicsAabbStep`, `PhysicsAabbCollisionBatch`,
-  `PhysicsBodyDeltaAccumulator`, `PhysicsBodyStore`, `PhysicsStep`, `PhysicsColliderBake`,
-  `PhysicsShapeStore` (.cpp/.hpp) + their unit tests + CMake. First remove test-only consumers:
-  `appendPhysicsCollisionBatchDebugProjection` (DebugProjection), the 4 island `PhysicsFrameStats`
-  accumulators, `raycastPhysicsAabbs` (in live PhysicsCollisionQueries). EXCLUDE `PhysicsAabbContact`
-  + `PhysicsAabbContactSolver` (tool-retained by kernel-bench) and `PhysicsSpatialSurfaceColliderBake`
-  (live). Keep `accumulatePlayerPhysicsMovePlannerStats`.
+- **3a physics island (biggest win, own PR) — SWEEP MIS-CLASSIFIED, CORRECTED BELOW.**
+  CORRECTION (verified via include graph; the sweep's 7-file list would break the kernel-bench):
+  `PhysicsShapeStore` is LIVE (`PhysicsAabbCollider.cpp` calls `shapeStore->read(shapeId)`),
+  and `PhysicsBodyStore` is LIVE (`PhysicsBodyView` is defined there and used by the tool-retained
+  `PhysicsAabbContactSolver.cpp`). KEEP both. The TRUE clean-dead subset is 5 files:
+  `PhysicsAabbStep`, `PhysicsAabbCollisionBatch`, `PhysicsBodyDeltaAccumulator`, `PhysicsStep`,
+  `PhysicsColliderBake` (.cpp/.hpp) + their unit tests + CMake. Removal order: FIRST remove the
+  test-only consumers so the tree compiles — `appendPhysicsCollisionBatchDebugProjection`
+  (DebugProjection + projection_tests), the 4 island `PhysicsFrameStats` accumulators
+  (+ physics_frame_stats_tests, keeping `accumulatePlayerPhysicsMovePlannerStats` — LIVE),
+  `raycastPhysicsAabbs` (in live PhysicsCollisionQueries + its test) — THEN delete the 5 files.
+  EXCLUDE `PhysicsAabbContact`/`PhysicsAabbContactSolver` (tool-retained), `PhysicsSpatialSurfaceColliderBake`,
+  `PhysicsShapeStore`, `PhysicsBodyStore` (all live). Build with tools+Vulkan enabled so the
+  kernel-bench still links. NOT YET DONE — needs its own careful pass.
 - 3b math: `Plane`/`Ray3` (.{hpp,cpp}, coupled) + `translationMat4`/`scaleMat4`/`rotationEulerRadiansMat4`
   (keep Mat4 file); rework math_tests.
 - 3c save/clock/command: `writeSessionSaveFile` (migrate tests to durable writer), `deleteSaveFile`,
