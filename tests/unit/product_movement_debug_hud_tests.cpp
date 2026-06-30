@@ -37,6 +37,11 @@ iggy3d::ProductAppWindowState movedWindow() {
   window.gameplayMovementGroundSnapApplied = true;
   window.gameplayMovementPolicyBand = "flat";
   window.gameplayMovementSpeedMultiplier = 1.0F;
+  window.gameplayMovementState =
+      iggy3d::ProductGameplayMovementState::MovingGrounded;
+  window.gameplayMovementGrounded = true;
+  window.gameplayMovementHorizontalSpeedMetersPerSecond = 3.3F;
+  window.gameplayJumpVelocityMetersPerSecond = 0.0F;
   window.gameplayMovementFinalX = -1.0F;
   window.gameplayMovementFinalY = 0.0F;
   window.gameplayMovementFinalZ = -1.0F;
@@ -77,8 +82,12 @@ int main() {
   ok &= expect(moved.status == "moved", "moved status");
   ok &= expect(moved.reasonCode == "movement_ok", "moved reason");
   ok &= expect(!moved.blocked, "moved not blocked");
-  ok &= expect(moved.lines.size() == 7U, "moved line count");
+  ok &= expect(moved.movementState == "moving_grounded",
+               "moved movement state");
+  ok &= expect(moved.lines.size() == 8U, "moved line count");
   ok &= expect(hasLine(moved, "STATUS", "moved"), "moved status line");
+  ok &= expect(hasLine(moved, "STATE", "moving grounded h3.300 v0.000"),
+               "moved state display");
   ok &= expect(hasLine(moved, "REASON", "movement ok"), "moved reason display");
   ok &= expect(hasLine(moved, "HIT", "none"), "moved hit display");
   ok &= expect(hasLine(moved, "SPEED", "1.000"), "moved speed display");
@@ -86,6 +95,8 @@ int main() {
 
   iggy3d::ProductAppWindowState blocked = movedWindow();
   blocked.gameplayMovementBlocked = true;
+  blocked.gameplayMovementState =
+      iggy3d::ProductGameplayMovementState::BlockedOrSliding;
   blocked.gameplayMovementStatus = "blocked";
   blocked.gameplayMovementReasonCode = "blocked_by_collision";
   blocked.gameplayMovementBlockedReason = "blocked_by_collision";
@@ -97,7 +108,11 @@ int main() {
       iggy3d::buildMovementDebugHud(blocked, true, true);
   ok &= expect(blockedHud.visible, "blocked hud visible");
   ok &= expect(blockedHud.blocked, "blocked hud blocked");
+  ok &= expect(blockedHud.movementState == "blocked_or_sliding",
+               "blocked hud state");
   ok &= expect(blockedHud.hitSurfaceId == "wall_r0_c1_actor_blocker", "blocked hit id");
+  ok &= expect(hasLine(blockedHud, "STATE", "blocked or sliding h3.300 v0.000"),
+               "blocked state display");
   ok &= expect(hasLine(blockedHud, "STATUS", "blocked"), "blocked status line");
   ok &= expect(hasLine(blockedHud, "REASON", "blocked by collision"),
                "blocked reason display");

@@ -38,6 +38,12 @@ std::string finalPositionDisplay(const ProductAppWindowState& window) {
          " z" + fixed3(window.gameplayMovementFinalZ);
 }
 
+std::string movementStateDisplay(const ProductAppWindowState& window) {
+  return codeDisplay(productGameplayMovementStateName(window.gameplayMovementState)) +
+         " h" + fixed3(window.gameplayMovementHorizontalSpeedMetersPerSecond) +
+         " v" + fixed3(window.gameplayJumpVelocityMetersPerSecond);
+}
+
 FeedbackTone statusTone(const ProductAppWindowState& window) {
   if (window.gameplayMovementBlocked) {
     return FeedbackTone::Warn;
@@ -70,6 +76,8 @@ MovementDebugHud buildMovementDebugHud(
   hud.debugOverlayEnabled = debugOverlayEnabled;
   hud.debugAvailable = window.gameplayMovementDebugAvailable;
   hud.blocked = window.gameplayMovementBlocked;
+  hud.movementState =
+      std::string{productGameplayMovementStateName(window.gameplayMovementState)};
   hud.blockedReason = window.gameplayMovementBlockedReason;
   hud.hitSurfaceId = window.gameplayMovementHitSurfaceId;
   hud.policyBand = window.gameplayMovementPolicyBand;
@@ -78,6 +86,9 @@ MovementDebugHud buildMovementDebugHud(
   hud.movementClamped = window.gameplayMovementClamped;
   hud.collisionSweepCount = window.gameplayMovementCollisionSweepCount;
   hud.speedMultiplier = window.gameplayMovementSpeedMultiplier;
+  hud.horizontalSpeedMetersPerSecond =
+      window.gameplayMovementHorizontalSpeedMetersPerSecond;
+  hud.verticalVelocityMetersPerSecond = window.gameplayJumpVelocityMetersPerSecond;
   hud.finalX = window.gameplayMovementFinalX;
   hud.finalY = window.gameplayMovementFinalY;
   hud.finalZ = window.gameplayMovementFinalZ;
@@ -91,6 +102,7 @@ MovementDebugHud buildMovementDebugHud(
   hud.reasonCode = window.gameplayMovementReasonCode;
 
   addLine(hud, "STATUS", codeDisplay(hud.status), statusTone(window));
+  addLine(hud, "STATE", movementStateDisplay(window), FeedbackTone::Neutral);
   addLine(hud, "REASON", codeDisplay(hud.reasonCode),
           window.gameplayMovementBlocked ? FeedbackTone::Warn
                                          : FeedbackTone::Neutral);

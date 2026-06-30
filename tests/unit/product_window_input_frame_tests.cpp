@@ -2727,6 +2727,9 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.gameplayMovementGroundVelocityX = 1.5F;
   window.gameplayMovementGroundVelocityZ = -2.0F;
+  window.gameplayMovementHorizontalSpeedMetersPerSecond = 2.5F;
+  window.gameplayMovementState =
+      iggy3d::ProductGameplayMovementState::MovingGrounded;
   window.gameplayJumpCoyoteSecondsRemaining = 0.08F;
   window.gameplayJumpBufferSecondsRemaining = 0.06F;
   window.gameplayJumpHeld = true;
@@ -2754,6 +2757,11 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
          expect(window.gameplayMovementGroundVelocityX == 0.0F &&
                     window.gameplayMovementGroundVelocityZ == 0.0F,
                 "editor input clears retained ground velocity") &&
+         expect(window.gameplayMovementHorizontalSpeedMetersPerSecond == 0.0F,
+                "editor input clears horizontal speed proof") &&
+         expect(window.gameplayMovementState ==
+                    iggy3d::ProductGameplayMovementState::IdleGrounded,
+                "editor input resets movement state proof") &&
          expect(window.gameplayJumpCoyoteSecondsRemaining == 0.0F &&
                     window.gameplayJumpBufferSecondsRemaining == 0.0F &&
                     !window.gameplayJumpHeld &&

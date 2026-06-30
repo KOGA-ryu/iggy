@@ -31,6 +31,8 @@ constexpr float kGameplayGroundContactToleranceMeters = 0.12F;
 constexpr float kGameplayResetBelowLowestFloorMeters = 6.0F;
 constexpr float kGameplayResetZoneRadiusMeters = 0.70F;
 constexpr float kGameplayResetZoneVerticalToleranceMeters = 1.20F;
+constexpr float kMovementStateSpeedEpsilonMetersPerSecond = 0.001F;
+constexpr float kMovementStateDistanceEpsilonMeters = 0.0001F;
 
 struct ProductInteractionOutcomeSnapshot {
   EntityId target;
@@ -186,6 +188,71 @@ void clearProductMovementDebug(ProductAppWindowState& window) {
   window.gameplayMovementHorizontalDistanceMeters = 0.0F;
   window.gameplayMovementVerticalDeltaMeters = 0.0F;
   window.gameplayMovementGradePercent = 0.0F;
+}
+
+float productHorizontalMovementSpeedMetersPerSecond(
+    const ProductAppWindowState& window) {
+  const float speedSquared =
+      window.gameplayMovementGroundVelocityX *
+          window.gameplayMovementGroundVelocityX +
+      window.gameplayMovementGroundVelocityZ *
+          window.gameplayMovementGroundVelocityZ;
+  return std::sqrt(std::max(0.0F, speedSquared));
+}
+
+void updateProductMovementStateProof(ProductAppWindowState& window) {
+  window.gameplayMovementHorizontalSpeedMetersPerSecond =
+      productHorizontalMovementSpeedMetersPerSecond(window);
+  window.gameplayMovementGrounded = !window.gameplayJumpActive;
+
+  const bool blockedOrSliding =
+      window.gameplayMovementBlocked ||
+      window.gameplayMovementClamped ||
+      window.gameplayMovementSlid ||
+      (window.gameplayMovementBlockedReason != "none" &&
+       window.gameplayMovementBlockedReason != "movement_ok");
+  // branch-gate: BG-1161
+  if (blockedOrSliding) {
+    window.gameplayMovementState =
+        ProductGameplayMovementState::BlockedOrSliding;
+    return;
+  }
+
+  // branch-gate: BG-1153
+  if (window.gameplayJumpActive) {
+    // branch-gate: BG-1161
+    if (window.gameplayMovementReasonCode == "airborne_manual_move" &&
+        window.gameplayMovementHorizontalDistanceMeters >
+            kMovementStateDistanceEpsilonMeters) {
+      window.gameplayMovementState =
+          ProductGameplayMovementState::AirborneControl;
+      return;
+    }
+    // branch-gate: BG-1153
+    if (window.gameplayJumpStatus == "accepted") {
+      window.gameplayMovementState = ProductGameplayMovementState::Jumping;
+      return;
+    }
+    // branch-gate: BG-1153
+    window.gameplayMovementState =
+        window.gameplayJumpVelocityMetersPerSecond > 0.0F
+            ? ProductGameplayMovementState::Rising
+            : ProductGameplayMovementState::Falling;
+    return;
+  }
+
+  const bool horizontalVelocityActive =
+      window.gameplayMovementHorizontalSpeedMetersPerSecond >
+      kMovementStateSpeedEpsilonMetersPerSecond;
+  const bool movementDebugMoved =
+      window.gameplayMovementStatus == "moved" &&
+      window.gameplayMovementHorizontalDistanceMeters >
+          kMovementStateDistanceEpsilonMeters;
+  // branch-gate: BG-1161
+  window.gameplayMovementState =
+      horizontalVelocityActive || movementDebugMoved
+          ? ProductGameplayMovementState::MovingGrounded
+          : ProductGameplayMovementState::IdleGrounded;
 }
 
 float manualFirstPersonMaxSpeedMetersPerSecond(
@@ -1763,6 +1830,7 @@ void applyProductGameplayActions(Session& session,
   // branch-gate: BG-1155
   if (actionWasPressed(actions, InputAction::PlayerDash)) {
     submitProductDash(session, window, moveX, moveY, source, collisionSurfaces);
+    updateProductMovementStateProof(window);
     return;
   }
   if (moveX != 0.0F || moveY != 0.0F || horizontalVelocityActive(window)) {
@@ -1789,6 +1857,7 @@ void applyProductGameplayActions(Session& session,
     window.gameplayCommandStatus = reset.reset ? "accepted" : "rejected";
     window.runtimeStateHash = session.stateHash();
   }
+  updateProductMovementStateProof(window);
 }
 
 }  // namespace iggy3d

@@ -25,6 +25,7 @@ struct MovementDebugHud {
   bool blocked = false;
   std::string status = "not_requested";
   std::string reasonCode = "not_requested";
+  std::string movementState = "idle_grounded";
   std::string blockedReason = "none";
   std::string hitSurfaceId = "none";
   std::string policyBand = "none";
@@ -33,6 +34,8 @@ struct MovementDebugHud {
   bool movementClamped = false;
   std::uint64_t collisionSweepCount = 0;
   float speedMultiplier = 1.0F;
+  float horizontalSpeedMetersPerSecond = 0.0F;
+  float verticalVelocityMetersPerSecond = 0.0F;
   float finalX = 0.0F;
   float finalY = 0.0F;
   float finalZ = 0.0F;

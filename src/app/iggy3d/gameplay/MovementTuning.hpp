@@ -32,6 +32,38 @@ enum class ProductGameplayMovementTuningFieldKind : std::uint8_t {
   Toggle,
 };
 
+enum class ProductGameplayMovementState : std::uint8_t {
+  IdleGrounded,
+  MovingGrounded,
+  Jumping,
+  Rising,
+  Falling,
+  AirborneControl,
+  BlockedOrSliding,
+};
+
+constexpr std::string_view productGameplayMovementStateName(
+    ProductGameplayMovementState state) {
+  // branch-gate: BG-1161
+  switch (state) {
+    case ProductGameplayMovementState::IdleGrounded:
+      return "idle_grounded";
+    case ProductGameplayMovementState::MovingGrounded:
+      return "moving_grounded";
+    case ProductGameplayMovementState::Jumping:
+      return "jumping";
+    case ProductGameplayMovementState::Rising:
+      return "rising";
+    case ProductGameplayMovementState::Falling:
+      return "falling";
+    case ProductGameplayMovementState::AirborneControl:
+      return "airborne_control";
+    case ProductGameplayMovementState::BlockedOrSliding:
+      return "blocked_or_sliding";
+  }
+  return "unknown";
+}
+
 struct ProductGameplayMovementTuning {
   std::string_view walkProfile = "manual_first_person";
   std::string_view sprintProfile = "manual_first_person_sprint";

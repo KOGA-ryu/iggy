@@ -42,6 +42,12 @@ void clearProductGameplayMovementTuning(ProductAppWindowState& window) {
 void clearProductGameplayGroundVelocity(ProductAppWindowState& window) {
   window.gameplayMovementGroundVelocityX = 0.0F;
   window.gameplayMovementGroundVelocityZ = 0.0F;
+  window.gameplayMovementHorizontalSpeedMetersPerSecond = 0.0F;
+  // branch-gate: BG-1161
+  if (!window.gameplayJumpActive) {
+    window.gameplayMovementGrounded = true;
+    window.gameplayMovementState = ProductGameplayMovementState::IdleGrounded;
+  }
 }
 
 void clearProductGameplayJumpTiming(ProductAppWindowState& window) {

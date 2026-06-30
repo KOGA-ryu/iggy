@@ -481,6 +481,12 @@ bool productMoveUsesTunedManualStep() {
                 "default physics planner status") &&
          expect(window.gameplayMovementProfile == kExpectedManualFirstPersonProfile,
                 "manual movement profile") &&
+         expect(window.gameplayMovementState ==
+                    iggy3d::ProductGameplayMovementState::MovingGrounded,
+                "manual movement state") &&
+         expect(window.gameplayMovementGrounded, "manual movement grounded") &&
+         expect(window.gameplayMovementHorizontalSpeedMetersPerSecond > 0.0F,
+                "manual movement horizontal speed proof") &&
          expect(nearlyEqual(window.gameplayMovementMaxSpeedMetersPerSecond,
                             kExpectedManualFirstPersonSpeedMetersPerSecond),
                 "manual movement speed") &&
@@ -490,6 +496,27 @@ bool productMoveUsesTunedManualStep() {
          expect(nearlyEqual(delta.x, 0.0F), "forward x unchanged") &&
          expect(nearlyEqual(delta.z, -kExpectedManualFirstPersonStepMeters),
                 "W moves forward along camera -Z at yaw zero");
+}
+
+bool productMovementStateReportsIdleGroundedWithoutInput() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "idle state session created")) {
+    return false;
+  }
+
+  iggy3d::applyProductGameplayActions(*session,
+                                      noActions(),
+                                      window,
+                                      "unit/gameplay_controller_idle_state");
+
+  return expect(window.gameplayMovementState ==
+                    iggy3d::ProductGameplayMovementState::IdleGrounded,
+                "idle grounded state") &&
+         expect(window.gameplayMovementGrounded, "idle grounded proof") &&
+         expect(nearlyEqual(window.gameplayMovementHorizontalSpeedMetersPerSecond,
+                            0.0F),
+                "idle horizontal speed proof");
 }
 
 bool productWasdUsesCameraRelativeYawZero() {
@@ -792,6 +819,10 @@ bool productJumpRaisesPlayerAndRecordsProof() {
   return expect(window.gameplayJumpRequested, "jump requested") &&
          expect(window.gameplayJumpAccepted, "jump accepted") &&
          expect(window.gameplayJumpActive, "jump remains active after first step") &&
+         expect(window.gameplayMovementState ==
+                    iggy3d::ProductGameplayMovementState::Rising,
+                "jump movement state rising") &&
+         expect(!window.gameplayMovementGrounded, "jump airborne proof") &&
          expect(window.gameplayJumpStatus == "airborne", "jump airborne status") &&
          expect(window.gameplayJumpReasonCode == "gameplay_jump_airborne",
                 "jump airborne reason") &&
@@ -823,6 +854,11 @@ bool productJumpCanMoveForwardInSameFrame() {
   return expect(window.gameplayJumpRequested, "jump forward jump requested") &&
          expect(window.gameplayJumpAccepted, "jump forward jump accepted") &&
          expect(window.gameplayJumpActive, "jump forward remains airborne") &&
+         expect(window.gameplayMovementState ==
+                    iggy3d::ProductGameplayMovementState::AirborneControl,
+                "jump forward airborne control state") &&
+         expect(!window.gameplayMovementGrounded,
+                "jump forward airborne proof") &&
          expect(window.gameplayJumpStatus == "airborne",
                 "jump forward jump airborne") &&
          expect(window.gameplayMovementAttempted,
@@ -1050,9 +1086,40 @@ bool productFallGravityMultiplierDescendsFaster() {
   return expect(playerEntity(*fastSession)->transform.position.y <
                     playerEntity(*normalSession)->transform.position.y,
                 "higher fall multiplier descends farther") &&
+         expect(normalWindow.gameplayMovementState ==
+                    iggy3d::ProductGameplayMovementState::Falling,
+                "normal fall state") &&
+         expect(fastWindow.gameplayMovementState ==
+                    iggy3d::ProductGameplayMovementState::Falling,
+                "fast fall state") &&
          expect(fastWindow.gameplayJumpVelocityMetersPerSecond <
                     normalWindow.gameplayJumpVelocityMetersPerSecond,
                 "higher fall multiplier has lower velocity");
+}
+
+bool productMovementStateReportsBlockedOrSlidingFromCollisionProof() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "blocked state session created")) {
+    return false;
+  }
+
+  window.gameplayMovementBlocked = true;
+  window.gameplayMovementClamped = true;
+  window.gameplayMovementBlockedReason = "blocked_by_collision";
+  window.gameplayMovementHitSurfaceId = "unit_wall_actor_blocker";
+  iggy3d::applyProductGameplayActions(*session,
+                                      noActions(),
+                                      window,
+                                      "unit/gameplay_controller_blocked_state");
+
+  return expect(window.gameplayMovementState ==
+                    iggy3d::ProductGameplayMovementState::BlockedOrSliding,
+                "blocked or sliding state") &&
+         expect(window.gameplayMovementGrounded,
+                "blocked state remains grounded") &&
+         expect(window.gameplayMovementHitSurfaceId == "unit_wall_actor_blocker",
+                "blocked state keeps hit surface proof");
 }
 
 bool productJumpUsesClamberTraversalWhenCandidateIsLocal() {
@@ -1663,6 +1730,7 @@ bool optInMoveWithoutCollisionSurfacesRecordsNoSurfaces() {
 
 int main() {
   const bool ok = productMoveUsesTunedManualStep() &&
+                  productMovementStateReportsIdleGroundedWithoutInput() &&
                   productWasdUsesCameraRelativeYawZero() &&
                   productMoveUsesCameraYaw() &&
                   productMoveNormalizesDiagonalToTunedStep() &&
@@ -1681,6 +1749,7 @@ int main() {
                   productBufferedJumpFiresOnLanding() &&
                   productEarlyJumpReleaseCutsJumpHeight() &&
                   productFallGravityMultiplierDescendsFaster() &&
+                  productMovementStateReportsBlockedOrSlidingFromCollisionProof() &&
                   productJumpUsesClamberTraversalWhenCandidateIsLocal() &&
                   productJumpUsesWallJumpWhenAirborneNearWall() &&
                   productJumpRejectsWallJumpNearGenericWall() &&

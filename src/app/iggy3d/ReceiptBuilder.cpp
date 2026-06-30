@@ -886,6 +886,19 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.gameplayMovementGroundVelocityX));
   appendReceiptField(receipt, "gameplay_movement_ground_velocity_z",
                      floatReceiptValue(window.gameplayMovementGroundVelocityZ));
+  appendReceiptField(receipt, "gameplay_movement_state",
+                     productGameplayMovementStateName(window.gameplayMovementState));
+  appendReceiptField(receipt, "movement_state",
+                     productGameplayMovementStateName(window.gameplayMovementState));
+  appendReceiptField(receipt, "movement_grounded",
+                     window.gameplayMovementGrounded);
+  appendReceiptField(receipt, "movement_vertical_velocity_mps",
+                     floatReceiptValue(window.gameplayJumpVelocityMetersPerSecond));
+  appendReceiptField(receipt, "movement_horizontal_speed_mps",
+                     floatReceiptValue(
+                         window.gameplayMovementHorizontalSpeedMetersPerSecond));
+  appendReceiptField(receipt, "movement_hit_surface_id",
+                     window.gameplayMovementHitSurfaceId);
   appendReceiptField(receipt, "gameplay_movement_grade_percent",
                      floatReceiptValue(window.gameplayMovementGradePercent));
   appendReceiptField(receipt, "gameplay_movement_profile",
