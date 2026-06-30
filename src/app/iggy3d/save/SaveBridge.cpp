@@ -1,12 +1,60 @@
 #include "app/iggy3d/save/SaveBridge.hpp"
 
 #include <chrono>
+#include <ctime>
 
 #include "app/iggy3d/save/CatalogProjector.hpp"
 #include "runtime/save/SaveCodec.hpp"
 
 namespace iggy3d {
 namespace {
+
+// Product identity carried on a save's durable metadata. Read back from an
+// existing save so a re-save preserves the world identity that creation set
+// instead of overwriting it with blanks.
+struct ExistingSaveIdentity {
+  bool found = false;
+  std::string worldId;
+  std::string worldTitle;
+  std::string saveTitle;
+  std::string saveType;
+  std::string createdAtUtc;
+  std::string savedAtUtc;
+};
+
+ExistingSaveIdentity readExistingSaveIdentity(const std::filesystem::path& root,
+                                              std::string_view idHint) {
+  ExistingSaveIdentity existing;
+  if (!isValidSaveFileId(idHint)) {
+    return existing;
+  }
+  const std::filesystem::path path = saveFilePathForId(root, idHint);
+  std::error_code error;
+  if (!std::filesystem::exists(path, error) || error) {
+    return existing;
+  }
+  const SaveFileReadResult read = readSaveFile(path);
+  if (!read.ok) {
+    return existing;
+  }
+  const SaveDecodeResult decoded = decodeSaveEnvelope(read.encodedText);
+  if (decoded.status != SaveCodecStatus::Ok) {
+    return existing;
+  }
+  existing.found = true;
+  existing.worldId = decoded.envelope.metadata.worldId;
+  existing.worldTitle = decoded.envelope.metadata.worldTitle;
+  existing.saveTitle = decoded.envelope.metadata.saveTitle;
+  existing.saveType = decoded.envelope.metadata.saveType;
+  existing.createdAtUtc = decoded.envelope.metadata.createdAtUtc;
+  existing.savedAtUtc = decoded.envelope.metadata.savedAtUtc;
+  return existing;
+}
+
+std::string preferNonEmpty(const std::string& primary,
+                           const std::string& fallback) {
+  return primary.empty() ? fallback : primary;
+}
 
 std::string timestampLabelForPath(const std::filesystem::path& path) {
   std::error_code error;
@@ -215,6 +263,23 @@ ProductSaveMutationStatus mutationStatusForRecover(
 
 }  // namespace
 
+std::string productSaveTimestampNowUtc() {
+  const std::time_t now = std::chrono::system_clock::to_time_t(
+      std::chrono::system_clock::now());
+  std::tm utc{};
+#if defined(_WIN32)
+  gmtime_s(&utc, &now);
+#else
+  gmtime_r(&now, &utc);
+#endif
+  char buffer[32] = {0};
+  // ISO-8601 UTC, e.g. 2026-06-30T05:47:12Z
+  if (std::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &utc) == 0U) {
+    return "";
+  }
+  return std::string(buffer);
+}
+
 std::string_view productSaveMutationStatusName(ProductSaveMutationStatus status) {
   // branch-gate: BG-1218
   switch (status) {
@@ -262,14 +327,35 @@ ProductSaveBridgeResult scanDeletedProductSaves(
 
 ProductSaveWriteResult writeProductSessionSaveDurably(
     const ProductSaveWriteRequest& request) {
+  // Identity carry-forward: when overwriting an existing save, any identity
+  // field the caller leaves empty inherits the value already on disk. This is
+  // what stops a pause/progress save (which only knows the save id) from
+  // blanking the worldId/worldTitle/saveType/createdAtUtc that world creation
+  // wrote. A caller that supplies a field (e.g. saveType="manual" on a manual
+  // save, or a future rename) still overrides it. New saves (no existing file)
+  // keep the request values verbatim.
+  const ExistingSaveIdentity existing =
+      readExistingSaveIdentity(request.saveRoot, request.saveIdHint);
+  const std::string worldId = preferNonEmpty(request.worldId, existing.worldId);
+  const std::string worldTitle =
+      preferNonEmpty(request.worldTitle, existing.worldTitle);
+  const std::string saveTitle =
+      preferNonEmpty(request.saveTitle, existing.saveTitle);
+  const std::string saveType =
+      preferNonEmpty(request.saveType, existing.saveType);
+  const std::string createdAtUtc =
+      preferNonEmpty(request.createdAtUtc, existing.createdAtUtc);
+  const std::string savedAtUtc =
+      preferNonEmpty(request.savedAtUtc, existing.savedAtUtc);
+
   ProductSaveWriteResult result;
   result.durableWriteRequested = true;
-  result.worldId = request.worldId;
-  result.worldTitle = request.worldTitle;
-  result.saveTitle = request.saveTitle;
-  result.saveType = request.saveType;
-  result.createdAtUtc = request.createdAtUtc;
-  result.savedAtUtc = request.savedAtUtc;
+  result.worldId = worldId;
+  result.worldTitle = worldTitle;
+  result.saveTitle = saveTitle;
+  result.saveType = saveType;
+  result.createdAtUtc = createdAtUtc;
+  result.savedAtUtc = savedAtUtc;
 
   SaveFileDurableWriteRequest durableRequest;
   durableRequest.root = request.saveRoot;
@@ -277,12 +363,12 @@ ProductSaveWriteResult writeProductSessionSaveDurably(
   durableRequest.attemptToken = request.attemptToken;
   durableRequest.state = request.state;
   durableRequest.authoredRoom = request.authoredRoom;
-  durableRequest.productMetadata.worldId = request.worldId;
-  durableRequest.productMetadata.worldTitle = request.worldTitle;
-  durableRequest.productMetadata.saveTitle = request.saveTitle;
-  durableRequest.productMetadata.saveType = request.saveType;
-  durableRequest.productMetadata.createdAtUtc = request.createdAtUtc;
-  durableRequest.productMetadata.savedAtUtc = request.savedAtUtc;
+  durableRequest.productMetadata.worldId = worldId;
+  durableRequest.productMetadata.worldTitle = worldTitle;
+  durableRequest.productMetadata.saveTitle = saveTitle;
+  durableRequest.productMetadata.saveType = saveType;
+  durableRequest.productMetadata.createdAtUtc = createdAtUtc;
+  durableRequest.productMetadata.savedAtUtc = savedAtUtc;
 
   const SaveFileDurableWriteResult durable =
       writeSessionSaveFileDurably(durableRequest);

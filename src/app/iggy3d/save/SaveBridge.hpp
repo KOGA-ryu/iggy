@@ -152,6 +152,14 @@ struct ProductSaveMutationResult {
   ProductSaveRecoverResult recover;
 };
 
+// Current wall-clock time formatted as a UTC ISO-8601 second-granularity string
+// ("YYYY-MM-DDTHH:MM:SSZ"). This is the single product save clock: world
+// creation and every progress save stamp savedAtUtc through it so the catalog's
+// newest-first ordering and Continue policy reflect real recency. Callers that
+// need determinism (unit tests) supply their own timestamp instead of calling
+// this.
+std::string productSaveTimestampNowUtc();
+
 ProductSaveBridgeResult scanProductSaves(const std::filesystem::path& saveRoot,
                                          std::string_view packageId,
                                          std::string_view scenarioId);

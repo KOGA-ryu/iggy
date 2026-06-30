@@ -161,11 +161,16 @@ ProductWorldCreationResult prepareProductWorldCreationFromDraft(
   window.worldSetupTitle = setup.createRequest.worldName;
   window.worldSetupStatus = std::string(setup.status);
 
+  // createdAtUtc/savedAtUtc seed for the initial save: a real UTC timestamp so
+  // the catalog's newest-first ordering and Continue policy reflect real
+  // creation/save recency across worlds (replaces a fixed literal that made
+  // every world's timestamp identical). worldId uniqueness is a follow-on
+  // (Phase 2); the value is preserved across re-saves by carry-forward.
   ProductWorldCreationResult creation = prepareProductWorldCreation(
       makeProductWorldCreationInput(setup.createRequest,
                                     world,
                                     options.saveRoot,
-                                    "product_new_world_request_001",
+                                    productSaveTimestampNowUtc(),
                                     "world_0001"));
   window.worldCreationStatus = std::string(creation.status);
   window.worldCreationReasonCode = std::string(creation.reasonCode);
@@ -242,15 +247,6 @@ void recordProductWorldInitialSaveResult(
   if (initialSave.saveWrite.ok && !initialSave.saveWrite.record.id.empty()) {
     window.activeProductSaveId = initialSave.saveWrite.record.id;
   }
-}
-
-const SaveSlotPreview* newestCompatibleSaveSlot(const SaveSlotList& slots) {
-  for (auto it = slots.slots.rbegin(); it != slots.slots.rend(); ++it) {
-    if (it->enabled && it->compatibility == SaveSlotCompatibility::Compatible) {
-      return &*it;
-    }
-  }
-  return nullptr;
 }
 
 void recordProductSaveLoadResult(const ProductSaveLoadResult& loaded,
@@ -511,6 +507,12 @@ ProductSaveWriteResult writeProductCurrentSessionSave(
   if (window.activeRoom.hasAuthoredRoom) {
     request.authoredRoom = &window.activeRoom.authoredRoom;
   }
+  // A pause/progress save is a manual save and advances the save time. The
+  // remaining identity (worldId/worldTitle/saveTitle/createdAtUtc) is left
+  // empty on purpose: writeProductSessionSaveDurably carries it forward from
+  // the existing save on disk so re-saving never wipes the world identity.
+  request.saveType = "manual";
+  request.savedAtUtc = productSaveTimestampNowUtc();
   const ProductSaveWriteResult written = writeProductSessionSaveDurably(request);
   recordProductSaveWriteResult(source, written, window);
   return written;
@@ -944,9 +946,20 @@ void launchProductContinueSave(const ProductAppOptions& options,
                                FrontendState& frontend,
                                std::optional<Session>& activeSession,
                                ProductAppWindowState& window) {
+  // Continue selects the newest compatible active save via the catalog policy
+  // (selectProductContinueSave), then resolves the matching projected slot to
+  // load. The catalog is sorted newest-first and the policy is unit-tested in
+  // product_save_catalog_tests; this replaces an ad-hoc reverse scan that
+  // returned the OLDEST compatible save.
+  const ProductContinueSelectionResult continueSelection =
+      selectProductContinueSave(saves.catalog.catalog);
+  const SaveSlotPreview* slot =
+      continueSelection.selected
+          ? saveSlotById(saves.slots, continueSelection.selectedSaveId)
+          : nullptr;
   launchProductSaveSlot(options,
                         world,
-                        newestCompatibleSaveSlot(saves.slots),
+                        slot,
                         FrontendAction::Continue,
                         "continue",
                         frontend,
