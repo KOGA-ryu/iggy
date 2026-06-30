@@ -36,6 +36,11 @@ struct MovementDebugHud {
   float speedMultiplier = 1.0F;
   float horizontalSpeedMetersPerSecond = 0.0F;
   float verticalVelocityMetersPerSecond = 0.0F;
+  bool wallRunCandidateAvailable = false;
+  std::string wallRunCandidateStatus = "wall_run_not_checked";
+  std::string wallRunSide = "none";
+  std::string wallRunSurfaceId = "none";
+  float wallRunApproachSpeedMetersPerSecond = 0.0F;
   float finalX = 0.0F;
   float finalY = 0.0F;
   float finalZ = 0.0F;

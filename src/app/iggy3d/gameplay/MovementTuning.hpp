@@ -25,6 +25,8 @@ enum class ProductGameplayMovementTuningField : std::uint8_t {
   DashSpeed,
   DashDuration,
   DashCooldown,
+  WallRunMinSpeed,
+  WallRunMaxNormalY,
 };
 
 enum class ProductGameplayMovementTuningFieldKind : std::uint8_t {
@@ -91,6 +93,9 @@ struct ProductGameplayMovementTuning {
   float dashDurationSeconds = 0.18F;
   float dashCooldownSeconds = 0.45F;
 
+  float wallRunMinSpeedMetersPerSecond = 2.0F;
+  float wallRunMaxWallNormalY = 0.25F;
+
   float wallJumpProbeMeters = 0.58F;
   float wallJumpPushMeters = 1.20F;
   float wallJumpRiseMeters = 0.45F;
@@ -116,7 +121,7 @@ struct ProductGameplayMovementTuningFieldDescriptor {
   float step = 0.1F;
 };
 
-inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 16U>
+inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 18U>
     kProductGameplayMovementTuningFields{{
         {ProductGameplayMovementTuningField::WalkSpeed,
          "walk_speed_mps",
@@ -245,6 +250,22 @@ inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 16U>
          ProductGameplayMovementTuningFieldKind::Scalar,
          0.0F,
          3.0F,
+         0.05F},
+        {ProductGameplayMovementTuningField::WallRunMinSpeed,
+         "wall_run_min_speed_mps",
+         "WALLRUN SPD",
+         &ProductGameplayMovementTuning::wallRunMinSpeedMetersPerSecond,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.1F,
+         12.0F,
+         0.1F},
+        {ProductGameplayMovementTuningField::WallRunMaxNormalY,
+         "wall_run_max_normal_y",
+         "WALLRUN NY",
+         &ProductGameplayMovementTuning::wallRunMaxWallNormalY,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.0F,
+         1.0F,
          0.05F},
     }};
 

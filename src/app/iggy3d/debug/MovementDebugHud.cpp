@@ -44,6 +44,13 @@ std::string movementStateDisplay(const ProductAppWindowState& window) {
          " v" + fixed3(window.gameplayJumpVelocityMetersPerSecond);
 }
 
+std::string wallRunDisplay(const ProductAppWindowState& window) {
+  return codeDisplay(window.gameplayWallRunSide) +
+         " " + codeDisplay(window.gameplayWallRunSurfaceId) +
+         " " + codeDisplay(window.gameplayWallRunCandidateReasonCode) +
+         " h" + fixed3(window.gameplayWallRunApproachSpeedMetersPerSecond);
+}
+
 FeedbackTone statusTone(const ProductAppWindowState& window) {
   if (window.gameplayMovementBlocked) {
     return FeedbackTone::Warn;
@@ -89,6 +96,12 @@ MovementDebugHud buildMovementDebugHud(
   hud.horizontalSpeedMetersPerSecond =
       window.gameplayMovementHorizontalSpeedMetersPerSecond;
   hud.verticalVelocityMetersPerSecond = window.gameplayJumpVelocityMetersPerSecond;
+  hud.wallRunCandidateAvailable = window.gameplayWallRunCandidateAvailable;
+  hud.wallRunCandidateStatus = window.gameplayWallRunCandidateStatus;
+  hud.wallRunSide = window.gameplayWallRunSide;
+  hud.wallRunSurfaceId = window.gameplayWallRunSurfaceId;
+  hud.wallRunApproachSpeedMetersPerSecond =
+      window.gameplayWallRunApproachSpeedMetersPerSecond;
   hud.finalX = window.gameplayMovementFinalX;
   hud.finalY = window.gameplayMovementFinalY;
   hud.finalZ = window.gameplayMovementFinalZ;
@@ -101,8 +114,13 @@ MovementDebugHud buildMovementDebugHud(
   hud.status = window.gameplayMovementStatus;
   hud.reasonCode = window.gameplayMovementReasonCode;
 
+  // branch-gate: BG-1161
+  const FeedbackTone wallRunTone =
+      window.gameplayWallRunCandidateAvailable ? FeedbackTone::Pass
+                                               : FeedbackTone::Neutral;
   addLine(hud, "STATUS", codeDisplay(hud.status), statusTone(window));
   addLine(hud, "STATE", movementStateDisplay(window), FeedbackTone::Neutral);
+  addLine(hud, "WALLRUN", wallRunDisplay(window), wallRunTone);
   addLine(hud, "REASON", codeDisplay(hud.reasonCode),
           window.gameplayMovementBlocked ? FeedbackTone::Warn
                                          : FeedbackTone::Neutral);

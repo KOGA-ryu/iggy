@@ -227,6 +227,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      "gameplay_movement_tuning_dash_cooldown_s",
                      floatReceiptValue(
                          window.gameplayMovementTuning.dashCooldownSeconds));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_wall_run_min_speed_mps",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning
+                             .wallRunMinSpeedMetersPerSecond));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_wall_run_max_normal_y",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning.wallRunMaxWallNormalY));
   appendReceiptField(receipt, "window_requested", window.requested);
   appendReceiptField(receipt, "window_shell", window.sdlAvailable ? "sdl3" : "unavailable");
   appendReceiptField(receipt, "window_created", window.created);
@@ -899,6 +908,24 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                          window.gameplayMovementHorizontalSpeedMetersPerSecond));
   appendReceiptField(receipt, "movement_hit_surface_id",
                      window.gameplayMovementHitSurfaceId);
+  appendReceiptField(receipt, "wall_run_candidate_available",
+                     window.gameplayWallRunCandidateAvailable);
+  appendReceiptField(receipt, "wall_run_candidate_status",
+                     window.gameplayWallRunCandidateStatus);
+  appendReceiptField(receipt, "wall_run_candidate_reason_code",
+                     window.gameplayWallRunCandidateReasonCode);
+  appendReceiptField(receipt, "wall_run_side", window.gameplayWallRunSide);
+  appendReceiptField(receipt, "wall_run_surface_id",
+                     window.gameplayWallRunSurfaceId);
+  appendReceiptField(receipt, "wall_run_normal_x",
+                     floatReceiptValue(window.gameplayWallRunNormalX));
+  appendReceiptField(receipt, "wall_run_normal_y",
+                     floatReceiptValue(window.gameplayWallRunNormalY));
+  appendReceiptField(receipt, "wall_run_normal_z",
+                     floatReceiptValue(window.gameplayWallRunNormalZ));
+  appendReceiptField(receipt, "wall_run_approach_speed_mps",
+                     floatReceiptValue(
+                         window.gameplayWallRunApproachSpeedMetersPerSecond));
   appendReceiptField(receipt, "gameplay_movement_grade_percent",
                      floatReceiptValue(window.gameplayMovementGradePercent));
   appendReceiptField(receipt, "gameplay_movement_profile",

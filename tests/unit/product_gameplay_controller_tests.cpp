@@ -1122,6 +1122,206 @@ bool productMovementStateReportsBlockedOrSlidingFromCollisionProof() {
                 "blocked state keeps hit surface proof");
 }
 
+bool productWallRunCandidateReportsAirborneSideWallContact() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "wall-run candidate session created")) {
+    return false;
+  }
+
+  setPlayerPosition(*session, {3.0F, 0.80F, 0.65F});
+  setWallJumpActiveRoom(window, *session);
+  window.gameplayJumpActive = true;
+  window.gameplayJumpVelocityMetersPerSecond = 1.0F;
+  window.gameplayJumpGroundY = 0.0F;
+  window.gameplayJumpStartY = 0.80F;
+  iggy3d::applyProductGameplayActions(*session,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      window,
+                                      "unit/gameplay_controller_wall_run_candidate",
+                                      activeSurfaces(window));
+
+  return expect(window.gameplayWallRunCandidateAvailable,
+                "wall-run candidate available") &&
+         expect(window.gameplayWallRunCandidateStatus == "wall_run_candidate",
+                "wall-run candidate status") &&
+         expect(window.gameplayWallRunSurfaceId ==
+                    "wall_jump_wall_actor_blocker",
+                "wall-run candidate surface") &&
+         expect(window.gameplayWallRunApproachSpeedMetersPerSecond >=
+                    window.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond,
+                "wall-run candidate speed") &&
+         expect(window.gameplayWallRunSide != "none",
+                "wall-run candidate side proof");
+}
+
+bool productWallRunCandidateRejectsGroundedContact() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "grounded wall-run session created")) {
+    return false;
+  }
+
+  setPlayerPosition(*session, {3.0F, 0.05F, 0.65F});
+  setWallJumpActiveRoom(window, *session);
+  iggy3d::applyProductGameplayActions(*session,
+                                      noActions(),
+                                      window,
+                                      "unit/gameplay_controller_wall_run_grounded",
+                                      activeSurfaces(window));
+
+  return expect(!window.gameplayWallRunCandidateAvailable,
+                "grounded wall-run candidate rejected") &&
+         expect(window.gameplayWallRunCandidateReasonCode == "wall_run_grounded",
+                "grounded wall-run reason");
+}
+
+bool productWallRunCandidateRejectsLowSpeed() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "low-speed wall-run session created")) {
+    return false;
+  }
+
+  setPlayerPosition(*session, {3.0F, 0.80F, 0.65F});
+  setWallJumpActiveRoom(window, *session);
+  window.gameplayJumpActive = true;
+  window.gameplayJumpVelocityMetersPerSecond = 1.0F;
+  window.gameplayJumpGroundY = 0.0F;
+  window.gameplayJumpStartY = 0.80F;
+  window.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond = 10.0F;
+  iggy3d::applyProductGameplayActions(*session,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      window,
+                                      "unit/gameplay_controller_wall_run_low_speed",
+                                      activeSurfaces(window));
+
+  return expect(!window.gameplayWallRunCandidateAvailable,
+                "low-speed wall-run candidate rejected") &&
+         expect(window.gameplayWallRunCandidateReasonCode == "wall_run_low_speed",
+                "low-speed wall-run reason");
+}
+
+bool productWallRunCandidateRejectsNoWallContact() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "no-wall wall-run session created")) {
+    return false;
+  }
+
+  window.gameplayJumpActive = true;
+  window.gameplayJumpVelocityMetersPerSecond = 1.0F;
+  window.gameplayJumpGroundY = 0.0F;
+  window.gameplayJumpStartY = 0.80F;
+  iggy3d::applyProductGameplayActions(*session,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      window,
+                                      "unit/gameplay_controller_wall_run_no_wall",
+                                      activeSurfaces(window));
+
+  return expect(!window.gameplayWallRunCandidateAvailable,
+                "no-wall wall-run candidate rejected") &&
+         expect(window.gameplayWallRunCandidateReasonCode ==
+                    "wall_run_no_wall_contact",
+                "no-wall wall-run reason");
+}
+
+bool productWallRunMinSpeedTuningControlsCandidateThreshold() {
+  std::optional<iggy3d::Session> slowSession;
+  iggy3d::ProductAppWindowState slowWindow = makeGameplayWindow(slowSession);
+  std::optional<iggy3d::Session> fastSession;
+  iggy3d::ProductAppWindowState fastWindow = makeGameplayWindow(fastSession);
+  if (!expect(slowSession.has_value() && fastSession.has_value(),
+              "wall-run threshold sessions created")) {
+    return false;
+  }
+
+  setPlayerPosition(*slowSession, {3.0F, 0.80F, 0.65F});
+  setPlayerPosition(*fastSession, {3.0F, 0.80F, 0.65F});
+  setWallJumpActiveRoom(slowWindow, *slowSession);
+  setWallJumpActiveRoom(fastWindow, *fastSession);
+  slowWindow.gameplayJumpActive = true;
+  slowWindow.gameplayJumpVelocityMetersPerSecond = 1.0F;
+  slowWindow.gameplayJumpGroundY = 0.0F;
+  slowWindow.gameplayJumpStartY = 0.80F;
+  slowWindow.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond = 10.0F;
+  fastWindow.gameplayJumpActive = true;
+  fastWindow.gameplayJumpVelocityMetersPerSecond = 1.0F;
+  fastWindow.gameplayJumpGroundY = 0.0F;
+  fastWindow.gameplayJumpStartY = 0.80F;
+  fastWindow.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond = 0.5F;
+
+  iggy3d::applyProductGameplayActions(*slowSession,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      slowWindow,
+                                      "unit/gameplay_controller_wall_run_high_threshold",
+                                      activeSurfaces(slowWindow));
+  iggy3d::applyProductGameplayActions(*fastSession,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      fastWindow,
+                                      "unit/gameplay_controller_wall_run_low_threshold",
+                                      activeSurfaces(fastWindow));
+
+  return expect(!slowWindow.gameplayWallRunCandidateAvailable,
+                "high wall-run speed threshold rejects") &&
+         expect(fastWindow.gameplayWallRunCandidateAvailable,
+                "low wall-run speed threshold accepts");
+}
+
+bool productWallRunCandidateDoesNotChangeMovementOutput() {
+  std::optional<iggy3d::Session> candidateSession;
+  iggy3d::ProductAppWindowState candidateWindow =
+      makeGameplayWindow(candidateSession);
+  std::optional<iggy3d::Session> rejectedSession;
+  iggy3d::ProductAppWindowState rejectedWindow =
+      makeGameplayWindow(rejectedSession);
+  if (!expect(candidateSession.has_value() && rejectedSession.has_value(),
+              "wall-run non-invasive sessions created")) {
+    return false;
+  }
+
+  setPlayerPosition(*candidateSession, {3.0F, 0.80F, 0.65F});
+  setPlayerPosition(*rejectedSession, {3.0F, 0.80F, 0.65F});
+  setWallJumpActiveRoom(candidateWindow, *candidateSession);
+  setWallJumpActiveRoom(rejectedWindow, *rejectedSession);
+  candidateWindow.gameplayJumpActive = true;
+  candidateWindow.gameplayJumpVelocityMetersPerSecond = 1.0F;
+  candidateWindow.gameplayJumpGroundY = 0.0F;
+  candidateWindow.gameplayJumpStartY = 0.80F;
+  candidateWindow.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond = 0.5F;
+  rejectedWindow.gameplayJumpActive = true;
+  rejectedWindow.gameplayJumpVelocityMetersPerSecond = 1.0F;
+  rejectedWindow.gameplayJumpGroundY = 0.0F;
+  rejectedWindow.gameplayJumpStartY = 0.80F;
+  rejectedWindow.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond = 10.0F;
+
+  iggy3d::applyProductGameplayActions(*candidateSession,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      candidateWindow,
+                                      "unit/gameplay_controller_wall_run_noninvasive_on",
+                                      activeSurfaces(candidateWindow));
+  iggy3d::applyProductGameplayActions(*rejectedSession,
+                                      manualMoveActions(1.0F, 0.0F),
+                                      rejectedWindow,
+                                      "unit/gameplay_controller_wall_run_noninvasive_off",
+                                      activeSurfaces(rejectedWindow));
+
+  const iggy3d::Vec3 candidateFinal =
+      playerEntity(*candidateSession)->transform.position;
+  const iggy3d::Vec3 rejectedFinal =
+      playerEntity(*rejectedSession)->transform.position;
+  return expect(candidateWindow.gameplayWallRunCandidateAvailable,
+                "candidate comparison enabled") &&
+         expect(!rejectedWindow.gameplayWallRunCandidateAvailable,
+                "candidate comparison rejected") &&
+         expect(nearlyEqual(candidateFinal.x, rejectedFinal.x),
+                "wall-run candidate does not change final x") &&
+         expect(nearlyEqual(candidateFinal.y, rejectedFinal.y),
+                "wall-run candidate does not change final y") &&
+         expect(nearlyEqual(candidateFinal.z, rejectedFinal.z),
+                "wall-run candidate does not change final z");
+}
+
 bool productJumpUsesClamberTraversalWhenCandidateIsLocal() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -1750,6 +1950,12 @@ int main() {
                   productEarlyJumpReleaseCutsJumpHeight() &&
                   productFallGravityMultiplierDescendsFaster() &&
                   productMovementStateReportsBlockedOrSlidingFromCollisionProof() &&
+                  productWallRunCandidateReportsAirborneSideWallContact() &&
+                  productWallRunCandidateRejectsGroundedContact() &&
+                  productWallRunCandidateRejectsLowSpeed() &&
+                  productWallRunCandidateRejectsNoWallContact() &&
+                  productWallRunMinSpeedTuningControlsCandidateThreshold() &&
+                  productWallRunCandidateDoesNotChangeMovementOutput() &&
                   productJumpUsesClamberTraversalWhenCandidateIsLocal() &&
                   productJumpUsesWallJumpWhenAirborneNearWall() &&
                   productJumpRejectsWallJumpNearGenericWall() &&

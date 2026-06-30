@@ -344,6 +344,15 @@ struct ProductAppWindowState {
       ProductGameplayMovementState::IdleGrounded;
   bool gameplayMovementGrounded = true;
   float gameplayMovementHorizontalSpeedMetersPerSecond = 0.0F;
+  bool gameplayWallRunCandidateAvailable = false;
+  std::string gameplayWallRunCandidateStatus = "wall_run_not_checked";
+  std::string gameplayWallRunCandidateReasonCode = "wall_run_not_checked";
+  std::string gameplayWallRunSide = "none";
+  std::string gameplayWallRunSurfaceId = "none";
+  float gameplayWallRunNormalX = 0.0F;
+  float gameplayWallRunNormalY = 0.0F;
+  float gameplayWallRunNormalZ = 0.0F;
+  float gameplayWallRunApproachSpeedMetersPerSecond = 0.0F;
   float gameplayMovementGradePercent = 0.0F;
   std::string gameplayMovementProfile =
       std::string{kProductGameplayMovementTuning.walkProfile};

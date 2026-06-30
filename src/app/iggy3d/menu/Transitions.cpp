@@ -43,6 +43,15 @@ void clearProductGameplayGroundVelocity(ProductAppWindowState& window) {
   window.gameplayMovementGroundVelocityX = 0.0F;
   window.gameplayMovementGroundVelocityZ = 0.0F;
   window.gameplayMovementHorizontalSpeedMetersPerSecond = 0.0F;
+  window.gameplayWallRunCandidateAvailable = false;
+  window.gameplayWallRunCandidateStatus = "wall_run_grounded";
+  window.gameplayWallRunCandidateReasonCode = window.gameplayWallRunCandidateStatus;
+  window.gameplayWallRunSide = "none";
+  window.gameplayWallRunSurfaceId = "none";
+  window.gameplayWallRunNormalX = 0.0F;
+  window.gameplayWallRunNormalY = 0.0F;
+  window.gameplayWallRunNormalZ = 0.0F;
+  window.gameplayWallRunApproachSpeedMetersPerSecond = 0.0F;
   // branch-gate: BG-1161
   if (!window.gameplayJumpActive) {
     window.gameplayMovementGrounded = true;

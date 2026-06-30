@@ -33,6 +33,8 @@ constexpr float kGameplayResetZoneRadiusMeters = 0.70F;
 constexpr float kGameplayResetZoneVerticalToleranceMeters = 1.20F;
 constexpr float kMovementStateSpeedEpsilonMetersPerSecond = 0.001F;
 constexpr float kMovementStateDistanceEpsilonMeters = 0.0001F;
+constexpr float kWallRunSurfaceVerticalSlackMeters = 0.35F;
+constexpr float kWallRunAlongWallDotThreshold = 0.35F;
 
 struct ProductInteractionOutcomeSnapshot {
   EntityId target;
@@ -197,7 +199,25 @@ float productHorizontalMovementSpeedMetersPerSecond(
           window.gameplayMovementGroundVelocityX +
       window.gameplayMovementGroundVelocityZ *
           window.gameplayMovementGroundVelocityZ;
-  return std::sqrt(std::max(0.0F, speedSquared));
+  const float retainedSpeed = std::sqrt(std::max(0.0F, speedSquared));
+  const float dt = std::max(0.0F, window.gameplayMovementTuning.inputStepSeconds);
+  // branch-gate: BG-1161
+  const float debugSpeed =
+      dt > 0.0F ? window.gameplayMovementHorizontalDistanceMeters / dt : 0.0F;
+  return std::max(retainedSpeed, debugSpeed);
+}
+
+void clearProductWallRunCandidateProof(ProductAppWindowState& window,
+                                       std::string_view reason) {
+  window.gameplayWallRunCandidateAvailable = false;
+  window.gameplayWallRunCandidateStatus = std::string{reason};
+  window.gameplayWallRunCandidateReasonCode = std::string{reason};
+  window.gameplayWallRunSide = "none";
+  window.gameplayWallRunSurfaceId = "none";
+  window.gameplayWallRunNormalX = 0.0F;
+  window.gameplayWallRunNormalY = 0.0F;
+  window.gameplayWallRunNormalZ = 0.0F;
+  window.gameplayWallRunApproachSpeedMetersPerSecond = 0.0F;
 }
 
 void updateProductMovementStateProof(ProductAppWindowState& window) {
@@ -789,6 +809,188 @@ const CollisionSurfaceView* findWallJumpSurface(const SpatialSurfaceSet& surface
     awayNormal = candidateNormal;
   }
   return best;
+}
+
+bool isNearWallRunSurface(Vec3 position,
+                          const CollisionSurfaceView& surface,
+                          Vec3& awayNormal,
+                          float& distanceSq,
+                          const ProductGameplayMovementTuning& tuning) {
+  // branch-gate: BG-1157
+  if (!actorBlockingSurface(surface) || surface.opening ||
+      surface.role != CollisionSurfaceRole::Blocker ||
+      !isValid(surface.bounds) ||
+      std::fabs(surface.normal.y) >
+          std::clamp(tuning.wallRunMaxWallNormalY, 0.0F, 1.0F)) {
+    return false;
+  }
+
+  Vec3 normal;
+  // branch-gate: BG-1157
+  if (!horizontalNormal(surface.normal, normal)) {
+    return false;
+  }
+
+  // branch-gate: BG-1157
+  if (position.y < surface.bounds.min.y - kWallRunSurfaceVerticalSlackMeters ||
+      position.y > surface.bounds.max.y + kWallRunSurfaceVerticalSlackMeters) {
+    return false;
+  }
+
+  const float clampedX =
+      std::clamp(position.x, surface.bounds.min.x, surface.bounds.max.x);
+  const float clampedZ =
+      std::clamp(position.z, surface.bounds.min.z, surface.bounds.max.z);
+  const Vec3 nearest{clampedX, position.y, clampedZ};
+  Vec3 fromSurface = position - nearest;
+  fromSurface.y = 0.0F;
+  const float fromSurfaceSq = lengthSquared(fromSurface);
+  // branch-gate: BG-1157
+  if (fromSurfaceSq > 0.0001F) {
+    awayNormal = fromSurface / std::sqrt(fromSurfaceSq);
+  } else {
+    const Vec3 centerToPlayer = position - center(surface.bounds);
+    // branch-gate: BG-1157
+    awayNormal = dot(centerToPlayer, normal) < 0.0F ? normal * -1.0F : normal;
+  }
+
+  distanceSq = fromSurfaceSq;
+  return distanceSq <= tuning.wallJumpProbeMeters * tuning.wallJumpProbeMeters;
+}
+
+const CollisionSurfaceView* findWallRunSurface(const SpatialSurfaceSet& surfaces,
+                                               Vec3 position,
+                                               Vec3& awayNormal,
+                                               const ProductGameplayMovementTuning& tuning) {
+  const CollisionSurfaceView* best = nullptr;
+  float bestDistanceSq = tuning.wallJumpProbeMeters * tuning.wallJumpProbeMeters;
+  for (const CollisionSurfaceView& surface : surfaces.surfaces()) {
+    Vec3 candidateNormal;
+    float candidateDistanceSq = 0.0F;
+    // branch-gate: BG-1157
+    if (!isNearWallRunSurface(position,
+                              surface,
+                              candidateNormal,
+                              candidateDistanceSq,
+                              tuning)) {
+      continue;
+    }
+    // branch-gate: BG-1157
+    if (best != nullptr && candidateDistanceSq >= bestDistanceSq) {
+      continue;
+    }
+    best = &surface;
+    bestDistanceSq = candidateDistanceSq;
+    awayNormal = candidateNormal;
+  }
+  return best;
+}
+
+std::string wallRunSideName(Vec3 awayNormal, float yawDegrees) {
+  const float yawRadians = yawDegrees * kPi / 180.0F;
+  const Vec3 forward{std::sin(yawRadians), 0.0F, -std::cos(yawRadians)};
+  const Vec3 right{std::cos(yawRadians), 0.0F, std::sin(yawRadians)};
+  const float rightDot = dot(awayNormal, right);
+  const float forwardDot = dot(awayNormal, forward);
+  // branch-gate: BG-1157
+  if (std::fabs(rightDot) >= 0.35F) {
+    // branch-gate: BG-1157
+    return rightDot > 0.0F ? "left" : "right";
+  }
+  // branch-gate: BG-1157
+  if (std::fabs(forwardDot) >= 0.35F) {
+    // branch-gate: BG-1157
+    return forwardDot < 0.0F ? "front" : "back";
+  }
+  return "unknown";
+}
+
+bool productMovementDebugAlongWall(const ProductAppWindowState& window,
+                                   Vec3 awayNormal) {
+  Vec3 travel{window.gameplayMovementFinalX - window.gameplayMovementStartX,
+              0.0F,
+              window.gameplayMovementFinalZ - window.gameplayMovementStartZ};
+  const float travelLenSq = lengthSquared(travel);
+  // branch-gate: BG-1161
+  if (!isFinite(travel) || travelLenSq <= kMovementStateDistanceEpsilonMeters) {
+    return false;
+  }
+  travel = travel / std::sqrt(travelLenSq);
+  const Vec3 tangent{-awayNormal.z, 0.0F, awayNormal.x};
+  return std::fabs(dot(travel, tangent)) >= kWallRunAlongWallDotThreshold;
+}
+
+void updateProductWallRunCandidateProof(const Session& session,
+                                        ProductAppWindowState& window,
+                                        const SpatialSurfaceSet* collisionSurfaces) {
+  window.gameplayWallRunApproachSpeedMetersPerSecond =
+      window.gameplayMovementHorizontalSpeedMetersPerSecond;
+
+  // branch-gate: BG-1153
+  if (!window.gameplayJumpActive) {
+    clearProductWallRunCandidateProof(window, "wall_run_grounded");
+    return;
+  }
+  const float minSpeed =
+      std::max(0.0F, window.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond);
+  // branch-gate: BG-1161
+  if (window.gameplayMovementHorizontalSpeedMetersPerSecond < minSpeed) {
+    clearProductWallRunCandidateProof(window, "wall_run_low_speed");
+    window.gameplayWallRunApproachSpeedMetersPerSecond =
+        window.gameplayMovementHorizontalSpeedMetersPerSecond;
+    return;
+  }
+  // branch-gate: BG-1157
+  if (collisionSurfaces == nullptr) {
+    clearProductWallRunCandidateProof(window, "wall_run_no_surfaces");
+    return;
+  }
+  const EntityState* actor = productPlayerEntity(session);
+  // branch-gate: BG-1153
+  if (actor == nullptr) {
+    clearProductWallRunCandidateProof(window, "wall_run_missing_player");
+    return;
+  }
+
+  Vec3 awayNormal;
+  const CollisionSurfaceView* surface =
+      findWallRunSurface(*collisionSurfaces,
+                         actor->transform.position,
+                         awayNormal,
+                         window.gameplayMovementTuning);
+  // branch-gate: BG-1157
+  if (surface == nullptr) {
+    clearProductWallRunCandidateProof(window, "wall_run_no_wall_contact");
+    window.gameplayWallRunApproachSpeedMetersPerSecond =
+        window.gameplayMovementHorizontalSpeedMetersPerSecond;
+    return;
+  }
+  // branch-gate: BG-1161
+  if (!productMovementDebugAlongWall(window, awayNormal)) {
+    clearProductWallRunCandidateProof(window, "wall_run_not_along_wall");
+    window.gameplayWallRunSurfaceId = surface->id.empty() ? "wall_run_surface"
+                                                          : surface->id;
+    window.gameplayWallRunNormalX = awayNormal.x;
+    window.gameplayWallRunNormalY = surface->normal.y;
+    window.gameplayWallRunNormalZ = awayNormal.z;
+    window.gameplayWallRunApproachSpeedMetersPerSecond =
+        window.gameplayMovementHorizontalSpeedMetersPerSecond;
+    return;
+  }
+
+  window.gameplayWallRunCandidateAvailable = true;
+  window.gameplayWallRunCandidateStatus = "wall_run_candidate";
+  window.gameplayWallRunCandidateReasonCode = "wall_run_candidate";
+  window.gameplayWallRunSide =
+      wallRunSideName(awayNormal, window.viewport.cameraYawDegrees);
+  // branch-gate: BG-1157
+  window.gameplayWallRunSurfaceId =
+      surface->id.empty() ? "wall_run_surface" : surface->id;
+  window.gameplayWallRunNormalX = awayNormal.x;
+  window.gameplayWallRunNormalY = surface->normal.y;
+  window.gameplayWallRunNormalZ = awayNormal.z;
+  window.gameplayWallRunApproachSpeedMetersPerSecond =
+      window.gameplayMovementHorizontalSpeedMetersPerSecond;
 }
 
 void recordProductWallJumpTraversalProof(ProductAppWindowState& window,
@@ -1831,6 +2033,7 @@ void applyProductGameplayActions(Session& session,
   if (actionWasPressed(actions, InputAction::PlayerDash)) {
     submitProductDash(session, window, moveX, moveY, source, collisionSurfaces);
     updateProductMovementStateProof(window);
+    updateProductWallRunCandidateProof(session, window, collisionSurfaces);
     return;
   }
   if (moveX != 0.0F || moveY != 0.0F || horizontalVelocityActive(window)) {
@@ -1858,6 +2061,7 @@ void applyProductGameplayActions(Session& session,
     window.runtimeStateHash = session.stateHash();
   }
   updateProductMovementStateProof(window);
+  updateProductWallRunCandidateProof(session, window, collisionSurfaces);
 }
 
 }  // namespace iggy3d
