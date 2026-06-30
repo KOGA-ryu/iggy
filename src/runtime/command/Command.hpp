@@ -121,16 +121,6 @@ struct CommandRecord {
   CommandRejectionReason rejection = CommandRejectionReason::None;
 };
 
-struct CommandDebugLabel {
-  CommandId commandId = kInvalidCommandId;
-  const char* label = nullptr;
-};
-
-inline bool isSessionControlCommand(CommandKind kind) {
-  return kind == CommandKind::ToggleTacticalMode || kind == CommandKind::Pause ||
-         kind == CommandKind::Resume || kind == CommandKind::StepTacticalTick;
-}
-
 inline bool requiresActor(CommandKind kind) {
   return kind == CommandKind::Move || kind == CommandKind::Interact ||
          kind == CommandKind::Inspect || kind == CommandKind::Attack ||
@@ -153,14 +143,6 @@ inline bool requiresAbilityPayload(CommandKind kind) {
 
 inline bool isValidCommandAbility(CommandAbilityKind ability) {
   return ability == CommandAbilityKind::ArcaneBolt;
-}
-
-inline bool isAccepted(const CommandRecord& command) {
-  return command.admission == CommandAdmissionStatus::Accepted;
-}
-
-inline bool isRejected(const CommandRecord& command) {
-  return command.admission == CommandAdmissionStatus::Rejected;
 }
 
 }  // namespace iggy3d

@@ -40,18 +40,6 @@ StableHashValue StableHasher::value() const {
   return hash_;
 }
 
-StableHashValue stableHashBytes(std::span<const std::uint8_t> bytes) {
-  StableHasher hasher;
-  for (std::uint8_t byte : bytes) {
-    hasher.addByte(byte);
-  }
-  return hasher.value();
-}
-
-void addEnumByte(StableHasher& hasher, std::uint8_t value) {
-  hasher.addByte(value);
-}
-
 void addVec3Quantized(StableHasher& hasher, Vec3 value, float scale) {
   hasher.addFloatQuantized(value.x, scale);
   hasher.addFloatQuantized(value.y, scale);

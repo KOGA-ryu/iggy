@@ -27,8 +27,6 @@ struct StableHasher {
   StableHashValue hash_ = kStableHashOffsetBasis;
 };
 
-StableHashValue stableHashBytes(std::span<const std::uint8_t> bytes);
-void addEnumByte(StableHasher& hasher, std::uint8_t value);
 void addVec3Quantized(StableHasher& hasher, Vec3 value, float scale = 1000.0F);
 
 }  // namespace iggy3d

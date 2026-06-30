@@ -44,9 +44,4 @@ inline Diagnostic makeDiagnostic(
   return Diagnostic{severity, domain, std::move(code), std::move(message), std::move(location)};
 }
 
-inline bool hasLocation(const Diagnostic& diagnostic) {
-  return !diagnostic.location.file.empty() || diagnostic.location.line != 0 ||
-         diagnostic.location.column != 0;
-}
-
 }  // namespace iggy3d

@@ -34,8 +34,4 @@ inline std::uint64_t toUint64(EntityId id) {
   return id.value;
 }
 
-inline EntityId entityIdFromUint64(std::uint64_t value) {
-  return EntityId{value};
-}
-
 }  // namespace iggy3d
