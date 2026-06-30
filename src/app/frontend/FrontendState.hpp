@@ -57,11 +57,17 @@ enum class FrontendDevToolsCategory : std::uint8_t {
   Performance,
 };
 
+enum class FrontendSaveBrowserMode : std::uint8_t {
+  Load,
+  Delete,
+};
+
 struct FrontendState {
   FrontendScreen screen = FrontendScreen::BootStatus;
   FrontendScreen childScreen = FrontendScreen::Gameplay;
   FrontendAction selectedAction = FrontendAction::None;
   FrontendAction disabledAction = FrontendAction::None;
+  FrontendSaveBrowserMode saveBrowserMode = FrontendSaveBrowserMode::Load;
   FrontendDevToolsCategory devToolsCategory = FrontendDevToolsCategory::None;
   bool bootScanComplete = false;
   bool packageReady = false;
@@ -75,6 +81,7 @@ struct FrontendState {
 std::string_view frontendScreenName(FrontendScreen screen);
 std::string_view frontendActionName(FrontendAction action);
 std::string_view frontendDevToolsCategoryName(FrontendDevToolsCategory category);
+std::string_view frontendSaveBrowserModeName(FrontendSaveBrowserMode mode);
 
 const std::vector<FrontendAction>& starterActionOrder();
 const std::vector<FrontendAction>& pauseActionOrder();

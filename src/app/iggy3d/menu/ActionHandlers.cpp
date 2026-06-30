@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
@@ -378,6 +379,9 @@ ProductMenuActionResult confirmStarterLoadSave(
     ProductStarterMenuActionContext context) {
   clearProductGameplayMovementTuning(context.window);
   context.frontend.childScreen = FrontendScreen::LoadSave;
+  context.frontend.saveBrowserMode = FrontendSaveBrowserMode::Load;
+  context.window.saveSlotBrowserMode =
+      std::string(frontendSaveBrowserModeName(context.frontend.saveBrowserMode));
   initializeSelectedProductSaveSlot(context.saves.slots, context.window);
   context.frontend.status = "opening_menu_load_save_selected";
   return {true, true};
@@ -385,17 +389,13 @@ ProductMenuActionResult confirmStarterLoadSave(
 
 ProductMenuActionResult confirmStarterDelete(ProductStarterMenuActionContext context) {
   clearProductGameplayMovementTuning(context.window);
-  // File selection: instead of auto-picking the default slot and jumping
-  // straight to the confirm dialog, open the existing selectable save browser
-  // in Delete mode. This reuses the exact "Existing Saves" list -- slot
-  // up/down, click-to-select, then "DELETE SELECTED" -> confirm -- so the
-  // operator chooses WHICH map to delete. The browser's Delete branch
-  // (applyProductLoadSaveMenuAction) routes the selected slot into the same
-  // confirmation that the auto-pick used to open directly.
   context.frontend.childScreen = FrontendScreen::LoadSave;
+  context.frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
   context.frontend.selectedAction = FrontendAction::Delete;
+  context.window.saveSlotBrowserMode =
+      std::string(frontendSaveBrowserModeName(context.frontend.saveBrowserMode));
   initializeSelectedProductSaveSlot(context.saves.slots, context.window);
-  context.frontend.status = "opening_menu_delete_select_opened";
+  context.frontend.status = "delete_world_browser_open";
   return {true, true};
 }
 
@@ -545,10 +545,14 @@ ProductMenuActionResult applyProductLoadSaveMenuAction(
     InputAction action,
     ProductLoadSaveMenuActionContext context) {
   FrontendState& frontend = context.frontend;
+  context.window.saveSlotBrowserMode =
+      std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
   // branch-gate: BG-1020
   if (action == InputAction::MenuBack) {
     frontend.childScreen = FrontendScreen::Gameplay;
-    frontend.status = "load_save_closed";
+    frontend.status = frontend.saveBrowserMode == FrontendSaveBrowserMode::Delete
+                          ? "delete_world_browser_closed"
+                          : "load_save_closed";
     return {true, true};
   }
   // branch-gate: BG-1020
@@ -560,7 +564,7 @@ ProductMenuActionResult applyProductLoadSaveMenuAction(
   // branch-gate: BG-1020
   if (action == InputAction::MenuConfirm) {
     // branch-gate: BG-1020
-    if (frontend.selectedAction == FrontendAction::Delete) {
+    if (frontend.saveBrowserMode == FrontendSaveBrowserMode::Delete) {
       openProductSaveDeleteConfirmation(context.saves.slots, context.window,
                                         frontend);
     } else {

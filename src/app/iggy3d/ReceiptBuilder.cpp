@@ -727,11 +727,57 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                          window.roomEditorHudPreviewOptimizedTriangleDelta));
   appendReceiptField(receipt, "room_editor_hud_line_count",
                      std::to_string(window.roomEditorHudLineCount));
+  appendReceiptField(receipt,
+                     "save_browser_mode",
+                     frontendSaveBrowserModeName(frontend.saveBrowserMode));
   appendReceiptField(receipt, "selected_save_id", window.selectedProductSaveId);
   appendReceiptField(receipt, "selected_save_enabled",
                      window.selectedProductSaveEnabled);
   appendReceiptField(receipt, "selected_save_status",
                      window.selectedProductSaveStatus);
+  appendReceiptField(receipt, "save_slot_browser_mode", window.saveSlotBrowserMode);
+  appendReceiptField(receipt, "save_slot_ring_count", window.saveSlotRingCount);
+  appendReceiptField(receipt,
+                     "save_slot_ring_selected_index",
+                     window.saveSlotRingSelectedIndex);
+  appendReceiptField(receipt,
+                     "save_slot_ring_selected_id",
+                     window.saveSlotRingSelectedId);
+  appendReceiptField(receipt,
+                     "save_slot_ring_selected_status",
+                     window.saveSlotRingSelectedStatus);
+  appendReceiptField(receipt, "save_slot_action_command",
+                     window.saveSlotActionCommand);
+  appendReceiptField(receipt, "save_slot_action_enabled",
+                     window.saveSlotActionEnabled);
+  appendReceiptField(receipt,
+                     "save_slot_action_confirmation_required",
+                     window.saveSlotActionConfirmationRequired);
+  appendReceiptField(receipt, "save_slot_action_status",
+                     window.saveSlotActionStatus);
+  appendReceiptField(receipt, "save_flow_operation", window.saveFlowOperation);
+  appendReceiptField(receipt,
+                     "save_flow_source_surface",
+                     window.saveFlowSourceSurface);
+  appendReceiptField(receipt, "save_flow_status", window.saveFlowStatus);
+  appendReceiptField(receipt,
+                     "save_flow_reason_code",
+                     window.saveFlowReasonCode);
+  appendReceiptField(receipt,
+                     "save_flow_affected_slot_id",
+                     window.saveFlowAffectedSlotId);
+  appendReceiptField(receipt,
+                     "save_flow_active_count_before",
+                     window.saveFlowActiveCountBefore);
+  appendReceiptField(receipt,
+                     "save_flow_active_count_after",
+                     window.saveFlowActiveCountAfter);
+  appendReceiptField(receipt,
+                     "save_flow_deleted_count_after",
+                     window.saveFlowDeletedCountAfter);
+  appendReceiptField(receipt,
+                     "save_flow_selected_slot_after",
+                     window.saveFlowSelectedSlotAfter);
   appendReceiptField(receipt, "save_delete_confirmation_open",
                      window.saveDeleteConfirmationOpen);
   appendReceiptField(receipt, "save_delete_candidate_id",

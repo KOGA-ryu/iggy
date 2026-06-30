@@ -104,6 +104,17 @@ std::string_view frontendDevToolsCategoryName(FrontendDevToolsCategory category)
   return "none";
 }
 
+std::string_view frontendSaveBrowserModeName(FrontendSaveBrowserMode mode) {
+  // branch-gate: BG-1020
+  switch (mode) {
+    case FrontendSaveBrowserMode::Load:
+      return "load";
+    case FrontendSaveBrowserMode::Delete:
+      return "delete";
+  }
+  return "load";
+}
+
 const std::vector<FrontendAction>& starterActionOrder() {
   static const std::vector<FrontendAction> actions = {
       FrontendAction::Continue,

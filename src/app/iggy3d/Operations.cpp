@@ -4,6 +4,7 @@
 #include <string>
 
 #include "app/PackageRuntimeLookup.hpp"
+#include "app/frontend/SaveBrowser.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
@@ -351,6 +352,14 @@ const SaveSlotPreview* firstSelectableSaveSlot(const SaveSlotList& slots) {
 void recordSelectedProductSaveSlot(const SaveSlotList& slots,
                                    const SaveSlotPreview* slot,
                                    ProductAppWindowState& window) {
+  const SaveSlotRingModel ring =
+      // branch-gate: BG-1020
+      buildSaveSlotRingModel(slots, slot == nullptr ? "none" : slot->id);
+  window.saveSlotRingCount = static_cast<std::uint64_t>(ring.items.size());
+  window.saveSlotRingSelectedIndex = ring.selectedIndex;
+  window.saveSlotRingSelectedId = ring.selectedSlotId;
+  window.saveSlotRingSelectedStatus = ring.selectedStatus;
+
   if (slots.slots.empty()) {
     window.selectedProductSaveId = "none";
     window.selectedProductSaveEnabled = false;
@@ -366,6 +375,50 @@ void recordSelectedProductSaveSlot(const SaveSlotList& slots,
   window.selectedProductSaveId = slot->id.empty() ? "none" : slot->id;
   window.selectedProductSaveEnabled = slot->enabled;
   window.selectedProductSaveStatus = slot->enabled ? "selected" : "disabled";
+}
+
+void recordProductSaveSlotAction(ProductAppWindowState& window,
+                                 const SaveSlotActionSpec& action,
+                                 std::string_view status) {
+  window.saveSlotActionCommand = std::string(saveSlotCommandName(action.command));
+  window.saveSlotActionEnabled = action.enabled;
+  window.saveSlotActionConfirmationRequired = action.confirmationRequired;
+  window.saveSlotActionStatus = std::string(status);
+}
+
+void recordProductSaveFlowRequest(const ProductSaveFlowRequest& request,
+                                  ProductAppWindowState& window) {
+  window.saveFlowOperation =
+      std::string(productSaveFlowOperationName(request.operation));
+  // branch-gate: BG-1020
+  window.saveFlowSourceSurface = request.sourceSurface.empty()
+                                     ? "none"
+                                     : request.sourceSurface;
+  window.saveFlowAffectedSlotId =
+      // branch-gate: BG-1020
+      request.slotId.empty() ? "none" : request.slotId;
+}
+
+void recordProductSaveFlowResult(ProductSaveFlowOperation operation,
+                                 std::string_view sourceSurface,
+                                 const ProductSaveFlowResult& result,
+                                 ProductAppWindowState& window) {
+  window.saveFlowOperation =
+      std::string(productSaveFlowOperationName(operation));
+  // branch-gate: BG-1020
+  window.saveFlowSourceSurface =
+      sourceSurface.empty() ? "none" : std::string(sourceSurface);
+  window.saveFlowStatus = result.status;
+  window.saveFlowReasonCode = result.reason;
+  window.saveFlowAffectedSlotId =
+      // branch-gate: BG-1020
+      result.affectedSlotId.empty() ? "none" : result.affectedSlotId;
+  window.saveFlowActiveCountBefore = result.activeCountBefore;
+  window.saveFlowActiveCountAfter = result.activeCountAfter;
+  window.saveFlowDeletedCountAfter = result.deletedCountAfter;
+  window.saveFlowSelectedSlotAfter =
+      // branch-gate: BG-1020
+      result.selectedSlotAfter.empty() ? "none" : result.selectedSlotAfter;
 }
 
 void recordSelectedDeletedProductSaveSlot(const SaveSlotList& slots,
@@ -402,6 +455,21 @@ const SaveSlotPreview* initializeSelectedDeletedProductSaveSlot(
 }
 
 }  // namespace
+
+std::string_view productSaveFlowOperationName(ProductSaveFlowOperation operation) {
+  // branch-gate: BG-1020
+  switch (operation) {
+    case ProductSaveFlowOperation::None:
+      return "none";
+    case ProductSaveFlowOperation::Load:
+      return "load";
+    case ProductSaveFlowOperation::Delete:
+      return "delete";
+    case ProductSaveFlowOperation::Recover:
+      return "recover";
+  }
+  return "none";
+}
 
 ProductWorldTemplate productWorldTemplateFromOptions(
     const ProductAppOptions& options) {
@@ -469,19 +537,10 @@ const SaveSlotPreview* moveSelectedProductSaveSlot(const SaveSlotList& slots,
     return nullptr;
   }
 
-  std::size_t index = 0;
-  for (std::size_t i = 0; i < slots.slots.size(); ++i) {
-    if (slots.slots[i].id == window.selectedProductSaveId) {
-      index = i;
-      break;
-    }
-  }
-  if (action == InputAction::MenuUp && index > 0U) {
-    --index;
-  } else if (action == InputAction::MenuDown && index + 1U < slots.slots.size()) {
-    ++index;
-  }
-  const SaveSlotPreview* selected = &slots.slots[index];
+  const bool previous = action == InputAction::MenuUp;
+  const std::string selectedId =
+      nextSaveSlotRingSelection(slots, window.selectedProductSaveId, previous);
+  const SaveSlotPreview* selected = saveSlotById(slots, selectedId);
   recordSelectedProductSaveSlot(slots, selected, window);
   return selected;
 }
@@ -524,6 +583,9 @@ void openDeletedProductSaveBrowser(const ProductAppOptions& options,
   window.deletedSaveBrowserOpen = true;
   initializeSelectedDeletedProductSaveSlot(deletedSaves.slots, window);
   frontend.childScreen = FrontendScreen::LoadSave;
+  frontend.saveBrowserMode = FrontendSaveBrowserMode::Load;
+  window.saveSlotBrowserMode =
+      std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
   frontend.status = "deleted_save_browser_open";
 }
 
@@ -582,12 +644,24 @@ void executeProductSaveRecover(const ProductAppOptions& options,
 void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
                                        ProductAppWindowState& window,
                                        FrontendState& frontend) {
+  frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
+  window.saveSlotBrowserMode =
+      std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
   const SaveSlotPreview* slot =
       window.selectedProductSaveId == "none"
           ? nullptr
           : saveSlotById(slots, window.selectedProductSaveId);
   if (slot == nullptr) {
     recordSelectedProductSaveSlot(slots, nullptr, window);
+    recordProductSaveSlotAction(
+        window,
+        SaveSlotActionSpec{FrontendAction::Delete,
+                           SaveSlotCommand::Delete,
+                           "DELETE SELECTED",
+                           false,
+                           true,
+                           "save_delete_unavailable"},
+        "save_slot_action_disabled");
     window.saveDeleteConfirmationOpen = false;
     window.saveDeleteCandidateId = "none";
     window.saveDeleteCandidateEnabled = false;
@@ -602,6 +676,15 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
   }
 
   recordSelectedProductSaveSlot(slots, slot, window);
+  recordProductSaveSlotAction(
+      window,
+      SaveSlotActionSpec{FrontendAction::Delete,
+                         SaveSlotCommand::Delete,
+                         "DELETE SELECTED",
+                         true,
+                         true,
+                         "none"},
+      "save_slot_action_confirm_requested");
   window.saveDeleteConfirmationOpen = true;
   window.saveDeleteCandidateId = slot->id.empty() ? "none" : slot->id;
   window.saveDeleteCandidateEnabled = slot->enabled;
@@ -624,14 +707,27 @@ void cancelProductSaveDeleteConfirmation(ProductAppWindowState& window,
   window.saveDeleteRecoverable = false;
   window.saveDeleteExecuted = false;
   frontend.childScreen = FrontendScreen::LoadSave;
-  frontend.selectedAction = FrontendAction::Delete;
+  frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
+  window.saveSlotBrowserMode =
+      std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
   frontend.status = "save_delete_cancelled";
 }
 
-void executeProductSaveSoftDelete(const ProductAppOptions& options,
-                                  ProductSaveBridgeResult& saves,
-                                  ProductAppWindowState& window,
-                                  FrontendState& frontend) {
+ProductSaveFlowResult executeProductSaveSoftDelete(
+    const ProductAppOptions& options,
+    ProductSaveBridgeResult& saves,
+    ProductAppWindowState& window,
+    FrontendState& frontend) {
+  ProductSaveFlowResult flow;
+  flow.activeCountBefore = static_cast<std::uint64_t>(saves.slots.slots.size());
+  ProductSaveFlowRequest request;
+  request.operation = ProductSaveFlowOperation::Delete;
+  request.slotId = window.saveDeleteCandidateId;
+  request.sourceSurface = "delete_world_browser";
+  request.confirmationToken = window.saveDeleteConfirmationOpen
+                                  ? "delete_confirm_open"
+                                  : "delete_confirm_missing";
+  recordProductSaveFlowRequest(request, window);
   window.saveDeleteConfirmationOpen = false;
   window.saveDeleteType = "soft";
   window.saveDeleteRecoverable = false;
@@ -641,9 +737,21 @@ void executeProductSaveSoftDelete(const ProductAppOptions& options,
     window.saveDeleteReasonCode = "product_save_delete_id_missing";
     window.saveDeleteExecuted = false;
     frontend.childScreen = FrontendScreen::LoadSave;
-    frontend.selectedAction = FrontendAction::Delete;
+    frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
+    window.saveSlotBrowserMode =
+        std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
     frontend.status = "save_delete_failed";
-    return;
+    flow.status = window.saveDeleteStatus;
+    flow.reason = window.saveDeleteReasonCode;
+    flow.affectedSlotId = "none";
+    flow.activeCountAfter = flow.activeCountBefore;
+    flow.deletedCountAfter = window.deletedSaveCount;
+    flow.selectedSlotAfter = window.selectedProductSaveId;
+    recordProductSaveFlowResult(ProductSaveFlowOperation::Delete,
+                                "delete_world_browser",
+                                flow,
+                                window);
+    return flow;
   }
 
   const ProductSaveSoftDeleteResult deleted =
@@ -652,6 +760,11 @@ void executeProductSaveSoftDelete(const ProductAppOptions& options,
   window.saveDeleteReasonCode = deleted.reasonCode;
   window.saveDeleteExecuted = deleted.ok;
   window.saveDeleteRecoverable = deleted.ok;
+  flow.ok = deleted.ok;
+  flow.status = deleted.status;
+  flow.reason = deleted.reasonCode;
+  // branch-gate: BG-1020
+  flow.affectedSlotId = deleted.saveId.empty() ? "none" : deleted.saveId;
   if (deleted.ok) {
     window.selectedProductSaveEnabled = false;
     window.selectedProductSaveStatus = "missing";
@@ -665,9 +778,23 @@ void executeProductSaveSoftDelete(const ProductAppOptions& options,
     saves = scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
     initializeSelectedProductSaveSlot(saves.slots, window);
   }
+  const ProductSaveBridgeResult deletedAfter =
+      scanDeletedProductSavesForOptions(options);
+  recordDeletedProductSaveSlots(deletedAfter, window);
+  flow.activeCountAfter = static_cast<std::uint64_t>(saves.slots.slots.size());
+  flow.deletedCountAfter =
+      static_cast<std::uint64_t>(deletedAfter.slots.slots.size());
+  flow.selectedSlotAfter = window.selectedProductSaveId;
   frontend.childScreen = FrontendScreen::LoadSave;
-  frontend.selectedAction = FrontendAction::Delete;
+  frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
+  window.saveSlotBrowserMode =
+      std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
   frontend.status = deleted.ok ? "save_delete_soft_deleted" : "save_delete_failed";
+  recordProductSaveFlowResult(ProductSaveFlowOperation::Delete,
+                              "delete_world_browser",
+                              flow,
+                              window);
+  return flow;
 }
 
 void launchProductNewWorld(const ProductAppOptions& options,

@@ -1098,11 +1098,20 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
 }
 
 void drawLoadSavePanel(SDL_Renderer& renderer,
+                       FrontendSaveBrowserMode mode,
                        const ProductSaveBridgeResult& saves) {
+  const bool deleteMode = mode == FrontendSaveBrowserMode::Delete;
   setColor(renderer, 226, 230, 211);
-  drawText(renderer, "LOAD MAP", 450.0F, 152.0F, 4.0F);
+  // branch-gate: BG-1121
+  drawText(renderer, deleteMode ? "DELETE WORLD" : "LOAD MAP", 450.0F, 152.0F, 4.0F);
   setColor(renderer, 166, 184, 177);
-  drawText(renderer, "UP DOWN SELECT MAP   CONFIRM LOAD", 452.0F, 210.0F, 2.0F);
+  drawText(renderer,
+           // branch-gate: BG-1121
+           deleteMode ? "UP DOWN SELECT WORLD   CONFIRM DELETE" :
+                        "UP DOWN SELECT MAP   CONFIRM LOAD",
+           452.0F,
+           210.0F,
+           2.0F);
   drawText(renderer, "SLOTS", 452.0F, 260.0F, 2.0F);
   drawText(renderer, std::to_string(saves.slots.slots.size()), 558.0F, 260.0F, 2.0F);
   drawText(renderer, "COMPATIBLE", 714.0F, 260.0F, 2.0F);
@@ -1138,9 +1147,17 @@ void drawLoadSavePanel(SDL_Renderer& renderer,
   }
 
   setColor(renderer, 126, 201, 176);
-  drawText(renderer, "LOAD SELECTED", 452.0F, 548.0F, 2.0F);
-  drawText(renderer, "DELETE SELECTED", 690.0F, 548.0F, 2.0F);
-  drawText(renderer, "BACK", 1010.0F, 548.0F, 2.0F);
+  // branch-gate: BG-1121
+  if (deleteMode) {
+    setColor(renderer, 236, 118, 86);
+    drawText(renderer, "DELETE SELECTED", 452.0F, 548.0F, 2.0F);
+    setColor(renderer, 126, 201, 176);
+    drawText(renderer, "BACK", 760.0F, 548.0F, 2.0F);
+  } else {
+    drawText(renderer, "LOAD SELECTED", 452.0F, 548.0F, 2.0F);
+    drawText(renderer, "DELETE SELECTED", 690.0F, 548.0F, 2.0F);
+    drawText(renderer, "BACK", 1010.0F, 548.0F, 2.0F);
+  }
 }
 
 void drawDeleteConfirmPanel(SDL_Renderer& renderer) {
@@ -1342,22 +1359,31 @@ OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, floa
       }
       slotY += 38.0F;
     }
+    const bool deleteMode =
+        frontend.saveBrowserMode == FrontendSaveBrowserMode::Delete;
     // branch-gate: BG-1121
-    if (x >= 430.0F && x <= 650.0F && y >= 530.0F && y <= 578.0F) {
+    if (!deleteMode && x >= 430.0F && x <= 650.0F &&
+        y >= 530.0F && y <= 578.0F) {
       OpeningMenuHitTestResult result;
       result.hit = true;
       result.area = OpeningMenuHitArea::LoadSaveLoad;
       return result;
     }
     // branch-gate: BG-1121
-    if (x >= 668.0F && x <= 955.0F && y >= 530.0F && y <= 578.0F) {
+    if ((!deleteMode && x >= 668.0F && x <= 955.0F &&
+         y >= 530.0F && y <= 578.0F) ||
+        (deleteMode && x >= 430.0F && x <= 740.0F &&
+         y >= 530.0F && y <= 578.0F)) {
       OpeningMenuHitTestResult result;
       result.hit = true;
       result.area = OpeningMenuHitArea::LoadSaveDelete;
       return result;
     }
     // branch-gate: BG-1121
-    if (x >= 990.0F && x <= 1110.0F && y >= 530.0F && y <= 578.0F) {
+    if ((!deleteMode && x >= 990.0F && x <= 1110.0F &&
+         y >= 530.0F && y <= 578.0F) ||
+        (deleteMode && x >= 740.0F && x <= 860.0F &&
+         y >= 530.0F && y <= 578.0F)) {
       OpeningMenuHitTestResult result;
       result.hit = true;
       result.area = OpeningMenuHitArea::LoadSaveBack;
@@ -1515,7 +1541,7 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                       movementTuningField);
   // branch-gate: BG-1121
   } else if (frontend.childScreen == FrontendScreen::LoadSave) {
-    drawLoadSavePanel(renderer, saves);
+    drawLoadSavePanel(renderer, frontend.saveBrowserMode, saves);
   // branch-gate: BG-1121
   } else if (frontend.childScreen == FrontendScreen::DeleteConfirm) {
     drawDeleteConfirmPanel(renderer);

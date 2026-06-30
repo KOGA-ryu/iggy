@@ -22,6 +22,11 @@ bool softDeleteSave(const std::filesystem::path& binary,
              exitCode) &&
          exitCode == 0 && iggy3d::smoke::productReceipt(fields) &&
          iggy3d::smoke::automationApplied(fields) &&
+         iggy3d::smoke::hasField(fields, "save_browser_mode", "delete") &&
+         iggy3d::smoke::hasField(fields, "save_slot_browser_mode", "delete") &&
+         iggy3d::smoke::hasField(fields, "save_flow_operation", "delete") &&
+         iggy3d::smoke::hasField(fields, "save_flow_status",
+                                 "product_save_soft_deleted") &&
          iggy3d::smoke::hasField(fields, "save_delete_status",
                                  "product_save_soft_deleted") &&
          iggy3d::smoke::hasField(fields, "save_delete_executed", "true");
@@ -56,6 +61,13 @@ int main() {
       iggy3d::smoke::hasField(fields, "frontend_screen", "starter") &&
       iggy3d::smoke::hasField(fields, "frontend_child_screen", "delete_confirm") &&
       iggy3d::smoke::hasField(fields, "frontend_selected_action", "delete") &&
+      iggy3d::smoke::hasField(fields, "save_browser_mode", "delete") &&
+      iggy3d::smoke::hasField(fields, "save_slot_browser_mode", "delete") &&
+      iggy3d::smoke::hasField(fields, "save_slot_action_command", "delete") &&
+      iggy3d::smoke::hasField(fields, "save_slot_action_enabled", "true") &&
+      iggy3d::smoke::hasField(fields,
+                              "save_slot_action_confirmation_required",
+                              "true") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
       iggy3d::smoke::hasField(fields, "selected_save_id", "save_001") &&
       iggy3d::smoke::hasField(fields, "selected_save_enabled", "true") &&
@@ -86,6 +98,8 @@ int main() {
       iggy3d::smoke::hasField(fields, "frontend_screen", "starter") &&
       iggy3d::smoke::hasField(fields, "frontend_child_screen", "load_save") &&
       iggy3d::smoke::hasField(fields, "frontend_selected_action", "delete") &&
+      iggy3d::smoke::hasField(fields, "save_browser_mode", "delete") &&
+      iggy3d::smoke::hasField(fields, "save_slot_browser_mode", "delete") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
       iggy3d::smoke::hasField(fields, "selected_save_id", "save_001") &&
       iggy3d::smoke::hasField(fields, "save_delete_confirmation_open", "false") &&
@@ -106,6 +120,8 @@ int main() {
       iggy3d::smoke::hasField(fields, "frontend_screen", "starter") &&
       iggy3d::smoke::hasField(fields, "frontend_child_screen", "load_save") &&
       iggy3d::smoke::hasField(fields, "frontend_selected_action", "delete") &&
+      iggy3d::smoke::hasField(fields, "save_browser_mode", "delete") &&
+      iggy3d::smoke::hasField(fields, "save_slot_browser_mode", "delete") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
       // Live refresh: this root held a single save, so after the soft-delete
       // the active catalog re-scan finds it empty -- the count drops to 0 and
@@ -116,6 +132,10 @@ int main() {
       iggy3d::smoke::hasField(fields, "compatible_save_count", "0") &&
       iggy3d::smoke::hasField(fields, "selected_save_id", "none") &&
       iggy3d::smoke::hasField(fields, "selected_save_status", "empty") &&
+      iggy3d::smoke::hasField(fields, "save_flow_active_count_before", "1") &&
+      iggy3d::smoke::hasField(fields, "save_flow_active_count_after", "0") &&
+      iggy3d::smoke::hasField(fields, "save_flow_deleted_count_after", "1") &&
+      iggy3d::smoke::hasField(fields, "save_flow_selected_slot_after", "none") &&
       iggy3d::smoke::hasField(fields, "save_delete_confirmation_open", "false") &&
       iggy3d::smoke::hasField(fields, "save_delete_candidate_id", "save_001") &&
       iggy3d::smoke::hasField(fields, "save_delete_reason_code",
@@ -168,6 +188,8 @@ int main() {
       iggy3d::smoke::automationApplied(multiFields) &&
       iggy3d::smoke::hasField(multiFields, "frontend_child_screen",
                               "load_save") &&
+      iggy3d::smoke::hasField(multiFields, "save_browser_mode", "delete") &&
+      iggy3d::smoke::hasField(multiFields, "save_slot_browser_mode", "delete") &&
       iggy3d::smoke::hasField(multiFields, "save_delete_candidate_id",
                               "save_002") &&
       iggy3d::smoke::hasField(multiFields, "save_delete_status",
@@ -176,6 +198,15 @@ int main() {
       // Live refresh: catalog drops from 2 maps to 1.
       iggy3d::smoke::hasField(multiFields, "save_count", "1") &&
       iggy3d::smoke::hasField(multiFields, "compatible_save_count", "1") &&
+      iggy3d::smoke::hasField(multiFields,
+                              "save_flow_active_count_before",
+                              "2") &&
+      iggy3d::smoke::hasField(multiFields,
+                              "save_flow_active_count_after",
+                              "1") &&
+      iggy3d::smoke::hasField(multiFields,
+                              "save_flow_selected_slot_after",
+                              "save_001") &&
       // Selection clamps onto the surviving map, not the deleted one.
       iggy3d::smoke::hasField(multiFields, "selected_save_id", "save_001") &&
       iggy3d::smoke::hasField(multiFields, "selected_save_status",

@@ -24,6 +24,7 @@
 
 #include <algorithm>
 #include <array>
+#include <string>
 
 namespace iggy3d {
 namespace {
@@ -600,12 +601,16 @@ void dispatchProductOpeningMenuMouseHit(
       }
       return;
     case OpeningMenuHitArea::LoadSaveLoad:
-      context.frontend.selectedAction = FrontendAction::LoadSave;
+      context.frontend.saveBrowserMode = FrontendSaveBrowserMode::Load;
+      context.window.saveSlotBrowserMode =
+          std::string(frontendSaveBrowserModeName(context.frontend.saveBrowserMode));
       routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
                                    context);
       return;
     case OpeningMenuHitArea::LoadSaveDelete:
-      context.frontend.selectedAction = FrontendAction::Delete;
+      context.frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
+      context.window.saveSlotBrowserMode =
+          std::string(frontendSaveBrowserModeName(context.frontend.saveBrowserMode));
       routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
                                    context);
       return;

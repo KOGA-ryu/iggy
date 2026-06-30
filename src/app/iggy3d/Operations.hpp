@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
+#include <string>
 #include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
@@ -13,6 +15,33 @@
 #include "runtime/session/Session.hpp"
 
 namespace iggy3d {
+
+enum class ProductSaveFlowOperation {
+  None,
+  Load,
+  Delete,
+  Recover,
+};
+
+struct ProductSaveFlowRequest {
+  ProductSaveFlowOperation operation = ProductSaveFlowOperation::None;
+  std::string slotId = "none";
+  std::string sourceSurface = "none";
+  std::string confirmationToken = "none";
+};
+
+struct ProductSaveFlowResult {
+  bool ok = false;
+  std::string status = "not_requested";
+  std::string reason = "not_requested";
+  std::string affectedSlotId = "none";
+  std::uint64_t activeCountBefore = 0;
+  std::uint64_t activeCountAfter = 0;
+  std::uint64_t deletedCountAfter = 0;
+  std::string selectedSlotAfter = "none";
+};
+
+std::string_view productSaveFlowOperationName(ProductSaveFlowOperation operation);
 
 ProductWorldTemplate productWorldTemplateFromOptions(
     const ProductAppOptions& options);
@@ -52,10 +81,11 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
                                        FrontendState& frontend);
 void cancelProductSaveDeleteConfirmation(ProductAppWindowState& window,
                                          FrontendState& frontend);
-void executeProductSaveSoftDelete(const ProductAppOptions& options,
-                                  ProductSaveBridgeResult& saves,
-                                  ProductAppWindowState& window,
-                                  FrontendState& frontend);
+ProductSaveFlowResult executeProductSaveSoftDelete(
+    const ProductAppOptions& options,
+    ProductSaveBridgeResult& saves,
+    ProductAppWindowState& window,
+    FrontendState& frontend);
 
 void launchProductNewWorld(const ProductAppOptions& options,
                            const WorldSetupDraft& worldSetupDraft,

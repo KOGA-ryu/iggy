@@ -206,9 +206,16 @@ bool deleteAndExitActionsAreExplicitRows() {
          expect(deleteSave.frontend.childScreen ==
                     iggy3d::FrontendScreen::LoadSave,
                 "delete opens selectable browser") &&
+         expect(deleteSave.frontend.saveBrowserMode ==
+                    iggy3d::FrontendSaveBrowserMode::Delete,
+                "delete opens explicit delete browser mode") &&
+         expect(deleteSave.window.saveSlotBrowserMode == "delete",
+                "delete records browser mode") &&
          expect(deleteSave.frontend.selectedAction ==
                     iggy3d::FrontendAction::Delete,
-                "delete keeps delete action") &&
+                "delete keeps starter action proof") &&
+         expect(deleteSave.frontend.status == "delete_world_browser_open",
+                "delete browser status") &&
          expect(!deleteSave.window.saveDeleteConfirmationOpen,
                 "delete does not auto-open confirmation") &&
          expect(deleteSave.window.selectedProductSaveId == "save_unit",

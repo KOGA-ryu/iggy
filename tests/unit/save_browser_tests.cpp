@@ -78,6 +78,106 @@ bool compatibleSaveMapsToSelectorAndEnablesActions() {
          expect(model.status == "save_browser_selection_ready", "ready status");
 }
 
+const iggy3d::SaveSlotActionSpec* actionSpecFor(
+    const iggy3d::SaveBrowserModel& model,
+    iggy3d::FrontendAction action) {
+  for (const iggy3d::SaveSlotActionSpec& spec : model.actions) {
+    if (spec.action == action) {
+      return &spec;
+    }
+  }
+  return nullptr;
+}
+
+bool slotRingWrapsAndClampsSelection() {
+  iggy3d::SaveSlotList slots;
+  slots.slots.push_back(compatibleSlot("save_001"));
+  slots.slots.push_back(compatibleSlot("save_002"));
+  slots.compatibleCount = 2;
+
+  const iggy3d::SaveSlotRingModel selected =
+      iggy3d::buildSaveSlotRingModel(slots, "save_002");
+  const iggy3d::SaveSlotRingModel missing =
+      iggy3d::buildSaveSlotRingModel(slots, "missing");
+  const std::string previous =
+      iggy3d::nextSaveSlotRingSelection(slots, "save_001", true);
+  const std::string next =
+      iggy3d::nextSaveSlotRingSelection(slots, "save_002", false);
+
+  return expect(selected.items.size() == 2U, "ring item count") &&
+         expect(selected.selectedIndex == 1U, "ring selected index") &&
+         expect(selected.selectedSlotId == "save_002", "ring selected id") &&
+         expect(missing.selectedIndex == 0U, "missing clamps to first index") &&
+         expect(missing.selectedSlotId == "save_001",
+                "missing clamps to first id") &&
+         expect(previous == "save_002", "previous wraps to last") &&
+         expect(next == "save_001", "next wraps to first");
+}
+
+bool deleteModeUsesExplicitActionDescriptors() {
+  iggy3d::SaveSlotList slots;
+  slots.slots.push_back(compatibleSlot("save_001"));
+  slots.compatibleCount = 1;
+  const iggy3d::SaveBrowserModel model = iggy3d::buildSaveBrowserModel(
+      slots, "save_001", iggy3d::FrontendSaveBrowserMode::Delete);
+
+  const iggy3d::SaveSlotActionSpec* load =
+      actionSpecFor(model, iggy3d::FrontendAction::Load);
+  const iggy3d::SaveSlotActionSpec* del =
+      actionSpecFor(model, iggy3d::FrontendAction::Delete);
+  const iggy3d::SaveSlotActionSpec* back =
+      actionSpecFor(model, iggy3d::FrontendAction::Back);
+
+  const auto loadRoute =
+      iggy3d::routeSaveBrowserAction(model,
+                                     iggy3d::MenuOwner::Starter,
+                                     iggy3d::FrontendAction::Load);
+  const auto deleteRoute =
+      iggy3d::routeSaveBrowserAction(model,
+                                     iggy3d::MenuOwner::Starter,
+                                     iggy3d::FrontendAction::Delete);
+
+  return expect(model.mode == iggy3d::FrontendSaveBrowserMode::Delete,
+                "delete mode recorded") &&
+         expect(model.actions.size() == 2U, "delete mode action count") &&
+         expect(load == nullptr, "delete mode has no load action") &&
+         expect(del != nullptr, "delete mode has delete action") &&
+         expect(del->command == iggy3d::SaveSlotCommand::Delete,
+                "delete command") &&
+         expect(del->enabled, "delete action enabled") &&
+         expect(del->confirmationRequired, "delete requires confirmation") &&
+         expect(back != nullptr && back->command == iggy3d::SaveSlotCommand::Back,
+                "back command") &&
+         expect(!loadRoute.accepted, "load rejected in delete mode") &&
+         expect(loadRoute.status == "not_save_browser_action",
+                "load rejected reason") &&
+         expect(deleteRoute.accepted, "delete accepted in delete mode") &&
+         expect(deleteRoute.nextChildScreen ==
+                    iggy3d::FrontendScreen::DeleteConfirm,
+                "delete routes to confirm");
+}
+
+bool emptyDeleteModeDisablesDeleteWithStableReason() {
+  const iggy3d::SaveSlotList slots;
+  const iggy3d::SaveBrowserModel model = iggy3d::buildSaveBrowserModel(
+      slots, "", iggy3d::FrontendSaveBrowserMode::Delete);
+  const iggy3d::SaveSlotActionSpec* del =
+      actionSpecFor(model, iggy3d::FrontendAction::Delete);
+  const auto route =
+      iggy3d::routeSaveBrowserAction(model,
+                                     iggy3d::MenuOwner::Starter,
+                                     iggy3d::FrontendAction::Delete);
+
+  return expect(model.ring.empty, "empty ring") &&
+         expect(del != nullptr, "empty delete spec present") &&
+         expect(!del->enabled, "empty delete disabled") &&
+         expect(del->disabledReason == "save_browser_empty",
+                "empty delete disabled reason") &&
+         expect(!route.accepted, "empty delete route rejected") &&
+         expect(route.status == "save_browser_empty",
+                "empty delete route reason");
+}
+
 bool corruptSaveMapsDisabledReasonAndCannotLoad() {
   iggy3d::SaveSlotList slots;
   slots.slots.push_back(corruptSlot("save_bad"));
@@ -278,6 +378,9 @@ bool emptyMissingUnsupportedAndInvalidParentAreDeterministic() {
 int main() {
   const bool ok = emptyBrowserBuildsEmptySelector() &&
                   compatibleSaveMapsToSelectorAndEnablesActions() &&
+                  slotRingWrapsAndClampsSelection() &&
+                  deleteModeUsesExplicitActionDescriptors() &&
+                  emptyDeleteModeDisablesDeleteWithStableReason() &&
                   corruptSaveMapsDisabledReasonAndCannotLoad() &&
                   missingSelectionReportsMissing() &&
                   backRoutesCloseToParentSurfaces() &&
