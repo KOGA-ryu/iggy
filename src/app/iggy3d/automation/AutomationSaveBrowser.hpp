@@ -13,7 +13,7 @@ struct ProductAutomationSaveBrowserContext {
   FrontendState& frontend;
   ProductAppWindowState& window;
   const ProductAppOptions& options;
-  const ProductSaveBridgeResult& saves;
+  ProductSaveBridgeResult& saves;
   std::function<MenuOwner()> currentOwner;
 };
 

@@ -16,7 +16,7 @@ struct ProductSaveBridgeResult;
 
 struct ProductAutomationDispatchContext {
   FrontendState& frontend;
-  const ProductSaveBridgeResult& saves;
+  ProductSaveBridgeResult& saves;
   const ProductAppOptions& options;
   FrontendSettingsTab& settingsTab;
   Session* activeSession = nullptr;
@@ -32,7 +32,7 @@ struct ProductAutomationDispatchContext {
 
 struct ProductAutomationAppContext {
   FrontendState& frontend;
-  const ProductSaveBridgeResult& saves;
+  ProductSaveBridgeResult& saves;
   const ProductAppOptions& options;
   FrontendSettings& settings;
   FrontendSettingsTab& settingsTab;

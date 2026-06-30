@@ -18,7 +18,7 @@ struct WorldSetupDraft;
 
 struct ProductOpeningMenuInputContext {
   FrontendState& frontend;
-  const ProductSaveBridgeResult& saves;
+  ProductSaveBridgeResult& saves;
   const ProductAppOptions& options;
   FrontendSettingsTab& settingsTab;
   std::optional<Session>& activeSession;

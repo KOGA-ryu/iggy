@@ -1100,9 +1100,9 @@ void drawNewWorldPanel(SDL_Renderer& renderer,
 void drawLoadSavePanel(SDL_Renderer& renderer,
                        const ProductSaveBridgeResult& saves) {
   setColor(renderer, 226, 230, 211);
-  drawText(renderer, "LOAD SAVE", 450.0F, 152.0F, 4.0F);
+  drawText(renderer, "LOAD MAP", 450.0F, 152.0F, 4.0F);
   setColor(renderer, 166, 184, 177);
-  drawText(renderer, "UP DOWN SELECT SAVE   CONFIRM LOAD", 452.0F, 210.0F, 2.0F);
+  drawText(renderer, "UP DOWN SELECT MAP   CONFIRM LOAD", 452.0F, 210.0F, 2.0F);
   drawText(renderer, "SLOTS", 452.0F, 260.0F, 2.0F);
   drawText(renderer, std::to_string(saves.slots.slots.size()), 558.0F, 260.0F, 2.0F);
   drawText(renderer, "COMPATIBLE", 714.0F, 260.0F, 2.0F);
@@ -1145,11 +1145,11 @@ void drawLoadSavePanel(SDL_Renderer& renderer,
 
 void drawDeleteConfirmPanel(SDL_Renderer& renderer) {
   setColor(renderer, 226, 230, 211);
-  drawText(renderer, "DELETE SAVE", 450.0F, 152.0F, 4.0F);
+  drawText(renderer, "DELETE MAP", 450.0F, 152.0F, 4.0F);
   setColor(renderer, 166, 184, 177);
-  drawText(renderer, "THIS MOVES THE SAVE TO DELETED SAVES", 452.0F, 210.0F, 2.0F);
-  drawText(renderer, "SAVE", 452.0F, 260.0F, 2.0F);
-  drawText(renderer, "SELECTED SAVE", 452.0F, 292.0F, 2.0F);
+  drawText(renderer, "THIS MOVES THE MAP TO DELETED MAPS", 452.0F, 210.0F, 2.0F);
+  drawText(renderer, "MAP", 452.0F, 260.0F, 2.0F);
+  drawText(renderer, "SELECTED MAP", 452.0F, 292.0F, 2.0F);
   drawText(renderer, "STATUS", 452.0F, 350.0F, 2.0F);
   drawText(renderer, "CONFIRM OPEN", 452.0F, 382.0F, 2.0F);
 

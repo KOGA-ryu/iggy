@@ -26,7 +26,7 @@ bool returnIfHandled(const ProductAutomationExecutionResult& execution,
 }
 
 bool routeAutomationInput(FrontendState& frontend,
-                          const ProductSaveBridgeResult& saves,
+                          ProductSaveBridgeResult& saves,
                           const ProductAppOptions& options,
                           FrontendSettings& settings,
                           FrontendSettingsTab& settingsTab,

@@ -838,7 +838,7 @@ bool controllerSouthJumpsFromClamberedWallTop() {
          expect(finalY > clamberTopY, "wall top jump raises player");
 }
 
-bool starterDeleteButtonOpensDeleteConfirmation() {
+bool starterDeleteButtonOpensSelectableBrowser() {
   iggy3d::FrontendState frontend = starterFrontend();
   frontend.selectedAction = iggy3d::FrontendAction::Delete;
   iggy3d::ProductAppOptions options;
@@ -861,18 +861,20 @@ bool starterDeleteButtonOpensDeleteConfirmation() {
            window,
            closeRequested});
 
+  // The main-menu "Delete" entry now opens the selectable save browser in
+  // Delete mode (so the operator picks WHICH map), rather than jumping
+  // straight to the confirm dialog. The slot list is pre-selected to the
+  // first save; no delete fires until the operator confirms a chosen slot.
   return expect(result.handled, "starter delete handled") &&
          expect(result.accepted, "starter delete accepted") &&
-         expect(frontend.childScreen == iggy3d::FrontendScreen::DeleteConfirm,
-                "starter delete opens confirmation") &&
+         expect(frontend.childScreen == iggy3d::FrontendScreen::LoadSave,
+                "starter delete opens selectable browser") &&
          expect(frontend.selectedAction == iggy3d::FrontendAction::Delete,
-                "starter delete selected action") &&
-         expect(window.saveDeleteConfirmationOpen,
-                "starter delete confirmation open") &&
-         expect(window.saveDeleteCandidateId == "save_unit",
-                "starter delete candidate id") &&
+                "starter delete selected action is delete") &&
+         expect(!window.saveDeleteConfirmationOpen,
+                "starter delete does not auto-open confirmation") &&
          expect(window.selectedProductSaveId == "save_unit",
-                "starter delete selected save") &&
+                "starter delete pre-selects first save") &&
          expect(!closeRequested, "starter delete does not close app");
 }
 
@@ -2794,7 +2796,7 @@ int main() {
       mapMakerMovementStaysGameplayOwnedAndDoesNotPause() &&
       controllerChordToggleRecordsCreativeConsumption() &&
       controllerSouthJumpsFromClamberedWallTop() &&
-      starterDeleteButtonOpensDeleteConfirmation() &&
+      starterDeleteButtonOpensSelectableBrowser() &&
       starterHitTestUsesCanonicalActionRows() &&
       pauseHitTestUsesPauseActionRows() &&
       pauseSettingsConfirmOpensSettingsPanel() &&

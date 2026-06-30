@@ -47,7 +47,7 @@ struct ProductWindowInputFrameState {
 
 struct ProductWindowInputFrameContext {
   FrontendState& frontend;
-  const ProductSaveBridgeResult& saves;
+  ProductSaveBridgeResult& saves;
   const ProductAppOptions& options;
   FrontendSettingsTab& settingsTab;
   std::optional<Session>& activeSession;

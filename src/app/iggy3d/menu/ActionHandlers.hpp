@@ -38,13 +38,14 @@ struct ProductSettingsMenuActionContext {
 struct ProductDeleteConfirmMenuActionContext {
   FrontendState& frontend;
   const ProductAppOptions& options;
+  ProductSaveBridgeResult& saves;
   ProductAppWindowState& window;
 };
 
 struct ProductLoadSaveMenuActionContext {
   FrontendState& frontend;
   const ProductAppOptions& options;
-  const ProductSaveBridgeResult& saves;
+  ProductSaveBridgeResult& saves;
   std::optional<Session>& activeSession;
   ProductAppWindowState& window;
 };
@@ -60,7 +61,7 @@ struct ProductNewWorldMenuActionContext {
 struct ProductStarterMenuActionContext {
   FrontendState& frontend;
   const ProductAppOptions& options;
-  const ProductSaveBridgeResult& saves;
+  ProductSaveBridgeResult& saves;
   FrontendSettingsTab& settingsTab;
   std::optional<Session>& activeSession;
   WorldSetupDraft& worldSetupDraft;

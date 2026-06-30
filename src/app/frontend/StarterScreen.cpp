@@ -70,8 +70,12 @@ FrontendRouteResult routeStarterAction(const StarterScreenModel& model,
                                        "starter_load_save_opened",
                                        action);
     case FrontendAction::Delete:
-      return acceptedStarterChildRoute(FrontendScreen::DeleteConfirm,
-                                       "starter_delete_confirm_opened",
+      // The Delete entry opens the selectable save browser (LoadSave) so the
+      // operator picks WHICH map; the DELETE SELECTED button inside the browser
+      // is what reaches the DeleteConfirm dialog. Keeping this model in step
+      // with the live handler (confirmStarterDelete) avoids a routing lie.
+      return acceptedStarterChildRoute(FrontendScreen::LoadSave,
+                                       "starter_delete_select_opened",
                                        action);
     case FrontendAction::Settings:
       return acceptedStarterChildRoute(FrontendScreen::Settings,
@@ -138,7 +142,7 @@ FrontendScreen starterChildScreenForAction(FrontendAction action) {
     case FrontendAction::LoadSave:
       return FrontendScreen::LoadSave;
     case FrontendAction::Delete:
-      return FrontendScreen::DeleteConfirm;
+      return FrontendScreen::LoadSave;
     case FrontendAction::Settings:
       return FrontendScreen::Settings;
     case FrontendAction::DevTools:
@@ -171,9 +175,9 @@ std::string_view starterActionLabel(FrontendAction action) {
     case FrontendAction::NewWorld:
       return "Build Map";
     case FrontendAction::LoadSave:
-      return "Existing Saves";
+      return "Existing Maps";
     case FrontendAction::Delete:
-      return "Delete Save";
+      return "Delete Map";
     case FrontendAction::Settings:
       return "Settings";
     case FrontendAction::DevTools:

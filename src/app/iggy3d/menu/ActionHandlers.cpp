@@ -385,9 +385,17 @@ ProductMenuActionResult confirmStarterLoadSave(
 
 ProductMenuActionResult confirmStarterDelete(ProductStarterMenuActionContext context) {
   clearProductGameplayMovementTuning(context.window);
+  // File selection: instead of auto-picking the default slot and jumping
+  // straight to the confirm dialog, open the existing selectable save browser
+  // in Delete mode. This reuses the exact "Existing Saves" list -- slot
+  // up/down, click-to-select, then "DELETE SELECTED" -> confirm -- so the
+  // operator chooses WHICH map to delete. The browser's Delete branch
+  // (applyProductLoadSaveMenuAction) routes the selected slot into the same
+  // confirmation that the auto-pick used to open directly.
+  context.frontend.childScreen = FrontendScreen::LoadSave;
+  context.frontend.selectedAction = FrontendAction::Delete;
   initializeSelectedProductSaveSlot(context.saves.slots, context.window);
-  openProductSaveDeleteConfirmation(context.saves.slots, context.window,
-                                    context.frontend);
+  context.frontend.status = "opening_menu_delete_select_opened";
   return {true, true};
 }
 
@@ -526,7 +534,7 @@ ProductMenuActionResult applyProductDeleteConfirmMenuAction(
   }
   // branch-gate: BG-1020
   if (action == InputAction::MenuConfirm) {
-    executeProductSaveSoftDelete(context.options, context.window,
+    executeProductSaveSoftDelete(context.options, context.saves, context.window,
                                  context.frontend);
     return {true, true};
   }

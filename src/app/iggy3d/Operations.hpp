@@ -53,6 +53,7 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
 void cancelProductSaveDeleteConfirmation(ProductAppWindowState& window,
                                          FrontendState& frontend);
 void executeProductSaveSoftDelete(const ProductAppOptions& options,
+                                  ProductSaveBridgeResult& saves,
                                   ProductAppWindowState& window,
                                   FrontendState& frontend);
 

@@ -629,6 +629,7 @@ void cancelProductSaveDeleteConfirmation(ProductAppWindowState& window,
 }
 
 void executeProductSaveSoftDelete(const ProductAppOptions& options,
+                                  ProductSaveBridgeResult& saves,
                                   ProductAppWindowState& window,
                                   FrontendState& frontend) {
   window.saveDeleteConfirmationOpen = false;
@@ -654,6 +655,15 @@ void executeProductSaveSoftDelete(const ProductAppOptions& options,
   if (deleted.ok) {
     window.selectedProductSaveEnabled = false;
     window.selectedProductSaveStatus = "missing";
+    // Live refresh: the file is gone on disk, but `saves` is the in-memory
+    // catalog that Continue, the Load list, and the receipt `save_count` all
+    // read. Without re-scanning it, the deleted map stays visible until the
+    // next app launch. We re-scan and re-clamp the selection here, mirroring
+    // `executeProductSaveRecover` above -- the delete path was simply one
+    // branch short of the recover path's treatment.
+    const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
+    saves = scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
+    initializeSelectedProductSaveSlot(saves.slots, window);
   }
   frontend.childScreen = FrontendScreen::LoadSave;
   frontend.selectedAction = FrontendAction::Delete;

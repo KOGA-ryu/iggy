@@ -200,13 +200,19 @@ bool deleteAndExitActionsAreExplicitRows() {
 
   return expect(deleteResult.handled && deleteResult.accepted,
                 "delete accepted") &&
+         // Delete now opens the selectable save browser (LoadSave in Delete
+         // mode) so the operator chooses which map; the confirmation only opens
+         // once they confirm a selected slot inside the browser.
          expect(deleteSave.frontend.childScreen ==
-                    iggy3d::FrontendScreen::DeleteConfirm,
-                "delete confirm child") &&
-         expect(deleteSave.window.saveDeleteConfirmationOpen,
-                "delete confirmation open") &&
-         expect(deleteSave.window.saveDeleteCandidateId == "save_unit",
-                "delete candidate") &&
+                    iggy3d::FrontendScreen::LoadSave,
+                "delete opens selectable browser") &&
+         expect(deleteSave.frontend.selectedAction ==
+                    iggy3d::FrontendAction::Delete,
+                "delete keeps delete action") &&
+         expect(!deleteSave.window.saveDeleteConfirmationOpen,
+                "delete does not auto-open confirmation") &&
+         expect(deleteSave.window.selectedProductSaveId == "save_unit",
+                "delete pre-selects first save") &&
          expect(!deleteSave.window.gameplayMovementTuningVisible,
                 "delete clears movement tuning") &&
          expect(!deleteSave.closeRequested, "delete does not close") &&

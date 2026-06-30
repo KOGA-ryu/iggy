@@ -13,8 +13,8 @@ ConfirmDialogModel buildExitConfirmDialog() {
 ConfirmDialogModel buildDeleteSaveConfirmDialog() {
   ConfirmDialogModel model;
   model.confirmAction = FrontendAction::Delete;
-  model.title = "Delete Save";
-  model.message = "Delete the selected save file.";
+  model.title = "Delete Map";
+  model.message = "Delete the selected map.";
   model.destructive = true;
   return model;
 }

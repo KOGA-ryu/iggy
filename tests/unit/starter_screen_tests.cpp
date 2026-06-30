@@ -143,8 +143,8 @@ bool enabledStarterActionsReturnRouteResults() {
                 "new world no transition") &&
          expect(loadRoute.nextChildScreen == iggy3d::FrontendScreen::LoadSave,
                 "load child") &&
-         expect(deleteRoute.nextChildScreen == iggy3d::FrontendScreen::DeleteConfirm,
-                "delete confirm child") &&
+         expect(deleteRoute.nextChildScreen == iggy3d::FrontendScreen::LoadSave,
+                "delete opens selectable browser child") &&
          expect(settingsRoute.nextChildScreen == iggy3d::FrontendScreen::Settings,
                 "settings child") &&
          expect(devToolsRoute.nextChildScreen == iggy3d::FrontendScreen::StarterDevTools,

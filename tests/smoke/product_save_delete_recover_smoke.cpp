@@ -107,9 +107,15 @@ int main() {
       iggy3d::smoke::hasField(fields, "frontend_child_screen", "load_save") &&
       iggy3d::smoke::hasField(fields, "frontend_selected_action", "delete") &&
       iggy3d::smoke::hasField(fields, "gameplay_active", "false") &&
-      iggy3d::smoke::hasField(fields, "selected_save_id", "save_001") &&
-      iggy3d::smoke::hasField(fields, "selected_save_enabled", "false") &&
-      iggy3d::smoke::hasField(fields, "selected_save_status", "missing") &&
+      // Live refresh: this root held a single save, so after the soft-delete
+      // the active catalog re-scan finds it empty -- the count drops to 0 and
+      // the selection clamps to "none"/"empty" rather than the stale
+      // "save_001"/"missing" the pre-fix build left behind. This receipt is the
+      // proof the deleted map left Continue + the Load list without a restart.
+      iggy3d::smoke::hasField(fields, "save_count", "0") &&
+      iggy3d::smoke::hasField(fields, "compatible_save_count", "0") &&
+      iggy3d::smoke::hasField(fields, "selected_save_id", "none") &&
+      iggy3d::smoke::hasField(fields, "selected_save_status", "empty") &&
       iggy3d::smoke::hasField(fields, "save_delete_confirmation_open", "false") &&
       iggy3d::smoke::hasField(fields, "save_delete_candidate_id", "save_001") &&
       iggy3d::smoke::hasField(fields, "save_delete_reason_code",
@@ -118,6 +124,68 @@ int main() {
       iggy3d::smoke::hasField(fields, "save_delete_recoverable", "true") &&
       !std::filesystem::exists(deleteRoot / "save_001.iggy3d.save") &&
       std::filesystem::exists(deleteRoot / "deleted" / "save_001.iggy3d.save");
+
+  // Multi-save selection + live refresh: seed TWO maps, SELECT the second,
+  // delete only it. This proves (1) the operator's chosen map is the one that
+  // moves -- save_002 to deleted/, save_001 untouched in root -- and (2) the
+  // active catalog drops to a single map live (save_count == 1), the proof the
+  // delete reaches Continue + the Load list without a restart.
+  const std::filesystem::path multiRoot =
+      iggy3d::smoke::cleanSaveRoot("save_delete_multi");
+  iggy3d::smoke::ReceiptFields multiFields;
+  const bool multiSeedFirst =
+      appAvailable &&
+      iggy3d::smoke::seedWorldSave(binary, "save_delete_multi_seed_first",
+                                   multiRoot, "First World");
+  const bool multiSeedSecond =
+      appAvailable && multiSeedFirst &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "save_delete_multi_seed_second",
+          "frontend.select=new_world\nfrontend.execute=true\n"
+          "world.title=Second World\nworld.create=true\n",
+          iggy3d::smoke::saveRootArg(multiRoot),
+          multiFields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(multiFields) &&
+      iggy3d::smoke::hasField(multiFields, "world_creation_initial_save_id",
+                              "save_002") &&
+      std::filesystem::exists(multiRoot / "save_001.iggy3d.save") &&
+      std::filesystem::exists(multiRoot / "save_002.iggy3d.save");
+
+  multiFields.clear();
+  const bool multiSelectSecondDelete =
+      appAvailable && multiSeedSecond &&
+      iggy3d::smoke::runProductCase(
+          binary,
+          "save_delete_multi_select_second_delete",
+          "frontend.select=load_save\nfrontend.execute=true\n"
+          "save.select=save_002\nsave.delete=true\nmenu.confirm=true\n",
+          iggy3d::smoke::saveRootArg(multiRoot),
+          multiFields,
+          exitCode) &&
+      exitCode == 0 && iggy3d::smoke::productReceipt(multiFields) &&
+      iggy3d::smoke::automationApplied(multiFields) &&
+      iggy3d::smoke::hasField(multiFields, "frontend_child_screen",
+                              "load_save") &&
+      iggy3d::smoke::hasField(multiFields, "save_delete_candidate_id",
+                              "save_002") &&
+      iggy3d::smoke::hasField(multiFields, "save_delete_status",
+                              "product_save_soft_deleted") &&
+      iggy3d::smoke::hasField(multiFields, "save_delete_executed", "true") &&
+      // Live refresh: catalog drops from 2 maps to 1.
+      iggy3d::smoke::hasField(multiFields, "save_count", "1") &&
+      iggy3d::smoke::hasField(multiFields, "compatible_save_count", "1") &&
+      // Selection clamps onto the surviving map, not the deleted one.
+      iggy3d::smoke::hasField(multiFields, "selected_save_id", "save_001") &&
+      iggy3d::smoke::hasField(multiFields, "selected_save_status",
+                              "selected") &&
+      // Only the chosen map moved; the first remains.
+      std::filesystem::exists(multiRoot / "save_001.iggy3d.save") &&
+      !std::filesystem::exists(multiRoot / "save_002.iggy3d.save") &&
+      !std::filesystem::exists(multiRoot / "deleted" /
+                               "save_001.iggy3d.save") &&
+      std::filesystem::exists(multiRoot / "deleted" / "save_002.iggy3d.save");
 
   const std::filesystem::path recoverRoot =
       iggy3d::smoke::cleanSaveRoot("recover_soft_deleted");
@@ -316,6 +384,7 @@ int main() {
 
   const bool passed = seed && loadSaveDeleteConfirmOpen && loadSaveDeleteCancel &&
                       loadSaveDeleteConfirmSoftDeleted &&
+                      multiSeedSecond && multiSelectSecondDelete &&
                       loadSaveRecoverSoftDeleted &&
                       loadSaveRecoverSnapshotSidecar &&
                       loadSaveRecoverMissingSelection &&
@@ -328,6 +397,10 @@ int main() {
             << (loadSaveDeleteCancel ? "true" : "false") << "\n";
   std::cout << "load_save_delete_confirm_soft_deleted="
             << (loadSaveDeleteConfirmSoftDeleted ? "true" : "false") << "\n";
+  std::cout << "save_delete_multi_seed_second="
+            << (multiSeedSecond ? "true" : "false") << "\n";
+  std::cout << "save_delete_multi_select_second_delete="
+            << (multiSelectSecondDelete ? "true" : "false") << "\n";
   std::cout << "load_save_recover_soft_deleted="
             << (loadSaveRecoverSoftDeleted ? "true" : "false") << "\n";
   std::cout << "load_save_recover_snapshot_sidecar="

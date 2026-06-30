@@ -52,6 +52,11 @@ void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
 
 ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& request) {
   ProductAppWindowState window = request.window;
+  // Mutable in-loop catalog. `request.saves` is the snapshot the loop starts
+  // from; we copy it (like `window` above) so a live soft-delete can re-scan
+  // and have Continue / the Load list / the receipt all forget the map without
+  // an app restart. The request itself stays a read-only input.
+  ProductSaveBridgeResult saves = request.saves;
   window.requested = request.options.windowMode == ProductWindowMode::Window;
   const bool useVulkanRenderer =
       productWindowRendererUsesVulkan(request.options.renderer);
@@ -106,7 +111,7 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
     sdlWindow.setTitle(productWindowTitle(window));
 
     processProductWindowInputFrame(ProductWindowInputFrameContext{
-        request.frontend, request.saves, request.options, settingsTab,
+        request.frontend, saves, request.options, settingsTab,
         request.activeSession, request.worldSetupDraft, window, request.settings,
         inputFrame, closeRequested, &sdlWindow});
 
@@ -118,7 +123,7 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
 
     presentProductWindowFrame(ProductWindowFramePresenterRequest{
         request.options, request.world, request.frontend, settingsTab,
-        request.worldSetupDraft, window, request.saves, sdlWindow, renderer,
+        request.worldSetupDraft, window, saves, sdlWindow, renderer,
         projectionFrame});
     ++window.framesPresented;
 

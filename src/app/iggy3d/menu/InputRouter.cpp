@@ -64,7 +64,8 @@ void dispatchSettingsAction(InputAction action,
 void dispatchDeleteConfirmAction(InputAction action,
                                  ProductOpeningMenuInputContext context) {
   (void)applyProductDeleteConfirmMenuAction(
-      action, {context.frontend, context.options, context.window});
+      action,
+      {context.frontend, context.options, context.saves, context.window});
 }
 
 void dispatchExitConfirmAction(InputAction action,
