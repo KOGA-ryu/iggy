@@ -7,10 +7,63 @@
 #include <sstream>
 #include <string_view>
 
+#if defined(_WIN32)
+#include <io.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 namespace iggy3d {
 namespace {
 
 constexpr std::string_view kSaveFileExtension = ".iggy3d.save";
+
+// Flush a file's contents to the filesystem so a committed save survives a
+// process or OS crash. The durable write already guards against truncation via
+// temp-write + readback; this closes the remaining gap where the bytes live
+// only in the OS page cache. Best-effort by platform; returns false only when
+// the path cannot be opened or the sync call fails so callers can treat a
+// failed sync as a failed durable write rather than silently overstating
+// durability. (Power-loss-proof flushing on macOS would additionally need
+// F_FULLFSYNC; fsync here protects against process/OS crash.)
+bool syncFileToDisk(const std::filesystem::path& path) {
+#if defined(_WIN32)
+  FILE* file = nullptr;
+  if (_wfopen_s(&file, path.wstring().c_str(), L"rb") != 0 || file == nullptr) {
+    return false;
+  }
+  const int fd = _fileno(file);
+  const bool ok = fd >= 0 && _commit(fd) == 0;
+  std::fclose(file);
+  return ok;
+#else
+  const int fd = ::open(path.c_str(), O_RDONLY);
+  if (fd < 0) {
+    return false;
+  }
+  const bool ok = ::fsync(fd) == 0;
+  ::close(fd);
+  return ok;
+#endif
+}
+
+// Flush a directory entry so a freshly renamed save name is itself durable.
+// POSIX-only; on Windows the rename is made durable by the file flush above.
+bool syncDirectoryToDisk(const std::filesystem::path& directory) {
+#if defined(_WIN32)
+  (void)directory;
+  return true;
+#else
+  const int fd = ::open(directory.c_str(), O_RDONLY);
+  if (fd < 0) {
+    return false;
+  }
+  const bool ok = ::fsync(fd) == 0;
+  ::close(fd);
+  return ok;
+#endif
+}
 
 bool hasSaveFileExtension(const std::filesystem::path& path) {
   const std::string filename = path.filename().string();
@@ -195,6 +248,13 @@ SaveFileTempWriteResult writeDurableSaveTempFile(
     return result;
   }
 
+  // Flush the validated temp file to disk before it is committed so the bytes
+  // are durable, not merely in the page cache, when the atomic rename happens.
+  if (!syncFileToDisk(result.paths.tempPath)) {
+    result.reason = "durable_save_temp_sync_failed";
+    return result;
+  }
+
   result.ok = true;
   result.reason = "durable_save_temp_written";
   return result;
@@ -257,6 +317,11 @@ SaveFileFinalCommitResult commitDurableSaveTempFile(
     return result;
   }
   result.committed = true;
+
+  // Flush the directory entry so the committed name survives a crash too. This
+  // is best-effort: the file contents are already durable from the temp sync,
+  // so a directory-sync failure does not undo a successful commit.
+  (void)syncDirectoryToDisk(result.paths.root);
 
   const std::string encodedText = readWholeFile(result.paths.finalPath);
   if (encodedText.empty()) {
