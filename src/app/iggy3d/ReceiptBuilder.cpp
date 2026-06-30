@@ -170,9 +170,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(
                          window.gameplayMovementTuning.sprintSpeedMetersPerSecond));
   appendReceiptField(receipt,
-                     "gameplay_movement_tuning_ground_response",
+                     "gameplay_movement_tuning_ground_acceleration_mps2",
                      floatReceiptValue(
-                         window.gameplayMovementTuning.groundResponseMultiplier));
+                         window.gameplayMovementTuning
+                             .groundAccelerationMetersPerSecondSquared));
+  appendReceiptField(receipt,
+                     "gameplay_movement_tuning_ground_deceleration_mps2",
+                     floatReceiptValue(
+                         window.gameplayMovementTuning
+                             .groundDecelerationMetersPerSecondSquared));
   appendReceiptField(receipt,
                      "gameplay_movement_tuning_air_control",
                      floatReceiptValue(
@@ -860,6 +866,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.gameplayMovementHorizontalDistanceMeters));
   appendReceiptField(receipt, "gameplay_movement_vertical_delta_meters",
                      floatReceiptValue(window.gameplayMovementVerticalDeltaMeters));
+  appendReceiptField(receipt, "gameplay_movement_ground_velocity_x",
+                     floatReceiptValue(window.gameplayMovementGroundVelocityX));
+  appendReceiptField(receipt, "gameplay_movement_ground_velocity_z",
+                     floatReceiptValue(window.gameplayMovementGroundVelocityZ));
   appendReceiptField(receipt, "gameplay_movement_grade_percent",
                      floatReceiptValue(window.gameplayMovementGradePercent));
   appendReceiptField(receipt, "gameplay_movement_profile",

@@ -1012,6 +1012,87 @@ Vec3 manualFirstPersonMoveDelta(float moveX,
   return (right * moveX + forward * moveY) * (scale * stepMeters);
 }
 
+Vec3 manualFirstPersonDesiredVelocity(float moveX,
+                                      float moveY,
+                                      float yawDegrees,
+                                      bool sprinting,
+                                      const ProductGameplayMovementTuning& tuning) {
+  const float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
+  // branch-gate: BG-1161
+  if (magnitude <= 0.0F || !std::isfinite(magnitude)) {
+    return {};
+  }
+  const float scale = 1.0F / std::max(1.0F, magnitude);
+  const float speed =
+      manualFirstPersonMaxSpeedMetersPerSecond(tuning, sprinting);
+  const float yawRadians = yawDegrees * kPi / 180.0F;
+  const float cosYaw = std::cos(yawRadians);
+  const float sinYaw = std::sin(yawRadians);
+  const Vec3 forward{sinYaw, 0.0F, -cosYaw};
+  const Vec3 right{cosYaw, 0.0F, sinYaw};
+  return (right * moveX + forward * moveY) * (scale * speed);
+}
+
+Vec3 moveHorizontalVelocityToward(Vec3 current, Vec3 target, float maxDelta) {
+  Vec3 delta{target.x - current.x, 0.0F, target.z - current.z};
+  const float distance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
+  // branch-gate: BG-1161
+  if (distance <= 0.0001F || !std::isfinite(distance)) {
+    return target;
+  }
+  // branch-gate: BG-1161
+  if (maxDelta >= distance) {
+    return target;
+  }
+  const float scale = std::max(0.0F, maxDelta) / distance;
+  return {current.x + delta.x * scale, 0.0F, current.z + delta.z * scale};
+}
+
+Vec3 clampHorizontalVelocity(Vec3 velocity, float maxSpeed) {
+  const float speed =
+      std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+  // branch-gate: BG-1161
+  if (speed <= maxSpeed || speed <= 0.0001F || !std::isfinite(speed)) {
+    return velocity;
+  }
+  const float scale = maxSpeed / speed;
+  return {velocity.x * scale, 0.0F, velocity.z * scale};
+}
+
+bool horizontalVelocityActive(const ProductAppWindowState& window) {
+  const float speedSquared =
+      window.gameplayMovementGroundVelocityX *
+          window.gameplayMovementGroundVelocityX +
+      window.gameplayMovementGroundVelocityZ *
+          window.gameplayMovementGroundVelocityZ;
+  return speedSquared > 0.000001F;
+}
+
+Vec3 updateProductGroundMovementVelocity(ProductAppWindowState& window,
+                                         float moveX,
+                                         float moveY,
+                                         bool sprinting) {
+  const ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
+  const float dt = std::max(0.0F, tuning.inputStepSeconds);
+  Vec3 current{window.gameplayMovementGroundVelocityX,
+               0.0F,
+               window.gameplayMovementGroundVelocityZ};
+  const Vec3 target = manualFirstPersonDesiredVelocity(
+      moveX, moveY, window.viewport.cameraYawDegrees, sprinting, tuning);
+  const bool hasIntent = target.x != 0.0F || target.z != 0.0F;
+  const float rate =
+      hasIntent ? tuning.groundAccelerationMetersPerSecondSquared
+                : tuning.groundDecelerationMetersPerSecondSquared;  // branch-gate: BG-1161
+  const float maxSpeed =
+      manualFirstPersonMaxSpeedMetersPerSecond(tuning, sprinting);
+  Vec3 next = moveHorizontalVelocityToward(
+      current, target, std::max(0.0F, rate) * dt);
+  next = clampHorizontalVelocity(next, maxSpeed);
+  window.gameplayMovementGroundVelocityX = next.x;
+  window.gameplayMovementGroundVelocityZ = next.z;
+  return next;
+}
+
 void recordProductAirborneMovementDebug(ProductAppWindowState& window,
                                         Vec3 start,
                                         Vec3 finalPosition) {
@@ -1455,9 +1536,8 @@ void submitProductMove(Session& session,
   const EntityState* actor = productPlayerEntity(session);
   if (actor == nullptr) {
     window.gameplayCommandStatus = "missing_player";
-    return;
-  }
-  if (moveX == 0.0F && moveY == 0.0F) {
+    window.gameplayMovementGroundVelocityX = 0.0F;
+    window.gameplayMovementGroundVelocityZ = 0.0F;
     return;
   }
   recordProductMovementProfile(window, sprinting);
@@ -1465,17 +1545,21 @@ void submitProductMove(Session& session,
   // directly so holding movement with jump does not get snapped back to ground.
   // branch-gate: BG-1161
   if (window.gameplayJumpActive) {
+    window.gameplayMovementGroundVelocityX = 0.0F;
+    window.gameplayMovementGroundVelocityZ = 0.0F;
     submitProductAirborneMove(session, window, *actor, moveX, moveY, sprinting, source);
     return;
   }
+  const Vec3 retainedVelocity =
+      updateProductGroundMovementVelocity(window, moveX, moveY, sprinting);
+  const Vec3 retainedDelta =
+      retainedVelocity * window.gameplayMovementTuning.inputStepSeconds;
+  // branch-gate: BG-1161
+  if (retainedDelta.x == 0.0F && retainedDelta.z == 0.0F) {
+    return;
+  }
   Vec3 destination = actor->transform.position;
-  destination = destination + manualFirstPersonMoveDelta(
-                                  moveX,
-                                  moveY,
-                                  window.viewport.cameraYawDegrees,
-                                  sprinting,
-                                  window.gameplayMovementTuning,
-                                  window.gameplayMovementTuning.groundResponseMultiplier);
+  destination = destination + retainedDelta;
 
   CommandRecord command;
   command.playerSlot = 0;
@@ -1572,7 +1656,7 @@ void applyProductGameplayActions(Session& session,
     submitProductDash(session, window, moveX, moveY, source, collisionSurfaces);
     return;
   }
-  if (moveX != 0.0F || moveY != 0.0F) {
+  if (moveX != 0.0F || moveY != 0.0F || horizontalVelocityActive(window)) {
     submitProductMove(session, window, moveX, moveY, sprinting, source,
                       collisionSurfaces);
   }

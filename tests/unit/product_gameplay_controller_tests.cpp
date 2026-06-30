@@ -606,32 +606,162 @@ bool productMoveUsesRuntimeTunedWindowSpeed() {
                 "runtime tuned final z");
 }
 
-bool productMoveUsesRuntimeTunedGroundResponse() {
+bool productMoveUsesRuntimeTunedGroundAcceleration() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
-  if (!expect(session.has_value(), "runtime tuned response session created")) {
+  if (!expect(session.has_value(), "runtime tuned acceleration session created")) {
     return false;
   }
 
-  window.gameplayMovementTuning.groundResponseMultiplier = 0.5F;
+  window.gameplayMovementTuning.groundAccelerationMetersPerSecondSquared = 33.0F;
   const float expectedStep =
-      window.gameplayMovementTuning.walkSpeedMetersPerSecond *
+      window.gameplayMovementTuning.groundAccelerationMetersPerSecondSquared *
       window.gameplayMovementTuning.inputStepSeconds *
-      window.gameplayMovementTuning.groundResponseMultiplier;
+      window.gameplayMovementTuning.inputStepSeconds;
   const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
   iggy3d::applyProductGameplayActions(*session,
                                       manualMoveActions(0.0F, 1.0F),
                                       window,
-                                      "unit/gameplay_controller_response_tuning");
+                                      "unit/gameplay_controller_accel_tuning");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
   return expect(window.gameplayCommandAccepted,
-                "runtime response tuned move accepted") &&
+                "runtime acceleration tuned move accepted") &&
          expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
                             expectedStep),
-                "runtime response tuned horizontal distance") &&
+                "runtime acceleration tuned horizontal distance") &&
          expect(nearlyEqual(final.z - start.z, -expectedStep),
-                "runtime response tuned final z");
+                "runtime acceleration tuned final z");
+}
+
+bool productGroundAccelerationApproachesMaxSpeed() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "accel ramp session created")) {
+    return false;
+  }
+
+  window.gameplayMovementTuning.groundAccelerationMetersPerSecondSquared = 33.0F;
+  iggy3d::applyProductGameplayActions(*session,
+                                      forwardMoveActions(),
+                                      window,
+                                      "unit/gameplay_controller_accel_ramp_first");
+  const float firstDistance = window.gameplayMovementHorizontalDistanceMeters;
+  for (int frame = 0; frame < 8; ++frame) {
+    iggy3d::applyProductGameplayActions(*session,
+                                        forwardMoveActions(),
+                                        window,
+                                        "unit/gameplay_controller_accel_ramp_later");
+  }
+  const float laterDistance = window.gameplayMovementHorizontalDistanceMeters;
+
+  return expect(firstDistance < kExpectedManualFirstPersonStepMeters,
+                "first acceleration frame is below full speed") &&
+         expect(laterDistance > firstDistance,
+                "later acceleration frame moves farther") &&
+         expect(nearlyEqual(laterDistance, kExpectedManualFirstPersonStepMeters),
+                "acceleration reaches max speed step");
+}
+
+bool productHigherGroundAccelerationReachesSpeedFaster() {
+  std::optional<iggy3d::Session> slowSession;
+  iggy3d::ProductAppWindowState slowWindow = makeGameplayWindow(slowSession);
+  std::optional<iggy3d::Session> fastSession;
+  iggy3d::ProductAppWindowState fastWindow = makeGameplayWindow(fastSession);
+  if (!expect(slowSession.has_value() && fastSession.has_value(),
+              "accel comparison sessions created")) {
+    return false;
+  }
+
+  slowWindow.gameplayMovementTuning.groundAccelerationMetersPerSecondSquared =
+      16.5F;
+  fastWindow.gameplayMovementTuning.groundAccelerationMetersPerSecondSquared =
+      66.0F;
+  iggy3d::applyProductGameplayActions(*slowSession,
+                                      forwardMoveActions(),
+                                      slowWindow,
+                                      "unit/gameplay_controller_accel_slow");
+  iggy3d::applyProductGameplayActions(*fastSession,
+                                      forwardMoveActions(),
+                                      fastWindow,
+                                      "unit/gameplay_controller_accel_fast");
+
+  return expect(fastWindow.gameplayMovementHorizontalDistanceMeters >
+                    slowWindow.gameplayMovementHorizontalDistanceMeters,
+                "higher acceleration moves farther on first frame") &&
+         expect(std::fabs(fastWindow.gameplayMovementGroundVelocityZ) >
+                    std::fabs(slowWindow.gameplayMovementGroundVelocityZ),
+                "higher acceleration stores faster retained velocity");
+}
+
+bool productGroundDecelerationDecaysRetainedVelocity() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "decel session created")) {
+    return false;
+  }
+
+  iggy3d::applyProductGameplayActions(*session,
+                                      forwardMoveActions(),
+                                      window,
+                                      "unit/gameplay_controller_decel_prime");
+  const float startingSpeed = std::fabs(window.gameplayMovementGroundVelocityZ);
+  window.gameplayMovementTuning.groundDecelerationMetersPerSecondSquared = 33.0F;
+  iggy3d::ActionState noInput;
+  iggy3d::applyProductGameplayActions(*session,
+                                      noInput,
+                                      window,
+                                      "unit/gameplay_controller_decel_release");
+  const float decayedSpeed = std::fabs(window.gameplayMovementGroundVelocityZ);
+
+  return expect(window.gameplayCommandAccepted,
+                "deceleration submits retained movement") &&
+         expect(window.gameplayMovementHorizontalDistanceMeters > 0.0F,
+                "deceleration keeps moving after release") &&
+         expect(decayedSpeed < startingSpeed,
+                "deceleration reduces retained speed") &&
+         expect(decayedSpeed > 0.0F,
+                "deceleration does not stop instantly");
+}
+
+bool productHigherGroundDecelerationStopsFaster() {
+  std::optional<iggy3d::Session> slowSession;
+  iggy3d::ProductAppWindowState slowWindow = makeGameplayWindow(slowSession);
+  std::optional<iggy3d::Session> fastSession;
+  iggy3d::ProductAppWindowState fastWindow = makeGameplayWindow(fastSession);
+  if (!expect(slowSession.has_value() && fastSession.has_value(),
+              "decel comparison sessions created")) {
+    return false;
+  }
+
+  iggy3d::applyProductGameplayActions(*slowSession,
+                                      forwardMoveActions(),
+                                      slowWindow,
+                                      "unit/gameplay_controller_decel_slow_prime");
+  iggy3d::applyProductGameplayActions(*fastSession,
+                                      forwardMoveActions(),
+                                      fastWindow,
+                                      "unit/gameplay_controller_decel_fast_prime");
+  slowWindow.gameplayMovementTuning.groundDecelerationMetersPerSecondSquared =
+      16.5F;
+  fastWindow.gameplayMovementTuning.groundDecelerationMetersPerSecondSquared =
+      66.0F;
+  iggy3d::ActionState noInput;
+  iggy3d::applyProductGameplayActions(*slowSession,
+                                      noInput,
+                                      slowWindow,
+                                      "unit/gameplay_controller_decel_slow");
+  iggy3d::applyProductGameplayActions(*fastSession,
+                                      noInput,
+                                      fastWindow,
+                                      "unit/gameplay_controller_decel_fast");
+
+  return expect(fastWindow.gameplayMovementHorizontalDistanceMeters <
+                    slowWindow.gameplayMovementHorizontalDistanceMeters,
+                "higher deceleration moves less after release") &&
+         expect(std::fabs(fastWindow.gameplayMovementGroundVelocityZ) <
+                    std::fabs(slowWindow.gameplayMovementGroundVelocityZ),
+                "higher deceleration stores lower retained velocity");
 }
 
 bool productJumpRaisesPlayerAndRecordsProof() {
@@ -1347,7 +1477,11 @@ int main() {
                   productMoveNormalizesDiagonalToTunedStep() &&
                   productSprintUsesSprintProfileAndStep() &&
                   productMoveUsesRuntimeTunedWindowSpeed() &&
-                  productMoveUsesRuntimeTunedGroundResponse() &&
+                  productMoveUsesRuntimeTunedGroundAcceleration() &&
+                  productGroundAccelerationApproachesMaxSpeed() &&
+                  productHigherGroundAccelerationReachesSpeedFaster() &&
+                  productGroundDecelerationDecaysRetainedVelocity() &&
+                  productHigherGroundDecelerationStopsFaster() &&
                   productJumpRaisesPlayerAndRecordsProof() &&
                   productJumpCanMoveForwardInSameFrame() &&
                   productJumpAirControlScalesAirborneMove() &&

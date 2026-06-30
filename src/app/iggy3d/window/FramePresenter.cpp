@@ -440,7 +440,7 @@ void appendMovementTuningHudUi(
       scaledHudOffset(820.0F, viewportWidth, kVirtualViewportWidth),
       scaledHudOffset(410.0F, viewportHeight, kVirtualViewportHeight),
       scaledHudExtent(384.0F, viewportWidth, kVirtualViewportWidth),
-      scaledHudExtent(232.0F, viewportHeight, kVirtualViewportHeight),
+      scaledHudExtent(288.0F, viewportHeight, kVirtualViewportHeight),
       14.0F / 255.0F,
       21.0F / 255.0F,
       23.0F / 255.0F,

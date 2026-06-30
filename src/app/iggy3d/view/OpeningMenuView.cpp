@@ -605,7 +605,7 @@ void drawGameplayMovementTuningHud(
   }
 
   setColor(renderer, 14, 21, 23);
-  fillRect(renderer, 820.0F, 410.0F, 384.0F, 232.0F);
+  fillRect(renderer, 820.0F, 410.0F, 384.0F, 288.0F);
   setColor(renderer, 245, 214, 96);
   drawText(renderer, "MOVEMENT TUNING", 838.0F, 426.0F, 2.0F);
   setColor(renderer, 166, 184, 177);

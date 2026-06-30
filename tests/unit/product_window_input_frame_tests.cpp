@@ -2721,6 +2721,37 @@ bool movementTuningLookValuesDriveCameraInput() {
                 "look tuning leaves invert setting unchanged");
 }
 
+bool editorOwnedInputClearsRetainedGroundVelocity() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window = editingWindow();
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.gameplayMovementGroundVelocityX = 1.5F;
+  window.gameplayMovementGroundVelocityZ = -2.0F;
+  iggy3d::ActionState actions;
+  iggy3d::recordAction(actions,
+                       iggy3d::InputAction::EditorNudgeX,
+                       true,
+                       true,
+                       false,
+                       1.0F);
+
+  const iggy3d::ProductControllerSampleInputResult result =
+      iggy3d::applyProductWindowInputActions(frontend,
+                                             window,
+                                             nullptr,
+                                             nullptr,
+                                             actions,
+                                             "unit/editor_velocity_clear");
+
+  return expect(result.processed, "editor input processed") &&
+         expect(result.actionApplied, "editor input applied") &&
+         expect(window.roomEditorLastOperationAccepted,
+                "editor input accepted") &&
+         expect(window.gameplayMovementGroundVelocityX == 0.0F &&
+                    window.gameplayMovementGroundVelocityZ == 0.0F,
+                "editor input clears retained ground velocity");
+}
+
 }  // namespace
 
 int main() {
@@ -2775,7 +2806,8 @@ int main() {
       mapMakerToggleUsesGameplayOnlyCreativeMode() &&
       mapMakerToggleRoutesAsGameplayOwnedInput() &&
       gameplaySettingsAdjustMovementTuningLive() &&
-      movementTuningLookValuesDriveCameraInput();
+      movementTuningLookValuesDriveCameraInput() &&
+      editorOwnedInputClearsRetainedGroundVelocity();
   std::cout << "product_window_input_frame_tests="
             << (passed ? "pass" : "fail") << '\n';
   return passed ? 0 : 1;

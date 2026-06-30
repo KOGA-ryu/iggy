@@ -11,7 +11,8 @@ namespace iggy3d {
 enum class ProductGameplayMovementTuningField : std::uint8_t {
   WalkSpeed,
   SprintSpeed,
-  GroundResponse,
+  GroundAcceleration,
+  GroundDeceleration,
   AirControl,
   JumpImpulse,
   Gravity,
@@ -35,7 +36,8 @@ struct ProductGameplayMovementTuning {
   // Player feel tuning lives here. Adjust these values when testing movement.
   float walkSpeedMetersPerSecond = 3.3F;
   float sprintSpeedMetersPerSecond = 6.2F;
-  float groundResponseMultiplier = 1.0F;
+  float groundAccelerationMetersPerSecondSquared = 400.0F;
+  float groundDecelerationMetersPerSecondSquared = 400.0F;
   float airControlMultiplier = 1.0F;
   float inputStepSeconds = 1.0F / 60.0F;
 
@@ -74,7 +76,7 @@ struct ProductGameplayMovementTuningFieldDescriptor {
   float step = 0.1F;
 };
 
-inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 11U>
+inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 12U>
     kProductGameplayMovementTuningFields{{
         {ProductGameplayMovementTuningField::WalkSpeed,
          "walk_speed_mps",
@@ -92,14 +94,22 @@ inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 11U>
          0.1F,
          18.0F,
          0.1F},
-        {ProductGameplayMovementTuningField::GroundResponse,
-         "ground_response",
-         "RESPONSE",
-         &ProductGameplayMovementTuning::groundResponseMultiplier,
+        {ProductGameplayMovementTuningField::GroundAcceleration,
+         "ground_acceleration_mps2",
+         "ACCEL",
+         &ProductGameplayMovementTuning::groundAccelerationMetersPerSecondSquared,
          ProductGameplayMovementTuningFieldKind::Scalar,
-         0.25F,
-         2.0F,
-         0.05F},
+         1.0F,
+         400.0F,
+         5.0F},
+        {ProductGameplayMovementTuningField::GroundDeceleration,
+         "ground_deceleration_mps2",
+         "STOP",
+         &ProductGameplayMovementTuning::groundDecelerationMetersPerSecondSquared,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         1.0F,
+         400.0F,
+         5.0F},
         {ProductGameplayMovementTuningField::AirControl,
          "air_control",
          "AIR CTRL",

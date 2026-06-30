@@ -39,9 +39,15 @@ void clearProductGameplayMovementTuning(ProductAppWindowState& window) {
   window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
 }
 
+void clearProductGameplayGroundVelocity(ProductAppWindowState& window) {
+  window.gameplayMovementGroundVelocityX = 0.0F;
+  window.gameplayMovementGroundVelocityZ = 0.0F;
+}
+
 void clearProductMenuOwnedTransientModes(ProductAppWindowState& window) {
   clearProductMapMakerMode(window);
   clearProductGameplayMovementTuning(window);
+  clearProductGameplayGroundVelocity(window);
 }
 
 void clearProductRoomEditorTransientModes(ProductAppWindowState& window) {

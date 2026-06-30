@@ -338,6 +338,8 @@ struct ProductAppWindowState {
   float gameplayMovementFinalZ = 0.0F;
   float gameplayMovementHorizontalDistanceMeters = 0.0F;
   float gameplayMovementVerticalDeltaMeters = 0.0F;
+  float gameplayMovementGroundVelocityX = 0.0F;
+  float gameplayMovementGroundVelocityZ = 0.0F;
   float gameplayMovementGradePercent = 0.0F;
   std::string gameplayMovementProfile =
       std::string{kProductGameplayMovementTuning.walkProfile};

@@ -400,6 +400,12 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   }
 
   // branch-gate: BG-1061
+  if (window.roomEditing.ready) {
+    window.gameplayMovementGroundVelocityX = 0.0F;
+    window.gameplayMovementGroundVelocityZ = 0.0F;
+  }
+
+  // branch-gate: BG-1061
   if (!acceptedEditorActions.entries.empty()) {
     applyProductWindowRoomEditorActions(window, acceptedEditorActions);
     result.actionApplied = true;

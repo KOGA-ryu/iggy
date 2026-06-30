@@ -29,6 +29,11 @@ void showMovementTuning(iggy3d::ProductAppWindowState& window) {
   window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
 }
 
+void retainGroundVelocity(iggy3d::ProductAppWindowState& window) {
+  window.gameplayMovementGroundVelocityX = 1.25F;
+  window.gameplayMovementGroundVelocityZ = -2.5F;
+}
+
 void showCollisionOverlay(iggy3d::ProductAppWindowState& window) {
   window.devCollisionOverlayVisible = true;
   window.devCollisionOverlayStatus = "dev_collision_overlay_enabled";
@@ -162,6 +167,7 @@ int main() {
 
   activateMapMaker(window);
   showMovementTuning(window);
+  retainGroundVelocity(window);
   showCollisionOverlay(window);
   settings.debugOverlayEnabled = true;
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::Resume);
@@ -171,6 +177,9 @@ int main() {
   ok &= expect(window.inputOwner == iggy3d::MenuOwner::Pause,
                "pause owns input");
   ok &= expect(window.gameplayInputSuppressed, "pause suppresses gameplay input");
+  ok &= expect(window.gameplayMovementGroundVelocityX == 0.0F &&
+                   window.gameplayMovementGroundVelocityZ == 0.0F,
+               "pause clears retained ground velocity");
   ok &= expect(window.productTransitionSessionPreserved,
                "pause keeps session active");
   ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
@@ -319,6 +328,7 @@ int main() {
   openProductPauseTransition(frontend, window, iggy3d::FrontendAction::ReturnToTitle);
   activateMapMaker(window);
   showMovementTuning(window);
+  retainGroundVelocity(window);
   showCollisionOverlay(window);
   showRoomEditorTransients(window);
   settings.debugOverlayEnabled = true;
@@ -328,6 +338,9 @@ int main() {
   ok &= expect(frontend.returnToTitleRequested, "return to title requested");
   ok &= expect(!window.gameplayActive, "return to title clears gameplay active");
   ok &= expect(!window.runtimeSessionCreated, "return to title clears session flag");
+  ok &= expect(window.gameplayMovementGroundVelocityX == 0.0F &&
+                   window.gameplayMovementGroundVelocityZ == 0.0F,
+               "return to title clears retained ground velocity");
   ok &= expect(window.inputOwner == iggy3d::MenuOwner::Starter,
                "return to title restores starter owner");
   ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
