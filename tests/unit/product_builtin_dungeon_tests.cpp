@@ -12,6 +12,7 @@
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
+#include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "runtime/player/PlayerPhysicsMovePlanner.hpp"
 #include "runtime/movement/MovementTraversalSlots.hpp"
 
@@ -84,6 +85,7 @@ constexpr ExpectedDungeonCounts kExpectedDungeons[] = {
     {"object_crate_room", 7U, 5U, 15U, 20U, 1U, 2U, 57U, 15U, 21U, 21U},
     {"movement_gym", 45U, 23U, 776U, 259U, 10U, 5U, 1318U, 780U, 269U, 269U},
     {"movement_wall_run_corridor", 24U, 6U, 88U, 56U, 0U, 2U, 200U, 88U, 56U, 56U},
+    {"movement_test_lab_v0_1", 64U, 17U, 930U, 158U, 22U, 2U, 1277U, 933U, 172U, 172U},
     {"slope_gym", 19U, 9U, 119U, 52U, 0U, 3U, 223U, 119U, 52U, 52U},
     {"layered_jump_gym", 12U, 8U, 274U, 0U, 0U, 16U, 274U, 274U, 0U, 0U},
 };
@@ -123,10 +125,8 @@ const iggy3d::RoomSpatialSurface* findSurface(const iggy3d::RoomAsset& room,
 
 iggy3d::ProductAsciiRoomAuthoringResult buildDungeonAuthoring(
     const iggy3d::ProductBuiltinDungeonDefinition& dungeon) {
-  iggy3d::ProductAsciiRoomAuthoringRequest request;
-  request.sourceText = std::string{dungeon.asciiRoomText};
-  request.roomId = std::string{dungeon.roomId};
-  request.sourceName = std::string{dungeon.sourceName};
+  iggy3d::ProductAsciiRoomAuthoringRequest request =
+      iggy3d::productBuiltinDungeonAuthoringRequest(dungeon);
   return iggy3d::buildProductAsciiRoomAuthoring(request);
 }
 
@@ -137,10 +137,8 @@ iggy3d::ProductActiveRoomState buildDungeonActiveRoom(std::string_view roomId) {
     return {};
   }
 
-  iggy3d::ProductAsciiRoomAuthoringRequest request;
-  request.sourceText = std::string{dungeon->asciiRoomText};
-  request.roomId = std::string{dungeon->roomId};
-  request.sourceName = std::string{dungeon->sourceName};
+  iggy3d::ProductAsciiRoomAuthoringRequest request =
+      iggy3d::productBuiltinDungeonAuthoringRequest(*dungeon);
   const iggy3d::ProductAsciiRoomAuthoringResult authoring =
       iggy3d::buildProductAsciiRoomAuthoring(request);
   return iggy3d::buildProductActiveRoomFromAsciiAuthoring(request, authoring);
@@ -203,7 +201,7 @@ bool catalogExposesSelectableDungeons() {
   const bool previousReturnsLoopKeep =
       draft.asciiRoomId == "loop_keep_ascii" && draft.worldName == "Loop Keep";
 
-  return expect(catalog.size() == 12U, "catalog size") &&
+  return expect(catalog.size() == 13U, "catalog size") &&
          expect(startsOnLoopKeep, "default starts loop keep") &&
          expect(nextOk, "next select ok") &&
          expect(nextIsGatehouse, "next selects gatehouse") &&
@@ -233,6 +231,9 @@ bool catalogExposesSelectableDungeons() {
          expect(iggy3d::findProductBuiltinDungeonByRoomId(
                     "movement_wall_run_corridor") != nullptr,
                 "find movement wall run corridor") &&
+         expect(iggy3d::findProductBuiltinDungeonByRoomId(
+                    "movement_test_lab_v0_1") != nullptr,
+                "find movement test lab") &&
          expect(iggy3d::findProductBuiltinDungeonByRoomId(
                     "slope_gym") != nullptr,
                 "find slope gym") &&
@@ -379,6 +380,29 @@ std::size_t countMeshesWithRole(const iggy3d::RoomAsset& room,
     }
   }
   return count;
+}
+
+std::size_t countAuthoredObjectsWithTag(
+    const iggy3d::SaveAuthoredRoomSection& authored,
+    std::string_view tag) {
+  std::size_t count = 0U;
+  for (const iggy3d::SaveAuthoredRoomObjectRecord& object : authored.objects) {
+    if (hasTag(object.semantics.traversalTags, tag)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+const iggy3d::SaveAuthoredRoomObjectRecord* findAuthoredObject(
+    const iggy3d::SaveAuthoredRoomSection& authored,
+    std::string_view id) {
+  for (const iggy3d::SaveAuthoredRoomObjectRecord& object : authored.objects) {
+    if (object.id == id) {
+      return &object;
+    }
+  }
+  return nullptr;
 }
 
 const iggy3d::RoomStaticMeshAsset* findMesh(const iggy3d::RoomAsset& room,
@@ -542,6 +566,127 @@ bool wallRunCorridorBuildsLongRunnableWallCollision() {
          expect(surfaces != nullptr, "wall run corridor collision pointer");
 }
 
+bool movementTestLabBuildsDescriptorObjectsAndCollision() {
+  const ExpectedDungeonCounts* expected =
+      expectedCountsFor("movement_test_lab_v0_1");
+  const iggy3d::ProductBuiltinDungeonDefinition* dungeon =
+      iggy3d::findProductBuiltinDungeonByRoomId("movement_test_lab_v0_1");
+  const iggy3d::ProductAsciiRoomAuthoringRequest request =
+      dungeon == nullptr ? iggy3d::ProductAsciiRoomAuthoringRequest{}
+                         : iggy3d::productBuiltinDungeonAuthoringRequest(*dungeon);
+  const iggy3d::ProductAsciiRoomAuthoringResult authoring =
+      dungeon == nullptr ? iggy3d::ProductAsciiRoomAuthoringResult{}
+                         : iggy3d::buildProductAsciiRoomAuthoring(request);
+  const iggy3d::ProductActiveRoomState active =
+      buildDungeonActiveRoom("movement_test_lab_v0_1");
+  const iggy3d::ProductActiveRoomCollisionState collision =
+      iggy3d::buildProductActiveRoomCollision(active);
+  const iggy3d::SpatialSurfaceSet* surfaces =
+      iggy3d::productActiveRoomCollisionSurfaces(collision);
+  const iggy3d::RoomStaticMeshAsset* wallRunMesh =
+      findMesh(active.room,
+               "movement_lab_wall_run_corridor_left_wall_run_surface");
+  const iggy3d::RoomStaticMeshAsset* ledgeMesh =
+      findMesh(active.room, "movement_lab_ledge_mantle_lane_mid_ledge");
+  const iggy3d::RoomSpatialSurface* wallRunSurface =
+      findSurface(active.room,
+                  "movement_lab_wall_run_corridor_left_wall_run_surface_actor_blocker");
+  const iggy3d::RoomSpatialSurface* ledgeTop =
+      findSurface(active.room,
+                  "movement_lab_ledge_mantle_lane_mid_ledge_walkable_top");
+  const iggy3d::SaveAuthoredRoomObjectRecord* snapPlaceholder =
+      findAuthoredObject(authoring.authoredRoom.authoredRoom,
+                         "movement_lab_ledge_mantle_lane_snap_volume_placeholder");
+  const iggy3d::ProductPrimitiveDrawList drawList =
+      iggy3d::buildProductPrimitiveDrawList(nullptr, nullptr, &active.room, &collision);
+
+  return expect(expected != nullptr, "movement lab expected counts") &&
+         expect(dungeon != nullptr, "movement lab dungeon exists") &&
+         expect(request.injectMovementTestLabObjects,
+                "movement lab request injects descriptors") &&
+         expect(dungeon != nullptr &&
+                    std::string_view{dungeon->asciiRoomText}.find('C') ==
+                        std::string_view::npos,
+                "movement lab footprint has no crate glyph") &&
+         expect(dungeon != nullptr &&
+                    std::string_view{dungeon->asciiRoomText}.find('L') ==
+                        std::string_view::npos,
+                "movement lab footprint has no ledge glyph") &&
+         expect(dungeon != nullptr &&
+                    std::string_view{dungeon->asciiRoomText}.find('J') ==
+                        std::string_view::npos,
+                "movement lab footprint has no wall-jump glyph") &&
+         expect(authoring.ok, "movement lab authoring ok") &&
+         expect(authoring.objectCount == expected->objectCount,
+                "movement lab object count") &&
+         expect(authoring.markerCount == expected->markerCount,
+                "movement lab marker count") &&
+         expect(countAuthoredObjectsWithTag(authoring.authoredRoom.authoredRoom,
+                                            "flat_speed_lane") == 4U,
+                "flat lane object count") &&
+         expect(countAuthoredObjectsWithTag(authoring.authoredRoom.authoredRoom,
+                                            "jump_coyote_lane") == 5U,
+                "jump lane object count") &&
+         expect(countAuthoredObjectsWithTag(authoring.authoredRoom.authoredRoom,
+                                            "wall_run_corridor") == 4U,
+                "wall run lane object count") &&
+         expect(countAuthoredObjectsWithTag(authoring.authoredRoom.authoredRoom,
+                                            "collision_slide_lane") == 5U,
+                "collision lane object count") &&
+         expect(countAuthoredObjectsWithTag(authoring.authoredRoom.authoredRoom,
+                                            "ledge_mantle_lane") == 4U,
+                "ledge lane object count") &&
+         expect(snapPlaceholder != nullptr, "snap placeholder authored object") &&
+         expect(snapPlaceholder == nullptr ||
+                    !snapPlaceholder->semantics.blocksActor,
+                "snap placeholder nonblocking") &&
+         expect(active.loaded, "movement lab active room loaded") &&
+         expect(active.roomId == "movement_test_lab_v0_1",
+                "movement lab room id") &&
+         expect(active.authoredFloorCount == expected->floorCount,
+                "movement lab floor count") &&
+         expect(active.authoredWallCount == expected->wallCount,
+                "movement lab wall count") &&
+         expect(active.authoredObjectCount == expected->objectCount,
+                "movement lab active object count") &&
+         expect(active.staticMeshCount == 1110U,
+                "movement lab static mesh count") &&
+         expect(countMeshesWithRole(active.room, "prop") == 19U,
+                "movement lab prop mesh count") &&
+         expect(countMeshesWithRole(active.room, "ledge") == 3U,
+                "movement lab ledge mesh count") &&
+         expect(wallRunMesh != nullptr, "movement lab wall run mesh") &&
+         expect(wallRunMesh == nullptr || wallRunMesh->meshId == "stone_wall_panel",
+                "movement lab wall run asset") &&
+         expect(ledgeMesh != nullptr, "movement lab ledge mesh") &&
+         expect(ledgeMesh == nullptr || ledgeMesh->role == "ledge",
+                "movement lab ledge role") &&
+         expect(collision.ready, "movement lab collision ready") &&
+         expect(collision.querySurfaceCount == expected->spatialSurfaceCount,
+                "movement lab collision surface count") &&
+         expect(collision.walkableSurfaceCount == expected->walkableSurfaceCount,
+                "movement lab walkable surface count") &&
+         expect(collision.actorBlockerSurfaceCount ==
+                    expected->actorBlockerSurfaceCount,
+                "movement lab actor blocker count") &&
+         expect(collision.projectileBlockerSurfaceCount ==
+                    expected->projectileBlockerSurfaceCount,
+                "movement lab projectile blocker count") &&
+         expect(surfaces != nullptr, "movement lab collision pointer") &&
+         expect(wallRunSurface != nullptr, "movement lab wall run surface") &&
+         expect(wallRunSurface == nullptr ||
+                    hasTag(wallRunSurface->traversalTags, "wall_run"),
+                "movement lab wall run tag") &&
+         expect(wallRunSurface == nullptr || wallRunSurface->blocksActor,
+                "movement lab wall run blocks actor") &&
+         expect(ledgeTop != nullptr, "movement lab ledge top surface") &&
+         expect(ledgeTop == nullptr || hasTag(ledgeTop->traversalTags, "clamber"),
+                "movement lab ledge clamber tag") &&
+         expect(drawList.roomVisible, "movement lab draw room visible") &&
+         expect(drawList.propTileCount == expected->objectCount,
+                "movement lab primitive prop proof");
+}
+
 bool slopeGymBuildsRampSurfaces() {
   const ExpectedDungeonCounts* expected = expectedCountsFor("slope_gym");
   const iggy3d::ProductBuiltinDungeonDefinition* dungeon =
@@ -678,6 +823,7 @@ int main() {
                       objectCrateRoomBuildsVisiblePropAndCollision() &&
                       movementGymBuildsScaledJumpAndClamberObjects() &&
                       wallRunCorridorBuildsLongRunnableWallCollision() &&
+                      movementTestLabBuildsDescriptorObjectsAndCollision() &&
                       slopeGymBuildsRampSurfaces() &&
                       layeredJumpGymBuildsStackedFloors() &&
                       physicsPlannerUsesTestRooms();

@@ -24,6 +24,7 @@ struct ProductAsciiRoomAuthoringRequest {
   bool centerOnOrigin = true;
   std::int32_t storyIndex = 0;
   bool emitAssetText = true;
+  bool injectMovementTestLabObjects = false;
   AsciiRoomAssetTextConfig assetTextConfig;
 };
 

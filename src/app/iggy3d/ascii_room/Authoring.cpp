@@ -1,7 +1,10 @@
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 
+#include <iterator>
 #include <string>
 #include <utility>
+
+#include "app/iggy3d/world/MovementTestLab.hpp"
 
 namespace iggy3d {
 
@@ -108,6 +111,20 @@ ProductAsciiRoomAuthoringResult buildProductAsciiRoomAuthoring(
     const std::string reason = result.authoredRoom.reasonCode;
     return failedResult(std::move(result), "authored_room", status, reason);
   }
+  ProductMovementTestLabBuildConfig movementLabConfig;
+  movementLabConfig.tileSizeMeters =
+      request.tileSizeMeters * result.source.tileScaleMeters;
+  movementLabConfig.centerOnOrigin = request.centerOnOrigin;
+  movementLabConfig.storyIndex = request.storyIndex;
+  movementLabConfig.enabled = request.injectMovementTestLabObjects;
+  std::vector<SaveAuthoredRoomObjectRecord> movementLabObjects =
+      buildProductMovementTestLabObjects(result.grid.grid, movementLabConfig);
+  result.authoredRoom.authoredRoom.objects.insert(
+      result.authoredRoom.authoredRoom.objects.end(),
+      std::make_move_iterator(movementLabObjects.begin()),
+      std::make_move_iterator(movementLabObjects.end()));
+  result.authoredRoom.objectCount =
+      result.authoredRoom.authoredRoom.objects.size();
 
   result.roomAsset =
       buildRoomAssetFromAsciiRoom(result.authoredRoom,

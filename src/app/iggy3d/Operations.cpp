@@ -72,12 +72,7 @@ std::filesystem::path defaultProductPackagePath(const ProductAppOptions& options
 
 ProductAsciiRoomAuthoringRequest productAsciiRoomAuthoringRequestFromWorldSetup(
     const WorldSetupDraft& draft) {
-  ProductAsciiRoomAuthoringRequest request;
-  request.sourceText = draft.asciiRoomText;
-  request.roomId = draft.asciiRoomId;
-  request.sourceName = draft.asciiRoomSourceName;
-  request.centerOnOrigin = false;
-  return request;
+  return productWorldSetupAuthoringRequest(draft);
 }
 
 bool createProductSessionFromPackage(const PackageLoadResult& package,

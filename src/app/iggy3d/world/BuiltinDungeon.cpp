@@ -4,6 +4,8 @@
 #include <cstddef>
 #include <string>
 
+#include "app/iggy3d/world/MovementTestLab.hpp"
+
 namespace iggy3d {
 namespace {
 
@@ -116,6 +118,26 @@ constexpr std::string_view kMovementWallRunCorridorText =
     "#......................#\n"
     "########################\n";
 
+constexpr std::string_view kMovementTestLabText =
+    "*2\n"
+    "################################################################\n"
+    "#P............................................................E#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "#..............................................................#\n"
+    "################################################################\n";
+
 constexpr std::string_view kSlopeGymText =
     "*5\n"
     "###################\n"
@@ -157,7 +179,7 @@ constexpr std::string_view kLayeredJumpGymText =
     "............\n"
     "..........E.\n";
 
-constexpr std::array<ProductBuiltinDungeonDefinition, 12> kCatalog = {{
+constexpr std::array<ProductBuiltinDungeonDefinition, 13> kCatalog = {{
     ProductBuiltinDungeonDefinition{
         "Loop Keep",
         "loop_keep_ascii",
@@ -217,6 +239,12 @@ constexpr std::array<ProductBuiltinDungeonDefinition, 12> kCatalog = {{
         "movement_wall_run_corridor",
         "fixtures/rooms/ascii/movement_wall_run_corridor.iggyroom.txt",
         kMovementWallRunCorridorText,
+    },
+    ProductBuiltinDungeonDefinition{
+        "Movement Test Lab v0.1",
+        "movement_test_lab_v0_1",
+        "fixtures/rooms/ascii/movement_test_lab_v0_1.iggyroom.txt",
+        kMovementTestLabText,
     },
     ProductBuiltinDungeonDefinition{
         "Slope Gym",
@@ -284,6 +312,33 @@ std::string_view productBuiltinDungeonSourceName() {
 
 std::string_view productBuiltinDungeonAsciiRoomText() {
   return productDefaultBuiltinDungeon().asciiRoomText;
+}
+
+ProductAsciiRoomAuthoringRequest productBuiltinDungeonAuthoringRequest(
+    const ProductBuiltinDungeonDefinition& dungeon) {
+  ProductAsciiRoomAuthoringRequest request;
+  request.sourceText = std::string(dungeon.asciiRoomText);
+  request.roomId = std::string(dungeon.roomId);
+  request.sourceName = std::string(dungeon.sourceName);
+  request.injectMovementTestLabObjects =
+      productMovementTestLabRoomId(dungeon.roomId);
+  return request;
+}
+
+ProductAsciiRoomAuthoringRequest productWorldSetupAuthoringRequest(
+    const WorldSetupDraft& draft) {
+  ProductAsciiRoomAuthoringRequest request;
+  request.sourceText = draft.asciiRoomText;
+  request.roomId = draft.asciiRoomId;
+  request.sourceName = draft.asciiRoomSourceName;
+  request.centerOnOrigin = false;
+  const ProductBuiltinDungeonDefinition* dungeon =
+      findProductBuiltinDungeonByRoomId(draft.asciiRoomId);
+  const bool matchesBuiltin =
+      dungeon != nullptr && dungeon->asciiRoomText == draft.asciiRoomText;
+  request.injectMovementTestLabObjects =
+      matchesBuiltin && productMovementTestLabRoomId(draft.asciiRoomId);
+  return request;
 }
 
 bool applyProductBuiltinDungeonToDraft(std::size_t index,

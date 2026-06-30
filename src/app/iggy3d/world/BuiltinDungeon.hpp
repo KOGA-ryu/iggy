@@ -5,6 +5,7 @@
 #include <string_view>
 
 #include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/ascii_room/Authoring.hpp"
 
 namespace iggy3d {
 
@@ -25,6 +26,11 @@ std::string_view productBuiltinDungeonWorldTitle();
 std::string_view productBuiltinDungeonRoomId();
 std::string_view productBuiltinDungeonSourceName();
 std::string_view productBuiltinDungeonAsciiRoomText();
+
+ProductAsciiRoomAuthoringRequest productBuiltinDungeonAuthoringRequest(
+    const ProductBuiltinDungeonDefinition& dungeon);
+ProductAsciiRoomAuthoringRequest productWorldSetupAuthoringRequest(
+    const WorldSetupDraft& draft);
 
 bool applyProductBuiltinDungeonToDraft(std::size_t index,
                                        WorldSetupDraft& draft);
