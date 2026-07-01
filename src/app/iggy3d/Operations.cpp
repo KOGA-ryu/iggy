@@ -272,25 +272,12 @@ void recordProductSaveLoadResult(const ProductSaveLoadResult& loaded,
 void recordSavedRoomMarkerBindingResult(
     const ProductSavedRoomMarkerBindingResult& bound,
     ProductAppWindowState& window) {
-  window.savedMarkerBindStatus = bound.status;
-  window.savedMarkerBindReasonCode = bound.reasonCode;
-  window.savedMarkerBindRequested = bound.requested;
-  window.savedMarkerBindSessionReplaced = bound.sessionReplaced;
-  window.savedMarkerBindRoomId = bound.roomId.empty() ? "none" : bound.roomId;
-  window.savedMarkerBindMarkerCount = bound.markerCount;
-  window.savedMarkerBindSeedEntityCount = bound.seedEntityCount;
-  window.savedMarkerBindAddedEntityCount = bound.addedEntityCount;
-  window.savedMarkerBindExistingEntityCount = bound.existingEntityCount;
-  window.savedMarkerBindAddedObjectiveCount = bound.addedObjectiveCount;
-  window.savedMarkerBindExistingObjectiveCount = bound.existingObjectiveCount;
-  window.savedMarkerBindAddedCombatantCount = bound.addedCombatantCount;
-  window.savedMarkerBindExistingCombatantCount = bound.existingCombatantCount;
-  window.savedMarkerBindPickupCount = bound.pickupCount;
-  window.savedMarkerBindDoorCount = bound.doorCount;
-  window.savedMarkerBindMarkerEntityCount = bound.markerEntityCount;
-  window.savedMarkerBindNpcCount = bound.npcCount;
-  window.savedMarkerBindPreviousHash = bound.previousHash;
-  window.savedMarkerBindBoundHash = bound.boundHash;
+  window.savedMarkerBind = bound;
+  // Normalize an empty room id to "none" at the producer so ReceiptBuilder
+  // stays a straight read of the typed result (preserves the prior receipt).
+  if (window.savedMarkerBind.roomId.empty()) {
+    window.savedMarkerBind.roomId = "none";
+  }
 }
 
 void clearProductGameplayLaunchState(std::optional<Session>& activeSession,

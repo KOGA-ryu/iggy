@@ -16,6 +16,7 @@
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/view/ViewportState.hpp"
+#include "app/iggy3d/save/RoomMarkerBinding.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "render/RenderDiagnostics.hpp"
 
@@ -228,25 +229,10 @@ struct ProductAppWindowState {
   std::uint64_t productSaveLoadAuthoredWallCount = 0;
   std::uint64_t productSaveLoadAuthoredObjectCount = 0;
   std::uint64_t productSaveLoadAuthoredMarkerCount = 0;
-  std::string savedMarkerBindStatus = "not_requested";
-  std::string savedMarkerBindReasonCode = "not_requested";
-  bool savedMarkerBindRequested = false;
-  bool savedMarkerBindSessionReplaced = false;
-  std::string savedMarkerBindRoomId = "none";
-  std::uint64_t savedMarkerBindMarkerCount = 0;
-  std::uint64_t savedMarkerBindSeedEntityCount = 0;
-  std::uint64_t savedMarkerBindAddedEntityCount = 0;
-  std::uint64_t savedMarkerBindExistingEntityCount = 0;
-  std::uint64_t savedMarkerBindAddedObjectiveCount = 0;
-  std::uint64_t savedMarkerBindExistingObjectiveCount = 0;
-  std::uint64_t savedMarkerBindAddedCombatantCount = 0;
-  std::uint64_t savedMarkerBindExistingCombatantCount = 0;
-  std::uint64_t savedMarkerBindPickupCount = 0;
-  std::uint64_t savedMarkerBindDoorCount = 0;
-  std::uint64_t savedMarkerBindMarkerEntityCount = 0;
-  std::uint64_t savedMarkerBindNpcCount = 0;
-  std::uint64_t savedMarkerBindPreviousHash = 0;
-  std::uint64_t savedMarkerBindBoundHash = 0;
+  // Typed result stored directly (was a 19-field string mirror flattened by
+  // the orchestration and read back by ReceiptBuilder). Its defaults match the
+  // former flat-field defaults, so the emitted receipt is unchanged.
+  ProductSavedRoomMarkerBindingResult savedMarkerBind;
   std::string selectedProductSaveId = "none";
   bool selectedProductSaveEnabled = false;
   std::string selectedProductSaveStatus = "none";
