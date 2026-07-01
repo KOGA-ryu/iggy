@@ -804,61 +804,68 @@ void emitDeleteConfirmContent(ProductUiDrawList& list) {
 
 void emitSettingsContent(ProductUiDrawList& list,
                          FrontendSettingsTab selectedTab) {
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {450.0F, 128.0F, 360.0F, 42.0F},
-           makeStarterSemanticId("content.settings.title"),
-           "SETTINGS");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {452.0F, 185.0F, 520.0F, 26.0F},
-           makeStarterSemanticId("content.settings.instructions"),
-           "SELECT A SETTINGS CATEGORY");
+  // Rebuilt from the L1 widget layer (docs/ui/ui_architecture.md).
+  // Emission-preserving: same rects/tones/ids/order as the hand-emit, so the
+  // draw-list receipt stays byte-identical. Designated initializers name each
+  // field so a semanticId/text or selected/enabled transposition is a compile
+  // mismatch, not a silent swap. The BACK action widget also emits a hit region.
+  WidgetOutput out;
+  emit(UiText{.rect = {450.0F, 128.0F, 360.0F, 42.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.settings.title"),
+              .text = "SETTINGS"},
+       out);
+  emit(UiText{.rect = {452.0F, 185.0F, 520.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.settings.instructions"),
+              .text = "SELECT A SETTINGS CATEGORY"},
+       out);
 
   float y = 230.0F;
   for (const FrontendSettingsTab tab : settingsTabOrder()) {
     const bool selected = tab == selectedTab;
-    emitText(list,
-             // branch-gate: BG-1073
-             selected ? ProductUiTone::Accent : ProductUiTone::TextMuted,
-             {458.0F, y, 280.0F, 26.0F},
-             makeStarterSemanticId("content.settings.tab." +
-                                   std::string(frontendSettingsTabName(tab))),
-             frontendSettingsTabName(tab),
-             FrontendAction::None,
-             selected,
-             true);
+    emit(UiText{.rect = {458.0F, y, 280.0F, 26.0F},
+                // branch-gate: BG-1073
+                .tone = selected ? ProductUiTone::Accent : ProductUiTone::TextMuted,
+                .semanticId = makeStarterSemanticId(
+                    "content.settings.tab." +
+                    std::string(frontendSettingsTabName(tab))),
+                .text = std::string(frontendSettingsTabName(tab)),
+                .selected = selected,
+                .enabled = true},
+         out);
     y += 34.0F;
   }
 
-  emitText(list,
-           ProductUiTone::Accent,
-           {850.0F, 230.0F, 180.0F, 26.0F},
-           makeStarterSemanticId("content.settings.current_label"),
-           "CURRENT");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {850.0F, 272.0F, 300.0F, 26.0F},
-           makeStarterSemanticId("content.settings.current_input"),
-           "INPUT AUTO");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {850.0F, 304.0F, 300.0F, 26.0F},
-           makeStarterSemanticId("content.settings.current_look"),
-           "LOOK 1.000");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {850.0F, 336.0F, 300.0F, 26.0F},
-           makeStarterSemanticId("content.settings.current_camera"),
-           "CAMERA FIRST PERSON");
-  emitText(list,
-           ProductUiTone::Accent,
-           {850.0F, 394.0F, 100.0F, 26.0F},
-           makeStarterSemanticId("content.settings.back"),
-           "BACK",
-           FrontendAction::Back,
-           false,
-           true);
+  emit(UiText{.rect = {850.0F, 230.0F, 180.0F, 26.0F},
+              .tone = ProductUiTone::Accent,
+              .semanticId = makeStarterSemanticId("content.settings.current_label"),
+              .text = "CURRENT"},
+       out);
+  emit(UiText{.rect = {850.0F, 272.0F, 300.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.settings.current_input"),
+              .text = "INPUT AUTO"},
+       out);
+  emit(UiText{.rect = {850.0F, 304.0F, 300.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.settings.current_look"),
+              .text = "LOOK 1.000"},
+       out);
+  emit(UiText{.rect = {850.0F, 336.0F, 300.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.settings.current_camera"),
+              .text = "CAMERA FIRST PERSON"},
+       out);
+  emit(UiText{.rect = {850.0F, 394.0F, 100.0F, 26.0F},
+              .tone = ProductUiTone::Accent,
+              .semanticId = makeStarterSemanticId("content.settings.back"),
+              .text = "BACK",
+              .action = FrontendAction::Back,
+              .selected = false,
+              .enabled = true},
+       out);
+  appendWidgetOutput(list, out);
 }
 
 void emitDevToolsContent(ProductUiDrawList& list,
