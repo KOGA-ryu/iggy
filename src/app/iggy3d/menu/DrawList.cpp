@@ -871,61 +871,68 @@ void emitSettingsContent(ProductUiDrawList& list,
 void emitDevToolsContent(ProductUiDrawList& list,
                          FrontendDevToolsCategory selectedCategory) {
   const DevToolsMenuModel model = buildDevToolsMenuModel(selectedCategory);
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {450.0F, 128.0F, 360.0F, 42.0F},
-           makeStarterSemanticId("content.dev_tools.title"),
-           "DEV TOOLS");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {452.0F, 185.0F, 760.0F, 26.0F},
-           makeStarterSemanticId("content.dev_tools.function_keys"),
-           devToolsFunctionKeyHintLabel());
+  // Rebuilt from the L1 widget layer (docs/ui/ui_architecture.md).
+  // Emission-preserving: same rects/tones/ids/order as the hand-emit, so the
+  // draw-list receipt stays byte-identical. Designated initializers name each
+  // field so a semanticId/text or selected/enabled transposition is a compile
+  // mismatch, not a silent swap. The BACK action widget also emits a hit region.
+  WidgetOutput out;
+  emit(UiText{.rect = {450.0F, 128.0F, 360.0F, 42.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.dev_tools.title"),
+              .text = "DEV TOOLS"},
+       out);
+  emit(UiText{.rect = {452.0F, 185.0F, 760.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.dev_tools.function_keys"),
+              .text = std::string(devToolsFunctionKeyHintLabel())},
+       out);
 
   float y = 230.0F;
   for (const FrontendDevToolsCategory category : model.categories) {
     const bool selected = category == model.selected;
-    emitText(list,
-             // branch-gate: BG-1073
-             selected ? ProductUiTone::Accent : ProductUiTone::TextMuted,
-             {458.0F, y, 280.0F, 26.0F},
-             makeStarterSemanticId("content.dev_tools.category." +
-                                   std::string(frontendDevToolsCategoryName(category))),
-             devToolsCategoryLabel(category),
-             FrontendAction::None,
-             selected,
-             true);
+    emit(UiText{.rect = {458.0F, y, 280.0F, 26.0F},
+                // branch-gate: BG-1073
+                .tone = selected ? ProductUiTone::Accent : ProductUiTone::TextMuted,
+                .semanticId = makeStarterSemanticId(
+                    "content.dev_tools.category." +
+                    std::string(frontendDevToolsCategoryName(category))),
+                .text = std::string(devToolsCategoryLabel(category)),
+                .selected = selected,
+                .enabled = true},
+         out);
     y += 34.0F;
   }
 
-  emitText(list,
-           ProductUiTone::Accent,
-           {850.0F, 230.0F, 180.0F, 26.0F},
-           makeStarterSemanticId("content.dev_tools.readouts_label"),
-           "READOUTS");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {850.0F, 272.0F, 300.0F, 26.0F},
-           makeStarterSemanticId("content.dev_tools.runtime_state"),
-           "RUNTIME STATE");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {850.0F, 304.0F, 300.0F, 26.0F},
-           makeStarterSemanticId("content.dev_tools.input_owner"),
-           "INPUT OWNER");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {850.0F, 336.0F, 300.0F, 26.0F},
-           makeStarterSemanticId("content.dev_tools.renderer_status"),
-           "RENDERER STATUS");
-  emitText(list,
-           ProductUiTone::Accent,
-           {850.0F, 394.0F, 100.0F, 26.0F},
-           makeStarterSemanticId("content.dev_tools.back"),
-           "BACK",
-           FrontendAction::Back,
-           false,
-           true);
+  emit(UiText{.rect = {850.0F, 230.0F, 180.0F, 26.0F},
+              .tone = ProductUiTone::Accent,
+              .semanticId = makeStarterSemanticId("content.dev_tools.readouts_label"),
+              .text = "READOUTS"},
+       out);
+  emit(UiText{.rect = {850.0F, 272.0F, 300.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.dev_tools.runtime_state"),
+              .text = "RUNTIME STATE"},
+       out);
+  emit(UiText{.rect = {850.0F, 304.0F, 300.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.dev_tools.input_owner"),
+              .text = "INPUT OWNER"},
+       out);
+  emit(UiText{.rect = {850.0F, 336.0F, 300.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.dev_tools.renderer_status"),
+              .text = "RENDERER STATUS"},
+       out);
+  emit(UiText{.rect = {850.0F, 394.0F, 100.0F, 26.0F},
+              .tone = ProductUiTone::Accent,
+              .semanticId = makeStarterSemanticId("content.dev_tools.back"),
+              .text = "BACK",
+              .action = FrontendAction::Back,
+              .selected = false,
+              .enabled = true},
+       out);
+  appendWidgetOutput(list, out);
 }
 
 ProductUiDrawList rejectedList(const ProductUiDrawListRequest& request,
