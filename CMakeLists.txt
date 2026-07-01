@@ -94,6 +94,7 @@ target_sources(iggy3d
     src/app/iggy3d/debug/TopDownMapOverlay.cpp
     src/app/iggy3d/menu/DrawList.cpp
     src/app/iggy3d/menu/Notebook.cpp
+    src/app/iggy3d/menu/PauseUi.cpp
     src/app/iggy3d/ui/Widget.cpp
     src/app/iggy3d/view/ViewportFraming.cpp
     src/app/iggy3d/window/FramePresenter.cpp

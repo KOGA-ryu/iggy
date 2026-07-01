@@ -142,6 +142,11 @@ iggy3d_add_unit_test(product_ui_theme_tests
 set_tests_properties(product_ui_theme_tests PROPERTIES
   LABELS "unit;app;product;ui;theme;iggy3d")
 
+iggy3d_add_unit_test(product_pause_ui_draw_list_tests
+  tests/unit/product_pause_ui_draw_list_tests.cpp)
+set_tests_properties(product_pause_ui_draw_list_tests PROPERTIES
+  LABELS "unit;app;product;ui;pause;iggy3d")
+
 iggy3d_add_unit_test(product_automation_command_registry_tests
   tests/unit/product_automation_command_registry_tests.cpp)
 set_tests_properties(product_automation_command_registry_tests PROPERTIES
