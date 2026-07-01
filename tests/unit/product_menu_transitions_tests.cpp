@@ -66,14 +66,14 @@ void showRoomEditorTransients(iggy3d::ProductAppWindowState& window) {
   window.roomEditorPreviewBeforeDrawCount = 7;
   window.roomEditorPreviewAfterDrawCount = 8;
   window.roomEditorPreviewOptimizedDrawDelta = 1;
-  window.roomEditorHudVisible = true;
-  window.roomEditorHudStatus = "room_editor_hud_visible";
-  window.roomEditorHudReasonCode = window.roomEditorHudStatus;
-  window.roomEditorHudPreviewActive = true;
-  window.roomEditorHudPreviewStatus = "room_editor_preview_ready";
-  window.roomEditorHudPreviewCandidateId = "preview_floor";
-  window.roomEditorHudPreviewOptimizedDrawDelta = 1;
-  window.roomEditorHudLineCount = 4;
+  window.roomEditorHud.visible = true;
+  window.roomEditorHud.status = "room_editor_hud_visible";
+  window.roomEditorHud.reasonCode = window.roomEditorHud.status;
+  window.roomEditorHud.previewActive = true;
+  window.roomEditorHud.previewStatus = "room_editor_preview_ready";
+  window.roomEditorHud.previewCandidateId = "preview_floor";
+  window.roomEditorHud.previewOptimizedDrawDelta = 1;
+  window.roomEditorHud.lineCount = 4;
   window.viewport.productDrawRoomEditorCursorVisible = true;
   window.viewport.productDrawRoomEditorCursorCount = 1;
   window.viewport.productDrawRoomEditorPreviewVisible = true;
@@ -389,9 +389,9 @@ int main() {
   ok &= expect(window.roomEditorPreviewStatus ==
                    "room_editor_preview_not_requested",
                "return to title clears room editor preview status");
-  ok &= expect(!window.roomEditorHudVisible,
+  ok &= expect(!window.roomEditorHud.visible,
                "return to title clears room editor hud");
-  ok &= expect(window.roomEditorHudStatus == "room_editor_hud_not_ready",
+  ok &= expect(window.roomEditorHud.status == "room_editor_hud_not_ready",
                "return to title room editor hud hidden status");
   ok &= expect(!window.viewport.productDrawRoomEditorCursorVisible,
                "return to title clears room editor cursor draw");

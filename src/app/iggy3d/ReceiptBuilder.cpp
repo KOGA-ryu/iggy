@@ -694,38 +694,39 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      std::to_string(
                          window.roomEditorPreviewOptimizedTriangleDelta));
   appendReceiptField(receipt, "room_editor_hud_visible",
-                     window.roomEditorHudVisible);
+                     window.roomEditorHud.visible);
   appendReceiptField(receipt, "room_editor_hud_status",
-                     window.roomEditorHudStatus);
+                     window.roomEditorHud.status);
   appendReceiptField(receipt, "room_editor_hud_reason_code",
-                     window.roomEditorHudReasonCode);
-  appendReceiptField(receipt, "room_editor_hud_tool", window.roomEditorHudTool);
+                     window.roomEditorHud.reasonCode);
+  appendReceiptField(receipt, "room_editor_hud_tool",
+                     window.roomEditorHud.toolName);
   appendReceiptField(receipt, "room_editor_hud_wall_direction",
-                     window.roomEditorHudWallDirection);
+                     window.roomEditorHud.wallDirectionName);
   appendReceiptField(receipt, "room_editor_hud_grid_x",
-                     std::to_string(window.roomEditorHudGridX));
+                     std::to_string(window.roomEditorHud.gridX));
   appendReceiptField(receipt, "room_editor_hud_grid_z",
-                     std::to_string(window.roomEditorHudGridZ));
+                     std::to_string(window.roomEditorHud.gridZ));
   appendReceiptField(receipt, "room_editor_hud_last_operation",
-                     window.roomEditorHudLastOperation);
+                     window.roomEditorHud.lastOperation);
   appendReceiptField(receipt, "room_editor_hud_last_operation_accepted",
-                     window.roomEditorHudLastOperationAccepted);
+                     window.roomEditorHud.lastOperationAccepted);
   appendReceiptField(receipt, "room_editor_hud_last_primitive_id",
-                     window.roomEditorHudLastPrimitiveId);
+                     window.roomEditorHud.lastPrimitiveId);
   appendReceiptField(receipt, "room_editor_hud_preview_active",
-                     window.roomEditorHudPreviewActive);
+                     window.roomEditorHud.previewActive);
   appendReceiptField(receipt, "room_editor_hud_preview_status",
-                     window.roomEditorHudPreviewStatus);
+                     window.roomEditorHud.previewStatus);
   appendReceiptField(receipt, "room_editor_hud_preview_candidate_id",
-                     window.roomEditorHudPreviewCandidateId);
+                     window.roomEditorHud.previewCandidateId);
   appendReceiptField(receipt, "room_editor_hud_preview_optimized_draw_delta",
                      std::to_string(
-                         window.roomEditorHudPreviewOptimizedDrawDelta));
+                         window.roomEditorHud.previewOptimizedDrawDelta));
   appendReceiptField(receipt, "room_editor_hud_preview_optimized_triangle_delta",
                      std::to_string(
-                         window.roomEditorHudPreviewOptimizedTriangleDelta));
+                         window.roomEditorHud.previewOptimizedTriangleDelta));
   appendReceiptField(receipt, "room_editor_hud_line_count",
-                     std::to_string(window.roomEditorHudLineCount));
+                     std::to_string(window.roomEditorHud.lineCount));
   appendReceiptField(receipt,
                      "save_browser_mode",
                      frontendSaveBrowserModeName(frontend.saveBrowserMode));

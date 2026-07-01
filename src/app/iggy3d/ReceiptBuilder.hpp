@@ -18,6 +18,7 @@
 #include "app/iggy3d/room_editor/Cursor.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
+#include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/view/ViewportState.hpp"
 #include "app/iggy3d/save/RoomMarkerBinding.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
@@ -191,22 +192,7 @@ struct ProductAppWindowState {
   std::int64_t roomEditorPreviewAvoidedTriangleCountDelta = 0;
   std::int64_t roomEditorPreviewOptimizedDrawDelta = 0;
   std::int64_t roomEditorPreviewOptimizedTriangleDelta = 0;
-  bool roomEditorHudVisible = false;
-  std::string roomEditorHudStatus = "room_editor_hud_not_ready";
-  std::string roomEditorHudReasonCode = "room_editor_hud_not_ready";
-  std::string roomEditorHudTool = "floor";
-  std::string roomEditorHudWallDirection = "up";
-  std::int32_t roomEditorHudGridX = 0;
-  std::int32_t roomEditorHudGridZ = 0;
-  std::string roomEditorHudLastOperation = "none";
-  bool roomEditorHudLastOperationAccepted = false;
-  std::string roomEditorHudLastPrimitiveId = "none";
-  bool roomEditorHudPreviewActive = false;
-  std::string roomEditorHudPreviewStatus = "room_editor_preview_not_requested";
-  std::string roomEditorHudPreviewCandidateId = "none";
-  std::int64_t roomEditorHudPreviewOptimizedDrawDelta = 0;
-  std::int64_t roomEditorHudPreviewOptimizedTriangleDelta = 0;
-  std::uint64_t roomEditorHudLineCount = 0;
+  ProductRoomEditorHud roomEditorHud;
   ProductActiveRoomState activeRoom;
   ProductActiveRoomCollisionState activeRoomCollision;
   std::string productSaveStatus = "not_requested";

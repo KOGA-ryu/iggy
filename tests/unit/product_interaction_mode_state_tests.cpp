@@ -88,7 +88,7 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
   window.roomEditorPreviewActive = true;
   window.roomEditorPreviewVisible = true;
   window.roomEditorOverlayVisible = true;
-  window.roomEditorHudVisible = true;
+  window.roomEditorHud.visible = true;
   window.viewport.productDrawRoomEditorCursorVisible = true;
   window.viewport.productDrawRoomEditorCursorCount = 1;
   const std::string activeRoomId = window.activeRoom.roomId;
@@ -117,7 +117,7 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
          expect(!window.roomEditorOverlayVisible, "room editor overlay hidden") &&
          expect(!window.roomEditorPreviewVisible, "room editor preview hidden") &&
          expect(!window.roomEditorPreviewActive, "room editor preview inactive") &&
-         expect(!window.roomEditorHudVisible, "room editor hud hidden") &&
+         expect(!window.roomEditorHud.visible, "room editor hud hidden") &&
          expect(!window.viewport.productDrawRoomEditorCursorVisible,
                 "room editor cursor draw hidden") &&
          expect(window.activeRoom.loaded, "active room still loaded") &&

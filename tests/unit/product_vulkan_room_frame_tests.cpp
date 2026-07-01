@@ -1244,7 +1244,7 @@ bool roomEditorSurfaceShowsEditorHudOnly() {
                 "editor surface preserves physics debug lines") &&
          expect(!projection.drawList.physicsDebugVisible,
                 "editor surface hides physics debug geometry") &&
-         expect(window.roomEditorHudVisible,
+         expect(window.roomEditorHud.visible,
                 "editor window records room editor HUD visible") &&
          expect(window.roomEditorOverlayVisible,
                 "editor window records room editor overlay visible") &&

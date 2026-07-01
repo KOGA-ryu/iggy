@@ -258,24 +258,7 @@ void copyProductRoomEditorOverlay(ProductAppWindowState& window,
 
 void copyProductRoomEditorHud(ProductAppWindowState& window,
                               const ProductRoomEditorHud& hud) {
-  window.roomEditorHudVisible = hud.visible;
-  window.roomEditorHudStatus = hud.status;
-  window.roomEditorHudReasonCode = hud.reasonCode;
-  window.roomEditorHudTool = hud.toolName;
-  window.roomEditorHudWallDirection = hud.wallDirectionName;
-  window.roomEditorHudGridX = hud.gridX;
-  window.roomEditorHudGridZ = hud.gridZ;
-  window.roomEditorHudLastOperation = hud.lastOperation;
-  window.roomEditorHudLastOperationAccepted = hud.lastOperationAccepted;
-  window.roomEditorHudLastPrimitiveId = hud.lastPrimitiveId;
-  window.roomEditorHudPreviewActive = hud.previewActive;
-  window.roomEditorHudPreviewStatus = hud.previewStatus;
-  window.roomEditorHudPreviewCandidateId = hud.previewCandidateId;
-  window.roomEditorHudPreviewOptimizedDrawDelta =
-      hud.previewOptimizedDrawDelta;
-  window.roomEditorHudPreviewOptimizedTriangleDelta =
-      hud.previewOptimizedTriangleDelta;
-  window.roomEditorHudLineCount = hud.lineCount;
+  window.roomEditorHud = hud;
 }
 
 void copyInteractionModeHud(ProductAppWindowState& window,
