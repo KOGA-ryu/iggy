@@ -224,15 +224,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "map_maker_grid_major_dot_count",
                      window.mapMakerGridMajorDotCount);
   appendReceiptField(receipt, "interaction_mode_hud_visible",
-                     window.interactionModeHudVisible);
+                     window.interactionModeHud.visible);
   appendReceiptField(receipt, "interaction_mode_hud_status",
-                     window.interactionModeHudStatus);
+                     window.interactionModeHud.status);
   appendReceiptField(receipt, "interaction_mode_hud_reason_code",
-                     window.interactionModeHudReasonCode);
+                     window.interactionModeHud.reasonCode);
   appendReceiptField(receipt, "interaction_mode_hud_mode",
-                     window.interactionModeHudMode);
+                     window.interactionModeHud.mode);
   appendReceiptField(receipt, "interaction_mode_hud_label",
-                     window.interactionModeHudLabel);
+                     window.interactionModeHud.label);
   appendReceiptField(receipt, "top_down_map_visible", window.topDownMapVisible);
   appendReceiptField(receipt, "top_down_map_purpose", window.topDownMapPurpose);
   appendReceiptField(receipt, "top_down_map_size", window.topDownMapSize);

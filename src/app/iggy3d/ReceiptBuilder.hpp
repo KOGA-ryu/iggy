@@ -12,6 +12,7 @@
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
+#include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
@@ -48,11 +49,7 @@ struct ProductAppWindowState {
   std::uint64_t mapMakerGridLayerCount = 0;
   std::uint64_t mapMakerGridDotCount = 0;
   std::uint64_t mapMakerGridMajorDotCount = 0;
-  bool interactionModeHudVisible = false;
-  std::string interactionModeHudStatus = "interaction_mode_hud_hidden";
-  std::string interactionModeHudReasonCode = "interaction_mode_hud_hidden";
-  std::string interactionModeHudMode = "player";
-  std::string interactionModeHudLabel = "player";
+  InteractionModeHud interactionModeHud;
   bool topDownMapVisible = false;
   std::string topDownMapPurpose = "hidden";
   std::string topDownMapSize = "hidden";

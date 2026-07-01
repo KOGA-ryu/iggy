@@ -285,11 +285,7 @@ void copyProductRoomEditorHud(ProductAppWindowState& window,
 
 void copyInteractionModeHud(ProductAppWindowState& window,
                                    const InteractionModeHud& hud) {
-  window.interactionModeHudVisible = hud.visible;
-  window.interactionModeHudStatus = hud.status;
-  window.interactionModeHudReasonCode = hud.reasonCode;
-  window.interactionModeHudMode = hud.mode;
-  window.interactionModeHudLabel = hud.label;
+  window.interactionModeHud = hud;
 }
 
 void copyTopDownMapOverlay(ProductAppWindowState& window,
