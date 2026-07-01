@@ -132,6 +132,11 @@ iggy3d_add_unit_test(product_ui_widget_tests
 set_tests_properties(product_ui_widget_tests PROPERTIES
   LABELS "unit;app;product;ui;widget;iggy3d")
 
+iggy3d_add_unit_test(product_notebook_ui_draw_list_tests
+  tests/unit/product_notebook_ui_draw_list_tests.cpp)
+set_tests_properties(product_notebook_ui_draw_list_tests PROPERTIES
+  LABELS "unit;app;product;ui;notebook;iggy3d")
+
 iggy3d_add_unit_test(product_automation_command_registry_tests
   tests/unit/product_automation_command_registry_tests.cpp)
 set_tests_properties(product_automation_command_registry_tests PROPERTIES
