@@ -147,6 +147,11 @@ iggy3d_add_unit_test(product_pause_ui_draw_list_tests
 set_tests_properties(product_pause_ui_draw_list_tests PROPERTIES
   LABELS "unit;app;product;ui;pause;iggy3d")
 
+iggy3d_add_unit_test(product_vulkan_pause_overlay_tests
+  tests/unit/product_vulkan_pause_overlay_tests.cpp)
+set_tests_properties(product_vulkan_pause_overlay_tests PROPERTIES
+  LABELS "unit;app;product;renderer;vulkan;pause;iggy3d")
+
 iggy3d_add_unit_test(product_automation_command_registry_tests
   tests/unit/product_automation_command_registry_tests.cpp)
 set_tests_properties(product_automation_command_registry_tests PROPERTIES

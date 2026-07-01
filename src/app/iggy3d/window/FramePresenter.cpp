@@ -9,6 +9,7 @@
 
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
+#include "app/iggy3d/menu/PauseUi.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "render/FrameInput.hpp"
 #include "render/debug/DebugHudText.hpp"
@@ -742,6 +743,29 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
           request.frontend.screen == FrontendScreen::DevOverlay &&
               frontendDevToolsOpen(request.frontend),
           request.frontend.devToolsCategory);
+      // In-game pause opens the character's journal: overlay the Journal-themed
+      // pause menu onto the frozen scene before the single submit. The Vulkan
+      // path renders no pause menu otherwise. Enablement mirrors makePauseRow.
+      // branch-gate: BG-1030
+      if (frontendPauseMenuOpen(request.frontend)) {
+        PauseMenuContext pauseContext;
+        pauseContext.pauseOpen = true;
+        pauseContext.runtimeSessionAvailable = request.window.gameplayActive;
+        pauseContext.saveRootWritable = !request.options.saveRoot.empty();
+        pauseContext.compatibleSaveCount = request.saves.slots.compatibleCount;
+        pauseContext.developerToolsEnabled = true;
+        pauseContext.activeRoomEditable = request.window.roomEditing.ready;
+        pauseContext.roomEditingReady = request.window.roomEditing.ready;
+        const PauseMenuModel pauseModel =
+            buildPauseMenuModel(pauseContext, request.frontend.selectedAction);
+        ProductPauseUiRequest pauseUiRequest;
+        pauseUiRequest.model = &pauseModel;
+        const ProductUiDrawList pauseUi =
+            buildProductPauseUiDrawList(pauseUiRequest);
+        appendPauseMenuOverlay(renderFrame, pauseUi,
+                               request.window.framesPresented + 1U,
+                               drawableExtent.width, drawableExtent.height);
+      }
       const RenderSubmitResult submit =
           request.renderer.vulkanRenderer.submitFrame(
               refreshProductVulkanGameplayFrameInput(renderFrame));
@@ -953,6 +977,33 @@ const FrameInput& refreshProductVulkanGameplayFrameInput(
   gameplayFrame.frame.ui.primitiveCount =
       gameplayFrame.rects.size() + gameplayFrame.textGlyphCount;
   return gameplayFrame.frame;
+}
+
+void appendPauseMenuOverlay(ProductVulkanGameplayFrame& gameplayFrame,
+                            const ProductUiDrawList& overlayUi,
+                            std::uint64_t frameIndex,
+                            std::uint32_t drawableWidth,
+                            std::uint32_t drawableHeight) {
+  // branch-gate: BG-1030
+  if (!overlayUi.ready) {
+    return;
+  }
+  // Convert the overlay draw list to rects + glyphs with the SAME machinery the
+  // starter menu uses — renderRectFor resolves the draw list's theme (Journal),
+  // and scaling uses the overlay's own virtual dimensions.
+  const ProductVulkanMenuFrame overlayFrame = buildProductVulkanStarterMenuFrame(
+      {&overlayUi, frameIndex, drawableWidth, drawableHeight});
+  // branch-gate: BG-1030
+  if (!overlayFrame.ready) {
+    return;
+  }
+  gameplayFrame.rects.insert(gameplayFrame.rects.end(),
+                             overlayFrame.rects.begin(),
+                             overlayFrame.rects.end());
+  gameplayFrame.textGlyphQuads.insert(gameplayFrame.textGlyphQuads.end(),
+                                      overlayFrame.textGlyphQuads.begin(),
+                                      overlayFrame.textGlyphQuads.end());
+  gameplayFrame.textGlyphCount += overlayFrame.textGlyphCount;
 }
 
 void presentProductWindowFrame(ProductWindowFramePresenterRequest request) {

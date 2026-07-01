@@ -76,6 +76,16 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
     FrontendDevToolsCategory devToolsCategory = FrontendDevToolsCategory::Session);
 const FrameInput& refreshProductVulkanGameplayFrameInput(
     ProductVulkanGameplayFrame& gameplayFrame);
+
+// Overlay an in-game menu draw list (e.g. the Journal-themed pause menu) onto a
+// gameplay frame's ui overlay, so it composites over the frozen 3D scene in the
+// same single submit. Reuses the menu-frame converter, so the draw list's theme
+// resolves at the render seam. No-op if the draw list is not ready.
+void appendPauseMenuOverlay(ProductVulkanGameplayFrame& gameplayFrame,
+                            const ProductUiDrawList& overlayUi,
+                            std::uint64_t frameIndex,
+                            std::uint32_t drawableWidth,
+                            std::uint32_t drawableHeight);
 void presentProductWindowFrame(ProductWindowFramePresenterRequest request);
 
 }  // namespace iggy3d
