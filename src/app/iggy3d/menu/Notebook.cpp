@@ -194,6 +194,7 @@ ProductUiDrawList buildProductNotebookUiDrawList(
   list.reasonCode = "product_notebook_ui_ready";
   list.virtualWidth = request.virtualWidth;
   list.virtualHeight = request.virtualHeight;
+  list.theme = ProductUiThemeId::Journal;  // the diegetic Moleskine skin
   list.selectedAction = std::string(productNotebookTabName(request.tab));
 
   WidgetOutput out;

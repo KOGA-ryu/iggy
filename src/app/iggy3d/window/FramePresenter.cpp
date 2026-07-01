@@ -57,7 +57,14 @@ RenderUiRect renderRectFor(const ProductUiPrimitive& primitive,
                            const ProductVulkanMenuFrameRequest& request,
                            float scaleX,
                            float scaleY) {
-  const ProductUiColor color = productUiToneColor(primitive.tone);
+  // Resolve the tone through the theme the draw list was built with — System for
+  // the starter/system shell, Journal (Moleskine) for the in-game diegetic
+  // surfaces. Defaults to System when no draw list is attached.
+  const ProductUiThemeId themeId = request.uiDrawList != nullptr
+                                       ? request.uiDrawList->theme
+                                       : ProductUiThemeId::System;
+  const ProductUiColor color =
+      productUiToneColor(primitive.tone, productUiTheme(themeId));
   RenderUiRect rect;
   rect.x = scaledOffset(primitive.rect.x, scaleX);
   rect.y = scaledOffset(primitive.rect.y, scaleY);

@@ -974,6 +974,63 @@ ProductUiColor productUiToneColor(ProductUiTone tone) {
   return toneDescriptor(tone).color;
 }
 
+namespace {
+
+// The System theme is exactly the long-standing descriptor palette, built from the
+// same table so it can never drift from productUiToneColor(tone) — every existing
+// receipt keeps its colours.
+ProductUiTheme makeSystemTheme() {
+  constexpr std::array<ProductUiTone, 9> kAllTones{
+      ProductUiTone::Surface,   ProductUiTone::SurfaceRaised,
+      ProductUiTone::TextPrimary, ProductUiTone::TextMuted,
+      ProductUiTone::Accent,    ProductUiTone::Selected,
+      ProductUiTone::Disabled,  ProductUiTone::Border,
+      ProductUiTone::Status};
+  ProductUiTheme theme;
+  for (const ProductUiTone tone : kAllTones) {
+    theme.tones[static_cast<std::size_t>(tone)] = toneDescriptor(tone).color;
+  }
+  return theme;
+}
+
+// The Journal (Moleskine) palette: light cream page, dark graphite ink, leather
+// cover, brass accents — the same tones the System theme resolves dark, resolved
+// as an aged notebook. Tune freely; this is data.
+ProductUiTheme makeJournalTheme() {
+  ProductUiTheme theme;
+  auto& t = theme.tones;
+  t[static_cast<std::size_t>(ProductUiTone::Surface)] = {0.169F, 0.125F, 0.094F, 1.0F};
+  t[static_cast<std::size_t>(ProductUiTone::SurfaceRaised)] = {0.925F, 0.890F, 0.804F, 1.0F};
+  t[static_cast<std::size_t>(ProductUiTone::TextPrimary)] = {0.247F, 0.224F, 0.180F, 1.0F};
+  t[static_cast<std::size_t>(ProductUiTone::TextMuted)] = {0.420F, 0.384F, 0.322F, 1.0F};
+  t[static_cast<std::size_t>(ProductUiTone::Accent)] = {0.725F, 0.541F, 0.235F, 1.0F};
+  t[static_cast<std::size_t>(ProductUiTone::Selected)] = {0.851F, 0.780F, 0.627F, 1.0F};
+  t[static_cast<std::size_t>(ProductUiTone::Disabled)] = {0.604F, 0.565F, 0.471F, 1.0F};
+  t[static_cast<std::size_t>(ProductUiTone::Border)] = {0.761F, 0.706F, 0.549F, 1.0F};
+  t[static_cast<std::size_t>(ProductUiTone::Status)] = {0.478F, 0.427F, 0.329F, 1.0F};
+  return theme;
+}
+
+}  // namespace
+
+const ProductUiTheme& productUiTheme(ProductUiThemeId id) {
+  static const ProductUiTheme kSystem = makeSystemTheme();
+  static const ProductUiTheme kJournal = makeJournalTheme();
+  // branch-gate: BG-1217
+  switch (id) {
+    case ProductUiThemeId::Journal:
+      return kJournal;
+    case ProductUiThemeId::System:
+      break;
+  }
+  return kSystem;
+}
+
+ProductUiColor productUiToneColor(ProductUiTone tone,
+                                  const ProductUiTheme& theme) {
+  return theme.tones[static_cast<std::size_t>(tone)];
+}
+
 ProductUiDrawList buildProductStarterUiDrawList(
     const ProductUiDrawListRequest& request) {
   const ProductStarterUiContext context = starterUiContextFor(request);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <string_view>
@@ -47,6 +48,22 @@ struct ProductUiColor {
   float a = 1.0F;
 };
 
+// L2 theme (docs/ui/ui_architecture.md): the SAME semantic tones resolve to a
+// different palette per surface. `System` is the dark UI shell (the starter menu
+// and system chrome); `Journal` is the cream/leather/graphite Moleskine skin worn
+// by the in-game, diegetic surfaces (the recon notebook and, once migrated, the
+// in-game/pause menu). A draw list is tagged with the theme that built it, and the
+// render seam resolves tones through that theme.
+enum class ProductUiThemeId : std::uint8_t {
+  System,
+  Journal,
+};
+
+// A theme is a palette: one colour per ProductUiTone, indexed by the tone's value.
+struct ProductUiTheme {
+  std::array<ProductUiColor, 9> tones;
+};
+
 struct ProductUiPrimitive {
   ProductUiPrimitiveKind kind = ProductUiPrimitiveKind::Rect;
   ProductUiTone tone = ProductUiTone::Surface;
@@ -89,6 +106,7 @@ struct ProductUiDrawList {
   std::string reasonCode = "product_ui_draw_list_not_ready";
   std::uint32_t virtualWidth = 1280;
   std::uint32_t virtualHeight = 720;
+  ProductUiThemeId theme = ProductUiThemeId::System;
   std::vector<ProductUiPrimitive> primitives;
   std::vector<UiHitRegion> hitRegions;
   std::uint64_t hitRegionCount = 0;
@@ -139,7 +157,14 @@ struct ProductUiDrawListRequest {
 
 std::string_view productUiPrimitiveKindName(ProductUiPrimitiveKind kind);
 std::string_view productUiToneName(ProductUiTone tone);
+
+// Resolve a tone to a colour. The single-argument form uses the System theme (the
+// long-standing default — every existing receipt keeps its colours). The theme
+// forms let a surface (e.g. the notebook) resolve the same tones to a different
+// palette. `productUiTheme(id)` returns the built-in palette for a theme id.
 ProductUiColor productUiToneColor(ProductUiTone tone);
+ProductUiColor productUiToneColor(ProductUiTone tone, const ProductUiTheme& theme);
+const ProductUiTheme& productUiTheme(ProductUiThemeId id);
 
 ProductUiDrawList buildProductStarterUiDrawList(
     const ProductUiDrawListRequest& request);

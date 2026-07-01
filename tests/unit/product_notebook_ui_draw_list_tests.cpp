@@ -66,6 +66,8 @@ bool notebookBuildsBookShellSketchAndNotes() {
   ok &= expect(list.status == "product_notebook_ui_ready", "ready status");
   ok &= expect(list.virtualWidth == 1280U, "virtual width");
   ok &= expect(list.selectedAction == "maps", "active tab recorded");
+  ok &= expect(list.theme == iggy3d::ProductUiThemeId::Journal,
+               "notebook wears the journal theme");
   ok &= expect(list.primitiveCount == list.primitives.size(), "primitive count");
 
   ok &= expect(findPrimitive(list, "notebook.book") != nullptr, "book shell");
