@@ -48,22 +48,27 @@ Note: adding a source file or test requires a CMake reconfigure — `make` trigg
 
 ## Next work (in priority order)
 
-1. ~~**Wire the input router to consume `hitRegions`.**~~ **DONE (uncommitted).**
-   `openingMenuActionAt` (`OpeningMenuView.cpp`) now builds a `ProductUiDrawList` via
-   `buildProductStarterUiDrawList({.frontend=&frontend})` at hit-test time and reads
-   `list.hitRegions` for the LoadSave action buttons (Load/Delete/Back) and the
-   DeleteConfirm buttons (Confirm/Back), via a `hitRegionActionAt(regions, x, y)` helper.
-   The hand-derived pixel-rect `if` blocks for those 5 buttons are deleted. The
-   `LoadSaveSlot` per-row selection and the NewWorld/Settings/DevTools hit-testing are
-   still hand-derived — those emitters aren't migrated to widgets yet, so they emit no
-   hit regions; that's expected, not a gap in this change.
-   **Gotcha found and fixed**: the LoadSave 3-button row's widget rects overlap by
-   design (`{x,y,240,26}` at x=452/690/1010 → Load's rect ends at x=692, Delete's
-   starts at x=690). A first-match scan over `hitRegions` picked the wrong button at
-   that seam; `hitRegionActionAt` now scans **back-to-front** so the last-drawn
-   (topmost) region wins on overlap — carry this convention into any future
-   widget hit-testing. Suite 172/172 green after the fix; caught by the existing
-   `product_window_input_frame_tests` (no new test was needed).
+1. ~~**Wire the input router to consume `hitRegions`.**~~ **DONE (commits 5f97319 + 3291738).**
+   `openingMenuActionAt` (`OpeningMenuView.cpp`) reads `list.hitRegions` for the LoadSave
+   action buttons (Load/Delete/Back) and the DeleteConfirm buttons (Confirm/Back), via a
+   `hitRegionActionAt(regions, x, y)` helper. The hand-derived pixel-rect `if` blocks for
+   those 5 buttons are deleted. The `LoadSaveSlot` per-row selection and the
+   NewWorld/Settings/DevTools hit-testing are still hand-derived — those emitters aren't
+   migrated to widgets yet, so they emit no hit regions; that's expected, not a gap.
+   **Gotcha (carry forward)**: the LoadSave 3-button row's widget rects overlap by design
+   (`{x,y,240,26}` at x=452/690/1010 → Load ends at x=692, Delete starts at x=690). So
+   `hitRegionActionAt` scans **back-to-front** — the last-drawn (topmost) region wins on
+   overlap. Use this convention for any future widget hit-testing.
+   **Coupling closed**: `openingMenuActionAt` no longer builds its own partial
+   `{.frontend=...}` request. Both the hit-test path (via `InputFrame`) and the draw path
+   (`FramePresenter`) build the request through ONE shared factory,
+   `buildProductStarterUiDrawListRequest(...)` in `menu/DrawList.*` (commit 3291738), so
+   hit-test and draw provably use the identical request — divergence is now structurally
+   impossible. The factory takes a small `ProductStarterUiDraftState` POD for the
+   window-owned scalars so `menu/DrawList` stays off the `ReceiptBuilder.hpp` god-struct.
+   Follow-up the factory now makes cheap: a test that passes a populated
+   `ProductSaveBridgeResult`+`selectedSaveId` through the factory to lock a save-dependent
+   button layout (none exists today, so out of scope until one does).
 2. **Murder the remaining starter screens** from widgets, one per commit, byte-identical:
    `emitSettingsContent`, `emitDevToolsContent`, `emitNewWorldContent`. Each is guarded
    by a test in `product_ui_draw_list_tests` (`settingsAndDevToolsChildScreensAreModeled`,
