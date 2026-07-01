@@ -549,11 +549,11 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.productSaveSessionSaved);
   appendReceiptField(receipt, "active_product_save_id", window.activeProductSaveId);
   appendReceiptField(receipt, "product_save_load_status",
-                     window.productSaveLoadStatus);
+                     window.productSaveLoadResult.status);
   appendReceiptField(receipt, "product_save_load_reason_code",
-                     window.productSaveLoadReasonCode);
+                     window.productSaveLoadResult.reasonCode);
   appendReceiptField(receipt, "product_save_load_save_id",
-                     window.productSaveLoadSaveId);
+                     window.productSaveLoadResult.record.id);
   appendReceiptField(receipt, "product_save_load_source",
                      window.productSaveLoadSource);
   appendReceiptField(receipt, "product_save_load_selected_id",
@@ -562,22 +562,22 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.productSaveLoadSelectedEnabled);
   appendReceiptField(receipt,
                      "product_save_load_authored_room_present",
-                     window.productSaveLoadAuthoredRoomPresent);
+                     window.productSaveLoadResult.authoredRoomPresent);
   appendReceiptField(receipt,
                      "product_save_load_authored_room_id",
-                     window.productSaveLoadAuthoredRoomId);
+                     window.productSaveLoadResult.authoredRoomId);
   appendReceiptField(receipt,
                      "product_save_load_authored_floor_count",
-                     window.productSaveLoadAuthoredFloorCount);
+                     window.productSaveLoadResult.authoredFloorCount);
   appendReceiptField(receipt,
                      "product_save_load_authored_wall_count",
-                     window.productSaveLoadAuthoredWallCount);
+                     window.productSaveLoadResult.authoredWallCount);
   appendReceiptField(receipt,
                      "product_save_load_authored_object_count",
-                     window.productSaveLoadAuthoredObjectCount);
+                     window.productSaveLoadResult.authoredObjectCount);
   appendReceiptField(receipt,
                      "product_save_load_authored_marker_count",
-                     window.productSaveLoadAuthoredMarkerCount);
+                     window.productSaveLoadResult.authoredMarkerCount);
   appendReceiptField(receipt, "saved_marker_bind_status",
                      window.savedMarkerBind.status);
   appendReceiptField(receipt, "saved_marker_bind_reason_code",
@@ -812,11 +812,11 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "save_recover_snapshot_missing",
                      window.saveRecoverSnapshotMissing);
   appendReceiptField(receipt, "product_save_load_previous_hash",
-                     window.productSaveLoadPreviousHash);
+                     window.productSaveLoadResult.previousHash);
   appendReceiptField(receipt, "product_save_load_loaded_hash",
-                     window.productSaveLoadLoadedHash);
+                     window.productSaveLoadResult.loadedHash);
   appendReceiptField(receipt, "product_save_load_session_loaded",
-                     window.productSaveLoadSessionLoaded);
+                     window.productSaveLoadResult.sessionLoaded);
   appendReceiptField(receipt, "runtime_session_created", window.runtimeSessionCreated);
   appendReceiptField(receipt, "gameplay_active", window.gameplayActive);
   appendReceiptField(receipt, "runtime_state_hash", window.runtimeStateHash);

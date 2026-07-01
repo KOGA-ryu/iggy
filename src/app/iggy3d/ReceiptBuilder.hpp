@@ -217,18 +217,14 @@ struct ProductAppWindowState {
   std::string productSaveSaveId = "none";
   bool productSaveSessionSaved = false;
   std::string activeProductSaveId = "none";
-  std::string productSaveLoadStatus = "not_requested";
-  std::string productSaveLoadReasonCode = "not_requested";
-  std::string productSaveLoadSaveId = "none";
+  // Typed load result stored directly (was a flat mirror of the fields of
+  // ProductSaveLoadResult). The save-selection fields below are a separate
+  // concern (set at selection/input time, not part of the load result) and
+  // stay flat.
+  ProductSaveLoadResult productSaveLoadResult;
   std::string productSaveLoadSource = "none";
   std::string productSaveLoadSelectedId = "none";
   bool productSaveLoadSelectedEnabled = false;
-  bool productSaveLoadAuthoredRoomPresent = false;
-  std::string productSaveLoadAuthoredRoomId = "none";
-  std::uint64_t productSaveLoadAuthoredFloorCount = 0;
-  std::uint64_t productSaveLoadAuthoredWallCount = 0;
-  std::uint64_t productSaveLoadAuthoredObjectCount = 0;
-  std::uint64_t productSaveLoadAuthoredMarkerCount = 0;
   // Typed result stored directly (was a 19-field string mirror flattened by
   // the orchestration and read back by ReceiptBuilder). Its defaults match the
   // former flat-field defaults, so the emitted receipt is unchanged.
@@ -274,9 +270,6 @@ struct ProductAppWindowState {
   std::string saveRecoverSaveId = "none";
   bool saveRecoverSnapshotRecovered = false;
   bool saveRecoverSnapshotMissing = false;
-  std::uint64_t productSaveLoadPreviousHash = 0;
-  std::uint64_t productSaveLoadLoadedHash = 0;
-  bool productSaveLoadSessionLoaded = false;
   std::uint64_t runtimeStateHash = 0;
   ProductViewportState viewport;
   std::uint64_t sceneItemCount = 0;

@@ -251,19 +251,12 @@ void recordProductWorldInitialSaveResult(
 
 void recordProductSaveLoadResult(const ProductSaveLoadResult& loaded,
                                  ProductAppWindowState& window) {
-  window.productSaveLoadStatus = loaded.status;
-  window.productSaveLoadReasonCode = loaded.reasonCode;
-  window.productSaveLoadSaveId =
-      loaded.record.id.empty() ? "none" : loaded.record.id;
-  window.productSaveLoadPreviousHash = loaded.previousHash;
-  window.productSaveLoadLoadedHash = loaded.loadedHash;
-  window.productSaveLoadSessionLoaded = loaded.sessionLoaded;
-  window.productSaveLoadAuthoredRoomPresent = loaded.authoredRoomPresent;
-  window.productSaveLoadAuthoredRoomId = loaded.authoredRoomId;
-  window.productSaveLoadAuthoredFloorCount = loaded.authoredFloorCount;
-  window.productSaveLoadAuthoredWallCount = loaded.authoredWallCount;
-  window.productSaveLoadAuthoredObjectCount = loaded.authoredObjectCount;
-  window.productSaveLoadAuthoredMarkerCount = loaded.authoredMarkerCount;
+  window.productSaveLoadResult = loaded;
+  // Normalize an empty save id to "none" at the producer so ReceiptBuilder
+  // stays a straight read of the typed result (preserves the prior receipt).
+  if (window.productSaveLoadResult.record.id.empty()) {
+    window.productSaveLoadResult.record.id = "none";
+  }
   if (loaded.ok && !loaded.record.id.empty()) {
     window.activeProductSaveId = loaded.record.id;
   }
@@ -859,8 +852,8 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   recordProductSaveLoadSelection(source, slot, window);
   if (slot == nullptr) {
     window.launchStatus = "no_compatible_save";
-    window.productSaveLoadStatus = "no_compatible_save";
-    window.productSaveLoadReasonCode = "no_compatible_save";
+    window.productSaveLoadResult.status = "no_compatible_save";
+    window.productSaveLoadResult.reasonCode = "no_compatible_save";
     frontend.status = source == "load_save_selector"
                           ? "load_save_action_disabled"
                           : "opening_menu_action_disabled";
@@ -870,8 +863,8 @@ void launchProductSaveSlot(const ProductAppOptions& options,
     const std::string reason =
         slot->reason.empty() ? "save_slot_disabled" : slot->reason;
     window.launchStatus = reason;
-    window.productSaveLoadStatus = reason;
-    window.productSaveLoadReasonCode = reason;
+    window.productSaveLoadResult.status = reason;
+    window.productSaveLoadResult.reasonCode = reason;
     frontend.status = "load_save_action_disabled";
     return;
   }
