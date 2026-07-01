@@ -247,22 +247,7 @@ void copyPhysicsDebugHud(ProductAppWindowState& window,
 
 void copyPositionHud(ProductAppWindowState& window,
                      const PositionHud& hud) {
-  window.positionHudVisible = hud.visible;
-  window.positionHudDebugAvailable = hud.debugAvailable;
-  window.positionHudLineCount = static_cast<std::uint64_t>(hud.lineCount);
-  window.positionHudStatus = hud.status;
-  window.positionHudReasonCode = hud.reasonCode;
-  window.positionHudPlayerPositionAvailable = hud.playerPositionAvailable;
-  window.positionHudWorldX = hud.worldX;
-  window.positionHudWorldY = hud.worldY;
-  window.positionHudWorldZ = hud.worldZ;
-  window.positionHudGridX = hud.gridX;
-  window.positionHudGridY = hud.gridY;
-  window.positionHudGridZ = hud.gridZ;
-  window.positionHudLayerIndex = hud.layerIndex;
-  window.positionHudFacing = hud.facing;
-  window.positionHudYawDegrees = hud.yawDegrees;
-  window.positionHudPitchDegrees = hud.pitchDegrees;
+  window.positionHud = hud;
 }
 
 void copyProductRoomEditorOverlay(ProductAppWindowState& window,

@@ -387,7 +387,7 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
                window.viewport.productViewFrameItemCount);
   const std::uint64_t debugHudLines =
       projection.movementHud.lines.size() + window.npcBehaviorDebugHudLineCount +
-      window.physicsDebugHudLineCount + window.positionHudLineCount;
+      window.physicsDebugHudLineCount + window.positionHud.lineCount;
   counters.debugHudLineMax =
       std::max(counters.debugHudLineMax, debugHudLines);
   counters.movementDebugHudLineMax =
