@@ -12,6 +12,7 @@
 #include "app/frontend/StarterScreen.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
+#include "app/iggy3d/ui/Widget.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 
 namespace iggy3d {
@@ -737,52 +738,57 @@ void emitLoadSaveContent(ProductUiDrawList& list,
 }
 
 void emitDeleteConfirmContent(ProductUiDrawList& list) {
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {450.0F, 152.0F, 360.0F, 42.0F},
-           makeStarterSemanticId("content.delete_confirm.title"),
-           "DELETE MAP");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {452.0F, 210.0F, 620.0F, 26.0F},
-           makeStarterSemanticId("content.delete_confirm.instructions"),
-           "THIS MOVES THE MAP TO DELETED MAPS");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {452.0F, 260.0F, 180.0F, 26.0F},
-           makeStarterSemanticId("content.delete_confirm.map_label"),
-           "MAP");
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {452.0F, 292.0F, 320.0F, 26.0F},
-           makeStarterSemanticId("content.delete_confirm.map_value"),
-           "SELECTED MAP");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {452.0F, 350.0F, 180.0F, 26.0F},
-           makeStarterSemanticId("content.delete_confirm.status_label"),
-           "STATUS");
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {452.0F, 382.0F, 320.0F, 26.0F},
-           makeStarterSemanticId("content.delete_confirm.status_value"),
-           "CONFIRM OPEN");
-  emitText(list,
-           ProductUiTone::Accent,
-           {452.0F, 508.0F, 260.0F, 26.0F},
-           makeStarterSemanticId("content.delete_confirm.confirm"),
-           "CONFIRM DELETE",
-           FrontendAction::Delete,
-           false,
-           true);
-  emitText(list,
-           ProductUiTone::Accent,
-           {760.0F, 508.0F, 100.0F, 26.0F},
-           makeStarterSemanticId("content.delete_confirm.back"),
-           "BACK",
-           FrontendAction::Back,
-           false,
-           true);
+  // First screen rebuilt from the L1 widget layer (docs/ui/ui_architecture.md).
+  // Emission-preserving: the widgets carry the same explicit rects/tones/ids as
+  // the hand-emit they replace, so they produce byte-identical primitives (the
+  // draw-list receipt in product_ui_draw_list_tests still passes). The difference
+  // is the interactive confirm/back now ALSO emit hit regions — the input lane the
+  // hand-emit never expressed, and the layout that hit-testing can reuse instead
+  // of re-deriving it by hand.
+  WidgetOutput out;
+  emit(UiText{{450.0F, 152.0F, 360.0F, 42.0F},
+              ProductUiTone::TextPrimary,
+              makeStarterSemanticId("content.delete_confirm.title"),
+              "DELETE MAP"},
+       out);
+  emit(UiText{{452.0F, 210.0F, 620.0F, 26.0F},
+              ProductUiTone::TextMuted,
+              makeStarterSemanticId("content.delete_confirm.instructions"),
+              "THIS MOVES THE MAP TO DELETED MAPS"},
+       out);
+  emit(UiText{{452.0F, 260.0F, 180.0F, 26.0F},
+              ProductUiTone::TextMuted,
+              makeStarterSemanticId("content.delete_confirm.map_label"),
+              "MAP"},
+       out);
+  emit(UiText{{452.0F, 292.0F, 320.0F, 26.0F},
+              ProductUiTone::TextPrimary,
+              makeStarterSemanticId("content.delete_confirm.map_value"),
+              "SELECTED MAP"},
+       out);
+  emit(UiText{{452.0F, 350.0F, 180.0F, 26.0F},
+              ProductUiTone::TextMuted,
+              makeStarterSemanticId("content.delete_confirm.status_label"),
+              "STATUS"},
+       out);
+  emit(UiText{{452.0F, 382.0F, 320.0F, 26.0F},
+              ProductUiTone::TextPrimary,
+              makeStarterSemanticId("content.delete_confirm.status_value"),
+              "CONFIRM OPEN"},
+       out);
+  emit(UiText{{452.0F, 508.0F, 260.0F, 26.0F},
+              ProductUiTone::Accent,
+              makeStarterSemanticId("content.delete_confirm.confirm"),
+              "CONFIRM DELETE",
+              FrontendAction::Delete},
+       out);
+  emit(UiText{{760.0F, 508.0F, 100.0F, 26.0F},
+              ProductUiTone::Accent,
+              makeStarterSemanticId("content.delete_confirm.back"),
+              "BACK",
+              FrontendAction::Back},
+       out);
+  appendWidgetOutput(list, out);
 }
 
 void emitSettingsContent(ProductUiDrawList& list,
