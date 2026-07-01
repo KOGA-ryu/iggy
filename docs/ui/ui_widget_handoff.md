@@ -69,15 +69,27 @@ Note: adding a source file or test requires a CMake reconfigure — `make` trigg
    Follow-up the factory now makes cheap: a test that passes a populated
    `ProductSaveBridgeResult`+`selectedSaveId` through the factory to lock a save-dependent
    button layout (none exists today, so out of scope until one does).
-2. **Murder the remaining starter screens** from widgets, one per commit, byte-identical:
-   `emitSettingsContent`, `emitDevToolsContent`, `emitNewWorldContent`. Each is guarded
-   by a test in `product_ui_draw_list_tests` (`settingsAndDevToolsChildScreensAreModeled`,
-   `newWorldChildScreenBuildsReadySelectorSurface`, etc.). A parameterized workflow for
-   this exists — see below. Once a screen is migrated, its buttons should also be wired
-   into `openingMenuActionAt`'s hit-region lookup, following the pattern in step 1.
+2. ~~**Murder the remaining starter screens** (`emitSettingsContent`, `emitDevToolsContent`,
+   `emitNewWorldContent`).~~ **DONE (commits fa5a98a, dfa0fa3, 15ab1ec).** All three migrated
+   byte-identical via the `ui-murder-screen` workflow. **All starter CONTENT emitters now
+   build through the widget layer.** What's still bespoke in `DrawList.cpp`: the chrome —
+   `emitStarterFrame` (header/menu/content/footer panels), `emitStarterRows` (left menu
+   action rows, with the Rect/Highlight selection background + disabled-row counting), and
+   `emitStarterStatus`. These use `emitRect`/`emitText` directly and are the last targets;
+   `emitStarterRows` is the meatier one (needs a Panel/Highlight widget path + row-count
+   bookkeeping, guarded by `starterRootDrawListContainsHeaderAndRowsInOrder`). Follow-up per
+   step 1: wire the migrated Settings/DevTools/NewWorld buttons (BACK, CreateAndEnter) into
+   `openingMenuActionAt`'s hit-region lookup — they now emit hit regions but the input path
+   only consumes LoadSave/DeleteConfirm so far.
 3. **Next bricks** (`ui_architecture.md` §implementation-order): `Button`, `ProgressBar`
    (both build on today's rect+text L0). Then `Grid`/`List`, then the two engine gaps:
    clipping (for `ScrollView`) and the textured-quad pipeline (for `Image`/`Icon`/`Viewport`).
+4. **Flaky-under-parallel tests** (noticed, unfixed): `ctest -j` intermittently fails a
+   shifting set of ~4 file-writing tests (`product_save_bridge_tests`, `product_world_creation_tests`,
+   `product_new_world_menu_action_tests`, `product_gameplay_controls_smoke`,
+   `product_menu_transition_smoke`) on save-root/filesystem contention; all pass serially/in
+   isolation. Pre-existing test-isolation issue, not a product bug. Worth making them
+   parallel-safe (unique save roots) so the green-suite gate stays trustworthy.
 
 ## Discipline / gotchas
 
