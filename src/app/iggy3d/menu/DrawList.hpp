@@ -100,6 +100,23 @@ struct ProductUiDrawList {
   std::string selectedAction = "none";
 };
 
+// The ProductAppWindowState-owned scalars the starter UI request needs, passed as a
+// small value type so this header (and menu/DrawList.*) never has to include the
+// ~421-field ProductAppWindowState god-struct from ReceiptBuilder.hpp. Both the frame
+// draw path and the hit-test path fill it from their own window state.
+struct ProductStarterUiDraftState {
+  bool dungeonDraftEditMode = false;
+  bool dungeonDraftModified = false;
+  std::uint64_t dungeonDraftCursorRow = 0;
+  std::uint64_t dungeonDraftCursorColumn = 0;
+  std::string dungeonDraftSelectedGlyph = ".";
+  std::string dungeonDraftLastGlyph = "none";
+  std::string selectedSaveId;
+};
+
+// Build this via buildProductStarterUiDrawListRequest() — the single request
+// constructor shared by the draw path and the hit-test path, so the two cannot
+// diverge. Do not hand-roll a starter request in production.
 struct ProductUiDrawListRequest {
   const FrontendState* frontend = nullptr;
   std::uint64_t compatibleSaveCount = 0;
@@ -126,5 +143,16 @@ ProductUiColor productUiToneColor(ProductUiTone tone);
 
 ProductUiDrawList buildProductStarterUiDrawList(
     const ProductUiDrawListRequest& request);
+
+// The single constructor for a starter-menu draw-list request, shared by the frame
+// draw path (FramePresenter) and the opening-menu hit-test (OpeningMenuView) so both
+// necessarily build the same request from the same state. virtualWidth/Height are
+// fixed at 1280x720 (as the draw path always has).
+ProductUiDrawListRequest buildProductStarterUiDrawListRequest(
+    const FrontendState& frontend,
+    const ProductSaveBridgeResult& saves,
+    const WorldSetupDraft& worldSetupDraft,
+    FrontendSettingsTab settingsTab,
+    const ProductStarterUiDraftState& draft);
 
 }  // namespace iggy3d

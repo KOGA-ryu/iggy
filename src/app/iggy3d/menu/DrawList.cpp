@@ -1008,4 +1008,28 @@ ProductUiDrawList buildProductStarterUiDrawList(
   return list;
 }
 
+ProductUiDrawListRequest buildProductStarterUiDrawListRequest(
+    const FrontendState& frontend,
+    const ProductSaveBridgeResult& saves,
+    const WorldSetupDraft& worldSetupDraft,
+    FrontendSettingsTab settingsTab,
+    const ProductStarterUiDraftState& draft) {
+  ProductUiDrawListRequest request;
+  request.frontend = &frontend;
+  request.compatibleSaveCount = saves.slots.compatibleCount;
+  request.virtualWidth = 1280U;
+  request.virtualHeight = 720U;
+  request.worldSetupDraft = &worldSetupDraft;
+  request.dungeonDraftEditMode = draft.dungeonDraftEditMode;
+  request.dungeonDraftModified = draft.dungeonDraftModified;
+  request.dungeonDraftCursorRow = draft.dungeonDraftCursorRow;
+  request.dungeonDraftCursorColumn = draft.dungeonDraftCursorColumn;
+  request.dungeonDraftSelectedGlyph = draft.dungeonDraftSelectedGlyph;
+  request.dungeonDraftLastGlyph = draft.dungeonDraftLastGlyph;
+  request.settingsTab = settingsTab;
+  request.saves = &saves;
+  request.selectedSaveId = draft.selectedSaveId;
+  return request;
+}
+
 }  // namespace iggy3d

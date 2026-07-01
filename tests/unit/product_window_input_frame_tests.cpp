@@ -2,6 +2,7 @@
 #include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
+#include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
@@ -37,6 +38,19 @@ bool expectNear(float actual,
                 std::string_view message,
                 float epsilon = 0.0001F) {
   return expect(std::fabs(actual - expected) < epsilon, message);
+}
+
+// Test-local convenience: openingMenuActionAt now takes the same
+// ProductUiDrawListRequest the frame path builds. These tests only exercise
+// hit-test geometry from a bare FrontendState (the wired buttons' rects depend
+// only on frontend.saveBrowserMode), so a frontend-only request reproduces
+// exactly what production feeds for those buttons.
+iggy3d::OpeningMenuHitTestResult hitAt(const iggy3d::FrontendState& frontend,
+                                       float x,
+                                       float y) {
+  iggy3d::ProductUiDrawListRequest request;
+  request.frontend = &frontend;
+  return iggy3d::openingMenuActionAt(request, x, y);
 }
 
 iggy3d::ProductAsciiRoomAuthoringRequest smallRoomRequest() {
@@ -881,9 +895,9 @@ bool starterDeleteButtonOpensSelectableBrowser() {
 bool starterHitTestUsesCanonicalActionRows() {
   const iggy3d::FrontendState frontend = starterFrontend();
   const iggy3d::OpeningMenuHitTestResult deleteHit =
-      iggy3d::openingMenuActionAt(frontend, 62.0F, 306.0F);
+      hitAt(frontend, 62.0F, 306.0F);
   const iggy3d::OpeningMenuHitTestResult exitHit =
-      iggy3d::openingMenuActionAt(frontend, 62.0F, 462.0F);
+      hitAt(frontend, 62.0F, 462.0F);
 
   return expect(deleteHit.hit, "delete starter row hit") &&
          expect(deleteHit.area == iggy3d::OpeningMenuHitArea::StarterAction,
@@ -908,9 +922,9 @@ bool pauseHitTestUsesPauseActionRows() {
           {frontend, window, closeRequested});
 
   const iggy3d::OpeningMenuHitTestResult resumeHit =
-      iggy3d::openingMenuActionAt(frontend, 62.0F, 150.0F);
+      hitAt(frontend, 62.0F, 150.0F);
   const iggy3d::OpeningMenuHitTestResult settingsHit =
-      iggy3d::openingMenuActionAt(frontend, 62.0F, 462.0F);
+      hitAt(frontend, 62.0F, 462.0F);
 
   return expect(paused.handled, "system pause handled") &&
          expect(paused.accepted, "system pause accepted") &&
@@ -1327,42 +1341,42 @@ bool childPanelHitTestsExposeMenuActions() {
   iggy3d::FrontendState frontend = starterFrontend();
   frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
   const iggy3d::OpeningMenuHitTestResult createHit =
-      iggy3d::openingMenuActionAt(frontend, 452.0F, 508.0F);
+      hitAt(frontend, 452.0F, 508.0F);
   const iggy3d::OpeningMenuHitTestResult newWorldBackHit =
-      iggy3d::openingMenuActionAt(frontend, 850.0F, 508.0F);
+      hitAt(frontend, 850.0F, 508.0F);
   const iggy3d::OpeningMenuHitTestResult newWorldPreviousHit =
-      iggy3d::openingMenuActionAt(frontend, 452.0F, 556.0F);
+      hitAt(frontend, 452.0F, 556.0F);
   const iggy3d::OpeningMenuHitTestResult newWorldNextHit =
-      iggy3d::openingMenuActionAt(frontend, 570.0F, 556.0F);
+      hitAt(frontend, 570.0F, 556.0F);
 
   frontend.childScreen = iggy3d::FrontendScreen::LoadSave;
   const iggy3d::OpeningMenuHitTestResult slotHit =
-      iggy3d::openingMenuActionAt(frontend, 452.0F, 356.0F);
+      hitAt(frontend, 452.0F, 356.0F);
   const iggy3d::OpeningMenuHitTestResult loadHit =
-      iggy3d::openingMenuActionAt(frontend, 452.0F, 548.0F);
+      hitAt(frontend, 452.0F, 548.0F);
   const iggy3d::OpeningMenuHitTestResult deleteHit =
-      iggy3d::openingMenuActionAt(frontend, 690.0F, 548.0F);
+      hitAt(frontend, 690.0F, 548.0F);
   const iggy3d::OpeningMenuHitTestResult loadBackHit =
-      iggy3d::openingMenuActionAt(frontend, 1010.0F, 548.0F);
+      hitAt(frontend, 1010.0F, 548.0F);
 
   frontend.childScreen = iggy3d::FrontendScreen::DeleteConfirm;
   const iggy3d::OpeningMenuHitTestResult confirmDeleteHit =
-      iggy3d::openingMenuActionAt(frontend, 452.0F, 508.0F);
+      hitAt(frontend, 452.0F, 508.0F);
   const iggy3d::OpeningMenuHitTestResult deleteBackHit =
-      iggy3d::openingMenuActionAt(frontend, 760.0F, 508.0F);
+      hitAt(frontend, 760.0F, 508.0F);
   frontend.childScreen = iggy3d::FrontendScreen::Settings;
   const iggy3d::OpeningMenuHitTestResult settingsBackHit =
-      iggy3d::openingMenuActionAt(frontend, 850.0F, 394.0F);
+      hitAt(frontend, 850.0F, 394.0F);
   frontend.screen = iggy3d::FrontendScreen::Settings;
   frontend.childScreen = iggy3d::FrontendScreen::Pause;
   const iggy3d::OpeningMenuHitTestResult pauseSettingsBackHit =
-      iggy3d::openingMenuActionAt(frontend, 850.0F, 394.0F);
+      hitAt(frontend, 850.0F, 394.0F);
   const iggy3d::OpeningMenuHitTestResult pauseSettingsTabHit =
-      iggy3d::openingMenuActionAt(frontend, 452.0F, 264.0F);
+      hitAt(frontend, 452.0F, 264.0F);
   frontend.screen = iggy3d::FrontendScreen::Starter;
   frontend.childScreen = iggy3d::FrontendScreen::StarterDevTools;
   const iggy3d::OpeningMenuHitTestResult devToolsBackHit =
-      iggy3d::openingMenuActionAt(frontend, 850.0F, 394.0F);
+      hitAt(frontend, 850.0F, 394.0F);
 
   return expect(createHit.hit, "new world create hit") &&
          expect(createHit.area == iggy3d::OpeningMenuHitArea::NewWorldCreate,
@@ -1581,7 +1595,7 @@ bool menuClickNormalizationScalesWindowCoordinates() {
   iggy3d::FrontendState frontend = starterFrontend();
   frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
   const iggy3d::OpeningMenuHitTestResult createHit =
-      iggy3d::openingMenuActionAt(frontend, scaled.x, scaled.y);
+      hitAt(frontend, scaled.x, scaled.y);
 
   return expect(scaled.clicked, "scaled click remains clicked") &&
          expect(scaled.x == 452.0F, "scaled click x") &&

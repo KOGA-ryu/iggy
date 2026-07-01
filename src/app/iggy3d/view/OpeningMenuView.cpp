@@ -1320,17 +1320,17 @@ ProductFrontendSurface openingMenuDetailSurfaceFor(
   return resolveProductActiveSurface(context).activeSurface;
 }
 
-OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, float x, float y) {
+OpeningMenuHitTestResult openingMenuActionAt(const ProductUiDrawListRequest& request,
+                                             float x,
+                                             float y) {
+  const FrontendState& frontend = *request.frontend;
   const ProductFrontendSurface detailSurface =
       openingMenuDetailSurfaceFor(frontend);
-  // The widget layer (docs/ui/ui_architecture.md) emits hit regions from the
-  // same rects it draws. Building the draw list here lets the LoadSave and
-  // DeleteConfirm button checks below read those regions instead of
-  // re-deriving the rects by hand — the two cannot drift apart. Screens not
-  // yet migrated to widgets emit no regions, so this is a no-op for them.
-  ProductUiDrawListRequest hitTestRequest;
-  hitTestRequest.frontend = &frontend;
-  const ProductUiDrawList hitTestUi = buildProductStarterUiDrawList(hitTestRequest);
+  // The hit regions come from the SAME request the frame path draws with (built by
+  // buildProductStarterUiDrawListRequest), so the LoadSave/DeleteConfirm button
+  // lookups below cannot drift from what was drawn. Screens not yet migrated to
+  // widgets emit no regions, so this is a no-op for them.
+  const ProductUiDrawList hitTestUi = buildProductStarterUiDrawList(request);
   float rowY = 150.0F;
   for (const FrontendAction action : menuActionOrderForFrontend(frontend)) {
     const bool hitX = x >= 30.0F && x <= 370.0F;

@@ -14,6 +14,7 @@
 #include "app/iggy3d/automation/Automation.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
+#include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
@@ -1031,8 +1032,24 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   if (click.clicked) {
     const MouseClick menuClick =
         productWindowMenuClickForHitTest(click, context.sdlWindow);
+    // Build the hit-test request through the SAME factory the frame draw path
+    // uses (buildProductStarterUiDrawListRequest), so hit-testing consumes the
+    // identical request that produced what was drawn.
+    const ProductUiDrawListRequest uiRequest =
+        buildProductStarterUiDrawListRequest(
+            context.frontend,
+            context.saves,
+            context.worldSetupDraft,
+            context.settingsTab,
+            {context.window.worldSetupDungeonDraftEditMode,
+             context.window.worldSetupDungeonDraftModified,
+             context.window.worldSetupDungeonDraftCursorRow,
+             context.window.worldSetupDungeonDraftCursorColumn,
+             context.window.worldSetupDungeonDraftSelectedGlyph,
+             context.window.worldSetupDungeonDraftLastGlyph,
+             context.window.selectedProductSaveId});
     const OpeningMenuHitTestResult hit =
-        openingMenuActionAt(context.frontend, menuClick.x, menuClick.y);
+        openingMenuActionAt(uiRequest, menuClick.x, menuClick.y);
     // branch-gate: BG-1029
     if (hit.hit) {
       context.window.mouseMenuSelectUsed = true;

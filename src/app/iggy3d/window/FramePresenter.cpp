@@ -749,27 +749,19 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
         "product_vulkan_waiting_for_gameplay_room";
     // branch-gate: BG-1072
     if (request.frontend.screen == FrontendScreen::Starter) {
-      ProductUiDrawListRequest uiRequest;
-      uiRequest.frontend = &request.frontend;
-      uiRequest.compatibleSaveCount = request.saves.slots.compatibleCount;
-      uiRequest.virtualWidth = 1280U;
-      uiRequest.virtualHeight = 720U;
-      uiRequest.worldSetupDraft = &request.worldSetupDraft;
-      uiRequest.dungeonDraftEditMode =
-          request.window.worldSetupDungeonDraftEditMode;
-      uiRequest.dungeonDraftModified =
-          request.window.worldSetupDungeonDraftModified;
-      uiRequest.dungeonDraftCursorRow =
-          request.window.worldSetupDungeonDraftCursorRow;
-      uiRequest.dungeonDraftCursorColumn =
-          request.window.worldSetupDungeonDraftCursorColumn;
-      uiRequest.dungeonDraftSelectedGlyph =
-          request.window.worldSetupDungeonDraftSelectedGlyph;
-      uiRequest.dungeonDraftLastGlyph =
-          request.window.worldSetupDungeonDraftLastGlyph;
-      uiRequest.settingsTab = request.settingsTab;
-      uiRequest.saves = &request.saves;
-      uiRequest.selectedSaveId = request.window.selectedProductSaveId;
+      const ProductUiDrawListRequest uiRequest =
+          buildProductStarterUiDrawListRequest(
+              request.frontend,
+              request.saves,
+              request.worldSetupDraft,
+              request.settingsTab,
+              {request.window.worldSetupDungeonDraftEditMode,
+               request.window.worldSetupDungeonDraftModified,
+               request.window.worldSetupDungeonDraftCursorRow,
+               request.window.worldSetupDungeonDraftCursorColumn,
+               request.window.worldSetupDungeonDraftSelectedGlyph,
+               request.window.worldSetupDungeonDraftLastGlyph,
+               request.window.selectedProductSaveId});
       const ProductUiDrawList menuUi = buildProductStarterUiDrawList(uiRequest);
       recordProductVulkanMenuUiDrawList(request.window, "starter", menuUi);
       const SdlDrawableExtent drawableExtent = request.sdlWindow.drawableExtent();
