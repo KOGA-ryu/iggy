@@ -48,18 +48,28 @@ Note: adding a source file or test requires a CMake reconfigure — `make` trigg
 
 ## Next work (in priority order)
 
-1. **[Highest leverage] Wire the input router to consume `hitRegions`.** Today the
-   widget layer *emits* hit regions and the draw list *carries* them (receipt-guarded),
-   but nothing *reads* them: `OpeningMenuView.cpp` (~line 1350) still hand-derives its
-   own hit rects (`slotY=318; slotY+=38`) in parallel with the draw loop — the exact
-   duplication the widget layer exists to kill. Route the hit-tester to read
-   `list.hitRegions`, then delete the hand-derived rects. This *completes* the
-   architecture's core promise. (Touches input routing — verify carefully, full suite.)
+1. ~~**Wire the input router to consume `hitRegions`.**~~ **DONE (uncommitted).**
+   `openingMenuActionAt` (`OpeningMenuView.cpp`) now builds a `ProductUiDrawList` via
+   `buildProductStarterUiDrawList({.frontend=&frontend})` at hit-test time and reads
+   `list.hitRegions` for the LoadSave action buttons (Load/Delete/Back) and the
+   DeleteConfirm buttons (Confirm/Back), via a `hitRegionActionAt(regions, x, y)` helper.
+   The hand-derived pixel-rect `if` blocks for those 5 buttons are deleted. The
+   `LoadSaveSlot` per-row selection and the NewWorld/Settings/DevTools hit-testing are
+   still hand-derived — those emitters aren't migrated to widgets yet, so they emit no
+   hit regions; that's expected, not a gap in this change.
+   **Gotcha found and fixed**: the LoadSave 3-button row's widget rects overlap by
+   design (`{x,y,240,26}` at x=452/690/1010 → Load's rect ends at x=692, Delete's
+   starts at x=690). A first-match scan over `hitRegions` picked the wrong button at
+   that seam; `hitRegionActionAt` now scans **back-to-front** so the last-drawn
+   (topmost) region wins on overlap — carry this convention into any future
+   widget hit-testing. Suite 172/172 green after the fix; caught by the existing
+   `product_window_input_frame_tests` (no new test was needed).
 2. **Murder the remaining starter screens** from widgets, one per commit, byte-identical:
    `emitSettingsContent`, `emitDevToolsContent`, `emitNewWorldContent`. Each is guarded
    by a test in `product_ui_draw_list_tests` (`settingsAndDevToolsChildScreensAreModeled`,
    `newWorldChildScreenBuildsReadySelectorSurface`, etc.). A parameterized workflow for
-   this exists — see below.
+   this exists — see below. Once a screen is migrated, its buttons should also be wired
+   into `openingMenuActionAt`'s hit-region lookup, following the pattern in step 1.
 3. **Next bricks** (`ui_architecture.md` §implementation-order): `Button`, `ProgressBar`
    (both build on today's rect+text L0). Then `Grid`/`List`, then the two engine gaps:
    clipping (for `ScrollView`) and the textured-quad pipeline (for `Image`/`Icon`/`Viewport`).

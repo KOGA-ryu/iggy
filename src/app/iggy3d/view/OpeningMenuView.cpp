@@ -25,6 +25,7 @@
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
+#include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
@@ -1287,6 +1288,29 @@ bool drawGameplayPanel(SDL_Renderer& renderer,
   return true;
 }
 
+bool uiRectContains(const ProductUiRect& rect, float x, float y) {
+  return x >= rect.x && x <= rect.x + rect.width &&
+         y >= rect.y && y <= rect.y + rect.height;
+}
+
+// Looks up the interactive-widget action at (x, y) among the hit regions the
+// widget layer (docs/ui/ui_architecture.md) emitted for the current child
+// screen's content — the SAME rects that produced the draw primitives, so
+// hit-testing cannot drift from what is drawn. Regions are searched back to
+// front (reverse emission order) so an overlap between adjacent buttons
+// resolves the same way the visual stack would: the later (topmost) one wins.
+FrontendAction hitRegionActionAt(const std::vector<UiHitRegion>& regions,
+                                 float x,
+                                 float y) {
+  for (auto it = regions.rbegin(); it != regions.rend(); ++it) {
+    // branch-gate: BG-1121
+    if (it->action != FrontendAction::None && uiRectContains(it->rect, x, y)) {
+      return it->action;
+    }
+  }
+  return FrontendAction::None;
+}
+
 }  // namespace
 
 ProductFrontendSurface openingMenuDetailSurfaceFor(
@@ -1299,6 +1323,14 @@ ProductFrontendSurface openingMenuDetailSurfaceFor(
 OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, float x, float y) {
   const ProductFrontendSurface detailSurface =
       openingMenuDetailSurfaceFor(frontend);
+  // The widget layer (docs/ui/ui_architecture.md) emits hit regions from the
+  // same rects it draws. Building the draw list here lets the LoadSave and
+  // DeleteConfirm button checks below read those regions instead of
+  // re-deriving the rects by hand — the two cannot drift apart. Screens not
+  // yet migrated to widgets emit no regions, so this is a no-op for them.
+  ProductUiDrawListRequest hitTestRequest;
+  hitTestRequest.frontend = &frontend;
+  const ProductUiDrawList hitTestUi = buildProductStarterUiDrawList(hitTestRequest);
   float rowY = 150.0F;
   for (const FrontendAction action : menuActionOrderForFrontend(frontend)) {
     const bool hitX = x >= 30.0F && x <= 370.0F;
@@ -1359,53 +1391,47 @@ OpeningMenuHitTestResult openingMenuActionAt(const FrontendState& frontend, floa
       }
       slotY += 38.0F;
     }
-    const bool deleteMode =
-        frontend.saveBrowserMode == FrontendSaveBrowserMode::Delete;
-    // branch-gate: BG-1121
-    if (!deleteMode && x >= 430.0F && x <= 650.0F &&
-        y >= 530.0F && y <= 578.0F) {
-      OpeningMenuHitTestResult result;
-      result.hit = true;
-      result.area = OpeningMenuHitArea::LoadSaveLoad;
-      return result;
-    }
-    // branch-gate: BG-1121
-    if ((!deleteMode && x >= 668.0F && x <= 955.0F &&
-         y >= 530.0F && y <= 578.0F) ||
-        (deleteMode && x >= 430.0F && x <= 740.0F &&
-         y >= 530.0F && y <= 578.0F)) {
-      OpeningMenuHitTestResult result;
-      result.hit = true;
-      result.area = OpeningMenuHitArea::LoadSaveDelete;
-      return result;
-    }
-    // branch-gate: BG-1121
-    if ((!deleteMode && x >= 990.0F && x <= 1110.0F &&
-         y >= 530.0F && y <= 578.0F) ||
-        (deleteMode && x >= 740.0F && x <= 860.0F &&
-         y >= 530.0F && y <= 578.0F)) {
-      OpeningMenuHitTestResult result;
-      result.hit = true;
-      result.area = OpeningMenuHitArea::LoadSaveBack;
-      return result;
+    switch (hitRegionActionAt(hitTestUi.hitRegions, x, y)) {  // branch-gate: BG-1121
+      case FrontendAction::Load: {
+        OpeningMenuHitTestResult result;
+        result.hit = true;
+        result.area = OpeningMenuHitArea::LoadSaveLoad;
+        return result;
+      }
+      case FrontendAction::Delete: {
+        OpeningMenuHitTestResult result;
+        result.hit = true;
+        result.area = OpeningMenuHitArea::LoadSaveDelete;
+        return result;
+      }
+      case FrontendAction::Back: {
+        OpeningMenuHitTestResult result;
+        result.hit = true;
+        result.area = OpeningMenuHitArea::LoadSaveBack;
+        return result;
+      }
+      default:
+        break;
     }
   }
 
   // branch-gate: BG-1121
   if (frontend.childScreen == FrontendScreen::DeleteConfirm) {
-    // branch-gate: BG-1121
-    if (x >= 430.0F && x <= 720.0F && y >= 490.0F && y <= 536.0F) {
-      OpeningMenuHitTestResult result;
-      result.hit = true;
-      result.area = OpeningMenuHitArea::DeleteConfirmConfirm;
-      return result;
-    }
-    // branch-gate: BG-1121
-    if (x >= 740.0F && x <= 865.0F && y >= 490.0F && y <= 536.0F) {
-      OpeningMenuHitTestResult result;
-      result.hit = true;
-      result.area = OpeningMenuHitArea::DeleteConfirmBack;
-      return result;
+    switch (hitRegionActionAt(hitTestUi.hitRegions, x, y)) {  // branch-gate: BG-1121
+      case FrontendAction::Delete: {
+        OpeningMenuHitTestResult result;
+        result.hit = true;
+        result.area = OpeningMenuHitArea::DeleteConfirmConfirm;
+        return result;
+      }
+      case FrontendAction::Back: {
+        OpeningMenuHitTestResult result;
+        result.hit = true;
+        result.area = OpeningMenuHitArea::DeleteConfirmBack;
+        return result;
+      }
+      default:
+        break;
     }
   }
 
