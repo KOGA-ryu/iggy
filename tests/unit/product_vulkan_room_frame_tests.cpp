@@ -480,13 +480,13 @@ bool productPhysicsDebugHudUnavailableWithoutMovementStats() {
   ok = expect(frame.physicsHud.reasonCode == "physics_debug_unavailable",
               "unavailable physics HUD reason") &&
        ok;
-  ok = expect(window.physicsDebugHudDebugAvailable,
+  ok = expect(window.physicsDebugHud.debugAvailable,
               "window physics debug projection available") &&
        ok;
-  ok = expect(window.physicsDebugHudLineCount == 0U,
+  ok = expect(window.physicsDebugHud.lineCount == 0U,
               "window physics debug line count zero") &&
        ok;
-  ok = expect(window.physicsDebugHudStatus == "physics_debug_unavailable",
+  ok = expect(window.physicsDebugHud.status == "physics_debug_unavailable",
               "window physics debug unavailable status") &&
        ok;
   ok = expect(iggy3d::hasReceiptField(receipt,
@@ -569,14 +569,14 @@ bool productPhysicsDebugHudReadyFromMovementStats() {
        ok;
   ok = expect(!frame.physicsHud.hasWarnings, "ready physics HUD no warnings") &&
        ok;
-  ok = expect(window.physicsDebugHudVisible, "window physics HUD visible") && ok;
-  ok = expect(window.physicsDebugHudLineCount == 4U,
+  ok = expect(window.physicsDebugHud.visible, "window physics HUD visible") && ok;
+  ok = expect(window.physicsDebugHud.lineCount == 4U,
               "window physics HUD line count") &&
        ok;
-  ok = expect(window.physicsDebugHudStatus == "physics_debug_ready",
+  ok = expect(window.physicsDebugHud.status == "physics_debug_ready",
               "window physics HUD ready status") &&
        ok;
-  ok = expect(!window.physicsDebugHudHasWarnings,
+  ok = expect(!window.physicsDebugHud.hasWarnings,
               "window physics HUD no warnings") &&
        ok;
   ok = expect(frame.positionHud.visible, "ready position HUD visible") && ok;
@@ -624,7 +624,7 @@ bool productPhysicsDebugHudWarningFromMovementStats() {
   ok = expect(frame.physicsHud.visible, "warning physics HUD visible") && ok;
   ok = expect(frame.physicsHud.hasWarnings, "warning physics HUD has warnings") &&
        ok;
-  ok = expect(window.physicsDebugHudHasWarnings,
+  ok = expect(window.physicsDebugHud.hasWarnings,
               "window physics HUD has warnings") &&
        ok;
   return ok;
@@ -1186,8 +1186,8 @@ bool gameplayDebugHudsHideOnMenuSurfaces() {
     ok = expect(!projection.drawList.physicsDebugVisible, surface.label) && ok;
     ok = expect(!window.positionHud.visible, surface.label) && ok;
     ok = expect(window.positionHud.debugAvailable, surface.label) && ok;
-    ok = expect(!window.physicsDebugHudVisible, surface.label) && ok;
-    ok = expect(window.physicsDebugHudLineCount == 4U, surface.label) && ok;
+    ok = expect(!window.physicsDebugHud.visible, surface.label) && ok;
+    ok = expect(window.physicsDebugHud.lineCount == 4U, surface.label) && ok;
   }
   return ok;
 }

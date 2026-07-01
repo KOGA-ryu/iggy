@@ -94,14 +94,14 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
       window.npcBehaviorDebugHudReasonCode,
       {}};
   const PhysicsDebugHud physicsHud{
-      window.physicsDebugHudVisible,
+      window.physicsDebugHud.visible,
       settings.devToolsEnabled,
       settings.debugOverlayEnabled,
-      window.physicsDebugHudDebugAvailable,
-      static_cast<std::size_t>(window.physicsDebugHudLineCount),
-      window.physicsDebugHudStatus,
-      window.physicsDebugHudReasonCode,
-      window.physicsDebugHudHasWarnings,
+      window.physicsDebugHud.debugAvailable,
+      window.physicsDebugHud.lineCount,
+      window.physicsDebugHud.status,
+      window.physicsDebugHud.reasonCode,
+      window.physicsDebugHud.hasWarnings,
       {}};
   appendReceiptField(receipt, "app", "iggy3d");
   appendReceiptField(receipt, "app_surface", "product");

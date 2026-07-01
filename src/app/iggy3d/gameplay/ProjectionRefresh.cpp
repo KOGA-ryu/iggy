@@ -237,12 +237,7 @@ void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
 
 void copyPhysicsDebugHud(ProductAppWindowState& window,
                          const PhysicsDebugHud& hud) {
-  window.physicsDebugHudVisible = hud.visible;
-  window.physicsDebugHudDebugAvailable = hud.debugAvailable;
-  window.physicsDebugHudLineCount = static_cast<std::uint64_t>(hud.lineCount);
-  window.physicsDebugHudStatus = hud.status;
-  window.physicsDebugHudReasonCode = hud.reasonCode;
-  window.physicsDebugHudHasWarnings = hud.hasWarnings;
+  window.physicsDebugHud = hud;
 }
 
 void copyPositionHud(ProductAppWindowState& window,

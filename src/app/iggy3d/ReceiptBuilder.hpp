@@ -13,6 +13,7 @@
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/iggy3d/debug/InteractionModeHud.hpp"
+#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
@@ -278,12 +279,7 @@ struct ProductAppWindowState {
   std::string npcBehaviorDebugHudStatus = "not_requested";
   std::string npcBehaviorDebugHudReasonCode = "not_requested";
   bool npcBehaviorDebugHudHasUnresolvedProfile = false;
-  bool physicsDebugHudVisible = false;
-  bool physicsDebugHudDebugAvailable = false;
-  std::uint64_t physicsDebugHudLineCount = 0;
-  std::string physicsDebugHudStatus = "not_requested";
-  std::string physicsDebugHudReasonCode = "not_requested";
-  bool physicsDebugHudHasWarnings = false;
+  PhysicsDebugHud physicsDebugHud;
   PositionHud positionHud;
   bool playerVisible = false;
   bool roomVisible = false;
