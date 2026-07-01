@@ -20,25 +20,10 @@ namespace iggy3d {
 // layer is emission-preserving so a screen can be rebuilt with a byte-identical
 // draw-list receipt.
 
-// The input lane's view of an interactive widget. It is computed from the SAME
-// rect that produced the draw primitive, so drawing and hit-testing can never
-// drift apart (the duplicated hand-math they drift from lives in OpeningMenuView).
-enum class UiHitKind : std::uint8_t {
-  None,
-  Button,
-  Row,
-  Slider,
-  Toggle,
-  Viewport,
-};
-
-struct UiHitRegion {
-  std::string semanticId;
-  ProductUiRect rect;
-  UiHitKind kind = UiHitKind::None;
-  FrontendAction action = FrontendAction::None;
-  bool enabled = true;
-};
+// UiHitKind / UiHitRegion are defined in menu/DrawList.hpp (L0) so the draw list
+// can carry a durable hit-region lane alongside its primitives. A widget emits a
+// region from the SAME rect that produced its draw primitive, so drawing and
+// hit-testing can never drift apart.
 
 // What every widget emits: visuals for the renderer + hit regions for input.
 struct WidgetOutput {
@@ -74,8 +59,9 @@ void emit(const UiPanel& widget, WidgetOutput& out);
 
 // Splat a widget output into the L0 draw list, preserving the kind-based count
 // bookkeeping (textCount / rectCount) that receipts assert — mirrors the counting
-// the hand-written emitText/emitRect helpers do. Hit regions ride on the
-// WidgetOutput for the input lane (not yet consumed by the draw list).
+// the hand-written emitText/emitRect helpers do. Hit regions are carried onto the
+// draw list's hit-region lane (list.hitRegions) so they are captured and
+// receipt-guarded, not dropped. (The input router does not consume them yet.)
 void appendWidgetOutput(ProductUiDrawList& list, const WidgetOutput& out);
 
 }  // namespace iggy3d

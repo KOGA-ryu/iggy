@@ -29,6 +29,16 @@ const iggy3d::ProductUiPrimitive* findPrimitive(
   return nullptr;
 }
 
+const iggy3d::UiHitRegion* findHitRegion(const iggy3d::ProductUiDrawList& list,
+                                         std::string_view semanticId) {
+  for (const iggy3d::UiHitRegion& region : list.hitRegions) {
+    if (region.semanticId == semanticId) {
+      return &region;
+    }
+  }
+  return nullptr;
+}
+
 iggy3d::FrontendState starterFrontend(iggy3d::FrontendAction selected) {
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Starter;
@@ -334,6 +344,62 @@ bool deleteConfirmChildScreenBuildsSharedConfirmSurface() {
   return ok;
 }
 
+bool widgetBuiltScreensCaptureActionHitRegions() {
+  // The widget layer emits a hit region for every interactive primitive, onto the
+  // draw list's hit-region lane. This guards that lane against bit-rot: if a
+  // rebuilt screen stops emitting an action's hit region, or emits it from a
+  // different rect than it draws, this fails.
+  iggy3d::FrontendState confirmFrontend =
+      starterFrontend(iggy3d::FrontendAction::Delete);
+  confirmFrontend.childScreen = iggy3d::FrontendScreen::DeleteConfirm;
+  const iggy3d::ProductUiDrawList confirmList =
+      iggy3d::buildProductStarterUiDrawList({&confirmFrontend, 1U, 1280U, 720U});
+  const iggy3d::UiHitRegion* confirmHit =
+      findHitRegion(confirmList, "starter.content.delete_confirm.confirm");
+  const iggy3d::UiHitRegion* backHit =
+      findHitRegion(confirmList, "starter.content.delete_confirm.back");
+  const iggy3d::ProductUiPrimitive* confirmDraw =
+      findPrimitive(confirmList, "starter.content.delete_confirm.confirm");
+  bool ok = true;
+  ok &= expect(confirmList.hitRegionCount == confirmList.hitRegions.size(),
+               "hit region count matches vector");
+  ok &= expect(confirmHit != nullptr &&
+                   confirmHit->action == iggy3d::FrontendAction::Delete,
+               "delete-confirm confirm hit region");
+  ok &= expect(confirmHit != nullptr &&
+                   confirmHit->kind == iggy3d::UiHitKind::Button,
+               "confirm hit region is a button");
+  ok &= expect(backHit != nullptr && backHit->action == iggy3d::FrontendAction::Back,
+               "delete-confirm back hit region");
+  // The hit region shares the drawn primitive's rect — draw and hit cannot drift.
+  ok &= expect(confirmHit != nullptr && confirmDraw != nullptr &&
+                   confirmHit->rect.x == confirmDraw->rect.x &&
+                   confirmHit->rect.y == confirmDraw->rect.y,
+               "hit region rect equals draw rect");
+
+  iggy3d::FrontendState loadFrontend =
+      starterFrontend(iggy3d::FrontendAction::LoadSave);
+  loadFrontend.childScreen = iggy3d::FrontendScreen::LoadSave;
+  loadFrontend.saveBrowserMode = iggy3d::FrontendSaveBrowserMode::Load;
+  iggy3d::ProductSaveBridgeResult saves = oneSlotSaves();
+  iggy3d::ProductUiDrawListRequest request;
+  request.frontend = &loadFrontend;
+  request.compatibleSaveCount = saves.slots.compatibleCount;
+  request.saves = &saves;
+  const iggy3d::ProductUiDrawList loadList =
+      iggy3d::buildProductStarterUiDrawList(request);
+  ok &= expect(
+      findHitRegion(loadList, "starter.content.load_save.action.load") != nullptr,
+      "load-save load action hit region");
+  ok &= expect(
+      findHitRegion(loadList, "starter.content.load_save.action.delete") != nullptr,
+      "load-save delete action hit region");
+  ok &= expect(
+      findHitRegion(loadList, "starter.content.load_save.action.back") != nullptr,
+      "load-save back action hit region");
+  return ok;
+}
+
 bool settingsAndDevToolsChildScreensAreModeled() {
   iggy3d::FrontendState settings =
       starterFrontend(iggy3d::FrontendAction::Settings);
@@ -458,6 +524,7 @@ int main() {
   ok &= loadSaveChildScreenBuildsSharedSelectorSurface();
   ok &= deleteModeChildScreenBuildsDeleteWorldSurface();
   ok &= deleteConfirmChildScreenBuildsSharedConfirmSurface();
+  ok &= widgetBuiltScreensCaptureActionHitRegions();
   ok &= settingsAndDevToolsChildScreensAreModeled();
   ok &= invalidContextRejectsWithoutRendererTypes();
   if (!ok) {

@@ -85,6 +85,35 @@ bool panelWidgetAndAppendPreserveKindCountBookkeeping() {
   return ok;
 }
 
+bool appendWidgetOutputThreadsHitRegionsOntoTheList() {
+  iggy3d::WidgetOutput out;
+  iggy3d::emit(iggy3d::UiText{.rect = {0.0F, 0.0F, 100.0F, 24.0F},
+                              .tone = iggy3d::ProductUiTone::TextMuted,
+                              .semanticId = "widget.plain.label",
+                              .text = "PLAIN"},
+               out);
+  iggy3d::emit(iggy3d::UiText{.rect = {0.0F, 30.0F, 100.0F, 24.0F},
+                              .tone = iggy3d::ProductUiTone::Accent,
+                              .semanticId = "widget.action.button",
+                              .text = "GO",
+                              .action = iggy3d::FrontendAction::Back},
+               out);
+  iggy3d::ProductUiDrawList list;
+  iggy3d::appendWidgetOutput(list, out);
+  bool ok = true;
+  ok &= expect(list.primitives.size() == 2U, "both primitives appended");
+  ok &= expect(list.hitRegions.size() == 1U,
+               "only the interactive widget adds a hit region");
+  ok &= expect(list.hitRegionCount == 1U, "hit region count tracks the lane");
+  ok &= expect(!list.hitRegions.empty() &&
+                   list.hitRegions.front().semanticId == "widget.action.button",
+               "hit region carries the interactive widget id");
+  ok &= expect(!list.hitRegions.empty() &&
+                   list.hitRegions.front().action == iggy3d::FrontendAction::Back,
+               "hit region carries the action");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -92,6 +121,7 @@ int main() {
   ok &= textWidgetEmitsOneTextPrimitiveAndNoHitRegionWithoutAction();
   ok &= interactiveTextEmitsHitRegionFromTheSameRect();
   ok &= panelWidgetAndAppendPreserveKindCountBookkeeping();
+  ok &= appendWidgetOutputThreadsHitRegionsOntoTheList();
   if (!ok) {
     return 1;
   }

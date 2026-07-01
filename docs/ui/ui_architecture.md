@@ -138,12 +138,18 @@ This matches the engine's determinism: the same state deterministically produces
 same draw list, so **every widget is receipt-testable** exactly like the rest of the
 engine. Retained/stateful widget trees would fight that — we don't build them.
 
-**Emit visuals AND hit regions — the split.** L0 currently welds an `action` onto the
-draw primitive. Widgets instead emit a *parallel* `UiHitRegion` list so draw and
-input stay in separate lanes (see "Cross-cutting systems"). Layout is computed
-**once** and feeds both — killing the draw/hit-test duplication that exists today
-(the save browser computes `slotY = 318; slotY += 38` in *both* its draw loop and its
-hit-test at `OpeningMenuView.cpp:1350`; they drift the moment one is edited).
+**Emit visuals AND hit regions — the split.** L0 welds an `action` onto the draw
+primitive. Widgets instead emit a *parallel* `UiHitRegion` list, computed from the
+same rect as the draw primitive, so draw and input can share one layout. **Current
+state:** the widget layer emits these and `appendWidgetOutput` carries them onto
+`ProductUiDrawList.hitRegions`, where a receipt guards them (`product_ui_draw_list_tests`
+asserts each rebuilt screen's action hit regions and that a hit region's rect equals
+its draw primitive's). **Not yet done:** the input router still doesn't *consume* that
+lane — the SDL save browser keeps hand-deriving its own hit rects (`slotY = 318;
+slotY += 38` duplicated between its draw loop and its hit-test at
+`OpeningMenuView.cpp:1350`). Killing that duplication is the input-lane wiring step
+(routing `hitRegions` into the hit-test, then deleting the hand-derived rects); until
+then the duplication is real, just now with a receipt-backed lane ready to replace it.
 
 ### Two build tiers (forced by the L0 gaps)
 
@@ -195,9 +201,11 @@ struct Viewport {
 ## L2 — theme / skin (generalize the tone system)
 
 `ProductUiTone` is the seed of this layer — semantic color *roles* resolved by
-`productUiToneColor(tone)`. Today it's a hardcoded enum→color switch. L2 **generalizes
-it into data**: a `Theme` mapping each tone slot to a color, plus type roles (sizes)
-and metrics (padding, row height, border width). One theme per game/skin; swap the
+`productUiToneColor(tone)`, which already looks the color up in a constexpr
+descriptor table (`toneDescriptor(tone).color`), not a switch. So L0 is *closer* to
+"tones as data" than a hardcoded palette — it's just a single fixed table. L2
+**makes it swappable**: a `Theme` mapping each tone slot to a color, plus type roles
+(sizes) and metrics (padding, row height, border width). One theme per game/skin; swap the
 theme and the worn-leather thief look becomes the knight/priest look with zero widget
 changes. **Widgets reference tones, never raw RGB** — already true at L0; keep it.
 
@@ -278,11 +286,14 @@ A widget tree deterministically emits a `ProductUiDrawList`. Serialize it to can
 receipt discipline to the entire UI: a widget's output is as verifiable as a physics
 step. Proposed helper: `serializeProductUiDrawList(list) → std::string`.
 
-`product_ui_draw_list_tests` already asserts the shape we must preserve — for the
-starter/save draw list: `rectCount==11`, `textCount==11`, `primitiveCount ==
-primitives.size()`, and per-`semanticId` field values (e.g. `header.text=="IGGY3D"`,
-highlight `rect.x==50, rect.y==194`). **A widget rebuild is proven correct when these
-stay byte-identical.**
+`product_ui_draw_list_tests` already asserts the shape we must preserve. The
+**top-level starter menu** is pinned by `starterRootDrawListContainsHeaderAndRowsInOrder`
+(`rectCount==11`, `textCount==11`, `header.text=="IGGY3D"`) and
+`selectedNewWorldGetsHighlightAndStableCoordinates` (the menu's new-world row highlight
+at `rect.x==50, rect.y==194` — note: this is a *menu row*, not a save slot). The
+**save browser** is pinned separately by `loadSaveChildScreenBuildsSharedSelectorSurface`,
+`deleteModeChildScreenBuildsDeleteWorldSurface`, and `loadSaveDrawListHighlightsSelectedSlot`.
+**A widget rebuild is proven correct when these stay byte-identical.**
 
 ---
 
@@ -306,11 +317,13 @@ stay byte-identical.**
 
 ## First target — the proof
 
-The save browser exists in the **primitive** path already (`buildProductStarterUiDrawList`
-consumes `saves`/`selectedSaveId`; `product_ui_draw_list_tests` covers its rows —
-"disabledSaveRowsAreRepresentedWithoutCompatibleSaves",
-"selectedNewWorldGetsHighlightAndStableCoordinates"). Rebuild *that* emission from L1
-widgets, hold the receipt identical. Then the SDL duplicate
+The save browser lives in the **primitive** path (`buildProductStarterUiDrawList`
+consumes `saves`/`selectedSaveId`); its rows/actions are guarded by
+`loadSaveChildScreenBuildsSharedSelectorSurface`,
+`deleteModeChildScreenBuildsDeleteWorldSurface`, and
+`loadSaveDrawListHighlightsSelectedSlot`. Rebuilding *that* emission from L1 widgets
+while holding those receipts byte-identical is the proof — **done** (delete-confirm
+first, then the save browser). Next, the SDL duplicate
 (`OpeningMenuView::drawLoadSavePanel`) becomes deletable by pointing the SDL backend
 at the same primitives.
 

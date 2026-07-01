@@ -65,6 +65,10 @@ void appendWidgetOutput(ProductUiDrawList& list, const WidgetOutput& out) {
       ++list.rectCount;
     }
   }
+  for (const UiHitRegion& region : out.hitRegions) {
+    list.hitRegions.push_back(region);
+    ++list.hitRegionCount;
+  }
 }
 
 }  // namespace iggy3d

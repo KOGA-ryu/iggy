@@ -626,20 +626,20 @@ std::string saveSlotStatusText(const SaveSlotRingItem& item) {
   return item.enabled ? "READY" : item.status;
 }
 
-void emitLoadSaveAction(ProductUiDrawList& list,
+void emitLoadSaveAction(WidgetOutput& out,
                         const SaveSlotActionSpec& action,
                         float x,
                         ProductUiTone tone) {
-  emitText(list,
-           // branch-gate: BG-1073
-           action.enabled ? tone : ProductUiTone::Disabled,
-           {x, 548.0F, 240.0F, 26.0F},
-           makeStarterSemanticId("content.load_save.action." +
-                                 std::string(frontendActionName(action.action))),
-           action.label,
-           action.action,
-           false,
-           action.enabled);
+  emit(UiText{.rect = {x, 548.0F, 240.0F, 26.0F},
+              // branch-gate: BG-1073
+              .tone = action.enabled ? tone : ProductUiTone::Disabled,
+              .semanticId = makeStarterSemanticId(
+                  "content.load_save.action." +
+                  std::string(frontendActionName(action.action))),
+              .text = std::string(action.label),
+              .action = action.action,
+              .enabled = action.enabled},
+       out);
 }
 
 void emitLoadSaveContent(ProductUiDrawList& list,
@@ -655,86 +655,94 @@ void emitLoadSaveContent(ProductUiDrawList& list,
                             frontend.saveBrowserMode);
   const bool deleteMode =
       frontend.saveBrowserMode == FrontendSaveBrowserMode::Delete;
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {450.0F, 152.0F, 360.0F, 42.0F},
-           makeStarterSemanticId("content.load_save.title"),
-           // branch-gate: BG-1073
-           deleteMode ? "DELETE WORLD" : "LOAD MAP");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {452.0F, 210.0F, 700.0F, 26.0F},
-           makeStarterSemanticId("content.load_save.instructions"),
-           // branch-gate: BG-1073
-           deleteMode ? "UP DOWN SELECT WORLD   CONFIRM DELETE"
-                      : "UP DOWN SELECT MAP   CONFIRM LOAD");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {452.0F, 260.0F, 100.0F, 26.0F},
-           makeStarterSemanticId("content.load_save.slots_label"),
-           "SLOTS");
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {558.0F, 260.0F, 120.0F, 26.0F},
-           makeStarterSemanticId("content.load_save.slots_value"),
-           std::to_string(slots.slots.size()));
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {714.0F, 260.0F, 180.0F, 26.0F},
-           makeStarterSemanticId("content.load_save.compatible_label"),
-           "COMPATIBLE");
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {910.0F, 260.0F, 120.0F, 26.0F},
-           makeStarterSemanticId("content.load_save.compatible_value"),
-           std::to_string(slots.compatibleCount));
+
+  // Save browser rebuilt from the L1 widget layer (docs/ui/ui_architecture.md).
+  // Emission-preserving: same rects/tones/ids/order as the hand-emit, so the
+  // draw-list receipt stays byte-identical. Designated initializers name each
+  // field so a semanticId/text or selected/enabled transposition is a compile
+  // mismatch, not a silent swap. The action widgets also emit hit regions.
+  WidgetOutput out;
+  emit(UiText{.rect = {450.0F, 152.0F, 360.0F, 42.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.load_save.title"),
+              // branch-gate: BG-1073
+              .text = deleteMode ? "DELETE WORLD" : "LOAD MAP"},
+       out);
+  emit(UiText{.rect = {452.0F, 210.0F, 700.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.load_save.instructions"),
+              // branch-gate: BG-1073
+              .text = deleteMode ? "UP DOWN SELECT WORLD   CONFIRM DELETE"
+                                 : "UP DOWN SELECT MAP   CONFIRM LOAD"},
+       out);
+  emit(UiText{.rect = {452.0F, 260.0F, 100.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.load_save.slots_label"),
+              .text = "SLOTS"},
+       out);
+  emit(UiText{.rect = {558.0F, 260.0F, 120.0F, 26.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.load_save.slots_value"),
+              .text = std::to_string(slots.slots.size())},
+       out);
+  emit(UiText{.rect = {714.0F, 260.0F, 180.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.load_save.compatible_label"),
+              .text = "COMPATIBLE"},
+       out);
+  emit(UiText{.rect = {910.0F, 260.0F, 120.0F, 26.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.load_save.compatible_value"),
+              .text = std::to_string(slots.compatibleCount)},
+       out);
 
   float slotY = 318.0F;
   const std::size_t visibleSlotCount =
       std::min<std::size_t>(browser.ring.items.size(), 5U);
   // branch-gate: BG-1073
   if (visibleSlotCount == 0U) {
-    emitText(list,
-             ProductUiTone::TextMuted,
-             {452.0F, slotY, 360.0F, 26.0F},
-             makeStarterSemanticId("content.load_save.empty"),
-             "NO COMPATIBLE SAVES");
+    emit(UiText{.rect = {452.0F, slotY, 360.0F, 26.0F},
+                .tone = ProductUiTone::TextMuted,
+                .semanticId = makeStarterSemanticId("content.load_save.empty"),
+                .text = "NO COMPATIBLE SAVES"},
+         out);
   }
   for (std::size_t i = 0; i < visibleSlotCount; ++i) {
     const SaveSlotRingItem& item = browser.ring.items[i];
     const bool selected = i == static_cast<std::size_t>(browser.ring.selectedIndex);
-    emitText(list,
-             // branch-gate: BG-1073
-             item.enabled ? ProductUiTone::TextPrimary : ProductUiTone::Disabled,
-             {452.0F, slotY, 360.0F, 26.0F},
-             makeStarterSemanticId("content.load_save.slot_" +
-                                   std::to_string(i) + ".title"),
-             saveSlotTitle(item),
-             FrontendAction::None,
-             selected,
-             item.enabled);
-    emitText(list,
-             // branch-gate: BG-1073
-             item.enabled ? ProductUiTone::TextMuted : ProductUiTone::Disabled,
-             {850.0F, slotY, 260.0F, 26.0F},
-             makeStarterSemanticId("content.load_save.slot_" +
-                                   std::to_string(i) + ".status"),
-             saveSlotStatusText(item),
-             FrontendAction::None,
-             selected,
-             item.enabled);
+    emit(UiText{.rect = {452.0F, slotY, 360.0F, 26.0F},
+                // branch-gate: BG-1073
+                .tone = item.enabled ? ProductUiTone::TextPrimary
+                                     : ProductUiTone::Disabled,
+                .semanticId = makeStarterSemanticId("content.load_save.slot_" +
+                                                    std::to_string(i) + ".title"),
+                .text = saveSlotTitle(item),
+                .selected = selected,
+                .enabled = item.enabled},
+         out);
+    emit(UiText{.rect = {850.0F, slotY, 260.0F, 26.0F},
+                // branch-gate: BG-1073
+                .tone = item.enabled ? ProductUiTone::TextMuted
+                                     : ProductUiTone::Disabled,
+                .semanticId = makeStarterSemanticId("content.load_save.slot_" +
+                                                    std::to_string(i) + ".status"),
+                .text = saveSlotStatusText(item),
+                .selected = selected,
+                .enabled = item.enabled},
+         out);
     slotY += 38.0F;
   }
 
   // branch-gate: BG-1073
   if (deleteMode) {
-    emitLoadSaveAction(list, browser.actions[0], 452.0F, ProductUiTone::Accent);
-    emitLoadSaveAction(list, browser.actions[1], 760.0F, ProductUiTone::Accent);
+    emitLoadSaveAction(out, browser.actions[0], 452.0F, ProductUiTone::Accent);
+    emitLoadSaveAction(out, browser.actions[1], 760.0F, ProductUiTone::Accent);
   } else {
-    emitLoadSaveAction(list, browser.actions[0], 452.0F, ProductUiTone::Accent);
-    emitLoadSaveAction(list, browser.actions[1], 690.0F, ProductUiTone::Accent);
-    emitLoadSaveAction(list, browser.actions[2], 1010.0F, ProductUiTone::Accent);
+    emitLoadSaveAction(out, browser.actions[0], 452.0F, ProductUiTone::Accent);
+    emitLoadSaveAction(out, browser.actions[1], 690.0F, ProductUiTone::Accent);
+    emitLoadSaveAction(out, browser.actions[2], 1010.0F, ProductUiTone::Accent);
   }
+  appendWidgetOutput(list, out);
 }
 
 void emitDeleteConfirmContent(ProductUiDrawList& list) {
@@ -746,47 +754,50 @@ void emitDeleteConfirmContent(ProductUiDrawList& list) {
   // hand-emit never expressed, and the layout that hit-testing can reuse instead
   // of re-deriving it by hand.
   WidgetOutput out;
-  emit(UiText{{450.0F, 152.0F, 360.0F, 42.0F},
-              ProductUiTone::TextPrimary,
-              makeStarterSemanticId("content.delete_confirm.title"),
-              "DELETE MAP"},
+  emit(UiText{.rect = {450.0F, 152.0F, 360.0F, 42.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.delete_confirm.title"),
+              .text = "DELETE MAP"},
        out);
-  emit(UiText{{452.0F, 210.0F, 620.0F, 26.0F},
-              ProductUiTone::TextMuted,
-              makeStarterSemanticId("content.delete_confirm.instructions"),
-              "THIS MOVES THE MAP TO DELETED MAPS"},
+  emit(UiText{.rect = {452.0F, 210.0F, 620.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId =
+                  makeStarterSemanticId("content.delete_confirm.instructions"),
+              .text = "THIS MOVES THE MAP TO DELETED MAPS"},
        out);
-  emit(UiText{{452.0F, 260.0F, 180.0F, 26.0F},
-              ProductUiTone::TextMuted,
-              makeStarterSemanticId("content.delete_confirm.map_label"),
-              "MAP"},
+  emit(UiText{.rect = {452.0F, 260.0F, 180.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.delete_confirm.map_label"),
+              .text = "MAP"},
        out);
-  emit(UiText{{452.0F, 292.0F, 320.0F, 26.0F},
-              ProductUiTone::TextPrimary,
-              makeStarterSemanticId("content.delete_confirm.map_value"),
-              "SELECTED MAP"},
+  emit(UiText{.rect = {452.0F, 292.0F, 320.0F, 26.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.delete_confirm.map_value"),
+              .text = "SELECTED MAP"},
        out);
-  emit(UiText{{452.0F, 350.0F, 180.0F, 26.0F},
-              ProductUiTone::TextMuted,
-              makeStarterSemanticId("content.delete_confirm.status_label"),
-              "STATUS"},
+  emit(UiText{.rect = {452.0F, 350.0F, 180.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId =
+                  makeStarterSemanticId("content.delete_confirm.status_label"),
+              .text = "STATUS"},
        out);
-  emit(UiText{{452.0F, 382.0F, 320.0F, 26.0F},
-              ProductUiTone::TextPrimary,
-              makeStarterSemanticId("content.delete_confirm.status_value"),
-              "CONFIRM OPEN"},
+  emit(UiText{.rect = {452.0F, 382.0F, 320.0F, 26.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId =
+                  makeStarterSemanticId("content.delete_confirm.status_value"),
+              .text = "CONFIRM OPEN"},
        out);
-  emit(UiText{{452.0F, 508.0F, 260.0F, 26.0F},
-              ProductUiTone::Accent,
-              makeStarterSemanticId("content.delete_confirm.confirm"),
-              "CONFIRM DELETE",
-              FrontendAction::Delete},
+  emit(UiText{.rect = {452.0F, 508.0F, 260.0F, 26.0F},
+              .tone = ProductUiTone::Accent,
+              .semanticId = makeStarterSemanticId("content.delete_confirm.confirm"),
+              .text = "CONFIRM DELETE",
+              .action = FrontendAction::Delete},
        out);
-  emit(UiText{{760.0F, 508.0F, 100.0F, 26.0F},
-              ProductUiTone::Accent,
-              makeStarterSemanticId("content.delete_confirm.back"),
-              "BACK",
-              FrontendAction::Back},
+  emit(UiText{.rect = {760.0F, 508.0F, 100.0F, 26.0F},
+              .tone = ProductUiTone::Accent,
+              .semanticId = makeStarterSemanticId("content.delete_confirm.back"),
+              .text = "BACK",
+              .action = FrontendAction::Back},
        out);
   appendWidgetOutput(list, out);
 }

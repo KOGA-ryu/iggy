@@ -58,6 +58,30 @@ struct ProductUiPrimitive {
   bool enabled = true;
 };
 
+// The input lane's view of an interactive widget: computed from the SAME rect
+// that produced a draw primitive, so drawing and hit-testing cannot drift. The
+// widget layer (src/app/iggy3d/ui/Widget.hpp) emits these; the draw list carries
+// them alongside the primitives. NB: input-router consumption — replacing the
+// hand-derived hit rects in OpeningMenuView — is a later step (see
+// docs/ui/ui_architecture.md). Today they are captured and receipt-guarded here,
+// not yet routed.
+enum class UiHitKind : std::uint8_t {
+  None,
+  Button,
+  Row,
+  Slider,
+  Toggle,
+  Viewport,
+};
+
+struct UiHitRegion {
+  std::string semanticId;
+  ProductUiRect rect;
+  UiHitKind kind = UiHitKind::None;
+  FrontendAction action = FrontendAction::None;
+  bool enabled = true;
+};
+
 struct ProductUiDrawList {
   bool ready = false;
   bool partial = false;
@@ -66,6 +90,8 @@ struct ProductUiDrawList {
   std::uint32_t virtualWidth = 1280;
   std::uint32_t virtualHeight = 720;
   std::vector<ProductUiPrimitive> primitives;
+  std::vector<UiHitRegion> hitRegions;
+  std::uint64_t hitRegionCount = 0;
   std::uint64_t primitiveCount = 0;
   std::uint64_t textCount = 0;
   std::uint64_t rectCount = 0;
