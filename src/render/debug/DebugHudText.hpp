@@ -15,6 +15,12 @@ struct DebugHudGlyphQuad {
   std::uint32_t width = 0;
   std::uint32_t height = 0;
   char source = ' ';
+  // Glyph fill colour. Defaults to the long-standing debug-HUD mint so HUD text is
+  // unchanged; the UI text path overrides it with the theme-resolved tone colour.
+  float r = 0.78F;
+  float g = 0.95F;
+  float b = 0.82F;
+  float a = 1.0F;
 };
 
 struct DebugHudLayoutResult {

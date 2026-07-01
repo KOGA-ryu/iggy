@@ -84,10 +84,24 @@ void appendTextQuads(ProductVulkanMenuFrame& frame,
                      const ProductVulkanMenuFrameRequest& request,
                      float scaleX,
                      float scaleY) {
-  const DebugHudLayoutResult layout = layoutDebugHudTextAt(
+  // UI text resolves its colour through the same theme as rects, so glyphs match
+  // their tone (dark graphite ink on the cream Journal page, light on the dark
+  // System shell) instead of the fixed debug-HUD mint.
+  const ProductUiThemeId themeId = request.uiDrawList != nullptr
+                                       ? request.uiDrawList->theme
+                                       : ProductUiThemeId::System;
+  const ProductUiColor color =
+      productUiToneColor(primitive.tone, productUiTheme(themeId));
+  DebugHudLayoutResult layout = layoutDebugHudTextAt(
       primitive.text, scaledOffset(primitive.rect.x, scaleX),
       scaledOffset(primitive.rect.y, scaleY), request.drawableWidth,
       request.drawableHeight);
+  for (DebugHudGlyphQuad& quad : layout.quads) {
+    quad.r = color.r;
+    quad.g = color.g;
+    quad.b = color.b;
+    quad.a = color.a;
+  }
   frame.textGlyphCount += layout.glyphCount;
   frame.textGlyphQuads.insert(frame.textGlyphQuads.end(),
                               layout.quads.begin(), layout.quads.end());

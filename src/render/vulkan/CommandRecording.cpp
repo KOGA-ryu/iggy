@@ -75,14 +75,14 @@ void recordHudGlyphQuads(VkCommandBuffer commandBuffer,
   if (quads == nullptr || quadCount == 0U) {
     return;
   }
-  const VkClearAttachment hud = colorClear(0.78F, 0.95F, 0.82F, 1.0F);
   for (std::size_t index = 0; index < quadCount; ++index) {
     const DebugHudGlyphQuad& quad = quads[index];
     if (quad.width == 0U || quad.height == 0U) {
       continue;
     }
+    const VkClearAttachment glyph = colorClear(quad.r, quad.g, quad.b, quad.a);
     const VkClearRect rect = clearRect(quad.x, quad.y, quad.width, quad.height);
-    vkCmdClearAttachments(commandBuffer, 1, &hud, 1, &rect);
+    vkCmdClearAttachments(commandBuffer, 1, &glyph, 1, &rect);
   }
 }
 
