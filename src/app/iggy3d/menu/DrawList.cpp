@@ -457,7 +457,7 @@ std::string selectedGlyphText(const std::string& glyph) {
   return "TOOL " + glyph;
 }
 
-void emitAsciiDraftRows(ProductUiDrawList& list,
+void emitAsciiDraftRows(WidgetOutput& out,
                         const WorldSetupDraft& draft,
                         const ProductUiDrawListRequest& request) {
   const std::vector<std::string_view> rows = asciiPreviewRows(draft.asciiRoomText);
@@ -471,15 +471,16 @@ void emitAsciiDraftRows(ProductUiDrawList& list,
                                       request.dungeonDraftCursorRow,
                                       request.dungeonDraftCursorColumn)
             : std::string(rows[row]);
-    emitText(list,
-             // branch-gate: BG-1144
-             request.dungeonDraftEditMode && row == request.dungeonDraftCursorRow
-                 ? ProductUiTone::Accent
-                 : ProductUiTone::TextPrimary,
-             {850.0F, rowY, 360.0F, 22.0F},
-             makeStarterSemanticId("content.new_world.ascii_row_" +
-                                   std::to_string(row)),
-             rowText);
+    emit(UiText{.rect = {850.0F, rowY, 360.0F, 22.0F},
+                // branch-gate: BG-1144
+                .tone = request.dungeonDraftEditMode &&
+                                row == request.dungeonDraftCursorRow
+                            ? ProductUiTone::Accent
+                            : ProductUiTone::TextPrimary,
+                .semanticId = makeStarterSemanticId("content.new_world.ascii_row_" +
+                                                    std::to_string(row)),
+                .text = rowText},
+         out);
     rowY += 22.0F;
   }
 }
@@ -487,133 +488,144 @@ void emitAsciiDraftRows(ProductUiDrawList& list,
 void emitNewWorldContent(ProductUiDrawList& list,
                          const ProductUiDrawListRequest& request) {
   const WorldSetupDraft* draft = request.worldSetupDraft;
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {452.0F, 150.0F, 360.0F, 42.0F},
-           makeStarterSemanticId("content.new_world.title"),
-           "MAP BUILDER");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {452.0F, 210.0F, 700.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.instructions"),
-           request.dungeonDraftEditMode
-               ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C R=RESET 9^ 0v -< => SELECT"
-               : "UP DOWN SELECT TEMPLATE   TAB EDIT   CONFIRM BUILD");
+  // Rebuilt from the L1 widget layer (docs/ui/ui_architecture.md).
+  // Emission-preserving: same rects/tones/ids/order as the hand-emit, so the
+  // draw-list receipt stays byte-identical. Designated initializers name each
+  // field so a semanticId/text or selected/enabled transposition is a compile
+  // mismatch, not a silent swap. The CREATE and BACK action widgets also emit
+  // hit regions.
+  WidgetOutput out;
+  emit(UiText{.rect = {452.0F, 150.0F, 360.0F, 42.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.new_world.title"),
+              .text = "MAP BUILDER"},
+       out);
+  emit(UiText{.rect = {452.0F, 210.0F, 700.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.new_world.instructions"),
+              .text =
+                  request.dungeonDraftEditMode
+                      ? "EDIT MODE   ARROWS MOVE   1# 2. 3P 4K 5$ 6E 7+ 8C R=RESET 9^ 0v -< => SELECT"
+                      : "UP DOWN SELECT TEMPLATE   TAB EDIT   CONFIRM BUILD"},
+       out);
   // branch-gate: BG-1143
   if (draft == nullptr) {
-    emitText(list,
-             ProductUiTone::Status,
-             {452.0F, 272.0F, 620.0F, 26.0F},
-             makeStarterSemanticId("content.new_world.unavailable"),
-             "WORLD SETUP DRAFT UNAVAILABLE");
+    emit(UiText{.rect = {452.0F, 272.0F, 620.0F, 26.0F},
+                .tone = ProductUiTone::Status,
+                .semanticId = makeStarterSemanticId("content.new_world.unavailable"),
+                .text = "WORLD SETUP DRAFT UNAVAILABLE"},
+         out);
+    appendWidgetOutput(list, out);
     return;
   }
 
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {452.0F, 260.0F, 180.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.dungeon_label"),
-           "TEMPLATE");
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {452.0F, 289.0F, 360.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.dungeon_value"),
-           draft->worldName);
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {714.0F, 260.0F, 170.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.selection_label"),
-           "SELECTED");
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {714.0F, 289.0F, 150.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.selection_value"),
-           selectionLabelFor(*draft));
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {714.0F, 338.0F, 170.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.draft_label"),
-           "DRAFT");
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {714.0F, 367.0F, 150.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.draft_value"),
-           // branch-gate: BG-1144
-           request.dungeonDraftModified ? "CUSTOM" : "TEMPLATE");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {714.0F, 416.0F, 170.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.cursor_label"),
-           "CURSOR");
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {714.0F, 445.0F, 150.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.cursor_value"),
-           std::to_string(request.dungeonDraftCursorRow) + "," +
-               std::to_string(request.dungeonDraftCursorColumn));
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {452.0F, 338.0F, 180.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.room_id_label"),
-           "ASCII ROOM");
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {452.0F, 367.0F, 360.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.room_id_value"),
-           draft->asciiRoomId);
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {452.0F, 416.0F, 180.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.source_label"),
-           "MAP SOURCE");
-  emitText(list,
-           ProductUiTone::TextPrimary,
-           {452.0F, 445.0F, 520.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.source_value"),
-           draft->asciiRoomSourceName);
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {850.0F, 468.0F, 190.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.ascii_preview_label"),
-           "ASCII PREVIEW");
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {1030.0F, 446.0F, 170.0F, 22.0F},
-           makeStarterSemanticId("content.new_world.selected_glyph"),
-           selectedGlyphText(request.dungeonDraftSelectedGlyph));
-  emitText(list,
-           ProductUiTone::TextMuted,
-           {1030.0F, 468.0F, 170.0F, 22.0F},
-           makeStarterSemanticId("content.new_world.last_glyph"),
-           lastGlyphText(request.dungeonDraftLastGlyph));
-  emitAsciiDraftRows(list, *draft, request);
-  emitText(list,
-           ProductUiTone::Accent,
-           {452.0F, 508.0F, 260.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.create"),
-           request.dungeonDraftEditMode ? "TAB EXIT EDIT   CONFIRM BUILD"
-                                        : "CONFIRM TO BUILD",
-           FrontendAction::CreateAndEnter,
-           false,
-           true);
-  emitText(list,
-           ProductUiTone::Accent,
-           {452.0F, 556.0F, 90.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.prev"),
-           "PREV");
-  emitText(list,
-           ProductUiTone::Accent,
-           {570.0F, 556.0F, 90.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.next"),
-           "NEXT");
-  emitText(list,
-           ProductUiTone::Accent,
-           {850.0F, 508.0F, 100.0F, 26.0F},
-           makeStarterSemanticId("content.new_world.back"),
-           "BACK",
-           FrontendAction::Back,
-           false,
-           true);
+  emit(UiText{.rect = {452.0F, 260.0F, 180.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.new_world.dungeon_label"),
+              .text = "TEMPLATE"},
+       out);
+  emit(UiText{.rect = {452.0F, 289.0F, 360.0F, 26.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.new_world.dungeon_value"),
+              .text = draft->worldName},
+       out);
+  emit(UiText{.rect = {714.0F, 260.0F, 170.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.new_world.selection_label"),
+              .text = "SELECTED"},
+       out);
+  emit(UiText{.rect = {714.0F, 289.0F, 150.0F, 26.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.new_world.selection_value"),
+              .text = selectionLabelFor(*draft)},
+       out);
+  emit(UiText{.rect = {714.0F, 338.0F, 170.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.new_world.draft_label"),
+              .text = "DRAFT"},
+       out);
+  emit(UiText{.rect = {714.0F, 367.0F, 150.0F, 26.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.new_world.draft_value"),
+              // branch-gate: BG-1144
+              .text = request.dungeonDraftModified ? "CUSTOM" : "TEMPLATE"},
+       out);
+  emit(UiText{.rect = {714.0F, 416.0F, 170.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.new_world.cursor_label"),
+              .text = "CURSOR"},
+       out);
+  emit(UiText{.rect = {714.0F, 445.0F, 150.0F, 26.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.new_world.cursor_value"),
+              .text = std::to_string(request.dungeonDraftCursorRow) + "," +
+                      std::to_string(request.dungeonDraftCursorColumn)},
+       out);
+  emit(UiText{.rect = {452.0F, 338.0F, 180.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.new_world.room_id_label"),
+              .text = "ASCII ROOM"},
+       out);
+  emit(UiText{.rect = {452.0F, 367.0F, 360.0F, 26.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.new_world.room_id_value"),
+              .text = draft->asciiRoomId},
+       out);
+  emit(UiText{.rect = {452.0F, 416.0F, 180.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.new_world.source_label"),
+              .text = "MAP SOURCE"},
+       out);
+  emit(UiText{.rect = {452.0F, 445.0F, 520.0F, 26.0F},
+              .tone = ProductUiTone::TextPrimary,
+              .semanticId = makeStarterSemanticId("content.new_world.source_value"),
+              .text = draft->asciiRoomSourceName},
+       out);
+  emit(UiText{.rect = {850.0F, 468.0F, 190.0F, 26.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId =
+                  makeStarterSemanticId("content.new_world.ascii_preview_label"),
+              .text = "ASCII PREVIEW"},
+       out);
+  emit(UiText{.rect = {1030.0F, 446.0F, 170.0F, 22.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.new_world.selected_glyph"),
+              .text = selectedGlyphText(request.dungeonDraftSelectedGlyph)},
+       out);
+  emit(UiText{.rect = {1030.0F, 468.0F, 170.0F, 22.0F},
+              .tone = ProductUiTone::TextMuted,
+              .semanticId = makeStarterSemanticId("content.new_world.last_glyph"),
+              .text = lastGlyphText(request.dungeonDraftLastGlyph)},
+       out);
+  emitAsciiDraftRows(out, *draft, request);
+  emit(UiText{.rect = {452.0F, 508.0F, 260.0F, 26.0F},
+              .tone = ProductUiTone::Accent,
+              .semanticId = makeStarterSemanticId("content.new_world.create"),
+              .text = request.dungeonDraftEditMode ? "TAB EXIT EDIT   CONFIRM BUILD"
+                                                   : "CONFIRM TO BUILD",
+              .action = FrontendAction::CreateAndEnter,
+              .selected = false,
+              .enabled = true},
+       out);
+  emit(UiText{.rect = {452.0F, 556.0F, 90.0F, 26.0F},
+              .tone = ProductUiTone::Accent,
+              .semanticId = makeStarterSemanticId("content.new_world.prev"),
+              .text = "PREV"},
+       out);
+  emit(UiText{.rect = {570.0F, 556.0F, 90.0F, 26.0F},
+              .tone = ProductUiTone::Accent,
+              .semanticId = makeStarterSemanticId("content.new_world.next"),
+              .text = "NEXT"},
+       out);
+  emit(UiText{.rect = {850.0F, 508.0F, 100.0F, 26.0F},
+              .tone = ProductUiTone::Accent,
+              .semanticId = makeStarterSemanticId("content.new_world.back"),
+              .text = "BACK",
+              .action = FrontendAction::Back,
+              .selected = false,
+              .enabled = true},
+       out);
+  appendWidgetOutput(list, out);
 }
 
 std::string saveSlotTitle(const SaveSlotRingItem& item) {
