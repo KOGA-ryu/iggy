@@ -15,6 +15,7 @@
 #include "runtime/ai/NpcBehaviorSystem.hpp"
 #include "runtime/ai/NpcInvestigateSystem.hpp"
 #include "runtime/ai/NpcPatrolSystem.hpp"
+#include "runtime/ai/ReasoningRoute.hpp"
 #include "runtime/camera/CameraModePolicy.hpp"
 #include "runtime/clock/Clock.hpp"
 #include "runtime/physics/PhysicsCollisionQueries.hpp"
@@ -772,6 +773,99 @@ NpcBehaviorDecision maybeApplyPatrol(const NpcBehaviorDecision& decision,
   return patrol;
 }
 
+// Route-follow POST-STEP (A4 slice 2). After the overlay chain has set a point-move DESTINATION,
+// if that destination's straight segment is blocked, steer the guard along a planned graph route
+// instead of stalling into the wall. Rewrites ONLY the interim destination + stop distance -- adds
+// or reorders NO rung, introduces NO new AiIntentKind. Eligible: Investigate / ReturnToAnchor /
+// Patrol (Patrol only actually routes when its waypoint is blocked, which the trigger enforces);
+// Chasing/Attacking (band 5) stay DIRECT. EMPTY graph / no path / clear shot => decision untouched
+// (today's behavior), so graphless sessions are byte-identical. Route state = the actor's TRANSIENT
+// route fields (never hashed/saved). NEVER re-plans per tick: it invalidates on a cheap key
+// mismatch and plans only when the final destination is straight-blocked.
+NpcBehaviorDecision maybeFollowRoute(NpcBehaviorDecision decision, AiActorState& actor, Vec3 guardPos,
+                                     std::span<const PhysicsAabbCollider> colliders,
+                                     const ReasoningGraph& graph) {
+  const auto clearRoute = [&actor]() {
+    actor.hasRoute = false;
+    actor.routeNodeIds.clear();
+    actor.routeCursor = 0;
+  };
+  const auto nodePos = [&graph](std::uint32_t id) {
+    return id < graph.nodes.size() ? graph.nodes[id].positionMeters : Vec3{};
+  };
+  const auto distanceMeters = [](Vec3 a, Vec3 b) { return std::sqrt(lengthSquared(a - b)); };
+
+  const bool routable = decision.status == NpcBehaviorDecisionStatus::Decided &&
+                        (decision.intent == AiIntentKind::Investigate ||
+                         decision.intent == AiIntentKind::ReturnToAnchor ||
+                         decision.intent == AiIntentKind::Patrol);
+  if (!routable) {
+    return decision;  // Chasing/Attacking/Wait/None: never routed; any held route stays dormant.
+  }
+
+  const Vec3 finalDestination = decision.homePosition;  // the true target, captured BEFORE rewrite
+
+  // (1) Invalidate a stale route -- cheap equality only, no ray, no Dijkstra. Investigate origins
+  // move when fresh noise overwrites the memory; intents flip Return<->Chase<->Return.
+  if (actor.hasRoute && (actor.routeIntent != decision.intent ||
+                         !nearlyEqual(actor.routePlannedForDestination, finalDestination, 0.05F))) {
+    clearRoute();
+  }
+
+  // (2) Plan ONLY when the final destination is straight-blocked (one ray on the already-baked
+  // per-tick visionColliders; NO new bake). A clear shot or an empty/no-path result => direct.
+  bool justPlanned = false;
+  if (!actor.hasRoute) {
+    if (!reasoningSegmentBlocked(colliders, guardPos, finalDestination)) {
+      return decision;  // clear shot -> today's direct behavior
+    }
+    const PlannedRoute planned = planRoute(graph, colliders, guardPos, finalDestination, {});
+    if (planned.nodeIds.empty()) {
+      return decision;  // no path / empty graph / unreachable -> direct (never worse than status quo)
+    }
+    actor.routeNodeIds = planned.nodeIds;
+    actor.routeCursor = 0;
+    actor.routeIntent = decision.intent;
+    actor.routePlannedForDestination = finalDestination;
+    actor.hasRoute = true;
+    actor.routeLastPositionMeters = guardPos;
+    justPlanned = true;
+  }
+
+  // (3) Advance the cursor through every route node already reached.
+  const std::uint32_t cursorBefore = actor.routeCursor;
+  const std::uint32_t routeSize = static_cast<std::uint32_t>(actor.routeNodeIds.size());
+  while (actor.routeCursor < routeSize &&
+         distanceMeters(guardPos, nodePos(actor.routeNodeIds[actor.routeCursor])) <=
+             kPatrolArriveEpsilonMeters) {
+    ++actor.routeCursor;
+  }
+  if (actor.routeCursor >= routeSize) {
+    // Every route node reached -> the wall is flanked; the final leg goes DIRECT to the true target
+    // with the intent's OWN stop (already on `decision`). Retire the route.
+    clearRoute();
+    return decision;
+  }
+
+  // (4) No-progress guard (deterministic, per-guard -- NEVER transient.lastMovementResult): if we
+  // neither advanced a node nor moved since the previous follow tick, the leg is stuck. A re-plan
+  // would reproduce the same blocked node, so DROP to direct rather than loop.
+  const bool advancedNode = actor.routeCursor > cursorBefore;
+  const bool moved = distanceMeters(guardPos, actor.routeLastPositionMeters) >= kPatrolArriveEpsilonMeters;
+  if (!justPlanned && !advancedNode && !moved) {
+    clearRoute();
+    return decision;
+  }
+  actor.routeLastPositionMeters = guardPos;
+
+  // (5) Steer to the current interim node with the PATROL stop pair. The intent's own stop (e.g.
+  // ReturnToAnchor's larger returnStopDistanceMeters) would freeze the guard AT an interim node; it
+  // applies only to the final leg handled in (3).
+  decision.homePosition = nodePos(actor.routeNodeIds[actor.routeCursor]);
+  decision.returnStopDistanceMeters = kPatrolMoveStopMeters;
+  return decision;
+}
+
 void applyNpcBehaviorDecision(AiActorState& actorState,
                               const NpcBehaviorDecision& decision) {
   actorState.behavior = decision.behavior;
@@ -1043,6 +1137,12 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
     decision =
         maybeApplyInvestigate(decision, actorState, perception, alertProfile, state.clock.tickIndex);
     decision = maybeApplyPatrol(decision, actorState, perception, alertProfile);
+    // Route-follow POST-STEP (A4 s2): flank blocked destinations via the carried reasoning graph.
+    // Rewrites only the interim destination inside the rung above; empty graph -> unchanged.
+    if (actorEntity != nullptr) {
+      decision = maybeFollowRoute(decision, actorState, actorEntity->transform.position,
+                                  visionColliders, state.reasoningGraph);
+    }
     applyNpcBehaviorDecision(actorState, decision);
     updateNpcFacing(actorState, decision, perception);
     actorState.lastTargetInRadius = perception.targetInPerceptionRadius;

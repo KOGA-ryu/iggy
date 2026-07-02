@@ -151,6 +151,19 @@ struct AiActorState {
   std::uint64_t lastKnownTargetTick = 0;
   bool hasLastKnownTarget = false;
   std::uint32_t investigateDwellTicks = 0;
+  // Current L5 route (A4 slice 2). TRANSIENT-IN-PERSISTENCE: deliberately EXCLUDED from
+  // SaveAiActorRecord / SaveCodec / StateHash / SaveLoad (the a2 four-way lock stays exactly as-is),
+  // so a reloaded guard simply re-plans when a blocked destination next needs a route -- routes are
+  // recomputed-on-load, never serialized/hashed. Node ids index state.reasoningGraph; the route is
+  // keyed to (routeIntent, routePlannedForDestination) so a stale route dies the moment the intent
+  // flips or the destination moves. routeLastPositionMeters is the per-guard no-progress baseline
+  // (NEVER transient.lastMovementResult -- that single slot is last-writer-wins across guards).
+  std::vector<std::uint32_t> routeNodeIds;
+  std::uint32_t routeCursor = 0;
+  AiIntentKind routeIntent = AiIntentKind::None;
+  Vec3 routePlannedForDestination{};
+  bool hasRoute = false;
+  Vec3 routeLastPositionMeters{};
 };
 
 struct AiState {

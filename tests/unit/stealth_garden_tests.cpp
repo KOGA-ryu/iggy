@@ -960,6 +960,141 @@ bool reasoningRoutePlansAroundIslandWithTieBreak() {
   return ok;
 }
 
+// --- a4s2: route-following overlays -----------------------------------------------------------
+iggy3d::Vec3 guardEntityPos(const GardenSession& gs) {
+  const iggy3d::EntityState* e = gs.session->state().world.findById(gs.guard);
+  return e == nullptr ? iggy3d::Vec3{} : e->transform.position;
+}
+
+// Seed a guard into the Searching band investigating `origin`, parked so the player is never
+// perceived (no Chase). Guard at (12,3); origin (1,3) is island-blocked on the direct line.
+void seedInvestigatingGuard(GardenSession& gs, iggy3d::Vec3 origin) {
+  if (iggy3d::AiActorState* g = mutableGuardAi(gs)) {
+    g->alertLevel = 0.55F;  // Searching band
+    g->lastRiseTick = 0;
+    g->hasLastKnownTarget = true;
+    g->lastKnownTargetPosition = origin;
+    g->lastKnownTargetTick = 0;
+    g->hasHomePosition = false;  // no leash return to fight the investigate overlay
+  }
+  teleportEntity(gs, gs.guard, cellToWorld(12, 3));
+  teleportEntity(gs, gs.player, iggy3d::Vec3{40.0F, 0.0F, 40.0F});  // far -> never perceived
+}
+
+// THE behavioral proof: with a graph installed, a guard whose DIRECT path to the investigate origin
+// is island-blocked follows the flank route and REACHES the origin within a measured budget; WITHOUT
+// a graph it stalls against the island forever (today's behavior = the empty-graph zero-drift witness).
+bool routeFollowingReachesIslandBlockedOrigin() {
+  const Garden garden = loadGarden();
+  if (!expect(garden.ok, "garden loaded for route-follow")) {
+    return false;
+  }
+  const std::vector<iggy3d::Vec3> waypoints = {cellToWorld(1, 1), cellToWorld(1, 5)};
+  const iggy3d::ReasoningGraph graph = iggy3d::buildReasoningGraph(garden.room, waypoints);
+  const iggy3d::Vec3 origin = cellToWorld(1, 3);
+
+  const auto runReach = [&](bool withGraph) -> int {
+    GardenSession gs = makeGardenSession();
+    if (!gs.ok) {
+      return -2;
+    }
+    if (withGraph) {
+      gs.session->setReasoningGraph(graph);
+    }
+    seedInvestigatingGuard(gs, origin);
+    for (int i = 0; i < 80; ++i) {
+      submitWait(gs);
+      if (!tick(gs)) {
+        return -3;
+      }
+      if (planarDistance(guardEntityPos(gs), origin) <= 0.5F) {
+        return i + 1;
+      }
+    }
+    return -1;  // never reached within the budget
+  };
+
+  const int withGraphTicks = runReach(true);
+  const int withoutGraphTicks = runReach(false);
+  std::cerr << "a4s2 route-follow: withGraph reached origin in " << withGraphTicks
+            << " ticks; withoutGraph=" << withoutGraphTicks << " (-1 = stalled at the island)\n";
+
+  // Measured: 15 ticks (deterministic). Pin with margin for the flank arc.
+  return expect(withGraphTicks > 0, "guard reaches the island-blocked origin via the flank route") &&
+         expect(withGraphTicks <= 25, "guard reaches within the measured tick budget (measured 15)") &&
+         expect(withoutGraphTicks == -1,
+                "without a graph the guard stalls against the island (today's behavior)");
+}
+
+// Cadence: a stale route dies the moment the destination moves -- here to a CLEAR-reachable spot, so
+// the route drops to EMPTY (direct) rather than steering toward the old blocked origin.
+bool routeInvalidatesWhenDestinationChanges() {
+  const Garden garden = loadGarden();
+  if (!expect(garden.ok, "garden loaded for invalidation")) {
+    return false;
+  }
+  GardenSession gs = makeGardenSession();
+  if (!gs.ok) {
+    return false;
+  }
+  const std::vector<iggy3d::Vec3> waypoints = {cellToWorld(1, 1), cellToWorld(1, 5)};
+  gs.session->setReasoningGraph(iggy3d::buildReasoningGraph(garden.room, waypoints));
+  seedInvestigatingGuard(gs, cellToWorld(1, 3));
+
+  submitWait(gs);
+  bool ok = expect(tick(gs), "invalidation plan tick");
+  const iggy3d::AiActorState* g1 = guardAi(gs);
+  ok = ok && expect(g1 != nullptr && g1->hasRoute, "guard plans a route to the blocked origin") &&
+       expect(g1 != nullptr &&
+                  iggy3d::nearlyEqual(g1->routePlannedForDestination, cellToWorld(1, 3), 0.05F),
+              "route is keyed to the blocked origin");
+
+  // Move the last-known origin to a clear-reachable spot (right column, no island between).
+  if (iggy3d::AiActorState* g = mutableGuardAi(gs)) {
+    g->lastKnownTargetPosition = cellToWorld(12, 5);
+    g->investigateDwellTicks = 0;
+  }
+  submitWait(gs);
+  ok = ok && expect(tick(gs), "invalidation change tick");
+  const iggy3d::AiActorState* g2 = guardAi(gs);
+  ok = ok && expect(g2 != nullptr && !g2->hasRoute,
+                    "stale route dies when the destination moves to a clear shot (no re-route)");
+  return ok;
+}
+
+// The no-progress safety net: a guard holding a route it cannot advance (seeded stuck leg, zero
+// movement since the last follow tick) DROPS the route to EMPTY (direct fallback) rather than loop.
+bool routeNoProgressDropsStuckLeg() {
+  const Garden garden = loadGarden();
+  if (!expect(garden.ok, "garden loaded for no-progress")) {
+    return false;
+  }
+  GardenSession gs = makeGardenSession();
+  if (!gs.ok) {
+    return false;
+  }
+  const std::vector<iggy3d::Vec3> waypoints = {cellToWorld(1, 1), cellToWorld(1, 5)};
+  gs.session->setReasoningGraph(iggy3d::buildReasoningGraph(garden.room, waypoints));
+  seedInvestigatingGuard(gs, cellToWorld(1, 3));
+
+  // White-box: seed a route to a node the guard cannot progress toward from (12,3) (the (1,5) node
+  // is across the island), with the no-progress baseline already at the guard's cell (zero delta).
+  if (iggy3d::AiActorState* g = mutableGuardAi(gs)) {
+    g->hasRoute = true;
+    g->routeNodeIds = {2U};  // patrolPost@(1,5)
+    g->routeCursor = 0;
+    g->routeIntent = iggy3d::AiIntentKind::Investigate;
+    g->routePlannedForDestination = cellToWorld(1, 3);
+    g->routeLastPositionMeters = cellToWorld(12, 3);
+  }
+
+  submitWait(gs);
+  bool ok = expect(tick(gs), "no-progress tick");
+  const iggy3d::AiActorState* g = guardAi(gs);
+  return ok && expect(g != nullptr && !g->hasRoute,
+                      "a stuck route leg (no progress) drops to EMPTY direct fallback");
+}
+
 }  // namespace
 
 int main() {
@@ -970,6 +1105,9 @@ int main() {
                   heardNoiseSearchesAndInvestigatesButNeverChases() &&
                   reasoningGraphShapeMatchesGarden() &&
                   reasoningGraphCarriesAcrossTicksAndClearsOnLoad() &&
-                  reasoningRoutePlansAroundIslandWithTieBreak();
+                  reasoningRoutePlansAroundIslandWithTieBreak() &&
+                  routeFollowingReachesIslandBlockedOrigin() &&
+                  routeInvalidatesWhenDestinationChanges() &&
+                  routeNoProgressDropsStuckLeg();
   return ok ? 0 : 1;
 }
