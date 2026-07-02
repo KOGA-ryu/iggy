@@ -136,9 +136,9 @@ struct AiActorState {
   std::uint64_t graceUntilTick = 0;       // up-hysteresis window end
   float graceThreshold = 0.0F;            // level when the window opened
   std::uint32_t graceCount = 0;           // swallowed rises this window
-  // Authored patrol route (slice 6). Seeded once at spawn; the cursor is transient
-  // runtime state (not serialized/hashed, like alertLevel/facingDirection). Empty
-  // route = no patrol (stands still when idle, back-compat).
+  // Authored patrol route (slice 6). DURABLE (a2 commit 1): saved + hashed, so a guard reloads
+  // mid-beat with its route and cursor intact. Empty route = no patrol (stands still when idle,
+  // back-compat).
   std::vector<Vec3> patrolWaypoints;
   PatrolMode patrolMode = PatrolMode::Loop;
   std::uint32_t patrolTargetIndex = 0;    // waypoint currently walking toward

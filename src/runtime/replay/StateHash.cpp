@@ -217,6 +217,15 @@ StateHashValue computeStateHash(const SessionState& state) {
     addFloatField(hasher, "ai.leashRadiusMeters", actor.leashRadiusMeters);
     addFloatField(hasher, "ai.returnRadiusMeters", actor.returnRadiusMeters);
     addFloatField(hasher, "ai.homeToleranceMeters", actor.homeToleranceMeters);
+    // Patrol route + cursor (a2 commit 1). Quantized like every other durable float (the
+    // sub-1e-3 save fidelity is proven by the exact-float save/load test, not by the hash).
+    addU64(hasher, "ai.patrolWaypoint.count", actor.patrolWaypoints.size());
+    for (const Vec3& waypoint : actor.patrolWaypoints) {
+      addVec3Field(hasher, "ai.patrolWaypoint", waypoint);
+    }
+    addEnum(hasher, "ai.patrolMode", actor.patrolMode);
+    addU64(hasher, "ai.patrolTargetIndex", actor.patrolTargetIndex);
+    addBoolField(hasher, "ai.patrolForward", actor.patrolForward);
   }
 
   addU64(hasher, "objectives.count", state.objectives.objectives.size());

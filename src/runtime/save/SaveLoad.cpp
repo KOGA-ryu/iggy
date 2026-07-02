@@ -257,6 +257,10 @@ SaveEnvelope envelopeFromState(const SessionState& state) {
     record.leashRadiusMeters = actor.leashRadiusMeters;
     record.returnRadiusMeters = actor.returnRadiusMeters;
     record.homeToleranceMeters = actor.homeToleranceMeters;
+    record.patrolWaypoints = actor.patrolWaypoints;
+    record.patrolMode = actor.patrolMode;
+    record.patrolTargetIndex = actor.patrolTargetIndex;
+    record.patrolForward = actor.patrolForward;
     envelope.ai.actors.push_back(record);
   }
   for (const ObjectiveRecord& objective : state.objectives.objectives) {
@@ -432,6 +436,10 @@ LoadStateResult buildCandidate(const SaveEnvelope& envelope,
     actor.leashRadiusMeters = saved.leashRadiusMeters;
     actor.returnRadiusMeters = saved.returnRadiusMeters;
     actor.homeToleranceMeters = saved.homeToleranceMeters;
+    actor.patrolWaypoints = saved.patrolWaypoints;
+    actor.patrolMode = saved.patrolMode;
+    actor.patrolTargetIndex = saved.patrolTargetIndex;
+    actor.patrolForward = saved.patrolForward;
     candidate.ai.actors.push_back(actor);
   }
   for (const SaveObjectiveRecord& saved : envelope.objectives.objectives) {

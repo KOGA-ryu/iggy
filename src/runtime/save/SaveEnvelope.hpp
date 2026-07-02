@@ -271,6 +271,11 @@ struct SaveAiActorRecord {
   float leashRadiusMeters = 0.0F;
   float returnRadiusMeters = 0.0F;
   float homeToleranceMeters = 0.0F;
+  // Patrol route + cursor (a2 commit 1). Defaults match AiActorState (empty route, Loop, 0, true).
+  std::vector<Vec3> patrolWaypoints;
+  PatrolMode patrolMode = PatrolMode::Loop;
+  std::uint32_t patrolTargetIndex = 0;
+  bool patrolForward = true;
 };
 
 struct SaveAiSection {

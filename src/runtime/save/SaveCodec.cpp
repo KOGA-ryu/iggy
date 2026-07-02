@@ -1,5 +1,6 @@
 #include "runtime/save/SaveCodec.hpp"
 
+#include <array>
 #include <charconv>
 #include <iomanip>
 #include <limits>
@@ -96,6 +97,23 @@ std::string formatFloat(float value) {
 
 std::string formatVec3(Vec3 value) {
   return formatFloat(value.x) + "," + formatFloat(value.y) + "," + formatFloat(value.z);
+}
+
+// Shortest round-trip float text (std::to_chars). Used ONLY for the AI stealth-state fields
+// (a2): unlike the fixed-3-decimal formatFloat, this loses no precision, so e.g. a partially
+// drained alertLevel reloads to the EXACT value and post-load band-crossing ticks match an
+// unreloaded run (the read side, std::strtof, is already lossless). Do NOT use for the legacy
+// fields — they stay on formatFloat so their bytes are unchanged.
+std::string formatFloatLossless(float value) {
+  std::array<char, 32> buffer{};
+  const std::to_chars_result result =
+      std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
+  return std::string(buffer.data(), result.ptr);
+}
+
+std::string formatVec3Lossless(Vec3 value) {
+  return formatFloatLossless(value.x) + "," + formatFloatLossless(value.y) + "," +
+         formatFloatLossless(value.z);
 }
 
 bool parseFloat(std::string_view value, float& out) {
@@ -262,6 +280,11 @@ std::string enumText(AiBehaviorKind value) {
 template <>
 std::string enumText(AiIntentKind value) {
   return std::string(aiIntentKindName(value));
+}
+
+template <>
+std::string enumText(PatrolMode value) {
+  return std::string(patrolModeName(value));
 }
 
 template <>
@@ -556,6 +579,19 @@ bool parseEnum(std::string_view value, AiIntentKind& out) {
   }
   if (value == "investigate") {
     out = AiIntentKind::Investigate;
+    return true;
+  }
+  return false;
+}
+
+template <>
+bool parseEnum(std::string_view value, PatrolMode& out) {
+  if (value == "loop") {
+    out = PatrolMode::Loop;
+    return true;
+  }
+  if (value == "ping_pong") {
+    out = PatrolMode::PingPong;
     return true;
   }
   return false;
@@ -1000,6 +1036,15 @@ private:
       line(p + "leashRadiusMeters", formatFloat(actor.leashRadiusMeters));
       line(p + "returnRadiusMeters", formatFloat(actor.returnRadiusMeters));
       line(p + "homeToleranceMeters", formatFloat(actor.homeToleranceMeters));
+      // Patrol route + cursor (a2 commit 1). Waypoints use the lossless float encoder.
+      line(p + "patrolWaypoint.count", unsignedText(actor.patrolWaypoints.size()));
+      for (std::size_t w = 0; w < actor.patrolWaypoints.size(); ++w) {
+        line(p + "patrolWaypoint." + std::to_string(w),
+             formatVec3Lossless(actor.patrolWaypoints[w]));
+      }
+      lineEnum(p + "patrolMode", actor.patrolMode);
+      line(p + "patrolTargetIndex", unsignedText(actor.patrolTargetIndex));
+      lineBool(p + "patrolForward", actor.patrolForward);
     }
   }
 
@@ -1588,6 +1633,25 @@ private:
       }
       if (nextKeyIs(p + "homeToleranceMeters")) {
         readFloat(p + "homeToleranceMeters", actor.homeToleranceMeters);
+      }
+      // Patrol route + cursor (a2 commit 1). Each key guarded by nextKeyIs so an old envelope
+      // missing them decodes to the record defaults (empty route, Loop, 0, true).
+      if (nextKeyIs(p + "patrolWaypoint.count")) {
+        std::uint64_t waypointCount = 0;
+        readUnsigned(p + "patrolWaypoint.count", waypointCount);
+        actor.patrolWaypoints.resize(static_cast<std::size_t>(waypointCount));
+        for (std::size_t w = 0; w < actor.patrolWaypoints.size(); ++w) {
+          readVec3(p + "patrolWaypoint." + std::to_string(w), actor.patrolWaypoints[w]);
+        }
+      }
+      if (nextKeyIs(p + "patrolMode")) {
+        readEnum(p + "patrolMode", actor.patrolMode);
+      }
+      if (nextKeyIs(p + "patrolTargetIndex")) {
+        readUnsigned(p + "patrolTargetIndex", actor.patrolTargetIndex);
+      }
+      if (nextKeyIs(p + "patrolForward")) {
+        readBool(p + "patrolForward", actor.patrolForward);
       }
     }
   }

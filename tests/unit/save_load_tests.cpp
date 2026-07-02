@@ -35,6 +35,15 @@ std::string eraseLineStartingWith(std::string text, std::string_view prefix) {
   return text;
 }
 
+std::string eraseAllLinesContaining(std::string text, std::string_view prefix) {
+  std::string previous;
+  while (previous != text) {
+    previous = text;
+    text = eraseLineStartingWith(text, prefix);
+  }
+  return text;
+}
+
 std::string replaceFirst(std::string text,
                          std::string_view value,
                          std::string_view replacement) {
@@ -1135,6 +1144,78 @@ bool invalidCombatStateRejectedOnLoad() {
   return ok;
 }
 
+// a2 commit 1: a guard's patrol route + cursor survive save->load, a routeless guard stays
+// routeless, and an old envelope missing the patrol keys loads to the empty-route defaults.
+bool patrolRouteRoundTripsThroughSaveLoad() {
+  iggy3d::Session source = makeSession();
+  iggy3d::SessionState sourceState = source.state();
+  iggy3d::AiActorState actor;
+  actor.actor = {2};
+  actor.behaviorProfileId = "default";
+  // A non-3-decimal waypoint coord proves the lossless (to_chars) waypoint encoder.
+  actor.patrolWaypoints = {{1.234567F, 0.0F, 2.5F}, {3.0F, 0.0F, 4.0F}, {0.25F, 0.0F, 7.75F}};
+  actor.patrolMode = iggy3d::PatrolMode::PingPong;
+  actor.patrolTargetIndex = 1;
+  actor.patrolForward = false;
+  sourceState.ai.actors.push_back(actor);
+
+  const iggy3d::SaveStateResult saved = iggy3d::saveSessionStateEncoded(sourceState);
+  bool ok = expect(saved.status == iggy3d::SaveLoadStatus::Ok, "patrol save status");
+  const iggy3d::SaveAiActorRecord& record = saved.envelope.ai.actors.front();
+  ok = ok && expect(record.patrolWaypoints.size() == 3U, "patrol count envelope") &&
+       expect(record.patrolMode == iggy3d::PatrolMode::PingPong, "patrol mode envelope") &&
+       expect(record.patrolTargetIndex == 1U, "patrol index envelope") &&
+       expect(!record.patrolForward, "patrol forward envelope") &&
+       expect(saved.encodedSaveText.find("ai.actor.0.patrolWaypoint.count=3\n") !=
+                  std::string::npos, "patrol count encoded") &&
+       expect(saved.encodedSaveText.find("ai.actor.0.patrolMode=ping_pong\n") !=
+                  std::string::npos, "patrol mode encoded");
+
+  iggy3d::Session loaded = makeSession();
+  (void)iggy3d::loadEncodedSaveIntoSession(loaded, saved.encodedSaveText,
+                                           compatibilityFor(saved.envelope));
+  const iggy3d::AiActorState* la =
+      loaded.state().ai.actors.empty() ? nullptr : &loaded.state().ai.actors.front();
+  ok = ok && expect(la != nullptr && la->patrolWaypoints.size() == 3U, "patrol loaded count") &&
+       // Exact-float equality proves lossless: 1.234567 is not 3-decimal-representable.
+       expect(la != nullptr && la->patrolWaypoints[0].x == 1.234567F &&
+                  la->patrolWaypoints[0].z == 2.5F, "patrol waypoint 0 exact") &&
+       expect(la != nullptr && la->patrolWaypoints[2].z == 7.75F, "patrol waypoint 2 exact") &&
+       expect(la != nullptr && la->patrolMode == iggy3d::PatrolMode::PingPong, "patrol mode loaded") &&
+       expect(la != nullptr && la->patrolTargetIndex == 1U, "patrol index loaded") &&
+       expect(la != nullptr && !la->patrolForward, "patrol forward loaded");
+
+  // A routeless guard round-trips to the empty-route defaults.
+  iggy3d::SessionState freshState = makeSession().state();
+  iggy3d::AiActorState fresh;
+  fresh.actor = {2};
+  fresh.behaviorProfileId = "default";
+  freshState.ai.actors.push_back(fresh);
+  const iggy3d::SaveStateResult freshSaved = iggy3d::saveSessionStateEncoded(freshState);
+  iggy3d::Session freshLoaded = makeSession();
+  (void)iggy3d::loadEncodedSaveIntoSession(freshLoaded, freshSaved.encodedSaveText,
+                                           compatibilityFor(freshSaved.envelope));
+  const iggy3d::AiActorState* fl =
+      freshLoaded.state().ai.actors.empty() ? nullptr : &freshLoaded.state().ai.actors.front();
+  ok = ok && expect(fl != nullptr && fl->patrolWaypoints.empty() &&
+                        fl->patrolMode == iggy3d::PatrolMode::Loop && fl->patrolForward,
+                    "routeless guard stays routeless");
+
+  // Backward compat: an old envelope with NO patrol keys decodes to the defaults (no failure).
+  const std::string oldStyle =
+      eraseAllLinesContaining(saved.encodedSaveText, "ai.actor.0.patrol");
+  const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(oldStyle);
+  ok = ok && expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                    "old save without patrol keys decodes") &&
+       expect(decoded.envelope.ai.actors.front().patrolWaypoints.empty(),
+              "old save patrol route defaults empty") &&
+       expect(decoded.envelope.ai.actors.front().patrolMode == iggy3d::PatrolMode::Loop,
+              "old save patrol mode defaults loop") &&
+       expect(decoded.envelope.ai.actors.front().patrolForward,
+              "old save patrol forward defaults true");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -1153,6 +1234,7 @@ int main() {
   ok = attackDamageAndCombatRoundTrip() && ok;
   ok = defaultAiActorStateHasPassiveDefaults() && ok;
   ok = aiStateRoundTripsThroughSaveLoadAndCodec() && ok;
+  ok = patrolRouteRoundTripsThroughSaveLoad() && ok;
   ok = aiStateChangesParticipateInHash() && ok;
   ok = invalidCombatStateRejectedOnLoad() && ok;
   return ok ? 0 : 1;
