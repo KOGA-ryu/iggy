@@ -65,6 +65,10 @@ struct ScenarioObjectiveSeed {
 struct ScenarioAiActorSeed {
   std::string actorStableName;
   std::string behaviorProfileId = "default";
+  // Optional authored spawn facing (yaw degrees; 0 = +Z, clockwise from above
+  // so 90 = +X). When unset the NPC faces the player at spawn.
+  bool hasFacing = false;
+  float facingDegrees = 0.0F;
 };
 
 struct ScenarioAiGuardAnchorSeed {

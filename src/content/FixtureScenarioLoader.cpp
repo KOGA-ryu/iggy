@@ -697,6 +697,12 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
           return fail(parser, ScenarioLoadStatus::InvalidEnum, "scenario.invalid_enum",
                       "invalid ai actor profile id", lineNumber, column);
         }
+      } else if (key == "facing_degrees") {
+        if (!parseFloat(value, aiActor.facingDegrees)) {
+          return fail(parser, ScenarioLoadStatus::InvalidNumber, "scenario.invalid_number",
+                      "invalid ai actor facing degrees", lineNumber, column);
+        }
+        aiActor.hasFacing = true;
       } else {
         return fail(parser, ScenarioLoadStatus::UnsupportedKey, "scenario.unsupported_key",
                     "unsupported ai actor key", lineNumber, column);

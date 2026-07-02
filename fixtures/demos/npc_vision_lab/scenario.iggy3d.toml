@@ -15,10 +15,11 @@ slot = 0
 kind = "Local"
 actor = "player"
 
-# Player spawns on the west floor tile. The hostile watcher sits ~3 m east,
-# inside its 6 m perception radius, on the open training-room floor (clear
-# line of sight), so it perceives the player on spawn: its gaze blade turns
-# alert-red and it begins to chase.
+# The player spawns ~3 m west of the hostile watcher, directly behind it: the
+# watcher faces east (+X, facing_degrees = 90), so the player starts inside its
+# 6 m radius but OUTSIDE its vision cone -> unaware (cyan gaze blade). Circle
+# around to the watcher's front (east side) to step into the cone and get
+# spotted (blade turns alert-red and it chases).
 [[entities]]
 stable_name = "player"
 kind = "Player"
@@ -68,6 +69,7 @@ objective_ref = "collect_gold_key"
 [[ai_actors]]
 actor = "watcher"
 behavior_profile_id = "melee_training"
+facing_degrees = 90.000
 
 [[objectives]]
 id = "collect_gold_key"

@@ -158,6 +158,7 @@ bool createCombat(const FixtureScenarioSeed& seed, const WorldState& world, Comb
 }
 
 Vec3 initialNpcFacing(const WorldState& world, Vec3 actorPosition);
+Vec3 facingDirectionFromDegrees(float degrees);
 
 StatusResult createAiActors(const FixtureScenarioSeed& seed,
                             const WorldState& world,
@@ -183,7 +184,8 @@ StatusResult createAiActors(const FixtureScenarioSeed& seed,
     actorState.actor = actor->id;
     actorState.behaviorProfileId = aiSeed.behaviorProfileId;
     actorState.facingDirection =
-        initialNpcFacing(world, actor->transform.position);
+        aiSeed.hasFacing ? facingDirectionFromDegrees(aiSeed.facingDegrees)
+                         : initialNpcFacing(world, actor->transform.position);
     ai.actors.push_back(std::move(actorState));
     seededActors.push_back(actor->id);
   }
@@ -618,6 +620,14 @@ Vec3 horizontalDirectionOrForward(Vec3 from, Vec3 to) {
   }
   const float invLength = 1.0F / std::sqrt(lengthSq);
   return Vec3{delta.x * invLength, 0.0F, delta.z * invLength};
+}
+
+// Authored spawn facing: yaw degrees about +Y, 0 = +Z, clockwise from above
+// (90 = +X), matching the scenario ai_actor facing_degrees convention.
+Vec3 facingDirectionFromDegrees(float degrees) {
+  constexpr float kDegreesToRadians = 0.01745329252F;
+  const float radians = degrees * kDegreesToRadians;
+  return Vec3{std::sin(radians), 0.0F, std::cos(radians)};
 }
 
 // Provisional spawn facing until authored orientation exists: point the NPC at

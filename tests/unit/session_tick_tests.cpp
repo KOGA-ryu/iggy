@@ -887,6 +887,38 @@ bool npcVisionConeGatesSessionPerception() {
   return ok;
 }
 
+bool authoredNpcFacingOverridesDefaultAndGatesVision() {
+  iggy3d::SessionCreateRequest request;
+  request.config = iggy3d::makeDefaultRuntimeConfig();
+  request.seed = makeNpcCombatSeed(4.0F);  // npc at +4x, player at origin (west)
+  iggy3d::ScenarioAiActorSeed aiSeed;
+  aiSeed.actorStableName = "training_npc";
+  aiSeed.behaviorProfileId = "melee_training";
+  aiSeed.hasFacing = true;
+  aiSeed.facingDegrees = 90.0F;  // face +x (east), away from the player to the west
+  request.seed.aiActors.push_back(aiSeed);
+
+  const iggy3d::Result<iggy3d::Session> created = iggy3d::Session::create(request);
+  if (!expect(created.status == iggy3d::ResultStatus::Ok, "authored facing create ok")) {
+    return false;
+  }
+  iggy3d::Session session = std::move(created.value);
+  const iggy3d::AiActorState* seeded = findAiActor(session.state().ai, {2});
+  bool ok = expect(seeded != nullptr &&
+                       iggy3d::nearlyEqual(seeded->facingDirection, {1.0F, 0.0F, 0.0F}),
+                   "authored facing overrides player-facing default");
+
+  // Player is directly behind the authored gaze -> stays unseen.
+  ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                    "authored facing tick ok");
+  const iggy3d::AiActorState* ticked = findAiActor(session.state().ai, {2});
+  return ok &&
+         expect(ticked != nullptr && !ticked->lastTargetInVisionCone,
+                "player behind authored facing is out of cone") &&
+         expect(ticked != nullptr && ticked->behavior == iggy3d::AiBehaviorKind::Idle,
+                "npc stays unaware of the player behind it");
+}
+
 bool sessionCreateSeedsAiActorProfileIntoStateAndBaseline() {
   const iggy3d::Result<iggy3d::Session> created =
       createNpcCombatSessionWithAiSeed("training_npc", "passive");
@@ -1404,6 +1436,7 @@ int main() {
                   npcAiCooldownTickWaitsWithoutSecondAttack() &&
                   npcAiChaseMovesThroughNormalCommandExecution() &&
                   npcVisionConeGatesSessionPerception() &&
+                  authoredNpcFacingOverridesDefaultAndGatesVision() &&
                   sessionCreateSeedsAiActorProfileIntoStateAndBaseline() &&
                   sessionCreateRejectsInvalidAiActorSeeds() &&
                   sessionCreateSeedsGuardAnchorIntoStateAndBaseline() &&
