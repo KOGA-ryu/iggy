@@ -31,6 +31,9 @@ target_sources(iggy3d
     src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp
     src/app/iggy3d/world/DefaultWorldTemplate.cpp
     src/app/iggy3d/room_editor/EditableRoomToAuthoredRoom.cpp
+    src/app/iggy3d/creative/Object.cpp
+    src/app/iggy3d/creative/Document.cpp
+    src/app/iggy3d/creative/Commands.cpp
     src/app/iggy3d/creative/Metrics.cpp
     src/app/iggy3d/creative/Facade.cpp
     src/app/iggy3d/creative/Palette.cpp

@@ -237,6 +237,11 @@ iggy3d_add_unit_test(creative_core_tests
 set_tests_properties(creative_core_tests PROPERTIES
   LABELS "unit;app;creative;core;iggy3d")
 
+iggy3d_add_unit_test(creative_room_tests
+  tests/unit/creative_room_tests.cpp)
+set_tests_properties(creative_room_tests PROPERTIES
+  LABELS "unit;app;creative;room;iggy3d")
+
 iggy3d_add_unit_test(product_creative_palette_tests
   tests/unit/creative_palette_tests.cpp)
 set_tests_properties(product_creative_palette_tests PROPERTIES
