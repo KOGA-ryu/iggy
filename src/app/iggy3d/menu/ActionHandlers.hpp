@@ -17,6 +17,7 @@ struct WorldSetupDraft;
 struct ProductPauseMenuActionContext {
   FrontendState& frontend;
   const ProductAppOptions& options;
+  ProductSaveBridgeResult& saves;
   FrontendSettingsTab& settingsTab;
   std::optional<Session>& activeSession;
   ProductAppWindowState& window;

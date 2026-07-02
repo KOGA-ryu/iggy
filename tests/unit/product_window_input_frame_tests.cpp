@@ -5,6 +5,7 @@
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"
+#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
@@ -18,11 +19,13 @@
 #include "runtime/replay/StateHash.hpp"
 
 #include <cmath>
+#include <filesystem>
 #include <iostream>
 #include <limits>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <system_error>
 
 namespace {
 
@@ -948,6 +951,7 @@ bool pauseSettingsConfirmOpensSettingsPanel() {
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves;
   iggy3d::FrontendSettings settings;
 
   (void)iggy3d::applyProductSystemPauseMenuAction(
@@ -956,8 +960,8 @@ bool pauseSettingsConfirmOpensSettingsPanel() {
   const iggy3d::ProductMenuActionResult opened =
       iggy3d::applyProductPauseMenuAction(
           iggy3d::InputAction::MenuConfirm,
-          {frontend, options, settingsTab, activeSession, window, closeRequested,
-           settings});
+          {frontend, options, saves, settingsTab, activeSession, window,
+           closeRequested, settings});
 
   return expect(opened.handled, "pause settings confirm handled") &&
          expect(opened.accepted, "pause settings confirm accepted") &&
@@ -992,8 +996,8 @@ bool pauseSettingsInputDispatchRoutesToSettings() {
   frontend.selectedAction = iggy3d::FrontendAction::Settings;
   (void)iggy3d::applyProductPauseMenuAction(
       iggy3d::InputAction::MenuConfirm,
-      {frontend, options, settingsTab, activeSession, window, closeRequested,
-       settings});
+      {frontend, options, saves, settingsTab, activeSession, window,
+       closeRequested, settings});
 
   const iggy3d::FrontendAction selectedBefore = frontend.selectedAction;
   iggy3d::routeProductOpeningMenuInput(
@@ -1318,6 +1322,7 @@ bool pauseSaveFlowLeavesStableFrontendStatus() {
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves;
   iggy3d::FrontendSettings settings;
 
   (void)iggy3d::applyProductSystemPauseMenuAction(
@@ -1326,7 +1331,7 @@ bool pauseSaveFlowLeavesStableFrontendStatus() {
   const iggy3d::ProductMenuActionResult saved =
       iggy3d::applyProductPauseMenuAction(
           iggy3d::InputAction::MenuConfirm,
-          {frontend, options, settingsTab, activeSession, window, closeRequested,
+          {frontend, options, saves, settingsTab, activeSession, window, closeRequested,
            settings});
 
   return expect(saved.handled, "pause save handled") &&
@@ -1335,6 +1340,137 @@ bool pauseSaveFlowLeavesStableFrontendStatus() {
                 "pause save failure status remains stable") &&
          expect(window.launchStatus == "product_save_session_missing",
                 "pause save failure launch status");
+}
+
+// sd3: selecting Load from the pause menu opens the save browser as a Pause-owned child in
+// Load mode — the enum AND the string mirror set explicitly, even over a stale Delete residue.
+bool pauseLoadOpensBrowserInLoadModeOverStaleResidue() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::FrontendSettings settings;
+
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
+  // Seed a STALE Delete residue that a correct opener must overwrite.
+  frontend.saveBrowserMode = iggy3d::FrontendSaveBrowserMode::Delete;
+  window.saveSlotBrowserMode = "delete";
+  frontend.selectedAction = iggy3d::FrontendAction::LoadSave;
+  const iggy3d::ProductMenuActionResult opened =
+      iggy3d::applyProductPauseMenuAction(
+          iggy3d::InputAction::MenuConfirm,
+          {frontend, options, saves, settingsTab, activeSession, window,
+           closeRequested, settings});
+
+  return expect(opened.handled && opened.accepted, "pause load handled+accepted") &&
+         expect(frontend.childScreen == iggy3d::FrontendScreen::LoadSave,
+                "pause load opens the browser overlay") &&
+         expect(frontend.screen == iggy3d::FrontendScreen::Pause,
+                "pause load keeps the pause surface (Pause-owned child)") &&
+         expect(frontend.saveBrowserMode == iggy3d::FrontendSaveBrowserMode::Load,
+                "pause load sets Load mode over the stale Delete") &&
+         expect(window.saveSlotBrowserMode == "load",
+                "pause load mirrors the mode string in lockstep");
+}
+
+// sd3: BACK from a pause-opened browser returns to the PAUSE menu (childScreen->Gameplay while
+// screen stays Pause); a starter-opened browser returns to Starter. Both are screen-derived —
+// no back-path code was added, this pins that the origins stay distinct.
+bool pauseOpenedBrowserBackReturnsToPause() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::FrontendSettings settings;
+
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
+  frontend.selectedAction = iggy3d::FrontendAction::LoadSave;
+  (void)iggy3d::applyProductPauseMenuAction(
+      iggy3d::InputAction::MenuConfirm,
+      {frontend, options, saves, settingsTab, activeSession, window,
+       closeRequested, settings});
+  // Back out of the pause-opened browser.
+  (void)iggy3d::applyProductLoadSaveMenuAction(
+      iggy3d::InputAction::MenuBack,
+      {frontend, options, saves, activeSession, window});
+  const bool backToPause =
+      frontend.screen == iggy3d::FrontendScreen::Pause &&
+      frontend.childScreen == iggy3d::FrontendScreen::Gameplay;
+
+  // Contrast: a starter-opened browser backs out to Starter.
+  iggy3d::FrontendState starter = starterFrontend();
+  starter.childScreen = iggy3d::FrontendScreen::LoadSave;
+  starter.saveBrowserMode = iggy3d::FrontendSaveBrowserMode::Load;
+  (void)iggy3d::applyProductLoadSaveMenuAction(
+      iggy3d::InputAction::MenuBack,
+      {starter, options, saves, activeSession, window});
+  const bool backToStarter =
+      starter.screen == iggy3d::FrontendScreen::Starter &&
+      starter.childScreen == iggy3d::FrontendScreen::Gameplay;
+
+  return expect(backToPause, "pause-opened browser back returns to the pause menu") &&
+         expect(backToStarter, "starter-opened browser back returns to starter");
+}
+
+// sd3 HARD-STOP verify: load-from-pause goes through the SAME shared launch path as starter and
+// replaces the active session — no pause-specific teardown. Uses a real durable save on disk.
+bool loadFromPauseReplacesTheActiveSession() {
+  namespace fs = std::filesystem;
+  std::error_code ec;
+  const fs::path saveRoot = fs::temp_directory_path() / "iggy3d_sd3_load_from_pause";
+  fs::remove_all(saveRoot, ec);
+  fs::create_directories(saveRoot, ec);
+
+  iggy3d::ProductAppOptions options;
+  options.saveRoot = saveRoot;
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::WorldSetupDraft draft;
+  iggy3d::FrontendSettings settings;
+
+  // Establish a durable save + an in-game session via new-world (writes to disk).
+  iggy3d::launchProductNewWorld(options, draft, frontend, activeSession, window);
+  const bool hadSession = activeSession.has_value();
+  const iggy3d::ProductWorldTemplate world =
+      iggy3d::productWorldTemplateFromOptions(options);
+  iggy3d::ProductSaveBridgeResult saves =
+      iggy3d::scanProductSaves(saveRoot, world.packageId, world.scenarioId);
+  const bool haveCompatibleSave = saves.slots.compatibleCount > 0U;
+
+  // Pause, open Load from pause, then confirm the load.
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
+  frontend.selectedAction = iggy3d::FrontendAction::LoadSave;
+  (void)iggy3d::applyProductPauseMenuAction(
+      iggy3d::InputAction::MenuConfirm,
+      {frontend, options, saves, settingsTab, activeSession, window,
+       closeRequested, settings});
+  window.launchStatus = "unset";
+  (void)iggy3d::applyProductLoadSaveMenuAction(
+      iggy3d::InputAction::MenuConfirm,
+      {frontend, options, saves, activeSession, window});
+  const bool replaced =
+      activeSession.has_value() && window.launchStatus == "product_save_loaded";
+
+  fs::remove_all(saveRoot, ec);
+  return expect(hadSession, "new-world established an active session") &&
+         expect(haveCompatibleSave, "durable save is scannable/compatible") &&
+         expect(replaced,
+                "load-from-pause replaced the session via the shared launch path");
 }
 
 bool childPanelHitTestsExposeMenuActions() {
@@ -2822,6 +2958,9 @@ int main() {
       gameplayAndEditorSurfacesDoNotFallThroughToStarter() &&
       editorBackOpensPauseWithoutLeavingEditor() &&
       pauseSaveFlowLeavesStableFrontendStatus() &&
+      pauseLoadOpensBrowserInLoadModeOverStaleResidue() &&
+      pauseOpenedBrowserBackReturnsToPause() &&
+      loadFromPauseReplacesTheActiveSession() &&
       childPanelHitTestsExposeMenuActions() &&
       openingMenuMouseDispatchRoutesStarterAndSettingsHits() &&
       openingMenuMouseDispatchRoutesNewWorldNavigationRows() &&

@@ -339,6 +339,20 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
     context.closeRequested = true;
     return {true, true};
   }
+  // sd3: complete the pause Load row. Open the save browser as a Pause-OWNED child overlay:
+  // set only childScreen (screen stays Pause), so pauseChildDecision routes it to the
+  // Pause-owned SaveSelector; MenuBack (childScreen->Gameplay) then returns to the pause menu.
+  // Set the mode enum AND its string mirror in lockstep so no stale Delete residue leaks in.
+  // Matches confirmStarterLoadSave's idiom (which keeps screen=Starter).
+  if (frontend.selectedAction == FrontendAction::LoadSave) {
+    frontend.childScreen = FrontendScreen::LoadSave;
+    frontend.saveBrowserMode = FrontendSaveBrowserMode::Load;
+    window.saveSlotBrowserMode =
+        std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
+    initializeSelectedProductSaveSlot(context.saves.slots, window);
+    frontend.status = "pause_load_save_opened";
+    return {true, true};
+  }
   frontend.status = "pause_action_selected";
   return {true, true};
 }

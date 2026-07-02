@@ -37,7 +37,7 @@ MenuOwnerState menuOwnerStateForActiveOwner(MenuOwner owner) {
 void dispatchPauseAction(InputAction action,
                          ProductOpeningMenuInputContext context) {
   ProductPauseMenuActionContext pauseContext{
-      context.frontend, context.options, context.settingsTab,
+      context.frontend, context.options, context.saves, context.settingsTab,
       context.activeSession, context.window, context.closeRequested,
       context.settings};
   (void)applyProductPauseMenuAction(action, pauseContext);
