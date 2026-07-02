@@ -447,6 +447,10 @@ iggy3d_add_unit_test(stealth_garden_tests tests/unit/stealth_garden_tests.cpp)
 set_tests_properties(stealth_garden_tests PROPERTIES
   LABELS "unit;runtime;ai;stealth;garden;iggy3d")
 
+iggy3d_add_unit_test(stealth_tuning_readout_tests tests/unit/stealth_tuning_readout_tests.cpp)
+set_tests_properties(stealth_tuning_readout_tests PROPERTIES
+  LABELS "unit;runtime;ai;stealth;tuning;iggy3d")
+
 iggy3d_add_unit_test(npc_behavior_debug_snapshot_tests
   tests/unit/npc_behavior_debug_snapshot_tests.cpp)
 set_tests_properties(npc_behavior_debug_snapshot_tests PROPERTIES
