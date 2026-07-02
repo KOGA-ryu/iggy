@@ -1128,6 +1128,12 @@ SessionState& Session::mutableStateForOwnedSystems() {
   return state_;
 }
 
+void Session::setReasoningGraph(ReasoningGraph graph) {
+  // Set-once carry: the session takes ownership of the caller-built graph. Off StateHash/SaveCodec,
+  // so this never shifts a receipt or hash (A3 zero-behavior-change contract).
+  state_.reasoningGraph = std::move(graph);
+}
+
 SessionLifecycle Session::lifecycle() const {
   return state_.lifecycle;
 }

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -53,6 +55,10 @@ enum class ReasoningEdgeKind : std::uint8_t {
   guarded,
 };
 
+// Count of ReasoningNodeKind values (append-only enum: doorway..reference). Keep in sync when a
+// kind is appended -- it sizes the per-kind summary array.
+inline constexpr std::size_t kReasoningNodeKindCount = 14;
+
 std::string_view reasoningNodeKindName(ReasoningNodeKind kind);
 std::string_view reasoningEdgeKindName(ReasoningEdgeKind kind);
 
@@ -81,6 +87,17 @@ struct ReasoningGraph {
 struct ReasoningGraphConfig {
   float maxLinkDistanceMeters = 20.0F;
 };
+
+// Observability facts about a built graph -- a SIBLING to the graph (kept OFF NpcBehaviorDebugSnapshot
+// so the graph facts don't collide with the pending HUD string-mirror cut). Indexed by
+// static_cast<std::size_t>(ReasoningNodeKind).
+struct ReasoningGraphSummary {
+  std::size_t nodeCount = 0;
+  std::size_t edgeCount = 0;
+  std::array<std::size_t, kReasoningNodeKindCount> perKindCounts{};
+};
+
+ReasoningGraphSummary summarizeReasoningGraph(const ReasoningGraph& graph);
 
 // Pure builder. NODES: each derivable `room.anchors` entry (exit / treasure|key|pickup ->
 // objective / spawn|npc -> reference) plus one `patrolPost` per waypoint. ORDER: stable-sorted by

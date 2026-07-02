@@ -109,6 +109,19 @@ std::string_view reasoningEdgeKindName(ReasoningEdgeKind kind) {
   return "unknown";
 }
 
+ReasoningGraphSummary summarizeReasoningGraph(const ReasoningGraph& graph) {
+  ReasoningGraphSummary summary;
+  summary.nodeCount = graph.nodes.size();
+  summary.edgeCount = graph.edges.size();
+  for (const ReasoningNode& node : graph.nodes) {
+    const std::size_t index = static_cast<std::size_t>(node.kind);
+    if (index < summary.perKindCounts.size()) {
+      ++summary.perKindCounts[index];
+    }
+  }
+  return summary;
+}
+
 ReasoningGraph buildReasoningGraph(const RoomAsset& room, std::span<const Vec3> patrolWaypoints,
                                    const ReasoningGraphConfig& config) {
   ReasoningGraph graph;

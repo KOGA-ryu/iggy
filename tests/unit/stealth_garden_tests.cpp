@@ -33,6 +33,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -57,6 +58,29 @@ float planarDistance(iggy3d::Vec3 a, iggy3d::Vec3 b) {
   const float dx = b.x - a.x;
   const float dz = b.z - a.z;
   return std::sqrt(dx * dx + dz * dz);
+}
+
+// Bitwise graph equality (a3s2 post-load pin): ids/kinds/positions/labels + the full edge list.
+bool graphsEqual(const iggy3d::ReasoningGraph& a, const iggy3d::ReasoningGraph& b) {
+  if (a.nodes.size() != b.nodes.size() || a.edges.size() != b.edges.size()) {
+    return false;
+  }
+  for (std::size_t i = 0; i < a.nodes.size(); ++i) {
+    if (a.nodes[i].id != b.nodes[i].id || a.nodes[i].kind != b.nodes[i].kind ||
+        a.nodes[i].positionMeters.x != b.nodes[i].positionMeters.x ||
+        a.nodes[i].positionMeters.y != b.nodes[i].positionMeters.y ||
+        a.nodes[i].positionMeters.z != b.nodes[i].positionMeters.z ||
+        a.nodes[i].sourceLabel != b.nodes[i].sourceLabel) {
+      return false;
+    }
+  }
+  for (std::size_t i = 0; i < a.edges.size(); ++i) {
+    if (a.edges[i].from != b.edges[i].from || a.edges[i].to != b.edges[i].to ||
+        a.edges[i].kind != b.edges[i].kind || a.edges[i].lengthMeters != b.edges[i].lengthMeters) {
+      return false;
+    }
+  }
+  return true;
 }
 
 std::string readFile(const char* path) {
@@ -840,6 +864,50 @@ bool reasoningGraphShapeMatchesGarden() {
   return ok;
 }
 
+// a3s2: the session CARRIES the graph (survives ticks) and after a load the slot is a valid EMPTY
+// value (transient-in-persistence), re-derivable to the pre-save graph from the same room.
+bool reasoningGraphCarriesAcrossTicksAndClearsOnLoad() {
+  GardenSession gs = makeGardenSession();
+  if (!gs.ok) {
+    return false;
+  }
+  const Garden garden = loadGarden();
+  const std::vector<iggy3d::Vec3> waypoints = {cellToWorld(1, 1), cellToWorld(1, 5)};
+  const iggy3d::ReasoningGraph built = iggy3d::buildReasoningGraph(garden.room, waypoints);
+  gs.session->setReasoningGraph(built);
+
+  bool ok = expect(!built.nodes.empty(), "garden graph is non-empty") &&
+            expect(graphsEqual(gs.session->state().reasoningGraph, built),
+                   "session carries the graph after setReasoningGraph");
+
+  // The slot lives OUTSIDE transient, so ticking (which clears transient) never touches it.
+  for (int i = 0; i < 3; ++i) {
+    submitWait(gs);
+    ok = ok && expect(tick(gs), "carry tick ok");
+  }
+  ok = ok && expect(graphsEqual(gs.session->state().reasoningGraph, built),
+                    "graph survives ticks unchanged");
+
+  // Post-load: replaceStateFromLoad installs a loaded state whose reasoningGraph is DEFAULT-EMPTY
+  // -- the save envelope never carried it (off SaveCodec/SaveEnvelope), so a decoded state has no
+  // graph. Model that loaded state and assert the slot becomes valid-empty, not stale/dangling.
+  iggy3d::SessionState loaded = gs.session->state();
+  loaded.reasoningGraph = {};
+  const iggy3d::SessionLoadResult load = gs.session->replaceStateFromLoad(std::move(loaded));
+  ok = ok && expect(load.status == iggy3d::SessionLoadStatus::Ok, "replaceStateFromLoad ok") &&
+       expect(gs.session->state().reasoningGraph.nodes.empty() &&
+                  gs.session->state().reasoningGraph.edges.empty(),
+              "post-load the graph slot is a valid EMPTY value");
+
+  // Re-supply the SAME room's freshly-built graph: buildReasoningGraph is deterministic, so it
+  // reproduces the pre-save graph bitwise (the honest in-lane round-trip pin).
+  const iggy3d::ReasoningGraph rebuilt = iggy3d::buildReasoningGraph(garden.room, waypoints);
+  gs.session->setReasoningGraph(rebuilt);
+  ok = ok && expect(graphsEqual(gs.session->state().reasoningGraph, built),
+                    "re-supplying the same room reproduces the pre-save graph");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -848,6 +916,7 @@ int main() {
                   breakContactInvestigatesThenGivesUp() &&
                   sneakFootstepsStayBelowHearingMargin() &&
                   heardNoiseSearchesAndInvestigatesButNeverChases() &&
-                  reasoningGraphShapeMatchesGarden();
+                  reasoningGraphShapeMatchesGarden() &&
+                  reasoningGraphCarriesAcrossTicksAndClearsOnLoad();
   return ok ? 0 : 1;
 }

@@ -84,6 +84,11 @@ public:
   const SessionState& state() const;
   SessionState& mutableStateForOwnedSystems();
 
+  // Set-once L4 reasoning-graph carry (A3). The session OWNS the copy; nothing per-tick rebuilds
+  // it. Built from the UNFILTERED activation-time RoomAsset by the caller (fixtures today; the
+  // product activation sites in the brokered follow-up). Not hashed, not serialized.
+  void setReasoningGraph(ReasoningGraph graph);
+
   SessionLifecycle lifecycle() const;
   SessionOutcome outcome() const;
   std::uint64_t stateHash() const;

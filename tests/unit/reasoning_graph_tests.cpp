@@ -186,11 +186,41 @@ bool sameInputsYieldBitwiseIdenticalGraph() {
          expect(ordered, "ids are the stable-sorted index (kinds non-decreasing)");
 }
 
+bool summaryCountsMatchGraph() {
+  iggy3d::RoomAsset room;
+  room.id = "summary_test";
+  room.anchors = {
+      anchor("exit", {1.0F, 0.0F, 1.0F}),
+      anchor("treasure", {2.0F, 0.0F, 2.0F}),
+      anchor("key", {3.0F, 0.0F, 3.0F}),
+      anchor("spawn", {4.0F, 0.0F, 4.0F}),
+      anchor("npc", {5.0F, 0.0F, 5.0F}),
+  };
+  const std::vector<iggy3d::Vec3> waypoints = {{6.0F, 0.0F, 6.0F}};
+  const iggy3d::ReasoningGraph g = iggy3d::buildReasoningGraph(room, waypoints);
+  const iggy3d::ReasoningGraphSummary s = iggy3d::summarizeReasoningGraph(g);
+
+  const auto kindCount = [&s](iggy3d::ReasoningNodeKind k) {
+    return s.perKindCounts[static_cast<std::size_t>(k)];
+  };
+  std::size_t perKindTotal = 0;
+  for (std::size_t c : s.perKindCounts) {
+    perKindTotal += c;
+  }
+  return expect(s.nodeCount == g.nodes.size(), "summary node count matches the graph") &&
+         expect(s.edgeCount == g.edges.size(), "summary edge count matches the graph") &&
+         expect(kindCount(iggy3d::ReasoningNodeKind::exit) == 1U, "summary: 1 exit") &&
+         expect(kindCount(iggy3d::ReasoningNodeKind::objective) == 2U, "summary: 2 objective") &&
+         expect(kindCount(iggy3d::ReasoningNodeKind::reference) == 2U, "summary: 2 reference") &&
+         expect(kindCount(iggy3d::ReasoningNodeKind::patrolPost) == 1U, "summary: 1 patrolPost") &&
+         expect(perKindTotal == s.nodeCount, "per-kind counts sum to the node count");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = anchorMappingDerivesRightKinds() && waypointsBecomePatrolPosts() &&
                   wallBlocksWalkableEdge() && maxLinkDistanceCutsLongEdges() &&
-                  sameInputsYieldBitwiseIdenticalGraph();
+                  sameInputsYieldBitwiseIdenticalGraph() && summaryCountsMatchGraph();
   return ok ? 0 : 1;
 }

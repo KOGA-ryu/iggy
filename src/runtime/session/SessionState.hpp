@@ -7,6 +7,7 @@
 #include "config/RuntimeConfig.hpp"
 #include "runtime/ai/AiState.hpp"
 #include "runtime/ai/NpcSoundPerception.hpp"
+#include "runtime/ai/ReasoningGraph.hpp"
 #include "runtime/ability/AbilitySystem.hpp"
 #include "runtime/camera/CameraState.hpp"
 #include "runtime/clock/ClockState.hpp"
@@ -104,6 +105,15 @@ struct SessionState {
 
   BaselineSnapshot baseline;
   SessionTransientState transient;
+
+  // L4 reasoning graph (A3). TRANSIENT-IN-THE-PERSISTENCE-SENSE: it lives OUTSIDE `transient` so it
+  // survives ticks (transient is cleared every tick), but it is deliberately absent from StateHash,
+  // SaveCodec and SaveEnvelope (the A4 route-state precedent) -- never hashed, never serialized. It
+  // is set ONCE from the UNFILTERED activation-time RoomAsset (never the runtime-filtered collision
+  // view) and is NOT rebuilt to track runtime state in A3; dynamic openings/locks become future
+  // `locked` edge annotations, not rebuilds. After replaceStateFromLoad the slot is default-empty
+  // (the envelope never carried it) -- a valid empty value, not stale/dangling.
+  ReasoningGraph reasoningGraph;
 
   std::uint64_t currentStateHash = 0;
 };

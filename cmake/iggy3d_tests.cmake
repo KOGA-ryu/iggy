@@ -470,6 +470,10 @@ iggy3d_add_unit_test(reasoning_graph_tests tests/unit/reasoning_graph_tests.cpp)
 set_tests_properties(reasoning_graph_tests PROPERTIES
   LABELS "unit;runtime;ai;reasoning;iggy3d")
 
+iggy3d_add_unit_test(reasoning_graph_readout tests/unit/reasoning_graph_readout.cpp)
+set_tests_properties(reasoning_graph_readout PROPERTIES
+  LABELS "unit;runtime;ai;reasoning;readout;iggy3d")
+
 iggy3d_add_unit_test(stealth_garden_tests tests/unit/stealth_garden_tests.cpp)
 set_tests_properties(stealth_garden_tests PROPERTIES
   LABELS "unit;runtime;ai;stealth;garden;iggy3d")
