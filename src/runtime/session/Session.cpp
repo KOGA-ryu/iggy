@@ -7,6 +7,7 @@
 
 #include "core/math/Vec3.hpp"
 #include "runtime/ability/AbilitySystem.hpp"
+#include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/ai/NpcBehaviorSystem.hpp"
 #include "runtime/camera/CameraModePolicy.hpp"
@@ -603,6 +604,73 @@ bool shouldBuildCommandForDecision(const NpcBehaviorDecision& decision) {
          decision.status == NpcBehaviorDecisionStatus::OnCooldown;
 }
 
+// Local clamp to [0,1] matching NpcAlertSystem.cpp's private clamp01 (NaN -> 0).
+float clamp01(float value) {
+  if (!(value > 0.0F)) {
+    return 0.0F;
+  }
+  if (value > 1.0F) {
+    return 1.0F;
+  }
+  return value;
+}
+
+// A resolved, alive target entity exists (regardless of whether it is currently
+// perceived). This is the honest source for the FSM's no-target combat cap: the
+// four "target known but not visible right now" statuses still have a live
+// target, while defeat/inactive/invalid statuses do not.
+bool perceptionHasLiveTarget(NpcPerceptionStatus status) {
+  switch (status) {
+    case NpcPerceptionStatus::Ready:
+    case NpcPerceptionStatus::TargetOutOfRange:
+    case NpcPerceptionStatus::TargetOutOfCone:
+    case NpcPerceptionStatus::TargetOccluded:
+      return true;
+    case NpcPerceptionStatus::InvalidWorld:
+    case NpcPerceptionStatus::InvalidCombat:
+    case NpcPerceptionStatus::InvalidActor:
+    case NpcPerceptionStatus::InvalidTarget:
+    case NpcPerceptionStatus::InvalidConfig:
+    case NpcPerceptionStatus::ActorInactive:
+    case NpcPerceptionStatus::TargetInactive:
+    case NpcPerceptionStatus::ActorDefeated:
+    case NpcPerceptionStatus::TargetDefeated:
+      return false;
+  }
+  return false;
+}
+
+// Overlay the graded-alert band onto the fully-alert decision: only the hostile
+// combat outcomes (Chasing/Attacking, or OnCooldown) are gated. Below the combat
+// band they are downgraded to the alert rung's behavior with a passive Wait
+// intent (like a non-engaged NPC). Everything else — leash/return, passive Alert,
+// no-target Idle, defeat, disabled, waiting, invalid — passes through unchanged so
+// those authoritative outcomes always win over the alert overlay.
+NpcBehaviorDecision reconcileAlertBand(const NpcBehaviorDecision& engaged,
+                                       const AiActorState& actor,
+                                       const AlertProfile& profile) {
+  const bool hostileCombat =
+      (engaged.status == NpcBehaviorDecisionStatus::Decided &&
+       (engaged.behavior == AiBehaviorKind::Chasing ||
+        engaged.behavior == AiBehaviorKind::Attacking)) ||
+      engaged.status == NpcBehaviorDecisionStatus::OnCooldown;
+  if (!hostileCombat) {
+    return engaged;
+  }
+
+  const std::uint8_t band = alertBandIndex(actor.alertLevel, profile);
+  if (band >= 5U) {
+    return engaged;  // combat band: keep the range split / cooldown / movement
+  }
+
+  // Sub-combat: hold at the alert rung, no attack/move command this tick.
+  NpcBehaviorDecision downgraded = engaged;
+  downgraded.behavior = alertBehaviorForLevel(actor.alertLevel, profile);
+  downgraded.intent = AiIntentKind::Wait;
+  downgraded.cooldownTicksRemaining = 0;
+  return downgraded;
+}
+
 void applyNpcBehaviorDecision(AiActorState& actorState,
                               const NpcBehaviorDecision& decision) {
   actorState.behavior = decision.behavior;
@@ -747,6 +815,7 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
       continue;
     }
     const NpcBehaviorConfig config = resolvedProfile.config;
+    const AlertProfile alertProfile = resolvedProfile.profile.alertProfile;
 
     const EntityState* actorEntity = state.world.findById(actorState.actor);
     const EntityState* targetEntity = state.world.findById(target);
@@ -763,9 +832,25 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
     perceptionRequest.targetHasLineOfSight = hasLineOfSight;
     const NpcPerceptionResult perception = queryNpcPerception(perceptionRequest);
 
-    const NpcBehaviorDecision decision =
+    // Step the graded-alert FSM from the perception already computed. It writes
+    // actor.alertLevel (durable) and actor.behavior; the final behavior is set
+    // authoritatively by applyNpcBehaviorDecision below, so the intermediate
+    // behavior write here is harmless.
+    NpcAlertStimulus stimulus;
+    stimulus.targetPerceived = perception.status == NpcPerceptionStatus::Ready;
+    stimulus.proximity01 =
+        config.perceptionRadiusMeters > 0.0F
+            ? clamp01(1.0F - perception.distanceMeters / config.perceptionRadiusMeters)
+            : 0.0F;
+    stimulus.hasValidTarget = perceptionHasLiveTarget(perception.status);
+    stimulus.visualConfirmed = perception.targetInVisionCone && perception.hasLineOfSight;
+    npcStepAlert(actorState, stimulus, alertProfile, state.clock.tickIndex);
+
+    const NpcBehaviorDecision engaged =
         chooseNpcBehaviorIntent(NpcBehaviorDecisionRequest{&actorState, perception, config,
                                                            state.clock.tickIndex});
+    const NpcBehaviorDecision decision =
+        reconcileAlertBand(engaged, actorState, alertProfile);
     applyNpcBehaviorDecision(actorState, decision);
     updateNpcFacing(actorState, decision, perception);
     actorState.lastTargetInRadius = perception.targetInPerceptionRadius;

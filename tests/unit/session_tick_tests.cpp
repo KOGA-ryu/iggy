@@ -1,6 +1,7 @@
 #include "runtime/session/Session.hpp"
 #include "runtime/session/SessionTick.hpp"
 
+#include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
@@ -456,6 +457,20 @@ void seedNpcAiProfile(iggy3d::Session& session, std::string_view profileId) {
   actors.push_back(actor);
 }
 
+// Seed the NPC AI actor and pre-force its graded alert to the combat band (1.0)
+// so the plumbing tests below keep the instant chase/attack path. Escalation
+// itself is proven separately by npcAlertLadderEscalatesThenDecaysInLoop, so
+// these tests stay tuning-agnostic while still honoring the new alert gate.
+void seedAlertedNpcAtCombat(iggy3d::Session& session, std::string_view profileId) {
+  seedNpcAiProfile(session, profileId);  // actor {2}, facing -x toward player
+  for (auto& a : session.mutableStateForOwnedSystems().ai.actors) {
+    if (a.actor == iggy3d::EntityId{2}) {
+      a.alertLevel = 1.0F;
+      a.lastRiseTick = 0;
+    }
+  }
+}
+
 const iggy3d::CommandRecord* lastCommandWithSource(const iggy3d::CommandLog& log,
                                                    iggy3d::CommandSource source) {
   const iggy3d::CommandRecord* result = nullptr;
@@ -742,6 +757,7 @@ bool physicsPlannerStepOneTickOptionCompilesAndRuns() {
 
 bool npcAiTickEnqueuesAttackThroughAdmissionAndCombat() {
   iggy3d::Session session = makeNpcCombatSession();
+  seedAlertedNpcAtCombat(session, "default");  // instant combat path (plumbing test)
 
   bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "npc attack tick ok");
   const iggy3d::CombatantState* playerCombatant =
@@ -778,6 +794,7 @@ bool npcAiTickEnqueuesAttackThroughAdmissionAndCombat() {
 
 bool npcAiCooldownTickWaitsWithoutSecondAttack() {
   iggy3d::Session session = makeNpcCombatSession();
+  seedAlertedNpcAtCombat(session, "default");  // instant combat path (plumbing test)
   bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "first npc tick ok") &&
             expect(session.tick().status == iggy3d::ResultStatus::Ok, "second npc tick ok");
 
@@ -805,6 +822,7 @@ bool npcAiCooldownTickWaitsWithoutSecondAttack() {
 
 bool npcAiChaseMovesThroughNormalCommandExecution() {
   iggy3d::Session session = makeNpcCombatSession(4.0F);
+  seedAlertedNpcAtCombat(session, "default");  // instant combat path (plumbing test)
 
   bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "npc chase tick ok");
   const iggy3d::CommandRecord* command =
@@ -840,6 +858,7 @@ bool npcVisionConeGatesSessionPerception() {
   // Seeded facing points at the player, so the NPC perceives and chases, and
   // the AI drives its gaze toward the target.
   iggy3d::Session seeing = makeNpcCombatSession(4.0F);
+  seedAlertedNpcAtCombat(seeing, "default");  // instant combat path (plumbing test)
   bool ok = expect(seeing.tick().status == iggy3d::ResultStatus::Ok,
                    "vision see tick ok");
   const iggy3d::AiActorState* seeingAi = findAiActor(seeing.state().ai, {2});
@@ -1304,12 +1323,34 @@ bool invalidProfileSkipsNpcCommandAndStateMutation() {
   return ok;
 }
 
+bool forceActorAtCombat(iggy3d::Session& session, iggy3d::EntityId actor) {
+  bool found = false;
+  for (iggy3d::AiActorState& a : session.mutableStateForOwnedSystems().ai.actors) {
+    if (a.actor == actor) {
+      a.alertLevel = 1.0F;
+      a.lastRiseTick = 0;
+      found = true;
+    }
+  }
+  return found;
+}
+
 bool autoRegisteredNpcUsesDefaultProfileAndAttacks() {
   iggy3d::Session session = makeNpcCombatSession();
 
+  // Tick 1 proves lazy auto-registration under the default profile; graded alert
+  // is still sub-combat so it only emits a Wait. Force alert to combat, then tick
+  // 2 exercises the attack plumbing.
   bool ok = expect(session.state().ai.actors.empty(), "auto default starts without ai actor") &&
             expect(session.tick().status == iggy3d::ResultStatus::Ok,
                    "auto default tick ok");
+  const iggy3d::AiActorState* registered = findAiActor(session.state().ai, {2});
+  ok = ok && expect(registered != nullptr && registered->behaviorProfileId == "default",
+                    "auto default profile id") &&
+       expect(forceActorAtCombat(session, {2}), "auto default force combat alert") &&
+       expect(session.tick().status == iggy3d::ResultStatus::Ok,
+              "auto default second tick ok");
+
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
   const iggy3d::CombatantState* playerCombatant =
@@ -1323,8 +1364,6 @@ bool autoRegisteredNpcUsesDefaultProfileAndAttacks() {
               "auto default attack accepted") &&
        expect(playerCombatant != nullptr && playerCombatant->hitPoints == 9,
               "auto default damages player") &&
-       expect(aiActor != nullptr && aiActor->behaviorProfileId == "default",
-              "auto default profile id") &&
        expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Attacking,
               "auto default behavior attacking") &&
        expect(aiActor != nullptr &&
@@ -1336,7 +1375,12 @@ bool autoRegisteredNpcUsesDefaultProfileAndAttacks() {
 bool rejectedAiAttackRemainsVisibleInCommandLog() {
   iggy3d::Session session = makeNpcCombatSession(1.0F, false);
 
+  // Tick 1 registers the actor (sub-combat Wait); force alert to combat, then
+  // tick 2 produces the attack that combat admission rejects (invalid target).
   bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                   "rejected ai attack register tick ok") &&
+            expect(forceActorAtCombat(session, {2}), "rejected ai attack force combat") &&
+            expect(session.tick().status == iggy3d::ResultStatus::Ok,
                    "rejected ai attack tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
@@ -1423,6 +1467,88 @@ bool pausedNormalTickDoesNotRunNpcAi() {
   return ok;
 }
 
+// The in-loop proof (not just the pure FSM): a perceived hostile NPC climbs the
+// alert ladder over ticks and eventually chases, then decays once it loses sight.
+// This is the one test intentionally coupled to the AlertProfile tuning.
+bool npcAlertLadderEscalatesThenDecaysInLoop() {
+  // Player at origin, NPC at x=3 (outside attack range 1.5, so combat==Chasing).
+  iggy3d::Session session = makeNpcCombatSession(3.0F);
+  seedNpcAiProfile(session, "default");  // facing -x -> player perceived from tick 1
+  const iggy3d::AlertProfile profile;    // matches the built-in default profile
+
+  bool ok = true;
+  std::uint8_t maxBandSeen = 0U;
+  std::uint8_t lastBand = 0U;
+  bool sawObservant = false;
+  bool sawSuspicious = false;
+  bool sawSearching = false;
+  bool sawAlert = false;
+  bool reachedChasing = false;
+  constexpr int kTickCap = 200;
+  int climbTicks = 0;
+  for (; climbTicks < kTickCap; ++climbTicks) {
+    if (session.tick().status != iggy3d::ResultStatus::Ok) {
+      ok = expect(false, "escalation climb tick ok");
+      break;
+    }
+    const iggy3d::AiActorState* actor = findAiActor(session.state().ai, {2});
+    if (actor == nullptr) {
+      ok = expect(false, "escalation actor present");
+      break;
+    }
+    const std::uint8_t band = iggy3d::alertBandIndex(actor->alertLevel, profile);
+    // Monotonic non-decreasing while perceived (no decay path taken here).
+    ok = ok && expect(band >= lastBand, "escalation band non-decreasing");
+    lastBand = band;
+    maxBandSeen = band > maxBandSeen ? band : maxBandSeen;
+    switch (actor->behavior) {
+      case iggy3d::AiBehaviorKind::Observant: sawObservant = true; break;
+      case iggy3d::AiBehaviorKind::Suspicious: sawSuspicious = true; break;
+      case iggy3d::AiBehaviorKind::Searching: sawSearching = true; break;
+      case iggy3d::AiBehaviorKind::Alert: sawAlert = true; break;
+      case iggy3d::AiBehaviorKind::Chasing: reachedChasing = true; break;
+      default: break;
+    }
+    if (reachedChasing) {
+      break;
+    }
+  }
+
+  ok = ok && expect(sawObservant, "escalation passed through observant") &&
+       expect(sawSuspicious, "escalation passed through suspicious") &&
+       expect(sawSearching, "escalation passed through searching") &&
+       expect(sawAlert, "escalation passed through alert") &&
+       expect(reachedChasing, "escalation reached chasing") &&
+       expect(maxBandSeen == 5U, "escalation reached combat band");
+
+  // Decay: turn the NPC away so the player leaves its cone (perception != Ready).
+  const iggy3d::AiActorState* atPeak = findAiActor(session.state().ai, {2});
+  const float peak = atPeak != nullptr ? atPeak->alertLevel : 0.0F;
+  for (iggy3d::AiActorState& a : session.mutableStateForOwnedSystems().ai.actors) {
+    if (a.actor == iggy3d::EntityId{2}) {
+      a.facingDirection = {1.0F, 0.0F, 0.0F};  // away from player at -x
+    }
+  }
+  // Tick past dead-time plus a margin; the agitated band drains slowly by design,
+  // so we assert strict decrease (direction), not full return to Idle. A blind NPC
+  // enqueues no command, and a tick with no work does not advance the clock (so the
+  // dead-time would never elapse); submit a player Wait each tick to keep the clock
+  // advancing, exactly as ongoing player activity would in a live session.
+  const int kDecayTicks = static_cast<int>(profile.deadTimeTicks) + 40;
+  for (int i = 0; i < kDecayTicks; ++i) {
+    (void)session.submitCommand(submittedWait());
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                      "escalation decay tick ok");
+  }
+  const iggy3d::AiActorState* decayed = findAiActor(session.state().ai, {2});
+  ok = ok && expect(decayed != nullptr && decayed->alertLevel < peak,
+                    "escalation decays back down") &&
+       expect(decayed != nullptr &&
+                  decayed->behavior != iggy3d::AiBehaviorKind::Chasing,
+              "escalation no longer chasing after decay");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -1450,6 +1576,7 @@ int main() {
                   invalidProfileSkipsNpcCommandAndStateMutation() &&
                   autoRegisteredNpcUsesDefaultProfileAndAttacks() &&
                   rejectedAiAttackRemainsVisibleInCommandLog() &&
+                  npcAlertLadderEscalatesThenDecaysInLoop() &&
                   defeatedPlayerIsNotAttackedAgain() &&
                   defeatedNpcDoesNotEnqueueAttackOrMove() &&
                   pausedNormalTickDoesNotRunNpcAi();

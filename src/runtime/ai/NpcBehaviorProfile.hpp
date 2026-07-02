@@ -5,6 +5,7 @@
 #include <string_view>
 #include <vector>
 
+#include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/ai/NpcBehaviorSystem.hpp"
 
 namespace iggy3d {
@@ -23,6 +24,9 @@ struct NpcBehaviorProfile {
   std::int32_t attackDamage = 1;
   std::uint32_t decisionIntervalTicks = 1;
   std::uint32_t attackCooldownTicks = 2;
+  // Graded-alert tuning (slice 5) rides on the behavior profile. The default
+  // construction is valid; resolve validates it via isValidAlertProfile.
+  AlertProfile alertProfile;
 };
 
 struct NpcBehaviorProfileCatalog {

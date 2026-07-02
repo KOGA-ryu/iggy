@@ -87,7 +87,8 @@ NpcBehaviorProfileResolveResult resolveNpcBehaviorProfile(
     }
     result.profile = profile;
     result.config = configFromNpcBehaviorProfile(profile);
-    if (!isValidNpcBehaviorConfig(result.config)) {
+    if (!isValidNpcBehaviorConfig(result.config) ||
+        !isValidAlertProfile(profile.alertProfile)) {
       result.status = NpcBehaviorProfileResolveStatus::InvalidConfig;
       result.reasonCode = npcBehaviorProfileResolveStatusName(result.status);
       return result;
