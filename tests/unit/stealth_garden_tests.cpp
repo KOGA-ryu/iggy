@@ -18,6 +18,7 @@
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "runtime/ai/NpcInvestigateSystem.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
+#include "runtime/ai/NpcSoundPerception.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/session/Session.hpp"
@@ -49,6 +50,12 @@ constexpr const char* kScenarioPath =
 // Cell (col,row) maps to world (col, 0, row); cell size 1 m (must match the scenario .toml).
 iggy3d::Vec3 cellToWorld(int col, int row) {
   return iggy3d::Vec3{static_cast<float>(col), 0.0F, static_cast<float>(row)};
+}
+
+float planarDistance(iggy3d::Vec3 a, iggy3d::Vec3 b) {
+  const float dx = b.x - a.x;
+  const float dz = b.z - a.z;
+  return std::sqrt(dx * dx + dz * dz);
 }
 
 std::string readFile(const char* path) {
@@ -617,11 +624,147 @@ bool islandBreaksLineOfSight() {
   return ok;
 }
 
+// --- a1s2: sound emission → hearing → investigation ----------------------------------------
+// SNEAK INVARIANT (mechanical margin). The sneak tape (sneakUnseenReachesExitWithoutAlarm)
+// stays green; here we assert WHY: across every emitting sneak tick the loudest footstep's
+// audibility at the (west-patrolling) guard -- computed by the pure kernel with NO wall (the
+// conservative upper bound; the island usually occludes it anyway) -- stays a stated margin
+// below the guard's hearing threshold, so the guard provably never hears the east-column sneak.
+bool sneakFootstepsStayBelowHearingMargin() {
+  GardenSession gs = makeGardenSession();
+  if (!gs.ok) {
+    return false;
+  }
+  const iggy3d::RuntimeConfig cfg = gs.session->state().config;
+  const iggy3d::SoundPerceptionConfig snd;  // reference hearing tuning (builtin profile default)
+  constexpr float kMarginDb = 3.0F;         // STATED mechanical margin
+
+  const auto guardPos = [&]() {
+    const iggy3d::EntityState* e = gs.session->state().world.findById(gs.guard);
+    return e == nullptr ? iggy3d::Vec3{} : e->transform.position;
+  };
+  const auto audibilityAt = [&](iggy3d::Vec3 origin, float d, iggy3d::Vec3 listener) {
+    iggy3d::SoundEvent step;
+    step.originMeters = origin;
+    step.loudnessDb = cfg.footstepBaseLoudnessDb + cfg.footstepLoudnessPerMeterDb * d;
+    step.alertFactor = cfg.footstepAlertFactor;
+    step.alertMax = cfg.footstepAlertMaxUnits;
+    return iggy3d::soundAudibilityDb(step, listener, snd, /*blockerBetween=*/false);
+  };
+
+  bool ok = true;
+  bool anyEmitted = false;
+  float maxAudibility = -1000.0F;
+  const iggy3d::Vec3 path[] = {gs.playerSpawn, cellToWorld(12, 3), gs.exitCell, gs.exitCell};
+  for (const iggy3d::Vec3& point : path) {
+    const iggy3d::Vec3 prev = playerPosition(gs);
+    const iggy3d::Vec3 guardBefore = guardPos();  // guard hears from ~its pre-move position
+    submitMove(gs, point);
+    ok = ok && expect(tick(gs), "sneak-margin move tick ok");
+    const iggy3d::Vec3 origin = playerPosition(gs);
+    const float d = planarDistance(prev, origin);
+    if (d <= 0.0F) {
+      continue;  // a zero-displacement move emits no footstep
+    }
+    anyEmitted = true;
+    // Upper-bound over both the guard's pre- and post-move positions (whichever is louder).
+    maxAudibility = std::max(maxAudibility, audibilityAt(origin, d, guardBefore));
+    maxAudibility = std::max(maxAudibility, audibilityAt(origin, d, guardPos()));
+  }
+  ok = ok && expect(anyEmitted, "the sneak run actually emits footsteps");
+  ok = ok && expect(maxAudibility <= snd.hearingThresholdDb - kMarginDb,
+                    "loudest sneak footstep stays >= 3 dB below the guard's hearing threshold");
+  return ok;
+}
+
+// CONVERSE (white-box, tuning-coupled -- the ONE quarantine test for a1s2). Freeze the guard at
+// a fixed cell facing AWAY (east) so it can never SEE the noise-maker; pace the player right
+// behind it (west) emitting footsteps until sustained hearing climbs it into Searching and
+// plants the noise origin in last-known memory. Then the player flees far and goes silent, and
+// the guard investigates the STALE origin -- moving toward it WITHOUT ever gaining LOS and NEVER
+// reaching Chasing (the hasValidTarget=false cap on noise-only alert).
+bool heardNoiseSearchesAndInvestigatesButNeverChases() {
+  GardenSession gs = makeGardenSession();
+  if (!gs.ok) {
+    return false;
+  }
+  const iggy3d::Vec3 guardCell = cellToWorld(3, 3);
+  const iggy3d::Vec3 pacerA = cellToWorld(2, 3);      // 1.0 m west of the guard
+  const iggy3d::Vec3 pacerB{2.4F, 0.0F, 3.0F};        // 0.6 m west of the guard
+  const iggy3d::Vec3 eastFacing{1.0F, 0.0F, 0.0F};    // guard looks AWAY from the noise
+
+  if (iggy3d::AiActorState* g0 = mutableGuardAi(gs)) {
+    g0->patrolWaypoints = {guardCell};  // degenerate beat: never patrols into LOS
+    g0->patrolTargetIndex = 0;
+  }
+  teleportEntity(gs, gs.guard, guardCell);
+  teleportEntity(gs, gs.player, pacerA);
+
+  const auto guardPos = [&]() {
+    const iggy3d::EntityState* e = gs.session->state().world.findById(gs.guard);
+    return e == nullptr ? iggy3d::Vec3{} : e->transform.position;
+  };
+  const auto sawPlayer = [&]() {
+    const iggy3d::AiActorState* g = guardAi(gs);
+    return g != nullptr && g->lastTargetInVisionCone && g->lastTargetHasLineOfSight;
+  };
+
+  bool ok = true;
+  bool reachedSearching = false;
+  bool everSawPlayer = false;
+  std::uint8_t maxBand = 0U;
+  // Phase 1: loiter behind the frozen guard until noise alone escalates it into Searching.
+  for (int i = 0; i < 400 && !reachedSearching; ++i) {
+    if (iggy3d::AiActorState* g = mutableGuardAi(gs)) {
+      g->facingDirection = eastFacing;  // this tick's perception uses this facing
+    }
+    teleportEntity(gs, gs.guard, guardCell);  // freeze position: never wander into LOS
+    submitMove(gs, (i % 2 == 0) ? pacerB : pacerA);
+    ok = ok && expect(tick(gs), "converse loiter tick ok");
+    everSawPlayer = everSawPlayer || sawPlayer();
+    const std::uint8_t band = bandRank(guardBehaviorViaSnapshot(gs));
+    maxBand = std::max(maxBand, band);
+    reachedSearching = band >= 3U;
+  }
+  ok = ok && expect(reachedSearching, "sustained noise escalates the guard into Searching");
+  ok = ok && expect(!everSawPlayer, "guard HEARS but never gains LOS to the noise-maker");
+
+  const iggy3d::AiActorState* gMid = guardAi(gs);
+  if (gMid == nullptr) {
+    return false;
+  }
+  ok = ok && expect(gMid->hasLastKnownTarget, "heard-and-unseen plants a last-known origin");
+  const iggy3d::Vec3 origin = gMid->lastKnownTargetPosition;
+  ok = ok && expect(origin.x < guardCell.x - 0.25F,
+                    "recorded origin is the noise to the guard's west, not the guard's own cell");
+
+  // Phase 2: player flees far and goes silent; the guard investigates the stale origin. Measure
+  // progress from the FROZEN cell (the guard's Phase-1 anchor); the investigate move enqueued on
+  // the last loiter tick executes here and walks it toward the noise.
+  teleportEntity(gs, gs.player, cellToWorld(12, 6));
+  const float startDist = planarDistance(guardCell, origin);
+  float minDist = planarDistance(guardPos(), origin);
+  for (int i = 0; i < 40; ++i) {
+    submitWait(gs);  // clock stays alive; no player movement -> no new noise
+    ok = ok && expect(tick(gs), "converse investigate tick ok");
+    minDist = std::min(minDist, planarDistance(guardPos(), origin));
+    maxBand = std::max(maxBand, bandRank(guardBehaviorViaSnapshot(gs)));
+    everSawPlayer = everSawPlayer || sawPlayer();
+  }
+  ok = ok && expect(minDist < startDist - 0.1F,
+                    "guard investigates -- walks toward the heard origin");
+  ok = ok && expect(!everSawPlayer, "guard never gains LOS across the whole converse");
+  ok = ok && expect(maxBand < 5U, "noise-only guard never reaches Chasing (band 5)");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
   const bool ok = islandBreaksLineOfSight() && sneakUnseenReachesExitWithoutAlarm() &&
                   spottedGuardEscalatesToChasing() && gardenGuardLapsIslandRing() &&
-                  breakContactInvestigatesThenGivesUp();
+                  breakContactInvestigatesThenGivesUp() &&
+                  sneakFootstepsStayBelowHearingMargin() &&
+                  heardNoiseSearchesAndInvestigatesButNeverChases();
   return ok ? 0 : 1;
 }

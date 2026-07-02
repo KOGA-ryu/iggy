@@ -6,6 +6,7 @@
 #include "runtime/movement/MovementSystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
 
+#include <cmath>
 #include <string>
 
 namespace iggy3d {
@@ -14,6 +15,14 @@ namespace {
 
 constexpr float kCommandAbilityEyeHeightMeters = 1.65F;
 constexpr float kFallbackCommandAbilityTickSeconds = 1.0F / 60.0F;
+
+// Ground-plane distance between two points (footsteps are a floor phenomenon; the
+// vertical component is irrelevant to how far a footfall carries).
+float horizontalDistanceMeters(Vec3 from, Vec3 to) {
+  const float dx = to.x - from.x;
+  const float dz = to.z - from.z;
+  return std::sqrt(dx * dx + dz * dz);
+}
 
 bool isRetryableSourceKind(CommandKind kind) {
   return kind != CommandKind::None && kind != CommandKind::Retry && kind != CommandKind::Reset &&
@@ -229,6 +238,7 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
   result.outcome = state.outcome;
   state.transient.lastMovementResultAvailable = false;
   state.transient.lastMovementResult = {};
+  state.transient.soundEvents.clear();  // per-tick sound bus: movement fills, AI loop reads
 
   if (state.lifecycle != SessionLifecycle::Playing) {
     result.status = SessionTickStatus::SessionNotPlayable;
@@ -267,6 +277,25 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
       const MovementResult movement = executeMovement(movementContext, request);
       state.transient.lastMovementResultAvailable = true;
       state.transient.lastMovementResult = movement;
+      // EMIT (a1s2, L1): a moving player makes footstep noise. v1 = player footsteps
+      // only (guards emit nothing, so no self-hearing). Loudness scales with the
+      // actual horizontal displacement this tick; a fully-blocked move (d==0) is
+      // silent. Object/combat noise are later A1 sockets. NAMED config, no hardcoded
+      // dimensions. Pushed onto the per-tick bus that enqueueNpcBehaviorCommands reads.
+      if (intent.command.source == CommandSource::LocalPlayer) {
+        const float displacement =
+            horizontalDistanceMeters(movement.start, movement.finalPosition);
+        if (displacement > 0.0F) {
+          SoundEvent footstep;
+          footstep.source = intent.command.actor;
+          footstep.originMeters = movement.finalPosition;
+          footstep.loudnessDb = state.config.footstepBaseLoudnessDb +
+                                state.config.footstepLoudnessPerMeterDb * displacement;
+          footstep.alertFactor = state.config.footstepAlertFactor;
+          footstep.alertMax = state.config.footstepAlertMaxUnits;
+          state.transient.soundEvents.push_back(footstep);
+        }
+      }
       if (movement.blocked != MovementBlockedReason::None) {
         if (movementBlockConsumesTick(movement.blocked)) {
           result.executedSequences.push_back(intent.command.sequence);

@@ -1,5 +1,6 @@
 #include "runtime/ai/NpcAlertSystem.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -210,6 +211,34 @@ bool alertFsmIsDeterministic() {
   return expect(first == second, "identical inputs yield a byte-identical alert trace");
 }
 
+// a1s2 (L1): sustained heard-but-unseen noise drives alert up but the no-target
+// combat cap (hasValidTarget=false, wired by the heard branch) holds it at band 4 --
+// pure noise NEVER reaches band 5 / Chasing. Feeds npcStepAlert directly (no session)
+// with a maxed sound stimulus and targetPerceived=false, spamming many ticks.
+bool soundOnlyNoiseCapsBelowChasing() {
+  const iggy3d::AlertProfile p;
+  iggy3d::AiActorState a;
+  iggy3d::NpcAlertStimulus stim;
+  stim.targetPerceived = false;  // never visually seen
+  stim.hasValidTarget = false;   // no resolved target -- pure noise
+  stim.visualConfirmed = false;
+  stim.heard = true;
+  stim.alertUnits = p.soundAlertUnitsRef;  // full-strength (clamp01(units/ref) == 1)
+  stim.soundInvestigatePos = iggy3d::Vec3{3.0F, 0.0F, 3.0F};
+
+  std::uint8_t maxBand = 0U;
+  for (std::uint64_t t = 0; t < 600; ++t) {
+    iggy3d::npcStepAlert(a, stim, p, t);
+    maxBand = std::max(maxBand, iggy3d::alertBandIndex(a.alertLevel, p));
+  }
+  return expect(a.alertLevel > p.searchingNorm,
+                "sustained noise climbs into the search/alert bands") &&
+         expect(a.alertLevel < p.combatNorm, "noise-only level capped below combat") &&
+         expect(iggy3d::alertBandIndex(a.alertLevel, p) == 4U,
+                "noise-only tops out at band 4 (agitated)") &&
+         expect(maxBand < 5U, "noise-only never reaches band 5 / chasing");
+}
+
 }  // namespace
 
 int main() {
@@ -219,6 +248,7 @@ int main() {
                   decayIsLinearPerBandAndDeadTimeGated() &&
                   graceWindowSwallowsSmallRisesButVisualBypasses() &&
                   alertLadderWalksUpThenDownDeterministically() &&
-                  alertFsmIsDeterministic();
+                  alertFsmIsDeterministic() &&
+                  soundOnlyNoiseCapsBelowChasing();
   return ok ? 0 : 1;
 }

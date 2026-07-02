@@ -161,6 +161,15 @@ void npcStepAlert(AiActorState& actor, const NpcAlertStimulus& stimulus,
     const float increment = profile.riseRatePerTick * clamp01(stimulus.proximity01);
     npcRaiseAlert(actor, profile, increment, tick, stimulus.hasValidTarget,
                   stimulus.visualConfirmed);
+  } else if (stimulus.heard) {
+    // Heard-and-unseen: a NON-VISUAL rise (grace applies). hasValidTarget=false is
+    // deliberate -- an unnamed threat -- so the no-target combat cap holds the guard
+    // just below combatNorm: band 4 max, Searching reachable, NEVER band 5 / Chasing
+    // on noise alone (the guard has no true target to run down through walls).
+    const float ref = profile.soundAlertUnitsRef > 0.0F ? profile.soundAlertUnitsRef : 1.0F;
+    const float increment = profile.soundRiseScale * clamp01(stimulus.alertUnits / ref);
+    npcRaiseAlert(actor, profile, increment, tick, /*hasValidTarget=*/false,
+                  /*visualConfirmed=*/false);
   } else {
     npcDecayAlert(actor, profile, tick);
   }

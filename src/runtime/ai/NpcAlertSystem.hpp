@@ -37,6 +37,13 @@ struct AlertProfile {
   float graceFrac = 1.2F;
   std::uint32_t graceWindowTicks = 40U;
   std::uint32_t graceCountLimit = 5U;
+  // Sound-driven rise (a1s2, L1). A heard-but-unseen noise raises the level by
+  // soundRiseScale * clamp01(alertUnits / soundAlertUnitsRef) per tick. Reference
+  // seeds: soundRiseScale ~0.05 class (A10-tunable); soundAlertUnitsRef defaults to
+  // the footstep alertMax (30) so a full-strength footstep gives a full-scale rise.
+  // Config only -- not persisted (a2 persists AiActorState, not AlertProfile).
+  float soundRiseScale = 0.05F;
+  float soundAlertUnitsRef = 30.0F;
 };
 
 // Per-tick perception summary fed to the FSM, computed from an

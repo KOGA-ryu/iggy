@@ -7,6 +7,7 @@
 
 #include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/ai/NpcBehaviorSystem.hpp"
+#include "runtime/ai/NpcSoundPerception.hpp"
 
 namespace iggy3d {
 
@@ -27,6 +28,9 @@ struct NpcBehaviorProfile {
   // Graded-alert tuning (slice 5) rides on the behavior profile. The default
   // construction is valid; resolve validates it via isValidAlertProfile.
   AlertProfile alertProfile;
+  // Sound-hearing tuning (a1s2, L1) sibling to alertProfile: the attenuation
+  // kernel's per-guard thresholds/losses. Reference defaults from a1s1.
+  SoundPerceptionConfig soundConfig;
 };
 
 struct NpcBehaviorProfileCatalog {

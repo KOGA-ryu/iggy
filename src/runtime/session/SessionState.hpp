@@ -6,6 +6,7 @@
 
 #include "config/RuntimeConfig.hpp"
 #include "runtime/ai/AiState.hpp"
+#include "runtime/ai/NpcSoundPerception.hpp"
 #include "runtime/ability/AbilitySystem.hpp"
 #include "runtime/camera/CameraState.hpp"
 #include "runtime/clock/ClockState.hpp"
@@ -72,6 +73,11 @@ struct SessionTransientState {
   std::vector<CommandSequence> pendingExecutionSequences;
   bool lastMovementResultAvailable = false;
   MovementResult lastMovementResult;
+  // Per-tick sound bus (a1s2, L1). Movement execution PUSHES a SoundEvent per moving
+  // player; the AI loop (enqueueNpcBehaviorCommands) READS it to resolve per-guard
+  // hearing. Cleared at tick start so hearing sees only THIS tick's noise. Transient
+  // (not persisted/hashed) -- it is fully regenerated each tick from movement.
+  std::vector<SoundEvent> soundEvents;
   bool cameraInputClearRequested = false;
   bool summaryDirty = true;
   bool stateHashDirty = true;

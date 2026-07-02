@@ -2,6 +2,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <memory>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -306,6 +309,7 @@ void clearTransient(SessionState& state) {
   state.transient.pendingExecutionSequences.clear();
   state.transient.lastMovementResultAvailable = false;
   state.transient.lastMovementResult = {};
+  state.transient.soundEvents.clear();
   state.transient.cameraInputClearRequested = false;
   state.transient.summaryDirty = true;
   state.transient.stateHashDirty = false;
@@ -871,6 +875,49 @@ bool actorHasLineOfSightToTarget(const std::vector<PhysicsAabbCollider>& collide
   return true;
 }
 
+// Point-to-point occlusion for the sound path (a1s2, L1): same eye-height ray as
+// actorHasLineOfSightToTarget but on raw positions, returning APPLY-ONCE whether a
+// wall sits between (true = at least one occluder). The sound kernel uses this as a
+// single boolean per event (flat perWallLossDb, never a wall count -- a1s1 ruling).
+// Degenerate/failed queries report "no blocker" (never fabricate attenuation).
+bool hasBlockerBetween(const std::vector<PhysicsAabbCollider>& colliders, Vec3 from,
+                       Vec3 to) {
+  if (colliders.empty()) {
+    return false;
+  }
+  constexpr float kEyeHeightMeters = 1.0F;
+  Vec3 origin = from;
+  origin.y += kEyeHeightMeters;
+  Vec3 destEye = to;
+  destEye.y += kEyeHeightMeters;
+  const Vec3 delta{destEye.x - origin.x, destEye.y - origin.y, destEye.z - origin.z};
+  const float distanceSq = lengthSquared(delta);
+  if (!std::isfinite(distanceSq) || distanceSq < 1.0e-6F) {
+    return false;
+  }
+  const float distance = std::sqrt(distanceSq);
+  PhysicsRaycastQueryRequest request;
+  request.colliders = &colliders;
+  request.originMeters = origin;
+  request.direction = delta;  // normalized inside the query
+  request.maxDistanceMeters = distance;
+  request.includeSensors = false;
+  const PhysicsRaycastQueryResult result = raycastPhysicsAabbs(request);
+  if (!result.ok) {
+    return false;
+  }
+  constexpr float kOcclusionMarginMeters = 0.01F;
+  for (const PhysicsRaycastHit& hit : result.hits) {
+    if (hit.startInside) {
+      continue;
+    }
+    if (hit.distanceMeters < distance - kOcclusionMarginMeters) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
                                 const SpatialSurfaceSet* collisionSurfaces) {
   if (state.lifecycle != SessionLifecycle::Playing || state.clock.mode == ClockMode::Paused) {
@@ -944,11 +991,47 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
             : 0.0F;
     stimulus.hasValidTarget = perceptionHasLiveTarget(perception.status);
     stimulus.visualConfirmed = perception.targetInVisionCone && perception.hasLineOfSight;
+
+    // PERCEIVE (a1s2, L1): resolve THIS tick's sound bus at the guard. Self-hearing
+    // skip -- a guard never hears an event it emitted (v1 guards are silent, but the
+    // guard is defensively excluded so patrol/idle can't self-alert). blockers[i] is
+    // the APPLY-ONCE wall test between guard and each origin, reusing visionColliders.
+    // guardPos comes from actorEntity; if it's missing the guard simply hears nothing.
+    if (actorEntity != nullptr && !state.transient.soundEvents.empty()) {
+      const Vec3 guardPos = actorEntity->transform.position;
+      std::vector<SoundEvent> audibleEvents;
+      audibleEvents.reserve(state.transient.soundEvents.size());
+      // Parallel blocker buffer. std::vector<bool> is bit-packed and cannot back a
+      // std::span<const bool>, so use a plain heap bool[] the span can view.
+      auto blockers = std::make_unique<bool[]>(state.transient.soundEvents.size());
+      std::size_t heardCount = 0;
+      for (const SoundEvent& event : state.transient.soundEvents) {
+        if (event.source == actorState.actor) {
+          continue;  // never hear yourself
+        }
+        blockers[heardCount] = hasBlockerBetween(visionColliders, guardPos, event.originMeters);
+        audibleEvents.push_back(event);
+        ++heardCount;
+      }
+      const SoundPerceptionResult snd = resolveLoudestSound(
+          audibleEvents, guardPos, resolvedProfile.profile.soundConfig,
+          std::span<const bool>(blockers.get(), heardCount));
+      stimulus.heard = snd.heard;
+      stimulus.audibilityDb = snd.audibilityDb;
+      stimulus.alertUnits = snd.alertUnits;
+      stimulus.soundInvestigatePos = snd.investigatePos;
+    }
+
     npcStepAlert(actorState, stimulus, alertProfile, state.clock.tickIndex);
     // Remember where the target is while it is actually seen (slice 7). visualConfirmed implies
-    // Ready, so perception.targetPosition is the live sighting.
+    // Ready, so perception.targetPosition is the live sighting. MEMORY (a1s2): if the target
+    // was heard but never seen this tick, plant the sound origin in the SAME last-known memory
+    // so npcStepInvestigate (band-gated >= Searching) walks the guard to the noise -- no second
+    // memory system (map law). Visual always wins when both are present.
     if (stimulus.visualConfirmed) {
       npcRecordSighting(actorState, perception.targetPosition, state.clock.tickIndex);
+    } else if (stimulus.heard) {
+      npcRecordSighting(actorState, stimulus.soundInvestigatePos, state.clock.tickIndex);
     }
 
     const NpcBehaviorDecision engaged =
