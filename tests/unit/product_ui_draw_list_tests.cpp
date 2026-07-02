@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 
+#include "app/frontend/SaveSlotModel.hpp"
 #include "app/frontend/StarterScreen.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
@@ -344,6 +345,74 @@ bool deleteConfirmChildScreenBuildsSharedConfirmSurface() {
   return ok;
 }
 
+// sd2: the delete-confirm panel names the world it will delete. The map value renders the
+// candidate's real displayTitle and the status is truthful — resolved through the one shared
+// resolveProductDeleteConfirmModel that the SDL lane also consumes.
+bool deleteConfirmPanelNamesTheCandidateWorld() {
+  iggy3d::FrontendState frontend =
+      starterFrontend(iggy3d::FrontendAction::Delete);
+  frontend.childScreen = iggy3d::FrontendScreen::DeleteConfirm;
+
+  iggy3d::SaveSlotPreview slot;
+  slot.id = "save_42";
+  slot.displayTitle = "DUNGEON ALPHA";
+  iggy3d::ProductSaveBridgeResult saves;
+  saves.slots.slots.push_back(slot);
+  saves.slots.compatibleCount = 1U;
+
+  iggy3d::ProductUiDrawListRequest request;
+  request.frontend = &frontend;
+  request.compatibleSaveCount = 1U;
+  request.saves = &saves;
+  request.deleteCandidateId = "save_42";
+
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductStarterUiDrawList(request);
+  const iggy3d::ProductUiPrimitive* mapValue =
+      findPrimitive(list, "starter.content.delete_confirm.map_value");
+  const iggy3d::ProductUiPrimitive* statusValue =
+      findPrimitive(list, "starter.content.delete_confirm.status_value");
+
+  bool ok = true;
+  ok &= expect(mapValue != nullptr && mapValue->text == "DUNGEON ALPHA",
+               "delete confirm names the real candidate title");
+  ok &= expect(statusValue != nullptr && statusValue->text == "READY TO DELETE",
+               "delete confirm shows a truthful status");
+  // The shared resolver produces the same model the SDL lane draws (compile-enforced there).
+  const iggy3d::ProductDeleteConfirmModel model =
+      iggy3d::resolveProductDeleteConfirmModel("save_42", saves);
+  ok &= expect(model.mapTitle == "DUNGEON ALPHA" && model.statusText == "READY TO DELETE",
+               "shared resolver returns the candidate model");
+  return ok;
+}
+
+bool deleteConfirmPanelFallsBackWhenNoCandidate() {
+  iggy3d::FrontendState frontend =
+      starterFrontend(iggy3d::FrontendAction::Delete);
+  frontend.childScreen = iggy3d::FrontendScreen::DeleteConfirm;
+
+  // No candidate id set (and no catalog): the panel must show the deterministic fallback,
+  // never a blank or stale string.
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductStarterUiDrawList({&frontend, 0U, 1280U, 720U});
+  const iggy3d::ProductUiPrimitive* mapValue =
+      findPrimitive(list, "starter.content.delete_confirm.map_value");
+  const iggy3d::ProductUiPrimitive* statusValue =
+      findPrimitive(list, "starter.content.delete_confirm.status_value");
+
+  bool ok = true;
+  ok &= expect(mapValue != nullptr && mapValue->text == "NO MAP SELECTED",
+               "delete confirm falls back with no candidate (map)");
+  ok &= expect(statusValue != nullptr && statusValue->text == "NO MAP SELECTED",
+               "delete confirm falls back with no candidate (status)");
+  // A candidate id that is not in the catalog also falls back (no garbage).
+  const iggy3d::ProductSaveBridgeResult empty;
+  const iggy3d::ProductDeleteConfirmModel missing =
+      iggy3d::resolveProductDeleteConfirmModel("ghost_save", empty);
+  ok &= expect(missing.mapTitle == "NO MAP SELECTED", "unknown candidate falls back");
+  return ok;
+}
+
 bool widgetBuiltScreensCaptureActionHitRegions() {
   // The widget layer emits a hit region for every interactive primitive, onto the
   // draw list's hit-region lane. This guards that lane against bit-rot: if a
@@ -524,6 +593,8 @@ int main() {
   ok &= loadSaveChildScreenBuildsSharedSelectorSurface();
   ok &= deleteModeChildScreenBuildsDeleteWorldSurface();
   ok &= deleteConfirmChildScreenBuildsSharedConfirmSurface();
+  ok &= deleteConfirmPanelNamesTheCandidateWorld();
+  ok &= deleteConfirmPanelFallsBackWhenNoCandidate();
   ok &= widgetBuiltScreensCaptureActionHitRegions();
   ok &= settingsAndDevToolsChildScreensAreModeled();
   ok &= invalidContextRejectsWithoutRendererTypes();

@@ -757,14 +757,14 @@ void emitLoadSaveContent(ProductUiDrawList& list,
   appendWidgetOutput(list, out);
 }
 
-void emitDeleteConfirmContent(ProductUiDrawList& list) {
+void emitDeleteConfirmContent(ProductUiDrawList& list,
+                              const ProductDeleteConfirmModel& model) {
   // First screen rebuilt from the L1 widget layer (docs/ui/ui_architecture.md).
-  // Emission-preserving: the widgets carry the same explicit rects/tones/ids as
-  // the hand-emit they replace, so they produce byte-identical primitives (the
-  // draw-list receipt in product_ui_draw_list_tests still passes). The difference
-  // is the interactive confirm/back now ALSO emit hit regions — the input lane the
-  // hand-emit never expressed, and the layout that hit-testing can reuse instead
-  // of re-deriving it by hand.
+  // NOT emission-preserving (sd2): the map value and status value are now DYNAMIC — they render
+  // the delete candidate's real title/status from resolveProductDeleteConfirmModel (with a fixed
+  // fallback when no candidate is set) instead of the old static "SELECTED MAP"/"CONFIRM OPEN".
+  // Every other primitive (rects/tones/semanticIds, and the interactive confirm/back hit regions)
+  // is unchanged. Both presentation lanes render `model` from the same shared resolver.
   WidgetOutput out;
   emit(UiText{.rect = {450.0F, 152.0F, 360.0F, 42.0F},
               .tone = ProductUiTone::TextPrimary,
@@ -785,7 +785,7 @@ void emitDeleteConfirmContent(ProductUiDrawList& list) {
   emit(UiText{.rect = {452.0F, 292.0F, 320.0F, 26.0F},
               .tone = ProductUiTone::TextPrimary,
               .semanticId = makeStarterSemanticId("content.delete_confirm.map_value"),
-              .text = "SELECTED MAP"},
+              .text = model.mapTitle},
        out);
   emit(UiText{.rect = {452.0F, 350.0F, 180.0F, 26.0F},
               .tone = ProductUiTone::TextMuted,
@@ -797,7 +797,7 @@ void emitDeleteConfirmContent(ProductUiDrawList& list) {
               .tone = ProductUiTone::TextPrimary,
               .semanticId =
                   makeStarterSemanticId("content.delete_confirm.status_value"),
-              .text = "CONFIRM OPEN"},
+              .text = model.statusText},
        out);
   emit(UiText{.rect = {452.0F, 508.0F, 260.0F, 26.0F},
               .tone = ProductUiTone::Accent,
@@ -1071,9 +1071,16 @@ ProductUiDrawList buildProductStarterUiDrawList(
     case ProductStarterUiContext::LoadSave:
       emitLoadSaveContent(list, request);
       break;
-    case ProductStarterUiContext::DeleteConfirm:
-      emitDeleteConfirmContent(list);
+    case ProductStarterUiContext::DeleteConfirm: {
+      // Resolve the panel text from the live catalog + the tracked candidate id (one shared
+      // source; the SDL view resolves the same model). A null catalog falls back deterministically.
+      const ProductSaveBridgeResult emptyCatalog;
+      emitDeleteConfirmContent(
+          list, resolveProductDeleteConfirmModel(
+                    request.deleteCandidateId,
+                    request.saves != nullptr ? *request.saves : emptyCatalog));
       break;
+    }
     case ProductStarterUiContext::Settings:
       emitSettingsContent(list, request.settingsTab);
       break;
@@ -1089,6 +1096,24 @@ ProductUiDrawList buildProductStarterUiDrawList(
   }
   list.primitiveCount = list.primitives.size();
   return list;
+}
+
+ProductDeleteConfirmModel resolveProductDeleteConfirmModel(
+    std::string_view candidateId, const ProductSaveBridgeResult& saves) {
+  // Fallback when nothing is meaningfully selected — never blank, never garbage.
+  ProductDeleteConfirmModel model{"NO MAP SELECTED", "NO MAP SELECTED"};
+  if (candidateId.empty() || candidateId == "none") {
+    return model;
+  }
+  for (const SaveSlotPreview& slot : saves.slots.slots) {
+    if (slot.id == candidateId) {
+      // Prefer the human title; fall back to the id so a titleless slot still names something.
+      model.mapTitle = !slot.displayTitle.empty() ? slot.displayTitle : slot.id;
+      model.statusText = "READY TO DELETE";
+      return model;
+    }
+  }
+  return model;  // candidate set but not in the catalog -> fallback
 }
 
 ProductUiDrawListRequest buildProductStarterUiDrawListRequest(
@@ -1112,6 +1137,7 @@ ProductUiDrawListRequest buildProductStarterUiDrawListRequest(
   request.settingsTab = settingsTab;
   request.saves = &saves;
   request.selectedSaveId = draft.selectedSaveId;
+  request.deleteCandidateId = draft.deleteCandidateId;
   return request;
 }
 
