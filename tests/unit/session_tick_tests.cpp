@@ -1616,6 +1616,54 @@ bool patrolNpcWalksLoopRouteInOrder() {
   return ok;
 }
 
+// s6c: a guard on a rectangular (diagonal-cornered) loop must visit ALL FOUR corners in order
+// and complete a full lap -- never stall at a corner. This square STALLS under the pre-fix
+// design (patrol move-stop == arrival-epsilon: a cornered approach parks a float hair outside
+// the arrival ring). The route sits far from the origin so the player is out of perception
+// radius and the guard stays low-alert and patrols the whole time.
+bool patrolNpcLapsRectangularRouteWithDiagonalCorners() {
+  iggy3d::Session session = makeNpcCombatSession(8.0F);  // npc at (8,0,0), player at origin
+  const std::vector<iggy3d::Vec3> square = {
+      {8.0F, 0.0F, 3.0F}, {11.0F, 0.0F, 3.0F}, {11.0F, 0.0F, 6.0F}, {8.0F, 0.0F, 6.0F}};
+  seedPatrolNpc(session, square, iggy3d::PatrolMode::Loop);
+
+  bool ok = true;
+  bool visited[4] = {false, false, false, false};
+  int lastIndex = 0;
+  bool inOrder = true;
+  bool completedLap = false;
+  bool patrolEveryTick = true;
+  // Perimeter 12 m at ~1 m/tick + the spawn approach, laps in ~15 ticks; give ~2 laps of slack.
+  for (int tick = 0; tick < 60 && !completedLap; ++tick) {
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "square patrol tick ok");
+    const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+    if (ai == nullptr) {
+      return expect(false, "square patrol actor present");
+    }
+    patrolEveryTick = patrolEveryTick && ai->lastIntent == iggy3d::AiIntentKind::Patrol;
+    const int idx = static_cast<int>(ai->patrolTargetIndex);
+    // The cursor targets the NEXT corner; it advances 0->1->2->3->0. Track order + wrap.
+    if (idx != lastIndex) {
+      const int expected = (lastIndex + 1) % 4;
+      if (idx != expected) {
+        inOrder = false;
+      }
+      if (lastIndex == 3 && idx == 0 && visited[0] && visited[1] && visited[2]) {
+        completedLap = true;  // came back to the start after touching every corner
+      }
+      lastIndex = idx;
+    }
+    visited[idx] = true;
+  }
+
+  ok = ok && expect(patrolEveryTick, "square patrol intent every tick") &&
+       expect(visited[0] && visited[1] && visited[2] && visited[3],
+              "square patrol visits all four corners") &&
+       expect(inOrder, "square patrol advances corners in order (no stall/skip)") &&
+       expect(completedLap, "square patrol completes a full lap");
+  return ok;
+}
+
 // (b) COMPOSE with s5: a patrolling NPC that perceives the player escalates and STOPS
 // patrolling; once alert decays back to the low band it RESUMES. Asserts on alert band +
 // lastIntent (patrol facing interacts with the cone, so positions are not asserted here).
@@ -1713,6 +1761,7 @@ int main() {
                   rejectedAiAttackRemainsVisibleInCommandLog() &&
                   npcAlertLadderEscalatesThenDecaysInLoop() &&
                   patrolNpcWalksLoopRouteInOrder() &&
+                  patrolNpcLapsRectangularRouteWithDiagonalCorners() &&
                   patrolYieldsToEscalationThenResumes() &&
                   idleNpcWithoutWaypointsDoesNotMove() &&
                   defeatedPlayerIsNotAttackedAgain() &&

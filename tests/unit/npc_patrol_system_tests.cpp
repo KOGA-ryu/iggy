@@ -122,12 +122,45 @@ bool staleCursorClamped() {
                 "stale cursor clamped to first waypoint");
 }
 
+// s6c regression: the patrol Move parks the guard at kPatrolMoveStopMeters from the waypoint,
+// which must be STRICTLY inside the arrival ring (kPatrolArriveEpsilonMeters) so arrival always
+// fires there. With the old design (stop == epsilon) a cornered approach lands a float hair
+// OUTSIDE the ring and the cursor stalls forever. Assert arrival fires at the rest distance and
+// a few ULP beyond it (still < epsilon).
+bool arrivesAtTheMoveRestDistance() {
+  static_assert(iggy3d::kPatrolMoveStopMeters < iggy3d::kPatrolArriveEpsilonMeters,
+                "rest distance must be inside the arrival ring");
+
+  const auto advancesFrom = [](float distanceToWaypoint) {
+    iggy3d::AiActorState actor;
+    actor.patrolMode = iggy3d::PatrolMode::Loop;
+    actor.patrolWaypoints = {v(5.0F, 0.0F), v(0.0F, 0.0F)};
+    actor.patrolTargetIndex = 0;  // walking toward (5,0)
+    // Place the actor `distanceToWaypoint` short of (5,0) along the approach axis.
+    const iggy3d::NpcPatrolStep step =
+        iggy3d::npcStepPatrol(actor, v(5.0F - distanceToWaypoint, 0.0F), kEps);
+    // Advanced iff it now targets the NEXT waypoint (index 1 -> destination (0,0)).
+    return sameXZ(step.destination, v(0.0F, 0.0F)) && actor.patrolTargetIndex == 1U;
+  };
+
+  const float ulp = std::nextafter(iggy3d::kPatrolMoveStopMeters, 1.0F) -
+                    iggy3d::kPatrolMoveStopMeters;
+  bool ok = expect(advancesFrom(iggy3d::kPatrolMoveStopMeters),
+                   "arrival fires at the move rest distance") &&
+            expect(advancesFrom(iggy3d::kPatrolMoveStopMeters + 4.0F * ulp),
+                   "arrival fires a few ULP beyond the rest distance") &&
+            // Sanity: still no early arrival just inside the epsilon boundary from outside.
+            expect(!advancesFrom(iggy3d::kPatrolArriveEpsilonMeters + 0.05F),
+                   "no arrival while still outside the ring");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
   const bool ok = routeValidation() && emptyRouteInactive() &&
                   loopVisitsInOrderAndWraps() && pingPongBouncesAtEnds() &&
                   advancesOnlyWithinEpsilon() && singleWaypointStationary() &&
-                  staleCursorClamped();
+                  staleCursorClamped() && arrivesAtTheMoveRestDistance();
   return ok ? 0 : 1;
 }

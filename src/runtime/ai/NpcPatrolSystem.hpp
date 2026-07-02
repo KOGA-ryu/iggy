@@ -18,6 +18,14 @@ namespace iggy3d {
 // overshoots the waypoint it is arriving at.
 inline constexpr float kPatrolArriveEpsilonMeters = 0.25F;
 
+// The patrol Move stops strictly inside the arrival ring (half the epsilon) so a guard that
+// has effectively reached a waypoint always registers arrival next tick, instead of parking on
+// the knife-edge distance == epsilon where float error on a cornered approach stalls the cursor
+// (found by the s6b garden; see s6c). Keep this STRICTLY less than kPatrolArriveEpsilonMeters.
+inline constexpr float kPatrolMoveStopMeters = kPatrolArriveEpsilonMeters * 0.5F;  // 0.125 m
+static_assert(kPatrolMoveStopMeters < kPatrolArriveEpsilonMeters,
+              "patrol move stop must rest inside the arrival ring");
+
 // One step of the patrol cursor. When inactive the caller leaves the decision untouched.
 struct NpcPatrolStep {
   bool active = false;

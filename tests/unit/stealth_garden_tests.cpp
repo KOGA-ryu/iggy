@@ -397,6 +397,69 @@ bool spottedGuardEscalatesToChasing() {
   return ok;
 }
 
+// --- Guard laps the island ring (s6c) ----------------------------------------------------
+// A rectangular patrol loop in the walkable ring AROUND the island (diagonal corners). Before
+// the s6c fix the guard stalled at a corner; now it must visit all four corners in order and
+// complete a full lap. The player is parked far outside so the guard stays low-alert and
+// patrols the whole time. This is why s6b shipped a straight beat — s6c makes rings reliable.
+bool gardenGuardLapsIslandRing() {
+  GardenSession gs = makeGardenSession();
+  if (!gs.ok) {
+    return false;
+  }
+
+  // Rectangular ring between the border and the island (rows 2 & 5, cols 2 & 11 are all floor;
+  // the island occupies cols 4-9, rows 3-4, i.e. INSIDE this loop).
+  const iggy3d::Vec3 ring[] = {cellToWorld(2, 2), cellToWorld(11, 2), cellToWorld(11, 5),
+                               cellToWorld(2, 5)};
+  for (iggy3d::AiActorState& ai : gs.session->mutableStateForOwnedSystems().ai.actors) {
+    if (ai.actor == gs.guard) {
+      ai.patrolWaypoints = {ring[0], ring[1], ring[2], ring[3]};
+      ai.patrolTargetIndex = 0;
+    }
+  }
+  // Park the player far outside the garden so it is never perceived (guard stays patrolling).
+  iggy3d::WorldState& world = gs.session->mutableStateForOwnedSystems().world;
+  const iggy3d::EntityState* p = world.findById(gs.player);
+  if (p != nullptr) {
+    iggy3d::EntityState copy = *p;
+    copy.transform.position = {50.0F, 0.0F, 50.0F};
+    (void)world.upsertEntity(copy);
+  }
+
+  bool ok = true;
+  bool visited[4] = {false, false, false, false};
+  int lastIndex = 0;
+  bool inOrder = true;
+  bool completedLap = false;
+  // Perimeter ~24 m at ~1 m/tick + spawn approach; a lap is ~26 ticks. Give ~2 laps of slack.
+  for (int i = 0; i < 70 && !completedLap; ++i) {
+    ok = ok && expect(tick(gs), "ring lap tick ok");
+    const iggy3d::AiActorState* ai = guardAi(gs);
+    if (ai == nullptr) {
+      return expect(false, "ring lap guard present");
+    }
+    ok = ok && expect(ai->lastIntent == iggy3d::AiIntentKind::Patrol, "ring lap stays patrolling");
+    const int idx = static_cast<int>(ai->patrolTargetIndex);
+    if (idx != lastIndex) {
+      if (idx != (lastIndex + 1) % 4) {
+        inOrder = false;
+      }
+      if (lastIndex == 3 && idx == 0 && visited[0] && visited[1] && visited[2]) {
+        completedLap = true;
+      }
+      lastIndex = idx;
+    }
+    visited[idx] = true;
+  }
+
+  ok = ok && expect(visited[0] && visited[1] && visited[2] && visited[3],
+                    "ring lap visits all four corners") &&
+       expect(inOrder, "ring lap advances corners in order (no stall)") &&
+       expect(completedLap, "ring lap completes a full lap around the island");
+  return ok;
+}
+
 // --- Island occlusion (the blind side the testbed is built around) -----------------------
 // Place the guard on the top row and the player on the bottom row on the SAME column, with
 // the central island between them. Assert the guard has the player in its cone and radius but
@@ -448,6 +511,6 @@ bool islandBreaksLineOfSight() {
 
 int main() {
   const bool ok = islandBreaksLineOfSight() && sneakUnseenReachesExitWithoutAlarm() &&
-                  spottedGuardEscalatesToChasing();
+                  spottedGuardEscalatesToChasing() && gardenGuardLapsIslandRing();
   return ok ? 0 : 1;
 }

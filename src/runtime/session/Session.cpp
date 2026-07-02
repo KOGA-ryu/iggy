@@ -719,7 +719,9 @@ NpcBehaviorDecision maybeApplyPatrol(const NpcBehaviorDecision& decision,
   patrol.status = NpcBehaviorDecisionStatus::Decided;
   patrol.intent = AiIntentKind::Patrol;
   patrol.homePosition = step.destination;
-  patrol.returnStopDistanceMeters = kPatrolArriveEpsilonMeters;
+  // Rest strictly inside the arrival ring so a cornered approach always registers arrival
+  // next tick (see kPatrolMoveStopMeters); arrival precision itself stays at the epsilon.
+  patrol.returnStopDistanceMeters = kPatrolMoveStopMeters;
   patrol.cooldownTicksRemaining = 0;
   return patrol;
 }
