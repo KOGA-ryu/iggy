@@ -10,6 +10,7 @@
 #include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/ai/NpcBehaviorSystem.hpp"
+#include "runtime/ai/NpcInvestigateSystem.hpp"
 #include "runtime/ai/NpcPatrolSystem.hpp"
 #include "runtime/camera/CameraModePolicy.hpp"
 #include "runtime/clock/Clock.hpp"
@@ -688,6 +689,47 @@ bool perceptionHasActorPosition(const NpcPerceptionResult& perception) {
   return isValid(perception.actor) && isFinite(perception.actorPosition);
 }
 
+// Overlay last-known-position investigation onto the reconciled decision (slice 7). Sits in
+// precedence BETWEEN combat (kept by reconcileAlertBand at band 5) and patrol (band <=1): when
+// the guard is standing/aware (intent==Wait) with memory of a target it can no longer see and
+// alert is still in the Searching/Alert band, walk to the remembered spot and look around.
+// Gating on intent==Wait leaves combat move/attack, leash ReturnToAnchor, and defeat/disabled
+// None untouched. Bands are disjoint from patrol's, so the two overlays never fight.
+NpcBehaviorDecision maybeApplyInvestigate(const NpcBehaviorDecision& decision,
+                                          AiActorState& actor,
+                                          const NpcPerceptionResult& perception,
+                                          const AlertProfile& profile,
+                                          std::uint64_t tick) {
+  static_cast<void>(tick);
+  if (decision.intent != AiIntentKind::Wait || !perceptionHasActorPosition(perception)) {
+    return decision;
+  }
+
+  const bool visualConfirmed =
+      perception.targetInVisionCone && perception.hasLineOfSight;
+  const std::uint8_t band = alertBandIndex(actor.alertLevel, profile);
+  const NpcInvestigateStep step =
+      npcStepInvestigate(actor, perception.actorPosition, band, visualConfirmed,
+                         kPatrolArriveEpsilonMeters, kInvestigateDwellTicks);
+  if (!step.active) {
+    return decision;
+  }
+
+  // Behavior stays derived from the alert level (Searching/Alert); only the intent changes.
+  NpcBehaviorDecision investigate = decision;
+  investigate.status = NpcBehaviorDecisionStatus::Decided;
+  investigate.behavior = alertBehaviorForLevel(actor.alertLevel, profile);
+  investigate.cooldownTicksRemaining = 0;
+  if (step.dwelling) {
+    investigate.intent = AiIntentKind::Wait;  // look around at the spot, no move
+  } else {
+    investigate.intent = AiIntentKind::Investigate;
+    investigate.homePosition = step.destination;
+    investigate.returnStopDistanceMeters = kPatrolMoveStopMeters;
+  }
+  return investigate;
+}
+
 // Overlay low-alert patrol onto the reconciled decision (slice 6). Patrol drives
 // movement ONLY when the NPC is at rest in the Idle/Observant band; every engaged /
 // returning / passive / defeated / cooldown outcome is left untouched (none is an
@@ -775,7 +817,8 @@ void updateNpcFacing(AiActorState& actorState,
       break;
     case AiIntentKind::ReturnToAnchor:
     case AiIntentKind::Patrol:
-      // Both point-moves face decision.homePosition (anchor / current waypoint).
+    case AiIntentKind::Investigate:
+      // Point-moves face decision.homePosition (anchor / waypoint / last-known sighting).
       actorState.facingDirection = horizontalDirectionOrForward(
           perception.actorPosition, decision.homePosition);
       break;
@@ -902,12 +945,20 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
     stimulus.hasValidTarget = perceptionHasLiveTarget(perception.status);
     stimulus.visualConfirmed = perception.targetInVisionCone && perception.hasLineOfSight;
     npcStepAlert(actorState, stimulus, alertProfile, state.clock.tickIndex);
+    // Remember where the target is while it is actually seen (slice 7). visualConfirmed implies
+    // Ready, so perception.targetPosition is the live sighting.
+    if (stimulus.visualConfirmed) {
+      npcRecordSighting(actorState, perception.targetPosition, state.clock.tickIndex);
+    }
 
     const NpcBehaviorDecision engaged =
         chooseNpcBehaviorIntent(NpcBehaviorDecisionRequest{&actorState, perception, config,
                                                            state.clock.tickIndex});
     NpcBehaviorDecision decision =
         reconcileAlertBand(engaged, actorState, alertProfile);
+    // Precedence: combat (kept above) > investigate last-known (band 3-4) > patrol (band <=1).
+    decision =
+        maybeApplyInvestigate(decision, actorState, perception, alertProfile, state.clock.tickIndex);
     decision = maybeApplyPatrol(decision, actorState, perception, alertProfile);
     applyNpcBehaviorDecision(actorState, decision);
     updateNpcFacing(actorState, decision, perception);

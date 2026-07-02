@@ -16,6 +16,7 @@
 #include "core/math/Vec3.hpp"
 #include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
+#include "runtime/ai/NpcInvestigateSystem.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
@@ -265,6 +266,25 @@ const iggy3d::AiActorState* guardAi(const GardenSession& gs) {
   return nullptr;
 }
 
+iggy3d::AiActorState* mutableGuardAi(GardenSession& gs) {
+  for (iggy3d::AiActorState& actor : gs.session->mutableStateForOwnedSystems().ai.actors) {
+    if (actor.actor == gs.guard) {
+      return &actor;
+    }
+  }
+  return nullptr;
+}
+
+void teleportEntity(GardenSession& gs, iggy3d::EntityId id, iggy3d::Vec3 pos) {
+  iggy3d::WorldState& world = gs.session->mutableStateForOwnedSystems().world;
+  const iggy3d::EntityState* entity = world.findById(id);
+  if (entity != nullptr) {
+    iggy3d::EntityState copy = *entity;
+    copy.transform.position = pos;
+    (void)world.upsertEntity(copy);
+  }
+}
+
 // Guard's alert rung read through the NPC behavior debug snapshot (the in-game read-out).
 iggy3d::AiBehaviorKind guardBehaviorViaSnapshot(const GardenSession& gs) {
   const iggy3d::NpcBehaviorProfileCatalog catalog = iggy3d::makeBuiltInNpcBehaviorProfileCatalog();
@@ -460,6 +480,96 @@ bool gardenGuardLapsIslandRing() {
   return ok;
 }
 
+// --- Break contact: investigate last-known, then give up (s7) -----------------------------
+// The guard sees the player just north of the island, then the player ducks below the island so
+// LOS breaks. The guard must (a) have recorded the last-known spot, (b) enter Searching and MOVE
+// toward it (not reset), (c) dwell there, (d) give up and return to patrol once alert decays.
+bool breakContactInvestigatesThenGivesUp() {
+  GardenSession gs = makeGardenSession();
+  if (!gs.ok) {
+    return false;
+  }
+
+  // Set the guard just above the island facing south, alert already in the Searching band; put
+  // the player one cell south (north of the island, clear LOS) so the guard sees it.
+  iggy3d::AiActorState* g = mutableGuardAi(gs);
+  if (g == nullptr) {
+    return expect(false, "break-contact guard present");
+  }
+  g->alertLevel = 0.55F;  // Searching band
+  g->lastRiseTick = 0;
+  const iggy3d::Vec3 seenAt = cellToWorld(6, 2);
+  teleportEntity(gs, gs.guard, cellToWorld(6, 1));
+  teleportEntity(gs, gs.player, seenAt);
+
+  // (a) See the player -> record last-known.
+  submitWait(gs);
+  bool ok = expect(tick(gs), "break-contact see tick ok");
+  const iggy3d::AiActorState* ai = guardAi(gs);
+  ok = ok && expect(ai != nullptr && ai->hasLastKnownTarget, "records last-known while seen") &&
+       expect(ai != nullptr && iggy3d::nearlyEqual(ai->lastKnownTargetPosition, seenAt, 0.05F),
+              "last-known is where the player was seen");
+
+  // Break contact: the player ducks to the bottom corridor, behind the island.
+  teleportEntity(gs, gs.player, cellToWorld(6, 6));
+
+  // (b) Unseen but still Searching -> investigate: LOS is now blocked and the guard MOVES toward
+  // the last-known spot (does not reset to patrol).
+  bool sawInvestigate = false;
+  bool losBrokenWhileInRadius = false;
+  for (int i = 0; i < 8; ++i) {
+    submitWait(gs);
+    ok = ok && expect(tick(gs), "break-contact investigate tick ok");
+    ai = guardAi(gs);
+    if (ai != nullptr && ai->lastIntent == iggy3d::AiIntentKind::Investigate) {
+      sawInvestigate = true;
+    }
+    if (ai != nullptr && ai->lastTargetInRadius && !ai->lastTargetHasLineOfSight) {
+      losBrokenWhileInRadius = true;  // the island is doing the occluding
+    }
+  }
+  const iggy3d::EntityState* guardEntity = gs.session->state().world.findById(gs.guard);
+  ok = ok && expect(sawInvestigate, "guard investigates toward last-known after losing sight") &&
+       expect(losBrokenWhileInRadius, "island breaks LOS during the search") &&
+       expect(guardEntity != nullptr && guardEntity->transform.position.z > 1.5F,
+              "guard advanced toward the last-known spot");
+
+  // (c) Dwell/look around at the spot.
+  bool sawDwell = false;
+  for (int i = 0; i < 20 && !sawDwell; ++i) {
+    submitWait(gs);
+    ok = ok && expect(tick(gs), "break-contact dwell tick ok");
+    ai = guardAi(gs);
+    if (ai != nullptr && ai->hasLastKnownTarget && ai->investigateDwellTicks > 0U &&
+        ai->lastIntent == iggy3d::AiIntentKind::Wait) {
+      sawDwell = true;
+    }
+  }
+  ok = ok && expect(sawDwell, "guard dwells (looks around) at last-known");
+
+  // (d) Give up after the dwell, then return to patrol once alert decays (simulate the decay).
+  bool gaveUp = false;
+  for (int i = 0; i < static_cast<int>(iggy3d::kInvestigateDwellTicks) + 10 && !gaveUp; ++i) {
+    submitWait(gs);
+    ok = ok && expect(tick(gs), "break-contact giveup tick ok");
+    ai = guardAi(gs);
+    if (ai != nullptr && !ai->hasLastKnownTarget) {
+      gaveUp = true;
+    }
+  }
+  ok = ok && expect(gaveUp, "guard gives up after the dwell");
+
+  // Alert fully decays with no re-acquire -> patrol resumes.
+  g = mutableGuardAi(gs);
+  g->alertLevel = 0.0F;
+  submitWait(gs);
+  ok = ok && expect(tick(gs), "break-contact patrol-resume tick ok");
+  ai = guardAi(gs);
+  ok = ok && expect(ai != nullptr && ai->lastIntent == iggy3d::AiIntentKind::Patrol,
+                    "guard returns to patrol after giving up");
+  return ok;
+}
+
 // --- Island occlusion (the blind side the testbed is built around) -----------------------
 // Place the guard on the top row and the player on the bottom row on the SAME column, with
 // the central island between them. Assert the guard has the player in its cone and radius but
@@ -511,6 +621,7 @@ bool islandBreaksLineOfSight() {
 
 int main() {
   const bool ok = islandBreaksLineOfSight() && sneakUnseenReachesExitWithoutAlarm() &&
-                  spottedGuardEscalatesToChasing() && gardenGuardLapsIslandRing();
+                  spottedGuardEscalatesToChasing() && gardenGuardLapsIslandRing() &&
+                  breakContactInvestigatesThenGivesUp();
   return ok ? 0 : 1;
 }

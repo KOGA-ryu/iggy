@@ -35,6 +35,9 @@ enum class AiIntentKind : std::uint8_t {
   // Low-alert patrol (slice 6), appended so serialized numbers stay stable. Drives a
   // point-move toward the current waypoint, sharing the ReturnToAnchor move path.
   Patrol,
+  // Investigate the last-known target position (slice 7). A point-move toward the remembered
+  // sighting; sits in precedence between combat and patrol. Appended for stable numbering.
+  Investigate,
 };
 
 // How an NPC continues its patrol route on reaching the last waypoint.
@@ -93,6 +96,8 @@ inline std::string_view aiIntentKindName(AiIntentKind kind) {
       return "return_to_anchor";
     case AiIntentKind::Patrol:
       return "patrol";
+    case AiIntentKind::Investigate:
+      return "investigate";
   }
   return "none";
 }
@@ -138,6 +143,13 @@ struct AiActorState {
   PatrolMode patrolMode = PatrolMode::Loop;
   std::uint32_t patrolTargetIndex = 0;    // waypoint currently walking toward
   bool patrolForward = true;              // ping-pong travel direction
+  // Last-known target memory (slice 7). Transient runtime state (not serialized/hashed, like
+  // alertLevel/patrol cursor): where/when the target was last visually confirmed, and the
+  // look-around dwell counter once the guard reaches that spot.
+  Vec3 lastKnownTargetPosition{};
+  std::uint64_t lastKnownTargetTick = 0;
+  bool hasLastKnownTarget = false;
+  std::uint32_t investigateDwellTicks = 0;
 };
 
 struct AiState {

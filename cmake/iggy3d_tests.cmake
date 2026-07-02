@@ -439,6 +439,10 @@ iggy3d_add_unit_test(npc_patrol_system_tests tests/unit/npc_patrol_system_tests.
 set_tests_properties(npc_patrol_system_tests PROPERTIES
   LABELS "unit;runtime;ai;npc_behavior;patrol;iggy3d")
 
+iggy3d_add_unit_test(npc_investigate_system_tests tests/unit/npc_investigate_system_tests.cpp)
+set_tests_properties(npc_investigate_system_tests PROPERTIES
+  LABELS "unit;runtime;ai;npc_behavior;investigate;iggy3d")
+
 iggy3d_add_unit_test(stealth_garden_tests tests/unit/stealth_garden_tests.cpp)
 set_tests_properties(stealth_garden_tests PROPERTIES
   LABELS "unit;runtime;ai;stealth;garden;iggy3d")

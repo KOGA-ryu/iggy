@@ -554,6 +554,10 @@ bool parseEnum(std::string_view value, AiIntentKind& out) {
     out = AiIntentKind::Patrol;
     return true;
   }
+  if (value == "investigate") {
+    out = AiIntentKind::Investigate;
+    return true;
+  }
   return false;
 }
 

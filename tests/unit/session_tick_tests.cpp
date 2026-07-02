@@ -2,6 +2,7 @@
 #include "runtime/session/SessionTick.hpp"
 
 #include "runtime/ai/NpcAlertSystem.hpp"
+#include "runtime/ai/NpcInvestigateSystem.hpp"
 #include "runtime/ai/NpcPatrolSystem.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
@@ -1732,6 +1733,84 @@ bool idleNpcWithoutWaypointsDoesNotMove() {
   return ok;
 }
 
+// s7: a guard that loses a target it was looking at records the last-known position, walks there
+// to investigate (Searching band), looks around for the bounded dwell, and gives up (memory
+// cleared) — it does NOT instantly reset. Uses the white-box seam to seed the Searching band and
+// to break contact deterministically.
+bool guardInvestigatesLastKnownThenGivesUp() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);  // guard {2} at (4,0,0), player {1} at origin
+  seedNpcAiProfile(session, "default");                  // guard faces -x toward the player
+  for (iggy3d::AiActorState& a : session.mutableStateForOwnedSystems().ai.actors) {
+    if (a.actor == iggy3d::EntityId{2}) {
+      a.alertLevel = 0.50F;  // Searching band (0.43 <= level < 0.78)
+      a.lastRiseTick = 0;
+    }
+  }
+
+  // (a) See the player -> record last-known at the sighting (the player's position, origin).
+  (void)session.submitCommand(submittedWait());
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate see tick ok");
+  const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+  ok = ok && expect(ai != nullptr && ai->hasLastKnownTarget, "records last-known while seen") &&
+       expect(ai != nullptr &&
+                  iggy3d::nearlyEqual(ai->lastKnownTargetPosition, {0.0F, 0.0F, 0.0F}, 0.05F),
+              "last-known is the sighting position");
+
+  // Break contact: teleport the player far outside perception so the guard loses sight.
+  {
+    iggy3d::WorldState& world = session.mutableStateForOwnedSystems().world;
+    const iggy3d::EntityState* p = world.findById({1});
+    iggy3d::EntityState copy = *p;
+    copy.transform.position = {50.0F, 0.0F, 50.0F};
+    (void)world.upsertEntity(copy);
+  }
+
+  // (b) Now unseen but still Searching -> investigate: walk toward last-known (origin, -x).
+  bool sawInvestigate = false;
+  float startX = 4.0F;
+  for (int i = 0; i < 8; ++i) {
+    (void)session.submitCommand(submittedWait());
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate move tick ok");
+    ai = findAiActor(session.state().ai, {2});
+    if (ai != nullptr && ai->lastIntent == iggy3d::AiIntentKind::Investigate) {
+      sawInvestigate = true;
+    }
+  }
+  const iggy3d::EntityState* npc = session.state().world.findById({2});
+  ok = ok && expect(sawInvestigate, "guard investigates toward last-known") &&
+       expect(npc != nullptr && npc->transform.position.x < startX - 1.0F,
+              "guard advanced toward last-known");
+
+  // (c) Arrive and dwell: intent becomes Wait and the look-around counter climbs.
+  bool sawDwell = false;
+  for (int i = 0; i < 20 && !sawDwell; ++i) {
+    (void)session.submitCommand(submittedWait());
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate dwell tick ok");
+    ai = findAiActor(session.state().ai, {2});
+    if (ai != nullptr && ai->hasLastKnownTarget && ai->investigateDwellTicks > 0U &&
+        ai->lastIntent == iggy3d::AiIntentKind::Wait) {
+      sawDwell = true;
+    }
+  }
+  ok = ok && expect(sawDwell, "guard dwells (looks around) at last-known");
+
+  // (d) Give up: after the dwell elapses, memory clears and it stops investigating.
+  bool gaveUp = false;
+  for (int i = 0; i < static_cast<int>(iggy3d::kInvestigateDwellTicks) + 10 && !gaveUp; ++i) {
+    (void)session.submitCommand(submittedWait());
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate giveup tick ok");
+    ai = findAiActor(session.state().ai, {2});
+    if (ai != nullptr && !ai->hasLastKnownTarget) {
+      gaveUp = true;
+    }
+  }
+  ai = findAiActor(session.state().ai, {2});
+  ok = ok && expect(gaveUp, "guard gives up after the dwell") &&
+       expect(ai != nullptr && ai->lastIntent != iggy3d::AiIntentKind::Investigate,
+              "guard no longer investigating after give-up");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -1764,6 +1843,7 @@ int main() {
                   patrolNpcLapsRectangularRouteWithDiagonalCorners() &&
                   patrolYieldsToEscalationThenResumes() &&
                   idleNpcWithoutWaypointsDoesNotMove() &&
+                  guardInvestigatesLastKnownThenGivesUp() &&
                   defeatedPlayerIsNotAttackedAgain() &&
                   defeatedNpcDoesNotEnqueueAttackOrMove() &&
                   pausedNormalTickDoesNotRunNpcAi();
