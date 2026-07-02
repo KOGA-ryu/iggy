@@ -13,15 +13,6 @@ bool isDeletedEntry(const ProductSaveCatalogEntry& entry) {
   return entry.location == ProductSaveCatalogLocation::Deleted || entry.deleted;
 }
 
-bool hasActiveCollision(const ProductSaveCatalogEntry& deletedEntry,
-                        const std::vector<ProductSaveCatalogEntry>& activeEntries) {
-  return std::any_of(activeEntries.begin(), activeEntries.end(),
-                     [&deletedEntry](const ProductSaveCatalogEntry& activeEntry) {
-                       return isActiveEntry(activeEntry) &&
-                              activeEntry.saveId == deletedEntry.saveId;
-                     });
-}
-
 bool entrySortBefore(const ProductSaveCatalogEntry& lhs,
                      const ProductSaveCatalogEntry& rhs) {
   const bool lhsHasTime = hasProductSaveCatalogTimestamp(lhs.savedAtUtc);
@@ -74,42 +65,16 @@ bool canLoadProductSave(const ProductSaveCatalogEntry& entry) {
          !entry.corrupt;
 }
 
-bool canSoftDeleteProductSave(const ProductSaveCatalogEntry& entry) {
-  return isActiveEntry(entry) && !entry.saveId.empty();
-}
-
-bool canRecoverProductSave(
-    const ProductSaveCatalogEntry& entry,
-    const std::vector<ProductSaveCatalogEntry>& activeEntries) {
-  return isDeletedEntry(entry) && entry.recoverable && !entry.saveId.empty() &&
-         !hasActiveCollision(entry, activeEntries);
-}
-
 ProductSaveCatalogBuildResult buildProductSaveCatalog(
     std::vector<ProductSaveCatalogEntry> entries) {
   ProductSaveCatalogBuildResult result;
   result.catalog.entries = sortProductSaveCatalogEntries(std::move(entries));
-  // Pass 1: fill display titles and collect the active entries. canRecoverProductSave needs the
-  // active list to reject a deleted id that collides with a live save (the store's recover would
-  // refuse it), so the recoverable count can only be predicate-authoritative after we know them.
-  std::vector<ProductSaveCatalogEntry> activeEntries;
   for (auto& entry : result.catalog.entries) {
     if (entry.displayTitle.empty()) {
       entry.displayTitle = productSaveDisplayTitle(entry);
     }
-    if (isActiveEntry(entry)) {
-      activeEntries.push_back(entry);
-    }
-  }
-  // Pass 2: counts. recoverableDeletedCount now goes through canRecoverProductSave — a deleted
-  // entry with an empty id OR an active-id collision cannot actually be recovered, so it is no
-  // longer counted (declared count correction; recoverableDeletedCount has no receipt consumer).
-  for (const auto& entry : result.catalog.entries) {
     if (isDeletedEntry(entry)) {
       ++result.deletedCount;
-      if (canRecoverProductSave(entry, activeEntries)) {
-        ++result.recoverableDeletedCount;
-      }
     } else {
       ++result.activeCount;
       if (canLoadProductSave(entry)) {

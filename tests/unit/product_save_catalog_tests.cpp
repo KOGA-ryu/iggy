@@ -155,18 +155,6 @@ void missingSnapshotDoesNotBlockLoad() {
          "missing snapshot does not make row unloadable");
 }
 
-void recoverEligibilityRejectsActiveTargetCollision() {
-  const auto active = activeEntry("save_001", "2026-06-24T00:00:00Z");
-  const auto deletedCollision = deletedEntry("save_001", "2026-06-24T01:00:00Z");
-  const auto deletedNoCollision = deletedEntry("save_002", "2026-06-24T01:00:00Z");
-  const std::vector<ProductSaveCatalogEntry> activeEntries{active};
-
-  expect(!iggy3d::canRecoverProductSave(deletedCollision, activeEntries),
-         "recover rejects active target collision");
-  expect(iggy3d::canRecoverProductSave(deletedNoCollision, activeEntries),
-         "recover allows deleted row without active collision");
-}
-
 void buildResultCountsAndTitlesAreStable() {
   auto corrupt = activeEntry("save_corrupt", "2026-06-24T01:00:00Z");
   corrupt.corrupt = true;
@@ -187,30 +175,9 @@ void buildResultCountsAndTitlesAreStable() {
   expect(built.deletedCount == 1, "catalog build counts deleted entries");
   expect(built.compatibleActiveCount == 1,
          "catalog build counts compatible loadable active entries");
-  expect(built.recoverableDeletedCount == 1,
-         "catalog build counts recoverable deleted entries");
   expect(built.corruptCount == 1, "catalog build counts corrupt entries");
   expect(!built.catalog.entries.front().displayTitle.empty(),
          "catalog build fills display title fallback");
-}
-
-// sd4-A: recoverableDeletedCount is now predicate-authoritative (canRecoverProductSave). A
-// deleted entry whose id collides with an ACTIVE save cannot actually be recovered (the store
-// refuses a target-exists recover), and an empty-id entry can't either — so neither is counted,
-// even though both are still counted as deleted.
-void recoverableCountExcludesCollisionsAndEmptyIds() {
-  const auto active = activeEntry("save_001", "2026-06-24T00:00:00Z");
-  const auto deletedCollision = deletedEntry("save_001", "2026-06-24T01:00:00Z");
-  const auto deletedRecoverable = deletedEntry("save_002", "2026-06-24T02:00:00Z");
-  const auto deletedEmptyId = deletedEntry("", "2026-06-24T03:00:00Z");
-
-  const auto built = iggy3d::buildProductSaveCatalog(
-      {active, deletedCollision, deletedRecoverable, deletedEmptyId});
-
-  expect(built.activeCount == 1, "one active entry counted");
-  expect(built.deletedCount == 3, "all three deleted entries counted deleted");
-  expect(built.recoverableDeletedCount == 1,
-         "only the non-colliding, non-empty-id deleted entry is counted recoverable");
 }
 
 void deterministicSortPutsValidNewestBeforeLegacyRows() {
@@ -236,9 +203,7 @@ int main() {
   incompatibleCorruptUnloadableRowsRemainRepresentableButIgnored();
   displayTitlePrefersSaveTitleThenWorldTitleThenSaveId();
   missingSnapshotDoesNotBlockLoad();
-  recoverEligibilityRejectsActiveTargetCollision();
   buildResultCountsAndTitlesAreStable();
-  recoverableCountExcludesCollisionsAndEmptyIds();
   deterministicSortPutsValidNewestBeforeLegacyRows();
 
   std::cout << "product_save_catalog_tests passed\n";

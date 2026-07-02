@@ -54,7 +54,6 @@ struct ProductSaveCatalogBuildResult {
   std::uint64_t activeCount = 0;
   std::uint64_t deletedCount = 0;
   std::uint64_t compatibleActiveCount = 0;
-  std::uint64_t recoverableDeletedCount = 0;
   std::uint64_t corruptCount = 0;
   ProductSaveCatalog catalog;
 };
@@ -75,10 +74,6 @@ std::string_view productSaveCatalogLocationName(
 std::string productSaveDisplayTitle(const ProductSaveCatalogEntry& entry);
 bool hasProductSaveCatalogTimestamp(std::string_view timestamp);
 bool canLoadProductSave(const ProductSaveCatalogEntry& entry);
-bool canSoftDeleteProductSave(const ProductSaveCatalogEntry& entry);
-bool canRecoverProductSave(
-    const ProductSaveCatalogEntry& entry,
-    const std::vector<ProductSaveCatalogEntry>& activeEntries);
 ProductSaveCatalogBuildResult buildProductSaveCatalog(
     std::vector<ProductSaveCatalogEntry> entries);
 std::vector<ProductSaveCatalogEntry> sortProductSaveCatalogEntries(
