@@ -761,6 +761,7 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
     actorState.lastTargetInRadius = perception.targetInPerceptionRadius;
     actorState.lastTargetInVisionCone = perception.targetInVisionCone;
     actorState.lastTargetHasLineOfSight = perception.hasLineOfSight;
+    actorState.lastSightRangeMeters = config.perceptionRadiusMeters;
 
     if (!shouldBuildCommandForDecision(decision)) {
       continue;

@@ -1,6 +1,8 @@
 #include "projection/scene/SceneProjection.hpp"
 
+#include <cmath>
 #include <set>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -181,6 +183,53 @@ void attachRoomProjection(const RoomAsset* room, SceneProjectionResult& result) 
   result.room = std::move(projected);
 }
 
+// Append a per-NPC "gaze blade" debug mesh: a thin world-space triangle from
+// the NPC eye along its facing, length = sight range, tinted alert (currently
+// perceives the player) vs scan (does not). Piggybacks the room-mesh render
+// path, which is the one path that rasterizes world geometry.
+void attachNpcVisionDebug(const SessionState& state,
+                          const SceneProjectionConfig& config,
+                          SceneProjectionResult& result) {
+  if (!config.includeNpcVisionDebug || !result.room.loaded) {
+    return;
+  }
+  constexpr float kEyeHeightMeters = 1.0F;
+  constexpr float kGazeBladeHalfWidthMeters = 0.12F;
+  for (const AiActorState& actor : state.ai.actors) {
+    const EntityState* entity = state.world.findById(actor.actor);
+    if (entity == nullptr || !entity->active ||
+        entity->kind != EntityKind::Npc) {
+      continue;
+    }
+    const float facingLengthSq = actor.facingDirection.x * actor.facingDirection.x +
+                                 actor.facingDirection.z * actor.facingDirection.z;
+    if (!(facingLengthSq > 1.0e-8F) || !(actor.lastSightRangeMeters > 0.0F)) {
+      continue;
+    }
+    const float invLength = 1.0F / std::sqrt(facingLengthSq);
+    const Vec3 apex{entity->transform.position.x,
+                    entity->transform.position.y + kEyeHeightMeters,
+                    entity->transform.position.z};
+    const Vec3 end{
+        apex.x + actor.facingDirection.x * invLength * actor.lastSightRangeMeters,
+        apex.y,
+        apex.z + actor.facingDirection.z * invLength * actor.lastSightRangeMeters};
+    const bool alert = actor.lastTargetInRadius && actor.lastTargetInVisionCone &&
+                       actor.lastTargetHasLineOfSight;
+
+    SceneRoomMeshItem item;
+    item.id = "npc_gaze_" + entity->stableName;
+    item.role = alert ? "npc_gaze_alert" : "npc_gaze_scan";
+    item.position = apex;
+    item.size = {kGazeBladeHalfWidthMeters, 0.0F, 0.0F};
+    item.hasWallSegment = true;
+    item.wallStartMeters = apex;
+    item.wallEndMeters = end;
+    item.wallThicknessMeters = kGazeBladeHalfWidthMeters;
+    result.room.meshes.push_back(std::move(item));
+  }
+}
+
 }  // namespace
 
 SceneProjectionResult buildSceneProjection(const SessionState& state,
@@ -215,6 +264,7 @@ SceneProjectionResult buildSceneProjection(const SessionState& state,
   }
 
   attachRoomProjection(room, result);
+  attachNpcVisionDebug(state, config, result);
   return result;
 }
 

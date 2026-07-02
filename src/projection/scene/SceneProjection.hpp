@@ -20,6 +20,9 @@ struct SceneProjectionConfig {
   bool includeObjectiveMarkers = true;
   bool includeTacticalMarkers = true;
   bool includeDebugOnly = false;
+  // Emit NPC gaze-blade meshes (a debug visualization of each NPC's vision
+  // direction and range). Off by default so normal frames are unaffected.
+  bool includeNpcVisionDebug = false;
 };
 
 struct SceneProjectionResult {

@@ -85,10 +85,11 @@ struct AiActorState {
   // not serialized or hashed. Defaults to canonical forward until driven.
   Vec3 facingDirection{0.0F, 0.0F, 1.0F};
   // Last-decision perception outcome, mirrored for read-only observability
-  // (debug snapshot / tests). Not part of the decision inputs.
+  // (debug snapshot / tests / vision overlay). Not part of the decision inputs.
   bool lastTargetInRadius = false;
   bool lastTargetInVisionCone = false;
   bool lastTargetHasLineOfSight = false;
+  float lastSightRangeMeters = 0.0F;
 };
 
 struct AiState {

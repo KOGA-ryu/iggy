@@ -707,7 +707,10 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   // branch-gate: BG-1027
   const RoomAsset* activeRoom =
       window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
-  frame.scene = buildSceneProjection(request.activeSession->state(), activeRoom);
+  SceneProjectionConfig sceneConfig;
+  sceneConfig.includeNpcVisionDebug = request.debugOverlayEnabled;
+  frame.scene = buildSceneProjection(request.activeSession->state(), activeRoom,
+                                     sceneConfig);
   frame.debug = buildProductDebugProjectionWithNpcBehavior(
       request.activeSession->state(),
       request.developerToolsEnabled,

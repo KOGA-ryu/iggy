@@ -174,6 +174,12 @@ Vec3 colorForRoomRole(const std::string& role) {
   if (role == "spell") {
     return {0.34F, 0.62F, 0.88F};
   }
+  if (role == "npc_gaze_alert") {
+    return {0.95F, 0.30F, 0.22F};
+  }
+  if (role == "npc_gaze_scan") {
+    return {0.28F, 0.80F, 0.85F};
+  }
   if (role == "bean_player") {
     return {0.22F, 0.56F, 0.92F};
   }
@@ -472,6 +478,49 @@ bool appendBean(std::vector<FirstRoomVertex>& vertices,
   range.firstIndex = static_cast<std::uint32_t>(indices.size());
   for (const std::uint16_t index : bean.indices) {
     indices.push_back(static_cast<std::uint16_t>(base + index));
+  }
+  range.indexCount = static_cast<std::uint32_t>(indices.size()) - range.firstIndex;
+  draws.push_back(range);
+  return true;
+}
+
+// A thin, double-sided horizontal triangle from `start` to `end` (a debug
+// "gaze blade" showing an NPC's vision direction and range). Base half-width
+// is `halfWidth`. Returns false on a degenerate segment or vertex overflow.
+bool appendGazeBlade(std::vector<FirstRoomVertex>& vertices,
+                     std::vector<std::uint16_t>& indices,
+                     std::vector<IndexedDrawRange>& draws,
+                     Vec3 start,
+                     Vec3 end,
+                     float halfWidth,
+                     Vec3 color) {
+  const float dx = end.x - start.x;
+  const float dz = end.z - start.z;
+  const float lengthSq = dx * dx + dz * dz;
+  if (!std::isfinite(lengthSq) || lengthSq < 1.0e-6F ||
+      vertices.size() + 3 >
+          static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max())) {
+    return false;
+  }
+  const float width = std::max(halfWidth, 0.001F);
+  const float inv = 1.0F / std::sqrt(lengthSq);
+  const float perpX = -dz * inv * width;
+  const float perpZ = dx * inv * width;
+  const std::uint16_t base = static_cast<std::uint16_t>(vertices.size());
+  vertices.push_back({{start.x, start.y, start.z}, {color.x, color.y, color.z}});
+  vertices.push_back({{end.x + perpX, end.y, end.z + perpZ},
+                      {color.x, color.y, color.z}});
+  vertices.push_back({{end.x - perpX, end.y, end.z - perpZ},
+                      {color.x, color.y, color.z}});
+  IndexedDrawRange range;
+  range.firstIndex = static_cast<std::uint32_t>(indices.size());
+  const std::uint16_t winding[6] = {
+      base, static_cast<std::uint16_t>(base + 1),
+      static_cast<std::uint16_t>(base + 2), base,
+      static_cast<std::uint16_t>(base + 2),
+      static_cast<std::uint16_t>(base + 1)};
+  for (const std::uint16_t index : winding) {
+    indices.push_back(index);
   }
   range.indexCount = static_cast<std::uint32_t>(indices.size()) - range.firstIndex;
   draws.push_back(range);
@@ -923,6 +972,14 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
       }
       result.roomGridLineDrawCount += gridLines;
       result.roomGridVisible = result.roomGridVisible || gridLines > 0U;
+      continue;
+    }
+
+    if (mesh.role == "npc_gaze_alert" || mesh.role == "npc_gaze_scan") {
+      // Debug aid: a failed blade is skipped, never nukes the frame.
+      (void)appendGazeBlade(result.vertices, result.indices, result.indexedDraws,
+                            mesh.wallStartMeters, mesh.wallEndMeters,
+                            mesh.wallThicknessMeters, colorForRoomRole(mesh.role));
       continue;
     }
 

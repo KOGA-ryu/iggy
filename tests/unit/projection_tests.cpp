@@ -921,12 +921,81 @@ bool saveLoadProjectionIsEquivalent() {
                 "key inactive fact roundtrip");
 }
 
+bool hasGazeBladeMesh(const std::vector<iggy3d::SceneRoomMeshItem>& meshes,
+                      const iggy3d::SceneRoomMeshItem** out = nullptr) {
+  for (const iggy3d::SceneRoomMeshItem& mesh : meshes) {
+    if (mesh.role == "npc_gaze_alert" || mesh.role == "npc_gaze_scan") {
+      if (out != nullptr) {
+        *out = &mesh;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+bool npcVisionDebugEmitsGazeBladeMesh() {
+  const iggy3d::RoomAsset room = floorWallProjectionRoom();
+
+  iggy3d::SessionState state;
+  iggy3d::EntityState npc;
+  npc.id = {2};
+  npc.stableName = "training_npc";
+  npc.kind = iggy3d::EntityKind::Npc;
+  npc.transform.position = {1.0F, 0.0F, 1.0F};
+  npc.active = true;
+  (void)state.world.seedEntity(npc);
+
+  iggy3d::AiActorState actor;
+  actor.actor = {2};
+  actor.facingDirection = {1.0F, 0.0F, 0.0F};
+  actor.lastSightRangeMeters = 6.0F;
+  actor.lastTargetInRadius = true;
+  actor.lastTargetInVisionCone = true;
+  actor.lastTargetHasLineOfSight = true;
+  state.ai.actors.push_back(actor);
+
+  // Gated off by default -> no gaze geometry on normal frames.
+  const iggy3d::SceneProjectionResult without =
+      iggy3d::buildSceneProjection(state, &room);
+
+  iggy3d::SceneProjectionConfig config;
+  config.includeNpcVisionDebug = true;
+  const iggy3d::SceneRoomMeshItem* gaze = nullptr;
+  const iggy3d::SceneProjectionResult withDebug =
+      iggy3d::buildSceneProjection(state, &room, config);
+  const bool found = hasGazeBladeMesh(withDebug.room.meshes, &gaze);
+
+  bool ok =
+      expect(!hasGazeBladeMesh(without.room.meshes), "gaze blade gated off by default") &&
+      expect(found && gaze != nullptr, "gaze blade emitted when enabled") &&
+      expect(gaze != nullptr && gaze->role == "npc_gaze_alert",
+             "gaze blade alert tint when perceiving player") &&
+      expect(gaze != nullptr && gaze->hasWallSegment, "gaze blade carries segment") &&
+      expect(gaze != nullptr &&
+                 iggy3d::nearlyEqual(gaze->wallStartMeters, {1.0F, 1.0F, 1.0F}),
+             "gaze apex at npc eye height") &&
+      expect(gaze != nullptr &&
+                 iggy3d::nearlyEqual(gaze->wallEndMeters, {7.0F, 1.0F, 1.0F}),
+             "gaze end at facing times range");
+
+  // Not currently perceiving the player -> scan tint instead of alert.
+  state.ai.actors[0].lastTargetInVisionCone = false;
+  const iggy3d::SceneRoomMeshItem* scanGaze = nullptr;
+  const iggy3d::SceneProjectionResult scan =
+      iggy3d::buildSceneProjection(state, &room, config);
+  (void)hasGazeBladeMesh(scan.room.meshes, &scanGaze);
+  return ok && expect(scanGaze != nullptr && scanGaze->role == "npc_gaze_scan",
+                      "gaze blade scan tint when not perceiving");
+}
+
 }  // namespace
 
 int main() {
   bool ok = true;
   ok = firstRoomProjectionContainsInitialItems() && ok;
   ok = activeRoomProjectionCarriesFloorAndWallMeshes() && ok;
+  ok = npcVisionDebugEmitsGazeBladeMesh() && ok;
   ok = inactivePickupFilteringWorks() && ok;
   ok = projectionDoesNotMutateRuntimeTruth() && ok;
   ok = debugProjectionIncludesProofFacts() && ok;
