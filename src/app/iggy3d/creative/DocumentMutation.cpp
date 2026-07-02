@@ -1,0 +1,330 @@
+
+
+#include "iggy3d/creative/DocumentMutation.hpp"
+
+#include <utility>
+
+namespace iggy3d::creative {
+namespace {
+
+[[nodiscard]] CreativeObjectDirtyFlags mergeDirtyFlags(CreativeObjectDirtyFlags lhs, CreativeObjectDirtyFlags rhs) noexcept {
+    return lhs | rhs;
+}
+
+[[nodiscard]] CreativeDocumentMutationStatus statusFromApplyReceipt(const CreativeMutationApplyReceipt& receipt) noexcept {
+    switch (receipt.status) {
+    case CreativeMutationApplyStatus::Applied:
+        return CreativeDocumentMutationStatus::Applied;
+    case CreativeMutationApplyStatus::NoChange:
+        return CreativeDocumentMutationStatus::NoChange;
+    case CreativeMutationApplyStatus::Rejected:
+    case CreativeMutationApplyStatus::MissingPayload:
+    case CreativeMutationApplyStatus::WrongPayload:
+    case CreativeMutationApplyStatus::UnsupportedMutation:
+    case CreativeMutationApplyStatus::LockedObject:
+    case CreativeMutationApplyStatus::InvalidObject:
+    case CreativeMutationApplyStatus::InvalidMutation:
+    case CreativeMutationApplyStatus::Unknown:
+        return CreativeDocumentMutationStatus::ApplyFailed;
+    }
+
+    return CreativeDocumentMutationStatus::ApplyFailed;
+}
+
+[[nodiscard]] CreativeDocumentMutationStatus statusFromBatchCounts(
+    std::uint64_t appliedCount,
+    std::uint64_t noChangeCount,
+    std::uint64_t failedCount) noexcept {
+    if (failedCount > 0 && appliedCount > 0) {
+        return CreativeDocumentMutationStatus::BatchPartiallyApplied;
+    }
+
+    if (failedCount > 0) {
+        return CreativeDocumentMutationStatus::ApplyFailed;
+    }
+
+    if (appliedCount > 0) {
+        return CreativeDocumentMutationStatus::BatchApplied;
+    }
+
+    if (noChangeCount > 0) {
+        return CreativeDocumentMutationStatus::BatchNoChange;
+    }
+
+    return CreativeDocumentMutationStatus::BatchNoChange;
+}
+
+void incrementDocumentRevisionForMutation(CreativeDocument& document) {
+    // Future preferred route:
+    // document.markContentChanged();
+    //
+    // This function intentionally exists as the only revision bridge for object
+    // mutation. If CreativeDocument keeps markContentChanged private, Codex must
+    // add a narrow friend or public document-owned revision hook here rather
+    // than incrementing revisions in random call sites.
+    (void)document;
+}
+
+} // namespace
+
+std::string_view toString(CreativeDocumentMutationStatus status) noexcept {
+    switch (status) {
+    case CreativeDocumentMutationStatus::Unknown: return "Unknown";
+    case CreativeDocumentMutationStatus::Applied: return "Applied";
+    case CreativeDocumentMutationStatus::NoChange: return "NoChange";
+    case CreativeDocumentMutationStatus::Rejected: return "Rejected";
+    case CreativeDocumentMutationStatus::MissingDocument: return "MissingDocument";
+    case CreativeDocumentMutationStatus::InvalidDocument: return "InvalidDocument";
+    case CreativeDocumentMutationStatus::MissingObject: return "MissingObject";
+    case CreativeDocumentMutationStatus::InvalidRequest: return "InvalidRequest";
+    case CreativeDocumentMutationStatus::ApplyFailed: return "ApplyFailed";
+    case CreativeDocumentMutationStatus::BatchPartiallyApplied: return "BatchPartiallyApplied";
+    case CreativeDocumentMutationStatus::BatchApplied: return "BatchApplied";
+    case CreativeDocumentMutationStatus::BatchNoChange: return "BatchNoChange";
+    }
+
+    return "Unknown";
+}
+
+bool documentMutationSucceeded(CreativeDocumentMutationStatus status) noexcept {
+    switch (status) {
+    case CreativeDocumentMutationStatus::Applied:
+    case CreativeDocumentMutationStatus::NoChange:
+    case CreativeDocumentMutationStatus::BatchApplied:
+    case CreativeDocumentMutationStatus::BatchNoChange:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool documentMutationFailed(CreativeDocumentMutationStatus status) noexcept {
+    return !documentMutationSucceeded(status);
+}
+
+bool documentMutationChanged(CreativeDocumentMutationStatus status) noexcept {
+    return status == CreativeDocumentMutationStatus::Applied ||
+           status == CreativeDocumentMutationStatus::BatchApplied ||
+           status == CreativeDocumentMutationStatus::BatchPartiallyApplied;
+}
+
+CreativeDocumentMutationReceipt makeDocumentMutationReceipt(
+    CreativeDocumentMutationStatus status,
+    CreativeObjectId objectId,
+    CreativeObjectKind objectKind,
+    CreativeMutationKind mutationKind,
+    std::uint64_t revisionBefore,
+    std::uint64_t revisionAfter,
+    CreativeObjectDirtyFlags dirtyFlags,
+    bool changed,
+    bool allowed,
+    CreativeMutationApplyReceipt objectReceipt,
+    std::string message) {
+    return CreativeDocumentMutationReceipt{
+        status,
+        objectId,
+        objectKind,
+        mutationKind,
+        revisionBefore,
+        revisionAfter,
+        dirtyFlags,
+        changed,
+        allowed,
+        std::move(objectReceipt),
+        std::move(message),
+    };
+}
+
+CreativeDocumentMutationReceipt rejectDocumentMutation(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    CreativeMutationKind mutationKind,
+    CreativeDocumentMutationStatus status,
+    std::string message) {
+    const auto revision = document.revision();
+    CreativeObject placeholder{};
+    placeholder.id = objectId;
+
+    return makeDocumentMutationReceipt(
+        status,
+        objectId,
+        CreativeObjectKind::Unknown,
+        mutationKind,
+        revision,
+        revision,
+        0,
+        false,
+        false,
+        rejectMutation(placeholder, mutationKind, CreativeMutationApplyStatus::Rejected, message),
+        std::move(message));
+}
+
+CreativeDocumentMutationReceipt applyDocumentMutation(
+    CreativeDocument& document,
+    const CreativeMutationRequest& request,
+    const CreativeDocumentMutationOptions& options) {
+    if (!document.isValid()) {
+        return rejectDocumentMutation(document, request.objectId, request.kind, CreativeDocumentMutationStatus::InvalidDocument, "cannot mutate object in invalid document");
+    }
+
+    if (request.objectId == 0 || request.kind == CreativeMutationKind::Unknown) {
+        return rejectDocumentMutation(document, request.objectId, request.kind, CreativeDocumentMutationStatus::InvalidRequest, "document mutation request is invalid");
+    }
+
+    auto* object = document.findObject(request.objectId);
+    if (object == nullptr) {
+        return rejectDocumentMutation(document, request.objectId, request.kind, CreativeDocumentMutationStatus::MissingObject, "document does not contain requested object");
+    }
+
+    const auto revisionBefore = document.revision();
+    auto objectReceipt = applyMutation(*object, request, options.applyOptions);
+    const auto documentStatus = statusFromApplyReceipt(objectReceipt);
+
+    if (documentStatus == CreativeDocumentMutationStatus::Applied && objectReceipt.changed && options.incrementRevisionOnChange) {
+        incrementDocumentRevisionForMutation(document);
+    }
+
+    const auto revisionAfter = document.revision();
+    return makeDocumentMutationReceipt(
+        documentStatus,
+        object->id,
+        object->kind,
+        request.kind,
+        revisionBefore,
+        revisionAfter,
+        objectReceipt.dirtyFlags,
+        objectReceipt.changed,
+        objectReceipt.allowed,
+        std::move(objectReceipt),
+        "document mutation applied through object mutation pipeline");
+}
+
+CreativeDocumentMutationReceipt applyDocumentMutation(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    CreativeMutationKind mutationKind,
+    const CreativeMutationPayload& payload,
+    const CreativeDocumentMutationOptions& options) {
+    return applyDocumentMutation(
+        document,
+        CreativeMutationRequest{0, objectId, mutationKind, payload},
+        options);
+}
+
+CreativeDocumentBatchMutationReceipt applyDocumentMutations(
+    CreativeDocument& document,
+    std::span<const CreativeMutationRequest> requests,
+    const CreativeDocumentMutationOptions& options) {
+    CreativeDocumentBatchMutationReceipt batch{};
+    batch.revisionBefore = document.revision();
+    batch.revisionAfter = batch.revisionBefore;
+    batch.attemptedCount = static_cast<std::uint64_t>(requests.size());
+
+    for (const auto& request : requests) {
+        auto receipt = applyDocumentMutation(document, request, options);
+        batch.dirtyFlags = mergeDirtyFlags(batch.dirtyFlags, receipt.dirtyFlags);
+
+        if (receipt.status == CreativeDocumentMutationStatus::Applied) {
+            ++batch.appliedCount;
+            batch.changed = true;
+        } else if (receipt.status == CreativeDocumentMutationStatus::NoChange) {
+            ++batch.noChangeCount;
+        } else {
+            ++batch.failedCount;
+            if (options.stopBatchOnFailure) {
+                batch.stoppedEarly = true;
+                batch.receipts.push_back(std::move(receipt));
+                break;
+            }
+        }
+
+        batch.receipts.push_back(std::move(receipt));
+    }
+
+    batch.revisionAfter = document.revision();
+    batch.status = statusFromBatchCounts(batch.appliedCount, batch.noChangeCount, batch.failedCount);
+    batch.message = "document mutation batch completed";
+    return batch;
+}
+
+CreativeDocumentMutationReceipt renameDocumentObject(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    std::string name,
+    const CreativeDocumentMutationOptions& options) {
+    return applyDocumentMutation(document, objectId, CreativeMutationKind::Rename, makeRenamePayload(std::move(name)), options);
+}
+
+CreativeDocumentMutationReceipt moveDocumentObject(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    CreativeVec3 position,
+    const CreativeDocumentMutationOptions& options) {
+    return applyDocumentMutation(document, objectId, CreativeMutationKind::Move, makeMovePayload(position), options);
+}
+
+CreativeDocumentMutationReceipt rotateDocumentObject(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    CreativeVec3 rotation,
+    const CreativeDocumentMutationOptions& options) {
+    return applyDocumentMutation(document, objectId, CreativeMutationKind::Rotate, makeRotatePayload(rotation), options);
+}
+
+CreativeDocumentMutationReceipt resizeDocumentObject(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    CreativeVec3 size,
+    const CreativeDocumentMutationOptions& options) {
+    return applyDocumentMutation(document, objectId, CreativeMutationKind::Resize, makeResizePayload(size), options);
+}
+
+CreativeDocumentMutationReceipt setDocumentObjectBounds(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    CreativeBounds bounds,
+    const CreativeDocumentMutationOptions& options) {
+    return applyDocumentMutation(document, objectId, CreativeMutationKind::SetBounds, makeBoundsPayload(bounds), options);
+}
+
+CreativeDocumentMutationReceipt setDocumentObjectVisible(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    bool visible,
+    const CreativeDocumentMutationOptions& options) {
+    return applyDocumentMutation(document, objectId, CreativeMutationKind::SetVisible, makeVisibilityPayload(visible), options);
+}
+
+CreativeDocumentMutationReceipt setDocumentObjectLocked(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    bool locked,
+    const CreativeDocumentMutationOptions& options) {
+    return applyDocumentMutation(document, objectId, CreativeMutationKind::SetLocked, makeLockPayload(locked), options);
+}
+
+CreativeDocumentMutationReceipt assignDocumentObjectLayer(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    CreativeLayerId layerId,
+    const CreativeDocumentMutationOptions& options) {
+    return applyDocumentMutation(document, objectId, CreativeMutationKind::AssignLayer, makeLayerPayload(layerId), options);
+}
+
+CreativeDocumentMutationReceipt addDocumentObjectTag(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    std::string tag,
+    const CreativeDocumentMutationOptions& options) {
+    return applyDocumentMutation(document, objectId, CreativeMutationKind::AddTag, makeTagPayload(std::move(tag)), options);
+}
+
+CreativeDocumentMutationReceipt removeDocumentObjectTag(
+    CreativeDocument& document,
+    CreativeObjectId objectId,
+    std::string tag,
+    const CreativeDocumentMutationOptions& options) {
+    return applyDocumentMutation(document, objectId, CreativeMutationKind::RemoveTag, makeTagPayload(std::move(tag)), options);
+}
+
+} // namespace iggy3d::creative
