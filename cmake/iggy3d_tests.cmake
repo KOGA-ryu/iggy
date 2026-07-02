@@ -329,6 +329,10 @@ iggy3d_add_unit_test(ascii_room_grid_tests tests/unit/ascii_room_grid_tests.cpp)
 set_tests_properties(ascii_room_grid_tests PROPERTIES
   LABELS "unit;app;product;ascii_room;grid;iggy3d")
 
+iggy3d_add_unit_test(ascii_room_canvas_tests tests/unit/ascii_room_canvas_tests.cpp)
+set_tests_properties(ascii_room_canvas_tests PROPERTIES
+  LABELS "unit;app;product;ascii_room;canvas;iggy3d")
+
 iggy3d_add_unit_test(ascii_room_to_authored_room_tests tests/unit/ascii_room_to_authored_room_tests.cpp)
 set_tests_properties(ascii_room_to_authored_room_tests PROPERTIES
   LABELS "unit;app;product;ascii_room;authored_room;iggy3d")

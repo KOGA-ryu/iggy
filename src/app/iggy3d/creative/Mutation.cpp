@@ -1,6 +1,6 @@
 
 
-#include "iggy3d/creative/Mutation.hpp"
+#include "app/iggy3d/creative/Mutation.hpp"
 
 #include <algorithm>
 #include <utility>
@@ -708,6 +708,7 @@ bool payloadMatchesMutation(CreativeMutationKind kind, const CreativeMutationPay
     case CreativeMutationKind::SetCondition:
     case CreativeMutationKind::SetSpawnerProfile:
     case CreativeMutationKind::SetDespawnRule:
+    case CreativeMutationKind::SetCheckpointId:
     case CreativeMutationKind::SetTestLaneKind:
     case CreativeMutationKind::SetProbeKind:
     case CreativeMutationKind::SetExpectedResult:

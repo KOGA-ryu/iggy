@@ -56,6 +56,7 @@ class CreativeDocument {
       std::optional<CreativeObjectId> parentId = std::nullopt);
   [[nodiscard]] bool renameObject(CreativeObjectId id, std::string nextName);
   [[nodiscard]] bool removeObject(CreativeObjectId id);
+  void markObjectMutationChanged() noexcept;
 
   // Future slice: authored spatial content.
   // [[nodiscard]] bool setObjectTransform(CreativeObjectId id, CreativeTransform transform);

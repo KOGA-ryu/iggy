@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "iggy3d/creative/Object.hpp"
+#include "app/iggy3d/creative/Object.hpp"
 
 #include <cstdint>
 #include <optional>

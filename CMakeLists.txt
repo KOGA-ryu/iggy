@@ -25,6 +25,7 @@ target_sources(iggy3d
     src/app/iggy3d/AppShell.cpp
     src/app/iggy3d/ascii_room/AsciiRoomGrid.cpp
     src/app/iggy3d/ascii_room/AsciiRoomSource.cpp
+    src/app/iggy3d/ascii_room/AsciiRoomCanvas.cpp
     src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.cpp
     src/app/iggy3d/ascii_room/AsciiRoomAssetText.cpp
     src/app/iggy3d/ascii_room/AsciiRoomToEditableRoom.cpp
@@ -33,6 +34,11 @@ target_sources(iggy3d
     src/app/iggy3d/room_editor/EditableRoomToAuthoredRoom.cpp
     src/app/iggy3d/creative/Object.cpp
     src/app/iggy3d/creative/Document.cpp
+    src/app/iggy3d/creative/Mutation.cpp
+    src/app/iggy3d/creative/ObjectDescriptor.cpp
+    src/app/iggy3d/creative/MutationApply.cpp
+    src/app/iggy3d/creative/DocumentMutation.cpp
+    src/app/iggy3d/creative/SpatialProjection.cpp
     src/app/iggy3d/creative/Commands.cpp
     src/app/iggy3d/creative/Metrics.cpp
     src/app/iggy3d/creative/Facade.cpp

@@ -1,6 +1,6 @@
 
 
-#include "iggy3d/creative/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/ObjectDescriptor.hpp"
 
 #include <array>
 
@@ -101,7 +101,7 @@ constexpr CreativeObjectDescriptor descriptor(
     };
 }
 
-constexpr std::array<CreativeObjectDescriptor, 96> kDescriptors{{
+constexpr auto kDescriptors = std::to_array<CreativeObjectDescriptor>({
     descriptor(CreativeObjectKind::Unknown, CreativeObjectCategory::Unknown, CreativeObjectProfile::Unknown, "Unknown", "Unknown", "invalid or unclassified creative object", 0, CreativeObjectDefaults{}, false, false, false, false, false, false),
 
     descriptor(CreativeObjectKind::Room, CreativeObjectCategory::Structural, CreativeObjectProfile::RoomContainer, "Room", "Room", "authored room volume or level container", structuralCreationDirtyFlags(), boxDefaults(10.0, 4.0, 10.0), false, true, false, true, true, false),
@@ -219,7 +219,7 @@ constexpr std::array<CreativeObjectDescriptor, 96> kDescriptors{{
     descriptor(CreativeObjectKind::LootPoint, CreativeObjectCategory::Gameplay, CreativeObjectProfile::GameplayMarker, "LootPoint", "Loot Point", "loot placement marker", navigationCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Gameplay), markerDefaults(), true, false, false, false, true, false),
     descriptor(CreativeObjectKind::QuestMarker, CreativeObjectCategory::Gameplay, CreativeObjectProfile::GameplayMarker, "QuestMarker", "Quest Marker", "quest objective marker", navigationCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Gameplay), markerDefaults(), true, false, false, false, true, false),
     descriptor(CreativeObjectKind::DialogueMarker, CreativeObjectCategory::Gameplay, CreativeObjectProfile::GameplayMarker, "DialogueMarker", "Dialogue Marker", "dialogue trigger or speaker marker", navigationCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Gameplay), markerDefaults(), true, false, false, false, true, false),
-}};
+});
 
 } // namespace
 

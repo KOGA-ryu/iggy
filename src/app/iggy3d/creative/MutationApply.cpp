@@ -1,16 +1,12 @@
 
 
-#include "iggy3d/creative/MutationApply.hpp"
+#include "app/iggy3d/creative/MutationApply.hpp"
 
 #include <algorithm>
 #include <utility>
 
 namespace iggy3d::creative {
 namespace {
-
-[[nodiscard]] CreativeMutationPayload emptyPayload() {
-    return CreativeMutationPayload{};
-}
 
 [[nodiscard]] CreativeMutationApplyReceipt makeNoChangeReceipt(
     const CreativeObject& object,
@@ -175,6 +171,7 @@ namespace {
     case CreativeMutationKind::SetCondition:
     case CreativeMutationKind::SetSpawnerProfile:
     case CreativeMutationKind::SetDespawnRule:
+    case CreativeMutationKind::SetCheckpointId:
     case CreativeMutationKind::SetTestLaneKind:
     case CreativeMutationKind::SetProbeKind:
     case CreativeMutationKind::SetExpectedResult:

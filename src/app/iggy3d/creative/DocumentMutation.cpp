@@ -1,6 +1,6 @@
 
 
-#include "iggy3d/creative/DocumentMutation.hpp"
+#include "app/iggy3d/creative/DocumentMutation.hpp"
 
 #include <utility>
 
@@ -55,14 +55,10 @@ namespace {
 }
 
 void incrementDocumentRevisionForMutation(CreativeDocument& document) {
-    // Future preferred route:
-    // document.markContentChanged();
-    //
     // This function intentionally exists as the only revision bridge for object
-    // mutation. If CreativeDocument keeps markContentChanged private, Codex must
-    // add a narrow friend or public document-owned revision hook here rather
-    // than incrementing revisions in random call sites.
-    (void)document;
+    // mutation. Keep revision ownership in CreativeDocument rather than
+    // incrementing revisions in random call sites.
+    document.markObjectMutationChanged();
 }
 
 } // namespace

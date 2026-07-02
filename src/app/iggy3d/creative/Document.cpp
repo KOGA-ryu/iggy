@@ -30,7 +30,7 @@ bool CreativeDocument::rename(std::string nextName) {
   }
 
   name_ = std::move(nextName);
-  markContentChanged();
+  markObjectMutationChanged();
   return true;
 }
 
@@ -146,6 +146,10 @@ void CreativeDocument::markContentChanged() noexcept {
   if (valid_) {
     ++revision_;
   }
+}
+
+void CreativeDocument::markObjectMutationChanged() noexcept {
+  markContentChanged();
 }
 
 }  // namespace iggy3d::creative
