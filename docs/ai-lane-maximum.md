@@ -1,4 +1,4 @@
-# The AI Lane Maximum — destiny document v1.1
+# The AI Lane Maximum — destiny document v1.2
 
 > Planner-authored 2026-07-02. This is the END of the AI lane: every behaviour layer the game's
 > identity demands, their contracts, the dependency DAG, the pre-declared churn, and the
@@ -243,7 +243,7 @@ transient state on top.
 | Future layer | Will churn (deliberately) | Precedent/rule |
 |---|---|---|
 | A1 sound | `NpcAlertStimulus` grows channels; `enqueueNpcBehaviorCommands` builds them; garden tests gain hearing scenarios; escalation TIMINGS may shift → the TWO product tapes pinning `kNpcEscalationWaits=24` re-baseline (`tests/smoke/product_gameplay_tape_smoke.cpp`, `tests/unit/product_gameplay_tape_runner_tests.cpp`) | s5 rule: tests-only re-baseline is planner-authorizable; N is MEASURED never guessed; passive/ghost receipts stay byte-identical; ReceiptBuilder/src/app product surfaces are cross-lane HARD-STOP |
-| A2 persistence | `SaveAiActorRecord`+`SaveCodec`+`StateHash` lockstep growth; save/load + hash tests | triple-lock; append-only enums |
+| A2 persistence | `SaveAiActorRecord`+`SaveCodec`+`StateHash` lockstep growth; save/load + hash tests; **the repo's ONE literal hash pin re-baselines**: `fixtures/demos/first_room/expected_summary.txt` `state_hash` line (a demo-smoke golden; guards present ⇒ hash legitimately shifts) — once per hash-coverage commit, bisected + measured. Vulkan smokes verified pin-free (computed receipts only) | triple-lock; append-only enums; never shrink hash coverage to dodge a golden |
 | A3 graph | new runtime/ai module + fixture growth; `PackageSessionSeed` emits derived nodes from anchors (in-lane shared ground, by this order); notebook-projection wiring = separate planner-brokered follow-up slice (src/app); when next_work Stream 3 lands, A3 gains ONE portal-stitch slice | greenfield; keep O(n) descriptor-scan patterns OUT of per-tick loops |
 | A4 travel | patrol/investigate/return destinations become route-node-fed; straight-line stall tests re-pin; NEW INTENT kinds (if any) touch the three dispatchers incl. the MANUAL if-chain `buildNpcBehaviorCommand`; route state transient — NO triple-lock growth | motor interface unchanged (point-moves) |
 | A5 chess | the overlay chain gains a rung — precedence is ORDER-LOAD-BEARING (combat > investigate > patrol, gated on intent==Wait); `NpcBehaviorProfile` gains weight columns; decision receipts extend snapshot rows; garden sub-combat intent pins re-pin (break-contact investigate / dwell / patrol-resume); SEQUENCE against the pending npcBehaviorDebugHud string-mirror cut | s5 precedent: graded overlay was made the SOLE path, no opt-in flag — same rule here |
@@ -322,3 +322,11 @@ fleet's copy.
   silent); omniscience refusal tightened to perception-events wording.
   Known stale sibling: docs/next_work.md still says slice-5 integration is "next" (s5–s8 have
   landed); update it when trunk settles.
+- v1.2 (2026-07-02, the cutter corrected the map — first live firing of the feedback rule):
+  a2's builder hard-stopped on a false "zero literal hash pins" premise; truth: the repo has
+  exactly ONE — the first_room demo golden (A2 churn row corrected; once-per-commit
+  re-baseline authorized; Vulkan smokes verified pin-free on the Mac). SEQUENCING AMENDMENT:
+  parallel work on a DISJOINT slice while another is hard-stopped is authorized, provided the
+  reviewer proves disjointness by file-set (a1s1 precedent — verified clean during the a2
+  stop). a1s1 landed: `NpcSoundPerception.{hpp,cpp}` kernel + inert stimulus fields,
+  commit `ae1e4bc8`, 187/187.
