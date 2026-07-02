@@ -101,7 +101,7 @@ void dispatchConfirmDialogAction(const ProductActiveSurfaceFrame& surface,
 void dispatchNewWorldAction(InputAction action,
                             ProductOpeningMenuInputContext context) {
   ProductNewWorldMenuActionContext newWorldContext{
-      context.frontend, context.options, context.activeSession,
+      context.frontend, context.options, context.saves, context.activeSession,
       context.worldSetupDraft, context.window};
   (void)applyProductNewWorldMenuAction(action, newWorldContext);
 }

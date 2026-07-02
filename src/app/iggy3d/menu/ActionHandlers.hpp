@@ -53,6 +53,7 @@ struct ProductLoadSaveMenuActionContext {
 struct ProductNewWorldMenuActionContext {
   FrontendState& frontend;
   const ProductAppOptions& options;
+  ProductSaveBridgeResult& saves;
   std::optional<Session>& activeSession;
   WorldSetupDraft& worldSetupDraft;
   ProductAppWindowState& window;
