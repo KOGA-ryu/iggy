@@ -10,6 +10,7 @@
 
 #include "content/assets/RoomAsset.hpp"
 #include "core/math/Vec3.hpp"
+#include "runtime/physics/PhysicsAabbCollider.hpp"
 
 namespace iggy3d {
 
@@ -59,8 +60,18 @@ enum class ReasoningEdgeKind : std::uint8_t {
 // kind is appended -- it sizes the per-kind summary array.
 inline constexpr std::size_t kReasoningNodeKindCount = 14;
 
+// Count of ReasoningEdgeKind values (walkable..guarded). Sizes L5's per-edge-kind cost table.
+inline constexpr std::size_t kReasoningEdgeKindCount = 7;
+
 std::string_view reasoningNodeKindName(ReasoningNodeKind kind);
 std::string_view reasoningEdgeKindName(ReasoningEdgeKind kind);
+
+// Actor-blocking test between two world points, at eye height with the vision/hearing occlusion
+// margin -- the ONE segment discipline shared by a3s1's edge build and L5's route reachability, so
+// what routes == what an edge links == what a sense traverses. Empty colliders, a bad query, or a
+// degenerate segment report "not blocked" (never fabricate an obstruction). Takes ALREADY-BAKED
+// colliders (never bakes).
+bool reasoningSegmentBlocked(std::span<const PhysicsAabbCollider> colliders, Vec3 from, Vec3 to);
 
 struct ReasoningNode {
   std::uint32_t id = 0U;

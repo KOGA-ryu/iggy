@@ -36,10 +36,9 @@ bool nodeKindForAnchor(const std::string& anchorKind, ReasoningNodeKind& out) {
   return false;
 }
 
-// APPLY-ONCE actor-blocking test between two node positions, mirroring the vision/hearing rays: a
-// hit before the far endpoint (ignoring startInside) means blocked. Empty colliders, a bad query,
-// or a degenerate segment report "not blocked" (never fabricate an obstruction).
-bool segmentBlocked(const std::vector<PhysicsAabbCollider>& colliders, Vec3 from, Vec3 to) {
+}  // namespace
+
+bool reasoningSegmentBlocked(std::span<const PhysicsAabbCollider> colliders, Vec3 from, Vec3 to) {
   if (colliders.empty()) {
     return false;
   }
@@ -53,8 +52,12 @@ bool segmentBlocked(const std::vector<PhysicsAabbCollider>& colliders, Vec3 from
     return false;
   }
   const float distance = std::sqrt(distanceSq);
+  // raycastPhysicsAabbs is vector-based; copy the span view into a local vector for the query. The
+  // collider set is small and this runs at build-time (edge bake) / on-demand (route reachability),
+  // never per-tile.
+  const std::vector<PhysicsAabbCollider> colliderVec(colliders.begin(), colliders.end());
   PhysicsRaycastQueryRequest request;
-  request.colliders = &colliders;
+  request.colliders = &colliderVec;
   request.originMeters = origin;
   request.direction = delta;  // normalized inside the query
   request.maxDistanceMeters = distance;
@@ -73,8 +76,6 @@ bool segmentBlocked(const std::vector<PhysicsAabbCollider>& colliders, Vec3 from
   }
   return false;
 }
-
-}  // namespace
 
 std::string_view reasoningNodeKindName(ReasoningNodeKind kind) {
   switch (kind) {
@@ -170,7 +171,7 @@ ReasoningGraph buildReasoningGraph(const RoomAsset& room, std::span<const Vec3> 
       if (len > config.maxLinkDistanceMeters) {
         continue;
       }
-      if (segmentBlocked(colliders, a, b)) {
+      if (reasoningSegmentBlocked(colliders, a, b)) {
         continue;
       }
       graph.edges.push_back(ReasoningEdge{graph.nodes[i].id, graph.nodes[j].id,

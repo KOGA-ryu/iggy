@@ -20,6 +20,8 @@
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/ai/NpcSoundPerception.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"
+#include "runtime/ai/ReasoningRoute.hpp"
+#include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/session/Session.hpp"
@@ -908,6 +910,56 @@ bool reasoningGraphCarriesAcrossTicksAndClearsOnLoad() {
   return ok;
 }
 
+// a4s1: L5 planRoute over the real garden graph. From the bottom patrolPost (1,5) to the exit
+// (12,1) the direct segment crosses the island, so the route MUST flank via the co-located (1,1)
+// pair -- and the id tie-break decides between two equal-cost flanks. If this does not route, the
+// pinned shape or the kernel is wrong (a hard STOP-and-flag case, per the spec).
+bool reasoningRoutePlansAroundIslandWithTieBreak() {
+  const Garden garden = loadGarden();
+  if (!expect(garden.ok, "garden loaded for routing")) {
+    return false;
+  }
+  const std::vector<iggy3d::Vec3> waypoints = {cellToWorld(1, 1), cellToWorld(1, 5)};
+  const iggy3d::ReasoningGraph g = iggy3d::buildReasoningGraph(garden.room, waypoints);
+
+  // Bake the SAME garden colliders the a3s1 edge build used (so reachability == edge occlusion).
+  iggy3d::PhysicsSpatialSurfaceColliderBakeRequest req;
+  req.surfaces = &garden.surfaces;
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult bake =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces(req);
+  bool ok = expect(bake.ok && !bake.colliders.empty(), "garden colliders baked");
+
+  // Confirm the ids match a3s2's readout before pinning the sequence.
+  const auto find = [&g](iggy3d::ReasoningNodeKind kind, iggy3d::Vec3 pos) -> std::uint32_t {
+    for (const iggy3d::ReasoningNode& n : g.nodes) {
+      if (n.kind == kind && iggy3d::nearlyEqual(n.positionMeters, pos, 0.01F)) {
+        return n.id;
+      }
+    }
+    return 0xFFFFFFFFU;
+  };
+  ok = ok && expect(find(iggy3d::ReasoningNodeKind::exit, cellToWorld(12, 1)) == 0U &&
+                        find(iggy3d::ReasoningNodeKind::patrolPost, cellToWorld(1, 1)) == 1U &&
+                        find(iggy3d::ReasoningNodeKind::patrolPost, cellToWorld(1, 5)) == 2U &&
+                        find(iggy3d::ReasoningNodeKind::reference, cellToWorld(1, 1)) == 3U,
+                    "garden ids match a3s2 readout (exit0, post1@(1,1), post2@(1,5), ref3@(1,1))");
+
+  // The flanking route: [post(1,5)=2, post(1,1)=1, exit=0] -- the id tie-break picks id1 over the
+  // co-located id3 among two equal-cost flanks.
+  const iggy3d::PlannedRoute route =
+      iggy3d::planRoute(g, bake.colliders, cellToWorld(1, 5), cellToWorld(12, 1));
+  ok = ok && expect(route.nodeIds == std::vector<std::uint32_t>{2U, 1U, 0U},
+                    "island-flanking route is [2,1,0] via the co-located-pair id tie-break");
+
+  // Co-located ENTRY pin: from (1,1) the nearest nodes are the (1,1) pair (id1 patrolPost + id3
+  // reference, same cell) -> ENTRY resolves to id1 (lowest id).
+  const iggy3d::PlannedRoute fromColocated =
+      iggy3d::planRoute(g, bake.colliders, cellToWorld(1, 1), cellToWorld(12, 1));
+  ok = ok && expect(!fromColocated.nodeIds.empty() && fromColocated.nodeIds.front() == 1U,
+                    "co-located entry tie-break resolves to id1 (lowest id over id1/id3)");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -917,6 +969,7 @@ int main() {
                   sneakFootstepsStayBelowHearingMargin() &&
                   heardNoiseSearchesAndInvestigatesButNeverChases() &&
                   reasoningGraphShapeMatchesGarden() &&
-                  reasoningGraphCarriesAcrossTicksAndClearsOnLoad();
+                  reasoningGraphCarriesAcrossTicksAndClearsOnLoad() &&
+                  reasoningRoutePlansAroundIslandWithTieBreak();
   return ok ? 0 : 1;
 }
