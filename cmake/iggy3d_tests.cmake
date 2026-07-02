@@ -466,6 +466,10 @@ iggy3d_add_unit_test(npc_sound_perception_tests tests/unit/npc_sound_perception_
 set_tests_properties(npc_sound_perception_tests PROPERTIES
   LABELS "unit;runtime;ai;npc_behavior;sound;iggy3d")
 
+iggy3d_add_unit_test(reasoning_graph_tests tests/unit/reasoning_graph_tests.cpp)
+set_tests_properties(reasoning_graph_tests PROPERTIES
+  LABELS "unit;runtime;ai;reasoning;iggy3d")
+
 iggy3d_add_unit_test(stealth_garden_tests tests/unit/stealth_garden_tests.cpp)
 set_tests_properties(stealth_garden_tests PROPERTIES
   LABELS "unit;runtime;ai;stealth;garden;iggy3d")

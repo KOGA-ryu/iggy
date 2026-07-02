@@ -19,6 +19,7 @@
 #include "runtime/ai/NpcInvestigateSystem.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/ai/NpcSoundPerception.hpp"
+#include "runtime/ai/ReasoningGraph.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/session/Session.hpp"
@@ -68,6 +69,7 @@ std::string readFile(const char* path) {
 struct Garden {
   bool ok = false;
   iggy3d::SpatialSurfaceSet surfaces;
+  iggy3d::RoomAsset room;    // a3s1: the authored room (walls/floor + N/P/E anchors)
   iggy3d::Vec3 guardSpawn;   // grid 'N'
   iggy3d::Vec3 playerSpawn;  // grid 'P'
   iggy3d::Vec3 exitCell;     // grid 'E'
@@ -137,7 +139,22 @@ Garden loadGarden() {
   floor.collisionMask = {"actor"};
   room.spatialSurfaces.push_back(std::move(floor));
 
+  // a3s1 fixture growth: author the meaningful positions as room anchors so the L4 reasoning
+  // graph has content to derive. The grid tracked these glyph cells above; expose them as the
+  // exit + the two entity references (guard 'N', player 'P').
+  const auto pushAnchor = [&room](const char* kind, iggy3d::Vec3 pos) {
+    iggy3d::RoomAnchorAsset a;
+    a.id = std::string("anchor_") + kind;
+    a.kind = kind;
+    a.positionMeters = pos;
+    room.anchors.push_back(std::move(a));
+  };
+  pushAnchor("exit", garden.exitCell);
+  pushAnchor("npc", garden.guardSpawn);
+  pushAnchor("spawn", garden.playerSpawn);
+
   garden.surfaces = iggy3d::buildSpatialSurfaceSet(room);
+  garden.room = room;
   garden.ok = true;
   return garden;
 }
@@ -758,6 +775,71 @@ bool heardNoiseSearchesAndInvestigatesButNeverChases() {
   return ok;
 }
 
+// --- a3s1: L4 reasoning graph shape pinned on the grown garden fixture -----------------------
+// loadGarden now authors exit/npc/spawn anchors; feed the room + the scenario's patrol ring into
+// buildReasoningGraph and pin the SHAPE (counts + kinds + key positions + island occlusion), NOT
+// float noise. This is the greenfield graph exercised end to end on real garden geometry.
+bool reasoningGraphShapeMatchesGarden() {
+  const Garden garden = loadGarden();
+  if (!expect(garden.ok, "garden loaded for reasoning graph")) {
+    return false;
+  }
+  // The scenario's guard beat (fixtures/rooms/ascii/stealth_garden.scenario.iggy3d.toml waypoint
+  // lines): the west leg (1,1) <-> (1,5). Passed as the builder's caller-supplied waypoint input.
+  const std::vector<iggy3d::Vec3> waypoints = {cellToWorld(1, 1), cellToWorld(1, 5)};
+  const iggy3d::ReasoningGraph g = iggy3d::buildReasoningGraph(garden.room, waypoints);
+
+  const auto find = [&g](iggy3d::ReasoningNodeKind kind, iggy3d::Vec3 pos) -> const iggy3d::ReasoningNode* {
+    for (const iggy3d::ReasoningNode& n : g.nodes) {
+      if (n.kind == kind && iggy3d::nearlyEqual(n.positionMeters, pos, 0.01F)) {
+        return &n;
+      }
+    }
+    return nullptr;
+  };
+  const auto hasEdge = [&g](const iggy3d::ReasoningNode* a, const iggy3d::ReasoningNode* b) {
+    if (a == nullptr || b == nullptr) {
+      return false;
+    }
+    for (const iggy3d::ReasoningEdge& e : g.edges) {
+      if ((e.from == a->id && e.to == b->id) || (e.from == b->id && e.to == a->id)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Shape: 1 exit + 2 references (N,P) + 2 patrolPosts = 5 nodes.
+  int exits = 0;
+  int references = 0;
+  int posts = 0;
+  for (const iggy3d::ReasoningNode& n : g.nodes) {
+    if (n.kind == iggy3d::ReasoningNodeKind::exit) ++exits;
+    if (n.kind == iggy3d::ReasoningNodeKind::reference) ++references;
+    if (n.kind == iggy3d::ReasoningNodeKind::patrolPost) ++posts;
+  }
+  bool ok = expect(g.nodes.size() == 5U, "garden graph has 5 nodes") &&
+            expect(exits == 1 && references == 2 && posts == 2,
+                   "1 exit + 2 references (N,P) + 2 patrolPosts");
+
+  const iggy3d::ReasoningNode* exitNode = find(iggy3d::ReasoningNodeKind::exit, cellToWorld(12, 1));
+  const iggy3d::ReasoningNode* npcRef = find(iggy3d::ReasoningNodeKind::reference, cellToWorld(1, 1));
+  const iggy3d::ReasoningNode* spawnRef = find(iggy3d::ReasoningNodeKind::reference, cellToWorld(12, 6));
+  const iggy3d::ReasoningNode* postBottom = find(iggy3d::ReasoningNodeKind::patrolPost, cellToWorld(1, 5));
+  ok = ok && expect(exitNode != nullptr, "exit node sits at the E cell (12,1)") &&
+       expect(npcRef != nullptr, "reference node at the N cell (1,1)") &&
+       expect(spawnRef != nullptr, "reference node at the P cell (12,6)") &&
+       expect(postBottom != nullptr, "patrolPost at the bottom waypoint (1,5)");
+
+  // Island occlusion: a top-row node (exit @12,1) to a bottom node (patrolPost @1,5) crosses the
+  // island (cols 4-9, rows 3-4) -> NO direct walkable edge. An open top-row pair IS linked.
+  ok = ok && expect(!hasEdge(exitNode, postBottom),
+                    "no direct edge through the island (exit -> bottom patrolPost)") &&
+       expect(hasEdge(exitNode, npcRef),
+              "open top-row pair is linked (exit -> N reference across the clear top row)");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -765,6 +847,7 @@ int main() {
                   spottedGuardEscalatesToChasing() && gardenGuardLapsIslandRing() &&
                   breakContactInvestigatesThenGivesUp() &&
                   sneakFootstepsStayBelowHearingMargin() &&
-                  heardNoiseSearchesAndInvestigatesButNeverChases();
+                  heardNoiseSearchesAndInvestigatesButNeverChases() &&
+                  reasoningGraphShapeMatchesGarden();
   return ok ? 0 : 1;
 }
