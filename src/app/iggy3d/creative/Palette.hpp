@@ -8,9 +8,9 @@
 #include "core/math/Vec3.hpp"
 #include "runtime/object/ObjectTraits.hpp"
 
-namespace iggy3d {
+namespace iggy3d::creative {
 
-enum class ProductCreativePaletteGroup : std::uint8_t {
+enum class Group : std::uint8_t {
   Structure,
   Movement,
   Physics,
@@ -19,8 +19,8 @@ enum class ProductCreativePaletteGroup : std::uint8_t {
   Unknown,
 };
 
-struct ProductCreativePaletteSlot {
-  ProductCreativePaletteGroup group = ProductCreativePaletteGroup::Unknown;
+struct Slot {
+  Group group = Group::Unknown;
   std::uint32_t slotIndex = 0;
   std::string assetId;
   std::string displayName;
@@ -31,14 +31,14 @@ struct ProductCreativePaletteSlot {
   bool blocksActor = false;
   bool blocksVision = false;
   bool enabled = false;
-  std::string reasonCode = "creative_palette_slot_not_built";
+  std::string reasonCode = "slot_not_built";
 };
 
-struct ProductCreativePalette {
+struct PalView {
   bool ok = false;
-  std::string status = "creative_palette_not_built";
-  std::string reasonCode = "creative_palette_not_built";
-  std::vector<ProductCreativePaletteSlot> slots;
+  std::string status = "palette_not_built";
+  std::string reasonCode = "palette_not_built";
+  std::vector<Slot> slots;
   std::uint64_t structureCount = 0;
   std::uint64_t movementCount = 0;
   std::uint64_t physicsCount = 0;
@@ -48,15 +48,11 @@ struct ProductCreativePalette {
   std::uint64_t disabledCount = 0;
 };
 
-std::string_view productCreativePaletteGroupName(
-    ProductCreativePaletteGroup group);
+std::string_view groupName(Group group);
 
-ProductCreativePalette buildProductCreativePaletteFromCatalog(
-    const ObjectAssetCatalog& catalog);
-ProductCreativePalette buildProductCreativePalette();
+PalView buildPalViewFromCatalog(const ObjectAssetCatalog& catalog);
+PalView buildPalView();
 
-const ProductCreativePaletteSlot* findProductCreativePaletteSlot(
-    const ProductCreativePalette& palette,
-    std::string_view assetId);
+const Slot* findSlot(const PalView& palette, std::string_view assetId);
 
-}  // namespace iggy3d
+}  // namespace iggy3d::creative

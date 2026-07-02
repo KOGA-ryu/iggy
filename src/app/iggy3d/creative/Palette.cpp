@@ -4,79 +4,79 @@
 #include <cstddef>
 #include <string>
 
-namespace iggy3d {
+namespace iggy3d::creative {
 namespace {
 
-struct ProductCreativePaletteGroupDescriptor {
-  ProductCreativePaletteGroup group = ProductCreativePaletteGroup::Unknown;
+struct GroupDescriptor {
+  Group group = Group::Unknown;
   std::string_view name = "unknown";
 };
 
-struct ProductCreativeAssetGroupDescriptor {
+struct AssetGroupDescriptor {
   std::string_view assetId;
-  ProductCreativePaletteGroup group = ProductCreativePaletteGroup::Unknown;
+  Group group = Group::Unknown;
 };
 
-struct ProductCreativeEditorGroupDescriptor {
+struct EditorGroupDescriptor {
   std::string_view editorGroup;
-  ProductCreativePaletteGroup group = ProductCreativePaletteGroup::Unknown;
+  Group group = Group::Unknown;
 };
 
-constexpr std::array kProductCreativePaletteGroupDescriptors{
-    ProductCreativePaletteGroupDescriptor{ProductCreativePaletteGroup::Structure,
+constexpr std::array kGroupDescriptors{
+    GroupDescriptor{Group::Structure,
                                           "structure"},
-    ProductCreativePaletteGroupDescriptor{ProductCreativePaletteGroup::Movement,
+    GroupDescriptor{Group::Movement,
                                           "movement"},
-    ProductCreativePaletteGroupDescriptor{ProductCreativePaletteGroup::Physics,
+    GroupDescriptor{Group::Physics,
                                           "physics"},
-    ProductCreativePaletteGroupDescriptor{ProductCreativePaletteGroup::Markers,
+    GroupDescriptor{Group::Markers,
                                           "markers"},
-    ProductCreativePaletteGroupDescriptor{ProductCreativePaletteGroup::TestLab,
+    GroupDescriptor{Group::TestLab,
                                           "test_lab"},
-    ProductCreativePaletteGroupDescriptor{ProductCreativePaletteGroup::Unknown,
+    GroupDescriptor{Group::Unknown,
                                           "unknown"},
 };
 
-constexpr std::array kProductCreativeAssetGroupDescriptors{
-    ProductCreativeAssetGroupDescriptor{"stone_block_proxy",
-                                        ProductCreativePaletteGroup::Structure},
-    ProductCreativeAssetGroupDescriptor{"stone_floor_slab",
-                                        ProductCreativePaletteGroup::Structure},
-    ProductCreativeAssetGroupDescriptor{"stone_wall_panel",
-                                        ProductCreativePaletteGroup::Structure},
-    ProductCreativeAssetGroupDescriptor{"wood_crate_proxy",
-                                        ProductCreativePaletteGroup::Physics},
+constexpr std::array kAssetGroupDescriptors{
+    AssetGroupDescriptor{"stone_block_proxy",
+                                        Group::Structure},
+    AssetGroupDescriptor{"stone_floor_slab",
+                                        Group::Structure},
+    AssetGroupDescriptor{"stone_wall_panel",
+                                        Group::Structure},
+    AssetGroupDescriptor{"wood_crate_proxy",
+                                        Group::Physics},
 };
 
-constexpr std::array kProductCreativeEditorGroupDescriptors{
-    ProductCreativeEditorGroupDescriptor{"structure",
-                                         ProductCreativePaletteGroup::Structure},
-    ProductCreativeEditorGroupDescriptor{"movement",
-                                         ProductCreativePaletteGroup::Movement},
-    ProductCreativeEditorGroupDescriptor{"physics",
-                                         ProductCreativePaletteGroup::Physics},
-    ProductCreativeEditorGroupDescriptor{"markers",
-                                         ProductCreativePaletteGroup::Markers},
-    ProductCreativeEditorGroupDescriptor{"test_lab",
-                                         ProductCreativePaletteGroup::TestLab},
-    ProductCreativeEditorGroupDescriptor{"shapes",
-                                         ProductCreativePaletteGroup::Structure},
+constexpr std::array kEditorGroupDescriptors{
+    EditorGroupDescriptor{"structure",
+                                         Group::Structure},
+    EditorGroupDescriptor{"movement",
+                                         Group::Movement},
+    EditorGroupDescriptor{"physics",
+                                         Group::Physics},
+    EditorGroupDescriptor{"markers",
+                                         Group::Markers},
+    EditorGroupDescriptor{"test_lab",
+                                         Group::TestLab},
+    EditorGroupDescriptor{"shapes",
+                                         Group::Structure},
 };
 
-ProductCreativePaletteGroup groupForEditorGroup(std::string_view editorGroup) {
-  for (const ProductCreativeEditorGroupDescriptor& descriptor :
-       kProductCreativeEditorGroupDescriptors) {
+Group groupForEditorGroup(std::string_view editorGroup) {
+  for (const EditorGroupDescriptor& descriptor :
+       kEditorGroupDescriptors) {
     // branch-gate: BG-1221
     if (descriptor.editorGroup == editorGroup) {
       return descriptor.group;
     }
   }
-  return ProductCreativePaletteGroup::Unknown;
+  return Group::Unknown;
 }
 
-ProductCreativePaletteGroup groupForAsset(const ObjectAssetDefinition& asset) {
-  for (const ProductCreativeAssetGroupDescriptor& descriptor :
-       kProductCreativeAssetGroupDescriptors) {
+Group groupForAsset(const ObjectAssetDefinition& asset) {
+  for (const AssetGroupDescriptor& descriptor :
+       kAssetGroupDescriptors) {
     // branch-gate: BG-1221
     if (descriptor.assetId == asset.id.value) {
       return descriptor.group;
@@ -85,33 +85,33 @@ ProductCreativePaletteGroup groupForAsset(const ObjectAssetDefinition& asset) {
   return groupForEditorGroup(asset.editor.paletteGroup);
 }
 
-bool isKnownCreativePaletteGroup(ProductCreativePaletteGroup group) {
-  return group != ProductCreativePaletteGroup::Unknown;
+bool isKnownGroup(Group group) {
+  return group != Group::Unknown;
 }
 
-std::uint64_t& groupCount(ProductCreativePalette& palette,
-                          ProductCreativePaletteGroup group) {
+std::uint64_t& groupCount(PalView& palette,
+                          Group group) {
   // branch-gate: BG-1221
   switch (group) {
-    case ProductCreativePaletteGroup::Structure:
+    case Group::Structure:
       return palette.structureCount;
-    case ProductCreativePaletteGroup::Movement:
+    case Group::Movement:
       return palette.movementCount;
-    case ProductCreativePaletteGroup::Physics:
+    case Group::Physics:
       return palette.physicsCount;
-    case ProductCreativePaletteGroup::Markers:
+    case Group::Markers:
       return palette.markerCount;
-    case ProductCreativePaletteGroup::TestLab:
+    case Group::TestLab:
       return palette.testLabCount;
-    case ProductCreativePaletteGroup::Unknown:
+    case Group::Unknown:
       return palette.unknownCount;
   }
   return palette.unknownCount;
 }
 
-ProductCreativePaletteSlot slotFromAsset(const ObjectAssetDefinition& asset,
+Slot slotFromAsset(const ObjectAssetDefinition& asset,
                                          std::uint32_t slotIndex) {
-  ProductCreativePaletteSlot slot;
+  Slot slot;
   slot.group = groupForAsset(asset);
   slot.slotIndex = slotIndex;
   slot.assetId = asset.id.value;
@@ -125,26 +125,26 @@ ProductCreativePaletteSlot slotFromAsset(const ObjectAssetDefinition& asset,
 
   const ObjectValidationResult validation = validateObjectAssetDefinition(&asset);
   slot.enabled = validation.ok && slot.placeable &&
-                 isKnownCreativePaletteGroup(slot.group);
+                 isKnownGroup(slot.group);
   // branch-gate: BG-1221
   if (!validation.ok) {
     slot.reasonCode = std::string(validation.reasonCode);
   } else if (!slot.placeable) {  // branch-gate: BG-1221
-    slot.reasonCode = "creative_palette_not_placeable";
-  } else if (!isKnownCreativePaletteGroup(slot.group)) {  // branch-gate: BG-1221
-    slot.reasonCode = "creative_palette_unknown_group";
+    slot.reasonCode = "not_placeable";
+  } else if (!isKnownGroup(slot.group)) {  // branch-gate: BG-1221
+    slot.reasonCode = "unknown_group";
   } else {
-    slot.reasonCode = "creative_palette_slot_ready";
+    slot.reasonCode = "slot_ready";
   }
   return slot;
 }
 
 }  // namespace
 
-std::string_view productCreativePaletteGroupName(
-    ProductCreativePaletteGroup group) {
-  for (const ProductCreativePaletteGroupDescriptor& descriptor :
-       kProductCreativePaletteGroupDescriptors) {
+std::string_view groupName(
+    Group group) {
+  for (const GroupDescriptor& descriptor :
+       kGroupDescriptors) {
     // branch-gate: BG-1221
     if (descriptor.group == group) {
       return descriptor.name;
@@ -153,14 +153,14 @@ std::string_view productCreativePaletteGroupName(
   return "unknown";
 }
 
-ProductCreativePalette buildProductCreativePaletteFromCatalog(
+PalView buildPalViewFromCatalog(
     const ObjectAssetCatalog& catalog) {
-  ProductCreativePalette palette;
+  PalView palette;
   palette.slots.reserve(catalog.assets.size());
   for (const ObjectAssetDefinition& asset : catalog.assets) {
     std::uint64_t& count = groupCount(palette, groupForAsset(asset));
     const auto slotIndex = static_cast<std::uint32_t>(count);
-    ProductCreativePaletteSlot slot = slotFromAsset(asset, slotIndex);
+    Slot slot = slotFromAsset(asset, slotIndex);
     ++count;
     // branch-gate: BG-1221
     if (!slot.enabled) {
@@ -169,19 +169,19 @@ ProductCreativePalette buildProductCreativePaletteFromCatalog(
     palette.slots.push_back(std::move(slot));
   }
   palette.ok = true;
-  palette.status = "creative_palette_ready";
-  palette.reasonCode = "creative_palette_ready";
+  palette.status = "palette_ready";
+  palette.reasonCode = "palette_ready";
   return palette;
 }
 
-ProductCreativePalette buildProductCreativePalette() {
-  return buildProductCreativePaletteFromCatalog(makeBuiltInObjectAssetCatalog());
+PalView buildPalView() {
+  return buildPalViewFromCatalog(makeBuiltInObjectAssetCatalog());
 }
 
-const ProductCreativePaletteSlot* findProductCreativePaletteSlot(
-    const ProductCreativePalette& palette,
+const Slot* findSlot(
+    const PalView& palette,
     std::string_view assetId) {
-  for (const ProductCreativePaletteSlot& slot : palette.slots) {
+  for (const Slot& slot : palette.slots) {
     // branch-gate: BG-1221
     if (slot.assetId == assetId) {
       return &slot;
@@ -190,4 +190,4 @@ const ProductCreativePaletteSlot* findProductCreativePaletteSlot(
   return nullptr;
 }
 
-}  // namespace iggy3d
+}  // namespace iggy3d::creative

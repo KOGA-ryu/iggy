@@ -1,10 +1,11 @@
-#include "app/iggy3d/creative/Blockout.hpp"
+#include "app/iggy3d/creative/Block.hpp"
 
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
 
 namespace {
+namespace cr = iggy3d::creative;
 
 bool expect(bool condition, std::string_view message) {
   if (!condition) {
@@ -51,55 +52,63 @@ iggy3d::EditableRoomObject testObject() {
   return object;
 }
 
+cr::BlockRequest requestFor(const iggy3d::EditableRoomDocument& document,
+                            float gridStepMeters = 1.0F) {
+  cr::BlockRequest request;
+  request.document = &document;
+  request.gridStepMeters = gridStepMeters;
+  return request;
+}
+
 bool namesAreStable() {
-  return expect(iggy3d::productCreativeBlockoutPrimitiveKindName(
-                    iggy3d::ProductCreativeBlockoutPrimitiveKind::Floor) == "floor",
+  return expect(cr::kindName(
+                    cr::Kind::Floor) == "floor",
                 "floor kind name") &&
-         expect(iggy3d::productCreativeBlockoutPrimitiveKindName(
-                    iggy3d::ProductCreativeBlockoutPrimitiveKind::Wall) == "wall",
+         expect(cr::kindName(
+                    cr::Kind::Wall) == "wall",
                 "wall kind name") &&
-         expect(iggy3d::productCreativeBlockoutPrimitiveKindName(
-                    iggy3d::ProductCreativeBlockoutPrimitiveKind::Object) == "object",
+         expect(cr::kindName(
+                    cr::Kind::Object) == "object",
                 "object kind name") &&
-         expect(iggy3d::productCreativeBlockoutFaceName(
-                    iggy3d::ProductCreativeBlockoutFace::Top) == "top",
+         expect(cr::faceName(
+                    cr::Face::Top) == "top",
                 "top face name") &&
-         expect(iggy3d::productCreativeBlockoutFaceName(
-                    iggy3d::ProductCreativeBlockoutFace::West) == "west",
+         expect(cr::faceName(
+                    cr::Face::West) == "west",
                 "west face name");
 }
 
 bool missingAndInvalidRequestsFailClosed() {
-  const iggy3d::ProductCreativeBlockoutOverlay missing =
-      iggy3d::buildProductCreativeBlockoutOverlay({});
+  const cr::BlockView missing =
+      cr::buildBlockView({});
   iggy3d::EditableRoomDocument document;
-  const iggy3d::ProductCreativeBlockoutOverlay badStep =
-      iggy3d::buildProductCreativeBlockoutOverlay({&document, 0.0F});
+  const cr::BlockView badStep =
+      cr::buildBlockView(requestFor(document, 0.0F));
   return expect(!missing.ok, "missing document fails") &&
-         expect(missing.reasonCode == "creative_blockout_missing_document",
+         expect(missing.reasonCode == "missing_document",
                 "missing reason") &&
          expect(missing.faces.empty(), "missing faces empty") &&
          expect(missing.labels.empty(), "missing labels empty") &&
          expect(!badStep.ok, "bad step fails") &&
-         expect(badStep.reasonCode == "creative_blockout_invalid_grid_step",
+         expect(badStep.reasonCode == "invalid_grid_step",
                 "bad step reason");
 }
 
 bool floorPacketContainsTopFaceAndLabels() {
   iggy3d::EditableRoomDocument document;
   document.floors.push_back(testFloor());
-  const iggy3d::ProductCreativeBlockoutOverlay overlay =
-      iggy3d::buildProductCreativeBlockoutOverlay({&document, 1.0F});
-  const iggy3d::ProductCreativeBlockoutFaceOverlay& face = overlay.faces.front();
+  const cr::BlockView overlay =
+      cr::buildBlockView(requestFor(document));
+  const cr::FaceOverlay& face = overlay.faces.front();
   return expect(overlay.ok, "floor overlay ok") &&
          expect(overlay.floorCount == 1U, "floor count") &&
          expect(overlay.faces.size() == 1U, "floor face count") &&
          expect(overlay.labels.size() == 2U, "floor label count") &&
          expect(face.primitive.kind ==
-                    iggy3d::ProductCreativeBlockoutPrimitiveKind::Floor,
+                    cr::Kind::Floor,
                 "floor face kind") &&
          expect(face.primitive.id == "floor_001", "floor id") &&
-         expect(face.face == iggy3d::ProductCreativeBlockoutFace::Top,
+         expect(face.face == cr::Face::Top,
                 "floor top face") &&
          expectVec3(face.centerMeters, {1.0F, 0.1F, 2.0F}, "floor face center") &&
          expect(face.widthMeters == 3.0F, "floor width") &&
@@ -113,19 +122,19 @@ bool floorPacketContainsTopFaceAndLabels() {
 bool wallPacketContainsSixFacesAndLabels() {
   iggy3d::EditableRoomDocument document;
   document.walls.push_back(testWall());
-  const iggy3d::ProductCreativeBlockoutOverlay overlay =
-      iggy3d::buildProductCreativeBlockoutOverlay({&document, 1.0F});
+  const cr::BlockView overlay =
+      cr::buildBlockView(requestFor(document));
   return expect(overlay.ok, "wall overlay ok") &&
          expect(overlay.wallCount == 1U, "wall count") &&
          expect(overlay.faces.size() == 6U, "wall face count") &&
          expect(overlay.labels.size() == 3U, "wall label count") &&
-         expect(overlay.faces[0].face == iggy3d::ProductCreativeBlockoutFace::North,
+         expect(overlay.faces[0].face == cr::Face::North,
                 "wall first north") &&
          expect(overlay.faces[0].widthMeters == 4.0F, "wall length") &&
          expect(overlay.faces[0].heightMeters == 2.0F, "wall height") &&
          expect(overlay.faces[0].gridLineCountU == 5U, "wall grid U") &&
          expect(overlay.faces[0].gridLineCountV == 3U, "wall grid V") &&
-         expect(overlay.faces[2].face == iggy3d::ProductCreativeBlockoutFace::Top,
+         expect(overlay.faces[2].face == cr::Face::Top,
                 "wall top third") &&
          expect(overlay.faces[2].heightMeters == 0.5F, "wall thickness as top height") &&
          expect(overlay.labels[0].label == "W 4.0m", "wall width label") &&
@@ -136,13 +145,13 @@ bool wallPacketContainsSixFacesAndLabels() {
 bool objectPacketContainsAxisAlignedFacesYawAndLabels() {
   iggy3d::EditableRoomDocument document;
   document.objects.push_back(testObject());
-  const iggy3d::ProductCreativeBlockoutOverlay overlay =
-      iggy3d::buildProductCreativeBlockoutOverlay({&document, 1.0F});
+  const cr::BlockView overlay =
+      cr::buildBlockView(requestFor(document));
   return expect(overlay.ok, "object overlay ok") &&
          expect(overlay.objectCount == 1U, "object count") &&
          expect(overlay.faces.size() == 6U, "object face count") &&
          expect(overlay.labels.size() == 3U, "object label count") &&
-         expect(overlay.faces[0].face == iggy3d::ProductCreativeBlockoutFace::Top,
+         expect(overlay.faces[0].face == cr::Face::Top,
                 "object top first") &&
          expectVec3(overlay.faces[0].centerMeters, {2.0F, 2.0F, 3.0F},
                     "object top center") &&
@@ -159,30 +168,30 @@ bool selectionAndHoverFlagOnlyMatchingPrimitive() {
   document.floors.push_back(testFloor());
   document.walls.push_back(testWall());
   document.objects.push_back(testObject());
-  iggy3d::ProductCreativeBlockoutOverlayRequest request;
+  cr::BlockRequest request;
   request.document = &document;
   request.gridStepMeters = 1.0F;
   request.hasSelectedPrimitive = true;
-  request.selectedPrimitive = {iggy3d::ProductCreativeBlockoutPrimitiveKind::Wall,
+  request.selectedPrimitive = {cr::Kind::Wall,
                                "wall_001",
                                0};
   request.hasHoveredPrimitive = true;
-  request.hoveredPrimitive = {iggy3d::ProductCreativeBlockoutPrimitiveKind::Object,
+  request.hoveredPrimitive = {cr::Kind::Object,
                               "object_001",
                               0};
-  const iggy3d::ProductCreativeBlockoutOverlay overlay =
-      iggy3d::buildProductCreativeBlockoutOverlay(request);
+  const cr::BlockView overlay =
+      cr::buildBlockView(request);
   bool floorFlagged = false;
   bool wallSelected = false;
   bool objectHovered = false;
-  for (const iggy3d::ProductCreativeBlockoutFaceOverlay& face : overlay.faces) {
-    if (face.primitive.kind == iggy3d::ProductCreativeBlockoutPrimitiveKind::Floor) {
+  for (const cr::FaceOverlay& face : overlay.faces) {
+    if (face.primitive.kind == cr::Kind::Floor) {
       floorFlagged = floorFlagged || face.selected || face.hovered;
     }
-    if (face.primitive.kind == iggy3d::ProductCreativeBlockoutPrimitiveKind::Wall) {
+    if (face.primitive.kind == cr::Kind::Wall) {
       wallSelected = wallSelected || face.selected;
     }
-    if (face.primitive.kind == iggy3d::ProductCreativeBlockoutPrimitiveKind::Object) {
+    if (face.primitive.kind == cr::Kind::Object) {
       objectHovered = objectHovered || face.hovered;
     }
   }
@@ -201,10 +210,10 @@ bool deterministicAndDoesNotMutateInput() {
   const std::string floorId = document.floors.front().id;
   const std::string wallId = document.walls.front().id;
   const std::string objectId = document.objects.front().id;
-  const iggy3d::ProductCreativeBlockoutOverlay first =
-      iggy3d::buildProductCreativeBlockoutOverlay({&document, 1.0F});
-  const iggy3d::ProductCreativeBlockoutOverlay second =
-      iggy3d::buildProductCreativeBlockoutOverlay({&document, 1.0F});
+  const cr::BlockView first =
+      cr::buildBlockView(requestFor(document));
+  const cr::BlockView second =
+      cr::buildBlockView(requestFor(document));
   return expect(first.faces.size() == 13U, "combined face count") &&
          expect(first.labels.size() == 8U, "combined label count") &&
          expect(first.faces.size() == second.faces.size(), "repeat face count") &&
@@ -212,10 +221,10 @@ bool deterministicAndDoesNotMutateInput() {
          expect(first.faces[0].primitive.id == second.faces[0].primitive.id,
                 "repeat first face id") &&
          expect(first.faces[1].primitive.kind ==
-                    iggy3d::ProductCreativeBlockoutPrimitiveKind::Wall,
+                    cr::Kind::Wall,
                 "wall after floor") &&
          expect(first.faces[7].primitive.kind ==
-                    iggy3d::ProductCreativeBlockoutPrimitiveKind::Object,
+                    cr::Kind::Object,
                 "object after wall") &&
          expect(document.floors.front().id == floorId, "floor id not mutated") &&
          expect(document.walls.front().id == wallId, "wall id not mutated") &&

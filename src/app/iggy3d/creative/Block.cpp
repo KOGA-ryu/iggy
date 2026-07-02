@@ -1,4 +1,4 @@
-#include "app/iggy3d/creative/Blockout.hpp"
+#include "app/iggy3d/creative/Block.hpp"
 
 #include <array>
 #include <cmath>
@@ -7,66 +7,66 @@
 #include <sstream>
 #include <string>
 
-namespace iggy3d {
+namespace iggy3d::creative {
 namespace {
 
-struct ProductCreativePrimitiveKindDescriptor {
-  ProductCreativeBlockoutPrimitiveKind kind = ProductCreativeBlockoutPrimitiveKind::Floor;
+struct KindDescriptor {
+  Kind kind = Kind::Floor;
   std::string_view name = "floor";
 };
 
-struct ProductCreativeFaceDescriptor {
-  ProductCreativeBlockoutFace face = ProductCreativeBlockoutFace::Top;
+struct FaceDescriptor {
+  Face face = Face::Top;
   std::string_view name = "top";
 };
 
-struct ProductCreativeBoxFaceDescriptor {
-  ProductCreativeBlockoutFace face = ProductCreativeBlockoutFace::Top;
+struct BoxFaceDescriptor {
+  Face face = Face::Top;
   Vec3 normal;
   Vec3 tangentU;
   Vec3 tangentV;
 };
 
-constexpr std::array kProductCreativePrimitiveKindDescriptors{
-    ProductCreativePrimitiveKindDescriptor{
-        ProductCreativeBlockoutPrimitiveKind::Floor, "floor"},
-    ProductCreativePrimitiveKindDescriptor{
-        ProductCreativeBlockoutPrimitiveKind::Wall, "wall"},
-    ProductCreativePrimitiveKindDescriptor{
-        ProductCreativeBlockoutPrimitiveKind::Object, "object"},
+constexpr std::array kKindDescriptors{
+    KindDescriptor{
+        Kind::Floor, "floor"},
+    KindDescriptor{
+        Kind::Wall, "wall"},
+    KindDescriptor{
+        Kind::Object, "object"},
 };
 
-constexpr std::array kProductCreativeFaceDescriptors{
-    ProductCreativeFaceDescriptor{ProductCreativeBlockoutFace::Top, "top"},
-    ProductCreativeFaceDescriptor{ProductCreativeBlockoutFace::Bottom, "bottom"},
-    ProductCreativeFaceDescriptor{ProductCreativeBlockoutFace::North, "north"},
-    ProductCreativeFaceDescriptor{ProductCreativeBlockoutFace::South, "south"},
-    ProductCreativeFaceDescriptor{ProductCreativeBlockoutFace::East, "east"},
-    ProductCreativeFaceDescriptor{ProductCreativeBlockoutFace::West, "west"},
+constexpr std::array kFaceDescriptors{
+    FaceDescriptor{Face::Top, "top"},
+    FaceDescriptor{Face::Bottom, "bottom"},
+    FaceDescriptor{Face::North, "north"},
+    FaceDescriptor{Face::South, "south"},
+    FaceDescriptor{Face::East, "east"},
+    FaceDescriptor{Face::West, "west"},
 };
 
-constexpr std::array kProductCreativeBoxFaceDescriptors{
-    ProductCreativeBoxFaceDescriptor{ProductCreativeBlockoutFace::Top,
+constexpr std::array kBoxFaceDescriptors{
+    BoxFaceDescriptor{Face::Top,
                                      {0.0F, 1.0F, 0.0F},
                                      {1.0F, 0.0F, 0.0F},
                                      {0.0F, 0.0F, 1.0F}},
-    ProductCreativeBoxFaceDescriptor{ProductCreativeBlockoutFace::Bottom,
+    BoxFaceDescriptor{Face::Bottom,
                                      {0.0F, -1.0F, 0.0F},
                                      {1.0F, 0.0F, 0.0F},
                                      {0.0F, 0.0F, 1.0F}},
-    ProductCreativeBoxFaceDescriptor{ProductCreativeBlockoutFace::North,
+    BoxFaceDescriptor{Face::North,
                                      {0.0F, 0.0F, -1.0F},
                                      {1.0F, 0.0F, 0.0F},
                                      {0.0F, 1.0F, 0.0F}},
-    ProductCreativeBoxFaceDescriptor{ProductCreativeBlockoutFace::South,
+    BoxFaceDescriptor{Face::South,
                                      {0.0F, 0.0F, 1.0F},
                                      {1.0F, 0.0F, 0.0F},
                                      {0.0F, 1.0F, 0.0F}},
-    ProductCreativeBoxFaceDescriptor{ProductCreativeBlockoutFace::East,
+    BoxFaceDescriptor{Face::East,
                                      {1.0F, 0.0F, 0.0F},
                                      {0.0F, 0.0F, 1.0F},
                                      {0.0F, 1.0F, 0.0F}},
-    ProductCreativeBoxFaceDescriptor{ProductCreativeBlockoutFace::West,
+    BoxFaceDescriptor{Face::West,
                                      {-1.0F, 0.0F, 0.0F},
                                      {0.0F, 0.0F, 1.0F},
                                      {0.0F, 1.0F, 0.0F}},
@@ -93,47 +93,47 @@ Vec3 wallNormalFromTangent(Vec3 tangent) {
   return {-tangent.z, 0.0F, tangent.x};
 }
 
-Vec3 faceOffset(ProductCreativeBlockoutFace face, Vec3 size) {
+Vec3 faceOffset(Face face, Vec3 size) {
   switch (face) {  // branch-gate: BG-1222
-    case ProductCreativeBlockoutFace::Top:
+    case Face::Top:
       return {0.0F, size.y * 0.5F, 0.0F};
-    case ProductCreativeBlockoutFace::Bottom:
+    case Face::Bottom:
       return {0.0F, -size.y * 0.5F, 0.0F};
-    case ProductCreativeBlockoutFace::North:
+    case Face::North:
       return {0.0F, 0.0F, -size.z * 0.5F};
-    case ProductCreativeBlockoutFace::South:
+    case Face::South:
       return {0.0F, 0.0F, size.z * 0.5F};
-    case ProductCreativeBlockoutFace::East:
+    case Face::East:
       return {size.x * 0.5F, 0.0F, 0.0F};
-    case ProductCreativeBlockoutFace::West:
+    case Face::West:
       return {-size.x * 0.5F, 0.0F, 0.0F};
   }
   return {};
 }
 
-float boxFaceWidth(ProductCreativeBlockoutFace face, Vec3 size) {
+float boxFaceWidth(Face face, Vec3 size) {
   switch (face) {  // branch-gate: BG-1222
-    case ProductCreativeBlockoutFace::Top:
-    case ProductCreativeBlockoutFace::Bottom:
-    case ProductCreativeBlockoutFace::North:
-    case ProductCreativeBlockoutFace::South:
+    case Face::Top:
+    case Face::Bottom:
+    case Face::North:
+    case Face::South:
       return size.x;
-    case ProductCreativeBlockoutFace::East:
-    case ProductCreativeBlockoutFace::West:
+    case Face::East:
+    case Face::West:
       return size.z;
   }
   return 0.0F;
 }
 
-float boxFaceHeight(ProductCreativeBlockoutFace face, Vec3 size) {
+float boxFaceHeight(Face face, Vec3 size) {
   switch (face) {  // branch-gate: BG-1222
-    case ProductCreativeBlockoutFace::Top:
-    case ProductCreativeBlockoutFace::Bottom:
+    case Face::Top:
+    case Face::Bottom:
       return size.z;
-    case ProductCreativeBlockoutFace::North:
-    case ProductCreativeBlockoutFace::South:
-    case ProductCreativeBlockoutFace::East:
-    case ProductCreativeBlockoutFace::West:
+    case Face::North:
+    case Face::South:
+    case Face::East:
+    case Face::West:
       return size.y;
   }
   return 0.0F;
@@ -153,8 +153,8 @@ std::string meterLabel(std::string_view prefix, float meters) {
   return stream.str();
 }
 
-bool primitiveRefsMatch(const ProductCreativeBlockoutPrimitiveRef& lhs,
-                        const ProductCreativeBlockoutPrimitiveRef& rhs) {
+bool primitiveRefsMatch(const Ref& lhs,
+                        const Ref& rhs) {
   // branch-gate: BG-1222
   if (lhs.kind != rhs.kind) {
     return false;
@@ -166,9 +166,9 @@ bool primitiveRefsMatch(const ProductCreativeBlockoutPrimitiveRef& lhs,
   return lhs.sourceIndex == rhs.sourceIndex;
 }
 
-void applySelectionFlags(ProductCreativeBlockoutFaceOverlay& face,
-                         const ProductCreativeBlockoutOverlayRequest& request,
-                         ProductCreativeBlockoutOverlay& overlay) {
+void applySelectionFlags(FaceOverlay& face,
+                         const BlockRequest& request,
+                         BlockView& overlay) {
   face.selected = request.hasSelectedPrimitive &&
                   primitiveRefsMatch(face.primitive, request.selectedPrimitive);
   face.hovered = request.hasHoveredPrimitive &&
@@ -183,21 +183,21 @@ void applySelectionFlags(ProductCreativeBlockoutFaceOverlay& face,
   }
 }
 
-void appendLabel(ProductCreativeBlockoutOverlay& overlay,
-                 ProductCreativeBlockoutPrimitiveRef primitive,
+void appendLabel(BlockView& overlay,
+                 Ref primitive,
                  Vec3 position,
                  std::string label) {
-  ProductCreativeMeasurementLabel out;
+  MeasureLabel out;
   out.primitive = std::move(primitive);
   out.worldPositionMeters = position;
   out.label = std::move(label);
   overlay.labels.push_back(std::move(out));
 }
 
-void appendFace(ProductCreativeBlockoutOverlay& overlay,
-                const ProductCreativeBlockoutOverlayRequest& request,
-                ProductCreativeBlockoutPrimitiveRef primitive,
-                ProductCreativeBlockoutFace face,
+void appendFace(BlockView& overlay,
+                const BlockRequest& request,
+                Ref primitive,
+                Face face,
                 Vec3 center,
                 Vec3 normal,
                 Vec3 tangentU,
@@ -205,7 +205,7 @@ void appendFace(ProductCreativeBlockoutOverlay& overlay,
                 float widthMeters,
                 float heightMeters,
                 float yawDegrees = 0.0F) {
-  ProductCreativeBlockoutFaceOverlay out;
+  FaceOverlay out;
   out.primitive = std::move(primitive);
   out.face = face;
   out.centerMeters = center;
@@ -221,14 +221,14 @@ void appendFace(ProductCreativeBlockoutOverlay& overlay,
   overlay.faces.push_back(std::move(out));
 }
 
-void appendBoxFaces(ProductCreativeBlockoutOverlay& overlay,
-                    const ProductCreativeBlockoutOverlayRequest& request,
-                    ProductCreativeBlockoutPrimitiveRef primitive,
+void appendBoxFaces(BlockView& overlay,
+                    const BlockRequest& request,
+                    Ref primitive,
                     Vec3 center,
                     Vec3 size,
                     float yawDegrees) {
-  for (const ProductCreativeBoxFaceDescriptor& descriptor :
-       kProductCreativeBoxFaceDescriptors) {
+  for (const BoxFaceDescriptor& descriptor :
+       kBoxFaceDescriptors) {
     appendFace(overlay,
                request,
                primitive,
@@ -243,19 +243,19 @@ void appendBoxFaces(ProductCreativeBlockoutOverlay& overlay,
   }
 }
 
-void appendFloorOverlay(ProductCreativeBlockoutOverlay& overlay,
-                        const ProductCreativeBlockoutOverlayRequest& request,
+void appendFloorOverlay(BlockView& overlay,
+                        const BlockRequest& request,
                         const EditableRoomFloor& floor,
                         std::uint32_t sourceIndex) {
-  const ProductCreativeBlockoutPrimitiveRef primitive{
-      ProductCreativeBlockoutPrimitiveKind::Floor,
+  const Ref primitive{
+      Kind::Floor,
       floor.id,
       sourceIndex,
   };
   appendFace(overlay,
              request,
              primitive,
-             ProductCreativeBlockoutFace::Top,
+             Face::Top,
              floor.centerMeters + Vec3{0.0F, floor.sizeMeters.y * 0.5F, 0.0F},
              {0.0F, 1.0F, 0.0F},
              {1.0F, 0.0F, 0.0F},
@@ -272,12 +272,12 @@ void appendFloorOverlay(ProductCreativeBlockoutOverlay& overlay,
               meterLabel("D", floor.sizeMeters.z));
 }
 
-void appendWallOverlay(ProductCreativeBlockoutOverlay& overlay,
-                       const ProductCreativeBlockoutOverlayRequest& request,
+void appendWallOverlay(BlockView& overlay,
+                       const BlockRequest& request,
                        const EditableRoomWall& wall,
                        std::uint32_t sourceIndex) {
-  const ProductCreativeBlockoutPrimitiveRef primitive{
-      ProductCreativeBlockoutPrimitiveKind::Wall,
+  const Ref primitive{
+      Kind::Wall,
       wall.id,
       sourceIndex,
   };
@@ -290,7 +290,7 @@ void appendWallOverlay(ProductCreativeBlockoutOverlay& overlay,
   appendFace(overlay,
              request,
              primitive,
-             ProductCreativeBlockoutFace::North,
+             Face::North,
              center + normal * (wall.thicknessMeters * 0.5F),
              normal,
              tangent,
@@ -300,7 +300,7 @@ void appendWallOverlay(ProductCreativeBlockoutOverlay& overlay,
   appendFace(overlay,
              request,
              primitive,
-             ProductCreativeBlockoutFace::South,
+             Face::South,
              center - normal * (wall.thicknessMeters * 0.5F),
              normal * -1.0F,
              tangent,
@@ -310,7 +310,7 @@ void appendWallOverlay(ProductCreativeBlockoutOverlay& overlay,
   appendFace(overlay,
              request,
              primitive,
-             ProductCreativeBlockoutFace::Top,
+             Face::Top,
              center + Vec3{0.0F, wall.heightMeters * 0.5F, 0.0F},
              {0.0F, 1.0F, 0.0F},
              tangent,
@@ -320,7 +320,7 @@ void appendWallOverlay(ProductCreativeBlockoutOverlay& overlay,
   appendFace(overlay,
              request,
              primitive,
-             ProductCreativeBlockoutFace::Bottom,
+             Face::Bottom,
              center - Vec3{0.0F, wall.heightMeters * 0.5F, 0.0F},
              {0.0F, -1.0F, 0.0F},
              tangent,
@@ -330,7 +330,7 @@ void appendWallOverlay(ProductCreativeBlockoutOverlay& overlay,
   appendFace(overlay,
              request,
              primitive,
-             ProductCreativeBlockoutFace::East,
+             Face::East,
              wall.endMeters + Vec3{0.0F,
                                    wall.bottomY + wall.heightMeters * 0.5F,
                                    0.0F},
@@ -342,7 +342,7 @@ void appendWallOverlay(ProductCreativeBlockoutOverlay& overlay,
   appendFace(overlay,
              request,
              primitive,
-             ProductCreativeBlockoutFace::West,
+             Face::West,
              wall.startMeters + Vec3{0.0F,
                                      wall.bottomY + wall.heightMeters * 0.5F,
                                      0.0F},
@@ -365,12 +365,12 @@ void appendWallOverlay(ProductCreativeBlockoutOverlay& overlay,
               meterLabel("D", wall.thicknessMeters));
 }
 
-void appendObjectOverlay(ProductCreativeBlockoutOverlay& overlay,
-                         const ProductCreativeBlockoutOverlayRequest& request,
+void appendObjectOverlay(BlockView& overlay,
+                         const BlockRequest& request,
                          const EditableRoomObject& object,
                          std::uint32_t sourceIndex) {
-  const ProductCreativeBlockoutPrimitiveRef primitive{
-      ProductCreativeBlockoutPrimitiveKind::Object,
+  const Ref primitive{
+      Kind::Object,
       object.id,
       sourceIndex,
   };
@@ -396,10 +396,10 @@ void appendObjectOverlay(ProductCreativeBlockoutOverlay& overlay,
 
 }  // namespace
 
-std::string_view productCreativeBlockoutPrimitiveKindName(
-    ProductCreativeBlockoutPrimitiveKind kind) {
-  for (const ProductCreativePrimitiveKindDescriptor& descriptor :
-       kProductCreativePrimitiveKindDescriptors) {
+std::string_view kindName(
+    Kind kind) {
+  for (const KindDescriptor& descriptor :
+       kKindDescriptors) {
     // branch-gate: BG-1222
     if (descriptor.kind == kind) {
       return descriptor.name;
@@ -408,10 +408,10 @@ std::string_view productCreativeBlockoutPrimitiveKindName(
   return "unknown";
 }
 
-std::string_view productCreativeBlockoutFaceName(
-    ProductCreativeBlockoutFace face) {
-  for (const ProductCreativeFaceDescriptor& descriptor :
-       kProductCreativeFaceDescriptors) {
+std::string_view faceName(
+    Face face) {
+  for (const FaceDescriptor& descriptor :
+       kFaceDescriptors) {
     // branch-gate: BG-1222
     if (descriptor.face == face) {
       return descriptor.name;
@@ -420,20 +420,20 @@ std::string_view productCreativeBlockoutFaceName(
   return "unknown";
 }
 
-ProductCreativeBlockoutOverlay buildProductCreativeBlockoutOverlay(
-    const ProductCreativeBlockoutOverlayRequest& request) {
-  ProductCreativeBlockoutOverlay overlay;
+BlockView buildBlockView(
+    const BlockRequest& request) {
+  BlockView overlay;
   overlay.gridStepMeters = request.gridStepMeters;
   // branch-gate: BG-1222
   if (request.document == nullptr) {
-    overlay.status = "creative_blockout_missing_document";
-    overlay.reasonCode = "creative_blockout_missing_document";
+    overlay.status = "missing_document";
+    overlay.reasonCode = "missing_document";
     return overlay;
   }
   // branch-gate: BG-1222
   if (!positiveFinite(request.gridStepMeters)) {
-    overlay.status = "creative_blockout_invalid_grid_step";
-    overlay.reasonCode = "creative_blockout_invalid_grid_step";
+    overlay.status = "invalid_grid_step";
+    overlay.reasonCode = "invalid_grid_step";
     return overlay;
   }
 
@@ -441,8 +441,8 @@ ProductCreativeBlockoutOverlay buildProductCreativeBlockoutOverlay(
   overlay.wallCount = request.document->walls.size();
   overlay.objectCount = request.document->objects.size();
   overlay.faces.reserve(overlay.floorCount +
-                        overlay.wallCount * kProductCreativeBoxFaceDescriptors.size() +
-                        overlay.objectCount * kProductCreativeBoxFaceDescriptors.size());
+                        overlay.wallCount * kBoxFaceDescriptors.size() +
+                        overlay.objectCount * kBoxFaceDescriptors.size());
   overlay.labels.reserve(overlay.floorCount * 2U + overlay.wallCount * 3U +
                          overlay.objectCount * 3U);
 
@@ -466,9 +466,9 @@ ProductCreativeBlockoutOverlay buildProductCreativeBlockoutOverlay(
   }
 
   overlay.ok = true;
-  overlay.status = "creative_blockout_ready";
-  overlay.reasonCode = "creative_blockout_ready";
+  overlay.status = "block_ready";
+  overlay.reasonCode = "block_ready";
   return overlay;
 }
 
-}  // namespace iggy3d
+}  // namespace iggy3d::creative
