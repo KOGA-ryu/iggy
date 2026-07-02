@@ -51,6 +51,9 @@ void applyAiState(NpcBehaviorDebugActorRow& row, const AiActorState& state) {
   row.behavior = state.behavior;
   row.lastIntent = state.lastIntent;
   row.target = state.target;
+  row.targetInPerceptionRadius = state.lastTargetInRadius;
+  row.targetInVisionCone = state.lastTargetInVisionCone;
+  row.targetHasLineOfSight = state.lastTargetHasLineOfSight;
   row.cooldownTicksRemaining = state.cooldownTicksRemaining;
   row.nextDecisionTick = state.nextDecisionTick;
 }

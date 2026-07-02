@@ -59,8 +59,10 @@ plausibly-intended API. Split into per-cluster PRs.
   `PhysicsColliderBake` (.cpp/.hpp) + their unit tests + CMake. Removal order: FIRST remove the
   test-only consumers so the tree compiles — `appendPhysicsCollisionBatchDebugProjection`
   (DebugProjection + projection_tests), the 4 island `PhysicsFrameStats` accumulators
-  (+ physics_frame_stats_tests, keeping `accumulatePlayerPhysicsMovePlannerStats` — LIVE),
-  `raycastPhysicsAabbs` (in live PhysicsCollisionQueries + its test) — THEN delete the 5 files.
+  (+ physics_frame_stats_tests, keeping `accumulatePlayerPhysicsMovePlannerStats` — LIVE) —
+  THEN delete the 5 files. NOTE (2026-07-01): `raycastPhysicsAabbs` is NO LONGER a removal
+  target — it became a live production caller when NPC vision line-of-sight wired to it
+  (Session enqueue -> actorHasLineOfSightToTarget). Keep it.
   EXCLUDE `PhysicsAabbContact`/`PhysicsAabbContactSolver` (tool-retained), `PhysicsSpatialSurfaceColliderBake`,
   `PhysicsShapeStore`, `PhysicsBodyStore` (all live). Build with tools+Vulkan enabled so the
   kernel-bench still links. NOT YET DONE — needs its own careful pass.

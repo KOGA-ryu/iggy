@@ -5,11 +5,14 @@
 #include <utility>
 #include <vector>
 
+#include "core/math/Vec3.hpp"
 #include "runtime/ability/AbilitySystem.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/ai/NpcBehaviorSystem.hpp"
 #include "runtime/camera/CameraModePolicy.hpp"
 #include "runtime/clock/Clock.hpp"
+#include "runtime/physics/PhysicsCollisionQueries.hpp"
+#include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 #include "runtime/session/SessionRunner.hpp"
 #include "runtime/session/SessionTick.hpp"
 
@@ -154,6 +157,8 @@ bool createCombat(const FixtureScenarioSeed& seed, const WorldState& world, Comb
   return true;
 }
 
+Vec3 initialNpcFacing(const WorldState& world, Vec3 actorPosition);
+
 StatusResult createAiActors(const FixtureScenarioSeed& seed,
                             const WorldState& world,
                             AiState& ai) {
@@ -177,6 +182,8 @@ StatusResult createAiActors(const FixtureScenarioSeed& seed,
     AiActorState actorState;
     actorState.actor = actor->id;
     actorState.behaviorProfileId = aiSeed.behaviorProfileId;
+    actorState.facingDirection =
+        initialNpcFacing(world, actor->transform.position);
     ai.actors.push_back(std::move(actorState));
     seededActors.push_back(actor->id);
   }
@@ -580,6 +587,10 @@ void ensureAiActorsForActiveNpcs(SessionState& state) {
     if (findAiActorState(state.ai, actor) == nullptr) {
       AiActorState actorState;
       actorState.actor = actor;
+      if (const EntityState* actorEntity = state.world.findById(actor)) {
+        actorState.facingDirection =
+            initialNpcFacing(state.world, actorEntity->transform.position);
+      }
       state.ai.actors.push_back(actorState);
     }
   }
@@ -599,7 +610,91 @@ void applyNpcBehaviorDecision(AiActorState& actorState,
   actorState.cooldownTicksRemaining = decision.cooldownTicksRemaining;
 }
 
-void enqueueNpcBehaviorCommands(Session& session, SessionState& state) {
+Vec3 horizontalDirectionOrForward(Vec3 from, Vec3 to) {
+  const Vec3 delta{to.x - from.x, 0.0F, to.z - from.z};
+  const float lengthSq = lengthSquared(delta);
+  if (!std::isfinite(lengthSq) || lengthSq < 1.0e-8F) {
+    return Vec3{0.0F, 0.0F, 1.0F};
+  }
+  const float invLength = 1.0F / std::sqrt(lengthSq);
+  return Vec3{delta.x * invLength, 0.0F, delta.z * invLength};
+}
+
+// Provisional spawn facing until authored orientation exists: point the NPC at
+// the first player entity so seeded guards start oriented toward the threat.
+Vec3 initialNpcFacing(const WorldState& world, Vec3 actorPosition) {
+  for (const EntityState& entity : world.entities()) {
+    if (entity.kind == EntityKind::Player) {
+      return horizontalDirectionOrForward(actorPosition, entity.transform.position);
+    }
+  }
+  return Vec3{0.0F, 0.0F, 1.0F};
+}
+
+void updateNpcFacing(AiActorState& actorState,
+                     const NpcBehaviorDecision& decision,
+                     const NpcPerceptionResult& perception) {
+  switch (decision.intent) {
+    case AiIntentKind::MoveTowardTarget:
+    case AiIntentKind::AttackTarget:
+      actorState.facingDirection = horizontalDirectionOrForward(
+          perception.actorPosition, perception.targetPosition);
+      break;
+    case AiIntentKind::ReturnToAnchor:
+      actorState.facingDirection = horizontalDirectionOrForward(
+          perception.actorPosition, decision.homePosition);
+      break;
+    case AiIntentKind::None:
+    case AiIntentKind::Wait:
+      break;  // hold current gaze
+  }
+}
+
+// Cast an eye-height ray from actor to target against baked world colliders.
+// Returns true (clear) when there are no colliders, on a bad query, or when no
+// occluder sits between them — never fabricates stealth from a failed query.
+bool actorHasLineOfSightToTarget(const std::vector<PhysicsAabbCollider>& colliders,
+                                 const EntityState* actor,
+                                 const EntityState* target) {
+  if (colliders.empty() || actor == nullptr || target == nullptr) {
+    return true;
+  }
+  constexpr float kEyeHeightMeters = 1.0F;
+  Vec3 origin = actor->transform.position;
+  origin.y += kEyeHeightMeters;
+  Vec3 targetEye = target->transform.position;
+  targetEye.y += kEyeHeightMeters;
+  const Vec3 delta{targetEye.x - origin.x, targetEye.y - origin.y,
+                   targetEye.z - origin.z};
+  const float distanceSq = lengthSquared(delta);
+  if (!std::isfinite(distanceSq) || distanceSq < 1.0e-6F) {
+    return true;
+  }
+  const float distance = std::sqrt(distanceSq);
+  PhysicsRaycastQueryRequest request;
+  request.colliders = &colliders;
+  request.originMeters = origin;
+  request.direction = delta;  // normalized inside the query
+  request.maxDistanceMeters = distance;
+  request.includeSensors = false;
+  const PhysicsRaycastQueryResult result = raycastPhysicsAabbs(request);
+  if (!result.ok) {
+    return true;
+  }
+  constexpr float kOcclusionMarginMeters = 0.01F;
+  for (const PhysicsRaycastHit& hit : result.hits) {
+    if (hit.startInside) {
+      continue;
+    }
+    if (hit.distanceMeters < distance - kOcclusionMarginMeters) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
+                                const SpatialSurfaceSet* collisionSurfaces) {
   if (state.lifecycle != SessionLifecycle::Playing || state.clock.mode == ClockMode::Paused) {
     return;
   }
@@ -608,6 +703,19 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state) {
   const PlayerSlot* playerZero = state.players.findSlot(0);
   const EntityId target = playerZero == nullptr ? EntityId{} : playerZero->actor;
   const NpcBehaviorProfileCatalog profileCatalog = makeBuiltInNpcBehaviorProfileCatalog();
+
+  // Bake world collision geometry once so NPC vision rays reuse the same
+  // colliders the player movement path uses. No surfaces -> LOS assumed clear.
+  std::vector<PhysicsAabbCollider> visionColliders;
+  if (collisionSurfaces != nullptr) {
+    PhysicsSpatialSurfaceColliderBakeRequest bakeRequest;
+    bakeRequest.surfaces = collisionSurfaces;
+    const PhysicsSpatialSurfaceColliderBakeResult bake =
+        bakePhysicsAabbCollidersFromSpatialSurfaces(bakeRequest);
+    if (bake.ok) {
+      visionColliders = std::move(bake.colliders);
+    }
+  }
 
   std::vector<std::size_t> actorIndexes;
   actorIndexes.reserve(state.ai.actors.size());
@@ -629,13 +737,31 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state) {
       continue;
     }
     const NpcBehaviorConfig config = resolvedProfile.config;
-    const NpcPerceptionResult perception =
-        queryNpcPerception(NpcPerceptionRequest{&state.world, &state.combat,
-                                                actorState.actor, target, config});
+
+    const EntityState* actorEntity = state.world.findById(actorState.actor);
+    const EntityState* targetEntity = state.world.findById(target);
+    const bool hasLineOfSight =
+        actorHasLineOfSightToTarget(visionColliders, actorEntity, targetEntity);
+
+    NpcPerceptionRequest perceptionRequest;
+    perceptionRequest.world = &state.world;
+    perceptionRequest.combat = &state.combat;
+    perceptionRequest.actor = actorState.actor;
+    perceptionRequest.target = target;
+    perceptionRequest.config = config;
+    perceptionRequest.actorFacingDirection = actorState.facingDirection;
+    perceptionRequest.targetHasLineOfSight = hasLineOfSight;
+    const NpcPerceptionResult perception = queryNpcPerception(perceptionRequest);
+
     const NpcBehaviorDecision decision =
         chooseNpcBehaviorIntent(NpcBehaviorDecisionRequest{&actorState, perception, config,
                                                            state.clock.tickIndex});
     applyNpcBehaviorDecision(actorState, decision);
+    updateNpcFacing(actorState, decision, perception);
+    actorState.lastTargetInRadius = perception.targetInPerceptionRadius;
+    actorState.lastTargetInVisionCone = perception.targetInVisionCone;
+    actorState.lastTargetHasLineOfSight = perception.hasLineOfSight;
+
     if (!shouldBuildCommandForDecision(decision)) {
       continue;
     }
@@ -735,7 +861,7 @@ StatusResult Session::tick(const SpatialSurfaceSet* collisionSurfaces) {
 }
 
 StatusResult Session::tickWithOptions(const SessionTickOptions& options) {
-  enqueueNpcBehaviorCommands(*this, state_);
+  enqueueNpcBehaviorCommands(*this, state_, options.collisionSurfaces);
   std::vector<CommandRecord> commands = pendingAcceptedCommands(state_);
   const SessionTickResult tick =
       runSessionTick(SessionTickInput{&state_,

@@ -157,9 +157,65 @@ bool configValidationRejectsBadValues() {
   ok = ok && expect(!iggy3d::isValidNpcBehaviorConfig(config),
                     "zero damage rejected");
   config = {};
+  config.visionHalfAngleDegrees = 0.0F;
+  ok = ok && expect(!iggy3d::isValidNpcBehaviorConfig(config),
+                    "zero vision angle rejected");
+  config = {};
+  config.visionHalfAngleDegrees = 200.0F;
+  ok = ok && expect(!iggy3d::isValidNpcBehaviorConfig(config),
+                    "over range vision angle rejected");
+  config = {};
   config.decisionIntervalTicks = 0;
   return ok && expect(!iggy3d::isValidNpcBehaviorConfig(config),
                       "zero decision interval rejected");
+}
+
+bool visionConeAndLineOfSightGatePerception() {
+  const iggy3d::WorldState world = worldWithNpcAndPlayer(3.0F);  // npc@0, player@+3x
+  const iggy3d::CombatState readyCombat = combat();
+  const iggy3d::NpcBehaviorConfig config;  // 60 degree half-angle cone
+
+  // Facing straight at the target (+x), clear line of sight -> perceived.
+  iggy3d::NpcPerceptionRequest facingTarget{&world, &readyCombat, {1}, {2}, config};
+  facingTarget.actorFacingDirection = {1.0F, 0.0F, 0.0F};
+  const iggy3d::NpcPerceptionResult seen = iggy3d::queryNpcPerception(facingTarget);
+  bool ok = expect(seen.status == iggy3d::NpcPerceptionStatus::Ready,
+                   "cone facing target ready") &&
+            expect(seen.targetInVisionCone, "cone facing target in cone") &&
+            expect(seen.hasLineOfSight, "cone facing target has line of sight");
+
+  // Facing away (-x) -> target is behind the cone.
+  iggy3d::NpcPerceptionRequest facingAway{&world, &readyCombat, {1}, {2}, config};
+  facingAway.actorFacingDirection = {-1.0F, 0.0F, 0.0F};
+  const iggy3d::NpcPerceptionResult behind = iggy3d::queryNpcPerception(facingAway);
+  ok = ok && expect(behind.status == iggy3d::NpcPerceptionStatus::TargetOutOfCone,
+                    "cone facing away out of cone") &&
+       expect(!behind.targetInVisionCone, "cone facing away flag false");
+
+  // Facing 90 degrees off (+z) -> beyond a 60 degree half-angle cone.
+  iggy3d::NpcPerceptionRequest facingSide{&world, &readyCombat, {1}, {2}, config};
+  facingSide.actorFacingDirection = {0.0F, 0.0F, 1.0F};
+  ok = ok && expect(iggy3d::queryNpcPerception(facingSide).status ==
+                        iggy3d::NpcPerceptionStatus::TargetOutOfCone,
+                    "cone perpendicular out of cone");
+
+  // Zero facing disables the cone (omnidirectional legacy behavior).
+  iggy3d::NpcPerceptionRequest facingNone{&world, &readyCombat, {1}, {2}, config};
+  facingNone.actorFacingDirection = {0.0F, 0.0F, 0.0F};
+  ok = ok && expect(iggy3d::queryNpcPerception(facingNone).status ==
+                        iggy3d::NpcPerceptionStatus::Ready,
+                    "zero facing omnidirectional ready");
+
+  // In cone but occluded -> perceived as blocked.
+  iggy3d::NpcPerceptionRequest occluded{&world, &readyCombat, {1}, {2}, config};
+  occluded.actorFacingDirection = {1.0F, 0.0F, 0.0F};
+  occluded.targetHasLineOfSight = false;
+  const iggy3d::NpcPerceptionResult blocked = iggy3d::queryNpcPerception(occluded);
+  return ok &&
+         expect(blocked.status == iggy3d::NpcPerceptionStatus::TargetOccluded,
+                "occluded status") &&
+         expect(blocked.targetInVisionCone, "occluded still in cone") &&
+         expect(!blocked.hasLineOfSight, "occluded no line of sight");
 }
 
 bool perceptionReportsDeterministicFailures() {
@@ -577,6 +633,14 @@ bool stableStatusNamesAreLowerSnake() {
                     iggy3d::NpcPerceptionStatus::TargetOutOfRange) ==
                     "target_out_of_range",
                 "perception lower snake") &&
+         expect(iggy3d::npcPerceptionStatusName(
+                    iggy3d::NpcPerceptionStatus::TargetOutOfCone) ==
+                    "target_out_of_cone",
+                "perception out of cone lower snake") &&
+         expect(iggy3d::npcPerceptionStatusName(
+                    iggy3d::NpcPerceptionStatus::TargetOccluded) ==
+                    "target_occluded",
+                "perception occluded lower snake") &&
          expect(iggy3d::npcBehaviorDecisionStatusName(
                     iggy3d::NpcBehaviorDecisionStatus::InvalidGuard) ==
                     "invalid_guard",
@@ -597,6 +661,7 @@ int main() {
   const bool ok = configValidationRejectsBadValues() &&
                   perceptionReportsDeterministicFailures() &&
                   defeatedAndOutOfRangePerceptionStatuses() &&
+                  visionConeAndLineOfSightGatePerception() &&
                   chaseDecisionAndCommandAreDeterministic() &&
                   attackDecisionAndCommandAreDeterministic() &&
                   cooldownDisabledAndNoTargetPoliciesAreDeterministic() &&

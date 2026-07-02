@@ -48,6 +48,9 @@ struct NpcBehaviorDebugActorRow {
   bool targetActive = false;
   bool targetCombatantDefeated = false;
   float targetDistanceMeters = 0.0F;
+  bool targetInPerceptionRadius = false;
+  bool targetInVisionCone = false;
+  bool targetHasLineOfSight = false;
   std::uint32_t cooldownTicksRemaining = 0;
   CommandTick nextDecisionTick = 0;
 };

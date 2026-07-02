@@ -26,6 +26,9 @@ struct NpcBehaviorConfig {
   float chaseStopDistanceMeters = 1.25F;
   float attackRangeMeters = 1.5F;
   float chaseStepMeters = 1.0F;
+  // Half-angle of the horizontal vision cone. The target is only perceived
+  // when it lies within +/- this angle of the actor's facing direction.
+  float visionHalfAngleDegrees = 60.0F;
   std::int32_t attackDamage = 1;
   std::uint32_t decisionIntervalTicks = 1;
   std::uint32_t attackCooldownTicks = 2;
@@ -43,6 +46,8 @@ enum class NpcPerceptionStatus : std::uint8_t {
   ActorDefeated,
   TargetDefeated,
   TargetOutOfRange,
+  TargetOutOfCone,
+  TargetOccluded,
 };
 
 std::string_view npcPerceptionStatusName(NpcPerceptionStatus status);
@@ -54,6 +59,14 @@ struct NpcPerceptionRequest {
   EntityId actor;
   EntityId target;
   NpcBehaviorConfig config;
+  // Actor's horizontal gaze direction. A zero/degenerate vector disables the
+  // vision-cone gate (omnidirectional perception) so low-level callers that
+  // don't model facing keep the pre-cone behavior.
+  Vec3 actorFacingDirection;
+  // Whether the actor has an unobstructed line of sight to the target. The
+  // caller resolves this (e.g. via a physics raycast against world colliders);
+  // the default true means "assume clear" when no occlusion test is available.
+  bool targetHasLineOfSight = true;
 };
 
 struct NpcPerceptionResult {
@@ -69,6 +82,8 @@ struct NpcPerceptionResult {
   bool targetDefeated = false;
   bool targetInPerceptionRadius = false;
   bool targetInAttackRange = false;
+  bool targetInVisionCone = false;
+  bool hasLineOfSight = false;
 };
 
 NpcPerceptionResult queryNpcPerception(const NpcPerceptionRequest& request);

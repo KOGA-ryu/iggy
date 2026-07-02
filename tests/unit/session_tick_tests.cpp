@@ -448,6 +448,9 @@ void seedNpcAiProfile(iggy3d::Session& session, std::string_view profileId) {
   iggy3d::AiActorState actor;
   actor.actor = {2};
   actor.behaviorProfileId = std::string(profileId);
+  // These fixtures place the player at the origin with the NPC on the +x axis,
+  // so face -x toward the player to bring it inside the NPC's vision cone.
+  actor.facingDirection = {-1.0F, 0.0F, 0.0F};
   auto& actors = session.mutableStateForOwnedSystems().ai.actors;
   actors.clear();
   actors.push_back(actor);
@@ -830,6 +833,57 @@ bool npcAiChaseMovesThroughNormalCommandExecution() {
               "ai chase intent") &&
        expect(aiActor != nullptr && aiActor->target == iggy3d::EntityId{1},
               "ai chase target player");
+  return ok;
+}
+
+bool npcVisionConeGatesSessionPerception() {
+  // Seeded facing points at the player, so the NPC perceives and chases, and
+  // the AI drives its gaze toward the target.
+  iggy3d::Session seeing = makeNpcCombatSession(4.0F);
+  bool ok = expect(seeing.tick().status == iggy3d::ResultStatus::Ok,
+                   "vision see tick ok");
+  const iggy3d::AiActorState* seeingAi = findAiActor(seeing.state().ai, {2});
+  ok = ok &&
+       expect(seeingAi != nullptr && seeingAi->behavior == iggy3d::AiBehaviorKind::Chasing,
+              "vision see chases") &&
+       expect(seeingAi != nullptr && seeingAi->lastTargetInRadius,
+              "vision see in radius") &&
+       expect(seeingAi != nullptr && seeingAi->lastTargetInVisionCone,
+              "vision see in cone") &&
+       expect(seeingAi != nullptr && seeingAi->lastTargetHasLineOfSight,
+              "vision see has line of sight") &&
+       expect(seeingAi != nullptr &&
+                  iggy3d::nearlyEqual(seeingAi->facingDirection, {-1.0F, 0.0F, 0.0F}),
+              "vision facing driven toward player");
+
+  // Force the NPC to look away: the player leaves its cone and goes unseen.
+  // Seed the AI actor at create time so the facing override lands before the
+  // first tick (an unseeded actor is created lazily during the tick).
+  iggy3d::Result<iggy3d::Session> blindResult =
+      createNpcCombatSessionWithAiSeed("training_npc", "default", 4.0F);
+  ok = ok && expect(blindResult.status == iggy3d::ResultStatus::Ok,
+                    "vision blind create ok");
+  if (blindResult.status == iggy3d::ResultStatus::Ok) {
+    iggy3d::Session& blind = blindResult.value;
+    iggy3d::SessionState& blindState = blind.mutableStateForOwnedSystems();
+    for (iggy3d::AiActorState& actor : blindState.ai.actors) {
+      if (actor.actor == iggy3d::EntityId{2}) {
+        actor.facingDirection = {1.0F, 0.0F, 0.0F};  // away from player at -x
+      }
+    }
+    ok = ok && expect(blind.tick().status == iggy3d::ResultStatus::Ok,
+                      "vision blind tick ok");
+    const iggy3d::AiActorState* blindAi = findAiActor(blind.state().ai, {2});
+    const iggy3d::CommandRecord* aiCommand =
+        lastCommandWithSource(blind.state().commandLog, iggy3d::CommandSource::Ai);
+    ok = ok &&
+         expect(blindAi != nullptr && blindAi->behavior == iggy3d::AiBehaviorKind::Idle,
+                "vision blind idle") &&
+         expect(blindAi != nullptr && !blindAi->lastTargetInVisionCone,
+                "vision blind out of cone") &&
+         expect(aiCommand == nullptr || aiCommand->kind != iggy3d::CommandKind::Move,
+                "vision blind no chase command");
+  }
   return ok;
 }
 
@@ -1349,6 +1403,7 @@ int main() {
                   npcAiTickEnqueuesAttackThroughAdmissionAndCombat() &&
                   npcAiCooldownTickWaitsWithoutSecondAttack() &&
                   npcAiChaseMovesThroughNormalCommandExecution() &&
+                  npcVisionConeGatesSessionPerception() &&
                   sessionCreateSeedsAiActorProfileIntoStateAndBaseline() &&
                   sessionCreateRejectsInvalidAiActorSeeds() &&
                   sessionCreateSeedsGuardAnchorIntoStateAndBaseline() &&

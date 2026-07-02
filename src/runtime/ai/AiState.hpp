@@ -80,6 +80,15 @@ struct AiActorState {
   float leashRadiusMeters = 0.0F;
   float returnRadiusMeters = 0.0F;
   float homeToleranceMeters = 0.0F;
+  // Horizontal gaze direction (normalized) the NPC's vision cone originates
+  // from. Transient runtime state: recomputed each decision tick by the AI,
+  // not serialized or hashed. Defaults to canonical forward until driven.
+  Vec3 facingDirection{0.0F, 0.0F, 1.0F};
+  // Last-decision perception outcome, mirrored for read-only observability
+  // (debug snapshot / tests). Not part of the decision inputs.
+  bool lastTargetInRadius = false;
+  bool lastTargetInVisionCone = false;
+  bool lastTargetHasLineOfSight = false;
 };
 
 struct AiState {
