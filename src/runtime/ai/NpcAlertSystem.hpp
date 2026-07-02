@@ -46,6 +46,13 @@ struct NpcAlertStimulus {
   float proximity01 = 0.0F;       // clamp01(1 - distance/effectiveRadius)
   bool hasValidTarget = false;    // a resolved, live target entity exists
   bool visualConfirmed = false;   // LOS-confirmed sighting -> bypasses grace
+  // Sound perception (a1s1, L1). INERT: appended so existing positional inits keep compiling,
+  // with defaults that leave npcStepAlert bit-for-bit today's. No producer writes these yet;
+  // a1s2 wires resolveLoudestSound into the loop and has npcStepAlert consume them.
+  bool heard = false;
+  float audibilityDb = 0.0F;
+  float alertUnits = 0.0F;
+  Vec3 soundInvestigatePos{};
 };
 
 bool isValidAlertProfile(const AlertProfile& profile);
