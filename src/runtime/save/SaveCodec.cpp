@@ -513,6 +513,18 @@ bool parseEnum(std::string_view value, AiBehaviorKind& out) {
     out = AiBehaviorKind::Returning;
     return true;
   }
+  if (value == "observant") {
+    out = AiBehaviorKind::Observant;
+    return true;
+  }
+  if (value == "suspicious") {
+    out = AiBehaviorKind::Suspicious;
+    return true;
+  }
+  if (value == "searching") {
+    out = AiBehaviorKind::Searching;
+    return true;
+  }
   return false;
 }
 

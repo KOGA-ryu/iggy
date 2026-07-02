@@ -18,6 +18,12 @@ enum class AiBehaviorKind : std::uint8_t {
   Attacking,
   Defeated,
   Returning,
+  // Graded-alert rungs (slice 5), appended so existing serialized values keep
+  // their numbers. Ordering low->high is derived by alertBehaviorForLevel, not
+  // by enum value.
+  Observant,
+  Suspicious,
+  Searching,
 };
 
 enum class AiIntentKind : std::uint8_t {
@@ -44,6 +50,12 @@ inline std::string_view aiBehaviorKindName(AiBehaviorKind kind) {
       return "defeated";
     case AiBehaviorKind::Returning:
       return "returning";
+    case AiBehaviorKind::Observant:
+      return "observant";
+    case AiBehaviorKind::Suspicious:
+      return "suspicious";
+    case AiBehaviorKind::Searching:
+      return "searching";
   }
   return "none";
 }
@@ -90,6 +102,14 @@ struct AiActorState {
   bool lastTargetInVisionCone = false;
   bool lastTargetHasLineOfSight = false;
   float lastSightRangeMeters = 0.0F;
+  // Graded alert FSM (slice 5). alertLevel is normalized 0..1 (combat = 1.0);
+  // behavior is always re-derived from it, never set directly.
+  float alertLevel = 0.0F;
+  std::uint64_t lastRiseTick = 0;         // dead-time anchor; resets on any rise
+  std::uint8_t maxAlertIndexThisEngagement = 0;  // high-water band (calm-down)
+  std::uint64_t graceUntilTick = 0;       // up-hysteresis window end
+  float graceThreshold = 0.0F;            // level when the window opened
+  std::uint32_t graceCount = 0;           // swallowed rises this window
 };
 
 struct AiState {
