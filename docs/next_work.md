@@ -1,5 +1,32 @@
 # iggy3d — Next Work / Onboarding
 
+## Current working setup (2026-07-02) — READ FIRST
+
+**Where to work:** the Linux box, in `~/iggy3d-clean` — a git worktree on the clean trunk `iggy3d-main` (builds + tests green on GCC 16, Vulkan OFF). The old box branches (`claude/creative-mode-*`, `claude/npc-line-of-sight`, `claude/p3-zoo-ingest`, `render-lighting`, `imgui-m1`, `edi-map-converter`) are preserved in the `~/iggy3d` clone for reference — cherry-pick from them only when a specific feature is wanted.
+
+**Agent split (hold the boundary):** **Claude** owns the NPC behaviour loop + movement gameplay (`src/runtime/ai/`, perception, the alert/awareness FSM, movement). **Codex** owns the creative work (map-maker/modeler, rendering, asset pipeline, `src/app/iggy3d/creative/`). When committing in a shared tree, stage **only your own hunks**; never absorb the other agent's `creative/*` / `runtime/ai/*` changes.
+
+**Build on the box:**
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+  -DIGGY3D_ENABLE_VULKAN=OFF -DIGGY3D_USE_SYSTEM_SDL3=ON \
+  -DSDL3_DIR=/home/kogaRyu/deps/prefix/usr/lib64/cmake/SDL3
+cmake --build build -j        # add `-- -k 0` to see ALL failures at once
+ctest --test-dir build        # the gate
+```
+GCC/libstdc++ is stricter than the Mac's clang/libc++ about includes — add the direct `#include` (e.g. `<cstdint>`) when it complains. Vulkan render sources are NOT compiled here.
+
+**Git:** `~/iggy3d-clean` syncs GitHub directly over SSH — plain `git pull` / `git push` (trunk = `KOGA-ryu/iggy`, branch `iggy3d-main`).
+
+**Current focus — the NPC stealth loop** (Claude's lane). Blueprint: [`stealth-ai-plan.md`](stealth-ai-plan.md) — a clean-room 6-slice plan mined from The Dark Mod (design shape + reference values only, no GPL code).
+- Slices 1–2 (LOS occlusion + FOV vision cone + authored facing) — **DONE** (+ gaze-blade debug overlay, `fixtures/demos/npc_vision_lab`).
+- Slice 5 (graded alert FSM: `alertLevel` 0..1, Idle→Observant→Suspicious→Searching→Alert→combat, dead-time decay + grace hysteresis, no-target combat cap) — **core DONE** as pure functions in `src/runtime/ai/NpcAlertSystem.*` + `npc_alert_fsm_tests`, **not yet wired into the live decision loop**.
+- **Next:** slice 5 *integration* — wire the FSM into `enqueueNpcBehaviorCommands` (Session.cpp) so NPCs escalate in-game (this intentionally churns the existing instant-chase tests) → then slice 6 (patrol routes + investigate-last-known-position memory). See the `merge-linux-box`, `agent-boundary-codex`, and `game-vision` memory.
+
+The backlog below (2026-06-30) is still valid future work, secondary to the stealth loop.
+
+---
+
 > Start-here map for the next working session. Written 2026-06-30 at a good stopping point: suite green, coupling decoupling underway, ASCII authoring surface fully scouted. Each stream below is self-contained — pick one and go. Companion docs: [`ascii_dungeon_authoring_reference.md`](ascii_dungeon_authoring_reference.md), [`multiroom_connectivity_design.md`](multiroom_connectivity_design.md).
 
 ## Current state (what's true right now)
