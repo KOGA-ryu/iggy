@@ -1,3 +1,4 @@
+#include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
 #include "runtime/replay/StateHash.hpp"
@@ -1216,6 +1217,96 @@ bool patrolRouteRoundTripsThroughSaveLoad() {
   return ok;
 }
 
+// a2 commit 2: a mid-engagement guard's alert FSM, last-known memory, and facing survive
+// save->load with EXACT-float fidelity (the lossless encoder pin — a hash compare would pass
+// trivially and is forbidden as the fidelity proof); a fresh guard stays fresh; old envelopes load.
+bool alertMemoryFacingRoundTripsThroughSaveLoad() {
+  iggy3d::Session source = makeSession();
+  iggy3d::SessionState sourceState = source.state();
+  iggy3d::AiActorState actor;
+  actor.actor = {2};
+  actor.behaviorProfileId = "default";
+  // Non-3-decimal values: formatFloat (fixed 3-decimal) would lose these; formatFloatLossless keeps them.
+  actor.alertLevel = 0.4237123F;
+  actor.lastRiseTick = 4242;
+  actor.maxAlertIndexThisEngagement = 3;
+  actor.graceUntilTick = 4300;
+  actor.graceThreshold = 0.2617319F;
+  actor.graceCount = 2;
+  actor.lastKnownTargetPosition = {3.1415927F, 0.0F, 2.7182817F};
+  actor.lastKnownTargetTick = 4230;
+  actor.hasLastKnownTarget = true;
+  actor.investigateDwellTicks = 17;
+  actor.facingDirection = {0.6427876F, 0.0F, 0.7660444F};  // ~40 deg, non-3-decimal
+  sourceState.ai.actors.push_back(actor);
+
+  const iggy3d::SaveStateResult saved = iggy3d::saveSessionStateEncoded(sourceState);
+  iggy3d::Session loaded = makeSession();
+  (void)iggy3d::loadEncodedSaveIntoSession(loaded, saved.encodedSaveText,
+                                           compatibilityFor(saved.envelope));
+  const iggy3d::AiActorState* la =
+      loaded.state().ai.actors.empty() ? nullptr : &loaded.state().ai.actors.front();
+
+  const iggy3d::AlertProfile profile;  // default band tuning; band is derived from the exact level
+  bool ok = expect(la != nullptr, "alert actor loaded");
+  ok = ok &&
+       // EXACT-float equality (==, NOT nearlyEqual, NOT a hash compare) proves the lossless encoder.
+       expect(la != nullptr && la->alertLevel == 0.4237123F, "alertLevel exact") &&
+       expect(la != nullptr && la->graceThreshold == 0.2617319F, "graceThreshold exact") &&
+       expect(la != nullptr && la->lastKnownTargetPosition.x == 3.1415927F &&
+                  la->lastKnownTargetPosition.z == 2.7182817F, "lastKnown position exact") &&
+       expect(la != nullptr && la->facingDirection.x == 0.6427876F &&
+                  la->facingDirection.z == 0.7660444F, "facingDirection exact") &&
+       expect(la != nullptr && iggy3d::alertBandIndex(la->alertLevel, profile) ==
+                                   iggy3d::alertBandIndex(0.4237123F, profile),
+              "alert band survives (derived from the exact level)") &&
+       expect(la != nullptr && la->lastRiseTick == 4242U, "lastRiseTick survives") &&
+       expect(la != nullptr && la->maxAlertIndexThisEngagement == 3U, "maxAlertIndex survives") &&
+       expect(la != nullptr && la->graceUntilTick == 4300U && la->graceCount == 2U,
+              "grace window survives") &&
+       expect(la != nullptr && la->lastKnownTargetTick == 4230U, "lastKnown tick survives") &&
+       expect(la != nullptr && la->hasLastKnownTarget, "hasLastKnownTarget survives") &&
+       expect(la != nullptr && la->investigateDwellTicks == 17U, "dwell survives");
+
+  // A fresh guard round-trips to defaults (amnesiac-but-valid).
+  iggy3d::SessionState freshState = makeSession().state();
+  iggy3d::AiActorState fresh;
+  fresh.actor = {2};
+  fresh.behaviorProfileId = "default";
+  freshState.ai.actors.push_back(fresh);
+  const iggy3d::SaveStateResult freshSaved = iggy3d::saveSessionStateEncoded(freshState);
+  iggy3d::Session freshLoaded = makeSession();
+  (void)iggy3d::loadEncodedSaveIntoSession(freshLoaded, freshSaved.encodedSaveText,
+                                           compatibilityFor(freshSaved.envelope));
+  const iggy3d::AiActorState* fl =
+      freshLoaded.state().ai.actors.empty() ? nullptr : &freshLoaded.state().ai.actors.front();
+  ok = ok && expect(fl != nullptr && fl->alertLevel == 0.0F && !fl->hasLastKnownTarget &&
+                        fl->investigateDwellTicks == 0U && fl->facingDirection.x == 0.0F &&
+                        fl->facingDirection.z == 1.0F,
+                    "fresh guard stays fresh");
+
+  // Backward compat: an old envelope missing the commit-2 keys loads to the defaults.
+  std::string oldStyle = eraseAllLinesContaining(saved.encodedSaveText, "ai.actor.0.alertLevel");
+  oldStyle = eraseAllLinesContaining(oldStyle, "ai.actor.0.lastRiseTick");
+  oldStyle = eraseAllLinesContaining(oldStyle, "ai.actor.0.maxAlertIndexThisEngagement");
+  oldStyle = eraseAllLinesContaining(oldStyle, "ai.actor.0.graceUntilTick");
+  oldStyle = eraseAllLinesContaining(oldStyle, "ai.actor.0.graceThreshold");
+  oldStyle = eraseAllLinesContaining(oldStyle, "ai.actor.0.graceCount");
+  oldStyle = eraseAllLinesContaining(oldStyle, "ai.actor.0.lastKnownTargetPosition");
+  oldStyle = eraseAllLinesContaining(oldStyle, "ai.actor.0.lastKnownTargetTick");
+  oldStyle = eraseAllLinesContaining(oldStyle, "ai.actor.0.hasLastKnownTarget");
+  oldStyle = eraseAllLinesContaining(oldStyle, "ai.actor.0.investigateDwellTicks");
+  oldStyle = eraseAllLinesContaining(oldStyle, "ai.actor.0.facingDirection");
+  const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(oldStyle);
+  ok = ok && expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                    "old save without alert/memory/facing keys decodes") &&
+       expect(decoded.envelope.ai.actors.front().alertLevel == 0.0F &&
+                  !decoded.envelope.ai.actors.front().hasLastKnownTarget &&
+                  decoded.envelope.ai.actors.front().facingDirection.z == 1.0F,
+              "old save alert/memory/facing default to fresh");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -1235,6 +1326,7 @@ int main() {
   ok = defaultAiActorStateHasPassiveDefaults() && ok;
   ok = aiStateRoundTripsThroughSaveLoadAndCodec() && ok;
   ok = patrolRouteRoundTripsThroughSaveLoad() && ok;
+  ok = alertMemoryFacingRoundTripsThroughSaveLoad() && ok;
   ok = aiStateChangesParticipateInHash() && ok;
   ok = invalidCombatStateRejectedOnLoad() && ok;
   return ok ? 0 : 1;

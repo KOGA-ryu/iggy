@@ -226,6 +226,18 @@ StateHashValue computeStateHash(const SessionState& state) {
     addEnum(hasher, "ai.patrolMode", actor.patrolMode);
     addU64(hasher, "ai.patrolTargetIndex", actor.patrolTargetIndex);
     addBoolField(hasher, "ai.patrolForward", actor.patrolForward);
+    // Alert FSM + last-known memory + facing (a2 commit 2). Quantized like every durable float.
+    addFloatField(hasher, "ai.alertLevel", actor.alertLevel);
+    addU64(hasher, "ai.lastRiseTick", actor.lastRiseTick);
+    addU64(hasher, "ai.maxAlertIndexThisEngagement", actor.maxAlertIndexThisEngagement);
+    addU64(hasher, "ai.graceUntilTick", actor.graceUntilTick);
+    addFloatField(hasher, "ai.graceThreshold", actor.graceThreshold);
+    addU64(hasher, "ai.graceCount", actor.graceCount);
+    addVec3Field(hasher, "ai.lastKnownTargetPosition", actor.lastKnownTargetPosition);
+    addU64(hasher, "ai.lastKnownTargetTick", actor.lastKnownTargetTick);
+    addBoolField(hasher, "ai.hasLastKnownTarget", actor.hasLastKnownTarget);
+    addU64(hasher, "ai.investigateDwellTicks", actor.investigateDwellTicks);
+    addVec3Field(hasher, "ai.facingDirection", actor.facingDirection);
   }
 
   addU64(hasher, "objectives.count", state.objectives.objectives.size());

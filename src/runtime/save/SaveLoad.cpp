@@ -261,6 +261,17 @@ SaveEnvelope envelopeFromState(const SessionState& state) {
     record.patrolMode = actor.patrolMode;
     record.patrolTargetIndex = actor.patrolTargetIndex;
     record.patrolForward = actor.patrolForward;
+    record.alertLevel = actor.alertLevel;
+    record.lastRiseTick = actor.lastRiseTick;
+    record.maxAlertIndexThisEngagement = actor.maxAlertIndexThisEngagement;
+    record.graceUntilTick = actor.graceUntilTick;
+    record.graceThreshold = actor.graceThreshold;
+    record.graceCount = actor.graceCount;
+    record.lastKnownTargetPosition = actor.lastKnownTargetPosition;
+    record.lastKnownTargetTick = actor.lastKnownTargetTick;
+    record.hasLastKnownTarget = actor.hasLastKnownTarget;
+    record.investigateDwellTicks = actor.investigateDwellTicks;
+    record.facingDirection = actor.facingDirection;
     envelope.ai.actors.push_back(record);
   }
   for (const ObjectiveRecord& objective : state.objectives.objectives) {
@@ -440,6 +451,17 @@ LoadStateResult buildCandidate(const SaveEnvelope& envelope,
     actor.patrolMode = saved.patrolMode;
     actor.patrolTargetIndex = saved.patrolTargetIndex;
     actor.patrolForward = saved.patrolForward;
+    actor.alertLevel = saved.alertLevel;
+    actor.lastRiseTick = saved.lastRiseTick;
+    actor.maxAlertIndexThisEngagement = saved.maxAlertIndexThisEngagement;
+    actor.graceUntilTick = saved.graceUntilTick;
+    actor.graceThreshold = saved.graceThreshold;
+    actor.graceCount = saved.graceCount;
+    actor.lastKnownTargetPosition = saved.lastKnownTargetPosition;
+    actor.lastKnownTargetTick = saved.lastKnownTargetTick;
+    actor.hasLastKnownTarget = saved.hasLastKnownTarget;
+    actor.investigateDwellTicks = saved.investigateDwellTicks;
+    actor.facingDirection = saved.facingDirection;
     candidate.ai.actors.push_back(actor);
   }
   for (const SaveObjectiveRecord& saved : envelope.objectives.objectives) {

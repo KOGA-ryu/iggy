@@ -1045,6 +1045,18 @@ private:
       lineEnum(p + "patrolMode", actor.patrolMode);
       line(p + "patrolTargetIndex", unsignedText(actor.patrolTargetIndex));
       lineBool(p + "patrolForward", actor.patrolForward);
+      // Alert FSM + last-known memory + facing (a2 commit 2). Floats/Vec3s lossless.
+      line(p + "alertLevel", formatFloatLossless(actor.alertLevel));
+      line(p + "lastRiseTick", unsignedText(actor.lastRiseTick));
+      line(p + "maxAlertIndexThisEngagement", unsignedText(actor.maxAlertIndexThisEngagement));
+      line(p + "graceUntilTick", unsignedText(actor.graceUntilTick));
+      line(p + "graceThreshold", formatFloatLossless(actor.graceThreshold));
+      line(p + "graceCount", unsignedText(actor.graceCount));
+      line(p + "lastKnownTargetPosition", formatVec3Lossless(actor.lastKnownTargetPosition));
+      line(p + "lastKnownTargetTick", unsignedText(actor.lastKnownTargetTick));
+      lineBool(p + "hasLastKnownTarget", actor.hasLastKnownTarget);
+      line(p + "investigateDwellTicks", unsignedText(actor.investigateDwellTicks));
+      line(p + "facingDirection", formatVec3Lossless(actor.facingDirection));
     }
   }
 
@@ -1652,6 +1664,41 @@ private:
       }
       if (nextKeyIs(p + "patrolForward")) {
         readBool(p + "patrolForward", actor.patrolForward);
+      }
+      // Alert FSM + last-known memory + facing (a2 commit 2). Each guarded so an old envelope
+      // missing them decodes to the record defaults (fresh, amnesiac-but-valid guard).
+      if (nextKeyIs(p + "alertLevel")) {
+        readFloat(p + "alertLevel", actor.alertLevel);
+      }
+      if (nextKeyIs(p + "lastRiseTick")) {
+        readUnsigned(p + "lastRiseTick", actor.lastRiseTick);
+      }
+      if (nextKeyIs(p + "maxAlertIndexThisEngagement")) {
+        readUnsigned(p + "maxAlertIndexThisEngagement", actor.maxAlertIndexThisEngagement);
+      }
+      if (nextKeyIs(p + "graceUntilTick")) {
+        readUnsigned(p + "graceUntilTick", actor.graceUntilTick);
+      }
+      if (nextKeyIs(p + "graceThreshold")) {
+        readFloat(p + "graceThreshold", actor.graceThreshold);
+      }
+      if (nextKeyIs(p + "graceCount")) {
+        readUnsigned(p + "graceCount", actor.graceCount);
+      }
+      if (nextKeyIs(p + "lastKnownTargetPosition")) {
+        readVec3(p + "lastKnownTargetPosition", actor.lastKnownTargetPosition);
+      }
+      if (nextKeyIs(p + "lastKnownTargetTick")) {
+        readUnsigned(p + "lastKnownTargetTick", actor.lastKnownTargetTick);
+      }
+      if (nextKeyIs(p + "hasLastKnownTarget")) {
+        readBool(p + "hasLastKnownTarget", actor.hasLastKnownTarget);
+      }
+      if (nextKeyIs(p + "investigateDwellTicks")) {
+        readUnsigned(p + "investigateDwellTicks", actor.investigateDwellTicks);
+      }
+      if (nextKeyIs(p + "facingDirection")) {
+        readVec3(p + "facingDirection", actor.facingDirection);
       }
     }
   }

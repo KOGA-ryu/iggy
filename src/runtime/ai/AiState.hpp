@@ -118,9 +118,9 @@ struct AiActorState {
   float leashRadiusMeters = 0.0F;
   float returnRadiusMeters = 0.0F;
   float homeToleranceMeters = 0.0F;
-  // Horizontal gaze direction (normalized) the NPC's vision cone originates
-  // from. Transient runtime state: recomputed each decision tick by the AI,
-  // not serialized or hashed. Defaults to canonical forward until driven.
+  // Horizontal gaze direction (normalized) the NPC's vision cone originates from. DURABLE
+  // (a2 commit 2): saved + hashed, so a reloaded guard keeps facing where it was looking instead
+  // of snapping toward the player. Defaults to canonical forward until driven.
   Vec3 facingDirection{0.0F, 0.0F, 1.0F};
   // Last-decision perception outcome, mirrored for read-only observability
   // (debug snapshot / tests / vision overlay). Not part of the decision inputs.
@@ -128,8 +128,9 @@ struct AiActorState {
   bool lastTargetInVisionCone = false;
   bool lastTargetHasLineOfSight = false;
   float lastSightRangeMeters = 0.0F;
-  // Graded alert FSM (slice 5). alertLevel is normalized 0..1 (combat = 1.0);
-  // behavior is always re-derived from it, never set directly.
+  // Graded alert FSM (slice 5). alertLevel is normalized 0..1 (combat = 1.0); behavior is always
+  // re-derived from it, never set directly. DURABLE (a2 commit 2): the whole FSM (level + grace)
+  // is saved (LOSSLESS floats) + hashed, so a mid-engagement reload keeps the guard's alarm.
   float alertLevel = 0.0F;
   std::uint64_t lastRiseTick = 0;         // dead-time anchor; resets on any rise
   std::uint8_t maxAlertIndexThisEngagement = 0;  // high-water band (calm-down)
@@ -143,9 +144,9 @@ struct AiActorState {
   PatrolMode patrolMode = PatrolMode::Loop;
   std::uint32_t patrolTargetIndex = 0;    // waypoint currently walking toward
   bool patrolForward = true;              // ping-pong travel direction
-  // Last-known target memory (slice 7). Transient runtime state (not serialized/hashed, like
-  // alertLevel/patrol cursor): where/when the target was last visually confirmed, and the
-  // look-around dwell counter once the guard reaches that spot.
+  // Last-known target memory (slice 7). DURABLE (a2 commit 2): saved (LOSSLESS position) + hashed,
+  // so a reloaded guard still investigates where it last saw the target instead of forgetting.
+  // Where/when the target was last visually confirmed, and the look-around dwell on arrival.
   Vec3 lastKnownTargetPosition{};
   std::uint64_t lastKnownTargetTick = 0;
   bool hasLastKnownTarget = false;

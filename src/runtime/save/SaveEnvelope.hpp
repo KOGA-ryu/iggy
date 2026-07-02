@@ -276,6 +276,18 @@ struct SaveAiActorRecord {
   PatrolMode patrolMode = PatrolMode::Loop;
   std::uint32_t patrolTargetIndex = 0;
   bool patrolForward = true;
+  // Alert FSM + last-known memory + facing (a2 commit 2). Defaults match AiActorState.
+  float alertLevel = 0.0F;
+  std::uint64_t lastRiseTick = 0;
+  std::uint8_t maxAlertIndexThisEngagement = 0;
+  std::uint64_t graceUntilTick = 0;
+  float graceThreshold = 0.0F;
+  std::uint32_t graceCount = 0;
+  Vec3 lastKnownTargetPosition{};
+  std::uint64_t lastKnownTargetTick = 0;
+  bool hasLastKnownTarget = false;
+  std::uint32_t investigateDwellTicks = 0;
+  Vec3 facingDirection{0.0F, 0.0F, 1.0F};
 };
 
 struct SaveAiSection {
