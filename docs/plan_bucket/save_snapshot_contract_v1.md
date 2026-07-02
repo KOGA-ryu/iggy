@@ -11,6 +11,49 @@ make the save unloadable.
 
 This is a plan only. It does not authorize source edits.
 
+## CURRENT STATUS (as of slice sd5, 2026-07-02) — CONSUMER-COMPLETE, PRODUCER-MISSING
+
+> Read this before designing against the contract below. The snapshot pipeline is fully wired
+> on the CONSUMER side but has **no producer**: nothing in production ever writes a save
+> snapshot. Real installs always render the fallback; `<id>.snapshot.png` files appear only
+> where tests plant them as fixtures.
+
+### 1. What exists and works
+- **Paths:** `saveSnapshotPathForId(root, id)` = `saveRoot/<id>.snapshot.png`, with the deleted
+  twin under `saveRoot/deleted/` (`src/runtime/save/SaveFileStore.cpp`).
+- **Both-direction, best-effort moves:** soft-delete and recover move the snapshot sidecar
+  alongside the save file. A missing snapshot never fails the op — it sets a `snapshotMissing`
+  flag and succeeds. Soft-delete sets `snapshotMoved`/`snapshotMissing`; recover sets
+  `snapshotRecovered`/`snapshotMissing`, each with reason tokens (`SaveFileStore.cpp`).
+- **Read side:** `SaveBridge.cpp` fills `snapshotAvailable`/`snapshotStatus` per slot;
+  `CatalogProjector.cpp` sets `snapshotFallback = !snapshotAvailable`.
+- **Receipt proof:** the recover outcome (including snapshot flags) reaches the receipt via
+  `ReceiptBuilder.cpp`.
+
+### 2. What is missing — the producer
+- **Nothing writes `snapshotPath`.** `makeDurableSavePlan` carries
+  `plan.paths.snapshotPath = saveSnapshotPathForId(...)` (`SaveFileStore.cpp:192`), but the
+  temp-write and commit steps (`writeDurableSaveTempFile` / `commitDurableSaveTempFile`) never
+  reference it. The durable save write produces the `.iggy3d.save` file and nothing else.
+- **No PNG encoder is reachable from the save lane.** To be precise: the tree is NOT
+  encoder-free — the repo's one PNG writer is a full IHDR/IDAT/CRC encoder in the
+  **Vulkan-gated render lane** (`src/render/vulkan/FrameCapture.cpp`), which is compiled OUT on
+  the Vulkan-OFF box config and is Codex/render territory. It is simply not wired to, or
+  reachable from, the save write path.
+
+### 3. Consequence
+Because no producer runs, every real install's save has no snapshot file → the read side reports
+`snapshotAvailable = false` → the UI always takes `snapshotFallback`. Any `<id>.snapshot.png`
+observed today was planted by a test fixture, not by gameplay.
+
+### 4. Boundary note — the future producer is deferred render-lane work
+Building the producer is framebuffer-capture work in the **render lane (Codex territory)**: grab
+the gameplay/tactical camera framebuffer at save time (behind the pause UI when saving from
+pause, per the User Decision below) and encode it — it would naturally reuse the existing
+`FrameCapture` PNG encoder. This is **deliberately deferred** (planner decision); it is NOT built
+by the sd1–sd5 series. The consumer contract below stands so the producer can be dropped in later
+without reworking the move/read/fallback pipeline.
+
 ## User Decision
 
 When a save is written, capture a screenshot from the active gameplay camera.
