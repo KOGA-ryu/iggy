@@ -32,7 +32,26 @@ enum class AiIntentKind : std::uint8_t {
   MoveTowardTarget,
   AttackTarget,
   ReturnToAnchor,
+  // Low-alert patrol (slice 6), appended so serialized numbers stay stable. Drives a
+  // point-move toward the current waypoint, sharing the ReturnToAnchor move path.
+  Patrol,
 };
+
+// How an NPC continues its patrol route on reaching the last waypoint.
+enum class PatrolMode : std::uint8_t {
+  Loop,      // wrap back to the first waypoint
+  PingPong,  // reverse direction at each end
+};
+
+inline std::string_view patrolModeName(PatrolMode mode) {
+  switch (mode) {
+    case PatrolMode::Loop:
+      return "loop";
+    case PatrolMode::PingPong:
+      return "ping_pong";
+  }
+  return "loop";
+}
 
 inline std::string_view aiBehaviorKindName(AiBehaviorKind kind) {
   switch (kind) {
@@ -72,6 +91,8 @@ inline std::string_view aiIntentKindName(AiIntentKind kind) {
       return "attack_target";
     case AiIntentKind::ReturnToAnchor:
       return "return_to_anchor";
+    case AiIntentKind::Patrol:
+      return "patrol";
   }
   return "none";
 }
@@ -110,6 +131,13 @@ struct AiActorState {
   std::uint64_t graceUntilTick = 0;       // up-hysteresis window end
   float graceThreshold = 0.0F;            // level when the window opened
   std::uint32_t graceCount = 0;           // swallowed rises this window
+  // Authored patrol route (slice 6). Seeded once at spawn; the cursor is transient
+  // runtime state (not serialized/hashed, like alertLevel/facingDirection). Empty
+  // route = no patrol (stands still when idle, back-compat).
+  std::vector<Vec3> patrolWaypoints;
+  PatrolMode patrolMode = PatrolMode::Loop;
+  std::uint32_t patrolTargetIndex = 0;    // waypoint currently walking toward
+  bool patrolForward = true;              // ping-pong travel direction
 };
 
 struct AiState {

@@ -435,6 +435,10 @@ iggy3d_add_unit_test(npc_alert_fsm_tests tests/unit/npc_alert_fsm_tests.cpp)
 set_tests_properties(npc_alert_fsm_tests PROPERTIES
   LABELS "unit;runtime;ai;npc_behavior;alert;iggy3d")
 
+iggy3d_add_unit_test(npc_patrol_system_tests tests/unit/npc_patrol_system_tests.cpp)
+set_tests_properties(npc_patrol_system_tests PROPERTIES
+  LABELS "unit;runtime;ai;npc_behavior;patrol;iggy3d")
+
 iggy3d_add_unit_test(npc_behavior_debug_snapshot_tests
   tests/unit/npc_behavior_debug_snapshot_tests.cpp)
 set_tests_properties(npc_behavior_debug_snapshot_tests PROPERTIES

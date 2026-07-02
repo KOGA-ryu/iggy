@@ -283,6 +283,51 @@ bool scenarioAiActorRejectsInvalidInputs() {
   return ok;
 }
 
+bool scenarioAiActorParsesPatrolRoute() {
+  // Optional patrol keys: repeated `waypoint` builds an ordered route; `patrol_mode`
+  // selects loop/ping_pong. An actor with no patrol keys yields an empty route.
+  std::string routed = scenarioWithAiActor("training_dummy", "passive");
+  routed += "waypoint = [1.0, 0.0, 2.0]\n";
+  routed += "waypoint = [3.0, 0.0, 4.0]\n";
+  routed += "patrol_mode = \"ping_pong\"\n";
+  const iggy3d::ScenarioLoadResult route = iggy3d::parseScenarioText(routed);
+
+  bool ok = expect(route.status == iggy3d::ScenarioLoadStatus::Ok, "patrol route parses") &&
+            expect(route.seed.aiActors.size() == 1U, "patrol actor count") &&
+            expect(route.seed.aiActors[0].patrolWaypoints.size() == 2U,
+                   "patrol waypoint count") &&
+            expect(route.seed.aiActors[0].patrolWaypoints[0].x == 1.0F &&
+                       route.seed.aiActors[0].patrolWaypoints[0].z == 2.0F,
+                   "first waypoint ordered") &&
+            expect(route.seed.aiActors[0].patrolWaypoints[1].x == 3.0F &&
+                       route.seed.aiActors[0].patrolWaypoints[1].z == 4.0F,
+                   "second waypoint ordered") &&
+            expect(route.seed.aiActors[0].patrolMode == iggy3d::PatrolMode::PingPong,
+                   "patrol mode ping_pong");
+
+  // Bad patrol_mode value fails InvalidEnum.
+  std::string badMode = scenarioWithAiActor("training_dummy", "passive");
+  badMode += "patrol_mode = \"diagonal\"\n";
+  const iggy3d::ScenarioLoadResult bad = iggy3d::parseScenarioText(badMode);
+  ok = ok && expect(bad.status == iggy3d::ScenarioLoadStatus::InvalidEnum,
+                    "invalid patrol mode rejects");
+
+  // Bad waypoint value fails InvalidNumber.
+  std::string badWaypoint = scenarioWithAiActor("training_dummy", "passive");
+  badWaypoint += "waypoint = [1.0, 0.0]\n";  // wrong arity
+  const iggy3d::ScenarioLoadResult badWp = iggy3d::parseScenarioText(badWaypoint);
+  ok = ok && expect(badWp.status == iggy3d::ScenarioLoadStatus::InvalidNumber,
+                    "invalid waypoint rejects");
+
+  // Back-compat: no patrol keys -> empty route.
+  const iggy3d::ScenarioLoadResult plain =
+      iggy3d::parseScenarioText(scenarioWithAiActor("training_dummy", "passive"));
+  ok = ok && expect(plain.status == iggy3d::ScenarioLoadStatus::Ok, "plain ai actor parses") &&
+       expect(plain.seed.aiActors.size() == 1U && plain.seed.aiActors[0].patrolWaypoints.empty(),
+              "no patrol keys yields empty route");
+  return ok;
+}
+
 
 bool scenarioSeedContainsAiGuardAnchors() {
   const iggy3d::ScenarioLoadResult result =
@@ -731,7 +776,8 @@ bool loadPackageSmoke() {
 int main() {
   const bool ok = parseValidPackageAndScenarioText() && scenarioSeedContainsDefaults() &&
                   scenarioSeedContainsEntities() && scenarioSeedContainsAiActors() &&
-                  scenarioAiActorRejectsInvalidInputs() && scenarioSeedContainsAiGuardAnchors() &&
+                  scenarioAiActorRejectsInvalidInputs() && scenarioAiActorParsesPatrolRoute() &&
+                  scenarioSeedContainsAiGuardAnchors() &&
                   scenarioAiGuardAnchorRejectsInvalidInputs() && validatorAcceptsAndRejects() &&
                   validatorAcceptsAndRejectsAiGuardAnchors() && loaderRejectsInvalidInputs() &&
                   loadPackageSmoke();

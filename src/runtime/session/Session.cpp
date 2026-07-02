@@ -10,6 +10,7 @@
 #include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/ai/NpcBehaviorSystem.hpp"
+#include "runtime/ai/NpcPatrolSystem.hpp"
 #include "runtime/camera/CameraModePolicy.hpp"
 #include "runtime/clock/Clock.hpp"
 #include "runtime/physics/PhysicsCollisionQueries.hpp"
@@ -187,6 +188,16 @@ StatusResult createAiActors(const FixtureScenarioSeed& seed,
     actorState.facingDirection =
         aiSeed.hasFacing ? facingDirectionFromDegrees(aiSeed.facingDegrees)
                          : initialNpcFacing(world, actor->transform.position);
+    // Optional authored patrol route (slice 6). Empty = no patrol; a non-empty route
+    // must be finite (fail-closed, same pattern as the other ai-seed guards).
+    if (!aiSeed.patrolWaypoints.empty()) {
+      if (!isValidPatrolRoute(aiSeed.patrolWaypoints)) {
+        return statusError("session.ai_seed_invalid_patrol_route",
+                           "ai actor patrol route has a non-finite waypoint");
+      }
+      actorState.patrolWaypoints = aiSeed.patrolWaypoints;
+      actorState.patrolMode = aiSeed.patrolMode;
+    }
     ai.actors.push_back(std::move(actorState));
     seededActors.push_back(actor->id);
   }
@@ -671,6 +682,48 @@ NpcBehaviorDecision reconcileAlertBand(const NpcBehaviorDecision& engaged,
   return downgraded;
 }
 
+// A resolved perception with a usable actor position (mirrors the NpcBehaviorSystem
+// predicate; patrol needs the live position to measure waypoint arrival).
+bool perceptionHasActorPosition(const NpcPerceptionResult& perception) {
+  return isValid(perception.actor) && isFinite(perception.actorPosition);
+}
+
+// Overlay low-alert patrol onto the reconciled decision (slice 6). Patrol drives
+// movement ONLY when the NPC is at rest in the Idle/Observant band; every engaged /
+// returning / passive / defeated / cooldown outcome is left untouched (none is an
+// Idle/Observant + Wait resting state), so s5 and guard/leash behavior never regress.
+NpcBehaviorDecision maybeApplyPatrol(const NpcBehaviorDecision& decision,
+                                     AiActorState& actor,
+                                     const NpcPerceptionResult& perception,
+                                     const AlertProfile& profile) {
+  const bool resting =
+      decision.intent == AiIntentKind::Wait &&
+      (decision.behavior == AiBehaviorKind::Idle ||
+       decision.behavior == AiBehaviorKind::Observant);
+  if (actor.patrolWaypoints.empty() || !resting ||
+      alertBandIndex(actor.alertLevel, profile) > 1U ||
+      !perceptionHasActorPosition(perception)) {
+    return decision;
+  }
+
+  const NpcPatrolStep step =
+      npcStepPatrol(actor, perception.actorPosition, kPatrolArriveEpsilonMeters);
+  if (!step.active) {
+    return decision;
+  }
+
+  // Keep the alert-derived behavior + target; switch to a point-move toward the
+  // waypoint. status=Decided so shouldBuildCommandForDecision emits the Move (a resting
+  // decision is NoTarget, which would emit nothing).
+  NpcBehaviorDecision patrol = decision;
+  patrol.status = NpcBehaviorDecisionStatus::Decided;
+  patrol.intent = AiIntentKind::Patrol;
+  patrol.homePosition = step.destination;
+  patrol.returnStopDistanceMeters = kPatrolArriveEpsilonMeters;
+  patrol.cooldownTicksRemaining = 0;
+  return patrol;
+}
+
 void applyNpcBehaviorDecision(AiActorState& actorState,
                               const NpcBehaviorDecision& decision) {
   actorState.behavior = decision.behavior;
@@ -719,6 +772,8 @@ void updateNpcFacing(AiActorState& actorState,
           perception.actorPosition, perception.targetPosition);
       break;
     case AiIntentKind::ReturnToAnchor:
+    case AiIntentKind::Patrol:
+      // Both point-moves face decision.homePosition (anchor / current waypoint).
       actorState.facingDirection = horizontalDirectionOrForward(
           perception.actorPosition, decision.homePosition);
       break;
@@ -849,8 +904,9 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
     const NpcBehaviorDecision engaged =
         chooseNpcBehaviorIntent(NpcBehaviorDecisionRequest{&actorState, perception, config,
                                                            state.clock.tickIndex});
-    const NpcBehaviorDecision decision =
+    NpcBehaviorDecision decision =
         reconcileAlertBand(engaged, actorState, alertProfile);
+    decision = maybeApplyPatrol(decision, actorState, perception, alertProfile);
     applyNpcBehaviorDecision(actorState, decision);
     updateNpcFacing(actorState, decision, perception);
     actorState.lastTargetInRadius = perception.targetInPerceptionRadius;

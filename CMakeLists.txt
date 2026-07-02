@@ -142,6 +142,7 @@ target_sources(iggy3d
     src/runtime/ai/NpcBehaviorProfile.cpp
     src/runtime/ai/NpcBehaviorDebugSnapshot.cpp
     src/runtime/ai/NpcAlertSystem.cpp
+    src/runtime/ai/NpcPatrolSystem.cpp
     src/runtime/combat/CombatSystem.cpp
     src/runtime/collision/SpatialSurfaceSet.cpp
     src/runtime/collision/CollisionQuery.cpp

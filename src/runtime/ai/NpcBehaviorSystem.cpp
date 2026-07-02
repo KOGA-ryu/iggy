@@ -497,7 +497,10 @@ NpcBehaviorCommandResult buildNpcBehaviorCommand(
     result.command = command;
     return result;
   }
-  if (request.decision.intent == AiIntentKind::ReturnToAnchor) {
+  // ReturnToAnchor and Patrol are both point-moves toward decision.homePosition (the
+  // anchor, resp. the current waypoint); they share this branch exactly.
+  if (request.decision.intent == AiIntentKind::ReturnToAnchor ||
+      request.decision.intent == AiIntentKind::Patrol) {
     if (!perceptionHasActorPosition(request.perception) ||
         !isFinite(request.decision.homePosition) ||
         !std::isfinite(request.decision.returnStopDistanceMeters) ||
