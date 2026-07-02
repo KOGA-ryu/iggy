@@ -89,13 +89,25 @@ ProductSaveCatalogBuildResult buildProductSaveCatalog(
     std::vector<ProductSaveCatalogEntry> entries) {
   ProductSaveCatalogBuildResult result;
   result.catalog.entries = sortProductSaveCatalogEntries(std::move(entries));
+  // Pass 1: fill display titles and collect the active entries. canRecoverProductSave needs the
+  // active list to reject a deleted id that collides with a live save (the store's recover would
+  // refuse it), so the recoverable count can only be predicate-authoritative after we know them.
+  std::vector<ProductSaveCatalogEntry> activeEntries;
   for (auto& entry : result.catalog.entries) {
     if (entry.displayTitle.empty()) {
       entry.displayTitle = productSaveDisplayTitle(entry);
     }
+    if (isActiveEntry(entry)) {
+      activeEntries.push_back(entry);
+    }
+  }
+  // Pass 2: counts. recoverableDeletedCount now goes through canRecoverProductSave — a deleted
+  // entry with an empty id OR an active-id collision cannot actually be recovered, so it is no
+  // longer counted (declared count correction; recoverableDeletedCount has no receipt consumer).
+  for (const auto& entry : result.catalog.entries) {
     if (isDeletedEntry(entry)) {
       ++result.deletedCount;
-      if (entry.recoverable) {
+      if (canRecoverProductSave(entry, activeEntries)) {
         ++result.recoverableDeletedCount;
       }
     } else {
