@@ -40,8 +40,11 @@ iggy3d::ProductMenuActionResult applyNewWorldAction(
     std::optional<iggy3d::Session>& activeSession,
     iggy3d::WorldSetupDraft& draft,
     iggy3d::ProductAppWindowState& window) {
+  // sd1: the context gained a save-catalog reference (the in-window new-world refresh target).
+  // These tests assert draft/window behavior, not the catalog, so a local scratch is enough.
+  iggy3d::ProductSaveBridgeResult saves;
   iggy3d::ProductNewWorldMenuActionContext context{
-      frontend, options, activeSession, draft, window};
+      frontend, options, saves, activeSession, draft, window};
   return iggy3d::applyProductNewWorldMenuAction(action, context);
 }
 

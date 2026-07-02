@@ -130,6 +130,8 @@ struct ProductStarterUiDraftState {
   std::string dungeonDraftSelectedGlyph = ".";
   std::string dungeonDraftLastGlyph = "none";
   std::string selectedSaveId;
+  // The save the delete-confirm panel is about to delete (window.saveDeleteCandidateId).
+  std::string deleteCandidateId{};
 };
 
 // Build this via buildProductStarterUiDrawListRequest() — the single request
@@ -153,7 +155,26 @@ struct ProductUiDrawListRequest {
   // the save-browser model so the drawn row highlight matches the row the
   // player navigated to instead of always defaulting to the first slot.
   std::string selectedSaveId;
+  // The save the delete-confirm panel is about to delete (window.saveDeleteCandidateId),
+  // resolved to a real title/status via resolveProductDeleteConfirmModel. Default member
+  // initializer keeps positional aggregate-init sites (hand-built test requests) warning-free.
+  std::string deleteCandidateId{};
 };
+
+// The delete-confirmation panel's dynamic text, resolved once and rendered identically by both
+// presentation lanes (the draw-list lane and the SDL view) so a destructive confirmation always
+// names the world it will delete.
+struct ProductDeleteConfirmModel {
+  std::string mapTitle;
+  std::string statusText;
+};
+
+// Resolve the delete-confirm panel text from the LIVE catalog + the tracked candidate id (the
+// single source both lanes consume). Finds the slot with id == candidateId and shows its title;
+// a deterministic fallback ("NO MAP SELECTED") when the candidate is empty/"none"/not found so
+// the panel is never blank or garbage.
+ProductDeleteConfirmModel resolveProductDeleteConfirmModel(
+    std::string_view candidateId, const ProductSaveBridgeResult& saves);
 
 std::string_view productUiPrimitiveKindName(ProductUiPrimitiveKind kind);
 std::string_view productUiToneName(ProductUiTone tone);

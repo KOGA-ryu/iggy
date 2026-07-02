@@ -207,6 +207,24 @@ std::string npcCombatTapeText() {
   return "wait\n";
 }
 
+// Graded alert (s5): a hostile NPC climbs the alert ladder from perception before it
+// attacks, so the HOSTILE combat package idles the player in view this many ticks — the
+// smallest wait-count at which the adjacent NPC reaches combat and lands its first attack
+// (measured against the default AlertProfile at this adjacency). The final tick is the
+// attack, so the combat-outcome receipt fields keep their pre-escalation values; only the
+// step counts and ai_wait_logged (sub-combat Waits on ticks 1..N-1) move. Passive/ghost
+// packages stay on the 1-tick npcCombatTapeText() so their receipts are byte-identical.
+constexpr unsigned kNpcEscalationWaits = 24U;
+
+std::string npcCombatEscalationTapeText() {
+  std::string tape;
+  tape.reserve(kNpcEscalationWaits * 5U);
+  for (unsigned i = 0; i < kNpcEscalationWaits; ++i) {
+    tape += "wait\n";
+  }
+  return tape;
+}
+
 bool makeGeneratedAsciiPackage(const std::filesystem::path& root,
                                std::string_view sourceText,
                                std::string_view scenarioText,
@@ -388,7 +406,7 @@ int main() {
                                 "######\n"
                                 "#PN$E#\n"
                                 "######\n",
-                                npcCombatTapeText(),
+                                npcCombatEscalationTapeText(),
                                 npcPackagePath,
                                 npcTapePath);
   const bool passiveNpcPackageGenerated =
@@ -1068,10 +1086,10 @@ int main() {
                               "gameplay_tape_completed") &&
       iggy3d::smoke::hasField(npcFields,
                               "gameplay_tape_step_count",
-                              "1") &&
+                              "24") &&
       iggy3d::smoke::hasField(npcFields,
                               "gameplay_tape_executed_step_count",
-                              "1") &&
+                              "24") &&
       iggy3d::smoke::hasField(npcFields,
                               "gameplay_tape_last_action",
                               "wait") &&
@@ -1092,7 +1110,7 @@ int main() {
                               "true") &&
       iggy3d::smoke::hasField(npcFields,
                               "gameplay_tape_ai_wait_logged",
-                              "false") &&
+                              "true") &&
       iggy3d::smoke::hasField(npcFields,
                               "gameplay_tape_ai_player_damaged",
                               "true") &&

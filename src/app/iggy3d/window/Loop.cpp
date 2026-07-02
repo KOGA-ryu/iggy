@@ -1,5 +1,7 @@
 #include "app/iggy3d/window/Loop.hpp"
 
+#include <utility>
+
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
@@ -50,12 +52,13 @@ void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
 
 }  // namespace
 
-ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& request) {
+ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& request) {
   ProductAppWindowState window = request.window;
-  // Mutable in-loop catalog. `request.saves` is the snapshot the loop starts
-  // from; we copy it (like `window` above) so a live soft-delete can re-scan
-  // and have Continue / the Load list / the receipt all forget the map without
-  // an app restart. The request itself stays a read-only input.
+  // Mutable in-loop catalog. `request.saves` is the snapshot the loop starts from; we copy it
+  // (like `window` above) so in-window mutations re-scan into it: a live soft-delete
+  // (Operations.cpp) and a live new-world (menu/ActionHandlers.cpp) both refresh this copy. It
+  // is RETURNED with the window so Continue / the Load list / the receipt all report the true
+  // end-of-session catalog without an app restart. The request itself stays a read-only input.
   ProductSaveBridgeResult saves = request.saves;
   window.requested = request.options.windowMode == ProductWindowMode::Window;
   const bool useVulkanRenderer =
@@ -65,7 +68,7 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
   // branch-gate: BG-1031
   if (!window.requested) {
     recordNoWindowMouseCapturePolicy(request.frontend, window);
-    return window;
+    return ProductWindowLoopResult{std::move(window), std::move(saves)};
   }
 
 #if defined(IGGY3D_HAS_SDL3)
@@ -87,7 +90,7 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
   // branch-gate: BG-1031
   if (!window.created) {
     window.status = "window_create_failed";
-    return window;
+    return ProductWindowLoopResult{std::move(window), std::move(saves)};
   }
 
   ProductWindowRendererState renderer = createProductWindowRenderer(
@@ -95,7 +98,7 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
                                    &sdlWindow, &window});
   // branch-gate: BG-1031
   if (!renderer.ready) {
-    return window;
+    return ProductWindowLoopResult{std::move(window), std::move(saves)};
   }
 
   sdlWindow.setTitle(productWindowTitle(window));
@@ -152,7 +155,7 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
   shutdownProductWindowRenderer(renderer);
   window.selectedSettingsTab = settingsTab;
   finalizeProductWindowRendererStatus(renderer, window);
-  return window;
+  return ProductWindowLoopResult{std::move(window), std::move(saves)};
 #else
   (void)request;
   window.sdlAvailable = false;
@@ -160,7 +163,9 @@ ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& reque
   window.drawable = false;
   window.openingMenuVisible = false;
   window.status = "sdl3_unavailable";
-  return window;
+  // BLIND on the box (this #else is preprocessed out with system SDL3 ON). Mirrors the SDL
+  // returns exactly: `saves == request.saves` here (unmutated), returned with the window.
+  return ProductWindowLoopResult{std::move(window), std::move(saves)};
 #endif
 }
 

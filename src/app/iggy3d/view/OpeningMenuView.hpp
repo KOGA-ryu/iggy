@@ -107,7 +107,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const DebugProjectionResult* debug,
                                          float cameraYawDegrees,
                                          float cameraPitchDegrees,
-                                         const ProductSaveBridgeResult& saves);
+                                         const ProductSaveBridgeResult& saves,
+                                         const std::string& deleteCandidateId);
 #endif
 
 }  // namespace iggy3d

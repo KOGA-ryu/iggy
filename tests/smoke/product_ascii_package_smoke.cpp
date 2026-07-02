@@ -227,7 +227,13 @@ int main() {
                               "true") &&
       iggy3d::smoke::hasField(scriptedFields, "gameplay_reach_gate", "pass") &&
       iggy3d::smoke::hasField(scriptedFields, "gameplay_last_rejection", "none") &&
-      iggy3d::smoke::hasField(scriptedFields, "attack_executed", "false") &&
+      // Graded alert (s5) re-baseline: the target NPC no longer instantly chases during
+      // the scripted approach. Previously that left the final player-attack tick failing
+      // with session.tick_invalid_state (gameplay_tick_advanced=false → attack_executed=
+      // false); now the tick advances cleanly and the player's attack executes. Verified
+      // deterministic and confirmed against the pre-change binary (session_outcome stays
+      // None in both). Test-only re-baseline of our own change's downstream output.
+      iggy3d::smoke::hasField(scriptedFields, "attack_executed", "true") &&
       iggy3d::smoke::hasField(scriptedFields,
                               "product_feedback_visible",
                               "true") &&

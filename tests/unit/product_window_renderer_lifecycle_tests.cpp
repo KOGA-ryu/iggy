@@ -1,10 +1,15 @@
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 
+#include <filesystem>
 #include <iostream>
 #include <optional>
 #include <string_view>
+#include <system_error>
 
+#include "app/input/InputAction.hpp"
+#include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/window/Loop.hpp"
 #include "render/RenderDiagnostics.hpp"
 
@@ -313,16 +318,21 @@ bool noWindowGameplayReportsMouseCaptureNotApplied() {
   window.gameplayActive = true;
   iggy3d::FrontendSettings settings;
   iggy3d::ProductSaveBridgeResult saves;
+  saves.slots.compatibleCount = 7;  // sentinel: proves the returned catalog is THIS one
 
-  const iggy3d::ProductAppWindowState result =
+  const iggy3d::ProductWindowLoopResult loopResult =
       iggy3d::runProductWindowLoop(iggy3d::ProductWindowLoopRequest{
           options, world, frontend, activeSession, worldSetupDraft, window,
           settings, saves});
-  const iggy3d::RenderReceipt receipt =
-      iggy3d::buildProductAppReceipt(options, world, frontend, settings, result,
-                                     saves);
+  const iggy3d::ProductAppWindowState& result = loopResult.window;
+  // Seam (a): the loop hands its catalog back and the receipt is built from THAT catalog. The
+  // no-window path never mutates it, so it flows through unchanged (byte-identical receipt).
+  const iggy3d::RenderReceipt receipt = iggy3d::buildProductAppReceipt(
+      options, world, frontend, settings, result, loopResult.saves);
 
-  return expect(!result.requested, "no-window not requested") &&
+  return expect(loopResult.saves.slots.compatibleCount == 7,
+                "loop returns its final save catalog to the caller") &&
+         expect(!result.requested, "no-window not requested") &&
          expect(!result.created, "no-window not created") &&
          expect(!result.mouseCaptureRequested,
                 "no-window mouse capture not requested") &&
@@ -356,6 +366,40 @@ bool noWindowGameplayReportsMouseCaptureNotApplied() {
                 "no-window receipt capture owner");
 }
 
+// Seam (b): the in-window new-world action durably writes the initial save AND refreshes the
+// loop-local catalog (sd1). Drive the handler headlessly against a real temp save root and prove
+// the context catalog now reflects the new durable save. Removing the refresh line in
+// ActionHandlers.cpp turns this RED.
+bool inWindowNewWorldRefreshesCatalog() {
+  namespace fs = std::filesystem;
+  std::error_code ec;
+  const fs::path saveRoot = fs::temp_directory_path() / "iggy3d_sd1_new_world_refresh";
+  fs::remove_all(saveRoot, ec);
+  fs::create_directories(saveRoot, ec);
+
+  iggy3d::ProductAppOptions options;
+  options.saveRoot = saveRoot;
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::WorldSetupDraft worldSetupDraft;
+  iggy3d::ProductAppWindowState window;
+  window.worldSetupDungeonDraftEditMode = false;  // MenuConfirm launches the world (not paint)
+  iggy3d::ProductSaveBridgeResult saves;          // empty catalog before the new world
+
+  const bool emptyBefore = saves.slots.compatibleCount == 0;
+
+  iggy3d::ProductNewWorldMenuActionContext context{
+      frontend, options, saves, activeSession, worldSetupDraft, window};
+  (void)iggy3d::applyProductNewWorldMenuAction(iggy3d::InputAction::MenuConfirm, context);
+
+  const bool refreshed = saves.slots.compatibleCount > 0;  // durable save is now visible
+  fs::remove_all(saveRoot, ec);
+
+  return expect(emptyBefore, "catalog empty before in-window new-world") &&
+         expect(refreshed,
+                "in-window new-world refreshes the loop-local catalog (compatible slot appeared)");
+}
+
 }  // namespace
 
 int main() {
@@ -369,7 +413,8 @@ int main() {
       starterMenuUiDrawListStatusIsStable() &&
       starterMenuSubmitMarksFramePresented() &&
       productReceiptCarriesReadinessFields() &&
-      noWindowGameplayReportsMouseCaptureNotApplied();
+      noWindowGameplayReportsMouseCaptureNotApplied() &&
+      inWindowNewWorldRefreshesCatalog();
   if (!ok) {
     return 1;
   }

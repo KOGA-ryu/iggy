@@ -22,7 +22,6 @@ enum class AppConfigStatus : std::uint8_t {
   MissingFixturePath,
   InvalidPackagePath,
   InvalidSavePath,
-  InvalidLoadPath,
   InvalidReplayPath,
   InvalidExpectedSummaryPath,
   InvalidCameraMode,
@@ -35,7 +34,6 @@ struct AppConfig {
   AppMode mode = AppMode::HeadlessDemo;
   std::filesystem::path packagePath = "fixtures/demos/first_room/package.iggy3d.toml";
   std::filesystem::path savePath;
-  std::filesystem::path loadPath;
   std::filesystem::path replayPath;
   std::filesystem::path expectedSummaryPath;
   RuntimeConfig runtimeConfig;

@@ -13,15 +13,6 @@ bool isDeletedEntry(const ProductSaveCatalogEntry& entry) {
   return entry.location == ProductSaveCatalogLocation::Deleted || entry.deleted;
 }
 
-bool hasActiveCollision(const ProductSaveCatalogEntry& deletedEntry,
-                        const std::vector<ProductSaveCatalogEntry>& activeEntries) {
-  return std::any_of(activeEntries.begin(), activeEntries.end(),
-                     [&deletedEntry](const ProductSaveCatalogEntry& activeEntry) {
-                       return isActiveEntry(activeEntry) &&
-                              activeEntry.saveId == deletedEntry.saveId;
-                     });
-}
-
 bool entrySortBefore(const ProductSaveCatalogEntry& lhs,
                      const ProductSaveCatalogEntry& rhs) {
   const bool lhsHasTime = hasProductSaveCatalogTimestamp(lhs.savedAtUtc);
@@ -74,17 +65,6 @@ bool canLoadProductSave(const ProductSaveCatalogEntry& entry) {
          !entry.corrupt;
 }
 
-bool canSoftDeleteProductSave(const ProductSaveCatalogEntry& entry) {
-  return isActiveEntry(entry) && !entry.saveId.empty();
-}
-
-bool canRecoverProductSave(
-    const ProductSaveCatalogEntry& entry,
-    const std::vector<ProductSaveCatalogEntry>& activeEntries) {
-  return isDeletedEntry(entry) && entry.recoverable && !entry.saveId.empty() &&
-         !hasActiveCollision(entry, activeEntries);
-}
-
 ProductSaveCatalogBuildResult buildProductSaveCatalog(
     std::vector<ProductSaveCatalogEntry> entries) {
   ProductSaveCatalogBuildResult result;
@@ -95,9 +75,6 @@ ProductSaveCatalogBuildResult buildProductSaveCatalog(
     }
     if (isDeletedEntry(entry)) {
       ++result.deletedCount;
-      if (entry.recoverable) {
-        ++result.recoverableDeletedCount;
-      }
     } else {
       ++result.activeCount;
       if (canLoadProductSave(entry)) {

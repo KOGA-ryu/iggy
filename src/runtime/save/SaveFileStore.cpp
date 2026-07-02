@@ -189,6 +189,9 @@ SaveFileDurableWritePlan planDurableSaveFileWrite(
   plan.paths.attemptToken = std::string(attemptToken);
   plan.paths.finalPath = saveFilePathForId(root, id);
   plan.paths.tempPath = saveFileTempPathForId(root, id, attemptToken);
+  // Carried for the move/read/fallback pipeline, but NO producer writes this yet — the
+  // temp-write/commit below never touch snapshotPath. See the CURRENT STATUS section of
+  // docs/plan_bucket/save_snapshot_contract_v1.md.
   plan.paths.snapshotPath = saveSnapshotPathForId(root, id);
   return plan;
 }

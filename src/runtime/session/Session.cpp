@@ -7,8 +7,11 @@
 
 #include "core/math/Vec3.hpp"
 #include "runtime/ability/AbilitySystem.hpp"
+#include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/ai/NpcBehaviorSystem.hpp"
+#include "runtime/ai/NpcInvestigateSystem.hpp"
+#include "runtime/ai/NpcPatrolSystem.hpp"
 #include "runtime/camera/CameraModePolicy.hpp"
 #include "runtime/clock/Clock.hpp"
 #include "runtime/physics/PhysicsCollisionQueries.hpp"
@@ -186,6 +189,16 @@ StatusResult createAiActors(const FixtureScenarioSeed& seed,
     actorState.facingDirection =
         aiSeed.hasFacing ? facingDirectionFromDegrees(aiSeed.facingDegrees)
                          : initialNpcFacing(world, actor->transform.position);
+    // Optional authored patrol route (slice 6). Empty = no patrol; a non-empty route
+    // must be finite (fail-closed, same pattern as the other ai-seed guards).
+    if (!aiSeed.patrolWaypoints.empty()) {
+      if (!isValidPatrolRoute(aiSeed.patrolWaypoints)) {
+        return statusError("session.ai_seed_invalid_patrol_route",
+                           "ai actor patrol route has a non-finite waypoint");
+      }
+      actorState.patrolWaypoints = aiSeed.patrolWaypoints;
+      actorState.patrolMode = aiSeed.patrolMode;
+    }
     ai.actors.push_back(std::move(actorState));
     seededActors.push_back(actor->id);
   }
@@ -603,6 +616,158 @@ bool shouldBuildCommandForDecision(const NpcBehaviorDecision& decision) {
          decision.status == NpcBehaviorDecisionStatus::OnCooldown;
 }
 
+// Local clamp to [0,1] matching NpcAlertSystem.cpp's private clamp01 (NaN -> 0).
+float clamp01(float value) {
+  if (!(value > 0.0F)) {
+    return 0.0F;
+  }
+  if (value > 1.0F) {
+    return 1.0F;
+  }
+  return value;
+}
+
+// A resolved, alive target entity exists (regardless of whether it is currently
+// perceived). This is the honest source for the FSM's no-target combat cap: the
+// four "target known but not visible right now" statuses still have a live
+// target, while defeat/inactive/invalid statuses do not.
+bool perceptionHasLiveTarget(NpcPerceptionStatus status) {
+  switch (status) {
+    case NpcPerceptionStatus::Ready:
+    case NpcPerceptionStatus::TargetOutOfRange:
+    case NpcPerceptionStatus::TargetOutOfCone:
+    case NpcPerceptionStatus::TargetOccluded:
+      return true;
+    case NpcPerceptionStatus::InvalidWorld:
+    case NpcPerceptionStatus::InvalidCombat:
+    case NpcPerceptionStatus::InvalidActor:
+    case NpcPerceptionStatus::InvalidTarget:
+    case NpcPerceptionStatus::InvalidConfig:
+    case NpcPerceptionStatus::ActorInactive:
+    case NpcPerceptionStatus::TargetInactive:
+    case NpcPerceptionStatus::ActorDefeated:
+    case NpcPerceptionStatus::TargetDefeated:
+      return false;
+  }
+  return false;
+}
+
+// Overlay the graded-alert band onto the fully-alert decision: only the hostile
+// combat outcomes (Chasing/Attacking, or OnCooldown) are gated. Below the combat
+// band they are downgraded to the alert rung's behavior with a passive Wait
+// intent (like a non-engaged NPC). Everything else — leash/return, passive Alert,
+// no-target Idle, defeat, disabled, waiting, invalid — passes through unchanged so
+// those authoritative outcomes always win over the alert overlay.
+NpcBehaviorDecision reconcileAlertBand(const NpcBehaviorDecision& engaged,
+                                       const AiActorState& actor,
+                                       const AlertProfile& profile) {
+  const bool hostileCombat =
+      (engaged.status == NpcBehaviorDecisionStatus::Decided &&
+       (engaged.behavior == AiBehaviorKind::Chasing ||
+        engaged.behavior == AiBehaviorKind::Attacking)) ||
+      engaged.status == NpcBehaviorDecisionStatus::OnCooldown;
+  if (!hostileCombat) {
+    return engaged;
+  }
+
+  const std::uint8_t band = alertBandIndex(actor.alertLevel, profile);
+  if (band >= 5U) {
+    return engaged;  // combat band: keep the range split / cooldown / movement
+  }
+
+  // Sub-combat: hold at the alert rung, no attack/move command this tick.
+  NpcBehaviorDecision downgraded = engaged;
+  downgraded.behavior = alertBehaviorForLevel(actor.alertLevel, profile);
+  downgraded.intent = AiIntentKind::Wait;
+  downgraded.cooldownTicksRemaining = 0;
+  return downgraded;
+}
+
+// A resolved perception with a usable actor position (mirrors the NpcBehaviorSystem
+// predicate; patrol needs the live position to measure waypoint arrival).
+bool perceptionHasActorPosition(const NpcPerceptionResult& perception) {
+  return isValid(perception.actor) && isFinite(perception.actorPosition);
+}
+
+// Overlay last-known-position investigation onto the reconciled decision (slice 7). Sits in
+// precedence BETWEEN combat (kept by reconcileAlertBand at band 5) and patrol (band <=1): when
+// the guard is standing/aware (intent==Wait) with memory of a target it can no longer see and
+// alert is still in the Searching/Alert band, walk to the remembered spot and look around.
+// Gating on intent==Wait leaves combat move/attack, leash ReturnToAnchor, and defeat/disabled
+// None untouched. Bands are disjoint from patrol's, so the two overlays never fight.
+NpcBehaviorDecision maybeApplyInvestigate(const NpcBehaviorDecision& decision,
+                                          AiActorState& actor,
+                                          const NpcPerceptionResult& perception,
+                                          const AlertProfile& profile,
+                                          std::uint64_t tick) {
+  static_cast<void>(tick);
+  if (decision.intent != AiIntentKind::Wait || !perceptionHasActorPosition(perception)) {
+    return decision;
+  }
+
+  const bool visualConfirmed =
+      perception.targetInVisionCone && perception.hasLineOfSight;
+  const std::uint8_t band = alertBandIndex(actor.alertLevel, profile);
+  const NpcInvestigateStep step =
+      npcStepInvestigate(actor, perception.actorPosition, band, visualConfirmed,
+                         kPatrolArriveEpsilonMeters, kInvestigateDwellTicks);
+  if (!step.active) {
+    return decision;
+  }
+
+  // Behavior stays derived from the alert level (Searching/Alert); only the intent changes.
+  NpcBehaviorDecision investigate = decision;
+  investigate.status = NpcBehaviorDecisionStatus::Decided;
+  investigate.behavior = alertBehaviorForLevel(actor.alertLevel, profile);
+  investigate.cooldownTicksRemaining = 0;
+  if (step.dwelling) {
+    investigate.intent = AiIntentKind::Wait;  // look around at the spot, no move
+  } else {
+    investigate.intent = AiIntentKind::Investigate;
+    investigate.homePosition = step.destination;
+    investigate.returnStopDistanceMeters = kPatrolMoveStopMeters;
+  }
+  return investigate;
+}
+
+// Overlay low-alert patrol onto the reconciled decision (slice 6). Patrol drives
+// movement ONLY when the NPC is at rest in the Idle/Observant band; every engaged /
+// returning / passive / defeated / cooldown outcome is left untouched (none is an
+// Idle/Observant + Wait resting state), so s5 and guard/leash behavior never regress.
+NpcBehaviorDecision maybeApplyPatrol(const NpcBehaviorDecision& decision,
+                                     AiActorState& actor,
+                                     const NpcPerceptionResult& perception,
+                                     const AlertProfile& profile) {
+  const bool resting =
+      decision.intent == AiIntentKind::Wait &&
+      (decision.behavior == AiBehaviorKind::Idle ||
+       decision.behavior == AiBehaviorKind::Observant);
+  if (actor.patrolWaypoints.empty() || !resting ||
+      alertBandIndex(actor.alertLevel, profile) > 1U ||
+      !perceptionHasActorPosition(perception)) {
+    return decision;
+  }
+
+  const NpcPatrolStep step =
+      npcStepPatrol(actor, perception.actorPosition, kPatrolArriveEpsilonMeters);
+  if (!step.active) {
+    return decision;
+  }
+
+  // Keep the alert-derived behavior + target; switch to a point-move toward the
+  // waypoint. status=Decided so shouldBuildCommandForDecision emits the Move (a resting
+  // decision is NoTarget, which would emit nothing).
+  NpcBehaviorDecision patrol = decision;
+  patrol.status = NpcBehaviorDecisionStatus::Decided;
+  patrol.intent = AiIntentKind::Patrol;
+  patrol.homePosition = step.destination;
+  // Rest strictly inside the arrival ring so a cornered approach always registers arrival
+  // next tick (see kPatrolMoveStopMeters); arrival precision itself stays at the epsilon.
+  patrol.returnStopDistanceMeters = kPatrolMoveStopMeters;
+  patrol.cooldownTicksRemaining = 0;
+  return patrol;
+}
+
 void applyNpcBehaviorDecision(AiActorState& actorState,
                               const NpcBehaviorDecision& decision) {
   actorState.behavior = decision.behavior;
@@ -651,6 +816,9 @@ void updateNpcFacing(AiActorState& actorState,
           perception.actorPosition, perception.targetPosition);
       break;
     case AiIntentKind::ReturnToAnchor:
+    case AiIntentKind::Patrol:
+    case AiIntentKind::Investigate:
+      // Point-moves face decision.homePosition (anchor / waypoint / last-known sighting).
       actorState.facingDirection = horizontalDirectionOrForward(
           perception.actorPosition, decision.homePosition);
       break;
@@ -747,6 +915,7 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
       continue;
     }
     const NpcBehaviorConfig config = resolvedProfile.config;
+    const AlertProfile alertProfile = resolvedProfile.profile.alertProfile;
 
     const EntityState* actorEntity = state.world.findById(actorState.actor);
     const EntityState* targetEntity = state.world.findById(target);
@@ -763,9 +932,34 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
     perceptionRequest.targetHasLineOfSight = hasLineOfSight;
     const NpcPerceptionResult perception = queryNpcPerception(perceptionRequest);
 
-    const NpcBehaviorDecision decision =
+    // Step the graded-alert FSM from the perception already computed. It writes
+    // actor.alertLevel (durable) and actor.behavior; the final behavior is set
+    // authoritatively by applyNpcBehaviorDecision below, so the intermediate
+    // behavior write here is harmless.
+    NpcAlertStimulus stimulus;
+    stimulus.targetPerceived = perception.status == NpcPerceptionStatus::Ready;
+    stimulus.proximity01 =
+        config.perceptionRadiusMeters > 0.0F
+            ? clamp01(1.0F - perception.distanceMeters / config.perceptionRadiusMeters)
+            : 0.0F;
+    stimulus.hasValidTarget = perceptionHasLiveTarget(perception.status);
+    stimulus.visualConfirmed = perception.targetInVisionCone && perception.hasLineOfSight;
+    npcStepAlert(actorState, stimulus, alertProfile, state.clock.tickIndex);
+    // Remember where the target is while it is actually seen (slice 7). visualConfirmed implies
+    // Ready, so perception.targetPosition is the live sighting.
+    if (stimulus.visualConfirmed) {
+      npcRecordSighting(actorState, perception.targetPosition, state.clock.tickIndex);
+    }
+
+    const NpcBehaviorDecision engaged =
         chooseNpcBehaviorIntent(NpcBehaviorDecisionRequest{&actorState, perception, config,
                                                            state.clock.tickIndex});
+    NpcBehaviorDecision decision =
+        reconcileAlertBand(engaged, actorState, alertProfile);
+    // Precedence: combat (kept above) > investigate last-known (band 3-4) > patrol (band <=1).
+    decision =
+        maybeApplyInvestigate(decision, actorState, perception, alertProfile, state.clock.tickIndex);
+    decision = maybeApplyPatrol(decision, actorState, perception, alertProfile);
     applyNpcBehaviorDecision(actorState, decision);
     updateNpcFacing(actorState, decision, perception);
     actorState.lastTargetInRadius = perception.targetInPerceptionRadius;

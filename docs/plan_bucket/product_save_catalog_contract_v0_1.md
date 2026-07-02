@@ -284,8 +284,8 @@ selectProductContinueSave(catalog, policy)
 buildProductSaveBrowserRows(catalog, mode)
 findProductSaveCatalogEntry(catalog, saveId, location)
 canLoadProductSave(entry)
-canSoftDeleteProductSave(entry)
-canRecoverProductSave(entry)
+canSoftDeleteProductSave(entry)   # REMOVED as of sd6 (user decision: unknown intent, deleted)
+canRecoverProductSave(entry)      # REMOVED as of sd6 (user decision: unknown intent, deleted)
 ```
 
 Request inputs:
@@ -307,7 +307,7 @@ reasonCode
 activeCount
 deletedCount
 compatibleActiveCount
-recoverableDeletedCount
+recoverableDeletedCount   # REMOVED as of sd6 (user decision: unknown intent, deleted)
 corruptCount
 entries
 ```
@@ -409,8 +409,9 @@ Use policy functions instead of if/else chains:
 
 - `selectProductContinueSave` contains Continue policy;
 - `buildProductSaveBrowserRows` contains row filtering/sorting;
-- `canLoadProductSave`, `canSoftDeleteProductSave`, and
-  `canRecoverProductSave` contain action eligibility;
+- `canLoadProductSave` contains load eligibility (`canSoftDeleteProductSave` and
+  `canRecoverProductSave` were REMOVED as of sd6 — user decision: unknown intent, deleted;
+  recover-collision policy stays enforced at the store level);
 - menu routing consumes policy results instead of duplicating conditions.
 
 Use result structs with reason codes:
@@ -479,7 +480,7 @@ save_catalog_reason_code
 save_catalog_active_count
 save_catalog_deleted_count
 save_catalog_compatible_active_count
-save_catalog_recoverable_deleted_count
+save_catalog_recoverable_deleted_count   # REMOVED as of sd6 (never implemented; user decision: deleted)
 save_catalog_corrupt_count
 save_catalog_policy
 ```

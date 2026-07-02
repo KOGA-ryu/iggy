@@ -703,6 +703,28 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
                       "invalid ai actor facing degrees", lineNumber, column);
         }
         aiActor.hasFacing = true;
+      } else if (key == "waypoint") {
+        // Repeatable: each `waypoint = [x,y,z]` appends to the ordered patrol route.
+        Vec3 waypoint;
+        if (!parseVec3(value, waypoint)) {
+          return fail(parser, ScenarioLoadStatus::InvalidNumber, "scenario.invalid_number",
+                      "invalid ai actor waypoint", lineNumber, column);
+        }
+        aiActor.patrolWaypoints.push_back(waypoint);
+      } else if (key == "patrol_mode") {
+        std::string mode;
+        if (!parseString(value, mode)) {
+          return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",
+                      "invalid ai actor patrol mode", lineNumber, column);
+        }
+        if (mode == "loop") {
+          aiActor.patrolMode = PatrolMode::Loop;
+        } else if (mode == "ping_pong") {
+          aiActor.patrolMode = PatrolMode::PingPong;
+        } else {
+          return fail(parser, ScenarioLoadStatus::InvalidEnum, "scenario.invalid_enum",
+                      "invalid ai actor patrol mode", lineNumber, column);
+        }
       } else {
         return fail(parser, ScenarioLoadStatus::UnsupportedKey, "scenario.unsupported_key",
                     "unsupported ai actor key", lineNumber, column);

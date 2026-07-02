@@ -37,7 +37,7 @@ MenuOwnerState menuOwnerStateForActiveOwner(MenuOwner owner) {
 void dispatchPauseAction(InputAction action,
                          ProductOpeningMenuInputContext context) {
   ProductPauseMenuActionContext pauseContext{
-      context.frontend, context.options, context.settingsTab,
+      context.frontend, context.options, context.saves, context.settingsTab,
       context.activeSession, context.window, context.closeRequested,
       context.settings};
   (void)applyProductPauseMenuAction(action, pauseContext);
@@ -101,7 +101,7 @@ void dispatchConfirmDialogAction(const ProductActiveSurfaceFrame& surface,
 void dispatchNewWorldAction(InputAction action,
                             ProductOpeningMenuInputContext context) {
   ProductNewWorldMenuActionContext newWorldContext{
-      context.frontend, context.options, context.activeSession,
+      context.frontend, context.options, context.saves, context.activeSession,
       context.worldSetupDraft, context.window};
   (void)applyProductNewWorldMenuAction(action, newWorldContext);
 }

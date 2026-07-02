@@ -8,6 +8,8 @@
 #include "core/diagnostics/Diagnostic.hpp"
 #include "core/math/Aabb3.hpp"
 #include "core/math/Transform3.hpp"
+#include "core/math/Vec3.hpp"
+#include "runtime/ai/AiState.hpp"
 #include "runtime/camera/CameraState.hpp"
 #include "runtime/clock/ClockState.hpp"
 #include "runtime/combat/CombatState.hpp"
@@ -69,6 +71,11 @@ struct ScenarioAiActorSeed {
   // so 90 = +X). When unset the NPC faces the player at spawn.
   bool hasFacing = false;
   float facingDegrees = 0.0F;
+  // Optional authored patrol route (slice 6). Repeated `waypoint` keys append in order;
+  // an empty route means the NPC does not patrol (back-compat). Default member
+  // initializers keep positional aggregate-init sites warning-free.
+  std::vector<Vec3> patrolWaypoints{};
+  PatrolMode patrolMode = PatrolMode::Loop;
 };
 
 struct ScenarioAiGuardAnchorSeed {

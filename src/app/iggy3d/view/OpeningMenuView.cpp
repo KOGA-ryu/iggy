@@ -1161,15 +1161,18 @@ void drawLoadSavePanel(SDL_Renderer& renderer,
   }
 }
 
-void drawDeleteConfirmPanel(SDL_Renderer& renderer) {
+void drawDeleteConfirmPanel(SDL_Renderer& renderer,
+                            const ProductDeleteConfirmModel& model) {
   setColor(renderer, 226, 230, 211);
   drawText(renderer, "DELETE MAP", 450.0F, 152.0F, 4.0F);
   setColor(renderer, 166, 184, 177);
   drawText(renderer, "THIS MOVES THE MAP TO DELETED MAPS", 452.0F, 210.0F, 2.0F);
   drawText(renderer, "MAP", 452.0F, 260.0F, 2.0F);
-  drawText(renderer, "SELECTED MAP", 452.0F, 292.0F, 2.0F);
+  // sd2: the map value + status render the delete candidate's real title/status from the shared
+  // resolveProductDeleteConfirmModel (same model the draw-list lane emits), not a static string.
+  drawText(renderer, model.mapTitle, 452.0F, 292.0F, 2.0F);
   drawText(renderer, "STATUS", 452.0F, 350.0F, 2.0F);
-  drawText(renderer, "CONFIRM OPEN", 452.0F, 382.0F, 2.0F);
+  drawText(renderer, model.statusText, 452.0F, 382.0F, 2.0F);
 
   setColor(renderer, 236, 118, 86);
   drawText(renderer, "CONFIRM DELETE", 452.0F, 508.0F, 2.0F);
@@ -1512,7 +1515,8 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
                                          const DebugProjectionResult* debug,
                                          float cameraYawDegrees,
                                          float cameraPitchDegrees,
-                                         const ProductSaveBridgeResult& saves) {
+                                         const ProductSaveBridgeResult& saves,
+                                         const std::string& deleteCandidateId) {
   OpeningMenuViewState state;
   SDL_SetRenderDrawBlendMode(&renderer, SDL_BLENDMODE_BLEND);
   (void)gameplayActive;
@@ -1570,7 +1574,9 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
     drawLoadSavePanel(renderer, frontend.saveBrowserMode, saves);
   // branch-gate: BG-1121
   } else if (frontend.childScreen == FrontendScreen::DeleteConfirm) {
-    drawDeleteConfirmPanel(renderer);
+    // Resolve the panel text from the SAME shared source the draw-list lane uses (sd2).
+    drawDeleteConfirmPanel(
+        renderer, resolveProductDeleteConfirmModel(deleteCandidateId, saves));
   // branch-gate: BG-1141
   } else if (frontend.childScreen == FrontendScreen::NewWorld) {
     drawNewWorldPanel(renderer,

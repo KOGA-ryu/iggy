@@ -1,0 +1,98 @@
+# Stealth garden — headless testbed scenario (slice s6b).
+#
+# Geometry (walls) comes from stealth_garden.iggyroom.txt and is baked into a
+# SpatialSurfaceSet by the test harness. Spawns, the guard patrol beat, and the
+# exit objective come from THIS file (content lane). Entity positions MUST match
+# the grid glyph cells: cell (col,row) -> world (col, 0, row), cell size 1 m.
+#   N guard -> (1,0,1)   E exit -> (12,0,1)   P player -> (12,0,6)
+#
+# To change the guard's beat, edit the [[ai_actors]] waypoint lines (west-side
+# rectangle in the ring, loop mode). To add a scenario, add a tape + assertion in
+# tests/unit/stealth_garden_tests.cpp — no engine or fixture change needed.
+
+[scenario]
+id = "stealth_garden.runtime_loop"
+
+[defaults]
+fixed_tick_rate_hz = 20
+interaction_range_meters = 1.500
+movement_distance_meters = 3.000
+slow_time_scale = 0.250
+initial_clock = "Normal"
+default_realtime_camera = "ThirdPerson"
+default_tactical_camera = "TacticalOverhead"
+
+[[players]]
+slot = 0
+kind = "Local"
+actor = "player"
+
+# Player spawns bottom-right (grid P). Must be entity #1 so slot 0 controls it.
+[[entities]]
+stable_name = "player"
+kind = "Player"
+active = true
+persistent = true
+position = [12.000, 0.000, 6.000]
+bounds_min = [-0.250, 0.000, -0.250]
+bounds_max = [0.250, 1.800, 0.250]
+targetable = false
+target_actions = []
+combatant = true
+faction_id = 1
+hit_points = 10
+max_hit_points = 10
+
+# Hostile guard spawns top-left (grid N); patrols the west side of the ring.
+[[entities]]
+stable_name = "guard"
+kind = "Npc"
+active = true
+persistent = true
+position = [1.000, 0.000, 1.000]
+bounds_min = [-0.250, 0.000, -0.250]
+bounds_max = [0.250, 1.200, 0.250]
+targetable = true
+target_actions = ["Attack", "Inspect"]
+combatant = true
+faction_id = 2
+hit_points = 3
+max_hit_points = 3
+
+# Exit pickup at grid E (top-right). Collecting it completes the exit_ objective
+# -> SessionOutcome::Victory.
+[[entities]]
+stable_name = "exit_key"
+kind = "Pickup"
+active = true
+persistent = true
+position = [12.000, 0.000, 1.000]
+bounds_min = [-0.100, 0.000, -0.100]
+bounds_max = [0.100, 0.100, 0.100]
+targetable = true
+target_actions = ["Interact", "Inspect"]
+item_id = "exit_key"
+item_count = 1
+interaction = "Pickup"
+deactivate_on_success = true
+objective_ref = "exit_garden"
+
+[[ai_actors]]
+actor = "guard"
+behavior_profile_id = "melee_training"
+facing_degrees = 0.000
+patrol_mode = "loop"
+# West-side sentry beat: a straight north-south leg on the far-west column (x=1), off the
+# island. Kept axis-aligned on purpose (see the harness note). Edit these two lines to move
+# the guard's beat.
+waypoint = [1.000, 0.000, 1.000]
+waypoint = [1.000, 0.000, 5.000]
+
+[[objectives]]
+id = "exit_garden"
+initial_status = "Active"
+condition = "InventoryContains"
+player_slot = 0
+item_id = "exit_key"
+item_count = 1
+complete_status = "Complete"

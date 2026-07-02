@@ -97,13 +97,6 @@ CliParseResult parseCommandLine(std::vector<std::string_view> args) {
       }
       ++index;
       result.config.savePath = std::string(args[index]);
-    } else if (arg == "--load") {
-      if (needValue(args, index)) {
-        return fail(result, AppConfigStatus::MissingOptionValue, "cli.missing_option_value",
-                    "missing load path");
-      }
-      ++index;
-      result.config.loadPath = std::string(args[index]);
     } else if (arg == "--replay-path") {
       if (needValue(args, index)) {
         return fail(result, AppConfigStatus::MissingOptionValue, "cli.missing_option_value",
@@ -149,7 +142,7 @@ CliParseResult parseCommandLine(std::vector<std::string_view> args) {
 
 std::string_view cliHelpText() {
   return "iggy3d options: --demo --validate-package --replay --help -h --version --package "
-         "--fixture --save --load --replay-path --summary --camera --verbose -v";
+         "--fixture --save --replay-path --summary --camera --verbose -v";
 }
 
 std::string_view cliVersionText() {

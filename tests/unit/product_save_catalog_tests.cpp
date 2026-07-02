@@ -155,18 +155,6 @@ void missingSnapshotDoesNotBlockLoad() {
          "missing snapshot does not make row unloadable");
 }
 
-void recoverEligibilityRejectsActiveTargetCollision() {
-  const auto active = activeEntry("save_001", "2026-06-24T00:00:00Z");
-  const auto deletedCollision = deletedEntry("save_001", "2026-06-24T01:00:00Z");
-  const auto deletedNoCollision = deletedEntry("save_002", "2026-06-24T01:00:00Z");
-  const std::vector<ProductSaveCatalogEntry> activeEntries{active};
-
-  expect(!iggy3d::canRecoverProductSave(deletedCollision, activeEntries),
-         "recover rejects active target collision");
-  expect(iggy3d::canRecoverProductSave(deletedNoCollision, activeEntries),
-         "recover allows deleted row without active collision");
-}
-
 void buildResultCountsAndTitlesAreStable() {
   auto corrupt = activeEntry("save_corrupt", "2026-06-24T01:00:00Z");
   corrupt.corrupt = true;
@@ -187,8 +175,6 @@ void buildResultCountsAndTitlesAreStable() {
   expect(built.deletedCount == 1, "catalog build counts deleted entries");
   expect(built.compatibleActiveCount == 1,
          "catalog build counts compatible loadable active entries");
-  expect(built.recoverableDeletedCount == 1,
-         "catalog build counts recoverable deleted entries");
   expect(built.corruptCount == 1, "catalog build counts corrupt entries");
   expect(!built.catalog.entries.front().displayTitle.empty(),
          "catalog build fills display title fallback");
@@ -217,7 +203,6 @@ int main() {
   incompatibleCorruptUnloadableRowsRemainRepresentableButIgnored();
   displayTitlePrefersSaveTitleThenWorldTitleThenSaveId();
   missingSnapshotDoesNotBlockLoad();
-  recoverEligibilityRejectsActiveTargetCollision();
   buildResultCountsAndTitlesAreStable();
   deterministicSortPutsValidNewestBeforeLegacyRows();
 

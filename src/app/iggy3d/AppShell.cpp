@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <optional>
+#include <utility>
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/Operations.hpp"
@@ -139,8 +140,12 @@ int runProductApp(int argc, char** argv) {
     window.status = "automation_close_requested";
   }
 
-  window = runProductWindowLoop(ProductWindowLoopRequest{
+  // The loop returns the true end-of-session catalog (in-window soft-delete / new-world fold
+  // into it); consume it as the single source of truth for the receipt — no exit-time re-scan.
+  ProductWindowLoopResult loopResult = runProductWindowLoop(ProductWindowLoopRequest{
       options, world, frontend, activeSession, worldSetupDraft, window, settings, saves});
+  window = std::move(loopResult.window);
+  saves = std::move(loopResult.saves);
   refreshProductGameplayProjectionMetrics(
       ProductGameplayProjectionRefreshRequest{activeSession, window,
                                               settings.devToolsEnabled,

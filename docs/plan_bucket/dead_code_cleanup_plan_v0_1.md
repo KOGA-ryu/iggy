@@ -31,7 +31,7 @@ items are under IGGY3D_BUILD_VULKAN_BACKEND / #if IGGY3D_HAS_VULKAN).
   `MaterialDescriptorRecord` structs. (Keep the underlying `_` fields — internally live.)
 - content/projection: `setFloorPositionCommand`, `roomEditCommandKindName` (EditableRoomDocument).
 - frontend/app: `starterChildScreenForAction`; `buildSaveBrowserModelFromCatalog` (CatalogProjector);
-  `canSoftDeleteProductSave` (Catalog); `productPauseSaveFlowKindName` (Flow);
+  `canSoftDeleteProductSave` (Catalog) — DONE, removed in sd6; `productPauseSaveFlowKindName` (Flow);
   `productSaveMutationStatusName` (SaveBridge; keep the enum value); `recordProductVulkanMenuUnsupported`.
 - world/ascii/input: `productBuiltinDungeonWorldTitle`; `productCustomDungeonSourceName`
   (keep `kCustomSourceName`); `asciiRoomDiagnosticSeverityError`; `asciiRoomCellKindName`;
@@ -72,7 +72,7 @@ plausibly-intended API. Split into per-cluster PRs.
   `acceptCommand`, `makeDefaultClockState`, `shouldRunAutomaticTick`,
   `requiresEntityTarget`/`requiresPointTarget`/`requiresAbilityPayload` (KEEP `requiresActor` — live).
 - 3d world/camera/catalog: `WorldState::upsertEntity`, `makeDefaultCameraState`, `clearCameraInputRequest`,
-  `canRecoverProductSave`, `productUiPrimitiveKindName`/`productUiToneName`.
+  `canRecoverProductSave` (DONE, removed in sd6), `productUiPrimitiveKindName`/`productUiToneName`.
 - 3e content/frontend/render: `PackageValidator` (whole module, big test surgery — own PR),
   `appendRuntimeDebugSnapshot`, `setObjectPositionCommand`, `routeStarterBackFromChild`,
   `nextSettingsTab`/`previousSettingsTab`, `restoreFrontendSettingsDefaults`/`applyFrontendSettingsDraft`,

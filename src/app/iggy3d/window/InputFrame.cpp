@@ -1047,7 +1047,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
              context.window.worldSetupDungeonDraftCursorColumn,
              context.window.worldSetupDungeonDraftSelectedGlyph,
              context.window.worldSetupDungeonDraftLastGlyph,
-             context.window.selectedProductSaveId});
+             context.window.selectedProductSaveId,
+             context.window.saveDeleteCandidateId});
     const OpeningMenuHitTestResult hit =
         openingMenuActionAt(uiRequest, menuClick.x, menuClick.y);
     // branch-gate: BG-1029

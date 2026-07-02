@@ -10,6 +10,7 @@
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/world/DungeonDraft.hpp"
 #include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
@@ -338,6 +339,20 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
     context.closeRequested = true;
     return {true, true};
   }
+  // sd3: complete the pause Load row. Open the save browser as a Pause-OWNED child overlay:
+  // set only childScreen (screen stays Pause), so pauseChildDecision routes it to the
+  // Pause-owned SaveSelector; MenuBack (childScreen->Gameplay) then returns to the pause menu.
+  // Set the mode enum AND its string mirror in lockstep so no stale Delete residue leaks in.
+  // Matches confirmStarterLoadSave's idiom (which keeps screen=Starter).
+  if (frontend.selectedAction == FrontendAction::LoadSave) {
+    frontend.childScreen = FrontendScreen::LoadSave;
+    frontend.saveBrowserMode = FrontendSaveBrowserMode::Load;
+    window.saveSlotBrowserMode =
+        std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
+    initializeSelectedProductSaveSlot(context.saves.slots, window);
+    frontend.status = "pause_load_save_opened";
+    return {true, true};
+  }
   frontend.status = "pause_action_selected";
   return {true, true};
 }
@@ -648,6 +663,14 @@ ProductMenuActionResult applyProductNewWorldMenuAction(
     }
     launchProductNewWorld(context.options, worldSetupDraft, frontend,
                           context.activeSession, window);
+    // Close the in-window new-world hole (sd1): the durable initial save just written is
+    // invisible to the loop's pre-window scan, so refresh the loop-local catalog here the same
+    // way soft-delete does. Unconditional is truthful — on a failed launch the durable state is
+    // unchanged so the scan equals the prior catalog.
+    const ProductWorldTemplate newWorld =
+        productWorldTemplateFromOptions(context.options);
+    context.saves = scanProductSaves(context.options.saveRoot, newWorld.packageId,
+                                     newWorld.scenarioId);
     return {true, true};
   }
   frontend.status = "new_world_input_ignored";

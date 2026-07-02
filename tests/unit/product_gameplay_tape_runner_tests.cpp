@@ -186,6 +186,24 @@ bool tapeAcceptsExpectedMovementBlock() {
                 "expected movement block no mutation");
 }
 
+// Graded alert (s5): the adjacent hostile NPC no longer attacks on tick 1 — it must
+// climb the alert ladder from perception first. This tape idles the player in view for
+// kNpcEscalationWaits ticks, which is the smallest wait-count at which the NPC reaches
+// combat and lands its first attack (measured against the default AlertProfile at this
+// adjacency; do NOT tune the FSM to change it). The final tick is the attack, so the
+// combat-outcome receipt fields match the pre-escalation values; only the count fields
+// and aiWaitLogged (the NPC now emits sub-combat Waits on ticks 1..N-1) move.
+constexpr unsigned kNpcEscalationWaits = 24U;
+
+std::string npcCombatEscalationTape() {
+  std::string tape;
+  tape.reserve(kNpcEscalationWaits * 5U);
+  for (unsigned i = 0; i < kNpcEscalationWaits; ++i) {
+    tape += "wait\n";
+  }
+  return tape;
+}
+
 bool tapeWaitLetsNpcAttackPlayer() {
   const iggy3d::ProductAsciiRoomAuthoringResult room = makeNpcRoom();
   if (!expect(room.ok, "npc room authored")) {
@@ -194,7 +212,7 @@ bool tapeWaitLetsNpcAttackPlayer() {
   std::optional<iggy3d::Session> session =
       makeSessionFromRoom(room.roomAsset.room);
   const iggy3d::ProductGameplayTapeParseResult parsed =
-      iggy3d::parseProductGameplayTape("wait\n");
+      iggy3d::parseProductGameplayTape(npcCombatEscalationTape());
   if (!expect(session.has_value(), "npc session exists") ||
       !expect(parsed.ok, "npc tape parsed")) {
     return false;
@@ -204,15 +222,15 @@ bool tapeWaitLetsNpcAttackPlayer() {
       iggy3d::runProductGameplayTape({&*session, &parsed.tape});
   return expect(run.ok, "npc tape run ok") &&
          expect(run.status == "gameplay_tape_completed", "npc run status") &&
-         expect(run.stepCount == 1U, "npc step count") &&
-         expect(run.executedStepCount == 1U, "npc executed count") &&
+         expect(run.stepCount == kNpcEscalationWaits, "npc step count") &&
+         expect(run.executedStepCount == kNpcEscalationWaits, "npc executed count") &&
          expect(run.lastAction == "wait", "npc last action") &&
          expect(run.lastTarget == "none", "npc last target") &&
          expect(run.npcTargetable, "npc targetable") &&
          expect(!run.npcDefeated, "npc not defeated") &&
          expect(run.aiCommandLogged, "ai command logged") &&
          expect(run.aiAttackLogged, "ai attack logged") &&
-         expect(!run.aiWaitLogged, "ai wait not logged") &&
+         expect(run.aiWaitLogged, "ai wait logged during escalation") &&
          expect(run.aiPlayerDamaged, "ai damages player") &&
          expect(run.aiPlayerHpBefore == 10, "ai hp before") &&
          expect(run.aiPlayerHpAfter == 9, "ai hp after") &&
@@ -221,7 +239,8 @@ bool tapeWaitLetsNpcAttackPlayer() {
          expect(run.aiBehavior == "attacking", "ai behavior") &&
          expect(run.aiIntent == "attack_target", "ai intent") &&
          expect(run.sessionOutcome == "None", "npc no session outcome") &&
-         expect(session->state().clock.tickIndex == 1U, "npc one accepted tick");
+         expect(session->state().clock.tickIndex == kNpcEscalationWaits,
+                "npc accepted ticks match escalation length");
 }
 
 iggy3d::CommandRecord oldAiAttackCommand() {

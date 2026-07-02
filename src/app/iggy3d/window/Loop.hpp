@@ -24,6 +24,14 @@ struct ProductWindowLoopRequest {
   const ProductSaveBridgeResult& saves;
 };
 
-ProductAppWindowState runProductWindowLoop(const ProductWindowLoopRequest& request);
+// The loop returns BOTH the final window state and the final save catalog: the loop-local
+// catalog absorbs in-window mutations (soft-delete, new-world) that the caller's pre-loop scan
+// cannot see, so the receipt must be built from THIS returned catalog, not a second scan.
+struct ProductWindowLoopResult {
+  ProductAppWindowState window;
+  ProductSaveBridgeResult saves;
+};
+
+ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& request);
 
 }  // namespace iggy3d

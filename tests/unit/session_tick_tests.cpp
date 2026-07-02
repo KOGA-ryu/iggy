@@ -1,6 +1,9 @@
 #include "runtime/session/Session.hpp"
 #include "runtime/session/SessionTick.hpp"
 
+#include "runtime/ai/NpcAlertSystem.hpp"
+#include "runtime/ai/NpcInvestigateSystem.hpp"
+#include "runtime/ai/NpcPatrolSystem.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/objective/ObjectiveSystem.hpp"
@@ -8,6 +11,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -456,6 +460,45 @@ void seedNpcAiProfile(iggy3d::Session& session, std::string_view profileId) {
   actors.push_back(actor);
 }
 
+// Seed the NPC AI actor and pre-force its graded alert to the combat band (1.0)
+// so the plumbing tests below keep the instant chase/attack path. Escalation
+// itself is proven separately by npcAlertLadderEscalatesThenDecaysInLoop, so
+// these tests stay tuning-agnostic while still honoring the new alert gate.
+void seedAlertedNpcAtCombat(iggy3d::Session& session, std::string_view profileId) {
+  seedNpcAiProfile(session, profileId);  // actor {2}, facing -x toward player
+  for (auto& a : session.mutableStateForOwnedSystems().ai.actors) {
+    if (a.actor == iggy3d::EntityId{2}) {
+      a.alertLevel = 1.0F;
+      a.lastRiseTick = 0;
+    }
+  }
+}
+
+// Seed the NPC actor {2} with an authored patrol route, facing +z so the player at the
+// origin sits OUTSIDE its vision cone (the NPC stays at low alert and patrols).
+void seedPatrolNpc(iggy3d::Session& session,
+                   const std::vector<iggy3d::Vec3>& waypoints,
+                   iggy3d::PatrolMode mode) {
+  iggy3d::AiActorState actor;
+  actor.actor = {2};
+  actor.behaviorProfileId = "default";
+  actor.facingDirection = {0.0F, 0.0F, 1.0F};  // +z: player (at -x) is out of cone
+  actor.patrolWaypoints = waypoints;
+  actor.patrolMode = mode;
+  auto& actors = session.mutableStateForOwnedSystems().ai.actors;
+  actors.clear();
+  actors.push_back(actor);
+}
+
+iggy3d::AiActorState* mutableAiActor(iggy3d::Session& session, iggy3d::EntityId actor) {
+  for (iggy3d::AiActorState& a : session.mutableStateForOwnedSystems().ai.actors) {
+    if (a.actor == actor) {
+      return &a;
+    }
+  }
+  return nullptr;
+}
+
 const iggy3d::CommandRecord* lastCommandWithSource(const iggy3d::CommandLog& log,
                                                    iggy3d::CommandSource source) {
   const iggy3d::CommandRecord* result = nullptr;
@@ -742,6 +785,7 @@ bool physicsPlannerStepOneTickOptionCompilesAndRuns() {
 
 bool npcAiTickEnqueuesAttackThroughAdmissionAndCombat() {
   iggy3d::Session session = makeNpcCombatSession();
+  seedAlertedNpcAtCombat(session, "default");  // instant combat path (plumbing test)
 
   bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "npc attack tick ok");
   const iggy3d::CombatantState* playerCombatant =
@@ -778,6 +822,7 @@ bool npcAiTickEnqueuesAttackThroughAdmissionAndCombat() {
 
 bool npcAiCooldownTickWaitsWithoutSecondAttack() {
   iggy3d::Session session = makeNpcCombatSession();
+  seedAlertedNpcAtCombat(session, "default");  // instant combat path (plumbing test)
   bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "first npc tick ok") &&
             expect(session.tick().status == iggy3d::ResultStatus::Ok, "second npc tick ok");
 
@@ -805,6 +850,7 @@ bool npcAiCooldownTickWaitsWithoutSecondAttack() {
 
 bool npcAiChaseMovesThroughNormalCommandExecution() {
   iggy3d::Session session = makeNpcCombatSession(4.0F);
+  seedAlertedNpcAtCombat(session, "default");  // instant combat path (plumbing test)
 
   bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "npc chase tick ok");
   const iggy3d::CommandRecord* command =
@@ -840,6 +886,7 @@ bool npcVisionConeGatesSessionPerception() {
   // Seeded facing points at the player, so the NPC perceives and chases, and
   // the AI drives its gaze toward the target.
   iggy3d::Session seeing = makeNpcCombatSession(4.0F);
+  seedAlertedNpcAtCombat(seeing, "default");  // instant combat path (plumbing test)
   bool ok = expect(seeing.tick().status == iggy3d::ResultStatus::Ok,
                    "vision see tick ok");
   const iggy3d::AiActorState* seeingAi = findAiActor(seeing.state().ai, {2});
@@ -1304,12 +1351,34 @@ bool invalidProfileSkipsNpcCommandAndStateMutation() {
   return ok;
 }
 
+bool forceActorAtCombat(iggy3d::Session& session, iggy3d::EntityId actor) {
+  bool found = false;
+  for (iggy3d::AiActorState& a : session.mutableStateForOwnedSystems().ai.actors) {
+    if (a.actor == actor) {
+      a.alertLevel = 1.0F;
+      a.lastRiseTick = 0;
+      found = true;
+    }
+  }
+  return found;
+}
+
 bool autoRegisteredNpcUsesDefaultProfileAndAttacks() {
   iggy3d::Session session = makeNpcCombatSession();
 
+  // Tick 1 proves lazy auto-registration under the default profile; graded alert
+  // is still sub-combat so it only emits a Wait. Force alert to combat, then tick
+  // 2 exercises the attack plumbing.
   bool ok = expect(session.state().ai.actors.empty(), "auto default starts without ai actor") &&
             expect(session.tick().status == iggy3d::ResultStatus::Ok,
                    "auto default tick ok");
+  const iggy3d::AiActorState* registered = findAiActor(session.state().ai, {2});
+  ok = ok && expect(registered != nullptr && registered->behaviorProfileId == "default",
+                    "auto default profile id") &&
+       expect(forceActorAtCombat(session, {2}), "auto default force combat alert") &&
+       expect(session.tick().status == iggy3d::ResultStatus::Ok,
+              "auto default second tick ok");
+
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
   const iggy3d::CombatantState* playerCombatant =
@@ -1323,8 +1392,6 @@ bool autoRegisteredNpcUsesDefaultProfileAndAttacks() {
               "auto default attack accepted") &&
        expect(playerCombatant != nullptr && playerCombatant->hitPoints == 9,
               "auto default damages player") &&
-       expect(aiActor != nullptr && aiActor->behaviorProfileId == "default",
-              "auto default profile id") &&
        expect(aiActor != nullptr && aiActor->behavior == iggy3d::AiBehaviorKind::Attacking,
               "auto default behavior attacking") &&
        expect(aiActor != nullptr &&
@@ -1336,7 +1403,12 @@ bool autoRegisteredNpcUsesDefaultProfileAndAttacks() {
 bool rejectedAiAttackRemainsVisibleInCommandLog() {
   iggy3d::Session session = makeNpcCombatSession(1.0F, false);
 
+  // Tick 1 registers the actor (sub-combat Wait); force alert to combat, then
+  // tick 2 produces the attack that combat admission rejects (invalid target).
   bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                   "rejected ai attack register tick ok") &&
+            expect(forceActorAtCombat(session, {2}), "rejected ai attack force combat") &&
+            expect(session.tick().status == iggy3d::ResultStatus::Ok,
                    "rejected ai attack tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
@@ -1423,6 +1495,322 @@ bool pausedNormalTickDoesNotRunNpcAi() {
   return ok;
 }
 
+// The in-loop proof (not just the pure FSM): a perceived hostile NPC climbs the
+// alert ladder over ticks and eventually chases, then decays once it loses sight.
+// This is the one test intentionally coupled to the AlertProfile tuning.
+bool npcAlertLadderEscalatesThenDecaysInLoop() {
+  // Player at origin, NPC at x=3 (outside attack range 1.5, so combat==Chasing).
+  iggy3d::Session session = makeNpcCombatSession(3.0F);
+  seedNpcAiProfile(session, "default");  // facing -x -> player perceived from tick 1
+  const iggy3d::AlertProfile profile;    // matches the built-in default profile
+
+  bool ok = true;
+  std::uint8_t maxBandSeen = 0U;
+  std::uint8_t lastBand = 0U;
+  bool sawObservant = false;
+  bool sawSuspicious = false;
+  bool sawSearching = false;
+  bool sawAlert = false;
+  bool reachedChasing = false;
+  constexpr int kTickCap = 200;
+  int climbTicks = 0;
+  for (; climbTicks < kTickCap; ++climbTicks) {
+    if (session.tick().status != iggy3d::ResultStatus::Ok) {
+      ok = expect(false, "escalation climb tick ok");
+      break;
+    }
+    const iggy3d::AiActorState* actor = findAiActor(session.state().ai, {2});
+    if (actor == nullptr) {
+      ok = expect(false, "escalation actor present");
+      break;
+    }
+    const std::uint8_t band = iggy3d::alertBandIndex(actor->alertLevel, profile);
+    // Monotonic non-decreasing while perceived (no decay path taken here).
+    ok = ok && expect(band >= lastBand, "escalation band non-decreasing");
+    lastBand = band;
+    maxBandSeen = band > maxBandSeen ? band : maxBandSeen;
+    switch (actor->behavior) {
+      case iggy3d::AiBehaviorKind::Observant: sawObservant = true; break;
+      case iggy3d::AiBehaviorKind::Suspicious: sawSuspicious = true; break;
+      case iggy3d::AiBehaviorKind::Searching: sawSearching = true; break;
+      case iggy3d::AiBehaviorKind::Alert: sawAlert = true; break;
+      case iggy3d::AiBehaviorKind::Chasing: reachedChasing = true; break;
+      default: break;
+    }
+    if (reachedChasing) {
+      break;
+    }
+  }
+
+  ok = ok && expect(sawObservant, "escalation passed through observant") &&
+       expect(sawSuspicious, "escalation passed through suspicious") &&
+       expect(sawSearching, "escalation passed through searching") &&
+       expect(sawAlert, "escalation passed through alert") &&
+       expect(reachedChasing, "escalation reached chasing") &&
+       expect(maxBandSeen == 5U, "escalation reached combat band");
+
+  // Decay: turn the NPC away so the player leaves its cone (perception != Ready).
+  const iggy3d::AiActorState* atPeak = findAiActor(session.state().ai, {2});
+  const float peak = atPeak != nullptr ? atPeak->alertLevel : 0.0F;
+  for (iggy3d::AiActorState& a : session.mutableStateForOwnedSystems().ai.actors) {
+    if (a.actor == iggy3d::EntityId{2}) {
+      a.facingDirection = {1.0F, 0.0F, 0.0F};  // away from player at -x
+    }
+  }
+  // Tick past dead-time plus a margin; the agitated band drains slowly by design,
+  // so we assert strict decrease (direction), not full return to Idle. A blind NPC
+  // enqueues no command, and a tick with no work does not advance the clock (so the
+  // dead-time would never elapse); submit a player Wait each tick to keep the clock
+  // advancing, exactly as ongoing player activity would in a live session.
+  const int kDecayTicks = static_cast<int>(profile.deadTimeTicks) + 40;
+  for (int i = 0; i < kDecayTicks; ++i) {
+    (void)session.submitCommand(submittedWait());
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                      "escalation decay tick ok");
+  }
+  const iggy3d::AiActorState* decayed = findAiActor(session.state().ai, {2});
+  ok = ok && expect(decayed != nullptr && decayed->alertLevel < peak,
+                    "escalation decays back down") &&
+       expect(decayed != nullptr &&
+                  decayed->behavior != iggy3d::AiBehaviorKind::Chasing,
+              "escalation no longer chasing after decay");
+  return ok;
+}
+
+// (a) An NPC with an authored loop route walks the waypoints in order and wraps. It never
+// perceives the player (faces its waypoints, which lie on the +z line away from the origin),
+// so it stays low-alert and patrols every tick.
+bool patrolNpcWalksLoopRouteInOrder() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);  // npc at (4,0,0), player at origin
+  seedPatrolNpc(session, {{4.0F, 0.0F, 3.0F}, {4.0F, 0.0F, -3.0F}},
+                iggy3d::PatrolMode::Loop);
+
+  bool ok = true;
+  float maxZ = 0.0F;
+  float minZ = 0.0F;
+  bool sawIndex1 = false;
+  bool sawWrapBackTo0 = false;
+  bool patrolEveryTick = true;
+  for (int tick = 0; tick < 40; ++tick) {
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "patrol tick ok");
+    const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+    const iggy3d::EntityState* npc = session.state().world.findById({2});
+    if (ai == nullptr || npc == nullptr) {
+      return expect(false, "patrol actor/entity present");
+    }
+    patrolEveryTick = patrolEveryTick && ai->lastIntent == iggy3d::AiIntentKind::Patrol;
+    maxZ = std::max(maxZ, npc->transform.position.z);
+    minZ = std::min(minZ, npc->transform.position.z);
+    if (ai->patrolTargetIndex == 1U) {
+      sawIndex1 = true;
+    }
+    if (sawIndex1 && ai->patrolTargetIndex == 0U) {
+      sawWrapBackTo0 = true;  // reached the 2nd waypoint, looped back to the 1st
+    }
+  }
+
+  ok = ok && expect(patrolEveryTick, "patrol intent every tick") &&
+       expect(maxZ >= 2.7F, "patrol reached first waypoint (+z)") &&
+       expect(minZ <= -2.7F, "patrol reached second waypoint (-z)") &&
+       expect(sawIndex1, "patrol advanced to second waypoint") &&
+       expect(sawWrapBackTo0, "patrol looped back to first waypoint");
+  return ok;
+}
+
+// s6c: a guard on a rectangular (diagonal-cornered) loop must visit ALL FOUR corners in order
+// and complete a full lap -- never stall at a corner. This square STALLS under the pre-fix
+// design (patrol move-stop == arrival-epsilon: a cornered approach parks a float hair outside
+// the arrival ring). The route sits far from the origin so the player is out of perception
+// radius and the guard stays low-alert and patrols the whole time.
+bool patrolNpcLapsRectangularRouteWithDiagonalCorners() {
+  iggy3d::Session session = makeNpcCombatSession(8.0F);  // npc at (8,0,0), player at origin
+  const std::vector<iggy3d::Vec3> square = {
+      {8.0F, 0.0F, 3.0F}, {11.0F, 0.0F, 3.0F}, {11.0F, 0.0F, 6.0F}, {8.0F, 0.0F, 6.0F}};
+  seedPatrolNpc(session, square, iggy3d::PatrolMode::Loop);
+
+  bool ok = true;
+  bool visited[4] = {false, false, false, false};
+  int lastIndex = 0;
+  bool inOrder = true;
+  bool completedLap = false;
+  bool patrolEveryTick = true;
+  // Perimeter 12 m at ~1 m/tick + the spawn approach, laps in ~15 ticks; give ~2 laps of slack.
+  for (int tick = 0; tick < 60 && !completedLap; ++tick) {
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "square patrol tick ok");
+    const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+    if (ai == nullptr) {
+      return expect(false, "square patrol actor present");
+    }
+    patrolEveryTick = patrolEveryTick && ai->lastIntent == iggy3d::AiIntentKind::Patrol;
+    const int idx = static_cast<int>(ai->patrolTargetIndex);
+    // The cursor targets the NEXT corner; it advances 0->1->2->3->0. Track order + wrap.
+    if (idx != lastIndex) {
+      const int expected = (lastIndex + 1) % 4;
+      if (idx != expected) {
+        inOrder = false;
+      }
+      if (lastIndex == 3 && idx == 0 && visited[0] && visited[1] && visited[2]) {
+        completedLap = true;  // came back to the start after touching every corner
+      }
+      lastIndex = idx;
+    }
+    visited[idx] = true;
+  }
+
+  ok = ok && expect(patrolEveryTick, "square patrol intent every tick") &&
+       expect(visited[0] && visited[1] && visited[2] && visited[3],
+              "square patrol visits all four corners") &&
+       expect(inOrder, "square patrol advances corners in order (no stall/skip)") &&
+       expect(completedLap, "square patrol completes a full lap");
+  return ok;
+}
+
+// (b) COMPOSE with s5: a patrolling NPC that perceives the player escalates and STOPS
+// patrolling; once alert decays back to the low band it RESUMES. Asserts on alert band +
+// lastIntent (patrol facing interacts with the cone, so positions are not asserted here).
+bool patrolYieldsToEscalationThenResumes() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);
+  seedPatrolNpc(session, {{4.0F, 0.0F, 3.0F}, {4.0F, 0.0F, -3.0F}},
+                iggy3d::PatrolMode::Loop);
+
+  // Patrolling while unaware.
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "compose patrol tick ok");
+  const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+  ok = ok && expect(ai != nullptr && ai->lastIntent == iggy3d::AiIntentKind::Patrol,
+                    "compose starts patrolling");
+
+  // Escalate: face the player and jump alert into the Suspicious band. Patrol must yield.
+  iggy3d::AiActorState* mutableAi = mutableAiActor(session, {2});
+  if (mutableAi == nullptr) {
+    return expect(false, "compose mutable actor");
+  }
+  mutableAi->facingDirection = {-1.0F, 0.0F, 0.0F};  // toward player at origin
+  mutableAi->alertLevel = 0.30F;                     // Suspicious band (>0.26)
+  ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "compose escalate tick ok");
+  ai = findAiActor(session.state().ai, {2});
+  ok = ok && expect(ai != nullptr && ai->lastIntent != iggy3d::AiIntentKind::Patrol,
+                    "escalation stops patrol") &&
+       expect(ai != nullptr && ai->behavior == iggy3d::AiBehaviorKind::Suspicious,
+              "escalation raises behavior to suspicious");
+
+  // Look away and let alert decay; patrol resumes once back in the low band. A blind NPC
+  // enqueues no command, so submit a player Wait each tick to keep the clock advancing.
+  mutableAi = mutableAiActor(session, {2});
+  mutableAi->facingDirection = {0.0F, 0.0F, 1.0F};  // +z: player out of cone
+  bool resumed = false;
+  for (int tick = 0; tick < 300 && !resumed; ++tick) {
+    (void)session.submitCommand(submittedWait());
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "compose decay tick ok");
+    const iggy3d::AiActorState* decayAi = findAiActor(session.state().ai, {2});
+    if (decayAi != nullptr && decayAi->lastIntent == iggy3d::AiIntentKind::Patrol) {
+      resumed = true;
+    }
+  }
+  ok = ok && expect(resumed, "patrol resumes after alert decays to low band");
+  return ok;
+}
+
+// (c) BACK-COMPAT: an NPC with NO authored waypoints does not move while idle, exactly as
+// before this slice.
+bool idleNpcWithoutWaypointsDoesNotMove() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);
+  seedPatrolNpc(session, {}, iggy3d::PatrolMode::Loop);  // empty route: no patrol
+
+  const iggy3d::EntityState* before = session.state().world.findById({2});
+  const iggy3d::Vec3 startPos = before->transform.position;
+
+  bool ok = true;
+  for (int tick = 0; tick < 8; ++tick) {
+    (void)session.submitCommand(submittedWait());
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "idle tick ok");
+  }
+  const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+  const iggy3d::EntityState* after = session.state().world.findById({2});
+  ok = ok && expect(ai != nullptr && ai->lastIntent != iggy3d::AiIntentKind::Patrol,
+                    "no-waypoint npc does not patrol") &&
+       expect(after != nullptr && iggy3d::nearlyEqual(after->transform.position, startPos),
+              "no-waypoint npc stays put while idle");
+  return ok;
+}
+
+// s7: a guard that loses a target it was looking at records the last-known position, walks there
+// to investigate (Searching band), looks around for the bounded dwell, and gives up (memory
+// cleared) — it does NOT instantly reset. Uses the white-box seam to seed the Searching band and
+// to break contact deterministically.
+bool guardInvestigatesLastKnownThenGivesUp() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);  // guard {2} at (4,0,0), player {1} at origin
+  seedNpcAiProfile(session, "default");                  // guard faces -x toward the player
+  for (iggy3d::AiActorState& a : session.mutableStateForOwnedSystems().ai.actors) {
+    if (a.actor == iggy3d::EntityId{2}) {
+      a.alertLevel = 0.50F;  // Searching band (0.43 <= level < 0.78)
+      a.lastRiseTick = 0;
+    }
+  }
+
+  // (a) See the player -> record last-known at the sighting (the player's position, origin).
+  (void)session.submitCommand(submittedWait());
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate see tick ok");
+  const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+  ok = ok && expect(ai != nullptr && ai->hasLastKnownTarget, "records last-known while seen") &&
+       expect(ai != nullptr &&
+                  iggy3d::nearlyEqual(ai->lastKnownTargetPosition, {0.0F, 0.0F, 0.0F}, 0.05F),
+              "last-known is the sighting position");
+
+  // Break contact: teleport the player far outside perception so the guard loses sight.
+  {
+    iggy3d::WorldState& world = session.mutableStateForOwnedSystems().world;
+    const iggy3d::EntityState* p = world.findById({1});
+    iggy3d::EntityState copy = *p;
+    copy.transform.position = {50.0F, 0.0F, 50.0F};
+    (void)world.upsertEntity(copy);
+  }
+
+  // (b) Now unseen but still Searching -> investigate: walk toward last-known (origin, -x).
+  bool sawInvestigate = false;
+  float startX = 4.0F;
+  for (int i = 0; i < 8; ++i) {
+    (void)session.submitCommand(submittedWait());
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate move tick ok");
+    ai = findAiActor(session.state().ai, {2});
+    if (ai != nullptr && ai->lastIntent == iggy3d::AiIntentKind::Investigate) {
+      sawInvestigate = true;
+    }
+  }
+  const iggy3d::EntityState* npc = session.state().world.findById({2});
+  ok = ok && expect(sawInvestigate, "guard investigates toward last-known") &&
+       expect(npc != nullptr && npc->transform.position.x < startX - 1.0F,
+              "guard advanced toward last-known");
+
+  // (c) Arrive and dwell: intent becomes Wait and the look-around counter climbs.
+  bool sawDwell = false;
+  for (int i = 0; i < 20 && !sawDwell; ++i) {
+    (void)session.submitCommand(submittedWait());
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate dwell tick ok");
+    ai = findAiActor(session.state().ai, {2});
+    if (ai != nullptr && ai->hasLastKnownTarget && ai->investigateDwellTicks > 0U &&
+        ai->lastIntent == iggy3d::AiIntentKind::Wait) {
+      sawDwell = true;
+    }
+  }
+  ok = ok && expect(sawDwell, "guard dwells (looks around) at last-known");
+
+  // (d) Give up: after the dwell elapses, memory clears and it stops investigating.
+  bool gaveUp = false;
+  for (int i = 0; i < static_cast<int>(iggy3d::kInvestigateDwellTicks) + 10 && !gaveUp; ++i) {
+    (void)session.submitCommand(submittedWait());
+    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate giveup tick ok");
+    ai = findAiActor(session.state().ai, {2});
+    if (ai != nullptr && !ai->hasLastKnownTarget) {
+      gaveUp = true;
+    }
+  }
+  ai = findAiActor(session.state().ai, {2});
+  ok = ok && expect(gaveUp, "guard gives up after the dwell") &&
+       expect(ai != nullptr && ai->lastIntent != iggy3d::AiIntentKind::Investigate,
+              "guard no longer investigating after give-up");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -1450,6 +1838,12 @@ int main() {
                   invalidProfileSkipsNpcCommandAndStateMutation() &&
                   autoRegisteredNpcUsesDefaultProfileAndAttacks() &&
                   rejectedAiAttackRemainsVisibleInCommandLog() &&
+                  npcAlertLadderEscalatesThenDecaysInLoop() &&
+                  patrolNpcWalksLoopRouteInOrder() &&
+                  patrolNpcLapsRectangularRouteWithDiagonalCorners() &&
+                  patrolYieldsToEscalationThenResumes() &&
+                  idleNpcWithoutWaypointsDoesNotMove() &&
+                  guardInvestigatesLastKnownThenGivesUp() &&
                   defeatedPlayerIsNotAttackedAgain() &&
                   defeatedNpcDoesNotEnqueueAttackOrMove() &&
                   pausedNormalTickDoesNotRunNpcAi();
