@@ -89,9 +89,6 @@ AppConfigStatus validateAppConfig(const AppConfig& config) {
   if (!config.savePath.empty() && (!hasFilename(config.savePath) || containsOldIggyPath(config.savePath))) {
     return AppConfigStatus::InvalidSavePath;
   }
-  if (!config.loadPath.empty() && (!hasFilename(config.loadPath) || containsOldIggyPath(config.loadPath))) {
-    return AppConfigStatus::InvalidLoadPath;
-  }
   if (config.mode == AppMode::Replay && config.replayPath.empty()) {
     return AppConfigStatus::InvalidReplayPath;
   }
@@ -116,8 +113,6 @@ const char* appConfigStatusCode(AppConfigStatus status) {
       return "app.invalid_package_path";
     case AppConfigStatus::InvalidSavePath:
       return "app.invalid_save_path";
-    case AppConfigStatus::InvalidLoadPath:
-      return "app.invalid_load_path";
     case AppConfigStatus::InvalidReplayPath:
       return "app.invalid_replay_path";
     case AppConfigStatus::InvalidExpectedSummaryPath:
