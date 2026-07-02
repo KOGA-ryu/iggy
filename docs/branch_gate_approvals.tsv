@@ -210,3 +210,4 @@ BG-1217	src/app/iggy3d/menu/DrawList.cpp	starter child panel shared UI draw-list
 BG-1218	src/app/iggy3d/save/SaveBridge.cpp	product save catalog scan and projection validation policy	codex	2026-06-30
 BG-1219	src/runtime/save/SaveFileStore.cpp	save file path listing and id extraction policy	codex	2026-06-30
 BG-1220	src/app/iggy3d/save/CatalogProjector.cpp	product save catalog to frontend slot projection policy	codex	2026-06-30
+BG-1221	src/app/iggy3d/creative/Palette.cpp	creative palette descriptor group and slot projection policy	codex	2026-07-02

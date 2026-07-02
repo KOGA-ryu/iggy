@@ -232,6 +232,11 @@ iggy3d_add_unit_test(product_map_maker_presentation_tests
 set_tests_properties(product_map_maker_presentation_tests PROPERTIES
   LABELS "unit;app;product;map_maker;presentation;iggy3d")
 
+iggy3d_add_unit_test(product_creative_palette_tests
+  tests/unit/product_creative_palette_tests.cpp)
+set_tests_properties(product_creative_palette_tests PROPERTIES
+  LABELS "unit;app;product;creative;palette;iggy3d")
+
 iggy3d_add_unit_test(product_frontend_router_tests tests/unit/product_frontend_router_tests.cpp)
 set_tests_properties(product_frontend_router_tests PROPERTIES
   LABELS "unit;app;product;frontend;router;iggy3d")
