@@ -1,4 +1,4 @@
-# The AI Lane Maximum — destiny document v1.2
+# The AI Lane Maximum — destiny document v1.3
 
 > Planner-authored 2026-07-02. This is the END of the AI lane: every behaviour layer the game's
 > identity demands, their contracts, the dependency DAG, the pre-declared churn, and the
@@ -122,7 +122,9 @@ graph's node annotations — never a second memory system.
 "The physical map moves bodies; the reasoning map moves thoughts."
 - Nodes = meaningful positions ONLY (deck doc §12): doorway, stair, chokepoint, hiding spot,
   cover cluster, objective, window, ladder, exit, patrol post, high ground, sound source,
-  last-known position. Edges typed: walkable, hidden, climb, locked, noisy, dangerous, guarded.
+  last-known position — **plus `reference` (14th, a3s1): the provenance-neutral entity-anchor
+  kind (spawn/npc anchors); semantic spawn-region kinds arrive with A7, `reference` stays for
+  unclassified anchors.** Edges typed: walkable, hidden, climb, locked, noisy, dangerous, guarded.
 - **Home:** `ReasoningNodeKind` and friends live in `src/runtime/ai/`; `menu/Notebook.hpp`
   (the second reader) includes it — NEVER the reverse. The notebook-projection wiring itself
   is a small src/app edit: a ⚠CROSS-LANE-adjacent follow-up slice, planner-brokered, cut
@@ -322,6 +324,12 @@ fleet's copy.
   silent); omniscience refusal tightened to perception-events wording.
   Known stale sibling: docs/next_work.md still says slice-5 integration is "next" (s5–s8 have
   landed); update it when trunk settles.
+- v1.3 (2026-07-02): a3s1 landed (`e247af24`, 188/188) — vocabulary + anchor/waypoint nodes +
+  walkable edges, garden pinned. Cutter-carried flag ruled: `ReasoningNodeKind::reference`
+  (14th kind) CONFIRMED — provenance-neutral entity-anchor kind; semantic spawn-region kinds
+  arrive with A7. A1+A2 roots done earlier this day (hearing kernel, footsteps→investigation,
+  durable stealth state); chokepoints/doorways deferred to pre-named a3s1b (doorways first
+  from RoomOpeningAsset).
 - v1.2 (2026-07-02, the cutter corrected the map — first live firing of the feedback rule):
   a2's builder hard-stopped on a false "zero literal hash pins" premise; truth: the repo has
   exactly ONE — the first_room demo golden (A2 churn row corrected; once-per-commit
