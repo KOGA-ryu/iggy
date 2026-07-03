@@ -11,6 +11,7 @@
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/menu/CreativeUiProjection.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
+#include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 #include "app/iggy3d/window/CreativeUiInputFrame.hpp"
 #include "app/iggy3d/window/CreativeViewportPickFrame.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
@@ -81,6 +82,29 @@ std::string_view uiHitKindReceiptName(UiHitKind kind) noexcept {
       return "viewport";
   }
   return "unknown";
+}
+
+std::string_view productCreativeUiCommandKindReceiptName(
+    ProductCreativeUiCommandKind kind) noexcept {
+  switch (kind) {
+    case ProductCreativeUiCommandKind::None:
+      return "none";
+    case ProductCreativeUiCommandKind::CycleNextTool:
+      return "cycle_next_tool";
+  }
+  return "unknown";
+}
+
+std::string_view creativeToolReceiptName(creative::Tool tool) noexcept {
+  switch (tool) {
+    case creative::Tool::Select:
+      return "Select";
+    case creative::Tool::Inspect:
+      return "Inspect";
+    case creative::Tool::Measure:
+      return "Measure";
+  }
+  return "Unknown";
 }
 
 }  // namespace
@@ -170,6 +194,27 @@ void recordProductCreativeUiDownstreamClick(
   window.creativeUiInputDownstreamClickSuppressed = receipt.suppressed;
   window.creativeUiInputDownstreamClickStatus = receipt.status;
   window.creativeUiInputDownstreamClickReasonCode = receipt.reasonCode;
+}
+
+void recordProductCreativeUiCommandFrame(
+    ProductAppWindowState& window,
+    const ProductCreativeUiCommandFrameReceipt& receipt) {
+  window.creativeUiCommandRequested = receipt.requested;
+  window.creativeUiCommandFacadeAvailable = receipt.facadeAvailable;
+  window.creativeUiCommandInputConsumed = receipt.inputConsumed;
+  window.creativeUiCommandInputEnabled = receipt.inputEnabled;
+  window.creativeUiCommandAccepted = receipt.accepted;
+  window.creativeUiCommandChanged = receipt.changed;
+  window.creativeUiCommandKind =
+      std::string(productCreativeUiCommandKindReceiptName(receipt.commandKind));
+  window.creativeUiCommandToolBefore =
+      std::string(creativeToolReceiptName(receipt.toolBefore));
+  window.creativeUiCommandToolAfter =
+      std::string(creativeToolReceiptName(receipt.toolAfter));
+  window.creativeUiCommandSemanticId =
+      receipt.semanticId.empty() ? "none" : receipt.semanticId;
+  window.creativeUiCommandStatus = receipt.status;
+  window.creativeUiCommandReasonCode = receipt.reasonCode;
 }
 
 void recordProductCreativeViewportPickFrame(
@@ -1767,6 +1812,30 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_reason_code",
                      window.creativeUiInputDownstreamClickReasonCode);
+  appendReceiptField(receipt, "creative_ui_command_requested",
+                     window.creativeUiCommandRequested);
+  appendReceiptField(receipt, "creative_ui_command_facade_available",
+                     window.creativeUiCommandFacadeAvailable);
+  appendReceiptField(receipt, "creative_ui_command_input_consumed",
+                     window.creativeUiCommandInputConsumed);
+  appendReceiptField(receipt, "creative_ui_command_input_enabled",
+                     window.creativeUiCommandInputEnabled);
+  appendReceiptField(receipt, "creative_ui_command_accepted",
+                     window.creativeUiCommandAccepted);
+  appendReceiptField(receipt, "creative_ui_command_changed",
+                     window.creativeUiCommandChanged);
+  appendReceiptField(receipt, "creative_ui_command_kind",
+                     window.creativeUiCommandKind);
+  appendReceiptField(receipt, "creative_ui_command_tool_before",
+                     window.creativeUiCommandToolBefore);
+  appendReceiptField(receipt, "creative_ui_command_tool_after",
+                     window.creativeUiCommandToolAfter);
+  appendReceiptField(receipt, "creative_ui_command_semantic_id",
+                     window.creativeUiCommandSemanticId);
+  appendReceiptField(receipt, "creative_ui_command_status",
+                     window.creativeUiCommandStatus);
+  appendReceiptField(receipt, "creative_ui_command_reason_code",
+                     window.creativeUiCommandReasonCode);
   appendReceiptField(receipt, "creative_viewport_pick_requested",
                      window.creativeViewportPickRequested);
   appendReceiptField(receipt, "creative_viewport_pick_active",

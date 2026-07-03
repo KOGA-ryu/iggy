@@ -29,6 +29,7 @@ namespace iggy3d {
 struct ProductCreativeUiProjectionReceipt;
 struct ProductCreativeUiInputFrameReceipt;
 struct ProductCreativeUiDownstreamClickReceipt;
+struct ProductCreativeUiCommandFrameReceipt;
 struct ProductCreativeViewportPickFrameReceipt;
 
 struct ProductAppWindowState {
@@ -539,6 +540,20 @@ struct ProductAppWindowState {
       "creative_ui_input_downstream_click_not_requested";
   std::string creativeUiInputDownstreamClickReasonCode =
       "creative_ui_input_downstream_click_not_requested";
+  bool creativeUiCommandRequested = false;
+  bool creativeUiCommandFacadeAvailable = false;
+  bool creativeUiCommandInputConsumed = false;
+  bool creativeUiCommandInputEnabled = false;
+  bool creativeUiCommandAccepted = false;
+  bool creativeUiCommandChanged = false;
+  std::string creativeUiCommandKind = "none";
+  std::string creativeUiCommandToolBefore = "Select";
+  std::string creativeUiCommandToolAfter = "Select";
+  std::string creativeUiCommandSemanticId = "none";
+  std::string creativeUiCommandStatus =
+      "product_creative_ui_command_not_requested";
+  std::string creativeUiCommandReasonCode =
+      "product_creative_ui_command_not_requested";
   bool creativeViewportPickRequested = false;
   bool creativeViewportPickActive = false;
   bool creativeViewportPickClickPresent = false;
@@ -592,6 +607,9 @@ void recordProductCreativeUiInputFrame(
 void recordProductCreativeUiDownstreamClick(
     ProductAppWindowState& window,
     const ProductCreativeUiDownstreamClickReceipt& receipt);
+void recordProductCreativeUiCommandFrame(
+    ProductAppWindowState& window,
+    const ProductCreativeUiCommandFrameReceipt& receipt);
 void recordProductCreativeViewportPickFrame(
     ProductAppWindowState& window,
     const ProductCreativeViewportPickFrameReceipt& receipt);
