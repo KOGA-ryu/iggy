@@ -54,11 +54,12 @@ namespace {
     return CreativeDocumentMutationStatus::BatchNoChange;
 }
 
-void incrementDocumentRevisionForMutation(CreativeDocument& document) {
+void incrementDocumentRevisionForMutation(CreativeDocument& document,
+                                          CreativeObjectDirtyFlags dirtyFlags) {
     // This function intentionally exists as the only revision bridge for object
     // mutation. Keep revision ownership in CreativeDocument rather than
     // incrementing revisions in random call sites.
-    document.markObjectMutationChanged();
+    document.markObjectMutationChanged(dirtyFlags);
 }
 
 } // namespace
@@ -178,7 +179,7 @@ CreativeDocumentMutationReceipt applyDocumentMutation(
     const auto documentStatus = statusFromApplyReceipt(objectReceipt);
 
     if (documentStatus == CreativeDocumentMutationStatus::Applied && objectReceipt.changed && options.incrementRevisionOnChange) {
-        incrementDocumentRevisionForMutation(document);
+        incrementDocumentRevisionForMutation(document, objectReceipt.dirtyFlags);
     }
 
     const auto revisionAfter = document.revision();

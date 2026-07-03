@@ -5,6 +5,22 @@
 namespace iggy3d::creative {
 namespace {
 
+constexpr CreativeObjectDirtyFlags dirtyFlagValue(
+    CreativeObjectDirtyFlag flag) noexcept {
+  return static_cast<CreativeObjectDirtyFlags>(flag);
+}
+
+constexpr CreativeObjectDirtyFlags documentIdentityDirtyFlags() noexcept {
+  return dirtyFlagValue(CreativeObjectDirtyFlag::Identity) |
+         dirtyFlagValue(CreativeObjectDirtyFlag::Preview) |
+         dirtyFlagValue(CreativeObjectDirtyFlag::Serialization);
+}
+
+CreativeObjectDirtyFlags dirtyFlagsForRemoval(
+    CreativeObjectKind objectKind) noexcept {
+  return dirtyFlagsForCreation(objectKind) | documentIdentityDirtyFlags();
+}
+
 void setCreateStatus(CreativeDocumentCreateReceipt& receipt,
                      CreativeDocumentCreateStatus status,
                      std::string_view reason) noexcept {
@@ -83,13 +99,23 @@ std::uint64_t CreativeDocument::revision() const noexcept {
   return revision_;
 }
 
+CreativeObjectDirtyFlags CreativeDocument::dirtyFlags() const noexcept {
+  return dirtyFlags_;
+}
+
+CreativeObjectDirtyFlags CreativeDocument::drainDirtyFlags() noexcept {
+  const CreativeObjectDirtyFlags drained = dirtyFlags_;
+  dirtyFlags_ = 0;
+  return drained;
+}
+
 bool CreativeDocument::rename(std::string nextName) {
   if (!valid_ || name_ == nextName) {
     return false;
   }
 
   name_ = std::move(nextName);
-  markObjectMutationChanged();
+  markObjectMutationChanged(documentIdentityDirtyFlags());
   return true;
 }
 
@@ -97,6 +123,7 @@ void CreativeDocument::reset() {
   valid_ = true;
   name_.clear();
   revision_ = 0;
+  dirtyFlags_ = 0;
 
   objects_.clear();
   objectIndex_.clear();
@@ -294,6 +321,7 @@ CreativeDocumentRemoveReceipt CreativeDocument::removeDocumentObject(
   const CreativeObject& object = objects_[index];
   receipt.objectKind = object.kind;
   receipt.objectName = object.name;
+  receipt.removalDirtyFlags = dirtyFlagsForRemoval(object.kind);
 
   objectIndex_.erase(found);
   objects_.erase(objects_.begin() + static_cast<std::ptrdiff_t>(index));
@@ -303,6 +331,7 @@ CreativeDocumentRemoveReceipt CreativeDocument::removeDocumentObject(
   }
 
   markContentChanged();
+  markDirty(receipt.removalDirtyFlags);
   receipt.accepted = true;
   receipt.changed = revision_ != receipt.revisionBefore;
   receipt.objectRemoved = true;
@@ -353,6 +382,7 @@ bool CreativeDocument::renameObject(CreativeObjectId id, std::string nextName) {
 
   object->name = std::move(nextName);
   markContentChanged();
+  markDirty(documentIdentityDirtyFlags());
   return true;
 }
 
@@ -366,21 +396,30 @@ void CreativeDocument::markContentChanged() noexcept {
   }
 }
 
+void CreativeDocument::markDirty(CreativeObjectDirtyFlags dirtyFlags) noexcept {
+  dirtyFlags_ |= dirtyFlags;
+}
+
 CreativeObjectId CreativeDocument::appendObject(CreativeObject object) {
   if (!valid_) {
     return kInvalidObjectId;
   }
 
+  const CreativeObjectDirtyFlags creationDirtyFlags =
+      dirtyFlagsForCreation(object.kind);
   const CreativeObjectId id = nextObjectId_++;
   object.id = id;
   objectIndex_[id] = objects_.size();
   objects_.push_back(std::move(object));
   markContentChanged();
+  markDirty(creationDirtyFlags);
   return id;
 }
 
-void CreativeDocument::markObjectMutationChanged() noexcept {
+void CreativeDocument::markObjectMutationChanged(
+    CreativeObjectDirtyFlags dirtyFlags) noexcept {
   markContentChanged();
+  markDirty(dirtyFlags);
 }
 
 }  // namespace iggy3d::creative

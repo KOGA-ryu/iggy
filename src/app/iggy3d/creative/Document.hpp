@@ -78,6 +78,7 @@ struct CreativeDocumentRemoveReceipt {
   std::string objectName;
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
+  CreativeObjectDirtyFlags removalDirtyFlags = 0;
   std::string_view message = "document_remove_not_requested";
   std::string_view reasonCode = "document_remove_not_requested";
 };
@@ -105,6 +106,8 @@ class CreativeDocument {
   [[nodiscard]] bool isValid() const noexcept;
   [[nodiscard]] std::string_view name() const noexcept;
   [[nodiscard]] std::uint64_t revision() const noexcept;
+  [[nodiscard]] CreativeObjectDirtyFlags dirtyFlags() const noexcept;
+  [[nodiscard]] CreativeObjectDirtyFlags drainDirtyFlags() noexcept;
 
   bool rename(std::string nextName);
   void reset();
@@ -136,7 +139,7 @@ class CreativeDocument {
       std::optional<CreativeObjectId> parentId = std::nullopt);
   [[nodiscard]] bool renameObject(CreativeObjectId id, std::string nextName);
   [[nodiscard]] bool removeObject(CreativeObjectId id);
-  void markObjectMutationChanged() noexcept;
+  void markObjectMutationChanged(CreativeObjectDirtyFlags dirtyFlags = 0) noexcept;
 
   // Future slice: authored spatial content.
   // [[nodiscard]] bool setObjectTransform(CreativeObjectId id, CreativeTransform transform);
@@ -167,10 +170,12 @@ class CreativeDocument {
  private:
   [[nodiscard]] CreativeObjectId appendObject(CreativeObject object);
   void markContentChanged() noexcept;
+  void markDirty(CreativeObjectDirtyFlags dirtyFlags) noexcept;
 
   bool valid_{true};
   std::string name_{};
   std::uint64_t revision_{0};
+  CreativeObjectDirtyFlags dirtyFlags_{0};
 
   // Future slice: stable document identity.
   // CreativeDocumentId id_{};
