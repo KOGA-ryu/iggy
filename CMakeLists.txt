@@ -122,6 +122,7 @@ target_sources(iggy3d
     src/app/iggy3d/view/ViewportFraming.cpp
     src/app/iggy3d/window/FramePresenter.cpp
     src/app/iggy3d/window/CreativeUiWindowFrame.cpp
+    src/app/iggy3d/window/CreativeInputFrame.cpp
     src/app/iggy3d/window/InputFrame.cpp
     src/app/iggy3d/window/Loop.cpp
     src/app/iggy3d/window/RendererLifecycle.cpp
