@@ -19,6 +19,14 @@ void setReceiptStatus(CreativeDocumentWireframeReceipt& receipt,
   receipt.reasonCode = reasonCode;
 }
 
+void setSegmentReceiptStatus(CreativeDocumentWireframeSegmentReceipt& receipt,
+                             CreativeDocumentWireframeSegmentStatus status,
+                             std::string_view reasonCode) noexcept {
+  receipt.status = status;
+  receipt.message = reasonCode;
+  receipt.reasonCode = reasonCode;
+}
+
 [[nodiscard]] bool isNonProjectableObject(
     const CreativeObject& object,
     CreativeSpatialProjectionProfile profile) noexcept {
@@ -64,6 +72,109 @@ void setReceiptStatus(CreativeDocumentWireframeReceipt& receipt,
   }
 
   return item;
+}
+
+[[nodiscard]] bool samePoint(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+[[nodiscard]] bool isDegenerateBounds(CreativeBounds bounds) noexcept {
+  return bounds.min.x >= bounds.max.x || bounds.min.y >= bounds.max.y ||
+         bounds.min.z >= bounds.max.z;
+}
+
+void appendSegment(CreativeDocumentWireframeSegmentList& list,
+                   const CreativeDocumentWireframeItem& item,
+                   CreativeDocumentWireframeSegmentKind segmentKind,
+                   CreativeVec3 start,
+                   CreativeVec3 end) {
+  CreativeDocumentWireframeSegment segment;
+  segment.objectId = item.objectId;
+  segment.objectKind = item.objectKind;
+  segment.style = item.style;
+  segment.segmentKind = segmentKind;
+  segment.start = start;
+  segment.end = end;
+  list.segments.push_back(segment);
+}
+
+void appendBoxSegments(CreativeDocumentWireframeSegmentList& list,
+                       const CreativeDocumentWireframeItem& item) {
+  const CreativeVec3 min = item.bounds.min;
+  const CreativeVec3 max = item.bounds.max;
+
+  const CreativeVec3 bottomFrontLeft{min.x, min.y, min.z};
+  const CreativeVec3 bottomFrontRight{max.x, min.y, min.z};
+  const CreativeVec3 bottomBackRight{max.x, min.y, max.z};
+  const CreativeVec3 bottomBackLeft{min.x, min.y, max.z};
+
+  const CreativeVec3 topFrontLeft{min.x, max.y, min.z};
+  const CreativeVec3 topFrontRight{max.x, max.y, min.z};
+  const CreativeVec3 topBackRight{max.x, max.y, max.z};
+  const CreativeVec3 topBackLeft{min.x, max.y, max.z};
+
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                bottomFrontLeft,
+                bottomFrontRight);
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                bottomFrontRight,
+                bottomBackRight);
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                bottomBackRight,
+                bottomBackLeft);
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                bottomBackLeft,
+                bottomFrontLeft);
+
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                topFrontLeft,
+                topFrontRight);
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                topFrontRight,
+                topBackRight);
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                topBackRight,
+                topBackLeft);
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                topBackLeft,
+                topFrontLeft);
+
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                bottomFrontLeft,
+                topFrontLeft);
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                bottomFrontRight,
+                topFrontRight);
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                bottomBackRight,
+                topBackRight);
+  appendSegment(list,
+                item,
+                CreativeDocumentWireframeSegmentKind::BoxEdge,
+                bottomBackLeft,
+                topBackLeft);
 }
 
 }  // namespace
@@ -129,6 +240,38 @@ std::string_view toString(CreativeDocumentWireframeStyle style) noexcept {
       return "Testing";
     case CreativeDocumentWireframeStyle::Authoring:
       return "Authoring";
+  }
+
+  return "Unknown";
+}
+
+std::string_view toString(
+    CreativeDocumentWireframeSegmentStatus status) noexcept {
+  switch (status) {
+    case CreativeDocumentWireframeSegmentStatus::Unknown:
+      return "Unknown";
+    case CreativeDocumentWireframeSegmentStatus::MissingSource:
+      return "MissingSource";
+    case CreativeDocumentWireframeSegmentStatus::EmptySource:
+      return "EmptySource";
+    case CreativeDocumentWireframeSegmentStatus::Built:
+      return "Built";
+    case CreativeDocumentWireframeSegmentStatus::NoSegments:
+      return "NoSegments";
+  }
+
+  return "Unknown";
+}
+
+std::string_view toString(
+    CreativeDocumentWireframeSegmentKind segmentKind) noexcept {
+  switch (segmentKind) {
+    case CreativeDocumentWireframeSegmentKind::Unknown:
+      return "Unknown";
+    case CreativeDocumentWireframeSegmentKind::BoxEdge:
+      return "BoxEdge";
+    case CreativeDocumentWireframeSegmentKind::Line:
+      return "Line";
   }
 
   return "Unknown";
@@ -299,6 +442,95 @@ CreativeDocumentWireframeBuildResult buildCreativeDocumentWireframeList(
                                             objects.size(),
                                             projectionRequest,
                                             true});
+}
+
+CreativeDocumentWireframeSegmentBuildResult buildCreativeDocumentWireframeSegments(
+    const CreativeDocumentWireframeSegmentBuildRequest& request) {
+  CreativeDocumentWireframeSegmentBuildResult result;
+  CreativeDocumentWireframeSegmentReceipt& receipt = result.receipt;
+  receipt.requested = true;
+  receipt.sourceAvailable = request.sourceAvailable &&
+                            (request.items != nullptr ||
+                             request.itemCount == 0U);
+  receipt.itemCount = request.itemCount;
+
+  if (!receipt.sourceAvailable) {
+    setSegmentReceiptStatus(
+        receipt,
+        CreativeDocumentWireframeSegmentStatus::MissingSource,
+        "creative_document_wireframe_segments_source_missing");
+    return result;
+  }
+
+  if (request.itemCount == 0U) {
+    setSegmentReceiptStatus(
+        receipt,
+        CreativeDocumentWireframeSegmentStatus::EmptySource,
+        "creative_document_wireframe_segments_source_empty");
+    return result;
+  }
+
+  result.segmentList.segments.reserve(request.itemCount * 12U);
+  const std::span<const CreativeDocumentWireframeItem> items(request.items,
+                                                            request.itemCount);
+  for (const CreativeDocumentWireframeItem& item : items) {
+    switch (item.itemKind) {
+      case CreativeDocumentWireframeItemKind::Box:
+        ++receipt.boxItemCount;
+        if (isDegenerateBounds(item.bounds)) {
+          ++receipt.skippedDegenerateCount;
+          break;
+        }
+        appendBoxSegments(result.segmentList, item);
+        break;
+      case CreativeDocumentWireframeItemKind::Line:
+        ++receipt.lineItemCount;
+        if (samePoint(item.start, item.end)) {
+          ++receipt.skippedDegenerateCount;
+          break;
+        }
+        appendSegment(result.segmentList,
+                      item,
+                      CreativeDocumentWireframeSegmentKind::Line,
+                      item.start,
+                      item.end);
+        break;
+      case CreativeDocumentWireframeItemKind::Point:
+        ++receipt.pointItemCount;
+        break;
+      case CreativeDocumentWireframeItemKind::Unknown:
+        break;
+    }
+  }
+
+  receipt.segmentCount = result.segmentList.segments.size();
+  if (receipt.segmentCount > 0U) {
+    setSegmentReceiptStatus(receipt,
+                            CreativeDocumentWireframeSegmentStatus::Built,
+                            "creative_document_wireframe_segments_built");
+  } else {
+    setSegmentReceiptStatus(receipt,
+                            CreativeDocumentWireframeSegmentStatus::NoSegments,
+                            "creative_document_wireframe_segments_none");
+  }
+
+  return result;
+}
+
+CreativeDocumentWireframeSegmentBuildResult buildCreativeDocumentWireframeSegments(
+    const CreativeDocumentWireframeDrawList& drawList) {
+  return buildCreativeDocumentWireframeSegments(
+      CreativeDocumentWireframeSegmentBuildRequest{drawList.items.data(),
+                                                   drawList.items.size(),
+                                                   true});
+}
+
+CreativeDocumentWireframeSegmentBuildResult buildCreativeDocumentWireframeSegments(
+    const CreativeDocument& document,
+    const CreativeSpatialProjectionRequest& projectionRequest) {
+  const CreativeDocumentWireframeBuildResult wireframe =
+      buildCreativeDocumentWireframeList(document, projectionRequest);
+  return buildCreativeDocumentWireframeSegments(wireframe.drawList);
 }
 
 }  // namespace iggy3d::creative

@@ -20,6 +20,15 @@ bool sameVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
 
+bool sameSegment(const cr::CreativeDocumentWireframeSegment& segment,
+                 cr::CreativeObjectId objectId,
+                 cr::CreativeDocumentWireframeSegmentKind kind,
+                 cr::CreativeVec3 start,
+                 cr::CreativeVec3 end) {
+  return segment.objectId == objectId && segment.segmentKind == kind &&
+         sameVec3(segment.start, start) && sameVec3(segment.end, end);
+}
+
 cr::CreativeSpatialProjectionRequest makeProjectionRequest() {
   cr::CreativeSpatialProjectionRequest request;
   request.gridSize = {64, 64, 16};
@@ -246,6 +255,246 @@ bool invalidProjectionSettingsFailClosed() {
                 "invalid reason");
 }
 
+bool roomDefaultBoxEmitsTwelveStableEdges() {
+  cr::CreativeDocument document;
+  const cr::CreativeObjectId roomId =
+      createObject(document, cr::CreativeObjectKind::Room);
+
+  const cr::CreativeDocumentWireframeSegmentBuildResult result =
+      cr::buildCreativeDocumentWireframeSegments(document,
+                                                makeProjectionRequest());
+  const std::vector<cr::CreativeDocumentWireframeSegment>& segments =
+      result.segmentList.segments;
+
+  return expect(roomId != cr::kInvalidObjectId, "segments room created") &&
+         expect(result.receipt.requested, "segments requested") &&
+         expect(result.receipt.sourceAvailable, "segments source") &&
+         expect(result.receipt.itemCount == 1U, "segments item count") &&
+         expect(result.receipt.boxItemCount == 1U, "segments box count") &&
+         expect(result.receipt.lineItemCount == 0U, "segments line count") &&
+         expect(result.receipt.pointItemCount == 0U, "segments point count") &&
+         expect(result.receipt.skippedDegenerateCount == 0U,
+                "segments no degenerates") &&
+         expect(result.receipt.segmentCount == 12U, "segments count") &&
+         expect(result.receipt.status ==
+                    cr::CreativeDocumentWireframeSegmentStatus::Built,
+                "segments built") &&
+         expect(result.receipt.reasonCode ==
+                    "creative_document_wireframe_segments_built",
+                "segments reason") &&
+         expect(segments.size() == 12U, "segments vector count") &&
+         expect(sameSegment(segments[0],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {0.0, 0.0, 0.0},
+                            {10.0, 0.0, 0.0}),
+                "bottom edge 0") &&
+         expect(sameSegment(segments[1],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {10.0, 0.0, 0.0},
+                            {10.0, 0.0, 10.0}),
+                "bottom edge 1") &&
+         expect(sameSegment(segments[2],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {10.0, 0.0, 10.0},
+                            {0.0, 0.0, 10.0}),
+                "bottom edge 2") &&
+         expect(sameSegment(segments[3],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {0.0, 0.0, 10.0},
+                            {0.0, 0.0, 0.0}),
+                "bottom edge 3") &&
+         expect(sameSegment(segments[4],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {0.0, 4.0, 0.0},
+                            {10.0, 4.0, 0.0}),
+                "top edge 0") &&
+         expect(sameSegment(segments[5],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {10.0, 4.0, 0.0},
+                            {10.0, 4.0, 10.0}),
+                "top edge 1") &&
+         expect(sameSegment(segments[6],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {10.0, 4.0, 10.0},
+                            {0.0, 4.0, 10.0}),
+                "top edge 2") &&
+         expect(sameSegment(segments[7],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {0.0, 4.0, 10.0},
+                            {0.0, 4.0, 0.0}),
+                "top edge 3") &&
+         expect(sameSegment(segments[8],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {0.0, 0.0, 0.0},
+                            {0.0, 4.0, 0.0}),
+                "vertical edge 0") &&
+         expect(sameSegment(segments[9],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {10.0, 0.0, 0.0},
+                            {10.0, 4.0, 0.0}),
+                "vertical edge 1") &&
+         expect(sameSegment(segments[10],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {10.0, 0.0, 10.0},
+                            {10.0, 4.0, 10.0}),
+                "vertical edge 2") &&
+         expect(sameSegment(segments[11],
+                            roomId,
+                            cr::CreativeDocumentWireframeSegmentKind::BoxEdge,
+                            {0.0, 0.0, 10.0},
+                            {0.0, 4.0, 10.0}),
+                "vertical edge 3");
+}
+
+bool roomAndCrateSegmentsPreserveItemOrder() {
+  cr::CreativeDocument document;
+  const cr::CreativeObjectId roomId =
+      createObject(document, cr::CreativeObjectKind::Room);
+  const cr::CreativeObjectId crateId =
+      createObject(document, cr::CreativeObjectKind::Crate);
+
+  const cr::CreativeDocumentWireframeSegmentBuildResult result =
+      cr::buildCreativeDocumentWireframeSegments(document,
+                                                makeProjectionRequest());
+  const std::vector<cr::CreativeDocumentWireframeSegment>& segments =
+      result.segmentList.segments;
+
+  return expect(result.receipt.itemCount == 2U, "order segment item count") &&
+         expect(result.receipt.boxItemCount == 2U, "order segment boxes") &&
+         expect(result.receipt.segmentCount == 24U, "order segment count") &&
+         expect(segments.size() == 24U, "order vector size") &&
+         expect(segments[0].objectId == roomId, "order first room") &&
+         expect(segments[11].objectId == roomId, "order last room") &&
+         expect(segments[12].objectId == crateId, "order first crate") &&
+         expect(segments[23].objectId == crateId, "order last crate");
+}
+
+bool hiddenRoomProducesNoSegmentsThroughConveniencePath() {
+  cr::CreativeDocument document;
+  const cr::CreativeObjectId roomId =
+      createObject(document, cr::CreativeObjectKind::Room);
+  static_cast<void>(cr::setDocumentObjectVisible(document, roomId, false));
+
+  const cr::CreativeDocumentWireframeSegmentBuildResult result =
+      cr::buildCreativeDocumentWireframeSegments(document,
+                                                makeProjectionRequest());
+
+  return expect(result.receipt.requested, "hidden segments requested") &&
+         expect(result.receipt.sourceAvailable, "hidden segments source") &&
+         expect(result.receipt.itemCount == 0U, "hidden segment items") &&
+         expect(result.receipt.segmentCount == 0U, "hidden segment count") &&
+         expect(result.segmentList.segments.empty(), "hidden no segments") &&
+         expect(result.receipt.status ==
+                    cr::CreativeDocumentWireframeSegmentStatus::EmptySource,
+                "hidden segment status") &&
+         expect(result.receipt.reasonCode ==
+                    "creative_document_wireframe_segments_source_empty",
+                "hidden segment reason");
+}
+
+bool lineItemEmitsOneSegment() {
+  cr::CreativeDocumentWireframeItem item;
+  item.itemKind = cr::CreativeDocumentWireframeItemKind::Line;
+  item.objectId = 19;
+  item.objectKind = cr::CreativeObjectKind::CameraRail;
+  item.style = cr::CreativeDocumentWireframeStyle::Camera;
+  item.start = {1.0, 2.0, 3.0};
+  item.end = {4.0, 5.0, 6.0};
+
+  cr::CreativeDocumentWireframeDrawList drawList;
+  drawList.items.push_back(item);
+  const cr::CreativeDocumentWireframeSegmentBuildResult result =
+      cr::buildCreativeDocumentWireframeSegments(drawList);
+
+  return expect(result.receipt.itemCount == 1U, "line item count") &&
+         expect(result.receipt.lineItemCount == 1U, "line count") &&
+         expect(result.receipt.segmentCount == 1U, "line segment count") &&
+         expect(result.segmentList.segments.size() == 1U,
+                "line segment vector") &&
+         expect(sameSegment(result.segmentList.segments[0],
+                            19,
+                            cr::CreativeDocumentWireframeSegmentKind::Line,
+                            {1.0, 2.0, 3.0},
+                            {4.0, 5.0, 6.0}),
+                "line segment endpoints") &&
+         expect(result.segmentList.segments[0].objectKind ==
+                    cr::CreativeObjectKind::CameraRail,
+                "line object kind") &&
+         expect(result.segmentList.segments[0].style ==
+                    cr::CreativeDocumentWireframeStyle::Camera,
+                "line style");
+}
+
+bool pointItemEmitsNoSegmentsWithTruthfulCounts() {
+  cr::CreativeDocumentWireframeItem item;
+  item.itemKind = cr::CreativeDocumentWireframeItemKind::Point;
+  item.objectId = 23;
+  item.objectKind = cr::CreativeObjectKind::SpawnPoint;
+  item.style = cr::CreativeDocumentWireframeStyle::Navigation;
+  item.start = {2.0, 3.0, 4.0};
+  item.end = item.start;
+
+  cr::CreativeDocumentWireframeDrawList drawList;
+  drawList.items.push_back(item);
+  const cr::CreativeDocumentWireframeSegmentBuildResult result =
+      cr::buildCreativeDocumentWireframeSegments(drawList);
+
+  return expect(result.receipt.itemCount == 1U, "point item count") &&
+         expect(result.receipt.pointItemCount == 1U, "point count") &&
+         expect(result.receipt.segmentCount == 0U, "point segment count") &&
+         expect(result.receipt.skippedDegenerateCount == 0U,
+                "point no degenerate") &&
+         expect(result.segmentList.segments.empty(), "point no segments") &&
+         expect(result.receipt.status ==
+                    cr::CreativeDocumentWireframeSegmentStatus::NoSegments,
+                "point status") &&
+         expect(result.receipt.reasonCode ==
+                    "creative_document_wireframe_segments_none",
+                "point reason");
+}
+
+bool degenerateBoxIsSkippedWithoutSegments() {
+  cr::CreativeDocumentWireframeItem item;
+  item.itemKind = cr::CreativeDocumentWireframeItemKind::Box;
+  item.objectId = 29;
+  item.objectKind = cr::CreativeObjectKind::Crate;
+  item.style = cr::CreativeDocumentWireframeStyle::Structural;
+  item.bounds = {{1.0, 1.0, 1.0}, {1.0, 1.0, 1.0}};
+
+  cr::CreativeDocumentWireframeDrawList drawList;
+  drawList.items.push_back(item);
+  const cr::CreativeDocumentWireframeSegmentBuildResult result =
+      cr::buildCreativeDocumentWireframeSegments(drawList);
+
+  return expect(result.receipt.itemCount == 1U,
+                "degenerate item count") &&
+         expect(result.receipt.boxItemCount == 1U,
+                "degenerate box count") &&
+         expect(result.receipt.skippedDegenerateCount == 1U,
+                "degenerate skipped count") &&
+         expect(result.receipt.segmentCount == 0U,
+                "degenerate no segments") &&
+         expect(result.segmentList.segments.empty(),
+                "degenerate segment vector") &&
+         expect(result.receipt.status ==
+                    cr::CreativeDocumentWireframeSegmentStatus::NoSegments,
+                "degenerate status") &&
+         expect(result.receipt.reasonCode ==
+                    "creative_document_wireframe_segments_none",
+                "degenerate reason");
+}
+
 }  // namespace
 
 int main() {
@@ -255,6 +504,12 @@ int main() {
                   visibilityToggleRemovesAndRestoresItem() &&
                   multipleVisibleObjectsPreserveDocumentOrder() &&
                   objectSpanUnknownObjectIsCountedButNotRendered() &&
-                  invalidProjectionSettingsFailClosed();
+                  invalidProjectionSettingsFailClosed() &&
+                  roomDefaultBoxEmitsTwelveStableEdges() &&
+                  roomAndCrateSegmentsPreserveItemOrder() &&
+                  hiddenRoomProducesNoSegmentsThroughConveniencePath() &&
+                  lineItemEmitsOneSegment() &&
+                  pointItemEmitsNoSegmentsWithTruthfulCounts() &&
+                  degenerateBoxIsSkippedWithoutSegments();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
