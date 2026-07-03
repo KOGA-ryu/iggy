@@ -15,10 +15,12 @@ struct ProductCreativeUiCommandRow {
       ProductCreativeUiCommandKind::None;
 };
 
-constexpr std::array<ProductCreativeUiCommandRow, 1>
+constexpr std::array<ProductCreativeUiCommandRow, 2>
     kProductCreativeUiCommandRows = {{
         {"creative.row.tools.active_tool",
          ProductCreativeUiCommandKind::CycleNextTool},
+        {"creative.row.selection.selected_target",
+         ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility},
     }};
 
 [[nodiscard]] const ProductCreativeUiCommandRow* findCommandRow(
@@ -36,6 +38,25 @@ void setNoopStatus(ProductCreativeUiCommandFrameReceipt& receipt,
                   std::string_view status) {
   receipt.status = std::string(status);
   receipt.reasonCode = std::string(status);
+}
+
+void copyMutationReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
+                         const creative::CreativeFacadeMutationReceipt&
+                             mutationReceipt) {
+  receipt.mutationRequested = mutationReceipt.requested;
+  receipt.mutationAccepted = mutationReceipt.accepted;
+  receipt.mutationChanged = mutationReceipt.changed;
+  receipt.mutationStatus = mutationReceipt.status;
+  receipt.documentMutationStatus = mutationReceipt.documentStatus;
+  receipt.mutationKind = mutationReceipt.mutationKind;
+  receipt.mutationTarget = mutationReceipt.target;
+  receipt.mutationObjectId = mutationReceipt.objectId;
+  receipt.mutationObjectKind = mutationReceipt.objectKind;
+  receipt.visibleBefore = mutationReceipt.visibleBefore;
+  receipt.visibleAfter = mutationReceipt.visibleAfter;
+  receipt.revisionBefore = mutationReceipt.revisionBefore;
+  receipt.revisionAfter = mutationReceipt.revisionAfter;
+  receipt.mutationMessage = mutationReceipt.message;
 }
 
 }  // namespace
@@ -82,6 +103,23 @@ ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
         nextProductCreativeTool(receipt.toolBefore));
     receipt.toolAfter = facade.toolState().activeTool;
     setNoopStatus(receipt, "product_creative_ui_command_applied");
+    return receipt;
+  }
+
+  if (receipt.commandKind ==
+      ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility) {
+    const creative::CreativeFacadeMutationReceipt mutationReceipt =
+        facade.toggleSelectedObjectVisibility();
+    copyMutationReceipt(receipt, mutationReceipt);
+    receipt.accepted = mutationReceipt.accepted;
+    receipt.changed = mutationReceipt.changed;
+    if (mutationReceipt.accepted && mutationReceipt.changed) {
+      setNoopStatus(receipt, "product_creative_ui_command_applied");
+    } else if (mutationReceipt.accepted) {
+      setNoopStatus(receipt, "product_creative_ui_command_no_change");
+    } else {
+      setNoopStatus(receipt, "product_creative_ui_command_rejected");
+    }
     return receipt;
   }
 

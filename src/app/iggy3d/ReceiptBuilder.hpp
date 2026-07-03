@@ -554,6 +554,20 @@ struct ProductAppWindowState {
       "product_creative_ui_command_not_requested";
   std::string creativeUiCommandReasonCode =
       "product_creative_ui_command_not_requested";
+  bool creativeUiCommandMutationRequested = false;
+  bool creativeUiCommandMutationAccepted = false;
+  bool creativeUiCommandMutationChanged = false;
+  std::string creativeUiCommandMutationStatus = "Unknown";
+  std::string creativeUiCommandDocumentMutationStatus = "Unknown";
+  std::string creativeUiCommandMutationKind = "Unknown";
+  std::uint64_t creativeUiCommandMutationTarget = 0;
+  std::uint64_t creativeUiCommandMutationObjectId = 0;
+  std::string creativeUiCommandMutationObjectKind = "Unknown";
+  bool creativeUiCommandVisibleBefore = false;
+  bool creativeUiCommandVisibleAfter = false;
+  std::uint64_t creativeUiCommandRevisionBefore = 0;
+  std::uint64_t creativeUiCommandRevisionAfter = 0;
+  std::string creativeUiCommandMutationMessage = "none";
   bool creativeViewportPickRequested = false;
   bool creativeViewportPickActive = false;
   bool creativeViewportPickClickPresent = false;

@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -65,6 +66,27 @@ iggy3d::ProductCreativeUiCommandFrameReceipt appliedCommandReceipt() {
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
+cr::CreativeToolInputPacket pointerPress(cr::Id targetId) {
+  cr::CreativeToolInputPacket input;
+  input.kind = cr::CreativeToolInputKind::PointerPress;
+  input.pointer.button = cr::CreativeToolPointerButton::Primary;
+  input.pointer.target.value = targetId;
+  return input;
+}
+
+iggy3d::ProductCreativeUiCommandFrameReceipt appliedToggleReceipt() {
+  cr::Facade facade;
+  facade.reset();
+  const cr::CreativeObjectId roomId = facade.createRoom("Room");
+  static_cast<void>(facade.dispatchToolInput(
+      pointerPress(static_cast<cr::Id>(roomId))));
+
+  iggy3d::ProductCreativeUiCommandFrameRequest request;
+  request.facade = &facade;
+  request.inputReceipt = commandInput("creative.row.selection.selected_target");
+  return iggy3d::routeProductCreativeUiCommandFrame(request);
+}
+
 bool defaultWindowReceiptCarriesNotRequestedFields() {
   const iggy3d::ProductAppWindowState window;
   const iggy3d::RenderReceipt receipt = receiptFor(window);
@@ -116,7 +138,63 @@ bool defaultWindowReceiptCarriesNotRequestedFields() {
          expectReceiptField(receipt,
                             "creative_ui_command_reason_code",
                             "product_creative_ui_command_not_requested",
-                            "default reason");
+                            "default reason") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_requested",
+                            "false",
+                            "default mutation requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_accepted",
+                            "false",
+                            "default mutation accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_changed",
+                            "false",
+                            "default mutation changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_status",
+                            "Unknown",
+                            "default mutation status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_document_mutation_status",
+                            "Unknown",
+                            "default document mutation status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_kind",
+                            "Unknown",
+                            "default mutation kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_target",
+                            "0",
+                            "default mutation target") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_object_id",
+                            "0",
+                            "default mutation object") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_object_kind",
+                            "Unknown",
+                            "default mutation object kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_visible_before",
+                            "false",
+                            "default visible before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_visible_after",
+                            "false",
+                            "default visible after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_revision_before",
+                            "0",
+                            "default revision before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_revision_after",
+                            "0",
+                            "default revision after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_message",
+                            "none",
+                            "default mutation message");
 }
 
 bool defaultCommandReceiptRecordsSafely() {
@@ -152,7 +230,15 @@ bool defaultCommandReceiptRecordsSafely() {
          expectReceiptField(receipt,
                             "creative_ui_command_reason_code",
                             "product_creative_ui_command_not_requested",
-                            "record default reason");
+                            "record default reason") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_status",
+                            "Unknown",
+                            "record default mutation status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_message",
+                            "none",
+                            "record default mutation message");
 }
 
 bool nullFacadeCommandReceiptRecordsFields() {
@@ -261,6 +347,93 @@ bool appliedCommandReceiptRecordsFields() {
                             "applied reason");
 }
 
+bool toggleCommandReceiptRecordsMutationFields() {
+  const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
+      appliedToggleReceipt();
+  iggy3d::ProductAppWindowState window;
+  iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  const std::string objectId = std::to_string(commandReceipt.mutationObjectId);
+  const std::string revisionBefore =
+      std::to_string(commandReceipt.revisionBefore);
+  const std::string revisionAfter =
+      std::to_string(commandReceipt.revisionAfter);
+
+  return expectReceiptField(receipt,
+                            "creative_ui_command_kind",
+                            "toggle_selected_object_visibility",
+                            "toggle kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_status",
+                            "product_creative_ui_command_applied",
+                            "toggle status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_accepted",
+                            "true",
+                            "toggle accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_changed",
+                            "true",
+                            "toggle changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_requested",
+                            "true",
+                            "toggle mutation requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_accepted",
+                            "true",
+                            "toggle mutation accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_changed",
+                            "true",
+                            "toggle mutation changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_status",
+                            "Applied",
+                            "toggle mutation status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_document_mutation_status",
+                            "Applied",
+                            "toggle document mutation status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_kind",
+                            "SetVisible",
+                            "toggle mutation kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_target",
+                            objectId,
+                            "toggle mutation target") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_object_id",
+                            objectId,
+                            "toggle mutation object") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_object_kind",
+                            "Room",
+                            "toggle mutation object kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_visible_before",
+                            "true",
+                            "toggle visible before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_visible_after",
+                            "false",
+                            "toggle visible after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_revision_before",
+                            revisionBefore,
+                            "toggle revision before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_revision_after",
+                            revisionAfter,
+                            "toggle revision after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_message",
+                            "document mutation applied through object mutation pipeline",
+                            "toggle mutation message");
+}
+
 bool recorderPreservesNeighboringFields() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_before";
@@ -345,6 +518,7 @@ int main() {
                   defaultCommandReceiptRecordsSafely() &&
                   nullFacadeCommandReceiptRecordsFields() &&
                   appliedCommandReceiptRecordsFields() &&
+                  toggleCommandReceiptRecordsMutationFields() &&
                   recorderPreservesNeighboringFields();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

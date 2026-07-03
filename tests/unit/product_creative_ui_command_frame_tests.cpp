@@ -40,6 +40,25 @@ iggy3d::ProductCreativeUiCommandFrameReceipt routeCommand(
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
+cr::CreativeToolInputPacket pointerPress(cr::Id targetId) {
+  cr::CreativeToolInputPacket input;
+  input.kind = cr::CreativeToolInputKind::PointerPress;
+  input.pointer.button = cr::CreativeToolPointerButton::Primary;
+  input.pointer.target.value = targetId;
+  return input;
+}
+
+void selectTarget(cr::Facade& facade, cr::CreativeObjectId objectId) {
+  static_cast<void>(facade.setActiveTool(cr::Tool::Select));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerPress(static_cast<cr::Id>(objectId))));
+}
+
+void inspectTarget(cr::Facade& facade, cr::Id targetId) {
+  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.dispatchToolInput(pointerPress(targetId)));
+}
+
 bool nullFacadeFailsClosed() {
   iggy3d::ProductCreativeUiCommandFrameRequest request;
   request.inputReceipt = commandInput("creative.row.tools.active_tool");
@@ -220,10 +239,187 @@ bool commandUpdatesOldStateAndDoesNotMutateDocument() {
                 "state document unchanged");
 }
 
+bool selectedTargetRowTogglesRoomVisibilityOff() {
+  cr::Facade facade;
+  facade.reset();
+  const cr::CreativeObjectId roomId = facade.createRoom("Room");
+  selectTarget(facade, roomId);
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(facade, "creative.row.selection.selected_target");
+  const cr::CreativeObject* room = facade.findObject(roomId);
+
+  return expect(room != nullptr, "toggle off room exists") &&
+         expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        ToggleSelectedObjectVisibility,
+                "toggle off command kind") &&
+         expect(receipt.accepted, "toggle off accepted") &&
+         expect(receipt.changed, "toggle off changed") &&
+         expect(receipt.status == "product_creative_ui_command_applied",
+                "toggle off status") &&
+         expect(receipt.mutationRequested, "toggle off mutation requested") &&
+         expect(receipt.mutationAccepted, "toggle off mutation accepted") &&
+         expect(receipt.mutationChanged, "toggle off mutation changed") &&
+         expect(receipt.mutationStatus ==
+                    cr::CreativeFacadeMutationStatus::Applied,
+                "toggle off mutation status") &&
+         expect(receipt.documentMutationStatus ==
+                    cr::CreativeDocumentMutationStatus::Applied,
+                "toggle off document status") &&
+         expect(receipt.mutationKind == cr::CreativeMutationKind::SetVisible,
+                "toggle off mutation kind") &&
+         expect(receipt.mutationTarget.value == roomId,
+                "toggle off mutation target") &&
+         expect(receipt.mutationObjectId == roomId,
+                "toggle off mutation object") &&
+         expect(receipt.mutationObjectKind == cr::CreativeObjectKind::Room,
+                "toggle off mutation object kind") &&
+         expect(receipt.visibleBefore, "toggle off visible before") &&
+         expect(!receipt.visibleAfter, "toggle off visible after") &&
+         expect(!room->visible, "toggle off room hidden") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "toggle off revision before") &&
+         expect(receipt.revisionAfter == revisionBefore + 1U,
+                "toggle off revision after") &&
+         expect(facade.document().objectCount() == objectCountBefore,
+                "toggle off object count unchanged") &&
+         expect(facade.selectionState().selectedTarget.value == roomId,
+                "toggle off selection preserved");
+}
+
+bool selectedTargetRowTogglesRoomVisibilityOnAgain() {
+  cr::Facade facade;
+  facade.reset();
+  const cr::CreativeObjectId roomId = facade.createRoom("Room");
+  selectTarget(facade, roomId);
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt first =
+      routeCommand(facade, "creative.row.selection.selected_target");
+  const std::uint64_t revisionBeforeSecond = facade.document().revision();
+  const iggy3d::ProductCreativeUiCommandFrameReceipt second =
+      routeCommand(facade, "creative.row.selection.selected_target");
+  const cr::CreativeObject* room = facade.findObject(roomId);
+
+  return expect(first.changed, "toggle on setup changed") &&
+         expect(room != nullptr, "toggle on room exists") &&
+         expect(second.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        ToggleSelectedObjectVisibility,
+                "toggle on command kind") &&
+         expect(second.accepted, "toggle on accepted") &&
+         expect(second.changed, "toggle on changed") &&
+         expect(second.status == "product_creative_ui_command_applied",
+                "toggle on status") &&
+         expect(!second.visibleBefore, "toggle on visible before") &&
+         expect(second.visibleAfter, "toggle on visible after") &&
+         expect(room->visible, "toggle on room visible") &&
+         expect(second.revisionBefore == revisionBeforeSecond,
+                "toggle on revision before") &&
+         expect(second.revisionAfter == revisionBeforeSecond + 1U,
+                "toggle on revision after") &&
+         expect(facade.selectionState().selectedTarget.value == roomId,
+                "toggle on selection preserved");
+}
+
+bool selectedTargetRowPreservesInspectionTarget() {
+  cr::Facade facade;
+  facade.reset();
+  const cr::CreativeObjectId roomId = facade.createRoom("Room");
+  selectTarget(facade, roomId);
+  inspectTarget(facade, 77);
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(facade, "creative.row.selection.selected_target");
+
+  return expect(receipt.changed, "inspection toggle changed") &&
+         expect(facade.selectionState().selectedTarget.value == roomId,
+                "inspection selection preserved") &&
+         expect(facade.inspectionState().inspectedTarget.value == 77U,
+                "inspection target preserved");
+}
+
+bool selectedTargetRowNoSelectionRejects() {
+  cr::Facade facade;
+  facade.reset();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(facade, "creative.row.selection.selected_target");
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        ToggleSelectedObjectVisibility,
+                "no selection command kind") &&
+         expect(!receipt.accepted, "no selection not accepted") &&
+         expect(!receipt.changed, "no selection unchanged") &&
+         expect(receipt.status == "product_creative_ui_command_rejected",
+                "no selection status") &&
+         expect(receipt.mutationRequested, "no selection mutation requested") &&
+         expect(!receipt.mutationAccepted,
+                "no selection mutation not accepted") &&
+         expect(!receipt.mutationChanged, "no selection mutation unchanged") &&
+         expect(receipt.mutationStatus ==
+                    cr::CreativeFacadeMutationStatus::NoSelection,
+                "no selection mutation status") &&
+         expect(receipt.documentMutationStatus ==
+                    cr::CreativeDocumentMutationStatus::Unknown,
+                "no selection document status") &&
+         expect(receipt.mutationKind == cr::CreativeMutationKind::Unknown,
+                "no selection mutation kind") &&
+         expect(receipt.mutationMessage == "no_selection",
+                "no selection mutation message") &&
+         expect(facade.document().objectCount() == 0U,
+                "no selection document unchanged");
+}
+
+bool selectedTargetRowMissingObjectRejectsAndPreservesSelection() {
+  cr::Facade facade;
+  facade.reset();
+  constexpr cr::Id missingTarget = 999;
+  static_cast<void>(facade.dispatchToolInput(pointerPress(missingTarget)));
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(facade, "creative.row.selection.selected_target");
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        ToggleSelectedObjectVisibility,
+                "missing command kind") &&
+         expect(!receipt.accepted, "missing not accepted") &&
+         expect(!receipt.changed, "missing unchanged") &&
+         expect(receipt.status == "product_creative_ui_command_rejected",
+                "missing status") &&
+         expect(receipt.mutationRequested, "missing mutation requested") &&
+         expect(!receipt.mutationAccepted, "missing mutation not accepted") &&
+         expect(!receipt.mutationChanged, "missing mutation unchanged") &&
+         expect(receipt.mutationStatus ==
+                    cr::CreativeFacadeMutationStatus::MissingObject,
+                "missing mutation status") &&
+         expect(receipt.documentMutationStatus ==
+                    cr::CreativeDocumentMutationStatus::MissingObject,
+                "missing document status") &&
+         expect(receipt.mutationKind == cr::CreativeMutationKind::SetVisible,
+                "missing mutation kind") &&
+         expect(receipt.mutationTarget.value == missingTarget,
+                "missing mutation target") &&
+         expect(receipt.mutationObjectId == missingTarget,
+                "missing mutation object id") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "missing revision before") &&
+         expect(receipt.revisionAfter == revisionBefore,
+                "missing revision after") &&
+         expect(receipt.mutationMessage == "missing_object",
+                "missing mutation message") &&
+         expect(facade.selectionState().selectedTarget.value == missingTarget,
+                "missing selection preserved");
+}
+
 bool nonToolRowsRemainUnknownNoop() {
-  constexpr std::array<std::string_view, 3> kUnknownRows = {
+  constexpr std::array<std::string_view, 2> kUnknownRows = {
       "creative.row.status.creative_status",
-      "creative.row.selection.selected_target",
       "creative.row.snap.snap_settings",
   };
 
@@ -259,6 +455,11 @@ int main() {
   ok &= activeToolCommandCyclesSelectToInspect();
   ok &= repeatedActiveToolCommandCyclesToolOrder();
   ok &= commandUpdatesOldStateAndDoesNotMutateDocument();
+  ok &= selectedTargetRowTogglesRoomVisibilityOff();
+  ok &= selectedTargetRowTogglesRoomVisibilityOnAgain();
+  ok &= selectedTargetRowPreservesInspectionTarget();
+  ok &= selectedTargetRowNoSelectionRejects();
+  ok &= selectedTargetRowMissingObjectRejectsAndPreservesSelection();
   ok &= nonToolRowsRemainUnknownNoop();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

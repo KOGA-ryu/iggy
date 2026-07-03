@@ -91,6 +91,8 @@ std::string_view productCreativeUiCommandKindReceiptName(
       return "none";
     case ProductCreativeUiCommandKind::CycleNextTool:
       return "cycle_next_tool";
+    case ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility:
+      return "toggle_selected_object_visibility";
   }
   return "unknown";
 }
@@ -215,6 +217,25 @@ void recordProductCreativeUiCommandFrame(
       receipt.semanticId.empty() ? "none" : receipt.semanticId;
   window.creativeUiCommandStatus = receipt.status;
   window.creativeUiCommandReasonCode = receipt.reasonCode;
+  window.creativeUiCommandMutationRequested = receipt.mutationRequested;
+  window.creativeUiCommandMutationAccepted = receipt.mutationAccepted;
+  window.creativeUiCommandMutationChanged = receipt.mutationChanged;
+  window.creativeUiCommandMutationStatus =
+      std::string(creative::toString(receipt.mutationStatus));
+  window.creativeUiCommandDocumentMutationStatus =
+      std::string(creative::toString(receipt.documentMutationStatus));
+  window.creativeUiCommandMutationKind =
+      std::string(creative::toString(receipt.mutationKind));
+  window.creativeUiCommandMutationTarget = receipt.mutationTarget.value;
+  window.creativeUiCommandMutationObjectId = receipt.mutationObjectId;
+  window.creativeUiCommandMutationObjectKind =
+      std::string(creative::toString(receipt.mutationObjectKind));
+  window.creativeUiCommandVisibleBefore = receipt.visibleBefore;
+  window.creativeUiCommandVisibleAfter = receipt.visibleAfter;
+  window.creativeUiCommandRevisionBefore = receipt.revisionBefore;
+  window.creativeUiCommandRevisionAfter = receipt.revisionAfter;
+  window.creativeUiCommandMutationMessage =
+      receipt.mutationMessage.empty() ? "none" : receipt.mutationMessage;
 }
 
 void recordProductCreativeViewportPickFrame(
@@ -1836,6 +1857,34 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiCommandStatus);
   appendReceiptField(receipt, "creative_ui_command_reason_code",
                      window.creativeUiCommandReasonCode);
+  appendReceiptField(receipt, "creative_ui_command_mutation_requested",
+                     window.creativeUiCommandMutationRequested);
+  appendReceiptField(receipt, "creative_ui_command_mutation_accepted",
+                     window.creativeUiCommandMutationAccepted);
+  appendReceiptField(receipt, "creative_ui_command_mutation_changed",
+                     window.creativeUiCommandMutationChanged);
+  appendReceiptField(receipt, "creative_ui_command_mutation_status",
+                     window.creativeUiCommandMutationStatus);
+  appendReceiptField(receipt, "creative_ui_command_document_mutation_status",
+                     window.creativeUiCommandDocumentMutationStatus);
+  appendReceiptField(receipt, "creative_ui_command_mutation_kind",
+                     window.creativeUiCommandMutationKind);
+  appendReceiptField(receipt, "creative_ui_command_mutation_target",
+                     window.creativeUiCommandMutationTarget);
+  appendReceiptField(receipt, "creative_ui_command_mutation_object_id",
+                     window.creativeUiCommandMutationObjectId);
+  appendReceiptField(receipt, "creative_ui_command_mutation_object_kind",
+                     window.creativeUiCommandMutationObjectKind);
+  appendReceiptField(receipt, "creative_ui_command_visible_before",
+                     window.creativeUiCommandVisibleBefore);
+  appendReceiptField(receipt, "creative_ui_command_visible_after",
+                     window.creativeUiCommandVisibleAfter);
+  appendReceiptField(receipt, "creative_ui_command_revision_before",
+                     window.creativeUiCommandRevisionBefore);
+  appendReceiptField(receipt, "creative_ui_command_revision_after",
+                     window.creativeUiCommandRevisionAfter);
+  appendReceiptField(receipt, "creative_ui_command_mutation_message",
+                     window.creativeUiCommandMutationMessage);
   appendReceiptField(receipt, "creative_viewport_pick_requested",
                      window.creativeViewportPickRequested);
   appendReceiptField(receipt, "creative_viewport_pick_active",
