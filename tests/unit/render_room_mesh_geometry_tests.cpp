@@ -191,6 +191,54 @@ iggy3d::SceneRoomProjection roomProjection(std::vector<iggy3d::SceneRoomMeshItem
   return room;
 }
 
+std::vector<iggy3d::RenderCreativeWireframeDebugLine> roomWireframeLines(
+    float thickness = 0.05F) {
+  const iggy3d::Vec3 min{0.0F, 0.0F, 0.0F};
+  const iggy3d::Vec3 max{10.0F, 4.0F, 10.0F};
+  const iggy3d::RenderLineColor color{0.42F, 0.78F, 0.86F, 1.0F};
+  const iggy3d::Vec3 corners[8] = {
+      {min.x, min.y, min.z},
+      {max.x, min.y, min.z},
+      {max.x, min.y, max.z},
+      {min.x, min.y, max.z},
+      {min.x, max.y, min.z},
+      {max.x, max.y, min.z},
+      {max.x, max.y, max.z},
+      {min.x, max.y, max.z},
+  };
+  const std::pair<int, int> edges[12] = {
+      {0, 1}, {1, 2}, {2, 3}, {3, 0},
+      {4, 5}, {5, 6}, {6, 7}, {7, 4},
+      {0, 4}, {1, 5}, {2, 6}, {3, 7},
+  };
+
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
+  lines.reserve(12U);
+  for (const auto [startIndex, endIndex] : edges) {
+    iggy3d::RenderCreativeWireframeDebugLine line;
+    line.start = corners[startIndex];
+    line.end = corners[endIndex];
+    line.color = color;
+    line.objectId = 42U;
+    line.objectKind = 1U;
+    line.style = 1U;
+    line.segmentKind = 1U;
+    line.thickness = thickness;
+    lines.push_back(line);
+  }
+  return lines;
+}
+
+iggy3d::RenderCreativeWireframeDebugFrame creativeDebugFrameFor(
+    const std::vector<iggy3d::RenderCreativeWireframeDebugLine>& lines) {
+  iggy3d::RenderCreativeWireframeDebugFrame frame;
+  frame.available = true;
+  frame.visible = !lines.empty();
+  frame.lines = lines.data();
+  frame.lineCount = lines.size();
+  return frame;
+}
+
 bool asciiFloorsAndWallsBuildVulkanRoomGeometry() {
   const iggy3d::AsciiRoomToRoomAssetResult asset = buildAsciiRoomAsset(
       "###\n"
@@ -768,6 +816,128 @@ bool emptyProjectionDoesNotBuildRoomGeometry() {
                 "empty geometry source count");
 }
 
+bool creativeWireframeDebugNoLinesAreNoOp() {
+  const iggy3d::vulkan::CreativeWireframeDebugCpuGeometry missing =
+      iggy3d::vulkan::buildCreativeWireframeDebugCpuGeometry(nullptr);
+  const std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
+  const iggy3d::RenderCreativeWireframeDebugFrame frame =
+      creativeDebugFrameFor(lines);
+  const iggy3d::vulkan::CreativeWireframeDebugCpuGeometry empty =
+      iggy3d::vulkan::buildCreativeWireframeDebugCpuGeometry(&frame);
+
+  return expect(!missing.ready, "missing debug geometry not ready") &&
+         expect(missing.inputLineCount == 0U,
+                "missing debug input zero") &&
+         expect(missing.emittedBoxCount == 0U,
+                "missing debug draw zero") &&
+         expect(missing.reasonCode ==
+                    "vulkan_creative_wireframe_debug_geometry_not_requested",
+                "missing debug reason") &&
+         expect(!empty.ready, "empty debug geometry not ready") &&
+         expect(empty.inputLineCount == 0U, "empty debug input zero") &&
+         expect(empty.emittedBoxCount == 0U, "empty debug draw zero") &&
+         expect(empty.reasonCode ==
+                    "vulkan_creative_wireframe_debug_geometry_no_lines",
+                "empty debug reason");
+}
+
+bool creativeWireframeDebugRoomLinesEmitThinBoxes() {
+  const std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines =
+      roomWireframeLines();
+  const iggy3d::RenderCreativeWireframeDebugFrame frame =
+      creativeDebugFrameFor(lines);
+  const iggy3d::vulkan::CreativeWireframeDebugCpuGeometry geometry =
+      iggy3d::vulkan::buildCreativeWireframeDebugCpuGeometry(&frame);
+  const VertexBounds firstBox = boundsForVertexRange(geometry.vertices, 0U, 8U);
+
+  return expect(geometry.ready, "debug room geometry ready") &&
+         expect(geometry.inputLineCount == 12U,
+                "debug room input count") &&
+         expect(geometry.emittedBoxCount == 12U,
+                "debug room emitted boxes") &&
+         expect(geometry.skippedCount == 0U, "debug room skipped zero") &&
+         expect(geometry.indexedDraws.size() == 12U,
+                "debug room draw ranges") &&
+         expect(geometry.vertices.size() == 96U,
+                "debug room vertex count") &&
+         expect(geometry.indices.size() == 864U,
+                "debug room index count") &&
+         expect(countVerticesWithColor(geometry.vertices,
+                                       0.42F,
+                                       0.78F,
+                                       0.86F) == 96U,
+                "debug room color copied") &&
+         expect(near(firstBox.minX, 0.0F), "debug first box min x") &&
+         expect(near(firstBox.maxX, 10.0F), "debug first box max x") &&
+         expect(near(firstBox.minY, -0.025F), "debug first box min y") &&
+         expect(near(firstBox.maxY, 0.025F), "debug first box max y") &&
+         expect(near(firstBox.minZ, -0.025F), "debug first box min z") &&
+         expect(near(firstBox.maxZ, 0.025F), "debug first box max z") &&
+         expect(geometry.reasonCode ==
+                    "vulkan_creative_wireframe_debug_geometry_built",
+                "debug room reason");
+}
+
+bool creativeWireframeDebugSkipsDegenerateAndDiagonalLines() {
+  std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines;
+  iggy3d::RenderCreativeWireframeDebugLine degenerate;
+  degenerate.start = {1.0F, 1.0F, 1.0F};
+  degenerate.end = degenerate.start;
+  degenerate.thickness = 0.05F;
+  lines.push_back(degenerate);
+  iggy3d::RenderCreativeWireframeDebugLine diagonal;
+  diagonal.start = {0.0F, 0.0F, 0.0F};
+  diagonal.end = {1.0F, 1.0F, 0.0F};
+  diagonal.thickness = 0.05F;
+  lines.push_back(diagonal);
+
+  const iggy3d::RenderCreativeWireframeDebugFrame frame =
+      creativeDebugFrameFor(lines);
+  const iggy3d::vulkan::CreativeWireframeDebugCpuGeometry geometry =
+      iggy3d::vulkan::buildCreativeWireframeDebugCpuGeometry(&frame);
+
+  return expect(!geometry.ready, "skipped debug geometry not ready") &&
+         expect(geometry.inputLineCount == 2U, "skipped debug input") &&
+         expect(geometry.emittedBoxCount == 0U,
+                "skipped debug emitted zero") &&
+         expect(geometry.skippedCount == 2U, "skipped debug count") &&
+         expect(geometry.vertices.empty(), "skipped debug vertices empty") &&
+         expect(geometry.reasonCode ==
+                    "vulkan_creative_wireframe_debug_geometry_no_geometry",
+                "skipped debug reason");
+}
+
+bool creativeWireframeDebugAppendsToRoomGeometry() {
+  const iggy3d::SceneRoomProjection room = roomProjection({
+      propMesh("crate_1", 1.0F, 0.4F, -1.0F),
+  });
+  const std::vector<iggy3d::RenderCreativeWireframeDebugLine> lines =
+      roomWireframeLines();
+  const iggy3d::RenderCreativeWireframeDebugFrame frame =
+      creativeDebugFrameFor(lines);
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(room, &frame);
+
+  return expect(geometry.ready, "room plus debug ready") &&
+         expect(geometry.sourceRoomStaticMeshCount == 1U,
+                "room plus debug source mesh count") &&
+         expect(geometry.creativeWireframeDebugLineInputCount == 12U,
+                "room plus debug input count") &&
+         expect(geometry.creativeWireframeDebugGeometryDrawCount == 12U,
+                "room plus debug draw count") &&
+         expect(geometry.creativeWireframeDebugGeometrySkippedCount == 0U,
+                "room plus debug skipped count") &&
+         expect(geometry.indexedDraws.size() == 13U,
+                "room plus debug indexed draws") &&
+         expect(geometry.vertices.size() == 104U,
+                "room plus debug vertex count") &&
+         expect(geometry.indices.size() == 936U,
+                "room plus debug index count") &&
+         expect(geometry.creativeWireframeDebugGeometryReasonCode ==
+                    "vulkan_creative_wireframe_debug_geometry_built",
+                "room plus debug reason");
+}
+
 }  // namespace
 
 int main() {
@@ -791,5 +961,9 @@ int main() {
   ok = roomGeometrySignatureTracksAsciiRoomShape() && ok;
   ok = propMeshesUseGenericBoxGeometry() && ok;
   ok = emptyProjectionDoesNotBuildRoomGeometry() && ok;
+  ok = creativeWireframeDebugNoLinesAreNoOp() && ok;
+  ok = creativeWireframeDebugRoomLinesEmitThinBoxes() && ok;
+  ok = creativeWireframeDebugSkipsDegenerateAndDiagonalLines() && ok;
+  ok = creativeWireframeDebugAppendsToRoomGeometry() && ok;
   return ok ? 0 : 1;
 }

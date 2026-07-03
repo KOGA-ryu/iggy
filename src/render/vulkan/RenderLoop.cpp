@@ -460,7 +460,9 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
   const bool drawPackageRoom = packageRoomLoaded(frame);
   if (drawPackageRoom) {
     BufferImageResourcesResult roomResources =
-        createInfo_.firstRoomResources->createRoomMeshResources(frame.projections.scene->room);
+        createInfo_.firstRoomResources->createRoomMeshResources(
+            frame.projections.scene->room,
+            &frame.creativeWireframeDebug);
     if (roomResources.outcome != RenderOutcome::Ok) {
       result.status = VulkanFrameStatus::Failed;
       result.outcome = roomResources.outcome;
@@ -821,6 +823,58 @@ VulkanFrameResult RenderLoop::renderFrame(const FrameInput& frame) {
                        proxyFacts.keyMarkerVisible || room.keyAnchorVisible);
     appendReceiptField(result.receipt, "dummy_marker_visible",
                        proxyFacts.dummyMarkerVisible || room.dummyAnchorVisible);
+  }
+  if (drawPackageRoom) {
+    const FirstRoomGeometryResources& geometry =
+        createInfo_.firstRoomResources->geometry();
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_input_line_count",
+                       static_cast<std::uint64_t>(
+                           geometry.creativeWireframeDebugLineInputCount));
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_draw_count",
+                       static_cast<std::uint64_t>(
+                           geometry.creativeWireframeDebugGeometryDrawCount));
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_box_count",
+                       static_cast<std::uint64_t>(
+                           geometry.creativeWireframeDebugGeometryDrawCount));
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_skipped_count",
+                       static_cast<std::uint64_t>(
+                           geometry.creativeWireframeDebugGeometrySkippedCount));
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_status",
+                       geometry.creativeWireframeDebugGeometryStatus);
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_reason_code",
+                       geometry.creativeWireframeDebugGeometryReasonCode);
+  } else {
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_input_line_count",
+                       static_cast<std::uint64_t>(
+                           frame.creativeWireframeDebug.lineCount));
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_draw_count",
+                       static_cast<std::uint64_t>(0));
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_box_count",
+                       static_cast<std::uint64_t>(0));
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_skipped_count",
+                       static_cast<std::uint64_t>(0));
+    const char* reasonCode =
+        frame.creativeWireframeDebug.available
+            ? (frame.creativeWireframeDebug.lineCount == 0U
+                   ? "vulkan_creative_wireframe_debug_geometry_no_lines"
+                   : "vulkan_creative_wireframe_debug_geometry_not_drawn")
+            : "vulkan_creative_wireframe_debug_geometry_not_requested";
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_status",
+                       reasonCode);
+    appendReceiptField(result.receipt,
+                       "creative_wireframe_debug_geometry_reason_code",
+                       reasonCode);
   }
   appendReceiptField(result.receipt, "screenshot_capture",
                      drawFirstRoom && readySwapchain.transferSourceSupported &&

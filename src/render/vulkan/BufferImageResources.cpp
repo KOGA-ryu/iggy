@@ -35,6 +35,24 @@ RenderReceipt baseReceipt(std::string_view result, std::string_view reasonCode) 
   appendReceiptField(receipt, "index_buffer_count", static_cast<std::uint64_t>(0));
   appendReceiptField(receipt, "depth_image_created", false);
   appendReceiptField(receipt, "per_frame_allocation_count", static_cast<std::uint64_t>(0));
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_input_line_count",
+                     static_cast<std::uint64_t>(0));
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_draw_count",
+                     static_cast<std::uint64_t>(0));
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_box_count",
+                     static_cast<std::uint64_t>(0));
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_skipped_count",
+                     static_cast<std::uint64_t>(0));
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_status",
+                     "vulkan_creative_wireframe_debug_geometry_not_requested");
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_reason_code",
+                     "vulkan_creative_wireframe_debug_geometry_not_requested");
   appendReceiptField(receipt, "result", result);
   appendReceiptField(receipt, "reason_code", reasonCode);
   return receipt;
@@ -264,6 +282,7 @@ void appendTriangle(std::vector<std::uint16_t>& indices,
                     std::uint16_t a,
                     std::uint16_t b,
                     std::uint16_t c);
+bool finiteVec3(Vec3 value);
 
 bool canAppendPlane(const std::vector<FirstRoomVertex>& vertices) {
   return vertices.size() + 4U <=
@@ -375,6 +394,106 @@ bool appendBoxIfFits(std::vector<FirstRoomVertex>& vertices,
   }
   appendBox(vertices, indices, draws, center, size, color);
   return true;
+}
+
+void setCreativeWireframeDebugGeometryStatus(
+    CreativeWireframeDebugCpuGeometry& geometry,
+    std::string_view status) {
+  geometry.status = std::string(status);
+  geometry.reasonCode = geometry.status;
+}
+
+bool creativeDebugLineBox(const RenderCreativeWireframeDebugLine& line,
+                          Vec3& center,
+                          Vec3& size,
+                          Vec3& color) {
+  if (!finiteVec3(line.start) || !finiteVec3(line.end) ||
+      !std::isfinite(line.thickness) || line.thickness <= 0.0F ||
+      !std::isfinite(line.color.r) || !std::isfinite(line.color.g) ||
+      !std::isfinite(line.color.b)) {
+    return false;
+  }
+
+  const float dx = line.end.x - line.start.x;
+  const float dy = line.end.y - line.start.y;
+  const float dz = line.end.z - line.start.z;
+  const bool movesX = !near(dx, 0.0F);
+  const bool movesY = !near(dy, 0.0F);
+  const bool movesZ = !near(dz, 0.0F);
+  const std::uint8_t movedAxisCount =
+      static_cast<std::uint8_t>(movesX ? 1U : 0U) +
+      static_cast<std::uint8_t>(movesY ? 1U : 0U) +
+      static_cast<std::uint8_t>(movesZ ? 1U : 0U);
+  if (movedAxisCount != 1U) {
+    return false;
+  }
+
+  center = {(line.start.x + line.end.x) * 0.5F,
+            (line.start.y + line.end.y) * 0.5F,
+            (line.start.z + line.end.z) * 0.5F};
+  const float thickness = std::max(line.thickness, 0.001F);
+  if (movesX) {
+    size = {std::fabs(dx), thickness, thickness};
+  } else if (movesY) {
+    size = {thickness, std::fabs(dy), thickness};
+  } else {
+    size = {thickness, thickness, std::fabs(dz)};
+  }
+  color = {line.color.r, line.color.g, line.color.b};
+  return true;
+}
+
+std::uint64_t creativeWireframeDebugGeometrySignature(
+    const RenderCreativeWireframeDebugFrame* frame) {
+  std::uint64_t hash = 1469598103934665603ULL;
+  if (frame == nullptr || !frame->available) {
+    hashString(hash, "not_requested");
+    return hash;
+  }
+  hashString(hash, frame->visible ? "visible" : "hidden");
+  hashByte(hash, static_cast<std::uint8_t>(frame->lineCount & 0xFFU));
+  hashByte(hash, static_cast<std::uint8_t>((frame->lineCount >> 8U) & 0xFFU));
+  if (frame->lines == nullptr || frame->lineCount == 0U) {
+    return hash;
+  }
+  for (std::size_t index = 0; index < frame->lineCount; ++index) {
+    const RenderCreativeWireframeDebugLine& line = frame->lines[index];
+    hashVec3(hash, line.start);
+    hashVec3(hash, line.end);
+    hashFloat(hash, line.color.r);
+    hashFloat(hash, line.color.g);
+    hashFloat(hash, line.color.b);
+    hashFloat(hash, line.color.a);
+    hashFloat(hash, line.thickness);
+  }
+  return hash;
+}
+
+void appendCreativeWireframeDebugReceiptFields(
+    RenderReceipt& receipt,
+    const FirstRoomGeometryResources& geometry) {
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_input_line_count",
+                     static_cast<std::uint64_t>(
+                         geometry.creativeWireframeDebugLineInputCount));
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_draw_count",
+                     static_cast<std::uint64_t>(
+                         geometry.creativeWireframeDebugGeometryDrawCount));
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_box_count",
+                     static_cast<std::uint64_t>(
+                         geometry.creativeWireframeDebugGeometryDrawCount));
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_skipped_count",
+                     static_cast<std::uint64_t>(
+                         geometry.creativeWireframeDebugGeometrySkippedCount));
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_status",
+                     geometry.creativeWireframeDebugGeometryStatus);
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_geometry_reason_code",
+                     geometry.creativeWireframeDebugGeometryReasonCode);
 }
 
 bool appendFloorGrid(std::vector<FirstRoomVertex>& vertices,
@@ -894,7 +1013,128 @@ std::vector<std::uint16_t> firstRoomBootstrapIndices() {
   return {0U, 1U, 2U, 2U, 3U, 0U};
 }
 
-RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
+CreativeWireframeDebugCpuGeometry buildCreativeWireframeDebugCpuGeometry(
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug) {
+  CreativeWireframeDebugCpuGeometry result;
+  result.geometrySignature =
+      creativeWireframeDebugGeometrySignature(creativeWireframeDebug);
+
+  if (creativeWireframeDebug == nullptr || !creativeWireframeDebug->available) {
+    setCreativeWireframeDebugGeometryStatus(
+        result,
+        "vulkan_creative_wireframe_debug_geometry_not_requested");
+    return result;
+  }
+
+  result.inputLineCount = creativeWireframeDebug->lineCount;
+  if (creativeWireframeDebug->lineCount == 0U) {
+    setCreativeWireframeDebugGeometryStatus(
+        result,
+        "vulkan_creative_wireframe_debug_geometry_no_lines");
+    return result;
+  }
+
+  if (creativeWireframeDebug->lines == nullptr) {
+    result.skippedCount = creativeWireframeDebug->lineCount;
+    setCreativeWireframeDebugGeometryStatus(
+        result,
+        "vulkan_creative_wireframe_debug_geometry_source_missing");
+    return result;
+  }
+
+  result.vertices.reserve(creativeWireframeDebug->lineCount * 8U);
+  result.indices.reserve(creativeWireframeDebug->lineCount * 72U);
+  for (std::size_t index = 0; index < creativeWireframeDebug->lineCount;
+       ++index) {
+    Vec3 center;
+    Vec3 size;
+    Vec3 color;
+    if (!creativeDebugLineBox(creativeWireframeDebug->lines[index],
+                              center,
+                              size,
+                              color) ||
+        !appendBoxIfFits(result.vertices,
+                         result.indices,
+                         result.indexedDraws,
+                         center,
+                         size,
+                         color)) {
+      ++result.skippedCount;
+      continue;
+    }
+    ++result.emittedBoxCount;
+  }
+
+  result.ready = result.emittedBoxCount > 0U && !result.vertices.empty() &&
+                 !result.indices.empty() && !result.indexedDraws.empty();
+  if (result.ready) {
+    setCreativeWireframeDebugGeometryStatus(
+        result,
+        "vulkan_creative_wireframe_debug_geometry_built");
+    return result;
+  }
+
+  setCreativeWireframeDebugGeometryStatus(
+      result,
+      "vulkan_creative_wireframe_debug_geometry_no_geometry");
+  return result;
+}
+
+void appendCreativeWireframeDebugGeometry(RoomMeshCpuGeometry& roomGeometry,
+                                          const RenderCreativeWireframeDebugFrame* creativeWireframeDebug) {
+  const CreativeWireframeDebugCpuGeometry debugGeometry =
+      buildCreativeWireframeDebugCpuGeometry(creativeWireframeDebug);
+  roomGeometry.creativeWireframeDebugLineInputCount =
+      debugGeometry.inputLineCount;
+  roomGeometry.creativeWireframeDebugGeometryDrawCount =
+      debugGeometry.emittedBoxCount;
+  roomGeometry.creativeWireframeDebugGeometrySkippedCount =
+      debugGeometry.skippedCount;
+  roomGeometry.creativeWireframeDebugGeometryStatus = debugGeometry.status;
+  roomGeometry.creativeWireframeDebugGeometryReasonCode =
+      debugGeometry.reasonCode;
+  roomGeometry.sourceCreativeWireframeDebugSignature =
+      debugGeometry.geometrySignature;
+
+  if (!debugGeometry.ready) {
+    return;
+  }
+
+  if (roomGeometry.vertices.size() + debugGeometry.vertices.size() >
+      static_cast<std::size_t>(std::numeric_limits<std::uint16_t>::max())) {
+    roomGeometry.creativeWireframeDebugGeometryDrawCount = 0;
+    roomGeometry.creativeWireframeDebugGeometrySkippedCount =
+        debugGeometry.inputLineCount;
+    roomGeometry.creativeWireframeDebugGeometryStatus =
+        "vulkan_creative_wireframe_debug_geometry_no_geometry";
+    roomGeometry.creativeWireframeDebugGeometryReasonCode =
+        roomGeometry.creativeWireframeDebugGeometryStatus;
+    return;
+  }
+
+  const std::uint16_t vertexBase =
+      static_cast<std::uint16_t>(roomGeometry.vertices.size());
+  const std::uint32_t indexBase =
+      static_cast<std::uint32_t>(roomGeometry.indices.size());
+  roomGeometry.vertices.insert(roomGeometry.vertices.end(),
+                               debugGeometry.vertices.begin(),
+                               debugGeometry.vertices.end());
+  roomGeometry.indices.reserve(roomGeometry.indices.size() +
+                               debugGeometry.indices.size());
+  for (const std::uint16_t index : debugGeometry.indices) {
+    roomGeometry.indices.push_back(static_cast<std::uint16_t>(vertexBase + index));
+  }
+  roomGeometry.indexedDraws.reserve(roomGeometry.indexedDraws.size() +
+                                    debugGeometry.indexedDraws.size());
+  for (IndexedDrawRange draw : debugGeometry.indexedDraws) {
+    draw.firstIndex += indexBase;
+    roomGeometry.indexedDraws.push_back(draw);
+  }
+}
+
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
+    const SceneRoomProjection& room,
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug) {
   RoomMeshCpuGeometry result;
   result.sourceRoomAssetId = room.assetId;
   result.sourceRoomStaticMeshCount = room.meshes.size();
@@ -1009,9 +1249,14 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
     }
   }
 
+  appendCreativeWireframeDebugGeometry(result, creativeWireframeDebug);
   result.ready = !result.vertices.empty() && !result.indices.empty() &&
                  !result.indexedDraws.empty();
   return result;
+}
+
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room) {
+  return buildRoomMeshCpuGeometry(room, nullptr);
 }
 
 BufferImageResources::~BufferImageResources() {
@@ -1069,6 +1314,14 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
   geometry_.sourceRoomAssetId.clear();
   geometry_.sourceRoomStaticMeshCount = 0;
   geometry_.sourceRoomGeometrySignature = 0;
+  geometry_.sourceCreativeWireframeDebugSignature = 0;
+  geometry_.creativeWireframeDebugLineInputCount = 0;
+  geometry_.creativeWireframeDebugGeometryDrawCount = 0;
+  geometry_.creativeWireframeDebugGeometrySkippedCount = 0;
+  geometry_.creativeWireframeDebugGeometryStatus =
+      "vulkan_creative_wireframe_debug_geometry_not_requested";
+  geometry_.creativeWireframeDebugGeometryReasonCode =
+      "vulkan_creative_wireframe_debug_geometry_not_requested";
   geometry_.roomFloorDrawCount = 0;
   geometry_.roomWallDrawCount = 0;
   geometry_.roomGridLineDrawCount = 0;
@@ -1131,7 +1384,8 @@ BufferImageResourcesResult BufferImageResources::createFirstRoomResources(
 }
 
 BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
-    const SceneRoomProjection& room) {
+    const SceneRoomProjection& room,
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug) {
   BufferImageResourcesResult result;
   result.receipt = baseReceipt("fail", "memory_allocation_failed");
   if (!ready_ || !allocator_.ready() || room.meshes.empty() || depth_.extent.width == 0U ||
@@ -1141,9 +1395,14 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
     return result;
   }
   const std::uint64_t geometrySignature = roomGeometrySignature(room);
+  const std::uint64_t creativeWireframeDebugSignature =
+      creativeWireframeDebugGeometrySignature(creativeWireframeDebug);
   if (geometry_.packageRoomGeometry && geometry_.sourceRoomAssetId == room.assetId &&
       geometry_.sourceRoomStaticMeshCount == room.meshes.size() &&
-      geometry_.sourceRoomGeometrySignature == geometrySignature && geometry_.indexCount > 0U &&
+      geometry_.sourceRoomGeometrySignature == geometrySignature &&
+      geometry_.sourceCreativeWireframeDebugSignature ==
+          creativeWireframeDebugSignature &&
+      geometry_.indexCount > 0U &&
       geometry_.vertexBuffer.allocation.buffer != VK_NULL_HANDLE &&
       geometry_.indexBuffer.allocation.buffer != VK_NULL_HANDLE) {
     result.outcome = RenderOutcome::Ok;
@@ -1162,10 +1421,12 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
                        static_cast<std::uint64_t>(geometry_.roomGridLineDrawCount));
     appendReceiptField(result.receipt, "room_grid_visible", geometry_.roomGridVisible);
     appendReceiptField(result.receipt, "room_grid_truncated", geometry_.roomGridTruncated);
+    appendCreativeWireframeDebugReceiptFields(result.receipt, geometry_);
     return result;
   }
 
-  const RoomMeshCpuGeometry cpuGeometry = buildRoomMeshCpuGeometry(room);
+  const RoomMeshCpuGeometry cpuGeometry =
+      buildRoomMeshCpuGeometry(room, creativeWireframeDebug);
   if (!cpuGeometry.ready) {
     result.reason = {"vertex_buffer_create_failed", "vertex buffer create failed"};
     result.receipt = baseReceipt("fail", result.reason.code);
@@ -1201,9 +1462,21 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
   replacement.sourceRoomAssetId = cpuGeometry.sourceRoomAssetId;
   replacement.sourceRoomStaticMeshCount = cpuGeometry.sourceRoomStaticMeshCount;
   replacement.sourceRoomGeometrySignature = cpuGeometry.sourceRoomGeometrySignature;
+  replacement.sourceCreativeWireframeDebugSignature =
+      cpuGeometry.sourceCreativeWireframeDebugSignature;
   replacement.roomFloorDrawCount = cpuGeometry.roomFloorDrawCount;
   replacement.roomWallDrawCount = cpuGeometry.roomWallDrawCount;
   replacement.roomGridLineDrawCount = cpuGeometry.roomGridLineDrawCount;
+  replacement.creativeWireframeDebugLineInputCount =
+      cpuGeometry.creativeWireframeDebugLineInputCount;
+  replacement.creativeWireframeDebugGeometryDrawCount =
+      cpuGeometry.creativeWireframeDebugGeometryDrawCount;
+  replacement.creativeWireframeDebugGeometrySkippedCount =
+      cpuGeometry.creativeWireframeDebugGeometrySkippedCount;
+  replacement.creativeWireframeDebugGeometryStatus =
+      cpuGeometry.creativeWireframeDebugGeometryStatus;
+  replacement.creativeWireframeDebugGeometryReasonCode =
+      cpuGeometry.creativeWireframeDebugGeometryReasonCode;
   replacement.roomGridVisible = cpuGeometry.roomGridVisible;
   replacement.roomGridTruncated = cpuGeometry.roomGridTruncated;
   replacement.packageRoomGeometry = true;
@@ -1236,6 +1509,7 @@ BufferImageResourcesResult BufferImageResources::createRoomMeshResources(
                      static_cast<std::uint64_t>(geometry_.roomGridLineDrawCount));
   appendReceiptField(result.receipt, "room_grid_visible", geometry_.roomGridVisible);
   appendReceiptField(result.receipt, "room_grid_truncated", geometry_.roomGridTruncated);
+  appendCreativeWireframeDebugReceiptFields(result.receipt, geometry_);
   appendReceiptField(result.receipt, "index_count", static_cast<std::uint64_t>(geometry_.indexCount));
   return result;
 }

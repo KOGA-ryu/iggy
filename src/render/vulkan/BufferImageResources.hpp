@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "projection/scene/SceneItem.hpp"
+#include "render/FrameInput.hpp"
 #include "render/RenderDiagnostics.hpp"
 #include "render/vulkan/FirstRoomPipeline.hpp"
 #include "render/vulkan/VulkanMemoryAllocator.hpp"
@@ -49,6 +50,14 @@ struct FirstRoomGeometryResources {
   std::size_t roomFloorDrawCount = 0;
   std::size_t roomWallDrawCount = 0;
   std::size_t roomGridLineDrawCount = 0;
+  std::size_t creativeWireframeDebugLineInputCount = 0;
+  std::size_t creativeWireframeDebugGeometryDrawCount = 0;
+  std::size_t creativeWireframeDebugGeometrySkippedCount = 0;
+  std::string creativeWireframeDebugGeometryStatus =
+      "vulkan_creative_wireframe_debug_geometry_not_requested";
+  std::string creativeWireframeDebugGeometryReasonCode =
+      "vulkan_creative_wireframe_debug_geometry_not_requested";
+  std::uint64_t sourceCreativeWireframeDebugSignature = 0;
   bool roomGridVisible = false;
   bool roomGridTruncated = false;
   bool packageRoomGeometry = false;
@@ -65,8 +74,30 @@ struct RoomMeshCpuGeometry {
   std::size_t roomFloorDrawCount = 0;
   std::size_t roomWallDrawCount = 0;
   std::size_t roomGridLineDrawCount = 0;
+  std::size_t creativeWireframeDebugLineInputCount = 0;
+  std::size_t creativeWireframeDebugGeometryDrawCount = 0;
+  std::size_t creativeWireframeDebugGeometrySkippedCount = 0;
+  std::string creativeWireframeDebugGeometryStatus =
+      "vulkan_creative_wireframe_debug_geometry_not_requested";
+  std::string creativeWireframeDebugGeometryReasonCode =
+      "vulkan_creative_wireframe_debug_geometry_not_requested";
+  std::uint64_t sourceCreativeWireframeDebugSignature = 0;
   bool roomGridVisible = false;
   bool roomGridTruncated = false;
+  bool ready = false;
+};
+
+struct CreativeWireframeDebugCpuGeometry {
+  std::vector<FirstRoomVertex> vertices;
+  std::vector<std::uint16_t> indices;
+  std::vector<IndexedDrawRange> indexedDraws;
+  std::size_t inputLineCount = 0;
+  std::size_t emittedBoxCount = 0;
+  std::size_t skippedCount = 0;
+  std::uint64_t geometrySignature = 0;
+  std::string status = "vulkan_creative_wireframe_debug_geometry_not_requested";
+  std::string reasonCode =
+      "vulkan_creative_wireframe_debug_geometry_not_requested";
   bool ready = false;
 };
 
@@ -101,7 +132,9 @@ public:
 
   BufferImageResourcesResult createFirstRoomResources(
       const BufferImageResourcesCreateInfo& createInfo);
-  BufferImageResourcesResult createRoomMeshResources(const SceneRoomProjection& room);
+  BufferImageResourcesResult createRoomMeshResources(
+      const SceneRoomProjection& room,
+      const RenderCreativeWireframeDebugFrame* creativeWireframeDebug = nullptr);
   RenderReceipt destroy();
 
   const FirstRoomGeometryResources& geometry() const;
@@ -121,5 +154,10 @@ private:
 std::vector<FirstRoomVertex> firstRoomBootstrapVertices();
 std::vector<std::uint16_t> firstRoomBootstrapIndices();
 RoomMeshCpuGeometry buildRoomMeshCpuGeometry(const SceneRoomProjection& room);
+RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
+    const SceneRoomProjection& room,
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug);
+CreativeWireframeDebugCpuGeometry buildCreativeWireframeDebugCpuGeometry(
+    const RenderCreativeWireframeDebugFrame* creativeWireframeDebug);
 
 }  // namespace iggy3d::vulkan
