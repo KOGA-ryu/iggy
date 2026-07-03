@@ -18,8 +18,11 @@ namespace {
 constexpr float kEyeHeightMeters = 1.0F;
 constexpr float kOcclusionMarginMeters = 0.01F;
 
-// v1 anchor-kind -> node-kind mapping. Returns false for kinds NOT derived this slice
-// (door/secret_door become `doorway` in a3s1b; marker/trap/reset_zone are unused here).
+// Anchor-kind -> node-kind mapping (the affordance vocabulary v0.1 wire strings; docs/
+// affordance_vocabulary_v0_1.md is the contract). Returns false for kinds with no v0.1 node --
+// door/secret_door (a3s1b `doorway`), marker, and the deck-only `trap`/`reset_zone` -- and for any
+// unknown string: NO node, NO error (ignore-and-continue is the contract's law). Stable node
+// ordering (sort by kind,x,z,y) is unchanged. DORMANT until an authored map emits these strings.
 bool nodeKindForAnchor(const std::string& anchorKind, ReasoningNodeKind& out) {
   if (anchorKind == "exit") {
     out = ReasoningNodeKind::exit;
@@ -29,8 +32,28 @@ bool nodeKindForAnchor(const std::string& anchorKind, ReasoningNodeKind& out) {
     out = ReasoningNodeKind::objective;
     return true;
   }
-  if (anchorKind == "spawn" || anchorKind == "npc") {
+  if (anchorKind == "spawn" || anchorKind == "npc" || anchorKind == "monster") {
     out = ReasoningNodeKind::reference;
+    return true;
+  }
+  if (anchorKind == "chokepoint") {
+    out = ReasoningNodeKind::chokepoint;
+    return true;
+  }
+  if (anchorKind == "high_ground") {
+    out = ReasoningNodeKind::highGround;
+    return true;
+  }
+  if (anchorKind == "hiding_spot") {
+    out = ReasoningNodeKind::hidingSpot;
+    return true;
+  }
+  if (anchorKind == "cover") {
+    out = ReasoningNodeKind::coverCluster;
+    return true;
+  }
+  if (anchorKind == "patrol_post") {
+    out = ReasoningNodeKind::patrolPost;
     return true;
   }
   return false;

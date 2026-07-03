@@ -686,6 +686,57 @@ bool glyphLikeGuardNamesHaveNoAsciiMeaning() {
                 "glyph guard missing actor error");
 }
 
+// a7s1: a `monster` anchor seeds an entity IDENTICALLY to an `npc` anchor (affordance vocabulary
+// v0.1) -- same EntityKind::Npc seed, same stableName -> same profile-by-name flow.
+bool monsterAnchorSeedsIdenticalToNpc() {
+  iggy3d::PackageLoadResult package;
+  package.status = iggy3d::PackageLoadStatus::Ok;
+  package.manifest.packageId = "iggy3d.monster_room";
+  package.scenario.scenarioId = "monster_room";
+  iggy3d::RoomAsset room;
+  room.id = "monster_room";
+  room.anchors = {
+      anchor("marker_spawn", "spawn", {1.0F, 0.0F, 1.0F}),
+      anchor("marker_guard", "npc", {2.0F, 0.0F, 1.0F}),
+      anchor("marker_beast", "monster", {3.0F, 0.0F, 1.0F}),
+  };
+  package.rooms.push_back(room);
+
+  const iggy3d::ProductPackageSessionSeedResult result =
+      iggy3d::buildProductPackageSessionSeed(package);
+  const iggy3d::ScenarioEntitySeed* guard = findEntity(result.seed, "marker_guard");
+  const iggy3d::ScenarioEntitySeed* beast = findEntity(result.seed, "marker_beast");
+
+  const auto profileFor = [&result](std::string_view name) -> std::string {
+    for (const iggy3d::ScenarioAiActorSeed& a : result.seed.aiActors) {
+      if (a.actorStableName == name) {
+        return a.behaviorProfileId;
+      }
+    }
+    return "<none>";
+  };
+
+  bool ok = expect(result.ok, "monster room seed ok");
+  ok = ok && expect(guard != nullptr && beast != nullptr, "guard + beast entities seeded");
+  if (guard == nullptr || beast == nullptr) {
+    return false;
+  }
+  ok = ok && expect(beast->kind == iggy3d::EntityKind::Npc, "monster anchor -> EntityKind::Npc") &&
+       expect(beast->kind == guard->kind &&
+                  beast->targeting.targetable == guard->targeting.targetable &&
+                  beast->combatantEnabled == guard->combatantEnabled &&
+                  beast->combatant.factionId == guard->combatant.factionId &&
+                  beast->combatant.hitPoints == guard->combatant.hitPoints &&
+                  beast->combatant.maxHitPoints == guard->combatant.maxHitPoints,
+              "monster entity seed matches the npc seed (aside from position)") &&
+       expect(beast->stableName == "marker_beast", "monster keeps its anchor stableName");
+  ok = ok && expect(result.npcCount == 2U, "monster is counted as an NPC (npcCount == 2)");
+  ok = ok && expect(profileFor("marker_beast") == profileFor("marker_guard") &&
+                        profileFor("marker_beast") == "default",
+                    "monster gets the same profile-by-name flow as npc (default)");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -705,6 +756,7 @@ int main() {
                   synthesizedScenarioGuardAnchorsMapThroughSessionCreate() &&
                   scenarioProfileAndGuardMergeIntoOneAiActor() &&
                   explicitProfileOverrideDoesNotEraseGuardMetadata() &&
-                  glyphLikeGuardNamesHaveNoAsciiMeaning();
+                  glyphLikeGuardNamesHaveNoAsciiMeaning() &&
+                  monsterAnchorSeedsIdenticalToNpc();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

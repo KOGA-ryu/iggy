@@ -166,5 +166,35 @@ int main() {
                     "exit + bottom patrolPost nodes present") &&
        expect(!throughIsland, "no direct edge through the island (matches a3s1 garden pin)");
 
+  // a7s1: a HAND-BUILT room authoring the affordance-vocabulary v0.1 kinds -> the graph maps each to
+  // its §12 node. Prints the authored nodes so a re-authored map's shape is visible over SSH.
+  iggy3d::RoomAsset affordances;
+  affordances.id = "authored_affordances";
+  const auto authoredAnchor = [&affordances](const char* kind, iggy3d::Vec3 pos) {
+    iggy3d::RoomAnchorAsset a;
+    a.id = std::string("anchor_") + kind;
+    a.kind = kind;
+    a.positionMeters = pos;
+    affordances.anchors.push_back(std::move(a));
+  };
+  authoredAnchor("chokepoint", cellToWorld(1, 1));
+  authoredAnchor("high_ground", cellToWorld(2, 2));
+  authoredAnchor("hiding_spot", cellToWorld(3, 3));
+  authoredAnchor("cover", cellToWorld(4, 4));
+  authoredAnchor("patrol_post", cellToWorld(5, 5));
+  authoredAnchor("monster", cellToWorld(6, 6));
+  authoredAnchor("trap", cellToWorld(7, 7));  // deck metadata -> no node
+  const std::vector<iggy3d::Vec3> noWaypoints;
+  const iggy3d::ReasoningGraph affGraph = iggy3d::buildReasoningGraph(affordances, noWaypoints);
+
+  std::cout << "\n=== reasoning graph readout: authored affordances (hand-built) ===\n";
+  std::cout << "nodes=" << affGraph.nodes.size() << " (trap/unknown produce none)\n";
+  for (const iggy3d::ReasoningNode& n : affGraph.nodes) {
+    std::cout << "  node #" << n.id << "  " << iggy3d::reasoningNodeKindName(n.kind) << "  <- "
+              << n.sourceLabel << "\n";
+  }
+  ok = ok && expect(affGraph.nodes.size() == 6U,
+                    "authored affordance kinds map to 6 nodes (trap excluded)");
+
   return ok ? 0 : 1;
 }

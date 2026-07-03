@@ -156,7 +156,10 @@ bool isSpawn(const RoomAnchorAsset& anchor) {
 ScenarioEntitySeed entityFromAnchor(const RoomAnchorAsset& anchor,
                                     std::string_view firstKeyItemId,
                                     std::string_view firstTreasureItemId) {
-  if (anchor.kind == "npc") {
+  // Affordance vocabulary v0.1: `monster` seeds an entity identically to `npc` (same EntityKind::Npc
+  // seed, same stableName=anchor.id -> same profile-by-name flow). Encounter-generation flavour that
+  // distinguishes monster from guard is a future slice; entity seeding is identical today.
+  if (anchor.kind == "npc" || anchor.kind == "monster") {
     return npcFromAnchor(anchor);
   }
   if (anchor.kind == "pickup" || anchor.kind == "key" || anchor.kind == "treasure") {

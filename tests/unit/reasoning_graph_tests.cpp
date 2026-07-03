@@ -216,11 +216,50 @@ bool summaryCountsMatchGraph() {
          expect(perKindTotal == s.nodeCount, "per-kind counts sum to the node count");
 }
 
+// a7s1: the affordance vocabulary v0.1 authored kinds map to their §12 nodes; trap/reset_zone/
+// unknown produce NO node and NO error (ignore-and-continue is the contract's law).
+bool affordanceKindsMapToNodes() {
+  iggy3d::RoomAsset room;
+  room.id = "affordance_test";
+  room.anchors = {
+      anchor("chokepoint", {1.0F, 0.0F, 1.0F}),
+      anchor("high_ground", {2.0F, 0.0F, 2.0F}),
+      anchor("hiding_spot", {3.0F, 0.0F, 3.0F}),
+      anchor("cover", {4.0F, 0.0F, 4.0F}),
+      anchor("patrol_post", {5.0F, 0.0F, 5.0F}),
+      anchor("monster", {6.0F, 0.0F, 6.0F}),
+      anchor("trap", {7.0F, 0.0F, 7.0F}),              // deck metadata -> no node
+      anchor("reset_zone", {8.0F, 0.0F, 8.0F}),        // hazard socket -> no node
+      anchor("totally_unknown", {9.0F, 0.0F, 9.0F}),   // unknown -> no node, no error
+  };
+  const std::vector<iggy3d::Vec3> noWaypoints;
+  const iggy3d::ReasoningGraph g = iggy3d::buildReasoningGraph(room, noWaypoints);
+
+  const auto has = [&g](iggy3d::ReasoningNodeKind kind, iggy3d::Vec3 pos) {
+    for (const iggy3d::ReasoningNode& n : g.nodes) {
+      if (n.kind == kind && vec3Exact(n.positionMeters, pos)) {
+        return true;
+      }
+    }
+    return false;
+  };
+  return expect(g.nodes.size() == 6U, "only the 6 authored affordance kinds become nodes") &&
+         expect(has(iggy3d::ReasoningNodeKind::chokepoint, {1, 0, 1}), "chokepoint -> chokepoint") &&
+         expect(has(iggy3d::ReasoningNodeKind::highGround, {2, 0, 2}), "high_ground -> highGround") &&
+         expect(has(iggy3d::ReasoningNodeKind::hidingSpot, {3, 0, 3}), "hiding_spot -> hidingSpot") &&
+         expect(has(iggy3d::ReasoningNodeKind::coverCluster, {4, 0, 4}), "cover -> coverCluster") &&
+         expect(has(iggy3d::ReasoningNodeKind::patrolPost, {5, 0, 5}), "patrol_post -> patrolPost") &&
+         expect(has(iggy3d::ReasoningNodeKind::reference, {6, 0, 6}), "monster -> reference") &&
+         expect(!has(iggy3d::ReasoningNodeKind::doorway, {7, 0, 7}),
+                "trap/reset_zone/unknown derive no node (ignore-and-continue)");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = anchorMappingDerivesRightKinds() && waypointsBecomePatrolPosts() &&
                   wallBlocksWalkableEdge() && maxLinkDistanceCutsLongEdges() &&
-                  sameInputsYieldBitwiseIdenticalGraph() && summaryCountsMatchGraph();
+                  sameInputsYieldBitwiseIdenticalGraph() && summaryCountsMatchGraph() &&
+                  affordanceKindsMapToNodes();
   return ok ? 0 : 1;
 }
