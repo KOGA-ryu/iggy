@@ -2,6 +2,8 @@
 
 #include <array>
 #include <charconv>
+#include <cmath>
+#include <cstdlib>
 #include <iomanip>
 #include <limits>
 #include <set>
@@ -116,10 +118,34 @@ std::string formatVec3Lossless(Vec3 value) {
          formatFloatLossless(value.z);
 }
 
+std::string formatDoubleLossless(double value) {
+  std::array<char, 64> buffer{};
+  const std::to_chars_result result =
+      std::to_chars(buffer.data(), buffer.data() + buffer.size(), value);
+  if (result.ec == std::errc{}) {
+    return std::string(buffer.data(), result.ptr);
+  }
+  std::ostringstream out;
+  out << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
+  return out.str();
+}
+
+std::string formatCreativeVec3(const SaveCreativeDocumentVec3Record& value) {
+  return formatDoubleLossless(value.x) + "," + formatDoubleLossless(value.y) + "," +
+         formatDoubleLossless(value.z);
+}
+
 bool parseFloat(std::string_view value, float& out) {
   std::string text(value);
   char* end = nullptr;
   out = std::strtof(text.c_str(), &end);
+  return end != text.c_str() && *end == '\0' && std::isfinite(out);
+}
+
+bool parseDouble(std::string_view value, double& out) {
+  std::string text(value);
+  char* end = nullptr;
+  out = std::strtod(text.c_str(), &end);
   return end != text.c_str() && *end == '\0' && std::isfinite(out);
 }
 
@@ -134,6 +160,19 @@ bool parseVec3(std::string_view value, Vec3& out) {
   return parseFloat(value.substr(0, first), out.x) &&
          parseFloat(value.substr(first + 1U, second - first - 1U), out.y) &&
          parseFloat(value.substr(second + 1U), out.z);
+}
+
+bool parseCreativeVec3(std::string_view value, SaveCreativeDocumentVec3Record& out) {
+  const std::size_t first = value.find(',');
+  const std::size_t second = first == std::string_view::npos ? std::string_view::npos
+                                                             : value.find(',', first + 1U);
+  if (first == std::string_view::npos || second == std::string_view::npos ||
+      value.find(',', second + 1U) != std::string_view::npos) {
+    return false;
+  }
+  return parseDouble(value.substr(0, first), out.x) &&
+         parseDouble(value.substr(first + 1U, second - first - 1U), out.y) &&
+         parseDouble(value.substr(second + 1U), out.z);
 }
 
 template <typename T>
@@ -731,6 +770,7 @@ public:
     writeSession();
     writeWorld();
     writeAuthoredRoom();
+    writeCreativeDocument();
     writePlayers();
     writeClock();
     writeCamera();
@@ -759,6 +799,10 @@ private:
   template <typename Enum>
   void lineEnum(const std::string& key, Enum value) {
     line(key, enumText(value));
+  }
+  void lineCreativeVec3(const std::string& key,
+                        const SaveCreativeDocumentVec3Record& value) {
+    line(key, formatCreativeVec3(value));
   }
 
   void writeMetadata() {
@@ -911,6 +955,56 @@ private:
       line(p + "positionMeters", formatVec3(marker.positionMeters));
       line(p + "sourceLine", unsignedText(marker.sourceLine));
       line(p + "sourceColumn", unsignedText(marker.sourceColumn));
+    }
+  }
+
+  void writeCreativeDocument() {
+    if (!envelope_.creativeDocument.present) {
+      return;
+    }
+    const SaveCreativeDocumentSection& section = envelope_.creativeDocument;
+    lineBool("creativeDocument.present", true);
+    line("creativeDocument.version", unsignedText(section.version));
+    line("creativeDocument.documentId", unsignedText(section.documentId));
+    lineString("creativeDocument.name", section.name);
+    lineString("creativeDocument.units", section.units);
+    lineCreativeVec3("creativeDocument.grid.origin", section.gridOrigin);
+    line("creativeDocument.grid.cellSizeMeters", formatDoubleLossless(section.cellSizeMeters));
+    line("creativeDocument.grid.width", unsignedText(section.gridWidth));
+    line("creativeDocument.grid.height", unsignedText(section.gridHeight));
+    line("creativeDocument.grid.depth", unsignedText(section.gridDepth));
+    lineString("creativeDocument.snap.mode", section.snapMode);
+    line("creativeDocument.snap.axes", unsignedText(section.snapAxes));
+    line("creativeDocument.snap.stepX", formatDoubleLossless(section.snapStepX));
+    line("creativeDocument.snap.stepY", formatDoubleLossless(section.snapStepY));
+    line("creativeDocument.snap.stepZ", formatDoubleLossless(section.snapStepZ));
+    line("creativeDocument.snap.originX", formatDoubleLossless(section.snapOriginX));
+    line("creativeDocument.snap.originY", formatDoubleLossless(section.snapOriginY));
+    line("creativeDocument.snap.originZ", formatDoubleLossless(section.snapOriginZ));
+    lineCreativeVec3("creativeDocument.worldBounds.min", section.worldBounds.min);
+    lineCreativeVec3("creativeDocument.worldBounds.max", section.worldBounds.max);
+    line("creativeDocument.nextObjectId", unsignedText(section.nextObjectId));
+    line("creativeDocument.object.count", unsignedText(section.objects.size()));
+    for (std::size_t index = 0; index < section.objects.size(); ++index) {
+      const SaveCreativeDocumentObjectRecord& object = section.objects[index];
+      const std::string p = "creativeDocument.object." + std::to_string(index) + ".";
+      line(p + "id", unsignedText(object.id));
+      lineString(p + "kind", object.kind);
+      lineString(p + "name", object.name);
+      lineCreativeVec3(p + "transform.position", object.transform.position);
+      lineCreativeVec3(p + "transform.rotation", object.transform.rotation);
+      lineCreativeVec3(p + "transform.scale", object.transform.scale);
+      lineCreativeVec3(p + "bounds.min", object.bounds.min);
+      lineCreativeVec3(p + "bounds.max", object.bounds.max);
+      line(p + "layerId", unsignedText(object.layerId));
+      lineBool(p + "visible", object.visible);
+      lineBool(p + "locked", object.locked);
+      lineBool(p + "hasParent", object.hasParent);
+      line(p + "parentId", unsignedText(object.parentId));
+      line(p + "tag.count", unsignedText(object.tags.size()));
+      for (std::size_t tag = 0; tag < object.tags.size(); ++tag) {
+        lineString(p + "tag." + std::to_string(tag), object.tags[tag]);
+      }
     }
   }
 
@@ -1104,6 +1198,7 @@ public:
     readSession();
     readWorld();
     readAuthoredRoom();
+    readCreativeDocument();
     readPlayers();
     readClock();
     readCamera();
@@ -1246,6 +1341,18 @@ private:
     return true;
   }
 
+  bool readDouble(const std::string& key, double& out) {
+    std::string_view value;
+    if (!nextValue(key, value)) {
+      return false;
+    }
+    if (!parseDouble(value, out)) {
+      result_ = fail(SaveCodecStatus::InvalidNumber, key, index_, "invalid double");
+      return false;
+    }
+    return true;
+  }
+
   bool readBool(const std::string& key, bool& out) {
     std::string_view value;
     if (!nextValue(key, value)) {
@@ -1264,6 +1371,18 @@ private:
       return false;
     }
     if (!parseVec3(value, out)) {
+      result_ = fail(SaveCodecStatus::InvalidNumber, key, index_, "invalid vector");
+      return false;
+    }
+    return true;
+  }
+
+  bool readCreativeVec3(const std::string& key, SaveCreativeDocumentVec3Record& out) {
+    std::string_view value;
+    if (!nextValue(key, value)) {
+      return false;
+    }
+    if (!parseCreativeVec3(value, out)) {
       result_ = fail(SaveCodecStatus::InvalidNumber, key, index_, "invalid vector");
       return false;
     }
@@ -1471,6 +1590,58 @@ private:
       readVec3(p + "positionMeters", marker.positionMeters);
       readUnsigned(p + "sourceLine", marker.sourceLine);
       readUnsigned(p + "sourceColumn", marker.sourceColumn);
+    }
+  }
+
+  void readCreativeDocument() {
+    if (!nextKeyIs("creativeDocument.present")) {
+      return;
+    }
+    SaveCreativeDocumentSection& section = envelope_.creativeDocument;
+    readBool("creativeDocument.present", section.present);
+    if (!section.present) {
+      return;
+    }
+    readUnsigned("creativeDocument.version", section.version);
+    readUnsigned("creativeDocument.documentId", section.documentId);
+    readString("creativeDocument.name", section.name);
+    readString("creativeDocument.units", section.units);
+    readCreativeVec3("creativeDocument.grid.origin", section.gridOrigin);
+    readDouble("creativeDocument.grid.cellSizeMeters", section.cellSizeMeters);
+    readUnsigned("creativeDocument.grid.width", section.gridWidth);
+    readUnsigned("creativeDocument.grid.height", section.gridHeight);
+    readUnsigned("creativeDocument.grid.depth", section.gridDepth);
+    readString("creativeDocument.snap.mode", section.snapMode);
+    readUnsigned("creativeDocument.snap.axes", section.snapAxes);
+    readDouble("creativeDocument.snap.stepX", section.snapStepX);
+    readDouble("creativeDocument.snap.stepY", section.snapStepY);
+    readDouble("creativeDocument.snap.stepZ", section.snapStepZ);
+    readDouble("creativeDocument.snap.originX", section.snapOriginX);
+    readDouble("creativeDocument.snap.originY", section.snapOriginY);
+    readDouble("creativeDocument.snap.originZ", section.snapOriginZ);
+    readCreativeVec3("creativeDocument.worldBounds.min", section.worldBounds.min);
+    readCreativeVec3("creativeDocument.worldBounds.max", section.worldBounds.max);
+    readUnsigned("creativeDocument.nextObjectId", section.nextObjectId);
+    std::uint64_t objectCount = 0;
+    readUnsigned("creativeDocument.object.count", objectCount);
+    section.objects.resize(static_cast<std::size_t>(objectCount));
+    for (std::size_t index = 0; index < section.objects.size(); ++index) {
+      SaveCreativeDocumentObjectRecord& object = section.objects[index];
+      const std::string p = "creativeDocument.object." + std::to_string(index) + ".";
+      readUnsigned(p + "id", object.id);
+      readString(p + "kind", object.kind);
+      readString(p + "name", object.name);
+      readCreativeVec3(p + "transform.position", object.transform.position);
+      readCreativeVec3(p + "transform.rotation", object.transform.rotation);
+      readCreativeVec3(p + "transform.scale", object.transform.scale);
+      readCreativeVec3(p + "bounds.min", object.bounds.min);
+      readCreativeVec3(p + "bounds.max", object.bounds.max);
+      readUnsigned(p + "layerId", object.layerId);
+      readBool(p + "visible", object.visible);
+      readBool(p + "locked", object.locked);
+      readBool(p + "hasParent", object.hasParent);
+      readUnsigned(p + "parentId", object.parentId);
+      readStringVector(p + "tag.count", p + "tag.", object.tags);
     }
   }
 

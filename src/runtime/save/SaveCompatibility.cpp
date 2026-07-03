@@ -31,11 +31,12 @@ bool isLowerHex16(const std::string& value) {
 
 SaveCompatibilityResult checkSaveCompatibility(const SaveCompatibilityRequest& request) {
   const SaveEnvelope& envelope = request.envelope;
-  if (envelope.metadata.schemaVersion != request.currentSchemaVersion ||
+  if (envelope.metadata.schemaVersion > request.currentSchemaVersion ||
       envelope.metadata.minimumReadableSchemaVersion > request.currentSchemaVersion ||
       envelope.metadata.schemaVersion < request.minimumReadableSchemaVersion) {
     return failure(SaveCompatibilityStatus::UnsupportedSchemaVersion, "metadata.schemaVersion",
-                   std::to_string(request.currentSchemaVersion),
+                   std::to_string(request.minimumReadableSchemaVersion) + ".." +
+                       std::to_string(request.currentSchemaVersion),
                    std::to_string(envelope.metadata.schemaVersion));
   }
   if (envelope.metadata.runtimeSaveVersion != request.currentRuntimeSaveVersion) {

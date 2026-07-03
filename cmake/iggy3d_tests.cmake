@@ -811,6 +811,11 @@ set_tests_properties(session_runner_tests PROPERTIES LABELS "unit;runtime;sessio
 iggy3d_add_unit_test(save_load_tests tests/unit/save_load_tests.cpp)
 set_tests_properties(save_load_tests PROPERTIES LABELS "unit;runtime;save;iggy3d")
 
+iggy3d_add_unit_test(save_creative_document_section_tests
+  tests/unit/save_creative_document_section_tests.cpp)
+set_tests_properties(save_creative_document_section_tests PROPERTIES
+  LABELS "unit;runtime;save;creative;iggy3d")
+
 iggy3d_add_unit_test(projection_tests tests/unit/projection_tests.cpp)
 set_tests_properties(projection_tests PROPERTIES LABELS "unit;runtime;projection;iggy3d")
 

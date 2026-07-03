@@ -23,7 +23,7 @@
 
 namespace iggy3d {
 
-inline constexpr std::uint32_t kSaveSchemaVersion = 1;
+inline constexpr std::uint32_t kSaveSchemaVersion = 2;
 inline constexpr std::uint32_t kMinimumReadableSaveSchemaVersion = 1;
 inline constexpr std::uint32_t kRuntimeSaveVersion = 1;
 
@@ -157,6 +157,61 @@ struct SaveAuthoredRoomSection {
   std::vector<SaveAuthoredRoomWallRecord> walls;
   std::vector<SaveAuthoredRoomObjectRecord> objects;
   std::vector<SaveAuthoredRoomMarkerRecord> markers;
+};
+
+struct SaveCreativeDocumentVec3Record {
+  double x = 0.0;
+  double y = 0.0;
+  double z = 0.0;
+};
+
+struct SaveCreativeDocumentTransformRecord {
+  SaveCreativeDocumentVec3Record position;
+  SaveCreativeDocumentVec3Record rotation;
+  SaveCreativeDocumentVec3Record scale{1.0, 1.0, 1.0};
+};
+
+struct SaveCreativeDocumentBoundsRecord {
+  SaveCreativeDocumentVec3Record min;
+  SaveCreativeDocumentVec3Record max;
+};
+
+struct SaveCreativeDocumentObjectRecord {
+  std::uint64_t id = 0;
+  std::string kind;
+  std::string name;
+  SaveCreativeDocumentTransformRecord transform;
+  SaveCreativeDocumentBoundsRecord bounds;
+  std::uint64_t layerId = 0;
+  bool visible = true;
+  bool locked = false;
+  bool hasParent = false;
+  std::uint64_t parentId = 0;
+  std::vector<std::string> tags;
+};
+
+struct SaveCreativeDocumentSection {
+  bool present = false;
+  std::uint32_t version = 1;
+  std::uint64_t documentId = 0;
+  std::string name;
+  std::string units = "Meters";
+  SaveCreativeDocumentVec3Record gridOrigin;
+  double cellSizeMeters = 1.0;
+  std::uint32_t gridWidth = 0;
+  std::uint32_t gridHeight = 0;
+  std::uint32_t gridDepth = 0;
+  std::string snapMode = "Disabled";
+  std::uint32_t snapAxes = 0;
+  double snapStepX = 1.0;
+  double snapStepY = 1.0;
+  double snapStepZ = 1.0;
+  double snapOriginX = 0.0;
+  double snapOriginY = 0.0;
+  double snapOriginZ = 0.0;
+  SaveCreativeDocumentBoundsRecord worldBounds;
+  std::uint64_t nextObjectId = 1;
+  std::vector<SaveCreativeDocumentObjectRecord> objects;
 };
 
 struct SavePlayerSlotRecord {
@@ -312,6 +367,7 @@ struct SaveEnvelope {
   SaveSessionSection session;
   SaveWorldSection world;
   SaveAuthoredRoomSection authoredRoom;
+  SaveCreativeDocumentSection creativeDocument;
   SavePlayerSection players;
   SaveClockSection clock;
   SaveCameraSection camera;
