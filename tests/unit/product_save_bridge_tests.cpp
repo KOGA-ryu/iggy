@@ -6,10 +6,12 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <span>
 #include <string>
 #include <string_view>
 
 namespace {
+namespace cr = iggy3d::creative;
 
 bool expect(bool condition, std::string_view message) {
   if (!condition) {
@@ -95,6 +97,164 @@ iggy3d::SaveAuthoredRoomSection authoredRoomFixture() {
   marker.sourceColumn = 4;
   authoredRoom.markers.push_back(marker);
   return authoredRoom;
+}
+
+bool sameCreativeVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+bool sameCreativeBounds(cr::CreativeBounds lhs, cr::CreativeBounds rhs) {
+  return sameCreativeVec3(lhs.min, rhs.min) &&
+         sameCreativeVec3(lhs.max, rhs.max);
+}
+
+bool sameCreativeTransform(cr::CreativeTransform lhs,
+                           cr::CreativeTransform rhs) {
+  return sameCreativeVec3(lhs.position, rhs.position) &&
+         sameCreativeVec3(lhs.rotation, rhs.rotation) &&
+         sameCreativeVec3(lhs.scale, rhs.scale);
+}
+
+bool sameCreativeGridSettings(cr::CreativeGridSettings lhs,
+                              cr::CreativeGridSettings rhs) {
+  return sameCreativeVec3(lhs.origin, rhs.origin) &&
+         lhs.cellSizeMeters == rhs.cellSizeMeters &&
+         lhs.size.width == rhs.size.width && lhs.size.height == rhs.size.height &&
+         lhs.size.depth == rhs.size.depth;
+}
+
+bool sameCreativeSnapSettings(cr::CreativeDocumentSnapSettings lhs,
+                              cr::CreativeDocumentSnapSettings rhs) {
+  return lhs.mode == rhs.mode && lhs.axes == rhs.axes &&
+         lhs.stepX == rhs.stepX && lhs.stepY == rhs.stepY &&
+         lhs.stepZ == rhs.stepZ && lhs.originX == rhs.originX &&
+         lhs.originY == rhs.originY && lhs.originZ == rhs.originZ;
+}
+
+cr::CreativeGridSettings creativeGridFixture() {
+  cr::CreativeGridSettings settings;
+  settings.origin = {1.0 / 3.0, 0.125, -4.5};
+  settings.cellSizeMeters = 0.5;
+  settings.size = {64, 32, 8};
+  return settings;
+}
+
+cr::CreativeDocumentSnapSettings creativeSnapFixture() {
+  cr::CreativeDocumentSnapSettings settings =
+      cr::makeDefaultCreativeDocumentSnapSettings();
+  settings.mode = cr::CreativeDocumentSnapMode::Grid;
+  settings.axes = cr::kCreativeDocumentSnapAxisXZ;
+  settings.stepX = 0.25;
+  settings.stepZ = 2.0;
+  settings.originX = -1.0;
+  settings.originZ = 4.0;
+  return settings;
+}
+
+cr::CreativeBounds creativeWorldBoundsFixture() {
+  return {{-8.0, -1.0, -4.0}, {64.0, 32.0, 8.0}};
+}
+
+cr::CreativeObject creativeGroupObjectFixture() {
+  cr::CreativeObject object;
+  object.id = 2;
+  object.kind = cr::CreativeObjectKind::Group;
+  object.name = "Creative Group";
+  object.layerId = 4;
+  object.tags = {"container"};
+  return object;
+}
+
+cr::CreativeObject creativeCrateObjectFixture() {
+  cr::CreativeObject object;
+  object.id = 7;
+  object.kind = cr::CreativeObjectKind::Crate;
+  object.name = "Creative Crate";
+  object.transform.position = {1.0 / 3.0, 2.0, 0.125};
+  object.transform.rotation = {0.0, 0.5, 0.0};
+  object.transform.scale = {1.0, 2.0, 3.0};
+  object.bounds = {{0.0, -0.25, 0.0}, {10.5, 4.25, 7.75}};
+  object.layerId = 9;
+  object.visible = false;
+  object.locked = true;
+  object.parentId = 2;
+  object.tags = {"crate", "saved"};
+  return object;
+}
+
+cr::CreativeDocumentRestoreRequest creativeRestoreFixture() {
+  cr::CreativeDocumentRestoreRequest request;
+  request.documentId = 9001;
+  request.name = "Creative Save Document";
+  request.units = cr::CreativeUnits::Meters;
+  request.gridSettings = creativeGridFixture();
+  request.snapSettings = creativeSnapFixture();
+  request.worldBounds = creativeWorldBoundsFixture();
+  request.nextObjectId = 100;
+  request.objects = {creativeGroupObjectFixture(), creativeCrateObjectFixture()};
+  return request;
+}
+
+cr::CreativeDocument creativeDocumentFixture() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Before");
+  const cr::CreativeDocumentRestoreReceipt restored =
+      document.restoreForLoad(creativeRestoreFixture());
+  if (!restored.accepted) {
+    std::cerr << "creative document fixture restore failed\n";
+  }
+  return document;
+}
+
+bool sameCreativeObject(const cr::CreativeObject& lhs,
+                        const cr::CreativeObject& rhs) {
+  return lhs.id == rhs.id && lhs.kind == rhs.kind && lhs.name == rhs.name &&
+         sameCreativeTransform(lhs.transform, rhs.transform) &&
+         sameCreativeBounds(lhs.bounds, rhs.bounds) &&
+         lhs.layerId == rhs.layerId && lhs.visible == rhs.visible &&
+         lhs.locked == rhs.locked && lhs.parentId == rhs.parentId &&
+         lhs.tags == rhs.tags;
+}
+
+bool sameCreativeDocumentContent(const cr::CreativeDocument& lhs,
+                                 const cr::CreativeDocument& rhs) {
+  if (lhs.id() != rhs.id() || lhs.name() != rhs.name() ||
+      lhs.units() != rhs.units() ||
+      !sameCreativeGridSettings(lhs.gridSettings(), rhs.gridSettings()) ||
+      !sameCreativeSnapSettings(lhs.documentSnapSettings(),
+                                rhs.documentSnapSettings()) ||
+      !sameCreativeBounds(lhs.worldBounds(), rhs.worldBounds()) ||
+      lhs.nextObjectId() != rhs.nextObjectId() ||
+      lhs.objectCount() != rhs.objectCount()) {
+    return false;
+  }
+  const std::span<const cr::CreativeObject> lhsObjects = lhs.objects();
+  const std::span<const cr::CreativeObject> rhsObjects = rhs.objects();
+  for (std::size_t index = 0; index < lhsObjects.size(); ++index) {
+    if (!sameCreativeObject(lhsObjects[index], rhsObjects[index])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+iggy3d::ProductCreativeSaveWriteRequest creativeSaveRequest(
+    const std::filesystem::path& root,
+    const cr::CreativeDocument& document,
+    std::string_view attemptToken,
+    std::string_view idHint = "") {
+  iggy3d::ProductCreativeSaveWriteRequest request;
+  request.saveRoot = root;
+  request.saveIdHint = std::string{idHint};
+  request.attemptToken = std::string{attemptToken};
+  request.document = &document;
+  request.packageId = "iggy3d.creative";
+  request.scenarioId = "creative.document";
+  request.worldId = "world_creative_0001";
+  request.worldTitle = "Creative World";
+  request.saveTitle = "Creative Manual Save";
+  request.createdAtUtc = "2026-07-03T00:00:00Z";
+  request.savedAtUtc = "2026-07-03T00:05:00Z";
+  return request;
 }
 
 bool productDurableSaveWritesFinalAndScans() {
@@ -272,6 +432,315 @@ bool productDurableSavePersistsAuthoredRoom() {
                 "product authored scan floor count") &&
          expect(scanned.slots.slots.front().authoredMarkerCount == 1U,
                 "product authored scan marker count");
+}
+
+bool creativeDurableSaveWritesFinalAndLoads() {
+  const std::filesystem::path root = testRoot();
+  const cr::CreativeDocument document = creativeDocumentFixture();
+  const iggy3d::ProductCreativeSaveWriteResult written =
+      iggy3d::writeCreativeDocumentSaveDurably(
+          creativeSaveRequest(root, document, "attempt_001"));
+  const iggy3d::SaveFileReadResult read =
+      written.ok ? iggy3d::readSaveFile(written.record.path)
+                 : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText)
+              : iggy3d::SaveDecodeResult{};
+  const iggy3d::ProductCreativeSaveLoadResult loaded =
+      written.ok ? iggy3d::loadCreativeDocumentSave({written.record.path})
+                 : iggy3d::ProductCreativeSaveLoadResult{};
+
+  return expect(written.ok, "creative write ok") &&
+         expect(written.status == "creative_save_written",
+                "creative write status") &&
+         expect(written.reasonCode == "creative_save_written",
+                "creative write reason") &&
+         expect(written.durableReason == "durable_save_file_written",
+                "creative durable reason") &&
+         expect(written.durableWriteRequested,
+                "creative durable requested") &&
+         expect(written.sectionReceipt.accepted,
+                "creative section accepted") &&
+         expect(written.sectionReceipt.reasonCode ==
+                    "creative_document_section_converted",
+                "creative section reason") &&
+         expect(written.record.id == "save_001",
+                "creative generated id") &&
+         expect(written.record.path == written.paths.finalPath,
+                "creative record path") &&
+         expect(written.tempWritten, "creative temp written") &&
+         expect(written.tempValidated, "creative temp validated") &&
+         expect(written.committed, "creative committed") &&
+         expect(written.finalValidated, "creative final validated") &&
+         expect(!written.previousExisted, "creative no previous") &&
+         expect(written.previousPreserved, "creative previous preserved") &&
+         expect(written.encodedBytes > 0U, "creative encoded bytes") &&
+         expect(written.packageId == "iggy3d.creative",
+                "creative package mirror") &&
+         expect(written.scenarioId == "creative.document",
+                "creative scenario mirror") &&
+         expect(written.worldId == "world_creative_0001",
+                "creative world id mirror") &&
+         expect(written.saveType == "creative",
+                "creative save type mirror") &&
+         expect(written.documentId == document.id(),
+                "creative document id mirror") &&
+         expect(written.creativeObjectCount == document.objectCount(),
+                "creative object count mirror") &&
+         expect(written.creativeNextObjectId == document.nextObjectId(),
+                "creative next id mirror") &&
+         expect(std::filesystem::exists(written.paths.finalPath),
+                "creative final exists") &&
+         expect(!std::filesystem::exists(written.paths.tempPath),
+                "creative temp consumed") &&
+         expect(read.ok, "creative read ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "creative decoded") &&
+         expect(decoded.envelope.metadata.saveId == "save_001",
+                "creative metadata save id") &&
+         expect(decoded.envelope.metadata.worldId == "world_creative_0001",
+                "creative metadata world id") &&
+         expect(decoded.envelope.metadata.saveTitle == "Creative Manual Save",
+                "creative metadata save title") &&
+         expect(decoded.envelope.metadata.savedStateHash == 0U,
+                "creative metadata zero hash") &&
+         expect(decoded.envelope.metadata.savedStateHashHex ==
+                    "0000000000000000",
+                "creative metadata zero hash hex") &&
+         expect(decoded.envelope.creativeDocument.present,
+                "creative section present") &&
+         expect(decoded.envelope.creativeDocument.documentId == document.id(),
+                "creative section document id") &&
+         expect(decoded.envelope.creativeDocument.objects.size() == 2U,
+                "creative section object count") &&
+         expect(decoded.envelope.creativeDocument.objects[1].kind == "Crate",
+                "creative section kind string") &&
+         expect(decoded.envelope.creativeDocument.objects[1].hasParent,
+                "creative section parent flag") &&
+         expect(decoded.envelope.creativeDocument.objects[1].parentId == 2U,
+                "creative section parent id") &&
+         expect(loaded.ok, "creative load ok") &&
+         expect(loaded.status == "creative_save_loaded",
+                "creative load status") &&
+         expect(loaded.fileRead, "creative load read") &&
+         expect(loaded.decoded, "creative load decoded") &&
+         expect(loaded.sectionRestored, "creative load section restored") &&
+         expect(loaded.sectionReceipt.accepted,
+                "creative load section accepted") &&
+         expect(loaded.record.id == "save_001", "creative load record id") &&
+         expect(loaded.packageId == "iggy3d.creative",
+                "creative load package mirror") &&
+         expect(loaded.worldTitle == "Creative World",
+                "creative load world title mirror") &&
+         expect(loaded.documentId == document.id(),
+                "creative load document id mirror") &&
+         expect(loaded.creativeObjectCount == document.objectCount(),
+                "creative load object count mirror") &&
+         expect(loaded.creativeNextObjectId == document.nextObjectId(),
+                "creative load next id mirror") &&
+         expect(loaded.document.revision() == 0U,
+                "creative loaded revision zero") &&
+         expect(loaded.document.dirtyFlags() == 0U,
+                "creative loaded dirty zero") &&
+         expect(sameCreativeDocumentContent(loaded.document, document),
+                "creative loaded document content");
+}
+
+bool creativeDurableSaveHonorsValidIdHint() {
+  const std::filesystem::path root = testRoot();
+  const cr::CreativeDocument document = creativeDocumentFixture();
+  const iggy3d::ProductCreativeSaveWriteResult written =
+      iggy3d::writeCreativeDocumentSaveDurably(
+          creativeSaveRequest(root, document, "attempt_001", "creative_manual"));
+  const iggy3d::SaveFileReadResult read =
+      written.ok ? iggy3d::readSaveFile(written.record.path)
+                 : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText)
+              : iggy3d::SaveDecodeResult{};
+
+  return expect(written.ok, "creative id hint ok") &&
+         expect(written.record.id == "creative_manual",
+                "creative id hint record") &&
+         expect(written.paths.finalPath == root / "creative_manual.iggy3d.save",
+                "creative id hint path") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "creative id hint decoded") &&
+         expect(decoded.envelope.metadata.saveId == "creative_manual",
+                "creative id hint metadata");
+}
+
+bool creativeDurableSaveCarriesExistingIdentityOnOverwrite() {
+  const std::filesystem::path root = testRoot();
+  const cr::CreativeDocument document = creativeDocumentFixture();
+  const iggy3d::ProductCreativeSaveWriteResult initial =
+      iggy3d::writeCreativeDocumentSaveDurably(
+          creativeSaveRequest(root, document, "attempt_001", "creative_manual"));
+
+  cr::CreativeDocument replacement = creativeDocumentFixture();
+  cr::CreativeDocumentCreateRequest createRequest;
+  createRequest.kind = cr::CreativeObjectKind::Room;
+  const cr::CreativeDocumentCreateReceipt created =
+      replacement.createObject(createRequest);
+  iggy3d::ProductCreativeSaveWriteRequest request =
+      creativeSaveRequest(root, replacement, "attempt_002", "creative_manual");
+  request.packageId = "iggy3d.creative.replacement";
+  request.scenarioId = "creative.replacement";
+  request.worldId.clear();
+  request.worldTitle.clear();
+  request.saveTitle.clear();
+  request.saveType.clear();
+  request.createdAtUtc.clear();
+  request.savedAtUtc.clear();
+
+  const iggy3d::ProductCreativeSaveWriteResult overwritten =
+      iggy3d::writeCreativeDocumentSaveDurably(request);
+  const iggy3d::SaveFileReadResult read =
+      overwritten.ok ? iggy3d::readSaveFile(overwritten.record.path)
+                     : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText)
+              : iggy3d::SaveDecodeResult{};
+
+  return expect(initial.ok, "creative overwrite setup ok") &&
+         expect(created.accepted, "creative overwrite changed document") &&
+         expect(overwritten.ok, "creative overwrite ok") &&
+         expect(overwritten.previousExisted,
+                "creative overwrite previous existed") &&
+         expect(overwritten.packageId == "iggy3d.creative.replacement",
+                "creative overwrite package from request") &&
+         expect(overwritten.scenarioId == "creative.replacement",
+                "creative overwrite scenario from request") &&
+         expect(overwritten.worldId == "world_creative_0001",
+                "creative overwrite carries world id") &&
+         expect(overwritten.worldTitle == "Creative World",
+                "creative overwrite carries world title") &&
+         expect(overwritten.saveTitle == "Creative Manual Save",
+                "creative overwrite carries save title") &&
+         expect(overwritten.saveType == "creative",
+                "creative overwrite carries save type") &&
+         expect(overwritten.createdAtUtc == "2026-07-03T00:00:00Z",
+                "creative overwrite carries created utc") &&
+         expect(overwritten.savedAtUtc == "2026-07-03T00:05:00Z",
+                "creative overwrite carries saved utc") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "creative overwrite decoded") &&
+         expect(decoded.envelope.metadata.packageId ==
+                    "iggy3d.creative.replacement",
+                "creative overwrite encoded package") &&
+         expect(decoded.envelope.metadata.scenarioId == "creative.replacement",
+                "creative overwrite encoded scenario") &&
+         expect(decoded.envelope.metadata.worldId == "world_creative_0001",
+                "creative overwrite encoded world id") &&
+         expect(decoded.envelope.metadata.saveTitle == "Creative Manual Save",
+                "creative overwrite encoded save title") &&
+         expect(decoded.envelope.creativeDocument.objects.size() ==
+                    replacement.objectCount(),
+                "creative overwrite encoded replacement document");
+}
+
+bool creativeDurableSaveRejectsNullDocument() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::ProductCreativeSaveWriteRequest request;
+  request.saveRoot = root;
+  request.attemptToken = "attempt_001";
+  const iggy3d::ProductCreativeSaveWriteResult written =
+      iggy3d::writeCreativeDocumentSaveDurably(request);
+
+  return expect(!written.ok, "creative null document rejected") &&
+         expect(written.status == "creative_save_document_missing",
+                "creative null document status") &&
+         expect(written.reasonCode == "creative_save_document_missing",
+                "creative null document reason") &&
+         expect(written.durableReason == "creative_save_document_missing",
+                "creative null durable reason") &&
+         expect(!written.durableWriteRequested,
+                "creative null no durable") &&
+         expect(!written.tempWritten, "creative null no temp") &&
+         expect(!written.committed, "creative null no commit") &&
+         expect(iggy3d::listSaveFiles(root).empty(),
+                "creative null no save");
+}
+
+bool creativeDurableSaveRejectsInvalidDocumentId() {
+  const std::filesystem::path root = testRoot();
+  const cr::CreativeDocument document =
+      cr::CreativeDocument::create("Missing Id");
+  const iggy3d::ProductCreativeSaveWriteResult written =
+      iggy3d::writeCreativeDocumentSaveDurably(
+          creativeSaveRequest(root, document, "attempt_001"));
+
+  return expect(!written.ok, "creative invalid document id rejected") &&
+         expect(written.status == "invalid_document_id",
+                "creative invalid document id status") &&
+         expect(written.reasonCode == "invalid_document_id",
+                "creative invalid document id reason") &&
+         expect(written.sectionReceipt.requested,
+                "creative invalid section requested") &&
+         expect(written.sectionReceipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::
+                        InvalidDocumentId,
+                "creative invalid section status") &&
+         expect(!written.durableWriteRequested,
+                "creative invalid no durable") &&
+         expect(iggy3d::listSaveFiles(root).empty(),
+                "creative invalid no save");
+}
+
+bool creativeDurableSaveRejectsInvalidAttemptToken() {
+  const std::filesystem::path root = testRoot();
+  const cr::CreativeDocument document = creativeDocumentFixture();
+  const iggy3d::ProductCreativeSaveWriteResult written =
+      iggy3d::writeCreativeDocumentSaveDurably(
+          creativeSaveRequest(root, document, "attempt 001"));
+
+  return expect(!written.ok, "creative invalid attempt rejected") &&
+         expect(written.status == "durable_save_invalid_attempt_token",
+                "creative invalid attempt status") &&
+         expect(written.reasonCode == "durable_save_invalid_attempt_token",
+                "creative invalid attempt reason") &&
+         expect(written.durableReason == "durable_save_invalid_attempt_token",
+                "creative invalid durable reason") &&
+         expect(written.sectionReceipt.accepted,
+                "creative invalid attempt section accepted") &&
+         expect(written.durableWriteRequested,
+                "creative invalid attempt durable requested") &&
+         expect(!written.tempWritten,
+                "creative invalid attempt no temp") &&
+         expect(!written.committed,
+                "creative invalid attempt no commit") &&
+         expect(written.paths.finalPath.empty(),
+                "creative invalid attempt no final") &&
+         expect(iggy3d::listSaveFiles(root).empty(),
+                "creative invalid attempt no save");
+}
+
+bool creativeLoadRejectsSessionSaveWithoutCreativeSection() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductSaveWriteResult written =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_001"));
+  const iggy3d::ProductCreativeSaveLoadResult loaded =
+      written.ok ? iggy3d::loadCreativeDocumentSave({written.record.path})
+                 : iggy3d::ProductCreativeSaveLoadResult{};
+
+  return expect(written.ok, "creative missing setup session write") &&
+         expect(!loaded.ok, "creative missing section rejected") &&
+         expect(loaded.status == "missing_creative_document_section",
+                "creative missing section status") &&
+         expect(loaded.reasonCode == "missing_creative_document_section",
+                "creative missing section reason") &&
+         expect(loaded.fileRead, "creative missing section read") &&
+         expect(loaded.decoded, "creative missing section decoded") &&
+         expect(!loaded.sectionRestored,
+                "creative missing section not restored") &&
+         expect(loaded.sectionReceipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::
+                        MissingSection,
+                "creative missing section receipt") &&
+         expect(loaded.document.objectCount() == 0U,
+                "creative missing section empty document");
 }
 
 bool productSoftDeleteMovesSaveAndRemovesFromScan() {
@@ -877,6 +1346,13 @@ int main() {
                   productDurableSaveRejectsMissingState() &&
                   productDurableSaveRejectsInvalidAttemptToken() &&
                   productDurableSavePersistsAuthoredRoom() &&
+                  creativeDurableSaveWritesFinalAndLoads() &&
+                  creativeDurableSaveHonorsValidIdHint() &&
+                  creativeDurableSaveCarriesExistingIdentityOnOverwrite() &&
+                  creativeDurableSaveRejectsNullDocument() &&
+                  creativeDurableSaveRejectsInvalidDocumentId() &&
+                  creativeDurableSaveRejectsInvalidAttemptToken() &&
+                  creativeLoadRejectsSessionSaveWithoutCreativeSection() &&
                   productSoftDeleteMovesSaveAndRemovesFromScan() &&
                   productSoftDeleteMovesSnapshotSidecarWhenPresent() &&
                   productSoftDeleteRejectsMissingIdBeforeIo() &&

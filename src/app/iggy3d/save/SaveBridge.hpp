@@ -7,6 +7,7 @@
 
 #include "app/frontend/SaveSlotModel.hpp"
 #include "app/iggy3d/save/Catalog.hpp"
+#include "app/iggy3d/save/CreativeDocumentSection.hpp"
 #include "runtime/save/SaveFileStore.hpp"
 #include "runtime/session/Session.hpp"
 
@@ -85,6 +86,80 @@ struct ProductSaveLoadResult {
   std::uint64_t authoredObjectCount = 0;
   std::uint64_t authoredMarkerCount = 0;
   SaveAuthoredRoomSection authoredRoom;
+};
+
+struct ProductCreativeSaveWriteRequest {
+  std::filesystem::path saveRoot;
+  std::string saveIdHint;
+  std::string attemptToken;
+  const creative::CreativeDocument* document = nullptr;
+  std::string packageId;
+  std::string scenarioId;
+  std::string worldId;
+  std::string worldTitle;
+  std::string saveTitle;
+  std::string saveType = "creative";
+  std::string createdAtUtc;
+  std::string savedAtUtc;
+};
+
+struct ProductCreativeSaveWriteResult {
+  bool ok = false;
+  std::string status = "not_requested";
+  std::string reasonCode = "not_requested";
+  std::string durableReason = "not_requested";
+  ProductCreativeDocumentSectionReceipt sectionReceipt;
+  SaveFileRecord record;
+  SaveFileDurableWritePaths paths;
+  std::uint64_t encodedBytes = 0;
+  bool durableWriteRequested = false;
+  bool tempWritten = false;
+  bool tempValidated = false;
+  bool committed = false;
+  bool finalValidated = false;
+  bool previousExisted = false;
+  bool previousPreserved = true;
+  std::string packageId;
+  std::string scenarioId;
+  std::string worldId;
+  std::string worldTitle;
+  std::string saveTitle;
+  std::string saveType;
+  std::string createdAtUtc;
+  std::string savedAtUtc;
+  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
+  std::uint64_t creativeObjectCount = 0;
+  creative::CreativeObjectId creativeNextObjectId =
+      creative::kInvalidObjectId;
+};
+
+struct ProductCreativeSaveLoadRequest {
+  std::filesystem::path path;
+};
+
+struct ProductCreativeSaveLoadResult {
+  bool ok = false;
+  std::string status = "not_requested";
+  std::string reasonCode = "not_requested";
+  bool fileRead = false;
+  bool decoded = false;
+  bool sectionRestored = false;
+  SaveFileRecord record;
+  SaveCodecStatus codecStatus = SaveCodecStatus::Ok;
+  ProductCreativeDocumentSectionReceipt sectionReceipt;
+  creative::CreativeDocument document;
+  std::string packageId;
+  std::string scenarioId;
+  std::string worldId;
+  std::string worldTitle;
+  std::string saveTitle;
+  std::string saveType;
+  std::string createdAtUtc;
+  std::string savedAtUtc;
+  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
+  std::uint64_t creativeObjectCount = 0;
+  creative::CreativeObjectId creativeNextObjectId =
+      creative::kInvalidObjectId;
 };
 
 struct ProductSaveSoftDeleteRequest {
@@ -178,6 +253,10 @@ ProductSaveWriteResult writeProductSessionSaveDurably(
     const ProductSaveWriteRequest& request);
 ProductSaveLoadResult loadProductSessionSave(
     const ProductSaveLoadRequest& request);
+ProductCreativeSaveWriteResult writeCreativeDocumentSaveDurably(
+    const ProductCreativeSaveWriteRequest& request);
+ProductCreativeSaveLoadResult loadCreativeDocumentSave(
+    const ProductCreativeSaveLoadRequest& request);
 ProductSaveSoftDeleteResult softDeleteProductSave(
     const ProductSaveSoftDeleteRequest& request);
 ProductSaveRecoverResult recoverProductSave(
