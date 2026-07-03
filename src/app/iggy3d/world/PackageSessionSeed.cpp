@@ -249,6 +249,11 @@ bool validateScenarioAiActors(const std::vector<ScenarioAiActorSeed>& aiActors) 
 
 bool assignNpcBehaviorProfiles(FixtureScenarioSeed& seed,
                                const ProductNpcProfileAssignmentTable* assignments) {
+  // MERGE, don't rebuild (A8a): capture the authored aiActor seeds (patrol waypoints/mode/facing)
+  // BEFORE clearing, then for each Npc keep the seed matched by stableName and overlay ONLY the
+  // resolved profileId. Entities with no authored seed still get a bare seed. Authored routes
+  // survive the assignment pass (the deck kernel needs them).
+  const std::vector<ScenarioAiActorSeed> authored = std::move(seed.aiActors);
   seed.aiActors.clear();
   if (assignments != nullptr) {
     const ProductNpcProfileAssignmentValidationResult validation =
@@ -268,8 +273,14 @@ bool assignNpcBehaviorProfiles(FixtureScenarioSeed& seed,
       return false;
     }
     ScenarioAiActorSeed aiActor;
+    for (const ScenarioAiActorSeed& authoredSeed : authored) {
+      if (authoredSeed.actorStableName == entity.stableName) {
+        aiActor = authoredSeed;  // keep authored routes / mode / facing
+        break;
+      }
+    }
     aiActor.actorStableName = entity.stableName;
-    aiActor.behaviorProfileId = resolved.behaviorProfileId;
+    aiActor.behaviorProfileId = resolved.behaviorProfileId;  // overlay ONLY the profile
     seed.aiActors.push_back(std::move(aiActor));
   }
   return true;
@@ -334,7 +345,9 @@ ProductPackageSessionSeedResult buildProductPackageSessionSeed(
   result.seed.players.clear();
   result.seed.entities.clear();
   result.seed.objectives.clear();
-  result.seed.aiActors.clear();
+  // A8a: populate the aiActors FROM the authored scenario seeds (WITH patrol routes) instead of
+  // clearing, so assignNpcBehaviorProfiles' merge finds and preserves them in the synthesized path.
+  result.seed.aiActors = package.scenario.aiActors;
   result.seed.players.push_back({0, PlayerSlotKind::Local, "player"});
   result.seed.entities.push_back(playerFromAnchor(*spawn));
 

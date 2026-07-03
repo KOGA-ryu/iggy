@@ -686,6 +686,59 @@ bool glyphLikeGuardNamesHaveNoAsciiMeaning() {
                 "glyph guard missing actor error");
 }
 
+// a8a Commit 1: an authored patrol route + a profile assignment -> BOTH survive the aiActor merge,
+// covering the SCENARIO path AND the SYNTHESIZED-from-anchors path (routes no longer dropped).
+bool authoredPatrolAndProfileBothSurvive() {
+  // SYNTHESIZED path: authored aiActor with a patrol route + an override assignment.
+  iggy3d::PackageLoadResult synth =
+      loadPackageFixture("fixtures/demos/ascii_training_room/package.iggy3d.toml");
+  iggy3d::ScenarioAiActorSeed authored;
+  authored.actorStableName = "marker_npc_spawn_r1_c4";
+  authored.behaviorProfileId = "default";
+  authored.patrolWaypoints = {{1.0F, 0.0F, 1.0F}, {3.0F, 0.0F, 1.0F}};
+  authored.patrolMode = iggy3d::PatrolMode::PingPong;
+  synth.scenario.aiActors.push_back(authored);
+  iggy3d::ProductNpcProfileAssignmentTable synthAssign;
+  synthAssign.assignments.push_back({"marker_npc_spawn_r1_c4", "passive"});
+  const iggy3d::ProductPackageSessionSeedResult synthResult =
+      iggy3d::buildProductPackageSessionSeed(synth, &synthAssign);
+  const iggy3d::ScenarioAiActorSeed* synthSeed =
+      findAiActorSeed(synthResult.seed, "marker_npc_spawn_r1_c4");
+  bool ok = expect(synthResult.ok, "synthesized route+profile seed ok") &&
+            expect(synthSeed != nullptr && synthSeed->behaviorProfileId == "passive",
+                   "synthesized: the assignment profile overlays") &&
+            expect(synthSeed != nullptr && synthSeed->patrolWaypoints.size() == 2U &&
+                       synthSeed->patrolMode == iggy3d::PatrolMode::PingPong,
+                   "synthesized: the authored patrol route survives the merge");
+
+  // SCENARIO path: authored entities + an authored aiActor route + an assignment.
+  iggy3d::PackageLoadResult scen;
+  scen.status = iggy3d::PackageLoadStatus::Ok;
+  scen.scenario.scenarioId = "authored_route";
+  iggy3d::ScenarioEntitySeed guard;
+  guard.stableName = "guard_1";
+  guard.kind = iggy3d::EntityKind::Npc;
+  scen.scenario.entities.push_back(guard);
+  iggy3d::ScenarioAiActorSeed guardSeed;
+  guardSeed.actorStableName = "guard_1";
+  guardSeed.behaviorProfileId = "default";
+  guardSeed.patrolWaypoints = {{1.0F, 0.0F, 1.0F}, {1.0F, 0.0F, 5.0F}};
+  guardSeed.patrolMode = iggy3d::PatrolMode::Loop;
+  scen.scenario.aiActors.push_back(guardSeed);
+  iggy3d::ProductNpcProfileAssignmentTable scenAssign;
+  scenAssign.assignments.push_back({"guard_1", "passive"});
+  const iggy3d::ProductPackageSessionSeedResult scenResult =
+      iggy3d::buildProductPackageSessionSeed(scen, &scenAssign);
+  const iggy3d::ScenarioAiActorSeed* scenSeed = findAiActorSeed(scenResult.seed, "guard_1");
+  ok = ok && expect(scenResult.ok, "scenario route+profile seed ok") &&
+       expect(scenSeed != nullptr && scenSeed->behaviorProfileId == "passive",
+              "scenario: the assignment profile overlays") &&
+       expect(scenSeed != nullptr && scenSeed->patrolWaypoints.size() == 2U &&
+                  scenSeed->patrolMode == iggy3d::PatrolMode::Loop,
+              "scenario: the authored patrol route survives the merge");
+  return ok;
+}
+
 // a7s1: a `monster` anchor seeds an entity IDENTICALLY to an `npc` anchor (affordance vocabulary
 // v0.1) -- same EntityKind::Npc seed, same stableName -> same profile-by-name flow.
 bool monsterAnchorSeedsIdenticalToNpc() {
@@ -757,6 +810,7 @@ int main() {
                   scenarioProfileAndGuardMergeIntoOneAiActor() &&
                   explicitProfileOverrideDoesNotEraseGuardMetadata() &&
                   glyphLikeGuardNamesHaveNoAsciiMeaning() &&
-                  monsterAnchorSeedsIdenticalToNpc();
+                  monsterAnchorSeedsIdenticalToNpc() &&
+                  authoredPatrolAndProfileBothSurvive();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
