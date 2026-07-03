@@ -67,6 +67,7 @@ target_sources(iggy3d
     src/app/iggy3d/gameplay/Controller.cpp
     src/app/iggy3d/gameplay/GameplayFeedback.cpp
     src/app/iggy3d/gameplay/MovementProof.cpp
+    src/app/iggy3d/gameplay/MovementTuningCockpit.cpp
     src/app/iggy3d/gameplay/ProjectionRefresh.cpp
     src/app/iggy3d/menu/FrontendRouter.cpp
     src/app/iggy3d/gameplay/Tape.cpp

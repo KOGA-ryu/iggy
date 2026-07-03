@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <string_view>
 
 namespace iggy3d {
@@ -62,6 +63,19 @@ inline constexpr float kMinSneakLoudnessMultiplier = 0.05F;
 
 // Fail-closed lookup: the static row for `id`, or nullptr (caller maps null -> seed error).
 const MovementDimensionProfile* movementDimensionProfileById(std::string_view id);
+
+// M-LAB s1 (config function #1 of the two named cockpit additions): read-only enumeration over the
+// static rows so the tuning cockpit can cycle dimensions without knowing their ids. byIndex returns
+// nullptr out of range. NOTHING else about the row data moves.
+std::size_t movementDimensionProfileCount();
+const MovementDimensionProfile* movementDimensionProfileByIndex(std::size_t index);
+
+// M-LAB s1 (config function #2): parse a `[movement_dimension_profile]` TOML row (the cockpit export
+// schema) into `out`. Every mirror field is required; any missing/malformed key ⇒ false (fail-closed).
+// Floats round-trip losslessly (std::from_chars). NOTE: `out`'s string_view fields (id + the 3 profile
+// names) reference `tomlRow` -- the caller MUST keep that buffer alive for `out`'s lifetime. This is
+// the round-trip's read half AND the reserved seam for a future file-backed / data-driven profile row.
+bool parseMovementDimensionProfileRow(std::string_view tomlRow, MovementDimensionProfile& out);
 
 // THE DASH COHERENCE VALIDATION (MA1): a resolved config is coherent iff a dash cannot travel
 // farther than the admission limit -- dashSpeed x dashDuration <= resolvedMovementDistanceMeters (+

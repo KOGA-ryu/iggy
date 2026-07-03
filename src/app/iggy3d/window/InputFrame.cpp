@@ -6,6 +6,7 @@
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/gameplay/Controller.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
+#include "app/iggy3d/gameplay/MovementTuningCockpit.hpp"
 #include "app/iggy3d/map_maker/CreativeFly.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
@@ -683,7 +684,9 @@ bool cancelProductRoomEditorPendingPreviewFromBack(
 ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
     FrontendState& frontend,
     ProductAppWindowState& window,
-    InputAction action) {
+    InputAction action,
+    Session* activeSession,
+    const std::filesystem::path* saveRoot) {
   ProductMovementTuningInputResult result;
   const bool gameplaySurfaceActive =
       resolvedSurfaceAcceptsGameplayInput(frontend, window);
@@ -749,11 +752,31 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
     result.handled = true;
     result.accepted = true;
     result.status = "movement_tuning_adjusted";
+  // M-LAB s1: Shift+Tab hot-swaps the dimension row (needs the live session admission limit for the
+  // honest mismatch marker); Tab exports the tuned row (needs saveRoot). Both no-op without context.
+    // The swap/export handlers set window status + reason directly; carry them onto the result so the
+    // shared finalize below preserves the handler's (possibly distinct) reason code.
+  } else if (action == InputAction::MenuPreviousTab && activeSession != nullptr) {
+    const MovementTuningSwapResult swap = applyMovementTuningProfileSwap(
+        window, activeSession->state().config.movementDistanceMeters);
+    result.handled = true;
+    result.accepted = swap.applied;
+    result.status = window.gameplayMovementTuningStatus;
+    result.reasonCode = window.gameplayMovementTuningReasonCode;
+  } else if (action == InputAction::MenuNextTab && saveRoot != nullptr) {
+    const MovementTuningExportResult exported =
+        exportMovementTuningProfile(window, *saveRoot);
+    result.handled = true;
+    result.accepted = exported.ok;
+    result.status = window.gameplayMovementTuningStatus;
+    result.reasonCode = window.gameplayMovementTuningReasonCode;
   }
 
   // branch-gate: BG-1212
   if (result.handled) {
-    result.reasonCode = result.status;
+    if (result.reasonCode.empty()) {
+      result.reasonCode = result.status;
+    }
     window.gameplayMovementTuningStatus = result.status;
     window.gameplayMovementTuningReasonCode = result.reasonCode;
     frontend.status = result.status;
@@ -959,6 +982,25 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                  false,
                  1.0F);
     keyboardMenuAction = InputAction::None;
+  }
+  // M-LAB s1: while the tuning cockpit is visible, Tab exports the tuned row and Shift+Tab hot-swaps
+  // the dimension -- routed here (the level that holds the session + saveRoot) so the context-poor
+  // cockpit input layer stays untouched otherwise.
+  // branch-gate: BG-1212
+  if (context.window.gameplayMovementTuningVisible &&
+      (keyboardMenuAction == InputAction::MenuNextTab ||
+       keyboardMenuAction == InputAction::MenuPreviousTab)) {
+    Session* cockpitSession =
+        context.activeSession.has_value() ? &*context.activeSession : nullptr;
+    const ProductMovementTuningInputResult cockpitResult =
+        applyProductWindowMovementTuningInput(context.frontend, context.window,
+                                              keyboardMenuAction, cockpitSession,
+                                              &context.options.saveRoot);
+    // branch-gate: BG-1212
+    if (cockpitResult.handled) {
+      recordAction(actionState, keyboardMenuAction, true, cockpitResult.accepted, false, 1.0F);
+      keyboardMenuAction = InputAction::None;
+    }
   }
   routeProductWindowMenuInput(keyboardMenuAction, actionState, menuContext);
   // branch-gate: BG-1029

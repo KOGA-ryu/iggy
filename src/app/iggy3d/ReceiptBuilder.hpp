@@ -334,6 +334,9 @@ struct ProductAppWindowState {
   bool gameplayMovementTuningVisible = false;
   std::string gameplayMovementTuningStatus = "movement_tuning_ready";
   std::string gameplayMovementTuningReasonCode = "movement_tuning_ready";
+  // M-LAB s1: the LAST-APPLIED dimension row id (default = the session's launch row; hot-swap updates
+  // it). The export carries this row's runtime-only fields (admission limit + sneak multipliers).
+  std::string gameplayMovementTuningProfileId = "earth_standard";
   bool gameplayJumpRequested = false;
   bool gameplayJumpAccepted = false;
   bool gameplayJumpActive = false;

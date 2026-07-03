@@ -64,6 +64,11 @@ iggy3d_add_unit_test(movement_tuning_descriptor_coverage_tests
 set_tests_properties(movement_tuning_descriptor_coverage_tests PROPERTIES
   LABELS "unit;app;gameplay;movement;tuning;iggy3d")
 
+iggy3d_add_unit_test(movement_tuning_cockpit_tests
+  tests/unit/movement_tuning_cockpit_tests.cpp)
+set_tests_properties(movement_tuning_cockpit_tests PROPERTIES
+  LABELS "unit;app;gameplay;movement;tuning;cockpit;iggy3d")
+
 iggy3d_add_unit_test(product_app_options_tests tests/unit/product_app_options_tests.cpp)
 set_tests_properties(product_app_options_tests PROPERTIES
   LABELS "unit;app;product;options;iggy3d")

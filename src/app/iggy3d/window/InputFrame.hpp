@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -130,10 +131,15 @@ void recordProductWindowFunctionKeyKeyboardState(
 bool cancelProductRoomEditorPendingPreviewFromBack(
     const FrontendState& frontend,
     ProductAppWindowState& window);
+// M-LAB s1: `activeSession`/`saveRoot` are only needed for the profile SWAP (MenuPreviousTab, reads
+// the live admission limit) and EXPORT (MenuNextTab, writes under saveRoot) while the cockpit is
+// visible. Defaulted to nullptr so the existing toggle/field/adjust callers are unchanged.
 ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
     FrontendState& frontend,
     ProductAppWindowState& window,
-    InputAction action);
+    InputAction action,
+    Session* activeSession = nullptr,
+    const std::filesystem::path* saveRoot = nullptr);
 ProductWindowTopLevelToggleResult dispatchProductWindowTopLevelToggleAction(
     FrontendState& frontend,
     ProductAppWindowState& window,

@@ -245,6 +245,53 @@ inline void applyMovementDimensionProfileToTuning(const MovementDimensionProfile
   tuning.wallJumpMinAirborneHeightMeters = profile.wallJumpMinAirborneHeightMeters;
 }
 
+// M-LAB s1 export assembly (app-side -- may see both structs): the INVERSE of applyMovementDimension
+// ProfileToTuning. The 26 numerics + 3 ids come from the LIVE window `tuning` (what the designer just
+// felt); movementDistanceMeters + the sneak multipliers are runtime-only fields the cockpit never
+// tunes, so they carry from `lastAppliedRow` (the row last hot-swapped in); `id = exportId`. NOTE:
+// the result's string_view fields (id + the 3 profile names) reference `exportId`/`tuning` -- keep
+// them alive while the result is used (the caller serializes it immediately).
+inline MovementDimensionProfile movementDimensionProfileFromCockpit(
+    const ProductGameplayMovementTuning& tuning,
+    const MovementDimensionProfile& lastAppliedRow,
+    std::string_view exportId) {
+  MovementDimensionProfile row;
+  row.id = exportId;
+  row.movementDistanceMeters = lastAppliedRow.movementDistanceMeters;
+  row.walkSpeedMetersPerSecond = tuning.walkSpeedMetersPerSecond;
+  row.sprintSpeedMetersPerSecond = tuning.sprintSpeedMetersPerSecond;
+  row.groundAccelerationMetersPerSecondSquared = tuning.groundAccelerationMetersPerSecondSquared;
+  row.groundDecelerationMetersPerSecondSquared = tuning.groundDecelerationMetersPerSecondSquared;
+  row.airControlMultiplier = tuning.airControlMultiplier;
+  row.inputStepSeconds = tuning.inputStepSeconds;
+  row.jumpImpulseMetersPerSecond = tuning.jumpImpulseMetersPerSecond;
+  row.gravityMetersPerSecondSquared = tuning.gravityMetersPerSecondSquared;
+  row.coyoteTimeSeconds = tuning.coyoteTimeSeconds;
+  row.jumpBufferSeconds = tuning.jumpBufferSeconds;
+  row.jumpCutMultiplier = tuning.jumpCutMultiplier;
+  row.fallGravityMultiplier = tuning.fallGravityMultiplier;
+  row.lookSensitivity = tuning.lookSensitivity;
+  row.invertLookEnabled = tuning.invertLookEnabled;
+  row.dashSpeedMetersPerSecond = tuning.dashSpeedMetersPerSecond;
+  row.dashDurationSeconds = tuning.dashDurationSeconds;
+  row.dashCooldownSeconds = tuning.dashCooldownSeconds;
+  row.wallRunMinSpeedMetersPerSecond = tuning.wallRunMinSpeedMetersPerSecond;
+  row.wallRunMaxWallNormalY = tuning.wallRunMaxWallNormalY;
+  row.wallRunDurationSeconds = tuning.wallRunDurationSeconds;
+  row.wallRunGravityMultiplier = tuning.wallRunGravityMultiplier;
+  row.wallRunSpeedMultiplier = tuning.wallRunSpeedMultiplier;
+  row.wallJumpProbeMeters = tuning.wallJumpProbeMeters;
+  row.wallJumpPushMeters = tuning.wallJumpPushMeters;
+  row.wallJumpRiseMeters = tuning.wallJumpRiseMeters;
+  row.wallJumpMinAirborneHeightMeters = tuning.wallJumpMinAirborneHeightMeters;
+  row.walkProfile = tuning.walkProfile;
+  row.sprintProfile = tuning.sprintProfile;
+  row.dashProfile = tuning.dashProfile;
+  row.sneakSpeedMultiplier = lastAppliedRow.sneakSpeedMultiplier;
+  row.sneakLoudnessMultiplier = lastAppliedRow.sneakLoudnessMultiplier;
+  return row;
+}
+
 struct ProductGameplayMovementTuningFieldDescriptor {
   ProductGameplayMovementTuningField field = ProductGameplayMovementTuningField::WalkSpeed;
   std::string_view name = "walk_speed_mps";

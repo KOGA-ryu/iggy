@@ -117,6 +117,9 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   // MA1: initialize the window's mutable tuning copy from the session's resolved dimension profile.
   applyMovementDimensionProfileToTuning(activeSession->state().movementProfile,
                                         window.gameplayMovementTuning);
+  // M-LAB s1: the cockpit's last-applied id starts at the session's launch row (swap/export read it).
+  window.gameplayMovementTuningProfileId =
+      std::string(activeSession->state().movementProfile.id);
   window.activeRoomCollision =
       buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
   result.ok = true;

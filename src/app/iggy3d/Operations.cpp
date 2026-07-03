@@ -111,6 +111,9 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
   // (earth_standard maps byte-identical to today's default; giant_lowgrav tunes it up).
   applyMovementDimensionProfileToTuning(activeSession->state().movementProfile,
                                         window.gameplayMovementTuning);
+  // M-LAB s1: the cockpit's last-applied id starts at the session's launch row (swap/export read it).
+  window.gameplayMovementTuningProfileId =
+      std::string(activeSession->state().movementProfile.id);
   if (!package.rooms.empty()) {
     window.activeRoom = buildProductActiveRoomFromPackageRoom(
         package.rooms.front(), package.manifest.packageId, package.scenario.scenarioId);
