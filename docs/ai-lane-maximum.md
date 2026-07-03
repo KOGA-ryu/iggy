@@ -1,4 +1,4 @@
-# The AI Lane Maximum — destiny document v1.6
+# The AI Lane Maximum — destiny document v1.7
 
 > Planner-authored 2026-07-02. This is the END of the AI lane: every behaviour layer the game's
 > identity demands, their contracts, the dependency DAG, the pre-declared churn, and the
@@ -328,6 +328,12 @@ fleet's copy.
   silent); omniscience refusal tightened to perception-events wording.
   Known stale sibling: docs/next_work.md still says slice-5 integration is "next" (s5–s8 have
   landed); update it when trunk settles.
+- v1.7 (2026-07-02): A7 (AI half) + A8a COMPLETE (`1eaf7143`, `cf922637`, `3149609f`;
+  193/193). Six wire strings consumable; monster seeds like npc (M-ordering hazard CLEARED —
+  Codex's authoring half is fully unblocked, order-free); both seed route-drop sites fixed
+  (merge-don't-rebuild); objective→outcome is a transient SessionState table with
+  byte-identical defaults (hardcoded rules deleted). **A8b is cuttable now** (fixture-graph
+  fallback; production authoring arrives with Codex's glyphs → contract v0.2).
 - v1.6 (2026-07-02): A7 re-ruled for dispatch (critic pass on the cross-lane package):
   the contract = `docs/affordance_vocabulary_v0_1.md` with anchor-kind STRINGS on the wire
   (no shared header); `markerToReasoningNode` moves to the AI half; `PackageSessionSeed`
