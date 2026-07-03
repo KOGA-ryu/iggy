@@ -28,6 +28,7 @@ namespace iggy3d {
 
 struct ProductCreativeUiProjectionReceipt;
 struct ProductCreativeUiInputFrameReceipt;
+struct ProductCreativeUiDownstreamClickReceipt;
 
 struct ProductAppWindowState {
   bool requested = false;
@@ -529,6 +530,14 @@ struct ProductAppWindowState {
   std::string creativeUiInputSemanticId = "none";
   std::string creativeUiInputStatus = "creative_ui_input_not_requested";
   std::string creativeUiInputReasonCode = "creative_ui_input_not_requested";
+  bool creativeUiInputDownstreamClickRequested = false;
+  bool creativeUiInputDownstreamClickPresent = false;
+  bool creativeUiInputDownstreamClickHigherPriority = false;
+  bool creativeUiInputDownstreamClickSuppressed = false;
+  std::string creativeUiInputDownstreamClickStatus =
+      "creative_ui_input_downstream_click_not_requested";
+  std::string creativeUiInputDownstreamClickReasonCode =
+      "creative_ui_input_downstream_click_not_requested";
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;
@@ -554,5 +563,8 @@ void recordProductCreativeUiProjection(
 void recordProductCreativeUiInputFrame(
     ProductAppWindowState& window,
     const ProductCreativeUiInputFrameReceipt& receipt);
+void recordProductCreativeUiDownstreamClick(
+    ProductAppWindowState& window,
+    const ProductCreativeUiDownstreamClickReceipt& receipt);
 
 }  // namespace iggy3d

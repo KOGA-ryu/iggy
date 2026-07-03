@@ -239,6 +239,92 @@ bool receiptCopiesKnownRegionIndex() {
                 "known row semantic copied");
 }
 
+bool downstreamNoClickDoesNotSuppress() {
+  const iggy3d::ProductCreativeUiDownstreamClickReceipt receipt =
+      iggy3d::routeProductCreativeUiDownstreamClick({});
+
+  return expect(receipt.requested, "downstream no-click requested") &&
+         expect(!receipt.clickPresent, "downstream no-click absent") &&
+         expect(!receipt.creativeUiConsumed,
+                "downstream no-click creative false") &&
+         expect(!receipt.higherPriorityUiConsumed,
+                "downstream no-click priority false") &&
+         expect(!receipt.suppressed, "downstream no-click not suppressed") &&
+         expect(!receipt.downstreamClick.clicked,
+                "downstream no-click remains non-click") &&
+         expect(receipt.status ==
+                    "product_creative_ui_downstream_click_no_click",
+                "downstream no-click status");
+}
+
+bool downstreamSuppressesCreativeConsumedClick() {
+  iggy3d::ProductCreativeUiDownstreamClickRequest request;
+  request.click = clickAt(11.0F, 12.0F);
+  request.creativeUiConsumed = true;
+  const iggy3d::ProductCreativeUiDownstreamClickReceipt receipt =
+      iggy3d::routeProductCreativeUiDownstreamClick(request);
+
+  return expect(receipt.clickPresent, "suppressed click present") &&
+         expect(receipt.creativeUiConsumed, "suppressed creative consumed") &&
+         expect(!receipt.higherPriorityUiConsumed,
+                "suppressed no higher priority") &&
+         expect(receipt.suppressed, "suppressed true") &&
+         expect(!receipt.downstreamClick.clicked,
+                "suppressed downstream non-click") &&
+         expect(receipt.downstreamClick.x == 11.0F,
+                "suppressed downstream x preserved") &&
+         expect(receipt.downstreamClick.y == 12.0F,
+                "suppressed downstream y preserved") &&
+         expect(receipt.status ==
+                    "product_creative_ui_downstream_click_suppressed",
+                "suppressed status");
+}
+
+bool downstreamHigherPriorityKeepsClick() {
+  iggy3d::ProductCreativeUiDownstreamClickRequest request;
+  request.click = clickAt(21.0F, 22.0F);
+  request.creativeUiConsumed = true;
+  request.higherPriorityUiConsumed = true;
+  const iggy3d::ProductCreativeUiDownstreamClickReceipt receipt =
+      iggy3d::routeProductCreativeUiDownstreamClick(request);
+
+  return expect(receipt.clickPresent, "priority click present") &&
+         expect(receipt.creativeUiConsumed, "priority creative consumed") &&
+         expect(receipt.higherPriorityUiConsumed,
+                "priority higher consumed") &&
+         expect(!receipt.suppressed, "priority not suppressed") &&
+         expect(receipt.downstreamClick.clicked,
+                "priority downstream still clicked") &&
+         expect(receipt.downstreamClick.x == 21.0F,
+                "priority x preserved") &&
+         expect(receipt.downstreamClick.y == 22.0F,
+                "priority y preserved") &&
+         expect(receipt.status ==
+                    "product_creative_ui_downstream_click_higher_priority",
+                "priority status");
+}
+
+bool downstreamPassthroughWhenCreativeDoesNotConsume() {
+  iggy3d::ProductCreativeUiDownstreamClickRequest request;
+  request.click = clickAt(31.0F, 32.0F);
+  const iggy3d::ProductCreativeUiDownstreamClickReceipt receipt =
+      iggy3d::routeProductCreativeUiDownstreamClick(request);
+
+  return expect(receipt.clickPresent, "passthrough click present") &&
+         expect(!receipt.creativeUiConsumed,
+                "passthrough creative false") &&
+         expect(!receipt.suppressed, "passthrough not suppressed") &&
+         expect(receipt.downstreamClick.clicked,
+                "passthrough downstream clicked") &&
+         expect(receipt.downstreamClick.x == 31.0F,
+                "passthrough x preserved") &&
+         expect(receipt.downstreamClick.y == 32.0F,
+                "passthrough y preserved") &&
+         expect(receipt.status ==
+                    "product_creative_ui_downstream_click_passthrough",
+                "passthrough status");
+}
+
 bool defaultWindowReceiptFieldsAreNotRequested() {
   const iggy3d::ProductAppWindowState window;
   const iggy3d::RenderReceipt receipt = receiptFor(window);
@@ -302,7 +388,31 @@ bool defaultWindowReceiptFieldsAreNotRequested() {
          expectReceiptField(receipt,
                             "creative_ui_input_reason_code",
                             "creative_ui_input_not_requested",
-                            "default reason");
+                            "default reason") &&
+         expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_requested",
+                            "false",
+                            "default downstream requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_present",
+                            "false",
+                            "default downstream present") &&
+         expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_higher_priority",
+                            "false",
+                            "default downstream priority") &&
+         expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_suppressed",
+                            "false",
+                            "default downstream suppressed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_status",
+                            "creative_ui_input_downstream_click_not_requested",
+                            "default downstream status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_reason_code",
+                            "creative_ui_input_downstream_click_not_requested",
+                            "default downstream reason");
 }
 
 bool recorderCopiesNoClickReceipt() {
@@ -424,6 +534,43 @@ bool recorderCopiesConsumedCreativeRowReceipt() {
                             "consumed status");
 }
 
+bool recorderCopiesSuppressedDownstreamClickReceipt() {
+  iggy3d::ProductCreativeUiDownstreamClickRequest request;
+  request.click = clickAt(41.0F, 42.0F);
+  request.creativeUiConsumed = true;
+  const iggy3d::ProductCreativeUiDownstreamClickReceipt clickReceipt =
+      iggy3d::routeProductCreativeUiDownstreamClick(request);
+
+  iggy3d::ProductAppWindowState window;
+  iggy3d::recordProductCreativeUiDownstreamClick(window, clickReceipt);
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  return expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_requested",
+                            "true",
+                            "suppressed receipt requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_present",
+                            "true",
+                            "suppressed receipt present") &&
+         expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_higher_priority",
+                            "false",
+                            "suppressed receipt priority") &&
+         expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_suppressed",
+                            "true",
+                            "suppressed receipt suppressed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_status",
+                            "product_creative_ui_downstream_click_suppressed",
+                            "suppressed receipt status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_input_downstream_click_reason_code",
+                            "product_creative_ui_downstream_click_suppressed",
+                            "suppressed receipt reason");
+}
+
 bool recorderLeavesOtherReceiptFieldsUntouched() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_status_before";
@@ -434,8 +581,15 @@ bool recorderLeavesOtherReceiptFieldsUntouched() {
   window.creativeUiProjectionReady = true;
   window.creativeUiProjectionStatus = "projection_before";
   window.creativeUiProjectionHitRegionCount = 12;
+  window.creativeUiInputRequested = true;
+  window.creativeUiInputConsumed = true;
+  window.creativeUiInputStatus = "route_before";
 
-  iggy3d::recordProductCreativeUiInputFrame(window, consumedActiveRowReceipt());
+  iggy3d::ProductCreativeUiDownstreamClickRequest request;
+  request.click = clickAt(51.0F, 52.0F);
+  request.creativeUiConsumed = true;
+  iggy3d::recordProductCreativeUiDownstreamClick(
+      window, iggy3d::routeProductCreativeUiDownstreamClick(request));
 
   return expect(window.status == "window_status_before",
                 "window status unchanged") &&
@@ -452,7 +606,13 @@ bool recorderLeavesOtherReceiptFieldsUntouched() {
          expect(window.creativeUiProjectionStatus == "projection_before",
                 "projection status unchanged") &&
          expect(window.creativeUiProjectionHitRegionCount == 12U,
-                "projection hit count unchanged");
+                "projection hit count unchanged") &&
+         expect(window.creativeUiInputRequested,
+                "route requested unchanged") &&
+         expect(window.creativeUiInputConsumed,
+                "route consumed unchanged") &&
+         expect(window.creativeUiInputStatus == "route_before",
+                "route status unchanged");
 }
 
 bool inputFrameNoClickNullDrawListRecordsNoClick() {
@@ -496,7 +656,16 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
                 "input frame status") &&
          expect(window.creativeUiInputReasonCode ==
                     "product_creative_ui_input_no_click",
-                "input frame reason");
+                "input frame reason") &&
+         expect(window.creativeUiInputDownstreamClickRequested,
+                "input frame downstream requested") &&
+         expect(!window.creativeUiInputDownstreamClickPresent,
+                "input frame downstream no click") &&
+         expect(!window.creativeUiInputDownstreamClickSuppressed,
+                "input frame downstream not suppressed") &&
+         expect(window.creativeUiInputDownstreamClickStatus ==
+                    "product_creative_ui_downstream_click_no_click",
+                "input frame downstream status");
 }
 
 }  // namespace
@@ -509,9 +678,14 @@ int main() {
                   clickedOutsideReadyDrawListMisses() &&
                   disabledCreativeRowReportsHitDisabled() &&
                   receiptCopiesKnownRegionIndex() &&
+                  downstreamNoClickDoesNotSuppress() &&
+                  downstreamSuppressesCreativeConsumedClick() &&
+                  downstreamHigherPriorityKeepsClick() &&
+                  downstreamPassthroughWhenCreativeDoesNotConsume() &&
                   defaultWindowReceiptFieldsAreNotRequested() &&
                   recorderCopiesNoClickReceipt() &&
                   recorderCopiesConsumedCreativeRowReceipt() &&
+                  recorderCopiesSuppressedDownstreamClickReceipt() &&
                   recorderLeavesOtherReceiptFieldsUntouched() &&
                   inputFrameNoClickNullDrawListRecordsNoClick();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

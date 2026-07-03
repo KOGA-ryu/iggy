@@ -1036,6 +1036,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
           context.creativeUiDrawList,
           click,
       }));
+  bool higherPriorityMouseConsumed = false;
   // branch-gate: BG-1029
   if (click.clicked) {
     const MouseClick menuClick =
@@ -1063,8 +1064,19 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     if (hit.hit) {
       context.window.mouseMenuSelectUsed = true;
       dispatchProductOpeningMenuMouseHit(hit, click, actionState, menuContext);
+      higherPriorityMouseConsumed = true;
     }
   }
+  const ProductCreativeUiDownstreamClickReceipt downstreamClickReceipt =
+      routeProductCreativeUiDownstreamClick(
+          ProductCreativeUiDownstreamClickRequest{
+              click,
+              context.window.creativeUiInputConsumed,
+              higherPriorityMouseConsumed,
+          });
+  recordProductCreativeUiDownstreamClick(context.window,
+                                         downstreamClickReceipt);
+  const MouseClick downstreamClick = downstreamClickReceipt.downstreamClick;
 
   // branch-gate: BG-1029
   if (context.window.gameplayActive && context.activeSession.has_value() &&
@@ -1075,7 +1087,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       (void)processProductWindowEditorMousePickPreview({
           context.frontend,
           context.window,
-          click,
+          downstreamClick,
           productRoomEditorMousePickViewportConfig(context.window),
           productRoomEditorMousePickAnchor(&*context.activeSession),
       });
@@ -1099,7 +1111,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
         &context.window,
         context.creativeFacade,
         &gameplayActions,
-        click,
+        downstreamClick,
     });
     (void)applyProductWindowInputActions(context.frontend,
                                          context.window,

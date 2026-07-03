@@ -24,6 +24,12 @@ void setStatus(ProductCreativeUiInputFrameReceipt& receipt,
   receipt.reasonCode = receipt.status;
 }
 
+void setStatus(ProductCreativeUiDownstreamClickReceipt& receipt,
+               std::string status) {
+  receipt.status = std::move(status);
+  receipt.reasonCode = receipt.status;
+}
+
 }  // namespace
 
 ProductCreativeUiInputFrameReceipt routeProductCreativeUiInputFrame(
@@ -69,6 +75,37 @@ ProductCreativeUiInputFrameReceipt routeProductCreativeUiInputFrame(
   }
 
   setStatus(receipt, "product_creative_ui_input_miss");
+  return receipt;
+}
+
+ProductCreativeUiDownstreamClickReceipt routeProductCreativeUiDownstreamClick(
+    const ProductCreativeUiDownstreamClickRequest& request) {
+  ProductCreativeUiDownstreamClickReceipt receipt;
+  receipt.requested = true;
+  receipt.clickPresent = request.click.clicked;
+  receipt.creativeUiConsumed = request.creativeUiConsumed;
+  receipt.higherPriorityUiConsumed = request.higherPriorityUiConsumed;
+  receipt.downstreamClick = request.click;
+
+  if (!request.click.clicked) {
+    setStatus(receipt, "product_creative_ui_downstream_click_no_click");
+    return receipt;
+  }
+
+  if (request.higherPriorityUiConsumed) {
+    setStatus(receipt,
+              "product_creative_ui_downstream_click_higher_priority");
+    return receipt;
+  }
+
+  if (request.creativeUiConsumed) {
+    receipt.suppressed = true;
+    receipt.downstreamClick.clicked = false;
+    setStatus(receipt, "product_creative_ui_downstream_click_suppressed");
+    return receipt;
+  }
+
+  setStatus(receipt, "product_creative_ui_downstream_click_passthrough");
   return receipt;
 }
 

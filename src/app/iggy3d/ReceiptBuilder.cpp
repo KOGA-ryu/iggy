@@ -159,6 +159,18 @@ void recordProductCreativeUiInputFrame(
   window.creativeUiInputReasonCode = receipt.reasonCode;
 }
 
+void recordProductCreativeUiDownstreamClick(
+    ProductAppWindowState& window,
+    const ProductCreativeUiDownstreamClickReceipt& receipt) {
+  window.creativeUiInputDownstreamClickRequested = receipt.requested;
+  window.creativeUiInputDownstreamClickPresent = receipt.clickPresent;
+  window.creativeUiInputDownstreamClickHigherPriority =
+      receipt.higherPriorityUiConsumed;
+  window.creativeUiInputDownstreamClickSuppressed = receipt.suppressed;
+  window.creativeUiInputDownstreamClickStatus = receipt.status;
+  window.creativeUiInputDownstreamClickReasonCode = receipt.reasonCode;
+}
+
 RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductWorldTemplate& world,
                                      const FrontendState& frontend,
@@ -1701,6 +1713,24 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiInputStatus);
   appendReceiptField(receipt, "creative_ui_input_reason_code",
                      window.creativeUiInputReasonCode);
+  appendReceiptField(receipt,
+                     "creative_ui_input_downstream_click_requested",
+                     window.creativeUiInputDownstreamClickRequested);
+  appendReceiptField(receipt,
+                     "creative_ui_input_downstream_click_present",
+                     window.creativeUiInputDownstreamClickPresent);
+  appendReceiptField(receipt,
+                     "creative_ui_input_downstream_click_higher_priority",
+                     window.creativeUiInputDownstreamClickHigherPriority);
+  appendReceiptField(receipt,
+                     "creative_ui_input_downstream_click_suppressed",
+                     window.creativeUiInputDownstreamClickSuppressed);
+  appendReceiptField(receipt,
+                     "creative_ui_input_downstream_click_status",
+                     window.creativeUiInputDownstreamClickStatus);
+  appendReceiptField(receipt,
+                     "creative_ui_input_downstream_click_reason_code",
+                     window.creativeUiInputDownstreamClickReasonCode);
   appendReceiptField(receipt, "product_vulkan_gameplay_ready",
                      vulkanGameplayReadiness.ready);
   appendReceiptField(receipt, "product_vulkan_gameplay_status",

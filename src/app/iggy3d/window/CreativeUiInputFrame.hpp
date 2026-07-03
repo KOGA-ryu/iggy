@@ -32,7 +32,29 @@ struct ProductCreativeUiInputFrameReceipt {
   std::string reasonCode = "product_creative_ui_input_not_requested";
 };
 
+struct ProductCreativeUiDownstreamClickRequest {
+  MouseClick click;
+  bool creativeUiConsumed = false;
+  bool higherPriorityUiConsumed = false;
+};
+
+struct ProductCreativeUiDownstreamClickReceipt {
+  bool requested = false;
+  bool clickPresent = false;
+  bool creativeUiConsumed = false;
+  bool higherPriorityUiConsumed = false;
+  bool suppressed = false;
+  MouseClick downstreamClick;
+  std::string status =
+      "product_creative_ui_downstream_click_not_requested";
+  std::string reasonCode =
+      "product_creative_ui_downstream_click_not_requested";
+};
+
 [[nodiscard]] ProductCreativeUiInputFrameReceipt routeProductCreativeUiInputFrame(
     const ProductCreativeUiInputFrameRequest& request);
+[[nodiscard]] ProductCreativeUiDownstreamClickReceipt
+routeProductCreativeUiDownstreamClick(
+    const ProductCreativeUiDownstreamClickRequest& request);
 
 }  // namespace iggy3d
