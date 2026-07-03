@@ -267,6 +267,11 @@ iggy3d_add_unit_test(creative_measure_tests
 set_tests_properties(creative_measure_tests PROPERTIES
   LABELS "unit;app;creative;measure;iggy3d")
 
+iggy3d_add_unit_test(creative_snap_tests
+  tests/unit/creative_snap_tests.cpp)
+set_tests_properties(creative_snap_tests PROPERTIES
+  LABELS "unit;app;creative;snap;iggy3d")
+
 iggy3d_add_unit_test(product_creative_palette_tests
   tests/unit/creative_palette_tests.cpp)
 set_tests_properties(product_creative_palette_tests PROPERTIES
