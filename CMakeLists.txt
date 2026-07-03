@@ -45,6 +45,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/Inspect.cpp
     src/app/iggy3d/creative/Measure.cpp
     src/app/iggy3d/creative/Snap.cpp
+    src/app/iggy3d/creative/DocumentSnap.cpp
     src/app/iggy3d/creative/Ghost.cpp
     src/app/iggy3d/creative/Ui.cpp
     src/app/iggy3d/creative/Commands.cpp

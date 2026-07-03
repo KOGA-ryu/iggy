@@ -367,6 +367,11 @@ iggy3d_add_unit_test(creative_snap_tests
 set_tests_properties(creative_snap_tests PROPERTIES
   LABELS "unit;app;creative;snap;iggy3d")
 
+iggy3d_add_unit_test(creative_document_snap_tests
+  tests/unit/creative_document_snap_tests.cpp)
+set_tests_properties(creative_document_snap_tests PROPERTIES
+  LABELS "unit;app;creative;document;snap;iggy3d")
+
 iggy3d_add_unit_test(creative_ghost_tests
   tests/unit/creative_ghost_tests.cpp)
 set_tests_properties(creative_ghost_tests PROPERTIES
