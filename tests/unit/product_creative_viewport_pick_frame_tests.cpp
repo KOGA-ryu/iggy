@@ -80,6 +80,20 @@ cr::Facade facadeWithRoom() {
   return facade;
 }
 
+cr::CreativeToolInputPacket pointerPress(cr::Id targetId) {
+  cr::CreativeToolInputPacket input;
+  input.kind = cr::CreativeToolInputKind::PointerPress;
+  input.pointer.button = cr::CreativeToolPointerButton::Primary;
+  input.pointer.target.value = targetId;
+  return input;
+}
+
+void selectTarget(cr::Facade& facade, cr::CreativeObjectId objectId) {
+  static_cast<void>(facade.setActiveTool(cr::Tool::Select));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerPress(static_cast<cr::Id>(objectId))));
+}
+
 iggy3d::ProductCreativeViewportPickFrameRequest baseRequest(
     iggy3d::ProductAppWindowState& window,
     cr::Facade& facade) {
@@ -246,6 +260,40 @@ bool facadeRoomProjectsAndHits() {
          expect(receipt.pickMessage == "hit", "hit message") &&
          expect(receipt.status == "product_creative_viewport_pick_hit",
                 "hit status");
+}
+
+bool hiddenRoomDoesNotProduceViewportPickHit() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade = facadeWithRoom();
+  const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
+  selectTarget(facade, roomId);
+  const cr::CreativeFacadeMutationReceipt mutation =
+      facade.toggleSelectedObjectVisibility();
+  const cr::CreativeObject* room = facade.findObject(roomId);
+  iggy3d::ProductCreativeViewportPickFrameRequest request =
+      baseRequest(window, facade);
+
+  const iggy3d::ProductCreativeViewportPickFrameReceipt receipt =
+      iggy3d::routeProductCreativeViewportPickFrame(request);
+
+  return expect(mutation.accepted && mutation.changed,
+                "hidden pick setup mutation changed") &&
+         expect(room != nullptr && !room->visible,
+                "hidden pick setup room hidden") &&
+         expect(facade.selectionState().selectedTarget.value == roomId,
+                "hidden pick selection preserved") &&
+         expect(receipt.facadeAvailable, "hidden pick facade available") &&
+         expect(receipt.sourceAvailable, "hidden pick source available") &&
+         expect(receipt.objectCount == 1U, "hidden pick object count") &&
+         expect(!receipt.projected, "hidden pick not projected") &&
+         expect(receipt.projectionCellCount == 0U,
+                "hidden pick zero cells") &&
+         expect(!receipt.picked, "hidden pick not picked") &&
+         expect(receipt.target.value == cr::kInvalidId,
+                "hidden pick invalid target") &&
+         expect(receipt.status ==
+                    "product_creative_viewport_pick_projection_empty",
+                "hidden pick status");
 }
 
 bool missWithProjectedCellsReportsMiss() {
@@ -587,6 +635,7 @@ int main() {
       missingFacadeDoesNotPick() &&
       emptyFacadeDocumentReportsSourceEmpty() &&
       facadeRoomProjectsAndHits() &&
+      hiddenRoomDoesNotProduceViewportPickHit() &&
       missWithProjectedCellsReportsMiss() &&
       invalidViewportPropagatesThroughPick() &&
       invalidGridPropagatesThroughPick() &&
