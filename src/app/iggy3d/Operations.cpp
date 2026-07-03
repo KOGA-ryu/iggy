@@ -405,6 +405,13 @@ void setCreativeNewWorldLaunchStatus(
   result.reasonCode = result.status;
 }
 
+void setCreativeOpenWorldLaunchStatus(
+    ProductCreativeOpenWorldLaunchResult& result,
+    std::string reason) {
+  result.status = std::move(reason);
+  result.reasonCode = result.status;
+}
+
 void mirrorCreativeWorldCreateResult(
     ProductCreativeNewWorldLaunchResult& result,
     const CreativeWorldCreateResult& create) {
@@ -417,6 +424,18 @@ void mirrorCreativeWorldCreateResult(
   result.nextObjectId = create.document.nextObjectId();
 }
 
+void mirrorCreativeWorldOpenResult(
+    ProductCreativeOpenWorldLaunchResult& result,
+    const CreativeWorldOpenResult& open) {
+  result.openResult = open;
+  result.saveId = open.saveId.empty() ? "none" : open.saveId;
+  result.path = open.path;
+  result.worldId = open.worldId;
+  result.documentId = open.documentId;
+  result.objectCount = open.objectCount;
+  result.nextObjectId = open.nextObjectId;
+}
+
 void mirrorCreativeDocumentInstallResult(
     ProductCreativeNewWorldLaunchResult& result,
     const creative::CreativeFacadeDocumentInstallReceipt& install) {
@@ -426,6 +445,18 @@ void mirrorCreativeDocumentInstallResult(
     result.documentId = install.nextDocumentId;
     result.objectCount = install.nextObjectCount;
     result.nextObjectId = result.createResult.document.nextObjectId();
+  }
+}
+
+void mirrorCreativeDocumentInstallResult(
+    ProductCreativeOpenWorldLaunchResult& result,
+    const creative::CreativeFacadeDocumentInstallReceipt& install) {
+  result.installReceipt = install;
+  result.documentInstalled = install.accepted;
+  if (install.accepted) {
+    result.documentId = install.nextDocumentId;
+    result.objectCount = install.nextObjectCount;
+    result.nextObjectId = result.openResult.document.nextObjectId();
   }
 }
 
@@ -921,6 +952,54 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
   result.enteredGameplay = true;
   result.accepted = true;
   setCreativeNewWorldLaunchStatus(result, "product_creative_world_launched");
+  window.launchStatus = result.reasonCode;
+  return result;
+}
+
+ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
+    const ProductAppOptions& options,
+    const ProductCreativeOpenWorldLaunchRequest& request,
+    FrontendState& frontend,
+    std::optional<Session>& activeSession,
+    ProductAppWindowState& window,
+    creative::Facade& facade) {
+  ProductCreativeOpenWorldLaunchResult result;
+  window.launchAction = "creative_open_and_enter";
+
+  CreativeWorldOpenRequest openRequest;
+  openRequest.saveRoot = options.saveRoot;
+  openRequest.saveId = request.saveId;
+
+  const CreativeWorldOpenResult open = openCreativeWorld(openRequest);
+  mirrorCreativeWorldOpenResult(result, open);
+  if (!open.accepted) {
+    setCreativeOpenWorldLaunchStatus(result, open.reasonCode);
+    window.launchStatus = result.reasonCode;
+    return result;
+  }
+
+  if (!createProductSession(options, activeSession, window)) {
+    setCreativeOpenWorldLaunchStatus(result, window.launchStatus);
+    return result;
+  }
+  result.sessionCreated = activeSession.has_value();
+
+  creative::CreativeDocument documentToInstall = open.document;
+  const creative::CreativeFacadeDocumentInstallReceipt install =
+      facade.installDocument(std::move(documentToInstall));
+  mirrorCreativeDocumentInstallResult(result, install);
+  if (!install.accepted) {
+    setCreativeOpenWorldLaunchStatus(result, std::string{install.reasonCode});
+    window.launchStatus = result.reasonCode;
+    clearProductGameplayLaunchState(activeSession, window);
+    return result;
+  }
+
+  enterProductGameplayTransition(frontend, window, FrontendAction::Load);
+  window.interactionMode = ProductInteractionMode::Creative;
+  result.enteredGameplay = true;
+  result.accepted = true;
+  setCreativeOpenWorldLaunchStatus(result, "product_creative_world_opened");
   window.launchStatus = result.reasonCode;
   return result;
 }

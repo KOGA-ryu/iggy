@@ -74,6 +74,34 @@ iggy3d::ProductCreativeNewWorldLaunchResult launchCreativeWorld(
                                                facade);
 }
 
+iggy3d::ProductCreativeOpenWorldLaunchResult openCreativeWorld(
+    const iggy3d::ProductAppOptions& options,
+    std::string_view saveId,
+    iggy3d::FrontendState& frontend,
+    std::optional<iggy3d::Session>& activeSession,
+    iggy3d::ProductAppWindowState& window,
+    cr::Facade& facade) {
+  iggy3d::ProductCreativeOpenWorldLaunchRequest request;
+  request.saveId = std::string{saveId};
+  return iggy3d::launchProductCreativeOpenWorld(options,
+                                                request,
+                                                frontend,
+                                                activeSession,
+                                                window,
+                                                facade);
+}
+
+iggy3d::CreativeWorldSaveRequest saveRequest(
+    const iggy3d::ProductAppOptions& options,
+    std::string_view saveId,
+    cr::CreativeDocument& document) {
+  iggy3d::CreativeWorldSaveRequest request;
+  request.saveRoot = options.saveRoot;
+  request.saveId = std::string{saveId};
+  request.document = &document;
+  return request;
+}
+
 bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
   const iggy3d::ProductAppOptions options = testOptions("success");
   iggy3d::FrontendState frontend;
@@ -370,6 +398,338 @@ bool secondLaunchClearsOldFacadeStateAndInstallsNewDocument() {
                 "second launch pointer target invalid");
 }
 
+bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
+  const iggy3d::ProductAppOptions options = testOptions("open_success");
+  iggy3d::FrontendState createFrontend;
+  std::optional<iggy3d::Session> createSession;
+  iggy3d::ProductAppWindowState createWindow;
+  cr::Facade createFacade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult created =
+      launchCreativeWorld(options,
+                          launchRequest("Open Source",
+                                        "2026-07-03T13:00:00Z"),
+                          createFrontend,
+                          createSession,
+                          createWindow,
+                          createFacade);
+  const cr::CreativeDocumentCreateReceipt createdObject =
+      createFacade.createDocumentObject(cr::CreativeObjectKind::Room);
+  cr::CreativeDocument savedDocument = createFacade.document();
+  const bool renamed = savedDocument.rename("Opened Name");
+  const iggy3d::CreativeWorldSaveResult saved =
+      iggy3d::saveCreativeWorld(
+          saveRequest(options, created.saveId, savedDocument));
+
+  iggy3d::FrontendState openFrontend;
+  std::optional<iggy3d::Session> openSession;
+  iggy3d::ProductAppWindowState openWindow;
+  cr::Facade openFacade;
+  const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
+      openCreativeWorld(options,
+                        created.saveId,
+                        openFrontend,
+                        openSession,
+                        openWindow,
+                        openFacade);
+
+  return expect(created.accepted, "open launch setup create accepted") &&
+         expect(createdObject.accepted, "open launch setup object created") &&
+         expect(renamed, "open launch setup renamed") &&
+         expect(saved.accepted, "open launch setup saved") &&
+         expect(savedDocument.dirtyFlags() == 0U,
+                "open launch setup save drained dirty") &&
+         expect(opened.accepted, "open launch accepted") &&
+         expect(opened.status == "product_creative_world_opened",
+                "open launch status") &&
+         expect(opened.reasonCode == "product_creative_world_opened",
+                "open launch reason") &&
+         expect(opened.sessionCreated, "open launch session created") &&
+         expect(opened.documentInstalled, "open launch document installed") &&
+         expect(opened.enteredGameplay, "open launch entered gameplay") &&
+         expect(opened.openResult.accepted, "open launch open accepted") &&
+         expect(opened.installReceipt.accepted,
+                "open launch install accepted") &&
+         expect(opened.saveId == created.saveId, "open launch save id") &&
+         expect(opened.path == created.path, "open launch path") &&
+         expect(opened.worldId == created.worldId, "open launch world id") &&
+         expect(opened.documentId == created.documentId,
+                "open launch document id") &&
+         expect(opened.objectCount == 1U, "open launch object count") &&
+         expect(opened.nextObjectId == savedDocument.nextObjectId(),
+                "open launch next object id") &&
+         expect(openSession.has_value(), "open launch active session") &&
+         expect(openWindow.runtimeSessionCreated,
+                "open launch runtime session window") &&
+         expect(openWindow.gameplayActive, "open launch gameplay active") &&
+         expect(openWindow.interactionMode ==
+                    iggy3d::ProductInteractionMode::Creative,
+                "open launch creative mode") &&
+         expect(openFrontend.childScreen == iggy3d::FrontendScreen::Gameplay,
+                "open launch frontend gameplay") &&
+         expect(openWindow.launchStatus == "product_creative_world_opened",
+                "open launch window status") &&
+         expect(openFacade.document().id() == created.documentId,
+                "open launch facade document id") &&
+         expect(openFacade.document().name() == "Opened Name",
+                "open launch facade document name") &&
+         expect(openFacade.document().objectCount() == 1U,
+                "open launch facade object count") &&
+         expect(openFacade.document().nextObjectId() ==
+                    savedDocument.nextObjectId(),
+                "open launch facade next id") &&
+         expect(openFacade.document().revision() == 0U,
+                "open launch facade revision clean") &&
+         expect(openFacade.document().dirtyFlags() == 0U,
+                "open launch facade dirty clean") &&
+         expect(openFacade.selectionState().selectedTarget.value ==
+                    cr::kInvalidId,
+                "open launch selection clear") &&
+         expect(openFacade.inspectionState().inspectedTarget.value ==
+                    cr::kInvalidId,
+                "open launch inspection clear") &&
+         expect(!openFacade.measurementState().hasMeasurement,
+                "open launch measurement empty") &&
+         expect(!openFacade.ghostState().visible,
+                "open launch ghost hidden") &&
+         expect(openFacade.toolState().pointer.target.value == cr::kInvalidId,
+                "open launch pointer clear");
+}
+
+bool openBlankOrInvalidSaveIdRejectsBeforeSessionInstallAndModeSwitch() {
+  {
+    const iggy3d::ProductAppOptions options = testOptions("open_blank_id");
+    iggy3d::FrontendState frontend;
+    std::optional<iggy3d::Session> activeSession;
+    iggy3d::ProductAppWindowState window;
+    cr::Facade facade;
+
+    const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
+        openCreativeWorld(options, " ", frontend, activeSession, window, facade);
+
+    if (!expect(!opened.accepted, "open blank id rejected") ||
+        !expect(opened.status == "creative_world_save_id_missing",
+                "open blank id status") ||
+        !expect(!opened.sessionCreated, "open blank id no session") ||
+        !expect(!opened.documentInstalled, "open blank id no install") ||
+        !expect(!opened.enteredGameplay, "open blank id no gameplay") ||
+        !expect(!activeSession.has_value(), "open blank id no active session") ||
+        !expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+                "open blank id player mode") ||
+        !expect(facade.document().id() == cr::kInvalidDocumentId,
+                "open blank id facade unchanged")) {
+      return false;
+    }
+  }
+
+  {
+    const iggy3d::ProductAppOptions options = testOptions("open_invalid_id");
+    iggy3d::FrontendState frontend;
+    std::optional<iggy3d::Session> activeSession;
+    iggy3d::ProductAppWindowState window;
+    cr::Facade facade;
+
+    const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
+        openCreativeWorld(options,
+                          "bad save id",
+                          frontend,
+                          activeSession,
+                          window,
+                          facade);
+
+    return expect(!opened.accepted, "open invalid id rejected") &&
+           expect(opened.status == "creative_world_save_id_invalid",
+                  "open invalid id status") &&
+           expect(!opened.sessionCreated, "open invalid id no session") &&
+           expect(!opened.documentInstalled, "open invalid id no install") &&
+           expect(!opened.enteredGameplay, "open invalid id no gameplay") &&
+           expect(!activeSession.has_value(),
+                  "open invalid id no active session") &&
+           expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+                  "open invalid id player mode") &&
+           expect(facade.document().id() == cr::kInvalidDocumentId,
+                  "open invalid id facade unchanged");
+  }
+}
+
+bool openProductSessionSaveRejectsAsMissingCreativeSection() {
+  const iggy3d::ProductAppOptions options = testOptions("open_product_save");
+  iggy3d::FrontendState productFrontend;
+  std::optional<iggy3d::Session> productSession;
+  iggy3d::ProductAppWindowState productWindow;
+  iggy3d::WorldSetupDraft draft =
+      iggy3d::makeDefaultWorldSetupDraft("product_session_world");
+
+  iggy3d::launchProductNewWorld(options,
+                                draft,
+                                productFrontend,
+                                productSession,
+                                productWindow);
+
+  iggy3d::FrontendState openFrontend;
+  std::optional<iggy3d::Session> openSession;
+  iggy3d::ProductAppWindowState openWindow;
+  cr::Facade openFacade;
+  const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
+      openCreativeWorld(options,
+                        productWindow.activeProductSaveId,
+                        openFrontend,
+                        openSession,
+                        openWindow,
+                        openFacade);
+
+  return expect(productSession.has_value(),
+                "open product setup session created") &&
+         expect(productWindow.activeProductSaveId != "none",
+                "open product setup save id") &&
+         expect(!opened.accepted, "open product rejected") &&
+         expect(opened.status == "missing_creative_document_section",
+                "open product missing creative status") &&
+         expect(!opened.sessionCreated, "open product no new session") &&
+         expect(!opened.documentInstalled, "open product no install") &&
+         expect(!opened.enteredGameplay, "open product no gameplay") &&
+         expect(!openSession.has_value(), "open product active session absent") &&
+         expect(openWindow.interactionMode == iggy3d::ProductInteractionMode::Player,
+                "open product player mode") &&
+         expect(openFacade.document().id() == cr::kInvalidDocumentId,
+                "open product facade unchanged");
+}
+
+bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
+  const iggy3d::ProductAppOptions options = testOptions("open_second");
+
+  iggy3d::FrontendState firstCreateFrontend;
+  std::optional<iggy3d::Session> firstCreateSession;
+  iggy3d::ProductAppWindowState firstCreateWindow;
+  cr::Facade firstCreateFacade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult firstCreated =
+      launchCreativeWorld(options,
+                          launchRequest("First Open",
+                                        "2026-07-03T14:00:00Z"),
+                          firstCreateFrontend,
+                          firstCreateSession,
+                          firstCreateWindow,
+                          firstCreateFacade);
+  const cr::CreativeDocumentCreateReceipt firstObject =
+      firstCreateFacade.createDocumentObject(cr::CreativeObjectKind::Room);
+  cr::CreativeDocument firstSavedDocument = firstCreateFacade.document();
+  const iggy3d::CreativeWorldSaveResult firstSaved =
+      iggy3d::saveCreativeWorld(
+          saveRequest(options, firstCreated.saveId, firstSavedDocument));
+
+  iggy3d::FrontendState secondCreateFrontend;
+  std::optional<iggy3d::Session> secondCreateSession;
+  iggy3d::ProductAppWindowState secondCreateWindow;
+  cr::Facade secondCreateFacade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult secondCreated =
+      launchCreativeWorld(options,
+                          launchRequest("Second Open",
+                                        "2026-07-03T14:10:00Z"),
+                          secondCreateFrontend,
+                          secondCreateSession,
+                          secondCreateWindow,
+                          secondCreateFacade);
+
+  iggy3d::FrontendState openFrontend;
+  std::optional<iggy3d::Session> openSession;
+  iggy3d::ProductAppWindowState openWindow;
+  cr::Facade openFacade;
+  const iggy3d::ProductCreativeOpenWorldLaunchResult firstOpened =
+      openCreativeWorld(options,
+                        firstCreated.saveId,
+                        openFrontend,
+                        openSession,
+                        openWindow,
+                        openFacade);
+  static_cast<void>(openFacade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   1.0,
+                   2.0,
+                   targetId(firstObject.objectId))));
+  static_cast<void>(openFacade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(openFacade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   3.0,
+                   4.0,
+                   targetId(firstObject.objectId))));
+  static_cast<void>(openFacade.setActiveTool(cr::Tool::Measure));
+  static_cast<void>(openFacade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   5.0,
+                   6.0,
+                   targetId(firstObject.objectId))));
+  static_cast<void>(openFacade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerRelease,
+                   7.0,
+                   8.0,
+                   targetId(firstObject.objectId))));
+  static_cast<void>(openFacade.setActiveTool(cr::Tool::Select));
+  static_cast<void>(openFacade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerMove,
+                   9.0,
+                   10.0,
+                   targetId(firstObject.objectId))));
+
+  const iggy3d::ProductCreativeOpenWorldLaunchResult secondOpened =
+      openCreativeWorld(options,
+                        secondCreated.saveId,
+                        openFrontend,
+                        openSession,
+                        openWindow,
+                        openFacade);
+
+  return expect(firstCreated.accepted,
+                "second open setup first create accepted") &&
+         expect(firstObject.accepted,
+                "second open setup first object created") &&
+         expect(firstSaved.accepted, "second open setup first saved") &&
+         expect(secondCreated.accepted,
+                "second open setup second create accepted") &&
+         expect(firstOpened.accepted, "second open first open accepted") &&
+         expect(secondOpened.accepted, "second open accepted") &&
+         expect(secondOpened.documentId == secondCreated.documentId,
+                "second open document id") &&
+         expect(secondOpened.objectCount == 0U,
+                "second open empty restored object count") &&
+         expect(secondOpened.installReceipt.previousObjectCount == 1U,
+                "second open previous object count") &&
+         expect(secondOpened.installReceipt.selectionCleared,
+                "second open selection cleared") &&
+         expect(secondOpened.installReceipt.inspectionCleared,
+                "second open inspection cleared") &&
+         expect(secondOpened.installReceipt.measurementCleared,
+                "second open measurement cleared") &&
+         expect(secondOpened.installReceipt.ghostCleared,
+                "second open ghost cleared") &&
+         expect(secondOpened.installReceipt.toolPointerCleared,
+                "second open pointer cleared") &&
+         expect(openSession.has_value(), "second open active session") &&
+         expect(openWindow.interactionMode ==
+                    iggy3d::ProductInteractionMode::Creative,
+                "second open creative mode") &&
+         expect(openFacade.document().id() == secondCreated.documentId,
+                "second open facade document id") &&
+         expect(openFacade.document().name() == "Second Open",
+                "second open facade document name") &&
+         expect(openFacade.document().objectCount() == 0U,
+                "second open no leaked objects") &&
+         expect(openFacade.document().revision() == 0U,
+                "second open revision clean") &&
+         expect(openFacade.document().dirtyFlags() == 0U,
+                "second open dirty clean") &&
+         expect(openFacade.selectionState().selectedTarget.value ==
+                    cr::kInvalidId,
+                "second open selection invalid") &&
+         expect(openFacade.inspectionState().inspectedTarget.value ==
+                    cr::kInvalidId,
+                "second open inspection invalid") &&
+         expect(!openFacade.measurementState().hasMeasurement,
+                "second open measurement cleared state") &&
+         expect(!openFacade.ghostState().visible,
+                "second open ghost hidden") &&
+         expect(openFacade.toolState().pointer.target.value == cr::kInvalidId,
+                "second open pointer target invalid");
+}
+
 }  // namespace
 
 int main() {
@@ -377,6 +737,10 @@ int main() {
       successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() &&
       blankTitleOrTimestampRejectsBeforeSessionInstallAndModeSwitch() &&
       invalidAttemptTokenWritesNoCommittedSaveAndDoesNotEnterCreativeMode() &&
-      secondLaunchClearsOldFacadeStateAndInstallsNewDocument();
+      secondLaunchClearsOldFacadeStateAndInstallsNewDocument() &&
+      openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() &&
+      openBlankOrInvalidSaveIdRejectsBeforeSessionInstallAndModeSwitch() &&
+      openProductSessionSaveRejectsAsMissingCreativeSection() &&
+      secondOpenClearsOldFacadeStateAndInstallsRestoredDocument();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

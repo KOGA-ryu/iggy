@@ -68,6 +68,27 @@ struct ProductCreativeNewWorldLaunchResult {
   creative::CreativeFacadeDocumentInstallReceipt installReceipt;
 };
 
+struct ProductCreativeOpenWorldLaunchRequest {
+  std::string saveId;
+};
+
+struct ProductCreativeOpenWorldLaunchResult {
+  bool accepted = false;
+  std::string status = "product_creative_open_world_not_requested";
+  std::string reasonCode = "product_creative_open_world_not_requested";
+  bool sessionCreated = false;
+  bool documentInstalled = false;
+  bool enteredGameplay = false;
+  std::string saveId = "none";
+  std::filesystem::path path;
+  std::string worldId;
+  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
+  std::uint64_t objectCount = 0;
+  creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
+  CreativeWorldOpenResult openResult;
+  creative::CreativeFacadeDocumentInstallReceipt installReceipt;
+};
+
 std::string_view productSaveFlowOperationName(ProductSaveFlowOperation operation);
 
 ProductWorldTemplate productWorldTemplateFromOptions(
@@ -122,6 +143,13 @@ void launchProductNewWorld(const ProductAppOptions& options,
 ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
     const ProductAppOptions& options,
     const ProductCreativeNewWorldLaunchRequest& request,
+    FrontendState& frontend,
+    std::optional<Session>& activeSession,
+    ProductAppWindowState& window,
+    creative::Facade& facade);
+ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
+    const ProductAppOptions& options,
+    const ProductCreativeOpenWorldLaunchRequest& request,
     FrontendState& frontend,
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
