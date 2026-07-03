@@ -89,6 +89,10 @@ class Facade {
   [[nodiscard]] CreativeFacadeMutationReceipt
   toggleSelectedObjectVisibility();
 
+  [[nodiscard]] CreativeDocumentCreateReceipt createDocumentObject(
+      const CreativeDocumentCreateRequest& request);
+  [[nodiscard]] CreativeDocumentCreateReceipt createDocumentObject(
+      CreativeObjectKind kind);
   [[nodiscard]] CreativeObjectId createRoom(const CreateRoomCommand& command);
   [[nodiscard]] CreativeObjectId createRoom(std::string name);
   [[nodiscard]] bool renameObject(const RenameObjectCommand& command);

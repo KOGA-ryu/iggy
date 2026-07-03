@@ -252,6 +252,30 @@ CreativeFacadeMutationReceipt Facade::toggleSelectedObjectVisibility() {
   return receipt;
 }
 
+CreativeDocumentCreateReceipt Facade::createDocumentObject(
+    const CreativeDocumentCreateRequest& request) {
+  recordCommandAttempt(stats_);
+  CreativeDocumentCreateReceipt receipt = document_.createObject(request);
+  if (!receipt.accepted || !receipt.objectCreated) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+
+  recordCommandSuccess(stats_);
+  recordObjectCreated(stats_);
+  if (receipt.objectKind == CreativeObjectKind::Room) {
+    recordRoomCreated(stats_);
+  }
+  return receipt;
+}
+
+CreativeDocumentCreateReceipt Facade::createDocumentObject(
+    CreativeObjectKind kind) {
+  CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  return createDocumentObject(request);
+}
+
 CreativeObjectId Facade::createRoom(const CreateRoomCommand& command) {
   recordCommandAttempt(stats_);
 

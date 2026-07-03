@@ -322,6 +322,11 @@ iggy3d_add_unit_test(creative_document_mutation_tests
 set_tests_properties(creative_document_mutation_tests PROPERTIES
   LABELS "unit;app;creative;document;mutation;iggy3d")
 
+iggy3d_add_unit_test(creative_document_create_tests
+  tests/unit/creative_document_create_tests.cpp)
+set_tests_properties(creative_document_create_tests PROPERTIES
+  LABELS "unit;app;creative;document;create;iggy3d")
+
 iggy3d_add_unit_test(creative_facade_tests
   tests/unit/creative_facade_tests.cpp)
 set_tests_properties(creative_facade_tests PROPERTIES

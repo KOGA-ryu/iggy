@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/iggy3d/creative/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/Object.hpp"
 
 #include <cstddef>
@@ -12,6 +13,50 @@
 #include <vector>
 
 namespace iggy3d::creative {
+
+enum class CreativeDocumentCreateStatus : std::uint8_t {
+  Unknown,
+  InvalidDocument,
+  InvalidKind,
+  Created,
+  Rejected,
+};
+
+struct CreativeDocumentCreateRequest {
+  CreativeObjectKind kind = CreativeObjectKind::Unknown;
+  std::string name;
+  CreativeTransform transform;
+  bool hasTransformOverride = false;
+  CreativeBounds bounds;
+  bool hasBoundsOverride = false;
+  CreativeLayerId layerId = kDefaultLayerId;
+  bool hasLayerOverride = false;
+  bool visible = true;
+  bool hasVisibleOverride = false;
+  bool locked = false;
+  bool hasLockedOverride = false;
+  std::vector<std::string> tags;
+  std::optional<CreativeObjectId> parentId = std::nullopt;
+};
+
+struct CreativeDocumentCreateReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  bool objectCreated = false;
+  CreativeDocumentCreateStatus status = CreativeDocumentCreateStatus::Unknown;
+  CreativeObjectId objectId = kInvalidObjectId;
+  CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
+  std::string objectName;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  CreativeObjectDirtyFlags creationDirtyFlags = 0;
+  std::string_view message = "document_create_not_requested";
+  std::string_view reasonCode = "document_create_not_requested";
+};
+
+[[nodiscard]] std::string_view toString(
+    CreativeDocumentCreateStatus status) noexcept;
 
 // CreativeDocument is the authored content container for one creative work.
 // It owns the durable content truth: document identity, revision, and later the
@@ -45,6 +90,8 @@ class CreativeDocument {
   [[nodiscard]] CreativeObject* findObject(CreativeObjectId id) noexcept;
   [[nodiscard]] std::span<const CreativeObject> objects() const noexcept;
 
+  [[nodiscard]] CreativeDocumentCreateReceipt createObject(
+      const CreativeDocumentCreateRequest& request);
   [[nodiscard]] CreativeObjectId createRoom(
       std::string name,
       CreativeTransform transform = {},
@@ -85,6 +132,7 @@ class CreativeDocument {
   // bool setNotes(std::string notes);
 
  private:
+  [[nodiscard]] CreativeObjectId appendObject(CreativeObject object);
   void markContentChanged() noexcept;
 
   bool valid_{true};
