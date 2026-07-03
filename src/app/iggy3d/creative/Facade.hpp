@@ -3,19 +3,56 @@
 #include "app/iggy3d/creative/Commands.hpp"
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/Document.hpp"
+#include "app/iggy3d/creative/Ghost.hpp"
+#include "app/iggy3d/creative/Inspect.hpp"
+#include "app/iggy3d/creative/Measure.hpp"
 #include "app/iggy3d/creative/Metrics.hpp"
 #include "app/iggy3d/creative/Object.hpp"
+#include "app/iggy3d/creative/Select.hpp"
+#include "app/iggy3d/creative/Snap.hpp"
 #include "app/iggy3d/creative/State.hpp"
+#include "app/iggy3d/creative/Tools.hpp"
+#include "app/iggy3d/creative/Ui.hpp"
 
+#include <cstddef>
 #include <string>
+#include <string_view>
 
 namespace iggy3d::creative {
+
+struct CreativeFacadeToolDispatchReceipt {
+  CreativeToolInputKind inputKind = CreativeToolInputKind::Unknown;
+  Tool activeToolBefore = Tool::Select;
+  Tool activeToolAfter = Tool::Select;
+  std::size_t emittedIntentCount = 0;
+  bool toolAccepted = false;
+  bool selectionChanged = false;
+  bool inspectionChanged = false;
+  bool measurementChanged = false;
+  bool ghostChanged = false;
+  bool accepted = false;
+  bool changed = false;
+  std::string_view message = "tool_input_not_dispatched";
+};
 
 class Facade {
  public:
   void reset() noexcept;
   void beginFrame(const FramePacket& packet) noexcept;
   void handle(const Packet& packet) noexcept;
+
+  [[nodiscard]] const State& state() const noexcept;
+  [[nodiscard]] const CreativeToolState& toolState() const noexcept;
+  [[nodiscard]] const CreativeSelectionState& selectionState() const noexcept;
+  [[nodiscard]] const CreativeInspectionState& inspectionState() const noexcept;
+  [[nodiscard]] const CreativeMeasurementState& measurementState() const noexcept;
+  [[nodiscard]] const CreativeSnapSettings& snapSettings() const noexcept;
+  [[nodiscard]] const CreativeGhostState& ghostState() const noexcept;
+  [[nodiscard]] bool setActiveTool(Tool tool) noexcept;
+  void setSnapSettings(CreativeSnapSettings settings) noexcept;
+  [[nodiscard]] CreativeFacadeToolDispatchReceipt dispatchToolInput(
+      const CreativeToolInputPacket& input);
+  [[nodiscard]] CreativeUiBuildReceipt buildUiModel() const;
 
   [[nodiscard]] CreativeObjectId createRoom(const CreateRoomCommand& command);
   [[nodiscard]] CreativeObjectId createRoom(std::string name);
@@ -32,6 +69,12 @@ class Facade {
   State state_;
   CreativeDocument document_;
   Stats stats_;
+  CreativeToolState toolState_;
+  CreativeSelectionState selectionState_;
+  CreativeInspectionState inspectionState_;
+  CreativeMeasurementState measurementState_;
+  CreativeSnapSettings snapSettings_;
+  CreativeGhostState ghostState_;
 };
 
 }  // namespace iggy3d::creative
