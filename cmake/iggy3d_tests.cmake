@@ -531,6 +531,10 @@ iggy3d_add_unit_test(reasoning_graph_tests tests/unit/reasoning_graph_tests.cpp)
 set_tests_properties(reasoning_graph_tests PROPERTIES
   LABELS "unit;runtime;ai;reasoning;iggy3d")
 
+iggy3d_add_unit_test(reasoning_climb_edge_tests tests/unit/reasoning_climb_edge_tests.cpp)
+set_tests_properties(reasoning_climb_edge_tests PROPERTIES
+  LABELS "unit;runtime;ai;reasoning;movement;capability;iggy3d")
+
 iggy3d_add_unit_test(reasoning_graph_readout tests/unit/reasoning_graph_readout.cpp)
 set_tests_properties(reasoning_graph_readout PROPERTIES
   LABELS "unit;runtime;ai;reasoning;readout;iggy3d")

@@ -10,6 +10,7 @@
 
 #include "content/assets/RoomAsset.hpp"
 #include "core/math/Vec3.hpp"
+#include "runtime/movement/MovementTraversalSlots.hpp"
 #include "runtime/physics/PhysicsAabbCollider.hpp"
 
 namespace iggy3d {
@@ -99,6 +100,10 @@ struct ReasoningGraphConfig {
   float maxLinkDistanceMeters = 20.0F;
 };
 
+// MA4 (M3): how near a graph node must sit to a slot's front/landing side for that slot to bridge the
+// node -- the reach radius of the climb-edge emission predicate. Named, deterministic.
+inline constexpr float kClimbSlotReachMeters = 3.0F;
+
 // Observability facts about a built graph -- a SIBLING to the graph (kept OFF NpcBehaviorDebugSnapshot
 // so the graph facts don't collide with the pending HUD string-mirror cut). Indexed by
 // static_cast<std::size_t>(ReasoningNodeKind).
@@ -116,8 +121,13 @@ ReasoningGraphSummary summarizeReasoningGraph(const ReasoningGraph& graph);
 // within `maxLinkDistanceMeters` whose eye-height segment crosses no actor-blocking surface (the
 // SAME colliders vision/hearing use). All-pairs over the sparse set -- BUILD-TIME only, never a
 // per-tick navmesh. No session access; deterministic.
+// MA4: `slots` is an OPTIONAL traversal-slot input (additive; default empty => ZERO climb edges =>
+// every existing graph BYTE-IDENTICAL). When present, a node pair within maxLinkDistanceMeters whose
+// eye-height segment is BLOCKED gets ONE `climb` edge if a slot geometrically bridges it (nearest
+// bridging slot by through-slot length, slotId tie-break). Distance-only-absent pairs get nothing.
 ReasoningGraph buildReasoningGraph(const RoomAsset& room,
                                    std::span<const Vec3> patrolWaypoints,
-                                   const ReasoningGraphConfig& config = {});
+                                   const ReasoningGraphConfig& config = {},
+                                   std::span<const MovementTraversalSlot> slots = {});
 
 }  // namespace iggy3d

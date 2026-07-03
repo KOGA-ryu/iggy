@@ -4,6 +4,8 @@
 #include <cmath>
 #include <tuple>
 
+#include "core/math/Aabb3.hpp"
+
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/physics/PhysicsCollisionQueries.hpp"
 #include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
@@ -146,8 +148,46 @@ ReasoningGraphSummary summarizeReasoningGraph(const ReasoningGraph& graph) {
   return summary;
 }
 
+namespace {
+
+float climbDistance(Vec3 a, Vec3 b) { return std::sqrt(lengthSquared(b - a)); }
+
+// MA4: the best climb slot bridging blocked node pair (a,b), or nullptr. A slot bridges iff one node
+// is within kClimbSlotReachMeters of its front face AND the other within reach of its landing (either
+// assignment -- climb edges are undirected). Among bridging slots pick the smallest through-slot
+// length (|a->slotPos| + |slotPos->b|); slotId string tie-break makes the choice iteration-order-
+// independent + deterministic. `lengthOut` receives the chosen through-slot length.
+const MovementTraversalSlot* bestBridgingClimbSlot(std::span<const MovementTraversalSlot> slots,
+                                                   Vec3 a, Vec3 b, float& lengthOut) {
+  const MovementTraversalSlot* best = nullptr;
+  float bestLength = 0.0F;
+  for (const MovementTraversalSlot& slot : slots) {
+    const Vec3 frontPos = center(slot.frontFaceBounds);
+    const Vec3 landingPos = slot.landingPosition;
+    const bool bridges = (climbDistance(a, frontPos) <= kClimbSlotReachMeters &&
+                          climbDistance(b, landingPos) <= kClimbSlotReachMeters) ||
+                         (climbDistance(b, frontPos) <= kClimbSlotReachMeters &&
+                          climbDistance(a, landingPos) <= kClimbSlotReachMeters);
+    if (!bridges) {
+      continue;
+    }
+    const Vec3 slotPos = center(slot.targetBounds);
+    const float length = climbDistance(a, slotPos) + climbDistance(slotPos, b);
+    if (best == nullptr || length < bestLength ||
+        (length == bestLength && slot.slotId < best->slotId)) {
+      best = &slot;
+      bestLength = length;
+    }
+  }
+  lengthOut = bestLength;
+  return best;
+}
+
+}  // namespace
+
 ReasoningGraph buildReasoningGraph(const RoomAsset& room, std::span<const Vec3> patrolWaypoints,
-                                   const ReasoningGraphConfig& config) {
+                                   const ReasoningGraphConfig& config,
+                                   std::span<const MovementTraversalSlot> slots) {
   ReasoningGraph graph;
 
   // 1. Collect nodes: derivable anchors, then one patrolPost per caller-supplied waypoint.
@@ -195,6 +235,15 @@ ReasoningGraph buildReasoningGraph(const RoomAsset& room, std::span<const Vec3> 
         continue;
       }
       if (reasoningSegmentBlocked(colliders, a, b)) {
+        // MA4: a walking guard can't link this pair -- but a traversal slot might BRIDGE it. Emit ONE
+        // climb edge if a slot geometrically spans the blocked gap (empty slots => nothing => the
+        // graph is byte-identical to pre-MA4). Distance-only-absent pairs never reach here.
+        float climbLength = 0.0F;
+        const MovementTraversalSlot* bridge = bestBridgingClimbSlot(slots, a, b, climbLength);
+        if (bridge != nullptr) {
+          graph.edges.push_back(ReasoningEdge{graph.nodes[i].id, graph.nodes[j].id,
+                                              ReasoningEdgeKind::climb, climbLength});
+        }
         continue;
       }
       graph.edges.push_back(ReasoningEdge{graph.nodes[i].id, graph.nodes[j].id,
