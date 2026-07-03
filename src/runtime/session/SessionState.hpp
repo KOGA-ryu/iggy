@@ -111,6 +111,14 @@ struct SessionState {
   // (the envelope never carried it) -- a valid empty value, not stale/dangling.
   ReasoningGraph reasoningGraph;
 
+  // MA4 s2 traversal-slot registry. Same transient-in-persistence club as reasoningGraph: OFF
+  // StateHash/SaveCodec/SaveEnvelope, set ONCE at activation by the SAME caller that sets the graph
+  // (prebuilt from the activation-time RoomAsset). Default-empty ⇒ the Move-execution traversal hook
+  // is INERT (no arming resolves a slot). After replaceStateFromLoad it is default-empty (re-set at
+  // activation, like the graph) -- a valid empty value. Live product sessions do NOT populate it yet
+  // (the named brokered graph-into-activation follow-up wires both); this slice is proven in fixtures.
+  MovementTraversalSlotRegistry movementTraversalSlotRegistry;
+
   // Objective -> outcome mapping as DATA (A8a). TRANSIENT-IN-PERSISTENCE: absent from
   // StateHash/SaveCodec/SaveEnvelope/SaveObjectiveRecord (the reasoningGraph-slot precedent) --
   // rebuilt at create and in replaceStateFromLoad from buildObjectiveOutcomeTable(). Defaults

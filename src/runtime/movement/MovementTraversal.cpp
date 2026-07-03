@@ -810,6 +810,126 @@ TraversalResult executeWireWalk(WorldState& world,
   return result;
 }
 
+// --- MA4 s2: SLOT-BASED cores (no RoomAsset; the shipped slot carries the geometry) -------------
+// Kept SELF-CONTAINED (the room-based path above is untouched -> byte-identical). v1 handles the
+// CLAMBER mechanic -- climb edges bridge clamber walls, so that is the only kind Move-execution arms;
+// vault/wire slot-firing is a named extension point (returns UnsupportedMechanic here, so a non-
+// clamber bridge simply stays blocked -- safe).
+TraversalResult makeSlotResult(TraversalMechanic mechanic, EntityId actor, TraversalStatus status,
+                               Vec3 start = {}) {
+  TraversalResult result;
+  result.status = status;
+  result.mechanic = mechanic;
+  result.actor = actor;
+  result.start = start;
+  result.finalPosition = start;
+  result.reasonCode = traversalStatusName(status);
+  return result;
+}
+
+TraversalCandidatePreviewResult makeSlotPreviewResult(EntityId actor,
+                                                      TraversalCandidatePreviewStatus status,
+                                                      Vec3 start = {}) {
+  TraversalCandidatePreviewResult result;
+  result.status = status;
+  result.actor = actor;
+  result.start = start;
+  result.landingPosition = start;
+  result.selectedMechanic = TraversalMechanic::Clamber;
+  result.ready = status == TraversalCandidatePreviewStatus::Ready;
+  result.reasonCode = traversalCandidatePreviewStatusName(status);
+  result.hudCode = traversalCandidatePreviewHudCode(status);
+  return result;
+}
+
+TraversalMechanic mechanicForSlotKind(MovementTraversalSlotKind kind) {
+  switch (kind) {
+    case MovementTraversalSlotKind::Vault:
+      return TraversalMechanic::Vault;
+    case MovementTraversalSlotKind::WireWalk:
+      return TraversalMechanic::WireWalk;
+    case MovementTraversalSlotKind::Clamber:
+      return TraversalMechanic::Clamber;
+  }
+  return TraversalMechanic::Clamber;
+}
+
+// The approach gate facts for a slot vs the actor (mirrors selectMovementTraversalSlot's per-slot
+// math): horizontal range to the front face, horizontal facing dot, and ledge height from the feet.
+struct SlotApproachFacts {
+  float startRange = 0.0F;
+  float facingDot = 0.0F;
+  float ledgeHeight = 0.0F;
+};
+
+SlotApproachFacts slotApproachFacts(const MovementTraversalSlot& slot, Vec3 start, Vec3 forward) {
+  SlotApproachFacts facts;
+  const Vec3 frontCenter = center(slot.frontFaceBounds);
+  const Vec3 closest = closestPoint(slot.frontFaceBounds, {start.x, frontCenter.y, start.z});
+  const float dx = closest.x - start.x;
+  const float dz = closest.z - start.z;
+  facts.startRange = std::sqrt(dx * dx + dz * dz);
+  Vec3 toSlot;
+  if (normalizeHorizontal(frontCenter - start, toSlot)) {
+    facts.facingDot = dot(forward, toSlot);
+  }
+  facts.ledgeHeight = slot.topHeightMeters - start.y;
+  return facts;
+}
+
+// The clamber landing + collision + mutation for one slot (the post-selection body, sans room). The
+// same NoLandingGround / LandingBlocked / WorldMutationFailed discipline as the room-based path.
+TraversalResult executeClamberSlotCore(WorldState& world, EntityId actorId, const EntityState& actor,
+                                       const MovementTraversalSlot& slot,
+                                       const SpatialSurfaceSet& surfaces,
+                                       float landingGroundSnapMeters,
+                                       const SlotApproachFacts& facts) {
+  const Vec3 start = actor.transform.position;
+  Vec3 landing = slot.landingPosition;
+  const CollisionQueryResult ground = sampleSurfaceHeight(surfaces, landing, landingGroundSnapMeters);
+  if (ground.status != CollisionQueryStatus::Hit || ground.surfaceId != slot.landingSurfaceId) {
+    TraversalResult result =
+        makeSlotResult(TraversalMechanic::Clamber, actorId, TraversalStatus::NoLandingGround, start);
+    applySlotFacts(result, slot, facts.startRange, facts.facingDot, facts.ledgeHeight);
+    result.targetId = slot.sourceStaticMeshId;
+    return result;
+  }
+  landing.y = ground.heightMeters;
+
+  const CollisionQueryResult clearance =
+      queryPointOverlap(surfaces, landing + vec3UnitY() * slot.requiredClearanceHeightMeters,
+                        CollisionQueryKind::Actor);
+  if (clearance.status == CollisionQueryStatus::Hit && clearance.surfaceId != slot.frontSurfaceId) {
+    TraversalResult result =
+        makeSlotResult(TraversalMechanic::Clamber, actorId, TraversalStatus::LandingBlocked, start);
+    applySlotFacts(result, slot, facts.startRange, facts.facingDot, facts.ledgeHeight);
+    result.targetId = slot.sourceStaticMeshId;
+    result.landingSurfaceId = clearance.surfaceId;
+    return result;
+  }
+
+  Transform3 transform = actor.transform;
+  transform.position = landing;
+  const WorldMutationResult mutation = world.updateTransform(actorId, transform);
+  if (mutation.status != WorldStatus::Ok) {
+    TraversalResult result =
+        makeSlotResult(TraversalMechanic::Clamber, actorId, TraversalStatus::WorldMutationFailed, start);
+    applySlotFacts(result, slot, facts.startRange, facts.facingDot, facts.ledgeHeight);
+    result.targetId = slot.sourceStaticMeshId;
+    result.landingSurfaceId = ground.surfaceId;
+    return result;
+  }
+
+  TraversalResult result =
+      makeSlotResult(TraversalMechanic::Clamber, actorId, TraversalStatus::Applied, start);
+  applySlotFacts(result, slot, facts.startRange, facts.facingDot, facts.ledgeHeight);
+  result.targetId = slot.sourceStaticMeshId;
+  result.landingSurfaceId = ground.surfaceId;
+  result.finalPosition = landing;
+  result.travel = computeMovementTravelFacts(result.start, result.finalPosition);
+  return result;
+}
+
 }  // namespace
 
 TraversalResult executeTraversalMechanic(WorldState& world, const TraversalRequest& request) {
@@ -847,6 +967,107 @@ TraversalResult executeTraversalMechanic(WorldState& world, const TraversalReque
       return executeWireWalk(world, request, *actor, forward);
   }
   return makeResult(request, TraversalStatus::UnsupportedMechanic, actor->transform.position);
+}
+
+TraversalCandidatePreviewResult previewTraversalCandidateForSlot(
+    const WorldState& world, EntityId actorId, const MovementTraversalSlot& slot,
+    const SpatialSurfaceSet* collisionSurfaces, Vec3 forwardRaw) {
+  if (!isValid(actorId)) {
+    return makeSlotPreviewResult(actorId, TraversalCandidatePreviewStatus::InvalidActor);
+  }
+  const EntityState* actor = world.findById(actorId);
+  if (actor == nullptr) {
+    return makeSlotPreviewResult(actorId, TraversalCandidatePreviewStatus::InvalidActor);
+  }
+  if (!actor->active) {
+    return makeSlotPreviewResult(actorId, TraversalCandidatePreviewStatus::ActorInactive,
+                                 actor->transform.position);
+  }
+  Vec3 forward;
+  if (!normalizeHorizontal(forwardRaw, forward)) {
+    return makeSlotPreviewResult(actorId, TraversalCandidatePreviewStatus::InvalidInput,
+                                 actor->transform.position);
+  }
+  if (collisionSurfaces == nullptr) {
+    return makeSlotPreviewResult(actorId, TraversalCandidatePreviewStatus::MissingCollisionSurfaces,
+                                 actor->transform.position);
+  }
+  const Vec3 start = actor->transform.position;
+  if (slot.kind != MovementTraversalSlotKind::Clamber) {
+    return makeSlotPreviewResult(actorId, TraversalCandidatePreviewStatus::UnsupportedMechanic, start);
+  }
+
+  const SlotApproachFacts facts = slotApproachFacts(slot, start, forward);
+  const auto reject = [&](TraversalCandidatePreviewStatus status) {
+    TraversalCandidatePreviewResult result = makeSlotPreviewResult(actorId, status, start);
+    applySlotFacts(result, slot, facts.startRange, facts.facingDot, facts.ledgeHeight);
+    return result;
+  };
+  // The same 1.25 m approach / 0.35 facing / clamber-height gates the room-based selector applies.
+  const float maxRange = std::min(1.25F, slot.approachMaxDistanceMeters);
+  if (facts.startRange < slot.approachMinDistanceMeters || facts.startRange > maxRange) {
+    return reject(TraversalCandidatePreviewStatus::OutOfRange);
+  }
+  if (facts.ledgeHeight < 0.45F || facts.ledgeHeight > 1.80F) {
+    return reject(TraversalCandidatePreviewStatus::HeightRejected);
+  }
+  if (facts.facingDot < std::max(0.35F, slot.facingDotMin)) {
+    return reject(TraversalCandidatePreviewStatus::BadAngle);
+  }
+
+  Vec3 landing = slot.landingPosition;
+  const CollisionQueryResult ground = sampleSurfaceHeight(*collisionSurfaces, landing, 1.0F);
+  if (ground.status != CollisionQueryStatus::Hit || ground.surfaceId != slot.landingSurfaceId) {
+    return reject(TraversalCandidatePreviewStatus::NoLandingGround);
+  }
+  landing.y = ground.heightMeters;
+  const CollisionQueryResult clearance =
+      queryPointOverlap(*collisionSurfaces, landing + vec3UnitY() * slot.requiredClearanceHeightMeters,
+                        CollisionQueryKind::Actor);
+  if (clearance.status == CollisionQueryStatus::Hit && clearance.surfaceId != slot.frontSurfaceId) {
+    TraversalCandidatePreviewResult result = reject(TraversalCandidatePreviewStatus::LandingBlocked);
+    result.landingSurfaceId = clearance.surfaceId;
+    result.landingPosition = landing;
+    return result;
+  }
+
+  TraversalCandidatePreviewResult result =
+      makeSlotPreviewResult(actorId, TraversalCandidatePreviewStatus::Ready, start);
+  applySlotFacts(result, slot, facts.startRange, facts.facingDot, facts.ledgeHeight);
+  result.landingSurfaceId = ground.surfaceId.empty() ? "none" : ground.surfaceId;
+  result.landingPosition = landing;
+  return result;
+}
+
+TraversalResult executeTraversalMechanicForSlot(WorldState& world, EntityId actorId,
+                                                const MovementTraversalSlot& slot,
+                                                const SpatialSurfaceSet* collisionSurfaces,
+                                                Vec3 forwardRaw) {
+  const TraversalMechanic mechanic = mechanicForSlotKind(slot.kind);
+  if (!isValid(actorId)) {
+    return makeSlotResult(mechanic, actorId, TraversalStatus::InvalidActor);
+  }
+  const EntityState* actor = world.findById(actorId);
+  if (actor == nullptr) {
+    return makeSlotResult(mechanic, actorId, TraversalStatus::InvalidActor);
+  }
+  if (!actor->active) {
+    return makeSlotResult(mechanic, actorId, TraversalStatus::ActorInactive, actor->transform.position);
+  }
+  Vec3 forward;
+  if (!normalizeHorizontal(forwardRaw, forward)) {
+    return makeSlotResult(mechanic, actorId, TraversalStatus::InvalidInput, actor->transform.position);
+  }
+  if (collisionSurfaces == nullptr) {
+    return makeSlotResult(mechanic, actorId, TraversalStatus::MissingCollisionSurfaces,
+                          actor->transform.position);
+  }
+  if (slot.kind != MovementTraversalSlotKind::Clamber) {
+    return makeSlotResult(mechanic, actorId, TraversalStatus::UnsupportedMechanic,
+                          actor->transform.position);
+  }
+  const SlotApproachFacts facts = slotApproachFacts(slot, actor->transform.position, forward);
+  return executeClamberSlotCore(world, actorId, *actor, slot, *collisionSurfaces, 1.0F, facts);
 }
 
 TraversalIntentResult executeTraversalIntent(WorldState& world,

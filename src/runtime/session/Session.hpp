@@ -89,6 +89,12 @@ public:
   // product activation sites in the brokered follow-up). Not hashed, not serialized.
   void setReasoningGraph(ReasoningGraph graph);
 
+  // MA4 s2: set-once traversal-slot registry carry (mirrors setReasoningGraph). Prebuilt once from the
+  // activation-time RoomAsset; the session OWNS it. Off StateHash/SaveCodec. Default-empty ⇒ the Move-
+  // execution traversal hook stays INERT. Fixtures set it today; the same brokered follow-up wires it
+  // into product activation alongside the graph.
+  void setMovementTraversalSlotRegistry(MovementTraversalSlotRegistry registry);
+
   SessionLifecycle lifecycle() const;
   SessionOutcome outcome() const;
   std::uint64_t stateHash() const;

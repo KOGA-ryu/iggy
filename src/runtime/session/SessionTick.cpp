@@ -1,6 +1,9 @@
 #include "runtime/session/SessionTick.hpp"
 
+#include "core/math/Aabb3.hpp"
 #include "runtime/ability/AbilitySystem.hpp"
+#include "runtime/ai/NpcBehaviorProfile.hpp"
+#include "runtime/ai/ReasoningGraph.hpp"
 #include "runtime/combat/CombatSystem.hpp"
 #include "runtime/interaction/InteractionSystem.hpp"
 #include "runtime/movement/MovementSystem.hpp"
@@ -234,6 +237,91 @@ bool movementBlockConsumesTick(MovementBlockedReason reason) {
          reason == MovementBlockedReason::SlopeRejected;
 }
 
+// MA4 s2 ARMING (§M3-literal): arm a Move request for traversal ONLY when the acting NPC is a climber
+// AND its CURRENT ROUTE LEG crosses a climb edge. Resolves the ONE bridging slot (ma4s1's predicate;
+// slotId tie-break) from the set-once registry and copies it + the leg's FAR-NODE position onto the
+// request (plain transient data -- the movement lane never reads ai/route/catalog). Player and
+// unrouted/CHASING NPCs (chase never routes) leave the request default-off ⇒ execution byte-identical.
+void armAiMoveTraversal(const SessionState& state, EntityId actor, MovementRequest& request) {
+  const AiActorState* ai = nullptr;
+  for (const AiActorState& candidate : state.ai.actors) {
+    if (candidate.actor == actor) {
+      ai = &candidate;
+      break;
+    }
+  }
+  // No AI actor (player), no route, or no current leg (cursor 0) ⇒ never arm. Chase is unrouted ⇒ here.
+  if (ai == nullptr || !ai->hasRoute || ai->routeCursor < 1U ||
+      ai->routeNodeIds.size() <= ai->routeCursor) {
+    return;
+  }
+  const NpcBehaviorProfileResolveResult profile =
+      resolveNpcBehaviorProfile({&state.behaviorProfileCatalog, ai->behaviorProfileId});
+  if (!profile.ok || profile.profile.capability != MovementCapabilityClass::climber) {
+    return;  // §M3: only a climber arms
+  }
+
+  const std::uint32_t nearId = ai->routeNodeIds[ai->routeCursor - 1U];
+  const std::uint32_t farId = ai->routeNodeIds[ai->routeCursor];
+  bool crossesClimb = false;
+  for (const ReasoningEdge& edge : state.reasoningGraph.edges) {
+    if (edge.kind == ReasoningEdgeKind::climb &&
+        ((edge.from == nearId && edge.to == farId) || (edge.from == farId && edge.to == nearId))) {
+      crossesClimb = true;
+      break;
+    }
+  }
+  if (!crossesClimb) {
+    return;  // the current leg is not a climb edge ⇒ ordinary Move
+  }
+
+  const ReasoningNode* nearNode = nullptr;
+  const ReasoningNode* farNode = nullptr;
+  for (const ReasoningNode& node : state.reasoningGraph.nodes) {
+    if (node.id == nearId) {
+      nearNode = &node;
+    }
+    if (node.id == farId) {
+      farNode = &node;
+    }
+  }
+  if (nearNode == nullptr || farNode == nullptr) {
+    return;
+  }
+
+  // Resolve the bridging slot (ma4s1 predicate: front within reach of one node, landing of the other;
+  // nearest by through-slot length, slotId tie-break -- iteration-order-independent).
+  const Vec3 a = nearNode->positionMeters;
+  const Vec3 b = farNode->positionMeters;
+  const auto dist = [](Vec3 p, Vec3 q) { return std::sqrt(lengthSquared(q - p)); };
+  const MovementTraversalSlot* best = nullptr;
+  float bestLength = 0.0F;
+  for (const MovementTraversalSlot& slot : state.movementTraversalSlotRegistry.slots) {
+    const Vec3 front = center(slot.frontFaceBounds);
+    const Vec3 landing = slot.landingPosition;
+    const bool bridges =
+        (dist(a, front) <= kClimbSlotReachMeters && dist(b, landing) <= kClimbSlotReachMeters) ||
+        (dist(b, front) <= kClimbSlotReachMeters && dist(a, landing) <= kClimbSlotReachMeters);
+    if (!bridges) {
+      continue;
+    }
+    const float length = dist(a, center(slot.targetBounds)) + dist(center(slot.targetBounds), b);
+    if (best == nullptr || length < bestLength ||
+        (length == bestLength && slot.slotId < best->slotId)) {
+      best = &slot;
+      bestLength = length;
+    }
+  }
+  if (best == nullptr) {
+    return;  // empty/insufficient registry ⇒ hook stays inert (default-off)
+  }
+
+  request.capability = MovementCapabilityClass::climber;
+  request.armedTraversal = true;
+  request.armedSlot = *best;
+  request.traversalFarNodeMeters = b;
+}
+
 }  // namespace
 
 SessionTickResult runSessionTick(const SessionTickInput& input) {
@@ -282,8 +370,10 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
                                             input.collisionSurfaces,
                                             input.usePhysicsMovePlanner};
       const MovementMode mode = movementModeForClock(state.clock.mode == ClockMode::Slow);
-      const MovementRequest request =
+      MovementRequest request =
           movementRequestFromAcceptedCommand(intent.command, mode, state.config);
+      // MA4 s2: arm traversal for a routed climber whose current leg is a climb edge (inert otherwise).
+      armAiMoveTraversal(state, intent.command.actor, request);
       const MovementResult movement = executeMovement(movementContext, request);
       state.transient.lastMovementResultAvailable = true;
       state.transient.lastMovementResult = movement;

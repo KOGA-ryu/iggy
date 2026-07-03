@@ -8,6 +8,7 @@
 #include "core/math/Vec3.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/movement/MovementKinematics.hpp"
+#include "runtime/movement/MovementTraversalSlots.hpp"
 #include "runtime/world/WorldState.hpp"
 
 namespace iggy3d {
@@ -176,6 +177,20 @@ struct TraversalCandidatePreviewResult {
   const char* reasonCode = "traversal_preview_invalid_input";
   const char* hudCode = "INVALID";
 };
+
+// MA4 s2: SLOT-BASED cores -- preview/execute a traversal for ONE already-resolved slot, WITHOUT a
+// RoomAsset (the slot carries all geometry). This is the seam that lets Move execution fire a
+// traversal: the session arms ONE bridging slot onto the MovementRequest, and executeMovement uses
+// these. Gate with the preview (the same 1.25 m / 0.35 facing gates) BEFORE the mutating execute.
+// (`collisionSurfaces` is required for the landing/clearance checks -- the shipped slot carries
+// geometry but the ground surface still lives in the surface set.)
+TraversalCandidatePreviewResult previewTraversalCandidateForSlot(
+    const WorldState& world, EntityId actor, const MovementTraversalSlot& slot,
+    const SpatialSurfaceSet* collisionSurfaces, Vec3 forward);
+TraversalResult executeTraversalMechanicForSlot(WorldState& world, EntityId actor,
+                                                const MovementTraversalSlot& slot,
+                                                const SpatialSurfaceSet* collisionSurfaces,
+                                                Vec3 forward);
 
 TraversalResult executeTraversalMechanic(WorldState& world, const TraversalRequest& request);
 TraversalIntentResult executeTraversalIntent(WorldState& world,

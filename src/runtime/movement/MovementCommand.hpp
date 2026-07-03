@@ -7,7 +7,9 @@
 #include "core/ids/EntityId.hpp"
 #include "core/math/Vec3.hpp"
 #include "runtime/command/Command.hpp"
+#include "runtime/movement/MovementCapability.hpp"
 #include "runtime/movement/MovementParams.hpp"
+#include "runtime/movement/MovementTraversalSlots.hpp"
 #include "runtime/physics/PhysicsAabbCollider.hpp"
 #include "runtime/physics/PhysicsFrameStats.hpp"
 #include "runtime/physics/PhysicsKinematicMotor.hpp"
@@ -47,6 +49,13 @@ struct MovementRequest {
   MovementMode mode = MovementMode::Walk;
   float maxDistanceMeters = 0.0F;
   CommandId sourceCommandId = kInvalidCommandId;
+  // MA4 s2 traversal arming (TRANSIENT -- never hashed/saved/wire). The SESSION layer sets these when
+  // an AI Move's current route leg crosses a climb edge (climber class only); player + unrouted/chasing
+  // NPCs leave them default-off ⇒ the executeMovement path is BYTE-IDENTICAL.
+  MovementCapabilityClass capability = MovementCapabilityClass::grounded;
+  bool armedTraversal = false;
+  MovementTraversalSlot armedSlot;
+  Vec3 traversalFarNodeMeters;
 };
 
 struct MovementResult {
@@ -83,6 +92,11 @@ struct MovementResult {
   std::string movementPolicyBand;
   std::string hitSurfaceId;
   std::string reasonCode = "movement_ok";
+  // MA4 s2 traversal outcome (CONDITIONAL -- only meaningful when traversalApplied; a receipt surfaces
+  // move_traversal_applied/kind/slot ONLY then, so unarmed Moves are byte-identical by construction).
+  bool traversalApplied = false;
+  MovementTraversalSlotKind traversalKind = MovementTraversalSlotKind::Clamber;
+  std::string traversalSlotId;
 };
 
 struct KinematicMovementRequest {

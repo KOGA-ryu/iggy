@@ -2,6 +2,7 @@
 
 #include "runtime/collision/CollisionQuery.hpp"
 #include "runtime/movement/MovementKinematics.hpp"
+#include "runtime/movement/MovementTraversal.hpp"
 #include "runtime/player/PlayerPhysicsMovePlanner.hpp"
 
 #include <algorithm>
@@ -410,6 +411,68 @@ MovementBlockedReason validateMovementRequest(
   return MovementBlockedReason::None;
 }
 
+// MA4 s2: at the blocked convergence, an ARMED climber Move may get OVER the traversable obstacle
+// INSIDE this same logged command. Gate with the NON-mutating preview (1.25 m / 0.35 facing), then
+// fire ONLY if the landing lands STRICTLY closer to the route leg's FAR NODE than the current start
+// (the far node, NOT the step-clamped Move point -- kills the dead-zone). ONE traversal per command;
+// a still-blocked outcome stays blocked (the next command re-arms). Unarmed requests short-circuit ⇒
+// the blocked result passes through byte-identically.
+static MovementResult maybeApplyArmedTraversal(MovementSystemContext& context,
+                                               const MovementRequest& request,
+                                               const EntityState& actor, Vec3 start,
+                                               MovementResult blocked) {
+  if (!request.armedTraversal || context.world == nullptr ||
+      context.collisionSurfaces == nullptr) {
+    return blocked;
+  }
+  Vec3 forward = request.destination - start;
+  forward.y = 0.0F;
+  const float len2 = lengthSquared(forward);
+  if (!std::isfinite(len2) || len2 <= kMovementEpsilon * kMovementEpsilon) {
+    return blocked;  // no move direction -> nothing to face the obstacle with
+  }
+  forward = forward / std::sqrt(len2);
+
+  const TraversalCandidatePreviewResult preview = previewTraversalCandidateForSlot(
+      *context.world, request.actor, request.armedSlot, context.collisionSurfaces, forward);
+  if (preview.status != TraversalCandidatePreviewStatus::Ready) {
+    return blocked;
+  }
+  const auto horizToFarNode = [&](Vec3 point) {
+    Vec3 delta = request.traversalFarNodeMeters - point;
+    delta.y = 0.0F;
+    return std::sqrt(lengthSquared(delta));
+  };
+  if (!(horizToFarNode(preview.landingPosition) < horizToFarNode(start))) {
+    return blocked;  // the traversal would not make progress toward the leg's far node -> don't fire
+  }
+
+  const TraversalResult traversal = executeTraversalMechanicForSlot(
+      *context.world, request.actor, request.armedSlot, context.collisionSurfaces, forward);
+  if (traversal.status != TraversalStatus::Applied) {
+    return blocked;
+  }
+  // SOUND: NPC traversal is DECLARED SILENT in v1 -- no SoundEvent here (the SAME declared hole as
+  // player traversal; both unify at MA7 verb-sound). The transform already mutated through the same
+  // world path any Move uses (already hashed) so this stays replay/save sound.
+  (void)actor;
+  MovementResult result;
+  result.actor = request.actor;
+  result.start = start;
+  result.destination = request.destination;
+  result.finalPosition = traversal.finalPosition;
+  result.mode = request.mode;
+  result.blocked = MovementBlockedReason::None;
+  result.sourceCommandId = request.sourceCommandId;
+  result.distanceMeters = movementDistanceMeters(start, traversal.finalPosition);
+  result.reasonCode = "movement_ok";
+  result.traversalApplied = true;
+  result.traversalKind = request.armedSlot.kind;
+  result.traversalSlotId = traversal.slotId;
+  applyTravelFacts(result);
+  return result;
+}
+
 MovementResult executeMovement(MovementSystemContext& context, const MovementRequest& request) {
   Vec3 start;
   if (context.world == nullptr) {
@@ -442,7 +505,14 @@ MovementResult executeMovement(MovementSystemContext& context, const MovementReq
 
   // branch-gate: BG-1102
   if (context.usePhysicsMovePlanner && context.collisionSurfaces != nullptr) {
-    return executePhysicsPlannedMovement(context, request, *actor, start, distance, limit);
+    // MA4 s2: the physics-planner branch converges here; an armed climber traversal may rescue a
+    // blocked result (no-op when unarmed or the planner did not block).
+    const MovementResult planned =
+        executePhysicsPlannedMovement(context, request, *actor, start, distance, limit);
+    if (planned.blocked != MovementBlockedReason::None) {
+      return maybeApplyArmedTraversal(context, request, *actor, start, planned);
+    }
+    return planned;
   }
 
   if (context.collisionSurfaces != nullptr) {
@@ -453,11 +523,12 @@ MovementResult executeMovement(MovementSystemContext& context, const MovementReq
                      request.destination + vec3UnitY() * (params.heightMeters * 0.5F),
                      CollisionQueryKind::Actor);
     if (hit.status == CollisionQueryStatus::Hit) {
-      return blockedCollisionAwareResult(request,
-                                         start,
-                                         MovementBlockedReason::BlockedByCollision,
-                                         distance,
-                                         hit.surfaceId);
+      // MA4 s2: the kinematic branch's collision-blocked convergence -- the traversal firing point.
+      return maybeApplyArmedTraversal(
+          context, request, *actor, start,
+          blockedCollisionAwareResult(request, start,
+                                      MovementBlockedReason::BlockedByCollision, distance,
+                                      hit.surfaceId));
     }
 
     Vec3 snapped;

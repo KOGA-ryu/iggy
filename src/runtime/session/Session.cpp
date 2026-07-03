@@ -1354,6 +1354,12 @@ void Session::setReasoningGraph(ReasoningGraph graph) {
   state_.reasoningGraph = std::move(graph);
 }
 
+void Session::setMovementTraversalSlotRegistry(MovementTraversalSlotRegistry registry) {
+  // MA4 s2 set-once carry: mirrors setReasoningGraph. Off StateHash/SaveCodec; default-empty leaves the
+  // traversal firing hook inert, so this never shifts a receipt or hash.
+  state_.movementTraversalSlotRegistry = std::move(registry);
+}
+
 SessionLifecycle Session::lifecycle() const {
   return state_.lifecycle;
 }
