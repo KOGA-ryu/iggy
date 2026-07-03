@@ -5,6 +5,7 @@
 #include "app/iggy3d/creative/Ui.hpp"
 #include "app/iggy3d/menu/CreativeUiDrawList.hpp"
 #include "app/iggy3d/window/CreativeInputFrame.hpp"
+#include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 #include "app/iggy3d/window/CreativeUiWindowFrame.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
@@ -655,6 +656,105 @@ bool recorderCopiesConsumedCreativeRowReceipt() {
                             "consumed status");
 }
 
+bool recorderPreservesStickyClickAndCommandAcrossNoClickFrame() {
+  iggy3d::creative::Facade facade;
+  facade.reset();
+  const iggy3d::creative::CreativeUiBuildReceipt ui = facade.buildUiModel();
+  iggy3d::ProductCreativeUiDrawListRequest drawRequest;
+  drawRequest.model = &ui.model;
+  const iggy3d::ProductUiDrawList drawList =
+      iggy3d::buildProductCreativeUiDrawList(drawRequest);
+  const iggy3d::UiHitRegion* createHit =
+      findHitRegion(drawList, "creative.row.tools.create_room");
+
+  iggy3d::ProductAppWindowState window;
+  iggy3d::ProductCreativeUiInputFrameRequest clickRequest;
+  clickRequest.creativeUiDrawList = &drawList;
+  if (createHit != nullptr) {
+    clickRequest.click = clickAt(createHit->rect.x, createHit->rect.y);
+  }
+  const iggy3d::ProductCreativeUiInputFrameReceipt clickReceipt =
+      iggy3d::routeProductCreativeUiInputFrame(clickRequest);
+  iggy3d::recordProductCreativeUiInputFrame(window, clickReceipt);
+  const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
+      iggy3d::routeProductCreativeUiCommandFrame(
+          iggy3d::ProductCreativeUiCommandFrameRequest{&facade, clickReceipt});
+  iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
+  const std::uint64_t createdObjectId =
+      window.creativeUiLastCommandCreateObjectId;
+
+  iggy3d::ProductCreativeUiInputFrameRequest noClickRequest;
+  noClickRequest.creativeUiDrawList = &drawList;
+  const iggy3d::ProductCreativeUiInputFrameReceipt noClickReceipt =
+      iggy3d::routeProductCreativeUiInputFrame(noClickRequest);
+  iggy3d::recordProductCreativeUiInputFrame(window, noClickReceipt);
+  const iggy3d::ProductCreativeUiCommandFrameReceipt noClickCommandReceipt =
+      iggy3d::routeProductCreativeUiCommandFrame(
+          iggy3d::ProductCreativeUiCommandFrameRequest{&facade,
+                                                       noClickReceipt});
+  iggy3d::recordProductCreativeUiCommandFrame(window, noClickCommandReceipt);
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  return expect(createHit != nullptr, "sticky create hit exists") &&
+         expect(clickReceipt.clickPresent, "sticky click present") &&
+         expect(commandReceipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::CreateRoom,
+                "sticky command create room") &&
+         expect(window.creativeUiInputStatus ==
+                    "product_creative_ui_input_no_click",
+                "sticky per-frame no-click status") &&
+         expect(window.creativeUiCommandKind == "none",
+                "sticky per-frame command none") &&
+         expect(window.creativeUiLastClickSeen,
+                "sticky click seen retained") &&
+         expect(window.creativeUiLastClickX != "none",
+                "sticky click x retained") &&
+         expect(window.creativeUiLastClickY != "none",
+                "sticky click y retained") &&
+         expect(window.creativeUiLastInputHit,
+                "sticky input hit retained") &&
+         expect(window.creativeUiLastInputConsumed,
+                "sticky input consumed retained") &&
+         expect(window.creativeUiLastInputStatus ==
+                    "product_creative_ui_input_consumed",
+                "sticky input status retained") &&
+         expect(window.creativeUiLastInputSemanticId ==
+                    "creative.row.tools.create_room",
+                "sticky input semantic retained") &&
+         expect(window.creativeUiLastCommandKind == "create_room",
+                "sticky command kind retained") &&
+         expect(window.creativeUiLastCommandStatus ==
+                    "product_creative_ui_command_applied",
+                "sticky command status retained") &&
+         expect(window.creativeUiLastCommandCreateRequested,
+                "sticky create requested retained") &&
+         expect(window.creativeUiLastCommandCreateAccepted,
+                "sticky create accepted retained") &&
+         expect(window.creativeUiLastCommandCreateChanged,
+                "sticky create changed retained") &&
+         expect(createdObjectId != 0U, "sticky create object id retained") &&
+         expectReceiptField(receipt,
+                            "creative_ui_last_click_seen",
+                            "true",
+                            "sticky receipt click seen") &&
+         expectReceiptField(receipt,
+                            "creative_ui_last_input_semantic_id",
+                            "creative.row.tools.create_room",
+                            "sticky receipt semantic") &&
+         expectReceiptField(receipt,
+                            "creative_ui_last_command_kind",
+                            "create_room",
+                            "sticky receipt command kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_last_command_create_requested",
+                            "true",
+                            "sticky receipt create requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_last_command_create_object_id",
+                            std::to_string(createdObjectId),
+                            "sticky receipt create object id");
+}
+
 bool recorderCopiesSuppressedDownstreamClickReceipt() {
   iggy3d::ProductCreativeUiDownstreamClickRequest request;
   request.click = clickAt(41.0F, 42.0F);
@@ -969,6 +1069,9 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
       iggy3d::buildProductCreativeUiDrawList(rebuiltDrawRequest);
   const iggy3d::ProductUiPrimitive* rebuiltCreatePrimitive =
       findPrimitive(rebuiltDrawList, "creative.row.tools.create_room");
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+  const std::string createdObjectId =
+      std::to_string(window.creativeUiCommandCreateObjectId);
 
   return expect(createHit != nullptr, "create injected hit exists") &&
          expect(window.creativeUiInputConsumed,
@@ -1008,6 +1111,45 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
                 "create injected create message") &&
          expect(window.creativeUiCommandCreateReasonCode == "object_created",
                 "create injected create reason") &&
+         expect(window.creativeUiLastClickSeen,
+                "create injected sticky click seen") &&
+         expect(window.creativeUiLastInputHit,
+                "create injected sticky input hit") &&
+         expect(window.creativeUiLastInputConsumed,
+                "create injected sticky input consumed") &&
+         expect(window.creativeUiLastInputSemanticId ==
+                    "creative.row.tools.create_room",
+                "create injected sticky input semantic") &&
+         expect(window.creativeUiLastCommandKind == "create_room",
+                "create injected sticky command kind") &&
+         expect(window.creativeUiLastCommandStatus ==
+                    "product_creative_ui_command_applied",
+                "create injected sticky command status") &&
+         expect(window.creativeUiLastCommandCreateRequested,
+                "create injected sticky create requested") &&
+         expect(window.creativeUiLastCommandCreateAccepted,
+                "create injected sticky create accepted") &&
+         expect(window.creativeUiLastCommandCreateChanged,
+                "create injected sticky create changed") &&
+         expect(window.creativeUiLastCommandCreateObjectId ==
+                    window.creativeUiCommandCreateObjectId,
+                "create injected sticky object id") &&
+         expectReceiptField(receipt,
+                            "creative_ui_last_click_seen",
+                            "true",
+                            "create injected receipt sticky click") &&
+         expectReceiptField(receipt,
+                            "creative_ui_last_input_semantic_id",
+                            "creative.row.tools.create_room",
+                            "create injected receipt sticky semantic") &&
+         expectReceiptField(receipt,
+                            "creative_ui_last_command_kind",
+                            "create_room",
+                            "create injected receipt sticky command") &&
+         expectReceiptField(receipt,
+                            "creative_ui_last_command_create_object_id",
+                            createdObjectId,
+                            "create injected receipt sticky object id") &&
          expect(facade.document().objectCount() == 1U,
                 "create injected object count") &&
          expect(facade.document().revision() == 1U,
@@ -1147,6 +1289,7 @@ int main() {
                   defaultWindowReceiptFieldsAreNotRequested() &&
                   recorderCopiesNoClickReceipt() &&
                   recorderCopiesConsumedCreativeRowReceipt() &&
+                  recorderPreservesStickyClickAndCommandAcrossNoClickFrame() &&
                   recorderCopiesSuppressedDownstreamClickReceipt() &&
                   recorderLeavesOtherReceiptFieldsUntouched() &&
                   inputFrameNoClickNullDrawListRecordsNoClick() &&

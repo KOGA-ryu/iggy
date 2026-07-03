@@ -37,6 +37,8 @@ ProductCreativeUiInputFrameReceipt routeProductCreativeUiInputFrame(
   ProductCreativeUiInputFrameReceipt receipt;
   receipt.requested = true;
   receipt.clickPresent = request.click.clicked;
+  receipt.clickX = request.click.x;
+  receipt.clickY = request.click.y;
   receipt.drawListAvailable = request.creativeUiDrawList != nullptr;
 
   if (!request.click.clicked) {

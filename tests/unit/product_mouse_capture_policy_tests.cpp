@@ -122,7 +122,7 @@ bool policyCases() {
           "editor",
       },
       {
-          "creative_gameplay_capture",
+          "creative_gameplay_releases_for_editor_pointer",
           {
               true,
               iggy3d::ProductInteractionMode::Creative,
@@ -130,10 +130,10 @@ bool policyCases() {
               false,
               true,
           },
-          true,
-          "mouse_capture_requested",
-          "mouse_capture_gameplay_mouselook",
-          "relative",
+          false,
+          "mouse_capture_not_requested",
+          "mouse_capture_creative_editor_pointer",
+          "gameplay_released",
           "gameplay",
       },
       {

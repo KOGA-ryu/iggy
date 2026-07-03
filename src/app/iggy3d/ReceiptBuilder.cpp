@@ -188,6 +188,17 @@ void recordProductCreativeUiInputFrame(
       receipt.semanticId.empty() ? "none" : receipt.semanticId;
   window.creativeUiInputStatus = receipt.status;
   window.creativeUiInputReasonCode = receipt.reasonCode;
+
+  if (receipt.clickPresent) {
+    window.creativeUiLastClickSeen = true;
+    window.creativeUiLastClickX = floatReceiptValue(receipt.clickX);
+    window.creativeUiLastClickY = floatReceiptValue(receipt.clickY);
+    window.creativeUiLastInputHit = receipt.hit;
+    window.creativeUiLastInputConsumed = receipt.consumed;
+    window.creativeUiLastInputStatus = receipt.status;
+    window.creativeUiLastInputSemanticId =
+        receipt.semanticId.empty() ? "none" : receipt.semanticId;
+  }
 }
 
 void recordProductCreativeUiDownstreamClick(
@@ -258,6 +269,22 @@ void recordProductCreativeUiCommandFrame(
       receipt.createMessage.empty() ? "none" : receipt.createMessage;
   window.creativeUiCommandCreateReasonCode =
       receipt.createReasonCode.empty() ? "none" : receipt.createReasonCode;
+
+  const bool commandTouchedCreativeState =
+      receipt.inputClickPresent ||
+      receipt.commandKind != ProductCreativeUiCommandKind::None ||
+      receipt.accepted || receipt.changed || receipt.createRequested ||
+      receipt.mutationRequested ||
+      (receipt.inputConsumed && !receipt.semanticId.empty());
+  if (commandTouchedCreativeState) {
+    window.creativeUiLastCommandKind =
+        std::string(productCreativeUiCommandKindReceiptName(receipt.commandKind));
+    window.creativeUiLastCommandStatus = receipt.status;
+    window.creativeUiLastCommandCreateRequested = receipt.createRequested;
+    window.creativeUiLastCommandCreateAccepted = receipt.createAccepted;
+    window.creativeUiLastCommandCreateChanged = receipt.createChanged;
+    window.creativeUiLastCommandCreateObjectId = receipt.createObjectId;
+  }
 }
 
 void recordProductCreativeViewportPickFrame(
@@ -1903,6 +1930,36 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiInputStatus);
   appendReceiptField(receipt, "creative_ui_input_reason_code",
                      window.creativeUiInputReasonCode);
+  appendReceiptField(receipt, "creative_ui_last_click_seen",
+                     window.creativeUiLastClickSeen);
+  appendReceiptField(receipt, "creative_ui_last_click_x",
+                     window.creativeUiLastClickX);
+  appendReceiptField(receipt, "creative_ui_last_click_y",
+                     window.creativeUiLastClickY);
+  appendReceiptField(receipt, "creative_ui_last_input_hit",
+                     window.creativeUiLastInputHit);
+  appendReceiptField(receipt, "creative_ui_last_input_consumed",
+                     window.creativeUiLastInputConsumed);
+  appendReceiptField(receipt, "creative_ui_last_input_status",
+                     window.creativeUiLastInputStatus);
+  appendReceiptField(receipt, "creative_ui_last_input_semantic_id",
+                     window.creativeUiLastInputSemanticId);
+  appendReceiptField(receipt, "creative_ui_last_command_kind",
+                     window.creativeUiLastCommandKind);
+  appendReceiptField(receipt, "creative_ui_last_command_status",
+                     window.creativeUiLastCommandStatus);
+  appendReceiptField(receipt,
+                     "creative_ui_last_command_create_requested",
+                     window.creativeUiLastCommandCreateRequested);
+  appendReceiptField(receipt,
+                     "creative_ui_last_command_create_accepted",
+                     window.creativeUiLastCommandCreateAccepted);
+  appendReceiptField(receipt,
+                     "creative_ui_last_command_create_changed",
+                     window.creativeUiLastCommandCreateChanged);
+  appendReceiptField(receipt,
+                     "creative_ui_last_command_create_object_id",
+                     window.creativeUiLastCommandCreateObjectId);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_requested",
                      window.creativeUiInputDownstreamClickRequested);

@@ -64,6 +64,7 @@ struct ProductActiveSurfaceContext {
   bool gameplayActive = false;
   bool hasActiveSession = false;
   bool roomEditorReady = false;
+  ProductInteractionMode interactionMode = ProductInteractionMode::Player;
 };
 
 struct ProductActiveSurfaceFrame {

@@ -26,6 +26,7 @@
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <vector>
 
 namespace {
 
@@ -54,6 +55,22 @@ iggy3d::OpeningMenuHitTestResult hitAt(const iggy3d::FrontendState& frontend,
   iggy3d::ProductUiDrawListRequest request;
   request.frontend = &frontend;
   return iggy3d::openingMenuActionAt(request, x, y);
+}
+
+iggy3d::OpeningMenuHitTestResult hitStarterAction(
+    const iggy3d::FrontendState& frontend,
+    iggy3d::FrontendAction action) {
+  constexpr float kRowX = 62.0F;
+  constexpr float kRowY = 150.0F;
+  constexpr float kRowStep = 52.0F;
+  const std::vector<iggy3d::FrontendAction>& actions =
+      iggy3d::starterActionOrder();
+  for (std::size_t index = 0; index < actions.size(); ++index) {
+    if (actions[index] == action) {
+      return hitAt(frontend, kRowX, kRowY + static_cast<float>(index) * kRowStep);
+    }
+  }
+  return {};
 }
 
 iggy3d::ProductAsciiRoomAuthoringRequest smallRoomRequest() {
@@ -898,9 +915,9 @@ bool starterDeleteButtonOpensSelectableBrowser() {
 bool starterHitTestUsesCanonicalActionRows() {
   const iggy3d::FrontendState frontend = starterFrontend();
   const iggy3d::OpeningMenuHitTestResult deleteHit =
-      hitAt(frontend, 62.0F, 358.0F);
+      hitStarterAction(frontend, iggy3d::FrontendAction::Delete);
   const iggy3d::OpeningMenuHitTestResult exitHit =
-      hitAt(frontend, 62.0F, 514.0F);
+      hitStarterAction(frontend, iggy3d::FrontendAction::Exit);
 
   return expect(deleteHit.hit, "delete starter row hit") &&
          expect(deleteHit.area == iggy3d::OpeningMenuHitArea::StarterAction,

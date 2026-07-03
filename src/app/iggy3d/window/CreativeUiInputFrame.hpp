@@ -17,6 +17,8 @@ struct ProductCreativeUiInputFrameRequest {
 struct ProductCreativeUiInputFrameReceipt {
   bool requested = false;
   bool clickPresent = false;
+  float clickX = 0.0F;
+  float clickY = 0.0F;
   bool drawListAvailable = false;
   bool routed = false;
   bool hit = false;

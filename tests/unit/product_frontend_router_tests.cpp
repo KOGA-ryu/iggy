@@ -34,13 +34,16 @@ iggy3d::ProductActiveSurfaceContext activeSurfaceContextFor(
     iggy3d::FrontendScreen child,
     bool gameplayActive = false,
     bool hasActiveSession = false,
-    bool roomEditorReady = false) {
+    bool roomEditorReady = false,
+    iggy3d::ProductInteractionMode interactionMode =
+        iggy3d::ProductInteractionMode::Player) {
   iggy3d::ProductActiveSurfaceContext context;
   context.frontend.screen = screen;
   context.frontend.childScreen = child;
   context.gameplayActive = gameplayActive;
   context.hasActiveSession = hasActiveSession;
   context.roomEditorReady = roomEditorReady;
+  context.interactionMode = interactionMode;
   return context;
 }
 
@@ -573,6 +576,10 @@ bool activeSurfaceWindowContextPreservesLegacyGameplayGate() {
   const auto gameplay = iggy3d::resolveProductActiveSurface(
       iggy3d::productActiveSurfaceContextForWindow(frontend, window));
 
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  const auto creativeGameplay = iggy3d::resolveProductActiveSurface(
+      iggy3d::productActiveSurfaceContextForWindow(frontend, window));
+
   window.roomEditing.ready = true;
   const auto editor = iggy3d::resolveProductActiveSurface(
       iggy3d::productActiveSurfaceContextForWindow(frontend, window));
@@ -581,6 +588,14 @@ bool activeSurfaceWindowContextPreservesLegacyGameplayGate() {
                 "window gameplay owner") &&
          expect(gameplay.inputSurface == iggy3d::ProductInputSurface::Gameplay,
                 "window gameplay input surface") &&
+         expect(gameplay.mouseCapturePolicy ==
+                    iggy3d::ProductActiveMouseCapturePolicy::RelativeGameplay,
+                "player gameplay keeps relative mouse capture policy") &&
+         expect(creativeGameplay.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "window creative gameplay owner") &&
+         expect(creativeGameplay.mouseCapturePolicy ==
+                    iggy3d::ProductActiveMouseCapturePolicy::Released,
+                "creative gameplay releases mouse capture policy") &&
          expect(editor.inputOwner == iggy3d::MenuOwner::Editor,
                 "window editor owner") &&
          expect(editor.inputSurface == iggy3d::ProductInputSurface::RoomEditor,

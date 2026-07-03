@@ -236,6 +236,7 @@ ProductActiveSurfaceContext productActiveSurfaceContextForWindow(
   context.gameplayActive = window.gameplayActive;
   context.hasActiveSession = window.gameplayActive;
   context.roomEditorReady = window.roomEditing.ready;
+  context.interactionMode = window.interactionMode;
   return context;
 }
 
@@ -275,7 +276,8 @@ ProductActiveSurfaceFrame resolveProductActiveSurface(
   }
   // branch-gate: BG-1058
   if (context.gameplayActive && frame.inputOwner == MenuOwner::Gameplay &&
-      !frame.gameplayInputSuppressed) {
+      !frame.gameplayInputSuppressed &&
+      context.interactionMode == ProductInteractionMode::Player) {
     frame.mouseCapturePolicy =
         ProductActiveMouseCapturePolicy::RelativeGameplay;
   }

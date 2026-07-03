@@ -23,6 +23,7 @@ struct ProductCreativeUiCommandFrameRequest {
 struct ProductCreativeUiCommandFrameReceipt {
   bool requested = false;
   bool facadeAvailable = false;
+  bool inputClickPresent = false;
   bool inputConsumed = false;
   bool inputEnabled = false;
   bool accepted = false;

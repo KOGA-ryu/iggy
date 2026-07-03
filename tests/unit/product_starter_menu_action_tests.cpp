@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
@@ -395,6 +396,86 @@ bool creativeNewWorldMissingFacadeFailsClosed() {
                 "missing facade clears movement tuning") &&
          expect(creativeSaves.catalog.catalog.entries.empty(),
                 "missing facade writes no save");
+}
+
+bool creativeStarterLaunchCanOpenAndClosePauseWithMenuBackRoute() {
+  StarterHarness harness;
+  iggy3d::creative::Facade facade;
+  harness.creativeFacade = &facade;
+  harness.options.saveRoot = testRoot("creative_pause_resume");
+  harness.frontend.selectedAction = iggy3d::FrontendAction::CreativeNewWorld;
+  harness.draft.worldName = "Starter Creative Pause";
+  iggy3d::FrontendSettings settings;
+
+  const iggy3d::ProductMenuActionResult launched =
+      applyStarterAction(harness, iggy3d::InputAction::MenuConfirm);
+  const iggy3d::creative::CreativeDocumentId documentId = facade.document().id();
+
+  iggy3d::ActionState openActions;
+  iggy3d::routeProductOpeningMenuInput(
+      iggy3d::InputAction::MenuBack,
+      openActions,
+      {
+          harness.frontend,
+          harness.saves,
+          harness.options,
+          harness.settingsTab,
+          harness.activeSession,
+          harness.draft,
+          harness.window,
+          harness.closeRequested,
+          settings,
+          &facade,
+      });
+
+  const bool openedPause =
+      expect(harness.frontend.screen == iggy3d::FrontendScreen::Pause,
+             "creative menu back opens pause") &&
+      expect(harness.window.inputOwner == iggy3d::MenuOwner::Pause,
+             "creative pause owns input") &&
+      expect(harness.window.gameplayInputSuppressed,
+             "creative pause suppresses gameplay") &&
+      expect(harness.window.interactionMode ==
+                 iggy3d::ProductInteractionMode::Creative,
+             "creative pause preserves creative mode");
+
+  iggy3d::ActionState closeActions;
+  iggy3d::routeProductOpeningMenuInput(
+      iggy3d::InputAction::MenuBack,
+      closeActions,
+      {
+          harness.frontend,
+          harness.saves,
+          harness.options,
+          harness.settingsTab,
+          harness.activeSession,
+          harness.draft,
+          harness.window,
+          harness.closeRequested,
+          settings,
+          &facade,
+      });
+
+  return expect(launched.handled && launched.accepted,
+                "creative pause launch accepted") &&
+         expect(documentId != iggy3d::creative::kInvalidDocumentId,
+                "creative pause document id") &&
+         openedPause &&
+         expect(harness.frontend.screen == iggy3d::FrontendScreen::Gameplay,
+                "creative second menu back resumes gameplay") &&
+         expect(harness.window.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "creative resumed gameplay owns input") &&
+         expect(!harness.window.gameplayInputSuppressed,
+                "creative resumed gameplay unsuppressed") &&
+         expect(harness.window.interactionMode ==
+                    iggy3d::ProductInteractionMode::Creative,
+                "creative resumed mode stays creative") &&
+         expect(harness.window.gameplayActive,
+                "creative resumed gameplay active") &&
+         expect(harness.activeSession.has_value(),
+                "creative resumed session alive") &&
+         expect(facade.document().id() == documentId,
+                "creative resumed facade document unchanged");
 }
 
 bool creativeOpenWorldLaunchesThroughStarterAction() {
@@ -820,6 +901,7 @@ int main() {
                   deleteAndExitActionsAreExplicitRows() &&
                   creativeNewWorldLaunchesThroughStarterActionAndKeepsContinueSeparate() &&
                   creativeNewWorldMissingFacadeFailsClosed() &&
+                  creativeStarterLaunchCanOpenAndClosePauseWithMenuBackRoute() &&
                   creativeOpenWorldLaunchesThroughStarterAction() &&
                   creativeOpenWorldWithoutCreativeSaveFailsClosed() &&
                   creativeOpenWorldMissingFacadeFailsClosed() &&

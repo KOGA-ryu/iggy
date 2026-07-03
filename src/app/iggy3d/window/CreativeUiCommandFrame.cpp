@@ -84,6 +84,7 @@ ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
     const ProductCreativeUiCommandFrameRequest& request) {
   ProductCreativeUiCommandFrameReceipt receipt;
   receipt.requested = true;
+  receipt.inputClickPresent = request.inputReceipt.clickPresent;
   receipt.inputConsumed = request.inputReceipt.consumed;
   receipt.inputEnabled = request.inputReceipt.enabled;
   receipt.semanticId = request.inputReceipt.semanticId;
