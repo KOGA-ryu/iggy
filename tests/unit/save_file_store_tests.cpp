@@ -35,6 +35,40 @@ iggy3d::Session makeFixtureSession() {
   return iggy3d::Session::create(request).value;
 }
 
+iggy3d::SaveEnvelope makeCreativeEnvelope(std::string_view name) {
+  iggy3d::SaveEnvelope envelope;
+  envelope.metadata.packageId = "creative.package";
+  envelope.metadata.scenarioId = "creative.scenario";
+  envelope.metadata.worldId = "creative_world_01";
+  envelope.metadata.worldTitle = "Creative World";
+  envelope.metadata.saveTitle = "Creative Save";
+  envelope.metadata.saveType = "creative";
+  envelope.metadata.createdAtUtc = "2026-07-03T00:00:00Z";
+  envelope.metadata.savedAtUtc = "2026-07-03T00:01:00Z";
+  envelope.metadata.savedStateHash = 0;
+  envelope.metadata.savedStateHashHex = "0000000000000000";
+  envelope.creativeDocument.present = true;
+  envelope.creativeDocument.version = 1;
+  envelope.creativeDocument.documentId = 7001;
+  envelope.creativeDocument.name = std::string{name};
+  envelope.creativeDocument.units = "Meters";
+  envelope.creativeDocument.gridWidth = 64;
+  envelope.creativeDocument.gridHeight = 64;
+  envelope.creativeDocument.gridDepth = 8;
+  envelope.creativeDocument.snapMode = "Grid";
+  envelope.creativeDocument.snapAxes = 7;
+  envelope.creativeDocument.nextObjectId = 8;
+
+  iggy3d::SaveCreativeDocumentObjectRecord object;
+  object.id = 7;
+  object.kind = "Room";
+  object.name = "Creative Room";
+  object.bounds.max = {10.0, 4.0, 10.0};
+  object.visible = true;
+  envelope.creativeDocument.objects.push_back(object);
+  return envelope;
+}
+
 iggy3d::SaveFileTempValidationResult writeAndValidateTempSave(
     const std::filesystem::path& root,
     std::string_view saveId,
@@ -866,6 +900,192 @@ bool durableSessionWritePersistsAuthoredRoomSection() {
                 "durable authored floor traversal");
 }
 
+bool durableEnvelopeWritePersistsCreativeSectionWithoutSessionState() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::SaveFileEnvelopeDurableWriteRequest request;
+  request.root = root;
+  request.attemptToken = "attempt_001";
+  request.envelope = makeCreativeEnvelope("Durable Creative");
+  const iggy3d::SaveFileDurableWriteResult written =
+      iggy3d::writeSaveEnvelopeFileDurably(request);
+  const iggy3d::SaveFileReadResult read =
+      written.ok ? iggy3d::readSaveFile(written.record.path)
+                 : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText)
+              : iggy3d::SaveDecodeResult{};
+  const std::vector<iggy3d::SaveFileRecord> listed =
+      iggy3d::listSaveFiles(root);
+
+  return expect(written.ok, "durable envelope write ok") &&
+         expect(written.reason == "durable_save_file_written",
+                "durable envelope write reason") &&
+         expect(written.record.id == "save_001",
+                "durable envelope generated id") &&
+         expect(written.record.packageId == "creative.package",
+                "durable envelope package") &&
+         expect(written.record.scenarioId == "creative.scenario",
+                "durable envelope scenario") &&
+         expect(written.envelopeBuilt, "durable envelope built") &&
+         expect(written.encoded, "durable envelope encoded") &&
+         expect(written.tempWritten, "durable envelope temp written") &&
+         expect(written.tempValidated, "durable envelope temp validated") &&
+         expect(written.committed, "durable envelope committed") &&
+         expect(written.finalValidated, "durable envelope final validated") &&
+         expect(!written.previousExisted, "durable envelope no previous") &&
+         expect(written.previousPreserved,
+                "durable envelope previous preserved") &&
+         expect(written.encodedBytes > 0U, "durable envelope encoded bytes") &&
+         expect(std::filesystem::exists(written.paths.finalPath),
+                "durable envelope final exists") &&
+         expect(!std::filesystem::exists(written.paths.tempPath),
+                "durable envelope temp consumed") &&
+         expect(read.ok, "durable envelope read ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "durable envelope decoded") &&
+         expect(decoded.envelope.metadata.schemaVersion ==
+                    iggy3d::kSaveSchemaVersion,
+                "durable envelope schema v2") &&
+         expect(decoded.envelope.metadata.saveId == "save_001",
+                "durable envelope metadata save id") &&
+         expect(decoded.envelope.metadata.saveId == written.record.id,
+                "durable envelope record id") &&
+         expect(decoded.envelope.creativeDocument.present,
+                "durable envelope creative present") &&
+         expect(decoded.envelope.creativeDocument.name == "Durable Creative",
+                "durable envelope creative name") &&
+         expect(decoded.envelope.creativeDocument.objects.size() == 1U,
+                "durable envelope creative object") &&
+         expect(listed.size() == 1U, "durable envelope listed") &&
+         expect(listed.front().id == written.record.id,
+                "durable envelope listed id");
+}
+
+bool durableEnvelopeWriteAllowsDefaultEnvelopeWithoutSessionState() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::SaveFileEnvelopeDurableWriteRequest request;
+  request.root = root;
+  request.attemptToken = "attempt_001";
+  const iggy3d::SaveFileDurableWriteResult written =
+      iggy3d::writeSaveEnvelopeFileDurably(request);
+  const iggy3d::SaveFileReadResult read =
+      written.ok ? iggy3d::readSaveFile(written.record.path)
+                 : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText)
+              : iggy3d::SaveDecodeResult{};
+
+  return expect(written.ok, "default envelope write ok") &&
+         expect(written.reason == "durable_save_file_written",
+                "default envelope write reason") &&
+         expect(written.record.id == "save_001",
+                "default envelope generated id") &&
+         expect(read.ok, "default envelope read ok") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "default envelope decoded") &&
+         expect(decoded.envelope.metadata.saveId == "save_001",
+                "default envelope save id") &&
+         expect(!decoded.envelope.creativeDocument.present,
+                "default envelope creative absent");
+}
+
+bool durableEnvelopeWriteHonorsValidIdHint() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::SaveFileEnvelopeDurableWriteRequest request;
+  request.root = root;
+  request.idHint = "creative_manual_01";
+  request.attemptToken = "attempt_001";
+  request.envelope = makeCreativeEnvelope("Manual Creative");
+  const iggy3d::SaveFileDurableWriteResult written =
+      iggy3d::writeSaveEnvelopeFileDurably(request);
+  const iggy3d::SaveFileReadResult read =
+      written.ok ? iggy3d::readSaveFile(written.record.path)
+                 : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText)
+              : iggy3d::SaveDecodeResult{};
+
+  return expect(written.ok, "durable envelope id hint ok") &&
+         expect(written.record.id == "creative_manual_01",
+                "durable envelope id hint record") &&
+         expect(written.paths.finalPath ==
+                    root / "creative_manual_01.iggy3d.save",
+                "durable envelope id hint path") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "durable envelope id hint decode") &&
+         expect(decoded.envelope.metadata.saveId == "creative_manual_01",
+                "durable envelope id hint metadata");
+}
+
+bool durableEnvelopeWriteRejectsInvalidAttemptTokenBeforeTempWrite() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::SaveFileEnvelopeDurableWriteRequest request;
+  request.root = root;
+  request.attemptToken = "attempt 001";
+  request.envelope = makeCreativeEnvelope("Bad Attempt");
+  const iggy3d::SaveFileDurableWriteResult written =
+      iggy3d::writeSaveEnvelopeFileDurably(request);
+
+  return expect(!written.ok, "durable envelope invalid attempt rejected") &&
+         expect(written.reason == "durable_save_invalid_attempt_token",
+                "durable envelope invalid attempt reason") &&
+         expect(written.envelopeBuilt,
+                "durable envelope invalid attempt built") &&
+         expect(written.encoded, "durable envelope invalid attempt encoded") &&
+         expect(!written.tempWritten,
+                "durable envelope invalid attempt no temp") &&
+         expect(!written.committed,
+                "durable envelope invalid attempt no commit") &&
+         expect(written.paths.finalPath.empty(),
+                "durable envelope invalid attempt no final") &&
+         expect(iggy3d::listSaveFiles(root).empty(),
+                "durable envelope invalid attempt no save");
+}
+
+bool durableEnvelopeWriteOverwritesSameIdWithNewEnvelope() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::SaveFileEnvelopeDurableWriteRequest first;
+  first.root = root;
+  first.idHint = "creative_save";
+  first.attemptToken = "attempt_001";
+  first.envelope = makeCreativeEnvelope("First Creative");
+  const iggy3d::SaveFileDurableWriteResult firstWrite =
+      iggy3d::writeSaveEnvelopeFileDurably(first);
+
+  iggy3d::SaveFileEnvelopeDurableWriteRequest second;
+  second.root = root;
+  second.idHint = "creative_save";
+  second.attemptToken = "attempt_002";
+  second.envelope = makeCreativeEnvelope("Second Creative");
+  const iggy3d::SaveFileDurableWriteResult secondWrite =
+      iggy3d::writeSaveEnvelopeFileDurably(second);
+  const iggy3d::SaveFileReadResult read =
+      secondWrite.ok ? iggy3d::readSaveFile(secondWrite.record.path)
+                     : iggy3d::SaveFileReadResult{};
+  const iggy3d::SaveDecodeResult decoded =
+      read.ok ? iggy3d::decodeSaveEnvelope(read.encodedText)
+              : iggy3d::SaveDecodeResult{};
+  const std::vector<iggy3d::SaveFileRecord> listed =
+      iggy3d::listSaveFiles(root);
+
+  return expect(firstWrite.ok, "durable envelope overwrite first ok") &&
+         expect(secondWrite.ok, "durable envelope overwrite second ok") &&
+         expect(secondWrite.previousExisted,
+                "durable envelope overwrite previous existed") &&
+         expect(!secondWrite.previousPreserved,
+                "durable envelope overwrite previous replaced") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "durable envelope overwrite decoded") &&
+         expect(decoded.envelope.creativeDocument.name == "Second Creative",
+                "durable envelope overwrite final content") &&
+         expect(decoded.envelope.metadata.saveId == "creative_save",
+                "durable envelope overwrite save id") &&
+         expect(listed.size() == 1U,
+                "durable envelope overwrite one listed") &&
+         expect(listed.front().id == "creative_save",
+                "durable envelope overwrite listed id");
+}
+
 bool writeListReadAndDeleteRoundTrips() {
   const std::filesystem::path root = testRoot();
   iggy3d::Session session = makeFixtureSession();
@@ -1014,6 +1234,11 @@ int main() {
                   durableSessionWriteRejectsMissingState() &&
                   durableSessionWriteRejectsInvalidAttemptToken() &&
                   durableSessionWritePersistsAuthoredRoomSection() &&
+                  durableEnvelopeWritePersistsCreativeSectionWithoutSessionState() &&
+                  durableEnvelopeWriteAllowsDefaultEnvelopeWithoutSessionState() &&
+                  durableEnvelopeWriteHonorsValidIdHint() &&
+                  durableEnvelopeWriteRejectsInvalidAttemptTokenBeforeTempWrite() &&
+                  durableEnvelopeWriteOverwritesSameIdWithNewEnvelope() &&
                   writeListReadAndDeleteRoundTrips() && missingStateIsRejected() &&
                   idHintOverwritesExistingSave() && authoredRoomSectionIsWrittenToSaveFile();
   return ok ? 0 : 1;

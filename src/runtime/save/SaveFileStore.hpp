@@ -81,6 +81,13 @@ struct SaveFileDurableWriteRequest {
   SaveFileProductMetadata productMetadata;
 };
 
+struct SaveFileEnvelopeDurableWriteRequest {
+  std::filesystem::path root;
+  std::string idHint;
+  std::string attemptToken;
+  SaveEnvelope envelope;
+};
+
 struct SaveFileDurableWriteResult {
   bool ok = false;
   std::string reason = "not_requested";
@@ -234,6 +241,8 @@ std::vector<SaveFileRecord> listSaveFiles(const std::filesystem::path& root);
 SaveFileWriteResult writeSessionSaveFile(const SaveFileWriteRequest& request);
 SaveFileDurableWriteResult writeSessionSaveFileDurably(
     const SaveFileDurableWriteRequest& request);
+SaveFileDurableWriteResult writeSaveEnvelopeFileDurably(
+    const SaveFileEnvelopeDurableWriteRequest& request);
 SaveFileReadResult readSaveFile(const std::filesystem::path& path);
 bool deleteSaveFile(const std::filesystem::path& path);
 

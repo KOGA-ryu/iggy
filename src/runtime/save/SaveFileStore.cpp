@@ -103,6 +103,80 @@ std::string readWholeFile(const std::filesystem::path& path) {
                      std::istreambuf_iterator<char>());
 }
 
+std::string selectSaveFileId(const std::filesystem::path& root,
+                             std::string_view idHint) {
+  std::error_code error;
+  std::string id = isValidSaveFileId(idHint)
+                       ? std::string{idHint}
+                       : makeSaveId(listSaveFiles(root).size() + 1U);
+  std::filesystem::path path = saveFilePathForId(root, id);
+  if (!isValidSaveFileId(idHint)) {
+    std::size_t index = listSaveFiles(root).size() + 1U;
+    while (std::filesystem::exists(path, error)) {
+      ++index;
+      id = makeSaveId(index);
+      path = saveFilePathForId(root, id);
+    }
+  }
+  return id;
+}
+
+SaveFileDurableWriteResult writeEncodedEnvelopeFileDurably(
+    const std::filesystem::path& root,
+    std::string_view id,
+    std::string_view attemptToken,
+    std::string_view encodedText,
+    const SaveEnvelope& envelope) {
+  SaveFileDurableWriteResult result;
+
+  const SaveFileDurableWritePlan plan =
+      planDurableSaveFileWrite(root, id, attemptToken);
+  result.paths = plan.paths;
+  if (!plan.ok) {
+    result.reason = plan.reason;
+    return result;
+  }
+
+  const SaveFileTempWriteResult tempWrite =
+      writeDurableSaveTempFile({plan, std::string{encodedText}});
+  result.paths = tempWrite.paths;
+  result.tempWritten = tempWrite.tempWritten;
+  result.encodedBytes = tempWrite.encodedBytes;
+  if (!tempWrite.ok) {
+    result.reason = tempWrite.reason;
+    return result;
+  }
+
+  const SaveFileTempValidationResult tempValidation =
+      validateDurableSaveTempFile(tempWrite);
+  result.tempValidated = tempValidation.tempValidated;
+  result.codecStatus = tempValidation.codecStatus;
+  result.encodedBytes = tempValidation.encodedBytes;
+  if (!tempValidation.ok) {
+    result.reason = tempValidation.reason;
+    return result;
+  }
+
+  const SaveFileFinalCommitResult finalCommit =
+      commitDurableSaveTempFile(tempValidation);
+  result.paths = finalCommit.paths;
+  result.codecStatus = finalCommit.codecStatus;
+  result.encodedBytes = finalCommit.encodedBytes;
+  result.previousExisted = finalCommit.previousExisted;
+  result.previousPreserved = finalCommit.previousPreserved;
+  result.committed = finalCommit.committed;
+  result.finalValidated = finalCommit.finalValidated;
+  if (!finalCommit.ok) {
+    result.reason = finalCommit.reason;
+    return result;
+  }
+
+  result.ok = true;
+  result.reason = "durable_save_file_written";
+  result.record = recordFromEnvelope(finalCommit.paths.finalPath, envelope);
+  return result;
+}
+
 }  // namespace
 
 bool isValidSaveFileId(std::string_view id) {
@@ -625,19 +699,7 @@ SaveFileDurableWriteResult writeSessionSaveFileDurably(
     saved.envelope.authoredRoom = *request.authoredRoom;
   }
 
-  std::error_code error;
-  std::string id = isValidSaveFileId(request.idHint)
-                       ? request.idHint
-                       : makeSaveId(listSaveFiles(request.root).size() + 1U);
-  std::filesystem::path path = saveFilePathForId(request.root, id);
-  if (!isValidSaveFileId(request.idHint)) {
-    std::size_t index = listSaveFiles(request.root).size() + 1U;
-    while (std::filesystem::exists(path, error)) {
-      ++index;
-      id = makeSaveId(index);
-      path = saveFilePathForId(request.root, id);
-    }
-  }
+  const std::string id = selectSaveFileId(request.root, request.idHint);
 
   saved.envelope.metadata.saveId = id;
   saved.envelope.metadata.worldId = request.productMetadata.worldId;
@@ -659,51 +721,49 @@ SaveFileDurableWriteResult writeSessionSaveFileDurably(
   saved.savedStateHash = encoded.savedStateHash;
   result.encoded = true;
 
-  const SaveFileDurableWritePlan plan =
-      planDurableSaveFileWrite(request.root, id, request.attemptToken);
-  result.paths = plan.paths;
-  if (!plan.ok) {
-    result.reason = plan.reason;
+  SaveFileDurableWriteResult durable =
+      writeEncodedEnvelopeFileDurably(request.root,
+                                      id,
+                                      request.attemptToken,
+                                      saved.encodedSaveText,
+                                      saved.envelope);
+  durable.saveStatus = result.saveStatus;
+  if (durable.codecStatus == SaveCodecStatus::Ok) {
+    durable.codecStatus = result.codecStatus;
+  }
+  durable.envelopeBuilt = result.envelopeBuilt;
+  durable.encoded = result.encoded;
+  return durable;
+}
+
+SaveFileDurableWriteResult writeSaveEnvelopeFileDurably(
+    const SaveFileEnvelopeDurableWriteRequest& request) {
+  SaveFileDurableWriteResult result;
+  result.envelopeBuilt = true;
+
+  const std::string id = selectSaveFileId(request.root, request.idHint);
+  SaveEnvelope envelope = request.envelope;
+  envelope.metadata.saveId = id;
+
+  const SaveEncodeResult encoded = encodeSaveEnvelope(envelope);
+  result.codecStatus = encoded.status;
+  if (encoded.status != SaveCodecStatus::Ok) {
+    result.saveStatus = SaveLoadStatus::EncodeFailed;
+    result.reason = "save_encode_failed";
     return result;
   }
+  result.saveStatus = SaveLoadStatus::Ok;
+  result.encoded = true;
 
-  const SaveFileTempWriteResult tempWrite =
-      writeDurableSaveTempFile({plan, saved.encodedSaveText});
-  result.paths = tempWrite.paths;
-  result.tempWritten = tempWrite.tempWritten;
-  result.encodedBytes = tempWrite.encodedBytes;
-  if (!tempWrite.ok) {
-    result.reason = tempWrite.reason;
-    return result;
-  }
-
-  const SaveFileTempValidationResult tempValidation =
-      validateDurableSaveTempFile(tempWrite);
-  result.tempValidated = tempValidation.tempValidated;
-  result.codecStatus = tempValidation.codecStatus;
-  result.encodedBytes = tempValidation.encodedBytes;
-  if (!tempValidation.ok) {
-    result.reason = tempValidation.reason;
-    return result;
-  }
-
-  const SaveFileFinalCommitResult finalCommit =
-      commitDurableSaveTempFile(tempValidation);
-  result.paths = finalCommit.paths;
-  result.codecStatus = finalCommit.codecStatus;
-  result.encodedBytes = finalCommit.encodedBytes;
-  result.previousExisted = finalCommit.previousExisted;
-  result.previousPreserved = finalCommit.previousPreserved;
-  result.committed = finalCommit.committed;
-  result.finalValidated = finalCommit.finalValidated;
-  if (!finalCommit.ok) {
-    result.reason = finalCommit.reason;
-    return result;
-  }
-
-  result.ok = true;
-  result.reason = "durable_save_file_written";
-  result.record = recordFromEnvelope(finalCommit.paths.finalPath, saved.envelope);
+  const SaveLoadStatus saveStatus = result.saveStatus;
+  result = writeEncodedEnvelopeFileDurably(request.root,
+                                           id,
+                                           request.attemptToken,
+                                           encoded.encodedText,
+                                           envelope);
+  result.saveStatus = saveStatus;
+  result.envelopeBuilt = true;
+  result.encoded = true;
   return result;
 }
 
