@@ -84,6 +84,21 @@ namespace {
     };
 }
 
+[[nodiscard]] CreativeBounds translateBounds(const CreativeBounds& bounds, CreativeVec3 delta) noexcept {
+    return CreativeBounds{
+        CreativeVec3{
+            bounds.min.x + delta.x,
+            bounds.min.y + delta.y,
+            bounds.min.z + delta.z,
+        },
+        CreativeVec3{
+            bounds.max.x + delta.x,
+            bounds.max.y + delta.y,
+            bounds.max.z + delta.z,
+        },
+    };
+}
+
 [[nodiscard]] bool hasTag(const CreativeObject& object, const std::string& tag) {
     return std::find(object.tags.begin(), object.tags.end(), tag) != object.tags.end();
 }
@@ -389,7 +404,17 @@ CreativeMutationApplyReceipt applyMoveMutation(CreativeObject& object, const Mov
         return makeNoChangeReceipt(object, CreativeMutationKind::Move, "object position already matches requested value");
     }
 
+    const CreativeVec3 oldPosition = object.transform.position;
+    const CreativeVec3 delta{
+        mutation.position.x - oldPosition.x,
+        mutation.position.y - oldPosition.y,
+        mutation.position.z - oldPosition.z,
+    };
+
     object.transform.position = mutation.position;
+    if (objectHasBounds(object.kind)) {
+        object.bounds = translateBounds(object.bounds, delta);
+    }
     return makeAppliedReceipt(object, CreativeMutationKind::Move, "object moved");
 }
 

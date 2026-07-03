@@ -44,6 +44,22 @@ cr::CreativeDocument makeDocumentWithObjectKind(
   return document;
 }
 
+cr::CreativeDocument makeDocumentWithCrate(cr::CreativeObjectId& crateId) {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Document");
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Crate;
+  request.name = "Crate";
+  request.transform = cr::CreativeTransform{};
+  request.hasTransformOverride = true;
+  request.bounds = cr::CreativeBounds{cr::CreativeVec3{0.0, 0.0, 0.0},
+                                     cr::CreativeVec3{1.0, 1.0, 1.0}};
+  request.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt receipt =
+      document.createObject(request);
+  crateId = receipt.objectId;
+  return document;
+}
+
 cr::CreativeVec3 boundsSize(const cr::CreativeObject& object) {
   return cr::CreativeVec3{
       object.bounds.max.x - object.bounds.min.x,
@@ -54,6 +70,10 @@ cr::CreativeVec3 boundsSize(const cr::CreativeObject& object) {
 
 bool sameVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+bool sameBounds(const cr::CreativeBounds& lhs, const cr::CreativeBounds& rhs) {
+  return sameVec3(lhs.min, rhs.min) && sameVec3(lhs.max, rhs.max);
 }
 
 bool setVisibleMutatesThroughDocumentGateway() {
@@ -256,6 +276,99 @@ bool alreadyCurrentScalarDimensionIsNoChange() {
          expect(receipt.objectReceipt.message ==
                     "object bounds size already matches requested value",
                 "current scalar object message");
+}
+
+bool boundedMoveTranslatesCrateBoundsExactlyOnce() {
+  cr::CreativeObjectId crateId = cr::kInvalidObjectId;
+  cr::CreativeDocument document = makeDocumentWithCrate(crateId);
+  const cr::CreativeObject* before = document.findObject(crateId);
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt = cr::moveDocumentObject(
+      document, crateId, cr::CreativeVec3{2.0, 0.0, 3.0});
+  const cr::CreativeObject* after = document.findObject(crateId);
+  const std::uint64_t revisionBeforeNoChange = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt noChange = cr::moveDocumentObject(
+      document, crateId, cr::CreativeVec3{2.0, 0.0, 3.0});
+  const cr::CreativeObject* afterNoChange = document.findObject(crateId);
+
+  return expect(before != nullptr, "crate move setup exists") &&
+         expect(after != nullptr, "crate move after exists") &&
+         expect(afterNoChange != nullptr, "crate move no-change exists") &&
+         expect(receipt.status == cr::CreativeDocumentMutationStatus::Applied,
+                "crate move status applied") &&
+         expect(receipt.changed, "crate move changed") &&
+         expect(receipt.allowed, "crate move allowed") &&
+         expect(receipt.objectKind == cr::CreativeObjectKind::Crate,
+                "crate move object kind") &&
+         expect(receipt.mutationKind == cr::CreativeMutationKind::Move,
+                "crate move mutation kind") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "crate move revision before") &&
+         expect(receipt.revisionAfter == revisionBefore + 1U,
+                "crate move revision after") &&
+         expect(document.revision() == revisionBeforeNoChange,
+                "crate move document revision advanced once") &&
+         expect(sameVec3(after->transform.position,
+                         cr::CreativeVec3{2.0, 0.0, 3.0}),
+                "crate move position updated") &&
+         expect(sameBounds(after->bounds,
+                           cr::CreativeBounds{
+                               cr::CreativeVec3{2.0, 0.0, 3.0},
+                               cr::CreativeVec3{3.0, 1.0, 4.0}}),
+                "crate move bounds translated") &&
+         expect(cr::hasDirtyFlag(receipt.dirtyFlags,
+                                 cr::CreativeObjectDirtyFlag::Transform),
+                "crate move dirty transform") &&
+         expect(cr::hasDirtyFlag(receipt.dirtyFlags,
+                                 cr::CreativeObjectDirtyFlag::Bounds),
+                "crate move dirty bounds") &&
+         expect(receipt.objectReceipt.message == "object moved",
+                "crate move object message") &&
+         expect(noChange.status == cr::CreativeDocumentMutationStatus::NoChange,
+                "crate repeated move no change") &&
+         expect(!noChange.changed, "crate repeated move changed false") &&
+         expect(noChange.revisionBefore == revisionBeforeNoChange,
+                "crate repeated move revision before") &&
+         expect(noChange.revisionAfter == revisionBeforeNoChange,
+                "crate repeated move revision after") &&
+         expect(document.revision() == revisionBeforeNoChange,
+                "crate repeated move revision unchanged") &&
+         expect(sameBounds(afterNoChange->bounds,
+                           cr::CreativeBounds{
+                               cr::CreativeVec3{2.0, 0.0, 3.0},
+                               cr::CreativeVec3{3.0, 1.0, 4.0}}),
+                "crate repeated move did not translate bounds again");
+}
+
+bool pointOnlyMovePreservesStoredBoundsField() {
+  cr::CreativeObjectId pointId = cr::kInvalidObjectId;
+  cr::CreativeDocument document = makeDocumentWithObjectKind(
+      cr::CreativeObjectKind::SpawnPoint, pointId);
+  const cr::CreativeObject* before = document.findObject(pointId);
+  const cr::CreativeBounds boundsBefore =
+      before != nullptr ? before->bounds : cr::CreativeBounds{};
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt = cr::moveDocumentObject(
+      document, pointId, cr::CreativeVec3{1.0, 2.0, 3.0});
+  const cr::CreativeObject* after = document.findObject(pointId);
+
+  return expect(before != nullptr, "point move setup exists") &&
+         expect(after != nullptr, "point move after exists") &&
+         expect(receipt.status == cr::CreativeDocumentMutationStatus::Applied,
+                "point move status applied") &&
+         expect(receipt.changed, "point move changed") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "point move revision before") &&
+         expect(receipt.revisionAfter == revisionBefore + 1U,
+                "point move revision after") &&
+         expect(sameVec3(after->transform.position,
+                         cr::CreativeVec3{1.0, 2.0, 3.0}),
+                "point move position updated") &&
+         expect(sameBounds(after->bounds, boundsBefore),
+                "point move bounds field unchanged");
 }
 
 bool missingObjectRejectsWithoutRevisionAdvance() {
@@ -464,6 +577,8 @@ int main() {
                   setVisibleFalseThenTrueIncrementsForEachRealChange() &&
                   scalarDimensionAxisPolicyIsStable() &&
                   alreadyCurrentScalarDimensionIsNoChange() &&
+                  boundedMoveTranslatesCrateBoundsExactlyOnce() &&
+                  pointOnlyMovePreservesStoredBoundsField() &&
                   missingObjectRejectsWithoutRevisionAdvance() &&
                   descriptorAllowedTextSleeperVerbIsDocumentNoChange() &&
                   descriptorAllowedScalarSleeperVerbIsDocumentNoChange() &&

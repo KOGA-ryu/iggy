@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/SpatialProjection.hpp"
+#include "app/iggy3d/creative/DocumentMutation.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -38,6 +39,27 @@ cr::CreativeSpatialProjectionRequest makeRequest() {
   cr::CreativeSpatialProjectionRequest request;
   request.gridSize = {8, 8, 2};
   return request;
+}
+
+cr::CreativeSpatialProjectionRequest makeDeepRequest() {
+  cr::CreativeSpatialProjectionRequest request;
+  request.gridSize = {8, 8, 8};
+  return request;
+}
+
+bool hasCellAt(const cr::CreativeSpatialProjectionReceipt& receipt,
+               cr::CreativeObjectId objectId,
+               cr::CreativeGridCoord3 coord,
+               cr::CreativeGridSize3 gridSize) {
+  const cr::CreativeGridIndex index = cr::toGridIndex(coord, gridSize);
+  for (const cr::CreativeSpatialCell& cell : receipt.cells) {
+    if (cell.objectId == objectId && cell.coord.x == coord.x &&
+        cell.coord.y == coord.y && cell.coord.z == coord.z &&
+        cell.index == index) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool defaultRequestExcludesAuthoringOnlyObjects() {
@@ -196,6 +218,50 @@ bool hiddenAuthoringObjectReportsHiddenBeforeAuthoringExclusion() {
          expect(receipt.cells.empty(), "hidden authoring no cells");
 }
 
+bool boundedMoveShiftsCrateProjectionCells() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Document");
+  cr::CreativeDocumentCreateRequest createRequest;
+  createRequest.kind = cr::CreativeObjectKind::Crate;
+  createRequest.name = "Crate";
+  createRequest.transform = cr::CreativeTransform{};
+  createRequest.hasTransformOverride = true;
+  createRequest.bounds = cr::CreativeBounds{cr::CreativeVec3{0.0, 0.0, 0.0},
+                                           cr::CreativeVec3{1.0, 1.0, 1.0}};
+  createRequest.hasBoundsOverride = true;
+  const cr::CreativeDocumentCreateReceipt createReceipt =
+      document.createObject(createRequest);
+  const cr::CreativeObjectId crateId = createReceipt.objectId;
+  const cr::CreativeSpatialProjectionRequest request = makeDeepRequest();
+
+  const cr::CreativeSpatialProjectionReceipt before =
+      cr::projectObjectsToGrid(document.objects(), request);
+  const cr::CreativeDocumentMutationReceipt moveReceipt =
+      cr::moveDocumentObject(document, crateId,
+                             cr::CreativeVec3{2.0, 0.0, 3.0});
+  const cr::CreativeSpatialProjectionReceipt after =
+      cr::projectObjectsToGrid(document.objects(), request);
+  const cr::CreativeGridCoord3 oldCoord{0, 0, 0};
+  const cr::CreativeGridCoord3 newCoord{2, 0, 3};
+
+  return expect(createReceipt.status == cr::CreativeDocumentCreateStatus::Created,
+                "crate projection setup created") &&
+         expect(before.status == cr::CreativeSpatialProjectionStatus::Projected,
+                "crate projection before projected") &&
+         expect(hasCellAt(before, crateId, oldCoord, request.gridSize),
+                "crate projection before old cell") &&
+         expect(moveReceipt.status == cr::CreativeDocumentMutationStatus::Applied,
+                "crate projection move applied") &&
+         expect(moveReceipt.changed, "crate projection move changed") &&
+         expect(moveReceipt.mutationKind == cr::CreativeMutationKind::Move,
+                "crate projection move kind") &&
+         expect(after.status == cr::CreativeSpatialProjectionStatus::Projected,
+                "crate projection after projected") &&
+         expect(hasCellAt(after, crateId, newCoord, request.gridSize),
+                "crate projection after new cell") &&
+         expect(!hasCellAt(after, crateId, oldCoord, request.gridSize),
+                "crate projection after old cell absent");
+}
+
 }  // namespace
 
 int main() {
@@ -205,6 +271,7 @@ int main() {
                   hiddenRoomDoesNotProject() &&
                   aggregateVisibleAndHiddenRoomsProjectsOnlyVisibleCells() &&
                   aggregateAllHiddenProjectableObjectsDoesNotProject() &&
-                  hiddenAuthoringObjectReportsHiddenBeforeAuthoringExclusion();
+                  hiddenAuthoringObjectReportsHiddenBeforeAuthoringExclusion() &&
+                  boundedMoveShiftsCrateProjectionCells();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
