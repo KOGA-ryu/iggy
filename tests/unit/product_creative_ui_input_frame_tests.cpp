@@ -321,7 +321,7 @@ bool disabledCreativeRowReportsHitDisabled() {
 
 bool receiptCopiesKnownRegionIndex() {
   const iggy3d::ProductUiDrawList drawList = defaultCreativeDrawList();
-  const iggy3d::UiHitRegion& statusHit = drawList.hitRegions[1];
+  const iggy3d::UiHitRegion& statusHit = drawList.hitRegions[2];
 
   iggy3d::ProductCreativeUiInputFrameRequest request;
   request.creativeUiDrawList = &drawList;
@@ -330,7 +330,7 @@ bool receiptCopiesKnownRegionIndex() {
       iggy3d::routeProductCreativeUiInputFrame(request);
 
   return expect(receipt.hit, "known row hit") &&
-         expect(receipt.regionIndex == 1U, "known row index copied") &&
+         expect(receipt.regionIndex == 2U, "known row index copied") &&
          expect(receipt.semanticId == "creative.row.status.creative_status",
                 "known row semantic copied");
 }

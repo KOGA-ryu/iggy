@@ -234,6 +234,8 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
 
   const iggy3d::ProductUiPrimitive* active =
       findPrimitive(list, "creative.row.tools.active_tool");
+  const iggy3d::ProductUiPrimitive* createRoom =
+      findPrimitive(list, "creative.row.tools.create_room");
   const iggy3d::ProductUiPrimitive* status =
       findPrimitive(list, "creative.row.status.creative_status");
   const iggy3d::ProductUiPrimitive* snap =
@@ -255,6 +257,8 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                 "hidden ghost panel") &&
          expect(active != nullptr && active->text == "Active Tool: Select",
                 "active row text") &&
+         expect(createRoom != nullptr && createRoom->text == "Create Room",
+                "create room row text") &&
          expect(status != nullptr && hasPrefix(status->text, "Creative Status:"),
                 "status row text") &&
          expect(snap != nullptr &&
@@ -265,6 +269,9 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
          expect(rowHitMatchesTextPrimitive(list,
                                            "creative.row.tools.active_tool"),
                 "active row hit") &&
+         expect(rowHitMatchesTextPrimitive(list,
+                                           "creative.row.tools.create_room"),
+                "create room row hit") &&
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.status.creative_status"),
                 "status row hit") &&

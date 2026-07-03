@@ -286,6 +286,86 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
                 "visibility flow visible cell restored");
 }
 
+bool createRoomUiRowCommandCreatesRoomThroughFacade() {
+  cr::Facade facade;
+  facade.reset();
+  const cr::CreativeUiBuildReceipt initialUi = facade.buildUiModel();
+  const iggy3d::ProductUiDrawList initialDrawList =
+      drawCreativeUi(initialUi.model);
+  const iggy3d::ProductUiPrimitive* createPrimitive =
+      findPrimitive(initialDrawList, "creative.row.tools.create_room");
+
+  const iggy3d::ProductCreativeUiInputFrameReceipt createInput =
+      createPrimitive != nullptr
+          ? clickPrimitive(initialDrawList, *createPrimitive)
+          : iggy3d::ProductCreativeUiInputFrameReceipt{};
+  const iggy3d::ProductCreativeUiCommandFrameReceipt createCommand =
+      iggy3d::routeProductCreativeUiCommandFrame(
+          iggy3d::ProductCreativeUiCommandFrameRequest{&facade, createInput});
+  const cr::CreativeObject* created =
+      facade.findObject(createCommand.createObjectId);
+  const cr::CreativeUiBuildReceipt rebuiltUi = facade.buildUiModel();
+  const iggy3d::ProductUiDrawList rebuiltDrawList =
+      drawCreativeUi(rebuiltUi.model);
+  const iggy3d::ProductUiPrimitive* rebuiltCreatePrimitive =
+      findPrimitive(rebuiltDrawList, "creative.row.tools.create_room");
+
+  return expect(createPrimitive != nullptr, "create flow primitive exists") &&
+         expect(createPrimitive->text == "Create Room",
+                "create flow primitive text") &&
+         expect(createInput.consumed && createInput.enabled,
+                "create flow input consumed") &&
+         expect(createInput.semanticId == "creative.row.tools.create_room",
+                "create flow semantic") &&
+         expect(createCommand.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::CreateRoom,
+                "create flow command kind") &&
+         expect(createCommand.accepted && createCommand.changed,
+                "create flow command changed") &&
+         expect(createCommand.createRequested &&
+                    createCommand.createAccepted &&
+                    createCommand.createChanged,
+                "create flow receipt changed") &&
+         expect(createCommand.createStatus ==
+                    cr::CreativeDocumentCreateStatus::Created,
+                "create flow create status") &&
+         expect(createCommand.createObjectId != cr::kInvalidObjectId,
+                "create flow object id") &&
+         expect(createCommand.createObjectKind == cr::CreativeObjectKind::Room,
+                "create flow object kind") &&
+         expect(createCommand.createObjectName == "Room",
+                "create flow object name") &&
+         expect(createCommand.createRevisionBefore == 0U,
+                "create flow revision before") &&
+         expect(createCommand.createRevisionAfter == 1U,
+                "create flow revision after") &&
+         expect(created != nullptr, "create flow object exists") &&
+         expect(created->bounds.min.x == 0.0 && created->bounds.min.y == 0.0 &&
+                    created->bounds.min.z == 0.0,
+                "create flow bounds min") &&
+         expect(created->bounds.max.x == 10.0 && created->bounds.max.y == 4.0 &&
+                    created->bounds.max.z == 10.0,
+                "create flow bounds max") &&
+         expect(created->visible, "create flow visible") &&
+         expect(!created->locked, "create flow unlocked") &&
+         expect(facade.document().objectCount() == 1U,
+                "create flow object count") &&
+         expect(facade.document().revision() == 1U,
+                "create flow document revision") &&
+         expect(facade.selectionState().selectedTarget.value ==
+                    cr::kInvalidId,
+                "create flow selection unchanged") &&
+         expect(facade.inspectionState().inspectedTarget.value ==
+                    cr::kInvalidId,
+                "create flow inspection unchanged") &&
+         expect(rebuiltUi.model.rows.size() == initialUi.model.rows.size(),
+                "create flow rebuilt row count stable") &&
+         expect(rebuiltCreatePrimitive != nullptr,
+                "create flow rebuilt primitive") &&
+         expect(rebuiltCreatePrimitive->text == "Create Room",
+                "create flow rebuilt text");
+}
+
 bool selectPickUpdatesFacadeAndUiRows() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade = facadeWithRoom();
@@ -448,7 +528,8 @@ bool suppressedCreativeUiClickDoesNotPickOrSelect() {
 }  // namespace
 
 int main() {
-  const bool ok = selectedTargetCommandTogglesVisibilityAndRefreshesPick() &&
+  const bool ok = createRoomUiRowCommandCreatesRoomThroughFacade() &&
+                  selectedTargetCommandTogglesVisibilityAndRefreshesPick() &&
                   selectPickUpdatesFacadeAndUiRows() &&
                   inspectPickUpdatesFacadeAndUiRows() &&
                   measurePickStoresTargetOnMeasurementRows() &&

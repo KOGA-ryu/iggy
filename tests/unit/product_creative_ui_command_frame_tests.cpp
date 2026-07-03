@@ -239,6 +239,104 @@ bool commandUpdatesOldStateAndDoesNotMutateDocument() {
                 "state document unchanged");
 }
 
+bool createRoomCommandCreatesGenericRoom() {
+  cr::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  inspectTarget(facade, 77);
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(facade, "creative.row.tools.create_room");
+  const cr::CreativeObject* room = facade.findObject(receipt.createObjectId);
+  const cr::CreativeObjectDescriptor& descriptor =
+      cr::describeObject(cr::CreativeObjectKind::Room);
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::CreateRoom,
+                "create command kind") &&
+         expect(receipt.accepted, "create accepted") &&
+         expect(receipt.changed, "create changed") &&
+         expect(receipt.status == "product_creative_ui_command_applied",
+                "create status") &&
+         expect(receipt.createRequested, "create receipt requested") &&
+         expect(receipt.createAccepted, "create receipt accepted") &&
+         expect(receipt.createChanged, "create receipt changed") &&
+         expect(receipt.createStatus ==
+                    cr::CreativeDocumentCreateStatus::Created,
+                "create receipt status") &&
+         expect(receipt.createObjectId != cr::kInvalidObjectId,
+                "create object id") &&
+         expect(receipt.createObjectKind == cr::CreativeObjectKind::Room,
+                "create object kind") &&
+         expect(receipt.createObjectName == "Room",
+                "create object name") &&
+         expect(receipt.createRevisionBefore == revisionBefore,
+                "create revision before") &&
+         expect(receipt.createRevisionAfter == revisionBefore + 1U,
+                "create revision after") &&
+         expect(receipt.createDirtyFlags == descriptor.creationDirtyFlags,
+                "create dirty flags") &&
+         expect(receipt.createMessage == "object_created",
+                "create message") &&
+         expect(receipt.createReasonCode == "object_created",
+                "create reason") &&
+         expect(room != nullptr, "create room exists") &&
+         expect(room->kind == cr::CreativeObjectKind::Room,
+                "created room kind") &&
+         expect(room->bounds.min.x == 0.0 && room->bounds.min.y == 0.0 &&
+                    room->bounds.min.z == 0.0,
+                "created room bounds min") &&
+         expect(room->bounds.max.x == 10.0 && room->bounds.max.y == 4.0 &&
+                    room->bounds.max.z == 10.0,
+                "created room bounds max") &&
+         expect(room->visible, "created room visible") &&
+         expect(!room->locked, "created room unlocked") &&
+         expect(facade.document().objectCount() == objectCountBefore + 1U,
+                "create object count") &&
+         expect(facade.document().revision() == revisionBefore + 1U,
+                "create document revision") &&
+         expect(facade.toolState().activeTool == cr::Tool::Inspect,
+                "create tool preserved") &&
+         expect(facade.state().tool == cr::Tool::Inspect,
+                "create old tool preserved") &&
+         expect(facade.selectionState().selectedTarget.value ==
+                    cr::kInvalidId,
+                "create selection preserved") &&
+         expect(facade.inspectionState().inspectedTarget.value == 77U,
+                "create inspection preserved");
+}
+
+bool repeatedCreateRoomCommandCreatesNewIdsAndRevisions() {
+  cr::Facade facade;
+  facade.reset();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt first =
+      routeCommand(facade, "creative.row.tools.create_room");
+  const iggy3d::ProductCreativeUiCommandFrameReceipt second =
+      routeCommand(facade, "creative.row.tools.create_room");
+
+  return expect(first.accepted && first.changed, "repeat create first") &&
+         expect(second.accepted && second.changed, "repeat create second") &&
+         expect(first.createObjectId != cr::kInvalidObjectId,
+                "repeat first id") &&
+         expect(second.createObjectId != cr::kInvalidObjectId,
+                "repeat second id") &&
+         expect(second.createObjectId > first.createObjectId,
+                "repeat ids increase") &&
+         expect(first.createRevisionAfter == 1U,
+                "repeat first revision") &&
+         expect(second.createRevisionBefore == 1U,
+                "repeat second revision before") &&
+         expect(second.createRevisionAfter == 2U,
+                "repeat second revision after") &&
+         expect(facade.document().objectCount() == 2U,
+                "repeat object count") &&
+         expect(facade.document().revision() == 2U,
+                "repeat document revision");
+}
+
 bool selectedTargetRowTogglesRoomVisibilityOff() {
   cr::Facade facade;
   facade.reset();
@@ -455,6 +553,8 @@ int main() {
   ok &= activeToolCommandCyclesSelectToInspect();
   ok &= repeatedActiveToolCommandCyclesToolOrder();
   ok &= commandUpdatesOldStateAndDoesNotMutateDocument();
+  ok &= createRoomCommandCreatesGenericRoom();
+  ok &= repeatedCreateRoomCommandCreatesNewIdsAndRevisions();
   ok &= selectedTargetRowTogglesRoomVisibilityOff();
   ok &= selectedTargetRowTogglesRoomVisibilityOnAgain();
   ok &= selectedTargetRowPreservesInspectionTarget();

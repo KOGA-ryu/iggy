@@ -15,10 +15,12 @@ struct ProductCreativeUiCommandRow {
       ProductCreativeUiCommandKind::None;
 };
 
-constexpr std::array<ProductCreativeUiCommandRow, 2>
+constexpr std::array<ProductCreativeUiCommandRow, 3>
     kProductCreativeUiCommandRows = {{
         {"creative.row.tools.active_tool",
          ProductCreativeUiCommandKind::CycleNextTool},
+        {"creative.row.tools.create_room",
+         ProductCreativeUiCommandKind::CreateRoom},
         {"creative.row.selection.selected_target",
          ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility},
     }};
@@ -57,6 +59,23 @@ void copyMutationReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
   receipt.revisionBefore = mutationReceipt.revisionBefore;
   receipt.revisionAfter = mutationReceipt.revisionAfter;
   receipt.mutationMessage = mutationReceipt.message;
+}
+
+void copyCreateReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
+                       const creative::CreativeDocumentCreateReceipt&
+                           createReceipt) {
+  receipt.createRequested = createReceipt.requested;
+  receipt.createAccepted = createReceipt.accepted;
+  receipt.createChanged = createReceipt.changed;
+  receipt.createStatus = createReceipt.status;
+  receipt.createObjectId = createReceipt.objectId;
+  receipt.createObjectKind = createReceipt.objectKind;
+  receipt.createObjectName = createReceipt.objectName;
+  receipt.createRevisionBefore = createReceipt.revisionBefore;
+  receipt.createRevisionAfter = createReceipt.revisionAfter;
+  receipt.createDirtyFlags = createReceipt.creationDirtyFlags;
+  receipt.createMessage = createReceipt.message;
+  receipt.createReasonCode = createReceipt.reasonCode;
 }
 
 }  // namespace
@@ -116,6 +135,23 @@ ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
     if (mutationReceipt.accepted && mutationReceipt.changed) {
       setNoopStatus(receipt, "product_creative_ui_command_applied");
     } else if (mutationReceipt.accepted) {
+      setNoopStatus(receipt, "product_creative_ui_command_no_change");
+    } else {
+      setNoopStatus(receipt, "product_creative_ui_command_rejected");
+    }
+    return receipt;
+  }
+
+  if (receipt.commandKind == ProductCreativeUiCommandKind::CreateRoom) {
+    const creative::CreativeDocumentCreateReceipt createReceipt =
+        facade.createDocumentObject(creative::CreativeObjectKind::Room);
+    copyCreateReceipt(receipt, createReceipt);
+    receipt.accepted = createReceipt.accepted;
+    receipt.changed = createReceipt.changed;
+    receipt.toolAfter = facade.toolState().activeTool;
+    if (createReceipt.accepted && createReceipt.changed) {
+      setNoopStatus(receipt, "product_creative_ui_command_applied");
+    } else if (createReceipt.accepted) {
       setNoopStatus(receipt, "product_creative_ui_command_no_change");
     } else {
       setNoopStatus(receipt, "product_creative_ui_command_rejected");

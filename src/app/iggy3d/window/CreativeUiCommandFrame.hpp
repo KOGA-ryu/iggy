@@ -12,6 +12,7 @@ enum class ProductCreativeUiCommandKind : std::uint8_t {
   None,
   CycleNextTool,
   ToggleSelectedObjectVisibility,
+  CreateRoom,
 };
 
 struct ProductCreativeUiCommandFrameRequest {
@@ -48,6 +49,20 @@ struct ProductCreativeUiCommandFrameReceipt {
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
   std::string mutationMessage;
+  bool createRequested = false;
+  bool createAccepted = false;
+  bool createChanged = false;
+  creative::CreativeDocumentCreateStatus createStatus =
+      creative::CreativeDocumentCreateStatus::Unknown;
+  creative::CreativeObjectId createObjectId = creative::kInvalidObjectId;
+  creative::CreativeObjectKind createObjectKind =
+      creative::CreativeObjectKind::Unknown;
+  std::string createObjectName;
+  std::uint64_t createRevisionBefore = 0;
+  std::uint64_t createRevisionAfter = 0;
+  creative::CreativeObjectDirtyFlags createDirtyFlags = 0;
+  std::string createMessage;
+  std::string createReasonCode;
   std::string semanticId;
   std::string status = "product_creative_ui_command_not_requested";
   std::string reasonCode = "product_creative_ui_command_not_requested";

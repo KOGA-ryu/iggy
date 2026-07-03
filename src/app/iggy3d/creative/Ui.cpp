@@ -79,6 +79,14 @@ void appendToolsPanel(CreativeUiModel& model,
   row.flags = enabledVisibleFlags() | kCreativeUiRowFlagActive;
   appendRow(model, row);
 
+  CreativeUiRow createRoomRow;
+  createRoomRow.kind = CreativeUiRowKind::CreateRoom;
+  createRoomRow.panel = CreativeUiPanelKind::Tools;
+  createRoomRow.id = "create_room";
+  createRoomRow.label = "Create Room";
+  createRoomRow.flags = enabledVisibleFlags();
+  appendRow(model, createRoomRow);
+
   finishPanel(model, panelIndex);
 }
 
@@ -281,7 +289,7 @@ CreativeUiBuildReceipt buildCreativeUiModel(CreativeUiBuildRequest request) {
   receipt.model.ghostVisible = request.ghostState.visible;
 
   receipt.model.panels.reserve(7);
-  receipt.model.rows.reserve(10);
+  receipt.model.rows.reserve(11);
 
   appendToolsPanel(receipt.model, request);
   appendStatusPanel(receipt.model, request);

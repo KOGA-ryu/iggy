@@ -46,7 +46,7 @@ bool defaultsBuildDefaultUiModel() {
          expect(!facade.ghostState().visible, "default ghost hidden") &&
          expect(ui.accepted, "default ui accepted") &&
          expect(ui.panelCount == 7U, "default ui panels") &&
-         expect(ui.rowCount == 3U, "default ui rows");
+         expect(ui.rowCount == 4U, "default ui rows");
 }
 
 bool setActiveToolUpdatesKernelAndOldState() {

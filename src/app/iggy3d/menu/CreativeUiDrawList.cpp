@@ -135,6 +135,8 @@ void appendVisibilityText(std::string& text,
       text.append(": ");
       text.append(toolName(row.tool));
       break;
+    case creative::CreativeUiRowKind::CreateRoom:
+      break;
     case creative::CreativeUiRowKind::StatusSummary:
       text.append(": flags=");
       text.append(std::to_string(row.flags));

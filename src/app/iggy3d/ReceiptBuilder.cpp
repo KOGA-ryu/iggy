@@ -93,6 +93,8 @@ std::string_view productCreativeUiCommandKindReceiptName(
       return "cycle_next_tool";
     case ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility:
       return "toggle_selected_object_visibility";
+    case ProductCreativeUiCommandKind::CreateRoom:
+      return "create_room";
   }
   return "unknown";
 }
@@ -236,6 +238,24 @@ void recordProductCreativeUiCommandFrame(
   window.creativeUiCommandRevisionAfter = receipt.revisionAfter;
   window.creativeUiCommandMutationMessage =
       receipt.mutationMessage.empty() ? "none" : receipt.mutationMessage;
+  window.creativeUiCommandCreateRequested = receipt.createRequested;
+  window.creativeUiCommandCreateAccepted = receipt.createAccepted;
+  window.creativeUiCommandCreateChanged = receipt.createChanged;
+  window.creativeUiCommandCreateStatus =
+      std::string(creative::toString(receipt.createStatus));
+  window.creativeUiCommandCreateObjectId = receipt.createObjectId;
+  window.creativeUiCommandCreateObjectKind =
+      std::string(creative::toString(receipt.createObjectKind));
+  window.creativeUiCommandCreateObjectName =
+      receipt.createObjectName.empty() ? "none" : receipt.createObjectName;
+  window.creativeUiCommandCreateRevisionBefore =
+      receipt.createRevisionBefore;
+  window.creativeUiCommandCreateRevisionAfter = receipt.createRevisionAfter;
+  window.creativeUiCommandCreateDirtyFlags = receipt.createDirtyFlags;
+  window.creativeUiCommandCreateMessage =
+      receipt.createMessage.empty() ? "none" : receipt.createMessage;
+  window.creativeUiCommandCreateReasonCode =
+      receipt.createReasonCode.empty() ? "none" : receipt.createReasonCode;
 }
 
 void recordProductCreativeViewportPickFrame(
@@ -1885,6 +1905,30 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiCommandRevisionAfter);
   appendReceiptField(receipt, "creative_ui_command_mutation_message",
                      window.creativeUiCommandMutationMessage);
+  appendReceiptField(receipt, "creative_ui_command_create_requested",
+                     window.creativeUiCommandCreateRequested);
+  appendReceiptField(receipt, "creative_ui_command_create_accepted",
+                     window.creativeUiCommandCreateAccepted);
+  appendReceiptField(receipt, "creative_ui_command_create_changed",
+                     window.creativeUiCommandCreateChanged);
+  appendReceiptField(receipt, "creative_ui_command_create_status",
+                     window.creativeUiCommandCreateStatus);
+  appendReceiptField(receipt, "creative_ui_command_create_object_id",
+                     window.creativeUiCommandCreateObjectId);
+  appendReceiptField(receipt, "creative_ui_command_create_object_kind",
+                     window.creativeUiCommandCreateObjectKind);
+  appendReceiptField(receipt, "creative_ui_command_create_object_name",
+                     window.creativeUiCommandCreateObjectName);
+  appendReceiptField(receipt, "creative_ui_command_create_revision_before",
+                     window.creativeUiCommandCreateRevisionBefore);
+  appendReceiptField(receipt, "creative_ui_command_create_revision_after",
+                     window.creativeUiCommandCreateRevisionAfter);
+  appendReceiptField(receipt, "creative_ui_command_create_dirty_flags",
+                     window.creativeUiCommandCreateDirtyFlags);
+  appendReceiptField(receipt, "creative_ui_command_create_message",
+                     window.creativeUiCommandCreateMessage);
+  appendReceiptField(receipt, "creative_ui_command_create_reason_code",
+                     window.creativeUiCommandCreateReasonCode);
   appendReceiptField(receipt, "creative_viewport_pick_requested",
                      window.creativeViewportPickRequested);
   appendReceiptField(receipt, "creative_viewport_pick_active",

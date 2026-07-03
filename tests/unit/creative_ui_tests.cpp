@@ -51,14 +51,14 @@ bool defaultModelDeterministic() {
 
   return expect(receipt.accepted, "default accepted") &&
          expect(receipt.panelCount == 7U, "default panel count") &&
-         expect(receipt.rowCount == 3U, "default row count") &&
+         expect(receipt.rowCount == 4U, "default row count") &&
          expect(model.panels.size() == 7U, "default panels size") &&
-         expect(model.rows.size() == 3U, "default rows size") &&
+         expect(model.rows.size() == 4U, "default rows size") &&
          expect(panel(model, cr::CreativeUiPanelKind::Tools).firstRow == 0U,
                 "tools first row") &&
-         expect(panel(model, cr::CreativeUiPanelKind::Tools).rowCount == 1U,
+         expect(panel(model, cr::CreativeUiPanelKind::Tools).rowCount == 2U,
                 "tools row count") &&
-         expect(panel(model, cr::CreativeUiPanelKind::Status).firstRow == 1U,
+         expect(panel(model, cr::CreativeUiPanelKind::Status).firstRow == 2U,
                 "status first row") &&
          expect(panel(model, cr::CreativeUiPanelKind::Status).rowCount == 1U,
                 "status row count") &&
@@ -70,15 +70,21 @@ bool defaultModelDeterministic() {
                 "measurement empty") &&
          expect(panel(model, cr::CreativeUiPanelKind::Ghost).rowCount == 0U,
                 "ghost empty") &&
-         expect(panel(model, cr::CreativeUiPanelKind::Snap).firstRow == 2U,
+         expect(panel(model, cr::CreativeUiPanelKind::Snap).firstRow == 3U,
                 "snap first row") &&
          expect(panel(model, cr::CreativeUiPanelKind::Snap).rowCount == 1U,
                 "snap row count") &&
          expect(model.rows[0].kind == cr::CreativeUiRowKind::ActiveTool,
                 "default active row") &&
-         expect(model.rows[1].kind == cr::CreativeUiRowKind::StatusSummary,
+         expect(model.rows[1].kind == cr::CreativeUiRowKind::CreateRoom,
+                "default create room row") &&
+         expect(model.rows[1].id == "create_room",
+                "default create room id") &&
+         expect(model.rows[1].label == "Create Room",
+                "default create room label") &&
+         expect(model.rows[2].kind == cr::CreativeUiRowKind::StatusSummary,
                 "default status row") &&
-         expect(model.rows[2].kind == cr::CreativeUiRowKind::SnapSettings,
+         expect(model.rows[3].kind == cr::CreativeUiRowKind::SnapSettings,
                 "default snap row");
 }
 

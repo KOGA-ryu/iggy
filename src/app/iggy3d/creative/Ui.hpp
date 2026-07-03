@@ -28,6 +28,7 @@ enum class CreativeUiPanelKind : std::uint8_t {
 
 enum class CreativeUiRowKind : std::uint8_t {
   ActiveTool,
+  CreateRoom,
   StatusSummary,
   SelectedTarget,
   InspectedTarget,

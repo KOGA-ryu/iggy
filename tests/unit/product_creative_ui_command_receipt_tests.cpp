@@ -87,6 +87,16 @@ iggy3d::ProductCreativeUiCommandFrameReceipt appliedToggleReceipt() {
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
+iggy3d::ProductCreativeUiCommandFrameReceipt appliedCreateRoomReceipt() {
+  cr::Facade facade;
+  facade.reset();
+
+  iggy3d::ProductCreativeUiCommandFrameRequest request;
+  request.facade = &facade;
+  request.inputReceipt = commandInput("creative.row.tools.create_room");
+  return iggy3d::routeProductCreativeUiCommandFrame(request);
+}
+
 bool defaultWindowReceiptCarriesNotRequestedFields() {
   const iggy3d::ProductAppWindowState window;
   const iggy3d::RenderReceipt receipt = receiptFor(window);
@@ -194,7 +204,55 @@ bool defaultWindowReceiptCarriesNotRequestedFields() {
          expectReceiptField(receipt,
                             "creative_ui_command_mutation_message",
                             "none",
-                            "default mutation message");
+                            "default mutation message") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_requested",
+                            "false",
+                            "default create requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_accepted",
+                            "false",
+                            "default create accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_changed",
+                            "false",
+                            "default create changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_status",
+                            "Unknown",
+                            "default create status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_object_id",
+                            "0",
+                            "default create object id") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_object_kind",
+                            "Unknown",
+                            "default create object kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_object_name",
+                            "none",
+                            "default create object name") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_revision_before",
+                            "0",
+                            "default create revision before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_revision_after",
+                            "0",
+                            "default create revision after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_dirty_flags",
+                            "0",
+                            "default create dirty flags") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_message",
+                            "none",
+                            "default create message") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_reason_code",
+                            "none",
+                            "default create reason");
 }
 
 bool defaultCommandReceiptRecordsSafely() {
@@ -238,7 +296,15 @@ bool defaultCommandReceiptRecordsSafely() {
          expectReceiptField(receipt,
                             "creative_ui_command_mutation_message",
                             "none",
-                            "record default mutation message");
+                            "record default mutation message") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_status",
+                            "Unknown",
+                            "record default create status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_message",
+                            "none",
+                            "record default create message");
 }
 
 bool nullFacadeCommandReceiptRecordsFields() {
@@ -434,6 +500,87 @@ bool toggleCommandReceiptRecordsMutationFields() {
                             "toggle mutation message");
 }
 
+bool createRoomCommandReceiptRecordsCreateFields() {
+  const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
+      appliedCreateRoomReceipt();
+  iggy3d::ProductAppWindowState window;
+  iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  const std::string objectId = std::to_string(commandReceipt.createObjectId);
+  const std::string revisionBefore =
+      std::to_string(commandReceipt.createRevisionBefore);
+  const std::string revisionAfter =
+      std::to_string(commandReceipt.createRevisionAfter);
+  const std::string dirtyFlags =
+      std::to_string(commandReceipt.createDirtyFlags);
+
+  return expectReceiptField(receipt,
+                            "creative_ui_command_kind",
+                            "create_room",
+                            "create kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_status",
+                            "product_creative_ui_command_applied",
+                            "create status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_accepted",
+                            "true",
+                            "create accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_changed",
+                            "true",
+                            "create changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_requested",
+                            "true",
+                            "create requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_accepted",
+                            "true",
+                            "create receipt accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_changed",
+                            "true",
+                            "create receipt changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_status",
+                            "Created",
+                            "create receipt status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_object_id",
+                            objectId,
+                            "create object id") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_object_kind",
+                            "Room",
+                            "create object kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_object_name",
+                            "Room",
+                            "create object name") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_revision_before",
+                            revisionBefore,
+                            "create revision before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_revision_after",
+                            revisionAfter,
+                            "create revision after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_dirty_flags",
+                            dirtyFlags,
+                            "create dirty flags") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_message",
+                            "object_created",
+                            "create message") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_create_reason_code",
+                            "object_created",
+                            "create reason");
+}
+
 bool recorderPreservesNeighboringFields() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_before";
@@ -519,6 +666,7 @@ int main() {
                   nullFacadeCommandReceiptRecordsFields() &&
                   appliedCommandReceiptRecordsFields() &&
                   toggleCommandReceiptRecordsMutationFields() &&
+                  createRoomCommandReceiptRecordsCreateFields() &&
                   recorderPreservesNeighboringFields();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
