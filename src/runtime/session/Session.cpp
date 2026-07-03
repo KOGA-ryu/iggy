@@ -13,6 +13,7 @@
 #include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/ai/NpcBehaviorSystem.hpp"
+#include "runtime/ai/GuardDecision.hpp"
 #include "runtime/ai/NpcInvestigateSystem.hpp"
 #include "runtime/ai/NpcPatrolSystem.hpp"
 #include "runtime/ai/ReasoningRoute.hpp"
@@ -773,6 +774,75 @@ NpcBehaviorDecision maybeApplyPatrol(const NpcBehaviorDecision& decision,
   return patrol;
 }
 
+// Scored-search rung (A5 slice 2). A guard still hot (Searching/Alert) whose investigate memory is
+// SPENT no longer Waits in place until decay -- it moves between the top-scored reasoning nodes
+// (a5s1 chooseSearchNode), steered by the COLD memory sample, riding maybeFollowRoute's flanking.
+// Precedence: combat > investigate > SEARCH > patrol, all intent==Wait gated. ZERO new AiIntentKind
+// (reuses Investigate -- it IS investigating likely spots; the receipt distinguishes scored-search
+// from memory-investigate). NEVER re-scores per tick: choose on entry, re-choose ONLY on arrival
+// (alternation via excludedNodeId). Not-hot / has-memory / not-Waiting / EMPTY graph / no candidate
+// => decision UNCHANGED (graphless sessions byte-identical). Search state = the actor's TRANSIENT
+// fields (never hashed/saved).
+NpcBehaviorDecision maybeApplySearch(NpcBehaviorDecision decision, AiActorState& actor, Vec3 guardPos,
+                                     std::span<const PhysicsAabbCollider> colliders,
+                                     const ReasoningGraph& graph, const AlertProfile& alertProfile,
+                                     const NpcPersonalityWeights& weights, std::uint64_t tick) {
+  const std::uint8_t band = alertBandIndex(actor.alertLevel, alertProfile);
+  if (band < 3U || band > 4U) {
+    actor.hasSearchChoice = false;  // cooled out of the search bands -> abandon
+    return decision;
+  }
+  // Trigger keyed to the MEMORY FACT (not the outcome): a DWELLING guard and a VISUALLY-STARING
+  // guard both HOLD memory (recording runs before the chain), so hasLastKnownTarget==false excludes
+  // both; only a hot guard with SPENT memory searches. intent!=Wait means investigate/patrol/chase
+  // already own the tick; empty graph => today's Wait-until-decay.
+  if (decision.intent != AiIntentKind::Wait || actor.hasLastKnownTarget || graph.nodes.empty()) {
+    return decision;
+  }
+
+  const auto nodePos = [&graph](std::uint32_t id) {
+    return id < graph.nodes.size() ? graph.nodes[id].positionMeters : Vec3{};
+  };
+  const auto distanceMeters = [](Vec3 a, Vec3 b) { return std::sqrt(lengthSquared(a - b)); };
+
+  // COLD memory sample: the surviving stale position/tick (flag down) so suspicion still steers the
+  // search toward where the target vanished.
+  GuardMemorySample memory;
+  memory.lastKnownPosition = actor.lastKnownTargetPosition;
+  memory.lastKnownTick = actor.lastKnownTargetTick;
+  memory.hasMemorySample = actor.hasLastKnownTarget || actor.lastKnownTargetTick != 0;
+
+  // Choose on entry; re-choose ONLY on arrival at the current node, excluding it so the choice
+  // ALTERNATES among top nodes (v1 honesty: alternation, not a full circuit).
+  bool reChoose = !actor.hasSearchChoice;
+  std::optional<std::uint32_t> excluded;
+  if (actor.hasSearchChoice &&
+      distanceMeters(guardPos, nodePos(actor.searchChosenNodeId)) <= kPatrolArriveEpsilonMeters) {
+    reChoose = true;
+    excluded = actor.searchChosenNodeId;
+  }
+  if (reChoose) {
+    const GuardDecision chosen = chooseSearchNode(graph, colliders, guardPos, memory, tick,
+                                                  actor.actor, weights, GuardDecisionConfig{}, excluded);
+    actor.searchLastReceipt = chosen.receipt;
+    if (!chosen.nodeId.has_value()) {
+      actor.hasSearchChoice = false;
+      return decision;  // no candidate -> pass through (today's Wait-until-decay)
+    }
+    actor.searchChosenNodeId = *chosen.nodeId;
+    actor.hasSearchChoice = true;
+  }
+
+  // Reuse the Investigate intent toward the chosen node; maybeFollowRoute flanks it if blocked.
+  decision.status = NpcBehaviorDecisionStatus::Decided;
+  decision.behavior = alertBehaviorForLevel(actor.alertLevel, alertProfile);
+  decision.intent = AiIntentKind::Investigate;
+  decision.homePosition = nodePos(actor.searchChosenNodeId);
+  decision.returnStopDistanceMeters = kPatrolMoveStopMeters;
+  decision.cooldownTicksRemaining = 0;
+  return decision;
+}
+
 // Route-follow POST-STEP (A4 slice 2). After the overlay chain has set a point-move DESTINATION,
 // if that destination's straight segment is blocked, steer the guard along a planned graph route
 // instead of stalling into the wall. Rewrites ONLY the interim destination + stop distance -- adds
@@ -1133,9 +1203,15 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
                                                            state.clock.tickIndex});
     NpcBehaviorDecision decision =
         reconcileAlertBand(engaged, actorState, alertProfile);
-    // Precedence: combat (kept above) > investigate last-known (band 3-4) > patrol (band <=1).
+    // Precedence: combat (kept above) > investigate last-known (band 3-4) > SEARCH (a5s2) > patrol.
     decision =
         maybeApplyInvestigate(decision, actorState, perception, alertProfile, state.clock.tickIndex);
+    // SEARCH rung (a5s2): a hot guard with SPENT memory checks scored nodes instead of Waiting.
+    if (actorEntity != nullptr) {
+      decision = maybeApplySearch(decision, actorState, actorEntity->transform.position,
+                                  visionColliders, state.reasoningGraph, alertProfile,
+                                  resolvedProfile.profile.personalityWeights, state.clock.tickIndex);
+    }
     decision = maybeApplyPatrol(decision, actorState, perception, alertProfile);
     // Route-follow POST-STEP (A4 s2): flank blocked destinations via the carried reasoning graph.
     // Rewrites only the interim destination inside the rung above; empty graph -> unchanged.

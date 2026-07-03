@@ -7,6 +7,7 @@
 
 #include "core/ids/EntityId.hpp"
 #include "core/math/Vec3.hpp"
+#include "runtime/ai/GuardDecisionReceipt.hpp"
 
 namespace iggy3d {
 
@@ -164,6 +165,15 @@ struct AiActorState {
   Vec3 routePlannedForDestination{};
   bool hasRoute = false;
   Vec3 routeLastPositionMeters{};
+  // Current L6 scored search (A5 slice 2). TRANSIENT-IN-PERSISTENCE like the route fields: EXCLUDED
+  // from SaveAiActorRecord/SaveCodec/StateHash/SaveLoad (the a2 four-way lock is untouched) --
+  // recomputed on load. searchChosenNodeId is the node the guard is heading to; on arrival it is
+  // passed back as the kernel's excludedNodeId so the choice ALTERNATES among top nodes.
+  // searchLastReceipt is the latest reasoning receipt kept AS STATE (receipts are not re-derivable
+  // -- the pure-summary pattern does not fit them), read by the guard_decision_readout.
+  std::uint32_t searchChosenNodeId = 0;
+  bool hasSearchChoice = false;
+  GuardDecisionReceipt searchLastReceipt;
 };
 
 struct AiState {

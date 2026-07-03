@@ -10,6 +10,7 @@
 
 #include "core/ids/EntityId.hpp"
 #include "core/math/Vec3.hpp"
+#include "runtime/ai/GuardDecisionReceipt.hpp"
 #include "runtime/ai/NpcPersonalityWeights.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"
 
@@ -31,26 +32,8 @@ struct GuardMemorySample {
   bool hasMemorySample = false;
 };
 
-// One SIGNED contribution to a decision score (deck §18: no black boxes).
-struct GuardDecisionFactor {
-  std::string_view name;
-  float value;
-};
-
-// The full, inspectable record of a decision. The chosen node's factors are, in order,
-// {"suspicion", "strategic", "travel"(<=0), "ally"(0)}, each already multiplied by its personality
-// weight so the receipt shows the ACTUAL contribution. hasChoice=false + empty factors when no
-// candidate remains.
-struct GuardDecisionReceipt {
-  EntityId actor;
-  std::uint64_t tick = 0;
-  bool hasChoice = false;
-  std::uint32_t chosenNodeId = 0;
-  float totalScore = 0.0F;
-  std::vector<GuardDecisionFactor> factors;
-  bool hasExcluded = false;
-  std::uint32_t excludedNodeId = 0;
-};
+// GuardDecisionFactor + GuardDecisionReceipt now live in GuardDecisionReceipt.hpp (so AiActorState
+// can carry a receipt without the whole kernel); included above.
 
 // NAMED strategic base value per ReasoningNodeKind -- "how much a guard wants to check this kind of
 // place." Exit/chokepoint HIGH, patrolPost/reference LOW. Reference-seeded; A10 retunes. Ordered to

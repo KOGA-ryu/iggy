@@ -482,6 +482,10 @@ iggy3d_add_unit_test(guard_decision_tests tests/unit/guard_decision_tests.cpp)
 set_tests_properties(guard_decision_tests PROPERTIES
   LABELS "unit;runtime;ai;reasoning;decision;iggy3d")
 
+iggy3d_add_unit_test(guard_decision_readout tests/unit/guard_decision_readout.cpp)
+set_tests_properties(guard_decision_readout PROPERTIES
+  LABELS "unit;runtime;ai;reasoning;decision;readout;iggy3d")
+
 iggy3d_add_unit_test(stealth_garden_tests tests/unit/stealth_garden_tests.cpp)
 set_tests_properties(stealth_garden_tests PROPERTIES
   LABELS "unit;runtime;ai;stealth;garden;iggy3d")

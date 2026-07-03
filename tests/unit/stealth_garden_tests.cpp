@@ -1162,6 +1162,109 @@ bool guardDecisionScoresGardenNodes() {
   return ok;
 }
 
+// a5s2: the SOLE new behavioral proof (installs its own graph; SELF-CONSISTENT, not config-pinned).
+// A hot guard whose investigate memory is SPENT searches scored nodes: it MOVES toward the node
+// named in ITS OWN receipt (via the flank when island-blocked). Abandon is proven with a PRE-FORCED
+// band drop (never waiting out real decay).
+bool searchRungMovesTowardScoredNode() {
+  const Garden garden = loadGarden();
+  if (!expect(garden.ok, "garden loaded for search")) {
+    return false;
+  }
+  const std::vector<iggy3d::Vec3> waypoints = {cellToWorld(1, 1), cellToWorld(1, 5)};
+  const iggy3d::ReasoningGraph graph = iggy3d::buildReasoningGraph(garden.room, waypoints);
+  GardenSession gs = makeGardenSession();
+  if (!gs.ok) {
+    return false;
+  }
+  gs.session->setReasoningGraph(graph);
+
+  // Hot guard, memory SPENT (flag down) but a COLD trail survives south of the island.
+  if (iggy3d::AiActorState* g = mutableGuardAi(gs)) {
+    g->alertLevel = 0.55F;  // Searching band
+    g->lastRiseTick = 0;
+    g->hasLastKnownTarget = false;                    // spent -> search triggers
+    g->lastKnownTargetPosition = cellToWorld(6, 6);   // cold trail
+    g->lastKnownTargetTick = 1;                        // non-zero -> hasMemorySample true (steers)
+    g->hasHomePosition = false;
+  }
+  teleportEntity(gs, gs.guard, cellToWorld(1, 5));
+  teleportEntity(gs, gs.player, iggy3d::Vec3{40.0F, 0.0F, 40.0F});
+
+  submitWait(gs);
+  bool ok = expect(tick(gs), "search entry tick");
+  const iggy3d::AiActorState* g1 = guardAi(gs);
+  ok = ok && expect(g1 != nullptr && g1->hasSearchChoice && g1->searchLastReceipt.hasChoice,
+                    "a hot spent-memory guard makes a scored search choice");
+  if (g1 == nullptr || !g1->hasSearchChoice) {
+    return false;
+  }
+  const std::uint32_t chosen = g1->searchLastReceipt.chosenNodeId;
+  const iggy3d::Vec3 chosenPos = graph.nodes[chosen].positionMeters;
+  const float startDist = planarDistance(guardEntityPos(gs), chosenPos);
+
+  float minDist = startDist;
+  for (int i = 0; i < 40; ++i) {
+    submitWait(gs);
+    ok = ok && expect(tick(gs), "search follow tick");
+    minDist = std::min(minDist, planarDistance(guardEntityPos(gs), chosenPos));
+  }
+  std::cerr << "a5s2 search: chosenNodeId=" << chosen << " startDist=" << startDist
+            << " minDist=" << minDist << "\n";
+  ok = ok && expect(minDist < startDist - 1.0F,
+                    "guard moves toward the node named in its OWN receipt (self-consistent, flanked)");
+
+  // ABANDON via pre-forced band drop (plumbing; never wait out decay).
+  if (iggy3d::AiActorState* g = mutableGuardAi(gs)) {
+    g->alertLevel = 0.05F;  // below searchingNorm -> out of the search bands
+  }
+  submitWait(gs);
+  ok = ok && expect(tick(gs), "search abandon tick");
+  const iggy3d::AiActorState* g2 = guardAi(gs);
+  ok = ok && expect(g2 != nullptr && !g2->hasSearchChoice,
+                    "a band drop below Searching abandons the search");
+  return ok;
+}
+
+// a5s2: the memory-flag discipline made visible. Fresh memory at the guard's feet => investigate
+// dwells and OWNS the tick; the search rung must NOT fire while the memory flag is up.
+bool searchWaitsWhileMemoryHeld() {
+  const Garden garden = loadGarden();
+  if (!expect(garden.ok, "garden loaded for dwell-hold")) {
+    return false;
+  }
+  const std::vector<iggy3d::Vec3> waypoints = {cellToWorld(1, 1), cellToWorld(1, 5)};
+  GardenSession gs = makeGardenSession();
+  if (!gs.ok) {
+    return false;
+  }
+  gs.session->setReasoningGraph(iggy3d::buildReasoningGraph(garden.room, waypoints));
+
+  if (iggy3d::AiActorState* g = mutableGuardAi(gs)) {
+    g->alertLevel = 0.55F;  // Searching band -- hot enough to search IF memory were spent
+    g->lastRiseTick = 0;
+    g->hasLastKnownTarget = true;  // memory HELD -> investigate owns the tick, search must not fire
+    g->lastKnownTargetPosition = cellToWorld(6, 3);  // at the guard's feet -> dwell on arrival
+    g->lastKnownTargetTick = 1;
+    g->hasHomePosition = false;
+  }
+  teleportEntity(gs, gs.guard, cellToWorld(6, 3));
+  teleportEntity(gs, gs.player, iggy3d::Vec3{40.0F, 0.0F, 40.0F});
+
+  bool ok = true;
+  bool everSearched = false;
+  for (int i = 0; i < 10; ++i) {  // well within kInvestigateDwellTicks
+    submitWait(gs);
+    ok = ok && expect(tick(gs), "dwell-hold tick");
+    const iggy3d::AiActorState* g = guardAi(gs);
+    if (g != nullptr && g->hasSearchChoice) {
+      everSearched = true;
+    }
+  }
+  return ok && expect(!everSearched,
+                      "search never fires while the memory flag is held (investigate preempts)");
+}
+
 }  // namespace
 
 int main() {
@@ -1176,6 +1279,8 @@ int main() {
                   routeFollowingReachesIslandBlockedOrigin() &&
                   routeInvalidatesWhenDestinationChanges() &&
                   routeNoProgressDropsStuckLeg() &&
-                  guardDecisionScoresGardenNodes();
+                  guardDecisionScoresGardenNodes() &&
+                  searchRungMovesTowardScoredNode() &&
+                  searchWaitsWhileMemoryHeld();
   return ok ? 0 : 1;
 }
