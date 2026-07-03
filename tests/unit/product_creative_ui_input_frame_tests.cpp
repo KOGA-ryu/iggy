@@ -1,6 +1,7 @@
 #include "app/iggy3d/window/CreativeUiInputFrame.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/Ui.hpp"
 #include "app/iggy3d/menu/CreativeUiDrawList.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
@@ -625,6 +626,8 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
   iggy3d::ProductAppWindowState window;
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
+  iggy3d::creative::Facade facade;
+  facade.reset();
   bool closeRequested = false;
 
   iggy3d::processProductWindowInputFrame(iggy3d::ProductWindowInputFrameContext{
@@ -639,7 +642,7 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
       inputFrame,
       closeRequested,
       nullptr,
-      nullptr,
+      &facade,
       nullptr,
   });
 
@@ -665,7 +668,31 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
                 "input frame downstream not suppressed") &&
          expect(window.creativeUiInputDownstreamClickStatus ==
                     "product_creative_ui_downstream_click_no_click",
-                "input frame downstream status");
+                "input frame downstream status") &&
+         expect(window.creativeUiCommandRequested,
+                "input frame command requested") &&
+         expect(window.creativeUiCommandFacadeAvailable,
+                "input frame command facade available") &&
+         expect(!window.creativeUiCommandInputConsumed,
+                "input frame command input not consumed") &&
+         expect(!window.creativeUiCommandAccepted,
+                "input frame command not accepted") &&
+         expect(!window.creativeUiCommandChanged,
+                "input frame command unchanged") &&
+         expect(window.creativeUiCommandKind == "none",
+                "input frame command kind none") &&
+         expect(window.creativeUiCommandToolBefore == "Select",
+                "input frame command tool before") &&
+         expect(window.creativeUiCommandToolAfter == "Select",
+                "input frame command tool after") &&
+         expect(window.creativeUiCommandSemanticId == "none",
+                "input frame command semantic none") &&
+         expect(window.creativeUiCommandStatus ==
+                    "product_creative_ui_command_not_consumed",
+                "input frame command status") &&
+         expect(facade.toolState().activeTool ==
+                    iggy3d::creative::Tool::Select,
+                "input frame facade tool unchanged");
 }
 
 }  // namespace

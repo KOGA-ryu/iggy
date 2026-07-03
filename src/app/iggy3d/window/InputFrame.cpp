@@ -10,6 +10,7 @@
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
 #include "app/iggy3d/window/CreativeInputFrame.hpp"
+#include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 #include "app/iggy3d/window/CreativeUiInputFrame.hpp"
 #include "app/iggy3d/window/CreativeViewportPickFrame.hpp"
 #include "app/iggy3d/room_editor/ActionController.hpp"
@@ -1031,12 +1032,20 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   }
 
   const MouseClick click = pollMouseClick(context.inputFrame.mouse);
-  recordProductCreativeUiInputFrame(
-      context.window,
+  const ProductCreativeUiInputFrameReceipt creativeUiInputReceipt =
       routeProductCreativeUiInputFrame(ProductCreativeUiInputFrameRequest{
           context.creativeUiDrawList,
           click,
-      }));
+      });
+  recordProductCreativeUiInputFrame(
+      context.window, creativeUiInputReceipt);
+  const ProductCreativeUiCommandFrameReceipt creativeUiCommandReceipt =
+      routeProductCreativeUiCommandFrame(ProductCreativeUiCommandFrameRequest{
+          context.creativeFacade,
+          creativeUiInputReceipt,
+      });
+  recordProductCreativeUiCommandFrame(context.window,
+                                      creativeUiCommandReceipt);
   bool higherPriorityMouseConsumed = false;
   // branch-gate: BG-1029
   if (click.clicked) {
