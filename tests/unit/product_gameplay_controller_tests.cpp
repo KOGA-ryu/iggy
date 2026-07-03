@@ -1097,6 +1097,52 @@ bool productFallGravityMultiplierDescendsFaster() {
                 "higher fall multiplier has lower velocity");
 }
 
+// MA1: the giant_lowgrav dimension must FEEL different. Same jump input, the giant world reaches a
+// strictly higher apex than earth_standard (jumpImpulse 19.5/gravity 11.0 vs 15.8/18.0 -> ~17.3 m vs
+// ~6.9 m). A bare '>' structural assert -- no golden, no magic threshold.
+bool productGiantDimensionJumpsStrictlyHigherThanEarth() {
+  std::optional<iggy3d::Session> earthSession;
+  iggy3d::ProductAppWindowState earthWindow = makeGameplayWindow(earthSession);
+  std::optional<iggy3d::Session> giantSession;
+  iggy3d::ProductAppWindowState giantWindow = makeGameplayWindow(giantSession);
+  if (!expect(earthSession.has_value() && giantSession.has_value(),
+              "apex sessions created")) {
+    return false;
+  }
+
+  const iggy3d::MovementDimensionProfile* earth =
+      iggy3d::movementDimensionProfileById("earth_standard");
+  const iggy3d::MovementDimensionProfile* giant =
+      iggy3d::movementDimensionProfileById("giant_lowgrav");
+  if (!expect(earth != nullptr && giant != nullptr, "apex profiles resolve")) {
+    return false;
+  }
+  // Inject each world's tuning through the SAME window path the app uses at session launch.
+  iggy3d::applyMovementDimensionProfileToTuning(*earth, earthWindow.gameplayMovementTuning);
+  iggy3d::applyMovementDimensionProfileToTuning(*giant, giantWindow.gameplayMovementTuning);
+
+  iggy3d::applyProductGameplayActions(*earthSession, jumpActions(), earthWindow,
+                                      "unit/gameplay_controller_apex_earth_start");
+  iggy3d::applyProductGameplayActions(*giantSession, jumpActions(), giantWindow,
+                                      "unit/gameplay_controller_apex_giant_start");
+  float earthApexY = playerEntity(*earthSession)->transform.position.y;
+  float giantApexY = playerEntity(*giantSession)->transform.position.y;
+  // 150 input steps > both apex times (earth ~0.88 s, giant ~1.77 s) so each arc fully peaks.
+  for (int frame = 0; frame < 150; ++frame) {
+    iggy3d::applyProductGameplayActions(*earthSession, noActions(), earthWindow,
+                                        "unit/gameplay_controller_apex_earth_tick");
+    iggy3d::applyProductGameplayActions(*giantSession, noActions(), giantWindow,
+                                        "unit/gameplay_controller_apex_giant_tick");
+    earthApexY = std::max(earthApexY, playerEntity(*earthSession)->transform.position.y);
+    giantApexY = std::max(giantApexY, playerEntity(*giantSession)->transform.position.y);
+  }
+
+  return expect(earthWindow.gameplayJumpAccepted, "earth jump accepted") &&
+         expect(giantWindow.gameplayJumpAccepted, "giant jump accepted") &&
+         expect(giantApexY > earthApexY,
+                "giant_lowgrav reaches a strictly higher apex than earth_standard");
+}
+
 bool productMovementStateReportsBlockedOrSlidingFromCollisionProof() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -2194,6 +2240,7 @@ int main() {
                   productBufferedJumpFiresOnLanding() &&
                   productEarlyJumpReleaseCutsJumpHeight() &&
                   productFallGravityMultiplierDescendsFaster() &&
+                  productGiantDimensionJumpsStrictlyHigherThanEarth() &&
                   productMovementStateReportsBlockedOrSlidingFromCollisionProof() &&
                   productWallRunCandidateReportsAirborneSideWallContact() &&
                   productWallRunCandidateRejectsGroundedContact() &&
