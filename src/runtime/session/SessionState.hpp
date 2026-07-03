@@ -6,6 +6,7 @@
 
 #include "config/RuntimeConfig.hpp"
 #include "runtime/ai/AiState.hpp"
+#include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/ai/NpcSoundPerception.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"
 #include "runtime/ability/AbilitySystem.hpp"
@@ -114,6 +115,13 @@ struct SessionState {
   // rebuilt at create and in replaceStateFromLoad from buildObjectiveOutcomeTable(). Defaults
   // reproduce the two formerly-hardcoded rules exactly, so this is output-preserving.
   ObjectiveOutcomeTable outcomeTable;
+
+  // NPC behavior-profile catalog as DATA, built ONCE (A9). TRANSIENT-IN-PERSISTENCE like the
+  // reasoningGraph/outcomeTable club: OFF StateHash/SaveCodec/SaveEnvelope (actors persist only their
+  // behaviorProfileId string, as today). Built at create from the scenario's custom profiles; CARRIED
+  // across replaceStateFromLoad (loads are same-scenario by the identity gate, and the load path has
+  // no scenario to rebuild from); self-heals to the built-ins if empty (a bare Session(state)).
+  NpcBehaviorProfileCatalog behaviorProfileCatalog;
 
   std::uint64_t currentStateHash = 0;
 };

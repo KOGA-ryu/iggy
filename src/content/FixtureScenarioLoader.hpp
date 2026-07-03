@@ -10,6 +10,7 @@
 #include "core/math/Transform3.hpp"
 #include "core/math/Vec3.hpp"
 #include "runtime/ai/AiState.hpp"
+#include "runtime/ai/NpcBehaviorProfile.hpp"
 #include "runtime/camera/CameraState.hpp"
 #include "runtime/clock/ClockState.hpp"
 #include "runtime/combat/CombatState.hpp"
@@ -97,6 +98,9 @@ struct FixtureScenarioSeed {
   std::vector<ScenarioObjectiveSeed> objectives;
   std::vector<ScenarioAiActorSeed> aiActors;
   std::vector<ScenarioAiGuardAnchorSeed> aiGuardAnchors;
+  // Scenario-authored behavior profiles (A9). Added on top of the three built-ins by
+  // buildNpcBehaviorProfileCatalog; empty => the catalog is byte-identical to the built-ins.
+  std::vector<NpcBehaviorProfile> behaviorProfiles;
 };
 
 struct ScenarioLoadResult {

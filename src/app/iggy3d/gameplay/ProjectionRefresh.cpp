@@ -213,8 +213,15 @@ DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
     bool developerToolsEnabled,
     bool debugOverlayEnabled) {
   DebugProjectionResult debug = buildDebugProjection(state);
-  const NpcBehaviorProfileCatalog catalog =
-      makeBuiltInNpcBehaviorProfileCatalog();
+  // A9: read the session's DATA catalog so the debug snapshot resolves the same profiles the runtime
+  // does (a built-in-only fallback would report profileResolved=false for a scenario-resolvable
+  // profile -- a lying receipt). Empty (bare Session(state)) -> built-ins, byte-identical for defaults.
+  const NpcBehaviorProfileCatalog fallbackCatalog =
+      state.behaviorProfileCatalog.profiles.empty() ? makeBuiltInNpcBehaviorProfileCatalog()
+                                                    : NpcBehaviorProfileCatalog{};
+  const NpcBehaviorProfileCatalog& catalog = state.behaviorProfileCatalog.profiles.empty()
+                                                 ? fallbackCatalog
+                                                 : state.behaviorProfileCatalog;
   const NpcBehaviorDebugSnapshot snapshot = buildNpcBehaviorDebugSnapshot(
       {true, &state.world, &state.ai, &state.combat, &catalog,
        state.clock.tickIndex, 128});

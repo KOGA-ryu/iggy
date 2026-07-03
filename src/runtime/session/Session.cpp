@@ -596,6 +596,14 @@ AiActorState* findAiActorState(AiState& ai, EntityId actor) {
   return nullptr;
 }
 
+// A9: the behavior-profile catalog is DATA built once (create/load). This idempotent guard heals a
+// bare Session(state) (empty catalog) to the built-ins on its first tick -- never a per-tick rebuild.
+void ensureBehaviorProfileCatalog(SessionState& state) {
+  if (state.behaviorProfileCatalog.profiles.empty()) {
+    state.behaviorProfileCatalog = makeBuiltInNpcBehaviorProfileCatalog();
+  }
+}
+
 void ensureAiActorsForActiveNpcs(SessionState& state) {
   std::vector<EntityId> activeNpcs;
   for (const EntityState& entity : state.world.entities()) {
@@ -1089,9 +1097,10 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
   }
 
   ensureAiActorsForActiveNpcs(state);
+  ensureBehaviorProfileCatalog(state);  // A9: build once (heal empty) -- NO per-tick rebuild/alloc
   const PlayerSlot* playerZero = state.players.findSlot(0);
   const EntityId target = playerZero == nullptr ? EntityId{} : playerZero->actor;
-  const NpcBehaviorProfileCatalog profileCatalog = makeBuiltInNpcBehaviorProfileCatalog();
+  const NpcBehaviorProfileCatalog& profileCatalog = state.behaviorProfileCatalog;
 
   // Bake world collision geometry once so NPC vision rays reuse the same
   // colliders the player movement path uses. No surfaces -> LOS assumed clear.
@@ -1287,6 +1296,25 @@ Result<Session> Session::create(const SessionCreateRequest& request) {
     return createFailure("session.objective_seed_failed", "missing objectives");
   }
 
+  // A9: build the behavior-profile catalog (built-ins + scenario custom rows) ONCE, fail-closed like
+  // the ai-seed guards. Placed before clearTransient/hash so it exists when computeStateHash runs
+  // (it is NOT hashed). Default/product seeds carry no custom rows => built-ins => byte-identical.
+  const NpcBehaviorProfileCatalogResult catalogResult =
+      buildNpcBehaviorProfileCatalog(request.seed.behaviorProfiles);
+  if (catalogResult.status != NpcBehaviorProfileCatalogStatus::Ok) {
+    const char* suffix = "invalid";
+    switch (catalogResult.status) {
+      case NpcBehaviorProfileCatalogStatus::InvalidId: suffix = "invalid_id"; break;
+      case NpcBehaviorProfileCatalogStatus::DuplicateId: suffix = "duplicate_id"; break;
+      case NpcBehaviorProfileCatalogStatus::BuiltInCollision: suffix = "builtin_collision"; break;
+      case NpcBehaviorProfileCatalogStatus::InvalidConfig: suffix = "invalid_config"; break;
+      case NpcBehaviorProfileCatalogStatus::Ok: break;
+    }
+    return createFailure(std::string("session.behavior_profile_") + suffix,
+                         std::string(catalogResult.reasonCode));
+  }
+  state.behaviorProfileCatalog = std::move(catalogResult.catalog);
+
   clearTransient(state);
   state.currentStateHash = computeStateHash(state);
   state.baseline = buildBaseline(state);
@@ -1475,6 +1503,10 @@ SessionLoadResult Session::replaceStateFromLoad(SessionState loadedState) {
 
   clearTransient(loadedState);
   loadedState.outcomeTable = buildObjectiveOutcomeTable();  // A8a: rebuilt-on-load (transient)
+  // A9: CARRY the live catalog into the loaded state (loads are same-scenario by the identity gate;
+  // the load path has no scenario to rebuild from). If the live catalog were empty, the tick ensure
+  // still yields built-ins -- no crash, no lie.
+  loadedState.behaviorProfileCatalog = state_.behaviorProfileCatalog;
   loadedState.currentStateHash = computeStateHash(loadedState);
   result.loadedHash = loadedState.currentStateHash;
   state_ = std::move(loadedState);

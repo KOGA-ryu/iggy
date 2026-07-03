@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -68,6 +70,29 @@ struct NpcBehaviorProfileResolveResult {
 bool isValidNpcBehaviorProfileId(std::string_view profileId);
 NpcBehaviorConfig configFromNpcBehaviorProfile(const NpcBehaviorProfile& profile);
 NpcBehaviorProfileCatalog makeBuiltInNpcBehaviorProfileCatalog();
+
+// Fail-closed catalog builder (A9): the three built-ins (default/melee_training/passive, FIXED
+// order) THEN the scenario's custom rows in order. A custom id that is invalid, collides with a
+// built-in, duplicates an earlier custom, or carries an invalid AlertProfile fails the build. No
+// custom rows => the catalog is BYTE-IDENTICAL to the built-ins (output-preserving).
+enum class NpcBehaviorProfileCatalogStatus : std::uint8_t {
+  Ok,
+  InvalidId,
+  DuplicateId,
+  BuiltInCollision,
+  InvalidConfig,
+};
+
+struct NpcBehaviorProfileCatalogResult {
+  NpcBehaviorProfileCatalogStatus status = NpcBehaviorProfileCatalogStatus::Ok;
+  std::string_view reasonCode = "ok";
+  std::size_t badProfileIndex = 0;      // index into customProfiles of the offending row (on failure)
+  NpcBehaviorProfileCatalog catalog;    // valid only when status == Ok
+};
+
+NpcBehaviorProfileCatalogResult buildNpcBehaviorProfileCatalog(
+    std::span<const NpcBehaviorProfile> customProfiles);
+
 NpcBehaviorProfileResolveResult resolveNpcBehaviorProfile(
     const NpcBehaviorProfileResolveRequest& request);
 

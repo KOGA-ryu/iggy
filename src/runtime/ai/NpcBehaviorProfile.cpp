@@ -66,6 +66,50 @@ NpcBehaviorProfileCatalog makeBuiltInNpcBehaviorProfileCatalog() {
   return catalog;
 }
 
+NpcBehaviorProfileCatalogResult buildNpcBehaviorProfileCatalog(
+    std::span<const NpcBehaviorProfile> customProfiles) {
+  NpcBehaviorProfileCatalogResult result;
+  result.catalog = makeBuiltInNpcBehaviorProfileCatalog();
+  const std::size_t builtInCount = result.catalog.profiles.size();
+
+  for (std::size_t i = 0; i < customProfiles.size(); ++i) {
+    const NpcBehaviorProfile& profile = customProfiles[i];
+    result.badProfileIndex = i;
+    if (!isValidNpcBehaviorProfileId(profile.id.value)) {
+      result.status = NpcBehaviorProfileCatalogStatus::InvalidId;
+      result.reasonCode = "profile_invalid_id";
+      return result;
+    }
+    for (std::size_t b = 0; b < builtInCount; ++b) {
+      if (result.catalog.profiles[b].id.value == profile.id.value) {
+        result.status = NpcBehaviorProfileCatalogStatus::BuiltInCollision;
+        result.reasonCode = "profile_builtin_collision";
+        return result;
+      }
+    }
+    for (std::size_t c = builtInCount; c < result.catalog.profiles.size(); ++c) {
+      if (result.catalog.profiles[c].id.value == profile.id.value) {
+        result.status = NpcBehaviorProfileCatalogStatus::DuplicateId;
+        result.reasonCode = "profile_duplicate_id";
+        return result;
+      }
+    }
+    if (!isValidAlertProfile(profile.alertProfile)) {
+      result.status = NpcBehaviorProfileCatalogStatus::InvalidConfig;
+      result.reasonCode = "profile_invalid_config";
+      return result;
+    }
+    // SoundPerceptionConfig + personalityWeights are accepted as authored (resolve validates only
+    // the AlertProfile today -- keep parity).
+    result.catalog.profiles.push_back(profile);
+  }
+
+  result.status = NpcBehaviorProfileCatalogStatus::Ok;
+  result.reasonCode = "ok";
+  result.badProfileIndex = 0;
+  return result;
+}
+
 NpcBehaviorProfileResolveResult resolveNpcBehaviorProfile(
     const NpcBehaviorProfileResolveRequest& request) {
   NpcBehaviorProfileResolveResult result;

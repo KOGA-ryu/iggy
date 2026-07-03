@@ -490,6 +490,10 @@ iggy3d_add_unit_test(npc_behavior_profile_tests tests/unit/npc_behavior_profile_
 set_tests_properties(npc_behavior_profile_tests PROPERTIES
   LABELS "unit;runtime;ai;npc_behavior;profile;iggy3d")
 
+iggy3d_add_unit_test(behavior_profile_catalog_tests tests/unit/behavior_profile_catalog_tests.cpp)
+set_tests_properties(behavior_profile_catalog_tests PROPERTIES
+  LABELS "unit;runtime;ai;npc_behavior;iggy3d")
+
 iggy3d_add_unit_test(npc_alert_fsm_tests tests/unit/npc_alert_fsm_tests.cpp)
 set_tests_properties(npc_alert_fsm_tests PROPERTIES
   LABELS "unit;runtime;ai;npc_behavior;alert;iggy3d")

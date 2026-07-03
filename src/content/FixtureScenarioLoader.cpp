@@ -22,6 +22,7 @@ enum class Table {
   Objective,
   AiActor,
   AiGuardAnchor,
+  BehaviorProfile,
 };
 
 struct Line {
@@ -222,6 +223,20 @@ std::vector<std::string_view> splitCommaList(std::string_view value) {
   }
   parts.push_back(trim(value.substr(start)));
   return parts;
+}
+
+// A9: a bracketed 4-element uint array `[a,b,c,d]` (alert_drain_ticks), mirroring parseVec3's shape.
+bool parseU32Array4(std::string_view value, std::uint32_t (&out)[4]) {
+  value = trim(value);
+  if (value.size() < 2U || value.front() != '[' || value.back() != ']') {
+    return false;
+  }
+  const auto parts = splitCommaList(value.substr(1, value.size() - 2U));
+  if (parts.size() != 4U) {
+    return false;
+  }
+  return parseU32(parts[0], out[0]) && parseU32(parts[1], out[1]) && parseU32(parts[2], out[2]) &&
+         parseU32(parts[3], out[3]);
 }
 
 bool parseVec3(std::string_view value, Vec3& out) {
@@ -478,6 +493,11 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
       parser.table = Table::AiGuardAnchor;
       parser.result.seed.aiGuardAnchors.push_back({});
       parser.aiGuardAnchorFlags.push_back(AiGuardAnchorFlags{.startLine = lineNumber});
+      continue;
+    }
+    if (line == "[[behavior_profiles]]") {
+      parser.table = Table::BehaviorProfile;
+      parser.result.seed.behaviorProfiles.push_back({});  // all keys optional -> struct defaults
       continue;
     }
     if (line.starts_with("[")) {
@@ -766,6 +786,95 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
       } else {
         return fail(parser, ScenarioLoadStatus::UnsupportedKey, "scenario.unsupported_key",
                     "unsupported ai guard anchor key", lineNumber, column);
+      }
+    } else if (parser.table == Table::BehaviorProfile &&
+               !parser.result.seed.behaviorProfiles.empty()) {
+      NpcBehaviorProfile& profile = parser.result.seed.behaviorProfiles.back();
+      AlertProfile& alert = profile.alertProfile;
+      SoundPerceptionConfig& sound = profile.soundConfig;
+      NpcPersonalityWeights& weights = profile.personalityWeights;
+      const auto badNumber = [&]() {
+        return fail(parser, ScenarioLoadStatus::InvalidNumber, "scenario.invalid_number",
+                    "invalid behavior profile number", lineNumber, column);
+      };
+      if (key == "id") {
+        if (!parseString(value, profile.id.value)) {
+          return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",
+                      "invalid behavior profile id", lineNumber, column);
+        }
+      } else if (key == "engagement_policy") {
+        std::string policy;
+        if (!parseString(value, policy)) {
+          return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",
+                      "invalid engagement policy", lineNumber, column);
+        }
+        if (policy == "hostile") {
+          profile.engagementPolicy = NpcEngagementPolicy::Hostile;
+        } else if (policy == "passive") {
+          profile.engagementPolicy = NpcEngagementPolicy::Passive;
+        } else {
+          return fail(parser, ScenarioLoadStatus::InvalidEnum, "scenario.invalid_enum",
+                      "invalid engagement policy", lineNumber, column);
+        }
+      } else if (key == "perception_radius_meters") {
+        if (!parseFloat(value, profile.perceptionRadiusMeters)) return badNumber();
+      } else if (key == "chase_stop_distance_meters") {
+        if (!parseFloat(value, profile.chaseStopDistanceMeters)) return badNumber();
+      } else if (key == "attack_range_meters") {
+        if (!parseFloat(value, profile.attackRangeMeters)) return badNumber();
+      } else if (key == "chase_step_meters") {
+        if (!parseFloat(value, profile.chaseStepMeters)) return badNumber();
+      } else if (key == "attack_damage") {
+        if (!parseI32(value, profile.attackDamage)) return badNumber();
+      } else if (key == "decision_interval_ticks") {
+        if (!parseU32(value, profile.decisionIntervalTicks)) return badNumber();
+      } else if (key == "attack_cooldown_ticks") {
+        if (!parseU32(value, profile.attackCooldownTicks)) return badNumber();
+      } else if (key == "alert_observant_norm") {
+        if (!parseFloat(value, alert.observantNorm)) return badNumber();
+      } else if (key == "alert_suspicious_norm") {
+        if (!parseFloat(value, alert.suspiciousNorm)) return badNumber();
+      } else if (key == "alert_searching_norm") {
+        if (!parseFloat(value, alert.searchingNorm)) return badNumber();
+      } else if (key == "alert_agitated_norm") {
+        if (!parseFloat(value, alert.agitatedNorm)) return badNumber();
+      } else if (key == "alert_combat_norm") {
+        if (!parseFloat(value, alert.combatNorm)) return badNumber();
+      } else if (key == "alert_rise_rate_per_tick") {
+        if (!parseFloat(value, alert.riseRatePerTick)) return badNumber();
+      } else if (key == "alert_drain_ticks") {
+        if (!parseU32Array4(value, alert.drainTicks)) return badNumber();
+      } else if (key == "alert_dead_time_ticks") {
+        if (!parseU32(value, alert.deadTimeTicks)) return badNumber();
+      } else if (key == "alert_grace_frac") {
+        if (!parseFloat(value, alert.graceFrac)) return badNumber();
+      } else if (key == "alert_grace_window_ticks") {
+        if (!parseU32(value, alert.graceWindowTicks)) return badNumber();
+      } else if (key == "alert_grace_count_limit") {
+        if (!parseU32(value, alert.graceCountLimit)) return badNumber();
+      } else if (key == "alert_sound_rise_scale") {
+        if (!parseFloat(value, alert.soundRiseScale)) return badNumber();
+      } else if (key == "alert_sound_alert_units_ref") {
+        if (!parseFloat(value, alert.soundAlertUnitsRef)) return badNumber();
+      } else if (key == "sound_hearing_threshold_db") {
+        if (!parseFloat(value, sound.hearingThresholdDb)) return badNumber();
+      } else if (key == "sound_falloff_coeff") {
+        if (!parseFloat(value, sound.falloffCoeff)) return badNumber();
+      } else if (key == "sound_per_wall_loss_db") {
+        if (!parseFloat(value, sound.perWallLossDb)) return badNumber();
+      } else if (key == "sound_air_loss_db_per_meter") {
+        if (!parseFloat(value, sound.airLossDbPerMeter)) return badNumber();
+      } else if (key == "weight_suspicion") {
+        if (!parseFloat(value, weights.suspicionWeight)) return badNumber();
+      } else if (key == "weight_strategic") {
+        if (!parseFloat(value, weights.strategicWeight)) return badNumber();
+      } else if (key == "weight_travel") {
+        if (!parseFloat(value, weights.travelWeight)) return badNumber();
+      } else if (key == "weight_ally") {
+        if (!parseFloat(value, weights.allyWeight)) return badNumber();
+      } else {
+        return fail(parser, ScenarioLoadStatus::UnsupportedKey, "scenario.unsupported_key",
+                    "unsupported behavior profile key", lineNumber, column);
       }
     } else {
       return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",
