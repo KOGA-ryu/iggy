@@ -90,6 +90,40 @@ bool viewportAndClockFailuresAreStable() {
                 "clock reason");
 }
 
+bool creativeWireframeDebugChannelValidationWorks() {
+  iggy3d::SceneProjectionResult scene;
+  iggy3d::FrameInput absent = validFrame(scene);
+  iggy3d::FrameInput zeroCount = validFrame(scene);
+  zeroCount.creativeWireframeDebug.available = true;
+  zeroCount.creativeWireframeDebug.visible = true;
+
+  iggy3d::RenderCreativeWireframeDebugLine line;
+  line.start = {0.0F, 0.0F, 0.0F};
+  line.end = {1.0F, 0.0F, 0.0F};
+  iggy3d::FrameInput present = validFrame(scene);
+  present.creativeWireframeDebug.available = true;
+  present.creativeWireframeDebug.visible = true;
+  present.creativeWireframeDebug.lines = &line;
+  present.creativeWireframeDebug.lineCount = 1U;
+
+  iggy3d::FrameInput missingPointer = present;
+  missingPointer.creativeWireframeDebug.lines = nullptr;
+
+  return expect(iggy3d::validateFrameInput(absent) == iggy3d::FrameInputStatus::Valid,
+                "creative wireframe absent valid") &&
+         expect(iggy3d::validateFrameInput(zeroCount) == iggy3d::FrameInputStatus::Valid,
+                "creative wireframe zero count valid") &&
+         expect(iggy3d::validateFrameInput(present) == iggy3d::FrameInputStatus::Valid,
+                "creative wireframe present valid") &&
+         expect(iggy3d::validateFrameInput(missingPointer) ==
+                    iggy3d::FrameInputStatus::InvalidCreativeWireframeDebugLines,
+                "creative wireframe pointer required") &&
+         expect(iggy3d::frameInputReasonCode(
+                    iggy3d::FrameInputStatus::InvalidCreativeWireframeDebugLines) ==
+                    "frame_creative_wireframe_debug_lines_invalid",
+                "creative wireframe invalid reason");
+}
+
 bool firstFailureOrderAndNoMutation() {
   iggy3d::SceneProjectionResult scene;
   scene.sourceStateHash = 99U;
@@ -113,6 +147,7 @@ int main() {
   bool ok = true;
   ok = frameProjectionValidationWorks() && ok;
   ok = viewportAndClockFailuresAreStable() && ok;
+  ok = creativeWireframeDebugChannelValidationWorks() && ok;
   ok = firstFailureOrderAndNoMutation() && ok;
   return ok ? 0 : 1;
 }

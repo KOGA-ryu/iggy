@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/DocumentWireframe.hpp"
 #include "app/iggy3d/creative/SpatialProjection.hpp"
+#include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 
 #include <cstdint>
 #include <string>
@@ -9,7 +10,6 @@
 namespace iggy3d {
 
 struct ProductAppWindowState;
-enum class ProductCreativeWireframeDebugLineStatus : std::uint8_t;
 namespace creative {
 class Facade;
 }  // namespace creative
@@ -51,8 +51,16 @@ struct ProductCreativeWireframeFrameReceipt {
   std::string reasonCode = "creative_wireframe_frame_not_requested";
 };
 
+struct ProductCreativeWireframeFrameBuildResult {
+  ProductCreativeWireframeFrameReceipt receipt;
+  ProductCreativeWireframeDebugLineList debugLineList;
+};
+
 [[nodiscard]] bool productCreativeWireframeFrameActiveForWindow(
     const ProductAppWindowState& window) noexcept;
+[[nodiscard]] ProductCreativeWireframeFrameBuildResult
+buildProductCreativeWireframeFrame(
+    const ProductCreativeWireframeFrameRequest& request);
 [[nodiscard]] ProductCreativeWireframeFrameReceipt
 routeProductCreativeWireframeFrame(
     const ProductCreativeWireframeFrameRequest& request);

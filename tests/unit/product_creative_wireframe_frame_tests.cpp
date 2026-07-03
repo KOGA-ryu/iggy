@@ -4,7 +4,9 @@
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
+#include "app/iggy3d/window/FramePresenter.hpp"
 
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
@@ -210,6 +212,49 @@ bool oneRoomBuildsTwelveSegments() {
          expect(receipt.status ==
                     "product_creative_wireframe_frame_built",
                 "room status");
+}
+
+bool buildResultKeepsDebugLineList() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoom(facade);
+
+  const iggy3d::ProductCreativeWireframeFrameBuildResult result =
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+
+  return expect(result.receipt.status ==
+                    "product_creative_wireframe_frame_built",
+                "build result status") &&
+         expect(result.receipt.debugLineCount == 12U,
+                "build result debug line count") &&
+         expect(result.debugLineList.lines.size() == 12U,
+                "build result line list size") &&
+         expect(result.debugLineList.lines.front().objectId == roomId,
+                "build result line object id");
+}
+
+bool presenterRenderFrameCarriesDebugLines() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  const iggy3d::ProductCreativeWireframeFrameBuildResult result =
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+
+  const iggy3d::ProductCreativeWireframeDebugRenderFrame renderFrame =
+      iggy3d::buildProductCreativeWireframeDebugRenderFrame(
+          &result.debugLineList);
+
+  return expect(renderFrame.frame.available, "render frame available") &&
+         expect(renderFrame.frame.visible, "render frame visible") &&
+         expect(renderFrame.frame.lineCount == 12U,
+                "render frame line count") &&
+         expect(renderFrame.frame.lines == renderFrame.lines.data(),
+                "render frame pointer owned") &&
+         expect(renderFrame.lines.front().objectId ==
+                    static_cast<std::uint64_t>(roomId),
+                "render line object id") &&
+         expect(renderFrame.lines.front().thickness == 1.0F,
+                "render line thickness");
 }
 
 bool hiddenRoomBuildsNoSegmentsButCountsObject() {
@@ -547,6 +592,8 @@ int main() {
       nullFacadeFailsClosed() &&
       emptyCreativeDocumentBuildsZeroSegments() &&
       oneRoomBuildsTwelveSegments() &&
+      buildResultKeepsDebugLineList() &&
+      presenterRenderFrameCarriesDebugLines() &&
       hiddenRoomBuildsNoSegmentsButCountsObject() &&
       createRoomCommandThenWireframeBuildsSegments() &&
       defaultWindowReceiptFieldsAreNotRequested() &&

@@ -19,6 +19,8 @@
 
 namespace iggy3d {
 
+struct ProductCreativeWireframeDebugLineList;
+
 struct ProductVulkanMenuFrameRequest {
   const ProductUiDrawList* uiDrawList = nullptr;
   std::uint64_t frameIndex = 0;
@@ -40,7 +42,13 @@ struct ProductVulkanGameplayFrame {
   FrameInput frame;
   std::vector<RenderUiRect> rects;
   std::vector<DebugHudGlyphQuad> textGlyphQuads;
+  std::vector<RenderCreativeWireframeDebugLine> creativeWireframeDebugLines;
   std::uint64_t textGlyphCount = 0;
+};
+
+struct ProductCreativeWireframeDebugRenderFrame {
+  std::vector<RenderCreativeWireframeDebugLine> lines;
+  RenderCreativeWireframeDebugFrame frame;
 };
 
 struct ProductWindowFramePresenterRequest {
@@ -55,6 +63,8 @@ struct ProductWindowFramePresenterRequest {
   ProductWindowRendererState& renderer;
   const ProductGameplayProjectionFrame& projectionFrame;
   const ProductUiDrawList* creativeUiDrawList = nullptr;
+  const ProductCreativeWireframeDebugLineList* creativeWireframeDebugLineList =
+      nullptr;
 };
 
 ProductVulkanMenuFrame buildProductVulkanStarterMenuFrame(
@@ -77,6 +87,9 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
     FrontendDevToolsCategory devToolsCategory = FrontendDevToolsCategory::Session);
 const FrameInput& refreshProductVulkanGameplayFrameInput(
     ProductVulkanGameplayFrame& gameplayFrame);
+[[nodiscard]] ProductCreativeWireframeDebugRenderFrame
+buildProductCreativeWireframeDebugRenderFrame(
+    const ProductCreativeWireframeDebugLineList* lineList);
 
 void appendProductUiOverlay(ProductVulkanGameplayFrame& gameplayFrame,
                             const ProductUiDrawList& overlayUi,

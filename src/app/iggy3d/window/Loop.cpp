@@ -193,12 +193,17 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         creative::CreativeViewportPickDepthMode::HighestZFirst,
         {}});
 
-    const ProductCreativeWireframeFrameReceipt wireframeReceipt =
-        routeProductCreativeWireframeFrame(ProductCreativeWireframeFrameRequest{
+    const ProductCreativeWireframeFrameBuildResult wireframeFrame =
+        buildProductCreativeWireframeFrame(ProductCreativeWireframeFrameRequest{
             &window,
             request.creativeFacade,
             creativeWireframeProjectionRequest()});
-    recordProductCreativeWireframeFrame(window, wireframeReceipt);
+    recordProductCreativeWireframeFrame(window, wireframeFrame.receipt);
+    const ProductCreativeWireframeDebugLineList* creativeWireframeDebugLines =
+        wireframeFrame.receipt.active &&
+                wireframeFrame.receipt.debugLineSourceAvailable
+            ? &wireframeFrame.debugLineList
+            : nullptr;
 
     const ProductGameplayProjectionFrame projectionFrame =
         buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{
@@ -209,7 +214,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     presentProductWindowFrame(ProductWindowFramePresenterRequest{
         request.options, request.world, request.frontend, settingsTab,
         request.worldSetupDraft, window, saves, sdlWindow, renderer,
-        projectionFrame, creativeUiDrawList});
+        projectionFrame, creativeUiDrawList, creativeWireframeDebugLines});
     ++window.framesPresented;
 
     // branch-gate: BG-1031

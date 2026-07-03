@@ -69,12 +69,38 @@ struct RenderUiFrame {
   std::size_t primitiveCount = 0;
 };
 
+struct RenderLineColor {
+  float r = 1.0F;
+  float g = 1.0F;
+  float b = 1.0F;
+  float a = 1.0F;
+};
+
+struct RenderCreativeWireframeDebugLine {
+  Vec3 start;
+  Vec3 end;
+  RenderLineColor color;
+  std::uint64_t objectId = 0;
+  std::uint32_t objectKind = 0;
+  std::uint32_t style = 0;
+  std::uint32_t segmentKind = 0;
+  float thickness = 1.0F;
+};
+
+struct RenderCreativeWireframeDebugFrame {
+  bool visible = false;
+  bool available = false;
+  const RenderCreativeWireframeDebugLine* lines = nullptr;
+  std::size_t lineCount = 0;
+};
+
 struct FrameInput {
   RenderViewport viewport;
   RenderFrameClock clock;
   RenderCameraFrame camera;
   RenderSceneFrame projections;
   RenderUiFrame ui;
+  RenderCreativeWireframeDebugFrame creativeWireframeDebug;
 };
 
 enum class FrameInputStatus : std::uint8_t {
@@ -87,6 +113,7 @@ enum class FrameInputStatus : std::uint8_t {
   InvalidCameraBasis,
   InvalidCameraMatrix,
   InvalidClipPlanes,
+  InvalidCreativeWireframeDebugLines,
 };
 
 FrameInputStatus validateFrameInput(const FrameInput& frame);

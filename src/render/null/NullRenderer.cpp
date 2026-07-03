@@ -34,6 +34,12 @@ RenderReceipt NullRenderer::makeReceipt(std::string_view result,
                      static_cast<std::uint64_t>(lastViewportHeight_));
   appendReceiptField(receipt, "scene_item_count", lastSceneItemCount_);
   appendReceiptField(receipt, "debug_item_count", lastDebugItemCount_);
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_lines_visible",
+                     lastCreativeWireframeDebugLinesVisible_ ? "true" : "false");
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_line_count",
+                     lastCreativeWireframeDebugLineCount_);
   appendReceiptField(receipt, "draw_count", static_cast<std::uint64_t>(0));
   appendReceiptField(receipt, "frame_input_valid", frameInputValid);
   appendReceiptField(receipt, "runtime_hash_before", "unavailable");
@@ -70,6 +76,11 @@ RenderSubmitResult NullRenderer::submitFrame(const FrameInput& frame) {
     lastDebugItemCount_ = frame.projections.debug == nullptr
                               ? 0U
                               : static_cast<std::uint64_t>(frame.projections.debug->items.size());
+    lastCreativeWireframeDebugLinesVisible_ =
+        frame.creativeWireframeDebug.visible &&
+        frame.creativeWireframeDebug.lineCount > 0U;
+    lastCreativeWireframeDebugLineCount_ =
+        static_cast<std::uint64_t>(frame.creativeWireframeDebug.lineCount);
     lastReasonCode_ = "null_renderer_ok";
 
     RenderSubmitResult result;

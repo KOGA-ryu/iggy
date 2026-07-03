@@ -1,6 +1,7 @@
 #include "render/RendererApi.hpp"
 #include "render/null/NullRenderer.hpp"
 
+#include <cstddef>
 #include <iostream>
 #include <string_view>
 
@@ -58,11 +59,53 @@ bool acceptsValidDrawableFrameAndRecordsCounts() {
                 "scene count") &&
          expect(iggy3d::hasReceiptField(result.receipt, "debug_item_count", "1"),
                 "debug count") &&
+         expect(iggy3d::hasReceiptField(result.receipt,
+                                        "creative_wireframe_debug_lines_visible",
+                                        "false"),
+                "creative wireframe hidden") &&
+         expect(iggy3d::hasReceiptField(result.receipt,
+                                        "creative_wireframe_debug_line_count",
+                                        "0"),
+                "creative wireframe count zero") &&
          expect(iggy3d::hasReceiptField(result.receipt, "draw_count", "0"),
                 "draw count zero") &&
          expect(iggy3d::hasReceiptField(receipt, "last_source_tick", "1"),
                 "last source tick") &&
          expect(iggy3d::hasReceiptField(receipt, "last_frame_index", "1"), "last frame");
+}
+
+bool recordsCreativeWireframeDebugLineCount() {
+  iggy3d::NullRenderer renderer;
+  iggy3d::SceneProjectionResult scene;
+  iggy3d::DebugProjectionResult debug;
+  iggy3d::FrameInput frame = validFrame(scene, debug);
+  iggy3d::RenderCreativeWireframeDebugLine lines[12];
+  for (std::size_t index = 0; index < 12U; ++index) {
+    lines[index].start = {static_cast<float>(index), 0.0F, 0.0F};
+    lines[index].end = {static_cast<float>(index), 1.0F, 0.0F};
+  }
+  frame.creativeWireframeDebug.available = true;
+  frame.creativeWireframeDebug.visible = true;
+  frame.creativeWireframeDebug.lines = lines;
+  frame.creativeWireframeDebug.lineCount = 12U;
+
+  const iggy3d::RenderSubmitResult result = renderer.submitFrame(frame);
+  const iggy3d::RenderReceipt receipt = renderer.diagnostics();
+
+  return expect(result.outcome == iggy3d::RenderOutcome::Ok,
+                "creative wireframe submit ok") &&
+         expect(iggy3d::hasReceiptField(result.receipt,
+                                        "creative_wireframe_debug_lines_visible",
+                                        "true"),
+                "creative wireframe visible") &&
+         expect(iggy3d::hasReceiptField(result.receipt,
+                                        "creative_wireframe_debug_line_count",
+                                        "12"),
+                "creative wireframe count") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "creative_wireframe_debug_line_count",
+                                        "12"),
+                "creative wireframe diagnostics count");
 }
 
 bool invalidAndNotDrawableFramesAreDiagnosed() {
@@ -139,6 +182,7 @@ int main() {
   bool ok = true;
   ok = constructsReadyAndReportsBackend() && ok;
   ok = acceptsValidDrawableFrameAndRecordsCounts() && ok;
+  ok = recordsCreativeWireframeDebugLineCount() && ok;
   ok = invalidAndNotDrawableFramesAreDiagnosed() && ok;
   ok = resizeWaitAndShutdownBehave() && ok;
   ok = factoryCreatesNullRendererNow() && ok;

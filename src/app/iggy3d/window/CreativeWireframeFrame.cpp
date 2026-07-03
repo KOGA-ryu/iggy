@@ -62,31 +62,37 @@ bool productCreativeWireframeFrameActiveForWindow(
 
 ProductCreativeWireframeFrameReceipt routeProductCreativeWireframeFrame(
     const ProductCreativeWireframeFrameRequest& request) {
-  ProductCreativeWireframeFrameReceipt receipt;
+  return buildProductCreativeWireframeFrame(request).receipt;
+}
+
+ProductCreativeWireframeFrameBuildResult buildProductCreativeWireframeFrame(
+    const ProductCreativeWireframeFrameRequest& request) {
+  ProductCreativeWireframeFrameBuildResult result;
+  ProductCreativeWireframeFrameReceipt& receipt = result.receipt;
   receipt.requested = true;
 
   if (request.window == nullptr) {
     setStatus(receipt, "product_creative_wireframe_frame_window_missing");
-    return receipt;
+    return result;
   }
 
   receipt.active = productCreativeWireframeFrameActiveForWindow(*request.window);
   if (!receipt.active) {
     setStatus(receipt, "product_creative_wireframe_frame_inactive");
-    return receipt;
+    return result;
   }
 
   receipt.facadeAvailable = request.facade != nullptr;
   if (request.facade == nullptr) {
     setStatus(receipt, "product_creative_wireframe_frame_facade_missing");
-    return receipt;
+    return result;
   }
 
   const creative::CreativeDocument& document = request.facade->document();
   receipt.documentAvailable = document.isValid();
   if (!receipt.documentAvailable) {
     setStatus(receipt, "product_creative_wireframe_frame_document_invalid");
-    return receipt;
+    return result;
   }
 
   const creative::CreativeDocumentWireframeBuildResult wireframe =
@@ -97,29 +103,30 @@ ProductCreativeWireframeFrameReceipt routeProductCreativeWireframeFrame(
   if (wireframe.receipt.status ==
       creative::CreativeDocumentWireframeStatus::InvalidProjection) {
     setStatus(receipt, "product_creative_wireframe_frame_invalid_projection");
-    return receipt;
+    return result;
   }
 
   const creative::CreativeDocumentWireframeSegmentBuildResult segments =
       creative::buildCreativeDocumentWireframeSegments(wireframe.drawList);
   copySegmentReceipt(receipt, segments.receipt);
 
-  const ProductCreativeWireframeDebugLineBuildResult debugLines =
+  ProductCreativeWireframeDebugLineBuildResult debugLines =
       buildProductCreativeWireframeDebugLines(segments.segmentList);
   copyDebugLineReceipt(receipt, debugLines.receipt);
+  result.debugLineList = std::move(debugLines.lineList);
 
   if (receipt.objectCount == 0U) {
     setStatus(receipt, "product_creative_wireframe_frame_source_empty");
-    return receipt;
+    return result;
   }
 
   if (receipt.segmentCount > 0U) {
     setStatus(receipt, "product_creative_wireframe_frame_built");
-    return receipt;
+    return result;
   }
 
   setStatus(receipt, "product_creative_wireframe_frame_no_segments");
-  return receipt;
+  return result;
 }
 
 }  // namespace iggy3d

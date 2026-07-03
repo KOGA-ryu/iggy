@@ -38,8 +38,10 @@ private:
   std::uint64_t lastFrameIndex_ = 0;
   std::uint64_t lastSceneItemCount_ = 0;
   std::uint64_t lastDebugItemCount_ = 0;
+  std::uint64_t lastCreativeWireframeDebugLineCount_ = 0;
   std::uint32_t lastViewportWidth_ = 0;
   std::uint32_t lastViewportHeight_ = 0;
+  bool lastCreativeWireframeDebugLinesVisible_ = false;
   std::string_view lastReasonCode_ = "null_renderer_ok";
 };
 

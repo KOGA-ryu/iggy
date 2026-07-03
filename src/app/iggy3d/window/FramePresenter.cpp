@@ -10,6 +10,7 @@
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/menu/PauseUi.hpp"
+#include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "render/FrameInput.hpp"
 #include "render/debug/DebugHudText.hpp"
@@ -738,6 +739,20 @@ void applyProductWindowProjectionMetrics(
                                  viewVisible);
 }
 
+RenderCreativeWireframeDebugLine renderCreativeWireframeDebugLineFor(
+    const ProductCreativeWireframeDebugLine& line) {
+  RenderCreativeWireframeDebugLine renderLine;
+  renderLine.start = line.start;
+  renderLine.end = line.end;
+  renderLine.color = {line.color.r, line.color.g, line.color.b, line.color.a};
+  renderLine.objectId = static_cast<std::uint64_t>(line.objectId);
+  renderLine.objectKind = static_cast<std::uint32_t>(line.objectKind);
+  renderLine.style = static_cast<std::uint32_t>(line.style);
+  renderLine.segmentKind = static_cast<std::uint32_t>(line.segmentKind);
+  renderLine.thickness = line.thickness;
+  return renderLine;
+}
+
 void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
   // branch-gate: BG-1030
   if (request.projectionFrame.scenePtr() != nullptr &&
@@ -757,6 +772,13 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
           request.frontend.screen == FrontendScreen::DevOverlay &&
               frontendDevToolsOpen(request.frontend),
           request.frontend.devToolsCategory);
+      const ProductCreativeWireframeDebugRenderFrame creativeDebugFrame =
+          buildProductCreativeWireframeDebugRenderFrame(
+              request.creativeWireframeDebugLineList);
+      renderFrame.creativeWireframeDebugLines = creativeDebugFrame.lines;
+      renderFrame.frame.creativeWireframeDebug = creativeDebugFrame.frame;
+      renderFrame.frame.creativeWireframeDebug.lines =
+          renderFrame.creativeWireframeDebugLines.data();
       // Creative UI is a transient one-frame overlay over gameplay. It is appended
       // before pause UI so the pause journal remains topmost when both exist.
       if (request.creativeUiDrawList != nullptr) {
@@ -1001,7 +1023,33 @@ const FrameInput& refreshProductVulkanGameplayFrameInput(
   gameplayFrame.frame.ui.textGlyphCount = gameplayFrame.textGlyphCount;
   gameplayFrame.frame.ui.primitiveCount =
       gameplayFrame.rects.size() + gameplayFrame.textGlyphCount;
+  gameplayFrame.frame.creativeWireframeDebug.lines =
+      gameplayFrame.creativeWireframeDebugLines.data();
+  gameplayFrame.frame.creativeWireframeDebug.lineCount =
+      gameplayFrame.creativeWireframeDebugLines.size();
+  gameplayFrame.frame.creativeWireframeDebug.visible =
+      gameplayFrame.frame.creativeWireframeDebug.available &&
+      !gameplayFrame.creativeWireframeDebugLines.empty();
   return gameplayFrame.frame;
+}
+
+ProductCreativeWireframeDebugRenderFrame buildProductCreativeWireframeDebugRenderFrame(
+    const ProductCreativeWireframeDebugLineList* lineList) {
+  ProductCreativeWireframeDebugRenderFrame renderFrame;
+  if (lineList == nullptr) {
+    return renderFrame;
+  }
+
+  renderFrame.frame.available = true;
+  renderFrame.lines.reserve(lineList->lines.size());
+  for (const ProductCreativeWireframeDebugLine& line : lineList->lines) {
+    renderFrame.lines.push_back(renderCreativeWireframeDebugLineFor(line));
+  }
+
+  renderFrame.frame.visible = !renderFrame.lines.empty();
+  renderFrame.frame.lines = renderFrame.lines.data();
+  renderFrame.frame.lineCount = renderFrame.lines.size();
+  return renderFrame;
 }
 
 void appendProductUiOverlay(ProductVulkanGameplayFrame& gameplayFrame,

@@ -63,6 +63,8 @@ std::string_view frameInputReasonCode(FrameInputStatus status) {
       return "frame_camera_matrix_invalid";
     case FrameInputStatus::InvalidClipPlanes:
       return "frame_clip_planes_invalid";
+    case FrameInputStatus::InvalidCreativeWireframeDebugLines:
+      return "frame_creative_wireframe_debug_lines_invalid";
   }
   return "frame_input_invalid";
 }
@@ -104,6 +106,11 @@ FrameInputStatus validateFrameInput(const FrameInput& frame) {
   if (!isFiniteScalar(frame.camera.nearPlane) || !isFiniteScalar(frame.camera.farPlane) ||
       frame.camera.nearPlane <= 0.0F || frame.camera.farPlane <= frame.camera.nearPlane) {
     return FrameInputStatus::InvalidClipPlanes;
+  }
+
+  if (frame.creativeWireframeDebug.lineCount > 0U &&
+      frame.creativeWireframeDebug.lines == nullptr) {
+    return FrameInputStatus::InvalidCreativeWireframeDebugLines;
   }
 
   // branch-gate: BG-1080
