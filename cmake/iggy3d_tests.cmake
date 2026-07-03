@@ -132,6 +132,11 @@ iggy3d_add_unit_test(product_creative_ui_draw_list_tests
 set_tests_properties(product_creative_ui_draw_list_tests PROPERTIES
   LABELS "unit;app;product;creative;ui;draw_list;iggy3d")
 
+iggy3d_add_unit_test(product_creative_ui_projection_tests
+  tests/unit/product_creative_ui_projection_tests.cpp)
+set_tests_properties(product_creative_ui_projection_tests PROPERTIES
+  LABELS "unit;app;product;creative;ui;projection;iggy3d")
+
 iggy3d_add_unit_test(product_ui_widget_tests
   tests/unit/product_ui_widget_tests.cpp)
 set_tests_properties(product_ui_widget_tests PROPERTIES
