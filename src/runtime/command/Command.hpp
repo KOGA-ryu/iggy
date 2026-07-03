@@ -97,13 +97,18 @@ struct CommandTarget {
   Vec3 point;
 };
 
+// MA1 s2: the sneak stance rides an EXISTING userData0 bit on Move (a documented constant, NOT a new
+// named payload field). userData0 is already hashed (deterministic/replay-sound) and now saved; the
+// bit is the single carrier of per-command stance from admission through to footstep loudness.
+inline constexpr std::uint64_t kMoveSneakBit = 1ULL << 0;
+
 struct CommandPayload {
   CommandTarget target;
   CommandId retrySourceCommandId = kInvalidCommandId;
   std::int32_t attackDamage = 0;
   CommandAbilityKind ability = CommandAbilityKind::None;
   Vec3 abilityDirection;
-  std::uint64_t userData0 = 0;
+  std::uint64_t userData0 = 0;  // bitfield; bit 0 = kMoveSneakBit (Move stance)
   std::uint64_t userData1 = 0;
 };
 

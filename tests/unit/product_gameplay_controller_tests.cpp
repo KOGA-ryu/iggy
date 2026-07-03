@@ -378,6 +378,13 @@ iggy3d::ActionState manualMoveActions(float moveX,
   return actions;
 }
 
+// MA1 s2: move with crouch HELD (the sneak stance).
+iggy3d::ActionState crouchMoveActions(float moveX, float moveY) {
+  iggy3d::ActionState actions = manualMoveActions(moveX, moveY);
+  iggy3d::recordAction(actions, iggy3d::InputAction::PlayerCrouch, true, false, false, 1.0F);
+  return actions;
+}
+
 iggy3d::ActionState jumpActions() {
   iggy3d::ActionState actions;
   iggy3d::recordAction(actions,
@@ -1141,6 +1148,34 @@ bool productGiantDimensionJumpsStrictlyHigherThanEarth() {
          expect(giantWindow.gameplayJumpAccepted, "giant jump accepted") &&
          expect(giantApexY > earthApexY,
                 "giant_lowgrav reaches a strictly higher apex than earth_standard");
+}
+
+// MA1 s2 speed half: crouch-held shrinks the ground Move step by the dimension's sneakSpeedMultiplier
+// (earth 0.5), so a sneak travels a strictly shorter distance than a walk on the same input.
+bool productCrouchStanceTravelsShorterThanWalk() {
+  std::optional<iggy3d::Session> walkSession;
+  iggy3d::ProductAppWindowState walkWindow = makeGameplayWindow(walkSession);
+  std::optional<iggy3d::Session> sneakSession;
+  iggy3d::ProductAppWindowState sneakWindow = makeGameplayWindow(sneakSession);
+  if (!expect(walkSession.has_value() && sneakSession.has_value(), "stance sessions created")) {
+    return false;
+  }
+
+  const iggy3d::Vec3 walkStart = playerEntity(*walkSession)->transform.position;
+  const iggy3d::Vec3 sneakStart = playerEntity(*sneakSession)->transform.position;
+  iggy3d::applyProductGameplayActions(*walkSession, manualMoveActions(0.0F, 1.0F), walkWindow,
+                                      "unit/gameplay_controller_walk_step");
+  iggy3d::applyProductGameplayActions(*sneakSession, crouchMoveActions(0.0F, 1.0F), sneakWindow,
+                                      "unit/gameplay_controller_sneak_step");
+  const float walkDist =
+      horizontalDistance(walkStart, playerEntity(*walkSession)->transform.position);
+  const float sneakDist =
+      horizontalDistance(sneakStart, playerEntity(*sneakSession)->transform.position);
+
+  return expect(walkDist > 0.0F, "the walk step moves the player") &&
+         expect(sneakDist > 0.0F, "the sneak step moves the player") &&
+         expect(sneakDist < walkDist,
+                "a crouch-held sneak travels a strictly shorter step than a walk");
 }
 
 bool productMovementStateReportsBlockedOrSlidingFromCollisionProof() {
@@ -2241,6 +2276,7 @@ int main() {
                   productEarlyJumpReleaseCutsJumpHeight() &&
                   productFallGravityMultiplierDescendsFaster() &&
                   productGiantDimensionJumpsStrictlyHigherThanEarth() &&
+                  productCrouchStanceTravelsShorterThanWalk() &&
                   productMovementStateReportsBlockedOrSlidingFromCollisionProof() &&
                   productWallRunCandidateReportsAirborneSideWallContact() &&
                   productWallRunCandidateRejectsGroundedContact() &&

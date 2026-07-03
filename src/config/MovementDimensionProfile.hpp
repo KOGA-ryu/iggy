@@ -48,7 +48,17 @@ struct MovementDimensionProfile {
   std::string_view walkProfile = "manual_first_person";
   std::string_view sprintProfile = "manual_first_person_sprint";
   std::string_view dashProfile = "manual_first_person_dash";
+
+  // MA1 s2 sneak-stance knobs (per-dimension, EXTRA — NOT part of the 26-field app-tuning mirror,
+  // so applyMovementDimensionProfileToTuning does NOT touch them). The speed half scales Move deltas;
+  // the loudness half scales emitted footstep dB. Both in (0, 1]; loudness never below the floor
+  // (sneak DECLARES noise, never silent — the sound law).
+  float sneakSpeedMultiplier = 0.5F;
+  float sneakLoudnessMultiplier = 0.35F;
 };
+
+// The sound-law floor: a sneak footstep is quieter but NEVER silent (loudness multiplier >= this).
+inline constexpr float kMinSneakLoudnessMultiplier = 0.05F;
 
 // Fail-closed lookup: the static row for `id`, or nullptr (caller maps null -> seed error).
 const MovementDimensionProfile* movementDimensionProfileById(std::string_view id);

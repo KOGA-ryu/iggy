@@ -83,6 +83,8 @@ SaveCommandRecord saveCommand(const CommandRecord& command) {
   record.attackDamage = command.payload.attackDamage;
   record.ability = command.payload.ability;
   record.abilityDirection = command.payload.abilityDirection;
+  record.userData0 = command.payload.userData0;
+  record.userData1 = command.payload.userData1;
   record.issuedTick = command.issuedTick;
   record.scheduledTick = command.scheduledTick;
   record.admission = command.admission;
@@ -106,6 +108,8 @@ CommandRecord loadCommand(const SaveCommandRecord& record) {
   command.payload.attackDamage = record.attackDamage;
   command.payload.ability = record.ability;
   command.payload.abilityDirection = record.abilityDirection;
+  command.payload.userData0 = record.userData0;
+  command.payload.userData1 = record.userData1;
   command.issuedTick = record.issuedTick;
   command.scheduledTick = record.scheduledTick;
   command.admission = record.admission;

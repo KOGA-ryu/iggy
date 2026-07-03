@@ -301,6 +301,13 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
           footstep.originMeters = movement.finalPosition;
           footstep.loudnessDb = state.config.footstepBaseLoudnessDb +
                                 state.config.footstepLoudnessPerMeterDb * displacement;
+          // MA1 s2: a sneaking step is quieter. The per-dimension multiplier scales the emitted dB
+          // (monotonic; the seam armour's loudness multiplier composes here later). Combined with the
+          // stance's smaller displacement above, a sneak is quieter two ways. Stance arrives via the
+          // Move's userData bit -> request -> movement.mode (deterministic + replay/load-sound).
+          if (movement.mode == MovementMode::Sneak) {
+            footstep.loudnessDb *= state.movementProfile.sneakLoudnessMultiplier;
+          }
           footstep.alertFactor = state.config.footstepAlertFactor;
           footstep.alertMax = state.config.footstepAlertMaxUnits;
           state.transient.soundEvents.push_back(footstep);

@@ -383,6 +383,7 @@ struct ProductAppWindowState {
   bool gameplayCollisionSurfacesUsed = false;
   std::uint64_t gameplayCollisionSurfaceCount = 0;
   std::string gameplayTickReasonCode = "not_requested";
+  bool gameplayCrouchHeld = false;  // MA1 s2: automation-driven sneak stance hold (ORed with live crouch)
   bool physicsMovementPlannerEnabled = false;
   bool physicsMovementPlannerRequested = false;
   bool physicsMovementPlannerUsed = false;

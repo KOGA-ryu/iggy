@@ -710,6 +710,12 @@ MovementRequest movementRequestFromAcceptedCommand(
   }
 
   request.destination = command.payload.target.point;
+  // MA1 s2: the sneak stance (carried on the accepted, hashed command) OVERRIDES the clock-derived
+  // mode for this Move. Nothing branches on MovementMode values today, so this is a pure relabel that
+  // reaches footstep emission via MovementResult.mode -- the only deterministic per-command carrier.
+  if ((command.payload.userData0 & kMoveSneakBit) != 0) {
+    request.mode = MovementMode::Sneak;
+  }
   return request;
 }
 

@@ -1309,6 +1309,93 @@ bool alertMemoryFacingRoundTripsThroughSaveLoad() {
 
 }  // namespace
 
+// MA1 s2 determinism: a Move with the sneak stance rides the (already-hashed) userData0 bit. This
+// verifies the bit is deterministic, HASHED, and now SAVED -- the exact failure mode the persistence
+// closes (a lost bit would make the post-load footstep louder + diverge the hash).
+iggy3d::CommandRecord submittedSneakMove(iggy3d::Vec3 point) {
+  iggy3d::CommandRecord command = submittedMove(point);
+  command.payload.userData0 |= iggy3d::kMoveSneakBit;
+  return command;
+}
+
+float lastFootstepLoudness(const iggy3d::Session& session) {
+  const std::vector<iggy3d::SoundEvent>& events = session.state().transient.soundEvents;
+  return events.empty() ? -1.0F : events.front().loudnessDb;
+}
+
+bool sneakBitIsHashedAndDeterministic() {
+  iggy3d::Session a = makeSession();
+  (void)a.submitCommand(submittedSneakMove({1.5F, 0.0F, 0.0F}));
+  (void)a.tick();
+  iggy3d::Session b = makeSession();
+  (void)b.submitCommand(submittedSneakMove({1.5F, 0.0F, 0.0F}));
+  (void)b.tick();
+  iggy3d::Session walk = makeSession();
+  (void)walk.submitCommand(submittedMove({1.5F, 0.0F, 0.0F}));
+  (void)walk.tick();
+
+  bool loggedBit = false;
+  for (const iggy3d::CommandRecord& record : a.state().commandLog.records()) {
+    if ((record.payload.userData0 & iggy3d::kMoveSneakBit) != 0) {
+      loggedBit = true;
+    }
+  }
+  return expect(loggedBit, "the sneak bit is recorded on the logged Move") &&
+         expect(a.stateHash() == b.stateHash(),
+                "an identical sneak sequence is deterministic (same hash)") &&
+         expect(a.stateHash() != walk.stateHash(),
+                "the sneak bit participates in the state hash (sneak vs walk diverge)");
+}
+
+bool sneakBitAndLoudnessSurviveSaveLoad() {
+  iggy3d::Session live = makeSession();
+  (void)live.submitCommand(submittedSneakMove({1.5F, 0.0F, 0.0F}));
+  (void)live.tick();
+  const iggy3d::SaveStateResult sneakSave = iggy3d::saveSessionStateEncoded(live.state());
+  bool ok = expect(sneakSave.status == iggy3d::SaveLoadStatus::Ok, "mid-sneak save ok") &&
+            expect(sneakSave.encodedSaveText.find("userData0") != std::string::npos,
+                   "the sneak command persists userData0 on the wire");
+
+  const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(sneakSave.encodedSaveText);
+  ok = ok && expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "mid-sneak decode ok");
+  bool decodedBit = false;
+  for (const iggy3d::SaveCommandRecord& record : decoded.envelope.commandLog.records) {
+    if ((record.userData0 & iggy3d::kMoveSneakBit) != 0) {
+      decodedBit = true;
+    }
+  }
+  ok = ok && expect(decodedBit, "the decoded command log carries the sneak bit");
+
+  iggy3d::Session loaded = makeSession();
+  const iggy3d::LoadStateResult load = iggy3d::loadEncodedSaveIntoSession(
+      loaded, sneakSave.encodedSaveText, compatibilityFor(sneakSave.envelope));
+  ok = ok && expect(load.status == iggy3d::SaveLoadStatus::Ok, "mid-sneak load ok") &&
+       expect(loaded.stateHash() == live.stateHash(),
+              "post-load hash matches -> the saved sneak bit restored byte-identically");
+
+  // The next sneak footstep after load is as quiet as the never-saved run (profile carried + stance
+  // intact). A lost bit would emit a LOUDER step here.
+  (void)loaded.submitCommand(submittedSneakMove({3.0F, 0.0F, 0.0F}));
+  (void)loaded.tick();
+  const float loadedLoud = lastFootstepLoudness(loaded);
+  (void)live.submitCommand(submittedSneakMove({3.0F, 0.0F, 0.0F}));
+  (void)live.tick();
+  const float liveLoud = lastFootstepLoudness(live);
+  ok = ok && expect(loadedLoud > 0.0F &&
+                        loadedLoud - liveLoud < 0.001F && liveLoud - loadedLoud < 0.001F,
+                    "a post-load sneak footstep is identically quiet to the never-saved run");
+
+  // A no-sneak save omits the userData keys entirely -> byte-identical to pre-MA1 saves.
+  iggy3d::Session walkSession = makeSession();
+  (void)walkSession.submitCommand(submittedMove({1.5F, 0.0F, 0.0F}));
+  (void)walkSession.tick();
+  const iggy3d::SaveStateResult walkSave =
+      iggy3d::saveSessionStateEncoded(walkSession.state());
+  ok = ok && expect(walkSave.encodedSaveText.find("userData0") == std::string::npos,
+                    "a no-sneak save omits the userData keys (byte-identical back-compat)");
+  return ok;
+}
+
 int main() {
   bool ok = true;
   ok = envelopeMappingPreservesDurableState() && ok;
@@ -1329,5 +1416,7 @@ int main() {
   ok = alertMemoryFacingRoundTripsThroughSaveLoad() && ok;
   ok = aiStateChangesParticipateInHash() && ok;
   ok = invalidCombatStateRejectedOnLoad() && ok;
+  ok = sneakBitIsHashedAndDeterministic() && ok;
+  ok = sneakBitAndLoudnessSurviveSaveLoad() && ok;
   return ok ? 0 : 1;
 }

@@ -18,6 +18,10 @@ enum class MovementMode : std::uint8_t {
   Walk,
   Tactical,
   Reposition,
+  // MA1 s2: the crouch-walk stance. Derived (Move only) from the command's kMoveSneakBit in
+  // movementRequestFromAcceptedCommand and WINS over the clock-derived label; scales footstep
+  // loudness at emission. APPENDED at the end so serialized ordinals of the prior modes are stable.
+  Sneak,
 };
 
 enum class MovementBlockedReason : std::uint8_t {

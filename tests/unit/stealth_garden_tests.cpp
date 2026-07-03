@@ -736,6 +736,79 @@ bool sneakFootstepsStayBelowHearingMargin() {
   return ok;
 }
 
+// MA1 s2 (the ONE tuning-coupled sneak-stance test). Move the player a fixed step in two fresh,
+// identical gardens -- one WALKING, one SNEAKING (the kMoveSneakBit on the Move) -- and read the
+// EMITTED footstep loudness (the sneak one is scaled by the dimension's sneakLoudnessMultiplier at
+// emission). At a listener 1 m from each footstep (the reference distance -> falloff cancels, so the
+// separation is purely the stance) the WALK is clearly HEARD while the SNEAK is clearly UNHEARD, both
+// with the CURRENT footstep knobs (NO retuning). This lane sits CLOSER than the frozen ~11 m east-
+// column block, which must also stay green.
+float emitFootstepLoudness(GardenSession& gs, iggy3d::Vec3 delta, bool sneak,
+                           iggy3d::Vec3& originOut) {
+  iggy3d::CommandRecord command = playerCommand(gs.player, iggy3d::CommandKind::Move);
+  command.payload.target.hasPoint = true;
+  command.payload.target.point = playerPosition(gs) + delta;
+  // MA1 s2: the stance rides the existing userData0 bit (NOT a new named field). At runtime the bit
+  // only quiets the step -- the app-side speed half is a separate concern -- so walk and sneak here
+  // travel the SAME displacement, isolating the loudness half for an equal-distance comparison.
+  if (sneak) {
+    command.payload.userData0 |= iggy3d::kMoveSneakBit;
+  }
+  (void)gs.session->submitCommand(command);
+  if (!tick(gs)) {
+    return -1000.0F;
+  }
+  const std::vector<iggy3d::SoundEvent>& events = gs.session->state().transient.soundEvents;
+  if (events.empty()) {
+    return -1000.0F;
+  }
+  originOut = events.front().originMeters;
+  return events.front().loudnessDb;
+}
+
+bool sneakFootstepUnheardWhereAWalkIsHeard() {
+  GardenSession walkGarden = makeGardenSession();
+  GardenSession sneakGarden = makeGardenSession();
+  if (!walkGarden.ok || !sneakGarden.ok) {
+    return false;
+  }
+  const iggy3d::SoundPerceptionConfig snd;  // reference hearing tuning (threshold 20 dB, falloff 9)
+  constexpr float kMarginDb = 3.0F;         // the same stated mechanical margin as the frozen block
+
+  // A fixed step up the open east-column lane, identical in both gardens (same spawn, same walls).
+  const iggy3d::Vec3 toExit = walkGarden.exitCell - walkGarden.playerSpawn;
+  const float len = std::sqrt(toExit.x * toExit.x + toExit.z * toExit.z);
+  const iggy3d::Vec3 step = len > 0.0F ? iggy3d::Vec3{toExit.x / len * 2.5F, 0.0F,
+                                                      toExit.z / len * 2.5F}
+                                       : iggy3d::Vec3{0.0F, 0.0F, 2.5F};
+
+  iggy3d::Vec3 walkOrigin;
+  iggy3d::Vec3 sneakOrigin;
+  const float walkLoud = emitFootstepLoudness(walkGarden, step, /*sneak=*/false, walkOrigin);
+  const float sneakLoud = emitFootstepLoudness(sneakGarden, step, /*sneak=*/true, sneakOrigin);
+
+  bool ok = expect(walkLoud > 0.0F && sneakLoud > 0.0F, "both gardens emit a footstep");
+  ok = ok && expect(sneakLoud < walkLoud, "the emitted sneak footstep is quieter than the walk");
+
+  // Listener 1 m from each footstep (same close geometry for both).
+  iggy3d::SoundEvent walkEvent;
+  walkEvent.originMeters = walkOrigin;
+  walkEvent.loudnessDb = walkLoud;
+  iggy3d::SoundEvent sneakEvent;
+  sneakEvent.originMeters = sneakOrigin;
+  sneakEvent.loudnessDb = sneakLoud;
+  const iggy3d::Vec3 walkListener = walkOrigin + iggy3d::Vec3{1.0F, 0.0F, 0.0F};
+  const iggy3d::Vec3 sneakListener = sneakOrigin + iggy3d::Vec3{1.0F, 0.0F, 0.0F};
+  const float walkAudibility = iggy3d::soundAudibilityDb(walkEvent, walkListener, snd, false);
+  const float sneakAudibility = iggy3d::soundAudibilityDb(sneakEvent, sneakListener, snd, false);
+
+  ok = ok && expect(walkAudibility > snd.hearingThresholdDb + kMarginDb,
+                    "a WALK footstep is clearly HEARD at 1 m (current knobs)");
+  ok = ok && expect(sneakAudibility < snd.hearingThresholdDb - kMarginDb,
+                    "the SNEAK footstep is clearly UNHEARD at the same 1 m geometry");
+  return ok;
+}
+
 // CONVERSE (white-box, tuning-coupled -- the ONE quarantine test for a1s2). Freeze the guard at
 // a fixed cell facing AWAY (east) so it can never SEE the noise-maker; pace the player right
 // behind it (west) emitting footsteps until sustained hearing climbs it into Searching and
@@ -1272,6 +1345,7 @@ int main() {
                   spottedGuardEscalatesToChasing() && gardenGuardLapsIslandRing() &&
                   breakContactInvestigatesThenGivesUp() &&
                   sneakFootstepsStayBelowHearingMargin() &&
+                  sneakFootstepUnheardWhereAWalkIsHeard() &&
                   heardNoiseSearchesAndInvestigatesButNeverChases() &&
                   reasoningGraphShapeMatchesGarden() &&
                   reasoningGraphCarriesAcrossTicksAndClearsOnLoad() &&

@@ -206,6 +206,8 @@ struct SaveCommandRecord {
   std::int32_t attackDamage = 0;
   CommandAbilityKind ability = CommandAbilityKind::None;
   Vec3 abilityDirection;
+  std::uint64_t userData0 = 0;  // MA1 s2: closes the hashed-but-unsaved hole (carries the sneak bit)
+  std::uint64_t userData1 = 0;
   CommandTick issuedTick = kInvalidCommandTick;
   CommandTick scheduledTick = kInvalidCommandTick;
   CommandAdmissionStatus admission = CommandAdmissionStatus::Pending;

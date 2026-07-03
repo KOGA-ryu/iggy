@@ -265,6 +265,22 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
     return passGameplayAutomation(true);
   }
 
+  // MA1 s2: crouch is a persistent stance HOLD (state-setter, like physics_movement) -- it does not
+  // drive a tick itself; the next move verb reads it (ORed into the gameplay intent) and sneaks.
+  // branch-gate: BG-1010
+  if (automationSpec.commandId == ProductAutomationCommandId::GameplayCrouch) {
+    bool boolValue = false;
+    // branch-gate: BG-1010
+    if (!resolveProductAutomationBool(value, boolValue)) {
+      context.window.automationControlStatus = "invalid_value";
+      return failGameplayAutomation();
+    }
+    context.window.gameplayCrouchHeld = boolValue;
+    markAutomationApplied(context.window, command, automationSpec.canonicalKey,
+                          context.currentOwner(), "applied");
+    return passGameplayAutomation(true);
+  }
+
   // branch-gate: BG-1010
   if (automationSpec.commandId ==
       ProductAutomationCommandId::GameplayPlayerPosition) {

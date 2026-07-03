@@ -985,6 +985,11 @@ private:
       line(p + "attackDamage", std::to_string(record.attackDamage));
       lineEnum(p + "ability", record.ability);
       line(p + "abilityDirection", formatVec3(record.abilityDirection));
+      // MA1 s2: userData persisted only when non-zero -> existing saves (all 0) stay BYTE-IDENTICAL.
+      if (record.userData0 != 0 || record.userData1 != 0) {
+        line(p + "userData0", unsignedText(record.userData0));
+        line(p + "userData1", unsignedText(record.userData1));
+      }
       line(p + "issuedTick", unsignedText(record.issuedTick));
       line(p + "scheduledTick", unsignedText(record.scheduledTick));
       lineEnum(p + "admission", record.admission);
@@ -1565,6 +1570,11 @@ private:
       if (nextKeyIs(p + "ability")) {
         readEnum(p + "ability", record.ability);
         readVec3(p + "abilityDirection", record.abilityDirection);
+      }
+      // MA1 s2: absent userData keys ⇒ 0 (default already set), so old saves decode unchanged.
+      if (nextKeyIs(p + "userData0")) {
+        readUnsigned(p + "userData0", record.userData0);
+        readUnsigned(p + "userData1", record.userData1);
       }
       readUnsigned(p + "issuedTick", record.issuedTick);
       readUnsigned(p + "scheduledTick", record.scheduledTick);

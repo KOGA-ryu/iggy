@@ -17,6 +17,8 @@ constexpr MovementDimensionProfile makeGiantLowgrav() {
   profile.jumpImpulseMetersPerSecond = 19.5F;
   profile.wallRunDurationSeconds = 1.1F;
   profile.dashSpeedMetersPerSecond = 22.0F;
+  // sneakSpeedMultiplier / sneakLoudnessMultiplier keep earth's defaults (0.5 / 0.35) -- the giant
+  // world may retune its own sneak feel later; matching earth is a valid first value.
   return profile;
 }
 
@@ -42,6 +44,15 @@ bool isCoherentMovementProfile(const MovementDimensionProfile& profile,
   if (!std::isfinite(profile.dashSpeedMetersPerSecond) ||
       !std::isfinite(profile.dashDurationSeconds) ||
       !std::isfinite(resolvedMovementDistanceMeters)) {
+    return false;
+  }
+  // MA1 s2: sneak multipliers slow + quiet, never stop or silence. Both in (0, 1]; loudness above the
+  // floor (fail-closed -- a silent sneak would break the sound law the stealth sim depends on).
+  if (!std::isfinite(profile.sneakSpeedMultiplier) ||
+      !std::isfinite(profile.sneakLoudnessMultiplier) ||
+      profile.sneakSpeedMultiplier <= 0.0F || profile.sneakSpeedMultiplier > 1.0F ||
+      profile.sneakLoudnessMultiplier > 1.0F ||
+      profile.sneakLoudnessMultiplier < kMinSneakLoudnessMultiplier) {
     return false;
   }
   return profile.dashSpeedMetersPerSecond * profile.dashDurationSeconds <=

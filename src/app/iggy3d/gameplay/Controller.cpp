@@ -2151,6 +2151,7 @@ void submitProductMove(Session& session,
                        float moveX,
                        float moveY,
                        bool sprinting,
+                       bool sneaking,
                        std::string_view source,
                        const SpatialSurfaceSet* collisionSurfaces) {
   clearProductTargetProof(window);
@@ -2174,8 +2175,13 @@ void submitProductMove(Session& session,
   }
   const Vec3 retainedVelocity =
       updateProductGroundMovementVelocity(window, moveX, moveY, sprinting);
+  // MA1 s2 speed half: sneaking shrinks the per-step destination by the dimension's multiplier (read
+  // from the runtime profile). Zero wire change -- the command just travels a shorter delta, which
+  // ALSO reduces the footstep displacement (the second, complementary quieting).
+  const float sneakSpeedMultiplier =
+      sneaking ? session.state().movementProfile.sneakSpeedMultiplier : 1.0F;
   const Vec3 retainedDelta =
-      retainedVelocity * window.gameplayMovementTuning.inputStepSeconds;
+      retainedVelocity * (window.gameplayMovementTuning.inputStepSeconds * sneakSpeedMultiplier);
   // branch-gate: BG-1161
   if (retainedDelta.x == 0.0F && retainedDelta.z == 0.0F) {
     return;
@@ -2190,6 +2196,11 @@ void submitProductMove(Session& session,
   command.source = CommandSource::LocalPlayer;
   command.payload.target.hasPoint = true;
   command.payload.target.point = destination;
+  // MA1 s2 loudness half: carry the stance on the hashed/logged command so replay + post-load
+  // reproduce it and SessionTick can scale footstep loudness deterministically.
+  if (sneaking) {
+    command.payload.userData0 |= kMoveSneakBit;
+  }
   window.gameplayInputSource = std::string(source);
   submitProductGameplayCommand(session, window, command, collisionSurfaces);
 }
@@ -2260,6 +2271,7 @@ struct ProductGameplayInputIntent {
   float moveX = 0.0F;
   float moveY = 0.0F;
   bool sprinting = false;
+  bool sneaking = false;
   bool jumpPressed = false;
   bool jumpReleased = false;
   bool dashPressed = false;
@@ -2274,6 +2286,10 @@ ProductGameplayInputIntent sampleProductGameplayInputIntent(
   intent.moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
   intent.moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
   intent.sprinting = actionIsDown(actions, InputAction::PlayerSprint);
+  // MA1 s2: crouch HELD = sneaking (no toggle state to persist). The mode-filter
+  // (mapMakerConsumesGameplayAction) already strips PlayerCrouch while creative-fly owns input, so
+  // this only reads crouch when gameplay owns it. The automation hold is ORed in by the caller.
+  intent.sneaking = actionIsDown(actions, InputAction::PlayerCrouch);
   intent.jumpPressed = actionWasPressed(actions, InputAction::PlayerJump);
   intent.jumpReleased = actionWasReleased(actions, InputAction::PlayerJump);
   intent.dashPressed = actionWasPressed(actions, InputAction::PlayerDash);
@@ -2376,6 +2392,7 @@ void updateProductRetainedHorizontalVelocityPhase(
                     intent.moveX,
                     intent.moveY,
                     intent.sprinting,
+                    intent.sneaking,
                     source,
                     collisionSurfaces);
 }
@@ -2430,8 +2447,10 @@ void applyProductGameplayActions(Session& session,
                                  ProductAppWindowState& window,
                                  std::string_view source,
                                  const SpatialSurfaceSet* collisionSurfaces) {
-  const ProductGameplayInputIntent intent =
-      sampleProductGameplayInputIntent(actions);
+  ProductGameplayInputIntent intent = sampleProductGameplayInputIntent(actions);
+  // MA1 s2: automation drives the stance via a persistent window hold (tapes can't hold a key across
+  // separate move verbs); OR it with the live crouch so both input paths sneak identically.
+  intent.sneaking = intent.sneaking || window.gameplayCrouchHeld;
   updateProductJumpTimingPhase(session, window, intent, source, collisionSurfaces);
   if (applyProductDashPhase(
           session, window, intent, source, collisionSurfaces)) {
