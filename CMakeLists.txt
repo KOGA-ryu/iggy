@@ -167,6 +167,7 @@ target_sources(iggy3d
     src/runtime/ai/ReasoningGraph.cpp
     src/runtime/ai/ReasoningRoute.cpp
     src/runtime/ai/GuardDecision.cpp
+    src/runtime/ai/InfluenceMap.cpp
     src/runtime/encounter/EncounterDeck.cpp
     src/runtime/encounter/EncounterPlacement.cpp
     src/runtime/combat/CombatSystem.cpp

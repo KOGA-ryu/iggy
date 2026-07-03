@@ -526,6 +526,14 @@ iggy3d_add_unit_test(guard_decision_readout tests/unit/guard_decision_readout.cp
 set_tests_properties(guard_decision_readout PROPERTIES
   LABELS "unit;runtime;ai;reasoning;decision;readout;iggy3d")
 
+iggy3d_add_unit_test(influence_map_tests tests/unit/influence_map_tests.cpp)
+set_tests_properties(influence_map_tests PROPERTIES
+  LABELS "unit;runtime;ai;reasoning;influence;iggy3d")
+
+iggy3d_add_unit_test(influence_readout tests/unit/influence_readout.cpp)
+set_tests_properties(influence_readout PROPERTIES
+  LABELS "unit;runtime;ai;reasoning;influence;readout;iggy3d")
+
 iggy3d_add_unit_test(encounter_deck_tests tests/unit/encounter_deck_tests.cpp)
 set_tests_properties(encounter_deck_tests PROPERTIES LABELS "unit;runtime;encounter;iggy3d")
 
