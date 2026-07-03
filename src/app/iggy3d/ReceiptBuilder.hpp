@@ -208,6 +208,19 @@ struct ProductAppWindowState {
   std::string productSaveSaveId = "none";
   bool productSaveSessionSaved = false;
   std::string activeProductSaveId = "none";
+  std::string activeCreativeSaveId = "none";
+  std::string activeCreativeSavePath = "none";
+  std::string activeCreativeWorldId = "none";
+  std::uint64_t activeCreativeDocumentId = 0;
+  std::uint64_t activeCreativeObjectCount = 0;
+  std::uint64_t activeCreativeNextObjectId = 0;
+  std::string activeCreativeSaveStatus = "creative_world_save_not_requested";
+  std::string activeCreativeSaveReasonCode =
+      "creative_world_save_not_requested";
+  std::uint64_t activeCreativeSaveDirtyFlagsBefore = 0;
+  std::uint64_t activeCreativeSaveDirtyFlagsDrained = 0;
+  std::uint64_t activeCreativeSaveDirtyFlagsAfter = 0;
+  std::string activeCreativeSaveSavedAtUtc = "none";
   // Typed load result stored directly (was a flat mirror of the fields of
   // ProductSaveLoadResult). The save-selection fields below are a separate
   // concern (set at selection/input time, not part of the load result) and

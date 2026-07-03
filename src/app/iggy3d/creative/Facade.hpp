@@ -131,6 +131,7 @@ class Facade {
   [[nodiscard]] const CreativeObject* findObject(
       CreativeObjectId id) const noexcept;
   [[nodiscard]] const CreativeDocument& document() const noexcept;
+  [[nodiscard]] CreativeDocument& documentForPersistence() noexcept;
   [[nodiscard]] const Stats& stats() const noexcept;
 
  private:

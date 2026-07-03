@@ -549,6 +549,10 @@ const CreativeDocument& Facade::document() const noexcept {
   return document_;
 }
 
+CreativeDocument& Facade::documentForPersistence() noexcept {
+  return document_;
+}
+
 const Stats& Facade::stats() const noexcept {
   return stats_;
 }

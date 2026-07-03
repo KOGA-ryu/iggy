@@ -89,6 +89,23 @@ struct ProductCreativeOpenWorldLaunchResult {
   creative::CreativeFacadeDocumentInstallReceipt installReceipt;
 };
 
+struct ProductCreativeCurrentWorldSaveResult {
+  bool accepted = false;
+  std::string status = "product_creative_save_not_requested";
+  std::string reasonCode = "product_creative_save_not_requested";
+  std::string saveId = "none";
+  std::filesystem::path path;
+  std::string worldId = "none";
+  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
+  std::uint64_t objectCount = 0;
+  creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
+  creative::CreativeObjectDirtyFlags dirtyFlagsBefore = 0;
+  creative::CreativeObjectDirtyFlags dirtyFlagsDrained = 0;
+  creative::CreativeObjectDirtyFlags dirtyFlagsAfter = 0;
+  bool saved = false;
+  CreativeWorldSaveResult saveResult;
+};
+
 std::string_view productSaveFlowOperationName(ProductSaveFlowOperation operation);
 
 ProductWorldTemplate productWorldTemplateFromOptions(
@@ -154,6 +171,11 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
     creative::Facade& facade);
+ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
+    const ProductAppOptions& options,
+    creative::Facade& facade,
+    std::string_view source,
+    ProductAppWindowState& window);
 void launchProductContinueSave(const ProductAppOptions& options,
                                const ProductWorldTemplate& world,
                                const ProductSaveBridgeResult& saves,

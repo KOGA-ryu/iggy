@@ -165,6 +165,23 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
                 "creative launch frontend gameplay") &&
          expect(window.launchStatus == "product_creative_world_launched",
                 "creative launch window status") &&
+         expect(window.activeProductSaveId == "none",
+                "creative launch does not set product save id") &&
+         expect(window.activeCreativeSaveId == launched.saveId,
+                "creative launch active creative save id") &&
+         expect(window.activeCreativeSavePath == launched.path.generic_string(),
+                "creative launch active creative save path") &&
+         expect(window.activeCreativeWorldId == launched.worldId,
+                "creative launch active creative world id") &&
+         expect(window.activeCreativeDocumentId == launched.documentId,
+                "creative launch active creative document id") &&
+         expect(window.activeCreativeObjectCount == launched.objectCount,
+                "creative launch active creative object count") &&
+         expect(window.activeCreativeNextObjectId == launched.nextObjectId,
+                "creative launch active creative next id") &&
+         expect(window.activeCreativeSaveStatus ==
+                    "creative_world_save_not_requested",
+                "creative launch active creative save status") &&
          expect(facade.document().id() == launched.documentId,
                 "creative launch facade document id") &&
          expect(facade.document().name() == "Creative Direct",
@@ -468,6 +485,20 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
                 "open launch frontend gameplay") &&
          expect(openWindow.launchStatus == "product_creative_world_opened",
                 "open launch window status") &&
+         expect(openWindow.activeProductSaveId == "none",
+                "open launch does not set product save id") &&
+         expect(openWindow.activeCreativeSaveId == opened.saveId,
+                "open launch active creative save id") &&
+         expect(openWindow.activeCreativeSavePath == opened.path.generic_string(),
+                "open launch active creative save path") &&
+         expect(openWindow.activeCreativeWorldId == opened.worldId,
+                "open launch active creative world id") &&
+         expect(openWindow.activeCreativeDocumentId == opened.documentId,
+                "open launch active creative document id") &&
+         expect(openWindow.activeCreativeObjectCount == opened.objectCount,
+                "open launch active creative object count") &&
+         expect(openWindow.activeCreativeNextObjectId == opened.nextObjectId,
+                "open launch active creative next id") &&
          expect(openFacade.document().id() == created.documentId,
                 "open launch facade document id") &&
          expect(openFacade.document().name() == "Opened Name",
@@ -592,6 +623,258 @@ bool openProductSessionSaveRejectsAsMissingCreativeSection() {
                 "open product player mode") &&
          expect(openFacade.document().id() == cr::kInvalidDocumentId,
                 "open product facade unchanged");
+}
+
+bool productNewWorldLaunchClearsActiveCreativeIdentity() {
+  const iggy3d::ProductAppOptions options = testOptions("product_clears_creative");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::Facade facade;
+
+  const iggy3d::ProductCreativeNewWorldLaunchResult created =
+      launchCreativeWorld(options,
+                          launchRequest("Creative Before Product",
+                                        "2026-07-03T15:00:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          facade);
+  const std::string creativeSaveId = window.activeCreativeSaveId;
+
+  iggy3d::WorldSetupDraft draft =
+      iggy3d::makeDefaultWorldSetupDraft("product_after_creative");
+  draft.worldName = "Product After Creative";
+  iggy3d::launchProductNewWorld(options, draft, frontend, activeSession, window);
+
+  return expect(created.accepted,
+                "product clear setup creative accepted") &&
+         expect(creativeSaveId != "none",
+                "product clear setup creative id recorded") &&
+         expect(activeSession.has_value(),
+                "product clear runtime session present") &&
+         expect(window.gameplayActive,
+                "product clear gameplay active") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+                "product clear player interaction mode") &&
+         expect(window.activeProductSaveId != "none",
+                "product clear active product save id") &&
+         expect(window.activeProductSaveId != creativeSaveId,
+                "product clear product id differs creative id") &&
+         expect(window.activeCreativeSaveId == "none",
+                "product clear active creative save id") &&
+         expect(window.activeCreativeSavePath == "none",
+                "product clear active creative save path") &&
+         expect(window.activeCreativeWorldId == "none",
+                "product clear active creative world id") &&
+         expect(window.activeCreativeDocumentId == cr::kInvalidDocumentId,
+                "product clear active creative document id") &&
+         expect(window.activeCreativeObjectCount == 0U,
+                "product clear active creative object count") &&
+         expect(window.activeCreativeNextObjectId == cr::kInvalidObjectId,
+                "product clear active creative next id") &&
+         expect(window.activeCreativeSaveStatus ==
+                    "creative_world_save_not_requested",
+                "product clear active creative save status");
+}
+
+bool currentCreativeWorldSaveDrainsDirtyAndPersistsDocument() {
+  const iggy3d::ProductAppOptions options = testOptions("current_save_success");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::Facade facade;
+
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Save Current Creative",
+                                        "2026-07-03T16:00:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          facade);
+  const cr::CreativeDocumentCreateReceipt createdObject =
+      facade.createDocumentObject(cr::CreativeObjectKind::Room);
+  const cr::CreativeObjectDirtyFlags dirtyBefore =
+      facade.document().dirtyFlags();
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
+      iggy3d::saveProductCurrentCreativeWorld(options, facade, "unit", window);
+
+  iggy3d::FrontendState openFrontend;
+  std::optional<iggy3d::Session> openSession;
+  iggy3d::ProductAppWindowState openWindow;
+  cr::Facade openFacade;
+  const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
+      openCreativeWorld(options,
+                        launched.saveId,
+                        openFrontend,
+                        openSession,
+                        openWindow,
+                        openFacade);
+
+  return expect(launched.accepted, "current save setup launch accepted") &&
+         expect(createdObject.accepted,
+                "current save setup object created") &&
+         expect(dirtyBefore != 0U, "current save setup dirty nonzero") &&
+         expect(saved.accepted, "current save accepted") &&
+         expect(saved.saved, "current save saved") &&
+         expect(saved.status == "product_creative_world_saved",
+                "current save status") &&
+         expect(saved.reasonCode == "product_creative_world_saved",
+                "current save reason") &&
+         expect(saved.saveId == launched.saveId, "current save id") &&
+         expect(saved.path == launched.path, "current save path") &&
+         expect(saved.worldId == launched.worldId, "current save world id") &&
+         expect(saved.documentId == launched.documentId,
+                "current save document id") &&
+         expect(saved.objectCount == 1U, "current save object count") &&
+         expect(saved.nextObjectId == facade.document().nextObjectId(),
+                "current save next object id") &&
+         expect(saved.dirtyFlagsBefore == dirtyBefore,
+                "current save dirty before") &&
+         expect(saved.dirtyFlagsDrained == dirtyBefore,
+                "current save dirty drained") &&
+         expect(saved.dirtyFlagsAfter == 0U, "current save dirty after") &&
+         expect(facade.document().dirtyFlags() == 0U,
+                "current save facade dirty drained") &&
+         expect(facade.document().revision() == revisionBefore,
+                "current save revision preserved") &&
+         expect(window.activeCreativeSaveId == launched.saveId,
+                "current save active id") &&
+         expect(window.activeCreativeSavePath == launched.path.generic_string(),
+                "current save active path") &&
+         expect(window.activeCreativeWorldId == launched.worldId,
+                "current save active world id") &&
+         expect(window.activeCreativeDocumentId == launched.documentId,
+                "current save active document id") &&
+         expect(window.activeCreativeObjectCount == 1U,
+                "current save active object count") &&
+         expect(window.activeCreativeNextObjectId ==
+                    facade.document().nextObjectId(),
+                "current save active next object id") &&
+         expect(window.activeCreativeSaveStatus ==
+                    "product_creative_world_saved",
+                "current save active status") &&
+         expect(window.activeCreativeSaveReasonCode ==
+                    "product_creative_world_saved",
+                "current save active reason") &&
+         expect(window.activeCreativeSaveDirtyFlagsBefore == dirtyBefore,
+                "current save active dirty before") &&
+         expect(window.activeCreativeSaveDirtyFlagsDrained == dirtyBefore,
+                "current save active dirty drained") &&
+         expect(window.activeCreativeSaveDirtyFlagsAfter == 0U,
+                "current save active dirty after") &&
+         expect(window.activeCreativeSaveSavedAtUtc != "none",
+                "current save saved timestamp") &&
+         expect(opened.accepted, "current save reopen accepted") &&
+         expect(opened.objectCount == 1U, "current save reopen object count") &&
+         expect(openFacade.document().findObject(createdObject.objectId) != nullptr,
+                "current save reopen object findable") &&
+         expect(openFacade.document().dirtyFlags() == 0U,
+                "current save reopen dirty clean");
+}
+
+bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
+  {
+    const iggy3d::ProductAppOptions options = testOptions("current_save_missing_id");
+    iggy3d::FrontendState frontend;
+    std::optional<iggy3d::Session> activeSession;
+    iggy3d::ProductAppWindowState window;
+    cr::Facade facade;
+    const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+        launchCreativeWorld(options,
+                            launchRequest("Missing Id",
+                                          "2026-07-03T16:10:00Z"),
+                            frontend,
+                            activeSession,
+                            window,
+                            facade);
+    const cr::CreativeDocumentCreateReceipt createdObject =
+        facade.createDocumentObject(cr::CreativeObjectKind::Room);
+    const cr::CreativeObjectDirtyFlags dirtyBefore =
+        facade.document().dirtyFlags();
+    window.activeCreativeSaveId = "none";
+
+    const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
+        iggy3d::saveProductCurrentCreativeWorld(options, facade, "unit", window);
+
+    if (!expect(launched.accepted, "missing id setup launch accepted") ||
+        !expect(createdObject.accepted, "missing id setup object created") ||
+        !expect(!saved.accepted, "missing id rejected") ||
+        !expect(saved.status == "product_creative_save_id_missing",
+                "missing id status") ||
+        !expect(saved.dirtyFlagsBefore == dirtyBefore,
+                "missing id dirty before") ||
+        !expect(saved.dirtyFlagsAfter == dirtyBefore,
+                "missing id dirty after") ||
+        !expect(facade.document().dirtyFlags() == dirtyBefore,
+                "missing id facade dirty preserved") ||
+        !expect(window.activeCreativeSaveStatus ==
+                    "product_creative_save_id_missing",
+                "missing id window status")) {
+      return false;
+    }
+  }
+
+  {
+    const iggy3d::ProductAppOptions options = testOptions("current_save_inactive");
+    iggy3d::FrontendState frontend;
+    std::optional<iggy3d::Session> activeSession;
+    iggy3d::ProductAppWindowState window;
+    cr::Facade facade;
+    const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+        launchCreativeWorld(options,
+                            launchRequest("Inactive Save",
+                                          "2026-07-03T16:20:00Z"),
+                            frontend,
+                            activeSession,
+                            window,
+                            facade);
+    const cr::CreativeDocumentCreateReceipt createdObject =
+        facade.createDocumentObject(cr::CreativeObjectKind::Room);
+    const cr::CreativeObjectDirtyFlags dirtyBefore =
+        facade.document().dirtyFlags();
+    window.interactionMode = iggy3d::ProductInteractionMode::Player;
+
+    const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
+        iggy3d::saveProductCurrentCreativeWorld(options, facade, "unit", window);
+
+    if (!expect(launched.accepted, "inactive setup launch accepted") ||
+        !expect(createdObject.accepted, "inactive setup object created") ||
+        !expect(!saved.accepted, "inactive rejected") ||
+        !expect(saved.status == "product_creative_save_inactive",
+                "inactive status") ||
+        !expect(saved.dirtyFlagsAfter == dirtyBefore,
+                "inactive dirty after") ||
+        !expect(facade.document().dirtyFlags() == dirtyBefore,
+                "inactive facade dirty preserved") ||
+        !expect(window.activeCreativeSaveStatus ==
+                    "product_creative_save_inactive",
+                "inactive window status")) {
+      return false;
+    }
+  }
+
+  const iggy3d::ProductAppOptions options = testOptions("current_save_invalid_doc");
+  iggy3d::ProductAppWindowState window;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.activeCreativeSaveId = "save_001";
+  window.activeCreativeWorldId = "world_0001";
+  cr::Facade facade;
+
+  const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
+      iggy3d::saveProductCurrentCreativeWorld(options, facade, "unit", window);
+
+  return expect(!saved.accepted, "invalid doc rejected") &&
+         expect(saved.status == "product_creative_save_document_id_missing",
+                "invalid doc status") &&
+         expect(saved.dirtyFlagsBefore == 0U, "invalid doc dirty before") &&
+         expect(saved.dirtyFlagsAfter == 0U, "invalid doc dirty after") &&
+         expect(window.activeCreativeSaveStatus ==
+                    "product_creative_save_document_id_missing",
+                "invalid doc window status");
 }
 
 bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
@@ -741,6 +1024,9 @@ int main() {
       openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() &&
       openBlankOrInvalidSaveIdRejectsBeforeSessionInstallAndModeSwitch() &&
       openProductSessionSaveRejectsAsMissingCreativeSection() &&
+      productNewWorldLaunchClearsActiveCreativeIdentity() &&
+      currentCreativeWorldSaveDrainsDirtyAndPersistsDocument() &&
+      currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() &&
       secondOpenClearsOldFacadeStateAndInstallsRestoredDocument();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

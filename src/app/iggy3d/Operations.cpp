@@ -412,6 +412,90 @@ void setCreativeOpenWorldLaunchStatus(
   result.reasonCode = result.status;
 }
 
+void setCurrentCreativeSaveStatus(
+    ProductCreativeCurrentWorldSaveResult& result,
+    std::string reason) {
+  result.status = std::move(reason);
+  result.reasonCode = result.status;
+}
+
+std::string idOrNone(std::string_view value) {
+  return value.empty() ? "none" : std::string(value);
+}
+
+std::string pathOrNone(const std::filesystem::path& path) {
+  return path.empty() ? "none" : path.generic_string();
+}
+
+bool missingWindowIdentity(std::string_view value) {
+  return value.empty() || value == "none";
+}
+
+void clearActiveCreativeSaveIdentity(ProductAppWindowState& window) {
+  window.activeCreativeSaveId = "none";
+  window.activeCreativeSavePath = "none";
+  window.activeCreativeWorldId = "none";
+  window.activeCreativeDocumentId = creative::kInvalidDocumentId;
+  window.activeCreativeObjectCount = 0;
+  window.activeCreativeNextObjectId = creative::kInvalidObjectId;
+  window.activeCreativeSaveStatus = "creative_world_save_not_requested";
+  window.activeCreativeSaveReasonCode = "creative_world_save_not_requested";
+  window.activeCreativeSaveDirtyFlagsBefore = 0;
+  window.activeCreativeSaveDirtyFlagsDrained = 0;
+  window.activeCreativeSaveDirtyFlagsAfter = 0;
+  window.activeCreativeSaveSavedAtUtc = "none";
+}
+
+void recordActiveCreativeSaveIdentity(
+    ProductAppWindowState& window,
+    std::string_view saveId,
+    const std::filesystem::path& path,
+    std::string_view worldId,
+    creative::CreativeDocumentId documentId,
+    std::uint64_t objectCount,
+    creative::CreativeObjectId nextObjectId) {
+  window.activeCreativeSaveId = idOrNone(saveId);
+  window.activeCreativeSavePath = pathOrNone(path);
+  window.activeCreativeWorldId = idOrNone(worldId);
+  window.activeCreativeDocumentId = documentId;
+  window.activeCreativeObjectCount = objectCount;
+  window.activeCreativeNextObjectId = nextObjectId;
+  window.activeCreativeSaveStatus = "creative_world_save_not_requested";
+  window.activeCreativeSaveReasonCode = "creative_world_save_not_requested";
+  window.activeCreativeSaveDirtyFlagsBefore = 0;
+  window.activeCreativeSaveDirtyFlagsDrained = 0;
+  window.activeCreativeSaveDirtyFlagsAfter = 0;
+  window.activeCreativeSaveSavedAtUtc = "none";
+}
+
+void recordActiveCreativeSaveResult(
+    ProductAppWindowState& window,
+    const ProductCreativeCurrentWorldSaveResult& result) {
+  window.activeCreativeSaveStatus = result.status;
+  window.activeCreativeSaveReasonCode = result.reasonCode;
+  window.activeCreativeSaveDirtyFlagsBefore = result.dirtyFlagsBefore;
+  window.activeCreativeSaveDirtyFlagsDrained = result.dirtyFlagsDrained;
+  window.activeCreativeSaveDirtyFlagsAfter = result.dirtyFlagsAfter;
+  window.activeCreativeSaveSavedAtUtc =
+      result.saveResult.savedAtUtc.empty() ? "none" : result.saveResult.savedAtUtc;
+  if (result.accepted && result.saved) {
+    recordActiveCreativeSaveIdentity(window,
+                                     result.saveId,
+                                     result.path,
+                                     result.worldId,
+                                     result.documentId,
+                                     result.objectCount,
+                                     result.nextObjectId);
+    window.activeCreativeSaveStatus = result.status;
+    window.activeCreativeSaveReasonCode = result.reasonCode;
+    window.activeCreativeSaveDirtyFlagsBefore = result.dirtyFlagsBefore;
+    window.activeCreativeSaveDirtyFlagsDrained = result.dirtyFlagsDrained;
+    window.activeCreativeSaveDirtyFlagsAfter = result.dirtyFlagsAfter;
+    window.activeCreativeSaveSavedAtUtc =
+        result.saveResult.savedAtUtc.empty() ? "none" : result.saveResult.savedAtUtc;
+  }
+}
+
 void mirrorCreativeWorldCreateResult(
     ProductCreativeNewWorldLaunchResult& result,
     const CreativeWorldCreateResult& create) {
@@ -900,6 +984,8 @@ void launchProductNewWorld(const ProductAppOptions& options,
   }
 
   window.launchStatus = initialSave.status;
+  clearActiveCreativeSaveIdentity(window);
+  window.interactionMode = ProductInteractionMode::Player;
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
 }
 
@@ -953,6 +1039,13 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
   result.accepted = true;
   setCreativeNewWorldLaunchStatus(result, "product_creative_world_launched");
   window.launchStatus = result.reasonCode;
+  recordActiveCreativeSaveIdentity(window,
+                                   result.saveId,
+                                   result.path,
+                                   result.worldId,
+                                   result.documentId,
+                                   result.objectCount,
+                                   result.nextObjectId);
   return result;
 }
 
@@ -1001,6 +1094,84 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
   result.accepted = true;
   setCreativeOpenWorldLaunchStatus(result, "product_creative_world_opened");
   window.launchStatus = result.reasonCode;
+  recordActiveCreativeSaveIdentity(window,
+                                   result.saveId,
+                                   result.path,
+                                   result.worldId,
+                                   result.documentId,
+                                   result.objectCount,
+                                   result.nextObjectId);
+  return result;
+}
+
+ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
+    const ProductAppOptions& options,
+    creative::Facade& facade,
+    std::string_view source,
+    ProductAppWindowState& window) {
+  (void)source;
+
+  ProductCreativeCurrentWorldSaveResult result;
+  result.saveId = window.activeCreativeSaveId;
+  result.path =
+      missingWindowIdentity(window.activeCreativeSavePath)
+          ? std::filesystem::path{}
+          : std::filesystem::path{window.activeCreativeSavePath};
+  result.worldId = window.activeCreativeWorldId;
+  result.documentId = facade.document().id();
+  result.objectCount = facade.document().objectCount();
+  result.nextObjectId = facade.document().nextObjectId();
+  result.dirtyFlagsBefore = facade.document().dirtyFlags();
+  result.dirtyFlagsAfter = result.dirtyFlagsBefore;
+
+  if (window.interactionMode != ProductInteractionMode::Creative) {
+    setCurrentCreativeSaveStatus(result, "product_creative_save_inactive");
+    recordActiveCreativeSaveResult(window, result);
+    return result;
+  }
+  if (missingWindowIdentity(window.activeCreativeSaveId)) {
+    setCurrentCreativeSaveStatus(result, "product_creative_save_id_missing");
+    recordActiveCreativeSaveResult(window, result);
+    return result;
+  }
+  if (facade.document().id() == creative::kInvalidDocumentId) {
+    setCurrentCreativeSaveStatus(result,
+                                 "product_creative_save_document_id_missing");
+    recordActiveCreativeSaveResult(window, result);
+    return result;
+  }
+
+  CreativeWorldSaveRequest request;
+  request.saveRoot = options.saveRoot;
+  request.saveId = window.activeCreativeSaveId;
+  request.attemptToken = "attempt_002";
+  request.document = &facade.documentForPersistence();
+  if (!missingWindowIdentity(window.activeCreativeWorldId)) {
+    request.worldId = window.activeCreativeWorldId;
+  }
+  request.savedAtUtc = productSaveTimestampNowUtc();
+
+  const CreativeWorldSaveResult saved = saveCreativeWorld(request);
+  result.saveResult = saved;
+  result.saveId = saved.saveId.empty() ? result.saveId : saved.saveId;
+  result.path = saved.path.empty() ? result.path : saved.path;
+  result.worldId = saved.worldId.empty() ? result.worldId : saved.worldId;
+  result.documentId = saved.documentId;
+  result.objectCount = saved.objectCount;
+  result.nextObjectId = saved.nextObjectId;
+  result.dirtyFlagsBefore = saved.dirtyFlagsBefore;
+  result.dirtyFlagsDrained = saved.dirtyFlagsDrained;
+  result.dirtyFlagsAfter = saved.dirtyFlagsAfter;
+  result.saved = saved.saved;
+  if (!saved.accepted || !saved.saved) {
+    setCurrentCreativeSaveStatus(result, saved.reasonCode);
+    recordActiveCreativeSaveResult(window, result);
+    return result;
+  }
+
+  result.accepted = true;
+  setCurrentCreativeSaveStatus(result, "product_creative_world_saved");
+  recordActiveCreativeSaveResult(window, result);
   return result;
 }
 
@@ -1077,6 +1248,8 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   }
   window.launchStatus = loaded.status;
   window.runtimeStateHash = activeSession->stateHash();
+  clearActiveCreativeSaveIdentity(window);
+  window.interactionMode = ProductInteractionMode::Player;
   enterProductGameplayTransition(frontend, window, launchAction);
 }
 

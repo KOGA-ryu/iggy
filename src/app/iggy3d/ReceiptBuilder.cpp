@@ -777,6 +777,30 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "product_save_session_saved",
                      window.productSaveSessionSaved);
   appendReceiptField(receipt, "active_product_save_id", window.activeProductSaveId);
+  appendReceiptField(receipt, "active_creative_save_id",
+                     window.activeCreativeSaveId);
+  appendReceiptField(receipt, "active_creative_save_path",
+                     window.activeCreativeSavePath);
+  appendReceiptField(receipt, "active_creative_world_id",
+                     window.activeCreativeWorldId);
+  appendReceiptField(receipt, "active_creative_document_id",
+                     window.activeCreativeDocumentId);
+  appendReceiptField(receipt, "active_creative_object_count",
+                     window.activeCreativeObjectCount);
+  appendReceiptField(receipt, "active_creative_next_object_id",
+                     window.activeCreativeNextObjectId);
+  appendReceiptField(receipt, "active_creative_save_status",
+                     window.activeCreativeSaveStatus);
+  appendReceiptField(receipt, "active_creative_save_reason_code",
+                     window.activeCreativeSaveReasonCode);
+  appendReceiptField(receipt, "active_creative_save_dirty_flags_before",
+                     window.activeCreativeSaveDirtyFlagsBefore);
+  appendReceiptField(receipt, "active_creative_save_dirty_flags_drained",
+                     window.activeCreativeSaveDirtyFlagsDrained);
+  appendReceiptField(receipt, "active_creative_save_dirty_flags_after",
+                     window.activeCreativeSaveDirtyFlagsAfter);
+  appendReceiptField(receipt, "active_creative_save_saved_at_utc",
+                     window.activeCreativeSaveSavedAtUtc);
   appendReceiptField(receipt, "product_save_load_status",
                      window.productSaveLoadResult.status);
   appendReceiptField(receipt, "product_save_load_reason_code",
