@@ -179,6 +179,51 @@ bool giantGymDerivesSameStationSlots() {
                 "giant gym derives 3 wire slots");
 }
 
+// The over-limit stations exist to FEEL the ceiling: a clamber/vault attempt at them must REJECT at
+// selection (not just derive a slot). Position the actor so ONLY the over-limit station is in range,
+// so the global sawInRange/sawHeightEligible flags resolve to HeightRejected.
+bool overLimitStationsRejectUnderSelection() {
+  iggy3d::PackageLoadResult package;
+  iggy3d::MovementTraversalSlotRegistry registry;
+  if (!expect(loadGym(kEarthPackage, package, registry), "over-limit gym derives slots")) {
+    return false;
+  }
+
+  // The 2.2 m clamber wall (clamber_rung_blocked, X=42 ft, top 2.286 m). Actor just in front of it
+  // (X=12.80 m, the next rung is > 1.25 m away in X), clamber gates maxLedge=1.80 m.
+  iggy3d::MovementTraversalSlotSelectionRequest clamber;
+  clamber.kind = iggy3d::MovementTraversalSlotKind::Clamber;
+  clamber.actorPosition = {12.80F, 0.0F, 3.0F};
+  clamber.forward = {0.0F, 0.0F, 1.0F};
+  clamber.maxStartRangeMeters = 1.25F;
+  clamber.minLedgeHeightMeters = 0.45F;
+  clamber.maxLedgeHeightMeters = 1.80F;
+  const iggy3d::MovementTraversalSlotSelection clamberSel =
+      iggy3d::selectMovementTraversalSlot(registry, clamber);
+
+  // The 2.2 m vault rail (vault_rail_overlimit, X=34 ft, top 2.21 m). Vault ceiling maxLedge=2.0 m.
+  iggy3d::MovementTraversalSlotSelectionRequest vault;
+  vault.kind = iggy3d::MovementTraversalSlotKind::Vault;
+  vault.actorPosition = {10.36F, 0.0F, 5.5F};
+  vault.forward = {0.0F, 0.0F, 1.0F};
+  vault.maxStartRangeMeters = 1.25F;
+  vault.minLedgeHeightMeters = 0.0F;
+  vault.maxLedgeHeightMeters = 2.0F;
+  const iggy3d::MovementTraversalSlotSelection vaultSel =
+      iggy3d::selectMovementTraversalSlot(registry, vault);
+
+  return expect(clamberSel.status != iggy3d::MovementTraversalSlotSelectionStatus::Found,
+                "the 2.2 m clamber wall is NOT selected (feels the ceiling)") &&
+         expect(clamberSel.status ==
+                    iggy3d::MovementTraversalSlotSelectionStatus::HeightRejected,
+                "the 2.2 m clamber wall rejects on height (> 1.80 m)") &&
+         expect(vaultSel.status != iggy3d::MovementTraversalSlotSelectionStatus::Found,
+                "the 2.2 m vault rail never vaults (feels the ceiling)") &&
+         expect(vaultSel.status ==
+                    iggy3d::MovementTraversalSlotSelectionStatus::HeightRejected,
+                "the 2.2 m vault rail rejects on height (> 2.0 m ceiling)");
+}
+
 bool gymsShareByteIdenticalGeometry() {
   const std::string earthRoom = readFile(kEarthRoom);
   const std::string giantRoom = readFile(kGiantRoom);
@@ -204,6 +249,7 @@ bool gymsShareByteIdenticalGeometry() {
 int main() {
   const bool ok = earthGymLoadsCreatesAndActivates() && earthGymDerivesStationSlots() &&
                   earthGymResolvesEarthProfile() && giantGymLoadsAndResolvesGiantProfile() &&
-                  giantGymDerivesSameStationSlots() && gymsShareByteIdenticalGeometry();
+                  giantGymDerivesSameStationSlots() && overLimitStationsRejectUnderSelection() &&
+                  gymsShareByteIdenticalGeometry();
   return ok ? 0 : 1;
 }
