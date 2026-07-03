@@ -190,6 +190,21 @@ bool clickPacketMapsMouseClick() {
                 "packet target invalid");
 }
 
+bool clickPacketPreservesPickedTarget() {
+  const iggy3d::MouseClick click = clickAt(12.5F, 34.25F);
+  cr::TargetRef target;
+  target.value = 77;
+  const cr::CreativeToolInputPacket packet =
+      iggy3d::productCreativePointerPressPacket(click, target);
+
+  return expect(packet.kind == cr::CreativeToolInputKind::PointerPress,
+                "target packet press") &&
+         expect(packet.pointer.target.value == 77U,
+                "target packet target copied") &&
+         expect(packet.pointer.x == 12.5, "target packet x") &&
+         expect(packet.pointer.y == 34.25, "target packet y");
+}
+
 bool editorNextToolChangesFacadeToolWithoutDocumentMutation() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade;
@@ -218,6 +233,62 @@ bool editorNextToolChangesFacadeToolWithoutDocumentMutation() {
                 "facade active inspect") &&
          expect(facade.document().objectCount() == objectCountBefore,
                 "tool action document unchanged");
+}
+
+bool selectClickWithPickedTargetUpdatesSelection() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+  cr::TargetRef target;
+  target.value = 101;
+
+  iggy3d::ProductCreativeInputFrameRequest request;
+  request.window = &window;
+  request.facade = &facade;
+  request.click = clickAt(18.0F, 19.0F);
+  request.pointerTarget = target;
+  const iggy3d::ProductCreativeInputFrameReceipt receipt =
+      iggy3d::processProductCreativeInputFrame(request);
+
+  return expect(receipt.pointerDispatched, "select target pointer dispatched") &&
+         expect(receipt.inputKind == cr::CreativeToolInputKind::PointerPress,
+                "select target input kind") &&
+         expect(receipt.emittedIntentCount == 1U,
+                "select target emitted") &&
+         expect(receipt.changed, "select target changed") &&
+         expect(facade.selectionState().selectedTarget.value == 101U,
+                "select target selected") &&
+         expect(facade.state().selected.value == 101U,
+                "select target old state selected") &&
+         expect(facade.document().objectCount() == 0U,
+                "select target document unchanged");
+}
+
+bool inspectClickWithPickedTargetUpdatesInspection() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  cr::TargetRef target;
+  target.value = 202;
+
+  iggy3d::ProductCreativeInputFrameRequest request;
+  request.window = &window;
+  request.facade = &facade;
+  request.click = clickAt(28.0F, 29.0F);
+  request.pointerTarget = target;
+  const iggy3d::ProductCreativeInputFrameReceipt receipt =
+      iggy3d::processProductCreativeInputFrame(request);
+
+  return expect(receipt.pointerDispatched, "inspect target pointer dispatched") &&
+         expect(receipt.changed, "inspect target changed") &&
+         expect(facade.inspectionState().inspectedTarget.value == 202U,
+                "inspect target inspected") &&
+         expect(facade.selectionState().selectedTarget.value ==
+                    cr::kInvalidId,
+                "inspect target selection unchanged") &&
+         expect(facade.document().objectCount() == 0U,
+                "inspect target document unchanged");
 }
 
 bool clickWithMeasureActiveBeginsMeasurement() {
@@ -252,6 +323,34 @@ bool clickWithMeasureActiveBeginsMeasurement() {
                 "measurement start x") &&
          expect(facade.measurementState().startPoint.y == 96.5,
                 "measurement start y");
+}
+
+bool measureClickWithPickedTargetStoresMeasurementTarget() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+  cr::TargetRef target;
+  target.value = 303;
+
+  iggy3d::ProductCreativeInputFrameRequest request;
+  request.window = &window;
+  request.facade = &facade;
+  request.click = clickAt(38.0F, 39.0F);
+  request.pointerTarget = target;
+  const iggy3d::ProductCreativeInputFrameReceipt receipt =
+      iggy3d::processProductCreativeInputFrame(request);
+
+  return expect(receipt.pointerDispatched, "measure target pointer dispatched") &&
+         expect(facade.measurementState().active,
+                "measure target active") &&
+         expect(facade.measurementState().startPoint.target.value == 303U,
+                "measure target start target") &&
+         expect(facade.measurementState().currentPoint.target.value == 303U,
+                "measure target current target") &&
+         expect(facade.selectionState().selectedTarget.value ==
+                    cr::kInvalidId,
+                "measure target selection unchanged");
 }
 
 bool editorCancelPreviewCancelsActiveMeasurement() {
@@ -455,6 +554,53 @@ bool batchPointerRunsAfterActionsWithUpdatedTool() {
                 "batch measurement y");
 }
 
+bool batchPointerUsesPickedTargetAfterToolAction() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+
+  iggy3d::ActionState actions;
+  recordTestAction(actions, iggy3d::InputAction::EditorSelectWallTool, true);
+  cr::TargetRef target;
+  target.value = 404;
+  iggy3d::ProductCreativeInputActionsRequest request;
+  request.window = &window;
+  request.facade = &facade;
+  request.actions = &actions;
+  request.click = clickAt(62.0F, 64.0F);
+  request.pointerTarget = target;
+  const iggy3d::ProductCreativeInputFrameReceipt receipt =
+      iggy3d::processProductCreativeInputActions(request);
+
+  return expect(receipt.actionHandled, "batch target action handled") &&
+         expect(receipt.pointerDispatched, "batch target pointer dispatched") &&
+         expect(receipt.activeToolAfter == cr::Tool::Inspect,
+                "batch target tool inspect") &&
+         expect(facade.inspectionState().inspectedTarget.value == 404U,
+                "batch target inspected") &&
+         expect(facade.selectionState().selectedTarget.value ==
+                    cr::kInvalidId,
+                "batch target selection unchanged");
+}
+
+bool invalidPointerTargetKeepsSelectionInvalid() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+
+  iggy3d::ProductCreativeInputFrameRequest request;
+  request.window = &window;
+  request.facade = &facade;
+  request.click = clickAt(78.0F, 79.0F);
+  const iggy3d::ProductCreativeInputFrameReceipt receipt =
+      iggy3d::processProductCreativeInputFrame(request);
+
+  return expect(receipt.pointerDispatched, "invalid target pointer") &&
+         expect(facade.selectionState().selectedTarget.value ==
+                    cr::kInvalidId,
+                "invalid target selection invalid");
+}
+
 bool batchCancelOnlyWhenPressed() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade;
@@ -513,14 +659,20 @@ int main() {
   ok &= toolOrderCycles();
   ok &= toolActionMappingUsesFlatRows();
   ok &= clickPacketMapsMouseClick();
+  ok &= clickPacketPreservesPickedTarget();
   ok &= editorNextToolChangesFacadeToolWithoutDocumentMutation();
+  ok &= selectClickWithPickedTargetUpdatesSelection();
+  ok &= inspectClickWithPickedTargetUpdatesInspection();
   ok &= clickWithMeasureActiveBeginsMeasurement();
+  ok &= measureClickWithPickedTargetStoresMeasurementTarget();
   ok &= editorCancelPreviewCancelsActiveMeasurement();
   ok &= noApplicableInputReturnsNoop();
   ok &= batchNoopsForClosedInputs();
   ok &= batchPressedToolCyclesOnceHeldDoesNotCycle();
   ok &= batchProcessesMultiplePressedToolActionsInEntryOrder();
   ok &= batchPointerRunsAfterActionsWithUpdatedTool();
+  ok &= batchPointerUsesPickedTargetAfterToolAction();
+  ok &= invalidPointerTargetKeepsSelectionInvalid();
   ok &= batchCancelOnlyWhenPressed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

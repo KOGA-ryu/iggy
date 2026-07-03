@@ -22,6 +22,7 @@ struct ProductCreativeInputFrameRequest {
   creative::Facade* facade = nullptr;
   InputAction action = InputAction::None;
   MouseClick click;
+  creative::TargetRef pointerTarget;
 };
 
 struct ProductCreativeInputActionsRequest {
@@ -29,6 +30,7 @@ struct ProductCreativeInputActionsRequest {
   creative::Facade* facade = nullptr;
   const ActionState* actions = nullptr;
   MouseClick click;
+  creative::TargetRef pointerTarget;
 };
 
 struct ProductCreativeInputFrameReceipt {
@@ -61,7 +63,8 @@ struct ProductCreativeInputFrameReceipt {
     creative::Tool current,
     creative::Tool& out) noexcept;
 [[nodiscard]] creative::CreativeToolInputPacket productCreativePointerPressPacket(
-    const MouseClick& click) noexcept;
+    const MouseClick& click,
+    creative::TargetRef target = {}) noexcept;
 [[nodiscard]] ProductCreativeInputFrameReceipt processProductCreativeInputFrame(
     const ProductCreativeInputFrameRequest& request);
 [[nodiscard]] ProductCreativeInputFrameReceipt processProductCreativeInputActions(

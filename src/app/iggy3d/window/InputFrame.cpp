@@ -1078,8 +1078,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   recordProductCreativeUiDownstreamClick(context.window,
                                          downstreamClickReceipt);
   const MouseClick downstreamClick = downstreamClickReceipt.downstreamClick;
-  recordProductCreativeViewportPickFrame(
-      context.window,
+  const ProductCreativeViewportPickFrameReceipt viewportPickReceipt =
       routeProductCreativeViewportPickFrame(
           ProductCreativeViewportPickFrameRequest{
               &context.window,
@@ -1089,7 +1088,12 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
               context.creativeViewportPickViewport,
               context.creativeViewportPickProjectionRequest,
               context.creativeViewportPickZ,
-          }));
+          });
+  recordProductCreativeViewportPickFrame(context.window, viewportPickReceipt);
+  creative::TargetRef creativePointerTarget;
+  if (viewportPickReceipt.picked) {
+    creativePointerTarget = viewportPickReceipt.target;
+  }
 
   // branch-gate: BG-1029
   if (context.window.gameplayActive && context.activeSession.has_value() &&
@@ -1125,6 +1129,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
         context.creativeFacade,
         &gameplayActions,
         downstreamClick,
+        creativePointerTarget,
     });
     (void)applyProductWindowInputActions(context.frontend,
                                          context.window,

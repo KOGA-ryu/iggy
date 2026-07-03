@@ -131,14 +131,15 @@ bool productCreativeToolActionTarget(InputAction action,
 }
 
 creative::CreativeToolInputPacket productCreativePointerPressPacket(
-    const MouseClick& click) noexcept {
+    const MouseClick& click,
+    creative::TargetRef target) noexcept {
   creative::CreativeToolInputPacket packet;
   packet.kind = creative::CreativeToolInputKind::PointerPress;
   packet.pointer.x = static_cast<double>(click.x);
   packet.pointer.y = static_cast<double>(click.y);
   packet.pointer.button = creative::CreativeToolPointerButton::Primary;
   packet.pointer.modifiers = creative::kCreativeToolModifierNone;
-  packet.pointer.target.value = creative::kInvalidId;
+  packet.pointer.target = target;
   return packet;
 }
 
@@ -190,7 +191,8 @@ ProductCreativeInputFrameReceipt processProductCreativeInputFrame(
 
   if (request.click.clicked) {
     const creative::CreativeFacadeToolDispatchReceipt dispatchReceipt =
-        facade.dispatchToolInput(productCreativePointerPressPacket(request.click));
+        facade.dispatchToolInput(productCreativePointerPressPacket(
+            request.click, request.pointerTarget));
     receipt.pointerDispatched = true;
     mergeDispatchReceipt(receipt, dispatchReceipt);
   }
@@ -262,6 +264,7 @@ ProductCreativeInputFrameReceipt processProductCreativeInputActions(
     frameRequest.window = request.window;
     frameRequest.facade = request.facade;
     frameRequest.click = request.click;
+    frameRequest.pointerTarget = request.pointerTarget;
     const ProductCreativeInputFrameReceipt frameReceipt =
         processProductCreativeInputFrame(frameRequest);
     mergeInputFrameReceipt(receipt, frameReceipt);
