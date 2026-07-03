@@ -48,6 +48,25 @@ void copyHitCell(CreativeViewportPickReceipt& receipt,
   }
 }
 
+[[nodiscard]] bool findMatchingCell(const CreativeSpatialCell* cells,
+                                    std::size_t cellCount,
+                                    CreativeGridCoord3 coord,
+                                    CreativeGridSize3 gridSize,
+                                    const CreativeSpatialCell*& matchedCell,
+                                    std::size_t& matchedCellIndex) noexcept {
+  const CreativeGridIndex index = toGridIndex(coord, gridSize);
+  bool matched = false;
+  for (std::size_t cellIndex = 0U; cellIndex < cellCount; ++cellIndex) {
+    const CreativeSpatialCell& cell = cells[cellIndex];
+    if (cell.index == index && sameCoord(cell.coord, coord)) {
+      matchedCell = &cell;
+      matchedCellIndex = cellIndex;
+      matched = true;
+    }
+  }
+  return matched;
+}
+
 }  // namespace
 
 std::string_view toString(CreativeViewportPickStatus status) noexcept {
@@ -111,32 +130,58 @@ CreativeViewportPickReceipt pickCreativeViewportCell(
                        "out_of_viewport");
   }
 
-  const CreativeGridCoord3 coord = pointerToCreativeGridCoord(
+  CreativeGridCoord3 coord = pointerToCreativeGridCoord(
       request.viewport, request.gridSize, request.pointerX, request.pointerY,
       request.z);
-  if (!isInsideGrid(coord, request.gridSize)) {
+  const CreativeGridCoord3 fixedCoord = coord;
+  if (request.depthMode == CreativeViewportPickDepthMode::FixedZ &&
+      !isInsideGrid(coord, request.gridSize)) {
     CreativeViewportPickReceipt receipt =
         makeReceipt(CreativeViewportPickStatus::OutOfGrid, "out_of_grid");
     receipt.coord = coord;
     return receipt;
   }
+  if (request.depthMode != CreativeViewportPickDepthMode::FixedZ) {
+    coord.z = 0;
+    if (!isInsideGrid(coord, request.gridSize)) {
+      CreativeViewportPickReceipt receipt =
+          makeReceipt(CreativeViewportPickStatus::OutOfGrid, "out_of_grid");
+      receipt.coord = fixedCoord;
+      return receipt;
+    }
+  }
 
-  const CreativeGridIndex index = toGridIndex(coord, request.gridSize);
   const CreativeSpatialCell* matchedCell = nullptr;
   std::size_t matchedCellIndex = 0U;
-  for (std::size_t cellIndex = 0U; cellIndex < request.cellCount; ++cellIndex) {
-    const CreativeSpatialCell& cell = request.cells[cellIndex];
-    if (cell.index == index && sameCoord(cell.coord, coord)) {
-      matchedCell = &cell;
-      matchedCellIndex = cellIndex;
+  if (request.depthMode == CreativeViewportPickDepthMode::HighestZFirst) {
+    for (std::int32_t z = request.gridSize.depth - 1; z >= 0; --z) {
+      coord.z = z;
+      if (findMatchingCell(request.cells, request.cellCount, coord,
+                           request.gridSize, matchedCell, matchedCellIndex)) {
+        break;
+      }
     }
+  } else if (request.depthMode == CreativeViewportPickDepthMode::LowestZFirst) {
+    for (std::int32_t z = 0; z < request.gridSize.depth; ++z) {
+      coord.z = z;
+      if (findMatchingCell(request.cells, request.cellCount, coord,
+                           request.gridSize, matchedCell, matchedCellIndex)) {
+        break;
+      }
+    }
+  } else {
+    static_cast<void>(findMatchingCell(request.cells, request.cellCount, coord,
+                                       request.gridSize, matchedCell,
+                                       matchedCellIndex));
   }
 
   if (matchedCell == nullptr) {
     CreativeViewportPickReceipt receipt =
         makeReceipt(CreativeViewportPickStatus::Miss, "miss");
-    receipt.coord = coord;
-    receipt.index = index;
+    receipt.coord = fixedCoord;
+    if (isInsideGrid(fixedCoord, request.gridSize)) {
+      receipt.index = toGridIndex(fixedCoord, request.gridSize);
+    }
     return receipt;
   }
 

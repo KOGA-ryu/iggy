@@ -41,7 +41,9 @@ cr::CreativeViewportPickRequest requestWithCells(
     const std::vector<cr::CreativeSpatialCell>& cells,
     float pointerX = 150.0F,
     float pointerY = 250.0F,
-    std::int32_t z = 1) {
+    std::int32_t z = 1,
+    cr::CreativeViewportPickDepthMode depthMode =
+        cr::CreativeViewportPickDepthMode::FixedZ) {
   cr::CreativeViewportPickRequest request;
   request.viewport = viewport();
   request.gridSize = gridSize();
@@ -50,6 +52,7 @@ cr::CreativeViewportPickRequest requestWithCells(
   request.pointerX = pointerX;
   request.pointerY = pointerY;
   request.z = z;
+  request.depthMode = depthMode;
   return request;
 }
 
@@ -267,6 +270,125 @@ bool laterMatchingCellWins() {
          expect(receipt.target.value == 12U, "later target");
 }
 
+bool fixedZModeRemainsDefault() {
+  const std::vector<cr::CreativeSpatialCell> cells{
+      makeCell({1, 2, 1}, 21, cr::CreativeObjectKind::Room,
+               cr::CreativeSpatialOccupancyKind::Structural),
+  };
+  const cr::CreativeViewportPickReceipt receipt =
+      cr::pickCreativeViewportCell(requestWithCells(cells, 150.0F, 250.0F, 0));
+
+  return expect(receipt.status == cr::CreativeViewportPickStatus::Miss,
+                "fixed z default miss") &&
+         expect(!receipt.hit, "fixed z default no hit") &&
+         expect(receipt.coord.x == 1, "fixed z miss x") &&
+         expect(receipt.coord.y == 2, "fixed z miss y") &&
+         expect(receipt.coord.z == 0, "fixed z miss z") &&
+         expect(receipt.index == 9U, "fixed z miss index");
+}
+
+bool highestZFirstHitsHigherCellWhenRequestZIsZero() {
+  const std::vector<cr::CreativeSpatialCell> cells{
+      makeCell({1, 2, 1}, 31, cr::CreativeObjectKind::Room,
+               cr::CreativeSpatialOccupancyKind::Structural),
+  };
+  const cr::CreativeViewportPickReceipt receipt = cr::pickCreativeViewportCell(
+      requestWithCells(cells,
+                       150.0F,
+                       250.0F,
+                       0,
+                       cr::CreativeViewportPickDepthMode::HighestZFirst));
+
+  return expect(receipt.status == cr::CreativeViewportPickStatus::Hit,
+                "highest z hit status") &&
+         expect(receipt.objectId == 31U, "highest z object id") &&
+         expect(receipt.coord.z == 1, "highest z coord") &&
+         expect(receipt.index == 25U, "highest z index");
+}
+
+bool highestZFirstChoosesHigherZWhenBothSlicesMatch() {
+  const std::vector<cr::CreativeSpatialCell> cells{
+      makeCell({1, 2, 0}, 41, cr::CreativeObjectKind::Floor,
+               cr::CreativeSpatialOccupancyKind::Structural),
+      makeCell({1, 2, 1}, 42, cr::CreativeObjectKind::Room,
+               cr::CreativeSpatialOccupancyKind::Structural),
+  };
+  const cr::CreativeViewportPickReceipt receipt = cr::pickCreativeViewportCell(
+      requestWithCells(cells,
+                       150.0F,
+                       250.0F,
+                       0,
+                       cr::CreativeViewportPickDepthMode::HighestZFirst));
+
+  return expect(receipt.objectId == 42U, "highest z chooses upper id") &&
+         expect(receipt.coord.z == 1, "highest z chooses upper coord") &&
+         expect(receipt.cellIndex == 1U, "highest z upper cell index");
+}
+
+bool lowestZFirstChoosesLowerZWhenBothSlicesMatch() {
+  const std::vector<cr::CreativeSpatialCell> cells{
+      makeCell({1, 2, 0}, 51, cr::CreativeObjectKind::Floor,
+               cr::CreativeSpatialOccupancyKind::Structural),
+      makeCell({1, 2, 1}, 52, cr::CreativeObjectKind::Room,
+               cr::CreativeSpatialOccupancyKind::Structural),
+  };
+  const cr::CreativeViewportPickReceipt receipt = cr::pickCreativeViewportCell(
+      requestWithCells(cells,
+                       150.0F,
+                       250.0F,
+                       0,
+                       cr::CreativeViewportPickDepthMode::LowestZFirst));
+
+  return expect(receipt.objectId == 51U, "lowest z chooses lower id") &&
+         expect(receipt.coord.z == 0, "lowest z chooses lower coord") &&
+         expect(receipt.cellIndex == 0U, "lowest z lower cell index");
+}
+
+bool laterMatchingCellWinsWithinWinningZSlice() {
+  const std::vector<cr::CreativeSpatialCell> cells{
+      makeCell({1, 2, 0}, 60, cr::CreativeObjectKind::Floor,
+               cr::CreativeSpatialOccupancyKind::Structural),
+      makeCell({1, 2, 1}, 61, cr::CreativeObjectKind::Room,
+               cr::CreativeSpatialOccupancyKind::Structural),
+      makeCell({1, 2, 1}, 62, cr::CreativeObjectKind::Door,
+               cr::CreativeSpatialOccupancyKind::Navigation),
+  };
+  const cr::CreativeViewportPickReceipt receipt = cr::pickCreativeViewportCell(
+      requestWithCells(cells,
+                       150.0F,
+                       250.0F,
+                       0,
+                       cr::CreativeViewportPickDepthMode::HighestZFirst));
+
+  return expect(receipt.objectId == 62U, "z slice later object id") &&
+         expect(receipt.objectKind == cr::CreativeObjectKind::Door,
+                "z slice later kind") &&
+         expect(receipt.coord.z == 1, "z slice later coord") &&
+         expect(receipt.cellIndex == 2U, "z slice later cell index");
+}
+
+bool stackMissUsesRequestZForDeterministicReceipt() {
+  const std::vector<cr::CreativeSpatialCell> cells{
+      makeCell({0, 0, 1}, 71, cr::CreativeObjectKind::Room,
+               cr::CreativeSpatialOccupancyKind::Structural),
+  };
+  const cr::CreativeViewportPickReceipt receipt = cr::pickCreativeViewportCell(
+      requestWithCells(cells,
+                       150.0F,
+                       250.0F,
+                       0,
+                       cr::CreativeViewportPickDepthMode::HighestZFirst));
+
+  return expect(receipt.status == cr::CreativeViewportPickStatus::Miss,
+                "stack miss status") &&
+         expect(!receipt.hit, "stack miss no hit") &&
+         expect(receipt.coord.x == 1, "stack miss x") &&
+         expect(receipt.coord.y == 2, "stack miss y") &&
+         expect(receipt.coord.z == 0, "stack miss request z") &&
+         expect(receipt.index == 9U, "stack miss request z index") &&
+         expect(receipt.message == "miss", "stack miss message");
+}
+
 }  // namespace
 
 int main() {
@@ -282,6 +404,12 @@ int main() {
       targetUsesObjectIdWhenInRange() &&
       objectIdZeroLeavesTargetInvalid() &&
       objectIdOutsideTargetRangeLeavesTargetInvalid() &&
-      laterMatchingCellWins();
+      laterMatchingCellWins() &&
+      fixedZModeRemainsDefault() &&
+      highestZFirstHitsHigherCellWhenRequestZIsZero() &&
+      highestZFirstChoosesHigherZWhenBothSlicesMatch() &&
+      lowestZFirstChoosesLowerZWhenBothSlicesMatch() &&
+      laterMatchingCellWinsWithinWinningZSlice() &&
+      stackMissUsesRequestZForDeterministicReceipt();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

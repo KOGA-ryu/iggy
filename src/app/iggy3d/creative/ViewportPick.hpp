@@ -21,6 +21,12 @@ enum class CreativeViewportPickStatus : std::uint8_t {
   Hit,
 };
 
+enum class CreativeViewportPickDepthMode : std::uint8_t {
+  FixedZ,
+  HighestZFirst,
+  LowestZFirst,
+};
+
 struct CreativeViewportPickViewport {
   float x = 0.0F;
   float y = 0.0F;
@@ -36,6 +42,8 @@ struct CreativeViewportPickRequest {
   float pointerX = 0.0F;
   float pointerY = 0.0F;
   std::int32_t z = 0;
+  CreativeViewportPickDepthMode depthMode =
+      CreativeViewportPickDepthMode::FixedZ;
 };
 
 struct CreativeViewportPickReceipt {

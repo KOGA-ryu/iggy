@@ -106,6 +106,7 @@ ProductCreativeViewportPickFrameReceipt routeProductCreativeViewportPickFrame(
           request.click.x,
           request.click.y,
           request.z,
+          request.depthMode,
       });
   copyPickReceipt(receipt, pick);
 

@@ -165,7 +165,8 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
             static_cast<float>(creativeCoordinateSpace.virtualHeight),
         },
         creativeViewportPickProjectionRequest(),
-        0});
+        0,
+        creative::CreativeViewportPickDepthMode::HighestZFirst});
 
     const ProductGameplayProjectionFrame projectionFrame =
         buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{

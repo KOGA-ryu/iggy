@@ -1097,6 +1097,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
               context.creativeViewportPickViewport,
               context.creativeViewportPickProjectionRequest,
               context.creativeViewportPickZ,
+              context.creativeViewportPickDepthMode,
           });
   recordProductCreativeViewportPickFrame(context.window, viewportPickReceipt);
   creative::TargetRef creativePointerTarget;

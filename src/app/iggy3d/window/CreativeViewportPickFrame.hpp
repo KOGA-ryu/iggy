@@ -23,6 +23,8 @@ struct ProductCreativeViewportPickFrameRequest {
   creative::CreativeViewportPickViewport viewport;
   creative::CreativeSpatialProjectionRequest projectionRequest;
   std::int32_t z = 0;
+  creative::CreativeViewportPickDepthMode depthMode =
+      creative::CreativeViewportPickDepthMode::FixedZ;
 };
 
 struct ProductCreativeViewportPickFrameReceipt {

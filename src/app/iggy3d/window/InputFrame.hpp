@@ -69,6 +69,8 @@ struct ProductWindowInputFrameContext {
   creative::CreativeViewportPickViewport creativeViewportPickViewport = {};
   creative::CreativeSpatialProjectionRequest creativeViewportPickProjectionRequest = {};
   std::int32_t creativeViewportPickZ = 0;
+  creative::CreativeViewportPickDepthMode creativeViewportPickDepthMode =
+      creative::CreativeViewportPickDepthMode::FixedZ;
 };
 
 struct ProductControllerSampleInputContext {

@@ -262,6 +262,57 @@ bool facadeRoomProjectsAndHits() {
                 "hit status");
 }
 
+bool defaultDepthModeStaysFixedZ() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade = facadeWithRoom();
+  iggy3d::ProductCreativeViewportPickFrameRequest request =
+      baseRequest(window, facade);
+  request.z = 0;
+
+  const iggy3d::ProductCreativeViewportPickFrameReceipt receipt =
+      iggy3d::routeProductCreativeViewportPickFrame(request);
+
+  return expect(receipt.projected, "fixed z projected") &&
+         expect(receipt.projectionCellCount == 1U, "fixed z cell count") &&
+         expect(!receipt.picked, "fixed z not picked") &&
+         expect(receipt.pickStatus == cr::CreativeViewportPickStatus::Miss,
+                "fixed z pick status") &&
+         expect(receipt.coord.x == 1 && receipt.coord.y == 2 &&
+                    receipt.coord.z == 0,
+                "fixed z miss coord") &&
+         expect(receipt.gridIndex == 9U, "fixed z miss index") &&
+         expect(receipt.status == "product_creative_viewport_pick_miss",
+                "fixed z miss status");
+}
+
+bool highestZDepthModePicksRoomAtZOneWithRequestZZero() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade = facadeWithRoom();
+  const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
+  iggy3d::ProductCreativeViewportPickFrameRequest request =
+      baseRequest(window, facade);
+  request.z = 0;
+  request.depthMode = cr::CreativeViewportPickDepthMode::HighestZFirst;
+
+  const iggy3d::ProductCreativeViewportPickFrameReceipt receipt =
+      iggy3d::routeProductCreativeViewportPickFrame(request);
+
+  return expect(receipt.projected, "highest frame projected") &&
+         expect(receipt.projectionCellCount == 1U,
+                "highest frame cell count") &&
+         expect(receipt.picked, "highest frame picked") &&
+         expect(receipt.pickStatus == cr::CreativeViewportPickStatus::Hit,
+                "highest frame pick hit") &&
+         expect(receipt.objectId == roomId, "highest frame object id") &&
+         expect(receipt.coord.x == 1 && receipt.coord.y == 2 &&
+                    receipt.coord.z == 1,
+                "highest frame coord") &&
+         expect(receipt.gridIndex == 25U, "highest frame grid index") &&
+         expect(receipt.target.value == roomId, "highest frame target") &&
+         expect(receipt.status == "product_creative_viewport_pick_hit",
+                "highest frame status");
+}
+
 bool hiddenRoomDoesNotProduceViewportPickHit() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade = facadeWithRoom();
@@ -635,6 +686,8 @@ int main() {
       missingFacadeDoesNotPick() &&
       emptyFacadeDocumentReportsSourceEmpty() &&
       facadeRoomProjectsAndHits() &&
+      defaultDepthModeStaysFixedZ() &&
+      highestZDepthModePicksRoomAtZOneWithRequestZZero() &&
       hiddenRoomDoesNotProduceViewportPickHit() &&
       missWithProjectedCellsReportsMiss() &&
       invalidViewportPropagatesThroughPick() &&
