@@ -540,6 +540,10 @@ set_tests_properties(encounter_deck_tests PROPERTIES LABELS "unit;runtime;encoun
 iggy3d_add_unit_test(encounter_placement_tests tests/unit/encounter_placement_tests.cpp)
 set_tests_properties(encounter_placement_tests PROPERTIES LABELS "unit;runtime;encounter;iggy3d")
 
+iggy3d_add_unit_test(encounter_influence_warnings_tests tests/unit/encounter_influence_warnings_tests.cpp)
+set_tests_properties(encounter_influence_warnings_tests PROPERTIES
+  LABELS "unit;runtime;encounter;influence;iggy3d")
+
 iggy3d_add_unit_test(stealth_garden_tests tests/unit/stealth_garden_tests.cpp)
 set_tests_properties(stealth_garden_tests PROPERTIES
   LABELS "unit;runtime;ai;stealth;garden;iggy3d")

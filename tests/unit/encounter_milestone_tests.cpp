@@ -139,8 +139,11 @@ int main() {
       iggy3d::placeEncounterHand(deal.hand, room, graph, colliders, placementConfig);
   const iggy3d::EncounterValidationResult validation = iggy3d::validateEncounter(
       deal.hand, placement, room, graph, colliders, iggy3d::kMediumEncounterBudget, placementConfig);
+  // a6s2: the report warns from the influence map computed over the placed encounter.
+  const std::vector<std::string> influenceWarnings =
+      iggy3d::deriveEncounterInfluenceWarnings(graph, colliders, placement, {});
   const iggy3d::EncounterBattleReport report = iggy3d::buildEncounterBattleReport(
-      room.id, deal.receipt, placement, validation, iggy3d::kMediumEncounterBudget);
+      room.id, deal.receipt, placement, validation, iggy3d::kMediumEncounterBudget, influenceWarnings);
   const std::string rendered = iggy3d::renderEncounterBattleReport(report);
   std::cout << rendered;
 

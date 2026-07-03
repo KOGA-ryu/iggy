@@ -5,10 +5,13 @@
 #include <string>
 #include <vector>
 
+#include <string_view>
+
 #include "config/RuntimeConfig.hpp"
 #include "content/FixtureScenarioLoader.hpp"
 #include "content/assets/RoomAsset.hpp"
 #include "core/math/Vec3.hpp"
+#include "runtime/ai/InfluenceMap.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"
 #include "runtime/encounter/EncounterDeck.hpp"
 #include "runtime/physics/PhysicsAabbCollider.hpp"
@@ -102,11 +105,43 @@ FixtureScenarioSeed composeEncounterScenarioSeed(const RoomAsset& room,
                                                  const PlacementConfig& config,
                                                  const RuntimeConfig& runtimeConfig);
 
+// Influence-derived warnings (A6 slice 2): the battle report's warnings section learns to warn from
+// the L7 influence map computed over the PLACED encounter. Rules are DATA (evaluated in enum order),
+// codes only (the renderer's no-floats law). NOT wired into Session/scoring (a9s4 territory).
+enum class EncounterInfluenceWarning : std::uint8_t {
+  ObjectiveLowCoverage,
+  UnwatchedEscapeRoute,
+};
+std::string_view encounterInfluenceWarningCode(EncounterInfluenceWarning warning);
+
+struct InfluenceWarningConfig {
+  float objectiveCoverageThreshold = 1.0F;  // NAMED: guardInfluence at an objective node below this warns
+  InfluenceMapConfig influence;             // the a6s1 kernel config (default)
+};
+
+// Guard samples for the influence map = each placed guard's ENTITY position UNION its patrol
+// waypoints, DEDUP'd by position (first-wins, deterministic order). The union is honest: a patroller
+// covers its route, so spawn-only sampling would fire `unwatched_escape_route` about a route a guard
+// demonstrably walks. Dedup collapses the shared-post artifact (the Patrol tactic hands every guard
+// the SAME post list) while genuine distinct-position multi-guard sums are preserved.
+std::vector<InfluenceGuardSample> encounterGuardSamples(const EncounterPlacementResult& placement);
+
+// Derive the influence warning codes over the placed encounter. Pure; borrows the already-baked
+// graph+colliders (NEVER bakes). ObjectiveLowCoverage: an objective node exists AND the max
+// guardInfluence over objective nodes < threshold. UnwatchedEscapeRoute: some exit node has zero
+// visibilityCoverage. (Potential visibility may only OVER-cover vs a real cone, so this warning may
+// only UNDER-fire -- it NEVER over-claims a route unwatched.)
+std::vector<std::string> deriveEncounterInfluenceWarnings(const ReasoningGraph& graph,
+                                                          std::span<const PhysicsAabbCollider> colliders,
+                                                          const EncounterPlacementResult& placement,
+                                                          const InfluenceWarningConfig& config);
+
 EncounterBattleReport buildEncounterBattleReport(const std::string& battlefieldId,
                                                  const EncounterDealReceipt& dealReceipt,
                                                  const EncounterPlacementResult& placement,
                                                  const EncounterValidationResult& validation,
-                                                 EncounterBudget budget);
+                                                 EncounterBudget budget,
+                                                 const std::vector<std::string>& influenceWarnings = {});
 
 // Deterministic key=value text (s8-dashboard discipline): FIXED line order, NO raw floats / NO
 // positions, so the bitwise pin is robust to geometry retunes.

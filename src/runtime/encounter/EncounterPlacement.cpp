@@ -7,6 +7,7 @@
 
 #include "core/math/Aabb3.hpp"
 #include "core/math/Transform3.hpp"
+#include "runtime/ai/InfluenceMap.hpp"
 #include "runtime/ai/ReasoningRoute.hpp"
 
 namespace iggy3d {
@@ -367,11 +368,90 @@ FixtureScenarioSeed composeEncounterScenarioSeed(const RoomAsset& room,
   return seed;
 }
 
+std::string_view encounterInfluenceWarningCode(EncounterInfluenceWarning warning) {
+  switch (warning) {
+    case EncounterInfluenceWarning::ObjectiveLowCoverage: return "objective_low_coverage";
+    case EncounterInfluenceWarning::UnwatchedEscapeRoute: return "unwatched_escape_route";
+  }
+  return "unknown";
+}
+
+std::vector<InfluenceGuardSample> encounterGuardSamples(const EncounterPlacementResult& placement) {
+  std::vector<InfluenceGuardSample> samples;
+  const auto pushDedup = [&samples](Vec3 pos) {
+    for (const InfluenceGuardSample& existing : samples) {
+      if (nearlyEqual(existing.positionMeters, pos, 1.0e-3F)) {
+        return;  // shared post / duplicate -> first wins
+      }
+    }
+    samples.push_back(InfluenceGuardSample{pos});
+  };
+  for (const ScenarioAiActorSeed& aiActor : placement.enemyAiActors) {
+    for (const ScenarioEntitySeed& entity : placement.enemyEntities) {
+      if (entity.stableName == aiActor.actorStableName) {
+        pushDedup(entity.transform.position);  // the guard's placed position
+        break;
+      }
+    }
+    for (const Vec3& waypoint : aiActor.patrolWaypoints) {
+      pushDedup(waypoint);  // a patroller covers its route
+    }
+  }
+  return samples;
+}
+
+std::vector<std::string> deriveEncounterInfluenceWarnings(const ReasoningGraph& graph,
+                                                          std::span<const PhysicsAabbCollider> colliders,
+                                                          const EncounterPlacementResult& placement,
+                                                          const InfluenceWarningConfig& config) {
+  std::vector<std::string> warnings;
+  const std::vector<InfluenceGuardSample> samples = encounterGuardSamples(placement);
+  const InfluenceMap map = buildInfluenceMap(graph, colliders, samples, config.influence);
+
+  // Rule order = enum order. Each rule pushes its code AT MOST ONCE.
+  // ObjectiveLowCoverage: an objective node exists AND max guardInfluence over objective nodes is
+  // below the named threshold. (No objective node -> not a warning; that is TacticObjectiveAbsent's
+  // concern in validateEncounter.)
+  bool hasObjective = false;
+  float maxObjectiveGuardInfluence = 0.0F;
+  for (std::size_t i = 0; i < graph.nodes.size(); ++i) {
+    if (graph.nodes[i].kind != ReasoningNodeKind::objective) {
+      continue;
+    }
+    const float guardInfluence = influenceValue(map, i, InfluenceChannel::guardInfluence);
+    if (!hasObjective || guardInfluence > maxObjectiveGuardInfluence) {
+      maxObjectiveGuardInfluence = guardInfluence;
+    }
+    hasObjective = true;
+  }
+  if (hasObjective && maxObjectiveGuardInfluence < config.objectiveCoverageThreshold) {
+    warnings.emplace_back(
+        encounterInfluenceWarningCode(EncounterInfluenceWarning::ObjectiveLowCoverage));
+  }
+
+  // UnwatchedEscapeRoute: some exit node has zero visibilityCoverage from the placed guards.
+  bool unwatchedExit = false;
+  for (std::size_t i = 0; i < graph.nodes.size(); ++i) {
+    if (graph.nodes[i].kind == ReasoningNodeKind::exit &&
+        influenceValue(map, i, InfluenceChannel::visibilityCoverage) == 0.0F) {
+      unwatchedExit = true;
+      break;
+    }
+  }
+  if (unwatchedExit) {
+    warnings.emplace_back(
+        encounterInfluenceWarningCode(EncounterInfluenceWarning::UnwatchedEscapeRoute));
+  }
+
+  return warnings;
+}
+
 EncounterBattleReport buildEncounterBattleReport(const std::string& battlefieldId,
                                                  const EncounterDealReceipt& dealReceipt,
                                                  const EncounterPlacementResult& placement,
                                                  const EncounterValidationResult& validation,
-                                                 EncounterBudget budget) {
+                                                 EncounterBudget budget,
+                                                 const std::vector<std::string>& influenceWarnings) {
   EncounterBattleReport report;
   report.battlefieldId = battlefieldId;
   report.seed = dealReceipt.seed;
@@ -382,6 +462,9 @@ EncounterBattleReport buildEncounterBattleReport(const std::string& battlefieldI
   report.validation = validation;
   report.appliedTactic = placement.appliedTactic;
   report.warnings = placement.warnings;
+  for (const std::string& warning : influenceWarnings) {
+    report.warnings.push_back(warning);  // append derived influence warnings after placement's
+  }
   report.difficultyBand = difficultyBandOf(dealReceipt.totalCost, budget.points);
   return report;
 }
