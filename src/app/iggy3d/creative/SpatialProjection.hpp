@@ -77,7 +77,7 @@ struct CreativeSpatialProjectionRequest {
   CreativeGridSize3 gridSize;
   double cellSize = 1.0;
   bool clampToGrid = true;
-  bool includeAuthoringOnly = true;
+  bool includeAuthoringOnly = false;
 };
 
 struct CreativeSpatialProjectionReceipt {
