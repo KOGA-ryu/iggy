@@ -225,6 +225,80 @@ constexpr auto kDescriptors = std::to_array<CreativeObjectDescriptor>({
     descriptor(CreativeObjectKind::DialogueMarker, CreativeObjectCategory::Gameplay, CreativeObjectProfile::GameplayMarker, CreativeSpatialProjectionProfile::PointProjection, CreativeSpatialOccupancyKind::Gameplay, "DialogueMarker", "Dialogue Marker", "dialogue trigger or speaker marker", navigationCreationDirtyFlags() | flagValue(CreativeObjectDirtyFlag::Gameplay), markerDefaults(), true, false, false, false, true, false),
 });
 
+[[nodiscard]] bool projectionUsesSpatialExtent(
+    CreativeSpatialProjectionProfile profile) noexcept {
+    switch (profile) {
+    case CreativeSpatialProjectionProfile::BoxProjection:
+    case CreativeSpatialProjectionProfile::VolumeProjection:
+    case CreativeSpatialProjectionProfile::LineProjection:
+    case CreativeSpatialProjectionProfile::LinkProjection:
+        return true;
+    case CreativeSpatialProjectionProfile::Unknown:
+    case CreativeSpatialProjectionProfile::NoProjection:
+    case CreativeSpatialProjectionProfile::PointProjection:
+        return false;
+    }
+
+    return false;
+}
+
+[[nodiscard]] CreativeObjectDirtyFlags systemDirtyFlagsForOccupancy(
+    CreativeSpatialOccupancyKind occupancyKind) noexcept {
+    switch (occupancyKind) {
+    case CreativeSpatialOccupancyKind::Structural:
+    case CreativeSpatialOccupancyKind::Collision:
+        return flagValue(CreativeObjectDirtyFlag::Collision);
+    case CreativeSpatialOccupancyKind::Navigation:
+        return flagValue(CreativeObjectDirtyFlag::Navigation);
+    case CreativeSpatialOccupancyKind::Trigger:
+        return flagValue(CreativeObjectDirtyFlag::Logic) |
+               flagValue(CreativeObjectDirtyFlag::Gameplay);
+    case CreativeSpatialOccupancyKind::Gameplay:
+        return flagValue(CreativeObjectDirtyFlag::Gameplay) |
+               flagValue(CreativeObjectDirtyFlag::Logic);
+    case CreativeSpatialOccupancyKind::Light:
+        return flagValue(CreativeObjectDirtyFlag::Lighting);
+    case CreativeSpatialOccupancyKind::Audio:
+        return flagValue(CreativeObjectDirtyFlag::Audio);
+    case CreativeSpatialOccupancyKind::Camera:
+        return flagValue(CreativeObjectDirtyFlag::Camera);
+    case CreativeSpatialOccupancyKind::Testing:
+        return flagValue(CreativeObjectDirtyFlag::Testing);
+    case CreativeSpatialOccupancyKind::Unknown:
+    case CreativeSpatialOccupancyKind::Authoring:
+        return 0;
+    }
+
+    return 0;
+}
+
+[[nodiscard]] CreativeObjectDirtyFlags transformSpatialDirtyFlags(
+    const CreativeObjectDescriptor& descriptor) noexcept {
+    CreativeObjectDirtyFlags flags =
+        flagValue(CreativeObjectDirtyFlag::Transform) |
+        flagValue(CreativeObjectDirtyFlag::Preview);
+
+    if (projectionUsesSpatialExtent(descriptor.projectionProfile)) {
+        flags = flags | CreativeObjectDirtyFlag::Bounds |
+                CreativeObjectDirtyFlag::Geometry;
+    }
+
+    return flags;
+}
+
+[[nodiscard]] CreativeObjectDirtyFlags shapeSpatialDirtyFlags(
+    const CreativeObjectDescriptor& descriptor) noexcept {
+    CreativeObjectDirtyFlags flags =
+        flagValue(CreativeObjectDirtyFlag::Bounds) |
+        flagValue(CreativeObjectDirtyFlag::Preview);
+
+    if (projectionUsesSpatialExtent(descriptor.projectionProfile)) {
+        flags = flags | CreativeObjectDirtyFlag::Geometry;
+    }
+
+    return flags;
+}
+
 } // namespace
 
 CreativeObjectDirtyFlags operator|(CreativeObjectDirtyFlag lhs, CreativeObjectDirtyFlag rhs) noexcept {
@@ -331,55 +405,38 @@ CreativeObjectDirtyFlags dirtyFlagsForCreation(CreativeObjectKind kind) noexcept
 CreativeObjectDirtyFlags dirtyFlagsForMutation(CreativeObjectKind objectKind, CreativeMutationKind mutationKind) noexcept {
     auto flags = commonAuthoredDirtyFlags();
     const auto& descriptor = describeObject(objectKind);
+    const auto systemFlags = systemDirtyFlagsForOccupancy(descriptor.occupancyKind);
 
     if (isTransformMutation(mutationKind)) {
-        flags = flags | CreativeObjectDirtyFlag::Transform | CreativeObjectDirtyFlag::Preview;
-        if (descriptor.hasBounds) {
-            flags = flags | CreativeObjectDirtyFlag::Bounds;
-        }
-        if (descriptor.category == CreativeObjectCategory::Structural || descriptor.profile == CreativeObjectProfile::TerrainVolume) {
-            flags = flags | CreativeObjectDirtyFlag::Geometry | CreativeObjectDirtyFlag::Collision;
-        }
+        flags = flags | transformSpatialDirtyFlags(descriptor) | systemFlags;
     }
 
     if (isShapeMutation(mutationKind)) {
-        flags = flags | CreativeObjectDirtyFlag::Bounds | CreativeObjectDirtyFlag::Geometry | CreativeObjectDirtyFlag::Preview;
-        if (descriptor.category == CreativeObjectCategory::Structural || descriptor.profile == CreativeObjectProfile::TerrainVolume || descriptor.profile == CreativeObjectProfile::Volume) {
-            flags = flags | CreativeObjectDirtyFlag::Collision;
-        }
+        flags = flags | shapeSpatialDirtyFlags(descriptor) | systemFlags;
     }
 
     if (isRelationshipMutation(mutationKind)) {
-        flags = flags | CreativeObjectDirtyFlag::Logic | CreativeObjectDirtyFlag::Gameplay;
+        flags = flags | systemFlags;
     }
 
     if (isLogicMutation(mutationKind)) {
-        flags = flags | CreativeObjectDirtyFlag::Logic | CreativeObjectDirtyFlag::Gameplay;
+        flags = flags | CreativeObjectDirtyFlag::Logic | systemFlags;
     }
 
     if (isNavigationMutation(mutationKind)) {
-        flags = flags | CreativeObjectDirtyFlag::Navigation | CreativeObjectDirtyFlag::Gameplay;
+        flags = flags | systemFlags;
     }
 
     if (isTestingMutation(mutationKind)) {
-        flags = flags | CreativeObjectDirtyFlag::Testing | CreativeObjectDirtyFlag::Preview;
+        flags = flags | CreativeObjectDirtyFlag::Preview | systemFlags;
     }
 
     if (isSensoryMutation(mutationKind)) {
-        flags = flags | CreativeObjectDirtyFlag::Preview;
-        if (descriptor.profile == CreativeObjectProfile::Light) {
-            flags = flags | CreativeObjectDirtyFlag::Lighting;
-        }
-        if (descriptor.profile == CreativeObjectProfile::Audio) {
-            flags = flags | CreativeObjectDirtyFlag::Audio;
-        }
-        if (descriptor.profile == CreativeObjectProfile::Camera) {
-            flags = flags | CreativeObjectDirtyFlag::Camera;
-        }
+        flags = flags | CreativeObjectDirtyFlag::Preview | systemFlags;
     }
 
     if (isGameplayMutation(mutationKind)) {
-        flags = flags | CreativeObjectDirtyFlag::Gameplay;
+        flags = flags | CreativeObjectDirtyFlag::Gameplay | systemFlags;
     }
 
     if (mutationKind == CreativeMutationKind::SetVisible || mutationKind == CreativeMutationKind::SetLocked || mutationKind == CreativeMutationKind::Rename) {

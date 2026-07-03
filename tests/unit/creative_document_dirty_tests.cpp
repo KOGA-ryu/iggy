@@ -214,6 +214,78 @@ bool futureStorageNoChangeLeavesAccumulatorEmpty() {
                 "future no-change drain zero");
 }
 
+bool appliedCrateMoveDrainsDescriptorDerivedFlags() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentCreateReceipt created =
+      createObject(document, cr::CreativeObjectKind::Crate, "Crate");
+  static_cast<void>(document.drainDirtyFlags());
+  const cr::CreativeObjectDirtyFlags expected =
+      cr::dirtyFlagsForMutation(cr::CreativeObjectKind::Crate,
+                                cr::CreativeMutationKind::Move);
+
+  const cr::CreativeDocumentMutationReceipt receipt =
+      cr::moveDocumentObject(document,
+                             created.objectId,
+                             cr::CreativeVec3{2.0, 0.0, 3.0});
+  const cr::CreativeObjectDirtyFlags drained = document.drainDirtyFlags();
+
+  return expect(created.accepted, "crate move dirty setup accepted") &&
+         expect(receipt.status == cr::CreativeDocumentMutationStatus::Applied,
+                "crate move dirty status applied") &&
+         expect(receipt.changed, "crate move dirty changed") &&
+         expect(receipt.dirtyFlags == expected,
+                "crate move receipt descriptor flags") &&
+         expect(cr::hasDirtyFlag(receipt.dirtyFlags,
+                                 cr::CreativeObjectDirtyFlag::Transform),
+                "crate move receipt transform") &&
+         expect(cr::hasDirtyFlag(receipt.dirtyFlags,
+                                 cr::CreativeObjectDirtyFlag::Bounds),
+                "crate move receipt bounds") &&
+         expect(cr::hasDirtyFlag(receipt.dirtyFlags,
+                                 cr::CreativeObjectDirtyFlag::Geometry),
+                "crate move receipt geometry") &&
+         expect(cr::hasDirtyFlag(receipt.dirtyFlags,
+                                 cr::CreativeObjectDirtyFlag::Collision),
+                "crate move receipt collision") &&
+         expect(drained == expected, "crate move drain descriptor flags") &&
+         expect(document.dirtyFlags() == 0U, "crate move drain clears");
+}
+
+bool appliedNoteRenameDrainsIdentityOnlyFlags() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentCreateReceipt created =
+      createObject(document, cr::CreativeObjectKind::Note, "Note");
+  static_cast<void>(document.drainDirtyFlags());
+  const cr::CreativeObjectDirtyFlags expected =
+      cr::dirtyFlagsForMutation(cr::CreativeObjectKind::Note,
+                                cr::CreativeMutationKind::Rename);
+
+  const cr::CreativeDocumentMutationReceipt receipt =
+      cr::renameDocumentObject(document, created.objectId, "Renamed Note");
+  const cr::CreativeObjectDirtyFlags drained = document.drainDirtyFlags();
+
+  return expect(created.accepted, "note rename dirty setup accepted") &&
+         expect(receipt.status == cr::CreativeDocumentMutationStatus::Applied,
+                "note rename dirty status applied") &&
+         expect(receipt.changed, "note rename dirty changed") &&
+         expect(receipt.dirtyFlags == expected,
+                "note rename receipt descriptor flags") &&
+         expect(cr::hasDirtyFlag(receipt.dirtyFlags,
+                                 cr::CreativeObjectDirtyFlag::Identity),
+                "note rename receipt identity") &&
+         expect(cr::hasDirtyFlag(receipt.dirtyFlags,
+                                 cr::CreativeObjectDirtyFlag::Preview),
+                "note rename receipt preview") &&
+         expect(!cr::hasDirtyFlag(receipt.dirtyFlags,
+                                  cr::CreativeObjectDirtyFlag::Geometry),
+                "note rename receipt no geometry") &&
+         expect(!cr::hasDirtyFlag(receipt.dirtyFlags,
+                                  cr::CreativeObjectDirtyFlag::Collision),
+                "note rename receipt no collision") &&
+         expect(drained == expected, "note rename drain descriptor flags") &&
+         expect(document.dirtyFlags() == 0U, "note rename drain clears");
+}
+
 bool sequentialAppliedMutationsOrDirtyFlagsAndDrainOnce() {
   cr::CreativeDocument document;
   const cr::CreativeDocumentCreateReceipt created =
@@ -265,6 +337,8 @@ int main() {
                   setVisibleAppliedAccumulatesMutationFlags() &&
                   noChangeVisibilityLeavesAccumulatorEmpty() &&
                   futureStorageNoChangeLeavesAccumulatorEmpty() &&
+                  appliedCrateMoveDrainsDescriptorDerivedFlags() &&
+                  appliedNoteRenameDrainsIdentityOnlyFlags() &&
                   sequentialAppliedMutationsOrDirtyFlagsAndDrainOnce() &&
                   facadePathsExposeDocumentAccumulator();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

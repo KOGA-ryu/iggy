@@ -30,6 +30,18 @@ bool expectSpatialDescriptor(cr::CreativeObjectKind kind,
   return ok;
 }
 
+bool expectHasDirtyFlag(cr::CreativeObjectDirtyFlags flags,
+                        cr::CreativeObjectDirtyFlag flag,
+                        std::string_view message) {
+  return expect(cr::hasDirtyFlag(flags, flag), message);
+}
+
+bool expectLacksDirtyFlag(cr::CreativeObjectDirtyFlags flags,
+                          cr::CreativeObjectDirtyFlag flag,
+                          std::string_view message) {
+  return expect(!cr::hasDirtyFlag(flags, flag), message);
+}
+
 bool descriptorTableRowsAreStableAndUnique() {
   const std::span<const cr::CreativeObjectDescriptor> descriptors =
       cr::allObjectDescriptors();
@@ -240,12 +252,140 @@ bool representativeDescriptorsPinSpatialFacts() {
              "cutscene marker spatial descriptor");
 }
 
+bool mutationDirtyFlagsFollowDescriptorSpatialColumns() {
+  const cr::CreativeObjectDirtyFlags noteRename =
+      cr::dirtyFlagsForMutation(cr::CreativeObjectKind::Note,
+                                cr::CreativeMutationKind::Rename);
+  const cr::CreativeObjectDirtyFlags pointLightMove =
+      cr::dirtyFlagsForMutation(cr::CreativeObjectKind::PointLight,
+                                cr::CreativeMutationKind::Move);
+  const cr::CreativeObjectDirtyFlags cameraRailMove =
+      cr::dirtyFlagsForMutation(cr::CreativeObjectKind::CameraRail,
+                                cr::CreativeMutationKind::Move);
+  const cr::CreativeObjectDirtyFlags crateMove =
+      cr::dirtyFlagsForMutation(cr::CreativeObjectKind::Crate,
+                                cr::CreativeMutationKind::Move);
+  const cr::CreativeObjectDirtyFlags navLinkTarget =
+      cr::dirtyFlagsForMutation(cr::CreativeObjectKind::NavLink,
+                                cr::CreativeMutationKind::LinkTarget);
+  const cr::CreativeObjectDirtyFlags roomVisible =
+      cr::dirtyFlagsForMutation(cr::CreativeObjectKind::Room,
+                                cr::CreativeMutationKind::SetVisible);
+
+  return expectHasDirtyFlag(noteRename,
+                            cr::CreativeObjectDirtyFlag::Identity,
+                            "note rename identity") &&
+         expectHasDirtyFlag(noteRename,
+                            cr::CreativeObjectDirtyFlag::Preview,
+                            "note rename preview") &&
+         expectHasDirtyFlag(noteRename,
+                            cr::CreativeObjectDirtyFlag::Serialization,
+                            "note rename serialization") &&
+         expectLacksDirtyFlag(noteRename,
+                              cr::CreativeObjectDirtyFlag::Geometry,
+                              "note rename no geometry") &&
+         expectLacksDirtyFlag(noteRename,
+                              cr::CreativeObjectDirtyFlag::Collision,
+                              "note rename no collision") &&
+         expectLacksDirtyFlag(noteRename,
+                              cr::CreativeObjectDirtyFlag::Navigation,
+                              "note rename no navigation") &&
+         expectLacksDirtyFlag(noteRename,
+                              cr::CreativeObjectDirtyFlag::Lighting,
+                              "note rename no lighting") &&
+         expectLacksDirtyFlag(noteRename,
+                              cr::CreativeObjectDirtyFlag::Audio,
+                              "note rename no audio") &&
+         expectLacksDirtyFlag(noteRename,
+                              cr::CreativeObjectDirtyFlag::Camera,
+                              "note rename no camera") &&
+         expectLacksDirtyFlag(noteRename,
+                              cr::CreativeObjectDirtyFlag::Gameplay,
+                              "note rename no gameplay") &&
+         expectLacksDirtyFlag(noteRename,
+                              cr::CreativeObjectDirtyFlag::Testing,
+                              "note rename no testing") &&
+         expectHasDirtyFlag(pointLightMove,
+                            cr::CreativeObjectDirtyFlag::Transform,
+                            "point light move transform") &&
+         expectHasDirtyFlag(pointLightMove,
+                            cr::CreativeObjectDirtyFlag::Preview,
+                            "point light move preview") &&
+         expectHasDirtyFlag(pointLightMove,
+                            cr::CreativeObjectDirtyFlag::Lighting,
+                            "point light move lighting") &&
+         expectLacksDirtyFlag(pointLightMove,
+                              cr::CreativeObjectDirtyFlag::Geometry,
+                              "point light move no geometry") &&
+         expectLacksDirtyFlag(pointLightMove,
+                              cr::CreativeObjectDirtyFlag::Collision,
+                              "point light move no collision") &&
+         expectHasDirtyFlag(cameraRailMove,
+                            cr::CreativeObjectDirtyFlag::Transform,
+                            "camera rail move transform") &&
+         expectHasDirtyFlag(cameraRailMove,
+                            cr::CreativeObjectDirtyFlag::Bounds,
+                            "camera rail move bounds") &&
+         expectHasDirtyFlag(cameraRailMove,
+                            cr::CreativeObjectDirtyFlag::Geometry,
+                            "camera rail move geometry") &&
+         expectHasDirtyFlag(cameraRailMove,
+                            cr::CreativeObjectDirtyFlag::Preview,
+                            "camera rail move preview") &&
+         expectHasDirtyFlag(cameraRailMove,
+                            cr::CreativeObjectDirtyFlag::Camera,
+                            "camera rail move camera") &&
+         expectHasDirtyFlag(crateMove,
+                            cr::CreativeObjectDirtyFlag::Transform,
+                            "crate move transform") &&
+         expectHasDirtyFlag(crateMove,
+                            cr::CreativeObjectDirtyFlag::Bounds,
+                            "crate move bounds") &&
+         expectHasDirtyFlag(crateMove,
+                            cr::CreativeObjectDirtyFlag::Geometry,
+                            "crate move geometry") &&
+         expectHasDirtyFlag(crateMove,
+                            cr::CreativeObjectDirtyFlag::Collision,
+                            "crate move collision") &&
+         expectHasDirtyFlag(crateMove,
+                            cr::CreativeObjectDirtyFlag::Preview,
+                            "crate move preview") &&
+         expectHasDirtyFlag(navLinkTarget,
+                            cr::CreativeObjectDirtyFlag::Navigation,
+                            "nav link target navigation") &&
+         expectLacksDirtyFlag(navLinkTarget,
+                              cr::CreativeObjectDirtyFlag::Geometry,
+                              "nav link target no geometry") &&
+         expectLacksDirtyFlag(navLinkTarget,
+                              cr::CreativeObjectDirtyFlag::Collision,
+                              "nav link target no collision") &&
+         expectLacksDirtyFlag(navLinkTarget,
+                              cr::CreativeObjectDirtyFlag::Gameplay,
+                              "nav link target no gameplay") &&
+         expectHasDirtyFlag(roomVisible,
+                            cr::CreativeObjectDirtyFlag::Identity,
+                            "room visible identity") &&
+         expectHasDirtyFlag(roomVisible,
+                            cr::CreativeObjectDirtyFlag::Preview,
+                            "room visible preview") &&
+         expectHasDirtyFlag(roomVisible,
+                            cr::CreativeObjectDirtyFlag::Serialization,
+                            "room visible serialization") &&
+         expectLacksDirtyFlag(roomVisible,
+                              cr::CreativeObjectDirtyFlag::Geometry,
+                              "room visible no geometry") &&
+         expectLacksDirtyFlag(roomVisible,
+                              cr::CreativeObjectDirtyFlag::Collision,
+                              "room visible no collision");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = descriptorTableRowsAreStableAndUnique() &&
                   roomDescriptorPinsShapeBearingProjectionContract() &&
                   unknownDescriptorRemainsInvalidAndNonProjectable() &&
-                  representativeDescriptorsPinSpatialFacts();
+                  representativeDescriptorsPinSpatialFacts() &&
+                  mutationDirtyFlagsFollowDescriptorSpatialColumns();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
