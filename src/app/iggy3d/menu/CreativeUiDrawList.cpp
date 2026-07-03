@@ -115,6 +115,19 @@ constexpr float kPanelGap = 10.0F;
   return id;
 }
 
+void appendVisibilityText(std::string& text,
+                          const creative::CreativeUiRow& row) {
+  text.append(" visible=");
+  if (!hasFlag(row.flags, creative::kCreativeUiRowFlagObjectKnown)) {
+    text.append("unknown");
+    return;
+  }
+
+  text.append(hasFlag(row.flags, creative::kCreativeUiRowFlagObjectVisible)
+                  ? "true"
+                  : "false");
+}
+
 [[nodiscard]] std::string rowText(const creative::CreativeUiRow& row) {
   std::string text(row.label.empty() ? row.id : row.label);
   switch (row.kind) {
@@ -130,6 +143,7 @@ constexpr float kPanelGap = 10.0F;
     case creative::CreativeUiRowKind::InspectedTarget:
       text.append(": target=");
       text.append(std::to_string(row.target.value));
+      appendVisibilityText(text, row);
       break;
     case creative::CreativeUiRowKind::MeasurementState:
       text.append(": ");

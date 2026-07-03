@@ -4,6 +4,7 @@
 #include "app/iggy3d/creative/Ghost.hpp"
 #include "app/iggy3d/creative/Inspect.hpp"
 #include "app/iggy3d/creative/Measure.hpp"
+#include "app/iggy3d/creative/Object.hpp"
 #include "app/iggy3d/creative/Select.hpp"
 #include "app/iggy3d/creative/Snap.hpp"
 #include "app/iggy3d/creative/Tools.hpp"
@@ -55,6 +56,17 @@ inline constexpr CreativeUiRowFlagMask kCreativeUiRowFlagSnapChanged =
     1u << 8;
 inline constexpr CreativeUiRowFlagMask kCreativeUiRowFlagSettingsValid =
     1u << 9;
+inline constexpr CreativeUiRowFlagMask kCreativeUiRowFlagObjectKnown =
+    1u << 10;
+inline constexpr CreativeUiRowFlagMask kCreativeUiRowFlagObjectVisible =
+    1u << 11;
+
+struct CreativeUiObjectSummary {
+  TargetRef target;
+  CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
+  bool exists = false;
+  bool visible = false;
+};
 
 struct CreativeUiRow {
   CreativeUiRowKind kind = CreativeUiRowKind::StatusSummary;
@@ -63,6 +75,7 @@ struct CreativeUiRow {
   std::string_view label;
   Tool tool = Tool::Select;
   TargetRef target;
+  CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
   double primaryX = 0.0;
   double primaryY = 0.0;
   double secondaryX = 0.0;
@@ -85,6 +98,7 @@ struct CreativeUiPanel {
 struct CreativeUiModel {
   std::vector<CreativeUiPanel> panels;
   std::vector<CreativeUiRow> rows;
+  std::vector<CreativeUiObjectSummary> objectSummaries;
   Tool activeTool = Tool::Select;
   TargetRef selectedTarget;
   TargetRef inspectedTarget;
@@ -100,6 +114,7 @@ struct CreativeUiBuildRequest {
   CreativeMeasurementState measurementState;
   CreativeSnapSettings snapSettings;
   CreativeGhostState ghostState;
+  std::vector<CreativeUiObjectSummary> objectSummaries;
 };
 
 struct CreativeUiBuildReceipt {

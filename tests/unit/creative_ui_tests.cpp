@@ -23,6 +23,17 @@ cr::CreativeUiBuildReceipt buildDefault() {
   return cr::buildCreativeUiModel(cr::makeDefaultCreativeUiBuildRequest());
 }
 
+cr::CreativeUiObjectSummary objectSummary(cr::Id target,
+                                          cr::CreativeObjectKind kind,
+                                          bool visible) {
+  cr::CreativeUiObjectSummary summary;
+  summary.target.value = target;
+  summary.objectKind = kind;
+  summary.exists = true;
+  summary.visible = visible;
+  return summary;
+}
+
 const cr::CreativeUiPanel& panel(const cr::CreativeUiModel& model,
                                  cr::CreativeUiPanelKind kind) {
   return model.panels[static_cast<std::size_t>(kind)];
@@ -108,6 +119,69 @@ bool selectedTargetRowAppearsOnlyWhenNonzero() {
                 "selection target flag");
 }
 
+bool selectedVisibleObjectSummaryMarksRowVisible() {
+  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
+  request.selectionState.selectedTarget.value = 42;
+  request.objectSummaries.push_back(
+      objectSummary(42, cr::CreativeObjectKind::Room, true));
+
+  const cr::CreativeUiBuildReceipt receipt = cr::buildCreativeUiModel(request);
+  const cr::CreativeUiRow& row =
+      firstPanelRow(receipt.model, cr::CreativeUiPanelKind::Selection);
+
+  return expect(row.target.value == 42U, "selected visible target") &&
+         expect(row.objectKind == cr::CreativeObjectKind::Room,
+                "selected visible kind") &&
+         expect(hasFlag(row.flags, cr::kCreativeUiRowFlagObjectKnown),
+                "selected visible known") &&
+         expect(hasFlag(row.flags, cr::kCreativeUiRowFlagObjectVisible),
+                "selected visible flag") &&
+         expect(receipt.model.objectSummaries.size() == 1U,
+                "selected visible summary copied");
+}
+
+bool selectedHiddenObjectSummaryKeepsRowAndMarksInvisible() {
+  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
+  request.selectionState.selectedTarget.value = 42;
+  request.objectSummaries.push_back(
+      objectSummary(42, cr::CreativeObjectKind::Room, false));
+
+  const cr::CreativeUiBuildReceipt receipt = cr::buildCreativeUiModel(request);
+  const cr::CreativeUiRow& row =
+      firstPanelRow(receipt.model, cr::CreativeUiPanelKind::Selection);
+
+  return expect(panel(receipt.model,
+                      cr::CreativeUiPanelKind::Selection).rowCount == 1U,
+                "selected hidden row kept") &&
+         expect(row.target.value == 42U, "selected hidden target") &&
+         expect(row.objectKind == cr::CreativeObjectKind::Room,
+                "selected hidden kind") &&
+         expect(hasFlag(row.flags, cr::kCreativeUiRowFlagObjectKnown),
+                "selected hidden known") &&
+         expect(!hasFlag(row.flags, cr::kCreativeUiRowFlagObjectVisible),
+                "selected hidden visible false");
+}
+
+bool selectedMissingObjectSummaryKeepsRowUnknown() {
+  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
+  request.selectionState.selectedTarget.value = 42;
+
+  const cr::CreativeUiBuildReceipt receipt = cr::buildCreativeUiModel(request);
+  const cr::CreativeUiRow& row =
+      firstPanelRow(receipt.model, cr::CreativeUiPanelKind::Selection);
+
+  return expect(panel(receipt.model,
+                      cr::CreativeUiPanelKind::Selection).rowCount == 1U,
+                "selected missing row kept") &&
+         expect(row.target.value == 42U, "selected missing target") &&
+         expect(row.objectKind == cr::CreativeObjectKind::Unknown,
+                "selected missing kind unknown") &&
+         expect(!hasFlag(row.flags, cr::kCreativeUiRowFlagObjectKnown),
+                "selected missing known false") &&
+         expect(!hasFlag(row.flags, cr::kCreativeUiRowFlagObjectVisible),
+                "selected missing visible false");
+}
+
 bool inspectedTargetRowAppearsOnlyWhenNonzero() {
   cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
   const cr::CreativeUiBuildReceipt empty = cr::buildCreativeUiModel(request);
@@ -126,6 +200,25 @@ bool inspectedTargetRowAppearsOnlyWhenNonzero() {
          expect(row.target.value == 84U, "inspection target") &&
          expect(hasFlag(row.flags, cr::kCreativeUiRowFlagHasTarget),
                 "inspection target flag");
+}
+
+bool inspectedObjectSummaryMarksRowVisibility() {
+  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
+  request.inspectionState.inspectedTarget.value = 84;
+  request.objectSummaries.push_back(
+      objectSummary(84, cr::CreativeObjectKind::Room, false));
+
+  const cr::CreativeUiBuildReceipt receipt = cr::buildCreativeUiModel(request);
+  const cr::CreativeUiRow& row =
+      firstPanelRow(receipt.model, cr::CreativeUiPanelKind::Inspection);
+
+  return expect(row.target.value == 84U, "inspected summary target") &&
+         expect(row.objectKind == cr::CreativeObjectKind::Room,
+                "inspected summary kind") &&
+         expect(hasFlag(row.flags, cr::kCreativeUiRowFlagObjectKnown),
+                "inspected summary known") &&
+         expect(!hasFlag(row.flags, cr::kCreativeUiRowFlagObjectVisible),
+                "inspected summary hidden");
 }
 
 bool measurementRowsPreserveStateAndPoints() {
@@ -277,7 +370,11 @@ int main() {
   const bool ok = defaultModelDeterministic() &&
                   activeToolRowReflectsToolChanges() &&
                   selectedTargetRowAppearsOnlyWhenNonzero() &&
+                  selectedVisibleObjectSummaryMarksRowVisible() &&
+                  selectedHiddenObjectSummaryKeepsRowAndMarksInvisible() &&
+                  selectedMissingObjectSummaryKeepsRowUnknown() &&
                   inspectedTargetRowAppearsOnlyWhenNonzero() &&
+                  inspectedObjectSummaryMarksRowVisibility() &&
                   measurementRowsPreserveStateAndPoints() &&
                   ghostRowAppearsOnlyWhenVisible() &&
                   snapSettingsRowReflectsModeAxesStepsAndOrigin() &&

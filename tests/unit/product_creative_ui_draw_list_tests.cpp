@@ -69,6 +69,17 @@ std::uint64_t countKind(const iggy3d::ProductUiDrawList& list,
   return count;
 }
 
+cr::CreativeUiObjectSummary objectSummary(cr::Id target,
+                                          cr::CreativeObjectKind kind,
+                                          bool visible) {
+  cr::CreativeUiObjectSummary summary;
+  summary.target.value = target;
+  summary.objectKind = kind;
+  summary.exists = true;
+  summary.visible = visible;
+  return summary;
+}
+
 bool rowHitMatchesTextPrimitive(const iggy3d::ProductUiDrawList& list,
                                 std::string_view semanticId) {
   const iggy3d::ProductUiPrimitive* primitive =
@@ -96,6 +107,10 @@ cr::CreativeUiModel populatedCreativeUiModel() {
   cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
   request.selectionState.selectedTarget.value = 42;
   request.inspectionState.inspectedTarget.value = 84;
+  request.objectSummaries.push_back(
+      objectSummary(42, cr::CreativeObjectKind::Room, true));
+  request.objectSummaries.push_back(
+      objectSummary(84, cr::CreativeObjectKind::Room, false));
   request.measurementState.active = true;
   request.measurementState.hasMeasurement = true;
   request.measurementState.startPoint = {1.0, 2.0, cr::TargetRef{7}};
@@ -110,6 +125,18 @@ cr::CreativeUiModel populatedCreativeUiModel() {
   request.ghostState.snapApplied = true;
   request.ghostState.snapChanged = true;
   request.ghostState.updateCount = 5;
+  return cr::buildCreativeUiModel(request).model;
+}
+
+cr::CreativeUiModel selectedTargetModel(cr::Id target,
+                                        bool withSummary,
+                                        bool visible) {
+  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
+  request.selectionState.selectedTarget.value = target;
+  if (withSummary) {
+    request.objectSummaries.push_back(
+        objectSummary(target, cr::CreativeObjectKind::Room, visible));
+  }
   return cr::buildCreativeUiModel(request).model;
 }
 
@@ -287,10 +314,12 @@ bool populatedModelPreservesCreativeOrderAndText() {
   const std::size_t ghostPanel = primitiveIndex(list, "creative.panel.ghost");
 
   return expect(selected != nullptr &&
-                    selected->text == "Selected Target: target=42",
+                    selected->text ==
+                        "Selected Target: target=42 visible=true",
                 "selected row text") &&
          expect(inspected != nullptr &&
-                    inspected->text == "Inspected Target: target=84",
+                    inspected->text ==
+                        "Inspected Target: target=84 visible=false",
                 "inspected row text") &&
          expect(measurement != nullptr &&
                     measurement->text == "Measurement State: active samples=2",
@@ -330,6 +359,43 @@ bool populatedModelPreservesCreativeOrderAndText() {
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.ghost.ghost_preview"),
                 "ghost hit");
+}
+
+bool selectedTargetVisibilityTextHandlesHiddenAndUnknown() {
+  const cr::CreativeUiModel hiddenModel = selectedTargetModel(42, true, false);
+  iggy3d::ProductCreativeUiDrawListRequest hiddenRequest;
+  hiddenRequest.model = &hiddenModel;
+  const iggy3d::ProductUiDrawList hiddenList =
+      iggy3d::buildProductCreativeUiDrawList(hiddenRequest);
+  const iggy3d::ProductUiPrimitive* hidden =
+      findPrimitive(hiddenList, "creative.row.selection.selected_target");
+
+  const cr::CreativeUiModel missingModel = selectedTargetModel(77, false, false);
+  iggy3d::ProductCreativeUiDrawListRequest missingRequest;
+  missingRequest.model = &missingModel;
+  const iggy3d::ProductUiDrawList missingList =
+      iggy3d::buildProductCreativeUiDrawList(missingRequest);
+  const iggy3d::ProductUiPrimitive* missing =
+      findPrimitive(missingList, "creative.row.selection.selected_target");
+
+  return expect(hidden != nullptr &&
+                    hidden->semanticId ==
+                        "creative.row.selection.selected_target",
+                "hidden semantic unchanged") &&
+         expect(hidden != nullptr &&
+                    hidden->text ==
+                        "Selected Target: target=42 visible=false",
+                "hidden selected text") &&
+         expect(missing != nullptr &&
+                    missing->text ==
+                        "Selected Target: target=77 visible=unknown",
+                "missing selected text") &&
+         expect(rowHitMatchesTextPrimitive(
+                    hiddenList, "creative.row.selection.selected_target"),
+                "hidden selected hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    missingList, "creative.row.selection.selected_target"),
+                "missing selected hit");
 }
 
 bool countersMatchPrimitiveContents() {
@@ -421,6 +487,7 @@ int main() {
                   primitivesAreNonInteractiveCreativeSemantics() &&
                   defaultModelEmitsVisiblePanelsAndRowsOnly() &&
                   populatedModelPreservesCreativeOrderAndText() &&
+                  selectedTargetVisibilityTextHandlesHiddenAndUnknown() &&
                   countersMatchPrimitiveContents() &&
                   disabledRowsEmitDisabledHitRegions() &&
                   repeatedBuildIsStable();

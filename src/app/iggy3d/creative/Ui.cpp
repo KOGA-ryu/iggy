@@ -16,6 +16,37 @@ namespace {
                            : kCreativeUiRowFlagNone;
 }
 
+[[nodiscard]] const CreativeUiObjectSummary* findObjectSummary(
+    const std::vector<CreativeUiObjectSummary>& summaries,
+    TargetRef target) noexcept {
+  if (!hasTarget(target)) {
+    return nullptr;
+  }
+
+  for (const CreativeUiObjectSummary& summary : summaries) {
+    if (summary.exists && summary.target.value == target.value) {
+      return &summary;
+    }
+  }
+
+  return nullptr;
+}
+
+void applyObjectSummary(CreativeUiRow& row,
+                        const CreativeUiBuildRequest& request) noexcept {
+  const CreativeUiObjectSummary* summary =
+      findObjectSummary(request.objectSummaries, row.target);
+  if (summary == nullptr) {
+    return;
+  }
+
+  row.objectKind = summary->objectKind;
+  row.flags |= kCreativeUiRowFlagObjectKnown;
+  if (summary->visible) {
+    row.flags |= kCreativeUiRowFlagObjectVisible;
+  }
+}
+
 std::size_t beginPanel(CreativeUiModel& model,
                        CreativeUiPanelKind kind,
                        bool visible,
@@ -96,6 +127,7 @@ void appendSelectionPanel(CreativeUiModel& model,
     row.label = "Selected Target";
     row.target = request.selectionState.selectedTarget;
     row.flags = enabledVisibleFlags() | targetFlag(row.target);
+    applyObjectSummary(row, request);
     appendRow(model, row);
   }
 
@@ -116,6 +148,7 @@ void appendInspectionPanel(CreativeUiModel& model,
     row.label = "Inspected Target";
     row.target = request.inspectionState.inspectedTarget;
     row.flags = enabledVisibleFlags() | targetFlag(row.target);
+    applyObjectSummary(row, request);
     appendRow(model, row);
   }
 
@@ -242,6 +275,7 @@ CreativeUiBuildReceipt buildCreativeUiModel(CreativeUiBuildRequest request) {
   receipt.model.activeTool = request.toolState.activeTool;
   receipt.model.selectedTarget = request.selectionState.selectedTarget;
   receipt.model.inspectedTarget = request.inspectionState.inspectedTarget;
+  receipt.model.objectSummaries = request.objectSummaries;
   receipt.model.measurementActive = request.measurementState.active;
   receipt.model.hasMeasurement = request.measurementState.hasMeasurement;
   receipt.model.ghostVisible = request.ghostState.visible;

@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
 #include <limits>
+#include <span>
 #include <utility>
 
 namespace iggy3d::creative {
@@ -21,6 +22,15 @@ namespace {
 
   objectId = static_cast<CreativeObjectId>(target.value);
   return objectId != kInvalidObjectId;
+}
+
+[[nodiscard]] TargetRef objectIdToTargetRef(CreativeObjectId objectId) noexcept {
+  if (objectId == kInvalidObjectId ||
+      objectId > std::numeric_limits<Id>::max()) {
+    return {};
+  }
+
+  return TargetRef{static_cast<Id>(objectId)};
 }
 
 }  // namespace
@@ -155,6 +165,21 @@ CreativeUiBuildReceipt Facade::buildUiModel() const {
   request.measurementState = measurementState_;
   request.snapSettings = snapSettings_;
   request.ghostState = ghostState_;
+  const std::span<const CreativeObject> objects = document_.objects();
+  request.objectSummaries.reserve(objects.size());
+  for (const CreativeObject& object : objects) {
+    const TargetRef target = objectIdToTargetRef(object.id);
+    if (target.value == kInvalidId) {
+      continue;
+    }
+
+    CreativeUiObjectSummary summary;
+    summary.target = target;
+    summary.objectKind = object.kind;
+    summary.exists = true;
+    summary.visible = object.visible;
+    request.objectSummaries.push_back(summary);
+  }
   return buildCreativeUiModel(request);
 }
 

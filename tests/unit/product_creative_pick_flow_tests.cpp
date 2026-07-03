@@ -209,6 +209,10 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
          expect(selectedPrimitive->semanticId ==
                     "creative.row.selection.selected_target",
                 "visibility flow selected semantic") &&
+         expect(selectedPrimitive->text ==
+                    "Selected Target: target=" + std::to_string(roomId) +
+                        " visible=true",
+                "visibility flow selected visible text") &&
          expect(selectedUiInput.consumed && selectedUiInput.enabled,
                 "visibility flow selected ui consumed") &&
          expect(selectedUiInput.semanticId ==
@@ -251,6 +255,10 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
                 "visibility flow hidden selected row target") &&
          expect(hiddenSelectedPrimitive != nullptr,
                 "visibility flow hidden selected primitive") &&
+         expect(hiddenSelectedPrimitive->text ==
+                    "Selected Target: target=" + std::to_string(roomId) +
+                        " visible=false",
+                "visibility flow hidden selected text") &&
          expect(hiddenUiInput.consumed && hiddenUiInput.enabled,
                 "visibility flow hidden ui consumed") &&
          expect(showCommand.commandKind ==
@@ -311,7 +319,8 @@ bool selectPickUpdatesFacadeAndUiRows() {
          expect(selected->target.value == roomId, "select ui row target") &&
          expect(selectedText != nullptr, "select draw text exists") &&
          expect(selectedText->text ==
-                    "Selected Target: target=" + std::to_string(roomId),
+                    "Selected Target: target=" + std::to_string(roomId) +
+                        " visible=true",
                 "select draw text target");
 }
 
