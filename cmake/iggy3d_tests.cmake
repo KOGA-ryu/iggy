@@ -1312,3 +1312,6 @@ if(TARGET iggy3d_headless_demo)
     PRIVATE
       IGGY3D_HEADLESS_DEMO_PATH="$<TARGET_FILE:iggy3d_headless_demo>")
 endif()
+
+iggy3d_add_unit_test(encounter_milestone_tests tests/unit/encounter_milestone_tests.cpp)
+set_tests_properties(encounter_milestone_tests PROPERTIES LABELS "unit;runtime;encounter;iggy3d")
