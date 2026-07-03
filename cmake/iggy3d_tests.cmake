@@ -312,6 +312,11 @@ iggy3d_add_unit_test(creative_facade_tests
 set_tests_properties(creative_facade_tests PROPERTIES
   LABELS "unit;app;creative;facade;iggy3d")
 
+iggy3d_add_unit_test(creative_facade_mutation_tests
+  tests/unit/creative_facade_mutation_tests.cpp)
+set_tests_properties(creative_facade_mutation_tests PROPERTIES
+  LABELS "unit;app;creative;facade;mutation;iggy3d")
+
 iggy3d_add_unit_test(creative_spatial_projection_tests
   tests/unit/creative_spatial_projection_tests.cpp)
 set_tests_properties(creative_spatial_projection_tests PROPERTIES

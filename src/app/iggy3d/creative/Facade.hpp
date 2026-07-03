@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/Commands.hpp"
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/Document.hpp"
+#include "app/iggy3d/creative/DocumentMutation.hpp"
 #include "app/iggy3d/creative/Ghost.hpp"
 #include "app/iggy3d/creative/Inspect.hpp"
 #include "app/iggy3d/creative/Measure.hpp"
@@ -15,6 +16,7 @@
 #include "app/iggy3d/creative/Ui.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -35,6 +37,37 @@ struct CreativeFacadeToolDispatchReceipt {
   std::string_view message = "tool_input_not_dispatched";
 };
 
+enum class CreativeFacadeMutationStatus : std::uint8_t {
+  Unknown,
+  NoSelection,
+  MissingObject,
+  Applied,
+  NoChange,
+  Rejected,
+};
+
+struct CreativeFacadeMutationReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  bool hadSelection = false;
+  TargetRef target;
+  CreativeObjectId objectId = kInvalidObjectId;
+  CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
+  bool visibleBefore = false;
+  bool visibleAfter = false;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  CreativeFacadeMutationStatus status = CreativeFacadeMutationStatus::Unknown;
+  CreativeDocumentMutationStatus documentStatus =
+      CreativeDocumentMutationStatus::Unknown;
+  CreativeMutationKind mutationKind = CreativeMutationKind::Unknown;
+  std::string message;
+};
+
+[[nodiscard]] std::string_view toString(
+    CreativeFacadeMutationStatus status) noexcept;
+
 class Facade {
  public:
   void reset() noexcept;
@@ -53,6 +86,8 @@ class Facade {
   [[nodiscard]] CreativeFacadeToolDispatchReceipt dispatchToolInput(
       const CreativeToolInputPacket& input);
   [[nodiscard]] CreativeUiBuildReceipt buildUiModel() const;
+  [[nodiscard]] CreativeFacadeMutationReceipt
+  toggleSelectedObjectVisibility();
 
   [[nodiscard]] CreativeObjectId createRoom(const CreateRoomCommand& command);
   [[nodiscard]] CreativeObjectId createRoom(std::string name);

@@ -1,8 +1,47 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
+#include <limits>
 #include <utility>
 
 namespace iggy3d::creative {
+namespace {
+
+[[nodiscard]] bool targetRefToObjectId(TargetRef target,
+                                       CreativeObjectId& objectId) noexcept {
+  if (target.value == kInvalidId) {
+    return false;
+  }
+
+  if constexpr (std::numeric_limits<Id>::max() >
+                std::numeric_limits<CreativeObjectId>::max()) {
+    if (target.value > std::numeric_limits<CreativeObjectId>::max()) {
+      return false;
+    }
+  }
+
+  objectId = static_cast<CreativeObjectId>(target.value);
+  return objectId != kInvalidObjectId;
+}
+
+}  // namespace
+
+std::string_view toString(CreativeFacadeMutationStatus status) noexcept {
+  switch (status) {
+    case CreativeFacadeMutationStatus::Unknown:
+      return "Unknown";
+    case CreativeFacadeMutationStatus::NoSelection:
+      return "NoSelection";
+    case CreativeFacadeMutationStatus::MissingObject:
+      return "MissingObject";
+    case CreativeFacadeMutationStatus::Applied:
+      return "Applied";
+    case CreativeFacadeMutationStatus::NoChange:
+      return "NoChange";
+    case CreativeFacadeMutationStatus::Rejected:
+      return "Rejected";
+  }
+  return "Unknown";
+}
 
 void Facade::reset() noexcept {
   state_ = State{};
@@ -117,6 +156,75 @@ CreativeUiBuildReceipt Facade::buildUiModel() const {
   request.snapSettings = snapSettings_;
   request.ghostState = ghostState_;
   return buildCreativeUiModel(request);
+}
+
+CreativeFacadeMutationReceipt Facade::toggleSelectedObjectVisibility() {
+  CreativeFacadeMutationReceipt receipt;
+  receipt.requested = true;
+  receipt.target = selectionState_.selectedTarget;
+  receipt.revisionBefore = document_.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+
+  if (receipt.target.value == kInvalidId) {
+    receipt.status = CreativeFacadeMutationStatus::NoSelection;
+    receipt.message = "no_selection";
+    return receipt;
+  }
+
+  receipt.hadSelection = true;
+  receipt.mutationKind = CreativeMutationKind::SetVisible;
+
+  CreativeObjectId objectId = kInvalidObjectId;
+  if (!targetRefToObjectId(receipt.target, objectId)) {
+    receipt.status = CreativeFacadeMutationStatus::MissingObject;
+    receipt.documentStatus = CreativeDocumentMutationStatus::MissingObject;
+    receipt.message = "missing_object";
+    return receipt;
+  }
+  receipt.objectId = objectId;
+
+  const CreativeObject* object = document_.findObject(objectId);
+  if (object == nullptr) {
+    receipt.status = CreativeFacadeMutationStatus::MissingObject;
+    receipt.documentStatus = CreativeDocumentMutationStatus::MissingObject;
+    receipt.message = "missing_object";
+    return receipt;
+  }
+
+  receipt.objectKind = object->kind;
+  receipt.visibleBefore = object->visible;
+
+  const CreativeDocumentMutationReceipt documentReceipt =
+      setDocumentObjectVisible(document_, objectId, !receipt.visibleBefore);
+
+  receipt.accepted = documentMutationSucceeded(documentReceipt.status);
+  receipt.changed = documentReceipt.changed &&
+                    documentReceipt.revisionAfter !=
+                        documentReceipt.revisionBefore;
+  receipt.documentStatus = documentReceipt.status;
+  receipt.mutationKind = documentReceipt.mutationKind;
+  receipt.revisionBefore = documentReceipt.revisionBefore;
+  receipt.revisionAfter = documentReceipt.revisionAfter;
+  receipt.message = documentReceipt.message;
+
+  const CreativeObject* objectAfter = document_.findObject(objectId);
+  if (objectAfter != nullptr) {
+    receipt.objectKind = objectAfter->kind;
+    receipt.visibleAfter = objectAfter->visible;
+  } else {
+    receipt.visibleAfter = receipt.visibleBefore;
+  }
+
+  if (documentReceipt.status == CreativeDocumentMutationStatus::Applied &&
+      receipt.changed) {
+    receipt.status = CreativeFacadeMutationStatus::Applied;
+  } else if (documentReceipt.status == CreativeDocumentMutationStatus::NoChange) {
+    receipt.status = CreativeFacadeMutationStatus::NoChange;
+  } else {
+    receipt.status = CreativeFacadeMutationStatus::Rejected;
+  }
+
+  return receipt;
 }
 
 CreativeObjectId Facade::createRoom(const CreateRoomCommand& command) {
