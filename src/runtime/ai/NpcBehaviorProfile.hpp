@@ -7,6 +7,7 @@
 
 #include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/ai/NpcBehaviorSystem.hpp"
+#include "runtime/ai/NpcPersonalityWeights.hpp"
 #include "runtime/ai/NpcSoundPerception.hpp"
 
 namespace iggy3d {
@@ -31,6 +32,9 @@ struct NpcBehaviorProfile {
   // Sound-hearing tuning (a1s2, L1) sibling to alertProfile: the attenuation
   // kernel's per-guard thresholds/losses. Reference defaults from a1s1.
   SoundPerceptionConfig soundConfig;
+  // L6 personality weights (a5s1, A9 seam). ALL NEUTRAL (1.0) in v1 -- invisible to behavior; the
+  // guard-decision kernel multiplies by them, A9's cards later ship non-neutral values.
+  NpcPersonalityWeights personalityWeights;
 };
 
 struct NpcBehaviorProfileCatalog {

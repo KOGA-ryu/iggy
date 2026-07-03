@@ -82,7 +82,9 @@ bool straightChainRoutesEndToEnd() {
   const std::vector<iggy3d::PhysicsAabbCollider> noColliders;
   const iggy3d::PlannedRoute route =
       iggy3d::planRoute(g, noColliders, {0, 0, 0}, {9, 0, 0});
-  return expect(routeEquals(route, {0, 1, 2, 3}), "straight chain routes end to end");
+  return expect(routeEquals(route, {0, 1, 2, 3}), "straight chain routes end to end") &&
+         // from == node0, so guard->entry leg is 0; total = 3 + 3 + 3 edge costs.
+         expect(route.totalCostMeters == 9.0F, "route total cost sums the edge lengths");
 }
 
 bool cheaperLongPathBeatsHopCount() {

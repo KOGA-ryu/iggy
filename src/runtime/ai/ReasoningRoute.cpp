@@ -59,6 +59,7 @@ PlannedRoute planRoute(const ReasoningGraph& graph, std::span<const PhysicsAabbC
   }
   if (entry == exit) {
     route.nodeIds.push_back(entry);
+    route.totalCostMeters = euclideanDistance(fromMeters, graph.nodes[entry].positionMeters);
     return route;
   }
 
@@ -113,6 +114,9 @@ PlannedRoute planRoute(const ReasoningGraph& graph, std::span<const PhysicsAabbC
   if (dist[exit] == kInfinity) {
     return route;  // exit disconnected from entry in the graph -> empty
   }
+  // Total cost = the guard->entry straight leg + the settled entry->exit edge-cost sum (dist[exit]).
+  route.totalCostMeters =
+      euclideanDistance(fromMeters, graph.nodes[entry].positionMeters) + dist[exit];
 
   // Reconstruct entry -> exit through settled predecessors.
   std::vector<std::uint32_t> reversed;

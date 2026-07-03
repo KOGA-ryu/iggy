@@ -159,6 +159,7 @@ target_sources(iggy3d
     src/runtime/ai/NpcSoundPerception.cpp
     src/runtime/ai/ReasoningGraph.cpp
     src/runtime/ai/ReasoningRoute.cpp
+    src/runtime/ai/GuardDecision.cpp
     src/runtime/combat/CombatSystem.cpp
     src/runtime/collision/SpatialSurfaceSet.cpp
     src/runtime/collision/CollisionQuery.cpp

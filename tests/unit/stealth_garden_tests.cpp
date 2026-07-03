@@ -18,6 +18,7 @@
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "runtime/ai/NpcInvestigateSystem.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
+#include "runtime/ai/GuardDecision.hpp"
 #include "runtime/ai/NpcSoundPerception.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"
 #include "runtime/ai/ReasoningRoute.hpp"
@@ -60,6 +61,21 @@ float planarDistance(iggy3d::Vec3 a, iggy3d::Vec3 b) {
   const float dx = b.x - a.x;
   const float dz = b.z - a.z;
   return std::sqrt(dx * dx + dz * dz);
+}
+
+// a5s1 receipt helpers: read a factor's value / sign by name.
+float factorValueOf(const iggy3d::GuardDecisionReceipt& receipt, std::string_view name) {
+  for (const iggy3d::GuardDecisionFactor& f : receipt.factors) {
+    if (f.name == name) {
+      return f.value;
+    }
+  }
+  return 0.0F;
+}
+
+int factorSign(const iggy3d::GuardDecisionReceipt& receipt, std::string_view name) {
+  const float v = factorValueOf(receipt, name);
+  return v > 0.0F ? 1 : (v < 0.0F ? -1 : 0);
 }
 
 // Bitwise graph equality (a3s2 post-load pin): ids/kinds/positions/labels + the full edge list.
@@ -1095,6 +1111,57 @@ bool routeNoProgressDropsStuckLeg() {
                       "a stuck route leg (no progress) drops to EMPTY direct fallback");
 }
 
+// a5s1: THE ONE tuning-coupled A5 test (quarantine law). Guard at patrolPost(1,1), a COLD memory
+// sample planted south of the island, real baked colliders -- compute with the ACTUAL config, pin
+// the chosen node + the receipt factor SIGNS, and PRINT the receipt. A future retune re-pins exactly
+// this test and nothing else (a5s2's scenario asserts self-consistency, not config).
+bool guardDecisionScoresGardenNodes() {
+  const Garden garden = loadGarden();
+  if (!expect(garden.ok, "garden loaded for guard-decision")) {
+    return false;
+  }
+  const std::vector<iggy3d::Vec3> waypoints = {cellToWorld(1, 1), cellToWorld(1, 5)};
+  const iggy3d::ReasoningGraph graph = iggy3d::buildReasoningGraph(garden.room, waypoints);
+  iggy3d::PhysicsSpatialSurfaceColliderBakeRequest req;
+  req.surfaces = &garden.surfaces;
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult bake =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces(req);
+
+  // Cold trail south of the island (rows 3-4): recorded at tick 0, decided one staleness half-life
+  // later so the sample is genuinely aged.
+  const iggy3d::GuardDecisionConfig config;
+  iggy3d::GuardMemorySample memory;
+  memory.hasMemorySample = true;
+  memory.lastKnownPosition = cellToWorld(6, 6);
+  memory.lastKnownTick = 0;
+  const std::uint64_t tick = static_cast<std::uint64_t>(config.suspicionStalenessHalfLifeTicks);
+
+  const iggy3d::GuardDecision decision =
+      iggy3d::chooseSearchNode(graph, bake.colliders, cellToWorld(1, 1), memory, tick,
+                               iggy3d::EntityId{}, iggy3d::NpcPersonalityWeights{}, config);
+
+  std::cerr << "a5s1 garden receipt: hasChoice=" << decision.receipt.hasChoice
+            << " chosenNodeId=" << decision.receipt.chosenNodeId
+            << " total=" << decision.receipt.totalScore << "\n";
+  for (const iggy3d::GuardDecisionFactor& f : decision.receipt.factors) {
+    std::cerr << "    factor " << f.name << " = " << f.value << "\n";
+  }
+
+  bool ok = expect(decision.nodeId.has_value() && decision.receipt.hasChoice,
+                   "guard makes a choice over the garden graph");
+  // Pinned against the REAL config numbers: the exit's high strategic value wins over the local
+  // patrolPost/reference nodes (the cold, weak suspicion cannot overcome the strategic tour).
+  ok = ok && expect(decision.nodeId.has_value() && *decision.nodeId == 0U,
+                    "the exit node wins the garden decision (strategic tour, cold trail)");
+  // Receipt factor SIGNS: suspicion small positive, strategic positive, travel negative, ally 0.
+  ok = ok && expect(factorSign(decision.receipt, "suspicion") >= 0,
+                    "suspicion contribution is non-negative") &&
+       expect(factorSign(decision.receipt, "strategic") > 0, "strategic contribution is positive") &&
+       expect(factorSign(decision.receipt, "travel") < 0, "travel contribution is negative") &&
+       expect(factorValueOf(decision.receipt, "ally") == 0.0F, "ally contribution is a hard 0");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
@@ -1108,6 +1175,7 @@ int main() {
                   reasoningRoutePlansAroundIslandWithTieBreak() &&
                   routeFollowingReachesIslandBlockedOrigin() &&
                   routeInvalidatesWhenDestinationChanges() &&
-                  routeNoProgressDropsStuckLeg();
+                  routeNoProgressDropsStuckLeg() &&
+                  guardDecisionScoresGardenNodes();
   return ok ? 0 : 1;
 }

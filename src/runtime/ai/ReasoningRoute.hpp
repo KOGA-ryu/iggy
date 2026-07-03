@@ -41,6 +41,10 @@ float travelCost(const ReasoningEdge& edge, const TravelCostConfig& config = {})
 // A planned route as an ordered node-id sequence. EMPTY nodeIds => no route (caller falls back).
 struct PlannedRoute {
   std::vector<std::uint32_t> nodeIds;
+  // Total traversal cost of the route: the guard->entry straight leg PLUS the sum of edge
+  // travelCosts entry->exit (A5 L6 travel term reads this). EMPTY route => 0. When `to` is itself a
+  // graph node the exit node IS `to`, so there is no exit-leg double count.
+  float totalCostMeters = 0.0F;
 };
 
 // Least-cost route between two world positions over `graph`. Takes ALREADY-BAKED colliders (a4s2
