@@ -159,6 +159,11 @@ struct ProductUiDrawListRequest {
   // resolved to a real title/status via resolveProductDeleteConfirmModel. Default member
   // initializer keeps positional aggregate-init sites (hand-built test requests) warning-free.
   std::string deleteCandidateId{};
+  bool gameplayActive = false;
+  bool saveRootWritable = false;
+  bool developerToolsEnabled = true;
+  bool activeRoomEditable = false;
+  bool roomEditingReady = false;
 };
 
 // The delete-confirmation panel's dynamic text, resolved once and rendered identically by both

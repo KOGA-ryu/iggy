@@ -45,6 +45,7 @@ void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
       surface.gameplayInputSuppressed,
       true,
       false,
+      productCreativeDocumentEditorActiveForWindow(window),
   });
   window.mouseCaptureRequested = policy.requested;
   window.mouseCaptureActive = false;

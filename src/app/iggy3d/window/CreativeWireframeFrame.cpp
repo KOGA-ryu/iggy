@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 
 #include <string>
@@ -57,7 +58,7 @@ void copyDebugLineReceipt(
 
 bool productCreativeWireframeFrameActiveForWindow(
     const ProductAppWindowState& window) noexcept {
-  return window.interactionMode == ProductInteractionMode::Creative;
+  return productCreativeDocumentEditorActiveForWindow(window);
 }
 
 ProductCreativeWireframeFrameReceipt routeProductCreativeWireframeFrame(

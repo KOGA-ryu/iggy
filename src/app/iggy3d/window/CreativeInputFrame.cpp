@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/input/ActionState.hpp"
 
 #include <array>
@@ -95,7 +96,7 @@ void mergeInputFrameReceipt(ProductCreativeInputFrameReceipt& receipt,
 
 bool productCreativeInputActiveForWindow(
     const ProductAppWindowState& window) noexcept {
-  return window.interactionMode == ProductInteractionMode::Creative;
+  return productCreativeDocumentEditorActiveForWindow(window);
 }
 
 creative::Tool nextProductCreativeTool(creative::Tool tool) noexcept {

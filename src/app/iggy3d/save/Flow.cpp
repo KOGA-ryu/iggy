@@ -3,6 +3,7 @@
 #include <array>
 
 #include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 
 namespace iggy3d {
@@ -180,7 +181,7 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
     creative::Facade* creativeFacade) {
-  if (window.interactionMode == ProductInteractionMode::Creative) {
+  if (productCreativeDocumentEditorActiveForWindow(window)) {
     return executeCreativePauseSaveFlow(kind,
                                         options,
                                         frontend,
@@ -216,7 +217,7 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     ProductAppWindowState& window,
     FrontendSettings& settings,
     creative::Facade* creativeFacade) {
-  if (window.interactionMode == ProductInteractionMode::Creative) {
+  if (productCreativeDocumentEditorActiveForWindow(window)) {
     return executeCreativePauseSaveFlow(kind,
                                         options,
                                         frontend,

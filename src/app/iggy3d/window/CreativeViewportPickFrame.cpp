@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 
 #include <span>
 #include <utility>
@@ -39,7 +40,7 @@ void copyPickReceipt(ProductCreativeViewportPickFrameReceipt& receipt,
 
 bool productCreativeViewportPickActiveForWindow(
     const ProductAppWindowState& window) noexcept {
-  return window.interactionMode == ProductInteractionMode::Creative;
+  return productCreativeDocumentEditorActiveForWindow(window);
 }
 
 ProductCreativeViewportPickFrameReceipt routeProductCreativeViewportPickFrame(

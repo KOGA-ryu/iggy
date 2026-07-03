@@ -780,6 +780,17 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
     ProductGameplayMapMakerToggleActionContext context) {
   // branch-gate: BG-1205
   if (action == InputAction::MapMakerToggle) {
+    if (productCreativeWorldActiveForWindow(context.window)) {
+      context.frontend.status = "map_maker_toggle_creative_world_active";
+      context.window.mapMakerStatus = "map_maker_creative_world_active";
+      context.window.mapMakerReasonCode = context.window.mapMakerStatus;
+      context.window.viewport.creativeFlyActive = false;
+      context.window.viewport.creativeFlyStatus = "creative_fly_not_requested";
+      context.window.viewport.creativeFlyReasonCode =
+          context.window.viewport.creativeFlyStatus;
+      context.window.viewport.creativeFlySpeedMetersPerSecond = 0.0F;
+      return {true, false};
+    }
     // branch-gate: BG-1205
     if (!resolvedSurfaceAcceptsGameplayInput(context.frontend, context.window)) {
       clearProductMapMakerMode(context.window);

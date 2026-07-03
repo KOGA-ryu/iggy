@@ -67,6 +67,9 @@ cr::CreativeSpatialProjectionRequest projectionRequest() {
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.activeCreativeSaveId = "creative_save";
+  window.activeCreativeWorldId = "world_001";
+  window.activeCreativeDocumentId = 42U;
   return window;
 }
 
@@ -107,15 +110,21 @@ iggy3d::ProductCreativeViewportPickFrameRequest baseRequest(
   return request;
 }
 
-bool activeRuleUsesOnlyInteractionMode() {
+bool activeRuleUsesCreativeDocumentIdentity() {
   iggy3d::ProductAppWindowState player;
   player.interactionMode = iggy3d::ProductInteractionMode::Player;
-  iggy3d::ProductAppWindowState creative = creativeWindow();
+  iggy3d::ProductAppWindowState legacyCreative;
+  legacyCreative.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  iggy3d::ProductAppWindowState documentCreative = creativeWindow();
 
   return expect(!iggy3d::productCreativeViewportPickActiveForWindow(player),
                 "player inactive") &&
-         expect(iggy3d::productCreativeViewportPickActiveForWindow(creative),
-                "creative active");
+         expect(!iggy3d::productCreativeViewportPickActiveForWindow(
+                    legacyCreative),
+                "legacy creative inactive") &&
+         expect(iggy3d::productCreativeViewportPickActiveForWindow(
+                    documentCreative),
+                "document creative active");
 }
 
 bool nullWindowFailsClosed() {
@@ -683,7 +692,7 @@ bool inputFrameNoWindowNoClickRecordsInactiveViewportPick() {
 
 int main() {
   const bool ok =
-      activeRuleUsesOnlyInteractionMode() &&
+      activeRuleUsesCreativeDocumentIdentity() &&
       nullWindowFailsClosed() &&
       inactiveWindowDoesNotPick() &&
       noClickDoesNotPick() &&

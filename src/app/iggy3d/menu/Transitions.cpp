@@ -21,18 +21,10 @@ void setTransition(ProductAppWindowState& window,
   window.productTransitionSessionPreserved = sessionPreserved;
 }
 
-bool hasActiveCreativeWorldIdentity(const ProductAppWindowState& window) {
-  return (!window.activeCreativeSaveId.empty() &&
-          window.activeCreativeSaveId != "none") ||
-         (!window.activeCreativeWorldId.empty() &&
-          window.activeCreativeWorldId != "none") ||
-         window.activeCreativeDocumentId != 0;
-}
-
 void clearProductPauseOwnedTransientModes(ProductAppWindowState& window) {
   const bool preserveCreativeWorldMode =
       window.interactionMode == ProductInteractionMode::Creative &&
-      hasActiveCreativeWorldIdentity(window);
+      productCreativeWorldActiveForWindow(window);
   clearProductMenuOwnedTransientModes(window);
   if (preserveCreativeWorldMode) {
     window.interactionMode = ProductInteractionMode::Creative;

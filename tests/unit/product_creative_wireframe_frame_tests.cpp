@@ -48,6 +48,9 @@ bool expectReceiptField(const iggy3d::RenderReceipt& receipt,
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.activeCreativeSaveId = "creative_save";
+  window.activeCreativeWorldId = "world_001";
+  window.activeCreativeDocumentId = 42U;
   return window;
 }
 
@@ -107,15 +110,21 @@ iggy3d::SceneRoomProjection packageRoomProjection() {
   return room;
 }
 
-bool activeRuleUsesOnlyInteractionMode() {
+bool activeRuleUsesCreativeDocumentIdentity() {
   iggy3d::ProductAppWindowState player;
   player.interactionMode = iggy3d::ProductInteractionMode::Player;
-  iggy3d::ProductAppWindowState creative = creativeWindow();
+  iggy3d::ProductAppWindowState legacyCreative;
+  legacyCreative.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  iggy3d::ProductAppWindowState documentCreative = creativeWindow();
 
   return expect(!iggy3d::productCreativeWireframeFrameActiveForWindow(player),
                 "player wireframe inactive") &&
-         expect(iggy3d::productCreativeWireframeFrameActiveForWindow(creative),
-                "creative wireframe active");
+         expect(!iggy3d::productCreativeWireframeFrameActiveForWindow(
+                    legacyCreative),
+                "legacy creative wireframe inactive") &&
+         expect(iggy3d::productCreativeWireframeFrameActiveForWindow(
+                    documentCreative),
+                "document creative wireframe active");
 }
 
 bool inactiveWindowDoesNotBuild() {
@@ -745,7 +754,7 @@ bool recorderPreservesExistingFields() {
 
 int main() {
   const bool ok =
-      activeRuleUsesOnlyInteractionMode() &&
+      activeRuleUsesCreativeDocumentIdentity() &&
       inactiveWindowDoesNotBuild() &&
       nullFacadeFailsClosed() &&
       emptyCreativeDocumentBuildsZeroSegments() &&

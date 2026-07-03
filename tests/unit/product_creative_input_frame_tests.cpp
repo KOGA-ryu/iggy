@@ -23,6 +23,9 @@ bool expect(bool condition, std::string_view message) {
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.activeCreativeSaveId = "creative_save";
+  window.activeCreativeWorldId = "world_001";
+  window.activeCreativeDocumentId = 42U;
   return window;
 }
 
@@ -40,15 +43,19 @@ void recordTestAction(iggy3d::ActionState& actions,
   iggy3d::recordAction(actions, action, true, pressed, false, 1.0F);
 }
 
-bool activeRuleUsesOnlyInteractionMode() {
+bool activeRuleUsesCreativeDocumentIdentity() {
   iggy3d::ProductAppWindowState window;
   const bool playerActive = iggy3d::productCreativeInputActiveForWindow(window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  const bool creativeActive =
+  const bool legacyCreativeActive =
+      iggy3d::productCreativeInputActiveForWindow(window);
+  window.activeCreativeDocumentId = 42U;
+  const bool documentCreativeActive =
       iggy3d::productCreativeInputActiveForWindow(window);
 
   return expect(!playerActive, "player inactive") &&
-         expect(creativeActive, "creative active");
+         expect(!legacyCreativeActive, "legacy creative inactive") &&
+         expect(documentCreativeActive, "document creative active");
 }
 
 bool nullWindowReturnsWindowMissing() {
@@ -652,7 +659,7 @@ bool batchCancelOnlyWhenPressed() {
 
 int main() {
   bool ok = true;
-  ok &= activeRuleUsesOnlyInteractionMode();
+  ok &= activeRuleUsesCreativeDocumentIdentity();
   ok &= nullWindowReturnsWindowMissing();
   ok &= inactiveWindowNoopsAndDoesNotMutateFacade();
   ok &= activeCreativeNullFacadeReportsMissing();

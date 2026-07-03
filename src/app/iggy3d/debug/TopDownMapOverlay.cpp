@@ -8,6 +8,7 @@ namespace {
 
 enum class TopDownMapContext {
   Hidden,
+  CreativeWorldHidden,
   Minimap,
   EditorOverview,
   DebugFallback,
@@ -23,7 +24,7 @@ struct TopDownMapDescriptor {
   std::string_view reasonCode;
 };
 
-constexpr std::array<TopDownMapDescriptor, 5> kTopDownMapDescriptors{
+constexpr std::array<TopDownMapDescriptor, 6> kTopDownMapDescriptors{
     TopDownMapDescriptor{
         TopDownMapContext::Hidden,
         false,
@@ -31,6 +32,14 @@ constexpr std::array<TopDownMapDescriptor, 5> kTopDownMapDescriptors{
         "hidden",
         "top_down_map_hidden",
         "top_down_map_gameplay_inactive",
+    },
+    TopDownMapDescriptor{
+        TopDownMapContext::CreativeWorldHidden,
+        false,
+        "hidden",
+        "hidden",
+        "top_down_map_hidden",
+        "top_down_map_creative_world_active",
     },
     TopDownMapDescriptor{
         TopDownMapContext::Minimap,
@@ -80,6 +89,9 @@ TopDownMapContext contextFor(TopDownMapOverlayRequest request) {
   // branch-gate: BG-1070
   if (!request.gameplayActive) {
     return TopDownMapContext::Hidden;
+  }
+  if (request.creativeWorldActive) {
+    return TopDownMapContext::CreativeWorldHidden;
   }
   // branch-gate: BG-1070
   if (request.interactionMode == ProductInteractionMode::Creative ||

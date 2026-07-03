@@ -23,6 +23,7 @@ struct TopDownMapOverlayRequest {
   bool gameplayActive = false;
   bool roomEditingReady = false;
   std::uint64_t itemCount = 0;
+  bool creativeWorldActive = false;
 };
 
 TopDownMapOverlay buildTopDownMapOverlay(

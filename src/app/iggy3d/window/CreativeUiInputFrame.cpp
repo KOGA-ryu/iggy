@@ -95,6 +95,8 @@ ProductCreativeUiDownstreamClickReceipt routeProductCreativeUiDownstreamClick(
   }
 
   if (request.higherPriorityUiConsumed) {
+    receipt.suppressed = true;
+    receipt.downstreamClick.clicked = false;
     setStatus(receipt,
               "product_creative_ui_downstream_click_higher_priority");
     return receipt;

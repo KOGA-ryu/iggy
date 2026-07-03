@@ -9,6 +9,7 @@
 
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/PauseUi.hpp"
 #include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
@@ -761,6 +762,10 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
     const SdlDrawableExtent drawableExtent = request.sdlWindow.drawableExtent();
     // branch-gate: BG-1030
     if (drawableExtent.width > 0U && drawableExtent.height > 0U) {
+      const bool creativeEditorOverlayActive =
+          productCreativeDocumentEditorActiveForWindow(request.window) &&
+          request.creativeUiDrawList != nullptr &&
+          request.creativeUiDrawList->ready;
       ProductVulkanGameplayFrame renderFrame = buildProductVulkanGameplayFrame(
           request.projectionFrame, request.window.framesPresented + 1U,
           drawableExtent.width, drawableExtent.height,
@@ -771,7 +776,8 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
           request.window.gameplayMovementTuningVisible,
           request.frontend.screen == FrontendScreen::DevOverlay &&
               frontendDevToolsOpen(request.frontend),
-          request.frontend.devToolsCategory);
+          request.frontend.devToolsCategory,
+          creativeEditorOverlayActive);
       const ProductCreativeWireframeDebugRenderFrame creativeDebugFrame =
           buildProductCreativeWireframeDebugRenderFrame(
               request.creativeWireframeDebugLineList);
@@ -968,47 +974,53 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
     ProductGameplayMovementTuningField movementTuningField,
     bool movementTuningVisible,
     bool devToolsOverlayVisible,
-    FrontendDevToolsCategory devToolsCategory) {
+    FrontendDevToolsCategory devToolsCategory,
+    bool creativeEditorOverlayActive) {
   ProductVulkanGameplayFrame frame;
   frame.frame = makeProductVulkanFrame(projectionFrame.scene, projectionFrame.debug,
                                        frameIndex, viewportWidth, viewportHeight,
                                        cameraYawDegrees, cameraPitchDegrees,
                                        projectionFrame.cameraAnchorOverrideAvailable,
                                        projectionFrame.cameraAnchorOverrideMeters);
-  appendMapMakerCubePreviewUi(frame, projectionFrame.viewportFrame, viewportWidth,
-                              viewportHeight);
-  appendTopDownMapOverlayUi(frame, projectionFrame.topDownMapOverlay,
-                            viewportWidth, viewportHeight);
-  appendMapMakerHudUi(frame, projectionFrame.mapMakerHud, viewportWidth,
-                      viewportHeight);
-  appendInteractionModeHudUi(frame,
-                             projectionFrame.interactionModeHud,
-                             viewportWidth,
+  if (!creativeEditorOverlayActive) {
+    appendMapMakerCubePreviewUi(frame, projectionFrame.viewportFrame, viewportWidth,
+                                viewportHeight);
+    appendTopDownMapOverlayUi(frame, projectionFrame.topDownMapOverlay,
+                              viewportWidth, viewportHeight);
+    appendMapMakerHudUi(frame, projectionFrame.mapMakerHud, viewportWidth,
+                        viewportHeight);
+    appendInteractionModeHudUi(frame,
+                               projectionFrame.interactionModeHud,
+                               viewportWidth,
+                               viewportHeight);
+    appendMovementDebugHudUi(frame, projectionFrame.movementHud, viewportWidth,
                              viewportHeight);
-  appendMovementDebugHudUi(frame, projectionFrame.movementHud, viewportWidth,
-                           viewportHeight);
-  appendNpcBehaviorDebugHudUi(frame,
-                              projectionFrame.npcBehaviorHud,
+    appendNpcBehaviorDebugHudUi(frame,
+                                projectionFrame.npcBehaviorHud,
+                                viewportWidth,
+                                viewportHeight);
+    appendPhysicsDebugHudUi(frame, projectionFrame.physicsHud, viewportWidth,
+                            viewportHeight);
+    appendRoomEditorHudUi(frame, projectionFrame.roomEditorHud, viewportWidth,
+                          viewportHeight);
+    appendPositionHudUi(frame, projectionFrame.positionHud, viewportWidth,
+                        viewportHeight);
+    appendMovementTuningHudUi(frame,
+                              movementTuning,
+                              movementTuningField,
+                              movementTuningVisible,
                               viewportWidth,
                               viewportHeight);
-  appendPhysicsDebugHudUi(frame, projectionFrame.physicsHud, viewportWidth,
-                          viewportHeight);
-  appendRoomEditorHudUi(frame, projectionFrame.roomEditorHud, viewportWidth,
-                        viewportHeight);
-  appendPositionHudUi(frame, projectionFrame.positionHud, viewportWidth, viewportHeight);
-  appendMovementTuningHudUi(frame,
-                            movementTuning,
-                            movementTuningField,
-                            movementTuningVisible,
-                            viewportWidth,
-                            viewportHeight);
+  }
   appendDevToolsOverlayUi(frame,
                           devToolsOverlayVisible,
                           devToolsCategory,
                           viewportWidth,
                           viewportHeight);
-  appendGameplayFeedbackUi(frame, projectionFrame.feedback, viewportWidth,
-                           viewportHeight);
+  if (!creativeEditorOverlayActive) {
+    appendGameplayFeedbackUi(frame, projectionFrame.feedback, viewportWidth,
+                             viewportHeight);
+  }
   return frame;
 }
 

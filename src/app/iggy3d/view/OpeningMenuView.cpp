@@ -27,6 +27,8 @@
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
+#include "app/iggy3d/menu/PauseUi.hpp"
+#include "app/iggy3d/menu/UiHitRouter.hpp"
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/view/ViewportFraming.hpp"
@@ -1314,6 +1316,43 @@ FrontendAction hitRegionActionAt(const std::vector<UiHitRegion>& regions,
   return FrontendAction::None;
 }
 
+OpeningMenuHitTestResult pauseMenuActionAt(const ProductUiDrawListRequest& request,
+                                           float x,
+                                           float y) {
+  PauseMenuContext pauseContext;
+  pauseContext.pauseOpen = true;
+  pauseContext.runtimeSessionAvailable = request.gameplayActive;
+  pauseContext.saveRootWritable = request.saveRootWritable;
+  pauseContext.compatibleSaveCount = request.compatibleSaveCount;
+  pauseContext.developerToolsEnabled = request.developerToolsEnabled;
+  pauseContext.activeRoomEditable = request.activeRoomEditable;
+  pauseContext.roomEditingReady = request.roomEditingReady;
+
+  const PauseMenuModel pauseModel =
+      buildPauseMenuModel(pauseContext, request.frontend->selectedAction);
+  ProductPauseUiRequest pauseUiRequest;
+  pauseUiRequest.model = &pauseModel;
+  pauseUiRequest.virtualWidth = request.virtualWidth;
+  pauseUiRequest.virtualHeight = request.virtualHeight;
+  const ProductUiDrawList pauseUi = buildProductPauseUiDrawList(pauseUiRequest);
+  const ProductUiHitLayer layer{
+      ProductUiHitSurface::PauseMenu,
+      &pauseUi,
+      true,
+  };
+  const ProductUiHitRouteReceipt route =
+      routeProductUiHit(ProductUiHitRouteRequest{&layer, 1U, x, y});
+  if (!route.hit || !route.consumed || route.action == FrontendAction::None) {
+    return {};
+  }
+
+  OpeningMenuHitTestResult result;
+  result.hit = true;
+  result.area = OpeningMenuHitArea::StarterAction;
+  result.action = route.action;
+  return result;
+}
+
 }  // namespace
 
 ProductFrontendSurface openingMenuDetailSurfaceFor(
@@ -1329,6 +1368,9 @@ OpeningMenuHitTestResult openingMenuActionAt(const ProductUiDrawListRequest& req
   const FrontendState& frontend = *request.frontend;
   const ProductFrontendSurface detailSurface =
       openingMenuDetailSurfaceFor(frontend);
+  if (frontendPauseMenuOpen(frontend)) {
+    return pauseMenuActionAt(request, x, y);
+  }
   // The hit regions come from the SAME request the frame path draws with (built by
   // buildProductStarterUiDrawListRequest), so the LoadSave/DeleteConfirm button
   // lookups below cannot drift from what was drawn. Screens not yet migrated to

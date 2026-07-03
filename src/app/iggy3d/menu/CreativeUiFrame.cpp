@@ -1,5 +1,7 @@
 #include "app/iggy3d/menu/CreativeUiFrame.hpp"
 
+#include "app/iggy3d/menu/FrontendRouter.hpp"
+
 namespace iggy3d {
 namespace {
 
@@ -44,7 +46,7 @@ ProductCreativeUiFrameReceipt frameReceiptFromProjection(
 
 bool productCreativeUiActiveForWindow(
     const ProductAppWindowState& window) noexcept {
-  return window.interactionMode == ProductInteractionMode::Creative;
+  return productCreativeDocumentEditorActiveForWindow(window);
 }
 
 ProductCreativeUiFrame buildProductCreativeUiFrame(

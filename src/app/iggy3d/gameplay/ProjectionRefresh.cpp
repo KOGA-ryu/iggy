@@ -660,7 +660,8 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                       hudSurface.gameplayHudVisible ||
                                           hudSurface.roomEditorHudVisible,
                                       hudSurface.roomEditorHudVisible,
-                                      0U});
+                                      0U,
+                                      productCreativeWorldActiveForWindow(window)});
   copyTopDownMapOverlay(window, frame.topDownMapOverlay);
   frame.movementHud = buildMovementDebugHud(window,
                                                    request.developerToolsEnabled,
@@ -764,7 +765,8 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                       hudSurface.gameplayHudVisible ||
                                           hudSurface.roomEditorHudVisible,
                                       hudSurface.roomEditorHudVisible,
-                                      frame.drawList.itemCount});
+                                      frame.drawList.itemCount,
+                                      productCreativeWorldActiveForWindow(window)});
   copyTopDownMapOverlay(window, frame.topDownMapOverlay);
   frame.viewportFrame = buildProductViewportFrame(
       frame.drawList,

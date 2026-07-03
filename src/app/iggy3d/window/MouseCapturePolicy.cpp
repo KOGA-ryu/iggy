@@ -29,9 +29,9 @@ ProductMouseCapturePolicy buildProductMouseCapturePolicy(
     policy.mode = "gameplay_released";
     return policy;
   }
-  // Creative mode currently exposes absolute-position editor UI rows over the
-  // gameplay frame. Releasing relative capture keeps those rows click-addressable.
-  if (request.interactionMode == ProductInteractionMode::Creative) {
+  // CreativeDocument exposes absolute-position editor UI rows over the gameplay
+  // backdrop. Releasing relative capture keeps those rows click-addressable.
+  if (request.creativeDocumentActive) {
     policy.reasonCode = "mouse_capture_creative_editor_pointer";
     policy.mode = "gameplay_released";
     return policy;

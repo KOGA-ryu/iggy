@@ -170,8 +170,10 @@ void resetMovementTuningRepeat(ProductMovementTuningRepeatState& repeat) {
   repeat.heldFrames = 0U;
 }
 
-MouseClick productWindowMenuClickForHitTest(MouseClick click,
-                                            const SdlWindow* sdlWindow) {
+MouseClick productWindowClickForHitTest(MouseClick click,
+                                        const SdlWindow* sdlWindow,
+                                        std::uint32_t virtualWidth,
+                                        std::uint32_t virtualHeight) {
   // branch-gate: BG-1123
   if (sdlWindow == nullptr) {
     return click;
@@ -179,7 +181,14 @@ MouseClick productWindowMenuClickForHitTest(MouseClick click,
   const SdlWindowEventState& eventState = sdlWindow->eventState();
   return normalizeProductWindowMenuClick(click,
                                          eventState.windowWidth,
-                                         eventState.windowHeight);
+                                         eventState.windowHeight,
+                                         virtualWidth,
+                                         virtualHeight);
+}
+
+MouseClick productWindowMenuClickForHitTest(MouseClick click,
+                                            const SdlWindow* sdlWindow) {
+  return productWindowClickForHitTest(click, sdlWindow, 1280U, 720U);
 }
 
 void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
@@ -237,7 +246,8 @@ bool productWindowEditorMousePickSurfaceReady(
     const FrontendState& frontend,
     const ProductAppWindowState& window) {
   return frontend.screen == FrontendScreen::Gameplay && window.gameplayActive &&
-         !frontendBlocksGameplayInput(frontend);
+         !frontendBlocksGameplayInput(frontend) &&
+         !productCreativeWorldActiveForWindow(window);
 }
 
 bool productWindowFocused(const SdlWindow* sdlWindow) {
@@ -274,6 +284,7 @@ void updateProductWindowMouseCapture(const FrontendState& frontend,
       surface.gameplayInputSuppressed,
       productWindowFocused(sdlWindow),
       sdlWindow != nullptr,
+      productCreativeDocumentEditorActiveForWindow(window),
   });
   // branch-gate: BG-1076
   if (sdlWindow == nullptr) {
@@ -851,6 +862,14 @@ ProductControllerSampleInputResult processProductControllerActionSample(
       });
   const bool controllerModeChordRequested = modeToggle.toggleRequested;
 
+  if (productCreativeDocumentEditorActiveForWindow(context.window)) {
+    ProductControllerSampleInputResult result;
+    result.processed = true;
+    result.status = "controller_sample_creative_document_suppressed";
+    result.reasonCode = result.status;
+    return result;
+  }
+
   ActionState controllerActions;
   recordProductWindowControllerActions(context.frontend,
                                        context.window,
@@ -1042,21 +1061,9 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
 
   const MouseClick click = resolveProductWindowInputMouseClick(
       context.clickOverride, context.inputFrame.mouse);
-  const ProductCreativeUiInputFrameReceipt creativeUiInputReceipt =
-      routeProductCreativeUiInputFrame(ProductCreativeUiInputFrameRequest{
-          context.creativeUiDrawList,
-          click,
-      });
-  recordProductCreativeUiInputFrame(
-      context.window, creativeUiInputReceipt);
-  const ProductCreativeUiCommandFrameReceipt creativeUiCommandReceipt =
-      routeProductCreativeUiCommandFrame(ProductCreativeUiCommandFrameRequest{
-          context.creativeFacade,
-          creativeUiInputReceipt,
-      });
-  recordProductCreativeUiCommandFrame(context.window,
-                                      creativeUiCommandReceipt);
   bool higherPriorityMouseConsumed = false;
+  const bool frontendMouseOwnsInput =
+      click.clicked && frontendBlocksGameplayInput(context.frontend);
   // branch-gate: BG-1029
   if (click.clicked) {
     const MouseClick menuClick =
@@ -1064,7 +1071,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     // Build the hit-test request through the SAME factory the frame draw path
     // uses (buildProductStarterUiDrawListRequest), so hit-testing consumes the
     // identical request that produced what was drawn.
-    const ProductUiDrawListRequest uiRequest =
+    ProductUiDrawListRequest uiRequest =
         buildProductStarterUiDrawListRequest(
             context.frontend,
             context.saves,
@@ -1078,6 +1085,11 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
              context.window.worldSetupDungeonDraftLastGlyph,
              context.window.selectedProductSaveId,
              context.window.saveDeleteCandidateId});
+    uiRequest.gameplayActive = context.window.gameplayActive;
+    uiRequest.saveRootWritable = !context.options.saveRoot.empty();
+    uiRequest.developerToolsEnabled = true;
+    uiRequest.activeRoomEditable = context.window.roomEditing.ready;
+    uiRequest.roomEditingReady = context.window.roomEditing.ready;
     const OpeningMenuHitTestResult hit =
         openingMenuActionAt(uiRequest, menuClick.x, menuClick.y);
     // branch-gate: BG-1029
@@ -1087,12 +1099,41 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       higherPriorityMouseConsumed = true;
     }
   }
+  MouseClick creativeUiClick = productWindowClickForHitTest(
+      click,
+      context.sdlWindow,
+      context.creativeUiDrawList == nullptr
+          ? 1280U
+          : context.creativeUiDrawList->virtualWidth,
+      context.creativeUiDrawList == nullptr
+          ? 720U
+          : context.creativeUiDrawList->virtualHeight);
+  // Branch-gate: BG-1029. Surfaces visually above gameplay own the click even
+  // when the pointer misses a specific row, and a row hit consumes before the
+  // Creative overlay can route a hidden/behind click.
+  if (frontendMouseOwnsInput || higherPriorityMouseConsumed) {
+    creativeUiClick.clicked = false;
+  }
+  const ProductCreativeUiInputFrameReceipt creativeUiInputReceipt =
+      routeProductCreativeUiInputFrame(ProductCreativeUiInputFrameRequest{
+          context.creativeUiDrawList,
+          creativeUiClick,
+      });
+  recordProductCreativeUiInputFrame(
+      context.window, creativeUiInputReceipt);
+  const ProductCreativeUiCommandFrameReceipt creativeUiCommandReceipt =
+      routeProductCreativeUiCommandFrame(ProductCreativeUiCommandFrameRequest{
+          context.creativeFacade,
+          creativeUiInputReceipt,
+      });
+  recordProductCreativeUiCommandFrame(context.window,
+                                      creativeUiCommandReceipt);
   const ProductCreativeUiDownstreamClickReceipt downstreamClickReceipt =
       routeProductCreativeUiDownstreamClick(
           ProductCreativeUiDownstreamClickRequest{
               click,
               context.window.creativeUiInputConsumed,
-              higherPriorityMouseConsumed,
+              higherPriorityMouseConsumed || frontendMouseOwnsInput,
           });
   recordProductCreativeUiDownstreamClick(context.window,
                                          downstreamClickReceipt);
@@ -1119,43 +1160,58 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   if (context.window.gameplayActive && context.activeSession.has_value() &&
       !frontendBlocksGameplayInput(context.frontend)) {
     ActionState gameplayActions;
+    const bool creativeDocumentActive =
+        productCreativeDocumentEditorActiveForWindow(context.window);
     // branch-gate: BG-1029
-    if (context.window.roomEditing.ready) {
-      (void)processProductWindowEditorMousePickPreview({
-          context.frontend,
-          context.window,
-          downstreamClick,
-          productRoomEditorMousePickViewportConfig(context.window),
-          productRoomEditorMousePickAnchor(&*context.activeSession),
-      });
-      pollKeyboardRoomEditorActions(context.inputFrame.keyboard, gameplayActions);
-      recordProductWindowControllerActions(
-          context.frontend, context.window, context.inputFrame.controllerAction,
-          gamepadControllerSample, controllerModeChordRequested,
-          gameplayActions);
+    if (creativeDocumentActive) {
+      (void)processProductCreativeInputActions(
+          ProductCreativeInputActionsRequest{
+              &context.window,
+              context.creativeFacade,
+              &gameplayActions,
+              downstreamClick,
+              creativePointerTarget,
+          });
     } else {
-      // branch-gate: BG-1212
-      if (!context.window.gameplayMovementTuningVisible) {
-        pollKeyboardGameplayActions(context.inputFrame.keyboard, gameplayActions);
+      if (context.window.roomEditing.ready) {
+        (void)processProductWindowEditorMousePickPreview({
+            context.frontend,
+            context.window,
+            downstreamClick,
+            productRoomEditorMousePickViewportConfig(context.window),
+            productRoomEditorMousePickAnchor(&*context.activeSession),
+        });
+        pollKeyboardRoomEditorActions(context.inputFrame.keyboard,
+                                      gameplayActions);
+        recordProductWindowControllerActions(
+            context.frontend, context.window, context.inputFrame.controllerAction,
+            gamepadControllerSample, controllerModeChordRequested,
+            gameplayActions);
+      } else {
+        // branch-gate: BG-1212
+        if (!context.window.gameplayMovementTuningVisible) {
+          pollKeyboardGameplayActions(context.inputFrame.keyboard,
+                                      gameplayActions);
+        }
+        recordProductWindowControllerActions(
+            context.frontend, context.window, context.inputFrame.controllerAction,
+            gamepadControllerSample, controllerModeChordRequested,
+            gameplayActions);
+        pollMouseGameplayActions(context.inputFrame.mouse, gameplayActions);
       }
-      recordProductWindowControllerActions(
-          context.frontend, context.window, context.inputFrame.controllerAction,
-          gamepadControllerSample, controllerModeChordRequested,
-          gameplayActions);
-      pollMouseGameplayActions(context.inputFrame.mouse, gameplayActions);
+      (void)processProductCreativeInputActions(ProductCreativeInputActionsRequest{
+          &context.window,
+          context.creativeFacade,
+          &gameplayActions,
+          downstreamClick,
+          creativePointerTarget,
+      });
+      (void)applyProductWindowInputActions(context.frontend,
+                                           context.window,
+                                           &*context.activeSession,
+                                           &context.settings, gameplayActions,
+                                           "action_map");
     }
-    (void)processProductCreativeInputActions(ProductCreativeInputActionsRequest{
-        &context.window,
-        context.creativeFacade,
-        &gameplayActions,
-        downstreamClick,
-        creativePointerTarget,
-    });
-    (void)applyProductWindowInputActions(context.frontend,
-                                         context.window,
-                                         &*context.activeSession,
-                                         &context.settings, gameplayActions,
-                                         "action_map");
   }
   updateProductWindowMouseCapture(context.frontend,
                                   context.window,

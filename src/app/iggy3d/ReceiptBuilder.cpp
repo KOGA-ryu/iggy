@@ -373,6 +373,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   RenderReceipt receipt;
   const ProductActiveSurfaceFrame activeSurface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
+  const ProductCreativeSurfaceKind creativeSurface =
+      productCreativeSurfaceKindForWindow(frontend, window);
   const bool mapMakerLive = productMapMakerLiveForWindow(frontend, window);
   const GameplayFeedback feedback = buildGameplayFeedback(window);
   const ProductMovementProofPacket movementProof =
@@ -501,6 +503,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gamepad_menu_select_used", window.gamepadMenuSelectUsed);
   appendReceiptField(receipt, "interaction_mode",
                      productInteractionModeName(window.interactionMode));
+  appendReceiptField(receipt, "creative_surface_kind",
+                     productCreativeSurfaceKindName(creativeSurface));
   appendReceiptField(receipt, "map_maker_active", mapMakerLive);
   appendReceiptField(receipt, "map_maker_status", window.mapMakerStatus);
   appendReceiptField(receipt, "map_maker_reason_code",

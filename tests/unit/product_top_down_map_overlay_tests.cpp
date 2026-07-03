@@ -71,6 +71,25 @@ bool creativeEditingUsesEditorOverview() {
          expect(overlay.itemCount == 17U, "creative overview item count");
 }
 
+bool activeCreativeWorldHidesTopDownMap() {
+  const iggy3d::TopDownMapOverlay overlay =
+      iggy3d::buildTopDownMapOverlay(
+          {iggy3d::ProductRendererRequest::Vulkan,
+           iggy3d::ProductInteractionMode::Creative,
+           true,
+           false,
+           13U,
+           true});
+  return expect(!overlay.visible, "creative world hidden") &&
+         expect(overlay.purpose == "hidden", "creative world purpose") &&
+         expect(overlay.size == "hidden", "creative world size") &&
+         expect(overlay.status == "top_down_map_hidden",
+                "creative world status") &&
+         expect(overlay.reasonCode == "top_down_map_creative_world_active",
+                "creative world reason") &&
+         expect(overlay.itemCount == 13U, "creative world item count");
+}
+
 bool nullPlayerGameplayUsesDiagnosticFallback() {
   const iggy3d::TopDownMapOverlay overlay =
       iggy3d::buildTopDownMapOverlay(
@@ -153,6 +172,7 @@ int main() {
   ok &= inactiveGameplayHidesTopDownMap();
   ok &= playerGameplayUsesCompactMinimap();
   ok &= creativeEditingUsesEditorOverview();
+  ok &= activeCreativeWorldHidesTopDownMap();
   ok &= nullPlayerGameplayUsesDiagnosticFallback();
   ok &= unknownInteractionModeFailsClosed();
   ok &= receiptCarriesTopDownMapFields();

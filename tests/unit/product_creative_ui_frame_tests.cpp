@@ -81,14 +81,32 @@ void prepopulateCreativeProjection(iggy3d::ProductAppWindowState& window) {
   window.creativeUiProjectionHitRegionCount = 18;
 }
 
-bool activeRuleUsesOnlyInteractionMode() {
+void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.activeCreativeSaveId = "creative_save";
+  window.activeCreativeWorldId = "world_001";
+  window.activeCreativeDocumentId = 42U;
+}
+
+void clearCreativeDocumentIdentity(iggy3d::ProductAppWindowState& window) {
+  window.activeCreativeSaveId = "none";
+  window.activeCreativeWorldId = "none";
+  window.activeCreativeDocumentId = 0U;
+}
+
+bool activeRuleUsesCreativeDocumentIdentity() {
   iggy3d::ProductAppWindowState window;
   const bool playerActive = iggy3d::productCreativeUiActiveForWindow(window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  const bool creativeActive = iggy3d::productCreativeUiActiveForWindow(window);
+  const bool legacyCreativeActive =
+      iggy3d::productCreativeUiActiveForWindow(window);
+  markCreativeDocumentWindow(window);
+  const bool documentCreativeActive =
+      iggy3d::productCreativeUiActiveForWindow(window);
 
   return expect(!playerActive, "player inactive") &&
-         expect(creativeActive, "creative active");
+         expect(!legacyCreativeActive, "legacy creative inactive") &&
+         expect(documentCreativeActive, "document creative active");
 }
 
 bool nullWindowReturnsWindowMissing() {
@@ -179,7 +197,7 @@ bool inactiveWindowRecordsInactiveProjection() {
 
 bool creativeWindowMissingFacadeRecordsFailure() {
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(window);
   prepopulateCreativeProjection(window);
 
   iggy3d::ProductCreativeUiFrameRequest request;
@@ -231,7 +249,7 @@ bool creativeWindowMissingFacadeRecordsFailure() {
 
 bool creativeWindowWithFacadeProjectsAndRecords() {
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(window);
   cr::Facade facade;
   populateInspectedFacade(facade);
 
@@ -291,7 +309,7 @@ bool creativeWindowWithFacadeProjectsAndRecords() {
 
 bool activeThenInactiveClearsPriorReadyProjection() {
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(window);
   cr::Facade facade;
   facade.reset();
 
@@ -302,6 +320,7 @@ bool activeThenInactiveClearsPriorReadyProjection() {
       iggy3d::buildProductCreativeUiFrame(request);
 
   window.interactionMode = iggy3d::ProductInteractionMode::Player;
+  clearCreativeDocumentIdentity(window);
   const iggy3d::ProductCreativeUiFrame inactiveFrame =
       iggy3d::buildProductCreativeUiFrame(request);
 
@@ -332,7 +351,7 @@ bool activeThenInactiveClearsPriorReadyProjection() {
 
 bool productVulkanMenuUiFieldsAreUnchanged() {
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(window);
   window.productVulkanMenuUiReady = true;
   window.productVulkanMenuUiPartial = true;
   window.productVulkanMenuUiStatus = "preexisting_ui_status";
@@ -374,7 +393,7 @@ bool productVulkanMenuUiFieldsAreUnchanged() {
 
 bool facadeStateIsNotMutatedByProjection() {
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(window);
   cr::Facade facade;
   populateInspectedFacade(facade);
 
@@ -397,7 +416,7 @@ bool facadeStateIsNotMutatedByProjection() {
 }  // namespace
 
 int main() {
-  const bool ok = activeRuleUsesOnlyInteractionMode() &&
+  const bool ok = activeRuleUsesCreativeDocumentIdentity() &&
                   nullWindowReturnsWindowMissing() &&
                   inactiveWindowRecordsInactiveProjection() &&
                   creativeWindowMissingFacadeRecordsFailure() &&

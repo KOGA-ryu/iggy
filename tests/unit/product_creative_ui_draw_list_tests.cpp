@@ -255,16 +255,13 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                 "hidden measurement panel") &&
          expect(findPrimitive(list, "creative.panel.ghost") == nullptr,
                 "hidden ghost panel") &&
-         expect(active != nullptr && active->text == "Active Tool: Select",
+         expect(active != nullptr && active->text == "Tool: Select",
                 "active row text") &&
          expect(createRoom != nullptr && createRoom->text == "Create Room",
                 "create room row text") &&
-         expect(status != nullptr && hasPrefix(status->text, "Creative Status:"),
+         expect(status != nullptr && status->text == "Status: Ready",
                 "status row text") &&
-         expect(snap != nullptr &&
-                    snap->text ==
-                        "Snap Settings: mode=Grid axes=XY step=(1.00, 1.00) "
-                        "origin=(0.00, 0.00)",
+         expect(snap != nullptr && snap->text == "Snap: Grid XY 1.00x1.00",
                 "snap row text") &&
          expect(rowHitMatchesTextPrimitive(list,
                                            "creative.row.tools.active_tool"),
@@ -321,24 +318,19 @@ bool populatedModelPreservesCreativeOrderAndText() {
   const std::size_t ghostPanel = primitiveIndex(list, "creative.panel.ghost");
 
   return expect(selected != nullptr &&
-                    selected->text ==
-                        "Selected Target: target=42 visible=true",
+                    selected->text == "Selected: target=42 visible=true",
                 "selected row text") &&
          expect(inspected != nullptr &&
-                    inspected->text ==
-                        "Inspected Target: target=84 visible=false",
+                    inspected->text == "Inspected: target=84 visible=false",
                 "inspected row text") &&
          expect(measurement != nullptr &&
-                    measurement->text == "Measurement State: active samples=2",
+                    measurement->text == "Measure: active samples=2",
                 "measurement row text") &&
          expect(start != nullptr &&
-                    start->text ==
-                        "Measurement Start: point=(1.00, 2.00) target=7",
+                    start->text == "Start: (1.00,2.00) target=7",
                 "measurement start text") &&
          expect(ghost != nullptr &&
-                    ghost->text ==
-                        "Ghost Preview: raw=(1.20, 2.70) snapped=(1.00, 3.00) "
-                        "target=99 tool=Measure",
+                    ghost->text == "Ghost: (1.20,2.70)->(1.00,3.00) target=99",
                 "ghost row text") &&
          expect(selectionPanel != list.primitives.size(),
                 "selection panel exists") &&
@@ -390,12 +382,10 @@ bool selectedTargetVisibilityTextHandlesHiddenAndUnknown() {
                         "creative.row.selection.selected_target",
                 "hidden semantic unchanged") &&
          expect(hidden != nullptr &&
-                    hidden->text ==
-                        "Selected Target: target=42 visible=false",
+                    hidden->text == "Selected: target=42 visible=false",
                 "hidden selected text") &&
          expect(missing != nullptr &&
-                    missing->text ==
-                        "Selected Target: target=77 visible=unknown",
+                    missing->text == "Selected: target=77 visible=unknown",
                 "missing selected text") &&
          expect(rowHitMatchesTextPrimitive(
                     hiddenList, "creative.row.selection.selected_target"),

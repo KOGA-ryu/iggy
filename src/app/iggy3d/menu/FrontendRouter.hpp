@@ -37,6 +37,12 @@ enum class ProductActiveMouseCapturePolicy : std::uint8_t {
   RelativeGameplay,
 };
 
+enum class ProductCreativeSurfaceKind : std::uint8_t {
+  None,
+  LegacyMapMaker,
+  CreativeDocument,
+};
+
 struct ProductFrontendRouteContext {
   FrontendState frontend;
   bool gameplayActive = false;
@@ -86,6 +92,8 @@ struct ProductActiveSurfaceFrame {
 std::string_view productFrontendSurfaceName(ProductFrontendSurface surface);
 std::string_view productActiveMouseCapturePolicyName(
     ProductActiveMouseCapturePolicy policy);
+std::string_view productCreativeSurfaceKindName(
+    ProductCreativeSurfaceKind kind);
 
 ProductActiveSurfaceContext productActiveSurfaceContextForWindow(
     const FrontendState& frontend,
@@ -95,6 +103,12 @@ ProductActiveSurfaceFrame resolveProductActiveSurface(
     const ProductActiveSurfaceContext& context);
 bool productMapMakerLiveForWindow(const FrontendState& frontend,
                                   const ProductAppWindowState& window);
+bool productCreativeWorldActiveForWindow(const ProductAppWindowState& window);
+bool productCreativeDocumentEditorActiveForWindow(
+    const ProductAppWindowState& window);
+ProductCreativeSurfaceKind productCreativeSurfaceKindForWindow(
+    const FrontendState& frontend,
+    const ProductAppWindowState& window);
 void syncProductWindowInputOwnerFromActiveSurface(
     ProductAppWindowState& window,
     const ProductActiveSurfaceFrame& surface);

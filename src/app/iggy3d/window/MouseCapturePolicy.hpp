@@ -14,6 +14,7 @@ struct ProductMouseCapturePolicyRequest {
   bool frontendBlocksGameplay = true;
   bool windowFocused = true;
   bool windowCaptureSupported = true;
+  bool creativeDocumentActive = false;
 };
 
 struct ProductMouseCapturePolicy {

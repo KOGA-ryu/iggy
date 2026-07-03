@@ -5,6 +5,7 @@
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"
+#include "app/iggy3d/menu/PauseUi.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
@@ -44,6 +45,13 @@ bool expectNear(float actual,
   return expect(std::fabs(actual - expected) < epsilon, message);
 }
 
+void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.activeCreativeSaveId = "creative_save";
+  window.activeCreativeWorldId = "world_001";
+  window.activeCreativeDocumentId = 42U;
+}
+
 // Test-local convenience: openingMenuActionAt now takes the same
 // ProductUiDrawListRequest the frame path builds. These tests only exercise
 // hit-test geometry from a bare FrontendState (the wired buttons' rects depend
@@ -54,6 +62,12 @@ iggy3d::OpeningMenuHitTestResult hitAt(const iggy3d::FrontendState& frontend,
                                        float y) {
   iggy3d::ProductUiDrawListRequest request;
   request.frontend = &frontend;
+  request.compatibleSaveCount = 1U;
+  request.gameplayActive = true;
+  request.saveRootWritable = true;
+  request.developerToolsEnabled = true;
+  request.activeRoomEditable = true;
+  request.roomEditingReady = true;
   return iggy3d::openingMenuActionAt(request, x, y);
 }
 
@@ -274,6 +288,35 @@ iggy3d::MouseClick clickAt(float x, float y) {
   click.x = x;
   click.y = y;
   return click;
+}
+
+iggy3d::MouseClick clickPauseAction(const iggy3d::FrontendState& frontend,
+                                    iggy3d::FrontendAction action) {
+  iggy3d::PauseMenuContext pauseContext;
+  pauseContext.pauseOpen = true;
+  pauseContext.runtimeSessionAvailable = true;
+  pauseContext.saveRootWritable = true;
+  pauseContext.compatibleSaveCount = 1U;
+  pauseContext.developerToolsEnabled = true;
+  pauseContext.activeRoomEditable = true;
+  pauseContext.roomEditingReady = true;
+  const iggy3d::PauseMenuModel model =
+      iggy3d::buildPauseMenuModel(pauseContext, frontend.selectedAction);
+  iggy3d::ProductPauseUiRequest request;
+  request.model = &model;
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductPauseUiDrawList(request);
+
+  std::string semanticId = "pause.row.";
+  semanticId.append(iggy3d::frontendActionName(action));
+  semanticId.append(".label");
+  for (const iggy3d::UiHitRegion& region : list.hitRegions) {
+    if (region.semanticId == semanticId) {
+      return clickAt(region.rect.x + region.rect.width * 0.5F,
+                     region.rect.y + region.rect.height * 0.5F);
+    }
+  }
+  return {};
 }
 
 iggy3d::ProductSaveBridgeResult compatibleSaveBridge() {
@@ -786,6 +829,64 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
                 "map maker movement avoids pause-like owner status");
 }
 
+bool creativeDocumentSuppressesProductControllerMovement() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = gameplayWindow(session);
+  if (!expect(session.has_value(),
+              "creative document movement suppression session created")) {
+    return false;
+  }
+  markCreativeDocumentWindow(window);
+  window.mapMakerStatus = "map_maker_enabled";
+  window.mapMakerReasonCode = window.mapMakerStatus;
+
+  const iggy3d::EntityId actor = session->state().players.actorForSlot(0);
+  const iggy3d::EntityState* beforePlayer =
+      session->state().world.findById(actor);
+  if (!expect(beforePlayer != nullptr,
+              "creative document movement player exists")) {
+    return false;
+  }
+  const iggy3d::Vec3 beforePosition = beforePlayer->transform.position;
+  iggy3d::ProductControllerModeChordState chord;
+  iggy3d::ProductControllerActionRoutingState routing;
+
+  const iggy3d::ProductControllerSampleInputResult blocked =
+      iggy3d::processProductControllerActionSample(
+          {frontend, window, &*session, chord, routing, nullptr, "unit"},
+          iggy3d::productControllerActionSampleForControl(
+              iggy3d::ProductControllerControl::LeftStickUp));
+  const iggy3d::EntityState* afterPlayer =
+      session->state().world.findById(actor);
+  if (!expect(afterPlayer != nullptr,
+              "creative document movement player remains")) {
+    return false;
+  }
+
+  return expect(blocked.processed,
+                "creative document controller sample processed") &&
+         expect(!blocked.actionApplied,
+                "creative document movement not applied") &&
+         expect(!blocked.actionAccepted,
+                "creative document movement not accepted") &&
+         expect(blocked.status ==
+                    "controller_sample_creative_document_suppressed",
+                "creative document suppression status") &&
+         expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
+                "creative document is not legacy map maker") &&
+         expect(iggy3d::productCreativeSurfaceKindForWindow(frontend, window) ==
+                    iggy3d::ProductCreativeSurfaceKind::CreativeDocument,
+                "creative document surface kind") &&
+         expect(!window.viewport.creativeFlyActive,
+                "creative document does not run creative fly") &&
+         expect(!window.gameplayCommandSubmitted,
+                "creative document does not submit gameplay command") &&
+         expect(iggy3d::nearlyEqual(beforePosition,
+                                    afterPlayer->transform.position),
+                "creative document leaves runtime player position unchanged");
+}
+
 bool controllerChordToggleRecordsCreativeConsumption() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   std::optional<iggy3d::Session> session;
@@ -941,23 +1042,107 @@ bool pauseHitTestUsesPauseActionRows() {
           iggy3d::InputAction::SystemPause,
           {frontend, window, closeRequested});
 
+  const iggy3d::MouseClick resumeClick =
+      clickPauseAction(frontend, iggy3d::FrontendAction::Resume);
+  const iggy3d::MouseClick settingsClick =
+      clickPauseAction(frontend, iggy3d::FrontendAction::Settings);
   const iggy3d::OpeningMenuHitTestResult resumeHit =
-      hitAt(frontend, 62.0F, 150.0F);
+      hitAt(frontend, resumeClick.x, resumeClick.y);
   const iggy3d::OpeningMenuHitTestResult settingsHit =
-      hitAt(frontend, 62.0F, 462.0F);
+      hitAt(frontend, settingsClick.x, settingsClick.y);
+  const iggy3d::OpeningMenuHitTestResult staleLeftHit =
+      hitAt(frontend, 62.0F, 150.0F);
 
   return expect(paused.handled, "system pause handled") &&
          expect(paused.accepted, "system pause accepted") &&
          expect(frontend.screen == iggy3d::FrontendScreen::Pause,
                 "system pause opens pause screen") &&
+         expect(resumeClick.clicked, "pause resume test click found") &&
          expect(resumeHit.hit, "pause resume row hit") &&
          expect(resumeHit.action == iggy3d::FrontendAction::Resume,
                 "pause first row is resume") &&
+         expect(settingsClick.clicked, "pause settings test click found") &&
          expect(settingsHit.hit, "pause settings row hit") &&
          expect(settingsHit.area == iggy3d::OpeningMenuHitArea::StarterAction,
                 "pause settings row uses menu action area") &&
          expect(settingsHit.action == iggy3d::FrontendAction::Settings,
-                "pause settings row maps to settings");
+                "pause settings row maps to settings") &&
+         expect(!staleLeftHit.hit,
+                "pause no longer uses stale left-side action rows");
+}
+
+bool pauseMouseClickResumesBeforeCreativeOverlayInput() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  bool closeRequested = false;
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
+  const iggy3d::MouseClick resumeClick =
+      clickPauseAction(frontend, iggy3d::FrontendAction::Resume);
+
+  iggy3d::ProductUiDrawList creativeUi;
+  creativeUi.ready = true;
+  creativeUi.virtualWidth = 1280U;
+  creativeUi.virtualHeight = 720U;
+  creativeUi.hitRegions.push_back(
+      iggy3d::UiHitRegion{.semanticId = "creative.row.tools.create_room",
+                           .rect = {0.0F, 0.0F, 1280.0F, 720.0F},
+                           .kind = iggy3d::UiHitKind::Button,
+                           .action = iggy3d::FrontendAction::None,
+                           .enabled = true});
+
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::ProductAppOptions options;
+  options.saveRoot = std::filesystem::temp_directory_path();
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::WorldSetupDraft draft;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductWindowInputFrameState inputFrame;
+
+  iggy3d::processProductWindowInputFrame(
+      iggy3d::ProductWindowInputFrameContext{
+          frontend,
+          saves,
+          options,
+          settingsTab,
+          activeSession,
+          draft,
+          window,
+          settings,
+          inputFrame,
+          closeRequested,
+          nullptr,
+          nullptr,
+          &creativeUi,
+          {},
+          {},
+          0,
+          iggy3d::creative::CreativeViewportPickDepthMode::FixedZ,
+          {true, resumeClick},
+      });
+
+  return expect(resumeClick.clicked, "pause resume process click found") &&
+         expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
+                "pause click resumes gameplay") &&
+         expect(window.creativeUiInputRequested,
+                "creative ui input receipt recorded") &&
+         expect(!window.creativeUiInputClickPresent,
+                "pause-owned click is not routed to creative ui") &&
+         expect(!window.creativeUiInputConsumed,
+                "pause-owned click is not consumed by creative ui") &&
+         expect(window.creativeUiInputStatus ==
+                    "product_creative_ui_input_no_click",
+                "creative ui records no click behind pause") &&
+         expect(window.creativeUiCommandKind == "none",
+                "creative command does not fire behind pause") &&
+         expect(window.creativeUiInputDownstreamClickSuppressed,
+                "pause-owned click suppresses downstream creative/gameplay click") &&
+         expect(window.creativeUiInputDownstreamClickStatus ==
+                    "product_creative_ui_downstream_click_higher_priority",
+                "downstream receipt names higher-priority ui");
 }
 
 bool pauseSettingsConfirmOpensSettingsPanel() {
@@ -2321,6 +2506,37 @@ bool topLevelToggleFunnelPreservesPolicies() {
       expect(iggy3d::productMapMakerLiveForWindow(mapMaker, mapMakerWindow),
              "top-level M enables map maker");
 
+  iggy3d::FrontendState creativeWorld = gameplayFrontend();
+  iggy3d::ProductAppWindowState creativeWorldWindow;
+  creativeWorldWindow.gameplayActive = true;
+  creativeWorldWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  creativeWorldWindow.activeCreativeSaveId = "creative_save";
+  creativeWorldWindow.activeCreativeWorldId = "world_001";
+  creativeWorldWindow.activeCreativeDocumentId = 42U;
+  creativeWorldWindow.mapMakerStatus = "map_maker_enabled";
+  creativeWorldWindow.viewport.creativeFlyActive = true;
+  const iggy3d::ProductWindowTopLevelToggleResult creativeWorldM =
+      iggy3d::dispatchProductWindowTopLevelToggleAction(
+          creativeWorld,
+          creativeWorldWindow,
+          iggy3d::InputAction::MapMakerToggle,
+          &settings,
+          &closeRequested);
+  const bool creativeWorldMOk =
+      expect(creativeWorldM.handled, "top-level creative M handled") &&
+      expect(!creativeWorldM.accepted, "top-level creative M rejected") &&
+      expect(creativeWorldWindow.interactionMode ==
+                 iggy3d::ProductInteractionMode::Creative,
+             "top-level creative M preserves creative mode") &&
+      expect(!iggy3d::productMapMakerLiveForWindow(creativeWorld,
+                                                   creativeWorldWindow),
+             "top-level creative M blocks map maker live state") &&
+      expect(!creativeWorldWindow.viewport.creativeFlyActive,
+             "top-level creative M clears stale creative fly") &&
+      expect(creativeWorldWindow.mapMakerStatus ==
+                 "map_maker_creative_world_active",
+             "top-level creative M status");
+
   iggy3d::FrontendState pauseMapMaker = gameplayFrontend();
   pauseMapMaker.screen = iggy3d::FrontendScreen::Pause;
   pauseMapMaker.childScreen = iggy3d::FrontendScreen::Gameplay;
@@ -2342,7 +2558,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
              "top-level pause M clears map maker live state");
 
   return debugOk && blockedDebugOk && tuningOk && blockedTuningOk && devOk &&
-         f2Ok && mOk && blockedMOk;
+         f2Ok && mOk && creativeWorldMOk && blockedMOk;
 }
 
 bool movementTuningGameplayInputIsLiveAndFocused() {
@@ -2708,6 +2924,39 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
       expect(!window.viewport.creativeFlyActive,
              "map maker disable clears creative fly active");
 
+  iggy3d::FrontendState creativeWorld = gameplayFrontend();
+  iggy3d::ProductAppWindowState creativeWorldWindow;
+  creativeWorldWindow.gameplayActive = true;
+  creativeWorldWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  creativeWorldWindow.activeCreativeSaveId = "creative_save";
+  creativeWorldWindow.activeCreativeWorldId = "world_001";
+  creativeWorldWindow.activeCreativeDocumentId = 42U;
+  creativeWorldWindow.mapMakerStatus = "map_maker_enabled";
+  creativeWorldWindow.viewport.creativeFlyActive = true;
+  const iggy3d::ProductMenuActionResult creativeWorldBlocked =
+      iggy3d::applyProductGameplayMapMakerToggleAction(
+          iggy3d::InputAction::MapMakerToggle,
+          {creativeWorld, creativeWorldWindow});
+  const bool creativeWorldBlockedOk =
+      expect(creativeWorldBlocked.handled,
+             "creative world map maker toggle handled") &&
+      expect(!creativeWorldBlocked.accepted,
+             "creative world map maker toggle rejected") &&
+      expect(creativeWorldWindow.interactionMode ==
+                 iggy3d::ProductInteractionMode::Creative,
+             "creative world preserves creative interaction mode") &&
+      expect(!iggy3d::productMapMakerLiveForWindow(creativeWorld,
+                                                   creativeWorldWindow),
+             "creative world blocks map maker live") &&
+      expect(!creativeWorldWindow.viewport.creativeFlyActive,
+             "creative world clears stale creative fly") &&
+      expect(creativeWorldWindow.mapMakerStatus ==
+                 "map_maker_creative_world_active",
+             "creative world map maker status") &&
+      expect(creativeWorld.status ==
+                 "map_maker_toggle_creative_world_active",
+             "creative world frontend status");
+
   iggy3d::FrontendState starter = starterFrontend();
   iggy3d::ProductAppWindowState inactiveWindow;
   const iggy3d::ProductMenuActionResult ignored =
@@ -2754,7 +3003,8 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
       expect(!iggy3d::productMapMakerLiveForWindow(frontend, staleWindow),
              "player mode is not map maker live");
 
-  return enabledOk && disabledOk && ignoredOk && blockedOk && staleCacheOk;
+  return enabledOk && disabledOk && creativeWorldBlockedOk && ignoredOk &&
+         blockedOk && staleCacheOk;
 }
 
 bool mapMakerToggleRoutesAsGameplayOwnedInput() {
@@ -2961,11 +3211,13 @@ int main() {
       controllerSouthJumpsInGameplayPlayerMode() &&
       controllerSouthDoesNotJumpWhenFrontendBlocksGameplay() &&
       mapMakerMovementStaysGameplayOwnedAndDoesNotPause() &&
+      creativeDocumentSuppressesProductControllerMovement() &&
       controllerChordToggleRecordsCreativeConsumption() &&
       controllerSouthJumpsFromClamberedWallTop() &&
       starterDeleteButtonOpensSelectableBrowser() &&
       starterHitTestUsesCanonicalActionRows() &&
       pauseHitTestUsesPauseActionRows() &&
+      pauseMouseClickResumesBeforeCreativeOverlayInput() &&
       pauseSettingsConfirmOpensSettingsPanel() &&
       pauseSettingsInputDispatchRoutesToSettings() &&
       starterSettingsInputDispatchRoutesToSettings() &&

@@ -84,7 +84,8 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
         ProductGameplayMovementTuningField::WalkSpeed,
     bool movementTuningVisible = false,
     bool devToolsOverlayVisible = false,
-    FrontendDevToolsCategory devToolsCategory = FrontendDevToolsCategory::Session);
+    FrontendDevToolsCategory devToolsCategory = FrontendDevToolsCategory::Session,
+    bool creativeEditorOverlayActive = false);
 const FrameInput& refreshProductVulkanGameplayFrameInput(
     ProductVulkanGameplayFrame& gameplayFrame);
 [[nodiscard]] ProductCreativeWireframeDebugRenderFrame

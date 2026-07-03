@@ -19,15 +19,55 @@ bool expect(bool condition, std::string_view message) {
   return true;
 }
 
+void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.activeCreativeSaveId = "creative_save";
+  window.activeCreativeWorldId = "world_001";
+  window.activeCreativeDocumentId = 42U;
+}
+
 iggy3d::ProductCreativeUiFrame readyCreativeUiFrame() {
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(window);
   cr::Facade facade;
   facade.reset();
   return iggy3d::buildProductCreativeUiWindowFrame(
       iggy3d::ProductCreativeUiWindowFrameRequest{
           &window, &facade, 1280, 720, 1280, 720,
           iggy3d::ProductUiThemeId::System});
+}
+
+bool legacyCreativeWindowDoesNotBuildDocumentOverlay() {
+  iggy3d::ProductAppWindowState window;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  cr::Facade facade;
+  facade.reset();
+
+  const iggy3d::ProductCreativeUiFrame frame =
+      iggy3d::buildProductCreativeUiWindowFrame(
+          iggy3d::ProductCreativeUiWindowFrameRequest{
+              &window, &facade, 1280, 720, 1280, 720,
+              iggy3d::ProductUiThemeId::System});
+
+  return expect(!frame.projection.drawList.ready,
+                "legacy creative draw list inactive") &&
+         expect(frame.receipt.status == "product_creative_ui_frame_inactive",
+                "legacy creative frame inactive status");
+}
+
+iggy3d::ProductGameplayProjectionFrame legacyGameplayHudProjectionFrame() {
+  iggy3d::ProductGameplayProjectionFrame frame;
+  frame.topDownMapOverlay.visible = true;
+  frame.topDownMapOverlay.purpose = "editor_overview";
+  frame.topDownMapOverlay.size = "full";
+  frame.topDownMapOverlay.itemCount = 14U;
+  frame.interactionModeHud.visible = true;
+  frame.interactionModeHud.label = "CREATIVE";
+  frame.feedback.visible = true;
+  frame.feedback.lines.push_back(
+      iggy3d::GameplayFeedbackLine{"TARGET", "NOT_ATTEMPTED",
+                                   iggy3d::FeedbackTone::Neutral, true});
+  return frame;
 }
 
 bool readyCreativeOverlayAddsRectsAndGlyphs() {
@@ -111,13 +151,56 @@ bool creativeOverlayRefreshesGameplayFrameInput() {
                 "refreshed primitive count");
 }
 
+bool creativeEditorFrameSuppressesLegacyGameplayHudPanels() {
+  const iggy3d::ProductGameplayProjectionFrame projection =
+      legacyGameplayHudProjectionFrame();
+  const iggy3d::ProductVulkanGameplayFrame normal =
+      iggy3d::buildProductVulkanGameplayFrame(
+          projection,
+          5U,
+          1280U,
+          720U,
+          0.0F,
+          0.0F,
+          iggy3d::productGameplayMovementTuning(),
+          iggy3d::ProductGameplayMovementTuningField::WalkSpeed,
+          false,
+          false,
+          iggy3d::FrontendDevToolsCategory::Session,
+          false);
+  const iggy3d::ProductVulkanGameplayFrame creative =
+      iggy3d::buildProductVulkanGameplayFrame(
+          projection,
+          5U,
+          1280U,
+          720U,
+          0.0F,
+          0.0F,
+          iggy3d::productGameplayMovementTuning(),
+          iggy3d::ProductGameplayMovementTuningField::WalkSpeed,
+          false,
+          false,
+          iggy3d::FrontendDevToolsCategory::Session,
+          true);
+
+  return expect(!normal.rects.empty(), "normal gameplay hud rects") &&
+         expect(!normal.textGlyphQuads.empty(), "normal gameplay hud text") &&
+         expect(creative.rects.empty(), "creative suppresses legacy rects") &&
+         expect(creative.textGlyphQuads.empty(),
+                "creative suppresses legacy text") &&
+         expect(creative.textGlyphCount == 0U,
+                "creative suppresses legacy glyph count");
+}
+
 }  // namespace
 
 int main() {
   bool ok = true;
   ok &= readyCreativeOverlayAddsRectsAndGlyphs();
+  ok &= legacyCreativeWindowDoesNotBuildDocumentOverlay();
   ok &= creativeOverlayAppendsToExistingHudOverlay();
   ok &= unreadyCreativeOverlayNoops();
   ok &= creativeOverlayRefreshesGameplayFrameInput();
+  ok &= creativeEditorFrameSuppressesLegacyGameplayHudPanels();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

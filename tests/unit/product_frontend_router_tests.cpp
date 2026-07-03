@@ -602,6 +602,106 @@ bool activeSurfaceWindowContextPreservesLegacyGameplayGate() {
                 "window editor input surface");
 }
 
+bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Gameplay;
+  frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
+
+  iggy3d::ProductAppWindowState none;
+  none.gameplayActive = true;
+
+  iggy3d::ProductAppWindowState legacy;
+  legacy.gameplayActive = true;
+  legacy.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  legacy.mapMakerStatus = "map_maker_enabled";
+  legacy.mapMakerReasonCode = legacy.mapMakerStatus;
+
+  iggy3d::ProductAppWindowState document;
+  document.gameplayActive = true;
+  document.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  document.mapMakerStatus = "map_maker_enabled";
+  document.activeCreativeSaveId = "creative_save";
+  document.activeCreativeWorldId = "world_001";
+  document.activeCreativeDocumentId = 42U;
+
+  iggy3d::ProductAppWindowState staleIdentity;
+  staleIdentity.gameplayActive = true;
+  staleIdentity.interactionMode = iggy3d::ProductInteractionMode::Player;
+  staleIdentity.activeCreativeDocumentId = 42U;
+
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductSaveBridgeResult saves;
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options,
+                                     world,
+                                     frontend,
+                                     settings,
+                                     document,
+                                     saves);
+
+  return expect(iggy3d::productCreativeSurfaceKindName(
+                    iggy3d::ProductCreativeSurfaceKind::None) == "none",
+                "none surface name") &&
+         expect(iggy3d::productCreativeSurfaceKindName(
+                    iggy3d::ProductCreativeSurfaceKind::LegacyMapMaker) ==
+                    "legacy_map_maker",
+                "legacy surface name") &&
+         expect(iggy3d::productCreativeSurfaceKindName(
+                    iggy3d::ProductCreativeSurfaceKind::CreativeDocument) ==
+                    "creative_document",
+                "document surface name") &&
+         expect(iggy3d::productCreativeSurfaceKindForWindow(frontend, none) ==
+                    iggy3d::ProductCreativeSurfaceKind::None,
+                "default surface none") &&
+         expect(iggy3d::productCreativeSurfaceKindForWindow(frontend, legacy) ==
+                    iggy3d::ProductCreativeSurfaceKind::LegacyMapMaker,
+                "legacy map maker surface") &&
+         expect(iggy3d::productMapMakerLiveForWindow(frontend, legacy),
+                "legacy map maker live") &&
+         expect(iggy3d::productCreativeSurfaceKindForWindow(frontend,
+                                                            document) ==
+                    iggy3d::ProductCreativeSurfaceKind::CreativeDocument,
+                "document surface wins over stale map maker status") &&
+         expect(!iggy3d::productMapMakerLiveForWindow(frontend, document),
+                "document surface blocks map maker") &&
+         expect(iggy3d::productCreativeSurfaceKindForWindow(frontend,
+                                                            staleIdentity) ==
+                    iggy3d::ProductCreativeSurfaceKind::None,
+                "stale identity without creative mode is not live document") &&
+         expect(iggy3d::hasReceiptField(receipt,
+                                        "creative_surface_kind",
+                                        "creative_document"),
+                "receipt mirrors creative document surface kind");
+}
+
+bool creativeDocumentIdentitySuppressesRoomEditorSurface() {
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Gameplay;
+  frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
+
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.roomEditing.ready = true;
+  window.activeCreativeSaveId = "creative_save";
+  window.activeCreativeWorldId = "world_001";
+  window.activeCreativeDocumentId = 42U;
+
+  const iggy3d::ProductActiveSurfaceFrame surface =
+      iggy3d::resolveProductActiveSurface(
+          iggy3d::productActiveSurfaceContextForWindow(frontend, window));
+
+  return expect(surface.activeSurface ==
+                    iggy3d::ProductFrontendSurface::Gameplay,
+                "creative document does not become room editor surface") &&
+         expect(surface.inputSurface == iggy3d::ProductInputSurface::Gameplay,
+                "creative document keeps gameplay backdrop input surface") &&
+         expect(surface.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "creative document keeps gameplay owner for backdrop");
+}
+
 bool inputOwnerCacheSyncUsesResolvedActiveSurface() {
   struct CacheCase {
     iggy3d::FrontendScreen screen = iggy3d::FrontendScreen::Starter;
@@ -691,6 +791,8 @@ int main() {
                   activeMouseCapturePolicyNamesAreStable() &&
                   activeSurfaceMatrixCoversCurrentRoutes() &&
                   activeSurfaceWindowContextPreservesLegacyGameplayGate() &&
+                  creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() &&
+                  creativeDocumentIdentitySuppressesRoomEditorSurface() &&
                   inputOwnerCacheSyncUsesResolvedActiveSurface();
   return ok ? 0 : 1;
 }

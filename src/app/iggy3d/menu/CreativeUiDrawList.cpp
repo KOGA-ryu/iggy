@@ -12,11 +12,10 @@ namespace {
 
 constexpr float kOverlayX = 24.0F;
 constexpr float kOverlayY = 24.0F;
-constexpr float kPanelWidth = 360.0F;
-constexpr float kPanelHeaderHeight = 28.0F;
+constexpr float kPanelWidth = 300.0F;
 constexpr float kPanelPadding = 10.0F;
-constexpr float kRowHeight = 24.0F;
-constexpr float kPanelGap = 10.0F;
+constexpr float kRowHeight = 28.0F;
+constexpr float kPanelGap = 8.0F;
 
 [[nodiscard]] bool hasFlag(creative::CreativeUiRowFlagMask flags,
                            creative::CreativeUiRowFlagMask flag) noexcept {
@@ -132,23 +131,33 @@ void appendVisibilityText(std::string& text,
   std::string text(row.label.empty() ? row.id : row.label);
   switch (row.kind) {
     case creative::CreativeUiRowKind::ActiveTool:
-      text.append(": ");
+      text = "Tool: ";
       text.append(toolName(row.tool));
       break;
     case creative::CreativeUiRowKind::CreateRoom:
       break;
     case creative::CreativeUiRowKind::StatusSummary:
-      text.append(": flags=");
-      text.append(std::to_string(row.flags));
+      text = "Status: ";
+      if (hasFlag(row.flags, creative::kCreativeUiRowFlagActive)) {
+        text.append("Measuring");
+      } else if (hasFlag(row.flags, creative::kCreativeUiRowFlagHasTarget)) {
+        text.append("Selected");
+      } else if (hasFlag(row.flags, creative::kCreativeUiRowFlagHasMeasurement)) {
+        text.append("Measurement");
+      } else {
+        text.append("Ready");
+      }
       break;
     case creative::CreativeUiRowKind::SelectedTarget:
     case creative::CreativeUiRowKind::InspectedTarget:
-      text.append(": target=");
+      text = row.kind == creative::CreativeUiRowKind::SelectedTarget
+                 ? "Selected: target="
+                 : "Inspected: target=";
       text.append(std::to_string(row.target.value));
       appendVisibilityText(text, row);
       break;
     case creative::CreativeUiRowKind::MeasurementState:
-      text.append(": ");
+      text = "Measure: ";
       text.append(hasFlag(row.flags, creative::kCreativeUiRowFlagActive)
                       ? "active"
                       : "completed");
@@ -157,43 +166,44 @@ void appendVisibilityText(std::string& text,
       break;
     case creative::CreativeUiRowKind::MeasurementStartPoint:
     case creative::CreativeUiRowKind::MeasurementCurrentPoint:
-      text.append(": point=(");
+      text = row.kind == creative::CreativeUiRowKind::MeasurementStartPoint
+                 ? "Start: ("
+                 : "Current: (";
       text.append(formatDouble(row.primaryX));
-      text.append(", ");
+      text.push_back(',');
       text.append(formatDouble(row.primaryY));
       text.append(") target=");
       text.append(std::to_string(row.target.value));
       break;
     case creative::CreativeUiRowKind::GhostPreview:
-      text.append(": raw=(");
+      text = "Ghost: (";
       text.append(formatDouble(row.primaryX));
-      text.append(", ");
+      text.push_back(',');
       text.append(formatDouble(row.primaryY));
-      text.append(") snapped=(");
+      text.append(")->(");
       text.append(formatDouble(row.secondaryX));
-      text.append(", ");
+      text.push_back(',');
       text.append(formatDouble(row.secondaryY));
       text.append(") target=");
       text.append(std::to_string(row.target.value));
-      text.append(" tool=");
-      text.append(toolName(row.tool));
       break;
     case creative::CreativeUiRowKind::SnapSettings:
-      text.append(": mode=");
+      text = "Snap: ";
       text.append(snapModeName(
           static_cast<creative::CreativeSnapMode>(row.data0)));
-      text.append(" axes=");
+      text.push_back(' ');
       text.append(axisMaskName(static_cast<creative::CreativeSnapAxisMask>(
           row.data1)));
-      text.append(" step=(");
+      text.push_back(' ');
       text.append(formatDouble(row.primaryX));
-      text.append(", ");
+      text.push_back('x');
       text.append(formatDouble(row.primaryY));
-      text.append(") origin=(");
-      text.append(formatDouble(row.secondaryX));
-      text.append(", ");
-      text.append(formatDouble(row.secondaryY));
-      text.append(")");
+      if (row.secondaryX != 0.0 || row.secondaryY != 0.0) {
+        text.append(" @ ");
+        text.append(formatDouble(row.secondaryX));
+        text.push_back(',');
+        text.append(formatDouble(row.secondaryY));
+      }
       break;
   }
   return text;
@@ -236,8 +246,7 @@ void emitPanel(ProductUiDrawList& list,
   primitive.rect = {kOverlayX,
                     y,
                     kPanelWidth,
-                    kPanelHeaderHeight +
-                        kPanelPadding +
+                    (2.0F * kPanelPadding) +
                         static_cast<float>(panel.rowCount) * kRowHeight};
   primitive.semanticId = makeSemanticId("panel", panelName(panel.kind));
   primitive.enabled = panel.enabled;
@@ -311,7 +320,7 @@ ProductUiDrawList buildProductCreativeUiDrawList(
     }
 
     emitPanel(list, panel, y);
-    float rowY = y + kPanelHeaderHeight;
+    float rowY = y + kPanelPadding;
     const std::size_t end = panel.firstRow + panel.rowCount;
     for (std::size_t rowIndex = panel.firstRow;
          rowIndex < end && rowIndex < model.rows.size();
@@ -320,7 +329,7 @@ ProductUiDrawList buildProductCreativeUiDrawList(
       rowY += kRowHeight;
     }
 
-    y += kPanelHeaderHeight + kPanelPadding +
+    y += (2.0F * kPanelPadding) +
          static_cast<float>(panel.rowCount) * kRowHeight + kPanelGap;
   }
 

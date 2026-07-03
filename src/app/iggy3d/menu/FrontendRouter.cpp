@@ -233,6 +233,20 @@ std::string_view productActiveMouseCapturePolicyName(
   return "released";
 }
 
+std::string_view productCreativeSurfaceKindName(
+    ProductCreativeSurfaceKind kind) {
+  // branch-gate: BG-1058
+  switch (kind) {
+    case ProductCreativeSurfaceKind::None:
+      return "none";
+    case ProductCreativeSurfaceKind::LegacyMapMaker:
+      return "legacy_map_maker";
+    case ProductCreativeSurfaceKind::CreativeDocument:
+      return "creative_document";
+  }
+  return "none";
+}
+
 ProductActiveSurfaceContext productActiveSurfaceContextForWindow(
     const FrontendState& frontend,
     const ProductAppWindowState& window) {
@@ -240,7 +254,8 @@ ProductActiveSurfaceContext productActiveSurfaceContextForWindow(
   context.frontend = frontend;
   context.gameplayActive = window.gameplayActive;
   context.hasActiveSession = window.gameplayActive;
-  context.roomEditorReady = window.roomEditing.ready;
+  context.roomEditorReady =
+      window.roomEditing.ready && !productCreativeWorldActiveForWindow(window);
   context.interactionMode = window.interactionMode;
   return context;
 }
@@ -292,13 +307,42 @@ ProductActiveSurfaceFrame resolveProductActiveSurface(
 
 bool productMapMakerLiveForWindow(const FrontendState& frontend,
                                   const ProductAppWindowState& window) {
+  return productCreativeSurfaceKindForWindow(frontend, window) ==
+         ProductCreativeSurfaceKind::LegacyMapMaker;
+}
+
+bool productCreativeWorldActiveForWindow(const ProductAppWindowState& window) {
+  return (!window.activeCreativeSaveId.empty() &&
+          window.activeCreativeSaveId != "none") ||
+         (!window.activeCreativeWorldId.empty() &&
+          window.activeCreativeWorldId != "none") ||
+         window.activeCreativeDocumentId != 0;
+}
+
+bool productCreativeDocumentEditorActiveForWindow(
+    const ProductAppWindowState& window) {
+  return window.interactionMode == ProductInteractionMode::Creative &&
+         productCreativeWorldActiveForWindow(window);
+}
+
+ProductCreativeSurfaceKind productCreativeSurfaceKindForWindow(
+    const FrontendState& frontend,
+    const ProductAppWindowState& window) {
+  if (productCreativeDocumentEditorActiveForWindow(window)) {
+    return ProductCreativeSurfaceKind::CreativeDocument;
+  }
+
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
-  return window.interactionMode == ProductInteractionMode::Creative &&
-         mapMakerExplicitlyEnabled(window) &&
-         surface.activeSurface == ProductFrontendSurface::Gameplay &&
-         surface.inputOwner == MenuOwner::Gameplay &&
-         !surface.gameplayInputSuppressed;
+  if (window.interactionMode == ProductInteractionMode::Creative &&
+      mapMakerExplicitlyEnabled(window) &&
+      surface.activeSurface == ProductFrontendSurface::Gameplay &&
+      surface.inputOwner == MenuOwner::Gameplay &&
+      !surface.gameplayInputSuppressed) {
+    return ProductCreativeSurfaceKind::LegacyMapMaker;
+  }
+
+  return ProductCreativeSurfaceKind::None;
 }
 
 void syncProductWindowInputOwnerFromActiveSurface(

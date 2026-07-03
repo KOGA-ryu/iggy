@@ -55,6 +55,13 @@ iggy3d::MouseClick clickAt(float x, float y) {
   return click;
 }
 
+void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.activeCreativeSaveId = "creative_save";
+  window.activeCreativeWorldId = "world_001";
+  window.activeCreativeDocumentId = 42U;
+}
+
 iggy3d::creative::CreativeUiModel defaultCreativeModel() {
   return iggy3d::creative::buildCreativeUiModel(
              iggy3d::creative::makeDefaultCreativeUiBuildRequest())
@@ -275,7 +282,7 @@ bool unrenderableOverlayInputDoesNotSuppressToolClick() {
           });
 
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(window);
   iggy3d::creative::Facade facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(iggy3d::creative::Tool::Measure));
@@ -402,7 +409,7 @@ bool downstreamSuppressesCreativeConsumedClick() {
                 "suppressed status");
 }
 
-bool downstreamHigherPriorityKeepsClick() {
+bool downstreamHigherPrioritySuppressesClick() {
   iggy3d::ProductCreativeUiDownstreamClickRequest request;
   request.click = clickAt(21.0F, 22.0F);
   request.creativeUiConsumed = true;
@@ -414,9 +421,9 @@ bool downstreamHigherPriorityKeepsClick() {
          expect(receipt.creativeUiConsumed, "priority creative consumed") &&
          expect(receipt.higherPriorityUiConsumed,
                 "priority higher consumed") &&
-         expect(!receipt.suppressed, "priority not suppressed") &&
-         expect(receipt.downstreamClick.clicked,
-                "priority downstream still clicked") &&
+         expect(receipt.suppressed, "priority suppressed") &&
+         expect(!receipt.downstreamClick.clicked,
+                "priority downstream suppressed") &&
          expect(receipt.downstreamClick.x == 21.0F,
                 "priority x preserved") &&
          expect(receipt.downstreamClick.y == 22.0F,
@@ -931,7 +938,7 @@ bool inputFrameInjectedClickOnActiveToolRowRunsLiveCommandAndSuppressesClick() {
   iggy3d::WorldSetupDraft worldSetupDraft;
   iggy3d::ProductAppWindowState window;
   window.gameplayActive = true;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(window);
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
   iggy3d::creative::Facade facade;
@@ -1017,7 +1024,7 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
   iggy3d::WorldSetupDraft worldSetupDraft;
   iggy3d::ProductAppWindowState window;
   window.gameplayActive = true;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(window);
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
   iggy3d::creative::Facade facade;
@@ -1211,7 +1218,7 @@ bool inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool() {
   iggy3d::WorldSetupDraft worldSetupDraft;
   iggy3d::ProductAppWindowState window;
   window.gameplayActive = true;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(window);
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
   iggy3d::creative::Facade facade;
@@ -1284,7 +1291,7 @@ int main() {
                   receiptCopiesKnownRegionIndex() &&
                   downstreamNoClickDoesNotSuppress() &&
                   downstreamSuppressesCreativeConsumedClick() &&
-                  downstreamHigherPriorityKeepsClick() &&
+                  downstreamHigherPrioritySuppressesClick() &&
                   downstreamPassthroughWhenCreativeDoesNotConsume() &&
                   defaultWindowReceiptFieldsAreNotRequested() &&
                   recorderCopiesNoClickReceipt() &&
