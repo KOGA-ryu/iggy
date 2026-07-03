@@ -92,6 +92,30 @@ enum class CreativeObjectProfile {
     GameplayMarker
 };
 
+enum class CreativeSpatialProjectionProfile {
+    Unknown,
+    NoProjection,
+    PointProjection,
+    BoxProjection,
+    VolumeProjection,
+    LineProjection,
+    LinkProjection,
+};
+
+enum class CreativeSpatialOccupancyKind {
+    Unknown,
+    Structural,
+    Collision,
+    Navigation,
+    Trigger,
+    Gameplay,
+    Light,
+    Audio,
+    Camera,
+    Testing,
+    Authoring,
+};
+
 enum class CreativeObjectDirtyFlag : std::uint64_t {
     None = 0,
     Identity = 1ull << 0,
@@ -124,6 +148,10 @@ struct CreativeObjectDescriptor {
     CreativeObjectKind kind{CreativeObjectKind::Unknown};
     CreativeObjectCategory category{CreativeObjectCategory::Unknown};
     CreativeObjectProfile profile{CreativeObjectProfile::Unknown};
+    CreativeSpatialProjectionProfile projectionProfile{
+        CreativeSpatialProjectionProfile::Unknown};
+    CreativeSpatialOccupancyKind occupancyKind{
+        CreativeSpatialOccupancyKind::Unknown};
 
     std::string_view name{};
     std::string_view displayName{};

@@ -19,6 +19,17 @@ bool sameVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
 
+bool expectSpatialDescriptor(cr::CreativeObjectKind kind,
+                             cr::CreativeSpatialProjectionProfile profile,
+                             cr::CreativeSpatialOccupancyKind occupancyKind,
+                             std::string_view message) {
+  const cr::CreativeObjectDescriptor& descriptor = cr::describeObject(kind);
+  const bool ok =
+      expect(descriptor.projectionProfile == profile, message) &&
+      expect(descriptor.occupancyKind == occupancyKind, message);
+  return ok;
+}
+
 bool descriptorTableRowsAreStableAndUnique() {
   const std::span<const cr::CreativeObjectDescriptor> descriptors =
       cr::allObjectDescriptors();
@@ -41,6 +52,15 @@ bool descriptorTableRowsAreStableAndUnique() {
          expect(cr::dirtyFlagsForCreation(descriptor.kind) ==
                     descriptor.creationDirtyFlags,
                 "creation dirty flags match descriptor") &&
+         expect(descriptor.projectionProfile ==
+                    cr::projectionProfileForObject(descriptor.kind),
+                "projection profile helper reads descriptor") &&
+         expect(descriptor.occupancyKind ==
+                    cr::occupancyKindForObject(descriptor.kind),
+                "occupancy helper reads descriptor") &&
+         expect(descriptor.projectionProfile !=
+                    cr::CreativeSpatialProjectionProfile::Unknown,
+                "descriptor kind has explicit projection profile") &&
          expect(descriptor.name == cr::toString(descriptor.kind),
                 "descriptor stable name matches object kind string") &&
          expect(!descriptor.displayName.empty(),
@@ -54,13 +74,7 @@ bool descriptorTableRowsAreStableAndUnique() {
            ok;
     }
 
-    const cr::CreativeSpatialProjectionProfile projectionProfile =
-        cr::projectionProfileForObject(descriptor.kind);
-    ok = expect(projectionProfile != cr::CreativeSpatialProjectionProfile::Unknown,
-                "descriptor kind has explicit projection profile") &&
-         ok;
-
-    if (projectionProfile ==
+    if (descriptor.projectionProfile ==
         cr::CreativeSpatialProjectionProfile::PointProjection) {
       ok = expect(descriptor.hasTransform,
                   "point-projected descriptor carries transform") &&
@@ -130,7 +144,13 @@ bool roomDescriptorPinsShapeBearingProjectionContract() {
                 "room projects as box") &&
          expect(cr::occupancyKindForObject(cr::CreativeObjectKind::Room) ==
                     cr::CreativeSpatialOccupancyKind::Structural,
-                "room occupancy structural");
+                "room occupancy structural") &&
+         expect(descriptor.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::BoxProjection,
+                "room descriptor projection box") &&
+         expect(descriptor.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Structural,
+                "room descriptor occupancy structural");
 }
 
 bool unknownDescriptorRemainsInvalidAndNonProjectable() {
@@ -163,7 +183,61 @@ bool unknownDescriptorRemainsInvalidAndNonProjectable() {
                 "unknown has no projection") &&
          expect(cr::occupancyKindForObject(cr::CreativeObjectKind::Unknown) ==
                     cr::CreativeSpatialOccupancyKind::Unknown,
-                "unknown occupancy unknown");
+                "unknown occupancy unknown") &&
+         expect(descriptor.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::NoProjection,
+                "unknown descriptor projection no projection") &&
+         expect(descriptor.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Unknown,
+                "unknown descriptor occupancy unknown");
+}
+
+bool representativeDescriptorsPinSpatialFacts() {
+  return expectSpatialDescriptor(
+             cr::CreativeObjectKind::Unknown,
+             cr::CreativeSpatialProjectionProfile::NoProjection,
+             cr::CreativeSpatialOccupancyKind::Unknown,
+             "unknown spatial descriptor") &&
+         expectSpatialDescriptor(
+             cr::CreativeObjectKind::Room,
+             cr::CreativeSpatialProjectionProfile::BoxProjection,
+             cr::CreativeSpatialOccupancyKind::Structural,
+             "room spatial descriptor") &&
+         expectSpatialDescriptor(
+             cr::CreativeObjectKind::Note,
+             cr::CreativeSpatialProjectionProfile::PointProjection,
+             cr::CreativeSpatialOccupancyKind::Authoring,
+             "note spatial descriptor") &&
+         expectSpatialDescriptor(
+             cr::CreativeObjectKind::Crate,
+             cr::CreativeSpatialProjectionProfile::BoxProjection,
+             cr::CreativeSpatialOccupancyKind::Structural,
+             "crate spatial descriptor") &&
+         expectSpatialDescriptor(
+             cr::CreativeObjectKind::CameraRail,
+             cr::CreativeSpatialProjectionProfile::LineProjection,
+             cr::CreativeSpatialOccupancyKind::Camera,
+             "camera rail spatial descriptor") &&
+         expectSpatialDescriptor(
+             cr::CreativeObjectKind::NavLink,
+             cr::CreativeSpatialProjectionProfile::NoProjection,
+             cr::CreativeSpatialOccupancyKind::Navigation,
+             "nav link spatial descriptor") &&
+         expectSpatialDescriptor(
+             cr::CreativeObjectKind::JumpLink,
+             cr::CreativeSpatialProjectionProfile::NoProjection,
+             cr::CreativeSpatialOccupancyKind::Navigation,
+             "jump link spatial descriptor") &&
+         expectSpatialDescriptor(
+             cr::CreativeObjectKind::Group,
+             cr::CreativeSpatialProjectionProfile::NoProjection,
+             cr::CreativeSpatialOccupancyKind::Authoring,
+             "group spatial descriptor") &&
+         expectSpatialDescriptor(
+             cr::CreativeObjectKind::CutsceneMarker,
+             cr::CreativeSpatialProjectionProfile::NoProjection,
+             cr::CreativeSpatialOccupancyKind::Camera,
+             "cutscene marker spatial descriptor");
 }
 
 }  // namespace
@@ -171,6 +245,7 @@ bool unknownDescriptorRemainsInvalidAndNonProjectable() {
 int main() {
   const bool ok = descriptorTableRowsAreStableAndUnique() &&
                   roomDescriptorPinsShapeBearingProjectionContract() &&
-                  unknownDescriptorRemainsInvalidAndNonProjectable();
+                  unknownDescriptorRemainsInvalidAndNonProjectable() &&
+                  representativeDescriptorsPinSpatialFacts();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

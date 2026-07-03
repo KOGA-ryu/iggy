@@ -1,6 +1,5 @@
 #pragma once
 
-#include "app/iggy3d/creative/Object.hpp"
 #include "app/iggy3d/creative/ObjectDescriptor.hpp"
 
 #include <cstdint>
@@ -28,30 +27,6 @@ struct CreativeGridCoord3 {
 struct CreativeGridBounds3 {
   CreativeGridCoord3 min;
   CreativeGridCoord3 max;
-};
-
-enum class CreativeSpatialProjectionProfile {
-  Unknown,
-  NoProjection,
-  PointProjection,
-  BoxProjection,
-  VolumeProjection,
-  LineProjection,
-  LinkProjection,
-};
-
-enum class CreativeSpatialOccupancyKind {
-  Unknown,
-  Structural,
-  Collision,
-  Navigation,
-  Trigger,
-  Gameplay,
-  Light,
-  Audio,
-  Camera,
-  Testing,
-  Authoring,
 };
 
 enum class CreativeSpatialProjectionStatus {
