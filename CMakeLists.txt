@@ -99,6 +99,7 @@ target_sources(iggy3d
     src/app/iggy3d/automation/AutomationSystem.cpp
     src/app/iggy3d/menu/ActionHandlers.cpp
     src/app/iggy3d/menu/InputRouter.cpp
+    src/app/iggy3d/view/CreativeWireframeDebugLines.cpp
     src/app/iggy3d/view/PrimitiveDrawList.cpp
     src/app/iggy3d/view/RenderBridge.cpp
     src/app/iggy3d/room/GeometryOptimization.cpp
