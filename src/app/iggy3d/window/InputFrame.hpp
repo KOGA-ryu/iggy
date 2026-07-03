@@ -25,6 +25,7 @@ struct ProductSaveBridgeResult;
 struct WorldSetupDraft;
 struct OpeningMenuHitTestResult;
 struct ProductOpeningMenuInputContext;
+struct ProductUiDrawList;
 
 namespace creative {
 class Facade;
@@ -62,6 +63,7 @@ struct ProductWindowInputFrameContext {
   bool& closeRequested;
   SdlWindow* sdlWindow = nullptr;
   creative::Facade* creativeFacade = nullptr;
+  const ProductUiDrawList* creativeUiDrawList = nullptr;
 };
 
 struct ProductControllerSampleInputContext {

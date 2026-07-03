@@ -11,6 +11,7 @@
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/menu/CreativeUiProjection.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
+#include "app/iggy3d/window/CreativeUiInputFrame.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 
 namespace iggy3d {
@@ -42,6 +43,41 @@ std::string_view productUiThemeReceiptName(ProductUiThemeId theme) noexcept {
       return "system";
     case ProductUiThemeId::Journal:
       return "journal";
+  }
+  return "unknown";
+}
+
+std::string_view productUiHitSurfaceReceiptName(
+    ProductUiHitSurface surface) noexcept {
+  switch (surface) {
+    case ProductUiHitSurface::None:
+      return "none";
+    case ProductUiHitSurface::StarterMenu:
+      return "starter_menu";
+    case ProductUiHitSurface::PauseMenu:
+      return "pause_menu";
+    case ProductUiHitSurface::CreativeOverlay:
+      return "creative_overlay";
+    case ProductUiHitSurface::Notebook:
+      return "notebook";
+  }
+  return "unknown";
+}
+
+std::string_view uiHitKindReceiptName(UiHitKind kind) noexcept {
+  switch (kind) {
+    case UiHitKind::None:
+      return "none";
+    case UiHitKind::Button:
+      return "button";
+    case UiHitKind::Row:
+      return "row";
+    case UiHitKind::Slider:
+      return "slider";
+    case UiHitKind::Toggle:
+      return "toggle";
+    case UiHitKind::Viewport:
+      return "viewport";
   }
   return "unknown";
 }
@@ -97,6 +133,30 @@ void recordProductCreativeUiProjection(
   window.creativeUiProjectionRowCount = receipt.rowCount;
   window.creativeUiProjectionDisabledRowCount = receipt.disabledRowCount;
   window.creativeUiProjectionHitRegionCount = receipt.hitRegionCount;
+}
+
+void recordProductCreativeUiInputFrame(
+    ProductAppWindowState& window,
+    const ProductCreativeUiInputFrameReceipt& receipt) {
+  window.creativeUiInputRequested = receipt.requested;
+  window.creativeUiInputClickPresent = receipt.clickPresent;
+  window.creativeUiInputDrawListAvailable = receipt.drawListAvailable;
+  window.creativeUiInputRouted = receipt.routed;
+  window.creativeUiInputHit = receipt.hit;
+  window.creativeUiInputConsumed = receipt.consumed;
+  window.creativeUiInputEnabled = receipt.enabled;
+  window.creativeUiInputSurface =
+      std::string(productUiHitSurfaceReceiptName(receipt.surface));
+  window.creativeUiInputKind = std::string(uiHitKindReceiptName(receipt.kind));
+  window.creativeUiInputAction = std::string(frontendActionName(receipt.action));
+  window.creativeUiInputLayerIndex =
+      static_cast<std::uint64_t>(receipt.layerIndex);
+  window.creativeUiInputRegionIndex =
+      static_cast<std::uint64_t>(receipt.regionIndex);
+  window.creativeUiInputSemanticId =
+      receipt.semanticId.empty() ? "none" : receipt.semanticId;
+  window.creativeUiInputStatus = receipt.status;
+  window.creativeUiInputReasonCode = receipt.reasonCode;
 }
 
 RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
@@ -1611,6 +1671,36 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiProjectionDisabledRowCount);
   appendReceiptField(receipt, "creative_ui_projection_hit_region_count",
                      window.creativeUiProjectionHitRegionCount);
+  appendReceiptField(receipt, "creative_ui_input_requested",
+                     window.creativeUiInputRequested);
+  appendReceiptField(receipt, "creative_ui_input_click_present",
+                     window.creativeUiInputClickPresent);
+  appendReceiptField(receipt, "creative_ui_input_draw_list_available",
+                     window.creativeUiInputDrawListAvailable);
+  appendReceiptField(receipt, "creative_ui_input_routed",
+                     window.creativeUiInputRouted);
+  appendReceiptField(receipt, "creative_ui_input_hit",
+                     window.creativeUiInputHit);
+  appendReceiptField(receipt, "creative_ui_input_consumed",
+                     window.creativeUiInputConsumed);
+  appendReceiptField(receipt, "creative_ui_input_enabled",
+                     window.creativeUiInputEnabled);
+  appendReceiptField(receipt, "creative_ui_input_surface",
+                     window.creativeUiInputSurface);
+  appendReceiptField(receipt, "creative_ui_input_kind",
+                     window.creativeUiInputKind);
+  appendReceiptField(receipt, "creative_ui_input_action",
+                     window.creativeUiInputAction);
+  appendReceiptField(receipt, "creative_ui_input_layer_index",
+                     window.creativeUiInputLayerIndex);
+  appendReceiptField(receipt, "creative_ui_input_region_index",
+                     window.creativeUiInputRegionIndex);
+  appendReceiptField(receipt, "creative_ui_input_semantic_id",
+                     window.creativeUiInputSemanticId);
+  appendReceiptField(receipt, "creative_ui_input_status",
+                     window.creativeUiInputStatus);
+  appendReceiptField(receipt, "creative_ui_input_reason_code",
+                     window.creativeUiInputReasonCode);
   appendReceiptField(receipt, "product_vulkan_gameplay_ready",
                      vulkanGameplayReadiness.ready);
   appendReceiptField(receipt, "product_vulkan_gameplay_status",

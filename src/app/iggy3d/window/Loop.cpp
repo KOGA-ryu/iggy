@@ -114,11 +114,6 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     window.drawable = sdlWindow.isDrawable();
     sdlWindow.setTitle(productWindowTitle(window));
 
-    processProductWindowInputFrame(ProductWindowInputFrameContext{
-        request.frontend, saves, request.options, settingsTab,
-        request.activeSession, request.worldSetupDraft, window, request.settings,
-        inputFrame, closeRequested, &sdlWindow, request.creativeFacade});
-
     const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
     const ProductCreativeUiFrame creativeUiFrame = buildProductCreativeUiWindowFrame(
         ProductCreativeUiWindowFrameRequest{&window,
@@ -132,6 +127,12 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         creativeUiFrame.projection.drawList.ready
             ? &creativeUiFrame.projection.drawList
             : nullptr;
+
+    processProductWindowInputFrame(ProductWindowInputFrameContext{
+        request.frontend, saves, request.options, settingsTab,
+        request.activeSession, request.worldSetupDraft, window, request.settings,
+        inputFrame, closeRequested, &sdlWindow, request.creativeFacade,
+        creativeUiDrawList});
 
     const ProductGameplayProjectionFrame projectionFrame =
         buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{

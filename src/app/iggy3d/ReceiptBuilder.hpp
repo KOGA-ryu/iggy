@@ -27,6 +27,7 @@
 namespace iggy3d {
 
 struct ProductCreativeUiProjectionReceipt;
+struct ProductCreativeUiInputFrameReceipt;
 
 struct ProductAppWindowState {
   bool requested = false;
@@ -513,6 +514,21 @@ struct ProductAppWindowState {
   std::uint64_t creativeUiProjectionRowCount = 0;
   std::uint64_t creativeUiProjectionDisabledRowCount = 0;
   std::uint64_t creativeUiProjectionHitRegionCount = 0;
+  bool creativeUiInputRequested = false;
+  bool creativeUiInputClickPresent = false;
+  bool creativeUiInputDrawListAvailable = false;
+  bool creativeUiInputRouted = false;
+  bool creativeUiInputHit = false;
+  bool creativeUiInputConsumed = false;
+  bool creativeUiInputEnabled = false;
+  std::string creativeUiInputSurface = "none";
+  std::string creativeUiInputKind = "none";
+  std::string creativeUiInputAction = "none";
+  std::uint64_t creativeUiInputLayerIndex = 0;
+  std::uint64_t creativeUiInputRegionIndex = 0;
+  std::string creativeUiInputSemanticId = "none";
+  std::string creativeUiInputStatus = "creative_ui_input_not_requested";
+  std::string creativeUiInputReasonCode = "creative_ui_input_not_requested";
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;
@@ -535,5 +551,8 @@ void recordProductPhysicsMovementPlannerTickProof(
 void recordProductCreativeUiProjection(
     ProductAppWindowState& window,
     const ProductCreativeUiProjectionReceipt& receipt);
+void recordProductCreativeUiInputFrame(
+    ProductAppWindowState& window,
+    const ProductCreativeUiInputFrameReceipt& receipt);
 
 }  // namespace iggy3d

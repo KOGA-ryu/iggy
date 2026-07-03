@@ -10,6 +10,7 @@
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
 #include "app/iggy3d/window/CreativeInputFrame.hpp"
+#include "app/iggy3d/window/CreativeUiInputFrame.hpp"
 #include "app/iggy3d/room_editor/ActionController.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
@@ -1029,6 +1030,12 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   }
 
   const MouseClick click = pollMouseClick(context.inputFrame.mouse);
+  recordProductCreativeUiInputFrame(
+      context.window,
+      routeProductCreativeUiInputFrame(ProductCreativeUiInputFrameRequest{
+          context.creativeUiDrawList,
+          click,
+      }));
   // branch-gate: BG-1029
   if (click.clicked) {
     const MouseClick menuClick =
