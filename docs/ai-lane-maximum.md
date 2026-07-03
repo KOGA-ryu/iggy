@@ -1,4 +1,4 @@
-# The AI Lane Maximum — destiny document v1.9
+# The AI Lane Maximum — destiny document v1.10
 
 > Planner-authored 2026-07-02. This is the END of the AI lane: every behaviour layer the game's
 > identity demands, their contracts, the dependency DAG, the pre-declared churn, and the
@@ -328,6 +328,13 @@ fleet's copy.
   silent); omniscience refusal tightened to perception-events wording.
   Known stale sibling: docs/next_work.md still says slice-5 integration is "next" (s5–s8 have
   landed); update it when trunk settles.
+- v1.10 (2026-07-03): **A6 COMPLETE + a9s1 LANDED** (`f4c92cfb` influence kernel — Go on the
+  graph nodes, 6-channel enum, danger/soundPressure reserved; `72e7bde7` warnings reader —
+  guard samples ∪ patrol waypoints, milestone golden MEASURED UNCHANGED; `8d91d606` catalog —
+  data-driven, built once, carried across load, [[behavior_profiles]] full row incl. sound
+  knobs, the ONE ordered ProjectionRefresh line, per-tick rebuild DELETED; 208/208).
+  READY WHEN CONTENT ARRIVES: a9s2 personalities = catalog rows awaiting the user's enemy
+  roster; a9s3 shared alert; a9s4 target selection + live influence + the hoist.
 - v1.9 (2026-07-03): A6 scope ruled (encounter-time reader; potential-visibility one-sidedness
   proven; patrol waypoints join the guard samples) and its live-session remainder NAMED into
   a9s4 so no deferral floats in prose. A9 stream numbered s1–s4; a9s1's load path RULED
