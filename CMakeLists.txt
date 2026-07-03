@@ -39,6 +39,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/MutationApply.cpp
     src/app/iggy3d/creative/DocumentMutation.cpp
     src/app/iggy3d/creative/SpatialProjection.cpp
+    src/app/iggy3d/creative/DocumentWireframe.cpp
     src/app/iggy3d/creative/ViewportPick.cpp
     src/app/iggy3d/creative/Tools.cpp
     src/app/iggy3d/creative/Select.cpp
