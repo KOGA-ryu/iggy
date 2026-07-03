@@ -69,7 +69,7 @@ iggy3d::ProductAppWindowState creativeWindow() {
   return window;
 }
 
-bool drawableDimensionsAreUsedWhenNonzero() {
+bool logicalDimensionsAreUsedWhenDrawableIsHighDpi() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade;
   facade.reset();
@@ -78,17 +78,23 @@ bool drawableDimensionsAreUsedWhenNonzero() {
       iggy3d::buildProductCreativeUiWindowFrame(
           iggy3d::ProductCreativeUiWindowFrameRequest{&window,
                                                       &facade,
-                                                      1920,
-                                                      1080,
+                                                      2560,
+                                                      1440,
                                                       640,
                                                       360,
-                                                      iggy3d::ProductUiThemeId::System});
+                                                      iggy3d::ProductUiThemeId::System,
+                                                      1280,
+                                                      720});
 
-  return expect(frame.receipt.ready, "drawable frame ready") &&
-         expect(window.creativeUiProjectionVirtualWidth == 1920U,
-                "drawable width used") &&
-         expect(window.creativeUiProjectionVirtualHeight == 1080U,
-                "drawable height used");
+  return expect(frame.receipt.ready, "logical frame ready") &&
+         expect(frame.projection.drawList.virtualWidth == 1280U,
+                "logical draw list width") &&
+         expect(frame.projection.drawList.virtualHeight == 720U,
+                "logical draw list height") &&
+         expect(window.creativeUiProjectionVirtualWidth == 1280U,
+                "logical width used") &&
+         expect(window.creativeUiProjectionVirtualHeight == 720U,
+                "logical height used");
 }
 
 bool fallbackDimensionsAreUsedWhenDrawableZero() {
@@ -350,7 +356,7 @@ bool noWindowLoopDoesNotCallBridge() {
 }  // namespace
 
 int main() {
-  const bool ok = drawableDimensionsAreUsedWhenNonzero() &&
+  const bool ok = logicalDimensionsAreUsedWhenDrawableIsHighDpi() &&
                   fallbackDimensionsAreUsedWhenDrawableZero() &&
                   guardDimensionsAreUsedWhenDrawableAndFallbackZero() &&
                   inactiveWindowRecordsInactiveProjection() &&

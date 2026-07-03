@@ -5,6 +5,7 @@
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
+#include "app/iggy3d/window/CreativeWindowCoordinateSpace.hpp"
 #include "app/iggy3d/window/CreativeUiWindowFrame.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
@@ -49,18 +50,6 @@ void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
   window.mouseCaptureReasonCode = policy.reasonCode;
   window.mouseCaptureMode = policy.mode;
   window.mouseCaptureInputOwner = policy.inputOwner;
-}
-
-std::uint32_t creativeViewportPickExtent(std::uint32_t drawable,
-                                         std::uint32_t fallback,
-                                         std::uint32_t guard) noexcept {
-  if (drawable > 0U) {
-    return drawable;
-  }
-  if (fallback > 0U) {
-    return fallback;
-  }
-  return guard;
 }
 
 creative::CreativeSpatialProjectionRequest
@@ -137,6 +126,18 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     sdlWindow.setTitle(productWindowTitle(window));
 
     const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
+    const SdlWindowEventState& eventState = sdlWindow.eventState();
+    const ProductCreativeWindowCoordinateSpace creativeCoordinateSpace =
+        resolveProductCreativeWindowCoordinateSpace(
+            ProductCreativeWindowCoordinateSpaceRequest{
+                eventState.windowWidth,
+                eventState.windowHeight,
+                drawableExtent.width,
+                drawableExtent.height,
+                createInfo.width,
+                createInfo.height,
+                1280,
+                720});
     const ProductCreativeUiFrame creativeUiFrame = buildProductCreativeUiWindowFrame(
         ProductCreativeUiWindowFrameRequest{&window,
                                             request.creativeFacade,
@@ -144,19 +145,13 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
                                             drawableExtent.height,
                                             createInfo.width,
                                             createInfo.height,
-                                            ProductUiThemeId::System});
+                                            ProductUiThemeId::System,
+                                            eventState.windowWidth,
+                                            eventState.windowHeight});
     const ProductUiDrawList* creativeUiDrawList =
         creativeUiFrame.projection.drawList.ready
             ? &creativeUiFrame.projection.drawList
             : nullptr;
-    const std::uint32_t creativePickWidth =
-        creativeViewportPickExtent(drawableExtent.width,
-                                   createInfo.width,
-                                   1280U);
-    const std::uint32_t creativePickHeight =
-        creativeViewportPickExtent(drawableExtent.height,
-                                   createInfo.height,
-                                   720U);
 
     processProductWindowInputFrame(ProductWindowInputFrameContext{
         request.frontend, saves, request.options, settingsTab,
@@ -166,8 +161,8 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         creative::CreativeViewportPickViewport{
             0.0F,
             0.0F,
-            static_cast<float>(creativePickWidth),
-            static_cast<float>(creativePickHeight),
+            static_cast<float>(creativeCoordinateSpace.virtualWidth),
+            static_cast<float>(creativeCoordinateSpace.virtualHeight),
         },
         creativeViewportPickProjectionRequest(),
         0});

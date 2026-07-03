@@ -14,6 +14,8 @@ struct ProductCreativeUiWindowFrameRequest {
   std::uint32_t fallbackWidth = 1280;
   std::uint32_t fallbackHeight = 720;
   ProductUiThemeId theme = ProductUiThemeId::System;
+  std::uint32_t logicalWidth = 0;
+  std::uint32_t logicalHeight = 0;
 };
 
 [[nodiscard]] ProductCreativeUiFrame buildProductCreativeUiWindowFrame(

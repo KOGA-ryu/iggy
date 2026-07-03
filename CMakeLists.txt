@@ -123,6 +123,7 @@ target_sources(iggy3d
     src/app/iggy3d/ui/Widget.cpp
     src/app/iggy3d/view/ViewportFraming.cpp
     src/app/iggy3d/window/FramePresenter.cpp
+    src/app/iggy3d/window/CreativeWindowCoordinateSpace.cpp
     src/app/iggy3d/window/CreativeUiWindowFrame.cpp
     src/app/iggy3d/window/CreativeUiInputFrame.cpp
     src/app/iggy3d/window/CreativeUiCommandFrame.cpp
