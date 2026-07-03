@@ -162,6 +162,11 @@ iggy3d_add_unit_test(product_creative_ui_input_frame_tests
 set_tests_properties(product_creative_ui_input_frame_tests PROPERTIES
   LABELS "unit;app;product;creative;ui;input;window;frame;iggy3d")
 
+iggy3d_add_unit_test(product_creative_ui_command_frame_tests
+  tests/unit/product_creative_ui_command_frame_tests.cpp)
+set_tests_properties(product_creative_ui_command_frame_tests PROPERTIES
+  LABELS "unit;app;product;creative;ui;command;window;frame;iggy3d")
+
 iggy3d_add_unit_test(product_creative_viewport_pick_frame_tests
   tests/unit/product_creative_viewport_pick_frame_tests.cpp)
 set_tests_properties(product_creative_viewport_pick_frame_tests PROPERTIES
