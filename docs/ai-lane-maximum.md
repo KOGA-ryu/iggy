@@ -1,4 +1,4 @@
-# The AI Lane Maximum — destiny document v1.7
+# The AI Lane Maximum — destiny document v1.8
 
 > Planner-authored 2026-07-02. This is the END of the AI lane: every behaviour layer the game's
 > identity demands, their contracts, the dependency DAG, the pre-declared churn, and the
@@ -328,6 +328,17 @@ fleet's copy.
   silent); omniscience refusal tightened to perception-events wording.
   Known stale sibling: docs/next_work.md still says slice-5 integration is "next" (s5–s8 have
   landed); update it when trunk settles.
+- v1.8 (2026-07-02): **A8b COMPLETE — THE FULL-DNA MINIMUM IS CLOSED** (`1ce8a5cd` deal
+  kernel, `648f5812` placement/validator/report, `3f8b4eda` milestone test; 196/196).
+  One battlefield deals many battles: seeded splitmix64 draw over the 9-card table (facts =
+  wire strings + the treasure|key|pickup⇒objective derivation), tactics are placement
+  POLICIES (Patrol@1 writes real routes, DefendObjective clusters, Ambush conceals or
+  honestly reports), paired entity+aiActor seeds boot real guards (player slot-0 law, Waits
+  vs the NoWork trap), the validator REJECTS with all six reasons reachable (repair remains
+  a future constitutional slice), the report renderer is retune-robust (no floats/positions).
+  Hazard effects + socket binding deferred; RuntimeSummary untouched; `requires` is a C++20
+  keyword — the field is `requiredFacts`. source→generation→validation→decision→report: a
+  passing headless test.
 - v1.7 (2026-07-02): A7 (AI half) + A8a COMPLETE (`1eaf7143`, `cf922637`, `3149609f`;
   193/193). Six wire strings consumable; monster seeds like npc (M-ordering hazard CLEARED —
   Codex's authoring half is fully unblocked, order-free); both seed route-drop sites fixed
