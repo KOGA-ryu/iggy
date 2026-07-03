@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 
 #include <string>
 #include <utility>
@@ -37,6 +38,19 @@ void copySegmentReceipt(
   receipt.skippedDegenerateCount = segments.skippedDegenerateCount;
   receipt.segmentStatus = segments.status;
   receipt.segmentReasonCode = std::string(segments.reasonCode);
+}
+
+void copyDebugLineReceipt(
+    ProductCreativeWireframeFrameReceipt& receipt,
+    const ProductCreativeWireframeDebugLineReceipt& debugLines) {
+  receipt.debugLineRequested = debugLines.requested;
+  receipt.debugLineSourceAvailable = debugLines.sourceAvailable;
+  receipt.debugLineInputSegmentCount = debugLines.segmentCount;
+  receipt.debugLineCount = debugLines.lineCount;
+  receipt.debugLineSkippedDegenerateCount =
+      debugLines.skippedDegenerateCount;
+  receipt.debugLineStatus = debugLines.status;
+  receipt.debugLineReasonCode = std::string(debugLines.reasonCode);
 }
 
 }  // namespace
@@ -89,6 +103,10 @@ ProductCreativeWireframeFrameReceipt routeProductCreativeWireframeFrame(
   const creative::CreativeDocumentWireframeSegmentBuildResult segments =
       creative::buildCreativeDocumentWireframeSegments(wireframe.drawList);
   copySegmentReceipt(receipt, segments.receipt);
+
+  const ProductCreativeWireframeDebugLineBuildResult debugLines =
+      buildProductCreativeWireframeDebugLines(segments.segmentList);
+  copyDebugLineReceipt(receipt, debugLines.receipt);
 
   if (receipt.objectCount == 0U) {
     setStatus(receipt, "product_creative_wireframe_frame_source_empty");

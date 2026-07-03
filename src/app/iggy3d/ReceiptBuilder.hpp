@@ -640,6 +640,13 @@ struct ProductAppWindowState {
   std::string creativeWireframeWireframeReasonCode = "none";
   std::string creativeWireframeSegmentStatus = "Unknown";
   std::string creativeWireframeSegmentReasonCode = "none";
+  bool creativeWireframeDebugLineRequested = false;
+  bool creativeWireframeDebugLineSourceAvailable = false;
+  std::uint64_t creativeWireframeDebugLineInputSegmentCount = 0;
+  std::uint64_t creativeWireframeDebugLineCount = 0;
+  std::uint64_t creativeWireframeDebugLineSkippedDegenerateCount = 0;
+  std::string creativeWireframeDebugLineStatus = "Unknown";
+  std::string creativeWireframeDebugLineReasonCode = "none";
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;

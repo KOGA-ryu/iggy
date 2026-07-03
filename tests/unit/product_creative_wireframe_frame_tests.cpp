@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 
 #include <cstdlib>
@@ -146,6 +147,18 @@ bool emptyCreativeDocumentBuildsZeroSegments() {
                 "empty visible object count") &&
          expect(receipt.itemCount == 0U, "empty item count") &&
          expect(receipt.segmentCount == 0U, "empty segment count") &&
+         expect(receipt.debugLineRequested, "empty debug line requested") &&
+         expect(receipt.debugLineSourceAvailable,
+                "empty debug line source") &&
+         expect(receipt.debugLineInputSegmentCount == 0U,
+                "empty debug line input segments") &&
+         expect(receipt.debugLineCount == 0U,
+                "empty debug line count") &&
+         expect(receipt.debugLineSkippedDegenerateCount == 0U,
+                "empty debug line skipped count") &&
+         expect(receipt.debugLineStatus ==
+                    iggy3d::ProductCreativeWireframeDebugLineStatus::NoLines,
+                "empty debug line status") &&
          expect(receipt.wireframeStatus ==
                     cr::CreativeDocumentWireframeStatus::EmptySource,
                 "empty wireframe status") &&
@@ -177,6 +190,17 @@ bool oneRoomBuildsTwelveSegments() {
          expect(receipt.skippedDegenerateCount == 0U,
                 "room skipped count") &&
          expect(receipt.segmentCount == 12U, "room segment count") &&
+         expect(receipt.debugLineRequested, "room debug line requested") &&
+         expect(receipt.debugLineSourceAvailable,
+                "room debug line source") &&
+         expect(receipt.debugLineInputSegmentCount == 12U,
+                "room debug line input segments") &&
+         expect(receipt.debugLineCount == 12U, "room debug line count") &&
+         expect(receipt.debugLineSkippedDegenerateCount == 0U,
+                "room debug line skipped count") &&
+         expect(receipt.debugLineStatus ==
+                    iggy3d::ProductCreativeWireframeDebugLineStatus::Built,
+                "room debug line status") &&
          expect(receipt.wireframeStatus ==
                     cr::CreativeDocumentWireframeStatus::Built,
                 "room wireframe status") &&
@@ -207,6 +231,16 @@ bool hiddenRoomBuildsNoSegmentsButCountsObject() {
                 "hidden visible object count") &&
          expect(receipt.itemCount == 0U, "hidden item count") &&
          expect(receipt.segmentCount == 0U, "hidden segment count") &&
+         expect(receipt.debugLineRequested, "hidden debug line requested") &&
+         expect(receipt.debugLineSourceAvailable,
+                "hidden debug line source") &&
+         expect(receipt.debugLineInputSegmentCount == 0U,
+                "hidden debug line input segments") &&
+         expect(receipt.debugLineCount == 0U,
+                "hidden debug line count") &&
+         expect(receipt.debugLineStatus ==
+                    iggy3d::ProductCreativeWireframeDebugLineStatus::NoLines,
+                "hidden debug line status") &&
          expect(receipt.wireframeStatus ==
                     cr::CreativeDocumentWireframeStatus::NoVisibleItems,
                 "hidden wireframe status") &&
@@ -242,6 +276,8 @@ bool createRoomCommandThenWireframeBuildsSegments() {
          expect(receipt.objectCount == 1U, "command wireframe object count") &&
          expect(receipt.segmentCount == 12U,
                 "command wireframe segment count") &&
+         expect(receipt.debugLineCount == 12U,
+                "command wireframe debug line count") &&
          expect(receipt.status ==
                     "product_creative_wireframe_frame_built",
                 "command wireframe status");
@@ -326,7 +362,35 @@ bool defaultWindowReceiptFieldsAreNotRequested() {
          expectReceiptField(receipt,
                             "creative_wireframe_segment_reason_code",
                             "none",
-                            "default segment reason");
+                            "default segment reason") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_requested",
+                            "false",
+                            "default debug line requested") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_source_available",
+                            "false",
+                            "default debug line source") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_input_segment_count",
+                            "0",
+                            "default debug line input segments") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_count",
+                            "0",
+                            "default debug line count") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_skipped_degenerate_count",
+                            "0",
+                            "default debug line skipped count") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_status",
+                            "Unknown",
+                            "default debug line status") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_reason_code",
+                            "none",
+                            "default debug line reason");
 }
 
 bool recorderCopiesRoomReceiptFields() {
@@ -403,7 +467,35 @@ bool recorderCopiesRoomReceiptFields() {
          expectReceiptField(receipt,
                             "creative_wireframe_segment_reason_code",
                             "creative_document_wireframe_segments_built",
-                            "room receipt segment reason");
+                            "room receipt segment reason") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_requested",
+                            "true",
+                            "room receipt debug line requested") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_source_available",
+                            "true",
+                            "room receipt debug line source") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_input_segment_count",
+                            "12",
+                            "room receipt debug line input segments") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_count",
+                            "12",
+                            "room receipt debug line count") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_skipped_degenerate_count",
+                            "0",
+                            "room receipt debug line skipped count") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_status",
+                            "Built",
+                            "room receipt debug line status") &&
+         expectReceiptField(receipt,
+                            "creative_wireframe_debug_line_reason_code",
+                            "product_creative_wireframe_debug_lines_built",
+                            "room receipt debug line reason");
 }
 
 bool recorderPreservesExistingFields() {

@@ -9,6 +9,7 @@
 namespace iggy3d {
 
 struct ProductAppWindowState;
+enum class ProductCreativeWireframeDebugLineStatus : std::uint8_t;
 namespace creative {
 class Facade;
 }  // namespace creative
@@ -39,6 +40,13 @@ struct ProductCreativeWireframeFrameReceipt {
   creative::CreativeDocumentWireframeSegmentStatus segmentStatus =
       creative::CreativeDocumentWireframeSegmentStatus::Unknown;
   std::string segmentReasonCode = "none";
+  bool debugLineRequested = false;
+  bool debugLineSourceAvailable = false;
+  std::uint64_t debugLineInputSegmentCount = 0;
+  std::uint64_t debugLineCount = 0;
+  std::uint64_t debugLineSkippedDegenerateCount = 0;
+  ProductCreativeWireframeDebugLineStatus debugLineStatus{};
+  std::string debugLineReasonCode = "none";
   std::string status = "creative_wireframe_frame_not_requested";
   std::string reasonCode = "creative_wireframe_frame_not_requested";
 };

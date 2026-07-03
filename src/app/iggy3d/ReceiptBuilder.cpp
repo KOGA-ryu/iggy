@@ -16,6 +16,7 @@
 #include "app/iggy3d/window/CreativeViewportPickFrame.hpp"
 #include "app/iggy3d/window/CreativeWireframeFrame.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
+#include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 
 namespace iggy3d {
 namespace {
@@ -322,6 +323,18 @@ void recordProductCreativeWireframeFrame(
       std::string(creative::toString(receipt.segmentStatus));
   window.creativeWireframeSegmentReasonCode =
       receipt.segmentReasonCode.empty() ? "none" : receipt.segmentReasonCode;
+  window.creativeWireframeDebugLineRequested = receipt.debugLineRequested;
+  window.creativeWireframeDebugLineSourceAvailable =
+      receipt.debugLineSourceAvailable;
+  window.creativeWireframeDebugLineInputSegmentCount =
+      receipt.debugLineInputSegmentCount;
+  window.creativeWireframeDebugLineCount = receipt.debugLineCount;
+  window.creativeWireframeDebugLineSkippedDegenerateCount =
+      receipt.debugLineSkippedDegenerateCount;
+  window.creativeWireframeDebugLineStatus =
+      std::string(toString(receipt.debugLineStatus));
+  window.creativeWireframeDebugLineReasonCode =
+      receipt.debugLineReasonCode.empty() ? "none" : receipt.debugLineReasonCode;
 }
 
 RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
@@ -2069,6 +2082,22 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeWireframeSegmentStatus);
   appendReceiptField(receipt, "creative_wireframe_segment_reason_code",
                      window.creativeWireframeSegmentReasonCode);
+  appendReceiptField(receipt, "creative_wireframe_debug_line_requested",
+                     window.creativeWireframeDebugLineRequested);
+  appendReceiptField(receipt, "creative_wireframe_debug_line_source_available",
+                     window.creativeWireframeDebugLineSourceAvailable);
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_line_input_segment_count",
+                     window.creativeWireframeDebugLineInputSegmentCount);
+  appendReceiptField(receipt, "creative_wireframe_debug_line_count",
+                     window.creativeWireframeDebugLineCount);
+  appendReceiptField(receipt,
+                     "creative_wireframe_debug_line_skipped_degenerate_count",
+                     window.creativeWireframeDebugLineSkippedDegenerateCount);
+  appendReceiptField(receipt, "creative_wireframe_debug_line_status",
+                     window.creativeWireframeDebugLineStatus);
+  appendReceiptField(receipt, "creative_wireframe_debug_line_reason_code",
+                     window.creativeWireframeDebugLineReasonCode);
   appendReceiptField(receipt, "product_vulkan_gameplay_ready",
                      vulkanGameplayReadiness.ready);
   appendReceiptField(receipt, "product_vulkan_gameplay_status",
