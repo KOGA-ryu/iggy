@@ -116,6 +116,7 @@ target_sources(iggy3d
     src/app/iggy3d/menu/CreativeUiDrawList.cpp
     src/app/iggy3d/menu/CreativeUiProjection.cpp
     src/app/iggy3d/menu/CreativeUiFrame.cpp
+    src/app/iggy3d/menu/UiHitRouter.cpp
     src/app/iggy3d/menu/Notebook.cpp
     src/app/iggy3d/menu/PauseUi.cpp
     src/app/iggy3d/ui/Widget.cpp
