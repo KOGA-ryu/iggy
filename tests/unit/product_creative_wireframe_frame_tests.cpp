@@ -5,6 +5,8 @@
 #include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
+#include "projection/scene/SceneItem.hpp"
+#include "render/vulkan/BufferImageResources.hpp"
 
 #include <cstdint>
 #include <cstdlib>
@@ -86,6 +88,23 @@ cr::CreativeObjectId createRoom(cr::Facade& facade) {
   const cr::CreativeDocumentCreateReceipt receipt =
       facade.createDocumentObject(cr::CreativeObjectKind::Room);
   return receipt.objectId;
+}
+
+iggy3d::SceneRoomProjection packageRoomProjection() {
+  iggy3d::SceneRoomMeshItem prop;
+  prop.id = "w8_h_prop";
+  prop.role = "prop";
+  prop.materialId = "w8_h_debug_material";
+  prop.position = {0.0F, 0.5F, 0.0F};
+  prop.size = {1.0F, 1.0F, 1.0F};
+
+  iggy3d::SceneRoomProjection room;
+  room.loaded = true;
+  room.assetId = "w8_h_package_room";
+  room.version = 1;
+  room.staticMeshCount = 1U;
+  room.meshes.push_back(prop);
+  return room;
 }
 
 bool activeRuleUsesOnlyInteractionMode() {
@@ -257,6 +276,45 @@ bool presenterRenderFrameCarriesDebugLines() {
                 "render line thickness");
 }
 
+bool visibleRoomWireframeReachesVulkanCpuGeometry() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  const iggy3d::ProductCreativeWireframeFrameBuildResult frameResult =
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+  const iggy3d::ProductCreativeWireframeDebugRenderFrame renderFrame =
+      iggy3d::buildProductCreativeWireframeDebugRenderFrame(
+          &frameResult.debugLineList);
+  const iggy3d::SceneRoomProjection packageRoom = packageRoomProjection();
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(packageRoom,
+                                               &renderFrame.frame);
+
+  return expect(roomId != cr::kInvalidObjectId, "composition room created") &&
+         expect(frameResult.receipt.objectCount == 1U,
+                "composition object count") &&
+         expect(frameResult.receipt.debugLineCount == 12U,
+                "composition debug line count") &&
+         expect(renderFrame.frame.available,
+                "composition render debug available") &&
+         expect(renderFrame.frame.visible,
+                "composition render debug visible") &&
+         expect(renderFrame.frame.lineCount == 12U,
+                "composition render line count") &&
+         expect(geometry.ready, "composition geometry ready") &&
+         expect(geometry.creativeWireframeDebugLineInputCount == 12U,
+                "composition geometry input count") &&
+         expect(geometry.creativeWireframeDebugGeometryDrawCount == 12U,
+                "composition geometry draw count") &&
+         expect(geometry.creativeWireframeDebugGeometrySkippedCount == 0U,
+                "composition geometry skipped count") &&
+         expect(geometry.creativeWireframeDebugGeometryReasonCode ==
+                    "vulkan_creative_wireframe_debug_geometry_built",
+                "composition geometry reason") &&
+         expect(geometry.indexedDraws.size() >= 13U,
+                "composition appended debug draw ranges");
+}
+
 bool hiddenRoomBuildsNoSegmentsButCountsObject() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade;
@@ -295,6 +353,106 @@ bool hiddenRoomBuildsNoSegmentsButCountsObject() {
          expect(receipt.status ==
                     "product_creative_wireframe_frame_no_segments",
                 "hidden status");
+}
+
+bool hiddenRoomWireframeDoesNotAppendVulkanDebugGeometry() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  selectTarget(facade, roomId);
+  const cr::CreativeFacadeMutationReceipt mutation =
+      facade.toggleSelectedObjectVisibility();
+  const iggy3d::ProductCreativeWireframeFrameBuildResult frameResult =
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+  const iggy3d::ProductCreativeWireframeDebugRenderFrame renderFrame =
+      iggy3d::buildProductCreativeWireframeDebugRenderFrame(
+          &frameResult.debugLineList);
+  const iggy3d::SceneRoomProjection packageRoom = packageRoomProjection();
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(packageRoom,
+                                               &renderFrame.frame);
+
+  return expect(mutation.accepted && mutation.changed,
+                "hidden composition mutation changed") &&
+         expect(facade.document().objectCount() == 1U,
+                "hidden composition object remains") &&
+         expect(frameResult.receipt.objectCount == 1U,
+                "hidden composition receipt object count") &&
+         expect(frameResult.receipt.debugLineCount == 0U,
+                "hidden composition debug line count") &&
+         expect(renderFrame.frame.available,
+                "hidden composition render debug available") &&
+         expect(!renderFrame.frame.visible,
+                "hidden composition render debug hidden") &&
+         expect(renderFrame.frame.lineCount == 0U,
+                "hidden composition render line count") &&
+         expect(geometry.ready, "hidden composition base geometry ready") &&
+         expect(geometry.creativeWireframeDebugLineInputCount == 0U,
+                "hidden composition geometry input count") &&
+         expect(geometry.creativeWireframeDebugGeometryDrawCount == 0U,
+                "hidden composition geometry draw count") &&
+         expect(geometry.creativeWireframeDebugGeometrySkippedCount == 0U,
+                "hidden composition geometry skipped count") &&
+         expect(geometry.creativeWireframeDebugGeometryReasonCode ==
+                    "vulkan_creative_wireframe_debug_geometry_no_lines",
+                "hidden composition geometry reason");
+}
+
+bool missingCreativeDebugSourceKeepsVulkanGeometryNotRequested() {
+  const iggy3d::ProductCreativeWireframeDebugRenderFrame renderFrame =
+      iggy3d::buildProductCreativeWireframeDebugRenderFrame(nullptr);
+  const iggy3d::SceneRoomProjection packageRoom = packageRoomProjection();
+  const iggy3d::vulkan::RoomMeshCpuGeometry geometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(packageRoom,
+                                               &renderFrame.frame);
+
+  return expect(!renderFrame.frame.available,
+                "missing source render frame unavailable") &&
+         expect(!renderFrame.frame.visible,
+                "missing source render frame hidden") &&
+         expect(renderFrame.frame.lineCount == 0U,
+                "missing source render line count") &&
+         expect(geometry.ready, "missing source base geometry ready") &&
+         expect(geometry.creativeWireframeDebugLineInputCount == 0U,
+                "missing source geometry input count") &&
+         expect(geometry.creativeWireframeDebugGeometryDrawCount == 0U,
+                "missing source geometry draw count") &&
+         expect(geometry.creativeWireframeDebugGeometryReasonCode ==
+                    "vulkan_creative_wireframe_debug_geometry_not_requested",
+                "missing source geometry reason");
+}
+
+bool creativeDebugGeometrySignatureTracksVisibilityState() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  const iggy3d::ProductCreativeWireframeFrameBuildResult visibleFrame =
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+  const iggy3d::ProductCreativeWireframeDebugRenderFrame visibleRenderFrame =
+      iggy3d::buildProductCreativeWireframeDebugRenderFrame(
+          &visibleFrame.debugLineList);
+  selectTarget(facade, roomId);
+  static_cast<void>(facade.toggleSelectedObjectVisibility());
+  const iggy3d::ProductCreativeWireframeFrameBuildResult hiddenFrame =
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+  const iggy3d::ProductCreativeWireframeDebugRenderFrame hiddenRenderFrame =
+      iggy3d::buildProductCreativeWireframeDebugRenderFrame(
+          &hiddenFrame.debugLineList);
+  const iggy3d::SceneRoomProjection packageRoom = packageRoomProjection();
+  const iggy3d::vulkan::RoomMeshCpuGeometry visibleGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(packageRoom,
+                                               &visibleRenderFrame.frame);
+  const iggy3d::vulkan::RoomMeshCpuGeometry hiddenGeometry =
+      iggy3d::vulkan::buildRoomMeshCpuGeometry(packageRoom,
+                                               &hiddenRenderFrame.frame);
+
+  return expect(visibleGeometry.sourceCreativeWireframeDebugSignature != 0U,
+                "visible signature present") &&
+         expect(hiddenGeometry.sourceCreativeWireframeDebugSignature != 0U,
+                "hidden signature present") &&
+         expect(visibleGeometry.sourceCreativeWireframeDebugSignature !=
+                    hiddenGeometry.sourceCreativeWireframeDebugSignature,
+                "visibility changes debug geometry signature");
 }
 
 bool createRoomCommandThenWireframeBuildsSegments() {
@@ -594,7 +752,11 @@ int main() {
       oneRoomBuildsTwelveSegments() &&
       buildResultKeepsDebugLineList() &&
       presenterRenderFrameCarriesDebugLines() &&
+      visibleRoomWireframeReachesVulkanCpuGeometry() &&
       hiddenRoomBuildsNoSegmentsButCountsObject() &&
+      hiddenRoomWireframeDoesNotAppendVulkanDebugGeometry() &&
+      missingCreativeDebugSourceKeepsVulkanGeometryNotRequested() &&
+      creativeDebugGeometrySignatureTracksVisibilityState() &&
       createRoomCommandThenWireframeBuildsSegments() &&
       defaultWindowReceiptFieldsAreNotRequested() &&
       recorderCopiesRoomReceiptFields() &&
