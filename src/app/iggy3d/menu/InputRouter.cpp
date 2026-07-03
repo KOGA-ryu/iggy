@@ -39,7 +39,7 @@ void dispatchPauseAction(InputAction action,
   ProductPauseMenuActionContext pauseContext{
       context.frontend, context.options, context.saves, context.settingsTab,
       context.activeSession, context.window, context.closeRequested,
-      context.settings};
+      context.settings, context.creativeFacade};
   (void)applyProductPauseMenuAction(action, pauseContext);
 }
 

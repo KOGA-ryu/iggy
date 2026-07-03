@@ -26,6 +26,7 @@ struct ProductPauseMenuActionContext {
   ProductAppWindowState& window;
   bool& closeRequested;
   FrontendSettings& settings;
+  creative::Facade* creativeFacade = nullptr;
 };
 
 struct ProductDevToolsMenuActionContext {

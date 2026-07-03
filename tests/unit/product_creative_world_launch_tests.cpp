@@ -1,4 +1,5 @@
 #include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/menu/ActionHandlers.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -100,6 +101,27 @@ iggy3d::CreativeWorldSaveRequest saveRequest(
   request.saveId = std::string{saveId};
   request.document = &document;
   return request;
+}
+
+iggy3d::ProductMenuActionResult confirmPauseAction(
+    const iggy3d::ProductAppOptions& options,
+    iggy3d::FrontendAction action,
+    iggy3d::FrontendState& frontend,
+    std::optional<iggy3d::Session>& activeSession,
+    iggy3d::ProductAppWindowState& window,
+    cr::Facade* facade) {
+  bool closeRequested = false;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  iggy3d::ProductSaveBridgeResult saves;
+  iggy3d::FrontendSettings settings;
+
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
+  frontend.selectedAction = action;
+  return iggy3d::applyProductPauseMenuAction(
+      iggy3d::InputAction::MenuConfirm,
+      {frontend, options, saves, settingsTab, activeSession, window,
+       closeRequested, settings, facade});
 }
 
 bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
@@ -877,6 +899,252 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
                 "invalid doc window status");
 }
 
+bool pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() {
+  const iggy3d::ProductAppOptions options = testOptions("pause_creative_save");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::Facade facade;
+
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Pause Creative Save",
+                                        "2026-07-03T17:00:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          facade);
+  const cr::CreativeDocumentCreateReceipt createdObject =
+      facade.createDocumentObject(cr::CreativeObjectKind::Room);
+  const cr::CreativeObjectDirtyFlags dirtyBefore =
+      facade.document().dirtyFlags();
+  const iggy3d::ProductMenuActionResult saved =
+      confirmPauseAction(options,
+                         iggy3d::FrontendAction::Save,
+                         frontend,
+                         activeSession,
+                         window,
+                         &facade);
+
+  iggy3d::FrontendState openFrontend;
+  std::optional<iggy3d::Session> openSession;
+  iggy3d::ProductAppWindowState openWindow;
+  cr::Facade openFacade;
+  const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
+      openCreativeWorld(options,
+                        launched.saveId,
+                        openFrontend,
+                        openSession,
+                        openWindow,
+                        openFacade);
+
+  return expect(launched.accepted, "pause creative save launch accepted") &&
+         expect(createdObject.accepted, "pause creative save object created") &&
+         expect(dirtyBefore != 0U, "pause creative save dirty before") &&
+         expect(saved.handled && saved.accepted,
+                "pause creative save handled") &&
+         expect(frontend.status == "pause_creative_save_written",
+                "pause creative save frontend status") &&
+         expect(window.launchStatus == "product_creative_world_saved",
+                "pause creative save launch status") &&
+         expect(window.activeCreativeSaveStatus ==
+                    "product_creative_world_saved",
+                "pause creative save active status") &&
+         expect(window.activeCreativeSaveDirtyFlagsBefore == dirtyBefore,
+                "pause creative save dirty before mirrored") &&
+         expect(window.activeCreativeSaveDirtyFlagsDrained == dirtyBefore,
+                "pause creative save dirty drained mirrored") &&
+         expect(window.activeCreativeSaveDirtyFlagsAfter == 0U,
+                "pause creative save dirty after mirrored") &&
+         expect(facade.document().dirtyFlags() == 0U,
+                "pause creative save facade dirty drained") &&
+         expect(activeSession.has_value(),
+                "pause creative save keeps active session") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+                "pause creative save remains creative") &&
+         expect(window.activeProductSaveId == "none",
+                "pause creative save does not set product save id") &&
+         expect(opened.accepted, "pause creative save reopen accepted") &&
+         expect(opened.objectCount == 1U, "pause creative save reopen object") &&
+         expect(openFacade.document().findObject(createdObject.objectId) != nullptr,
+                "pause creative save reopened object findable");
+}
+
+bool pauseCreativeSaveNullFacadeFailsClosed() {
+  const iggy3d::ProductAppOptions options = testOptions("pause_creative_null");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::Facade facade;
+
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Pause Creative Null",
+                                        "2026-07-03T17:10:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          facade);
+  const cr::CreativeDocumentCreateReceipt createdObject =
+      facade.createDocumentObject(cr::CreativeObjectKind::Room);
+  const cr::CreativeObjectDirtyFlags dirtyBefore =
+      facade.document().dirtyFlags();
+  const iggy3d::ProductMenuActionResult saved =
+      confirmPauseAction(options,
+                         iggy3d::FrontendAction::Save,
+                         frontend,
+                         activeSession,
+                         window,
+                         nullptr);
+
+  return expect(launched.accepted, "pause creative null launch accepted") &&
+         expect(createdObject.accepted, "pause creative null object created") &&
+         expect(saved.handled && saved.accepted,
+                "pause creative null handled") &&
+         expect(frontend.status == "pause_creative_save_failed",
+                "pause creative null frontend status") &&
+         expect(window.launchStatus == "product_creative_save_facade_missing",
+                "pause creative null launch status") &&
+         expect(window.activeCreativeSaveStatus ==
+                    "product_creative_save_facade_missing",
+                "pause creative null active status") &&
+         expect(facade.document().dirtyFlags() == dirtyBefore,
+                "pause creative null dirty preserved") &&
+         expect(activeSession.has_value(),
+                "pause creative null keeps active session") &&
+         expect(window.activeProductSaveId == "none",
+                "pause creative null does not set product save id");
+}
+
+bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("pause_creative_save_exit");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::Facade facade;
+
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Pause Creative Exit",
+                                        "2026-07-03T17:20:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          facade);
+  const cr::CreativeDocumentCreateReceipt createdObject =
+      facade.createDocumentObject(cr::CreativeObjectKind::Room);
+  const cr::CreativeObjectDirtyFlags dirtyBefore =
+      facade.document().dirtyFlags();
+  const iggy3d::ProductMenuActionResult saved =
+      confirmPauseAction(options,
+                         iggy3d::FrontendAction::SaveAndExit,
+                         frontend,
+                         activeSession,
+                         window,
+                         &facade);
+
+  iggy3d::FrontendState openFrontend;
+  std::optional<iggy3d::Session> openSession;
+  iggy3d::ProductAppWindowState openWindow;
+  cr::Facade openFacade;
+  const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
+      openCreativeWorld(options,
+                        launched.saveId,
+                        openFrontend,
+                        openSession,
+                        openWindow,
+                        openFacade);
+
+  return expect(launched.accepted,
+                "pause creative save exit launch accepted") &&
+         expect(createdObject.accepted,
+                "pause creative save exit object created") &&
+         expect(dirtyBefore != 0U, "pause creative save exit dirty before") &&
+         expect(saved.handled && saved.accepted,
+                "pause creative save exit handled") &&
+         expect(frontend.screen == iggy3d::FrontendScreen::Starter,
+                "pause creative save exit returned starter") &&
+         expect(frontend.status == "returned_to_title",
+                "pause creative save exit frontend returned") &&
+         expect(window.launchStatus == "product_creative_world_saved",
+                "pause creative save exit launch status") &&
+         expect(!activeSession.has_value(),
+                "pause creative save exit resets session") &&
+         expect(!window.gameplayActive,
+                "pause creative save exit clears gameplay active") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+                "pause creative save exit player mode") &&
+         expect(window.activeCreativeSaveId == "none",
+                "pause creative save exit clears active creative id") &&
+         expect(window.activeCreativeSaveStatus ==
+                    "creative_world_save_not_requested",
+                "pause creative save exit clears save status") &&
+         expect(facade.document().dirtyFlags() == 0U,
+                "pause creative save exit dirty drained") &&
+         expect(window.activeProductSaveId == "none",
+                "pause creative save exit does not set product save id") &&
+         expect(opened.accepted, "pause creative save exit reopen accepted") &&
+         expect(opened.objectCount == 1U,
+                "pause creative save exit reopen object") &&
+         expect(openFacade.document().findObject(createdObject.objectId) != nullptr,
+                "pause creative save exit reopened object findable");
+}
+
+bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("pause_creative_save_exit_missing_id");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::Facade facade;
+
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Pause Creative Exit Missing",
+                                        "2026-07-03T17:30:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          facade);
+  const cr::CreativeDocumentCreateReceipt createdObject =
+      facade.createDocumentObject(cr::CreativeObjectKind::Room);
+  const cr::CreativeObjectDirtyFlags dirtyBefore =
+      facade.document().dirtyFlags();
+  window.activeCreativeSaveId = "none";
+  const iggy3d::ProductMenuActionResult saved =
+      confirmPauseAction(options,
+                         iggy3d::FrontendAction::SaveAndExit,
+                         frontend,
+                         activeSession,
+                         window,
+                         &facade);
+
+  return expect(launched.accepted,
+                "pause creative save exit failure launch accepted") &&
+         expect(createdObject.accepted,
+                "pause creative save exit failure object created") &&
+         expect(saved.handled && saved.accepted,
+                "pause creative save exit failure handled") &&
+         expect(frontend.screen == iggy3d::FrontendScreen::Pause,
+                "pause creative save exit failure stays paused") &&
+         expect(frontend.status == "pause_creative_save_and_exit_failed",
+                "pause creative save exit failure frontend status") &&
+         expect(window.launchStatus == "product_creative_save_id_missing",
+                "pause creative save exit failure launch status") &&
+         expect(activeSession.has_value(),
+                "pause creative save exit failure keeps session") &&
+         expect(window.gameplayActive,
+                "pause creative save exit failure gameplay active") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+                "pause creative save exit failure stays creative") &&
+         expect(facade.document().dirtyFlags() == dirtyBefore,
+                "pause creative save exit failure dirty preserved") &&
+         expect(window.activeCreativeSaveStatus ==
+                    "product_creative_save_id_missing",
+                "pause creative save exit failure active status");
+}
+
 bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
   const iggy3d::ProductAppOptions options = testOptions("open_second");
 
@@ -1027,6 +1295,10 @@ int main() {
       productNewWorldLaunchClearsActiveCreativeIdentity() &&
       currentCreativeWorldSaveDrainsDirtyAndPersistsDocument() &&
       currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() &&
+      pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() &&
+      pauseCreativeSaveNullFacadeFailsClosed() &&
+      pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() &&
+      pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() &&
       secondOpenClearsOldFacadeStateAndInstallsRestoredDocument();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

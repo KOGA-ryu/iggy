@@ -21,6 +21,24 @@ void setTransition(ProductAppWindowState& window,
   window.productTransitionSessionPreserved = sessionPreserved;
 }
 
+bool hasActiveCreativeWorldIdentity(const ProductAppWindowState& window) {
+  return (!window.activeCreativeSaveId.empty() &&
+          window.activeCreativeSaveId != "none") ||
+         (!window.activeCreativeWorldId.empty() &&
+          window.activeCreativeWorldId != "none") ||
+         window.activeCreativeDocumentId != 0;
+}
+
+void clearProductPauseOwnedTransientModes(ProductAppWindowState& window) {
+  const bool preserveCreativeWorldMode =
+      window.interactionMode == ProductInteractionMode::Creative &&
+      hasActiveCreativeWorldIdentity(window);
+  clearProductMenuOwnedTransientModes(window);
+  if (preserveCreativeWorldMode) {
+    window.interactionMode = ProductInteractionMode::Creative;
+  }
+}
+
 }  // namespace
 
 void clearProductMapMakerMode(ProductAppWindowState& window) {
@@ -171,7 +189,7 @@ void enterProductGameplayTransition(FrontendState& frontend,
 void openProductPauseTransition(FrontendState& frontend,
                                 ProductAppWindowState& window,
                                 FrontendAction selectedAction) {
-  clearProductMenuOwnedTransientModes(window);
+  clearProductPauseOwnedTransientModes(window);
   openFrontendPause(frontend, selectedAction);
   syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "open_pause", "pause_ready", false, false,

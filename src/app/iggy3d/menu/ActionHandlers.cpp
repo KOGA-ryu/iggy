@@ -316,7 +316,7 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
   if (frontend.selectedAction == FrontendAction::Save) {
     executeProductPauseSaveFlow(ProductPauseSaveFlowKind::Save, context.options,
                                 frontend, context.activeSession, window,
-                                context.settings);
+                                context.settings, context.creativeFacade);
     return {true, true};
   }
   // branch-gate: BG-1017
@@ -324,7 +324,7 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
     executeProductPauseSaveFlow(ProductPauseSaveFlowKind::SaveAndExit,
                                 context.options, frontend,
                                 context.activeSession, window,
-                                context.settings);
+                                context.settings, context.creativeFacade);
     return {true, true};
   }
   // branch-gate: BG-1017

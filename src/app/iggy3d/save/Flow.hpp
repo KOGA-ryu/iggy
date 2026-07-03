@@ -8,6 +8,7 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
+#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
@@ -23,6 +24,10 @@ enum class ProductPauseSaveFlowKind : std::uint8_t {
 struct ProductPauseSaveFlowResult {
   ProductPauseSaveFlowKind kind = ProductPauseSaveFlowKind::Save;
   ProductSaveWriteResult write;
+  bool creativeSaveRequested = false;
+  bool creativeSaveAccepted = false;
+  bool creativeSaveSaved = false;
+  ProductCreativeCurrentWorldSaveResult creativeSave;
   std::string frontendStatus;
   std::string launchStatus;
   bool returnedToTitle = false;
@@ -42,6 +47,23 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     FrontendState& frontend,
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
+    creative::Facade* creativeFacade);
+
+ProductPauseSaveFlowResult executeProductPauseSaveFlow(
+    ProductPauseSaveFlowKind kind,
+    const ProductAppOptions& options,
+    FrontendState& frontend,
+    std::optional<Session>& activeSession,
+    ProductAppWindowState& window,
     FrontendSettings& settings);
+
+ProductPauseSaveFlowResult executeProductPauseSaveFlow(
+    ProductPauseSaveFlowKind kind,
+    const ProductAppOptions& options,
+    FrontendState& frontend,
+    std::optional<Session>& activeSession,
+    ProductAppWindowState& window,
+    FrontendSettings& settings,
+    creative::Facade* creativeFacade);
 
 }  // namespace iggy3d
