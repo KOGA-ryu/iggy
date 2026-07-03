@@ -1,4 +1,4 @@
-# The Movement & Abilities Maximum — destiny document v1.3
+# The Movement & Abilities Maximum — destiny document v1.4
 
 > Planner-authored 2026-07-03. The lane's SECOND WING: parkour movement, the ability engine,
 > and NPCs USING BOTH. Sibling to `docs/ai-lane-maximum.md` (v1.10) — same laws: slices cut
@@ -121,7 +121,7 @@ testable headless), with Controller touching only their input triggers. Each ver
 affordance (tags/slots — Codex authors surfaces) + runtime phase + M1 profile fields +
 SOUND declaration + receipts + a MovementTestLab lane. Every verb is a down-payment on MA7.
 
-### M3 — NPC movement capability (the novel one; MA4)
+### M3 — NPC movement capability (the novel one; MA4) — ✅ SHIPPED (MA4, v1.4; live-session arming INERT until the brokered graph/registry product wiring)
 - **Capability CLASSES, not per-guard configs**: a small enum (grounded / climber / leaper /
   flier-reserved), each a `TravelCostConfig` row (unusable edge = a named sentinel the
   router SKIPS — no float-INF arithmetic; InfluenceMap's +inf-for-unreached convention is
@@ -191,7 +191,7 @@ MA2   Ability engine n→N (+ wild-magic sockets, ONE schema)
 MA3a  Player cast + gameplay.cast + cast noise                ← independent, early payoff
 MA3b  NPC caster rung (needs MA2; sequenced vs a9s3/a9s4)
 MA4   NPC movement (capability classes + climb edges +
-      traversal-inside-Move; owns its determinism ruling)     ← independent of MA1-3
+      traversal-inside-Move; owns its determinism ruling)     ✅ SHIPPED (216/216 @ 8f68baa7)
 MA5   New parkour verbs, RUNTIME-FIRST (slide, ledge-hang,
       climb, ladder — PlayerMotor phases + gym lanes)
 MA6   Damage types + status skeleton                           ← unlocks the content matrix
@@ -199,7 +199,7 @@ MA7   (pre-named, unscheduled) Motor unification — landing
       thump + falling damage + CommandKind::Traverse +
       impulse reconciliation + VERB SOUND (player traversal
       silence + NPC traversal silence, both declared) land HERE
-M-LAB (tooling, cuttable anytime, serves the experimental-
+M-LAB ✅ SHIPPED (212/212) — (tooling, serves the experimental-
       movement mandate): the FEEL LABORATORY — the in-game
       tuning cockpit (live field adjust EXISTS in the menu
       stack; grows to full field coverage + dimension-profile
@@ -226,6 +226,31 @@ MA6 independent · MA7 last.
 - The feedback rule + version log (inherited verbatim from the AI map).
 
 ## 5. Version log
+- v1.4 (2026-07-03): **M-LAB + MA4 COMPLETE** (four gated slices, all verdicts clean;
+  trunk b191a0cd..8f68baa7; suite 209→216; zero unrelated re-pins across the run).
+  M-LAB LANDED: cockpit (25 descriptors + anti-drift coverage law; earth↔giant hot-swap
+  with `admission_limit_unswapped` honesty receipt; coherence-gated numbered TOML export
+  + the commissioned `parseMovementDimensionProfileRow` + config row enumerator — the
+  reserved seam for file-backed profiles) + gyms (`parkour_gym_earth`/`_giant` packages,
+  10 graded stations, byte-identical geometry, --package reachability).
+  MA4 LANDED: `MovementCapabilityClass` leaf enum (grounded/climber, leaper/flier
+  reserved) on the a9s1 profile; climb edges emitted from bridging clamber slots
+  (blocked-pair predicate, nearest/slotId-deterministic); skip-sentinel routing
+  (`kUnusableEdgeKindMultiplier=-1`, checked before cost — never in sums); grounded-by-
+  name at the actor-free sites; §M3-literal arming (route leg crosses climb edge; chase
+  never traverses) + blocked-convergence firing on BOTH movement branches via
+  non-mutating preview + far-node strictly-closer; SessionState slot-registry carry
+  (transient club, set-once, default-empty inert); receipts conditional; silence declared.
+  MAP CORRECTIONS/FINDINGS from the cuts: (a) `wall_jump` is NOT TOML-legal (whitelist
+  ×3 omits it; ASCII J-glyph path only) — the gym chimney ships INERT; the new-tag slice
+  (MA5-adjacent) inherits this + the triplicated-whitelist fix; (b) VAULT HAS NO BLOCKED
+  HEIGHT BAND — its 2.0 m ceiling exists only at selection time (appendVaultSlot always
+  stamps vault_low); (c) ma4s2 fired CLAMBER-ONLY (vault/wire climb-edge firing =
+  UnsupportedMechanic safe no-op, a NAMED extension point); (d) ma4s2 used self-contained
+  room-free slot cores — the room-based traversal path untouched; clean-delegation
+  refactor flagged as follow-up; (e) live-session NPC traversal + reasoning-graph wiring
+  remain INERT pending the ONE brokered product-activation follow-up (graph + slot
+  registry populate together).
 - v1.3 (2026-07-03): MA4 pre-flight corrections + the feel laboratory. (a) §M3 cost rows:
   unusable = router-skips sentinel, NOT +∞ arithmetic (the critic's better call);
   (b) MA7 row now owns VERB SOUND — player traversal emits nothing today (recon fact)
