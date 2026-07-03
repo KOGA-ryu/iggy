@@ -108,6 +108,7 @@ target_sources(iggy3d
     src/app/iggy3d/room_editor/Preview.cpp
     src/app/iggy3d/room_editor/EditingState.cpp
     src/app/iggy3d/gameplay/ScriptedDriver.cpp
+    src/app/iggy3d/save/CreativeDocumentSection.cpp
     src/app/iggy3d/save/RoomMarkerBinding.cpp
     src/app/iggy3d/save/Catalog.cpp
     src/app/iggy3d/save/CatalogProjector.cpp
