@@ -1,4 +1,4 @@
-# The AI Lane Maximum — destiny document v1.5
+# The AI Lane Maximum — destiny document v1.6
 
 > Planner-authored 2026-07-02. This is the END of the AI lane: every behaviour layer the game's
 > identity demands, their contracts, the dependency DAG, the pre-declared churn, and the
@@ -250,7 +250,7 @@ transient state on top.
 | A4 travel | patrol/investigate/return destinations become route-node-fed; straight-line stall tests re-pin; NEW INTENT kinds (if any) touch the three dispatchers incl. the MANUAL if-chain `buildNpcBehaviorCommand`; route state transient — NO triple-lock growth | motor interface unchanged (point-moves) |
 | A5 chess | the overlay chain gains a rung — precedence is ORDER-LOAD-BEARING (combat > investigate > patrol, gated on intent==Wait); `NpcBehaviorProfile` gains weight columns; decision receipts extend snapshot rows; garden sub-combat intent pins re-pin (break-contact investigate / dwell / patrol-resume); SEQUENCE against the pending npcBehaviorDebugHud string-mirror cut | s5 precedent: graded overlay was made the SOLE path, no opt-in flag — same rule here |
 | A6 influence | hoists the per-tick `SpatialSurfaceSet` collider rebake (Session.cpp) — a timing-visible perf change; garden tick-cap pins re-measured | declare before, measure after |
-| A7 affordance | ⚠CROSS-LANE: the vocabulary HEADER is in-lane (runtime/ai, delivered with/after A3); Codex owns the marker→node mapping in the authoring lane (glyph table, anchor kinds, GameplayMarker descriptors — app→runtime include is legal); resolves N/M collapse + T/R/? inertness; ascii reference doc §8 updated | one vocabulary, authored once; planner brokers; the header is the contract, the doc is the receipt |
+| A7 affordance | ⚠CROSS-LANE, re-ruled v1.6: the contract travels as ANCHOR-KIND STRINGS on `RoomAnchorAsset.kind` — `docs/affordance_vocabulary_v0_1.md` IS the contract artifact (no shared header needed). AI half (fleet): `markerToReasoningNode` string→kind mapping in runtime/ai + the `monster` entity-seeding touch in `PackageSessionSeed.cpp` (named shared-ground touch). Codex half: emit-strings-only (glyph table, `anchorKindForMarkerTag`, authoring reference §1/§4 + inertness-note amendments). Resolves N/M collapse (ordering-sensitive: AI half first or same window — warden_vault authors M) + T/R Stream-4 resolution (T inert placement affordance; R already has LIVE reset-to-spawn gameplay — only its deck semantics are future). Creative GameplayMarker emission of the wire strings: DEFERRED to a later Codex order | one vocabulary, authored once; planner brokers; the CONTRACT DOC is the contract, wire strings append-only |
 | A8a groundwork | `assignNpcBehaviorProfiles` widened to carry patrol/facing (the seed-rebuild trap, PackageSessionSeed.cpp — in-lane shared ground by this order); objective conditions grow past `PlayerHasItem`; the TWO hardcoded outcome rules in SessionTick.cpp subsumed into data | deliberate schema growth, not drift |
 | A8b deck kernel | new module (cards/budget/validator/placement/report); `RuntimeSummary` generalization churns replay `expectedSummaryText` baselines | fallback: fixture-authored graph if A7 stalls |
 | A9 team | target selection replaces hardcoded player-slot-0 in `enqueueNpcBehaviorCommands`; profile catalog goes data-driven (churns Session.cpp per-tick rebuild, ProjectionRefresh, PackageValidator, FixtureScenarioLoader, 4+ test binaries — the catalog is rebuilt EVERY tick today) | the catalog churn list is known and finite; do it once, in one slice |
@@ -273,8 +273,9 @@ integration per the §2 L1 ruling — fields on the bus, existing `npcStepAlert`
 the slope/personality tuning slices) + `planRoute(graph, colliders, from, to, config)` ·
 `GuardDecisionReceipt` · `InfluenceMap`, `InfluenceChannel` ·
 `EncounterCard{requires, provides, cost}`, `EncounterBudget`, `EncounterValidator`,
-`EncounterBattleReport`, `dealEncounterHand` · `markerToReasoningNode` (the A7 mapping, Codex's
-half) · `NpcPersonalityWeights` (columns on `NpcBehaviorProfile`) · `selectNpcTarget` ·
+`EncounterBattleReport`, `dealEncounterHand` · `markerToReasoningNode` (the A7 mapping —
+re-ruled v1.6: runtime/ai, the AI-lane half; Codex emits wire strings only) ·
+`NpcPersonalityWeights` (columns on `NpcBehaviorProfile`) · `selectNpcTarget` ·
 persistence: `SaveAiActorRecord` grows `alertLevel/grace*/patrol*/lastKnown*/facing` fields
 per the s6c-patrol-save template (route state explicitly NOT among them — transient by design).
 All names grep-verified collision-free in the tree at v1.1.
@@ -293,8 +294,9 @@ All names grep-verified collision-free in the tree at v1.1.
 - **Cross-lane discipline, scoped precisely:** `creative/**` is never touched. ReceiptBuilder
   and src/app product/UI surfaces are out-of-lane EXCEPT by explicit planner order (the
   sd-series precedent). `src/app/iggy3d/world/` seed plumbing (PackageSessionSeed,
-  NpcProfileAssignment) is in-lane shared ground FOR THE STREAMS THIS MAP NAMES (A3, A8a) —
-  a reviewer should not stop-flag those; anything beyond the named touches still stops.
+  NpcProfileAssignment) is in-lane shared ground FOR THE STREAMS THIS MAP NAMES (A3, A7's
+  monster-seeding touch, A8a) — a reviewer should not stop-flag those; anything beyond the
+  named touches still stops.
 - No companion/priestess AI in v1.x (reserved in §1 — a future READER of L4/L6, never a
   parallel stack).
 - No physics redesign inside AI streams; the kinematic kernel interface is the wall.
@@ -326,6 +328,16 @@ fleet's copy.
   silent); omniscience refusal tightened to perception-events wording.
   Known stale sibling: docs/next_work.md still says slice-5 integration is "next" (s5–s8 have
   landed); update it when trunk settles.
+- v1.6 (2026-07-02): A7 re-ruled for dispatch (critic pass on the cross-lane package):
+  the contract = `docs/affordance_vocabulary_v0_1.md` with anchor-kind STRINGS on the wire
+  (no shared header); `markerToReasoningNode` moves to the AI half; `PackageSessionSeed`
+  monster-seeding named as A7 shared ground; M de-collapse is ordering-sensitive (AI half
+  first — warden_vault exposure); Stream-4 resolution corrected (R is NOT inert — live
+  reset-to-spawn gameplay exists; T inert; both become deck affordances); creative
+  GameplayMarker emission deferred. A8a commit-2 seam pre-ruled: outcome mapping =
+  session-level TRANSIENT table rebuilt on load (ObjectiveRecord-field seam FORBIDDEN this
+  slice — objectives persist+hash via the SaveObjectiveRecord mirror; a compiling-but-
+  unpersisted field is the trap).
 - v1.5 (2026-07-02): A5 COMPLETE (`55916b5f` kernel, `49a2d44c` rung; 192/192). L6 landed:
   `chooseSearchNode` (1-ply, signed-factor `GuardDecisionReceipt`, `excludedNodeId`
   suppression), `NpcPersonalityWeights` neutral columns on the profile (the A9 seam),
