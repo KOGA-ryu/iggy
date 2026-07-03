@@ -297,6 +297,11 @@ iggy3d_add_unit_test(creative_spatial_projection_tests
 set_tests_properties(creative_spatial_projection_tests PROPERTIES
   LABELS "unit;app;creative;spatial_projection;iggy3d")
 
+iggy3d_add_unit_test(creative_viewport_pick_tests
+  tests/unit/creative_viewport_pick_tests.cpp)
+set_tests_properties(creative_viewport_pick_tests PROPERTIES
+  LABELS "unit;app;creative;viewport_pick;iggy3d")
+
 iggy3d_add_unit_test(creative_tools_tests
   tests/unit/creative_tools_tests.cpp)
 set_tests_properties(creative_tools_tests PROPERTIES
