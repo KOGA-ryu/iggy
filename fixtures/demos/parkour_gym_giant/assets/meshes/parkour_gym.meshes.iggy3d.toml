@@ -1,0 +1,35 @@
+[[primitive_meshes]]
+id = "gym_floor_panel"
+kind = "box"
+size_ft = [60.0, 0.10, 60.0]
+material = "gym_floor"
+
+[[primitive_meshes]]
+id = "gym_wall_panel"
+kind = "box"
+size_ft = [60.0, 8.0, 1.0]
+material = "gym_wall"
+
+[[primitive_meshes]]
+id = "gym_ledge_block"
+kind = "box"
+size_ft = [4.0, 1.0, 2.0]
+material = "gym_ledge"
+
+[[primitive_meshes]]
+id = "gym_rail"
+kind = "box"
+size_ft = [8.0, 0.30, 0.30]
+material = "gym_rail"
+
+[[primitive_meshes]]
+id = "gym_marker"
+kind = "box"
+size_ft = [1.0, 0.06, 3.0]
+material = "gym_marker"
+
+[[primitive_meshes]]
+id = "gym_ramp"
+kind = "box"
+size_ft = [8.0, 0.12, 8.0]
+material = "gym_slope"

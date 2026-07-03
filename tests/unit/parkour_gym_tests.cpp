@@ -25,8 +25,16 @@ bool expect(bool condition, std::string_view message) {
 
 constexpr std::string_view kEarthPackage =
     "fixtures/demos/parkour_gym_earth/package.iggy3d.toml";
+constexpr std::string_view kGiantPackage =
+    "fixtures/demos/parkour_gym_giant/package.iggy3d.toml";
 constexpr std::string_view kEarthRoom =
     "fixtures/demos/parkour_gym_earth/assets/rooms/parkour_gym.room.iggy3d.toml";
+constexpr std::string_view kGiantRoom =
+    "fixtures/demos/parkour_gym_giant/assets/rooms/parkour_gym.room.iggy3d.toml";
+constexpr std::string_view kEarthScenario =
+    "fixtures/demos/parkour_gym_earth/scenario.iggy3d.toml";
+constexpr std::string_view kGiantScenario =
+    "fixtures/demos/parkour_gym_giant/scenario.iggy3d.toml";
 
 std::size_t slotKindCount(const iggy3d::MovementTraversalSlotRegistry& registry,
                           iggy3d::MovementTraversalSlotKind kind) {
@@ -54,6 +62,16 @@ std::string readFile(std::string_view path) {
   std::stringstream buffer;
   buffer << file.rdbuf();
   return buffer.str();
+}
+
+// Replace every occurrence of `from` with `to` (used to neutralize the one differing scenario value).
+std::string replaceAll(std::string text, std::string_view from, std::string_view to) {
+  std::size_t pos = 0;
+  while ((pos = text.find(from, pos)) != std::string::npos) {
+    text.replace(pos, from.size(), to);
+    pos += to.size();
+  }
+  return text;
 }
 
 // Load a gym package + build its slot registry from the (single) authored room.
@@ -125,13 +143,67 @@ bool earthGymResolvesEarthProfile() {
                 "earth gym admission limit is 3.0 (from the profile)");
 }
 
+bool giantGymLoadsAndResolvesGiantProfile() {
+  const iggy3d::PackageLoadResult package = iggy3d::loadPackage({std::string(kGiantPackage)});
+  bool ok = expect(package.status == iggy3d::PackageLoadStatus::Ok, "giant gym package loads") &&
+            expect(!package.rooms.empty(), "giant gym ships a room");
+
+  iggy3d::SessionCreateRequest request;
+  request.packageId = package.manifest.packageId;
+  request.config = package.scenario.config;
+  request.seed = package.scenario;
+  iggy3d::Result<iggy3d::Session> created = iggy3d::Session::create(request);
+  ok = ok && expect(created.status == iggy3d::ResultStatus::Ok, "giant gym session creates");
+
+  // The whole point: OMITTING movement_distance_meters lets giant's 4.5 limit come from the profile
+  // (an explicit 3.0 would have clamped it back to earth's).
+  ok = ok && expect(package.scenario.movementProfile.id == "giant_lowgrav",
+                    "giant gym resolves giant_lowgrav") &&
+       expect(package.scenario.config.movementDistanceMeters == 4.5F,
+              "giant gym admission limit is 4.5 (from the profile, not clamped to 3.0)");
+  return ok;
+}
+
+bool giantGymDerivesSameStationSlots() {
+  iggy3d::PackageLoadResult package;
+  iggy3d::MovementTraversalSlotRegistry registry;
+  if (!expect(loadGym(kGiantPackage, package, registry), "giant gym derives slots")) {
+    return false;
+  }
+  // Same geometry ⇒ same affordances (the dimension changes feel, not layout).
+  return expect(slotKindCount(registry, iggy3d::MovementTraversalSlotKind::Clamber) == 5U,
+                "giant gym derives 5 clamber slots") &&
+         expect(slotKindCount(registry, iggy3d::MovementTraversalSlotKind::Vault) == 4U,
+                "giant gym derives 4 vault slots") &&
+         expect(slotKindCount(registry, iggy3d::MovementTraversalSlotKind::WireWalk) == 3U,
+                "giant gym derives 3 wire slots");
+}
+
+bool gymsShareByteIdenticalGeometry() {
+  const std::string earthRoom = readFile(kEarthRoom);
+  const std::string giantRoom = readFile(kGiantRoom);
+  bool ok = expect(!earthRoom.empty(), "earth room file reads") &&
+            expect(earthRoom == giantRoom,
+                   "the two gyms' room asset files are BYTE-IDENTICAL (shared geometry)");
+
+  // The scenarios must differ ONLY in the movement_profile value.
+  const std::string earthScenario = readFile(kEarthScenario);
+  const std::string giantScenario = readFile(kGiantScenario);
+  const std::string neutralEarth =
+      replaceAll(earthScenario, "\"earth_standard\"", "\"<PROFILE>\"");
+  const std::string neutralGiant =
+      replaceAll(giantScenario, "\"giant_lowgrav\"", "\"<PROFILE>\"");
+  ok = ok && expect(earthScenario != giantScenario, "the scenarios are not identical") &&
+       expect(neutralEarth == neutralGiant,
+              "the scenarios differ ONLY in the movement_profile value");
+  return ok;
+}
+
 }  // namespace
 
 int main() {
   const bool ok = earthGymLoadsCreatesAndActivates() && earthGymDerivesStationSlots() &&
-                  earthGymResolvesEarthProfile();
-  // Referenced so GATE 2 (giant + parity) can drop in without an unused-warning churn.
-  (void)&readFile;
-  (void)&kEarthRoom;
+                  earthGymResolvesEarthProfile() && giantGymLoadsAndResolvesGiantProfile() &&
+                  giantGymDerivesSameStationSlots() && gymsShareByteIdenticalGeometry();
   return ok ? 0 : 1;
 }

@@ -4,7 +4,7 @@ id = "parkour_gym.runtime_loop"
 [defaults]
 fixed_tick_rate_hz = 60
 interaction_range_meters = 1.500
-movement_profile = "earth_standard"
+movement_profile = "giant_lowgrav"
 slow_time_scale = 0.250
 initial_clock = "Normal"
 default_realtime_camera = "FirstPerson"

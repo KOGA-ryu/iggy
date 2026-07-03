@@ -1,0 +1,17 @@
+[package]
+id = "iggy3d.parkour_gym_giant"
+schema_version = 1
+required_runtime_schema = 1
+scenario = "scenario.iggy3d.toml"
+
+[[assets]]
+id = "room.parkour_gym"
+path = "assets/rooms/parkour_gym.room.iggy3d.toml"
+
+[[assets]]
+id = "mesh.parkour_gym_primitives"
+path = "assets/meshes/parkour_gym.meshes.iggy3d.toml"
+
+[[assets]]
+id = "material.parkour_gym"
+path = "assets/materials/parkour_gym.materials.iggy3d.toml"

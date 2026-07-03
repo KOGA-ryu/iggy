@@ -1,0 +1,29 @@
+[[materials]]
+id = "gym_floor"
+kind = "vertex_color"
+color = [0.28, 0.30, 0.33]
+
+[[materials]]
+id = "gym_wall"
+kind = "vertex_color"
+color = [0.42, 0.43, 0.46]
+
+[[materials]]
+id = "gym_ledge"
+kind = "vertex_color"
+color = [0.30, 0.52, 0.70]
+
+[[materials]]
+id = "gym_rail"
+kind = "vertex_color"
+color = [0.88, 0.74, 0.28]
+
+[[materials]]
+id = "gym_marker"
+kind = "vertex_color"
+color = [0.72, 0.62, 0.20]
+
+[[materials]]
+id = "gym_slope"
+kind = "vertex_color"
+color = [0.34, 0.60, 0.42]
