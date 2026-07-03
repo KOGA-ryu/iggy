@@ -120,14 +120,18 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         inputFrame, closeRequested, &sdlWindow});
 
     const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
-    static_cast<void>(buildProductCreativeUiWindowFrame(
+    const ProductCreativeUiFrame creativeUiFrame = buildProductCreativeUiWindowFrame(
         ProductCreativeUiWindowFrameRequest{&window,
                                             request.creativeFacade,
                                             drawableExtent.width,
                                             drawableExtent.height,
                                             createInfo.width,
                                             createInfo.height,
-                                            ProductUiThemeId::System}));
+                                            ProductUiThemeId::System});
+    const ProductUiDrawList* creativeUiDrawList =
+        creativeUiFrame.projection.drawList.ready
+            ? &creativeUiFrame.projection.drawList
+            : nullptr;
 
     const ProductGameplayProjectionFrame projectionFrame =
         buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{
@@ -138,7 +142,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     presentProductWindowFrame(ProductWindowFramePresenterRequest{
         request.options, request.world, request.frontend, settingsTab,
         request.worldSetupDraft, window, saves, sdlWindow, renderer,
-        projectionFrame});
+        projectionFrame, creativeUiDrawList});
     ++window.framesPresented;
 
     // branch-gate: BG-1031

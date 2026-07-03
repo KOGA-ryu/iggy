@@ -757,6 +757,15 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
           request.frontend.screen == FrontendScreen::DevOverlay &&
               frontendDevToolsOpen(request.frontend),
           request.frontend.devToolsCategory);
+      // Creative UI is a transient one-frame overlay over gameplay. It is appended
+      // before pause UI so the pause journal remains topmost when both exist.
+      if (request.creativeUiDrawList != nullptr) {
+        appendCreativeUiOverlay(renderFrame,
+                                *request.creativeUiDrawList,
+                                request.window.framesPresented + 1U,
+                                drawableExtent.width,
+                                drawableExtent.height);
+      }
       // In-game pause opens the character's journal: overlay the Journal-themed
       // pause menu onto the frozen scene before the single submit. The Vulkan
       // path renders no pause menu otherwise. Enablement mirrors makePauseRow.
@@ -995,7 +1004,7 @@ const FrameInput& refreshProductVulkanGameplayFrameInput(
   return gameplayFrame.frame;
 }
 
-void appendPauseMenuOverlay(ProductVulkanGameplayFrame& gameplayFrame,
+void appendProductUiOverlay(ProductVulkanGameplayFrame& gameplayFrame,
                             const ProductUiDrawList& overlayUi,
                             std::uint64_t frameIndex,
                             std::uint32_t drawableWidth,
@@ -1013,6 +1022,10 @@ void appendPauseMenuOverlay(ProductVulkanGameplayFrame& gameplayFrame,
   if (!overlayFrame.ready) {
     return;
   }
+  gameplayFrame.rects.reserve(gameplayFrame.rects.size() +
+                              overlayFrame.rects.size());
+  gameplayFrame.textGlyphQuads.reserve(gameplayFrame.textGlyphQuads.size() +
+                                       overlayFrame.textGlyphQuads.size());
   gameplayFrame.rects.insert(gameplayFrame.rects.end(),
                              overlayFrame.rects.begin(),
                              overlayFrame.rects.end());
@@ -1020,6 +1033,30 @@ void appendPauseMenuOverlay(ProductVulkanGameplayFrame& gameplayFrame,
                                       overlayFrame.textGlyphQuads.begin(),
                                       overlayFrame.textGlyphQuads.end());
   gameplayFrame.textGlyphCount += overlayFrame.textGlyphCount;
+}
+
+void appendCreativeUiOverlay(ProductVulkanGameplayFrame& gameplayFrame,
+                             const ProductUiDrawList& overlayUi,
+                             std::uint64_t frameIndex,
+                             std::uint32_t drawableWidth,
+                             std::uint32_t drawableHeight) {
+  appendProductUiOverlay(gameplayFrame,
+                         overlayUi,
+                         frameIndex,
+                         drawableWidth,
+                         drawableHeight);
+}
+
+void appendPauseMenuOverlay(ProductVulkanGameplayFrame& gameplayFrame,
+                            const ProductUiDrawList& overlayUi,
+                            std::uint64_t frameIndex,
+                            std::uint32_t drawableWidth,
+                            std::uint32_t drawableHeight) {
+  appendProductUiOverlay(gameplayFrame,
+                         overlayUi,
+                         frameIndex,
+                         drawableWidth,
+                         drawableHeight);
 }
 
 void presentProductWindowFrame(ProductWindowFramePresenterRequest request) {

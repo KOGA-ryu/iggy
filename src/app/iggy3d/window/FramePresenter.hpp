@@ -54,6 +54,7 @@ struct ProductWindowFramePresenterRequest {
   SdlWindow& sdlWindow;
   ProductWindowRendererState& renderer;
   const ProductGameplayProjectionFrame& projectionFrame;
+  const ProductUiDrawList* creativeUiDrawList = nullptr;
 };
 
 ProductVulkanMenuFrame buildProductVulkanStarterMenuFrame(
@@ -76,6 +77,17 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
     FrontendDevToolsCategory devToolsCategory = FrontendDevToolsCategory::Session);
 const FrameInput& refreshProductVulkanGameplayFrameInput(
     ProductVulkanGameplayFrame& gameplayFrame);
+
+void appendProductUiOverlay(ProductVulkanGameplayFrame& gameplayFrame,
+                            const ProductUiDrawList& overlayUi,
+                            std::uint64_t frameIndex,
+                            std::uint32_t drawableWidth,
+                            std::uint32_t drawableHeight);
+void appendCreativeUiOverlay(ProductVulkanGameplayFrame& gameplayFrame,
+                             const ProductUiDrawList& overlayUi,
+                             std::uint64_t frameIndex,
+                             std::uint32_t drawableWidth,
+                             std::uint32_t drawableHeight);
 
 // Overlay an in-game menu draw list (e.g. the Journal-themed pause menu) onto a
 // gameplay frame's ui overlay, so it composites over the frozen 3D scene in the
