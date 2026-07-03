@@ -95,6 +95,63 @@ void invalidateRemovedObjectEditorState(
   }
 }
 
+void resetTransientFacadeState(
+    State& state,
+    Stats& stats,
+    CreativeToolState& toolState,
+    CreativeSelectionState& selectionState,
+    CreativeInspectionState& inspectionState,
+    CreativeMeasurementState& measurementState,
+    CreativeSnapSettings& snapSettings,
+    CreativeGhostState& ghostState) noexcept {
+  state = State{};
+  resetStats(stats);
+  toolState = makeDefaultCreativeToolState();
+  selectionState = makeDefaultCreativeSelectionState();
+  inspectionState = makeDefaultCreativeInspectionState();
+  measurementState = makeDefaultCreativeMeasurementState();
+  snapSettings = makeDefaultCreativeSnapSettings();
+  ghostState = makeDefaultCreativeGhostState();
+}
+
+[[nodiscard]] bool hasSelectionState(
+    const State& state,
+    const CreativeSelectionState& selectionState) noexcept {
+  return state.selected.value != kInvalidId ||
+         selectionState.selectedTarget.value != kInvalidId ||
+         selectionState.candidateTarget.value != kInvalidId;
+}
+
+[[nodiscard]] bool hasInspectionState(
+    const CreativeInspectionState& inspectionState) noexcept {
+  return inspectionState.inspectedTarget.value != kInvalidId ||
+         inspectionState.candidateTarget.value != kInvalidId;
+}
+
+[[nodiscard]] bool hasMeasurementState(
+    const CreativeMeasurementState& measurementState,
+    const CreativeToolState& toolState) noexcept {
+  return measurementState.active || measurementState.hasMeasurement ||
+         toolState.measurementActive;
+}
+
+[[nodiscard]] bool hasToolPointerState(
+    const State& state,
+    const CreativeToolState& toolState) noexcept {
+  return state.hovered.value != kInvalidId ||
+         toolState.pointer.target.value != kInvalidId ||
+         toolState.pointer.x != 0.0 || toolState.pointer.y != 0.0 ||
+         toolState.pointer.button != CreativeToolPointerButton::None ||
+         toolState.pointer.modifiers != kCreativeToolModifierNone;
+}
+
+void setInstallStatus(CreativeFacadeDocumentInstallReceipt& receipt,
+                      std::string_view status) noexcept {
+  receipt.status = status;
+  receipt.reasonCode = status;
+  receipt.message = status;
+}
+
 }  // namespace
 
 std::string_view toString(CreativeFacadeMutationStatus status) noexcept {
@@ -116,15 +173,15 @@ std::string_view toString(CreativeFacadeMutationStatus status) noexcept {
 }
 
 void Facade::reset() noexcept {
-  state_ = State{};
   document_.reset();
-  resetStats(stats_);
-  toolState_ = makeDefaultCreativeToolState();
-  selectionState_ = makeDefaultCreativeSelectionState();
-  inspectionState_ = makeDefaultCreativeInspectionState();
-  measurementState_ = makeDefaultCreativeMeasurementState();
-  snapSettings_ = makeDefaultCreativeSnapSettings();
-  ghostState_ = makeDefaultCreativeGhostState();
+  resetTransientFacadeState(state_,
+                            stats_,
+                            toolState_,
+                            selectionState_,
+                            inspectionState_,
+                            measurementState_,
+                            snapSettings_,
+                            ghostState_);
 }
 
 void Facade::beginFrame(const FramePacket& packet) noexcept {
@@ -377,6 +434,57 @@ CreativeDocumentRemoveReceipt Facade::removeDocumentObject(
   CreativeDocumentRemoveRequest request;
   request.objectId = id;
   return removeDocumentObject(request);
+}
+
+CreativeFacadeDocumentInstallReceipt Facade::installDocument(
+    CreativeDocument document) {
+  CreativeFacadeDocumentInstallReceipt receipt;
+  receipt.requested = true;
+  receipt.hadPreviousDocument = document_.isValid();
+  receipt.previousDocumentId = document_.id();
+  receipt.nextDocumentId = document.id();
+  receipt.previousObjectCount = document_.objectCount();
+  receipt.nextObjectCount = document.objectCount();
+  receipt.previousDirtyFlags = document_.dirtyFlags();
+  receipt.nextDirtyFlags = document.dirtyFlags();
+  receipt.activeToolBefore = toolState_.activeTool;
+  receipt.activeToolAfter = toolState_.activeTool;
+
+  if (!document.isValid()) {
+    setInstallStatus(receipt, "creative_facade_document_invalid");
+    return receipt;
+  }
+
+  if (document.id() == kInvalidDocumentId) {
+    setInstallStatus(receipt, "creative_facade_document_id_missing");
+    return receipt;
+  }
+
+  receipt.selectionCleared = hasSelectionState(state_, selectionState_);
+  receipt.inspectionCleared = hasInspectionState(inspectionState_);
+  receipt.measurementCleared = hasMeasurementState(measurementState_,
+                                                   toolState_);
+  receipt.ghostCleared = ghostState_.visible;
+  receipt.toolPointerCleared = hasToolPointerState(state_, toolState_);
+
+  document_ = std::move(document);
+  resetTransientFacadeState(state_,
+                            stats_,
+                            toolState_,
+                            selectionState_,
+                            inspectionState_,
+                            measurementState_,
+                            snapSettings_,
+                            ghostState_);
+
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.nextDocumentId = document_.id();
+  receipt.nextObjectCount = document_.objectCount();
+  receipt.nextDirtyFlags = document_.dirtyFlags();
+  receipt.activeToolAfter = toolState_.activeTool;
+  setInstallStatus(receipt, "creative_facade_document_installed");
+  return receipt;
 }
 
 CreativeObjectId Facade::createRoom(const CreateRoomCommand& command) {

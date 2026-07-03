@@ -2,7 +2,9 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <string>
 #include <string_view>
+#include <utility>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -48,6 +50,30 @@ bool hasGhostPreviewRow(const cr::CreativeUiModel& model) {
     }
   }
   return false;
+}
+
+bool hasRowKind(const cr::CreativeUiModel& model, cr::CreativeUiRowKind kind) {
+  for (const cr::CreativeUiRow& row : model.rows) {
+    if (row.kind == kind) {
+      return true;
+    }
+  }
+  return false;
+}
+
+cr::CreativeDocument documentWithRooms(std::string_view name,
+                                       cr::CreativeDocumentId documentId,
+                                       std::size_t roomCount) {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create(std::string{name});
+  static_cast<void>(document.assignId(documentId));
+  for (std::size_t index = 0; index < roomCount; ++index) {
+    cr::CreativeDocumentCreateRequest request;
+    request.kind = cr::CreativeObjectKind::Room;
+    request.name = "Room " + std::to_string(index + 1U);
+    static_cast<void>(document.createObject(request));
+  }
+  return document;
 }
 
 bool defaultsBuildDefaultUiModel() {
@@ -448,6 +474,246 @@ bool roomCommandsStillWorkThroughFacade() {
                 "facade room successes");
 }
 
+bool installingValidDocumentReplacesDocumentAndPreservesContentState() {
+  cr::Facade facade;
+  cr::CreativeDocument document = documentWithRooms("Installed", 77, 1);
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeObjectDirtyFlags dirtyBefore = document.dirtyFlags();
+  const cr::CreativeObjectId nextObjectIdBefore = document.nextObjectId();
+
+  const cr::CreativeFacadeDocumentInstallReceipt receipt =
+      facade.installDocument(std::move(document));
+
+  return expect(receipt.requested, "install requested") &&
+         expect(receipt.accepted, "install accepted") &&
+         expect(receipt.changed, "install changed") &&
+         expect(receipt.hadPreviousDocument, "install previous document") &&
+         expect(receipt.previousDocumentId == cr::kInvalidDocumentId,
+                "install previous id invalid") &&
+         expect(receipt.nextDocumentId == 77U, "install next id") &&
+         expect(receipt.previousObjectCount == 0U,
+                "install previous object count") &&
+         expect(receipt.nextObjectCount == 1U, "install next object count") &&
+         expect(receipt.previousDirtyFlags == 0U,
+                "install previous dirty flags") &&
+         expect(receipt.nextDirtyFlags == dirtyBefore,
+                "install next dirty flags") &&
+         expect(receipt.activeToolBefore == cr::Tool::Select,
+                "install active tool before") &&
+         expect(receipt.activeToolAfter == cr::Tool::Select,
+                "install active tool after") &&
+         expect(receipt.status == "creative_facade_document_installed",
+                "install status") &&
+         expect(receipt.reasonCode == "creative_facade_document_installed",
+                "install reason") &&
+         expect(facade.document().id() == 77U,
+                "install document id stored") &&
+         expect(facade.document().name() == "Installed",
+                "install document name stored") &&
+         expect(facade.document().objectCount() == 1U,
+                "install document object count") &&
+         expect(facade.document().revision() == revisionBefore,
+                "install preserves revision") &&
+         expect(facade.document().dirtyFlags() == dirtyBefore,
+                "install preserves dirty flags") &&
+         expect(facade.document().nextObjectId() == nextObjectIdBefore,
+                "install preserves cursor") &&
+         expect(facade.findObject(1) != nullptr,
+                "install object findable");
+}
+
+bool installingInvalidIdDocumentDoesNotMutateExistingFacade() {
+  cr::Facade facade;
+  cr::CreativeDocument existing = documentWithRooms("Existing", 88, 1);
+  const cr::CreativeFacadeDocumentInstallReceipt setup =
+      facade.installDocument(std::move(existing));
+  const cr::CreativeObjectId selectedId = facade.document().objects()[0].id;
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   1.0,
+                   2.0,
+                   targetId(selectedId))));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const cr::CreativeObjectDirtyFlags dirtyBefore =
+      facade.document().dirtyFlags();
+
+  cr::CreativeDocument invalid = cr::CreativeDocument::create("No Id");
+  const cr::CreativeFacadeDocumentInstallReceipt receipt =
+      facade.installDocument(std::move(invalid));
+
+  return expect(setup.accepted, "install invalid setup accepted") &&
+         expect(receipt.requested, "install invalid requested") &&
+         expect(!receipt.accepted, "install invalid rejected") &&
+         expect(!receipt.changed, "install invalid unchanged") &&
+         expect(receipt.previousDocumentId == 88U,
+                "install invalid previous id") &&
+         expect(receipt.nextDocumentId == cr::kInvalidDocumentId,
+                "install invalid next id") &&
+         expect(receipt.status == "creative_facade_document_id_missing",
+                "install invalid status") &&
+         expect(facade.document().id() == 88U,
+                "install invalid keeps document id") &&
+         expect(facade.document().objectCount() == 1U,
+                "install invalid keeps objects") &&
+         expect(facade.document().revision() == revisionBefore,
+                "install invalid keeps revision") &&
+         expect(facade.document().dirtyFlags() == dirtyBefore,
+                "install invalid keeps dirty flags") &&
+         expect(facade.toolState().activeTool == cr::Tool::Inspect,
+                "install invalid keeps active tool") &&
+         expect(facade.selectionState().selectedTarget.value ==
+                    targetId(selectedId),
+                "install invalid keeps selection") &&
+         expect(facade.state().selected.value == targetId(selectedId),
+                "install invalid keeps old selected");
+}
+
+bool installingDocumentClearsTransientEditorState() {
+  cr::Facade facade;
+  cr::CreativeDocument oldDocument = documentWithRooms("Old", 90, 2);
+  const cr::CreativeFacadeDocumentInstallReceipt setup =
+      facade.installDocument(std::move(oldDocument));
+  const cr::CreativeObjectId firstId = facade.document().objects()[0].id;
+  const cr::CreativeObjectId secondId = facade.document().objects()[1].id;
+
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   1.0,
+                   2.0,
+                   targetId(firstId))));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   3.0,
+                   4.0,
+                   targetId(secondId))));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   5.0,
+                   6.0,
+                   targetId(firstId))));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerRelease,
+                   7.0,
+                   8.0,
+                   targetId(firstId))));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Select));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerMove,
+                   9.0,
+                   10.0,
+                   targetId(secondId))));
+  static_cast<void>(
+      facade.createDocumentObject(cr::CreativeObjectKind::Room));
+
+  cr::CreativeDocument nextDocument = documentWithRooms("Next", 91, 1);
+  const std::uint64_t nextRevision = nextDocument.revision();
+  const cr::CreativeObjectDirtyFlags nextDirty = nextDocument.dirtyFlags();
+  const cr::CreativeFacadeDocumentInstallReceipt receipt =
+      facade.installDocument(std::move(nextDocument));
+  const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
+
+  return expect(setup.accepted, "install clear setup accepted") &&
+         expect(receipt.accepted, "install clear accepted") &&
+         expect(receipt.selectionCleared, "install clears selection flag") &&
+         expect(receipt.inspectionCleared, "install clears inspection flag") &&
+         expect(receipt.measurementCleared, "install clears measurement flag") &&
+         expect(receipt.ghostCleared, "install clears ghost flag") &&
+         expect(receipt.toolPointerCleared,
+                "install clears tool pointer flag") &&
+         expect(receipt.nextDocumentId == 91U, "install clear next id") &&
+         expect(receipt.nextObjectCount == 1U,
+                "install clear next object count") &&
+         expect(receipt.nextDirtyFlags == nextDirty,
+                "install clear next dirty flags") &&
+         expect(facade.document().id() == 91U,
+                "install clear document id") &&
+         expect(facade.document().revision() == nextRevision,
+                "install clear preserves revision") &&
+         expect(facade.document().dirtyFlags() == nextDirty,
+                "install clear preserves dirty") &&
+         expect(facade.toolState().activeTool == cr::Tool::Select,
+                "install clear active tool default") &&
+         expect(facade.state().tool == cr::Tool::Select,
+                "install clear old tool default") &&
+         expect(facade.selectionState().selectedTarget.value ==
+                    cr::kInvalidId,
+                "install clear selection empty") &&
+         expect(facade.selectionState().candidateTarget.value ==
+                    cr::kInvalidId,
+                "install clear selection candidate empty") &&
+         expect(facade.inspectionState().inspectedTarget.value ==
+                    cr::kInvalidId,
+                "install clear inspection empty") &&
+         expect(facade.inspectionState().candidateTarget.value ==
+                    cr::kInvalidId,
+                "install clear inspection candidate empty") &&
+         expect(!facade.measurementState().active,
+                "install clear measurement inactive") &&
+         expect(!facade.measurementState().hasMeasurement,
+                "install clear measurement empty") &&
+         expect(facade.measurementState().sampleCount == 0U,
+                "install clear measurement samples zero") &&
+         expect(!facade.ghostState().visible, "install clear ghost hidden") &&
+         expect(facade.toolState().pointer.target.value == cr::kInvalidId,
+                "install clear tool pointer target") &&
+         expect(facade.state().selected.value == cr::kInvalidId,
+                "install clear old selected") &&
+         expect(facade.state().hovered.value == cr::kInvalidId,
+                "install clear old hovered") &&
+         expect(facade.stats().commandAttempts == 0U,
+                "install clear stats reset attempts") &&
+         expect(ui.accepted, "install clear ui accepted") &&
+         expect(ui.rowCount == 4U, "install clear default row count") &&
+         expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::SelectedTarget),
+                "install clear no selected row") &&
+         expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::InspectedTarget),
+                "install clear no inspected row") &&
+         expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::MeasurementState),
+                "install clear no measurement row") &&
+         expect(!hasGhostPreviewRow(ui.model), "install clear no ghost row");
+}
+
+bool installingSecondDocumentDoesNotLeakOldSelectionRows() {
+  cr::Facade facade;
+  cr::CreativeDocument first = documentWithRooms("First", 101, 2);
+  const cr::CreativeFacadeDocumentInstallReceipt firstInstall =
+      facade.installDocument(std::move(first));
+  const cr::CreativeObjectId firstSelectedId = facade.document().objects()[0].id;
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   1.0,
+                   2.0,
+                   targetId(firstSelectedId))));
+  const cr::CreativeUiBuildReceipt before = facade.buildUiModel();
+
+  cr::CreativeDocument second = documentWithRooms("Second", 102, 1);
+  const cr::CreativeFacadeDocumentInstallReceipt secondInstall =
+      facade.installDocument(std::move(second));
+  const cr::CreativeUiBuildReceipt after = facade.buildUiModel();
+
+  return expect(firstInstall.accepted, "install second setup accepted") &&
+         expect(before.accepted, "install second before ui accepted") &&
+         expect(hasRowKind(before.model, cr::CreativeUiRowKind::SelectedTarget),
+                "install second before selected row") &&
+         expect(secondInstall.accepted, "install second accepted") &&
+         expect(secondInstall.selectionCleared,
+                "install second selection cleared") &&
+         expect(facade.document().id() == 102U,
+                "install second document id") &&
+         expect(facade.document().objectCount() == 1U,
+                "install second object count") &&
+         expect(after.accepted, "install second after ui accepted") &&
+         expect(after.model.objectSummaries.size() == 1U,
+                "install second summaries only new document") &&
+         expect(!hasRowKind(after.model, cr::CreativeUiRowKind::SelectedTarget),
+                "install second no selected row") &&
+         expect(!hasRowKind(after.model, cr::CreativeUiRowKind::InspectedTarget),
+                "install second no inspected row");
+}
+
 bool removingSelectedObjectClearsSelectionAndOldState() {
   cr::Facade facade;
   const cr::CreativeObjectId id = facade.createRoom("Selected Room");
@@ -667,6 +933,10 @@ int main() {
                   snapSettingsAffectLaterGhostDispatch() &&
                   unknownInputDoesNotChangeKernels() &&
                   roomCommandsStillWorkThroughFacade() &&
+                  installingValidDocumentReplacesDocumentAndPreservesContentState() &&
+                  installingInvalidIdDocumentDoesNotMutateExistingFacade() &&
+                  installingDocumentClearsTransientEditorState() &&
+                  installingSecondDocumentDoesNotLeakOldSelectionRows() &&
                   removingSelectedObjectClearsSelectionAndOldState() &&
                   removingInspectedObjectClearsInspectionOnly() &&
                   removingMissingObjectPreservesEditorTargets() &&

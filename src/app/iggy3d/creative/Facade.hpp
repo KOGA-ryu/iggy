@@ -65,6 +65,29 @@ struct CreativeFacadeMutationReceipt {
   std::string message;
 };
 
+struct CreativeFacadeDocumentInstallReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  bool hadPreviousDocument = false;
+  CreativeDocumentId previousDocumentId = kInvalidDocumentId;
+  CreativeDocumentId nextDocumentId = kInvalidDocumentId;
+  std::uint64_t previousObjectCount = 0;
+  std::uint64_t nextObjectCount = 0;
+  CreativeObjectDirtyFlags previousDirtyFlags = 0;
+  CreativeObjectDirtyFlags nextDirtyFlags = 0;
+  bool selectionCleared = false;
+  bool inspectionCleared = false;
+  bool measurementCleared = false;
+  bool ghostCleared = false;
+  bool toolPointerCleared = false;
+  Tool activeToolBefore = Tool::Select;
+  Tool activeToolAfter = Tool::Select;
+  std::string_view status = "creative_facade_document_not_requested";
+  std::string_view reasonCode = "creative_facade_document_not_requested";
+  std::string_view message = "creative_facade_document_not_requested";
+};
+
 [[nodiscard]] std::string_view toString(
     CreativeFacadeMutationStatus status) noexcept;
 
@@ -97,6 +120,8 @@ class Facade {
       const CreativeDocumentRemoveRequest& request);
   [[nodiscard]] CreativeDocumentRemoveReceipt removeDocumentObject(
       CreativeObjectId id);
+  [[nodiscard]] CreativeFacadeDocumentInstallReceipt installDocument(
+      CreativeDocument document);
   [[nodiscard]] CreativeObjectId createRoom(const CreateRoomCommand& command);
   [[nodiscard]] CreativeObjectId createRoom(std::string name);
   [[nodiscard]] bool renameObject(const RenameObjectCommand& command);
