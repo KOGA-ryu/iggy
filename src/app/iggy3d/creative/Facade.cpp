@@ -33,6 +33,17 @@ namespace {
   return TargetRef{static_cast<Id>(objectId)};
 }
 
+[[nodiscard]] CreativeGhostReceipt applyFacadeGhostToolIntent(
+    CreativeGhostState& state,
+    const CreativeToolIntent& intent,
+    CreativeSnapSettings snapSettings) noexcept {
+  if (intent.kind == CreativeToolIntentKind::CancelToolAction) {
+    return hideGhost(state);
+  }
+
+  return applyGhostToolIntent(state, intent, snapSettings);
+}
+
 }  // namespace
 
 std::string_view toString(CreativeFacadeMutationStatus status) noexcept {
@@ -111,6 +122,9 @@ bool Facade::setActiveTool(Tool tool) noexcept {
       toolState_.activeTool != Tool::Measure && measurementState_.active) {
     static_cast<void>(cancelMeasurement(measurementState_));
   }
+  if (changed && ghostState_.visible) {
+    static_cast<void>(hideGhost(ghostState_));
+  }
   state_.tool = toolState_.activeTool;
   return changed;
 }
@@ -142,7 +156,7 @@ CreativeFacadeToolDispatchReceipt Facade::dispatchToolInput(
     const CreativeMeasurementReceipt measurementReceipt =
         applyMeasurementToolIntent(measurementState_, intent);
     const CreativeGhostReceipt ghostReceipt =
-        applyGhostToolIntent(ghostState_, intent, snapSettings_);
+        applyFacadeGhostToolIntent(ghostState_, intent, snapSettings_);
 
     receipt.selectionChanged = receipt.selectionChanged ||
                                selectionReceipt.changed;
@@ -150,6 +164,12 @@ CreativeFacadeToolDispatchReceipt Facade::dispatchToolInput(
                                 inspectionReceipt.changed;
     receipt.measurementChanged = receipt.measurementChanged ||
                                  measurementReceipt.changed;
+    receipt.ghostChanged = receipt.ghostChanged || ghostReceipt.changed;
+  }
+
+  if (input.kind == CreativeToolInputKind::Cancel &&
+      toolReceipt.intents.empty() && ghostState_.visible) {
+    const CreativeGhostReceipt ghostReceipt = hideGhost(ghostState_);
     receipt.ghostChanged = receipt.ghostChanged || ghostReceipt.changed;
   }
 

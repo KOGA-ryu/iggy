@@ -48,6 +48,17 @@ cr::CreativeToolInputPacket pointerPress(cr::Id targetId) {
   return input;
 }
 
+cr::CreativeToolInputPacket pointerMove(double x,
+                                        double y,
+                                        cr::Id targetId) {
+  cr::CreativeToolInputPacket input;
+  input.kind = cr::CreativeToolInputKind::PointerMove;
+  input.pointer.x = x;
+  input.pointer.y = y;
+  input.pointer.target.value = targetId;
+  return input;
+}
+
 void selectTarget(cr::Facade& facade, cr::CreativeObjectId objectId) {
   static_cast<void>(facade.setActiveTool(cr::Tool::Select));
   static_cast<void>(facade.dispatchToolInput(
@@ -192,6 +203,33 @@ bool activeToolCommandCyclesSelectToInspect() {
                 "cycle facade tool") &&
          expect(receipt.status == "product_creative_ui_command_applied",
                 "cycle status");
+}
+
+bool activeToolCommandHidesVisibleGhost() {
+  cr::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.dispatchToolInput(pointerMove(1.2, 2.7, 42)));
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(facade);
+
+  return expect(receipt.accepted, "command ghost accepted") &&
+         expect(receipt.changed, "command ghost changed") &&
+         expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::CycleNextTool,
+                "command ghost kind") &&
+         expect(receipt.toolBefore == cr::Tool::Select,
+                "command ghost before select") &&
+         expect(receipt.toolAfter == cr::Tool::Inspect,
+                "command ghost after inspect") &&
+         expect(facade.toolState().activeTool == cr::Tool::Inspect,
+                "command ghost facade inspect") &&
+         expect(facade.state().tool == cr::Tool::Inspect,
+                "command ghost old state inspect") &&
+         expect(!facade.ghostState().visible, "command ghost hidden") &&
+         expect(facade.document().objectCount() == objectCountBefore,
+                "command ghost document unchanged");
 }
 
 bool repeatedActiveToolCommandCyclesToolOrder() {
@@ -584,6 +622,7 @@ int main() {
   ok &= consumedDisabledNoops();
   ok &= consumedUnknownSemanticNoops();
   ok &= activeToolCommandCyclesSelectToInspect();
+  ok &= activeToolCommandHidesVisibleGhost();
   ok &= repeatedActiveToolCommandCyclesToolOrder();
   ok &= activeToolCommandLeavingMeasureCancelsActiveMeasurement();
   ok &= commandUpdatesOldStateAndDoesNotMutateDocument();

@@ -27,6 +27,25 @@ cr::CreativeToolInputPacket pointerInput(cr::CreativeToolInputKind kind,
   return input;
 }
 
+const cr::CreativeUiPanel* findPanel(const cr::CreativeUiModel& model,
+                                     cr::CreativeUiPanelKind kind) {
+  for (const cr::CreativeUiPanel& panel : model.panels) {
+    if (panel.kind == kind) {
+      return &panel;
+    }
+  }
+  return nullptr;
+}
+
+bool hasGhostPreviewRow(const cr::CreativeUiModel& model) {
+  for (const cr::CreativeUiRow& row : model.rows) {
+    if (row.kind == cr::CreativeUiRowKind::GhostPreview) {
+      return true;
+    }
+  }
+  return false;
+}
+
 bool defaultsBuildDefaultUiModel() {
   const cr::Facade facade;
   const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
@@ -263,6 +282,107 @@ bool pointerMoveUpdatesGhostWithSnap() {
          expect(facade.ghostState().target.value == 42U, "ghost target");
 }
 
+bool cancelInputHidesGhostAndUiDropsGhostRow() {
+  cr::Facade facade;
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerMove, 1.2, 2.7, 42)));
+
+  const cr::CreativeFacadeToolDispatchReceipt cancel =
+      facade.dispatchToolInput(
+          pointerInput(cr::CreativeToolInputKind::Cancel, 0.0, 0.0));
+  const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
+  const cr::CreativeUiPanel* ghostPanel =
+      findPanel(ui.model, cr::CreativeUiPanelKind::Ghost);
+
+  return expect(cancel.accepted, "ghost cancel accepted") &&
+         expect(cancel.ghostChanged, "ghost cancel changed ghost") &&
+         expect(!facade.ghostState().visible, "ghost cancel hidden") &&
+         expect(ui.accepted, "ghost cancel ui accepted") &&
+         expect(!ui.model.ghostVisible, "ghost cancel ui ghost hidden") &&
+         expect(ghostPanel != nullptr, "ghost cancel panel exists") &&
+         expect(ghostPanel != nullptr && !ghostPanel->visible,
+                "ghost cancel panel hidden") &&
+         expect(ghostPanel != nullptr && ghostPanel->rowCount == 0U,
+                "ghost cancel panel no rows") &&
+         expect(!hasGhostPreviewRow(ui.model), "ghost cancel no ghost row");
+}
+
+bool toolSwitchHidesVisibleGhost() {
+  cr::Facade facade;
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerMove, 1.2, 2.7, 42)));
+
+  const bool changed = facade.setActiveTool(cr::Tool::Inspect);
+
+  return expect(changed, "ghost switch changed") &&
+         expect(facade.toolState().activeTool == cr::Tool::Inspect,
+                "ghost switch active inspect") &&
+         expect(facade.state().tool == cr::Tool::Inspect,
+                "ghost switch old state inspect") &&
+         expect(!facade.ghostState().visible, "ghost switch hidden");
+}
+
+bool sameToolActivationKeepsVisibleGhost() {
+  cr::Facade facade;
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerMove, 1.2, 2.7, 42)));
+
+  const bool changed = facade.setActiveTool(cr::Tool::Select);
+
+  return expect(!changed, "same tool ghost no change") &&
+         expect(facade.toolState().activeTool == cr::Tool::Select,
+                "same tool ghost active select") &&
+         expect(facade.state().tool == cr::Tool::Select,
+                "same tool ghost old state select") &&
+         expect(facade.ghostState().visible, "same tool ghost remains visible") &&
+         expect(facade.ghostState().sourceTool == cr::Tool::Select,
+                "same tool ghost source preserved") &&
+         expect(facade.ghostState().target.value == 42U,
+                "same tool ghost target preserved");
+}
+
+bool hiddenGhostToolSwitchPreservesOtherEditorState() {
+  cr::Facade facade;
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress, 1.0, 2.0, 11)));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress, 3.0, 4.0, 22)));
+
+  const bool changed = facade.setActiveTool(cr::Tool::Select);
+
+  return expect(changed, "hidden ghost switch changed") &&
+         expect(!facade.ghostState().visible, "hidden ghost remains hidden") &&
+         expect(facade.selectionState().selectedTarget.value == 11U,
+                "hidden ghost selection preserved") &&
+         expect(facade.inspectionState().inspectedTarget.value == 22U,
+                "hidden ghost inspection preserved") &&
+         expect(!facade.measurementState().active,
+                "hidden ghost measurement inactive") &&
+         expect(!facade.measurementState().hasMeasurement,
+                "hidden ghost measurement empty");
+}
+
+bool pointerMoveAfterHideShowsGhostWithNewTool() {
+  cr::Facade facade;
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerMove, 1.2, 2.7, 42)));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+
+  const cr::CreativeFacadeToolDispatchReceipt receipt =
+      facade.dispatchToolInput(
+          pointerInput(cr::CreativeToolInputKind::PointerMove, 5.4, 6.2, 77));
+
+  return expect(receipt.ghostChanged, "ghost reshow changed") &&
+         expect(facade.ghostState().visible, "ghost reshow visible") &&
+         expect(facade.ghostState().sourceTool == cr::Tool::Inspect,
+                "ghost reshow source inspect") &&
+         expect(facade.ghostState().rawPoint.x == 5.4,
+                "ghost reshow raw x") &&
+         expect(facade.ghostState().target.value == 77U,
+                "ghost reshow target");
+}
+
 bool snapSettingsAffectLaterGhostDispatch() {
   cr::Facade facade;
   cr::CreativeSnapSettings snap = cr::makeDefaultCreativeSnapSettings();
@@ -337,6 +457,11 @@ int main() {
                   leavingMeasurePreservesCompletedMeasurement() &&
                   nonMeasureToolSwitchDoesNotTouchMeasurement() &&
                   pointerMoveUpdatesGhostWithSnap() &&
+                  cancelInputHidesGhostAndUiDropsGhostRow() &&
+                  toolSwitchHidesVisibleGhost() &&
+                  sameToolActivationKeepsVisibleGhost() &&
+                  hiddenGhostToolSwitchPreservesOtherEditorState() &&
+                  pointerMoveAfterHideShowsGhostWithNewTool() &&
                   snapSettingsAffectLaterGhostDispatch() &&
                   unknownInputDoesNotChangeKernels() &&
                   roomCommandsStillWorkThroughFacade();
