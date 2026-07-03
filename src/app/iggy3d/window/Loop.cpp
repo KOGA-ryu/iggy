@@ -117,7 +117,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     processProductWindowInputFrame(ProductWindowInputFrameContext{
         request.frontend, saves, request.options, settingsTab,
         request.activeSession, request.worldSetupDraft, window, request.settings,
-        inputFrame, closeRequested, &sdlWindow});
+        inputFrame, closeRequested, &sdlWindow, request.creativeFacade});
 
     const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
     const ProductCreativeUiFrame creativeUiFrame = buildProductCreativeUiWindowFrame(

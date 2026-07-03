@@ -10,6 +10,7 @@
 
 namespace iggy3d {
 
+struct ActionState;
 struct ProductAppWindowState;
 
 namespace creative {
@@ -20,6 +21,13 @@ struct ProductCreativeInputFrameRequest {
   ProductAppWindowState* window = nullptr;
   creative::Facade* facade = nullptr;
   InputAction action = InputAction::None;
+  MouseClick click;
+};
+
+struct ProductCreativeInputActionsRequest {
+  ProductAppWindowState* window = nullptr;
+  creative::Facade* facade = nullptr;
+  const ActionState* actions = nullptr;
   MouseClick click;
 };
 
@@ -56,5 +64,7 @@ struct ProductCreativeInputFrameReceipt {
     const MouseClick& click) noexcept;
 [[nodiscard]] ProductCreativeInputFrameReceipt processProductCreativeInputFrame(
     const ProductCreativeInputFrameRequest& request);
+[[nodiscard]] ProductCreativeInputFrameReceipt processProductCreativeInputActions(
+    const ProductCreativeInputActionsRequest& request);
 
 }  // namespace iggy3d

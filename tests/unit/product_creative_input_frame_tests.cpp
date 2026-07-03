@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/input/ActionState.hpp"
 
 #include <cstdint>
 #include <cstdlib>
@@ -31,6 +32,12 @@ iggy3d::MouseClick clickAt(float x, float y) {
   click.x = x;
   click.y = y;
   return click;
+}
+
+void recordTestAction(iggy3d::ActionState& actions,
+                      iggy3d::InputAction action,
+                      bool pressed) {
+  iggy3d::recordAction(actions, action, true, pressed, false, 1.0F);
 }
 
 bool activeRuleUsesOnlyInteractionMode() {
@@ -304,6 +311,197 @@ bool noApplicableInputReturnsNoop() {
                 "noop status");
 }
 
+bool batchNoopsForClosedInputs() {
+  const iggy3d::ProductCreativeInputFrameReceipt nullWindowReceipt =
+      iggy3d::processProductCreativeInputActions({});
+
+  iggy3d::ProductAppWindowState inactiveWindow;
+  cr::Facade inactiveFacade;
+  inactiveFacade.reset();
+  static_cast<void>(inactiveFacade.setActiveTool(cr::Tool::Inspect));
+  iggy3d::ActionState inactiveActions;
+  recordTestAction(inactiveActions, iggy3d::InputAction::EditorNextTool, true);
+  iggy3d::ProductCreativeInputActionsRequest inactiveRequest;
+  inactiveRequest.window = &inactiveWindow;
+  inactiveRequest.facade = &inactiveFacade;
+  inactiveRequest.actions = &inactiveActions;
+  inactiveRequest.click = clickAt(2.0F, 3.0F);
+  const iggy3d::ProductCreativeInputFrameReceipt inactiveReceipt =
+      iggy3d::processProductCreativeInputActions(inactiveRequest);
+
+  iggy3d::ProductAppWindowState creative = creativeWindow();
+  iggy3d::ProductCreativeInputActionsRequest missingFacadeRequest;
+  missingFacadeRequest.window = &creative;
+  missingFacadeRequest.actions = &inactiveActions;
+  const iggy3d::ProductCreativeInputFrameReceipt missingFacadeReceipt =
+      iggy3d::processProductCreativeInputActions(missingFacadeRequest);
+
+  cr::Facade facade;
+  facade.reset();
+  iggy3d::ProductCreativeInputActionsRequest nullActionsRequest;
+  nullActionsRequest.window = &creative;
+  nullActionsRequest.facade = &facade;
+  const iggy3d::ProductCreativeInputFrameReceipt nullActionsReceipt =
+      iggy3d::processProductCreativeInputActions(nullActionsRequest);
+
+  return expect(nullWindowReceipt.status ==
+                    "product_creative_input_window_missing",
+                "batch null window") &&
+         expect(inactiveReceipt.status == "product_creative_input_inactive",
+                "batch inactive status") &&
+         expect(inactiveFacade.toolState().activeTool == cr::Tool::Inspect,
+                "batch inactive facade unchanged") &&
+         expect(missingFacadeReceipt.status ==
+                    "product_creative_input_facade_missing",
+                "batch missing facade") &&
+         expect(nullActionsReceipt.requested, "batch null actions requested") &&
+         expect(nullActionsReceipt.active, "batch null actions active") &&
+         expect(nullActionsReceipt.facadeAvailable,
+                "batch null actions facade") &&
+         expect(!nullActionsReceipt.accepted, "batch null actions accepted") &&
+         expect(!nullActionsReceipt.changed, "batch null actions changed") &&
+         expect(nullActionsReceipt.status == "product_creative_input_noop",
+                "batch null actions noop");
+}
+
+bool batchPressedToolCyclesOnceHeldDoesNotCycle() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+
+  iggy3d::ActionState heldActions;
+  recordTestAction(heldActions, iggy3d::InputAction::EditorNextTool, false);
+  iggy3d::ProductCreativeInputActionsRequest heldRequest;
+  heldRequest.window = &window;
+  heldRequest.facade = &facade;
+  heldRequest.actions = &heldActions;
+  const iggy3d::ProductCreativeInputFrameReceipt heldReceipt =
+      iggy3d::processProductCreativeInputActions(heldRequest);
+
+  iggy3d::ActionState pressedActions;
+  recordTestAction(pressedActions, iggy3d::InputAction::EditorNextTool, true);
+  iggy3d::ProductCreativeInputActionsRequest pressedRequest;
+  pressedRequest.window = &window;
+  pressedRequest.facade = &facade;
+  pressedRequest.actions = &pressedActions;
+  const iggy3d::ProductCreativeInputFrameReceipt pressedReceipt =
+      iggy3d::processProductCreativeInputActions(pressedRequest);
+
+  return expect(heldReceipt.status == "product_creative_input_noop",
+                "held action noop") &&
+         expect(facade.toolState().activeTool == cr::Tool::Inspect,
+                "pressed action cycles once") &&
+         expect(pressedReceipt.actionHandled, "pressed action handled") &&
+         expect(pressedReceipt.toolChanged, "pressed tool changed") &&
+         expect(pressedReceipt.activeToolBefore == cr::Tool::Select,
+                "pressed before select") &&
+         expect(pressedReceipt.activeToolAfter == cr::Tool::Inspect,
+                "pressed after inspect");
+}
+
+bool batchProcessesMultiplePressedToolActionsInEntryOrder() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+
+  iggy3d::ActionState actions;
+  recordTestAction(actions, iggy3d::InputAction::EditorPreviousTool, true);
+  recordTestAction(actions, iggy3d::InputAction::EditorNextTool, true);
+  iggy3d::ProductCreativeInputActionsRequest request;
+  request.window = &window;
+  request.facade = &facade;
+  request.actions = &actions;
+  const iggy3d::ProductCreativeInputFrameReceipt receipt =
+      iggy3d::processProductCreativeInputActions(request);
+
+  return expect(receipt.actionHandled, "multi action handled") &&
+         expect(receipt.toolChanged, "multi action changed") &&
+         expect(receipt.activeToolBefore == cr::Tool::Select,
+                "multi before select") &&
+         expect(receipt.activeToolAfter == cr::Tool::Select,
+                "multi after select") &&
+         expect(facade.toolState().activeTool == cr::Tool::Select,
+                "multi facade select");
+}
+
+bool batchPointerRunsAfterActionsWithUpdatedTool() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+
+  iggy3d::ActionState actions;
+  recordTestAction(actions, iggy3d::InputAction::EditorPreviousTool, true);
+  iggy3d::ProductCreativeInputActionsRequest request;
+  request.window = &window;
+  request.facade = &facade;
+  request.actions = &actions;
+  request.click = clickAt(22.0F, 44.0F);
+  const iggy3d::ProductCreativeInputFrameReceipt receipt =
+      iggy3d::processProductCreativeInputActions(request);
+
+  return expect(receipt.actionHandled, "action before pointer handled") &&
+         expect(receipt.pointerDispatched, "pointer dispatched after action") &&
+         expect(receipt.inputKind == cr::CreativeToolInputKind::PointerPress,
+                "pointer wins final input kind") &&
+         expect(receipt.emittedIntentCount == 1U,
+                "pointer wins final emitted count") &&
+         expect(receipt.activeToolAfter == cr::Tool::Measure,
+                "pointer uses measure tool") &&
+         expect(facade.measurementState().active,
+                "batch measurement active") &&
+         expect(facade.measurementState().startPoint.x == 22.0,
+                "batch measurement x") &&
+         expect(facade.measurementState().startPoint.y == 44.0,
+                "batch measurement y");
+}
+
+bool batchCancelOnlyWhenPressed() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+
+  iggy3d::ProductCreativeInputFrameRequest beginRequest;
+  beginRequest.window = &window;
+  beginRequest.facade = &facade;
+  beginRequest.click = clickAt(5.0F, 6.0F);
+  static_cast<void>(iggy3d::processProductCreativeInputFrame(beginRequest));
+
+  iggy3d::ActionState heldCancelActions;
+  recordTestAction(heldCancelActions,
+                   iggy3d::InputAction::EditorCancelPreview,
+                   false);
+  iggy3d::ProductCreativeInputActionsRequest heldRequest;
+  heldRequest.window = &window;
+  heldRequest.facade = &facade;
+  heldRequest.actions = &heldCancelActions;
+  const iggy3d::ProductCreativeInputFrameReceipt heldReceipt =
+      iggy3d::processProductCreativeInputActions(heldRequest);
+  const bool activeAfterHeldCancel = facade.measurementState().active;
+
+  iggy3d::ActionState pressedCancelActions;
+  recordTestAction(pressedCancelActions,
+                   iggy3d::InputAction::EditorCancelPreview,
+                   true);
+  iggy3d::ProductCreativeInputActionsRequest pressedRequest;
+  pressedRequest.window = &window;
+  pressedRequest.facade = &facade;
+  pressedRequest.actions = &pressedCancelActions;
+  const iggy3d::ProductCreativeInputFrameReceipt pressedReceipt =
+      iggy3d::processProductCreativeInputActions(pressedRequest);
+
+  return expect(heldReceipt.status == "product_creative_input_noop",
+                "held cancel noop") &&
+         expect(activeAfterHeldCancel, "held cancel leaves measurement active") &&
+         expect(facade.measurementState().active == false,
+                "pressed cancel inactive") &&
+         expect(pressedReceipt.cancelDispatched, "pressed cancel dispatched") &&
+         expect(pressedReceipt.inputKind == cr::CreativeToolInputKind::Cancel,
+                "pressed cancel kind") &&
+         expect(!facade.measurementState().hasMeasurement,
+                "pressed cancel clears measurement");
+}
+
 }  // namespace
 
 int main() {
@@ -319,5 +517,10 @@ int main() {
   ok &= clickWithMeasureActiveBeginsMeasurement();
   ok &= editorCancelPreviewCancelsActiveMeasurement();
   ok &= noApplicableInputReturnsNoop();
+  ok &= batchNoopsForClosedInputs();
+  ok &= batchPressedToolCyclesOnceHeldDoesNotCycle();
+  ok &= batchProcessesMultiplePressedToolActionsInEntryOrder();
+  ok &= batchPointerRunsAfterActionsWithUpdatedTool();
+  ok &= batchCancelOnlyWhenPressed();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

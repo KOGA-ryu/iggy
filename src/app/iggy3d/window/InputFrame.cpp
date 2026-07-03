@@ -9,6 +9,7 @@
 #include "app/iggy3d/map_maker/CreativeFly.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
+#include "app/iggy3d/window/CreativeInputFrame.hpp"
 #include "app/iggy3d/room_editor/ActionController.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
@@ -1087,6 +1088,12 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
           gameplayActions);
       pollMouseGameplayActions(context.inputFrame.mouse, gameplayActions);
     }
+    (void)processProductCreativeInputActions(ProductCreativeInputActionsRequest{
+        &context.window,
+        context.creativeFacade,
+        &gameplayActions,
+        click,
+    });
     (void)applyProductWindowInputActions(context.frontend,
                                          context.window,
                                          &*context.activeSession,

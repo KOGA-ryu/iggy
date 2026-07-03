@@ -26,6 +26,10 @@ struct WorldSetupDraft;
 struct OpeningMenuHitTestResult;
 struct ProductOpeningMenuInputContext;
 
+namespace creative {
+class Facade;
+}  // namespace creative
+
 struct ProductMovementTuningRepeatPolicy {
   std::uint32_t initialDelayFrames = 12U;
   std::uint32_t repeatIntervalFrames = 4U;
@@ -57,6 +61,7 @@ struct ProductWindowInputFrameContext {
   ProductWindowInputFrameState& inputFrame;
   bool& closeRequested;
   SdlWindow* sdlWindow = nullptr;
+  creative::Facade* creativeFacade = nullptr;
 };
 
 struct ProductControllerSampleInputContext {
