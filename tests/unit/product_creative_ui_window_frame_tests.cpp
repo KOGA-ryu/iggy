@@ -63,10 +63,131 @@ void prepopulateProductVulkanMenuUi(iggy3d::ProductAppWindowState& window) {
   window.productVulkanMenuUiSelectedAction = "preexisting_action";
 }
 
+iggy3d::ProductUiDrawList readyCreativeDrawList() {
+  iggy3d::ProductUiDrawList drawList;
+  drawList.ready = true;
+  return drawList;
+}
+
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   return window;
+}
+
+bool overlayInputAvailabilityAllowsRenderableReadyDrawList() {
+  const iggy3d::ProductUiDrawList drawList = readyCreativeDrawList();
+  const iggy3d::ProductCreativeUiOverlayInputAvailability availability =
+      iggy3d::resolveProductCreativeUiOverlayInputAvailability(
+          iggy3d::ProductCreativeUiOverlayInputAvailabilityRequest{
+              &drawList,
+              true,
+              true,
+              1280,
+              720,
+              true});
+
+  return expect(availability.requested, "availability requested") &&
+         expect(availability.drawListAvailable, "availability draw list") &&
+         expect(availability.drawListReady, "availability ready") &&
+         expect(availability.rendererCanRenderCreativeOverlay,
+                "availability renderer") &&
+         expect(availability.windowDrawable, "availability window drawable") &&
+         expect(availability.drawableAvailable,
+                "availability drawable extent") &&
+         expect(availability.gameplayOverlayRenderable,
+                "availability gameplay overlay") &&
+         expect(availability.inputAvailable, "availability input") &&
+         expect(availability.status ==
+                    "product_creative_ui_overlay_input_available",
+                "availability status");
+}
+
+bool overlayInputAvailabilityRejectsUnrenderableRenderer() {
+  const iggy3d::ProductUiDrawList drawList = readyCreativeDrawList();
+  const iggy3d::ProductCreativeUiOverlayInputAvailability availability =
+      iggy3d::resolveProductCreativeUiOverlayInputAvailability(
+          iggy3d::ProductCreativeUiOverlayInputAvailabilityRequest{
+              &drawList,
+              false,
+              true,
+              1280,
+              720,
+              true});
+
+  return expect(availability.requested, "renderer requested") &&
+         expect(availability.drawListAvailable, "renderer draw available") &&
+         expect(availability.drawListReady, "renderer draw ready") &&
+         expect(!availability.inputAvailable, "renderer input unavailable") &&
+         expect(availability.status ==
+                    "product_creative_ui_overlay_input_renderer_unavailable",
+                "renderer status");
+}
+
+bool overlayInputAvailabilityStatusesAreStable() {
+  const iggy3d::ProductUiDrawList readyDrawList = readyCreativeDrawList();
+  iggy3d::ProductUiDrawList notReadyDrawList;
+  notReadyDrawList.ready = false;
+
+  const iggy3d::ProductCreativeUiOverlayInputAvailability missing =
+      iggy3d::resolveProductCreativeUiOverlayInputAvailability({});
+  const iggy3d::ProductCreativeUiOverlayInputAvailability notReady =
+      iggy3d::resolveProductCreativeUiOverlayInputAvailability(
+          iggy3d::ProductCreativeUiOverlayInputAvailabilityRequest{
+              &notReadyDrawList,
+              true,
+              true,
+              1280,
+              720,
+              true});
+  const iggy3d::ProductCreativeUiOverlayInputAvailability notDrawable =
+      iggy3d::resolveProductCreativeUiOverlayInputAvailability(
+          iggy3d::ProductCreativeUiOverlayInputAvailabilityRequest{
+              &readyDrawList,
+              true,
+              false,
+              1280,
+              720,
+              true});
+  const iggy3d::ProductCreativeUiOverlayInputAvailability noExtent =
+      iggy3d::resolveProductCreativeUiOverlayInputAvailability(
+          iggy3d::ProductCreativeUiOverlayInputAvailabilityRequest{
+              &readyDrawList,
+              true,
+              true,
+              0,
+              720,
+              true});
+  const iggy3d::ProductCreativeUiOverlayInputAvailability noGameplay =
+      iggy3d::resolveProductCreativeUiOverlayInputAvailability(
+          iggy3d::ProductCreativeUiOverlayInputAvailabilityRequest{
+              &readyDrawList,
+              true,
+              true,
+              1280,
+              720,
+              false});
+
+  return expect(missing.status ==
+                    "product_creative_ui_overlay_input_draw_list_missing",
+                "missing status") &&
+         expect(notReady.status ==
+                    "product_creative_ui_overlay_input_draw_list_not_ready",
+                "not ready status") &&
+         expect(notDrawable.status ==
+                    "product_creative_ui_overlay_input_window_not_drawable",
+                "not drawable status") &&
+         expect(noExtent.status ==
+                    "product_creative_ui_overlay_input_drawable_unavailable",
+                "no extent status") &&
+         expect(noGameplay.status ==
+                    "product_creative_ui_overlay_input_gameplay_unavailable",
+                "no gameplay status") &&
+         expect(!missing.inputAvailable, "missing unavailable") &&
+         expect(!notReady.inputAvailable, "not ready unavailable") &&
+         expect(!notDrawable.inputAvailable, "not drawable unavailable") &&
+         expect(!noExtent.inputAvailable, "no extent unavailable") &&
+         expect(!noGameplay.inputAvailable, "no gameplay unavailable");
 }
 
 bool logicalDimensionsAreUsedWhenDrawableIsHighDpi() {
@@ -356,7 +477,10 @@ bool noWindowLoopDoesNotCallBridge() {
 }  // namespace
 
 int main() {
-  const bool ok = logicalDimensionsAreUsedWhenDrawableIsHighDpi() &&
+  const bool ok = overlayInputAvailabilityAllowsRenderableReadyDrawList() &&
+                  overlayInputAvailabilityRejectsUnrenderableRenderer() &&
+                  overlayInputAvailabilityStatusesAreStable() &&
+                  logicalDimensionsAreUsedWhenDrawableIsHighDpi() &&
                   fallbackDimensionsAreUsedWhenDrawableZero() &&
                   guardDimensionsAreUsedWhenDrawableAndFallbackZero() &&
                   inactiveWindowRecordsInactiveProjection() &&

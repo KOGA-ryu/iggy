@@ -4,6 +4,8 @@
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/Ui.hpp"
 #include "app/iggy3d/menu/CreativeUiDrawList.hpp"
+#include "app/iggy3d/window/CreativeInputFrame.hpp"
+#include "app/iggy3d/window/CreativeUiWindowFrame.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 
@@ -185,6 +187,99 @@ bool clickedReadyCreativeRowConsumes() {
                 "ready semantic copied") &&
          expect(receipt.status == "product_creative_ui_input_consumed",
                 "ready consumed status");
+}
+
+bool renderableOverlayInputConsumesReadyCreativeRow() {
+  const iggy3d::ProductUiDrawList drawList = defaultCreativeDrawList();
+  const iggy3d::UiHitRegion& activeHit = drawList.hitRegions.front();
+  const iggy3d::ProductCreativeUiOverlayInputAvailability availability =
+      iggy3d::resolveProductCreativeUiOverlayInputAvailability(
+          iggy3d::ProductCreativeUiOverlayInputAvailabilityRequest{
+              &drawList,
+              true,
+              true,
+              1280,
+              720,
+              true});
+  const iggy3d::ProductUiDrawList* inputDrawList =
+      availability.inputAvailable ? &drawList : nullptr;
+
+  iggy3d::ProductCreativeUiInputFrameRequest request;
+  request.creativeUiDrawList = inputDrawList;
+  request.click = clickAt(activeHit.rect.x, activeHit.rect.y);
+  const iggy3d::ProductCreativeUiInputFrameReceipt receipt =
+      iggy3d::routeProductCreativeUiInputFrame(request);
+
+  return expect(availability.inputAvailable, "renderable input available") &&
+         expect(receipt.drawListAvailable, "renderable draw available") &&
+         expect(receipt.routed, "renderable routed") &&
+         expect(receipt.consumed, "renderable consumed") &&
+         expect(receipt.semanticId == "creative.row.tools.active_tool",
+                "renderable semantic");
+}
+
+bool unrenderableOverlayInputDoesNotSuppressToolClick() {
+  const iggy3d::ProductUiDrawList drawList = defaultCreativeDrawList();
+  const iggy3d::UiHitRegion& activeHit = drawList.hitRegions.front();
+  const iggy3d::MouseClick click =
+      clickAt(activeHit.rect.x, activeHit.rect.y);
+  const iggy3d::ProductCreativeUiOverlayInputAvailability availability =
+      iggy3d::resolveProductCreativeUiOverlayInputAvailability(
+          iggy3d::ProductCreativeUiOverlayInputAvailabilityRequest{
+              &drawList,
+              false,
+              true,
+              1280,
+              720,
+              true});
+  const iggy3d::ProductUiDrawList* inputDrawList =
+      availability.inputAvailable ? &drawList : nullptr;
+
+  iggy3d::ProductCreativeUiInputFrameRequest inputRequest;
+  inputRequest.creativeUiDrawList = inputDrawList;
+  inputRequest.click = click;
+  const iggy3d::ProductCreativeUiInputFrameReceipt inputReceipt =
+      iggy3d::routeProductCreativeUiInputFrame(inputRequest);
+  const iggy3d::ProductCreativeUiDownstreamClickReceipt downstream =
+      iggy3d::routeProductCreativeUiDownstreamClick(
+          iggy3d::ProductCreativeUiDownstreamClickRequest{
+              click,
+              inputReceipt.consumed,
+              false,
+          });
+
+  iggy3d::ProductAppWindowState window;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  iggy3d::creative::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(iggy3d::creative::Tool::Measure));
+  const iggy3d::ProductCreativeInputFrameReceipt toolReceipt =
+      iggy3d::processProductCreativeInputActions(
+          iggy3d::ProductCreativeInputActionsRequest{
+              &window,
+              &facade,
+              nullptr,
+              downstream.downstreamClick,
+              {},
+          });
+
+  return expect(!availability.inputAvailable,
+                "unrenderable input unavailable") &&
+         expect(inputReceipt.clickPresent, "unrenderable click present") &&
+         expect(!inputReceipt.drawListAvailable,
+                "unrenderable draw list withheld") &&
+         expect(inputReceipt.status ==
+                    "product_creative_ui_input_draw_list_missing",
+                "unrenderable route fails closed") &&
+         expect(!inputReceipt.consumed, "unrenderable not consumed") &&
+         expect(!downstream.suppressed,
+                "unrenderable downstream not suppressed") &&
+         expect(downstream.downstreamClick.clicked,
+                "unrenderable downstream click kept") &&
+         expect(toolReceipt.pointerDispatched,
+                "unrenderable tool pointer dispatched") &&
+         expect(facade.measurementState().active,
+                "unrenderable measurement active");
 }
 
 bool clickedOutsideReadyDrawListMisses() {
@@ -702,6 +797,8 @@ int main() {
                   clickedNullDrawListFailsClosed() &&
                   clickedNotReadyDrawListRoutesAndReportsNotReady() &&
                   clickedReadyCreativeRowConsumes() &&
+                  renderableOverlayInputConsumesReadyCreativeRow() &&
+                  unrenderableOverlayInputDoesNotSuppressToolClick() &&
                   clickedOutsideReadyDrawListMisses() &&
                   disabledCreativeRowReportsHitDisabled() &&
                   receiptCopiesKnownRegionIndex() &&

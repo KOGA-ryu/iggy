@@ -152,12 +152,24 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         creativeUiFrame.projection.drawList.ready
             ? &creativeUiFrame.projection.drawList
             : nullptr;
+    const ProductCreativeUiOverlayInputAvailability creativeUiInputAvailability =
+        resolveProductCreativeUiOverlayInputAvailability(
+            ProductCreativeUiOverlayInputAvailabilityRequest{
+                creativeUiDrawList,
+                renderer.useVulkanRenderer,
+                window.drawable,
+                drawableExtent.width,
+                drawableExtent.height,
+                window.gameplayActive && request.activeSession.has_value()});
+    const ProductUiDrawList* creativeUiInputDrawList =
+        creativeUiInputAvailability.inputAvailable ? creativeUiDrawList
+                                                   : nullptr;
 
     processProductWindowInputFrame(ProductWindowInputFrameContext{
         request.frontend, saves, request.options, settingsTab,
         request.activeSession, request.worldSetupDraft, window, request.settings,
         inputFrame, closeRequested, &sdlWindow, request.creativeFacade,
-        creativeUiDrawList,
+        creativeUiInputDrawList,
         creative::CreativeViewportPickViewport{
             0.0F,
             0.0F,
