@@ -149,6 +149,99 @@ bool measurePressMoveReleaseUpdatesMeasurement() {
                 "measure did not mutate document");
 }
 
+bool leavingMeasureCancelsActiveMeasurement() {
+  cr::Facade facade;
+  const bool measureToolChanged = facade.setActiveTool(cr::Tool::Measure);
+  const cr::CreativeFacadeToolDispatchReceipt begin =
+      facade.dispatchToolInput(
+          pointerInput(cr::CreativeToolInputKind::PointerPress,
+                       1.0,
+                       2.0,
+                       7));
+
+  const bool selectToolChanged = facade.setActiveTool(cr::Tool::Select);
+
+  return expect(measureToolChanged, "leave measure setup tool changed") &&
+         expect(begin.measurementChanged, "leave measure setup began") &&
+         expect(selectToolChanged, "leave measure changed to select") &&
+         expect(facade.toolState().activeTool == cr::Tool::Select,
+                "leave measure active tool select") &&
+         expect(facade.state().tool == cr::Tool::Select,
+                "leave measure old state select") &&
+         expect(!facade.measurementState().active,
+                "leave measure measurement inactive") &&
+         expect(!facade.measurementState().hasMeasurement,
+                "leave measure measurement cleared") &&
+         expect(facade.measurementState().sampleCount == 0U,
+                "leave measure samples cleared");
+}
+
+bool sameMeasureToolActivationKeepsActiveMeasurement() {
+  cr::Facade facade;
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress, 1.0, 2.0, 7)));
+
+  const bool changed = facade.setActiveTool(cr::Tool::Measure);
+
+  return expect(!changed, "same measure no change") &&
+         expect(facade.toolState().activeTool == cr::Tool::Measure,
+                "same measure active tool") &&
+         expect(facade.state().tool == cr::Tool::Measure,
+                "same measure old state") &&
+         expect(facade.measurementState().active,
+                "same measure remains active") &&
+         expect(facade.measurementState().hasMeasurement,
+                "same measure retains measurement") &&
+         expect(facade.measurementState().startPoint.x == 1.0,
+                "same measure start preserved");
+}
+
+bool leavingMeasurePreservesCompletedMeasurement() {
+  cr::Facade facade;
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress, 1.0, 2.0, 7)));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerRelease, 5.0, 6.0, 9)));
+
+  const bool changed = facade.setActiveTool(cr::Tool::Select);
+
+  return expect(changed, "completed measure leave changed") &&
+         expect(facade.toolState().activeTool == cr::Tool::Select,
+                "completed measure active select") &&
+         expect(facade.state().tool == cr::Tool::Select,
+                "completed measure old state select") &&
+         expect(!facade.measurementState().active,
+                "completed measure remains inactive") &&
+         expect(facade.measurementState().hasMeasurement,
+                "completed measure retained") &&
+         expect(facade.measurementState().startPoint.x == 1.0,
+                "completed measure start retained") &&
+         expect(facade.measurementState().currentPoint.x == 5.0,
+                "completed measure current retained") &&
+         expect(facade.measurementState().currentPoint.target.value == 9U,
+                "completed measure target retained");
+}
+
+bool nonMeasureToolSwitchDoesNotTouchMeasurement() {
+  cr::Facade facade;
+
+  const bool changed = facade.setActiveTool(cr::Tool::Inspect);
+
+  return expect(changed, "non-measure switch changed") &&
+         expect(facade.toolState().activeTool == cr::Tool::Inspect,
+                "non-measure active inspect") &&
+         expect(facade.state().tool == cr::Tool::Inspect,
+                "non-measure old state inspect") &&
+         expect(!facade.measurementState().active,
+                "non-measure measurement inactive") &&
+         expect(!facade.measurementState().hasMeasurement,
+                "non-measure measurement empty") &&
+         expect(facade.measurementState().sampleCount == 0U,
+                "non-measure samples unchanged");
+}
+
 bool pointerMoveUpdatesGhostWithSnap() {
   cr::Facade facade;
   const cr::CreativeFacadeToolDispatchReceipt receipt =
@@ -239,6 +332,10 @@ int main() {
                   selectPressUpdatesSelectionOnlyAndNotDocument() &&
                   inspectPressUpdatesInspectionOnly() &&
                   measurePressMoveReleaseUpdatesMeasurement() &&
+                  leavingMeasureCancelsActiveMeasurement() &&
+                  sameMeasureToolActivationKeepsActiveMeasurement() &&
+                  leavingMeasurePreservesCompletedMeasurement() &&
+                  nonMeasureToolSwitchDoesNotTouchMeasurement() &&
                   pointerMoveUpdatesGhostWithSnap() &&
                   snapSettingsAffectLaterGhostDispatch() &&
                   unknownInputDoesNotChangeKernels() &&

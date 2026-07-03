@@ -220,6 +220,39 @@ bool repeatedActiveToolCommandCyclesToolOrder() {
                 "repeat facade select");
 }
 
+bool activeToolCommandLeavingMeasureCancelsActiveMeasurement() {
+  cr::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+  const cr::CreativeFacadeToolDispatchReceipt begin =
+      facade.dispatchToolInput(pointerPress(0));
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(facade);
+
+  return expect(begin.measurementChanged, "command measure setup began") &&
+         expect(receipt.accepted, "command leave measure accepted") &&
+         expect(receipt.changed, "command leave measure changed") &&
+         expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::CycleNextTool,
+                "command leave measure kind") &&
+         expect(receipt.toolBefore == cr::Tool::Measure,
+                "command leave measure before") &&
+         expect(receipt.toolAfter == cr::Tool::Select,
+                "command leave measure after") &&
+         expect(facade.toolState().activeTool == cr::Tool::Select,
+                "command leave measure facade tool") &&
+         expect(facade.state().tool == cr::Tool::Select,
+                "command leave measure old state") &&
+         expect(!facade.measurementState().active,
+                "command leave measure inactive") &&
+         expect(!facade.measurementState().hasMeasurement,
+                "command leave measure cleared") &&
+         expect(facade.document().objectCount() == objectCountBefore,
+                "command leave measure document unchanged");
+}
+
 bool commandUpdatesOldStateAndDoesNotMutateDocument() {
   cr::Facade facade;
   facade.reset();
@@ -552,6 +585,7 @@ int main() {
   ok &= consumedUnknownSemanticNoops();
   ok &= activeToolCommandCyclesSelectToInspect();
   ok &= repeatedActiveToolCommandCyclesToolOrder();
+  ok &= activeToolCommandLeavingMeasureCancelsActiveMeasurement();
   ok &= commandUpdatesOldStateAndDoesNotMutateDocument();
   ok &= createRoomCommandCreatesGenericRoom();
   ok &= repeatedCreateRoomCommandCreatesNewIdsAndRevisions();

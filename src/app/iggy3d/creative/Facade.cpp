@@ -105,7 +105,12 @@ const CreativeGhostState& Facade::ghostState() const noexcept {
 }
 
 bool Facade::setActiveTool(Tool tool) noexcept {
+  const Tool activeToolBefore = toolState_.activeTool;
   const bool changed = iggy3d::creative::setActiveTool(toolState_, tool);
+  if (changed && activeToolBefore == Tool::Measure &&
+      toolState_.activeTool != Tool::Measure && measurementState_.active) {
+    static_cast<void>(cancelMeasurement(measurementState_));
+  }
   state_.tool = toolState_.activeTool;
   return changed;
 }
