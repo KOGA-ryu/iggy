@@ -84,16 +84,6 @@ namespace {
                      "object_hidden");
 }
 
-[[nodiscard]] CreativeGridCoord3 clampedCoord(
-    CreativeGridCoord3 coord,
-    CreativeGridSize3 size) noexcept {
-  return CreativeGridCoord3{
-      std::clamp(coord.x, std::int32_t{0}, size.width - 1),
-      std::clamp(coord.y, std::int32_t{0}, size.height - 1),
-      std::clamp(coord.z, std::int32_t{0}, size.depth - 1),
-  };
-}
-
 [[nodiscard]] bool boundsOutsideGrid(CreativeGridBounds3 bounds,
                                      CreativeGridSize3 size) noexcept {
   return bounds.min.x < 0 || bounds.min.y < 0 || bounds.min.z < 0 ||
@@ -716,15 +706,12 @@ CreativeSpatialProjectionReceipt projectPointObjectToGrid(
   CreativeGridCoord3 coord =
       worldToGridCoord(object.transform.position, request.cellSize);
   if (!isInsideGrid(coord, request.gridSize)) {
-    if (!request.clampToGrid) {
-      return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
-                         object,
-                         profile,
-                         occupancyKind,
-                         pointBounds(coord),
-                         "out_of_bounds");
-    }
-    coord = clampedCoord(coord, request.gridSize);
+    return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
+                       object,
+                       profile,
+                       occupancyKind,
+                       pointBounds(coord),
+                       "out_of_bounds");
   }
 
   CreativeSpatialProjectionReceipt receipt =
@@ -784,16 +771,12 @@ CreativeSpatialProjectionReceipt projectLineObjectToGrid(
       worldToGridCoord(object.bounds.max, request.cellSize);
   if (!isInsideGrid(start, request.gridSize) ||
       !isInsideGrid(end, request.gridSize)) {
-    if (!request.clampToGrid) {
-      return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
-                         object,
-                         profile,
-                         occupancyKind,
-                         lineBounds(start, end),
-                         "out_of_bounds");
-    }
-    start = clampedCoord(start, request.gridSize);
-    end = clampedCoord(end, request.gridSize);
+    return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
+                       object,
+                       profile,
+                       occupancyKind,
+                       lineBounds(start, end),
+                       "out_of_bounds");
   }
 
   const std::int32_t dx = end.x - start.x;
