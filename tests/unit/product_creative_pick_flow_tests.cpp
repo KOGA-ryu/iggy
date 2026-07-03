@@ -1,4 +1,5 @@
 #include "app/iggy3d/window/CreativeInputFrame.hpp"
+#include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 #include "app/iggy3d/window/CreativeUiInputFrame.hpp"
 #include "app/iggy3d/window/CreativeViewportPickFrame.hpp"
 
@@ -10,6 +11,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -88,6 +90,22 @@ const iggy3d::ProductUiPrimitive* findPrimitive(
   return nullptr;
 }
 
+iggy3d::ProductUiDrawList drawCreativeUi(const cr::CreativeUiModel& model) {
+  iggy3d::ProductCreativeUiDrawListRequest request;
+  request.model = &model;
+  return iggy3d::buildProductCreativeUiDrawList(request);
+}
+
+iggy3d::ProductCreativeUiInputFrameReceipt clickPrimitive(
+    const iggy3d::ProductUiDrawList& drawList,
+    const iggy3d::ProductUiPrimitive& primitive) {
+  iggy3d::ProductCreativeUiInputFrameRequest request;
+  request.creativeUiDrawList = &drawList;
+  request.click =
+      clickAt(primitive.rect.x + 1.0F, primitive.rect.y + 1.0F);
+  return iggy3d::routeProductCreativeUiInputFrame(request);
+}
+
 iggy3d::ProductCreativeViewportPickFrameReceipt pickRoomAt(
     iggy3d::ProductAppWindowState& window,
     cr::Facade& facade,
@@ -117,6 +135,147 @@ iggy3d::ProductCreativeInputFrameReceipt dispatchPickedClick(
   request.click = click;
   request.pointerTarget = target;
   return iggy3d::processProductCreativeInputActions(request);
+}
+
+bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade = facadeWithRoom();
+  const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+  const std::uint64_t revisionBeforeToggle = facade.document().revision();
+  const iggy3d::MouseClick viewportClick = clickAt(150.0F, 250.0F);
+
+  const iggy3d::ProductCreativeViewportPickFrameReceipt initialPick =
+      pickRoomAt(window, facade, viewportClick);
+  const iggy3d::ProductCreativeInputFrameReceipt selectInput =
+      dispatchPickedClick(window, facade, viewportClick, initialPick.target);
+  const cr::CreativeUiBuildReceipt selectedUi = facade.buildUiModel();
+  const cr::CreativeUiRow* selectedRow = findUiRow(
+      selectedUi.model, cr::CreativeUiPanelKind::Selection,
+      cr::CreativeUiRowKind::SelectedTarget);
+  const iggy3d::ProductUiDrawList selectedDrawList =
+      drawCreativeUi(selectedUi.model);
+  const iggy3d::ProductUiPrimitive* selectedPrimitive =
+      findPrimitive(selectedDrawList, "creative.row.selection.selected_target");
+
+  const iggy3d::ProductCreativeUiInputFrameReceipt selectedUiInput =
+      selectedPrimitive != nullptr
+          ? clickPrimitive(selectedDrawList, *selectedPrimitive)
+          : iggy3d::ProductCreativeUiInputFrameReceipt{};
+  const iggy3d::ProductCreativeUiCommandFrameReceipt hideCommand =
+      iggy3d::routeProductCreativeUiCommandFrame(
+          iggy3d::ProductCreativeUiCommandFrameRequest{&facade,
+                                                       selectedUiInput});
+  const cr::CreativeObject* hiddenRoom = facade.findObject(roomId);
+  const bool roomHiddenAfterHide =
+      hiddenRoom != nullptr && !hiddenRoom->visible;
+  const iggy3d::ProductCreativeViewportPickFrameReceipt hiddenPick =
+      pickRoomAt(window, facade, viewportClick);
+  const cr::CreativeUiBuildReceipt hiddenUi = facade.buildUiModel();
+  const cr::CreativeUiRow* hiddenSelectedRow = findUiRow(
+      hiddenUi.model, cr::CreativeUiPanelKind::Selection,
+      cr::CreativeUiRowKind::SelectedTarget);
+  const iggy3d::ProductUiDrawList hiddenDrawList =
+      drawCreativeUi(hiddenUi.model);
+  const iggy3d::ProductUiPrimitive* hiddenSelectedPrimitive =
+      findPrimitive(hiddenDrawList, "creative.row.selection.selected_target");
+
+  const iggy3d::ProductCreativeUiInputFrameReceipt hiddenUiInput =
+      hiddenSelectedPrimitive != nullptr
+          ? clickPrimitive(hiddenDrawList, *hiddenSelectedPrimitive)
+          : iggy3d::ProductCreativeUiInputFrameReceipt{};
+  const iggy3d::ProductCreativeUiCommandFrameReceipt showCommand =
+      iggy3d::routeProductCreativeUiCommandFrame(
+          iggy3d::ProductCreativeUiCommandFrameRequest{&facade,
+                                                       hiddenUiInput});
+  const cr::CreativeObject* visibleRoom = facade.findObject(roomId);
+  const iggy3d::ProductCreativeViewportPickFrameReceipt visiblePick =
+      pickRoomAt(window, facade, viewportClick);
+
+  return expect(initialPick.picked, "visibility flow initial pick") &&
+         expect(initialPick.target.value == roomId,
+                "visibility flow initial target") &&
+         expect(selectInput.pointerDispatched,
+                "visibility flow select dispatched") &&
+         expect(facade.selectionState().selectedTarget.value == roomId,
+                "visibility flow selected target") &&
+         expect(facade.state().selected.value == roomId,
+                "visibility flow old selected target") &&
+         expect(selectedRow != nullptr, "visibility flow selected row") &&
+         expect(selectedRow->target.value == roomId,
+                "visibility flow selected row target") &&
+         expect(selectedPrimitive != nullptr,
+                "visibility flow selected primitive") &&
+         expect(selectedPrimitive->semanticId ==
+                    "creative.row.selection.selected_target",
+                "visibility flow selected semantic") &&
+         expect(selectedUiInput.consumed && selectedUiInput.enabled,
+                "visibility flow selected ui consumed") &&
+         expect(selectedUiInput.semanticId ==
+                    "creative.row.selection.selected_target",
+                "visibility flow selected ui semantic") &&
+         expect(hideCommand.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        ToggleSelectedObjectVisibility,
+                "visibility flow hide command kind") &&
+         expect(hideCommand.accepted && hideCommand.changed,
+                "visibility flow hide changed") &&
+         expect(hideCommand.mutationStatus ==
+                    cr::CreativeFacadeMutationStatus::Applied,
+                "visibility flow hide mutation status") &&
+         expect(hideCommand.mutationKind ==
+                    cr::CreativeMutationKind::SetVisible,
+                "visibility flow hide mutation kind") &&
+         expect(hideCommand.visibleBefore && !hideCommand.visibleAfter,
+                "visibility flow hide visible fields") &&
+         expect(hideCommand.revisionBefore == revisionBeforeToggle,
+                "visibility flow hide revision before") &&
+         expect(hideCommand.revisionAfter == revisionBeforeToggle + 1U,
+                "visibility flow hide revision after") &&
+         expect(roomHiddenAfterHide, "visibility flow room hidden") &&
+         expect(facade.document().objectCount() == objectCountBefore,
+                "visibility flow object count unchanged") &&
+         expect(facade.selectionState().selectedTarget.value == roomId,
+                "visibility flow selection preserved after hide") &&
+         expect(hiddenPick.projectionCellCount == 0U,
+                "visibility flow hidden zero cells") &&
+         expect(!hiddenPick.picked, "visibility flow hidden not picked") &&
+         expect(hiddenPick.target.value == cr::kInvalidId,
+                "visibility flow hidden target invalid") &&
+         expect(hiddenPick.status ==
+                    "product_creative_viewport_pick_projection_empty",
+                "visibility flow hidden pick status") &&
+         expect(hiddenSelectedRow != nullptr,
+                "visibility flow hidden selected row") &&
+         expect(hiddenSelectedRow->target.value == roomId,
+                "visibility flow hidden selected row target") &&
+         expect(hiddenSelectedPrimitive != nullptr,
+                "visibility flow hidden selected primitive") &&
+         expect(hiddenUiInput.consumed && hiddenUiInput.enabled,
+                "visibility flow hidden ui consumed") &&
+         expect(showCommand.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        ToggleSelectedObjectVisibility,
+                "visibility flow show command kind") &&
+         expect(showCommand.accepted && showCommand.changed,
+                "visibility flow show changed") &&
+         expect(!showCommand.visibleBefore && showCommand.visibleAfter,
+                "visibility flow show visible fields") &&
+         expect(showCommand.revisionBefore == hideCommand.revisionAfter,
+                "visibility flow show revision before") &&
+         expect(showCommand.revisionAfter == hideCommand.revisionAfter + 1U,
+                "visibility flow show revision after") &&
+         expect(visibleRoom != nullptr && visibleRoom->visible,
+                "visibility flow room visible again") &&
+         expect(facade.document().objectCount() == objectCountBefore,
+                "visibility flow object count still unchanged") &&
+         expect(facade.selectionState().selectedTarget.value == roomId,
+                "visibility flow selection preserved after show") &&
+         expect(visiblePick.picked, "visibility flow visible picked again") &&
+         expect(visiblePick.target.value == roomId,
+                "visibility flow visible target again") &&
+         expect(visiblePick.projectionCellCount == 1U,
+                "visibility flow visible cell restored");
 }
 
 bool selectPickUpdatesFacadeAndUiRows() {
@@ -280,7 +439,8 @@ bool suppressedCreativeUiClickDoesNotPickOrSelect() {
 }  // namespace
 
 int main() {
-  const bool ok = selectPickUpdatesFacadeAndUiRows() &&
+  const bool ok = selectedTargetCommandTogglesVisibilityAndRefreshesPick() &&
+                  selectPickUpdatesFacadeAndUiRows() &&
                   inspectPickUpdatesFacadeAndUiRows() &&
                   measurePickStoresTargetOnMeasurementRows() &&
                   missKeepsTargetInvalidAndSelectionUnchanged() &&
