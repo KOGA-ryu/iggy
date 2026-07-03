@@ -5,6 +5,7 @@
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
+#include "app/iggy3d/window/CreativeUiWindowFrame.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
@@ -117,6 +118,16 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         request.frontend, saves, request.options, settingsTab,
         request.activeSession, request.worldSetupDraft, window, request.settings,
         inputFrame, closeRequested, &sdlWindow});
+
+    const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
+    static_cast<void>(buildProductCreativeUiWindowFrame(
+        ProductCreativeUiWindowFrameRequest{&window,
+                                            request.creativeFacade,
+                                            drawableExtent.width,
+                                            drawableExtent.height,
+                                            createInfo.width,
+                                            createInfo.height,
+                                            ProductUiThemeId::System}));
 
     const ProductGameplayProjectionFrame projectionFrame =
         buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{

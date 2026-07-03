@@ -1,0 +1,360 @@
+#include "app/iggy3d/window/CreativeUiWindowFrame.hpp"
+
+#include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/window/Loop.hpp"
+
+#include <cstdlib>
+#include <iostream>
+#include <optional>
+#include <string>
+#include <string_view>
+
+namespace {
+namespace cr = iggy3d::creative;
+
+bool expect(bool condition, std::string_view message) {
+  if (!condition) {
+    std::cerr << "FAIL: " << message << '\n';
+  }
+  return condition;
+}
+
+iggy3d::RenderReceipt receiptFor(const iggy3d::ProductAppWindowState& window) {
+  iggy3d::ProductAppOptions options;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendState frontend;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductSaveBridgeResult saves;
+  return iggy3d::buildProductAppReceipt(options,
+                                        world,
+                                        frontend,
+                                        settings,
+                                        window,
+                                        saves);
+}
+
+bool expectReceiptField(const iggy3d::RenderReceipt& receipt,
+                        std::string_view key,
+                        std::string_view value,
+                        std::string_view message) {
+  return expect(iggy3d::hasReceiptField(receipt, key, value), message);
+}
+
+void populateInspectedFacade(cr::Facade& facade) {
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+
+  cr::CreativeToolInputPacket input;
+  input.kind = cr::CreativeToolInputKind::PointerPress;
+  input.pointer.button = cr::CreativeToolPointerButton::Primary;
+  input.pointer.target.value = 88;
+  static_cast<void>(facade.dispatchToolInput(input));
+}
+
+void prepopulateProductVulkanMenuUi(iggy3d::ProductAppWindowState& window) {
+  window.productVulkanMenuUiReady = true;
+  window.productVulkanMenuUiPartial = true;
+  window.productVulkanMenuUiStatus = "preexisting_ui_status";
+  window.productVulkanMenuUiReasonCode = "preexisting_ui_reason";
+  window.productVulkanMenuUiPrimitiveCount = 101;
+  window.productVulkanMenuUiTextCount = 102;
+  window.productVulkanMenuUiRectCount = 103;
+  window.productVulkanMenuUiRowCount = 104;
+  window.productVulkanMenuUiSelectedAction = "preexisting_action";
+}
+
+iggy3d::ProductAppWindowState creativeWindow() {
+  iggy3d::ProductAppWindowState window;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  return window;
+}
+
+bool drawableDimensionsAreUsedWhenNonzero() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+
+  const iggy3d::ProductCreativeUiFrame frame =
+      iggy3d::buildProductCreativeUiWindowFrame(
+          iggy3d::ProductCreativeUiWindowFrameRequest{&window,
+                                                      &facade,
+                                                      1920,
+                                                      1080,
+                                                      640,
+                                                      360,
+                                                      iggy3d::ProductUiThemeId::System});
+
+  return expect(frame.receipt.ready, "drawable frame ready") &&
+         expect(window.creativeUiProjectionVirtualWidth == 1920U,
+                "drawable width used") &&
+         expect(window.creativeUiProjectionVirtualHeight == 1080U,
+                "drawable height used");
+}
+
+bool fallbackDimensionsAreUsedWhenDrawableZero() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+
+  const iggy3d::ProductCreativeUiFrame frame =
+      iggy3d::buildProductCreativeUiWindowFrame(
+          iggy3d::ProductCreativeUiWindowFrameRequest{&window,
+                                                      &facade,
+                                                      0,
+                                                      0,
+                                                      1366,
+                                                      768,
+                                                      iggy3d::ProductUiThemeId::Journal});
+
+  return expect(frame.receipt.ready, "fallback frame ready") &&
+         expect(window.creativeUiProjectionVirtualWidth == 1366U,
+                "fallback width used") &&
+         expect(window.creativeUiProjectionVirtualHeight == 768U,
+                "fallback height used") &&
+         expect(window.creativeUiProjectionTheme == "journal",
+                "fallback theme copied");
+}
+
+bool guardDimensionsAreUsedWhenDrawableAndFallbackZero() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+
+  const iggy3d::ProductCreativeUiFrame frame =
+      iggy3d::buildProductCreativeUiWindowFrame(
+          iggy3d::ProductCreativeUiWindowFrameRequest{&window,
+                                                      &facade,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      0,
+                                                      iggy3d::ProductUiThemeId::System});
+
+  return expect(frame.receipt.ready, "guard frame ready") &&
+         expect(window.creativeUiProjectionVirtualWidth == 1280U,
+                "guard width used") &&
+         expect(window.creativeUiProjectionVirtualHeight == 720U,
+                "guard height used");
+}
+
+bool inactiveWindowRecordsInactiveProjection() {
+  iggy3d::ProductAppWindowState window;
+  cr::Facade facade;
+  facade.reset();
+
+  const iggy3d::ProductCreativeUiFrame frame =
+      iggy3d::buildProductCreativeUiWindowFrame(
+          iggy3d::ProductCreativeUiWindowFrameRequest{&window,
+                                                      &facade,
+                                                      1280,
+                                                      720,
+                                                      1280,
+                                                      720,
+                                                      iggy3d::ProductUiThemeId::System});
+
+  return expect(!frame.receipt.active, "inactive not active") &&
+         expect(!frame.receipt.projected, "inactive not projected") &&
+         expect(frame.receipt.recorded, "inactive recorded") &&
+         expect(frame.receipt.status == "product_creative_ui_frame_inactive",
+                "inactive status") &&
+         expect(!window.creativeUiProjectionRequested,
+                "inactive requested false") &&
+         expect(!window.creativeUiProjectionReady, "inactive ready false") &&
+         expect(window.creativeUiProjectionStatus ==
+                    "product_creative_ui_frame_inactive",
+                "inactive window status") &&
+         expect(window.creativeUiProjectionPrimitiveCount == 0U,
+                "inactive primitive count zero") &&
+         expect(window.creativeUiProjectionTextCount == 0U,
+                "inactive text count zero") &&
+         expect(window.creativeUiProjectionRectCount == 0U,
+                "inactive rect count zero") &&
+         expect(window.creativeUiProjectionRowCount == 0U,
+                "inactive row count zero") &&
+         expect(window.creativeUiProjectionHitRegionCount == 0U,
+                "inactive hit count zero");
+}
+
+bool creativeWindowWithFacadeRecordsReadyProjection() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  populateInspectedFacade(facade);
+
+  const iggy3d::ProductCreativeUiFrame frame =
+      iggy3d::buildProductCreativeUiWindowFrame(
+          iggy3d::ProductCreativeUiWindowFrameRequest{&window,
+                                                      &facade,
+                                                      1280,
+                                                      720,
+                                                      1280,
+                                                      720,
+                                                      iggy3d::ProductUiThemeId::System});
+
+  return expect(frame.receipt.requested, "ready requested") &&
+         expect(frame.receipt.active, "ready active") &&
+         expect(frame.receipt.projected, "ready projected") &&
+         expect(frame.receipt.recorded, "ready recorded") &&
+         expect(frame.receipt.ready, "ready frame ready") &&
+         expect(window.creativeUiProjectionReady, "window ready") &&
+         expect(window.creativeUiProjectionUsedFacade, "window used facade") &&
+         expect(!window.creativeUiProjectionUsedModel, "window model unused") &&
+         expect(window.creativeUiProjectionPanelCount > 0U,
+                "panel count nonzero") &&
+         expect(window.creativeUiProjectionModelRowCount > 0U,
+                "model row count nonzero") &&
+         expect(window.creativeUiProjectionPrimitiveCount > 0U,
+                "primitive count nonzero") &&
+         expect(window.creativeUiProjectionTextCount > 0U,
+                "text count nonzero") &&
+         expect(window.creativeUiProjectionRectCount > 0U,
+                "rect count nonzero") &&
+         expect(window.creativeUiProjectionRowCount > 0U,
+                "row count nonzero") &&
+         expect(window.creativeUiProjectionHitRegionCount == 0U,
+                "hit count zero");
+}
+
+bool creativeWindowWithNullFacadeRecordsFacadeMissing() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+
+  const iggy3d::ProductCreativeUiFrame frame =
+      iggy3d::buildProductCreativeUiWindowFrame(
+          iggy3d::ProductCreativeUiWindowFrameRequest{&window,
+                                                      nullptr,
+                                                      1280,
+                                                      720,
+                                                      1280,
+                                                      720,
+                                                      iggy3d::ProductUiThemeId::System});
+
+  return expect(frame.receipt.requested, "missing requested") &&
+         expect(frame.receipt.active, "missing active") &&
+         expect(!frame.receipt.projected, "missing not projected") &&
+         expect(frame.receipt.recorded, "missing recorded") &&
+         expect(!frame.receipt.ready, "missing not ready") &&
+         expect(frame.receipt.status ==
+                    "product_creative_ui_frame_facade_missing",
+                "missing frame status") &&
+         expect(window.creativeUiProjectionStatus ==
+                    "product_creative_ui_frame_facade_missing",
+                "missing window status") &&
+         expect(window.creativeUiProjectionPrimitiveCount == 0U,
+                "missing primitive count zero");
+}
+
+bool productVulkanMenuUiFieldsAreUnchanged() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  prepopulateProductVulkanMenuUi(window);
+  cr::Facade facade;
+  facade.reset();
+
+  static_cast<void>(iggy3d::buildProductCreativeUiWindowFrame(
+      iggy3d::ProductCreativeUiWindowFrameRequest{&window,
+                                                  &facade,
+                                                  1280,
+                                                  720,
+                                                  1280,
+                                                  720,
+                                                  iggy3d::ProductUiThemeId::System}));
+
+  return expect(window.productVulkanMenuUiReady,
+                "vulkan ui ready unchanged") &&
+         expect(window.productVulkanMenuUiPartial,
+                "vulkan ui partial unchanged") &&
+         expect(window.productVulkanMenuUiStatus == "preexisting_ui_status",
+                "vulkan ui status unchanged") &&
+         expect(window.productVulkanMenuUiReasonCode ==
+                    "preexisting_ui_reason",
+                "vulkan ui reason unchanged") &&
+         expect(window.productVulkanMenuUiPrimitiveCount == 101U,
+                "vulkan ui primitive count unchanged") &&
+         expect(window.productVulkanMenuUiTextCount == 102U,
+                "vulkan ui text count unchanged") &&
+         expect(window.productVulkanMenuUiRectCount == 103U,
+                "vulkan ui rect count unchanged") &&
+         expect(window.productVulkanMenuUiRowCount == 104U,
+                "vulkan ui row count unchanged") &&
+         expect(window.productVulkanMenuUiSelectedAction ==
+                    "preexisting_action",
+                "vulkan ui action unchanged");
+}
+
+bool facadeStateIsNotMutatedByBridge() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  populateInspectedFacade(facade);
+
+  const cr::Tool activeToolBefore = facade.toolState().activeTool;
+  const cr::TargetRef inspectedBefore =
+      facade.inspectionState().inspectedTarget;
+
+  static_cast<void>(iggy3d::buildProductCreativeUiWindowFrame(
+      iggy3d::ProductCreativeUiWindowFrameRequest{&window,
+                                                  &facade,
+                                                  1280,
+                                                  720,
+                                                  1280,
+                                                  720,
+                                                  iggy3d::ProductUiThemeId::System}));
+
+  return expect(facade.toolState().activeTool == activeToolBefore,
+                "facade active tool unchanged") &&
+         expect(facade.inspectionState().inspectedTarget.value ==
+                    inspectedBefore.value,
+                "facade inspected target unchanged");
+}
+
+bool noWindowLoopDoesNotCallBridge() {
+  iggy3d::ProductAppOptions options;
+  options.windowMode = iggy3d::ProductWindowMode::NoWindow;
+  iggy3d::ProductWorldTemplate world;
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::WorldSetupDraft worldSetupDraft;
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductSaveBridgeResult saves;
+  cr::Facade facade;
+  facade.reset();
+
+  const iggy3d::ProductWindowLoopResult loopResult =
+      iggy3d::runProductWindowLoop(iggy3d::ProductWindowLoopRequest{
+          options,
+          world,
+          frontend,
+          activeSession,
+          worldSetupDraft,
+          window,
+          settings,
+          saves,
+          &facade});
+  const iggy3d::RenderReceipt receipt = receiptFor(loopResult.window);
+
+  return expect(!loopResult.window.requested, "no-window not requested") &&
+         expect(loopResult.window.creativeUiProjectionStatus ==
+                    "creative_ui_projection_not_requested",
+                "no-window bridge not called") &&
+         expect(!loopResult.window.creativeUiProjectionRequested,
+                "no-window creative requested false") &&
+         expect(loopResult.window.creativeUiProjectionPrimitiveCount == 0U,
+                "no-window primitive count zero") &&
+         expectReceiptField(receipt,
+                            "creative_ui_projection_status",
+                            "creative_ui_projection_not_requested",
+                            "no-window receipt not requested");
+}
+
+}  // namespace
+
+int main() {
+  const bool ok = drawableDimensionsAreUsedWhenNonzero() &&
+                  fallbackDimensionsAreUsedWhenDrawableZero() &&
+                  guardDimensionsAreUsedWhenDrawableAndFallbackZero() &&
+                  inactiveWindowRecordsInactiveProjection() &&
+                  creativeWindowWithFacadeRecordsReadyProjection() &&
+                  creativeWindowWithNullFacadeRecordsFacadeMissing() &&
+                  productVulkanMenuUiFieldsAreUnchanged() &&
+                  facadeStateIsNotMutatedByBridge() &&
+                  noWindowLoopDoesNotCallBridge();
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
+}

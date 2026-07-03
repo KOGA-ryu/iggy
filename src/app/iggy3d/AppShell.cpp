@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/view/CameraController.hpp"
 #include "app/iggy3d/Options.hpp"
@@ -93,6 +94,8 @@ int runProductApp(int argc, char** argv) {
       scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   FrontendSettings settings = productFrontendSettingsFromOptions(options);
   std::optional<Session> activeSession;
+  creative::Facade creativeFacade;
+  creativeFacade.reset();
   // branch-gate: BG-1026
   WorldSetupDraft worldSetupDraft = options.devPackageOverride.empty()
                                         ? makeProductDefaultWorldSetupDraft()
@@ -143,7 +146,15 @@ int runProductApp(int argc, char** argv) {
   // The loop returns the true end-of-session catalog (in-window soft-delete / new-world fold
   // into it); consume it as the single source of truth for the receipt — no exit-time re-scan.
   ProductWindowLoopResult loopResult = runProductWindowLoop(ProductWindowLoopRequest{
-      options, world, frontend, activeSession, worldSetupDraft, window, settings, saves});
+      options,
+      world,
+      frontend,
+      activeSession,
+      worldSetupDraft,
+      window,
+      settings,
+      saves,
+      &creativeFacade});
   window = std::move(loopResult.window);
   saves = std::move(loopResult.saves);
   refreshProductGameplayProjectionMetrics(
