@@ -31,6 +31,7 @@ struct ProductCreativeUiInputFrameReceipt;
 struct ProductCreativeUiDownstreamClickReceipt;
 struct ProductCreativeUiCommandFrameReceipt;
 struct ProductCreativeViewportPickFrameReceipt;
+struct ProductCreativeWireframeFrameReceipt;
 
 struct ProductAppWindowState {
   bool requested = false;
@@ -618,6 +619,27 @@ struct ProductAppWindowState {
   std::string creativeViewportPickOccupancyKind = "Unknown";
   std::uint64_t creativeViewportPickTarget = 0;
   std::uint64_t creativeViewportPickCellIndex = 0;
+  bool creativeWireframeRequested = false;
+  bool creativeWireframeActive = false;
+  bool creativeWireframeFacadeAvailable = false;
+  bool creativeWireframeDocumentAvailable = false;
+  bool creativeWireframeSourceAvailable = false;
+  std::uint64_t creativeWireframeObjectCount = 0;
+  std::uint64_t creativeWireframeVisibleObjectCount = 0;
+  std::uint64_t creativeWireframeItemCount = 0;
+  std::uint64_t creativeWireframeSegmentCount = 0;
+  std::uint64_t creativeWireframeBoxItemCount = 0;
+  std::uint64_t creativeWireframeLineItemCount = 0;
+  std::uint64_t creativeWireframePointItemCount = 0;
+  std::uint64_t creativeWireframeSkippedDegenerateCount = 0;
+  std::string creativeWireframeStatus =
+      "creative_wireframe_frame_not_requested";
+  std::string creativeWireframeReasonCode =
+      "creative_wireframe_frame_not_requested";
+  std::string creativeWireframeWireframeStatus = "Unknown";
+  std::string creativeWireframeWireframeReasonCode = "none";
+  std::string creativeWireframeSegmentStatus = "Unknown";
+  std::string creativeWireframeSegmentReasonCode = "none";
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;
@@ -652,5 +674,8 @@ void recordProductCreativeUiCommandFrame(
 void recordProductCreativeViewportPickFrame(
     ProductAppWindowState& window,
     const ProductCreativeViewportPickFrameReceipt& receipt);
+void recordProductCreativeWireframeFrame(
+    ProductAppWindowState& window,
+    const ProductCreativeWireframeFrameReceipt& receipt);
 
 }  // namespace iggy3d

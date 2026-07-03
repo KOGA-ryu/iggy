@@ -3,10 +3,12 @@
 #include <utility>
 
 #include "app/frontend/MenuInput.hpp"
+#include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
 #include "app/iggy3d/window/CreativeWindowCoordinateSpace.hpp"
 #include "app/iggy3d/window/CreativeUiWindowFrame.hpp"
+#include "app/iggy3d/window/CreativeWireframeFrame.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
@@ -56,6 +58,16 @@ creative::CreativeSpatialProjectionRequest
 creativeViewportPickProjectionRequest() noexcept {
   creative::CreativeSpatialProjectionRequest request;
   request.gridSize = {64, 64, 8};
+  request.cellSize = 1.0;
+  request.clampToGrid = true;
+  request.includeAuthoringOnly = false;
+  return request;
+}
+
+creative::CreativeSpatialProjectionRequest
+creativeWireframeProjectionRequest() noexcept {
+  creative::CreativeSpatialProjectionRequest request;
+  request.gridSize = {64, 64, 16};
   request.cellSize = 1.0;
   request.clampToGrid = true;
   request.includeAuthoringOnly = false;
@@ -180,6 +192,13 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         0,
         creative::CreativeViewportPickDepthMode::HighestZFirst,
         {}});
+
+    const ProductCreativeWireframeFrameReceipt wireframeReceipt =
+        routeProductCreativeWireframeFrame(ProductCreativeWireframeFrameRequest{
+            &window,
+            request.creativeFacade,
+            creativeWireframeProjectionRequest()});
+    recordProductCreativeWireframeFrame(window, wireframeReceipt);
 
     const ProductGameplayProjectionFrame projectionFrame =
         buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{

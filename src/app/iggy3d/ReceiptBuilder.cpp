@@ -14,6 +14,7 @@
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 #include "app/iggy3d/window/CreativeUiInputFrame.hpp"
 #include "app/iggy3d/window/CreativeViewportPickFrame.hpp"
+#include "app/iggy3d/window/CreativeWireframeFrame.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 
 namespace iggy3d {
@@ -291,6 +292,36 @@ void recordProductCreativeViewportPickFrame(
   window.creativeViewportPickTarget = receipt.target.value;
   window.creativeViewportPickCellIndex =
       static_cast<std::uint64_t>(receipt.cellIndex);
+}
+
+void recordProductCreativeWireframeFrame(
+    ProductAppWindowState& window,
+    const ProductCreativeWireframeFrameReceipt& receipt) {
+  window.creativeWireframeRequested = receipt.requested;
+  window.creativeWireframeActive = receipt.active;
+  window.creativeWireframeFacadeAvailable = receipt.facadeAvailable;
+  window.creativeWireframeDocumentAvailable = receipt.documentAvailable;
+  window.creativeWireframeSourceAvailable = receipt.sourceAvailable;
+  window.creativeWireframeObjectCount = receipt.objectCount;
+  window.creativeWireframeVisibleObjectCount = receipt.visibleObjectCount;
+  window.creativeWireframeItemCount = receipt.itemCount;
+  window.creativeWireframeSegmentCount = receipt.segmentCount;
+  window.creativeWireframeBoxItemCount = receipt.boxItemCount;
+  window.creativeWireframeLineItemCount = receipt.lineItemCount;
+  window.creativeWireframePointItemCount = receipt.pointItemCount;
+  window.creativeWireframeSkippedDegenerateCount =
+      receipt.skippedDegenerateCount;
+  window.creativeWireframeStatus = receipt.status;
+  window.creativeWireframeReasonCode = receipt.reasonCode;
+  window.creativeWireframeWireframeStatus =
+      std::string(creative::toString(receipt.wireframeStatus));
+  window.creativeWireframeWireframeReasonCode =
+      receipt.wireframeReasonCode.empty() ? "none"
+                                          : receipt.wireframeReasonCode;
+  window.creativeWireframeSegmentStatus =
+      std::string(creative::toString(receipt.segmentStatus));
+  window.creativeWireframeSegmentReasonCode =
+      receipt.segmentReasonCode.empty() ? "none" : receipt.segmentReasonCode;
 }
 
 RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
@@ -1999,6 +2030,45 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeViewportPickTarget);
   appendReceiptField(receipt, "creative_viewport_pick_cell_index",
                      window.creativeViewportPickCellIndex);
+  appendReceiptField(receipt, "creative_wireframe_requested",
+                     window.creativeWireframeRequested);
+  appendReceiptField(receipt, "creative_wireframe_active",
+                     window.creativeWireframeActive);
+  appendReceiptField(receipt, "creative_wireframe_facade_available",
+                     window.creativeWireframeFacadeAvailable);
+  appendReceiptField(receipt, "creative_wireframe_document_available",
+                     window.creativeWireframeDocumentAvailable);
+  appendReceiptField(receipt, "creative_wireframe_source_available",
+                     window.creativeWireframeSourceAvailable);
+  appendReceiptField(receipt, "creative_wireframe_object_count",
+                     window.creativeWireframeObjectCount);
+  appendReceiptField(receipt, "creative_wireframe_visible_object_count",
+                     window.creativeWireframeVisibleObjectCount);
+  appendReceiptField(receipt, "creative_wireframe_item_count",
+                     window.creativeWireframeItemCount);
+  appendReceiptField(receipt, "creative_wireframe_segment_count",
+                     window.creativeWireframeSegmentCount);
+  appendReceiptField(receipt, "creative_wireframe_box_item_count",
+                     window.creativeWireframeBoxItemCount);
+  appendReceiptField(receipt, "creative_wireframe_line_item_count",
+                     window.creativeWireframeLineItemCount);
+  appendReceiptField(receipt, "creative_wireframe_point_item_count",
+                     window.creativeWireframePointItemCount);
+  appendReceiptField(receipt,
+                     "creative_wireframe_skipped_degenerate_count",
+                     window.creativeWireframeSkippedDegenerateCount);
+  appendReceiptField(receipt, "creative_wireframe_status",
+                     window.creativeWireframeStatus);
+  appendReceiptField(receipt, "creative_wireframe_reason_code",
+                     window.creativeWireframeReasonCode);
+  appendReceiptField(receipt, "creative_wireframe_wireframe_status",
+                     window.creativeWireframeWireframeStatus);
+  appendReceiptField(receipt, "creative_wireframe_wireframe_reason_code",
+                     window.creativeWireframeWireframeReasonCode);
+  appendReceiptField(receipt, "creative_wireframe_segment_status",
+                     window.creativeWireframeSegmentStatus);
+  appendReceiptField(receipt, "creative_wireframe_segment_reason_code",
+                     window.creativeWireframeSegmentReasonCode);
   appendReceiptField(receipt, "product_vulkan_gameplay_ready",
                      vulkanGameplayReadiness.ready);
   appendReceiptField(receipt, "product_vulkan_gameplay_status",

@@ -131,6 +131,7 @@ target_sources(iggy3d
     src/app/iggy3d/window/CreativeUiInputFrame.cpp
     src/app/iggy3d/window/CreativeUiCommandFrame.cpp
     src/app/iggy3d/window/CreativeViewportPickFrame.cpp
+    src/app/iggy3d/window/CreativeWireframeFrame.cpp
     src/app/iggy3d/window/CreativeInputFrame.cpp
     src/app/iggy3d/window/InputFrame.cpp
     src/app/iggy3d/window/Loop.cpp
