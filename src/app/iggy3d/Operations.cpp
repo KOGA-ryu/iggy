@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <string>
+#include <utility>
 
 #include "app/PackageRuntimeLookup.hpp"
 #include "app/frontend/SaveBrowser.hpp"
@@ -395,6 +396,37 @@ void recordProductSaveFlowResult(ProductSaveFlowOperation operation,
   window.saveFlowSelectedSlotAfter =
       // branch-gate: BG-1020
       result.selectedSlotAfter.empty() ? "none" : result.selectedSlotAfter;
+}
+
+void setCreativeNewWorldLaunchStatus(
+    ProductCreativeNewWorldLaunchResult& result,
+    std::string reason) {
+  result.status = std::move(reason);
+  result.reasonCode = result.status;
+}
+
+void mirrorCreativeWorldCreateResult(
+    ProductCreativeNewWorldLaunchResult& result,
+    const CreativeWorldCreateResult& create) {
+  result.createResult = create;
+  result.saveId = create.saveId.empty() ? "none" : create.saveId;
+  result.path = create.path;
+  result.worldId = create.worldId;
+  result.documentId = create.documentId;
+  result.objectCount = create.document.objectCount();
+  result.nextObjectId = create.document.nextObjectId();
+}
+
+void mirrorCreativeDocumentInstallResult(
+    ProductCreativeNewWorldLaunchResult& result,
+    const creative::CreativeFacadeDocumentInstallReceipt& install) {
+  result.installReceipt = install;
+  result.documentInstalled = install.accepted;
+  if (install.accepted) {
+    result.documentId = install.nextDocumentId;
+    result.objectCount = install.nextObjectCount;
+    result.nextObjectId = result.createResult.document.nextObjectId();
+  }
 }
 
 void recordSelectedDeletedProductSaveSlot(const SaveSlotList& slots,
@@ -838,6 +870,59 @@ void launchProductNewWorld(const ProductAppOptions& options,
 
   window.launchStatus = initialSave.status;
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
+}
+
+ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
+    const ProductAppOptions& options,
+    const ProductCreativeNewWorldLaunchRequest& request,
+    FrontendState& frontend,
+    std::optional<Session>& activeSession,
+    ProductAppWindowState& window,
+    creative::Facade& facade) {
+  ProductCreativeNewWorldLaunchResult result;
+  window.launchAction = "creative_create_and_enter";
+
+  CreativeWorldCreateRequest createRequest;
+  createRequest.saveRoot = options.saveRoot;
+  createRequest.title = request.title;
+  createRequest.templateId = request.templateId;
+  createRequest.requestedAtUtc = request.requestedAtUtc;
+  createRequest.attemptToken = request.attemptToken;
+  createRequest.packageId = request.packageId;
+  createRequest.scenarioId = request.scenarioId;
+
+  const CreativeWorldCreateResult create = createCreativeWorld(createRequest);
+  mirrorCreativeWorldCreateResult(result, create);
+  if (!create.accepted) {
+    setCreativeNewWorldLaunchStatus(result, create.reasonCode);
+    window.launchStatus = result.reasonCode;
+    return result;
+  }
+
+  if (!createProductSession(options, activeSession, window)) {
+    setCreativeNewWorldLaunchStatus(result, window.launchStatus);
+    return result;
+  }
+  result.sessionCreated = activeSession.has_value();
+
+  creative::CreativeDocument documentToInstall = create.document;
+  const creative::CreativeFacadeDocumentInstallReceipt install =
+      facade.installDocument(std::move(documentToInstall));
+  mirrorCreativeDocumentInstallResult(result, install);
+  if (!install.accepted) {
+    setCreativeNewWorldLaunchStatus(result, std::string{install.reasonCode});
+    window.launchStatus = result.reasonCode;
+    clearProductGameplayLaunchState(activeSession, window);
+    return result;
+  }
+
+  enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
+  window.interactionMode = ProductInteractionMode::Creative;
+  result.enteredGameplay = true;
+  result.accepted = true;
+  setCreativeNewWorldLaunchStatus(result, "product_creative_world_launched");
+  window.launchStatus = result.reasonCode;
+  return result;
 }
 
 void launchProductSaveSlot(const ProductAppOptions& options,

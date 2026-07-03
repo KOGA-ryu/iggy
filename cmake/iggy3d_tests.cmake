@@ -449,6 +449,11 @@ iggy3d_add_unit_test(creative_world_service_tests
 set_tests_properties(creative_world_service_tests PROPERTIES
   LABELS "unit;app;product;creative;world;service;iggy3d")
 
+iggy3d_add_unit_test(product_creative_world_launch_tests
+  tests/unit/product_creative_world_launch_tests.cpp)
+set_tests_properties(product_creative_world_launch_tests PROPERTIES
+  LABELS "unit;app;product;creative;world;launch;iggy3d")
+
 iggy3d_add_unit_test(product_save_bridge_tests tests/unit/product_save_bridge_tests.cpp)
 set_tests_properties(product_save_bridge_tests PROPERTIES
   LABELS "unit;app;product;save;bridge;iggy3d")

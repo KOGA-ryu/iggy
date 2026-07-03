@@ -1,16 +1,19 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
+#include "app/iggy3d/world/CreativeWorldService.hpp"
 #include "app/input/InputAction.hpp"
 #include "runtime/session/Session.hpp"
 
@@ -37,6 +40,32 @@ struct ProductSaveFlowResult {
   std::uint64_t activeCountAfter = 0;
   std::uint64_t deletedCountAfter = 0;
   std::string selectedSlotAfter = "none";
+};
+
+struct ProductCreativeNewWorldLaunchRequest {
+  std::string title;
+  std::string templateId = "empty";
+  std::string requestedAtUtc;
+  std::string attemptToken = "attempt_001";
+  std::string packageId = "iggy3d.creative";
+  std::string scenarioId = "creative.document";
+};
+
+struct ProductCreativeNewWorldLaunchResult {
+  bool accepted = false;
+  std::string status = "product_creative_new_world_not_requested";
+  std::string reasonCode = "product_creative_new_world_not_requested";
+  bool sessionCreated = false;
+  bool documentInstalled = false;
+  bool enteredGameplay = false;
+  std::string saveId = "none";
+  std::filesystem::path path;
+  std::string worldId;
+  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
+  std::uint64_t objectCount = 0;
+  creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
+  CreativeWorldCreateResult createResult;
+  creative::CreativeFacadeDocumentInstallReceipt installReceipt;
 };
 
 std::string_view productSaveFlowOperationName(ProductSaveFlowOperation operation);
@@ -90,6 +119,13 @@ void launchProductNewWorld(const ProductAppOptions& options,
                            FrontendState& frontend,
                            std::optional<Session>& activeSession,
                            ProductAppWindowState& window);
+ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
+    const ProductAppOptions& options,
+    const ProductCreativeNewWorldLaunchRequest& request,
+    FrontendState& frontend,
+    std::optional<Session>& activeSession,
+    ProductAppWindowState& window,
+    creative::Facade& facade);
 void launchProductContinueSave(const ProductAppOptions& options,
                                const ProductWorldTemplate& world,
                                const ProductSaveBridgeResult& saves,
