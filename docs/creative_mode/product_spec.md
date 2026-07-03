@@ -341,6 +341,13 @@ Save authored room edits:
 
 ## 8. Consolidation Policy
 
+Foundation v0.3 amendment: `CreativeDocument` is the authored truth of
+creative mode. ASCII sources, runtime/product worlds, and map-maker or
+room-editor state are not the initialization source for creative documents.
+ASCII import may become an optional one-way bridge later, but it is not the
+open/init path. Creative mutations edit the isolated creative document first
+and do not mutate product/runtime gameplay state directly.
+
 - `room_editor`: keep as authoring kernel. It owns cursor primitives, preview dry-run, `RoomEditCommand`, `EditableRoomSession`, undo/redo, and document bake.
 - `map_maker`: keep grid/fly/cube preview for now. It becomes Creative support only after the Creative facade works and tests prove behavior parity.
 - `creative`: future facade/orchestrator. It owns palette projection, selected palette slot, tool model, placement request packets, selection packets, UI model packets, and metrics packets. It does not own a second command system.

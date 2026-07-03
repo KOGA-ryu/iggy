@@ -307,6 +307,16 @@ iggy3d_add_unit_test(creative_room_tests
 set_tests_properties(creative_room_tests PROPERTIES
   LABELS "unit;app;creative;room;iggy3d")
 
+iggy3d_add_unit_test(creative_object_descriptor_tests
+  tests/unit/creative_object_descriptor_tests.cpp)
+set_tests_properties(creative_object_descriptor_tests PROPERTIES
+  LABELS "unit;app;creative;object_descriptor;iggy3d")
+
+iggy3d_add_unit_test(creative_document_mutation_tests
+  tests/unit/creative_document_mutation_tests.cpp)
+set_tests_properties(creative_document_mutation_tests PROPERTIES
+  LABELS "unit;app;creative;document;mutation;iggy3d")
+
 iggy3d_add_unit_test(creative_facade_tests
   tests/unit/creative_facade_tests.cpp)
 set_tests_properties(creative_facade_tests PROPERTIES
