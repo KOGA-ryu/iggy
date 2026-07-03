@@ -1,6 +1,13 @@
 #include "app/iggy3d/save/CatalogProjector.hpp"
 
 namespace iggy3d {
+namespace {
+
+bool isDeletedCatalogEntry(const ProductSaveCatalogEntry& entry) {
+  return entry.location == ProductSaveCatalogLocation::Deleted || entry.deleted;
+}
+
+}  // namespace
 
 SaveSlotCompatibility saveSlotCompatibilityFromCatalogEntry(
     const ProductSaveCatalogEntry& entry) {
@@ -45,7 +52,9 @@ SaveSlotPreview saveSlotPreviewFromCatalogEntry(
   preview.authoredWallCount = entry.authoredWallCount;
   preview.authoredMarkerCount = entry.authoredMarkerCount;
   preview.compatibility = saveSlotCompatibilityFromCatalogEntry(entry);
-  preview.enabled = entry.compatible && !entry.corrupt;
+  preview.enabled = isDeletedCatalogEntry(entry)
+                        ? (entry.recoverable && !entry.corrupt)
+                        : canLoadProductSave(entry);
   preview.corrupt = entry.corrupt;
   // branch-gate: BG-1220
   preview.reason = preview.enabled ? "compatible" : entry.disabledReason;

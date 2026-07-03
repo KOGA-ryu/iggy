@@ -13,10 +13,17 @@ enum class ProductSaveCatalogLocation {
   Deleted,
 };
 
+enum class ProductSaveContentKind {
+  Unknown,
+  ProductSession,
+  CreativeDocument,
+};
+
 struct ProductSaveCatalogEntry {
   std::string saveId;
   std::filesystem::path path;
   ProductSaveCatalogLocation location = ProductSaveCatalogLocation::Active;
+  ProductSaveContentKind contentKind = ProductSaveContentKind::Unknown;
   std::string worldId;
   std::string worldTitle;
   std::string saveTitle;
@@ -32,6 +39,10 @@ struct ProductSaveCatalogEntry {
   std::uint64_t authoredWallCount = 0;
   std::uint64_t authoredObjectCount = 0;
   std::uint64_t authoredMarkerCount = 0;
+  bool creativeDocumentPresent = false;
+  std::uint64_t creativeDocumentId = 0;
+  std::uint64_t creativeObjectCount = 0;
+  std::uint64_t creativeNextObjectId = 0;
   std::filesystem::path snapshotPath;
   std::string snapshotStatus = "missing";
   bool snapshotAvailable = false;
@@ -71,9 +82,11 @@ struct ProductContinueSelectionResult {
 
 std::string_view productSaveCatalogLocationName(
     ProductSaveCatalogLocation location);
+std::string_view productSaveContentKindName(ProductSaveContentKind contentKind);
 std::string productSaveDisplayTitle(const ProductSaveCatalogEntry& entry);
 bool hasProductSaveCatalogTimestamp(std::string_view timestamp);
 bool canLoadProductSave(const ProductSaveCatalogEntry& entry);
+bool canOpenCreativeWorld(const ProductSaveCatalogEntry& entry);
 ProductSaveCatalogBuildResult buildProductSaveCatalog(
     std::vector<ProductSaveCatalogEntry> entries);
 std::vector<ProductSaveCatalogEntry> sortProductSaveCatalogEntries(

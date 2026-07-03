@@ -227,6 +227,18 @@ ProductSaveCatalogEntry catalogEntryForSavePath(
       static_cast<std::uint64_t>(decoded.envelope.authoredRoom.objects.size());
   entry.authoredMarkerCount =
       static_cast<std::uint64_t>(decoded.envelope.authoredRoom.markers.size());
+  entry.contentKind = decoded.envelope.creativeDocument.present
+                          ? ProductSaveContentKind::CreativeDocument
+                          : ProductSaveContentKind::ProductSession;
+  if (decoded.envelope.creativeDocument.present) {
+    const SaveCreativeDocumentSection& creative =
+        decoded.envelope.creativeDocument;
+    entry.creativeDocumentPresent = true;
+    entry.creativeDocumentId = creative.documentId;
+    entry.creativeObjectCount =
+        static_cast<std::uint64_t>(creative.objects.size());
+    entry.creativeNextObjectId = creative.nextObjectId;
+  }
 
   const std::string reason =
       compatibilityReason(entry.packageId,
@@ -235,12 +247,19 @@ ProductSaveCatalogEntry catalogEntryForSavePath(
                           expectedScenarioId);
   entry.compatible = reason == "compatible";
   entry.corrupt = false;
-  entry.loadable =
-      location == ProductSaveCatalogLocation::Active && entry.compatible;
+  entry.loadable = location == ProductSaveCatalogLocation::Active &&
+                   entry.compatible &&
+                   entry.contentKind == ProductSaveContentKind::ProductSession;
   entry.recoverable =
       location == ProductSaveCatalogLocation::Deleted && entry.compatible;
-  // branch-gate: BG-1218
-  entry.disabledReason = entry.compatible ? "none" : reason;
+  if (!entry.compatible) {
+    entry.disabledReason = reason;
+  } else if (location == ProductSaveCatalogLocation::Active &&
+             entry.contentKind == ProductSaveContentKind::CreativeDocument) {
+    entry.disabledReason = "creative_save_not_product_loadable";
+  } else {
+    entry.disabledReason = "none";
+  }
   return entry;
 }
 

@@ -546,6 +546,89 @@ bool creativeDurableSaveWritesFinalAndLoads() {
                 "creative loaded document content");
 }
 
+bool creativeDurableSaveScansAsCreativeAndNotProductLoadable() {
+  const std::filesystem::path root = testRoot();
+  const cr::CreativeDocument document = creativeDocumentFixture();
+  const iggy3d::ProductCreativeSaveWriteResult written =
+      iggy3d::writeCreativeDocumentSaveDurably(
+          creativeSaveRequest(root, document, "attempt_001", "creative_save"));
+  const iggy3d::ProductSaveBridgeResult scanned = iggy3d::scanProductSaves(
+      root, "iggy3d.creative", "creative.document");
+
+  const bool hasEntry = scanned.catalog.catalog.entries.size() == 1U;
+  const iggy3d::ProductSaveCatalogEntry entry =
+      hasEntry ? scanned.catalog.catalog.entries.front()
+               : iggy3d::ProductSaveCatalogEntry{};
+  const bool hasSlot = scanned.slots.slots.size() == 1U;
+  const iggy3d::SaveSlotPreview slot =
+      hasSlot ? scanned.slots.slots.front() : iggy3d::SaveSlotPreview{};
+
+  return expect(written.ok, "creative scan setup write ok") &&
+         expect(hasEntry, "creative scan one catalog entry") &&
+         expect(entry.contentKind ==
+                    iggy3d::ProductSaveContentKind::CreativeDocument,
+                "creative scan content kind") &&
+         expect(iggy3d::productSaveContentKindName(entry.contentKind) ==
+                    "creative_document",
+                "creative scan content kind name") &&
+         expect(entry.creativeDocumentPresent,
+                "creative scan document present mirror") &&
+         expect(entry.creativeDocumentId == document.id(),
+                "creative scan document id mirror") &&
+         expect(entry.creativeObjectCount == document.objectCount(),
+                "creative scan object count mirror") &&
+         expect(entry.creativeNextObjectId == document.nextObjectId(),
+                "creative scan next id mirror") &&
+         expect(entry.compatible, "creative scan compatible") &&
+         expect(!entry.loadable, "creative scan not product loadable") &&
+         expect(!iggy3d::canLoadProductSave(entry),
+                "creative scan canLoad false") &&
+         expect(iggy3d::canOpenCreativeWorld(entry),
+                "creative scan canOpen true") &&
+         expect(entry.disabledReason == "creative_save_not_product_loadable",
+                "creative scan disabled reason") &&
+         expect(scanned.catalog.compatibleActiveCount == 0U,
+                "creative scan no product-compatible active count") &&
+         expect(hasSlot, "creative scan one slot") &&
+         expect(!slot.enabled, "creative active slot disabled") &&
+         expect(slot.compatibility == iggy3d::SaveSlotCompatibility::Compatible,
+                "creative active slot compatible") &&
+         expect(slot.reason == "creative_save_not_product_loadable",
+                "creative active slot reason") &&
+         expect(scanned.slots.compatibleCount == 0U,
+                "creative active slot not counted enabled");
+}
+
+bool productContinueIgnoresCreativeSaveWhenNewestInScan() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductSaveWriteResult product =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_001"));
+  const cr::CreativeDocument document = creativeDocumentFixture();
+  const iggy3d::ProductCreativeSaveWriteResult creative =
+      iggy3d::writeCreativeDocumentSaveDurably(
+          creativeSaveRequest(root, document, "attempt_002", "save_999"));
+  const iggy3d::ProductSaveBridgeResult scanned =
+      iggy3d::scanProductSaves(root, "", "");
+  const iggy3d::ProductContinueSelectionResult selected =
+      iggy3d::selectProductContinueSave(scanned.catalog.catalog);
+
+  return expect(product.ok, "mixed scan product write ok") &&
+         expect(creative.ok, "mixed scan creative write ok") &&
+         expect(scanned.catalog.catalog.entries.size() == 2U,
+                "mixed scan two entries") &&
+         expect(scanned.catalog.compatibleActiveCount == 1U,
+                "mixed scan one product-loadable entry") &&
+         expect(selected.selected, "mixed scan selected product continue") &&
+         expect(selected.selectedSaveId == "save_001",
+                "mixed scan product continue ignores creative newest") &&
+         expect(selected.consideredCount == 2U,
+                "mixed scan continue considered active rows") &&
+         expect(selected.compatibleCount == 1U,
+                "mixed scan continue compatible product count");
+}
+
 bool creativeDurableSaveHonorsValidIdHint() {
   const std::filesystem::path root = testRoot();
   const cr::CreativeDocument document = creativeDocumentFixture();
@@ -1103,6 +1186,71 @@ bool productDeletedScanUsesMovedSnapshotSidecar() {
                 "product deleted snapshot status");
 }
 
+bool deletedCreativeSaveRemainsRecoverableButNotProductLoadable() {
+  const std::filesystem::path root = testRoot();
+  const cr::CreativeDocument document = creativeDocumentFixture();
+  const iggy3d::ProductCreativeSaveWriteResult written =
+      iggy3d::writeCreativeDocumentSaveDurably(
+          creativeSaveRequest(root, document, "attempt_001", "creative_save"));
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, "creative_save"});
+  const iggy3d::ProductSaveBridgeResult scanned = iggy3d::scanDeletedProductSaves(
+      root, "iggy3d.creative", "creative.document");
+
+  const bool hasEntry = scanned.catalog.catalog.entries.size() == 1U;
+  const iggy3d::ProductSaveCatalogEntry entry =
+      hasEntry ? scanned.catalog.catalog.entries.front()
+               : iggy3d::ProductSaveCatalogEntry{};
+  const bool hasSlot = scanned.slots.slots.size() == 1U;
+  const iggy3d::SaveSlotPreview slot =
+      hasSlot ? scanned.slots.slots.front() : iggy3d::SaveSlotPreview{};
+
+  return expect(written.ok, "deleted creative setup write ok") &&
+         expect(deleted.ok, "deleted creative soft delete ok") &&
+         expect(hasEntry, "deleted creative one catalog entry") &&
+         expect(entry.contentKind ==
+                    iggy3d::ProductSaveContentKind::CreativeDocument,
+                "deleted creative content kind") &&
+         expect(entry.deleted, "deleted creative entry deleted") &&
+         expect(!entry.loadable, "deleted creative not product loadable") &&
+         expect(entry.recoverable, "deleted creative recoverable") &&
+         expect(!iggy3d::canLoadProductSave(entry),
+                "deleted creative canLoad false") &&
+         expect(!iggy3d::canOpenCreativeWorld(entry),
+                "deleted creative canOpen false while deleted") &&
+         expect(entry.disabledReason == "none",
+                "deleted creative no disabled reason") &&
+         expect(hasSlot, "deleted creative one slot") &&
+         expect(slot.enabled, "deleted creative slot enabled for recovery") &&
+         expect(slot.reason == "compatible",
+                "deleted creative slot recovery reason");
+}
+
+bool corruptCatalogEntryKeepsUnknownContentKind() {
+  const std::filesystem::path root = testRoot();
+  {
+    std::ofstream output(root / "save_corrupt.iggy3d.save");
+    output << "not an iggy3d save\n";
+  }
+  const iggy3d::ProductSaveBridgeResult scanned =
+      iggy3d::scanProductSaves(root, "", "");
+  const bool hasEntry = scanned.catalog.catalog.entries.size() == 1U;
+  const iggy3d::ProductSaveCatalogEntry entry =
+      hasEntry ? scanned.catalog.catalog.entries.front()
+               : iggy3d::ProductSaveCatalogEntry{};
+
+  return expect(hasEntry, "corrupt catalog one entry") &&
+         expect(entry.corrupt, "corrupt catalog marked corrupt") &&
+         expect(entry.contentKind == iggy3d::ProductSaveContentKind::Unknown,
+                "corrupt catalog content kind unknown") &&
+         expect(!entry.creativeDocumentPresent,
+                "corrupt catalog creative mirror absent") &&
+         expect(!iggy3d::canLoadProductSave(entry),
+                "corrupt catalog canLoad false") &&
+         expect(!iggy3d::canOpenCreativeWorld(entry),
+                "corrupt catalog canOpen false");
+}
+
 bool productLoadSaveLoadsCompatibleSession() {
   const std::filesystem::path root = testRoot();
   iggy3d::Session savedSession = makeChangedFixtureSession();
@@ -1347,12 +1495,16 @@ int main() {
                   productDurableSaveRejectsInvalidAttemptToken() &&
                   productDurableSavePersistsAuthoredRoom() &&
                   creativeDurableSaveWritesFinalAndLoads() &&
+                  creativeDurableSaveScansAsCreativeAndNotProductLoadable() &&
+                  productContinueIgnoresCreativeSaveWhenNewestInScan() &&
                   creativeDurableSaveHonorsValidIdHint() &&
                   creativeDurableSaveCarriesExistingIdentityOnOverwrite() &&
                   creativeDurableSaveRejectsNullDocument() &&
                   creativeDurableSaveRejectsInvalidDocumentId() &&
                   creativeDurableSaveRejectsInvalidAttemptToken() &&
                   creativeLoadRejectsSessionSaveWithoutCreativeSection() &&
+                  deletedCreativeSaveRemainsRecoverableButNotProductLoadable() &&
+                  corruptCatalogEntryKeepsUnknownContentKind() &&
                   productSoftDeleteMovesSaveAndRemovesFromScan() &&
                   productSoftDeleteMovesSnapshotSidecarWhenPresent() &&
                   productSoftDeleteRejectsMissingIdBeforeIo() &&

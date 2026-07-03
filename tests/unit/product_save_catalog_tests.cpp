@@ -11,6 +11,7 @@ namespace {
 using iggy3d::ProductSaveCatalog;
 using iggy3d::ProductSaveCatalogEntry;
 using iggy3d::ProductSaveCatalogLocation;
+using iggy3d::ProductSaveContentKind;
 
 void expect(bool condition, const char* message) {
   if (!condition) {
@@ -31,11 +32,27 @@ ProductSaveCatalogEntry activeEntry(std::string saveId,
   entry.savedAtUtc = std::move(savedAtUtc);
   entry.packageId = "iggy3d.product.default";
   entry.scenarioId = "training_ground";
+  entry.contentKind = ProductSaveContentKind::ProductSession;
   entry.snapshotStatus = "missing";
   entry.snapshotAvailable = false;
   entry.compatible = true;
   entry.loadable = true;
   entry.disabledReason = "none";
+  return entry;
+}
+
+ProductSaveCatalogEntry creativeEntry(std::string saveId,
+                                      std::string savedAtUtc) {
+  ProductSaveCatalogEntry entry = activeEntry(std::move(saveId),
+                                              std::move(savedAtUtc));
+  entry.contentKind = ProductSaveContentKind::CreativeDocument;
+  entry.saveType = "creative";
+  entry.creativeDocumentPresent = true;
+  entry.creativeDocumentId = 9001;
+  entry.creativeObjectCount = 2;
+  entry.creativeNextObjectId = 100;
+  entry.loadable = false;
+  entry.disabledReason = "creative_save_not_product_loadable";
   return entry;
 }
 
@@ -50,6 +67,21 @@ ProductSaveCatalogEntry deletedEntry(std::string saveId,
   entry.path = std::filesystem::path{"/tmp/deleted"} /
                (entry.saveId + ".iggy3d.save");
   return entry;
+}
+
+void contentKindDefaultsAndNamesAreStable() {
+  ProductSaveCatalogEntry entry;
+  expect(entry.contentKind == ProductSaveContentKind::Unknown,
+         "catalog content kind defaults unknown");
+  expect(iggy3d::productSaveContentKindName(ProductSaveContentKind::Unknown) ==
+             "unknown",
+         "unknown content kind name");
+  expect(iggy3d::productSaveContentKindName(
+             ProductSaveContentKind::ProductSession) == "product_session",
+         "product session content kind name");
+  expect(iggy3d::productSaveContentKindName(
+             ProductSaveContentKind::CreativeDocument) == "creative_document",
+         "creative document content kind name");
 }
 
 void emptyCatalogYieldsNoContinueSelection() {
@@ -71,6 +103,22 @@ void activeCompatibleSaveCanBeSelected() {
          "compatible active save reports selected status");
 }
 
+void contentKindSplitsProductLoadAndCreativeOpen() {
+  ProductSaveCatalogEntry product =
+      activeEntry("save_product", "2026-06-24T00:00:00Z");
+  ProductSaveCatalogEntry creative =
+      creativeEntry("save_creative", "2026-06-24T01:00:00Z");
+
+  expect(iggy3d::canLoadProductSave(product),
+         "product session save is product-loadable");
+  expect(!iggy3d::canOpenCreativeWorld(product),
+         "product session save is not creative-openable");
+  expect(!iggy3d::canLoadProductSave(creative),
+         "creative document save is not product-loadable");
+  expect(iggy3d::canOpenCreativeWorld(creative),
+         "creative document save is creative-openable");
+}
+
 void newestSavedAtWins() {
   ProductSaveCatalog catalog;
   catalog.entries.push_back(activeEntry("save_001", "2026-06-24T00:00:00Z"));
@@ -89,6 +137,21 @@ void sameSavedAtUsesHighestSaveId() {
   const auto result = iggy3d::selectProductContinueSave(catalog);
   expect(result.selectedSaveId == "save_003",
          "same savedAtUtc tie breaks by highest save id");
+}
+
+void creativeSaveIsIgnoredByProductContinueEvenWhenNewest() {
+  ProductSaveCatalog catalog;
+  catalog.entries.push_back(activeEntry("save_001", "2026-06-24T00:00:00Z"));
+  catalog.entries.push_back(creativeEntry("save_999", "2026-06-24T02:00:00Z"));
+
+  const auto result = iggy3d::selectProductContinueSave(catalog);
+  expect(result.selected, "product continue should still select product save");
+  expect(result.selectedSaveId == "save_001",
+         "creative save should not win product continue");
+  expect(result.consideredCount == 2,
+         "continue still considers active rows for diagnostics");
+  expect(result.compatibleCount == 1,
+         "continue compatible count includes only product-loadable rows");
 }
 
 void deletedSaveIsIgnoredByContinue() {
@@ -195,10 +258,13 @@ void deterministicSortPutsValidNewestBeforeLegacyRows() {
 }  // namespace
 
 int main() {
+  contentKindDefaultsAndNamesAreStable();
   emptyCatalogYieldsNoContinueSelection();
   activeCompatibleSaveCanBeSelected();
+  contentKindSplitsProductLoadAndCreativeOpen();
   newestSavedAtWins();
   sameSavedAtUsesHighestSaveId();
+  creativeSaveIsIgnoredByProductContinueEvenWhenNewest();
   deletedSaveIsIgnoredByContinue();
   incompatibleCorruptUnloadableRowsRemainRepresentableButIgnored();
   displayTitlePrefersSaveTitleThenWorldTitleThenSaveId();

@@ -43,6 +43,18 @@ std::string_view productSaveCatalogLocationName(
   return "active";
 }
 
+std::string_view productSaveContentKindName(ProductSaveContentKind contentKind) {
+  switch (contentKind) {
+    case ProductSaveContentKind::Unknown:
+      return "unknown";
+    case ProductSaveContentKind::ProductSession:
+      return "product_session";
+    case ProductSaveContentKind::CreativeDocument:
+      return "creative_document";
+  }
+  return "unknown";
+}
+
 std::string productSaveDisplayTitle(const ProductSaveCatalogEntry& entry) {
   if (!entry.saveTitle.empty()) {
     return entry.saveTitle;
@@ -62,7 +74,13 @@ bool hasProductSaveCatalogTimestamp(std::string_view timestamp) {
 
 bool canLoadProductSave(const ProductSaveCatalogEntry& entry) {
   return isActiveEntry(entry) && entry.loadable && entry.compatible &&
-         !entry.corrupt;
+         !entry.corrupt &&
+         entry.contentKind == ProductSaveContentKind::ProductSession;
+}
+
+bool canOpenCreativeWorld(const ProductSaveCatalogEntry& entry) {
+  return isActiveEntry(entry) && entry.compatible && !entry.corrupt &&
+         entry.contentKind == ProductSaveContentKind::CreativeDocument;
 }
 
 ProductSaveCatalogBuildResult buildProductSaveCatalog(

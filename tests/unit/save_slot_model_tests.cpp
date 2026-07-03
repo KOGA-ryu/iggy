@@ -1,4 +1,5 @@
 #include "app/iggy3d/save/SaveBridge.hpp"
+#include "app/iggy3d/save/CatalogProjector.hpp"
 #include "content/PackageLoader.hpp"
 #include "runtime/save/SaveFileStore.hpp"
 #include "runtime/session/Session.hpp"
@@ -203,12 +204,58 @@ bool deterministicOrdering() {
          expect(slots.slots[1].id == "save_001", "save_001 second by catalog sort");
 }
 
+iggy3d::ProductSaveCatalogEntry creativeCatalogEntry(
+    iggy3d::ProductSaveCatalogLocation location) {
+  iggy3d::ProductSaveCatalogEntry entry;
+  entry.saveId = "creative_save";
+  entry.path = "/tmp/creative_save.iggy3d.save";
+  entry.location = location;
+  entry.deleted = location == iggy3d::ProductSaveCatalogLocation::Deleted;
+  entry.contentKind = iggy3d::ProductSaveContentKind::CreativeDocument;
+  entry.packageId = "iggy3d.creative";
+  entry.scenarioId = "creative.document";
+  entry.compatible = true;
+  entry.loadable = false;
+  entry.recoverable = entry.deleted;
+  entry.disabledReason =
+      entry.deleted ? "none" : "creative_save_not_product_loadable";
+  return entry;
+}
+
+bool activeCreativeSaveSlotIsDisabledForProductLoad() {
+  const iggy3d::SaveSlotPreview slot =
+      iggy3d::saveSlotPreviewFromCatalogEntry(
+          creativeCatalogEntry(iggy3d::ProductSaveCatalogLocation::Active));
+
+  return expect(slot.id == "creative_save", "active creative slot id") &&
+         expect(!slot.enabled, "active creative slot disabled") &&
+         expect(slot.compatibility == iggy3d::SaveSlotCompatibility::Compatible,
+                "active creative slot compatibility preserved") &&
+         expect(slot.reason == "creative_save_not_product_loadable",
+                "active creative disabled reason");
+}
+
+bool deletedCreativeSaveSlotStaysEnabledForRecovery() {
+  const iggy3d::SaveSlotPreview slot =
+      iggy3d::saveSlotPreviewFromCatalogEntry(
+          creativeCatalogEntry(iggy3d::ProductSaveCatalogLocation::Deleted));
+
+  return expect(slot.id == "creative_save", "deleted creative slot id") &&
+         expect(slot.enabled, "deleted creative slot enabled for recovery") &&
+         expect(slot.compatibility == iggy3d::SaveSlotCompatibility::Compatible,
+                "deleted creative compatibility preserved") &&
+         expect(slot.reason == "compatible",
+                "deleted creative recovery reason");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = compatibleSavePreviewIncludesMetadata() &&
                   sidecarSnapshotUpdatesPresentationOnly() &&
                   emptySidecarFallsBackWithoutDisablingSave() &&
-                  corruptSaveIsVisibleDisabledRow() && deterministicOrdering();
+                  corruptSaveIsVisibleDisabledRow() && deterministicOrdering() &&
+                  activeCreativeSaveSlotIsDisabledForProductLoad() &&
+                  deletedCreativeSaveSlotStaysEnabledForRecovery();
   return ok ? 0 : 1;
 }
