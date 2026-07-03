@@ -1,4 +1,4 @@
-# The AI Lane Maximum — destiny document v1.8
+# The AI Lane Maximum — destiny document v1.9
 
 > Planner-authored 2026-07-02. This is the END of the AI lane: every behaviour layer the game's
 > identity demands, their contracts, the dependency DAG, the pre-declared churn, and the
@@ -249,11 +249,11 @@ transient state on top.
 | A3 graph | new runtime/ai module + fixture growth; `PackageSessionSeed` emits derived nodes from anchors (in-lane shared ground, by this order); notebook-projection wiring = separate planner-brokered follow-up slice (src/app); when next_work Stream 3 lands, A3 gains ONE portal-stitch slice | greenfield; keep O(n) descriptor-scan patterns OUT of per-tick loops |
 | A4 travel | patrol/investigate/return destinations become route-node-fed; straight-line stall tests re-pin; NEW INTENT kinds (if any) touch the three dispatchers incl. the MANUAL if-chain `buildNpcBehaviorCommand`; route state transient — NO triple-lock growth | motor interface unchanged (point-moves) |
 | A5 chess | the overlay chain gains a rung — precedence is ORDER-LOAD-BEARING (combat > investigate > patrol, gated on intent==Wait); `NpcBehaviorProfile` gains weight columns; decision receipts extend snapshot rows; garden sub-combat intent pins re-pin (break-contact investigate / dwell / patrol-resume); SEQUENCE against the pending npcBehaviorDebugHud string-mirror cut | s5 precedent: graded overlay was made the SOLE path, no opt-in flag — same rule here |
-| A6 influence | hoists the per-tick `SpatialSurfaceSet` collider rebake (Session.cpp) — a timing-visible perf change; garden tick-cap pins re-measured | declare before, measure after |
+| A6 influence | LANDED SCOPE (v1.9): encounter-time kernel (guardInfluence / potential-visibility [omnidirectional radius+LOS — provably one-sided vs cone vision] / escape-pressure / objective-control over graph NODES) + the battle-report warnings reader; guard samples = placed positions ∪ patrol waypoints. INHERITED BY a9s4 (named, cannot drop): live session-time influence, the L6 allyCoverage/enrichment scoring term, and the per-tick collider-rebake hoist + garden tick-cap re-measure | declare before, measure after; warnings may only under-fire, never over-claim |
 | A7 affordance | ⚠CROSS-LANE, re-ruled v1.6: the contract travels as ANCHOR-KIND STRINGS on `RoomAnchorAsset.kind` — `docs/affordance_vocabulary_v0_1.md` IS the contract artifact (no shared header needed). AI half (fleet): `markerToReasoningNode` string→kind mapping in runtime/ai + the `monster` entity-seeding touch in `PackageSessionSeed.cpp` (named shared-ground touch). Codex half: emit-strings-only (glyph table, `anchorKindForMarkerTag`, authoring reference §1/§4 + inertness-note amendments). Resolves N/M collapse (ordering-sensitive: AI half first or same window — warden_vault authors M) + T/R Stream-4 resolution (T inert placement affordance; R already has LIVE reset-to-spawn gameplay — only its deck semantics are future). Creative GameplayMarker emission of the wire strings: DEFERRED to a later Codex order | one vocabulary, authored once; planner brokers; the CONTRACT DOC is the contract, wire strings append-only |
 | A8a groundwork | `assignNpcBehaviorProfiles` widened to carry patrol/facing (the seed-rebuild trap, PackageSessionSeed.cpp — in-lane shared ground by this order); objective conditions grow past `PlayerHasItem`; the TWO hardcoded outcome rules in SessionTick.cpp subsumed into data | deliberate schema growth, not drift |
 | A8b deck kernel | new module (cards/budget/validator/placement/report); `RuntimeSummary` generalization churns replay `expectedSummaryText` baselines | fallback: fixture-authored graph if A7 stalls |
-| A9 team | target selection replaces hardcoded player-slot-0 in `enqueueNpcBehaviorCommands`; profile catalog goes data-driven (churns Session.cpp per-tick rebuild, ProjectionRefresh, PackageValidator, FixtureScenarioLoader, 4+ test binaries — the catalog is rebuilt EVERY tick today) | the catalog churn list is known and finite; do it once, in one slice |
+| A9 team — STREAM NUMBERED (v1.9) | a9s1: data-driven profile catalog on SessionState (TRANSIENT; **carried across `replaceStateFromLoad` from the pre-load session** — loads are same-scenario by the compatibility gate; bare state-constructions fall back to built-ins) — churns the Session.cpp per-tick rebuild + the ONE-LINE ProjectionRefresh swap (explicit planner-ordered app touch; the function already holds `state`) + FixtureScenarioLoader `[[behavior_profiles]]` full row incl. SoundPerceptionConfig + tests; PackageValidator is charset-only (verified — NO catalog dependency, zero changes). a9s2: personalities as catalog rows. a9s3: shared alert = ally-call SoundEvents. a9s4: target selection + live influence/allyCoverage + the A6-inherited hoist | do the catalog once, in one slice |
 
 ## 5. Reserved sockets (names fixed now; bodies later)
 
@@ -328,6 +328,14 @@ fleet's copy.
   silent); omniscience refusal tightened to perception-events wording.
   Known stale sibling: docs/next_work.md still says slice-5 integration is "next" (s5–s8 have
   landed); update it when trunk settles.
+- v1.9 (2026-07-03): A6 scope ruled (encounter-time reader; potential-visibility one-sidedness
+  proven; patrol waypoints join the guard samples) and its live-session remainder NAMED into
+  a9s4 so no deferral floats in prose. A9 stream numbered s1–s4; a9s1's load path RULED
+  (catalog carried across the state swap — the 'rebuild from scenario on load' idea was
+  unimplementable: replaceStateFromLoad has no scenario access, and the graph slot is pinned
+  default-empty); ProjectionRefresh one-line swap pulled INTO a9s1 (deferring it made the
+  debug snapshot report unresolved for profiles the runtime resolves — a lying receipt);
+  PackageValidator overstatement corrected (charset-only).
 - v1.8 (2026-07-02): **A8b COMPLETE — THE FULL-DNA MINIMUM IS CLOSED** (`1ce8a5cd` deal
   kernel, `648f5812` placement/validator/report, `3f8b4eda` milestone test; 196/196).
   One battlefield deals many battles: seeded splitmix64 draw over the 9-card table (facts =
