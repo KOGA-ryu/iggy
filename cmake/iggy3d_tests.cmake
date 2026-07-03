@@ -526,6 +526,12 @@ iggy3d_add_unit_test(guard_decision_readout tests/unit/guard_decision_readout.cp
 set_tests_properties(guard_decision_readout PROPERTIES
   LABELS "unit;runtime;ai;reasoning;decision;readout;iggy3d")
 
+iggy3d_add_unit_test(encounter_deck_tests tests/unit/encounter_deck_tests.cpp)
+set_tests_properties(encounter_deck_tests PROPERTIES LABELS "unit;runtime;encounter;iggy3d")
+
+iggy3d_add_unit_test(encounter_placement_tests tests/unit/encounter_placement_tests.cpp)
+set_tests_properties(encounter_placement_tests PROPERTIES LABELS "unit;runtime;encounter;iggy3d")
+
 iggy3d_add_unit_test(stealth_garden_tests tests/unit/stealth_garden_tests.cpp)
 set_tests_properties(stealth_garden_tests PROPERTIES
   LABELS "unit;runtime;ai;stealth;garden;iggy3d")
@@ -1346,3 +1352,6 @@ if(TARGET iggy3d_headless_demo)
     PRIVATE
       IGGY3D_HEADLESS_DEMO_PATH="$<TARGET_FILE:iggy3d_headless_demo>")
 endif()
+
+iggy3d_add_unit_test(encounter_milestone_tests tests/unit/encounter_milestone_tests.cpp)
+set_tests_properties(encounter_milestone_tests PROPERTIES LABELS "unit;runtime;encounter;iggy3d")
