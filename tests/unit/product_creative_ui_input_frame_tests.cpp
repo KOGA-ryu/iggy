@@ -80,13 +80,38 @@ iggy3d::ProductUiDrawList disabledActiveRowCreativeDrawList() {
   return iggy3d::buildProductCreativeUiDrawList(request);
 }
 
+const iggy3d::UiHitRegion* findHitRegion(
+    const iggy3d::ProductUiDrawList& drawList,
+    std::string_view semanticId) {
+  for (const iggy3d::UiHitRegion& hit : drawList.hitRegions) {
+    if (hit.semanticId == semanticId) {
+      return &hit;
+    }
+  }
+  return nullptr;
+}
+
+const iggy3d::ProductUiPrimitive* findPrimitive(
+    const iggy3d::ProductUiDrawList& drawList,
+    std::string_view semanticId) {
+  for (const iggy3d::ProductUiPrimitive& primitive : drawList.primitives) {
+    if (primitive.semanticId == semanticId) {
+      return &primitive;
+    }
+  }
+  return nullptr;
+}
+
 iggy3d::ProductCreativeUiInputFrameReceipt consumedActiveRowReceipt() {
   const iggy3d::ProductUiDrawList drawList = defaultCreativeDrawList();
-  const iggy3d::UiHitRegion& activeHit = drawList.hitRegions.front();
+  const iggy3d::UiHitRegion* activeHit =
+      findHitRegion(drawList, "creative.row.tools.active_tool");
 
   iggy3d::ProductCreativeUiInputFrameRequest request;
   request.creativeUiDrawList = &drawList;
-  request.click = clickAt(activeHit.rect.x, activeHit.rect.y);
+  if (activeHit != nullptr) {
+    request.click = clickAt(activeHit->rect.x, activeHit->rect.y);
+  }
   return iggy3d::routeProductCreativeUiInputFrame(request);
 }
 
@@ -881,6 +906,158 @@ bool inputFrameInjectedClickOnActiveToolRowRunsLiveCommandAndSuppressesClick() {
                 "injected no measurement dispatch");
 }
 
+bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
+  iggy3d::FrontendState frontend;
+  iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
+  iggy3d::ProductSaveBridgeResult saves;
+  iggy3d::ProductAppOptions options;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
+  std::optional<iggy3d::Session> activeSession;
+  activeSession.emplace();
+  iggy3d::WorldSetupDraft worldSetupDraft;
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductWindowInputFrameState inputFrame;
+  iggy3d::creative::Facade facade;
+  facade.reset();
+  bool closeRequested = false;
+
+  const iggy3d::creative::CreativeUiBuildReceipt ui = facade.buildUiModel();
+  iggy3d::ProductCreativeUiDrawListRequest drawRequest;
+  drawRequest.model = &ui.model;
+  const iggy3d::ProductUiDrawList drawList =
+      iggy3d::buildProductCreativeUiDrawList(drawRequest);
+  const iggy3d::UiHitRegion* createHit =
+      findHitRegion(drawList, "creative.row.tools.create_room");
+
+  iggy3d::ProductWindowInputClickOverride clickOverride;
+  clickOverride.enabled = true;
+  if (createHit != nullptr) {
+    clickOverride.click = clickAt(createHit->rect.x, createHit->rect.y);
+  }
+
+  iggy3d::processProductWindowInputFrame(iggy3d::ProductWindowInputFrameContext{
+      frontend,
+      saves,
+      options,
+      settingsTab,
+      activeSession,
+      worldSetupDraft,
+      window,
+      settings,
+      inputFrame,
+      closeRequested,
+      nullptr,
+      &facade,
+      &drawList,
+      {},
+      {},
+      0,
+      iggy3d::creative::CreativeViewportPickDepthMode::FixedZ,
+      clickOverride,
+  });
+
+  const iggy3d::creative::CreativeObject* created =
+      facade.findObject(window.creativeUiCommandCreateObjectId);
+  const iggy3d::creative::CreativeUiBuildReceipt rebuiltUi =
+      facade.buildUiModel();
+  iggy3d::ProductCreativeUiDrawListRequest rebuiltDrawRequest;
+  rebuiltDrawRequest.model = &rebuiltUi.model;
+  const iggy3d::ProductUiDrawList rebuiltDrawList =
+      iggy3d::buildProductCreativeUiDrawList(rebuiltDrawRequest);
+  const iggy3d::ProductUiPrimitive* rebuiltCreatePrimitive =
+      findPrimitive(rebuiltDrawList, "creative.row.tools.create_room");
+
+  return expect(createHit != nullptr, "create injected hit exists") &&
+         expect(window.creativeUiInputConsumed,
+                "create injected row click consumed") &&
+         expect(window.creativeUiInputSemanticId ==
+                    "creative.row.tools.create_room",
+                "create injected row semantic") &&
+         expect(window.creativeUiCommandRequested,
+                "create injected command requested") &&
+         expect(window.creativeUiCommandAccepted,
+                "create injected command accepted") &&
+         expect(window.creativeUiCommandChanged,
+                "create injected command changed") &&
+         expect(window.creativeUiCommandKind == "create_room",
+                "create injected command kind") &&
+         expect(window.creativeUiCommandCreateRequested,
+                "create injected create requested") &&
+         expect(window.creativeUiCommandCreateAccepted,
+                "create injected create accepted") &&
+         expect(window.creativeUiCommandCreateChanged,
+                "create injected create changed") &&
+         expect(window.creativeUiCommandCreateStatus == "Created",
+                "create injected create status") &&
+         expect(window.creativeUiCommandCreateObjectId != 0U,
+                "create injected object id") &&
+         expect(window.creativeUiCommandCreateObjectKind == "Room",
+                "create injected object kind") &&
+         expect(window.creativeUiCommandCreateObjectName == "Room",
+                "create injected object name") &&
+         expect(window.creativeUiCommandCreateRevisionBefore == 0U,
+                "create injected revision before") &&
+         expect(window.creativeUiCommandCreateRevisionAfter == 1U,
+                "create injected revision after") &&
+         expect(window.creativeUiCommandCreateDirtyFlags != 0U,
+                "create injected dirty flags") &&
+         expect(window.creativeUiCommandCreateMessage == "object_created",
+                "create injected create message") &&
+         expect(window.creativeUiCommandCreateReasonCode == "object_created",
+                "create injected create reason") &&
+         expect(facade.document().objectCount() == 1U,
+                "create injected object count") &&
+         expect(facade.document().revision() == 1U,
+                "create injected document revision") &&
+         expect(created != nullptr, "create injected object exists") &&
+         expect(created != nullptr &&
+                    created->kind ==
+                        iggy3d::creative::CreativeObjectKind::Room,
+                "create injected object room") &&
+         expect(created != nullptr && created->bounds.min.x == 0.0 &&
+                    created->bounds.min.y == 0.0 &&
+                    created->bounds.min.z == 0.0,
+                "create injected bounds min") &&
+         expect(created != nullptr && created->bounds.max.x == 10.0 &&
+                    created->bounds.max.y == 4.0 &&
+                    created->bounds.max.z == 10.0,
+                "create injected bounds max") &&
+         expect(created != nullptr && created->visible,
+                "create injected visible") &&
+         expect(created != nullptr && !created->locked,
+                "create injected unlocked") &&
+         expect(facade.toolState().activeTool ==
+                    iggy3d::creative::Tool::Select,
+                "create injected active tool unchanged") &&
+         expect(facade.state().tool == iggy3d::creative::Tool::Select,
+                "create injected old tool unchanged") &&
+         expect(facade.selectionState().selectedTarget.value ==
+                    iggy3d::creative::kInvalidId,
+                "create injected selection invalid") &&
+         expect(facade.inspectionState().inspectedTarget.value ==
+                    iggy3d::creative::kInvalidId,
+                "create injected inspection invalid") &&
+         expect(!facade.measurementState().active,
+                "create injected no measurement") &&
+         expect(window.creativeUiInputDownstreamClickSuppressed,
+                "create injected downstream suppressed") &&
+         expect(window.creativeViewportPickClickSuppressed,
+                "create injected viewport suppressed") &&
+         expect(!window.creativeViewportPickPicked,
+                "create injected viewport did not pick") &&
+         expect(window.creativeViewportPickStatus ==
+                    "product_creative_viewport_pick_no_click",
+                "create injected viewport no-click") &&
+         expect(rebuiltCreatePrimitive != nullptr,
+                "create injected rebuilt create row") &&
+         expect(rebuiltCreatePrimitive != nullptr &&
+                    rebuiltCreatePrimitive->text == "Create Room",
+                "create injected rebuilt text");
+}
+
 bool inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool() {
   iggy3d::FrontendState frontend;
   iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
@@ -974,6 +1151,7 @@ int main() {
                   recorderLeavesOtherReceiptFieldsUntouched() &&
                   inputFrameNoClickNullDrawListRecordsNoClick() &&
                   inputFrameInjectedClickOnActiveToolRowRunsLiveCommandAndSuppressesClick() &&
+                  inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() &&
                   inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
