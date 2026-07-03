@@ -9,6 +9,7 @@
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
+#include "app/iggy3d/menu/CreativeUiProjection.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 
@@ -33,6 +34,16 @@ void setPhysicsMovementPlannerProof(ProductAppWindowState& window,
   window.physicsMovementPlannerUsed = used;
   window.physicsMovementPlannerStatus = std::move(status);
   window.physicsMovementPlannerReasonCode = window.physicsMovementPlannerStatus;
+}
+
+std::string_view productUiThemeReceiptName(ProductUiThemeId theme) noexcept {
+  switch (theme) {
+    case ProductUiThemeId::System:
+      return "system";
+    case ProductUiThemeId::Journal:
+      return "journal";
+  }
+  return "unknown";
 }
 
 }  // namespace
@@ -62,6 +73,30 @@ void recordProductPhysicsMovementPlannerTickProof(
   }
   setPhysicsMovementPlannerProof(
       window, "physics_movement_planner_not_used", true, false);
+}
+
+void recordProductCreativeUiProjection(
+    ProductAppWindowState& window,
+    const ProductCreativeUiProjectionReceipt& receipt) {
+  window.creativeUiProjectionRequested = receipt.requested;
+  window.creativeUiProjectionReady = receipt.ready;
+  window.creativeUiProjectionPartial = receipt.partial;
+  window.creativeUiProjectionStatus = std::string(receipt.status);
+  window.creativeUiProjectionReasonCode = std::string(receipt.reasonCode);
+  window.creativeUiProjectionUsedModel = receipt.usedModel;
+  window.creativeUiProjectionUsedFacade = receipt.usedFacade;
+  window.creativeUiProjectionVirtualWidth = receipt.virtualWidth;
+  window.creativeUiProjectionVirtualHeight = receipt.virtualHeight;
+  window.creativeUiProjectionTheme =
+      std::string(productUiThemeReceiptName(receipt.theme));
+  window.creativeUiProjectionPanelCount = receipt.panelCount;
+  window.creativeUiProjectionModelRowCount = receipt.modelRowCount;
+  window.creativeUiProjectionPrimitiveCount = receipt.primitiveCount;
+  window.creativeUiProjectionTextCount = receipt.textCount;
+  window.creativeUiProjectionRectCount = receipt.rectCount;
+  window.creativeUiProjectionRowCount = receipt.rowCount;
+  window.creativeUiProjectionDisabledRowCount = receipt.disabledRowCount;
+  window.creativeUiProjectionHitRegionCount = receipt.hitRegionCount;
 }
 
 RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
@@ -1538,6 +1573,44 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.productVulkanMenuUiRowCount);
   appendReceiptField(receipt, "product_vulkan_menu_ui_selected_action",
                      window.productVulkanMenuUiSelectedAction);
+  appendReceiptField(receipt, "creative_ui_projection_requested",
+                     window.creativeUiProjectionRequested);
+  appendReceiptField(receipt, "creative_ui_projection_ready",
+                     window.creativeUiProjectionReady);
+  appendReceiptField(receipt, "creative_ui_projection_partial",
+                     window.creativeUiProjectionPartial);
+  appendReceiptField(receipt, "creative_ui_projection_status",
+                     window.creativeUiProjectionStatus);
+  appendReceiptField(receipt, "creative_ui_projection_reason_code",
+                     window.creativeUiProjectionReasonCode);
+  appendReceiptField(receipt, "creative_ui_projection_used_model",
+                     window.creativeUiProjectionUsedModel);
+  appendReceiptField(receipt, "creative_ui_projection_used_facade",
+                     window.creativeUiProjectionUsedFacade);
+  appendReceiptField(receipt, "creative_ui_projection_virtual_width",
+                     static_cast<std::uint64_t>(
+                         window.creativeUiProjectionVirtualWidth));
+  appendReceiptField(receipt, "creative_ui_projection_virtual_height",
+                     static_cast<std::uint64_t>(
+                         window.creativeUiProjectionVirtualHeight));
+  appendReceiptField(receipt, "creative_ui_projection_theme",
+                     window.creativeUiProjectionTheme);
+  appendReceiptField(receipt, "creative_ui_projection_panel_count",
+                     window.creativeUiProjectionPanelCount);
+  appendReceiptField(receipt, "creative_ui_projection_model_row_count",
+                     window.creativeUiProjectionModelRowCount);
+  appendReceiptField(receipt, "creative_ui_projection_primitive_count",
+                     window.creativeUiProjectionPrimitiveCount);
+  appendReceiptField(receipt, "creative_ui_projection_text_count",
+                     window.creativeUiProjectionTextCount);
+  appendReceiptField(receipt, "creative_ui_projection_rect_count",
+                     window.creativeUiProjectionRectCount);
+  appendReceiptField(receipt, "creative_ui_projection_row_count",
+                     window.creativeUiProjectionRowCount);
+  appendReceiptField(receipt, "creative_ui_projection_disabled_row_count",
+                     window.creativeUiProjectionDisabledRowCount);
+  appendReceiptField(receipt, "creative_ui_projection_hit_region_count",
+                     window.creativeUiProjectionHitRegionCount);
   appendReceiptField(receipt, "product_vulkan_gameplay_ready",
                      vulkanGameplayReadiness.ready);
   appendReceiptField(receipt, "product_vulkan_gameplay_status",

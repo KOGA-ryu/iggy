@@ -26,6 +26,8 @@
 
 namespace iggy3d {
 
+struct ProductCreativeUiProjectionReceipt;
+
 struct ProductAppWindowState {
   bool requested = false;
   bool sdlAvailable = false;
@@ -492,6 +494,25 @@ struct ProductAppWindowState {
   std::uint64_t productVulkanMenuUiRectCount = 0;
   std::uint64_t productVulkanMenuUiRowCount = 0;
   std::string productVulkanMenuUiSelectedAction = "none";
+  bool creativeUiProjectionRequested = false;
+  bool creativeUiProjectionReady = false;
+  bool creativeUiProjectionPartial = false;
+  std::string creativeUiProjectionStatus = "creative_ui_projection_not_requested";
+  std::string creativeUiProjectionReasonCode =
+      "creative_ui_projection_not_requested";
+  bool creativeUiProjectionUsedModel = false;
+  bool creativeUiProjectionUsedFacade = false;
+  std::uint32_t creativeUiProjectionVirtualWidth = 0;
+  std::uint32_t creativeUiProjectionVirtualHeight = 0;
+  std::string creativeUiProjectionTheme = "none";
+  std::uint64_t creativeUiProjectionPanelCount = 0;
+  std::uint64_t creativeUiProjectionModelRowCount = 0;
+  std::uint64_t creativeUiProjectionPrimitiveCount = 0;
+  std::uint64_t creativeUiProjectionTextCount = 0;
+  std::uint64_t creativeUiProjectionRectCount = 0;
+  std::uint64_t creativeUiProjectionRowCount = 0;
+  std::uint64_t creativeUiProjectionDisabledRowCount = 0;
+  std::uint64_t creativeUiProjectionHitRegionCount = 0;
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;
@@ -510,5 +531,9 @@ void recordProductPhysicsMovementPlannerTickProof(
     bool requested,
     bool collisionSurfacesAvailable,
     bool movementPhysicsStatsAvailable);
+
+void recordProductCreativeUiProjection(
+    ProductAppWindowState& window,
+    const ProductCreativeUiProjectionReceipt& receipt);
 
 }  // namespace iggy3d
