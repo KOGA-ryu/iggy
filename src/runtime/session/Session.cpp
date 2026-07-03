@@ -1278,6 +1278,10 @@ Result<Session> Session::create(const SessionCreateRequest& request) {
   state.objectives = createObjectives(request.seed);
   state.outcomeTable = buildObjectiveOutcomeTable();  // A8a: objective->outcome rules as data
   state.movementProfile = request.seed.movementProfile;  // MA1: the resolved dimension profile
+  if (!isCoherentMovementProfile(state.movementProfile, state.config.movementDistanceMeters)) {
+    return createFailure("session.movement_profile_incoherent",
+                         "movement profile dash exceeds the movement limit");
+  }
   state.nextCommandId = 1;
 
   if (!createWorld(request.seed, state.world)) {
@@ -1508,6 +1512,7 @@ SessionLoadResult Session::replaceStateFromLoad(SessionState loadedState) {
   // the load path has no scenario to rebuild from). If the live catalog were empty, the tick ensure
   // still yields built-ins -- no crash, no lie.
   loadedState.behaviorProfileCatalog = state_.behaviorProfileCatalog;
+  loadedState.movementProfile = state_.movementProfile;  // MA1: carry (same-scenario by identity gate)
   loadedState.currentStateHash = computeStateHash(loadedState);
   result.loadedHash = loadedState.currentStateHash;
   state_ = std::move(loadedState);

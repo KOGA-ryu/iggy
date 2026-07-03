@@ -792,6 +792,10 @@ private:
     line("session.slowTimeScale", formatFloat(envelope_.session.slowTimeScale));
     lineString("session.packageId", envelope_.session.packageId);
     lineString("session.scenarioId", envelope_.session.scenarioId);
+    // MA1: conditional write keeps earth_standard saves byte-identical to pre-MA1 wire.
+    if (envelope_.session.movementProfileId != "earth_standard") {
+      lineString("session.movementProfileId", envelope_.session.movementProfileId);
+    }
   }
 
   void writeWorld() {
@@ -1323,6 +1327,10 @@ private:
     readFloat("session.slowTimeScale", envelope_.session.slowTimeScale);
     readString("session.packageId", envelope_.session.packageId);
     readString("session.scenarioId", envelope_.session.scenarioId);
+    // MA1: absent key => earth_standard (default already set), so old saves decode unchanged.
+    if (nextKeyIs("session.movementProfileId")) {
+      readString("session.movementProfileId", envelope_.session.movementProfileId);
+    }
   }
 
   void readWorld() {

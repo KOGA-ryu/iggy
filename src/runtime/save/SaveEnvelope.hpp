@@ -58,6 +58,7 @@ struct SaveSessionSection {
   float slowTimeScale = 0.250F;
   std::string packageId;
   std::string scenarioId;
+  std::string movementProfileId = "earth_standard";  // MA1: saved (not hashed); default omitted from wire
 };
 
 struct SaveEntityRecord {

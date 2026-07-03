@@ -31,7 +31,7 @@ struct MovementDimensionProfile {
   float fallGravityMultiplier = 1.60F;
   float lookSensitivity = 1.0F;
   float invertLookEnabled = 0.0F;
-  float dashSpeedMetersPerSecond = 18.5F;  // GATE 2 trims to 16.6 in lockstep with the app constant
+  float dashSpeedMetersPerSecond = 16.6F;  // trimmed (16.6 x 0.18 = 2.988 m <= movementDistance 3.0)
   float dashDurationSeconds = 0.18F;
   float dashCooldownSeconds = 0.45F;
   float wallRunMinSpeedMetersPerSecond = 2.0F;
@@ -52,5 +52,12 @@ struct MovementDimensionProfile {
 
 // Fail-closed lookup: the static row for `id`, or nullptr (caller maps null -> seed error).
 const MovementDimensionProfile* movementDimensionProfileById(std::string_view id);
+
+// THE DASH COHERENCE VALIDATION (MA1): a resolved config is coherent iff a dash cannot travel
+// farther than the admission limit -- dashSpeed x dashDuration <= resolvedMovementDistanceMeters (+
+// finite guards). The dash>admission bug (a dash reported accepted then admission-rejected) dies
+// here + at the reorder in Controller.
+bool isCoherentMovementProfile(const MovementDimensionProfile& profile,
+                               float resolvedMovementDistanceMeters);
 
 }  // namespace iggy3d

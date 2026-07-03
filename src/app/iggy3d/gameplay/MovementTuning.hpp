@@ -164,7 +164,7 @@ struct ProductGameplayMovementTuning {
   float lookSensitivity = 1.0F;
   float invertLookEnabled = 0.0F;
 
-  float dashSpeedMetersPerSecond = 18.5F;
+  float dashSpeedMetersPerSecond = 16.6F;  // MA1 dash fix: 16.6 x 0.18 = 2.988 m <= movementDistance 3.0
   float dashDurationSeconds = 0.18F;
   float dashCooldownSeconds = 0.45F;
 

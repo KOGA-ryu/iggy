@@ -1986,6 +1986,33 @@ bool productDashUsesRuntimeTunedWindowDistance() {
                 "runtime tuned dash distance");
 }
 
+// MA1 dash fix: a dash whose distance exceeds the movement admission limit must be REJECTED (not
+// falsely reported accepted), and it must NOT burn a cooldown. Proves the reorder: bookkeeping is
+// gated on command admission, so an admission-rejected move drops straight to rejectProductDash.
+bool productDashRejectedWhenBeyondMovementLimitSetsNoCooldown() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "over-limit dash session created")) {
+    return false;
+  }
+
+  // 40.0 x 0.18 = 7.2 m, far beyond the default 3.0 m admission limit -> the move is rejected.
+  window.gameplayMovementTuning.dashSpeedMetersPerSecond = 40.0F;
+  iggy3d::applyProductGameplayActions(*session,
+                                      dashActions(),
+                                      window,
+                                      "unit/gameplay_controller_dash_too_far");
+
+  return expect(window.gameplayDashRequested, "over-limit dash requested") &&
+         expect(!window.gameplayDashAccepted, "over-limit dash NOT accepted") &&
+         expect(window.gameplayDashStatus == "movement_rejected",
+                "over-limit dash status is movement_rejected") &&
+         expect(window.gameplayDashReasonCode == "gameplay_dash_movement_too_far",
+                "over-limit dash reason code") &&
+         expect(nearlyEqual(window.gameplayDashCooldownRemainingSeconds, 0.0F),
+                "over-limit dash burns NO cooldown");
+}
+
 bool productDashUsesMoveIntentDirection() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -2194,6 +2221,7 @@ int main() {
                   productDashMovesForwardAndRecordsProof() &&
                   productDashUsesRuntimeTunedWindowDistance() &&
                   productDashUsesMoveIntentDirection() &&
+                  productDashRejectedWhenBeyondMovementLimitSetsNoCooldown() &&
                   productDashRejectsDuringCooldown() &&
                   defaultOffMoveWithCollisionSurfacesUsesLegacyPath() &&
                   optInMoveWithCollisionSurfacesUsesPhysicsPlanner() &&

@@ -1563,6 +1563,25 @@ void submitProductDash(Session& session,
   Vec3 destination = actor->transform.position + direction * dashDistance;
   destination.y = actor->transform.position.y;
 
+  // MA1 dash fix: admit the move command FIRST, then gate the accept-bookkeeping (cooldown, distance,
+  // profile) on admission. Previously the bookkeeping (incl. cooldown) ran unconditionally, so a dash
+  // whose distance exceeded the movement limit reported "accepted" yet the move was admission-rejected
+  // -- and it still burned a cooldown. On rejection we set NO cooldown.
+  CommandRecord command;
+  command.playerSlot = 0;
+  command.actor = actor->id;
+  command.kind = CommandKind::Move;
+  command.source = CommandSource::LocalPlayer;
+  command.payload.target.hasPoint = true;
+  command.payload.target.point = destination;
+  submitProductGameplayCommand(session, window, command, collisionSurfaces);
+
+  // branch-gate: BG-1155
+  if (!window.gameplayCommandAccepted) {
+    rejectProductDash(window, "movement_rejected", "gameplay_dash_movement_too_far");
+    return;
+  }
+
   window.gameplayDashAccepted = true;
   window.gameplayDashStatus = "accepted";
   window.gameplayDashReasonCode = "gameplay_dash_accepted";
@@ -1575,15 +1594,6 @@ void submitProductDash(Session& session,
   window.gameplayMovementProfile = std::string{tuning.dashProfile};
   window.gameplayMovementMaxSpeedMetersPerSecond =
       tuning.dashSpeedMetersPerSecond;
-
-  CommandRecord command;
-  command.playerSlot = 0;
-  command.actor = actor->id;
-  command.kind = CommandKind::Move;
-  command.source = CommandSource::LocalPlayer;
-  command.payload.target.hasPoint = true;
-  command.payload.target.point = destination;
-  submitProductGameplayCommand(session, window, command, collisionSurfaces);
 }
 
 Vec3 manualFirstPersonMoveDelta(float moveX,

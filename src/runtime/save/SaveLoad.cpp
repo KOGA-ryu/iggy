@@ -191,6 +191,7 @@ SaveEnvelope envelopeFromState(const SessionState& state) {
   envelope.session.slowTimeScale = state.config.slowTimeScale;
   envelope.session.packageId = state.identity.packageId;
   envelope.session.scenarioId = state.identity.scenarioId;
+  envelope.session.movementProfileId = std::string(state.movementProfile.id);  // MA1: saved id (not hashed)
 
   envelope.world.nextEntityId = state.world.nextEntityId();
   for (const EntityState& entity : state.world.entities()) {
@@ -365,6 +366,13 @@ LoadStateResult buildCandidate(const SaveEnvelope& envelope,
   if (validateRuntimeConfig(candidate.config) != RuntimeConfigStatus::Ok) {
     return loadFailure(SaveLoadStatus::InvalidEnvelope, previousHash, "invalid runtime config");
   }
+  // MA1: fail-closed resolve of the saved profile id (numerics are then carried across load).
+  const MovementDimensionProfile* movementRow =
+      movementDimensionProfileById(envelope.session.movementProfileId);
+  if (movementRow == nullptr) {
+    return loadFailure(SaveLoadStatus::InvalidEnvelope, previousHash, "unknown movement profile");
+  }
+  candidate.movementProfile = *movementRow;
   candidate.nextCommandId = envelope.session.nextCommandId;
 
   for (const SaveEntityRecord& saved : envelope.world.entities) {

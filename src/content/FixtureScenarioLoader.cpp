@@ -387,6 +387,11 @@ ScenarioLoadResult validateRequired(Parser& parser) {
   if (!parser.movementDistance) {
     parser.result.seed.config.movementDistanceMeters = movementRow->movementDistanceMeters;
   }
+  if (!isCoherentMovementProfile(parser.result.seed.movementProfile,
+                                 parser.result.seed.config.movementDistanceMeters)) {
+    return fail(parser, ScenarioLoadStatus::InvalidNumber, "scenario.incoherent_movement_profile",
+                "movement profile dash exceeds the movement limit", 0, 0);
+  }
 
   if (!parser.scenarioId || parser.result.seed.scenarioId.empty()) {
     return fail(parser, ScenarioLoadStatus::MissingScenarioId, "scenario.missing_id",
