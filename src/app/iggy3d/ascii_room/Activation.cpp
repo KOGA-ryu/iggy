@@ -114,6 +114,9 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   }
 
   activeSession = std::move(session.value);
+  // MA1: initialize the window's mutable tuning copy from the session's resolved dimension profile.
+  applyMovementDimensionProfileToTuning(activeSession->state().movementProfile,
+                                        window.gameplayMovementTuning);
   window.activeRoomCollision =
       buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
   result.ok = true;

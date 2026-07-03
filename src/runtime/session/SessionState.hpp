@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "config/MovementDimensionProfile.hpp"
 #include "config/RuntimeConfig.hpp"
 #include "runtime/ai/AiState.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
@@ -122,6 +123,11 @@ struct SessionState {
   // across replaceStateFromLoad (loads are same-scenario by the identity gate, and the load path has
   // no scenario to rebuild from); self-heals to the built-ins if empty (a bare Session(state)).
   NpcBehaviorProfileCatalog behaviorProfileCatalog;
+
+  // Selected movement dimension profile (MA1). TRANSIENT-IN-PERSISTENCE like the reasoningGraph/
+  // outcomeTable/catalog club: OFF StateHash/SaveCodec-state (movementDistanceMeters keeps its own
+  // hashed+saved path). Set at create from the seed; CARRIED across replaceStateFromLoad (GATE 2).
+  MovementDimensionProfile movementProfile;
 
   std::uint64_t currentStateHash = 0;
 };

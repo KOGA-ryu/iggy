@@ -107,6 +107,10 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
   window.activeRoom = {};
   window.activeRoomCollision = {};
   activeSession = std::move(session.value);
+  // MA1: initialize the window's mutable tuning copy from the session's resolved dimension profile
+  // (earth_standard maps byte-identical to today's default; giant_lowgrav tunes it up).
+  applyMovementDimensionProfileToTuning(activeSession->state().movementProfile,
+                                        window.gameplayMovementTuning);
   if (!package.rooms.empty()) {
     window.activeRoom = buildProductActiveRoomFromPackageRoom(
         package.rooms.front(), package.manifest.packageId, package.scenario.scenarioId);

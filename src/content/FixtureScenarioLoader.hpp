@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "config/MovementDimensionProfile.hpp"
 #include "config/RuntimeConfig.hpp"
 #include "core/diagnostics/Diagnostic.hpp"
 #include "core/math/Aabb3.hpp"
@@ -90,6 +91,10 @@ struct ScenarioAiGuardAnchorSeed {
 struct FixtureScenarioSeed {
   std::string scenarioId;
   RuntimeConfig config;
+  // Selected movement dimension profile (MA1). Default earth_standard; the loader resolves the
+  // scenario's `movement_profile` key against the static rows and applies precedence (an explicit
+  // movement_distance_meters overrides the profile's limit).
+  MovementDimensionProfile movementProfile;
   ClockMode initialClockMode = ClockMode::Normal;
   CameraMode defaultRealtimeCamera = CameraMode::ThirdPerson;
   CameraMode defaultTacticalCamera = CameraMode::TacticalOverhead;

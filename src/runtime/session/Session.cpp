@@ -1277,6 +1277,7 @@ Result<Session> Session::create(const SessionCreateRequest& request) {
   state.inventory = createInventory(request.seed);
   state.objectives = createObjectives(request.seed);
   state.outcomeTable = buildObjectiveOutcomeTable();  // A8a: objective->outcome rules as data
+  state.movementProfile = request.seed.movementProfile;  // MA1: the resolved dimension profile
   state.nextCommandId = 1;
 
   if (!createWorld(request.seed, state.world)) {

@@ -6,6 +6,8 @@
 #include <cstdint>
 #include <string_view>
 
+#include "config/MovementDimensionProfile.hpp"
+
 namespace iggy3d {
 
 enum class ProductGameplayMovementTuningField : std::uint8_t {
@@ -182,6 +184,43 @@ inline constexpr ProductGameplayMovementTuning kProductGameplayMovementTuning{};
 
 constexpr const ProductGameplayMovementTuning& productGameplayMovementTuning() {
   return kProductGameplayMovementTuning;
+}
+
+// MA1: map the runtime/config-side MovementDimensionProfile MIRROR onto the app tuning at window
+// init (the injection point). Copies the 26 numerics + 3 ids (NOT movementDistanceMeters -- that is
+// runtime config, not app feel). earth_standard maps BYTE-IDENTICAL to kProductGameplayMovementTuning
+// (a test guards this anti-drift). This is the ONLY place the two structs meet.
+inline void applyMovementDimensionProfileToTuning(const MovementDimensionProfile& profile,
+                                                  ProductGameplayMovementTuning& tuning) {
+  tuning.walkProfile = profile.walkProfile;
+  tuning.sprintProfile = profile.sprintProfile;
+  tuning.dashProfile = profile.dashProfile;
+  tuning.walkSpeedMetersPerSecond = profile.walkSpeedMetersPerSecond;
+  tuning.sprintSpeedMetersPerSecond = profile.sprintSpeedMetersPerSecond;
+  tuning.groundAccelerationMetersPerSecondSquared = profile.groundAccelerationMetersPerSecondSquared;
+  tuning.groundDecelerationMetersPerSecondSquared = profile.groundDecelerationMetersPerSecondSquared;
+  tuning.airControlMultiplier = profile.airControlMultiplier;
+  tuning.inputStepSeconds = profile.inputStepSeconds;
+  tuning.jumpImpulseMetersPerSecond = profile.jumpImpulseMetersPerSecond;
+  tuning.gravityMetersPerSecondSquared = profile.gravityMetersPerSecondSquared;
+  tuning.coyoteTimeSeconds = profile.coyoteTimeSeconds;
+  tuning.jumpBufferSeconds = profile.jumpBufferSeconds;
+  tuning.jumpCutMultiplier = profile.jumpCutMultiplier;
+  tuning.fallGravityMultiplier = profile.fallGravityMultiplier;
+  tuning.lookSensitivity = profile.lookSensitivity;
+  tuning.invertLookEnabled = profile.invertLookEnabled;
+  tuning.dashSpeedMetersPerSecond = profile.dashSpeedMetersPerSecond;
+  tuning.dashDurationSeconds = profile.dashDurationSeconds;
+  tuning.dashCooldownSeconds = profile.dashCooldownSeconds;
+  tuning.wallRunMinSpeedMetersPerSecond = profile.wallRunMinSpeedMetersPerSecond;
+  tuning.wallRunMaxWallNormalY = profile.wallRunMaxWallNormalY;
+  tuning.wallRunDurationSeconds = profile.wallRunDurationSeconds;
+  tuning.wallRunGravityMultiplier = profile.wallRunGravityMultiplier;
+  tuning.wallRunSpeedMultiplier = profile.wallRunSpeedMultiplier;
+  tuning.wallJumpProbeMeters = profile.wallJumpProbeMeters;
+  tuning.wallJumpPushMeters = profile.wallJumpPushMeters;
+  tuning.wallJumpRiseMeters = profile.wallJumpRiseMeters;
+  tuning.wallJumpMinAirborneHeightMeters = profile.wallJumpMinAirborneHeightMeters;
 }
 
 struct ProductGameplayMovementTuningFieldDescriptor {

@@ -96,6 +96,7 @@ struct Parser {
   bool initialClock = false;
   bool realtimeCamera = false;
   bool tacticalCamera = false;
+  std::string movementProfileId = "earth_standard";  // MA1: selection key (default = earth_standard)
   std::vector<PlayerFlags> playerFlags;
   std::vector<EntityFlags> entityFlags;
   std::vector<ObjectiveFlags> objectiveFlags;
@@ -375,13 +376,26 @@ bool parseObjectiveStatus(std::string_view value, ObjectiveStatusSeed& out) {
 }
 
 ScenarioLoadResult validateRequired(Parser& parser) {
+  // MA1: resolve the movement dimension profile (fail-closed on an unknown id) and apply precedence
+  // -- an explicit movement_distance_meters overrides the profile's limit; absent takes the row's.
+  const MovementDimensionProfile* movementRow = movementDimensionProfileById(parser.movementProfileId);
+  if (movementRow == nullptr) {
+    return fail(parser, ScenarioLoadStatus::InvalidEnum, "scenario.unknown_movement_profile",
+                "unknown movement_profile " + parser.movementProfileId, 0, 0);
+  }
+  parser.result.seed.movementProfile = *movementRow;
+  if (!parser.movementDistance) {
+    parser.result.seed.config.movementDistanceMeters = movementRow->movementDistanceMeters;
+  }
+
   if (!parser.scenarioId || parser.result.seed.scenarioId.empty()) {
     return fail(parser, ScenarioLoadStatus::MissingScenarioId, "scenario.missing_id",
                 "missing scenario id", 0, 0);
   }
-  if (!parser.fixedTick || !parser.interactionRange || !parser.movementDistance ||
-      !parser.slowScale || !parser.initialClock || !parser.realtimeCamera ||
-      !parser.tacticalCamera) {
+  // MA1: movement_distance_meters is now OPTIONAL -- the dimension profile provides it (resolved
+  // above; an explicit key overrides). Every existing fixture still sets it, so back-compat holds.
+  if (!parser.fixedTick || !parser.interactionRange || !parser.slowScale || !parser.initialClock ||
+      !parser.realtimeCamera || !parser.tacticalCamera) {
     return fail(parser, ScenarioLoadStatus::MissingRequiredKey, "scenario.missing_required_key",
                 "missing defaults key", 0, 0);
   }
@@ -548,6 +562,11 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
         if (!parser.slowScale) {
           return fail(parser, ScenarioLoadStatus::InvalidNumber, "scenario.invalid_number",
                       "invalid slow time scale", lineNumber, column);
+        }
+      } else if (key == "movement_profile") {
+        if (!parseString(value, parser.movementProfileId)) {
+          return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",
+                      "invalid movement_profile", lineNumber, column);
         }
       } else if (key == "initial_clock") {
         std::string token;
