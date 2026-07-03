@@ -1,4 +1,4 @@
-# The Movement & Abilities Maximum — destiny document v1.2
+# The Movement & Abilities Maximum — destiny document v1.3
 
 > Planner-authored 2026-07-03. The lane's SECOND WING: parkour movement, the ability engine,
 > and NPCs USING BOTH. Sibling to `docs/ai-lane-maximum.md` (v1.10) — same laws: slices cut
@@ -123,7 +123,9 @@ SOUND declaration + receipts + a MovementTestLab lane. Every verb is a down-paym
 
 ### M3 — NPC movement capability (the novel one; MA4)
 - **Capability CLASSES, not per-guard configs**: a small enum (grounded / climber / leaper /
-  flier-reserved), each a `TravelCostConfig` row (+∞ multiplier = edge unusable); profile
+  flier-reserved), each a `TravelCostConfig` row (unusable edge = a named sentinel the
+  router SKIPS — no float-INF arithmetic; InfluenceMap's +inf-for-unreached convention is
+  separate and untouched) (v1.3 correction); profile
   carries its class. The config threads through the **FOUR default-{} call sites** that must
   agree on reachability: GuardDecision (search routing), Session (route-following),
   InfluenceMap (Dijkstra weights), EncounterPlacement (validator reachability).
@@ -195,7 +197,17 @@ MA5   New parkour verbs, RUNTIME-FIRST (slide, ledge-hang,
 MA6   Damage types + status skeleton                           ← unlocks the content matrix
 MA7   (pre-named, unscheduled) Motor unification — landing
       thump + falling damage + CommandKind::Traverse +
-      impulse reconciliation land HERE
+      impulse reconciliation + VERB SOUND (player traversal
+      silence + NPC traversal silence, both declared) land HERE
+M-LAB (tooling, cuttable anytime, serves the experimental-
+      movement mandate): the FEEL LABORATORY — the in-game
+      tuning cockpit (live field adjust EXISTS in the menu
+      stack; grows to full field coverage + dimension-profile
+      hot-swap + EXPORT-current-tuning-as-profile-row receipt:
+      feel is zeroed IN GAME, then becomes data — nobody
+      transcribes numbers) + the parkour GYM fixtures (graded
+      stations per feat; earth + giant variants on identical
+      geometry)
 DAG: MA1 ∥ MA2 ∥ MA3a ∥ MA4 all independent · MA3b ← MA2 (+ AI-map sequencing) ·
 MA5 ← M2 law (motor-phase pattern, benefits from MA7 direction but doesn't wait) ·
 MA6 independent · MA7 last.
@@ -214,6 +226,15 @@ MA6 independent · MA7 last.
 - The feedback rule + version log (inherited verbatim from the AI map).
 
 ## 5. Version log
+- v1.3 (2026-07-03): MA4 pre-flight corrections + the feel laboratory. (a) §M3 cost rows:
+  unusable = router-skips sentinel, NOT +∞ arithmetic (the critic's better call);
+  (b) MA7 row now owns VERB SOUND — player traversal emits nothing today (recon fact)
+  and ma4s2's NPC traversal declares silence — both unify there; (c) M-LAB added
+  (tooling row): the in-game tuning cockpit exists in embryo (menu-stack field adjust,
+  21 fields) and grows full coverage + profile hot-swap + export-as-profile-row; plus
+  parkour gym fixtures — the user's experimental-movement mandate gets a lab, and tuned
+  feel exits the lab as DATA. (d) MA4 sequencing law recorded: a9s4 must not run
+  concurrently with ma4s1 (both churn InfluenceMap + the Session decision chain).
 - v1.2 (2026-07-03): **MA1 COMPLETE** (two gated slices, both verdicts clean; trunk
   9a149977+5d967485+7fe362a1 (ma1s1) + ecd1c6e0 (ma1s2); suite 209/209; zero re-pins,
   zero StateHash change across the whole stream).
