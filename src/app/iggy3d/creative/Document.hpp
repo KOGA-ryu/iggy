@@ -14,6 +14,10 @@
 
 namespace iggy3d::creative {
 
+using CreativeDocumentId = std::uint64_t;
+
+inline constexpr CreativeDocumentId kInvalidDocumentId = 0;
+
 enum class CreativeDocumentCreateStatus : std::uint8_t {
   Unknown,
   InvalidDocument,
@@ -104,16 +108,15 @@ class CreativeDocument {
   [[nodiscard]] static CreativeDocument create(std::string name);
 
   [[nodiscard]] bool isValid() const noexcept;
+  [[nodiscard]] CreativeDocumentId id() const noexcept;
   [[nodiscard]] std::string_view name() const noexcept;
   [[nodiscard]] std::uint64_t revision() const noexcept;
   [[nodiscard]] CreativeObjectDirtyFlags dirtyFlags() const noexcept;
   [[nodiscard]] CreativeObjectDirtyFlags drainDirtyFlags() noexcept;
 
+  [[nodiscard]] bool assignId(CreativeDocumentId id) noexcept;
   bool rename(std::string nextName);
   void reset();
-
-  // Future slice: document identity.
-  // [[nodiscard]] CreativeDocumentId id() const noexcept;
 
   [[nodiscard]] std::uint64_t objectCount() const noexcept;
   [[nodiscard]] bool containsObject(CreativeObjectId id) const noexcept;
@@ -173,12 +176,10 @@ class CreativeDocument {
   void markDirty(CreativeObjectDirtyFlags dirtyFlags) noexcept;
 
   bool valid_{true};
+  CreativeDocumentId id_{kInvalidDocumentId};
   std::string name_{};
   std::uint64_t revision_{0};
   CreativeObjectDirtyFlags dirtyFlags_{0};
-
-  // Future slice: stable document identity.
-  // CreativeDocumentId id_{};
 
   std::vector<CreativeObject> objects_{};
   std::unordered_map<CreativeObjectId, std::size_t> objectIndex_{};

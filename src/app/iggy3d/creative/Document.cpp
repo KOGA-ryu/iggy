@@ -91,6 +91,10 @@ bool CreativeDocument::isValid() const noexcept {
   return valid_;
 }
 
+CreativeDocumentId CreativeDocument::id() const noexcept {
+  return id_;
+}
+
 std::string_view CreativeDocument::name() const noexcept {
   return name_;
 }
@@ -109,6 +113,16 @@ CreativeObjectDirtyFlags CreativeDocument::drainDirtyFlags() noexcept {
   return drained;
 }
 
+bool CreativeDocument::assignId(CreativeDocumentId id) noexcept {
+  if (id == kInvalidDocumentId || id_ == id ||
+      id_ != kInvalidDocumentId) {
+    return false;
+  }
+
+  id_ = id;
+  return true;
+}
+
 bool CreativeDocument::rename(std::string nextName) {
   if (!valid_ || name_ == nextName) {
     return false;
@@ -121,6 +135,7 @@ bool CreativeDocument::rename(std::string nextName) {
 
 void CreativeDocument::reset() {
   valid_ = true;
+  id_ = kInvalidDocumentId;
   name_.clear();
   revision_ = 0;
   dirtyFlags_ = 0;
@@ -130,7 +145,6 @@ void CreativeDocument::reset() {
   nextObjectId_ = 1;
 
   // Future slice reset duties:
-  // id_ = {};
   // units_ = CreativeUnits::Meters;
   // gridSettings_ = {};
   // snapSettings_ = {};
