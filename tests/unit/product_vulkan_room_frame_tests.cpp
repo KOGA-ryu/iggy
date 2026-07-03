@@ -1261,6 +1261,8 @@ bool gameplayMapMakerFrameCarriesGridOverlay() {
     return false;
   }
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.mapMakerStatus = "map_maker_enabled";
+  window.mapMakerReasonCode = window.mapMakerStatus;
   window.viewport.creativeFlyAnchorValid = true;
   window.viewport.creativeFlyPositionMeters = {0.0F, 2.0F, 0.0F};
   iggy3d::FrontendState frontend;

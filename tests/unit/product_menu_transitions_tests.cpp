@@ -168,11 +168,15 @@ int main() {
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const iggy3d::RenderReceipt creativeGameplayReceipt =
       receiptFor(frontend, settings, window);
-  ok &= expectReceiptField(creativeGameplayReceipt, "map_maker_active", "true",
-                           "creative gameplay receipt derives map maker live");
+  ok &= expectReceiptField(creativeGameplayReceipt, "map_maker_active", "false",
+                           "creative gameplay alone is not map maker live");
   window.interactionMode = iggy3d::ProductInteractionMode::Player;
 
   activateMapMaker(window);
+  const iggy3d::RenderReceipt activeMapMakerReceipt =
+      receiptFor(frontend, settings, window);
+  ok &= expectReceiptField(activeMapMakerReceipt, "map_maker_active", "true",
+                           "explicit map maker receipt is live");
   showMovementTuning(window);
   retainGroundVelocity(window);
   retainJumpTiming(window);

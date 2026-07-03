@@ -39,6 +39,11 @@ ProductFrontendSurface surfaceForParentOwner(MenuOwner owner) {
   return ProductFrontendSurface::None;
 }
 
+bool mapMakerExplicitlyEnabled(const ProductAppWindowState& window) {
+  return window.mapMakerStatus == "map_maker_enabled" ||
+         window.mapMakerStatus == "map_maker_active";
+}
+
 ProductInputSurface inputSurfaceForActiveSurface(
     const ProductActiveSurfaceContext& context,
     ProductFrontendSurface surface) {
@@ -290,6 +295,7 @@ bool productMapMakerLiveForWindow(const FrontendState& frontend,
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
   return window.interactionMode == ProductInteractionMode::Creative &&
+         mapMakerExplicitlyEnabled(window) &&
          surface.activeSurface == ProductFrontendSurface::Gameplay &&
          surface.inputOwner == MenuOwner::Gameplay &&
          !surface.gameplayInputSuppressed;

@@ -1,5 +1,6 @@
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -183,6 +184,10 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
          expect(window.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "creative launch interaction mode") &&
+         expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
+                "creative launch does not activate map maker") &&
+         expect(window.mapMakerStatus == "map_maker_inactive",
+                "creative launch map maker inactive status") &&
          expect(frontend.childScreen == iggy3d::FrontendScreen::Gameplay,
                 "creative launch frontend gameplay") &&
          expect(window.launchStatus == "product_creative_world_launched",
