@@ -1,4 +1,4 @@
-# The Movement & Abilities Maximum — destiny document v1.1
+# The Movement & Abilities Maximum — destiny document v1.2
 
 > Planner-authored 2026-07-03. The lane's SECOND WING: parkour movement, the ability engine,
 > and NPCs USING BOTH. Sibling to `docs/ai-lane-maximum.md` (v1.10) — same laws: slices cut
@@ -88,7 +88,7 @@ B2  Damage types +     ABSENT bare int32 today; the interaction matrix's spine
 —   Authoring          ⚠CROSS ascii tags live ('J'→wall_jump); creative WallRunSurface (Codex)
 ```
 
-### M1 — Dimension profiles + the sneak stance (the FIRST stream)
+### M1 — Dimension profiles + the sneak stance (the FIRST stream) — ✅ SHIPPED (MA1, v1.2)
 - **`MovementDimensionProfile`** (reserved): the per-world movement envelope — the FULL
   `ProductGameplayMovementTuning` STRUCT (~26 numeric fields + 3 profile-name ids; do NOT
   size from the 21-entry HUD descriptor table — it omits the wall-jump quad and
@@ -184,7 +184,7 @@ BUILT and test-pinned. Generalize the data:
 ## 3. Streams and order
 
 ```
-MA1   Dimension profiles + SNEAK stance + dash fix            ← FIRST (identity + user ruling)
+MA1   Dimension profiles + SNEAK stance + dash fix            ✅ SHIPPED (209/209 @ ecd1c6e0)
 MA2   Ability engine n→N (+ wild-magic sockets, ONE schema)
 MA3a  Player cast + gameplay.cast + cast noise                ← independent, early payoff
 MA3b  NPC caster rung (needs MA2; sequenced vs a9s3/a9s4)
@@ -214,6 +214,26 @@ MA6 independent · MA7 last.
 - The feedback rule + version log (inherited verbatim from the AI map).
 
 ## 5. Version log
+- v1.2 (2026-07-03): **MA1 COMPLETE** (two gated slices, both verdicts clean; trunk
+  9a149977+5d967485+7fe362a1 (ma1s1) + ecd1c6e0 (ma1s2); suite 209/209; zero re-pins,
+  zero StateHash change across the whole stream).
+  LANDED: `MovementDimensionProfile` runtime-mirror rows `earth_standard`/`giant_lowgrav`
+  (TOML `movement_profile` selection, explicit-key-overrides-profile precedence, profile id
+  SAVED-not-hashed with conditional envelope key); dash coherence validator + dashSpeed
+  trimmed 16.6 + bookkeeping-after-admission (the live bug dead); giant-jumps-higher apex
+  assert (bare `>`, through the real integrator); `MovementMode::Sneak` (appended) carried
+  by `kMoveSneakBit` on the EXISTING `payload.userData0`; SaveCodec now persists
+  userData0/1 (the latent hashed-but-not-saved hole CLOSED); sneak speed/loudness
+  multipliers are per-dimension profile fields, fail-closed validated (quieter, NEVER
+  silent — loudness floor); crouch = HOLD, mode-filter respected; automation
+  `gameplay.crouch`/`game.crouch`.
+  MAP CORRECTIONS from the cut (the cutter corrects the map): (a) automation HOLDS are
+  persistent window FLAGS (state-setter verbs, like `physics_movement`) — tapes cannot
+  hold a key across move verbs; (b) sneak's speed half scales the per-step delta only —
+  the retained-momentum model is UNCHANGED (deliberate v1 minimal; a "sneak decelerates
+  momentum" pass belongs to a later movement stream); (c) the garden's tuned-down footstep
+  knobs mean walk-vs-sneak separation is only measurable at close range — the 1 m
+  reference lane is the pattern for future audibility cases.
 - v1.1 (2026-07-03): 2-critic pass. Blockers fixed: new verbs RUNTIME-FIRST (PlayerMotor
   phases — the lawless layer frozen); MA4 trigger ruled (traversal inside Move-command
   execution; world 3 relabeled lawful-adjacent; CommandKind::Traverse reserved for MA7);
