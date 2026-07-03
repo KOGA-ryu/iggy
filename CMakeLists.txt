@@ -135,6 +135,7 @@ target_sources(iggy3d
     src/app/iggy3d/window/Loop.cpp
     src/app/iggy3d/window/RendererLifecycle.cpp
     src/app/iggy3d/world/Creation.cpp
+    src/app/iggy3d/world/CreativeWorldService.cpp
     src/app/iggy3d/ReceiptBuilder.cpp
     src/app/iggy3d/save/SaveBridge.cpp
     src/app/frontend/FrontendState.cpp
