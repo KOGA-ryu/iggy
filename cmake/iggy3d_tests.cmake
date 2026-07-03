@@ -33,6 +33,9 @@ set_tests_properties(package_loader_tests PROPERTIES LABELS "unit;content;iggy3d
 iggy3d_add_unit_test(room_asset_loader_tests tests/unit/room_asset_loader_tests.cpp)
 set_tests_properties(room_asset_loader_tests PROPERTIES LABELS "unit;content;room_asset;iggy3d")
 
+iggy3d_add_unit_test(parkour_gym_tests tests/unit/parkour_gym_tests.cpp)
+set_tests_properties(parkour_gym_tests PROPERTIES LABELS "unit;content;movement;iggy3d")
+
 iggy3d_add_unit_test(editable_room_document_tests tests/unit/editable_room_document_tests.cpp)
 set_tests_properties(editable_room_document_tests PROPERTIES
   LABELS "unit;content;authoring;room_edit;iggy3d")

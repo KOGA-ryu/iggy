@@ -1,0 +1,551 @@
+[room]
+id = "parkour_gym"
+version = 1
+units = "ft"
+source = "iggy3d.hand_authored"
+source_file = "fixtures/demos/parkour_gym_earth/assets/rooms/parkour_gym.room.iggy3d.toml"
+source_subset = "parkour_gym_v1"
+
+[conversion]
+feet_to_meters = 0.3048
+world_axis_x = "east"
+world_axis_y = "up"
+world_axis_z = "south"
+
+# ---------------------------------------------------------------------------
+# Parkour gym: graded feel-test stations. Authored in FEET (kFeetToMeters 0.3048).
+# Boundary-critical grades are OFF the strict boundary so feet->meter conversion
+# cannot flip a `>` comparison (clamber max is 1.80 m; the top PASSING rung is
+# authored at 5.75 ft = 1.753 m, and the over-max wall at 7.5 ft = 2.286 m).
+# The room asset file is BYTE-IDENTICAL between parkour_gym_earth and _giant --
+# only the scenario's movement_profile differs.
+# ---------------------------------------------------------------------------
+
+[[static_meshes]]
+id = "main_floor"
+mesh = "gym_floor_panel"
+role = "floor"
+position_ft = [36.0, 0.0, 36.0]
+size_ft = [72.0, 0.10, 72.0]
+material = "gym_floor"
+
+[[static_meshes]]
+id = "north_wall"
+mesh = "gym_wall_panel"
+role = "wall"
+position_ft = [36.0, 4.0, 0.5]
+size_ft = [72.0, 8.0, 1.0]
+material = "gym_wall"
+
+[[static_meshes]]
+id = "south_wall"
+mesh = "gym_wall_panel"
+role = "wall"
+position_ft = [36.0, 4.0, 71.5]
+size_ft = [72.0, 8.0, 1.0]
+material = "gym_wall"
+
+[[static_meshes]]
+id = "west_wall"
+mesh = "gym_wall_panel"
+role = "wall"
+position_ft = [0.5, 4.0, 36.0]
+size_ft = [1.0, 8.0, 72.0]
+material = "gym_wall"
+
+[[static_meshes]]
+id = "east_wall"
+mesh = "gym_wall_panel"
+role = "wall"
+position_ft = [71.5, 4.0, 36.0]
+size_ft = [1.0, 8.0, 72.0]
+material = "gym_wall"
+
+# --- STATION 2: CLAMBER LADDER (Z=12) -------------------------------------
+# Five role="ledge" walls with a clamber-tagged walkable top + clamber-tagged
+# actor blocker (the affordance recipe). Heights: 2.0/3.5/4.0/5.75/7.5 ft ->
+# clamber_low / clamber_mid / clamber_mid / clamber_high / blocked_high.
+[[static_meshes]]
+id = "clamber_rung_low"
+mesh = "gym_ledge_block"
+role = "ledge"
+position_ft = [10.0, 1.00, 12.0]
+size_ft = [4.0, 2.00, 2.0]
+material = "gym_ledge"
+
+[[static_meshes]]
+id = "clamber_rung_mid"
+mesh = "gym_ledge_block"
+role = "ledge"
+position_ft = [18.0, 1.75, 12.0]
+size_ft = [4.0, 3.50, 2.0]
+material = "gym_ledge"
+
+[[static_meshes]]
+id = "clamber_rung_midb"
+mesh = "gym_ledge_block"
+role = "ledge"
+position_ft = [26.0, 2.00, 12.0]
+size_ft = [4.0, 4.00, 2.0]
+material = "gym_ledge"
+
+[[static_meshes]]
+id = "clamber_rung_high"
+mesh = "gym_ledge_block"
+role = "ledge"
+position_ft = [34.0, 2.875, 12.0]
+size_ft = [4.0, 5.75, 2.0]
+material = "gym_ledge"
+
+[[static_meshes]]
+id = "clamber_rung_blocked"
+mesh = "gym_ledge_block"
+role = "ledge"
+position_ft = [42.0, 3.75, 12.0]
+size_ft = [4.0, 7.50, 2.0]
+material = "gym_ledge"
+
+# --- STATION 3: VAULT RAILS (Z=20) ----------------------------------------
+# role="rail" + "vault" in the id (the legacy-name affordance). Tops at
+# ~0.6/1.0/1.4/2.2 m; the 2.2 m rail is over the 2.0 m vault ceiling (never vaults).
+[[static_meshes]]
+id = "vault_rail_low"
+mesh = "gym_rail"
+role = "rail"
+position_ft = [10.0, 1.85, 20.0]
+size_ft = [6.0, 0.30, 0.30]
+material = "gym_rail"
+
+[[static_meshes]]
+id = "vault_rail_mid"
+mesh = "gym_rail"
+role = "rail"
+position_ft = [18.0, 3.15, 20.0]
+size_ft = [6.0, 0.30, 0.30]
+material = "gym_rail"
+
+[[static_meshes]]
+id = "vault_rail_high"
+mesh = "gym_rail"
+role = "rail"
+position_ft = [26.0, 4.45, 20.0]
+size_ft = [6.0, 0.30, 0.30]
+material = "gym_rail"
+
+[[static_meshes]]
+id = "vault_rail_overlimit"
+mesh = "gym_rail"
+role = "rail"
+position_ft = [34.0, 7.10, 20.0]
+size_ft = [6.0, 0.30, 0.30]
+material = "gym_rail"
+
+# --- STATION 4: WIRE RUN (5/10/20 m rails) --------------------------------
+# role="rail" + "wire" in the id. The 20 m wire (65.6 ft) spans most of the gym.
+[[static_meshes]]
+id = "wire_rail_05m"
+mesh = "gym_rail"
+role = "rail"
+position_ft = [36.0, 3.00, 28.0]
+size_ft = [16.4, 0.25, 0.25]
+material = "gym_rail"
+
+[[static_meshes]]
+id = "wire_rail_10m"
+mesh = "gym_rail"
+role = "rail"
+position_ft = [36.0, 3.00, 34.0]
+size_ft = [32.8, 0.25, 0.25]
+material = "gym_rail"
+
+[[static_meshes]]
+id = "wire_rail_20m"
+mesh = "gym_rail"
+role = "rail"
+position_ft = [36.0, 3.00, 42.0]
+size_ft = [65.6, 0.25, 0.25]
+material = "gym_rail"
+
+# --- STATION 5: WALL-RUN GALLERY (bare wall blockers, no tag) -------------
+[[static_meshes]]
+id = "wallrun_wall_a"
+mesh = "gym_wall_panel"
+role = "wall"
+position_ft = [10.0, 2.0, 50.0]
+size_ft = [1.0, 4.0, 12.0]
+material = "gym_wall"
+
+[[static_meshes]]
+id = "wallrun_wall_b"
+mesh = "gym_wall_panel"
+role = "wall"
+position_ft = [24.0, 2.0, 50.0]
+size_ft = [1.0, 4.0, 12.0]
+material = "gym_wall"
+
+[[static_meshes]]
+id = "wallrun_wall_c"
+mesh = "gym_wall_panel"
+role = "wall"
+position_ft = [40.0, 2.0, 50.0]
+size_ft = [1.0, 4.0, 12.0]
+material = "gym_wall"
+
+# --- STATION 6: WALL-JUMP CHIMNEY (SHIPS INERT) ---------------------------
+# wall_jump is not TOML-legal (whitelist; the tag exists only on the ASCII
+# J-glyph path). These two facing walls ~2 m apart rising ~8 ft are inert
+# geometry -- the named finding is in the slice REPORT.
+[[static_meshes]]
+id = "chimney_wall_west"
+mesh = "gym_wall_panel"
+role = "wall"
+position_ft = [54.0, 4.0, 50.0]
+size_ft = [1.0, 8.0, 8.0]
+material = "gym_wall"
+
+[[static_meshes]]
+id = "chimney_wall_east"
+mesh = "gym_wall_panel"
+role = "wall"
+position_ft = [60.6, 4.0, 50.0]
+size_ft = [1.0, 8.0, 8.0]
+material = "gym_wall"
+
+# --- STATION 1 + 9: JUMP PITS / DROP TOWER (ledges, walkable-only) --------
+# role="ledge" WITHOUT clamber-tagged surfaces derives NO traversal slot --
+# these are pure jump/drop feel probes.
+[[static_meshes]]
+id = "jump_start_pad"
+mesh = "gym_ledge_block"
+role = "ledge"
+position_ft = [8.0, 0.30, 62.0]
+size_ft = [6.0, 0.60, 6.0]
+material = "gym_ledge"
+
+[[static_meshes]]
+id = "jump_landing_pad"
+mesh = "gym_ledge_block"
+role = "ledge"
+position_ft = [40.0, 0.60, 62.0]
+size_ft = [6.0, 1.20, 6.0]
+material = "gym_ledge"
+
+[[static_meshes]]
+id = "drop_tower_platform"
+mesh = "gym_ledge_block"
+role = "ledge"
+position_ft = [58.0, 13.0, 62.0]
+size_ft = [6.0, 26.0, 6.0]
+material = "gym_ledge"
+
+# --- STATION 7: DASH LANES (floor markers at 2.5/3.0/3.5 m) ---------------
+# 3.5 m > earth's 3.0 admission limit yet <= giant's 4.5: the dimension edge,
+# felt physically. Pure signage, no slot.
+[[static_meshes]]
+id = "dash_marker_2p5m"
+mesh = "gym_marker"
+role = "dash"
+position_ft = [12.20, 0.12, 6.0]
+size_ft = [0.30, 0.06, 3.0]
+material = "gym_marker"
+
+[[static_meshes]]
+id = "dash_marker_3p0m"
+mesh = "gym_marker"
+role = "dash"
+position_ft = [13.84, 0.12, 6.0]
+size_ft = [0.30, 0.06, 3.0]
+material = "gym_marker"
+
+[[static_meshes]]
+id = "dash_marker_3p5m"
+mesh = "gym_marker"
+role = "dash"
+position_ft = [15.48, 0.12, 6.0]
+size_ft = [0.30, 0.06, 3.0]
+material = "gym_marker"
+
+# --- STATION 8: SLOPE FAN (one ramp per band; 45 deg is blocked) ----------
+[[static_meshes]]
+id = "slope_ramp_20deg"
+mesh = "gym_ramp"
+role = "slope"
+position_ft = [30.0, 1.0, 6.0]
+size_ft = [8.0, 0.12, 8.0]
+material = "gym_slope"
+
+[[static_meshes]]
+id = "slope_ramp_45deg"
+mesh = "gym_ramp"
+role = "slope"
+position_ft = [42.0, 1.0, 6.0]
+size_ft = [8.0, 0.12, 8.0]
+material = "gym_slope"
+
+# --- STATION 10: SNEAK ALLEY (per-meter markers, no guard) ----------------
+[[static_meshes]]
+id = "sneak_marker_start"
+mesh = "gym_marker"
+role = "dash"
+position_ft = [52.0, 0.12, 8.0]
+size_ft = [0.20, 0.06, 3.0]
+material = "gym_marker"
+
+[[static_meshes]]
+id = "sneak_marker_end"
+mesh = "gym_marker"
+role = "dash"
+position_ft = [64.0, 0.12, 8.0]
+size_ft = [0.20, 0.06, 3.0]
+material = "gym_marker"
+
+# ===========================================================================
+# SPATIAL SURFACES
+# ===========================================================================
+
+[[spatial_surfaces]]
+id = "main_floor_walkable"
+source_static_mesh = "main_floor"
+shape = "plane"
+role = "walkable"
+points_ft = [[0.0, 0.05, 0.0], [72.0, 0.05, 0.0], [72.0, 0.05, 72.0], [0.0, 0.05, 72.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "north_wall_actor_blocker"
+source_static_mesh = "north_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[0.0, 0.0, 0.0], [72.0, 0.0, 0.0], [72.0, 8.0, 1.0], [0.0, 8.0, 1.0]]
+normal = [0.0, 0.0, 1.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "south_wall_actor_blocker"
+source_static_mesh = "south_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[0.0, 0.0, 71.0], [72.0, 0.0, 71.0], [72.0, 8.0, 72.0], [0.0, 8.0, 72.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "west_wall_actor_blocker"
+source_static_mesh = "west_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 8.0, 72.0], [0.0, 8.0, 72.0]]
+normal = [1.0, 0.0, 0.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "east_wall_actor_blocker"
+source_static_mesh = "east_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[71.0, 0.0, 0.0], [72.0, 0.0, 0.0], [72.0, 8.0, 72.0], [71.0, 8.0, 72.0]]
+normal = [-1.0, 0.0, 0.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+# Clamber ladder: top (walkable+clamber) + front (blocker+clamber) per wall.
+[[spatial_surfaces]]
+id = "clamber_rung_low_top"
+source_static_mesh = "clamber_rung_low"
+shape = "plane"
+role = "walkable"
+points_ft = [[8.0, 2.00, 11.0], [12.0, 2.00, 11.0], [12.0, 2.00, 13.0], [8.0, 2.00, 13.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_rung_low_blocker"
+source_static_mesh = "clamber_rung_low"
+shape = "box"
+role = "blocker"
+points_ft = [[8.0, 0.0, 11.0], [12.0, 0.0, 11.0], [12.0, 2.00, 13.0], [8.0, 2.00, 13.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_rung_mid_top"
+source_static_mesh = "clamber_rung_mid"
+shape = "plane"
+role = "walkable"
+points_ft = [[16.0, 3.50, 11.0], [20.0, 3.50, 11.0], [20.0, 3.50, 13.0], [16.0, 3.50, 13.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_rung_mid_blocker"
+source_static_mesh = "clamber_rung_mid"
+shape = "box"
+role = "blocker"
+points_ft = [[16.0, 0.0, 11.0], [20.0, 0.0, 11.0], [20.0, 3.50, 13.0], [16.0, 3.50, 13.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_rung_midb_top"
+source_static_mesh = "clamber_rung_midb"
+shape = "plane"
+role = "walkable"
+points_ft = [[24.0, 4.00, 11.0], [28.0, 4.00, 11.0], [28.0, 4.00, 13.0], [24.0, 4.00, 13.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_rung_midb_blocker"
+source_static_mesh = "clamber_rung_midb"
+shape = "box"
+role = "blocker"
+points_ft = [[24.0, 0.0, 11.0], [28.0, 0.0, 11.0], [28.0, 4.00, 13.0], [24.0, 4.00, 13.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_rung_high_top"
+source_static_mesh = "clamber_rung_high"
+shape = "plane"
+role = "walkable"
+points_ft = [[32.0, 5.75, 11.0], [36.0, 5.75, 11.0], [36.0, 5.75, 13.0], [32.0, 5.75, 13.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_rung_high_blocker"
+source_static_mesh = "clamber_rung_high"
+shape = "box"
+role = "blocker"
+points_ft = [[32.0, 0.0, 11.0], [36.0, 0.0, 11.0], [36.0, 5.75, 13.0], [32.0, 5.75, 13.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_rung_blocked_top"
+source_static_mesh = "clamber_rung_blocked"
+shape = "plane"
+role = "walkable"
+points_ft = [[40.0, 7.50, 11.0], [44.0, 7.50, 11.0], [44.0, 7.50, 13.0], [40.0, 7.50, 13.0]]
+normal = [0.0, 1.0, 0.0]
+traversal_tags = ["walkable", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = false
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "clamber_rung_blocked_blocker"
+source_static_mesh = "clamber_rung_blocked"
+shape = "box"
+role = "blocker"
+points_ft = [[40.0, 0.0, 11.0], [44.0, 0.0, 11.0], [44.0, 7.50, 13.0], [40.0, 7.50, 13.0]]
+normal = [0.0, 0.0, -1.0]
+traversal_tags = ["blocker", "clamber"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+# Wall-run + chimney: bare actor blockers (NO clamber tag -> no slot).
+[[spatial_surfaces]]
+id = "wallrun_wall_a_blocker"
+source_static_mesh = "wallrun_wall_a"
+shape = "box"
+role = "blocker"
+points_ft = [[9.5, 0.0, 44.0], [10.5, 0.0, 44.0], [10.5, 4.0, 56.0], [9.5, 4.0, 56.0]]
+normal = [-1.0, 0.0, 0.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wallrun_wall_b_blocker"
+source_static_mesh = "wallrun_wall_b"
+shape = "box"
+role = "blocker"
+points_ft = [[23.5, 0.0, 44.0], [24.5, 0.0, 44.0], [24.5, 4.0, 56.0], [23.5, 4.0, 56.0]]
+normal = [-1.0, 0.0, 0.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[spatial_surfaces]]
+id = "wallrun_wall_c_blocker"
+source_static_mesh = "wallrun_wall_c"
+shape = "box"
+role = "blocker"
+points_ft = [[39.5, 0.0, 44.0], [40.5, 0.0, 44.0], [40.5, 4.0, 56.0], [39.5, 4.0, 56.0]]
+normal = [-1.0, 0.0, 0.0]
+traversal_tags = ["blocker"]
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+
+[[anchors]]
+id = "player_spawn"
+kind = "spawn"
+position_ft = [19.685, 0.0, 19.685]
+
+[[anchors]]
+id = "gold_key"
+kind = "pickup"
+position_ft = [19.685, 0.0, 9.843]
+runtime_stable_name = "gold_key"
