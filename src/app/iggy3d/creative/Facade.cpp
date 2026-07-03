@@ -44,6 +44,57 @@ namespace {
   return applyGhostToolIntent(state, intent, snapSettings);
 }
 
+[[nodiscard]] bool targetRefMatchesObject(TargetRef target,
+                                          CreativeObjectId objectId) noexcept {
+  CreativeObjectId targetObjectId = kInvalidObjectId;
+  return targetRefToObjectId(target, targetObjectId) &&
+         targetObjectId == objectId;
+}
+
+void clearTargetRefIfMatches(TargetRef& target,
+                             CreativeObjectId objectId) noexcept {
+  if (targetRefMatchesObject(target, objectId)) {
+    target = {};
+  }
+}
+
+void invalidateRemovedObjectEditorState(
+    CreativeObjectId objectId,
+    State& state,
+    CreativeToolState& toolState,
+    CreativeSelectionState& selectionState,
+    CreativeInspectionState& inspectionState,
+    CreativeMeasurementState& measurementState,
+    CreativeGhostState& ghostState) noexcept {
+  if (targetRefMatchesObject(selectionState.selectedTarget, objectId)) {
+    static_cast<void>(setSelectedTarget(selectionState, {}));
+  }
+  if (targetRefMatchesObject(selectionState.candidateTarget, objectId)) {
+    static_cast<void>(updateSelectionCandidate(selectionState, {}));
+  }
+
+  if (targetRefMatchesObject(inspectionState.inspectedTarget, objectId)) {
+    static_cast<void>(setInspectedTarget(inspectionState, {}));
+  }
+  if (targetRefMatchesObject(inspectionState.candidateTarget, objectId)) {
+    static_cast<void>(updateInspectionCandidate(inspectionState, {}));
+  }
+
+  clearTargetRefIfMatches(toolState.pointer.target, objectId);
+  state.selected = selectionState.selectedTarget;
+  clearTargetRefIfMatches(state.hovered, objectId);
+
+  if (ghostState.visible && targetRefMatchesObject(ghostState.target, objectId)) {
+    static_cast<void>(hideGhost(ghostState));
+  }
+
+  if (targetRefMatchesObject(measurementState.startPoint.target, objectId) ||
+      targetRefMatchesObject(measurementState.currentPoint.target, objectId)) {
+    static_cast<void>(clearMeasurement(measurementState));
+    toolState.measurementActive = false;
+  }
+}
+
 }  // namespace
 
 std::string_view toString(CreativeFacadeMutationStatus status) noexcept {
@@ -349,6 +400,13 @@ bool Facade::removeObject(const RemoveObjectCommand& command) {
   recordCommandAttempt(stats_);
   const bool removed = document_.removeObject(command.id);
   if (removed) {
+    invalidateRemovedObjectEditorState(command.id,
+                                       state_,
+                                       toolState_,
+                                       selectionState_,
+                                       inspectionState_,
+                                       measurementState_,
+                                       ghostState_);
     recordCommandSuccess(stats_);
   } else {
     recordCommandFailure(stats_);
