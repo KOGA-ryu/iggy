@@ -32,6 +32,12 @@ enum class ProductGameplayMovementTuningField : std::uint8_t {
   WallRunDuration,
   WallRunGravityMultiplier,
   WallRunSpeedMultiplier,
+  // M-LAB s1: the wall-jump quad -- appended at the END so the prior ordinals (== array indices) are
+  // stable. These complete full feel coverage (every float field but inputStepSeconds is now tunable).
+  WallJumpProbe,
+  WallJumpPush,
+  WallJumpRise,
+  WallJumpMinAirborneHeight,
 };
 
 enum class ProductGameplayMovementTuningFieldKind : std::uint8_t {
@@ -180,7 +186,23 @@ struct ProductGameplayMovementTuning {
   float wallJumpMinAirborneHeightMeters = 0.20F;
 };
 
+// M-LAB s1 anti-drift guard: the descriptor-coverage test counts float fields by sizeof arithmetic
+// (sizeof(struct) - 3*sizeof(string_view)) / sizeof(float), which is only valid if the layout is
+// padding-free. 48 B ids + 104 B floats = 152 B, 8-aligned -- enforce it at compile time so a future
+// field that changes the layout can't silently break the count.
+static_assert(sizeof(ProductGameplayMovementTuning) ==
+                  3U * sizeof(std::string_view) + 26U * sizeof(float),
+              "ProductGameplayMovementTuning layout drifted -- update the descriptor coverage math");
+
 inline constexpr ProductGameplayMovementTuning kProductGameplayMovementTuning{};
+
+// M-LAB s1: fields DELIBERATELY excluded from the tuning cockpit. inputStepSeconds is the fixed tick
+// step -- constitution, not feel -- so it gets no descriptor; the coverage test counts it here so the
+// (descriptors + exclusions == float fields) invariant still holds.
+inline constexpr std::array<float ProductGameplayMovementTuning::*, 1U>
+    kExcludedMovementTuningFields{{
+        &ProductGameplayMovementTuning::inputStepSeconds,
+    }};
 
 constexpr const ProductGameplayMovementTuning& productGameplayMovementTuning() {
   return kProductGameplayMovementTuning;
@@ -236,7 +258,7 @@ struct ProductGameplayMovementTuningFieldDescriptor {
   float step = 0.1F;
 };
 
-inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 21U>
+inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 25U>
     kProductGameplayMovementTuningFields{{
         {ProductGameplayMovementTuningField::WalkSpeed,
          "walk_speed_mps",
@@ -406,6 +428,39 @@ inline constexpr std::array<ProductGameplayMovementTuningFieldDescriptor, 21U>
          0.25F,
          2.0F,
          0.05F},
+        // M-LAB s1: the wall-jump quad completes feel coverage (coherent ranges, appended in enum order).
+        {ProductGameplayMovementTuningField::WallJumpProbe,
+         "wall_jump_probe_m",
+         "WALLJMP PROBE",
+         &ProductGameplayMovementTuning::wallJumpProbeMeters,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.1F,
+         2.0F,
+         0.02F},
+        {ProductGameplayMovementTuningField::WallJumpPush,
+         "wall_jump_push_m",
+         "WALLJMP PUSH",
+         &ProductGameplayMovementTuning::wallJumpPushMeters,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.1F,
+         3.0F,
+         0.05F},
+        {ProductGameplayMovementTuningField::WallJumpRise,
+         "wall_jump_rise_m",
+         "WALLJMP RISE",
+         &ProductGameplayMovementTuning::wallJumpRiseMeters,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.0F,
+         2.0F,
+         0.05F},
+        {ProductGameplayMovementTuningField::WallJumpMinAirborneHeight,
+         "wall_jump_min_airborne_height_m",
+         "WALLJMP MINAIR",
+         &ProductGameplayMovementTuning::wallJumpMinAirborneHeightMeters,
+         ProductGameplayMovementTuningFieldKind::Scalar,
+         0.0F,
+         1.0F,
+         0.02F},
     }};
 
 constexpr std::size_t productGameplayMovementTuningFieldCount() {

@@ -2361,7 +2361,7 @@ bool movementTuningGameplayInputIsLiveAndFocused() {
       expect(previous.handled, "movement tuning up handled") &&
       expect(previous.accepted, "movement tuning up accepted") &&
       expect(window.gameplayMovementTuningSelectedField ==
-                 iggy3d::ProductGameplayMovementTuningField::WallRunSpeedMultiplier,
+                 iggy3d::ProductGameplayMovementTuningField::WallJumpMinAirborneHeight,
              "movement tuning up wraps to previous field");
 
   const iggy3d::ProductMovementTuningInputResult next =
