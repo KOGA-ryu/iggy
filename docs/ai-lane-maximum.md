@@ -1,4 +1,4 @@
-# The AI Lane Maximum — destiny document v1.4
+# The AI Lane Maximum — destiny document v1.5
 
 > Planner-authored 2026-07-02. This is the END of the AI lane: every behaviour layer the game's
 > identity demands, their contracts, the dependency DAG, the pre-declared churn, and the
@@ -326,6 +326,18 @@ fleet's copy.
   silent); omniscience refusal tightened to perception-events wording.
   Known stale sibling: docs/next_work.md still says slice-5 integration is "next" (s5–s8 have
   landed); update it when trunk settles.
+- v1.5 (2026-07-02): A5 COMPLETE (`55916b5f` kernel, `49a2d44c` rung; 192/192). L6 landed:
+  `chooseSearchNode` (1-ply, signed-factor `GuardDecisionReceipt`, `excludedNodeId`
+  suppression), `NpcPersonalityWeights` neutral columns on the profile (the A9 seam),
+  `PlannedRoute.totalCostMeters` additive, the SEARCH rung (combat > investigate > SEARCH >
+  patrol; trigger `band∈{3,4} && intent==Wait && !hasLastKnownTarget && graph non-empty`;
+  COLD-MEMORY ruling — clearMemory's surviving stale sample steers suspicion). CORRECTIONS:
+  the A5 churn row's "decision receipts extend snapshot rows" is DEFERRED past the
+  npcBehaviorDebugHud string-mirror cut — receipts live in a transient AiActorState slot read
+  by `guard_decision_readout`; V1 search shape = alternation between top nodes (searched-node
+  SET = pre-named L3 extension). A10 DIAL LOGGED: at reference constants cold-trail suspicion
+  (~0.01) is dwarfed by strategic value (20) — falloff/half-life tuning will re-pin exactly
+  the ONE quarantined a5s1 garden test.
 - v1.4 (2026-07-02): A4 COMPLETE (`bd8230f1` kernel, `e0c7625c` wiring; 190/190). Signature
   correction ratified: `travelCost(edge, config)` actor-free v1 + `planRoute(graph, colliders,
   from, to, config)` taking BAKED colliders (buildReasoningGraph bakes internally; planRoute
