@@ -1,4 +1,4 @@
-# The AI Lane Maximum — destiny document v1.3
+# The AI Lane Maximum — destiny document v1.4
 
 > Planner-authored 2026-07-02. This is the END of the AI lane: every behaviour layer the game's
 > identity demands, their contracts, the dependency DAG, the pre-declared churn, and the
@@ -269,7 +269,9 @@ integration per the §2 L1 ruling — fields on the bus, existing `npcStepAlert`
 `npcStepAlertBehavior` signature, which is hereby retired) · `LightField`, `PointLightSample`,
 `lightLevelAt` · `ReasoningGraph`, `ReasoningNode`, `ReasoningEdge`, `ReasoningNodeKind`,
 `ReasoningEdgeKind`, `buildReasoningGraph(room…)` (runtime-side header; notebook includes it) ·
-`travelCost(actor, node)` · `GuardDecisionReceipt` · `InfluenceMap`, `InfluenceChannel` ·
+`travelCost(edge, config)` (v1 as landed — actor-free edge cost; actor-bearing terms land with
+the slope/personality tuning slices) + `planRoute(graph, colliders, from, to, config)` ·
+`GuardDecisionReceipt` · `InfluenceMap`, `InfluenceChannel` ·
 `EncounterCard{requires, provides, cost}`, `EncounterBudget`, `EncounterValidator`,
 `EncounterBattleReport`, `dealEncounterHand` · `markerToReasoningNode` (the A7 mapping, Codex's
 half) · `NpcPersonalityWeights` (columns on `NpcBehaviorProfile`) · `selectNpcTarget` ·
@@ -324,6 +326,14 @@ fleet's copy.
   silent); omniscience refusal tightened to perception-events wording.
   Known stale sibling: docs/next_work.md still says slice-5 integration is "next" (s5–s8 have
   landed); update it when trunk settles.
+- v1.4 (2026-07-02): A4 COMPLETE (`bd8230f1` kernel, `e0c7625c` wiring; 190/190). Signature
+  correction ratified: `travelCost(edge, config)` actor-free v1 + `planRoute(graph, colliders,
+  from, to, config)` taking BAKED colliders (buildReasoningGraph bakes internally; planRoute
+  never does). One shared `reasoningSegmentBlocked` ray discipline for senses/edges/routes.
+  Route state transient on AiActorState keyed (intent, plannedForDestination); interim nodes
+  use the patrol stop/arrive pair; chase stays direct; guards flank island-blocked
+  investigate/return destinations (measured 15 ticks vs infinite stall). Zero existing
+  re-pins — makeGardenSession stays graphless by design.
 - v1.3 (2026-07-02): a3s1 landed (`e247af24`, 188/188) — vocabulary + anchor/waypoint nodes +
   walkable edges, garden pinned. Cutter-carried flag ruled: `ReasoningNodeKind::reference`
   (14th kind) CONFIRMED — provenance-neutral entity-anchor kind; semantic spawn-region kinds
