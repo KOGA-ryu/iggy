@@ -121,7 +121,8 @@ struct CreativeMutationApplyOptions {
 // Detailed future executor hooks. They are declared now so the mutation engine
 // has a complete landing map, but complex payload storage is intentionally not
 // forced into CreativeObject yet. Until specific payload fields exist on objects,
-// these may return NoChange or Applied-with-dirty-receipt in the implementation.
+// these return NoChange with no dirty flags rather than pretending that future
+// storage changed.
 [[nodiscard]] CreativeMutationApplyReceipt applyAttachMutation(CreativeObject& object, CreativeMutationKind mutationKind, const AttachToMutation& mutation);
 [[nodiscard]] CreativeMutationApplyReceipt applyLinkMutation(CreativeObject& object, CreativeMutationKind mutationKind, const LinkTargetMutation& mutation);
 [[nodiscard]] CreativeMutationApplyReceipt applySocketMutation(CreativeObject& object, CreativeMutationKind mutationKind, const SetSocketMutation& mutation);

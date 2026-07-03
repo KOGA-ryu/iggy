@@ -36,6 +36,12 @@ namespace {
         std::move(message));
 }
 
+[[nodiscard]] CreativeMutationApplyReceipt makeFutureStorageNoChangeReceipt(
+    const CreativeObject& object,
+    CreativeMutationKind mutationKind) {
+    return makeNoChangeReceipt(object, mutationKind, "mutation has no stored object field yet");
+}
+
 [[nodiscard]] bool sameVec3(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
     return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
@@ -82,6 +88,42 @@ namespace {
     return std::find(object.tags.begin(), object.tags.end(), tag) != object.tags.end();
 }
 
+[[nodiscard]] CreativeMutationApplyReceipt applyRotateMutationAs(
+    CreativeObject& object,
+    CreativeMutationKind mutationKind,
+    const RotateMutation& mutation) {
+    if (sameVec3(object.transform.rotation, mutation.rotation)) {
+        return makeNoChangeReceipt(object, mutationKind, "object rotation already matches requested value");
+    }
+
+    object.transform.rotation = mutation.rotation;
+    return makeAppliedReceipt(object, mutationKind, "object rotated");
+}
+
+[[nodiscard]] CreativeMutationApplyReceipt applyResizeMutationAs(
+    CreativeObject& object,
+    CreativeMutationKind mutationKind,
+    CreativeVec3 size) {
+    if (sameVec3(boundsSize(object.bounds), size)) {
+        return makeNoChangeReceipt(object, mutationKind, "object bounds size already matches requested value");
+    }
+
+    object.bounds = resizeBoundsFromMin(object.bounds, size);
+    return makeAppliedReceipt(object, mutationKind, "object resized");
+}
+
+[[nodiscard]] CreativeMutationApplyReceipt applySetBoundsMutationAs(
+    CreativeObject& object,
+    CreativeMutationKind mutationKind,
+    const SetBoundsMutation& mutation) {
+    if (sameBounds(object.bounds, mutation.bounds)) {
+        return makeNoChangeReceipt(object, mutationKind, "object bounds already match requested bounds");
+    }
+
+    object.bounds = mutation.bounds;
+    return makeAppliedReceipt(object, mutationKind, "object bounds changed");
+}
+
 [[nodiscard]] CreativeMutationApplyReceipt applyPayloadToObject(
     CreativeObject& object,
     CreativeMutationKind mutationKind,
@@ -102,8 +144,9 @@ namespace {
     case CreativeMutationKind::Move:
         return applyMoveMutation(object, std::get<MoveMutation>(value));
     case CreativeMutationKind::Rotate:
-    case CreativeMutationKind::SetSpawnFacing:
         return applyRotateMutation(object, std::get<RotateMutation>(value));
+    case CreativeMutationKind::SetSpawnFacing:
+        return applyRotateMutationAs(object, mutationKind, std::get<RotateMutation>(value));
     case CreativeMutationKind::Scale:
         return applyScaleMutation(object, std::get<ScaleMutation>(value));
     case CreativeMutationKind::SetTransform:
@@ -114,8 +157,9 @@ namespace {
     case CreativeMutationKind::Stretch:
         return applyStretchMutation(object, std::get<StretchMutation>(value));
     case CreativeMutationKind::SetBounds:
-    case CreativeMutationKind::SetTriggerShape:
         return applySetBoundsMutation(object, std::get<SetBoundsMutation>(value));
+    case CreativeMutationKind::SetTriggerShape:
+        return applySetBoundsMutationAs(object, mutationKind, std::get<SetBoundsMutation>(value));
 
     case CreativeMutationKind::SetHeight:
     case CreativeMutationKind::SetRadius:
@@ -149,11 +193,11 @@ namespace {
     case CreativeMutationKind::SetCameraRail:
         return applyLinkMutation(object, mutationKind, std::get<LinkTargetMutation>(value));
     case CreativeMutationKind::UnlinkTarget:
-        return makeAppliedReceipt(object, mutationKind, "link target mutation accepted for future payload storage");
+        return makeFutureStorageNoChangeReceipt(object, mutationKind);
     case CreativeMutationKind::SetSocket:
         return applySocketMutation(object, mutationKind, std::get<SetSocketMutation>(value));
     case CreativeMutationKind::ClearSocket:
-        return makeAppliedReceipt(object, mutationKind, "clear socket mutation accepted for future payload storage");
+        return makeFutureStorageNoChangeReceipt(object, mutationKind);
 
     case CreativeMutationKind::AssignLayer:
         return applyAssignLayerMutation(object, std::get<AssignLayerMutation>(value));
@@ -350,12 +394,7 @@ CreativeMutationApplyReceipt applyMoveMutation(CreativeObject& object, const Mov
 }
 
 CreativeMutationApplyReceipt applyRotateMutation(CreativeObject& object, const RotateMutation& mutation) {
-    if (sameVec3(object.transform.rotation, mutation.rotation)) {
-        return makeNoChangeReceipt(object, CreativeMutationKind::Rotate, "object rotation already matches requested value");
-    }
-
-    object.transform.rotation = mutation.rotation;
-    return makeAppliedReceipt(object, CreativeMutationKind::Rotate, "object rotated");
+    return applyRotateMutationAs(object, CreativeMutationKind::Rotate, mutation);
 }
 
 CreativeMutationApplyReceipt applyScaleMutation(CreativeObject& object, const ScaleMutation& mutation) {
@@ -377,12 +416,7 @@ CreativeMutationApplyReceipt applySetTransformMutation(CreativeObject& object, c
 }
 
 CreativeMutationApplyReceipt applyResizeMutation(CreativeObject& object, const ResizeMutation& mutation) {
-    if (sameVec3(boundsSize(object.bounds), mutation.size)) {
-        return makeNoChangeReceipt(object, CreativeMutationKind::Resize, "object bounds size already matches requested value");
-    }
-
-    object.bounds = resizeBoundsFromMin(object.bounds, mutation.size);
-    return makeAppliedReceipt(object, CreativeMutationKind::Resize, "object resized");
+    return applyResizeMutationAs(object, CreativeMutationKind::Resize, mutation.size);
 }
 
 CreativeMutationApplyReceipt applyStretchMutation(CreativeObject& object, const StretchMutation& mutation) {
@@ -395,34 +429,29 @@ CreativeMutationApplyReceipt applyStretchMutation(CreativeObject& object, const 
 }
 
 CreativeMutationApplyReceipt applySetBoundsMutation(CreativeObject& object, const SetBoundsMutation& mutation) {
-    if (sameBounds(object.bounds, mutation.bounds)) {
-        return makeNoChangeReceipt(object, CreativeMutationKind::SetBounds, "object bounds already match requested bounds");
-    }
-
-    object.bounds = mutation.bounds;
-    return makeAppliedReceipt(object, CreativeMutationKind::SetBounds, "object bounds changed");
+    return applySetBoundsMutationAs(object, CreativeMutationKind::SetBounds, mutation);
 }
 
 CreativeMutationApplyReceipt applyScalarMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ScalarMutation& mutation) {
     switch (mutationKind) {
     case CreativeMutationKind::SetHeight: {
         const auto size = boundsSize(object.bounds);
-        return applyResizeMutation(object, ResizeMutation{CreativeVec3{size.x, mutation.value, size.z}});
+        return applyResizeMutationAs(object, mutationKind, CreativeVec3{size.x, mutation.value, size.z});
     }
     case CreativeMutationKind::SetLength: {
         const auto size = boundsSize(object.bounds);
-        return applyResizeMutation(object, ResizeMutation{CreativeVec3{size.x, size.y, mutation.value}});
+        return applyResizeMutationAs(object, mutationKind, CreativeVec3{mutation.value, size.y, size.z});
     }
     case CreativeMutationKind::SetWidth: {
         const auto size = boundsSize(object.bounds);
-        return applyResizeMutation(object, ResizeMutation{CreativeVec3{mutation.value, size.y, size.z}});
+        return applyResizeMutationAs(object, mutationKind, CreativeVec3{mutation.value, size.y, size.z});
     }
     case CreativeMutationKind::SetDepth: {
         const auto size = boundsSize(object.bounds);
-        return applyResizeMutation(object, ResizeMutation{CreativeVec3{size.x, size.y, mutation.value}});
+        return applyResizeMutationAs(object, mutationKind, CreativeVec3{size.x, size.y, mutation.value});
     }
     default:
-        return makeAppliedReceipt(object, mutationKind, "scalar mutation accepted for future payload storage");
+        return makeFutureStorageNoChangeReceipt(object, mutationKind);
     }
 }
 
@@ -483,56 +512,52 @@ CreativeMutationApplyReceipt applyClearTagsMutation(CreativeObject& object, Crea
 }
 
 CreativeMutationApplyReceipt applyAttachMutation(CreativeObject& object, CreativeMutationKind mutationKind, const AttachToMutation& mutation) {
+    if (object.parentId.has_value() && object.parentId.value() == mutation.targetId) {
+        return makeNoChangeReceipt(object, mutationKind, "object parent already matches requested parent");
+    }
+
     object.parentId = mutation.targetId;
-    return makeAppliedReceipt(object, mutationKind, "attachment mutation accepted; socket payload storage is future work");
+    return makeAppliedReceipt(object, mutationKind, "object parent changed");
 }
 
 CreativeMutationApplyReceipt applyLinkMutation(CreativeObject& object, CreativeMutationKind mutationKind, const LinkTargetMutation& mutation) {
-    (void)object;
     (void)mutation;
-    return makeMutationApplyReceipt(
-        CreativeMutationApplyStatus::Applied,
-        object,
-        mutationKind,
-        dirtyFlagsForMutation(object.kind, mutationKind),
-        true,
-        true,
-        "link mutation accepted for future relationship payload storage");
+    return makeFutureStorageNoChangeReceipt(object, mutationKind);
 }
 
 CreativeMutationApplyReceipt applySocketMutation(CreativeObject& object, CreativeMutationKind mutationKind, const SetSocketMutation& mutation) {
     (void)mutation;
-    return makeAppliedReceipt(object, mutationKind, "socket mutation accepted for future socket payload storage");
+    return makeFutureStorageNoChangeReceipt(object, mutationKind);
 }
 
 CreativeMutationApplyReceipt applyTextMutation(CreativeObject& object, CreativeMutationKind mutationKind, const TextMutation& mutation) {
     (void)mutation;
-    return makeAppliedReceipt(object, mutationKind, "text mutation accepted for future text payload storage");
+    return makeFutureStorageNoChangeReceipt(object, mutationKind);
 }
 
 CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation) {
     (void)mutation;
-    return makeAppliedReceipt(object, mutationKind, "reference source mutation accepted for future reference payload storage");
+    return makeFutureStorageNoChangeReceipt(object, mutationKind);
 }
 
 CreativeMutationApplyReceipt applyColorMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ColorMutation& mutation) {
     (void)mutation;
-    return makeAppliedReceipt(object, mutationKind, "color mutation accepted for future color payload storage");
+    return makeFutureStorageNoChangeReceipt(object, mutationKind);
 }
 
 CreativeMutationApplyReceipt applyAudioSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const AudioSourceMutation& mutation) {
     (void)mutation;
-    return makeAppliedReceipt(object, mutationKind, "audio source mutation accepted for future audio payload storage");
+    return makeFutureStorageNoChangeReceipt(object, mutationKind);
 }
 
 CreativeMutationApplyReceipt applyStringIdMutation(CreativeObject& object, CreativeMutationKind mutationKind, const StringIdMutation& mutation) {
     (void)mutation;
-    return makeAppliedReceipt(object, mutationKind, "string id mutation accepted for future semantic payload storage");
+    return makeFutureStorageNoChangeReceipt(object, mutationKind);
 }
 
 CreativeMutationApplyReceipt applyObjectKindMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ObjectKindMutation& mutation) {
     (void)mutation;
-    return makeAppliedReceipt(object, mutationKind, "object-kind mutation accepted for future payload storage");
+    return makeFutureStorageNoChangeReceipt(object, mutationKind);
 }
 
 } // namespace iggy3d::creative
