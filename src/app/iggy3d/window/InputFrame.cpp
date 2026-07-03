@@ -11,6 +11,7 @@
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
 #include "app/iggy3d/window/CreativeInputFrame.hpp"
 #include "app/iggy3d/window/CreativeUiInputFrame.hpp"
+#include "app/iggy3d/window/CreativeViewportPickFrame.hpp"
 #include "app/iggy3d/room_editor/ActionController.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
@@ -1077,6 +1078,18 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   recordProductCreativeUiDownstreamClick(context.window,
                                          downstreamClickReceipt);
   const MouseClick downstreamClick = downstreamClickReceipt.downstreamClick;
+  recordProductCreativeViewportPickFrame(
+      context.window,
+      routeProductCreativeViewportPickFrame(
+          ProductCreativeViewportPickFrameRequest{
+              &context.window,
+              context.creativeFacade,
+              downstreamClick,
+              downstreamClickReceipt.suppressed,
+              context.creativeViewportPickViewport,
+              context.creativeViewportPickProjectionRequest,
+              context.creativeViewportPickZ,
+          }));
 
   // branch-gate: BG-1029
   if (context.window.gameplayActive && context.activeSession.has_value() &&

@@ -29,6 +29,7 @@ namespace iggy3d {
 struct ProductCreativeUiProjectionReceipt;
 struct ProductCreativeUiInputFrameReceipt;
 struct ProductCreativeUiDownstreamClickReceipt;
+struct ProductCreativeViewportPickFrameReceipt;
 
 struct ProductAppWindowState {
   bool requested = false;
@@ -538,6 +539,31 @@ struct ProductAppWindowState {
       "creative_ui_input_downstream_click_not_requested";
   std::string creativeUiInputDownstreamClickReasonCode =
       "creative_ui_input_downstream_click_not_requested";
+  bool creativeViewportPickRequested = false;
+  bool creativeViewportPickActive = false;
+  bool creativeViewportPickClickPresent = false;
+  bool creativeViewportPickClickSuppressed = false;
+  bool creativeViewportPickFacadeAvailable = false;
+  bool creativeViewportPickSourceAvailable = false;
+  bool creativeViewportPickProjected = false;
+  bool creativeViewportPickPicked = false;
+  std::uint64_t creativeViewportPickObjectCount = 0;
+  std::uint64_t creativeViewportPickProjectionCellCount = 0;
+  std::string creativeViewportPickStatus =
+      "creative_viewport_pick_not_requested";
+  std::string creativeViewportPickReasonCode =
+      "creative_viewport_pick_not_requested";
+  std::string creativeViewportPickPickStatus = "Unknown";
+  std::string creativeViewportPickMessage = "none";
+  std::int32_t creativeViewportPickCoordX = 0;
+  std::int32_t creativeViewportPickCoordY = 0;
+  std::int32_t creativeViewportPickCoordZ = 0;
+  std::uint64_t creativeViewportPickGridIndex = 0;
+  std::uint64_t creativeViewportPickObjectId = 0;
+  std::string creativeViewportPickObjectKind = "Unknown";
+  std::string creativeViewportPickOccupancyKind = "Unknown";
+  std::uint64_t creativeViewportPickTarget = 0;
+  std::uint64_t creativeViewportPickCellIndex = 0;
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;
@@ -566,5 +592,8 @@ void recordProductCreativeUiInputFrame(
 void recordProductCreativeUiDownstreamClick(
     ProductAppWindowState& window,
     const ProductCreativeUiDownstreamClickReceipt& receipt);
+void recordProductCreativeViewportPickFrame(
+    ProductAppWindowState& window,
+    const ProductCreativeViewportPickFrameReceipt& receipt);
 
 }  // namespace iggy3d

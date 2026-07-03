@@ -8,6 +8,8 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/Options.hpp"
+#include "app/iggy3d/creative/SpatialProjection.hpp"
+#include "app/iggy3d/creative/ViewportPick.hpp"
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
@@ -64,6 +66,9 @@ struct ProductWindowInputFrameContext {
   SdlWindow* sdlWindow = nullptr;
   creative::Facade* creativeFacade = nullptr;
   const ProductUiDrawList* creativeUiDrawList = nullptr;
+  creative::CreativeViewportPickViewport creativeViewportPickViewport = {};
+  creative::CreativeSpatialProjectionRequest creativeViewportPickProjectionRequest = {};
+  std::int32_t creativeViewportPickZ = 0;
 };
 
 struct ProductControllerSampleInputContext {

@@ -51,6 +51,28 @@ void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
   window.mouseCaptureInputOwner = policy.inputOwner;
 }
 
+std::uint32_t creativeViewportPickExtent(std::uint32_t drawable,
+                                         std::uint32_t fallback,
+                                         std::uint32_t guard) noexcept {
+  if (drawable > 0U) {
+    return drawable;
+  }
+  if (fallback > 0U) {
+    return fallback;
+  }
+  return guard;
+}
+
+creative::CreativeSpatialProjectionRequest
+creativeViewportPickProjectionRequest() noexcept {
+  creative::CreativeSpatialProjectionRequest request;
+  request.gridSize = {64, 64, 8};
+  request.cellSize = 1.0;
+  request.clampToGrid = true;
+  request.includeAuthoringOnly = false;
+  return request;
+}
+
 }  // namespace
 
 ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& request) {
@@ -127,12 +149,28 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         creativeUiFrame.projection.drawList.ready
             ? &creativeUiFrame.projection.drawList
             : nullptr;
+    const std::uint32_t creativePickWidth =
+        creativeViewportPickExtent(drawableExtent.width,
+                                   createInfo.width,
+                                   1280U);
+    const std::uint32_t creativePickHeight =
+        creativeViewportPickExtent(drawableExtent.height,
+                                   createInfo.height,
+                                   720U);
 
     processProductWindowInputFrame(ProductWindowInputFrameContext{
         request.frontend, saves, request.options, settingsTab,
         request.activeSession, request.worldSetupDraft, window, request.settings,
         inputFrame, closeRequested, &sdlWindow, request.creativeFacade,
-        creativeUiDrawList});
+        creativeUiDrawList,
+        creative::CreativeViewportPickViewport{
+            0.0F,
+            0.0F,
+            static_cast<float>(creativePickWidth),
+            static_cast<float>(creativePickHeight),
+        },
+        creativeViewportPickProjectionRequest(),
+        0});
 
     const ProductGameplayProjectionFrame projectionFrame =
         buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{

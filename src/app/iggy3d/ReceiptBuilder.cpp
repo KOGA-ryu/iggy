@@ -12,6 +12,7 @@
 #include "app/iggy3d/menu/CreativeUiProjection.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/window/CreativeUiInputFrame.hpp"
+#include "app/iggy3d/window/CreativeViewportPickFrame.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 
 namespace iggy3d {
@@ -169,6 +170,41 @@ void recordProductCreativeUiDownstreamClick(
   window.creativeUiInputDownstreamClickSuppressed = receipt.suppressed;
   window.creativeUiInputDownstreamClickStatus = receipt.status;
   window.creativeUiInputDownstreamClickReasonCode = receipt.reasonCode;
+}
+
+void recordProductCreativeViewportPickFrame(
+    ProductAppWindowState& window,
+    const ProductCreativeViewportPickFrameReceipt& receipt) {
+  window.creativeViewportPickRequested = receipt.requested;
+  window.creativeViewportPickActive = receipt.active;
+  window.creativeViewportPickClickPresent = receipt.clickPresent;
+  window.creativeViewportPickClickSuppressed =
+      receipt.downstreamClickSuppressed;
+  window.creativeViewportPickFacadeAvailable = receipt.facadeAvailable;
+  window.creativeViewportPickSourceAvailable = receipt.sourceAvailable;
+  window.creativeViewportPickProjected = receipt.projected;
+  window.creativeViewportPickPicked = receipt.picked;
+  window.creativeViewportPickObjectCount = receipt.objectCount;
+  window.creativeViewportPickProjectionCellCount =
+      receipt.projectionCellCount;
+  window.creativeViewportPickStatus = receipt.status;
+  window.creativeViewportPickReasonCode = receipt.reasonCode;
+  window.creativeViewportPickPickStatus =
+      std::string(creative::toString(receipt.pickStatus));
+  window.creativeViewportPickMessage =
+      receipt.pickMessage.empty() ? "none" : receipt.pickMessage;
+  window.creativeViewportPickCoordX = receipt.coord.x;
+  window.creativeViewportPickCoordY = receipt.coord.y;
+  window.creativeViewportPickCoordZ = receipt.coord.z;
+  window.creativeViewportPickGridIndex = receipt.gridIndex;
+  window.creativeViewportPickObjectId = receipt.objectId;
+  window.creativeViewportPickObjectKind =
+      std::string(creative::toString(receipt.objectKind));
+  window.creativeViewportPickOccupancyKind =
+      std::string(creative::toString(receipt.occupancyKind));
+  window.creativeViewportPickTarget = receipt.target.value;
+  window.creativeViewportPickCellIndex =
+      static_cast<std::uint64_t>(receipt.cellIndex);
 }
 
 RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
@@ -1731,6 +1767,52 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_reason_code",
                      window.creativeUiInputDownstreamClickReasonCode);
+  appendReceiptField(receipt, "creative_viewport_pick_requested",
+                     window.creativeViewportPickRequested);
+  appendReceiptField(receipt, "creative_viewport_pick_active",
+                     window.creativeViewportPickActive);
+  appendReceiptField(receipt, "creative_viewport_pick_click_present",
+                     window.creativeViewportPickClickPresent);
+  appendReceiptField(receipt, "creative_viewport_pick_click_suppressed",
+                     window.creativeViewportPickClickSuppressed);
+  appendReceiptField(receipt, "creative_viewport_pick_facade_available",
+                     window.creativeViewportPickFacadeAvailable);
+  appendReceiptField(receipt, "creative_viewport_pick_source_available",
+                     window.creativeViewportPickSourceAvailable);
+  appendReceiptField(receipt, "creative_viewport_pick_projected",
+                     window.creativeViewportPickProjected);
+  appendReceiptField(receipt, "creative_viewport_pick_picked",
+                     window.creativeViewportPickPicked);
+  appendReceiptField(receipt, "creative_viewport_pick_object_count",
+                     window.creativeViewportPickObjectCount);
+  appendReceiptField(receipt, "creative_viewport_pick_projection_cell_count",
+                     window.creativeViewportPickProjectionCellCount);
+  appendReceiptField(receipt, "creative_viewport_pick_status",
+                     window.creativeViewportPickStatus);
+  appendReceiptField(receipt, "creative_viewport_pick_reason_code",
+                     window.creativeViewportPickReasonCode);
+  appendReceiptField(receipt, "creative_viewport_pick_pick_status",
+                     window.creativeViewportPickPickStatus);
+  appendReceiptField(receipt, "creative_viewport_pick_message",
+                     window.creativeViewportPickMessage);
+  appendReceiptField(receipt, "creative_viewport_pick_coord_x",
+                     std::to_string(window.creativeViewportPickCoordX));
+  appendReceiptField(receipt, "creative_viewport_pick_coord_y",
+                     std::to_string(window.creativeViewportPickCoordY));
+  appendReceiptField(receipt, "creative_viewport_pick_coord_z",
+                     std::to_string(window.creativeViewportPickCoordZ));
+  appendReceiptField(receipt, "creative_viewport_pick_grid_index",
+                     window.creativeViewportPickGridIndex);
+  appendReceiptField(receipt, "creative_viewport_pick_object_id",
+                     window.creativeViewportPickObjectId);
+  appendReceiptField(receipt, "creative_viewport_pick_object_kind",
+                     window.creativeViewportPickObjectKind);
+  appendReceiptField(receipt, "creative_viewport_pick_occupancy_kind",
+                     window.creativeViewportPickOccupancyKind);
+  appendReceiptField(receipt, "creative_viewport_pick_target",
+                     window.creativeViewportPickTarget);
+  appendReceiptField(receipt, "creative_viewport_pick_cell_index",
+                     window.creativeViewportPickCellIndex);
   appendReceiptField(receipt, "product_vulkan_gameplay_ready",
                      vulkanGameplayReadiness.ready);
   appendReceiptField(receipt, "product_vulkan_gameplay_status",
