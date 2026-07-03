@@ -1267,6 +1267,7 @@ Result<Session> Session::create(const SessionCreateRequest& request) {
   state.camera = createCamera(request.seed);
   state.inventory = createInventory(request.seed);
   state.objectives = createObjectives(request.seed);
+  state.outcomeTable = buildObjectiveOutcomeTable();  // A8a: objective->outcome rules as data
   state.nextCommandId = 1;
 
   if (!createWorld(request.seed, state.world)) {
@@ -1473,6 +1474,7 @@ SessionLoadResult Session::replaceStateFromLoad(SessionState loadedState) {
   }
 
   clearTransient(loadedState);
+  loadedState.outcomeTable = buildObjectiveOutcomeTable();  // A8a: rebuilt-on-load (transient)
   loadedState.currentStateHash = computeStateHash(loadedState);
   result.loadedHash = loadedState.currentStateHash;
   state_ = std::move(loadedState);

@@ -198,22 +198,32 @@ bool tickActiveAbilityRuntime(SessionState& state,
 }
 
 bool applyObjectiveOutcome(SessionState& state, SessionTickResult& result) {
-  for (const ObjectiveRecord& objective : state.objectives.objectives) {
-    if (objective.status == ObjectiveStatus::Complete &&
-        objective.objectiveId.rfind("exit_", 0) == 0) {
-      if (state.outcome != SessionOutcome::Victory) {
-        state.outcome = SessionOutcome::Victory;
-        result.lifecycleChanged = true;
-        return true;
+  // Objective -> outcome now lives in state.outcomeTable (A8a): evaluate rules IN ORDER; the first
+  // rule with a matching complete objective decides. The default table reproduces the two
+  // formerly-hardcoded rules exactly (exit_ prefix -> Victory, then collect_gold_key -> DemoComplete),
+  // so this is byte-identical to the old path.
+  for (const ObjectiveOutcomeRule& rule : state.outcomeTable.rules) {
+    bool matched = false;
+    for (const ObjectiveRecord& objective : state.objectives.objectives) {
+      if (objective.status != ObjectiveStatus::Complete) {
+        continue;
       }
-      return false;
+      const bool hit = rule.isPrefix ? (objective.objectiveId.rfind(rule.match, 0) == 0)
+                                     : (objective.objectiveId == rule.match);
+      if (hit) {
+        matched = true;
+        break;
+      }
     }
-  }
-  if (objectiveComplete(state.objectives, "collect_gold_key") &&
-      state.outcome != SessionOutcome::DemoComplete) {
-    state.outcome = SessionOutcome::DemoComplete;
-    result.lifecycleChanged = true;
-    return true;
+    if (!matched) {
+      continue;
+    }
+    if (state.outcome != rule.outcome) {
+      state.outcome = rule.outcome;
+      result.lifecycleChanged = true;
+      return true;
+    }
+    return false;  // the first matching rule decides; outcome already set -> no change
   }
   return false;
 }

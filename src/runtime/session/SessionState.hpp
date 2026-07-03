@@ -17,7 +17,9 @@
 #include "runtime/diagnostics/RuntimeMetrics.hpp"
 #include "runtime/inventory/InventoryState.hpp"
 #include "runtime/movement/MovementCommand.hpp"
+#include "runtime/objective/ObjectiveOutcome.hpp"
 #include "runtime/objective/ObjectiveState.hpp"
+#include "runtime/session/SessionOutcome.hpp"
 #include "runtime/player/PlayerRoster.hpp"
 #include "runtime/replay/CommandLog.hpp"
 #include "runtime/world/WorldState.hpp"
@@ -29,14 +31,6 @@ enum class SessionLifecycle : std::uint8_t {
   Playing,
   Paused,
   Complete,
-  Failed,
-};
-
-enum class SessionOutcome : std::uint8_t {
-  None,
-  DemoComplete,
-  Victory,
-  Defeat,
   Failed,
 };
 
@@ -114,6 +108,12 @@ struct SessionState {
   // `locked` edge annotations, not rebuilds. After replaceStateFromLoad the slot is default-empty
   // (the envelope never carried it) -- a valid empty value, not stale/dangling.
   ReasoningGraph reasoningGraph;
+
+  // Objective -> outcome mapping as DATA (A8a). TRANSIENT-IN-PERSISTENCE: absent from
+  // StateHash/SaveCodec/SaveEnvelope/SaveObjectiveRecord (the reasoningGraph-slot precedent) --
+  // rebuilt at create and in replaceStateFromLoad from buildObjectiveOutcomeTable(). Defaults
+  // reproduce the two formerly-hardcoded rules exactly, so this is output-preserving.
+  ObjectiveOutcomeTable outcomeTable;
 
   std::uint64_t currentStateHash = 0;
 };

@@ -565,6 +565,9 @@ set_tests_properties(inventory_system_tests PROPERTIES LABELS "unit;runtime;inve
 iggy3d_add_unit_test(objective_system_tests tests/unit/objective_system_tests.cpp)
 set_tests_properties(objective_system_tests PROPERTIES LABELS "unit;runtime;objective;iggy3d")
 
+iggy3d_add_unit_test(objective_outcome_tests tests/unit/objective_outcome_tests.cpp)
+set_tests_properties(objective_outcome_tests PROPERTIES LABELS "unit;runtime;objective;iggy3d")
+
 iggy3d_add_unit_test(interaction_system_tests tests/unit/interaction_system_tests.cpp)
 set_tests_properties(interaction_system_tests PROPERTIES LABELS "unit;runtime;interaction;iggy3d")
 
