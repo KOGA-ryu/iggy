@@ -140,6 +140,7 @@ CreativeDocumentMutationReceipt rejectDocumentMutation(
     const auto revision = document.revision();
     CreativeObject placeholder{};
     placeholder.id = objectId;
+    const std::string objectMessage = message;
 
     return makeDocumentMutationReceipt(
         status,
@@ -151,7 +152,7 @@ CreativeDocumentMutationReceipt rejectDocumentMutation(
         0,
         false,
         false,
-        rejectMutation(placeholder, mutationKind, CreativeMutationApplyStatus::Rejected, message),
+        rejectMutation(placeholder, mutationKind, CreativeMutationApplyStatus::Rejected, objectMessage),
         std::move(message));
 }
 

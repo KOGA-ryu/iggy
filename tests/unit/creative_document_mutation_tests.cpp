@@ -407,7 +407,10 @@ bool missingObjectRejectsWithoutRevisionAdvance() {
                 "missing document message") &&
          expect(receipt.objectReceipt.message ==
                     "document does not contain requested object",
-                "missing object message");
+                "missing object message") &&
+         expect(!receipt.message.empty(), "missing document message nonempty") &&
+         expect(!receipt.objectReceipt.message.empty(),
+                "missing object message nonempty");
 }
 
 bool descriptorAllowedTextSleeperVerbIsDocumentNoChange() {
@@ -535,9 +538,50 @@ bool unsupportedMutationDoesNotFalselyReportApplied() {
                 "unsupported revision after") &&
          expect(document.revision() == revisionBefore,
                 "unsupported document revision unchanged") &&
+         expect(receipt.message ==
+                    "document mutation applied through object mutation pipeline",
+                "unsupported document message") &&
          expect(receipt.objectReceipt.message ==
                     "object kind does not allow this mutation",
-                "unsupported object message");
+                "unsupported object message") &&
+         expect(!receipt.message.empty(),
+                "unsupported document message nonempty") &&
+         expect(!receipt.objectReceipt.message.empty(),
+                "unsupported object message nonempty");
+}
+
+bool wrongPayloadFailureMessagesAreStable() {
+  cr::CreativeObjectId roomId = cr::kInvalidObjectId;
+  cr::CreativeDocument document = makeDocumentWithRoom(roomId);
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt = cr::applyDocumentMutation(
+      document, roomId, cr::CreativeMutationKind::SetVisible,
+      cr::makeMovePayload(cr::CreativeVec3{1.0, 2.0, 3.0}));
+
+  return expect(receipt.status == cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "wrong payload status failed") &&
+         expect(receipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::WrongPayload,
+                "wrong payload object status") &&
+         expect(!receipt.changed, "wrong payload changed false") &&
+         expect(!receipt.allowed, "wrong payload allowed false") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "wrong payload revision before") &&
+         expect(receipt.revisionAfter == revisionBefore,
+                "wrong payload revision after") &&
+         expect(document.revision() == revisionBefore,
+                "wrong payload revision unchanged") &&
+         expect(receipt.message ==
+                    "document mutation applied through object mutation pipeline",
+                "wrong payload document message") &&
+         expect(receipt.objectReceipt.message ==
+                    "mutation payload does not match mutation kind",
+                "wrong payload object message") &&
+         expect(!receipt.message.empty(),
+                "wrong payload document message nonempty") &&
+         expect(!receipt.objectReceipt.message.empty(),
+                "wrong payload object message nonempty");
 }
 
 bool invalidMutationRequestRejectsBeforeApply() {
@@ -566,7 +610,13 @@ bool invalidMutationRequestRejectsBeforeApply() {
                     cr::CreativeMutationApplyStatus::Rejected,
                 "invalid object status rejected") &&
          expect(receipt.message == "document mutation request is invalid",
-                "invalid message");
+                "invalid message") &&
+         expect(receipt.objectReceipt.message ==
+                    "document mutation request is invalid",
+                "invalid object message") &&
+         expect(!receipt.message.empty(), "invalid document message nonempty") &&
+         expect(!receipt.objectReceipt.message.empty(),
+                "invalid object message nonempty");
 }
 
 }  // namespace
@@ -584,6 +634,7 @@ int main() {
                   descriptorAllowedScalarSleeperVerbIsDocumentNoChange() &&
                   descriptorAllowedLinkSleeperVerbIsDocumentNoChange() &&
                   unsupportedMutationDoesNotFalselyReportApplied() &&
+                  wrongPayloadFailureMessagesAreStable() &&
                   invalidMutationRequestRejectsBeforeApply();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
