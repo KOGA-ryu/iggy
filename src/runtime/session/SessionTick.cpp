@@ -237,6 +237,8 @@ bool movementBlockConsumesTick(MovementBlockedReason reason) {
          reason == MovementBlockedReason::SlopeRejected;
 }
 
+}  // namespace
+
 // MA4 s2 ARMING (§M3-literal): arm a Move request for traversal ONLY when the acting NPC is a climber
 // AND its CURRENT ROUTE LEG crosses a climb edge. Resolves the ONE bridging slot (ma4s1's predicate;
 // slotId tie-break) from the set-once registry and copies it + the leg's FAR-NODE position onto the
@@ -321,8 +323,6 @@ void armAiMoveTraversal(const SessionState& state, EntityId actor, MovementReque
   request.armedSlot = *best;
   request.traversalFarNodeMeters = b;
 }
-
-}  // namespace
 
 SessionTickResult runSessionTick(const SessionTickInput& input) {
   SessionTickResult result;

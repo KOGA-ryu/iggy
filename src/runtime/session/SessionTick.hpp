@@ -5,6 +5,7 @@
 
 #include "runtime/command/Command.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
+#include "runtime/movement/MovementCommand.hpp"
 #include "runtime/session/SessionState.hpp"
 
 namespace iggy3d {
@@ -47,5 +48,11 @@ struct SessionTickResult {
 };
 
 SessionTickResult runSessionTick(const SessionTickInput& input);
+
+// MA4 s2 arming (§M3-literal, exposed for direct testing): arm a Move request for traversal ONLY when
+// the acting NPC is a climber whose CURRENT route leg crosses a climb edge -- resolving the ONE
+// bridging slot from the set-once registry. Player + unrouted/chasing NPCs leave the request
+// default-off (the executeMovement path is then byte-identical).
+void armAiMoveTraversal(const SessionState& state, EntityId actor, MovementRequest& request);
 
 }  // namespace iggy3d

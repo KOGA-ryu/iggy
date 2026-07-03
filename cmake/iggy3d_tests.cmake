@@ -603,6 +603,14 @@ set_tests_properties(movement_kinematics_tests PROPERTIES LABELS "unit;runtime;m
 iggy3d_add_unit_test(movement_traversal_tests tests/unit/movement_traversal_tests.cpp)
 set_tests_properties(movement_traversal_tests PROPERTIES LABELS "unit;runtime;movement;traversal;iggy3d")
 
+iggy3d_add_unit_test(movement_traversal_in_move_tests tests/unit/movement_traversal_in_move_tests.cpp)
+set_tests_properties(movement_traversal_in_move_tests PROPERTIES
+  LABELS "unit;runtime;movement;traversal;capability;iggy3d")
+
+iggy3d_add_unit_test(movement_traversal_arming_tests tests/unit/movement_traversal_arming_tests.cpp)
+set_tests_properties(movement_traversal_arming_tests PROPERTIES
+  LABELS "unit;runtime;movement;session;traversal;capability;iggy3d")
+
 iggy3d_add_unit_test(movement_traversal_slots_tests tests/unit/movement_traversal_slots_tests.cpp)
 set_tests_properties(movement_traversal_slots_tests PROPERTIES
   LABELS "unit;runtime;movement;traversal;slots;iggy3d")
