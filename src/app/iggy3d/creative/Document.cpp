@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/Document.hpp"
 
+#include <cmath>
 #include <utility>
 
 namespace iggy3d::creative {
@@ -13,6 +14,11 @@ constexpr CreativeObjectDirtyFlags dirtyFlagValue(
 constexpr CreativeObjectDirtyFlags documentIdentityDirtyFlags() noexcept {
   return dirtyFlagValue(CreativeObjectDirtyFlag::Identity) |
          dirtyFlagValue(CreativeObjectDirtyFlag::Preview) |
+         dirtyFlagValue(CreativeObjectDirtyFlag::Serialization);
+}
+
+constexpr CreativeObjectDirtyFlags documentSettingsDirtyFlags() noexcept {
+  return dirtyFlagValue(CreativeObjectDirtyFlag::Preview) |
          dirtyFlagValue(CreativeObjectDirtyFlag::Serialization);
 }
 
@@ -37,12 +43,80 @@ void setRemoveStatus(CreativeDocumentRemoveReceipt& receipt,
   receipt.reasonCode = reason;
 }
 
+void setRestoreStatus(CreativeDocumentRestoreReceipt& receipt,
+                      CreativeDocumentRestoreStatus status,
+                      std::string_view reason) noexcept {
+  receipt.status = status;
+  receipt.message = reason;
+  receipt.reasonCode = reason;
+}
+
 std::string descriptorDefaultName(
     const CreativeObjectDescriptor& descriptor) {
   if (!descriptor.displayName.empty()) {
     return std::string{descriptor.displayName};
   }
   return std::string{descriptor.name};
+}
+
+bool sameVec3(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+bool sameGridSize(CreativeGridSize3 lhs, CreativeGridSize3 rhs) noexcept {
+  return lhs.width == rhs.width && lhs.height == rhs.height &&
+         lhs.depth == rhs.depth;
+}
+
+bool sameGridSettings(CreativeGridSettings lhs,
+                      CreativeGridSettings rhs) noexcept {
+  return sameVec3(lhs.origin, rhs.origin) &&
+         lhs.cellSizeMeters == rhs.cellSizeMeters &&
+         sameGridSize(lhs.size, rhs.size);
+}
+
+bool sameSnapSettings(CreativeDocumentSnapSettings lhs,
+                      CreativeDocumentSnapSettings rhs) noexcept {
+  return lhs.mode == rhs.mode && lhs.axes == rhs.axes &&
+         lhs.stepX == rhs.stepX && lhs.stepY == rhs.stepY &&
+         lhs.stepZ == rhs.stepZ && lhs.originX == rhs.originX &&
+         lhs.originY == rhs.originY && lhs.originZ == rhs.originZ;
+}
+
+bool sameBounds(CreativeBounds lhs, CreativeBounds rhs) noexcept {
+  return sameVec3(lhs.min, rhs.min) && sameVec3(lhs.max, rhs.max);
+}
+
+bool isFiniteVec3(CreativeVec3 value) noexcept {
+  return std::isfinite(value.x) && std::isfinite(value.y) &&
+         std::isfinite(value.z);
+}
+
+bool isValidUnits(CreativeUnits units) noexcept {
+  return units == CreativeUnits::Meters;
+}
+
+bool isValidGridSettings(CreativeGridSettings settings) noexcept {
+  return isFiniteVec3(settings.origin) &&
+         std::isfinite(settings.cellSizeMeters) &&
+         settings.cellSizeMeters > 0.0 && settings.size.width >= 0 &&
+         settings.size.height >= 0 && settings.size.depth >= 0;
+}
+
+bool isValidWorldBounds(CreativeBounds bounds) noexcept {
+  return isFiniteVec3(bounds.min) && isFiniteVec3(bounds.max);
+}
+
+bool isValidRestoreObject(const CreativeObject& object) noexcept {
+  const CreativeObjectDescriptor& descriptor = describeObject(object.kind);
+  return object.id != kInvalidObjectId &&
+         object.kind != CreativeObjectKind::Unknown &&
+         descriptor.kind == object.kind &&
+         descriptor.kind != CreativeObjectKind::Unknown &&
+         isFiniteVec3(object.transform.position) &&
+         isFiniteVec3(object.transform.rotation) &&
+         isFiniteVec3(object.transform.scale) &&
+         isValidWorldBounds(object.bounds);
 }
 
 }  // namespace
@@ -75,6 +149,28 @@ std::string_view toString(CreativeDocumentRemoveStatus status) noexcept {
       return "MissingObject";
     case CreativeDocumentRemoveStatus::Removed:
       return "Removed";
+  }
+  return "Unknown";
+}
+
+std::string_view toString(CreativeDocumentRestoreStatus status) noexcept {
+  switch (status) {
+    case CreativeDocumentRestoreStatus::Unknown:
+      return "Unknown";
+    case CreativeDocumentRestoreStatus::InvalidDocument:
+      return "InvalidDocument";
+    case CreativeDocumentRestoreStatus::InvalidDocumentId:
+      return "InvalidDocumentId";
+    case CreativeDocumentRestoreStatus::InvalidSettings:
+      return "InvalidSettings";
+    case CreativeDocumentRestoreStatus::InvalidObject:
+      return "InvalidObject";
+    case CreativeDocumentRestoreStatus::DuplicateObjectId:
+      return "DuplicateObjectId";
+    case CreativeDocumentRestoreStatus::InvalidNextObjectId:
+      return "InvalidNextObjectId";
+    case CreativeDocumentRestoreStatus::Restored:
+      return "Restored";
   }
   return "Unknown";
 }
@@ -113,6 +209,27 @@ CreativeObjectDirtyFlags CreativeDocument::drainDirtyFlags() noexcept {
   return drained;
 }
 
+CreativeUnits CreativeDocument::units() const noexcept {
+  return units_;
+}
+
+CreativeGridSettings CreativeDocument::gridSettings() const noexcept {
+  return gridSettings_;
+}
+
+CreativeDocumentSnapSettings CreativeDocument::documentSnapSettings()
+    const noexcept {
+  return snapSettings_;
+}
+
+CreativeBounds CreativeDocument::worldBounds() const noexcept {
+  return worldBounds_;
+}
+
+CreativeObjectId CreativeDocument::nextObjectId() const noexcept {
+  return nextObjectId_;
+}
+
 bool CreativeDocument::assignId(CreativeDocumentId id) noexcept {
   if (id == kInvalidDocumentId || id_ == id ||
       id_ != kInvalidDocumentId) {
@@ -120,6 +237,50 @@ bool CreativeDocument::assignId(CreativeDocumentId id) noexcept {
   }
 
   id_ = id;
+  return true;
+}
+
+bool CreativeDocument::setUnits(CreativeUnits units) {
+  if (!valid_ || !isValidUnits(units) || units_ == units) {
+    return false;
+  }
+
+  units_ = units;
+  markObjectMutationChanged(documentSettingsDirtyFlags());
+  return true;
+}
+
+bool CreativeDocument::setGridSettings(CreativeGridSettings settings) {
+  if (!valid_ || !isValidGridSettings(settings) ||
+      sameGridSettings(gridSettings_, settings)) {
+    return false;
+  }
+
+  gridSettings_ = settings;
+  markObjectMutationChanged(documentSettingsDirtyFlags());
+  return true;
+}
+
+bool CreativeDocument::setDocumentSnapSettings(
+    CreativeDocumentSnapSettings settings) {
+  if (!valid_ || !isValidCreativeDocumentSnapSettings(settings) ||
+      sameSnapSettings(snapSettings_, settings)) {
+    return false;
+  }
+
+  snapSettings_ = settings;
+  markObjectMutationChanged(documentSettingsDirtyFlags());
+  return true;
+}
+
+bool CreativeDocument::setWorldBounds(CreativeBounds bounds) {
+  if (!valid_ || !isValidWorldBounds(bounds) ||
+      sameBounds(worldBounds_, bounds)) {
+    return false;
+  }
+
+  worldBounds_ = bounds;
+  markObjectMutationChanged(documentSettingsDirtyFlags());
   return true;
 }
 
@@ -143,12 +304,12 @@ void CreativeDocument::reset() {
   objects_.clear();
   objectIndex_.clear();
   nextObjectId_ = 1;
+  units_ = CreativeUnits::Meters;
+  gridSettings_ = {};
+  snapSettings_ = makeDefaultCreativeDocumentSnapSettings();
+  worldBounds_ = {};
 
   // Future slice reset duties:
-  // units_ = CreativeUnits::Meters;
-  // gridSettings_ = {};
-  // snapSettings_ = {};
-  // worldBounds_ = {};
   // layers_.clear();
   // nextLayerId_ = 1;
   // tagRegistry_.clear();
@@ -434,6 +595,108 @@ void CreativeDocument::markObjectMutationChanged(
     CreativeObjectDirtyFlags dirtyFlags) noexcept {
   markContentChanged();
   markDirty(dirtyFlags);
+}
+
+CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
+    const CreativeDocumentRestoreRequest& request) {
+  CreativeDocumentRestoreReceipt receipt;
+  receipt.requested = true;
+  receipt.documentId = request.documentId;
+  receipt.objectCount = request.objects.size();
+  receipt.nextObjectId = request.nextObjectId;
+
+  if (!valid_) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidDocument,
+                     "invalid_document");
+    return receipt;
+  }
+
+  if (request.documentId == kInvalidDocumentId) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidDocumentId,
+                     "invalid_document_id");
+    return receipt;
+  }
+
+  if (!isValidUnits(request.units)) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidSettings,
+                     "invalid_units");
+    return receipt;
+  }
+
+  if (!isValidGridSettings(request.gridSettings)) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidSettings,
+                     "invalid_grid_settings");
+    return receipt;
+  }
+
+  if (!isValidCreativeDocumentSnapSettings(request.snapSettings)) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidSettings,
+                     "invalid_document_snap_settings");
+    return receipt;
+  }
+
+  if (!isValidWorldBounds(request.worldBounds)) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidSettings,
+                     "invalid_world_bounds");
+    return receipt;
+  }
+
+  std::unordered_map<CreativeObjectId, std::size_t> restoredIndex;
+  restoredIndex.reserve(request.objects.size());
+  CreativeObjectId maxObjectId = kInvalidObjectId;
+  for (std::size_t index = 0; index < request.objects.size(); ++index) {
+    const CreativeObject& object = request.objects[index];
+    if (!isValidRestoreObject(object)) {
+      setRestoreStatus(receipt,
+                       CreativeDocumentRestoreStatus::InvalidObject,
+                       "invalid_object");
+      return receipt;
+    }
+    if (restoredIndex.find(object.id) != restoredIndex.end()) {
+      setRestoreStatus(receipt,
+                       CreativeDocumentRestoreStatus::DuplicateObjectId,
+                       "duplicate_object_id");
+      return receipt;
+    }
+    restoredIndex.emplace(object.id, index);
+    if (object.id > maxObjectId) {
+      maxObjectId = object.id;
+    }
+  }
+
+  if (request.nextObjectId == kInvalidObjectId ||
+      request.nextObjectId <= maxObjectId) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidNextObjectId,
+                     "invalid_next_object_id");
+    return receipt;
+  }
+
+  valid_ = true;
+  id_ = request.documentId;
+  name_ = request.name;
+  units_ = request.units;
+  gridSettings_ = request.gridSettings;
+  snapSettings_ = request.snapSettings;
+  worldBounds_ = request.worldBounds;
+  objects_ = request.objects;
+  objectIndex_ = std::move(restoredIndex);
+  nextObjectId_ = request.nextObjectId;
+  revision_ = 0;
+  dirtyFlags_ = 0;
+
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.status = CreativeDocumentRestoreStatus::Restored;
+  receipt.message = "document_restored";
+  receipt.reasonCode = "document_restored";
+  return receipt;
 }
 
 }  // namespace iggy3d::creative

@@ -342,6 +342,11 @@ iggy3d_add_unit_test(creative_document_identity_tests
 set_tests_properties(creative_document_identity_tests PROPERTIES
   LABELS "unit;app;creative;document;identity;iggy3d")
 
+iggy3d_add_unit_test(creative_document_persistence_state_tests
+  tests/unit/creative_document_persistence_state_tests.cpp)
+set_tests_properties(creative_document_persistence_state_tests PROPERTIES
+  LABELS "unit;app;creative;document;persistence;iggy3d")
+
 iggy3d_add_unit_test(creative_facade_tests
   tests/unit/creative_facade_tests.cpp)
 set_tests_properties(creative_facade_tests PROPERTIES
