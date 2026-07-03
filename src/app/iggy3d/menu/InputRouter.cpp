@@ -119,7 +119,7 @@ void dispatchStarterAction(InputAction action,
   ProductStarterMenuActionContext starterContext{
       context.frontend, context.options, context.saves, context.settingsTab,
       context.activeSession, context.worldSetupDraft, context.window,
-      context.closeRequested};
+      context.closeRequested, context.creativeFacade};
   (void)applyProductStarterMenuAction(action, starterContext);
 }
 

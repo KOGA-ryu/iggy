@@ -898,9 +898,9 @@ bool starterDeleteButtonOpensSelectableBrowser() {
 bool starterHitTestUsesCanonicalActionRows() {
   const iggy3d::FrontendState frontend = starterFrontend();
   const iggy3d::OpeningMenuHitTestResult deleteHit =
-      hitAt(frontend, 62.0F, 306.0F);
+      hitAt(frontend, 62.0F, 358.0F);
   const iggy3d::OpeningMenuHitTestResult exitHit =
-      hitAt(frontend, 62.0F, 462.0F);
+      hitAt(frontend, 62.0F, 514.0F);
 
   return expect(deleteHit.hit, "delete starter row hit") &&
          expect(deleteHit.area == iggy3d::OpeningMenuHitArea::StarterAction,

@@ -65,6 +65,16 @@ FrontendRouteResult routeStarterAction(const StarterScreenModel& model,
       return acceptedStarterChildRoute(FrontendScreen::NewWorld,
                                        "starter_new_world_opened",
                                        action);
+    case FrontendAction::CreativeNewWorld:
+      return makeAcceptedFrontendRouteResult(MenuOwner::Gameplay,
+                                             FrontendScreen::Gameplay,
+                                             FrontendScreen::Gameplay,
+                                             FrontendTransitionRequest::LaunchGameplay,
+                                             false,
+                                             false,
+                                             "starter_creative_new_world_launch",
+                                             "starter_creative_new_world_launch",
+                                             action);
     case FrontendAction::LoadSave:
       return acceptedStarterChildRoute(FrontendScreen::LoadSave,
                                        "starter_load_save_opened",
@@ -141,6 +151,8 @@ std::string_view starterActionLabel(FrontendAction action) {
       return "Continue";
     case FrontendAction::NewWorld:
       return "Build Map";
+    case FrontendAction::CreativeNewWorld:
+      return "Creative World";
     case FrontendAction::LoadSave:
       return "Existing Maps";
     case FrontendAction::Delete:
@@ -162,6 +174,8 @@ std::string_view starterActionCommand(FrontendAction action) {
       return "starter_continue";
     case FrontendAction::NewWorld:
       return "starter_new_world";
+    case FrontendAction::CreativeNewWorld:
+      return "starter_creative_new_world";
     case FrontendAction::LoadSave:
       return "starter_existing_saves";
     case FrontendAction::Delete:
@@ -199,6 +213,7 @@ bool starterActionEnabled(FrontendAction action, std::uint64_t compatibleSaveCou
     case FrontendAction::Delete:
       return compatibleSaveCount > 0U;
     case FrontendAction::NewWorld:
+    case FrontendAction::CreativeNewWorld:
     case FrontendAction::Settings:
     case FrontendAction::DevTools:
     case FrontendAction::Exit:

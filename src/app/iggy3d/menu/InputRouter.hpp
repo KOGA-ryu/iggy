@@ -15,6 +15,9 @@ namespace iggy3d {
 
 struct ProductSaveBridgeResult;
 struct WorldSetupDraft;
+namespace creative {
+class Facade;
+}  // namespace creative
 
 struct ProductOpeningMenuInputContext {
   FrontendState& frontend;
@@ -26,6 +29,7 @@ struct ProductOpeningMenuInputContext {
   ProductAppWindowState& window;
   bool& closeRequested;
   FrontendSettings& settings;
+  creative::Facade* creativeFacade = nullptr;
 };
 
 MenuOwner productInputOwnerFor(const FrontendState& frontend,

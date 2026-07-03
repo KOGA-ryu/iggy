@@ -38,6 +38,8 @@ std::string_view frontendActionName(FrontendAction action) {
       return "continue";
     case FrontendAction::NewWorld:
       return "new_world";
+    case FrontendAction::CreativeNewWorld:
+      return "creative_new_world";
     case FrontendAction::LoadSave:
       return "load_save";
     case FrontendAction::Settings:
@@ -119,6 +121,7 @@ const std::vector<FrontendAction>& starterActionOrder() {
   static const std::vector<FrontendAction> actions = {
       FrontendAction::Continue,
       FrontendAction::NewWorld,
+      FrontendAction::CreativeNewWorld,
       FrontendAction::LoadSave,
       FrontendAction::Delete,
       FrontendAction::Settings,

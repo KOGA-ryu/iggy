@@ -943,7 +943,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   ProductOpeningMenuInputContext menuContext{
       context.frontend, context.saves, context.options, context.settingsTab,
       context.activeSession, context.worldSetupDraft, context.window,
-      context.closeRequested, context.settings};
+      context.closeRequested, context.settings, context.creativeFacade};
   InputAction functionKeyAction = InputAction::None;
   // branch-gate: BG-1194
   if (context.sdlWindow != nullptr) {

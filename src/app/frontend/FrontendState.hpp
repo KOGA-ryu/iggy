@@ -24,6 +24,7 @@ enum class FrontendAction : std::uint8_t {
   None,
   Continue,
   NewWorld,
+  CreativeNewWorld,
   LoadSave,
   Settings,
   DevTools,

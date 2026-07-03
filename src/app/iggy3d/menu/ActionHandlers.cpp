@@ -390,6 +390,40 @@ ProductMenuActionResult confirmStarterNewWorld(
   return {true, true};
 }
 
+ProductMenuActionResult confirmStarterCreativeNewWorld(
+    ProductStarterMenuActionContext context) {
+  clearProductGameplayMovementTuning(context.window);
+  if (context.creativeFacade == nullptr) {
+    context.window.launchStatus = "product_creative_world_facade_missing";
+    context.frontend.status = "product_creative_world_facade_missing";
+    return {true, true};
+  }
+
+  ProductCreativeNewWorldLaunchRequest request;
+  request.title = context.worldSetupDraft.worldName;
+  request.templateId = "empty";
+  request.requestedAtUtc = productSaveTimestampNowUtc();
+
+  const ProductCreativeNewWorldLaunchResult launched =
+      launchProductCreativeNewWorld(context.options,
+                                    request,
+                                    context.frontend,
+                                    context.activeSession,
+                                    context.window,
+                                    *context.creativeFacade);
+  if (!launched.accepted) {
+    context.frontend.status = "opening_menu_creative_new_world_failed";
+    return {true, true};
+  }
+
+  const ProductWorldTemplate productWorld =
+      productWorldTemplateFromOptions(context.options);
+  context.saves = scanProductSaves(context.options.saveRoot,
+                                   productWorld.packageId,
+                                   productWorld.scenarioId);
+  return {true, true};
+}
+
 ProductMenuActionResult confirmStarterLoadSave(
     ProductStarterMenuActionContext context) {
   clearProductGameplayMovementTuning(context.window);
@@ -437,6 +471,8 @@ ProductMenuActionResult handleStarterConfirm(ProductStarterMenuActionContext con
       StarterConfirmActionRow{FrontendAction::Continue, confirmStarterContinue},
       StarterConfirmActionRow{FrontendAction::Exit, confirmStarterExit},
       StarterConfirmActionRow{FrontendAction::NewWorld, confirmStarterNewWorld},
+      StarterConfirmActionRow{FrontendAction::CreativeNewWorld,
+                              confirmStarterCreativeNewWorld},
       StarterConfirmActionRow{FrontendAction::LoadSave, confirmStarterLoadSave},
       StarterConfirmActionRow{FrontendAction::Delete, confirmStarterDelete},
       StarterConfirmActionRow{FrontendAction::Settings, confirmStarterSettings},

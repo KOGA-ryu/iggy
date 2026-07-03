@@ -199,6 +199,7 @@ WorldSetupRouteResult routeWorldSetupAction(const WorldSetupDraft& draft,
     case FrontendAction::None:
     case FrontendAction::Continue:
     case FrontendAction::NewWorld:
+    case FrontendAction::CreativeNewWorld:
     case FrontendAction::LoadSave:
     case FrontendAction::Settings:
     case FrontendAction::DevTools:

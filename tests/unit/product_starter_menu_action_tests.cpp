@@ -1,11 +1,13 @@
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 
+#include <filesystem>
 #include <iostream>
 #include <optional>
 #include <string>
 #include <string_view>
 
 #include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 
 namespace {
@@ -35,6 +37,7 @@ struct StarterHarness {
   iggy3d::WorldSetupDraft draft = iggy3d::makeDefaultWorldSetupDraft("starter_seed");
   iggy3d::ProductAppWindowState window;
   bool closeRequested = false;
+  iggy3d::creative::Facade* creativeFacade = nullptr;
 
   StarterHarness() {
     frontend.screen = iggy3d::FrontendScreen::Starter;
@@ -43,6 +46,16 @@ struct StarterHarness {
     frontend.status = "starter_screen_ready";
   }
 };
+
+std::filesystem::path testRoot(std::string_view name) {
+  const std::filesystem::path root =
+      std::filesystem::temp_directory_path() / "iggy3d_starter_action" /
+      std::string{name};
+  std::error_code error;
+  std::filesystem::remove_all(root, error);
+  std::filesystem::create_directories(root, error);
+  return root;
+}
 
 iggy3d::ProductMenuActionResult applyStarterAction(
     StarterHarness& harness,
@@ -58,6 +71,7 @@ iggy3d::ProductMenuActionResult applyStarterAction(
           harness.draft,
           harness.window,
           harness.closeRequested,
+          harness.creativeFacade,
       });
 }
 
@@ -231,11 +245,114 @@ bool deleteAndExitActionsAreExplicitRows() {
                 "exit status");
 }
 
+bool creativeNewWorldLaunchesThroughStarterActionAndKeepsContinueSeparate() {
+  StarterHarness harness;
+  iggy3d::creative::Facade facade;
+  harness.creativeFacade = &facade;
+  harness.options.saveRoot = testRoot("creative_launch");
+  harness.frontend.selectedAction = iggy3d::FrontendAction::CreativeNewWorld;
+  harness.draft.worldName = "Starter Creative";
+  showMovementTuning(harness);
+
+  const iggy3d::ProductMenuActionResult result =
+      applyStarterAction(harness, iggy3d::InputAction::MenuConfirm);
+  const iggy3d::ProductSaveBridgeResult creativeSaves =
+      iggy3d::scanProductSaves(harness.options.saveRoot,
+                               "iggy3d.creative",
+                               "creative.document");
+  const bool hasCreativeEntry =
+      creativeSaves.catalog.catalog.entries.size() == 1U;
+  const iggy3d::ProductSaveCatalogEntry creativeEntry =
+      hasCreativeEntry ? creativeSaves.catalog.catalog.entries.front()
+                       : iggy3d::ProductSaveCatalogEntry{};
+  const iggy3d::ProductContinueSelectionResult productContinue =
+      iggy3d::selectProductContinueSave(creativeSaves.catalog.catalog);
+  const iggy3d::ProductContinueSelectionResult contextContinue =
+      iggy3d::selectProductContinueSave(harness.saves.catalog.catalog);
+
+  return expect(result.handled && result.accepted,
+                "creative starter handled") &&
+         expect(harness.activeSession.has_value(),
+                "creative starter runtime session") &&
+         expect(harness.window.gameplayActive,
+                "creative starter gameplay active") &&
+         expect(harness.frontend.screen == iggy3d::FrontendScreen::Gameplay,
+                "creative starter frontend gameplay") &&
+         expect(harness.window.interactionMode ==
+                    iggy3d::ProductInteractionMode::Creative,
+                "creative starter interaction mode") &&
+         expect(harness.window.launchStatus ==
+                    "product_creative_world_launched",
+                "creative starter launch status") &&
+         expect(!harness.window.gameplayMovementTuningVisible,
+                "creative starter clears movement tuning") &&
+         expect(facade.document().id() !=
+                    iggy3d::creative::kInvalidDocumentId,
+                "creative starter document id") &&
+         expect(facade.document().name() == "Starter Creative",
+                "creative starter document title") &&
+         expect(facade.document().objectCount() == 0U,
+                "creative starter object count") &&
+         expect(facade.document().revision() == 0U,
+                "creative starter revision clean") &&
+         expect(facade.document().dirtyFlags() == 0U,
+                "creative starter dirty clean") &&
+         expect(hasCreativeEntry, "creative starter save entry") &&
+         expect(creativeEntry.contentKind ==
+                    iggy3d::ProductSaveContentKind::CreativeDocument,
+                "creative starter catalog kind") &&
+         expect(iggy3d::canOpenCreativeWorld(creativeEntry),
+                "creative starter can open creative") &&
+         expect(!iggy3d::canLoadProductSave(creativeEntry),
+                "creative starter not product loadable") &&
+         expect(!productContinue.selected,
+                "creative starter continue ignores creative scan") &&
+         expect(!contextContinue.selected,
+                "creative starter refreshed context keeps continue disabled");
+}
+
+bool creativeNewWorldMissingFacadeFailsClosed() {
+  StarterHarness harness;
+  harness.options.saveRoot = testRoot("creative_missing_facade");
+  harness.frontend.selectedAction = iggy3d::FrontendAction::CreativeNewWorld;
+  harness.draft.worldName = "Missing Facade Creative";
+  showMovementTuning(harness);
+
+  const iggy3d::ProductMenuActionResult result =
+      applyStarterAction(harness, iggy3d::InputAction::MenuConfirm);
+  const iggy3d::ProductSaveBridgeResult creativeSaves =
+      iggy3d::scanProductSaves(harness.options.saveRoot,
+                               "iggy3d.creative",
+                               "creative.document");
+
+  return expect(result.handled && result.accepted,
+                "missing facade handled") &&
+         expect(!harness.activeSession.has_value(),
+                "missing facade no session") &&
+         expect(!harness.window.gameplayActive,
+                "missing facade no gameplay") &&
+         expect(harness.window.interactionMode ==
+                    iggy3d::ProductInteractionMode::Player,
+                "missing facade player mode") &&
+         expect(harness.window.launchStatus ==
+                    "product_creative_world_facade_missing",
+                "missing facade launch status") &&
+         expect(harness.frontend.status ==
+                    "product_creative_world_facade_missing",
+                "missing facade frontend status") &&
+         expect(!harness.window.gameplayMovementTuningVisible,
+                "missing facade clears movement tuning") &&
+         expect(creativeSaves.catalog.catalog.entries.empty(),
+                "missing facade writes no save");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = selectionAndBackAreStable() && disabledContinueStaysOnStarter() &&
                   childPanelActionsOpenExpectedSurfaces() &&
-                  deleteAndExitActionsAreExplicitRows();
+                  deleteAndExitActionsAreExplicitRows() &&
+                  creativeNewWorldLaunchesThroughStarterActionAndKeepsContinueSeparate() &&
+                  creativeNewWorldMissingFacadeFailsClosed();
   return ok ? 0 : 1;
 }
