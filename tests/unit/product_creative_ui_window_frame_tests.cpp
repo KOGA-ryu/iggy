@@ -210,8 +210,11 @@ bool creativeWindowWithFacadeRecordsReadyProjection() {
                 "rect count nonzero") &&
          expect(window.creativeUiProjectionRowCount > 0U,
                 "row count nonzero") &&
-         expect(window.creativeUiProjectionHitRegionCount == 0U,
-                "hit count zero");
+         expect(window.creativeUiProjectionHitRegionCount > 0U,
+                "hit count nonzero") &&
+         expect(window.creativeUiProjectionHitRegionCount ==
+                    window.creativeUiProjectionRowCount,
+                "hit count mirrors row count");
 }
 
 bool creativeWindowWithNullFacadeRecordsFacadeMissing() {

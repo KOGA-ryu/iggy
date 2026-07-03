@@ -262,8 +262,11 @@ bool creativeWindowWithFacadeProjectsAndRecords() {
                 "rect count nonzero") &&
          expect(window.creativeUiProjectionRowCount > 0U,
                 "row count nonzero") &&
-         expect(window.creativeUiProjectionHitRegionCount == 0U,
-                "hit count zero") &&
+         expect(window.creativeUiProjectionHitRegionCount > 0U,
+                "hit count nonzero") &&
+         expect(window.creativeUiProjectionHitRegionCount ==
+                    window.creativeUiProjectionRowCount,
+                "hit count mirrors row count") &&
          expect(frame.receipt.primitiveCount ==
                     window.creativeUiProjectionPrimitiveCount,
                 "frame primitive count copied") &&
@@ -273,7 +276,9 @@ bool creativeWindowWithFacadeProjectsAndRecords() {
                 "frame rect count copied") &&
          expect(frame.receipt.rowCount == window.creativeUiProjectionRowCount,
                 "frame row count copied") &&
-         expect(frame.receipt.hitRegionCount == 0U, "frame hit count zero") &&
+         expect(frame.receipt.hitRegionCount ==
+                    window.creativeUiProjectionHitRegionCount,
+                "frame hit count copied") &&
          expectReceiptField(receipt,
                             "creative_ui_projection_used_facade",
                             "true",

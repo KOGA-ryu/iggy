@@ -27,6 +27,17 @@ const iggy3d::ProductUiPrimitive* findPrimitive(
   return nullptr;
 }
 
+const iggy3d::UiHitRegion* findHitRegion(
+    const iggy3d::ProductUiDrawList& list,
+    std::string_view semanticId) {
+  for (const iggy3d::UiHitRegion& hit : list.hitRegions) {
+    if (hit.semanticId == semanticId) {
+      return &hit;
+    }
+  }
+  return nullptr;
+}
+
 std::size_t primitiveIndex(const iggy3d::ProductUiDrawList& list,
                            std::string_view semanticId) {
   for (std::size_t index = 0; index < list.primitives.size(); ++index) {
@@ -41,6 +52,12 @@ bool hasPrefix(std::string_view text, std::string_view prefix) {
   return text.rfind(prefix, 0) == 0;
 }
 
+bool rectEquals(const iggy3d::ProductUiRect& lhs,
+                const iggy3d::ProductUiRect& rhs) {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.width == rhs.width &&
+         lhs.height == rhs.height;
+}
+
 std::uint64_t countKind(const iggy3d::ProductUiDrawList& list,
                         iggy3d::ProductUiPrimitiveKind kind) {
   std::uint64_t count = 0;
@@ -50,6 +67,25 @@ std::uint64_t countKind(const iggy3d::ProductUiDrawList& list,
     }
   }
   return count;
+}
+
+bool rowHitMatchesTextPrimitive(const iggy3d::ProductUiDrawList& list,
+                                std::string_view semanticId) {
+  const iggy3d::ProductUiPrimitive* primitive =
+      findPrimitive(list, semanticId);
+  const iggy3d::UiHitRegion* hit = findHitRegion(list, semanticId);
+  return expect(primitive != nullptr, "matching primitive exists") &&
+         expect(hit != nullptr, "matching hit exists") &&
+         expect(primitive->kind == iggy3d::ProductUiPrimitiveKind::Text,
+                "matching primitive text") &&
+         expect(hit->semanticId == primitive->semanticId,
+                "matching semantic") &&
+         expect(rectEquals(hit->rect, primitive->rect), "matching rect") &&
+         expect(hit->kind == iggy3d::UiHitKind::Row, "matching hit row kind") &&
+         expect(hit->enabled == primitive->enabled,
+                "matching enabled state") &&
+         expect(hit->action == iggy3d::FrontendAction::None,
+                "matching hit action none");
 }
 
 cr::CreativeUiModel defaultCreativeUiModel() {
@@ -75,6 +111,17 @@ cr::CreativeUiModel populatedCreativeUiModel() {
   request.ghostState.snapChanged = true;
   request.ghostState.updateCount = 5;
   return cr::buildCreativeUiModel(request).model;
+}
+
+cr::CreativeUiModel disabledRowCreativeUiModel() {
+  cr::CreativeUiModel model = defaultCreativeUiModel();
+  for (cr::CreativeUiRow& row : model.rows) {
+    if (row.id == "active_tool") {
+      row.flags &= ~cr::kCreativeUiRowFlagEnabled;
+      break;
+    }
+  }
+  return model;
 }
 
 bool nullModelFailsClosed() {
@@ -137,9 +184,18 @@ bool primitivesAreNonInteractiveCreativeSemantics() {
                 "primitive action none") &&
          ok;
   }
+  for (const iggy3d::UiHitRegion& hit : list.hitRegions) {
+    ok = expect(hasPrefix(hit.semanticId, "creative."),
+                "hit creative semantic prefix") &&
+         ok;
+    ok = expect(hit.kind == iggy3d::UiHitKind::Row, "hit row kind") && ok;
+    ok = expect(hit.action == iggy3d::FrontendAction::None,
+                "hit action none") &&
+         ok;
+  }
 
-  return ok && expect(list.hitRegions.empty(), "no hit regions") &&
-         expect(list.hitRegionCount == 0U, "hit region count zero");
+  return ok && expect(list.hitRegionCount == list.hitRegions.size(),
+                      "hit region count size");
 }
 
 bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
@@ -178,7 +234,31 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                     snap->text ==
                         "Snap Settings: mode=Grid axes=XY step=(1.00, 1.00) "
                         "origin=(0.00, 0.00)",
-                "snap row text");
+                "snap row text") &&
+         expect(rowHitMatchesTextPrimitive(list,
+                                           "creative.row.tools.active_tool"),
+                "active row hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.status.creative_status"),
+                "status row hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.snap.snap_settings"),
+                "snap row hit") &&
+         expect(findHitRegion(list,
+                              "creative.row.selection.selected_target") ==
+                    nullptr,
+                "hidden selection hit") &&
+         expect(findHitRegion(list,
+                              "creative.row.inspection.inspected_target") ==
+                    nullptr,
+                "hidden inspection hit") &&
+         expect(findHitRegion(list,
+                              "creative.row.measurement.measurement_state") ==
+                    nullptr,
+                "hidden measurement hit") &&
+         expect(findHitRegion(list, "creative.row.ghost.ghost_preview") ==
+                    nullptr,
+                "hidden ghost hit");
 }
 
 bool populatedModelPreservesCreativeOrderAndText() {
@@ -234,7 +314,22 @@ bool populatedModelPreservesCreativeOrderAndText() {
          expect(selectionPanel < inspectionPanel,
                 "selection before inspection") &&
          expect(measurementPanel < ghostPanel,
-                "measurement before ghost");
+                "measurement before ghost") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.selection.selected_target"),
+                "selected hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.inspection.inspected_target"),
+                "inspected hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.measurement.measurement_state"),
+                "measurement hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.measurement.measurement_start"),
+                "measurement start hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.ghost.ghost_preview"),
+                "ghost hit");
 }
 
 bool countersMatchPrimitiveContents() {
@@ -255,7 +350,33 @@ bool countersMatchPrimitiveContents() {
          expect(list.rectCount == panelCount, "rect count") &&
          expect(list.rowCount == textCount, "row count") &&
          expect(list.disabledRowCount == 0U, "disabled row count") &&
-         expect(list.hitRegionCount == 0U, "hit count");
+         expect(list.hitRegionCount == list.hitRegions.size(),
+                "hit count size") &&
+         expect(list.hitRegionCount == list.rowCount, "hit count row count");
+}
+
+bool disabledRowsEmitDisabledHitRegions() {
+  const cr::CreativeUiModel model = disabledRowCreativeUiModel();
+  iggy3d::ProductCreativeUiDrawListRequest request;
+  request.model = &model;
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductCreativeUiDrawList(request);
+
+  const iggy3d::ProductUiPrimitive* active =
+      findPrimitive(list, "creative.row.tools.active_tool");
+  const iggy3d::UiHitRegion* activeHit =
+      findHitRegion(list, "creative.row.tools.active_tool");
+
+  return expect(list.disabledRowCount == 1U, "disabled row count one") &&
+         expect(active != nullptr, "disabled active primitive") &&
+         expect(activeHit != nullptr, "disabled active hit") &&
+         expect(!active->enabled, "disabled primitive enabled false") &&
+         expect(!activeHit->enabled, "disabled hit enabled false") &&
+         expect(activeHit->action == iggy3d::FrontendAction::None,
+                "disabled hit action none") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.tools.active_tool"),
+                "disabled hit matches primitive");
 }
 
 bool repeatedBuildIsStable() {
@@ -279,7 +400,17 @@ bool repeatedBuildIsStable() {
                     second.primitives.back().semanticId,
                 "repeat last semantic") &&
          expect(first.primitives.back().text == second.primitives.back().text,
-                "repeat last text");
+                "repeat last text") &&
+         expect(first.hitRegionCount == second.hitRegionCount,
+                "repeat hit count") &&
+         expect(first.hitRegions.size() == second.hitRegions.size(),
+                "repeat hit size") &&
+         expect(first.hitRegions.front().semanticId ==
+                    second.hitRegions.front().semanticId,
+                "repeat first hit") &&
+         expect(first.hitRegions.back().semanticId ==
+                    second.hitRegions.back().semanticId,
+                "repeat last hit");
 }
 
 }  // namespace
@@ -291,6 +422,7 @@ int main() {
                   defaultModelEmitsVisiblePanelsAndRowsOnly() &&
                   populatedModelPreservesCreativeOrderAndText() &&
                   countersMatchPrimitiveContents() &&
+                  disabledRowsEmitDisabledHitRegions() &&
                   repeatedBuildIsStable();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

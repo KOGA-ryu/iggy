@@ -223,10 +223,14 @@ bool populatedModelHasNonzeroCounts() {
          expect(projection.receipt.textCount > 0U, "populated text") &&
          expect(projection.receipt.rectCount > 0U, "populated rect") &&
          expect(projection.receipt.rowCount > 0U, "populated row count") &&
-         expect(projection.receipt.hitRegionCount == 0U,
-                "populated no hit count") &&
-         expect(projection.drawList.hitRegions.empty(),
-                "populated hit regions empty");
+         expect(projection.receipt.hitRegionCount > 0U,
+                "populated hit count") &&
+         expect(projection.receipt.hitRegionCount ==
+                    projection.drawList.hitRegions.size(),
+                "populated hit count mirrors regions") &&
+         expect(projection.receipt.hitRegionCount ==
+                    projection.receipt.rowCount,
+                "populated hit count mirrors row count");
 }
 
 bool primitivesRemainNonInteractive() {

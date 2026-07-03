@@ -245,7 +245,16 @@ void emitRowText(ProductUiDrawList& list,
   primitive.semanticId = rowSemanticId(row, rowIndex);
   primitive.text = rowText(row);
   primitive.enabled = enabled;
+
+  UiHitRegion hit;
+  hit.semanticId = primitive.semanticId;
+  hit.rect = primitive.rect;
+  hit.kind = UiHitKind::Row;
+  hit.action = FrontendAction::None;
+  hit.enabled = enabled;
+
   list.primitives.push_back(std::move(primitive));
+  list.hitRegions.push_back(std::move(hit));
   ++list.textCount;
   ++list.rowCount;
   if (!enabled) {
@@ -275,7 +284,9 @@ ProductUiDrawList buildProductCreativeUiDrawList(
   list.partial = false;
   list.status = "product_creative_ui_draw_list_ready";
   list.reasonCode = "product_creative_ui_draw_list_ready";
-  list.primitives.reserve(visiblePanelCount(model) + visibleRowCount(model));
+  const std::size_t visibleRows = visibleRowCount(model);
+  list.primitives.reserve(visiblePanelCount(model) + visibleRows);
+  list.hitRegions.reserve(visibleRows);
 
   float y = kOverlayY;
   for (const creative::CreativeUiPanel& panel : model.panels) {

@@ -262,8 +262,11 @@ bool modelProjectionRecordsReceiptFields() {
                 "model rect count nonzero") &&
          expect(window.creativeUiProjectionRowCount > 0U,
                 "model draw row count nonzero") &&
-         expect(window.creativeUiProjectionHitRegionCount == 0U,
-                "model hit count zero") &&
+         expect(window.creativeUiProjectionHitRegionCount > 0U,
+                "model hit count nonzero") &&
+         expect(window.creativeUiProjectionHitRegionCount ==
+                    window.creativeUiProjectionRowCount,
+                "model hit count mirrors row count") &&
          expectRecordedCounts(receipt, projection);
 }
 
