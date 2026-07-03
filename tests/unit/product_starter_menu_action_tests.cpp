@@ -10,6 +10,7 @@
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
+#include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 #include "app/iggy3d/world/CreativeWorldService.hpp"
 
 namespace {
@@ -75,6 +76,54 @@ iggy3d::ProductMenuActionResult applyStarterAction(
           harness.closeRequested,
           harness.creativeFacade,
       });
+}
+
+iggy3d::ProductMenuActionResult applyPauseConfirmAction(
+    StarterHarness& harness,
+    iggy3d::FrontendAction action,
+    iggy3d::creative::Facade* facade) {
+  iggy3d::FrontendSettings settings;
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::SystemPause,
+      {harness.frontend, harness.window, harness.closeRequested});
+  harness.frontend.selectedAction = action;
+  return iggy3d::applyProductPauseMenuAction(
+      iggy3d::InputAction::MenuConfirm,
+      {
+          harness.frontend,
+          harness.options,
+          harness.saves,
+          harness.settingsTab,
+          harness.activeSession,
+          harness.window,
+          harness.closeRequested,
+          settings,
+          facade,
+      });
+}
+
+iggy3d::ProductCreativeUiCommandFrameReceipt routeCreateRoomCommand(
+    iggy3d::creative::Facade& facade) {
+  iggy3d::ProductCreativeUiInputFrameReceipt input;
+  input.requested = true;
+  input.clickPresent = true;
+  input.drawListAvailable = true;
+  input.routed = true;
+  input.hit = true;
+  input.consumed = true;
+  input.enabled = true;
+  input.semanticId = "creative.row.tools.create_room";
+
+  iggy3d::ProductCreativeUiCommandFrameRequest request;
+  request.facade = &facade;
+  request.inputReceipt = input;
+  return iggy3d::routeProductCreativeUiCommandFrame(request);
+}
+
+bool productContinueSelectsNoSave(const std::filesystem::path& root) {
+  const iggy3d::ProductSaveBridgeResult saves =
+      iggy3d::scanProductSaves(root, "", "");
+  return !iggy3d::selectProductContinueSave(saves.catalog.catalog).selected;
 }
 
 void showMovementTuning(StarterHarness& harness) {
@@ -537,6 +586,232 @@ bool creativeOpenWorldIgnoresProductOnlySaves() {
                 "creative open product-only no active product id");
 }
 
+bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
+  StarterHarness harness;
+  iggy3d::creative::Facade facade;
+  harness.creativeFacade = &facade;
+  harness.options.saveRoot = testRoot("creative_lifecycle_loop");
+  harness.frontend.selectedAction = iggy3d::FrontendAction::CreativeNewWorld;
+  harness.draft.worldName = "Lifecycle Creative";
+
+  const iggy3d::ProductMenuActionResult launched =
+      applyStarterAction(harness, iggy3d::InputAction::MenuConfirm);
+  const bool launchSessionPresent = harness.activeSession.has_value();
+  const bool launchGameplayActive = harness.window.gameplayActive;
+  const iggy3d::ProductInteractionMode launchInteractionMode =
+      harness.window.interactionMode;
+  const std::string launchStatus = harness.window.launchStatus;
+  const std::string launchedSaveId = harness.window.activeCreativeSaveId;
+  const std::string launchedSavePath = harness.window.activeCreativeSavePath;
+  const std::string launchedWorldId = harness.window.activeCreativeWorldId;
+  const std::uint64_t launchedDocumentId =
+      harness.window.activeCreativeDocumentId;
+  const bool launchNoProductSaveId =
+      harness.window.activeProductSaveId == "none";
+  const std::uint64_t launchObjectCount = facade.document().objectCount();
+  const bool productContinueAfterLaunch =
+      productContinueSelectsNoSave(harness.options.saveRoot);
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt createRoom =
+      routeCreateRoomCommand(facade);
+  const iggy3d::creative::CreativeObject* createdRoom =
+      facade.findObject(createRoom.createObjectId);
+  const iggy3d::creative::CreativeObjectDirtyFlags dirtyBeforeSave =
+      facade.document().dirtyFlags();
+
+  const iggy3d::ProductMenuActionResult savedAndExited =
+      applyPauseConfirmAction(harness,
+                              iggy3d::FrontendAction::SaveAndExit,
+                              &facade);
+  const bool saveExitReturnedStarter =
+      harness.frontend.screen == iggy3d::FrontendScreen::Starter;
+  const std::string saveExitFrontendStatus{harness.frontend.status};
+  const bool saveExitSessionCleared = !harness.activeSession.has_value();
+  const bool saveExitGameplayCleared = !harness.window.gameplayActive;
+  const iggy3d::ProductInteractionMode saveExitInteractionMode =
+      harness.window.interactionMode;
+  const std::string saveExitLaunchStatus = harness.window.launchStatus;
+  const iggy3d::creative::CreativeObjectDirtyFlags dirtyAfterSaveExit =
+      facade.document().dirtyFlags();
+  const bool saveExitNoProductSaveId =
+      harness.window.activeProductSaveId == "none";
+  const bool productContinueAfterSaveExit =
+      productContinueSelectsNoSave(harness.options.saveRoot);
+  const bool creativeIdentityCleared =
+      harness.window.activeCreativeSaveId == "none" &&
+      harness.window.activeCreativeSavePath == "none" &&
+      harness.window.activeCreativeWorldId == "none" &&
+      harness.window.activeCreativeDocumentId ==
+          iggy3d::creative::kInvalidDocumentId &&
+      harness.window.activeCreativeObjectCount == 0U &&
+      harness.window.activeCreativeNextObjectId ==
+          iggy3d::creative::kInvalidObjectId;
+
+  iggy3d::creative::Facade reopenedFacade;
+  harness.creativeFacade = &reopenedFacade;
+  harness.frontend.selectedAction = iggy3d::FrontendAction::CreativeOpenWorld;
+  const iggy3d::ProductMenuActionResult reopened =
+      applyStarterAction(harness, iggy3d::InputAction::MenuConfirm);
+  const std::span<const iggy3d::creative::CreativeObject> reopenedObjects =
+      reopenedFacade.document().objects();
+  const iggy3d::creative::CreativeObject* reopenedRoom =
+      reopenedObjects.empty() ? nullptr : &reopenedObjects.front();
+  const bool productContinueAfterReopen =
+      productContinueSelectsNoSave(harness.options.saveRoot);
+
+  return expect(launched.handled && launched.accepted,
+                "lifecycle starter create handled") &&
+         expect(launchSessionPresent,
+                "lifecycle launch active session") &&
+         expect(launchGameplayActive,
+                "lifecycle launch gameplay active") &&
+         expect(launchInteractionMode ==
+                    iggy3d::ProductInteractionMode::Creative,
+                "lifecycle launch creative mode") &&
+         expect(launchStatus == "product_creative_world_launched",
+                "lifecycle launch status") &&
+         expect(launchedSaveId != "none", "lifecycle launch save id") &&
+         expect(launchedSavePath != "none", "lifecycle launch save path") &&
+         expect(launchedWorldId != "none", "lifecycle launch world id") &&
+         expect(launchedDocumentId !=
+                    iggy3d::creative::kInvalidDocumentId,
+                "lifecycle launch document id") &&
+         expect(launchNoProductSaveId,
+                "lifecycle launch no product save id") &&
+         expect(launchObjectCount == 0U,
+                "lifecycle launch empty document") &&
+         expect(productContinueAfterLaunch,
+                "lifecycle product continue ignores creative launch") &&
+         expect(createRoom.requested, "lifecycle create command requested") &&
+         expect(createRoom.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::CreateRoom,
+                "lifecycle create command kind") &&
+         expect(createRoom.accepted && createRoom.changed,
+                "lifecycle create command applied") &&
+         expect(createRoom.createRequested &&
+                    createRoom.createAccepted &&
+                    createRoom.createChanged,
+                "lifecycle create receipt applied") &&
+         expect(createRoom.createStatus ==
+                    iggy3d::creative::CreativeDocumentCreateStatus::Created,
+                "lifecycle create status") &&
+         expect(createRoom.createObjectId !=
+                    iggy3d::creative::kInvalidObjectId,
+                "lifecycle create object id") &&
+         expect(createRoom.createObjectKind ==
+                    iggy3d::creative::CreativeObjectKind::Room,
+                "lifecycle create object kind") &&
+         expect(facade.document().objectCount() == 1U,
+                "lifecycle created one room") &&
+         expect(facade.document().nextObjectId() == 2U,
+                "lifecycle next id after create") &&
+         expect(createdRoom != nullptr, "lifecycle created room exists") &&
+         expect(createdRoom != nullptr &&
+                    createdRoom->kind ==
+                        iggy3d::creative::CreativeObjectKind::Room,
+                "lifecycle created room kind") &&
+         expect(createdRoom != nullptr &&
+                    createdRoom->bounds.min.x == 0.0 &&
+                    createdRoom->bounds.min.y == 0.0 &&
+                    createdRoom->bounds.min.z == 0.0,
+                "lifecycle created room bounds min") &&
+         expect(createdRoom != nullptr &&
+                    createdRoom->bounds.max.x == 10.0 &&
+                    createdRoom->bounds.max.y == 4.0 &&
+                    createdRoom->bounds.max.z == 10.0,
+                "lifecycle created room bounds max") &&
+         expect(createdRoom != nullptr && createdRoom->visible,
+                "lifecycle created room visible") &&
+         expect(createdRoom != nullptr && !createdRoom->locked,
+                "lifecycle created room unlocked") &&
+         expect(dirtyBeforeSave != 0U, "lifecycle dirty before save") &&
+         expect(savedAndExited.handled && savedAndExited.accepted,
+                "lifecycle save exit handled") &&
+         expect(saveExitReturnedStarter,
+                "lifecycle save exit returns starter") &&
+         expect(saveExitFrontendStatus == "returned_to_title",
+                "lifecycle save exit returned status") &&
+         expect(saveExitSessionCleared,
+                "lifecycle save exit clears session") &&
+         expect(saveExitGameplayCleared,
+                "lifecycle save exit clears gameplay") &&
+         expect(saveExitInteractionMode ==
+                    iggy3d::ProductInteractionMode::Player,
+                "lifecycle save exit player mode") &&
+         expect(saveExitLaunchStatus == "product_creative_world_saved",
+                "lifecycle save exit launch status") &&
+         expect(dirtyAfterSaveExit == 0U,
+                "lifecycle save exit drains dirty") &&
+         expect(creativeIdentityCleared,
+                "lifecycle save exit clears creative identity") &&
+         expect(saveExitNoProductSaveId,
+                "lifecycle save exit no product save id") &&
+         expect(productContinueAfterSaveExit,
+                "lifecycle product continue ignores saved creative") &&
+         expect(reopened.handled && reopened.accepted,
+                "lifecycle reopen handled") &&
+         expect(harness.activeSession.has_value(),
+                "lifecycle reopen active session") &&
+         expect(harness.window.gameplayActive,
+                "lifecycle reopen gameplay active") &&
+         expect(harness.window.interactionMode ==
+                    iggy3d::ProductInteractionMode::Creative,
+                "lifecycle reopen creative mode") &&
+         expect(harness.window.launchStatus ==
+                    "product_creative_world_opened",
+                "lifecycle reopen status") &&
+         expect(reopenedFacade.document().id() == launchedDocumentId,
+                "lifecycle reopened document id") &&
+         expect(reopenedFacade.document().name() == "Lifecycle Creative",
+                "lifecycle reopened document name") &&
+         expect(reopenedFacade.document().objectCount() == 1U,
+                "lifecycle reopened object count") &&
+         expect(reopenedFacade.document().revision() == 0U,
+                "lifecycle reopened revision clean") &&
+         expect(reopenedFacade.document().dirtyFlags() == 0U,
+                "lifecycle reopened dirty clean") &&
+         expect(reopenedFacade.document().nextObjectId() == 2U,
+                "lifecycle reopened next id") &&
+         expect(reopenedRoom != nullptr, "lifecycle reopened room exists") &&
+         expect(reopenedRoom != nullptr &&
+                    reopenedRoom->id == createRoom.createObjectId,
+                "lifecycle reopened room id") &&
+         expect(reopenedRoom != nullptr &&
+                    reopenedRoom->kind ==
+                        iggy3d::creative::CreativeObjectKind::Room,
+                "lifecycle reopened room kind") &&
+         expect(reopenedRoom != nullptr &&
+                    reopenedRoom->bounds.min.x == 0.0 &&
+                    reopenedRoom->bounds.min.y == 0.0 &&
+                    reopenedRoom->bounds.min.z == 0.0,
+                "lifecycle reopened room bounds min") &&
+         expect(reopenedRoom != nullptr &&
+                    reopenedRoom->bounds.max.x == 10.0 &&
+                    reopenedRoom->bounds.max.y == 4.0 &&
+                    reopenedRoom->bounds.max.z == 10.0,
+                "lifecycle reopened room bounds max") &&
+         expect(reopenedRoom != nullptr && reopenedRoom->visible,
+                "lifecycle reopened room visible") &&
+         expect(reopenedRoom != nullptr && !reopenedRoom->locked,
+                "lifecycle reopened room unlocked") &&
+         expect(harness.window.activeCreativeSaveId == launchedSaveId,
+                "lifecycle reopen restores active creative save") &&
+         expect(harness.window.activeCreativeSavePath == launchedSavePath,
+                "lifecycle reopen restores active creative path") &&
+         expect(harness.window.activeCreativeWorldId == launchedWorldId,
+                "lifecycle reopen restores active creative world") &&
+         expect(harness.window.activeCreativeDocumentId == launchedDocumentId,
+                "lifecycle reopen restores active creative document") &&
+         expect(harness.window.activeCreativeObjectCount == 1U,
+                "lifecycle reopen active creative object count") &&
+         expect(harness.window.activeCreativeNextObjectId == 2U,
+                "lifecycle reopen active creative next id") &&
+         expect(harness.window.activeProductSaveId == "none",
+                "lifecycle reopen no product save id") &&
+         expect(productContinueAfterReopen,
+                "lifecycle product continue ignores reopened creative");
+}
+
 }  // namespace
 
 int main() {
@@ -548,6 +823,7 @@ int main() {
                   creativeOpenWorldLaunchesThroughStarterAction() &&
                   creativeOpenWorldWithoutCreativeSaveFailsClosed() &&
                   creativeOpenWorldMissingFacadeFailsClosed() &&
-                  creativeOpenWorldIgnoresProductOnlySaves();
+                  creativeOpenWorldIgnoresProductOnlySaves() &&
+                  creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen();
   return ok ? 0 : 1;
 }
