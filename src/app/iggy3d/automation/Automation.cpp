@@ -849,6 +849,8 @@ ProductFrontendSelectAutomationResult resolveProductFrontendSelectAutomation(
   static constexpr std::array rows{
       FrontendSelectRow{"continue", FrontendAction::Continue},
       FrontendSelectRow{"new_world", FrontendAction::NewWorld},
+      FrontendSelectRow{"creative_new_world", FrontendAction::CreativeNewWorld},
+      FrontendSelectRow{"creative_open_world", FrontendAction::CreativeOpenWorld},
       FrontendSelectRow{"load_save", FrontendAction::LoadSave},
       FrontendSelectRow{"settings", FrontendAction::Settings},
       FrontendSelectRow{"dev_tools", FrontendAction::DevTools},
@@ -864,6 +866,8 @@ ProductFrontendSelectAutomationResult resolveProductFrontendSelectAutomation(
   static constexpr std::array lookup{
       FrontendSelectRow{"continue", FrontendAction::Continue},
       FrontendSelectRow{"new_world", FrontendAction::NewWorld},
+      FrontendSelectRow{"creative_new_world", FrontendAction::CreativeNewWorld},
+      FrontendSelectRow{"creative_open_world", FrontendAction::CreativeOpenWorld},
       FrontendSelectRow{"load_save", FrontendAction::LoadSave},
       FrontendSelectRow{"settings", FrontendAction::Settings},
       FrontendSelectRow{"dev_tools", FrontendAction::DevTools},

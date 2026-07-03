@@ -4,10 +4,11 @@
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 #include "app/iggy3d/automation/AutomationSaveBrowser.hpp"
 #include "app/iggy3d/automation/AutomationSystem.hpp"
-#include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/ascii_room/Activation.hpp"
-#include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/menu/InputRouter.hpp"
+#include "app/iggy3d/menu/Transitions.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
 
@@ -34,11 +35,12 @@ bool routeAutomationInput(FrontendState& frontend,
                           WorldSetupDraft& worldSetupDraft,
                           ProductAppWindowState& window,
                           InputAction action,
-                          bool& closeRequested) {
+                          bool& closeRequested,
+                          creative::Facade* creativeFacade) {
   ActionState actionState;
   ProductOpeningMenuInputContext menuContext{
       frontend, saves, options, settingsTab, activeSession, worldSetupDraft,
-      window, closeRequested, settings};
+      window, closeRequested, settings, creativeFacade};
   routeProductOpeningMenuInput(action, actionState, menuContext);
   window.automationControlLastOwner = productInputOwnerFor(frontend, window);
   return window.lastInputAccepted || action == InputAction::None;
@@ -166,7 +168,8 @@ bool applyProductAutomationAppCommand(const ProductAutomationCommand& command,
                                     context.options, context.settings,
                                     context.settingsTab,
                                     context.activeSession, context.worldSetupDraft,
-                                    context.window, action, context.closeRequested);
+                                    context.window, action, context.closeRequested,
+                                    context.creativeFacade);
       },
       [&context]() {
         const ProductAsciiRoomActivationResult activated =

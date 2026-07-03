@@ -122,14 +122,15 @@ int runProductApp(int argc, char** argv) {
   ProductAutomationControlContext automationControlContext{
       options.automationControlPath, frontend, window, automationSettingsTab,
       [&frontend, &saves, &options, &automationSettingsTab, &activeSession,
-       &worldSetupDraft, &window, &settings, &automationCloseRequested](
+       &worldSetupDraft, &window, &settings, &automationCloseRequested,
+       &creativeFacade](
           const ProductAutomationCommand& command) {
         return applyProductAutomationAppCommand(
             command, ProductAutomationAppContext{
                          frontend, saves, options, settings,
                          automationSettingsTab,
                          activeSession, worldSetupDraft, window,
-                         automationCloseRequested});
+                         automationCloseRequested, &creativeFacade});
       },
       [&frontend, &window]() { return productInputOwnerFor(frontend, window); },
   };

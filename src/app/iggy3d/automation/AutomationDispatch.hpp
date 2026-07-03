@@ -13,6 +13,9 @@ namespace iggy3d {
 class Session;
 struct ProductAppOptions;
 struct ProductSaveBridgeResult;
+namespace creative {
+class Facade;
+}
 
 struct ProductAutomationDispatchContext {
   FrontendState& frontend;
@@ -40,6 +43,7 @@ struct ProductAutomationAppContext {
   WorldSetupDraft& worldSetupDraft;
   ProductAppWindowState& window;
   bool& closeRequested;
+  creative::Facade* creativeFacade = nullptr;
 };
 
 bool applyProductAutomationCommand(

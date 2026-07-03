@@ -241,6 +241,18 @@ int main() {
   expect(selectSettings.action == iggy3d::FrontendAction::Settings,
          "frontend select settings resolves to settings");
 
+  const iggy3d::ProductFrontendSelectAutomationResult selectCreativeNew =
+      iggy3d::resolveProductFrontendSelectAutomation("creative_new_world");
+  expect(selectCreativeNew.valid, "frontend select creative new world is valid");
+  expect(selectCreativeNew.action == iggy3d::FrontendAction::CreativeNewWorld,
+         "frontend select creative new world resolves to creative new world");
+
+  const iggy3d::ProductFrontendSelectAutomationResult selectCreativeOpen =
+      iggy3d::resolveProductFrontendSelectAutomation("creative_open_world");
+  expect(selectCreativeOpen.valid, "frontend select creative open world is valid");
+  expect(selectCreativeOpen.action == iggy3d::FrontendAction::CreativeOpenWorld,
+         "frontend select creative open world resolves to creative open world");
+
   const iggy3d::ProductFrontendSelectAutomationResult selectPauseAlias =
       iggy3d::resolveProductFrontendSelectAutomation("pause.select");
   expect(!selectPauseAlias.valid, "frontend select alias is not resolved by parser");
