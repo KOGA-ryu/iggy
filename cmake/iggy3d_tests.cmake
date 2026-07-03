@@ -252,6 +252,16 @@ iggy3d_add_unit_test(creative_tools_tests
 set_tests_properties(creative_tools_tests PROPERTIES
   LABELS "unit;app;creative;tools;iggy3d")
 
+iggy3d_add_unit_test(creative_select_tests
+  tests/unit/creative_select_tests.cpp)
+set_tests_properties(creative_select_tests PROPERTIES
+  LABELS "unit;app;creative;select;iggy3d")
+
+iggy3d_add_unit_test(creative_inspect_tests
+  tests/unit/creative_inspect_tests.cpp)
+set_tests_properties(creative_inspect_tests PROPERTIES
+  LABELS "unit;app;creative;inspect;iggy3d")
+
 iggy3d_add_unit_test(product_creative_palette_tests
   tests/unit/creative_palette_tests.cpp)
 set_tests_properties(product_creative_palette_tests PROPERTIES

@@ -40,6 +40,8 @@ target_sources(iggy3d
     src/app/iggy3d/creative/DocumentMutation.cpp
     src/app/iggy3d/creative/SpatialProjection.cpp
     src/app/iggy3d/creative/Tools.cpp
+    src/app/iggy3d/creative/Select.cpp
+    src/app/iggy3d/creative/Inspect.cpp
     src/app/iggy3d/creative/Commands.cpp
     src/app/iggy3d/creative/Metrics.cpp
     src/app/iggy3d/creative/Facade.cpp
