@@ -32,6 +32,11 @@ void setOpenStatus(CreativeWorldOpenResult& result, std::string reason) {
   result.reasonCode = result.status;
 }
 
+void setSaveStatus(CreativeWorldSaveResult& result, std::string reason) {
+  result.status = std::move(reason);
+  result.reasonCode = result.status;
+}
+
 void considerCreativeDocumentId(const ProductSaveCatalog& catalog,
                                 creative::CreativeDocumentId& maxId) {
   for (const ProductSaveCatalogEntry& entry : catalog.entries) {
@@ -71,6 +76,34 @@ void mirrorOpenLoad(CreativeWorldOpenResult& result,
   result.documentId = load.documentId;
   result.objectCount = load.creativeObjectCount;
   result.nextObjectId = load.creativeNextObjectId;
+}
+
+void mirrorSaveDocumentState(CreativeWorldSaveResult& result,
+                             const creative::CreativeDocument* document) {
+  if (document == nullptr) {
+    return;
+  }
+  result.documentId = document->id();
+  result.objectCount = document->objectCount();
+  result.nextObjectId = document->nextObjectId();
+  result.dirtyFlagsBefore = document->dirtyFlags();
+  result.dirtyFlagsAfter = result.dirtyFlagsBefore;
+}
+
+void mirrorSaveWrite(CreativeWorldSaveResult& result,
+                     const ProductCreativeSaveWriteResult& saveWrite) {
+  result.saveWrite = saveWrite;
+  result.packageId = saveWrite.packageId;
+  result.scenarioId = saveWrite.scenarioId;
+  result.worldId = saveWrite.worldId;
+  result.worldTitle = saveWrite.worldTitle;
+  result.saveTitle = saveWrite.saveTitle;
+  result.saveType = saveWrite.saveType;
+  result.createdAtUtc = saveWrite.createdAtUtc;
+  result.savedAtUtc = saveWrite.savedAtUtc;
+  result.documentId = saveWrite.documentId;
+  result.objectCount = saveWrite.creativeObjectCount;
+  result.nextObjectId = saveWrite.creativeNextObjectId;
 }
 
 }  // namespace
@@ -170,6 +203,70 @@ CreativeWorldOpenResult openCreativeWorld(
   result.document = load.document;
   result.accepted = true;
   setOpenStatus(result, "creative_world_opened");
+  return result;
+}
+
+CreativeWorldSaveResult saveCreativeWorld(
+    const CreativeWorldSaveRequest& request) {
+  CreativeWorldSaveResult result;
+  result.saveId = request.saveId.empty() ? "none" : request.saveId;
+  mirrorSaveDocumentState(result, request.document);
+
+  if (request.document == nullptr) {
+    setSaveStatus(result, "creative_world_save_document_missing");
+    return result;
+  }
+  if (request.saveRoot.empty()) {
+    setSaveStatus(result, "creative_world_save_root_missing");
+    return result;
+  }
+  if (isBlank(request.saveId)) {
+    setSaveStatus(result, "creative_world_save_id_missing");
+    return result;
+  }
+  if (!isValidSaveFileId(request.saveId)) {
+    setSaveStatus(result, "creative_world_save_id_invalid");
+    return result;
+  }
+  if (request.document->id() == creative::kInvalidDocumentId) {
+    setSaveStatus(result, "invalid_document_id");
+    return result;
+  }
+
+  result.path = saveFilePathForId(request.saveRoot, request.saveId);
+
+  ProductCreativeSaveWriteRequest saveRequest;
+  saveRequest.saveRoot = request.saveRoot;
+  saveRequest.saveIdHint = request.saveId;
+  saveRequest.attemptToken = request.attemptToken;
+  saveRequest.document = request.document;
+  saveRequest.packageId = request.packageId;
+  saveRequest.scenarioId = request.scenarioId;
+  saveRequest.worldId = request.worldId;
+  saveRequest.worldTitle = request.worldTitle;
+  saveRequest.saveTitle = request.saveTitle;
+  saveRequest.saveType = request.saveType;
+  saveRequest.createdAtUtc = request.createdAtUtc;
+  saveRequest.savedAtUtc = request.savedAtUtc;
+
+  const ProductCreativeSaveWriteResult saveWrite =
+      writeCreativeDocumentSaveDurably(saveRequest);
+  mirrorSaveWrite(result, saveWrite);
+  result.saveId = saveWrite.record.id.empty() ? result.saveId
+                                              : saveWrite.record.id;
+  result.path = saveWrite.record.path.empty() ? result.path
+                                              : saveWrite.record.path;
+  if (!saveWrite.ok) {
+    setSaveStatus(result, saveWrite.reasonCode);
+    result.dirtyFlagsAfter = request.document->dirtyFlags();
+    return result;
+  }
+
+  result.dirtyFlagsDrained = request.document->drainDirtyFlags();
+  result.dirtyFlagsAfter = request.document->dirtyFlags();
+  result.accepted = true;
+  result.saved = true;
+  setSaveStatus(result, "creative_world_saved");
   return result;
 }
 

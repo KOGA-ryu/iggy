@@ -40,6 +40,21 @@ struct CreativeWorldOpenRequest {
   std::string saveId;
 };
 
+struct CreativeWorldSaveRequest {
+  std::filesystem::path saveRoot;
+  std::string saveId;
+  std::string attemptToken = "attempt_001";
+  creative::CreativeDocument* document = nullptr;
+  std::string packageId = "iggy3d.creative";
+  std::string scenarioId = "creative.document";
+  std::string worldId;
+  std::string worldTitle;
+  std::string saveTitle;
+  std::string saveType;
+  std::string createdAtUtc;
+  std::string savedAtUtc;
+};
+
 struct CreativeWorldOpenResult {
   bool accepted = false;
   std::string status = "creative_world_open_not_requested";
@@ -61,9 +76,35 @@ struct CreativeWorldOpenResult {
   std::string savedAtUtc;
 };
 
+struct CreativeWorldSaveResult {
+  bool accepted = false;
+  std::string status = "creative_world_save_not_requested";
+  std::string reasonCode = "creative_world_save_not_requested";
+  std::string saveId = "none";
+  std::filesystem::path path;
+  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
+  std::uint64_t objectCount = 0;
+  creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
+  creative::CreativeObjectDirtyFlags dirtyFlagsBefore = 0;
+  creative::CreativeObjectDirtyFlags dirtyFlagsDrained = 0;
+  creative::CreativeObjectDirtyFlags dirtyFlagsAfter = 0;
+  bool saved = false;
+  ProductCreativeSaveWriteResult saveWrite;
+  std::string packageId;
+  std::string scenarioId;
+  std::string worldId;
+  std::string worldTitle;
+  std::string saveTitle;
+  std::string saveType;
+  std::string createdAtUtc;
+  std::string savedAtUtc;
+};
+
 [[nodiscard]] CreativeWorldCreateResult createCreativeWorld(
     const CreativeWorldCreateRequest& request);
 [[nodiscard]] CreativeWorldOpenResult openCreativeWorld(
     const CreativeWorldOpenRequest& request);
+[[nodiscard]] CreativeWorldSaveResult saveCreativeWorld(
+    const CreativeWorldSaveRequest& request);
 
 }  // namespace iggy3d

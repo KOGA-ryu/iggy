@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <iostream>
 #include <string_view>
+#include <utility>
 
 #include "runtime/save/SaveFileStore.hpp"
 
@@ -35,6 +36,17 @@ iggy3d::CreativeWorldCreateRequest createRequest(
   request.saveRoot = root;
   request.title = std::string{title};
   request.requestedAtUtc = std::string{requestedAtUtc};
+  return request;
+}
+
+iggy3d::CreativeWorldSaveRequest saveRequest(
+    const std::filesystem::path& root,
+    std::string saveId,
+    cr::CreativeDocument& document) {
+  iggy3d::CreativeWorldSaveRequest request;
+  request.saveRoot = root;
+  request.saveId = std::move(saveId);
+  request.document = &document;
   return request;
 }
 
@@ -145,6 +157,217 @@ bool openCreativeWorldRestoresCreatedDocument() {
          expect(opened.worldTitle == "Open Me", "open world title") &&
          expect(opened.saveTitle == "Open Me", "open save title") &&
          expect(opened.saveType == "creative", "open save type");
+}
+
+bool saveDirtyCreativeWorldDrainsDirtyFlagsAfterDurableWrite() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::CreativeWorldCreateResult created =
+      iggy3d::createCreativeWorld(createRequest(root, "Carry Forward"));
+  cr::CreativeDocument document = created.document;
+  const bool renamed = document.rename("Renamed Creative Document");
+  const cr::CreativeObjectDirtyFlags dirtyBefore = document.dirtyFlags();
+  const std::uint64_t revisionBeforeSave = document.revision();
+
+  const iggy3d::CreativeWorldSaveResult saved =
+      iggy3d::saveCreativeWorld(saveRequest(root, created.saveId, document));
+  const iggy3d::CreativeWorldOpenResult reopened =
+      iggy3d::openCreativeWorld({root, created.saveId});
+  const iggy3d::ProductSaveBridgeResult scanned =
+      iggy3d::scanProductSaves(root, "iggy3d.creative", "creative.document");
+  const bool hasEntry = scanned.catalog.catalog.entries.size() == 1U;
+  const iggy3d::ProductSaveCatalogEntry entry =
+      hasEntry ? scanned.catalog.catalog.entries.front()
+               : iggy3d::ProductSaveCatalogEntry{};
+
+  return expect(created.accepted, "save dirty setup create accepted") &&
+         expect(renamed, "save dirty document renamed") &&
+         expect(dirtyBefore != 0U, "save dirty has dirty flags") &&
+         expect(saved.accepted, "save dirty accepted") &&
+         expect(saved.saved, "save dirty saved") &&
+         expect(saved.status == "creative_world_saved",
+                "save dirty status") &&
+         expect(saved.reasonCode == "creative_world_saved",
+                "save dirty reason") &&
+         expect(saved.saveId == created.saveId, "save dirty same id") &&
+         expect(saved.path == created.path, "save dirty same path") &&
+         expect(saved.saveWrite.ok, "save dirty write ok") &&
+         expect(saved.saveWrite.previousExisted,
+                "save dirty overwrote existing save") &&
+         expect(saved.dirtyFlagsBefore == dirtyBefore,
+                "save dirty before mirrored") &&
+         expect(saved.dirtyFlagsDrained == dirtyBefore,
+                "save dirty drained before flags") &&
+         expect(saved.dirtyFlagsAfter == 0U, "save dirty after zero") &&
+         expect(document.dirtyFlags() == 0U, "save dirty document drained") &&
+         expect(document.revision() == revisionBeforeSave,
+                "save dirty revision preserved") &&
+         expect(reopened.accepted, "save dirty reopen accepted") &&
+         expect(reopened.document.name() == "Renamed Creative Document",
+                "save dirty reopened renamed document") &&
+         expect(reopened.document.revision() == 0U,
+                "save dirty reopened revision clean") &&
+         expect(reopened.document.dirtyFlags() == 0U,
+                "save dirty reopened dirty clean") &&
+         expect(saved.worldId == "world_0001",
+                "save dirty carried world id") &&
+         expect(saved.worldTitle == "Carry Forward",
+                "save dirty carried world title") &&
+         expect(saved.saveTitle == "Carry Forward",
+                "save dirty carried save title") &&
+         expect(saved.saveType == "creative",
+                "save dirty carried save type") &&
+         expect(saved.createdAtUtc == "2026-07-03T10:00:00Z",
+                "save dirty carried created time") &&
+         expect(saved.savedAtUtc == "2026-07-03T10:00:00Z",
+                "save dirty carried saved time") &&
+         expect(hasEntry, "save dirty scan entry") &&
+         expect(entry.worldId == "world_0001",
+                "save dirty catalog world id carried") &&
+         expect(entry.worldTitle == "Carry Forward",
+                "save dirty catalog world title carried") &&
+         expect(entry.saveTitle == "Carry Forward",
+                "save dirty catalog save title carried");
+}
+
+bool saveCleanCreativeWorldSucceedsAndDrainsZero() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::CreativeWorldCreateResult created =
+      iggy3d::createCreativeWorld(createRequest(root, "Clean"));
+  cr::CreativeDocument document = created.document;
+
+  const iggy3d::CreativeWorldSaveResult saved =
+      iggy3d::saveCreativeWorld(saveRequest(root, created.saveId, document));
+
+  return expect(created.accepted, "save clean setup create accepted") &&
+         expect(document.dirtyFlags() == 0U, "save clean starts clean") &&
+         expect(saved.accepted, "save clean accepted") &&
+         expect(saved.saved, "save clean saved") &&
+         expect(saved.dirtyFlagsBefore == 0U, "save clean before zero") &&
+         expect(saved.dirtyFlagsDrained == 0U, "save clean drained zero") &&
+         expect(saved.dirtyFlagsAfter == 0U, "save clean after zero") &&
+         expect(document.dirtyFlags() == 0U, "save clean document remains clean");
+}
+
+bool saveInvalidAttemptTokenPreservesDirtyFlags() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::CreativeWorldCreateResult created =
+      iggy3d::createCreativeWorld(createRequest(root, "Dirty Failure"));
+  cr::CreativeDocument document = created.document;
+  static_cast<void>(document.rename("Still Dirty"));
+  const cr::CreativeObjectDirtyFlags dirtyBefore = document.dirtyFlags();
+  iggy3d::CreativeWorldSaveRequest request =
+      saveRequest(root, created.saveId, document);
+  request.attemptToken = "attempt token with spaces";
+
+  const iggy3d::CreativeWorldSaveResult saved =
+      iggy3d::saveCreativeWorld(request);
+
+  return expect(created.accepted, "save invalid setup create accepted") &&
+         expect(dirtyBefore != 0U, "save invalid setup dirty") &&
+         expect(!saved.accepted, "save invalid rejected") &&
+         expect(!saved.saved, "save invalid not saved") &&
+         expect(saved.status == "durable_save_invalid_attempt_token",
+                "save invalid status") &&
+         expect(saved.dirtyFlagsBefore == dirtyBefore,
+                "save invalid before mirrored") &&
+         expect(saved.dirtyFlagsDrained == 0U,
+                "save invalid did not drain") &&
+         expect(saved.dirtyFlagsAfter == dirtyBefore,
+                "save invalid after preserved") &&
+         expect(document.dirtyFlags() == dirtyBefore,
+                "save invalid document dirty preserved") &&
+         expect(!saved.saveWrite.tempWritten,
+                "save invalid no temp write") &&
+         expect(!saved.saveWrite.committed,
+                "save invalid not committed");
+}
+
+bool saveValidationRejectsBeforeDurableWriteAndPreservesDirtyFlags() {
+  const std::filesystem::path root = testRoot();
+  const iggy3d::CreativeWorldCreateResult created =
+      iggy3d::createCreativeWorld(createRequest(root, "Validation"));
+  cr::CreativeDocument document = created.document;
+  static_cast<void>(document.rename("Validation Dirty"));
+  const cr::CreativeObjectDirtyFlags dirtyBefore = document.dirtyFlags();
+
+  iggy3d::CreativeWorldSaveRequest missingRoot =
+      saveRequest(root, created.saveId, document);
+  missingRoot.saveRoot.clear();
+  iggy3d::CreativeWorldSaveRequest missingId =
+      saveRequest(root, " ", document);
+  iggy3d::CreativeWorldSaveRequest invalidId =
+      saveRequest(root, "save/001", document);
+  iggy3d::CreativeWorldSaveRequest nullDocument;
+  nullDocument.saveRoot = root;
+  nullDocument.saveId = created.saveId;
+
+  const iggy3d::CreativeWorldSaveResult missingRootResult =
+      iggy3d::saveCreativeWorld(missingRoot);
+  const iggy3d::CreativeWorldSaveResult missingIdResult =
+      iggy3d::saveCreativeWorld(missingId);
+  const iggy3d::CreativeWorldSaveResult invalidIdResult =
+      iggy3d::saveCreativeWorld(invalidId);
+  const iggy3d::CreativeWorldSaveResult nullDocumentResult =
+      iggy3d::saveCreativeWorld(nullDocument);
+
+  return expect(created.accepted, "save validation setup create accepted") &&
+         expect(!missingRootResult.accepted, "save missing root rejected") &&
+         expect(missingRootResult.status == "creative_world_save_root_missing",
+                "save missing root status") &&
+         expect(missingRootResult.dirtyFlagsBefore == dirtyBefore,
+                "save missing root dirty before") &&
+         expect(missingRootResult.dirtyFlagsAfter == dirtyBefore,
+                "save missing root dirty after") &&
+         expect(!missingIdResult.accepted, "save missing id rejected") &&
+         expect(missingIdResult.status == "creative_world_save_id_missing",
+                "save missing id status") &&
+         expect(missingIdResult.dirtyFlagsAfter == dirtyBefore,
+                "save missing id dirty after") &&
+         expect(!invalidIdResult.accepted, "save invalid id rejected") &&
+         expect(invalidIdResult.status == "creative_world_save_id_invalid",
+                "save invalid id status") &&
+         expect(invalidIdResult.dirtyFlagsAfter == dirtyBefore,
+                "save invalid id dirty after") &&
+         expect(!nullDocumentResult.accepted, "save null document rejected") &&
+         expect(nullDocumentResult.status ==
+                    "creative_world_save_document_missing",
+                "save null document status") &&
+         expect(!missingRootResult.saveWrite.durableWriteRequested,
+                "save missing root no durable") &&
+         expect(!missingIdResult.saveWrite.durableWriteRequested,
+                "save missing id no durable") &&
+         expect(!invalidIdResult.saveWrite.durableWriteRequested,
+                "save invalid id no durable") &&
+         expect(document.dirtyFlags() == dirtyBefore,
+                "save validation document dirty preserved");
+}
+
+bool saveInvalidDocumentIdRejectsAndPreservesDirtyFlags() {
+  const std::filesystem::path root = testRoot();
+  cr::CreativeDocument document = cr::CreativeDocument::create("No Id");
+  static_cast<void>(document.rename("No Id Dirty"));
+  const cr::CreativeObjectDirtyFlags dirtyBefore = document.dirtyFlags();
+
+  const iggy3d::CreativeWorldSaveResult saved =
+      iggy3d::saveCreativeWorld(saveRequest(root, "save_001", document));
+
+  return expect(!saved.accepted, "save invalid document rejected") &&
+         expect(saved.status == "invalid_document_id",
+                "save invalid document status") &&
+         expect(saved.documentId == cr::kInvalidDocumentId,
+                "save invalid document id mirrored") &&
+         expect(saved.dirtyFlagsBefore == dirtyBefore,
+                "save invalid document dirty before") &&
+         expect(saved.dirtyFlagsAfter == dirtyBefore,
+                "save invalid document dirty after") &&
+         expect(saved.dirtyFlagsDrained == 0U,
+                "save invalid document did not drain") &&
+         expect(document.dirtyFlags() == dirtyBefore,
+                "save invalid document dirty preserved") &&
+         expect(!saved.saveWrite.durableWriteRequested,
+                "save invalid document no durable") &&
+         expect(iggy3d::listSaveFilePaths(root).empty(),
+                "save invalid document no committed save");
 }
 
 bool validationRejectsBeforeDurableWrite() {
@@ -295,6 +518,11 @@ int main() {
   const bool ok =
       createEmptyCreativeWorldWritesDurableSaveAndScansAsCreative() &&
       openCreativeWorldRestoresCreatedDocument() &&
+      saveDirtyCreativeWorldDrainsDirtyFlagsAfterDurableWrite() &&
+      saveCleanCreativeWorldSucceedsAndDrainsZero() &&
+      saveInvalidAttemptTokenPreservesDirtyFlags() &&
+      saveValidationRejectsBeforeDurableWriteAndPreservesDirtyFlags() &&
+      saveInvalidDocumentIdRejectsAndPreservesDirtyFlags() &&
       validationRejectsBeforeDurableWrite() &&
       invalidAttemptTokenFailsAfterDocumentCreationWithoutCommittedSave() &&
       documentIdMintUsesActiveAndDeletedCreativeSaves() &&
