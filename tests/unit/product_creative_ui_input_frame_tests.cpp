@@ -739,6 +739,11 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
       nullptr,
       &facade,
       nullptr,
+      {},
+      {},
+      0,
+      iggy3d::creative::CreativeViewportPickDepthMode::FixedZ,
+      {},
   });
 
   return expect(window.creativeUiInputRequested,
@@ -790,6 +795,162 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
                 "input frame facade tool unchanged");
 }
 
+bool inputFrameInjectedClickOnActiveToolRowRunsLiveCommandAndSuppressesClick() {
+  iggy3d::FrontendState frontend;
+  iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
+  iggy3d::ProductSaveBridgeResult saves;
+  iggy3d::ProductAppOptions options;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
+  std::optional<iggy3d::Session> activeSession;
+  activeSession.emplace();
+  iggy3d::WorldSetupDraft worldSetupDraft;
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductWindowInputFrameState inputFrame;
+  iggy3d::creative::Facade facade;
+  facade.reset();
+  bool closeRequested = false;
+
+  const iggy3d::ProductUiDrawList drawList = defaultCreativeDrawList();
+  const iggy3d::UiHitRegion& activeHit = drawList.hitRegions.front();
+  iggy3d::ProductWindowInputClickOverride clickOverride;
+  clickOverride.enabled = true;
+  clickOverride.click = clickAt(activeHit.rect.x, activeHit.rect.y);
+
+  iggy3d::processProductWindowInputFrame(iggy3d::ProductWindowInputFrameContext{
+      frontend,
+      saves,
+      options,
+      settingsTab,
+      activeSession,
+      worldSetupDraft,
+      window,
+      settings,
+      inputFrame,
+      closeRequested,
+      nullptr,
+      &facade,
+      &drawList,
+      {},
+      {},
+      0,
+      iggy3d::creative::CreativeViewportPickDepthMode::FixedZ,
+      clickOverride,
+  });
+
+  return expect(window.creativeUiInputConsumed,
+                "injected row click consumed") &&
+         expect(window.creativeUiInputSemanticId ==
+                    "creative.row.tools.active_tool",
+                "injected row semantic") &&
+         expect(window.creativeUiCommandRequested,
+                "injected command requested") &&
+         expect(window.creativeUiCommandAccepted,
+                "injected command accepted") &&
+         expect(window.creativeUiCommandChanged,
+                "injected command changed") &&
+         expect(window.creativeUiCommandKind == "cycle_next_tool",
+                "injected command kind") &&
+         expect(window.creativeUiCommandToolBefore == "Select",
+                "injected command tool before") &&
+         expect(window.creativeUiCommandToolAfter == "Inspect",
+                "injected command tool after") &&
+         expect(facade.toolState().activeTool ==
+                    iggy3d::creative::Tool::Inspect,
+                "injected facade tool inspect") &&
+         expect(facade.state().tool == iggy3d::creative::Tool::Inspect,
+                "injected old state tool inspect") &&
+         expect(window.creativeUiInputDownstreamClickSuppressed,
+                "injected downstream suppressed") &&
+         expect(window.creativeViewportPickClickSuppressed,
+                "injected viewport click suppressed") &&
+         expect(!window.creativeViewportPickPicked,
+                "injected viewport did not pick") &&
+         expect(window.creativeViewportPickStatus ==
+                    "product_creative_viewport_pick_no_click",
+                "injected viewport no-click status") &&
+         expect(facade.selectionState().selectedTarget.value ==
+                    iggy3d::creative::kInvalidId,
+                "injected no pointer selection") &&
+         expect(facade.inspectionState().inspectedTarget.value ==
+                    iggy3d::creative::kInvalidId,
+                "injected no pointer inspection") &&
+         expect(!facade.measurementState().active,
+                "injected no measurement dispatch");
+}
+
+bool inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool() {
+  iggy3d::FrontendState frontend;
+  iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
+  iggy3d::ProductSaveBridgeResult saves;
+  iggy3d::ProductAppOptions options;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
+  std::optional<iggy3d::Session> activeSession;
+  activeSession.emplace();
+  iggy3d::WorldSetupDraft worldSetupDraft;
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductWindowInputFrameState inputFrame;
+  iggy3d::creative::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(iggy3d::creative::Tool::Measure));
+  bool closeRequested = false;
+
+  iggy3d::ProductWindowInputClickOverride clickOverride;
+  clickOverride.enabled = true;
+  clickOverride.click = clickAt(80.0F, 96.0F);
+
+  iggy3d::processProductWindowInputFrame(iggy3d::ProductWindowInputFrameContext{
+      frontend,
+      saves,
+      options,
+      settingsTab,
+      activeSession,
+      worldSetupDraft,
+      window,
+      settings,
+      inputFrame,
+      closeRequested,
+      nullptr,
+      &facade,
+      nullptr,
+      {},
+      {},
+      0,
+      iggy3d::creative::CreativeViewportPickDepthMode::FixedZ,
+      clickOverride,
+  });
+
+  return expect(window.creativeUiInputRequested,
+                "injected missing draw requested") &&
+         expect(window.creativeUiInputClickPresent,
+                "injected missing draw click") &&
+         expect(!window.creativeUiInputDrawListAvailable,
+                "injected missing draw unavailable") &&
+         expect(window.creativeUiInputStatus ==
+                    "product_creative_ui_input_draw_list_missing",
+                "injected missing draw status") &&
+         expect(!window.creativeUiInputConsumed,
+                "injected missing draw not consumed") &&
+         expect(!window.creativeUiInputDownstreamClickSuppressed,
+                "injected missing draw not suppressed") &&
+         expect(window.creativeViewportPickStatus ==
+                    "product_creative_viewport_pick_source_empty",
+                "injected missing draw viewport source empty") &&
+         expect(facade.measurementState().active,
+                "injected missing draw measurement active") &&
+         expect(facade.measurementState().hasMeasurement,
+                "injected missing draw measurement exists") &&
+         expect(facade.measurementState().startPoint.x == 80.0,
+                "injected missing draw measurement x") &&
+         expect(facade.measurementState().startPoint.y == 96.0,
+                "injected missing draw measurement y");
+}
+
 }  // namespace
 
 int main() {
@@ -811,6 +972,8 @@ int main() {
                   recorderCopiesConsumedCreativeRowReceipt() &&
                   recorderCopiesSuppressedDownstreamClickReceipt() &&
                   recorderLeavesOtherReceiptFieldsUntouched() &&
-                  inputFrameNoClickNullDrawListRecordsNoClick();
+                  inputFrameNoClickNullDrawListRecordsNoClick() &&
+                  inputFrameInjectedClickOnActiveToolRowRunsLiveCommandAndSuppressesClick() &&
+                  inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

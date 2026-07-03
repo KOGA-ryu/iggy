@@ -651,6 +651,15 @@ MouseClick normalizeProductWindowMenuClick(MouseClick click,
   return click;
 }
 
+MouseClick resolveProductWindowInputMouseClick(
+    ProductWindowInputClickOverride clickOverride,
+    MouseInputState& mouse) {
+  if (clickOverride.enabled) {
+    return clickOverride.click;
+  }
+  return pollMouseClick(mouse);
+}
+
 void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                           SdlWindow* sdlWindow,
                                           ProductAppWindowState* window) {
@@ -1031,7 +1040,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                  1.0F);
   }
 
-  const MouseClick click = pollMouseClick(context.inputFrame.mouse);
+  const MouseClick click = resolveProductWindowInputMouseClick(
+      context.clickOverride, context.inputFrame.mouse);
   const ProductCreativeUiInputFrameReceipt creativeUiInputReceipt =
       routeProductCreativeUiInputFrame(ProductCreativeUiInputFrameRequest{
           context.creativeUiDrawList,

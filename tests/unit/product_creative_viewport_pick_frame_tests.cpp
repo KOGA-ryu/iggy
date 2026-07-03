@@ -663,6 +663,11 @@ bool inputFrameNoWindowNoClickRecordsInactiveViewportPick() {
       nullptr,
       nullptr,
       nullptr,
+      {},
+      {},
+      0,
+      iggy3d::creative::CreativeViewportPickDepthMode::FixedZ,
+      {},
   });
 
   return expect(window.creativeViewportPickRequested,

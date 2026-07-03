@@ -52,6 +52,11 @@ struct ProductWindowInputFrameState {
   ProductMovementTuningRepeatState movementTuningRepeat;
 };
 
+struct ProductWindowInputClickOverride {
+  bool enabled = false;
+  MouseClick click;
+};
+
 struct ProductWindowInputFrameContext {
   FrontendState& frontend;
   ProductSaveBridgeResult& saves;
@@ -71,6 +76,7 @@ struct ProductWindowInputFrameContext {
   std::int32_t creativeViewportPickZ = 0;
   creative::CreativeViewportPickDepthMode creativeViewportPickDepthMode =
       creative::CreativeViewportPickDepthMode::FixedZ;
+  ProductWindowInputClickOverride clickOverride;
 };
 
 struct ProductControllerSampleInputContext {
@@ -128,6 +134,9 @@ MouseClick normalizeProductWindowMenuClick(MouseClick click,
                                            std::uint32_t windowHeight,
                                            std::uint32_t virtualWidth = 1280U,
                                            std::uint32_t virtualHeight = 720U);
+MouseClick resolveProductWindowInputMouseClick(
+    ProductWindowInputClickOverride clickOverride,
+    MouseInputState& mouse);
 void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                           SdlWindow* sdlWindow = nullptr,
                                           ProductAppWindowState* window = nullptr);
