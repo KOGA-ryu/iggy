@@ -8,6 +8,7 @@
 
 #include "core/math/Vec3.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"
+#include "runtime/movement/MovementCapability.hpp"
 #include "runtime/physics/PhysicsAabbCollider.hpp"
 
 namespace iggy3d {
@@ -34,6 +35,26 @@ struct TravelCostConfig {
   // collision here; a later tuning slice wires it. Default 0 => no contribution.
   float slopePenaltyScale = 0.0F;
 };
+
+// MA4 (M3): the UNUSABLE sentinel -- a multiplier marking an edge kind the router must SKIP entirely
+// (NOT infinity arithmetic; map v1.3 correction). Negative so it is unambiguous against every real
+// positive multiplier. InfluenceMap's SEPARATE +inf-for-unreached convention is untouched -- this
+// scopes only to the router's edge-kind gate.
+inline constexpr float kUnusableEdgeKindMultiplier = -1.0F;
+
+// True unless `kind`'s multiplier is the unusable sentinel. planRoute + InfluenceMap's Dijkstra
+// `continue` (skip the edge) when this is false -- BEFORE travelCost, so the sentinel never enters a
+// cost sum (planRoute-returned costs stay finite + sentinel-free).
+inline bool isTraversableEdgeKind(const TravelCostConfig& config, ReasoningEdgeKind kind) {
+  const std::size_t index = static_cast<std::size_t>(kind);
+  return index >= config.edgeKindMultipliers.size() ||
+         config.edgeKindMultipliers[index] != kUnusableEdgeKindMultiplier;
+}
+
+// MA4: the class -> cost-row mapping (ai owns it; ai includes movement for the enum). `grounded`
+// marks `climb` UNUSABLE (walks around); `climber` leaves climb at 1.0 (routes over). leaper/flier
+// are RESERVED and return grounded's config (no v1 behavior). Pure, deterministic.
+TravelCostConfig travelCostConfigForCapability(MovementCapabilityClass capability);
 
 // Actor-free edge cost: euclidean length x the edge-kind multiplier (+ the neutral slope term = 0).
 float travelCost(const ReasoningEdge& edge, const TravelCostConfig& config = {});

@@ -11,6 +11,7 @@
 #include "runtime/ai/NpcBehaviorSystem.hpp"
 #include "runtime/ai/NpcPersonalityWeights.hpp"
 #include "runtime/ai/NpcSoundPerception.hpp"
+#include "runtime/movement/MovementCapability.hpp"
 
 namespace iggy3d {
 
@@ -37,6 +38,10 @@ struct NpcBehaviorProfile {
   // L6 personality weights (a5s1, A9 seam). ALL NEUTRAL (1.0) in v1 -- invisible to behavior; the
   // guard-decision kernel multiplies by them, A9's cards later ship non-neutral values.
   NpcPersonalityWeights personalityWeights;
+  // MA4 (M3): movement capability class. Default grounded => every existing profile/fixture unchanged.
+  // Actor-aware route sites resolve this per acting NPC -> travelCostConfigForCapability. Rides the
+  // catalog (carried across load); adds NO saved/hashed field.
+  MovementCapabilityClass capability = MovementCapabilityClass::grounded;
 };
 
 struct NpcBehaviorProfileCatalog {

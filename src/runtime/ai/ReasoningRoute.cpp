@@ -35,6 +35,17 @@ bool nearestReachableNode(const ReasoningGraph& graph, std::span<const PhysicsAa
 
 }  // namespace
 
+TravelCostConfig travelCostConfigForCapability(MovementCapabilityClass capability) {
+  TravelCostConfig config;  // all-1.0 defaults (every edge kind traversable)
+  // Only a climber may use climb edges; grounded (and the reserved leaper/flier, which fall through
+  // to grounded in v1) mark climb UNUSABLE so the router skips it and walks around.
+  if (capability != MovementCapabilityClass::climber) {
+    config.edgeKindMultipliers[static_cast<std::size_t>(ReasoningEdgeKind::climb)] =
+        kUnusableEdgeKindMultiplier;
+  }
+  return config;
+}
+
 float travelCost(const ReasoningEdge& edge, const TravelCostConfig& config) {
   const std::size_t kindIndex = static_cast<std::size_t>(edge.kind);
   const float multiplier =
@@ -67,6 +78,12 @@ PlannedRoute planRoute(const ReasoningGraph& graph, std::span<const PhysicsAabbC
   // id doubles as its dist/prev array index.
   std::vector<std::vector<std::pair<std::uint32_t, float>>> adjacency(nodeCount);
   for (const ReasoningEdge& edge : graph.edges) {
+    // MA4: SKIP an edge whose kind is marked unusable for this class (e.g. a grounded guard on a climb
+    // edge) -- BEFORE travelCost, so the sentinel never enters a cost sum. Default config keeps every
+    // kind traversable => byte-identical to the pre-MA4 adjacency.
+    if (!isTraversableEdgeKind(config, edge.kind)) {
+      continue;
+    }
     if (edge.from < nodeCount && edge.to < nodeCount) {
       const float cost = travelCost(edge, config);
       adjacency[edge.from].push_back({edge.to, cost});

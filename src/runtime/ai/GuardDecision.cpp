@@ -31,12 +31,14 @@ float stalenessDecay(std::uint64_t ticksSinceRecorded, float halfLifeTicks) {
 // travelTerm for a candidate node. Direct clear segment => straight-line distance; else the A4 route
 // cost. `reachable` is set false when the direct is blocked AND no route exists (unreachable node).
 float travelTerm(const ReasoningGraph& graph, std::span<const PhysicsAabbCollider> colliders,
-                 Vec3 guardPosition, Vec3 nodePosition, bool& reachable) {
+                 Vec3 guardPosition, Vec3 nodePosition, bool& reachable,
+                 const TravelCostConfig& travelConfig) {
   reachable = true;
   if (!reasoningSegmentBlocked(colliders, guardPosition, nodePosition)) {
     return euclideanDistance(guardPosition, nodePosition);
   }
-  const PlannedRoute route = planRoute(graph, colliders, guardPosition, nodePosition, {});
+  const PlannedRoute route =
+      planRoute(graph, colliders, guardPosition, nodePosition, travelConfig);
   if (route.nodeIds.empty()) {
     reachable = false;  // blocked direct + no route -> unreachable
     return 0.0F;
@@ -50,7 +52,8 @@ GuardDecision chooseSearchNode(const ReasoningGraph& graph,
                                std::span<const PhysicsAabbCollider> colliders, Vec3 guardPosition,
                                const GuardMemorySample& memory, std::uint64_t tick, EntityId actor,
                                const NpcPersonalityWeights& weights, const GuardDecisionConfig& config,
-                               std::optional<std::uint32_t> excludedNodeId) {
+                               std::optional<std::uint32_t> excludedNodeId,
+                               const TravelCostConfig& travelConfig) {
   GuardDecision decision;
   decision.receipt.actor = actor;
   decision.receipt.tick = tick;
@@ -79,7 +82,8 @@ GuardDecision chooseSearchNode(const ReasoningGraph& graph,
       continue;
     }
     bool reachable = true;
-    const float travel = travelTerm(graph, colliders, guardPosition, node.positionMeters, reachable);
+    const float travel =
+        travelTerm(graph, colliders, guardPosition, node.positionMeters, reachable, travelConfig);
     if (!reachable) {
       continue;  // unreachable candidate excluded from scoring
     }

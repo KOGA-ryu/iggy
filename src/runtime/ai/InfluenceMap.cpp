@@ -47,9 +47,18 @@ std::vector<float> graphDistanceToKind(const ReasoningGraph& graph, ReasoningNod
     idToIndex[graph.nodes[i].id] = i;
   }
 
+  // MA4: this kernel is deliberately ACTOR-FREE (its escape-pressure channel is a static world fact),
+  // so it reasons with the conservative grounded class BY NAME -- and SKIPS edge kinds that class
+  // cannot use (climb) BEFORE travelCost, exactly as planRoute does. Default-grounded keeps every
+  // pre-MA4 graph (which has no climb edges) byte-identical.
+  const TravelCostConfig groundedConfig =
+      travelCostConfigForCapability(MovementCapabilityClass::grounded);
   std::vector<std::vector<std::pair<std::size_t, float>>> adjacency(nodeCount);
   for (const ReasoningEdge& edge : graph.edges) {
     if (edge.from > maxId || edge.to > maxId) {
+      continue;
+    }
+    if (!isTraversableEdgeKind(groundedConfig, edge.kind)) {
       continue;
     }
     const std::size_t from = idToIndex[edge.from];
@@ -57,7 +66,7 @@ std::vector<float> graphDistanceToKind(const ReasoningGraph& graph, ReasoningNod
     if (from == kNoIndex || to == kNoIndex) {
       continue;
     }
-    const float weight = travelCost(edge, {});
+    const float weight = travelCost(edge, groundedConfig);
     adjacency[from].push_back({to, weight});
     adjacency[to].push_back({from, weight});
   }

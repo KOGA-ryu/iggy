@@ -794,7 +794,8 @@ NpcBehaviorDecision maybeApplyPatrol(const NpcBehaviorDecision& decision,
 NpcBehaviorDecision maybeApplySearch(NpcBehaviorDecision decision, AiActorState& actor, Vec3 guardPos,
                                      std::span<const PhysicsAabbCollider> colliders,
                                      const ReasoningGraph& graph, const AlertProfile& alertProfile,
-                                     const NpcPersonalityWeights& weights, std::uint64_t tick) {
+                                     const NpcPersonalityWeights& weights, std::uint64_t tick,
+                                     const TravelCostConfig& travelConfig) {
   const std::uint8_t band = alertBandIndex(actor.alertLevel, alertProfile);
   if (band < 3U || band > 4U) {
     actor.hasSearchChoice = false;  // cooled out of the search bands -> abandon
@@ -830,8 +831,9 @@ NpcBehaviorDecision maybeApplySearch(NpcBehaviorDecision decision, AiActorState&
     excluded = actor.searchChosenNodeId;
   }
   if (reChoose) {
-    const GuardDecision chosen = chooseSearchNode(graph, colliders, guardPos, memory, tick,
-                                                  actor.actor, weights, GuardDecisionConfig{}, excluded);
+    const GuardDecision chosen =
+        chooseSearchNode(graph, colliders, guardPos, memory, tick, actor.actor, weights,
+                         GuardDecisionConfig{}, excluded, travelConfig);
     actor.searchLastReceipt = chosen.receipt;
     if (!chosen.nodeId.has_value()) {
       actor.hasSearchChoice = false;
@@ -862,7 +864,8 @@ NpcBehaviorDecision maybeApplySearch(NpcBehaviorDecision decision, AiActorState&
 // mismatch and plans only when the final destination is straight-blocked.
 NpcBehaviorDecision maybeFollowRoute(NpcBehaviorDecision decision, AiActorState& actor, Vec3 guardPos,
                                      std::span<const PhysicsAabbCollider> colliders,
-                                     const ReasoningGraph& graph) {
+                                     const ReasoningGraph& graph,
+                                     const TravelCostConfig& travelConfig) {
   const auto clearRoute = [&actor]() {
     actor.hasRoute = false;
     actor.routeNodeIds.clear();
@@ -897,7 +900,8 @@ NpcBehaviorDecision maybeFollowRoute(NpcBehaviorDecision decision, AiActorState&
     if (!reasoningSegmentBlocked(colliders, guardPos, finalDestination)) {
       return decision;  // clear shot -> today's direct behavior
     }
-    const PlannedRoute planned = planRoute(graph, colliders, guardPos, finalDestination, {});
+    const PlannedRoute planned =
+        planRoute(graph, colliders, guardPos, finalDestination, travelConfig);
     if (planned.nodeIds.empty()) {
       return decision;  // no path / empty graph / unreachable -> direct (never worse than status quo)
     }
@@ -1215,18 +1219,24 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
     // Precedence: combat (kept above) > investigate last-known (band 3-4) > SEARCH (a5s2) > patrol.
     decision =
         maybeApplyInvestigate(decision, actorState, perception, alertProfile, state.clock.tickIndex);
+    // MA4: this guard's capability cost row (resolved from its behavior profile). Grounded (the
+    // default profile) marks climb edges unusable; a climber-profile guard routes over them. With no
+    // climb edges in the graph yet (ma4s2 emits them), this is byte-identical to the pre-MA4 route.
+    const TravelCostConfig travelConfig =
+        travelCostConfigForCapability(resolvedProfile.profile.capability);
     // SEARCH rung (a5s2): a hot guard with SPENT memory checks scored nodes instead of Waiting.
     if (actorEntity != nullptr) {
       decision = maybeApplySearch(decision, actorState, actorEntity->transform.position,
                                   visionColliders, state.reasoningGraph, alertProfile,
-                                  resolvedProfile.profile.personalityWeights, state.clock.tickIndex);
+                                  resolvedProfile.profile.personalityWeights, state.clock.tickIndex,
+                                  travelConfig);
     }
     decision = maybeApplyPatrol(decision, actorState, perception, alertProfile);
     // Route-follow POST-STEP (A4 s2): flank blocked destinations via the carried reasoning graph.
     // Rewrites only the interim destination inside the rung above; empty graph -> unchanged.
     if (actorEntity != nullptr) {
       decision = maybeFollowRoute(decision, actorState, actorEntity->transform.position,
-                                  visionColliders, state.reasoningGraph);
+                                  visionColliders, state.reasoningGraph, travelConfig);
     }
     applyNpcBehaviorDecision(actorState, decision);
     updateNpcFacing(actorState, decision, perception);

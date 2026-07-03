@@ -270,7 +270,11 @@ EncounterValidationResult validateEncounter(const std::vector<EncounterCard>& ha
 
   // 1. Objective reachable from player start (A4 route over the graph + colliders).
   if (hasObjective) {
-    const PlannedRoute route = planRoute(graph, colliders, playerStart, placement.tacticalCenter, {});
+    // MA4: this validator reasons about the WORLD, not a specific actor -- use the conservative
+    // grounded class BY NAME (a world reachable by the least-capable class is reachable by all).
+    const PlannedRoute route =
+        planRoute(graph, colliders, playerStart, placement.tacticalCenter,
+                  travelCostConfigForCapability(MovementCapabilityClass::grounded));
     if (route.nodeIds.empty()) {
       result.reasons.push_back(EncounterValidationReason::ObjectiveUnreachable);
     }

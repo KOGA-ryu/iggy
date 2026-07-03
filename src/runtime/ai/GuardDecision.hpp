@@ -13,6 +13,7 @@
 #include "runtime/ai/GuardDecisionReceipt.hpp"
 #include "runtime/ai/NpcPersonalityWeights.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"
+#include "runtime/ai/ReasoningRoute.hpp"
 
 namespace iggy3d {
 
@@ -74,10 +75,14 @@ struct GuardDecision {
 // blocked AND has no route is UNREACHABLE and excluded from candidates. Score =
 // suspicion*wSusp + strategic*wStrat - travel*wTravel + 0*wAlly; MAX wins, equal scores resolve to
 // the lowest node id. No candidate => nodeId=nullopt, receipt.hasChoice=false.
+// MA4: `travelConfig` is the acting NPC's capability cost row (the Session resolves it from the
+// guard's profile). Defaulted to `{}` (all edge kinds traversable) so existing direct callers are
+// byte-identical; the live path passes travelCostConfigForCapability(profile.capability).
 GuardDecision chooseSearchNode(const ReasoningGraph& graph,
                                std::span<const PhysicsAabbCollider> colliders, Vec3 guardPosition,
                                const GuardMemorySample& memory, std::uint64_t tick, EntityId actor,
                                const NpcPersonalityWeights& weights, const GuardDecisionConfig& config,
-                               std::optional<std::uint32_t> excludedNodeId = std::nullopt);
+                               std::optional<std::uint32_t> excludedNodeId = std::nullopt,
+                               const TravelCostConfig& travelConfig = {});
 
 }  // namespace iggy3d

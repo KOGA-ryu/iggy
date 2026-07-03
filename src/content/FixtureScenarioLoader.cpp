@@ -840,6 +840,17 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
           return fail(parser, ScenarioLoadStatus::InvalidEnum, "scenario.invalid_enum",
                       "invalid engagement policy", lineNumber, column);
         }
+      } else if (key == "capability") {
+        std::string capabilityText;
+        if (!parseString(value, capabilityText)) {
+          return fail(parser, ScenarioLoadStatus::ParseError, "scenario.parse_error",
+                      "invalid capability", lineNumber, column);
+        }
+        // MA4: string -> MovementCapabilityClass, fail-closed on an unknown class (ABSENT ⇒ grounded).
+        if (!movementCapabilityClassFromString(capabilityText, profile.capability)) {
+          return fail(parser, ScenarioLoadStatus::InvalidEnum, "scenario.invalid_enum",
+                      "invalid capability", lineNumber, column);
+        }
       } else if (key == "perception_radius_meters") {
         if (!parseFloat(value, profile.perceptionRadiusMeters)) return badNumber();
       } else if (key == "chase_stop_distance_meters") {
