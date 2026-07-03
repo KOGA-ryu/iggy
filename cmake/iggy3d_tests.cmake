@@ -142,6 +142,11 @@ iggy3d_add_unit_test(product_creative_ui_projection_receipt_tests
 set_tests_properties(product_creative_ui_projection_receipt_tests PROPERTIES
   LABELS "unit;app;product;creative;ui;projection;receipt;iggy3d")
 
+iggy3d_add_unit_test(product_creative_ui_frame_tests
+  tests/unit/product_creative_ui_frame_tests.cpp)
+set_tests_properties(product_creative_ui_frame_tests PROPERTIES
+  LABELS "unit;app;product;creative;ui;frame;iggy3d")
+
 iggy3d_add_unit_test(product_ui_widget_tests
   tests/unit/product_ui_widget_tests.cpp)
 set_tests_properties(product_ui_widget_tests PROPERTIES
