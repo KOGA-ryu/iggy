@@ -22,6 +22,14 @@ enum class CreativeDocumentCreateStatus : std::uint8_t {
   Rejected,
 };
 
+enum class CreativeDocumentRemoveStatus : std::uint8_t {
+  Unknown,
+  InvalidDocument,
+  InvalidObjectId,
+  MissingObject,
+  Removed,
+};
+
 struct CreativeDocumentCreateRequest {
   CreativeObjectKind kind = CreativeObjectKind::Unknown;
   std::string name;
@@ -55,8 +63,29 @@ struct CreativeDocumentCreateReceipt {
   std::string_view reasonCode = "document_create_not_requested";
 };
 
+struct CreativeDocumentRemoveRequest {
+  CreativeObjectId objectId = kInvalidObjectId;
+};
+
+struct CreativeDocumentRemoveReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  bool objectRemoved = false;
+  CreativeDocumentRemoveStatus status = CreativeDocumentRemoveStatus::Unknown;
+  CreativeObjectId objectId = kInvalidObjectId;
+  CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
+  std::string objectName;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  std::string_view message = "document_remove_not_requested";
+  std::string_view reasonCode = "document_remove_not_requested";
+};
+
 [[nodiscard]] std::string_view toString(
     CreativeDocumentCreateStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeDocumentRemoveStatus status) noexcept;
 
 // CreativeDocument is the authored content container for one creative work.
 // It owns the durable content truth: document identity, revision, and later the
@@ -92,6 +121,10 @@ class CreativeDocument {
 
   [[nodiscard]] CreativeDocumentCreateReceipt createObject(
       const CreativeDocumentCreateRequest& request);
+  [[nodiscard]] CreativeDocumentRemoveReceipt removeDocumentObject(
+      const CreativeDocumentRemoveRequest& request);
+  [[nodiscard]] CreativeDocumentRemoveReceipt removeDocumentObject(
+      CreativeObjectId id);
   [[nodiscard]] CreativeObjectId createRoom(
       std::string name,
       CreativeTransform transform = {},

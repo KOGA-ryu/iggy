@@ -13,6 +13,14 @@ void setCreateStatus(CreativeDocumentCreateReceipt& receipt,
   receipt.reasonCode = reason;
 }
 
+void setRemoveStatus(CreativeDocumentRemoveReceipt& receipt,
+                     CreativeDocumentRemoveStatus status,
+                     std::string_view reason) noexcept {
+  receipt.status = status;
+  receipt.message = reason;
+  receipt.reasonCode = reason;
+}
+
 std::string descriptorDefaultName(
     const CreativeObjectDescriptor& descriptor) {
   if (!descriptor.displayName.empty()) {
@@ -35,6 +43,22 @@ std::string_view toString(CreativeDocumentCreateStatus status) noexcept {
       return "Created";
     case CreativeDocumentCreateStatus::Rejected:
       return "Rejected";
+  }
+  return "Unknown";
+}
+
+std::string_view toString(CreativeDocumentRemoveStatus status) noexcept {
+  switch (status) {
+    case CreativeDocumentRemoveStatus::Unknown:
+      return "Unknown";
+    case CreativeDocumentRemoveStatus::InvalidDocument:
+      return "InvalidDocument";
+    case CreativeDocumentRemoveStatus::InvalidObjectId:
+      return "InvalidObjectId";
+    case CreativeDocumentRemoveStatus::MissingObject:
+      return "MissingObject";
+    case CreativeDocumentRemoveStatus::Removed:
+      return "Removed";
   }
   return "Unknown";
 }
@@ -236,6 +260,66 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
   return receipt;
 }
 
+CreativeDocumentRemoveReceipt CreativeDocument::removeDocumentObject(
+    const CreativeDocumentRemoveRequest& request) {
+  CreativeDocumentRemoveReceipt receipt;
+  receipt.requested = true;
+  receipt.objectId = request.objectId;
+  receipt.revisionBefore = revision_;
+  receipt.revisionAfter = revision_;
+
+  if (!valid_) {
+    setRemoveStatus(receipt,
+                    CreativeDocumentRemoveStatus::InvalidDocument,
+                    "invalid_document");
+    return receipt;
+  }
+
+  if (request.objectId == kInvalidObjectId) {
+    setRemoveStatus(receipt,
+                    CreativeDocumentRemoveStatus::InvalidObjectId,
+                    "invalid_object_id");
+    return receipt;
+  }
+
+  const auto found = objectIndex_.find(request.objectId);
+  if (found == objectIndex_.end()) {
+    setRemoveStatus(receipt,
+                    CreativeDocumentRemoveStatus::MissingObject,
+                    "missing_object");
+    return receipt;
+  }
+
+  const std::size_t index = found->second;
+  const CreativeObject& object = objects_[index];
+  receipt.objectKind = object.kind;
+  receipt.objectName = object.name;
+
+  objectIndex_.erase(found);
+  objects_.erase(objects_.begin() + static_cast<std::ptrdiff_t>(index));
+  for (std::size_t nextIndex = index; nextIndex < objects_.size();
+       ++nextIndex) {
+    objectIndex_[objects_[nextIndex].id] = nextIndex;
+  }
+
+  markContentChanged();
+  receipt.accepted = true;
+  receipt.changed = revision_ != receipt.revisionBefore;
+  receipt.objectRemoved = true;
+  receipt.status = CreativeDocumentRemoveStatus::Removed;
+  receipt.revisionAfter = revision_;
+  receipt.message = "object_removed";
+  receipt.reasonCode = "object_removed";
+  return receipt;
+}
+
+CreativeDocumentRemoveReceipt CreativeDocument::removeDocumentObject(
+    CreativeObjectId id) {
+  CreativeDocumentRemoveRequest request;
+  request.objectId = id;
+  return removeDocumentObject(request);
+}
+
 CreativeObjectId CreativeDocument::createRoom(
     std::string name,
     CreativeTransform transform,
@@ -273,21 +357,7 @@ bool CreativeDocument::renameObject(CreativeObjectId id, std::string nextName) {
 }
 
 bool CreativeDocument::removeObject(CreativeObjectId id) {
-  const auto found = objectIndex_.find(id);
-  if (found == objectIndex_.end()) {
-    return false;
-  }
-
-  const std::size_t index = found->second;
-  objectIndex_.erase(found);
-  objects_.erase(objects_.begin() + static_cast<std::ptrdiff_t>(index));
-  for (std::size_t nextIndex = index; nextIndex < objects_.size();
-       ++nextIndex) {
-    objectIndex_[objects_[nextIndex].id] = nextIndex;
-  }
-
-  markContentChanged();
-  return true;
+  return removeDocumentObject(id).objectRemoved;
 }
 
 void CreativeDocument::markContentChanged() noexcept {

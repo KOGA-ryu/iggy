@@ -93,6 +93,10 @@ class Facade {
       const CreativeDocumentCreateRequest& request);
   [[nodiscard]] CreativeDocumentCreateReceipt createDocumentObject(
       CreativeObjectKind kind);
+  [[nodiscard]] CreativeDocumentRemoveReceipt removeDocumentObject(
+      const CreativeDocumentRemoveRequest& request);
+  [[nodiscard]] CreativeDocumentRemoveReceipt removeDocumentObject(
+      CreativeObjectId id);
   [[nodiscard]] CreativeObjectId createRoom(const CreateRoomCommand& command);
   [[nodiscard]] CreativeObjectId createRoom(std::string name);
   [[nodiscard]] bool renameObject(const RenameObjectCommand& command);

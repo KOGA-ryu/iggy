@@ -352,6 +352,33 @@ CreativeDocumentCreateReceipt Facade::createDocumentObject(
   return createDocumentObject(request);
 }
 
+CreativeDocumentRemoveReceipt Facade::removeDocumentObject(
+    const CreativeDocumentRemoveRequest& request) {
+  recordCommandAttempt(stats_);
+  CreativeDocumentRemoveReceipt receipt = document_.removeDocumentObject(request);
+  if (!receipt.accepted || !receipt.objectRemoved) {
+    recordCommandFailure(stats_);
+    return receipt;
+  }
+
+  invalidateRemovedObjectEditorState(receipt.objectId,
+                                     state_,
+                                     toolState_,
+                                     selectionState_,
+                                     inspectionState_,
+                                     measurementState_,
+                                     ghostState_);
+  recordCommandSuccess(stats_);
+  return receipt;
+}
+
+CreativeDocumentRemoveReceipt Facade::removeDocumentObject(
+    CreativeObjectId id) {
+  CreativeDocumentRemoveRequest request;
+  request.objectId = id;
+  return removeDocumentObject(request);
+}
+
 CreativeObjectId Facade::createRoom(const CreateRoomCommand& command) {
   recordCommandAttempt(stats_);
 
@@ -397,21 +424,7 @@ bool Facade::renameObject(CreativeObjectId id, std::string nextName) {
 }
 
 bool Facade::removeObject(const RemoveObjectCommand& command) {
-  recordCommandAttempt(stats_);
-  const bool removed = document_.removeObject(command.id);
-  if (removed) {
-    invalidateRemovedObjectEditorState(command.id,
-                                       state_,
-                                       toolState_,
-                                       selectionState_,
-                                       inspectionState_,
-                                       measurementState_,
-                                       ghostState_);
-    recordCommandSuccess(stats_);
-  } else {
-    recordCommandFailure(stats_);
-  }
-  return removed;
+  return removeDocumentObject(command.id).objectRemoved;
 }
 
 bool Facade::removeObject(CreativeObjectId id) {
