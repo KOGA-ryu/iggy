@@ -152,4 +152,43 @@ ProductContinueSelectionResult selectProductContinueSave(
   return result;
 }
 
+ProductCreativeWorldSelectionResult selectCreativeWorldContinueSave(
+    const ProductSaveCatalog& catalog) {
+  ProductCreativeWorldSelectionResult result;
+  const ProductSaveCatalogEntry* selected = nullptr;
+
+  for (const auto& entry : catalog.entries) {
+    if (!isActiveEntry(entry)) {
+      continue;
+    }
+    ++result.consideredCount;
+    if (!canOpenCreativeWorld(entry)) {
+      continue;
+    }
+    ++result.openableCount;
+    if (selected == nullptr || entrySortBefore(entry, *selected)) {
+      selected = &entry;
+    }
+  }
+
+  if (result.consideredCount == 0) {
+    result.status = "creative_open_no_active_saves";
+    result.reasonCode = result.status;
+    return result;
+  }
+  if (selected == nullptr) {
+    result.status = "creative_open_no_openable_saves";
+    result.reasonCode = result.status;
+    return result;
+  }
+
+  result.selected = true;
+  result.status = "creative_open_save_selected";
+  result.reasonCode = result.status;
+  result.selectedSaveId = selected->saveId;
+  result.selectedSavedAtUtc = selected->savedAtUtc;
+  result.entry = *selected;
+  return result;
+}
+
 }  // namespace iggy3d

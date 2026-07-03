@@ -75,14 +75,15 @@ bool starterRootDrawListContainsHeaderAndRowsInOrder() {
   ok &= expect(list.virtualHeight == 720U, "virtual height");
   ok &= expect(list.rowCount == iggy3d::starterActionOrder().size(), "row count");
   ok &= expect(list.selectedAction == "continue", "selected action copied");
-  ok &= expect(list.textCount == 12U, "text count");
-  ok &= expect(list.rectCount == 12U, "rect count");
+  ok &= expect(list.textCount == 13U, "text count");
+  ok &= expect(list.rectCount == 13U, "rect count");
   ok &= expect(list.primitiveCount == list.primitives.size(), "primitive count");
 
   const char* rowIds[] = {
       "starter.row.continue.label",
       "starter.row.new_world.label",
       "starter.row.creative_new_world.label",
+      "starter.row.creative_open_world.label",
       "starter.row.load_save.label",
       "starter.row.delete.label",
       "starter.row.settings.label",

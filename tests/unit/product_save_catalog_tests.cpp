@@ -145,6 +145,7 @@ void creativeSaveIsIgnoredByProductContinueEvenWhenNewest() {
   catalog.entries.push_back(creativeEntry("save_999", "2026-06-24T02:00:00Z"));
 
   const auto result = iggy3d::selectProductContinueSave(catalog);
+  const auto creativeResult = iggy3d::selectCreativeWorldContinueSave(catalog);
   expect(result.selected, "product continue should still select product save");
   expect(result.selectedSaveId == "save_001",
          "creative save should not win product continue");
@@ -152,6 +153,75 @@ void creativeSaveIsIgnoredByProductContinueEvenWhenNewest() {
          "continue still considers active rows for diagnostics");
   expect(result.compatibleCount == 1,
          "continue compatible count includes only product-loadable rows");
+  expect(creativeResult.selected,
+         "creative continue should select creative save");
+  expect(creativeResult.selectedSaveId == "save_999",
+         "creative continue should ignore product save");
+  expect(creativeResult.consideredCount == 2,
+         "creative selector considers active rows");
+  expect(creativeResult.openableCount == 1,
+         "creative selector counts only openable creative rows");
+}
+
+void emptyCatalogYieldsNoCreativeSelection() {
+  const auto result = iggy3d::selectCreativeWorldContinueSave(ProductSaveCatalog{});
+  expect(!result.selected, "empty catalog should not select creative save");
+  expect(result.status == "creative_open_no_active_saves",
+         "empty creative selector reports no active saves");
+}
+
+void productOnlyCatalogYieldsNoCreativeSelection() {
+  ProductSaveCatalog catalog;
+  catalog.entries.push_back(activeEntry("save_001", "2026-06-24T00:00:00Z"));
+
+  const auto result = iggy3d::selectCreativeWorldContinueSave(catalog);
+  expect(!result.selected, "product-only catalog should not select creative save");
+  expect(result.status == "creative_open_no_openable_saves",
+         "product-only creative selector reports no openable saves");
+  expect(result.consideredCount == 1,
+         "product-only creative selector considers active row");
+  expect(result.openableCount == 0,
+         "product-only creative selector has zero openable rows");
+}
+
+void newestCreativeSavedAtWins() {
+  ProductSaveCatalog catalog;
+  catalog.entries.push_back(creativeEntry("save_creative_001",
+                                          "2026-06-24T00:00:00Z"));
+  catalog.entries.push_back(creativeEntry("save_creative_002",
+                                          "2026-06-24T01:00:00Z"));
+
+  const auto result = iggy3d::selectCreativeWorldContinueSave(catalog);
+  expect(result.selected, "creative selector should select active creative save");
+  expect(result.selectedSaveId == "save_creative_002",
+         "newest creative savedAtUtc wins");
+  expect(result.status == "creative_open_save_selected",
+         "creative selector reports selected status");
+}
+
+void sameCreativeSavedAtUsesHighestSaveId() {
+  ProductSaveCatalog catalog;
+  catalog.entries.push_back(creativeEntry("save_creative_001",
+                                          "2026-06-24T01:00:00Z"));
+  catalog.entries.push_back(creativeEntry("save_creative_003",
+                                          "2026-06-24T01:00:00Z"));
+  catalog.entries.push_back(creativeEntry("save_creative_002",
+                                          "2026-06-24T01:00:00Z"));
+
+  const auto result = iggy3d::selectCreativeWorldContinueSave(catalog);
+  expect(result.selectedSaveId == "save_creative_003",
+         "same creative savedAtUtc tie breaks by highest save id");
+}
+
+void deletedCreativeSaveIsIgnoredByCreativeContinue() {
+  ProductSaveCatalog catalog;
+  catalog.entries.push_back(deletedEntry("save_creative_999",
+                                         "2026-06-24T02:00:00Z"));
+
+  const auto result = iggy3d::selectCreativeWorldContinueSave(catalog);
+  expect(!result.selected, "deleted creative save should not be selected");
+  expect(result.status == "creative_open_no_active_saves",
+         "deleted-only creative selector reports no active saves");
 }
 
 void deletedSaveIsIgnoredByContinue() {
@@ -265,6 +335,11 @@ int main() {
   newestSavedAtWins();
   sameSavedAtUsesHighestSaveId();
   creativeSaveIsIgnoredByProductContinueEvenWhenNewest();
+  emptyCatalogYieldsNoCreativeSelection();
+  productOnlyCatalogYieldsNoCreativeSelection();
+  newestCreativeSavedAtWins();
+  sameCreativeSavedAtUsesHighestSaveId();
+  deletedCreativeSaveIsIgnoredByCreativeContinue();
   deletedSaveIsIgnoredByContinue();
   incompatibleCorruptUnloadableRowsRemainRepresentableButIgnored();
   displayTitlePrefersSaveTitleThenWorldTitleThenSaveId();

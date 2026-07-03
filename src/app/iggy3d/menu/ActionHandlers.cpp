@@ -424,6 +424,43 @@ ProductMenuActionResult confirmStarterCreativeNewWorld(
   return {true, true};
 }
 
+ProductMenuActionResult confirmStarterCreativeOpenWorld(
+    ProductStarterMenuActionContext context) {
+  clearProductGameplayMovementTuning(context.window);
+  if (context.creativeFacade == nullptr) {
+    context.window.launchStatus = "product_creative_world_facade_missing";
+    context.frontend.status = "product_creative_world_facade_missing";
+    return {true, true};
+  }
+
+  const ProductSaveBridgeResult creativeSaves =
+      scanProductSaves(context.options.saveRoot,
+                       "iggy3d.creative",
+                       "creative.document");
+  const ProductCreativeWorldSelectionResult selection =
+      selectCreativeWorldContinueSave(creativeSaves.catalog.catalog);
+  if (!selection.selected) {
+    context.window.launchStatus = selection.reasonCode;
+    context.frontend.status = "opening_menu_creative_open_world_unavailable";
+    return {true, true};
+  }
+
+  ProductCreativeOpenWorldLaunchRequest request;
+  request.saveId = selection.selectedSaveId;
+  const ProductCreativeOpenWorldLaunchResult opened =
+      launchProductCreativeOpenWorld(context.options,
+                                     request,
+                                     context.frontend,
+                                     context.activeSession,
+                                     context.window,
+                                     *context.creativeFacade);
+  if (!opened.accepted) {
+    context.frontend.status = "opening_menu_creative_open_world_failed";
+    return {true, true};
+  }
+  return {true, true};
+}
+
 ProductMenuActionResult confirmStarterLoadSave(
     ProductStarterMenuActionContext context) {
   clearProductGameplayMovementTuning(context.window);
@@ -473,6 +510,8 @@ ProductMenuActionResult handleStarterConfirm(ProductStarterMenuActionContext con
       StarterConfirmActionRow{FrontendAction::NewWorld, confirmStarterNewWorld},
       StarterConfirmActionRow{FrontendAction::CreativeNewWorld,
                               confirmStarterCreativeNewWorld},
+      StarterConfirmActionRow{FrontendAction::CreativeOpenWorld,
+                              confirmStarterCreativeOpenWorld},
       StarterConfirmActionRow{FrontendAction::LoadSave, confirmStarterLoadSave},
       StarterConfirmActionRow{FrontendAction::Delete, confirmStarterDelete},
       StarterConfirmActionRow{FrontendAction::Settings, confirmStarterSettings},

@@ -75,6 +75,16 @@ FrontendRouteResult routeStarterAction(const StarterScreenModel& model,
                                              "starter_creative_new_world_launch",
                                              "starter_creative_new_world_launch",
                                              action);
+    case FrontendAction::CreativeOpenWorld:
+      return makeAcceptedFrontendRouteResult(MenuOwner::Gameplay,
+                                             FrontendScreen::Gameplay,
+                                             FrontendScreen::Gameplay,
+                                             FrontendTransitionRequest::LaunchGameplay,
+                                             false,
+                                             false,
+                                             "starter_creative_open_world_launch",
+                                             "starter_creative_open_world_launch",
+                                             action);
     case FrontendAction::LoadSave:
       return acceptedStarterChildRoute(FrontendScreen::LoadSave,
                                        "starter_load_save_opened",
@@ -153,6 +163,8 @@ std::string_view starterActionLabel(FrontendAction action) {
       return "Build Map";
     case FrontendAction::CreativeNewWorld:
       return "Creative World";
+    case FrontendAction::CreativeOpenWorld:
+      return "Continue Creative";
     case FrontendAction::LoadSave:
       return "Existing Maps";
     case FrontendAction::Delete:
@@ -176,6 +188,8 @@ std::string_view starterActionCommand(FrontendAction action) {
       return "starter_new_world";
     case FrontendAction::CreativeNewWorld:
       return "starter_creative_new_world";
+    case FrontendAction::CreativeOpenWorld:
+      return "starter_continue_creative";
     case FrontendAction::LoadSave:
       return "starter_existing_saves";
     case FrontendAction::Delete:
@@ -214,6 +228,7 @@ bool starterActionEnabled(FrontendAction action, std::uint64_t compatibleSaveCou
       return compatibleSaveCount > 0U;
     case FrontendAction::NewWorld:
     case FrontendAction::CreativeNewWorld:
+    case FrontendAction::CreativeOpenWorld:
     case FrontendAction::Settings:
     case FrontendAction::DevTools:
     case FrontendAction::Exit:

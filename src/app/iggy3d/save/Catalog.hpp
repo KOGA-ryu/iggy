@@ -80,6 +80,17 @@ struct ProductContinueSelectionResult {
   ProductSaveCatalogEntry entry;
 };
 
+struct ProductCreativeWorldSelectionResult {
+  bool selected = false;
+  std::string status = "creative_open_no_active_saves";
+  std::string reasonCode = "creative_open_no_active_saves";
+  std::string selectedSaveId = "none";
+  std::string selectedSavedAtUtc;
+  std::uint64_t consideredCount = 0;
+  std::uint64_t openableCount = 0;
+  ProductSaveCatalogEntry entry;
+};
+
 std::string_view productSaveCatalogLocationName(
     ProductSaveCatalogLocation location);
 std::string_view productSaveContentKindName(ProductSaveContentKind contentKind);
@@ -92,6 +103,8 @@ ProductSaveCatalogBuildResult buildProductSaveCatalog(
 std::vector<ProductSaveCatalogEntry> sortProductSaveCatalogEntries(
     const std::vector<ProductSaveCatalogEntry>& entries);
 ProductContinueSelectionResult selectProductContinueSave(
+    const ProductSaveCatalog& catalog);
+ProductCreativeWorldSelectionResult selectCreativeWorldContinueSave(
     const ProductSaveCatalog& catalog);
 
 }  // namespace iggy3d

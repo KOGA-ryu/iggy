@@ -40,6 +40,8 @@ std::string_view frontendActionName(FrontendAction action) {
       return "new_world";
     case FrontendAction::CreativeNewWorld:
       return "creative_new_world";
+    case FrontendAction::CreativeOpenWorld:
+      return "creative_open_world";
     case FrontendAction::LoadSave:
       return "load_save";
     case FrontendAction::Settings:
@@ -122,6 +124,7 @@ const std::vector<FrontendAction>& starterActionOrder() {
       FrontendAction::Continue,
       FrontendAction::NewWorld,
       FrontendAction::CreativeNewWorld,
+      FrontendAction::CreativeOpenWorld,
       FrontendAction::LoadSave,
       FrontendAction::Delete,
       FrontendAction::Settings,
@@ -197,8 +200,10 @@ void enterFrontendGameplay(FrontendState& state, FrontendAction launchAction) {
   state.selectedAction = launchAction;
   state.launchRequested = true;
   state.inputOwned = false;
-  if (launchAction == FrontendAction::Load || launchAction == FrontendAction::LoadSave ||
-      launchAction == FrontendAction::Continue) {
+  if (launchAction == FrontendAction::Load ||
+      launchAction == FrontendAction::LoadSave ||
+      launchAction == FrontendAction::Continue ||
+      launchAction == FrontendAction::CreativeOpenWorld) {
     state.status = "frontend_launch_loaded_save";
   } else {
     state.status = "frontend_launch_new_world";

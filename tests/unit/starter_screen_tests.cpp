@@ -16,7 +16,7 @@ bool expect(bool condition, std::string_view message) {
 
 bool starterActionOrderIsExact() {
   const std::vector<iggy3d::FrontendAction>& actions = iggy3d::starterActionOrder();
-  return expect(actions.size() == 8U, "starter action count") &&
+  return expect(actions.size() == 9U, "starter action count") &&
          expect(actions[0] == iggy3d::FrontendAction::Continue, "continue first") &&
          expect(actions[1] == iggy3d::FrontendAction::NewWorld, "new world second") &&
          expect(actions[2] == iggy3d::FrontendAction::CreativeNewWorld,
@@ -25,11 +25,25 @@ bool starterActionOrderIsExact() {
                     iggy3d::FrontendAction::CreativeNewWorld) ==
                     "creative_new_world",
                 "creative world action name") &&
-         expect(actions[3] == iggy3d::FrontendAction::LoadSave, "load save fourth") &&
-         expect(actions[4] == iggy3d::FrontendAction::Delete, "delete fifth") &&
-         expect(actions[5] == iggy3d::FrontendAction::Settings, "settings sixth") &&
-         expect(actions[6] == iggy3d::FrontendAction::DevTools, "dev tools seventh") &&
-         expect(actions[7] == iggy3d::FrontendAction::Exit, "exit eighth");
+         expect(actions[3] == iggy3d::FrontendAction::CreativeOpenWorld,
+                "continue creative fourth") &&
+         expect(iggy3d::frontendActionName(
+                    iggy3d::FrontendAction::CreativeOpenWorld) ==
+                    "creative_open_world",
+                "continue creative action name") &&
+         expect(iggy3d::starterActionLabel(
+                    iggy3d::FrontendAction::CreativeOpenWorld) ==
+                    "Continue Creative",
+                "continue creative label") &&
+         expect(iggy3d::starterActionCommand(
+                    iggy3d::FrontendAction::CreativeOpenWorld) ==
+                    "starter_continue_creative",
+                "continue creative command") &&
+         expect(actions[4] == iggy3d::FrontendAction::LoadSave, "load save fifth") &&
+         expect(actions[5] == iggy3d::FrontendAction::Delete, "delete sixth") &&
+         expect(actions[6] == iggy3d::FrontendAction::Settings, "settings seventh") &&
+         expect(actions[7] == iggy3d::FrontendAction::DevTools, "dev tools eighth") &&
+         expect(actions[8] == iggy3d::FrontendAction::Exit, "exit ninth");
 }
 
 bool pauseActionOrderIsExact() {
@@ -118,6 +132,8 @@ bool enabledStarterActionsReturnRouteResults() {
       iggy3d::routeStarterAction(model, iggy3d::FrontendAction::NewWorld);
   const auto creativeRoute =
       iggy3d::routeStarterAction(model, iggy3d::FrontendAction::CreativeNewWorld);
+  const auto creativeOpenRoute =
+      iggy3d::routeStarterAction(model, iggy3d::FrontendAction::CreativeOpenWorld);
   const auto loadRoute =
       iggy3d::routeStarterAction(model, iggy3d::FrontendAction::LoadSave);
   const auto deleteRoute =
@@ -161,6 +177,19 @@ bool enabledStarterActionsReturnRouteResults() {
                 "creative world releases gameplay input") &&
          expect(creativeRoute.status == "starter_creative_new_world_launch",
                 "creative world status") &&
+         expect(creativeOpenRoute.accepted, "continue creative accepted") &&
+         expect(creativeOpenRoute.inputOwner == iggy3d::MenuOwner::Gameplay,
+                "continue creative gameplay owner") &&
+         expect(creativeOpenRoute.nextScreen == iggy3d::FrontendScreen::Gameplay,
+                "continue creative next gameplay") &&
+         expect(creativeOpenRoute.requestedTransition ==
+                    iggy3d::FrontendTransitionRequest::LaunchGameplay,
+                "continue creative launch transition") &&
+         expect(!creativeOpenRoute.gameplayInputSuppressed,
+                "continue creative releases gameplay input") &&
+         expect(creativeOpenRoute.status ==
+                    "starter_creative_open_world_launch",
+                "continue creative status") &&
          expect(loadRoute.nextChildScreen == iggy3d::FrontendScreen::LoadSave,
                 "load child") &&
          expect(deleteRoute.nextChildScreen == iggy3d::FrontendScreen::LoadSave,

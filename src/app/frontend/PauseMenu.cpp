@@ -51,6 +51,7 @@ MenuRowModel makePauseRow(FrontendAction action, const PauseMenuContext& context
     case FrontendAction::Continue:
     case FrontendAction::NewWorld:
     case FrontendAction::CreativeNewWorld:
+    case FrontendAction::CreativeOpenWorld:
     case FrontendAction::Exit:
     case FrontendAction::Load:
     case FrontendAction::Delete:
@@ -260,6 +261,7 @@ FrontendRouteResult routePauseAction(const PauseMenuModel& model,
     case FrontendAction::Continue:
     case FrontendAction::NewWorld:
     case FrontendAction::CreativeNewWorld:
+    case FrontendAction::CreativeOpenWorld:
     case FrontendAction::Exit:
     case FrontendAction::CreateAndEnter:
     case FrontendAction::Load:
