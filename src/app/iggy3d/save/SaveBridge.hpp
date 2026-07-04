@@ -18,6 +18,18 @@ struct ProductSaveBridgeResult {
   ProductSaveCatalogBuildResult catalog;
   SaveSlotList slots;
   std::string_view status = "save_bridge_ready";
+  bool scanMeasured = false;
+  std::uint64_t scanMicroseconds = 0;
+  std::uint64_t scanEntryCount = 0;
+  std::string_view scanStatus = "save_catalog_scan_not_requested";
+};
+
+struct ProductWorldIdMintResult {
+  std::string worldId = "world_0001";
+  bool scanMeasured = false;
+  std::uint64_t scanMicroseconds = 0;
+  std::uint64_t scanEntryCount = 0;
+  std::string_view scanStatus = "product_world_id_scan_not_requested";
 };
 
 struct ProductSaveWriteRequest {
@@ -241,6 +253,8 @@ std::string productSaveTimestampNowUtc();
 // creation and preserved across re-saves by writeProductSessionSaveDurably, so
 // this keeps each world's lineage distinct without reusing a deleted world's id.
 std::string nextProductWorldId(const std::filesystem::path& saveRoot);
+ProductWorldIdMintResult nextProductWorldIdMeasured(
+    const std::filesystem::path& saveRoot);
 
 ProductSaveBridgeResult scanProductSaves(const std::filesystem::path& saveRoot,
                                          std::string_view packageId,

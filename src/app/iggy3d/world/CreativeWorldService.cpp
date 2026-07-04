@@ -1,5 +1,6 @@
 #include "app/iggy3d/world/CreativeWorldService.hpp"
 
+#include <chrono>
 #include <limits>
 #include <string_view>
 #include <utility>
@@ -37,6 +38,14 @@ void setSaveStatus(CreativeWorldSaveResult& result, std::string reason) {
   result.reasonCode = result.status;
 }
 
+std::uint64_t elapsedMicroseconds(
+    std::chrono::steady_clock::time_point started) {
+  return static_cast<std::uint64_t>(
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::steady_clock::now() - started)
+          .count());
+}
+
 void considerCreativeDocumentId(const ProductSaveCatalog& catalog,
                                 creative::CreativeDocumentId& maxId) {
   for (const ProductSaveCatalogEntry& entry : catalog.entries) {
@@ -49,17 +58,33 @@ void considerCreativeDocumentId(const ProductSaveCatalog& catalog,
   }
 }
 
-creative::CreativeDocumentId nextCreativeDocumentId(
+struct CreativeDocumentIdMintResult {
+  creative::CreativeDocumentId id = creative::kInvalidDocumentId;
+  bool scanMeasured = false;
+  std::uint64_t scanMicroseconds = 0;
+  std::uint64_t scanEntryCount = 0;
+  std::string_view scanStatus = "creative_document_id_scan_not_requested";
+};
+
+CreativeDocumentIdMintResult nextCreativeDocumentId(
     const std::filesystem::path& saveRoot) {
+  CreativeDocumentIdMintResult result;
+  const auto started = std::chrono::steady_clock::now();
   creative::CreativeDocumentId maxId = creative::kInvalidDocumentId;
-  considerCreativeDocumentId(
-      scanProductSaves(saveRoot, "", "").catalog.catalog, maxId);
-  considerCreativeDocumentId(
-      scanDeletedProductSaves(saveRoot, "", "").catalog.catalog, maxId);
+  const ProductSaveBridgeResult active = scanProductSaves(saveRoot, "", "");
+  const ProductSaveBridgeResult deleted =
+      scanDeletedProductSaves(saveRoot, "", "");
+  considerCreativeDocumentId(active.catalog.catalog, maxId);
+  considerCreativeDocumentId(deleted.catalog.catalog, maxId);
+  result.scanMeasured = true;
+  result.scanMicroseconds = elapsedMicroseconds(started);
+  result.scanEntryCount = active.scanEntryCount + deleted.scanEntryCount;
+  result.scanStatus = "creative_document_id_scan_ready";
   if (maxId == std::numeric_limits<creative::CreativeDocumentId>::max()) {
-    return creative::kInvalidDocumentId;
+    return result;
   }
-  return maxId + 1U;
+  result.id = maxId + 1U;
+  return result;
 }
 
 void mirrorOpenLoad(CreativeWorldOpenResult& result,
@@ -131,8 +156,21 @@ CreativeWorldCreateResult createCreativeWorld(
     return result;
   }
 
-  result.worldId = nextProductWorldId(request.saveRoot);
-  result.documentId = nextCreativeDocumentId(request.saveRoot);
+  const ProductWorldIdMintResult worldId =
+      nextProductWorldIdMeasured(request.saveRoot);
+  result.worldId = worldId.worldId;
+  result.worldIdScanMeasured = worldId.scanMeasured;
+  result.worldIdScanMicroseconds = worldId.scanMicroseconds;
+  result.worldIdScanEntryCount = worldId.scanEntryCount;
+  result.worldIdScanStatus = std::string{worldId.scanStatus};
+
+  const CreativeDocumentIdMintResult documentId =
+      nextCreativeDocumentId(request.saveRoot);
+  result.documentId = documentId.id;
+  result.documentIdScanMeasured = documentId.scanMeasured;
+  result.documentIdScanMicroseconds = documentId.scanMicroseconds;
+  result.documentIdScanEntryCount = documentId.scanEntryCount;
+  result.documentIdScanStatus = std::string{documentId.scanStatus};
   if (result.documentId == creative::kInvalidDocumentId) {
     setCreateStatus(result, "creative_world_document_id_unavailable");
     return result;

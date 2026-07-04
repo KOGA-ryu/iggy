@@ -324,6 +324,10 @@ bool productDurableSaveWritesFinalAndScans() {
          expect(!std::filesystem::exists(written.paths.tempPath),
                 "product temp consumed") &&
          expect(scanned.status == "save_bridge_ready", "scan status") &&
+         expect(scanned.scanMeasured, "scan measured") &&
+         expect(scanned.scanStatus == "save_catalog_scan_ready",
+                "scan measured status") &&
+         expect(scanned.scanEntryCount == 1U, "scan measured count") &&
          expect(scanned.saveRoot == root, "scan root") &&
          expect(scanned.slots.slots.size() == 1U, "scan one slot") &&
          expect(scanned.slots.compatibleCount == 1U, "scan compatible") &&
@@ -332,6 +336,30 @@ bool productDurableSaveWritesFinalAndScans() {
          expect(scanned.slots.slots.front().savedStateHashHex ==
                     written.record.savedStateHashHex,
                 "scan hash hex");
+}
+
+bool worldIdMintMeasurementCountsActiveAndDeletedSaves() {
+  const std::filesystem::path root = testRoot();
+  iggy3d::Session session = makeFixtureSession();
+  const iggy3d::ProductSaveWriteResult first =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_first"));
+  const iggy3d::ProductSaveWriteResult second =
+      iggy3d::writeProductSessionSaveDurably(
+          productSaveRequest(root, session, "attempt_001", "save_second"));
+  const iggy3d::ProductSaveSoftDeleteResult deleted =
+      iggy3d::softDeleteProductSave({root, "save_first"});
+  const iggy3d::ProductWorldIdMintResult minted =
+      iggy3d::nextProductWorldIdMeasured(root);
+
+  return expect(first.ok, "world id first write") &&
+         expect(second.ok, "world id second write") &&
+         expect(deleted.ok, "world id soft delete") &&
+         expect(minted.worldId == "world_0002", "world id next keeps max") &&
+         expect(minted.scanMeasured, "world id scan measured") &&
+         expect(minted.scanStatus == "product_world_id_scan_ready",
+                "world id scan status") &&
+         expect(minted.scanEntryCount == 2U, "world id scan entry count");
 }
 
 bool productDurableSaveHonorsValidIdHint() {
@@ -1490,6 +1518,7 @@ bool productLoadSaveRejectsCorruptFile() {
 
 int main() {
   const bool ok = productDurableSaveWritesFinalAndScans() &&
+                  worldIdMintMeasurementCountsActiveAndDeletedSaves() &&
                   productDurableSaveHonorsValidIdHint() &&
                   productDurableSaveRejectsMissingState() &&
                   productDurableSaveRejectsInvalidAttemptToken() &&

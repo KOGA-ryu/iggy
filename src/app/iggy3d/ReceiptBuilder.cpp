@@ -588,6 +588,74 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "launch_action", window.launchAction);
   appendReceiptField(receipt, "launch_status", window.launchStatus);
   appendReceiptField(receipt, "package_load_status", window.packageLoadStatus);
+  appendReceiptField(receipt, "startup_package_path",
+                     window.startupPackagePath);
+  appendReceiptField(receipt, "startup_package_lookup_measured",
+                     window.startupPackageLookupMeasured);
+  appendReceiptField(receipt, "startup_package_lookup_us",
+                     window.startupPackageLookupMicroseconds);
+  appendReceiptField(receipt, "startup_package_lookup_status",
+                     window.startupPackageLookupStatus);
+  appendReceiptField(receipt, "startup_package_load_measured",
+                     window.startupPackageLoadMeasured);
+  appendReceiptField(receipt, "startup_package_load_us",
+                     window.startupPackageLoadMicroseconds);
+  appendReceiptField(receipt, "startup_package_load_status",
+                     window.startupPackageLoadStatus);
+  appendReceiptField(receipt, "startup_runtime_session_create_measured",
+                     window.startupRuntimeSessionCreateMeasured);
+  appendReceiptField(receipt, "startup_runtime_session_create_us",
+                     window.startupRuntimeSessionCreateMicroseconds);
+  appendReceiptField(receipt, "startup_runtime_session_create_status",
+                     window.startupRuntimeSessionCreateStatus);
+  appendReceiptField(receipt, "startup_save_catalog_scan_measured",
+                     saves.scanMeasured);
+  appendReceiptField(receipt, "startup_save_catalog_scan_us",
+                     saves.scanMicroseconds);
+  appendReceiptField(receipt, "startup_save_catalog_scan_entry_count",
+                     saves.scanEntryCount);
+  appendReceiptField(receipt, "startup_save_catalog_scan_status",
+                     saves.scanStatus);
+  appendReceiptField(receipt, "startup_creative_world_id_scan_measured",
+                     window.startupCreativeWorldIdScanMeasured);
+  appendReceiptField(receipt, "startup_creative_world_id_scan_us",
+                     window.startupCreativeWorldIdScanMicroseconds);
+  appendReceiptField(receipt, "startup_creative_world_id_scan_entry_count",
+                     window.startupCreativeWorldIdScanEntryCount);
+  appendReceiptField(receipt, "startup_creative_world_id_scan_status",
+                     window.startupCreativeWorldIdScanStatus);
+  appendReceiptField(receipt, "startup_creative_document_id_scan_measured",
+                     window.startupCreativeDocumentIdScanMeasured);
+  appendReceiptField(receipt, "startup_creative_document_id_scan_us",
+                     window.startupCreativeDocumentIdScanMicroseconds);
+  appendReceiptField(receipt, "startup_creative_document_id_scan_entry_count",
+                     window.startupCreativeDocumentIdScanEntryCount);
+  appendReceiptField(receipt, "startup_creative_document_id_scan_status",
+                     window.startupCreativeDocumentIdScanStatus);
+  appendReceiptField(receipt, "startup_creative_ui_first_frame_measured",
+                     window.startupCreativeUiFirstFrameMeasured);
+  appendReceiptField(receipt, "startup_creative_ui_first_frame_us",
+                     window.startupCreativeUiFirstFrameMicroseconds);
+  appendReceiptField(receipt, "startup_creative_ui_first_frame_status",
+                     window.startupCreativeUiFirstFrameStatus);
+  appendReceiptField(receipt, "startup_creative_wireframe_first_frame_measured",
+                     window.startupCreativeWireframeFirstFrameMeasured);
+  appendReceiptField(receipt, "startup_creative_wireframe_first_frame_us",
+                     window.startupCreativeWireframeFirstFrameMicroseconds);
+  appendReceiptField(receipt, "startup_creative_wireframe_first_frame_status",
+                     window.startupCreativeWireframeFirstFrameStatus);
+  appendReceiptField(receipt, "startup_vulkan_renderer_init_measured",
+                     window.startupVulkanRendererInitMeasured);
+  appendReceiptField(receipt, "startup_vulkan_renderer_init_us",
+                     window.startupVulkanRendererInitMicroseconds);
+  appendReceiptField(receipt, "startup_vulkan_renderer_init_status",
+                     window.startupVulkanRendererInitStatus);
+  appendReceiptField(receipt, "startup_vulkan_first_submit_measured",
+                     window.startupVulkanFirstSubmitMeasured);
+  appendReceiptField(receipt, "startup_vulkan_first_submit_us",
+                     window.startupVulkanFirstSubmitMicroseconds);
+  appendReceiptField(receipt, "startup_vulkan_first_submit_status",
+                     window.startupVulkanFirstSubmitStatus);
   appendReceiptField(receipt, "world_setup_title", window.worldSetupTitle);
   appendReceiptField(receipt, "world_setup_status", window.worldSetupStatus);
   appendReceiptField(receipt,

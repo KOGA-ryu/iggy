@@ -1,6 +1,7 @@
 #include "app/iggy3d/window/FramePresenter.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <iomanip>
@@ -22,6 +23,26 @@ namespace {
 
 constexpr float kVirtualViewportWidth = 1280.0F;
 constexpr float kVirtualViewportHeight = 720.0F;
+
+std::uint64_t elapsedMicroseconds(
+    std::chrono::steady_clock::time_point started) {
+  return static_cast<std::uint64_t>(
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::steady_clock::now() - started)
+          .count());
+}
+
+void recordFirstVulkanSubmitMeasurement(
+    ProductAppWindowState& window,
+    std::chrono::steady_clock::time_point started,
+    const RenderSubmitResult& submit) {
+  if (window.startupVulkanFirstSubmitMeasured) {
+    return;
+  }
+  window.startupVulkanFirstSubmitMeasured = true;
+  window.startupVulkanFirstSubmitMicroseconds = elapsedMicroseconds(started);
+  window.startupVulkanFirstSubmitStatus = std::string{submit.reason.code};
+}
 
 bool drawableReady(const ProductVulkanMenuFrameRequest& request) {
   return request.drawableWidth > 0U && request.drawableHeight > 0U;
@@ -817,9 +838,13 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
                                request.window.framesPresented + 1U,
                                drawableExtent.width, drawableExtent.height);
       }
+      const auto submitStarted = std::chrono::steady_clock::now();
       const RenderSubmitResult submit =
           request.renderer.vulkanRenderer.submitFrame(
               refreshProductVulkanGameplayFrameInput(renderFrame));
+      recordFirstVulkanSubmitMeasurement(request.window,
+                                         submitStarted,
+                                         submit);
       recordProductVulkanSubmit(request.window, submit);
     } else {
       request.window.productVulkanStatus = "frame_not_submitted";
@@ -857,8 +882,12 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
              drawableExtent.height});
         // branch-gate: BG-1072
         if (menuFrame.ready) {
+          const auto submitStarted = std::chrono::steady_clock::now();
           const RenderSubmitResult submit = request.renderer.vulkanRenderer.submitFrame(
               refreshProductVulkanMenuFrameInput(menuFrame));
+          recordFirstVulkanSubmitMeasurement(request.window,
+                                             submitStarted,
+                                             submit);
           recordProductVulkanSubmit(request.window, submit);
         } else {
           request.window.productVulkanStatus = "frame_not_submitted";

@@ -72,6 +72,18 @@ bool createEmptyCreativeWorldWritesDurableSaveAndScansAsCreative() {
          expect(created.templateId == "empty", "create template mirror") &&
          expect(created.worldId == "world_0001", "create world id") &&
          expect(created.documentId == 1U, "create document id") &&
+         expect(created.worldIdScanMeasured, "create world id scan measured") &&
+         expect(created.worldIdScanStatus == "product_world_id_scan_ready",
+                "create world id scan status") &&
+         expect(created.worldIdScanEntryCount == 0U,
+                "create world id scan empty count") &&
+         expect(created.documentIdScanMeasured,
+                "create document id scan measured") &&
+         expect(created.documentIdScanStatus ==
+                    "creative_document_id_scan_ready",
+                "create document id scan status") &&
+         expect(created.documentIdScanEntryCount == 0U,
+                "create document id scan empty count") &&
          expect(created.documentCreated, "create document created") &&
          expect(created.initialSaveWritten, "create initial save written") &&
          expect(created.saveId == "save_001", "create save id") &&
@@ -453,6 +465,13 @@ bool documentIdMintUsesActiveAndDeletedCreativeSaves() {
          expect(second.documentId == 2U, "id second two") &&
          expect(third.documentId == 3U,
                 "id third considers active and deleted") &&
+         expect(third.worldIdScanMeasured, "id third world scan measured") &&
+         expect(third.worldIdScanEntryCount == 2U,
+                "id third world scan entry count") &&
+         expect(third.documentIdScanMeasured,
+                "id third document scan measured") &&
+         expect(third.documentIdScanEntryCount == 2U,
+                "id third document scan entry count") &&
          expect(first.worldId == "world_0001", "world first one") &&
          expect(second.worldId == "world_0002", "world second two") &&
          expect(third.worldId == "world_0003",

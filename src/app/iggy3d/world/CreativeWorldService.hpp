@@ -31,6 +31,15 @@ struct CreativeWorldCreateResult {
   bool initialSaveWritten = false;
   std::string saveId = "none";
   std::filesystem::path path;
+  bool worldIdScanMeasured = false;
+  std::uint64_t worldIdScanMicroseconds = 0;
+  std::uint64_t worldIdScanEntryCount = 0;
+  std::string worldIdScanStatus = "product_world_id_scan_not_requested";
+  bool documentIdScanMeasured = false;
+  std::uint64_t documentIdScanMicroseconds = 0;
+  std::uint64_t documentIdScanEntryCount = 0;
+  std::string documentIdScanStatus =
+      "creative_document_id_scan_not_requested";
   ProductCreativeSaveWriteResult saveWrite;
   creative::CreativeDocument document;
 };

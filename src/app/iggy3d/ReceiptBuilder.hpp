@@ -92,6 +92,45 @@ struct ProductAppWindowState {
   std::string launchAction = "none";
   std::string launchStatus = "not_requested";
   std::string packageLoadStatus = "not_requested";
+  std::string startupPackagePath = "none";
+  bool startupPackageLookupMeasured = false;
+  std::uint64_t startupPackageLookupMicroseconds = 0;
+  std::string startupPackageLookupStatus =
+      "startup_package_lookup_not_requested";
+  bool startupPackageLoadMeasured = false;
+  std::uint64_t startupPackageLoadMicroseconds = 0;
+  std::string startupPackageLoadStatus =
+      "startup_package_load_not_requested";
+  bool startupRuntimeSessionCreateMeasured = false;
+  std::uint64_t startupRuntimeSessionCreateMicroseconds = 0;
+  std::string startupRuntimeSessionCreateStatus =
+      "startup_runtime_session_create_not_requested";
+  bool startupCreativeWorldIdScanMeasured = false;
+  std::uint64_t startupCreativeWorldIdScanMicroseconds = 0;
+  std::uint64_t startupCreativeWorldIdScanEntryCount = 0;
+  std::string startupCreativeWorldIdScanStatus =
+      "product_world_id_scan_not_requested";
+  bool startupCreativeDocumentIdScanMeasured = false;
+  std::uint64_t startupCreativeDocumentIdScanMicroseconds = 0;
+  std::uint64_t startupCreativeDocumentIdScanEntryCount = 0;
+  std::string startupCreativeDocumentIdScanStatus =
+      "creative_document_id_scan_not_requested";
+  bool startupCreativeUiFirstFrameMeasured = false;
+  std::uint64_t startupCreativeUiFirstFrameMicroseconds = 0;
+  std::string startupCreativeUiFirstFrameStatus =
+      "startup_creative_ui_first_frame_not_requested";
+  bool startupCreativeWireframeFirstFrameMeasured = false;
+  std::uint64_t startupCreativeWireframeFirstFrameMicroseconds = 0;
+  std::string startupCreativeWireframeFirstFrameStatus =
+      "startup_creative_wireframe_first_frame_not_requested";
+  bool startupVulkanRendererInitMeasured = false;
+  std::uint64_t startupVulkanRendererInitMicroseconds = 0;
+  std::string startupVulkanRendererInitStatus =
+      "startup_vulkan_renderer_init_not_requested";
+  bool startupVulkanFirstSubmitMeasured = false;
+  std::uint64_t startupVulkanFirstSubmitMicroseconds = 0;
+  std::string startupVulkanFirstSubmitStatus =
+      "startup_vulkan_first_submit_not_requested";
   std::string worldSetupTitle = "New World";
   std::string worldSetupStatus = "not_requested";
   std::string worldSetupDungeonTitle = "none";

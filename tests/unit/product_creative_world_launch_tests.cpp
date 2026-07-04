@@ -1,6 +1,7 @@
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
+#include "render/RenderDiagnostics.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -149,6 +150,13 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
                : iggy3d::ProductSaveCatalogEntry{};
   const iggy3d::ProductContinueSelectionResult continued =
       iggy3d::selectProductContinueSave(scanned.catalog.catalog);
+  const iggy3d::RenderReceipt receipt =
+      iggy3d::buildProductAppReceipt(options,
+                                     iggy3d::ProductWorldTemplate{},
+                                     frontend,
+                                     iggy3d::FrontendSettings{},
+                                     window,
+                                     scanned);
 
   return expect(launched.accepted, "creative launch accepted") &&
          expect(launched.status == "product_creative_world_launched",
@@ -192,6 +200,30 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
                 "creative launch frontend gameplay") &&
          expect(window.launchStatus == "product_creative_world_launched",
                 "creative launch window status") &&
+         expect(window.startupPackageLookupMeasured,
+                "creative launch package lookup measured") &&
+         expect(window.startupPackageLookupStatus ==
+                    "startup_package_lookup_resolved",
+                "creative launch package lookup status") &&
+         expect(window.startupPackageLoadMeasured,
+                "creative launch package load measured") &&
+         expect(window.startupPackageLoadStatus == "ok",
+                "creative launch package load status") &&
+         expect(window.startupRuntimeSessionCreateMeasured,
+                "creative launch session create measured") &&
+         expect(window.startupRuntimeSessionCreateStatus ==
+                    "startup_runtime_session_created",
+                "creative launch session create status") &&
+         expect(window.startupCreativeWorldIdScanMeasured,
+                "creative launch world id scan measured") &&
+         expect(window.startupCreativeWorldIdScanStatus ==
+                    "product_world_id_scan_ready",
+                "creative launch world id scan status") &&
+         expect(window.startupCreativeDocumentIdScanMeasured,
+                "creative launch document id scan measured") &&
+         expect(window.startupCreativeDocumentIdScanStatus ==
+                    "creative_document_id_scan_ready",
+                "creative launch document id scan status") &&
          expect(window.activeProductSaveId == "none",
                 "creative launch does not set product save id") &&
          expect(window.activeCreativeSaveId == launched.saveId,
@@ -250,7 +282,32 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
          expect(!continued.selected,
                 "creative launch continue ignores creative") &&
          expect(continued.status == "continue_no_compatible_saves",
-                "creative launch continue status");
+                "creative launch continue status") &&
+         expect(iggy3d::hasReceiptField(
+                    receipt,
+                    "startup_package_lookup_measured",
+                    "true"),
+                "creative launch receipt package lookup measured") &&
+         expect(iggy3d::hasReceiptField(
+                    receipt,
+                    "startup_runtime_session_create_status",
+                    "startup_runtime_session_created"),
+                "creative launch receipt session create status") &&
+         expect(iggy3d::hasReceiptField(
+                    receipt,
+                    "startup_save_catalog_scan_entry_count",
+                    "1"),
+                "creative launch receipt save scan count") &&
+         expect(iggy3d::hasReceiptField(
+                    receipt,
+                    "startup_creative_world_id_scan_status",
+                    "product_world_id_scan_ready"),
+                "creative launch receipt world id scan") &&
+         expect(iggy3d::hasReceiptField(
+                    receipt,
+                    "startup_creative_document_id_scan_status",
+                    "creative_document_id_scan_ready"),
+                "creative launch receipt document id scan");
 }
 
 bool blankTitleOrTimestampRejectsBeforeSessionInstallAndModeSwitch() {

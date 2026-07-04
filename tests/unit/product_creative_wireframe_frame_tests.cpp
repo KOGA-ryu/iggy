@@ -750,6 +750,60 @@ bool recorderPreservesExistingFields() {
                 "vulkan status kept");
 }
 
+bool startupFrameMeasurementFieldsAreReceiptOnlyScalars() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  window.startupCreativeUiFirstFrameMeasured = true;
+  window.startupCreativeUiFirstFrameMicroseconds = 17;
+  window.startupCreativeUiFirstFrameStatus =
+      "product_creative_ui_frame_ready";
+  window.startupCreativeWireframeFirstFrameMeasured = true;
+  window.startupCreativeWireframeFirstFrameMicroseconds = 23;
+  window.startupCreativeWireframeFirstFrameStatus =
+      "product_creative_wireframe_frame_built";
+  window.startupVulkanRendererInitMeasured = true;
+  window.startupVulkanRendererInitMicroseconds = 31;
+  window.startupVulkanRendererInitStatus =
+      "startup_vulkan_renderer_init_ready";
+  window.startupVulkanFirstSubmitMeasured = true;
+  window.startupVulkanFirstSubmitMicroseconds = 43;
+  window.startupVulkanFirstSubmitStatus = "renderer_ok";
+
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  return expectReceiptField(receipt,
+                            "startup_creative_ui_first_frame_measured",
+                            "true",
+                            "startup ui frame measured") &&
+         expectReceiptField(receipt,
+                            "startup_creative_ui_first_frame_us",
+                            "17",
+                            "startup ui frame us") &&
+         expectReceiptField(receipt,
+                            "startup_creative_wireframe_first_frame_measured",
+                            "true",
+                            "startup wireframe measured") &&
+         expectReceiptField(receipt,
+                            "startup_creative_wireframe_first_frame_status",
+                            "product_creative_wireframe_frame_built",
+                            "startup wireframe status") &&
+         expectReceiptField(receipt,
+                            "startup_vulkan_renderer_init_measured",
+                            "true",
+                            "startup renderer measured") &&
+         expectReceiptField(receipt,
+                            "startup_vulkan_renderer_init_us",
+                            "31",
+                            "startup renderer us") &&
+         expectReceiptField(receipt,
+                            "startup_vulkan_first_submit_measured",
+                            "true",
+                            "startup submit measured") &&
+         expectReceiptField(receipt,
+                            "startup_vulkan_first_submit_status",
+                            "renderer_ok",
+                            "startup submit status");
+}
+
 }  // namespace
 
 int main() {
@@ -769,6 +823,7 @@ int main() {
       createRoomCommandThenWireframeBuildsSegments() &&
       defaultWindowReceiptFieldsAreNotRequested() &&
       recorderCopiesRoomReceiptFields() &&
-      recorderPreservesExistingFields();
+      recorderPreservesExistingFields() &&
+      startupFrameMeasurementFieldsAreReceiptOnlyScalars();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -54,6 +54,14 @@ ExistingSaveIdentity readExistingSaveIdentity(const std::filesystem::path& root,
   return existing;
 }
 
+std::uint64_t elapsedMicroseconds(
+    std::chrono::steady_clock::time_point started) {
+  return static_cast<std::uint64_t>(
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::steady_clock::now() - started)
+          .count());
+}
+
 std::string preferNonEmpty(const std::string& primary,
                            const std::string& fallback) {
   return primary.empty() ? fallback : primary;
@@ -278,12 +286,19 @@ ProductSaveCatalogBuildResult scanProductSaveCatalog(
 ProductSaveBridgeResult bridgeResultFromCatalog(
     const std::filesystem::path& scanRoot,
     ProductSaveCatalogBuildResult catalog,
-    std::string_view status) {
+    std::string_view status,
+    std::uint64_t scanMicroseconds,
+    std::string_view scanStatus) {
   ProductSaveBridgeResult result;
   result.saveRoot = scanRoot;
   result.catalog = std::move(catalog);
   result.slots = buildSaveSlotListFromCatalog(result.catalog.catalog);
   result.status = status;
+  result.scanMeasured = true;
+  result.scanMicroseconds = scanMicroseconds;
+  result.scanEntryCount =
+      static_cast<std::uint64_t>(result.catalog.catalog.entries.size());
+  result.scanStatus = scanStatus;
   return result;
 }
 
@@ -382,28 +397,45 @@ std::string formatWorldId(std::uint64_t number) {
 
 }  // namespace
 
-std::string nextProductWorldId(const std::filesystem::path& saveRoot) {
+ProductWorldIdMintResult nextProductWorldIdMeasured(
+    const std::filesystem::path& saveRoot) {
   // World id collection is compatibility-independent: scan with empty
   // package/scenario so every existing world_<n> contributes, then take the
   // highest across active and deleted saves and return the next.
-  const std::uint64_t activeMax =
-      maxWorldIdNumber(scanProductSaves(saveRoot, "", "").catalog.catalog);
-  const std::uint64_t deletedMax =
-      maxWorldIdNumber(scanDeletedProductSaves(saveRoot, "", "").catalog.catalog);
-  return formatWorldId(std::max(activeMax, deletedMax) + 1U);
+  ProductWorldIdMintResult result;
+  const auto started = std::chrono::steady_clock::now();
+  const ProductSaveBridgeResult active = scanProductSaves(saveRoot, "", "");
+  const ProductSaveBridgeResult deleted =
+      scanDeletedProductSaves(saveRoot, "", "");
+  const std::uint64_t activeMax = maxWorldIdNumber(active.catalog.catalog);
+  const std::uint64_t deletedMax = maxWorldIdNumber(deleted.catalog.catalog);
+  result.worldId = formatWorldId(std::max(activeMax, deletedMax) + 1U);
+  result.scanMeasured = true;
+  result.scanMicroseconds = elapsedMicroseconds(started);
+  result.scanEntryCount = active.scanEntryCount + deleted.scanEntryCount;
+  result.scanStatus = "product_world_id_scan_ready";
+  return result;
 }
 
+std::string nextProductWorldId(const std::filesystem::path& saveRoot) {
+  return nextProductWorldIdMeasured(saveRoot).worldId;
+}
 
 ProductSaveBridgeResult scanProductSaves(const std::filesystem::path& saveRoot,
                                          std::string_view packageId,
                                          std::string_view scenarioId) {
-  return bridgeResultFromCatalog(
-      saveRoot,
+  const auto started = std::chrono::steady_clock::now();
+  ProductSaveCatalogBuildResult catalog =
       scanProductSaveCatalog(saveRoot,
                              ProductSaveCatalogLocation::Active,
                              packageId,
-                             scenarioId),
-      "save_bridge_ready");
+                             scenarioId);
+  return bridgeResultFromCatalog(
+      saveRoot,
+      std::move(catalog),
+      "save_bridge_ready",
+      elapsedMicroseconds(started),
+      "save_catalog_scan_ready");
 }
 
 ProductSaveBridgeResult scanDeletedProductSaves(
@@ -411,13 +443,18 @@ ProductSaveBridgeResult scanDeletedProductSaves(
     std::string_view packageId,
     std::string_view scenarioId) {
   const std::filesystem::path deletedRoot = deletedSaveDirectory(saveRoot);
-  return bridgeResultFromCatalog(
-      deletedRoot,
+  const auto started = std::chrono::steady_clock::now();
+  ProductSaveCatalogBuildResult catalog =
       scanProductSaveCatalog(deletedRoot,
                              ProductSaveCatalogLocation::Deleted,
                              packageId,
-                             scenarioId),
-      "deleted_save_bridge_ready");
+                             scenarioId);
+  return bridgeResultFromCatalog(
+      deletedRoot,
+      std::move(catalog),
+      "deleted_save_bridge_ready",
+      elapsedMicroseconds(started),
+      "deleted_save_catalog_scan_ready");
 }
 
 ProductSaveWriteResult writeProductSessionSaveDurably(

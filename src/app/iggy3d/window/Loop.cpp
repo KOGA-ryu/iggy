@@ -1,5 +1,7 @@
 #include "app/iggy3d/window/Loop.hpp"
 
+#include <chrono>
+#include <string_view>
 #include <utility>
 
 #include "app/frontend/MenuInput.hpp"
@@ -16,7 +18,6 @@
 #include "app/iggy3d/menu/InputRouter.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
-#include <chrono>
 #include <thread>
 
 #include "app/platform/SdlWindow.hpp"
@@ -75,6 +76,28 @@ creativeWireframeProjectionRequest() noexcept {
   return request;
 }
 
+std::uint64_t elapsedMicroseconds(
+    std::chrono::steady_clock::time_point started) {
+  return static_cast<std::uint64_t>(
+      std::chrono::duration_cast<std::chrono::microseconds>(
+          std::chrono::steady_clock::now() - started)
+          .count());
+}
+
+void recordFirstStartupMeasurement(
+    bool& measured,
+    std::uint64_t& microseconds,
+    std::string& status,
+    std::chrono::steady_clock::time_point started,
+    std::string_view statusValue) {
+  if (measured) {
+    return;
+  }
+  measured = true;
+  microseconds = elapsedMicroseconds(started);
+  status = std::string{statusValue};
+}
+
 }  // namespace
 
 ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& request) {
@@ -118,9 +141,18 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     return ProductWindowLoopResult{std::move(window), std::move(saves)};
   }
 
+  const auto rendererStarted = std::chrono::steady_clock::now();
   ProductWindowRendererState renderer = createProductWindowRenderer(
       ProductWindowRendererRequest{request.options.renderer, &createInfo,
                                    &sdlWindow, &window});
+  if (useVulkanRenderer) {
+    window.startupVulkanRendererInitMeasured = true;
+    window.startupVulkanRendererInitMicroseconds =
+        elapsedMicroseconds(rendererStarted);
+    window.startupVulkanRendererInitStatus =
+        renderer.ready ? "startup_vulkan_renderer_init_ready"
+                       : window.productVulkanReasonCode;
+  }
   // branch-gate: BG-1031
   if (!renderer.ready) {
     return ProductWindowLoopResult{std::move(window), std::move(saves)};
@@ -151,6 +183,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
                 createInfo.height,
                 1280,
                 720});
+    const auto creativeUiStarted = std::chrono::steady_clock::now();
     const ProductCreativeUiFrame creativeUiFrame = buildProductCreativeUiWindowFrame(
         ProductCreativeUiWindowFrameRequest{&window,
                                             request.creativeFacade,
@@ -161,6 +194,14 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
                                             ProductUiThemeId::System,
                                             eventState.windowWidth,
                                             eventState.windowHeight});
+    if (creativeUiFrame.receipt.active) {
+      recordFirstStartupMeasurement(
+          window.startupCreativeUiFirstFrameMeasured,
+          window.startupCreativeUiFirstFrameMicroseconds,
+          window.startupCreativeUiFirstFrameStatus,
+          creativeUiStarted,
+          creativeUiFrame.receipt.status);
+    }
     const ProductUiDrawList* creativeUiDrawList =
         creativeUiFrame.projection.drawList.ready
             ? &creativeUiFrame.projection.drawList
@@ -194,11 +235,20 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         creative::CreativeViewportPickDepthMode::HighestZFirst,
         {}});
 
+    const auto wireframeStarted = std::chrono::steady_clock::now();
     const ProductCreativeWireframeFrameBuildResult wireframeFrame =
         buildProductCreativeWireframeFrame(ProductCreativeWireframeFrameRequest{
             &window,
             request.creativeFacade,
             creativeWireframeProjectionRequest()});
+    if (wireframeFrame.receipt.active) {
+      recordFirstStartupMeasurement(
+          window.startupCreativeWireframeFirstFrameMeasured,
+          window.startupCreativeWireframeFirstFrameMicroseconds,
+          window.startupCreativeWireframeFirstFrameStatus,
+          wireframeStarted,
+          wireframeFrame.receipt.status);
+    }
     recordProductCreativeWireframeFrame(window, wireframeFrame.receipt);
     const ProductCreativeWireframeDebugLineList* creativeWireframeDebugLines =
         wireframeFrame.receipt.active &&

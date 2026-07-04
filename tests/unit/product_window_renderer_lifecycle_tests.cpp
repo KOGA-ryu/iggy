@@ -168,13 +168,13 @@ bool starterMenuUiDrawListStatusIsStable() {
          expect(!window.productVulkanMenuUiPartial, "menu ui not partial") &&
          expect(window.productVulkanMenuUiStatus == "product_ui_draw_list_ready",
                 "menu ui draw list status") &&
-         expect(window.productVulkanMenuUiPrimitiveCount == 22U,
+         expect(window.productVulkanMenuUiPrimitiveCount == 26U,
                 "menu ui primitive count") &&
-         expect(window.productVulkanMenuUiTextCount == 11U,
+         expect(window.productVulkanMenuUiTextCount == 13U,
                 "menu ui text count") &&
-         expect(window.productVulkanMenuUiRectCount == 11U,
+         expect(window.productVulkanMenuUiRectCount == 13U,
                 "menu ui rect count") &&
-         expect(window.productVulkanMenuUiRowCount == 7U,
+         expect(window.productVulkanMenuUiRowCount == 9U,
                 "menu ui row count") &&
          expect(window.productVulkanMenuUiSelectedAction == "new_world",
                 "menu ui selected action");
@@ -286,19 +286,19 @@ bool productReceiptCarriesReadinessFields() {
                 "receipt includes menu ui status") &&
          expect(iggy3d::hasReceiptField(receipt,
                                         "product_vulkan_menu_ui_primitive_count",
-                                        "22"),
+                                        "26"),
                 "receipt includes menu ui primitive count") &&
          expect(iggy3d::hasReceiptField(receipt,
                                         "product_vulkan_menu_ui_text_count",
-                                        "11"),
+                                        "13"),
                 "receipt includes menu ui text count") &&
          expect(iggy3d::hasReceiptField(receipt,
                                         "product_vulkan_menu_ui_rect_count",
-                                        "11"),
+                                        "13"),
                 "receipt includes menu ui rect count") &&
          expect(iggy3d::hasReceiptField(receipt,
                                         "product_vulkan_menu_ui_row_count",
-                                        "7"),
+                                        "9"),
                 "receipt includes menu ui row count") &&
          expect(iggy3d::hasReceiptField(receipt,
                                         "product_vulkan_menu_ui_selected_action",
