@@ -57,7 +57,7 @@ iggy3d::ProductCreativeUiCommandFrameReceipt nullFacadeReceipt() {
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
-iggy3d::ProductCreativeUiCommandFrameReceipt appliedCommandReceipt() {
+iggy3d::ProductCreativeUiCommandFrameReceipt activeToolDisplayReceipt() {
   cr::Facade facade;
   facade.reset();
   iggy3d::ProductCreativeUiCommandFrameRequest request;
@@ -356,9 +356,9 @@ bool nullFacadeCommandReceiptRecordsFields() {
                             "null facade reason");
 }
 
-bool appliedCommandReceiptRecordsFields() {
+bool activeToolDisplayCommandReceiptRecordsFields() {
   const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
-      appliedCommandReceipt();
+      activeToolDisplayReceipt();
   iggy3d::ProductAppWindowState window;
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
@@ -381,36 +381,36 @@ bool appliedCommandReceiptRecordsFields() {
                             "applied enabled") &&
          expectReceiptField(receipt,
                             "creative_ui_command_accepted",
-                            "true",
-                            "applied accepted") &&
+                            "false",
+                            "active display not accepted") &&
          expectReceiptField(receipt,
                             "creative_ui_command_changed",
-                            "true",
-                            "applied changed") &&
+                            "false",
+                            "active display unchanged") &&
          expectReceiptField(receipt,
                             "creative_ui_command_kind",
-                            "cycle_next_tool",
-                            "applied kind") &&
+                            "none",
+                            "active display kind") &&
          expectReceiptField(receipt,
                             "creative_ui_command_tool_before",
                             "Select",
-                            "applied before") &&
+                            "active display before") &&
          expectReceiptField(receipt,
                             "creative_ui_command_tool_after",
-                            "Inspect",
-                            "applied after") &&
+                            "Select",
+                            "active display after") &&
          expectReceiptField(receipt,
                             "creative_ui_command_semantic_id",
                             "creative.row.tools.active_tool",
-                            "applied semantic") &&
+                            "active display semantic") &&
          expectReceiptField(receipt,
                             "creative_ui_command_status",
-                            "product_creative_ui_command_applied",
-                            "applied status") &&
+                            "product_creative_ui_command_unknown_semantic",
+                            "active display status") &&
          expectReceiptField(receipt,
                             "creative_ui_command_reason_code",
-                            "product_creative_ui_command_applied",
-                            "applied reason");
+                            "product_creative_ui_command_unknown_semantic",
+                            "active display reason");
 }
 
 bool toggleCommandReceiptRecordsMutationFields() {
@@ -599,7 +599,7 @@ bool recorderPreservesNeighboringFields() {
   window.productVulkanMenuUiSelectedAction = "resume";
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
-      appliedCommandReceipt();
+      appliedCreateRoomReceipt();
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
@@ -664,7 +664,7 @@ int main() {
   const bool ok = defaultWindowReceiptCarriesNotRequestedFields() &&
                   defaultCommandReceiptRecordsSafely() &&
                   nullFacadeCommandReceiptRecordsFields() &&
-                  appliedCommandReceiptRecordsFields() &&
+                  activeToolDisplayCommandReceiptRecordsFields() &&
                   toggleCommandReceiptRecordsMutationFields() &&
                   createRoomCommandReceiptRecordsCreateFields() &&
                   recorderPreservesNeighboringFields();

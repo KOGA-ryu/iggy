@@ -183,7 +183,7 @@ bool facadeInputBuildsFromFacadeState() {
                 "facade active tool row") &&
          expect(inspected != nullptr &&
                     inspected->text ==
-                        "Inspected Target: target=88 visible=unknown",
+                        "Inspected: target=88 visible=unknown",
                 "facade inspected row") &&
          countsMirrorDrawList(projection);
 }

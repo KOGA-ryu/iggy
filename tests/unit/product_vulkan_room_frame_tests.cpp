@@ -1192,6 +1192,82 @@ bool gameplayDebugHudsHideOnMenuSurfaces() {
   return ok;
 }
 
+bool creativeDocumentSurfaceHidesLegacyGameplayHudAndFeedback() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
+  if (!expect(session.has_value(), "creative document surface session created")) {
+    return false;
+  }
+  seedMovementDebugFacts(window);
+  seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.activeCreativeSaveId = "creative_save";
+  window.activeCreativeWorldId = "world_001";
+  window.activeCreativeDocumentId = 42U;
+  window.mapMakerStatus = "map_maker_enabled";
+  window.mapMakerReasonCode = window.mapMakerStatus;
+  window.gameplayCommandSubmitted = true;
+  window.gameplayCommandKind = "move";
+  window.gameplayCommandStatus = "accepted";
+  window.gameplayCommandAccepted = true;
+  window.gameplayReachGate = "pass";
+
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Gameplay;
+  frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
+
+  const iggy3d::ProductGameplayProjectionFrame projection =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session,
+              window,
+              true,
+              true,
+              iggy3d::ProductRendererRequest::Vulkan,
+              frontend});
+  iggy3d::ProductVulkanGameplayFrame vulkanFrame =
+      iggy3d::buildProductVulkanGameplayFrame(
+          projection,
+          20U,
+          1280U,
+          720U,
+          window.viewport.cameraYawDegrees,
+          window.viewport.cameraPitchDegrees);
+  const VulkanUiCounts ui =
+      uiCountsFor(iggy3d::refreshProductVulkanGameplayFrameInput(vulkanFrame));
+
+  bool feedbackLinesHidden = true;
+  for (const iggy3d::GameplayFeedbackLine& line : projection.feedback.lines) {
+    feedbackLinesHidden = feedbackLinesHidden && !line.visible;
+  }
+
+  return expect(!projection.feedback.visible,
+                "creative document hides gameplay feedback") &&
+         expect(feedbackLinesHidden,
+                "creative document hides feedback lines") &&
+         expect(!projection.renderBridge.feedbackReady,
+                "creative document render bridge feedback hidden") &&
+         expect(!projection.topDownMapOverlay.visible,
+                "creative document hides top-down map") &&
+         expect(!projection.interactionModeHud.visible,
+                "creative document hides interaction mode HUD") &&
+         expect(!projection.mapMakerHud.visible,
+                "creative document hides map maker HUD") &&
+         expect(!projection.mapMakerGrid.visible,
+                "creative document hides map maker grid") &&
+         expect(!projection.roomEditorHud.visible,
+                "creative document hides room editor HUD") &&
+         expect(!projection.movementHud.visible,
+                "creative document hides movement HUD") &&
+         expect(!projection.npcBehaviorHud.visible,
+                "creative document hides NPC HUD") &&
+         expect(!projection.physicsHud.visible,
+                "creative document hides physics HUD") &&
+         expect(!projection.positionHud.visible,
+                "creative document hides position HUD") &&
+         expect(!ui.visible, "creative document no legacy Vulkan UI");
+}
+
 bool roomEditorSurfaceShowsEditorHudOnly() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window = makeGameplayWindow(session);
@@ -1373,6 +1449,7 @@ int main() {
                   vulkanGameplayFrameCarriesPositionHudUiOverlay() &&
                   vulkanGameplayFrameCarriesDebugHudUiParity() &&
                   gameplayDebugHudsHideOnMenuSurfaces() &&
+                  creativeDocumentSurfaceHidesLegacyGameplayHudAndFeedback() &&
                   roomEditorSurfaceShowsEditorHudOnly() &&
                   vulkanGameplayFrameCarriesMovementTuningUiOverlay() &&
                   vulkanGameplayFrameCarriesDevToolsOverlay() &&

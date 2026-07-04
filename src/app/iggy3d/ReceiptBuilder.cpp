@@ -91,8 +91,6 @@ std::string_view productCreativeUiCommandKindReceiptName(
   switch (kind) {
     case ProductCreativeUiCommandKind::None:
       return "none";
-    case ProductCreativeUiCommandKind::CycleNextTool:
-      return "cycle_next_tool";
     case ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility:
       return "toggle_selected_object_visibility";
     case ProductCreativeUiCommandKind::CreateRoom:

@@ -10,7 +10,6 @@ namespace iggy3d {
 
 enum class ProductCreativeUiCommandKind : std::uint8_t {
   None,
-  CycleNextTool,
   ToggleSelectedObjectVisibility,
   CreateRoom,
 };

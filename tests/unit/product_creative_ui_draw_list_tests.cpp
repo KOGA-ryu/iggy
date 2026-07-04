@@ -58,6 +58,26 @@ bool rectEquals(const iggy3d::ProductUiRect& lhs,
          lhs.height == rhs.height;
 }
 
+bool rectsOverlap(const iggy3d::ProductUiRect& lhs,
+                  const iggy3d::ProductUiRect& rhs) {
+  return lhs.x < rhs.x + rhs.width && lhs.x + lhs.width > rhs.x &&
+         lhs.y < rhs.y + rhs.height && lhs.y + lhs.height > rhs.y;
+}
+
+bool rectInsideVirtualFrame(const iggy3d::ProductUiRect& rect,
+                            std::uint32_t width,
+                            std::uint32_t height) {
+  return rect.x >= 0.0F && rect.y >= 0.0F &&
+         rect.x + rect.width <= static_cast<float>(width) &&
+         rect.y + rect.height <= static_cast<float>(height);
+}
+
+bool textFitsPrimitiveRect(const iggy3d::ProductUiPrimitive& primitive) {
+  constexpr float kGlyphAdvance = 12.0F;
+  return static_cast<float>(primitive.text.size()) * kGlyphAdvance <=
+         primitive.rect.width;
+}
+
 std::uint64_t countKind(const iggy3d::ProductUiDrawList& list,
                         iggy3d::ProductUiPrimitiveKind kind) {
   std::uint64_t count = 0;
@@ -255,11 +275,11 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                 "hidden measurement panel") &&
          expect(findPrimitive(list, "creative.panel.ghost") == nullptr,
                 "hidden ghost panel") &&
-         expect(active != nullptr && active->text == "Tool: Select",
+         expect(active != nullptr && active->text == "Active Tool: Select",
                 "active row text") &&
          expect(createRoom != nullptr && createRoom->text == "Create Room",
                 "create room row text") &&
-         expect(status != nullptr && status->text == "Status: Ready",
+         expect(status != nullptr && status->text == "Creative: Ready",
                 "status row text") &&
          expect(snap != nullptr && snap->text == "Snap: Grid XY 1.00x1.00",
                 "snap row text") &&
@@ -290,6 +310,41 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
          expect(findHitRegion(list, "creative.row.ghost.ghost_preview") ==
                     nullptr,
                 "hidden ghost hit");
+}
+
+bool defaultModelUsesSeparatedPanelZones() {
+  const cr::CreativeUiModel model = defaultCreativeUiModel();
+  iggy3d::ProductCreativeUiDrawListRequest request;
+  request.model = &model;
+  request.virtualWidth = 1280;
+  request.virtualHeight = 720;
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductCreativeUiDrawList(request);
+
+  const iggy3d::ProductUiPrimitive* tools =
+      findPrimitive(list, "creative.panel.tools");
+  const iggy3d::ProductUiPrimitive* status =
+      findPrimitive(list, "creative.panel.status");
+  const iggy3d::ProductUiPrimitive* snap =
+      findPrimitive(list, "creative.panel.snap");
+
+  return expect(tools != nullptr, "layout tools panel") &&
+         expect(status != nullptr, "layout status panel") &&
+         expect(snap != nullptr, "layout snap panel") &&
+         expect(rectInsideVirtualFrame(tools->rect, 1280, 720),
+                "tools inside frame") &&
+         expect(rectInsideVirtualFrame(status->rect, 1280, 720),
+                "status inside frame") &&
+         expect(rectInsideVirtualFrame(snap->rect, 1280, 720),
+                "snap inside frame") &&
+         expect(!rectsOverlap(tools->rect, status->rect),
+                "tools and status separated") &&
+         expect(!rectsOverlap(status->rect, snap->rect),
+                "status and snap separated") &&
+         expect(status->rect.y > tools->rect.y + tools->rect.height,
+                "status below tools") &&
+         expect(snap->rect.y > status->rect.y + status->rect.height,
+                "snap below status");
 }
 
 bool populatedModelPreservesCreativeOrderAndText() {
@@ -358,6 +413,29 @@ bool populatedModelPreservesCreativeOrderAndText() {
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.ghost.ghost_preview"),
                 "ghost hit");
+}
+
+bool populatedModelTextStaysInsidePrimitiveRects() {
+  const cr::CreativeUiModel model = populatedCreativeUiModel();
+  iggy3d::ProductCreativeUiDrawListRequest request;
+  request.model = &model;
+  request.virtualWidth = 1280;
+  request.virtualHeight = 720;
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductCreativeUiDrawList(request);
+
+  bool ok = true;
+  for (const iggy3d::ProductUiPrimitive& primitive : list.primitives) {
+    ok = expect(rectInsideVirtualFrame(primitive.rect, 1280, 720),
+                "primitive inside frame") &&
+         ok;
+    if (primitive.kind == iggy3d::ProductUiPrimitiveKind::Text) {
+      ok = expect(textFitsPrimitiveRect(primitive),
+                  "creative text fits primitive rect") &&
+           ok;
+    }
+  }
+  return ok;
 }
 
 bool selectedTargetVisibilityTextHandlesHiddenAndUnknown() {
@@ -483,7 +561,9 @@ int main() {
                   defaultModelProducesReadyDrawList() &&
                   primitivesAreNonInteractiveCreativeSemantics() &&
                   defaultModelEmitsVisiblePanelsAndRowsOnly() &&
+                  defaultModelUsesSeparatedPanelZones() &&
                   populatedModelPreservesCreativeOrderAndText() &&
+                  populatedModelTextStaysInsidePrimitiveRects() &&
                   selectedTargetVisibilityTextHandlesHiddenAndUnknown() &&
                   countersMatchPrimitiveContents() &&
                   disabledRowsEmitDisabledHitRegions() &&

@@ -36,6 +36,10 @@ struct ProductHudSurfacePolicy {
 ProductHudSurfacePolicy productHudSurfacePolicy(
     const FrontendState& frontend,
     const ProductAppWindowState& window) {
+  if (productCreativeDocumentEditorActiveForWindow(window)) {
+    return {};
+  }
+
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
   ProductHudSurfacePolicy policy;
@@ -47,6 +51,24 @@ ProductHudSurfacePolicy productHudSurfacePolicy(
       surface.activeSurface == ProductFrontendSurface::Editor &&
       surface.inputOwner == MenuOwner::Editor;
   return policy;
+}
+
+void applyGameplayFeedbackVisibility(GameplayFeedback& feedback,
+                                     bool visible) {
+  feedback.visible = feedback.visible && visible;
+  feedback.targetFeedbackVisible =
+      feedback.targetFeedbackVisible && feedback.visible;
+  feedback.commandFeedbackVisible =
+      feedback.commandFeedbackVisible && feedback.visible;
+  feedback.reachFeedbackVisible =
+      feedback.reachFeedbackVisible && feedback.visible;
+  feedback.combatFeedbackVisible =
+      feedback.combatFeedbackVisible && feedback.visible;
+  feedback.interactionFeedbackVisible =
+      feedback.interactionFeedbackVisible && feedback.visible;
+  for (GameplayFeedbackLine& line : feedback.lines) {
+    line.visible = line.visible && feedback.visible;
+  }
 }
 
 void appendPhysicsDebugFromMovement(DebugProjectionResult& debug,
@@ -647,6 +669,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   const ProductHudSurfacePolicy hudSurface =
       productHudSurfacePolicy(request.frontend, window);
   frame.feedback = buildGameplayFeedback(window);
+  applyGameplayFeedbackVisibility(frame.feedback, hudSurface.gameplayHudVisible);
   frame.interactionModeHud = buildInteractionModeHud(
       InteractionModeHudRequest{
           window.interactionMode,
@@ -782,6 +805,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.sceneItemCount = frame.scene.items.size();
   window.runtimeStateHash = request.activeSession->stateHash();
   frame.feedback = buildGameplayFeedback(window);
+  applyGameplayFeedbackVisibility(frame.feedback, hudSurface.gameplayHudVisible);
   frame.interactionModeHud = buildInteractionModeHud(
       InteractionModeHudRequest{
           window.interactionMode,

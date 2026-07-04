@@ -1,5 +1,6 @@
 #include "app/iggy3d/menu/CreativeUiDrawList.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <iomanip>
 #include <sstream>
@@ -12,10 +13,24 @@ namespace {
 
 constexpr float kOverlayX = 24.0F;
 constexpr float kOverlayY = 24.0F;
-constexpr float kPanelWidth = 300.0F;
 constexpr float kPanelPadding = 10.0F;
 constexpr float kRowHeight = 28.0F;
 constexpr float kPanelGap = 8.0F;
+constexpr float kToolsPanelWidth = 360.0F;
+constexpr float kInfoPanelWidth = 560.0F;
+constexpr float kTargetPanelWidth = 620.0F;
+constexpr float kGlyphAdvance = 12.0F;
+
+struct PanelLayoutCursor {
+  float leftY = kOverlayY;
+  float rightY = kOverlayY;
+};
+
+struct PanelLayout {
+  float x = kOverlayX;
+  float y = kOverlayY;
+  float width = kToolsPanelWidth;
+};
 
 [[nodiscard]] bool hasFlag(creative::CreativeUiRowFlagMask flags,
                            creative::CreativeUiRowFlagMask flag) noexcept {
@@ -131,13 +146,13 @@ void appendVisibilityText(std::string& text,
   std::string text(row.label.empty() ? row.id : row.label);
   switch (row.kind) {
     case creative::CreativeUiRowKind::ActiveTool:
-      text = "Tool: ";
+      text = "Active Tool: ";
       text.append(toolName(row.tool));
       break;
     case creative::CreativeUiRowKind::CreateRoom:
       break;
     case creative::CreativeUiRowKind::StatusSummary:
-      text = "Status: ";
+      text = "Creative: ";
       if (hasFlag(row.flags, creative::kCreativeUiRowFlagActive)) {
         text.append("Measuring");
       } else if (hasFlag(row.flags, creative::kCreativeUiRowFlagHasTarget)) {
@@ -209,6 +224,84 @@ void appendVisibilityText(std::string& text,
   return text;
 }
 
+[[nodiscard]] float panelHeight(std::size_t rowCount) noexcept {
+  return (2.0F * kPanelPadding) +
+         static_cast<float>(rowCount) * kRowHeight;
+}
+
+[[nodiscard]] std::string fitTextToWidth(std::string text,
+                                         float width) {
+  if (width <= kGlyphAdvance) {
+    return {};
+  }
+  const std::size_t maxChars =
+      static_cast<std::size_t>(std::max(1.0F, width / kGlyphAdvance));
+  if (text.size() <= maxChars) {
+    return text;
+  }
+  if (maxChars <= 3U) {
+    text.resize(maxChars);
+    return text;
+  }
+  text.resize(maxChars - 3U);
+  text.append("...");
+  return text;
+}
+
+[[nodiscard]] float constrainedPanelWidth(float desiredWidth,
+                                          std::uint32_t virtualWidth) noexcept {
+  const float maxWidth = std::max(120.0F,
+                                  static_cast<float>(virtualWidth) -
+                                      (2.0F * kOverlayX));
+  return std::min(desiredWidth, maxWidth);
+}
+
+[[nodiscard]] PanelLayout panelLayoutFor(
+    const creative::CreativeUiPanel& panel,
+    std::uint32_t virtualWidth,
+    std::uint32_t virtualHeight,
+    PanelLayoutCursor& cursor) noexcept {
+  const float height = panelHeight(panel.rowCount);
+  PanelLayout layout;
+
+  switch (panel.kind) {
+    case creative::CreativeUiPanelKind::Tools:
+      layout = {kOverlayX,
+                cursor.leftY,
+                constrainedPanelWidth(kToolsPanelWidth, virtualWidth)};
+      cursor.leftY += height + kPanelGap;
+      return layout;
+    case creative::CreativeUiPanelKind::Status:
+      layout = {kOverlayX,
+                std::max(cursor.leftY,
+                         static_cast<float>(virtualHeight) - kOverlayY -
+                             (2.0F * height) - kPanelGap),
+                constrainedPanelWidth(kInfoPanelWidth, virtualWidth)};
+      return layout;
+    case creative::CreativeUiPanelKind::Snap:
+      layout = {kOverlayX,
+                std::max(cursor.leftY,
+                         static_cast<float>(virtualHeight) - kOverlayY -
+                             height),
+                constrainedPanelWidth(kInfoPanelWidth, virtualWidth)};
+      return layout;
+    case creative::CreativeUiPanelKind::Selection:
+    case creative::CreativeUiPanelKind::Inspection:
+    case creative::CreativeUiPanelKind::Measurement:
+    case creative::CreativeUiPanelKind::Ghost: {
+      layout.width = constrainedPanelWidth(kTargetPanelWidth, virtualWidth);
+      layout.x =
+          std::max(kOverlayX,
+                   static_cast<float>(virtualWidth) - kOverlayX - layout.width);
+      layout.y = cursor.rightY;
+      cursor.rightY += height + kPanelGap;
+      return layout;
+    }
+  }
+
+  return layout;
+}
+
 [[nodiscard]] std::size_t visiblePanelCount(
     const creative::CreativeUiModel& model) noexcept {
   std::size_t count = 0;
@@ -239,15 +332,11 @@ void appendVisibilityText(std::string& text,
 
 void emitPanel(ProductUiDrawList& list,
                const creative::CreativeUiPanel& panel,
-               float y) {
+               const PanelLayout& layout) {
   ProductUiPrimitive primitive;
   primitive.kind = ProductUiPrimitiveKind::Panel;
   primitive.tone = ProductUiTone::SurfaceRaised;
-  primitive.rect = {kOverlayX,
-                    y,
-                    kPanelWidth,
-                    (2.0F * kPanelPadding) +
-                        static_cast<float>(panel.rowCount) * kRowHeight};
+  primitive.rect = {layout.x, layout.y, layout.width, panelHeight(panel.rowCount)};
   primitive.semanticId = makeSemanticId("panel", panelName(panel.kind));
   primitive.enabled = panel.enabled;
   list.primitives.push_back(std::move(primitive));
@@ -257,18 +346,19 @@ void emitPanel(ProductUiDrawList& list,
 void emitRowText(ProductUiDrawList& list,
                  const creative::CreativeUiRow& row,
                  std::size_t rowIndex,
+                 const PanelLayout& layout,
                  float y) {
   const bool enabled = isRowEnabled(row);
   ProductUiPrimitive primitive;
   primitive.kind = ProductUiPrimitiveKind::Text;
   primitive.tone = enabled ? ProductUiTone::TextPrimary
                            : ProductUiTone::Disabled;
-  primitive.rect = {kOverlayX + kPanelPadding,
+  primitive.rect = {layout.x + kPanelPadding,
                     y,
-                    kPanelWidth - (2.0F * kPanelPadding),
+                    layout.width - (2.0F * kPanelPadding),
                     kRowHeight};
   primitive.semanticId = rowSemanticId(row, rowIndex);
-  primitive.text = rowText(row);
+  primitive.text = fitTextToWidth(rowText(row), primitive.rect.width);
   primitive.enabled = enabled;
 
   UiHitRegion hit;
@@ -313,24 +403,23 @@ ProductUiDrawList buildProductCreativeUiDrawList(
   list.primitives.reserve(visiblePanelCount(model) + visibleRows);
   list.hitRegions.reserve(visibleRows);
 
-  float y = kOverlayY;
+  PanelLayoutCursor cursor;
   for (const creative::CreativeUiPanel& panel : model.panels) {
     if (!panel.visible) {
       continue;
     }
 
-    emitPanel(list, panel, y);
-    float rowY = y + kPanelPadding;
+    const PanelLayout layout =
+        panelLayoutFor(panel, request.virtualWidth, request.virtualHeight, cursor);
+    emitPanel(list, panel, layout);
+    float rowY = layout.y + kPanelPadding;
     const std::size_t end = panel.firstRow + panel.rowCount;
     for (std::size_t rowIndex = panel.firstRow;
          rowIndex < end && rowIndex < model.rows.size();
          ++rowIndex) {
-      emitRowText(list, model.rows[rowIndex], rowIndex, rowY);
+      emitRowText(list, model.rows[rowIndex], rowIndex, layout, rowY);
       rowY += kRowHeight;
     }
-
-    y += (2.0F * kPanelPadding) +
-         static_cast<float>(panel.rowCount) * kRowHeight + kPanelGap;
   }
 
   list.primitiveCount = list.primitives.size();

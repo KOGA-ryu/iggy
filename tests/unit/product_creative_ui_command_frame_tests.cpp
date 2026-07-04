@@ -185,27 +185,34 @@ bool consumedUnknownSemanticNoops() {
                 "unknown status");
 }
 
-bool activeToolCommandCyclesSelectToInspect() {
+bool activeToolRowIsDisplayOnlyAndDoesNotChangeTool() {
   cr::Facade facade;
   facade.reset();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
       routeCommand(facade);
 
-  return expect(receipt.accepted, "cycle accepted") &&
-         expect(receipt.changed, "cycle changed") &&
+  return expect(!receipt.accepted, "active display not accepted") &&
+         expect(!receipt.changed, "active display unchanged") &&
          expect(receipt.commandKind ==
-                    iggy3d::ProductCreativeUiCommandKind::CycleNextTool,
-                "cycle command kind") &&
-         expect(receipt.toolBefore == cr::Tool::Select, "cycle before") &&
-         expect(receipt.toolAfter == cr::Tool::Inspect, "cycle after") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
-                "cycle facade tool") &&
-         expect(receipt.status == "product_creative_ui_command_applied",
-                "cycle status");
+                    iggy3d::ProductCreativeUiCommandKind::None,
+                "active display command none") &&
+         expect(receipt.semanticId == "creative.row.tools.active_tool",
+                "active display semantic") &&
+         expect(receipt.toolBefore == cr::Tool::Select,
+                "active display before select") &&
+         expect(receipt.toolAfter == cr::Tool::Select,
+                "active display after select") &&
+         expect(facade.toolState().activeTool == cr::Tool::Select,
+                "active display facade select") &&
+         expect(facade.state().tool == cr::Tool::Select,
+                "active display old state select") &&
+         expect(receipt.status ==
+                    "product_creative_ui_command_unknown_semantic",
+                "active display status");
 }
 
-bool activeToolCommandHidesVisibleGhost() {
+bool activeToolRowDoesNotHideVisibleGhost() {
   cr::Facade facade;
   facade.reset();
   static_cast<void>(facade.dispatchToolInput(pointerMove(1.2, 2.7, 42)));
@@ -214,51 +221,26 @@ bool activeToolCommandHidesVisibleGhost() {
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
       routeCommand(facade);
 
-  return expect(receipt.accepted, "command ghost accepted") &&
-         expect(receipt.changed, "command ghost changed") &&
+  return expect(facade.ghostState().visible,
+                "active display ghost remains visible") &&
+         expect(!receipt.accepted, "active display ghost not accepted") &&
+         expect(!receipt.changed, "active display ghost unchanged") &&
          expect(receipt.commandKind ==
-                    iggy3d::ProductCreativeUiCommandKind::CycleNextTool,
-                "command ghost kind") &&
+                    iggy3d::ProductCreativeUiCommandKind::None,
+                "active display ghost command none") &&
          expect(receipt.toolBefore == cr::Tool::Select,
-                "command ghost before select") &&
-         expect(receipt.toolAfter == cr::Tool::Inspect,
-                "command ghost after inspect") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
-                "command ghost facade inspect") &&
-         expect(facade.state().tool == cr::Tool::Inspect,
-                "command ghost old state inspect") &&
-         expect(!facade.ghostState().visible, "command ghost hidden") &&
-         expect(facade.document().objectCount() == objectCountBefore,
-                "command ghost document unchanged");
-}
-
-bool repeatedActiveToolCommandCyclesToolOrder() {
-  cr::Facade facade;
-  facade.reset();
-
-  const iggy3d::ProductCreativeUiCommandFrameReceipt first =
-      routeCommand(facade);
-  const iggy3d::ProductCreativeUiCommandFrameReceipt second =
-      routeCommand(facade);
-  const iggy3d::ProductCreativeUiCommandFrameReceipt third =
-      routeCommand(facade);
-
-  return expect(first.toolBefore == cr::Tool::Select &&
-                    first.toolAfter == cr::Tool::Inspect,
-                "repeat select inspect") &&
-         expect(second.toolBefore == cr::Tool::Inspect &&
-                    second.toolAfter == cr::Tool::Measure,
-                "repeat inspect measure") &&
-         expect(third.toolBefore == cr::Tool::Measure &&
-                    third.toolAfter == cr::Tool::Select,
-                "repeat measure select") &&
-         expect(first.changed && second.changed && third.changed,
-                "repeat all changed") &&
+                "active display ghost before select") &&
+         expect(receipt.toolAfter == cr::Tool::Select,
+                "active display ghost after select") &&
          expect(facade.toolState().activeTool == cr::Tool::Select,
-                "repeat facade select");
+                "active display ghost facade select") &&
+         expect(facade.state().tool == cr::Tool::Select,
+                "active display ghost old state select") &&
+         expect(facade.document().objectCount() == objectCountBefore,
+                "active display ghost document unchanged");
 }
 
-bool activeToolCommandLeavingMeasureCancelsActiveMeasurement() {
+bool activeToolRowDoesNotCancelActiveMeasurement() {
   cr::Facade facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
@@ -269,45 +251,27 @@ bool activeToolCommandLeavingMeasureCancelsActiveMeasurement() {
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
       routeCommand(facade);
 
-  return expect(begin.measurementChanged, "command measure setup began") &&
-         expect(receipt.accepted, "command leave measure accepted") &&
-         expect(receipt.changed, "command leave measure changed") &&
+  return expect(begin.measurementChanged,
+                "active display measure setup began") &&
+         expect(!receipt.accepted, "active display measure not accepted") &&
+         expect(!receipt.changed, "active display measure unchanged") &&
          expect(receipt.commandKind ==
-                    iggy3d::ProductCreativeUiCommandKind::CycleNextTool,
-                "command leave measure kind") &&
+                    iggy3d::ProductCreativeUiCommandKind::None,
+                "active display measure command none") &&
          expect(receipt.toolBefore == cr::Tool::Measure,
-                "command leave measure before") &&
-         expect(receipt.toolAfter == cr::Tool::Select,
-                "command leave measure after") &&
-         expect(facade.toolState().activeTool == cr::Tool::Select,
-                "command leave measure facade tool") &&
-         expect(facade.state().tool == cr::Tool::Select,
-                "command leave measure old state") &&
-         expect(!facade.measurementState().active,
-                "command leave measure inactive") &&
-         expect(!facade.measurementState().hasMeasurement,
-                "command leave measure cleared") &&
+                "active display measure before") &&
+         expect(receipt.toolAfter == cr::Tool::Measure,
+                "active display measure after") &&
+         expect(facade.toolState().activeTool == cr::Tool::Measure,
+                "active display measure facade tool") &&
+         expect(facade.state().tool == cr::Tool::Measure,
+                "active display measure old state") &&
+         expect(facade.measurementState().active,
+                "active display measure still active") &&
+         expect(facade.measurementState().hasMeasurement,
+                "active display measure still present") &&
          expect(facade.document().objectCount() == objectCountBefore,
-                "command leave measure document unchanged");
-}
-
-bool commandUpdatesOldStateAndDoesNotMutateDocument() {
-  cr::Facade facade;
-  facade.reset();
-  const cr::CreativeObjectId roomId = facade.createRoom("Room");
-  const std::uint64_t objectCountBefore = facade.document().objectCount();
-
-  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade);
-
-  return expect(roomId != cr::kInvalidObjectId, "state room created") &&
-         expect(receipt.changed, "state changed") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
-                "state tool state inspect") &&
-         expect(facade.state().tool == cr::Tool::Inspect,
-                "state old state inspect") &&
-         expect(facade.document().objectCount() == objectCountBefore,
-                "state document unchanged");
+                "active display measure document unchanged");
 }
 
 bool createRoomCommandCreatesGenericRoom() {
@@ -621,11 +585,9 @@ int main() {
   ok &= notConsumedInputNoops();
   ok &= consumedDisabledNoops();
   ok &= consumedUnknownSemanticNoops();
-  ok &= activeToolCommandCyclesSelectToInspect();
-  ok &= activeToolCommandHidesVisibleGhost();
-  ok &= repeatedActiveToolCommandCyclesToolOrder();
-  ok &= activeToolCommandLeavingMeasureCancelsActiveMeasurement();
-  ok &= commandUpdatesOldStateAndDoesNotMutateDocument();
+  ok &= activeToolRowIsDisplayOnlyAndDoesNotChangeTool();
+  ok &= activeToolRowDoesNotHideVisibleGhost();
+  ok &= activeToolRowDoesNotCancelActiveMeasurement();
   ok &= createRoomCommandCreatesGenericRoom();
   ok &= repeatedCreateRoomCommandCreatesNewIdsAndRevisions();
   ok &= selectedTargetRowTogglesRoomVisibilityOff();

@@ -1,8 +1,14 @@
-# Creative World Foundation — plan v0.2 (the "down" layer)
+# Creative World Foundation — plan v0.4 (the "down" layer)
 
 > Planner-authored 2026-07-02. v0.1 was grounded in a 4-reader recon of the as-built creative
 > lane at merge `465a3821` (+ Codex's in-flight WIP diff); v0.2 folds in a 3-lens adversarial
-> critique (grounding / doctrine / executability) that killed four blockers. This is the
+> critique (grounding / doctrine / executability) that killed four blockers. v0.3 (2026-07-03)
+> adds §7 — the ruling pass answering Codex's "what is creative mode actually editing?" question
+> set, grounded in a 5-reader recon at trunk `722decb0` — plus recon-found diseases appended to
+> W-order scope. v0.4 (2026-07-03, same day) adds D8 and §8: the reviewed-and-adversarially-
+> verified findings ledger from the 8-finder/2-refuter review of the full creative series
+> (`33cdfe88^..722decb0`), the new order W1w, and the RED-GATE notice (F16 confirmed by run).
+> Full evidence: docs/creative_mode/creative_series_review_2026_07_03.md. This is the
 > contract for everything UNDER object creation: world lifecycle, world math, snapping,
 > projection, persistence. The nouns / verbs / descriptors / receipts (the "top") already
 > exist — this plan gives them a floor.
@@ -136,6 +142,18 @@ families become derivable from descriptor profile/capabilities over time. Rule f
 work: **a new per-kind fact is a descriptor column, never a new switch.** Table invariants get
 their own test (every non-Unknown kind has exactly one row; profile ↔ capability coherence;
 creation flags coherent with category).
+
+**D8 — One spatial truth per profile; placement mutations move what the profile projects.**
+(Added v0.4 from review finding F9.) Projection reads `object.bounds` for Box/Volume/Line
+profiles and `transform.position` for Point — but `Move` writes only position, so a "moved"
+structural object keeps its old occupancy and old pick cells while the receipt says
+"object moved". INVARIANT: any mutation whose kind implies a placement change must change the
+fields its profile projects — Move translates bounds by the same delta as position; Resize /
+SetBounds keep position coherent per descriptor. An Applied receipt on a placement verb that
+does not alter the object's projected cells is a receipt lie (K1-class). Corollary (F10):
+clamping must never FABRICATE occupancy — out-of-grid content projects Empty (intersection
+semantics) uniformly across profiles; the Point/Line relocation-to-border behavior is a bug,
+not a feature. Repairs land in W1.
 
 ---
 
@@ -343,3 +361,127 @@ writes exactly the field its kind names; a rebuild that skipped clean channels s
 3. Whether W0's spec amendment retires product_spec §6–§7 file names (Input/Placement/Snap/…)
    in favor of the reserved creative/* slots, or keeps both vocabularies until the toolbelt
    stream starts.
+
+## 7. Ruling pass — 2026-07-03 (source-of-truth Q&A, plan v0.3)
+
+> Codex asked "what is creative mode actually editing?" as an open product question. It is not
+> open: **D1 ratified it 2026-07-02.** Recorded here so the question cannot reopen. Grounded in
+> a 5-reader recon of trunk `722decb0` (this plan / creative code / ascii pipeline / product
+> lifecycle / cross-lane readers).
+
+**R1 — Source of truth: `CreativeDocument` (D1 stands).** Not the live runtime world: every
+future reader (reasoning graph A7, encounter deck A8b, recon notebook, multiroom) consumes
+RUNTIME room content through the two named export bridges — GameplayMarker wire-string emission
+(deferred, affordance_vocabulary_v0_1.md:70-72) and the adapters/RoomEd bake (reserved, L5) —
+never the document directly. Not the ASCII pipeline: write-only law
+(ascii_dungeon_authoring_reference.md:274) + the §4 no-grid-merging boundary. Not dev
+scaffolding: that describes the CODE's current state (app-lifetime empty document, unit-test-only
+loop), not the contract.
+
+**R2 — New World creates a creative document only for CREATIVE worlds, per L3.**
+`createCreativeWorld` mints worldId+documentId (D2c), builds from template (EMPTY = zero
+objects), writes the initial durable save immediately. Product New World never creates one.
+This is W6+W7 — deliberately the last, thinnest product-lane slices (god-struct hazard).
+
+**R3 — Continue: creative worlds reopen via `openCreativeWorld` decoding
+`SaveCreativeDocumentSection` (D2/D2b); product Continue/Load filters creative saves OUT
+(`canLoadProductSave`). NEVER re-derive a document from ASCII on open — same permanent-divergence
+law as the editable doc.**
+
+**R4 — Creative mutations do NOT touch live gameplay — ruled out, not merely unbuilt.**
+Document mutation → dirty channels (L4) → creative projection/draw only. Gameplay consumption
+arrives exclusively via the named deferred bridges (bake / wire-string emission). No planned
+reader requires immediacy.
+
+**R5 — First object type: Room stays the first citizen; the real deliverable is W3's GENERIC
+receipted `createDocumentObject(kind)`, not more per-kind creators.** First shape-bearing kind
+after W3: a structural box (Crate-class) — it exercises transform/bounds and feeds W8's wireframe
+draw and the future bake bridge. The GameplayMarker family has the named external readers
+(deck/graph) but its wire emission stays a LATER Codex order — do not pull it forward.
+
+**R6 — Visibility is a real persisted document field (L2 record: `visible`), not throwaway — but
+its UX is a proof mutation until W8 draws.** Keep the verb + receipt; invest no final UX yet.
+Repo precedent: the authored-room `hidden` bool was data-without-behavior its whole life; 4F is
+the first consumer of a visibility bit anywhere in the repo.
+
+**D7 — No dev seed. The seed IS W3.** No fake room, no dev-only options flag, no
+temporary-labeled scaffolding. The receipted create verb (W3), reachable from the creative UI,
+is the manual-testing unlock — and it is real product code. Until W3 lands the loop stays
+unit-test-proven (product_creative_pick_flow_tests.cpp); that is acceptable, fog is not.
+
+**Recon-found diseases (appended to W-order scope):**
+- **Facade/document is app-lifetime, never reset on world transitions** (AppShell.cpp:97;
+  contrast `activeSession.reset()` on ReturnToTitle, ActionHandlers.cpp:333). A document mutated
+  in world A leaks into world B and the title screen. Pin with a test now; fixed structurally by
+  world-scoping in W6.
+- **W0 incomplete at `722decb0`:** the D1 supersession note is ABSENT from product_spec.md §8;
+  required test targets `creative_object_descriptor_tests` / `creative_document_mutation_tests`
+  do not exist.
+- **W1 diseases confirmed live:** SetLength/SetDepth both write z (MutationApply.cpp:412-424);
+  sleeper verbs still return false Applied; Facade create/rename/remove still bypass
+  `applyDocumentMutation` (SetVisible, from the 4D–4H series, is the one repaired verb).
+- **W2 name-collision hazard:** the shipped `CreativeSnapSettings` (Snap.hpp:28-35) is a 2D
+  pointer/tool snap, NOT this plan's document-owned 3D snap settings — W2 must rename one.
+
+**Sequencing order to Codex: DESCEND.** No more top slices above the unbuilt floor. Next cuts,
+in order: finish W0 (spec amendment + missing test targets) → W1 → W2 → W3. W8 may run after
+W2+W4 as already pinned. The ASCII import bridge stays OFF the critical path: a post-W3 optional
+one-way import (`SaveAuthoredRoomSection` → objects, ~3 vector loops, blocked on W3's generic
+create anyway), never an init path, never consulted on open. On §6.1 the planner's
+recommendation is the dev-tools door first (decouples W7 from the queued new_world widget
+migration); the user's taste still rules.
+
+## 8. Review findings ledger — 2026-07-03 (plan v0.4)
+
+> An 8-finder / 2-adversarial-refuter / completeness-critic review of the full creative series
+> (`33cdfe88^..722decb0`) produced **16 CONFIRMED findings (2 critical)** beyond the §7
+> known-disease list, 2 plausible, 17 unverified minors, 2 refuted. Full evidence with failure
+> scenarios and refuter traces: **docs/creative_mode/creative_series_review_2026_07_03.md**
+> (findings F1–F16, P1–P2, minors, critic notes). This ledger routes them into orders.
+> W0 landed mid-review (`cd6b9f4e`); uncommitted W1 work already fixes F12 + P1.
+
+**GATE IS RED — repair before any other cut.** F16: `product_creative_ui_projection_tests`
+FAILS at HEAD ("FAIL: facade inspected row") — 4H changed the row text and missed this file's
+pre-4H exact-text pin (fixture copy-pasted across three files). Confirmed by build+run on the
+Mac. The 4H commit shipped against a red gate; fix the pin, de-duplicate the fixture, and
+re-establish the full-ctest-green discipline of §5 before W1 proceeds.
+
+**W1 scope APPENDED (mutation/projection semantics + editor-state lifecycle):**
+- F9/F10 per **D8**: Move must translate bounds; clamp must intersect, never relocate.
+- F11: `rejectDocumentMutation` consumes `message` twice across indeterminately-sequenced
+  arguments of one call — empty receipt messages on GCC (box toolchain). Fix + pin.
+- F12 AttachTo no-change/self-attach guard — **in flight, uncommitted**; land with pins
+  (include target-existence policy).
+- P1 aliased-verb receipt stamping (SetSpawnFacing/SetTriggerShape) — **in flight, uncommitted**.
+- F13 measurement flag desync (CRITICAL): tool switch must cancel or carry tool-scoped state;
+  one measurement truth, not two flags. F14 ghost hide path (Cancel/tool-switch/pointer-leave
+  must be able to hide it). F15 removal must invalidate every editor TargetRef to the dead id
+  (interim guard now; structural fix rides W3's receipted remove).
+- Triage the 17 minors (review doc list) while in these files; they are UNVERIFIED — check
+  each before fixing.
+
+**W1w [C] — NEW ORDER: live-wiring repair (window seam).** The unit-proven loop is broken in
+the running app; no test drives the production composition with a real click. Scope:
+- F1 (CRITICAL) + F2: one coordinate law for the creative surface — normalize clicks and size
+  viewports in ONE space (the menu path's window-coordinate normalization is the precedent);
+  high-DPI (the dev Mac) currently makes 3/4 of the grid unpickable and misaligns every UI hit
+  region by 2x.
+- F3: kill the `z=0` pick-plane literal — a click on an object's (x,y) must be able to hit it
+  regardless of z (column search / topmost rule; mechanism Codex's choice, receipt must name it).
+- F4: renderer parity law — a surface that consumes input MUST be drawn on every renderer that
+  routes it (SDL path draws no overlay today; box gate runs Vulkan-OFF).
+- F6/F7/P2: ONE consumption law for a click, ordered and total (phantom starter-band hits during
+  gameplay must not set higher-priority consumption; higher-priority consumption must also
+  suppress pick/selection dispatch). F8: creative bridge and room editor must not double-handle
+  the same keys/click (consume or gate by surface).
+- Gate: a live-entry-point test that pushes a REAL click through
+  `processProductWindowInputFrame` + `Loop`-built frames at 1x AND 2x (drawable≠window) and
+  pins pick→select→toggle→UI end to end (closes F5).
+  Sequencing: W1w may run parallel to W1 (different files), MUST land before W7 entry and
+  before any human manual test of the loop.
+
+**Process notes (user/git owner):** (a) lane contamination — the planner's ai-lane-maximum.md
+v1.8 hunk rode inside Codex commit `d063dc10` "3H creative ui"; (b) the ~90 new creative
+receipt fields have ZERO non-test readers (write-only receipt surface — doctrine watch:
+schedule the first reader); (c) all 24 new test mains chain assertions with `&&` — first
+failure hides the rest of the binary's results.

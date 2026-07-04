@@ -253,6 +253,10 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
                 "creative launch facade dirty clean") &&
          expect(facade.document().nextObjectId() == 1U,
                 "creative launch facade next id") &&
+         expect(facade.toolState().activeTool == cr::Tool::Select,
+                "creative launch active tool select") &&
+         expect(facade.state().tool == cr::Tool::Select,
+                "creative launch old state tool select") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "creative launch selection clear") &&
          expect(facade.inspectionState().inspectedTarget.value == cr::kInvalidId,

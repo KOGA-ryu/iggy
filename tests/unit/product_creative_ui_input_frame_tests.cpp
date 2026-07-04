@@ -927,7 +927,7 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
                 "input frame facade tool unchanged");
 }
 
-bool inputFrameInjectedClickOnActiveToolRowRunsLiveCommandAndSuppressesClick() {
+bool inputFrameInjectedClickOnActiveToolRowIsDisplayOnlyAndSuppressesClick() {
   iggy3d::FrontendState frontend;
   iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
   iggy3d::ProductSaveBridgeResult saves;
@@ -979,21 +979,24 @@ bool inputFrameInjectedClickOnActiveToolRowRunsLiveCommandAndSuppressesClick() {
                 "injected row semantic") &&
          expect(window.creativeUiCommandRequested,
                 "injected command requested") &&
-         expect(window.creativeUiCommandAccepted,
-                "injected command accepted") &&
-         expect(window.creativeUiCommandChanged,
-                "injected command changed") &&
-         expect(window.creativeUiCommandKind == "cycle_next_tool",
+         expect(!window.creativeUiCommandAccepted,
+                "injected command not accepted") &&
+         expect(!window.creativeUiCommandChanged,
+                "injected command unchanged") &&
+         expect(window.creativeUiCommandKind == "none",
                 "injected command kind") &&
          expect(window.creativeUiCommandToolBefore == "Select",
                 "injected command tool before") &&
-         expect(window.creativeUiCommandToolAfter == "Inspect",
+         expect(window.creativeUiCommandToolAfter == "Select",
                 "injected command tool after") &&
+         expect(window.creativeUiCommandStatus ==
+                    "product_creative_ui_command_unknown_semantic",
+                "injected command status") &&
          expect(facade.toolState().activeTool ==
-                    iggy3d::creative::Tool::Inspect,
-                "injected facade tool inspect") &&
-         expect(facade.state().tool == iggy3d::creative::Tool::Inspect,
-                "injected old state tool inspect") &&
+                    iggy3d::creative::Tool::Select,
+                "injected facade tool select") &&
+         expect(facade.state().tool == iggy3d::creative::Tool::Select,
+                "injected old state tool select") &&
          expect(window.creativeUiInputDownstreamClickSuppressed,
                 "injected downstream suppressed") &&
          expect(window.creativeViewportPickClickSuppressed,
@@ -1300,7 +1303,7 @@ int main() {
                   recorderCopiesSuppressedDownstreamClickReceipt() &&
                   recorderLeavesOtherReceiptFieldsUntouched() &&
                   inputFrameNoClickNullDrawListRecordsNoClick() &&
-                  inputFrameInjectedClickOnActiveToolRowRunsLiveCommandAndSuppressesClick() &&
+                  inputFrameInjectedClickOnActiveToolRowIsDisplayOnlyAndSuppressesClick() &&
                   inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() &&
                   inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

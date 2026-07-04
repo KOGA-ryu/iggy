@@ -1,7 +1,6 @@
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 
 #include "app/iggy3d/creative/Facade.hpp"
-#include "app/iggy3d/window/CreativeInputFrame.hpp"
 
 #include <array>
 #include <string_view>
@@ -15,10 +14,8 @@ struct ProductCreativeUiCommandRow {
       ProductCreativeUiCommandKind::None;
 };
 
-constexpr std::array<ProductCreativeUiCommandRow, 3>
+constexpr std::array<ProductCreativeUiCommandRow, 2>
     kProductCreativeUiCommandRows = {{
-        {"creative.row.tools.active_tool",
-         ProductCreativeUiCommandKind::CycleNextTool},
         {"creative.row.tools.create_room",
          ProductCreativeUiCommandKind::CreateRoom},
         {"creative.row.selection.selected_target",
@@ -117,15 +114,6 @@ ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
   }
 
   receipt.commandKind = row->commandKind;
-  if (receipt.commandKind == ProductCreativeUiCommandKind::CycleNextTool) {
-    receipt.accepted = true;
-    receipt.changed = facade.setActiveTool(
-        nextProductCreativeTool(receipt.toolBefore));
-    receipt.toolAfter = facade.toolState().activeTool;
-    setNoopStatus(receipt, "product_creative_ui_command_applied");
-    return receipt;
-  }
-
   if (receipt.commandKind ==
       ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility) {
     const creative::CreativeFacadeMutationReceipt mutationReceipt =
