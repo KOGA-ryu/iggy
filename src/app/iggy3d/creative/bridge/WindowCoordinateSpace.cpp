@@ -1,4 +1,4 @@
-#include "app/iggy3d/window/CreativeWindowCoordinateSpace.hpp"
+#include "app/iggy3d/creative/bridge/WindowCoordinateSpace.hpp"
 
 namespace iggy3d {
 namespace {

@@ -9,14 +9,14 @@
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
-#include "app/iggy3d/menu/CreativeUiProjection.hpp"
+#include "app/iggy3d/creative/ui/UiProjection.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
-#include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
-#include "app/iggy3d/window/CreativeUiInputFrame.hpp"
-#include "app/iggy3d/window/CreativeViewportPickFrame.hpp"
-#include "app/iggy3d/window/CreativeWireframeFrame.hpp"
+#include "app/iggy3d/creative/bridge/UiCommandFrame.hpp"
+#include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
+#include "app/iggy3d/creative/bridge/ViewportPickFrame.hpp"
+#include "app/iggy3d/creative/bridge/WireframeFrame.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
-#include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
+#include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 
 namespace iggy3d {
 namespace {

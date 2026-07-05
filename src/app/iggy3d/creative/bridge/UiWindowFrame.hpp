@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/iggy3d/menu/CreativeUiFrame.hpp"
+#include "app/iggy3d/creative/ui/UiFrame.hpp"
 
 #include <cstdint>
 #include <string_view>

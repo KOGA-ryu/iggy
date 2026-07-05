@@ -13,7 +13,7 @@
 
 #include "app/input/ActionState.hpp"
 #include "app/input/InputAction.hpp"
-#include "app/iggy3d/map_maker/CreativeFly.hpp"
+#include "app/iggy3d/creative/camera/Fly.hpp"
 
 namespace {
 

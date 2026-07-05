@@ -1,4 +1,4 @@
-#include "app/iggy3d/window/CreativeUiInputFrame.hpp"
+#include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
 
 #include <utility>
 

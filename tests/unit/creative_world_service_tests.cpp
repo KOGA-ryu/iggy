@@ -1,4 +1,4 @@
-#include "app/iggy3d/world/CreativeWorldService.hpp"
+#include "app/iggy3d/creative/world/WorldService.hpp"
 
 #include <cstdlib>
 #include <filesystem>

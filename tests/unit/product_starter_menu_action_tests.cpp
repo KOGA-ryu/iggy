@@ -12,8 +12,8 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
-#include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
-#include "app/iggy3d/world/CreativeWorldService.hpp"
+#include "app/iggy3d/creative/bridge/UiCommandFrame.hpp"
+#include "app/iggy3d/creative/world/WorldService.hpp"
 
 namespace {
 

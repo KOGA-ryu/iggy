@@ -1,4 +1,4 @@
-#include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
+#include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 
 #include "app/iggy3d/creative/document/Document.hpp"
 

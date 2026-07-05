@@ -12,7 +12,7 @@
 #include "app/iggy3d/creative/spatial/ViewportPick.hpp"
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
-#include "app/iggy3d/window/CreativeInputFrame.hpp"
+#include "app/iggy3d/creative/bridge/InputFrame.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/view/ViewportFraming.hpp"
 #include "app/input/GamepadInput.hpp"

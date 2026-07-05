@@ -1,4 +1,4 @@
-#include "app/iggy3d/window/CreativeUiWindowFrame.hpp"
+#include "app/iggy3d/creative/bridge/UiWindowFrame.hpp"
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"

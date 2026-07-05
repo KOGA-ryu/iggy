@@ -1,10 +1,10 @@
-#include "app/iggy3d/window/CreativeWireframeFrame.hpp"
+#include "app/iggy3d/creative/bridge/WireframeFrame.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
-#include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
-#include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
+#include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
+#include "app/iggy3d/creative/bridge/UiCommandFrame.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
 #include "projection/scene/SceneItem.hpp"
 #include "render/vulkan/BufferImageResources.hpp"

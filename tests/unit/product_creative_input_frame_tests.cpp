@@ -1,4 +1,4 @@
-#include "app/iggy3d/window/CreativeInputFrame.hpp"
+#include "app/iggy3d/creative/bridge/InputFrame.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"

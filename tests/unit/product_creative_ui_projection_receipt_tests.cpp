@@ -2,7 +2,7 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
-#include "app/iggy3d/menu/CreativeUiProjection.hpp"
+#include "app/iggy3d/creative/ui/UiProjection.hpp"
 
 #include <cstdlib>
 #include <iostream>

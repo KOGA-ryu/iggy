@@ -1,13 +1,13 @@
-#include "app/iggy3d/window/CreativeUiInputFrame.hpp"
+#include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/ui/Ui.hpp"
-#include "app/iggy3d/menu/CreativeUiDrawList.hpp"
-#include "app/iggy3d/window/CreativeInputFrame.hpp"
-#include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
-#include "app/iggy3d/window/CreativeUiWindowFrame.hpp"
+#include "app/iggy3d/creative/ui/UiDrawList.hpp"
+#include "app/iggy3d/creative/bridge/InputFrame.hpp"
+#include "app/iggy3d/creative/bridge/UiCommandFrame.hpp"
+#include "app/iggy3d/creative/bridge/UiWindowFrame.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 

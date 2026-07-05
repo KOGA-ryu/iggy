@@ -14,7 +14,7 @@
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
-#include "app/iggy3d/world/CreativeWorldService.hpp"
+#include "app/iggy3d/creative/world/WorldService.hpp"
 #include "app/input/InputAction.hpp"
 #include "runtime/session/Session.hpp"
 

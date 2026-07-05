@@ -12,7 +12,7 @@
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/PauseUi.hpp"
-#include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
+#include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "render/FrameInput.hpp"
 #include "render/debug/DebugHudText.hpp"

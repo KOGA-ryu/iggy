@@ -77,7 +77,7 @@ target_sources(iggy3d
     src/app/iggy3d/input/InteractionMode.cpp
     src/app/iggy3d/debug/InteractionModeHud.cpp
     src/app/iggy3d/input/InteractionModeState.cpp
-    src/app/iggy3d/map_maker/CreativeFly.cpp
+    src/app/iggy3d/creative/camera/Fly.cpp
     src/app/iggy3d/map_maker/Grid.cpp
     src/app/iggy3d/map_maker/Presentation.cpp
     src/app/iggy3d/menu/Transitions.cpp
@@ -98,7 +98,7 @@ target_sources(iggy3d
     src/app/iggy3d/automation/AutomationSystem.cpp
     src/app/iggy3d/menu/ActionHandlers.cpp
     src/app/iggy3d/menu/InputRouter.cpp
-    src/app/iggy3d/view/CreativeWireframeDebugLines.cpp
+    src/app/iggy3d/creative/render/WireframeDebugLines.cpp
     src/app/iggy3d/view/PrimitiveDrawList.cpp
     src/app/iggy3d/view/RenderBridge.cpp
     src/app/iggy3d/room/GeometryOptimization.cpp
@@ -109,7 +109,7 @@ target_sources(iggy3d
     src/app/iggy3d/room_editor/Preview.cpp
     src/app/iggy3d/room_editor/EditingState.cpp
     src/app/iggy3d/gameplay/ScriptedDriver.cpp
-    src/app/iggy3d/save/CreativeDocumentSection.cpp
+    src/app/iggy3d/creative/world/DocumentSection.cpp
     src/app/iggy3d/save/RoomMarkerBinding.cpp
     src/app/iggy3d/save/Catalog.cpp
     src/app/iggy3d/save/CatalogProjector.cpp
@@ -117,27 +117,27 @@ target_sources(iggy3d
     src/app/iggy3d/world/NpcProfileAssignment.cpp
     src/app/iggy3d/debug/TopDownMapOverlay.cpp
     src/app/iggy3d/menu/DrawList.cpp
-    src/app/iggy3d/menu/CreativeUiDrawList.cpp
-    src/app/iggy3d/menu/CreativeUiProjection.cpp
-    src/app/iggy3d/menu/CreativeUiFrame.cpp
+    src/app/iggy3d/creative/ui/UiDrawList.cpp
+    src/app/iggy3d/creative/ui/UiProjection.cpp
+    src/app/iggy3d/creative/ui/UiFrame.cpp
     src/app/iggy3d/menu/UiHitRouter.cpp
     src/app/iggy3d/menu/Notebook.cpp
     src/app/iggy3d/menu/PauseUi.cpp
     src/app/iggy3d/ui/Widget.cpp
     src/app/iggy3d/view/ViewportFraming.cpp
     src/app/iggy3d/window/FramePresenter.cpp
-    src/app/iggy3d/window/CreativeWindowCoordinateSpace.cpp
-    src/app/iggy3d/window/CreativeUiWindowFrame.cpp
-    src/app/iggy3d/window/CreativeUiInputFrame.cpp
-    src/app/iggy3d/window/CreativeUiCommandFrame.cpp
-    src/app/iggy3d/window/CreativeViewportPickFrame.cpp
-    src/app/iggy3d/window/CreativeWireframeFrame.cpp
-    src/app/iggy3d/window/CreativeInputFrame.cpp
+    src/app/iggy3d/creative/bridge/WindowCoordinateSpace.cpp
+    src/app/iggy3d/creative/bridge/UiWindowFrame.cpp
+    src/app/iggy3d/creative/bridge/UiInputFrame.cpp
+    src/app/iggy3d/creative/bridge/UiCommandFrame.cpp
+    src/app/iggy3d/creative/bridge/ViewportPickFrame.cpp
+    src/app/iggy3d/creative/bridge/WireframeFrame.cpp
+    src/app/iggy3d/creative/bridge/InputFrame.cpp
     src/app/iggy3d/window/InputFrame.cpp
     src/app/iggy3d/window/Loop.cpp
     src/app/iggy3d/window/RendererLifecycle.cpp
     src/app/iggy3d/world/Creation.cpp
-    src/app/iggy3d/world/CreativeWorldService.cpp
+    src/app/iggy3d/creative/world/WorldService.cpp
     src/app/iggy3d/ReceiptBuilder.cpp
     src/app/iggy3d/save/SaveBridge.cpp
     src/app/frontend/FrontendState.cpp

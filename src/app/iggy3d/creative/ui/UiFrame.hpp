@@ -1,7 +1,7 @@
 #pragma once
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
-#include "app/iggy3d/menu/CreativeUiProjection.hpp"
+#include "app/iggy3d/creative/ui/UiProjection.hpp"
 
 #include <cstdint>
 #include <string_view>

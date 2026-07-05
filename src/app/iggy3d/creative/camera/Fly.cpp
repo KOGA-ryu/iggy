@@ -1,4 +1,4 @@
-#include "app/iggy3d/map_maker/CreativeFly.hpp"
+#include "app/iggy3d/creative/camera/Fly.hpp"
 
 #include <cmath>
 

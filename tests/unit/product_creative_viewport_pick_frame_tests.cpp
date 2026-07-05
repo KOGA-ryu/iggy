@@ -1,4 +1,4 @@
-#include "app/iggy3d/window/CreativeViewportPickFrame.hpp"
+#include "app/iggy3d/creative/bridge/ViewportPickFrame.hpp"
 
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
