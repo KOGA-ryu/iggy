@@ -169,9 +169,13 @@ transient; center = stage + wireframes only.
 New semantic ids (the complete v1 addition set):
 `creative.row.tools.tool_select|tool_move|tool_measure|tool_navigate`
 `creative.row.create.create_room|create_crate`
-`creative.row.inspector.visible|locked` (commands) and
-`creative.row.inspector.kind|id|name|bounds|position|layer` (display)
+`creative.row.selection.inspector_visible|inspector_locked` (commands) and
+`creative.row.selection.inspector_kind|id|name|bounds|position|layer` (display)
 `creative.row.status.summary` (display).
+(As-built: the inspector IS the now-always-visible Selection panel, so wire ids
+carry the `selection.inspector_*` prefix rather than a bare `inspector.*` — the
+panel-name-derived id rule. A future cleanup could rename the panel kind
+Selection→Inspector to get bare `inspector.*` ids; deferred, not load-bearing.)
 Command table generalizes from the 2-entry array to rows carrying
 `{semanticId, commandKind, payload}` (palette kind = payload — kills the
 hardcoded Room).
@@ -241,6 +245,21 @@ stays descriptor-only until the per-object detailing thread rules on it):
 - **TV1-E [ui dex]** — Inspector panel: display rows + visible/locked toggle
   rows (TD-4), no-selection state ("nothing selected — click an object"),
   gated on real verbs (TL-7). Needs TV1-A, TV1-D.
+  **DONE 2026-07-05** (commit 8c521f7f, reviewed APPROVE_WITH_NITS, gate
+  confirmed via forced clean rebuild 234/234). The Selection panel became the
+  always-visible inspector (default UI now 9 rows / 7 panels — **anchor drift:
+  any slice pinning the old 8-row default must update**). TD-4 fully closed:
+  selected_target is display-only, visibility toggle lives on
+  `inspector_visible`, new `inspector_locked` → ToggleSelectedObjectLocked
+  (receipt locked_before/after). Notes: (a) bounds row shows min/max only — the
+  size triple is carried in row fields but not rendered (620px column truncates
+  min+max+size); if "show size" is load-bearing, widen the column or split the
+  row (v1.5 numeric-edit territory anyway). (b) inspector display rows still
+  emit clickable hit regions that consume-and-noop (prevents pick-through —
+  intended). (c) `CreativeUiObjectSummary.name`/row `name` are string_views into
+  the live document — safe under per-frame rebuild; copy if the model ever
+  detaches from the document. (d) cosmetic: some test helper names still say
+  `selectedTarget*` but route `inspector_visible` — follow-up rename.
 - **TV1-F [input dex]** — Drag lifecycle: window layer emits
   Move/Release/Cancel packets with held-button tracking; Measure End works;
   Esc = cancel. Needs TV1-C.
