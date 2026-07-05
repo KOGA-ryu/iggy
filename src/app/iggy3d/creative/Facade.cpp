@@ -38,6 +38,37 @@ namespace {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
 
+// Hold one axis of a Move anchor at the start-anchor value, leaving the other
+// two. Applied BEFORE snapping (so the requested anchor already holds the axis)
+// AND AFTER snapping (so the grid snap can't lift/shift a HELD axis — e.g. a
+// ground-plane editor holding Y keeps the object on the floor instead of the
+// snap rounding Y up to the next grid line). The caller chooses the held axis
+// from its camera (front view holds Z, ground plane holds Y), so the kernel
+// stays view-agnostic.
+void holdMoveAxis(CreativeVec3& anchor, CreativeVec3 startAnchor,
+                  CreativeToolMoveHeldAxis heldAxis) noexcept {
+  switch (heldAxis) {
+    case CreativeToolMoveHeldAxis::X:
+      anchor.x = startAnchor.x;
+      break;
+    case CreativeToolMoveHeldAxis::Y:
+      anchor.y = startAnchor.y;
+      break;
+    case CreativeToolMoveHeldAxis::Z:
+      anchor.z = startAnchor.z;
+      break;
+  }
+}
+
+[[nodiscard]] CreativeVec3 resolveMoveAnchor(
+    CreativeToolWorldPoint destination,
+    CreativeVec3 startAnchor,
+    CreativeToolMoveHeldAxis heldAxis) noexcept {
+  CreativeVec3 requested{destination.x, destination.y, destination.z};
+  holdMoveAxis(requested, startAnchor, heldAxis);
+  return requested;
+}
+
 [[nodiscard]] bool targetRefToObjectId(TargetRef target,
                                        CreativeObjectId& objectId) noexcept {
   if (target.value == kInvalidId) {
@@ -530,16 +561,18 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
         receipt.locked = object->locked;
       }
       if (intent.pointer.hasWorldDestination) {
-        // TD-7: screen=XY drag — take world X and Y from the pointer so the
-        // object tracks the cursor; the DEPTH axis (world Z) holds the start
-        // anchor Z.
-        const CreativeVec3 requested{intent.pointer.worldDestination.x,
-                                     intent.pointer.worldDestination.y,
-                                     moveDragStartAnchor_.z};
+        // View-agnostic Move (supersedes TD-7's hardcoded screen=XY hold): the
+        // caller's moveHeldAxis picks which axis stays put; the other two follow
+        // the pointer. Front view holds Z, ground-plane editor holds Y.
+        const CreativeVec3 requested = resolveMoveAnchor(
+            intent.pointer.worldDestination, moveDragStartAnchor_,
+            intent.pointer.moveHeldAxis);
+        CreativeVec3 snapped =
+            snapWorldAnchor(requested, document_.documentSnapSettings());
+        holdMoveAxis(snapped, moveDragStartAnchor_, intent.pointer.moveHeldAxis);
         receipt.hasDestinationAnchor = true;
         receipt.requestedAnchor = requested;
-        receipt.snappedAnchor =
-            snapWorldAnchor(requested, document_.documentSnapSettings());
+        receipt.snappedAnchor = snapped;
       }
       receipt.outcome = CreativeFacadeMoveDragOutcome::Previewing;
       receipt.message = "move_drag_preview";
@@ -583,13 +616,14 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
         return receipt;
       }
 
-      // TD-7: screen=XY drag — world X and Y follow the cursor; the DEPTH axis
-      // (world Z) holds the start anchor Z so the object tracks the pointer.
-      const CreativeVec3 requested{intent.pointer.worldDestination.x,
-                                   intent.pointer.worldDestination.y,
-                                   startAnchor.z};
-      const CreativeVec3 snapped =
+      // View-agnostic Move (see the PreviewMove note above): moveHeldAxis picks
+      // the axis to hold at the start anchor; the other two follow the pointer.
+      const CreativeVec3 requested = resolveMoveAnchor(
+          intent.pointer.worldDestination, startAnchor,
+          intent.pointer.moveHeldAxis);
+      CreativeVec3 snapped =
           snapWorldAnchor(requested, document_.documentSnapSettings());
+      holdMoveAxis(snapped, startAnchor, intent.pointer.moveHeldAxis);
       receipt.hasDestinationAnchor = true;
       receipt.requestedAnchor = requested;
       receipt.snappedAnchor = snapped;

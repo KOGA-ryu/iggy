@@ -432,14 +432,12 @@ int main(int argc, char** argv) {
   // crate placement BEFORE the commit and AFTER the release exactly once.
   bool loggedMoveBefore = false;
   bool loggedMoveAfter = false;
-  // The scripted Move destination. The kernel's v1 generic Move (TD-7,
-  // Facade.cpp:586-590) is a SCREEN-plane drag: worldDestination.x -> the
-  // object's world-X anchor, worldDestination.y -> its world-Y anchor, and the
-  // DEPTH axis (world Z) HOLDS the start-anchor Z. So to relocate the crate a
-  // few cells cleanly we set X=4 (slide it sideways) and hold Y at its authored
-  // anchor height 0.5 (avoid sinking it into the ground); Z is ignored by the
-  // facade. This is the kernel's mapping — we do NOT reinterpret the axes here.
-  const creative::CreativeToolWorldPoint kCaptureMoveDestination{4.0, 0.5, 0.0};
+  // The scripted Move destination. This app is a GROUND-PLANE editor: it sets
+  // moveHeldAxis=Y on its Move packets, so the kernel holds the object's Y
+  // (authored height) and slides it across the floor in XZ to (x, z) =
+  // (worldDestination.x, worldDestination.z). We send it diagonally to cell
+  // (4,4) to prove ground-plane movement (the Y here is ignored — Y is held).
+  const creative::CreativeToolWorldPoint kCaptureMoveDestination{4.0, 0.0, 4.0};
 
   std::uint64_t frameIndex = 0;
   std::uint32_t lastWidth = 0;
@@ -662,6 +660,7 @@ int main(int argc, char** argv) {
         move.pointer.button = creative::CreativeToolPointerButton::Primary;
         move.pointer.hasWorldDestination = true;
         move.pointer.worldDestination = kCaptureMoveDestination;
+        move.pointer.moveHeldAxis = creative::CreativeToolMoveHeldAxis::Y;
         const creative::CreativeFacadeToolDispatchReceipt r =
             appState.facade.dispatchToolInput(move);
         logMoveDispatch("MOVE", r);
@@ -671,6 +670,7 @@ int main(int argc, char** argv) {
         release.pointer.button = creative::CreativeToolPointerButton::Primary;
         release.pointer.hasWorldDestination = true;
         release.pointer.worldDestination = kCaptureMoveDestination;
+        release.pointer.moveHeldAxis = creative::CreativeToolMoveHeldAxis::Y;
         const creative::CreativeFacadeToolDispatchReceipt r =
             appState.facade.dispatchToolInput(release);
         logMoveDispatch("RELEASE", r);
@@ -721,6 +721,7 @@ int main(int argc, char** argv) {
           move.pointer.button = creative::CreativeToolPointerButton::Primary;
           move.pointer.hasWorldDestination = true;
           move.pointer.worldDestination = ground;
+          move.pointer.moveHeldAxis = creative::CreativeToolMoveHeldAxis::Y;
           (void)appState.facade.dispatchToolInput(move);
         } else if (!lDown && moveDragButtonDown) {
           moveDragButtonDown = false;
@@ -729,6 +730,7 @@ int main(int argc, char** argv) {
           release.pointer.button = creative::CreativeToolPointerButton::Primary;
           release.pointer.hasWorldDestination = true;
           release.pointer.worldDestination = ground;
+          release.pointer.moveHeldAxis = creative::CreativeToolMoveHeldAxis::Y;
           const creative::CreativeFacadeToolDispatchReceipt r =
               appState.facade.dispatchToolInput(release);
           logMoveDispatch("RELEASE", r);

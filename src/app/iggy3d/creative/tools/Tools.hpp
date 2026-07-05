@@ -59,6 +59,13 @@ struct CreativeToolWorldPoint {
   double z = 0.0;
 };
 
+// Which world axis a Move drag HOLDS (keeps at the start anchor's value) while
+// the other two follow worldDestination. The CALLER picks this from its camera:
+// a flat FRONT view holds Z (screen = world XY), a GROUND-PLANE editor holds Y
+// (slide along the floor in XZ). Defaults to Z for the product's legacy
+// front-view projection, so existing callers keep their behavior unchanged.
+enum class CreativeToolMoveHeldAxis : std::uint8_t { X, Y, Z };
+
 struct CreativeToolPointerPacket {
   double x = 0.0;
   double y = 0.0;
@@ -70,6 +77,8 @@ struct CreativeToolPointerPacket {
   // whether the facade may commit a mutation to it.
   bool hasWorldDestination = false;
   CreativeToolWorldPoint worldDestination;
+  // The axis the Move drag holds at the start anchor (default Z = front-view).
+  CreativeToolMoveHeldAxis moveHeldAxis = CreativeToolMoveHeldAxis::Z;
 };
 
 struct CreativeToolInputPacket {
