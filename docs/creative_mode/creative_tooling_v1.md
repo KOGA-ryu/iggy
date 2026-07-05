@@ -301,7 +301,15 @@ stays descriptor-only until the per-object detailing thread rules on it):
   Esc cancels, locked refuses truthfully, same-anchor is NoChange. All three
   TV1-F entry requirements met (window-plumbing test, orphan-release no-op,
   pointerLifecycleTarget filled). Axis corrected to cursor-following per the
-  revised TD-7 (screen=XY, hold Z). Deferrals: the dedicated wireframe preview
+  revised TD-7 (screen=XY, hold Z).
+  **TD-7 SUPERSEDED (2026-07-05, commit defc4e44):** the hardcoded screen=XY hold
+  assumed the product's flat front projection and floated objects under a 3D fly
+  camera. Move is now VIEW-AGNOSTIC — `CreativeToolPointerPacket.moveHeldAxis`
+  (default Z, so the product path is byte-identical) lets the CALLER pick the
+  held axis from its camera; a ground-plane editor holds Y and slides XZ. The
+  held axis is re-applied AFTER document snap so it never rounds up to a grid
+  line (no float). `iggy3d_creative` uses Y (ground-plane).
+  Deferrals: the dedicated wireframe preview
   BOX (vs the ghost point) → render slice TV1-J; depth-axis / numeric move →
   v1.5. Note: TV1-G added a minimal scripted `ProductWindowInputClickOverride.
   pointerLifecycle` socket to make the drag headless-testable — **TV1-K should
