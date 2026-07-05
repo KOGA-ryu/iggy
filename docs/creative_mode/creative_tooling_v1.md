@@ -263,6 +263,21 @@ stays descriptor-only until the per-object detailing thread rules on it):
 - **TV1-F [input dex]** — Drag lifecycle: window layer emits
   Move/Release/Cancel packets with held-button tracking; Measure End works;
   Esc = cancel. Needs TV1-C.
+  **DONE 2026-07-05** (commit 8aff9a35, reviewed APPROVE_WITH_NITS, gate
+  confirmed via forced clean rebuild 234/234). Flagship delivered: Measure ends
+  through the window frame entry. Held state lives in
+  `ProductWindowInputFrameState.creativePointerLifecycle`, reset on tool switch
+  and on any mode-exit frame (no phantom release). Coords reuse the pick/press
+  window-pixel space. Lifecycle is inert under `clickOverride` (automation) —
+  headless drag/measure-end wait on TV1-K's injected-gesture channel. **HARD
+  REQUIREMENTS PUSHED TO TV1-G** (from TV1-F review nits): (i) add a
+  lifecycle test THROUGH `processProductWindowInputFrame` (raw-mouse edge
+  detection → resolver → dispatch is currently inspection-verified only — this
+  is the window-plumbing seam the create_room bug taught us to test); (ii) the
+  Move commit-on-release must tolerate a Release with NO preceding Press (a drag
+  interrupted by pause then resumed with the button still held); (iii) fill the
+  `pointerLifecycleTarget` seam — Move/Release currently carry an invalid target,
+  and Move's snapped commit needs a picked target on release.
 - **TV1-G [input+mutation dex]** — Move tool: drag preview via ghost line/box
   in wireframe layer, snapped single commit on release (TD-6/7), lock refusal
   surfaces in status. Needs TV1-B, TV1-F.
