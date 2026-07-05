@@ -127,9 +127,21 @@ Load-bearing facts:
    preview only. On Release: ONE Move mutation (snapped). On Cancel/Escape:
    no mutation, receipt `move_cancelled`. Keeps revision = user intent count,
    receipts meaningful, undo-ready.
-7. **Move plane:** drag moves in the XZ plane at the object's current
-   anchor Y (grid pick supplies XZ; Y unchanged in v1). Vertical moves =
-   inspector numeric later / v1.5 modifier key. Stated so nobody invents.
+7. **Move plane (CORRECTED in TV1-G):** a drag must FOLLOW THE CURSOR, so its
+   axes must match the viewport projection. The as-built creative projection is
+   a **front view — screen = world XY, depth = world Z** (`worldToGridCoord`
+   maps `position.y → gridY`; the pick maps screen-vertical → `coord.y`).
+   Therefore drag maps screen-horizontal → world X, screen-vertical → world Y,
+   and **holds depth Z** at the object's current anchor Z. (The original "XZ
+   plane, Y unchanged" wording assumed a top-down camera that does not exist —
+   it was wrong and would have moved the object in depth instead of tracking
+   the cursor.) Depth (Z) moves = v1.5 modifier / inspector numeric. **Law: the
+   drag reuses the pick's pointer→grid conversion so pick and drag can never
+   disagree; if the camera/projection changes (e.g. TV1-H), the drag follows
+   automatically.** Known future polish: screen-Y currently grows *downward*
+   with pixel-Y (inherited from the pick); making "cursor up = world Y up" must
+   be done in the projection layer (`ViewportPick.cpp`), never patched into the
+   drag alone.
 8. **Navigate is a tool** (not a mode outside the palette): while Navigate is
    active, WASD + mouse-look drive a creative fly camera (reusing
    `CreativeFly` from map_maker), mouse capture re-engages, and pointer
@@ -281,6 +293,21 @@ stays descriptor-only until the per-object detailing thread rules on it):
 - **TV1-G [input+mutation dex]** — Move tool: drag preview via ghost line/box
   in wireframe layer, snapped single commit on release (TD-6/7), lock refusal
   surfaces in status. Needs TV1-B, TV1-F.
+  **DONE 2026-07-05** (commit a5f0120c: mechanism APPROVE_WITH_NITS + a folded-in
+  axis-correction slice APPROVE; gate confirmed forced clean rebuild 235/235 —
+  new `product_creative_move_drag_frame_tests` target). **Drag-to-move works.**
+  Press begins the drag, held-move previews the snapped destination via the
+  EXISTING ghost (no mid-drag mutation), release commits ONE corner-anchor Move,
+  Esc cancels, locked refuses truthfully, same-anchor is NoChange. All three
+  TV1-F entry requirements met (window-plumbing test, orphan-release no-op,
+  pointerLifecycleTarget filled). Axis corrected to cursor-following per the
+  revised TD-7 (screen=XY, hold Z). Deferrals: the dedicated wireframe preview
+  BOX (vs the ghost point) → render slice TV1-J; depth-axis / numeric move →
+  v1.5. Note: TV1-G added a minimal scripted `ProductWindowInputClickOverride.
+  pointerLifecycle` socket to make the drag headless-testable — **TV1-K should
+  fold its richer injected-gesture channel into/alongside this, not add a
+  parallel one.** Cosmetic follow-up: the facade `committed` receipt field means
+  "commit attempted" not "landed" — consider a rename.
 - **TV1-H [lifecycle dex]** — Navigate camera (TD-8): CreativeFly reuse,
   capture policy branch, keyboard routed to fly only while Navigate active.
   Viewport purity polish: DevTools gate + creative window title. Needs TV1-C.
