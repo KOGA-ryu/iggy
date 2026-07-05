@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/Ui.hpp"
 
+#include <cstddef>
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
@@ -50,15 +51,19 @@ bool defaultModelDeterministic() {
   const cr::CreativeUiModel& model = receipt.model;
 
   return expect(receipt.accepted, "default accepted") &&
-         expect(receipt.panelCount == 6U, "default panel count") &&
-         expect(receipt.rowCount == 4U, "default row count") &&
-         expect(model.panels.size() == 6U, "default panels size") &&
-         expect(model.rows.size() == 4U, "default rows size") &&
+         expect(receipt.panelCount == 7U, "default panel count") &&
+         expect(receipt.rowCount == 8U, "default row count") &&
+         expect(model.panels.size() == 7U, "default panels size") &&
+         expect(model.rows.size() == 8U, "default rows size") &&
          expect(panel(model, cr::CreativeUiPanelKind::Tools).firstRow == 0U,
                 "tools first row") &&
-         expect(panel(model, cr::CreativeUiPanelKind::Tools).rowCount == 2U,
+         expect(panel(model, cr::CreativeUiPanelKind::Tools).rowCount == 4U,
                 "tools row count") &&
-         expect(panel(model, cr::CreativeUiPanelKind::Status).firstRow == 2U,
+         expect(panel(model, cr::CreativeUiPanelKind::Create).firstRow == 4U,
+                "create first row") &&
+         expect(panel(model, cr::CreativeUiPanelKind::Create).rowCount == 2U,
+                "create row count") &&
+         expect(panel(model, cr::CreativeUiPanelKind::Status).firstRow == 6U,
                 "status first row") &&
          expect(panel(model, cr::CreativeUiPanelKind::Status).rowCount == 1U,
                 "status row count") &&
@@ -68,44 +73,95 @@ bool defaultModelDeterministic() {
                 "measurement empty") &&
          expect(panel(model, cr::CreativeUiPanelKind::Ghost).rowCount == 0U,
                 "ghost empty") &&
-         expect(panel(model, cr::CreativeUiPanelKind::Snap).firstRow == 3U,
+         expect(panel(model, cr::CreativeUiPanelKind::Snap).firstRow == 7U,
                 "snap first row") &&
          expect(panel(model, cr::CreativeUiPanelKind::Snap).rowCount == 1U,
                 "snap row count") &&
-         expect(model.rows[0].kind == cr::CreativeUiRowKind::ActiveTool,
-                "default active row") &&
-         expect(model.rows[1].kind == cr::CreativeUiRowKind::CreateRoom,
+         expect(model.rows[0].kind == cr::CreativeUiRowKind::ToolButton,
+                "default select tool row") &&
+         expect(model.rows[0].id == "tool_select", "default select id") &&
+         expect(model.rows[0].label == "Select", "default select label") &&
+         expect(model.rows[0].tool == cr::Tool::Select,
+                "default select tool payload") &&
+         expect(hasFlag(model.rows[0].flags, cr::kCreativeUiRowFlagActive),
+                "default select active") &&
+         expect(model.rows[1].id == "tool_move", "default move id") &&
+         expect(model.rows[1].label == "Move", "default move label") &&
+         expect(model.rows[1].tool == cr::Tool::Move,
+                "default move tool payload") &&
+         expect(!hasFlag(model.rows[1].flags, cr::kCreativeUiRowFlagActive),
+                "default move inactive") &&
+         expect(model.rows[2].id == "tool_measure", "default measure id") &&
+         expect(model.rows[2].label == "Measure", "default measure label") &&
+         expect(model.rows[3].id == "tool_navigate", "default navigate id") &&
+         expect(model.rows[3].label == "Navigate",
+                "default navigate label") &&
+         expect(model.rows[4].kind == cr::CreativeUiRowKind::CreateObject,
                 "default create room row") &&
-         expect(model.rows[1].id == "create_room",
+         expect(model.rows[4].id == "create_room",
                 "default create room id") &&
-         expect(model.rows[1].label == "Create Room",
+         expect(model.rows[4].label == "Create Room",
                 "default create room label") &&
-         expect(model.rows[2].kind == cr::CreativeUiRowKind::StatusSummary,
+         expect(model.rows[4].objectKind == cr::CreativeObjectKind::Room,
+                "default create room payload") &&
+         expect(model.rows[5].kind == cr::CreativeUiRowKind::CreateObject,
+                "default create crate row") &&
+         expect(model.rows[5].id == "create_crate",
+                "default create crate id") &&
+         expect(model.rows[5].label == "Create Crate",
+                "default create crate label") &&
+         expect(model.rows[5].objectKind == cr::CreativeObjectKind::Crate,
+                "default create crate payload") &&
+         expect(model.rows[6].kind == cr::CreativeUiRowKind::StatusSummary,
                 "default status row") &&
-         expect(model.rows[3].kind == cr::CreativeUiRowKind::SnapSettings,
+         expect(model.rows[7].kind == cr::CreativeUiRowKind::SnapSettings,
                 "default snap row");
 }
 
-bool activeToolRowReflectsToolChanges() {
-  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
-  request.toolState.activeTool = cr::Tool::Move;
-  const cr::CreativeUiBuildReceipt moveReceipt =
-      cr::buildCreativeUiModel(request);
-  request.toolState.activeTool = cr::Tool::Measure;
-  const cr::CreativeUiBuildReceipt measureReceipt =
-      cr::buildCreativeUiModel(request);
-  request.toolState.activeTool = cr::Tool::Navigate;
-  const cr::CreativeUiBuildReceipt navigateReceipt =
-      cr::buildCreativeUiModel(request);
+std::size_t activeToolRowCount(const cr::CreativeUiModel& model) {
+  std::size_t count = 0;
+  for (const cr::CreativeUiRow& row : model.rows) {
+    if (row.kind == cr::CreativeUiRowKind::ToolButton &&
+        hasFlag(row.flags, cr::kCreativeUiRowFlagActive)) {
+      ++count;
+    }
+  }
+  return count;
+}
 
-  return expect(moveReceipt.model.rows[0].tool == cr::Tool::Move,
-                "move active tool") &&
-         expect(measureReceipt.model.rows[0].tool == cr::Tool::Measure,
-                "measure active tool") &&
-         expect(navigateReceipt.model.rows[0].tool == cr::Tool::Navigate,
-                "navigate active tool") &&
-         expect(measureReceipt.model.activeTool == cr::Tool::Measure,
-                "summary active tool");
+bool toolPaletteMarksExactlyOneActiveRowPerTool() {
+  const cr::Tool tools[] = {cr::Tool::Select,
+                            cr::Tool::Move,
+                            cr::Tool::Measure,
+                            cr::Tool::Navigate};
+
+  bool ok = true;
+  for (const cr::Tool tool : tools) {
+    cr::CreativeUiBuildRequest request =
+        cr::makeDefaultCreativeUiBuildRequest();
+    request.toolState.activeTool = tool;
+    const cr::CreativeUiBuildReceipt receipt =
+        cr::buildCreativeUiModel(request);
+    const cr::CreativeUiModel& model = receipt.model;
+
+    ok = expect(activeToolRowCount(model) == 1U,
+                "exactly one active tool row") &&
+         ok;
+    ok = expect(model.activeTool == tool, "summary active tool") && ok;
+    for (std::size_t index = 0; index < 4U; ++index) {
+      const cr::CreativeUiRow& row = model.rows[index];
+      const bool isActive =
+          hasFlag(row.flags, cr::kCreativeUiRowFlagActive);
+      ok = expect(isActive == (row.tool == tool),
+                  "active flag tracks tool state") &&
+           ok;
+      ok = expect(hasFlag(row.flags, cr::kCreativeUiRowFlagVisible) &&
+                      hasFlag(row.flags, cr::kCreativeUiRowFlagEnabled),
+                  "tool rows visible and enabled") &&
+           ok;
+    }
+  }
+  return ok;
 }
 
 bool selectedTargetRowAppearsOnlyWhenNonzero() {
@@ -338,7 +394,7 @@ bool repeatedBuildProducesSameRows() {
 
 int main() {
   const bool ok = defaultModelDeterministic() &&
-                  activeToolRowReflectsToolChanges() &&
+                  toolPaletteMarksExactlyOneActiveRowPerTool() &&
                   selectedTargetRowAppearsOnlyWhenNonzero() &&
                   selectedVisibleObjectSummaryMarksRowVisible() &&
                   selectedHiddenObjectSummaryKeepsRowAndMarksInvisible() &&

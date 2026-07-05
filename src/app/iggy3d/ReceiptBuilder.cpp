@@ -93,8 +93,10 @@ std::string_view productCreativeUiCommandKindReceiptName(
       return "none";
     case ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility:
       return "toggle_selected_object_visibility";
-    case ProductCreativeUiCommandKind::CreateRoom:
-      return "create_room";
+    case ProductCreativeUiCommandKind::SetActiveTool:
+      return "set_active_tool";
+    case ProductCreativeUiCommandKind::CreateObject:
+      return "create_object";
   }
   return "unknown";
 }
@@ -224,6 +226,12 @@ void recordProductCreativeUiCommandFrame(
   window.creativeUiCommandChanged = receipt.changed;
   window.creativeUiCommandKind =
       std::string(productCreativeUiCommandKindReceiptName(receipt.commandKind));
+  window.creativeUiCommandTool =
+      receipt.commandKind == ProductCreativeUiCommandKind::SetActiveTool
+          ? std::string(creativeToolReceiptName(receipt.commandTool))
+          : std::string("none");
+  window.creativeUiCommandObjectKind =
+      std::string(creative::toString(receipt.commandObjectKind));
   window.creativeUiCommandToolBefore =
       std::string(creativeToolReceiptName(receipt.toolBefore));
   window.creativeUiCommandToolAfter =
@@ -2064,6 +2072,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiCommandChanged);
   appendReceiptField(receipt, "creative_ui_command_kind",
                      window.creativeUiCommandKind);
+  appendReceiptField(receipt, "creative_ui_command_tool",
+                     window.creativeUiCommandTool);
+  appendReceiptField(receipt, "creative_ui_command_object_kind",
+                     window.creativeUiCommandObjectKind);
   appendReceiptField(receipt, "creative_ui_command_tool_before",
                      window.creativeUiCommandToolBefore);
   appendReceiptField(receipt, "creative_ui_command_tool_after",

@@ -17,6 +17,7 @@ namespace iggy3d::creative {
 
 enum class CreativeUiPanelKind : std::uint8_t {
   Tools,
+  Create,
   Status,
   Selection,
   Measurement,
@@ -25,8 +26,8 @@ enum class CreativeUiPanelKind : std::uint8_t {
 };
 
 enum class CreativeUiRowKind : std::uint8_t {
-  ActiveTool,
-  CreateRoom,
+  ToolButton,
+  CreateObject,
   StatusSummary,
   SelectedTarget,
   MeasurementState,

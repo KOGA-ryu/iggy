@@ -470,7 +470,7 @@ bool createRoomCommandThenWireframeBuildsSegments() {
   iggy3d::ProductCreativeUiInputFrameReceipt input;
   input.consumed = true;
   input.enabled = true;
-  input.semanticId = "creative.row.tools.create_room";
+  input.semanticId = "creative.row.create.create_room";
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt command =
       iggy3d::routeProductCreativeUiCommandFrame(
@@ -481,7 +481,7 @@ bool createRoomCommandThenWireframeBuildsSegments() {
   return expect(command.accepted && command.changed,
                 "create command accepted") &&
          expect(command.commandKind ==
-                    iggy3d::ProductCreativeUiCommandKind::CreateRoom,
+                    iggy3d::ProductCreativeUiCommandKind::CreateObject,
                 "create command kind") &&
          expect(facade.document().objectCount() == 1U,
                 "create command object count") &&

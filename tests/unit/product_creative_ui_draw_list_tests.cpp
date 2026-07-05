@@ -160,7 +160,7 @@ cr::CreativeUiModel selectedTargetModel(cr::Id target,
 cr::CreativeUiModel disabledRowCreativeUiModel() {
   cr::CreativeUiModel model = defaultCreativeUiModel();
   for (cr::CreativeUiRow& row : model.rows) {
-    if (row.id == "active_tool") {
+    if (row.id == "tool_select") {
       row.flags &= ~cr::kCreativeUiRowFlagEnabled;
       break;
     }
@@ -249,10 +249,18 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
   const iggy3d::ProductUiDrawList list =
       iggy3d::buildProductCreativeUiDrawList(request);
 
-  const iggy3d::ProductUiPrimitive* active =
-      findPrimitive(list, "creative.row.tools.active_tool");
+  const iggy3d::ProductUiPrimitive* toolSelect =
+      findPrimitive(list, "creative.row.tools.tool_select");
+  const iggy3d::ProductUiPrimitive* toolMove =
+      findPrimitive(list, "creative.row.tools.tool_move");
+  const iggy3d::ProductUiPrimitive* toolMeasure =
+      findPrimitive(list, "creative.row.tools.tool_measure");
+  const iggy3d::ProductUiPrimitive* toolNavigate =
+      findPrimitive(list, "creative.row.tools.tool_navigate");
   const iggy3d::ProductUiPrimitive* createRoom =
-      findPrimitive(list, "creative.row.tools.create_room");
+      findPrimitive(list, "creative.row.create.create_room");
+  const iggy3d::ProductUiPrimitive* createCrate =
+      findPrimitive(list, "creative.row.create.create_crate");
   const iggy3d::ProductUiPrimitive* status =
       findPrimitive(list, "creative.row.status.creative_status");
   const iggy3d::ProductUiPrimitive* snap =
@@ -260,6 +268,8 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
 
   return expect(findPrimitive(list, "creative.panel.tools") != nullptr,
                 "tools panel") &&
+         expect(findPrimitive(list, "creative.panel.create") != nullptr,
+                "create panel") &&
          expect(findPrimitive(list, "creative.panel.status") != nullptr,
                 "status panel") &&
          expect(findPrimitive(list, "creative.panel.snap") != nullptr,
@@ -270,20 +280,42 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                 "hidden measurement panel") &&
          expect(findPrimitive(list, "creative.panel.ghost") == nullptr,
                 "hidden ghost panel") &&
-         expect(active != nullptr && active->text == "Active Tool: Select",
-                "active row text") &&
+         expect(toolSelect != nullptr &&
+                    toolSelect->text == "Select (active)",
+                "select tool row text") &&
+         expect(toolMove != nullptr && toolMove->text == "Move",
+                "move tool row text") &&
+         expect(toolMeasure != nullptr && toolMeasure->text == "Measure",
+                "measure tool row text") &&
+         expect(toolNavigate != nullptr && toolNavigate->text == "Navigate",
+                "navigate tool row text") &&
          expect(createRoom != nullptr && createRoom->text == "Create Room",
                 "create room row text") &&
+         expect(createCrate != nullptr &&
+                    createCrate->text == "Create Crate",
+                "create crate row text") &&
          expect(status != nullptr && status->text == "Creative: Ready",
                 "status row text") &&
          expect(snap != nullptr && snap->text == "Snap: Grid XY 1.00x1.00",
                 "snap row text") &&
          expect(rowHitMatchesTextPrimitive(list,
-                                           "creative.row.tools.active_tool"),
-                "active row hit") &&
+                                           "creative.row.tools.tool_select"),
+                "select tool row hit") &&
          expect(rowHitMatchesTextPrimitive(list,
-                                           "creative.row.tools.create_room"),
+                                           "creative.row.tools.tool_move"),
+                "move tool row hit") &&
+         expect(rowHitMatchesTextPrimitive(list,
+                                           "creative.row.tools.tool_measure"),
+                "measure tool row hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.tools.tool_navigate"),
+                "navigate tool row hit") &&
+         expect(rowHitMatchesTextPrimitive(list,
+                                           "creative.row.create.create_room"),
                 "create room row hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.create.create_crate"),
+                "create crate row hit") &&
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.status.creative_status"),
                 "status row hit") &&
@@ -303,34 +335,44 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                 "hidden ghost hit");
 }
 
-bool activeToolRowTextCoversAllFourTools() {
+bool toolPaletteTextMarksOnlyActiveToolAcrossAllFourTools() {
   struct Row {
     cr::Tool tool;
-    std::string_view text;
-    const char* label;
+    std::string_view semanticId;
+    std::string_view activeText;
+    std::string_view inactiveText;
   };
   const Row rows[] = {
-      {cr::Tool::Select, "Active Tool: Select", "active text select"},
-      {cr::Tool::Move, "Active Tool: Move", "active text move"},
-      {cr::Tool::Measure, "Active Tool: Measure", "active text measure"},
-      {cr::Tool::Navigate, "Active Tool: Navigate", "active text navigate"},
+      {cr::Tool::Select, "creative.row.tools.tool_select",
+       "Select (active)", "Select"},
+      {cr::Tool::Move, "creative.row.tools.tool_move",
+       "Move (active)", "Move"},
+      {cr::Tool::Measure, "creative.row.tools.tool_measure",
+       "Measure (active)", "Measure"},
+      {cr::Tool::Navigate, "creative.row.tools.tool_navigate",
+       "Navigate (active)", "Navigate"},
   };
 
   bool ok = true;
-  for (const Row& row : rows) {
+  for (const Row& activeRow : rows) {
     cr::CreativeUiBuildRequest buildRequest =
         cr::makeDefaultCreativeUiBuildRequest();
-    buildRequest.toolState.activeTool = row.tool;
+    buildRequest.toolState.activeTool = activeRow.tool;
     const cr::CreativeUiModel model =
         cr::buildCreativeUiModel(buildRequest).model;
     iggy3d::ProductCreativeUiDrawListRequest request;
     request.model = &model;
     const iggy3d::ProductUiDrawList list =
         iggy3d::buildProductCreativeUiDrawList(request);
-    const iggy3d::ProductUiPrimitive* active =
-        findPrimitive(list, "creative.row.tools.active_tool");
-    ok = expect(active != nullptr && active->text == row.text, row.label) &&
-         ok;
+    for (const Row& row : rows) {
+      const iggy3d::ProductUiPrimitive* primitive =
+          findPrimitive(list, row.semanticId);
+      const std::string_view expected =
+          row.tool == activeRow.tool ? row.activeText : row.inactiveText;
+      ok = expect(primitive != nullptr && primitive->text == expected,
+                  "tool row text tracks active tool") &&
+           ok;
+    }
   }
   return ok;
 }
@@ -346,26 +388,37 @@ bool defaultModelUsesSeparatedPanelZones() {
 
   const iggy3d::ProductUiPrimitive* tools =
       findPrimitive(list, "creative.panel.tools");
+  const iggy3d::ProductUiPrimitive* create =
+      findPrimitive(list, "creative.panel.create");
   const iggy3d::ProductUiPrimitive* status =
       findPrimitive(list, "creative.panel.status");
   const iggy3d::ProductUiPrimitive* snap =
       findPrimitive(list, "creative.panel.snap");
 
   return expect(tools != nullptr, "layout tools panel") &&
+         expect(create != nullptr, "layout create panel") &&
          expect(status != nullptr, "layout status panel") &&
          expect(snap != nullptr, "layout snap panel") &&
          expect(rectInsideVirtualFrame(tools->rect, 1280, 720),
                 "tools inside frame") &&
+         expect(rectInsideVirtualFrame(create->rect, 1280, 720),
+                "create inside frame") &&
          expect(rectInsideVirtualFrame(status->rect, 1280, 720),
                 "status inside frame") &&
          expect(rectInsideVirtualFrame(snap->rect, 1280, 720),
                 "snap inside frame") &&
-         expect(!rectsOverlap(tools->rect, status->rect),
-                "tools and status separated") &&
+         expect(!rectsOverlap(tools->rect, create->rect),
+                "tools and create separated") &&
+         expect(!rectsOverlap(create->rect, status->rect),
+                "create and status separated") &&
          expect(!rectsOverlap(status->rect, snap->rect),
                 "status and snap separated") &&
-         expect(status->rect.y > tools->rect.y + tools->rect.height,
-                "status below tools") &&
+         expect(create->rect.x == tools->rect.x,
+                "create stacked in tools column") &&
+         expect(create->rect.y > tools->rect.y + tools->rect.height,
+                "create below tools") &&
+         expect(status->rect.y > create->rect.y + create->rect.height,
+                "status below create") &&
          expect(snap->rect.y > status->rect.y + status->rect.height,
                 "snap below status");
 }
@@ -515,9 +568,9 @@ bool disabledRowsEmitDisabledHitRegions() {
       iggy3d::buildProductCreativeUiDrawList(request);
 
   const iggy3d::ProductUiPrimitive* active =
-      findPrimitive(list, "creative.row.tools.active_tool");
+      findPrimitive(list, "creative.row.tools.tool_select");
   const iggy3d::UiHitRegion* activeHit =
-      findHitRegion(list, "creative.row.tools.active_tool");
+      findHitRegion(list, "creative.row.tools.tool_select");
 
   return expect(list.disabledRowCount == 1U, "disabled row count one") &&
          expect(active != nullptr, "disabled active primitive") &&
@@ -527,7 +580,7 @@ bool disabledRowsEmitDisabledHitRegions() {
          expect(activeHit->action == iggy3d::FrontendAction::None,
                 "disabled hit action none") &&
          expect(rowHitMatchesTextPrimitive(
-                    list, "creative.row.tools.active_tool"),
+                    list, "creative.row.tools.tool_select"),
                 "disabled hit matches primitive");
 }
 
@@ -572,7 +625,7 @@ int main() {
                   defaultModelProducesReadyDrawList() &&
                   primitivesAreNonInteractiveCreativeSemantics() &&
                   defaultModelEmitsVisiblePanelsAndRowsOnly() &&
-                  activeToolRowTextCoversAllFourTools() &&
+                  toolPaletteTextMarksOnlyActiveToolAcrossAllFourTools() &&
                   defaultModelUsesSeparatedPanelZones() &&
                   populatedModelPreservesCreativeOrderAndText() &&
                   populatedModelTextStaysInsidePrimitiveRects() &&

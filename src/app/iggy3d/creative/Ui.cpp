@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/Ui.hpp"
 
+#include <array>
+
 namespace iggy3d::creative {
 namespace {
 
@@ -65,27 +67,67 @@ void appendRow(CreativeUiModel& model, CreativeUiRow row) {
   model.rows.push_back(row);
 }
 
+struct CreativeUiToolRowSpec {
+  Tool tool = Tool::Select;
+  std::string_view id;
+  std::string_view label;
+};
+
+inline constexpr std::array<CreativeUiToolRowSpec, 4> kCreativeUiToolRows = {{
+    {Tool::Select, "tool_select", "Select"},
+    {Tool::Move, "tool_move", "Move"},
+    {Tool::Measure, "tool_measure", "Measure"},
+    {Tool::Navigate, "tool_navigate", "Navigate"},
+}};
+
+struct CreativeUiCreateRowSpec {
+  CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
+  std::string_view id;
+  std::string_view label;
+};
+
+inline constexpr std::array<CreativeUiCreateRowSpec, 2> kCreativeUiCreateRows =
+    {{
+        {CreativeObjectKind::Room, "create_room", "Create Room"},
+        {CreativeObjectKind::Crate, "create_crate", "Create Crate"},
+    }};
+
 void appendToolsPanel(CreativeUiModel& model,
                       const CreativeUiBuildRequest& request) {
   const std::size_t panelIndex =
       beginPanel(model, CreativeUiPanelKind::Tools, true, true);
 
-  CreativeUiRow row;
-  row.kind = CreativeUiRowKind::ActiveTool;
-  row.panel = CreativeUiPanelKind::Tools;
-  row.id = "active_tool";
-  row.label = "Active Tool";
-  row.tool = request.toolState.activeTool;
-  row.flags = enabledVisibleFlags() | kCreativeUiRowFlagActive;
-  appendRow(model, row);
+  for (const CreativeUiToolRowSpec& spec : kCreativeUiToolRows) {
+    CreativeUiRow row;
+    row.kind = CreativeUiRowKind::ToolButton;
+    row.panel = CreativeUiPanelKind::Tools;
+    row.id = spec.id;
+    row.label = spec.label;
+    row.tool = spec.tool;
+    row.flags = enabledVisibleFlags();
+    if (request.toolState.activeTool == spec.tool) {
+      row.flags |= kCreativeUiRowFlagActive;
+    }
+    appendRow(model, row);
+  }
 
-  CreativeUiRow createRoomRow;
-  createRoomRow.kind = CreativeUiRowKind::CreateRoom;
-  createRoomRow.panel = CreativeUiPanelKind::Tools;
-  createRoomRow.id = "create_room";
-  createRoomRow.label = "Create Room";
-  createRoomRow.flags = enabledVisibleFlags();
-  appendRow(model, createRoomRow);
+  finishPanel(model, panelIndex);
+}
+
+void appendCreatePanel(CreativeUiModel& model) {
+  const std::size_t panelIndex =
+      beginPanel(model, CreativeUiPanelKind::Create, true, true);
+
+  for (const CreativeUiCreateRowSpec& spec : kCreativeUiCreateRows) {
+    CreativeUiRow row;
+    row.kind = CreativeUiRowKind::CreateObject;
+    row.panel = CreativeUiPanelKind::Create;
+    row.id = spec.id;
+    row.label = spec.label;
+    row.objectKind = spec.objectKind;
+    row.flags = enabledVisibleFlags();
+    appendRow(model, row);
+  }
 
   finishPanel(model, panelIndex);
 }
@@ -266,10 +308,11 @@ CreativeUiBuildReceipt buildCreativeUiModel(CreativeUiBuildRequest request) {
   receipt.model.hasMeasurement = request.measurementState.hasMeasurement;
   receipt.model.ghostVisible = request.ghostState.visible;
 
-  receipt.model.panels.reserve(6);
-  receipt.model.rows.reserve(9);
+  receipt.model.panels.reserve(7);
+  receipt.model.rows.reserve(13);
 
   appendToolsPanel(receipt.model, request);
+  appendCreatePanel(receipt.model);
   appendStatusPanel(receipt.model, request);
   appendSelectionPanel(receipt.model, request);
   appendMeasurementPanel(receipt.model, request);

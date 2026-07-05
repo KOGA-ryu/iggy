@@ -103,8 +103,8 @@ bool defaultsBuildDefaultUiModel() {
                 "default measurement empty") &&
          expect(!facade.ghostState().visible, "default ghost hidden") &&
          expect(ui.accepted, "default ui accepted") &&
-         expect(ui.panelCount == 6U, "default ui panels") &&
-         expect(ui.rowCount == 4U, "default ui rows");
+         expect(ui.panelCount == 7U, "default ui panels") &&
+         expect(ui.rowCount == 8U, "default ui rows");
 }
 
 bool setActiveToolUpdatesKernelAndOldState() {
@@ -727,7 +727,7 @@ bool installingDocumentClearsTransientEditorState() {
          expect(facade.stats().commandAttempts == 0U,
                 "install clear stats reset attempts") &&
          expect(ui.accepted, "install clear ui accepted") &&
-         expect(ui.rowCount == 4U, "install clear default row count") &&
+         expect(ui.rowCount == 8U, "install clear default row count") &&
          expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::SelectedTarget),
                 "install clear no selected row") &&
          expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::MeasurementState),

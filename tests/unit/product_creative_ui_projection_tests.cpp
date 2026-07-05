@@ -171,15 +171,15 @@ bool facadeInputBuildsFromFacadeState() {
       findPrimitive(projection.drawList,
                     "creative.row.selection.selected_target");
   const iggy3d::ProductUiPrimitive* active =
-      findPrimitive(projection.drawList, "creative.row.tools.active_tool");
+      findPrimitive(projection.drawList, "creative.row.tools.tool_move");
 
   return expect(projection.receipt.ready, "facade ready") &&
          expect(projection.receipt.usedFacade, "facade used") &&
          expect(!projection.receipt.usedModel, "facade model not used") &&
-         expect(projection.receipt.panelCount == 6U, "facade panel count") &&
+         expect(projection.receipt.panelCount == 7U, "facade panel count") &&
          expect(projection.receipt.modelRowCount > 3U,
                 "facade model rows populated") &&
-         expect(active != nullptr && active->text == "Active Tool: Move",
+         expect(active != nullptr && active->text == "Move (active)",
                 "facade active tool row") &&
          expect(selected != nullptr &&
                     selected->text ==

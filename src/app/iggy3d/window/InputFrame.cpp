@@ -1064,8 +1064,17 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   bool higherPriorityMouseConsumed = false;
   const bool frontendMouseOwnsInput =
       click.clicked && frontendBlocksGameplayInput(context.frontend);
-  // branch-gate: BG-1029
-  if (click.clicked) {
+  // branch-gate: BG-1029. Skip the legacy opening/starter-menu hit band during
+  // raw creative-document gameplay: its hardcoded row band (openingMenuActionAt)
+  // is a raw-coordinate check that fires even when no starter rows are drawn, so
+  // it steals clicks landing on creative overlay rows (e.g. a Create row that
+  // reflows into the phantom band). But any real frontend menu over a creative
+  // world (pause and its Settings/Load/Delete children) still routes its mouse
+  // hits HERE, so keep running the block whenever the frontend owns the mouse
+  // (frontendMouseOwnsInput) — openingMenuActionAt routes the correct rows then.
+  if (click.clicked &&
+      (!productCreativeDocumentEditorActiveForWindow(context.window) ||
+       frontendMouseOwnsInput)) {
     const MouseClick menuClick =
         productWindowMenuClickForHitTest(click, context.sdlWindow);
     // Build the hit-test request through the SAME factory the frame draw path

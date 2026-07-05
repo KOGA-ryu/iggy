@@ -1,8 +1,12 @@
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/Placement.hpp"
 
 #include <array>
+#include <iomanip>
+#include <sstream>
+#include <string>
 #include <string_view>
 
 namespace iggy3d {
@@ -12,15 +16,48 @@ struct ProductCreativeUiCommandRow {
   std::string_view semanticId;
   ProductCreativeUiCommandKind commandKind =
       ProductCreativeUiCommandKind::None;
+  creative::Tool tool = creative::Tool::Select;
+  creative::CreativeObjectKind objectKind =
+      creative::CreativeObjectKind::Unknown;
 };
 
-constexpr std::array<ProductCreativeUiCommandRow, 2>
+constexpr std::array<ProductCreativeUiCommandRow, 7>
     kProductCreativeUiCommandRows = {{
-        {"creative.row.tools.create_room",
-         ProductCreativeUiCommandKind::CreateRoom},
+        {"creative.row.tools.tool_select",
+         ProductCreativeUiCommandKind::SetActiveTool,
+         creative::Tool::Select,
+         creative::CreativeObjectKind::Unknown},
+        {"creative.row.tools.tool_move",
+         ProductCreativeUiCommandKind::SetActiveTool,
+         creative::Tool::Move,
+         creative::CreativeObjectKind::Unknown},
+        {"creative.row.tools.tool_measure",
+         ProductCreativeUiCommandKind::SetActiveTool,
+         creative::Tool::Measure,
+         creative::CreativeObjectKind::Unknown},
+        {"creative.row.tools.tool_navigate",
+         ProductCreativeUiCommandKind::SetActiveTool,
+         creative::Tool::Navigate,
+         creative::CreativeObjectKind::Unknown},
+        {"creative.row.create.create_room",
+         ProductCreativeUiCommandKind::CreateObject,
+         creative::Tool::Select,
+         creative::CreativeObjectKind::Room},
+        {"creative.row.create.create_crate",
+         ProductCreativeUiCommandKind::CreateObject,
+         creative::Tool::Select,
+         creative::CreativeObjectKind::Crate},
         {"creative.row.selection.selected_target",
-         ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility},
+         ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility,
+         creative::Tool::Select,
+         creative::CreativeObjectKind::Unknown},
     }};
+
+[[nodiscard]] std::string formatPlacementOffset(double value) {
+  std::ostringstream stream;
+  stream << std::fixed << std::setprecision(2) << value;
+  return stream.str();
+}
 
 [[nodiscard]] const ProductCreativeUiCommandRow* findCommandRow(
     std::string_view semanticId) noexcept {
@@ -131,13 +168,35 @@ ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
     return receipt;
   }
 
-  if (receipt.commandKind == ProductCreativeUiCommandKind::CreateRoom) {
+  if (receipt.commandKind == ProductCreativeUiCommandKind::SetActiveTool) {
+    receipt.commandTool = row->tool;
+    const bool toolChanged = facade.setActiveTool(row->tool);
+    receipt.toolAfter = facade.toolState().activeTool;
+    receipt.accepted = true;
+    receipt.changed = toolChanged;
+    setNoopStatus(receipt,
+                  toolChanged ? "product_creative_ui_command_applied"
+                              : "product_creative_ui_command_no_change");
+    return receipt;
+  }
+
+  if (receipt.commandKind == ProductCreativeUiCommandKind::CreateObject) {
+    receipt.commandObjectKind = row->objectKind;
+    const creative::CreativePlacedCreateRequest placed =
+        creative::buildPlacedCreateRequest(facade.document(),
+                                           row->objectKind);
     const creative::CreativeDocumentCreateReceipt createReceipt =
-        facade.createDocumentObject(creative::CreativeObjectKind::Room);
+        facade.createDocumentObject(placed.createRequest);
     copyCreateReceipt(receipt, createReceipt);
     receipt.accepted = createReceipt.accepted;
     receipt.changed = createReceipt.changed;
     receipt.toolAfter = facade.toolState().activeTool;
+    if (createReceipt.accepted && createReceipt.changed &&
+        placed.offsetApplied) {
+      receipt.createMessage.append(" placement_offset_x=");
+      receipt.createMessage.append(formatPlacementOffset(placed.offsetX));
+      receipt.createReasonCode.append("_placement_offset");
+    }
     if (createReceipt.accepted && createReceipt.changed) {
       setNoopStatus(receipt, "product_creative_ui_command_applied");
     } else if (createReceipt.accepted) {

@@ -613,6 +613,8 @@ struct ProductAppWindowState {
   bool creativeUiCommandAccepted = false;
   bool creativeUiCommandChanged = false;
   std::string creativeUiCommandKind = "none";
+  std::string creativeUiCommandTool = "none";
+  std::string creativeUiCommandObjectKind = "Unknown";
   std::string creativeUiCommandToolBefore = "Select";
   std::string creativeUiCommandToolAfter = "Select";
   std::string creativeUiCommandSemanticId = "none";

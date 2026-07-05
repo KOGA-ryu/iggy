@@ -113,7 +113,7 @@ iggy3d::ProductCreativeUiCommandFrameReceipt routeCreateRoomCommand(
   input.hit = true;
   input.consumed = true;
   input.enabled = true;
-  input.semanticId = "creative.row.tools.create_room";
+  input.semanticId = "creative.row.create.create_room";
 
   iggy3d::ProductCreativeUiCommandFrameRequest request;
   request.facade = &facade;
@@ -765,7 +765,7 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
                 "lifecycle product continue ignores creative launch") &&
          expect(createRoom.requested, "lifecycle create command requested") &&
          expect(createRoom.commandKind ==
-                    iggy3d::ProductCreativeUiCommandKind::CreateRoom,
+                    iggy3d::ProductCreativeUiCommandKind::CreateObject,
                 "lifecycle create command kind") &&
          expect(createRoom.accepted && createRoom.changed,
                 "lifecycle create command applied") &&

@@ -46,6 +46,8 @@ struct PanelLayout {
   switch (kind) {
     case creative::CreativeUiPanelKind::Tools:
       return "tools";
+    case creative::CreativeUiPanelKind::Create:
+      return "create";
     case creative::CreativeUiPanelKind::Status:
       return "status";
     case creative::CreativeUiPanelKind::Selection:
@@ -145,11 +147,13 @@ void appendVisibilityText(std::string& text,
 [[nodiscard]] std::string rowText(const creative::CreativeUiRow& row) {
   std::string text(row.label.empty() ? row.id : row.label);
   switch (row.kind) {
-    case creative::CreativeUiRowKind::ActiveTool:
-      text = "Active Tool: ";
-      text.append(toolName(row.tool));
+    case creative::CreativeUiRowKind::ToolButton:
+      text = std::string(toolName(row.tool));
+      if (hasFlag(row.flags, creative::kCreativeUiRowFlagActive)) {
+        text.append(" (active)");
+      }
       break;
-    case creative::CreativeUiRowKind::CreateRoom:
+    case creative::CreativeUiRowKind::CreateObject:
       break;
     case creative::CreativeUiRowKind::StatusSummary:
       text = "Creative: ";
@@ -263,6 +267,7 @@ void appendVisibilityText(std::string& text,
 
   switch (panel.kind) {
     case creative::CreativeUiPanelKind::Tools:
+    case creative::CreativeUiPanelKind::Create:
       layout = {kOverlayX,
                 cursor.leftY,
                 constrainedPanelWidth(kToolsPanelWidth, virtualWidth)};

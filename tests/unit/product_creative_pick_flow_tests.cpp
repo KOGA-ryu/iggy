@@ -294,7 +294,7 @@ bool createRoomUiRowCommandCreatesRoomThroughFacade() {
   const iggy3d::ProductUiDrawList initialDrawList =
       drawCreativeUi(initialUi.model);
   const iggy3d::ProductUiPrimitive* createPrimitive =
-      findPrimitive(initialDrawList, "creative.row.tools.create_room");
+      findPrimitive(initialDrawList, "creative.row.create.create_room");
 
   const iggy3d::ProductCreativeUiInputFrameReceipt createInput =
       createPrimitive != nullptr
@@ -309,17 +309,17 @@ bool createRoomUiRowCommandCreatesRoomThroughFacade() {
   const iggy3d::ProductUiDrawList rebuiltDrawList =
       drawCreativeUi(rebuiltUi.model);
   const iggy3d::ProductUiPrimitive* rebuiltCreatePrimitive =
-      findPrimitive(rebuiltDrawList, "creative.row.tools.create_room");
+      findPrimitive(rebuiltDrawList, "creative.row.create.create_room");
 
   return expect(createPrimitive != nullptr, "create flow primitive exists") &&
          expect(createPrimitive->text == "Create Room",
                 "create flow primitive text") &&
          expect(createInput.consumed && createInput.enabled,
                 "create flow input consumed") &&
-         expect(createInput.semanticId == "creative.row.tools.create_room",
+         expect(createInput.semanticId == "creative.row.create.create_room",
                 "create flow semantic") &&
          expect(createCommand.commandKind ==
-                    iggy3d::ProductCreativeUiCommandKind::CreateRoom,
+                    iggy3d::ProductCreativeUiCommandKind::CreateObject,
                 "create flow command kind") &&
          expect(createCommand.accepted && createCommand.changed,
                 "create flow command changed") &&

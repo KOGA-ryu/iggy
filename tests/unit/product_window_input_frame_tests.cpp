@@ -1087,7 +1087,7 @@ bool pauseMouseClickResumesBeforeCreativeOverlayInput() {
   creativeUi.virtualWidth = 1280U;
   creativeUi.virtualHeight = 720U;
   creativeUi.hitRegions.push_back(
-      iggy3d::UiHitRegion{.semanticId = "creative.row.tools.create_room",
+      iggy3d::UiHitRegion{.semanticId = "creative.row.create.create_room",
                            .rect = {0.0F, 0.0F, 1280.0F, 720.0F},
                            .kind = iggy3d::UiHitKind::Button,
                            .action = iggy3d::FrontendAction::None,
@@ -1143,6 +1143,75 @@ bool pauseMouseClickResumesBeforeCreativeOverlayInput() {
          expect(window.creativeUiInputDownstreamClickStatus ==
                     "product_creative_ui_downstream_click_higher_priority",
                 "downstream receipt names higher-priority ui");
+}
+
+// Regression (BG-1029): the creative-editor guard on the legacy opening-menu
+// hit-test must NOT swallow pause-menu mouse clicks in an ACTIVE creative world.
+// The prior guard skipped the block whenever the creative editor was active,
+// but a paused creative world keeps interactionMode==Creative, so the pause menu
+// (still drawn) became mouse-dead. Here the world is truly active
+// (activeCreative* set) AND paused; the Resume click must still route.
+bool pauseMouseClickResumesInActiveCreativeWorld() {
+  iggy3d::FrontendState frontend = gameplayFrontend();
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.activeCreativeSaveId = "creative_save";
+  window.activeCreativeWorldId = "world_001";
+  window.activeCreativeDocumentId = 42U;
+  bool closeRequested = false;
+  (void)iggy3d::applyProductSystemPauseMenuAction(
+      iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
+  const iggy3d::MouseClick resumeClick =
+      clickPauseAction(frontend, iggy3d::FrontendAction::Resume);
+
+  iggy3d::ProductUiDrawList creativeUi;
+  creativeUi.ready = true;
+  creativeUi.virtualWidth = 1280U;
+  creativeUi.virtualHeight = 720U;
+  creativeUi.hitRegions.push_back(
+      iggy3d::UiHitRegion{.semanticId = "creative.row.create.create_room",
+                           .rect = {0.0F, 0.0F, 1280.0F, 720.0F},
+                           .kind = iggy3d::UiHitKind::Button,
+                           .action = iggy3d::FrontendAction::None,
+                           .enabled = true});
+
+  iggy3d::ProductSaveBridgeResult saves = compatibleSaveBridge();
+  iggy3d::ProductAppOptions options;
+  options.saveRoot = std::filesystem::temp_directory_path();
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::WorldSetupDraft draft;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductWindowInputFrameState inputFrame;
+
+  iggy3d::processProductWindowInputFrame(
+      iggy3d::ProductWindowInputFrameContext{
+          frontend,
+          saves,
+          options,
+          settingsTab,
+          activeSession,
+          draft,
+          window,
+          settings,
+          inputFrame,
+          closeRequested,
+          nullptr,
+          nullptr,
+          &creativeUi,
+          {},
+          {},
+          0,
+          iggy3d::creative::CreativeViewportPickDepthMode::FixedZ,
+          {true, resumeClick},
+      });
+
+  return expect(resumeClick.clicked, "active-world pause resume click found") &&
+         expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
+                "active-world pause click resumes gameplay") &&
+         expect(!window.creativeUiInputConsumed,
+                "active-world pause click not consumed by creative ui");
 }
 
 bool pauseSettingsConfirmOpensSettingsPanel() {
@@ -3218,6 +3287,7 @@ int main() {
       starterHitTestUsesCanonicalActionRows() &&
       pauseHitTestUsesPauseActionRows() &&
       pauseMouseClickResumesBeforeCreativeOverlayInput() &&
+      pauseMouseClickResumesInActiveCreativeWorld() &&
       pauseSettingsConfirmOpensSettingsPanel() &&
       pauseSettingsInputDispatchRoutesToSettings() &&
       starterSettingsInputDispatchRoutesToSettings() &&

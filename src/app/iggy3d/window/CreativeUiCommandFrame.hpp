@@ -11,7 +11,8 @@ namespace iggy3d {
 enum class ProductCreativeUiCommandKind : std::uint8_t {
   None,
   ToggleSelectedObjectVisibility,
-  CreateRoom,
+  SetActiveTool,
+  CreateObject,
 };
 
 struct ProductCreativeUiCommandFrameRequest {
@@ -29,6 +30,9 @@ struct ProductCreativeUiCommandFrameReceipt {
   bool changed = false;
   ProductCreativeUiCommandKind commandKind =
       ProductCreativeUiCommandKind::None;
+  creative::Tool commandTool = creative::Tool::Select;
+  creative::CreativeObjectKind commandObjectKind =
+      creative::CreativeObjectKind::Unknown;
   creative::Tool toolBefore = creative::Tool::Select;
   creative::Tool toolAfter = creative::Tool::Select;
   bool mutationRequested = false;
