@@ -27,7 +27,21 @@ namespace iggy3d {
 
 namespace {
 
-const char* productWindowTitle(const ProductAppWindowState& window) {
+const char* productWindowTitle(const FrontendState& frontend,
+                               const ProductAppWindowState& window) {
+  // The title must agree with what is actually DRAWN. The opening menu draws
+  // while frontend.screen == Starter (the FramePresenter menu gate). The title,
+  // historically, keyed only on window.gameplayActive + the creative predicate
+  // (window-side state). Those two sources can disagree if a build is only
+  // partially rebuilt (window.gameplayActive flips but the frontend.screen
+  // transition is not linked in) — which surfaces as the confusing "iggy3d -
+  // Creative" title over a still-visible starter menu. Gate the title on the
+  // SAME frontend surface the menu gate reads first, so they can never
+  // contradict.
+  // branch-gate: BG-1031
+  if (frontend.screen == FrontendScreen::Starter) {
+    return "iggy3d - Opening Menu";
+  }
   // branch-gate: BG-1031
   if (window.gameplayActive) {
     // TV1-H (TL-5): the window title is creative-aware — the creative document
@@ -164,7 +178,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     return ProductWindowLoopResult{std::move(window), std::move(saves)};
   }
 
-  sdlWindow.setTitle(productWindowTitle(window));
+  sdlWindow.setTitle(productWindowTitle(request.frontend, window));
   const auto start = std::chrono::steady_clock::now();
   ProductWindowInputFrameState inputFrame;
   initializeProductWindowInputFrameState(inputFrame, window);
@@ -174,7 +188,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     sdlWindow.pollEvents();
     ++window.eventPollCount;
     window.drawable = sdlWindow.isDrawable();
-    sdlWindow.setTitle(productWindowTitle(window));
+    sdlWindow.setTitle(productWindowTitle(request.frontend, window));
 
     const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
     const SdlWindowEventState& eventState = sdlWindow.eventState();
