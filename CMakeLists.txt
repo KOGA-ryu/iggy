@@ -302,6 +302,10 @@ target_link_libraries(iggy3d_app PRIVATE iggy3d)
 set_target_properties(iggy3d_app PROPERTIES OUTPUT_NAME iggy3d)
 iggy3d_apply_warnings(iggy3d_app)
 
+add_executable(iggy3d_creative apps/iggy3d_creative/main.cpp)
+target_link_libraries(iggy3d_creative PRIVATE iggy3d)
+iggy3d_apply_warnings(iggy3d_creative)
+
 if(IGGY3D_BUILD_TOOLS)
   add_executable(iggy3d_headless_demo apps/iggy3d_headless_demo/main.cpp)
   target_link_libraries(iggy3d_headless_demo PRIVATE iggy3d)
