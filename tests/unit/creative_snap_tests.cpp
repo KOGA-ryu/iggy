@@ -1,4 +1,4 @@
-#include "app/iggy3d/creative/Snap.hpp"
+#include "app/iggy3d/creative/spatial/Snap.hpp"
 
 #include <cstdlib>
 #include <iostream>

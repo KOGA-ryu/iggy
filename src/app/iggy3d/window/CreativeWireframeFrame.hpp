@@ -1,7 +1,7 @@
 #pragma once
 
-#include "app/iggy3d/creative/DocumentWireframe.hpp"
-#include "app/iggy3d/creative/SpatialProjection.hpp"
+#include "app/iggy3d/creative/document/DocumentWireframe.hpp"
+#include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 #include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 
 #include <cstdint>

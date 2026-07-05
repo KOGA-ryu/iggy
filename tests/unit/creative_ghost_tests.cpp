@@ -1,4 +1,4 @@
-#include "app/iggy3d/creative/Ghost.hpp"
+#include "app/iggy3d/creative/spatial/Ghost.hpp"
 
 #include <cstdlib>
 #include <iostream>

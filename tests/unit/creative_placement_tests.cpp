@@ -1,6 +1,6 @@
-#include "app/iggy3d/creative/Placement.hpp"
+#include "app/iggy3d/creative/tools/Placement.hpp"
 
-#include "app/iggy3d/creative/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
 #include <cstdlib>
 #include <iostream>

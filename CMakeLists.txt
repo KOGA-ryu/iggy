@@ -32,27 +32,27 @@ target_sources(iggy3d
     src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp
     src/app/iggy3d/world/DefaultWorldTemplate.cpp
     src/app/iggy3d/room_editor/EditableRoomToAuthoredRoom.cpp
-    src/app/iggy3d/creative/Object.cpp
-    src/app/iggy3d/creative/Document.cpp
-    src/app/iggy3d/creative/Mutation.cpp
-    src/app/iggy3d/creative/ObjectDescriptor.cpp
-    src/app/iggy3d/creative/MutationApply.cpp
-    src/app/iggy3d/creative/DocumentMutation.cpp
-    src/app/iggy3d/creative/SpatialProjection.cpp
-    src/app/iggy3d/creative/DocumentWireframe.cpp
-    src/app/iggy3d/creative/ViewportPick.cpp
-    src/app/iggy3d/creative/Tools.cpp
-    src/app/iggy3d/creative/Select.cpp
-    src/app/iggy3d/creative/Measure.cpp
-    src/app/iggy3d/creative/Snap.cpp
-    src/app/iggy3d/creative/DocumentSnap.cpp
-    src/app/iggy3d/creative/Ghost.cpp
-    src/app/iggy3d/creative/Placement.cpp
-    src/app/iggy3d/creative/Ui.cpp
-    src/app/iggy3d/creative/Metrics.cpp
+    src/app/iggy3d/creative/document/Object.cpp
+    src/app/iggy3d/creative/document/Document.cpp
+    src/app/iggy3d/creative/mutation/Mutation.cpp
+    src/app/iggy3d/creative/document/ObjectDescriptor.cpp
+    src/app/iggy3d/creative/mutation/MutationApply.cpp
+    src/app/iggy3d/creative/document/DocumentMutation.cpp
+    src/app/iggy3d/creative/spatial/SpatialProjection.cpp
+    src/app/iggy3d/creative/document/DocumentWireframe.cpp
+    src/app/iggy3d/creative/spatial/ViewportPick.cpp
+    src/app/iggy3d/creative/tools/Tools.cpp
+    src/app/iggy3d/creative/tools/Select.cpp
+    src/app/iggy3d/creative/tools/Measure.cpp
+    src/app/iggy3d/creative/spatial/Snap.cpp
+    src/app/iggy3d/creative/document/DocumentSnap.cpp
+    src/app/iggy3d/creative/spatial/Ghost.cpp
+    src/app/iggy3d/creative/tools/Placement.cpp
+    src/app/iggy3d/creative/ui/Ui.cpp
+    src/app/iggy3d/creative/mutation/Metrics.cpp
     src/app/iggy3d/creative/Facade.cpp
-    src/app/iggy3d/creative/Palette.cpp
-    src/app/iggy3d/creative/Block.cpp
+    src/app/iggy3d/creative/tools/Palette.cpp
+    src/app/iggy3d/creative/document/Block.cpp
     src/app/iggy3d/view/OpeningMenuView.cpp
     src/app/iggy3d/gameplay/ActiveRoomCollision.cpp
     src/app/iggy3d/gameplay/ActiveRoomState.cpp

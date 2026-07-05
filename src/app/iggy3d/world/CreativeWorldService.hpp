@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <string>
 
-#include "app/iggy3d/creative/Document.hpp"
+#include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 
 namespace iggy3d {

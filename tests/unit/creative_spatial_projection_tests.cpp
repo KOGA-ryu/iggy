@@ -1,5 +1,5 @@
-#include "app/iggy3d/creative/SpatialProjection.hpp"
-#include "app/iggy3d/creative/DocumentMutation.hpp"
+#include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
+#include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
 #include <cstdlib>
 #include <iostream>

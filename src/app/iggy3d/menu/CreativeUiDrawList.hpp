@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/iggy3d/creative/Ui.hpp"
+#include "app/iggy3d/creative/ui/Ui.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
 
 #include <cstdint>

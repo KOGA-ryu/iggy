@@ -1,4 +1,4 @@
-#include "app/iggy3d/creative/Palette.hpp"
+#include "app/iggy3d/creative/tools/Palette.hpp"
 
 #include <cmath>
 #include <cstdlib>

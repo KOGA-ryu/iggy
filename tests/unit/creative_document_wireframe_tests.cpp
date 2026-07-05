@@ -1,5 +1,5 @@
-#include "app/iggy3d/creative/DocumentMutation.hpp"
-#include "app/iggy3d/creative/DocumentWireframe.hpp"
+#include "app/iggy3d/creative/document/DocumentMutation.hpp"
+#include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 
 #include <cstdlib>
 #include <iostream>

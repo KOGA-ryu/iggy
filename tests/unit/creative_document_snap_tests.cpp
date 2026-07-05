@@ -1,4 +1,4 @@
-#include "app/iggy3d/creative/DocumentSnap.hpp"
+#include "app/iggy3d/creative/document/DocumentSnap.hpp"
 
 #include <cmath>
 #include <cstdlib>

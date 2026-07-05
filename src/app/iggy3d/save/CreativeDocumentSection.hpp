@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/iggy3d/creative/Document.hpp"
+#include "app/iggy3d/creative/document/Document.hpp"
 #include "runtime/save/SaveEnvelope.hpp"
 
 #include <cstdint>

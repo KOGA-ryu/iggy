@@ -1,7 +1,7 @@
 #pragma once
 
-#include "app/iggy3d/creative/SpatialProjection.hpp"
-#include "app/iggy3d/creative/ViewportPick.hpp"
+#include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
+#include "app/iggy3d/creative/spatial/ViewportPick.hpp"
 #include "app/input/MouseInput.hpp"
 
 #include <cstdint>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app/iggy3d/creative/DocumentWireframe.hpp"
+#include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 #include "core/math/Vec3.hpp"
 
 #include <cstddef>

@@ -1,4 +1,4 @@
-#include "app/iggy3d/creative/Block.hpp"
+#include "app/iggy3d/creative/document/Block.hpp"
 
 #include <cstdlib>
 #include <iostream>

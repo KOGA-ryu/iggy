@@ -1,7 +1,7 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
-#include "app/iggy3d/creative/DocumentSnap.hpp"
-#include "app/iggy3d/creative/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/document/DocumentSnap.hpp"
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
 #include <limits>
 #include <span>

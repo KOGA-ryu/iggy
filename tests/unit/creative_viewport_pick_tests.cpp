@@ -1,4 +1,4 @@
-#include "app/iggy3d/creative/ViewportPick.hpp"
+#include "app/iggy3d/creative/spatial/ViewportPick.hpp"
 
 #include <cstdlib>
 #include <iostream>

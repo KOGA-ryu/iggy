@@ -1,5 +1,5 @@
-#include "app/iggy3d/creative/ObjectDescriptor.hpp"
-#include "app/iggy3d/creative/SpatialProjection.hpp"
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 
 #include <cstdlib>
 #include <iostream>

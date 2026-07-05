@@ -1,6 +1,6 @@
 #include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 
-#include "app/iggy3d/creative/Document.hpp"
+#include "app/iggy3d/creative/document/Document.hpp"
 
 #include <cstdlib>
 #include <iostream>

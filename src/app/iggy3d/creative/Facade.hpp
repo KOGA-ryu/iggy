@@ -1,17 +1,17 @@
 #pragma once
 
 #include "app/iggy3d/creative/Core.hpp"
-#include "app/iggy3d/creative/Document.hpp"
-#include "app/iggy3d/creative/DocumentMutation.hpp"
-#include "app/iggy3d/creative/Ghost.hpp"
-#include "app/iggy3d/creative/Measure.hpp"
-#include "app/iggy3d/creative/Metrics.hpp"
-#include "app/iggy3d/creative/Object.hpp"
-#include "app/iggy3d/creative/Select.hpp"
-#include "app/iggy3d/creative/Snap.hpp"
+#include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/document/DocumentMutation.hpp"
+#include "app/iggy3d/creative/spatial/Ghost.hpp"
+#include "app/iggy3d/creative/tools/Measure.hpp"
+#include "app/iggy3d/creative/mutation/Metrics.hpp"
+#include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/tools/Select.hpp"
+#include "app/iggy3d/creative/spatial/Snap.hpp"
 #include "app/iggy3d/creative/State.hpp"
-#include "app/iggy3d/creative/Tools.hpp"
-#include "app/iggy3d/creative/Ui.hpp"
+#include "app/iggy3d/creative/tools/Tools.hpp"
+#include "app/iggy3d/creative/ui/Ui.hpp"
 
 #include <cstddef>
 #include <cstdint>
