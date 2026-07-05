@@ -218,8 +218,26 @@ stays descriptor-only until the per-object detailing thread rules on it):
   controller has no creative tool bindings, tie-break helper/batch alignment,
   brief anchor drift in CreativeInputFrame/Tools/Facade line numbers).
 - **TV1-D [ui dex]** — Palette + command generalization: per-tool rows with
-  Active flag, create rows with payload column, command table → payload rows,
-  selected_target becomes display-only. Needs TV1-C.
+  Active flag, create rows with payload column, command table → payload rows.
+  **DONE 2026-07-05** (commit d6a44e49, reviewed APPROVE after two REJECT
+  rounds). Deviations/notes: (a) selected_target keeps the visibility toggle
+  until TV1-E moves it to the inspector — did NOT become display-only yet
+  (sanctioned, avoids a dark loop between slices). (b) `creative/Placement.*`
+  added: successive creates offset +X by count×snap-step (bounds-only for
+  no-transform kinds, position+bounds for transform kinds, D8-coherent);
+  receipt notes the offset. (c) **Product fix BG-1029** (InputFrame.cpp): the
+  legacy opening-menu hit band (`openingMenuActionAt`, raw-coordinate, not
+  screen-gated) stole creative-overlay clicks once the Create row reflowed into
+  the phantom starter band (y≈174). Guard: skip that band during raw creative
+  gameplay, keep it whenever the frontend owns the mouse (`frontendMouseOwnsInput`)
+  so pause + its Settings/Load/Delete children stay clickable over a creative
+  world. Pinned by `pauseMouseClickResumesInActiveCreativeWorld`. This is the
+  same F6/F7 phantom-band class from the foundation review, re-exposed by layout
+  reflow — **any future creative-row layout change must re-check the [136,188+52k]
+  band.** (d) LESSON: incremental `cmake --build <touched-targets>` hides
+  compile failures in SIBLING test targets that reference retired symbols — make
+  cache stale-green. Gate discipline is now: `cmake --build build` (ALL targets)
+  then full `ctest`, and reviewers force a clean rebuild.
 - **TV1-E [ui dex]** — Inspector panel: display rows + visible/locked toggle
   rows (TD-4), no-selection state ("nothing selected — click an object"),
   gated on real verbs (TL-7). Needs TV1-A, TV1-D.
