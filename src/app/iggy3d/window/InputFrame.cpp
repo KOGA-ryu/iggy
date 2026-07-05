@@ -286,6 +286,7 @@ void updateProductWindowMouseCapture(const FrontendState& frontend,
       productWindowFocused(sdlWindow),
       sdlWindow != nullptr,
       productCreativeDocumentEditorActiveForWindow(window),
+      window.creativeNavigateActive,
   });
   // branch-gate: BG-1076
   if (sdlWindow == nullptr) {
@@ -374,8 +375,6 @@ ProductCreativeFlyResult applyProductWindowCreativeFlyActions(
   window.viewport.creativeFlyStatus = fly.reasonCode;
   window.viewport.creativeFlyReasonCode = fly.reasonCode;
   window.viewport.creativeFlySpeedMetersPerSecond = fly.speedMetersPerSecond;
-  window.mapMakerStatus = "map_maker_active";
-  window.mapMakerReasonCode = window.mapMakerStatus;
   // branch-gate: BG-1205
   if (fly.applied) {
     window.viewport.creativeFlyPositionMeters = fly.finalPositionMeters;
@@ -481,6 +480,11 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
     const ProductCreativeFlyResult fly =
         applyProductWindowCreativeFlyActions(window, activeSession,
                                              acceptedGameplayActions);
+    // The map_maker surface tags its status here; the shared fly wrapper stays
+    // surface-neutral so the creative-document Navigate path (TV1-H) can reuse
+    // it without stamping a map_maker label.
+    window.mapMakerStatus = "map_maker_active";
+    window.mapMakerReasonCode = window.mapMakerStatus;
     mapMakerActionApplied = !acceptedGameplayActions.entries.empty();
     mapMakerActionAccepted =
         mapMakerActionApplied &&
@@ -1262,7 +1266,37 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       creativeRequest.pointerLifecycle = creativePointerLifecycle;
       creativeRequest.pointerLifecycleTarget = creativePointerLifecycleTarget;
       (void)processProductCreativeInputActions(creativeRequest);
+
+      // TV1-H (TD-8): Navigate = fly camera, gated STRICTLY to the active tool
+      // being Navigate in creative document mode. A tool-key press this frame
+      // has already landed in the facade above, so we read the RESULT here.
+      // When Navigate is active, WASD + Space/Ctrl + Shift drive the fly kernel
+      // (the SAME applyProductCreativeFlyInput map_maker uses) and relative
+      // mouse motion drives look; the mouse-capture policy re-engages relative
+      // capture for the look (keyed on the mirror flag below). For every other
+      // tool the fly stays dead and the free cursor drives UI/pick — movement
+      // is enabled ONLY here, and only the fly-movement keys, never general
+      // gameplay keyboard input.
+      const bool navigateActive =
+          context.creativeFacade != nullptr &&
+          context.creativeFacade->toolState().activeTool ==
+              creative::Tool::Navigate;
+      context.window.creativeNavigateActive = navigateActive;
+      if (navigateActive) {
+        // Seed the fly anchor from the current view on entering Navigate so the
+        // camera starts where the fixed first-person anchor already is.
+        ensureCreativeFlyAnchor(context.window, &*context.activeSession);
+        ActionState flyActions;
+        pollKeyboardCreativeFlyActions(flyActions);
+        pollMouseGameplayActions(context.inputFrame.mouse, flyActions);
+        // Mouse-look first so the fly moves relative to the updated heading.
+        applyProductCameraActions(flyActions, context.window.viewport,
+                                  context.settings, "creative_navigate");
+        (void)applyProductWindowCreativeFlyActions(
+            context.window, &*context.activeSession, flyActions);
+      }
     } else {
+      context.window.creativeNavigateActive = false;
       if (context.window.roomEditing.ready) {
         (void)processProductWindowEditorMousePickPreview({
             context.frontend,
@@ -1306,12 +1340,15 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   }
   // If the creative-document dispatch path did not run this frame (frontend
   // menu open over the world, pause, no session), drop any held-state so a
-  // gesture interrupted mid-drag cannot fire a phantom Release on resume.
+  // gesture interrupted mid-drag cannot fire a phantom Release on resume. Also
+  // clear the Navigate mirror (TV1-H) so a pause over a Navigate world releases
+  // capture rather than staying captured behind the menu.
   if (!productCreativeDocumentEditorActiveForWindow(context.window) ||
       !context.window.gameplayActive || !context.activeSession.has_value() ||
       frontendBlocksGameplayInput(context.frontend)) {
     resetProductCreativePointerLifecycle(
         context.inputFrame.creativePointerLifecycle);
+    context.window.creativeNavigateActive = false;
   }
   updateProductWindowMouseCapture(context.frontend,
                                   context.window,

@@ -29,6 +29,18 @@ ProductMouseCapturePolicy buildProductMouseCapturePolicy(
     policy.mode = "gameplay_released";
     return policy;
   }
+  // TV1-H (TD-8): the Navigate tool drives a fly camera with mouse-look, so it
+  // RE-ENGAGES relative capture even in creative document mode. This branch
+  // sits ahead of the free-cursor release below so Navigate wins; switching to
+  // Select/Move/Measure clears creativeNavigateActive and falls through to the
+  // release branch, freeing the cursor again for UI/pick.
+  if (request.creativeDocumentActive && request.creativeNavigateActive) {
+    policy.requested = true;
+    policy.status = "mouse_capture_requested";
+    policy.reasonCode = "mouse_capture_creative_navigate_mouselook";
+    policy.mode = "relative";
+    return policy;
+  }
   // CreativeDocument exposes absolute-position editor UI rows over the gameplay
   // backdrop. Releasing relative capture keeps those rows click-addressable.
   if (request.creativeDocumentActive) {

@@ -1665,6 +1665,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      floatReceiptValue(window.viewport.cameraPitchDegrees));
   appendReceiptField(receipt, "camera_heading_visible",
                      window.viewport.cameraHeadingVisible);
+  appendReceiptField(receipt, "creative_navigate_active",
+                     window.creativeNavigateActive);
   appendReceiptField(receipt, "creative_fly_active",
                      window.viewport.creativeFlyActive);
   appendReceiptField(receipt, "creative_fly_status",

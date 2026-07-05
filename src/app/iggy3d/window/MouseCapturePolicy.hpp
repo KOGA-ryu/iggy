@@ -15,6 +15,10 @@ struct ProductMouseCapturePolicyRequest {
   bool windowFocused = true;
   bool windowCaptureSupported = true;
   bool creativeDocumentActive = false;
+  // TV1-H (TD-8): the creative Navigate tool is active this frame. Navigate
+  // re-engages relative capture for mouse-look; Select/Move/Measure keep the
+  // released free cursor for UI/pick.
+  bool creativeNavigateActive = false;
 };
 
 struct ProductMouseCapturePolicy {

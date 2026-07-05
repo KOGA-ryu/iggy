@@ -746,8 +746,16 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   frame.mapMakerGridOverlay =
       buildProductMapMakerGridOverlay(frame.mapMakerGrid);
   appendMapMakerGridDotsToScene(frame.mapMakerGrid, frame.scene);
+  // TV1-H (TD-8): the creative-document Navigate tool drives the SAME fly
+  // camera anchor as map_maker. Mirror the map_maker override path here, gated
+  // on Navigate-active-in-creative-document rather than on the map_maker
+  // surface, so the fly position feeds the projected camera in either lane.
+  const bool creativeNavigateOverride =
+      productCreativeDocumentEditorActiveForWindow(window) &&
+      window.creativeNavigateActive;
   frame.cameraAnchorOverrideAvailable =
-      mapMakerLive && window.viewport.creativeFlyAnchorValid;
+      (mapMakerLive || creativeNavigateOverride) &&
+      window.viewport.creativeFlyAnchorValid;
   frame.cameraAnchorOverrideMeters = window.viewport.creativeFlyPositionMeters;
   frame.mapMakerCubePreview = buildProductMapMakerCubePreview(
       mapMakerLive,

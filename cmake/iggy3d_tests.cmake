@@ -317,6 +317,11 @@ iggy3d_add_unit_test(product_creative_fly_tests
 set_tests_properties(product_creative_fly_tests PROPERTIES
   LABELS "unit;app;product;map_maker;creative_fly;iggy3d")
 
+iggy3d_add_unit_test(product_creative_navigate_fly_tests
+  tests/unit/product_creative_navigate_fly_tests.cpp)
+set_tests_properties(product_creative_navigate_fly_tests PROPERTIES
+  LABELS "unit;app;product;creative;creative_fly;iggy3d")
+
 iggy3d_add_unit_test(product_map_maker_presentation_tests
   tests/unit/product_map_maker_presentation_tests.cpp)
 set_tests_properties(product_map_maker_presentation_tests PROPERTIES

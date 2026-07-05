@@ -30,6 +30,11 @@ namespace {
 const char* productWindowTitle(const ProductAppWindowState& window) {
   // branch-gate: BG-1031
   if (window.gameplayActive) {
+    // TV1-H (TL-5): the window title is creative-aware — the creative document
+    // editor runs over the gameplay backdrop but is its own surface.
+    if (productCreativeDocumentEditorActiveForWindow(window)) {
+      return "iggy3d - Creative";
+    }
     return "iggy3d - Gameplay";
   }
   return "iggy3d - Opening Menu";
@@ -47,6 +52,7 @@ void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
       true,
       false,
       productCreativeDocumentEditorActiveForWindow(window),
+      window.creativeNavigateActive,
   });
   window.mouseCaptureRequested = policy.requested;
   window.mouseCaptureActive = false;

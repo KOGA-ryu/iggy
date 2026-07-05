@@ -122,5 +122,23 @@ KeyboardCreativeToolKeyPresses recordKeyboardCreativeToolKeys(
     const KeyboardCreativeToolInputSample& sample);
 KeyboardCreativeToolKeyPresses pollKeyboardCreativeToolKeys(
     KeyboardInputState& state);
+// Creative Navigate fly movement (TV1-H, TD-8). Records ONLY the fly-relevant
+// gameplay axes (WASD plane + Space/Ctrl vertical + Shift sprint) so the
+// Navigate fly camera can move; it deliberately does NOT resurrect jump /
+// interact / dash / retry — general gameplay keyboard input stays dead in
+// creative document mode. Continuous (held) axes, so no edge state is tracked.
+struct KeyboardCreativeFlyInputSample {
+  bool forwardDown = false;
+  bool backDown = false;
+  bool leftDown = false;
+  bool rightDown = false;
+  bool upDown = false;
+  bool downDown = false;
+  bool sprintDown = false;
+};
+void recordKeyboardCreativeFlyActions(
+    const KeyboardCreativeFlyInputSample& sample,
+    ActionState& actions);
+void pollKeyboardCreativeFlyActions(ActionState& actions);
 
 }  // namespace iggy3d

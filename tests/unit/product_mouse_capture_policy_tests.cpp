@@ -139,6 +139,45 @@ bool policyCases() {
           "gameplay",
       },
       {
+          // TV1-H (TD-8): Navigate re-engages relative capture for mouse-look.
+          "creative_document_navigate_recaptures",
+          {
+              true,
+              iggy3d::ProductInteractionMode::Creative,
+              iggy3d::MenuOwner::Gameplay,
+              false,
+              true,
+              true,
+              true,   // creativeDocumentActive
+              true,   // creativeNavigateActive
+          },
+          true,
+          "mouse_capture_requested",
+          "mouse_capture_creative_navigate_mouselook",
+          "relative",
+          "gameplay",
+      },
+      {
+          // Select/Move/Measure keep the released free cursor: Navigate off but
+          // still in the creative document.
+          "creative_document_non_navigate_stays_released",
+          {
+              true,
+              iggy3d::ProductInteractionMode::Creative,
+              iggy3d::MenuOwner::Gameplay,
+              false,
+              true,
+              true,
+              true,    // creativeDocumentActive
+              false,   // creativeNavigateActive
+          },
+          false,
+          "mouse_capture_not_requested",
+          "mouse_capture_creative_editor_pointer",
+          "gameplay_released",
+          "gameplay",
+      },
+      {
           "legacy_creative_gameplay_keeps_relative_capture",
           {
               true,
@@ -274,12 +313,17 @@ bool receiptCarriesMouseCaptureProof() {
   window.mouseCaptureReasonCode = "mouse_capture_active";
   window.mouseCaptureMode = "relative";
   window.mouseCaptureInputOwner = "gameplay";
+  // TV1-H: the Navigate mirror is receipt-visible (fly active state).
+  window.creativeNavigateActive = true;
 
   const iggy3d::RenderReceipt receipt =
       iggy3d::buildProductAppReceipt(options, world, frontend, settings, window,
                                      saves);
 
-  return expect(iggy3d::hasReceiptField(receipt, "mouse_capture_requested",
+  return expect(iggy3d::hasReceiptField(receipt, "creative_navigate_active",
+                                        "true"),
+                "receipt creative navigate active") &&
+         expect(iggy3d::hasReceiptField(receipt, "mouse_capture_requested",
                                         "true"),
                 "receipt mouse capture requested") &&
          expect(iggy3d::hasReceiptField(receipt, "mouse_capture_active",

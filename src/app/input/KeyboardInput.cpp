@@ -388,4 +388,53 @@ KeyboardCreativeToolKeyPresses pollKeyboardCreativeToolKeys(
 #endif
 }
 
+void recordKeyboardCreativeFlyActions(
+    const KeyboardCreativeFlyInputSample& sample,
+    ActionState& actions) {
+  // Fly axes only. PlayerMoveX/Y drive the ground plane, PlayerJump/PlayerCrouch
+  // are the fly vertical (up/down), PlayerSprint is the boost — the exact set
+  // applyProductWindowCreativeFlyActions consumes. Nothing else is recorded, so
+  // no other gameplay verb can fire.
+  if (sample.forwardDown) {
+    recordAction(actions, InputAction::PlayerMoveY, true, false, false, 1.0F);
+  }
+  if (sample.backDown) {
+    recordAction(actions, InputAction::PlayerMoveY, true, false, false, -1.0F);
+  }
+  if (sample.leftDown) {
+    recordAction(actions, InputAction::PlayerMoveX, true, false, false, -1.0F);
+  }
+  if (sample.rightDown) {
+    recordAction(actions, InputAction::PlayerMoveX, true, false, false, 1.0F);
+  }
+  if (sample.upDown) {
+    recordAction(actions, InputAction::PlayerJump, true, false, false, 1.0F);
+  }
+  if (sample.downDown) {
+    recordAction(actions, InputAction::PlayerCrouch, true, false, false, 1.0F);
+  }
+  if (sample.sprintDown) {
+    recordAction(actions, InputAction::PlayerSprint, true, false, false, 1.0F);
+  }
+}
+
+void pollKeyboardCreativeFlyActions(ActionState& actions) {
+#if defined(IGGY3D_HAS_SDL3)
+  const bool* keys = SDL_GetKeyboardState(nullptr);
+  KeyboardCreativeFlyInputSample sample;
+  sample.forwardDown = keyDown(keys, SDL_SCANCODE_W);
+  sample.backDown = keyDown(keys, SDL_SCANCODE_S);
+  sample.leftDown = keyDown(keys, SDL_SCANCODE_A);
+  sample.rightDown = keyDown(keys, SDL_SCANCODE_D);
+  sample.upDown = keyDown(keys, SDL_SCANCODE_SPACE);
+  sample.downDown =
+      keyDown(keys, SDL_SCANCODE_LCTRL) || keyDown(keys, SDL_SCANCODE_RCTRL);
+  sample.sprintDown =
+      keyDown(keys, SDL_SCANCODE_LSHIFT) || keyDown(keys, SDL_SCANCODE_RSHIFT);
+  recordKeyboardCreativeFlyActions(sample, actions);
+#else
+  (void)actions;
+#endif
+}
+
 }  // namespace iggy3d

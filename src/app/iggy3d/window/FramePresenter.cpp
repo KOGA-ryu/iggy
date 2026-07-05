@@ -1041,12 +1041,15 @@ ProductVulkanGameplayFrame buildProductVulkanGameplayFrame(
                               viewportWidth,
                               viewportHeight);
   }
-  appendDevToolsOverlayUi(frame,
-                          devToolsOverlayVisible,
-                          devToolsCategory,
-                          viewportWidth,
-                          viewportHeight);
+  // TV1-H (TL-5): the DevTools overlay is creative-aware — it stays off while
+  // the creative document editor overlay owns the viewport, alongside the other
+  // HUDs gated above. (The pause journal stays topmost by design.)
   if (!creativeEditorOverlayActive) {
+    appendDevToolsOverlayUi(frame,
+                            devToolsOverlayVisible,
+                            devToolsCategory,
+                            viewportWidth,
+                            viewportHeight);
     appendGameplayFeedbackUi(frame, projectionFrame.feedback, viewportWidth,
                              viewportHeight);
   }

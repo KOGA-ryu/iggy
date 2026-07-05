@@ -254,6 +254,11 @@ struct ProductAppWindowState {
   std::uint64_t activeCreativeDocumentId = 0;
   std::uint64_t activeCreativeObjectCount = 0;
   std::uint64_t activeCreativeNextObjectId = 0;
+  // TV1-H: mirrors the creative facade's active tool being Navigate this frame.
+  // Contexts that only carry the window (mouse-capture policy, projection
+  // camera-anchor override) read this instead of the facade so the fly camera
+  // and its capture re-engage are gated on Navigate-active-in-creative-document.
+  bool creativeNavigateActive = false;
   std::string activeCreativeSaveStatus = "creative_world_save_not_requested";
   std::string activeCreativeSaveReasonCode =
       "creative_world_save_not_requested";
