@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <thread>
@@ -31,6 +32,7 @@
 #include "render/FrameInput.hpp"
 #include "render/RendererApi.hpp"
 #include "render/RendererConfig.hpp"
+#include "render/vulkan/FrameCapture.hpp"
 #include "render/vulkan/InstanceDeviceSurface.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
@@ -62,16 +64,17 @@ RendererConfig makeCreativeVulkanRendererConfig() {
   return config;
 }
 
-// Build the Vulkan backend + RendererApi wired to the SDL window's surface.
-// Mirrors the backend construction in RendererLifecycle.cpp:214-262.
-RendererApi createCreativeRenderer(SdlWindow& window) {
+// Build the Vulkan backend wired to the SDL window's surface. Returns the
+// VulkanBackend directly (not wrapped in RendererApi) so we can reach its
+// frame-capture API for --capture. Mirrors RendererLifecycle.cpp:214-262.
+std::unique_ptr<VulkanBackend> createCreativeRenderer(SdlWindow& window) {
   SdlVulkanSurfaceProvider sdlVulkanProvider;
   const SdlVulkanExtensionList extensions =
       sdlVulkanProvider.requiredInstanceExtensions(window);
   if (extensions.outcome != RenderOutcome::Ok) {
     SDL_Log("iggy3d_creative: vulkan instance extensions unavailable (%s)",
             std::string(extensions.reason.code).c_str());
-    return RendererApi{};
+    return nullptr;
   }
 
   VulkanBackendCreateInfo backendInfo;
@@ -91,7 +94,32 @@ RendererApi createCreativeRenderer(SdlWindow& window) {
         return receipt;
       };
 
-  return RendererApi(std::make_unique<VulkanBackend>(std::move(backendInfo)));
+  return std::make_unique<VulkanBackend>(std::move(backendInfo));
+}
+
+// Write the last presented frame to a PNG (+ raw/meta/hash siblings) via the
+// engine's FrameCapture. Requires a drawable swapchain (a display), so this
+// only works on a machine with a screen — the capture reads back the swapchain.
+bool captureFrameToPng(VulkanBackend& backend, const std::string& pngPath) {
+  const RenderOutcome wait = backend.waitIdle();
+  if (wait != RenderOutcome::Ok || !backend.frameCaptureReady()) {
+    SDL_Log("iggy3d_creative: capture unavailable (wait=%d ready=%d)",
+            static_cast<int>(wait), backend.frameCaptureReady() ? 1 : 0);
+    return false;
+  }
+  const vulkan::NormalizedCapture capture = backend.readLastFrameCapture();
+  const std::filesystem::path png{pngPath};
+  vulkan::FrameCaptureArtifacts artifacts;
+  artifacts.screenshotPath = png;
+  artifacts.rawPath = std::filesystem::path{png}.replace_extension(".rgba");
+  artifacts.metaPath = std::filesystem::path{png}.replace_extension(".meta.kv");
+  artifacts.hashPath = std::filesystem::path{png}.replace_extension(".sha256");
+  const vulkan::FrameCaptureResult result =
+      vulkan::writePacket7CaptureArtifacts(capture, artifacts);
+  SDL_Log("iggy3d_creative: capture written=%d path='%s' %ux%u coverage=%.4f",
+          result.written ? 1 : 0, png.generic_string().c_str(), capture.width,
+          capture.height, result.nonBackgroundPixelCoverage);
+  return result.written;
 }
 
 // Local reimplementation of the ~20-line product loop
@@ -136,13 +164,23 @@ void appendGridDotsToScene(const ProductMapMakerGridSnapshot& grid,
 }  // namespace
 
 int main(int argc, char** argv) {
-  // Optional: --frames N auto-exits after N presented frames (scriptable run).
+  // Optional flags:
+  //   --frames N        auto-exit after N presented frames (scriptable run)
+  //   --capture <path>  render a few frames, write <path>.png, then exit
   std::uint64_t maxFrames = 0;  // 0 = run until window close.
+  std::string capturePath;
   for (int i = 1; i < argc; ++i) {
     const std::string arg = argv[i];
     if (arg == "--frames" && i + 1 < argc) {
       maxFrames = std::strtoull(argv[++i], nullptr, 10);
+    } else if (arg == "--capture" && i + 1 < argc) {
+      capturePath = argv[++i];
     }
+  }
+  // In capture mode, render a handful of frames to let the swapchain settle,
+  // then grab the last one.
+  if (!capturePath.empty() && maxFrames == 0U) {
+    maxFrames = 8U;
   }
 
   // Window (Vulkan). The SdlWindow ctor initializes the SDL video subsystem.
@@ -159,14 +197,20 @@ int main(int argc, char** argv) {
     return 1;
   }
 
-  RendererApi renderer = createCreativeRenderer(window);
-  if (!renderer.hasBackend()) {
-    SDL_Log("iggy3d_creative: failed to create vulkan renderer");
+  std::unique_ptr<VulkanBackend> backend = createCreativeRenderer(window);
+  if (backend == nullptr ||
+      backend->lifecycleState() != RendererLifecycleState::Ready) {
+    SDL_Log("iggy3d_creative: renderer not ready (lifecycle=%d)",
+            backend == nullptr ? -1
+                               : static_cast<int>(backend->lifecycleState()));
     return 1;
   }
 
-  // Relative mouse mode for a free-look fly camera.
-  window.setRelativeMouseMode(true);
+  // Relative mouse mode for a free-look fly camera (interactive only — don't
+  // grab the mouse during a scripted --capture run).
+  if (capturePath.empty()) {
+    window.setRelativeMouseMode(true);
+  }
 
   // Fly camera state. Start pulled back and up, looking at the origin.
   ProductCreativeFlyConfig flyConfig;
@@ -226,7 +270,7 @@ int main(int argc, char** argv) {
       viewport.height = extent.height;
       viewport.aspectRatio =
           static_cast<float>(extent.width) / static_cast<float>(extent.height);
-      renderer.resize(viewport);
+      backend->resize(viewport);
       lastWidth = extent.width;
       lastHeight = extent.height;
     }
@@ -277,7 +321,7 @@ int main(int argc, char** argv) {
         scene, debug, frameIndex++, extent.width, extent.height, yawDegrees,
         pitchDegrees, /*cameraAnchorOverrideAvailable=*/true, flyPos);
 
-    const RenderSubmitResult submit = renderer.submitFrame(frame);
+    const RenderSubmitResult submit = backend->submitFrame(frame);
     if (frameIndex <= 1) {
       SDL_Log("iggy3d_creative: frame %llu submit outcome=%d reason='%s' "
               "meshes=%zu",
@@ -293,7 +337,11 @@ int main(int argc, char** argv) {
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
   }
 
-  renderer.waitIdle();
-  renderer.shutdown();
-  return 0;
+  bool captureOk = true;
+  if (!capturePath.empty()) {
+    captureOk = captureFrameToPng(*backend, capturePath);
+  }
+  backend->waitIdle();
+  backend->shutdown();
+  return captureOk ? 0 : 1;
 }
