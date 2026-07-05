@@ -1,5 +1,6 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
 
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/menu/CreativeUiProjection.hpp"
 
@@ -271,11 +272,12 @@ bool modelProjectionRecordsReceiptFields() {
 }
 
 bool facadeProjectionRecordsReceiptFields() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   populateSelectedFacade(facade);
 
   iggy3d::ProductCreativeUiProjectionRequest request;
-  request.facade = &facade;
+  request.creative = &app;
   const iggy3d::ProductCreativeUiProjection projection =
       iggy3d::buildProductCreativeUiProjection(request);
 

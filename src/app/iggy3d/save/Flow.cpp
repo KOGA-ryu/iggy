@@ -3,6 +3,7 @@
 #include <array>
 
 #include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 
@@ -61,7 +62,16 @@ const PauseSaveFlowConfig& pauseSaveFlowConfigFor(
   return kPauseSaveFlowConfigs[static_cast<std::size_t>(kind)];
 }
 
-void clearPauseFlowActiveCreativeIdentity(ProductAppWindowState& window) {
+// SLICE 2 (PART B): clear the creative container's identity (the source of
+// truth) via its single clear() method, and keep the god-struct mirror on
+// `window` in lockstep so the receipt + identity tests stay green. `identity`
+// is optional because the caller only holds a container when creative is live.
+void clearPauseFlowActiveCreativeIdentity(
+    ProductAppWindowState& window,
+    creative::CreativeActiveIdentity* identity = nullptr) {
+  if (identity != nullptr) {
+    identity->clear();
+  }
   window.activeCreativeSaveId = "none";
   window.activeCreativeSavePath = "none";
   window.activeCreativeWorldId = "none";
@@ -100,17 +110,17 @@ ProductPauseSaveFlowResult executeCreativePauseSaveFlow(
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
     FrontendSettings* settings,
-    creative::Facade* creativeFacade) {
+    creative::CreativeAppState* creativeApp) {
   const PauseSaveFlowConfig& config = pauseSaveFlowConfigFor(kind);
   ProductPauseSaveFlowResult result;
   result.kind = kind;
   result.creativeSaveRequested = true;
 
-  if (creativeFacade == nullptr) {
+  if (creativeApp == nullptr) {
     recordPauseCreativeFacadeMissing(result, window);
   } else {
     result.creativeSave = saveProductCurrentCreativeWorld(
-        options, *creativeFacade, config.source, window);
+        options, *creativeApp, config.source, window);
     result.creativeSaveAccepted = result.creativeSave.accepted;
     result.creativeSaveSaved = result.creativeSave.saved;
     result.launchStatus = result.creativeSave.reasonCode;
@@ -132,7 +142,8 @@ ProductPauseSaveFlowResult executeCreativePauseSaveFlow(
     } else {
       returnProductToTitleTransition(frontend, window, *settings);
     }
-    clearPauseFlowActiveCreativeIdentity(window);
+    clearPauseFlowActiveCreativeIdentity(
+        window, creativeApp != nullptr ? &creativeApp->identity : nullptr);
   }
   kPauseSaveSessionAppliers[result.sessionReset](activeSession);
   return result;
@@ -180,7 +191,7 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     FrontendState& frontend,
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
-    creative::Facade* creativeFacade) {
+    creative::CreativeAppState* creativeApp) {
   if (productCreativeDocumentEditorActiveForWindow(window)) {
     return executeCreativePauseSaveFlow(kind,
                                         options,
@@ -188,7 +199,7 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
                                         activeSession,
                                         window,
                                         nullptr,
-                                        creativeFacade);
+                                        creativeApp);
   }
   return executeProductPauseSaveFlow(
       kind, options, frontend, activeSession, window);
@@ -216,7 +227,7 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
     FrontendSettings& settings,
-    creative::Facade* creativeFacade) {
+    creative::CreativeAppState* creativeApp) {
   if (productCreativeDocumentEditorActiveForWindow(window)) {
     return executeCreativePauseSaveFlow(kind,
                                         options,
@@ -224,7 +235,7 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
                                         activeSession,
                                         window,
                                         &settings,
-                                        creativeFacade);
+                                        creativeApp);
   }
 
   ProductPauseSaveFlowResult result =

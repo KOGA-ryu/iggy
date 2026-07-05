@@ -1,6 +1,7 @@
 #include "app/iggy3d/window/CreativeWireframeFrame.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
@@ -83,13 +84,15 @@ ProductCreativeWireframeFrameBuildResult buildProductCreativeWireframeFrame(
     return result;
   }
 
-  receipt.facadeAvailable = request.facade != nullptr;
-  if (request.facade == nullptr) {
+  creative::Facade* facade =
+      request.creative != nullptr ? &request.creative->facade : nullptr;
+  receipt.facadeAvailable = facade != nullptr;
+  if (facade == nullptr) {
     setStatus(receipt, "product_creative_wireframe_frame_facade_missing");
     return result;
   }
 
-  const creative::CreativeDocument& document = request.facade->document();
+  const creative::CreativeDocument& document = facade->document();
   receipt.documentAvailable = document.isValid();
   if (!receipt.documentAvailable) {
     setStatus(receipt, "product_creative_wireframe_frame_document_invalid");

@@ -9,7 +9,7 @@ namespace iggy3d {
 
 struct ProductCreativeUiWindowFrameRequest {
   ProductAppWindowState* window = nullptr;
-  const creative::Facade* facade = nullptr;
+  const creative::CreativeAppState* creative = nullptr;
   std::uint32_t drawableWidth = 0;
   std::uint32_t drawableHeight = 0;
   std::uint32_t fallbackWidth = 1280;

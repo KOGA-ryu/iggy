@@ -1,5 +1,6 @@
 #include "app/iggy3d/menu/CreativeUiProjection.hpp"
 
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 
 #include <cstdlib>
@@ -160,10 +161,11 @@ bool modelInputBuildsReadyProjection() {
 }
 
 bool facadeInputBuildsFromFacadeState() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   populateSelectedFacade(facade);
   iggy3d::ProductCreativeUiProjectionRequest request;
-  request.facade = &facade;
+  request.creative = &app;
   const iggy3d::ProductCreativeUiProjection projection =
       iggy3d::buildProductCreativeUiProjection(request);
 
@@ -190,11 +192,12 @@ bool facadeInputBuildsFromFacadeState() {
 
 bool modelTakesPrecedenceOverFacade() {
   const cr::CreativeUiModel model = defaultCreativeUiModel();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   populateSelectedFacade(facade);
   iggy3d::ProductCreativeUiProjectionRequest request;
   request.model = &model;
-  request.facade = &facade;
+  request.creative = &app;
   const iggy3d::ProductCreativeUiProjection projection =
       iggy3d::buildProductCreativeUiProjection(request);
 

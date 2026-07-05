@@ -192,7 +192,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     const auto creativeUiStarted = std::chrono::steady_clock::now();
     const ProductCreativeUiFrame creativeUiFrame = buildProductCreativeUiWindowFrame(
         ProductCreativeUiWindowFrameRequest{&window,
-                                            request.creativeFacade,
+                                            request.creativeApp,
                                             drawableExtent.width,
                                             drawableExtent.height,
                                             createInfo.width,
@@ -228,7 +228,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     processProductWindowInputFrame(ProductWindowInputFrameContext{
         request.frontend, saves, request.options, settingsTab,
         request.activeSession, request.worldSetupDraft, window, request.settings,
-        inputFrame, closeRequested, &sdlWindow, request.creativeFacade,
+        inputFrame, closeRequested, &sdlWindow, request.creativeApp,
         creativeUiInputDrawList,
         creative::CreativeViewportPickViewport{
             0.0F,
@@ -245,7 +245,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     const ProductCreativeWireframeFrameBuildResult wireframeFrame =
         buildProductCreativeWireframeFrame(ProductCreativeWireframeFrameRequest{
             &window,
-            request.creativeFacade,
+            request.creativeApp,
             creativeWireframeProjectionRequest()});
     if (wireframeFrame.receipt.active) {
       recordFirstStartupMeasurement(

@@ -39,7 +39,7 @@ void dispatchPauseAction(InputAction action,
   ProductPauseMenuActionContext pauseContext{
       context.frontend, context.options, context.saves, context.settingsTab,
       context.activeSession, context.window, context.closeRequested,
-      context.settings, context.creativeFacade};
+      context.settings, context.creativeApp};
   (void)applyProductPauseMenuAction(action, pauseContext);
 }
 
@@ -119,7 +119,7 @@ void dispatchStarterAction(InputAction action,
   ProductStarterMenuActionContext starterContext{
       context.frontend, context.options, context.saves, context.settingsTab,
       context.activeSession, context.worldSetupDraft, context.window,
-      context.closeRequested, context.creativeFacade};
+      context.closeRequested, context.creativeApp};
   (void)applyProductStarterMenuAction(action, starterContext);
 }
 

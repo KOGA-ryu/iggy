@@ -554,7 +554,17 @@ bool missingWindowIdentity(std::string_view value) {
   return value.empty() || value == "none";
 }
 
-void clearActiveCreativeSaveIdentity(ProductAppWindowState& window) {
+// SLICE 2 (PART B): every write below lands in BOTH the god-struct mirror on
+// `window` (kept so the receipt + the ~106 identity tests stay green) AND the
+// creative container's own identity (the new source of truth). The two are held
+// in strict lockstep here so a later slice can flip the readers over without a
+// value drift.
+void clearActiveCreativeSaveIdentity(
+    ProductAppWindowState& window,
+    creative::CreativeActiveIdentity* identity = nullptr) {
+  if (identity != nullptr) {
+    identity->clear();
+  }
   window.activeCreativeSaveId = "none";
   window.activeCreativeSavePath = "none";
   window.activeCreativeWorldId = "none";
@@ -571,12 +581,25 @@ void clearActiveCreativeSaveIdentity(ProductAppWindowState& window) {
 
 void recordActiveCreativeSaveIdentity(
     ProductAppWindowState& window,
+    creative::CreativeActiveIdentity& identity,
     std::string_view saveId,
     const std::filesystem::path& path,
     std::string_view worldId,
     creative::CreativeDocumentId documentId,
     std::uint64_t objectCount,
     creative::CreativeObjectId nextObjectId) {
+  identity.saveId = idOrNone(saveId);
+  identity.savePath = pathOrNone(path);
+  identity.worldId = idOrNone(worldId);
+  identity.documentId = documentId;
+  identity.objectCount = objectCount;
+  identity.nextObjectId = nextObjectId;
+  identity.saveStatus = "creative_world_save_not_requested";
+  identity.saveReasonCode = "creative_world_save_not_requested";
+  identity.saveDirtyFlagsBefore = 0;
+  identity.saveDirtyFlagsDrained = 0;
+  identity.saveDirtyFlagsAfter = 0;
+  identity.saveSavedAtUtc = "none";
   window.activeCreativeSaveId = idOrNone(saveId);
   window.activeCreativeSavePath = pathOrNone(path);
   window.activeCreativeWorldId = idOrNone(worldId);
@@ -593,7 +616,15 @@ void recordActiveCreativeSaveIdentity(
 
 void recordActiveCreativeSaveResult(
     ProductAppWindowState& window,
+    creative::CreativeActiveIdentity& identity,
     const ProductCreativeCurrentWorldSaveResult& result) {
+  identity.saveStatus = result.status;
+  identity.saveReasonCode = result.reasonCode;
+  identity.saveDirtyFlagsBefore = result.dirtyFlagsBefore;
+  identity.saveDirtyFlagsDrained = result.dirtyFlagsDrained;
+  identity.saveDirtyFlagsAfter = result.dirtyFlagsAfter;
+  identity.saveSavedAtUtc =
+      result.saveResult.savedAtUtc.empty() ? "none" : result.saveResult.savedAtUtc;
   window.activeCreativeSaveStatus = result.status;
   window.activeCreativeSaveReasonCode = result.reasonCode;
   window.activeCreativeSaveDirtyFlagsBefore = result.dirtyFlagsBefore;
@@ -603,12 +634,20 @@ void recordActiveCreativeSaveResult(
       result.saveResult.savedAtUtc.empty() ? "none" : result.saveResult.savedAtUtc;
   if (result.accepted && result.saved) {
     recordActiveCreativeSaveIdentity(window,
+                                     identity,
                                      result.saveId,
                                      result.path,
                                      result.worldId,
                                      result.documentId,
                                      result.objectCount,
                                      result.nextObjectId);
+    identity.saveStatus = result.status;
+    identity.saveReasonCode = result.reasonCode;
+    identity.saveDirtyFlagsBefore = result.dirtyFlagsBefore;
+    identity.saveDirtyFlagsDrained = result.dirtyFlagsDrained;
+    identity.saveDirtyFlagsAfter = result.dirtyFlagsAfter;
+    identity.saveSavedAtUtc =
+        result.saveResult.savedAtUtc.empty() ? "none" : result.saveResult.savedAtUtc;
     window.activeCreativeSaveStatus = result.status;
     window.activeCreativeSaveReasonCode = result.reasonCode;
     window.activeCreativeSaveDirtyFlagsBefore = result.dirtyFlagsBefore;
@@ -1118,7 +1157,8 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
     FrontendState& frontend,
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
-    creative::Facade& facade) {
+    creative::CreativeAppState& creativeApp) {
+  creative::Facade& facade = creativeApp.facade;
   ProductCreativeNewWorldLaunchResult result;
   window.launchAction = "creative_create_and_enter";
 
@@ -1179,6 +1219,7 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
   setCreativeNewWorldLaunchStatus(result, "product_creative_world_launched");
   window.launchStatus = result.reasonCode;
   recordActiveCreativeSaveIdentity(window,
+                                   creativeApp.identity,
                                    result.saveId,
                                    result.path,
                                    result.worldId,
@@ -1194,7 +1235,8 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
     FrontendState& frontend,
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
-    creative::Facade& facade) {
+    creative::CreativeAppState& creativeApp) {
+  creative::Facade& facade = creativeApp.facade;
   ProductCreativeOpenWorldLaunchResult result;
   window.launchAction = "creative_open_and_enter";
 
@@ -1236,6 +1278,7 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
   setCreativeOpenWorldLaunchStatus(result, "product_creative_world_opened");
   window.launchStatus = result.reasonCode;
   recordActiveCreativeSaveIdentity(window,
+                                   creativeApp.identity,
                                    result.saveId,
                                    result.path,
                                    result.worldId,
@@ -1247,10 +1290,11 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
 
 ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
     const ProductAppOptions& options,
-    creative::Facade& facade,
+    creative::CreativeAppState& creativeApp,
     std::string_view source,
     ProductAppWindowState& window) {
   (void)source;
+  creative::Facade& facade = creativeApp.facade;
 
   ProductCreativeCurrentWorldSaveResult result;
   result.saveId = window.activeCreativeSaveId;
@@ -1267,18 +1311,18 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
 
   if (window.interactionMode != ProductInteractionMode::Creative) {
     setCurrentCreativeSaveStatus(result, "product_creative_save_inactive");
-    recordActiveCreativeSaveResult(window, result);
+    recordActiveCreativeSaveResult(window, creativeApp.identity, result);
     return result;
   }
   if (missingWindowIdentity(window.activeCreativeSaveId)) {
     setCurrentCreativeSaveStatus(result, "product_creative_save_id_missing");
-    recordActiveCreativeSaveResult(window, result);
+    recordActiveCreativeSaveResult(window, creativeApp.identity, result);
     return result;
   }
   if (facade.document().id() == creative::kInvalidDocumentId) {
     setCurrentCreativeSaveStatus(result,
                                  "product_creative_save_document_id_missing");
-    recordActiveCreativeSaveResult(window, result);
+    recordActiveCreativeSaveResult(window, creativeApp.identity, result);
     return result;
   }
 
@@ -1306,13 +1350,13 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
   result.saved = saved.saved;
   if (!saved.accepted || !saved.saved) {
     setCurrentCreativeSaveStatus(result, saved.reasonCode);
-    recordActiveCreativeSaveResult(window, result);
+    recordActiveCreativeSaveResult(window, creativeApp.identity, result);
     return result;
   }
 
   result.accepted = true;
   setCurrentCreativeSaveStatus(result, "product_creative_world_saved");
-  recordActiveCreativeSaveResult(window, result);
+  recordActiveCreativeSaveResult(window, creativeApp.identity, result);
   return result;
 }
 

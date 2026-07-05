@@ -7,6 +7,7 @@
 #include <string_view>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/world/DungeonDraft.hpp"
 #include "app/iggy3d/Operations.hpp"
@@ -316,7 +317,7 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
   if (frontend.selectedAction == FrontendAction::Save) {
     executeProductPauseSaveFlow(ProductPauseSaveFlowKind::Save, context.options,
                                 frontend, context.activeSession, window,
-                                context.settings, context.creativeFacade);
+                                context.settings, context.creativeApp);
     return {true, true};
   }
   // branch-gate: BG-1017
@@ -324,7 +325,7 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
     executeProductPauseSaveFlow(ProductPauseSaveFlowKind::SaveAndExit,
                                 context.options, frontend,
                                 context.activeSession, window,
-                                context.settings, context.creativeFacade);
+                                context.settings, context.creativeApp);
     return {true, true};
   }
   // branch-gate: BG-1017
@@ -393,7 +394,7 @@ ProductMenuActionResult confirmStarterNewWorld(
 ProductMenuActionResult confirmStarterCreativeNewWorld(
     ProductStarterMenuActionContext context) {
   clearProductGameplayMovementTuning(context.window);
-  if (context.creativeFacade == nullptr) {
+  if (context.creativeApp == nullptr) {
     context.window.launchStatus = "product_creative_world_facade_missing";
     context.frontend.status = "product_creative_world_facade_missing";
     return {true, true};
@@ -410,7 +411,7 @@ ProductMenuActionResult confirmStarterCreativeNewWorld(
                                     context.frontend,
                                     context.activeSession,
                                     context.window,
-                                    *context.creativeFacade);
+                                    *context.creativeApp);
   if (!launched.accepted) {
     context.frontend.status = "opening_menu_creative_new_world_failed";
     return {true, true};
@@ -427,7 +428,7 @@ ProductMenuActionResult confirmStarterCreativeNewWorld(
 ProductMenuActionResult confirmStarterCreativeOpenWorld(
     ProductStarterMenuActionContext context) {
   clearProductGameplayMovementTuning(context.window);
-  if (context.creativeFacade == nullptr) {
+  if (context.creativeApp == nullptr) {
     context.window.launchStatus = "product_creative_world_facade_missing";
     context.frontend.status = "product_creative_world_facade_missing";
     return {true, true};
@@ -453,7 +454,7 @@ ProductMenuActionResult confirmStarterCreativeOpenWorld(
                                      context.frontend,
                                      context.activeSession,
                                      context.window,
-                                     *context.creativeFacade);
+                                     *context.creativeApp);
   if (!opened.accepted) {
     context.frontend.status = "opening_menu_creative_open_world_failed";
     return {true, true};

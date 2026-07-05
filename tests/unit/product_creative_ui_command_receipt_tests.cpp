@@ -1,5 +1,6 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
 
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 
@@ -58,10 +59,11 @@ iggy3d::ProductCreativeUiCommandFrameReceipt nullFacadeReceipt() {
 }
 
 iggy3d::ProductCreativeUiCommandFrameReceipt toolSelectNoChangeReceipt() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   iggy3d::ProductCreativeUiCommandFrameRequest request;
-  request.facade = &facade;
+  request.creative = &app;
   request.inputReceipt = commandInput("creative.row.tools.tool_select");
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
@@ -82,37 +84,40 @@ cr::CreativeToolInputPacket pointerPress(cr::Id targetId) {
 }
 
 iggy3d::ProductCreativeUiCommandFrameReceipt appliedToggleReceipt() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const cr::CreativeObjectId roomId = createRoom(facade);
   static_cast<void>(facade.dispatchToolInput(
       pointerPress(static_cast<cr::Id>(roomId))));
 
   iggy3d::ProductCreativeUiCommandFrameRequest request;
-  request.facade = &facade;
+  request.creative = &app;
   request.inputReceipt = commandInput("creative.row.selection.inspector_visible");
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
 iggy3d::ProductCreativeUiCommandFrameReceipt appliedLockReceipt() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const cr::CreativeObjectId roomId = createRoom(facade);
   static_cast<void>(facade.dispatchToolInput(
       pointerPress(static_cast<cr::Id>(roomId))));
 
   iggy3d::ProductCreativeUiCommandFrameRequest request;
-  request.facade = &facade;
+  request.creative = &app;
   request.inputReceipt = commandInput("creative.row.selection.inspector_locked");
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
 iggy3d::ProductCreativeUiCommandFrameReceipt appliedCreateRoomReceipt() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   iggy3d::ProductCreativeUiCommandFrameRequest request;
-  request.facade = &facade;
+  request.creative = &app;
   request.inputReceipt = commandInput("creative.row.create.create_room");
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }

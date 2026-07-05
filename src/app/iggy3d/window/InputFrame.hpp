@@ -31,7 +31,7 @@ struct ProductOpeningMenuInputContext;
 struct ProductUiDrawList;
 
 namespace creative {
-class Facade;
+struct CreativeAppState;
 }  // namespace creative
 
 struct ProductMovementTuningRepeatPolicy {
@@ -84,7 +84,7 @@ struct ProductWindowInputFrameContext {
   ProductWindowInputFrameState& inputFrame;
   bool& closeRequested;
   SdlWindow* sdlWindow = nullptr;
-  creative::Facade* creativeFacade = nullptr;
+  creative::CreativeAppState* creativeApp = nullptr;
   const ProductUiDrawList* creativeUiDrawList = nullptr;
   creative::CreativeViewportPickViewport creativeViewportPickViewport = {};
   creative::CreativeSpatialProjectionRequest creativeViewportPickProjectionRequest = {};

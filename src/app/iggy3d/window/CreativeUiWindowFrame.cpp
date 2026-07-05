@@ -20,7 +20,7 @@ ProductCreativeUiFrame buildProductCreativeUiWindowFrame(
 
   ProductCreativeUiFrameRequest frameRequest;
   frameRequest.window = request.window;
-  frameRequest.facade = request.facade;
+  frameRequest.creative = request.creative;
   frameRequest.virtualWidth = coordinateSpace.virtualWidth;
   frameRequest.virtualHeight = coordinateSpace.virtualHeight;
   frameRequest.theme = request.theme;

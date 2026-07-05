@@ -14,7 +14,7 @@ class Session;
 struct ProductAppOptions;
 struct ProductSaveBridgeResult;
 namespace creative {
-class Facade;
+struct CreativeAppState;
 }
 
 struct ProductAutomationDispatchContext {
@@ -43,7 +43,7 @@ struct ProductAutomationAppContext {
   WorldSetupDraft& worldSetupDraft;
   ProductAppWindowState& window;
   bool& closeRequested;
-  creative::Facade* creativeFacade = nullptr;
+  creative::CreativeAppState* creativeApp = nullptr;
 };
 
 bool applyProductAutomationCommand(

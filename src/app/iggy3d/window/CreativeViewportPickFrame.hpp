@@ -12,12 +12,12 @@ namespace iggy3d {
 
 struct ProductAppWindowState;
 namespace creative {
-class Facade;
+struct CreativeAppState;
 }  // namespace creative
 
 struct ProductCreativeViewportPickFrameRequest {
   ProductAppWindowState* window = nullptr;
-  creative::Facade* facade = nullptr;
+  creative::CreativeAppState* creative = nullptr;
   MouseClick click;
   bool downstreamClickSuppressed = false;
   creative::CreativeViewportPickViewport viewport;

@@ -36,11 +36,11 @@ bool routeAutomationInput(FrontendState& frontend,
                           ProductAppWindowState& window,
                           InputAction action,
                           bool& closeRequested,
-                          creative::Facade* creativeFacade) {
+                          creative::CreativeAppState* creativeApp) {
   ActionState actionState;
   ProductOpeningMenuInputContext menuContext{
       frontend, saves, options, settingsTab, activeSession, worldSetupDraft,
-      window, closeRequested, settings, creativeFacade};
+      window, closeRequested, settings, creativeApp};
   routeProductOpeningMenuInput(action, actionState, menuContext);
   window.automationControlLastOwner = productInputOwnerFor(frontend, window);
   return window.lastInputAccepted || action == InputAction::None;
@@ -169,7 +169,7 @@ bool applyProductAutomationAppCommand(const ProductAutomationCommand& command,
                                     context.settingsTab,
                                     context.activeSession, context.worldSetupDraft,
                                     context.window, action, context.closeRequested,
-                                    context.creativeFacade);
+                                    context.creativeApp);
       },
       [&context]() {
         const ProductAsciiRoomActivationResult activated =

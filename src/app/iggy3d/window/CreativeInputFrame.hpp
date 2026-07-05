@@ -16,7 +16,7 @@ struct ActionState;
 struct ProductAppWindowState;
 
 namespace creative {
-class Facade;
+struct CreativeAppState;
 }  // namespace creative
 
 // Held-button pointer gesture lifecycle state (TL-3). Persists across frames so
@@ -57,7 +57,7 @@ struct ProductCreativePointerLifecycleEvent {
 
 struct ProductCreativeInputFrameRequest {
   ProductAppWindowState* window = nullptr;
-  creative::Facade* facade = nullptr;
+  creative::CreativeAppState* creative = nullptr;
   InputAction action = InputAction::None;
   bool toolKeyRequested = false;
   creative::Tool toolKey = creative::Tool::Select;
@@ -74,7 +74,7 @@ struct ProductCreativeInputFrameRequest {
 
 struct ProductCreativeInputActionsRequest {
   ProductAppWindowState* window = nullptr;
-  creative::Facade* facade = nullptr;
+  creative::CreativeAppState* creative = nullptr;
   const ActionState* actions = nullptr;
   KeyboardCreativeToolKeyPresses toolKeys;
   MouseClick click;

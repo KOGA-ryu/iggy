@@ -8,6 +8,7 @@
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/save/Catalog.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
@@ -50,12 +51,13 @@ bool creativeNewWorldLaunchesThroughAutomationAppContext() {
   draft.worldName = "Automation Creative";
   iggy3d::ProductAppWindowState window;
   bool closeRequested = false;
-  iggy3d::creative::Facade facade;
+  iggy3d::creative::CreativeAppState app;
+  iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
 
   iggy3d::ProductAutomationAppContext context{
       frontend, saves, options, settings, settingsTab, activeSession, draft,
-      window, closeRequested, &facade};
+      window, closeRequested, &app};
 
   const bool selected = iggy3d::applyProductAutomationAppCommand(
       {"frontend.select", "creative_new_world"}, context);

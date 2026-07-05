@@ -9,6 +9,7 @@
 #include "app/iggy3d/map_maker/CreativeFly.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/window/CreativeInputFrame.hpp"
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
@@ -967,7 +968,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   ProductOpeningMenuInputContext menuContext{
       context.frontend, context.saves, context.options, context.settingsTab,
       context.activeSession, context.worldSetupDraft, context.window,
-      context.closeRequested, context.settings, context.creativeFacade};
+      context.closeRequested, context.settings, context.creativeApp};
   InputAction functionKeyAction = InputAction::None;
   // branch-gate: BG-1194
   if (context.sdlWindow != nullptr) {
@@ -1137,7 +1138,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       context.window, creativeUiInputReceipt);
   const ProductCreativeUiCommandFrameReceipt creativeUiCommandReceipt =
       routeProductCreativeUiCommandFrame(ProductCreativeUiCommandFrameRequest{
-          context.creativeFacade,
+          context.creativeApp,
           creativeUiInputReceipt,
       });
   recordProductCreativeUiCommandFrame(context.window,
@@ -1156,7 +1157,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       routeProductCreativeViewportPickFrame(
           ProductCreativeViewportPickFrameRequest{
               &context.window,
-              context.creativeFacade,
+              context.creativeApp,
               downstreamClick,
               downstreamClickReceipt.suppressed,
               context.creativeViewportPickViewport,
@@ -1229,9 +1230,9 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
               ProductCreativePointerLifecyclePhase::Move ||
           creativePointerLifecycle.phase ==
               ProductCreativePointerLifecyclePhase::Release;
-      if (lifecycleCarriesGesture && context.creativeFacade != nullptr) {
+      if (lifecycleCarriesGesture && context.creativeApp != nullptr) {
         const creative::CreativeToolState& toolState =
-            context.creativeFacade->toolState();
+            context.creativeApp->facade.toolState();
         if (toolState.moveDragActive) {
           creativePointerLifecycleTarget = toolState.moveDragTarget;
           const creative::CreativeGridCoord3 coord =
@@ -1258,7 +1259,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
 
       ProductCreativeInputActionsRequest creativeRequest;
       creativeRequest.window = &context.window;
-      creativeRequest.facade = context.creativeFacade;
+      creativeRequest.creative = context.creativeApp;
       creativeRequest.actions = &gameplayActions;
       creativeRequest.toolKeys = creativeToolKeys;
       creativeRequest.click = downstreamClick;
@@ -1278,8 +1279,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       // is enabled ONLY here, and only the fly-movement keys, never general
       // gameplay keyboard input.
       const bool navigateActive =
-          context.creativeFacade != nullptr &&
-          context.creativeFacade->toolState().activeTool ==
+          context.creativeApp != nullptr &&
+          context.creativeApp->facade.toolState().activeTool ==
               creative::Tool::Navigate;
       context.window.creativeNavigateActive = navigateActive;
       if (navigateActive) {
@@ -1325,7 +1326,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       }
       (void)processProductCreativeInputActions(ProductCreativeInputActionsRequest{
           &context.window,
-          context.creativeFacade,
+          context.creativeApp,
           &gameplayActions,
           {},
           downstreamClick,

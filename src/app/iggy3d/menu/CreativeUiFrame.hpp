@@ -10,7 +10,7 @@ namespace iggy3d {
 
 struct ProductCreativeUiFrameRequest {
   ProductAppWindowState* window = nullptr;
-  const creative::Facade* facade = nullptr;
+  const creative::CreativeAppState* creative = nullptr;
   std::uint32_t virtualWidth = 1280;
   std::uint32_t virtualHeight = 720;
   ProductUiThemeId theme = ProductUiThemeId::System;

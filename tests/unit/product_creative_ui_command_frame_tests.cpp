@@ -1,5 +1,6 @@
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 
 #include <array>
@@ -32,10 +33,10 @@ iggy3d::ProductCreativeUiInputFrameReceipt commandInput(
 }
 
 iggy3d::ProductCreativeUiCommandFrameReceipt routeCommand(
-    cr::Facade& facade,
+    cr::CreativeAppState& app,
     std::string_view semanticId = "creative.row.tools.tool_select") {
   iggy3d::ProductCreativeUiCommandFrameRequest request;
-  request.facade = &facade;
+  request.creative = &app;
   request.inputReceipt = commandInput(semanticId);
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
@@ -102,12 +103,13 @@ bool nullFacadeFailsClosed() {
 }
 
 bool notConsumedInputNoops() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
 
   iggy3d::ProductCreativeUiCommandFrameRequest request;
-  request.facade = &facade;
+  request.creative = &app;
   request.inputReceipt =
       commandInput("creative.row.tools.tool_select", false, true);
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
@@ -134,12 +136,13 @@ bool notConsumedInputNoops() {
 }
 
 bool consumedDisabledNoops() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));
 
   iggy3d::ProductCreativeUiCommandFrameRequest request;
-  request.facade = &facade;
+  request.creative = &app;
   request.inputReceipt =
       commandInput("creative.row.tools.tool_select", true, false);
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
@@ -163,11 +166,12 @@ bool consumedDisabledNoops() {
 }
 
 bool consumedUnknownSemanticNoops() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.status.creative_status");
+      routeCommand(app, "creative.row.status.creative_status");
 
   return expect(receipt.facadeAvailable, "unknown facade available") &&
          expect(receipt.inputConsumed, "unknown consumed") &&
@@ -188,14 +192,15 @@ bool consumedUnknownSemanticNoops() {
 }
 
 bool clickingActiveToolButtonIsAcceptedNoChange() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   // Facade starts on Select; clicking the already-active Select palette row is
   // an explicit SetActiveTool command that is consumed (accepted) but makes no
   // change and is NOT an error (TD-5 / palette policy).
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.tools.tool_select");
+      routeCommand(app, "creative.row.tools.tool_select");
 
   return expect(receipt.accepted, "active tool accepted") &&
          expect(!receipt.changed, "active tool unchanged") &&
@@ -217,7 +222,8 @@ bool clickingActiveToolButtonIsAcceptedNoChange() {
 }
 
 bool clickingActiveToolButtonPreservesVisibleGhost() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.dispatchToolInput(pointerMove(1.2, 2.7, 42)));
   const std::uint64_t objectCountBefore = facade.document().objectCount();
@@ -225,7 +231,7 @@ bool clickingActiveToolButtonPreservesVisibleGhost() {
   // Clicking the currently-active tool button is a same-tool no-op, so the
   // setActiveTool ghost-hide hygiene does not fire and the ghost survives.
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.tools.tool_select");
+      routeCommand(app, "creative.row.tools.tool_select");
 
   return expect(facade.ghostState().visible,
                 "active tool ghost remains visible") &&
@@ -247,7 +253,8 @@ bool clickingActiveToolButtonPreservesVisibleGhost() {
 }
 
 bool clickingActiveToolButtonPreservesActiveMeasurement() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
   const cr::CreativeFacadeToolDispatchReceipt begin =
@@ -258,7 +265,7 @@ bool clickingActiveToolButtonPreservesActiveMeasurement() {
   // the switch-away measurement-cancel hygiene does not fire. Clicking a
   // DIFFERENT tool button would legitimately cancel it.
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.tools.tool_measure");
+      routeCommand(app, "creative.row.tools.tool_measure");
 
   return expect(begin.measurementChanged,
                 "active tool measure setup began") &&
@@ -284,14 +291,15 @@ bool clickingActiveToolButtonPreservesActiveMeasurement() {
 }
 
 bool createRoomCommandCreatesGenericRoom() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   const std::uint64_t objectCountBefore = facade.document().objectCount();
   const std::uint64_t revisionBefore = facade.document().revision();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.create.create_room");
+      routeCommand(app, "creative.row.create.create_room");
   const cr::CreativeObject* room = facade.findObject(receipt.createObjectId);
   const cr::CreativeObjectDescriptor& descriptor =
       cr::describeObject(cr::CreativeObjectKind::Room);
@@ -350,13 +358,14 @@ bool createRoomCommandCreatesGenericRoom() {
 }
 
 bool repeatedCreateRoomCommandCreatesNewIdsAndRevisions() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt first =
-      routeCommand(facade, "creative.row.create.create_room");
+      routeCommand(app, "creative.row.create.create_room");
   const iggy3d::ProductCreativeUiCommandFrameReceipt second =
-      routeCommand(facade, "creative.row.create.create_room");
+      routeCommand(app, "creative.row.create.create_room");
 
   return expect(first.accepted && first.changed, "repeat create first") &&
          expect(second.accepted && second.changed, "repeat create second") &&
@@ -379,7 +388,8 @@ bool repeatedCreateRoomCommandCreatesNewIdsAndRevisions() {
 }
 
 bool selectedTargetRowTogglesRoomVisibilityOff() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
@@ -387,7 +397,7 @@ bool selectedTargetRowTogglesRoomVisibilityOff() {
   const std::uint64_t revisionBefore = facade.document().revision();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.selection.inspector_visible");
+      routeCommand(app, "creative.row.selection.inspector_visible");
   const cr::CreativeObject* room = facade.findObject(roomId);
 
   return expect(room != nullptr, "toggle off room exists") &&
@@ -430,16 +440,17 @@ bool selectedTargetRowTogglesRoomVisibilityOff() {
 }
 
 bool selectedTargetRowTogglesRoomVisibilityOnAgain() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt first =
-      routeCommand(facade, "creative.row.selection.inspector_visible");
+      routeCommand(app, "creative.row.selection.inspector_visible");
   const std::uint64_t revisionBeforeSecond = facade.document().revision();
   const iggy3d::ProductCreativeUiCommandFrameReceipt second =
-      routeCommand(facade, "creative.row.selection.inspector_visible");
+      routeCommand(app, "creative.row.selection.inspector_visible");
   const cr::CreativeObject* room = facade.findObject(roomId);
 
   return expect(first.changed, "toggle on setup changed") &&
@@ -464,14 +475,15 @@ bool selectedTargetRowTogglesRoomVisibilityOnAgain() {
 }
 
 bool selectedTargetRowPreservesActiveTool() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.selection.inspector_visible");
+      routeCommand(app, "creative.row.selection.inspector_visible");
 
   return expect(receipt.changed, "tool preserve toggle changed") &&
          expect(facade.selectionState().selectedTarget.value == roomId,
@@ -481,11 +493,12 @@ bool selectedTargetRowPreservesActiveTool() {
 }
 
 bool selectedTargetRowNoSelectionRejects() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.selection.inspector_visible");
+      routeCommand(app, "creative.row.selection.inspector_visible");
 
   return expect(receipt.commandKind ==
                     iggy3d::ProductCreativeUiCommandKind::
@@ -514,14 +527,15 @@ bool selectedTargetRowNoSelectionRejects() {
 }
 
 bool selectedTargetRowMissingObjectRejectsAndPreservesSelection() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   constexpr cr::Id missingTarget = 999;
   static_cast<void>(facade.dispatchToolInput(pointerPress(missingTarget)));
   const std::uint64_t revisionBefore = facade.document().revision();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.selection.inspector_visible");
+      routeCommand(app, "creative.row.selection.inspector_visible");
 
   return expect(receipt.commandKind ==
                     iggy3d::ProductCreativeUiCommandKind::
@@ -559,7 +573,8 @@ bool selectedTargetRowMissingObjectRejectsAndPreservesSelection() {
 bool selectedTargetRowIsDisplayOnlyNoop() {
   // TD-4: the selected_target row lost its command-table entry, so clicking it
   // is consumed but performs NO mutation (unknown semantic noop).
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
@@ -568,7 +583,7 @@ bool selectedTargetRowIsDisplayOnlyNoop() {
   const std::uint64_t revisionBefore = facade.document().revision();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.selection.selected_target");
+      routeCommand(app, "creative.row.selection.selected_target");
   const cr::CreativeObject* after = facade.findObject(roomId);
 
   return expect(receipt.commandKind ==
@@ -588,14 +603,15 @@ bool selectedTargetRowIsDisplayOnlyNoop() {
 }
 
 bool inspectorLockedRowTogglesRoomLockedOn() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
   const std::uint64_t revisionBefore = facade.document().revision();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.selection.inspector_locked");
+      routeCommand(app, "creative.row.selection.inspector_locked");
   const cr::CreativeObject* room = facade.findObject(roomId);
 
   return expect(room != nullptr, "lock on room exists") &&
@@ -627,15 +643,16 @@ bool inspectorLockedRowTogglesRoomLockedOn() {
 }
 
 bool inspectorLockedRowTogglesRoomLockedOffAgain() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt first =
-      routeCommand(facade, "creative.row.selection.inspector_locked");
+      routeCommand(app, "creative.row.selection.inspector_locked");
   const iggy3d::ProductCreativeUiCommandFrameReceipt second =
-      routeCommand(facade, "creative.row.selection.inspector_locked");
+      routeCommand(app, "creative.row.selection.inspector_locked");
   const cr::CreativeObject* room = facade.findObject(roomId);
 
   return expect(first.changed && first.lockedAfter, "lock off setup locked") &&
@@ -650,11 +667,12 @@ bool inspectorLockedRowTogglesRoomLockedOffAgain() {
 }
 
 bool inspectorLockedRowNoSelectionRejects() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.selection.inspector_locked");
+      routeCommand(app, "creative.row.selection.inspector_locked");
 
   return expect(receipt.commandKind ==
                     iggy3d::ProductCreativeUiCommandKind::
@@ -676,16 +694,17 @@ bool inspectorLockedRowNoSelectionRejects() {
 bool lockedObjectRefusesVisibilityMutationWithReceipt() {
   // TD-3: a locked object rejects all other mutations; toggling visibility on a
   // locked selection is rejected and the message names the lock (TL-6).
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
   const iggy3d::ProductCreativeUiCommandFrameReceipt lockReceipt =
-      routeCommand(facade, "creative.row.selection.inspector_locked");
+      routeCommand(app, "creative.row.selection.inspector_locked");
   const std::uint64_t revisionAfterLock = facade.document().revision();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt visibilityReceipt =
-      routeCommand(facade, "creative.row.selection.inspector_visible");
+      routeCommand(app, "creative.row.selection.inspector_visible");
   const cr::CreativeObject* room = facade.findObject(roomId);
 
   return expect(lockReceipt.accepted && lockReceipt.lockedAfter,
@@ -718,10 +737,11 @@ bool nonToolRowsRemainUnknownNoop() {
 
   bool ok = true;
   for (std::string_view semanticId : kUnknownRows) {
-    cr::Facade facade;
+    cr::CreativeAppState app;
+    [[maybe_unused]] cr::Facade& facade = app.facade;
     facade.reset();
     const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-        routeCommand(facade, semanticId);
+        routeCommand(app, semanticId);
     ok &= expect(receipt.semanticId == semanticId, "unknown row semantic") &&
           expect(receipt.status ==
                      "product_creative_ui_command_unknown_semantic",

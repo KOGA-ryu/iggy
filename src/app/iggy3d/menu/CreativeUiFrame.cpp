@@ -70,7 +70,7 @@ ProductCreativeUiFrame buildProductCreativeUiFrame(
     return frame;
   }
 
-  if (request.facade == nullptr) {
+  if (request.creative == nullptr) {
     frame.projection.receipt = makeFrameProjectionReceipt(
         request, true, "product_creative_ui_frame_facade_missing");
     recordProductCreativeUiProjection(window, frame.projection.receipt);
@@ -83,7 +83,7 @@ ProductCreativeUiFrame buildProductCreativeUiFrame(
   }
 
   ProductCreativeUiProjectionRequest projectionRequest;
-  projectionRequest.facade = request.facade;
+  projectionRequest.creative = request.creative;
   projectionRequest.virtualWidth = request.virtualWidth;
   projectionRequest.virtualHeight = request.virtualHeight;
   projectionRequest.theme = request.theme;

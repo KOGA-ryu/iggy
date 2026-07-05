@@ -11,12 +11,12 @@ namespace iggy3d {
 
 struct ProductAppWindowState;
 namespace creative {
-class Facade;
+struct CreativeAppState;
 }  // namespace creative
 
 struct ProductCreativeWireframeFrameRequest {
   ProductAppWindowState* window = nullptr;
-  creative::Facade* facade = nullptr;
+  creative::CreativeAppState* creative = nullptr;
   creative::CreativeSpatialProjectionRequest projectionRequest;
 };
 

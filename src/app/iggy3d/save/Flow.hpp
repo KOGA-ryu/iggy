@@ -16,6 +16,10 @@
 
 namespace iggy3d {
 
+namespace creative {
+struct CreativeAppState;
+}  // namespace creative
+
 enum class ProductPauseSaveFlowKind : std::uint8_t {
   Save,
   SaveAndExit,
@@ -47,7 +51,7 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     FrontendState& frontend,
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
-    creative::Facade* creativeFacade);
+    creative::CreativeAppState* creativeApp);
 
 ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     ProductPauseSaveFlowKind kind,
@@ -64,6 +68,6 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
     FrontendSettings& settings,
-    creative::Facade* creativeFacade);
+    creative::CreativeAppState* creativeApp);
 
 }  // namespace iggy3d

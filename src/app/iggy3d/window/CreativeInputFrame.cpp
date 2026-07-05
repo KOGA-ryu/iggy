@@ -1,6 +1,7 @@
 #include "app/iggy3d/window/CreativeInputFrame.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/input/ActionState.hpp"
@@ -186,13 +187,13 @@ ProductCreativeInputFrameReceipt processProductCreativeInputFrame(
   }
 
   receipt.requested = true;
-  if (request.facade == nullptr) {
+  if (request.creative == nullptr) {
     receipt.status = "product_creative_input_facade_missing";
     receipt.reasonCode = "product_creative_input_facade_missing";
     return receipt;
   }
 
-  creative::Facade& facade = *request.facade;
+  creative::Facade& facade = request.creative->facade;
   receipt.facadeAvailable = true;
   receipt.activeToolBefore = facade.toolState().activeTool;
   receipt.activeToolAfter = receipt.activeToolBefore;
@@ -287,13 +288,13 @@ ProductCreativeInputFrameReceipt processProductCreativeInputActions(
   }
 
   receipt.requested = true;
-  if (request.facade == nullptr) {
+  if (request.creative == nullptr) {
     receipt.status = "product_creative_input_facade_missing";
     receipt.reasonCode = "product_creative_input_facade_missing";
     return receipt;
   }
 
-  creative::Facade& facade = *request.facade;
+  creative::Facade& facade = request.creative->facade;
   receipt.facadeAvailable = true;
   receipt.activeToolBefore = facade.toolState().activeTool;
   receipt.activeToolAfter = receipt.activeToolBefore;
@@ -306,7 +307,7 @@ ProductCreativeInputFrameReceipt processProductCreativeInputActions(
 
     ProductCreativeInputFrameRequest frameRequest;
     frameRequest.window = request.window;
-    frameRequest.facade = request.facade;
+    frameRequest.creative = request.creative;
     frameRequest.toolKeyRequested = true;
     frameRequest.toolKey = row.tool;
     const ProductCreativeInputFrameReceipt frameReceipt =
@@ -324,7 +325,7 @@ ProductCreativeInputFrameReceipt processProductCreativeInputActions(
 
       ProductCreativeInputFrameRequest frameRequest;
       frameRequest.window = request.window;
-      frameRequest.facade = request.facade;
+      frameRequest.creative = request.creative;
       frameRequest.action = entry.action;
       const ProductCreativeInputFrameReceipt frameReceipt =
           processProductCreativeInputFrame(frameRequest);
@@ -341,7 +342,7 @@ ProductCreativeInputFrameReceipt processProductCreativeInputActions(
   if (request.click.clicked || hasLifecyclePacket) {
     ProductCreativeInputFrameRequest frameRequest;
     frameRequest.window = request.window;
-    frameRequest.facade = request.facade;
+    frameRequest.creative = request.creative;
     frameRequest.click = request.click;
     frameRequest.pointerTarget = request.pointerTarget;
     frameRequest.pointerLifecycle = request.pointerLifecycle;

@@ -4,6 +4,7 @@
 #include "app/iggy3d/window/CreativeViewportPickFrame.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/iggy3d/menu/CreativeUiDrawList.hpp"
@@ -56,7 +57,8 @@ cr::CreativeViewportPickViewport viewport() {
 }
 
 cr::Facade facadeWithRoom() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::Room;
   request.name = "Room";
@@ -107,12 +109,12 @@ iggy3d::ProductCreativeUiInputFrameReceipt clickPrimitive(
 
 iggy3d::ProductCreativeViewportPickFrameReceipt pickRoomAt(
     iggy3d::ProductAppWindowState& window,
-    cr::Facade& facade,
+    cr::CreativeAppState& app,
     iggy3d::MouseClick click,
     bool suppressed = false) {
   iggy3d::ProductCreativeViewportPickFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.click = click;
   request.downstreamClickSuppressed = suppressed;
   request.viewport = viewport();
@@ -123,14 +125,14 @@ iggy3d::ProductCreativeViewportPickFrameReceipt pickRoomAt(
 
 iggy3d::ProductCreativeInputFrameReceipt dispatchPickedClick(
     iggy3d::ProductAppWindowState& window,
-    cr::Facade& facade,
+    cr::CreativeAppState& app,
     iggy3d::MouseClick click,
     cr::TargetRef target,
     const iggy3d::ActionState* actions = nullptr,
     iggy3d::KeyboardCreativeToolKeyPresses toolKeys = {}) {
   iggy3d::ProductCreativeInputActionsRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.actions = actions;
   request.toolKeys = toolKeys;
   request.click = click;
@@ -140,16 +142,18 @@ iggy3d::ProductCreativeInputFrameReceipt dispatchPickedClick(
 
 bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade = facadeWithRoom();
+  cr::CreativeAppState app;
+  app.facade = facadeWithRoom();
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
   const std::uint64_t objectCountBefore = facade.document().objectCount();
   const std::uint64_t revisionBeforeToggle = facade.document().revision();
   const iggy3d::MouseClick viewportClick = clickAt(150.0F, 250.0F);
 
   const iggy3d::ProductCreativeViewportPickFrameReceipt initialPick =
-      pickRoomAt(window, facade, viewportClick);
+      pickRoomAt(window, app, viewportClick);
   const iggy3d::ProductCreativeInputFrameReceipt selectInput =
-      dispatchPickedClick(window, facade, viewportClick, initialPick.target);
+      dispatchPickedClick(window, app, viewportClick, initialPick.target);
   const cr::CreativeUiBuildReceipt selectedUi = facade.buildUiModel();
   const cr::CreativeUiRow* selectedRow = findUiRow(
       selectedUi.model, cr::CreativeUiPanelKind::Selection,
@@ -170,13 +174,13 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
           : iggy3d::ProductCreativeUiInputFrameReceipt{};
   const iggy3d::ProductCreativeUiCommandFrameReceipt hideCommand =
       iggy3d::routeProductCreativeUiCommandFrame(
-          iggy3d::ProductCreativeUiCommandFrameRequest{&facade,
+          iggy3d::ProductCreativeUiCommandFrameRequest{&app,
                                                        selectedUiInput});
   const cr::CreativeObject* hiddenRoom = facade.findObject(roomId);
   const bool roomHiddenAfterHide =
       hiddenRoom != nullptr && !hiddenRoom->visible;
   const iggy3d::ProductCreativeViewportPickFrameReceipt hiddenPick =
-      pickRoomAt(window, facade, viewportClick);
+      pickRoomAt(window, app, viewportClick);
   const cr::CreativeUiBuildReceipt hiddenUi = facade.buildUiModel();
   const cr::CreativeUiRow* hiddenSelectedRow = findUiRow(
       hiddenUi.model, cr::CreativeUiPanelKind::Selection,
@@ -195,11 +199,11 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
           : iggy3d::ProductCreativeUiInputFrameReceipt{};
   const iggy3d::ProductCreativeUiCommandFrameReceipt showCommand =
       iggy3d::routeProductCreativeUiCommandFrame(
-          iggy3d::ProductCreativeUiCommandFrameRequest{&facade,
+          iggy3d::ProductCreativeUiCommandFrameRequest{&app,
                                                        hiddenUiInput});
   const cr::CreativeObject* visibleRoom = facade.findObject(roomId);
   const iggy3d::ProductCreativeViewportPickFrameReceipt visiblePick =
-      pickRoomAt(window, facade, viewportClick);
+      pickRoomAt(window, app, viewportClick);
 
   return expect(initialPick.picked, "visibility flow initial pick") &&
          expect(initialPick.target.value == roomId,
@@ -303,7 +307,8 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
 }
 
 bool createRoomUiRowCommandCreatesRoomThroughFacade() {
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const cr::CreativeUiBuildReceipt initialUi = facade.buildUiModel();
   const iggy3d::ProductUiDrawList initialDrawList =
@@ -317,7 +322,7 @@ bool createRoomUiRowCommandCreatesRoomThroughFacade() {
           : iggy3d::ProductCreativeUiInputFrameReceipt{};
   const iggy3d::ProductCreativeUiCommandFrameReceipt createCommand =
       iggy3d::routeProductCreativeUiCommandFrame(
-          iggy3d::ProductCreativeUiCommandFrameRequest{&facade, createInput});
+          iggy3d::ProductCreativeUiCommandFrameRequest{&app, createInput});
   const cr::CreativeObject* created =
       facade.findObject(createCommand.createObjectId);
   const cr::CreativeUiBuildReceipt rebuiltUi = facade.buildUiModel();
@@ -381,14 +386,16 @@ bool createRoomUiRowCommandCreatesRoomThroughFacade() {
 
 bool selectPickUpdatesFacadeAndUiRows() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade = facadeWithRoom();
+  cr::CreativeAppState app;
+  app.facade = facadeWithRoom();
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
 
   const iggy3d::MouseClick click = clickAt(150.0F, 250.0F);
   const iggy3d::ProductCreativeViewportPickFrameReceipt pick =
-      pickRoomAt(window, facade, click);
+      pickRoomAt(window, app, click);
   const iggy3d::ProductCreativeInputFrameReceipt input =
-      dispatchPickedClick(window, facade, click, pick.target);
+      dispatchPickedClick(window, app, click, pick.target);
   const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
   const cr::CreativeUiRow* selected = findUiRow(
       ui.model, cr::CreativeUiPanelKind::Selection,
@@ -421,16 +428,18 @@ bool moveToolKeyPickSelectsAndFeedsSelectionRow() {
   // Move selects like Select until the drag slice (TV1-F/G) lands; the
   // selection panel is the only target surface.
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade = facadeWithRoom();
+  cr::CreativeAppState app;
+  app.facade = facadeWithRoom();
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
 
   iggy3d::KeyboardCreativeToolKeyPresses toolKeys;
   toolKeys.movePressed = true;
   const iggy3d::MouseClick click = clickAt(150.0F, 250.0F);
   const iggy3d::ProductCreativeViewportPickFrameReceipt pick =
-      pickRoomAt(window, facade, click);
+      pickRoomAt(window, app, click);
   const iggy3d::ProductCreativeInputFrameReceipt input =
-      dispatchPickedClick(window, facade, click, pick.target, nullptr,
+      dispatchPickedClick(window, app, click, pick.target, nullptr,
                           toolKeys);
   const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
   const cr::CreativeUiRow* selected = findUiRow(
@@ -450,16 +459,18 @@ bool moveToolKeyPickSelectsAndFeedsSelectionRow() {
 
 bool measurePickStoresTargetOnMeasurementRows() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade = facadeWithRoom();
+  cr::CreativeAppState app;
+  app.facade = facadeWithRoom();
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
 
   iggy3d::KeyboardCreativeToolKeyPresses toolKeys;
   toolKeys.measurePressed = true;
   const iggy3d::MouseClick click = clickAt(150.0F, 250.0F);
   const iggy3d::ProductCreativeViewportPickFrameReceipt pick =
-      pickRoomAt(window, facade, click);
+      pickRoomAt(window, app, click);
   const iggy3d::ProductCreativeInputFrameReceipt input =
-      dispatchPickedClick(window, facade, click, pick.target, nullptr,
+      dispatchPickedClick(window, app, click, pick.target, nullptr,
                           toolKeys);
   const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
   const cr::CreativeUiRow* start = findUiRow(
@@ -486,13 +497,15 @@ bool measurePickStoresTargetOnMeasurementRows() {
 
 bool missKeepsTargetInvalidAndSelectionUnchanged() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade = facadeWithRoom();
+  cr::CreativeAppState app;
+  app.facade = facadeWithRoom();
+  [[maybe_unused]] cr::Facade& facade = app.facade;
 
   const iggy3d::MouseClick click = clickAt(50.0F, 50.0F);
   const iggy3d::ProductCreativeViewportPickFrameReceipt pick =
-      pickRoomAt(window, facade, click);
+      pickRoomAt(window, app, click);
   const iggy3d::ProductCreativeInputFrameReceipt input =
-      dispatchPickedClick(window, facade, click, pick.target);
+      dispatchPickedClick(window, app, click, pick.target);
   const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
   const cr::CreativeUiRow* selected = findUiRow(
       ui.model, cr::CreativeUiPanelKind::Selection,
@@ -511,7 +524,9 @@ bool missKeepsTargetInvalidAndSelectionUnchanged() {
 
 bool suppressedCreativeUiClickDoesNotPickOrSelect() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade = facadeWithRoom();
+  cr::CreativeAppState app;
+  app.facade = facadeWithRoom();
+  [[maybe_unused]] cr::Facade& facade = app.facade;
 
   iggy3d::ProductCreativeUiDownstreamClickRequest downstreamRequest;
   downstreamRequest.click = clickAt(150.0F, 250.0F);
@@ -519,10 +534,10 @@ bool suppressedCreativeUiClickDoesNotPickOrSelect() {
   const iggy3d::ProductCreativeUiDownstreamClickReceipt downstream =
       iggy3d::routeProductCreativeUiDownstreamClick(downstreamRequest);
   const iggy3d::ProductCreativeViewportPickFrameReceipt pick =
-      pickRoomAt(window, facade, downstream.downstreamClick,
+      pickRoomAt(window, app, downstream.downstreamClick,
                  downstream.suppressed);
   const iggy3d::ProductCreativeInputFrameReceipt input =
-      dispatchPickedClick(window, facade, downstream.downstreamClick,
+      dispatchPickedClick(window, app, downstream.downstreamClick,
                           pick.target);
 
   return expect(downstream.suppressed, "suppressed downstream") &&

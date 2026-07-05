@@ -1,5 +1,6 @@
 #include "app/iggy3d/menu/CreativeUiProjection.hpp"
 
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/menu/CreativeUiDrawList.hpp"
 
@@ -60,8 +61,8 @@ ProductCreativeUiProjection buildProductCreativeUiProjection(
   const creative::CreativeUiModel* model = request.model;
   if (model != nullptr) {
     projection.receipt.usedModel = true;
-  } else if (request.facade != nullptr) {
-    facadeUiReceipt = request.facade->buildUiModel();
+  } else if (request.creative != nullptr) {
+    facadeUiReceipt = request.creative->facade.buildUiModel();
     model = &facadeUiReceipt.model;
     projection.receipt.usedFacade = true;
   }

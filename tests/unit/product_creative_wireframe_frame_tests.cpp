@@ -1,6 +1,7 @@
 #include "app/iggy3d/window/CreativeWireframeFrame.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/view/CreativeWireframeDebugLines.hpp"
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
@@ -79,10 +80,10 @@ void selectTarget(cr::Facade& facade, cr::CreativeObjectId objectId) {
 
 iggy3d::ProductCreativeWireframeFrameRequest baseRequest(
     iggy3d::ProductAppWindowState& window,
-    cr::Facade& facade) {
+    cr::CreativeAppState& app) {
   iggy3d::ProductCreativeWireframeFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.projectionRequest = projectionRequest();
   return request;
 }
@@ -129,9 +130,10 @@ bool activeRuleUsesCreativeDocumentIdentity() {
 
 bool inactiveWindowDoesNotBuild() {
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeWireframeFrameReceipt receipt =
-      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, app));
 
   return expect(receipt.requested, "inactive requested") &&
          expect(!receipt.active, "inactive active false") &&
@@ -164,10 +166,11 @@ bool nullFacadeFailsClosed() {
 
 bool emptyCreativeDocumentBuildsZeroSegments() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
 
   const iggy3d::ProductCreativeWireframeFrameReceipt receipt =
-      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, app));
 
   return expect(receipt.facadeAvailable, "empty facade available") &&
          expect(receipt.documentAvailable, "empty document available") &&
@@ -202,11 +205,12 @@ bool emptyCreativeDocumentBuildsZeroSegments() {
 
 bool oneRoomBuildsTwelveSegments() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
 
   const iggy3d::ProductCreativeWireframeFrameReceipt receipt =
-      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, app));
 
   return expect(roomId != cr::kInvalidObjectId, "room created") &&
          expect(receipt.sourceAvailable, "room source available") &&
@@ -244,11 +248,12 @@ bool oneRoomBuildsTwelveSegments() {
 
 bool buildResultKeepsDebugLineList() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
 
   const iggy3d::ProductCreativeWireframeFrameBuildResult result =
-      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, app));
 
   return expect(result.receipt.status ==
                     "product_creative_wireframe_frame_built",
@@ -263,10 +268,11 @@ bool buildResultKeepsDebugLineList() {
 
 bool presenterRenderFrameCarriesDebugLines() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
   const iggy3d::ProductCreativeWireframeFrameBuildResult result =
-      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, app));
 
   const iggy3d::ProductCreativeWireframeDebugRenderFrame renderFrame =
       iggy3d::buildProductCreativeWireframeDebugRenderFrame(
@@ -287,10 +293,11 @@ bool presenterRenderFrameCarriesDebugLines() {
 
 bool visibleRoomWireframeReachesVulkanCpuGeometry() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
   const iggy3d::ProductCreativeWireframeFrameBuildResult frameResult =
-      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, app));
   const iggy3d::ProductCreativeWireframeDebugRenderFrame renderFrame =
       iggy3d::buildProductCreativeWireframeDebugRenderFrame(
           &frameResult.debugLineList);
@@ -326,14 +333,15 @@ bool visibleRoomWireframeReachesVulkanCpuGeometry() {
 
 bool hiddenRoomBuildsNoSegmentsButCountsObject() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
   const cr::CreativeFacadeMutationReceipt mutation =
       facade.toggleSelectedObjectVisibility();
 
   const iggy3d::ProductCreativeWireframeFrameReceipt receipt =
-      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, app));
 
   return expect(mutation.accepted && mutation.changed,
                 "hidden setup mutation changed") &&
@@ -366,13 +374,14 @@ bool hiddenRoomBuildsNoSegmentsButCountsObject() {
 
 bool hiddenRoomWireframeDoesNotAppendVulkanDebugGeometry() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
   const cr::CreativeFacadeMutationReceipt mutation =
       facade.toggleSelectedObjectVisibility();
   const iggy3d::ProductCreativeWireframeFrameBuildResult frameResult =
-      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, app));
   const iggy3d::ProductCreativeWireframeDebugRenderFrame renderFrame =
       iggy3d::buildProductCreativeWireframeDebugRenderFrame(
           &frameResult.debugLineList);
@@ -433,17 +442,18 @@ bool missingCreativeDebugSourceKeepsVulkanGeometryNotRequested() {
 
 bool creativeDebugGeometrySignatureTracksVisibilityState() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
   const iggy3d::ProductCreativeWireframeFrameBuildResult visibleFrame =
-      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, app));
   const iggy3d::ProductCreativeWireframeDebugRenderFrame visibleRenderFrame =
       iggy3d::buildProductCreativeWireframeDebugRenderFrame(
           &visibleFrame.debugLineList);
   selectTarget(facade, roomId);
   static_cast<void>(facade.toggleSelectedObjectVisibility());
   const iggy3d::ProductCreativeWireframeFrameBuildResult hiddenFrame =
-      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::buildProductCreativeWireframeFrame(baseRequest(window, app));
   const iggy3d::ProductCreativeWireframeDebugRenderFrame hiddenRenderFrame =
       iggy3d::buildProductCreativeWireframeDebugRenderFrame(
           &hiddenFrame.debugLineList);
@@ -466,7 +476,8 @@ bool creativeDebugGeometrySignatureTracksVisibilityState() {
 
 bool createRoomCommandThenWireframeBuildsSegments() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   iggy3d::ProductCreativeUiInputFrameReceipt input;
   input.consumed = true;
   input.enabled = true;
@@ -474,9 +485,9 @@ bool createRoomCommandThenWireframeBuildsSegments() {
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt command =
       iggy3d::routeProductCreativeUiCommandFrame(
-          iggy3d::ProductCreativeUiCommandFrameRequest{&facade, input});
+          iggy3d::ProductCreativeUiCommandFrameRequest{&app, input});
   const iggy3d::ProductCreativeWireframeFrameReceipt receipt =
-      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, app));
 
   return expect(command.accepted && command.changed,
                 "create command accepted") &&
@@ -607,10 +618,11 @@ bool defaultWindowReceiptFieldsAreNotRequested() {
 
 bool recorderCopiesRoomReceiptFields() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   (void)createRoom(facade);
   const iggy3d::ProductCreativeWireframeFrameReceipt frameReceipt =
-      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, facade));
+      iggy3d::routeProductCreativeWireframeFrame(baseRequest(window, app));
 
   iggy3d::ProductAppWindowState receiptWindow;
   iggy3d::recordProductCreativeWireframeFrame(receiptWindow, frameReceipt);

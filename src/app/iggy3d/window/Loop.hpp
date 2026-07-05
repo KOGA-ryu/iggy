@@ -14,7 +14,7 @@
 namespace iggy3d {
 
 namespace creative {
-class Facade;
+struct CreativeAppState;
 }  // namespace creative
 
 struct ProductWindowLoopRequest {
@@ -26,7 +26,7 @@ struct ProductWindowLoopRequest {
   ProductAppWindowState window;
   FrontendSettings& settings;
   const ProductSaveBridgeResult& saves;
-  creative::Facade* creativeFacade = nullptr;
+  creative::CreativeAppState* creativeApp = nullptr;
 };
 
 // The loop returns BOTH the final window state and the final save catalog: the loop-local

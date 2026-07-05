@@ -1,6 +1,7 @@
 #include "app/iggy3d/window/CreativeUiInputFrame.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/Ui.hpp"
 #include "app/iggy3d/menu/CreativeUiDrawList.hpp"
@@ -283,14 +284,15 @@ bool unrenderableOverlayInputDoesNotSuppressToolClick() {
 
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
-  iggy3d::creative::Facade facade;
+  iggy3d::creative::CreativeAppState app;
+  [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(iggy3d::creative::Tool::Measure));
   const iggy3d::ProductCreativeInputFrameReceipt toolReceipt =
       iggy3d::processProductCreativeInputActions(
           iggy3d::ProductCreativeInputActionsRequest{
               &window,
-              &facade,
+              &app,
               nullptr,
               {},
               downstream.downstreamClick,
@@ -665,7 +667,8 @@ bool recorderCopiesConsumedCreativeRowReceipt() {
 }
 
 bool recorderPreservesStickyClickAndCommandAcrossNoClickFrame() {
-  iggy3d::creative::Facade facade;
+  iggy3d::creative::CreativeAppState app;
+  [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   const iggy3d::creative::CreativeUiBuildReceipt ui = facade.buildUiModel();
   iggy3d::ProductCreativeUiDrawListRequest drawRequest;
@@ -686,7 +689,7 @@ bool recorderPreservesStickyClickAndCommandAcrossNoClickFrame() {
   iggy3d::recordProductCreativeUiInputFrame(window, clickReceipt);
   const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
       iggy3d::routeProductCreativeUiCommandFrame(
-          iggy3d::ProductCreativeUiCommandFrameRequest{&facade, clickReceipt});
+          iggy3d::ProductCreativeUiCommandFrameRequest{&app, clickReceipt});
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const std::uint64_t createdObjectId =
       window.creativeUiLastCommandCreateObjectId;
@@ -698,7 +701,7 @@ bool recorderPreservesStickyClickAndCommandAcrossNoClickFrame() {
   iggy3d::recordProductCreativeUiInputFrame(window, noClickReceipt);
   const iggy3d::ProductCreativeUiCommandFrameReceipt noClickCommandReceipt =
       iggy3d::routeProductCreativeUiCommandFrame(
-          iggy3d::ProductCreativeUiCommandFrameRequest{&facade,
+          iggy3d::ProductCreativeUiCommandFrameRequest{&app,
                                                        noClickReceipt});
   iggy3d::recordProductCreativeUiCommandFrame(window, noClickCommandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
@@ -854,7 +857,8 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
   iggy3d::ProductAppWindowState window;
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
-  iggy3d::creative::Facade facade;
+  iggy3d::creative::CreativeAppState app;
+  [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   bool closeRequested = false;
 
@@ -870,7 +874,7 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
       inputFrame,
       closeRequested,
       nullptr,
-      &facade,
+      &app,
       nullptr,
       {},
       {},
@@ -942,7 +946,8 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
   markCreativeDocumentWindow(window);
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
-  iggy3d::creative::Facade facade;
+  iggy3d::creative::CreativeAppState app;
+  [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   bool closeRequested = false;
 
@@ -964,7 +969,7 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
       inputFrame,
       closeRequested,
       nullptr,
-      &facade,
+      &app,
       &drawList,
       {},
       {},
@@ -1028,7 +1033,8 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
   markCreativeDocumentWindow(window);
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
-  iggy3d::creative::Facade facade;
+  iggy3d::creative::CreativeAppState app;
+  [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   bool closeRequested = false;
 
@@ -1058,7 +1064,7 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
       inputFrame,
       closeRequested,
       nullptr,
-      &facade,
+      &app,
       &drawList,
       {},
       {},
@@ -1219,7 +1225,8 @@ bool inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool() {
   markCreativeDocumentWindow(window);
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
-  iggy3d::creative::Facade facade;
+  iggy3d::creative::CreativeAppState app;
+  [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(iggy3d::creative::Tool::Measure));
   bool closeRequested = false;
@@ -1240,7 +1247,7 @@ bool inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool() {
       inputFrame,
       closeRequested,
       nullptr,
-      &facade,
+      &app,
       nullptr,
       {},
       {},

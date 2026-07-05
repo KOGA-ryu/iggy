@@ -1,5 +1,6 @@
 #include "app/iggy3d/menu/CreativeUiFrame.hpp"
 
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 
 #include <cstdlib>
@@ -251,12 +252,13 @@ bool creativeWindowMissingFacadeRecordsFailure() {
 bool creativeWindowWithFacadeProjectsAndRecords() {
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   populateSelectedFacade(facade);
 
   iggy3d::ProductCreativeUiFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   const iggy3d::ProductCreativeUiFrame frame =
       iggy3d::buildProductCreativeUiFrame(request);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
@@ -311,12 +313,13 @@ bool creativeWindowWithFacadeProjectsAndRecords() {
 bool activeThenInactiveClearsPriorReadyProjection() {
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   iggy3d::ProductCreativeUiFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   const iggy3d::ProductCreativeUiFrame activeFrame =
       iggy3d::buildProductCreativeUiFrame(request);
 
@@ -363,11 +366,12 @@ bool productVulkanMenuUiFieldsAreUnchanged() {
   window.productVulkanMenuUiRowCount = 104;
   window.productVulkanMenuUiSelectedAction = "preexisting_action";
 
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   iggy3d::ProductCreativeUiFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   static_cast<void>(iggy3d::buildProductCreativeUiFrame(request));
 
   return expect(window.productVulkanMenuUiReady,
@@ -395,7 +399,8 @@ bool productVulkanMenuUiFieldsAreUnchanged() {
 bool facadeStateIsNotMutatedByProjection() {
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   populateSelectedFacade(facade);
 
   const cr::Tool activeToolBefore = facade.toolState().activeTool;
@@ -404,7 +409,7 @@ bool facadeStateIsNotMutatedByProjection() {
 
   iggy3d::ProductCreativeUiFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   static_cast<void>(iggy3d::buildProductCreativeUiFrame(request));
 
   return expect(facade.toolState().activeTool == activeToolBefore,

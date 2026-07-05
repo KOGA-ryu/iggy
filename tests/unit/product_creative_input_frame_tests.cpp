@@ -1,6 +1,7 @@
 #include "app/iggy3d/window/CreativeInputFrame.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/input/ActionState.hpp"
 
@@ -81,14 +82,15 @@ bool nullWindowReturnsWindowMissing() {
 
 bool inactiveWindowNoopsAndDoesNotMutateFacade() {
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   const std::uint64_t objectCountBefore = facade.document().objectCount();
 
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.toolKeyRequested = true;
   request.toolKey = cr::Tool::Measure;
   request.click = clickAt(10.0F, 20.0F);
@@ -301,13 +303,14 @@ bool clickPacketPreservesPickedTarget() {
 
 bool toolKeyChangesFacadeToolWithoutDocumentMutation() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const std::uint64_t objectCountBefore = facade.document().objectCount();
 
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.toolKeyRequested = true;
   request.toolKey = cr::Tool::Move;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
@@ -332,12 +335,13 @@ bool toolKeyChangesFacadeToolWithoutDocumentMutation() {
 
 bool repeatedToolKeyDoesNotSpamToolChanged() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   iggy3d::ProductCreativeInputActionsRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.toolKeys = moveKeyPressed();
   const iggy3d::ProductCreativeInputFrameReceipt first =
       iggy3d::processProductCreativeInputActions(request);
@@ -355,14 +359,15 @@ bool repeatedToolKeyDoesNotSpamToolChanged() {
 
 bool selectClickWithPickedTargetUpdatesSelection() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   cr::TargetRef target;
   target.value = 101;
 
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.click = clickAt(18.0F, 19.0F);
   request.pointerTarget = target;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
@@ -385,7 +390,8 @@ bool selectClickWithPickedTargetUpdatesSelection() {
 bool moveClickWithPickedTargetSelects() {
   // Move selects like Select until the drag slice (TV1-F/G) lands.
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   cr::TargetRef target;
@@ -393,7 +399,7 @@ bool moveClickWithPickedTargetSelects() {
 
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.click = clickAt(28.0F, 29.0F);
   request.pointerTarget = target;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
@@ -409,7 +415,8 @@ bool moveClickWithPickedTargetSelects() {
 
 bool navigateClickIsInert() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Navigate));
   cr::TargetRef target;
@@ -417,7 +424,7 @@ bool navigateClickIsInert() {
 
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.click = clickAt(28.0F, 29.0F);
   request.pointerTarget = target;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
@@ -439,13 +446,14 @@ bool navigateClickIsInert() {
 
 bool clickWithMeasureActiveBeginsMeasurement() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
 
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.click = clickAt(48.0F, 96.5F);
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputFrame(request);
@@ -473,7 +481,8 @@ bool clickWithMeasureActiveBeginsMeasurement() {
 
 bool measureClickWithPickedTargetStoresMeasurementTarget() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
   cr::TargetRef target;
@@ -481,7 +490,7 @@ bool measureClickWithPickedTargetStoresMeasurementTarget() {
 
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.click = clickAt(38.0F, 39.0F);
   request.pointerTarget = target;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
@@ -501,19 +510,20 @@ bool measureClickWithPickedTargetStoresMeasurementTarget() {
 
 bool editorCancelPreviewCancelsActiveMeasurement() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
 
   iggy3d::ProductCreativeInputFrameRequest beginRequest;
   beginRequest.window = &window;
-  beginRequest.facade = &facade;
+  beginRequest.creative = &app;
   beginRequest.click = clickAt(10.0F, 10.0F);
   static_cast<void>(iggy3d::processProductCreativeInputFrame(beginRequest));
 
   iggy3d::ProductCreativeInputFrameRequest cancelRequest;
   cancelRequest.window = &window;
-  cancelRequest.facade = &facade;
+  cancelRequest.creative = &app;
   cancelRequest.action = iggy3d::InputAction::EditorCancelPreview;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputFrame(cancelRequest);
@@ -532,12 +542,13 @@ bool editorCancelPreviewCancelsActiveMeasurement() {
 
 bool noApplicableInputReturnsNoop() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputFrame(request);
 
@@ -561,7 +572,8 @@ bool batchNoopsForClosedInputs() {
       iggy3d::processProductCreativeInputActions({});
 
   iggy3d::ProductAppWindowState inactiveWindow;
-  cr::Facade inactiveFacade;
+  cr::CreativeAppState inactiveApp;
+  cr::Facade& inactiveFacade = inactiveApp.facade;
   inactiveFacade.reset();
   static_cast<void>(inactiveFacade.setActiveTool(cr::Tool::Measure));
   iggy3d::ActionState inactiveActions;
@@ -570,7 +582,7 @@ bool batchNoopsForClosedInputs() {
                    true);
   iggy3d::ProductCreativeInputActionsRequest inactiveRequest;
   inactiveRequest.window = &inactiveWindow;
-  inactiveRequest.facade = &inactiveFacade;
+  inactiveRequest.creative = &inactiveApp;
   inactiveRequest.actions = &inactiveActions;
   inactiveRequest.toolKeys = moveKeyPressed();
   inactiveRequest.click = clickAt(2.0F, 3.0F);
@@ -584,11 +596,12 @@ bool batchNoopsForClosedInputs() {
   const iggy3d::ProductCreativeInputFrameReceipt missingFacadeReceipt =
       iggy3d::processProductCreativeInputActions(missingFacadeRequest);
 
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   iggy3d::ProductCreativeInputActionsRequest nullActionsRequest;
   nullActionsRequest.window = &creative;
-  nullActionsRequest.facade = &facade;
+  nullActionsRequest.creative = &app;
   const iggy3d::ProductCreativeInputFrameReceipt nullActionsReceipt =
       iggy3d::processProductCreativeInputActions(nullActionsRequest);
 
@@ -614,7 +627,8 @@ bool batchNoopsForClosedInputs() {
 
 bool batchHeldToolKeyDoesNotRedispatch() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   iggy3d::KeyboardInputState keyboard;
   iggy3d::KeyboardCreativeToolInputSample sample;
@@ -622,7 +636,7 @@ bool batchHeldToolKeyDoesNotRedispatch() {
 
   iggy3d::ProductCreativeInputActionsRequest pressedRequest;
   pressedRequest.window = &window;
-  pressedRequest.facade = &facade;
+  pressedRequest.creative = &app;
   pressedRequest.toolKeys =
       iggy3d::recordKeyboardCreativeToolKeys(keyboard, sample);
   const iggy3d::ProductCreativeInputFrameReceipt pressedReceipt =
@@ -630,7 +644,7 @@ bool batchHeldToolKeyDoesNotRedispatch() {
 
   iggy3d::ProductCreativeInputActionsRequest heldRequest;
   heldRequest.window = &window;
-  heldRequest.facade = &facade;
+  heldRequest.creative = &app;
   heldRequest.toolKeys =
       iggy3d::recordKeyboardCreativeToolKeys(keyboard, sample);
   const iggy3d::ProductCreativeInputFrameReceipt heldReceipt =
@@ -651,7 +665,8 @@ bool batchHeldToolKeyDoesNotRedispatch() {
 
 bool batchProcessesMultiplePressedToolKeysInKeyOrder() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   iggy3d::KeyboardCreativeToolKeyPresses presses;
@@ -659,7 +674,7 @@ bool batchProcessesMultiplePressedToolKeysInKeyOrder() {
   presses.measurePressed = true;
   iggy3d::ProductCreativeInputActionsRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.toolKeys = presses;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputActions(request);
@@ -676,14 +691,15 @@ bool batchProcessesMultiplePressedToolKeysInKeyOrder() {
 
 bool batchPointerRunsAfterActionsWithUpdatedTool() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   iggy3d::KeyboardCreativeToolKeyPresses presses;
   presses.measurePressed = true;
   iggy3d::ProductCreativeInputActionsRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.toolKeys = presses;
   request.click = clickAt(22.0F, 44.0F);
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
@@ -707,14 +723,15 @@ bool batchPointerRunsAfterActionsWithUpdatedTool() {
 
 bool batchPointerUsesPickedTargetAfterToolAction() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   cr::TargetRef target;
   target.value = 404;
   iggy3d::ProductCreativeInputActionsRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.toolKeys = moveKeyPressed();
   request.click = clickAt(62.0F, 64.0F);
   request.pointerTarget = target;
@@ -731,12 +748,13 @@ bool batchPointerUsesPickedTargetAfterToolAction() {
 
 bool invalidPointerTargetKeepsSelectionInvalid() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
-  request.facade = &facade;
+  request.creative = &app;
   request.click = clickAt(78.0F, 79.0F);
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputFrame(request);
@@ -749,13 +767,14 @@ bool invalidPointerTargetKeepsSelectionInvalid() {
 
 bool batchCancelOnlyWhenPressed() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
 
   iggy3d::ProductCreativeInputFrameRequest beginRequest;
   beginRequest.window = &window;
-  beginRequest.facade = &facade;
+  beginRequest.creative = &app;
   beginRequest.click = clickAt(5.0F, 6.0F);
   static_cast<void>(iggy3d::processProductCreativeInputFrame(beginRequest));
 
@@ -765,7 +784,7 @@ bool batchCancelOnlyWhenPressed() {
                    false);
   iggy3d::ProductCreativeInputActionsRequest heldRequest;
   heldRequest.window = &window;
-  heldRequest.facade = &facade;
+  heldRequest.creative = &app;
   heldRequest.actions = &heldCancelActions;
   const iggy3d::ProductCreativeInputFrameReceipt heldReceipt =
       iggy3d::processProductCreativeInputActions(heldRequest);
@@ -777,7 +796,7 @@ bool batchCancelOnlyWhenPressed() {
                    true);
   iggy3d::ProductCreativeInputActionsRequest pressedRequest;
   pressedRequest.window = &window;
-  pressedRequest.facade = &facade;
+  pressedRequest.creative = &app;
   pressedRequest.actions = &pressedCancelActions;
   const iggy3d::ProductCreativeInputFrameReceipt pressedReceipt =
       iggy3d::processProductCreativeInputActions(pressedRequest);
@@ -807,14 +826,15 @@ iggy3d::ProductCreativePointerLifecycleEvent lifecycleRelease(float x, float y) 
 // EndMeasurement intent (PointerRelease) was never reachable from the window.
 bool measureGestureBeginsUpdatesAndEndsThroughFrameEntry() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
 
   // Press -> Begin (the existing click path).
   iggy3d::ProductCreativeInputActionsRequest beginRequest;
   beginRequest.window = &window;
-  beginRequest.facade = &facade;
+  beginRequest.creative = &app;
   beginRequest.click = clickAt(10.0F, 10.0F);
   const iggy3d::ProductCreativeInputFrameReceipt beginReceipt =
       iggy3d::processProductCreativeInputActions(beginRequest);
@@ -823,7 +843,7 @@ bool measureGestureBeginsUpdatesAndEndsThroughFrameEntry() {
   // Move (held) -> Update: the measurement's current point tracks the pointer.
   iggy3d::ProductCreativeInputActionsRequest moveRequest;
   moveRequest.window = &window;
-  moveRequest.facade = &facade;
+  moveRequest.creative = &app;
   moveRequest.pointerLifecycle = lifecycleMove(40.0F, 55.0F);
   const iggy3d::ProductCreativeInputFrameReceipt moveReceipt =
       iggy3d::processProductCreativeInputActions(moveRequest);
@@ -834,7 +854,7 @@ bool measureGestureBeginsUpdatesAndEndsThroughFrameEntry() {
   // Release -> End: the measurement finally ends (active clears, result stays).
   iggy3d::ProductCreativeInputActionsRequest releaseRequest;
   releaseRequest.window = &window;
-  releaseRequest.facade = &facade;
+  releaseRequest.creative = &app;
   releaseRequest.pointerLifecycle = lifecycleRelease(40.0F, 55.0F);
   const iggy3d::ProductCreativeInputFrameReceipt releaseReceipt =
       iggy3d::processProductCreativeInputActions(releaseRequest);
@@ -867,13 +887,14 @@ bool measureGestureBeginsUpdatesAndEndsThroughFrameEntry() {
 // (no measurement to end) and does NOT resurrect the cancelled measurement.
 bool escMidMeasureCancelsThenReleaseIsInert() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
 
   iggy3d::ProductCreativeInputActionsRequest beginRequest;
   beginRequest.window = &window;
-  beginRequest.facade = &facade;
+  beginRequest.creative = &app;
   beginRequest.click = clickAt(12.0F, 12.0F);
   static_cast<void>(iggy3d::processProductCreativeInputActions(beginRequest));
 
@@ -882,7 +903,7 @@ bool escMidMeasureCancelsThenReleaseIsInert() {
                    true);
   iggy3d::ProductCreativeInputActionsRequest cancelRequest;
   cancelRequest.window = &window;
-  cancelRequest.facade = &facade;
+  cancelRequest.creative = &app;
   cancelRequest.actions = &cancelActions;
   const iggy3d::ProductCreativeInputFrameReceipt cancelReceipt =
       iggy3d::processProductCreativeInputActions(cancelRequest);
@@ -892,7 +913,7 @@ bool escMidMeasureCancelsThenReleaseIsInert() {
 
   iggy3d::ProductCreativeInputActionsRequest releaseRequest;
   releaseRequest.window = &window;
-  releaseRequest.facade = &facade;
+  releaseRequest.creative = &app;
   releaseRequest.pointerLifecycle = lifecycleRelease(12.0F, 12.0F);
   const iggy3d::ProductCreativeInputFrameReceipt releaseReceipt =
       iggy3d::processProductCreativeInputActions(releaseRequest);
@@ -915,19 +936,20 @@ bool escMidMeasureCancelsThenReleaseIsInert() {
 // move/release do not mutate the document or selection).
 bool selectMoveAndReleaseAreHarmlessNoOps() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();  // Select is the default tool.
 
   iggy3d::ProductCreativeInputActionsRequest moveRequest;
   moveRequest.window = &window;
-  moveRequest.facade = &facade;
+  moveRequest.creative = &app;
   moveRequest.pointerLifecycle = lifecycleMove(30.0F, 40.0F);
   const iggy3d::ProductCreativeInputFrameReceipt moveReceipt =
       iggy3d::processProductCreativeInputActions(moveRequest);
 
   iggy3d::ProductCreativeInputActionsRequest releaseRequest;
   releaseRequest.window = &window;
-  releaseRequest.facade = &facade;
+  releaseRequest.creative = &app;
   releaseRequest.pointerLifecycle = lifecycleRelease(30.0F, 40.0F);
   const iggy3d::ProductCreativeInputFrameReceipt releaseReceipt =
       iggy3d::processProductCreativeInputActions(releaseRequest);
@@ -945,20 +967,21 @@ bool selectMoveAndReleaseAreHarmlessNoOps() {
 // Navigate stays fully inert across the whole lifecycle (TD-8: camera in TV1-H).
 bool navigateLifecycleStaysInert() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Navigate));
 
   iggy3d::ProductCreativeInputActionsRequest moveRequest;
   moveRequest.window = &window;
-  moveRequest.facade = &facade;
+  moveRequest.creative = &app;
   moveRequest.pointerLifecycle = lifecycleMove(30.0F, 40.0F);
   const iggy3d::ProductCreativeInputFrameReceipt moveReceipt =
       iggy3d::processProductCreativeInputActions(moveRequest);
 
   iggy3d::ProductCreativeInputActionsRequest releaseRequest;
   releaseRequest.window = &window;
-  releaseRequest.facade = &facade;
+  releaseRequest.creative = &app;
   releaseRequest.pointerLifecycle = lifecycleRelease(30.0F, 40.0F);
   const iggy3d::ProductCreativeInputFrameReceipt releaseReceipt =
       iggy3d::processProductCreativeInputActions(releaseRequest);

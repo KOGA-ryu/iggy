@@ -1,5 +1,6 @@
 #pragma once
 
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/window/CreativeUiInputFrame.hpp"
 
@@ -17,7 +18,7 @@ enum class ProductCreativeUiCommandKind : std::uint8_t {
 };
 
 struct ProductCreativeUiCommandFrameRequest {
-  creative::Facade* facade = nullptr;
+  creative::CreativeAppState* creative = nullptr;
   ProductCreativeUiInputFrameReceipt inputReceipt;
 };
 

@@ -130,7 +130,7 @@ int runProductApp(int argc, char** argv) {
                          frontend, saves, options, settings,
                          automationSettingsTab,
                          activeSession, worldSetupDraft, window,
-                         automationCloseRequested, &creativeApp.facade});
+                         automationCloseRequested, &creativeApp});
       },
       [&frontend, &window]() { return productInputOwnerFor(frontend, window); },
   };
@@ -155,7 +155,7 @@ int runProductApp(int argc, char** argv) {
       window,
       settings,
       saves,
-      &creativeApp.facade});
+      &creativeApp});
   window = std::move(loopResult.window);
   saves = std::move(loopResult.saves);
   refreshProductGameplayProjectionMetrics(

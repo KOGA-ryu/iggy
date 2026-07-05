@@ -9,6 +9,7 @@
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
@@ -41,7 +42,7 @@ struct StarterHarness {
   iggy3d::WorldSetupDraft draft = iggy3d::makeDefaultWorldSetupDraft("starter_seed");
   iggy3d::ProductAppWindowState window;
   bool closeRequested = false;
-  iggy3d::creative::Facade* creativeFacade = nullptr;
+  iggy3d::creative::CreativeAppState* creativeApp = nullptr;
 
   StarterHarness() {
     frontend.screen = iggy3d::FrontendScreen::Starter;
@@ -75,14 +76,14 @@ iggy3d::ProductMenuActionResult applyStarterAction(
           harness.draft,
           harness.window,
           harness.closeRequested,
-          harness.creativeFacade,
+          harness.creativeApp,
       });
 }
 
 iggy3d::ProductMenuActionResult applyPauseConfirmAction(
     StarterHarness& harness,
     iggy3d::FrontendAction action,
-    iggy3d::creative::Facade* facade) {
+    iggy3d::creative::CreativeAppState* app) {
   iggy3d::FrontendSettings settings;
   (void)iggy3d::applyProductSystemPauseMenuAction(
       iggy3d::InputAction::SystemPause,
@@ -99,12 +100,12 @@ iggy3d::ProductMenuActionResult applyPauseConfirmAction(
           harness.window,
           harness.closeRequested,
           settings,
-          facade,
+          app,
       });
 }
 
 iggy3d::ProductCreativeUiCommandFrameReceipt routeCreateRoomCommand(
-    iggy3d::creative::Facade& facade) {
+    iggy3d::creative::CreativeAppState& app) {
   iggy3d::ProductCreativeUiInputFrameReceipt input;
   input.requested = true;
   input.clickPresent = true;
@@ -116,7 +117,7 @@ iggy3d::ProductCreativeUiCommandFrameReceipt routeCreateRoomCommand(
   input.semanticId = "creative.row.create.create_room";
 
   iggy3d::ProductCreativeUiCommandFrameRequest request;
-  request.facade = &facade;
+  request.creative = &app;
   request.inputReceipt = input;
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
@@ -299,8 +300,9 @@ bool deleteAndExitActionsAreExplicitRows() {
 
 bool creativeNewWorldLaunchesThroughStarterActionAndKeepsContinueSeparate() {
   StarterHarness harness;
-  iggy3d::creative::Facade facade;
-  harness.creativeFacade = &facade;
+  iggy3d::creative::CreativeAppState app;
+  iggy3d::creative::Facade& facade = app.facade;
+  harness.creativeApp = &app;
   harness.options.saveRoot = testRoot("creative_launch");
   harness.frontend.selectedAction = iggy3d::FrontendAction::CreativeNewWorld;
   harness.draft.worldName = "Starter Creative";
@@ -400,8 +402,9 @@ bool creativeNewWorldMissingFacadeFailsClosed() {
 
 bool creativeStarterLaunchCanOpenAndClosePauseWithMenuBackRoute() {
   StarterHarness harness;
-  iggy3d::creative::Facade facade;
-  harness.creativeFacade = &facade;
+  iggy3d::creative::CreativeAppState app;
+  iggy3d::creative::Facade& facade = app.facade;
+  harness.creativeApp = &app;
   harness.options.saveRoot = testRoot("creative_pause_resume");
   harness.frontend.selectedAction = iggy3d::FrontendAction::CreativeNewWorld;
   harness.draft.worldName = "Starter Creative Pause";
@@ -425,7 +428,7 @@ bool creativeStarterLaunchCanOpenAndClosePauseWithMenuBackRoute() {
           harness.window,
           harness.closeRequested,
           settings,
-          &facade,
+          &app,
       });
 
   const bool openedPause =
@@ -453,7 +456,7 @@ bool creativeStarterLaunchCanOpenAndClosePauseWithMenuBackRoute() {
           harness.window,
           harness.closeRequested,
           settings,
-          &facade,
+          &app,
       });
 
   return expect(launched.handled && launched.accepted,
@@ -480,8 +483,9 @@ bool creativeStarterLaunchCanOpenAndClosePauseWithMenuBackRoute() {
 
 bool creativeOpenWorldLaunchesThroughStarterAction() {
   StarterHarness harness;
-  iggy3d::creative::Facade facade;
-  harness.creativeFacade = &facade;
+  iggy3d::creative::CreativeAppState app;
+  iggy3d::creative::Facade& facade = app.facade;
+  harness.creativeApp = &app;
   harness.options.saveRoot = testRoot("creative_open");
 
   iggy3d::CreativeWorldCreateRequest create;
@@ -551,8 +555,9 @@ bool creativeOpenWorldLaunchesThroughStarterAction() {
 
 bool creativeOpenWorldWithoutCreativeSaveFailsClosed() {
   StarterHarness harness;
-  iggy3d::creative::Facade facade;
-  harness.creativeFacade = &facade;
+  iggy3d::creative::CreativeAppState app;
+  iggy3d::creative::Facade& facade = app.facade;
+  harness.creativeApp = &app;
   harness.options.saveRoot = testRoot("creative_open_empty");
   harness.frontend.selectedAction = iggy3d::FrontendAction::CreativeOpenWorld;
   showMovementTuning(harness);
@@ -630,8 +635,9 @@ bool creativeOpenWorldIgnoresProductOnlySaves() {
                                 setup.window);
 
   StarterHarness harness;
-  iggy3d::creative::Facade facade;
-  harness.creativeFacade = &facade;
+  iggy3d::creative::CreativeAppState app;
+  iggy3d::creative::Facade& facade = app.facade;
+  harness.creativeApp = &app;
   harness.options.saveRoot = setup.options.saveRoot;
   harness.frontend.selectedAction = iggy3d::FrontendAction::CreativeOpenWorld;
   showMovementTuning(harness);
@@ -669,8 +675,9 @@ bool creativeOpenWorldIgnoresProductOnlySaves() {
 
 bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
   StarterHarness harness;
-  iggy3d::creative::Facade facade;
-  harness.creativeFacade = &facade;
+  iggy3d::creative::CreativeAppState app;
+  iggy3d::creative::Facade& facade = app.facade;
+  harness.creativeApp = &app;
   harness.options.saveRoot = testRoot("creative_lifecycle_loop");
   harness.frontend.selectedAction = iggy3d::FrontendAction::CreativeNewWorld;
   harness.draft.worldName = "Lifecycle Creative";
@@ -694,7 +701,7 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
       productContinueSelectsNoSave(harness.options.saveRoot);
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt createRoom =
-      routeCreateRoomCommand(facade);
+      routeCreateRoomCommand(app);
   const iggy3d::creative::CreativeObject* createdRoom =
       facade.findObject(createRoom.createObjectId);
   const iggy3d::creative::CreativeObjectDirtyFlags dirtyBeforeSave =
@@ -703,7 +710,7 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
   const iggy3d::ProductMenuActionResult savedAndExited =
       applyPauseConfirmAction(harness,
                               iggy3d::FrontendAction::SaveAndExit,
-                              &facade);
+                              &app);
   const bool saveExitReturnedStarter =
       harness.frontend.screen == iggy3d::FrontendScreen::Starter;
   const std::string saveExitFrontendStatus{harness.frontend.status};
@@ -728,8 +735,9 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
       harness.window.activeCreativeNextObjectId ==
           iggy3d::creative::kInvalidObjectId;
 
-  iggy3d::creative::Facade reopenedFacade;
-  harness.creativeFacade = &reopenedFacade;
+  iggy3d::creative::CreativeAppState reopenedApp;
+  iggy3d::creative::Facade& reopenedFacade = reopenedApp.facade;
+  harness.creativeApp = &reopenedApp;
   harness.frontend.selectedAction = iggy3d::FrontendAction::CreativeOpenWorld;
   const iggy3d::ProductMenuActionResult reopened =
       applyStarterAction(harness, iggy3d::InputAction::MenuConfirm);

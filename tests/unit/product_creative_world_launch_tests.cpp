@@ -1,4 +1,5 @@
 #include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
@@ -69,13 +70,13 @@ iggy3d::ProductCreativeNewWorldLaunchResult launchCreativeWorld(
     iggy3d::FrontendState& frontend,
     std::optional<iggy3d::Session>& activeSession,
     iggy3d::ProductAppWindowState& window,
-    cr::Facade& facade) {
+    cr::CreativeAppState& app) {
   return iggy3d::launchProductCreativeNewWorld(options,
                                                request,
                                                frontend,
                                                activeSession,
                                                window,
-                                               facade);
+                                               app);
 }
 
 iggy3d::ProductCreativeOpenWorldLaunchResult openCreativeWorld(
@@ -84,7 +85,7 @@ iggy3d::ProductCreativeOpenWorldLaunchResult openCreativeWorld(
     iggy3d::FrontendState& frontend,
     std::optional<iggy3d::Session>& activeSession,
     iggy3d::ProductAppWindowState& window,
-    cr::Facade& facade) {
+    cr::CreativeAppState& app) {
   iggy3d::ProductCreativeOpenWorldLaunchRequest request;
   request.saveId = std::string{saveId};
   return iggy3d::launchProductCreativeOpenWorld(options,
@@ -92,7 +93,7 @@ iggy3d::ProductCreativeOpenWorldLaunchResult openCreativeWorld(
                                                 frontend,
                                                 activeSession,
                                                 window,
-                                                facade);
+                                                app);
 }
 
 iggy3d::CreativeWorldSaveRequest saveRequest(
@@ -112,7 +113,7 @@ iggy3d::ProductMenuActionResult confirmPauseAction(
     iggy3d::FrontendState& frontend,
     std::optional<iggy3d::Session>& activeSession,
     iggy3d::ProductAppWindowState& window,
-    cr::Facade* facade) {
+    cr::CreativeAppState* app) {
   bool closeRequested = false;
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   iggy3d::ProductSaveBridgeResult saves;
@@ -124,7 +125,7 @@ iggy3d::ProductMenuActionResult confirmPauseAction(
   return iggy3d::applyProductPauseMenuAction(
       iggy3d::InputAction::MenuConfirm,
       {frontend, options, saves, settingsTab, activeSession, window,
-       closeRequested, settings, facade});
+       closeRequested, settings, app});
 }
 
 bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
@@ -132,15 +133,15 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult launched =
       launchCreativeWorld(options,
                           launchRequest(),
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
   const iggy3d::ProductSaveBridgeResult scanned =
       iggy3d::scanProductSaves(options.saveRoot,
                                "iggy3d.creative",
@@ -319,15 +320,15 @@ bool blankTitleOrTimestampRejectsBeforeSessionInstallAndModeSwitch() {
     iggy3d::FrontendState frontend;
     std::optional<iggy3d::Session> activeSession;
     iggy3d::ProductAppWindowState window;
-    cr::Facade facade;
-
+    cr::CreativeAppState app;
+    [[maybe_unused]] cr::Facade& facade = app.facade;
     const iggy3d::ProductCreativeNewWorldLaunchResult launched =
         launchCreativeWorld(options,
                             launchRequest(" ", "2026-07-03T12:00:00Z"),
                             frontend,
                             activeSession,
                             window,
-                            facade);
+                            app);
 
     if (!expect(!launched.accepted, "blank title rejected") ||
         !expect(launched.status == "creative_world_title_missing",
@@ -349,15 +350,15 @@ bool blankTitleOrTimestampRejectsBeforeSessionInstallAndModeSwitch() {
     iggy3d::FrontendState frontend;
     std::optional<iggy3d::Session> activeSession;
     iggy3d::ProductAppWindowState window;
-    cr::Facade facade;
-
+    cr::CreativeAppState app;
+    [[maybe_unused]] cr::Facade& facade = app.facade;
     const iggy3d::ProductCreativeNewWorldLaunchResult launched =
         launchCreativeWorld(options,
                             launchRequest("No Time", ""),
                             frontend,
                             activeSession,
                             window,
-                            facade);
+                            app);
 
     return expect(!launched.accepted, "blank timestamp rejected") &&
            expect(launched.status == "creative_world_timestamp_missing",
@@ -379,12 +380,13 @@ bool invalidAttemptTokenWritesNoCommittedSaveAndDoesNotEnterCreativeMode() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   iggy3d::ProductCreativeNewWorldLaunchRequest request = launchRequest();
   request.attemptToken = "attempt token with spaces";
 
   const iggy3d::ProductCreativeNewWorldLaunchResult launched =
-      launchCreativeWorld(options, request, frontend, activeSession, window, facade);
+      launchCreativeWorld(options, request, frontend, activeSession, window, app);
   const iggy3d::ProductSaveBridgeResult scanned =
       iggy3d::scanProductSaves(options.saveRoot,
                                "iggy3d.creative",
@@ -415,15 +417,15 @@ bool secondLaunchClearsOldFacadeStateAndInstallsNewDocument() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult first =
       launchCreativeWorld(options,
                           launchRequest("First", "2026-07-03T12:00:00Z"),
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
   const cr::CreativeDocumentCreateReceipt createdObject =
       facade.createDocumentObject(cr::CreativeObjectKind::Room);
   static_cast<void>(facade.dispatchToolInput(
@@ -461,7 +463,7 @@ bool secondLaunchClearsOldFacadeStateAndInstallsNewDocument() {
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
 
   return expect(first.accepted, "second setup first accepted") &&
          expect(createdObject.accepted, "second setup object created") &&
@@ -503,7 +505,8 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
   iggy3d::FrontendState createFrontend;
   std::optional<iggy3d::Session> createSession;
   iggy3d::ProductAppWindowState createWindow;
-  cr::Facade createFacade;
+  cr::CreativeAppState createApp;
+  [[maybe_unused]] cr::Facade& createFacade = createApp.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult created =
       launchCreativeWorld(options,
                           launchRequest("Open Source",
@@ -511,7 +514,7 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
                           createFrontend,
                           createSession,
                           createWindow,
-                          createFacade);
+                          createApp);
   const cr::CreativeDocumentCreateReceipt createdObject =
       createFacade.createDocumentObject(cr::CreativeObjectKind::Room);
   cr::CreativeDocument savedDocument = createFacade.document();
@@ -523,14 +526,15 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
   iggy3d::FrontendState openFrontend;
   std::optional<iggy3d::Session> openSession;
   iggy3d::ProductAppWindowState openWindow;
-  cr::Facade openFacade;
+  cr::CreativeAppState openApp;
+  [[maybe_unused]] cr::Facade& openFacade = openApp.facade;
   const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
       openCreativeWorld(options,
                         created.saveId,
                         openFrontend,
                         openSession,
                         openWindow,
-                        openFacade);
+                        openApp);
 
   return expect(created.accepted, "open launch setup create accepted") &&
          expect(createdObject.accepted, "open launch setup object created") &&
@@ -612,10 +616,10 @@ bool openBlankOrInvalidSaveIdRejectsBeforeSessionInstallAndModeSwitch() {
     iggy3d::FrontendState frontend;
     std::optional<iggy3d::Session> activeSession;
     iggy3d::ProductAppWindowState window;
-    cr::Facade facade;
-
+    cr::CreativeAppState app;
+    [[maybe_unused]] cr::Facade& facade = app.facade;
     const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
-        openCreativeWorld(options, " ", frontend, activeSession, window, facade);
+        openCreativeWorld(options, " ", frontend, activeSession, window, app);
 
     if (!expect(!opened.accepted, "open blank id rejected") ||
         !expect(opened.status == "creative_world_save_id_missing",
@@ -637,15 +641,15 @@ bool openBlankOrInvalidSaveIdRejectsBeforeSessionInstallAndModeSwitch() {
     iggy3d::FrontendState frontend;
     std::optional<iggy3d::Session> activeSession;
     iggy3d::ProductAppWindowState window;
-    cr::Facade facade;
-
+    cr::CreativeAppState app;
+    [[maybe_unused]] cr::Facade& facade = app.facade;
     const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
         openCreativeWorld(options,
                           "bad save id",
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
 
     return expect(!opened.accepted, "open invalid id rejected") &&
            expect(opened.status == "creative_world_save_id_invalid",
@@ -679,14 +683,15 @@ bool openProductSessionSaveRejectsAsMissingCreativeSection() {
   iggy3d::FrontendState openFrontend;
   std::optional<iggy3d::Session> openSession;
   iggy3d::ProductAppWindowState openWindow;
-  cr::Facade openFacade;
+  cr::CreativeAppState openApp;
+  [[maybe_unused]] cr::Facade& openFacade = openApp.facade;
   const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
       openCreativeWorld(options,
                         productWindow.activeProductSaveId,
                         openFrontend,
                         openSession,
                         openWindow,
-                        openFacade);
+                        openApp);
 
   return expect(productSession.has_value(),
                 "open product setup session created") &&
@@ -710,8 +715,8 @@ bool productNewWorldLaunchClearsActiveCreativeIdentity() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult created =
       launchCreativeWorld(options,
                           launchRequest("Creative Before Product",
@@ -719,7 +724,7 @@ bool productNewWorldLaunchClearsActiveCreativeIdentity() {
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
   const std::string creativeSaveId = window.activeCreativeSaveId;
 
   iggy3d::WorldSetupDraft draft =
@@ -763,8 +768,8 @@ bool currentCreativeWorldSaveDrainsDirtyAndPersistsDocument() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult launched =
       launchCreativeWorld(options,
                           launchRequest("Save Current Creative",
@@ -772,7 +777,7 @@ bool currentCreativeWorldSaveDrainsDirtyAndPersistsDocument() {
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
   const cr::CreativeDocumentCreateReceipt createdObject =
       facade.createDocumentObject(cr::CreativeObjectKind::Room);
   const cr::CreativeObjectDirtyFlags dirtyBefore =
@@ -780,19 +785,20 @@ bool currentCreativeWorldSaveDrainsDirtyAndPersistsDocument() {
   const std::uint64_t revisionBefore = facade.document().revision();
 
   const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
-      iggy3d::saveProductCurrentCreativeWorld(options, facade, "unit", window);
+      iggy3d::saveProductCurrentCreativeWorld(options, app, "unit", window);
 
   iggy3d::FrontendState openFrontend;
   std::optional<iggy3d::Session> openSession;
   iggy3d::ProductAppWindowState openWindow;
-  cr::Facade openFacade;
+  cr::CreativeAppState openApp;
+  [[maybe_unused]] cr::Facade& openFacade = openApp.facade;
   const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
       openCreativeWorld(options,
                         launched.saveId,
                         openFrontend,
                         openSession,
                         openWindow,
-                        openFacade);
+                        openApp);
 
   return expect(launched.accepted, "current save setup launch accepted") &&
          expect(createdObject.accepted,
@@ -862,7 +868,8 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
     iggy3d::FrontendState frontend;
     std::optional<iggy3d::Session> activeSession;
     iggy3d::ProductAppWindowState window;
-    cr::Facade facade;
+    cr::CreativeAppState app;
+    [[maybe_unused]] cr::Facade& facade = app.facade;
     const iggy3d::ProductCreativeNewWorldLaunchResult launched =
         launchCreativeWorld(options,
                             launchRequest("Missing Id",
@@ -870,7 +877,7 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
                             frontend,
                             activeSession,
                             window,
-                            facade);
+                            app);
     const cr::CreativeDocumentCreateReceipt createdObject =
         facade.createDocumentObject(cr::CreativeObjectKind::Room);
     const cr::CreativeObjectDirtyFlags dirtyBefore =
@@ -878,7 +885,7 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
     window.activeCreativeSaveId = "none";
 
     const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
-        iggy3d::saveProductCurrentCreativeWorld(options, facade, "unit", window);
+        iggy3d::saveProductCurrentCreativeWorld(options, app, "unit", window);
 
     if (!expect(launched.accepted, "missing id setup launch accepted") ||
         !expect(createdObject.accepted, "missing id setup object created") ||
@@ -903,7 +910,8 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
     iggy3d::FrontendState frontend;
     std::optional<iggy3d::Session> activeSession;
     iggy3d::ProductAppWindowState window;
-    cr::Facade facade;
+    cr::CreativeAppState app;
+    [[maybe_unused]] cr::Facade& facade = app.facade;
     const iggy3d::ProductCreativeNewWorldLaunchResult launched =
         launchCreativeWorld(options,
                             launchRequest("Inactive Save",
@@ -911,7 +919,7 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
                             frontend,
                             activeSession,
                             window,
-                            facade);
+                            app);
     const cr::CreativeDocumentCreateReceipt createdObject =
         facade.createDocumentObject(cr::CreativeObjectKind::Room);
     const cr::CreativeObjectDirtyFlags dirtyBefore =
@@ -919,7 +927,7 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
     window.interactionMode = iggy3d::ProductInteractionMode::Player;
 
     const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
-        iggy3d::saveProductCurrentCreativeWorld(options, facade, "unit", window);
+        iggy3d::saveProductCurrentCreativeWorld(options, app, "unit", window);
 
     if (!expect(launched.accepted, "inactive setup launch accepted") ||
         !expect(createdObject.accepted, "inactive setup object created") ||
@@ -942,10 +950,10 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.activeCreativeSaveId = "save_001";
   window.activeCreativeWorldId = "world_0001";
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
-      iggy3d::saveProductCurrentCreativeWorld(options, facade, "unit", window);
+      iggy3d::saveProductCurrentCreativeWorld(options, app, "unit", window);
 
   return expect(!saved.accepted, "invalid doc rejected") &&
          expect(saved.status == "product_creative_save_document_id_missing",
@@ -962,8 +970,8 @@ bool pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult launched =
       launchCreativeWorld(options,
                           launchRequest("Pause Creative Save",
@@ -971,7 +979,7 @@ bool pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() {
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
   const cr::CreativeDocumentCreateReceipt createdObject =
       facade.createDocumentObject(cr::CreativeObjectKind::Room);
   const cr::CreativeObjectDirtyFlags dirtyBefore =
@@ -982,19 +990,20 @@ bool pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() {
                          frontend,
                          activeSession,
                          window,
-                         &facade);
+                         &app);
 
   iggy3d::FrontendState openFrontend;
   std::optional<iggy3d::Session> openSession;
   iggy3d::ProductAppWindowState openWindow;
-  cr::Facade openFacade;
+  cr::CreativeAppState openApp;
+  [[maybe_unused]] cr::Facade& openFacade = openApp.facade;
   const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
       openCreativeWorld(options,
                         launched.saveId,
                         openFrontend,
                         openSession,
                         openWindow,
-                        openFacade);
+                        openApp);
 
   return expect(launched.accepted, "pause creative save launch accepted") &&
          expect(createdObject.accepted, "pause creative save object created") &&
@@ -1033,8 +1042,8 @@ bool pauseCreativeSaveNullFacadeFailsClosed() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult launched =
       launchCreativeWorld(options,
                           launchRequest("Pause Creative Null",
@@ -1042,7 +1051,7 @@ bool pauseCreativeSaveNullFacadeFailsClosed() {
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
   const cr::CreativeDocumentCreateReceipt createdObject =
       facade.createDocumentObject(cr::CreativeObjectKind::Room);
   const cr::CreativeObjectDirtyFlags dirtyBefore =
@@ -1080,8 +1089,8 @@ bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult launched =
       launchCreativeWorld(options,
                           launchRequest("Pause Creative Exit",
@@ -1089,7 +1098,7 @@ bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
   const cr::CreativeDocumentCreateReceipt createdObject =
       facade.createDocumentObject(cr::CreativeObjectKind::Room);
   const cr::CreativeObjectDirtyFlags dirtyBefore =
@@ -1100,19 +1109,20 @@ bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
                          frontend,
                          activeSession,
                          window,
-                         &facade);
+                         &app);
 
   iggy3d::FrontendState openFrontend;
   std::optional<iggy3d::Session> openSession;
   iggy3d::ProductAppWindowState openWindow;
-  cr::Facade openFacade;
+  cr::CreativeAppState openApp;
+  [[maybe_unused]] cr::Facade& openFacade = openApp.facade;
   const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
       openCreativeWorld(options,
                         launched.saveId,
                         openFrontend,
                         openSession,
                         openWindow,
-                        openFacade);
+                        openApp);
 
   return expect(launched.accepted,
                 "pause creative save exit launch accepted") &&
@@ -1155,8 +1165,8 @@ bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult launched =
       launchCreativeWorld(options,
                           launchRequest("Pause Creative Exit Missing",
@@ -1164,7 +1174,7 @@ bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
   const cr::CreativeDocumentCreateReceipt createdObject =
       facade.createDocumentObject(cr::CreativeObjectKind::Room);
   const cr::CreativeObjectDirtyFlags dirtyBefore =
@@ -1176,7 +1186,7 @@ bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
                          frontend,
                          activeSession,
                          window,
-                         &facade);
+                         &app);
 
   return expect(launched.accepted,
                 "pause creative save exit failure launch accepted") &&
@@ -1209,7 +1219,8 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
   iggy3d::FrontendState firstCreateFrontend;
   std::optional<iggy3d::Session> firstCreateSession;
   iggy3d::ProductAppWindowState firstCreateWindow;
-  cr::Facade firstCreateFacade;
+  cr::CreativeAppState firstCreateApp;
+  [[maybe_unused]] cr::Facade& firstCreateFacade = firstCreateApp.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult firstCreated =
       launchCreativeWorld(options,
                           launchRequest("First Open",
@@ -1217,7 +1228,7 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
                           firstCreateFrontend,
                           firstCreateSession,
                           firstCreateWindow,
-                          firstCreateFacade);
+                          firstCreateApp);
   const cr::CreativeDocumentCreateReceipt firstObject =
       firstCreateFacade.createDocumentObject(cr::CreativeObjectKind::Room);
   cr::CreativeDocument firstSavedDocument = firstCreateFacade.document();
@@ -1228,7 +1239,8 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
   iggy3d::FrontendState secondCreateFrontend;
   std::optional<iggy3d::Session> secondCreateSession;
   iggy3d::ProductAppWindowState secondCreateWindow;
-  cr::Facade secondCreateFacade;
+  cr::CreativeAppState secondCreateApp;
+  [[maybe_unused]] cr::Facade& secondCreateFacade = secondCreateApp.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult secondCreated =
       launchCreativeWorld(options,
                           launchRequest("Second Open",
@@ -1236,19 +1248,20 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
                           secondCreateFrontend,
                           secondCreateSession,
                           secondCreateWindow,
-                          secondCreateFacade);
+                          secondCreateApp);
 
   iggy3d::FrontendState openFrontend;
   std::optional<iggy3d::Session> openSession;
   iggy3d::ProductAppWindowState openWindow;
-  cr::Facade openFacade;
+  cr::CreativeAppState openApp;
+  [[maybe_unused]] cr::Facade& openFacade = openApp.facade;
   const iggy3d::ProductCreativeOpenWorldLaunchResult firstOpened =
       openCreativeWorld(options,
                         firstCreated.saveId,
                         openFrontend,
                         openSession,
                         openWindow,
-                        openFacade);
+                        openApp);
   static_cast<void>(openFacade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
                    1.0,
@@ -1284,7 +1297,7 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
                         openFrontend,
                         openSession,
                         openWindow,
-                        openFacade);
+                        openApp);
 
   return expect(firstCreated.accepted,
                 "second open setup first create accepted") &&
@@ -1341,8 +1354,8 @@ bool creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult launched =
       launchCreativeWorld(options,
                           launchRequest("Blank Stage",
@@ -1350,7 +1363,7 @@ bool creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() {
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
 
   return expect(launched.accepted, "blank stage launch accepted") &&
          expect(activeSession.has_value(), "blank stage session present") &&
@@ -1378,8 +1391,8 @@ bool creativeLaunchFramesCameraOnOrigin() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult launched =
       launchCreativeWorld(options,
                           launchRequest("Origin Camera",
@@ -1387,7 +1400,7 @@ bool creativeLaunchFramesCameraOnOrigin() {
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
 
   return expect(launched.accepted, "origin camera launch accepted") &&
          expect(window.viewport.creativeFlyAnchorValid,
@@ -1410,8 +1423,8 @@ bool creativeFrameShowsGroundGrid() {
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
-
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeNewWorldLaunchResult launched =
       launchCreativeWorld(options,
                           launchRequest("Ground Grid",
@@ -1419,7 +1432,7 @@ bool creativeFrameShowsGroundGrid() {
                           frontend,
                           activeSession,
                           window,
-                          facade);
+                          app);
 
   iggy3d::FrontendState gameplayFrontend;
   gameplayFrontend.screen = iggy3d::FrontendScreen::Gameplay;

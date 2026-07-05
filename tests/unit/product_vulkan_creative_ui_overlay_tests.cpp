@@ -1,5 +1,6 @@
 #include "app/iggy3d/window/FramePresenter.hpp"
 
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/window/CreativeUiWindowFrame.hpp"
 
@@ -29,24 +30,26 @@ void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
 iggy3d::ProductCreativeUiFrame readyCreativeUiFrame() {
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   return iggy3d::buildProductCreativeUiWindowFrame(
       iggy3d::ProductCreativeUiWindowFrameRequest{
-          &window, &facade, 1280, 720, 1280, 720,
+          &window, &app, 1280, 720, 1280, 720,
           iggy3d::ProductUiThemeId::System});
 }
 
 bool legacyCreativeWindowDoesNotBuildDocumentOverlay() {
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   const iggy3d::ProductCreativeUiFrame frame =
       iggy3d::buildProductCreativeUiWindowFrame(
           iggy3d::ProductCreativeUiWindowFrameRequest{
-              &window, &facade, 1280, 720, 1280, 720,
+              &window, &app, 1280, 720, 1280, 720,
               iggy3d::ProductUiThemeId::System});
 
   return expect(!frame.projection.drawList.ready,

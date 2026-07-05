@@ -1,5 +1,6 @@
 #include "app/iggy3d/window/CreativeUiWindowFrame.hpp"
 
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/window/Loop.hpp"
 
@@ -196,13 +197,14 @@ bool overlayInputAvailabilityStatusesAreStable() {
 
 bool logicalDimensionsAreUsedWhenDrawableIsHighDpi() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   const iggy3d::ProductCreativeUiFrame frame =
       iggy3d::buildProductCreativeUiWindowFrame(
           iggy3d::ProductCreativeUiWindowFrameRequest{&window,
-                                                      &facade,
+                                                      &app,
                                                       2560,
                                                       1440,
                                                       640,
@@ -224,13 +226,14 @@ bool logicalDimensionsAreUsedWhenDrawableIsHighDpi() {
 
 bool fallbackDimensionsAreUsedWhenDrawableZero() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   const iggy3d::ProductCreativeUiFrame frame =
       iggy3d::buildProductCreativeUiWindowFrame(
           iggy3d::ProductCreativeUiWindowFrameRequest{&window,
-                                                      &facade,
+                                                      &app,
                                                       0,
                                                       0,
                                                       1366,
@@ -248,13 +251,14 @@ bool fallbackDimensionsAreUsedWhenDrawableZero() {
 
 bool guardDimensionsAreUsedWhenDrawableAndFallbackZero() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   const iggy3d::ProductCreativeUiFrame frame =
       iggy3d::buildProductCreativeUiWindowFrame(
           iggy3d::ProductCreativeUiWindowFrameRequest{&window,
-                                                      &facade,
+                                                      &app,
                                                       0,
                                                       0,
                                                       0,
@@ -270,13 +274,14 @@ bool guardDimensionsAreUsedWhenDrawableAndFallbackZero() {
 
 bool inactiveWindowRecordsInactiveProjection() {
   iggy3d::ProductAppWindowState window;
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   const iggy3d::ProductCreativeUiFrame frame =
       iggy3d::buildProductCreativeUiWindowFrame(
           iggy3d::ProductCreativeUiWindowFrameRequest{&window,
-                                                      &facade,
+                                                      &app,
                                                       1280,
                                                       720,
                                                       1280,
@@ -308,13 +313,14 @@ bool inactiveWindowRecordsInactiveProjection() {
 
 bool creativeWindowWithFacadeRecordsReadyProjection() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   populateSelectedFacade(facade);
 
   const iggy3d::ProductCreativeUiFrame frame =
       iggy3d::buildProductCreativeUiWindowFrame(
           iggy3d::ProductCreativeUiWindowFrameRequest{&window,
-                                                      &facade,
+                                                      &app,
                                                       1280,
                                                       720,
                                                       1280,
@@ -379,12 +385,13 @@ bool creativeWindowWithNullFacadeRecordsFacadeMissing() {
 bool productVulkanMenuUiFieldsAreUnchanged() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   prepopulateProductVulkanMenuUi(window);
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   static_cast<void>(iggy3d::buildProductCreativeUiWindowFrame(
       iggy3d::ProductCreativeUiWindowFrameRequest{&window,
-                                                  &facade,
+                                                  &app,
                                                   1280,
                                                   720,
                                                   1280,
@@ -415,7 +422,8 @@ bool productVulkanMenuUiFieldsAreUnchanged() {
 
 bool facadeStateIsNotMutatedByBridge() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   populateSelectedFacade(facade);
 
   const cr::Tool activeToolBefore = facade.toolState().activeTool;
@@ -424,7 +432,7 @@ bool facadeStateIsNotMutatedByBridge() {
 
   static_cast<void>(iggy3d::buildProductCreativeUiWindowFrame(
       iggy3d::ProductCreativeUiWindowFrameRequest{&window,
-                                                  &facade,
+                                                  &app,
                                                   1280,
                                                   720,
                                                   1280,
@@ -448,7 +456,8 @@ bool noWindowLoopDoesNotCallBridge() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   iggy3d::FrontendSettings settings;
   iggy3d::ProductSaveBridgeResult saves;
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
   const iggy3d::ProductWindowLoopResult loopResult =
@@ -461,7 +470,7 @@ bool noWindowLoopDoesNotCallBridge() {
           window,
           settings,
           saves,
-          &facade});
+          &app});
   const iggy3d::RenderReceipt receipt = receiptFor(loopResult.window);
 
   return expect(!loopResult.window.requested, "no-window not requested") &&

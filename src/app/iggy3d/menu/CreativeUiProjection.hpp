@@ -9,12 +9,12 @@
 namespace iggy3d {
 
 namespace creative {
-class Facade;
+struct CreativeAppState;
 }  // namespace creative
 
 struct ProductCreativeUiProjectionRequest {
   const creative::CreativeUiModel* model = nullptr;
-  const creative::Facade* facade = nullptr;
+  const creative::CreativeAppState* creative = nullptr;
   std::uint32_t virtualWidth = 1280;
   std::uint32_t virtualHeight = 720;
   ProductUiThemeId theme = ProductUiThemeId::System;

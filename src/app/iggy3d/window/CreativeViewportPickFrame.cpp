@@ -1,6 +1,7 @@
 #include "app/iggy3d/window/CreativeViewportPickFrame.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 
@@ -71,14 +72,16 @@ ProductCreativeViewportPickFrameReceipt routeProductCreativeViewportPickFrame(
     return receipt;
   }
 
-  receipt.facadeAvailable = request.facade != nullptr;
-  if (request.facade == nullptr) {
+  creative::Facade* facade =
+      request.creative != nullptr ? &request.creative->facade : nullptr;
+  receipt.facadeAvailable = facade != nullptr;
+  if (facade == nullptr) {
     setStatus(receipt, "product_creative_viewport_pick_facade_missing");
     return receipt;
   }
 
   const std::span<const creative::CreativeObject> objects =
-      request.facade->document().objects();
+      facade->document().objects();
   receipt.objectCount = objects.size();
   receipt.sourceAvailable = !objects.empty();
   if (objects.empty()) {

@@ -10,6 +10,7 @@
 
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 
@@ -91,7 +92,7 @@ struct WindowInputHarness {
     markCreativeDocumentWindow(window);
   }
 
-  void run(iggy3d::creative::Facade& facade,
+  void run(iggy3d::creative::CreativeAppState& app,
            iggy3d::ProductWindowInputClickOverride clickOverride) {
     iggy3d::processProductWindowInputFrame(iggy3d::ProductWindowInputFrameContext{
         frontend,
@@ -105,7 +106,7 @@ struct WindowInputHarness {
         inputFrame,
         closeRequested,
         nullptr,
-        &facade,
+        &app,
         nullptr,
         viewport(),
         projectionRequest(),
@@ -133,7 +134,8 @@ iggy3d::ProductWindowInputClickOverride lifecycleOverride(bool down,
 // pointer-lifecycle samples driving the raw resolver -> dispatch -> commit.
 bool windowFrameDragMovesRoomToReleaseDestination() {
   WindowInputHarness harness;
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));
 
@@ -144,7 +146,7 @@ bool windowFrameDragMovesRoomToReleaseDestination() {
   iggy3d::ProductWindowInputClickOverride press;
   press.enabled = true;
   press.click = clickAt(150.0F, 250.0F);
-  harness.run(facade, press);
+  harness.run(app, press);
 
   const bool beganOk =
       expect(facade.selectionState().selectedTarget.value == roomId,
@@ -154,12 +156,12 @@ bool windowFrameDragMovesRoomToReleaseDestination() {
 
   // Frame 2: injected held-button down at the destination pointer (250,150 ->
   // grid (2,1)). The resolver records the gesture in flight (Press edge).
-  harness.run(facade, lifecycleOverride(/*down=*/true, 250.0F, 150.0F));
+  harness.run(app, lifecycleOverride(/*down=*/true, 250.0F, 150.0F));
 
   // Frame 3: injected button release at the same pointer. The resolver emits
   // Release; the window resolves the destination world XY from grid cell (2,1)
   // and the facade commits one snapped Move.
-  harness.run(facade, lifecycleOverride(/*down=*/false, 250.0F, 150.0F));
+  harness.run(app, lifecycleOverride(/*down=*/false, 250.0F, 150.0F));
 
   const cr::CreativeObject* room = facade.findObject(roomId);
   return beganOk &&
@@ -190,15 +192,16 @@ bool windowFrameDragMovesRoomToReleaseDestination() {
 // no-op through the window frame — no crash, no spurious move.
 bool windowFrameReleaseWithoutPressIsNoOp() {
   WindowInputHarness harness;
-  cr::Facade facade;
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   const std::uint64_t revisionBefore = facade.document().revision();
 
   // The button is reported held (as if resumed mid-gesture)...
-  harness.run(facade, lifecycleOverride(/*down=*/true, 250.0F, 150.0F));
+  harness.run(app, lifecycleOverride(/*down=*/true, 250.0F, 150.0F));
   // ...then released. No drag ever began, so nothing commits.
-  harness.run(facade, lifecycleOverride(/*down=*/false, 250.0F, 150.0F));
+  harness.run(app, lifecycleOverride(/*down=*/false, 250.0F, 150.0F));
 
   const cr::CreativeObject* room = facade.findObject(roomId);
   return expect(room != nullptr && room->bounds.min.x == 1.0,

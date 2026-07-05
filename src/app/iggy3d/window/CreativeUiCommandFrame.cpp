@@ -129,12 +129,12 @@ ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
   receipt.inputEnabled = request.inputReceipt.enabled;
   receipt.semanticId = request.inputReceipt.semanticId;
 
-  if (request.facade == nullptr) {
+  if (request.creative == nullptr) {
     setNoopStatus(receipt, "product_creative_ui_command_facade_missing");
     return receipt;
   }
 
-  creative::Facade& facade = *request.facade;
+  creative::Facade& facade = request.creative->facade;
   receipt.facadeAvailable = true;
   receipt.toolBefore = facade.toolState().activeTool;
   receipt.toolAfter = receipt.toolBefore;

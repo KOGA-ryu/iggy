@@ -14,7 +14,7 @@ namespace iggy3d {
 struct ProductSaveBridgeResult;
 struct WorldSetupDraft;
 namespace creative {
-class Facade;
+struct CreativeAppState;
 }  // namespace creative
 
 struct ProductPauseMenuActionContext {
@@ -26,7 +26,7 @@ struct ProductPauseMenuActionContext {
   ProductAppWindowState& window;
   bool& closeRequested;
   FrontendSettings& settings;
-  creative::Facade* creativeFacade = nullptr;
+  creative::CreativeAppState* creativeApp = nullptr;
 };
 
 struct ProductDevToolsMenuActionContext {
@@ -73,7 +73,7 @@ struct ProductStarterMenuActionContext {
   WorldSetupDraft& worldSetupDraft;
   ProductAppWindowState& window;
   bool& closeRequested;
-  creative::Facade* creativeFacade = nullptr;
+  creative::CreativeAppState* creativeApp = nullptr;
 };
 
 struct ProductSystemPauseMenuActionContext {

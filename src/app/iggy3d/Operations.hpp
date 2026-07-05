@@ -8,6 +8,7 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/Options.hpp"
@@ -163,17 +164,17 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
     FrontendState& frontend,
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
-    creative::Facade& facade);
+    creative::CreativeAppState& creativeApp);
 ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
     const ProductAppOptions& options,
     const ProductCreativeOpenWorldLaunchRequest& request,
     FrontendState& frontend,
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
-    creative::Facade& facade);
+    creative::CreativeAppState& creativeApp);
 ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
     const ProductAppOptions& options,
-    creative::Facade& facade,
+    creative::CreativeAppState& creativeApp,
     std::string_view source,
     ProductAppWindowState& window);
 void launchProductContinueSave(const ProductAppOptions& options,
