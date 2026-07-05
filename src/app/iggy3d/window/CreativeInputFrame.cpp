@@ -40,6 +40,10 @@ void mergeInputFrameReceipt(ProductCreativeInputFrameReceipt& receipt,
   receipt.toolChanged = receipt.toolChanged || next.toolChanged;
   receipt.pointerDispatched =
       receipt.pointerDispatched || next.pointerDispatched;
+  receipt.pointerMoveDispatched =
+      receipt.pointerMoveDispatched || next.pointerMoveDispatched;
+  receipt.pointerReleaseDispatched =
+      receipt.pointerReleaseDispatched || next.pointerReleaseDispatched;
   receipt.cancelDispatched = receipt.cancelDispatched || next.cancelDispatched;
   receipt.accepted = receipt.accepted || next.accepted;
   receipt.changed = receipt.changed || next.changed;
@@ -86,6 +90,74 @@ creative::CreativeToolInputPacket productCreativePointerPressPacket(
   packet.pointer.modifiers = creative::kCreativeToolModifierNone;
   packet.pointer.target = target;
   return packet;
+}
+
+creative::CreativeToolInputPacket productCreativePointerMovePacket(
+    float x,
+    float y,
+    creative::TargetRef target) noexcept {
+  creative::CreativeToolInputPacket packet;
+  packet.kind = creative::CreativeToolInputKind::PointerMove;
+  packet.pointer.x = static_cast<double>(x);
+  packet.pointer.y = static_cast<double>(y);
+  // The primary button stays held through a drag Move; the tool core reads the
+  // button to know a gesture is in flight (vs a hover), so report it Primary.
+  packet.pointer.button = creative::CreativeToolPointerButton::Primary;
+  packet.pointer.modifiers = creative::kCreativeToolModifierNone;
+  packet.pointer.target = target;
+  return packet;
+}
+
+creative::CreativeToolInputPacket productCreativePointerReleasePacket(
+    float x,
+    float y,
+    creative::TargetRef target) noexcept {
+  creative::CreativeToolInputPacket packet;
+  packet.kind = creative::CreativeToolInputKind::PointerRelease;
+  packet.pointer.x = static_cast<double>(x);
+  packet.pointer.y = static_cast<double>(y);
+  // Release names the button that came up; the pointer is no longer held after.
+  packet.pointer.button = creative::CreativeToolPointerButton::Primary;
+  packet.pointer.modifiers = creative::kCreativeToolModifierNone;
+  packet.pointer.target = target;
+  return packet;
+}
+
+void resetProductCreativePointerLifecycle(
+    ProductCreativePointerLifecycleState& state) noexcept {
+  state.primaryButtonHeld = false;
+  state.lastPointerX = 0.0F;
+  state.lastPointerY = 0.0F;
+}
+
+ProductCreativePointerLifecycleEvent resolveProductCreativePointerLifecycle(
+    ProductCreativePointerLifecycleState& state,
+    const ProductCreativePointerSample& sample) noexcept {
+  ProductCreativePointerLifecycleEvent event;
+  event.x = sample.x;
+  event.y = sample.y;
+
+  const bool wasHeld = state.primaryButtonHeld;
+  const bool nowDown = sample.primaryButtonDown;
+
+  if (!wasHeld && nowDown) {
+    // Button-down edge. The pick chain owns Press so it can resolve a target;
+    // the lifecycle only records that the gesture is now in flight.
+    event.phase = ProductCreativePointerLifecyclePhase::Press;
+  } else if (wasHeld && !nowDown) {
+    // Button-up edge closes the gesture.
+    event.phase = ProductCreativePointerLifecyclePhase::Release;
+  } else if (wasHeld && nowDown) {
+    // Held: only a real position change is a Move (no zero-delta spam).
+    if (sample.x != state.lastPointerX || sample.y != state.lastPointerY) {
+      event.phase = ProductCreativePointerLifecyclePhase::Move;
+    }
+  }
+
+  state.primaryButtonHeld = nowDown;
+  state.lastPointerX = sample.x;
+  state.lastPointerY = sample.y;
+  return event;
 }
 
 ProductCreativeInputFrameReceipt processProductCreativeInputFrame(
@@ -141,9 +213,40 @@ ProductCreativeInputFrameReceipt processProductCreativeInputFrame(
     mergeDispatchReceipt(receipt, dispatchReceipt);
   }
 
+  // TL-3 lifecycle continuation: Press already flowed through the pick chain
+  // (via `click`), so here we only synthesize the Move (held drag) and the
+  // Release that finally ENDS a gesture (Measure end, future Move commit).
+  switch (request.pointerLifecycle.phase) {
+    case ProductCreativePointerLifecyclePhase::Move: {
+      const creative::CreativeFacadeToolDispatchReceipt dispatchReceipt =
+          facade.dispatchToolInput(productCreativePointerMovePacket(
+              request.pointerLifecycle.x,
+              request.pointerLifecycle.y,
+              request.pointerLifecycleTarget));
+      receipt.pointerMoveDispatched = true;
+      mergeDispatchReceipt(receipt, dispatchReceipt);
+      break;
+    }
+    case ProductCreativePointerLifecyclePhase::Release: {
+      const creative::CreativeFacadeToolDispatchReceipt dispatchReceipt =
+          facade.dispatchToolInput(productCreativePointerReleasePacket(
+              request.pointerLifecycle.x,
+              request.pointerLifecycle.y,
+              request.pointerLifecycleTarget));
+      receipt.pointerReleaseDispatched = true;
+      mergeDispatchReceipt(receipt, dispatchReceipt);
+      break;
+    }
+    case ProductCreativePointerLifecyclePhase::Press:
+    case ProductCreativePointerLifecyclePhase::None:
+      // Press is owned by the pick chain above; None emits nothing.
+      break;
+  }
+
   receipt.activeToolAfter = facade.toolState().activeTool;
   if (receipt.actionHandled || receipt.cancelDispatched ||
-      receipt.pointerDispatched) {
+      receipt.pointerDispatched || receipt.pointerMoveDispatched ||
+      receipt.pointerReleaseDispatched) {
     receipt.status = "product_creative_input_processed";
     receipt.reasonCode = "product_creative_input_processed";
   } else {
@@ -218,12 +321,19 @@ ProductCreativeInputFrameReceipt processProductCreativeInputActions(
     }
   }
 
-  if (request.click.clicked) {
+  const bool hasLifecyclePacket =
+      request.pointerLifecycle.phase ==
+          ProductCreativePointerLifecyclePhase::Move ||
+      request.pointerLifecycle.phase ==
+          ProductCreativePointerLifecyclePhase::Release;
+  if (request.click.clicked || hasLifecyclePacket) {
     ProductCreativeInputFrameRequest frameRequest;
     frameRequest.window = request.window;
     frameRequest.facade = request.facade;
     frameRequest.click = request.click;
     frameRequest.pointerTarget = request.pointerTarget;
+    frameRequest.pointerLifecycle = request.pointerLifecycle;
+    frameRequest.pointerLifecycleTarget = request.pointerLifecycleTarget;
     const ProductCreativeInputFrameReceipt frameReceipt =
         processProductCreativeInputFrame(frameRequest);
     mergeInputFrameReceipt(receipt, frameReceipt);

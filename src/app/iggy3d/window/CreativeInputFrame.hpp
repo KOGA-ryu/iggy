@@ -7,6 +7,7 @@
 #include "app/input/MouseInput.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <string_view>
 
 namespace iggy3d {
@@ -18,6 +19,37 @@ namespace creative {
 class Facade;
 }  // namespace creative
 
+// Held-button pointer gesture lifecycle state (TL-3). Persists across frames so
+// the window layer can synthesize the full Press -> Move* -> Release lifecycle
+// from raw mouse button + position state. Reset on tool switch / mode exit so a
+// stranded held-flag cannot fire a phantom release later.
+struct ProductCreativePointerLifecycleState {
+  bool primaryButtonHeld = false;
+  float lastPointerX = 0.0F;
+  float lastPointerY = 0.0F;
+};
+
+// One raw mouse snapshot: is the primary button down THIS frame and where.
+struct ProductCreativePointerSample {
+  bool primaryButtonDown = false;
+  float x = 0.0F;
+  float y = 0.0F;
+};
+
+enum class ProductCreativePointerLifecyclePhase : std::uint8_t {
+  None,     // button up last frame, up now (or held+unmoved): nothing to emit
+  Press,    // button-down edge (up last frame, down now)
+  Move,     // primary button held and the pointer position changed
+  Release,  // button-up edge (down last frame, up now)
+};
+
+struct ProductCreativePointerLifecycleEvent {
+  ProductCreativePointerLifecyclePhase phase =
+      ProductCreativePointerLifecyclePhase::None;
+  float x = 0.0F;
+  float y = 0.0F;
+};
+
 struct ProductCreativeInputFrameRequest {
   ProductAppWindowState* window = nullptr;
   creative::Facade* facade = nullptr;
@@ -26,6 +58,13 @@ struct ProductCreativeInputFrameRequest {
   creative::Tool toolKey = creative::Tool::Select;
   MouseClick click;
   creative::TargetRef pointerTarget;
+  // TL-3 pointer lifecycle continuation of the Press carried by `click`: a Move
+  // while the primary button is held, or the Release that ends the gesture. The
+  // pick chain resolves Press's target; Move/Release carry the current pointer
+  // position (raw window-pixel space, same as `click`) so a drag/measure can
+  // update and END. None phase = no lifecycle packet dispatched this frame.
+  ProductCreativePointerLifecycleEvent pointerLifecycle;
+  creative::TargetRef pointerLifecycleTarget;
 };
 
 struct ProductCreativeInputActionsRequest {
@@ -35,6 +74,8 @@ struct ProductCreativeInputActionsRequest {
   KeyboardCreativeToolKeyPresses toolKeys;
   MouseClick click;
   creative::TargetRef pointerTarget;
+  ProductCreativePointerLifecycleEvent pointerLifecycle;
+  creative::TargetRef pointerLifecycleTarget;
 };
 
 struct ProductCreativeInputFrameReceipt {
@@ -44,6 +85,8 @@ struct ProductCreativeInputFrameReceipt {
   bool actionHandled = false;
   bool toolChanged = false;
   bool pointerDispatched = false;
+  bool pointerMoveDispatched = false;
+  bool pointerReleaseDispatched = false;
   bool cancelDispatched = false;
   bool accepted = false;
   bool changed = false;
@@ -64,6 +107,26 @@ struct ProductCreativeInputFrameReceipt {
 [[nodiscard]] creative::CreativeToolInputPacket productCreativePointerPressPacket(
     const MouseClick& click,
     creative::TargetRef target = {}) noexcept;
+[[nodiscard]] creative::CreativeToolInputPacket productCreativePointerMovePacket(
+    float x,
+    float y,
+    creative::TargetRef target = {}) noexcept;
+[[nodiscard]] creative::CreativeToolInputPacket
+productCreativePointerReleasePacket(float x,
+                                    float y,
+                                    creative::TargetRef target = {}) noexcept;
+// Pure lifecycle resolver: given the persistent held-state and this frame's raw
+// sample, advance the state and report which lifecycle phase (if any) to emit.
+// Press does NOT flow through here in the frame (the pick chain owns Press so it
+// can resolve a target); Move/Release are the window-layer additions of TV1-F.
+[[nodiscard]] ProductCreativePointerLifecycleEvent
+resolveProductCreativePointerLifecycle(
+    ProductCreativePointerLifecycleState& state,
+    const ProductCreativePointerSample& sample) noexcept;
+// Clear held-state so a stranded held-flag cannot fire a phantom Release after a
+// tool switch or a creative-mode exit.
+void resetProductCreativePointerLifecycle(
+    ProductCreativePointerLifecycleState& state) noexcept;
 [[nodiscard]] ProductCreativeInputFrameReceipt processProductCreativeInputFrame(
     const ProductCreativeInputFrameRequest& request);
 [[nodiscard]] ProductCreativeInputFrameReceipt processProductCreativeInputActions(

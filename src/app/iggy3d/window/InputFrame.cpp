@@ -1177,15 +1177,40 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       // keys polled are the four direct tool keys (TL-2, keys 1/2/3/4).
       const KeyboardCreativeToolKeyPresses creativeToolKeys =
           pollKeyboardCreativeToolKeys(context.inputFrame.keyboard);
-      (void)processProductCreativeInputActions(
-          ProductCreativeInputActionsRequest{
-              &context.window,
-              context.creativeFacade,
-              &gameplayActions,
-              creativeToolKeys,
-              downstreamClick,
-              creativePointerTarget,
-          });
+
+      // TL-3 pointer gesture lifecycle. Press flows through the pick chain via
+      // `downstreamClick`; here we synthesize the Move (held drag) and Release
+      // (gesture END) from raw held-button state. Automation drives clicks
+      // through the override socket and does not update the raw button state,
+      // so the real-mouse lifecycle stays inert under an override (TV1-K owns
+      // the injected-gesture channel). A tool switch this frame resets the
+      // held-state first, so a button held across a switch cannot fire a
+      // phantom Release into the newly-selected tool. Coordinates are raw
+      // window-pixel space — the SAME space the pick/press already consume.
+      creative::Tool toolKeyTarget = creative::Tool::Select;
+      if (productCreativeToolKeyTarget(creativeToolKeys, toolKeyTarget)) {
+        resetProductCreativePointerLifecycle(
+            context.inputFrame.creativePointerLifecycle);
+      }
+      ProductCreativePointerLifecycleEvent creativePointerLifecycle;
+      // branch-gate: BG-1029
+      if (!context.clickOverride.enabled) {
+        const ProductCreativePointerSample pointerSample{
+            context.inputFrame.mouse.leftWasDown, click.x, click.y};
+        creativePointerLifecycle = resolveProductCreativePointerLifecycle(
+            context.inputFrame.creativePointerLifecycle, pointerSample);
+      }
+
+      ProductCreativeInputActionsRequest creativeRequest;
+      creativeRequest.window = &context.window;
+      creativeRequest.facade = context.creativeFacade;
+      creativeRequest.actions = &gameplayActions;
+      creativeRequest.toolKeys = creativeToolKeys;
+      creativeRequest.click = downstreamClick;
+      creativeRequest.pointerTarget = creativePointerTarget;
+      creativeRequest.pointerLifecycle = creativePointerLifecycle;
+      // Move/Release end the gesture at the current pointer; no target pick.
+      (void)processProductCreativeInputActions(creativeRequest);
     } else {
       if (context.window.roomEditing.ready) {
         (void)processProductWindowEditorMousePickPreview({
@@ -1227,6 +1252,15 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                                            &context.settings, gameplayActions,
                                            "action_map");
     }
+  }
+  // If the creative-document dispatch path did not run this frame (frontend
+  // menu open over the world, pause, no session), drop any held-state so a
+  // gesture interrupted mid-drag cannot fire a phantom Release on resume.
+  if (!productCreativeDocumentEditorActiveForWindow(context.window) ||
+      !context.window.gameplayActive || !context.activeSession.has_value() ||
+      frontendBlocksGameplayInput(context.frontend)) {
+    resetProductCreativePointerLifecycle(
+        context.inputFrame.creativePointerLifecycle);
   }
   updateProductWindowMouseCapture(context.frontend,
                                   context.window,

@@ -12,6 +12,7 @@
 #include "app/iggy3d/creative/ViewportPick.hpp"
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
+#include "app/iggy3d/window/CreativeInputFrame.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/view/ViewportFraming.hpp"
 #include "app/input/GamepadInput.hpp"
@@ -50,6 +51,8 @@ struct ProductWindowInputFrameState {
   ProductControllerModeChordState controllerModeChord;
   ProductControllerActionRoutingState controllerAction;
   ProductMovementTuningRepeatState movementTuningRepeat;
+  // TL-3 held-button pointer gesture lifecycle (creative document mode only).
+  ProductCreativePointerLifecycleState creativePointerLifecycle;
 };
 
 struct ProductWindowInputClickOverride {

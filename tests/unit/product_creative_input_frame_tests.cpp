@@ -197,6 +197,93 @@ bool clickPacketMapsMouseClick() {
                 "packet target invalid");
 }
 
+bool movePacketMapsPointer() {
+  cr::TargetRef target;
+  target.value = 55;
+  const cr::CreativeToolInputPacket packet =
+      iggy3d::productCreativePointerMovePacket(12.5F, 34.25F, target);
+
+  return expect(packet.kind == cr::CreativeToolInputKind::PointerMove,
+                "move packet kind") &&
+         expect(packet.pointer.button == cr::CreativeToolPointerButton::Primary,
+                "move packet primary") &&
+         expect(packet.pointer.x == 12.5, "move packet x") &&
+         expect(packet.pointer.y == 34.25, "move packet y") &&
+         expect(packet.pointer.target.value == 55U, "move packet target");
+}
+
+bool releasePacketMapsPointer() {
+  const cr::CreativeToolInputPacket packet =
+      iggy3d::productCreativePointerReleasePacket(60.0F, 70.0F);
+
+  return expect(packet.kind == cr::CreativeToolInputKind::PointerRelease,
+                "release packet kind") &&
+         expect(packet.pointer.button == cr::CreativeToolPointerButton::Primary,
+                "release packet primary") &&
+         expect(packet.pointer.x == 60.0, "release packet x") &&
+         expect(packet.pointer.y == 70.0, "release packet y") &&
+         expect(packet.pointer.target.value == cr::kInvalidId,
+                "release packet target invalid");
+}
+
+bool pointerLifecycleWalksPressMoveRelease() {
+  iggy3d::ProductCreativePointerLifecycleState state;
+
+  // Frame 0: button up -> nothing.
+  const iggy3d::ProductCreativePointerLifecycleEvent up0 =
+      iggy3d::resolveProductCreativePointerLifecycle(state, {false, 5.0F, 6.0F});
+  // Frame 1: button-down edge -> Press.
+  const iggy3d::ProductCreativePointerLifecycleEvent press =
+      iggy3d::resolveProductCreativePointerLifecycle(state, {true, 5.0F, 6.0F});
+  // Frame 2: held, position unchanged -> None (no zero-delta spam).
+  const iggy3d::ProductCreativePointerLifecycleEvent held =
+      iggy3d::resolveProductCreativePointerLifecycle(state, {true, 5.0F, 6.0F});
+  // Frame 3: held, moved -> Move at the new position.
+  const iggy3d::ProductCreativePointerLifecycleEvent move =
+      iggy3d::resolveProductCreativePointerLifecycle(state, {true, 9.0F, 8.0F});
+  // Frame 4: button-up edge -> Release at the current position.
+  const iggy3d::ProductCreativePointerLifecycleEvent release =
+      iggy3d::resolveProductCreativePointerLifecycle(state, {false, 9.0F, 8.0F});
+  // Frame 5: up again -> nothing, no phantom release.
+  const iggy3d::ProductCreativePointerLifecycleEvent up5 =
+      iggy3d::resolveProductCreativePointerLifecycle(state, {false, 9.0F, 8.0F});
+
+  return expect(up0.phase == iggy3d::ProductCreativePointerLifecyclePhase::None,
+                "lifecycle up0 none") &&
+         expect(press.phase ==
+                    iggy3d::ProductCreativePointerLifecyclePhase::Press,
+                "lifecycle press") &&
+         expect(held.phase == iggy3d::ProductCreativePointerLifecyclePhase::None,
+                "lifecycle held unmoved none") &&
+         expect(move.phase == iggy3d::ProductCreativePointerLifecyclePhase::Move,
+                "lifecycle move") &&
+         expect(move.x == 9.0F && move.y == 8.0F, "lifecycle move coords") &&
+         expect(release.phase ==
+                    iggy3d::ProductCreativePointerLifecyclePhase::Release,
+                "lifecycle release") &&
+         expect(release.x == 9.0F && release.y == 8.0F,
+                "lifecycle release coords") &&
+         expect(up5.phase == iggy3d::ProductCreativePointerLifecyclePhase::None,
+                "lifecycle up5 no phantom release");
+}
+
+bool pointerLifecycleResetDropsHeldFlag() {
+  iggy3d::ProductCreativePointerLifecycleState state;
+  // Enter a held gesture.
+  static_cast<void>(
+      iggy3d::resolveProductCreativePointerLifecycle(state, {true, 1.0F, 2.0F}));
+  // Reset (tool switch / mode exit) drops the held flag.
+  iggy3d::resetProductCreativePointerLifecycle(state);
+  // Button now up: without the reset this would have been a phantom Release.
+  const iggy3d::ProductCreativePointerLifecycleEvent afterReset =
+      iggy3d::resolveProductCreativePointerLifecycle(state, {false, 1.0F, 2.0F});
+
+  return expect(!state.primaryButtonHeld, "reset clears held flag") &&
+         expect(afterReset.phase ==
+                    iggy3d::ProductCreativePointerLifecyclePhase::None,
+                "reset prevents phantom release");
+}
+
 bool clickPacketPreservesPickedTarget() {
   const iggy3d::MouseClick click = clickAt(12.5F, 34.25F);
   cr::TargetRef target;
@@ -707,6 +794,188 @@ bool batchCancelOnlyWhenPressed() {
                 "pressed cancel clears measurement");
 }
 
+iggy3d::ProductCreativePointerLifecycleEvent lifecycleMove(float x, float y) {
+  return {iggy3d::ProductCreativePointerLifecyclePhase::Move, x, y};
+}
+
+iggy3d::ProductCreativePointerLifecycleEvent lifecycleRelease(float x, float y) {
+  return {iggy3d::ProductCreativePointerLifecyclePhase::Release, x, y};
+}
+
+// FLAGSHIP: a full Measure gesture through the WINDOW/frame entry finally ENDS.
+// Before TV1-F only PointerPress was synthesized, so Measure could Begin but the
+// EndMeasurement intent (PointerRelease) was never reachable from the window.
+bool measureGestureBeginsUpdatesAndEndsThroughFrameEntry() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+
+  // Press -> Begin (the existing click path).
+  iggy3d::ProductCreativeInputActionsRequest beginRequest;
+  beginRequest.window = &window;
+  beginRequest.facade = &facade;
+  beginRequest.click = clickAt(10.0F, 10.0F);
+  const iggy3d::ProductCreativeInputFrameReceipt beginReceipt =
+      iggy3d::processProductCreativeInputActions(beginRequest);
+  const bool beganActive = facade.measurementState().active;
+
+  // Move (held) -> Update: the measurement's current point tracks the pointer.
+  iggy3d::ProductCreativeInputActionsRequest moveRequest;
+  moveRequest.window = &window;
+  moveRequest.facade = &facade;
+  moveRequest.pointerLifecycle = lifecycleMove(40.0F, 55.0F);
+  const iggy3d::ProductCreativeInputFrameReceipt moveReceipt =
+      iggy3d::processProductCreativeInputActions(moveRequest);
+  const bool activeDuringMove = facade.measurementState().active;
+  const double currentXAfterMove = facade.measurementState().currentPoint.x;
+  const double currentYAfterMove = facade.measurementState().currentPoint.y;
+
+  // Release -> End: the measurement finally ends (active clears, result stays).
+  iggy3d::ProductCreativeInputActionsRequest releaseRequest;
+  releaseRequest.window = &window;
+  releaseRequest.facade = &facade;
+  releaseRequest.pointerLifecycle = lifecycleRelease(40.0F, 55.0F);
+  const iggy3d::ProductCreativeInputFrameReceipt releaseReceipt =
+      iggy3d::processProductCreativeInputActions(releaseRequest);
+
+  return expect(beginReceipt.pointerDispatched, "flagship begin dispatched") &&
+         expect(beganActive, "flagship measurement began active") &&
+         expect(moveReceipt.pointerMoveDispatched, "flagship move dispatched") &&
+         expect(moveReceipt.inputKind ==
+                    cr::CreativeToolInputKind::PointerMove,
+                "flagship move input kind") &&
+         expect(moveReceipt.emittedIntentCount == 1U,
+                "flagship move emitted update intent") &&
+         expect(activeDuringMove, "flagship still measuring during move") &&
+         expect(currentXAfterMove == 40.0, "flagship move updates current x") &&
+         expect(currentYAfterMove == 55.0, "flagship move updates current y") &&
+         expect(releaseReceipt.pointerReleaseDispatched,
+                "flagship release dispatched") &&
+         expect(releaseReceipt.inputKind ==
+                    cr::CreativeToolInputKind::PointerRelease,
+                "flagship release input kind") &&
+         expect(releaseReceipt.emittedIntentCount == 1U,
+                "flagship release emitted end intent") &&
+         expect(!facade.measurementState().active,
+                "flagship measurement ENDED after release") &&
+         expect(facade.measurementState().hasMeasurement,
+                "flagship measurement result retained after end");
+}
+
+// Esc mid-measure cancels the gesture; a subsequent Release is a harmless no-op
+// (no measurement to end) and does NOT resurrect the cancelled measurement.
+bool escMidMeasureCancelsThenReleaseIsInert() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+
+  iggy3d::ProductCreativeInputActionsRequest beginRequest;
+  beginRequest.window = &window;
+  beginRequest.facade = &facade;
+  beginRequest.click = clickAt(12.0F, 12.0F);
+  static_cast<void>(iggy3d::processProductCreativeInputActions(beginRequest));
+
+  iggy3d::ActionState cancelActions;
+  recordTestAction(cancelActions, iggy3d::InputAction::EditorCancelPreview,
+                   true);
+  iggy3d::ProductCreativeInputActionsRequest cancelRequest;
+  cancelRequest.window = &window;
+  cancelRequest.facade = &facade;
+  cancelRequest.actions = &cancelActions;
+  const iggy3d::ProductCreativeInputFrameReceipt cancelReceipt =
+      iggy3d::processProductCreativeInputActions(cancelRequest);
+  const bool activeAfterCancel = facade.measurementState().active;
+  const bool hasMeasurementAfterCancel =
+      facade.measurementState().hasMeasurement;
+
+  iggy3d::ProductCreativeInputActionsRequest releaseRequest;
+  releaseRequest.window = &window;
+  releaseRequest.facade = &facade;
+  releaseRequest.pointerLifecycle = lifecycleRelease(12.0F, 12.0F);
+  const iggy3d::ProductCreativeInputFrameReceipt releaseReceipt =
+      iggy3d::processProductCreativeInputActions(releaseRequest);
+
+  return expect(cancelReceipt.cancelDispatched, "esc cancel dispatched") &&
+         expect(!activeAfterCancel, "esc cancel clears active") &&
+         expect(!hasMeasurementAfterCancel, "esc cancel clears measurement") &&
+         expect(releaseReceipt.pointerReleaseDispatched,
+                "post-cancel release dispatched") &&
+         expect(releaseReceipt.emittedIntentCount == 0U,
+                "post-cancel release emits no end intent") &&
+         expect(!facade.measurementState().active,
+                "post-cancel release leaves no measurement") &&
+         expect(!facade.measurementState().hasMeasurement,
+                "post-cancel release does not resurrect measurement");
+}
+
+// A Move dispatched to the Select tool is a harmless preview no-op (Move-ready
+// plumbing per TV1-F#5: Press/Move/Release all reach the facade, but Select's
+// move/release do not mutate the document or selection).
+bool selectMoveAndReleaseAreHarmlessNoOps() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();  // Select is the default tool.
+
+  iggy3d::ProductCreativeInputActionsRequest moveRequest;
+  moveRequest.window = &window;
+  moveRequest.facade = &facade;
+  moveRequest.pointerLifecycle = lifecycleMove(30.0F, 40.0F);
+  const iggy3d::ProductCreativeInputFrameReceipt moveReceipt =
+      iggy3d::processProductCreativeInputActions(moveRequest);
+
+  iggy3d::ProductCreativeInputActionsRequest releaseRequest;
+  releaseRequest.window = &window;
+  releaseRequest.facade = &facade;
+  releaseRequest.pointerLifecycle = lifecycleRelease(30.0F, 40.0F);
+  const iggy3d::ProductCreativeInputFrameReceipt releaseReceipt =
+      iggy3d::processProductCreativeInputActions(releaseRequest);
+
+  return expect(moveReceipt.pointerMoveDispatched, "select move dispatched") &&
+         expect(moveReceipt.accepted, "select move accepted") &&
+         expect(releaseReceipt.pointerReleaseDispatched,
+                "select release dispatched") &&
+         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
+                "select move/release leaves selection untouched") &&
+         expect(facade.document().objectCount() == 0U,
+                "select move/release leaves document untouched");
+}
+
+// Navigate stays fully inert across the whole lifecycle (TD-8: camera in TV1-H).
+bool navigateLifecycleStaysInert() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Navigate));
+
+  iggy3d::ProductCreativeInputActionsRequest moveRequest;
+  moveRequest.window = &window;
+  moveRequest.facade = &facade;
+  moveRequest.pointerLifecycle = lifecycleMove(30.0F, 40.0F);
+  const iggy3d::ProductCreativeInputFrameReceipt moveReceipt =
+      iggy3d::processProductCreativeInputActions(moveRequest);
+
+  iggy3d::ProductCreativeInputActionsRequest releaseRequest;
+  releaseRequest.window = &window;
+  releaseRequest.facade = &facade;
+  releaseRequest.pointerLifecycle = lifecycleRelease(30.0F, 40.0F);
+  const iggy3d::ProductCreativeInputFrameReceipt releaseReceipt =
+      iggy3d::processProductCreativeInputActions(releaseRequest);
+
+  return expect(moveReceipt.pointerMoveDispatched, "navigate move dispatched") &&
+         expect(moveReceipt.emittedIntentCount == 0U,
+                "navigate move emits no intent") &&
+         expect(releaseReceipt.pointerReleaseDispatched,
+                "navigate release dispatched") &&
+         expect(releaseReceipt.emittedIntentCount == 0U,
+                "navigate release emits no intent") &&
+         expect(!facade.measurementState().active,
+                "navigate lifecycle no measurement") &&
+         expect(facade.document().objectCount() == 0U,
+                "navigate lifecycle document untouched");
+}
+
 }  // namespace
 
 int main() {
@@ -718,6 +987,10 @@ int main() {
   ok &= toolKeysMapDirectlyToTools();
   ok &= heldToolKeyRecordsNoPressEdge();
   ok &= clickPacketMapsMouseClick();
+  ok &= movePacketMapsPointer();
+  ok &= releasePacketMapsPointer();
+  ok &= pointerLifecycleWalksPressMoveRelease();
+  ok &= pointerLifecycleResetDropsHeldFlag();
   ok &= clickPacketPreservesPickedTarget();
   ok &= toolKeyChangesFacadeToolWithoutDocumentMutation();
   ok &= repeatedToolKeyDoesNotSpamToolChanged();
@@ -735,5 +1008,9 @@ int main() {
   ok &= batchPointerUsesPickedTargetAfterToolAction();
   ok &= invalidPointerTargetKeepsSelectionInvalid();
   ok &= batchCancelOnlyWhenPressed();
+  ok &= measureGestureBeginsUpdatesAndEndsThroughFrameEntry();
+  ok &= escMidMeasureCancelsThenReleaseIsInert();
+  ok &= selectMoveAndReleaseAreHarmlessNoOps();
+  ok &= navigateLifecycleStaysInert();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
