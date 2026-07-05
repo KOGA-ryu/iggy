@@ -75,11 +75,13 @@ iggy3d::ProductAppWindowState creativeWindow() {
 
 cr::Facade facadeWithRoom() {
   cr::Facade facade;
-  cr::CreateRoomCommand command;
-  command.name = "Room";
-  command.bounds.min = {1.0, 2.0, 1.0};
-  command.bounds.max = {2.0, 3.0, 2.0};
-  (void)facade.createRoom(command);
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Room;
+  request.name = "Room";
+  request.bounds.min = {1.0, 2.0, 1.0};
+  request.bounds.max = {2.0, 3.0, 2.0};
+  request.hasBoundsOverride = true;
+  (void)facade.createDocumentObject(request);
   return facade;
 }
 

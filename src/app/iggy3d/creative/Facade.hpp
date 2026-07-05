@@ -1,6 +1,5 @@
 #pragma once
 
-#include "app/iggy3d/creative/Commands.hpp"
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/Document.hpp"
 #include "app/iggy3d/creative/DocumentMutation.hpp"
@@ -56,6 +55,8 @@ struct CreativeFacadeMutationReceipt {
   CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
   bool visibleBefore = false;
   bool visibleAfter = false;
+  bool lockedBefore = false;
+  bool lockedAfter = false;
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
   CreativeFacadeMutationStatus status = CreativeFacadeMutationStatus::Unknown;
@@ -111,6 +112,7 @@ class Facade {
   [[nodiscard]] CreativeUiBuildReceipt buildUiModel() const;
   [[nodiscard]] CreativeFacadeMutationReceipt
   toggleSelectedObjectVisibility();
+  [[nodiscard]] CreativeFacadeMutationReceipt toggleSelectedObjectLocked();
 
   [[nodiscard]] CreativeDocumentCreateReceipt createDocumentObject(
       const CreativeDocumentCreateRequest& request);
@@ -122,12 +124,6 @@ class Facade {
       CreativeObjectId id);
   [[nodiscard]] CreativeFacadeDocumentInstallReceipt installDocument(
       CreativeDocument document);
-  [[nodiscard]] CreativeObjectId createRoom(const CreateRoomCommand& command);
-  [[nodiscard]] CreativeObjectId createRoom(std::string name);
-  [[nodiscard]] bool renameObject(const RenameObjectCommand& command);
-  [[nodiscard]] bool renameObject(CreativeObjectId id, std::string nextName);
-  [[nodiscard]] bool removeObject(const RemoveObjectCommand& command);
-  [[nodiscard]] bool removeObject(CreativeObjectId id);
   [[nodiscard]] const CreativeObject* findObject(
       CreativeObjectId id) const noexcept;
   [[nodiscard]] const CreativeDocument& document() const noexcept;

@@ -49,7 +49,6 @@ target_sources(iggy3d
     src/app/iggy3d/creative/DocumentSnap.cpp
     src/app/iggy3d/creative/Ghost.cpp
     src/app/iggy3d/creative/Ui.cpp
-    src/app/iggy3d/creative/Commands.cpp
     src/app/iggy3d/creative/Metrics.cpp
     src/app/iggy3d/creative/Facade.cpp
     src/app/iggy3d/creative/Palette.cpp

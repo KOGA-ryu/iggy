@@ -33,6 +33,7 @@ enum class CreativeDocumentRemoveStatus : std::uint8_t {
   InvalidDocument,
   InvalidObjectId,
   MissingObject,
+  LockedObject,
   Removed,
 };
 
@@ -191,17 +192,6 @@ class CreativeDocument {
       const CreativeDocumentRemoveRequest& request);
   [[nodiscard]] CreativeDocumentRemoveReceipt removeDocumentObject(
       CreativeObjectId id);
-  [[nodiscard]] CreativeObjectId createRoom(
-      std::string name,
-      CreativeTransform transform = {},
-      CreativeBounds bounds = {},
-      CreativeLayerId layerId = kDefaultLayerId,
-      bool visible = true,
-      bool locked = false,
-      std::vector<std::string> tags = {},
-      std::optional<CreativeObjectId> parentId = std::nullopt);
-  [[nodiscard]] bool renameObject(CreativeObjectId id, std::string nextName);
-  [[nodiscard]] bool removeObject(CreativeObjectId id);
   void markObjectMutationChanged(CreativeObjectDirtyFlags dirtyFlags = 0) noexcept;
   [[nodiscard]] CreativeDocumentRestoreReceipt restoreForLoad(
       const CreativeDocumentRestoreRequest& request);

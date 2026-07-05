@@ -33,6 +33,17 @@ cr::Id targetId(cr::CreativeObjectId objectId) {
   return static_cast<cr::Id>(objectId);
 }
 
+cr::CreativeObjectId createRoom(cr::Facade& facade, std::string_view name) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Room;
+  request.name = std::string{name};
+  return facade.createDocumentObject(request).objectId;
+}
+
+bool removeObject(cr::Facade& facade, cr::CreativeObjectId objectId) {
+  return facade.removeDocumentObject(objectId).objectRemoved;
+}
+
 const cr::CreativeUiPanel* findPanel(const cr::CreativeUiModel& model,
                                      cr::CreativeUiPanelKind kind) {
   for (const cr::CreativeUiPanel& panel : model.panels) {
@@ -459,18 +470,22 @@ bool unknownInputDoesNotChangeKernels() {
 
 bool roomCommandsStillWorkThroughFacade() {
   cr::Facade facade;
-  const cr::CreativeObjectId id = facade.createRoom("Facade Room");
-  const bool renamed = facade.renameObject(id, "Facade Room Renamed");
-  const bool removed = facade.removeObject(id);
+  const cr::CreativeObjectId id = createRoom(facade, "Facade Room");
+  const cr::CreativeDocumentMutationReceipt renamed =
+      cr::renameDocumentObject(facade.documentForPersistence(),
+                               id,
+                               "Facade Room Renamed");
+  const bool removed = removeObject(facade, id);
 
   return expect(id != cr::kInvalidObjectId, "facade room id") &&
-         expect(renamed, "facade room renamed") &&
+         expect(renamed.status == cr::CreativeDocumentMutationStatus::Applied,
+                "facade room renamed") &&
          expect(removed, "facade room removed") &&
          expect(facade.document().objectCount() == 0U,
                 "facade room document empty") &&
-         expect(facade.stats().commandAttempts == 3U,
+         expect(facade.stats().commandAttempts == 2U,
                 "facade room attempts") &&
-         expect(facade.stats().commandSuccesses == 3U,
+         expect(facade.stats().commandSuccesses == 2U,
                 "facade room successes");
 }
 
@@ -716,7 +731,7 @@ bool installingSecondDocumentDoesNotLeakOldSelectionRows() {
 
 bool removingSelectedObjectClearsSelectionAndOldState() {
   cr::Facade facade;
-  const cr::CreativeObjectId id = facade.createRoom("Selected Room");
+  const cr::CreativeObjectId id = createRoom(facade, "Selected Room");
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
                    1.0,
@@ -724,7 +739,7 @@ bool removingSelectedObjectClearsSelectionAndOldState() {
                    targetId(id))));
   const std::uint64_t revisionBeforeRemove = facade.document().revision();
 
-  const bool removed = facade.removeObject(id);
+  const bool removed = removeObject(facade, id);
 
   return expect(removed, "remove selected object succeeds") &&
          expect(facade.findObject(id) == nullptr,
@@ -747,8 +762,8 @@ bool removingSelectedObjectClearsSelectionAndOldState() {
 
 bool removingInspectedObjectClearsInspectionOnly() {
   cr::Facade facade;
-  const cr::CreativeObjectId selectedId = facade.createRoom("Selected Room");
-  const cr::CreativeObjectId inspectedId = facade.createRoom("Inspected Room");
+  const cr::CreativeObjectId selectedId = createRoom(facade, "Selected Room");
+  const cr::CreativeObjectId inspectedId = createRoom(facade, "Inspected Room");
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
                    1.0,
@@ -761,7 +776,7 @@ bool removingInspectedObjectClearsInspectionOnly() {
                    4.0,
                    targetId(inspectedId))));
 
-  const bool removed = facade.removeObject(inspectedId);
+  const bool removed = removeObject(facade, inspectedId);
 
   return expect(removed, "remove inspected object succeeds") &&
          expect(facade.findObject(inspectedId) == nullptr,
@@ -783,8 +798,8 @@ bool removingInspectedObjectClearsInspectionOnly() {
 
 bool removingMissingObjectPreservesEditorTargets() {
   cr::Facade facade;
-  const cr::CreativeObjectId selectedId = facade.createRoom("Selected Room");
-  const cr::CreativeObjectId inspectedId = facade.createRoom("Inspected Room");
+  const cr::CreativeObjectId selectedId = createRoom(facade, "Selected Room");
+  const cr::CreativeObjectId inspectedId = createRoom(facade, "Inspected Room");
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
                    1.0,
@@ -798,7 +813,7 @@ bool removingMissingObjectPreservesEditorTargets() {
                    targetId(inspectedId))));
   const std::uint64_t revisionBeforeRemove = facade.document().revision();
 
-  const bool removed = facade.removeObject(9999);
+  const bool removed = removeObject(facade, 9999);
 
   return expect(!removed, "remove missing object fails") &&
          expect(facade.document().objectCount() == 2U,
@@ -819,14 +834,14 @@ bool removingMissingObjectPreservesEditorTargets() {
 
 bool removingGhostTargetHidesGhost() {
   cr::Facade facade;
-  const cr::CreativeObjectId ghostId = facade.createRoom("Ghost Room");
+  const cr::CreativeObjectId ghostId = createRoom(facade, "Ghost Room");
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerMove,
                    1.0,
                    2.0,
                    targetId(ghostId))));
 
-  const bool removed = facade.removeObject(ghostId);
+  const bool removed = removeObject(facade, ghostId);
 
   return expect(removed, "remove ghost target succeeds") &&
          expect(!facade.ghostState().visible, "remove ghost target hides ghost");
@@ -834,15 +849,15 @@ bool removingGhostTargetHidesGhost() {
 
 bool removingDifferentObjectPreservesGhost() {
   cr::Facade facade;
-  const cr::CreativeObjectId removedId = facade.createRoom("Removed Room");
-  const cr::CreativeObjectId ghostId = facade.createRoom("Ghost Room");
+  const cr::CreativeObjectId removedId = createRoom(facade, "Removed Room");
+  const cr::CreativeObjectId ghostId = createRoom(facade, "Ghost Room");
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerMove,
                    1.0,
                    2.0,
                    targetId(ghostId))));
 
-  const bool removed = facade.removeObject(removedId);
+  const bool removed = removeObject(facade, removedId);
 
   return expect(removed, "remove different ghost object succeeds") &&
          expect(facade.ghostState().visible,
@@ -853,7 +868,7 @@ bool removingDifferentObjectPreservesGhost() {
 
 bool removingMeasurementTargetClearsMeasurement() {
   cr::Facade facade;
-  const cr::CreativeObjectId measuredId = facade.createRoom("Measured Room");
+  const cr::CreativeObjectId measuredId = createRoom(facade, "Measured Room");
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
@@ -866,7 +881,7 @@ bool removingMeasurementTargetClearsMeasurement() {
                    4.0,
                    targetId(measuredId))));
 
-  const bool removed = facade.removeObject(measuredId);
+  const bool removed = removeObject(facade, measuredId);
 
   return expect(removed, "remove measurement target succeeds") &&
          expect(!facade.measurementState().active,
@@ -881,8 +896,8 @@ bool removingMeasurementTargetClearsMeasurement() {
 
 bool removingDifferentObjectPreservesMeasurement() {
   cr::Facade facade;
-  const cr::CreativeObjectId removedId = facade.createRoom("Removed Room");
-  const cr::CreativeObjectId measuredId = facade.createRoom("Measured Room");
+  const cr::CreativeObjectId removedId = createRoom(facade, "Removed Room");
+  const cr::CreativeObjectId measuredId = createRoom(facade, "Measured Room");
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
@@ -895,7 +910,7 @@ bool removingDifferentObjectPreservesMeasurement() {
                    4.0,
                    targetId(measuredId))));
 
-  const bool removed = facade.removeObject(removedId);
+  const bool removed = removeObject(facade, removedId);
 
   return expect(removed, "remove different measurement object succeeds") &&
          expect(facade.measurementState().active,

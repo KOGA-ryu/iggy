@@ -144,7 +144,7 @@ bool documentRemoveInvalidIdRejectsDeterministically() {
                 "invalid remove keeps existing object");
 }
 
-bool legacyBoolRemoveUsesReceiptedPath() {
+bool receiptedRemoveKeepsMissingAndExistingSemantics() {
   cr::CreativeDocument document;
   const cr::CreativeDocumentCreateReceipt first =
       createRoom(document, "First Room");
@@ -152,20 +152,104 @@ bool legacyBoolRemoveUsesReceiptedPath() {
       createRoom(document, "Second Room");
   const std::uint64_t revisionBeforeMissing = document.revision();
 
-  const bool missingRemoved = document.removeObject(9999);
-  const bool existingRemoved = document.removeObject(first.objectId);
+  const cr::CreativeDocumentRemoveReceipt missing =
+      document.removeDocumentObject(9999);
+  const cr::CreativeDocumentRemoveReceipt existing =
+      document.removeDocumentObject(first.objectId);
 
-  return expect(first.accepted, "legacy first accepted") &&
-         expect(second.accepted, "legacy second accepted") &&
-         expect(!missingRemoved, "legacy missing false") &&
+  return expect(first.accepted, "receipted first accepted") &&
+         expect(second.accepted, "receipted second accepted") &&
+         expect(!missing.objectRemoved, "receipted missing not removed") &&
          expect(document.revision() == revisionBeforeMissing + 1U,
-                "legacy existing increments once") &&
-         expect(existingRemoved, "legacy existing true") &&
-         expect(document.objectCount() == 1U, "legacy count") &&
+                "receipted existing increments once") &&
+         expect(existing.objectRemoved, "receipted existing removed") &&
+         expect(document.objectCount() == 1U, "receipted count") &&
          expect(document.findObject(first.objectId) == nullptr,
-                "legacy removed object gone") &&
+                "receipted removed object gone") &&
          expect(document.findObject(second.objectId) != nullptr,
-                "legacy remaining object findable");
+                "receipted remaining object findable");
+}
+
+bool documentRemoveRefusesLockedObject() {
+  cr::CreativeDocument document;
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Room;
+  request.name = "Locked Room";
+  request.locked = true;
+  request.hasLockedOverride = true;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(request);
+  const std::uint64_t revisionBeforeRemove = document.revision();
+  const cr::CreativeObjectDirtyFlags dirtyBeforeRemove =
+      document.dirtyFlags();
+
+  const cr::CreativeDocumentRemoveReceipt receipt =
+      document.removeDocumentObject(created.objectId);
+
+  return expect(created.accepted, "locked doc remove setup accepted") &&
+         expect(receipt.requested, "locked doc remove requested") &&
+         expect(!receipt.accepted, "locked doc remove not accepted") &&
+         expect(!receipt.changed, "locked doc remove unchanged") &&
+         expect(!receipt.objectRemoved, "locked doc remove no removal") &&
+         expect(receipt.status ==
+                    cr::CreativeDocumentRemoveStatus::LockedObject,
+                "locked doc remove status") &&
+         expect(receipt.objectId == created.objectId,
+                "locked doc remove object id") &&
+         expect(receipt.objectKind == cr::CreativeObjectKind::Room,
+                "locked doc remove object kind") &&
+         expect(receipt.objectName == "Locked Room",
+                "locked doc remove object name") &&
+         expect(receipt.removalDirtyFlags == 0U,
+                "locked doc remove no dirty flags") &&
+         expect(receipt.message == "object is locked",
+                "locked doc remove message") &&
+         expect(receipt.reasonCode == "object is locked",
+                "locked doc remove reason") &&
+         expect(receipt.revisionBefore == revisionBeforeRemove,
+                "locked doc remove revision before") &&
+         expect(receipt.revisionAfter == revisionBeforeRemove,
+                "locked doc remove revision after") &&
+         expect(document.revision() == revisionBeforeRemove,
+                "locked doc remove document revision stable") &&
+         expect(document.dirtyFlags() == dirtyBeforeRemove,
+                "locked doc remove dirty flags stable") &&
+         expect(document.objectCount() == 1U,
+                "locked doc remove object retained") &&
+         expect(document.findObject(created.objectId) != nullptr,
+                "locked doc remove object findable");
+}
+
+bool documentRemoveSucceedsAfterUnlockThroughPipeline() {
+  cr::CreativeDocument document;
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Room;
+  request.name = "Locked Room";
+  request.locked = true;
+  request.hasLockedOverride = true;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(request);
+  const cr::CreativeDocumentRemoveReceipt refused =
+      document.removeDocumentObject(created.objectId);
+
+  const cr::CreativeDocumentMutationReceipt unlocked =
+      cr::setDocumentObjectLocked(document, created.objectId, false);
+  const cr::CreativeDocumentRemoveReceipt removed =
+      document.removeDocumentObject(created.objectId);
+
+  return expect(created.accepted, "unlock doc remove setup accepted") &&
+         expect(refused.status ==
+                    cr::CreativeDocumentRemoveStatus::LockedObject,
+                "unlock doc remove refused first") &&
+         expect(unlocked.status ==
+                    cr::CreativeDocumentMutationStatus::Applied,
+                "unlock doc remove unlock applied") &&
+         expect(removed.accepted, "unlock doc remove accepted") &&
+         expect(removed.objectRemoved, "unlock doc remove removed") &&
+         expect(removed.status == cr::CreativeDocumentRemoveStatus::Removed,
+                "unlock doc remove status") &&
+         expect(document.objectCount() == 0U,
+                "unlock doc remove document empty");
 }
 
 bool toStringCoversRemoveStatuses() {
@@ -184,6 +268,10 @@ bool toStringCoversRemoveStatuses() {
                     cr::CreativeDocumentRemoveStatus::MissingObject) ==
                     "MissingObject",
                 "remove status missing string") &&
+         expect(cr::toString(
+                    cr::CreativeDocumentRemoveStatus::LockedObject) ==
+                    "LockedObject",
+                "remove status locked string") &&
          expect(cr::toString(cr::CreativeDocumentRemoveStatus::Removed) ==
                     "Removed",
                 "remove status removed string");
@@ -270,7 +358,9 @@ int main() {
   const bool ok = documentRemoveSuccessCopiesMetadataAndReindexes() &&
                   documentRemoveMissingRejectsWithoutRevisionChange() &&
                   documentRemoveInvalidIdRejectsDeterministically() &&
-                  legacyBoolRemoveUsesReceiptedPath() &&
+                  receiptedRemoveKeepsMissingAndExistingSemantics() &&
+                  documentRemoveRefusesLockedObject() &&
+                  documentRemoveSucceedsAfterUnlockThroughPipeline() &&
                   toStringCoversRemoveStatuses() &&
                   facadeReceiptedRemoveInvalidatesSelectedTarget() &&
                   facadeReceiptedMissingRemovePreservesStateAndRecordsFailure();

@@ -40,6 +40,13 @@ iggy3d::ProductCreativeUiCommandFrameReceipt routeCommand(
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
+cr::CreativeObjectId createRoom(cr::Facade& facade) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Room;
+  request.name = "Room";
+  return facade.createDocumentObject(request).objectId;
+}
+
 cr::CreativeToolInputPacket pointerPress(cr::Id targetId) {
   cr::CreativeToolInputPacket input;
   input.kind = cr::CreativeToolInputKind::PointerPress;
@@ -375,7 +382,7 @@ bool repeatedCreateRoomCommandCreatesNewIdsAndRevisions() {
 bool selectedTargetRowTogglesRoomVisibilityOff() {
   cr::Facade facade;
   facade.reset();
-  const cr::CreativeObjectId roomId = facade.createRoom("Room");
+  const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
   const std::uint64_t objectCountBefore = facade.document().objectCount();
   const std::uint64_t revisionBefore = facade.document().revision();
@@ -426,7 +433,7 @@ bool selectedTargetRowTogglesRoomVisibilityOff() {
 bool selectedTargetRowTogglesRoomVisibilityOnAgain() {
   cr::Facade facade;
   facade.reset();
-  const cr::CreativeObjectId roomId = facade.createRoom("Room");
+  const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt first =
@@ -460,7 +467,7 @@ bool selectedTargetRowTogglesRoomVisibilityOnAgain() {
 bool selectedTargetRowPreservesInspectionTarget() {
   cr::Facade facade;
   facade.reset();
-  const cr::CreativeObjectId roomId = facade.createRoom("Room");
+  const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
   inspectTarget(facade, 77);
 

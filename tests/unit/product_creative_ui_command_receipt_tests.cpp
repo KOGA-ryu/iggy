@@ -66,6 +66,13 @@ iggy3d::ProductCreativeUiCommandFrameReceipt activeToolDisplayReceipt() {
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
+cr::CreativeObjectId createRoom(cr::Facade& facade) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Room;
+  request.name = "Room";
+  return facade.createDocumentObject(request).objectId;
+}
+
 cr::CreativeToolInputPacket pointerPress(cr::Id targetId) {
   cr::CreativeToolInputPacket input;
   input.kind = cr::CreativeToolInputKind::PointerPress;
@@ -77,7 +84,7 @@ cr::CreativeToolInputPacket pointerPress(cr::Id targetId) {
 iggy3d::ProductCreativeUiCommandFrameReceipt appliedToggleReceipt() {
   cr::Facade facade;
   facade.reset();
-  const cr::CreativeObjectId roomId = facade.createRoom("Room");
+  const cr::CreativeObjectId roomId = createRoom(facade);
   static_cast<void>(facade.dispatchToolInput(
       pointerPress(static_cast<cr::Id>(roomId))));
 

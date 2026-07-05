@@ -152,6 +152,84 @@ void setInstallStatus(CreativeFacadeDocumentInstallReceipt& receipt,
   receipt.message = status;
 }
 
+[[nodiscard]] CreativeFacadeMutationReceipt toggleSelectedObjectMutation(
+    CreativeDocument& document,
+    TargetRef selectedTarget,
+    CreativeMutationKind mutationKind) {
+  CreativeFacadeMutationReceipt receipt;
+  receipt.requested = true;
+  receipt.target = selectedTarget;
+  receipt.revisionBefore = document.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+
+  if (receipt.target.value == kInvalidId) {
+    receipt.status = CreativeFacadeMutationStatus::NoSelection;
+    receipt.message = "no_selection";
+    return receipt;
+  }
+
+  receipt.hadSelection = true;
+  receipt.mutationKind = mutationKind;
+
+  CreativeObjectId objectId = kInvalidObjectId;
+  if (!targetRefToObjectId(receipt.target, objectId)) {
+    receipt.status = CreativeFacadeMutationStatus::MissingObject;
+    receipt.documentStatus = CreativeDocumentMutationStatus::MissingObject;
+    receipt.message = "missing_object";
+    return receipt;
+  }
+  receipt.objectId = objectId;
+
+  const CreativeObject* object = document.findObject(objectId);
+  if (object == nullptr) {
+    receipt.status = CreativeFacadeMutationStatus::MissingObject;
+    receipt.documentStatus = CreativeDocumentMutationStatus::MissingObject;
+    receipt.message = "missing_object";
+    return receipt;
+  }
+
+  receipt.objectKind = object->kind;
+  receipt.visibleBefore = object->visible;
+  receipt.lockedBefore = object->locked;
+
+  const CreativeDocumentMutationReceipt documentReceipt =
+      mutationKind == CreativeMutationKind::SetLocked
+          ? setDocumentObjectLocked(document, objectId, !receipt.lockedBefore)
+          : setDocumentObjectVisible(document, objectId,
+                                     !receipt.visibleBefore);
+
+  receipt.accepted = documentMutationSucceeded(documentReceipt.status);
+  receipt.changed = documentReceipt.changed &&
+                    documentReceipt.revisionAfter !=
+                        documentReceipt.revisionBefore;
+  receipt.documentStatus = documentReceipt.status;
+  receipt.mutationKind = documentReceipt.mutationKind;
+  receipt.revisionBefore = documentReceipt.revisionBefore;
+  receipt.revisionAfter = documentReceipt.revisionAfter;
+  receipt.message = documentReceipt.message;
+
+  const CreativeObject* objectAfter = document.findObject(objectId);
+  if (objectAfter != nullptr) {
+    receipt.objectKind = objectAfter->kind;
+    receipt.visibleAfter = objectAfter->visible;
+    receipt.lockedAfter = objectAfter->locked;
+  } else {
+    receipt.visibleAfter = receipt.visibleBefore;
+    receipt.lockedAfter = receipt.lockedBefore;
+  }
+
+  if (documentReceipt.status == CreativeDocumentMutationStatus::Applied &&
+      receipt.changed) {
+    receipt.status = CreativeFacadeMutationStatus::Applied;
+  } else if (documentReceipt.status == CreativeDocumentMutationStatus::NoChange) {
+    receipt.status = CreativeFacadeMutationStatus::NoChange;
+  } else {
+    receipt.status = CreativeFacadeMutationStatus::Rejected;
+  }
+
+  return receipt;
+}
+
 }  // namespace
 
 std::string_view toString(CreativeFacadeMutationStatus status) noexcept {
@@ -317,72 +395,15 @@ CreativeUiBuildReceipt Facade::buildUiModel() const {
 }
 
 CreativeFacadeMutationReceipt Facade::toggleSelectedObjectVisibility() {
-  CreativeFacadeMutationReceipt receipt;
-  receipt.requested = true;
-  receipt.target = selectionState_.selectedTarget;
-  receipt.revisionBefore = document_.revision();
-  receipt.revisionAfter = receipt.revisionBefore;
+  return toggleSelectedObjectMutation(document_,
+                                      selectionState_.selectedTarget,
+                                      CreativeMutationKind::SetVisible);
+}
 
-  if (receipt.target.value == kInvalidId) {
-    receipt.status = CreativeFacadeMutationStatus::NoSelection;
-    receipt.message = "no_selection";
-    return receipt;
-  }
-
-  receipt.hadSelection = true;
-  receipt.mutationKind = CreativeMutationKind::SetVisible;
-
-  CreativeObjectId objectId = kInvalidObjectId;
-  if (!targetRefToObjectId(receipt.target, objectId)) {
-    receipt.status = CreativeFacadeMutationStatus::MissingObject;
-    receipt.documentStatus = CreativeDocumentMutationStatus::MissingObject;
-    receipt.message = "missing_object";
-    return receipt;
-  }
-  receipt.objectId = objectId;
-
-  const CreativeObject* object = document_.findObject(objectId);
-  if (object == nullptr) {
-    receipt.status = CreativeFacadeMutationStatus::MissingObject;
-    receipt.documentStatus = CreativeDocumentMutationStatus::MissingObject;
-    receipt.message = "missing_object";
-    return receipt;
-  }
-
-  receipt.objectKind = object->kind;
-  receipt.visibleBefore = object->visible;
-
-  const CreativeDocumentMutationReceipt documentReceipt =
-      setDocumentObjectVisible(document_, objectId, !receipt.visibleBefore);
-
-  receipt.accepted = documentMutationSucceeded(documentReceipt.status);
-  receipt.changed = documentReceipt.changed &&
-                    documentReceipt.revisionAfter !=
-                        documentReceipt.revisionBefore;
-  receipt.documentStatus = documentReceipt.status;
-  receipt.mutationKind = documentReceipt.mutationKind;
-  receipt.revisionBefore = documentReceipt.revisionBefore;
-  receipt.revisionAfter = documentReceipt.revisionAfter;
-  receipt.message = documentReceipt.message;
-
-  const CreativeObject* objectAfter = document_.findObject(objectId);
-  if (objectAfter != nullptr) {
-    receipt.objectKind = objectAfter->kind;
-    receipt.visibleAfter = objectAfter->visible;
-  } else {
-    receipt.visibleAfter = receipt.visibleBefore;
-  }
-
-  if (documentReceipt.status == CreativeDocumentMutationStatus::Applied &&
-      receipt.changed) {
-    receipt.status = CreativeFacadeMutationStatus::Applied;
-  } else if (documentReceipt.status == CreativeDocumentMutationStatus::NoChange) {
-    receipt.status = CreativeFacadeMutationStatus::NoChange;
-  } else {
-    receipt.status = CreativeFacadeMutationStatus::Rejected;
-  }
-
-  return receipt;
+CreativeFacadeMutationReceipt Facade::toggleSelectedObjectLocked() {
+  return toggleSelectedObjectMutation(document_,
+                                      selectionState_.selectedTarget,
+                                      CreativeMutationKind::SetLocked);
 }
 
 CreativeDocumentCreateReceipt Facade::createDocumentObject(
@@ -485,60 +506,6 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
   receipt.activeToolAfter = toolState_.activeTool;
   setInstallStatus(receipt, "creative_facade_document_installed");
   return receipt;
-}
-
-CreativeObjectId Facade::createRoom(const CreateRoomCommand& command) {
-  recordCommandAttempt(stats_);
-
-  const CreativeObjectId id = document_.createRoom(command.name,
-                                                   command.transform,
-                                                   command.bounds,
-                                                   command.layerId,
-                                                   command.visible,
-                                                   command.locked,
-                                                   command.tags,
-                                                   command.parentId);
-  if (id == kInvalidObjectId) {
-    recordCommandFailure(stats_);
-    return kInvalidObjectId;
-  }
-
-  recordCommandSuccess(stats_);
-  recordObjectCreated(stats_);
-  recordRoomCreated(stats_);
-  return id;
-}
-
-CreativeObjectId Facade::createRoom(std::string name) {
-  return createRoom(makeCreateRoomCommand(std::move(name)));
-}
-
-bool Facade::renameObject(const RenameObjectCommand& command) {
-  recordCommandAttempt(stats_);
-  const bool renamed = document_.renameObject(command.id, command.name);
-  if (renamed) {
-    recordCommandSuccess(stats_);
-  } else {
-    recordCommandFailure(stats_);
-  }
-  return renamed;
-}
-
-bool Facade::renameObject(CreativeObjectId id, std::string nextName) {
-  RenameObjectCommand command;
-  command.id = id;
-  command.name = std::move(nextName);
-  return renameObject(command);
-}
-
-bool Facade::removeObject(const RemoveObjectCommand& command) {
-  return removeDocumentObject(command.id).objectRemoved;
-}
-
-bool Facade::removeObject(CreativeObjectId id) {
-  RemoveObjectCommand command;
-  command.id = id;
-  return removeObject(command);
 }
 
 const CreativeObject* Facade::findObject(CreativeObjectId id) const noexcept {

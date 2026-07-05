@@ -16,11 +16,13 @@ bool expect(bool condition, std::string_view message) {
 
 cr::CreativeDocument makeDocumentWithRoom(cr::CreativeObjectId& roomId) {
   cr::CreativeDocument document = cr::CreativeDocument::create("Document");
-  roomId = document.createRoom(
-      "Room",
-      cr::CreativeTransform{},
-      cr::CreativeBounds{cr::CreativeVec3{0.0, 0.0, 0.0},
-                         cr::CreativeVec3{1.0, 1.0, 1.0}});
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Room;
+  request.name = "Room";
+  request.bounds = cr::CreativeBounds{cr::CreativeVec3{0.0, 0.0, 0.0},
+                                      cr::CreativeVec3{1.0, 1.0, 1.0}};
+  request.hasBoundsOverride = true;
+  roomId = document.createObject(request).objectId;
   return document;
 }
 
@@ -621,6 +623,72 @@ bool invalidMutationRequestRejectsBeforeApply() {
 
 }  // namespace
 
+bool lockedObjectRenameRejectsThroughPipeline() {
+  cr::CreativeObjectId roomId = cr::kInvalidObjectId;
+  cr::CreativeDocument document = makeDocumentWithRoom(roomId);
+  const cr::CreativeDocumentMutationReceipt locked =
+      cr::setDocumentObjectLocked(document, roomId, true);
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt =
+      cr::renameDocumentObject(document, roomId, "Renamed Room");
+  const cr::CreativeObject* room = document.findObject(roomId);
+
+  return expect(locked.status == cr::CreativeDocumentMutationStatus::Applied,
+                "locked rename setup applied") &&
+         expect(room != nullptr, "locked rename room exists") &&
+         expect(receipt.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "locked rename document status") &&
+         expect(cr::documentMutationFailed(receipt.status),
+                "locked rename failed") &&
+         expect(!receipt.changed, "locked rename unchanged") &&
+         expect(!receipt.allowed, "locked rename not allowed") &&
+         expect(receipt.mutationKind == cr::CreativeMutationKind::Rename,
+                "locked rename mutation kind") &&
+         expect(receipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::LockedObject,
+                "locked rename object status") &&
+         expect(receipt.objectReceipt.message == "object is locked",
+                "locked rename object message") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "locked rename revision before") &&
+         expect(receipt.revisionAfter == revisionBefore,
+                "locked rename revision after") &&
+         expect(document.revision() == revisionBefore,
+                "locked rename document revision stable") &&
+         expect(room->name == "Room", "locked rename name unchanged");
+}
+
+bool lockedObjectUnlockThenRenameApplies() {
+  cr::CreativeObjectId roomId = cr::kInvalidObjectId;
+  cr::CreativeDocument document = makeDocumentWithRoom(roomId);
+  static_cast<void>(cr::setDocumentObjectLocked(document, roomId, true));
+  const cr::CreativeDocumentMutationReceipt refused =
+      cr::renameDocumentObject(document, roomId, "Renamed Room");
+
+  const cr::CreativeDocumentMutationReceipt unlocked =
+      cr::setDocumentObjectLocked(document, roomId, false);
+  const cr::CreativeDocumentMutationReceipt renamed =
+      cr::renameDocumentObject(document, roomId, "Renamed Room");
+  const cr::CreativeObject* room = document.findObject(roomId);
+
+  return expect(refused.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "unlock rename setup refused") &&
+         expect(unlocked.status == cr::CreativeDocumentMutationStatus::Applied,
+                "unlock rename unlock applied") &&
+         expect(unlocked.mutationKind == cr::CreativeMutationKind::SetLocked,
+                "unlock rename unlock kind") &&
+         expect(renamed.status == cr::CreativeDocumentMutationStatus::Applied,
+                "unlock rename rename applied") &&
+         expect(renamed.changed, "unlock rename changed") &&
+         expect(room != nullptr && room->name == "Renamed Room",
+                "unlock rename name updated") &&
+         expect(room != nullptr && !room->locked,
+                "unlock rename object unlocked");
+}
+
 int main() {
   const bool ok = setVisibleMutatesThroughDocumentGateway() &&
                   settingAlreadyCurrentVisibilityIsNoChange() &&
@@ -635,6 +703,8 @@ int main() {
                   descriptorAllowedLinkSleeperVerbIsDocumentNoChange() &&
                   unsupportedMutationDoesNotFalselyReportApplied() &&
                   wrongPayloadFailureMessagesAreStable() &&
-                  invalidMutationRequestRejectsBeforeApply();
+                  invalidMutationRequestRejectsBeforeApply() &&
+                  lockedObjectRenameRejectsThroughPipeline() &&
+                  lockedObjectUnlockThenRenameApplies();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

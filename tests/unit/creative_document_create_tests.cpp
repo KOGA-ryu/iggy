@@ -214,46 +214,46 @@ bool unsupportedOverridesRejectWithoutMutation() {
                 "transform reject object count stable");
 }
 
-bool legacyCreateRoomPathRemainsCompatibleAndSharesAllocator() {
+bool receiptedCreateWithOverridesSharesAllocator() {
   cr::CreativeDocument document;
   cr::CreativeDocumentCreateRequest genericRequest;
   genericRequest.kind = cr::CreativeObjectKind::Room;
   const cr::CreativeDocumentCreateReceipt generic =
       document.createObject(genericRequest);
 
-  cr::CreativeTransform transform;
-  transform.position = {1.0, 2.0, 3.0};
-  transform.rotation = {0.0, 90.0, 0.0};
-  transform.scale = {2.0, 3.0, 4.0};
-  cr::CreativeBounds bounds{{-5.0, 0.0, -6.0}, {5.0, 4.0, 6.0}};
-  const cr::CreativeObjectId legacyId = document.createRoom(
-      "Legacy Room",
-      transform,
-      bounds,
-      7,
-      false,
-      true,
-      {"legacy"},
-      42);
-  const cr::CreativeObject* legacy = document.findObject(legacyId);
+  cr::CreativeDocumentCreateRequest overrideRequest;
+  overrideRequest.kind = cr::CreativeObjectKind::Room;
+  overrideRequest.name = "Override Room";
+  overrideRequest.bounds = cr::CreativeBounds{{-5.0, 0.0, -6.0},
+                                              {5.0, 4.0, 6.0}};
+  overrideRequest.hasBoundsOverride = true;
+  overrideRequest.layerId = 7;
+  overrideRequest.hasLayerOverride = true;
+  overrideRequest.visible = false;
+  overrideRequest.hasVisibleOverride = true;
+  overrideRequest.locked = true;
+  overrideRequest.hasLockedOverride = true;
+  overrideRequest.tags = {"override"};
+  const cr::CreativeDocumentCreateReceipt overridden =
+      document.createObject(overrideRequest);
+  const cr::CreativeObject* object = document.findObject(overridden.objectId);
 
   return expect(generic.accepted, "generic setup accepted") &&
-         expect(legacyId != cr::kInvalidObjectId, "legacy id") &&
-         expect(legacyId > generic.objectId, "legacy shares allocator") &&
-         expect(document.revision() == 2U, "legacy revision") &&
-         expect(document.objectCount() == 2U, "legacy object count") &&
-         expect(legacy != nullptr, "legacy findable") &&
-         expect(legacy->name == "Legacy Room", "legacy name") &&
-         expect(sameVec3(legacy->transform.position, {1.0, 2.0, 3.0}),
-                "legacy transform") &&
-         expect(sameVec3(legacy->bounds.max, {5.0, 4.0, 6.0}),
-                "legacy bounds") &&
-         expect(legacy->layerId == 7U, "legacy layer") &&
-         expect(!legacy->visible, "legacy visible") &&
-         expect(legacy->locked, "legacy locked") &&
-         expect(legacy->tags.size() == 1U, "legacy tags") &&
-         expect(legacy->parentId.has_value(), "legacy parent kept") &&
-         expect(*legacy->parentId == 42U, "legacy parent value");
+         expect(overridden.accepted, "override create accepted") &&
+         expect(overridden.objectId != cr::kInvalidObjectId, "override id") &&
+         expect(overridden.objectId > generic.objectId,
+                "override shares allocator") &&
+         expect(document.revision() == 2U, "override revision") &&
+         expect(document.objectCount() == 2U, "override object count") &&
+         expect(object != nullptr, "override findable") &&
+         expect(object->name == "Override Room", "override name") &&
+         expect(sameVec3(object->bounds.max, {5.0, 4.0, 6.0}),
+                "override bounds") &&
+         expect(object->layerId == 7U, "override layer") &&
+         expect(!object->visible, "override visible") &&
+         expect(object->locked, "override locked") &&
+         expect(object->tags.size() == 1U, "override tags") &&
+         expect(!object->parentId.has_value(), "override no parent");
 }
 
 bool facadeGenericCreateWrapsDocumentAndPreservesInteractionState() {
@@ -333,7 +333,7 @@ int main() {
                   unknownKindRejectsWithoutRevisionChange() &&
                   nameAndBoundsOverridesRespectDescriptorPolicy() &&
                   unsupportedOverridesRejectWithoutMutation() &&
-                  legacyCreateRoomPathRemainsCompatibleAndSharesAllocator() &&
+                  receiptedCreateWithOverridesSharesAllocator() &&
                   facadeGenericCreateWrapsDocumentAndPreservesInteractionState() &&
                   facadeGenericCreateFailureRecordsFailureOnly();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

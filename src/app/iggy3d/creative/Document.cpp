@@ -147,6 +147,8 @@ std::string_view toString(CreativeDocumentRemoveStatus status) noexcept {
       return "InvalidObjectId";
     case CreativeDocumentRemoveStatus::MissingObject:
       return "MissingObject";
+    case CreativeDocumentRemoveStatus::LockedObject:
+      return "LockedObject";
     case CreativeDocumentRemoveStatus::Removed:
       return "Removed";
   }
@@ -496,6 +498,14 @@ CreativeDocumentRemoveReceipt CreativeDocument::removeDocumentObject(
   const CreativeObject& object = objects_[index];
   receipt.objectKind = object.kind;
   receipt.objectName = object.name;
+
+  if (object.locked) {
+    setRemoveStatus(receipt,
+                    CreativeDocumentRemoveStatus::LockedObject,
+                    "object is locked");
+    return receipt;
+  }
+
   receipt.removalDirtyFlags = dirtyFlagsForRemoval(object.kind);
 
   objectIndex_.erase(found);
@@ -522,47 +532,6 @@ CreativeDocumentRemoveReceipt CreativeDocument::removeDocumentObject(
   CreativeDocumentRemoveRequest request;
   request.objectId = id;
   return removeDocumentObject(request);
-}
-
-CreativeObjectId CreativeDocument::createRoom(
-    std::string name,
-    CreativeTransform transform,
-    CreativeBounds bounds,
-    CreativeLayerId layerId,
-    bool visible,
-    bool locked,
-    std::vector<std::string> tags,
-    std::optional<CreativeObjectId> parentId) {
-  if (!valid_) {
-    return kInvalidObjectId;
-  }
-
-  CreativeObject object = makeRoomObject(kInvalidObjectId,
-                                         std::move(name),
-                                         transform,
-                                         bounds,
-                                         layerId,
-                                         visible,
-                                         locked,
-                                         std::move(tags),
-                                         parentId);
-  return appendObject(std::move(object));
-}
-
-bool CreativeDocument::renameObject(CreativeObjectId id, std::string nextName) {
-  CreativeObject* object = findObject(id);
-  if (object == nullptr || object->name == nextName) {
-    return false;
-  }
-
-  object->name = std::move(nextName);
-  markContentChanged();
-  markDirty(documentIdentityDirtyFlags());
-  return true;
-}
-
-bool CreativeDocument::removeObject(CreativeObjectId id) {
-  return removeDocumentObject(id).objectRemoved;
 }
 
 void CreativeDocument::markContentChanged() noexcept {
