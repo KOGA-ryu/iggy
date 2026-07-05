@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "app/frontend/FrontendState.hpp"
-#include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/view/CameraController.hpp"
 #include "app/iggy3d/Options.hpp"
@@ -94,8 +94,8 @@ int runProductApp(int argc, char** argv) {
       scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   FrontendSettings settings = productFrontendSettingsFromOptions(options);
   std::optional<Session> activeSession;
-  creative::Facade creativeFacade;
-  creativeFacade.reset();
+  creative::CreativeAppState creativeApp;
+  creativeApp.facade.reset();
   // branch-gate: BG-1026
   WorldSetupDraft worldSetupDraft = options.devPackageOverride.empty()
                                         ? makeProductDefaultWorldSetupDraft()
@@ -123,14 +123,14 @@ int runProductApp(int argc, char** argv) {
       options.automationControlPath, frontend, window, automationSettingsTab,
       [&frontend, &saves, &options, &automationSettingsTab, &activeSession,
        &worldSetupDraft, &window, &settings, &automationCloseRequested,
-       &creativeFacade](
+       &creativeApp](
           const ProductAutomationCommand& command) {
         return applyProductAutomationAppCommand(
             command, ProductAutomationAppContext{
                          frontend, saves, options, settings,
                          automationSettingsTab,
                          activeSession, worldSetupDraft, window,
-                         automationCloseRequested, &creativeFacade});
+                         automationCloseRequested, &creativeApp.facade});
       },
       [&frontend, &window]() { return productInputOwnerFor(frontend, window); },
   };
@@ -155,7 +155,7 @@ int runProductApp(int argc, char** argv) {
       window,
       settings,
       saves,
-      &creativeFacade});
+      &creativeApp.facade});
   window = std::move(loopResult.window);
   saves = std::move(loopResult.saves);
   refreshProductGameplayProjectionMetrics(
