@@ -1,4 +1,37 @@
-// iggy3d_creative — SLICE 5 ("Any Object Inherits the Tooling")
+// iggy3d_creative — SLICE 6 ("In-World Place — the Minecraft face")
+//
+// SLICE 6 adds a PLACE mode: the fly camera's aimed ground cell shows a GREEN
+// GHOST preview of the current "brush" object kind, and a click drops a NEW
+// object there (snapped to the 1 m grid), which immediately joins the world —
+// it renders, and is Select/Move/Gizmo-able via the identical generic tooling
+// from slice 5. Placement goes through the SAME generic createDocumentObject as
+// the seeded Floor + Crate: ANY kind places the same way, no per-kind place
+// code. The brush kind is just data in the create request.
+//
+// SLICE 6 additions (all generic; the brush kind never branches placement):
+//   - BRUSH KIND: an app-side placeBrush (default Crate). Key 'B' cycles it
+//     Crate <-> Floor. Each kind has a default footprint/height read from a tiny
+//     brushFootprint() table: Crate = 1x1x1, Floor = 4x0.25x4 (both min.y=0).
+//   - PLACE MODE: key '3' activates Place ('1' Select, '2' Move already exist).
+//     In Place mode the select/move hit-test is skipped; instead the camera ray
+//     hits Y=0, the XZ is snapped to the nearest 1 m cell center, and a GREEN
+//     (0,1,0,1) axis-aligned wireframe box (the brush footprint at that cell,
+//     min.y=0..height) is appended to the SAME combined wireframe vector the
+//     selection box + gizmo use — that box is the placement preview.
+//   - PLACE: a left-click (interactive) or synthesized (capture) calls
+//     facade.createDocumentObject(request{ kind=placeBrush, transform+bounds at
+//     the aimed cell with min.y=0, visible }). The new object logs its id/kind/
+//     pos and renders + becomes tool-able automatically (slice 5 iterates ALL
+//     objects). Select/Move/Gizmo keep working in their own modes; only Place
+//     mode swaps the click behavior to "drop a new object".
+//   - --capture PROOF: start in Place mode, brush=Crate. On frames ~3..6
+//     synthesize placing crates at world XZ (2,2),(4,2),(6,2), then switch the
+//     brush to Floor and place a Floor at (2,-3). The final frame leaves Place
+//     mode active with the ghost visible at the next aimed cell. The captured
+//     frame shows the 2 seeded objects PLUS the 4 placed objects (total 6) and
+//     the green ghost at the current aim.
+//
+// SLICE 5 ("Any Object Inherits the Tooling")
 //
 // A standalone executable that boots straight into a creative stage: a Vulkan
 // window showing a ground grid at Y=0 with a fly camera, PLUS authored objects
@@ -323,6 +356,124 @@ const char* renderRoleForKind(creative::CreativeObjectKind kind) {
   }
 }
 
+// ---- SLICE 6: place-mode helpers --------------------------------------------
+
+// A brush footprint: XZ extents (metres) + height (metres). The placed object
+// sits ON Y=0, so bounds are min.y=0..height and the XZ footprint is centered on
+// the aimed cell. This tiny table is the ONLY kind-specific place data — it is
+// pure geometry (extents), NOT placement logic: every kind goes through the same
+// createDocumentObject with these numbers dropped into transform + bounds.
+struct BrushFootprint {
+  float sizeX = 1.0F;
+  float height = 1.0F;
+  float sizeZ = 1.0F;
+};
+
+BrushFootprint brushFootprintFor(creative::CreativeObjectKind kind) {
+  switch (kind) {
+    case creative::CreativeObjectKind::Floor:
+      return {4.0F, 0.25F, 4.0F};  // 4 x 0.25 x 4 tile.
+    case creative::CreativeObjectKind::Crate:
+    default:
+      return {1.0F, 1.0F, 1.0F};  // 1 m cube.
+  }
+}
+
+// Cycle the placement brush Crate <-> Floor (key 'B'). Any unknown kind resets
+// to Crate so the brush is always one of the two placeable kinds.
+creative::CreativeObjectKind nextBrushKind(creative::CreativeObjectKind kind) {
+  return kind == creative::CreativeObjectKind::Crate
+             ? creative::CreativeObjectKind::Floor
+             : creative::CreativeObjectKind::Crate;
+}
+
+// Snap a world XZ ground point to the nearest 1 m cell CENTER: floor to the cell
+// then add half a cell. cellSize matches the grid pitch (1 m). Y is fixed at the
+// caller's placement plane (always 0 here), so we only snap XZ.
+Vec3 snapGroundToCellCenter(double worldX, double worldZ, double cellSize) {
+  const double cx = std::floor(worldX / cellSize) * cellSize + cellSize * 0.5;
+  const double cz = std::floor(worldZ / cellSize) * cellSize + cellSize * 0.5;
+  return {static_cast<float>(cx), 0.0F, static_cast<float>(cz)};
+}
+
+// Drop a NEW object of `brush` at the snapped ground cell center via the SAME
+// generic createDocumentObject the seed uses — the brush kind is data in the
+// request, NOT a place branch. The object sits ON Y=0: bounds are the brush
+// footprint centered in XZ on the cell with min.y=0..height, and the transform
+// position is the cell center at half-height. Logs the new id/kind/pos.
+creative::CreativeDocumentCreateReceipt placeBrushObject(
+    creative::Facade& facade, creative::CreativeObjectKind brush,
+    Vec3 cellCenter, std::uint64_t ordinal) {
+  const BrushFootprint fp = brushFootprintFor(brush);
+  const double halfX = static_cast<double>(fp.sizeX) * 0.5;
+  const double halfZ = static_cast<double>(fp.sizeZ) * 0.5;
+  const double height = static_cast<double>(fp.height);
+  const double cx = static_cast<double>(cellCenter.x);
+  const double cz = static_cast<double>(cellCenter.z);
+
+  creative::CreativeDocumentCreateRequest request;
+  request.kind = brush;  // <-- the ONLY per-kind input: pure data, no branch.
+  request.name = std::string(creative::toString(brush)) + " placed#" +
+                 std::to_string(ordinal);
+  // Position = cell center at half-height so the box straddles the footprint
+  // and rests on Y=0.
+  request.transform.position = {cx, height * 0.5, cz};
+  request.hasTransformOverride = true;
+  // Footprint centered in XZ on the cell, min.y=0 so it sits ON the ground.
+  request.bounds = {{cx - halfX, 0.0, cz - halfZ},
+                    {cx + halfX, height, cz + halfZ}};
+  request.hasBoundsOverride = true;
+  request.visible = true;
+  request.hasVisibleOverride = true;
+  request.locked = false;
+  request.hasLockedOverride = true;
+
+  const creative::CreativeDocumentCreateReceipt receipt =
+      facade.createDocumentObject(request);
+  SDL_Log("iggy3d_creative: PLACE dropped objectId=%llu kind='%s' "
+          "pos=(%.3f, %.3f, %.3f) bounds=[(%.3f,%.3f,%.3f)..(%.3f,%.3f,%.3f)] "
+          "accepted=%d",
+          static_cast<unsigned long long>(receipt.objectId),
+          std::string(creative::toString(receipt.objectKind)).c_str(),
+          request.transform.position.x, request.transform.position.y,
+          request.transform.position.z, request.bounds.min.x,
+          request.bounds.min.y, request.bounds.min.z, request.bounds.max.x,
+          request.bounds.max.y, request.bounds.max.z,
+          receipt.accepted ? 1 : 0);
+  return receipt;
+}
+
+// Append the 12 AXIS-ALIGNED edges of a world box [boxMin, boxMax] as wireframe
+// lines of the given color into `out`. Each edge moves along exactly one world
+// axis, which is the only geometry the renderer's creativeDebugLineBox draws —
+// the same reason the gizmo shafts are single-axis. Used for the green Place
+// ghost preview, appended to the SAME combined vector as the selection box.
+void appendWireframeBoxEdges(std::vector<RenderCreativeWireframeDebugLine>& out,
+                            Vec3 boxMin, Vec3 boxMax, RenderLineColor color,
+                            float thickness) {
+  // 8 corners indexed by (x bit0, y bit1, z bit2).
+  const auto corner = [&](int c) -> Vec3 {
+    return {(c & 1) ? boxMax.x : boxMin.x, (c & 2) ? boxMax.y : boxMin.y,
+            (c & 4) ? boxMax.z : boxMin.z};
+  };
+  // 12 edges: pairs of corner indices differing in exactly one axis bit.
+  static constexpr int kEdges[12][2] = {
+      {0, 1}, {2, 3}, {4, 5}, {6, 7},  // along X
+      {0, 2}, {1, 3}, {4, 6}, {5, 7},  // along Y
+      {0, 4}, {1, 5}, {2, 6}, {3, 7},  // along Z
+  };
+  out.reserve(out.size() + 12);
+  for (const auto& e : kEdges) {
+    RenderCreativeWireframeDebugLine line;
+    line.start = corner(e[0]);
+    line.end = corner(e[1]);
+    line.color = color;
+    line.objectId = 0;  // Ghost is not a document object.
+    line.thickness = thickness;
+    out.push_back(line);
+  }
+}
+
 // ---- SLICE 4: gizmo helpers -------------------------------------------------
 
 // A single world point projected to pixel space (same NDC->pixel maths as
@@ -635,6 +786,40 @@ int main(int argc, char** argv) {
   // --capture: log the grabbed axis exactly once.
   bool loggedGizmoGrab = false;
 
+  // ---- PLACE state (SLICE 6) ---------------------------------------------
+  // placeMode is an APP-level mode (not a kernel Tool) toggled by '3'. When on,
+  // the click drops a NEW object at the aimed cell instead of running the
+  // select/move hit-test. '1'/'2' leave place mode and set the kernel tool.
+  // placeBrush is the current brush kind (data-only; default Crate). The grid
+  // pitch (1 m) is the placement cell size for snapping.
+  bool placeMode = false;
+  creative::CreativeObjectKind placeBrush = creative::CreativeObjectKind::Crate;
+  const double placeCellSize = static_cast<double>(gridConfig.pitchMeters);
+  bool prevKey3 = false;
+  bool prevKeyB = false;
+  bool placeButtonDown = false;  // Interactive left-button edge latch in Place.
+  std::uint64_t placedCount = 0;  // Objects dropped via Place (for the count log).
+  // --capture: in Place mode we start ON so the proof frames can drop objects.
+  if (!capturePath.empty()) {
+    placeMode = true;
+    placeBrush = creative::CreativeObjectKind::Crate;
+  }
+  // --capture placement script: aim+place at these world XZ cells across frames
+  // 3..6 (last entry switches the brush to Floor before placing). Each is a
+  // (worldX, worldZ, kind) target fed to the SAME createDocumentObject.
+  struct CapturePlacement {
+    std::uint64_t frame;
+    double worldX;
+    double worldZ;
+    creative::CreativeObjectKind kind;
+  };
+  const std::array<CapturePlacement, 4> capturePlacements{{
+      {3U, 2.0, 2.0, creative::CreativeObjectKind::Crate},
+      {4U, 4.0, 2.0, creative::CreativeObjectKind::Crate},
+      {5U, 6.0, 2.0, creative::CreativeObjectKind::Crate},
+      {6U, 2.0, -3.0, creative::CreativeObjectKind::Floor},
+  }};
+
   std::uint64_t frameIndex = 0;
   std::uint32_t lastWidth = 0;
   std::uint32_t lastHeight = 0;
@@ -709,16 +894,34 @@ int main(int argc, char** argv) {
     if (capturePath.empty() && keys != nullptr) {
       const bool key1 = keys[SDL_SCANCODE_1] != 0;
       const bool key2 = keys[SDL_SCANCODE_2] != 0;
+      const bool key3 = keys[SDL_SCANCODE_3] != 0;
+      const bool keyB = keys[SDL_SCANCODE_B] != 0;
       if (key1 && !prevKey1) {
+        placeMode = false;  // '1' Select leaves Place mode.
         const bool ok = appState.facade.setActiveTool(creative::Tool::Select);
-        SDL_Log("iggy3d_creative: setActiveTool(Select) accepted=%d", ok ? 1 : 0);
+        SDL_Log("iggy3d_creative: setActiveTool(Select) accepted=%d placeMode=0",
+                ok ? 1 : 0);
       }
       if (key2 && !prevKey2) {
+        placeMode = false;  // '2' Move leaves Place mode.
         const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
-        SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d", ok ? 1 : 0);
+        SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d placeMode=0",
+                ok ? 1 : 0);
+      }
+      if (key3 && !prevKey3) {
+        placeMode = true;  // '3' Place: app-level mode, not a kernel Tool.
+        SDL_Log("iggy3d_creative: placeMode=1 brush='%s'",
+                std::string(creative::toString(placeBrush)).c_str());
+      }
+      if (keyB && !prevKeyB) {
+        placeBrush = nextBrushKind(placeBrush);  // Cycle Crate <-> Floor.
+        SDL_Log("iggy3d_creative: brush cycled -> '%s'",
+                std::string(creative::toString(placeBrush)).c_str());
       }
       prevKey1 = key1;
       prevKey2 = key2;
+      prevKey3 = key3;
+      prevKeyB = keyB;
     }
 
     // SCENE (local, must outlive submitFrame): rebuild the grid meshes each
@@ -759,6 +962,26 @@ int main(int argc, char** argv) {
     FrameInput frame = makeProductVulkanFrame(
         scene, debug, frameIndex++, extent.width, extent.height, yawDegrees,
         pitchDegrees, /*cameraAnchorOverrideAvailable=*/true, flyPos);
+
+    // ---- AIM -> GROUND CELL (SLICE 6, Place mode) --------------------------
+    // Cast the camera-forward ray to the Y=0 plane (eye + forward*t), giving a
+    // world XZ ground point, then snap XZ to the nearest 1 m cell center. This
+    // is the SAME camera-ray -> Y=0 math the interactive ground-plane Move uses;
+    // it feeds both the green ghost preview and the drop position. When the ray
+    // is (near) parallel to the ground we fall back to the point under the eye.
+    const Vec3 aimEye = frame.camera.worldEye;
+    const Vec3 aimFwd = frame.camera.worldForward;
+    double aimGroundX = static_cast<double>(aimEye.x);
+    double aimGroundZ = static_cast<double>(aimEye.z);
+    if (std::fabs(aimFwd.y) > 1.0e-4F) {
+      const float t = -aimEye.y / aimFwd.y;  // eye.y + t*fwd.y == 0
+      if (t > 0.0F) {
+        aimGroundX = static_cast<double>(aimEye.x + aimFwd.x * t);
+        aimGroundZ = static_cast<double>(aimEye.z + aimFwd.z * t);
+      }
+    }
+    const Vec3 aimCellCenter =
+        snapGroundToCellCenter(aimGroundX, aimGroundZ, placeCellSize);
 
     // ---- CLICK-TO-SELECT (generic over ALL objects) ------------------------
     // Project EVERY visible object's world bounds to a screen-space pixel AABB,
@@ -802,7 +1025,10 @@ int main(int argc, char** argv) {
     bool clickRequested = false;
     float clickX = 0.0F;
     float clickY = 0.0F;
-    if (!capturePath.empty()) {
+    if (!capturePath.empty() && placeMode) {
+      // Place-mode capture: no select-click is synthesized; the placement script
+      // below drops objects directly. Leave clickRequested false.
+    } else if (!capturePath.empty()) {
       // Synthesize a click on the FLOOR once the swapchain has settled (frame ~2),
       // aimed at a point on the floor's TOP surface near a corner — a point the
       // crate does NOT cover — so the generic nearest-hit picker selects the FLOOR
@@ -825,8 +1051,9 @@ int main(int argc, char** argv) {
           clickY = p.y;
         }
       }
-    } else {
+    } else if (!placeMode) {
       // Interactive: hold Left-Alt to release fly-look and click to select.
+      // Skipped in Place mode — the interactive Place block below owns the click.
       const bool* selKeys = SDL_GetKeyboardState(nullptr);
       const bool altHeld =
           selKeys != nullptr && (selKeys[SDL_SCANCODE_LALT] != 0);
@@ -879,6 +1106,52 @@ int main(int argc, char** argv) {
             creative::TargetRef{static_cast<creative::Id>(pickedId)};
       }  // A miss leaves target invalid -> Select clears selection.
       (void)appState.facade.dispatchToolInput(packet);
+    }
+
+    // ---- PLACE (SLICE 6) ---------------------------------------------------
+    // In Place mode a click drops a NEW object of the current brush kind at the
+    // aimed cell, snapped to the grid, via the SAME generic createDocumentObject.
+    // The new object joins the document immediately, so next frame it renders and
+    // is Select/Move/Gizmo-able with ZERO extra code. There is NO per-kind place
+    // branch — placeBrushObject() only reads the footprint table for geometry.
+    if (placeMode) {
+      if (!capturePath.empty()) {
+        // --capture: run the scripted placements. Each entry sets the brush kind
+        // then drops at its target world XZ, snapped to the cell center — proving
+        // the aim->cell->createDocumentObject pipeline the interactive path uses.
+        for (const CapturePlacement& p : capturePlacements) {
+          if (frameIndex == p.frame) {
+            placeBrush = p.kind;  // Brush is data; switching kinds is not a branch.
+            const Vec3 cell = snapGroundToCellCenter(p.worldX, p.worldZ,
+                                                     placeCellSize);
+            (void)placeBrushObject(appState.facade, placeBrush, cell,
+                                   ++placedCount);
+          }
+        }
+      } else {
+        // Interactive: hold Left-Alt (release fly-look) and left-click to drop at
+        // the aimed cell. Edge-triggered so one click drops exactly one object.
+        const bool* plKeys = SDL_GetKeyboardState(nullptr);
+        const bool altHeld =
+            plKeys != nullptr && (plKeys[SDL_SCANCODE_LALT] != 0);
+        if (altHeld) {
+          window.setRelativeMouseMode(false);
+          float mx = 0.0F;
+          float my = 0.0F;
+          const SDL_MouseButtonFlags buttons = SDL_GetMouseState(&mx, &my);
+          const bool lDown = (buttons & SDL_BUTTON_LMASK) != 0U;
+          if (lDown && !placeButtonDown) {
+            placeButtonDown = true;
+            (void)placeBrushObject(appState.facade, placeBrush, aimCellCenter,
+                                   ++placedCount);
+          } else if (!lDown) {
+            placeButtonDown = false;
+          }
+        } else {
+          window.setRelativeMouseMode(true);
+          placeButtonDown = false;
+        }
+      }
     }
 
     // ---- RESOLVE THE SELECTION (generic) -----------------------------------
@@ -980,7 +1253,7 @@ int main(int argc, char** argv) {
     // the FLOOR, which rides the identical path the crate did in slice 4.
     const creative::CreativeObjectId selectedObjectId =
         static_cast<creative::CreativeObjectId>(selectedId);
-    if (!capturePath.empty()) {
+    if (!capturePath.empty() && !placeMode) {
       // --capture (SLICE 5): after the FLOOR is selected (frame 3), grab the X
       // gizmo handle and run an AXIS-CONSTRAINED Move along +X by 2 m.
       //   frame 5: hit-test the X shaft (grab X) + switch to Move + PRESS
@@ -1051,7 +1324,8 @@ int main(int argc, char** argv) {
           loggedMoveAfter = true;
         }
       }
-    } else if (appState.facade.toolState().activeTool == creative::Tool::Move &&
+    } else if (!placeMode &&
+               appState.facade.toolState().activeTool == creative::Tool::Move &&
                hasSelection) {
       // Interactive Move (SLICE 5): while the Move tool is active and ANY object
       // is selected, hold Left-Alt (releases fly-look) and left-press. A press
@@ -1249,6 +1523,27 @@ int main(int argc, char** argv) {
         combinedWireLines.push_back(gizmoLine);
       }
     }
+    // ---- GHOST PREVIEW (SLICE 6) -------------------------------------------
+    // In Place mode, draw a GREEN (0,1,0,1) axis-aligned wireframe box at the
+    // aimed cell sized to the current brush footprint (min.y=0..height, XZ
+    // centered on the cell) — the placement preview. It rides the SAME combined
+    // wireframe vector as the selection box + gizmo, so it needs no new render
+    // path. It is NOT a document object (objectId=0); it vanishes on the drop's
+    // next frame if the aim moves.
+    std::size_t ghostEdgeCount = 0;
+    if (placeMode) {
+      const BrushFootprint fp = brushFootprintFor(placeBrush);
+      const Vec3 ghostMin{aimCellCenter.x - fp.sizeX * 0.5F, 0.0F,
+                          aimCellCenter.z - fp.sizeZ * 0.5F};
+      const Vec3 ghostMax{aimCellCenter.x + fp.sizeX * 0.5F, fp.height,
+                          aimCellCenter.z + fp.sizeZ * 0.5F};
+      const std::size_t before = combinedWireLines.size();
+      appendWireframeBoxEdges(combinedWireLines, ghostMin, ghostMax,
+                              RenderLineColor{0.0F, 1.0F, 0.0F, 1.0F},
+                              kGizmoThickness);
+      ghostEdgeCount = combinedWireLines.size() - before;
+    }
+    (void)ghostEdgeCount;
     RenderCreativeWireframeDebugFrame combinedWireFrame;
     combinedWireFrame.available = true;
     combinedWireFrame.visible = !combinedWireLines.empty();
@@ -1317,13 +1612,18 @@ int main(int argc, char** argv) {
               : "<none>";
       SDL_Log("iggy3d_creative: FINAL frame %llu submit outcome=%d reason='%s' "
               "selectedTarget=%u selectedKind='%s' hasSelection=%d selBoxLines=%zu "
-              "gizmoLines=%zu combinedWireLines=%zu",
+              "gizmoLines=%zu combinedWireLines=%zu placeMode=%d brush='%s' "
+              "ghostEdges=%zu placed=%llu objectCount=%llu",
               static_cast<unsigned long long>(frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(), selectedId, selKind,
               hasSelection ? 1 : 0, dbg.lines.size(),
               combinedWireLines.size() - dbg.lines.size(),
-              combinedWireLines.size());
+              combinedWireLines.size(), placeMode ? 1 : 0,
+              std::string(creative::toString(placeBrush)).c_str(),
+              ghostEdgeCount, static_cast<unsigned long long>(placedCount),
+              static_cast<unsigned long long>(
+                  appState.facade.document().objectCount()));
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
