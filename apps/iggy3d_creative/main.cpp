@@ -25,9 +25,9 @@
 //     pos and renders + becomes tool-able automatically (slice 5 iterates ALL
 //     objects). Select/Move/Gizmo keep working in their own modes; only Place
 //     mode swaps the click behavior to "drop a new object".
-//   - --capture PROOF: start in Place mode, brush=Crate. On frames 3..5
-//     synthesize placing Crate, Crate, then Wall through the same generic
-//     createDocumentObject request path. The final frame leaves Place mode
+//   - --capture PROOF: start in Place mode, brush=Crate. The script places the
+//     proof scene through the same generic createDocumentObject request path,
+//     exercises snapshot undo for place/delete/move, then leaves Place mode
 //     active with the ghost visible at the current aim.
 //
 // SLICE 5 ("Any Object Inherits the Tooling")
@@ -611,6 +611,43 @@ bool undoLastSnapshot(creative::CreativeAppState& appState,
   return installReceipt.accepted;
 }
 
+void discardUndoSnapshot(StandaloneUndoStack& undoStack,
+                         std::size_t depthBefore,
+                         std::string_view source,
+                         std::string_view reasonCode) {
+  if (undoStack.documents.size() <= depthBefore) {
+    return;
+  }
+  undoStack.documents.pop_back();
+  SDL_Log("iggy3d_creative: UNDO discarded source='%s' depth=%zu "
+          "reasonCode='%s'",
+          std::string(source).c_str(), undoStack.documents.size(),
+          std::string(reasonCode).c_str());
+}
+
+creative::CreativeDocumentCreateReceipt placeBrushObjectWithUndo(
+    creative::Facade& facade, StandaloneUndoStack& undoStack,
+    creative::CreativeObjectKind brush, Vec3 cellCenter, std::uint64_t ordinal,
+    std::string_view source) {
+  const std::size_t undoDepthBefore = undoStack.documents.size();
+  pushUndoSnapshot(undoStack, facade, source);
+  creative::CreativeDocumentCreateReceipt receipt =
+      placeBrushObject(facade, brush, cellCenter, ordinal);
+  if (!receipt.accepted || !receipt.objectCreated) {
+    discardUndoSnapshot(undoStack, undoDepthBefore, source, receipt.reasonCode);
+  }
+  SDL_Log("iggy3d_creative: UNDO create source='%s' objectId=%llu "
+          "accepted=%d created=%d objectCount=%llu depthBefore=%zu "
+          "depthAfter=%zu reasonCode='%s'",
+          std::string(source).c_str(),
+          static_cast<unsigned long long>(receipt.objectId),
+          receipt.accepted ? 1 : 0, receipt.objectCreated ? 1 : 0,
+          static_cast<unsigned long long>(facade.document().objectCount()),
+          undoDepthBefore, undoStack.documents.size(),
+          std::string(receipt.reasonCode).c_str());
+  return receipt;
+}
+
 // Delete the currently selected object through the facade's generic document
 // removal seam. The facade owns invalidating selection/tool/ghost/measurement
 // references; this app only asks to remove the selected target id and logs proof.
@@ -678,7 +715,7 @@ bool selectObjectForCapture(creative::Facade& facade,
                             creative::CreativeObjectId objectId,
                             std::string_view source) {
   if (objectId == creative::kInvalidObjectId) {
-    SDL_Log("iggy3d_creative: DELETE capture select skipped source='%s' "
+    SDL_Log("iggy3d_creative: CAPTURE select skipped source='%s' "
             "objectId=0",
             std::string(source).c_str());
     return false;
@@ -689,7 +726,7 @@ bool selectObjectForCapture(creative::Facade& facade,
   packet.pointer.target = creative::TargetRef{static_cast<creative::Id>(objectId)};
   const creative::CreativeFacadeToolDispatchReceipt receipt =
       facade.dispatchToolInput(packet);
-  SDL_Log("iggy3d_creative: DELETE capture selected source='%s' objectId=%llu "
+  SDL_Log("iggy3d_creative: CAPTURE selected source='%s' objectId=%llu "
           "accepted=%d changed=%d selectedTarget=%u",
           std::string(source).c_str(), static_cast<unsigned long long>(objectId),
           receipt.accepted ? 1 : 0, receipt.changed ? 1 : 0,
@@ -836,6 +873,23 @@ void logObjectPlacement(const char* phase, const creative::CreativeObject* obj) 
           obj->bounds.max.z);
 }
 
+void logUndoMovePlacement(const char* phase,
+                          creative::CreativeObjectId objectId,
+                          const creative::CreativeObject* obj) {
+  if (obj == nullptr) {
+    SDL_Log("iggy3d_creative: UNDO move %s objectId=%llu object=<null>",
+            phase, static_cast<unsigned long long>(objectId));
+    return;
+  }
+  SDL_Log("iggy3d_creative: UNDO move %s objectId=%llu pos=(%.3f, %.3f, %.3f) "
+          "bounds=[(%.3f, %.3f, %.3f)..(%.3f, %.3f, %.3f)]",
+          phase, static_cast<unsigned long long>(objectId),
+          obj->transform.position.x, obj->transform.position.y,
+          obj->transform.position.z, obj->bounds.min.x, obj->bounds.min.y,
+          obj->bounds.min.z, obj->bounds.max.x, obj->bounds.max.y,
+          obj->bounds.max.z);
+}
+
 // Log the facade tool-dispatch receipt, surfacing the generic Move-drag detail:
 // stage/outcome enums, committed/changed flags, the snapped anchor the facade
 // chose, and the document mutation status. This is the commit receipt the plan
@@ -855,6 +909,44 @@ void logMoveDispatch(const char* phase,
           r.moveDrag.snappedAnchor.y, r.moveDrag.snappedAnchor.z,
           static_cast<int>(r.moveDrag.documentStatus),
           r.moveDrag.message.c_str());
+}
+
+bool isAppliedMoveCommit(
+    const creative::CreativeFacadeToolDispatchReceipt& receipt) {
+  return receipt.moveDrag.stage == creative::CreativeFacadeMoveDragStage::Commit &&
+         receipt.moveDrag.outcome ==
+             creative::CreativeFacadeMoveDragOutcome::Applied &&
+         receipt.moveDrag.committed && receipt.moveDrag.changed;
+}
+
+creative::CreativeFacadeToolDispatchReceipt dispatchMoveReleaseWithUndo(
+    creative::CreativeAppState& appState, StandaloneUndoStack& undoStack,
+    const creative::CreativeToolInputPacket& release,
+    creative::CreativeObjectId objectId, std::string_view source) {
+  const std::size_t undoDepthBefore = undoStack.documents.size();
+  logUndoMovePlacement("before", objectId, appState.facade.findObject(objectId));
+  pushUndoSnapshot(undoStack, appState.facade, source);
+  const creative::CreativeFacadeToolDispatchReceipt receipt =
+      appState.facade.dispatchToolInput(release);
+  const bool applied = isAppliedMoveCommit(receipt);
+  if (!applied) {
+    discardUndoSnapshot(undoStack, undoDepthBefore, source,
+                        receipt.moveDrag.message);
+  }
+  logUndoMovePlacement("after", objectId, appState.facade.findObject(objectId));
+  SDL_Log("iggy3d_creative: UNDO move commit source='%s' objectId=%llu "
+          "applied=%d accepted=%d changed=%d moveDragChanged=%d "
+          "depthBefore=%zu depthAfter=%zu stage=%d outcome=%d "
+          "documentStatus=%d reasonCode='%s'",
+          std::string(source).c_str(),
+          static_cast<unsigned long long>(objectId), applied ? 1 : 0,
+          receipt.accepted ? 1 : 0, receipt.changed ? 1 : 0,
+          receipt.moveDrag.changed ? 1 : 0, undoDepthBefore,
+          undoStack.documents.size(), static_cast<int>(receipt.moveDrag.stage),
+          static_cast<int>(receipt.moveDrag.outcome),
+          static_cast<int>(receipt.moveDrag.documentStatus),
+          receipt.moveDrag.message.c_str());
+  return receipt;
 }
 
 // ---- SLICE 7: save / load helpers -------------------------------------------
@@ -1226,11 +1318,18 @@ int main(int argc, char** argv) {
     double worldZ;
     creative::CreativeObjectKind kind;
     bool deleteProofTarget = false;
+    bool moveProofTarget = false;
+    bool createUndoProofTarget = false;
   };
-  const std::array<CapturePlacement, 3> capturePlacements{{
-      {3U, 2.0, 2.0, creative::CreativeObjectKind::Crate, false},
-      {4U, 4.0, 2.0, creative::CreativeObjectKind::Crate, true},
-      {5U, -2.0, 2.0, creative::CreativeObjectKind::Wall, false},
+  const std::array<CapturePlacement, 4> capturePlacements{{
+      {3U, 2.0, 2.0, creative::CreativeObjectKind::Crate, false, true,
+       false},
+      {4U, 4.0, 2.0, creative::CreativeObjectKind::Crate, true, false,
+       false},
+      {5U, -2.0, 2.0, creative::CreativeObjectKind::Wall, false, false,
+       false},
+      {6U, 6.0, 2.0, creative::CreativeObjectKind::Crate, false, false,
+       true},
   }};
 
   // ---- SAVE / LOAD state (SLICE 7) ---------------------------------------
@@ -1252,15 +1351,29 @@ int main(int argc, char** argv) {
   bool roundtripCleared = false;
   bool roundtripLoaded = false;
   bool captureDeleteNoSelectionAttempted = false;
+  bool captureCreateUndoAttempted = false;
   bool captureDeleteAttempted = false;
   bool captureUndoAttempted = false;
+  bool captureMoveBeginAttempted = false;
+  bool captureMovePreviewAttempted = false;
+  bool captureMoveCommitAttempted = false;
+  bool captureMoveUndoAttempted = false;
   constexpr std::uint64_t kCaptureDeleteNoSelectionFrame = 2U;
-  constexpr std::uint64_t kCaptureDeleteFrame = 6U;
-  constexpr std::uint64_t kCaptureUndoFrame = 7U;
-  constexpr std::uint64_t kCaptureSaveFrame = 8U;
-  constexpr std::uint64_t kCaptureClearFrame = 10U;
-  constexpr std::uint64_t kCaptureLoadFrame = 12U;
+  constexpr std::uint64_t kCaptureCreateUndoFrame = 7U;
+  constexpr std::uint64_t kCaptureDeleteFrame = 8U;
+  constexpr std::uint64_t kCaptureUndoFrame = 9U;
+  constexpr std::uint64_t kCaptureMoveBeginFrame = 10U;
+  constexpr std::uint64_t kCaptureMovePreviewFrame = 11U;
+  constexpr std::uint64_t kCaptureMoveCommitFrame = 12U;
+  constexpr std::uint64_t kCaptureMoveUndoFrame = 13U;
+  constexpr std::uint64_t kCaptureSaveFrame = 14U;
+  constexpr std::uint64_t kCaptureClearFrame = 16U;
+  constexpr std::uint64_t kCaptureLoadFrame = 18U;
+  creative::CreativeObjectId captureCreateUndoTargetId =
+      creative::kInvalidObjectId;
   creative::CreativeObjectId captureDeleteTargetId = creative::kInvalidObjectId;
+  creative::CreativeObjectId captureMoveTargetId = creative::kInvalidObjectId;
+  creative::CreativeToolWorldPoint captureMoveDestination{};
 
   std::uint64_t frameIndex = 0;
   std::uint32_t lastWidth = 0;
@@ -1609,13 +1722,31 @@ int main(int argc, char** argv) {
             const Vec3 cell = snapGroundToCellCenter(p.worldX, p.worldZ,
                                                      placeCellSize);
             const creative::CreativeDocumentCreateReceipt receipt =
-                placeBrushObject(appState.facade, placeBrush, cell,
-                                 ++placedCount);
+                placeBrushObjectWithUndo(appState.facade, undoStack, placeBrush,
+                                         cell, ++placedCount,
+                                         p.createUndoProofTarget
+                                             ? "capture_place_create_target"
+                                             : "capture_place");
+            if (p.createUndoProofTarget && receipt.accepted) {
+              captureCreateUndoTargetId = receipt.objectId;
+              SDL_Log("iggy3d_creative: CREATE_UNDO capture target objectId=%llu "
+                      "kind='%s'",
+                      static_cast<unsigned long long>(
+                          captureCreateUndoTargetId),
+                      std::string(creative::toString(receipt.objectKind)).c_str());
+            }
             if (p.deleteProofTarget && receipt.accepted) {
               captureDeleteTargetId = receipt.objectId;
               SDL_Log("iggy3d_creative: DELETE capture target objectId=%llu "
                       "kind='%s'",
                       static_cast<unsigned long long>(captureDeleteTargetId),
+                      std::string(creative::toString(receipt.objectKind)).c_str());
+            }
+            if (p.moveProofTarget && receipt.accepted) {
+              captureMoveTargetId = receipt.objectId;
+              SDL_Log("iggy3d_creative: MOVE_UNDO capture target objectId=%llu "
+                      "kind='%s'",
+                      static_cast<unsigned long long>(captureMoveTargetId),
                       std::string(creative::toString(receipt.objectKind)).c_str());
             }
           }
@@ -1634,8 +1765,10 @@ int main(int argc, char** argv) {
           const bool lDown = (buttons & SDL_BUTTON_LMASK) != 0U;
           if (lDown && !placeButtonDown) {
             placeButtonDown = true;
-            (void)placeBrushObject(appState.facade, placeBrush, aimCellCenter,
-                                   ++placedCount);
+            (void)placeBrushObjectWithUndo(appState.facade, undoStack,
+                                           placeBrush, aimCellCenter,
+                                           ++placedCount,
+                                           "place_interactive");
           } else if (!lDown) {
             placeButtonDown = false;
           }
@@ -1647,15 +1780,32 @@ int main(int argc, char** argv) {
     }
 
     // ---- DELETE PROOF (SLICE B, --capture) --------------------------------
-    // Capture proves both paths: no-selection delete is a clean no-op, then a
-    // placed Crate is selected through the generic tool input packet and removed
-    // through Facade::removeDocumentObject. Slice C then restores that exact
-    // pre-delete document through the app-local snapshot undo before save/open.
+    // Capture proves correction paths: no-selection delete is a clean no-op,
+    // extra placement undo removes the new object, then a placed Crate is
+    // selected through the generic tool input packet and removed through
+    // Facade::removeDocumentObject. Slice C then restores that exact pre-delete
+    // document through the app-local snapshot undo before save/open.
     if (!capturePath.empty()) {
       if (frameIndex == kCaptureDeleteNoSelectionFrame &&
           !captureDeleteNoSelectionAttempted) {
         (void)deleteSelectedObject(appState, "capture_no_selection", &undoStack);
         captureDeleteNoSelectionAttempted = true;
+      } else if (frameIndex == kCaptureCreateUndoFrame &&
+                 !captureCreateUndoAttempted) {
+        SDL_Log("iggy3d_creative: CREATE_UNDO attempting target objectId=%llu "
+                "objectCountBefore=%llu",
+                static_cast<unsigned long long>(captureCreateUndoTargetId),
+                static_cast<unsigned long long>(
+                    appState.facade.document().objectCount()));
+        (void)undoLastSnapshot(appState, undoStack, "capture_create_undo");
+        SDL_Log("iggy3d_creative: CREATE_UNDO objectCountAfter=%llu "
+                "targetPresentAfter=%d",
+                static_cast<unsigned long long>(
+                    appState.facade.document().objectCount()),
+                appState.facade.findObject(captureCreateUndoTargetId) != nullptr
+                    ? 1
+                    : 0);
+        captureCreateUndoAttempted = true;
       } else if (frameIndex == kCaptureDeleteFrame && !captureDeleteAttempted) {
         (void)selectObjectForCapture(appState.facade, captureDeleteTargetId,
                                      "capture_delete");
@@ -1667,13 +1817,78 @@ int main(int argc, char** argv) {
       }
     }
 
+    // ---- MOVE UNDO PROOF (C2, --capture) ----------------------------------
+    // Drive one real Move through the facade packet lifecycle, keep the snapshot
+    // only when the release commits a changed move, then undo it before save.
+    if (!capturePath.empty()) {
+      if (frameIndex == kCaptureMoveBeginFrame && !captureMoveBeginAttempted) {
+        placeMode = false;
+        (void)appState.facade.setActiveTool(creative::Tool::Move);
+        (void)selectObjectForCapture(appState.facade, captureMoveTargetId,
+                                     "capture_move");
+        const creative::CreativeObject* moveTarget =
+            appState.facade.findObject(captureMoveTargetId);
+        if (moveTarget != nullptr) {
+          captureMoveDestination = {moveTarget->transform.position.x + 2.0,
+                                    moveTarget->transform.position.y,
+                                    moveTarget->transform.position.z};
+          logUndoMovePlacement("capture_begin", captureMoveTargetId,
+                               moveTarget);
+          creative::CreativeToolInputPacket press;
+          press.kind = creative::CreativeToolInputKind::PointerPress;
+          press.pointer.button = creative::CreativeToolPointerButton::Primary;
+          press.pointer.target =
+              creative::TargetRef{static_cast<creative::Id>(
+                  captureMoveTargetId)};
+          const creative::CreativeFacadeToolDispatchReceipt receipt =
+              appState.facade.dispatchToolInput(press);
+          logMoveDispatch("CAPTURE_MOVE_PRESS", receipt);
+        }
+        captureMoveBeginAttempted = true;
+      } else if (frameIndex == kCaptureMovePreviewFrame &&
+                 !captureMovePreviewAttempted) {
+        creative::CreativeToolInputPacket move;
+        move.kind = creative::CreativeToolInputKind::PointerMove;
+        move.pointer.button = creative::CreativeToolPointerButton::Primary;
+        move.pointer.hasWorldDestination = true;
+        move.pointer.worldDestination = captureMoveDestination;
+        move.pointer.moveHeldAxis = heldAxisForGrabbedAxis(GizmoAxis::X);
+        const creative::CreativeFacadeToolDispatchReceipt receipt =
+            appState.facade.dispatchToolInput(move);
+        logMoveDispatch("CAPTURE_MOVE", receipt);
+        captureMovePreviewAttempted = true;
+      } else if (frameIndex == kCaptureMoveCommitFrame &&
+                 !captureMoveCommitAttempted) {
+        creative::CreativeToolInputPacket release;
+        release.kind = creative::CreativeToolInputKind::PointerRelease;
+        release.pointer.button = creative::CreativeToolPointerButton::Primary;
+        release.pointer.hasWorldDestination = true;
+        release.pointer.worldDestination = captureMoveDestination;
+        release.pointer.moveHeldAxis = heldAxisForGrabbedAxis(GizmoAxis::X);
+        const creative::CreativeFacadeToolDispatchReceipt receipt =
+            dispatchMoveReleaseWithUndo(appState, undoStack, release,
+                                        captureMoveTargetId,
+                                        "capture_move_commit");
+        logMoveDispatch("CAPTURE_MOVE_RELEASE", receipt);
+        captureMoveCommitAttempted = true;
+      } else if (frameIndex == kCaptureMoveUndoFrame &&
+                 !captureMoveUndoAttempted) {
+        (void)undoLastSnapshot(appState, undoStack, "capture_move_undo");
+        placeMode = true;
+        placeBrush = creative::CreativeObjectKind::Wall;
+        logUndoMovePlacement("capture_undo_after", captureMoveTargetId,
+                             appState.facade.findObject(captureMoveTargetId));
+        captureMoveUndoAttempted = true;
+      }
+    }
+
     // ---- SAVE / LOAD ROUND-TRIP (SLICE 7, --capture) -----------------------
     // On fixed frames, drive the lossless round-trip and log the proof. The
-    // placements above (frames 3..5) grow the scene to 5 objects, DELETE removes
-    // one selected Crate, then UNDO restores it before SAVE on frame 8. The whole
-    // sequence reuses the kernel's creative-save/open — no new serialization
-    // here. All reads go through document().objects(), so no hardcoded id can
-    // dangle after the clear or the load.
+    // placements above grow the scene, create/delete/move undo return it to the
+    // intended five-object proof, then SAVE/CLEAR/LOAD proves persistence. The
+    // whole sequence reuses the kernel's creative-save/open — no new
+    // serialization here. All reads go through document().objects(), so no
+    // hardcoded id can dangle after the clear or the load.
     if (!capturePath.empty()) {
       if (frameIndex == kCaptureSaveFrame && !roundtripSaved) {
         // Snapshot BEFORE (post-place, pre-clear) then SAVE the live document.
@@ -1871,7 +2086,9 @@ int main(int argc, char** argv) {
         release.pointer.worldDestination = xAxisDestination;
         release.pointer.moveHeldAxis = heldAxisForGrabbedAxis(GizmoAxis::X);
         const creative::CreativeFacadeToolDispatchReceipt r =
-            appState.facade.dispatchToolInput(release);
+            dispatchMoveReleaseWithUndo(appState, undoStack, release,
+                                        selectedObjectId,
+                                        "capture_move_release");
         logMoveDispatch("RELEASE", r);
         if (!loggedMoveAfter) {
           logObjectPlacement("AFTER",
@@ -2008,7 +2225,9 @@ int main(int argc, char** argv) {
           buildConstrainedDestination(release.pointer.worldDestination,
                                       release.pointer.moveHeldAxis);
           const creative::CreativeFacadeToolDispatchReceipt r =
-              appState.facade.dispatchToolInput(release);
+              dispatchMoveReleaseWithUndo(appState, undoStack, release,
+                                          selectedObjectId,
+                                          "move_interactive_release");
           logMoveDispatch("RELEASE", r);
           interactiveGrabbedAxis = GizmoAxis::None;
         }
