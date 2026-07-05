@@ -92,6 +92,19 @@ enum class CreativeObjectProfile {
     GameplayMarker
 };
 
+// Shape kinds are generic editable archetypes. They describe how an authored
+// object should be manipulated by future generic tools; they are related to,
+// but intentionally distinct from, spatial projection policy.
+enum class CreativeObjectShapeKind {
+    Unknown,
+    Point,
+    Line,
+    BoxVolume,
+    Surface,
+    Path,
+    MeshProxy,
+};
+
 enum class CreativeSpatialProjectionProfile {
     Unknown,
     NoProjection,
@@ -148,6 +161,7 @@ struct CreativeObjectDescriptor {
     CreativeObjectKind kind{CreativeObjectKind::Unknown};
     CreativeObjectCategory category{CreativeObjectCategory::Unknown};
     CreativeObjectProfile profile{CreativeObjectProfile::Unknown};
+    CreativeObjectShapeKind shapeKind{CreativeObjectShapeKind::Unknown};
     CreativeSpatialProjectionProfile projectionProfile{
         CreativeSpatialProjectionProfile::Unknown};
     CreativeSpatialOccupancyKind occupancyKind{
@@ -177,10 +191,12 @@ struct CreativeObjectDescriptor {
 
 [[nodiscard]] std::string_view toString(CreativeObjectCategory category) noexcept;
 [[nodiscard]] std::string_view toString(CreativeObjectProfile profile) noexcept;
+[[nodiscard]] std::string_view toString(CreativeObjectShapeKind shapeKind) noexcept;
 [[nodiscard]] std::string_view toString(CreativeObjectDirtyFlag flag) noexcept;
 
 [[nodiscard]] CreativeObjectCategory categoryOf(CreativeObjectKind kind) noexcept;
 [[nodiscard]] CreativeObjectProfile profileOf(CreativeObjectKind kind) noexcept;
+[[nodiscard]] CreativeObjectShapeKind shapeKindForObject(CreativeObjectKind kind) noexcept;
 [[nodiscard]] const CreativeObjectDescriptor& describeObject(CreativeObjectKind kind) noexcept;
 [[nodiscard]] std::span<const CreativeObjectDescriptor> allObjectDescriptors() noexcept;
 

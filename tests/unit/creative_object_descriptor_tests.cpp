@@ -30,6 +30,14 @@ bool expectSpatialDescriptor(cr::CreativeObjectKind kind,
   return ok;
 }
 
+bool expectShapeDescriptor(cr::CreativeObjectKind kind,
+                           cr::CreativeObjectShapeKind shapeKind,
+                           std::string_view message) {
+  const cr::CreativeObjectDescriptor& descriptor = cr::describeObject(kind);
+  return expect(descriptor.shapeKind == shapeKind, message) &&
+         expect(cr::shapeKindForObject(kind) == shapeKind, message);
+}
+
 bool expectHasDirtyFlag(cr::CreativeObjectDirtyFlags flags,
                         cr::CreativeObjectDirtyFlag flag,
                         std::string_view message) {
@@ -61,6 +69,9 @@ bool descriptorTableRowsAreStableAndUnique() {
                 "categoryOf matches descriptor") &&
          expect(cr::profileOf(descriptor.kind) == descriptor.profile,
                 "profileOf matches descriptor") &&
+         expect(cr::shapeKindForObject(descriptor.kind) ==
+                    descriptor.shapeKind,
+                "shapeKindForObject matches descriptor") &&
          expect(cr::dirtyFlagsForCreation(descriptor.kind) ==
                     descriptor.creationDirtyFlags,
                 "creation dirty flags match descriptor") &&
@@ -92,9 +103,36 @@ bool descriptorTableRowsAreStableAndUnique() {
                   "point-projected descriptor carries transform") &&
            ok;
     }
+
+    if (descriptor.kind != cr::CreativeObjectKind::Unknown) {
+      ok = expect(descriptor.shapeKind != cr::CreativeObjectShapeKind::Unknown,
+                  "valid descriptor kind has explicit shape kind") &&
+           ok;
+    }
   }
 
   return ok;
+}
+
+bool shapeKindStringsAreStable() {
+  return expect(cr::toString(cr::CreativeObjectShapeKind::Unknown) ==
+                    "Unknown",
+                "unknown shape string") &&
+         expect(cr::toString(cr::CreativeObjectShapeKind::Point) == "Point",
+                "point shape string") &&
+         expect(cr::toString(cr::CreativeObjectShapeKind::Line) == "Line",
+                "line shape string") &&
+         expect(cr::toString(cr::CreativeObjectShapeKind::BoxVolume) ==
+                    "BoxVolume",
+                "box volume shape string") &&
+         expect(cr::toString(cr::CreativeObjectShapeKind::Surface) ==
+                    "Surface",
+                "surface shape string") &&
+         expect(cr::toString(cr::CreativeObjectShapeKind::Path) == "Path",
+                "path shape string") &&
+         expect(cr::toString(cr::CreativeObjectShapeKind::MeshProxy) ==
+                    "MeshProxy",
+                "mesh proxy shape string");
 }
 
 bool roomDescriptorPinsShapeBearingProjectionContract() {
@@ -107,6 +145,8 @@ bool roomDescriptorPinsShapeBearingProjectionContract() {
                 "room category") &&
          expect(descriptor.profile == cr::CreativeObjectProfile::RoomContainer,
                 "room profile") &&
+         expect(descriptor.shapeKind == cr::CreativeObjectShapeKind::BoxVolume,
+                "room shape box volume") &&
          expect(descriptor.name == "Room", "room stable name") &&
          expect(descriptor.displayName == "Room", "room display name") &&
          expect(!descriptor.hasTransform, "room has no transform by default") &&
@@ -175,6 +215,8 @@ bool unknownDescriptorRemainsInvalidAndNonProjectable() {
                 "unknown category") &&
          expect(descriptor.profile == cr::CreativeObjectProfile::Unknown,
                 "unknown profile") &&
+         expect(descriptor.shapeKind == cr::CreativeObjectShapeKind::Unknown,
+                "unknown shape") &&
          expect(descriptor.creationDirtyFlags == 0U,
                 "unknown has no creation dirty flags") &&
          expect(!descriptor.hasTransform, "unknown has no transform") &&
@@ -202,6 +244,76 @@ bool unknownDescriptorRemainsInvalidAndNonProjectable() {
          expect(descriptor.occupancyKind ==
                     cr::CreativeSpatialOccupancyKind::Unknown,
                 "unknown descriptor occupancy unknown");
+}
+
+bool representativeDescriptorsPinShapeFacts() {
+  return expectShapeDescriptor(cr::CreativeObjectKind::Room,
+                               cr::CreativeObjectShapeKind::BoxVolume,
+                               "room shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::Wall,
+                               cr::CreativeObjectShapeKind::Surface,
+                               "wall shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::Floor,
+                               cr::CreativeObjectShapeKind::Surface,
+                               "floor shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::Door,
+                               cr::CreativeObjectShapeKind::MeshProxy,
+                               "door shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::SpawnPoint,
+                               cr::CreativeObjectShapeKind::Point,
+                               "spawn point shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::NavLink,
+                               cr::CreativeObjectShapeKind::Line,
+                               "nav link shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::PatrolRoute,
+                               cr::CreativeObjectShapeKind::Path,
+                               "patrol route shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::Crate,
+                               cr::CreativeObjectShapeKind::MeshProxy,
+                               "crate shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::TriggerZone,
+                               cr::CreativeObjectShapeKind::BoxVolume,
+                               "trigger zone shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::PointLight,
+                               cr::CreativeObjectShapeKind::Point,
+                               "point light shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::MeasurementLine,
+                               cr::CreativeObjectShapeKind::Line,
+                               "measurement line shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::ReferenceImage,
+                               cr::CreativeObjectShapeKind::Surface,
+                               "reference image shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::Note,
+                               cr::CreativeObjectShapeKind::Point,
+                               "note shape descriptor") &&
+         expectShapeDescriptor(cr::CreativeObjectKind::EnemySpawn,
+                               cr::CreativeObjectShapeKind::Point,
+                               "enemy spawn shape descriptor");
+}
+
+bool shapeAndProjectionCanDifferByDesign() {
+  const cr::CreativeObjectDescriptor& wall =
+      cr::describeObject(cr::CreativeObjectKind::Wall);
+  const cr::CreativeObjectDescriptor& door =
+      cr::describeObject(cr::CreativeObjectKind::Door);
+  const cr::CreativeObjectDescriptor& patrolRoute =
+      cr::describeObject(cr::CreativeObjectKind::PatrolRoute);
+
+  return expect(wall.shapeKind == cr::CreativeObjectShapeKind::Surface,
+                "wall shape surface") &&
+         expect(wall.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::BoxProjection,
+                "wall projection remains box") &&
+         expect(door.shapeKind == cr::CreativeObjectShapeKind::MeshProxy,
+                "door shape mesh proxy") &&
+         expect(door.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::BoxProjection,
+                "door projection remains box") &&
+         expect(patrolRoute.shapeKind == cr::CreativeObjectShapeKind::Path,
+                "patrol route shape path") &&
+         expect(patrolRoute.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::NoProjection,
+                "patrol route projection remains none");
 }
 
 bool representativeDescriptorsPinSpatialFacts() {
@@ -383,8 +495,11 @@ bool mutationDirtyFlagsFollowDescriptorSpatialColumns() {
 
 int main() {
   const bool ok = descriptorTableRowsAreStableAndUnique() &&
+                  shapeKindStringsAreStable() &&
                   roomDescriptorPinsShapeBearingProjectionContract() &&
                   unknownDescriptorRemainsInvalidAndNonProjectable() &&
+                  representativeDescriptorsPinShapeFacts() &&
+                  shapeAndProjectionCanDifferByDesign() &&
                   representativeDescriptorsPinSpatialFacts() &&
                   mutationDirtyFlagsFollowDescriptorSpatialColumns();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
