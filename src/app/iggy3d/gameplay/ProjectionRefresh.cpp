@@ -393,7 +393,13 @@ ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
   ProductMapMakerGridConfig config;
   config.enabled = gridActive;
   config.anchorWorld = anchor;
-  config.planeY = std::floor(anchor.y);
+  // The LegacyMapMaker grid follows the fly camera's working elevation
+  // (floor(anchor.y)) so you author at whatever height you climb to. The F0
+  // creative blank stage is different: the grid is the GROUND the origin sits
+  // on, so it must stay at Y=0. Pinning it to the camera height (6m) parked the
+  // only visual reference at eye level, off-screen under a downward-pitched
+  // camera — the blank stage looked empty ("creative doesn't launch").
+  config.planeY = mapMakerLive ? std::floor(anchor.y) : 0.0F;
   const ProductMapMakerGridSnapshot grid =
       buildProductMapMakerGridSnapshot(config);
   window.mapMakerGridVisible = grid.visible;
