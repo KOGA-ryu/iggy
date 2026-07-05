@@ -188,9 +188,15 @@ bool roomDescriptorPinsShapeBearingProjectionContract() {
          expect(cr::descriptorAllowsMutation(cr::CreativeObjectKind::Room,
                                              cr::CreativeMutationKind::SetBounds),
                 "room allows bounds mutation") &&
+         expect(cr::descriptorAllowsMutation(cr::CreativeObjectKind::Room,
+                                             cr::CreativeMutationKind::Move),
+                "room allows corner-anchor move without a transform") &&
          expect(!cr::descriptorAllowsMutation(cr::CreativeObjectKind::Room,
-                                              cr::CreativeMutationKind::Move),
-                "room rejects move because it has no transform") &&
+                                              cr::CreativeMutationKind::Rotate),
+                "room rejects rotate because it has no transform") &&
+         expect(!cr::descriptorAllowsMutation(cr::CreativeObjectKind::Room,
+                                              cr::CreativeMutationKind::SetTransform),
+                "room rejects set transform because it has no transform") &&
          expect(cr::projectionProfileForObject(cr::CreativeObjectKind::Room) ==
                     cr::CreativeSpatialProjectionProfile::BoxProjection,
                 "room projects as box") &&

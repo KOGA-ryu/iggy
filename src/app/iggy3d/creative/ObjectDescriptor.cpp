@@ -506,7 +506,11 @@ bool descriptorAllowsMutation(CreativeObjectKind objectKind, CreativeMutationKin
     const auto& descriptor = describeObject(objectKind);
 
     if (isTransformMutation(mutationKind) && !descriptor.hasTransform) {
-        return false;
+        // TD-2: Move stays legal for bounds-only kinds because it places the
+        // corner anchor; other transform verbs still require a transform.
+        if (mutationKind != CreativeMutationKind::Move || !descriptor.hasBounds) {
+            return false;
+        }
     }
 
     if (isShapeMutation(mutationKind) && !descriptor.hasBounds) {

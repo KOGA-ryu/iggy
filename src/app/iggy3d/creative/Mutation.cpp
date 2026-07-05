@@ -392,6 +392,9 @@ std::vector<CreativeMutationKind> allowedMutations(CreativeObjectKind objectKind
         return {};
 
     case CreativeObjectKind::Room:
+        // TD-2: no-transform kinds with bounds move by corner anchor, so Move
+        // is a real verb for Room even though it stores no transform.
+        mutations.push_back(CreativeMutationKind::Move);
         appendBoxShapeMutations(mutations);
         return mutations;
 

@@ -46,6 +46,15 @@ cr::CreativeDocument makeDocumentWithObjectKind(
   return document;
 }
 
+cr::CreativeDocument makeDocumentWithDefaultRoom(cr::CreativeObjectId& roomId) {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Document");
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Room;
+  request.name = "Room";
+  roomId = document.createObject(request).objectId;
+  return document;
+}
+
 cr::CreativeDocument makeDocumentWithCrate(cr::CreativeObjectId& crateId) {
   cr::CreativeDocument document = cr::CreativeDocument::create("Document");
   cr::CreativeDocumentCreateRequest request;
@@ -524,8 +533,8 @@ bool unsupportedMutationDoesNotFalselyReportApplied() {
   const std::uint64_t revisionBefore = document.revision();
 
   const cr::CreativeDocumentMutationReceipt receipt = cr::applyDocumentMutation(
-      document, roomId, cr::CreativeMutationKind::Move,
-      cr::makeMovePayload(cr::CreativeVec3{1.0, 2.0, 3.0}));
+      document, roomId, cr::CreativeMutationKind::Rotate,
+      cr::makeRotatePayload(cr::CreativeVec3{0.0, 90.0, 0.0}));
 
   return expect(receipt.status == cr::CreativeDocumentMutationStatus::ApplyFailed,
                 "unsupported status failed") &&
@@ -621,6 +630,216 @@ bool invalidMutationRequestRejectsBeforeApply() {
                 "invalid object message nonempty");
 }
 
+bool cornerAnchorMoveTranslatesRoomBoundsAndKeepsIdentityTransform() {
+  cr::CreativeObjectId roomId = cr::kInvalidObjectId;
+  cr::CreativeDocument document = makeDocumentWithDefaultRoom(roomId);
+  const cr::CreativeObject* before = document.findObject(roomId);
+  const cr::CreativeBounds boundsBefore =
+      before != nullptr ? before->bounds : cr::CreativeBounds{};
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeObjectDirtyFlags expectedDirtyFlags =
+      cr::CreativeObjectDirtyFlag::Identity |
+      cr::CreativeObjectDirtyFlag::Transform |
+      cr::CreativeObjectDirtyFlag::Bounds |
+      cr::CreativeObjectDirtyFlag::Geometry |
+      cr::CreativeObjectDirtyFlag::Collision |
+      cr::CreativeObjectDirtyFlag::Preview |
+      cr::CreativeObjectDirtyFlag::Serialization;
+
+  const cr::CreativeDocumentMutationReceipt receipt = cr::moveDocumentObject(
+      document, roomId, cr::CreativeVec3{5.0, 0.0, 3.0});
+  const cr::CreativeObject* after = document.findObject(roomId);
+
+  return expect(before != nullptr, "room corner move setup exists") &&
+         expect(sameBounds(boundsBefore,
+                           cr::CreativeBounds{
+                               cr::CreativeVec3{0.0, 0.0, 0.0},
+                               cr::CreativeVec3{10.0, 4.0, 10.0}}),
+                "room corner move default bounds") &&
+         expect(after != nullptr, "room corner move after exists") &&
+         expect(receipt.status == cr::CreativeDocumentMutationStatus::Applied,
+                "room corner move status applied") &&
+         expect(receipt.changed, "room corner move changed") &&
+         expect(receipt.allowed, "room corner move allowed") &&
+         expect(receipt.objectKind == cr::CreativeObjectKind::Room,
+                "room corner move object kind") &&
+         expect(receipt.mutationKind == cr::CreativeMutationKind::Move,
+                "room corner move mutation kind") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "room corner move revision before") &&
+         expect(receipt.revisionAfter == revisionBefore + 1U,
+                "room corner move revision after") &&
+         expect(document.revision() == revisionBefore + 1U,
+                "room corner move document revision advanced") &&
+         expect(sameBounds(after->bounds,
+                           cr::CreativeBounds{
+                               cr::CreativeVec3{5.0, 0.0, 3.0},
+                               cr::CreativeVec3{15.0, 4.0, 13.0}}),
+                "room corner move bounds anchored to position") &&
+         expect(sameVec3(after->transform.position,
+                         cr::CreativeVec3{0.0, 0.0, 0.0}),
+                "room corner move transform position untouched") &&
+         expect(sameVec3(after->transform.rotation,
+                         cr::CreativeVec3{0.0, 0.0, 0.0}),
+                "room corner move transform rotation untouched") &&
+         expect(sameVec3(after->transform.scale,
+                         cr::CreativeVec3{1.0, 1.0, 1.0}),
+                "room corner move transform scale untouched") &&
+         expect(receipt.dirtyFlags == expectedDirtyFlags,
+                "room corner move exact dirty flags") &&
+         expect(receipt.dirtyFlags ==
+                    cr::dirtyFlagsForMutation(cr::CreativeObjectKind::Room,
+                                              cr::CreativeMutationKind::Move),
+                "room corner move dirty flags match descriptor derivation") &&
+         expect(receipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::Applied,
+                "room corner move object status applied") &&
+         expect(receipt.objectReceipt.message == "object moved",
+                "room corner move object message");
+}
+
+bool cornerAnchorMoveToCurrentCornerIsNoChange() {
+  cr::CreativeObjectId roomId = cr::kInvalidObjectId;
+  cr::CreativeDocument document = makeDocumentWithDefaultRoom(roomId);
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt = cr::moveDocumentObject(
+      document, roomId, cr::CreativeVec3{0.0, 0.0, 0.0});
+  const cr::CreativeObject* room = document.findObject(roomId);
+
+  return expect(room != nullptr, "room corner no-change exists") &&
+         expect(receipt.status == cr::CreativeDocumentMutationStatus::NoChange,
+                "room corner no-change status") &&
+         expect(!receipt.changed, "room corner no-change changed false") &&
+         expect(receipt.allowed, "room corner no-change allowed") &&
+         expect(receipt.dirtyFlags == 0U, "room corner no-change dirty flags") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "room corner no-change revision before") &&
+         expect(receipt.revisionAfter == revisionBefore,
+                "room corner no-change revision after") &&
+         expect(document.revision() == revisionBefore,
+                "room corner no-change document revision stable") &&
+         expect(sameBounds(room->bounds,
+                           cr::CreativeBounds{
+                               cr::CreativeVec3{0.0, 0.0, 0.0},
+                               cr::CreativeVec3{10.0, 4.0, 10.0}}),
+                "room corner no-change bounds untouched") &&
+         expect(receipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::NoChange,
+                "room corner no-change object status") &&
+         expect(receipt.objectReceipt.message ==
+                    "object position already matches requested value",
+                "room corner no-change object message");
+}
+
+bool lockedRoomMoveRejectsWithoutBoundsChange() {
+  cr::CreativeObjectId roomId = cr::kInvalidObjectId;
+  cr::CreativeDocument document = makeDocumentWithDefaultRoom(roomId);
+  const cr::CreativeDocumentMutationReceipt locked =
+      cr::setDocumentObjectLocked(document, roomId, true);
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt = cr::moveDocumentObject(
+      document, roomId, cr::CreativeVec3{5.0, 0.0, 3.0});
+  const cr::CreativeObject* room = document.findObject(roomId);
+
+  return expect(locked.status == cr::CreativeDocumentMutationStatus::Applied,
+                "locked room move setup applied") &&
+         expect(room != nullptr, "locked room move exists") &&
+         expect(receipt.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "locked room move document status") &&
+         expect(!receipt.changed, "locked room move unchanged") &&
+         expect(!receipt.allowed, "locked room move not allowed") &&
+         expect(receipt.mutationKind == cr::CreativeMutationKind::Move,
+                "locked room move mutation kind") &&
+         expect(receipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::LockedObject,
+                "locked room move object status") &&
+         expect(receipt.objectReceipt.message == "object is locked",
+                "locked room move object message") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "locked room move revision before") &&
+         expect(receipt.revisionAfter == revisionBefore,
+                "locked room move revision after") &&
+         expect(document.revision() == revisionBefore,
+                "locked room move document revision stable") &&
+         expect(sameBounds(room->bounds,
+                           cr::CreativeBounds{
+                               cr::CreativeVec3{0.0, 0.0, 0.0},
+                               cr::CreativeVec3{10.0, 4.0, 10.0}}),
+                "locked room move bounds untouched");
+}
+
+bool documentSnapSettingsFeedTheToolBoundarySnapFunctions() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Document");
+  const cr::CreativeDocumentSnapSettings defaults =
+      document.documentSnapSettings();
+  const cr::CreativeDocumentSnapReceipt defaultReceipt =
+      cr::snapCreativeDocumentPoint({5.4, 0.0, 3.6}, defaults);
+
+  cr::CreativeDocumentSnapSettings shifted = defaults;
+  shifted.originX = 0.5;
+  shifted.originZ = 0.5;
+  const bool shiftedStored = document.setDocumentSnapSettings(shifted);
+  const cr::CreativeDocumentSnapReceipt shiftedReceipt =
+      cr::snapCreativeDocumentPoint({5.4, 0.0, 3.6},
+                                    document.documentSnapSettings());
+
+  cr::CreativeDocumentSnapSettings maskedXz = defaults;
+  maskedXz.axes = cr::kCreativeDocumentSnapAxisXZ;
+  const bool maskedStored = document.setDocumentSnapSettings(maskedXz);
+  const cr::CreativeDocumentSnapReceipt maskedReceipt =
+      cr::snapCreativeDocumentPoint({5.4, 2.7, 3.6},
+                                    document.documentSnapSettings());
+
+  cr::CreativeDocumentSnapSettings disabled = defaults;
+  disabled.mode = cr::CreativeDocumentSnapMode::Disabled;
+  const bool disabledStored = document.setDocumentSnapSettings(disabled);
+  const cr::CreativeDocumentSnapReceipt disabledReceipt =
+      cr::snapCreativeDocumentPoint({5.4, 0.0, 3.6},
+                                    document.documentSnapSettings());
+
+  return expect(defaults.mode == cr::CreativeDocumentSnapMode::Grid,
+                "document snap default mode grid") &&
+         expect(defaults.axes == cr::kCreativeDocumentSnapAxisXYZ,
+                "document snap default axes xyz") &&
+         expect(defaults.stepX == 1.0 && defaults.stepY == 1.0 &&
+                    defaults.stepZ == 1.0,
+                "document snap default unit steps") &&
+         expect(defaults.originX == 0.0 && defaults.originY == 0.0 &&
+                    defaults.originZ == 0.0,
+                "document snap default zero origin") &&
+         expect(defaultReceipt.snapped, "document snap default snapped") &&
+         expect(sameVec3(cr::CreativeVec3{defaultReceipt.snappedPoint.x,
+                                          defaultReceipt.snappedPoint.y,
+                                          defaultReceipt.snappedPoint.z},
+                         cr::CreativeVec3{5.0, 0.0, 4.0}),
+                "document snap default grid point") &&
+         expect(shiftedStored, "document snap shifted origin stored") &&
+         expect(shiftedReceipt.snapped, "document snap shifted snapped") &&
+         expect(sameVec3(cr::CreativeVec3{shiftedReceipt.snappedPoint.x,
+                                          shiftedReceipt.snappedPoint.y,
+                                          shiftedReceipt.snappedPoint.z},
+                         cr::CreativeVec3{5.5, 0.0, 3.5}),
+                "document snap shifted origin point") &&
+         expect(maskedStored, "document snap masked axes stored") &&
+         expect(maskedReceipt.snapped, "document snap masked snapped") &&
+         expect(sameVec3(cr::CreativeVec3{maskedReceipt.snappedPoint.x,
+                                          maskedReceipt.snappedPoint.y,
+                                          maskedReceipt.snappedPoint.z},
+                         cr::CreativeVec3{5.0, 2.7, 4.0}),
+                "document snap masked leaves y unsnapped") &&
+         expect(disabledStored, "document snap disabled stored") &&
+         expect(!disabledReceipt.snapped, "document snap disabled not snapped") &&
+         expect(!disabledReceipt.changed, "document snap disabled unchanged") &&
+         expect(sameVec3(cr::CreativeVec3{disabledReceipt.snappedPoint.x,
+                                          disabledReceipt.snappedPoint.y,
+                                          disabledReceipt.snappedPoint.z},
+                         cr::CreativeVec3{5.4, 0.0, 3.6}),
+                "document snap disabled passthrough");
+}
+
 }  // namespace
 
 bool lockedObjectRenameRejectsThroughPipeline() {
@@ -697,6 +916,10 @@ int main() {
                   alreadyCurrentScalarDimensionIsNoChange() &&
                   boundedMoveTranslatesCrateBoundsExactlyOnce() &&
                   pointOnlyMovePreservesStoredBoundsField() &&
+                  cornerAnchorMoveTranslatesRoomBoundsAndKeepsIdentityTransform() &&
+                  cornerAnchorMoveToCurrentCornerIsNoChange() &&
+                  lockedRoomMoveRejectsWithoutBoundsChange() &&
+                  documentSnapSettingsFeedTheToolBoundarySnapFunctions() &&
                   missingObjectRejectsWithoutRevisionAdvance() &&
                   descriptorAllowedTextSleeperVerbIsDocumentNoChange() &&
                   descriptorAllowedScalarSleeperVerbIsDocumentNoChange() &&

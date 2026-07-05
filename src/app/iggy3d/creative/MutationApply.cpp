@@ -400,6 +400,24 @@ CreativeMutationApplyReceipt applyLockMutation(CreativeObject& object, const Loc
 }
 
 CreativeMutationApplyReceipt applyMoveMutation(CreativeObject& object, const MoveMutation& mutation) {
+    // TD-2: kinds without a transform but with bounds (Room) move by corner
+    // anchor — bounds.min lands on the requested position and the transform
+    // stays untouched.
+    if (!objectHasTransform(object.kind) && objectHasBounds(object.kind)) {
+        if (sameVec3(object.bounds.min, mutation.position)) {
+            return makeNoChangeReceipt(object, CreativeMutationKind::Move, "object position already matches requested value");
+        }
+
+        const CreativeVec3 cornerDelta{
+            mutation.position.x - object.bounds.min.x,
+            mutation.position.y - object.bounds.min.y,
+            mutation.position.z - object.bounds.min.z,
+        };
+
+        object.bounds = translateBounds(object.bounds, cornerDelta);
+        return makeAppliedReceipt(object, CreativeMutationKind::Move, "object moved");
+    }
+
     if (sameVec3(object.transform.position, mutation.position)) {
         return makeNoChangeReceipt(object, CreativeMutationKind::Move, "object position already matches requested value");
     }
