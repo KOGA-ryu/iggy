@@ -4,3 +4,6 @@ build-vulkan/
 *.user
 *.swp
 *.swo
+
+# clangd compile database (symlink into build/)
+compile_commands.json
