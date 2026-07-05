@@ -95,6 +95,39 @@ it per step, do not let it block F0.
 - Object containment: flat document vs rooms-contain-their-contents. Deferred;
   F0/F1 can proceed flat, revisit when multi-room authoring arrives.
 
+## Render + menu→stage switch model (mapped 2026-07-05, verified)
+
+How a frame is produced and how creative "launches" visually — so we stop
+guessing:
+- **Loop:** `runProductWindowLoop` (window/Loop.cpp) is a CONTINUOUS ~60fps
+  loop. Per iteration, in order: poll SDL events → `processProductWindowInputFrame`
+  (Loop.cpp:228, where a menu click launches) → build projection frame →
+  `presentProductWindowFrame` (Loop.cpp:271). Input runs BEFORE present on the
+  SAME live window/frontend refs, so a click shows in the same frame.
+- **Menu-vs-stage gate:** the opening menu draws iff
+  `frontend.screen == FrontendScreen::Starter` (FramePresenter.cpp:858).
+- **The switch:** click → routeProductOpeningMenuInput(MenuConfirm) →
+  confirmStarterCreativeNewWorld → launchProductCreativeNewWorld →
+  enterProductGameplayTransition → enterFrontendGameplay sets
+  `frontend.screen = Gameplay` UNCONDITIONALLY (FrontendState.cpp). Next present
+  drops the menu, draws the stage. The automation path
+  (routeAutomationInput) converges on the SAME routeProductOpeningMenuInput, so
+  headless `--automation-control` faithfully exercises the click path.
+- **Title:** productWindowTitle now keys on `frontend.screen` FIRST (Loop.cpp,
+  commit 08f76e55) so it can't disagree with the drawn body.
+
+**STALE-BUILD TRAP (cost a whole session, 2026-07-05):** a user screenshot showed
+title "iggy3d - Creative" OVER a still-visible starter menu. That state is
+IMPOSSIBLE in correct source (title requires interactionMode=Creative, set one
+line AFTER the screen transition). Root cause was a partially/stale-rebuilt
+windowed binary: title (window.gameplayActive, window-side) and menu gate
+(frontend.screen, frontend-side) read different truth, so a not-fully-relinked
+binary split them. LESSON: when windowed behavior contradicts the source, force a
+clean rebuild of the EXACT binary before chasing a code bug. Also: the headless
+`--print-render-receipt` `window_title` field is a crude formula
+(ReceiptBuilder.cpp:505-506, never emits "Creative") — use `interaction_mode`/
+`frontend_screen`/`opening_menu_visible`, not `window_title`, as the proxy.
+
 ## Discipline for this lane going forward
 
 Build ONE small step, then RUN THE APP AND LOOK (with the user), then iterate.
