@@ -538,6 +538,78 @@ creative::CreativeDocumentCreateReceipt placeBrushObject(
   return receipt;
 }
 
+// Delete the currently selected object through the facade's generic document
+// removal seam. The facade owns invalidating selection/tool/ghost/measurement
+// references; this app only asks to remove the selected target id and logs proof.
+creative::CreativeDocumentRemoveReceipt deleteSelectedObject(
+    creative::CreativeAppState& appState, std::string_view source) {
+  const creative::Id selectedId =
+      appState.facade.selectionState().selectedTarget.value;
+  const std::uint64_t objectCountBefore =
+      static_cast<std::uint64_t>(appState.facade.document().objectCount());
+  if (selectedId == 0U) {
+    SDL_Log("iggy3d_creative: DELETE no selection source='%s' "
+            "objectCount=%llu",
+            std::string(source).c_str(),
+            static_cast<unsigned long long>(objectCountBefore));
+    return {};
+  }
+
+  const auto objectId = static_cast<creative::CreativeObjectId>(selectedId);
+  const creative::CreativeObject* object = appState.facade.findObject(objectId);
+  if (object == nullptr) {
+    SDL_Log("iggy3d_creative: DELETE missing selection source='%s' "
+            "objectId=%llu objectCount=%llu",
+            std::string(source).c_str(),
+            static_cast<unsigned long long>(objectId),
+            static_cast<unsigned long long>(objectCountBefore));
+    return {};
+  }
+
+  const creative::CreativeObjectKind kind = object->kind;
+  creative::CreativeDocumentRemoveReceipt receipt =
+      appState.facade.removeDocumentObject(objectId);
+  const std::uint64_t objectCountAfter =
+      static_cast<std::uint64_t>(appState.facade.document().objectCount());
+  const creative::Id selectionAfter =
+      appState.facade.selectionState().selectedTarget.value;
+  SDL_Log("iggy3d_creative: DELETE removed objectId=%llu kind='%s' "
+          "accepted=%d changed=%d removed=%d status='%s' reasonCode='%s' "
+          "objectCountBefore=%llu objectCountAfter=%llu selectionAfter=%u",
+          static_cast<unsigned long long>(objectId),
+          std::string(creative::toString(kind)).c_str(),
+          receipt.accepted ? 1 : 0, receipt.changed ? 1 : 0,
+          receipt.objectRemoved ? 1 : 0,
+          std::string(creative::toString(receipt.status)).c_str(),
+          std::string(receipt.reasonCode).c_str(),
+          static_cast<unsigned long long>(objectCountBefore),
+          static_cast<unsigned long long>(objectCountAfter), selectionAfter);
+  return receipt;
+}
+
+bool selectObjectForCapture(creative::Facade& facade,
+                            creative::CreativeObjectId objectId,
+                            std::string_view source) {
+  if (objectId == creative::kInvalidObjectId) {
+    SDL_Log("iggy3d_creative: DELETE capture select skipped source='%s' "
+            "objectId=0",
+            std::string(source).c_str());
+    return false;
+  }
+  creative::CreativeToolInputPacket packet;
+  packet.kind = creative::CreativeToolInputKind::PointerPress;
+  packet.pointer.button = creative::CreativeToolPointerButton::Primary;
+  packet.pointer.target = creative::TargetRef{static_cast<creative::Id>(objectId)};
+  const creative::CreativeFacadeToolDispatchReceipt receipt =
+      facade.dispatchToolInput(packet);
+  SDL_Log("iggy3d_creative: DELETE capture selected source='%s' objectId=%llu "
+          "accepted=%d changed=%d selectedTarget=%u",
+          std::string(source).c_str(), static_cast<unsigned long long>(objectId),
+          receipt.accepted ? 1 : 0, receipt.changed ? 1 : 0,
+          facade.selectionState().selectedTarget.value);
+  return receipt.accepted;
+}
+
 // Append the 12 AXIS-ALIGNED edges of a world box [boxMin, boxMax] as wireframe
 // lines of the given color into `out`. Each edge moves along exactly one world
 // axis, which is the only geometry the renderer's creativeDebugLineBox draws —
@@ -1066,11 +1138,12 @@ int main(int argc, char** argv) {
     double worldX;
     double worldZ;
     creative::CreativeObjectKind kind;
+    bool deleteProofTarget = false;
   };
   const std::array<CapturePlacement, 3> capturePlacements{{
-      {3U, 2.0, 2.0, creative::CreativeObjectKind::Crate},
-      {4U, 4.0, 2.0, creative::CreativeObjectKind::Crate},
-      {5U, -2.0, 2.0, creative::CreativeObjectKind::Wall},
+      {3U, 2.0, 2.0, creative::CreativeObjectKind::Crate, false},
+      {4U, 4.0, 2.0, creative::CreativeObjectKind::Crate, true},
+      {5U, -2.0, 2.0, creative::CreativeObjectKind::Wall, false},
   }};
 
   // ---- SAVE / LOAD state (SLICE 7) ---------------------------------------
@@ -1078,18 +1151,25 @@ int main(int argc, char** argv) {
   bool prevKeyF5 = false;
   bool prevKeyF6 = false;
   bool prevKeyF9 = false;
-  // --capture round-trip proof: on fixed frames SAVE (6), snapshot BEFORE, CLEAR
-  // (8), LOAD (10), snapshot AFTER + emit the ROUNDTRIP line. The BEFORE snapshot
-  // (taken pre-clear, post-place) holds the placed proof scene to compare
-  // against AFTER.
+  bool prevKeyDelete = false;
+  bool prevKeyBackspace = false;
+  // --capture round-trip proof: first prove no-selection delete is a no-op,
+  // then delete one placed Crate before SAVE (7), CLEAR (9), LOAD (11), snapshot
+  // AFTER + emit the ROUNDTRIP line. The BEFORE snapshot (taken pre-clear,
+  // post-delete) holds the corrected proof scene to compare against AFTER.
   std::vector<ObjectSnapshotEntry> roundtripBefore;
   std::size_t roundtripCountAfterClear = 0;
   bool roundtripSaved = false;
   bool roundtripCleared = false;
   bool roundtripLoaded = false;
-  constexpr std::uint64_t kCaptureSaveFrame = 6U;
-  constexpr std::uint64_t kCaptureClearFrame = 8U;
-  constexpr std::uint64_t kCaptureLoadFrame = 10U;
+  bool captureDeleteNoSelectionAttempted = false;
+  bool captureDeleteAttempted = false;
+  constexpr std::uint64_t kCaptureDeleteNoSelectionFrame = 2U;
+  constexpr std::uint64_t kCaptureDeleteFrame = 6U;
+  constexpr std::uint64_t kCaptureSaveFrame = 7U;
+  constexpr std::uint64_t kCaptureClearFrame = 9U;
+  constexpr std::uint64_t kCaptureLoadFrame = 11U;
+  creative::CreativeObjectId captureDeleteTargetId = creative::kInvalidObjectId;
 
   std::uint64_t frameIndex = 0;
   std::uint32_t lastWidth = 0;
@@ -1167,6 +1247,8 @@ int main(int argc, char** argv) {
       const bool key2 = keys[SDL_SCANCODE_2] != 0;
       const bool key3 = keys[SDL_SCANCODE_3] != 0;
       const bool keyB = keys[SDL_SCANCODE_B] != 0;
+      const bool keyDelete = keys[SDL_SCANCODE_DELETE] != 0;
+      const bool keyBackspace = keys[SDL_SCANCODE_BACKSPACE] != 0;
       if (key1 && !prevKey1) {
         placeMode = false;  // '1' Select leaves Place mode.
         const bool ok = appState.facade.setActiveTool(creative::Tool::Select);
@@ -1189,6 +1271,11 @@ int main(int argc, char** argv) {
         SDL_Log("iggy3d_creative: brush cycled -> '%s'",
                 std::string(creative::toString(placeBrush)).c_str());
       }
+      if ((keyDelete && !prevKeyDelete) ||
+          (keyBackspace && !prevKeyBackspace)) {
+        (void)deleteSelectedObject(
+            appState, keyDelete ? "delete_key" : "backspace_key");
+      }
       // ---- SAVE / LOAD keys (SLICE 7): F5 save, F6 new/clear, F9 load -------
       const bool keyF5 = keys[SDL_SCANCODE_F5] != 0;
       const bool keyF6 = keys[SDL_SCANCODE_F6] != 0;
@@ -1208,6 +1295,8 @@ int main(int argc, char** argv) {
       prevKey2 = key2;
       prevKey3 = key3;
       prevKeyB = keyB;
+      prevKeyDelete = keyDelete;
+      prevKeyBackspace = keyBackspace;
       prevKeyF5 = keyF5;
       prevKeyF6 = keyF6;
       prevKeyF9 = keyF9;
@@ -1413,8 +1502,16 @@ int main(int argc, char** argv) {
             placeBrush = p.kind;  // Brush is data; switching kinds is not a branch.
             const Vec3 cell = snapGroundToCellCenter(p.worldX, p.worldZ,
                                                      placeCellSize);
-            (void)placeBrushObject(appState.facade, placeBrush, cell,
-                                   ++placedCount);
+            const creative::CreativeDocumentCreateReceipt receipt =
+                placeBrushObject(appState.facade, placeBrush, cell,
+                                 ++placedCount);
+            if (p.deleteProofTarget && receipt.accepted) {
+              captureDeleteTargetId = receipt.objectId;
+              SDL_Log("iggy3d_creative: DELETE capture target objectId=%llu "
+                      "kind='%s'",
+                      static_cast<unsigned long long>(captureDeleteTargetId),
+                      std::string(creative::toString(receipt.objectKind)).c_str());
+            }
           }
         }
       } else {
@@ -1443,10 +1540,27 @@ int main(int argc, char** argv) {
       }
     }
 
+    // ---- DELETE PROOF (SLICE B, --capture) --------------------------------
+    // Capture proves both paths: no-selection delete is a clean no-op, then a
+    // placed Crate is selected through the generic tool input packet and removed
+    // through Facade::removeDocumentObject before the save/open round-trip.
+    if (!capturePath.empty()) {
+      if (frameIndex == kCaptureDeleteNoSelectionFrame &&
+          !captureDeleteNoSelectionAttempted) {
+        (void)deleteSelectedObject(appState, "capture_no_selection");
+        captureDeleteNoSelectionAttempted = true;
+      } else if (frameIndex == kCaptureDeleteFrame && !captureDeleteAttempted) {
+        (void)selectObjectForCapture(appState.facade, captureDeleteTargetId,
+                                     "capture_delete");
+        (void)deleteSelectedObject(appState, "capture_delete");
+        captureDeleteAttempted = true;
+      }
+    }
+
     // ---- SAVE / LOAD ROUND-TRIP (SLICE 7, --capture) -----------------------
     // On fixed frames, drive the lossless round-trip and log the proof. The
-    // placements above (frames 3..4) have already grown the scene to 4 objects
-    // (2 seeded + 2 placed) by the time we SAVE on frame 6. The whole sequence
+    // placements above (frames 3..5) grow the scene to 5 objects, then DELETE
+    // removes one selected Crate before SAVE on frame 7. The whole sequence
     // reuses the kernel's creative-save/open — no new serialization here. All
     // reads go through document().objects(), so no hardcoded id can dangle after
     // the clear or the load.
