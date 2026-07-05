@@ -132,6 +132,7 @@
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "app/iggy3d/creative/ui/UiProjection.hpp"
+#include "app/iggy3d/creative/world/WorldService.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/map_maker/Grid.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
@@ -603,6 +604,141 @@ void logMoveDispatch(const char* phase,
           r.moveDrag.message.c_str());
 }
 
+// ---- SLICE 7: save / load helpers -------------------------------------------
+
+// A minimal per-object snapshot captured from the live document: id + kind +
+// position + bounds. Used to log the document BEFORE save and AFTER load and to
+// prove the round-trip is lossless (kinds + positions + bounds identical).
+struct ObjectSnapshotEntry {
+  creative::CreativeObjectId id = creative::kInvalidObjectId;
+  creative::CreativeObjectKind kind = creative::CreativeObjectKind::Unknown;
+  creative::CreativeVec3 position{};
+  creative::CreativeVec3 boundsMin{};
+  creative::CreativeVec3 boundsMax{};
+};
+
+// Snapshot EVERY object currently in the document (order preserved). Read-only —
+// no hardcoded ids, so it survives a clear/load with no dangling references.
+std::vector<ObjectSnapshotEntry> snapshotDocument(
+    const creative::CreativeDocument& doc) {
+  std::vector<ObjectSnapshotEntry> out;
+  out.reserve(doc.objectCount());
+  for (const creative::CreativeObject& obj : doc.objects()) {
+    ObjectSnapshotEntry e;
+    e.id = obj.id;
+    e.kind = obj.kind;
+    e.position = obj.transform.position;
+    e.boundsMin = obj.bounds.min;
+    e.boundsMax = obj.bounds.max;
+    out.push_back(e);
+  }
+  return out;
+}
+
+// Log a full snapshot of the document (one line per object) under a phase tag.
+void logDocumentSnapshot(const char* phase,
+                         const std::vector<ObjectSnapshotEntry>& snap) {
+  SDL_Log("iggy3d_creative: SNAPSHOT %s objectCount=%zu", phase, snap.size());
+  for (const ObjectSnapshotEntry& e : snap) {
+    SDL_Log("iggy3d_creative: SNAPSHOT %s   id=%llu kind='%s' "
+            "pos=(%.3f, %.3f, %.3f) "
+            "bounds=[(%.3f,%.3f,%.3f)..(%.3f,%.3f,%.3f)]",
+            phase, static_cast<unsigned long long>(e.id),
+            std::string(creative::toString(e.kind)).c_str(), e.position.x,
+            e.position.y, e.position.z, e.boundsMin.x, e.boundsMin.y,
+            e.boundsMin.z, e.boundsMax.x, e.boundsMax.y, e.boundsMax.z);
+  }
+}
+
+// True when two snapshots have identical kinds + positions + bounds in order
+// (the ids may legitimately re-mint on load, so id equality is NOT required).
+bool snapshotsMatch(const std::vector<ObjectSnapshotEntry>& before,
+                    const std::vector<ObjectSnapshotEntry>& after) {
+  if (before.size() != after.size()) {
+    return false;
+  }
+  const auto vecEq = [](const creative::CreativeVec3& a,
+                        const creative::CreativeVec3& b) {
+    constexpr double kEps = 1.0e-6;
+    return std::fabs(a.x - b.x) < kEps && std::fabs(a.y - b.y) < kEps &&
+           std::fabs(a.z - b.z) < kEps;
+  };
+  for (std::size_t i = 0; i < before.size(); ++i) {
+    if (before[i].kind != after[i].kind ||
+        !vecEq(before[i].position, after[i].position) ||
+        !vecEq(before[i].boundsMin, after[i].boundsMin) ||
+        !vecEq(before[i].boundsMax, after[i].boundsMax)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Persist the live document to disk via the kernel's creative-save. saveCreative-
+// World takes a MUTABLE document pointer because it drains dirty flags, so we
+// point it at a local COPY of facade.document() (the copy is safe to mutate and
+// the on-disk bytes are identical). Logs the full save receipt.
+CreativeWorldSaveResult saveStandaloneScene(
+    const creative::Facade& facade, const std::filesystem::path& saveRoot,
+    const std::string& saveId) {
+  creative::CreativeDocument docCopy = facade.document();  // Copy: save drains.
+  CreativeWorldSaveRequest request;
+  request.saveRoot = saveRoot;
+  request.saveId = saveId;
+  request.document = &docCopy;  // Mutable pointer at the local copy.
+  request.worldTitle = "standalone";
+  request.saveTitle = "scene";
+  const CreativeWorldSaveResult result = saveCreativeWorld(request);
+  SDL_Log("iggy3d_creative: SAVE accepted=%d saved=%d objectCount=%llu "
+          "path='%s' reasonCode='%s'",
+          result.accepted ? 1 : 0, result.saved ? 1 : 0,
+          static_cast<unsigned long long>(result.objectCount),
+          result.path.generic_string().c_str(), result.reasonCode.c_str());
+  return result;
+}
+
+// Restore the document from disk via the kernel's creative-open and install it
+// (MOVE the returned document into the facade). On accept the facade's install
+// resets transient state (selection, ghost, move-drag), so no stale ids dangle.
+// Logs the open receipt. Returns whether the load was accepted + installed.
+bool loadStandaloneScene(creative::CreativeAppState& appState,
+                         const std::filesystem::path& saveRoot,
+                         const std::string& saveId) {
+  CreativeWorldOpenRequest request;
+  request.saveRoot = saveRoot;
+  request.saveId = saveId;
+  CreativeWorldOpenResult result = openCreativeWorld(request);
+  SDL_Log("iggy3d_creative: LOAD accepted=%d objectCount=%llu reasonCode='%s'",
+          result.accepted ? 1 : 0,
+          static_cast<unsigned long long>(result.objectCount),
+          result.reasonCode.c_str());
+  if (!result.accepted) {
+    return false;
+  }
+  const creative::CreativeFacadeDocumentInstallReceipt installReceipt =
+      appState.facade.installDocument(std::move(result.document));
+  SDL_Log("iggy3d_creative: LOAD install accepted=%d objectCount=%llu",
+          installReceipt.accepted ? 1 : 0,
+          static_cast<unsigned long long>(
+              appState.facade.document().objectCount()));
+  return installReceipt.accepted;
+}
+
+// Install a fresh, empty document (NEW/CLEAR). The facade's install resets all
+// transient state including the selection, so any prior selection + hardcoded
+// seed ids are dropped — the render/hit-test iterate document().objects(), which
+// is now empty. Logs the resulting object count (expect 0).
+void clearToBlankScene(creative::CreativeAppState& appState) {
+  creative::CreativeDocument blank = creative::CreativeDocument::create("blank");
+  (void)blank.assignId(1);
+  const creative::CreativeFacadeDocumentInstallReceipt installReceipt =
+      appState.facade.installDocument(std::move(blank));
+  SDL_Log("iggy3d_creative: NEW/CLEAR install accepted=%d objectCount=%llu",
+          installReceipt.accepted ? 1 : 0,
+          static_cast<unsigned long long>(
+              appState.facade.document().objectCount()));
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -744,6 +880,25 @@ int main(int argc, char** argv) {
           std::string(creative::toString(crateReceipt.objectKind)).c_str());
   (void)crateObjectId;  // Retained for the log; tooling keys off the SELECTION.
 
+  // ---- SAVE LOCATION (SLICE 7) -------------------------------------------
+  // A single fixed save slot for the standalone app: <HOME>/.iggy3d/
+  // creative_standalone with saveId "scene". Created up front so the kernel's
+  // creative-save always has a writable root. One slot is enough for this slice.
+  std::filesystem::path saveRoot;
+  if (const char* home = std::getenv("HOME"); home != nullptr) {
+    saveRoot = std::filesystem::path{home} / ".iggy3d" / "creative_standalone";
+  } else {
+    saveRoot = std::filesystem::path{".iggy3d"} / "creative_standalone";
+  }
+  const std::string saveId = "scene";
+  {
+    std::error_code ec;
+    std::filesystem::create_directories(saveRoot, ec);
+    SDL_Log("iggy3d_creative: saveRoot='%s' saveId='%s' created=%d",
+            saveRoot.generic_string().c_str(), saveId.c_str(),
+            ec ? 0 : 1);
+  }
+
   // The wireframe projection request: a grid big enough to hold the origin
   // crate (world Y 0..1 fits in height=8; XZ clamp handles the negative corner).
   creative::CreativeSpatialProjectionRequest wireProjReq;
@@ -804,21 +959,36 @@ int main(int argc, char** argv) {
     placeMode = true;
     placeBrush = creative::CreativeObjectKind::Crate;
   }
-  // --capture placement script: aim+place at these world XZ cells across frames
-  // 3..6 (last entry switches the brush to Floor before placing). Each is a
-  // (worldX, worldZ, kind) target fed to the SAME createDocumentObject.
+  // --capture placement script (SLICE 7): place TWO crates on frames 3..4 so the
+  // scene grows to 4 objects (2 seeded + 2 placed) before the save/load proof.
+  // Each is a (worldX, worldZ, kind) target fed to the SAME createDocumentObject.
   struct CapturePlacement {
     std::uint64_t frame;
     double worldX;
     double worldZ;
     creative::CreativeObjectKind kind;
   };
-  const std::array<CapturePlacement, 4> capturePlacements{{
+  const std::array<CapturePlacement, 2> capturePlacements{{
       {3U, 2.0, 2.0, creative::CreativeObjectKind::Crate},
       {4U, 4.0, 2.0, creative::CreativeObjectKind::Crate},
-      {5U, 6.0, 2.0, creative::CreativeObjectKind::Crate},
-      {6U, 2.0, -3.0, creative::CreativeObjectKind::Floor},
   }};
+
+  // ---- SAVE / LOAD state (SLICE 7) ---------------------------------------
+  // Interactive: edge latches for F5 (save), F6 (new/clear), F9 (load).
+  bool prevKeyF5 = false;
+  bool prevKeyF6 = false;
+  bool prevKeyF9 = false;
+  // --capture round-trip proof: on fixed frames SAVE (6), snapshot BEFORE, CLEAR
+  // (8), LOAD (10), snapshot AFTER + emit the ROUNDTRIP line. The BEFORE snapshot
+  // (taken pre-clear, post-place) holds the 4 objects to compare against AFTER.
+  std::vector<ObjectSnapshotEntry> roundtripBefore;
+  std::size_t roundtripCountAfterClear = 0;
+  bool roundtripSaved = false;
+  bool roundtripCleared = false;
+  bool roundtripLoaded = false;
+  constexpr std::uint64_t kCaptureSaveFrame = 6U;
+  constexpr std::uint64_t kCaptureClearFrame = 8U;
+  constexpr std::uint64_t kCaptureLoadFrame = 10U;
 
   std::uint64_t frameIndex = 0;
   std::uint32_t lastWidth = 0;
@@ -918,10 +1088,28 @@ int main(int argc, char** argv) {
         SDL_Log("iggy3d_creative: brush cycled -> '%s'",
                 std::string(creative::toString(placeBrush)).c_str());
       }
+      // ---- SAVE / LOAD keys (SLICE 7): F5 save, F6 new/clear, F9 load -------
+      const bool keyF5 = keys[SDL_SCANCODE_F5] != 0;
+      const bool keyF6 = keys[SDL_SCANCODE_F6] != 0;
+      const bool keyF9 = keys[SDL_SCANCODE_F9] != 0;
+      if (keyF5 && !prevKeyF5) {
+        (void)saveStandaloneScene(appState.facade, saveRoot, saveId);
+      }
+      if (keyF6 && !prevKeyF6) {
+        clearToBlankScene(appState);  // Fresh blank document; facade resets
+                                      // selection so no stale seed id dangles.
+      }
+      if (keyF9 && !prevKeyF9) {
+        (void)loadStandaloneScene(appState, saveRoot, saveId);  // Facade reset
+                                                                // clears sel.
+      }
       prevKey1 = key1;
       prevKey2 = key2;
       prevKey3 = key3;
       prevKeyB = keyB;
+      prevKeyF5 = keyF5;
+      prevKeyF6 = keyF6;
+      prevKeyF9 = keyF9;
     }
 
     // SCENE (local, must outlive submitFrame): rebuild the grid meshes each
@@ -1151,6 +1339,40 @@ int main(int argc, char** argv) {
           window.setRelativeMouseMode(true);
           placeButtonDown = false;
         }
+      }
+    }
+
+    // ---- SAVE / LOAD ROUND-TRIP (SLICE 7, --capture) -----------------------
+    // On fixed frames, drive the lossless round-trip and log the proof. The
+    // placements above (frames 3..4) have already grown the scene to 4 objects
+    // (2 seeded + 2 placed) by the time we SAVE on frame 6. The whole sequence
+    // reuses the kernel's creative-save/open — no new serialization here. All
+    // reads go through document().objects(), so no hardcoded id can dangle after
+    // the clear or the load.
+    if (!capturePath.empty()) {
+      if (frameIndex == kCaptureSaveFrame && !roundtripSaved) {
+        // Snapshot BEFORE (post-place, pre-clear) then SAVE the live document.
+        roundtripBefore = snapshotDocument(appState.facade.document());
+        logDocumentSnapshot("BEFORE", roundtripBefore);
+        (void)saveStandaloneScene(appState.facade, saveRoot, saveId);
+        roundtripSaved = true;
+      } else if (frameIndex == kCaptureClearFrame && !roundtripCleared) {
+        // CLEAR: install a blank document (facade resets selection); expect 0.
+        clearToBlankScene(appState);
+        roundtripCountAfterClear = appState.facade.document().objectCount();
+        roundtripCleared = true;
+      } else if (frameIndex == kCaptureLoadFrame && !roundtripLoaded) {
+        // LOAD: restore from disk and install; snapshot AFTER + ROUNDTRIP line.
+        (void)loadStandaloneScene(appState, saveRoot, saveId);
+        const std::vector<ObjectSnapshotEntry> roundtripAfter =
+            snapshotDocument(appState.facade.document());
+        logDocumentSnapshot("AFTER", roundtripAfter);
+        const bool match = snapshotsMatch(roundtripBefore, roundtripAfter);
+        SDL_Log("iggy3d_creative: ROUNDTRIP objectCount before=%zu afterClear=%zu "
+                "afterLoad=%zu match=%d",
+                roundtripBefore.size(), roundtripCountAfterClear,
+                roundtripAfter.size(), match ? 1 : 0);
+        roundtripLoaded = true;
       }
     }
 
