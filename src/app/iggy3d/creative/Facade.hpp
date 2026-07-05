@@ -20,6 +20,54 @@
 
 namespace iggy3d::creative {
 
+// Move-tool drag lifecycle stages, receipt-visible (TL-6): a drag is fully
+// observable — begin, preview target, and the commit outcome.
+enum class CreativeFacadeMoveDragStage : std::uint8_t {
+  None,
+  Begin,
+  Preview,
+  Commit,
+  Cancelled,
+};
+
+enum class CreativeFacadeMoveDragOutcome : std::uint8_t {
+  None,
+  Begun,
+  Previewing,
+  Applied,
+  NoChange,
+  RejectedLocked,
+  Rejected,
+  Cancelled,
+  NoTarget,
+};
+
+// Full receipt for one Move-drag lifecycle event. Anchors are corner anchors
+// (TD-2): bounds.min for bounds-only kinds, transform.position otherwise. The
+// destination Y equals the start anchor Y (TD-7: XZ-only move in v1).
+struct CreativeFacadeMoveDragReceipt {
+  CreativeFacadeMoveDragStage stage = CreativeFacadeMoveDragStage::None;
+  CreativeFacadeMoveDragOutcome outcome = CreativeFacadeMoveDragOutcome::None;
+  bool requested = false;
+  bool accepted = false;
+  bool committed = false;
+  bool changed = false;
+  bool locked = false;
+  TargetRef target;
+  CreativeObjectId objectId = kInvalidObjectId;
+  CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
+  bool hasStartAnchor = false;
+  CreativeVec3 startAnchor;
+  bool hasDestinationAnchor = false;
+  CreativeVec3 requestedAnchor;
+  CreativeVec3 snappedAnchor;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  CreativeDocumentMutationStatus documentStatus =
+      CreativeDocumentMutationStatus::Unknown;
+  std::string message = "move_drag_not_requested";
+};
+
 struct CreativeFacadeToolDispatchReceipt {
   CreativeToolInputKind inputKind = CreativeToolInputKind::Unknown;
   Tool activeToolBefore = Tool::Select;
@@ -29,6 +77,8 @@ struct CreativeFacadeToolDispatchReceipt {
   bool selectionChanged = false;
   bool measurementChanged = false;
   bool ghostChanged = false;
+  bool moveDragChanged = false;
+  CreativeFacadeMoveDragReceipt moveDrag;
   bool accepted = false;
   bool changed = false;
   std::string_view message = "tool_input_not_dispatched";
@@ -101,6 +151,8 @@ class Facade {
   [[nodiscard]] const CreativeMeasurementState& measurementState() const noexcept;
   [[nodiscard]] const CreativeSnapSettings& snapSettings() const noexcept;
   [[nodiscard]] const CreativeGhostState& ghostState() const noexcept;
+  [[nodiscard]] const CreativeFacadeMoveDragReceipt& moveDragReceipt()
+      const noexcept;
   [[nodiscard]] bool setActiveTool(Tool tool) noexcept;
   void setSnapSettings(CreativeSnapSettings settings) noexcept;
   [[nodiscard]] CreativeFacadeToolDispatchReceipt dispatchToolInput(
@@ -127,6 +179,11 @@ class Facade {
   [[nodiscard]] const Stats& stats() const noexcept;
 
  private:
+  // Applies one Move-drag lifecycle intent (BeginMove/PreviewMove/CommitMove/
+  // CancelMove) against the drag-tracking members. Returns the stage receipt.
+  CreativeFacadeMoveDragReceipt applyMoveDragIntent(
+      const CreativeToolIntent& intent);
+
   State state_;
   CreativeDocument document_;
   Stats stats_;
@@ -135,6 +192,14 @@ class Facade {
   CreativeMeasurementState measurementState_;
   CreativeSnapSettings snapSettings_;
   CreativeGhostState ghostState_;
+  // Move-drag tracking (TV1-G): the resolved drag target + its start corner
+  // anchor, recorded on BeginMove and consumed on Preview/Commit. Y is held
+  // fixed to startAnchor.y for the whole drag (TD-7).
+  bool moveDragActive_ = false;
+  TargetRef moveDragTarget_;
+  CreativeObjectId moveDragObjectId_ = kInvalidObjectId;
+  CreativeVec3 moveDragStartAnchor_;
+  CreativeFacadeMoveDragReceipt moveDragReceipt_;
 };
 
 }  // namespace iggy3d::creative

@@ -1,11 +1,42 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
+#include "app/iggy3d/creative/DocumentSnap.hpp"
+#include "app/iggy3d/creative/ObjectDescriptor.hpp"
+
 #include <limits>
 #include <span>
 #include <utility>
 
 namespace iggy3d::creative {
 namespace {
+
+// TD-2 corner anchor: bounds-only kinds (Room) anchor at bounds.min; kinds with
+// a transform anchor at transform.position.
+[[nodiscard]] CreativeVec3 objectCornerAnchor(const CreativeObject& object) noexcept {
+  if (!objectHasTransform(object.kind) && objectHasBounds(object.kind)) {
+    return object.bounds.min;
+  }
+  return object.transform.position;
+}
+
+// Snap a world anchor via the document 3D snap contract (TL-4, D4). The tool
+// boundary snaps BEFORE building the Move payload; snap is never auto-applied
+// inside the mutation executor.
+[[nodiscard]] CreativeVec3 snapWorldAnchor(
+    CreativeVec3 anchor,
+    CreativeDocumentSnapSettings settings) noexcept {
+  const CreativeDocumentSnapReceipt snap = snapCreativeDocumentPoint(
+      CreativeDocumentSnapPoint3{anchor.x, anchor.y, anchor.z}, settings);
+  if (!snap.accepted) {
+    return anchor;
+  }
+  return CreativeVec3{snap.snappedPoint.x, snap.snappedPoint.y,
+                      snap.snappedPoint.z};
+}
+
+[[nodiscard]] bool sameAnchor(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
 
 [[nodiscard]] bool targetRefToObjectId(TargetRef target,
                                        CreativeObjectId& objectId) noexcept {
@@ -243,6 +274,11 @@ void Facade::reset() noexcept {
                             measurementState_,
                             snapSettings_,
                             ghostState_);
+  moveDragActive_ = false;
+  moveDragTarget_ = {};
+  moveDragObjectId_ = kInvalidObjectId;
+  moveDragStartAnchor_ = {};
+  moveDragReceipt_ = {};
 }
 
 void Facade::beginFrame(const FramePacket& packet) noexcept {
@@ -280,6 +316,10 @@ const CreativeGhostState& Facade::ghostState() const noexcept {
   return ghostState_;
 }
 
+const CreativeFacadeMoveDragReceipt& Facade::moveDragReceipt() const noexcept {
+  return moveDragReceipt_;
+}
+
 bool Facade::setActiveTool(Tool tool) noexcept {
   const Tool activeToolBefore = toolState_.activeTool;
   const bool changed = iggy3d::creative::setActiveTool(toolState_, tool);
@@ -289,6 +329,13 @@ bool Facade::setActiveTool(Tool tool) noexcept {
   }
   if (changed && ghostState_.visible) {
     static_cast<void>(hideGhost(ghostState_));
+  }
+  if (changed) {
+    // A tool switch abandons any Move drag in flight (mirrors the tool core).
+    moveDragActive_ = false;
+    moveDragTarget_ = {};
+    moveDragObjectId_ = kInvalidObjectId;
+    moveDragStartAnchor_ = {};
   }
   state_.tool = toolState_.activeTool;
   return changed;
@@ -326,6 +373,34 @@ CreativeFacadeToolDispatchReceipt Facade::dispatchToolInput(
     receipt.measurementChanged = receipt.measurementChanged ||
                                  measurementReceipt.changed;
     receipt.ghostChanged = receipt.ghostChanged || ghostReceipt.changed;
+
+    switch (intent.kind) {
+      case CreativeToolIntentKind::BeginMove:
+      case CreativeToolIntentKind::PreviewMove:
+      case CreativeToolIntentKind::CommitMove:
+      case CreativeToolIntentKind::CancelMove: {
+        receipt.moveDrag = applyMoveDragIntent(intent);
+        receipt.moveDragChanged =
+            receipt.moveDragChanged || receipt.moveDrag.changed ||
+            receipt.moveDrag.stage == CreativeFacadeMoveDragStage::Begin ||
+            receipt.moveDrag.stage == CreativeFacadeMoveDragStage::Cancelled;
+        // TD-6: preview during the drag reuses the existing ghost to indicate
+        // the destination; commit/cancel clear it. A dedicated wireframe box is
+        // deferred to the render slice (TV1-J).
+        if (intent.kind == CreativeToolIntentKind::BeginMove ||
+            intent.kind == CreativeToolIntentKind::PreviewMove) {
+          const CreativeGhostReceipt moveGhost = updateGhostPreview(
+              ghostState_, intent.pointer, Tool::Move, snapSettings_);
+          receipt.ghostChanged = receipt.ghostChanged || moveGhost.changed;
+        } else if (ghostState_.visible) {
+          const CreativeGhostReceipt moveGhost = hideGhost(ghostState_);
+          receipt.ghostChanged = receipt.ghostChanged || moveGhost.changed;
+        }
+        break;
+      }
+      default:
+        break;
+    }
   }
 
   if (input.kind == CreativeToolInputKind::Cancel &&
@@ -335,7 +410,11 @@ CreativeFacadeToolDispatchReceipt Facade::dispatchToolInput(
   }
 
   receipt.changed = receipt.changed || receipt.selectionChanged ||
-                    receipt.measurementChanged || receipt.ghostChanged;
+                    receipt.measurementChanged || receipt.ghostChanged ||
+                    receipt.moveDragChanged;
+  if (receipt.moveDrag.stage != CreativeFacadeMoveDragStage::None) {
+    moveDragReceipt_ = receipt.moveDrag;
+  }
   state_.tool = toolState_.activeTool;
   state_.selected = selectionState_.selectedTarget;
   state_.hovered = toolState_.pointer.target;
@@ -383,6 +462,204 @@ CreativeFacadeMutationReceipt Facade::toggleSelectedObjectLocked() {
   return toggleSelectedObjectMutation(document_,
                                       selectionState_.selectedTarget,
                                       CreativeMutationKind::SetLocked);
+}
+
+CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
+    const CreativeToolIntent& intent) {
+  CreativeFacadeMoveDragReceipt receipt;
+  receipt.requested = true;
+  receipt.revisionBefore = document_.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+
+  switch (intent.kind) {
+    case CreativeToolIntentKind::BeginMove: {
+      receipt.stage = CreativeFacadeMoveDragStage::Begin;
+      // The picked target seeds the drag; fall back to the current selection
+      // when the press missed a specific object (TV1-G).
+      TargetRef dragTarget = intent.pointer.target;
+      if (dragTarget.value == kInvalidId) {
+        dragTarget = selectionState_.selectedTarget;
+      }
+      receipt.target = dragTarget;
+
+      CreativeObjectId objectId = kInvalidObjectId;
+      const CreativeObject* object = nullptr;
+      if (targetRefToObjectId(dragTarget, objectId)) {
+        object = document_.findObject(objectId);
+      }
+      if (object == nullptr) {
+        moveDragActive_ = false;
+        moveDragTarget_ = {};
+        moveDragObjectId_ = kInvalidObjectId;
+        moveDragStartAnchor_ = {};
+        receipt.outcome = CreativeFacadeMoveDragOutcome::NoTarget;
+        receipt.message = "move_drag_no_target";
+        return receipt;
+      }
+
+      moveDragActive_ = true;
+      moveDragTarget_ = dragTarget;
+      moveDragObjectId_ = objectId;
+      moveDragStartAnchor_ = objectCornerAnchor(*object);
+      receipt.accepted = true;
+      receipt.objectId = objectId;
+      receipt.objectKind = object->kind;
+      receipt.locked = object->locked;
+      receipt.hasStartAnchor = true;
+      receipt.startAnchor = moveDragStartAnchor_;
+      receipt.outcome = CreativeFacadeMoveDragOutcome::Begun;
+      receipt.message = "move_drag_begin";
+      return receipt;
+    }
+
+    case CreativeToolIntentKind::PreviewMove: {
+      receipt.stage = CreativeFacadeMoveDragStage::Preview;
+      receipt.target = moveDragTarget_;
+      receipt.objectId = moveDragObjectId_;
+      if (!moveDragActive_) {
+        receipt.outcome = CreativeFacadeMoveDragOutcome::None;
+        receipt.message = "move_drag_inactive";
+        return receipt;
+      }
+      receipt.accepted = true;
+      receipt.hasStartAnchor = true;
+      receipt.startAnchor = moveDragStartAnchor_;
+      const CreativeObject* object = document_.findObject(moveDragObjectId_);
+      if (object != nullptr) {
+        receipt.objectKind = object->kind;
+        receipt.locked = object->locked;
+      }
+      if (intent.pointer.hasWorldDestination) {
+        // TD-7: screen=XY drag — take world X and Y from the pointer so the
+        // object tracks the cursor; the DEPTH axis (world Z) holds the start
+        // anchor Z.
+        const CreativeVec3 requested{intent.pointer.worldDestination.x,
+                                     intent.pointer.worldDestination.y,
+                                     moveDragStartAnchor_.z};
+        receipt.hasDestinationAnchor = true;
+        receipt.requestedAnchor = requested;
+        receipt.snappedAnchor =
+            snapWorldAnchor(requested, document_.documentSnapSettings());
+      }
+      receipt.outcome = CreativeFacadeMoveDragOutcome::Previewing;
+      receipt.message = "move_drag_preview";
+      return receipt;
+    }
+
+    case CreativeToolIntentKind::CommitMove: {
+      receipt.stage = CreativeFacadeMoveDragStage::Commit;
+      receipt.target = moveDragTarget_;
+      receipt.objectId = moveDragObjectId_;
+      const bool wasActive = moveDragActive_;
+      const CreativeVec3 startAnchor = moveDragStartAnchor_;
+      const CreativeObjectId objectId = moveDragObjectId_;
+      // The drag ends here regardless of outcome.
+      moveDragActive_ = false;
+      moveDragTarget_ = {};
+      moveDragObjectId_ = kInvalidObjectId;
+      moveDragStartAnchor_ = {};
+
+      if (!wasActive) {
+        receipt.outcome = CreativeFacadeMoveDragOutcome::None;
+        receipt.message = "move_drag_inactive";
+        return receipt;
+      }
+      receipt.hasStartAnchor = true;
+      receipt.startAnchor = startAnchor;
+
+      const CreativeObject* object = document_.findObject(objectId);
+      if (object == nullptr) {
+        receipt.outcome = CreativeFacadeMoveDragOutcome::NoTarget;
+        receipt.message = "move_drag_no_target";
+        return receipt;
+      }
+      receipt.objectKind = object->kind;
+      receipt.locked = object->locked;
+
+      if (!intent.pointer.hasWorldDestination) {
+        // No resolved destination (pointer never left the grid): nothing to do.
+        receipt.outcome = CreativeFacadeMoveDragOutcome::NoChange;
+        receipt.message = "move_drag_no_destination";
+        return receipt;
+      }
+
+      // TD-7: screen=XY drag — world X and Y follow the cursor; the DEPTH axis
+      // (world Z) holds the start anchor Z so the object tracks the pointer.
+      const CreativeVec3 requested{intent.pointer.worldDestination.x,
+                                   intent.pointer.worldDestination.y,
+                                   startAnchor.z};
+      const CreativeVec3 snapped =
+          snapWorldAnchor(requested, document_.documentSnapSettings());
+      receipt.hasDestinationAnchor = true;
+      receipt.requestedAnchor = requested;
+      receipt.snappedAnchor = snapped;
+
+      if (sameAnchor(snapped, startAnchor)) {
+        // TD-6: destination equals start anchor — no revision bump.
+        receipt.outcome = CreativeFacadeMoveDragOutcome::NoChange;
+        receipt.documentStatus = CreativeDocumentMutationStatus::NoChange;
+        receipt.message = "move_drag_no_change";
+        return receipt;
+      }
+
+      const CreativeDocumentMutationReceipt moveReceipt = moveDocumentObject(
+          document_, objectId, snapped);
+      receipt.documentStatus = moveReceipt.status;
+      receipt.revisionAfter = document_.revision();
+      receipt.changed =
+          moveReceipt.changed &&
+          moveReceipt.revisionAfter != moveReceipt.revisionBefore;
+      receipt.committed = true;
+
+      if (moveReceipt.status == CreativeDocumentMutationStatus::Applied &&
+          receipt.changed) {
+        receipt.accepted = true;
+        receipt.outcome = CreativeFacadeMoveDragOutcome::Applied;
+        receipt.message = "move_drag_applied";
+      } else if (moveReceipt.status ==
+                 CreativeDocumentMutationStatus::NoChange) {
+        receipt.outcome = CreativeFacadeMoveDragOutcome::NoChange;
+        receipt.message = "move_drag_no_change";
+      } else {
+        // Lock refusal (TD-3) surfaces here: the pipeline rejects the Move on a
+        // locked object; the lock-refusal truth lives in objectReceipt.message
+        // (TV1-A). Report it truthfully so the status line can read it.
+        receipt.outcome = object->locked
+                              ? CreativeFacadeMoveDragOutcome::RejectedLocked
+                              : CreativeFacadeMoveDragOutcome::Rejected;
+        receipt.message = moveReceipt.objectReceipt.message.empty()
+                              ? moveReceipt.message
+                              : moveReceipt.objectReceipt.message;
+        if (receipt.message.empty()) {
+          receipt.message = object->locked ? "move_drag_rejected_locked"
+                                           : "move_drag_rejected";
+        }
+      }
+      return receipt;
+    }
+
+    case CreativeToolIntentKind::CancelMove: {
+      receipt.stage = CreativeFacadeMoveDragStage::Cancelled;
+      receipt.target = moveDragTarget_;
+      receipt.objectId = moveDragObjectId_;
+      if (moveDragActive_) {
+        receipt.hasStartAnchor = true;
+        receipt.startAnchor = moveDragStartAnchor_;
+      }
+      moveDragActive_ = false;
+      moveDragTarget_ = {};
+      moveDragObjectId_ = kInvalidObjectId;
+      moveDragStartAnchor_ = {};
+      receipt.accepted = true;
+      receipt.outcome = CreativeFacadeMoveDragOutcome::Cancelled;
+      receipt.message = "move_cancelled";
+      return receipt;
+    }
+
+    default:
+      receipt.message = "move_drag_not_requested";
+      return receipt;
+  }
 }
 
 CreativeDocumentCreateReceipt Facade::createDocumentObject(
@@ -473,6 +750,11 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
                             measurementState_,
                             snapSettings_,
                             ghostState_);
+  moveDragActive_ = false;
+  moveDragTarget_ = {};
+  moveDragObjectId_ = kInvalidObjectId;
+  moveDragStartAnchor_ = {};
+  moveDragReceipt_ = {};
 
   receipt.accepted = true;
   receipt.changed = true;

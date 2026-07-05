@@ -48,6 +48,11 @@ struct ProductCreativePointerLifecycleEvent {
       ProductCreativePointerLifecyclePhase::None;
   float x = 0.0F;
   float y = 0.0F;
+  // Move-drag destination resolved from the pointer's grid XZ (TD-7). The
+  // window fills it for Move/Release phases so the tool's snapped commit has a
+  // destination anchor; the tool core carries it, the facade snaps + commits.
+  bool hasWorldDestination = false;
+  creative::CreativeToolWorldPoint worldDestination;
 };
 
 struct ProductCreativeInputFrameRequest {
@@ -110,11 +115,16 @@ struct ProductCreativeInputFrameReceipt {
 [[nodiscard]] creative::CreativeToolInputPacket productCreativePointerMovePacket(
     float x,
     float y,
-    creative::TargetRef target = {}) noexcept;
+    creative::TargetRef target = {},
+    bool hasWorldDestination = false,
+    creative::CreativeToolWorldPoint worldDestination = {}) noexcept;
 [[nodiscard]] creative::CreativeToolInputPacket
-productCreativePointerReleasePacket(float x,
-                                    float y,
-                                    creative::TargetRef target = {}) noexcept;
+productCreativePointerReleasePacket(
+    float x,
+    float y,
+    creative::TargetRef target = {},
+    bool hasWorldDestination = false,
+    creative::CreativeToolWorldPoint worldDestination = {}) noexcept;
 // Pure lifecycle resolver: given the persistent held-state and this frame's raw
 // sample, advance the state and report which lifecycle phase (if any) to emit.
 // Press does NOT flow through here in the frame (the pick chain owns Press so it

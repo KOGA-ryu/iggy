@@ -424,6 +424,205 @@ bool facadeMutationStatusStringsAreStable() {
                 "status rejected string");
 }
 
+cr::CreativeObjectId createRoomAt(cr::Facade& facade,
+                                  cr::CreativeVec3 corner,
+                                  bool locked = false) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::Room;
+  request.name = "Room";
+  request.bounds.min = corner;
+  request.bounds.max = {corner.x + 2.0, corner.y + 2.0, corner.z + 2.0};
+  request.hasBoundsOverride = true;
+  request.locked = locked;
+  request.hasLockedOverride = locked;
+  return facade.createDocumentObject(request).objectId;
+}
+
+cr::CreativeToolInputPacket movePress(cr::Id targetId) {
+  cr::CreativeToolInputPacket input;
+  input.kind = cr::CreativeToolInputKind::PointerPress;
+  input.pointer.button = cr::CreativeToolPointerButton::Primary;
+  input.pointer.target.value = targetId;
+  return input;
+}
+
+// TD-7: the creative viewport is a FRONT view (screen = world XY). The window
+// fills worldDestination from the pointer as {worldX, worldY, <placeholder>}:
+// screen-horizontal -> world X, screen-vertical -> world Y. The DEPTH axis
+// (world Z) is the held axis the facade overrides with the start anchor.
+cr::CreativeToolInputPacket moveDrag(cr::CreativeToolInputKind kind,
+                                     double worldX,
+                                     double worldY) {
+  cr::CreativeToolInputPacket input;
+  input.kind = kind;
+  input.pointer.button = cr::CreativeToolPointerButton::Primary;
+  input.pointer.hasWorldDestination = true;
+  input.pointer.worldDestination = {worldX, worldY, 0.0};
+  return input;
+}
+
+bool dragCommitMovesRoomByCornerAnchor() {
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoomAt(facade, {1.0, 2.0, 1.0});
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  static_cast<void>(facade.dispatchToolInput(
+      movePress(static_cast<cr::Id>(roomId))));
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  static_cast<void>(facade.dispatchToolInput(
+      moveDrag(cr::CreativeToolInputKind::PointerMove, 5.0, 6.0)));
+  const cr::CreativeFacadeToolDispatchReceipt commit = facade.dispatchToolInput(
+      moveDrag(cr::CreativeToolInputKind::PointerRelease, 5.0, 6.0));
+
+  const cr::CreativeObject* room = facade.findObject(roomId);
+  const cr::CreativeFacadeMoveDragReceipt& drag = commit.moveDrag;
+  return expect(room != nullptr, "drag commit room exists") &&
+         // TD-2 corner anchor + TD-7 screen=XY drag: bounds.min tracks the
+         // cursor in world X (horizontal) and world Y (vertical); the DEPTH
+         // axis (world Z) holds the start anchor Z == 1.0.
+         expect(room->bounds.min.x == 5.0, "drag commit corner x") &&
+         expect(room->bounds.min.y == 6.0, "drag commit corner y tracks cursor") &&
+         expect(room->bounds.min.z == 1.0, "drag commit corner z unchanged") &&
+         expect(room->bounds.max.x == 7.0, "drag commit corner max x") &&
+         expect(drag.stage == cr::CreativeFacadeMoveDragStage::Commit,
+                "drag commit stage") &&
+         expect(drag.outcome == cr::CreativeFacadeMoveDragOutcome::Applied,
+                "drag commit applied") &&
+         expect(drag.committed, "drag commit committed flag") &&
+         expect(drag.changed, "drag commit changed") &&
+         expect(drag.snappedAnchor.x == 5.0 && drag.snappedAnchor.y == 6.0,
+                "drag commit snapped anchor") &&
+         expect(drag.snappedAnchor.z == 1.0,
+                "drag commit snapped anchor holds start z") &&
+         expect(drag.startAnchor.x == 1.0 && drag.startAnchor.z == 1.0,
+                "drag commit start anchor") &&
+         expect(facade.document().revision() == revisionBefore + 1U,
+                "drag commit bumps revision") &&
+         expect(facade.moveDragReceipt().outcome ==
+                    cr::CreativeFacadeMoveDragOutcome::Applied,
+                "stored drag receipt applied");
+}
+
+bool dragCommitToStartAnchorIsNoChange() {
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoomAt(facade, {3.0, 0.0, 4.0});
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  static_cast<void>(facade.dispatchToolInput(
+      movePress(static_cast<cr::Id>(roomId))));
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  // Release on the start anchor's own screen cell (world X=3, world Y=0): the
+  // destination equals the start anchor, so it must be a no-change.
+  const cr::CreativeFacadeToolDispatchReceipt commit = facade.dispatchToolInput(
+      moveDrag(cr::CreativeToolInputKind::PointerRelease, 3.0, 0.0));
+
+  const cr::CreativeObject* room = facade.findObject(roomId);
+  return expect(room != nullptr && room->bounds.min.x == 3.0,
+                "no-change room unmoved") &&
+         expect(commit.moveDrag.outcome ==
+                    cr::CreativeFacadeMoveDragOutcome::NoChange,
+                "no-change outcome") &&
+         expect(!commit.moveDrag.changed, "no-change not changed") &&
+         expect(facade.document().revision() == revisionBefore,
+                "no-change no revision bump");
+}
+
+bool dragCommitOnLockedRoomRefused() {
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId =
+      createRoomAt(facade, {1.0, 0.0, 1.0}, /*locked=*/true);
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  static_cast<void>(facade.dispatchToolInput(
+      movePress(static_cast<cr::Id>(roomId))));
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const cr::CreativeFacadeToolDispatchReceipt commit = facade.dispatchToolInput(
+      moveDrag(cr::CreativeToolInputKind::PointerRelease, 7.0, 8.0));
+
+  const cr::CreativeObject* room = facade.findObject(roomId);
+  const cr::CreativeFacadeMoveDragReceipt& drag = commit.moveDrag;
+  return expect(room != nullptr && room->bounds.min.x == 1.0,
+                "locked drag room unmoved") &&
+         expect(drag.outcome ==
+                    cr::CreativeFacadeMoveDragOutcome::RejectedLocked,
+                "locked drag outcome") &&
+         expect(drag.locked, "locked drag locked flag") &&
+         expect(!drag.changed, "locked drag not changed") &&
+         // TV1-A: the lock-refusal truth is observable in the receipt message.
+         expect(!drag.message.empty(), "locked drag message present") &&
+         expect(facade.document().revision() == revisionBefore,
+                "locked drag no revision bump");
+}
+
+bool dragCancelDiscardsWithoutMutation() {
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoomAt(facade, {1.0, 0.0, 1.0});
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  static_cast<void>(facade.dispatchToolInput(
+      movePress(static_cast<cr::Id>(roomId))));
+  static_cast<void>(facade.dispatchToolInput(
+      moveDrag(cr::CreativeToolInputKind::PointerMove, 9.0, 9.0)));
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  cr::CreativeToolInputPacket cancel;
+  cancel.kind = cr::CreativeToolInputKind::Cancel;
+  const cr::CreativeFacadeToolDispatchReceipt cancelReceipt =
+      facade.dispatchToolInput(cancel);
+
+  const cr::CreativeObject* room = facade.findObject(roomId);
+  return expect(room != nullptr && room->bounds.min.x == 1.0,
+                "cancel room unmoved") &&
+         expect(cancelReceipt.moveDrag.outcome ==
+                    cr::CreativeFacadeMoveDragOutcome::Cancelled,
+                "cancel outcome") &&
+         expect(cancelReceipt.moveDrag.message == "move_cancelled",
+                "cancel message") &&
+         expect(!facade.ghostState().visible, "cancel hides ghost") &&
+         expect(facade.document().revision() == revisionBefore,
+                "cancel no revision bump");
+}
+
+bool dragPressOnObjectSelectsAndTargetsIt() {
+  // Move-press directly on an object selects it (TV1-C) and seeds the drag
+  // with that same object (TV1-G).
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoomAt(facade, {2.0, 0.0, 2.0});
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+
+  const cr::CreativeFacadeToolDispatchReceipt begin =
+      facade.dispatchToolInput(movePress(static_cast<cr::Id>(roomId)));
+
+  return expect(begin.moveDrag.stage == cr::CreativeFacadeMoveDragStage::Begin,
+                "press begin stage") &&
+         expect(begin.moveDrag.objectId == roomId, "press begin targets room") &&
+         expect(begin.moveDrag.outcome ==
+                    cr::CreativeFacadeMoveDragOutcome::Begun,
+                "press begin outcome") &&
+         expect(begin.moveDrag.hasStartAnchor, "press begin has start anchor") &&
+         expect(begin.moveDrag.startAnchor.x == 2.0,
+                "press begin start anchor x") &&
+         expect(facade.selectionState().selectedTarget.value == roomId,
+                "press selects the object");
+}
+
+bool orphanReleaseThroughFacadeIsNoOp() {
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoomAt(facade, {1.0, 0.0, 1.0});
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  // Release with NO preceding press (drag never began): harmless no-op.
+  const cr::CreativeFacadeToolDispatchReceipt commit = facade.dispatchToolInput(
+      moveDrag(cr::CreativeToolInputKind::PointerRelease, 7.0, 7.0));
+
+  const cr::CreativeObject* room = facade.findObject(roomId);
+  return expect(room != nullptr && room->bounds.min.x == 1.0,
+                "orphan release room unmoved") &&
+         expect(!commit.moveDrag.committed, "orphan release not committed") &&
+         expect(facade.document().revision() == revisionBefore,
+                "orphan release no revision bump");
+}
+
 }  // namespace
 
 int main() {
@@ -438,6 +637,12 @@ int main() {
                   visibilityToggleRejectsWhileLocked() &&
                   lockedObjectRemovalRefusedThroughFacade() &&
                   unlockedObjectRemovalSucceedsAfterUnlock() &&
+                  dragCommitMovesRoomByCornerAnchor() &&
+                  dragCommitToStartAnchorIsNoChange() &&
+                  dragCommitOnLockedRoomRefused() &&
+                  dragCancelDiscardsWithoutMutation() &&
+                  dragPressOnObjectSelectsAndTargetsIt() &&
+                  orphanReleaseThroughFacadeIsNoOp() &&
                   facadeMutationStatusStringsAreStable();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

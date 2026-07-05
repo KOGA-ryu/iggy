@@ -25,6 +25,13 @@ enum class CreativeToolIntentKind : std::uint8_t {
   EndMeasurement,
   CancelToolAction,
   PreviewPointer,
+  // Move-tool drag lifecycle (TV1-G, TD-6 preview-then-commit): a press on the
+  // Move tool begins a drag, held pointer moves preview only, release commits a
+  // single snapped Move mutation, cancel/escape discards with no mutation.
+  BeginMove,
+  PreviewMove,
+  CommitMove,
+  CancelMove,
 };
 
 enum class CreativeToolPointerButton : std::uint8_t {
@@ -42,12 +49,27 @@ inline constexpr CreativeToolModifierFlags kCreativeToolModifierControl = 1u << 
 inline constexpr CreativeToolModifierFlags kCreativeToolModifierAlt = 1u << 2;
 inline constexpr CreativeToolModifierFlags kCreativeToolModifierCommand = 1u << 3;
 
+// Grid/world destination the window layer resolves from the pointer's grid XZ
+// (the same pointer->grid-cell conversion the viewport pick uses; TD-7). Only
+// the Move tool's drag Move/Release lifecycle fills it — the tool core carries
+// it to the facade, which snaps it (TL-4, document snap) and commits one Move.
+struct CreativeToolWorldPoint {
+  double x = 0.0;
+  double y = 0.0;
+  double z = 0.0;
+};
+
 struct CreativeToolPointerPacket {
   double x = 0.0;
   double y = 0.0;
   CreativeToolPointerButton button = CreativeToolPointerButton::None;
   CreativeToolModifierFlags modifiers = kCreativeToolModifierNone;
   TargetRef target;
+  // XZ destination for a Move drag (Y is unchanged in v1, TD-7). Filled by the
+  // window for Move/Release lifecycle packets only; `hasWorldDestination` gates
+  // whether the facade may commit a mutation to it.
+  bool hasWorldDestination = false;
+  CreativeToolWorldPoint worldDestination;
 };
 
 struct CreativeToolInputPacket {
@@ -59,6 +81,11 @@ struct CreativeToolState {
   Tool activeTool = Tool::Select;
   CreativeToolPointerPacket pointer;
   bool measurementActive = false;
+  // Move-tool drag in flight (TV1-G). Set on a Move-tool press, cleared on
+  // release/cancel/tool-switch. `moveDragTarget` is the picked object from the
+  // press (the facade falls back to the current selection when it is invalid).
+  bool moveDragActive = false;
+  TargetRef moveDragTarget;
 };
 
 struct CreativeToolIntent {

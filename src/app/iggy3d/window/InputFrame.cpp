@@ -9,6 +9,7 @@
 #include "app/iggy3d/map_maker/CreativeFly.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
+#include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/window/CreativeInputFrame.hpp"
 #include "app/iggy3d/window/CreativeUiCommandFrame.hpp"
 #include "app/iggy3d/window/CreativeUiInputFrame.hpp"
@@ -1194,11 +1195,61 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       }
       ProductCreativePointerLifecycleEvent creativePointerLifecycle;
       // branch-gate: BG-1029
-      if (!context.clickOverride.enabled) {
+      if (context.clickOverride.pointerLifecycle.enabled) {
+        // Injected-gesture channel (test/automation): a scripted pointer sample
+        // drives the SAME raw resolver so the window-plumbing lifecycle
+        // (press-hold-release) is reachable headless, where there is no real
+        // SDL mouse. A real mouse under an override stays inert (no lifecycle);
+        // only an explicit scripted sample drives this.
+        const ProductCreativePointerSample pointerSample{
+            context.clickOverride.pointerLifecycle.primaryButtonDown,
+            context.clickOverride.pointerLifecycle.x,
+            context.clickOverride.pointerLifecycle.y};
+        creativePointerLifecycle = resolveProductCreativePointerLifecycle(
+            context.inputFrame.creativePointerLifecycle, pointerSample);
+      } else if (!context.clickOverride.enabled) {
         const ProductCreativePointerSample pointerSample{
             context.inputFrame.mouse.leftWasDown, click.x, click.y};
         creativePointerLifecycle = resolveProductCreativePointerLifecycle(
             context.inputFrame.creativePointerLifecycle, pointerSample);
+      }
+
+      // TV1-G: a Move-drag Move/Release carries the destination anchor. Reuse
+      // the pick's pointer->grid-cell conversion (TD-7: the drag plane is the
+      // SCREEN plane, world XY; Z is resolved by the facade from the start
+      // anchor). The dragged object is the facade's active drag target (filled
+      // on the Press) — this is the pointerLifecycleTarget seam.
+      creative::TargetRef creativePointerLifecycleTarget;
+      const bool lifecycleCarriesGesture =
+          creativePointerLifecycle.phase ==
+              ProductCreativePointerLifecyclePhase::Move ||
+          creativePointerLifecycle.phase ==
+              ProductCreativePointerLifecyclePhase::Release;
+      if (lifecycleCarriesGesture && context.creativeFacade != nullptr) {
+        const creative::CreativeToolState& toolState =
+            context.creativeFacade->toolState();
+        if (toolState.moveDragActive) {
+          creativePointerLifecycleTarget = toolState.moveDragTarget;
+          const creative::CreativeGridCoord3 coord =
+              creative::pointerToCreativeGridCoord(
+                  context.creativeViewportPickViewport,
+                  context.creativeViewportPickProjectionRequest.gridSize,
+                  creativePointerLifecycle.x,
+                  creativePointerLifecycle.y,
+                  context.creativeViewportPickZ);
+          // TD-7: the creative viewport is a FRONT view (screen = world XY), so
+          // the drag axes must match the projection for the object to track the
+          // cursor: `coord.x` is world X (screen-horizontal) and `coord.y` is
+          // world Y (screen-vertical). The held axis is DEPTH — world Z — which
+          // the facade overrides with the object's start anchor. The `.z` field
+          // below is a placeholder the facade replaces with the start anchor Z.
+          creativePointerLifecycle.hasWorldDestination = true;
+          creativePointerLifecycle.worldDestination = {
+              static_cast<double>(coord.x),
+              static_cast<double>(coord.y),
+              0.0,
+          };
+        }
       }
 
       ProductCreativeInputActionsRequest creativeRequest;
@@ -1209,7 +1260,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       creativeRequest.click = downstreamClick;
       creativeRequest.pointerTarget = creativePointerTarget;
       creativeRequest.pointerLifecycle = creativePointerLifecycle;
-      // Move/Release end the gesture at the current pointer; no target pick.
+      creativeRequest.pointerLifecycleTarget = creativePointerLifecycleTarget;
       (void)processProductCreativeInputActions(creativeRequest);
     } else {
       if (context.window.roomEditing.ready) {

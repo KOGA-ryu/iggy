@@ -92,8 +92,8 @@ bool selectPressEmitsSelectObjectCandidate() {
                 "select press target forwarded");
 }
 
-bool movePressEmitsSelectObjectCandidate() {
-  // Move selects like Select until the drag slice (TV1-F/G) lands.
+bool movePressSelectsAndBeginsDrag() {
+  // TV1-G: a Move-tool press selects (TV1-C) AND begins a drag (TD-6).
   cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
   const bool toolChanged = cr::setActiveTool(state, cr::Tool::Move);
 
@@ -107,12 +107,99 @@ bool movePressEmitsSelectObjectCandidate() {
                 "move press tool before") &&
          expect(receipt.activeToolAfter == cr::Tool::Move,
                 "move press tool after") &&
-         expect(receipt.emittedIntentCount == 1U, "move press count") &&
+         expect(receipt.emittedIntentCount == 2U, "move press count") &&
          expect(receipt.intents[0].kind ==
                     cr::CreativeToolIntentKind::SelectObjectCandidate,
-                "move press intent") &&
+                "move press select intent") &&
+         expect(receipt.intents[1].kind ==
+                    cr::CreativeToolIntentKind::BeginMove,
+                "move press begin-move intent") &&
          expect(receipt.intents[0].pointer.target.value == 42U,
-                "move press target forwarded");
+                "move press select target forwarded") &&
+         expect(receipt.intents[1].pointer.target.value == 42U,
+                "move press begin target forwarded") &&
+         expect(state.moveDragActive, "move press activates drag") &&
+         expect(state.moveDragTarget.value == 42U, "move press records target") &&
+         expect(receipt.message == "move_drag_begin", "move press message");
+}
+
+bool moveDragPreviewCommitLifecycle() {
+  // Press -> Move (preview) -> Release (commit) drives the drag state machine.
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Move));
+  static_cast<void>(cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerPress)));
+
+  const cr::CreativeToolDispatchReceipt preview = cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerMove, 30.0, 40.0));
+  const bool previewOk =
+      expect(preview.emittedIntentCount == 1U, "drag preview count") &&
+      expect(preview.intents[0].kind ==
+                 cr::CreativeToolIntentKind::PreviewMove,
+             "drag preview intent") &&
+      expect(preview.message == "move_preview", "drag preview message") &&
+      expect(state.moveDragActive, "drag still active during preview");
+
+  const cr::CreativeToolDispatchReceipt commit = cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerRelease, 30.0, 40.0));
+  const bool commitOk =
+      expect(commit.emittedIntentCount == 1U, "drag commit count") &&
+      expect(commit.intents[0].kind ==
+                 cr::CreativeToolIntentKind::CommitMove,
+             "drag commit intent") &&
+      expect(commit.message == "move_drag_commit", "drag commit message") &&
+      expect(!state.moveDragActive, "drag cleared after commit") &&
+      expect(state.moveDragTarget.value == cr::kInvalidId,
+             "drag target cleared after commit");
+  return previewOk && commitOk;
+}
+
+bool releaseWithoutDragIsNoOp() {
+  // TV1-F entry req (ii): a Release with no active drag is a harmless no-op.
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Move));
+
+  const cr::CreativeToolDispatchReceipt receipt = cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerRelease));
+
+  return expect(receipt.accepted, "orphan release accepted") &&
+         expect(receipt.emittedIntentCount == 0U, "orphan release no intent") &&
+         expect(receipt.message == "no_intent", "orphan release message") &&
+         expect(!state.moveDragActive, "orphan release leaves drag inactive");
+}
+
+bool cancelMidDragDiscardsWithoutMutation() {
+  // TD-6: Esc/Cancel mid-drag discards the drag, emitting CancelMove.
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Move));
+  static_cast<void>(cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerPress)));
+
+  cr::CreativeToolInputPacket cancel;
+  cancel.kind = cr::CreativeToolInputKind::Cancel;
+  const cr::CreativeToolDispatchReceipt receipt =
+      cr::dispatchToolInput(state, cancel);
+
+  return expect(receipt.emittedIntentCount == 1U, "cancel drag count") &&
+         expect(receipt.intents[0].kind ==
+                    cr::CreativeToolIntentKind::CancelMove,
+                "cancel drag intent") &&
+         expect(receipt.message == "move_drag_cancel", "cancel drag message") &&
+         expect(!state.moveDragActive, "cancel clears drag");
+}
+
+bool toolSwitchAbandonsDrag() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Move));
+  static_cast<void>(cr::dispatchToolInput(
+      state, pointerInput(cr::CreativeToolInputKind::PointerPress)));
+
+  const bool switched = cr::setActiveTool(state, cr::Tool::Select);
+
+  return expect(switched, "tool switched") &&
+         expect(!state.moveDragActive, "tool switch abandons drag") &&
+         expect(state.moveDragTarget.value == cr::kInvalidId,
+                "tool switch clears drag target");
 }
 
 bool moveToolPointerMoveKeepsGhostPreview() {
@@ -225,7 +312,11 @@ int main() {
                   sameToolActivationIsNoChange() &&
                   pointerMoveEmitsPreviewIntent() &&
                   selectPressEmitsSelectObjectCandidate() &&
-                  movePressEmitsSelectObjectCandidate() &&
+                  movePressSelectsAndBeginsDrag() &&
+                  moveDragPreviewCommitLifecycle() &&
+                  releaseWithoutDragIsNoOp() &&
+                  cancelMidDragDiscardsWithoutMutation() &&
+                  toolSwitchAbandonsDrag() &&
                   moveToolPointerMoveKeepsGhostPreview() &&
                   navigatePointerInputIsInert() &&
                   measurePressMoveReleaseEmitsMeasurementIntents() &&

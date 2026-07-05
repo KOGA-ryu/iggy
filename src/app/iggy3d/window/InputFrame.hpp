@@ -55,9 +55,21 @@ struct ProductWindowInputFrameState {
   ProductCreativePointerLifecycleState creativePointerLifecycle;
 };
 
+// Scripted pointer-lifecycle sample carried by an override (test/automation).
+// When `enabled`, it drives the creative pointer-lifecycle resolver in place of
+// the (absent-headless / real-under-override) SDL mouse, so an injected
+// press-hold-release drag can flow through processProductWindowInputFrame.
+struct ProductWindowInputPointerLifecycleOverride {
+  bool enabled = false;
+  bool primaryButtonDown = false;
+  float x = 0.0F;
+  float y = 0.0F;
+};
+
 struct ProductWindowInputClickOverride {
   bool enabled = false;
   MouseClick click;
+  ProductWindowInputPointerLifecycleOverride pointerLifecycle;
 };
 
 struct ProductWindowInputFrameContext {

@@ -95,7 +95,9 @@ creative::CreativeToolInputPacket productCreativePointerPressPacket(
 creative::CreativeToolInputPacket productCreativePointerMovePacket(
     float x,
     float y,
-    creative::TargetRef target) noexcept {
+    creative::TargetRef target,
+    bool hasWorldDestination,
+    creative::CreativeToolWorldPoint worldDestination) noexcept {
   creative::CreativeToolInputPacket packet;
   packet.kind = creative::CreativeToolInputKind::PointerMove;
   packet.pointer.x = static_cast<double>(x);
@@ -105,13 +107,17 @@ creative::CreativeToolInputPacket productCreativePointerMovePacket(
   packet.pointer.button = creative::CreativeToolPointerButton::Primary;
   packet.pointer.modifiers = creative::kCreativeToolModifierNone;
   packet.pointer.target = target;
+  packet.pointer.hasWorldDestination = hasWorldDestination;
+  packet.pointer.worldDestination = worldDestination;
   return packet;
 }
 
 creative::CreativeToolInputPacket productCreativePointerReleasePacket(
     float x,
     float y,
-    creative::TargetRef target) noexcept {
+    creative::TargetRef target,
+    bool hasWorldDestination,
+    creative::CreativeToolWorldPoint worldDestination) noexcept {
   creative::CreativeToolInputPacket packet;
   packet.kind = creative::CreativeToolInputKind::PointerRelease;
   packet.pointer.x = static_cast<double>(x);
@@ -120,6 +126,8 @@ creative::CreativeToolInputPacket productCreativePointerReleasePacket(
   packet.pointer.button = creative::CreativeToolPointerButton::Primary;
   packet.pointer.modifiers = creative::kCreativeToolModifierNone;
   packet.pointer.target = target;
+  packet.pointer.hasWorldDestination = hasWorldDestination;
+  packet.pointer.worldDestination = worldDestination;
   return packet;
 }
 
@@ -222,7 +230,9 @@ ProductCreativeInputFrameReceipt processProductCreativeInputFrame(
           facade.dispatchToolInput(productCreativePointerMovePacket(
               request.pointerLifecycle.x,
               request.pointerLifecycle.y,
-              request.pointerLifecycleTarget));
+              request.pointerLifecycleTarget,
+              request.pointerLifecycle.hasWorldDestination,
+              request.pointerLifecycle.worldDestination));
       receipt.pointerMoveDispatched = true;
       mergeDispatchReceipt(receipt, dispatchReceipt);
       break;
@@ -232,7 +242,9 @@ ProductCreativeInputFrameReceipt processProductCreativeInputFrame(
           facade.dispatchToolInput(productCreativePointerReleasePacket(
               request.pointerLifecycle.x,
               request.pointerLifecycle.y,
-              request.pointerLifecycleTarget));
+              request.pointerLifecycleTarget,
+              request.pointerLifecycle.hasWorldDestination,
+              request.pointerLifecycle.worldDestination));
       receipt.pointerReleaseDispatched = true;
       mergeDispatchReceipt(receipt, dispatchReceipt);
       break;
