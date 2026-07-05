@@ -67,6 +67,14 @@ USER at each step (the lesson: no more building blind):
 - **F0 — Blank stage.** Entering creative mode = an empty world: ground plane +
   visible grid, NOT the first_room demo. Own package/scenario or a synthesized
   empty stage; camera framed on the origin. Prereq for everything.
+  - **FIXED 2026-07-05 (32d13f38):** the blank stage rendered an empty void
+    ("creative doesn't launch") because the ground grid was pinned to
+    floor(camera.y)=6m (eye height) — off-screen under the downward camera. Now
+    the creative-stage grid stays at Y=0 (legacy map-maker still follows
+    elevation): `config.planeY = mapMakerLive ? floor(anchor.y) : 0` in
+    ProjectionRefresh.cpp:buildMapMakerGridForFrame. Verified headless (grid at
+    Y=0, visible, reaches draw list); camera (0,6,10) pitch -30 frames Y=0 at
+    the origin. STILL PENDING a real windowed look with the user.
 - **F1 — Drafting face MVP.** Object palette (Floor/Room/Crate) + dimension
   fields (type L×W×H) + click-drag to place a sized object. Deliver "pick Floor,
   type 20×20, drop it."
