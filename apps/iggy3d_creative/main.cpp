@@ -1,4 +1,4 @@
-// iggy3d_creative — SLICE 3 ("Move")
+// iggy3d_creative — SLICE 4 ("3-Axis Transform Gizmo")
 //
 // A standalone executable that boots straight into a creative stage: a Vulkan
 // window showing a ground grid at Y=0 with a fly camera, PLUS one authored crate
@@ -7,15 +7,31 @@
 // center) selects it, which draws a bright-yellow wireframe bounding box, a
 // "W x H x D m" dimension label, and an inspector panel of the crate's metadata.
 //
-// SLICE 3 adds MOVE, driven ENTIRELY through the kernel's generic Move system:
+// SLICE 3 added MOVE, driven ENTIRELY through the kernel's generic Move system:
 // switching to Tool::Move and feeding the pointer PRESS/MOVE/RELEASE lifecycle to
 // facade.dispatchToolInput() — the facade picks the object, snaps the world
 // destination to the grid, and commits ONE Move mutation. There is NO
 // crate-specific move math here; the crate's new transform/bounds are read back
 // from the document via findObject() each frame, so the prop cube, yellow
 // wireframe, dimension label and inspector all follow the moved object for free.
-// Keys: '1' -> Select, '2' -> Move. In --capture mode an early frame selects the
-// crate, then the Move lifecycle relocates it a few cells (world XZ 4,4).
+// Keys: '1' -> Select, '2' -> Move.
+//
+// SLICE 4 adds a 3-AXIS TRANSFORM GIZMO. When the crate is selected we draw three
+// axis-aligned wireframe shafts at its center C = (min+max)/2 — X (RED), Y
+// (GREEN), Z (BLUE) — as ADDITIONAL RenderCreativeWireframeDebugLine entries
+// appended to the yellow selection-box lines (one combined vector points
+// frame.creativeWireframeDebug at both). Grabbing one axis handle and dragging
+// moves the object ALONG THAT AXIS ONLY, committed through the SAME generic Move:
+// we build worldDestination with the grabbed axis carrying the dragged value and
+// the OTHER TWO pinned to the start anchor S, then set moveHeldAxis to one of the
+// two non-grabbed axes so the facade holds it exact after snap — the third
+// non-grabbed axis is pinned to S and snaps to itself for a grid-aligned object.
+// So there is STILL zero per-kind move math: single-axis motion falls out of the
+// destination + held-axis choice alone. The gizmo geometry is strictly
+// axis-aligned because the Vulkan renderer's creativeDebugLineBox only draws a
+// segment that moves along EXACTLY ONE world axis (diagonal segments are skipped).
+// In --capture mode an early frame selects the crate, then the Move lifecycle
+// grabs the X handle and slides the crate +3 m along X (Y,Z pinned).
 //
 // No menu, no ProductAppWindowState god-struct, no FrontendState, no room-loaded
 // gate. It is a pure consumer of the already-built `iggy3d` library, reusing the
@@ -260,6 +276,98 @@ Vec3 toVec3(const creative::CreativeVec3& v) {
           static_cast<float>(v.z)};
 }
 
+// ---- SLICE 4: gizmo helpers -------------------------------------------------
+
+// A single world point projected to pixel space (same NDC->pixel maths as
+// projectBoxToScreen). `valid` is false when the point is behind the camera
+// (w<=0) or projects to a non-finite NDC — a grabbed axis needs a valid tip.
+struct ScreenPoint {
+  bool valid = false;
+  float x = 0.0F;
+  float y = 0.0F;
+};
+
+// Project ONE world point through clipFromWorld into pixel space, culling w<=0
+// (behind the camera) so a flipped-sign divide can't smear the point off-screen.
+ScreenPoint projectPointToScreen(const Mat4& clipFromWorld, Vec3 world,
+                                 std::uint32_t widthPx, std::uint32_t heightPx) {
+  ScreenPoint out;
+  const float w = clipW(clipFromWorld, world);
+  if (!std::isfinite(w) || w <= 0.0F) {
+    return out;
+  }
+  const Vec3 ndc = transformPoint(clipFromWorld, world);
+  if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y)) {
+    return out;
+  }
+  out.x = (ndc.x * 0.5F + 0.5F) * static_cast<float>(widthPx);
+  out.y = (1.0F - (ndc.y * 0.5F + 0.5F)) * static_cast<float>(heightPx);
+  out.valid = true;
+  return out;
+}
+
+// Distance in pixels from point p to the finite screen segment [a, b]. Used to
+// hit-test a click against each projected axis shaft; the nearest axis within a
+// threshold is the grabbed handle.
+float pointToSegmentDistancePx(float px, float py, float ax, float ay, float bx,
+                               float by) {
+  const float dx = bx - ax;
+  const float dy = by - ay;
+  const float lenSq = dx * dx + dy * dy;
+  float t = 0.0F;
+  if (lenSq > 1.0e-6F) {
+    t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+    t = std::clamp(t, 0.0F, 1.0F);
+  }
+  const float cx = ax + t * dx;
+  const float cy = ay + t * dy;
+  const float ex = px - cx;
+  const float ey = py - cy;
+  return std::sqrt(ex * ex + ey * ey);
+}
+
+// Which gizmo axis a click grabbed (or None when the click missed every shaft).
+enum class GizmoAxis { None, X, Y, Z };
+
+// A gizmo axis shaft used for both drawing (world start/dir/color) and hit-test.
+struct GizmoAxisShaft {
+  GizmoAxis axis = GizmoAxis::None;
+  Vec3 tip{0.0F, 0.0F, 0.0F};            // C + dir * L (world-space shaft end).
+  RenderLineColor color{1.0F, 1.0F, 1.0F, 1.0F};
+};
+
+// Map a gizmo axis to the move-held axis for a SINGLE non-grabbed axis. Moving
+// along the grabbed axis means holding one of the OTHER two exact (via
+// moveHeldAxis) while pinning the third to the start anchor in worldDestination.
+// Convention: grabbed X -> hold Y, grabbed Y -> hold X, grabbed Z -> hold X.
+creative::CreativeToolMoveHeldAxis heldAxisForGrabbedAxis(GizmoAxis grabbed) {
+  switch (grabbed) {
+    case GizmoAxis::X:
+      return creative::CreativeToolMoveHeldAxis::Y;
+    case GizmoAxis::Y:
+      return creative::CreativeToolMoveHeldAxis::X;
+    case GizmoAxis::Z:
+      return creative::CreativeToolMoveHeldAxis::X;
+    case GizmoAxis::None:
+    default:
+      return creative::CreativeToolMoveHeldAxis::Y;
+  }
+}
+
+const char* gizmoAxisName(GizmoAxis axis) {
+  switch (axis) {
+    case GizmoAxis::X:
+      return "X";
+    case GizmoAxis::Y:
+      return "Y";
+    case GizmoAxis::Z:
+      return "Z";
+    case GizmoAxis::None:
+    default:
+      return "None";
+  }
+}
+
 // Log an object's document-truth position + bounds.min so the move is provable
 // BEFORE vs AFTER. Reads only — no position math. (bounds.min is the corner
 // anchor the facade snaps for props with an explicit bounds override.)
@@ -432,12 +540,25 @@ int main(int argc, char** argv) {
   // crate placement BEFORE the commit and AFTER the release exactly once.
   bool loggedMoveBefore = false;
   bool loggedMoveAfter = false;
-  // The scripted Move destination. This app is a GROUND-PLANE editor: it sets
-  // moveHeldAxis=Y on its Move packets, so the kernel holds the object's Y
-  // (authored height) and slides it across the floor in XZ to (x, z) =
-  // (worldDestination.x, worldDestination.z). We send it diagonally to cell
-  // (4,4) to prove ground-plane movement (the Y here is ignored — Y is held).
-  const creative::CreativeToolWorldPoint kCaptureMoveDestination{4.0, 0.0, 4.0};
+  // ---- GIZMO state (SLICE 4) ---------------------------------------------
+  // Axis shaft length (m) and wireframe thickness (m). Kept short so the shafts
+  // read as handles, not room-scale rays; thickness ~5 cm per the plan.
+  constexpr float kGizmoAxisLength = 1.5F;
+  constexpr float kGizmoThickness = 0.05F;
+  // Handle hit-test threshold (px): a click within this pixel distance of a
+  // projected shaft grabs that axis; the nearest axis within range wins.
+  constexpr float kGizmoHandleThresholdPx = 35.0F;
+  // Interactive: which axis is currently grabbed (None = not dragging a handle),
+  // the object's start corner anchor S captured at grab time, and the pixel/world
+  // frame captured at grab so a cursor drag maps to a world offset along the axis.
+  GizmoAxis interactiveGrabbedAxis = GizmoAxis::None;
+  Vec3 interactiveGrabAnchorS{0.0F, 0.0F, 0.0F};
+  float interactiveGrabCursorX = 0.0F;
+  float interactiveGrabCursorY = 0.0F;
+  ScreenPoint interactiveGrabCenterScreen;
+  ScreenPoint interactiveGrabTipScreen;
+  // --capture: log the grabbed axis exactly once.
+  bool loggedGizmoGrab = false;
 
   std::uint64_t frameIndex = 0;
   std::uint32_t lastWidth = 0;
@@ -629,17 +750,108 @@ int main(int argc, char** argv) {
     const bool crateSelected =
         selectedId == static_cast<creative::Id>(crateObjectId);
 
+    // ---- GIZMO GEOMETRY (SLICE 4) ------------------------------------------
+    // Build the 3 axis shafts at the selected object's center C = (min+max)/2.
+    // Each shaft is a single AXIS-ALIGNED world segment (start=C, end=C+dir*L),
+    // which is the ONLY geometry the renderer's creativeDebugLineBox will draw
+    // (it silently skips any segment moving along more than one world axis). The
+    // gizmo wireframe lines are appended to the yellow selection-box lines below.
+    const Vec3 gizmoCenter{(crateBoxMin.x + crateBoxMax.x) * 0.5F,
+                           (crateBoxMin.y + crateBoxMax.y) * 0.5F,
+                           (crateBoxMin.z + crateBoxMax.z) * 0.5F};
+    std::array<GizmoAxisShaft, 3> gizmoShafts{};
+    gizmoShafts[0] = {GizmoAxis::X,
+                      {gizmoCenter.x + kGizmoAxisLength, gizmoCenter.y,
+                       gizmoCenter.z},
+                      {1.0F, 0.0F, 0.0F, 1.0F}};
+    gizmoShafts[1] = {GizmoAxis::Y,
+                      {gizmoCenter.x, gizmoCenter.y + kGizmoAxisLength,
+                       gizmoCenter.z},
+                      {0.0F, 1.0F, 0.0F, 1.0F}};
+    gizmoShafts[2] = {GizmoAxis::Z,
+                      {gizmoCenter.x, gizmoCenter.y,
+                       gizmoCenter.z + kGizmoAxisLength},
+                      {0.0F, 0.0F, 1.0F, 1.0F}};
+
+    // ---- HANDLE HIT-TEST (SLICE 4) -----------------------------------------
+    // Project C and each axis tip to pixels; a click's nearest shaft within the
+    // pixel threshold names the grabbed axis. Reused by both --capture (to grab
+    // the X handle) and the interactive left-press-near-a-handle path below.
+    const ScreenPoint gizmoCenterScreen = projectPointToScreen(
+        frame.camera.clipFromWorld, gizmoCenter, extent.width, extent.height);
+    std::array<ScreenPoint, 3> gizmoTipScreen{};
+    for (std::size_t i = 0; i < 3; ++i) {
+      gizmoTipScreen[i] = projectPointToScreen(frame.camera.clipFromWorld,
+                                               gizmoShafts[i].tip, extent.width,
+                                               extent.height);
+    }
+    // Given a pixel (px,py), return the nearest grabbed axis (or None). Both the
+    // center and the candidate tip must project in front of the camera.
+    const auto pickGizmoAxis = [&](float px, float py) -> GizmoAxis {
+      if (!gizmoCenterScreen.valid) {
+        return GizmoAxis::None;
+      }
+      GizmoAxis best = GizmoAxis::None;
+      float bestDist = kGizmoHandleThresholdPx;
+      for (std::size_t i = 0; i < 3; ++i) {
+        if (!gizmoTipScreen[i].valid) {
+          continue;
+        }
+        const float d = pointToSegmentDistancePx(
+            px, py, gizmoCenterScreen.x, gizmoCenterScreen.y,
+            gizmoTipScreen[i].x, gizmoTipScreen[i].y);
+        if (d < bestDist) {
+          bestDist = d;
+          best = gizmoShafts[i].axis;
+        }
+      }
+      return best;
+    };
+    // Start anchor S for an axis-constrained move = the object's corner anchor,
+    // exactly as the facade captures it on BeginMove (objectCornerAnchor): for a
+    // Crate (hasTransform=true) that is transform.position, NOT bounds.min. Using
+    // the SAME anchor the facade holds keeps the pinned axes grid-aligned so they
+    // snap to themselves; reading bounds.min instead would desync the pinned axes
+    // and let the snap drag a "held" axis off S. Constrained-move worldDestination
+    // is built FROM S: grabbed axis carries the dragged value, other two pinned.
+    Vec3 gizmoAnchorS{gizmoCenter.x, gizmoCenter.y, gizmoCenter.z};
+    if (crate != nullptr) {
+      gizmoAnchorS = toVec3(crate->transform.position);
+    }
+
     // ---- MOVE (SLICE 3) ----------------------------------------------------
     // Everything below drives the kernel's GENERIC Move: setActiveTool(Move) +
     // the PRESS/MOVE/RELEASE pointer lifecycle through dispatchToolInput. The
     // facade picks the object, snaps the world destination to the grid, and
     // commits ONE Move mutation. NO crate-specific position math lives here.
     if (!capturePath.empty()) {
-      // --capture: after the crate is selected (frame 3), run the Move drag.
-      //   frame 5: switch to Move + PRESS on the crate (BeginMove)
-      //   frame 6: hold + PointerMove carrying worldDestination (PreviewMove)
+      // --capture (SLICE 4): after the crate is selected (frame 3), grab the X
+      // gizmo handle and run an AXIS-CONSTRAINED Move along +X.
+      //   frame 5: hit-test the X shaft (grab X) + switch to Move + PRESS
+      //   frame 6: PointerMove carrying worldDestination = {S.x+3, S.y, S.z},
+      //            moveHeldAxis=Y (PreviewMove) — X follows, Y held, Z pinned
       //   frame 7: RELEASE with the same worldDestination (CommitMove) -> snap
+      // The single-axis motion is entirely a product of the destination + held
+      // axis; there is NO per-object move math. worldDestination pins Y,Z to the
+      // start anchor S so only X (= S.x + 3) can change after the facade snaps.
+      const creative::CreativeToolWorldPoint xAxisDestination{
+          static_cast<double>(gizmoAnchorS.x) + 3.0,
+          static_cast<double>(gizmoAnchorS.y),
+          static_cast<double>(gizmoAnchorS.z)};
       if (frameIndex == 5U && crateSelected) {
+        // Synthesize a grab of the X handle: click the projected midpoint of the
+        // X shaft [screen(C), screen(Xtip)] and confirm the hit-test picks X.
+        GizmoAxis grabbed = GizmoAxis::None;
+        if (gizmoCenterScreen.valid && gizmoTipScreen[0].valid) {
+          const float hx = (gizmoCenterScreen.x + gizmoTipScreen[0].x) * 0.5F;
+          const float hy = (gizmoCenterScreen.y + gizmoTipScreen[0].y) * 0.5F;
+          grabbed = pickGizmoAxis(hx, hy);
+        }
+        if (!loggedGizmoGrab) {
+          SDL_Log("iggy3d_creative: GIZMO grabbed axis=%s (expected X)",
+                  gizmoAxisName(grabbed));
+          loggedGizmoGrab = true;
+        }
         const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
         SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d", ok ? 1 : 0);
         if (!loggedMoveBefore) {
@@ -659,8 +871,8 @@ int main(int argc, char** argv) {
         move.kind = creative::CreativeToolInputKind::PointerMove;
         move.pointer.button = creative::CreativeToolPointerButton::Primary;
         move.pointer.hasWorldDestination = true;
-        move.pointer.worldDestination = kCaptureMoveDestination;
-        move.pointer.moveHeldAxis = creative::CreativeToolMoveHeldAxis::Y;
+        move.pointer.worldDestination = xAxisDestination;
+        move.pointer.moveHeldAxis = heldAxisForGrabbedAxis(GizmoAxis::X);
         const creative::CreativeFacadeToolDispatchReceipt r =
             appState.facade.dispatchToolInput(move);
         logMoveDispatch("MOVE", r);
@@ -669,8 +881,8 @@ int main(int argc, char** argv) {
         release.kind = creative::CreativeToolInputKind::PointerRelease;
         release.pointer.button = creative::CreativeToolPointerButton::Primary;
         release.pointer.hasWorldDestination = true;
-        release.pointer.worldDestination = kCaptureMoveDestination;
-        release.pointer.moveHeldAxis = creative::CreativeToolMoveHeldAxis::Y;
+        release.pointer.worldDestination = xAxisDestination;
+        release.pointer.moveHeldAxis = heldAxisForGrabbedAxis(GizmoAxis::X);
         const creative::CreativeFacadeToolDispatchReceipt r =
             appState.facade.dispatchToolInput(release);
         logMoveDispatch("RELEASE", r);
@@ -681,12 +893,12 @@ int main(int argc, char** argv) {
       }
     } else if (appState.facade.toolState().activeTool == creative::Tool::Move &&
                crateSelected) {
-      // Interactive Move: while the Move tool is active and the crate is
-      // selected, a left-drag runs the same generic lifecycle. The destination
-      // is the ground cell the fly camera is aimed at — a simple ray from the
-      // camera eye along its forward to the Y=0 plane (kept basic per plan; the
-      // facade still owns the pick + snap + commit). Hold Left-Alt (same as the
-      // select path) to release fly-look while dragging.
+      // Interactive Move (SLICE 4): while the Move tool is active and the crate
+      // is selected, hold Left-Alt (releases fly-look) and left-press. A press
+      // NEAR a gizmo handle grabs that axis and maps cursor motion ALONG THAT
+      // AXIS ONLY; a press away from every handle falls back to the ground-plane
+      // move (camera-forward ray -> Y=0 plane). Either way the facade still owns
+      // the pick + snap + commit — no per-object move math here.
       const bool* mvKeys = SDL_GetKeyboardState(nullptr);
       const bool altHeld = mvKeys != nullptr && (mvKeys[SDL_SCANCODE_LALT] != 0);
       if (altHeld) {
@@ -694,8 +906,21 @@ int main(int argc, char** argv) {
         float my = 0.0F;
         const SDL_MouseButtonFlags buttons = SDL_GetMouseState(&mx, &my);
         const bool lDown = (buttons & SDL_BUTTON_LMASK) != 0U;
+        // High-DPI: scale logical cursor coords to drawable pixels (as select).
+        const std::uint32_t logicalW = window.eventState().windowWidth;
+        const std::uint32_t logicalH = window.eventState().windowHeight;
+        const float scaleX =
+            logicalW > 0 ? static_cast<float>(extent.width) /
+                               static_cast<float>(logicalW)
+                         : 1.0F;
+        const float scaleY =
+            logicalH > 0 ? static_cast<float>(extent.height) /
+                               static_cast<float>(logicalH)
+                         : 1.0F;
+        const float cursorPx = mx * scaleX;
+        const float cursorPy = my * scaleY;
 
-        // Camera-forward ray -> Y=0 plane -> world XZ ground point.
+        // Camera-forward ray -> Y=0 plane -> world XZ ground point (fallback).
         const Vec3 eye = frame.camera.worldEye;
         const Vec3 fwd = frame.camera.worldForward;
         creative::CreativeToolWorldPoint ground{eye.x, 0.0, eye.z};
@@ -707,8 +932,70 @@ int main(int argc, char** argv) {
           }
         }
 
+        // Build the pointer packet's worldDestination + moveHeldAxis. When an
+        // axis handle is grabbed, project the cursor delta since grab onto the
+        // shaft's screen direction, scale it to world length along the axis, and
+        // set worldDestination = S with only the grabbed axis advanced (the other
+        // two pinned to S), moveHeldAxis = one of the two non-grabbed axes.
+        const auto buildConstrainedDestination =
+            [&](creative::CreativeToolWorldPoint& dest,
+                creative::CreativeToolMoveHeldAxis& held) {
+              if (interactiveGrabbedAxis == GizmoAxis::None) {
+                dest = ground;  // Free ground-plane move.
+                held = creative::CreativeToolMoveHeldAxis::Y;
+                return;
+              }
+              // Screen-space shaft direction at grab time (center -> tip).
+              float sdx = interactiveGrabTipScreen.x - interactiveGrabCenterScreen.x;
+              float sdy = interactiveGrabTipScreen.y - interactiveGrabCenterScreen.y;
+              const float slen = std::sqrt(sdx * sdx + sdy * sdy);
+              float along = 0.0F;
+              if (slen > 1.0e-3F) {
+                sdx /= slen;
+                sdy /= slen;
+                const float cdx = cursorPx - interactiveGrabCursorX;
+                const float cdy = cursorPy - interactiveGrabCursorY;
+                // pixels moved along the shaft / pixels per shaft * world length.
+                const float alongPx = cdx * sdx + cdy * sdy;
+                along = (alongPx / slen) * kGizmoAxisLength;
+              }
+              dest.x = static_cast<double>(interactiveGrabAnchorS.x);
+              dest.y = static_cast<double>(interactiveGrabAnchorS.y);
+              dest.z = static_cast<double>(interactiveGrabAnchorS.z);
+              switch (interactiveGrabbedAxis) {
+                case GizmoAxis::X:
+                  dest.x += static_cast<double>(along);
+                  break;
+                case GizmoAxis::Y:
+                  dest.y += static_cast<double>(along);
+                  break;
+                case GizmoAxis::Z:
+                  dest.z += static_cast<double>(along);
+                  break;
+                case GizmoAxis::None:
+                default:
+                  break;
+              }
+              held = heldAxisForGrabbedAxis(interactiveGrabbedAxis);
+            };
+
         if (lDown && !moveDragButtonDown) {
           moveDragButtonDown = true;
+          // Grab an axis handle if the press landed near one; else free move.
+          interactiveGrabbedAxis = pickGizmoAxis(cursorPx, cursorPy);
+          interactiveGrabAnchorS = gizmoAnchorS;
+          interactiveGrabCursorX = cursorPx;
+          interactiveGrabCursorY = cursorPy;
+          interactiveGrabCenterScreen = gizmoCenterScreen;
+          if (interactiveGrabbedAxis == GizmoAxis::X) {
+            interactiveGrabTipScreen = gizmoTipScreen[0];
+          } else if (interactiveGrabbedAxis == GizmoAxis::Y) {
+            interactiveGrabTipScreen = gizmoTipScreen[1];
+          } else if (interactiveGrabbedAxis == GizmoAxis::Z) {
+            interactiveGrabTipScreen = gizmoTipScreen[2];
+          }
+          SDL_Log("iggy3d_creative: GIZMO grabbed axis=%s",
+                  gizmoAxisName(interactiveGrabbedAxis));
           creative::CreativeToolInputPacket press;
           press.kind = creative::CreativeToolInputKind::PointerPress;
           press.pointer.button = creative::CreativeToolPointerButton::Primary;
@@ -720,8 +1007,8 @@ int main(int argc, char** argv) {
           move.kind = creative::CreativeToolInputKind::PointerMove;
           move.pointer.button = creative::CreativeToolPointerButton::Primary;
           move.pointer.hasWorldDestination = true;
-          move.pointer.worldDestination = ground;
-          move.pointer.moveHeldAxis = creative::CreativeToolMoveHeldAxis::Y;
+          buildConstrainedDestination(move.pointer.worldDestination,
+                                      move.pointer.moveHeldAxis);
           (void)appState.facade.dispatchToolInput(move);
         } else if (!lDown && moveDragButtonDown) {
           moveDragButtonDown = false;
@@ -729,14 +1016,16 @@ int main(int argc, char** argv) {
           release.kind = creative::CreativeToolInputKind::PointerRelease;
           release.pointer.button = creative::CreativeToolPointerButton::Primary;
           release.pointer.hasWorldDestination = true;
-          release.pointer.worldDestination = ground;
-          release.pointer.moveHeldAxis = creative::CreativeToolMoveHeldAxis::Y;
+          buildConstrainedDestination(release.pointer.worldDestination,
+                                      release.pointer.moveHeldAxis);
           const creative::CreativeFacadeToolDispatchReceipt r =
               appState.facade.dispatchToolInput(release);
           logMoveDispatch("RELEASE", r);
+          interactiveGrabbedAxis = GizmoAxis::None;
         }
       } else if (moveDragButtonDown) {
         moveDragButtonDown = false;  // Alt released mid-drag: drop the latch.
+        interactiveGrabbedAxis = GizmoAxis::None;
       }
     }
 
@@ -777,6 +1066,31 @@ int main(int argc, char** argv) {
     ProductCreativeWireframeDebugRenderFrame dbg =
         buildProductCreativeWireframeDebugRenderFrame(&lines.lineList);
 
+    // ---- GIZMO WIREFRAME (SLICE 4) -----------------------------------------
+    // Build ONE combined line vector: the document wireframe lines that draw the
+    // yellow selection box (dbg.lines, already converted to render lines) PLUS
+    // the 3 axis-aligned gizmo shafts. Point frame.creativeWireframeDebug at THIS
+    // vector so the renderer draws both. The vector must outlive submitFrame(),
+    // so it lives here in the frame-loop body. When nothing is selected we skip
+    // the gizmo and the selection box is empty, so this is just dbg.lines.
+    std::vector<RenderCreativeWireframeDebugLine> combinedWireLines = dbg.lines;
+    if (crateSelected) {
+      for (const GizmoAxisShaft& shaft : gizmoShafts) {
+        RenderCreativeWireframeDebugLine gizmoLine;
+        gizmoLine.start = gizmoCenter;
+        gizmoLine.end = shaft.tip;  // Axis-aligned: only one component differs.
+        gizmoLine.color = shaft.color;
+        gizmoLine.objectId = crateObjectId;
+        gizmoLine.thickness = kGizmoThickness;
+        combinedWireLines.push_back(gizmoLine);
+      }
+    }
+    RenderCreativeWireframeDebugFrame combinedWireFrame;
+    combinedWireFrame.available = true;
+    combinedWireFrame.visible = !combinedWireLines.empty();
+    combinedWireFrame.lines = combinedWireLines.data();
+    combinedWireFrame.lineCount = combinedWireLines.size();
+
     // ---- DIMENSION LABEL + glyph merge -------------------------------------
     // Merge the inspector-panel glyphs with the dimension-label glyphs into ONE
     // vector so a single .data() pointer stays valid for the whole frame.
@@ -812,29 +1126,34 @@ int main(int argc, char** argv) {
     frame.ui.rectCount = menuFrame.rects.size();
     frame.ui.textGlyphQuads = glyphs.data();
     frame.ui.textGlyphQuadCount = glyphs.size();
-    frame.creativeWireframeDebug = dbg.frame;
+    // SLICE 4: the combined vector (selection box + gizmo shafts), NOT dbg.frame.
+    frame.creativeWireframeDebug = combinedWireFrame;
 
     const RenderSubmitResult submit = backend->submitFrame(frame);
     if (!loggedSelection) {
       loggedSelection = true;
       SDL_Log("iggy3d_creative: frame %llu submit outcome=%d reason='%s' "
-              "meshes=%zu selectedTarget=%u crateSelected=%d wireLines=%zu "
-              "uiRects=%zu glyphs=%zu",
+              "meshes=%zu selectedTarget=%u crateSelected=%d selBoxLines=%zu "
+              "gizmoLines=%zu combinedWireLines=%zu uiRects=%zu glyphs=%zu",
               static_cast<unsigned long long>(frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(),
               scene.room.meshes.size(), selectedId, crateSelected ? 1 : 0,
-              lines.lineList.lines.size(), menuFrame.rects.size(),
+              dbg.lines.size(), combinedWireLines.size() - dbg.lines.size(),
+              combinedWireLines.size(), menuFrame.rects.size(),
               glyphs.size());
     }
 
     if (maxFrames != 0U && frameIndex >= maxFrames) {
       SDL_Log("iggy3d_creative: FINAL frame %llu submit outcome=%d reason='%s' "
-              "selectedTarget=%u crateSelected=%d wireLines=%zu",
+              "selectedTarget=%u crateSelected=%d selBoxLines=%zu gizmoLines=%zu "
+              "combinedWireLines=%zu",
               static_cast<unsigned long long>(frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(), selectedId,
-              crateSelected ? 1 : 0, lines.lineList.lines.size());
+              crateSelected ? 1 : 0, dbg.lines.size(),
+              combinedWireLines.size() - dbg.lines.size(),
+              combinedWireLines.size());
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
