@@ -10,8 +10,9 @@
 //
 // SLICE 6 additions (all generic; the brush kind never branches placement):
 //   - BRUSH KIND: an app-side placeBrush (default Crate). Key 'B' cycles it
-//     Crate <-> Floor. Each kind has a default footprint/height read from a tiny
-//     brushFootprint() table: Crate = 1x1x1, Floor = 4x0.25x4 (both min.y=0).
+//     Crate -> Floor -> Wall. Each kind has a default footprint/height read from
+//     a tiny brushFootprint() table: Crate = 1x1x1, Floor = 4x0.25x4,
+//     Wall = 4x2.5x0.25 (all min.y=0).
 //   - PLACE MODE: key '3' activates Place ('1' Select, '2' Move already exist).
 //     In Place mode the select/move hit-test is skipped; instead the camera ray
 //     hits Y=0, the XZ is snapped to the nearest 1 m cell center, and a GREEN
@@ -24,12 +25,10 @@
 //     pos and renders + becomes tool-able automatically (slice 5 iterates ALL
 //     objects). Select/Move/Gizmo keep working in their own modes; only Place
 //     mode swaps the click behavior to "drop a new object".
-//   - --capture PROOF: start in Place mode, brush=Crate. On frames ~3..6
-//     synthesize placing crates at world XZ (2,2),(4,2),(6,2), then switch the
-//     brush to Floor and place a Floor at (2,-3). The final frame leaves Place
-//     mode active with the ghost visible at the next aimed cell. The captured
-//     frame shows the 2 seeded objects PLUS the 4 placed objects (total 6) and
-//     the green ghost at the current aim.
+//   - --capture PROOF: start in Place mode, brush=Crate. On frames 3..5
+//     synthesize placing Crate, Crate, then Wall through the same generic
+//     createDocumentObject request path. The final frame leaves Place mode
+//     active with the ghost visible at the current aim.
 //
 // SLICE 5 ("Any Object Inherits the Tooling")
 //
@@ -343,7 +342,8 @@ Vec3 toVec3(const creative::CreativeVec3& v) {
 }
 
 // Map an object KIND to a renderer room role. The renderer's colorForRoomRole
-// gives each role a distinct color: "floor" -> dark gray-blue, "prop" -> brown.
+// gives each role a distinct color: "floor" -> dark gray-blue, "wall" -> blue,
+// "prop" -> brown.
 // This is the ONLY place the code inspects a kind, and it drives colour ONLY —
 // none of the Select/Inspect/Move/Gizmo tooling ever branches on kind. A Floor
 // therefore looks different from a Crate but behaves identically under the tools.
@@ -351,6 +351,8 @@ const char* renderRoleForKind(creative::CreativeObjectKind kind) {
   switch (kind) {
     case creative::CreativeObjectKind::Floor:
       return "floor";
+    case creative::CreativeObjectKind::Wall:
+      return "wall";
     case creative::CreativeObjectKind::Crate:
     default:
       return "prop";
@@ -374,18 +376,26 @@ BrushFootprint brushFootprintFor(creative::CreativeObjectKind kind) {
   switch (kind) {
     case creative::CreativeObjectKind::Floor:
       return {4.0F, 0.25F, 4.0F};  // 4 x 0.25 x 4 tile.
+    case creative::CreativeObjectKind::Wall:
+      return {4.0F, 2.5F, 0.25F};  // 4 x 2.5 x 0.25 wall segment.
     case creative::CreativeObjectKind::Crate:
     default:
       return {1.0F, 1.0F, 1.0F};  // 1 m cube.
   }
 }
 
-// Cycle the placement brush Crate <-> Floor (key 'B'). Any unknown kind resets
-// to Crate so the brush is always one of the two placeable kinds.
+// Cycle the placement brush Crate -> Floor -> Wall (key 'B'). Any unknown kind
+// resets to Crate so the brush is always one of the placeable kinds.
 creative::CreativeObjectKind nextBrushKind(creative::CreativeObjectKind kind) {
-  return kind == creative::CreativeObjectKind::Crate
-             ? creative::CreativeObjectKind::Floor
-             : creative::CreativeObjectKind::Crate;
+  switch (kind) {
+    case creative::CreativeObjectKind::Crate:
+      return creative::CreativeObjectKind::Floor;
+    case creative::CreativeObjectKind::Floor:
+      return creative::CreativeObjectKind::Wall;
+    case creative::CreativeObjectKind::Wall:
+    default:
+      return creative::CreativeObjectKind::Crate;
+  }
 }
 
 // Snap a world XZ ground point to the nearest 1 m cell CENTER: floor to the cell
@@ -959,8 +969,8 @@ int main(int argc, char** argv) {
     placeMode = true;
     placeBrush = creative::CreativeObjectKind::Crate;
   }
-  // --capture placement script (SLICE 7): place TWO crates on frames 3..4 so the
-  // scene grows to 4 objects (2 seeded + 2 placed) before the save/load proof.
+  // --capture placement script (SLICE 7): place two crates and one wall on
+  // frames 3..5 so the scene grows before the save/load proof.
   // Each is a (worldX, worldZ, kind) target fed to the SAME createDocumentObject.
   struct CapturePlacement {
     std::uint64_t frame;
@@ -968,9 +978,10 @@ int main(int argc, char** argv) {
     double worldZ;
     creative::CreativeObjectKind kind;
   };
-  const std::array<CapturePlacement, 2> capturePlacements{{
+  const std::array<CapturePlacement, 3> capturePlacements{{
       {3U, 2.0, 2.0, creative::CreativeObjectKind::Crate},
       {4U, 4.0, 2.0, creative::CreativeObjectKind::Crate},
+      {5U, -2.0, 2.0, creative::CreativeObjectKind::Wall},
   }};
 
   // ---- SAVE / LOAD state (SLICE 7) ---------------------------------------
@@ -1084,7 +1095,7 @@ int main(int argc, char** argv) {
                 std::string(creative::toString(placeBrush)).c_str());
       }
       if (keyB && !prevKeyB) {
-        placeBrush = nextBrushKind(placeBrush);  // Cycle Crate <-> Floor.
+        placeBrush = nextBrushKind(placeBrush);  // Cycle Crate -> Floor -> Wall.
         SDL_Log("iggy3d_creative: brush cycled -> '%s'",
                 std::string(creative::toString(placeBrush)).c_str());
       }
