@@ -9,10 +9,10 @@
 // code. The brush kind is just data in the create request.
 //
 // SLICE 6 additions (all generic; the brush kind never branches placement):
-//   - BRUSH KIND: an app-side placeBrush (default Crate). Key 'B' cycles it
-//     Crate -> Floor -> Wall. Each kind has a default footprint/height read from
-//     a tiny brushFootprint() table: Crate = 1x1x1, Floor = 4x0.25x4,
-//     Wall = 4x2.5x0.25 (all min.y=0).
+//   - BRUSH KIND: an app-side placeBrush. Key 'B' cycles through a
+//     descriptor-derived brush palette. Each kind's footprint comes from
+//     descriptor defaults, with standing structural surfaces normalized to the
+//     standalone app's thin wall-panel editing affordance.
 //   - PLACE MODE: key '3' activates Place ('1' Select, '2' Move already exist).
 //     In Place mode the select/move hit-test is skipped; instead the camera ray
 //     hits Y=0, the XZ is snapped to the nearest 1 m cell center, and a GREEN
@@ -45,8 +45,8 @@
 // SLICE 5 changes vs slice 4, all generic (no per-kind branches in the tooling):
 //   - SEED: Floor 1 (4x0.25x4 tile on Y=0) + Crate 1 (1m cube resting on it).
 //   - RENDER: iterate facade.document().objects() and emit one SceneRoomMeshItem
-//     per visible object, mapping kind -> render role (Floor->"floor" gray,
-//     Crate/default->"prop" brown) so distinct kinds read as distinct colors.
+//     per visible object, mapping descriptor facts -> render role so surfaces
+//     and mesh proxies read as distinct material classes without per-kind tools.
 //   - HIT-TEST: project EVERY object's bounds to a screen AABB, and a click picks
 //     the hit object NEAREST the camera (smallest depth), selecting it via the
 //     generic dispatchToolInput PointerPress + that object's TargetRef; a miss
@@ -110,9 +110,11 @@
 #include <cstdlib>
 #include <cstdio>
 #include <filesystem>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -341,61 +343,141 @@ Vec3 toVec3(const creative::CreativeVec3& v) {
           static_cast<float>(v.z)};
 }
 
-// Map an object KIND to a renderer room role. The renderer's colorForRoomRole
-// gives each role a distinct color: "floor" -> dark gray-blue, "wall" -> blue,
-// "prop" -> brown.
-// This is the ONLY place the code inspects a kind, and it drives colour ONLY —
-// none of the Select/Inspect/Move/Gizmo tooling ever branches on kind. A Floor
-// therefore looks different from a Crate but behaves identically under the tools.
-const char* renderRoleForKind(creative::CreativeObjectKind kind) {
-  switch (kind) {
-    case creative::CreativeObjectKind::Floor:
-      return "floor";
-    case creative::CreativeObjectKind::Wall:
-      return "wall";
-    case creative::CreativeObjectKind::Crate:
-    default:
-      return "prop";
-  }
-}
-
 // ---- SLICE 6: place-mode helpers --------------------------------------------
 
 // A brush footprint: XZ extents (metres) + height (metres). The placed object
-// sits ON Y=0, so bounds are min.y=0..height and the XZ footprint is centered on
-// the aimed cell. This tiny table is the ONLY kind-specific place data — it is
-// pure geometry (extents), NOT placement logic: every kind goes through the same
-// createDocumentObject with these numbers dropped into transform + bounds.
+// sits ON Y=0, so bounds are min.y=0..height and the XZ footprint is centered
+// on the aimed cell. This is derived from descriptor defaults; placement logic
+// stays one generic createDocumentObject path.
 struct BrushFootprint {
   float sizeX = 1.0F;
   float height = 1.0F;
   float sizeZ = 1.0F;
 };
 
-BrushFootprint brushFootprintFor(creative::CreativeObjectKind kind) {
-  switch (kind) {
-    case creative::CreativeObjectKind::Floor:
-      return {4.0F, 0.25F, 4.0F};  // 4 x 0.25 x 4 tile.
-    case creative::CreativeObjectKind::Wall:
-      return {4.0F, 2.5F, 0.25F};  // 4 x 2.5 x 0.25 wall segment.
-    case creative::CreativeObjectKind::Crate:
-    default:
-      return {1.0F, 1.0F, 1.0F};  // 1 m cube.
-  }
+bool positiveFinite(float value) {
+  return std::isfinite(value) && value > 0.0F;
 }
 
-// Cycle the placement brush Crate -> Floor -> Wall (key 'B'). Any unknown kind
-// resets to Crate so the brush is always one of the placeable kinds.
-creative::CreativeObjectKind nextBrushKind(creative::CreativeObjectKind kind) {
-  switch (kind) {
-    case creative::CreativeObjectKind::Crate:
-      return creative::CreativeObjectKind::Floor;
-    case creative::CreativeObjectKind::Floor:
-      return creative::CreativeObjectKind::Wall;
-    case creative::CreativeObjectKind::Wall:
-    default:
-      return creative::CreativeObjectKind::Crate;
+BrushFootprint descriptorBoundsFootprint(
+    const creative::CreativeObjectDescriptor& descriptor) {
+  const creative::CreativeBounds& bounds = descriptor.defaults.bounds;
+  return {static_cast<float>(bounds.max.x - bounds.min.x),
+          static_cast<float>(bounds.max.y - bounds.min.y),
+          static_cast<float>(bounds.max.z - bounds.min.z)};
+}
+
+bool validBrushFootprint(BrushFootprint footprint) {
+  return positiveFinite(footprint.sizeX) && positiveFinite(footprint.height) &&
+         positiveFinite(footprint.sizeZ);
+}
+
+bool isHorizontalSurfaceFootprint(BrushFootprint footprint) {
+  return footprint.height <= std::min(footprint.sizeX, footprint.sizeZ);
+}
+
+bool isStandingSurfaceFootprint(BrushFootprint footprint) {
+  return footprint.height > std::min(footprint.sizeX, footprint.sizeZ);
+}
+
+bool descriptorSupportsBoxPlacement(
+    const creative::CreativeObjectDescriptor& descriptor) {
+  if (descriptor.kind == creative::CreativeObjectKind::Unknown ||
+      !descriptor.hasTransform || !descriptor.hasBounds ||
+      descriptor.projectionProfile !=
+          creative::CreativeSpatialProjectionProfile::BoxProjection) {
+    return false;
   }
+  const BrushFootprint footprint = descriptorBoundsFootprint(descriptor);
+  if (!validBrushFootprint(footprint)) {
+    return false;
+  }
+  switch (descriptor.shapeKind) {
+    case creative::CreativeObjectShapeKind::BoxVolume:
+    case creative::CreativeObjectShapeKind::Line:
+    case creative::CreativeObjectShapeKind::Surface:
+    case creative::CreativeObjectShapeKind::MeshProxy:
+      return true;
+    case creative::CreativeObjectShapeKind::Unknown:
+    case creative::CreativeObjectShapeKind::Point:
+    case creative::CreativeObjectShapeKind::Path:
+      return false;
+  }
+  return false;
+}
+
+BrushFootprint brushFootprintForDescriptor(
+    const creative::CreativeObjectDescriptor& descriptor) {
+  BrushFootprint footprint = descriptorBoundsFootprint(descriptor);
+  if (!validBrushFootprint(footprint)) {
+    return {};
+  }
+
+  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Surface &&
+      descriptor.occupancyKind ==
+          creative::CreativeSpatialOccupancyKind::Structural &&
+      isStandingSurfaceFootprint(footprint)) {
+    // Preserve the current wall brush proof while deriving the decision from
+    // descriptor shape/occupancy. A future descriptor placement-footprint column
+    // can delete these standalone editing constants.
+    return {std::max(footprint.sizeX, footprint.sizeZ), 2.5F, 0.25F};
+  }
+
+  return footprint;
+}
+
+std::vector<creative::CreativeObjectKind> buildBrushPaletteFromDescriptors() {
+  std::vector<creative::CreativeObjectKind> palette;
+  for (const creative::CreativeObjectDescriptor& descriptor :
+       creative::allObjectDescriptors()) {
+    if (descriptorSupportsBoxPlacement(descriptor)) {
+      palette.push_back(descriptor.kind);
+    }
+  }
+  return palette;
+}
+
+creative::CreativeObjectKind firstBrushKind(
+    const std::vector<creative::CreativeObjectKind>& palette) {
+  return palette.empty() ? creative::CreativeObjectKind::Unknown
+                         : palette.front();
+}
+
+creative::CreativeObjectKind nextBrushKind(
+    const std::vector<creative::CreativeObjectKind>& palette,
+    creative::CreativeObjectKind current) {
+  if (palette.empty()) {
+    return creative::CreativeObjectKind::Unknown;
+  }
+
+  const auto it = std::find(palette.begin(), palette.end(), current);
+  if (it == palette.end()) {
+    return palette.front();
+  }
+  const auto next = std::next(it);
+  return next == palette.end() ? palette.front() : *next;
+}
+
+std::string_view renderRoleForDescriptor(
+    const creative::CreativeObjectDescriptor& descriptor) {
+  const BrushFootprint footprint = descriptorBoundsFootprint(descriptor);
+  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Surface &&
+      descriptor.occupancyKind ==
+          creative::CreativeSpatialOccupancyKind::Structural &&
+      validBrushFootprint(footprint)) {
+    if (isHorizontalSurfaceFootprint(footprint)) {
+      return "floor";
+    }
+    if (isStandingSurfaceFootprint(footprint)) {
+      return "wall";
+    }
+  }
+  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Line &&
+      descriptor.occupancyKind ==
+          creative::CreativeSpatialOccupancyKind::Structural) {
+    return "wall";
+  }
+  return "prop";
 }
 
 // Snap a world XZ ground point to the nearest 1 m cell CENTER: floor to the cell
@@ -415,7 +497,9 @@ Vec3 snapGroundToCellCenter(double worldX, double worldZ, double cellSize) {
 creative::CreativeDocumentCreateReceipt placeBrushObject(
     creative::Facade& facade, creative::CreativeObjectKind brush,
     Vec3 cellCenter, std::uint64_t ordinal) {
-  const BrushFootprint fp = brushFootprintFor(brush);
+  const creative::CreativeObjectDescriptor& descriptor =
+      creative::describeObject(brush);
+  const BrushFootprint fp = brushFootprintForDescriptor(descriptor);
   const double halfX = static_cast<double>(fp.sizeX) * 0.5;
   const double halfZ = static_cast<double>(fp.sizeZ) * 0.5;
   const double height = static_cast<double>(fp.height);
@@ -955,10 +1039,15 @@ int main(int argc, char** argv) {
   // placeMode is an APP-level mode (not a kernel Tool) toggled by '3'. When on,
   // the click drops a NEW object at the aimed cell instead of running the
   // select/move hit-test. '1'/'2' leave place mode and set the kernel tool.
-  // placeBrush is the current brush kind (data-only; default Crate). The grid
-  // pitch (1 m) is the placement cell size for snapping.
+  // placeBrush is the current descriptor-backed brush kind. The grid pitch
+  // (1 m) is the placement cell size for snapping.
   bool placeMode = false;
-  creative::CreativeObjectKind placeBrush = creative::CreativeObjectKind::Crate;
+  const std::vector<creative::CreativeObjectKind> brushPalette =
+      buildBrushPaletteFromDescriptors();
+  creative::CreativeObjectKind placeBrush = firstBrushKind(brushPalette);
+  SDL_Log("iggy3d_creative: brush palette slots=%llu first='%s'",
+          static_cast<unsigned long long>(brushPalette.size()),
+          std::string(creative::toString(placeBrush)).c_str());
   const double placeCellSize = static_cast<double>(gridConfig.pitchMeters);
   bool prevKey3 = false;
   bool prevKeyB = false;
@@ -967,7 +1056,7 @@ int main(int argc, char** argv) {
   // --capture: in Place mode we start ON so the proof frames can drop objects.
   if (!capturePath.empty()) {
     placeMode = true;
-    placeBrush = creative::CreativeObjectKind::Crate;
+    placeBrush = firstBrushKind(brushPalette);
   }
   // --capture placement script (SLICE 7): place two crates and one wall on
   // frames 3..5 so the scene grows before the save/load proof.
@@ -991,7 +1080,8 @@ int main(int argc, char** argv) {
   bool prevKeyF9 = false;
   // --capture round-trip proof: on fixed frames SAVE (6), snapshot BEFORE, CLEAR
   // (8), LOAD (10), snapshot AFTER + emit the ROUNDTRIP line. The BEFORE snapshot
-  // (taken pre-clear, post-place) holds the 4 objects to compare against AFTER.
+  // (taken pre-clear, post-place) holds the placed proof scene to compare
+  // against AFTER.
   std::vector<ObjectSnapshotEntry> roundtripBefore;
   std::size_t roundtripCountAfterClear = 0;
   bool roundtripSaved = false;
@@ -1095,7 +1185,7 @@ int main(int argc, char** argv) {
                 std::string(creative::toString(placeBrush)).c_str());
       }
       if (keyB && !prevKeyB) {
-        placeBrush = nextBrushKind(placeBrush);  // Cycle Crate -> Floor -> Wall.
+        placeBrush = nextBrushKind(brushPalette, placeBrush);
         SDL_Log("iggy3d_creative: brush cycled -> '%s'",
                 std::string(creative::toString(placeBrush)).c_str());
       }
@@ -1126,8 +1216,8 @@ int main(int argc, char** argv) {
     // SCENE (local, must outlive submitFrame): rebuild the grid meshes each
     // frame from the cached snapshot, then append EVERY visible document object
     // as a shaded box — generically, one SceneRoomMeshItem per object. There is
-    // NO per-kind mesh code: the object's kind only picks a render role (color)
-    // via renderRoleForKind; geometry comes straight from its bounds. A new kind
+    // NO per-kind mesh code: descriptor facts pick a render role (color), and
+    // geometry comes straight from authored bounds. A new compatible descriptor
     // renders for free the moment it lands in the document.
     SceneProjectionResult scene{};
     appendGridDotsToScene(gridSnapshot, scene);
@@ -1141,8 +1231,8 @@ int main(int argc, char** argv) {
       const Vec3 boxMax = toVec3(obj.bounds.max);
       SceneRoomMeshItem mesh;
       mesh.id = "creative.object_" + std::to_string(obj.id);
-      mesh.role = renderRoleForKind(obj.kind);  // Color by kind — the only
-                                                // place kind is inspected.
+      mesh.role = std::string(
+          renderRoleForDescriptor(creative::describeObject(obj.kind)));
       mesh.materialId = "creative_object";
       mesh.position = {(boxMin.x + boxMax.x) * 0.5F,
                        (boxMin.y + boxMax.y) * 0.5F,
@@ -1312,7 +1402,7 @@ int main(int argc, char** argv) {
     // aimed cell, snapped to the grid, via the SAME generic createDocumentObject.
     // The new object joins the document immediately, so next frame it renders and
     // is Select/Move/Gizmo-able with ZERO extra code. There is NO per-kind place
-    // branch — placeBrushObject() only reads the footprint table for geometry.
+    // branch; placeBrushObject() reads descriptor-derived footprint geometry.
     if (placeMode) {
       if (!capturePath.empty()) {
         // --capture: run the scripted placements. Each entry sets the brush kind
@@ -1765,7 +1855,8 @@ int main(int argc, char** argv) {
     // next frame if the aim moves.
     std::size_t ghostEdgeCount = 0;
     if (placeMode) {
-      const BrushFootprint fp = brushFootprintFor(placeBrush);
+      const BrushFootprint fp =
+          brushFootprintForDescriptor(creative::describeObject(placeBrush));
       const Vec3 ghostMin{aimCellCenter.x - fp.sizeX * 0.5F, 0.0F,
                           aimCellCenter.z - fp.sizeZ * 0.5F};
       const Vec3 ghostMax{aimCellCenter.x + fp.sizeX * 0.5F, fp.height,
