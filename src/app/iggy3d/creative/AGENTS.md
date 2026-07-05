@@ -1,3 +1,24 @@
+# Creative lane — folder map
+
+Creative code lives under one roof here. The `creative/` root holds the public
+surface (`Facade`, `CreativeAppState`, `Core.hpp`, `State.hpp`); everything else
+is grouped by concern:
+
+- `document/` — the CreativeDocument data model: `Object`, `ObjectDescriptor`,
+  `Block`, `Document`, `DocumentMutation`, `DocumentSnap`, `DocumentWireframe`.
+- `mutation/` — the mutation grammar: `Mutation`, `MutationApply`, `Metrics`.
+- `tools/` — interaction tools: `Tools`, `Select`, `Measure`, `Placement`, `Palette`.
+- `spatial/` — geometry/preview: `SpatialProjection`, `ViewportPick`, `Snap`, `Ghost`.
+- `ui/` — the creative UI model & draw: `Ui`, `UiDrawList`, `UiProjection`, `UiFrame`.
+- `bridge/` — window-frame plumbing: `InputFrame`, `UiInputFrame`, `UiCommandFrame`,
+  `UiWindowFrame`, `ViewportPickFrame`, `WireframeFrame`, `WindowCoordinateSpace`.
+- `world/` — world lifecycle & save: `WorldService`, `DocumentSection`.
+- `render/` — `WireframeDebugLines`. `camera/` — `Fly`. `adapters/` — reserved
+  0-byte bake sockets (L5), leave dormant.
+
+Filenames below are basenames; find them in the folder above. Includes are
+full-path (`app/iggy3d/creative/<folder>/<Name>.hpp`).
+
 # Creative Object Kind Pattern
 
 Object kinds are DATA ROWS, not per-kind code paths. The receipted generic
