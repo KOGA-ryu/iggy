@@ -1,4 +1,4 @@
-// iggy3d_creative — SLICE 2 ("Select & Inspect")
+// iggy3d_creative — SLICE 3 ("Move")
 //
 // A standalone executable that boots straight into a creative stage: a Vulkan
 // window showing a ground grid at Y=0 with a fly camera, PLUS one authored crate
@@ -6,6 +6,16 @@
 // clicking it (or, in --capture mode, a synthesized click at its projected screen
 // center) selects it, which draws a bright-yellow wireframe bounding box, a
 // "W x H x D m" dimension label, and an inspector panel of the crate's metadata.
+//
+// SLICE 3 adds MOVE, driven ENTIRELY through the kernel's generic Move system:
+// switching to Tool::Move and feeding the pointer PRESS/MOVE/RELEASE lifecycle to
+// facade.dispatchToolInput() — the facade picks the object, snaps the world
+// destination to the grid, and commits ONE Move mutation. There is NO
+// crate-specific move math here; the crate's new transform/bounds are read back
+// from the document via findObject() each frame, so the prop cube, yellow
+// wireframe, dimension label and inspector all follow the moved object for free.
+// Keys: '1' -> Select, '2' -> Move. In --capture mode an early frame selects the
+// crate, then the Move lifecycle relocates it a few cells (world XZ 4,4).
 //
 // No menu, no ProductAppWindowState god-struct, no FrontendState, no room-loaded
 // gate. It is a pure consumer of the already-built `iggy3d` library, reusing the
@@ -250,6 +260,43 @@ Vec3 toVec3(const creative::CreativeVec3& v) {
           static_cast<float>(v.z)};
 }
 
+// Log an object's document-truth position + bounds.min so the move is provable
+// BEFORE vs AFTER. Reads only — no position math. (bounds.min is the corner
+// anchor the facade snaps for props with an explicit bounds override.)
+void logObjectPlacement(const char* phase, const creative::CreativeObject* obj) {
+  if (obj == nullptr) {
+    SDL_Log("iggy3d_creative: MOVE %s object=<null>", phase);
+    return;
+  }
+  SDL_Log("iggy3d_creative: MOVE %s pos=(%.3f, %.3f, %.3f) "
+          "boundsMin=(%.3f, %.3f, %.3f) boundsMax=(%.3f, %.3f, %.3f)",
+          phase, obj->transform.position.x, obj->transform.position.y,
+          obj->transform.position.z, obj->bounds.min.x, obj->bounds.min.y,
+          obj->bounds.min.z, obj->bounds.max.x, obj->bounds.max.y,
+          obj->bounds.max.z);
+}
+
+// Log the facade tool-dispatch receipt, surfacing the generic Move-drag detail:
+// stage/outcome enums, committed/changed flags, the snapped anchor the facade
+// chose, and the document mutation status. This is the commit receipt the plan
+// asks for — proof the move went through the kernel, not by hand.
+void logMoveDispatch(const char* phase,
+                     const creative::CreativeFacadeToolDispatchReceipt& r) {
+  SDL_Log("iggy3d_creative: MOVE dispatch %s inputKind=%d accepted=%d changed=%d "
+          "moveDragChanged=%d | drag.stage=%d drag.outcome=%d requested=%d "
+          "accepted=%d committed=%d changed=%d snappedAnchor=(%.3f, %.3f, %.3f) "
+          "documentStatus=%d msg='%s'",
+          phase, static_cast<int>(r.inputKind), r.accepted ? 1 : 0,
+          r.changed ? 1 : 0, r.moveDragChanged ? 1 : 0,
+          static_cast<int>(r.moveDrag.stage),
+          static_cast<int>(r.moveDrag.outcome), r.moveDrag.requested ? 1 : 0,
+          r.moveDrag.accepted ? 1 : 0, r.moveDrag.committed ? 1 : 0,
+          r.moveDrag.changed ? 1 : 0, r.moveDrag.snappedAnchor.x,
+          r.moveDrag.snappedAnchor.y, r.moveDrag.snappedAnchor.z,
+          static_cast<int>(r.moveDrag.documentStatus),
+          r.moveDrag.message.c_str());
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -374,6 +421,26 @@ int main(int argc, char** argv) {
   // Selected-state logging: emit the selection + submit reason once.
   bool loggedSelection = false;
 
+  // ---- MOVE state (SLICE 3) ----------------------------------------------
+  // Interactive: edge-triggered key latches for '1' Select / '2' Move so a held
+  // key switches the tool exactly once. Interactive drag latch tracks a left
+  // button held while the Move tool is active.
+  bool prevKey1 = false;
+  bool prevKey2 = false;
+  bool moveDragButtonDown = false;
+  // --capture: run the generic Move lifecycle across a few frames, and log the
+  // crate placement BEFORE the commit and AFTER the release exactly once.
+  bool loggedMoveBefore = false;
+  bool loggedMoveAfter = false;
+  // The scripted Move destination. The kernel's v1 generic Move (TD-7,
+  // Facade.cpp:586-590) is a SCREEN-plane drag: worldDestination.x -> the
+  // object's world-X anchor, worldDestination.y -> its world-Y anchor, and the
+  // DEPTH axis (world Z) HOLDS the start-anchor Z. So to relocate the crate a
+  // few cells cleanly we set X=4 (slide it sideways) and hold Y at its authored
+  // anchor height 0.5 (avoid sinking it into the ground); Z is ignored by the
+  // facade. This is the kernel's mapping — we do NOT reinterpret the axes here.
+  const creative::CreativeToolWorldPoint kCaptureMoveDestination{4.0, 0.5, 0.0};
+
   std::uint64_t frameIndex = 0;
   std::uint32_t lastWidth = 0;
   std::uint32_t lastHeight = 0;
@@ -440,6 +507,24 @@ int main(int argc, char** argv) {
         applyProductCreativeFlyInput(flyConfig, flyInput, flyPos);
     if (flyResult.applied) {
       flyPos = flyResult.finalPositionMeters;
+    }
+
+    // ---- TOOL SWITCH (SLICE 3): '1' -> Select, '2' -> Move ------------------
+    // Edge-triggered so a held key flips the active tool once. Driven ONLY
+    // through the facade's generic setActiveTool — no per-tool special-casing.
+    if (capturePath.empty() && keys != nullptr) {
+      const bool key1 = keys[SDL_SCANCODE_1] != 0;
+      const bool key2 = keys[SDL_SCANCODE_2] != 0;
+      if (key1 && !prevKey1) {
+        const bool ok = appState.facade.setActiveTool(creative::Tool::Select);
+        SDL_Log("iggy3d_creative: setActiveTool(Select) accepted=%d", ok ? 1 : 0);
+      }
+      if (key2 && !prevKey2) {
+        const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
+        SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d", ok ? 1 : 0);
+      }
+      prevKey1 = key1;
+      prevKey2 = key2;
     }
 
     // SCENE (local, must outlive submitFrame): rebuild the grid meshes each
@@ -545,6 +630,113 @@ int main(int argc, char** argv) {
         appState.facade.selectionState().selectedTarget.value;
     const bool crateSelected =
         selectedId == static_cast<creative::Id>(crateObjectId);
+
+    // ---- MOVE (SLICE 3) ----------------------------------------------------
+    // Everything below drives the kernel's GENERIC Move: setActiveTool(Move) +
+    // the PRESS/MOVE/RELEASE pointer lifecycle through dispatchToolInput. The
+    // facade picks the object, snaps the world destination to the grid, and
+    // commits ONE Move mutation. NO crate-specific position math lives here.
+    if (!capturePath.empty()) {
+      // --capture: after the crate is selected (frame 3), run the Move drag.
+      //   frame 5: switch to Move + PRESS on the crate (BeginMove)
+      //   frame 6: hold + PointerMove carrying worldDestination (PreviewMove)
+      //   frame 7: RELEASE with the same worldDestination (CommitMove) -> snap
+      if (frameIndex == 5U && crateSelected) {
+        const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
+        SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d", ok ? 1 : 0);
+        if (!loggedMoveBefore) {
+          logObjectPlacement("BEFORE", appState.facade.findObject(crateObjectId));
+          loggedMoveBefore = true;
+        }
+        creative::CreativeToolInputPacket press;
+        press.kind = creative::CreativeToolInputKind::PointerPress;
+        press.pointer.button = creative::CreativeToolPointerButton::Primary;
+        press.pointer.target =
+            creative::TargetRef{static_cast<creative::Id>(crateObjectId)};
+        const creative::CreativeFacadeToolDispatchReceipt r =
+            appState.facade.dispatchToolInput(press);
+        logMoveDispatch("PRESS", r);
+      } else if (frameIndex == 6U) {
+        creative::CreativeToolInputPacket move;
+        move.kind = creative::CreativeToolInputKind::PointerMove;
+        move.pointer.button = creative::CreativeToolPointerButton::Primary;
+        move.pointer.hasWorldDestination = true;
+        move.pointer.worldDestination = kCaptureMoveDestination;
+        const creative::CreativeFacadeToolDispatchReceipt r =
+            appState.facade.dispatchToolInput(move);
+        logMoveDispatch("MOVE", r);
+      } else if (frameIndex == 7U) {
+        creative::CreativeToolInputPacket release;
+        release.kind = creative::CreativeToolInputKind::PointerRelease;
+        release.pointer.button = creative::CreativeToolPointerButton::Primary;
+        release.pointer.hasWorldDestination = true;
+        release.pointer.worldDestination = kCaptureMoveDestination;
+        const creative::CreativeFacadeToolDispatchReceipt r =
+            appState.facade.dispatchToolInput(release);
+        logMoveDispatch("RELEASE", r);
+        if (!loggedMoveAfter) {
+          logObjectPlacement("AFTER", appState.facade.findObject(crateObjectId));
+          loggedMoveAfter = true;
+        }
+      }
+    } else if (appState.facade.toolState().activeTool == creative::Tool::Move &&
+               crateSelected) {
+      // Interactive Move: while the Move tool is active and the crate is
+      // selected, a left-drag runs the same generic lifecycle. The destination
+      // is the ground cell the fly camera is aimed at — a simple ray from the
+      // camera eye along its forward to the Y=0 plane (kept basic per plan; the
+      // facade still owns the pick + snap + commit). Hold Left-Alt (same as the
+      // select path) to release fly-look while dragging.
+      const bool* mvKeys = SDL_GetKeyboardState(nullptr);
+      const bool altHeld = mvKeys != nullptr && (mvKeys[SDL_SCANCODE_LALT] != 0);
+      if (altHeld) {
+        float mx = 0.0F;
+        float my = 0.0F;
+        const SDL_MouseButtonFlags buttons = SDL_GetMouseState(&mx, &my);
+        const bool lDown = (buttons & SDL_BUTTON_LMASK) != 0U;
+
+        // Camera-forward ray -> Y=0 plane -> world XZ ground point.
+        const Vec3 eye = frame.camera.worldEye;
+        const Vec3 fwd = frame.camera.worldForward;
+        creative::CreativeToolWorldPoint ground{eye.x, 0.0, eye.z};
+        if (std::fabs(fwd.y) > 1.0e-4F) {
+          const float t = -eye.y / fwd.y;  // eye.y + t*fwd.y == 0
+          if (t > 0.0F) {
+            ground.x = static_cast<double>(eye.x + fwd.x * t);
+            ground.z = static_cast<double>(eye.z + fwd.z * t);
+          }
+        }
+
+        if (lDown && !moveDragButtonDown) {
+          moveDragButtonDown = true;
+          creative::CreativeToolInputPacket press;
+          press.kind = creative::CreativeToolInputKind::PointerPress;
+          press.pointer.button = creative::CreativeToolPointerButton::Primary;
+          press.pointer.target =
+              creative::TargetRef{static_cast<creative::Id>(crateObjectId)};
+          (void)appState.facade.dispatchToolInput(press);
+        } else if (lDown && moveDragButtonDown) {
+          creative::CreativeToolInputPacket move;
+          move.kind = creative::CreativeToolInputKind::PointerMove;
+          move.pointer.button = creative::CreativeToolPointerButton::Primary;
+          move.pointer.hasWorldDestination = true;
+          move.pointer.worldDestination = ground;
+          (void)appState.facade.dispatchToolInput(move);
+        } else if (!lDown && moveDragButtonDown) {
+          moveDragButtonDown = false;
+          creative::CreativeToolInputPacket release;
+          release.kind = creative::CreativeToolInputKind::PointerRelease;
+          release.pointer.button = creative::CreativeToolPointerButton::Primary;
+          release.pointer.hasWorldDestination = true;
+          release.pointer.worldDestination = ground;
+          const creative::CreativeFacadeToolDispatchReceipt r =
+              appState.facade.dispatchToolInput(release);
+          logMoveDispatch("RELEASE", r);
+        }
+      } else if (moveDragButtonDown) {
+        moveDragButtonDown = false;  // Alt released mid-drag: drop the latch.
+      }
+    }
 
     // ---- INSPECTOR UI (draw list -> menu frame rects + glyphs) -------------
     ProductCreativeUiProjectionRequest uiReq;
