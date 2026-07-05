@@ -104,7 +104,9 @@ bool defaultsBuildDefaultUiModel() {
          expect(!facade.ghostState().visible, "default ghost hidden") &&
          expect(ui.accepted, "default ui accepted") &&
          expect(ui.panelCount == 7U, "default ui panels") &&
-         expect(ui.rowCount == 8U, "default ui rows");
+         // Inspector (Selection panel) is always present: with no selection it
+         // holds one resting row (TL-6), so the default is 9 rows not 8.
+         expect(ui.rowCount == 9U, "default ui rows");
 }
 
 bool setActiveToolUpdatesKernelAndOldState() {
@@ -727,9 +729,13 @@ bool installingDocumentClearsTransientEditorState() {
          expect(facade.stats().commandAttempts == 0U,
                 "install clear stats reset attempts") &&
          expect(ui.accepted, "install clear ui accepted") &&
-         expect(ui.rowCount == 8U, "install clear default row count") &&
+         // No selection => inspector shows its single resting row, so the
+         // cleared default is 9 rows (TL-6) and carries no SelectedTarget row.
+         expect(ui.rowCount == 9U, "install clear default row count") &&
          expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::SelectedTarget),
                 "install clear no selected row") &&
+         expect(hasRowKind(ui.model, cr::CreativeUiRowKind::InspectorEmpty),
+                "install clear inspector resting row") &&
          expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::MeasurementState),
                 "install clear no measurement row") &&
          expect(!hasGhostPreviewRow(ui.model), "install clear no ghost row");

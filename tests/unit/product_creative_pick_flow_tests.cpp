@@ -158,10 +158,15 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
       drawCreativeUi(selectedUi.model);
   const iggy3d::ProductUiPrimitive* selectedPrimitive =
       findPrimitive(selectedDrawList, "creative.row.selection.selected_target");
+  // TD-4: the visible toggle is now the dedicated inspector row, not the
+  // selected_target display row.
+  const iggy3d::ProductUiPrimitive* visibleTogglePrimitive =
+      findPrimitive(selectedDrawList,
+                    "creative.row.selection.inspector_visible");
 
   const iggy3d::ProductCreativeUiInputFrameReceipt selectedUiInput =
-      selectedPrimitive != nullptr
-          ? clickPrimitive(selectedDrawList, *selectedPrimitive)
+      visibleTogglePrimitive != nullptr
+          ? clickPrimitive(selectedDrawList, *visibleTogglePrimitive)
           : iggy3d::ProductCreativeUiInputFrameReceipt{};
   const iggy3d::ProductCreativeUiCommandFrameReceipt hideCommand =
       iggy3d::routeProductCreativeUiCommandFrame(
@@ -180,10 +185,13 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
       drawCreativeUi(hiddenUi.model);
   const iggy3d::ProductUiPrimitive* hiddenSelectedPrimitive =
       findPrimitive(hiddenDrawList, "creative.row.selection.selected_target");
+  const iggy3d::ProductUiPrimitive* hiddenVisibleTogglePrimitive =
+      findPrimitive(hiddenDrawList,
+                    "creative.row.selection.inspector_visible");
 
   const iggy3d::ProductCreativeUiInputFrameReceipt hiddenUiInput =
-      hiddenSelectedPrimitive != nullptr
-          ? clickPrimitive(hiddenDrawList, *hiddenSelectedPrimitive)
+      hiddenVisibleTogglePrimitive != nullptr
+          ? clickPrimitive(hiddenDrawList, *hiddenVisibleTogglePrimitive)
           : iggy3d::ProductCreativeUiInputFrameReceipt{};
   const iggy3d::ProductCreativeUiCommandFrameReceipt showCommand =
       iggy3d::routeProductCreativeUiCommandFrame(
@@ -214,10 +222,14 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
                     "Selected: target=" + std::to_string(roomId) +
                         " visible=true",
                 "visibility flow selected visible text") &&
+         expect(visibleTogglePrimitive != nullptr,
+                "visibility flow visible toggle primitive") &&
+         expect(visibleTogglePrimitive->text == "Visible: true",
+                "visibility flow visible toggle text") &&
          expect(selectedUiInput.consumed && selectedUiInput.enabled,
                 "visibility flow selected ui consumed") &&
          expect(selectedUiInput.semanticId ==
-                    "creative.row.selection.selected_target",
+                    "creative.row.selection.inspector_visible",
                 "visibility flow selected ui semantic") &&
          expect(hideCommand.commandKind ==
                     iggy3d::ProductCreativeUiCommandKind::
@@ -260,6 +272,9 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
                     "Selected: target=" + std::to_string(roomId) +
                         " visible=false",
                 "visibility flow hidden selected text") &&
+         expect(hiddenVisibleTogglePrimitive != nullptr &&
+                    hiddenVisibleTogglePrimitive->text == "Visible: false",
+                "visibility flow hidden visible toggle text") &&
          expect(hiddenUiInput.consumed && hiddenUiInput.enabled,
                 "visibility flow hidden ui consumed") &&
          expect(showCommand.commandKind ==

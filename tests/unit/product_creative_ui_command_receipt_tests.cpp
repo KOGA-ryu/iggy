@@ -90,7 +90,20 @@ iggy3d::ProductCreativeUiCommandFrameReceipt appliedToggleReceipt() {
 
   iggy3d::ProductCreativeUiCommandFrameRequest request;
   request.facade = &facade;
-  request.inputReceipt = commandInput("creative.row.selection.selected_target");
+  request.inputReceipt = commandInput("creative.row.selection.inspector_visible");
+  return iggy3d::routeProductCreativeUiCommandFrame(request);
+}
+
+iggy3d::ProductCreativeUiCommandFrameReceipt appliedLockReceipt() {
+  cr::Facade facade;
+  facade.reset();
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  static_cast<void>(facade.dispatchToolInput(
+      pointerPress(static_cast<cr::Id>(roomId))));
+
+  iggy3d::ProductCreativeUiCommandFrameRequest request;
+  request.facade = &facade;
+  request.inputReceipt = commandInput("creative.row.selection.inspector_locked");
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
@@ -507,6 +520,49 @@ bool toggleCommandReceiptRecordsMutationFields() {
                             "toggle mutation message");
 }
 
+bool lockCommandReceiptRecordsLockedFields() {
+  const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
+      appliedLockReceipt();
+  iggy3d::ProductAppWindowState window;
+  iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  return expectReceiptField(receipt,
+                            "creative_ui_command_kind",
+                            "toggle_selected_object_locked",
+                            "lock kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_status",
+                            "product_creative_ui_command_applied",
+                            "lock status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_mutation_kind",
+                            "SetLocked",
+                            "lock mutation kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_locked_before",
+                            "false",
+                            "lock locked before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_locked_after",
+                            "true",
+                            "lock locked after");
+}
+
+bool defaultWindowReceiptCarriesLockedFields() {
+  const iggy3d::ProductAppWindowState window;
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  return expectReceiptField(receipt,
+                            "creative_ui_command_locked_before",
+                            "false",
+                            "default locked before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_locked_after",
+                            "false",
+                            "default locked after");
+}
+
 bool createRoomCommandReceiptRecordsCreateFields() {
   const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
       appliedCreateRoomReceipt();
@@ -673,6 +729,8 @@ int main() {
                   nullFacadeCommandReceiptRecordsFields() &&
                   toolSelectNoChangeCommandReceiptRecordsFields() &&
                   toggleCommandReceiptRecordsMutationFields() &&
+                  lockCommandReceiptRecordsLockedFields() &&
+                  defaultWindowReceiptCarriesLockedFields() &&
                   createRoomCommandReceiptRecordsCreateFields() &&
                   recorderPreservesNeighboringFields();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

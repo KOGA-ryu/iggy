@@ -21,7 +21,7 @@ struct ProductCreativeUiCommandRow {
       creative::CreativeObjectKind::Unknown;
 };
 
-constexpr std::array<ProductCreativeUiCommandRow, 7>
+constexpr std::array<ProductCreativeUiCommandRow, 8>
     kProductCreativeUiCommandRows = {{
         {"creative.row.tools.tool_select",
          ProductCreativeUiCommandKind::SetActiveTool,
@@ -47,8 +47,12 @@ constexpr std::array<ProductCreativeUiCommandRow, 7>
          ProductCreativeUiCommandKind::CreateObject,
          creative::Tool::Select,
          creative::CreativeObjectKind::Crate},
-        {"creative.row.selection.selected_target",
+        {"creative.row.selection.inspector_visible",
          ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility,
+         creative::Tool::Select,
+         creative::CreativeObjectKind::Unknown},
+        {"creative.row.selection.inspector_locked",
+         ProductCreativeUiCommandKind::ToggleSelectedObjectLocked,
          creative::Tool::Select,
          creative::CreativeObjectKind::Unknown},
     }};
@@ -90,6 +94,8 @@ void copyMutationReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
   receipt.mutationObjectKind = mutationReceipt.objectKind;
   receipt.visibleBefore = mutationReceipt.visibleBefore;
   receipt.visibleAfter = mutationReceipt.visibleAfter;
+  receipt.lockedBefore = mutationReceipt.lockedBefore;
+  receipt.lockedAfter = mutationReceipt.lockedAfter;
   receipt.revisionBefore = mutationReceipt.revisionBefore;
   receipt.revisionAfter = mutationReceipt.revisionAfter;
   receipt.mutationMessage = mutationReceipt.message;
@@ -152,9 +158,14 @@ ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
 
   receipt.commandKind = row->commandKind;
   if (receipt.commandKind ==
-      ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility) {
+          ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility ||
+      receipt.commandKind ==
+          ProductCreativeUiCommandKind::ToggleSelectedObjectLocked) {
     const creative::CreativeFacadeMutationReceipt mutationReceipt =
-        facade.toggleSelectedObjectVisibility();
+        receipt.commandKind ==
+                ProductCreativeUiCommandKind::ToggleSelectedObjectLocked
+            ? facade.toggleSelectedObjectLocked()
+            : facade.toggleSelectedObjectVisibility();
     copyMutationReceipt(receipt, mutationReceipt);
     receipt.accepted = mutationReceipt.accepted;
     receipt.changed = mutationReceipt.changed;

@@ -35,9 +35,7 @@ namespace {
 }
 
 void applyObjectSummary(CreativeUiRow& row,
-                        const CreativeUiBuildRequest& request) noexcept {
-  const CreativeUiObjectSummary* summary =
-      findObjectSummary(request.objectSummaries, row.target);
+                        const CreativeUiObjectSummary* summary) noexcept {
   if (summary == nullptr) {
     return;
   }
@@ -46,6 +44,9 @@ void applyObjectSummary(CreativeUiRow& row,
   row.flags |= kCreativeUiRowFlagObjectKnown;
   if (summary->visible) {
     row.flags |= kCreativeUiRowFlagObjectVisible;
+  }
+  if (summary->locked) {
+    row.flags |= kCreativeUiRowFlagObjectLocked;
   }
 }
 
@@ -163,23 +164,134 @@ void appendStatusPanel(CreativeUiModel& model,
   finishPanel(model, panelIndex);
 }
 
+[[nodiscard]] CreativeUiRow makeInspectorRow(
+    CreativeUiRowKind kind,
+    std::string_view id,
+    std::string_view label,
+    TargetRef target) {
+  CreativeUiRow row;
+  row.kind = kind;
+  row.panel = CreativeUiPanelKind::Selection;
+  row.id = id;
+  row.label = label;
+  row.target = target;
+  row.flags = enabledVisibleFlags() | targetFlag(target);
+  return row;
+}
+
 void appendSelectionPanel(CreativeUiModel& model,
                           const CreativeUiBuildRequest& request) {
-  const bool visible = hasTarget(request.selectionState.selectedTarget);
+  // The Selection panel IS the inspector (TD-4). It is always visible: with a
+  // selection it shows display facts + the visible/locked toggle rows; with no
+  // selection it shows an explicit resting row (TL-6) rather than an empty
+  // panel.
   const std::size_t panelIndex =
-      beginPanel(model, CreativeUiPanelKind::Selection, visible, true);
+      beginPanel(model, CreativeUiPanelKind::Selection, true, true);
 
-  if (visible) {
-    CreativeUiRow row;
-    row.kind = CreativeUiRowKind::SelectedTarget;
-    row.panel = CreativeUiPanelKind::Selection;
-    row.id = "selected_target";
-    row.label = "Selected Target";
-    row.target = request.selectionState.selectedTarget;
-    row.flags = enabledVisibleFlags() | targetFlag(row.target);
-    applyObjectSummary(row, request);
+  const TargetRef target = request.selectionState.selectedTarget;
+  if (!hasTarget(target)) {
+    CreativeUiRow row = makeInspectorRow(CreativeUiRowKind::InspectorEmpty,
+                                         "inspector_empty",
+                                         "Inspector Empty",
+                                         {});
+    row.flags = enabledVisibleFlags();
     appendRow(model, row);
+    finishPanel(model, panelIndex);
+    return;
   }
+
+  const CreativeUiObjectSummary* summary =
+      findObjectSummary(request.objectSummaries, target);
+
+  // Selected-target display row (DISPLAY-ONLY now; the command-table entry was
+  // removed in TV1-E so clicking it does nothing — TD-4).
+  CreativeUiRow selectedRow = makeInspectorRow(CreativeUiRowKind::SelectedTarget,
+                                               "selected_target",
+                                               "Selected Target",
+                                               target);
+  applyObjectSummary(selectedRow, summary);
+  appendRow(model, selectedRow);
+
+  // Kind (display).
+  CreativeUiRow kindRow = makeInspectorRow(CreativeUiRowKind::InspectorKind,
+                                           "inspector_kind",
+                                           "Inspector Kind",
+                                           target);
+  applyObjectSummary(kindRow, summary);
+  appendRow(model, kindRow);
+
+  // Id (display).
+  CreativeUiRow idRow = makeInspectorRow(CreativeUiRowKind::InspectorId,
+                                         "inspector_id",
+                                         "Inspector Id",
+                                         target);
+  applyObjectSummary(idRow, summary);
+  idRow.data0 = summary != nullptr ? summary->objectId : 0;
+  appendRow(model, idRow);
+
+  // Name (display).
+  CreativeUiRow nameRow = makeInspectorRow(CreativeUiRowKind::InspectorName,
+                                           "inspector_name",
+                                           "Inspector Name",
+                                           target);
+  applyObjectSummary(nameRow, summary);
+  nameRow.name = summary != nullptr ? summary->name : std::string_view{};
+  appendRow(model, nameRow);
+
+  // Visible (COMMAND -> ToggleSelectedObjectVisibility, TD-4).
+  CreativeUiRow visibleRow = makeInspectorRow(CreativeUiRowKind::InspectorVisible,
+                                              "inspector_visible",
+                                              "Inspector Visible",
+                                              target);
+  applyObjectSummary(visibleRow, summary);
+  appendRow(model, visibleRow);
+
+  // Locked (COMMAND -> ToggleSelectedObjectLocked, TD-4).
+  CreativeUiRow lockedRow = makeInspectorRow(CreativeUiRowKind::InspectorLocked,
+                                             "inspector_locked",
+                                             "Inspector Locked",
+                                             target);
+  applyObjectSummary(lockedRow, summary);
+  appendRow(model, lockedRow);
+
+  // Bounds min/max/size (display, TD-9).
+  CreativeUiRow boundsRow = makeInspectorRow(CreativeUiRowKind::InspectorBounds,
+                                             "inspector_bounds",
+                                             "Inspector Bounds",
+                                             target);
+  applyObjectSummary(boundsRow, summary);
+  if (summary != nullptr) {
+    boundsRow.primaryX = summary->bounds.min.x;
+    boundsRow.primaryY = summary->bounds.min.y;
+    boundsRow.primaryZ = summary->bounds.min.z;
+    boundsRow.secondaryX = summary->bounds.max.x;
+    boundsRow.secondaryY = summary->bounds.max.y;
+    boundsRow.secondaryZ = summary->bounds.max.z;
+  }
+  appendRow(model, boundsRow);
+
+  // Position (display, TD-9).
+  CreativeUiRow positionRow = makeInspectorRow(
+      CreativeUiRowKind::InspectorPosition,
+      "inspector_position",
+      "Inspector Position",
+      target);
+  applyObjectSummary(positionRow, summary);
+  if (summary != nullptr) {
+    positionRow.primaryX = summary->position.x;
+    positionRow.primaryY = summary->position.y;
+    positionRow.primaryZ = summary->position.z;
+  }
+  appendRow(model, positionRow);
+
+  // Layer (display).
+  CreativeUiRow layerRow = makeInspectorRow(CreativeUiRowKind::InspectorLayer,
+                                            "inspector_layer",
+                                            "Inspector Layer",
+                                            target);
+  applyObjectSummary(layerRow, summary);
+  layerRow.data1 = summary != nullptr ? summary->layerId : 0;
+  appendRow(model, layerRow);
 
   finishPanel(model, panelIndex);
 }
@@ -309,7 +421,7 @@ CreativeUiBuildReceipt buildCreativeUiModel(CreativeUiBuildRequest request) {
   receipt.model.ghostVisible = request.ghostState.visible;
 
   receipt.model.panels.reserve(7);
-  receipt.model.rows.reserve(13);
+  receipt.model.rows.reserve(21);
 
   appendToolsPanel(receipt.model, request);
   appendCreatePanel(receipt.model);

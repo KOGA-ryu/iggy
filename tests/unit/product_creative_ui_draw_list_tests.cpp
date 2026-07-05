@@ -157,6 +157,25 @@ cr::CreativeUiModel selectedTargetModel(cr::Id target,
   return cr::buildCreativeUiModel(request).model;
 }
 
+cr::CreativeUiModel inspectorCreativeUiModel() {
+  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
+  request.selectionState.selectedTarget.value = 42;
+  cr::CreativeUiObjectSummary summary;
+  summary.target.value = 42;
+  summary.objectKind = cr::CreativeObjectKind::Crate;
+  summary.exists = true;
+  summary.visible = true;
+  summary.locked = false;
+  summary.name = "Crate A";
+  summary.objectId = 42;
+  summary.layerId = 3;
+  summary.bounds.min = {1.0, 2.0, 3.0};
+  summary.bounds.max = {5.0, 6.0, 7.0};
+  summary.position = {1.0, 2.0, 3.0};
+  request.objectSummaries.push_back(summary);
+  return cr::buildCreativeUiModel(request).model;
+}
+
 cr::CreativeUiModel disabledRowCreativeUiModel() {
   cr::CreativeUiModel model = defaultCreativeUiModel();
   for (cr::CreativeUiRow& row : model.rows) {
@@ -266,6 +285,9 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
   const iggy3d::ProductUiPrimitive* snap =
       findPrimitive(list, "creative.row.snap.snap_settings");
 
+  const iggy3d::ProductUiPrimitive* inspectorEmpty =
+      findPrimitive(list, "creative.row.selection.inspector_empty");
+
   return expect(findPrimitive(list, "creative.panel.tools") != nullptr,
                 "tools panel") &&
          expect(findPrimitive(list, "creative.panel.create") != nullptr,
@@ -274,8 +296,17 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                 "status panel") &&
          expect(findPrimitive(list, "creative.panel.snap") != nullptr,
                 "snap panel") &&
-         expect(findPrimitive(list, "creative.panel.selection") == nullptr,
-                "hidden selection panel") &&
+         // The inspector (Selection panel) is always present; with no
+         // selection it shows its resting row (TL-6).
+         expect(findPrimitive(list, "creative.panel.selection") != nullptr,
+                "inspector panel present") &&
+         expect(inspectorEmpty != nullptr &&
+                    inspectorEmpty->text == "No selection - click an object",
+                "inspector resting row text") &&
+         expect(findPrimitive(list,
+                              "creative.row.selection.selected_target") ==
+                    nullptr,
+                "no selected row without selection") &&
          expect(findPrimitive(list, "creative.panel.measurement") == nullptr,
                 "hidden measurement panel") &&
          expect(findPrimitive(list, "creative.panel.ghost") == nullptr,
@@ -584,6 +615,65 @@ bool disabledRowsEmitDisabledHitRegions() {
                 "disabled hit matches primitive");
 }
 
+bool inspectorRowsRenderExactTextForKnownObject() {
+  const cr::CreativeUiModel model = inspectorCreativeUiModel();
+  iggy3d::ProductCreativeUiDrawListRequest request;
+  request.model = &model;
+  // Wide frame so the full inspector rows render untruncated for the pin.
+  request.virtualWidth = 2400;
+  request.virtualHeight = 1200;
+  const iggy3d::ProductUiDrawList list =
+      iggy3d::buildProductCreativeUiDrawList(request);
+
+  const iggy3d::ProductUiPrimitive* selected =
+      findPrimitive(list, "creative.row.selection.selected_target");
+  const iggy3d::ProductUiPrimitive* kind =
+      findPrimitive(list, "creative.row.selection.inspector_kind");
+  const iggy3d::ProductUiPrimitive* id =
+      findPrimitive(list, "creative.row.selection.inspector_id");
+  const iggy3d::ProductUiPrimitive* name =
+      findPrimitive(list, "creative.row.selection.inspector_name");
+  const iggy3d::ProductUiPrimitive* visible =
+      findPrimitive(list, "creative.row.selection.inspector_visible");
+  const iggy3d::ProductUiPrimitive* locked =
+      findPrimitive(list, "creative.row.selection.inspector_locked");
+  const iggy3d::ProductUiPrimitive* bounds =
+      findPrimitive(list, "creative.row.selection.inspector_bounds");
+  const iggy3d::ProductUiPrimitive* position =
+      findPrimitive(list, "creative.row.selection.inspector_position");
+  const iggy3d::ProductUiPrimitive* layer =
+      findPrimitive(list, "creative.row.selection.inspector_layer");
+
+  return expect(selected != nullptr &&
+                    selected->text == "Selected: target=42 visible=true",
+                "inspector selected text") &&
+         expect(kind != nullptr && kind->text == "Kind: Crate",
+                "inspector kind text") &&
+         expect(id != nullptr && id->text == "Id: 42", "inspector id text") &&
+         expect(name != nullptr && name->text == "Name: Crate A",
+                "inspector name text") &&
+         expect(visible != nullptr && visible->text == "Visible: true",
+                "inspector visible text") &&
+         expect(locked != nullptr && locked->text == "Locked: false",
+                "inspector locked text") &&
+         // Bounds shows min/max (size lives in the row fields for v1.5).
+         expect(bounds != nullptr &&
+                    bounds->text ==
+                        "Bounds: min(1.00,2.00,3.00) max(5.00,6.00,7.00)",
+                "inspector bounds text") &&
+         expect(position != nullptr &&
+                    position->text == "Position: (1.00,2.00,3.00)",
+                "inspector position text") &&
+         expect(layer != nullptr && layer->text == "Layer: 3",
+                "inspector layer text") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.selection.inspector_visible"),
+                "inspector visible hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.selection.inspector_locked"),
+                "inspector locked hit");
+}
+
 bool repeatedBuildIsStable() {
   const cr::CreativeUiModel model = populatedCreativeUiModel();
   iggy3d::ProductCreativeUiDrawListRequest request;
@@ -632,6 +722,7 @@ int main() {
                   selectedTargetVisibilityTextHandlesHiddenAndUnknown() &&
                   countersMatchPrimitiveContents() &&
                   disabledRowsEmitDisabledHitRegions() &&
+                  inspectorRowsRenderExactTextForKnownObject() &&
                   repeatedBuildIsStable();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

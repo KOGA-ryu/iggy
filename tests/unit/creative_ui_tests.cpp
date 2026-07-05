@@ -35,6 +35,16 @@ cr::CreativeUiObjectSummary objectSummary(cr::Id target,
   return summary;
 }
 
+const cr::CreativeUiRow* rowOfKind(const cr::CreativeUiModel& model,
+                                   cr::CreativeUiRowKind kind) {
+  for (const cr::CreativeUiRow& row : model.rows) {
+    if (row.kind == kind) {
+      return &row;
+    }
+  }
+  return nullptr;
+}
+
 const cr::CreativeUiPanel& panel(const cr::CreativeUiModel& model,
                                  cr::CreativeUiPanelKind kind) {
   return model.panels[static_cast<std::size_t>(kind)];
@@ -52,9 +62,11 @@ bool defaultModelDeterministic() {
 
   return expect(receipt.accepted, "default accepted") &&
          expect(receipt.panelCount == 7U, "default panel count") &&
-         expect(receipt.rowCount == 8U, "default row count") &&
+         // Inspector (Selection) always present: 1 resting row with no
+         // selection (TL-6) => 9 rows by default.
+         expect(receipt.rowCount == 9U, "default row count") &&
          expect(model.panels.size() == 7U, "default panels size") &&
-         expect(model.rows.size() == 8U, "default rows size") &&
+         expect(model.rows.size() == 9U, "default rows size") &&
          expect(panel(model, cr::CreativeUiPanelKind::Tools).firstRow == 0U,
                 "tools first row") &&
          expect(panel(model, cr::CreativeUiPanelKind::Tools).rowCount == 4U,
@@ -67,13 +79,17 @@ bool defaultModelDeterministic() {
                 "status first row") &&
          expect(panel(model, cr::CreativeUiPanelKind::Status).rowCount == 1U,
                 "status row count") &&
-         expect(panel(model, cr::CreativeUiPanelKind::Selection).rowCount == 0U,
-                "selection empty") &&
+         expect(panel(model, cr::CreativeUiPanelKind::Selection).firstRow == 7U,
+                "selection first row") &&
+         expect(panel(model, cr::CreativeUiPanelKind::Selection).rowCount == 1U,
+                "selection resting row") &&
+         expect(model.rows[7].kind == cr::CreativeUiRowKind::InspectorEmpty,
+                "selection resting row kind") &&
          expect(panel(model, cr::CreativeUiPanelKind::Measurement).rowCount == 0U,
                 "measurement empty") &&
          expect(panel(model, cr::CreativeUiPanelKind::Ghost).rowCount == 0U,
                 "ghost empty") &&
-         expect(panel(model, cr::CreativeUiPanelKind::Snap).firstRow == 7U,
+         expect(panel(model, cr::CreativeUiPanelKind::Snap).firstRow == 8U,
                 "snap first row") &&
          expect(panel(model, cr::CreativeUiPanelKind::Snap).rowCount == 1U,
                 "snap row count") &&
@@ -114,7 +130,7 @@ bool defaultModelDeterministic() {
                 "default create crate payload") &&
          expect(model.rows[6].kind == cr::CreativeUiRowKind::StatusSummary,
                 "default status row") &&
-         expect(model.rows[7].kind == cr::CreativeUiRowKind::SnapSettings,
+         expect(model.rows[8].kind == cr::CreativeUiRowKind::SnapSettings,
                 "default snap row");
 }
 
@@ -167,16 +183,25 @@ bool toolPaletteMarksExactlyOneActiveRowPerTool() {
 bool selectedTargetRowAppearsOnlyWhenNonzero() {
   cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
   const cr::CreativeUiBuildReceipt empty = cr::buildCreativeUiModel(request);
+  const cr::CreativeUiRow& emptyRow =
+      firstPanelRow(empty.model, cr::CreativeUiPanelKind::Selection);
   request.selectionState.selectedTarget.value = 42;
   const cr::CreativeUiBuildReceipt selected =
       cr::buildCreativeUiModel(request);
   const cr::CreativeUiRow& row =
       firstPanelRow(selected.model, cr::CreativeUiPanelKind::Selection);
 
-  return expect(panel(empty.model, cr::CreativeUiPanelKind::Selection).rowCount == 0U,
-                "selection absent") &&
-         expect(panel(selected.model, cr::CreativeUiPanelKind::Selection).rowCount == 1U,
-                "selection present") &&
+  // No selection: the inspector is not empty; it holds one resting row.
+  // With a selection: the inspector expands to the full display + toggle rows,
+  // led by the DISPLAY-ONLY SelectedTarget row.
+  return expect(panel(empty.model, cr::CreativeUiPanelKind::Selection).rowCount == 1U,
+                "selection resting present") &&
+         expect(emptyRow.kind == cr::CreativeUiRowKind::InspectorEmpty,
+                "selection resting kind") &&
+         expect(emptyRow.target.value == cr::kInvalidId,
+                "selection resting no target") &&
+         expect(panel(selected.model, cr::CreativeUiPanelKind::Selection).rowCount == 9U,
+                "selection inspector present") &&
          expect(row.kind == cr::CreativeUiRowKind::SelectedTarget,
                 "selection row kind") &&
          expect(row.target.value == 42U, "selection target") &&
@@ -216,8 +241,8 @@ bool selectedHiddenObjectSummaryKeepsRowAndMarksInvisible() {
       firstPanelRow(receipt.model, cr::CreativeUiPanelKind::Selection);
 
   return expect(panel(receipt.model,
-                      cr::CreativeUiPanelKind::Selection).rowCount == 1U,
-                "selected hidden row kept") &&
+                      cr::CreativeUiPanelKind::Selection).rowCount == 9U,
+                "selected hidden inspector rows") &&
          expect(row.target.value == 42U, "selected hidden target") &&
          expect(row.objectKind == cr::CreativeObjectKind::Room,
                 "selected hidden kind") &&
@@ -236,8 +261,8 @@ bool selectedMissingObjectSummaryKeepsRowUnknown() {
       firstPanelRow(receipt.model, cr::CreativeUiPanelKind::Selection);
 
   return expect(panel(receipt.model,
-                      cr::CreativeUiPanelKind::Selection).rowCount == 1U,
-                "selected missing row kept") &&
+                      cr::CreativeUiPanelKind::Selection).rowCount == 9U,
+                "selected missing inspector rows") &&
          expect(row.target.value == 42U, "selected missing target") &&
          expect(row.objectKind == cr::CreativeObjectKind::Unknown,
                 "selected missing kind unknown") &&
@@ -245,6 +270,87 @@ bool selectedMissingObjectSummaryKeepsRowUnknown() {
                 "selected missing known false") &&
          expect(!hasFlag(row.flags, cr::kCreativeUiRowFlagObjectVisible),
                 "selected missing visible false");
+}
+
+bool inspectorRowsCarrySelectedObjectFacts() {
+  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
+  request.selectionState.selectedTarget.value = 42;
+  cr::CreativeUiObjectSummary summary =
+      objectSummary(42, cr::CreativeObjectKind::Crate, false);
+  summary.locked = true;
+  summary.name = "Crate A";
+  summary.objectId = 42;
+  summary.layerId = 3;
+  summary.bounds.min = {1.0, 2.0, 3.0};
+  summary.bounds.max = {5.0, 6.0, 7.0};
+  summary.position = {1.0, 2.0, 3.0};
+  request.objectSummaries.push_back(summary);
+
+  const cr::CreativeUiBuildReceipt receipt = cr::buildCreativeUiModel(request);
+  const cr::CreativeUiModel& model = receipt.model;
+  const cr::CreativeUiRow* kindRow =
+      rowOfKind(model, cr::CreativeUiRowKind::InspectorKind);
+  const cr::CreativeUiRow* idRow =
+      rowOfKind(model, cr::CreativeUiRowKind::InspectorId);
+  const cr::CreativeUiRow* nameRow =
+      rowOfKind(model, cr::CreativeUiRowKind::InspectorName);
+  const cr::CreativeUiRow* visibleRow =
+      rowOfKind(model, cr::CreativeUiRowKind::InspectorVisible);
+  const cr::CreativeUiRow* lockedRow =
+      rowOfKind(model, cr::CreativeUiRowKind::InspectorLocked);
+  const cr::CreativeUiRow* boundsRow =
+      rowOfKind(model, cr::CreativeUiRowKind::InspectorBounds);
+  const cr::CreativeUiRow* positionRow =
+      rowOfKind(model, cr::CreativeUiRowKind::InspectorPosition);
+  const cr::CreativeUiRow* layerRow =
+      rowOfKind(model, cr::CreativeUiRowKind::InspectorLayer);
+
+  return expect(kindRow != nullptr &&
+                    kindRow->objectKind == cr::CreativeObjectKind::Crate,
+                "inspector kind row") &&
+         expect(idRow != nullptr && idRow->data0 == 42U,
+                "inspector id row") &&
+         expect(nameRow != nullptr && nameRow->name == "Crate A",
+                "inspector name row") &&
+         expect(visibleRow != nullptr &&
+                    !hasFlag(visibleRow->flags,
+                             cr::kCreativeUiRowFlagObjectVisible) &&
+                    hasFlag(visibleRow->flags,
+                            cr::kCreativeUiRowFlagObjectKnown),
+                "inspector visible row") &&
+         expect(lockedRow != nullptr &&
+                    hasFlag(lockedRow->flags,
+                            cr::kCreativeUiRowFlagObjectLocked),
+                "inspector locked row") &&
+         expect(boundsRow != nullptr && boundsRow->primaryX == 1.0 &&
+                    boundsRow->primaryY == 2.0 && boundsRow->primaryZ == 3.0 &&
+                    boundsRow->secondaryX == 5.0 &&
+                    boundsRow->secondaryY == 6.0 &&
+                    boundsRow->secondaryZ == 7.0,
+                "inspector bounds row") &&
+         expect(positionRow != nullptr && positionRow->primaryX == 1.0 &&
+                    positionRow->primaryY == 2.0 &&
+                    positionRow->primaryZ == 3.0,
+                "inspector position row") &&
+         expect(layerRow != nullptr && layerRow->data1 == 3U,
+                "inspector layer row");
+}
+
+bool inspectorRestingRowHasNoTargetOrObject() {
+  const cr::CreativeUiBuildReceipt receipt = buildDefault();
+  const cr::CreativeUiRow* resting =
+      rowOfKind(receipt.model, cr::CreativeUiRowKind::InspectorEmpty);
+
+  return expect(resting != nullptr, "resting row present") &&
+         expect(resting->panel == cr::CreativeUiPanelKind::Selection,
+                "resting row in selection panel") &&
+         expect(resting->target.value == cr::kInvalidId,
+                "resting row no target") &&
+         expect(!hasFlag(resting->flags, cr::kCreativeUiRowFlagHasTarget),
+                "resting row no target flag") &&
+         expect(rowOfKind(receipt.model,
+                          cr::CreativeUiRowKind::SelectedTarget) == nullptr,
+                "resting has no selected row");
 }
 
 bool measurementRowsPreserveStateAndPoints() {
@@ -399,6 +505,8 @@ int main() {
                   selectedVisibleObjectSummaryMarksRowVisible() &&
                   selectedHiddenObjectSummaryKeepsRowAndMarksInvisible() &&
                   selectedMissingObjectSummaryKeepsRowUnknown() &&
+                  inspectorRowsCarrySelectedObjectFacts() &&
+                  inspectorRestingRowHasNoTargetOrObject() &&
                   measurementRowsPreserveStateAndPoints() &&
                   ghostRowAppearsOnlyWhenVisible() &&
                   snapSettingsRowReflectsModeAxesStepsAndOrigin() &&

@@ -633,6 +633,8 @@ struct ProductAppWindowState {
   std::string creativeUiCommandMutationObjectKind = "Unknown";
   bool creativeUiCommandVisibleBefore = false;
   bool creativeUiCommandVisibleAfter = false;
+  bool creativeUiCommandLockedBefore = false;
+  bool creativeUiCommandLockedAfter = false;
   std::uint64_t creativeUiCommandRevisionBefore = 0;
   std::uint64_t creativeUiCommandRevisionAfter = 0;
   std::string creativeUiCommandMutationMessage = "none";

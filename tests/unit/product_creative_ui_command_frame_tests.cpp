@@ -387,7 +387,7 @@ bool selectedTargetRowTogglesRoomVisibilityOff() {
   const std::uint64_t revisionBefore = facade.document().revision();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.selection.selected_target");
+      routeCommand(facade, "creative.row.selection.inspector_visible");
   const cr::CreativeObject* room = facade.findObject(roomId);
 
   return expect(room != nullptr, "toggle off room exists") &&
@@ -436,10 +436,10 @@ bool selectedTargetRowTogglesRoomVisibilityOnAgain() {
   selectTarget(facade, roomId);
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt first =
-      routeCommand(facade, "creative.row.selection.selected_target");
+      routeCommand(facade, "creative.row.selection.inspector_visible");
   const std::uint64_t revisionBeforeSecond = facade.document().revision();
   const iggy3d::ProductCreativeUiCommandFrameReceipt second =
-      routeCommand(facade, "creative.row.selection.selected_target");
+      routeCommand(facade, "creative.row.selection.inspector_visible");
   const cr::CreativeObject* room = facade.findObject(roomId);
 
   return expect(first.changed, "toggle on setup changed") &&
@@ -471,7 +471,7 @@ bool selectedTargetRowPreservesActiveTool() {
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.selection.selected_target");
+      routeCommand(facade, "creative.row.selection.inspector_visible");
 
   return expect(receipt.changed, "tool preserve toggle changed") &&
          expect(facade.selectionState().selectedTarget.value == roomId,
@@ -485,7 +485,7 @@ bool selectedTargetRowNoSelectionRejects() {
   facade.reset();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.selection.selected_target");
+      routeCommand(facade, "creative.row.selection.inspector_visible");
 
   return expect(receipt.commandKind ==
                     iggy3d::ProductCreativeUiCommandKind::
@@ -521,7 +521,7 @@ bool selectedTargetRowMissingObjectRejectsAndPreservesSelection() {
   const std::uint64_t revisionBefore = facade.document().revision();
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
-      routeCommand(facade, "creative.row.selection.selected_target");
+      routeCommand(facade, "creative.row.selection.inspector_visible");
 
   return expect(receipt.commandKind ==
                     iggy3d::ProductCreativeUiCommandKind::
@@ -554,6 +554,160 @@ bool selectedTargetRowMissingObjectRejectsAndPreservesSelection() {
                 "missing mutation message") &&
          expect(facade.selectionState().selectedTarget.value == missingTarget,
                 "missing selection preserved");
+}
+
+bool selectedTargetRowIsDisplayOnlyNoop() {
+  // TD-4: the selected_target row lost its command-table entry, so clicking it
+  // is consumed but performs NO mutation (unknown semantic noop).
+  cr::Facade facade;
+  facade.reset();
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  selectTarget(facade, roomId);
+  const cr::CreativeObject* before = facade.findObject(roomId);
+  const bool visibleBefore = before != nullptr && before->visible;
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(facade, "creative.row.selection.selected_target");
+  const cr::CreativeObject* after = facade.findObject(roomId);
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::None,
+                "display-only command none") &&
+         expect(!receipt.accepted, "display-only not accepted") &&
+         expect(!receipt.changed, "display-only unchanged") &&
+         expect(receipt.status ==
+                    "product_creative_ui_command_unknown_semantic",
+                "display-only status") &&
+         expect(after != nullptr && after->visible == visibleBefore,
+                "display-only visibility untouched") &&
+         expect(facade.document().revision() == revisionBefore,
+                "display-only revision untouched") &&
+         expect(facade.selectionState().selectedTarget.value == roomId,
+                "display-only selection preserved");
+}
+
+bool inspectorLockedRowTogglesRoomLockedOn() {
+  cr::Facade facade;
+  facade.reset();
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  selectTarget(facade, roomId);
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(facade, "creative.row.selection.inspector_locked");
+  const cr::CreativeObject* room = facade.findObject(roomId);
+
+  return expect(room != nullptr, "lock on room exists") &&
+         expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        ToggleSelectedObjectLocked,
+                "lock on command kind") &&
+         expect(receipt.accepted, "lock on accepted") &&
+         expect(receipt.changed, "lock on changed") &&
+         expect(receipt.status == "product_creative_ui_command_applied",
+                "lock on status") &&
+         expect(receipt.mutationRequested, "lock on mutation requested") &&
+         expect(receipt.mutationAccepted, "lock on mutation accepted") &&
+         expect(receipt.mutationChanged, "lock on mutation changed") &&
+         expect(receipt.mutationStatus ==
+                    cr::CreativeFacadeMutationStatus::Applied,
+                "lock on mutation status") &&
+         expect(receipt.mutationKind == cr::CreativeMutationKind::SetLocked,
+                "lock on mutation kind") &&
+         expect(!receipt.lockedBefore, "lock on locked before") &&
+         expect(receipt.lockedAfter, "lock on locked after") &&
+         expect(room->locked, "lock on room locked") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "lock on revision before") &&
+         expect(receipt.revisionAfter == revisionBefore + 1U,
+                "lock on revision after") &&
+         expect(facade.selectionState().selectedTarget.value == roomId,
+                "lock on selection preserved");
+}
+
+bool inspectorLockedRowTogglesRoomLockedOffAgain() {
+  cr::Facade facade;
+  facade.reset();
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  selectTarget(facade, roomId);
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt first =
+      routeCommand(facade, "creative.row.selection.inspector_locked");
+  const iggy3d::ProductCreativeUiCommandFrameReceipt second =
+      routeCommand(facade, "creative.row.selection.inspector_locked");
+  const cr::CreativeObject* room = facade.findObject(roomId);
+
+  return expect(first.changed && first.lockedAfter, "lock off setup locked") &&
+         expect(room != nullptr && !room->locked, "lock off room unlocked") &&
+         expect(second.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        ToggleSelectedObjectLocked,
+                "lock off command kind") &&
+         expect(second.accepted && second.changed, "lock off changed") &&
+         expect(second.lockedBefore && !second.lockedAfter,
+                "lock off locked fields");
+}
+
+bool inspectorLockedRowNoSelectionRejects() {
+  cr::Facade facade;
+  facade.reset();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(facade, "creative.row.selection.inspector_locked");
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        ToggleSelectedObjectLocked,
+                "lock no selection command kind") &&
+         expect(!receipt.accepted, "lock no selection not accepted") &&
+         expect(!receipt.changed, "lock no selection unchanged") &&
+         expect(receipt.status == "product_creative_ui_command_rejected",
+                "lock no selection status") &&
+         expect(receipt.mutationRequested,
+                "lock no selection mutation requested") &&
+         expect(receipt.mutationStatus ==
+                    cr::CreativeFacadeMutationStatus::NoSelection,
+                "lock no selection mutation status") &&
+         expect(receipt.mutationMessage == "no_selection",
+                "lock no selection message");
+}
+
+bool lockedObjectRefusesVisibilityMutationWithReceipt() {
+  // TD-3: a locked object rejects all other mutations; toggling visibility on a
+  // locked selection is rejected and the message names the lock (TL-6).
+  cr::Facade facade;
+  facade.reset();
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  selectTarget(facade, roomId);
+  const iggy3d::ProductCreativeUiCommandFrameReceipt lockReceipt =
+      routeCommand(facade, "creative.row.selection.inspector_locked");
+  const std::uint64_t revisionAfterLock = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt visibilityReceipt =
+      routeCommand(facade, "creative.row.selection.inspector_visible");
+  const cr::CreativeObject* room = facade.findObject(roomId);
+
+  return expect(lockReceipt.accepted && lockReceipt.lockedAfter,
+                "refuse setup locked") &&
+         expect(visibilityReceipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        ToggleSelectedObjectVisibility,
+                "refuse command kind") &&
+         expect(!visibilityReceipt.accepted, "refuse not accepted") &&
+         expect(!visibilityReceipt.changed, "refuse unchanged") &&
+         expect(visibilityReceipt.status ==
+                    "product_creative_ui_command_rejected",
+                "refuse status") &&
+         expect(visibilityReceipt.mutationStatus ==
+                    cr::CreativeFacadeMutationStatus::Rejected,
+                "refuse mutation status") &&
+         expect(room != nullptr && room->visible,
+                "refuse visibility untouched") &&
+         expect(facade.document().revision() == revisionAfterLock,
+                "refuse revision untouched") &&
+         expect(!visibilityReceipt.mutationMessage.empty(),
+                "refuse names a reason");
 }
 
 bool nonToolRowsRemainUnknownNoop() {
@@ -601,6 +755,11 @@ int main() {
   ok &= selectedTargetRowPreservesActiveTool();
   ok &= selectedTargetRowNoSelectionRejects();
   ok &= selectedTargetRowMissingObjectRejectsAndPreservesSelection();
+  ok &= selectedTargetRowIsDisplayOnlyNoop();
+  ok &= inspectorLockedRowTogglesRoomLockedOn();
+  ok &= inspectorLockedRowTogglesRoomLockedOffAgain();
+  ok &= inspectorLockedRowNoSelectionRejects();
+  ok &= lockedObjectRefusesVisibilityMutationWithReceipt();
   ok &= nonToolRowsRemainUnknownNoop();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

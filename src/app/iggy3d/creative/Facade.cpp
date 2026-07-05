@@ -362,6 +362,12 @@ CreativeUiBuildReceipt Facade::buildUiModel() const {
     summary.objectKind = object.kind;
     summary.exists = true;
     summary.visible = object.visible;
+    summary.locked = object.locked;
+    summary.name = object.name;
+    summary.objectId = object.id;
+    summary.layerId = object.layerId;
+    summary.bounds = object.bounds;
+    summary.position = object.transform.position;
     request.objectSummaries.push_back(summary);
   }
   return buildCreativeUiModel(request);

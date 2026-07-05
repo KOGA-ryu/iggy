@@ -93,6 +93,8 @@ std::string_view productCreativeUiCommandKindReceiptName(
       return "none";
     case ProductCreativeUiCommandKind::ToggleSelectedObjectVisibility:
       return "toggle_selected_object_visibility";
+    case ProductCreativeUiCommandKind::ToggleSelectedObjectLocked:
+      return "toggle_selected_object_locked";
     case ProductCreativeUiCommandKind::SetActiveTool:
       return "set_active_tool";
     case ProductCreativeUiCommandKind::CreateObject:
@@ -255,6 +257,8 @@ void recordProductCreativeUiCommandFrame(
       std::string(creative::toString(receipt.mutationObjectKind));
   window.creativeUiCommandVisibleBefore = receipt.visibleBefore;
   window.creativeUiCommandVisibleAfter = receipt.visibleAfter;
+  window.creativeUiCommandLockedBefore = receipt.lockedBefore;
+  window.creativeUiCommandLockedAfter = receipt.lockedAfter;
   window.creativeUiCommandRevisionBefore = receipt.revisionBefore;
   window.creativeUiCommandRevisionAfter = receipt.revisionAfter;
   window.creativeUiCommandMutationMessage =
@@ -2108,6 +2112,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiCommandVisibleBefore);
   appendReceiptField(receipt, "creative_ui_command_visible_after",
                      window.creativeUiCommandVisibleAfter);
+  appendReceiptField(receipt, "creative_ui_command_locked_before",
+                     window.creativeUiCommandLockedBefore);
+  appendReceiptField(receipt, "creative_ui_command_locked_after",
+                     window.creativeUiCommandLockedAfter);
   appendReceiptField(receipt, "creative_ui_command_revision_before",
                      window.creativeUiCommandRevisionBefore);
   appendReceiptField(receipt, "creative_ui_command_revision_after",

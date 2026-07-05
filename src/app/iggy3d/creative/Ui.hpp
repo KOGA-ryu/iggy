@@ -30,6 +30,15 @@ enum class CreativeUiRowKind : std::uint8_t {
   CreateObject,
   StatusSummary,
   SelectedTarget,
+  InspectorEmpty,
+  InspectorKind,
+  InspectorId,
+  InspectorName,
+  InspectorVisible,
+  InspectorLocked,
+  InspectorBounds,
+  InspectorPosition,
+  InspectorLayer,
   MeasurementState,
   MeasurementStartPoint,
   MeasurementCurrentPoint,
@@ -59,12 +68,20 @@ inline constexpr CreativeUiRowFlagMask kCreativeUiRowFlagObjectKnown =
     1u << 10;
 inline constexpr CreativeUiRowFlagMask kCreativeUiRowFlagObjectVisible =
     1u << 11;
+inline constexpr CreativeUiRowFlagMask kCreativeUiRowFlagObjectLocked =
+    1u << 12;
 
 struct CreativeUiObjectSummary {
   TargetRef target;
   CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
   bool exists = false;
   bool visible = false;
+  bool locked = false;
+  std::string_view name;
+  CreativeObjectId objectId = kInvalidObjectId;
+  CreativeLayerId layerId = kDefaultLayerId;
+  CreativeBounds bounds{};
+  CreativeVec3 position{};
 };
 
 struct CreativeUiRow {
@@ -72,13 +89,16 @@ struct CreativeUiRow {
   CreativeUiPanelKind panel = CreativeUiPanelKind::Status;
   std::string_view id;
   std::string_view label;
+  std::string_view name;
   Tool tool = Tool::Select;
   TargetRef target;
   CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
   double primaryX = 0.0;
   double primaryY = 0.0;
+  double primaryZ = 0.0;
   double secondaryX = 0.0;
   double secondaryY = 0.0;
+  double secondaryZ = 0.0;
   double value0 = 0.0;
   double value1 = 0.0;
   std::uint64_t data0 = 0;

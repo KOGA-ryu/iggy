@@ -11,6 +11,7 @@ namespace iggy3d {
 enum class ProductCreativeUiCommandKind : std::uint8_t {
   None,
   ToggleSelectedObjectVisibility,
+  ToggleSelectedObjectLocked,
   SetActiveTool,
   CreateObject,
 };
@@ -50,6 +51,8 @@ struct ProductCreativeUiCommandFrameReceipt {
       creative::CreativeObjectKind::Unknown;
   bool visibleBefore = false;
   bool visibleAfter = false;
+  bool lockedBefore = false;
+  bool lockedAfter = false;
   std::uint64_t revisionBefore = 0;
   std::uint64_t revisionAfter = 0;
   std::string mutationMessage;

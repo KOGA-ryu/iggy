@@ -144,6 +144,24 @@ void appendVisibilityText(std::string& text,
                   : "false");
 }
 
+[[nodiscard]] std::string boolFlagText(const creative::CreativeUiRow& row,
+                                       creative::CreativeUiRowFlagMask flag) {
+  if (!hasFlag(row.flags, creative::kCreativeUiRowFlagObjectKnown)) {
+    return "unknown";
+  }
+  return hasFlag(row.flags, flag) ? "true" : "false";
+}
+
+void appendVec3Text(std::string& text, double x, double y, double z) {
+  text.push_back('(');
+  text.append(formatDouble(x));
+  text.push_back(',');
+  text.append(formatDouble(y));
+  text.push_back(',');
+  text.append(formatDouble(z));
+  text.push_back(')');
+}
+
 [[nodiscard]] std::string rowText(const creative::CreativeUiRow& row) {
   std::string text(row.label.empty() ? row.id : row.label);
   switch (row.kind) {
@@ -171,6 +189,46 @@ void appendVisibilityText(std::string& text,
       text = "Selected: target=";
       text.append(std::to_string(row.target.value));
       appendVisibilityText(text, row);
+      break;
+    case creative::CreativeUiRowKind::InspectorEmpty:
+      text = "No selection - click an object";
+      break;
+    case creative::CreativeUiRowKind::InspectorKind:
+      text = "Kind: ";
+      text.append(creative::toString(row.objectKind));
+      break;
+    case creative::CreativeUiRowKind::InspectorId:
+      text = "Id: ";
+      text.append(std::to_string(row.data0));
+      break;
+    case creative::CreativeUiRowKind::InspectorName:
+      text = "Name: ";
+      text.append(row.name);
+      break;
+    case creative::CreativeUiRowKind::InspectorVisible:
+      text = "Visible: ";
+      text.append(
+          boolFlagText(row, creative::kCreativeUiRowFlagObjectVisible));
+      break;
+    case creative::CreativeUiRowKind::InspectorLocked:
+      text = "Locked: ";
+      text.append(boolFlagText(row, creative::kCreativeUiRowFlagObjectLocked));
+      break;
+    case creative::CreativeUiRowKind::InspectorBounds:
+      // min/max are shown; size is carried in the row fields (max-min) for the
+      // v1.5 numeric editor and stays out of the fixed-width line (TD-9).
+      text = "Bounds: min";
+      appendVec3Text(text, row.primaryX, row.primaryY, row.primaryZ);
+      text.append(" max");
+      appendVec3Text(text, row.secondaryX, row.secondaryY, row.secondaryZ);
+      break;
+    case creative::CreativeUiRowKind::InspectorPosition:
+      text = "Position: ";
+      appendVec3Text(text, row.primaryX, row.primaryY, row.primaryZ);
+      break;
+    case creative::CreativeUiRowKind::InspectorLayer:
+      text = "Layer: ";
+      text.append(std::to_string(row.data1));
       break;
     case creative::CreativeUiRowKind::MeasurementState:
       text = "Measure: ";
