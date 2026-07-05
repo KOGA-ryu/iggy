@@ -538,11 +538,85 @@ creative::CreativeDocumentCreateReceipt placeBrushObject(
   return receipt;
 }
 
+// Slice C: app-local, document-level undo. The kernel does not yet expose
+// inverse receipts/history, so the standalone app stores exact document values
+// before a destructive app command and restores them through Facade::installDocument.
+struct StandaloneUndoStack {
+  std::vector<creative::CreativeDocument> documents;
+  std::size_t maxDepth = 32;
+};
+
+void clearUndoStack(StandaloneUndoStack& undoStack, std::string_view source) {
+  const std::size_t depthBefore = undoStack.documents.size();
+  undoStack.documents.clear();
+  if (depthBefore > 0U) {
+    SDL_Log("iggy3d_creative: UNDO cleared source='%s' depthBefore=%zu "
+            "depthAfter=0",
+            std::string(source).c_str(), depthBefore);
+  }
+}
+
+void pushUndoSnapshot(StandaloneUndoStack& undoStack,
+                      const creative::Facade& facade,
+                      std::string_view source) {
+  if (undoStack.documents.size() >= undoStack.maxDepth) {
+    undoStack.documents.erase(undoStack.documents.begin());
+  }
+  const creative::CreativeDocument& document = facade.document();
+  undoStack.documents.push_back(document);
+  SDL_Log("iggy3d_creative: UNDO pushed source='%s' depth=%zu "
+          "objectCount=%llu revision=%llu dirtyFlags=%llu nextObjectId=%llu",
+          std::string(source).c_str(), undoStack.documents.size(),
+          static_cast<unsigned long long>(document.objectCount()),
+          static_cast<unsigned long long>(document.revision()),
+          static_cast<unsigned long long>(document.dirtyFlags()),
+          static_cast<unsigned long long>(document.nextObjectId()));
+}
+
+bool undoLastSnapshot(creative::CreativeAppState& appState,
+                      StandaloneUndoStack& undoStack,
+                      std::string_view source) {
+  const std::size_t depthBefore = undoStack.documents.size();
+  const std::uint64_t objectCountBefore =
+      static_cast<std::uint64_t>(appState.facade.document().objectCount());
+  if (undoStack.documents.empty()) {
+    SDL_Log("iggy3d_creative: UNDO empty source='%s' objectCount=%llu",
+            std::string(source).c_str(),
+            static_cast<unsigned long long>(objectCountBefore));
+    return false;
+  }
+
+  creative::CreativeDocument snapshot = undoStack.documents.back();
+  const creative::CreativeFacadeDocumentInstallReceipt installReceipt =
+      appState.facade.installDocument(std::move(snapshot));
+  if (installReceipt.accepted) {
+    undoStack.documents.pop_back();
+  }
+  const std::uint64_t objectCountAfter =
+      static_cast<std::uint64_t>(appState.facade.document().objectCount());
+  const creative::Id selectionAfter =
+      appState.facade.selectionState().selectedTarget.value;
+  SDL_Log("iggy3d_creative: UNDO applied source='%s' accepted=%d changed=%d "
+          "depthBefore=%zu depthAfter=%zu objectCountBefore=%llu "
+          "objectCountAfter=%llu revisionAfter=%llu dirtyFlagsAfter=%llu "
+          "selectionAfter=%u reasonCode='%s'",
+          std::string(source).c_str(), installReceipt.accepted ? 1 : 0,
+          installReceipt.changed ? 1 : 0, depthBefore,
+          undoStack.documents.size(),
+          static_cast<unsigned long long>(objectCountBefore),
+          static_cast<unsigned long long>(objectCountAfter),
+          static_cast<unsigned long long>(appState.facade.document().revision()),
+          static_cast<unsigned long long>(appState.facade.document().dirtyFlags()),
+          selectionAfter, std::string(installReceipt.reasonCode).c_str());
+  return installReceipt.accepted;
+}
+
 // Delete the currently selected object through the facade's generic document
 // removal seam. The facade owns invalidating selection/tool/ghost/measurement
 // references; this app only asks to remove the selected target id and logs proof.
 creative::CreativeDocumentRemoveReceipt deleteSelectedObject(
-    creative::CreativeAppState& appState, std::string_view source) {
+    creative::CreativeAppState& appState, std::string_view source,
+    StandaloneUndoStack* undoStack = nullptr) {
   const creative::Id selectedId =
       appState.facade.selectionState().selectedTarget.value;
   const std::uint64_t objectCountBefore =
@@ -567,8 +641,21 @@ creative::CreativeDocumentRemoveReceipt deleteSelectedObject(
   }
 
   const creative::CreativeObjectKind kind = object->kind;
+  const std::size_t undoDepthBefore =
+      undoStack != nullptr ? undoStack->documents.size() : 0U;
+  if (undoStack != nullptr) {
+    pushUndoSnapshot(*undoStack, appState.facade, source);
+  }
   creative::CreativeDocumentRemoveReceipt receipt =
       appState.facade.removeDocumentObject(objectId);
+  if ((!receipt.accepted || !receipt.objectRemoved) && undoStack != nullptr &&
+      undoStack->documents.size() > undoDepthBefore) {
+    undoStack->documents.pop_back();
+    SDL_Log("iggy3d_creative: UNDO discarded source='%s' depth=%zu "
+            "reasonCode='%s'",
+            std::string(source).c_str(), undoStack->documents.size(),
+            std::string(receipt.reasonCode).c_str());
+  }
   const std::uint64_t objectCountAfter =
       static_cast<std::uint64_t>(appState.facade.document().objectCount());
   const creative::Id selectionAfter =
@@ -1153,10 +1240,12 @@ int main(int argc, char** argv) {
   bool prevKeyF9 = false;
   bool prevKeyDelete = false;
   bool prevKeyBackspace = false;
+  bool prevKeyZ = false;
+  StandaloneUndoStack undoStack;
   // --capture round-trip proof: first prove no-selection delete is a no-op,
-  // then delete one placed Crate before SAVE (7), CLEAR (9), LOAD (11), snapshot
-  // AFTER + emit the ROUNDTRIP line. The BEFORE snapshot (taken pre-clear,
-  // post-delete) holds the corrected proof scene to compare against AFTER.
+  // then delete one placed Crate, undo it, SAVE (8), CLEAR (10), LOAD (12),
+  // snapshot AFTER + emit the ROUNDTRIP line. The BEFORE snapshot (taken
+  // pre-clear, post-undo) holds the restored proof scene to compare against AFTER.
   std::vector<ObjectSnapshotEntry> roundtripBefore;
   std::size_t roundtripCountAfterClear = 0;
   bool roundtripSaved = false;
@@ -1164,11 +1253,13 @@ int main(int argc, char** argv) {
   bool roundtripLoaded = false;
   bool captureDeleteNoSelectionAttempted = false;
   bool captureDeleteAttempted = false;
+  bool captureUndoAttempted = false;
   constexpr std::uint64_t kCaptureDeleteNoSelectionFrame = 2U;
   constexpr std::uint64_t kCaptureDeleteFrame = 6U;
-  constexpr std::uint64_t kCaptureSaveFrame = 7U;
-  constexpr std::uint64_t kCaptureClearFrame = 9U;
-  constexpr std::uint64_t kCaptureLoadFrame = 11U;
+  constexpr std::uint64_t kCaptureUndoFrame = 7U;
+  constexpr std::uint64_t kCaptureSaveFrame = 8U;
+  constexpr std::uint64_t kCaptureClearFrame = 10U;
+  constexpr std::uint64_t kCaptureLoadFrame = 12U;
   creative::CreativeObjectId captureDeleteTargetId = creative::kInvalidObjectId;
 
   std::uint64_t frameIndex = 0;
@@ -1249,6 +1340,10 @@ int main(int argc, char** argv) {
       const bool keyB = keys[SDL_SCANCODE_B] != 0;
       const bool keyDelete = keys[SDL_SCANCODE_DELETE] != 0;
       const bool keyBackspace = keys[SDL_SCANCODE_BACKSPACE] != 0;
+      const bool keyZ = keys[SDL_SCANCODE_Z] != 0;
+      const SDL_Keymod modState = SDL_GetModState();
+      const bool undoModifier =
+          (modState & (SDL_KMOD_GUI | SDL_KMOD_CTRL)) != 0U;
       if (key1 && !prevKey1) {
         placeMode = false;  // '1' Select leaves Place mode.
         const bool ok = appState.facade.setActiveTool(creative::Tool::Select);
@@ -1274,22 +1369,32 @@ int main(int argc, char** argv) {
       if ((keyDelete && !prevKeyDelete) ||
           (keyBackspace && !prevKeyBackspace)) {
         (void)deleteSelectedObject(
-            appState, keyDelete ? "delete_key" : "backspace_key");
+            appState, keyDelete ? "delete_key" : "backspace_key", &undoStack);
+      }
+      if (keyZ && !prevKeyZ && undoModifier) {
+        (void)undoLastSnapshot(appState, undoStack, "keyboard_undo");
       }
       // ---- SAVE / LOAD keys (SLICE 7): F5 save, F6 new/clear, F9 load -------
       const bool keyF5 = keys[SDL_SCANCODE_F5] != 0;
       const bool keyF6 = keys[SDL_SCANCODE_F6] != 0;
       const bool keyF9 = keys[SDL_SCANCODE_F9] != 0;
       if (keyF5 && !prevKeyF5) {
-        (void)saveStandaloneScene(appState.facade, saveRoot, saveId);
+        const CreativeWorldSaveResult saveResult =
+            saveStandaloneScene(appState.facade, saveRoot, saveId);
+        if (saveResult.accepted && saveResult.saved) {
+          clearUndoStack(undoStack, "save_success");
+        }
       }
       if (keyF6 && !prevKeyF6) {
         clearToBlankScene(appState);  // Fresh blank document; facade resets
                                       // selection so no stale seed id dangles.
+        clearUndoStack(undoStack, "new_clear");
       }
       if (keyF9 && !prevKeyF9) {
-        (void)loadStandaloneScene(appState, saveRoot, saveId);  // Facade reset
-                                                                // clears sel.
+        const bool loaded = loadStandaloneScene(appState, saveRoot, saveId);
+        if (loaded) {
+          clearUndoStack(undoStack, "load_success");
+        }
       }
       prevKey1 = key1;
       prevKey2 = key2;
@@ -1297,6 +1402,7 @@ int main(int argc, char** argv) {
       prevKeyB = keyB;
       prevKeyDelete = keyDelete;
       prevKeyBackspace = keyBackspace;
+      prevKeyZ = keyZ;
       prevKeyF5 = keyF5;
       prevKeyF6 = keyF6;
       prevKeyF9 = keyF9;
@@ -1543,42 +1649,54 @@ int main(int argc, char** argv) {
     // ---- DELETE PROOF (SLICE B, --capture) --------------------------------
     // Capture proves both paths: no-selection delete is a clean no-op, then a
     // placed Crate is selected through the generic tool input packet and removed
-    // through Facade::removeDocumentObject before the save/open round-trip.
+    // through Facade::removeDocumentObject. Slice C then restores that exact
+    // pre-delete document through the app-local snapshot undo before save/open.
     if (!capturePath.empty()) {
       if (frameIndex == kCaptureDeleteNoSelectionFrame &&
           !captureDeleteNoSelectionAttempted) {
-        (void)deleteSelectedObject(appState, "capture_no_selection");
+        (void)deleteSelectedObject(appState, "capture_no_selection", &undoStack);
         captureDeleteNoSelectionAttempted = true;
       } else if (frameIndex == kCaptureDeleteFrame && !captureDeleteAttempted) {
         (void)selectObjectForCapture(appState.facade, captureDeleteTargetId,
                                      "capture_delete");
-        (void)deleteSelectedObject(appState, "capture_delete");
+        (void)deleteSelectedObject(appState, "capture_delete", &undoStack);
         captureDeleteAttempted = true;
+      } else if (frameIndex == kCaptureUndoFrame && !captureUndoAttempted) {
+        (void)undoLastSnapshot(appState, undoStack, "capture_undo");
+        captureUndoAttempted = true;
       }
     }
 
     // ---- SAVE / LOAD ROUND-TRIP (SLICE 7, --capture) -----------------------
     // On fixed frames, drive the lossless round-trip and log the proof. The
-    // placements above (frames 3..5) grow the scene to 5 objects, then DELETE
-    // removes one selected Crate before SAVE on frame 7. The whole sequence
-    // reuses the kernel's creative-save/open — no new serialization here. All
-    // reads go through document().objects(), so no hardcoded id can dangle after
-    // the clear or the load.
+    // placements above (frames 3..5) grow the scene to 5 objects, DELETE removes
+    // one selected Crate, then UNDO restores it before SAVE on frame 8. The whole
+    // sequence reuses the kernel's creative-save/open — no new serialization
+    // here. All reads go through document().objects(), so no hardcoded id can
+    // dangle after the clear or the load.
     if (!capturePath.empty()) {
       if (frameIndex == kCaptureSaveFrame && !roundtripSaved) {
         // Snapshot BEFORE (post-place, pre-clear) then SAVE the live document.
         roundtripBefore = snapshotDocument(appState.facade.document());
         logDocumentSnapshot("BEFORE", roundtripBefore);
-        (void)saveStandaloneScene(appState.facade, saveRoot, saveId);
+        const CreativeWorldSaveResult saveResult =
+            saveStandaloneScene(appState.facade, saveRoot, saveId);
+        if (saveResult.accepted && saveResult.saved) {
+          clearUndoStack(undoStack, "capture_save_success");
+        }
         roundtripSaved = true;
       } else if (frameIndex == kCaptureClearFrame && !roundtripCleared) {
         // CLEAR: install a blank document (facade resets selection); expect 0.
         clearToBlankScene(appState);
+        clearUndoStack(undoStack, "capture_clear");
         roundtripCountAfterClear = appState.facade.document().objectCount();
         roundtripCleared = true;
       } else if (frameIndex == kCaptureLoadFrame && !roundtripLoaded) {
         // LOAD: restore from disk and install; snapshot AFTER + ROUNDTRIP line.
-        (void)loadStandaloneScene(appState, saveRoot, saveId);
+        const bool loaded = loadStandaloneScene(appState, saveRoot, saveId);
+        if (loaded) {
+          clearUndoStack(undoStack, "capture_load_success");
+        }
         const std::vector<ObjectSnapshotEntry> roundtripAfter =
             snapshotDocument(appState.facade.document());
         logDocumentSnapshot("AFTER", roundtripAfter);
