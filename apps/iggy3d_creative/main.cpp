@@ -1,11 +1,43 @@
-// iggy3d_creative — SLICE 4 ("3-Axis Transform Gizmo")
+// iggy3d_creative — SLICE 5 ("Any Object Inherits the Tooling")
 //
 // A standalone executable that boots straight into a creative stage: a Vulkan
-// window showing a ground grid at Y=0 with a fly camera, PLUS one authored crate
-// object seeded into a CreativeDocument. The crate renders as a shaded prop cube;
-// clicking it (or, in --capture mode, a synthesized click at its projected screen
-// center) selects it, which draws a bright-yellow wireframe bounding box, a
-// "W x H x D m" dimension label, and an inspector panel of the crate's metadata.
+// window showing a ground grid at Y=0 with a fly camera, PLUS authored objects
+// seeded into a CreativeDocument. SLICE 5 seeds TWO objects of DIFFERENT kinds —
+// a Floor tile and a Crate resting on it — and GENERALIZES every tool from the
+// old hardcoded crate to "the currently selected object". The whole point: a new
+// object kind (Floor) inherits Select / Inspect / Move / Gizmo with ZERO new
+// tooling code — Floor was already a kernel-ready CreativeObjectKind with a full
+// descriptor, so it just needs createDocumentObject(kind=Floor) and then rides
+// the identical generic code paths as the Crate.
+//
+// SLICE 5 changes vs slice 4, all generic (no per-kind branches in the tooling):
+//   - SEED: Floor 1 (4x0.25x4 tile on Y=0) + Crate 1 (1m cube resting on it).
+//   - RENDER: iterate facade.document().objects() and emit one SceneRoomMeshItem
+//     per visible object, mapping kind -> render role (Floor->"floor" gray,
+//     Crate/default->"prop" brown) so distinct kinds read as distinct colors.
+//   - HIT-TEST: project EVERY object's bounds to a screen AABB, and a click picks
+//     the hit object NEAREST the camera (smallest depth), selecting it via the
+//     generic dispatchToolInput PointerPress + that object's TargetRef; a miss
+//     clears selection.
+//   - TOOLING: the yellow wireframe recolor, the 3-axis gizmo, and the Move (both
+//     interactive and --capture) all key off the CURRENTLY SELECTED object id
+//     (facade.selectionState().selectedTarget.value, looked up via findObject) —
+//     NOT any hardcoded crate id and NOT any kind check. If nothing is selected we
+//     draw no gizmo/box and skip Move.
+//   - --capture PROOF: synthesize a click at the FLOOR's projected screen center
+//     (so the FLOOR, not the crate, becomes selected), render its gizmo + yellow
+//     box, then grab the X handle and slide the FLOOR +2 m along X via the SAME
+//     generic constrained Move. The captured frame shows both objects (distinct
+//     colors), the Floor selected (inspector KIND: FLOOR, gizmo on the floor),
+//     moved on X only.
+//
+// Prior slices (unchanged mechanics, now generalized):
+// SLICE 2 selection via CPU AABB raycast vs clipFromWorld; SLICE 3 Move via
+// dispatchToolInput PRESS/MOVE/RELEASE + grid snap; SLICE 4 3-axis gizmo where a
+// grabbed axis drives an axis-constrained Move (worldDestination pins the other
+// two axes, moveHeldAxis holds one exact). All of that math is object-agnostic —
+// it only ever needs a selected id, a center, and an anchor, which we now read
+// from whichever object the selection points at.
 //
 // SLICE 3 added MOVE, driven ENTIRELY through the kernel's generic Move system:
 // switching to Tool::Move and feeding the pointer PRESS/MOVE/RELEASE lifecycle to
@@ -276,6 +308,21 @@ Vec3 toVec3(const creative::CreativeVec3& v) {
           static_cast<float>(v.z)};
 }
 
+// Map an object KIND to a renderer room role. The renderer's colorForRoomRole
+// gives each role a distinct color: "floor" -> dark gray-blue, "prop" -> brown.
+// This is the ONLY place the code inspects a kind, and it drives colour ONLY —
+// none of the Select/Inspect/Move/Gizmo tooling ever branches on kind. A Floor
+// therefore looks different from a Crate but behaves identically under the tools.
+const char* renderRoleForKind(creative::CreativeObjectKind kind) {
+  switch (kind) {
+    case creative::CreativeObjectKind::Floor:
+      return "floor";
+    case creative::CreativeObjectKind::Crate:
+    default:
+      return "prop";
+  }
+}
+
 // ---- SLICE 4: gizmo helpers -------------------------------------------------
 
 // A single world point projected to pixel space (same NDC->pixel maths as
@@ -487,11 +534,14 @@ int main(int argc, char** argv) {
           static_cast<unsigned long long>(gridSnapshot.layerCount),
           static_cast<unsigned long long>(gridSnapshot.dotCount));
 
-  // ---- Seed ONE crate object into a CreativeDocument (once) --------------
+  // ---- Seed TWO objects of DIFFERENT kinds into a CreativeDocument -------
+  // A Floor tile sitting on Y=0 and a Crate resting on top of it. Both are
+  // authored through the SAME generic createDocumentObject path; Floor needs no
+  // new kernel work because CreativeObjectKind::Floor already ships a descriptor.
   creative::CreativeAppState appState;
   {
     creative::CreativeDocument doc =
-        creative::CreativeDocument::create("CrateWorld");
+        creative::CreativeDocument::create("FloorAndCrateWorld");
     (void)doc.assignId(1);
     const creative::CreativeFacadeDocumentInstallReceipt installReceipt =
         appState.facade.installDocument(std::move(doc));
@@ -499,24 +549,49 @@ int main(int argc, char** argv) {
             installReceipt.accepted ? 1 : 0);
   }
 
-  creative::CreativeDocumentCreateRequest request;
-  request.kind = creative::CreativeObjectKind::Crate;
-  request.name = "Crate 1";
-  request.transform.position = {0.0, 0.5, 0.0};
-  request.hasTransformOverride = true;
-  request.bounds = {{-0.5, 0.0, -0.5}, {0.5, 1.0, 0.5}};
-  request.hasBoundsOverride = true;
-  request.visible = true;
-  request.hasVisibleOverride = true;
-  request.locked = false;
-  request.hasLockedOverride = true;
-  const creative::CreativeDocumentCreateReceipt createReceipt =
-      appState.facade.createDocumentObject(request);
-  const creative::CreativeObjectId crateObjectId = createReceipt.objectId;
+  // FLOOR 1: a 4 x 0.25 x 4 walkable tile whose top sits at Y=0.25 with its slab
+  // straddling Y=0. Same authoring request struct as the crate — only kind and
+  // extents differ; no per-kind create path.
+  creative::CreativeDocumentCreateRequest floorRequest;
+  floorRequest.kind = creative::CreativeObjectKind::Floor;
+  floorRequest.name = "Floor 1";
+  floorRequest.transform.position = {0.0, 0.125, 0.0};
+  floorRequest.hasTransformOverride = true;
+  floorRequest.bounds = {{-2.0, 0.0, -2.0}, {2.0, 0.25, 2.0}};
+  floorRequest.hasBoundsOverride = true;
+  floorRequest.visible = true;
+  floorRequest.hasVisibleOverride = true;
+  floorRequest.locked = false;
+  floorRequest.hasLockedOverride = true;
+  const creative::CreativeDocumentCreateReceipt floorReceipt =
+      appState.facade.createDocumentObject(floorRequest);
+  const creative::CreativeObjectId floorObjectId = floorReceipt.objectId;
+  SDL_Log("iggy3d_creative: floor create accepted=%d objectId=%llu kind='%s'",
+          floorReceipt.accepted ? 1 : 0,
+          static_cast<unsigned long long>(floorObjectId),
+          std::string(creative::toString(floorReceipt.objectKind)).c_str());
+
+  // CRATE 1: a 1 m cube resting ON the floor (bottom at Y=0.25, top at Y=1.25),
+  // offset in Z so it does not eclipse the floor tile's center from the camera.
+  creative::CreativeDocumentCreateRequest crateRequest;
+  crateRequest.kind = creative::CreativeObjectKind::Crate;
+  crateRequest.name = "Crate 1";
+  crateRequest.transform.position = {0.0, 0.375, 0.0};
+  crateRequest.hasTransformOverride = true;
+  crateRequest.bounds = {{-0.5, 0.25, -0.5}, {0.5, 1.25, 0.5}};
+  crateRequest.hasBoundsOverride = true;
+  crateRequest.visible = true;
+  crateRequest.hasVisibleOverride = true;
+  crateRequest.locked = false;
+  crateRequest.hasLockedOverride = true;
+  const creative::CreativeDocumentCreateReceipt crateReceipt =
+      appState.facade.createDocumentObject(crateRequest);
+  const creative::CreativeObjectId crateObjectId = crateReceipt.objectId;
   SDL_Log("iggy3d_creative: crate create accepted=%d objectId=%llu kind='%s'",
-          createReceipt.accepted ? 1 : 0,
+          crateReceipt.accepted ? 1 : 0,
           static_cast<unsigned long long>(crateObjectId),
-          std::string(creative::toString(createReceipt.objectKind)).c_str());
+          std::string(creative::toString(crateReceipt.objectKind)).c_str());
+  (void)crateObjectId;  // Retained for the log; tooling keys off the SELECTION.
 
   // The wireframe projection request: a grid big enough to hold the origin
   // crate (world Y 0..1 fits in height=8; XZ clamp handles the negative corner).
@@ -647,31 +722,36 @@ int main(int argc, char** argv) {
     }
 
     // SCENE (local, must outlive submitFrame): rebuild the grid meshes each
-    // frame from the cached snapshot, then append the crate as a prop cube.
+    // frame from the cached snapshot, then append EVERY visible document object
+    // as a shaded box — generically, one SceneRoomMeshItem per object. There is
+    // NO per-kind mesh code: the object's kind only picks a render role (color)
+    // via renderRoleForKind; geometry comes straight from its bounds. A new kind
+    // renders for free the moment it lands in the document.
     SceneProjectionResult scene{};
     appendGridDotsToScene(gridSnapshot, scene);
 
-    const creative::CreativeObject* crate =
-        appState.facade.findObject(crateObjectId);
-    Vec3 crateBoxMin{-0.5F, 0.0F, -0.5F};
-    Vec3 crateBoxMax{0.5F, 1.0F, 0.5F};
-    if (crate != nullptr && crate->visible) {
-      crateBoxMin = toVec3(crate->bounds.min);
-      crateBoxMax = toVec3(crate->bounds.max);
-      SceneRoomMeshItem crateMesh;
-      crateMesh.id = "creative.crate_" + std::to_string(crateObjectId);
-      crateMesh.role = "prop";  // Distinct color from role="grid".
-      crateMesh.materialId = "creative_crate";
-      crateMesh.position = {(crateBoxMin.x + crateBoxMax.x) * 0.5F,
-                            (crateBoxMin.y + crateBoxMax.y) * 0.5F,
-                            (crateBoxMin.z + crateBoxMax.z) * 0.5F};
-      crateMesh.size = {crateBoxMax.x - crateBoxMin.x,
-                        crateBoxMax.y - crateBoxMin.y,
-                        crateBoxMax.z - crateBoxMin.z};
-      scene.room.meshes.push_back(std::move(crateMesh));
-      scene.room.staticMeshCount = scene.room.meshes.size();
-      scene.room.propVisible = true;
+    bool anyPropVisible = false;
+    for (const creative::CreativeObject& obj : appState.facade.document().objects()) {
+      if (!obj.visible) {
+        continue;  // Skip hidden objects (still authored, just not drawn).
+      }
+      const Vec3 boxMin = toVec3(obj.bounds.min);
+      const Vec3 boxMax = toVec3(obj.bounds.max);
+      SceneRoomMeshItem mesh;
+      mesh.id = "creative.object_" + std::to_string(obj.id);
+      mesh.role = renderRoleForKind(obj.kind);  // Color by kind — the only
+                                                // place kind is inspected.
+      mesh.materialId = "creative_object";
+      mesh.position = {(boxMin.x + boxMax.x) * 0.5F,
+                       (boxMin.y + boxMax.y) * 0.5F,
+                       (boxMin.z + boxMax.z) * 0.5F};
+      mesh.size = {boxMax.x - boxMin.x, boxMax.y - boxMin.y,
+                   boxMax.z - boxMin.z};
+      scene.room.meshes.push_back(std::move(mesh));
+      anyPropVisible = true;
     }
+    scene.room.staticMeshCount = scene.room.meshes.size();
+    scene.room.propVisible = anyPropVisible;
     DebugProjectionResult debug{};
 
     // FRAME (non-const so we can attach UI + wireframe + label below). This
@@ -680,25 +760,70 @@ int main(int argc, char** argv) {
         scene, debug, frameIndex++, extent.width, extent.height, yawDegrees,
         pitchDegrees, /*cameraAnchorOverrideAvailable=*/true, flyPos);
 
-    // ---- CLICK-TO-SELECT ---------------------------------------------------
-    // Project the crate box to a screen-space pixel AABB; a click inside selects
-    // it, a miss clears selection. In --capture mode, synthesize a click at the
-    // crate's projected screen center on an early frame so the captured frame is
-    // the SELECTED state.
-    const ScreenAabb crateScreen = projectBoxToScreen(
-        frame.camera.clipFromWorld, crateBoxMin, crateBoxMax, extent.width,
-        extent.height);
+    // ---- CLICK-TO-SELECT (generic over ALL objects) ------------------------
+    // Project EVERY visible object's world bounds to a screen-space pixel AABB,
+    // recording its center clip-w as a camera-depth key. A click picks the hit
+    // object NEAREST the camera (smallest depth); a miss clears selection. This
+    // is fully generic: it never mentions crate vs floor, only object ids.
+    struct ObjectScreenHit {
+      creative::CreativeObjectId id = creative::kInvalidObjectId;
+      ScreenAabb aabb;      // Projected pixel AABB for the pointer-in-box test.
+      float centerDepth = std::numeric_limits<float>::max();  // clip-w at center.
+    };
+    std::vector<ObjectScreenHit> objectHits;
+    // Remember the FLOOR's world bounds so --capture can aim its click at a point
+    // on the floor OUTSIDE the crate's footprint (the crate sits over the floor's
+    // center, so a center-click would land on the nearer crate — nearest wins).
+    bool haveFloorBounds = false;
+    Vec3 floorBoxMin{};
+    Vec3 floorBoxMax{};
+    for (const creative::CreativeObject& obj : appState.facade.document().objects()) {
+      if (!obj.visible) {
+        continue;
+      }
+      const Vec3 boxMin = toVec3(obj.bounds.min);
+      const Vec3 boxMax = toVec3(obj.bounds.max);
+      ObjectScreenHit hit;
+      hit.id = obj.id;
+      hit.aabb = projectBoxToScreen(frame.camera.clipFromWorld, boxMin, boxMax,
+                                    extent.width, extent.height);
+      const Vec3 center{(boxMin.x + boxMax.x) * 0.5F,
+                        (boxMin.y + boxMax.y) * 0.5F,
+                        (boxMin.z + boxMax.z) * 0.5F};
+      hit.centerDepth = clipW(frame.camera.clipFromWorld, center);
+      objectHits.push_back(hit);
+      if (obj.id == floorObjectId) {
+        haveFloorBounds = true;
+        floorBoxMin = boxMin;
+        floorBoxMax = boxMax;
+      }
+    }
 
     bool clickRequested = false;
     float clickX = 0.0F;
     float clickY = 0.0F;
     if (!capturePath.empty()) {
-      // Synthesize the click at the crate's projected center once the swapchain
-      // has settled (frame index ~2).
-      if (frameIndex == 3U && crateScreen.valid) {
-        clickRequested = true;
-        clickX = (crateScreen.minX + crateScreen.maxX) * 0.5F;
-        clickY = (crateScreen.minY + crateScreen.maxY) * 0.5F;
+      // Synthesize a click on the FLOOR once the swapchain has settled (frame ~2),
+      // aimed at a point on the floor's TOP surface near a corner — a point the
+      // crate does NOT cover — so the generic nearest-hit picker selects the FLOOR
+      // and not the crate. We project that single world point through the SAME
+      // clipFromWorld the hit-test uses.
+      if (frameIndex == 3U && haveFloorBounds) {
+        // 80% out toward the +X/+Z corner of the floor top, well past the crate's
+        // XZ footprint. This is only which pixel we click; the pick logic itself
+        // is unchanged and object-agnostic.
+        const Vec3 floorTopCorner{
+            floorBoxMin.x + (floorBoxMax.x - floorBoxMin.x) * 0.85F,
+            floorBoxMax.y,
+            floorBoxMin.z + (floorBoxMax.z - floorBoxMin.z) * 0.85F};
+        const ScreenPoint p = projectPointToScreen(
+            frame.camera.clipFromWorld, floorTopCorner, extent.width,
+            extent.height);
+        if (p.valid) {
+          clickRequested = true;
+          clickX = p.x;
+          clickY = p.y;
+        }
       }
     } else {
       // Interactive: hold Left-Alt to release fly-look and click to select.
@@ -732,23 +857,50 @@ int main(int argc, char** argv) {
     }
 
     if (clickRequested) {
-      const bool hit = crateScreen.valid && clickX >= crateScreen.minX &&
-                       clickX <= crateScreen.maxX && clickY >= crateScreen.minY &&
-                       clickY <= crateScreen.maxY;
+      // Nearest hit wins: scan every object's projected AABB for a pointer-in-box
+      // hit and keep the one with the smallest center depth (closest to camera).
+      creative::CreativeObjectId pickedId = creative::kInvalidObjectId;
+      float pickedDepth = std::numeric_limits<float>::max();
+      for (const ObjectScreenHit& h : objectHits) {
+        if (!h.aabb.valid || clickX < h.aabb.minX || clickX > h.aabb.maxX ||
+            clickY < h.aabb.minY || clickY > h.aabb.maxY) {
+          continue;
+        }
+        if (h.centerDepth < pickedDepth) {
+          pickedDepth = h.centerDepth;
+          pickedId = h.id;
+        }
+      }
       creative::CreativeToolInputPacket packet;
       packet.kind = creative::CreativeToolInputKind::PointerPress;
       packet.pointer.button = creative::CreativeToolPointerButton::Primary;
-      if (hit) {
+      if (pickedId != creative::kInvalidObjectId) {
         packet.pointer.target =
-            creative::TargetRef{static_cast<creative::Id>(crateObjectId)};
+            creative::TargetRef{static_cast<creative::Id>(pickedId)};
       }  // A miss leaves target invalid -> Select clears selection.
       (void)appState.facade.dispatchToolInput(packet);
     }
 
+    // ---- RESOLVE THE SELECTION (generic) -----------------------------------
+    // Everything downstream — the yellow box, the gizmo, the dimension label, and
+    // the Move — keys off the CURRENTLY SELECTED object id, looked up via the same
+    // findObject the inspector uses. No hardcoded crate id, no kind check. When
+    // nothing is selected we draw no gizmo/box and skip Move.
     const creative::Id selectedId =
         appState.facade.selectionState().selectedTarget.value;
-    const bool crateSelected =
-        selectedId == static_cast<creative::Id>(crateObjectId);
+    const creative::CreativeObject* selected =
+        selectedId != 0
+            ? appState.facade.findObject(
+                  static_cast<creative::CreativeObjectId>(selectedId))
+            : nullptr;
+    const bool hasSelection = selected != nullptr && selected->visible;
+    // Selected object's world bounds (defaults are unused when !hasSelection).
+    Vec3 selBoxMin{-0.5F, 0.0F, -0.5F};
+    Vec3 selBoxMax{0.5F, 1.0F, 0.5F};
+    if (hasSelection) {
+      selBoxMin = toVec3(selected->bounds.min);
+      selBoxMax = toVec3(selected->bounds.max);
+    }
 
     // ---- GIZMO GEOMETRY (SLICE 4) ------------------------------------------
     // Build the 3 axis shafts at the selected object's center C = (min+max)/2.
@@ -756,9 +908,9 @@ int main(int argc, char** argv) {
     // which is the ONLY geometry the renderer's creativeDebugLineBox will draw
     // (it silently skips any segment moving along more than one world axis). The
     // gizmo wireframe lines are appended to the yellow selection-box lines below.
-    const Vec3 gizmoCenter{(crateBoxMin.x + crateBoxMax.x) * 0.5F,
-                           (crateBoxMin.y + crateBoxMax.y) * 0.5F,
-                           (crateBoxMin.z + crateBoxMax.z) * 0.5F};
+    const Vec3 gizmoCenter{(selBoxMin.x + selBoxMax.x) * 0.5F,
+                           (selBoxMin.y + selBoxMax.y) * 0.5F,
+                           (selBoxMin.z + selBoxMax.z) * 0.5F};
     std::array<GizmoAxisShaft, 3> gizmoShafts{};
     gizmoShafts[0] = {GizmoAxis::X,
                       {gizmoCenter.x + kGizmoAxisLength, gizmoCenter.y,
@@ -815,30 +967,34 @@ int main(int argc, char** argv) {
     // and let the snap drag a "held" axis off S. Constrained-move worldDestination
     // is built FROM S: grabbed axis carries the dragged value, other two pinned.
     Vec3 gizmoAnchorS{gizmoCenter.x, gizmoCenter.y, gizmoCenter.z};
-    if (crate != nullptr) {
-      gizmoAnchorS = toVec3(crate->transform.position);
+    if (hasSelection) {
+      gizmoAnchorS = toVec3(selected->transform.position);
     }
 
     // ---- MOVE (SLICE 3) ----------------------------------------------------
     // Everything below drives the kernel's GENERIC Move: setActiveTool(Move) +
     // the PRESS/MOVE/RELEASE pointer lifecycle through dispatchToolInput. The
     // facade picks the object, snaps the world destination to the grid, and
-    // commits ONE Move mutation. NO crate-specific position math lives here.
+    // commits ONE Move mutation. NO per-object position math lives here, and the
+    // target is ALWAYS the currently selected id — for slice 5's capture that is
+    // the FLOOR, which rides the identical path the crate did in slice 4.
+    const creative::CreativeObjectId selectedObjectId =
+        static_cast<creative::CreativeObjectId>(selectedId);
     if (!capturePath.empty()) {
-      // --capture (SLICE 4): after the crate is selected (frame 3), grab the X
-      // gizmo handle and run an AXIS-CONSTRAINED Move along +X.
+      // --capture (SLICE 5): after the FLOOR is selected (frame 3), grab the X
+      // gizmo handle and run an AXIS-CONSTRAINED Move along +X by 2 m.
       //   frame 5: hit-test the X shaft (grab X) + switch to Move + PRESS
-      //   frame 6: PointerMove carrying worldDestination = {S.x+3, S.y, S.z},
+      //   frame 6: PointerMove carrying worldDestination = {S.x+2, S.y, S.z},
       //            moveHeldAxis=Y (PreviewMove) — X follows, Y held, Z pinned
       //   frame 7: RELEASE with the same worldDestination (CommitMove) -> snap
       // The single-axis motion is entirely a product of the destination + held
       // axis; there is NO per-object move math. worldDestination pins Y,Z to the
-      // start anchor S so only X (= S.x + 3) can change after the facade snaps.
+      // start anchor S so only X (= S.x + 2) can change after the facade snaps.
       const creative::CreativeToolWorldPoint xAxisDestination{
-          static_cast<double>(gizmoAnchorS.x) + 3.0,
+          static_cast<double>(gizmoAnchorS.x) + 2.0,
           static_cast<double>(gizmoAnchorS.y),
           static_cast<double>(gizmoAnchorS.z)};
-      if (frameIndex == 5U && crateSelected) {
+      if (frameIndex == 5U && hasSelection) {
         // Synthesize a grab of the X handle: click the projected midpoint of the
         // X shaft [screen(C), screen(Xtip)] and confirm the hit-test picks X.
         GizmoAxis grabbed = GizmoAxis::None;
@@ -848,21 +1004,24 @@ int main(int argc, char** argv) {
           grabbed = pickGizmoAxis(hx, hy);
         }
         if (!loggedGizmoGrab) {
-          SDL_Log("iggy3d_creative: GIZMO grabbed axis=%s (expected X)",
-                  gizmoAxisName(grabbed));
+          SDL_Log("iggy3d_creative: GIZMO grabbed axis=%s (expected X) on "
+                  "selected id=%u kind='%s'",
+                  gizmoAxisName(grabbed), selectedId,
+                  std::string(creative::toString(selected->kind)).c_str());
           loggedGizmoGrab = true;
         }
         const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
         SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d", ok ? 1 : 0);
         if (!loggedMoveBefore) {
-          logObjectPlacement("BEFORE", appState.facade.findObject(crateObjectId));
+          logObjectPlacement("BEFORE",
+                             appState.facade.findObject(selectedObjectId));
           loggedMoveBefore = true;
         }
         creative::CreativeToolInputPacket press;
         press.kind = creative::CreativeToolInputKind::PointerPress;
         press.pointer.button = creative::CreativeToolPointerButton::Primary;
         press.pointer.target =
-            creative::TargetRef{static_cast<creative::Id>(crateObjectId)};
+            creative::TargetRef{static_cast<creative::Id>(selectedObjectId)};
         const creative::CreativeFacadeToolDispatchReceipt r =
             appState.facade.dispatchToolInput(press);
         logMoveDispatch("PRESS", r);
@@ -887,13 +1046,14 @@ int main(int argc, char** argv) {
             appState.facade.dispatchToolInput(release);
         logMoveDispatch("RELEASE", r);
         if (!loggedMoveAfter) {
-          logObjectPlacement("AFTER", appState.facade.findObject(crateObjectId));
+          logObjectPlacement("AFTER",
+                             appState.facade.findObject(selectedObjectId));
           loggedMoveAfter = true;
         }
       }
     } else if (appState.facade.toolState().activeTool == creative::Tool::Move &&
-               crateSelected) {
-      // Interactive Move (SLICE 4): while the Move tool is active and the crate
+               hasSelection) {
+      // Interactive Move (SLICE 5): while the Move tool is active and ANY object
       // is selected, hold Left-Alt (releases fly-look) and left-press. A press
       // NEAR a gizmo handle grabs that axis and maps cursor motion ALONG THAT
       // AXIS ONLY; a press away from every handle falls back to the ground-plane
@@ -1000,7 +1160,7 @@ int main(int argc, char** argv) {
           press.kind = creative::CreativeToolInputKind::PointerPress;
           press.pointer.button = creative::CreativeToolPointerButton::Primary;
           press.pointer.target =
-              creative::TargetRef{static_cast<creative::Id>(crateObjectId)};
+              creative::TargetRef{static_cast<creative::Id>(selectedObjectId)};
           (void)appState.facade.dispatchToolInput(press);
         } else if (lDown && moveDragButtonDown) {
           creative::CreativeToolInputPacket move;
@@ -1057,7 +1217,10 @@ int main(int argc, char** argv) {
     // bright yellow + a touch fatter for emphasis (the kernel colors by style,
     // not by selection).
     for (ProductCreativeWireframeDebugLine& line : lines.lineList.lines) {
-      const bool sel = crateSelected && line.objectId == crateObjectId;
+      // Recolor the SELECTED object's edges — matched by id, whatever the kind.
+      const bool sel = hasSelection &&
+                       line.objectId == static_cast<creative::CreativeObjectId>(
+                                            selectedId);
       line.thickness = sel ? 0.06F : 0.03F;
       if (sel) {
         line.color = {1.0F, 1.0F, 0.0F, 1.0F};
@@ -1074,13 +1237,14 @@ int main(int argc, char** argv) {
     // so it lives here in the frame-loop body. When nothing is selected we skip
     // the gizmo and the selection box is empty, so this is just dbg.lines.
     std::vector<RenderCreativeWireframeDebugLine> combinedWireLines = dbg.lines;
-    if (crateSelected) {
+    if (hasSelection) {
       for (const GizmoAxisShaft& shaft : gizmoShafts) {
         RenderCreativeWireframeDebugLine gizmoLine;
         gizmoLine.start = gizmoCenter;
         gizmoLine.end = shaft.tip;  // Axis-aligned: only one component differs.
         gizmoLine.color = shaft.color;
-        gizmoLine.objectId = crateObjectId;
+        gizmoLine.objectId =
+            static_cast<creative::CreativeObjectId>(selectedId);
         gizmoLine.thickness = kGizmoThickness;
         combinedWireLines.push_back(gizmoLine);
       }
@@ -1095,19 +1259,19 @@ int main(int argc, char** argv) {
     // Merge the inspector-panel glyphs with the dimension-label glyphs into ONE
     // vector so a single .data() pointer stays valid for the whole frame.
     std::vector<DebugHudGlyphQuad> glyphs = menuFrame.textGlyphQuads;
-    if (crateSelected) {
-      const Vec3 center{(crateBoxMin.x + crateBoxMax.x) * 0.5F,
-                        (crateBoxMin.y + crateBoxMax.y) * 0.5F,
-                        (crateBoxMin.z + crateBoxMax.z) * 0.5F};
+    if (hasSelection) {
+      const Vec3 center{(selBoxMin.x + selBoxMax.x) * 0.5F,
+                        (selBoxMin.y + selBoxMax.y) * 0.5F,
+                        (selBoxMin.z + selBoxMax.z) * 0.5F};
       const float w = clipW(frame.camera.clipFromWorld, center);
       if (std::isfinite(w) && w > 0.0F) {
         const Vec3 ndc = transformPoint(frame.camera.clipFromWorld, center);
         const float px = (ndc.x * 0.5F + 0.5F) * static_cast<float>(extent.width);
         const float py = (1.0F - (ndc.y * 0.5F + 0.5F)) *
                          static_cast<float>(extent.height);
-        const float dimW = crateBoxMax.x - crateBoxMin.x;
-        const float dimH = crateBoxMax.y - crateBoxMin.y;
-        const float dimD = crateBoxMax.z - crateBoxMin.z;
+        const float dimW = selBoxMax.x - selBoxMin.x;
+        const float dimH = selBoxMax.y - selBoxMin.y;
+        const float dimD = selBoxMax.z - selBoxMin.z;
         char labelBuf[64];
         std::snprintf(labelBuf, sizeof(labelBuf), "%.1f x %.1f x %.1f m",
                       static_cast<double>(dimW), static_cast<double>(dimH),
@@ -1133,25 +1297,31 @@ int main(int argc, char** argv) {
     if (!loggedSelection) {
       loggedSelection = true;
       SDL_Log("iggy3d_creative: frame %llu submit outcome=%d reason='%s' "
-              "meshes=%zu selectedTarget=%u crateSelected=%d selBoxLines=%zu "
+              "meshes=%zu selectedTarget=%u hasSelection=%d selBoxLines=%zu "
               "gizmoLines=%zu combinedWireLines=%zu uiRects=%zu glyphs=%zu",
               static_cast<unsigned long long>(frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(),
-              scene.room.meshes.size(), selectedId, crateSelected ? 1 : 0,
+              scene.room.meshes.size(), selectedId, hasSelection ? 1 : 0,
               dbg.lines.size(), combinedWireLines.size() - dbg.lines.size(),
               combinedWireLines.size(), menuFrame.rects.size(),
               glyphs.size());
     }
 
     if (maxFrames != 0U && frameIndex >= maxFrames) {
+      // Name the SELECTED object + kind so the capture is self-documenting: for
+      // slice 5 this is expected to be the FLOOR.
+      const char* selKind =
+          hasSelection
+              ? creative::toString(selected->kind).data()
+              : "<none>";
       SDL_Log("iggy3d_creative: FINAL frame %llu submit outcome=%d reason='%s' "
-              "selectedTarget=%u crateSelected=%d selBoxLines=%zu gizmoLines=%zu "
-              "combinedWireLines=%zu",
+              "selectedTarget=%u selectedKind='%s' hasSelection=%d selBoxLines=%zu "
+              "gizmoLines=%zu combinedWireLines=%zu",
               static_cast<unsigned long long>(frameIndex),
               static_cast<int>(submit.outcome),
-              std::string(submit.reason.code).c_str(), selectedId,
-              crateSelected ? 1 : 0, dbg.lines.size(),
+              std::string(submit.reason.code).c_str(), selectedId, selKind,
+              hasSelection ? 1 : 0, dbg.lines.size(),
               combinedWireLines.size() - dbg.lines.size(),
               combinedWireLines.size());
       break;
