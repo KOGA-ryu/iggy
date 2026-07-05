@@ -11,6 +11,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <cstdlib>
 #include <memory>
 #include <string>
 #include <thread>
@@ -55,6 +56,9 @@ RendererConfig makeCreativeVulkanRendererConfig() {
     config.shaderRoot = lookup.lookup.shaderRoot;
     config.diagnosticsDir = lookup.lookup.diagnosticsDir;
   }
+  SDL_Log("iggy3d_creative: shader lookup outcome=%d shaderRoot='%s'",
+          static_cast<int>(lookup.outcome),
+          config.shaderRoot.generic_string().c_str());
   return config;
 }
 
@@ -109,6 +113,11 @@ void appendGridDotsToScene(const ProductMapMakerGridSnapshot& grid,
   scene.room.meshes.reserve(scene.room.meshes.size() + grid.dots.size());
   std::uint64_t index = 0;
   for (const ProductMapMakerGridDot& dot : grid.dots) {
+    // Keep only the ground layer: a small Y-extent still emits a few Y layers
+    // (the snap rounds the half-extent out to y=-1,0,1), so filter to planeY.
+    if (std::fabs(dot.worldPosition.y - grid.planeY) > grid.pitchMeters * 0.5F) {
+      continue;
+    }
     SceneRoomMeshItem mesh;
     mesh.id = dot.major ? "creative.grid_major_dot_" : "creative.grid_dot_";
     mesh.id += std::to_string(index);
@@ -126,7 +135,16 @@ void appendGridDotsToScene(const ProductMapMakerGridSnapshot& grid,
 
 }  // namespace
 
-int main(int /*argc*/, char** /*argv*/) {
+int main(int argc, char** argv) {
+  // Optional: --frames N auto-exits after N presented frames (scriptable run).
+  std::uint64_t maxFrames = 0;  // 0 = run until window close.
+  for (int i = 1; i < argc; ++i) {
+    const std::string arg = argv[i];
+    if (arg == "--frames" && i + 1 < argc) {
+      maxFrames = std::strtoull(argv[++i], nullptr, 10);
+    }
+  }
+
   // Window (Vulkan). The SdlWindow ctor initializes the SDL video subsystem.
   SdlWindowCreateInfo createInfo;
   createInfo.title = "iggy3d creative";
@@ -168,7 +186,9 @@ int main(int /*argc*/, char** /*argv*/) {
   gridConfig.pitchMeters = 1.0F;
   gridConfig.majorStepMeters = 5.0F;
   gridConfig.extentXMeters = 40.0F;
-  gridConfig.extentYMeters = 0.0F;  // CRITICAL: single Y=0 layer.
+  gridConfig.extentYMeters = 1.0F;  // Must be > 0 (config validity); the
+                                    // ground layer is filtered in
+                                    // appendGridDotsToScene (planeY only).
   gridConfig.extentZMeters = 40.0F;
   gridConfig.planeY = 0.0F;
   gridConfig.anchorWorld = Vec3{0.0F, 0.0F, 0.0F};
@@ -216,11 +236,14 @@ int main(int /*argc*/, char** /*argv*/) {
     const bool* keys = SDL_GetKeyboardState(nullptr);
     ProductCreativeFlyInput flyInput;
     if (keys != nullptr) {
+      // Fly camera axes: direction = right*moveX + forward*moveY + up*moveZ.
+      // So moveX = strafe (A/D), moveY = forward/back (W/S), moveZ = up/down
+      // (Space/LCtrl).
       const float moveX = (keys[SDL_SCANCODE_D] ? 1.0F : 0.0F) -
                           (keys[SDL_SCANCODE_A] ? 1.0F : 0.0F);
-      const float moveZ = (keys[SDL_SCANCODE_W] ? 1.0F : 0.0F) -
+      const float moveY = (keys[SDL_SCANCODE_W] ? 1.0F : 0.0F) -
                           (keys[SDL_SCANCODE_S] ? 1.0F : 0.0F);
-      const float moveY = (keys[SDL_SCANCODE_SPACE] ? 1.0F : 0.0F) -
+      const float moveZ = (keys[SDL_SCANCODE_SPACE] ? 1.0F : 0.0F) -
                           (keys[SDL_SCANCODE_LCTRL] ? 1.0F : 0.0F);
       flyInput.moveX = moveX;
       flyInput.moveY = moveY;
@@ -254,8 +277,19 @@ int main(int /*argc*/, char** /*argv*/) {
         scene, debug, frameIndex++, extent.width, extent.height, yawDegrees,
         pitchDegrees, /*cameraAnchorOverrideAvailable=*/true, flyPos);
 
-    renderer.submitFrame(frame);
+    const RenderSubmitResult submit = renderer.submitFrame(frame);
+    if (frameIndex <= 1) {
+      SDL_Log("iggy3d_creative: frame %llu submit outcome=%d reason='%s' "
+              "meshes=%zu",
+              static_cast<unsigned long long>(frameIndex),
+              static_cast<int>(submit.outcome),
+              std::string(submit.reason.code).c_str(),
+              scene.room.meshes.size());
+    }
 
+    if (maxFrames != 0U && frameIndex >= maxFrames) {
+      break;
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
   }
 
