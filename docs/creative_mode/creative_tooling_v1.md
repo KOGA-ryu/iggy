@@ -311,6 +311,20 @@ stays descriptor-only until the per-object detailing thread rules on it):
 - **TV1-H [lifecycle dex]** — Navigate camera (TD-8): CreativeFly reuse,
   capture policy branch, keyboard routed to fly only while Navigate active.
   Viewport purity polish: DevTools gate + creative window title. Needs TV1-C.
+  **DONE 2026-07-05** (commit a747524f, reviewed APPROVE, gate confirmed forced
+  clean rebuild 236/236 — new product_creative_navigate_fly_tests). Fly gated
+  strictly to activeTool==Navigate; relative mouse capture re-engaged only then;
+  narrow creative-only WASD poll (no gameplay keyboard resurrected); capture
+  coherence verified (pause/menu/mode-exit all release — no stuck cursor).
+  window.creativeNavigateActive mirror feeds MouseCapturePolicy + the camera
+  override (least-coupling seam, contexts carry only window). DevTools overlay
+  gated under the creative overlay; title says Creative. Notes: (a) fly is
+  yaw-only (matches map_maker; pitch-driven translation is a future kernel
+  change); (b) buildMapMakerGridForFrame resets creativeFlyActive every frame
+  for a creative doc — harmless (that flag only feeds HUD/receipt; the real fly
+  uses the valid-anchor gate) — revisit only if a Navigate fly HUD is wanted;
+  (c) the fly WASD poll lives in app/input/KeyboardInput.cpp (input-dex surface,
+  paralleling the TV1-C tool-key poll) — cross-dex touch, acceptable.
 - **TV1-I [lifecycle dex]** — Hygiene: facade uninstall on exit (TD-12), save
   version check (TD-14), status strip consolidation (Status+Snap → one bottom
   strip with last-receipt line, TL-6).
