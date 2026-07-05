@@ -402,11 +402,6 @@ iggy3d_add_unit_test(creative_select_tests
 set_tests_properties(creative_select_tests PROPERTIES
   LABELS "unit;app;creative;select;iggy3d")
 
-iggy3d_add_unit_test(creative_inspect_tests
-  tests/unit/creative_inspect_tests.cpp)
-set_tests_properties(creative_inspect_tests PROPERTIES
-  LABELS "unit;app;creative;inspect;iggy3d")
-
 iggy3d_add_unit_test(creative_measure_tests
   tests/unit/creative_measure_tests.cpp)
 set_tests_properties(creative_measure_tests PROPERTIES

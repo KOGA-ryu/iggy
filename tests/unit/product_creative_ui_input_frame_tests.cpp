@@ -292,6 +292,7 @@ bool unrenderableOverlayInputDoesNotSuppressToolClick() {
               &window,
               &facade,
               nullptr,
+              {},
               downstream.downstreamClick,
               {},
           });
@@ -1009,9 +1010,6 @@ bool inputFrameInjectedClickOnActiveToolRowIsDisplayOnlyAndSuppressesClick() {
          expect(facade.selectionState().selectedTarget.value ==
                     iggy3d::creative::kInvalidId,
                 "injected no pointer selection") &&
-         expect(facade.inspectionState().inspectedTarget.value ==
-                    iggy3d::creative::kInvalidId,
-                "injected no pointer inspection") &&
          expect(!facade.measurementState().active,
                 "injected no measurement dispatch");
 }
@@ -1189,9 +1187,6 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
          expect(facade.selectionState().selectedTarget.value ==
                     iggy3d::creative::kInvalidId,
                 "create injected selection invalid") &&
-         expect(facade.inspectionState().inspectedTarget.value ==
-                    iggy3d::creative::kInvalidId,
-                "create injected inspection invalid") &&
          expect(!facade.measurementState().active,
                 "create injected no measurement") &&
          expect(window.creativeUiInputDownstreamClickSuppressed,

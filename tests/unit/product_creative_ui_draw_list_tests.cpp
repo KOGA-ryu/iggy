@@ -126,11 +126,8 @@ cr::CreativeUiModel defaultCreativeUiModel() {
 cr::CreativeUiModel populatedCreativeUiModel() {
   cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
   request.selectionState.selectedTarget.value = 42;
-  request.inspectionState.inspectedTarget.value = 84;
   request.objectSummaries.push_back(
       objectSummary(42, cr::CreativeObjectKind::Room, true));
-  request.objectSummaries.push_back(
-      objectSummary(84, cr::CreativeObjectKind::Room, false));
   request.measurementState.active = true;
   request.measurementState.hasMeasurement = true;
   request.measurementState.startPoint = {1.0, 2.0, cr::TargetRef{7}};
@@ -269,8 +266,6 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                 "snap panel") &&
          expect(findPrimitive(list, "creative.panel.selection") == nullptr,
                 "hidden selection panel") &&
-         expect(findPrimitive(list, "creative.panel.inspection") == nullptr,
-                "hidden inspection panel") &&
          expect(findPrimitive(list, "creative.panel.measurement") == nullptr,
                 "hidden measurement panel") &&
          expect(findPrimitive(list, "creative.panel.ghost") == nullptr,
@@ -300,16 +295,44 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                     nullptr,
                 "hidden selection hit") &&
          expect(findHitRegion(list,
-                              "creative.row.inspection.inspected_target") ==
-                    nullptr,
-                "hidden inspection hit") &&
-         expect(findHitRegion(list,
                               "creative.row.measurement.measurement_state") ==
                     nullptr,
                 "hidden measurement hit") &&
          expect(findHitRegion(list, "creative.row.ghost.ghost_preview") ==
                     nullptr,
                 "hidden ghost hit");
+}
+
+bool activeToolRowTextCoversAllFourTools() {
+  struct Row {
+    cr::Tool tool;
+    std::string_view text;
+    const char* label;
+  };
+  const Row rows[] = {
+      {cr::Tool::Select, "Active Tool: Select", "active text select"},
+      {cr::Tool::Move, "Active Tool: Move", "active text move"},
+      {cr::Tool::Measure, "Active Tool: Measure", "active text measure"},
+      {cr::Tool::Navigate, "Active Tool: Navigate", "active text navigate"},
+  };
+
+  bool ok = true;
+  for (const Row& row : rows) {
+    cr::CreativeUiBuildRequest buildRequest =
+        cr::makeDefaultCreativeUiBuildRequest();
+    buildRequest.toolState.activeTool = row.tool;
+    const cr::CreativeUiModel model =
+        cr::buildCreativeUiModel(buildRequest).model;
+    iggy3d::ProductCreativeUiDrawListRequest request;
+    request.model = &model;
+    const iggy3d::ProductUiDrawList list =
+        iggy3d::buildProductCreativeUiDrawList(request);
+    const iggy3d::ProductUiPrimitive* active =
+        findPrimitive(list, "creative.row.tools.active_tool");
+    ok = expect(active != nullptr && active->text == row.text, row.label) &&
+         ok;
+  }
+  return ok;
 }
 
 bool defaultModelUsesSeparatedPanelZones() {
@@ -356,8 +379,6 @@ bool populatedModelPreservesCreativeOrderAndText() {
 
   const iggy3d::ProductUiPrimitive* selected =
       findPrimitive(list, "creative.row.selection.selected_target");
-  const iggy3d::ProductUiPrimitive* inspected =
-      findPrimitive(list, "creative.row.inspection.inspected_target");
   const iggy3d::ProductUiPrimitive* measurement =
       findPrimitive(list, "creative.row.measurement.measurement_state");
   const iggy3d::ProductUiPrimitive* start =
@@ -366,8 +387,6 @@ bool populatedModelPreservesCreativeOrderAndText() {
       findPrimitive(list, "creative.row.ghost.ghost_preview");
   const std::size_t selectionPanel =
       primitiveIndex(list, "creative.panel.selection");
-  const std::size_t inspectionPanel =
-      primitiveIndex(list, "creative.panel.inspection");
   const std::size_t measurementPanel =
       primitiveIndex(list, "creative.panel.measurement");
   const std::size_t ghostPanel = primitiveIndex(list, "creative.panel.ghost");
@@ -375,9 +394,6 @@ bool populatedModelPreservesCreativeOrderAndText() {
   return expect(selected != nullptr &&
                     selected->text == "Selected: target=42 visible=true",
                 "selected row text") &&
-         expect(inspected != nullptr &&
-                    inspected->text == "Inspected: target=84 visible=false",
-                "inspected row text") &&
          expect(measurement != nullptr &&
                     measurement->text == "Measure: active samples=2",
                 "measurement row text") &&
@@ -389,21 +405,16 @@ bool populatedModelPreservesCreativeOrderAndText() {
                 "ghost row text") &&
          expect(selectionPanel != list.primitives.size(),
                 "selection panel exists") &&
-         expect(inspectionPanel != list.primitives.size(),
-                "inspection panel exists") &&
          expect(measurementPanel != list.primitives.size(),
                 "measurement panel exists") &&
          expect(ghostPanel != list.primitives.size(), "ghost panel exists") &&
-         expect(selectionPanel < inspectionPanel,
-                "selection before inspection") &&
+         expect(selectionPanel < measurementPanel,
+                "selection before measurement") &&
          expect(measurementPanel < ghostPanel,
                 "measurement before ghost") &&
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.selection.selected_target"),
                 "selected hit") &&
-         expect(rowHitMatchesTextPrimitive(
-                    list, "creative.row.inspection.inspected_target"),
-                "inspected hit") &&
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.measurement.measurement_state"),
                 "measurement hit") &&
@@ -561,6 +572,7 @@ int main() {
                   defaultModelProducesReadyDrawList() &&
                   primitivesAreNonInteractiveCreativeSemantics() &&
                   defaultModelEmitsVisiblePanelsAndRowsOnly() &&
+                  activeToolRowTextCoversAllFourTools() &&
                   defaultModelUsesSeparatedPanelZones() &&
                   populatedModelPreservesCreativeOrderAndText() &&
                   populatedModelTextStaysInsidePrimitiveRects() &&

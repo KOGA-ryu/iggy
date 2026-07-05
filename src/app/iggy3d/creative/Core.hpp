@@ -10,8 +10,9 @@ inline constexpr Id kInvalidId = 0;
 
 enum class Tool : std::uint8_t {
   Select,
-  Inspect,
+  Move,
   Measure,
+  Navigate,
 };
 
 enum class PacketKind : std::uint8_t {

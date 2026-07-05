@@ -63,7 +63,6 @@ void invalidateRemovedObjectEditorState(
     State& state,
     CreativeToolState& toolState,
     CreativeSelectionState& selectionState,
-    CreativeInspectionState& inspectionState,
     CreativeMeasurementState& measurementState,
     CreativeGhostState& ghostState) noexcept {
   if (targetRefMatchesObject(selectionState.selectedTarget, objectId)) {
@@ -71,13 +70,6 @@ void invalidateRemovedObjectEditorState(
   }
   if (targetRefMatchesObject(selectionState.candidateTarget, objectId)) {
     static_cast<void>(updateSelectionCandidate(selectionState, {}));
-  }
-
-  if (targetRefMatchesObject(inspectionState.inspectedTarget, objectId)) {
-    static_cast<void>(setInspectedTarget(inspectionState, {}));
-  }
-  if (targetRefMatchesObject(inspectionState.candidateTarget, objectId)) {
-    static_cast<void>(updateInspectionCandidate(inspectionState, {}));
   }
 
   clearTargetRefIfMatches(toolState.pointer.target, objectId);
@@ -100,7 +92,6 @@ void resetTransientFacadeState(
     Stats& stats,
     CreativeToolState& toolState,
     CreativeSelectionState& selectionState,
-    CreativeInspectionState& inspectionState,
     CreativeMeasurementState& measurementState,
     CreativeSnapSettings& snapSettings,
     CreativeGhostState& ghostState) noexcept {
@@ -108,7 +99,6 @@ void resetTransientFacadeState(
   resetStats(stats);
   toolState = makeDefaultCreativeToolState();
   selectionState = makeDefaultCreativeSelectionState();
-  inspectionState = makeDefaultCreativeInspectionState();
   measurementState = makeDefaultCreativeMeasurementState();
   snapSettings = makeDefaultCreativeSnapSettings();
   ghostState = makeDefaultCreativeGhostState();
@@ -120,12 +110,6 @@ void resetTransientFacadeState(
   return state.selected.value != kInvalidId ||
          selectionState.selectedTarget.value != kInvalidId ||
          selectionState.candidateTarget.value != kInvalidId;
-}
-
-[[nodiscard]] bool hasInspectionState(
-    const CreativeInspectionState& inspectionState) noexcept {
-  return inspectionState.inspectedTarget.value != kInvalidId ||
-         inspectionState.candidateTarget.value != kInvalidId;
 }
 
 [[nodiscard]] bool hasMeasurementState(
@@ -256,7 +240,6 @@ void Facade::reset() noexcept {
                             stats_,
                             toolState_,
                             selectionState_,
-                            inspectionState_,
                             measurementState_,
                             snapSettings_,
                             ghostState_);
@@ -283,10 +266,6 @@ const CreativeToolState& Facade::toolState() const noexcept {
 
 const CreativeSelectionState& Facade::selectionState() const noexcept {
   return selectionState_;
-}
-
-const CreativeInspectionState& Facade::inspectionState() const noexcept {
-  return inspectionState_;
 }
 
 const CreativeMeasurementState& Facade::measurementState() const noexcept {
@@ -337,8 +316,6 @@ CreativeFacadeToolDispatchReceipt Facade::dispatchToolInput(
   for (const CreativeToolIntent& intent : toolReceipt.intents) {
     const CreativeSelectionReceipt selectionReceipt =
         applySelectionToolIntent(selectionState_, intent);
-    const CreativeInspectionReceipt inspectionReceipt =
-        applyInspectionToolIntent(inspectionState_, intent);
     const CreativeMeasurementReceipt measurementReceipt =
         applyMeasurementToolIntent(measurementState_, intent);
     const CreativeGhostReceipt ghostReceipt =
@@ -346,8 +323,6 @@ CreativeFacadeToolDispatchReceipt Facade::dispatchToolInput(
 
     receipt.selectionChanged = receipt.selectionChanged ||
                                selectionReceipt.changed;
-    receipt.inspectionChanged = receipt.inspectionChanged ||
-                                inspectionReceipt.changed;
     receipt.measurementChanged = receipt.measurementChanged ||
                                  measurementReceipt.changed;
     receipt.ghostChanged = receipt.ghostChanged || ghostReceipt.changed;
@@ -360,8 +335,7 @@ CreativeFacadeToolDispatchReceipt Facade::dispatchToolInput(
   }
 
   receipt.changed = receipt.changed || receipt.selectionChanged ||
-                    receipt.inspectionChanged || receipt.measurementChanged ||
-                    receipt.ghostChanged;
+                    receipt.measurementChanged || receipt.ghostChanged;
   state_.tool = toolState_.activeTool;
   state_.selected = selectionState_.selectedTarget;
   state_.hovered = toolState_.pointer.target;
@@ -372,7 +346,6 @@ CreativeUiBuildReceipt Facade::buildUiModel() const {
   CreativeUiBuildRequest request;
   request.toolState = toolState_;
   request.selectionState = selectionState_;
-  request.inspectionState = inspectionState_;
   request.measurementState = measurementState_;
   request.snapSettings = snapSettings_;
   request.ghostState = ghostState_;
@@ -443,7 +416,6 @@ CreativeDocumentRemoveReceipt Facade::removeDocumentObject(
                                      state_,
                                      toolState_,
                                      selectionState_,
-                                     inspectionState_,
                                      measurementState_,
                                      ghostState_);
   recordCommandSuccess(stats_);
@@ -482,7 +454,6 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
   }
 
   receipt.selectionCleared = hasSelectionState(state_, selectionState_);
-  receipt.inspectionCleared = hasInspectionState(inspectionState_);
   receipt.measurementCleared = hasMeasurementState(measurementState_,
                                                    toolState_);
   receipt.ghostCleared = ghostState_.visible;
@@ -493,7 +464,6 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
                             stats_,
                             toolState_,
                             selectionState_,
-                            inspectionState_,
                             measurementState_,
                             snapSettings_,
                             ghostState_);

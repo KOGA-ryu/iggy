@@ -4,7 +4,6 @@
 #include "app/iggy3d/creative/Document.hpp"
 #include "app/iggy3d/creative/DocumentMutation.hpp"
 #include "app/iggy3d/creative/Ghost.hpp"
-#include "app/iggy3d/creative/Inspect.hpp"
 #include "app/iggy3d/creative/Measure.hpp"
 #include "app/iggy3d/creative/Metrics.hpp"
 #include "app/iggy3d/creative/Object.hpp"
@@ -28,7 +27,6 @@ struct CreativeFacadeToolDispatchReceipt {
   std::size_t emittedIntentCount = 0;
   bool toolAccepted = false;
   bool selectionChanged = false;
-  bool inspectionChanged = false;
   bool measurementChanged = false;
   bool ghostChanged = false;
   bool accepted = false;
@@ -78,7 +76,6 @@ struct CreativeFacadeDocumentInstallReceipt {
   CreativeObjectDirtyFlags previousDirtyFlags = 0;
   CreativeObjectDirtyFlags nextDirtyFlags = 0;
   bool selectionCleared = false;
-  bool inspectionCleared = false;
   bool measurementCleared = false;
   bool ghostCleared = false;
   bool toolPointerCleared = false;
@@ -101,7 +98,6 @@ class Facade {
   [[nodiscard]] const State& state() const noexcept;
   [[nodiscard]] const CreativeToolState& toolState() const noexcept;
   [[nodiscard]] const CreativeSelectionState& selectionState() const noexcept;
-  [[nodiscard]] const CreativeInspectionState& inspectionState() const noexcept;
   [[nodiscard]] const CreativeMeasurementState& measurementState() const noexcept;
   [[nodiscard]] const CreativeSnapSettings& snapSettings() const noexcept;
   [[nodiscard]] const CreativeGhostState& ghostState() const noexcept;
@@ -136,7 +132,6 @@ class Facade {
   Stats stats_;
   CreativeToolState toolState_;
   CreativeSelectionState selectionState_;
-  CreativeInspectionState inspectionState_;
   CreativeMeasurementState measurementState_;
   CreativeSnapSettings snapSettings_;
   CreativeGhostState ghostState_;

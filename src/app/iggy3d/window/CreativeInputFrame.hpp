@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/Tools.hpp"
 #include "app/input/InputAction.hpp"
+#include "app/input/KeyboardInput.hpp"
 #include "app/input/MouseInput.hpp"
 
 #include <cstddef>
@@ -21,6 +22,8 @@ struct ProductCreativeInputFrameRequest {
   ProductAppWindowState* window = nullptr;
   creative::Facade* facade = nullptr;
   InputAction action = InputAction::None;
+  bool toolKeyRequested = false;
+  creative::Tool toolKey = creative::Tool::Select;
   MouseClick click;
   creative::TargetRef pointerTarget;
 };
@@ -29,6 +32,7 @@ struct ProductCreativeInputActionsRequest {
   ProductAppWindowState* window = nullptr;
   creative::Facade* facade = nullptr;
   const ActionState* actions = nullptr;
+  KeyboardCreativeToolKeyPresses toolKeys;
   MouseClick click;
   creative::TargetRef pointerTarget;
 };
@@ -54,13 +58,8 @@ struct ProductCreativeInputFrameReceipt {
 
 [[nodiscard]] bool productCreativeInputActiveForWindow(
     const ProductAppWindowState& window) noexcept;
-[[nodiscard]] creative::Tool nextProductCreativeTool(
-    creative::Tool tool) noexcept;
-[[nodiscard]] creative::Tool previousProductCreativeTool(
-    creative::Tool tool) noexcept;
-[[nodiscard]] bool productCreativeToolActionTarget(
-    InputAction action,
-    creative::Tool current,
+[[nodiscard]] bool productCreativeToolKeyTarget(
+    const KeyboardCreativeToolKeyPresses& presses,
     creative::Tool& out) noexcept;
 [[nodiscard]] creative::CreativeToolInputPacket productCreativePointerPressPacket(
     const MouseClick& click,

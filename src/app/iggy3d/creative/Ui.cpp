@@ -142,27 +142,6 @@ void appendSelectionPanel(CreativeUiModel& model,
   finishPanel(model, panelIndex);
 }
 
-void appendInspectionPanel(CreativeUiModel& model,
-                           const CreativeUiBuildRequest& request) {
-  const bool visible = hasTarget(request.inspectionState.inspectedTarget);
-  const std::size_t panelIndex =
-      beginPanel(model, CreativeUiPanelKind::Inspection, visible, true);
-
-  if (visible) {
-    CreativeUiRow row;
-    row.kind = CreativeUiRowKind::InspectedTarget;
-    row.panel = CreativeUiPanelKind::Inspection;
-    row.id = "inspected_target";
-    row.label = "Inspected Target";
-    row.target = request.inspectionState.inspectedTarget;
-    row.flags = enabledVisibleFlags() | targetFlag(row.target);
-    applyObjectSummary(row, request);
-    appendRow(model, row);
-  }
-
-  finishPanel(model, panelIndex);
-}
-
 void appendMeasurementPanel(CreativeUiModel& model,
                             const CreativeUiBuildRequest& request) {
   const bool visible = request.measurementState.hasMeasurement;
@@ -282,19 +261,17 @@ CreativeUiBuildReceipt buildCreativeUiModel(CreativeUiBuildRequest request) {
 
   receipt.model.activeTool = request.toolState.activeTool;
   receipt.model.selectedTarget = request.selectionState.selectedTarget;
-  receipt.model.inspectedTarget = request.inspectionState.inspectedTarget;
   receipt.model.objectSummaries = request.objectSummaries;
   receipt.model.measurementActive = request.measurementState.active;
   receipt.model.hasMeasurement = request.measurementState.hasMeasurement;
   receipt.model.ghostVisible = request.ghostState.visible;
 
-  receipt.model.panels.reserve(7);
-  receipt.model.rows.reserve(11);
+  receipt.model.panels.reserve(6);
+  receipt.model.rows.reserve(9);
 
   appendToolsPanel(receipt.model, request);
   appendStatusPanel(receipt.model, request);
   appendSelectionPanel(receipt.model, request);
-  appendInspectionPanel(receipt.model, request);
   appendMeasurementPanel(receipt.model, request);
   appendGhostPanel(receipt.model, request);
   appendSnapPanel(receipt.model, request);

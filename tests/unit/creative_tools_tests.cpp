@@ -36,11 +36,16 @@ bool defaultStateUsesSelect() {
 
 bool changingActiveToolWorks() {
   cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
-  const bool changed = cr::setActiveTool(state, cr::Tool::Inspect);
-
-  return expect(changed, "active tool changed") &&
-         expect(state.activeTool == cr::Tool::Inspect,
-                "active tool inspect");
+  bool ok = true;
+  const cr::Tool tools[] = {cr::Tool::Move,
+                            cr::Tool::Measure,
+                            cr::Tool::Navigate,
+                            cr::Tool::Select};
+  for (const cr::Tool tool : tools) {
+    ok = expect(cr::setActiveTool(state, tool), "active tool changed") && ok;
+    ok = expect(state.activeTool == tool, "active tool stored") && ok;
+  }
+  return ok;
 }
 
 bool sameToolActivationIsNoChange() {
@@ -87,24 +92,70 @@ bool selectPressEmitsSelectObjectCandidate() {
                 "select press target forwarded");
 }
 
-bool inspectPressEmitsInspectObjectCandidate() {
+bool movePressEmitsSelectObjectCandidate() {
+  // Move selects like Select until the drag slice (TV1-F/G) lands.
   cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
-  const bool toolChanged = cr::setActiveTool(state, cr::Tool::Inspect);
+  const bool toolChanged = cr::setActiveTool(state, cr::Tool::Move);
 
   const cr::CreativeToolDispatchReceipt receipt =
       cr::dispatchToolInput(state,
                             pointerInput(cr::CreativeToolInputKind::PointerPress));
 
-  return expect(toolChanged, "inspect setup changed tool") &&
-         expect(receipt.accepted, "inspect press accepted") &&
-         expect(receipt.activeToolBefore == cr::Tool::Inspect,
-                "inspect press tool before") &&
-         expect(receipt.activeToolAfter == cr::Tool::Inspect,
-                "inspect press tool after") &&
-         expect(receipt.emittedIntentCount == 1U, "inspect press count") &&
+  return expect(toolChanged, "move setup changed tool") &&
+         expect(receipt.accepted, "move press accepted") &&
+         expect(receipt.activeToolBefore == cr::Tool::Move,
+                "move press tool before") &&
+         expect(receipt.activeToolAfter == cr::Tool::Move,
+                "move press tool after") &&
+         expect(receipt.emittedIntentCount == 1U, "move press count") &&
          expect(receipt.intents[0].kind ==
-                    cr::CreativeToolIntentKind::InspectObjectCandidate,
-                "inspect press intent");
+                    cr::CreativeToolIntentKind::SelectObjectCandidate,
+                "move press intent") &&
+         expect(receipt.intents[0].pointer.target.value == 42U,
+                "move press target forwarded");
+}
+
+bool moveToolPointerMoveKeepsGhostPreview() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Move));
+
+  const cr::CreativeToolDispatchReceipt receipt =
+      cr::dispatchToolInput(state,
+                            pointerInput(cr::CreativeToolInputKind::PointerMove));
+
+  return expect(receipt.accepted, "move preview accepted") &&
+         expect(receipt.emittedIntentCount == 1U, "move preview count") &&
+         expect(receipt.intents[0].kind ==
+                    cr::CreativeToolIntentKind::PreviewPointer,
+                "move preview intent") &&
+         expect(receipt.message == "preview_pointer",
+                "move preview message");
+}
+
+bool navigatePointerInputIsInert() {
+  cr::CreativeToolState state = cr::makeDefaultCreativeToolState();
+  static_cast<void>(cr::setActiveTool(state, cr::Tool::Navigate));
+
+  bool ok = true;
+  const cr::CreativeToolInputKind kinds[] = {
+      cr::CreativeToolInputKind::PointerPress,
+      cr::CreativeToolInputKind::PointerMove,
+      cr::CreativeToolInputKind::PointerRelease,
+  };
+  for (const cr::CreativeToolInputKind kind : kinds) {
+    const cr::CreativeToolDispatchReceipt receipt =
+        cr::dispatchToolInput(state, pointerInput(kind));
+    ok = expect(receipt.accepted, "navigate input accepted") && ok;
+    ok = expect(receipt.emittedIntentCount == 0U,
+                "navigate input no intents") && ok;
+    ok = expect(receipt.intents.empty(), "navigate input intents empty") && ok;
+    ok = expect(!receipt.changedState, "navigate input unchanged") && ok;
+    ok = expect(receipt.message == "navigate_pointer_inert",
+                "navigate input message") && ok;
+  }
+  ok = expect(state.pointer.target.value == cr::kInvalidId,
+              "navigate pointer target untouched") && ok;
+  return ok;
 }
 
 bool measurePressMoveReleaseEmitsMeasurementIntents() {
@@ -174,7 +225,9 @@ int main() {
                   sameToolActivationIsNoChange() &&
                   pointerMoveEmitsPreviewIntent() &&
                   selectPressEmitsSelectObjectCandidate() &&
-                  inspectPressEmitsInspectObjectCandidate() &&
+                  movePressEmitsSelectObjectCandidate() &&
+                  moveToolPointerMoveKeepsGhostPreview() &&
+                  navigatePointerInputIsInert() &&
                   measurePressMoveReleaseEmitsMeasurementIntents() &&
                   unknownInputEmitsNoIntent();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

@@ -43,6 +43,12 @@ void recordTestAction(iggy3d::ActionState& actions,
   iggy3d::recordAction(actions, action, true, pressed, false, 1.0F);
 }
 
+iggy3d::KeyboardCreativeToolKeyPresses moveKeyPressed() {
+  iggy3d::KeyboardCreativeToolKeyPresses presses;
+  presses.movePressed = true;
+  return presses;
+}
+
 bool activeRuleUsesCreativeDocumentIdentity() {
   iggy3d::ProductAppWindowState window;
   const bool playerActive = iggy3d::productCreativeInputActiveForWindow(window);
@@ -77,13 +83,14 @@ bool inactiveWindowNoopsAndDoesNotMutateFacade() {
   iggy3d::ProductAppWindowState window;
   cr::Facade facade;
   facade.reset();
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   const std::uint64_t objectCountBefore = facade.document().objectCount();
 
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
   request.facade = &facade;
-  request.action = iggy3d::InputAction::EditorNextTool;
+  request.toolKeyRequested = true;
+  request.toolKey = cr::Tool::Measure;
   request.click = clickAt(10.0F, 20.0F);
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputFrame(request);
@@ -94,7 +101,7 @@ bool inactiveWindowNoopsAndDoesNotMutateFacade() {
          expect(!receipt.pointerDispatched, "inactive pointer not dispatched") &&
          expect(receipt.status == "product_creative_input_inactive",
                 "inactive status") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
+         expect(facade.toolState().activeTool == cr::Tool::Move,
                 "inactive tool unchanged") &&
          expect(facade.document().objectCount() == objectCountBefore,
                 "inactive document unchanged");
@@ -104,7 +111,8 @@ bool activeCreativeNullFacadeReportsMissing() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
-  request.action = iggy3d::InputAction::EditorNextTool;
+  request.toolKeyRequested = true;
+  request.toolKey = cr::Tool::Move;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputFrame(request);
 
@@ -116,68 +124,60 @@ bool activeCreativeNullFacadeReportsMissing() {
                 "missing facade status");
 }
 
-bool toolOrderCycles() {
-  return expect(iggy3d::nextProductCreativeTool(cr::Tool::Select) ==
-                    cr::Tool::Inspect,
-                "next select inspect") &&
-         expect(iggy3d::nextProductCreativeTool(cr::Tool::Inspect) ==
-                    cr::Tool::Measure,
-                "next inspect measure") &&
-         expect(iggy3d::nextProductCreativeTool(cr::Tool::Measure) ==
-                    cr::Tool::Select,
-                "next measure select") &&
-         expect(iggy3d::previousProductCreativeTool(cr::Tool::Select) ==
-                    cr::Tool::Measure,
-                "previous select measure") &&
-         expect(iggy3d::previousProductCreativeTool(cr::Tool::Measure) ==
-                    cr::Tool::Inspect,
-                "previous measure inspect") &&
-         expect(iggy3d::previousProductCreativeTool(cr::Tool::Inspect) ==
-                    cr::Tool::Select,
-                "previous inspect select");
+bool toolKeysMapDirectlyToTools() {
+  bool ok = true;
+  struct Row {
+    bool iggy3d::KeyboardCreativeToolKeyPresses::* pressed;
+    cr::Tool tool;
+    const char* label;
+  };
+  const Row rows[] = {
+      {&iggy3d::KeyboardCreativeToolKeyPresses::selectPressed,
+       cr::Tool::Select, "key 1 maps select"},
+      {&iggy3d::KeyboardCreativeToolKeyPresses::movePressed,
+       cr::Tool::Move, "key 2 maps move"},
+      {&iggy3d::KeyboardCreativeToolKeyPresses::measurePressed,
+       cr::Tool::Measure, "key 3 maps measure"},
+      {&iggy3d::KeyboardCreativeToolKeyPresses::navigatePressed,
+       cr::Tool::Navigate, "key 4 maps navigate"},
+  };
+  for (const Row& row : rows) {
+    iggy3d::KeyboardCreativeToolKeyPresses presses;
+    presses.*(row.pressed) = true;
+    cr::Tool out = cr::Tool::Measure;
+    ok &= expect(iggy3d::productCreativeToolKeyTarget(presses, out) &&
+                     out == row.tool,
+                 row.label);
+  }
+
+  cr::Tool out = cr::Tool::Measure;
+  ok &= expect(!iggy3d::productCreativeToolKeyTarget({}, out) &&
+                   out == cr::Tool::Measure,
+               "no tool key pressed rejected");
+  return ok;
 }
 
-bool toolActionMappingUsesFlatRows() {
-  cr::Tool out = cr::Tool::Measure;
-  bool ok = true;
-  ok &= expect(iggy3d::productCreativeToolActionTarget(
-                   iggy3d::InputAction::EditorNextTool,
-                   cr::Tool::Select,
-                   out) &&
-                   out == cr::Tool::Inspect,
-               "next action maps");
-  ok &= expect(iggy3d::productCreativeToolActionTarget(
-                   iggy3d::InputAction::EditorPreviousTool,
-                   cr::Tool::Select,
-                   out) &&
-                   out == cr::Tool::Measure,
-               "previous action maps");
-  ok &= expect(iggy3d::productCreativeToolActionTarget(
-                   iggy3d::InputAction::EditorSelect,
-                   cr::Tool::Measure,
-                   out) &&
-                   out == cr::Tool::Select,
-               "editor select maps");
-  ok &= expect(iggy3d::productCreativeToolActionTarget(
-                   iggy3d::InputAction::EditorSelectFloorTool,
-                   cr::Tool::Inspect,
-                   out) &&
-                   out == cr::Tool::Select,
-               "floor tool maps select");
-  ok &= expect(iggy3d::productCreativeToolActionTarget(
-                   iggy3d::InputAction::EditorSelectWallTool,
-                   cr::Tool::Select,
-                   out) &&
-                   out == cr::Tool::Inspect,
-               "wall tool maps inspect");
-  out = cr::Tool::Measure;
-  ok &= expect(!iggy3d::productCreativeToolActionTarget(
-                   iggy3d::InputAction::MenuBack,
-                   cr::Tool::Select,
-                   out) &&
-                   out == cr::Tool::Measure,
-               "non-tool action rejected");
-  return ok;
+bool heldToolKeyRecordsNoPressEdge() {
+  iggy3d::KeyboardInputState keyboard;
+  iggy3d::KeyboardCreativeToolInputSample sample;
+  sample.moveToolDown = true;
+
+  const iggy3d::KeyboardCreativeToolKeyPresses first =
+      iggy3d::recordKeyboardCreativeToolKeys(keyboard, sample);
+  const iggy3d::KeyboardCreativeToolKeyPresses held =
+      iggy3d::recordKeyboardCreativeToolKeys(keyboard, sample);
+  const iggy3d::KeyboardCreativeToolKeyPresses released =
+      iggy3d::recordKeyboardCreativeToolKeys(keyboard, {});
+  const iggy3d::KeyboardCreativeToolKeyPresses pressedAgain =
+      iggy3d::recordKeyboardCreativeToolKeys(keyboard, sample);
+
+  return expect(first.movePressed, "first move key press edge") &&
+         expect(!first.selectPressed && !first.measurePressed &&
+                    !first.navigatePressed,
+                "first move key only") &&
+         expect(!held.movePressed, "held move key no edge") &&
+         expect(!released.movePressed, "released move key no edge") &&
+         expect(pressedAgain.movePressed, "re-pressed move key edge");
 }
 
 bool clickPacketMapsMouseClick() {
@@ -212,7 +212,7 @@ bool clickPacketPreservesPickedTarget() {
          expect(packet.pointer.y == 34.25, "target packet y");
 }
 
-bool editorNextToolChangesFacadeToolWithoutDocumentMutation() {
+bool toolKeyChangesFacadeToolWithoutDocumentMutation() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade;
   facade.reset();
@@ -221,25 +221,49 @@ bool editorNextToolChangesFacadeToolWithoutDocumentMutation() {
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
   request.facade = &facade;
-  request.action = iggy3d::InputAction::EditorNextTool;
+  request.toolKeyRequested = true;
+  request.toolKey = cr::Tool::Move;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputFrame(request);
 
-  return expect(receipt.requested, "tool action requested") &&
-         expect(receipt.active, "tool action active") &&
-         expect(receipt.facadeAvailable, "tool action facade") &&
-         expect(receipt.actionHandled, "tool action handled") &&
-         expect(receipt.toolChanged, "tool action changed") &&
-         expect(receipt.accepted, "tool action accepted") &&
-         expect(receipt.changed, "tool action receipt changed") &&
+  return expect(receipt.requested, "tool key requested") &&
+         expect(receipt.active, "tool key active") &&
+         expect(receipt.facadeAvailable, "tool key facade") &&
+         expect(receipt.actionHandled, "tool key handled") &&
+         expect(receipt.toolChanged, "tool key changed") &&
+         expect(receipt.accepted, "tool key accepted") &&
+         expect(receipt.changed, "tool key receipt changed") &&
          expect(receipt.activeToolBefore == cr::Tool::Select,
                 "tool before select") &&
-         expect(receipt.activeToolAfter == cr::Tool::Inspect,
-                "tool after inspect") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
-                "facade active inspect") &&
+         expect(receipt.activeToolAfter == cr::Tool::Move,
+                "tool after move") &&
+         expect(facade.toolState().activeTool == cr::Tool::Move,
+                "facade active move") &&
          expect(facade.document().objectCount() == objectCountBefore,
-                "tool action document unchanged");
+                "tool key document unchanged");
+}
+
+bool repeatedToolKeyDoesNotSpamToolChanged() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+
+  iggy3d::ProductCreativeInputActionsRequest request;
+  request.window = &window;
+  request.facade = &facade;
+  request.toolKeys = moveKeyPressed();
+  const iggy3d::ProductCreativeInputFrameReceipt first =
+      iggy3d::processProductCreativeInputActions(request);
+  const iggy3d::ProductCreativeInputFrameReceipt repeat =
+      iggy3d::processProductCreativeInputActions(request);
+
+  return expect(first.actionHandled, "first tool key handled") &&
+         expect(first.toolChanged, "first tool key changed") &&
+         expect(repeat.actionHandled, "repeat tool key handled") &&
+         expect(!repeat.toolChanged, "repeat tool key no toolChanged") &&
+         expect(!repeat.changed, "repeat tool key no change") &&
+         expect(facade.toolState().activeTool == cr::Tool::Move,
+                "repeat facade still move");
 }
 
 bool selectClickWithPickedTargetUpdatesSelection() {
@@ -271,11 +295,12 @@ bool selectClickWithPickedTargetUpdatesSelection() {
                 "select target document unchanged");
 }
 
-bool inspectClickWithPickedTargetUpdatesInspection() {
+bool moveClickWithPickedTargetSelects() {
+  // Move selects like Select until the drag slice (TV1-F/G) lands.
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade;
   facade.reset();
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   cr::TargetRef target;
   target.value = 202;
 
@@ -287,15 +312,42 @@ bool inspectClickWithPickedTargetUpdatesInspection() {
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputFrame(request);
 
-  return expect(receipt.pointerDispatched, "inspect target pointer dispatched") &&
-         expect(receipt.changed, "inspect target changed") &&
-         expect(facade.inspectionState().inspectedTarget.value == 202U,
-                "inspect target inspected") &&
+  return expect(receipt.pointerDispatched, "move target pointer dispatched") &&
+         expect(receipt.changed, "move target changed") &&
+         expect(facade.selectionState().selectedTarget.value == 202U,
+                "move target selected") &&
+         expect(facade.document().objectCount() == 0U,
+                "move target document unchanged");
+}
+
+bool navigateClickIsInert() {
+  iggy3d::ProductAppWindowState window = creativeWindow();
+  cr::Facade facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Navigate));
+  cr::TargetRef target;
+  target.value = 303;
+
+  iggy3d::ProductCreativeInputFrameRequest request;
+  request.window = &window;
+  request.facade = &facade;
+  request.click = clickAt(28.0F, 29.0F);
+  request.pointerTarget = target;
+  const iggy3d::ProductCreativeInputFrameReceipt receipt =
+      iggy3d::processProductCreativeInputFrame(request);
+
+  return expect(receipt.pointerDispatched, "navigate pointer dispatched") &&
+         expect(receipt.accepted, "navigate pointer accepted") &&
+         expect(receipt.emittedIntentCount == 0U,
+                "navigate pointer no intents") &&
+         expect(!receipt.changed, "navigate pointer unchanged") &&
          expect(facade.selectionState().selectedTarget.value ==
                     cr::kInvalidId,
-                "inspect target selection unchanged") &&
+                "navigate pointer selection untouched") &&
+         expect(!facade.ghostState().visible,
+                "navigate pointer no ghost") &&
          expect(facade.document().objectCount() == 0U,
-                "inspect target document unchanged");
+                "navigate pointer document unchanged");
 }
 
 bool clickWithMeasureActiveBeginsMeasurement() {
@@ -424,13 +476,16 @@ bool batchNoopsForClosedInputs() {
   iggy3d::ProductAppWindowState inactiveWindow;
   cr::Facade inactiveFacade;
   inactiveFacade.reset();
-  static_cast<void>(inactiveFacade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(inactiveFacade.setActiveTool(cr::Tool::Measure));
   iggy3d::ActionState inactiveActions;
-  recordTestAction(inactiveActions, iggy3d::InputAction::EditorNextTool, true);
+  recordTestAction(inactiveActions,
+                   iggy3d::InputAction::EditorCancelPreview,
+                   true);
   iggy3d::ProductCreativeInputActionsRequest inactiveRequest;
   inactiveRequest.window = &inactiveWindow;
   inactiveRequest.facade = &inactiveFacade;
   inactiveRequest.actions = &inactiveActions;
+  inactiveRequest.toolKeys = moveKeyPressed();
   inactiveRequest.click = clickAt(2.0F, 3.0F);
   const iggy3d::ProductCreativeInputFrameReceipt inactiveReceipt =
       iggy3d::processProductCreativeInputActions(inactiveRequest);
@@ -455,7 +510,7 @@ bool batchNoopsForClosedInputs() {
                 "batch null window") &&
          expect(inactiveReceipt.status == "product_creative_input_inactive",
                 "batch inactive status") &&
-         expect(inactiveFacade.toolState().activeTool == cr::Tool::Inspect,
+         expect(inactiveFacade.toolState().activeTool == cr::Tool::Measure,
                 "batch inactive facade unchanged") &&
          expect(missingFacadeReceipt.status ==
                     "product_creative_input_facade_missing",
@@ -470,64 +525,66 @@ bool batchNoopsForClosedInputs() {
                 "batch null actions noop");
 }
 
-bool batchPressedToolCyclesOnceHeldDoesNotCycle() {
+bool batchHeldToolKeyDoesNotRedispatch() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade;
   facade.reset();
+  iggy3d::KeyboardInputState keyboard;
+  iggy3d::KeyboardCreativeToolInputSample sample;
+  sample.moveToolDown = true;
 
-  iggy3d::ActionState heldActions;
-  recordTestAction(heldActions, iggy3d::InputAction::EditorNextTool, false);
-  iggy3d::ProductCreativeInputActionsRequest heldRequest;
-  heldRequest.window = &window;
-  heldRequest.facade = &facade;
-  heldRequest.actions = &heldActions;
-  const iggy3d::ProductCreativeInputFrameReceipt heldReceipt =
-      iggy3d::processProductCreativeInputActions(heldRequest);
-
-  iggy3d::ActionState pressedActions;
-  recordTestAction(pressedActions, iggy3d::InputAction::EditorNextTool, true);
   iggy3d::ProductCreativeInputActionsRequest pressedRequest;
   pressedRequest.window = &window;
   pressedRequest.facade = &facade;
-  pressedRequest.actions = &pressedActions;
+  pressedRequest.toolKeys =
+      iggy3d::recordKeyboardCreativeToolKeys(keyboard, sample);
   const iggy3d::ProductCreativeInputFrameReceipt pressedReceipt =
       iggy3d::processProductCreativeInputActions(pressedRequest);
 
-  return expect(heldReceipt.status == "product_creative_input_noop",
-                "held action noop") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
-                "pressed action cycles once") &&
-         expect(pressedReceipt.actionHandled, "pressed action handled") &&
-         expect(pressedReceipt.toolChanged, "pressed tool changed") &&
+  iggy3d::ProductCreativeInputActionsRequest heldRequest;
+  heldRequest.window = &window;
+  heldRequest.facade = &facade;
+  heldRequest.toolKeys =
+      iggy3d::recordKeyboardCreativeToolKeys(keyboard, sample);
+  const iggy3d::ProductCreativeInputFrameReceipt heldReceipt =
+      iggy3d::processProductCreativeInputActions(heldRequest);
+
+  return expect(pressedReceipt.actionHandled, "pressed key handled") &&
+         expect(pressedReceipt.toolChanged, "pressed key changed tool") &&
          expect(pressedReceipt.activeToolBefore == cr::Tool::Select,
                 "pressed before select") &&
-         expect(pressedReceipt.activeToolAfter == cr::Tool::Inspect,
-                "pressed after inspect");
+         expect(pressedReceipt.activeToolAfter == cr::Tool::Move,
+                "pressed after move") &&
+         expect(heldReceipt.status == "product_creative_input_noop",
+                "held key noop") &&
+         expect(!heldReceipt.toolChanged, "held key no toolChanged") &&
+         expect(facade.toolState().activeTool == cr::Tool::Move,
+                "held key facade still move");
 }
 
-bool batchProcessesMultiplePressedToolActionsInEntryOrder() {
+bool batchProcessesMultiplePressedToolKeysInKeyOrder() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade;
   facade.reset();
 
-  iggy3d::ActionState actions;
-  recordTestAction(actions, iggy3d::InputAction::EditorPreviousTool, true);
-  recordTestAction(actions, iggy3d::InputAction::EditorNextTool, true);
+  iggy3d::KeyboardCreativeToolKeyPresses presses;
+  presses.movePressed = true;
+  presses.measurePressed = true;
   iggy3d::ProductCreativeInputActionsRequest request;
   request.window = &window;
   request.facade = &facade;
-  request.actions = &actions;
+  request.toolKeys = presses;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputActions(request);
 
-  return expect(receipt.actionHandled, "multi action handled") &&
-         expect(receipt.toolChanged, "multi action changed") &&
+  return expect(receipt.actionHandled, "multi key handled") &&
+         expect(receipt.toolChanged, "multi key changed") &&
          expect(receipt.activeToolBefore == cr::Tool::Select,
                 "multi before select") &&
-         expect(receipt.activeToolAfter == cr::Tool::Select,
-                "multi after select") &&
-         expect(facade.toolState().activeTool == cr::Tool::Select,
-                "multi facade select");
+         expect(receipt.activeToolAfter == cr::Tool::Measure,
+                "multi after measure") &&
+         expect(facade.toolState().activeTool == cr::Tool::Measure,
+                "multi facade measure");
 }
 
 bool batchPointerRunsAfterActionsWithUpdatedTool() {
@@ -535,12 +592,12 @@ bool batchPointerRunsAfterActionsWithUpdatedTool() {
   cr::Facade facade;
   facade.reset();
 
-  iggy3d::ActionState actions;
-  recordTestAction(actions, iggy3d::InputAction::EditorPreviousTool, true);
+  iggy3d::KeyboardCreativeToolKeyPresses presses;
+  presses.measurePressed = true;
   iggy3d::ProductCreativeInputActionsRequest request;
   request.window = &window;
   request.facade = &facade;
-  request.actions = &actions;
+  request.toolKeys = presses;
   request.click = clickAt(22.0F, 44.0F);
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputActions(request);
@@ -566,28 +623,23 @@ bool batchPointerUsesPickedTargetAfterToolAction() {
   cr::Facade facade;
   facade.reset();
 
-  iggy3d::ActionState actions;
-  recordTestAction(actions, iggy3d::InputAction::EditorSelectWallTool, true);
   cr::TargetRef target;
   target.value = 404;
   iggy3d::ProductCreativeInputActionsRequest request;
   request.window = &window;
   request.facade = &facade;
-  request.actions = &actions;
+  request.toolKeys = moveKeyPressed();
   request.click = clickAt(62.0F, 64.0F);
   request.pointerTarget = target;
   const iggy3d::ProductCreativeInputFrameReceipt receipt =
       iggy3d::processProductCreativeInputActions(request);
 
-  return expect(receipt.actionHandled, "batch target action handled") &&
+  return expect(receipt.actionHandled, "batch target key handled") &&
          expect(receipt.pointerDispatched, "batch target pointer dispatched") &&
-         expect(receipt.activeToolAfter == cr::Tool::Inspect,
-                "batch target tool inspect") &&
-         expect(facade.inspectionState().inspectedTarget.value == 404U,
-                "batch target inspected") &&
-         expect(facade.selectionState().selectedTarget.value ==
-                    cr::kInvalidId,
-                "batch target selection unchanged");
+         expect(receipt.activeToolAfter == cr::Tool::Move,
+                "batch target tool move") &&
+         expect(facade.selectionState().selectedTarget.value == 404U,
+                "batch target selected");
 }
 
 bool invalidPointerTargetKeepsSelectionInvalid() {
@@ -663,20 +715,22 @@ int main() {
   ok &= nullWindowReturnsWindowMissing();
   ok &= inactiveWindowNoopsAndDoesNotMutateFacade();
   ok &= activeCreativeNullFacadeReportsMissing();
-  ok &= toolOrderCycles();
-  ok &= toolActionMappingUsesFlatRows();
+  ok &= toolKeysMapDirectlyToTools();
+  ok &= heldToolKeyRecordsNoPressEdge();
   ok &= clickPacketMapsMouseClick();
   ok &= clickPacketPreservesPickedTarget();
-  ok &= editorNextToolChangesFacadeToolWithoutDocumentMutation();
+  ok &= toolKeyChangesFacadeToolWithoutDocumentMutation();
+  ok &= repeatedToolKeyDoesNotSpamToolChanged();
   ok &= selectClickWithPickedTargetUpdatesSelection();
-  ok &= inspectClickWithPickedTargetUpdatesInspection();
+  ok &= moveClickWithPickedTargetSelects();
+  ok &= navigateClickIsInert();
   ok &= clickWithMeasureActiveBeginsMeasurement();
   ok &= measureClickWithPickedTargetStoresMeasurementTarget();
   ok &= editorCancelPreviewCancelsActiveMeasurement();
   ok &= noApplicableInputReturnsNoop();
   ok &= batchNoopsForClosedInputs();
-  ok &= batchPressedToolCyclesOnceHeldDoesNotCycle();
-  ok &= batchProcessesMultiplePressedToolActionsInEntryOrder();
+  ok &= batchHeldToolKeyDoesNotRedispatch();
+  ok &= batchProcessesMultiplePressedToolKeysInKeyOrder();
   ok &= batchPointerRunsAfterActionsWithUpdatedTool();
   ok &= batchPointerUsesPickedTargetAfterToolAction();
   ok &= invalidPointerTargetKeepsSelectionInvalid();

@@ -36,11 +36,6 @@ void selectTarget(cr::Facade& facade, cr::CreativeObjectId objectId) {
       pointerPress(static_cast<cr::Id>(objectId))));
 }
 
-void inspectTarget(cr::Facade& facade, cr::Id targetId) {
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
-  static_cast<void>(facade.dispatchToolInput(pointerPress(targetId)));
-}
-
 bool defaultNoSelectionRejects() {
   cr::Facade facade;
   const std::uint64_t revisionBefore = facade.document().revision();
@@ -187,22 +182,20 @@ bool secondToggleRestoresVisibilityAndIncrementsAgain() {
                 "second selection preserved");
 }
 
-bool inspectionTargetRemainsUnchanged() {
+bool activeToolRemainsUnchangedByToggle() {
   cr::Facade facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
-  inspectTarget(facade, 77);
-  const cr::TargetRef inspectedBefore = facade.inspectionState().inspectedTarget;
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
 
   const cr::CreativeFacadeMutationReceipt receipt =
       facade.toggleSelectedObjectVisibility();
 
-  return expect(receipt.accepted, "inspection toggle accepted") &&
+  return expect(receipt.accepted, "tool toggle accepted") &&
          expect(facade.selectionState().selectedTarget.value == roomId,
-                "inspection selection preserved") &&
-         expect(facade.inspectionState().inspectedTarget.value ==
-                    inspectedBefore.value,
-                "inspection target preserved");
+                "tool toggle selection preserved") &&
+         expect(facade.toolState().activeTool == cr::Tool::Move,
+                "tool toggle active tool preserved");
 }
 
 bool lockToggleWithoutSelectionRejects() {
@@ -438,7 +431,7 @@ int main() {
                   selectedMissingTargetRejectsAndPreservesSelection() &&
                   selectedRoomTogglesVisibleFalseAndPreservesState() &&
                   secondToggleRestoresVisibilityAndIncrementsAgain() &&
-                  inspectionTargetRemainsUnchanged() &&
+                  activeToolRemainsUnchangedByToggle() &&
                   lockToggleWithoutSelectionRejects() &&
                   lockToggleLocksSelectedRoomWithReceipt() &&
                   lockToggleUnlocksLockedRoomDespiteLockGate() &&

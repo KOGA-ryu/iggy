@@ -258,7 +258,7 @@ bool receiptedCreateWithOverridesSharesAllocator() {
 
 bool facadeGenericCreateWrapsDocumentAndPreservesInteractionState() {
   cr::Facade facade;
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::Room;
   request.name = "Facade Generic Room";
@@ -289,15 +289,12 @@ bool facadeGenericCreateWrapsDocumentAndPreservesInteractionState() {
                 "facade objects created") &&
          expect(facade.stats().roomsCreated == 1U,
                 "facade rooms created") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
+         expect(facade.toolState().activeTool == cr::Tool::Move,
                 "facade tool preserved") &&
-         expect(facade.state().tool == cr::Tool::Inspect,
+         expect(facade.state().tool == cr::Tool::Move,
                 "facade old state tool preserved") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
-                "facade selection preserved") &&
-         expect(facade.inspectionState().inspectedTarget.value ==
-                    cr::kInvalidId,
-                "facade inspection preserved");
+                "facade selection preserved");
 }
 
 bool facadeGenericCreateFailureRecordsFailureOnly() {

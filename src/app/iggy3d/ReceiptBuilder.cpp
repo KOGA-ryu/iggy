@@ -103,10 +103,12 @@ std::string_view creativeToolReceiptName(creative::Tool tool) noexcept {
   switch (tool) {
     case creative::Tool::Select:
       return "Select";
-    case creative::Tool::Inspect:
-      return "Inspect";
+    case creative::Tool::Move:
+      return "Move";
     case creative::Tool::Measure:
       return "Measure";
+    case creative::Tool::Navigate:
+      return "Navigate";
   }
   return "Unknown";
 }

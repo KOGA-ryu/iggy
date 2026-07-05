@@ -34,7 +34,6 @@ cr::CreativeUiModel defaultCreativeUiModel() {
 cr::CreativeUiModel populatedCreativeUiModel() {
   cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
   request.selectionState.selectedTarget.value = 42;
-  request.inspectionState.inspectedTarget.value = 84;
   request.measurementState.active = true;
   request.measurementState.hasMeasurement = true;
   request.measurementState.startPoint = {1.0, 2.0, cr::TargetRef{7}};
@@ -52,9 +51,10 @@ cr::CreativeUiModel populatedCreativeUiModel() {
   return cr::buildCreativeUiModel(request).model;
 }
 
-void populateInspectedFacade(cr::Facade& facade) {
+void populateSelectedFacade(cr::Facade& facade) {
+  // Move selects like Select until the drag slice (TV1-F/G) lands.
   facade.reset();
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
 
   cr::CreativeToolInputPacket input;
   input.kind = cr::CreativeToolInputKind::PointerPress;
@@ -161,37 +161,37 @@ bool modelInputBuildsReadyProjection() {
 
 bool facadeInputBuildsFromFacadeState() {
   cr::Facade facade;
-  populateInspectedFacade(facade);
+  populateSelectedFacade(facade);
   iggy3d::ProductCreativeUiProjectionRequest request;
   request.facade = &facade;
   const iggy3d::ProductCreativeUiProjection projection =
       iggy3d::buildProductCreativeUiProjection(request);
 
-  const iggy3d::ProductUiPrimitive* inspected =
+  const iggy3d::ProductUiPrimitive* selected =
       findPrimitive(projection.drawList,
-                    "creative.row.inspection.inspected_target");
+                    "creative.row.selection.selected_target");
   const iggy3d::ProductUiPrimitive* active =
       findPrimitive(projection.drawList, "creative.row.tools.active_tool");
 
   return expect(projection.receipt.ready, "facade ready") &&
          expect(projection.receipt.usedFacade, "facade used") &&
          expect(!projection.receipt.usedModel, "facade model not used") &&
-         expect(projection.receipt.panelCount == 7U, "facade panel count") &&
+         expect(projection.receipt.panelCount == 6U, "facade panel count") &&
          expect(projection.receipt.modelRowCount > 3U,
                 "facade model rows populated") &&
-         expect(active != nullptr && active->text == "Active Tool: Inspect",
+         expect(active != nullptr && active->text == "Active Tool: Move",
                 "facade active tool row") &&
-         expect(inspected != nullptr &&
-                    inspected->text ==
-                        "Inspected: target=88 visible=unknown",
-                "facade inspected row") &&
+         expect(selected != nullptr &&
+                    selected->text ==
+                        "Selected: target=88 visible=unknown",
+                "facade selected row") &&
          countsMirrorDrawList(projection);
 }
 
 bool modelTakesPrecedenceOverFacade() {
   const cr::CreativeUiModel model = defaultCreativeUiModel();
   cr::Facade facade;
-  populateInspectedFacade(facade);
+  populateSelectedFacade(facade);
   iggy3d::ProductCreativeUiProjectionRequest request;
   request.model = &model;
   request.facade = &facade;
@@ -205,9 +205,9 @@ bool modelTakesPrecedenceOverFacade() {
          expect(projection.receipt.modelRowCount == model.rows.size(),
                 "precedence row count") &&
          expect(findPrimitive(projection.drawList,
-                              "creative.row.inspection.inspected_target") ==
+                              "creative.row.selection.selected_target") ==
                     nullptr,
-                "precedence ignores facade inspection");
+                "precedence ignores facade selection");
 }
 
 bool populatedModelHasNonzeroCounts() {

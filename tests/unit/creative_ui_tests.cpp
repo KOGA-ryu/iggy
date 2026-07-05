@@ -50,9 +50,9 @@ bool defaultModelDeterministic() {
   const cr::CreativeUiModel& model = receipt.model;
 
   return expect(receipt.accepted, "default accepted") &&
-         expect(receipt.panelCount == 7U, "default panel count") &&
+         expect(receipt.panelCount == 6U, "default panel count") &&
          expect(receipt.rowCount == 4U, "default row count") &&
-         expect(model.panels.size() == 7U, "default panels size") &&
+         expect(model.panels.size() == 6U, "default panels size") &&
          expect(model.rows.size() == 4U, "default rows size") &&
          expect(panel(model, cr::CreativeUiPanelKind::Tools).firstRow == 0U,
                 "tools first row") &&
@@ -64,8 +64,6 @@ bool defaultModelDeterministic() {
                 "status row count") &&
          expect(panel(model, cr::CreativeUiPanelKind::Selection).rowCount == 0U,
                 "selection empty") &&
-         expect(panel(model, cr::CreativeUiPanelKind::Inspection).rowCount == 0U,
-                "inspection empty") &&
          expect(panel(model, cr::CreativeUiPanelKind::Measurement).rowCount == 0U,
                 "measurement empty") &&
          expect(panel(model, cr::CreativeUiPanelKind::Ghost).rowCount == 0U,
@@ -90,17 +88,22 @@ bool defaultModelDeterministic() {
 
 bool activeToolRowReflectsToolChanges() {
   cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
-  request.toolState.activeTool = cr::Tool::Inspect;
-  const cr::CreativeUiBuildReceipt inspectReceipt =
+  request.toolState.activeTool = cr::Tool::Move;
+  const cr::CreativeUiBuildReceipt moveReceipt =
       cr::buildCreativeUiModel(request);
   request.toolState.activeTool = cr::Tool::Measure;
   const cr::CreativeUiBuildReceipt measureReceipt =
       cr::buildCreativeUiModel(request);
+  request.toolState.activeTool = cr::Tool::Navigate;
+  const cr::CreativeUiBuildReceipt navigateReceipt =
+      cr::buildCreativeUiModel(request);
 
-  return expect(inspectReceipt.model.rows[0].tool == cr::Tool::Inspect,
-                "inspect active tool") &&
+  return expect(moveReceipt.model.rows[0].tool == cr::Tool::Move,
+                "move active tool") &&
          expect(measureReceipt.model.rows[0].tool == cr::Tool::Measure,
                 "measure active tool") &&
+         expect(navigateReceipt.model.rows[0].tool == cr::Tool::Navigate,
+                "navigate active tool") &&
          expect(measureReceipt.model.activeTool == cr::Tool::Measure,
                 "summary active tool");
 }
@@ -186,45 +189,6 @@ bool selectedMissingObjectSummaryKeepsRowUnknown() {
                 "selected missing known false") &&
          expect(!hasFlag(row.flags, cr::kCreativeUiRowFlagObjectVisible),
                 "selected missing visible false");
-}
-
-bool inspectedTargetRowAppearsOnlyWhenNonzero() {
-  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
-  const cr::CreativeUiBuildReceipt empty = cr::buildCreativeUiModel(request);
-  request.inspectionState.inspectedTarget.value = 84;
-  const cr::CreativeUiBuildReceipt inspected =
-      cr::buildCreativeUiModel(request);
-  const cr::CreativeUiRow& row =
-      firstPanelRow(inspected.model, cr::CreativeUiPanelKind::Inspection);
-
-  return expect(panel(empty.model, cr::CreativeUiPanelKind::Inspection).rowCount == 0U,
-                "inspection absent") &&
-         expect(panel(inspected.model, cr::CreativeUiPanelKind::Inspection).rowCount == 1U,
-                "inspection present") &&
-         expect(row.kind == cr::CreativeUiRowKind::InspectedTarget,
-                "inspection row kind") &&
-         expect(row.target.value == 84U, "inspection target") &&
-         expect(hasFlag(row.flags, cr::kCreativeUiRowFlagHasTarget),
-                "inspection target flag");
-}
-
-bool inspectedObjectSummaryMarksRowVisibility() {
-  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
-  request.inspectionState.inspectedTarget.value = 84;
-  request.objectSummaries.push_back(
-      objectSummary(84, cr::CreativeObjectKind::Room, false));
-
-  const cr::CreativeUiBuildReceipt receipt = cr::buildCreativeUiModel(request);
-  const cr::CreativeUiRow& row =
-      firstPanelRow(receipt.model, cr::CreativeUiPanelKind::Inspection);
-
-  return expect(row.target.value == 84U, "inspected summary target") &&
-         expect(row.objectKind == cr::CreativeObjectKind::Room,
-                "inspected summary kind") &&
-         expect(hasFlag(row.flags, cr::kCreativeUiRowFlagObjectKnown),
-                "inspected summary known") &&
-         expect(!hasFlag(row.flags, cr::kCreativeUiRowFlagObjectVisible),
-                "inspected summary hidden");
 }
 
 bool measurementRowsPreserveStateAndPoints() {
@@ -379,8 +343,6 @@ int main() {
                   selectedVisibleObjectSummaryMarksRowVisible() &&
                   selectedHiddenObjectSummaryKeepsRowAndMarksInvisible() &&
                   selectedMissingObjectSummaryKeepsRowUnknown() &&
-                  inspectedTargetRowAppearsOnlyWhenNonzero() &&
-                  inspectedObjectSummaryMarksRowVisibility() &&
                   measurementRowsPreserveStateAndPoints() &&
                   ghostRowAppearsOnlyWhenVisible() &&
                   snapSettingsRowReflectsModeAxesStepsAndOrigin() &&

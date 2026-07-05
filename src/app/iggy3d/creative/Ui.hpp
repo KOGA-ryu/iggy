@@ -2,7 +2,6 @@
 
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/Ghost.hpp"
-#include "app/iggy3d/creative/Inspect.hpp"
 #include "app/iggy3d/creative/Measure.hpp"
 #include "app/iggy3d/creative/Object.hpp"
 #include "app/iggy3d/creative/Select.hpp"
@@ -20,7 +19,6 @@ enum class CreativeUiPanelKind : std::uint8_t {
   Tools,
   Status,
   Selection,
-  Inspection,
   Measurement,
   Ghost,
   Snap,
@@ -31,7 +29,6 @@ enum class CreativeUiRowKind : std::uint8_t {
   CreateRoom,
   StatusSummary,
   SelectedTarget,
-  InspectedTarget,
   MeasurementState,
   MeasurementStartPoint,
   MeasurementCurrentPoint,
@@ -102,7 +99,6 @@ struct CreativeUiModel {
   std::vector<CreativeUiObjectSummary> objectSummaries;
   Tool activeTool = Tool::Select;
   TargetRef selectedTarget;
-  TargetRef inspectedTarget;
   bool measurementActive = false;
   bool hasMeasurement = false;
   bool ghostVisible = false;
@@ -111,7 +107,6 @@ struct CreativeUiModel {
 struct CreativeUiBuildRequest {
   CreativeToolState toolState;
   CreativeSelectionState selectionState;
-  CreativeInspectionState inspectionState;
   CreativeMeasurementState measurementState;
   CreativeSnapSettings snapSettings;
   CreativeGhostState ghostState;

@@ -67,12 +67,6 @@ cr::Facade facadeWithRoom() {
   return facade;
 }
 
-iggy3d::ActionState singlePressedAction(iggy3d::InputAction action) {
-  iggy3d::ActionState actions;
-  iggy3d::recordAction(actions, action, true, true, false, 1.0F);
-  return actions;
-}
-
 const cr::CreativeUiRow* findUiRow(const cr::CreativeUiModel& model,
                                    cr::CreativeUiPanelKind panel,
                                    cr::CreativeUiRowKind kind) {
@@ -132,11 +126,13 @@ iggy3d::ProductCreativeInputFrameReceipt dispatchPickedClick(
     cr::Facade& facade,
     iggy3d::MouseClick click,
     cr::TargetRef target,
-    const iggy3d::ActionState* actions = nullptr) {
+    const iggy3d::ActionState* actions = nullptr,
+    iggy3d::KeyboardCreativeToolKeyPresses toolKeys = {}) {
   iggy3d::ProductCreativeInputActionsRequest request;
   request.window = &window;
   request.facade = &facade;
   request.actions = actions;
+  request.toolKeys = toolKeys;
   request.click = click;
   request.pointerTarget = target;
   return iggy3d::processProductCreativeInputActions(request);
@@ -360,9 +356,6 @@ bool createRoomUiRowCommandCreatesRoomThroughFacade() {
          expect(facade.selectionState().selectedTarget.value ==
                     cr::kInvalidId,
                 "create flow selection unchanged") &&
-         expect(facade.inspectionState().inspectedTarget.value ==
-                    cr::kInvalidId,
-                "create flow inspection unchanged") &&
          expect(rebuiltUi.model.rows.size() == initialUi.model.rows.size(),
                 "create flow rebuilt row count stable") &&
          expect(rebuiltCreatePrimitive != nullptr,
@@ -409,35 +402,35 @@ bool selectPickUpdatesFacadeAndUiRows() {
                 "select draw text target");
 }
 
-bool inspectPickUpdatesFacadeAndUiRows() {
+bool moveToolKeyPickSelectsAndFeedsSelectionRow() {
+  // Move selects like Select until the drag slice (TV1-F/G) lands; the
+  // selection panel is the only target surface.
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade = facadeWithRoom();
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
 
-  iggy3d::ActionState actions =
-      singlePressedAction(iggy3d::InputAction::EditorSelectWallTool);
+  iggy3d::KeyboardCreativeToolKeyPresses toolKeys;
+  toolKeys.movePressed = true;
   const iggy3d::MouseClick click = clickAt(150.0F, 250.0F);
   const iggy3d::ProductCreativeViewportPickFrameReceipt pick =
       pickRoomAt(window, facade, click);
   const iggy3d::ProductCreativeInputFrameReceipt input =
-      dispatchPickedClick(window, facade, click, pick.target, &actions);
+      dispatchPickedClick(window, facade, click, pick.target, nullptr,
+                          toolKeys);
   const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
-  const cr::CreativeUiRow* inspected = findUiRow(
-      ui.model, cr::CreativeUiPanelKind::Inspection,
-      cr::CreativeUiRowKind::InspectedTarget);
+  const cr::CreativeUiRow* selected = findUiRow(
+      ui.model, cr::CreativeUiPanelKind::Selection,
+      cr::CreativeUiRowKind::SelectedTarget);
 
-  return expect(pick.picked, "inspect pick hit") &&
-         expect(input.actionHandled, "inspect action handled") &&
-         expect(input.pointerDispatched, "inspect pointer dispatched") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
-                "inspect tool active") &&
-         expect(facade.inspectionState().inspectedTarget.value == roomId,
-                "inspect facade inspected") &&
-         expect(facade.selectionState().selectedTarget.value ==
-                    cr::kInvalidId,
-                "inspect selection untouched") &&
-         expect(inspected != nullptr, "inspect ui row exists") &&
-         expect(inspected->target.value == roomId, "inspect ui row target");
+  return expect(pick.picked, "move pick hit") &&
+         expect(input.actionHandled, "move tool key handled") &&
+         expect(input.pointerDispatched, "move pointer dispatched") &&
+         expect(facade.toolState().activeTool == cr::Tool::Move,
+                "move tool active") &&
+         expect(facade.selectionState().selectedTarget.value == roomId,
+                "move facade selected") &&
+         expect(selected != nullptr, "move ui selection row exists") &&
+         expect(selected->target.value == roomId, "move ui row target");
 }
 
 bool measurePickStoresTargetOnMeasurementRows() {
@@ -445,13 +438,14 @@ bool measurePickStoresTargetOnMeasurementRows() {
   cr::Facade facade = facadeWithRoom();
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
 
-  iggy3d::ActionState actions =
-      singlePressedAction(iggy3d::InputAction::EditorPreviousTool);
+  iggy3d::KeyboardCreativeToolKeyPresses toolKeys;
+  toolKeys.measurePressed = true;
   const iggy3d::MouseClick click = clickAt(150.0F, 250.0F);
   const iggy3d::ProductCreativeViewportPickFrameReceipt pick =
       pickRoomAt(window, facade, click);
   const iggy3d::ProductCreativeInputFrameReceipt input =
-      dispatchPickedClick(window, facade, click, pick.target, &actions);
+      dispatchPickedClick(window, facade, click, pick.target, nullptr,
+                          toolKeys);
   const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
   const cr::CreativeUiRow* start = findUiRow(
       ui.model, cr::CreativeUiPanelKind::Measurement,
@@ -536,7 +530,7 @@ int main() {
   const bool ok = createRoomUiRowCommandCreatesRoomThroughFacade() &&
                   selectedTargetCommandTogglesVisibilityAndRefreshesPick() &&
                   selectPickUpdatesFacadeAndUiRows() &&
-                  inspectPickUpdatesFacadeAndUiRows() &&
+                  moveToolKeyPickSelectsAndFeedsSelectionRow() &&
                   measurePickStoresTargetOnMeasurementRows() &&
                   missKeepsTargetInvalidAndSelectionUnchanged() &&
                   suppressedCreativeUiClickDoesNotPickOrSelect();

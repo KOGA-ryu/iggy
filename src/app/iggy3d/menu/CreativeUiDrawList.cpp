@@ -50,8 +50,6 @@ struct PanelLayout {
       return "status";
     case creative::CreativeUiPanelKind::Selection:
       return "selection";
-    case creative::CreativeUiPanelKind::Inspection:
-      return "inspection";
     case creative::CreativeUiPanelKind::Measurement:
       return "measurement";
     case creative::CreativeUiPanelKind::Ghost:
@@ -66,10 +64,12 @@ struct PanelLayout {
   switch (tool) {
     case creative::Tool::Select:
       return "Select";
-    case creative::Tool::Inspect:
-      return "Inspect";
+    case creative::Tool::Move:
+      return "Move";
     case creative::Tool::Measure:
       return "Measure";
+    case creative::Tool::Navigate:
+      return "Navigate";
   }
   return "Unknown";
 }
@@ -164,10 +164,7 @@ void appendVisibilityText(std::string& text,
       }
       break;
     case creative::CreativeUiRowKind::SelectedTarget:
-    case creative::CreativeUiRowKind::InspectedTarget:
-      text = row.kind == creative::CreativeUiRowKind::SelectedTarget
-                 ? "Selected: target="
-                 : "Inspected: target=";
+      text = "Selected: target=";
       text.append(std::to_string(row.target.value));
       appendVisibilityText(text, row);
       break;
@@ -286,7 +283,6 @@ void appendVisibilityText(std::string& text,
                 constrainedPanelWidth(kInfoPanelWidth, virtualWidth)};
       return layout;
     case creative::CreativeUiPanelKind::Selection:
-    case creative::CreativeUiPanelKind::Inspection:
     case creative::CreativeUiPanelKind::Measurement:
     case creative::CreativeUiPanelKind::Ghost: {
       layout.width = constrainedPanelWidth(kTargetPanelWidth, virtualWidth);

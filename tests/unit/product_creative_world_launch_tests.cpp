@@ -259,8 +259,6 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
                 "creative launch old state tool select") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "creative launch selection clear") &&
-         expect(facade.inspectionState().inspectedTarget.value == cr::kInvalidId,
-                "creative launch inspection clear") &&
          expect(!facade.measurementState().active,
                 "creative launch measurement inactive") &&
          expect(!facade.measurementState().hasMeasurement,
@@ -432,7 +430,7 @@ bool secondLaunchClearsOldFacadeStateAndInstallsNewDocument() {
                    1.0,
                    2.0,
                    targetId(createdObject.objectId))));
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
                    3.0,
@@ -473,8 +471,6 @@ bool secondLaunchClearsOldFacadeStateAndInstallsNewDocument() {
                 "second launch previous facade object count") &&
          expect(second.installReceipt.selectionCleared,
                 "second launch selection cleared") &&
-         expect(second.installReceipt.inspectionCleared,
-                "second launch inspection cleared") &&
          expect(second.installReceipt.measurementCleared,
                 "second launch measurement cleared") &&
          expect(second.installReceipt.ghostCleared,
@@ -493,8 +489,6 @@ bool secondLaunchClearsOldFacadeStateAndInstallsNewDocument() {
                 "second launch no leaked objects") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "second launch selection invalid") &&
-         expect(facade.inspectionState().inspectedTarget.value == cr::kInvalidId,
-                "second launch inspection invalid") &&
          expect(!facade.measurementState().hasMeasurement,
                 "second launch measurement cleared state") &&
          expect(!facade.ghostState().visible,
@@ -603,9 +597,6 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
          expect(openFacade.selectionState().selectedTarget.value ==
                     cr::kInvalidId,
                 "open launch selection clear") &&
-         expect(openFacade.inspectionState().inspectedTarget.value ==
-                    cr::kInvalidId,
-                "open launch inspection clear") &&
          expect(!openFacade.measurementState().hasMeasurement,
                 "open launch measurement empty") &&
          expect(!openFacade.ghostState().visible,
@@ -1262,7 +1253,7 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
                    1.0,
                    2.0,
                    targetId(firstObject.objectId))));
-  static_cast<void>(openFacade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(openFacade.setActiveTool(cr::Tool::Move));
   static_cast<void>(openFacade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
                    3.0,
@@ -1311,8 +1302,6 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
                 "second open previous object count") &&
          expect(secondOpened.installReceipt.selectionCleared,
                 "second open selection cleared") &&
-         expect(secondOpened.installReceipt.inspectionCleared,
-                "second open inspection cleared") &&
          expect(secondOpened.installReceipt.measurementCleared,
                 "second open measurement cleared") &&
          expect(secondOpened.installReceipt.ghostCleared,
@@ -1336,9 +1325,6 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
          expect(openFacade.selectionState().selectedTarget.value ==
                     cr::kInvalidId,
                 "second open selection invalid") &&
-         expect(openFacade.inspectionState().inspectedTarget.value ==
-                    cr::kInvalidId,
-                "second open inspection invalid") &&
          expect(!openFacade.measurementState().hasMeasurement,
                 "second open measurement cleared state") &&
          expect(!openFacade.ghostState().visible,

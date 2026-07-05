@@ -351,4 +351,41 @@ void pollKeyboardRoomEditorActions(KeyboardInputState& state, ActionState& actio
 #endif
 }
 
+KeyboardCreativeToolKeyPresses recordKeyboardCreativeToolKeys(
+    KeyboardInputState& state,
+    const KeyboardCreativeToolInputSample& sample) {
+  KeyboardCreativeToolKeyPresses presses;
+  // branch-gate: BG-1037
+  presses.selectPressed =
+      sample.selectToolDown && !state.creativeToolSelectWasDown;
+  presses.movePressed = sample.moveToolDown && !state.creativeToolMoveWasDown;
+  presses.measurePressed =
+      sample.measureToolDown && !state.creativeToolMeasureWasDown;
+  presses.navigatePressed =
+      sample.navigateToolDown && !state.creativeToolNavigateWasDown;
+  state.creativeToolSelectWasDown = sample.selectToolDown;
+  state.creativeToolMoveWasDown = sample.moveToolDown;
+  state.creativeToolMeasureWasDown = sample.measureToolDown;
+  state.creativeToolNavigateWasDown = sample.navigateToolDown;
+  return presses;
+}
+
+KeyboardCreativeToolKeyPresses pollKeyboardCreativeToolKeys(
+    KeyboardInputState& state) {
+#if defined(IGGY3D_HAS_SDL3)
+  // Creative document mode keeps the keyboard dead for gameplay; this poll
+  // reads ONLY the four direct tool keys.
+  const bool* keys = SDL_GetKeyboardState(nullptr);
+  KeyboardCreativeToolInputSample sample;
+  sample.selectToolDown = keyDown(keys, SDL_SCANCODE_1);
+  sample.moveToolDown = keyDown(keys, SDL_SCANCODE_2);
+  sample.measureToolDown = keyDown(keys, SDL_SCANCODE_3);
+  sample.navigateToolDown = keyDown(keys, SDL_SCANCODE_4);
+  return recordKeyboardCreativeToolKeys(state, sample);
+#else
+  (void)state;
+  return {};
+#endif
+}
+
 }  // namespace iggy3d

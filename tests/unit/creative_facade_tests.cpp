@@ -97,29 +97,27 @@ bool defaultsBuildDefaultUiModel() {
                 "default tool state") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "default selection") &&
-         expect(facade.inspectionState().inspectedTarget.value == cr::kInvalidId,
-                "default inspection") &&
          expect(!facade.measurementState().active,
                 "default measurement inactive") &&
          expect(!facade.measurementState().hasMeasurement,
                 "default measurement empty") &&
          expect(!facade.ghostState().visible, "default ghost hidden") &&
          expect(ui.accepted, "default ui accepted") &&
-         expect(ui.panelCount == 7U, "default ui panels") &&
+         expect(ui.panelCount == 6U, "default ui panels") &&
          expect(ui.rowCount == 4U, "default ui rows");
 }
 
 bool setActiveToolUpdatesKernelAndOldState() {
   cr::Facade facade;
-  const bool changed = facade.setActiveTool(cr::Tool::Inspect);
-  const bool same = facade.setActiveTool(cr::Tool::Inspect);
+  const bool changed = facade.setActiveTool(cr::Tool::Move);
+  const bool same = facade.setActiveTool(cr::Tool::Move);
 
   return expect(changed, "set active changed") &&
          expect(!same, "set active same no change") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
-                "tool state inspect") &&
-         expect(facade.state().tool == cr::Tool::Inspect,
-                "old state inspect");
+         expect(facade.toolState().activeTool == cr::Tool::Move,
+                "tool state move") &&
+         expect(facade.state().tool == cr::Tool::Move,
+                "old state move");
 }
 
 bool selectPressUpdatesSelectionOnlyAndNotDocument() {
@@ -135,7 +133,6 @@ bool selectPressUpdatesSelectionOnlyAndNotDocument() {
   return expect(receipt.accepted, "select dispatch accepted") &&
          expect(receipt.emittedIntentCount == 1U, "select emitted count") &&
          expect(receipt.selectionChanged, "select changed selection") &&
-         expect(!receipt.inspectionChanged, "select inspection unchanged") &&
          expect(!receipt.measurementChanged, "select measurement unchanged") &&
          expect(facade.selectionState().selectedTarget.value == 42U,
                 "select state target") &&
@@ -147,9 +144,10 @@ bool selectPressUpdatesSelectionOnlyAndNotDocument() {
                 "select did not mutate document");
 }
 
-bool inspectPressUpdatesInspectionOnly() {
+bool movePressSelectsLikeSelect() {
+  // Move selects like Select until the drag slice (TV1-F/G) lands.
   cr::Facade facade;
-  const bool toolChanged = facade.setActiveTool(cr::Tool::Inspect);
+  const bool toolChanged = facade.setActiveTool(cr::Tool::Move);
   const cr::CreativeFacadeToolDispatchReceipt receipt =
       facade.dispatchToolInput(
           pointerInput(cr::CreativeToolInputKind::PointerPress,
@@ -157,16 +155,65 @@ bool inspectPressUpdatesInspectionOnly() {
                        5.0,
                        77));
 
-  return expect(toolChanged, "inspect tool changed") &&
-         expect(receipt.accepted, "inspect dispatch accepted") &&
-         expect(receipt.inspectionChanged, "inspect changed inspection") &&
-         expect(!receipt.selectionChanged, "inspect selection unchanged") &&
-         expect(facade.inspectionState().inspectedTarget.value == 77U,
-                "inspection target") &&
-         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
-                "selection still empty") &&
+  return expect(toolChanged, "move tool changed") &&
+         expect(receipt.accepted, "move dispatch accepted") &&
+         expect(receipt.selectionChanged, "move changed selection") &&
+         expect(facade.selectionState().selectedTarget.value == 77U,
+                "move selection target") &&
          expect(facade.document().objectCount() == 0U,
-                "inspect did not mutate document");
+                "move press did not mutate document");
+}
+
+bool navigatePointerInputDoesNotTouchEditorState() {
+  cr::Facade facade;
+  const bool toolChanged = facade.setActiveTool(cr::Tool::Navigate);
+  const cr::CreativeFacadeToolDispatchReceipt press =
+      facade.dispatchToolInput(
+          pointerInput(cr::CreativeToolInputKind::PointerPress,
+                       4.0,
+                       5.0,
+                       77));
+  const cr::CreativeFacadeToolDispatchReceipt move =
+      facade.dispatchToolInput(
+          pointerInput(cr::CreativeToolInputKind::PointerMove,
+                       6.0,
+                       7.0,
+                       88));
+
+  return expect(toolChanged, "navigate tool changed") &&
+         expect(press.accepted, "navigate press accepted") &&
+         expect(press.emittedIntentCount == 0U, "navigate press inert") &&
+         expect(!press.changed, "navigate press unchanged") &&
+         expect(press.message == "navigate_pointer_inert",
+                "navigate press message") &&
+         expect(move.emittedIntentCount == 0U, "navigate move inert") &&
+         expect(!facade.ghostState().visible, "navigate no ghost") &&
+         expect(facade.selectionState().selectedTarget.value ==
+                    cr::kInvalidId,
+                "navigate selection untouched") &&
+         expect(facade.state().hovered.value == cr::kInvalidId,
+                "navigate hovered untouched") &&
+         expect(facade.document().objectCount() == 0U,
+                "navigate did not mutate document");
+}
+
+bool switchingToNavigateCancelsActiveMeasurement() {
+  cr::Facade facade;
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress, 1.0, 2.0, 7)));
+
+  const bool changed = facade.setActiveTool(cr::Tool::Navigate);
+
+  return expect(changed, "navigate switch changed") &&
+         expect(facade.toolState().activeTool == cr::Tool::Navigate,
+                "navigate switch active tool") &&
+         expect(!facade.measurementState().active,
+                "navigate switch cancels measurement") &&
+         expect(!facade.measurementState().hasMeasurement,
+                "navigate switch clears measurement") &&
+         expect(!facade.toolState().measurementActive,
+                "navigate switch clears tool measurement flag");
 }
 
 bool measurePressMoveReleaseUpdatesMeasurement() {
@@ -287,13 +334,13 @@ bool leavingMeasurePreservesCompletedMeasurement() {
 bool nonMeasureToolSwitchDoesNotTouchMeasurement() {
   cr::Facade facade;
 
-  const bool changed = facade.setActiveTool(cr::Tool::Inspect);
+  const bool changed = facade.setActiveTool(cr::Tool::Move);
 
   return expect(changed, "non-measure switch changed") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
-                "non-measure active inspect") &&
-         expect(facade.state().tool == cr::Tool::Inspect,
-                "non-measure old state inspect") &&
+         expect(facade.toolState().activeTool == cr::Tool::Move,
+                "non-measure active move") &&
+         expect(facade.state().tool == cr::Tool::Move,
+                "non-measure old state move") &&
          expect(!facade.measurementState().active,
                 "non-measure measurement inactive") &&
          expect(!facade.measurementState().hasMeasurement,
@@ -353,14 +400,27 @@ bool toolSwitchHidesVisibleGhost() {
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerMove, 1.2, 2.7, 42)));
 
-  const bool changed = facade.setActiveTool(cr::Tool::Inspect);
+  const bool changed = facade.setActiveTool(cr::Tool::Move);
 
   return expect(changed, "ghost switch changed") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
-                "ghost switch active inspect") &&
-         expect(facade.state().tool == cr::Tool::Inspect,
-                "ghost switch old state inspect") &&
+         expect(facade.toolState().activeTool == cr::Tool::Move,
+                "ghost switch active move") &&
+         expect(facade.state().tool == cr::Tool::Move,
+                "ghost switch old state move") &&
          expect(!facade.ghostState().visible, "ghost switch hidden");
+}
+
+bool switchingToNavigateHidesVisibleGhost() {
+  cr::Facade facade;
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerMove, 1.2, 2.7, 42)));
+
+  const bool changed = facade.setActiveTool(cr::Tool::Navigate);
+
+  return expect(changed, "navigate ghost switch changed") &&
+         expect(facade.toolState().activeTool == cr::Tool::Navigate,
+                "navigate ghost switch active tool") &&
+         expect(!facade.ghostState().visible, "navigate ghost switch hidden");
 }
 
 bool sameToolActivationKeepsVisibleGhost() {
@@ -386,9 +446,7 @@ bool hiddenGhostToolSwitchPreservesOtherEditorState() {
   cr::Facade facade;
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress, 1.0, 2.0, 11)));
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
-  static_cast<void>(facade.dispatchToolInput(
-      pointerInput(cr::CreativeToolInputKind::PointerPress, 3.0, 4.0, 22)));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
 
   const bool changed = facade.setActiveTool(cr::Tool::Select);
 
@@ -396,8 +454,6 @@ bool hiddenGhostToolSwitchPreservesOtherEditorState() {
          expect(!facade.ghostState().visible, "hidden ghost remains hidden") &&
          expect(facade.selectionState().selectedTarget.value == 11U,
                 "hidden ghost selection preserved") &&
-         expect(facade.inspectionState().inspectedTarget.value == 22U,
-                "hidden ghost inspection preserved") &&
          expect(!facade.measurementState().active,
                 "hidden ghost measurement inactive") &&
          expect(!facade.measurementState().hasMeasurement,
@@ -408,7 +464,7 @@ bool pointerMoveAfterHideShowsGhostWithNewTool() {
   cr::Facade facade;
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerMove, 1.2, 2.7, 42)));
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
 
   const cr::CreativeFacadeToolDispatchReceipt receipt =
       facade.dispatchToolInput(
@@ -416,8 +472,8 @@ bool pointerMoveAfterHideShowsGhostWithNewTool() {
 
   return expect(receipt.ghostChanged, "ghost reshow changed") &&
          expect(facade.ghostState().visible, "ghost reshow visible") &&
-         expect(facade.ghostState().sourceTool == cr::Tool::Inspect,
-                "ghost reshow source inspect") &&
+         expect(facade.ghostState().sourceTool == cr::Tool::Move,
+                "ghost reshow source move") &&
          expect(facade.ghostState().rawPoint.x == 5.4,
                 "ghost reshow raw x") &&
          expect(facade.ghostState().target.value == 77U,
@@ -455,14 +511,11 @@ bool unknownInputDoesNotChangeKernels() {
   return expect(!receipt.accepted, "unknown not accepted") &&
          expect(!receipt.changed, "unknown unchanged") &&
          expect(!receipt.selectionChanged, "unknown selection unchanged") &&
-         expect(!receipt.inspectionChanged, "unknown inspection unchanged") &&
          expect(!receipt.measurementChanged, "unknown measurement unchanged") &&
          expect(!receipt.ghostChanged, "unknown ghost unchanged") &&
          expect(receipt.message == "unsupported_input", "unknown message") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "unknown selection state") &&
-         expect(facade.inspectionState().inspectedTarget.value == cr::kInvalidId,
-                "unknown inspection state") &&
          expect(!facade.measurementState().hasMeasurement,
                 "unknown measurement state") &&
          expect(!facade.ghostState().visible, "unknown ghost state");
@@ -548,7 +601,7 @@ bool installingInvalidIdDocumentDoesNotMutateExistingFacade() {
                    1.0,
                    2.0,
                    targetId(selectedId))));
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   const std::uint64_t revisionBefore = facade.document().revision();
   const cr::CreativeObjectDirtyFlags dirtyBefore =
       facade.document().dirtyFlags();
@@ -575,7 +628,7 @@ bool installingInvalidIdDocumentDoesNotMutateExistingFacade() {
                 "install invalid keeps revision") &&
          expect(facade.document().dirtyFlags() == dirtyBefore,
                 "install invalid keeps dirty flags") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
+         expect(facade.toolState().activeTool == cr::Tool::Move,
                 "install invalid keeps active tool") &&
          expect(facade.selectionState().selectedTarget.value ==
                     targetId(selectedId),
@@ -597,7 +650,7 @@ bool installingDocumentClearsTransientEditorState() {
                    1.0,
                    2.0,
                    targetId(firstId))));
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
                    3.0,
@@ -633,7 +686,6 @@ bool installingDocumentClearsTransientEditorState() {
   return expect(setup.accepted, "install clear setup accepted") &&
          expect(receipt.accepted, "install clear accepted") &&
          expect(receipt.selectionCleared, "install clears selection flag") &&
-         expect(receipt.inspectionCleared, "install clears inspection flag") &&
          expect(receipt.measurementCleared, "install clears measurement flag") &&
          expect(receipt.ghostCleared, "install clears ghost flag") &&
          expect(receipt.toolPointerCleared,
@@ -659,12 +711,6 @@ bool installingDocumentClearsTransientEditorState() {
          expect(facade.selectionState().candidateTarget.value ==
                     cr::kInvalidId,
                 "install clear selection candidate empty") &&
-         expect(facade.inspectionState().inspectedTarget.value ==
-                    cr::kInvalidId,
-                "install clear inspection empty") &&
-         expect(facade.inspectionState().candidateTarget.value ==
-                    cr::kInvalidId,
-                "install clear inspection candidate empty") &&
          expect(!facade.measurementState().active,
                 "install clear measurement inactive") &&
          expect(!facade.measurementState().hasMeasurement,
@@ -684,8 +730,6 @@ bool installingDocumentClearsTransientEditorState() {
          expect(ui.rowCount == 4U, "install clear default row count") &&
          expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::SelectedTarget),
                 "install clear no selected row") &&
-         expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::InspectedTarget),
-                "install clear no inspected row") &&
          expect(!hasRowKind(ui.model, cr::CreativeUiRowKind::MeasurementState),
                 "install clear no measurement row") &&
          expect(!hasGhostPreviewRow(ui.model), "install clear no ghost row");
@@ -724,9 +768,7 @@ bool installingSecondDocumentDoesNotLeakOldSelectionRows() {
          expect(after.model.objectSummaries.size() == 1U,
                 "install second summaries only new document") &&
          expect(!hasRowKind(after.model, cr::CreativeUiRowKind::SelectedTarget),
-                "install second no selected row") &&
-         expect(!hasRowKind(after.model, cr::CreativeUiRowKind::InspectedTarget),
-                "install second no inspected row");
+                "install second no selected row");
 }
 
 bool removingSelectedObjectClearsSelectionAndOldState() {
@@ -760,57 +802,53 @@ bool removingSelectedObjectClearsSelectionAndOldState() {
                 "remove selected clears tool pointer target");
 }
 
-bool removingInspectedObjectClearsInspectionOnly() {
+bool removingHoveredObjectPreservesSelection() {
   cr::Facade facade;
   const cr::CreativeObjectId selectedId = createRoom(facade, "Selected Room");
-  const cr::CreativeObjectId inspectedId = createRoom(facade, "Inspected Room");
+  const cr::CreativeObjectId hoveredId = createRoom(facade, "Hovered Room");
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
                    1.0,
                    2.0,
                    targetId(selectedId))));
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
   static_cast<void>(facade.dispatchToolInput(
-      pointerInput(cr::CreativeToolInputKind::PointerPress,
+      pointerInput(cr::CreativeToolInputKind::PointerMove,
                    3.0,
                    4.0,
-                   targetId(inspectedId))));
+                   targetId(hoveredId))));
 
-  const bool removed = removeObject(facade, inspectedId);
+  const bool removed = removeObject(facade, hoveredId);
 
-  return expect(removed, "remove inspected object succeeds") &&
-         expect(facade.findObject(inspectedId) == nullptr,
-                "remove inspected object gone") &&
+  return expect(removed, "remove hovered object succeeds") &&
+         expect(facade.findObject(hoveredId) == nullptr,
+                "remove hovered object gone") &&
          expect(facade.document().objectCount() == 1U,
-                "remove inspected leaves selected object") &&
+                "remove hovered leaves selected object") &&
          expect(facade.selectionState().selectedTarget.value ==
                     targetId(selectedId),
-                "remove inspected preserves selection") &&
+                "remove hovered preserves selection") &&
          expect(facade.state().selected.value == targetId(selectedId),
-                "remove inspected preserves old selected") &&
-         expect(facade.inspectionState().inspectedTarget.value ==
-                    cr::kInvalidId,
-                "remove inspected clears inspection") &&
-         expect(facade.inspectionState().candidateTarget.value ==
-                    cr::kInvalidId,
-                "remove inspected candidate empty");
+                "remove hovered preserves old selected") &&
+         expect(facade.state().hovered.value == cr::kInvalidId,
+                "remove hovered clears hovered") &&
+         expect(facade.toolState().pointer.target.value == cr::kInvalidId,
+                "remove hovered clears tool pointer target");
 }
 
 bool removingMissingObjectPreservesEditorTargets() {
   cr::Facade facade;
   const cr::CreativeObjectId selectedId = createRoom(facade, "Selected Room");
-  const cr::CreativeObjectId inspectedId = createRoom(facade, "Inspected Room");
+  const cr::CreativeObjectId hoveredId = createRoom(facade, "Hovered Room");
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
                    1.0,
                    2.0,
                    targetId(selectedId))));
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
   static_cast<void>(facade.dispatchToolInput(
-      pointerInput(cr::CreativeToolInputKind::PointerPress,
+      pointerInput(cr::CreativeToolInputKind::PointerMove,
                    3.0,
                    4.0,
-                   targetId(inspectedId))));
+                   targetId(hoveredId))));
   const std::uint64_t revisionBeforeRemove = facade.document().revision();
 
   const bool removed = removeObject(facade, 9999);
@@ -823,12 +861,9 @@ bool removingMissingObjectPreservesEditorTargets() {
          expect(facade.selectionState().selectedTarget.value ==
                     targetId(selectedId),
                 "remove missing preserves selection") &&
-         expect(facade.inspectionState().inspectedTarget.value ==
-                    targetId(inspectedId),
-                "remove missing preserves inspection") &&
          expect(facade.state().selected.value == targetId(selectedId),
                 "remove missing preserves old selected") &&
-         expect(facade.state().hovered.value == targetId(inspectedId),
+         expect(facade.state().hovered.value == targetId(hoveredId),
                 "remove missing preserves hovered");
 }
 
@@ -933,7 +968,9 @@ int main() {
   const bool ok = defaultsBuildDefaultUiModel() &&
                   setActiveToolUpdatesKernelAndOldState() &&
                   selectPressUpdatesSelectionOnlyAndNotDocument() &&
-                  inspectPressUpdatesInspectionOnly() &&
+                  movePressSelectsLikeSelect() &&
+                  navigatePointerInputDoesNotTouchEditorState() &&
+                  switchingToNavigateCancelsActiveMeasurement() &&
                   measurePressMoveReleaseUpdatesMeasurement() &&
                   leavingMeasureCancelsActiveMeasurement() &&
                   sameMeasureToolActivationKeepsActiveMeasurement() &&
@@ -942,6 +979,7 @@ int main() {
                   pointerMoveUpdatesGhostWithSnap() &&
                   cancelInputHidesGhostAndUiDropsGhostRow() &&
                   toolSwitchHidesVisibleGhost() &&
+                  switchingToNavigateHidesVisibleGhost() &&
                   sameToolActivationKeepsVisibleGhost() &&
                   hiddenGhostToolSwitchPreservesOtherEditorState() &&
                   pointerMoveAfterHideShowsGhostWithNewTool() &&
@@ -953,7 +991,7 @@ int main() {
                   installingDocumentClearsTransientEditorState() &&
                   installingSecondDocumentDoesNotLeakOldSelectionRows() &&
                   removingSelectedObjectClearsSelectionAndOldState() &&
-                  removingInspectedObjectClearsInspectionOnly() &&
+                  removingHoveredObjectPreservesSelection() &&
                   removingMissingObjectPreservesEditorTargets() &&
                   removingGhostTargetHidesGhost() &&
                   removingDifferentObjectPreservesGhost() &&

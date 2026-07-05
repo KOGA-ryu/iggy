@@ -43,7 +43,6 @@ target_sources(iggy3d
     src/app/iggy3d/creative/ViewportPick.cpp
     src/app/iggy3d/creative/Tools.cpp
     src/app/iggy3d/creative/Select.cpp
-    src/app/iggy3d/creative/Inspect.cpp
     src/app/iggy3d/creative/Measure.cpp
     src/app/iggy3d/creative/Snap.cpp
     src/app/iggy3d/creative/DocumentSnap.cpp

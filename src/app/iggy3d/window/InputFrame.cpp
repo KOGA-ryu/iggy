@@ -1164,11 +1164,16 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
         productCreativeDocumentEditorActiveForWindow(context.window);
     // branch-gate: BG-1029
     if (creativeDocumentActive) {
+      // Keyboard stays dead for gameplay in creative document mode; the only
+      // keys polled are the four direct tool keys (TL-2, keys 1/2/3/4).
+      const KeyboardCreativeToolKeyPresses creativeToolKeys =
+          pollKeyboardCreativeToolKeys(context.inputFrame.keyboard);
       (void)processProductCreativeInputActions(
           ProductCreativeInputActionsRequest{
               &context.window,
               context.creativeFacade,
               &gameplayActions,
+              creativeToolKeys,
               downstreamClick,
               creativePointerTarget,
           });
@@ -1203,6 +1208,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
           &context.window,
           context.creativeFacade,
           &gameplayActions,
+          {},
           downstreamClick,
           creativePointerTarget,
       });

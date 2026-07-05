@@ -53,7 +53,6 @@ bool expectReceiptCount(const iggy3d::RenderReceipt& receipt,
 cr::CreativeUiModel populatedCreativeUiModel() {
   cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
   request.selectionState.selectedTarget.value = 42;
-  request.inspectionState.inspectedTarget.value = 84;
   request.measurementState.active = true;
   request.measurementState.hasMeasurement = true;
   request.measurementState.startPoint = {1.0, 2.0, cr::TargetRef{7}};
@@ -71,9 +70,10 @@ cr::CreativeUiModel populatedCreativeUiModel() {
   return cr::buildCreativeUiModel(request).model;
 }
 
-void populateInspectedFacade(cr::Facade& facade) {
+void populateSelectedFacade(cr::Facade& facade) {
+  // Move selects like Select until the drag slice (TV1-F/G) lands.
   facade.reset();
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
 
   cr::CreativeToolInputPacket input;
   input.kind = cr::CreativeToolInputKind::PointerPress;
@@ -272,7 +272,7 @@ bool modelProjectionRecordsReceiptFields() {
 
 bool facadeProjectionRecordsReceiptFields() {
   cr::Facade facade;
-  populateInspectedFacade(facade);
+  populateSelectedFacade(facade);
 
   iggy3d::ProductCreativeUiProjectionRequest request;
   request.facade = &facade;

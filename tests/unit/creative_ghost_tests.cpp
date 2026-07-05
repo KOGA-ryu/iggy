@@ -64,7 +64,7 @@ bool hideVisibleClearsPreviewState() {
   const cr::CreativeGhostReceipt update =
       cr::updateGhostPreview(state,
                              pointer(1.2, 2.7, 42),
-                             cr::Tool::Inspect,
+                             cr::Tool::Move,
                              cr::makeDefaultCreativeSnapSettings());
   const cr::CreativeGhostReceipt hide = cr::hideGhost(state);
 
@@ -221,7 +221,7 @@ bool applyPreviewPointerRoutesToUpdate() {
   cr::CreativeGhostState state = cr::makeDefaultCreativeGhostState();
   cr::CreativeToolIntent intent;
   intent.kind = cr::CreativeToolIntentKind::PreviewPointer;
-  intent.tool = cr::Tool::Inspect;
+  intent.tool = cr::Tool::Move;
   intent.pointer = pointer(1.2, 2.7, 42);
 
   const cr::CreativeGhostReceipt receipt =
@@ -233,7 +233,7 @@ bool applyPreviewPointerRoutesToUpdate() {
          expect(receipt.changed, "apply preview changed") &&
          expect(receipt.appliedChange == cr::CreativeGhostChangeKind::UpdatePreview,
                 "apply preview applied") &&
-         expect(state.sourceTool == cr::Tool::Inspect, "apply source") &&
+         expect(state.sourceTool == cr::Tool::Move, "apply source") &&
          expectPoint(state.rawPoint, 1.2, 2.7, "apply raw") &&
          expectPoint(state.snappedPoint, 1.0, 3.0, "apply snapped");
 }

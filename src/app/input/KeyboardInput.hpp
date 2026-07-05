@@ -45,6 +45,10 @@ struct KeyboardInputState {
   bool editorDeleteWasDown = false;
   bool editorUndoWasDown = false;
   bool editorRedoWasDown = false;
+  bool creativeToolSelectWasDown = false;
+  bool creativeToolMoveWasDown = false;
+  bool creativeToolMeasureWasDown = false;
+  bool creativeToolNavigateWasDown = false;
 };
 
 struct KeyboardRoomEditorInputSample {
@@ -68,6 +72,23 @@ struct KeyboardRoomEditorInputSample {
 
 struct KeyboardAsciiRoomPaintSample {
   std::array<bool, kKeyboardAsciiRoomPaintGlyphCount> glyphDown{};
+};
+
+// Creative document editor tool keys (1/2/3/4). Deliberately narrow: this is
+// the ONLY keyboard surface in creative document mode and it never records
+// gameplay actions.
+struct KeyboardCreativeToolInputSample {
+  bool selectToolDown = false;
+  bool moveToolDown = false;
+  bool measureToolDown = false;
+  bool navigateToolDown = false;
+};
+
+struct KeyboardCreativeToolKeyPresses {
+  bool selectPressed = false;
+  bool movePressed = false;
+  bool measurePressed = false;
+  bool navigatePressed = false;
 };
 
 struct KeyboardMenuInputSample {
@@ -96,5 +117,10 @@ void recordKeyboardRoomEditorActions(KeyboardInputState& state,
                                      const KeyboardRoomEditorInputSample& sample,
                                      ActionState& actions);
 void pollKeyboardRoomEditorActions(KeyboardInputState& state, ActionState& actions);
+KeyboardCreativeToolKeyPresses recordKeyboardCreativeToolKeys(
+    KeyboardInputState& state,
+    const KeyboardCreativeToolInputSample& sample);
+KeyboardCreativeToolKeyPresses pollKeyboardCreativeToolKeys(
+    KeyboardInputState& state);
 
 }  // namespace iggy3d

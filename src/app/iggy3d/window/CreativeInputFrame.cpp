@@ -6,51 +6,23 @@
 #include "app/input/ActionState.hpp"
 
 #include <array>
-#include <cstddef>
 
 namespace iggy3d {
 namespace {
 
-enum class ToolActionMode : unsigned char {
-  Direct,
-  Next,
-  Previous,
-};
-
-struct ToolActionRow {
-  InputAction action = InputAction::None;
-  ToolActionMode mode = ToolActionMode::Direct;
+struct ToolKeyRow {
+  bool KeyboardCreativeToolKeyPresses::* pressed = nullptr;
   creative::Tool tool = creative::Tool::Select;
 };
 
-constexpr std::array<creative::Tool, 3> kCreativeToolOrder = {
-    creative::Tool::Select,
-    creative::Tool::Inspect,
-    creative::Tool::Measure,
-};
-
-constexpr std::array<ToolActionRow, 5> kToolActionRows = {{
-    {InputAction::EditorNextTool, ToolActionMode::Next, creative::Tool::Select},
-    {InputAction::EditorPreviousTool,
-     ToolActionMode::Previous,
-     creative::Tool::Select},
-    {InputAction::EditorSelect, ToolActionMode::Direct, creative::Tool::Select},
-    {InputAction::EditorSelectFloorTool,
-     ToolActionMode::Direct,
-     creative::Tool::Select},
-    {InputAction::EditorSelectWallTool,
-     ToolActionMode::Direct,
-     creative::Tool::Inspect},
+// Direct tool keys 1/2/3/4 (TL-2: no cycling anywhere).
+constexpr std::array<ToolKeyRow, 4> kToolKeyRows = {{
+    {&KeyboardCreativeToolKeyPresses::selectPressed, creative::Tool::Select},
+    {&KeyboardCreativeToolKeyPresses::movePressed, creative::Tool::Move},
+    {&KeyboardCreativeToolKeyPresses::measurePressed, creative::Tool::Measure},
+    {&KeyboardCreativeToolKeyPresses::navigatePressed,
+     creative::Tool::Navigate},
 }};
-
-[[nodiscard]] std::size_t toolIndex(creative::Tool tool) noexcept {
-  for (std::size_t index = 0; index < kCreativeToolOrder.size(); ++index) {
-    if (kCreativeToolOrder[index] == tool) {
-      return index;
-    }
-  }
-  return 0;
-}
 
 void mergeDispatchReceipt(ProductCreativeInputFrameReceipt& receipt,
                           const creative::CreativeFacadeToolDispatchReceipt&
@@ -78,14 +50,6 @@ void mergeInputFrameReceipt(ProductCreativeInputFrameReceipt& receipt,
   }
 }
 
-[[nodiscard]] bool creativeInputActionHandledByBridge(
-    InputAction action,
-    creative::Tool currentTool) noexcept {
-  creative::Tool ignoredTool = currentTool;
-  return action == InputAction::EditorCancelPreview ||
-         productCreativeToolActionTarget(action, currentTool, ignoredTool);
-}
-
 [[nodiscard]] creative::CreativeToolInputPacket cancelPacket() noexcept {
   creative::CreativeToolInputPacket packet;
   packet.kind = creative::CreativeToolInputKind::Cancel;
@@ -99,34 +63,14 @@ bool productCreativeInputActiveForWindow(
   return productCreativeDocumentEditorActiveForWindow(window);
 }
 
-creative::Tool nextProductCreativeTool(creative::Tool tool) noexcept {
-  const std::size_t index = toolIndex(tool);
-  return kCreativeToolOrder[(index + 1U) % kCreativeToolOrder.size()];
-}
-
-creative::Tool previousProductCreativeTool(creative::Tool tool) noexcept {
-  const std::size_t index = toolIndex(tool);
-  return kCreativeToolOrder[(index + kCreativeToolOrder.size() - 1U) %
-                            kCreativeToolOrder.size()];
-}
-
-bool productCreativeToolActionTarget(InputAction action,
-                                     creative::Tool current,
-                                     creative::Tool& out) noexcept {
-  for (const ToolActionRow& row : kToolActionRows) {
-    if (row.action != action) {
-      continue;
-    }
-    if (row.mode == ToolActionMode::Next) {
-      out = nextProductCreativeTool(current);
+bool productCreativeToolKeyTarget(
+    const KeyboardCreativeToolKeyPresses& presses,
+    creative::Tool& out) noexcept {
+  for (const ToolKeyRow& row : kToolKeyRows) {
+    if (presses.*(row.pressed)) {
+      out = row.tool;
       return true;
     }
-    if (row.mode == ToolActionMode::Previous) {
-      out = previousProductCreativeTool(current);
-      return true;
-    }
-    out = row.tool;
-    return true;
   }
   return false;
 }
@@ -173,12 +117,11 @@ ProductCreativeInputFrameReceipt processProductCreativeInputFrame(
   receipt.activeToolBefore = facade.toolState().activeTool;
   receipt.activeToolAfter = receipt.activeToolBefore;
 
-  creative::Tool targetTool = receipt.activeToolBefore;
-  if (productCreativeToolActionTarget(request.action,
-                                      receipt.activeToolBefore,
-                                      targetTool)) {
+  if (request.toolKeyRequested) {
     receipt.actionHandled = true;
-    receipt.toolChanged = facade.setActiveTool(targetTool);
+    // setActiveTool no-ops on the same tool, so key repeat cannot spam
+    // toolChanged receipts.
+    receipt.toolChanged = facade.setActiveTool(request.toolKey);
     receipt.accepted = true;
     receipt.changed = receipt.changed || receipt.toolChanged;
   }
@@ -241,11 +184,26 @@ ProductCreativeInputFrameReceipt processProductCreativeInputActions(
   receipt.activeToolAfter = receipt.activeToolBefore;
 
   bool dispatched = false;
+  for (const ToolKeyRow& row : kToolKeyRows) {
+    if (!(request.toolKeys.*(row.pressed))) {
+      continue;
+    }
+
+    ProductCreativeInputFrameRequest frameRequest;
+    frameRequest.window = request.window;
+    frameRequest.facade = request.facade;
+    frameRequest.toolKeyRequested = true;
+    frameRequest.toolKey = row.tool;
+    const ProductCreativeInputFrameReceipt frameReceipt =
+        processProductCreativeInputFrame(frameRequest);
+    mergeInputFrameReceipt(receipt, frameReceipt);
+    dispatched = true;
+  }
+
   if (request.actions != nullptr) {
     for (const ActionStateEntry& entry : request.actions->entries) {
       if (!entry.pressed ||
-          !creativeInputActionHandledByBridge(entry.action,
-                                              facade.toolState().activeTool)) {
+          entry.action != InputAction::EditorCancelPreview) {
         continue;
       }
 

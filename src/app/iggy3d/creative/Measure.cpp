@@ -172,7 +172,6 @@ CreativeMeasurementReceipt applyMeasurementToolIntent(
       return cancelMeasurement(state);
     case CreativeToolIntentKind::NoIntent:
     case CreativeToolIntentKind::SelectObjectCandidate:
-    case CreativeToolIntentKind::InspectObjectCandidate:
     case CreativeToolIntentKind::PreviewPointer:
       break;
   }

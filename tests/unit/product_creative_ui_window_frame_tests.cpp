@@ -40,9 +40,10 @@ bool expectReceiptField(const iggy3d::RenderReceipt& receipt,
   return expect(iggy3d::hasReceiptField(receipt, key, value), message);
 }
 
-void populateInspectedFacade(cr::Facade& facade) {
+void populateSelectedFacade(cr::Facade& facade) {
+  // Move selects like Select until the drag slice (TV1-F/G) lands.
   facade.reset();
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
 
   cr::CreativeToolInputPacket input;
   input.kind = cr::CreativeToolInputKind::PointerPress;
@@ -308,7 +309,7 @@ bool inactiveWindowRecordsInactiveProjection() {
 bool creativeWindowWithFacadeRecordsReadyProjection() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade;
-  populateInspectedFacade(facade);
+  populateSelectedFacade(facade);
 
   const iggy3d::ProductCreativeUiFrame frame =
       iggy3d::buildProductCreativeUiWindowFrame(
@@ -415,11 +416,11 @@ bool productVulkanMenuUiFieldsAreUnchanged() {
 bool facadeStateIsNotMutatedByBridge() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::Facade facade;
-  populateInspectedFacade(facade);
+  populateSelectedFacade(facade);
 
   const cr::Tool activeToolBefore = facade.toolState().activeTool;
-  const cr::TargetRef inspectedBefore =
-      facade.inspectionState().inspectedTarget;
+  const cr::TargetRef selectedBefore =
+      facade.selectionState().selectedTarget;
 
   static_cast<void>(iggy3d::buildProductCreativeUiWindowFrame(
       iggy3d::ProductCreativeUiWindowFrameRequest{&window,
@@ -432,9 +433,9 @@ bool facadeStateIsNotMutatedByBridge() {
 
   return expect(facade.toolState().activeTool == activeToolBefore,
                 "facade active tool unchanged") &&
-         expect(facade.inspectionState().inspectedTarget.value ==
-                    inspectedBefore.value,
-                "facade inspected target unchanged");
+         expect(facade.selectionState().selectedTarget.value ==
+                    selectedBefore.value,
+                "facade selected target unchanged");
 }
 
 bool noWindowLoopDoesNotCallBridge() {

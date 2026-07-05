@@ -62,6 +62,11 @@ CreativeToolDispatchReceipt dispatchToolInput(
   switch (input.kind) {
     case CreativeToolInputKind::PointerMove:
       receipt.accepted = true;
+      if (state.activeTool == Tool::Navigate) {
+        // Navigate never touches the document; the camera arrives in TV1-H.
+        receipt.message = "navigate_pointer_inert";
+        break;
+      }
       updatePointer(state, input.pointer, receipt.changedState);
       if (state.activeTool == Tool::Measure) {
         emitIntent(receipt,
@@ -80,21 +85,21 @@ CreativeToolDispatchReceipt dispatchToolInput(
 
     case CreativeToolInputKind::PointerPress:
       receipt.accepted = true;
+      if (state.activeTool == Tool::Navigate) {
+        // Navigate never touches the document; the camera arrives in TV1-H.
+        receipt.message = "navigate_pointer_inert";
+        break;
+      }
       updatePointer(state, input.pointer, receipt.changedState);
       switch (state.activeTool) {
         case Tool::Select:
+        case Tool::Move:
+          // Move selects like Select until the drag slice (TV1-F/G) lands.
           emitIntent(receipt,
                      CreativeToolIntentKind::SelectObjectCandidate,
                      state.activeTool,
                      input.pointer);
           receipt.message = "select_object_candidate";
-          break;
-        case Tool::Inspect:
-          emitIntent(receipt,
-                     CreativeToolIntentKind::InspectObjectCandidate,
-                     state.activeTool,
-                     input.pointer);
-          receipt.message = "inspect_object_candidate";
           break;
         case Tool::Measure:
           if (!state.measurementActive) {
@@ -107,11 +112,18 @@ CreativeToolDispatchReceipt dispatchToolInput(
                      input.pointer);
           receipt.message = "begin_measurement";
           break;
+        case Tool::Navigate:
+          break;
       }
       break;
 
     case CreativeToolInputKind::PointerRelease:
       receipt.accepted = true;
+      if (state.activeTool == Tool::Navigate) {
+        // Navigate never touches the document; the camera arrives in TV1-H.
+        receipt.message = "navigate_pointer_inert";
+        break;
+      }
       updatePointer(state, input.pointer, receipt.changedState);
       if (state.activeTool == Tool::Measure && state.measurementActive) {
         state.measurementActive = false;

@@ -49,9 +49,10 @@ bool expectReceiptCount(const iggy3d::RenderReceipt& receipt,
                             message);
 }
 
-void populateInspectedFacade(cr::Facade& facade) {
+void populateSelectedFacade(cr::Facade& facade) {
+  // Move selects like Select until the drag slice (TV1-F/G) lands.
   facade.reset();
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
 
   cr::CreativeToolInputPacket input;
   input.kind = cr::CreativeToolInputKind::PointerPress;
@@ -251,7 +252,7 @@ bool creativeWindowWithFacadeProjectsAndRecords() {
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
   cr::Facade facade;
-  populateInspectedFacade(facade);
+  populateSelectedFacade(facade);
 
   iggy3d::ProductCreativeUiFrameRequest request;
   request.window = &window;
@@ -395,11 +396,11 @@ bool facadeStateIsNotMutatedByProjection() {
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
   cr::Facade facade;
-  populateInspectedFacade(facade);
+  populateSelectedFacade(facade);
 
   const cr::Tool activeToolBefore = facade.toolState().activeTool;
-  const cr::TargetRef inspectedBefore =
-      facade.inspectionState().inspectedTarget;
+  const cr::TargetRef selectedBefore =
+      facade.selectionState().selectedTarget;
 
   iggy3d::ProductCreativeUiFrameRequest request;
   request.window = &window;
@@ -408,9 +409,9 @@ bool facadeStateIsNotMutatedByProjection() {
 
   return expect(facade.toolState().activeTool == activeToolBefore,
                 "facade active tool unchanged") &&
-         expect(facade.inspectionState().inspectedTarget.value ==
-                    inspectedBefore.value,
-                "facade inspected target unchanged");
+         expect(facade.selectionState().selectedTarget.value ==
+                    selectedBefore.value,
+                "facade selected target unchanged");
 }
 
 }  // namespace

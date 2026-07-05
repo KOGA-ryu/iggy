@@ -72,11 +72,6 @@ void selectTarget(cr::Facade& facade, cr::CreativeObjectId objectId) {
       pointerPress(static_cast<cr::Id>(objectId))));
 }
 
-void inspectTarget(cr::Facade& facade, cr::Id targetId) {
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
-  static_cast<void>(facade.dispatchToolInput(pointerPress(targetId)));
-}
-
 bool nullFacadeFailsClosed() {
   iggy3d::ProductCreativeUiCommandFrameRequest request;
   request.inputReceipt = commandInput("creative.row.tools.active_tool");
@@ -141,7 +136,7 @@ bool notConsumedInputNoops() {
 bool consumedDisabledNoops() {
   cr::Facade facade;
   facade.reset();
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
 
   iggy3d::ProductCreativeUiCommandFrameRequest request;
   request.facade = &facade;
@@ -157,11 +152,11 @@ bool consumedDisabledNoops() {
          expect(receipt.commandKind ==
                     iggy3d::ProductCreativeUiCommandKind::None,
                 "disabled command none") &&
-         expect(receipt.toolBefore == cr::Tool::Inspect,
+         expect(receipt.toolBefore == cr::Tool::Move,
                 "disabled before") &&
-         expect(receipt.toolAfter == cr::Tool::Inspect,
+         expect(receipt.toolAfter == cr::Tool::Move,
                 "disabled after") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
+         expect(facade.toolState().activeTool == cr::Tool::Move,
                 "disabled facade unchanged") &&
          expect(receipt.status == "product_creative_ui_command_disabled",
                 "disabled status");
@@ -284,8 +279,7 @@ bool activeToolRowDoesNotCancelActiveMeasurement() {
 bool createRoomCommandCreatesGenericRoom() {
   cr::Facade facade;
   facade.reset();
-  static_cast<void>(facade.setActiveTool(cr::Tool::Inspect));
-  inspectTarget(facade, 77);
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   const std::uint64_t objectCountBefore = facade.document().objectCount();
   const std::uint64_t revisionBefore = facade.document().revision();
 
@@ -339,15 +333,13 @@ bool createRoomCommandCreatesGenericRoom() {
                 "create object count") &&
          expect(facade.document().revision() == revisionBefore + 1U,
                 "create document revision") &&
-         expect(facade.toolState().activeTool == cr::Tool::Inspect,
+         expect(facade.toolState().activeTool == cr::Tool::Move,
                 "create tool preserved") &&
-         expect(facade.state().tool == cr::Tool::Inspect,
+         expect(facade.state().tool == cr::Tool::Move,
                 "create old tool preserved") &&
          expect(facade.selectionState().selectedTarget.value ==
                     cr::kInvalidId,
-                "create selection preserved") &&
-         expect(facade.inspectionState().inspectedTarget.value == 77U,
-                "create inspection preserved");
+                "create selection preserved");
 }
 
 bool repeatedCreateRoomCommandCreatesNewIdsAndRevisions() {
@@ -464,21 +456,21 @@ bool selectedTargetRowTogglesRoomVisibilityOnAgain() {
                 "toggle on selection preserved");
 }
 
-bool selectedTargetRowPreservesInspectionTarget() {
+bool selectedTargetRowPreservesActiveTool() {
   cr::Facade facade;
   facade.reset();
   const cr::CreativeObjectId roomId = createRoom(facade);
   selectTarget(facade, roomId);
-  inspectTarget(facade, 77);
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
       routeCommand(facade, "creative.row.selection.selected_target");
 
-  return expect(receipt.changed, "inspection toggle changed") &&
+  return expect(receipt.changed, "tool preserve toggle changed") &&
          expect(facade.selectionState().selectedTarget.value == roomId,
-                "inspection selection preserved") &&
-         expect(facade.inspectionState().inspectedTarget.value == 77U,
-                "inspection target preserved");
+                "tool preserve selection preserved") &&
+         expect(facade.toolState().activeTool == cr::Tool::Measure,
+                "tool preserve active tool preserved");
 }
 
 bool selectedTargetRowNoSelectionRejects() {
@@ -599,7 +591,7 @@ int main() {
   ok &= repeatedCreateRoomCommandCreatesNewIdsAndRevisions();
   ok &= selectedTargetRowTogglesRoomVisibilityOff();
   ok &= selectedTargetRowTogglesRoomVisibilityOnAgain();
-  ok &= selectedTargetRowPreservesInspectionTarget();
+  ok &= selectedTargetRowPreservesActiveTool();
   ok &= selectedTargetRowNoSelectionRejects();
   ok &= selectedTargetRowMissingObjectRejectsAndPreservesSelection();
   ok &= nonToolRowsRemainUnknownNoop();

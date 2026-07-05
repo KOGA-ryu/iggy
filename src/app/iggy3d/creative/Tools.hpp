@@ -20,7 +20,6 @@ enum class CreativeToolInputKind : std::uint8_t {
 enum class CreativeToolIntentKind : std::uint8_t {
   NoIntent,
   SelectObjectCandidate,
-  InspectObjectCandidate,
   BeginMeasurement,
   UpdateMeasurement,
   EndMeasurement,
