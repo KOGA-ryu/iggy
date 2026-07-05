@@ -1253,8 +1253,13 @@ bool creativeDocumentSurfaceHidesLegacyGameplayHudAndFeedback() {
                 "creative document hides interaction mode HUD") &&
          expect(!projection.mapMakerHud.visible,
                 "creative document hides map maker HUD") &&
-         expect(!projection.mapMakerGrid.visible,
-                "creative document hides map maker grid") &&
+         // F0 (blank stage): the creative document surface SHOWS the ground grid
+         // (the map_maker grid geometry, reused) as the blank-canvas reference,
+         // while the legacy map_maker HUD/gameplay overlays stay hidden.
+         expect(projection.mapMakerGrid.visible,
+                "creative document shows ground grid") &&
+         expect(projection.mapMakerGrid.dotCount > 0U,
+                "creative document ground grid has dots") &&
          expect(!projection.roomEditorHud.visible,
                 "creative document hides room editor HUD") &&
          expect(!projection.movementHud.visible,

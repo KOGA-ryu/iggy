@@ -20,6 +20,8 @@
 #include "app/iggy3d/save/RoomMarkerBinding.hpp"
 #include "app/iggy3d/world/Creation.hpp"
 #include "content/PackageLoader.hpp"
+#include "core/math/Aabb3.hpp"
+#include "core/math/Transform3.hpp"
 #include "render/RenderDiagnostics.hpp"
 
 namespace iggy3d {
@@ -165,6 +167,89 @@ bool createProductSession(const ProductAppOptions& options,
   window.startupPackageLoadMicroseconds = elapsedMicroseconds(loadStarted);
   window.startupPackageLoadStatus = packageLoadStatusName(package.status);
   return createProductSessionFromPackage(package, activeSession, window);
+}
+
+// F0 (blank stage): a CREATIVE world must stand on its own empty canvas, not
+// the first_room demo ("Loop Keep") that createProductSession installs. Build a
+// minimal session that seeds ONLY a local player at the world origin and leaves
+// window.activeRoom empty, so no demo room geometry projects. The map_maker
+// grid (surfaced for the creative-document surface in ProjectionRefresh) draws
+// the visible ground grid around the origin. Product / LegacyMapMaker launches
+// keep calling createProductSession untouched.
+bool createCreativeBlankSession(std::optional<Session>& activeSession,
+                                ProductAppWindowState& window) {
+  const auto lookupStarted = std::chrono::steady_clock::now();
+  window.startupPackagePath = "creative_blank_stage";
+  window.startupPackageLookupMeasured = true;
+  window.startupPackageLookupMicroseconds = elapsedMicroseconds(lookupStarted);
+  window.startupPackageLookupStatus = "startup_package_lookup_resolved";
+
+  const auto loadStarted = std::chrono::steady_clock::now();
+  window.packageLoadStatus = "ok";
+  window.startupPackageLoadMeasured = true;
+  window.startupPackageLoadMicroseconds = elapsedMicroseconds(loadStarted);
+  window.startupPackageLoadStatus = "ok";
+
+  const auto sessionStarted = std::chrono::steady_clock::now();
+  FixtureScenarioSeed seed;
+  seed.scenarioId = "creative_blank";
+  ScenarioEntitySeed player;
+  player.stableName = "player";
+  player.kind = EntityKind::Player;
+  player.transform = identityTransform3();
+  player.localBounds = makeAabb3({-0.25F, 0.0F, -0.25F}, {0.25F, 1.8F, 0.25F});
+  player.active = true;
+  player.persistent = true;
+  seed.players.push_back({0, PlayerSlotKind::Local, "player"});
+  seed.entities.push_back(std::move(player));
+  // Session::create requires at least one objective. A creative stage has no
+  // gameplay goal, so seed a single inert objective: condition "None" +
+  // initialStatus Active never self-completes (only an ObjectiveTrigger would),
+  // so the session stays Playing and never finalizes an outcome.
+  ScenarioObjectiveSeed stageObjective;
+  stageObjective.id = "creative_blank_stage";
+  stageObjective.initialStatus = ObjectiveStatusSeed::Active;
+  stageObjective.condition = "None";
+  stageObjective.playerSlot = 0;
+  seed.objectives.push_back(std::move(stageObjective));
+
+  SessionCreateRequest create;
+  create.packageId = "iggy3d.creative_blank";
+  create.seed = seed;
+  create.config = seed.config;
+
+  Result<Session> session = Session::create(create);
+  if (session.status != ResultStatus::Ok) {
+    window.launchStatus =
+        session.error.code.empty() ? "session_create_failed" : session.error.code;
+    window.startupRuntimeSessionCreateMeasured = true;
+    window.startupRuntimeSessionCreateMicroseconds =
+        elapsedMicroseconds(sessionStarted);
+    window.startupRuntimeSessionCreateStatus = window.launchStatus;
+    return false;
+  }
+  window.startupRuntimeSessionCreateMeasured = true;
+  window.startupRuntimeSessionCreateMicroseconds =
+      elapsedMicroseconds(sessionStarted);
+  window.startupRuntimeSessionCreateStatus = "startup_runtime_session_created";
+
+  window.activeRoom = {};
+  window.activeRoomCollision = {};
+  activeSession = std::move(session.value);
+  window.runtimeSessionCreated = true;
+  window.gameplayActive = true;
+  window.runtimeStateHash = activeSession->stateHash();
+  window.launchStatus = "runtime_session_created";
+  return true;
+}
+
+// F0: place the creative fly camera on the world origin and pitch it down so
+// the origin ground grid (where objects will be created) is framed on entry.
+void frameCreativeStageCameraOnOrigin(ProductAppWindowState& window) {
+  window.viewport.creativeFlyPositionMeters = {0.0F, 6.0F, 10.0F};
+  window.viewport.creativeFlyAnchorValid = true;
+  window.viewport.cameraYawDegrees = 0.0F;
+  window.viewport.cameraPitchDegrees = -30.0F;
 }
 
 ProductWorldCreationResult prepareProductWorldCreationFromDraft(
@@ -1067,10 +1152,13 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
     return result;
   }
 
-  if (!createProductSession(options, activeSession, window)) {
+  // F0: enter a blank creative stage (empty ground grid at origin), NOT the
+  // first_room demo. Product New World keeps createProductSession.
+  if (!createCreativeBlankSession(activeSession, window)) {
     setCreativeNewWorldLaunchStatus(result, window.launchStatus);
     return result;
   }
+  frameCreativeStageCameraOnOrigin(window);
   result.sessionCreated = activeSession.has_value();
 
   creative::CreativeDocument documentToInstall = create.document;
@@ -1122,10 +1210,12 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
     return result;
   }
 
-  if (!createProductSession(options, activeSession, window)) {
+  // F0: opening a creative world also stands on the blank stage, not first_room.
+  if (!createCreativeBlankSession(activeSession, window)) {
     setCreativeOpenWorldLaunchStatus(result, window.launchStatus);
     return result;
   }
+  frameCreativeStageCameraOnOrigin(window);
   result.sessionCreated = activeSession.has_value();
 
   creative::CreativeDocument documentToInstall = open.document;

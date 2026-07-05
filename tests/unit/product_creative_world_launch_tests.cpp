@@ -1,4 +1,5 @@
 #include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "render/RenderDiagnostics.hpp"
@@ -1333,6 +1334,117 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
                 "second open pointer target invalid");
 }
 
+// F0 (blank stage): the creative launch must NOT install the first_room demo
+// room; window.activeRoom stays empty for a creative world.
+bool creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() {
+  const iggy3d::ProductAppOptions options = testOptions("blank_stage");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::Facade facade;
+
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Blank Stage",
+                                        "2026-07-05T09:00:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          facade);
+
+  return expect(launched.accepted, "blank stage launch accepted") &&
+         expect(activeSession.has_value(), "blank stage session present") &&
+         expect(window.gameplayActive, "blank stage gameplay active") &&
+         expect(!window.activeRoom.loaded,
+                "blank stage active room not loaded") &&
+         expect(!window.activeRoom.hasAuthoredRoom,
+                "blank stage no authored demo room") &&
+         expect(window.activeRoom.room.staticMeshes.empty(),
+                "blank stage room has no demo meshes") &&
+         expect(launched.objectCount == 0U, "blank stage empty document") &&
+         expect(facade.document().objectCount() == 0U,
+                "blank stage facade empty document") &&
+         expect(window.startupPackageLoadStatus == "ok",
+                "blank stage package load status ok") &&
+         expect(window.startupRuntimeSessionCreateStatus ==
+                    "startup_runtime_session_created",
+                "blank stage session create status");
+}
+
+// F0: creative entry frames the fly camera on the world origin (elevated,
+// pulled back, pitched down) so the origin ground grid is in view.
+bool creativeLaunchFramesCameraOnOrigin() {
+  const iggy3d::ProductAppOptions options = testOptions("origin_camera");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::Facade facade;
+
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Origin Camera",
+                                        "2026-07-05T09:10:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          facade);
+
+  return expect(launched.accepted, "origin camera launch accepted") &&
+         expect(window.viewport.creativeFlyAnchorValid,
+                "origin camera fly anchor valid") &&
+         expect(window.viewport.creativeFlyPositionMeters.x == 0.0F,
+                "origin camera anchor x at origin") &&
+         expect(window.viewport.creativeFlyPositionMeters.y > 0.0F,
+                "origin camera anchor elevated") &&
+         expect(window.viewport.creativeFlyPositionMeters.z > 0.0F,
+                "origin camera anchor pulled back") &&
+         expect(window.viewport.cameraYawDegrees == 0.0F,
+                "origin camera yaw faces origin") &&
+         expect(window.viewport.cameraPitchDegrees < 0.0F,
+                "origin camera pitched down toward ground");
+}
+
+// F0: the ground grid is present in the projected frame for a creative world.
+bool creativeFrameShowsGroundGrid() {
+  const iggy3d::ProductAppOptions options = testOptions("ground_grid");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::Facade facade;
+
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Ground Grid",
+                                        "2026-07-05T09:20:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          facade);
+
+  iggy3d::FrontendState gameplayFrontend;
+  gameplayFrontend.screen = iggy3d::FrontendScreen::Gameplay;
+  gameplayFrontend.childScreen = iggy3d::FrontendScreen::Gameplay;
+  gameplayFrontend.status = "gameplay_active";
+  iggy3d::refreshProductGameplayProjectionMetrics(
+      iggy3d::ProductGameplayProjectionRefreshRequest{
+          activeSession, window, false, false,
+          iggy3d::ProductRendererRequest::Vulkan, gameplayFrontend});
+
+  return expect(launched.accepted, "ground grid launch accepted") &&
+         expect(iggy3d::productCreativeDocumentEditorActiveForWindow(window),
+                "ground grid creative document active") &&
+         expect(window.mapMakerGridVisible,
+                "ground grid map maker grid visible") &&
+         expect(window.mapMakerGridDotCount > 0U,
+                "ground grid dot count nonzero") &&
+         expect(window.viewport.productDrawMapMakerGridVisible,
+                "ground grid draw list grid visible") &&
+         expect(window.viewport.productDrawMapMakerGridDotCount > 0U,
+                "ground grid draw list dot count nonzero") &&
+         expect(!iggy3d::productMapMakerLiveForWindow(gameplayFrontend, window),
+                "ground grid not legacy map maker surface");
+}
+
 }  // namespace
 
 int main() {
@@ -1351,6 +1463,9 @@ int main() {
       pauseCreativeSaveNullFacadeFailsClosed() &&
       pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() &&
       pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() &&
-      secondOpenClearsOldFacadeStateAndInstallsRestoredDocument();
+      secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() &&
+      creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() &&
+      creativeLaunchFramesCameraOnOrigin() &&
+      creativeFrameShowsGroundGrid();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

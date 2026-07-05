@@ -371,8 +371,14 @@ Vec3 mapMakerAnchorFor(ProductAppWindowState& window,
 ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
     ProductAppWindowState& window,
     const SceneProjectionResult& scene,
-    bool mapMakerLive) {
+    bool mapMakerLive,
+    bool creativeStageGridLive) {
   const bool active = window.gameplayActive && mapMakerLive;
+  // F0: the blank creative stage shows the SAME grid+ground reference without
+  // being the LegacyMapMaker surface, so gate the grid geometry on either lane
+  // while leaving the map_maker status/fly semantics keyed to mapMakerLive only.
+  const bool gridActive =
+      window.gameplayActive && (mapMakerLive || creativeStageGridLive);
   // branch-gate: BG-1205
   window.mapMakerStatus = active ? "map_maker_active" : "map_maker_inactive";
   window.mapMakerReasonCode = window.mapMakerStatus;
@@ -385,7 +391,7 @@ ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
   }
   const Vec3 anchor = mapMakerAnchorFor(window, scene);
   ProductMapMakerGridConfig config;
-  config.enabled = active;
+  config.enabled = gridActive;
   config.anchorWorld = anchor;
   config.planeY = std::floor(anchor.y);
   const ProductMapMakerGridSnapshot grid =
@@ -741,8 +747,12 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
       request.debugOverlayEnabled && hudSurface.gameplayHudVisible);
   const bool mapMakerLive =
       productMapMakerLiveForWindow(request.frontend, window);
+  // F0: a creative-document world (the blank stage) shows the ground grid too.
+  const bool creativeStageGridLive =
+      productCreativeDocumentEditorActiveForWindow(window);
   frame.mapMakerGrid = buildMapMakerGridForFrame(window, frame.scene,
-                                                 mapMakerLive);
+                                                 mapMakerLive,
+                                                 creativeStageGridLive);
   frame.mapMakerGridOverlay =
       buildProductMapMakerGridOverlay(frame.mapMakerGrid);
   appendMapMakerGridDotsToScene(frame.mapMakerGrid, frame.scene);
@@ -753,8 +763,10 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   const bool creativeNavigateOverride =
       productCreativeDocumentEditorActiveForWindow(window) &&
       window.creativeNavigateActive;
+  // F0: even before Navigate is engaged, the blank creative stage frames its
+  // fly-camera pose (origin-framed on entry) so the origin grid is in view.
   frame.cameraAnchorOverrideAvailable =
-      (mapMakerLive || creativeNavigateOverride) &&
+      (mapMakerLive || creativeNavigateOverride || creativeStageGridLive) &&
       window.viewport.creativeFlyAnchorValid;
   frame.cameraAnchorOverrideMeters = window.viewport.creativeFlyPositionMeters;
   frame.mapMakerCubePreview = buildProductMapMakerCubePreview(
