@@ -27,6 +27,7 @@ using iggy3d_creative_app::WorldRay;
 using iggy3d_creative_app::buildObjectVisualPickBounds;
 using iggy3d_creative_app::orientedVisualBoxForObject;
 using iggy3d_creative_app::pickNearestVisualBoundsObject;
+using iggy3d_creative_app::pickNearestVisualBoundsObjectBruteForce;
 using iggy3d_creative_app::rayEntryDistanceForAabb;
 using iggy3d_creative_app::visualBoundsForObject;
 
@@ -52,6 +53,26 @@ cr::CreativeObject makeCrateObject(cr::CreativeObjectId id) {
   object.transform.scale = {1.0, 1.0, 1.0};
   object.bounds = {{9.0, -0.5, -0.5}, {11.0, 0.5, 0.5}};
   return object;
+}
+
+ObjectVisualPickBounds makeAabbCandidate(cr::CreativeObjectId id,
+                                         Vec3 min,
+                                         Vec3 max) {
+  ObjectVisualPickBounds candidate;
+  candidate.id = id;
+  candidate.bounds = {min, max};
+  return candidate;
+}
+
+ObjectVisualPickBounds makeOrientedCandidate(cr::CreativeObjectId id,
+                                             Transform3 transform,
+                                             iggy3d::Aabb3 localBounds) {
+  ObjectVisualPickBounds candidate;
+  candidate.id = id;
+  candidate.orientedBounds = iggy3d::makeOrientedBox(transform, localBounds);
+  candidate.bounds = {iggy3d::orientedBoxWorldAabb(*candidate.orientedBounds).min,
+                      iggy3d::orientedBoxWorldAabb(*candidate.orientedBounds).max};
+  return candidate;
 }
 
 Mat4 identityClip() {
@@ -162,6 +183,89 @@ bool nonUnitRayComparesMixedCandidateDistancesInMeters() {
                 "nearest distance is closer than farther aabb face");
 }
 
+std::vector<ObjectVisualPickBounds> manyObjectPickFixture() {
+  std::vector<ObjectVisualPickBounds> candidates;
+  candidates.push_back(
+      makeAabbCandidate(101, {-0.8F, -0.8F, -4.0F}, {0.8F, 0.8F, -3.0F}));
+  candidates.push_back(
+      makeAabbCandidate(102, {-0.8F, -0.8F, -10.0F}, {0.8F, 0.8F, -9.0F}));
+  candidates.push_back(makeOrientedCandidate(
+      103,
+      Transform3{{4.0F, 0.0F, -6.0F},
+                 {0.0F, kPi * 0.25F, 0.0F},
+                 {1.0F, 1.0F, 1.0F}},
+      iggy3d::makeAabb3(Vec3{-0.9F, -0.9F, -0.9F},
+                        Vec3{0.9F, 0.9F, 0.9F})));
+
+  cr::CreativeObjectId id = 200;
+  for (int x = -6; x <= 6; ++x) {
+    for (int z = 0; z < 8; ++z) {
+      const float centerX = static_cast<float>(x) * 5.0F + 30.0F;
+      const float centerZ = -20.0F - static_cast<float>(z) * 3.0F;
+      candidates.push_back(makeAabbCandidate(
+          id++, {centerX - 0.5F, -0.5F, centerZ - 0.5F},
+          {centerX + 0.5F, 0.5F, centerZ + 0.5F}));
+    }
+  }
+  return candidates;
+}
+
+bool indexedPickMatchesBruteForceAcrossManyObjects() {
+  const std::vector<ObjectVisualPickBounds> candidates = manyObjectPickFixture();
+  const std::vector<WorldRay> rays{
+      {true, {0.0F, 0.0F, 0.0F}, {0.0F, 0.0F, -1.0F}},
+      {true, {0.0F, 0.0F, 0.0F}, {4.0F, 0.0F, -6.0F}},
+      {true, {0.0F, 0.0F, 0.0F}, {-8.0F, 1.0F, -4.0F}},
+      {true, {0.0F, 0.0F, 0.0F}, {0.0F, 4.0F, -1.0F}},
+  };
+
+  bool sawReducedCandidateSet = false;
+  bool ok = true;
+  for (const WorldRay& ray : rays) {
+    const ObjectVisualPickResult indexed =
+        pickNearestVisualBoundsObject(candidates, ray);
+    const ObjectVisualPickResult brute =
+        pickNearestVisualBoundsObjectBruteForce(candidates, ray);
+    sawReducedCandidateSet =
+        sawReducedCandidateSet || indexed.testedCount < brute.testedCount;
+    ok = expect(indexed.objectId == brute.objectId,
+                "indexed pick returns same object as brute force") &&
+         expect(indexed.hitCount == brute.hitCount,
+                "indexed pick sees same exact hit count as brute force") &&
+         expect((brute.objectId == cr::kInvalidObjectId &&
+                 indexed.entryDistance == std::numeric_limits<float>::max()) ||
+                    near(indexed.entryDistance, brute.entryDistance),
+                "indexed pick preserves nearest entry distance") &&
+         expect(indexed.testedCount <= brute.testedCount,
+                "indexed pick tests no more candidates than brute force") &&
+         ok;
+  }
+  return expect(sawReducedCandidateSet,
+                "broadphase reduces at least one many-object pick") &&
+         ok;
+}
+
+bool broadphaseFallsBackWhenRayQueryExceedsGridRange() {
+  const std::vector<ObjectVisualPickBounds> candidates{
+      makeAabbCandidate(501,
+                        {-0.5F, -0.5F, -0.5F},
+                        {0.5F, 0.5F, 0.5F}),
+  };
+  const WorldRay ray{true, {20000000.0F, 0.0F, 0.0F}, {-1.0F, 0.0F, 0.0F}};
+
+  const ObjectVisualPickResult indexed =
+      pickNearestVisualBoundsObject(candidates, ray);
+  const ObjectVisualPickResult brute =
+      pickNearestVisualBoundsObjectBruteForce(candidates, ray);
+
+  return expect(indexed.objectId == brute.objectId,
+                "out-of-range broadphase query falls back without dropping hit") &&
+         expect(indexed.hitCount == brute.hitCount,
+                "out-of-range fallback preserves hit count") &&
+         expect(indexed.testedCount == brute.testedCount,
+                "out-of-range fallback tests the full candidate set");
+}
+
 }  // namespace
 
 int main() {
@@ -170,6 +274,8 @@ int main() {
       rotatedObjectBuildsCenteredOrientedVisualBounds() &&
       rotatedPickHitsRealRotatedFaceOutsideStaleAabb() &&
       rotatedPickRejectsStaleOnlyAabbSpace() &&
-      nonUnitRayComparesMixedCandidateDistancesInMeters();
+      nonUnitRayComparesMixedCandidateDistancesInMeters() &&
+      indexedPickMatchesBruteForceAcrossManyObjects() &&
+      broadphaseFallsBackWhenRayQueryExceedsGridRange();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

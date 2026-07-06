@@ -20,9 +20,8 @@ None.
 
 ## Pull Next
 
-1. `ready/E101-kernel-w4-aabb-grid-index-pick-broadphase.md`
-2. `ready/E102-kernel-w5-room-bake-reachability-receipt.md`
-3. `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
+1. `ready/E102-kernel-w5-room-bake-reachability-receipt.md`
+2. `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -30,7 +29,6 @@ None currently ready.
 
 ## Tier 2: Feature-Add Seams
 
-- `ready/E101-kernel-w4-aabb-grid-index-pick-broadphase.md`
 - `ready/E102-kernel-w5-room-bake-reachability-receipt.md`
 - `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
 

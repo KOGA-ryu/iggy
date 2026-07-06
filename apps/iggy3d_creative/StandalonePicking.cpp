@@ -1,10 +1,13 @@
 #include "StandalonePicking.hpp"
 
+#include "core/math/Aabb3.hpp"
 #include "core/math/Mat4.hpp"
 #include "core/math/OrientedBox.hpp"
+#include "core/spatial/AabbGridIndex.hpp"
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace iggy3d_creative_app {
 namespace {
@@ -42,6 +45,135 @@ namespace {
     case 2:
     default:
       return value.z;
+  }
+}
+
+[[nodiscard]] iggy3d::Aabb3 aabbFromVisualBounds(VisualBounds bounds) {
+  return iggy3d::makeAabb3(bounds.min, bounds.max);
+}
+
+[[nodiscard]] float maxProjectionAlongRay(WorldRay ray,
+                                          const iggy3d::Aabb3& bounds) {
+  float maxProjection = 0.0F;
+  for (int corner = 0; corner < 8; ++corner) {
+    const iggy3d::Vec3 point{
+        (corner & 1) ? bounds.max.x : bounds.min.x,
+        (corner & 2) ? bounds.max.y : bounds.min.y,
+        (corner & 4) ? bounds.max.z : bounds.min.z,
+    };
+    const float projection = iggy3d::dot(point - ray.origin, ray.direction);
+    if (std::isfinite(projection)) {
+      maxProjection = std::max(maxProjection, projection);
+    }
+  }
+  return maxProjection;
+}
+
+[[nodiscard]] bool raySegmentQueryBounds(
+    WorldRay ray,
+    const std::vector<iggy3d::AabbGridItem>& indexedItems,
+    iggy3d::Aabb3& out) {
+  if (!ray.valid || !iggy3d::isFinite(ray.origin) ||
+      !iggy3d::isFinite(ray.direction)) {
+    return false;
+  }
+
+  float maxDistance = 0.0F;
+  for (const iggy3d::AabbGridItem& item : indexedItems) {
+    maxDistance =
+        std::max(maxDistance, maxProjectionAlongRay(ray, item.bounds));
+  }
+
+  constexpr float kRayQueryPaddingMeters = 0.05F;
+  const iggy3d::Vec3 end = ray.origin + ray.direction * maxDistance;
+  const iggy3d::Vec3 min{
+      std::min(ray.origin.x, end.x) - kRayQueryPaddingMeters,
+      std::min(ray.origin.y, end.y) - kRayQueryPaddingMeters,
+      std::min(ray.origin.z, end.z) - kRayQueryPaddingMeters,
+  };
+  const iggy3d::Vec3 max{
+      std::max(ray.origin.x, end.x) + kRayQueryPaddingMeters,
+      std::max(ray.origin.y, end.y) + kRayQueryPaddingMeters,
+      std::max(ray.origin.z, end.z) + kRayQueryPaddingMeters,
+  };
+  out = iggy3d::makeAabb3(min, max);
+  if (!iggy3d::isValid(out)) {
+    return false;
+  }
+
+  iggy3d::AabbGridIndex queryProbe;
+  return queryProbe.insert(1U, out);
+}
+
+[[nodiscard]] std::vector<iggy3d::AabbGridIndex::ItemId>
+indexedCandidateIdsForRay(
+    const std::vector<ObjectVisualPickBounds>& candidates,
+    WorldRay ray,
+    bool& fallbackToFullScan) {
+  fallbackToFullScan = false;
+  std::vector<iggy3d::AabbGridItem> indexedItems;
+  indexedItems.reserve(candidates.size());
+  std::vector<iggy3d::AabbGridIndex::ItemId> unindexedIds;
+
+  iggy3d::AabbGridIndex index;
+  for (const ObjectVisualPickBounds& candidate : candidates) {
+    const iggy3d::Aabb3 bounds = aabbFromVisualBounds(candidate.bounds);
+    if (!iggy3d::isValid(bounds)) {
+      unindexedIds.push_back(candidate.id);
+      continue;
+    }
+    indexedItems.push_back({candidate.id, bounds});
+  }
+  const std::size_t indexedCount = index.rebuildFrom(indexedItems);
+  if (indexedCount != indexedItems.size()) {
+    for (const iggy3d::AabbGridItem& item : indexedItems) {
+      if (!index.contains(item.id)) {
+        unindexedIds.push_back(item.id);
+      }
+    }
+  }
+  std::vector<iggy3d::AabbGridItem> activeIndexedItems;
+  activeIndexedItems.reserve(indexedCount);
+  for (const iggy3d::AabbGridItem& item : indexedItems) {
+    if (index.contains(item.id)) {
+      activeIndexedItems.push_back(item);
+    }
+  }
+
+  iggy3d::Aabb3 queryBounds{};
+  if (!raySegmentQueryBounds(ray, activeIndexedItems, queryBounds)) {
+    fallbackToFullScan = true;
+    return {};
+  }
+
+  std::vector<iggy3d::AabbGridIndex::ItemId> ids = index.query(queryBounds);
+  ids.insert(ids.end(), unindexedIds.begin(), unindexedIds.end());
+  std::sort(ids.begin(), ids.end());
+  ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+  return ids;
+}
+
+void narrowPickCandidate(ObjectVisualPickResult& result,
+                         const ObjectVisualPickBounds& candidate,
+                         WorldRay ray) {
+  float entryDistance = std::numeric_limits<float>::max();
+  if (candidate.orientedBounds.has_value()) {
+    const iggy3d::OrientedBoxRayHit hit =
+        iggy3d::intersectsRay(*candidate.orientedBounds, ray.origin,
+                              ray.direction,
+                              std::numeric_limits<float>::max());
+    if (!hit.hit) {
+      return;
+    }
+    entryDistance = hit.distanceMeters;
+  } else if (!rayEntryDistanceForAabb(ray, candidate.bounds, entryDistance)) {
+    return;
+  }
+
+  ++result.hitCount;
+  if (entryDistance < result.entryDistance) {
+    result.entryDistance = entryDistance;
+    result.objectId = candidate.id;
   }
 }
 
@@ -241,34 +373,45 @@ ObjectVisualPickResult pickNearestVisualBoundsObject(
     WorldRay ray) {
   ObjectVisualPickResult result;
   result.rayValid = ray.valid;
+  if (!ray.valid || !normalizeRayDirection(ray)) {
+    return result;
+  }
+
+  bool fallbackToFullScan = false;
+  const std::vector<iggy3d::AabbGridIndex::ItemId> indexedIds =
+      indexedCandidateIdsForRay(candidates, ray, fallbackToFullScan);
+  if (fallbackToFullScan) {
+    result.testedCount = candidates.size();
+    for (const ObjectVisualPickBounds& candidate : candidates) {
+      narrowPickCandidate(result, candidate, ray);
+    }
+    return result;
+  }
+
+  for (const ObjectVisualPickBounds& candidate : candidates) {
+    if (!std::binary_search(indexedIds.begin(), indexedIds.end(),
+                            candidate.id)) {
+      continue;
+    }
+    ++result.testedCount;
+    narrowPickCandidate(result, candidate, ray);
+  }
+
+  return result;
+}
+
+ObjectVisualPickResult pickNearestVisualBoundsObjectBruteForce(
+    const std::vector<ObjectVisualPickBounds>& candidates,
+    WorldRay ray) {
+  ObjectVisualPickResult result;
+  result.rayValid = ray.valid;
   result.testedCount = candidates.size();
   if (!ray.valid || !normalizeRayDirection(ray)) {
     return result;
   }
 
   for (const ObjectVisualPickBounds& candidate : candidates) {
-    float entryDistance = std::numeric_limits<float>::max();
-    if (candidate.orientedBounds.has_value()) {
-      const iggy3d::OrientedBoxRayHit hit =
-          iggy3d::intersectsRay(*candidate.orientedBounds,
-                                ray.origin,
-                                ray.direction,
-                                std::numeric_limits<float>::max());
-      if (!hit.hit) {
-        continue;
-      }
-      entryDistance = hit.distanceMeters;
-    } else {
-      if (!rayEntryDistanceForAabb(ray, candidate.bounds, entryDistance)) {
-        continue;
-      }
-    }
-
-    ++result.hitCount;
-    if (entryDistance < result.entryDistance) {
-      result.entryDistance = entryDistance;
-      result.objectId = candidate.id;
-    }
+    narrowPickCandidate(result, candidate, ray);
   }
 
   return result;

@@ -93,6 +93,9 @@ struct PathPointHandleHit {
 [[nodiscard]] ObjectVisualPickResult pickNearestVisualBoundsObject(
     const std::vector<ObjectVisualPickBounds>& candidates,
     WorldRay ray);
+[[nodiscard]] ObjectVisualPickResult pickNearestVisualBoundsObjectBruteForce(
+    const std::vector<ObjectVisualPickBounds>& candidates,
+    WorldRay ray);
 [[nodiscard]] std::vector<PathPointHandleHit> buildPathPointHandleHits(
     const cr::CreativeObject& object,
     const iggy3d::Mat4& clipFromWorld,
