@@ -92,6 +92,56 @@ bool isFiniteVec3(CreativeVec3 value) noexcept {
          std::isfinite(value.z);
 }
 
+bool isPathDescriptor(const CreativeObjectDescriptor& descriptor) noexcept {
+  return descriptor.shapeKind == CreativeObjectShapeKind::Path;
+}
+
+bool pathPointsAreValid(std::span<const CreativePathPoint> pathPoints) noexcept {
+  if (pathPoints.size() < 2U) {
+    return false;
+  }
+
+  for (const CreativePathPoint& point : pathPoints) {
+    if (!isFiniteVec3(point.position)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+std::string_view validateCreatePathPayload(
+    const CreativeObjectDescriptor& descriptor,
+    const CreativeDocumentCreateRequest& request) noexcept {
+  const bool hasPathPayload =
+      request.hasPathOverride || !request.pathPoints.empty();
+  if (isPathDescriptor(descriptor)) {
+    if (!request.hasPathOverride) {
+      return "path_override_required";
+    }
+    if (!pathPointsAreValid(request.pathPoints)) {
+      return "invalid_path_points";
+    }
+    return {};
+  }
+
+  if (hasPathPayload) {
+    return "path_unsupported";
+  }
+  return {};
+}
+
+std::string_view validateRestoredPathPayload(
+    const CreativeObjectDescriptor& descriptor,
+    const CreativeObject& object) noexcept {
+  if (isPathDescriptor(descriptor)) {
+    return pathPointsAreValid(object.pathPoints) ? std::string_view{}
+                                                : "invalid_path_points";
+  }
+
+  return object.pathPoints.empty() ? std::string_view{} : "path_unsupported";
+}
+
 bool isValidUnits(CreativeUnits units) noexcept {
   return units == CreativeUnits::Meters;
 }
@@ -424,6 +474,15 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
     return receipt;
   }
 
+  const std::string_view pathValidation =
+      validateCreatePathPayload(descriptor, request);
+  if (!pathValidation.empty()) {
+    setCreateStatus(receipt,
+                    CreativeDocumentCreateStatus::Rejected,
+                    pathValidation);
+    return receipt;
+  }
+
   CreativeObject object;
   object.kind = request.kind;
   object.name = request.name.empty() ? descriptorDefaultName(descriptor)
@@ -441,6 +500,7 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
                                             : descriptor.defaults.locked;
   object.tags = request.tags;
   object.parentId = request.parentId;
+  object.pathPoints = request.pathPoints;
 
   const CreativeObjectId id = appendObject(std::move(object));
   if (id == kInvalidObjectId) {
@@ -625,6 +685,15 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
       setRestoreStatus(receipt,
                        CreativeDocumentRestoreStatus::InvalidObject,
                        "invalid_object");
+      return receipt;
+    }
+    const CreativeObjectDescriptor& descriptor = describeObject(object.kind);
+    const std::string_view pathValidation =
+        validateRestoredPathPayload(descriptor, object);
+    if (!pathValidation.empty()) {
+      setRestoreStatus(receipt,
+                       CreativeDocumentRestoreStatus::InvalidObject,
+                       pathValidation);
       return receipt;
     }
     if (restoredIndex.find(object.id) != restoredIndex.end()) {

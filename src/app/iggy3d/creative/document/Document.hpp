@@ -73,6 +73,8 @@ struct CreativeDocumentCreateRequest {
   bool hasLockedOverride = false;
   std::vector<std::string> tags;
   std::optional<CreativeObjectId> parentId = std::nullopt;
+  bool hasPathOverride = false;
+  std::vector<CreativePathPoint> pathPoints;
 };
 
 struct CreativeDocumentCreateReceipt {

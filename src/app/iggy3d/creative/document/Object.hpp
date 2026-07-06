@@ -32,6 +32,10 @@ struct CreativeBounds {
   CreativeVec3 max{};
 };
 
+struct CreativePathPoint {
+  CreativeVec3 position{};
+};
+
 enum class CreativeObjectKind {
   Unknown,
 
@@ -175,6 +179,7 @@ struct CreativeObject {
 
   std::vector<std::string> tags{};
   std::optional<CreativeObjectId> parentId{};
+  std::vector<CreativePathPoint> pathPoints{};
 };
 
 [[nodiscard]] CreativeObject makeRoomObject(
