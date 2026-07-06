@@ -287,6 +287,17 @@ void appendSelectionPanel(CreativeUiModel& model,
   applyObjectSummary(deleteRow, summary);
   appendRow(model, deleteRow);
 
+  if (summary != nullptr && summary->objectKind == CreativeObjectKind::Room) {
+    // Generate Shell creates authored Floor/Wall children from Room metadata.
+    CreativeUiRow shellRow = makeInspectorRow(
+        CreativeUiRowKind::InspectorGenerateRoomShell,
+        "generate_room_shell",
+        "Generate Room Shell",
+        target);
+    applyObjectSummary(shellRow, summary);
+    appendRow(model, shellRow);
+  }
+
   // Bounds min/max/size (display, TD-9).
   CreativeUiRow boundsRow = makeInspectorRow(CreativeUiRowKind::InspectorBounds,
                                              "inspector_bounds",

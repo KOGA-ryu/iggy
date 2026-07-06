@@ -4,6 +4,7 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
@@ -19,6 +20,22 @@ bool expect(bool condition, std::string_view message) {
     return false;
   }
   return true;
+}
+
+bool near(double lhs, double rhs) {
+  return std::abs(lhs - rhs) < 0.000001;
+}
+
+cr::CreativeVec3 centerOfBounds(const cr::CreativeBounds& bounds) {
+  return {
+      bounds.min.x + (bounds.max.x - bounds.min.x) * 0.5,
+      bounds.min.y + (bounds.max.y - bounds.min.y) * 0.5,
+      bounds.min.z + (bounds.max.z - bounds.min.z) * 0.5,
+  };
+}
+
+bool sameVec3(const cr::CreativeVec3& lhs, const cr::CreativeVec3& rhs) {
+  return near(lhs.x, rhs.x) && near(lhs.y, rhs.y) && near(lhs.z, rhs.z);
 }
 
 iggy3d::ProductCreativeUiInputFrameReceipt commandInput(
@@ -769,6 +786,169 @@ bool deleteSelectedObjectNoSelectionRejectsWithoutMutation() {
                 "delete no selection revision unchanged");
 }
 
+bool generateRoomShellInstallsGeneratedChildrenAtomically() {
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
+  facade.reset();
+  static_cast<void>(facade.documentForPersistence().assignId(42U));
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  selectTarget(facade, roomId);
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(app, "creative.row.selection.generate_room_shell");
+
+  std::uint64_t floorCount = 0;
+  std::uint64_t wallCount = 0;
+  bool allGeneratedHaveParent = true;
+  bool allGeneratedHaveTags = true;
+  bool allGeneratedHaveCenteredTransforms = true;
+  const std::string sourceTag = "source_room_" + std::to_string(roomId);
+  for (const cr::CreativeObject& object : facade.document().objects()) {
+    if (object.parentId.has_value() && object.parentId.value() == roomId) {
+      floorCount += object.kind == cr::CreativeObjectKind::Floor ? 1U : 0U;
+      wallCount += object.kind == cr::CreativeObjectKind::Wall ? 1U : 0U;
+      allGeneratedHaveParent &= object.parentId.value() == roomId;
+      bool hasGeneratedTag = false;
+      bool hasSourceTag = false;
+      for (const std::string& tag : object.tags) {
+        hasGeneratedTag |= tag == "generated_room_shell";
+        hasSourceTag |= tag == sourceTag;
+      }
+      allGeneratedHaveTags &= hasGeneratedTag && hasSourceTag;
+      allGeneratedHaveCenteredTransforms &=
+          sameVec3(object.transform.position, centerOfBounds(object.bounds));
+    }
+  }
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        GenerateSelectedRoomShell,
+                "shell command kind") &&
+         expect(receipt.semanticId ==
+                    "creative.row.selection.generate_room_shell",
+                "shell semantic") &&
+         expect(receipt.accepted, "shell accepted") &&
+         expect(receipt.changed, "shell changed") &&
+         expect(receipt.status == "product_creative_ui_command_applied",
+                "shell status") &&
+         expect(receipt.shellRequested, "shell requested") &&
+         expect(receipt.shellAccepted, "shell receipt accepted") &&
+         expect(receipt.shellChanged, "shell receipt changed") &&
+         expect(receipt.shellRoomObjectId == roomId, "shell room id") &&
+         expect(receipt.shellGeneratedObjectCount == 5U,
+                "shell generated count") &&
+         expect(receipt.shellFloorCount == 1U, "shell floor count") &&
+         expect(receipt.shellWallCount == 4U, "shell wall count") &&
+         expect(receipt.shellRevisionBefore == revisionBefore,
+                "shell revision before") &&
+         expect(receipt.shellRevisionAfter == revisionBefore + 5U,
+                "shell revision after") &&
+         expect(receipt.shellStatus == "Generated", "shell receipt status") &&
+         expect(receipt.shellReasonCode == "creative_room_shell_generated",
+                "shell receipt reason") &&
+         expect(facade.document().objectCount() == 6U,
+                "shell object count") &&
+         expect(floorCount == 1U, "one generated floor") &&
+         expect(wallCount == 4U, "four generated walls") &&
+         expect(allGeneratedHaveParent, "generated children parented") &&
+         expect(allGeneratedHaveTags, "generated children tagged") &&
+         expect(allGeneratedHaveCenteredTransforms,
+                "generated children anchored at bounds centers") &&
+         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
+                "shell install clears selection");
+}
+
+bool generateRoomShellNoSelectionRejectsWithoutMutation() {
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
+  facade.reset();
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(app, "creative.row.selection.generate_room_shell");
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        GenerateSelectedRoomShell,
+                "shell no selection command kind") &&
+         expect(!receipt.accepted, "shell no selection rejected") &&
+         expect(!receipt.changed, "shell no selection unchanged") &&
+         expect(receipt.shellRequested, "shell no selection requested") &&
+         expect(!receipt.shellAccepted,
+                "shell no selection receipt rejected") &&
+         expect(receipt.shellStatus == "NoRoomSelected",
+                "shell no selection status") &&
+         expect(receipt.shellReasonCode ==
+                    "creative_room_shell_no_room_selected",
+                "shell no selection reason") &&
+         expect(facade.document().revision() == revisionBefore,
+                "shell no selection revision unchanged") &&
+         expect(facade.document().objectCount() == 0U,
+                "shell no selection object count");
+}
+
+bool generateRoomShellNonRoomRejectsWithoutMutation() {
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
+  facade.reset();
+  const cr::CreativeObjectId crateId =
+      createObject(facade, cr::CreativeObjectKind::Crate, "Crate A");
+  selectTarget(facade, crateId);
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(app, "creative.row.selection.generate_room_shell");
+
+  return expect(!receipt.accepted, "shell non-room rejected") &&
+         expect(!receipt.changed, "shell non-room unchanged") &&
+         expect(receipt.shellRoomObjectId == crateId, "shell non-room id") &&
+         expect(receipt.shellStatus == "SelectedNotRoom",
+                "shell non-room status") &&
+         expect(receipt.shellReasonCode ==
+                    "creative_room_shell_selected_not_room",
+                "shell non-room reason") &&
+         expect(facade.document().revision() == revisionBefore,
+                "shell non-room revision unchanged") &&
+         expect(facade.document().objectCount() == 1U,
+                "shell non-room object count");
+}
+
+bool generateRoomShellDuplicateRejectsWithoutMutation() {
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
+  facade.reset();
+  const cr::CreativeObjectId roomId = createRoom(facade);
+
+  cr::CreativeDocumentCreateRequest existing;
+  existing.kind = cr::CreativeObjectKind::Floor;
+  existing.name = "Existing Shell Floor";
+  existing.parentId = roomId;
+  existing.tags = {"generated_room_shell",
+                   "source_room_" + std::to_string(roomId)};
+  const cr::CreativeDocumentCreateReceipt existingReceipt =
+      facade.createDocumentObject(existing);
+  selectTarget(facade, roomId);
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(app, "creative.row.selection.generate_room_shell");
+
+  return expect(existingReceipt.accepted, "shell duplicate setup") &&
+         expect(!receipt.accepted, "shell duplicate rejected") &&
+         expect(!receipt.changed, "shell duplicate unchanged") &&
+         expect(receipt.shellStatus == "AlreadyExists",
+                "shell duplicate status") &&
+         expect(receipt.shellReasonCode ==
+                    "creative_room_shell_already_exists",
+                "shell duplicate reason") &&
+         expect(facade.document().revision() == revisionBefore,
+                "shell duplicate revision unchanged") &&
+         expect(facade.document().objectCount() == objectCountBefore,
+                "shell duplicate object count unchanged");
+}
+
 bool selectedTargetRowMissingObjectRejectsAndPreservesSelection() {
   cr::CreativeAppState app;
   [[maybe_unused]] cr::Facade& facade = app.facade;
@@ -1022,6 +1202,10 @@ int main() {
   ok &= selectedTargetRowNoSelectionRejects();
   ok &= deleteSelectedObjectRemovesObjectAndClearsSelection();
   ok &= deleteSelectedObjectNoSelectionRejectsWithoutMutation();
+  ok &= generateRoomShellInstallsGeneratedChildrenAtomically();
+  ok &= generateRoomShellNoSelectionRejectsWithoutMutation();
+  ok &= generateRoomShellNonRoomRejectsWithoutMutation();
+  ok &= generateRoomShellDuplicateRejectsWithoutMutation();
   ok &= selectedTargetRowMissingObjectRejectsAndPreservesSelection();
   ok &= selectedTargetRowIsDisplayOnlyNoop();
   ok &= inspectorLockedRowTogglesRoomLockedOn();

@@ -697,6 +697,21 @@ struct ProductAppWindowState {
   std::string creativeUiCommandUndoMessage = "creative_undo_not_requested";
   std::string creativeUiCommandUndoReasonCode =
       "creative_undo_not_requested";
+  bool creativeUiCommandShellRequested = false;
+  bool creativeUiCommandShellAccepted = false;
+  bool creativeUiCommandShellChanged = false;
+  std::uint64_t creativeUiCommandShellRoomObjectId = 0;
+  std::uint64_t creativeUiCommandShellGeneratedObjectCount = 0;
+  std::uint64_t creativeUiCommandShellFloorCount = 0;
+  std::uint64_t creativeUiCommandShellWallCount = 0;
+  std::uint64_t creativeUiCommandShellRevisionBefore = 0;
+  std::uint64_t creativeUiCommandShellRevisionAfter = 0;
+  std::string creativeUiCommandShellStatus =
+      "creative_room_shell_not_requested";
+  std::string creativeUiCommandShellReasonCode =
+      "creative_room_shell_not_requested";
+  std::string creativeUiCommandShellMessage =
+      "creative_room_shell_not_requested";
   bool creativeUiCommandBakedRoomRefreshRequested = false;
   bool creativeUiCommandBakedRoomRefreshAccepted = false;
   std::string creativeUiCommandBakedRoomRefreshStatus =

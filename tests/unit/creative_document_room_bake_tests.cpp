@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
+#include "app/iggy3d/creative/tools/RoomShell.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -157,6 +158,68 @@ bool emptyDocumentHasNoRenderableObjects() {
          expect(result.room.source == "iggy3d.creative_document",
                 "empty room source") &&
          expect(result.room.units == "m", "empty room units");
+}
+
+bool generatedRoomShellBakesChildrenAndSkipsRoomMetadata() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Shell Bake");
+  cr::CreativeDocumentCreateRequest roomRequest;
+  roomRequest.kind = cr::CreativeObjectKind::Room;
+  roomRequest.name = "Room";
+  const cr::CreativeDocumentCreateReceipt roomReceipt =
+      document.createObject(roomRequest);
+
+  cr::CreativeRoomShellBuildRequest shellRequest;
+  shellRequest.document = &document;
+  shellRequest.roomObjectId = roomReceipt.objectId;
+  const cr::CreativeRoomShellBuildResult shell =
+      cr::buildCreativeRoomShellCreateRequests(shellRequest);
+  bool shellCreated = shell.receipt.accepted;
+  for (const cr::CreativeDocumentCreateRequest& createRequest :
+       shell.createRequests) {
+    const cr::CreativeDocumentCreateReceipt createReceipt =
+        document.createObject(createRequest);
+    shellCreated &= createReceipt.accepted;
+  }
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+  std::uint64_t floorRoleCount = 0;
+  std::uint64_t wallRoleCount = 0;
+  bool noRoomSource = true;
+  for (const iggy3d::RoomStaticMeshAsset& mesh : result.room.staticMeshes) {
+    floorRoleCount += mesh.role == "floor" ? 1U : 0U;
+    wallRoleCount += mesh.role == "wall" ? 1U : 0U;
+  }
+  for (const cr::CreativeRoomBakeStaticMeshSource& source :
+       result.staticMeshSources) {
+    noRoomSource &= source.objectId != roomReceipt.objectId;
+  }
+
+  return expect(roomReceipt.accepted, "shell bake room created") &&
+         expect(shellCreated, "shell bake requests created") &&
+         expect(result.receipt.accepted, "shell bake accepted") &&
+         expect(result.receipt.objectCount == 6U,
+                "shell bake object count") &&
+         expect(result.receipt.consideredObjectCount == 5U,
+                "shell bake considered children") &&
+         expect(result.receipt.skippedRoomMetadataCount == 1U,
+                "shell bake skipped room metadata") &&
+         expect(result.receipt.bakedStaticMeshCount == 5U,
+                "shell bake mesh count") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "shell bake anchor count") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 9U,
+                "shell bake surface count") &&
+         expect(result.room.staticMeshes.size() == 5U,
+                "shell bake mesh vector") &&
+         expect(result.room.spatialSurfaces.size() == 9U,
+                "shell bake surface vector") &&
+         expect(result.staticMeshSources.size() == 5U,
+                "shell bake mesh sources") &&
+         expect(result.spatialSurfaceSources.size() == 9U,
+                "shell bake surface sources") &&
+         expect(floorRoleCount == 1U, "shell bake floor role") &&
+         expect(wallRoleCount == 4U, "shell bake wall roles") &&
+         expect(noRoomSource, "shell bake sources are generated children");
 }
 
 bool floorWallCrateBakeToRoomAsset() {
@@ -400,6 +463,60 @@ bool endpointLineDescriptorStaysOutOfBake() {
          expect(result.room.anchors.empty(), "endpoint line no anchors");
 }
 
+bool semanticVolumeProjectionObjectsDoNotBakeStaticGeometry() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Volumes");
+  const cr::CreativeDocumentCreateReceipt water =
+      createObject(document,
+                   cr::CreativeObjectKind::WaterVolume,
+                   {{0.0, 0.0, 0.0}, {4.0, 1.0, 4.0}});
+  const cr::CreativeDocumentCreateReceipt trigger =
+      createObject(document,
+                   cr::CreativeObjectKind::TriggerZone,
+                   {{5.0, 0.0, 0.0}, {7.0, 2.0, 2.0}});
+  const cr::CreativeDocumentCreateReceipt boundary =
+      createObject(document,
+                   cr::CreativeObjectKind::BoundaryVolume,
+                   {{-5.0, 0.0, -5.0}, {5.0, 4.0, 5.0}});
+  const cr::CreativeDocumentCreateReceipt alert =
+      createObject(document,
+                   cr::CreativeObjectKind::AlertZone,
+                   {{8.0, 0.0, 0.0}, {12.0, 2.0, 4.0}});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(water.accepted, "water volume create accepted") &&
+         expect(trigger.accepted, "trigger volume create accepted") &&
+         expect(boundary.accepted, "boundary volume create accepted") &&
+         expect(alert.accepted, "alert volume create accepted") &&
+         expect(!result.receipt.accepted, "volumes not accepted") &&
+         expect(result.receipt.status ==
+                    cr::CreativeRoomBakeStatus::NoRenderableObjects,
+                "volumes no-renderable status") &&
+         expect(result.receipt.reasonCode ==
+                    "creative_room_bake_no_renderable_objects",
+                "volumes no-renderable reason") &&
+         expect(result.receipt.objectCount == 4U, "volumes object count") &&
+         expect(result.receipt.consideredObjectCount == 4U,
+                "volumes considered count") &&
+         expect(result.receipt.skippedUnsupportedShapeCount == 4U,
+                "volumes unsupported shape count") &&
+         expect(result.receipt.skippedNoBoundsCount == 0U,
+                "volumes no-bounds count") &&
+         expect(result.receipt.bakedStaticMeshCount == 0U,
+                "volumes static mesh count") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 0U,
+                "volumes spatial surface count") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "volumes anchor count") &&
+         expect(result.room.staticMeshes.empty(), "volumes no meshes") &&
+         expect(result.room.spatialSurfaces.empty(), "volumes no surfaces") &&
+         expect(result.room.anchors.empty(), "volumes no anchors") &&
+         expect(result.staticMeshSources.empty(), "volumes no mesh sources") &&
+         expect(result.spatialSurfaceSources.empty(),
+                "volumes no surface sources") &&
+         expect(result.anchorSources.empty(), "volumes no anchor sources");
+}
+
 bool pointObjectBakesToAnchorOnly() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Point Anchor");
   const cr::CreativeVec3 position = {6.25, 1.5, -2.75};
@@ -613,9 +730,11 @@ bool unsupportedAndMetadataObjectsAreSkipped() {
 int main() {
   const bool ok = nullDocumentRejects() &&
                   emptyDocumentHasNoRenderableObjects() &&
+                  generatedRoomShellBakesChildrenAndSkipsRoomMetadata() &&
                   floorWallCrateBakeToRoomAsset() &&
                   boundsBackedLineBakesAsPropGeometry() &&
                   endpointLineDescriptorStaysOutOfBake() &&
+                  semanticVolumeProjectionObjectsDoNotBakeStaticGeometry() &&
                   pointObjectBakesToAnchorOnly() &&
                   bakedRoomProjectsAndLoadsIntoActiveRoom() &&
                   hiddenObjectsAreSkippedUnlessIncluded() &&

@@ -488,6 +488,8 @@ bool populatedModelPreservesCreativeOrderAndText() {
       findPrimitive(list, "creative.row.selection.selected_target");
   const iggy3d::ProductUiPrimitive* deleteSelected =
       findPrimitive(list, "creative.row.selection.delete_selected");
+  const iggy3d::ProductUiPrimitive* generateShell =
+      findPrimitive(list, "creative.row.selection.generate_room_shell");
   const iggy3d::ProductUiPrimitive* measurement =
       findPrimitive(list, "creative.row.measurement.measurement_state");
   const iggy3d::ProductUiPrimitive* start =
@@ -506,6 +508,9 @@ bool populatedModelPreservesCreativeOrderAndText() {
          expect(deleteSelected != nullptr &&
                     deleteSelected->text == "Delete Selected",
                 "delete selected row text") &&
+         expect(generateShell != nullptr &&
+                    generateShell->text == "Generate Room Shell",
+                "generate shell row text") &&
          expect(measurement != nullptr &&
                     measurement->text == "Measure: active samples=2",
                 "measurement row text") &&
@@ -530,6 +535,9 @@ bool populatedModelPreservesCreativeOrderAndText() {
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.selection.delete_selected"),
                 "delete selected hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.selection.generate_room_shell"),
+                "generate shell hit") &&
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.measurement.measurement_state"),
                 "measurement hit") &&
@@ -711,6 +719,8 @@ bool inspectorRowsRenderExactTextForKnownObject() {
       findPrimitive(list, "creative.row.selection.inspector_locked");
   const iggy3d::ProductUiPrimitive* deleteSelected =
       findPrimitive(list, "creative.row.selection.delete_selected");
+  const iggy3d::ProductUiPrimitive* generateShell =
+      findPrimitive(list, "creative.row.selection.generate_room_shell");
   const iggy3d::ProductUiPrimitive* bounds =
       findPrimitive(list, "creative.row.selection.inspector_bounds");
   const iggy3d::ProductUiPrimitive* position =
@@ -733,6 +743,8 @@ bool inspectorRowsRenderExactTextForKnownObject() {
          expect(deleteSelected != nullptr &&
                     deleteSelected->text == "Delete Selected",
                 "inspector delete selected text") &&
+         expect(generateShell == nullptr,
+                "crate generate shell row absent") &&
          // Bounds shows min/max (size lives in the row fields for v1.5).
          expect(bounds != nullptr &&
                     bounds->text ==

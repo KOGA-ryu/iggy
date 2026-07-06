@@ -39,6 +39,7 @@ enum class CreativeUiRowKind : std::uint8_t {
   InspectorVisible,
   InspectorLocked,
   InspectorDeleteSelected,
+  InspectorGenerateRoomShell,
   InspectorBounds,
   InspectorPosition,
   InspectorLayer,

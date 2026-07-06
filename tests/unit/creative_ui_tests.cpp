@@ -280,7 +280,7 @@ bool selectedHiddenObjectSummaryKeepsRowAndMarksInvisible() {
       firstPanelRow(receipt.model, cr::CreativeUiPanelKind::Selection);
 
   return expect(panel(receipt.model,
-                      cr::CreativeUiPanelKind::Selection).rowCount == 10U,
+                      cr::CreativeUiPanelKind::Selection).rowCount == 11U,
                 "selected hidden inspector rows") &&
          expect(row.target.value == 42U, "selected hidden target") &&
          expect(row.objectKind == cr::CreativeObjectKind::Room,
@@ -378,6 +378,48 @@ bool inspectorRowsCarrySelectedObjectFacts() {
                 "inspector position row") &&
          expect(layerRow != nullptr && layerRow->data1 == 3U,
                 "inspector layer row");
+}
+
+bool selectedRoomShowsGenerateRoomShellRowOnlyForRoom() {
+  cr::CreativeUiBuildRequest roomRequest =
+      cr::makeDefaultCreativeUiBuildRequest();
+  roomRequest.selectionState.selectedTarget.value = 7;
+  roomRequest.objectSummaries.push_back(
+      objectSummary(7, cr::CreativeObjectKind::Room, true));
+
+  const cr::CreativeUiBuildReceipt roomReceipt =
+      cr::buildCreativeUiModel(roomRequest);
+  const cr::CreativeUiRow* shellRow =
+      rowOfKind(roomReceipt.model,
+                cr::CreativeUiRowKind::InspectorGenerateRoomShell);
+
+  cr::CreativeUiBuildRequest crateRequest =
+      cr::makeDefaultCreativeUiBuildRequest();
+  crateRequest.selectionState.selectedTarget.value = 8;
+  crateRequest.objectSummaries.push_back(
+      objectSummary(8, cr::CreativeObjectKind::Crate, true));
+  const cr::CreativeUiBuildReceipt crateReceipt =
+      cr::buildCreativeUiModel(crateRequest);
+
+  return expect(shellRow != nullptr, "room shell row present") &&
+         expect(shellRow->id == "generate_room_shell", "room shell id") &&
+         expect(shellRow->label == "Generate Room Shell",
+                "room shell label") &&
+         expect(shellRow->target.value == 7U, "room shell target") &&
+         expect(shellRow->objectKind == cr::CreativeObjectKind::Room,
+                "room shell object kind") &&
+         expect(hasFlag(shellRow->flags, cr::kCreativeUiRowFlagEnabled),
+                "room shell enabled") &&
+         expect(panel(roomReceipt.model, cr::CreativeUiPanelKind::Selection)
+                    .rowCount == 11U,
+                "room selection row count includes shell") &&
+         expect(rowOfKind(crateReceipt.model,
+                          cr::CreativeUiRowKind::InspectorGenerateRoomShell) ==
+                    nullptr,
+                "crate shell row absent") &&
+         expect(panel(crateReceipt.model, cr::CreativeUiPanelKind::Selection)
+                    .rowCount == 10U,
+                "crate selection row count unchanged");
 }
 
 bool inspectorRestingRowHasNoTargetOrObject() {
@@ -551,6 +593,7 @@ int main() {
                   selectedHiddenObjectSummaryKeepsRowAndMarksInvisible() &&
                   selectedMissingObjectSummaryKeepsRowUnknown() &&
                   inspectorRowsCarrySelectedObjectFacts() &&
+                  selectedRoomShowsGenerateRoomShellRowOnlyForRoom() &&
                   inspectorRestingRowHasNoTargetOrObject() &&
                   measurementRowsPreserveStateAndPoints() &&
                   ghostRowAppearsOnlyWhenVisible() &&

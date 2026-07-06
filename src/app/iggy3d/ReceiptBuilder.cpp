@@ -123,6 +123,8 @@ std::string_view productCreativeUiCommandKindReceiptName(
       return "undo_last_document_change";
     case ProductCreativeUiCommandKind::DeleteSelectedObject:
       return "delete_selected_object";
+    case ProductCreativeUiCommandKind::GenerateSelectedRoomShell:
+      return "generate_selected_room_shell";
   }
   return "unknown";
 }
@@ -343,6 +345,24 @@ void recordProductCreativeUiCommandFrame(
       receipt.undoMessage.empty() ? "none" : receipt.undoMessage;
   window.creativeUiCommandUndoReasonCode =
       receipt.undoReasonCode.empty() ? "none" : receipt.undoReasonCode;
+  window.creativeUiCommandShellRequested = receipt.shellRequested;
+  window.creativeUiCommandShellAccepted = receipt.shellAccepted;
+  window.creativeUiCommandShellChanged = receipt.shellChanged;
+  window.creativeUiCommandShellRoomObjectId = receipt.shellRoomObjectId;
+  window.creativeUiCommandShellGeneratedObjectCount =
+      receipt.shellGeneratedObjectCount;
+  window.creativeUiCommandShellFloorCount = receipt.shellFloorCount;
+  window.creativeUiCommandShellWallCount = receipt.shellWallCount;
+  window.creativeUiCommandShellRevisionBefore =
+      receipt.shellRevisionBefore;
+  window.creativeUiCommandShellRevisionAfter = receipt.shellRevisionAfter;
+  window.creativeUiCommandShellStatus =
+      receipt.shellStatus.empty() ? "creative_room_shell_not_requested"
+                                  : receipt.shellStatus;
+  window.creativeUiCommandShellReasonCode =
+      receipt.shellReasonCode.empty() ? "none" : receipt.shellReasonCode;
+  window.creativeUiCommandShellMessage =
+      receipt.shellMessage.empty() ? "none" : receipt.shellMessage;
   window.creativeUiCommandBakedRoomRefreshRequested = false;
   window.creativeUiCommandBakedRoomRefreshAccepted = false;
   window.creativeUiCommandBakedRoomRefreshStatus =
@@ -2322,6 +2342,34 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiCommandUndoMessage);
   appendReceiptField(receipt, "creative_ui_command_undo_reason_code",
                      window.creativeUiCommandUndoReasonCode);
+  appendReceiptField(receipt, "creative_ui_command_shell_requested",
+                     window.creativeUiCommandShellRequested);
+  appendReceiptField(receipt, "creative_ui_command_shell_accepted",
+                     window.creativeUiCommandShellAccepted);
+  appendReceiptField(receipt, "creative_ui_command_shell_changed",
+                     window.creativeUiCommandShellChanged);
+  appendReceiptField(receipt, "creative_ui_command_shell_room_object_id",
+                     window.creativeUiCommandShellRoomObjectId);
+  appendReceiptField(
+      receipt,
+      "creative_ui_command_shell_generated_object_count",
+      window.creativeUiCommandShellGeneratedObjectCount);
+  appendReceiptField(receipt, "creative_ui_command_shell_floor_count",
+                     window.creativeUiCommandShellFloorCount);
+  appendReceiptField(receipt, "creative_ui_command_shell_wall_count",
+                     window.creativeUiCommandShellWallCount);
+  appendReceiptField(receipt,
+                     "creative_ui_command_shell_revision_before",
+                     window.creativeUiCommandShellRevisionBefore);
+  appendReceiptField(receipt,
+                     "creative_ui_command_shell_revision_after",
+                     window.creativeUiCommandShellRevisionAfter);
+  appendReceiptField(receipt, "creative_ui_command_shell_status",
+                     window.creativeUiCommandShellStatus);
+  appendReceiptField(receipt, "creative_ui_command_shell_reason_code",
+                     window.creativeUiCommandShellReasonCode);
+  appendReceiptField(receipt, "creative_ui_command_shell_message",
+                     window.creativeUiCommandShellMessage);
   appendReceiptField(receipt,
                      "creative_ui_command_baked_room_refresh_requested",
                      window.creativeUiCommandBakedRoomRefreshRequested);

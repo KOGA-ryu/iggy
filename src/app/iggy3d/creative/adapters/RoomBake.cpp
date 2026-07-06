@@ -130,8 +130,9 @@ enum class BakedRoomRole {
   switch (descriptor.shapeKind) {
     case CreativeObjectShapeKind::Surface:
     case CreativeObjectShapeKind::MeshProxy:
-    case CreativeObjectShapeKind::BoxVolume:
       return true;
+    case CreativeObjectShapeKind::BoxVolume:
+      return false;
     case CreativeObjectShapeKind::Line:
       return descriptorSupportsBoundsBackedLineGeometry(descriptor);
     case CreativeObjectShapeKind::Unknown:
@@ -169,8 +170,9 @@ enum class BakedRoomRole {
       }
       return BakedRoomRole::Prop;
     case CreativeObjectShapeKind::MeshProxy:
-    case CreativeObjectShapeKind::BoxVolume:
       return BakedRoomRole::Prop;
+    case CreativeObjectShapeKind::BoxVolume:
+      return BakedRoomRole::Unsupported;
     case CreativeObjectShapeKind::Line:
       if (descriptorSupportsBoundsBackedLineGeometry(descriptor)) {
         return BakedRoomRole::Prop;

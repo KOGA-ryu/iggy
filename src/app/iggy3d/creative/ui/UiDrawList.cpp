@@ -217,6 +217,7 @@ void appendVec3Text(std::string& text, double x, double y, double z) {
       text.append(boolFlagText(row, creative::kCreativeUiRowFlagObjectLocked));
       break;
     case creative::CreativeUiRowKind::InspectorDeleteSelected:
+    case creative::CreativeUiRowKind::InspectorGenerateRoomShell:
       break;
     case creative::CreativeUiRowKind::InspectorBounds:
       // min/max are shown; size is carried in the row fields (max-min) for the

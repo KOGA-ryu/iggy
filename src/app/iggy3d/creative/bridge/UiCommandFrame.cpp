@@ -2,12 +2,14 @@
 
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/tools/Placement.hpp"
+#include "app/iggy3d/creative/tools/RoomShell.hpp"
 
 #include <array>
 #include <iomanip>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace iggy3d {
 namespace {
@@ -21,7 +23,7 @@ struct ProductCreativeUiCommandRow {
       creative::CreativeObjectKind::Unknown;
 };
 
-constexpr std::array<ProductCreativeUiCommandRow, 11>
+constexpr std::array<ProductCreativeUiCommandRow, 12>
     kProductCreativeUiCommandRows = {{
         {"creative.row.tools.tool_select",
          ProductCreativeUiCommandKind::SetActiveTool,
@@ -65,6 +67,10 @@ constexpr std::array<ProductCreativeUiCommandRow, 11>
          creative::CreativeObjectKind::Unknown},
         {"creative.row.selection.delete_selected",
          ProductCreativeUiCommandKind::DeleteSelectedObject,
+         creative::Tool::Select,
+         creative::CreativeObjectKind::Unknown},
+        {"creative.row.selection.generate_room_shell",
+         ProductCreativeUiCommandKind::GenerateSelectedRoomShell,
          creative::Tool::Select,
          creative::CreativeObjectKind::Unknown},
     }};
@@ -175,6 +181,30 @@ void copyUndoReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
   receipt.undoStatus = undoReceipt.status;
   receipt.undoReasonCode = undoReceipt.reasonCode;
   receipt.undoMessage = undoReceipt.message;
+}
+
+void copyRoomShellReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
+                          const creative::CreativeRoomShellBuildReceipt&
+                              shellReceipt) {
+  receipt.shellRequested = shellReceipt.requested;
+  receipt.shellAccepted = shellReceipt.accepted;
+  receipt.shellRoomObjectId = shellReceipt.roomObjectId;
+  receipt.shellGeneratedObjectCount = shellReceipt.generatedRequestCount;
+  receipt.shellFloorCount = shellReceipt.floorRequestCount;
+  receipt.shellWallCount = shellReceipt.wallRequestCount;
+  receipt.shellStatus = std::string(creative::toString(shellReceipt.status));
+  receipt.shellReasonCode = shellReceipt.reasonCode;
+  receipt.shellMessage = shellReceipt.message;
+}
+
+void setRoomShellApplyStatus(ProductCreativeUiCommandFrameReceipt& receipt,
+                             creative::CreativeRoomShellBuildStatus status,
+                             std::string_view reasonCode) {
+  receipt.shellAccepted = false;
+  receipt.shellChanged = false;
+  receipt.shellStatus = std::string(creative::toString(status));
+  receipt.shellReasonCode = std::string(reasonCode);
+  receipt.shellMessage = std::string(reasonCode);
 }
 
 }  // namespace
@@ -302,6 +332,74 @@ ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
     } else {
       setNoopStatus(receipt, "product_creative_ui_command_rejected");
     }
+    return receipt;
+  }
+
+  if (receipt.commandKind ==
+      ProductCreativeUiCommandKind::GenerateSelectedRoomShell) {
+    const creative::TargetRef selectedTarget =
+        facade.selectionState().selectedTarget;
+    creative::CreativeRoomShellBuildRequest shellRequest;
+    shellRequest.document = &facade.document();
+    if (selectedTarget.value != creative::kInvalidId) {
+      shellRequest.roomObjectId =
+          static_cast<creative::CreativeObjectId>(selectedTarget.value);
+    }
+
+    const std::uint64_t revisionBefore = facade.document().revision();
+    const creative::CreativeRoomShellBuildResult shell =
+        creative::buildCreativeRoomShellCreateRequests(shellRequest);
+    copyRoomShellReceipt(receipt, shell.receipt);
+    receipt.shellRevisionBefore = revisionBefore;
+    receipt.shellRevisionAfter = revisionBefore;
+
+    if (!shell.receipt.accepted) {
+      receipt.toolAfter = facade.toolState().activeTool;
+      setNoopStatus(receipt, "product_creative_ui_command_rejected");
+      return receipt;
+    }
+
+    creative::CreativeDocument stagedDocument = facade.document();
+    bool createSucceeded = true;
+    for (const creative::CreativeDocumentCreateRequest& createRequest :
+         shell.createRequests) {
+      const creative::CreativeDocumentCreateReceipt createReceipt =
+          stagedDocument.createObject(createRequest);
+      if (!createReceipt.accepted || !createReceipt.changed) {
+        createSucceeded = false;
+        break;
+      }
+    }
+
+    if (!createSucceeded) {
+      setRoomShellApplyStatus(receipt,
+                              creative::CreativeRoomShellBuildStatus::
+                                  CreateRejected,
+                              "creative_room_shell_create_rejected");
+      receipt.toolAfter = facade.toolState().activeTool;
+      setNoopStatus(receipt, "product_creative_ui_command_rejected");
+      return receipt;
+    }
+
+    const creative::CreativeFacadeDocumentInstallReceipt installReceipt =
+        facade.installDocument(std::move(stagedDocument));
+    if (!installReceipt.accepted || !installReceipt.changed) {
+      setRoomShellApplyStatus(receipt,
+                              creative::CreativeRoomShellBuildStatus::
+                                  InstallRejected,
+                              "creative_room_shell_install_rejected");
+      receipt.toolAfter = facade.toolState().activeTool;
+      setNoopStatus(receipt, "product_creative_ui_command_rejected");
+      return receipt;
+    }
+
+    receipt.shellAccepted = true;
+    receipt.shellChanged = true;
+    receipt.shellRevisionAfter = facade.document().revision();
+    receipt.accepted = true;
+    receipt.changed = true;
+    receipt.toolAfter = facade.toolState().activeTool;
+    setNoopStatus(receipt, "product_creative_ui_command_applied");
     return receipt;
   }
 

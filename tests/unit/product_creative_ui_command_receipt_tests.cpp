@@ -161,6 +161,22 @@ iggy3d::ProductCreativeUiCommandFrameReceipt appliedUndoReceipt() {
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
+iggy3d::ProductCreativeUiCommandFrameReceipt appliedRoomShellReceipt() {
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  facade.reset();
+  static_cast<void>(facade.documentForPersistence().assignId(42U));
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  static_cast<void>(facade.dispatchToolInput(
+      pointerPress(static_cast<cr::Id>(roomId))));
+
+  iggy3d::ProductCreativeUiCommandFrameRequest request;
+  request.creative = &app;
+  request.inputReceipt =
+      commandInput("creative.row.selection.generate_room_shell");
+  return iggy3d::routeProductCreativeUiCommandFrame(request);
+}
+
 bool defaultWindowReceiptCarriesNotRequestedFields() {
   const iggy3d::ProductAppWindowState window;
   const iggy3d::RenderReceipt receipt = receiptFor(window);
@@ -958,6 +974,79 @@ bool undoCommandReceiptRecordsUndoFields() {
                             "undo reason");
 }
 
+bool roomShellCommandReceiptRecordsShellFields() {
+  const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
+      appliedRoomShellReceipt();
+  iggy3d::ProductAppWindowState window;
+  iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  return expectReceiptField(receipt,
+                            "creative_ui_command_kind",
+                            "generate_selected_room_shell",
+                            "shell kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_status",
+                            "product_creative_ui_command_applied",
+                            "shell command status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_accepted",
+                            "true",
+                            "shell accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_changed",
+                            "true",
+                            "shell changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_requested",
+                            "true",
+                            "shell requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_accepted",
+                            "true",
+                            "shell receipt accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_changed",
+                            "true",
+                            "shell receipt changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_room_object_id",
+                            std::to_string(commandReceipt.shellRoomObjectId),
+                            "shell room id") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_generated_object_count",
+                            "5",
+                            "shell generated count") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_floor_count",
+                            "1",
+                            "shell floor count") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_wall_count",
+                            "4",
+                            "shell wall count") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_revision_before",
+                            "1",
+                            "shell revision before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_revision_after",
+                            "6",
+                            "shell revision after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_status",
+                            "Generated",
+                            "shell status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_reason_code",
+                            "creative_room_shell_generated",
+                            "shell reason") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_shell_message",
+                            "creative_room_shell_generated",
+                            "shell message");
+}
+
 bool recorderPreservesNeighboringFields() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_before";
@@ -1048,6 +1137,7 @@ int main() {
                   createRoomCommandReceiptRecordsCreateFields() &&
                   deleteCommandReceiptRecordsDeleteFields() &&
                   undoCommandReceiptRecordsUndoFields() &&
+                  roomShellCommandReceiptRecordsShellFields() &&
                   recorderPreservesNeighboringFields();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
