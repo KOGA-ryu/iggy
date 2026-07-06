@@ -20,6 +20,8 @@ bool approx(float lhs, float rhs, float epsilon = 0.0001F) {
   return std::fabs(lhs - rhs) <= epsilon;
 }
 
+constexpr float kHalfPi = 1.57079632679489662F;
+
 iggy3d::EntityState entity(iggy3d::EntityId id,
                            std::string_view name,
                            iggy3d::Vec3 position,
@@ -107,6 +109,28 @@ bool radiusExpandsHurtVolume() {
          expect(hit.entity == iggy3d::EntityId{1}, "radius target");
 }
 
+bool rotatedEntityHitUsesScaleTranslateBounds() {
+  iggy3d::EntityState target = entity({1}, "wide_target", {0.0F, 0.0F, 4.0F});
+  target.localBounds = {{-2.0F, 0.0F, -0.25F}, {2.0F, 1.0F, 0.25F}};
+  target.transform.rotationEulerRadians = {0.0F, kHalfPi, 0.0F};
+  const iggy3d::WorldState world = worldWith({target});
+
+  iggy3d::EntityHitQueryRequest request;
+  request.world = &world;
+  request.startMeters = {1.5F, 0.5F, 0.0F};
+  request.endMeters = {1.5F, 0.5F, 10.0F};
+  request.radiusMeters = 0.0F;
+  const iggy3d::EntityHitQueryResult hit = iggy3d::queryFirstEntityHit(request);
+
+  return expect(hit.status == iggy3d::EntityHitStatus::Hit,
+                "rotated entity still uses scale-translate hit bounds") &&
+         expect(hit.entity == iggy3d::EntityId{1}, "rotated entity hit id") &&
+         expect(approx(hit.pointMeters.z, 3.75F), "rotated entity entry point") &&
+         expect(approx(hit.worldBounds.min.x, -2.0F) &&
+                    approx(hit.worldBounds.max.x, 2.0F),
+                "rotated entity x bounds ignore rotation");
+}
+
 bool invalidInputsAreDiagnosed() {
   const iggy3d::WorldState world = worldWith({
       entity({1}, "target", {0.0F, 0.0F, 4.0F}),
@@ -135,6 +159,7 @@ int main() {
   const bool ok = closestAttackableEntityWins() &&
                   ignoredInactiveAndNonAttackableEntitiesAreSkipped() &&
                   radiusExpandsHurtVolume() &&
+                  rotatedEntityHitUsesScaleTranslateBounds() &&
                   invalidInputsAreDiagnosed();
   return ok ? 0 : 1;
 }

@@ -26,8 +26,10 @@ Aabb3 expanded(Aabb3 bounds, float radiusMeters) {
 }
 
 Aabb3 worldBoundsForEntity(const EntityState& entity) {
-  const Vec3 worldMin = transformPoint(entity.transform, entity.localBounds.min);
-  const Vec3 worldMax = transformPoint(entity.transform, entity.localBounds.max);
+  const Vec3 worldMin =
+      transformPointScaleTranslate(entity.transform, entity.localBounds.min);
+  const Vec3 worldMax =
+      transformPointScaleTranslate(entity.transform, entity.localBounds.max);
   return {{std::min(worldMin.x, worldMax.x),
            std::min(worldMin.y, worldMax.y),
            std::min(worldMin.z, worldMax.z)},

@@ -19,6 +19,8 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
+constexpr float kHalfPi = 1.57079632679489662F;
+
 bool vec3Tests() {
   using namespace iggy3d;
   static_assert(sizeof(Vec3) == sizeof(float) * 3U);
@@ -40,14 +42,22 @@ bool vec3Tests() {
 bool transformTests() {
   using namespace iggy3d;
   const Transform3 identity = identityTransform3();
+  const Transform3 rotated{{1.0F, 2.0F, 3.0F},
+                           {0.0F, kHalfPi, 0.0F},
+                           {2.0F, 3.0F, 4.0F}};
+  const Vec3 local{1.0F, 1.0F, 1.0F};
+  const Vec3 scaleTranslate = transformPointScaleTranslate(rotated, local);
+  const Vec3 trs = transformPointTrs(rotated, local);
   return expect(nearlyEqual(identity.position, vec3Zero()), "Transform position") &&
          expect(nearlyEqual(identity.rotationEulerRadians, vec3Zero()), "Transform rotation") &&
          expect(nearlyEqual(identity.scale, Vec3{1.0F, 1.0F, 1.0F}), "Transform scale") &&
          expect(hasPositiveFiniteScale(identity), "Transform positive scale") &&
-         expect(nearlyEqual(transformPoint(Transform3{Vec3{1.0F, 2.0F, 3.0F}, {}, Vec3{2.0F, 3.0F, 4.0F}},
-                                           Vec3{1.0F, 1.0F, 1.0F}),
-                            Vec3{3.0F, 5.0F, 7.0F}),
-                "Transform point");
+         expect(nearlyEqual(scaleTranslate, Vec3{3.0F, 5.0F, 7.0F}),
+                "Transform scale-translate ignores rotation") &&
+         expect(nearlyEqual(transformPoint(rotated, local), scaleTranslate),
+                "Transform compatibility wrapper matches scale-translate") &&
+         expect(nearlyEqual(trs, Vec3{5.0F, 5.0F, 1.0F}),
+                "Transform TRS honors rotation");
 }
 
 bool aabbTests() {
