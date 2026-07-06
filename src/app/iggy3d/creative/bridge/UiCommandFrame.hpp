@@ -16,6 +16,7 @@ enum class ProductCreativeUiCommandKind : std::uint8_t {
   SetActiveTool,
   CreateObject,
   RebuildRoom,
+  DeleteSelectedObject,
 };
 
 struct ProductCreativeUiCommandFrameRequest {
@@ -72,6 +73,20 @@ struct ProductCreativeUiCommandFrameReceipt {
   creative::CreativeObjectDirtyFlags createDirtyFlags = 0;
   std::string createMessage;
   std::string createReasonCode;
+  bool deleteRequested = false;
+  bool deleteAccepted = false;
+  bool deleteChanged = false;
+  bool deleteRemoved = false;
+  creative::CreativeObjectId deleteObjectId = creative::kInvalidObjectId;
+  creative::CreativeObjectKind deleteObjectKind =
+      creative::CreativeObjectKind::Unknown;
+  std::string deleteObjectName;
+  std::uint64_t deleteRevisionBefore = 0;
+  std::uint64_t deleteRevisionAfter = 0;
+  creative::CreativeObjectDirtyFlags deleteDirtyFlags = 0;
+  std::string deleteStatus = "Unknown";
+  std::string deleteMessage;
+  std::string deleteReasonCode;
   std::string semanticId;
   std::string status = "product_creative_ui_command_not_requested";
   std::string reasonCode = "product_creative_ui_command_not_requested";

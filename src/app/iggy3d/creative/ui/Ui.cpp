@@ -262,6 +262,15 @@ void appendSelectionPanel(CreativeUiModel& model,
   applyObjectSummary(lockedRow, summary);
   appendRow(model, lockedRow);
 
+  // Delete (COMMAND -> DeleteSelectedObject, TD-4).
+  CreativeUiRow deleteRow = makeInspectorRow(
+      CreativeUiRowKind::InspectorDeleteSelected,
+      "delete_selected",
+      "Delete Selected",
+      target);
+  applyObjectSummary(deleteRow, summary);
+  appendRow(model, deleteRow);
+
   // Bounds min/max/size (display, TD-9).
   CreativeUiRow boundsRow = makeInspectorRow(CreativeUiRowKind::InspectorBounds,
                                              "inspector_bounds",

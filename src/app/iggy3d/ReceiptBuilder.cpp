@@ -119,6 +119,8 @@ std::string_view productCreativeUiCommandKindReceiptName(
       return "create_object";
     case ProductCreativeUiCommandKind::RebuildRoom:
       return "rebuild_room";
+    case ProductCreativeUiCommandKind::DeleteSelectedObject:
+      return "delete_selected_object";
   }
   return "unknown";
 }
@@ -301,6 +303,25 @@ void recordProductCreativeUiCommandFrame(
       receipt.createMessage.empty() ? "none" : receipt.createMessage;
   window.creativeUiCommandCreateReasonCode =
       receipt.createReasonCode.empty() ? "none" : receipt.createReasonCode;
+  window.creativeUiCommandDeleteRequested = receipt.deleteRequested;
+  window.creativeUiCommandDeleteAccepted = receipt.deleteAccepted;
+  window.creativeUiCommandDeleteChanged = receipt.deleteChanged;
+  window.creativeUiCommandDeleteRemoved = receipt.deleteRemoved;
+  window.creativeUiCommandDeleteObjectId = receipt.deleteObjectId;
+  window.creativeUiCommandDeleteObjectKind =
+      std::string(creative::toString(receipt.deleteObjectKind));
+  window.creativeUiCommandDeleteObjectName =
+      receipt.deleteObjectName.empty() ? "none" : receipt.deleteObjectName;
+  window.creativeUiCommandDeleteRevisionBefore =
+      receipt.deleteRevisionBefore;
+  window.creativeUiCommandDeleteRevisionAfter = receipt.deleteRevisionAfter;
+  window.creativeUiCommandDeleteDirtyFlags = receipt.deleteDirtyFlags;
+  window.creativeUiCommandDeleteStatus =
+      receipt.deleteStatus.empty() ? "Unknown" : receipt.deleteStatus;
+  window.creativeUiCommandDeleteMessage =
+      receipt.deleteMessage.empty() ? "none" : receipt.deleteMessage;
+  window.creativeUiCommandDeleteReasonCode =
+      receipt.deleteReasonCode.empty() ? "none" : receipt.deleteReasonCode;
   window.creativeUiCommandBakedRoomRefreshRequested = false;
   window.creativeUiCommandBakedRoomRefreshAccepted = false;
   window.creativeUiCommandBakedRoomRefreshStatus =
@@ -2226,6 +2247,32 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiCommandCreateMessage);
   appendReceiptField(receipt, "creative_ui_command_create_reason_code",
                      window.creativeUiCommandCreateReasonCode);
+  appendReceiptField(receipt, "creative_ui_command_delete_requested",
+                     window.creativeUiCommandDeleteRequested);
+  appendReceiptField(receipt, "creative_ui_command_delete_accepted",
+                     window.creativeUiCommandDeleteAccepted);
+  appendReceiptField(receipt, "creative_ui_command_delete_changed",
+                     window.creativeUiCommandDeleteChanged);
+  appendReceiptField(receipt, "creative_ui_command_delete_removed",
+                     window.creativeUiCommandDeleteRemoved);
+  appendReceiptField(receipt, "creative_ui_command_delete_object_id",
+                     window.creativeUiCommandDeleteObjectId);
+  appendReceiptField(receipt, "creative_ui_command_delete_object_kind",
+                     window.creativeUiCommandDeleteObjectKind);
+  appendReceiptField(receipt, "creative_ui_command_delete_object_name",
+                     window.creativeUiCommandDeleteObjectName);
+  appendReceiptField(receipt, "creative_ui_command_delete_revision_before",
+                     window.creativeUiCommandDeleteRevisionBefore);
+  appendReceiptField(receipt, "creative_ui_command_delete_revision_after",
+                     window.creativeUiCommandDeleteRevisionAfter);
+  appendReceiptField(receipt, "creative_ui_command_delete_dirty_flags",
+                     window.creativeUiCommandDeleteDirtyFlags);
+  appendReceiptField(receipt, "creative_ui_command_delete_status",
+                     window.creativeUiCommandDeleteStatus);
+  appendReceiptField(receipt, "creative_ui_command_delete_message",
+                     window.creativeUiCommandDeleteMessage);
+  appendReceiptField(receipt, "creative_ui_command_delete_reason_code",
+                     window.creativeUiCommandDeleteReasonCode);
   appendReceiptField(receipt,
                      "creative_ui_command_baked_room_refresh_requested",
                      window.creativeUiCommandBakedRoomRefreshRequested);

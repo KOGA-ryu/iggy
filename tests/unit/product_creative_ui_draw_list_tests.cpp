@@ -309,6 +309,10 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                               "creative.row.selection.selected_target") ==
                     nullptr,
                 "no selected row without selection") &&
+         expect(findPrimitive(list,
+                              "creative.row.selection.delete_selected") ==
+                    nullptr,
+                "no delete row without selection") &&
          expect(findPrimitive(list, "creative.panel.measurement") == nullptr,
                 "hidden measurement panel") &&
          expect(findPrimitive(list, "creative.panel.ghost") == nullptr,
@@ -365,6 +369,10 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                               "creative.row.selection.selected_target") ==
                     nullptr,
                 "hidden selection hit") &&
+         expect(findHitRegion(list,
+                              "creative.row.selection.delete_selected") ==
+                    nullptr,
+                "hidden delete hit") &&
          expect(findHitRegion(list,
                               "creative.row.measurement.measurement_state") ==
                     nullptr,
@@ -471,6 +479,8 @@ bool populatedModelPreservesCreativeOrderAndText() {
 
   const iggy3d::ProductUiPrimitive* selected =
       findPrimitive(list, "creative.row.selection.selected_target");
+  const iggy3d::ProductUiPrimitive* deleteSelected =
+      findPrimitive(list, "creative.row.selection.delete_selected");
   const iggy3d::ProductUiPrimitive* measurement =
       findPrimitive(list, "creative.row.measurement.measurement_state");
   const iggy3d::ProductUiPrimitive* start =
@@ -486,6 +496,9 @@ bool populatedModelPreservesCreativeOrderAndText() {
   return expect(selected != nullptr &&
                     selected->text == "Selected: target=42 visible=true",
                 "selected row text") &&
+         expect(deleteSelected != nullptr &&
+                    deleteSelected->text == "Delete Selected",
+                "delete selected row text") &&
          expect(measurement != nullptr &&
                     measurement->text == "Measure: active samples=2",
                 "measurement row text") &&
@@ -507,6 +520,9 @@ bool populatedModelPreservesCreativeOrderAndText() {
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.selection.selected_target"),
                 "selected hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.selection.delete_selected"),
+                "delete selected hit") &&
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.measurement.measurement_state"),
                 "measurement hit") &&
@@ -645,6 +661,8 @@ bool inspectorRowsRenderExactTextForKnownObject() {
       findPrimitive(list, "creative.row.selection.inspector_visible");
   const iggy3d::ProductUiPrimitive* locked =
       findPrimitive(list, "creative.row.selection.inspector_locked");
+  const iggy3d::ProductUiPrimitive* deleteSelected =
+      findPrimitive(list, "creative.row.selection.delete_selected");
   const iggy3d::ProductUiPrimitive* bounds =
       findPrimitive(list, "creative.row.selection.inspector_bounds");
   const iggy3d::ProductUiPrimitive* position =
@@ -664,6 +682,9 @@ bool inspectorRowsRenderExactTextForKnownObject() {
                 "inspector visible text") &&
          expect(locked != nullptr && locked->text == "Locked: false",
                 "inspector locked text") &&
+         expect(deleteSelected != nullptr &&
+                    deleteSelected->text == "Delete Selected",
+                "inspector delete selected text") &&
          // Bounds shows min/max (size lives in the row fields for v1.5).
          expect(bounds != nullptr &&
                     bounds->text ==
@@ -679,7 +700,10 @@ bool inspectorRowsRenderExactTextForKnownObject() {
                 "inspector visible hit") &&
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.selection.inspector_locked"),
-                "inspector locked hit");
+                "inspector locked hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.selection.delete_selected"),
+                "inspector delete selected hit");
 }
 
 bool repeatedBuildIsStable() {

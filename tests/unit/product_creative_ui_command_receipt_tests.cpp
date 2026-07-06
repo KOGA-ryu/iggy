@@ -75,6 +75,15 @@ cr::CreativeObjectId createRoom(cr::Facade& facade) {
   return facade.createDocumentObject(request).objectId;
 }
 
+cr::CreativeObjectId createObject(cr::Facade& facade,
+                                  cr::CreativeObjectKind kind,
+                                  std::string_view name) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.name = std::string(name);
+  return facade.createDocumentObject(request).objectId;
+}
+
 cr::CreativeToolInputPacket pointerPress(cr::Id targetId) {
   cr::CreativeToolInputPacket input;
   input.kind = cr::CreativeToolInputKind::PointerPress;
@@ -119,6 +128,21 @@ iggy3d::ProductCreativeUiCommandFrameReceipt appliedCreateRoomReceipt() {
   iggy3d::ProductCreativeUiCommandFrameRequest request;
   request.creative = &app;
   request.inputReceipt = commandInput("creative.row.create.create_room");
+  return iggy3d::routeProductCreativeUiCommandFrame(request);
+}
+
+iggy3d::ProductCreativeUiCommandFrameReceipt appliedDeleteReceipt() {
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
+  facade.reset();
+  const cr::CreativeObjectId crateId =
+      createObject(facade, cr::CreativeObjectKind::Crate, "Crate A");
+  static_cast<void>(facade.dispatchToolInput(
+      pointerPress(static_cast<cr::Id>(crateId))));
+
+  iggy3d::ProductCreativeUiCommandFrameRequest request;
+  request.creative = &app;
+  request.inputReceipt = commandInput("creative.row.selection.delete_selected");
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
@@ -277,7 +301,59 @@ bool defaultWindowReceiptCarriesNotRequestedFields() {
          expectReceiptField(receipt,
                             "creative_ui_command_create_reason_code",
                             "none",
-                            "default create reason");
+                            "default create reason") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_requested",
+                            "false",
+                            "default delete requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_accepted",
+                            "false",
+                            "default delete accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_changed",
+                            "false",
+                            "default delete changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_removed",
+                            "false",
+                            "default delete removed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_object_id",
+                            "0",
+                            "default delete object id") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_object_kind",
+                            "Unknown",
+                            "default delete object kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_object_name",
+                            "none",
+                            "default delete object name") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_revision_before",
+                            "0",
+                            "default delete revision before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_revision_after",
+                            "0",
+                            "default delete revision after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_dirty_flags",
+                            "0",
+                            "default delete dirty flags") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_status",
+                            "Unknown",
+                            "default delete status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_message",
+                            "none",
+                            "default delete message") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_reason_code",
+                            "none",
+                            "default delete reason");
 }
 
 bool defaultCommandReceiptRecordsSafely() {
@@ -649,6 +725,91 @@ bool createRoomCommandReceiptRecordsCreateFields() {
                             "create reason");
 }
 
+bool deleteCommandReceiptRecordsDeleteFields() {
+  const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
+      appliedDeleteReceipt();
+  iggy3d::ProductAppWindowState window;
+  iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  const std::string objectId = std::to_string(commandReceipt.deleteObjectId);
+  const std::string revisionBefore =
+      std::to_string(commandReceipt.deleteRevisionBefore);
+  const std::string revisionAfter =
+      std::to_string(commandReceipt.deleteRevisionAfter);
+  const std::string dirtyFlags =
+      std::to_string(commandReceipt.deleteDirtyFlags);
+
+  return expectReceiptField(receipt,
+                            "creative_ui_command_kind",
+                            "delete_selected_object",
+                            "delete kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_status",
+                            "product_creative_ui_command_applied",
+                            "delete status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_accepted",
+                            "true",
+                            "delete accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_changed",
+                            "true",
+                            "delete changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_requested",
+                            "true",
+                            "delete requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_accepted",
+                            "true",
+                            "delete receipt accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_changed",
+                            "true",
+                            "delete receipt changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_removed",
+                            "true",
+                            "delete removed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_object_id",
+                            objectId,
+                            "delete object id") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_object_kind",
+                            "Crate",
+                            "delete object kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_object_name",
+                            "Crate A",
+                            "delete object name") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_revision_before",
+                            revisionBefore,
+                            "delete revision before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_revision_after",
+                            revisionAfter,
+                            "delete revision after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_dirty_flags",
+                            dirtyFlags,
+                            "delete dirty flags") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_status",
+                            "Removed",
+                            "delete receipt status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_message",
+                            "object_removed",
+                            "delete message") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_delete_reason_code",
+                            "object_removed",
+                            "delete reason");
+}
+
 bool recorderPreservesNeighboringFields() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_before";
@@ -737,6 +898,7 @@ int main() {
                   lockCommandReceiptRecordsLockedFields() &&
                   defaultWindowReceiptCarriesLockedFields() &&
                   createRoomCommandReceiptRecordsCreateFields() &&
+                  deleteCommandReceiptRecordsDeleteFields() &&
                   recorderPreservesNeighboringFields();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -215,6 +215,8 @@ void appendVec3Text(std::string& text, double x, double y, double z) {
       text = "Locked: ";
       text.append(boolFlagText(row, creative::kCreativeUiRowFlagObjectLocked));
       break;
+    case creative::CreativeUiRowKind::InspectorDeleteSelected:
+      break;
     case creative::CreativeUiRowKind::InspectorBounds:
       // min/max are shown; size is carried in the row fields (max-min) for the
       // v1.5 numeric editor and stays out of the fixed-width line (TD-9).

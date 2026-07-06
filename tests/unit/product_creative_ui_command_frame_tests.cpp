@@ -48,6 +48,15 @@ cr::CreativeObjectId createRoom(cr::Facade& facade) {
   return facade.createDocumentObject(request).objectId;
 }
 
+cr::CreativeObjectId createObject(cr::Facade& facade,
+                                  cr::CreativeObjectKind kind,
+                                  std::string_view name) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.name = std::string(name);
+  return facade.createDocumentObject(request).objectId;
+}
+
 cr::CreativeToolInputPacket pointerPress(cr::Id targetId) {
   cr::CreativeToolInputPacket input;
   input.kind = cr::CreativeToolInputKind::PointerPress;
@@ -564,6 +573,100 @@ bool selectedTargetRowNoSelectionRejects() {
                 "no selection document unchanged");
 }
 
+bool deleteSelectedObjectRemovesObjectAndClearsSelection() {
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
+  facade.reset();
+  const cr::CreativeObjectId crateId =
+      createObject(facade, cr::CreativeObjectKind::Crate, "Crate A");
+  selectTarget(facade, crateId);
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(app, "creative.row.selection.delete_selected");
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::DeleteSelectedObject,
+                "delete command kind") &&
+         expect(receipt.semanticId == "creative.row.selection.delete_selected",
+                "delete semantic") &&
+         expect(receipt.accepted, "delete accepted") &&
+         expect(receipt.changed, "delete changed") &&
+         expect(receipt.status == "product_creative_ui_command_applied",
+                "delete status") &&
+         expect(receipt.reasonCode == "product_creative_ui_command_applied",
+                "delete reason") &&
+         expect(receipt.deleteRequested, "delete requested") &&
+         expect(receipt.deleteAccepted, "delete receipt accepted") &&
+         expect(receipt.deleteChanged, "delete receipt changed") &&
+         expect(receipt.deleteRemoved, "delete receipt removed") &&
+         expect(receipt.deleteObjectId == crateId, "delete object id") &&
+         expect(receipt.deleteObjectKind == cr::CreativeObjectKind::Crate,
+                "delete object kind") &&
+         expect(receipt.deleteObjectName == "Crate A",
+                "delete object name") &&
+         expect(receipt.deleteRevisionBefore == revisionBefore,
+                "delete revision before") &&
+         expect(receipt.deleteRevisionAfter == revisionBefore + 1U,
+                "delete revision after") &&
+         expect(receipt.deleteDirtyFlags != 0U, "delete dirty flags") &&
+         expect(receipt.deleteStatus == "Removed", "delete receipt status") &&
+         expect(receipt.deleteMessage == "object_removed",
+                "delete receipt message") &&
+         expect(receipt.deleteReasonCode == "object_removed",
+                "delete receipt reason") &&
+         expect(facade.findObject(crateId) == nullptr, "delete object gone") &&
+         expect(facade.document().objectCount() == objectCountBefore - 1U,
+                "delete object count") &&
+         expect(facade.document().revision() == revisionBefore + 1U,
+                "delete document revision") &&
+         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
+                "delete selection cleared") &&
+         expect(facade.toolState().activeTool == cr::Tool::Measure,
+                "delete tool preserved");
+}
+
+bool deleteSelectedObjectNoSelectionRejectsWithoutMutation() {
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
+  facade.reset();
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(app, "creative.row.selection.delete_selected");
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::DeleteSelectedObject,
+                "delete no selection command kind") &&
+         expect(!receipt.accepted, "delete no selection not accepted") &&
+         expect(!receipt.changed, "delete no selection unchanged") &&
+         expect(receipt.status == "product_creative_ui_command_rejected",
+                "delete no selection status") &&
+         expect(receipt.deleteRequested, "delete no selection requested") &&
+         expect(!receipt.deleteAccepted,
+                "delete no selection receipt not accepted") &&
+         expect(!receipt.deleteChanged, "delete no selection not changed") &&
+         expect(!receipt.deleteRemoved, "delete no selection not removed") &&
+         expect(receipt.deleteObjectId == cr::kInvalidObjectId,
+                "delete no selection object id") &&
+         expect(receipt.deleteStatus == "NoSelection",
+                "delete no selection receipt status") &&
+         expect(receipt.deleteMessage == "no_selection",
+                "delete no selection message") &&
+         expect(receipt.deleteReasonCode == "no_selection",
+                "delete no selection reason") &&
+         expect(receipt.deleteRevisionBefore == revisionBefore,
+                "delete no selection revision before") &&
+         expect(receipt.deleteRevisionAfter == revisionBefore,
+                "delete no selection revision after") &&
+         expect(facade.document().objectCount() == 0U,
+                "delete no selection object count") &&
+         expect(facade.document().revision() == revisionBefore,
+                "delete no selection revision unchanged");
+}
+
 bool selectedTargetRowMissingObjectRejectsAndPreservesSelection() {
   cr::CreativeAppState app;
   [[maybe_unused]] cr::Facade& facade = app.facade;
@@ -813,6 +916,8 @@ int main() {
   ok &= selectedTargetRowTogglesRoomVisibilityOnAgain();
   ok &= selectedTargetRowPreservesActiveTool();
   ok &= selectedTargetRowNoSelectionRejects();
+  ok &= deleteSelectedObjectRemovesObjectAndClearsSelection();
+  ok &= deleteSelectedObjectNoSelectionRejectsWithoutMutation();
   ok &= selectedTargetRowMissingObjectRejectsAndPreservesSelection();
   ok &= selectedTargetRowIsDisplayOnlyNoop();
   ok &= inspectorLockedRowTogglesRoomLockedOn();

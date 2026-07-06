@@ -206,7 +206,7 @@ bool selectedTargetRowAppearsOnlyWhenNonzero() {
                 "selection resting kind") &&
          expect(emptyRow.target.value == cr::kInvalidId,
                 "selection resting no target") &&
-         expect(panel(selected.model, cr::CreativeUiPanelKind::Selection).rowCount == 9U,
+         expect(panel(selected.model, cr::CreativeUiPanelKind::Selection).rowCount == 10U,
                 "selection inspector present") &&
          expect(row.kind == cr::CreativeUiRowKind::SelectedTarget,
                 "selection row kind") &&
@@ -247,7 +247,7 @@ bool selectedHiddenObjectSummaryKeepsRowAndMarksInvisible() {
       firstPanelRow(receipt.model, cr::CreativeUiPanelKind::Selection);
 
   return expect(panel(receipt.model,
-                      cr::CreativeUiPanelKind::Selection).rowCount == 9U,
+                      cr::CreativeUiPanelKind::Selection).rowCount == 10U,
                 "selected hidden inspector rows") &&
          expect(row.target.value == 42U, "selected hidden target") &&
          expect(row.objectKind == cr::CreativeObjectKind::Room,
@@ -267,7 +267,7 @@ bool selectedMissingObjectSummaryKeepsRowUnknown() {
       firstPanelRow(receipt.model, cr::CreativeUiPanelKind::Selection);
 
   return expect(panel(receipt.model,
-                      cr::CreativeUiPanelKind::Selection).rowCount == 9U,
+                      cr::CreativeUiPanelKind::Selection).rowCount == 10U,
                 "selected missing inspector rows") &&
          expect(row.target.value == 42U, "selected missing target") &&
          expect(row.objectKind == cr::CreativeObjectKind::Unknown,
@@ -304,6 +304,8 @@ bool inspectorRowsCarrySelectedObjectFacts() {
       rowOfKind(model, cr::CreativeUiRowKind::InspectorVisible);
   const cr::CreativeUiRow* lockedRow =
       rowOfKind(model, cr::CreativeUiRowKind::InspectorLocked);
+  const cr::CreativeUiRow* deleteRow =
+      rowOfKind(model, cr::CreativeUiRowKind::InspectorDeleteSelected);
   const cr::CreativeUiRow* boundsRow =
       rowOfKind(model, cr::CreativeUiRowKind::InspectorBounds);
   const cr::CreativeUiRow* positionRow =
@@ -328,6 +330,9 @@ bool inspectorRowsCarrySelectedObjectFacts() {
                     hasFlag(lockedRow->flags,
                             cr::kCreativeUiRowFlagObjectLocked),
                 "inspector locked row") &&
+         expect(deleteRow != nullptr && deleteRow->target.value == 42U &&
+                    deleteRow->label == "Delete Selected",
+                "inspector delete selected row") &&
          expect(boundsRow != nullptr && boundsRow->primaryX == 1.0 &&
                     boundsRow->primaryY == 2.0 && boundsRow->primaryZ == 3.0 &&
                     boundsRow->secondaryX == 5.0 &&

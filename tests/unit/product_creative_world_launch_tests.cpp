@@ -288,6 +288,21 @@ bool clickCreativeRebuildRoomThroughInputFrame(
                                             "creative.row.tools.rebuild_room");
 }
 
+bool clickCreativeDeleteSelectedThroughInputFrame(
+    const iggy3d::ProductAppOptions& options,
+    iggy3d::FrontendState& frontend,
+    std::optional<iggy3d::Session>& activeSession,
+    iggy3d::ProductAppWindowState& window,
+    cr::CreativeAppState& app) {
+  return clickCreativeUiRowThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app,
+      "creative.row.selection.delete_selected");
+}
+
 void runCreativePointerLifecycleFrame(
     const iggy3d::ProductAppOptions& options,
     iggy3d::FrontendState& frontend,
@@ -2290,6 +2305,230 @@ bool autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() {
   return ok;
 }
 
+bool deleteSelectedRenderableClearsBakedRoomThroughInputFrame() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("delete_selected_clears_baked_room");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Delete Selected Clears",
+                                        "2026-07-05T12:50:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  const cr::CreativeDocumentCreateReceipt floor =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Floor,
+                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const iggy3d::ProductCreativeBakedActiveRoomRefreshResult initialRefresh =
+      iggy3d::refreshProductCreativeBakedActiveRoom({},
+                                                    activeSession,
+                                                    window,
+                                                    app);
+  const bool activeRoomLoadedBeforeDelete = window.activeRoom.loaded;
+  const bool selected = selectFacadeObject(facade, floor.objectId);
+  const cr::CreativeObjectDirtyFlags dirtyBeforeDelete =
+      facade.document().dirtyFlags();
+  const std::uint64_t revisionBeforeDelete = facade.document().revision();
+
+  const bool clicked = clickCreativeDeleteSelectedThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app);
+
+  return expect(launched.accepted, "delete clear launch accepted") &&
+         expect(floor.accepted, "delete clear floor created") &&
+         expect(initialRefresh.accepted, "delete clear initial refresh") &&
+         expect(activeRoomLoadedBeforeDelete,
+                "delete clear initial active room") &&
+         expect(selected, "delete clear floor selected") &&
+         expect(clicked, "delete clear row clicked") &&
+         expect(facade.findObject(floor.objectId) == nullptr,
+                "delete clear floor gone") &&
+         expect(facade.document().objectCount() == 0U,
+                "delete clear object count") &&
+         expect(facade.document().revision() == revisionBeforeDelete + 1U,
+                "delete clear revision advanced") &&
+         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
+                "delete clear selection cleared") &&
+         expect(window.creativeUiInputConsumed,
+                "delete clear ui input consumed") &&
+         expect(window.creativeUiInputSemanticId ==
+                    "creative.row.selection.delete_selected",
+                "delete clear ui semantic") &&
+         expect(window.creativeUiCommandKind == "delete_selected_object",
+                "delete clear command kind") &&
+         expect(window.creativeUiCommandAccepted,
+                "delete clear command accepted") &&
+         expect(window.creativeUiCommandChanged,
+                "delete clear command changed") &&
+         expect(window.creativeUiCommandDeleteRequested,
+                "delete clear requested") &&
+         expect(window.creativeUiCommandDeleteAccepted,
+                "delete clear delete accepted") &&
+         expect(window.creativeUiCommandDeleteChanged,
+                "delete clear delete changed") &&
+         expect(window.creativeUiCommandDeleteRemoved,
+                "delete clear delete removed") &&
+         expect(window.creativeUiCommandDeleteObjectId == floor.objectId,
+                "delete clear object id") &&
+         expect(window.creativeUiCommandDeleteObjectKind == "Floor",
+                "delete clear object kind") &&
+         expect(window.creativeUiCommandDeleteRevisionBefore ==
+                    revisionBeforeDelete,
+                "delete clear revision before") &&
+         expect(window.creativeUiCommandDeleteRevisionAfter ==
+                    revisionBeforeDelete + 1U,
+                "delete clear revision after") &&
+         expect(window.creativeUiCommandDeleteStatus == "Removed",
+                "delete clear delete status") &&
+         expect(window.creativeDocumentChangedThisFrame,
+                "delete clear document changed") &&
+         expect(window.creativeBakedRoomAutoRefreshRequested,
+                "delete clear auto requested") &&
+         expect(window.creativeBakedRoomAutoRefreshAccepted,
+                "delete clear auto accepted") &&
+         expect(window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+                "delete clear auto cleared") &&
+         expect(window.creativeBakedRoomAutoRefreshStatus ==
+                    "product_creative_baked_room_cleared_no_renderable_objects",
+                "delete clear auto status") &&
+         expect(!window.activeRoom.loaded,
+                "delete clear active room unloaded") &&
+         expect(window.activeRoom.staticMeshCount == 0U,
+                "delete clear active mesh count") &&
+         expect(!window.activeRoomCollision.ready,
+                "delete clear collision unavailable") &&
+         expect(window.activeRoomCollision.querySurfaceCount == 0U,
+                "delete clear collision query count") &&
+         expect(!window.creativeBakedRoomStale,
+                "delete clear stale fresh") &&
+         expect(window.creativeBakedRoomStaleStatus ==
+                    "creative_baked_room_fresh",
+                "delete clear stale status") &&
+         expect(window.activeCreativeSaveId == launched.saveId,
+                "delete clear active creative save preserved") &&
+         expect(window.activeCreativeDocumentId == launched.documentId,
+                "delete clear active creative document preserved") &&
+         expect(window.activeProductSaveId == "none",
+                "delete clear active product save unchanged") &&
+         expect(dirtyBeforeDelete != 0U, "delete clear dirty before") &&
+         expect(facade.document().dirtyFlags() != 0U,
+                "delete clear dirty flags not drained");
+}
+
+bool deleteOneOfTwoRenderablesRebuildsRemainingBakedRoomThroughInputFrame() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("delete_selected_rebuilds_remaining_baked_room");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Delete Selected Rebuilds",
+                                        "2026-07-05T13:00:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  const cr::CreativeDocumentCreateReceipt floor =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Floor,
+                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt crate =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Crate,
+                         {{1.0, 0.0, 5.0}, {2.0, 1.0, 6.0}});
+  const iggy3d::ProductCreativeBakedActiveRoomRefreshResult initialRefresh =
+      iggy3d::refreshProductCreativeBakedActiveRoom({},
+                                                    activeSession,
+                                                    window,
+                                                    app);
+  const bool selected = selectFacadeObject(facade, crate.objectId);
+  const cr::CreativeObjectDirtyFlags dirtyBeforeDelete =
+      facade.document().dirtyFlags();
+  const std::uint64_t revisionBeforeDelete = facade.document().revision();
+
+  const bool clicked = clickCreativeDeleteSelectedThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app);
+
+  return expect(launched.accepted, "delete rebuild launch accepted") &&
+         expect(floor.accepted, "delete rebuild floor created") &&
+         expect(crate.accepted, "delete rebuild crate created") &&
+         expect(initialRefresh.accepted, "delete rebuild initial refresh") &&
+         expect(initialRefresh.staticMeshCount == 2U,
+                "delete rebuild initial mesh count") &&
+         expect(selected, "delete rebuild crate selected") &&
+         expect(clicked, "delete rebuild row clicked") &&
+         expect(facade.findObject(crate.objectId) == nullptr,
+                "delete rebuild crate gone") &&
+         expect(facade.findObject(floor.objectId) != nullptr,
+                "delete rebuild floor remains") &&
+         expect(facade.document().objectCount() == 1U,
+                "delete rebuild object count") &&
+         expect(facade.document().revision() == revisionBeforeDelete + 1U,
+                "delete rebuild revision advanced") &&
+         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
+                "delete rebuild selection cleared") &&
+         expect(window.creativeUiCommandKind == "delete_selected_object",
+                "delete rebuild command kind") &&
+         expect(window.creativeUiCommandDeleteObjectId == crate.objectId,
+                "delete rebuild object id") &&
+         expect(window.creativeUiCommandDeleteObjectKind == "Crate",
+                "delete rebuild object kind") &&
+         expect(window.creativeDocumentChangedThisFrame,
+                "delete rebuild document changed") &&
+         expect(window.creativeBakedRoomAutoRefreshRequested,
+                "delete rebuild auto requested") &&
+         expect(window.creativeBakedRoomAutoRefreshAccepted,
+                "delete rebuild auto accepted") &&
+         expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+                "delete rebuild auto not cleared") &&
+         expect(window.creativeBakedRoomAutoRefreshStatus ==
+                    "product_creative_baked_room_refreshed",
+                "delete rebuild auto status") &&
+         expect(window.creativeBakedRoomAutoRefreshStaticMeshCount == 1U,
+                "delete rebuild auto mesh count") &&
+         expect(window.creativeBakedRoomAutoRefreshSpatialSurfaceCount == 1U,
+                "delete rebuild auto surface count") &&
+         expect(window.creativeBakedRoomAutoRefreshCollisionReady,
+                "delete rebuild auto collision ready") &&
+         expect(window.activeRoom.loaded,
+                "delete rebuild active room loaded") &&
+         expect(window.activeRoom.staticMeshCount == 1U,
+                "delete rebuild active mesh count") &&
+         expect(window.activeRoom.spatialSurfaceCount == 1U,
+                "delete rebuild active surface count") &&
+         expect(window.activeRoomCollision.ready,
+                "delete rebuild active collision ready") &&
+         expect(window.activeRoomCollision.querySurfaceCount == 1U,
+                "delete rebuild collision query count") &&
+         expect(!window.creativeBakedRoomStale,
+                "delete rebuild stale fresh") &&
+         expect(window.activeCreativeSaveId == launched.saveId,
+                "delete rebuild active creative save preserved") &&
+         expect(window.activeCreativeDocumentId == launched.documentId,
+                "delete rebuild active creative document preserved") &&
+         expect(window.activeProductSaveId == "none",
+                "delete rebuild active product save unchanged") &&
+         expect(dirtyBeforeDelete != 0U, "delete rebuild dirty before") &&
+         expect(facade.document().dirtyFlags() != 0U,
+                "delete rebuild dirty flags not drained");
+}
+
 bool autoRefreshMoveCommitAndIgnoresNoChangeReleaseThroughInputFrame() {
   const iggy3d::ProductAppOptions options =
       testOptions("auto_move_baked_room");
@@ -2726,6 +2965,8 @@ int main() {
       manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() &&
       manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() &&
       autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() &&
+      deleteSelectedRenderableClearsBakedRoomThroughInputFrame() &&
+      deleteOneOfTwoRenderablesRebuildsRemainingBakedRoomThroughInputFrame() &&
       autoRefreshMoveCommitAndIgnoresNoChangeReleaseThroughInputFrame() &&
       refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() &&
       creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() &&

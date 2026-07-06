@@ -21,7 +21,7 @@ struct ProductCreativeUiCommandRow {
       creative::CreativeObjectKind::Unknown;
 };
 
-constexpr std::array<ProductCreativeUiCommandRow, 9>
+constexpr std::array<ProductCreativeUiCommandRow, 10>
     kProductCreativeUiCommandRows = {{
         {"creative.row.tools.tool_select",
          ProductCreativeUiCommandKind::SetActiveTool,
@@ -57,6 +57,10 @@ constexpr std::array<ProductCreativeUiCommandRow, 9>
          creative::CreativeObjectKind::Unknown},
         {"creative.row.selection.inspector_locked",
          ProductCreativeUiCommandKind::ToggleSelectedObjectLocked,
+         creative::Tool::Select,
+         creative::CreativeObjectKind::Unknown},
+        {"creative.row.selection.delete_selected",
+         ProductCreativeUiCommandKind::DeleteSelectedObject,
          creative::Tool::Select,
          creative::CreativeObjectKind::Unknown},
     }};
@@ -120,6 +124,34 @@ void copyCreateReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
   receipt.createDirtyFlags = createReceipt.creationDirtyFlags;
   receipt.createMessage = createReceipt.message;
   receipt.createReasonCode = createReceipt.reasonCode;
+}
+
+void setDeleteNoSelection(ProductCreativeUiCommandFrameReceipt& receipt,
+                          std::uint64_t revision) {
+  receipt.deleteRequested = true;
+  receipt.deleteRevisionBefore = revision;
+  receipt.deleteRevisionAfter = revision;
+  receipt.deleteStatus = "NoSelection";
+  receipt.deleteMessage = "no_selection";
+  receipt.deleteReasonCode = "no_selection";
+}
+
+void copyDeleteReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
+                       const creative::CreativeDocumentRemoveReceipt&
+                           deleteReceipt) {
+  receipt.deleteRequested = deleteReceipt.requested;
+  receipt.deleteAccepted = deleteReceipt.accepted;
+  receipt.deleteChanged = deleteReceipt.changed;
+  receipt.deleteRemoved = deleteReceipt.objectRemoved;
+  receipt.deleteObjectId = deleteReceipt.objectId;
+  receipt.deleteObjectKind = deleteReceipt.objectKind;
+  receipt.deleteObjectName = deleteReceipt.objectName;
+  receipt.deleteRevisionBefore = deleteReceipt.revisionBefore;
+  receipt.deleteRevisionAfter = deleteReceipt.revisionAfter;
+  receipt.deleteDirtyFlags = deleteReceipt.removalDirtyFlags;
+  receipt.deleteStatus = std::string(creative::toString(deleteReceipt.status));
+  receipt.deleteMessage = std::string(deleteReceipt.message);
+  receipt.deleteReasonCode = std::string(deleteReceipt.reasonCode);
 }
 
 }  // namespace
@@ -201,6 +233,34 @@ ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
     receipt.toolAfter = facade.toolState().activeTool;
     setNoopStatus(receipt,
                   "product_creative_ui_command_rebuild_room_requested");
+    return receipt;
+  }
+
+  if (receipt.commandKind == ProductCreativeUiCommandKind::DeleteSelectedObject) {
+    const creative::TargetRef selectedTarget =
+        facade.selectionState().selectedTarget;
+    if (selectedTarget.value == creative::kInvalidId) {
+      setDeleteNoSelection(receipt, facade.document().revision());
+      receipt.toolAfter = facade.toolState().activeTool;
+      setNoopStatus(receipt, "product_creative_ui_command_rejected");
+      return receipt;
+    }
+
+    const creative::CreativeDocumentRemoveReceipt deleteReceipt =
+        facade.removeDocumentObject(
+            static_cast<creative::CreativeObjectId>(selectedTarget.value));
+    copyDeleteReceipt(receipt, deleteReceipt);
+    receipt.accepted = deleteReceipt.accepted;
+    receipt.changed = deleteReceipt.changed;
+    receipt.toolAfter = facade.toolState().activeTool;
+    if (deleteReceipt.accepted && deleteReceipt.objectRemoved &&
+        deleteReceipt.changed) {
+      setNoopStatus(receipt, "product_creative_ui_command_applied");
+    } else if (deleteReceipt.accepted) {
+      setNoopStatus(receipt, "product_creative_ui_command_no_change");
+    } else {
+      setNoopStatus(receipt, "product_creative_ui_command_rejected");
+    }
     return receipt;
   }
 
