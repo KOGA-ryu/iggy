@@ -50,6 +50,7 @@
 #include "app/iggy3d/ascii_room/AsciiRoomPreviewState.hpp"
 #include "app/iggy3d/ascii_room/AsciiRoomActivationState.hpp"
 #include "app/iggy3d/ProductStartupState.hpp"
+#include "app/iggy3d/ProductCreativeUiInputState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -385,30 +386,8 @@ struct ProductAppWindowState {
   std::string productVulkanRecordMode = "none";
   ProductVulkanMenuState productVulkanMenu;
   ProductCreativeUiProjectionState creativeUiProjection;
-  bool creativeUiInputRequested = false;
-  bool creativeUiInputClickPresent = false;
-  bool creativeUiInputDrawListAvailable = false;
-  bool creativeUiInputRouted = false;
-  bool creativeUiInputHit = false;
-  bool creativeUiInputConsumed = false;
-  bool creativeUiInputEnabled = false;
-  std::string creativeUiInputSurface = "none";
-  std::string creativeUiInputKind = "none";
-  std::string creativeUiInputAction = "none";
-  std::uint64_t creativeUiInputLayerIndex = 0;
-  std::uint64_t creativeUiInputRegionIndex = 0;
-  std::string creativeUiInputSemanticId = "none";
-  std::string creativeUiInputStatus = "creative_ui_input_not_requested";
-  std::string creativeUiInputReasonCode = "creative_ui_input_not_requested";
+  ProductCreativeUiInputState creativeUiInput;
   ProductCreativeUiLastState creativeUiLast;
-  bool creativeUiInputDownstreamClickRequested = false;
-  bool creativeUiInputDownstreamClickPresent = false;
-  bool creativeUiInputDownstreamClickHigherPriority = false;
-  bool creativeUiInputDownstreamClickSuppressed = false;
-  std::string creativeUiInputDownstreamClickStatus =
-      "creative_ui_input_downstream_click_not_requested";
-  std::string creativeUiInputDownstreamClickReasonCode =
-      "creative_ui_input_downstream_click_not_requested";
   ProductCreativeUiCommandDiagnostics creativeUiCommand;
   ProductCreativeBakedRoomRefreshDiagnostics creativeBakedRoomAutoRefresh;
   bool creativeViewportPickRequested = false;

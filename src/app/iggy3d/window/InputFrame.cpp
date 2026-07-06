@@ -1109,7 +1109,7 @@ ProductCreativeViewportInputPhaseResult processProductCreativeViewportInputPhase
       routeProductCreativeUiDownstreamClick(
           ProductCreativeUiDownstreamClickRequest{
               request.click,
-          context.window.creativeUiInputConsumed,
+          context.window.creativeUiInput.consumed,
           request.higherPriorityMouseConsumed ||
               request.frontendMouseOwnsInput,
           });

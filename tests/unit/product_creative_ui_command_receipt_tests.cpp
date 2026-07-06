@@ -782,12 +782,12 @@ bool roomShellCommandReceiptRecordsShellFields() {
 bool recorderPreservesNeighboringFields() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_before";
-  window.creativeUiInputRequested = true;
-  window.creativeUiInputConsumed = true;
-  window.creativeUiInputStatus = "input_before";
-  window.creativeUiInputDownstreamClickRequested = true;
-  window.creativeUiInputDownstreamClickSuppressed = true;
-  window.creativeUiInputDownstreamClickStatus = "downstream_before";
+  window.creativeUiInput.requested = true;
+  window.creativeUiInput.consumed = true;
+  window.creativeUiInput.status = "input_before";
+  window.creativeUiInput.downstreamClickRequested = true;
+  window.creativeUiInput.downstreamClickSuppressed = true;
+  window.creativeUiInput.downstreamClickStatus = "downstream_before";
   window.creativeViewportPickRequested = true;
   window.creativeViewportPickStatus = "viewport_before";
   window.creativeUiProjection.requested = true;
@@ -802,15 +802,15 @@ bool recorderPreservesNeighboringFields() {
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
   return expect(window.status == "window_before", "window status kept") &&
-         expect(window.creativeUiInputRequested, "input requested kept") &&
-         expect(window.creativeUiInputConsumed, "input consumed kept") &&
-         expect(window.creativeUiInputStatus == "input_before",
+         expect(window.creativeUiInput.requested, "input requested kept") &&
+         expect(window.creativeUiInput.consumed, "input consumed kept") &&
+         expect(window.creativeUiInput.status == "input_before",
                 "input status kept") &&
-         expect(window.creativeUiInputDownstreamClickRequested,
+         expect(window.creativeUiInput.downstreamClickRequested,
                 "downstream requested kept") &&
-         expect(window.creativeUiInputDownstreamClickSuppressed,
+         expect(window.creativeUiInput.downstreamClickSuppressed,
                 "downstream suppressed kept") &&
-         expect(window.creativeUiInputDownstreamClickStatus ==
+         expect(window.creativeUiInput.downstreamClickStatus ==
                     "downstream_before",
                 "downstream status kept") &&
          expect(window.creativeViewportPickRequested,

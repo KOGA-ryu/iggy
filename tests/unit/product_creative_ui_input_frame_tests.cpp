@@ -778,7 +778,7 @@ bool recorderPreservesStickyClickAndCommandAcrossNoClickFrame() {
          expect(commandReceipt.commandKind ==
                     iggy3d::ProductCreativeUiCommandKind::CreateObject,
                 "sticky command create room") &&
-         expect(window.creativeUiInputStatus ==
+         expect(window.creativeUiInput.status ==
                     "product_creative_ui_input_no_click",
                 "sticky per-frame no-click status") &&
          expect(window.creativeUiCommand.kind == "none",
@@ -880,9 +880,9 @@ bool recorderLeavesOtherReceiptFieldsUntouched() {
   window.creativeUiProjection.ready = true;
   window.creativeUiProjection.status = "projection_before";
   window.creativeUiProjection.hitRegionCount = 12;
-  window.creativeUiInputRequested = true;
-  window.creativeUiInputConsumed = true;
-  window.creativeUiInputStatus = "route_before";
+  window.creativeUiInput.requested = true;
+  window.creativeUiInput.consumed = true;
+  window.creativeUiInput.status = "route_before";
 
   iggy3d::ProductCreativeUiDownstreamClickRequest request;
   request.click = clickAt(51.0F, 52.0F);
@@ -906,11 +906,11 @@ bool recorderLeavesOtherReceiptFieldsUntouched() {
                 "projection status unchanged") &&
          expect(window.creativeUiProjection.hitRegionCount == 12U,
                 "projection hit count unchanged") &&
-         expect(window.creativeUiInputRequested,
+         expect(window.creativeUiInput.requested,
                 "route requested unchanged") &&
-         expect(window.creativeUiInputConsumed,
+         expect(window.creativeUiInput.consumed,
                 "route consumed unchanged") &&
-         expect(window.creativeUiInputStatus == "route_before",
+         expect(window.creativeUiInput.status == "route_before",
                 "route status unchanged");
 }
 
@@ -950,27 +950,27 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
       {},
   });
 
-  return expect(window.creativeUiInputRequested,
+  return expect(window.creativeUiInput.requested,
                 "input frame requested") &&
-         expect(!window.creativeUiInputClickPresent,
+         expect(!window.creativeUiInput.clickPresent,
                 "input frame no click") &&
-         expect(!window.creativeUiInputDrawListAvailable,
+         expect(!window.creativeUiInput.drawListAvailable,
                 "input frame no draw list") &&
-         expect(!window.creativeUiInputRouted,
+         expect(!window.creativeUiInput.routed,
                 "input frame not routed") &&
-         expect(window.creativeUiInputStatus ==
+         expect(window.creativeUiInput.status ==
                     "product_creative_ui_input_no_click",
                 "input frame status") &&
-         expect(window.creativeUiInputReasonCode ==
+         expect(window.creativeUiInput.reasonCode ==
                     "product_creative_ui_input_no_click",
                 "input frame reason") &&
-         expect(window.creativeUiInputDownstreamClickRequested,
+         expect(window.creativeUiInput.downstreamClickRequested,
                 "input frame downstream requested") &&
-         expect(!window.creativeUiInputDownstreamClickPresent,
+         expect(!window.creativeUiInput.downstreamClickPresent,
                 "input frame downstream no click") &&
-         expect(!window.creativeUiInputDownstreamClickSuppressed,
+         expect(!window.creativeUiInput.downstreamClickSuppressed,
                 "input frame downstream not suppressed") &&
-         expect(window.creativeUiInputDownstreamClickStatus ==
+         expect(window.creativeUiInput.downstreamClickStatus ==
                     "product_creative_ui_downstream_click_no_click",
                 "input frame downstream status") &&
          expect(window.creativeUiCommand.requested,
@@ -1046,9 +1046,9 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
       clickOverride,
   });
 
-  return expect(window.creativeUiInputConsumed,
+  return expect(window.creativeUiInput.consumed,
                 "injected row click consumed") &&
-         expect(window.creativeUiInputSemanticId ==
+         expect(window.creativeUiInput.semanticId ==
                     "creative.row.tools.tool_select",
                 "injected row semantic") &&
          expect(window.creativeUiCommand.requested,
@@ -1071,7 +1071,7 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
                 "injected facade tool select") &&
          expect(facade.state().tool == iggy3d::creative::Tool::Select,
                 "injected old state tool select") &&
-         expect(window.creativeUiInputDownstreamClickSuppressed,
+         expect(window.creativeUiInput.downstreamClickSuppressed,
                 "injected downstream suppressed") &&
          expect(window.creativeViewportPickClickSuppressed,
                 "injected viewport click suppressed") &&
@@ -1257,9 +1257,9 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
       std::to_string(window.creativeUiCommand.create.objectId);
 
   return expect(createHit != nullptr, "create injected hit exists") &&
-         expect(window.creativeUiInputConsumed,
+         expect(window.creativeUiInput.consumed,
                 "create injected row click consumed") &&
-         expect(window.creativeUiInputSemanticId ==
+         expect(window.creativeUiInput.semanticId ==
                     "creative.row.create.create_room",
                 "create injected row semantic") &&
          expect(window.creativeUiCommand.requested,
@@ -1449,7 +1449,7 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
                 "create injected selection invalid") &&
          expect(!facade.measurementState().active,
                 "create injected no measurement") &&
-         expect(window.creativeUiInputDownstreamClickSuppressed,
+         expect(window.creativeUiInput.downstreamClickSuppressed,
                 "create injected downstream suppressed") &&
          expect(window.creativeViewportPickClickSuppressed,
                 "create injected viewport suppressed") &&
@@ -1525,9 +1525,9 @@ bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
   return expect(createHit != nullptr, "crate injected hit exists") &&
-         expect(window.creativeUiInputConsumed,
+         expect(window.creativeUiInput.consumed,
                 "crate injected row click consumed") &&
-         expect(window.creativeUiInputSemanticId ==
+         expect(window.creativeUiInput.semanticId ==
                     "creative.row.create.create_crate",
                 "crate injected row semantic") &&
          expect(window.creativeUiCommand.accepted,
@@ -1670,18 +1670,18 @@ bool inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool() {
       clickOverride,
   });
 
-  return expect(window.creativeUiInputRequested,
+  return expect(window.creativeUiInput.requested,
                 "injected missing draw requested") &&
-         expect(window.creativeUiInputClickPresent,
+         expect(window.creativeUiInput.clickPresent,
                 "injected missing draw click") &&
-         expect(!window.creativeUiInputDrawListAvailable,
+         expect(!window.creativeUiInput.drawListAvailable,
                 "injected missing draw unavailable") &&
-         expect(window.creativeUiInputStatus ==
+         expect(window.creativeUiInput.status ==
                     "product_creative_ui_input_draw_list_missing",
                 "injected missing draw status") &&
-         expect(!window.creativeUiInputConsumed,
+         expect(!window.creativeUiInput.consumed,
                 "injected missing draw not consumed") &&
-         expect(!window.creativeUiInputDownstreamClickSuppressed,
+         expect(!window.creativeUiInput.downstreamClickSuppressed,
                 "injected missing draw not suppressed") &&
          expect(window.creativeViewportPickStatus ==
                     "product_creative_viewport_pick_source_empty",

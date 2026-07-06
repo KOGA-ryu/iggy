@@ -1137,20 +1137,20 @@ bool pauseMouseClickResumesBeforeCreativeOverlayInput() {
   return expect(resumeClick.clicked, "pause resume process click found") &&
          expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
                 "pause click resumes gameplay") &&
-         expect(window.creativeUiInputRequested,
+         expect(window.creativeUiInput.requested,
                 "creative ui input receipt recorded") &&
-         expect(!window.creativeUiInputClickPresent,
+         expect(!window.creativeUiInput.clickPresent,
                 "pause-owned click is not routed to creative ui") &&
-         expect(!window.creativeUiInputConsumed,
+         expect(!window.creativeUiInput.consumed,
                 "pause-owned click is not consumed by creative ui") &&
-         expect(window.creativeUiInputStatus ==
+         expect(window.creativeUiInput.status ==
                     "product_creative_ui_input_no_click",
                 "creative ui records no click behind pause") &&
          expect(window.creativeUiCommand.kind == "none",
                 "creative command does not fire behind pause") &&
-         expect(window.creativeUiInputDownstreamClickSuppressed,
+         expect(window.creativeUiInput.downstreamClickSuppressed,
                 "pause-owned click suppresses downstream creative/gameplay click") &&
-         expect(window.creativeUiInputDownstreamClickStatus ==
+         expect(window.creativeUiInput.downstreamClickStatus ==
                     "product_creative_ui_downstream_click_higher_priority",
                 "downstream receipt names higher-priority ui");
 }
@@ -1217,7 +1217,7 @@ bool pauseMouseClickResumesInActiveCreativeWorld() {
   return expect(resumeClick.clicked, "active-world pause resume click found") &&
          expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
                 "active-world pause click resumes gameplay") &&
-         expect(!window.creativeUiInputConsumed,
+         expect(!window.creativeUiInput.consumed,
                 "active-world pause click not consumed by creative ui");
 }
 

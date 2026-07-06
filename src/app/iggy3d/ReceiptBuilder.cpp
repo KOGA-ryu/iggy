@@ -624,25 +624,25 @@ void recordProductCreativeUiProjection(
 void recordProductCreativeUiInputFrame(
     ProductAppWindowState& window,
     const ProductCreativeUiInputFrameReceipt& receipt) {
-  window.creativeUiInputRequested = receipt.requested;
-  window.creativeUiInputClickPresent = receipt.clickPresent;
-  window.creativeUiInputDrawListAvailable = receipt.drawListAvailable;
-  window.creativeUiInputRouted = receipt.routed;
-  window.creativeUiInputHit = receipt.hit;
-  window.creativeUiInputConsumed = receipt.consumed;
-  window.creativeUiInputEnabled = receipt.enabled;
-  window.creativeUiInputSurface =
+  window.creativeUiInput.requested = receipt.requested;
+  window.creativeUiInput.clickPresent = receipt.clickPresent;
+  window.creativeUiInput.drawListAvailable = receipt.drawListAvailable;
+  window.creativeUiInput.routed = receipt.routed;
+  window.creativeUiInput.hit = receipt.hit;
+  window.creativeUiInput.consumed = receipt.consumed;
+  window.creativeUiInput.enabled = receipt.enabled;
+  window.creativeUiInput.surface =
       std::string(productUiHitSurfaceReceiptName(receipt.surface));
-  window.creativeUiInputKind = std::string(uiHitKindReceiptName(receipt.kind));
-  window.creativeUiInputAction = std::string(frontendActionName(receipt.action));
-  window.creativeUiInputLayerIndex =
+  window.creativeUiInput.kind = std::string(uiHitKindReceiptName(receipt.kind));
+  window.creativeUiInput.action = std::string(frontendActionName(receipt.action));
+  window.creativeUiInput.layerIndex =
       static_cast<std::uint64_t>(receipt.layerIndex);
-  window.creativeUiInputRegionIndex =
+  window.creativeUiInput.regionIndex =
       static_cast<std::uint64_t>(receipt.regionIndex);
-  window.creativeUiInputSemanticId =
+  window.creativeUiInput.semanticId =
       receipt.semanticId.empty() ? "none" : receipt.semanticId;
-  window.creativeUiInputStatus = receipt.status;
-  window.creativeUiInputReasonCode = receipt.reasonCode;
+  window.creativeUiInput.status = receipt.status;
+  window.creativeUiInput.reasonCode = receipt.reasonCode;
 
   if (receipt.clickPresent) {
     window.creativeUiLast.clickSeen = true;
@@ -659,13 +659,13 @@ void recordProductCreativeUiInputFrame(
 void recordProductCreativeUiDownstreamClick(
     ProductAppWindowState& window,
     const ProductCreativeUiDownstreamClickReceipt& receipt) {
-  window.creativeUiInputDownstreamClickRequested = receipt.requested;
-  window.creativeUiInputDownstreamClickPresent = receipt.clickPresent;
-  window.creativeUiInputDownstreamClickHigherPriority =
+  window.creativeUiInput.downstreamClickRequested = receipt.requested;
+  window.creativeUiInput.downstreamClickPresent = receipt.clickPresent;
+  window.creativeUiInput.downstreamClickHigherPriority =
       receipt.higherPriorityUiConsumed;
-  window.creativeUiInputDownstreamClickSuppressed = receipt.suppressed;
-  window.creativeUiInputDownstreamClickStatus = receipt.status;
-  window.creativeUiInputDownstreamClickReasonCode = receipt.reasonCode;
+  window.creativeUiInput.downstreamClickSuppressed = receipt.suppressed;
+  window.creativeUiInput.downstreamClickStatus = receipt.status;
+  window.creativeUiInput.downstreamClickReasonCode = receipt.reasonCode;
 }
 
 void recordProductCreativeUiCommandFrame(
@@ -2437,35 +2437,35 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "creative_ui_projection_hit_region_count",
                      window.creativeUiProjection.hitRegionCount);
   appendReceiptField(receipt, "creative_ui_input_requested",
-                     window.creativeUiInputRequested);
+                     window.creativeUiInput.requested);
   appendReceiptField(receipt, "creative_ui_input_click_present",
-                     window.creativeUiInputClickPresent);
+                     window.creativeUiInput.clickPresent);
   appendReceiptField(receipt, "creative_ui_input_draw_list_available",
-                     window.creativeUiInputDrawListAvailable);
+                     window.creativeUiInput.drawListAvailable);
   appendReceiptField(receipt, "creative_ui_input_routed",
-                     window.creativeUiInputRouted);
+                     window.creativeUiInput.routed);
   appendReceiptField(receipt, "creative_ui_input_hit",
-                     window.creativeUiInputHit);
+                     window.creativeUiInput.hit);
   appendReceiptField(receipt, "creative_ui_input_consumed",
-                     window.creativeUiInputConsumed);
+                     window.creativeUiInput.consumed);
   appendReceiptField(receipt, "creative_ui_input_enabled",
-                     window.creativeUiInputEnabled);
+                     window.creativeUiInput.enabled);
   appendReceiptField(receipt, "creative_ui_input_surface",
-                     window.creativeUiInputSurface);
+                     window.creativeUiInput.surface);
   appendReceiptField(receipt, "creative_ui_input_kind",
-                     window.creativeUiInputKind);
+                     window.creativeUiInput.kind);
   appendReceiptField(receipt, "creative_ui_input_action",
-                     window.creativeUiInputAction);
+                     window.creativeUiInput.action);
   appendReceiptField(receipt, "creative_ui_input_layer_index",
-                     window.creativeUiInputLayerIndex);
+                     window.creativeUiInput.layerIndex);
   appendReceiptField(receipt, "creative_ui_input_region_index",
-                     window.creativeUiInputRegionIndex);
+                     window.creativeUiInput.regionIndex);
   appendReceiptField(receipt, "creative_ui_input_semantic_id",
-                     window.creativeUiInputSemanticId);
+                     window.creativeUiInput.semanticId);
   appendReceiptField(receipt, "creative_ui_input_status",
-                     window.creativeUiInputStatus);
+                     window.creativeUiInput.status);
   appendReceiptField(receipt, "creative_ui_input_reason_code",
-                     window.creativeUiInputReasonCode);
+                     window.creativeUiInput.reasonCode);
   appendReceiptField(receipt, "creative_ui_last_click_seen",
                      window.creativeUiLast.clickSeen);
   appendReceiptField(receipt, "creative_ui_last_click_x",
@@ -2498,22 +2498,22 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiLast.commandCreateObjectId);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_requested",
-                     window.creativeUiInputDownstreamClickRequested);
+                     window.creativeUiInput.downstreamClickRequested);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_present",
-                     window.creativeUiInputDownstreamClickPresent);
+                     window.creativeUiInput.downstreamClickPresent);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_higher_priority",
-                     window.creativeUiInputDownstreamClickHigherPriority);
+                     window.creativeUiInput.downstreamClickHigherPriority);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_suppressed",
-                     window.creativeUiInputDownstreamClickSuppressed);
+                     window.creativeUiInput.downstreamClickSuppressed);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_status",
-                     window.creativeUiInputDownstreamClickStatus);
+                     window.creativeUiInput.downstreamClickStatus);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_reason_code",
-                     window.creativeUiInputDownstreamClickReasonCode);
+                     window.creativeUiInput.downstreamClickReasonCode);
   appendProductCreativeUiCommandFields(receipt, window.creativeUiCommand);
   appendProductCreativeBakedRoomAutoRefreshFields(
       receipt, window.creativeBakedRoomAutoRefresh);

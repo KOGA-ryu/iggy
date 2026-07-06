@@ -648,10 +648,10 @@ bool recorderLeavesOtherFieldsUntouched() {
   window.productVulkanMenu.uiStatus = "vulkan_before";
   window.creativeUiProjection.requested = true;
   window.creativeUiProjection.status = "projection_before";
-  window.creativeUiInputRequested = true;
-  window.creativeUiInputStatus = "input_before";
-  window.creativeUiInputDownstreamClickRequested = true;
-  window.creativeUiInputDownstreamClickStatus = "downstream_before";
+  window.creativeUiInput.requested = true;
+  window.creativeUiInput.status = "input_before";
+  window.creativeUiInput.downstreamClickRequested = true;
+  window.creativeUiInput.downstreamClickStatus = "downstream_before";
 
   iggy3d::ProductCreativeViewportPickFrameReceipt receipt;
   receipt.requested = true;
@@ -667,12 +667,12 @@ bool recorderLeavesOtherFieldsUntouched() {
                 "projection requested kept") &&
          expect(window.creativeUiProjection.status == "projection_before",
                 "projection status kept") &&
-         expect(window.creativeUiInputRequested, "input requested kept") &&
-         expect(window.creativeUiInputStatus == "input_before",
+         expect(window.creativeUiInput.requested, "input requested kept") &&
+         expect(window.creativeUiInput.status == "input_before",
                 "input status kept") &&
-         expect(window.creativeUiInputDownstreamClickRequested,
+         expect(window.creativeUiInput.downstreamClickRequested,
                 "downstream requested kept") &&
-         expect(window.creativeUiInputDownstreamClickStatus ==
+         expect(window.creativeUiInput.downstreamClickStatus ==
                     "downstream_before",
                 "downstream status kept");
 }

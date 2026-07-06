@@ -2275,9 +2275,9 @@ bool manualRebuildRoomCommandReportsRefreshThroughInputFrame() {
                 "manual rebuild dirty before command") &&
          expect(scenario.clicked,
                 "manual rebuild row clicked through input frame") &&
-         expect(scenario.window.creativeUiInputConsumed,
+         expect(scenario.window.creativeUiInput.consumed,
                 "manual rebuild ui input consumed") &&
-         expect(scenario.window.creativeUiInputSemanticId ==
+         expect(scenario.window.creativeUiInput.semanticId ==
                     "creative.row.tools.rebuild_room",
                 "manual rebuild ui semantic") &&
          expect(scenario.window.creativeUiCommand.accepted,
@@ -2600,7 +2600,7 @@ GeneratedRoomShellScenario generateRoomShellScenario(std::string_view name) {
     scenario.bakedWallRoleCount += mesh.role == "wall" ? 1U : 0U;
   }
 
-  scenario.shellInputSemantic = scenario.window.creativeUiInputSemanticId;
+  scenario.shellInputSemantic = scenario.window.creativeUiInput.semanticId;
   scenario.shellCommandKind = scenario.window.creativeUiCommand.kind;
   scenario.shellCommandAccepted = scenario.window.creativeUiCommand.accepted;
   scenario.shellCommandChanged = scenario.window.creativeUiCommand.changed;
@@ -2864,7 +2864,7 @@ bool removeGeneratedRoomShellAndUndoRestoresThroughInputFrame() {
       scenario.window,
       scenario.app);
   const std::string removeShellInputSemantic =
-      scenario.window.creativeUiInputSemanticId;
+      scenario.window.creativeUiInput.semanticId;
   const std::string removeShellCommandKind =
       scenario.window.creativeUiCommand.kind;
   const bool removeShellCommandAccepted =
@@ -3043,15 +3043,15 @@ bool disabledUndoRowDoesNotRouteThroughInputFrame() {
                 "disabled undo revision unchanged") &&
          expect(facade.document().objectCount() == objectCountBefore,
                 "disabled undo object count unchanged") &&
-         expect(window.creativeUiInputSemanticId == "creative.row.tools.undo",
+         expect(window.creativeUiInput.semanticId == "creative.row.tools.undo",
                 "disabled undo semantic") &&
-         expect(window.creativeUiInputHit,
+         expect(window.creativeUiInput.hit,
                 "disabled undo input hit") &&
-         expect(!window.creativeUiInputConsumed,
+         expect(!window.creativeUiInput.consumed,
                 "disabled undo input not consumed") &&
-         expect(!window.creativeUiInputEnabled,
+         expect(!window.creativeUiInput.enabled,
                 "disabled undo input disabled") &&
-         expect(window.creativeUiInputStatus ==
+         expect(window.creativeUiInput.status ==
                     "product_creative_ui_input_hit_disabled",
                 "disabled undo input status") &&
          expect(window.creativeUiCommand.kind == "none",
@@ -3124,7 +3124,7 @@ bool undoAfterCreateCrateRestoresEmptyDocumentThroughInputFrame() {
                 "undo create dirty flags restored") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "undo create selection clear") &&
-         expect(window.creativeUiInputSemanticId == "creative.row.tools.undo",
+         expect(window.creativeUiInput.semanticId == "creative.row.tools.undo",
                 "undo create semantic") &&
          expect(window.creativeUiCommand.kind == "undo_last_document_change",
                 "undo create command kind") &&
@@ -3528,9 +3528,9 @@ bool deleteSelectedRenderableClearsBakedRoomThroughInputFrame() {
                 "delete clear revision advanced") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "delete clear selection cleared") &&
-         expect(window.creativeUiInputConsumed,
+         expect(window.creativeUiInput.consumed,
                 "delete clear ui input consumed") &&
-         expect(window.creativeUiInputSemanticId ==
+         expect(window.creativeUiInput.semanticId ==
                     "creative.row.selection.delete_selected",
                 "delete clear ui semantic") &&
          expect(window.creativeUiCommand.kind == "delete_selected_object",

@@ -725,8 +725,8 @@ bool recorderCopiesRoomReceiptFields() {
 bool recorderPreservesExistingFields() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_before";
-  window.creativeUiInputRequested = true;
-  window.creativeUiInputStatus = "input_before";
+  window.creativeUiInput.requested = true;
+  window.creativeUiInput.status = "input_before";
   window.creativeUiCommand.requested = true;
   window.creativeUiCommand.status = "command_before";
   window.creativeViewportPickRequested = true;
@@ -743,9 +743,9 @@ bool recorderPreservesExistingFields() {
   iggy3d::recordProductCreativeWireframeFrame(window, receipt);
 
   return expect(window.status == "window_before", "window status kept") &&
-         expect(window.creativeUiInputRequested,
+         expect(window.creativeUiInput.requested,
                 "creative input requested kept") &&
-         expect(window.creativeUiInputStatus == "input_before",
+         expect(window.creativeUiInput.status == "input_before",
                 "creative input status kept") &&
          expect(window.creativeUiCommand.requested,
                 "creative command requested kept") &&
