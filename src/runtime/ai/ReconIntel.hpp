@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <span>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "core/hash/StableHash.hpp"
@@ -32,5 +34,18 @@ ReconIntel captureReconIntel(std::span<const GuardReconObservation> observations
 // Deterministic digest of the whole packet (float-quantized for platform stability, like
 // StateHash). Identical packets hash identically; reordering guards changes the hash.
 StableHashValue hashReconIntel(const ReconIntel& intel);
+
+struct ReconIntelDecodeResult {
+  bool ok = false;
+  std::string reasonCode;
+  ReconIntel intel;
+};
+
+// Serialize the packet to deterministic, versioned text -- lossless floats via std::to_chars, the
+// same discipline SaveCodec uses (to_chars out, strtof in). Round-trips: deserialize(serialize(x))
+// reproduces x. Only the scouted guards are written; the derived summary is recomputed on decode so
+// there is one source of truth.
+std::string serializeReconIntel(const ReconIntel& intel);
+ReconIntelDecodeResult deserializeReconIntel(std::string_view text);
 
 }  // namespace iggy3d
