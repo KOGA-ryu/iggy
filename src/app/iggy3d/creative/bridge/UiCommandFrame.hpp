@@ -15,6 +15,7 @@ enum class ProductCreativeUiCommandKind : std::uint8_t {
   ToggleSelectedObjectLocked,
   SetActiveTool,
   CreateObject,
+  RebuildRoom,
 };
 
 struct ProductCreativeUiCommandFrameRequest {

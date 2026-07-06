@@ -79,6 +79,23 @@ ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
     FrontendSettings* settings,
     bool* closeRequested);
 
+void recordProductCreativeUiBakedRoomRefresh(
+    ProductAppWindowState& window,
+    const ProductCreativeBakedActiveRoomRefreshResult& refresh) {
+  window.creativeUiCommandBakedRoomRefreshRequested = true;
+  window.creativeUiCommandBakedRoomRefreshAccepted = refresh.accepted;
+  window.creativeUiCommandBakedRoomRefreshStatus = refresh.status;
+  window.creativeUiCommandBakedRoomRefreshReasonCode = refresh.reasonCode;
+  window.creativeUiCommandBakedRoomStaticMeshCount =
+      refresh.staticMeshCount;
+  window.creativeUiCommandBakedRoomAnchorCount = refresh.anchorCount;
+  window.creativeUiCommandBakedRoomSpatialSurfaceCount =
+      refresh.spatialSurfaceCount;
+  window.creativeUiCommandBakedRoomCollisionReady = refresh.collisionReady;
+  window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount =
+      refresh.collisionQuerySurfaceCount;
+}
+
 static constexpr std::array kProductWindowFunctionKeyBindings{
     ProductWindowFunctionKeyBinding{&SdlWindowEventState::f3Pressed,
                                     InputAction::DevDebugOverlay,
@@ -1143,6 +1160,16 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       });
   recordProductCreativeUiCommandFrame(context.window,
                                       creativeUiCommandReceipt);
+  if (creativeUiCommandReceipt.commandKind ==
+          ProductCreativeUiCommandKind::RebuildRoom &&
+      context.creativeApp != nullptr) {
+    const ProductCreativeBakedActiveRoomRefreshResult refresh =
+        refreshProductCreativeBakedActiveRoom({},
+                                             context.activeSession,
+                                             context.window,
+                                             *context.creativeApp);
+    recordProductCreativeUiBakedRoomRefresh(context.window, refresh);
+  }
   const ProductCreativeUiDownstreamClickReceipt downstreamClickReceipt =
       routeProductCreativeUiDownstreamClick(
           ProductCreativeUiDownstreamClickRequest{

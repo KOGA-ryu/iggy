@@ -655,6 +655,17 @@ struct ProductAppWindowState {
   std::uint64_t creativeUiCommandCreateDirtyFlags = 0;
   std::string creativeUiCommandCreateMessage = "none";
   std::string creativeUiCommandCreateReasonCode = "none";
+  bool creativeUiCommandBakedRoomRefreshRequested = false;
+  bool creativeUiCommandBakedRoomRefreshAccepted = false;
+  std::string creativeUiCommandBakedRoomRefreshStatus =
+      "product_creative_baked_room_not_requested";
+  std::string creativeUiCommandBakedRoomRefreshReasonCode =
+      "product_creative_baked_room_not_requested";
+  std::uint64_t creativeUiCommandBakedRoomStaticMeshCount = 0;
+  std::uint64_t creativeUiCommandBakedRoomAnchorCount = 0;
+  std::uint64_t creativeUiCommandBakedRoomSpatialSurfaceCount = 0;
+  bool creativeUiCommandBakedRoomCollisionReady = false;
+  std::uint64_t creativeUiCommandBakedRoomCollisionQuerySurfaceCount = 0;
   bool creativeViewportPickRequested = false;
   bool creativeViewportPickActive = false;
   bool creativeViewportPickClickPresent = false;

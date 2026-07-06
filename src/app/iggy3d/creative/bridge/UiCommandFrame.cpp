@@ -21,7 +21,7 @@ struct ProductCreativeUiCommandRow {
       creative::CreativeObjectKind::Unknown;
 };
 
-constexpr std::array<ProductCreativeUiCommandRow, 8>
+constexpr std::array<ProductCreativeUiCommandRow, 9>
     kProductCreativeUiCommandRows = {{
         {"creative.row.tools.tool_select",
          ProductCreativeUiCommandKind::SetActiveTool,
@@ -38,6 +38,10 @@ constexpr std::array<ProductCreativeUiCommandRow, 8>
         {"creative.row.tools.tool_navigate",
          ProductCreativeUiCommandKind::SetActiveTool,
          creative::Tool::Navigate,
+         creative::CreativeObjectKind::Unknown},
+        {"creative.row.tools.rebuild_room",
+         ProductCreativeUiCommandKind::RebuildRoom,
+         creative::Tool::Select,
          creative::CreativeObjectKind::Unknown},
         {"creative.row.create.create_room",
          ProductCreativeUiCommandKind::CreateObject,
@@ -188,6 +192,15 @@ ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
     setNoopStatus(receipt,
                   toolChanged ? "product_creative_ui_command_applied"
                               : "product_creative_ui_command_no_change");
+    return receipt;
+  }
+
+  if (receipt.commandKind == ProductCreativeUiCommandKind::RebuildRoom) {
+    receipt.accepted = true;
+    receipt.changed = false;
+    receipt.toolAfter = facade.toolState().activeTool;
+    setNoopStatus(receipt,
+                  "product_creative_ui_command_rebuild_room_requested");
     return receipt;
   }
 

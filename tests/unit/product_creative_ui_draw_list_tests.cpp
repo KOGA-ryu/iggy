@@ -276,6 +276,8 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
       findPrimitive(list, "creative.row.tools.tool_measure");
   const iggy3d::ProductUiPrimitive* toolNavigate =
       findPrimitive(list, "creative.row.tools.tool_navigate");
+  const iggy3d::ProductUiPrimitive* rebuildRoom =
+      findPrimitive(list, "creative.row.tools.rebuild_room");
   const iggy3d::ProductUiPrimitive* createRoom =
       findPrimitive(list, "creative.row.create.create_room");
   const iggy3d::ProductUiPrimitive* createCrate =
@@ -320,6 +322,9 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
                 "measure tool row text") &&
          expect(toolNavigate != nullptr && toolNavigate->text == "Navigate",
                 "navigate tool row text") &&
+         expect(rebuildRoom != nullptr &&
+                    rebuildRoom->text == "Rebuild Room",
+                "rebuild room row text") &&
          expect(createRoom != nullptr && createRoom->text == "Create Room",
                 "create room row text") &&
          expect(createCrate != nullptr &&
@@ -341,6 +346,9 @@ bool defaultModelEmitsVisiblePanelsAndRowsOnly() {
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.tools.tool_navigate"),
                 "navigate tool row hit") &&
+         expect(rowHitMatchesTextPrimitive(
+                    list, "creative.row.tools.rebuild_room"),
+                "rebuild room row hit") &&
          expect(rowHitMatchesTextPrimitive(list,
                                            "creative.row.create.create_room"),
                 "create room row hit") &&

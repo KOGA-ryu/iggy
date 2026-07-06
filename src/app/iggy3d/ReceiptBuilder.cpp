@@ -99,6 +99,8 @@ std::string_view productCreativeUiCommandKindReceiptName(
       return "set_active_tool";
     case ProductCreativeUiCommandKind::CreateObject:
       return "create_object";
+    case ProductCreativeUiCommandKind::RebuildRoom:
+      return "rebuild_room";
   }
   return "unknown";
 }
@@ -281,6 +283,17 @@ void recordProductCreativeUiCommandFrame(
       receipt.createMessage.empty() ? "none" : receipt.createMessage;
   window.creativeUiCommandCreateReasonCode =
       receipt.createReasonCode.empty() ? "none" : receipt.createReasonCode;
+  window.creativeUiCommandBakedRoomRefreshRequested = false;
+  window.creativeUiCommandBakedRoomRefreshAccepted = false;
+  window.creativeUiCommandBakedRoomRefreshStatus =
+      "product_creative_baked_room_not_requested";
+  window.creativeUiCommandBakedRoomRefreshReasonCode =
+      "product_creative_baked_room_not_requested";
+  window.creativeUiCommandBakedRoomStaticMeshCount = 0;
+  window.creativeUiCommandBakedRoomAnchorCount = 0;
+  window.creativeUiCommandBakedRoomSpatialSurfaceCount = 0;
+  window.creativeUiCommandBakedRoomCollisionReady = false;
+  window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount = 0;
 
   const bool commandTouchedCreativeState =
       receipt.inputClickPresent ||
@@ -2148,6 +2161,33 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiCommandCreateMessage);
   appendReceiptField(receipt, "creative_ui_command_create_reason_code",
                      window.creativeUiCommandCreateReasonCode);
+  appendReceiptField(receipt,
+                     "creative_ui_command_baked_room_refresh_requested",
+                     window.creativeUiCommandBakedRoomRefreshRequested);
+  appendReceiptField(receipt,
+                     "creative_ui_command_baked_room_refresh_accepted",
+                     window.creativeUiCommandBakedRoomRefreshAccepted);
+  appendReceiptField(receipt,
+                     "creative_ui_command_baked_room_refresh_status",
+                     window.creativeUiCommandBakedRoomRefreshStatus);
+  appendReceiptField(receipt,
+                     "creative_ui_command_baked_room_refresh_reason_code",
+                     window.creativeUiCommandBakedRoomRefreshReasonCode);
+  appendReceiptField(receipt,
+                     "creative_ui_command_baked_room_static_mesh_count",
+                     window.creativeUiCommandBakedRoomStaticMeshCount);
+  appendReceiptField(receipt,
+                     "creative_ui_command_baked_room_anchor_count",
+                     window.creativeUiCommandBakedRoomAnchorCount);
+  appendReceiptField(receipt,
+                     "creative_ui_command_baked_room_spatial_surface_count",
+                     window.creativeUiCommandBakedRoomSpatialSurfaceCount);
+  appendReceiptField(receipt,
+                     "creative_ui_command_baked_room_collision_ready",
+                     window.creativeUiCommandBakedRoomCollisionReady);
+  appendReceiptField(receipt,
+                     "creative_ui_command_baked_room_collision_query_surface_count",
+                     window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount);
   appendReceiptField(receipt, "creative_viewport_pick_requested",
                      window.creativeViewportPickRequested);
   appendReceiptField(receipt, "creative_viewport_pick_active",

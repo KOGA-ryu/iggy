@@ -1,8 +1,10 @@
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/ui/UiDrawList.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
+#include "app/iggy3d/window/InputFrame.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/RenderDiagnostics.hpp"
 
@@ -185,6 +187,80 @@ bool sentinelRoomStatePreserved(const iggy3d::ProductAppWindowState& window) {
                 "sentinel collision preserved") &&
          expect(window.activeRoomCollision.querySurfaceCount == 77U,
                 "sentinel collision query count preserved");
+}
+
+iggy3d::MouseClick clickAt(float x, float y) {
+  iggy3d::MouseClick click;
+  click.clicked = true;
+  click.x = x;
+  click.y = y;
+  return click;
+}
+
+const iggy3d::UiHitRegion* findHitRegion(
+    const iggy3d::ProductUiDrawList& drawList,
+    std::string_view semanticId) {
+  for (const iggy3d::UiHitRegion& hit : drawList.hitRegions) {
+    if (hit.semanticId == semanticId) {
+      return &hit;
+    }
+  }
+  return nullptr;
+}
+
+iggy3d::ProductUiDrawList creativeUiDrawListForFacade(cr::Facade& facade) {
+  const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
+  iggy3d::ProductCreativeUiDrawListRequest request;
+  request.model = &ui.model;
+  return iggy3d::buildProductCreativeUiDrawList(request);
+}
+
+bool clickCreativeRebuildRoomThroughInputFrame(
+    const iggy3d::ProductAppOptions& options,
+    iggy3d::FrontendState& frontend,
+    std::optional<iggy3d::Session>& activeSession,
+    iggy3d::ProductAppWindowState& window,
+    cr::CreativeAppState& app) {
+  iggy3d::ProductSaveBridgeResult saves;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
+  iggy3d::WorldSetupDraft worldSetupDraft;
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductWindowInputFrameState inputFrame;
+  bool closeRequested = false;
+
+  const iggy3d::ProductUiDrawList drawList =
+      creativeUiDrawListForFacade(app.facade);
+  const iggy3d::UiHitRegion* rebuildHit =
+      findHitRegion(drawList, "creative.row.tools.rebuild_room");
+  if (rebuildHit == nullptr) {
+    return false;
+  }
+
+  iggy3d::ProductWindowInputClickOverride clickOverride;
+  clickOverride.enabled = true;
+  clickOverride.click = clickAt(rebuildHit->rect.x, rebuildHit->rect.y);
+
+  iggy3d::processProductWindowInputFrame(iggy3d::ProductWindowInputFrameContext{
+      frontend,
+      saves,
+      options,
+      settingsTab,
+      activeSession,
+      worldSetupDraft,
+      window,
+      settings,
+      inputFrame,
+      closeRequested,
+      nullptr,
+      &app,
+      &drawList,
+      {},
+      {},
+      0,
+      cr::CreativeViewportPickDepthMode::FixedZ,
+      clickOverride,
+  });
+  return true;
 }
 
 iggy3d::ProductMenuActionResult confirmPauseAction(
@@ -1718,6 +1794,186 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
                 "baked room dirty flags preserved");
 }
 
+bool manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("manual_baked_room_rebuild");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Manual Baked Active Room",
+                                        "2026-07-05T12:10:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  const cr::CreativeDocumentCreateReceipt floor =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Floor,
+                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt wall =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Wall,
+                         {{5.0, 0.0, 0.0}, {9.0, 2.5, 0.25}});
+  const cr::CreativeDocumentCreateReceipt crate =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Crate,
+                         {{1.0, 0.0, 5.0}, {2.0, 1.0, 6.0}});
+  const cr::CreativeDocumentCreateReceipt beam =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Beam,
+                         {{0.0, 1.0, 0.0}, {4.0, 1.35, 0.35}});
+  const cr::CreativeDocumentCreateReceipt point =
+      createPointObject(facade,
+                        cr::CreativeObjectKind::PointLight,
+                        {6.25, 1.5, -2.75});
+  const cr::CreativeDocumentCreateReceipt path = createPatrolRoute(facade);
+  const cr::CreativeObjectDirtyFlags dirtyBefore =
+      facade.document().dirtyFlags();
+  const bool activeRoomLoadedBeforeCommand = window.activeRoom.loaded;
+
+  const bool clicked = clickCreativeRebuildRoomThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app);
+  const iggy3d::SceneProjectionResult projection =
+      activeSession.has_value()
+          ? iggy3d::buildSceneProjection(activeSession->state(),
+                                         &window.activeRoom.room)
+          : iggy3d::SceneProjectionResult{};
+
+  return expect(launched.accepted, "manual rebuild setup launch accepted") &&
+         expect(activeSession.has_value(), "manual rebuild active session") &&
+         expect(!launched.bakedActiveRoomRefreshAccepted,
+                "manual rebuild launch starts blank") &&
+         expect(!activeRoomLoadedBeforeCommand,
+                "manual rebuild active room starts blank") &&
+         expect(floor.accepted, "manual rebuild floor created") &&
+         expect(wall.accepted, "manual rebuild wall created") &&
+         expect(crate.accepted, "manual rebuild crate created") &&
+         expect(beam.accepted, "manual rebuild beam created") &&
+         expect(point.accepted, "manual rebuild point created") &&
+         expect(path.accepted, "manual rebuild path created") &&
+         expect(dirtyBefore != 0U, "manual rebuild dirty before command") &&
+         expect(clicked, "manual rebuild row clicked through input frame") &&
+         expect(window.creativeUiInputConsumed,
+                "manual rebuild ui input consumed") &&
+         expect(window.creativeUiInputSemanticId ==
+                    "creative.row.tools.rebuild_room",
+                "manual rebuild ui semantic") &&
+         expect(window.creativeUiCommandAccepted,
+                "manual rebuild command accepted") &&
+         expect(!window.creativeUiCommandChanged,
+                "manual rebuild command no document change") &&
+         expect(window.creativeUiCommandKind == "rebuild_room",
+                "manual rebuild command kind") &&
+         expect(window.creativeUiCommandStatus ==
+                    "product_creative_ui_command_rebuild_room_requested",
+                "manual rebuild command status") &&
+         expect(window.creativeUiCommandBakedRoomRefreshRequested,
+                "manual rebuild refresh requested") &&
+         expect(window.creativeUiCommandBakedRoomRefreshAccepted,
+                "manual rebuild refresh accepted") &&
+         expect(window.creativeUiCommandBakedRoomRefreshStatus ==
+                    "product_creative_baked_room_refreshed",
+                "manual rebuild refresh status") &&
+         expect(window.creativeUiCommandBakedRoomStaticMeshCount == 4U,
+                "manual rebuild refresh static mesh count") &&
+         expect(window.creativeUiCommandBakedRoomAnchorCount == 1U,
+                "manual rebuild refresh anchor count") &&
+         expect(window.creativeUiCommandBakedRoomSpatialSurfaceCount == 7U,
+                "manual rebuild refresh spatial surface count") &&
+         expect(window.creativeUiCommandBakedRoomCollisionReady,
+                "manual rebuild refresh collision ready") &&
+         expect(window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount == 7U,
+                "manual rebuild refresh collision query count") &&
+         expect(window.activeRoom.loaded,
+                "manual rebuild active room loaded") &&
+         expect(window.activeRoom.staticMeshCount == 4U,
+                "manual rebuild active mesh count") &&
+         expect(window.activeRoom.anchorCount == 1U,
+                "manual rebuild active anchor count") &&
+         expect(window.activeRoom.spatialSurfaceCount == 7U,
+                "manual rebuild active surface count") &&
+         expect(window.activeRoomCollision.ready,
+                "manual rebuild collision ready") &&
+         expect(window.activeRoomCollision.querySurfaceCount == 7U,
+                "manual rebuild collision query count") &&
+         expect(projection.room.loaded, "manual rebuild projection loaded") &&
+         expect(countProjectedRole(projection.room, "floor") == 1U,
+                "manual rebuild projection floor count") &&
+         expect(countProjectedRole(projection.room, "wall") == 1U,
+                "manual rebuild projection wall count") &&
+         expect(countProjectedRole(projection.room, "prop") == 2U,
+                "manual rebuild projection prop count") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+                "manual rebuild interaction remains creative") &&
+         expect(window.activeCreativeSaveId == launched.saveId,
+                "manual rebuild active creative save preserved") &&
+         expect(window.activeCreativeDocumentId == launched.documentId,
+                "manual rebuild active creative document preserved") &&
+         expect(window.activeProductSaveId == "none",
+                "manual rebuild active product save unchanged") &&
+         expect(facade.document().dirtyFlags() == dirtyBefore,
+                "manual rebuild dirty flags preserved");
+}
+
+bool manualRebuildRoomCommandPreservesRoomStateOnNoRenderableDocument() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("manual_baked_room_no_renderable");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Manual Empty Baked Room",
+                                        "2026-07-05T12:20:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  window.activeRoom = sentinelActiveRoom();
+  window.activeRoomCollision = sentinelActiveRoomCollision();
+
+  const bool clicked = clickCreativeRebuildRoomThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app);
+
+  return expect(launched.accepted,
+                "manual empty rebuild setup launch accepted") &&
+         expect(clicked, "manual empty rebuild clicked") &&
+         expect(window.creativeUiCommandKind == "rebuild_room",
+                "manual empty rebuild command kind") &&
+         expect(window.creativeUiCommandBakedRoomRefreshRequested,
+                "manual empty rebuild refresh requested") &&
+         expect(!window.creativeUiCommandBakedRoomRefreshAccepted,
+                "manual empty rebuild refresh rejected") &&
+         expect(window.creativeUiCommandBakedRoomRefreshStatus ==
+                    "creative_room_bake_no_renderable_objects",
+                "manual empty rebuild refresh status") &&
+         expect(window.creativeUiCommandBakedRoomRefreshReasonCode ==
+                    "creative_room_bake_no_renderable_objects",
+                "manual empty rebuild refresh reason") &&
+         expect(window.creativeUiCommandBakedRoomStaticMeshCount == 0U,
+                "manual empty rebuild static mesh count") &&
+         expect(window.creativeUiCommandBakedRoomAnchorCount == 0U,
+                "manual empty rebuild anchor count") &&
+         expect(window.creativeUiCommandBakedRoomSpatialSurfaceCount == 0U,
+                "manual empty rebuild spatial surface count") &&
+         expect(!window.creativeUiCommandBakedRoomCollisionReady,
+                "manual empty rebuild collision not ready") &&
+         sentinelRoomStatePreserved(window);
+}
+
 bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
   {
     const iggy3d::ProductAppOptions options = testOptions("baked_room_inactive");
@@ -2002,6 +2258,8 @@ int main() {
       pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() &&
       secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() &&
       refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() &&
+      manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() &&
+      manualRebuildRoomCommandPreservesRoomStateOnNoRenderableDocument() &&
       refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() &&
       creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() &&
       creativeLaunchFramesCameraOnOrigin() &&

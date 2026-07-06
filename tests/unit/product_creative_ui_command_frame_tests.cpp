@@ -290,6 +290,44 @@ bool clickingActiveToolButtonPreservesActiveMeasurement() {
                 "active display measure document unchanged");
 }
 
+bool rebuildRoomCommandRequestsExternalRefreshWithoutDocumentMutation() {
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
+  facade.reset();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(app, "creative.row.tools.rebuild_room");
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::RebuildRoom,
+                "rebuild command kind") &&
+         expect(receipt.semanticId == "creative.row.tools.rebuild_room",
+                "rebuild semantic") &&
+         expect(receipt.accepted, "rebuild command accepted") &&
+         expect(!receipt.changed, "rebuild command unchanged") &&
+         expect(receipt.status ==
+                    "product_creative_ui_command_rebuild_room_requested",
+                "rebuild command status") &&
+         expect(receipt.reasonCode ==
+                    "product_creative_ui_command_rebuild_room_requested",
+                "rebuild command reason") &&
+         expect(!receipt.createRequested, "rebuild does not create") &&
+         expect(!receipt.mutationRequested, "rebuild does not mutate") &&
+         expect(receipt.toolBefore == cr::Tool::Move,
+                "rebuild tool before") &&
+         expect(receipt.toolAfter == cr::Tool::Move,
+                "rebuild tool after") &&
+         expect(facade.toolState().activeTool == cr::Tool::Move,
+                "rebuild facade tool unchanged") &&
+         expect(facade.document().objectCount() == objectCountBefore,
+                "rebuild object count unchanged") &&
+         expect(facade.document().revision() == revisionBefore,
+                "rebuild revision unchanged");
+}
+
 bool createRoomCommandCreatesGenericRoom() {
   cr::CreativeAppState app;
   [[maybe_unused]] cr::Facade& facade = app.facade;
@@ -768,6 +806,7 @@ int main() {
   ok &= clickingActiveToolButtonIsAcceptedNoChange();
   ok &= clickingActiveToolButtonPreservesVisibleGhost();
   ok &= clickingActiveToolButtonPreservesActiveMeasurement();
+  ok &= rebuildRoomCommandRequestsExternalRefreshWithoutDocumentMutation();
   ok &= createRoomCommandCreatesGenericRoom();
   ok &= repeatedCreateRoomCommandCreatesNewIdsAndRevisions();
   ok &= selectedTargetRowTogglesRoomVisibilityOff();

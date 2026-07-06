@@ -112,6 +112,14 @@ void appendToolsPanel(CreativeUiModel& model,
     appendRow(model, row);
   }
 
+  CreativeUiRow rebuildRow;
+  rebuildRow.kind = CreativeUiRowKind::RebuildRoom;
+  rebuildRow.panel = CreativeUiPanelKind::Tools;
+  rebuildRow.id = "rebuild_room";
+  rebuildRow.label = "Rebuild Room";
+  rebuildRow.flags = enabledVisibleFlags();
+  appendRow(model, rebuildRow);
+
   finishPanel(model, panelIndex);
 }
 
