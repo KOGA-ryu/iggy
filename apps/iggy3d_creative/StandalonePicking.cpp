@@ -1,6 +1,7 @@
 #include "StandalonePicking.hpp"
 
 #include "core/math/Mat4.hpp"
+#include "core/math/OrientedBox.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -21,6 +22,15 @@ namespace {
     return fallback;
   }
   return value / std::sqrt(len2);
+}
+
+[[nodiscard]] bool normalizeRayDirection(WorldRay& ray) {
+  const float len2 = lengthSquared(ray.direction);
+  if (!std::isfinite(len2) || len2 <= 1.0e-8F) {
+    return false;
+  }
+  ray.direction = ray.direction / std::sqrt(len2);
+  return true;
 }
 
 [[nodiscard]] float component(iggy3d::Vec3 value, int axis) {
@@ -209,20 +219,49 @@ bool rayEntryDistanceForAabb(WorldRay ray, VisualBounds bounds, float& outT) {
   return std::isfinite(outT);
 }
 
+ObjectVisualPickBounds buildObjectVisualPickBounds(
+    const cr::CreativeObject& object,
+    const iggy3d::Mat4& clipFromWorld,
+    std::uint32_t widthPx,
+    std::uint32_t heightPx) {
+  ObjectVisualPickBounds candidate;
+  candidate.id = object.id;
+  candidate.bounds = visualBoundsForObject(object);
+  candidate.orientedBounds = orientedVisualBoxForObject(object);
+  candidate.screenAabb = projectBoxToScreen(clipFromWorld,
+                                            candidate.bounds.min,
+                                            candidate.bounds.max,
+                                            widthPx,
+                                            heightPx);
+  return candidate;
+}
+
 ObjectVisualPickResult pickNearestVisualBoundsObject(
     const std::vector<ObjectVisualPickBounds>& candidates,
     WorldRay ray) {
   ObjectVisualPickResult result;
   result.rayValid = ray.valid;
   result.testedCount = candidates.size();
-  if (!ray.valid) {
+  if (!ray.valid || !normalizeRayDirection(ray)) {
     return result;
   }
 
   for (const ObjectVisualPickBounds& candidate : candidates) {
     float entryDistance = std::numeric_limits<float>::max();
-    if (!rayEntryDistanceForAabb(ray, candidate.bounds, entryDistance)) {
-      continue;
+    if (candidate.orientedBounds.has_value()) {
+      const iggy3d::OrientedBoxRayHit hit =
+          iggy3d::intersectsRay(*candidate.orientedBounds,
+                                ray.origin,
+                                ray.direction,
+                                std::numeric_limits<float>::max());
+      if (!hit.hit) {
+        continue;
+      }
+      entryDistance = hit.distanceMeters;
+    } else {
+      if (!rayEntryDistanceForAabb(ray, candidate.bounds, entryDistance)) {
+        continue;
+      }
     }
 
     ++result.hitCount;

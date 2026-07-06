@@ -20,16 +20,22 @@ None currently claimed.
 
 ## Pull Next
 
-None currently ready.
+1. `ready/E99-kernel-w2-core-snap-move-place.md`
+2. `ready/E100-kernel-w3-frustum-cull-consumption-seam.md`
+3. `ready/E101-kernel-w4-aabb-grid-index-pick-broadphase.md`
+4. `ready/E102-kernel-w5-room-bake-reachability-receipt.md`
+5. `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
 
 ## Tier 1: Correctness And Compatibility
 
-None currently ready.
+- `ready/E99-kernel-w2-core-snap-move-place.md`
 
 ## Tier 2: Feature-Add Seams
 
-None currently ready. Builder finished the previous feature-add seam queue
-through E80.
+- `ready/E100-kernel-w3-frustum-cull-consumption-seam.md`
+- `ready/E101-kernel-w4-aabb-grid-index-pick-broadphase.md`
+- `ready/E102-kernel-w5-room-bake-reachability-receipt.md`
+- `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 

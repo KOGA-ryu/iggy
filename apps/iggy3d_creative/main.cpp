@@ -79,6 +79,7 @@ using iggy3d_creative_app::StandaloneCaptureScenarioStepRequest;
 using iggy3d_creative_app::StandaloneCaptureScript;
 using iggy3d_creative_app::StandaloneUndoStack;
 using iggy3d_creative_app::BrushFootprint;
+using iggy3d_creative_app::buildObjectVisualPickBounds;
 using iggy3d_creative_app::brushFootprintForDescriptor;
 using iggy3d_creative_app::buildBrushPaletteFromDescriptors;
 using iggy3d_creative_app::buildStandaloneRoomBakePreviewScene;
@@ -676,14 +677,10 @@ int main(int argc, char** argv) {
       if (!obj.visible) {
         continue;
       }
-      const VisualBounds visualBounds = visualBoundsForObject(obj);
-      const Vec3 boxMin = visualBounds.min;
-      const Vec3 boxMax = visualBounds.max;
-      ObjectVisualPickBounds hit;
-      hit.id = obj.id;
-      hit.bounds = visualBounds;
-      hit.screenAabb = projectBoxToScreen(frame.camera.clipFromWorld, boxMin,
-                                          boxMax, extent.width, extent.height);
+      const ObjectVisualPickBounds hit = buildObjectVisualPickBounds(
+          obj, frame.camera.clipFromWorld, extent.width, extent.height);
+      const Vec3 boxMin = hit.bounds.min;
+      const Vec3 boxMax = hit.bounds.max;
       objectPickCandidates.push_back(hit);
       if (obj.id == floorObjectId) {
         haveFloorBounds = true;

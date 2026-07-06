@@ -3,11 +3,15 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "core/math/Aabb3.hpp"
+#include "core/math/OrientedBox.hpp"
+#include "core/math/Transform3.hpp"
 #include "core/math/Vec3.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
 
 #include <cstddef>
+#include <optional>
 #include <string_view>
 #include <vector>
 
@@ -25,6 +29,12 @@ struct VisualBounds {
 };
 
 [[nodiscard]] iggy3d::Vec3 toVec3(const cr::CreativeVec3& value);
+[[nodiscard]] iggy3d::Transform3 toTransform3(
+    const cr::CreativeTransform& value);
+[[nodiscard]] iggy3d::Aabb3 visualBoundsToLocalAabb(
+    VisualBounds bounds,
+    const cr::CreativeTransform& transform);
+[[nodiscard]] bool objectHasVisualRotation(const cr::CreativeObject& object);
 [[nodiscard]] bool validPathPoints(
     const std::vector<cr::CreativePathPoint>& points);
 [[nodiscard]] VisualBounds pointMarkerBounds(
@@ -37,6 +47,10 @@ struct VisualBounds {
 [[nodiscard]] VisualBounds pathSegmentProxyBounds(
     cr::CreativeVec3 start,
     cr::CreativeVec3 end);
+[[nodiscard]] VisualBounds axisAlignedVisualBoundsForObject(
+    const cr::CreativeObject& object);
+[[nodiscard]] std::optional<iggy3d::OrientedBox> orientedVisualBoxForObject(
+    const cr::CreativeObject& object);
 [[nodiscard]] VisualBounds visualBoundsForObject(const cr::CreativeObject& object);
 [[nodiscard]] iggy3d::Vec3 visualBoundsCenter(VisualBounds bounds);
 [[nodiscard]] std::string_view renderRoleForDescriptor(

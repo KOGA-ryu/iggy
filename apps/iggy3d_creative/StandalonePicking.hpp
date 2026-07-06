@@ -3,11 +3,13 @@
 #include "StandalonePreviewProxies.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "core/math/Mat4.hpp"
+#include "core/math/OrientedBox.hpp"
 #include "core/math/Vec3.hpp"
 #include "render/FrameInput.hpp"
 
 #include <cstdint>
 #include <limits>
+#include <optional>
 #include <vector>
 
 namespace iggy3d_creative_app {
@@ -37,6 +39,7 @@ struct ObjectVisualPickBounds {
   cr::CreativeObjectId id = cr::kInvalidObjectId;
   VisualBounds bounds{};
   ScreenAabb screenAabb{};
+  std::optional<iggy3d::OrientedBox> orientedBounds{};
 };
 
 struct ObjectVisualPickResult {
@@ -82,6 +85,11 @@ struct PathPointHandleHit {
 [[nodiscard]] bool rayEntryDistanceForAabb(WorldRay ray,
                                            VisualBounds bounds,
                                            float& outT);
+[[nodiscard]] ObjectVisualPickBounds buildObjectVisualPickBounds(
+    const cr::CreativeObject& object,
+    const iggy3d::Mat4& clipFromWorld,
+    std::uint32_t widthPx,
+    std::uint32_t heightPx);
 [[nodiscard]] ObjectVisualPickResult pickNearestVisualBoundsObject(
     const std::vector<ObjectVisualPickBounds>& candidates,
     WorldRay ray);

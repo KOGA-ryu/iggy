@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <string>
 
 namespace iggy3d_creative_app {
@@ -11,6 +12,15 @@ namespace {
 [[nodiscard]] bool finiteCreativeVec3(const cr::CreativeVec3& value) {
   return std::isfinite(value.x) && std::isfinite(value.y) &&
          std::isfinite(value.z);
+}
+
+[[nodiscard]] bool finitePositiveCreativeVec3(const cr::CreativeVec3& value) {
+  return finiteCreativeVec3(value) && value.x > 0.0 && value.y > 0.0 &&
+         value.z > 0.0;
+}
+
+[[nodiscard]] VisualBounds visualBoundsFromAabb(const iggy3d::Aabb3& bounds) {
+  return {bounds.min, bounds.max};
 }
 
 enum class VisualMajorAxis { X, Y, Z };
@@ -43,6 +53,36 @@ enum class VisualMajorAxis { X, Y, Z };
 iggy3d::Vec3 toVec3(const cr::CreativeVec3& value) {
   return {static_cast<float>(value.x), static_cast<float>(value.y),
           static_cast<float>(value.z)};
+}
+
+iggy3d::Transform3 toTransform3(const cr::CreativeTransform& value) {
+  return {toVec3(value.position), toVec3(value.rotation), toVec3(value.scale)};
+}
+
+iggy3d::Aabb3 visualBoundsToLocalAabb(VisualBounds bounds,
+                                      const cr::CreativeTransform& transform) {
+  const iggy3d::Vec3 position = toVec3(transform.position);
+  const iggy3d::Vec3 scale = toVec3(transform.scale);
+  return iggy3d::makeAabb3(
+      {(bounds.min.x - position.x) / scale.x,
+       (bounds.min.y - position.y) / scale.y,
+       (bounds.min.z - position.z) / scale.z},
+      {(bounds.max.x - position.x) / scale.x,
+       (bounds.max.y - position.y) / scale.y,
+       (bounds.max.z - position.z) / scale.z});
+}
+
+bool objectHasVisualRotation(const cr::CreativeObject& object) {
+  constexpr double kRotationEps = 1.0e-8;
+  const cr::CreativeObjectDescriptor& descriptor = cr::describeObject(object.kind);
+  if (!descriptor.hasBounds || !finiteCreativeVec3(object.transform.position) ||
+      !finiteCreativeVec3(object.transform.rotation) ||
+      !finitePositiveCreativeVec3(object.transform.scale)) {
+    return false;
+  }
+  return std::fabs(object.transform.rotation.x) > kRotationEps ||
+         std::fabs(object.transform.rotation.y) > kRotationEps ||
+         std::fabs(object.transform.rotation.z) > kRotationEps;
 }
 
 bool validPathPoints(const std::vector<cr::CreativePathPoint>& points) {
@@ -136,7 +176,7 @@ VisualBounds pathSegmentProxyBounds(cr::CreativeVec3 start,
            std::max(a.z, b.z) + halfThickness}};
 }
 
-VisualBounds visualBoundsForObject(const cr::CreativeObject& object) {
+VisualBounds axisAlignedVisualBoundsForObject(const cr::CreativeObject& object) {
   const cr::CreativeObjectDescriptor& descriptor = cr::describeObject(object.kind);
   if (descriptor.shapeKind == cr::CreativeObjectShapeKind::Point) {
     return pointMarkerBounds(object.transform.position);
@@ -150,6 +190,31 @@ VisualBounds visualBoundsForObject(const cr::CreativeObject& object) {
     return lineProxyBounds(authoredBounds);
   }
   return authoredBounds;
+}
+
+std::optional<iggy3d::OrientedBox> orientedVisualBoxForObject(
+    const cr::CreativeObject& object) {
+  if (!objectHasVisualRotation(object)) {
+    return std::nullopt;
+  }
+  const VisualBounds axisAlignedBounds = axisAlignedVisualBoundsForObject(object);
+  const iggy3d::Transform3 transform = toTransform3(object.transform);
+  const iggy3d::Aabb3 localBounds =
+      visualBoundsToLocalAabb(axisAlignedBounds, object.transform);
+  const iggy3d::OrientedBox box =
+      iggy3d::makeOrientedBox(transform, localBounds);
+  if (!iggy3d::isFinite(box.transform) || !iggy3d::isValid(box.localBounds)) {
+    return std::nullopt;
+  }
+  return box;
+}
+
+VisualBounds visualBoundsForObject(const cr::CreativeObject& object) {
+  if (const std::optional<iggy3d::OrientedBox> box =
+          orientedVisualBoxForObject(object)) {
+    return visualBoundsFromAabb(iggy3d::orientedBoxWorldAabb(*box));
+  }
+  return axisAlignedVisualBoundsForObject(object);
 }
 
 iggy3d::Vec3 visualBoundsCenter(VisualBounds bounds) {
