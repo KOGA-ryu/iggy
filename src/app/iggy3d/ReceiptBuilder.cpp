@@ -1118,78 +1118,78 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.startupVulkanFirstSubmitMicroseconds);
   appendReceiptField(receipt, "startup_vulkan_first_submit_status",
                      window.startupVulkanFirstSubmitStatus);
-  appendReceiptField(receipt, "world_setup_title", window.worldSetupTitle);
-  appendReceiptField(receipt, "world_setup_status", window.worldSetupStatus);
+  appendReceiptField(receipt, "world_setup_title", window.worldSetup.title);
+  appendReceiptField(receipt, "world_setup_status", window.worldSetup.status);
   appendReceiptField(receipt,
                      "world_setup_dungeon_title",
-                     window.worldSetupDungeonTitle);
+                     window.worldSetup.dungeonTitle);
   appendReceiptField(receipt,
                      "world_setup_dungeon_index",
-                     window.worldSetupDungeonIndex);
+                     window.worldSetup.dungeonIndex);
   appendReceiptField(receipt,
                      "world_setup_dungeon_count",
-                     window.worldSetupDungeonCount);
+                     window.worldSetup.dungeonCount);
   appendReceiptField(receipt,
                      "world_setup_ascii_room_enabled",
-                     window.worldSetupAsciiRoomEnabled);
+                     window.worldSetup.asciiRoomEnabled);
   appendReceiptField(receipt,
                      "world_setup_ascii_room_text_present",
-                     window.worldSetupAsciiRoomTextPresent);
+                     window.worldSetup.asciiRoomTextPresent);
   appendReceiptField(receipt,
                      "world_setup_ascii_room_id",
-                     window.worldSetupAsciiRoomId);
+                     window.worldSetup.asciiRoomId);
   appendReceiptField(receipt,
                      "world_setup_ascii_room_source_name",
-                     window.worldSetupAsciiRoomSourceName);
+                     window.worldSetup.asciiRoomSourceName);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_edit_mode",
-                     window.worldSetupDungeonDraftEditMode);
+                     window.worldSetup.dungeonDraftEditMode);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_modified",
-                     window.worldSetupDungeonDraftModified);
+                     window.worldSetup.dungeonDraftModified);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_cursor_row",
-                     window.worldSetupDungeonDraftCursorRow);
+                     window.worldSetup.dungeonDraftCursorRow);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_cursor_column",
-                     window.worldSetupDungeonDraftCursorColumn);
+                     window.worldSetup.dungeonDraftCursorColumn);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_status",
-                     window.worldSetupDungeonDraftStatus);
+                     window.worldSetup.dungeonDraftStatus);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_reason_code",
-                     window.worldSetupDungeonDraftReasonCode);
+                     window.worldSetup.dungeonDraftReasonCode);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_selected_glyph",
-                     window.worldSetupDungeonDraftSelectedGlyph);
+                     window.worldSetup.dungeonDraftSelectedGlyph);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_last_glyph",
-                     window.worldSetupDungeonDraftLastGlyph);
-  appendReceiptField(receipt, "world_creation_status", window.worldCreationStatus);
+                     window.worldSetup.dungeonDraftLastGlyph);
+  appendReceiptField(receipt, "world_creation_status", window.worldCreation.status);
   appendReceiptField(receipt, "world_creation_reason_code",
-                     window.worldCreationReasonCode);
-  appendReceiptField(receipt, "world_creation_world_id", window.worldCreationWorldId);
+                     window.worldCreation.reasonCode);
+  appendReceiptField(receipt, "world_creation_world_id", window.worldCreation.worldId);
   appendReceiptField(receipt, "world_creation_world_title",
-                     window.worldCreationWorldTitle);
+                     window.worldCreation.worldTitle);
   appendReceiptField(receipt,
                      "world_creation_ascii_room_requested",
-                     window.worldCreationAsciiRoomRequested);
+                     window.worldCreation.asciiRoomRequested);
   appendReceiptField(receipt,
                      "world_creation_ascii_room_id",
-                     window.worldCreationAsciiRoomId);
+                     window.worldCreation.asciiRoomId);
   appendReceiptField(receipt,
                      "world_creation_ascii_room_source_name",
-                     window.worldCreationAsciiRoomSourceName);
+                     window.worldCreation.asciiRoomSourceName);
   appendReceiptField(receipt, "world_creation_initial_save_requested",
-                     window.worldCreationInitialSaveRequested);
+                     window.worldCreation.initialSaveRequested);
   appendReceiptField(receipt, "world_creation_initial_save_written",
-                     window.worldCreationInitialSaveWritten);
+                     window.worldCreation.initialSaveWritten);
   appendReceiptField(receipt, "world_creation_initial_save_id",
-                     window.worldCreationInitialSaveId);
+                     window.worldCreation.initialSaveId);
   appendReceiptField(receipt, "world_creation_initial_save_title",
-                     window.worldCreationInitialSaveTitle);
+                     window.worldCreation.initialSaveTitle);
   appendReceiptField(receipt, "world_creation_route_after_create",
-                     window.worldCreationRouteAfterCreate);
+                     window.worldCreation.routeAfterCreate);
   appendReceiptField(receipt, "ascii_room_preview_status",
                      window.asciiRoomPreviewStatus);
   appendReceiptField(receipt, "ascii_room_preview_reason_code",

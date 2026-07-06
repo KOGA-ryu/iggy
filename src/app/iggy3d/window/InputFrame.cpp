@@ -1514,12 +1514,12 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
             context.saves,
             context.worldSetupDraft,
             context.settingsTab,
-            {context.window.worldSetupDungeonDraftEditMode,
-             context.window.worldSetupDungeonDraftModified,
-             context.window.worldSetupDungeonDraftCursorRow,
-             context.window.worldSetupDungeonDraftCursorColumn,
-             context.window.worldSetupDungeonDraftSelectedGlyph,
-             context.window.worldSetupDungeonDraftLastGlyph,
+            {context.window.worldSetup.dungeonDraftEditMode,
+             context.window.worldSetup.dungeonDraftModified,
+             context.window.worldSetup.dungeonDraftCursorRow,
+             context.window.worldSetup.dungeonDraftCursorColumn,
+             context.window.worldSetup.dungeonDraftSelectedGlyph,
+             context.window.worldSetup.dungeonDraftLastGlyph,
              context.window.selectedProductSaveId,
              context.window.saveDeleteCandidateId});
     uiRequest.gameplayActive = context.window.gameplayActive;

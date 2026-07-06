@@ -20,6 +20,8 @@
 #include "app/iggy3d/input/ControllerActionState.hpp"
 #include "app/iggy3d/input/ControllerModeToggleState.hpp"
 #include "app/iggy3d/window/MouseCaptureState.hpp"
+#include "app/iggy3d/world/WorldSetupState.hpp"
+#include "app/iggy3d/world/WorldCreationState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -238,35 +240,8 @@ struct ProductAppWindowState {
   std::uint64_t startupVulkanFirstSubmitMicroseconds = 0;
   std::string startupVulkanFirstSubmitStatus =
       "startup_vulkan_first_submit_not_requested";
-  std::string worldSetupTitle = "New World";
-  std::string worldSetupStatus = "not_requested";
-  std::string worldSetupDungeonTitle = "none";
-  std::uint64_t worldSetupDungeonIndex = 0;
-  std::uint64_t worldSetupDungeonCount = 0;
-  bool worldSetupAsciiRoomEnabled = false;
-  bool worldSetupAsciiRoomTextPresent = false;
-  std::string worldSetupAsciiRoomId = "world_setup_room";
-  std::string worldSetupAsciiRoomSourceName = "world_setup_ascii_room.iggyroom.txt";
-  bool worldSetupDungeonDraftEditMode = false;
-  bool worldSetupDungeonDraftModified = false;
-  std::uint64_t worldSetupDungeonDraftCursorRow = 0;
-  std::uint64_t worldSetupDungeonDraftCursorColumn = 0;
-  std::string worldSetupDungeonDraftStatus = "not_requested";
-  std::string worldSetupDungeonDraftReasonCode = "not_requested";
-  std::string worldSetupDungeonDraftSelectedGlyph = ".";
-  std::string worldSetupDungeonDraftLastGlyph = "none";
-  std::string worldCreationStatus = "not_requested";
-  std::string worldCreationReasonCode = "not_requested";
-  std::string worldCreationWorldId = "none";
-  std::string worldCreationWorldTitle = "none";
-  bool worldCreationAsciiRoomRequested = false;
-  std::string worldCreationAsciiRoomId = "none";
-  std::string worldCreationAsciiRoomSourceName = "none";
-  bool worldCreationInitialSaveRequested = false;
-  bool worldCreationInitialSaveWritten = false;
-  std::string worldCreationInitialSaveId = "none";
-  std::string worldCreationInitialSaveTitle = "none";
-  std::string worldCreationRouteAfterCreate = "world_setup";
+  ProductWorldSetupState worldSetup;
+  ProductWorldCreationState worldCreation;
   std::string asciiRoomDraftText;
   std::string asciiRoomDraftRoomId = "ascii_preview";
   std::string asciiRoomDraftSourceName = "automation_ascii_room";

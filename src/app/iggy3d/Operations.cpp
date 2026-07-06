@@ -304,33 +304,33 @@ ProductWorldCreationResult prepareProductWorldCreationFromDraft(
     const ProductWorldTemplate& world,
     const WorldSetupDraft& draft,
     ProductAppWindowState& window) {
-  window.worldSetupTitle = draft.worldName;
-  window.worldSetupDungeonTitle = draft.worldName;
-  window.worldSetupDungeonCount = productBuiltinDungeonCatalog().size();
+  window.worldSetup.title = draft.worldName;
+  window.worldSetup.dungeonTitle = draft.worldName;
+  window.worldSetup.dungeonCount = productBuiltinDungeonCatalog().size();
   const std::size_t dungeonIndex =
       productBuiltinDungeonIndexForRoomId(draft.asciiRoomId);
-  window.worldSetupDungeonIndex = 0;
+  window.worldSetup.dungeonIndex = 0;
   // branch-gate: BG-1137
   if (dungeonIndex < productBuiltinDungeonCatalog().size()) {
-    window.worldSetupDungeonIndex =
+    window.worldSetup.dungeonIndex =
         static_cast<std::uint64_t>(dungeonIndex + 1U);
   }
-  window.worldSetupAsciiRoomEnabled = draft.asciiRoomEnabled;
-  window.worldSetupAsciiRoomTextPresent = !draft.asciiRoomText.empty();
-  window.worldSetupAsciiRoomId =
+  window.worldSetup.asciiRoomEnabled = draft.asciiRoomEnabled;
+  window.worldSetup.asciiRoomTextPresent = !draft.asciiRoomText.empty();
+  window.worldSetup.asciiRoomId =
       draft.asciiRoomId.empty() ? "none" : draft.asciiRoomId;
-  window.worldSetupAsciiRoomSourceName =
+  window.worldSetup.asciiRoomSourceName =
       draft.asciiRoomSourceName.empty() ? "none" : draft.asciiRoomSourceName;
   const WorldSetupRouteResult setup =
       routeWorldSetupAction(draft, FrontendAction::CreateAndEnter);
   if (!setup.accepted || !setup.createRequested) {
-    window.worldSetupStatus = std::string(setup.reasonCode);
-    window.worldCreationStatus = std::string(setup.status);
-    window.worldCreationReasonCode = std::string(setup.reasonCode);
+    window.worldSetup.status = std::string(setup.reasonCode);
+    window.worldCreation.status = std::string(setup.status);
+    window.worldCreation.reasonCode = std::string(setup.reasonCode);
     return {};
   }
-  window.worldSetupTitle = setup.createRequest.worldName;
-  window.worldSetupStatus = std::string(setup.status);
+  window.worldSetup.title = setup.createRequest.worldName;
+  window.worldSetup.status = std::string(setup.status);
 
   // createdAtUtc/savedAtUtc seed for the initial save: a real UTC timestamp so
   // the catalog's newest-first ordering and Continue policy reflect real
@@ -343,69 +343,69 @@ ProductWorldCreationResult prepareProductWorldCreationFromDraft(
                                     options.saveRoot,
                                     productSaveTimestampNowUtc(),
                                     nextProductWorldId(options.saveRoot)));
-  window.worldCreationStatus = std::string(creation.status);
-  window.worldCreationReasonCode = std::string(creation.reasonCode);
-  window.worldCreationWorldId =
+  window.worldCreation.status = std::string(creation.status);
+  window.worldCreation.reasonCode = std::string(creation.reasonCode);
+  window.worldCreation.worldId =
       creation.request.worldId.empty() ? "none" : creation.request.worldId;
-  window.worldCreationWorldTitle =
+  window.worldCreation.worldTitle =
       creation.initialSavePlan.worldTitle.empty()
           ? "none"
           : creation.initialSavePlan.worldTitle;
-  window.worldCreationAsciiRoomRequested = creation.request.asciiRoomRequested;
-  window.worldCreationAsciiRoomId =
+  window.worldCreation.asciiRoomRequested = creation.request.asciiRoomRequested;
+  window.worldCreation.asciiRoomId =
       creation.request.asciiRoomId.empty() ? "none" : creation.request.asciiRoomId;
-  window.worldCreationAsciiRoomSourceName =
+  window.worldCreation.asciiRoomSourceName =
       creation.request.asciiRoomSourceName.empty()
           ? "none"
           : creation.request.asciiRoomSourceName;
-  window.worldCreationInitialSaveRequested = creation.initialSavePlan.requested;
-  window.worldCreationInitialSaveWritten = creation.initialSaveWritten;
-  window.worldCreationInitialSaveId =
+  window.worldCreation.initialSaveRequested = creation.initialSavePlan.requested;
+  window.worldCreation.initialSaveWritten = creation.initialSaveWritten;
+  window.worldCreation.initialSaveId =
       creation.initialSavePlan.saveId.empty() ? "none"
                                               : creation.initialSavePlan.saveId;
-  window.worldCreationInitialSaveTitle =
+  window.worldCreation.initialSaveTitle =
       creation.initialSavePlan.worldTitle.empty()
           ? "none"
           : creation.initialSavePlan.worldTitle;
-  window.worldCreationRouteAfterCreate = std::string(creation.routeAfterCreate);
+  window.worldCreation.routeAfterCreate = std::string(creation.routeAfterCreate);
   return creation;
 }
 
 void recordProductWorldInitialSaveResult(
     const ProductWorldInitialSaveResult& initialSave,
     ProductAppWindowState& window) {
-  window.worldCreationStatus = initialSave.status;
-  window.worldCreationReasonCode = initialSave.reasonCode;
-  window.worldCreationWorldId = initialSave.creation.request.worldId.empty()
+  window.worldCreation.status = initialSave.status;
+  window.worldCreation.reasonCode = initialSave.reasonCode;
+  window.worldCreation.worldId = initialSave.creation.request.worldId.empty()
                                     ? "none"
                                     : initialSave.creation.request.worldId;
-  window.worldCreationWorldTitle =
+  window.worldCreation.worldTitle =
       initialSave.creation.initialSavePlan.worldTitle.empty()
           ? "none"
           : initialSave.creation.initialSavePlan.worldTitle;
-  window.worldCreationAsciiRoomRequested =
+  window.worldCreation.asciiRoomRequested =
       initialSave.creation.request.asciiRoomRequested;
-  window.worldCreationAsciiRoomId =
+  window.worldCreation.asciiRoomId =
       initialSave.creation.request.asciiRoomId.empty()
           ? "none"
           : initialSave.creation.request.asciiRoomId;
-  window.worldCreationAsciiRoomSourceName =
+  window.worldCreation.asciiRoomSourceName =
       initialSave.creation.request.asciiRoomSourceName.empty()
           ? "none"
           : initialSave.creation.request.asciiRoomSourceName;
-  window.worldCreationInitialSaveRequested =
+  window.worldCreation.initialSaveRequested =
       initialSave.creation.initialSavePlan.requested;
-  window.worldCreationInitialSaveWritten =
+  window.worldCreation.initialSaveWritten =
       initialSave.creation.initialSaveWritten;
-  window.worldCreationInitialSaveId =
+  window.worldCreation.initialSaveId =
       initialSave.creation.initialSavePlan.saveId.empty()
           ? "none"
           : initialSave.creation.initialSavePlan.saveId;
-  window.worldCreationInitialSaveTitle =
+  window.worldCreation.initialSaveTitle =
       initialSave.creation.initialSavePlan.worldTitle.empty()
           ? "none"
           : initialSave.creation.initialSavePlan.worldTitle;
-  window.worldCreationRouteAfterCreate =
+  window.worldCreation.routeAfterCreate =
       std::string(initialSave.creation.routeAfterCreate);
   window.productSaveStatus = initialSave.saveWrite.status;
   window.productSaveReasonCode = initialSave.saveWrite.reasonCode;

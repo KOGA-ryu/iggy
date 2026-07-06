@@ -1920,7 +1920,7 @@ bool openingMenuMouseDispatchRoutesNewWorldNavigationRows() {
   const bool previousOk =
       expect(harness.draft.asciiRoomId != nextDungeonId,
              "mouse previous dungeon changes draft") &&
-      expect(harness.window.worldSetupStatus == "world_setup_dungeon_selected",
+      expect(harness.window.worldSetup.status == "world_setup_dungeon_selected",
              "mouse previous dungeon window status");
 
   iggy3d::dispatchProductOpeningMenuMouseHit(

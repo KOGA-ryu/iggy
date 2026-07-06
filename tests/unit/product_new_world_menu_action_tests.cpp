@@ -62,7 +62,7 @@ bool newWorldDraftHotkeysDriveDraftState() {
       iggy3d::InputAction::MenuNextTab, frontend, options, activeSession, draft,
       window);
   bool ok = expect(tab.handled && tab.accepted, "tab toggles new world draft mode");
-  ok = expect(window.worldSetupDungeonDraftEditMode,
+  ok = expect(window.worldSetup.dungeonDraftEditMode,
               "draft edit mode enabled after menu next tab") &&
        ok;
   ok = expect(draft.selectedField == iggy3d::WorldSetupField::AsciiRoom,
@@ -85,19 +85,19 @@ bool newWorldDraftHotkeysDriveDraftState() {
                   rightOne.accepted && rightTwo.handled && rightTwo.accepted,
               "menu movement is accepted in draft edit mode") &&
        ok;
-  ok = expect(window.worldSetupDungeonDraftCursorRow == 1U,
+  ok = expect(window.worldSetup.dungeonDraftCursorRow == 1U,
               "draft cursor row reaches one") &&
        ok;
-  ok = expect(window.worldSetupDungeonDraftCursorColumn == 2U,
+  ok = expect(window.worldSetup.dungeonDraftCursorColumn == 2U,
               "draft cursor column reaches two") &&
        ok;
 
   const bool selected = iggy3d::selectDungeonDraftPaintGlyph(window, '>');
   ok = expect(selected, "ramp glyph selects paint tool") && ok;
-  ok = expect(window.worldSetupDungeonDraftSelectedGlyph == ">",
+  ok = expect(window.worldSetup.dungeonDraftSelectedGlyph == ">",
               "painting records selected glyph") &&
        ok;
-  ok = expect(!window.worldSetupDungeonDraftModified,
+  ok = expect(!window.worldSetup.dungeonDraftModified,
               "selecting paint tool does not mutate draft") &&
        ok;
 
@@ -107,20 +107,20 @@ bool newWorldDraftHotkeysDriveDraftState() {
   ok = expect(paint.handled && paint.accepted,
               "confirm paints selected glyph in edit mode") &&
        ok;
-  ok = expect(window.worldSetupDungeonDraftModified,
+  ok = expect(window.worldSetup.dungeonDraftModified,
               "painting marks dungeon draft modified") &&
        ok;
-  ok = expect(window.worldSetupDungeonDraftStatus == "dungeon_draft_cell_painted",
+  ok = expect(window.worldSetup.dungeonDraftStatus == "dungeon_draft_cell_painted",
               "painting records stable draft paint status") &&
        ok;
-  ok = expect(window.worldSetupDungeonDraftReasonCode ==
+  ok = expect(window.worldSetup.dungeonDraftReasonCode ==
                   "dungeon_draft_cell_painted",
               "painting records stable draft paint reason") &&
        ok;
-  ok = expect(window.worldSetupDungeonDraftLastGlyph == ">",
+  ok = expect(window.worldSetup.dungeonDraftLastGlyph == ">",
               "painting records last glyph") &&
        ok;
-  ok = expect(window.worldSetupAsciiRoomId ==
+  ok = expect(window.worldSetup.asciiRoomId ==
                   iggy3d::productCustomDungeonRoomId(),
               "painting switches to custom dungeon room id") &&
        ok;
@@ -138,11 +138,11 @@ bool manualDungeonSelectorCanCreateObjectCrateRoom() {
   iggy3d::ProductAppWindowState window;
   iggy3d::recordWorldSetupDraftState(draft, window);
 
-  bool ok = expect(window.worldSetupDungeonTitle == "Loop Keep",
+  bool ok = expect(window.worldSetup.dungeonTitle == "Loop Keep",
                    "selector starts on loop keep") &&
-            expect(window.worldSetupDungeonIndex == 1U,
+            expect(window.worldSetup.dungeonIndex == 1U,
                    "selector starts on index one") &&
-            expect(window.worldSetupDungeonCount ==
+            expect(window.worldSetup.dungeonCount ==
                        iggy3d::productBuiltinDungeonCatalog().size(),
                    "selector count mirrors catalog");
 
@@ -159,20 +159,20 @@ bool manualDungeonSelectorCanCreateObjectCrateRoom() {
   ok = expect(draft.asciiRoomId == "object_crate_room",
               "selector reaches object crate room id") &&
        ok;
-  ok = expect(window.worldSetupStatus == "world_setup_dungeon_selected",
+  ok = expect(window.worldSetup.status == "world_setup_dungeon_selected",
               "selector records selected status") &&
        ok;
-  ok = expect(window.worldSetupDungeonTitle == "Object Crate Room",
+  ok = expect(window.worldSetup.dungeonTitle == "Object Crate Room",
               "window mirrors selected dungeon title") &&
        ok;
-  ok = expect(window.worldSetupDungeonIndex == 8U,
+  ok = expect(window.worldSetup.dungeonIndex == 8U,
               "window mirrors selected dungeon index") &&
        ok;
-  ok = expect(window.worldSetupDungeonCount ==
+  ok = expect(window.worldSetup.dungeonCount ==
                   iggy3d::productBuiltinDungeonCatalog().size(),
               "window mirrors selected dungeon count") &&
        ok;
-  ok = expect(window.worldSetupAsciiRoomId == "object_crate_room",
+  ok = expect(window.worldSetup.asciiRoomId == "object_crate_room",
               "window mirrors selected room id") &&
        ok;
 
@@ -186,20 +186,20 @@ bool manualDungeonSelectorCanCreateObjectCrateRoom() {
   ok = expect(frontend.childScreen == iggy3d::FrontendScreen::Gameplay,
               "confirm enters gameplay") &&
        ok;
-  ok = expect(window.worldSetupStatus == "world_setup_create_requested",
+  ok = expect(window.worldSetup.status == "world_setup_create_requested",
               "confirm records create requested") &&
        ok;
-  ok = expect(window.worldSetupDungeonTitle == "Object Crate Room",
+  ok = expect(window.worldSetup.dungeonTitle == "Object Crate Room",
               "created receipt keeps dungeon title") &&
        ok;
-  ok = expect(window.worldSetupDungeonIndex == 8U,
+  ok = expect(window.worldSetup.dungeonIndex == 8U,
               "created receipt keeps dungeon index") &&
        ok;
-  ok = expect(window.worldSetupDungeonCount ==
+  ok = expect(window.worldSetup.dungeonCount ==
                   iggy3d::productBuiltinDungeonCatalog().size(),
               "created receipt keeps dungeon count") &&
        ok;
-  ok = expect(window.worldCreationAsciiRoomId == "object_crate_room",
+  ok = expect(window.worldCreation.asciiRoomId == "object_crate_room",
               "created room id") &&
        ok;
   ok = expect(window.activeRoom.loaded, "created active room loaded") && ok;
@@ -255,14 +255,14 @@ bool manualDungeonSelectorCanCreateMovementGym() {
   ok = expect(draft.asciiRoomId == "movement_gym",
               "selector reaches movement gym room id") &&
        ok;
-  ok = expect(window.worldSetupDungeonTitle == "Movement Gym",
+  ok = expect(window.worldSetup.dungeonTitle == "Movement Gym",
               "window mirrors movement gym title") &&
        ok;
-  ok = expect(window.worldSetupDungeonIndex ==
+  ok = expect(window.worldSetup.dungeonIndex ==
                   iggy3d::productBuiltinDungeonIndexForRoomId("movement_gym") + 1U,
               "window mirrors movement gym index") &&
        ok;
-  ok = expect(window.worldSetupDungeonCount ==
+  ok = expect(window.worldSetup.dungeonCount ==
                   iggy3d::productBuiltinDungeonCatalog().size(),
               "window mirrors movement gym count") &&
        ok;
@@ -278,7 +278,7 @@ bool manualDungeonSelectorCanCreateMovementGym() {
   ok = expect(frontend.childScreen == iggy3d::FrontendScreen::Gameplay,
               "movement gym enters gameplay") &&
        ok;
-  ok = expect(window.worldCreationAsciiRoomId == "movement_gym",
+  ok = expect(window.worldCreation.asciiRoomId == "movement_gym",
               "movement gym created room id") &&
        ok;
   ok = expect(window.activeRoom.loaded, "movement gym active room loaded") && ok;

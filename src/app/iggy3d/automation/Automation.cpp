@@ -1153,24 +1153,24 @@ bool resolveProductSaveBrowserBoolAutomation(std::string_view value,
 
 void recordWorldSetupDraftState(const WorldSetupDraft& draft,
                                 ProductAppWindowState& window) {
-  window.worldSetupTitle = draft.worldName;
-  window.worldSetupDungeonTitle = draft.worldName;
-  window.worldSetupDungeonCount = productBuiltinDungeonCatalog().size();
+  window.worldSetup.title = draft.worldName;
+  window.worldSetup.dungeonTitle = draft.worldName;
+  window.worldSetup.dungeonCount = productBuiltinDungeonCatalog().size();
   const std::size_t dungeonIndex =
       productBuiltinDungeonIndexForRoomId(draft.asciiRoomId);
-  window.worldSetupDungeonIndex = 0;
+  window.worldSetup.dungeonIndex = 0;
   // branch-gate: BG-1136
   if (dungeonIndex < productBuiltinDungeonCatalog().size()) {
-    window.worldSetupDungeonIndex =
+    window.worldSetup.dungeonIndex =
         static_cast<std::uint64_t>(dungeonIndex + 1U);
   }
-  window.worldSetupAsciiRoomEnabled = draft.asciiRoomEnabled;
-  window.worldSetupAsciiRoomTextPresent = !draft.asciiRoomText.empty();
+  window.worldSetup.asciiRoomEnabled = draft.asciiRoomEnabled;
+  window.worldSetup.asciiRoomTextPresent = !draft.asciiRoomText.empty();
   // branch-gate: BG-1004
-  window.worldSetupAsciiRoomId =
+  window.worldSetup.asciiRoomId =
       draft.asciiRoomId.empty() ? "none" : draft.asciiRoomId;
   // branch-gate: BG-1004
-  window.worldSetupAsciiRoomSourceName =
+  window.worldSetup.asciiRoomSourceName =
       draft.asciiRoomSourceName.empty() ? "none" : draft.asciiRoomSourceName;
   window.asciiRoomDraftText = draft.asciiRoomText;
   // branch-gate: BG-1004
@@ -1209,25 +1209,25 @@ void recordWorldSetupDraftState(const WorldSetupDraft& draft,
 ProductDungeonDraftCursor dungeonDraftCursorFromWindow(
     const ProductAppWindowState& window) {
   return ProductDungeonDraftCursor{
-      static_cast<std::size_t>(window.worldSetupDungeonDraftCursorRow),
-      static_cast<std::size_t>(window.worldSetupDungeonDraftCursorColumn),
+      static_cast<std::size_t>(window.worldSetup.dungeonDraftCursorRow),
+      static_cast<std::size_t>(window.worldSetup.dungeonDraftCursorColumn),
   };
 }
 
 void recordDungeonDraftOperation(ProductAppWindowState& window,
                                  const ProductDungeonDraftOperationResult& result) {
-  window.worldSetupDungeonDraftStatus = std::string(result.status);
-  window.worldSetupDungeonDraftReasonCode = std::string(result.reasonCode);
-  window.worldSetupDungeonDraftCursorRow =
+  window.worldSetup.dungeonDraftStatus = std::string(result.status);
+  window.worldSetup.dungeonDraftReasonCode = std::string(result.reasonCode);
+  window.worldSetup.dungeonDraftCursorRow =
       static_cast<std::uint64_t>(result.cursor.row);
-  window.worldSetupDungeonDraftCursorColumn =
+  window.worldSetup.dungeonDraftCursorColumn =
       static_cast<std::uint64_t>(result.cursor.column);
   // branch-gate: BG-1004
-  window.worldSetupDungeonDraftLastGlyph =
+  window.worldSetup.dungeonDraftLastGlyph =
       result.glyph == '\0' ? std::string{"none"} : std::string(1U, result.glyph);
   // branch-gate: BG-1004
   if (result.modified) {
-    window.worldSetupDungeonDraftModified = true;
+    window.worldSetup.dungeonDraftModified = true;
   }
 }
 
@@ -1235,19 +1235,19 @@ void resetDungeonDraftWindowCursor(const WorldSetupDraft& draft,
                                    ProductAppWindowState& window) {
   const ProductDungeonDraftCursor cursor =
       clampProductDungeonDraftCursor(draft, ProductDungeonDraftCursor{});
-  window.worldSetupDungeonDraftCursorRow = static_cast<std::uint64_t>(cursor.row);
-  window.worldSetupDungeonDraftCursorColumn =
+  window.worldSetup.dungeonDraftCursorRow = static_cast<std::uint64_t>(cursor.row);
+  window.worldSetup.dungeonDraftCursorColumn =
       static_cast<std::uint64_t>(cursor.column);
-  window.worldSetupDungeonDraftLastGlyph = "none";
+  window.worldSetup.dungeonDraftLastGlyph = "none";
 }
 
 bool applyDungeonDraftPaintGlyph(WorldSetupDraft& worldSetupDraft,
                                  ProductAppWindowState& window,
                                  char glyph) {
   // branch-gate: BG-1004
-  if (!window.worldSetupDungeonDraftEditMode) {
-    window.worldSetupDungeonDraftStatus = "dungeon_draft_edit_mode_off";
-    window.worldSetupDungeonDraftReasonCode = "dungeon_draft_edit_mode_off";
+  if (!window.worldSetup.dungeonDraftEditMode) {
+    window.worldSetup.dungeonDraftStatus = "dungeon_draft_edit_mode_off";
+    window.worldSetup.dungeonDraftReasonCode = "dungeon_draft_edit_mode_off";
     return false;
   }
   ProductDungeonDraftOperationResult painted = paintProductDungeonDraftCell(
@@ -1259,20 +1259,20 @@ bool applyDungeonDraftPaintGlyph(WorldSetupDraft& worldSetupDraft,
 
 bool selectDungeonDraftPaintGlyph(ProductAppWindowState& window, char glyph) {
   // branch-gate: BG-1146
-  if (!window.worldSetupDungeonDraftEditMode) {
-    window.worldSetupDungeonDraftStatus = "dungeon_draft_edit_mode_off";
-    window.worldSetupDungeonDraftReasonCode = "dungeon_draft_edit_mode_off";
+  if (!window.worldSetup.dungeonDraftEditMode) {
+    window.worldSetup.dungeonDraftStatus = "dungeon_draft_edit_mode_off";
+    window.worldSetup.dungeonDraftReasonCode = "dungeon_draft_edit_mode_off";
     return false;
   }
   // branch-gate: BG-1146
   if (!isProductDungeonDraftGlyph(glyph)) {
-    window.worldSetupDungeonDraftStatus = "dungeon_draft_invalid_glyph";
-    window.worldSetupDungeonDraftReasonCode = "dungeon_draft_invalid_glyph";
+    window.worldSetup.dungeonDraftStatus = "dungeon_draft_invalid_glyph";
+    window.worldSetup.dungeonDraftReasonCode = "dungeon_draft_invalid_glyph";
     return false;
   }
-  window.worldSetupDungeonDraftSelectedGlyph = std::string(1U, glyph);
-  window.worldSetupDungeonDraftStatus = "dungeon_draft_paint_tool_selected";
-  window.worldSetupDungeonDraftReasonCode = "dungeon_draft_paint_tool_selected";
+  window.worldSetup.dungeonDraftSelectedGlyph = std::string(1U, glyph);
+  window.worldSetup.dungeonDraftStatus = "dungeon_draft_paint_tool_selected";
+  window.worldSetup.dungeonDraftReasonCode = "dungeon_draft_paint_tool_selected";
   return true;
 }
 
@@ -1464,10 +1464,10 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
                             context.currentOwner(), "failed");
       return {true, false};
     }
-    const bool editMode = context.window.worldSetupDungeonDraftEditMode;
-    context.window.worldSetupDungeonDraftEditMode = false;
+    const bool editMode = context.window.worldSetup.dungeonDraftEditMode;
+    context.window.worldSetup.dungeonDraftEditMode = false;
     const bool routed = context.routeInput(InputAction::MenuConfirm);
-    context.window.worldSetupDungeonDraftEditMode = editMode;
+    context.window.worldSetup.dungeonDraftEditMode = editMode;
     markAutomationApplied(context.window, command,
                           inputActionName(InputAction::MenuConfirm),
                           context.window.automationControlLastOwner,
@@ -1487,7 +1487,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     }
     context.worldSetupDraft.worldName = std::string(value);
     recordWorldSetupDraftState(context.worldSetupDraft, context.window);
-    context.window.worldSetupStatus = "world_setup_title_updated";
+    context.window.worldSetup.status = "world_setup_title_updated";
     markAutomationApplied(context.window, command, "world.title",
                           context.currentOwner(), "applied");
     return {true, true};
@@ -1519,10 +1519,10 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
         return fail();
       }
       recordWorldSetupDraftState(context.worldSetupDraft, context.window);
-      context.window.worldSetupDungeonDraftModified = false;
-      context.window.worldSetupDungeonDraftEditMode = false;
+      context.window.worldSetup.dungeonDraftModified = false;
+      context.window.worldSetup.dungeonDraftEditMode = false;
       resetDungeonDraftWindowCursor(context.worldSetupDraft, context.window);
-      context.window.worldSetupStatus = "world_setup_dungeon_selected";
+      context.window.worldSetup.status = "world_setup_dungeon_selected";
       markAutomationApplied(context.window, command, "world.dungeon_id",
                             context.currentOwner(), "applied");
       return {true, true};
@@ -1546,15 +1546,15 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
                             context.currentOwner(), "failed");
       return {true, false};
     }
-    context.window.worldSetupDungeonDraftEditMode = boolValue;
+    context.window.worldSetup.dungeonDraftEditMode = boolValue;
     // branch-gate: BG-1004
     context.worldSetupDraft.selectedField =
         boolValue ? WorldSetupField::AsciiRoom : WorldSetupField::Create;
     // branch-gate: BG-1004
-    context.window.worldSetupDungeonDraftStatus =
+    context.window.worldSetup.dungeonDraftStatus =
         boolValue ? "dungeon_draft_edit_mode_on" : "dungeon_draft_edit_mode_off";
-    context.window.worldSetupDungeonDraftReasonCode =
-        context.window.worldSetupDungeonDraftStatus;
+    context.window.worldSetup.dungeonDraftReasonCode =
+        context.window.worldSetup.dungeonDraftStatus;
     resetDungeonDraftWindowCursor(context.worldSetupDraft, context.window);
     markAutomationApplied(context.window, command, "world.draft_edit_mode",
                           context.currentOwner(), "applied");
@@ -1571,9 +1571,9 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
       return {true, false};
     }
     // branch-gate: BG-1004
-    if (!context.window.worldSetupDungeonDraftEditMode) {
-      context.window.worldSetupDungeonDraftStatus = "dungeon_draft_edit_mode_off";
-      context.window.worldSetupDungeonDraftReasonCode =
+    if (!context.window.worldSetup.dungeonDraftEditMode) {
+      context.window.worldSetup.dungeonDraftStatus = "dungeon_draft_edit_mode_off";
+      context.window.worldSetup.dungeonDraftReasonCode =
           "dungeon_draft_edit_mode_off";
       context.window.automationControlStatus = "command_failed";
       markAutomationApplied(context.window, command, "world.draft_move",
@@ -1688,7 +1688,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     context.worldSetupDraft.asciiRoomText =
         decodeProductAsciiRoomAutomationText(value);
     recordWorldSetupDraftState(context.worldSetupDraft, context.window);
-    context.window.worldSetupStatus = "world_setup_ascii_room_text_updated";
+    context.window.worldSetup.status = "world_setup_ascii_room_text_updated";
     markAutomationApplied(context.window, command, "world.ascii_room_text",
                           context.currentOwner(), "applied");
     return {true, true};
@@ -1715,7 +1715,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     context.worldSetupDraft.asciiRoomEnabled = true;
     context.worldSetupDraft.asciiRoomId = std::string(asciiRoomId.value);
     recordWorldSetupDraftState(context.worldSetupDraft, context.window);
-    context.window.worldSetupStatus = "world_setup_ascii_room_id_updated";
+    context.window.worldSetup.status = "world_setup_ascii_room_id_updated";
     markAutomationApplied(context.window, command, "world.ascii_room_id",
                           context.currentOwner(), "applied");
     return {true, true};
@@ -1745,7 +1745,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     context.worldSetupDraft.asciiRoomSourceName =
         std::string(asciiRoomSourceName.value);
     recordWorldSetupDraftState(context.worldSetupDraft, context.window);
-    context.window.worldSetupStatus =
+    context.window.worldSetup.status =
         "world_setup_ascii_room_source_name_updated";
     markAutomationApplied(context.window, command, "world.ascii_room_source_name",
                           context.currentOwner(), "applied");
@@ -1786,11 +1786,11 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
         std::string(productCustomDungeonRoomId());
     context.worldSetupDraft.asciiRoomSourceName = std::string(asciiRoomFile.value);
     context.worldSetupDraft.asciiRoomText = asciiRoomText;
-    context.window.worldSetupDungeonDraftModified = false;
-    context.window.worldSetupDungeonDraftEditMode = false;
+    context.window.worldSetup.dungeonDraftModified = false;
+    context.window.worldSetup.dungeonDraftEditMode = false;
     resetDungeonDraftWindowCursor(context.worldSetupDraft, context.window);
     recordWorldSetupDraftState(context.worldSetupDraft, context.window);
-    context.window.worldSetupStatus = "world_setup_ascii_room_file_loaded";
+    context.window.worldSetup.status = "world_setup_ascii_room_file_loaded";
     markAutomationApplied(context.window, command, "world.ascii_room_file",
                           context.currentOwner(), "applied");
     return {true, true};

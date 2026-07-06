@@ -217,7 +217,7 @@ bool childPanelActionsOpenExpectedSurfaces() {
          expect(newWorld.frontend.selectedAction ==
                     iggy3d::FrontendAction::CreateAndEnter,
                 "new world selects create") &&
-         expect(newWorld.window.worldSetupStatus == "world_setup_open",
+         expect(newWorld.window.worldSetup.status == "world_setup_open",
                 "new world records draft state") &&
          expect(!newWorld.window.gameplayMovementTuningVisible,
                 "new world clears movement tuning") &&
