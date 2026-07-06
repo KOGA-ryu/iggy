@@ -804,8 +804,20 @@ void appendPathProxyMeshesToScene(const creative::CreativeObject& object,
   }
 }
 
+bool objectHasBakedStaticMesh(
+    const creative::CreativeObject& object,
+    const std::vector<RoomStaticMeshAsset>& bakedStaticMeshes) {
+  const std::string objectMeshId =
+      "creative_object_" + std::to_string(object.id);
+  return std::any_of(bakedStaticMeshes.begin(), bakedStaticMeshes.end(),
+                     [&](const RoomStaticMeshAsset& mesh) {
+                       return mesh.id == objectMeshId;
+                     });
+}
+
 std::size_t appendStandalonePreviewProxiesToScene(
     const creative::CreativeDocument& document,
+    const std::vector<RoomStaticMeshAsset>& bakedStaticMeshes,
     SceneProjectionResult& scene) {
   std::size_t appended = 0;
   for (const creative::CreativeObject& obj : document.objects()) {
@@ -815,6 +827,9 @@ std::size_t appendStandalonePreviewProxiesToScene(
     const creative::CreativeObjectDescriptor& descriptor =
         creative::describeObject(obj.kind);
     const std::string_view role = renderRoleForDescriptor(descriptor);
+    if (objectHasBakedStaticMesh(obj, bakedStaticMeshes)) {
+      continue;
+    }
     if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Path) {
       const std::size_t before = scene.room.meshes.size();
       appendPathProxyMeshesToScene(obj, scene, role);
@@ -2148,8 +2163,8 @@ int main(int argc, char** argv) {
     // SCENE (local, must outlive submitFrame): bake supported room geometry
     // through the same CreativeDocument -> RoomAsset adapter that gameplay will
     // eventually consume, then project that RoomAsset through the runtime scene
-    // path. Standalone-only editor proxies remain for Point/Line/Path because
-    // they are intentionally not RoomAsset static geometry in bake v1.
+    // path. Standalone-only editor proxies remain only for objects that RoomBake
+    // did not emit as static geometry, such as Point anchors and Path routes.
     creative::CreativeRoomBakeRequest bakeRequest;
     bakeRequest.document = &appState.facade.document();
     bakeRequest.roomId = "iggy3d_creative_preview";
@@ -2163,7 +2178,9 @@ int main(int argc, char** argv) {
         buildSceneProjection(emptyRuntimeState, &roomBake.room);
     appendGridDotsToScene(gridSnapshot, scene);
     const std::size_t standalonePreviewMeshCount =
-        appendStandalonePreviewProxiesToScene(appState.facade.document(), scene);
+        appendStandalonePreviewProxiesToScene(appState.facade.document(),
+                                              roomBake.room.staticMeshes,
+                                              scene);
     if (!scene.room.meshes.empty()) {
       scene.room.staticMeshCount = scene.room.meshes.size();
       scene.room.loaded = true;
