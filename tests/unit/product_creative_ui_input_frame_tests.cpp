@@ -63,6 +63,10 @@ void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
   window.activeCreativeDocumentId = 42U;
 }
 
+void assignValidDocumentId(iggy3d::creative::Facade& facade) {
+  static_cast<void>(facade.documentForPersistence().assignId(42U));
+}
+
 iggy3d::creative::CreativeUiModel defaultCreativeModel() {
   return iggy3d::creative::buildCreativeUiModel(
              iggy3d::creative::makeDefaultCreativeUiBuildRequest())
@@ -560,7 +564,23 @@ bool defaultWindowReceiptFieldsAreNotRequested() {
          expectReceiptField(receipt,
                             "creative_baked_room_stale_status",
                             "creative_baked_room_not_observed",
-                            "default baked room stale status");
+                            "default baked room stale status") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_auto_refresh_requested",
+                            "false",
+                            "default auto refresh not requested") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_auto_refresh_accepted",
+                            "false",
+                            "default auto refresh not accepted") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_auto_refresh_cleared_active_room",
+                            "false",
+                            "default auto refresh not cleared") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_auto_refresh_status",
+                            "product_creative_baked_room_not_requested",
+                            "default auto refresh status");
 }
 
 bool recorderCopiesNoClickReceipt() {
@@ -965,6 +985,7 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
   iggy3d::creative::CreativeAppState app;
   [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
+  assignValidDocumentId(facade);
   bool closeRequested = false;
 
   const iggy3d::ProductUiDrawList drawList = defaultCreativeDrawList();
@@ -1041,6 +1062,8 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
                 "injected tool row revision before") &&
          expect(window.creativeDocumentRevisionAfterFrame == 0U,
                 "injected tool row revision after") &&
+         expect(!window.creativeBakedRoomAutoRefreshRequested,
+                "injected tool row no auto refresh") &&
          expect(!window.creativeBakedRoomStale,
                 "injected tool row not stale");
 }
@@ -1062,6 +1085,7 @@ bool inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() {
   iggy3d::creative::CreativeAppState app;
   iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
+  assignValidDocumentId(facade);
   bool closeRequested = false;
 
   const iggy3d::ProductUiDrawList drawList = defaultCreativeDrawList();
@@ -1114,6 +1138,8 @@ bool inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() {
                 "measure row revision before") &&
          expect(window.creativeDocumentRevisionAfterFrame == 0U,
                 "measure row revision after") &&
+         expect(!window.creativeBakedRoomAutoRefreshRequested,
+                "measure row no auto refresh") &&
          expect(!window.creativeBakedRoomStale,
                 "measure row not stale");
 }
@@ -1135,6 +1161,7 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
   iggy3d::creative::CreativeAppState app;
   [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
+  assignValidDocumentId(facade);
   bool closeRequested = false;
 
   const iggy3d::creative::CreativeUiBuildReceipt ui = facade.buildUiModel();
@@ -1273,12 +1300,30 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
                             "create injected changed receipt") &&
          expectReceiptField(receipt,
                             "creative_baked_room_stale",
-                            "true",
-                            "create injected stale receipt") &&
+                            "false",
+                            "create injected fresh receipt") &&
          expectReceiptField(receipt,
                             "creative_baked_room_stale_status",
-                            "creative_baked_room_stale_document_changed",
-                            "create injected stale status receipt") &&
+                            "creative_baked_room_fresh",
+                            "create injected fresh status receipt") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_auto_refresh_requested",
+                            "true",
+                            "create injected auto refresh requested") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_auto_refresh_accepted",
+                            "true",
+                            "create injected auto refresh accepted") &&
+         expectReceiptField(
+             receipt,
+             "creative_baked_room_auto_refresh_cleared_active_room",
+             "true",
+             "create injected auto refresh cleared") &&
+         expectReceiptField(
+             receipt,
+             "creative_baked_room_auto_refresh_status",
+             "product_creative_baked_room_cleared_no_renderable_objects",
+             "create injected auto refresh clear status") &&
          expect(facade.document().objectCount() == 1U,
                 "create injected object count") &&
          expect(facade.document().revision() == 1U,
@@ -1291,15 +1336,31 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
                 "create injected frame revision before") &&
          expect(window.creativeDocumentRevisionAfterFrame == 1U,
                 "create injected frame revision after") &&
-         expect(window.creativeBakedRoomStale,
-                "create injected stale baked room") &&
+         expect(window.creativeBakedRoomAutoRefreshRequested,
+                "create injected auto refresh requested state") &&
+         expect(window.creativeBakedRoomAutoRefreshAccepted,
+                "create injected auto refresh accepted state") &&
+         expect(window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+                "create injected auto refresh cleared state") &&
+         expect(window.creativeBakedRoomAutoRefreshStatus ==
+                    "product_creative_baked_room_cleared_no_renderable_objects",
+                "create injected auto refresh status state") &&
+         expect(window.creativeBakedRoomAutoRefreshStaticMeshCount == 0U,
+                "create injected auto refresh mesh count") &&
+         expect(!window.creativeBakedRoomStale,
+                "create injected baked room fresh") &&
          expect(window.creativeBakedRoomStaleRevision == 1U,
-                "create injected stale revision") &&
+                "create injected fresh revision") &&
          expect(window.creativeBakedRoomStaleStatus ==
-                    "creative_baked_room_stale_document_changed",
-                "create injected stale status") &&
+                    "creative_baked_room_fresh",
+                "create injected fresh status") &&
          expect(!window.activeRoom.loaded,
-                "create injected does not auto-refresh active room") &&
+                "create injected metadata clears active room") &&
+         expect(window.activeRoom.status ==
+                    "product_creative_baked_room_cleared_no_renderable_objects",
+                "create injected active room clear status") &&
+         expect(!window.activeRoomCollision.ready,
+                "create injected collision unavailable") &&
          expect(created != nullptr, "create injected object exists") &&
          expect(created != nullptr &&
                     created->kind ==
@@ -1341,6 +1402,152 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
          expect(rebuiltCreatePrimitive != nullptr &&
                     rebuiltCreatePrimitive->text == "Create Room",
                 "create injected rebuilt text");
+}
+
+bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
+  iggy3d::FrontendState frontend;
+  iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
+  iggy3d::ProductSaveBridgeResult saves;
+  iggy3d::ProductAppOptions options;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
+  std::optional<iggy3d::Session> activeSession;
+  activeSession.emplace();
+  iggy3d::WorldSetupDraft worldSetupDraft;
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  markCreativeDocumentWindow(window);
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductWindowInputFrameState inputFrame;
+  iggy3d::creative::CreativeAppState app;
+  iggy3d::creative::Facade& facade = app.facade;
+  facade.reset();
+  assignValidDocumentId(facade);
+  bool closeRequested = false;
+
+  const iggy3d::creative::CreativeUiBuildReceipt ui = facade.buildUiModel();
+  iggy3d::ProductCreativeUiDrawListRequest drawRequest;
+  drawRequest.model = &ui.model;
+  const iggy3d::ProductUiDrawList drawList =
+      iggy3d::buildProductCreativeUiDrawList(drawRequest);
+  const iggy3d::UiHitRegion* createHit =
+      findHitRegion(drawList, "creative.row.create.create_crate");
+
+  iggy3d::ProductWindowInputClickOverride clickOverride;
+  clickOverride.enabled = true;
+  if (createHit != nullptr) {
+    clickOverride.click = clickAt(createHit->rect.x, createHit->rect.y);
+  }
+
+  iggy3d::processProductWindowInputFrame(iggy3d::ProductWindowInputFrameContext{
+      frontend,
+      saves,
+      options,
+      settingsTab,
+      activeSession,
+      worldSetupDraft,
+      window,
+      settings,
+      inputFrame,
+      closeRequested,
+      nullptr,
+      &app,
+      &drawList,
+      {},
+      {},
+      0,
+      iggy3d::creative::CreativeViewportPickDepthMode::FixedZ,
+      clickOverride,
+  });
+
+  const iggy3d::creative::CreativeObject* created =
+      facade.findObject(window.creativeUiCommandCreateObjectId);
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  return expect(createHit != nullptr, "crate injected hit exists") &&
+         expect(window.creativeUiInputConsumed,
+                "crate injected row click consumed") &&
+         expect(window.creativeUiInputSemanticId ==
+                    "creative.row.create.create_crate",
+                "crate injected row semantic") &&
+         expect(window.creativeUiCommandAccepted,
+                "crate injected command accepted") &&
+         expect(window.creativeUiCommandChanged,
+                "crate injected command changed") &&
+         expect(window.creativeUiCommandKind == "create_object",
+                "crate injected command kind") &&
+         expect(window.creativeUiCommandCreateAccepted,
+                "crate injected create accepted") &&
+         expect(window.creativeUiCommandCreateChanged,
+                "crate injected create changed") &&
+         expect(window.creativeUiCommandCreateObjectKind == "Crate",
+                "crate injected object kind") &&
+         expect(facade.document().objectCount() == 1U,
+                "crate injected object count") &&
+         expect(facade.document().revision() == 1U,
+                "crate injected document revision") &&
+         expect(created != nullptr, "crate injected object exists") &&
+         expect(created != nullptr &&
+                    created->kind ==
+                        iggy3d::creative::CreativeObjectKind::Crate,
+                "crate injected object crate") &&
+         expect(window.creativeDocumentRevisionObserved,
+                "crate injected revision observed") &&
+         expect(window.creativeDocumentChangedThisFrame,
+                "crate injected document changed") &&
+         expect(window.creativeDocumentRevisionBeforeFrame == 0U,
+                "crate injected revision before") &&
+         expect(window.creativeDocumentRevisionAfterFrame == 1U,
+                "crate injected revision after") &&
+         expect(window.creativeBakedRoomAutoRefreshRequested,
+                "crate injected auto refresh requested") &&
+         expect(window.creativeBakedRoomAutoRefreshAccepted,
+                "crate injected auto refresh accepted") &&
+         expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+                "crate injected auto refresh did not clear") &&
+         expect(window.creativeBakedRoomAutoRefreshStatus ==
+                    "product_creative_baked_room_refreshed",
+                "crate injected auto refresh status") &&
+         expect(window.creativeBakedRoomAutoRefreshStaticMeshCount == 1U,
+                "crate injected auto refresh mesh count") &&
+         expect(window.creativeBakedRoomAutoRefreshAnchorCount == 0U,
+                "crate injected auto refresh anchor count") &&
+         expect(window.creativeBakedRoomAutoRefreshSpatialSurfaceCount == 2U,
+                "crate injected auto refresh surface count") &&
+         expect(window.creativeBakedRoomAutoRefreshCollisionReady,
+                "crate injected auto refresh collision ready") &&
+         expect(window.creativeBakedRoomAutoRefreshCollisionQuerySurfaceCount == 2U,
+                "crate injected auto refresh collision query count") &&
+         expect(!window.creativeBakedRoomStale,
+                "crate injected baked room fresh") &&
+         expect(window.creativeBakedRoomStaleStatus ==
+                    "creative_baked_room_fresh",
+                "crate injected stale status fresh") &&
+         expect(window.activeRoom.loaded,
+                "crate injected active room loaded") &&
+         expect(window.activeRoom.staticMeshCount == 1U,
+                "crate injected active room mesh count") &&
+         expect(window.activeRoom.spatialSurfaceCount == 2U,
+                "crate injected active room surface count") &&
+         expect(window.activeRoomCollision.ready,
+                "crate injected collision ready") &&
+         expect(window.activeRoomCollision.querySurfaceCount == 2U,
+                "crate injected collision query count") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_auto_refresh_requested",
+                            "true",
+                            "crate injected receipt auto requested") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_auto_refresh_accepted",
+                            "true",
+                            "crate injected receipt auto accepted") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_auto_refresh_status",
+                            "product_creative_baked_room_refreshed",
+                            "crate injected receipt auto status") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_stale",
+                            "false",
+                            "crate injected receipt fresh");
 }
 
 bool inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool() {
@@ -1440,6 +1647,7 @@ int main() {
                   inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() &&
                   inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() &&
                   inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() &&
+                  inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() &&
                   inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

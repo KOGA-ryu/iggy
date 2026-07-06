@@ -197,6 +197,17 @@ iggy3d::MouseClick clickAt(float x, float y) {
   return click;
 }
 
+bool selectFacadeObject(cr::Facade& facade, cr::CreativeObjectId objectId) {
+  static_cast<void>(facade.setActiveTool(cr::Tool::Select));
+  const auto receipt = facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   1.0,
+                   2.0,
+                   targetId(objectId)));
+  return receipt.selectionChanged ||
+         facade.selectionState().selectedTarget.value == targetId(objectId);
+}
+
 const iggy3d::UiHitRegion* findHitRegion(
     const iggy3d::ProductUiDrawList& drawList,
     std::string_view semanticId) {
@@ -215,12 +226,13 @@ iggy3d::ProductUiDrawList creativeUiDrawListForFacade(cr::Facade& facade) {
   return iggy3d::buildProductCreativeUiDrawList(request);
 }
 
-bool clickCreativeRebuildRoomThroughInputFrame(
+bool clickCreativeUiRowThroughInputFrame(
     const iggy3d::ProductAppOptions& options,
     iggy3d::FrontendState& frontend,
     std::optional<iggy3d::Session>& activeSession,
     iggy3d::ProductAppWindowState& window,
-    cr::CreativeAppState& app) {
+    cr::CreativeAppState& app,
+    std::string_view semanticId) {
   iggy3d::ProductSaveBridgeResult saves;
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
   iggy3d::WorldSetupDraft worldSetupDraft;
@@ -230,15 +242,14 @@ bool clickCreativeRebuildRoomThroughInputFrame(
 
   const iggy3d::ProductUiDrawList drawList =
       creativeUiDrawListForFacade(app.facade);
-  const iggy3d::UiHitRegion* rebuildHit =
-      findHitRegion(drawList, "creative.row.tools.rebuild_room");
-  if (rebuildHit == nullptr) {
+  const iggy3d::UiHitRegion* hit = findHitRegion(drawList, semanticId);
+  if (hit == nullptr) {
     return false;
   }
 
   iggy3d::ProductWindowInputClickOverride clickOverride;
   clickOverride.enabled = true;
-  clickOverride.click = clickAt(rebuildHit->rect.x, rebuildHit->rect.y);
+  clickOverride.click = clickAt(hit->rect.x, hit->rect.y);
 
   iggy3d::processProductWindowInputFrame(iggy3d::ProductWindowInputFrameContext{
       frontend,
@@ -261,6 +272,69 @@ bool clickCreativeRebuildRoomThroughInputFrame(
       clickOverride,
   });
   return true;
+}
+
+bool clickCreativeRebuildRoomThroughInputFrame(
+    const iggy3d::ProductAppOptions& options,
+    iggy3d::FrontendState& frontend,
+    std::optional<iggy3d::Session>& activeSession,
+    iggy3d::ProductAppWindowState& window,
+    cr::CreativeAppState& app) {
+  return clickCreativeUiRowThroughInputFrame(options,
+                                            frontend,
+                                            activeSession,
+                                            window,
+                                            app,
+                                            "creative.row.tools.rebuild_room");
+}
+
+void runCreativePointerLifecycleFrame(
+    const iggy3d::ProductAppOptions& options,
+    iggy3d::FrontendState& frontend,
+    std::optional<iggy3d::Session>& activeSession,
+    iggy3d::ProductAppWindowState& window,
+    cr::CreativeAppState& app,
+    iggy3d::ProductWindowInputFrameState& inputFrame,
+    bool primaryButtonDown,
+    float x,
+    float y) {
+  iggy3d::ProductSaveBridgeResult saves;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
+  iggy3d::WorldSetupDraft worldSetupDraft;
+  iggy3d::FrontendSettings settings;
+  bool closeRequested = false;
+
+  iggy3d::ProductWindowInputClickOverride clickOverride;
+  clickOverride.pointerLifecycle.enabled = true;
+  clickOverride.pointerLifecycle.primaryButtonDown = primaryButtonDown;
+  clickOverride.pointerLifecycle.x = x;
+  clickOverride.pointerLifecycle.y = y;
+
+  iggy3d::creative::CreativeSpatialProjectionRequest projectionRequest;
+  projectionRequest.gridSize = {10, 10, 4};
+  projectionRequest.cellSize = 1.0;
+  projectionRequest.clampToGrid = true;
+
+  iggy3d::processProductWindowInputFrame(iggy3d::ProductWindowInputFrameContext{
+      frontend,
+      saves,
+      options,
+      settingsTab,
+      activeSession,
+      worldSetupDraft,
+      window,
+      settings,
+      inputFrame,
+      closeRequested,
+      nullptr,
+      &app,
+      nullptr,
+      {0.0F, 0.0F, 100.0F, 100.0F},
+      projectionRequest,
+      0,
+      cr::CreativeViewportPickDepthMode::FixedZ,
+      clickOverride,
+  });
 }
 
 iggy3d::ProductMenuActionResult confirmPauseAction(
@@ -2067,6 +2141,273 @@ bool manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() {
                 "manual empty rebuild dirty flags preserved");
 }
 
+bool autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("auto_visibility_baked_room");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Auto Visibility Baked Room",
+                                        "2026-07-05T12:30:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  const cr::CreativeDocumentCreateReceipt floor =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Floor,
+                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const bool selected = selectFacadeObject(facade, floor.objectId);
+  const cr::CreativeObjectDirtyFlags dirtyAfterCreate =
+      facade.document().dirtyFlags();
+  window.activeRoom = sentinelActiveRoom();
+  window.activeRoomCollision = sentinelActiveRoomCollision();
+  window.creativeBakedRoomStale = true;
+  window.creativeBakedRoomStaleDocumentId = facade.document().id();
+  window.creativeBakedRoomStaleRevision = facade.document().revision();
+  window.creativeBakedRoomStaleStatus =
+      "creative_baked_room_stale_document_changed";
+  window.creativeBakedRoomStaleReasonCode =
+      "creative_baked_room_stale_document_changed";
+
+  bool ok = expect(launched.accepted, "auto visibility launch accepted") &&
+            expect(floor.accepted, "auto visibility floor created") &&
+            expect(selected, "auto visibility floor selected") &&
+            expect(dirtyAfterCreate != 0U,
+                   "auto visibility dirty after create");
+
+  const bool hideClicked = clickCreativeUiRowThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app,
+      "creative.row.selection.inspector_visible");
+  const cr::CreativeObject* hidden = facade.findObject(floor.objectId);
+  const cr::CreativeObjectDirtyFlags dirtyAfterHide =
+      facade.document().dirtyFlags();
+  ok &= expect(hideClicked, "auto visibility hide clicked") &&
+        expect(hidden != nullptr && !hidden->visible,
+               "auto visibility floor hidden") &&
+        expect(window.creativeUiCommandKind ==
+                   "toggle_selected_object_visibility",
+               "auto visibility command kind hide") &&
+        expect(window.creativeDocumentChangedThisFrame,
+               "auto visibility hide document changed") &&
+        expect(window.creativeBakedRoomAutoRefreshRequested,
+               "auto visibility hide auto requested") &&
+        expect(window.creativeBakedRoomAutoRefreshAccepted,
+               "auto visibility hide auto accepted") &&
+        expect(window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+               "auto visibility hide cleared") &&
+        expect(window.creativeBakedRoomAutoRefreshStatus ==
+                   "product_creative_baked_room_cleared_no_renderable_objects",
+               "auto visibility hide clear status") &&
+        expect(!window.activeRoom.loaded,
+               "auto visibility hide active room unloaded") &&
+        expect(window.activeRoom.status ==
+                   "product_creative_baked_room_cleared_no_renderable_objects",
+               "auto visibility hide active room status") &&
+        expect(!window.activeRoomCollision.ready,
+               "auto visibility hide collision unavailable") &&
+        expect(!window.creativeBakedRoomStale,
+               "auto visibility hide stale cleared") &&
+        expect(window.creativeBakedRoomStaleStatus ==
+                   "creative_baked_room_fresh",
+               "auto visibility hide stale fresh") &&
+        expect(facade.document().dirtyFlags() == dirtyAfterHide,
+               "auto visibility hide dirty flags preserved");
+
+  const bool showClicked = clickCreativeUiRowThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app,
+      "creative.row.selection.inspector_visible");
+  const cr::CreativeObject* shown = facade.findObject(floor.objectId);
+  ok &= expect(showClicked, "auto visibility show clicked") &&
+        expect(shown != nullptr && shown->visible,
+               "auto visibility floor visible again") &&
+        expect(window.creativeDocumentChangedThisFrame,
+               "auto visibility show document changed") &&
+        expect(window.creativeBakedRoomAutoRefreshRequested,
+               "auto visibility show auto requested") &&
+        expect(window.creativeBakedRoomAutoRefreshAccepted,
+               "auto visibility show auto accepted") &&
+        expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+               "auto visibility show not cleared") &&
+        expect(window.creativeBakedRoomAutoRefreshStatus ==
+                   "product_creative_baked_room_refreshed",
+               "auto visibility show refresh status") &&
+        expect(window.creativeBakedRoomAutoRefreshStaticMeshCount == 1U,
+               "auto visibility show mesh count") &&
+        expect(window.creativeBakedRoomAutoRefreshSpatialSurfaceCount == 1U,
+               "auto visibility show surface count") &&
+        expect(window.creativeBakedRoomAutoRefreshCollisionReady,
+               "auto visibility show collision ready") &&
+        expect(window.activeRoom.loaded,
+               "auto visibility show active room loaded") &&
+        expect(window.activeRoom.staticMeshCount == 1U,
+               "auto visibility show active mesh count") &&
+        expect(window.activeRoom.spatialSurfaceCount == 1U,
+               "auto visibility show active surface count") &&
+        expect(window.activeRoomCollision.ready,
+               "auto visibility show active collision ready") &&
+        expect(window.activeRoomCollision.querySurfaceCount == 1U,
+               "auto visibility show collision query count") &&
+        expect(!window.creativeBakedRoomStale,
+               "auto visibility show stale cleared") &&
+        expect(window.activeCreativeSaveId == launched.saveId,
+               "auto visibility active creative save preserved") &&
+        expect(window.activeProductSaveId == "none",
+               "auto visibility active product save unchanged") &&
+        expect(facade.document().dirtyFlags() != 0U,
+               "auto visibility dirty flags not drained");
+
+  return ok;
+}
+
+bool autoRefreshMoveCommitAndIgnoresNoChangeReleaseThroughInputFrame() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("auto_move_baked_room");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  iggy3d::ProductWindowInputFrameState inputFrame;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Auto Move Baked Room",
+                                        "2026-07-05T12:40:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  const cr::CreativeDocumentCreateReceipt floor =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Floor,
+                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const iggy3d::ProductCreativeBakedActiveRoomRefreshResult initialRefresh =
+      iggy3d::refreshProductCreativeBakedActiveRoom({},
+                                                    activeSession,
+                                                    window,
+                                                    app);
+  const float initialCenterX =
+      window.activeRoom.room.staticMeshes.empty()
+          ? 0.0F
+          : window.activeRoom.room.staticMeshes.front().positionMeters.x;
+  const float initialCenterY =
+      window.activeRoom.room.staticMeshes.empty()
+          ? 0.0F
+          : window.activeRoom.room.staticMeshes.front().positionMeters.y;
+  const std::uint64_t revisionBeforeMove = facade.document().revision();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   0.0,
+                   0.0,
+                   targetId(floor.objectId))));
+  inputFrame.creativePointerLifecycle.primaryButtonHeld = true;
+  inputFrame.creativePointerLifecycle.lastPointerX = 0.0F;
+  inputFrame.creativePointerLifecycle.lastPointerY = 0.0F;
+
+  runCreativePointerLifecycleFrame(options,
+                                   frontend,
+                                   activeSession,
+                                   window,
+                                   app,
+                                   inputFrame,
+                                   false,
+                                   60.0F,
+                                   60.0F);
+
+  const float movedCenterX =
+      window.activeRoom.room.staticMeshes.empty()
+          ? 0.0F
+          : window.activeRoom.room.staticMeshes.front().positionMeters.x;
+  const float movedCenterY =
+      window.activeRoom.room.staticMeshes.empty()
+          ? 0.0F
+          : window.activeRoom.room.staticMeshes.front().positionMeters.y;
+
+  bool ok = expect(launched.accepted, "auto move launch accepted") &&
+            expect(floor.accepted, "auto move floor created") &&
+            expect(initialRefresh.accepted, "auto move initial refresh") &&
+            expect(window.activeRoom.loaded,
+                   "auto move active room loaded after move") &&
+            expect(facade.document().revision() == revisionBeforeMove + 1U,
+                   "auto move revision advanced") &&
+            expect(window.creativeDocumentChangedThisFrame,
+                   "auto move document changed") &&
+            expect(window.creativeBakedRoomAutoRefreshRequested,
+                   "auto move auto requested") &&
+            expect(window.creativeBakedRoomAutoRefreshAccepted,
+                   "auto move auto accepted") &&
+            expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+                   "auto move not cleared") &&
+            expect(window.creativeBakedRoomAutoRefreshStatus ==
+                       "product_creative_baked_room_refreshed",
+                   "auto move refresh status") &&
+            expect(window.activeRoom.staticMeshCount == 1U,
+                   "auto move mesh count") &&
+            expect(window.activeRoomCollision.ready,
+                   "auto move collision ready") &&
+            expect(window.activeRoomCollision.querySurfaceCount == 1U,
+                   "auto move collision query count") &&
+            expect(movedCenterX != initialCenterX || movedCenterY != initialCenterY,
+                   "auto move baked mesh center changed") &&
+            expect(!window.creativeBakedRoomStale,
+                   "auto move stale cleared");
+
+  const std::uint64_t revisionBeforeNoChange = facade.document().revision();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   6.0,
+                   6.0,
+                   targetId(floor.objectId))));
+  inputFrame.creativePointerLifecycle.primaryButtonHeld = true;
+  inputFrame.creativePointerLifecycle.lastPointerX = 60.0F;
+  inputFrame.creativePointerLifecycle.lastPointerY = 60.0F;
+
+  runCreativePointerLifecycleFrame(options,
+                                   frontend,
+                                   activeSession,
+                                   window,
+                                   app,
+                                   inputFrame,
+                                   false,
+                                   60.0F,
+                                   60.0F);
+
+  ok &= expect(facade.document().revision() == revisionBeforeNoChange,
+               "auto move no-change revision unchanged") &&
+        expect(window.creativeDocumentRevisionObserved,
+               "auto move no-change revision observed") &&
+        expect(!window.creativeDocumentChangedThisFrame,
+               "auto move no-change not changed") &&
+        expect(!window.creativeBakedRoomAutoRefreshRequested,
+               "auto move no-change no auto refresh") &&
+        expect(window.activeRoom.loaded,
+               "auto move no-change active room remains loaded") &&
+        expect(!window.creativeBakedRoomStale,
+               "auto move no-change remains fresh") &&
+        expect(window.activeCreativeSaveId == launched.saveId,
+               "auto move active creative save preserved") &&
+        expect(window.activeProductSaveId == "none",
+               "auto move active product save unchanged") &&
+        expect(facade.document().dirtyFlags() != 0U,
+               "auto move dirty flags not drained");
+
+  return ok;
+}
+
 bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
   {
     const iggy3d::ProductAppOptions options = testOptions("baked_room_inactive");
@@ -2355,6 +2696,8 @@ int main() {
       refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() &&
       manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() &&
       manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() &&
+      autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() &&
+      autoRefreshMoveCommitAndIgnoresNoChangeReleaseThroughInputFrame() &&
       refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() &&
       creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() &&
       creativeLaunchFramesCameraOnOrigin() &&

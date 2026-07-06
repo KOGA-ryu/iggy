@@ -41,6 +41,21 @@ void setPhysicsMovementPlannerProof(ProductAppWindowState& window,
   window.physicsMovementPlannerReasonCode = window.physicsMovementPlannerStatus;
 }
 
+void resetProductCreativeBakedRoomAutoRefresh(ProductAppWindowState& window) {
+  window.creativeBakedRoomAutoRefreshRequested = false;
+  window.creativeBakedRoomAutoRefreshAccepted = false;
+  window.creativeBakedRoomAutoRefreshClearedActiveRoom = false;
+  window.creativeBakedRoomAutoRefreshStatus =
+      "product_creative_baked_room_not_requested";
+  window.creativeBakedRoomAutoRefreshReasonCode =
+      "product_creative_baked_room_not_requested";
+  window.creativeBakedRoomAutoRefreshStaticMeshCount = 0;
+  window.creativeBakedRoomAutoRefreshAnchorCount = 0;
+  window.creativeBakedRoomAutoRefreshSpatialSurfaceCount = 0;
+  window.creativeBakedRoomAutoRefreshCollisionReady = false;
+  window.creativeBakedRoomAutoRefreshCollisionQuerySurfaceCount = 0;
+}
+
 std::string_view productUiThemeReceiptName(ProductUiThemeId theme) noexcept {
   switch (theme) {
     case ProductUiThemeId::System:
@@ -319,6 +334,7 @@ void recordProductCreativeDocumentRevisionFrame(
     std::uint64_t revisionBefore,
     std::uint64_t documentIdAfter,
     std::uint64_t revisionAfter) {
+  resetProductCreativeBakedRoomAutoRefresh(window);
   window.creativeDocumentRevisionObserved = observed;
   window.creativeDocumentChangedThisFrame = false;
   window.creativeDocumentRevisionDocumentId = observed ? documentIdAfter : 0U;
@@ -2231,6 +2247,30 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "creative_ui_command_baked_room_collision_query_surface_count",
                      window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount);
+  appendReceiptField(receipt, "creative_baked_room_auto_refresh_requested",
+                     window.creativeBakedRoomAutoRefreshRequested);
+  appendReceiptField(receipt, "creative_baked_room_auto_refresh_accepted",
+                     window.creativeBakedRoomAutoRefreshAccepted);
+  appendReceiptField(receipt,
+                     "creative_baked_room_auto_refresh_cleared_active_room",
+                     window.creativeBakedRoomAutoRefreshClearedActiveRoom);
+  appendReceiptField(receipt, "creative_baked_room_auto_refresh_status",
+                     window.creativeBakedRoomAutoRefreshStatus);
+  appendReceiptField(receipt, "creative_baked_room_auto_refresh_reason_code",
+                     window.creativeBakedRoomAutoRefreshReasonCode);
+  appendReceiptField(receipt, "creative_baked_room_auto_refresh_static_mesh_count",
+                     window.creativeBakedRoomAutoRefreshStaticMeshCount);
+  appendReceiptField(receipt, "creative_baked_room_auto_refresh_anchor_count",
+                     window.creativeBakedRoomAutoRefreshAnchorCount);
+  appendReceiptField(receipt,
+                     "creative_baked_room_auto_refresh_spatial_surface_count",
+                     window.creativeBakedRoomAutoRefreshSpatialSurfaceCount);
+  appendReceiptField(receipt, "creative_baked_room_auto_refresh_collision_ready",
+                     window.creativeBakedRoomAutoRefreshCollisionReady);
+  appendReceiptField(
+      receipt,
+      "creative_baked_room_auto_refresh_collision_query_surface_count",
+      window.creativeBakedRoomAutoRefreshCollisionQuerySurfaceCount);
   appendReceiptField(receipt, "creative_document_revision_observed",
                      window.creativeDocumentRevisionObserved);
   appendReceiptField(receipt, "creative_document_changed_this_frame",

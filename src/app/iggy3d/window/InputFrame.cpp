@@ -103,6 +103,24 @@ void recordProductCreativeUiBakedRoomRefresh(
       refresh.collisionQuerySurfaceCount;
 }
 
+void recordProductCreativeBakedRoomAutoRefresh(
+    ProductAppWindowState& window,
+    const ProductCreativeBakedActiveRoomRefreshResult& refresh) {
+  window.creativeBakedRoomAutoRefreshRequested = true;
+  window.creativeBakedRoomAutoRefreshAccepted = refresh.accepted;
+  window.creativeBakedRoomAutoRefreshClearedActiveRoom =
+      refresh.clearedActiveRoom;
+  window.creativeBakedRoomAutoRefreshStatus = refresh.status;
+  window.creativeBakedRoomAutoRefreshReasonCode = refresh.reasonCode;
+  window.creativeBakedRoomAutoRefreshStaticMeshCount = refresh.staticMeshCount;
+  window.creativeBakedRoomAutoRefreshAnchorCount = refresh.anchorCount;
+  window.creativeBakedRoomAutoRefreshSpatialSurfaceCount =
+      refresh.spatialSurfaceCount;
+  window.creativeBakedRoomAutoRefreshCollisionReady = refresh.collisionReady;
+  window.creativeBakedRoomAutoRefreshCollisionQuerySurfaceCount =
+      refresh.collisionQuerySurfaceCount;
+}
+
 ProductCreativeDocumentRevisionSnapshot
 captureProductCreativeDocumentRevision(
     const creative::CreativeAppState* creativeApp) noexcept {
@@ -1405,6 +1423,20 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       creativeRevisionBefore.revision,
       creativeRevisionAfter.documentId,
       creativeRevisionAfter.revision);
+  const bool creativeDocumentChanged =
+      creativeRevisionBefore.observed && creativeRevisionAfter.observed &&
+      (creativeRevisionBefore.documentId != creativeRevisionAfter.documentId ||
+       creativeRevisionBefore.revision != creativeRevisionAfter.revision);
+  if (creativeDocumentChanged && context.creativeApp != nullptr) {
+    ProductCreativeBakedActiveRoomRefreshRequest refreshRequest;
+    refreshRequest.clearOnNoRenderable = true;
+    const ProductCreativeBakedActiveRoomRefreshResult refresh =
+        refreshProductCreativeBakedActiveRoom(refreshRequest,
+                                             context.activeSession,
+                                             context.window,
+                                             *context.creativeApp);
+    recordProductCreativeBakedRoomAutoRefresh(context.window, refresh);
+  }
   // If the creative-document dispatch path did not run this frame (frontend
   // menu open over the world, pause, no session), drop any held-state so a
   // gesture interrupted mid-drag cannot fire a phantom Release on resume. Also
