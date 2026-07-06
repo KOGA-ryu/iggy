@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <string>
+#include <utility>
 
 namespace iggy3d::creative {
 namespace {
@@ -370,21 +371,37 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   return surface;
 }
 
+void appendSpatialSurfaceSource(
+    std::vector<CreativeRoomBakeSpatialSurfaceSource>& sources,
+    CreativeObjectId objectId,
+    const RoomSpatialSurface& surface) {
+  sources.push_back({objectId, surface.id, surface.sourceStaticMeshId});
+}
+
 void appendSpatialSurfaces(RoomAsset& room,
+                           std::vector<CreativeRoomBakeSpatialSurfaceSource>& sources,
                            const CreativeObject& object,
                            const CreativeObjectDescriptor& descriptor,
                            BakeBounds bounds,
                            BakedRoomRole role) {
   if (role == BakedRoomRole::Floor) {
-    room.spatialSurfaces.push_back(walkableSurfaceForObject(object, bounds));
+    RoomSpatialSurface surface = walkableSurfaceForObject(object, bounds);
+    appendSpatialSurfaceSource(sources, object.id, surface);
+    room.spatialSurfaces.push_back(std::move(surface));
     return;
   }
 
   if (descriptor.occupancyKind == CreativeSpatialOccupancyKind::Structural ||
       descriptor.occupancyKind == CreativeSpatialOccupancyKind::Collision) {
-    room.spatialSurfaces.push_back(actorBlockerSurfaceForObject(object, bounds));
-    room.spatialSurfaces.push_back(
-        projectileBlockerSurfaceForObject(object, bounds));
+    RoomSpatialSurface actorSurface =
+        actorBlockerSurfaceForObject(object, bounds);
+    appendSpatialSurfaceSource(sources, object.id, actorSurface);
+    room.spatialSurfaces.push_back(std::move(actorSurface));
+
+    RoomSpatialSurface projectileSurface =
+        projectileBlockerSurfaceForObject(object, bounds);
+    appendSpatialSurfaceSource(sources, object.id, projectileSurface);
+    room.spatialSurfaces.push_back(std::move(projectileSurface));
   }
 }
 
@@ -468,7 +485,9 @@ CreativeRoomBakeResult buildRoomAssetFromCreativeDocument(
         continue;
       }
 
-      result.room.anchors.push_back(anchorForObject(object, descriptor));
+      RoomAnchorAsset anchor = anchorForObject(object, descriptor);
+      result.anchorSources.push_back({object.id, anchor.id});
+      result.room.anchors.push_back(std::move(anchor));
       continue;
     }
 
@@ -494,8 +513,15 @@ CreativeRoomBakeResult buildRoomAssetFromCreativeDocument(
       continue;
     }
 
-    result.room.staticMeshes.push_back(staticMeshForObject(object, bounds, role));
-    appendSpatialSurfaces(result.room, object, descriptor, bounds, role);
+    RoomStaticMeshAsset mesh = staticMeshForObject(object, bounds, role);
+    result.staticMeshSources.push_back({object.id, mesh.id});
+    result.room.staticMeshes.push_back(std::move(mesh));
+    appendSpatialSurfaces(result.room,
+                          result.spatialSurfaceSources,
+                          object,
+                          descriptor,
+                          bounds,
+                          role);
   }
 
   result.receipt.bakedStaticMeshCount = result.room.staticMeshes.size();

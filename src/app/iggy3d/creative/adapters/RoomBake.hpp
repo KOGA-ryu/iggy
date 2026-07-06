@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace iggy3d::creative {
 
@@ -44,9 +45,28 @@ struct CreativeRoomBakeReceipt {
   std::string message = "creative_room_bake_not_requested";
 };
 
+struct CreativeRoomBakeStaticMeshSource {
+  CreativeObjectId objectId{kInvalidObjectId};
+  std::string staticMeshId;
+};
+
+struct CreativeRoomBakeAnchorSource {
+  CreativeObjectId objectId{kInvalidObjectId};
+  std::string anchorId;
+};
+
+struct CreativeRoomBakeSpatialSurfaceSource {
+  CreativeObjectId objectId{kInvalidObjectId};
+  std::string surfaceId;
+  std::string sourceStaticMeshId;
+};
+
 struct CreativeRoomBakeResult {
   RoomAsset room;
   CreativeRoomBakeReceipt receipt;
+  std::vector<CreativeRoomBakeStaticMeshSource> staticMeshSources;
+  std::vector<CreativeRoomBakeAnchorSource> anchorSources;
+  std::vector<CreativeRoomBakeSpatialSurfaceSource> spatialSurfaceSources;
 };
 
 [[nodiscard]] std::string_view toString(CreativeRoomBakeStatus status) noexcept;

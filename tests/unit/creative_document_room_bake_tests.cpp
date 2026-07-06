@@ -164,6 +164,10 @@ bool floorWallCrateBakeToRoomAsset() {
   const cr::CreativeRoomBakeResult result = bake(document);
   const std::vector<iggy3d::RoomStaticMeshAsset>& meshes =
       result.room.staticMeshes;
+  const std::vector<cr::CreativeRoomBakeStaticMeshSource>& meshSources =
+      result.staticMeshSources;
+  const std::vector<cr::CreativeRoomBakeSpatialSurfaceSource>& surfaceSources =
+      result.spatialSurfaceSources;
 
   return expect(result.receipt.accepted, "bake accepted") &&
          expect(result.receipt.status == cr::CreativeRoomBakeStatus::Baked,
@@ -180,11 +184,17 @@ bool floorWallCrateBakeToRoomAsset() {
          expect(result.receipt.bakedSpatialSurfaceCount == 5U,
                 "bake surface count") &&
          expect(meshes.size() == 3U, "mesh vector count") &&
+         expect(meshSources.size() == 3U, "mesh source count") &&
          expect(result.room.anchors.empty(), "no anchors for mesh bake") &&
+         expect(result.anchorSources.empty(), "no anchor sources") &&
+         expect(surfaceSources.size() == 5U, "surface source count") &&
          expect(countRole(meshes, "floor") == 1U, "floor role count") &&
          expect(countRole(meshes, "wall") == 1U, "wall role count") &&
          expect(countRole(meshes, "prop") == 1U, "prop role count") &&
          expect(meshes[0].id == "creative_object_1", "floor id") &&
+         expect(meshSources[0].objectId == 1U, "floor source object") &&
+         expect(meshSources[0].staticMeshId == meshes[0].id,
+                "floor source mesh id") &&
          expect(meshes[0].meshId == "creative_floor_rect", "floor mesh id") &&
          expect(meshes[0].materialId == "creative_floor",
                 "floor material") &&
@@ -193,6 +203,9 @@ bool floorWallCrateBakeToRoomAsset() {
          expect(sameVec3(meshes[0].sizeMeters, {4.0F, 0.25F, 4.0F}),
                 "floor size") &&
          expect(meshes[1].id == "creative_object_2", "wall id") &&
+         expect(meshSources[1].objectId == 2U, "wall source object") &&
+         expect(meshSources[1].staticMeshId == meshes[1].id,
+                "wall source mesh id") &&
          expect(meshes[1].meshId == "creative_wall_segment", "wall mesh id") &&
          expect(meshes[1].materialId == "creative_wall", "wall material") &&
          expect(meshes[1].hasWallSegment, "wall segment present") &&
@@ -212,12 +225,48 @@ bool floorWallCrateBakeToRoomAsset() {
          expect(meshes[1].wallThicknessMeters == 0.25F,
                 "wall thickness") &&
          expect(meshes[2].id == "creative_object_3", "prop id") &&
+         expect(meshSources[2].objectId == 3U, "prop source object") &&
+         expect(meshSources[2].staticMeshId == meshes[2].id,
+                "prop source mesh id") &&
          expect(meshes[2].meshId == "creative_box_proxy", "prop mesh id") &&
          expect(meshes[2].materialId == "creative_prop", "prop material") &&
          expect(sameVec3(meshes[2].positionMeters, {1.5F, 0.5F, 5.5F}),
                 "prop center") &&
          expect(sameVec3(meshes[2].sizeMeters, {1.0F, 1.0F, 1.0F}),
-                "prop size");
+                "prop size") &&
+         expect(surfaceSources[0].objectId == 1U, "floor surface object") &&
+         expect(surfaceSources[0].surfaceId == "creative_object_1_walkable",
+                "floor surface id") &&
+         expect(surfaceSources[0].sourceStaticMeshId == "creative_object_1",
+                "floor surface mesh id") &&
+         expect(surfaceSources[1].objectId == 2U,
+                "wall actor surface object") &&
+         expect(surfaceSources[1].surfaceId ==
+                    "creative_object_2_actor_blocker",
+                "wall actor surface id") &&
+         expect(surfaceSources[1].sourceStaticMeshId == "creative_object_2",
+                "wall actor surface mesh id") &&
+         expect(surfaceSources[2].objectId == 2U,
+                "wall projectile surface object") &&
+         expect(surfaceSources[2].surfaceId ==
+                    "creative_object_2_projectile_blocker",
+                "wall projectile surface id") &&
+         expect(surfaceSources[2].sourceStaticMeshId == "creative_object_2",
+                "wall projectile surface mesh id") &&
+         expect(surfaceSources[3].objectId == 3U,
+                "prop actor surface object") &&
+         expect(surfaceSources[3].surfaceId ==
+                    "creative_object_3_actor_blocker",
+                "prop actor surface id") &&
+         expect(surfaceSources[3].sourceStaticMeshId == "creative_object_3",
+                "prop actor surface mesh id") &&
+         expect(surfaceSources[4].objectId == 3U,
+                "prop projectile surface object") &&
+         expect(surfaceSources[4].surfaceId ==
+                    "creative_object_3_projectile_blocker",
+                "prop projectile surface id") &&
+         expect(surfaceSources[4].sourceStaticMeshId == "creative_object_3",
+                "prop projectile surface mesh id");
 }
 
 bool boundsBackedLineBakesAsPropGeometry() {
@@ -237,6 +286,15 @@ bool boundsBackedLineBakesAsPropGeometry() {
       result.room.spatialSurfaces.size() < 2U
           ? nullptr
           : &result.room.spatialSurfaces[1];
+  const cr::CreativeRoomBakeStaticMeshSource* meshSource =
+      result.staticMeshSources.empty() ? nullptr : &result.staticMeshSources[0];
+  const cr::CreativeRoomBakeSpatialSurfaceSource* actorSource =
+      result.spatialSurfaceSources.empty() ? nullptr
+                                           : &result.spatialSurfaceSources[0];
+  const cr::CreativeRoomBakeSpatialSurfaceSource* projectileSource =
+      result.spatialSurfaceSources.size() < 2U
+          ? nullptr
+          : &result.spatialSurfaceSources[1];
 
   return expect(created.accepted, "line create accepted") &&
          expect(result.receipt.accepted, "line bake accepted") &&
@@ -253,9 +311,18 @@ bool boundsBackedLineBakesAsPropGeometry() {
                 "line anchor count") &&
          expect(result.room.staticMeshes.size() == 1U,
                 "line mesh vector count") &&
+         expect(result.staticMeshSources.size() == 1U,
+                "line mesh source count") &&
+         expect(result.spatialSurfaceSources.size() == 2U,
+                "line surface source count") &&
          expect(result.room.anchors.empty(), "line no anchors") &&
+         expect(result.anchorSources.empty(), "line no anchor sources") &&
          expect(mesh != nullptr, "line mesh exists") &&
          expect(mesh->id == "creative_object_1", "line mesh id") &&
+         expect(meshSource != nullptr, "line mesh source exists") &&
+         expect(meshSource->objectId == 1U, "line mesh source object") &&
+         expect(meshSource->staticMeshId == mesh->id,
+                "line mesh source id") &&
          expect(mesh->role == "prop", "line mesh role") &&
          expect(mesh->meshId == "creative_box_proxy", "line mesh id stable") &&
          expect(mesh->materialId == "creative_prop", "line material stable") &&
@@ -264,8 +331,15 @@ bool boundsBackedLineBakesAsPropGeometry() {
          expect(sameVec3(mesh->sizeMeters, {4.0F, 0.35F, 0.35F}),
                 "line size") &&
          expect(actorSurface != nullptr, "line actor surface exists") &&
+         expect(actorSource != nullptr, "line actor source exists") &&
          expect(actorSurface->sourceStaticMeshId == "creative_object_1",
                 "line actor surface source") &&
+         expect(actorSource->objectId == 1U, "line actor source object") &&
+         expect(actorSource->surfaceId == actorSurface->id,
+                "line actor source surface id") &&
+         expect(actorSource->sourceStaticMeshId ==
+                    actorSurface->sourceStaticMeshId,
+                "line actor source mesh id") &&
          expect(actorSurface->role == iggy3d::RoomSpatialSurfaceRole::Blocker,
                 "line actor surface role") &&
          expect(actorSurface->blocksActor, "line actor blocks actor") &&
@@ -273,8 +347,17 @@ bool boundsBackedLineBakesAsPropGeometry() {
                 "line actor does not block projectile") &&
          expect(projectileSurface != nullptr,
                 "line projectile surface exists") &&
+         expect(projectileSource != nullptr,
+                "line projectile source exists") &&
          expect(projectileSurface->sourceStaticMeshId == "creative_object_1",
                 "line projectile surface source") &&
+         expect(projectileSource->objectId == 1U,
+                "line projectile source object") &&
+         expect(projectileSource->surfaceId == projectileSurface->id,
+                "line projectile source surface id") &&
+         expect(projectileSource->sourceStaticMeshId ==
+                    projectileSurface->sourceStaticMeshId,
+                "line projectile source mesh id") &&
          expect(projectileSurface->role ==
                     iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker,
                 "line projectile surface role") &&
@@ -308,6 +391,12 @@ bool endpointLineDescriptorStaysOutOfBake() {
          expect(result.receipt.bakedAnchorCount == 0U,
                 "endpoint line anchor count") &&
          expect(result.room.staticMeshes.empty(), "endpoint line no meshes") &&
+         expect(result.staticMeshSources.empty(),
+                "endpoint line no mesh sources") &&
+         expect(result.anchorSources.empty(),
+                "endpoint line no anchor sources") &&
+         expect(result.spatialSurfaceSources.empty(),
+                "endpoint line no surface sources") &&
          expect(result.room.anchors.empty(), "endpoint line no anchors");
 }
 
@@ -320,6 +409,8 @@ bool pointObjectBakesToAnchorOnly() {
 
   const iggy3d::RoomAnchorAsset* anchor =
       result.room.anchors.empty() ? nullptr : &result.room.anchors.front();
+  const cr::CreativeRoomBakeAnchorSource* anchorSource =
+      result.anchorSources.empty() ? nullptr : &result.anchorSources.front();
   return expect(created.accepted, "point create accepted") &&
          expect(result.receipt.accepted, "point anchor bake accepted") &&
          expect(result.receipt.status == cr::CreativeRoomBakeStatus::Baked,
@@ -334,10 +425,18 @@ bool pointObjectBakesToAnchorOnly() {
          expect(result.receipt.bakedSpatialSurfaceCount == 0U,
                 "point no surface count") &&
          expect(result.room.staticMeshes.empty(), "point no meshes") &&
+         expect(result.staticMeshSources.empty(), "point no mesh sources") &&
          expect(result.room.spatialSurfaces.empty(), "point no surfaces") &&
+         expect(result.spatialSurfaceSources.empty(),
+                "point no surface sources") &&
          expect(result.room.anchors.size() == 1U, "point anchor vector count") &&
+         expect(result.anchorSources.size() == 1U,
+                "point anchor source count") &&
          expect(anchor != nullptr, "point anchor exists") &&
+         expect(anchorSource != nullptr, "point anchor source exists") &&
          expect(anchor->id == "creative_object_1_anchor", "point anchor id") &&
+         expect(anchorSource->objectId == 1U, "point source object") &&
+         expect(anchorSource->anchorId == anchor->id, "point source anchor id") &&
          expect(anchor->kind == "light", "point anchor role") &&
          expect(anchor->runtimeStableName == "creative_object_1",
                 "point anchor stable name") &&
@@ -361,6 +460,8 @@ bool hiddenPointAnchorsAreSkippedUnlessIncluded() {
          expect(skipped.receipt.bakedAnchorCount == 0U,
                 "hidden point skipped anchor count") &&
          expect(skipped.room.anchors.empty(), "hidden point no anchors") &&
+         expect(skipped.anchorSources.empty(),
+                "hidden point no anchor sources") &&
          expect(included.receipt.accepted, "hidden point included accepted") &&
          expect(included.receipt.skippedHiddenCount == 0U,
                 "hidden point included skipped count") &&
@@ -368,6 +469,8 @@ bool hiddenPointAnchorsAreSkippedUnlessIncluded() {
                 "hidden point included anchor count") &&
          expect(included.room.anchors.size() == 1U,
                 "hidden point included anchor vector count") &&
+         expect(included.anchorSources.size() == 1U,
+                "hidden point included source count") &&
          expect(included.room.anchors[0].kind == "light",
                 "hidden point included role");
 }
@@ -386,6 +489,10 @@ bool editorOnlyPointIsSkipped() {
                 "editor point skipped count") &&
          expect(result.receipt.bakedAnchorCount == 0U,
                 "editor point no anchor count") &&
+         expect(result.staticMeshSources.empty(), "editor point no mesh sources") &&
+         expect(result.anchorSources.empty(), "editor point no anchor sources") &&
+         expect(result.spatialSurfaceSources.empty(),
+                "editor point no surface sources") &&
          expect(result.room.anchors.empty(), "editor point no anchors");
 }
 
@@ -494,7 +601,11 @@ bool unsupportedAndMetadataObjectsAreSkipped() {
          expect(result.receipt.bakedStaticMeshCount == 0U,
                 "unsupported mesh count") &&
          expect(result.receipt.bakedAnchorCount == 0U,
-                "unsupported anchor bake count");
+                "unsupported anchor bake count") &&
+         expect(result.staticMeshSources.empty(), "unsupported no mesh sources") &&
+         expect(result.anchorSources.empty(), "unsupported no anchor sources") &&
+         expect(result.spatialSurfaceSources.empty(),
+                "unsupported no surface sources");
 }
 
 }  // namespace
