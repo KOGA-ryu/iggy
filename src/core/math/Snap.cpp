@@ -40,6 +40,31 @@ Vec3 snapVec3ToGrid(Vec3 value, Vec3 step, Vec3 origin,
   return result;
 }
 
+float snapToCellCenter(float value, float cellSize, float gridOrigin) noexcept {
+  if (!std::isfinite(value) || !std::isfinite(cellSize) ||
+      !std::isfinite(gridOrigin) || !(cellSize > 0.0F)) {
+    return value;
+  }
+  const float cellIndex = std::floor((value - gridOrigin) / cellSize);
+  const float center = gridOrigin + (cellIndex + 0.5F) * cellSize;
+  return std::isfinite(center) ? center : value;
+}
+
+Vec3 snapVec3ToCellCenter(Vec3 value, Vec3 cellSize, Vec3 gridOrigin,
+                          unsigned axisMask) noexcept {
+  Vec3 result = value;
+  if (axisMask & 0x1u) {
+    result.x = snapToCellCenter(value.x, cellSize.x, gridOrigin.x);
+  }
+  if (axisMask & 0x2u) {
+    result.y = snapToCellCenter(value.y, cellSize.y, gridOrigin.y);
+  }
+  if (axisMask & 0x4u) {
+    result.z = snapToCellCenter(value.z, cellSize.z, gridOrigin.z);
+  }
+  return result;
+}
+
 Aabb3 alignAabbBaseToHeight(const Aabb3& box, float targetBase,
                             unsigned axis) noexcept {
   if (!isValid(box) || !std::isfinite(targetBase) || axis > 2u) {

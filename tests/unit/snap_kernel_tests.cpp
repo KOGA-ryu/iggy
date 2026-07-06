@@ -15,6 +15,8 @@ using iggy3d::alignAabbBaseToHeight;
 using iggy3d::extents;
 using iggy3d::makeAabb3;
 using iggy3d::snapScalarToGrid;
+using iggy3d::snapToCellCenter;
+using iggy3d::snapVec3ToCellCenter;
 using iggy3d::snapVec3ToGrid;
 using iggy3d::Vec3;
 
@@ -97,6 +99,53 @@ bool deltaSnapViaGrabOrigin() {
          expect(near(out.z, 1.7F), "z delta snaps to +1 step from grab");
 }
 
+bool cellCenterUsesContainingCellNotNearest() {
+  // The exact reported case: a ground hit ON the origin line must land in cell [0,1), center 0.5 --
+  // NOT the negative cell (-0.5) a nearest-grid-point (round) snap would pick.
+  return expect(near(snapToCellCenter(0.0F, 1.0F, 0.0F), 0.5F),
+                "value 0 -> containing cell [0,1) center 0.5") &&
+         expect(near(snapScalarToGrid(0.0F, 1.0F, 0.5F), -0.5F),
+                "the round route WOULD give -0.5 -- the bug we avoid");
+}
+
+bool cellCenterMatchesOldPlaceFormula() {
+  // Old Place: floor(v/cell)*cell + cell*0.5 (gridOrigin 0). Pin equivalence across signs/boundaries.
+  const float cell = 1.0F;
+  const float samples[] = {-2.4F, -1.0F, -0.3F, 0.0F, 0.5F, 0.999F, 1.0F, 1.5F, 3.2F};
+  bool ok = true;
+  for (const float v : samples) {
+    const float expected = std::floor(v / cell) * cell + cell * 0.5F;
+    ok = ok && expect(near(snapToCellCenter(v, cell, 0.0F), expected),
+                      "cell center matches the old Place formula");
+  }
+  return ok;
+}
+
+bool cellCenterBoundaryOpensUpperCell() {
+  // A point exactly on a cell line belongs to the cell it opens (floor: [1,2) includes 1.0).
+  return expect(near(snapToCellCenter(1.0F, 1.0F, 0.0F), 1.5F), "1.0 -> cell [1,2) center 1.5") &&
+         expect(near(snapToCellCenter(-1.0F, 1.0F, 0.0F), -0.5F), "-1.0 -> cell [-1,0) center -0.5");
+}
+
+bool cellCenterHonorsOriginAndSize() {
+  // 2 m cells offset by origin 1.0: cells [1,3),[3,5),... centers 2,4,...
+  return expect(near(snapToCellCenter(1.2F, 2.0F, 1.0F), 2.0F), "1.2 in [1,3) -> center 2") &&
+         expect(near(snapToCellCenter(3.0F, 2.0F, 1.0F), 4.0F), "3.0 in [3,5) -> center 4");
+}
+
+bool cellCenterVec3HoldsGroundAxis() {
+  // Place: snap X,Z to containing cell centers, hold Y at the ground (mask 0x5).
+  const Vec3 out = snapVec3ToCellCenter(Vec3{0.0F, 7.3F, 0.0F}, Vec3{1.0F, 1.0F, 1.0F},
+                                        Vec3{0.0F, 0.0F, 0.0F}, 0x5u);
+  return expect(near(out.x, 0.5F) && near(out.z, 0.5F), "X,Z -> containing cell centers") &&
+         expect(near(out.y, 7.3F), "held Y passes through");
+}
+
+bool cellCenterPassThroughBadCell() {
+  return expect(near(snapToCellCenter(3.0F, 0.0F, 0.0F), 3.0F), "zero cell size passes through") &&
+         expect(near(snapToCellCenter(3.0F, -1.0F, 0.0F), 3.0F), "negative cell size passes through");
+}
+
 bool alignBaseDefaultsToY() {
   const Aabb3 box = makeAabb3(Vec3{0.0F, 5.0F, 0.0F}, Vec3{2.0F, 7.0F, 2.0F});
   const Aabb3 out = alignAabbBaseToHeight(box, 0.0F);
@@ -144,7 +193,13 @@ int main() {
                   scalarPassThroughOnNonFiniteValue() &&
                   scalarOverflowPassesThrough() && vec3SnapsEveryAxis() &&
                   vec3AxisMaskHoldsAxis() && vec3PerAxisStepAndOrigin() &&
-                  deltaSnapViaGrabOrigin() && alignBaseDefaultsToY() &&
+                  deltaSnapViaGrabOrigin() &&
+                  cellCenterUsesContainingCellNotNearest() &&
+                  cellCenterMatchesOldPlaceFormula() &&
+                  cellCenterBoundaryOpensUpperCell() &&
+                  cellCenterHonorsOriginAndSize() &&
+                  cellCenterVec3HoldsGroundAxis() && cellCenterPassThroughBadCell() &&
+                  alignBaseDefaultsToY() &&
                   alignBaseOnZAndX() && alignPreservesSize() &&
                   alignPassThroughOnInvalid();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

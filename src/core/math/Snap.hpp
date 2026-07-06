@@ -26,6 +26,22 @@ namespace iggy3d {
 [[nodiscard]] Vec3 snapVec3ToGrid(Vec3 value, Vec3 step, Vec3 origin,
                                   unsigned axisMask = 0x7u) noexcept;
 
+// Center of the grid CELL that CONTAINS `value` -- a DIFFERENT question from snapScalarToGrid.
+// snapScalarToGrid answers "nearest grid point" (round); this answers "which cell did this point
+// land in, and where is its center" (floor). They disagree on cell boundaries: for cellSize 1 and
+// gridOrigin 0, value 0.0 lands in cell [0,1) -> center 0.5 here, whereas the nearest-center form
+// (round) would flip to -0.5. Cells are [gridOrigin + k*cellSize, gridOrigin + (k+1)*cellSize) and
+// the returned center is gridOrigin + (k + 0.5)*cellSize. This is what the Place tool needs (drop
+// an object into the cell under the cursor). Pass-through on non-positive/non-finite cellSize or
+// non-finite inputs, and if the computed center would be non-finite.
+[[nodiscard]] float snapToCellCenter(float value, float cellSize,
+                                     float gridOrigin = 0.0F) noexcept;
+
+// Per-axis containing-cell-center snap. Each axis via snapToCellCenter, gated by `axisMask`
+// (bit0 = X, bit1 = Y, bit2 = Z). Place uses axisMask 0x5 (X|Z) and holds Y at the ground.
+[[nodiscard]] Vec3 snapVec3ToCellCenter(Vec3 value, Vec3 cellSize, Vec3 gridOrigin,
+                                        unsigned axisMask = 0x7u) noexcept;
+
 // Pivot / feet-first snap: translate the whole box along one axis (0 = X, 1 = Y, 2 = Z; default Y,
 // the core up-axis) so its MINIMUM coordinate on that axis lands exactly on `targetBase`, preserving
 // the box's size on every axis. This is the pure core of drop-to-floor / pivot snap: given a surface

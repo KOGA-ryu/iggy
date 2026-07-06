@@ -101,10 +101,20 @@ local `snapGroundToCellCenter` doing `floor(x/cell)*cell + cell*0.5` by hand.
   second `holdMoveAxis` after snap** — the mask already held the axis. Keep the `holdMoveAxis` *before*
   snap (it sets the anchor for the held axis).
 - Place (optional but recommended): replace the hand-rolled floor math with
-  `snapVec3ToGrid(world, {1,1,1}, {0.5,0.5,0.5}, 0x5)` (X|Z), Y stays 0.
+  `snapVec3ToCellCenter(world, {1,1,1}, {0,0,0}, 0x5)` (X|Z), Y stays 0. **Use
+  `snapToCellCenter`, NOT `snapVec3ToGrid`** — see the hazard below.
 
 **Hazards:** get the mask inversion right (bit0=X, bit1=Y, bit2=Z). Core snap passes through on
 non-positive step, so a disabled/zero doc-snap correctly leaves the position untouched.
+
+**⚠️ Move vs Place use DIFFERENT primitives — do not merge them.** Move wants the *nearest grid
+point* (`round`): `snapVec3ToGrid`. Place wants the *center of the cell that contains the ground hit*
+(`floor`): `snapToCellCenter`. They disagree exactly on cell boundaries — for cellSize 1, a hit on the
+origin line (value 0.0) lands in cell `[0,1)` center `0.5` under `snapToCellCenter`, but the round form
+`snapVec3ToGrid(0.0, 1, origin=0.5)` returns `round(-0.5)+0.5 = -0.5`, dropping the object in the
+*negative* cell. This is a semantic mismatch, not float error. The old Place behavior
+(`floor(v/cell)*cell + cell*0.5`) is exactly `snapToCellCenter(v, cell, 0)` — that is the correct
+primitive for Place; `snapVec3ToGrid` is not.
 
 **Acceptance:** Move with held Y from `(0,5,0)` to `(10,100,10)` → result `Y==5`, X/Z on the 1 m grid.
 Existing `creative_tools_tests.cpp` stays green.
