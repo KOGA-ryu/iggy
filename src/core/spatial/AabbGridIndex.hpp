@@ -21,6 +21,21 @@ struct AabbGridIndexStats {
   std::uint64_t cellSpanCount = 0;  // total (item, cell) incidences
 };
 
+enum class AabbGridBoundsStatus {
+  Representable,
+  InvalidBounds,
+  OutOfRange,
+};
+
+struct AabbGridQueryResult {
+  AabbGridBoundsStatus boundsStatus = AabbGridBoundsStatus::InvalidBounds;
+  std::vector<std::uint64_t> candidates;
+
+  [[nodiscard]] bool queried() const noexcept {
+    return boundsStatus == AabbGridBoundsStatus::Representable;
+  }
+};
+
 // A coarse uniform-cell spatial hash over Aabb3 items -- the shared broadphase substrate the
 // creative editor's four otherwise-separate lanes all reduce to: ray-pick candidate gather,
 // snap-neighborhood search, overlap-at-placement validation, and frustum/cull. Same math as the
@@ -57,8 +72,18 @@ class AabbGridIndex {
   // skipped; the return value is the number actually indexed.
   std::size_t rebuildFrom(std::span<const AabbGridItem> items);
 
+  // Bounds contract shared by insert and query. Callers that must not confuse an empty query with
+  // an unrepresentable query should use queryChecked().
+  [[nodiscard]] AabbGridBoundsStatus boundsStatus(
+      const Aabb3& bounds) const noexcept;
+  [[nodiscard]] bool canRepresent(const Aabb3& bounds) const noexcept {
+    return boundsStatus(bounds) == AabbGridBoundsStatus::Representable;
+  }
+
   // Broadphase: candidate ids whose occupied cells overlap `query`, ascending + de-duplicated.
   [[nodiscard]] std::vector<ItemId> query(const Aabb3& query) const;
+  [[nodiscard]] AabbGridQueryResult queryChecked(
+      const Aabb3& query) const;
 
   [[nodiscard]] AabbGridIndexStats stats() const noexcept;
 

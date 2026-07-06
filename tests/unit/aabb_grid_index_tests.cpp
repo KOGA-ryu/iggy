@@ -164,6 +164,62 @@ bool invalidBoundsRejected() {
          expect(index.empty(), "index unchanged after rejected inserts");
 }
 
+bool boundsStatusDistinguishesInvalidAndOutOfRange() {
+  const AabbGridIndex index;
+  const float inf = std::numeric_limits<float>::infinity();
+  const float huge = std::numeric_limits<float>::max();
+
+  return expect(index.boundsStatus(box(0, 0, 0, 1, 1, 1)) ==
+                    iggy3d::AabbGridBoundsStatus::Representable,
+                "finite in-range bounds are representable") &&
+         expect(index.canRepresent(box(0, 0, 0, 1, 1, 1)),
+                "canRepresent mirrors representable status") &&
+         expect(index.boundsStatus(box(2, 2, 2, 0, 0, 0)) ==
+                    iggy3d::AabbGridBoundsStatus::InvalidBounds,
+                "inverted bounds are invalid") &&
+         expect(index.boundsStatus(box(0, 0, 0, inf, 1, 1)) ==
+                    iggy3d::AabbGridBoundsStatus::InvalidBounds,
+                "non-finite bounds are invalid") &&
+         expect(index.boundsStatus(
+                    box(20000000.0F, 0.0F, 0.0F,
+                        20000001.0F, 1.0F, 1.0F)) ==
+                    iggy3d::AabbGridBoundsStatus::OutOfRange,
+                "finite bounds outside cell range are out of range") &&
+         expect(index.boundsStatus(
+                    box(huge * 0.25F, 0.0F, 0.0F,
+                        huge * 0.5F, 1.0F, 1.0F)) ==
+                    iggy3d::AabbGridBoundsStatus::OutOfRange,
+                "huge finite bounds are classified before integer casting");
+}
+
+bool queryCheckedReportsWhetherQueryRan() {
+  AabbGridIndex index;
+  index.insert(42, box(0, 0, 0, 1, 1, 1));
+
+  const iggy3d::AabbGridQueryResult validEmpty =
+      index.queryChecked(box(50, 50, 50, 52, 52, 52));
+  const iggy3d::AabbGridQueryResult outOfRange =
+      index.queryChecked(box(20000000.0F, 0.0F, 0.0F,
+                             20000001.0F, 1.0F, 1.0F));
+  const iggy3d::AabbGridQueryResult invalid =
+      index.queryChecked(box(2, 2, 2, 0, 0, 0));
+
+  return expect(validEmpty.queried(), "valid empty query reports queried") &&
+         expect(validEmpty.candidates.empty(),
+                "valid empty query can still return no candidates") &&
+         expect(!outOfRange.queried(),
+                "out-of-range query reports not queried") &&
+         expect(outOfRange.boundsStatus ==
+                    iggy3d::AabbGridBoundsStatus::OutOfRange,
+                "out-of-range query reports status") &&
+         expect(outOfRange.candidates.empty(),
+                "out-of-range query returns no candidates") &&
+         expect(!invalid.queried(), "invalid query reports not queried") &&
+         expect(invalid.boundsStatus ==
+                    iggy3d::AabbGridBoundsStatus::InvalidBounds,
+                "invalid query reports status");
+}
+
 }  // namespace
 
 int main() {
@@ -171,6 +227,8 @@ int main() {
                   broadphaseNeverDropsTrueOverlap() &&
                   queryResultsAscendingAndDeduped() && insertReplaceMovesItem() &&
                   removeDropsItem() && rebuildMatchesIncrementalInserts() &&
-                  invalidBoundsRejected();
+                  invalidBoundsRejected() &&
+                  boundsStatusDistinguishesInvalidAndOutOfRange() &&
+                  queryCheckedReportsWhetherQueryRan();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

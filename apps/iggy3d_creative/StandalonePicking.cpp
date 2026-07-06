@@ -97,12 +97,7 @@ namespace {
       std::max(ray.origin.z, end.z) + kRayQueryPaddingMeters,
   };
   out = iggy3d::makeAabb3(min, max);
-  if (!iggy3d::isValid(out)) {
-    return false;
-  }
-
-  iggy3d::AabbGridIndex queryProbe;
-  return queryProbe.insert(1U, out);
+  return iggy3d::isValid(out);
 }
 
 [[nodiscard]] std::vector<iggy3d::AabbGridIndex::ItemId>
@@ -146,7 +141,13 @@ indexedCandidateIdsForRay(
     return {};
   }
 
-  std::vector<iggy3d::AabbGridIndex::ItemId> ids = index.query(queryBounds);
+  const iggy3d::AabbGridQueryResult query = index.queryChecked(queryBounds);
+  if (!query.queried()) {
+    fallbackToFullScan = true;
+    return {};
+  }
+
+  std::vector<iggy3d::AabbGridIndex::ItemId> ids = query.candidates;
   ids.insert(ids.end(), unindexedIds.begin(), unindexedIds.end());
   std::sort(ids.begin(), ids.end());
   ids.erase(std::unique(ids.begin(), ids.end()), ids.end());

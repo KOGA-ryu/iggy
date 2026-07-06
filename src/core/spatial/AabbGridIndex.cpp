@@ -28,7 +28,7 @@ bool AabbGridIndex::cellRange(const Aabb3& bounds, std::int64_t& minX,
                               std::int64_t& minY, std::int64_t& minZ,
                               std::int64_t& maxX, std::int64_t& maxY,
                               std::int64_t& maxZ) const noexcept {
-  if (!isFinite(bounds) || !isValid(bounds)) {
+  if (boundsStatus(bounds) != AabbGridBoundsStatus::Representable) {
     return false;
   }
 
@@ -43,11 +43,7 @@ bool AabbGridIndex::cellRange(const Aabb3& bounds, std::int64_t& minX,
   maxX = cell(bounds.max.x);
   maxY = cell(bounds.max.y);
   maxZ = cell(bounds.max.z);
-
-  const std::int64_t lo = -kCellUpper;
-  const std::int64_t hi = kCellUpper - 1;
-  return minX >= lo && minY >= lo && minZ >= lo && maxX <= hi && maxY <= hi &&
-         maxZ <= hi;
+  return true;
 }
 
 void AabbGridIndex::eraseFromCells(ItemId id, const Aabb3& bounds) {
@@ -121,13 +117,42 @@ std::size_t AabbGridIndex::rebuildFrom(std::span<const AabbGridItem> items) {
   return indexed;
 }
 
-std::vector<AabbGridIndex::ItemId> AabbGridIndex::query(
+AabbGridBoundsStatus AabbGridIndex::boundsStatus(
+    const Aabb3& bounds) const noexcept {
+  if (!isFinite(bounds) || !isValid(bounds)) {
+    return AabbGridBoundsStatus::InvalidBounds;
+  }
+
+  const auto cell = [this](float value) -> double {
+    return std::floor(static_cast<double>(value) / cellSizeMeters_);
+  };
+
+  const double minX = cell(bounds.min.x);
+  const double minY = cell(bounds.min.y);
+  const double minZ = cell(bounds.min.z);
+  const double maxX = cell(bounds.max.x);
+  const double maxY = cell(bounds.max.y);
+  const double maxZ = cell(bounds.max.z);
+
+  const double lo = static_cast<double>(-kCellUpper);
+  const double hi = static_cast<double>(kCellUpper - 1);
+  if (minX < lo || minY < lo || minZ < lo || maxX > hi || maxY > hi ||
+      maxZ > hi) {
+    return AabbGridBoundsStatus::OutOfRange;
+  }
+
+  return AabbGridBoundsStatus::Representable;
+}
+
+AabbGridQueryResult AabbGridIndex::queryChecked(
     const Aabb3& queryBounds) const {
-  std::vector<ItemId> candidates;
+  AabbGridQueryResult result;
   std::int64_t minX = 0, minY = 0, minZ = 0, maxX = 0, maxY = 0, maxZ = 0;
   if (!cellRange(queryBounds, minX, minY, minZ, maxX, maxY, maxZ)) {
-    return candidates;
+    result.boundsStatus = boundsStatus(queryBounds);
+    return result;
   }
+  result.boundsStatus = AabbGridBoundsStatus::Representable;
 
   for (std::int64_t x = minX; x <= maxX; ++x) {
     for (std::int64_t y = minY; y <= maxY; ++y) {
@@ -136,16 +161,22 @@ std::vector<AabbGridIndex::ItemId> AabbGridIndex::query(
         if (found == cells_.end()) {
           continue;
         }
-        candidates.insert(candidates.end(), found->second.begin(),
-                          found->second.end());
+        result.candidates.insert(result.candidates.end(), found->second.begin(),
+                                 found->second.end());
       }
     }
   }
 
-  std::sort(candidates.begin(), candidates.end());
-  candidates.erase(std::unique(candidates.begin(), candidates.end()),
-                   candidates.end());
-  return candidates;
+  std::sort(result.candidates.begin(), result.candidates.end());
+  result.candidates.erase(
+      std::unique(result.candidates.begin(), result.candidates.end()),
+      result.candidates.end());
+  return result;
+}
+
+std::vector<AabbGridIndex::ItemId> AabbGridIndex::query(
+    const Aabb3& queryBounds) const {
+  return queryChecked(queryBounds).candidates;
 }
 
 AabbGridIndexStats AabbGridIndex::stats() const noexcept {
