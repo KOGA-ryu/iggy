@@ -569,6 +569,203 @@ bool nearAlignedGreedyFloorDoesNotExpandAcrossNeighborCell() {
                 "near aligned floor size");
 }
 
+bool interleavedGreedyFloorSourcesKeepDocumentOrder() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Interleaved Greedy Floor Bake");
+  const cr::CreativeDocumentCreateReceipt beam =
+      createObject(document,
+                   cr::CreativeObjectKind::Beam,
+                   {{-2.0, 1.0, 0.0}, {2.0, 1.25, 0.25}});
+  const cr::CreativeDocumentCreateReceipt floorA =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{0.0, 0.0, 0.0}, {1.0, 0.25, 1.0}});
+  const cr::CreativeDocumentCreateReceipt floorB =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{1.0, 0.0, 0.0}, {2.0, 0.25, 1.0}});
+  const cr::CreativeDocumentCreateReceipt wall =
+      createObject(document,
+                   cr::CreativeObjectKind::Wall,
+                   {{3.0, 0.0, 0.0}, {5.0, 2.5, 0.25}});
+  const cr::CreativeDocumentCreateReceipt crate =
+      createObject(document,
+                   cr::CreativeObjectKind::Crate,
+                   {{6.0, 0.0, 0.0}, {7.0, 1.0, 1.0}});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+  const std::vector<iggy3d::RoomStaticMeshAsset>& meshes =
+      result.room.staticMeshes;
+  const std::vector<cr::CreativeRoomBakeStaticMeshSource>& meshSources =
+      result.staticMeshSources;
+  const std::string greedyFloorMeshId =
+      "creative_floor_greedy_" + std::to_string(floorA.objectId) + "_0";
+
+  return expect(beam.accepted, "interleaved beam created") &&
+         expect(floorA.accepted, "interleaved floor A created") &&
+         expect(floorB.accepted, "interleaved floor B created") &&
+         expect(wall.accepted, "interleaved wall created") &&
+         expect(crate.accepted, "interleaved crate created") &&
+         expect(result.receipt.accepted, "interleaved bake accepted") &&
+         expect(result.receipt.objectCount == 5U,
+                "interleaved object count") &&
+         expect(result.receipt.bakedStaticMeshCount == 4U,
+                "interleaved mesh count") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 8U,
+                "interleaved surface count") &&
+         expect(meshes.size() == 4U, "interleaved mesh vector count") &&
+         expect(meshSources.size() == 5U, "interleaved source vector count") &&
+         expect(meshes[0].id == "creative_object_" + std::to_string(beam.objectId),
+                "interleaved beam mesh first") &&
+         expect(meshes[1].id == greedyFloorMeshId,
+                "interleaved floor mesh second") &&
+         expect(meshes[1].role == "floor", "interleaved floor mesh role") &&
+         expect(meshes[2].id == "creative_object_" + std::to_string(wall.objectId),
+                "interleaved wall mesh third") &&
+         expect(meshes[3].id == "creative_object_" + std::to_string(crate.objectId),
+                "interleaved crate mesh fourth") &&
+         expect(meshSources[0].objectId == beam.objectId,
+                "interleaved beam source") &&
+         expect(meshSources[0].staticMeshId == meshes[0].id,
+                "interleaved beam source mesh") &&
+         expect(meshSources[1].objectId == floorA.objectId,
+                "interleaved floor A source") &&
+         expect(meshSources[1].staticMeshId == greedyFloorMeshId,
+                "interleaved floor A source mesh") &&
+         expect(meshSources[2].objectId == floorB.objectId,
+                "interleaved floor B source") &&
+         expect(meshSources[2].staticMeshId == greedyFloorMeshId,
+                "interleaved floor B source mesh") &&
+         expect(meshSources[3].objectId == wall.objectId,
+                "interleaved wall source") &&
+         expect(meshSources[3].staticMeshId == meshes[2].id,
+                "interleaved wall source mesh") &&
+         expect(meshSources[4].objectId == crate.objectId,
+                "interleaved crate source") &&
+         expect(meshSources[4].staticMeshId == meshes[3].id,
+                "interleaved crate source mesh");
+}
+
+bool nonAlignedFloorFallsBackToPerObjectMesh() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Nonaligned Greedy Floor Fallback");
+  const cr::CreativeDocumentCreateReceipt floor =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{0.25, 0.0, 0.0}, {1.25, 0.25, 1.0}});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+  const iggy3d::RoomStaticMeshAsset* mesh =
+      result.room.staticMeshes.empty() ? nullptr : &result.room.staticMeshes[0];
+  const cr::CreativeRoomBakeStaticMeshSource* meshSource =
+      result.staticMeshSources.empty() ? nullptr : &result.staticMeshSources[0];
+  const cr::CreativeRoomBakeSpatialSurfaceSource* surfaceSource =
+      result.spatialSurfaceSources.empty() ? nullptr
+                                           : &result.spatialSurfaceSources[0];
+  const std::string stableMeshId =
+      "creative_object_" + std::to_string(floor.objectId);
+
+  return expect(floor.accepted, "nonaligned floor created") &&
+         expect(result.receipt.accepted, "nonaligned bake accepted") &&
+         expect(result.receipt.bakedStaticMeshCount == 1U,
+                "nonaligned mesh count") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 1U,
+                "nonaligned surface count") &&
+         expect(mesh != nullptr, "nonaligned mesh exists") &&
+         expect(mesh != nullptr && mesh->id == stableMeshId,
+                "nonaligned mesh stable id") &&
+         expect(mesh != nullptr && mesh->role == "floor",
+                "nonaligned mesh role") &&
+         expect(mesh != nullptr &&
+                    sameVec3(mesh->positionMeters, {0.75F, 0.125F, 0.5F}),
+                "nonaligned mesh center") &&
+         expect(mesh != nullptr &&
+                    sameVec3(mesh->sizeMeters, {1.0F, 0.25F, 1.0F}),
+                "nonaligned mesh size") &&
+         expect(meshSource != nullptr, "nonaligned mesh source exists") &&
+         expect(meshSource != nullptr && meshSource->objectId == floor.objectId,
+                "nonaligned mesh source object") &&
+         expect(meshSource != nullptr && meshSource->staticMeshId == stableMeshId,
+                "nonaligned mesh source id") &&
+         expect(surfaceSource != nullptr, "nonaligned surface source exists") &&
+         expect(surfaceSource != nullptr &&
+                    surfaceSource->objectId == floor.objectId,
+                "nonaligned surface source object") &&
+         expect(surfaceSource != nullptr &&
+                    surfaceSource->sourceStaticMeshId == stableMeshId,
+                "nonaligned surface source mesh");
+}
+
+bool separatedAlignedFloorIslandsPreserveGap() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Separated Greedy Floor Islands");
+  const cr::CreativeDocumentCreateReceipt leftA =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{0.0, 0.0, 0.0}, {1.0, 0.25, 1.0}});
+  const cr::CreativeDocumentCreateReceipt leftB =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{1.0, 0.0, 0.0}, {2.0, 0.25, 1.0}});
+  const cr::CreativeDocumentCreateReceipt rightA =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{4.0, 0.0, 0.0}, {5.0, 0.25, 1.0}});
+  const cr::CreativeDocumentCreateReceipt rightB =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{5.0, 0.0, 0.0}, {6.0, 0.25, 1.0}});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+  const std::vector<iggy3d::RoomStaticMeshAsset>& meshes =
+      result.room.staticMeshes;
+  const std::string leftMeshId =
+      "creative_floor_greedy_" + std::to_string(leftA.objectId) + "_0";
+  const std::string rightMeshId =
+      "creative_floor_greedy_" + std::to_string(rightA.objectId) + "_1";
+
+  return expect(leftA.accepted, "separated left A created") &&
+         expect(leftB.accepted, "separated left B created") &&
+         expect(rightA.accepted, "separated right A created") &&
+         expect(rightB.accepted, "separated right B created") &&
+         expect(result.receipt.accepted, "separated bake accepted") &&
+         expect(result.receipt.bakedStaticMeshCount == 2U,
+                "separated mesh count") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 4U,
+                "separated surface count") &&
+         expect(meshes.size() == 2U, "separated mesh vector count") &&
+         expect(result.staticMeshSources.size() == 4U,
+                "separated source count") &&
+         expect(meshes[0].id == leftMeshId, "separated left mesh id") &&
+         expect(meshes[0].role == "floor", "separated left role") &&
+         expect(sameVec3(meshes[0].positionMeters, {1.0F, 0.125F, 0.5F}),
+                "separated left center") &&
+         expect(sameVec3(meshes[0].sizeMeters, {2.0F, 0.25F, 1.0F}),
+                "separated left size") &&
+         expect(meshes[1].id == rightMeshId, "separated right mesh id") &&
+         expect(meshes[1].role == "floor", "separated right role") &&
+         expect(sameVec3(meshes[1].positionMeters, {5.0F, 0.125F, 0.5F}),
+                "separated right center") &&
+         expect(sameVec3(meshes[1].sizeMeters, {2.0F, 0.25F, 1.0F}),
+                "separated right size") &&
+         expect(result.staticMeshSources[0].objectId == leftA.objectId,
+                "separated left A source") &&
+         expect(result.staticMeshSources[0].staticMeshId == leftMeshId,
+                "separated left A source mesh") &&
+         expect(result.staticMeshSources[1].objectId == leftB.objectId,
+                "separated left B source") &&
+         expect(result.staticMeshSources[1].staticMeshId == leftMeshId,
+                "separated left B source mesh") &&
+         expect(result.staticMeshSources[2].objectId == rightA.objectId,
+                "separated right A source") &&
+         expect(result.staticMeshSources[2].staticMeshId == rightMeshId,
+                "separated right A source mesh") &&
+         expect(result.staticMeshSources[3].objectId == rightB.objectId,
+                "separated right B source") &&
+         expect(result.staticMeshSources[3].staticMeshId == rightMeshId,
+                "separated right B source mesh");
+}
+
 bool perpendicularWallsBakeTruthfulBlockerNormals() {
   cr::CreativeDocument document =
       cr::CreativeDocument::create("Wall Normal Bake Test");
@@ -1490,6 +1687,9 @@ int main() {
                   floorWallCrateBakeToRoomAsset() &&
                   adjacentStructuralFloorsCollapseToSingleGreedyMesh() &&
                   nearAlignedGreedyFloorDoesNotExpandAcrossNeighborCell() &&
+                  interleavedGreedyFloorSourcesKeepDocumentOrder() &&
+                  nonAlignedFloorFallsBackToPerObjectMesh() &&
+                  separatedAlignedFloorIslandsPreserveGap() &&
                   perpendicularWallsBakeTruthfulBlockerNormals() &&
                   boundsBackedLineBakesAsPropGeometry() &&
                   endpointLineDescriptorStaysOutOfBake() &&

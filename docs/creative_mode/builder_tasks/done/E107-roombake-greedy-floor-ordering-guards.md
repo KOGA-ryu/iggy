@@ -68,3 +68,33 @@ Append:
 - Checks run:
 - Concerns/deferred:
 
+## Completed
+
+- Files changed:
+  - `tests/unit/creative_document_room_bake_tests.cpp`
+  - `docs/creative_mode/builder_tasks/claimed/E107-roombake-greedy-floor-ordering-guards.md`
+  - `docs/creative_mode/builder_tasks/PRIORITY.md`
+- Tests added:
+  - `interleavedGreedyFloorSourcesKeepDocumentOrder()`
+  - `nonAlignedFloorFallsBackToPerObjectMesh()`
+  - `separatedAlignedFloorIslandsPreserveGap()`
+- Behavior pinned:
+  - A bounds-backed `Beam`, two adjacent `Floor` objects, a `Wall`, and a
+    `Crate` preserve deterministic static mesh order and source sidecar order.
+    The merged floor mesh appears at the first contributing Floor's document
+    position.
+  - A valid but non-1m-grid-aligned `Floor` falls back to the per-object floor
+    mesh path, keeps `creative_object_<id>` as the mesh id, and keeps its
+    walkable surface source pointed at that same mesh id.
+  - Two aligned Floor islands separated by a gap produce two floor meshes with
+    exact extents around each island instead of one mesh covering the gap.
+- Checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target creative_document_room_bake_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^creative_document_room_bake_tests$' --output-on-failure`
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - focused trailing-whitespace scan over touched files
+- Concerns/deferred:
+  - No RoomBake source changes were needed; the new guards passed against the
+    current implementation.
+  - Greedy-floor extraction should now be able to proceed with stronger
+    ordering and sidecar coverage.
