@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 
+#include <algorithm>
 #include <span>
 #include <string_view>
 
@@ -63,9 +64,30 @@ void setSegmentReceiptStatus(CreativeDocumentWireframeSegmentReceipt& receipt,
       item.end = object.transform.position;
       break;
     case CreativeDocumentWireframeItemKind::Line:
-      item.bounds = object.bounds;
-      item.start = object.bounds.min;
-      item.end = object.bounds.max;
+      if (projectionReceipt.profile ==
+          CreativeSpatialProjectionProfile::PathProjection) {
+        item.pathPoints.reserve(object.pathPoints.size());
+        for (const CreativePathPoint& point : object.pathPoints) {
+          item.pathPoints.push_back(point.position);
+        }
+        if (!item.pathPoints.empty()) {
+          item.start = item.pathPoints.front();
+          item.end = item.pathPoints.back();
+          item.bounds = CreativeBounds{item.start, item.start};
+          for (const CreativeVec3 point : item.pathPoints) {
+            item.bounds.min.x = std::min(item.bounds.min.x, point.x);
+            item.bounds.min.y = std::min(item.bounds.min.y, point.y);
+            item.bounds.min.z = std::min(item.bounds.min.z, point.z);
+            item.bounds.max.x = std::max(item.bounds.max.x, point.x);
+            item.bounds.max.y = std::max(item.bounds.max.y, point.y);
+            item.bounds.max.z = std::max(item.bounds.max.z, point.z);
+          }
+        }
+      } else {
+        item.bounds = object.bounds;
+        item.start = object.bounds.min;
+        item.end = object.bounds.max;
+      }
       break;
     case CreativeDocumentWireframeItemKind::Unknown:
       break;
@@ -316,6 +338,7 @@ CreativeDocumentWireframeItemKind wireframeItemKindForProjection(
     case CreativeSpatialProjectionProfile::PointProjection:
       return CreativeDocumentWireframeItemKind::Point;
     case CreativeSpatialProjectionProfile::LineProjection:
+    case CreativeSpatialProjectionProfile::PathProjection:
     case CreativeSpatialProjectionProfile::LinkProjection:
       return CreativeDocumentWireframeItemKind::Line;
     case CreativeSpatialProjectionProfile::Unknown:
@@ -485,6 +508,23 @@ CreativeDocumentWireframeSegmentBuildResult buildCreativeDocumentWireframeSegmen
         break;
       case CreativeDocumentWireframeItemKind::Line:
         ++receipt.lineItemCount;
+        if (item.pathPoints.size() >= 2U) {
+          for (std::size_t index = 0; index < item.pathPoints.size() - 1U;
+               ++index) {
+            const CreativeVec3 start = item.pathPoints[index];
+            const CreativeVec3 end = item.pathPoints[index + 1U];
+            if (samePoint(start, end)) {
+              ++receipt.skippedDegenerateCount;
+              continue;
+            }
+            appendSegment(result.segmentList,
+                          item,
+                          CreativeDocumentWireframeSegmentKind::Line,
+                          start,
+                          end);
+          }
+          break;
+        }
         if (samePoint(item.start, item.end)) {
           ++receipt.skippedDegenerateCount;
           break;

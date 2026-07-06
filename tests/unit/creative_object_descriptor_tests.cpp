@@ -135,6 +135,33 @@ bool shapeKindStringsAreStable() {
                 "mesh proxy shape string");
 }
 
+bool spatialProjectionProfileStringsAreStable() {
+  return expect(cr::toString(cr::CreativeSpatialProjectionProfile::Unknown) ==
+                    "Unknown",
+                "unknown projection string") &&
+         expect(cr::toString(cr::CreativeSpatialProjectionProfile::NoProjection) ==
+                    "NoProjection",
+                "no projection string") &&
+         expect(cr::toString(cr::CreativeSpatialProjectionProfile::PointProjection) ==
+                    "PointProjection",
+                "point projection string") &&
+         expect(cr::toString(cr::CreativeSpatialProjectionProfile::BoxProjection) ==
+                    "BoxProjection",
+                "box projection string") &&
+         expect(cr::toString(cr::CreativeSpatialProjectionProfile::VolumeProjection) ==
+                    "VolumeProjection",
+                "volume projection string") &&
+         expect(cr::toString(cr::CreativeSpatialProjectionProfile::LineProjection) ==
+                    "LineProjection",
+                "line projection string") &&
+         expect(cr::toString(cr::CreativeSpatialProjectionProfile::PathProjection) ==
+                    "PathProjection",
+                "path projection string") &&
+         expect(cr::toString(cr::CreativeSpatialProjectionProfile::LinkProjection) ==
+                    "LinkProjection",
+                "link projection string");
+}
+
 bool roomDescriptorPinsShapeBearingProjectionContract() {
   const cr::CreativeObjectDescriptor& descriptor =
       cr::describeObject(cr::CreativeObjectKind::Room);
@@ -318,8 +345,8 @@ bool shapeAndProjectionCanDifferByDesign() {
          expect(patrolRoute.shapeKind == cr::CreativeObjectShapeKind::Path,
                 "patrol route shape path") &&
          expect(patrolRoute.projectionProfile ==
-                    cr::CreativeSpatialProjectionProfile::NoProjection,
-                "patrol route projection remains none");
+                    cr::CreativeSpatialProjectionProfile::PathProjection,
+                "patrol route projection path");
 }
 
 bool representativeDescriptorsPinSpatialFacts() {
@@ -348,6 +375,11 @@ bool representativeDescriptorsPinSpatialFacts() {
              cr::CreativeSpatialProjectionProfile::LineProjection,
              cr::CreativeSpatialOccupancyKind::Camera,
              "camera rail spatial descriptor") &&
+         expectSpatialDescriptor(
+             cr::CreativeObjectKind::PatrolRoute,
+             cr::CreativeSpatialProjectionProfile::PathProjection,
+             cr::CreativeSpatialOccupancyKind::Gameplay,
+             "patrol route spatial descriptor") &&
          expectSpatialDescriptor(
              cr::CreativeObjectKind::NavLink,
              cr::CreativeSpatialProjectionProfile::NoProjection,
@@ -502,6 +534,7 @@ bool mutationDirtyFlagsFollowDescriptorSpatialColumns() {
 int main() {
   const bool ok = descriptorTableRowsAreStableAndUnique() &&
                   shapeKindStringsAreStable() &&
+                  spatialProjectionProfileStringsAreStable() &&
                   roomDescriptorPinsShapeBearingProjectionContract() &&
                   unknownDescriptorRemainsInvalidAndNonProjectable() &&
                   representativeDescriptorsPinShapeFacts() &&

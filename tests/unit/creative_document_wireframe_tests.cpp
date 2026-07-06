@@ -38,10 +38,29 @@ cr::CreativeSpatialProjectionRequest makeProjectionRequest() {
   return request;
 }
 
+std::vector<cr::CreativePathPoint> authoredPathPoints() {
+  return {
+      cr::CreativePathPoint{{2.0, 0.0, 2.0}},
+      cr::CreativePathPoint{{4.0, 0.0, 2.0}},
+      cr::CreativePathPoint{{4.0, 0.0, 4.0}},
+  };
+}
+
 cr::CreativeObjectId createObject(cr::CreativeDocument& document,
                                   cr::CreativeObjectKind kind) {
   cr::CreativeDocumentCreateRequest request;
   request.kind = kind;
+  const cr::CreativeDocumentCreateReceipt receipt =
+      document.createObject(request);
+  return receipt.objectId;
+}
+
+cr::CreativeObjectId createPathObject(cr::CreativeDocument& document) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::PatrolRoute;
+  request.name = "Patrol Route";
+  request.hasPathOverride = true;
+  request.pathPoints = authoredPathPoints();
   const cr::CreativeDocumentCreateReceipt receipt =
       document.createObject(request);
   return receipt.objectId;
@@ -201,6 +220,78 @@ bool multipleVisibleObjectsPreserveDocumentOrder() {
          expect(sameVec3(result.drawList.items[1].bounds.max,
                          {1.0, 1.0, 1.0}),
                 "order crate default bounds");
+}
+
+bool patrolRoutePathEmitsOrderedGameplayLineSegments() {
+  cr::CreativeDocument document;
+  const cr::CreativeObjectId routeId = createPathObject(document);
+
+  const cr::CreativeDocumentWireframeBuildResult list =
+      cr::buildCreativeDocumentWireframeList(document, makeProjectionRequest());
+  const cr::CreativeDocumentWireframeSegmentBuildResult segments =
+      cr::buildCreativeDocumentWireframeSegments(document,
+                                                makeProjectionRequest());
+  const cr::CreativeDocumentWireframeItem& item = list.drawList.items[0];
+  const std::vector<cr::CreativeDocumentWireframeSegment>& segmentList =
+      segments.segmentList.segments;
+
+  return expect(routeId != cr::kInvalidObjectId, "path route created") &&
+         expect(list.receipt.status == cr::CreativeDocumentWireframeStatus::Built,
+                "path list built") &&
+         expect(list.receipt.objectCount == 1U, "path object count") &&
+         expect(list.receipt.projectableObjectCount == 1U,
+                "path projectable count") &&
+         expect(list.receipt.projectedObjectCount == 1U,
+                "path projected count") &&
+         expect(list.receipt.itemCount == 1U, "path item count") &&
+         expect(list.drawList.items.size() == 1U, "path item vector count") &&
+         expect(item.itemKind == cr::CreativeDocumentWireframeItemKind::Line,
+                "path item is line") &&
+         expect(item.objectId == routeId, "path item id") &&
+         expect(item.objectKind == cr::CreativeObjectKind::PatrolRoute,
+                "path item object kind") &&
+         expect(item.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::PathProjection,
+                "path item projection") &&
+         expect(item.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Gameplay,
+                "path item occupancy") &&
+         expect(item.style == cr::CreativeDocumentWireframeStyle::Gameplay,
+                "path item style") &&
+         expect(item.pathPoints.size() == 3U, "path item point count") &&
+         expect(sameVec3(item.pathPoints[0], {2.0, 0.0, 2.0}),
+                "path item point 0") &&
+         expect(sameVec3(item.pathPoints[1], {4.0, 0.0, 2.0}),
+                "path item point 1") &&
+         expect(sameVec3(item.pathPoints[2], {4.0, 0.0, 4.0}),
+                "path item point 2") &&
+         expect(segments.receipt.itemCount == 1U, "path segment item count") &&
+         expect(segments.receipt.boxItemCount == 0U, "path segment no boxes") &&
+         expect(segments.receipt.lineItemCount == 1U, "path segment line item") &&
+         expect(segments.receipt.pointItemCount == 0U, "path segment no points") &&
+         expect(segments.receipt.segmentCount == 2U, "path segment count") &&
+         expect(segments.receipt.skippedDegenerateCount == 0U,
+                "path segment no skipped") &&
+         expect(segments.receipt.status ==
+                    cr::CreativeDocumentWireframeSegmentStatus::Built,
+                "path segments built") &&
+         expect(segmentList.size() == 2U, "path segment vector count") &&
+         expect(sameSegment(segmentList[0],
+                            routeId,
+                            cr::CreativeDocumentWireframeSegmentKind::Line,
+                            {2.0, 0.0, 2.0},
+                            {4.0, 0.0, 2.0}),
+                "path first segment") &&
+         expect(segmentList[0].style == cr::CreativeDocumentWireframeStyle::Gameplay,
+                "path first segment style") &&
+         expect(sameSegment(segmentList[1],
+                            routeId,
+                            cr::CreativeDocumentWireframeSegmentKind::Line,
+                            {4.0, 0.0, 2.0},
+                            {4.0, 0.0, 4.0}),
+                "path second segment") &&
+         expect(segmentList[1].style == cr::CreativeDocumentWireframeStyle::Gameplay,
+                "path second segment style");
 }
 
 bool objectSpanUnknownObjectIsCountedButNotRendered() {
@@ -503,6 +594,7 @@ int main() {
                   hiddenRoomProducesNoItemsButKeepsObjectCount() &&
                   visibilityToggleRemovesAndRestoresItem() &&
                   multipleVisibleObjectsPreserveDocumentOrder() &&
+                  patrolRoutePathEmitsOrderedGameplayLineSegments() &&
                   objectSpanUnknownObjectIsCountedButNotRendered() &&
                   invalidProjectionSettingsFailClosed() &&
                   roomDefaultBoxEmitsTwelveStableEdges() &&

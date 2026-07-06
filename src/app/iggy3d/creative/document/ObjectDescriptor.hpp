@@ -112,6 +112,7 @@ enum class CreativeSpatialProjectionProfile {
     BoxProjection,
     VolumeProjection,
     LineProjection,
+    PathProjection,
     LinkProjection,
 };
 

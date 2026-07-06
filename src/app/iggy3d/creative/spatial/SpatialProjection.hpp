@@ -114,6 +114,9 @@ struct CreativeSpatialProjectionReceipt {
 [[nodiscard]] CreativeSpatialProjectionReceipt projectLineObjectToGrid(
     const CreativeObject& object,
     const CreativeSpatialProjectionRequest& request);
+[[nodiscard]] CreativeSpatialProjectionReceipt projectPathObjectToGrid(
+    const CreativeObject& object,
+    const CreativeSpatialProjectionRequest& request);
 [[nodiscard]] CreativeSpatialProjectionReceipt projectLinkObjectToGrid(
     const CreativeObject& object,
     const CreativeSpatialProjectionRequest& request);

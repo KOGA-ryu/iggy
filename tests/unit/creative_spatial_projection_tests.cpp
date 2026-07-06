@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -75,6 +76,17 @@ cr::CreativeObject makeLinkObject(cr::CreativeObjectId objectId) {
   return object;
 }
 
+cr::CreativeObject makePathObject(
+    cr::CreativeObjectId objectId,
+    std::vector<cr::CreativePathPoint> pathPoints) {
+  cr::CreativeObject object;
+  object.id = objectId;
+  object.kind = cr::CreativeObjectKind::PatrolRoute;
+  object.name = "Patrol Route";
+  object.pathPoints = std::move(pathPoints);
+  return object;
+}
+
 cr::CreativeSpatialProjectionRequest makeRequest() {
   cr::CreativeSpatialProjectionRequest request;
   request.gridSize = {8, 8, 2};
@@ -85,6 +97,10 @@ cr::CreativeSpatialProjectionRequest makeDeepRequest() {
   cr::CreativeSpatialProjectionRequest request;
   request.gridSize = {8, 8, 8};
   return request;
+}
+
+bool sameCoord(cr::CreativeGridCoord3 lhs, cr::CreativeGridCoord3 rhs) {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
 
 bool hasCellAt(const cr::CreativeSpatialProjectionReceipt& receipt,
@@ -401,6 +417,123 @@ bool offGridLineDoesNotClampEndpointsToBorder() {
                 "off-grid line no clamped border cell");
 }
 
+bool pathProjectionSamplesAdjacentSegmentsWithStableDedupe() {
+  const cr::CreativeObject object = makePathObject(
+      50,
+      {
+          cr::CreativePathPoint{{1.0, 0.0, 0.0}},
+          cr::CreativePathPoint{{3.0, 0.0, 0.0}},
+          cr::CreativePathPoint{{3.0, 0.0, 2.0}},
+      });
+  const cr::CreativeSpatialProjectionRequest request = makeDeepRequest();
+
+  const cr::CreativeSpatialProjectionReceipt receipt =
+      cr::projectObjectToGrid(object, request);
+  const std::vector<cr::CreativeGridCoord3> expectedCoords{
+      {1, 0, 0},
+      {2, 0, 0},
+      {3, 0, 0},
+      {3, 0, 1},
+      {3, 0, 2},
+  };
+
+  bool ok = expect(receipt.status ==
+                       cr::CreativeSpatialProjectionStatus::Projected,
+                   "path projected") &&
+            expect(receipt.message == "projected", "path projected message") &&
+            expect(receipt.objectId == object.id, "path object id") &&
+            expect(receipt.objectKind == cr::CreativeObjectKind::PatrolRoute,
+                   "path object kind") &&
+            expect(receipt.profile ==
+                       cr::CreativeSpatialProjectionProfile::PathProjection,
+                   "path projection profile") &&
+            expect(receipt.occupancyKind ==
+                       cr::CreativeSpatialOccupancyKind::Gameplay,
+                   "path occupancy") &&
+            expect(receipt.projectedBounds.min.x == 1,
+                   "path bounds min x") &&
+            expect(receipt.projectedBounds.min.y == 0,
+                   "path bounds min y") &&
+            expect(receipt.projectedBounds.min.z == 0,
+                   "path bounds min z") &&
+            expect(receipt.projectedBounds.max.x == 4,
+                   "path bounds max x") &&
+            expect(receipt.projectedBounds.max.y == 1,
+                   "path bounds max y") &&
+            expect(receipt.projectedBounds.max.z == 3,
+                   "path bounds max z") &&
+            expect(receipt.cells.size() == expectedCoords.size(),
+                   "path deduped cell count");
+
+  for (std::size_t index = 0; index < expectedCoords.size() &&
+                              index < receipt.cells.size();
+       ++index) {
+    const cr::CreativeSpatialCell& cell = receipt.cells[index];
+    ok = expect(cell.objectId == object.id, "path cell object id") &&
+         expect(cell.objectKind == cr::CreativeObjectKind::PatrolRoute,
+                "path cell object kind") &&
+         expect(cell.occupancyKind == cr::CreativeSpatialOccupancyKind::Gameplay,
+                "path cell occupancy") &&
+         expect(sameCoord(cell.coord, expectedCoords[index]),
+                "path cell order") &&
+         expect(cell.index == cr::toGridIndex(expectedCoords[index],
+                                             request.gridSize),
+                "path cell row-major index") &&
+         ok;
+  }
+
+  return ok;
+}
+
+bool hiddenPathProjectsNoCells() {
+  cr::CreativeObject object = makePathObject(
+      51,
+      {
+          cr::CreativePathPoint{{1.0, 0.0, 0.0}},
+          cr::CreativePathPoint{{3.0, 0.0, 0.0}},
+      });
+  object.visible = false;
+
+  const cr::CreativeSpatialProjectionReceipt receipt =
+      cr::projectObjectToGrid(object, makeDeepRequest());
+
+  return expect(receipt.status ==
+                    cr::CreativeSpatialProjectionStatus::NoProjection,
+                "hidden path no projection") &&
+         expect(receipt.message == "object_hidden",
+                "hidden path message") &&
+         expect(receipt.profile ==
+                    cr::CreativeSpatialProjectionProfile::PathProjection,
+                "hidden path profile") &&
+         expect(receipt.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Gameplay,
+                "hidden path occupancy") &&
+         expect(receipt.cells.empty(), "hidden path no cells");
+}
+
+bool offGridPathEndpointDoesNotClampToBorder() {
+  const cr::CreativeObject object = makePathObject(
+      52,
+      {
+          cr::CreativePathPoint{{-1.0, 0.0, 0.0}},
+          cr::CreativePathPoint{{3.0, 0.0, 0.0}},
+      });
+  cr::CreativeSpatialProjectionRequest request = makeDeepRequest();
+  request.clampToGrid = true;
+
+  const cr::CreativeSpatialProjectionReceipt receipt =
+      cr::projectObjectToGrid(object, request);
+
+  return expect(receipt.status == cr::CreativeSpatialProjectionStatus::OutOfBounds,
+                "off-grid path out of bounds") &&
+         expect(receipt.message == "out_of_bounds",
+                "off-grid path message") &&
+         expect(receipt.cells.empty(), "off-grid path no cells") &&
+         expect(!hasCellAt(receipt, object.id, cr::CreativeGridCoord3{0, 0, 0},
+                           request.gridSize),
+                "off-grid path no clamped border cell");
+}
+
 bool linkProjectionDoesNotEmitBorderCells() {
   const cr::CreativeObject object = makeLinkObject(49);
   cr::CreativeSpatialProjectionRequest request = makeRequest();
@@ -503,6 +636,9 @@ int main() {
                   disjointVolumeClampIntersectsToEmptyProjection() &&
                   partialVolumeClampEmitsOnlyIntersectingCells() &&
                   offGridLineDoesNotClampEndpointsToBorder() &&
+                  pathProjectionSamplesAdjacentSegmentsWithStableDedupe() &&
+                  hiddenPathProjectsNoCells() &&
+                  offGridPathEndpointDoesNotClampToBorder() &&
                   linkProjectionDoesNotEmitBorderCells() &&
                   aggregateIgnoresOffGridPointBorderArtifact() &&
                   boundedMoveShiftsCrateProjectionCells();

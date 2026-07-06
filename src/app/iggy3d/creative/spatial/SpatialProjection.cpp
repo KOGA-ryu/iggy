@@ -3,7 +3,9 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <span>
 #include <utility>
+#include <vector>
 
 namespace iggy3d::creative {
 namespace {
@@ -140,6 +142,89 @@ void fillBoundsCells(std::vector<CreativeSpatialCell>& cells,
   };
 }
 
+[[nodiscard]] CreativeGridBounds3 mergeBounds(CreativeGridBounds3 lhs,
+                                              CreativeGridBounds3 rhs) noexcept {
+  return CreativeGridBounds3{
+      CreativeGridCoord3{
+          std::min(lhs.min.x, rhs.min.x),
+          std::min(lhs.min.y, rhs.min.y),
+          std::min(lhs.min.z, rhs.min.z),
+      },
+      CreativeGridCoord3{
+          std::max(lhs.max.x, rhs.max.x),
+          std::max(lhs.max.y, rhs.max.y),
+          std::max(lhs.max.z, rhs.max.z),
+      },
+  };
+}
+
+[[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
+  return std::isfinite(value.x) && std::isfinite(value.y) &&
+         std::isfinite(value.z);
+}
+
+[[nodiscard]] bool pathPointsAreValid(
+    std::span<const CreativePathPoint> pathPoints) noexcept {
+  if (pathPoints.size() < 2U) {
+    return false;
+  }
+
+  return std::all_of(pathPoints.begin(),
+                     pathPoints.end(),
+                     [](const CreativePathPoint& point) {
+                       return finiteVec3(point.position);
+                     });
+}
+
+[[nodiscard]] bool sameCoord(CreativeGridCoord3 lhs,
+                             CreativeGridCoord3 rhs) noexcept {
+  return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
+}
+
+[[nodiscard]] bool containsCoord(std::span<const CreativeSpatialCell> cells,
+                                 CreativeGridCoord3 coord) noexcept {
+  return std::any_of(cells.begin(),
+                     cells.end(),
+                     [coord](const CreativeSpatialCell& cell) {
+                       return sameCoord(cell.coord, coord);
+                     });
+}
+
+void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
+                            CreativeGridSize3 size,
+                            CreativeGridCoord3 start,
+                            CreativeGridCoord3 end,
+                            const CreativeObject& object,
+                            CreativeSpatialOccupancyKind occupancyKind,
+                            bool dedupeAgainstExisting) {
+  const std::int32_t dx = end.x - start.x;
+  const std::int32_t dy = end.y - start.y;
+  const std::int32_t dz = end.z - start.z;
+  const std::int32_t steps = std::max({std::abs(dx), std::abs(dy), std::abs(dz)});
+
+  CreativeGridCoord3 previous{-1, -1, -1};
+  for (std::int32_t step = 0; step <= steps; ++step) {
+    const double t = steps == 0 ? 0.0 : static_cast<double>(step) / steps;
+    const CreativeGridCoord3 coord{
+        start.x + static_cast<std::int32_t>(std::round(dx * t)),
+        start.y + static_cast<std::int32_t>(std::round(dy * t)),
+        start.z + static_cast<std::int32_t>(std::round(dz * t)),
+    };
+    if (sameCoord(coord, previous)) {
+      continue;
+    }
+    previous = coord;
+    if (dedupeAgainstExisting && containsCoord(cells, coord)) {
+      continue;
+    }
+    cells.push_back(CreativeSpatialCell{toGridIndex(coord, size),
+                                        coord,
+                                        object.id,
+                                        object.kind,
+                                        occupancyKind});
+  }
+}
+
 [[nodiscard]] CreativeSpatialProjectionReceipt projectBoundsObjectToGrid(
     const CreativeObject& object,
     const CreativeSpatialProjectionRequest& request,
@@ -234,6 +319,8 @@ std::string_view toString(CreativeSpatialProjectionProfile profile) noexcept {
       return "VolumeProjection";
     case CreativeSpatialProjectionProfile::LineProjection:
       return "LineProjection";
+    case CreativeSpatialProjectionProfile::PathProjection:
+      return "PathProjection";
     case CreativeSpatialProjectionProfile::LinkProjection:
       return "LinkProjection";
   }
@@ -424,6 +511,8 @@ CreativeSpatialProjectionReceipt projectObjectToGrid(
       return projectVolumeObjectToGrid(object, request);
     case CreativeSpatialProjectionProfile::LineProjection:
       return projectLineObjectToGrid(object, request);
+    case CreativeSpatialProjectionProfile::PathProjection:
+      return projectPathObjectToGrid(object, request);
     case CreativeSpatialProjectionProfile::LinkProjection:
       return projectLinkObjectToGrid(object, request);
   }
@@ -529,11 +618,6 @@ CreativeSpatialProjectionReceipt projectLineObjectToGrid(
                        "out_of_bounds");
   }
 
-  const std::int32_t dx = end.x - start.x;
-  const std::int32_t dy = end.y - start.y;
-  const std::int32_t dz = end.z - start.z;
-  const std::int32_t steps = std::max({std::abs(dx), std::abs(dy), std::abs(dz)});
-
   CreativeSpatialProjectionReceipt receipt =
       makeReceipt(CreativeSpatialProjectionStatus::Projected,
                   object,
@@ -541,27 +625,83 @@ CreativeSpatialProjectionReceipt projectLineObjectToGrid(
                   occupancyKind,
                   lineBounds(start, end),
                   "projected");
-  receipt.cells.reserve(static_cast<std::size_t>(steps + 1));
+  appendSampledLineCells(receipt.cells,
+                         request.gridSize,
+                         start,
+                         end,
+                         object,
+                         occupancyKind,
+                         false);
 
-  CreativeGridCoord3 previous{-1, -1, -1};
-  for (std::int32_t step = 0; step <= steps; ++step) {
-    const double t = steps == 0 ? 0.0 : static_cast<double>(step) / steps;
-    const CreativeGridCoord3 coord{
-        start.x + static_cast<std::int32_t>(std::round(dx * t)),
-        start.y + static_cast<std::int32_t>(std::round(dy * t)),
-        start.z + static_cast<std::int32_t>(std::round(dz * t)),
-    };
-    if (coord.x == previous.x && coord.y == previous.y &&
-        coord.z == previous.z) {
-      continue;
+  if (receipt.cells.empty()) {
+    receipt.status = CreativeSpatialProjectionStatus::EmptyProjection;
+    receipt.message = "empty_projection";
+  }
+  return receipt;
+}
+
+CreativeSpatialProjectionReceipt projectPathObjectToGrid(
+    const CreativeObject& object,
+    const CreativeSpatialProjectionRequest& request) {
+  const CreativeSpatialProjectionProfile profile =
+      CreativeSpatialProjectionProfile::PathProjection;
+  const CreativeSpatialOccupancyKind occupancyKind =
+      occupancyKindForObject(object.kind);
+  if (!isValidRequest(request)) {
+    return rejectInvalidGrid(object, profile, occupancyKind);
+  }
+  if (!isValidObject(object)) {
+    return rejectInvalidObject(object, profile, occupancyKind);
+  }
+  if (!object.visible) {
+    return rejectHiddenObject(object, profile, occupancyKind);
+  }
+  if (!pathPointsAreValid(object.pathPoints)) {
+    return makeReceipt(CreativeSpatialProjectionStatus::EmptyProjection,
+                       object,
+                       profile,
+                       occupancyKind,
+                       {},
+                       "invalid_path_points");
+  }
+
+  std::vector<CreativeGridCoord3> coords;
+  coords.reserve(object.pathPoints.size());
+  for (const CreativePathPoint& point : object.pathPoints) {
+    const CreativeGridCoord3 coord =
+        worldToGridCoord(point.position, request.cellSize);
+    if (!isInsideGrid(coord, request.gridSize)) {
+      return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
+                         object,
+                         profile,
+                         occupancyKind,
+                         pointBounds(coord),
+                         "out_of_bounds");
     }
-    previous = coord;
-    receipt.cells.push_back(CreativeSpatialCell{toGridIndex(coord,
-                                                           request.gridSize),
-                                                coord,
-                                                object.id,
-                                                object.kind,
-                                                occupancyKind});
+    coords.push_back(coord);
+  }
+
+  CreativeGridBounds3 projectedBounds = lineBounds(coords[0], coords[1]);
+  for (std::size_t index = 1; index < coords.size() - 1U; ++index) {
+    projectedBounds = mergeBounds(projectedBounds,
+                                  lineBounds(coords[index], coords[index + 1U]));
+  }
+
+  CreativeSpatialProjectionReceipt receipt =
+      makeReceipt(CreativeSpatialProjectionStatus::Projected,
+                  object,
+                  profile,
+                  occupancyKind,
+                  projectedBounds,
+                  "projected");
+  for (std::size_t index = 0; index < coords.size() - 1U; ++index) {
+    appendSampledLineCells(receipt.cells,
+                           request.gridSize,
+                           coords[index],
+                           coords[index + 1U],
+                           object,
+                           occupancyKind,
+                           true);
   }
 
   if (receipt.cells.empty()) {

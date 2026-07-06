@@ -71,6 +71,7 @@ struct CreativeDocumentWireframeItem {
   CreativeBounds bounds;
   CreativeVec3 start;
   CreativeVec3 end;
+  std::vector<CreativeVec3> pathPoints;
   CreativeGridBounds3 projectedBounds;
   std::uint64_t projectedCellCount = 0;
 };
