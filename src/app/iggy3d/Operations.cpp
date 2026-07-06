@@ -535,13 +535,13 @@ void recordProductSaveSlotAction(ProductAppWindowState& window,
 
 void recordProductSaveFlowRequest(const ProductSaveFlowRequest& request,
                                   ProductAppWindowState& window) {
-  window.saveFlowOperation =
+  window.saveFlow.operation =
       std::string(productSaveFlowOperationName(request.operation));
   // branch-gate: BG-1020
-  window.saveFlowSourceSurface = request.sourceSurface.empty()
+  window.saveFlow.sourceSurface = request.sourceSurface.empty()
                                      ? "none"
                                      : request.sourceSurface;
-  window.saveFlowAffectedSlotId =
+  window.saveFlow.affectedSlotId =
       // branch-gate: BG-1020
       request.slotId.empty() ? "none" : request.slotId;
 }
@@ -550,20 +550,20 @@ void recordProductSaveFlowResult(ProductSaveFlowOperation operation,
                                  std::string_view sourceSurface,
                                  const ProductSaveFlowResult& result,
                                  ProductAppWindowState& window) {
-  window.saveFlowOperation =
+  window.saveFlow.operation =
       std::string(productSaveFlowOperationName(operation));
   // branch-gate: BG-1020
-  window.saveFlowSourceSurface =
+  window.saveFlow.sourceSurface =
       sourceSurface.empty() ? "none" : std::string(sourceSurface);
-  window.saveFlowStatus = result.status;
-  window.saveFlowReasonCode = result.reason;
-  window.saveFlowAffectedSlotId =
+  window.saveFlow.status = result.status;
+  window.saveFlow.reasonCode = result.reason;
+  window.saveFlow.affectedSlotId =
       // branch-gate: BG-1020
       result.affectedSlotId.empty() ? "none" : result.affectedSlotId;
-  window.saveFlowActiveCountBefore = result.activeCountBefore;
-  window.saveFlowActiveCountAfter = result.activeCountAfter;
-  window.saveFlowDeletedCountAfter = result.deletedCountAfter;
-  window.saveFlowSelectedSlotAfter =
+  window.saveFlow.activeCountBefore = result.activeCountBefore;
+  window.saveFlow.activeCountAfter = result.activeCountAfter;
+  window.saveFlow.deletedCountAfter = result.deletedCountAfter;
+  window.saveFlow.selectedSlotAfter =
       // branch-gate: BG-1020
       result.selectedSlotAfter.empty() ? "none" : result.selectedSlotAfter;
 }
@@ -1093,13 +1093,13 @@ void executeProductSaveRecover(const ProductAppOptions& options,
 
   const std::string recoverId =
       selected == nullptr || selected->id.empty() ? "none" : selected->id;
-  window.saveRecoverSaveId = recoverId;
-  window.saveRecoverSnapshotRecovered = false;
-  window.saveRecoverSnapshotMissing = false;
+  window.saveRecover.saveId = recoverId;
+  window.saveRecover.snapshotRecovered = false;
+  window.saveRecover.snapshotMissing = false;
   if (recoverId == "none") {
-    window.saveRecoverStatus = "product_save_recover_id_missing";
-    window.saveRecoverReasonCode = "product_save_recover_id_missing";
-    window.saveRecoverExecuted = false;
+    window.saveRecover.status = "product_save_recover_id_missing";
+    window.saveRecover.reasonCode = "product_save_recover_id_missing";
+    window.saveRecover.executed = false;
     frontend.childScreen = FrontendScreen::LoadSave;
     frontend.status = "save_recover_failed";
     return;
@@ -1113,12 +1113,12 @@ void executeProductSaveRecover(const ProductAppOptions& options,
       world.scenarioId,
   });
   const ProductSaveRecoverResult& recovered = mutation.recover;
-  window.saveRecoverStatus = recovered.status;
-  window.saveRecoverReasonCode = recovered.reasonCode;
-  window.saveRecoverExecuted = recovered.ok;
-  window.saveRecoverSaveId = recovered.saveId.empty() ? "none" : recovered.saveId;
-  window.saveRecoverSnapshotRecovered = recovered.snapshotRecovered;
-  window.saveRecoverSnapshotMissing = recovered.snapshotMissing;
+  window.saveRecover.status = recovered.status;
+  window.saveRecover.reasonCode = recovered.reasonCode;
+  window.saveRecover.executed = recovered.ok;
+  window.saveRecover.saveId = recovered.saveId.empty() ? "none" : recovered.saveId;
+  window.saveRecover.snapshotRecovered = recovered.snapshotRecovered;
+  window.saveRecover.snapshotMissing = recovered.snapshotMissing;
 
   recordDeletedProductSaveSlots(mutation.deletedSaves, window);
   if (recovered.ok) {
@@ -1153,16 +1153,16 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
                            true,
                            "save_delete_unavailable"},
         "save_slot_action_disabled");
-    window.saveDeleteConfirmationOpen = false;
-    window.saveDeleteCandidateId = "none";
-    window.saveDeleteCandidateEnabled = false;
-    window.saveDeleteStatus =
+    window.saveDelete.confirmationOpen = false;
+    window.saveDelete.candidateId = "none";
+    window.saveDelete.candidateEnabled = false;
+    window.saveDelete.status =
         slots.slots.empty() ? "save_delete_unavailable" : "save_delete_missing";
-    window.saveDeleteReasonCode = window.saveDeleteStatus;
-    window.saveDeleteType = "soft";
-    window.saveDeleteRecoverable = false;
-    window.saveDeleteExecuted = false;
-    frontend.status = window.saveDeleteStatus;
+    window.saveDelete.reasonCode = window.saveDelete.status;
+    window.saveDelete.type = "soft";
+    window.saveDelete.recoverable = false;
+    window.saveDelete.executed = false;
+    frontend.status = window.saveDelete.status;
     return;
   }
 
@@ -1176,14 +1176,14 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
                          true,
                          "none"},
       "save_slot_action_confirm_requested");
-  window.saveDeleteConfirmationOpen = true;
-  window.saveDeleteCandidateId = slot->id.empty() ? "none" : slot->id;
-  window.saveDeleteCandidateEnabled = slot->enabled;
-  window.saveDeleteStatus = "confirm_open";
-  window.saveDeleteReasonCode = "confirm_open";
-  window.saveDeleteType = "soft";
-  window.saveDeleteRecoverable = false;
-  window.saveDeleteExecuted = false;
+  window.saveDelete.confirmationOpen = true;
+  window.saveDelete.candidateId = slot->id.empty() ? "none" : slot->id;
+  window.saveDelete.candidateEnabled = slot->enabled;
+  window.saveDelete.status = "confirm_open";
+  window.saveDelete.reasonCode = "confirm_open";
+  window.saveDelete.type = "soft";
+  window.saveDelete.recoverable = false;
+  window.saveDelete.executed = false;
   frontend.childScreen = FrontendScreen::DeleteConfirm;
   frontend.selectedAction = FrontendAction::Delete;
   frontend.status = "save_delete_confirm_open";
@@ -1191,12 +1191,12 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
 
 void cancelProductSaveDeleteConfirmation(ProductAppWindowState& window,
                                          FrontendState& frontend) {
-  window.saveDeleteConfirmationOpen = false;
-  window.saveDeleteStatus = "cancelled";
-  window.saveDeleteReasonCode = "cancelled";
-  window.saveDeleteType = "soft";
-  window.saveDeleteRecoverable = false;
-  window.saveDeleteExecuted = false;
+  window.saveDelete.confirmationOpen = false;
+  window.saveDelete.status = "cancelled";
+  window.saveDelete.reasonCode = "cancelled";
+  window.saveDelete.type = "soft";
+  window.saveDelete.recoverable = false;
+  window.saveDelete.executed = false;
   frontend.childScreen = FrontendScreen::LoadSave;
   frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
   window.saveSlotBrowserMode =
@@ -1213,27 +1213,27 @@ ProductSaveFlowResult executeProductSaveSoftDelete(
   flow.activeCountBefore = static_cast<std::uint64_t>(saves.slots.slots.size());
   ProductSaveFlowRequest request;
   request.operation = ProductSaveFlowOperation::Delete;
-  request.slotId = window.saveDeleteCandidateId;
+  request.slotId = window.saveDelete.candidateId;
   request.sourceSurface = "delete_world_browser";
-  request.confirmationToken = window.saveDeleteConfirmationOpen
+  request.confirmationToken = window.saveDelete.confirmationOpen
                                   ? "delete_confirm_open"
                                   : "delete_confirm_missing";
   recordProductSaveFlowRequest(request, window);
-  window.saveDeleteConfirmationOpen = false;
-  window.saveDeleteType = "soft";
-  window.saveDeleteRecoverable = false;
-  if (window.saveDeleteCandidateId == "none" ||
-      window.saveDeleteCandidateId.empty()) {
-    window.saveDeleteStatus = "product_save_delete_id_missing";
-    window.saveDeleteReasonCode = "product_save_delete_id_missing";
-    window.saveDeleteExecuted = false;
+  window.saveDelete.confirmationOpen = false;
+  window.saveDelete.type = "soft";
+  window.saveDelete.recoverable = false;
+  if (window.saveDelete.candidateId == "none" ||
+      window.saveDelete.candidateId.empty()) {
+    window.saveDelete.status = "product_save_delete_id_missing";
+    window.saveDelete.reasonCode = "product_save_delete_id_missing";
+    window.saveDelete.executed = false;
     frontend.childScreen = FrontendScreen::LoadSave;
     frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
     window.saveSlotBrowserMode =
         std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
     frontend.status = "save_delete_failed";
-    flow.status = window.saveDeleteStatus;
-    flow.reason = window.saveDeleteReasonCode;
+    flow.status = window.saveDelete.status;
+    flow.reason = window.saveDelete.reasonCode;
     flow.affectedSlotId = "none";
     flow.activeCountAfter = flow.activeCountBefore;
     flow.deletedCountAfter = window.deletedSaveCount;
@@ -1248,15 +1248,15 @@ ProductSaveFlowResult executeProductSaveSoftDelete(
   const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
   const ProductSaveMutationResult mutation = softDeleteProductSaveAndRefresh({
       options.saveRoot,
-      window.saveDeleteCandidateId,
+      window.saveDelete.candidateId,
       world.packageId,
       world.scenarioId,
   });
   const ProductSaveSoftDeleteResult& deleted = mutation.softDelete;
-  window.saveDeleteStatus = deleted.status;
-  window.saveDeleteReasonCode = deleted.reasonCode;
-  window.saveDeleteExecuted = deleted.ok;
-  window.saveDeleteRecoverable = deleted.ok;
+  window.saveDelete.status = deleted.status;
+  window.saveDelete.reasonCode = deleted.reasonCode;
+  window.saveDelete.executed = deleted.ok;
+  window.saveDelete.recoverable = deleted.ok;
   flow.ok = deleted.ok;
   flow.status = deleted.status;
   flow.reason = deleted.reasonCode;

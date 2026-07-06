@@ -1016,7 +1016,7 @@ bool starterDeleteButtonOpensSelectableBrowser() {
                 "starter delete opens selectable browser") &&
          expect(frontend.selectedAction == iggy3d::FrontendAction::Delete,
                 "starter delete selected action is delete") &&
-         expect(!window.saveDeleteConfirmationOpen,
+         expect(!window.saveDelete.confirmationOpen,
                 "starter delete does not auto-open confirmation") &&
          expect(window.selectedProductSaveId == "save_unit",
                 "starter delete pre-selects first save") &&
@@ -1416,7 +1416,7 @@ bool confirmDialogDispatchDoesNotFallThroughToStarter() {
     frontend.childScreen = iggy3d::FrontendScreen::DeleteConfirm;
     frontend.selectedAction = iggy3d::FrontendAction::Continue;
     iggy3d::ProductAppWindowState window;
-    window.saveDeleteConfirmationOpen = true;
+    window.saveDelete.confirmationOpen = true;
     bool closeRequested = false;
     iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
     std::optional<iggy3d::Session> activeSession;
@@ -1441,7 +1441,7 @@ bool confirmDialogDispatchDoesNotFallThroughToStarter() {
     const bool deleteOk =
         expect(frontend.childScreen == iggy3d::FrontendScreen::LoadSave,
                "delete confirm back returns to save browser") &&
-        expect(!window.saveDeleteConfirmationOpen,
+        expect(!window.saveDelete.confirmationOpen,
                "delete confirm back cancels delete") &&
         expect(frontend.status == "save_delete_cancelled",
                "delete confirm back status") &&
@@ -1969,7 +1969,7 @@ bool openingMenuMouseDispatchRoutesLoadSaveRows() {
       expect(deleteSave.frontend.childScreen ==
                  iggy3d::FrontendScreen::DeleteConfirm,
              "mouse load delete opens confirm") &&
-      expect(deleteSave.window.saveDeleteConfirmationOpen,
+      expect(deleteSave.window.saveDelete.confirmationOpen,
              "mouse load delete confirmation open");
 
   MouseDispatchHarness back;
@@ -3219,10 +3219,10 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
   window.gameplayMovementHorizontalSpeedMetersPerSecond = 2.5F;
   window.gameplayMovementState =
       iggy3d::ProductGameplayMovementState::MovingGrounded;
-  window.gameplayWallRunActive = true;
-  window.gameplayWallRunStatus = "wall_run_active";
-  window.gameplayWallRunReasonCode = "wall_run_active";
-  window.gameplayWallRunRemainingSeconds = 0.5F;
+  window.gameplayWallRun.active = true;
+  window.gameplayWallRun.status = "wall_run_active";
+  window.gameplayWallRun.reasonCode = "wall_run_active";
+  window.gameplayWallRun.remainingSeconds = 0.5F;
   window.gameplayJumpCoyoteSecondsRemaining = 0.08F;
   window.gameplayJumpBufferSecondsRemaining = 0.06F;
   window.gameplayJumpHeld = true;
@@ -3255,8 +3255,8 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
          expect(window.gameplayMovementState ==
                     iggy3d::ProductGameplayMovementState::IdleGrounded,
                 "editor input resets movement state proof") &&
-         expect(!window.gameplayWallRunActive &&
-                    window.gameplayWallRunRemainingSeconds == 0.0F,
+         expect(!window.gameplayWallRun.active &&
+                    window.gameplayWallRun.remainingSeconds == 0.0F,
                 "editor input clears wall-run active proof") &&
          expect(window.gameplayJumpCoyoteSecondsRemaining == 0.0F &&
                     window.gameplayJumpBufferSecondsRemaining == 0.0F &&

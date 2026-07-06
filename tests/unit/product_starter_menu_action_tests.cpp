@@ -283,7 +283,7 @@ bool deleteAndExitActionsAreExplicitRows() {
                 "delete keeps starter action proof") &&
          expect(deleteSave.frontend.status == "delete_world_browser_open",
                 "delete browser status") &&
-         expect(!deleteSave.window.saveDeleteConfirmationOpen,
+         expect(!deleteSave.window.saveDelete.confirmationOpen,
                 "delete does not auto-open confirmation") &&
          expect(deleteSave.window.selectedProductSaveId == "save_unit",
                 "delete pre-selects first save") &&

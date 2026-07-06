@@ -61,26 +61,26 @@ ProductMovementProofPacket buildProductMovementProofPacket(
   packet.profile = window.gameplayMovementProfile;
   packet.maxSpeedMetersPerSecond = window.gameplayMovementMaxSpeedMetersPerSecond;
 
-  packet.wallRunCandidateAvailable = window.gameplayWallRunCandidateAvailable;
-  packet.wallRunCandidateStatus = window.gameplayWallRunCandidateStatus;
-  packet.wallRunCandidateReasonCode = window.gameplayWallRunCandidateReasonCode;
+  packet.wallRunCandidateAvailable = window.gameplayWallRun.candidateAvailable;
+  packet.wallRunCandidateStatus = window.gameplayWallRun.candidateStatus;
+  packet.wallRunCandidateReasonCode = window.gameplayWallRun.candidateReasonCode;
   packet.wallRunCandidateReasonHudLabel =
       wallRunHudLabel(packet.wallRunCandidateReasonCode);
-  packet.wallRunSide = window.gameplayWallRunSide;
-  packet.wallRunSurfaceId = window.gameplayWallRunSurfaceId;
-  packet.wallRunNormalX = window.gameplayWallRunNormalX;
-  packet.wallRunNormalY = window.gameplayWallRunNormalY;
-  packet.wallRunNormalZ = window.gameplayWallRunNormalZ;
+  packet.wallRunSide = window.gameplayWallRun.side;
+  packet.wallRunSurfaceId = window.gameplayWallRun.surfaceId;
+  packet.wallRunNormalX = window.gameplayWallRun.normalX;
+  packet.wallRunNormalY = window.gameplayWallRun.normalY;
+  packet.wallRunNormalZ = window.gameplayWallRun.normalZ;
   packet.wallRunApproachSpeedMetersPerSecond =
-      window.gameplayWallRunApproachSpeedMetersPerSecond;
-  packet.wallRunActive = window.gameplayWallRunActive;
-  packet.wallRunStatus = window.gameplayWallRunStatus;
-  packet.wallRunReasonCode = window.gameplayWallRunReasonCode;
+      window.gameplayWallRun.approachSpeedMetersPerSecond;
+  packet.wallRunActive = window.gameplayWallRun.active;
+  packet.wallRunStatus = window.gameplayWallRun.status;
+  packet.wallRunReasonCode = window.gameplayWallRun.reasonCode;
   packet.wallRunReasonHudLabel = wallRunHudLabel(packet.wallRunReasonCode);
-  packet.wallRunRemainingSeconds = window.gameplayWallRunRemainingSeconds;
-  packet.wallRunDurationSeconds = window.gameplayWallRunDurationSeconds;
-  packet.wallRunGravityMultiplier = window.gameplayWallRunGravityMultiplier;
-  packet.wallRunSpeedMultiplier = window.gameplayWallRunSpeedMultiplier;
+  packet.wallRunRemainingSeconds = window.gameplayWallRun.remainingSeconds;
+  packet.wallRunDurationSeconds = window.gameplayWallRun.durationSeconds;
+  packet.wallRunGravityMultiplier = window.gameplayWallRun.gravityMultiplier;
+  packet.wallRunSpeedMultiplier = window.gameplayWallRun.speedMultiplier;
   return packet;
 }
 

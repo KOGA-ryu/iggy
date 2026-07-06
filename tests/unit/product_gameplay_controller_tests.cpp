@@ -1141,17 +1141,17 @@ bool productWallRunCandidateReportsAirborneSideWallContact() {
                                       "unit/gameplay_controller_wall_run_candidate",
                                       activeSurfaces(window));
 
-  return expect(window.gameplayWallRunCandidateAvailable,
+  return expect(window.gameplayWallRun.candidateAvailable,
                 "wall-run candidate available") &&
-         expect(window.gameplayWallRunCandidateStatus == "wall_run_candidate",
+         expect(window.gameplayWallRun.candidateStatus == "wall_run_candidate",
                 "wall-run candidate status") &&
-         expect(window.gameplayWallRunSurfaceId ==
+         expect(window.gameplayWallRun.surfaceId ==
                     "wall_jump_wall_actor_blocker",
                 "wall-run candidate surface") &&
-         expect(window.gameplayWallRunApproachSpeedMetersPerSecond >=
+         expect(window.gameplayWallRun.approachSpeedMetersPerSecond >=
                     window.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond,
                 "wall-run candidate speed") &&
-         expect(window.gameplayWallRunSide != "none",
+         expect(window.gameplayWallRun.side != "none",
                 "wall-run candidate side proof");
 }
 
@@ -1170,9 +1170,9 @@ bool productWallRunCandidateRejectsGroundedContact() {
                                       "unit/gameplay_controller_wall_run_grounded",
                                       activeSurfaces(window));
 
-  return expect(!window.gameplayWallRunCandidateAvailable,
+  return expect(!window.gameplayWallRun.candidateAvailable,
                 "grounded wall-run candidate rejected") &&
-         expect(window.gameplayWallRunCandidateReasonCode == "wall_run_grounded",
+         expect(window.gameplayWallRun.candidateReasonCode == "wall_run_grounded",
                 "grounded wall-run reason");
 }
 
@@ -1196,9 +1196,9 @@ bool productWallRunCandidateRejectsLowSpeed() {
                                       "unit/gameplay_controller_wall_run_low_speed",
                                       activeSurfaces(window));
 
-  return expect(!window.gameplayWallRunCandidateAvailable,
+  return expect(!window.gameplayWallRun.candidateAvailable,
                 "low-speed wall-run candidate rejected") &&
-         expect(window.gameplayWallRunCandidateReasonCode == "wall_run_low_speed",
+         expect(window.gameplayWallRun.candidateReasonCode == "wall_run_low_speed",
                 "low-speed wall-run reason");
 }
 
@@ -1219,9 +1219,9 @@ bool productWallRunCandidateRejectsNoWallContact() {
                                       "unit/gameplay_controller_wall_run_no_wall",
                                       activeSurfaces(window));
 
-  return expect(!window.gameplayWallRunCandidateAvailable,
+  return expect(!window.gameplayWallRun.candidateAvailable,
                 "no-wall wall-run candidate rejected") &&
-         expect(window.gameplayWallRunCandidateReasonCode ==
+         expect(window.gameplayWallRun.candidateReasonCode ==
                     "wall_run_no_wall_contact",
                 "no-wall wall-run reason");
 }
@@ -1262,9 +1262,9 @@ bool productWallRunMinSpeedTuningControlsCandidateThreshold() {
                                       "unit/gameplay_controller_wall_run_low_threshold",
                                       activeSurfaces(fastWindow));
 
-  return expect(!slowWindow.gameplayWallRunCandidateAvailable,
+  return expect(!slowWindow.gameplayWallRun.candidateAvailable,
                 "high wall-run speed threshold rejects") &&
-         expect(fastWindow.gameplayWallRunCandidateAvailable,
+         expect(fastWindow.gameplayWallRun.candidateAvailable,
                 "low wall-run speed threshold accepts");
 }
 
@@ -1310,9 +1310,9 @@ bool productWallRunCandidateDoesNotChangeMovementOutput() {
       playerEntity(*candidateSession)->transform.position;
   const iggy3d::Vec3 rejectedFinal =
       playerEntity(*rejectedSession)->transform.position;
-  return expect(candidateWindow.gameplayWallRunCandidateAvailable,
+  return expect(candidateWindow.gameplayWallRun.candidateAvailable,
                 "candidate comparison enabled") &&
-         expect(!rejectedWindow.gameplayWallRunCandidateAvailable,
+         expect(!rejectedWindow.gameplayWallRun.candidateAvailable,
                 "candidate comparison rejected") &&
          expect(nearlyEqual(candidateFinal.x, rejectedFinal.x),
                 "wall-run candidate does not change final x") &&
@@ -1340,7 +1340,7 @@ bool enterWallRun(iggy3d::Session& session,
                                       window,
                                       "unit/gameplay_controller_wall_run_enter",
                                       activeSurfaces(window));
-  return window.gameplayWallRunActive;
+  return window.gameplayWallRun.active;
 }
 
 bool productWallRunCandidateEntersActiveState() {
@@ -1357,11 +1357,11 @@ bool productWallRunCandidateEntersActiveState() {
          expect(window.gameplayMovementState ==
                     iggy3d::ProductGameplayMovementState::WallRunning,
                 "wall-run movement state") &&
-         expect(window.gameplayWallRunStatus == "wall_run_active",
+         expect(window.gameplayWallRun.status == "wall_run_active",
                 "wall-run active status") &&
-         expect(window.gameplayWallRunReasonCode == "wall_run_started",
+         expect(window.gameplayWallRun.reasonCode == "wall_run_started",
                 "wall-run start reason") &&
-         expect(window.gameplayWallRunRemainingSeconds > 0.0F,
+         expect(window.gameplayWallRun.remainingSeconds > 0.0F,
                 "wall-run remaining time");
 }
 
@@ -1441,7 +1441,7 @@ bool productWallRunTimerExpiryExits() {
   seedAirborneWallRunSetup(*session, window);
   window.gameplayMovementTuning.wallRunDurationSeconds = 0.1F;
   const bool entered = enterWallRun(*session, window);
-  for (int frame = 0; frame < 10 && window.gameplayWallRunActive; ++frame) {
+  for (int frame = 0; frame < 10 && window.gameplayWallRun.active; ++frame) {
     iggy3d::applyProductGameplayActions(
         *session,
         manualMoveActions(1.0F, 0.0F),
@@ -1451,8 +1451,8 @@ bool productWallRunTimerExpiryExits() {
   }
 
   return expect(entered, "wall-run timer enters") &&
-         expect(!window.gameplayWallRunActive, "wall-run timer exits") &&
-         expect(window.gameplayWallRunReasonCode == "wall_run_expired",
+         expect(!window.gameplayWallRun.active, "wall-run timer exits") &&
+         expect(window.gameplayWallRun.reasonCode == "wall_run_expired",
                 "wall-run timer expiry reason");
 }
 
@@ -1472,8 +1472,8 @@ bool productWallRunInputStopExits() {
                                       activeSurfaces(window));
 
   return expect(entered, "wall-run input stop enters") &&
-         expect(!window.gameplayWallRunActive, "wall-run input stop exits") &&
-         expect(window.gameplayWallRunReasonCode == "wall_run_input_stopped",
+         expect(!window.gameplayWallRun.active, "wall-run input stop exits") &&
+         expect(window.gameplayWallRun.reasonCode == "wall_run_input_stopped",
                 "wall-run input stop reason");
 }
 
@@ -1493,8 +1493,8 @@ bool productWallRunJumpInputExits() {
                                       activeSurfaces(window));
 
   return expect(entered, "wall-run jump exit enters") &&
-         expect(!window.gameplayWallRunActive, "wall-run jump exits") &&
-         expect(window.gameplayWallRunReasonCode == "wall_run_exit_jump",
+         expect(!window.gameplayWallRun.active, "wall-run jump exits") &&
+         expect(window.gameplayWallRun.reasonCode == "wall_run_exit_jump",
                 "wall-run jump exit reason");
 }
 
@@ -1535,8 +1535,8 @@ bool productWallRunTuningChangesGravityAndDuration() {
 
   return expect(slowEntered && fastEntered, "wall-run tuning enters") &&
          expect(slowFall < fastFall, "wall-run gravity tuning changes fall") &&
-         expect(fastWindow.gameplayWallRunDurationSeconds >
-                    slowWindow.gameplayWallRunDurationSeconds,
+         expect(fastWindow.gameplayWallRun.durationSeconds >
+                    slowWindow.gameplayWallRun.durationSeconds,
                 "wall-run duration tuning recorded");
 }
 

@@ -201,8 +201,8 @@ ProductAutomationExecutionResult applyProductSaveBrowserAutomationCommand(
     markAutomationApplied(context.window, command, automationSpec.canonicalKey,
                           context.currentOwner(),
                           // branch-gate: BG-1008
-                          context.window.saveRecoverExecuted ? "applied" : "failed");
-    return passSaveBrowserAutomation(context.window.saveRecoverExecuted);
+                          context.window.saveRecover.executed ? "applied" : "failed");
+    return passSaveBrowserAutomation(context.window.saveRecover.executed);
   }
 
   return unhandledSaveBrowserAutomation();

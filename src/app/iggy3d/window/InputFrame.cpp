@@ -449,23 +449,23 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
     window.gameplayMovementGroundVelocityX = 0.0F;
     window.gameplayMovementGroundVelocityZ = 0.0F;
     window.gameplayMovementHorizontalSpeedMetersPerSecond = 0.0F;
-    window.gameplayWallRunCandidateAvailable = false;
-    window.gameplayWallRunCandidateStatus = "wall_run_grounded";
-    window.gameplayWallRunCandidateReasonCode =
-        window.gameplayWallRunCandidateStatus;
-    window.gameplayWallRunSide = "none";
-    window.gameplayWallRunSurfaceId = "none";
-    window.gameplayWallRunNormalX = 0.0F;
-    window.gameplayWallRunNormalY = 0.0F;
-    window.gameplayWallRunNormalZ = 0.0F;
-    window.gameplayWallRunApproachSpeedMetersPerSecond = 0.0F;
-    window.gameplayWallRunActive = false;
-    window.gameplayWallRunStatus = "wall_run_inactive";
-    window.gameplayWallRunReasonCode = window.gameplayWallRunStatus;
-    window.gameplayWallRunRemainingSeconds = 0.0F;
-    window.gameplayWallRunDurationSeconds = 0.0F;
-    window.gameplayWallRunGravityMultiplier = 1.0F;
-    window.gameplayWallRunSpeedMultiplier = 1.0F;
+    window.gameplayWallRun.candidateAvailable = false;
+    window.gameplayWallRun.candidateStatus = "wall_run_grounded";
+    window.gameplayWallRun.candidateReasonCode =
+        window.gameplayWallRun.candidateStatus;
+    window.gameplayWallRun.side = "none";
+    window.gameplayWallRun.surfaceId = "none";
+    window.gameplayWallRun.normalX = 0.0F;
+    window.gameplayWallRun.normalY = 0.0F;
+    window.gameplayWallRun.normalZ = 0.0F;
+    window.gameplayWallRun.approachSpeedMetersPerSecond = 0.0F;
+    window.gameplayWallRun.active = false;
+    window.gameplayWallRun.status = "wall_run_inactive";
+    window.gameplayWallRun.reasonCode = window.gameplayWallRun.status;
+    window.gameplayWallRun.remainingSeconds = 0.0F;
+    window.gameplayWallRun.durationSeconds = 0.0F;
+    window.gameplayWallRun.gravityMultiplier = 1.0F;
+    window.gameplayWallRun.speedMultiplier = 1.0F;
     // branch-gate: BG-1061
     if (!window.gameplayJumpActive) {
       window.gameplayMovementGrounded = true;
@@ -1521,7 +1521,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
              context.window.worldSetup.dungeonDraftSelectedGlyph,
              context.window.worldSetup.dungeonDraftLastGlyph,
              context.window.selectedProductSaveId,
-             context.window.saveDeleteCandidateId});
+             context.window.saveDelete.candidateId});
     uiRequest.gameplayActive = context.window.gameplayActive;
     uiRequest.saveRootWritable = !context.options.saveRoot.empty();
     uiRequest.developerToolsEnabled = true;

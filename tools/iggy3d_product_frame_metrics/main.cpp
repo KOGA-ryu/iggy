@@ -363,7 +363,7 @@ bool initializeScenarioRuntime(const ScenarioSpec& spec,
       return fail("wall_run_jump_failed");
     }
     if (!applyAutomationCommand(runtime, "game.move_x", "1") &&
-        !runtime.window.gameplayWallRunActive) {
+        !runtime.window.gameplayWallRun.active) {
       return fail("wall_run_move_failed");
     }
   }
@@ -408,10 +408,10 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
   counters.physicsMovementSweepMax =
       std::max(counters.physicsMovementSweepMax,
                window.gameplayMovementCollisionSweepCount);
-  if (window.gameplayWallRunCandidateAvailable) {
+  if (window.gameplayWallRun.candidateAvailable) {
     ++counters.wallRunCandidateFrameCount;
   }
-  if (window.gameplayWallRunActive) {
+  if (window.gameplayWallRun.active) {
     ++counters.wallRunActiveFrameCount;
   }
   if (window.gameplayMovementState ==
@@ -421,7 +421,7 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
   counters.lastMovementState =
       std::string(iggy3d::productGameplayMovementStateName(
           window.gameplayMovementState));
-  counters.lastWallRunStatus = window.gameplayWallRunStatus;
+  counters.lastWallRunStatus = window.gameplayWallRun.status;
   counters.lastHorizontalSpeedMetersPerSecond =
       window.gameplayMovementHorizontalSpeedMetersPerSecond;
   counters.lastVerticalVelocityMetersPerSecond =

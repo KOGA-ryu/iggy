@@ -22,6 +22,10 @@
 #include "app/iggy3d/window/MouseCaptureState.hpp"
 #include "app/iggy3d/world/WorldSetupState.hpp"
 #include "app/iggy3d/world/WorldCreationState.hpp"
+#include "app/iggy3d/save/SaveFlowState.hpp"
+#include "app/iggy3d/save/SaveDeleteState.hpp"
+#include "app/iggy3d/save/SaveRecoverState.hpp"
+#include "app/iggy3d/gameplay/WallRunState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -386,35 +390,15 @@ struct ProductAppWindowState {
   bool saveSlotActionEnabled = false;
   bool saveSlotActionConfirmationRequired = false;
   std::string saveSlotActionStatus = "not_requested";
-  std::string saveFlowOperation = "none";
-  std::string saveFlowSourceSurface = "none";
-  std::string saveFlowStatus = "not_requested";
-  std::string saveFlowReasonCode = "not_requested";
-  std::string saveFlowAffectedSlotId = "none";
-  std::uint64_t saveFlowActiveCountBefore = 0;
-  std::uint64_t saveFlowActiveCountAfter = 0;
-  std::uint64_t saveFlowDeletedCountAfter = 0;
-  std::string saveFlowSelectedSlotAfter = "none";
-  bool saveDeleteConfirmationOpen = false;
-  std::string saveDeleteCandidateId = "none";
-  bool saveDeleteCandidateEnabled = false;
-  std::string saveDeleteStatus = "not_requested";
-  std::string saveDeleteReasonCode = "not_requested";
-  std::string saveDeleteType = "none";
-  bool saveDeleteRecoverable = false;
-  bool saveDeleteExecuted = false;
+  ProductSaveFlowState saveFlow;
+  ProductSaveDeleteState saveDelete;
   bool deletedSaveBrowserOpen = false;
   std::uint64_t deletedSaveCount = 0;
   std::uint64_t deletedCompatibleSaveCount = 0;
   std::string deletedSelectedSaveId = "none";
   bool deletedSelectedSaveEnabled = false;
   std::string deletedSelectedSaveStatus = "none";
-  std::string saveRecoverStatus = "not_requested";
-  std::string saveRecoverReasonCode = "not_requested";
-  bool saveRecoverExecuted = false;
-  std::string saveRecoverSaveId = "none";
-  bool saveRecoverSnapshotRecovered = false;
-  bool saveRecoverSnapshotMissing = false;
+  ProductSaveRecoverState saveRecover;
   std::uint64_t runtimeStateHash = 0;
   ProductViewportState viewport;
   std::uint64_t sceneItemCount = 0;
@@ -466,22 +450,7 @@ struct ProductAppWindowState {
       ProductGameplayMovementState::IdleGrounded;
   bool gameplayMovementGrounded = true;
   float gameplayMovementHorizontalSpeedMetersPerSecond = 0.0F;
-  bool gameplayWallRunCandidateAvailable = false;
-  std::string gameplayWallRunCandidateStatus = "wall_run_not_checked";
-  std::string gameplayWallRunCandidateReasonCode = "wall_run_not_checked";
-  std::string gameplayWallRunSide = "none";
-  std::string gameplayWallRunSurfaceId = "none";
-  float gameplayWallRunNormalX = 0.0F;
-  float gameplayWallRunNormalY = 0.0F;
-  float gameplayWallRunNormalZ = 0.0F;
-  float gameplayWallRunApproachSpeedMetersPerSecond = 0.0F;
-  bool gameplayWallRunActive = false;
-  std::string gameplayWallRunStatus = "wall_run_inactive";
-  std::string gameplayWallRunReasonCode = "wall_run_inactive";
-  float gameplayWallRunRemainingSeconds = 0.0F;
-  float gameplayWallRunDurationSeconds = 0.0F;
-  float gameplayWallRunGravityMultiplier = 1.0F;
-  float gameplayWallRunSpeedMultiplier = 1.0F;
+  ProductWallRunState gameplayWallRun;
   float gameplayMovementGradePercent = 0.0F;
   std::string gameplayMovementProfile =
       std::string{kProductGameplayMovementTuning.walkProfile};

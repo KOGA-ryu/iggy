@@ -869,7 +869,7 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
                request.window.worldSetup.dungeonDraftSelectedGlyph,
                request.window.worldSetup.dungeonDraftLastGlyph,
                request.window.selectedProductSaveId,
-               request.window.saveDeleteCandidateId});
+               request.window.saveDelete.candidateId});
       const ProductUiDrawList menuUi = buildProductStarterUiDrawList(uiRequest);
       recordProductVulkanMenuUiDrawList(request.window, "starter", menuUi);
       const SdlDrawableExtent drawableExtent = request.sdlWindow.drawableExtent();
@@ -931,7 +931,7 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           request.window.viewport.cameraYawDegrees,
                           request.window.viewport.cameraPitchDegrees,
                           request.saves,
-                          request.window.saveDeleteCandidateId);
+                          request.window.saveDelete.candidateId);
   request.window.viewport.cameraHeadingVisible =
       request.window.viewport.cameraHeadingVisible || view.cameraHeadingDrawn;
   request.window.menuTextDrawn = request.window.menuTextDrawn || view.textDrawn;

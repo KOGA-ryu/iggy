@@ -279,28 +279,28 @@ ProductWallRunActiveEvaluationResult productWallRunActiveRecorded(
 void publishProductWallRunCandidateEvaluation(
     ProductAppWindowState& window,
     const ProductWallRunCandidateEvaluationResult& result) {
-  window.gameplayWallRunCandidateAvailable = result.available;
-  window.gameplayWallRunCandidateStatus = result.status;
-  window.gameplayWallRunCandidateReasonCode = result.reasonCode;
-  window.gameplayWallRunSide = result.side;
-  window.gameplayWallRunSurfaceId = result.surfaceId;
-  window.gameplayWallRunNormalX = result.normal.x;
-  window.gameplayWallRunNormalY = result.normal.y;
-  window.gameplayWallRunNormalZ = result.normal.z;
-  window.gameplayWallRunApproachSpeedMetersPerSecond =
+  window.gameplayWallRun.candidateAvailable = result.available;
+  window.gameplayWallRun.candidateStatus = result.status;
+  window.gameplayWallRun.candidateReasonCode = result.reasonCode;
+  window.gameplayWallRun.side = result.side;
+  window.gameplayWallRun.surfaceId = result.surfaceId;
+  window.gameplayWallRun.normalX = result.normal.x;
+  window.gameplayWallRun.normalY = result.normal.y;
+  window.gameplayWallRun.normalZ = result.normal.z;
+  window.gameplayWallRun.approachSpeedMetersPerSecond =
       result.approachSpeedMetersPerSecond;
 }
 
 void publishProductWallRunActiveEvaluation(
     ProductAppWindowState& window,
     const ProductWallRunActiveEvaluationResult& result) {
-  window.gameplayWallRunActive = result.active;
-  window.gameplayWallRunStatus = result.status;
-  window.gameplayWallRunReasonCode = result.reasonCode;
-  window.gameplayWallRunRemainingSeconds = result.remainingSeconds;
-  window.gameplayWallRunDurationSeconds = result.durationSeconds;
-  window.gameplayWallRunGravityMultiplier = result.gravityMultiplier;
-  window.gameplayWallRunSpeedMultiplier = result.speedMultiplier;
+  window.gameplayWallRun.active = result.active;
+  window.gameplayWallRun.status = result.status;
+  window.gameplayWallRun.reasonCode = result.reasonCode;
+  window.gameplayWallRun.remainingSeconds = result.remainingSeconds;
+  window.gameplayWallRun.durationSeconds = result.durationSeconds;
+  window.gameplayWallRun.gravityMultiplier = result.gravityMultiplier;
+  window.gameplayWallRun.speedMultiplier = result.speedMultiplier;
 }
 
 void publishProductWallRunEvaluation(
@@ -337,7 +337,7 @@ void updateProductMovementStateProof(ProductAppWindowState& window) {
   // branch-gate: BG-1153
   if (window.gameplayJumpActive) {
     // branch-gate: BG-1157
-    if (window.gameplayWallRunActive) {
+    if (window.gameplayWallRun.active) {
       window.gameplayMovementState = ProductGameplayMovementState::WallRunning;
       return;
     }
@@ -1022,7 +1022,7 @@ bool productMovementDebugAlongWall(const ProductAppWindowState& window,
 }
 
 bool wallRunProofNormal(const ProductAppWindowState& window, Vec3& normal) {
-  normal = {window.gameplayWallRunNormalX, 0.0F, window.gameplayWallRunNormalZ};
+  normal = {window.gameplayWallRun.normalX, 0.0F, window.gameplayWallRun.normalZ};
   const float lenSq = lengthSquared(normal);
   // branch-gate: BG-1157
   if (!isFinite(normal) || lenSq <= 0.0001F) {
@@ -1076,30 +1076,30 @@ ProductWallRunActiveEvaluationResult evaluateProductWallRunActiveWithoutJumpExit
   const ProductAppWindowState& window = request.window;
   const bool hasMoveInput = request.moveX != 0.0F || request.moveY != 0.0F;
   // branch-gate: BG-1157
-  if (window.gameplayWallRunActive && !window.gameplayJumpActive) {
+  if (window.gameplayWallRun.active && !window.gameplayJumpActive) {
     return productWallRunActiveRejected("wall_run_landed");
   }
   // branch-gate: BG-1157
-  if (window.gameplayWallRunActive && !hasMoveInput) {
+  if (window.gameplayWallRun.active && !hasMoveInput) {
     return productWallRunActiveRejected("wall_run_input_stopped");
   }
   Vec3 tangent;
   // branch-gate: BG-1157
-  if (window.gameplayWallRunActive &&
+  if (window.gameplayWallRun.active &&
       !wallRunTangentDirectionFromNormal(
           window, candidate.normal, request.moveX, request.moveY, tangent)) {
     return productWallRunActiveRejected("wall_run_input_away");
   }
   // branch-gate: BG-1157
-  if (window.gameplayWallRunActive && !candidate.available) {
+  if (window.gameplayWallRun.active && !candidate.available) {
     return productWallRunActiveRejected(candidate.reasonCode);
   }
   // branch-gate: BG-1157
-  if (!window.gameplayWallRunActive && (!candidate.available || !hasMoveInput)) {
+  if (!window.gameplayWallRun.active && (!candidate.available || !hasMoveInput)) {
     return productWallRunActiveRejected("wall_run_inactive");
   }
   // branch-gate: BG-1157
-  if (!window.gameplayWallRunActive &&
+  if (!window.gameplayWallRun.active &&
       !wallRunTangentDirectionFromNormal(
           window, candidate.normal, request.moveX, request.moveY, tangent)) {
     return productWallRunActiveRejected("wall_run_input_away");
@@ -1107,7 +1107,7 @@ ProductWallRunActiveEvaluationResult evaluateProductWallRunActiveWithoutJumpExit
 
   const float dt = std::max(0.0F, window.gameplayMovementTuning.inputStepSeconds);
   // branch-gate: BG-1157
-  if (!window.gameplayWallRunActive) {
+  if (!window.gameplayWallRun.active) {
     const float remaining =
         std::clamp(window.gameplayMovementTuning.wallRunDurationSeconds,
                    0.1F,
@@ -1119,7 +1119,7 @@ ProductWallRunActiveEvaluationResult evaluateProductWallRunActiveWithoutJumpExit
   }
 
   const float remaining =
-      std::max(0.0F, window.gameplayWallRunRemainingSeconds - dt);
+      std::max(0.0F, window.gameplayWallRun.remainingSeconds - dt);
   // branch-gate: BG-1157
   if (remaining <= 0.0F) {
     return productWallRunActiveRejected("wall_run_expired");
@@ -1363,7 +1363,7 @@ void advanceProductJump(Session& session,
   if (window.gameplayJumpVelocityMetersPerSecond <= 0.0F) {
     // branch-gate: BG-1157
     gravityMultiplier =
-        window.gameplayWallRunActive
+        window.gameplayWallRun.active
             ? std::clamp(tuning.wallRunGravityMultiplier, 0.0F, 1.0F)
             : tuning.fallGravityMultiplier;
   }
@@ -1775,7 +1775,7 @@ void submitProductAirborneMove(Session& session,
                                  window.gameplayMovementTuning,
                                  window.gameplayMovementTuning.airControlMultiplier);
   // branch-gate: BG-1157
-  if (window.gameplayWallRunActive) {
+  if (window.gameplayWallRun.active) {
     Vec3 wallRunDirection;
     // branch-gate: BG-1157
     if (wallRunTangentDirection(window, moveX, moveY, wallRunDirection)) {
@@ -2290,7 +2290,7 @@ void updateProductJumpTimingPhase(Session& session,
   // branch-gate: BG-1153
   if (intent.jumpPressed) {
     // branch-gate: BG-1157
-    if (window.gameplayWallRunActive) {
+    if (window.gameplayWallRun.active) {
       clearProductWallRunActiveProof(window, "wall_run_exit_jump");
     }
     submitProductJump(session, window, source);

@@ -150,7 +150,7 @@ bool deleteSelectedShrinksCatalogAndReclampsSelectionInPlace() {
   iggy3d::FrontendState frontend;
   // The operator selected save_002 and confirmed delete of save_002.
   iggy3d::selectProductSaveSlotById(saves.slots, "save_002", window);
-  window.saveDeleteCandidateId = "save_002";
+  window.saveDelete.candidateId = "save_002";
   if (!expect(window.selectedProductSaveId == "save_002",
               "selection starts on save_002")) {
     return false;
@@ -174,20 +174,20 @@ bool deleteSelectedShrinksCatalogAndReclampsSelectionInPlace() {
          expect(flow.deletedCountAfter == 1U, "flow deleted count") &&
          expect(flow.selectedSlotAfter == "save_001",
                 "flow selected survivor") &&
-         expect(window.saveFlowOperation == "delete",
+         expect(window.saveFlow.operation == "delete",
                 "window flow operation") &&
-         expect(window.saveFlowSourceSurface == "delete_world_browser",
+         expect(window.saveFlow.sourceSurface == "delete_world_browser",
                 "window flow source") &&
-         expect(window.saveFlowActiveCountBefore == 2U,
+         expect(window.saveFlow.activeCountBefore == 2U,
                 "window flow before count") &&
-         expect(window.saveFlowActiveCountAfter == 1U,
+         expect(window.saveFlow.activeCountAfter == 1U,
                 "window flow after count") &&
-         expect(window.saveFlowDeletedCountAfter == 1U,
+         expect(window.saveFlow.deletedCountAfter == 1U,
                 "window flow deleted count") &&
-         expect(window.saveFlowSelectedSlotAfter == "save_001",
+         expect(window.saveFlow.selectedSlotAfter == "save_001",
                 "window flow selected survivor") &&
-         expect(window.saveDeleteExecuted, "delete executed") &&
-         expect(window.saveDeleteStatus == "product_save_soft_deleted",
+         expect(window.saveDelete.executed, "delete executed") &&
+         expect(window.saveDelete.status == "product_save_soft_deleted",
                 "delete status soft deleted") &&
          expect(saves.slots.slots.size() == 1U,
                 "catalog shrinks to one map in place") &&
@@ -233,7 +233,7 @@ bool deleteLastSaveEmptiesCatalogInPlace() {
   iggy3d::ProductAppWindowState window;
   iggy3d::FrontendState frontend;
   iggy3d::selectProductSaveSlotById(saves.slots, "save_001", window);
-  window.saveDeleteCandidateId = "save_001";
+  window.saveDelete.candidateId = "save_001";
 
   const iggy3d::ProductSaveFlowResult flow =
       iggy3d::executeProductSaveSoftDelete(options, saves, window, frontend);
@@ -243,9 +243,9 @@ bool deleteLastSaveEmptiesCatalogInPlace() {
          expect(flow.activeCountAfter == 0U, "lone flow after count") &&
          expect(flow.selectedSlotAfter == "none",
                 "lone flow selected none") &&
-         expect(window.saveFlowSelectedSlotAfter == "none",
+         expect(window.saveFlow.selectedSlotAfter == "none",
                 "lone window flow selected none") &&
-         expect(window.saveDeleteExecuted, "lone delete executed") &&
+         expect(window.saveDelete.executed, "lone delete executed") &&
          expect(saves.slots.slots.empty(), "catalog empties in place") &&
          expect(saves.slots.compatibleCount == 0U,
                 "compatible count reaches zero in place") &&
