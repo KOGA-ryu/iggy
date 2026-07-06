@@ -461,6 +461,19 @@ cr::CreativeToolInputPacket moveDrag(cr::CreativeToolInputKind kind,
   return input;
 }
 
+cr::CreativeToolInputPacket moveDragToWorld(
+    cr::CreativeToolInputKind kind,
+    cr::CreativeToolWorldPoint worldDestination,
+    cr::CreativeToolMoveHeldAxis heldAxis) {
+  cr::CreativeToolInputPacket input;
+  input.kind = kind;
+  input.pointer.button = cr::CreativeToolPointerButton::Primary;
+  input.pointer.hasWorldDestination = true;
+  input.pointer.worldDestination = worldDestination;
+  input.pointer.moveHeldAxis = heldAxis;
+  return input;
+}
+
 bool dragCommitMovesRoomByCornerAnchor() {
   cr::Facade facade;
   const cr::CreativeObjectId roomId = createRoomAt(facade, {1.0, 2.0, 1.0});
@@ -501,6 +514,50 @@ bool dragCommitMovesRoomByCornerAnchor() {
          expect(facade.moveDragReceipt().outcome ==
                     cr::CreativeFacadeMoveDragOutcome::Applied,
                 "stored drag receipt applied");
+}
+
+bool dragCommitHeldYAxisSnapsOnlyXZWithCoreMask() {
+  cr::Facade facade;
+  const cr::CreativeObjectId roomId = createRoomAt(facade, {0.0, 5.0, 0.0});
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  static_cast<void>(facade.dispatchToolInput(
+      movePress(static_cast<cr::Id>(roomId))));
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const cr::CreativeToolWorldPoint destination{10.4, 100.0, 10.6};
+  const cr::CreativeFacadeToolDispatchReceipt preview =
+      facade.dispatchToolInput(moveDragToWorld(
+          cr::CreativeToolInputKind::PointerMove,
+          destination,
+          cr::CreativeToolMoveHeldAxis::Y));
+  const cr::CreativeFacadeToolDispatchReceipt commit =
+      facade.dispatchToolInput(moveDragToWorld(
+          cr::CreativeToolInputKind::PointerRelease,
+          destination,
+          cr::CreativeToolMoveHeldAxis::Y));
+
+  const cr::CreativeObject* room = facade.findObject(roomId);
+  const cr::CreativeFacadeMoveDragReceipt& drag = commit.moveDrag;
+  return expect(room != nullptr, "held-y room exists") &&
+         expect(preview.moveDrag.requestedAnchor.y == 5.0,
+                "held-y preview requested y anchored") &&
+         expect(preview.moveDrag.snappedAnchor.x == 10.0,
+                "held-y preview snapped x") &&
+         expect(preview.moveDrag.snappedAnchor.y == 5.0,
+                "held-y preview y preserved") &&
+         expect(preview.moveDrag.snappedAnchor.z == 11.0,
+                "held-y preview snapped z") &&
+         expect(room->bounds.min.x == 10.0, "held-y commit bounds x") &&
+         expect(room->bounds.min.y == 5.0, "held-y commit bounds y held") &&
+         expect(room->bounds.min.z == 11.0, "held-y commit bounds z") &&
+         expect(drag.snappedAnchor.x == 10.0, "held-y commit snapped x") &&
+         expect(drag.snappedAnchor.y == 5.0,
+                "held-y commit snapped y held") &&
+         expect(drag.snappedAnchor.z == 11.0, "held-y commit snapped z") &&
+         expect(drag.outcome == cr::CreativeFacadeMoveDragOutcome::Applied,
+                "held-y commit applied") &&
+         expect(facade.document().revision() == revisionBefore + 1U,
+                "held-y commit bumps revision");
 }
 
 bool dragCommitToStartAnchorIsNoChange() {
@@ -638,6 +695,7 @@ int main() {
                   lockedObjectRemovalRefusedThroughFacade() &&
                   unlockedObjectRemovalSucceedsAfterUnlock() &&
                   dragCommitMovesRoomByCornerAnchor() &&
+                  dragCommitHeldYAxisSnapsOnlyXZWithCoreMask() &&
                   dragCommitToStartAnchorIsNoChange() &&
                   dragCommitOnLockedRoomRefused() &&
                   dragCancelDiscardsWithoutMutation() &&

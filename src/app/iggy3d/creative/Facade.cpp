@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/document/DocumentSnap.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/tools/RoomShell.hpp"
+#include "core/math/Snap.hpp"
 
 #include <limits>
 #include <span>
@@ -20,19 +21,53 @@ namespace {
   return object.transform.position;
 }
 
-// Snap a world anchor via the document 3D snap contract (TL-4, D4). The tool
-// boundary snaps BEFORE building the Move payload; snap is never auto-applied
-// inside the mutation executor.
-[[nodiscard]] CreativeVec3 snapWorldAnchor(
-    CreativeVec3 anchor,
-    CreativeDocumentSnapSettings settings) noexcept {
-  const CreativeDocumentSnapReceipt snap = snapCreativeDocumentPoint(
-      CreativeDocumentSnapPoint3{anchor.x, anchor.y, anchor.z}, settings);
-  if (!snap.accepted) {
-    return anchor;
+[[nodiscard]] iggy3d::Vec3 toCoreVec3(CreativeVec3 value) noexcept {
+  return {static_cast<float>(value.x), static_cast<float>(value.y),
+          static_cast<float>(value.z)};
+}
+
+[[nodiscard]] CreativeVec3 toCreativeVec3(iggy3d::Vec3 value) noexcept {
+  return {static_cast<double>(value.x), static_cast<double>(value.y),
+          static_cast<double>(value.z)};
+}
+
+[[nodiscard]] unsigned moveSnapAxisMask(
+    CreativeToolMoveHeldAxis heldAxis) noexcept {
+  switch (heldAxis) {
+    case CreativeToolMoveHeldAxis::X:
+      return 0x6u;
+    case CreativeToolMoveHeldAxis::Y:
+      return 0x5u;
+    case CreativeToolMoveHeldAxis::Z:
+      return 0x3u;
   }
-  return CreativeVec3{snap.snappedPoint.x, snap.snappedPoint.y,
-                      snap.snappedPoint.z};
+  return 0x7u;
+}
+
+[[nodiscard]] unsigned documentSnapAxisMask(
+    CreativeDocumentSnapSettings settings) noexcept {
+  if (settings.mode == CreativeDocumentSnapMode::Disabled) {
+    return 0x0u;
+  }
+  return static_cast<unsigned>(settings.axes) & 0x7u;
+}
+
+// Snap a Move anchor through the core float snap kernel. The held axis is
+// excluded from the core axis mask, so no second post-snap hold pass is needed.
+[[nodiscard]] CreativeVec3 snapMoveAnchor(
+    CreativeVec3 anchor,
+    CreativeDocumentSnapSettings settings,
+    CreativeToolMoveHeldAxis heldAxis) noexcept {
+  const iggy3d::Vec3 step{static_cast<float>(settings.stepX),
+                          static_cast<float>(settings.stepY),
+                          static_cast<float>(settings.stepZ)};
+  const iggy3d::Vec3 origin{static_cast<float>(settings.originX),
+                            static_cast<float>(settings.originY),
+                            static_cast<float>(settings.originZ)};
+  const unsigned axisMask =
+      moveSnapAxisMask(heldAxis) & documentSnapAxisMask(settings);
+  return toCreativeVec3(
+      iggy3d::snapVec3ToGrid(toCoreVec3(anchor), step, origin, axisMask));
 }
 
 [[nodiscard]] bool sameAnchor(CreativeVec3 lhs, CreativeVec3 rhs) noexcept {
@@ -40,12 +75,10 @@ namespace {
 }
 
 // Hold one axis of a Move anchor at the start-anchor value, leaving the other
-// two. Applied BEFORE snapping (so the requested anchor already holds the axis)
-// AND AFTER snapping (so the grid snap can't lift/shift a HELD axis — e.g. a
-// ground-plane editor holding Y keeps the object on the floor instead of the
-// snap rounding Y up to the next grid line). The caller chooses the held axis
-// from its camera (front view holds Z, ground plane holds Y), so the kernel
-// stays view-agnostic.
+// two. Applied BEFORE snapping so the requested anchor already holds the axis;
+// core snap receives an axis mask that excludes the held axis. The caller
+// chooses the held axis from its camera (front view holds Z, ground-plane
+// editor holds Y), so the kernel stays view-agnostic.
 void holdMoveAxis(CreativeVec3& anchor, CreativeVec3 startAnchor,
                   CreativeToolMoveHeldAxis heldAxis) noexcept {
   switch (heldAxis) {
@@ -603,9 +636,9 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
         const CreativeVec3 requested = resolveMoveAnchor(
             intent.pointer.worldDestination, moveDragStartAnchor_,
             intent.pointer.moveHeldAxis);
-        CreativeVec3 snapped =
-            snapWorldAnchor(requested, document_.documentSnapSettings());
-        holdMoveAxis(snapped, moveDragStartAnchor_, intent.pointer.moveHeldAxis);
+        const CreativeVec3 snapped =
+            snapMoveAnchor(requested, document_.documentSnapSettings(),
+                           intent.pointer.moveHeldAxis);
         receipt.hasDestinationAnchor = true;
         receipt.requestedAnchor = requested;
         receipt.snappedAnchor = snapped;
@@ -657,9 +690,9 @@ CreativeFacadeMoveDragReceipt Facade::applyMoveDragIntent(
       const CreativeVec3 requested = resolveMoveAnchor(
           intent.pointer.worldDestination, startAnchor,
           intent.pointer.moveHeldAxis);
-      CreativeVec3 snapped =
-          snapWorldAnchor(requested, document_.documentSnapSettings());
-      holdMoveAxis(snapped, startAnchor, intent.pointer.moveHeldAxis);
+      const CreativeVec3 snapped =
+          snapMoveAnchor(requested, document_.documentSnapSettings(),
+                         intent.pointer.moveHeldAxis);
       receipt.hasDestinationAnchor = true;
       receipt.requestedAnchor = requested;
       receipt.snappedAnchor = snapped;

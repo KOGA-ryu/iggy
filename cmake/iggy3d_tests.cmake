@@ -471,6 +471,20 @@ set_tests_properties(standalone_picking_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;standalone;picking;iggy3d")
 
+add_executable(standalone_placement_tests
+  tests/unit/standalone_placement_tests.cpp
+  apps/iggy3d_creative/StandalonePlacement.cpp
+  apps/iggy3d_creative/StandaloneBrushPalette.cpp)
+target_include_directories(standalone_placement_tests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
+target_link_libraries(standalone_placement_tests PRIVATE iggy3d)
+iggy3d_apply_warnings(standalone_placement_tests)
+add_test(NAME standalone_placement_tests
+  COMMAND "$<TARGET_FILE:standalone_placement_tests>")
+set_tests_properties(standalone_placement_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;standalone;placement;iggy3d")
+
 iggy3d_add_unit_test(product_creative_palette_tests
   tests/unit/creative_palette_tests.cpp)
 set_tests_properties(product_creative_palette_tests PROPERTIES

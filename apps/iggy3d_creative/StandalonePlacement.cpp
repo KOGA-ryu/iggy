@@ -1,12 +1,12 @@
 #include "StandalonePlacement.hpp"
 
-#include <cmath>
 #include <cstdio>
 
 #include <SDL3/SDL.h>
 
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "core/math/Snap.hpp"
 
 #include "StandaloneBrushPalette.hpp"
 
@@ -15,9 +15,13 @@ namespace iggy3d_creative_app {
 iggy3d::Vec3 snapGroundToCellCenter(double worldX,
                                     double worldZ,
                                     double cellSize) {
-  const double cx = std::floor(worldX / cellSize) * cellSize + cellSize * 0.5;
-  const double cz = std::floor(worldZ / cellSize) * cellSize + cellSize * 0.5;
-  return {static_cast<float>(cx), 0.0F, static_cast<float>(cz)};
+  const float cell = static_cast<float>(cellSize);
+  const iggy3d::Vec3 snapped = iggy3d::snapVec3ToGrid(
+      {static_cast<float>(worldX), 0.0F, static_cast<float>(worldZ)},
+      {cell, cell, cell},
+      {cell * 0.5F, cell * 0.5F, cell * 0.5F},
+      0x5u);
+  return {snapped.x, 0.0F, snapped.z};
 }
 
 std::string pathPointsSummary(
