@@ -90,7 +90,7 @@ bool applyGameplayJumpActionState(ProductAutomationGameplayContext& context,
       productActiveRoomCollisionSurfaces(context.window.activeRoomCollision));
   return context.window.gameplayJumpRequested &&
          (context.window.gameplayJumpAccepted ||
-          context.window.gameplayTraversalConsumed);
+          context.window.gameplayTraversal.consumed);
 }
 
 bool parseGameplayPosition(std::string_view value, Vec3& out) {
@@ -254,7 +254,7 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
       context.window.automationControlStatus = "invalid_value";
       return failGameplayAutomation();
     }
-    context.window.physicsMovementPlannerEnabled = boolValue;
+    context.window.physicsMovementPlanner.enabled = boolValue;
     // branch-gate: BG-1010
     if (!boolValue) {
       recordProductPhysicsMovementPlannerTickProof(context.window, false,

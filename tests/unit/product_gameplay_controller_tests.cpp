@@ -470,13 +470,13 @@ bool productMoveUsesTunedManualStep() {
 
   return expect(window.gameplayCommandAccepted, "move accepted") &&
          expect(window.gameplayMovementStatus == "moved", "movement status") &&
-         expect(!window.physicsMovementPlannerEnabled,
+         expect(!window.physicsMovementPlanner.enabled,
                 "default physics planner disabled") &&
-         expect(!window.physicsMovementPlannerRequested,
+         expect(!window.physicsMovementPlanner.requested,
                 "default physics planner not requested") &&
-         expect(!window.physicsMovementPlannerUsed,
+         expect(!window.physicsMovementPlanner.used,
                 "default physics planner not used") &&
-         expect(window.physicsMovementPlannerStatus ==
+         expect(window.physicsMovementPlanner.status ==
                     "physics_movement_planner_disabled",
                 "default physics planner status") &&
          expect(window.gameplayMovementProfile == kExpectedManualFirstPersonProfile,
@@ -1565,35 +1565,35 @@ bool productJumpUsesClamberTraversalWhenCandidateIsLocal() {
                 "clamber jump status") &&
          expect(window.gameplayJumpReasonCode == "traversal_intent_applied",
                 "clamber jump reason") &&
-         expect(window.gameplayTraversalRequested, "clamber requested") &&
-         expect(window.gameplayTraversalConsumed, "clamber consumed input") &&
-         expect(window.gameplayTraversalAccepted, "clamber accepted") &&
-         expect(!window.gameplayTraversalFallbackJumpAllowed,
+         expect(window.gameplayTraversal.requested, "clamber requested") &&
+         expect(window.gameplayTraversal.consumed, "clamber consumed input") &&
+         expect(window.gameplayTraversal.accepted, "clamber accepted") &&
+         expect(!window.gameplayTraversal.fallbackJumpAllowed,
                 "clamber no jump fallback") &&
-         expect(window.gameplayTraversalStatus == "traversal_intent_applied",
+         expect(window.gameplayTraversal.status == "traversal_intent_applied",
                 "clamber traversal status") &&
-         expect(window.gameplayTraversalReasonCode == "traversal_intent_applied",
+         expect(window.gameplayTraversal.reasonCode == "traversal_intent_applied",
                 "clamber traversal reason") &&
-         expect(window.gameplayTraversalMechanic == "clamber",
+         expect(window.gameplayTraversal.mechanic == "clamber",
                 "clamber mechanic proof") &&
-         expect(window.gameplayTraversalSlotId == "clamber_block:clamber_top",
+         expect(window.gameplayTraversal.slotId == "clamber_block:clamber_top",
                 "clamber slot proof") &&
-         expect(window.gameplayTraversalTargetId == "clamber_block",
+         expect(window.gameplayTraversal.targetId == "clamber_block",
                 "clamber target proof") &&
-         expect(window.gameplayTraversalLandingSurfaceId == "clamber_top",
+         expect(window.gameplayTraversal.landingSurfaceId == "clamber_top",
                 "clamber landing proof") &&
          expect(window.playerPositionChanged, "clamber changed player position") &&
-         expect(nearlyEqual(window.gameplayTraversalStartX, start.x),
+         expect(nearlyEqual(window.gameplayTraversal.startX, start.x),
                 "clamber start x") &&
-         expect(nearlyEqual(window.gameplayTraversalStartY, start.y),
+         expect(nearlyEqual(window.gameplayTraversal.startY, start.y),
                 "clamber start y") &&
-         expect(nearlyEqual(window.gameplayTraversalStartZ, start.z),
+         expect(nearlyEqual(window.gameplayTraversal.startZ, start.z),
                 "clamber start z") &&
-         expect(nearlyEqual(window.gameplayTraversalFinalX, final.x),
+         expect(nearlyEqual(window.gameplayTraversal.finalX, final.x),
                 "clamber final x") &&
-         expect(nearlyEqual(window.gameplayTraversalFinalY, final.y),
+         expect(nearlyEqual(window.gameplayTraversal.finalY, final.y),
                 "clamber final y") &&
-         expect(nearlyEqual(window.gameplayTraversalFinalZ, final.z),
+         expect(nearlyEqual(window.gameplayTraversal.finalZ, final.z),
                 "clamber final z") &&
          expect(final.y > start.y, "clamber raises player");
 }
@@ -1622,32 +1622,32 @@ bool productJumpUsesWallJumpWhenAirborneNearWall() {
                 "wall jump status") &&
          expect(window.gameplayJumpReasonCode == "gameplay_jump_wall_jump",
                 "wall jump reason") &&
-         expect(window.gameplayTraversalRequested, "wall jump traversal requested") &&
-         expect(window.gameplayTraversalConsumed, "wall jump consumed input") &&
-         expect(window.gameplayTraversalAccepted, "wall jump traversal accepted") &&
-         expect(!window.gameplayTraversalFallbackJumpAllowed,
+         expect(window.gameplayTraversal.requested, "wall jump traversal requested") &&
+         expect(window.gameplayTraversal.consumed, "wall jump consumed input") &&
+         expect(window.gameplayTraversal.accepted, "wall jump traversal accepted") &&
+         expect(!window.gameplayTraversal.fallbackJumpAllowed,
                 "wall jump no fallback") &&
-         expect(window.gameplayTraversalMechanic == "wall_jump",
+         expect(window.gameplayTraversal.mechanic == "wall_jump",
                 "wall jump mechanic proof") &&
-         expect(window.gameplayTraversalSlotId == "wall_jump_wall_actor_blocker",
+         expect(window.gameplayTraversal.slotId == "wall_jump_wall_actor_blocker",
                 "wall jump slot proof") &&
-         expect(window.gameplayTraversalTargetId == "wall_jump_wall",
+         expect(window.gameplayTraversal.targetId == "wall_jump_wall",
                 "wall jump target proof") &&
-         expect(window.gameplayTraversalLandingSurfaceId ==
+         expect(window.gameplayTraversal.landingSurfaceId ==
                     "wall_jump_wall_actor_blocker",
                 "wall jump landing proof") &&
          expect(window.playerPositionChanged, "wall jump changed player position") &&
-         expect(nearlyEqual(window.gameplayTraversalStartX, start.x),
+         expect(nearlyEqual(window.gameplayTraversal.startX, start.x),
                 "wall jump start x") &&
-         expect(nearlyEqual(window.gameplayTraversalStartY, start.y),
+         expect(nearlyEqual(window.gameplayTraversal.startY, start.y),
                 "wall jump start y") &&
-         expect(nearlyEqual(window.gameplayTraversalStartZ, start.z),
+         expect(nearlyEqual(window.gameplayTraversal.startZ, start.z),
                 "wall jump start z") &&
-         expect(nearlyEqual(window.gameplayTraversalFinalX, final.x),
+         expect(nearlyEqual(window.gameplayTraversal.finalX, final.x),
                 "wall jump final x") &&
-         expect(nearlyEqual(window.gameplayTraversalFinalY, final.y),
+         expect(nearlyEqual(window.gameplayTraversal.finalY, final.y),
                 "wall jump final y") &&
-         expect(nearlyEqual(window.gameplayTraversalFinalZ, final.z),
+         expect(nearlyEqual(window.gameplayTraversal.finalZ, final.z),
                 "wall jump final z") &&
          expect(final.y > start.y, "wall jump raises player") &&
          expect(final.z > start.z, "wall jump pushes away from wall");
@@ -1679,7 +1679,7 @@ bool productJumpRejectsWallJumpNearGenericWall() {
          expect(window.gameplayJumpReasonCode ==
                     "gameplay_jump_already_airborne",
                 "generic wall jump reason") &&
-         expect(!window.gameplayTraversalAccepted,
+         expect(!window.gameplayTraversal.accepted,
                 "generic wall traversal rejected") &&
          expect(nearlyEqual(final.x, start.x), "generic wall x unchanged") &&
          expect(nearlyEqual(final.y, start.y), "generic wall y unchanged") &&
@@ -1940,14 +1940,14 @@ bool productDashMovesForwardAndRecordsProof() {
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
   const float appliedDistance = horizontalDistance(start, final);
 
-  return expect(window.gameplayDashRequested, "dash requested") &&
-         expect(window.gameplayDashAccepted, "dash accepted") &&
-         expect(window.gameplayDashStatus == "accepted", "dash status") &&
-         expect(window.gameplayDashReasonCode == "gameplay_dash_accepted",
+  return expect(window.gameplayDash.requested, "dash requested") &&
+         expect(window.gameplayDash.accepted, "dash accepted") &&
+         expect(window.gameplayDash.status == "accepted", "dash status") &&
+         expect(window.gameplayDash.reasonCode == "gameplay_dash_accepted",
                 "dash reason") &&
          expect(window.gameplayMovementProfile == kExpectedManualFirstPersonDashProfile,
                 "dash movement profile") &&
-         expect(nearlyEqual(window.gameplayDashDistanceMeters,
+         expect(nearlyEqual(window.gameplayDash.distanceMeters,
                             kExpectedManualFirstPersonDashDistanceMeters),
                 "dash distance proof") &&
          expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
@@ -1956,11 +1956,11 @@ bool productDashMovesForwardAndRecordsProof() {
          expect(window.gameplayMovementHorizontalDistanceMeters <=
                     kExpectedManualFirstPersonDashDistanceMeters,
                 "dash movement distance within requested dash") &&
-         expect(window.gameplayDashCooldownRemainingSeconds > 0.0F,
+         expect(window.gameplayDash.cooldownRemainingSeconds > 0.0F,
                 "dash cooldown set") &&
-         expect(nearlyEqual(window.gameplayDashDirectionX, 0.0F),
+         expect(nearlyEqual(window.gameplayDash.directionX, 0.0F),
                 "dash direction x") &&
-         expect(nearlyEqual(window.gameplayDashDirectionZ, -1.0F),
+         expect(nearlyEqual(window.gameplayDash.directionZ, -1.0F),
                 "dash direction z") &&
          expect(nearlyEqual(final.x - start.x, 0.0F), "dash x unchanged");
 }
@@ -1979,10 +1979,10 @@ bool productDashUsesRuntimeTunedWindowDistance() {
                                       window,
                                       "unit/gameplay_controller_runtime_dash");
 
-  return expect(window.gameplayDashAccepted, "runtime tuned dash accepted") &&
-         expect(nearlyEqual(window.gameplayDashSpeedMetersPerSecond, 4.0F),
+  return expect(window.gameplayDash.accepted, "runtime tuned dash accepted") &&
+         expect(nearlyEqual(window.gameplayDash.speedMetersPerSecond, 4.0F),
                 "runtime tuned dash speed") &&
-         expect(nearlyEqual(window.gameplayDashDistanceMeters, 1.0F),
+         expect(nearlyEqual(window.gameplayDash.distanceMeters, 1.0F),
                 "runtime tuned dash distance");
 }
 
@@ -2001,10 +2001,10 @@ bool productDashUsesMoveIntentDirection() {
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
   const float appliedDistance = horizontalDistance(start, final);
 
-  return expect(window.gameplayDashAccepted, "dash right accepted") &&
-         expect(nearlyEqual(window.gameplayDashDirectionX, 1.0F),
+  return expect(window.gameplayDash.accepted, "dash right accepted") &&
+         expect(nearlyEqual(window.gameplayDash.directionX, 1.0F),
                 "dash right direction x") &&
-         expect(nearlyEqual(window.gameplayDashDirectionZ, 0.0F),
+         expect(nearlyEqual(window.gameplayDash.directionZ, 0.0F),
                 "dash right direction z") &&
          expect(nearlyEqual(window.gameplayMovementHorizontalDistanceMeters,
                             appliedDistance),
@@ -2033,12 +2033,12 @@ bool productDashRejectsDuringCooldown() {
                                       "unit/gameplay_controller_dash_again");
   const iggy3d::Vec3 afterSecond = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayDashRequested, "cooldown dash requested") &&
-         expect(!window.gameplayDashAccepted, "cooldown dash rejected") &&
-         expect(window.gameplayDashStatus == "cooldown", "cooldown dash status") &&
-         expect(window.gameplayDashReasonCode == "gameplay_dash_cooldown",
+  return expect(window.gameplayDash.requested, "cooldown dash requested") &&
+         expect(!window.gameplayDash.accepted, "cooldown dash rejected") &&
+         expect(window.gameplayDash.status == "cooldown", "cooldown dash status") &&
+         expect(window.gameplayDash.reasonCode == "gameplay_dash_cooldown",
                 "cooldown dash reason") &&
-         expect(window.gameplayDashCooldownRemainingSeconds > 0.0F,
+         expect(window.gameplayDash.cooldownRemainingSeconds > 0.0F,
                 "cooldown remains") &&
          expect(nearlyEqual(afterFirst.x, afterSecond.x), "cooldown no x move") &&
          expect(nearlyEqual(afterFirst.z, afterSecond.z), "cooldown no z move");
@@ -2064,13 +2064,13 @@ bool defaultOffMoveWithCollisionSurfacesUsesLegacyPath() {
                 "legacy surfaces movement status") &&
          expect(window.gameplayCollisionSurfacesUsed,
                 "legacy surfaces collision surfaces used") &&
-         expect(!window.physicsMovementPlannerEnabled,
+         expect(!window.physicsMovementPlanner.enabled,
                 "legacy surfaces physics planner disabled") &&
-         expect(!window.physicsMovementPlannerRequested,
+         expect(!window.physicsMovementPlanner.requested,
                 "legacy surfaces physics planner not requested") &&
-         expect(!window.physicsMovementPlannerUsed,
+         expect(!window.physicsMovementPlanner.used,
                 "legacy surfaces physics planner not used") &&
-         expect(window.physicsMovementPlannerReasonCode ==
+         expect(window.physicsMovementPlanner.reasonCode ==
                     "physics_movement_planner_disabled",
                 "legacy surfaces physics planner reason") &&
          expect(session->state().transient.lastMovementResultAvailable,
@@ -2090,20 +2090,20 @@ bool optInMoveWithCollisionSurfacesUsesPhysicsPlanner() {
   if (!expect(surfaces != nullptr, "physics surfaces available")) {
     return false;
   }
-  window.physicsMovementPlannerEnabled = true;
+  window.physicsMovementPlanner.enabled = true;
 
   iggy3d::applyProductGameplayActions(*session, forwardMoveActions(), window,
                                       "unit/gameplay_controller_physics_surfaces",
                                       surfaces);
 
   return expect(window.gameplayCommandAccepted, "physics move accepted") &&
-         expect(window.physicsMovementPlannerEnabled,
+         expect(window.physicsMovementPlanner.enabled,
                 "physics planner enabled") &&
-         expect(window.physicsMovementPlannerRequested,
+         expect(window.physicsMovementPlanner.requested,
                 "physics planner requested") &&
-         expect(window.physicsMovementPlannerUsed,
+         expect(window.physicsMovementPlanner.used,
                 "physics planner used") &&
-         expect(window.physicsMovementPlannerStatus ==
+         expect(window.physicsMovementPlanner.status ==
                     "physics_movement_planner_used",
                 "physics planner status used") &&
          expect(session->state().transient.lastMovementResultAvailable,
@@ -2123,20 +2123,20 @@ bool optInMoveWithoutCollisionSurfacesRecordsNoSurfaces() {
   if (!expect(session.has_value(), "physics no surfaces session created")) {
     return false;
   }
-  window.physicsMovementPlannerEnabled = true;
+  window.physicsMovementPlanner.enabled = true;
 
   iggy3d::applyProductGameplayActions(*session, forwardMoveActions(), window,
                                       "unit/gameplay_controller_physics_no_surfaces");
 
   return expect(window.gameplayCommandAccepted,
                 "physics no surfaces move accepted") &&
-         expect(window.physicsMovementPlannerEnabled,
+         expect(window.physicsMovementPlanner.enabled,
                 "physics no surfaces planner enabled") &&
-         expect(window.physicsMovementPlannerRequested,
+         expect(window.physicsMovementPlanner.requested,
                 "physics no surfaces planner requested") &&
-         expect(!window.physicsMovementPlannerUsed,
+         expect(!window.physicsMovementPlanner.used,
                 "physics no surfaces planner not used") &&
-         expect(window.physicsMovementPlannerStatus ==
+         expect(window.physicsMovementPlanner.status ==
                     "physics_movement_planner_no_collision_surfaces",
                 "physics no surfaces planner status") &&
          expect(!session->state()

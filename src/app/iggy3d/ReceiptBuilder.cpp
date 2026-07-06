@@ -36,10 +36,10 @@ void setPhysicsMovementPlannerProof(ProductAppWindowState& window,
                                     std::string status,
                                     bool requested,
                                     bool used) {
-  window.physicsMovementPlannerRequested = requested;
-  window.physicsMovementPlannerUsed = used;
-  window.physicsMovementPlannerStatus = std::move(status);
-  window.physicsMovementPlannerReasonCode = window.physicsMovementPlannerStatus;
+  window.physicsMovementPlanner.requested = requested;
+  window.physicsMovementPlanner.used = used;
+  window.physicsMovementPlanner.status = std::move(status);
+  window.physicsMovementPlanner.reasonCode = window.physicsMovementPlanner.status;
 }
 
 std::string_view creativeToolReceiptName(creative::Tool tool) noexcept;
@@ -1838,54 +1838,54 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gameplay_reset_final_y",
                      floatReceiptValue(window.gameplayResetFinalY));
   appendReceiptField(receipt, "gameplay_traversal_requested",
-                     window.gameplayTraversalRequested);
+                     window.gameplayTraversal.requested);
   appendReceiptField(receipt, "gameplay_traversal_consumed",
-                     window.gameplayTraversalConsumed);
+                     window.gameplayTraversal.consumed);
   appendReceiptField(receipt, "gameplay_traversal_accepted",
-                     window.gameplayTraversalAccepted);
+                     window.gameplayTraversal.accepted);
   appendReceiptField(receipt, "gameplay_traversal_fallback_jump_allowed",
-                     window.gameplayTraversalFallbackJumpAllowed);
+                     window.gameplayTraversal.fallbackJumpAllowed);
   appendReceiptField(receipt, "gameplay_traversal_status",
-                     window.gameplayTraversalStatus);
+                     window.gameplayTraversal.status);
   appendReceiptField(receipt, "gameplay_traversal_reason_code",
-                     window.gameplayTraversalReasonCode);
+                     window.gameplayTraversal.reasonCode);
   appendReceiptField(receipt, "gameplay_traversal_mechanic",
-                     window.gameplayTraversalMechanic);
+                     window.gameplayTraversal.mechanic);
   appendReceiptField(receipt, "gameplay_traversal_slot_id",
-                     window.gameplayTraversalSlotId);
+                     window.gameplayTraversal.slotId);
   appendReceiptField(receipt, "gameplay_traversal_target_id",
-                     window.gameplayTraversalTargetId);
+                     window.gameplayTraversal.targetId);
   appendReceiptField(receipt, "gameplay_traversal_landing_surface_id",
-                     window.gameplayTraversalLandingSurfaceId);
+                     window.gameplayTraversal.landingSurfaceId);
   appendReceiptField(receipt, "gameplay_traversal_start_x",
-                     floatReceiptValue(window.gameplayTraversalStartX));
+                     floatReceiptValue(window.gameplayTraversal.startX));
   appendReceiptField(receipt, "gameplay_traversal_start_y",
-                     floatReceiptValue(window.gameplayTraversalStartY));
+                     floatReceiptValue(window.gameplayTraversal.startY));
   appendReceiptField(receipt, "gameplay_traversal_start_z",
-                     floatReceiptValue(window.gameplayTraversalStartZ));
+                     floatReceiptValue(window.gameplayTraversal.startZ));
   appendReceiptField(receipt, "gameplay_traversal_final_x",
-                     floatReceiptValue(window.gameplayTraversalFinalX));
+                     floatReceiptValue(window.gameplayTraversal.finalX));
   appendReceiptField(receipt, "gameplay_traversal_final_y",
-                     floatReceiptValue(window.gameplayTraversalFinalY));
+                     floatReceiptValue(window.gameplayTraversal.finalY));
   appendReceiptField(receipt, "gameplay_traversal_final_z",
-                     floatReceiptValue(window.gameplayTraversalFinalZ));
+                     floatReceiptValue(window.gameplayTraversal.finalZ));
   appendReceiptField(receipt, "gameplay_dash_requested",
-                     window.gameplayDashRequested);
+                     window.gameplayDash.requested);
   appendReceiptField(receipt, "gameplay_dash_accepted",
-                     window.gameplayDashAccepted);
-  appendReceiptField(receipt, "gameplay_dash_status", window.gameplayDashStatus);
+                     window.gameplayDash.accepted);
+  appendReceiptField(receipt, "gameplay_dash_status", window.gameplayDash.status);
   appendReceiptField(receipt, "gameplay_dash_reason_code",
-                     window.gameplayDashReasonCode);
+                     window.gameplayDash.reasonCode);
   appendReceiptField(receipt, "gameplay_dash_speed_mps",
-                     floatReceiptValue(window.gameplayDashSpeedMetersPerSecond));
+                     floatReceiptValue(window.gameplayDash.speedMetersPerSecond));
   appendReceiptField(receipt, "gameplay_dash_distance_meters",
-                     floatReceiptValue(window.gameplayDashDistanceMeters));
+                     floatReceiptValue(window.gameplayDash.distanceMeters));
   appendReceiptField(receipt, "gameplay_dash_cooldown_remaining_seconds",
-                     floatReceiptValue(window.gameplayDashCooldownRemainingSeconds));
+                     floatReceiptValue(window.gameplayDash.cooldownRemainingSeconds));
   appendReceiptField(receipt, "gameplay_dash_direction_x",
-                     floatReceiptValue(window.gameplayDashDirectionX));
+                     floatReceiptValue(window.gameplayDash.directionX));
   appendReceiptField(receipt, "gameplay_dash_direction_z",
-                     floatReceiptValue(window.gameplayDashDirectionZ));
+                     floatReceiptValue(window.gameplayDash.directionZ));
   appendReceiptField(receipt, "movement_debug_hud_visible", movementHud.visible);
   appendReceiptField(receipt, "movement_debug_hud_line_count",
                      static_cast<std::uint64_t>(movementHud.lines.size()));
@@ -1982,15 +1982,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gameplay_collision_surface_count",
                      window.gameplayCollisionSurfaceCount);
   appendReceiptField(receipt, "physics_movement_planner_enabled",
-                     window.physicsMovementPlannerEnabled);
+                     window.physicsMovementPlanner.enabled);
   appendReceiptField(receipt, "physics_movement_planner_requested",
-                     window.physicsMovementPlannerRequested);
+                     window.physicsMovementPlanner.requested);
   appendReceiptField(receipt, "physics_movement_planner_used",
-                     window.physicsMovementPlannerUsed);
+                     window.physicsMovementPlanner.used);
   appendReceiptField(receipt, "physics_movement_planner_status",
-                     window.physicsMovementPlannerStatus);
+                     window.physicsMovementPlanner.status);
   appendReceiptField(receipt, "physics_movement_planner_reason_code",
-                     window.physicsMovementPlannerReasonCode);
+                     window.physicsMovementPlanner.reasonCode);
   appendReceiptField(receipt, "target_discovered", window.targetDiscovered);
   appendReceiptField(receipt, "gameplay_target_status",
                      window.gameplayTargetStatus);
@@ -2006,19 +2006,19 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gameplay_target_supports_command",
                      window.gameplayTargetSupportsCommand);
   appendReceiptField(receipt, "gameplay_outcome_status",
-                     window.gameplayOutcomeStatus);
+                     window.gameplayOutcome.status);
   appendReceiptField(receipt, "gameplay_outcome_target_active_after",
-                     window.gameplayOutcomeTargetActiveAfter);
+                     window.gameplayOutcome.targetActiveAfter);
   appendReceiptField(receipt, "gameplay_outcome_inventory_changed",
-                     window.gameplayOutcomeInventoryChanged);
+                     window.gameplayOutcome.inventoryChanged);
   appendReceiptField(receipt, "gameplay_outcome_item_id",
-                     window.gameplayOutcomeItemId);
+                     window.gameplayOutcome.itemId);
   appendReceiptField(receipt, "gameplay_outcome_item_count",
-                     window.gameplayOutcomeItemCount);
+                     window.gameplayOutcome.itemCount);
   appendReceiptField(receipt, "gameplay_outcome_objective_changed",
-                     window.gameplayOutcomeObjectiveChanged);
+                     window.gameplayOutcome.objectiveChanged);
   appendReceiptField(receipt, "gameplay_outcome_event_count",
-                     window.gameplayOutcomeEventCount);
+                     window.gameplayOutcome.eventCount);
   appendReceiptField(receipt, "session_outcome", window.sessionOutcome);
   appendReceiptField(receipt, "gameplay_tape_requested",
                      window.gameplayTapeRequested);
@@ -2094,15 +2094,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "interaction_executed", window.interactionExecuted);
   appendReceiptField(receipt, "attack_executed", window.attackExecuted);
   appendReceiptField(receipt, "product_transition_last_action",
-                     window.productTransitionLastAction);
+                     window.productTransition.lastAction);
   appendReceiptField(receipt, "product_transition_status",
-                     window.productTransitionStatus);
+                     window.productTransition.status);
   appendReceiptField(receipt, "product_transition_returned_to_gameplay",
-                     window.productTransitionReturnedToGameplay);
+                     window.productTransition.returnedToGameplay);
   appendReceiptField(receipt, "product_transition_returned_to_title",
-                     window.productTransitionReturnedToTitle);
+                     window.productTransition.returnedToTitle);
   appendReceiptField(receipt, "product_transition_session_preserved",
-                     window.productTransitionSessionPreserved);
+                     window.productTransition.sessionPreserved);
   appendReceiptField(receipt, "camera_controller", window.viewport.cameraController);
   appendReceiptField(receipt, "camera_mode", window.viewport.cameraMode);
   appendReceiptField(receipt, "camera_controller_active",

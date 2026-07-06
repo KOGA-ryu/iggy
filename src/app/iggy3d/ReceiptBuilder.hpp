@@ -29,6 +29,11 @@
 #include "app/iggy3d/save/SelectedProductSaveState.hpp"
 #include "app/iggy3d/ProductCreativeUndoState.hpp"
 #include "app/iggy3d/ProductActiveCreativeState.hpp"
+#include "app/iggy3d/gameplay/TraversalState.hpp"
+#include "app/iggy3d/gameplay/DashState.hpp"
+#include "app/iggy3d/gameplay/OutcomeState.hpp"
+#include "app/iggy3d/gameplay/PhysicsMovementPlannerState.hpp"
+#include "app/iggy3d/menu/ProductTransitionState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -472,39 +477,12 @@ struct ProductAppWindowState {
   std::string gameplayResetSourceAnchorId = "none";
   float gameplayResetStartY = 0.0F;
   float gameplayResetFinalY = 0.0F;
-  bool gameplayTraversalRequested = false;
-  bool gameplayTraversalConsumed = false;
-  bool gameplayTraversalAccepted = false;
-  bool gameplayTraversalFallbackJumpAllowed = false;
-  std::string gameplayTraversalStatus = "not_requested";
-  std::string gameplayTraversalReasonCode = "not_requested";
-  std::string gameplayTraversalMechanic = "none";
-  std::string gameplayTraversalSlotId = "none";
-  std::string gameplayTraversalTargetId = "none";
-  std::string gameplayTraversalLandingSurfaceId = "none";
-  float gameplayTraversalStartX = 0.0F;
-  float gameplayTraversalStartY = 0.0F;
-  float gameplayTraversalStartZ = 0.0F;
-  float gameplayTraversalFinalX = 0.0F;
-  float gameplayTraversalFinalY = 0.0F;
-  float gameplayTraversalFinalZ = 0.0F;
-  bool gameplayDashRequested = false;
-  bool gameplayDashAccepted = false;
-  std::string gameplayDashStatus = "not_requested";
-  std::string gameplayDashReasonCode = "not_requested";
-  float gameplayDashSpeedMetersPerSecond = 0.0F;
-  float gameplayDashDistanceMeters = 0.0F;
-  float gameplayDashCooldownRemainingSeconds = 0.0F;
-  float gameplayDashDirectionX = 0.0F;
-  float gameplayDashDirectionZ = 0.0F;
+  ProductGameplayTraversalState gameplayTraversal;
+  ProductGameplayDashState gameplayDash;
   bool gameplayCollisionSurfacesUsed = false;
   std::uint64_t gameplayCollisionSurfaceCount = 0;
   std::string gameplayTickReasonCode = "not_requested";
-  bool physicsMovementPlannerEnabled = false;
-  bool physicsMovementPlannerRequested = false;
-  bool physicsMovementPlannerUsed = false;
-  std::string physicsMovementPlannerStatus = "physics_movement_planner_disabled";
-  std::string physicsMovementPlannerReasonCode = "physics_movement_planner_disabled";
+  ProductPhysicsMovementPlannerState physicsMovementPlanner;
   bool targetDiscovered = false;
   std::string gameplayTargetStatus = "not_requested";
   std::string gameplayTargetAction = "none";
@@ -513,13 +491,7 @@ struct ProductAppWindowState {
   std::string gameplayTargetKind = "none";
   float gameplayTargetDistanceMeters = 0.0F;
   bool gameplayTargetSupportsCommand = false;
-  std::string gameplayOutcomeStatus = "not_requested";
-  bool gameplayOutcomeTargetActiveAfter = false;
-  bool gameplayOutcomeInventoryChanged = false;
-  std::string gameplayOutcomeItemId = "none";
-  std::uint64_t gameplayOutcomeItemCount = 0;
-  bool gameplayOutcomeObjectiveChanged = false;
-  std::uint64_t gameplayOutcomeEventCount = 0;
+  ProductGameplayOutcomeState gameplayOutcome;
   std::string sessionOutcome = "None";
   bool gameplayTapeRequested = false;
   bool gameplayTapeLoaded = false;
@@ -559,11 +531,7 @@ struct ProductAppWindowState {
   std::string gameplayTapeAiIntent = "none";
   bool interactionExecuted = false;
   bool attackExecuted = false;
-  std::string productTransitionLastAction = "none";
-  std::string productTransitionStatus = "not_requested";
-  bool productTransitionReturnedToGameplay = false;
-  bool productTransitionReturnedToTitle = false;
-  bool productTransitionSessionPreserved = false;
+  ProductTransitionState productTransition;
   std::string gameplayInputSource = "none";
   std::string gameplayCommandKind = "none";
   std::string gameplayCommandStatus = "not_requested";

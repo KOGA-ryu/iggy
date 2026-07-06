@@ -562,7 +562,7 @@ void runProductGameplayTapeFromOptions(
           collisionSurfaces,
           &request.window.activeRoom,
           &request.window.activeRoomCollision,
-          request.window.physicsMovementPlannerEnabled});
+          request.window.physicsMovementPlanner.enabled});
   recordProductGameplayTapeRun(run, request.window);
   // branch-gate: BG-1120
   if (request.activeSession.has_value()) {
@@ -572,7 +572,7 @@ void runProductGameplayTapeFromOptions(
   }
   recordProductPhysicsMovementPlannerTickProof(
       request.window,
-      request.window.physicsMovementPlannerEnabled,
+      request.window.physicsMovementPlanner.enabled,
       collisionSurfaces != nullptr,
       request.activeSession.has_value() &&
           lastMovementHasPhysicsStats(*request.activeSession));

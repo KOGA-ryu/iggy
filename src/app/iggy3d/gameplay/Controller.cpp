@@ -765,54 +765,54 @@ void applyProductJumpReleaseCut(ProductAppWindowState& window) {
 }
 
 void clearProductTraversalProof(ProductAppWindowState& window) {
-  window.gameplayTraversalRequested = false;
-  window.gameplayTraversalConsumed = false;
-  window.gameplayTraversalAccepted = false;
-  window.gameplayTraversalFallbackJumpAllowed = false;
-  window.gameplayTraversalStatus = "not_requested";
-  window.gameplayTraversalReasonCode = "not_requested";
-  window.gameplayTraversalMechanic = "none";
-  window.gameplayTraversalSlotId = "none";
-  window.gameplayTraversalTargetId = "none";
-  window.gameplayTraversalLandingSurfaceId = "none";
-  window.gameplayTraversalStartX = 0.0F;
-  window.gameplayTraversalStartY = 0.0F;
-  window.gameplayTraversalStartZ = 0.0F;
-  window.gameplayTraversalFinalX = 0.0F;
-  window.gameplayTraversalFinalY = 0.0F;
-  window.gameplayTraversalFinalZ = 0.0F;
+  window.gameplayTraversal.requested = false;
+  window.gameplayTraversal.consumed = false;
+  window.gameplayTraversal.accepted = false;
+  window.gameplayTraversal.fallbackJumpAllowed = false;
+  window.gameplayTraversal.status = "not_requested";
+  window.gameplayTraversal.reasonCode = "not_requested";
+  window.gameplayTraversal.mechanic = "none";
+  window.gameplayTraversal.slotId = "none";
+  window.gameplayTraversal.targetId = "none";
+  window.gameplayTraversal.landingSurfaceId = "none";
+  window.gameplayTraversal.startX = 0.0F;
+  window.gameplayTraversal.startY = 0.0F;
+  window.gameplayTraversal.startZ = 0.0F;
+  window.gameplayTraversal.finalX = 0.0F;
+  window.gameplayTraversal.finalY = 0.0F;
+  window.gameplayTraversal.finalZ = 0.0F;
 }
 
 void recordProductTraversalProof(ProductAppWindowState& window,
                                  const TraversalIntentResult& result) {
-  window.gameplayTraversalRequested = result.requested;
-  window.gameplayTraversalConsumed = result.consumedInput;
-  window.gameplayTraversalAccepted = result.accepted;
-  window.gameplayTraversalFallbackJumpAllowed = result.fallbackJumpAllowed;
-  window.gameplayTraversalStatus = traversalIntentStatusName(result.status);
+  window.gameplayTraversal.requested = result.requested;
+  window.gameplayTraversal.consumed = result.consumedInput;
+  window.gameplayTraversal.accepted = result.accepted;
+  window.gameplayTraversal.fallbackJumpAllowed = result.fallbackJumpAllowed;
+  window.gameplayTraversal.status = traversalIntentStatusName(result.status);
   // branch-gate: BG-1156
-  window.gameplayTraversalReasonCode =
+  window.gameplayTraversal.reasonCode =
       result.reasonCode == nullptr ? "unknown" : result.reasonCode;
   // branch-gate: BG-1156
-  window.gameplayTraversalMechanic =
+  window.gameplayTraversal.mechanic =
       result.traversalAttempted ? traversalMechanicName(result.selectedMechanic)
                                 : "none";
   // branch-gate: BG-1156
-  window.gameplayTraversalSlotId =
+  window.gameplayTraversal.slotId =
       result.traversal.slotId.empty() ? "none" : result.traversal.slotId;
   // branch-gate: BG-1156
-  window.gameplayTraversalTargetId =
+  window.gameplayTraversal.targetId =
       result.traversal.targetId.empty() ? "none" : result.traversal.targetId;
   // branch-gate: BG-1156
-  window.gameplayTraversalLandingSurfaceId =
+  window.gameplayTraversal.landingSurfaceId =
       result.traversal.landingSurfaceId.empty() ? "none"
                                                 : result.traversal.landingSurfaceId;
-  window.gameplayTraversalStartX = result.traversal.start.x;
-  window.gameplayTraversalStartY = result.traversal.start.y;
-  window.gameplayTraversalStartZ = result.traversal.start.z;
-  window.gameplayTraversalFinalX = result.traversal.finalPosition.x;
-  window.gameplayTraversalFinalY = result.traversal.finalPosition.y;
-  window.gameplayTraversalFinalZ = result.traversal.finalPosition.z;
+  window.gameplayTraversal.startX = result.traversal.start.x;
+  window.gameplayTraversal.startY = result.traversal.start.y;
+  window.gameplayTraversal.startZ = result.traversal.start.z;
+  window.gameplayTraversal.finalX = result.traversal.finalPosition.x;
+  window.gameplayTraversal.finalY = result.traversal.finalPosition.y;
+  window.gameplayTraversal.finalZ = result.traversal.finalPosition.z;
 }
 
 bool actorBlockingSurface(const CollisionSurfaceView& surface) {
@@ -1213,31 +1213,31 @@ void recordProductWallJumpTraversalProof(ProductAppWindowState& window,
                                          const CollisionSurfaceView& surface,
                                          Vec3 start,
                                          Vec3 finalPosition) {
-  window.gameplayTraversalRequested = true;
-  window.gameplayTraversalConsumed = true;
-  window.gameplayTraversalAccepted = true;
-  window.gameplayTraversalFallbackJumpAllowed = false;
-  window.gameplayTraversalStatus = "traversal_intent_applied";
-  window.gameplayTraversalReasonCode = "traversal_intent_applied";
-  window.gameplayTraversalMechanic = "wall_jump";
-  window.gameplayTraversalSlotId = "wall_jump";
-  window.gameplayTraversalLandingSurfaceId = "wall_jump_surface";
+  window.gameplayTraversal.requested = true;
+  window.gameplayTraversal.consumed = true;
+  window.gameplayTraversal.accepted = true;
+  window.gameplayTraversal.fallbackJumpAllowed = false;
+  window.gameplayTraversal.status = "traversal_intent_applied";
+  window.gameplayTraversal.reasonCode = "traversal_intent_applied";
+  window.gameplayTraversal.mechanic = "wall_jump";
+  window.gameplayTraversal.slotId = "wall_jump";
+  window.gameplayTraversal.landingSurfaceId = "wall_jump_surface";
   // branch-gate: BG-1157
   if (!surface.id.empty()) {
-    window.gameplayTraversalSlotId = surface.id;
-    window.gameplayTraversalLandingSurfaceId = surface.id;
+    window.gameplayTraversal.slotId = surface.id;
+    window.gameplayTraversal.landingSurfaceId = surface.id;
   }
-  window.gameplayTraversalTargetId = window.gameplayTraversalSlotId;
+  window.gameplayTraversal.targetId = window.gameplayTraversal.slotId;
   // branch-gate: BG-1157
   if (!surface.runtimeOwnerStableName.empty()) {
-    window.gameplayTraversalTargetId = surface.runtimeOwnerStableName;
+    window.gameplayTraversal.targetId = surface.runtimeOwnerStableName;
   }
-  window.gameplayTraversalStartX = start.x;
-  window.gameplayTraversalStartY = start.y;
-  window.gameplayTraversalStartZ = start.z;
-  window.gameplayTraversalFinalX = finalPosition.x;
-  window.gameplayTraversalFinalY = finalPosition.y;
-  window.gameplayTraversalFinalZ = finalPosition.z;
+  window.gameplayTraversal.startX = start.x;
+  window.gameplayTraversal.startY = start.y;
+  window.gameplayTraversal.startZ = start.z;
+  window.gameplayTraversal.finalX = finalPosition.x;
+  window.gameplayTraversal.finalY = finalPosition.y;
+  window.gameplayTraversal.finalZ = finalPosition.z;
 }
 
 bool tryProductWallJump(Session& session, ProductAppWindowState& window) {
@@ -1456,9 +1456,9 @@ void submitProductJump(Session& session,
   if (tryProductTraversalJump(session, window)) {
     window.gameplayJumpAccepted = false;
     // branch-gate: BG-1156
-    window.gameplayJumpStatus = window.gameplayTraversalAccepted ? "traversal"
+    window.gameplayJumpStatus = window.gameplayTraversal.accepted ? "traversal"
                                                                  : "traversal_rejected";
-    window.gameplayJumpReasonCode = window.gameplayTraversalReasonCode;
+    window.gameplayJumpReasonCode = window.gameplayTraversal.reasonCode;
     return;
   }
 
@@ -1511,23 +1511,23 @@ Vec3 manualFirstPersonDirection(float moveX, float moveY, float yawDegrees) {
 void advanceProductDashCooldown(ProductAppWindowState& window) {
   const ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
   // branch-gate: BG-1155
-  if (window.gameplayDashCooldownRemainingSeconds <= 0.0F) {
-    window.gameplayDashCooldownRemainingSeconds = 0.0F;
+  if (window.gameplayDash.cooldownRemainingSeconds <= 0.0F) {
+    window.gameplayDash.cooldownRemainingSeconds = 0.0F;
     return;
   }
-  window.gameplayDashCooldownRemainingSeconds =
+  window.gameplayDash.cooldownRemainingSeconds =
       std::max(0.0F,
-               window.gameplayDashCooldownRemainingSeconds -
+               window.gameplayDash.cooldownRemainingSeconds -
                    tuning.inputStepSeconds);
 }
 
 void rejectProductDash(ProductAppWindowState& window,
                        std::string_view status,
                        std::string_view reason) {
-  window.gameplayDashRequested = true;
-  window.gameplayDashAccepted = false;
-  window.gameplayDashStatus = std::string{status};
-  window.gameplayDashReasonCode = std::string{reason};
+  window.gameplayDash.requested = true;
+  window.gameplayDash.accepted = false;
+  window.gameplayDash.status = std::string{status};
+  window.gameplayDash.reasonCode = std::string{reason};
 }
 
 void submitProductDash(Session& session,
@@ -1541,10 +1541,10 @@ void submitProductDash(Session& session,
   clearProductOutcomeProof(window);
   window.gameplayInputUsed = true;
   window.gameplayInputSource = std::string{source};
-  window.gameplayDashRequested = true;
+  window.gameplayDash.requested = true;
 
   // branch-gate: BG-1155
-  if (window.gameplayDashCooldownRemainingSeconds > 0.0F) {
+  if (window.gameplayDash.cooldownRemainingSeconds > 0.0F) {
     rejectProductDash(window, "cooldown", "gameplay_dash_cooldown");
     return;
   }
@@ -1563,15 +1563,15 @@ void submitProductDash(Session& session,
   Vec3 destination = actor->transform.position + direction * dashDistance;
   destination.y = actor->transform.position.y;
 
-  window.gameplayDashAccepted = true;
-  window.gameplayDashStatus = "accepted";
-  window.gameplayDashReasonCode = "gameplay_dash_accepted";
-  window.gameplayDashSpeedMetersPerSecond = tuning.dashSpeedMetersPerSecond;
-  window.gameplayDashDistanceMeters = dashDistance;
-  window.gameplayDashCooldownRemainingSeconds =
+  window.gameplayDash.accepted = true;
+  window.gameplayDash.status = "accepted";
+  window.gameplayDash.reasonCode = "gameplay_dash_accepted";
+  window.gameplayDash.speedMetersPerSecond = tuning.dashSpeedMetersPerSecond;
+  window.gameplayDash.distanceMeters = dashDistance;
+  window.gameplayDash.cooldownRemainingSeconds =
       tuning.dashCooldownSeconds;
-  window.gameplayDashDirectionX = direction.x;
-  window.gameplayDashDirectionZ = direction.z;
+  window.gameplayDash.directionX = direction.x;
+  window.gameplayDash.directionZ = direction.z;
   window.gameplayMovementProfile = std::string{tuning.dashProfile};
   window.gameplayMovementMaxSpeedMetersPerSecond =
       tuning.dashSpeedMetersPerSecond;
@@ -1832,13 +1832,13 @@ void clearProductTargetProof(ProductAppWindowState& window) {
 }
 
 void clearProductOutcomeProof(ProductAppWindowState& window) {
-  window.gameplayOutcomeStatus = "not_requested";
-  window.gameplayOutcomeTargetActiveAfter = false;
-  window.gameplayOutcomeInventoryChanged = false;
-  window.gameplayOutcomeItemId = "none";
-  window.gameplayOutcomeItemCount = 0;
-  window.gameplayOutcomeObjectiveChanged = false;
-  window.gameplayOutcomeEventCount = 0;
+  window.gameplayOutcome.status = "not_requested";
+  window.gameplayOutcome.targetActiveAfter = false;
+  window.gameplayOutcome.inventoryChanged = false;
+  window.gameplayOutcome.itemId = "none";
+  window.gameplayOutcome.itemCount = 0;
+  window.gameplayOutcome.objectiveChanged = false;
+  window.gameplayOutcome.eventCount = 0;
 }
 
 std::uint32_t inventoryItemCount(const InventoryState& inventory,
@@ -1886,36 +1886,36 @@ void recordProductInteractionOutcomeProof(
     ProductAppWindowState& window,
     const ProductInteractionOutcomeSnapshot& before) {
   const EntityState* target = session.state().world.findById(before.target);
-  window.gameplayOutcomeTargetActiveAfter =
+  window.gameplayOutcome.targetActiveAfter =
       target != nullptr && target->active;
-  window.gameplayOutcomeItemId = before.itemId.empty() ? "none" : before.itemId;
+  window.gameplayOutcome.itemId = before.itemId.empty() ? "none" : before.itemId;
   const std::uint32_t itemCountAfter =
       inventoryItemCount(session.state().inventory,
                          before.playerSlot,
                          before.itemId);
-  window.gameplayOutcomeItemCount = itemCountAfter;
-  window.gameplayOutcomeInventoryChanged =
+  window.gameplayOutcome.itemCount = itemCountAfter;
+  window.gameplayOutcome.inventoryChanged =
       itemCountAfter != before.itemCountBefore;
   const bool objectiveCompleteAfter =
       !before.objectiveId.empty() &&
       objectiveComplete(session.state().objectives, before.objectiveId);
-  window.gameplayOutcomeObjectiveChanged =
+  window.gameplayOutcome.objectiveChanged =
       objectiveCompleteAfter != before.objectiveCompleteBefore;
   const std::size_t eventCountAfter = session.state().transient.events.size();
-  window.gameplayOutcomeEventCount =
+  window.gameplayOutcome.eventCount =
       eventCountAfter >= before.eventCountBefore
           ? static_cast<std::uint64_t>(eventCountAfter - before.eventCountBefore)
           : 0U;
 
   if (!window.gameplayCommandAccepted) {
-    window.gameplayOutcomeStatus = "rejected";
+    window.gameplayOutcome.status = "rejected";
     return;
   }
   if (!window.gameplayTickAdvanced) {
-    window.gameplayOutcomeStatus = "tick_failed";
+    window.gameplayOutcome.status = "tick_failed";
     return;
   }
-  window.gameplayOutcomeStatus = "succeeded";
+  window.gameplayOutcome.status = "succeeded";
 }
 
 void recordProductTargetProof(const Session& session,
@@ -1998,7 +1998,7 @@ StatusResult tickProductGameplayCommand(Session& session,
                                         ProductAppWindowState& window,
                                         const SpatialSurfaceSet* collisionSurfaces) {
   // branch-gate: BG-1115
-  if (!window.physicsMovementPlannerEnabled) {
+  if (!window.physicsMovementPlanner.enabled) {
     recordProductPhysicsMovementPlannerTickProof(window, false,
                                                  collisionSurfaces != nullptr,
                                                  false);
@@ -2070,7 +2070,7 @@ void submitProductGameplayCommand(Session& session,
           ? 0U
           : static_cast<std::uint64_t>(collisionSurfaces->size());
   // branch-gate: BG-1115
-  if (!window.physicsMovementPlannerEnabled) {
+  if (!window.physicsMovementPlanner.enabled) {
     recordProductPhysicsMovementPlannerTickProof(window, false,
                                                  collisionSurfaces != nullptr,
                                                  false);
@@ -2096,7 +2096,7 @@ void submitProductGameplayCommand(Session& session,
     }
     recordProductPhysicsMovementPlannerTickProof(
         window,
-        window.physicsMovementPlannerEnabled,
+        window.physicsMovementPlanner.enabled,
         collisionSurfaces != nullptr,
         commandMovementHasPhysicsFrameStats(session, command.kind));
   }
@@ -2200,7 +2200,7 @@ void submitProductTargetCommand(Session& session,
     window.gameplayCommandStatus = "no_target";
     window.gameplayReachGate = "not_attempted";
     if (kind == CommandKind::Interact) {
-      window.gameplayOutcomeStatus = "no_target";
+      window.gameplayOutcome.status = "no_target";
     }
     return;
   }
