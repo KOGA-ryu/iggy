@@ -637,7 +637,7 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
   iggy3d::ProductAppWindowState staleIdentity;
   staleIdentity.gameplayActive = true;
   staleIdentity.interactionMode = iggy3d::ProductInteractionMode::Player;
-  staleIdentity.activeCreativeDocumentId = 42U;
+  staleIdentity.activeCreative.documentId = 42U;
   const iggy3d::creative::CreativeActiveIdentity liveIdentity =
       liveCreativeIdentity();
   const iggy3d::creative::CreativeActiveIdentity inactiveIdentity;

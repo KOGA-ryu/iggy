@@ -74,9 +74,9 @@ iggy3d::ProductUiDrawList readyCreativeDrawList() {
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreativeSaveId = "creative_save";
-  window.activeCreativeWorldId = "world_001";
-  window.activeCreativeDocumentId = 42U;
+  window.activeCreative.saveId = "creative_save";
+  window.activeCreative.worldId = "world_001";
+  window.activeCreative.documentId = 42U;
   return window;
 }
 

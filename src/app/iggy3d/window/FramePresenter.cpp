@@ -868,7 +868,7 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
                request.window.worldSetup.dungeonDraftCursorColumn,
                request.window.worldSetup.dungeonDraftSelectedGlyph,
                request.window.worldSetup.dungeonDraftLastGlyph,
-               request.window.selectedProductSaveId,
+               request.window.selectedProductSave.id,
                request.window.saveDelete.candidateId});
       const ProductUiDrawList menuUi = buildProductStarterUiDrawList(uiRequest);
       recordProductVulkanMenuUiDrawList(request.window, "starter", menuUi);

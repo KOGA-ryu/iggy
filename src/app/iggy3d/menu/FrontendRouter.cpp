@@ -323,11 +323,11 @@ bool productCreativeWorldActiveForIdentity(
 
 bool productCreativeWorldActiveForWindowMirror(
     const ProductAppWindowState& window) {
-  return (!window.activeCreativeSaveId.empty() &&
-          window.activeCreativeSaveId != "none") ||
-         (!window.activeCreativeWorldId.empty() &&
-          window.activeCreativeWorldId != "none") ||
-         window.activeCreativeDocumentId != 0;
+  return (!window.activeCreative.saveId.empty() &&
+          window.activeCreative.saveId != "none") ||
+         (!window.activeCreative.worldId.empty() &&
+          window.activeCreative.worldId != "none") ||
+         window.activeCreative.documentId != 0;
 }
 
 bool productCreativeDocumentEditorActiveForWindow(

@@ -1328,13 +1328,13 @@ void finalizeProductCreativeDocumentInputPhase(
     recordProductCreativeBakedRoomAutoRefresh(context.window, refresh);
   }
   if (context.creativeApp != nullptr) {
-    context.window.creativeUndoAvailable =
+    context.window.creativeUndo.available =
         creative::creativeUndoAvailable(context.creativeApp->undoStack);
-    context.window.creativeUndoDepth =
+    context.window.creativeUndo.depth =
         creative::creativeUndoDepth(context.creativeApp->undoStack);
   } else {
-    context.window.creativeUndoAvailable = false;
-    context.window.creativeUndoDepth = 0;
+    context.window.creativeUndo.available = false;
+    context.window.creativeUndo.depth = 0;
   }
 
   // If the creative-document dispatch path did not run this frame (frontend
@@ -1520,7 +1520,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
              context.window.worldSetup.dungeonDraftCursorColumn,
              context.window.worldSetup.dungeonDraftSelectedGlyph,
              context.window.worldSetup.dungeonDraftLastGlyph,
-             context.window.selectedProductSaveId,
+             context.window.selectedProductSave.id,
              context.window.saveDelete.candidateId});
     uiRequest.gameplayActive = context.window.gameplayActive;
     uiRequest.saveRootWritable = !context.options.saveRoot.empty();

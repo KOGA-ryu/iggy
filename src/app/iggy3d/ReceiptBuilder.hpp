@@ -26,6 +26,9 @@
 #include "app/iggy3d/save/SaveDeleteState.hpp"
 #include "app/iggy3d/save/SaveRecoverState.hpp"
 #include "app/iggy3d/gameplay/WallRunState.hpp"
+#include "app/iggy3d/save/SelectedProductSaveState.hpp"
+#include "app/iggy3d/ProductCreativeUndoState.hpp"
+#include "app/iggy3d/ProductActiveCreativeState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -334,19 +337,13 @@ struct ProductAppWindowState {
   std::string productSaveSaveId = "none";
   bool productSaveSessionSaved = false;
   std::string activeProductSaveId = "none";
-  std::string activeCreativeSaveId = "none";
-  std::string activeCreativeSavePath = "none";
-  std::string activeCreativeWorldId = "none";
-  std::uint64_t activeCreativeDocumentId = 0;
-  std::uint64_t activeCreativeObjectCount = 0;
-  std::uint64_t activeCreativeNextObjectId = 0;
+  ProductActiveCreativeState activeCreative;
   bool creativeDocumentRevisionObserved = false;
   bool creativeDocumentChangedThisFrame = false;
   std::uint64_t creativeDocumentRevisionDocumentId = 0;
   std::uint64_t creativeDocumentRevisionBeforeFrame = 0;
   std::uint64_t creativeDocumentRevisionAfterFrame = 0;
-  bool creativeUndoAvailable = false;
-  std::uint64_t creativeUndoDepth = 0;
+  ProductCreativeUndoState creativeUndo;
   bool creativeBakedRoomStale = false;
   std::uint64_t creativeBakedRoomStaleDocumentId = 0;
   std::uint64_t creativeBakedRoomStaleRevision = 0;
@@ -359,13 +356,6 @@ struct ProductAppWindowState {
   // camera-anchor override) read this instead of the facade so the fly camera
   // and its capture re-engage are gated on Navigate-active-in-creative-document.
   bool creativeNavigateActive = false;
-  std::string activeCreativeSaveStatus = "creative_world_save_not_requested";
-  std::string activeCreativeSaveReasonCode =
-      "creative_world_save_not_requested";
-  std::uint64_t activeCreativeSaveDirtyFlagsBefore = 0;
-  std::uint64_t activeCreativeSaveDirtyFlagsDrained = 0;
-  std::uint64_t activeCreativeSaveDirtyFlagsAfter = 0;
-  std::string activeCreativeSaveSavedAtUtc = "none";
   // Typed load result stored directly (was a flat mirror of the fields of
   // ProductSaveLoadResult). The save-selection fields below are a separate
   // concern (set at selection/input time, not part of the load result) and
@@ -378,9 +368,7 @@ struct ProductAppWindowState {
   // the orchestration and read back by ReceiptBuilder). Its defaults match the
   // former flat-field defaults, so the emitted receipt is unchanged.
   ProductSavedRoomMarkerBindingResult savedMarkerBind;
-  std::string selectedProductSaveId = "none";
-  bool selectedProductSaveEnabled = false;
-  std::string selectedProductSaveStatus = "none";
+  ProductSelectedProductSaveState selectedProductSave;
   std::string saveSlotBrowserMode = "load";
   std::uint64_t saveSlotRingCount = 0;
   std::uint64_t saveSlotRingSelectedIndex = 0;

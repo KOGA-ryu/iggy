@@ -1018,7 +1018,7 @@ bool starterDeleteButtonOpensSelectableBrowser() {
                 "starter delete selected action is delete") &&
          expect(!window.saveDelete.confirmationOpen,
                 "starter delete does not auto-open confirmation") &&
-         expect(window.selectedProductSaveId == "save_unit",
+         expect(window.selectedProductSave.id == "save_unit",
                 "starter delete pre-selects first save") &&
          expect(!closeRequested, "starter delete does not close app");
 }
@@ -1944,7 +1944,7 @@ bool openingMenuMouseDispatchRoutesLoadSaveRows() {
                                              slot.actionState,
                                              slot.context());
   const bool slotOk =
-      expect(slot.window.selectedProductSaveId == "save_unit",
+      expect(slot.window.selectedProductSave.id == "save_unit",
              "mouse load slot selects save") &&
       expect(slot.frontend.status == "load_save_selection_changed",
              "mouse load slot status");

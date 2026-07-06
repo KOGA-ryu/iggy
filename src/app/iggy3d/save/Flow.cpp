@@ -68,15 +68,15 @@ void recordPauseCreativeFacadeMissing(ProductPauseSaveFlowResult& result,
   result.creativeSaveRequested = true;
   result.creativeSave.status = std::string{reason};
   result.creativeSave.reasonCode = std::string{reason};
-  result.creativeSave.saveId = window.activeCreativeSaveId;
-  result.creativeSave.worldId = window.activeCreativeWorldId;
-  result.creativeSave.documentId = window.activeCreativeDocumentId;
-  result.creativeSave.objectCount = window.activeCreativeObjectCount;
-  result.creativeSave.nextObjectId = window.activeCreativeNextObjectId;
+  result.creativeSave.saveId = window.activeCreative.saveId;
+  result.creativeSave.worldId = window.activeCreative.worldId;
+  result.creativeSave.documentId = window.activeCreative.documentId;
+  result.creativeSave.objectCount = window.activeCreative.objectCount;
+  result.creativeSave.nextObjectId = window.activeCreative.nextObjectId;
   result.launchStatus = std::string{reason};
   window.launchStatus = std::string{reason};
-  window.activeCreativeSaveStatus = std::string{reason};
-  window.activeCreativeSaveReasonCode = std::string{reason};
+  window.activeCreative.saveStatus = std::string{reason};
+  window.activeCreative.saveReasonCode = std::string{reason};
 }
 
 bool productCreativeDocumentEditorActiveForSource(

@@ -91,8 +91,8 @@ bool creativeNewWorldLaunchesThroughAutomationAppContext() {
                 "automation entered creative mode") &&
          expect(window.launchStatus == "product_creative_world_launched",
                 "automation creative launch status") &&
-         expect(window.activeCreativeSaveId != "none" &&
-                    !window.activeCreativeSaveId.empty(),
+         expect(window.activeCreative.saveId != "none" &&
+                    !window.activeCreative.saveId.empty(),
                 "automation records creative save id") &&
          expect(window.activeProductSaveId == "none",
                 "automation does not set product save id") &&

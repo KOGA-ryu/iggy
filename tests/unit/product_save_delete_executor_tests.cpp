@@ -151,7 +151,7 @@ bool deleteSelectedShrinksCatalogAndReclampsSelectionInPlace() {
   // The operator selected save_002 and confirmed delete of save_002.
   iggy3d::selectProductSaveSlotById(saves.slots, "save_002", window);
   window.saveDelete.candidateId = "save_002";
-  if (!expect(window.selectedProductSaveId == "save_002",
+  if (!expect(window.selectedProductSave.id == "save_002",
               "selection starts on save_002")) {
     return false;
   }
@@ -196,13 +196,13 @@ bool deleteSelectedShrinksCatalogAndReclampsSelectionInPlace() {
          expect(deletedGone, "deleted id removed from saves.slots") &&
          expect(saves.slots.slots.front().id == "save_001",
                 "surviving map is save_001") &&
-         expect(window.selectedProductSaveId == "save_001",
+         expect(window.selectedProductSave.id == "save_001",
                 "selection re-clamps to surviving map") &&
-         expect(window.selectedProductSaveId != "save_002",
+         expect(window.selectedProductSave.id != "save_002",
                 "selection is not the deleted map") &&
-         expect(window.selectedProductSaveEnabled,
+         expect(window.selectedProductSave.enabled,
                 "re-clamped selection is selectable") &&
-         expect(window.selectedProductSaveStatus == "selected",
+         expect(window.selectedProductSave.status == "selected",
                 "re-clamped selection status selected") &&
          // The filesystem move really happened and is isolated to this root.
          expect(!std::filesystem::exists(root / "save_002.iggy3d.save"),
@@ -249,11 +249,11 @@ bool deleteLastSaveEmptiesCatalogInPlace() {
          expect(saves.slots.slots.empty(), "catalog empties in place") &&
          expect(saves.slots.compatibleCount == 0U,
                 "compatible count reaches zero in place") &&
-         expect(window.selectedProductSaveId == "none",
+         expect(window.selectedProductSave.id == "none",
                 "selection clamps to none") &&
-         expect(!window.selectedProductSaveEnabled,
+         expect(!window.selectedProductSave.enabled,
                 "no selection enabled when empty") &&
-         expect(window.selectedProductSaveStatus == "empty",
+         expect(window.selectedProductSave.status == "empty",
                 "selection status empty") &&
          expect(!std::filesystem::exists(root / "save_001.iggy3d.save"),
                 "lone deleted file left the active root") &&

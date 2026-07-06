@@ -85,7 +85,7 @@ ProductAutomationExecutionResult applyProductSaveBrowserAutomationCommand(
         selectProductSaveSlotById(context.saves.slots, saveSelection.saveId,
                                   context.window);
     // branch-gate: BG-1008
-    markAutomationApplied(context.window, command, context.window.selectedProductSaveId,
+    markAutomationApplied(context.window, command, context.window.selectedProductSave.id,
                           context.currentOwner(), selected ? "applied" : "ignored");
     return passSaveBrowserAutomation(selected);
   }

@@ -1383,29 +1383,29 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.productSaveSessionSaved);
   appendReceiptField(receipt, "active_product_save_id", window.activeProductSaveId);
   appendReceiptField(receipt, "active_creative_save_id",
-                     window.activeCreativeSaveId);
+                     window.activeCreative.saveId);
   appendReceiptField(receipt, "active_creative_save_path",
-                     window.activeCreativeSavePath);
+                     window.activeCreative.savePath);
   appendReceiptField(receipt, "active_creative_world_id",
-                     window.activeCreativeWorldId);
+                     window.activeCreative.worldId);
   appendReceiptField(receipt, "active_creative_document_id",
-                     window.activeCreativeDocumentId);
+                     window.activeCreative.documentId);
   appendReceiptField(receipt, "active_creative_object_count",
-                     window.activeCreativeObjectCount);
+                     window.activeCreative.objectCount);
   appendReceiptField(receipt, "active_creative_next_object_id",
-                     window.activeCreativeNextObjectId);
+                     window.activeCreative.nextObjectId);
   appendReceiptField(receipt, "active_creative_save_status",
-                     window.activeCreativeSaveStatus);
+                     window.activeCreative.saveStatus);
   appendReceiptField(receipt, "active_creative_save_reason_code",
-                     window.activeCreativeSaveReasonCode);
+                     window.activeCreative.saveReasonCode);
   appendReceiptField(receipt, "active_creative_save_dirty_flags_before",
-                     window.activeCreativeSaveDirtyFlagsBefore);
+                     window.activeCreative.saveDirtyFlagsBefore);
   appendReceiptField(receipt, "active_creative_save_dirty_flags_drained",
-                     window.activeCreativeSaveDirtyFlagsDrained);
+                     window.activeCreative.saveDirtyFlagsDrained);
   appendReceiptField(receipt, "active_creative_save_dirty_flags_after",
-                     window.activeCreativeSaveDirtyFlagsAfter);
+                     window.activeCreative.saveDirtyFlagsAfter);
   appendReceiptField(receipt, "active_creative_save_saved_at_utc",
-                     window.activeCreativeSaveSavedAtUtc);
+                     window.activeCreative.saveSavedAtUtc);
   appendReceiptField(receipt, "product_save_load_status",
                      window.productSaveLoadResult.status);
   appendReceiptField(receipt, "product_save_load_reason_code",
@@ -1588,11 +1588,11 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "save_browser_mode",
                      frontendSaveBrowserModeName(frontend.saveBrowserMode));
-  appendReceiptField(receipt, "selected_save_id", window.selectedProductSaveId);
+  appendReceiptField(receipt, "selected_save_id", window.selectedProductSave.id);
   appendReceiptField(receipt, "selected_save_enabled",
-                     window.selectedProductSaveEnabled);
+                     window.selectedProductSave.enabled);
   appendReceiptField(receipt, "selected_save_status",
-                     window.selectedProductSaveStatus);
+                     window.selectedProductSave.status);
   appendReceiptField(receipt, "save_slot_browser_mode", window.saveSlotBrowserMode);
   appendReceiptField(receipt, "save_slot_ring_count", window.saveSlotRingCount);
   appendReceiptField(receipt,
@@ -2528,9 +2528,9 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "creative_document_revision_after_frame",
                      window.creativeDocumentRevisionAfterFrame);
   appendReceiptField(receipt, "creative_undo_available",
-                     window.creativeUndoAvailable);
+                     window.creativeUndo.available);
   appendReceiptField(receipt, "creative_undo_depth",
-                     window.creativeUndoDepth);
+                     window.creativeUndo.depth);
   appendReceiptField(receipt, "creative_baked_room_stale",
                      window.creativeBakedRoomStale);
   appendReceiptField(receipt, "creative_baked_room_stale_document_id",

@@ -24,9 +24,9 @@ bool expect(bool condition, std::string_view message) {
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreativeSaveId = "creative_save";
-  window.activeCreativeWorldId = "world_001";
-  window.activeCreativeDocumentId = 42U;
+  window.activeCreative.saveId = "creative_save";
+  window.activeCreative.worldId = "world_001";
+  window.activeCreative.documentId = 42U;
   return window;
 }
 
@@ -56,7 +56,7 @@ bool activeRuleUsesCreativeDocumentIdentity() {
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const bool legacyCreativeActive =
       iggy3d::productCreativeInputActiveForWindow(window);
-  window.activeCreativeDocumentId = 42U;
+  window.activeCreative.documentId = 42U;
   const bool documentCreativeActive =
       iggy3d::productCreativeInputActiveForWindow(window);
 

@@ -30,27 +30,27 @@ namespace iggy3d {
 void mirrorProductActiveCreativeIdentity(
     const creative::CreativeActiveIdentity& identity,
     ProductAppWindowState& window) {
-  window.activeCreativeSaveId =
+  window.activeCreative.saveId =
       identity.saveId.empty() ? "none" : identity.saveId;
-  window.activeCreativeSavePath =
+  window.activeCreative.savePath =
       identity.savePath.empty() ? "none" : identity.savePath;
-  window.activeCreativeWorldId =
+  window.activeCreative.worldId =
       identity.worldId.empty() ? "none" : identity.worldId;
-  window.activeCreativeDocumentId = identity.documentId;
-  window.activeCreativeObjectCount = identity.objectCount;
-  window.activeCreativeNextObjectId = identity.nextObjectId;
-  window.activeCreativeSaveStatus =
+  window.activeCreative.documentId = identity.documentId;
+  window.activeCreative.objectCount = identity.objectCount;
+  window.activeCreative.nextObjectId = identity.nextObjectId;
+  window.activeCreative.saveStatus =
       identity.saveStatus.empty() ? "creative_world_save_not_requested"
                                   : identity.saveStatus;
-  window.activeCreativeSaveReasonCode =
+  window.activeCreative.saveReasonCode =
       identity.saveReasonCode.empty() ? "creative_world_save_not_requested"
                                       : identity.saveReasonCode;
-  window.activeCreativeSaveDirtyFlagsBefore =
+  window.activeCreative.saveDirtyFlagsBefore =
       identity.saveDirtyFlagsBefore;
-  window.activeCreativeSaveDirtyFlagsDrained =
+  window.activeCreative.saveDirtyFlagsDrained =
       identity.saveDirtyFlagsDrained;
-  window.activeCreativeSaveDirtyFlagsAfter = identity.saveDirtyFlagsAfter;
-  window.activeCreativeSaveSavedAtUtc =
+  window.activeCreative.saveDirtyFlagsAfter = identity.saveDirtyFlagsAfter;
+  window.activeCreative.saveSavedAtUtc =
       identity.saveSavedAtUtc.empty() ? "none" : identity.saveSavedAtUtc;
 }
 
@@ -64,8 +64,8 @@ void clearProductActiveCreativeIdentity(
   } else {
     mirrorProductActiveCreativeIdentity(cleared, window);
   }
-  window.creativeUndoAvailable = false;
-  window.creativeUndoDepth = 0;
+  window.creativeUndo.available = false;
+  window.creativeUndo.depth = 0;
 }
 
 namespace {
@@ -508,20 +508,20 @@ void recordSelectedProductSaveSlot(const SaveSlotList& slots,
   window.saveSlotRingSelectedStatus = ring.selectedStatus;
 
   if (slots.slots.empty()) {
-    window.selectedProductSaveId = "none";
-    window.selectedProductSaveEnabled = false;
-    window.selectedProductSaveStatus = "empty";
+    window.selectedProductSave.id = "none";
+    window.selectedProductSave.enabled = false;
+    window.selectedProductSave.status = "empty";
     return;
   }
   if (slot == nullptr) {
-    window.selectedProductSaveId = "none";
-    window.selectedProductSaveEnabled = false;
-    window.selectedProductSaveStatus = "missing";
+    window.selectedProductSave.id = "none";
+    window.selectedProductSave.enabled = false;
+    window.selectedProductSave.status = "missing";
     return;
   }
-  window.selectedProductSaveId = slot->id.empty() ? "none" : slot->id;
-  window.selectedProductSaveEnabled = slot->enabled;
-  window.selectedProductSaveStatus = slot->enabled ? "selected" : "disabled";
+  window.selectedProductSave.id = slot->id.empty() ? "none" : slot->id;
+  window.selectedProductSave.enabled = slot->enabled;
+  window.selectedProductSave.status = slot->enabled ? "selected" : "disabled";
 }
 
 void recordProductSaveSlotAction(ProductAppWindowState& window,
@@ -1010,9 +1010,9 @@ const SaveSlotPreview* initializeSelectedProductSaveSlot(
     const SaveSlotList& slots,
     ProductAppWindowState& window) {
   const SaveSlotPreview* current =
-      window.selectedProductSaveId == "none"
+      window.selectedProductSave.id == "none"
           ? nullptr
-          : saveSlotById(slots, window.selectedProductSaveId);
+          : saveSlotById(slots, window.selectedProductSave.id);
   const SaveSlotPreview* selected =
       current == nullptr ? firstSelectableSaveSlot(slots) : current;
   recordSelectedProductSaveSlot(slots, selected, window);
@@ -1029,7 +1029,7 @@ const SaveSlotPreview* moveSelectedProductSaveSlot(const SaveSlotList& slots,
 
   const bool previous = action == InputAction::MenuUp;
   const std::string selectedId =
-      nextSaveSlotRingSelection(slots, window.selectedProductSaveId, previous);
+      nextSaveSlotRingSelection(slots, window.selectedProductSave.id, previous);
   const SaveSlotPreview* selected = saveSlotById(slots, selectedId);
   recordSelectedProductSaveSlot(slots, selected, window);
   return selected;
@@ -1139,9 +1139,9 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
   window.saveSlotBrowserMode =
       std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
   const SaveSlotPreview* slot =
-      window.selectedProductSaveId == "none"
+      window.selectedProductSave.id == "none"
           ? nullptr
-          : saveSlotById(slots, window.selectedProductSaveId);
+          : saveSlotById(slots, window.selectedProductSave.id);
   if (slot == nullptr) {
     recordSelectedProductSaveSlot(slots, nullptr, window);
     recordProductSaveSlotAction(
@@ -1237,7 +1237,7 @@ ProductSaveFlowResult executeProductSaveSoftDelete(
     flow.affectedSlotId = "none";
     flow.activeCountAfter = flow.activeCountBefore;
     flow.deletedCountAfter = window.deletedSaveCount;
-    flow.selectedSlotAfter = window.selectedProductSaveId;
+    flow.selectedSlotAfter = window.selectedProductSave.id;
     recordProductSaveFlowResult(ProductSaveFlowOperation::Delete,
                                 "delete_world_browser",
                                 flow,
@@ -1263,8 +1263,8 @@ ProductSaveFlowResult executeProductSaveSoftDelete(
   // branch-gate: BG-1020
   flow.affectedSlotId = deleted.saveId.empty() ? "none" : deleted.saveId;
   if (deleted.ok) {
-    window.selectedProductSaveEnabled = false;
-    window.selectedProductSaveStatus = "missing";
+    window.selectedProductSave.enabled = false;
+    window.selectedProductSave.status = "missing";
     saves = mutation.activeSaves;
     initializeSelectedProductSaveSlot(saves.slots, window);
   }
@@ -1272,7 +1272,7 @@ ProductSaveFlowResult executeProductSaveSoftDelete(
   flow.activeCountAfter = static_cast<std::uint64_t>(saves.slots.slots.size());
   flow.deletedCountAfter =
       static_cast<std::uint64_t>(mutation.deletedSaves.slots.slots.size());
-  flow.selectedSlotAfter = window.selectedProductSaveId;
+  flow.selectedSlotAfter = window.selectedProductSave.id;
   frontend.childScreen = FrontendScreen::LoadSave;
   frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
   window.saveSlotBrowserMode =
@@ -1415,8 +1415,8 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
     return result;
   }
   creative::clearCreativeUndoStack(creativeApp.undoStack);
-  window.creativeUndoAvailable = false;
-  window.creativeUndoDepth = 0;
+  window.creativeUndo.available = false;
+  window.creativeUndo.depth = 0;
 
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
   window.interactionMode = ProductInteractionMode::Creative;
@@ -1484,8 +1484,8 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
     return result;
   }
   creative::clearCreativeUndoStack(creativeApp.undoStack);
-  window.creativeUndoAvailable = false;
-  window.creativeUndoDepth = 0;
+  window.creativeUndo.available = false;
+  window.creativeUndo.depth = 0;
 
   enterProductGameplayTransition(frontend, window, FrontendAction::Load);
   window.interactionMode = ProductInteractionMode::Creative;
@@ -1581,8 +1581,8 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
   result.accepted = true;
   setCurrentCreativeSaveStatus(result, "product_creative_world_saved");
   creative::clearCreativeUndoStack(creativeApp.undoStack);
-  window.creativeUndoAvailable = false;
-  window.creativeUndoDepth = 0;
+  window.creativeUndo.available = false;
+  window.creativeUndo.depth = 0;
   recordActiveCreativeSaveResult(window, creativeApp.identity, result);
   return result;
 }

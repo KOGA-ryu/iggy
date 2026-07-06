@@ -1201,9 +1201,9 @@ bool creativeDocumentSurfaceHidesLegacyGameplayHudAndFeedback() {
   seedMovementDebugFacts(window);
   seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreativeSaveId = "creative_save";
-  window.activeCreativeWorldId = "world_001";
-  window.activeCreativeDocumentId = 42U;
+  window.activeCreative.saveId = "creative_save";
+  window.activeCreative.worldId = "world_001";
+  window.activeCreative.documentId = 42U;
   window.mapMakerStatus = "map_maker_enabled";
   window.mapMakerReasonCode = window.mapMakerStatus;
   window.gameplayCommandSubmitted = true;
