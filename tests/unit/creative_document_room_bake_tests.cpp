@@ -844,6 +844,217 @@ bool productMeaningfulPointAnchorsUseDescriptorSemantics() {
                 "enemy source object");
 }
 
+bool disconnectedWalkableIslandsReportStrandedCells() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Disconnected Floors");
+  const cr::CreativeDocumentCreateReceipt left =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt right =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{10.0, 0.0, 0.0}, {14.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt spawn =
+      createPoint(document, cr::CreativeObjectKind::SpawnPoint, {1.0, 0.0, 1.0});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(left.accepted, "disconnected left floor created") &&
+         expect(right.accepted, "disconnected right floor created") &&
+         expect(spawn.accepted, "disconnected spawn created") &&
+         expect(result.receipt.accepted, "disconnected bake accepted") &&
+         expect(result.receipt.bakedStaticMeshCount == 2U,
+                "disconnected mesh count stable") &&
+         expect(result.receipt.bakedAnchorCount == 1U,
+                "disconnected anchor count stable") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 2U,
+                "disconnected surface count stable") &&
+         expect(result.reachability.requested,
+                "disconnected reachability requested") &&
+         expect(result.reachability.checked,
+                "disconnected reachability checked") &&
+         expect(result.reachability.status ==
+                    cr::CreativeRoomBakeReachabilityStatus::IslandsFound,
+                "disconnected status islands") &&
+         expect(result.reachability.reasonCode ==
+                    "creative_room_bake_reachability_islands_found",
+                "disconnected reason") &&
+         expect(result.reachability.hasIslands,
+                "disconnected has islands") &&
+         expect(result.reachability.walkableCellCount == 32U,
+                "disconnected walkable cells") &&
+         expect(result.reachability.reachedCellCount == 16U,
+                "disconnected reached cells") &&
+         expect(result.reachability.strandedCellCount == 16U,
+                "disconnected stranded cells") &&
+         expect(result.reachability.seedAnchorCount == 1U,
+                "disconnected seed count") &&
+         expect(result.reachability.usableSeedCount == 1U,
+                "disconnected usable seed") &&
+         expect(result.reachability.blockedSeedCount == 0U,
+                "disconnected no blocked seeds");
+}
+
+bool connectedWalkableLayoutReportsZeroStrandedCells() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Connected Floors");
+  const cr::CreativeDocumentCreateReceipt left =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt right =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{4.0, 0.0, 0.0}, {8.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt spawn =
+      createPoint(document, cr::CreativeObjectKind::SpawnPoint, {1.0, 0.0, 1.0});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(left.accepted, "connected left floor created") &&
+         expect(right.accepted, "connected right floor created") &&
+         expect(spawn.accepted, "connected spawn created") &&
+         expect(result.receipt.accepted, "connected bake accepted") &&
+         expect(result.receipt.bakedStaticMeshCount == 2U,
+                "connected mesh count stable") &&
+         expect(result.receipt.bakedAnchorCount == 1U,
+                "connected anchor count stable") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 2U,
+                "connected surface count stable") &&
+         expect(result.reachability.checked,
+                "connected reachability checked") &&
+         expect(result.reachability.status ==
+                    cr::CreativeRoomBakeReachabilityStatus::Reachable,
+                "connected status reachable") &&
+         expect(result.reachability.reasonCode ==
+                    "creative_room_bake_reachability_connected",
+                "connected reason") &&
+         expect(!result.reachability.hasIslands,
+                "connected no islands") &&
+         expect(result.reachability.walkableCellCount == 32U,
+                "connected walkable cells") &&
+         expect(result.reachability.reachedCellCount == 32U,
+                "connected reached cells") &&
+         expect(result.reachability.strandedCellCount == 0U,
+                "connected no stranded cells") &&
+         expect(result.reachability.seedAnchorCount == 1U,
+                "connected seed count") &&
+         expect(result.reachability.usableSeedCount == 1U,
+                "connected usable seed") &&
+         expect(result.reachability.blockedSeedCount == 0U,
+                "connected no blocked seeds");
+}
+
+bool walkableLayoutWithoutSeedReportsNoUsableSeeds() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("No Seed Floor");
+  const cr::CreativeDocumentCreateReceipt floor =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(floor.accepted, "no-seed floor created") &&
+         expect(result.receipt.accepted, "no-seed bake accepted") &&
+         expect(result.receipt.bakedStaticMeshCount == 1U,
+                "no-seed mesh count stable") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "no-seed anchor count stable") &&
+         expect(result.reachability.requested,
+                "no-seed reachability requested") &&
+         expect(!result.reachability.checked,
+                "no-seed reachability not checked") &&
+         expect(result.reachability.status ==
+                    cr::CreativeRoomBakeReachabilityStatus::NoUsableSeeds,
+                "no-seed status") &&
+         expect(result.reachability.reasonCode ==
+                    "creative_room_bake_reachability_no_usable_seeds",
+                "no-seed reason") &&
+         expect(result.reachability.hasIslands,
+                "no-seed marks walkable cells stranded") &&
+         expect(result.reachability.walkableCellCount == 16U,
+                "no-seed walkable cells") &&
+         expect(result.reachability.reachedCellCount == 0U,
+                "no-seed reached cells") &&
+         expect(result.reachability.strandedCellCount == 16U,
+                "no-seed stranded cells") &&
+         expect(result.reachability.seedAnchorCount == 0U,
+                "no-seed seed count");
+}
+
+bool blockedSeedReportsNoUsableSeeds() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Blocked Seed");
+  const cr::CreativeDocumentCreateReceipt floor =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt spawn =
+      createPoint(document,
+                  cr::CreativeObjectKind::SpawnPoint,
+                  {10.0, 0.0, 10.0});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(floor.accepted, "blocked-seed floor created") &&
+         expect(spawn.accepted, "blocked-seed spawn created") &&
+         expect(result.receipt.accepted, "blocked-seed bake accepted") &&
+         expect(result.receipt.bakedStaticMeshCount == 1U,
+                "blocked-seed mesh count stable") &&
+         expect(result.receipt.bakedAnchorCount == 1U,
+                "blocked-seed anchor count stable") &&
+         expect(!result.reachability.checked,
+                "blocked-seed reachability not checked") &&
+         expect(result.reachability.status ==
+                    cr::CreativeRoomBakeReachabilityStatus::NoUsableSeeds,
+                "blocked-seed status") &&
+         expect(result.reachability.reasonCode ==
+                    "creative_room_bake_reachability_no_usable_seeds",
+                "blocked-seed reason") &&
+         expect(result.reachability.hasIslands,
+                "blocked-seed walkable cells stranded") &&
+         expect(result.reachability.walkableCellCount == 16U,
+                "blocked-seed walkable cells") &&
+         expect(result.reachability.strandedCellCount == 16U,
+                "blocked-seed stranded cells") &&
+         expect(result.reachability.seedAnchorCount == 1U,
+                "blocked-seed seed count") &&
+         expect(result.reachability.usableSeedCount == 0U,
+                "blocked-seed no usable seeds") &&
+         expect(result.reachability.blockedSeedCount == 1U,
+                "blocked-seed blocked count");
+}
+
+bool oversizedWalkableProjectionReportsGridTooLarge() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Oversized Reachability Grid");
+  const cr::CreativeDocumentCreateReceipt floor =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{0.0, 0.0, 0.0}, {1001.0, 0.25, 1000.0}});
+  const cr::CreativeDocumentCreateReceipt spawn =
+      createPoint(document, cr::CreativeObjectKind::SpawnPoint, {1.0, 0.0, 1.0});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(floor.accepted, "oversized floor created") &&
+         expect(spawn.accepted, "oversized spawn created") &&
+         expect(result.receipt.accepted, "oversized bake accepted") &&
+         expect(result.receipt.bakedStaticMeshCount == 1U,
+                "oversized mesh count stable") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 1U,
+                "oversized surface count stable") &&
+         expect(result.reachability.requested,
+                "oversized reachability requested") &&
+         expect(!result.reachability.checked,
+                "oversized reachability not checked") &&
+         expect(result.reachability.status ==
+                    cr::CreativeRoomBakeReachabilityStatus::GridTooLarge,
+                "oversized status") &&
+         expect(result.reachability.reasonCode ==
+                    "creative_room_bake_reachability_grid_too_large",
+                "oversized reason");
+}
+
 bool broadOccupancyPointsWithoutAnchorSemanticsDoNotBakeAnchors() {
   cr::CreativeDocument document =
       cr::CreativeDocument::create("Broad Point Anchor Semantics");
@@ -1160,6 +1371,11 @@ int main() {
                   boxProjectionTestingVolumesDoNotBakeStaticGeometry() &&
                   pointObjectBakesToAnchorOnly() &&
                   productMeaningfulPointAnchorsUseDescriptorSemantics() &&
+                  disconnectedWalkableIslandsReportStrandedCells() &&
+                  connectedWalkableLayoutReportsZeroStrandedCells() &&
+                  walkableLayoutWithoutSeedReportsNoUsableSeeds() &&
+                  blockedSeedReportsNoUsableSeeds() &&
+                  oversizedWalkableProjectionReportsGridTooLarge() &&
                   broadOccupancyPointsWithoutAnchorSemanticsDoNotBakeAnchors() &&
                   bakedRoomProjectsAndLoadsIntoActiveRoom() &&
                   hiddenObjectsAreSkippedUnlessIncluded() &&

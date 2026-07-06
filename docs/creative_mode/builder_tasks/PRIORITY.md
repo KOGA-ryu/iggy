@@ -20,8 +20,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E102-kernel-w5-room-bake-reachability-receipt.md`
-2. `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
+1. `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -29,7 +28,6 @@ None currently ready.
 
 ## Tier 2: Feature-Add Seams
 
-- `ready/E102-kernel-w5-room-bake-reachability-receipt.md`
 - `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene

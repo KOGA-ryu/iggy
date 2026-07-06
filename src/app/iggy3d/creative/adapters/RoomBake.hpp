@@ -18,12 +18,26 @@ enum class CreativeRoomBakeStatus : std::uint8_t {
   Baked,
 };
 
+enum class CreativeRoomBakeReachabilityStatus : std::uint8_t {
+  Unknown,
+  NotRequested,
+  NotChecked,
+  InvalidCellSize,
+  NoWalkableCells,
+  GridTooLarge,
+  NoUsableSeeds,
+  Reachable,
+  IslandsFound,
+};
+
 struct CreativeRoomBakeRequest {
   const CreativeDocument* document = nullptr;
   std::string roomId;
   std::string sourceName;
   std::string sourceSubset = "creative_document";
   bool includeHidden = false;
+  bool validateReachability = true;
+  float reachabilityCellSizeMeters = 1.0F;
 };
 
 struct CreativeRoomBakeReceipt {
@@ -45,6 +59,23 @@ struct CreativeRoomBakeReceipt {
   std::string message = "creative_room_bake_not_requested";
 };
 
+struct CreativeRoomBakeReachabilityReceipt {
+  bool requested = false;
+  bool checked = false;
+  bool hasIslands = false;
+  std::uint32_t walkableCellCount = 0;
+  std::uint32_t reachedCellCount = 0;
+  std::uint32_t strandedCellCount = 0;
+  std::uint32_t seedAnchorCount = 0;
+  std::uint32_t usableSeedCount = 0;
+  std::uint32_t blockedSeedCount = 0;
+  float cellSizeMeters = 1.0F;
+  CreativeRoomBakeReachabilityStatus status =
+      CreativeRoomBakeReachabilityStatus::Unknown;
+  std::string reasonCode = "creative_room_bake_reachability_not_requested";
+  std::string message = "creative_room_bake_reachability_not_requested";
+};
+
 struct CreativeRoomBakeStaticMeshSource {
   CreativeObjectId objectId{kInvalidObjectId};
   std::string staticMeshId;
@@ -64,12 +95,15 @@ struct CreativeRoomBakeSpatialSurfaceSource {
 struct CreativeRoomBakeResult {
   RoomAsset room;
   CreativeRoomBakeReceipt receipt;
+  CreativeRoomBakeReachabilityReceipt reachability;
   std::vector<CreativeRoomBakeStaticMeshSource> staticMeshSources;
   std::vector<CreativeRoomBakeAnchorSource> anchorSources;
   std::vector<CreativeRoomBakeSpatialSurfaceSource> spatialSurfaceSources;
 };
 
 [[nodiscard]] std::string_view toString(CreativeRoomBakeStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeRoomBakeReachabilityStatus status) noexcept;
 
 [[nodiscard]] bool creativeRoomBakeBoundsAreValid(
     CreativeBounds bounds) noexcept;
