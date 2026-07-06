@@ -31,10 +31,12 @@ struct CreativeRoomBakeReceipt {
   std::uint64_t objectCount = 0;
   std::uint64_t consideredObjectCount = 0;
   std::uint64_t bakedStaticMeshCount = 0;
+  std::uint64_t bakedAnchorCount = 0;
   std::uint64_t bakedSpatialSurfaceCount = 0;
   std::uint64_t skippedHiddenCount = 0;
   std::uint64_t skippedEditorOnlyCount = 0;
   std::uint64_t skippedNoBoundsCount = 0;
+  std::uint64_t skippedUnsupportedAnchorCount = 0;
   std::uint64_t skippedUnsupportedShapeCount = 0;
   std::uint64_t skippedRoomMetadataCount = 0;
   CreativeRoomBakeStatus status = CreativeRoomBakeStatus::Unknown;

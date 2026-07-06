@@ -30,8 +30,22 @@ enum class BakedRoomRole {
   return finite(value.x) && finite(value.y) && finite(value.z);
 }
 
+[[nodiscard]] bool fitsFloat(double value) noexcept {
+  return std::fabs(value) <=
+         static_cast<double>(std::numeric_limits<float>::max());
+}
+
 [[nodiscard]] float toFloat(double value) noexcept {
   return static_cast<float>(value);
+}
+
+[[nodiscard]] Vec3 toVec3(CreativeVec3 value) noexcept {
+  return {toFloat(value.x), toFloat(value.y), toFloat(value.z)};
+}
+
+[[nodiscard]] bool validAnchorPosition(CreativeVec3 position) noexcept {
+  return finite(position) && fitsFloat(position.x) && fitsFloat(position.y) &&
+         fitsFloat(position.z);
 }
 
 [[nodiscard]] bool validBakeBounds(CreativeBounds bounds,
@@ -79,6 +93,22 @@ enum class BakedRoomRole {
     const CreativeObjectDescriptor& descriptor) noexcept {
   return descriptor.isRuntimeMeaningful ||
          occupancySupportsRuntimeRoomGeometry(descriptor.occupancyKind);
+}
+
+[[nodiscard]] bool occupancySupportsRuntimeRoomAnchor(
+    CreativeSpatialOccupancyKind occupancy) noexcept {
+  return occupancy == CreativeSpatialOccupancyKind::Navigation ||
+         occupancy == CreativeSpatialOccupancyKind::Gameplay ||
+         occupancy == CreativeSpatialOccupancyKind::Light ||
+         occupancy == CreativeSpatialOccupancyKind::Audio ||
+         occupancy == CreativeSpatialOccupancyKind::Camera;
+}
+
+[[nodiscard]] bool descriptorSupportsRuntimeRoomAnchor(
+    const CreativeObjectDescriptor& descriptor) noexcept {
+  return descriptor.shapeKind == CreativeObjectShapeKind::Point &&
+         descriptor.hasTransform &&
+         occupancySupportsRuntimeRoomAnchor(descriptor.occupancyKind);
 }
 
 [[nodiscard]] bool horizontalSurface(BakeBounds bounds) noexcept {
@@ -171,6 +201,41 @@ enum class BakedRoomRole {
     id += suffix;
   }
   return id;
+}
+
+[[nodiscard]] std::string_view anchorKindForDescriptor(
+    const CreativeObjectDescriptor& descriptor) noexcept {
+  switch (descriptor.occupancyKind) {
+    case CreativeSpatialOccupancyKind::Navigation:
+      return "navigation";
+    case CreativeSpatialOccupancyKind::Gameplay:
+      return "gameplay";
+    case CreativeSpatialOccupancyKind::Light:
+      return "light";
+    case CreativeSpatialOccupancyKind::Audio:
+      return "audio";
+    case CreativeSpatialOccupancyKind::Camera:
+      return "camera";
+    case CreativeSpatialOccupancyKind::Unknown:
+    case CreativeSpatialOccupancyKind::Structural:
+    case CreativeSpatialOccupancyKind::Collision:
+    case CreativeSpatialOccupancyKind::Trigger:
+    case CreativeSpatialOccupancyKind::Testing:
+    case CreativeSpatialOccupancyKind::Authoring:
+      return "";
+  }
+  return "";
+}
+
+[[nodiscard]] RoomAnchorAsset anchorForObject(
+    const CreativeObject& object,
+    const CreativeObjectDescriptor& descriptor) {
+  RoomAnchorAsset anchor;
+  anchor.id = stableObjectId(object, "anchor");
+  anchor.kind = std::string(anchorKindForDescriptor(descriptor));
+  anchor.runtimeStableName = stableObjectId(object);
+  anchor.positionMeters = toVec3(object.transform.position);
+  return anchor;
 }
 
 void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
@@ -362,6 +427,17 @@ CreativeRoomBakeResult buildRoomAssetFromCreativeDocument(
     }
 
     ++result.receipt.consideredObjectCount;
+    if (descriptor.shapeKind == CreativeObjectShapeKind::Point) {
+      if (!descriptorSupportsRuntimeRoomAnchor(descriptor) ||
+          !validAnchorPosition(object.transform.position)) {
+        ++result.receipt.skippedUnsupportedAnchorCount;
+        continue;
+      }
+
+      result.room.anchors.push_back(anchorForObject(object, descriptor));
+      continue;
+    }
+
     if (descriptor.shapeKind != CreativeObjectShapeKind::Surface &&
         descriptor.shapeKind != CreativeObjectShapeKind::MeshProxy &&
         descriptor.shapeKind != CreativeObjectShapeKind::BoxVolume) {
@@ -391,9 +467,10 @@ CreativeRoomBakeResult buildRoomAssetFromCreativeDocument(
   }
 
   result.receipt.bakedStaticMeshCount = result.room.staticMeshes.size();
+  result.receipt.bakedAnchorCount = result.room.anchors.size();
   result.receipt.bakedSpatialSurfaceCount = result.room.spatialSurfaces.size();
 
-  if (result.room.staticMeshes.empty()) {
+  if (result.room.staticMeshes.empty() && result.room.anchors.empty()) {
     setStatus(result.receipt,
               CreativeRoomBakeStatus::NoRenderableObjects,
               "creative_room_bake_no_renderable_objects");

@@ -62,11 +62,15 @@ cr::CreativeDocumentCreateReceipt createObject(
 
 cr::CreativeDocumentCreateReceipt createPoint(
     cr::CreativeDocument& document,
-    cr::CreativeObjectKind kind) {
+    cr::CreativeObjectKind kind,
+    cr::CreativeVec3 position = {1.0, 0.0, 1.0},
+    bool visible = true) {
   cr::CreativeDocumentCreateRequest request;
   request.kind = kind;
-  request.transform.position = {1.0, 0.0, 1.0};
+  request.transform.position = position;
   request.hasTransformOverride = true;
+  request.visible = visible;
+  request.hasVisibleOverride = true;
   return document.createObject(request);
 }
 
@@ -139,6 +143,8 @@ bool emptyDocumentHasNoRenderableObjects() {
          expect(result.receipt.objectCount == 0U, "empty object count") &&
          expect(result.receipt.bakedStaticMeshCount == 0U,
                 "empty baked mesh count") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "empty baked anchor count") &&
          expect(result.room.id == "creative_test_room", "empty room id") &&
          expect(result.room.source == "iggy3d.creative_document",
                 "empty room source") &&
@@ -161,9 +167,12 @@ bool floorWallCrateBakeToRoomAsset() {
                 "bake considered count") &&
          expect(result.receipt.bakedStaticMeshCount == 3U,
                 "bake mesh count") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "bake anchor count") &&
          expect(result.receipt.bakedSpatialSurfaceCount == 5U,
                 "bake surface count") &&
          expect(meshes.size() == 3U, "mesh vector count") &&
+         expect(result.room.anchors.empty(), "no anchors for mesh bake") &&
          expect(countRole(meshes, "floor") == 1U, "floor role count") &&
          expect(countRole(meshes, "wall") == 1U, "wall role count") &&
          expect(countRole(meshes, "prop") == 1U, "prop role count") &&
@@ -201,6 +210,84 @@ bool floorWallCrateBakeToRoomAsset() {
                 "prop center") &&
          expect(sameVec3(meshes[2].sizeMeters, {1.0F, 1.0F, 1.0F}),
                 "prop size");
+}
+
+bool pointObjectBakesToAnchorOnly() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Point Anchor");
+  const cr::CreativeVec3 position = {6.25, 1.5, -2.75};
+  const cr::CreativeDocumentCreateReceipt created =
+      createPoint(document, cr::CreativeObjectKind::PointLight, position);
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  const iggy3d::RoomAnchorAsset* anchor =
+      result.room.anchors.empty() ? nullptr : &result.room.anchors.front();
+  return expect(created.accepted, "point create accepted") &&
+         expect(result.receipt.accepted, "point anchor bake accepted") &&
+         expect(result.receipt.status == cr::CreativeRoomBakeStatus::Baked,
+                "point anchor status") &&
+         expect(result.receipt.objectCount == 1U, "point object count") &&
+         expect(result.receipt.consideredObjectCount == 1U,
+                "point considered count") &&
+         expect(result.receipt.bakedAnchorCount == 1U,
+                "point baked anchor count") &&
+         expect(result.receipt.bakedStaticMeshCount == 0U,
+                "point no mesh count") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 0U,
+                "point no surface count") &&
+         expect(result.room.staticMeshes.empty(), "point no meshes") &&
+         expect(result.room.spatialSurfaces.empty(), "point no surfaces") &&
+         expect(result.room.anchors.size() == 1U, "point anchor vector count") &&
+         expect(anchor != nullptr, "point anchor exists") &&
+         expect(anchor->id == "creative_object_1_anchor", "point anchor id") &&
+         expect(anchor->kind == "light", "point anchor role") &&
+         expect(anchor->runtimeStableName == "creative_object_1",
+                "point anchor stable name") &&
+         expect(sameVec3(anchor->positionMeters, {6.25F, 1.5F, -2.75F}),
+                "point anchor position");
+}
+
+bool hiddenPointAnchorsAreSkippedUnlessIncluded() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Hidden Point");
+  (void)createPoint(document,
+                    cr::CreativeObjectKind::PointLight,
+                    {3.0, 2.0, 1.0},
+                    false);
+
+  const cr::CreativeRoomBakeResult skipped = bake(document);
+  const cr::CreativeRoomBakeResult included = bake(document, true);
+
+  return expect(!skipped.receipt.accepted, "hidden point skipped not accepted") &&
+         expect(skipped.receipt.skippedHiddenCount == 1U,
+                "hidden point skipped count") &&
+         expect(skipped.receipt.bakedAnchorCount == 0U,
+                "hidden point skipped anchor count") &&
+         expect(skipped.room.anchors.empty(), "hidden point no anchors") &&
+         expect(included.receipt.accepted, "hidden point included accepted") &&
+         expect(included.receipt.skippedHiddenCount == 0U,
+                "hidden point included skipped count") &&
+         expect(included.receipt.bakedAnchorCount == 1U,
+                "hidden point included anchor count") &&
+         expect(included.room.anchors.size() == 1U,
+                "hidden point included anchor vector count") &&
+         expect(included.room.anchors[0].kind == "light",
+                "hidden point included role");
+}
+
+bool editorOnlyPointIsSkipped() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Editor Point");
+  (void)createPoint(document, cr::CreativeObjectKind::Note);
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(!result.receipt.accepted, "editor point not accepted") &&
+         expect(result.receipt.status ==
+                    cr::CreativeRoomBakeStatus::NoRenderableObjects,
+                "editor point status") &&
+         expect(result.receipt.skippedEditorOnlyCount == 1U,
+                "editor point skipped count") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "editor point no anchor count") &&
+         expect(result.room.anchors.empty(), "editor point no anchors");
 }
 
 bool bakedRoomProjectsAndLoadsIntoActiveRoom() {
@@ -283,7 +370,7 @@ bool unsupportedAndMetadataObjectsAreSkipped() {
                      cr::CreativeObjectKind::Room,
                      {{0.0, 0.0, 0.0}, {10.0, 4.0, 10.0}});
   (void)createPoint(document, cr::CreativeObjectKind::Note);
-  (void)createPoint(document, cr::CreativeObjectKind::PointLight);
+  (void)createPoint(document, cr::CreativeObjectKind::Socket);
   (void)createObject(document,
                      cr::CreativeObjectKind::Beam,
                      {{0.0, 0.0, 0.0}, {4.0, 0.35, 0.35}});
@@ -301,12 +388,16 @@ bool unsupportedAndMetadataObjectsAreSkipped() {
                 "room metadata count") &&
          expect(result.receipt.skippedEditorOnlyCount == 1U,
                 "editor-only count") &&
-         expect(result.receipt.skippedUnsupportedShapeCount == 3U,
+         expect(result.receipt.skippedUnsupportedAnchorCount == 1U,
+                "unsupported anchor count") &&
+         expect(result.receipt.skippedUnsupportedShapeCount == 2U,
                 "unsupported shape count") &&
          expect(result.receipt.skippedNoBoundsCount == 0U,
                 "unsupported no bounds count") &&
          expect(result.receipt.bakedStaticMeshCount == 0U,
-                "unsupported mesh count");
+                "unsupported mesh count") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "unsupported anchor bake count");
 }
 
 }  // namespace
@@ -315,8 +406,11 @@ int main() {
   const bool ok = nullDocumentRejects() &&
                   emptyDocumentHasNoRenderableObjects() &&
                   floorWallCrateBakeToRoomAsset() &&
+                  pointObjectBakesToAnchorOnly() &&
                   bakedRoomProjectsAndLoadsIntoActiveRoom() &&
                   hiddenObjectsAreSkippedUnlessIncluded() &&
+                  hiddenPointAnchorsAreSkippedUnlessIncluded() &&
+                  editorOnlyPointIsSkipped() &&
                   unsupportedAndMetadataObjectsAreSkipped();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
