@@ -165,6 +165,8 @@ target_sources(iggy3d
     src/app/iggy3d/creative/world/WorldService.cpp
     src/app/iggy3d/ReceiptBuilder.cpp
     src/app/iggy3d/receipt/ReceiptFields.cpp
+    src/app/iggy3d/receipt/PhysicsReceiptRecording.cpp
+    src/app/iggy3d/receipt/CreativeReceiptRecording.cpp
     src/app/iggy3d/receipt/FrontendSettingsWindowFields.cpp
     src/app/iggy3d/receipt/StartupWorldBuildoutFields.cpp
     src/app/iggy3d/receipt/SaveStateFields.cpp
