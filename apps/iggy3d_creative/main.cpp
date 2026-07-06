@@ -442,6 +442,11 @@ bool descriptorSupportsBrushPlacement(
          descriptorSupportsPointPlacement(descriptor);
 }
 
+bool descriptorAvailableInStandaloneBrushPalette(
+    const creative::CreativeObjectDescriptor& descriptor) {
+  return !descriptor.isEditorOnly;
+}
+
 BrushFootprint brushFootprintForDescriptor(
     const creative::CreativeObjectDescriptor& descriptor) {
   BrushFootprint footprint = descriptorBoundsFootprint(descriptor);
@@ -464,12 +469,32 @@ BrushFootprint brushFootprintForDescriptor(
 
 std::vector<creative::CreativeObjectKind> buildBrushPaletteFromDescriptors() {
   std::vector<creative::CreativeObjectKind> palette;
+  std::uint64_t eligibleBeforeHygiene = 0;
+  std::string removed;
   for (const creative::CreativeObjectDescriptor& descriptor :
        creative::allObjectDescriptors()) {
-    if (descriptorSupportsBrushPlacement(descriptor)) {
-      palette.push_back(descriptor.kind);
+    if (!descriptorSupportsBrushPlacement(descriptor)) {
+      continue;
     }
+
+    ++eligibleBeforeHygiene;
+    if (!descriptorAvailableInStandaloneBrushPalette(descriptor)) {
+      if (!removed.empty()) {
+        removed += ",";
+      }
+      removed += std::string(descriptor.name);
+      continue;
+    }
+
+    palette.push_back(descriptor.kind);
   }
+  SDL_Log("iggy3d_creative: brush palette hygiene before=%llu after=%llu "
+          "removed=%llu predicate='!descriptor.isEditorOnly' removed='%s'",
+          static_cast<unsigned long long>(eligibleBeforeHygiene),
+          static_cast<unsigned long long>(palette.size()),
+          static_cast<unsigned long long>(eligibleBeforeHygiene -
+                                          palette.size()),
+          removed.c_str());
   return palette;
 }
 
