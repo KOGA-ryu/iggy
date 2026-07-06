@@ -124,6 +124,7 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
@@ -801,6 +802,50 @@ void appendPathProxyMeshesToScene(const creative::CreativeObject& object,
                  segmentBounds.max.z - segmentBounds.min.z};
     scene.room.meshes.push_back(std::move(mesh));
   }
+}
+
+std::size_t appendStandalonePreviewProxiesToScene(
+    const creative::CreativeDocument& document,
+    SceneProjectionResult& scene) {
+  std::size_t appended = 0;
+  for (const creative::CreativeObject& obj : document.objects()) {
+    if (!obj.visible) {
+      continue;
+    }
+    const creative::CreativeObjectDescriptor& descriptor =
+        creative::describeObject(obj.kind);
+    const std::string_view role = renderRoleForDescriptor(descriptor);
+    if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Path) {
+      const std::size_t before = scene.room.meshes.size();
+      appendPathProxyMeshesToScene(obj, scene, role);
+      appended += scene.room.meshes.size() - before;
+      continue;
+    }
+    if (descriptor.shapeKind != creative::CreativeObjectShapeKind::Point &&
+        descriptor.shapeKind != creative::CreativeObjectShapeKind::Line) {
+      continue;
+    }
+
+    const VisualBounds visualBounds = visualBoundsForObject(obj);
+    const Vec3 boxMin = visualBounds.min;
+    const Vec3 boxMax = visualBounds.max;
+    SceneRoomMeshItem mesh;
+    mesh.id = "creative.preview_object_" + std::to_string(obj.id);
+    mesh.role = std::string(role);
+    mesh.materialId = "creative_preview_object";
+    mesh.position = {(boxMin.x + boxMax.x) * 0.5F,
+                     (boxMin.y + boxMax.y) * 0.5F,
+                     (boxMin.z + boxMax.z) * 0.5F};
+    mesh.size = {boxMax.x - boxMin.x, boxMax.y - boxMin.y,
+                 boxMax.z - boxMin.z};
+    scene.room.meshes.push_back(std::move(mesh));
+    ++appended;
+  }
+  if (appended > 0U) {
+    scene.room.staticMeshCount = scene.room.meshes.size();
+    scene.room.loaded = true;
+  }
+  return appended;
 }
 
 // Snap a world XZ ground point to the nearest 1 m cell CENTER: floor to the cell
@@ -2100,46 +2145,29 @@ int main(int argc, char** argv) {
       prevKeyF9 = keyF9;
     }
 
-    // SCENE (local, must outlive submitFrame): rebuild the grid meshes each
-    // frame from the cached snapshot, then append EVERY visible document object
-    // as a shaded box — generically, one SceneRoomMeshItem per object. There is
-    // NO per-kind mesh code: descriptor facts pick a render role (color), and
-    // geometry comes straight from authored bounds. A new compatible descriptor
-    // renders for free the moment it lands in the document.
-    SceneProjectionResult scene{};
-    appendGridDotsToScene(gridSnapshot, scene);
+    // SCENE (local, must outlive submitFrame): bake supported room geometry
+    // through the same CreativeDocument -> RoomAsset adapter that gameplay will
+    // eventually consume, then project that RoomAsset through the runtime scene
+    // path. Standalone-only editor proxies remain for Point/Line/Path because
+    // they are intentionally not RoomAsset static geometry in bake v1.
+    creative::CreativeRoomBakeRequest bakeRequest;
+    bakeRequest.document = &appState.facade.document();
+    bakeRequest.roomId = "iggy3d_creative_preview";
+    bakeRequest.sourceName = "apps/iggy3d_creative";
+    bakeRequest.sourceSubset = "standalone_preview";
+    const creative::CreativeRoomBakeResult roomBake =
+        creative::buildRoomAssetFromCreativeDocument(bakeRequest);
 
-    bool anyPropVisible = false;
-    for (const creative::CreativeObject& obj : appState.facade.document().objects()) {
-      if (!obj.visible) {
-        continue;  // Skip hidden objects (still authored, just not drawn).
-      }
-      const creative::CreativeObjectDescriptor& descriptor =
-          creative::describeObject(obj.kind);
-      const std::string_view role = renderRoleForDescriptor(descriptor);
-      if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Path) {
-        const std::size_t before = scene.room.meshes.size();
-        appendPathProxyMeshesToScene(obj, scene, role);
-        anyPropVisible = anyPropVisible || scene.room.meshes.size() > before;
-        continue;
-      }
-      const VisualBounds visualBounds = visualBoundsForObject(obj);
-      const Vec3 boxMin = visualBounds.min;
-      const Vec3 boxMax = visualBounds.max;
-      SceneRoomMeshItem mesh;
-      mesh.id = "creative.object_" + std::to_string(obj.id);
-      mesh.role = std::string(role);
-      mesh.materialId = "creative_object";
-      mesh.position = {(boxMin.x + boxMax.x) * 0.5F,
-                       (boxMin.y + boxMax.y) * 0.5F,
-                       (boxMin.z + boxMax.z) * 0.5F};
-      mesh.size = {boxMax.x - boxMin.x, boxMax.y - boxMin.y,
-                   boxMax.z - boxMin.z};
-      scene.room.meshes.push_back(std::move(mesh));
-      anyPropVisible = true;
+    SessionState emptyRuntimeState;
+    SceneProjectionResult scene =
+        buildSceneProjection(emptyRuntimeState, &roomBake.room);
+    appendGridDotsToScene(gridSnapshot, scene);
+    const std::size_t standalonePreviewMeshCount =
+        appendStandalonePreviewProxiesToScene(appState.facade.document(), scene);
+    if (!scene.room.meshes.empty()) {
+      scene.room.staticMeshCount = scene.room.meshes.size();
+      scene.room.loaded = true;
     }
-    scene.room.staticMeshCount = scene.room.meshes.size();
-    scene.room.propVisible = anyPropVisible;
     DebugProjectionResult debug{};
 
     // FRAME (non-const so we can attach UI + wireframe + label below). This
@@ -3609,6 +3637,34 @@ int main(int argc, char** argv) {
     }
 
     if (maxFrames != 0U && frameIndex >= maxFrames) {
+      SDL_Log("iggy3d_creative: ROOM_BAKE final status='%s' reasonCode='%s' "
+              "accepted=%d objectCount=%llu considered=%llu staticMeshes=%llu "
+              "spatialSurfaces=%llu skippedHidden=%llu skippedEditorOnly=%llu "
+              "skippedNoBounds=%llu skippedUnsupported=%llu "
+              "skippedRoomMetadata=%llu standalonePreviewMeshes=%zu "
+              "sceneMeshes=%zu",
+              std::string(creative::toString(roomBake.receipt.status)).c_str(),
+              roomBake.receipt.reasonCode.c_str(),
+              roomBake.receipt.accepted ? 1 : 0,
+              static_cast<unsigned long long>(roomBake.receipt.objectCount),
+              static_cast<unsigned long long>(
+                  roomBake.receipt.consideredObjectCount),
+              static_cast<unsigned long long>(
+                  roomBake.receipt.bakedStaticMeshCount),
+              static_cast<unsigned long long>(
+                  roomBake.receipt.bakedSpatialSurfaceCount),
+              static_cast<unsigned long long>(
+                  roomBake.receipt.skippedHiddenCount),
+              static_cast<unsigned long long>(
+                  roomBake.receipt.skippedEditorOnlyCount),
+              static_cast<unsigned long long>(
+                  roomBake.receipt.skippedNoBoundsCount),
+              static_cast<unsigned long long>(
+                  roomBake.receipt.skippedUnsupportedShapeCount),
+              static_cast<unsigned long long>(
+                  roomBake.receipt.skippedRoomMetadataCount),
+              standalonePreviewMeshCount,
+              scene.room.meshes.size());
       // Name the SELECTED object + kind so the capture is self-documenting: for
       // slice 5 this is expected to be the FLOOR.
       const char* selKind =
