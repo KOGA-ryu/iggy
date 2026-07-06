@@ -33,10 +33,6 @@ float vectorLength(Vec3 value) {
   return std::sqrt(lengthSquared(value));
 }
 
-Vec3 normalized(Vec3 value) {
-  return value / vectorLength(value);
-}
-
 AbilityCastResult rejected(AbilityId ability,
                            AbilityCastStatus status,
                            std::string reasonCode,

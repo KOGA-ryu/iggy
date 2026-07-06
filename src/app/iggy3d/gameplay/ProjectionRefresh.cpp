@@ -154,15 +154,13 @@ void applyProductVulkanRoomMeshProof(ProductViewportState& viewport,
       geometry.sourceRoomGeometrySignature;
 }
 
-Vec3 crossProduct(Vec3 lhs, Vec3 rhs) {
-  return {lhs.y * rhs.z - lhs.z * rhs.y,
-          lhs.z * rhs.x - lhs.x * rhs.z,
-          lhs.x * rhs.y - lhs.y * rhs.x};
-}
-
-Vec3 normalizedOr(Vec3 value, Vec3 fallback) {
+// Camera-basis normalize with a deliberately TIGHTER degeneracy cutoff (1e-6) than core
+// normalizedOr (1e-20): within ~0.06 deg of vertical the near-zero right-vector cross snaps to the
+// fallback instead of normalizing numerical noise (branch-gate: BG-1027). Kept local because that
+// threshold is a real gimbal-stability requirement, not lazy duplication; crossProduct now
+// delegates to core cross().
+Vec3 cameraBasisNormalizedOr(Vec3 value, Vec3 fallback) {
   const float len2 = lengthSquared(value);
-  // branch-gate: BG-1027
   if (!std::isfinite(len2) || len2 <= 0.000001F) {
     return fallback;
   }
@@ -184,9 +182,9 @@ Mat4 productPerspectiveMat4(float verticalFovRadians,
 }
 
 Mat4 productViewFromCamera(Vec3 eye, Vec3 forward, Vec3 up) {
-  const Vec3 f = normalizedOr(forward, {0.0F, 0.0F, -1.0F});
-  const Vec3 r = normalizedOr(crossProduct(f, up), {1.0F, 0.0F, 0.0F});
-  const Vec3 u = crossProduct(r, f);
+  const Vec3 f = cameraBasisNormalizedOr(forward, {0.0F, 0.0F, -1.0F});
+  const Vec3 r = cameraBasisNormalizedOr(cross(f, up), {1.0F, 0.0F, 0.0F});
+  const Vec3 u = cross(r, f);
   Mat4 result = identityMat4();
   result.m[0] = r.x;
   result.m[1] = r.y;

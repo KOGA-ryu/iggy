@@ -70,10 +70,6 @@ bool validContact(const PhysicsAabbContact& contact) {
          contact.penetrationMeters >= 0.0F && isFinite(contact.pointMeters);
 }
 
-Vec3 normalized(Vec3 value) {
-  return value / std::sqrt(lengthSquared(value));
-}
-
 void applyPositionCorrection(const PhysicsAabbContact& contact,
                              const PhysicsBodyView& first,
                              const PhysicsBodyView& second,

@@ -780,6 +780,10 @@ iggy3d_add_unit_test(stair_mesh_tests tests/unit/stair_mesh_tests.cpp)
 set_tests_properties(stair_mesh_tests PROPERTIES
   LABELS "unit;core;geom;stair;iggy3d")
 
+iggy3d_add_unit_test(vec3_math_tests tests/unit/vec3_math_tests.cpp)
+set_tests_properties(vec3_math_tests PROPERTIES
+  LABELS "unit;core;math;vec3;iggy3d")
+
 iggy3d_add_unit_test(reasoning_graph_readout tests/unit/reasoning_graph_readout.cpp)
 set_tests_properties(reasoning_graph_readout PROPERTIES
   LABELS "unit;runtime;ai;reasoning;readout;iggy3d")

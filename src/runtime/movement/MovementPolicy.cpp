@@ -21,10 +21,6 @@ const SlopeBand& blockedBand() {
   return kDefaultSlopeBands.back();
 }
 
-float length(Vec3 value) {
-  return std::sqrt(lengthSquared(value));
-}
-
 bool normalized(Vec3 value, Vec3& out) {
   if (!isFinite(value)) {
     return false;

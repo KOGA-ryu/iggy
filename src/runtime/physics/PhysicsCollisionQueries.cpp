@@ -72,13 +72,6 @@ bool nonZeroFiniteVector(Vec3 value) {
   return isFinite(value) && lengthSquared(value) > kDirectionEpsilonSquared;
 }
 
-float length(Vec3 value) {
-  return std::sqrt(lengthSquared(value));
-}
-
-Vec3 normalized(Vec3 value) {
-  return value / length(value);
-}
 
 bool zeroVector(Vec3 value) {
   return lengthSquared(value) <= kDirectionEpsilonSquared;

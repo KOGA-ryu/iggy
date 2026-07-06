@@ -12,14 +12,12 @@
 namespace iggy3d_creative_app {
 namespace {
 
-[[nodiscard]] iggy3d::Vec3 cross(iggy3d::Vec3 lhs, iggy3d::Vec3 rhs) {
-  return {lhs.y * rhs.z - lhs.z * rhs.y,
-          lhs.z * rhs.x - lhs.x * rhs.z,
-          lhs.x * rhs.y - lhs.y * rhs.x};
-}
-
-[[nodiscard]] iggy3d::Vec3 normalizedOr(iggy3d::Vec3 value,
-                                        iggy3d::Vec3 fallback) {
+// Pick-basis normalize with a deliberately tighter degeneracy cutoff (1e-8) than core normalizedOr
+// (1e-20): a near-degenerate camera basis snaps to the fallback rather than normalizing noise. Kept
+// local (renamed off the core name) so the threshold stays under this app's control. The cross
+// products below now use core iggy3d::cross (found via ADL) instead of a local copy.
+[[nodiscard]] iggy3d::Vec3 pickBasisNormalizedOr(iggy3d::Vec3 value,
+                                                 iggy3d::Vec3 fallback) {
   const float len2 = lengthSquared(value);
   if (!std::isfinite(len2) || len2 <= 1.0e-8F) {
     return fallback;
@@ -298,13 +296,13 @@ WorldRay worldRayFromPixel(const iggy3d::RenderCameraFrame& camera,
   const float viewY = ndcY / clipYScale;
 
   const iggy3d::Vec3 forward =
-      normalizedOr(camera.worldForward, {0.0F, 0.0F, -1.0F});
+      pickBasisNormalizedOr(camera.worldForward, {0.0F, 0.0F, -1.0F});
   const iggy3d::Vec3 right =
-      normalizedOr(cross(forward, camera.worldUp), {1.0F, 0.0F, 0.0F});
-  const iggy3d::Vec3 up = normalizedOr(cross(right, forward),
-                                       {0.0F, 1.0F, 0.0F});
-  const iggy3d::Vec3 direction = normalizedOr(forward + right * viewX + up * viewY,
-                                              forward);
+      pickBasisNormalizedOr(cross(forward, camera.worldUp), {1.0F, 0.0F, 0.0F});
+  const iggy3d::Vec3 up = pickBasisNormalizedOr(cross(right, forward),
+                                                {0.0F, 1.0F, 0.0F});
+  const iggy3d::Vec3 direction =
+      pickBasisNormalizedOr(forward + right * viewX + up * viewY, forward);
   if (!iggy3d::isFinite(direction)) {
     return {};
   }
