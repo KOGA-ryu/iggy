@@ -12,6 +12,16 @@ include(cmake/iggy3d_vulkan_deps.cmake)
 include(cmake/iggy3d_shaders.cmake)
 
 add_library(iggy3d)
+
+# Deterministic floating point across toolchains. Bar FMA contraction so `a*b + c` performs the
+# SAME two roundings on macOS/arm64 (Clang) and the Linux/x86-64 box (GCC). Without this, arm64
+# fuses into a single-rounding FMA and diverges ~1 ULP for ordinary inputs, breaking the save/hash
+# bit-stability the engine depends on (see core/math/Snap, OrientedBox::rotateEuler). PUBLIC so every
+# consumer (apps, tests, and header-inlined math) shares the discipline. Both GCC and Clang accept it.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(iggy3d PUBLIC -ffp-contract=off)
+endif()
+
 target_sources(iggy3d
   PRIVATE
     src/core/hash/StableHash.cpp
