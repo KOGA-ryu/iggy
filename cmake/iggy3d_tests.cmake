@@ -768,6 +768,10 @@ iggy3d_add_unit_test(oriented_box_tests tests/unit/oriented_box_tests.cpp)
 set_tests_properties(oriented_box_tests PROPERTIES
   LABELS "unit;core;math;obb;iggy3d")
 
+iggy3d_add_unit_test(aabb_ray_tests tests/unit/aabb_ray_tests.cpp)
+set_tests_properties(aabb_ray_tests PROPERTIES
+  LABELS "unit;core;math;ray;aabb;iggy3d")
+
 iggy3d_add_unit_test(snap_kernel_tests tests/unit/snap_kernel_tests.cpp)
 set_tests_properties(snap_kernel_tests PROPERTIES
   LABELS "unit;core;math;snap;iggy3d")

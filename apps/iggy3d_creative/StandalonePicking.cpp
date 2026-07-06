@@ -34,18 +34,6 @@ namespace {
   return true;
 }
 
-[[nodiscard]] float component(iggy3d::Vec3 value, int axis) {
-  switch (axis) {
-    case 0:
-      return value.x;
-    case 1:
-      return value.y;
-    case 2:
-    default:
-      return value.z;
-  }
-}
-
 [[nodiscard]] iggy3d::Aabb3 aabbFromVisualBounds(VisualBounds bounds) {
   return iggy3d::makeAabb3(bounds.min, bounds.max);
 }
@@ -311,43 +299,17 @@ WorldRay worldRayFromPixel(const iggy3d::RenderCameraFrame& camera,
 }
 
 bool rayEntryDistanceForAabb(WorldRay ray, VisualBounds bounds, float& outT) {
-  if (!ray.valid || !iggy3d::isFinite(bounds.min) ||
-      !iggy3d::isFinite(bounds.max)) {
+  if (!ray.valid) {
     return false;
   }
-
-  float tMin = 0.0F;
-  float tMax = std::numeric_limits<float>::max();
-  for (int axis = 0; axis < 3; ++axis) {
-    const float origin = component(ray.origin, axis);
-    const float direction = component(ray.direction, axis);
-    const float minValue = component(bounds.min, axis);
-    const float maxValue = component(bounds.max, axis);
-    if (minValue > maxValue) {
-      return false;
-    }
-    if (std::fabs(direction) <= 1.0e-6F) {
-      if (origin < minValue || origin > maxValue) {
-        return false;
-      }
-      continue;
-    }
-
-    const float inverseDirection = 1.0F / direction;
-    float nearDistance = (minValue - origin) * inverseDirection;
-    float farDistance = (maxValue - origin) * inverseDirection;
-    if (nearDistance > farDistance) {
-      std::swap(nearDistance, farDistance);
-    }
-    tMin = std::max(tMin, nearDistance);
-    tMax = std::min(tMax, farDistance);
-    if (tMin > tMax) {
-      return false;
-    }
+  const iggy3d::AabbRayHit hit = iggy3d::intersectsRay(
+      aabbFromVisualBounds(bounds), iggy3d::Ray3{ray.origin, ray.direction},
+      std::numeric_limits<float>::max());
+  if (!hit.hit) {
+    return false;
   }
-
-  outT = tMin;
-  return std::isfinite(outT);
+  outT = hit.distanceMeters;
+  return true;
 }
 
 ObjectVisualPickBounds buildObjectVisualPickBounds(
