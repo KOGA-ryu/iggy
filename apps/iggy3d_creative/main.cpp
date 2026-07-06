@@ -62,6 +62,7 @@
 #include "StandaloneCaptureScenario.hpp"
 #include "StandaloneCaptureScript.hpp"
 #include "StandaloneBrushPalette.hpp"
+#include "StandaloneFrustumCull.hpp"
 #include "StandaloneGizmo.hpp"
 #include "StandalonePathEditing.hpp"
 #include "StandalonePicking.hpp"
@@ -1571,17 +1572,29 @@ int main(int argc, char** argv) {
     // The combined vector (selection box + gizmo shafts), NOT dbg.frame.
     frame.creativeWireframeDebug = combinedWireFrame;
 
+    const iggy3d_creative_app::StandaloneFrustumCullResult frustumCull =
+        iggy3d_creative_app::cullStandaloneSceneRoomMeshesByFrustum(
+            *frame.projections.scene, frame.camera.clipFromWorld);
+    frame.projections.scene = &frustumCull.scene;
+
     const RenderSubmitResult submit = backend->submitFrame(frame);
     if (!loggedSelection) {
       loggedSelection = true;
       SDL_Log("iggy3d_creative: frame %llu submit outcome=%d reason='%s' "
-              "meshes=%zu selectedTarget=%u hasSelection=%d selBoxLines=%zu "
+              "meshes=%zu frustumInputMeshes=%zu frustumKeptMeshes=%zu "
+              "frustumCulledMeshes=%zu frustumConservativeMeshes=%zu "
+              "selectedTarget=%u hasSelection=%d selBoxLines=%zu "
               "pointMarkerLines=%zu lineMarkerLines=%zu pathHandleLines=%zu "
               "gizmoLines=%zu combinedWireLines=%zu uiRects=%zu glyphs=%zu",
               static_cast<unsigned long long>(frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(),
-              scene.room.meshes.size(), selectedId, hasSelection ? 1 : 0,
+              frustumCull.scene.room.meshes.size(),
+              frustumCull.receipt.inputRoomMeshCount,
+              frustumCull.receipt.keptRoomMeshCount,
+              frustumCull.receipt.culledRoomMeshCount,
+              frustumCull.receipt.conservativelyKeptMeshCount, selectedId,
+              hasSelection ? 1 : 0,
               documentWireLineCount, pointMarkerEdgeCount, lineMarkerEdgeCount,
               pathPointHandleEdgeCount,
               combinedWireLines.size() - documentWireLineCount -
@@ -1602,7 +1615,9 @@ int main(int argc, char** argv) {
               "selectedTarget=%u selectedKind='%s' hasSelection=%d selBoxLines=%zu "
               "pointMarkerLines=%zu lineMarkerLines=%zu pathHandleLines=%zu "
               "gizmoLines=%zu combinedWireLines=%zu placeMode=%d brush='%s' "
-              "ghostEdges=%zu placed=%llu objectCount=%llu",
+              "ghostEdges=%zu placed=%llu objectCount=%llu "
+              "frustumInputMeshes=%zu frustumKeptMeshes=%zu "
+              "frustumCulledMeshes=%zu frustumConservativeMeshes=%zu",
               static_cast<unsigned long long>(frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(), selectedId, selKind,
@@ -1616,7 +1631,11 @@ int main(int argc, char** argv) {
               std::string(creative::toString(placeBrush)).c_str(),
               ghostEdgeCount, static_cast<unsigned long long>(placedCount),
               static_cast<unsigned long long>(
-                  appState.facade.document().objectCount()));
+                  appState.facade.document().objectCount()),
+              frustumCull.receipt.inputRoomMeshCount,
+              frustumCull.receipt.keptRoomMeshCount,
+              frustumCull.receipt.culledRoomMeshCount,
+              frustumCull.receipt.conservativelyKeptMeshCount);
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(16));

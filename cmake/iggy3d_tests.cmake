@@ -485,6 +485,19 @@ set_tests_properties(standalone_placement_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "unit;app;creative;standalone;placement;iggy3d")
 
+add_executable(standalone_frustum_cull_tests
+  tests/unit/standalone_frustum_cull_tests.cpp
+  apps/iggy3d_creative/StandaloneFrustumCull.cpp)
+target_include_directories(standalone_frustum_cull_tests PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
+target_link_libraries(standalone_frustum_cull_tests PRIVATE iggy3d)
+iggy3d_apply_warnings(standalone_frustum_cull_tests)
+add_test(NAME standalone_frustum_cull_tests
+  COMMAND "$<TARGET_FILE:standalone_frustum_cull_tests>")
+set_tests_properties(standalone_frustum_cull_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "unit;app;creative;standalone;frustum;iggy3d")
+
 iggy3d_add_unit_test(product_creative_palette_tests
   tests/unit/creative_palette_tests.cpp)
 set_tests_properties(product_creative_palette_tests PROPERTIES

@@ -16,14 +16,13 @@ use this index only to decide which ready card to claim next.
 
 ## Currently Claimed
 
-None currently claimed.
+None.
 
 ## Pull Next
 
-1. `ready/E100-kernel-w3-frustum-cull-consumption-seam.md`
-2. `ready/E101-kernel-w4-aabb-grid-index-pick-broadphase.md`
-3. `ready/E102-kernel-w5-room-bake-reachability-receipt.md`
-4. `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
+1. `ready/E101-kernel-w4-aabb-grid-index-pick-broadphase.md`
+2. `ready/E102-kernel-w5-room-bake-reachability-receipt.md`
+3. `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -31,7 +30,6 @@ None currently ready.
 
 ## Tier 2: Feature-Add Seams
 
-- `ready/E100-kernel-w3-frustum-cull-consumption-seam.md`
 - `ready/E101-kernel-w4-aabb-grid-index-pick-broadphase.md`
 - `ready/E102-kernel-w5-room-bake-reachability-receipt.md`
 - `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
