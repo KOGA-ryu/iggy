@@ -242,7 +242,7 @@ void appendOverlapHit(PhysicsAabbOverlapQueryResult* result,
   result->sensors.push_back(collider.sensor);
 }
 
-struct SlabRayHit {
+struct PhysicsRayAabbHit {
   bool hit = false;
   float distanceMeters = 0.0F;
   Vec3 pointMeters;
@@ -263,34 +263,26 @@ Vec3 normalForAxis(std::size_t axisIndex, float sign) {
   return normals[axisIndex] * sign;
 }
 
-SlabRayHit raycastAabb(Vec3 originMeters,
-                       Vec3 normalizedDirection,
-                       float maxDistanceMeters,
-                       const Aabb3& bounds) {
-  // branch-gate: BG-1097
-  if (contains(bounds, originMeters)) {
-    SlabRayHit result;
-    result.hit = true;
-    result.startInside = true;
-    result.pointMeters = originMeters;
-    return result;
+Vec3 normalFromColliderToRay(Vec3 originMeters,
+                             Vec3 normalizedDirection,
+                             const Aabb3& bounds,
+                             const AabbRayHit& coreHit) {
+  if (coreHit.startInside) {
+    return {};
   }
 
   const std::array<float, 3> origin = components(originMeters);
   const std::array<float, 3> direction = components(normalizedDirection);
   const std::array<float, 3> minBounds = components(bounds.min);
   const std::array<float, 3> maxBounds = components(bounds.max);
-  float tMin = 0.0F;
-  float tMax = maxDistanceMeters;
   Vec3 normal;
+  float selectedNearDistance = 0.0F;
 
+  // Core `intersectsRay(...)` owns hit/miss, distance, point, and start-inside
+  // truth. Physics keeps only the legacy face-normal tie policy: choose the
+  // axis that advanced entry distance, preserving axis order on equal entries.
   for (std::size_t axis = 0U; axis < 3U; ++axis) {
-    // branch-gate: BG-1097
     if (std::fabs(direction[axis]) <= kAxisEpsilon) {
-      // branch-gate: BG-1097
-      if (origin[axis] < minBounds[axis] || origin[axis] > maxBounds[axis]) {
-        return {};
-      }
       continue;
     }
 
@@ -299,39 +291,45 @@ SlabRayHit raycastAabb(Vec3 originMeters,
     float farDistance = (maxBounds[axis] - origin[axis]) * inverseDirection;
     Vec3 nearNormal = normalForAxis(axis, -1.0F);
     Vec3 farNormal = normalForAxis(axis, 1.0F);
-    // branch-gate: BG-1097
     if (nearDistance > farDistance) {
       std::swap(nearDistance, farDistance);
       std::swap(nearNormal, farNormal);
     }
-    // branch-gate: BG-1097
-    if (nearDistance > tMin) {
-      tMin = nearDistance;
+    if (nearDistance > selectedNearDistance &&
+        nearDistance <= coreHit.distanceMeters + kAxisEpsilon) {
+      selectedNearDistance = nearDistance;
       normal = nearNormal;
-    }
-    tMax = std::min(tMax, farDistance);
-    // branch-gate: BG-1097
-    if (tMin > tMax) {
-      return {};
     }
   }
 
-  // branch-gate: BG-1097
-  if (tMin < 0.0F || tMin > maxDistanceMeters) {
+  return normal;
+}
+
+PhysicsRayAabbHit intersectPhysicsRayAabb(Vec3 originMeters,
+                                          Vec3 normalizedDirection,
+                                          float maxDistanceMeters,
+                                          const Aabb3& bounds) {
+  const AabbRayHit coreHit =
+      intersectsRay(bounds,
+                    Ray3{originMeters, normalizedDirection},
+                    maxDistanceMeters);
+  if (!coreHit.hit) {
     return {};
   }
 
-  SlabRayHit result;
+  PhysicsRayAabbHit result;
   result.hit = true;
-  result.distanceMeters = tMin;
-  result.pointMeters = originMeters + normalizedDirection * tMin;
-  result.normalFromColliderToRay = normal;
+  result.distanceMeters = coreHit.distanceMeters;
+  result.pointMeters = coreHit.pointMeters;
+  result.normalFromColliderToRay = normalFromColliderToRay(
+      originMeters, normalizedDirection, bounds, coreHit);
+  result.startInside = coreHit.startInside;
   return result;
 }
 
 PhysicsRaycastHit makeRaycastHit(std::size_t index,
                                  const PhysicsAabbCollider& collider,
-                                 const SlabRayHit& hit) {
+                                 const PhysicsRayAabbHit& hit) {
   PhysicsRaycastHit result;
   result.colliderIndex = index;
   result.bodyId = collider.bodyId;
@@ -457,12 +455,12 @@ PhysicsRaycastQueryResult raycastPhysicsAabbs(
       continue;
     }
     ++result.testedColliderCount;
-    const SlabRayHit slab = raycastAabb(
+    const PhysicsRayAabbHit rayHit = intersectPhysicsRayAabb(
         request.originMeters, direction, request.maxDistanceMeters,
         collider.bounds);
     // branch-gate: BG-1097
-    if (slab.hit) {
-      result.hits.push_back(makeRaycastHit(index, collider, slab));
+    if (rayHit.hit) {
+      result.hits.push_back(makeRaycastHit(index, collider, rayHit));
     }
   }
   std::sort(result.hits.begin(), result.hits.end(), raycastHitLess);
@@ -532,15 +530,16 @@ PhysicsSweptAabbQueryResult sweepPhysicsAabb(
 
     const Aabb3 expanded = expandedBounds(
         target, request.movingCollider->halfExtentsMeters);
-    const SlabRayHit slab = raycastAabb(
+    const PhysicsRayAabbHit rayHit = intersectPhysicsRayAabb(
         request.movingCollider->worldCenterMeters, direction,
         displacementLength, expanded);
     // branch-gate: BG-1097
-    if (slab.hit) {
-      const PhysicsRaycastHit rayHit = makeRaycastHit(index, target, slab);
+    if (rayHit.hit) {
+      const PhysicsRaycastHit physicsRayHit =
+          makeRaycastHit(index, target, rayHit);
       result.hits.push_back(makeSweptHit(*request.movingCollider, target,
                                          index, displacementLength, direction,
-                                         rayHit));
+                                         physicsRayHit));
     }
   }
   std::sort(result.hits.begin(), result.hits.end(), sweptHitLess);

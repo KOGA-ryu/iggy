@@ -280,6 +280,31 @@ bool raycastHitsSortMissAndStartInsidePolicy() {
                 "raycast does not mutate colliders");
 }
 
+bool raycastNonUnitDirectionReportsMeterDistance() {
+  std::vector<iggy3d::PhysicsAabbCollider> colliders{
+      colliderAt({7U}, {4.0F, 0.0F, 0.0F}, {0.5F, 0.5F, 0.5F}),
+  };
+  iggy3d::PhysicsRaycastQueryRequest request;
+  request.colliders = &colliders;
+  request.originMeters = {};
+  request.direction = {2.0F, 0.0F, 0.0F};
+  request.maxDistanceMeters = 10.0F;
+
+  const iggy3d::PhysicsRaycastQueryResult result =
+      iggy3d::raycastPhysicsAabbs(request);
+
+  return expect(result.ok, "non-unit raycast ok") &&
+         expect(result.hitCount == 1U, "non-unit raycast hit count") &&
+         expect(nearlyEqual(result.hits[0].distanceMeters, 3.5F),
+                "non-unit raycast distance in meters") &&
+         expect(iggy3d::nearlyEqual(result.hits[0].pointMeters,
+                                    {3.5F, 0.0F, 0.0F}),
+                "non-unit raycast point in meters") &&
+         expect(iggy3d::nearlyEqual(result.hits[0].normalFromColliderToRay,
+                                    {-1.0F, 0.0F, 0.0F}),
+                "non-unit raycast normal");
+}
+
 bool sweptAabbHitsMissesSensorsAndZeroDisplacement() {
   std::vector<iggy3d::PhysicsAabbCollider> colliders{
       colliderAt({1U}, {3.0F, 0.0F, 0.0F}, {0.5F, 0.5F, 0.5F}),
@@ -419,6 +444,7 @@ int main() {
                   invalidRequestsRejectWithoutOutput() &&
                   overlapFindsDeterministicHitsAndSensorPolicy() &&
                   raycastHitsSortMissAndStartInsidePolicy() &&
+                  raycastNonUnitDirectionReportsMeterDistance() &&
                   sweptAabbHitsMissesSensorsAndZeroDisplacement() &&
                   groundCheckUsesSweptAabbAndSensorPolicy();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
