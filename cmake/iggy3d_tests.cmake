@@ -727,6 +727,10 @@ iggy3d_add_unit_test(snap_kernel_tests tests/unit/snap_kernel_tests.cpp)
 set_tests_properties(snap_kernel_tests PROPERTIES
   LABELS "unit;core;math;snap;iggy3d")
 
+iggy3d_add_unit_test(frustum_tests tests/unit/frustum_tests.cpp)
+set_tests_properties(frustum_tests PROPERTIES
+  LABELS "unit;core;math;frustum;iggy3d")
+
 iggy3d_add_unit_test(reasoning_graph_readout tests/unit/reasoning_graph_readout.cpp)
 set_tests_properties(reasoning_graph_readout PROPERTIES
   LABELS "unit;runtime;ai;reasoning;readout;iggy3d")

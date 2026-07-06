@@ -33,6 +33,7 @@ target_sources(iggy3d
     src/core/math/Aabb3.cpp
     src/core/math/OrientedBox.cpp
     src/core/math/Snap.cpp
+    src/core/math/Frustum.cpp
     src/core/math/Mat4.cpp
     src/app/AppConfig.cpp
     src/app/CliParser.cpp
