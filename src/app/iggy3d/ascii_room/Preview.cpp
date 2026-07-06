@@ -39,9 +39,9 @@ std::string decodeProductAsciiRoomAutomationText(std::string_view value) {
 ProductAsciiRoomAuthoringRequest productAsciiRoomAuthoringRequestFromDraft(
     const ProductAppWindowState& window) {
   ProductAsciiRoomAuthoringRequest request;
-  request.sourceText = window.asciiRoomDraftText;
-  request.roomId = window.asciiRoomDraftRoomId;
-  request.sourceName = window.asciiRoomDraftSourceName;
+  request.sourceText = window.asciiRoomDraft.text;
+  request.roomId = window.asciiRoomDraft.roomId;
+  request.sourceName = window.asciiRoomDraft.sourceName;
   return request;
 }
 
@@ -49,32 +49,32 @@ void recordProductAsciiRoomPreview(std::string_view sourceName,
                                    std::string_view roomId,
                                    const ProductAsciiRoomAuthoringResult& result,
                                    ProductAppWindowState& window) {
-  window.asciiRoomPreviewStatus = result.status;
-  window.asciiRoomPreviewReasonCode = result.reasonCode;
-  window.asciiRoomPreviewFailedStage = result.failedStage;
-  window.asciiRoomPreviewRoomId =
+  window.asciiRoomPreview.status = result.status;
+  window.asciiRoomPreview.reasonCode = result.reasonCode;
+  window.asciiRoomPreview.failedStage = result.failedStage;
+  window.asciiRoomPreview.roomId =
       roomId.empty() ? std::string{"none"} : std::string(roomId);
-  window.asciiRoomPreviewSourceName =
+  window.asciiRoomPreview.sourceName =
       sourceName.empty() ? std::string{"none"} : std::string(sourceName);
-  window.asciiRoomPreviewReady = result.ok;
-  window.asciiRoomPreviewWidth = sizeReceiptValue(result.width);
-  window.asciiRoomPreviewHeight = sizeReceiptValue(result.height);
-  window.asciiRoomPreviewFloorCount = sizeReceiptValue(result.floorCount);
-  window.asciiRoomPreviewWallCount = sizeReceiptValue(result.wallCount);
-  window.asciiRoomPreviewObjectCount = sizeReceiptValue(result.objectCount);
-  window.asciiRoomPreviewMarkerCount = sizeReceiptValue(result.markerCount);
-  window.asciiRoomPreviewElevatedFloorCount =
+  window.asciiRoomPreview.ready = result.ok;
+  window.asciiRoomPreview.width = sizeReceiptValue(result.width);
+  window.asciiRoomPreview.height = sizeReceiptValue(result.height);
+  window.asciiRoomPreview.floorCount = sizeReceiptValue(result.floorCount);
+  window.asciiRoomPreview.wallCount = sizeReceiptValue(result.wallCount);
+  window.asciiRoomPreview.objectCount = sizeReceiptValue(result.objectCount);
+  window.asciiRoomPreview.markerCount = sizeReceiptValue(result.markerCount);
+  window.asciiRoomPreview.elevatedFloorCount =
       sizeReceiptValue(result.elevatedFloorCount);
-  window.asciiRoomPreviewRampCount = sizeReceiptValue(result.rampCount);
-  window.asciiRoomPreviewBlockedSlopeCount =
+  window.asciiRoomPreview.rampCount = sizeReceiptValue(result.rampCount);
+  window.asciiRoomPreview.blockedSlopeCount =
       sizeReceiptValue(result.blockedSlopeCount);
-  window.asciiRoomPreviewStaticMeshCount =
+  window.asciiRoomPreview.staticMeshCount =
       sizeReceiptValue(result.staticMeshCount);
-  window.asciiRoomPreviewAnchorCount = sizeReceiptValue(result.anchorCount);
-  window.asciiRoomPreviewSpatialSurfaceCount =
+  window.asciiRoomPreview.anchorCount = sizeReceiptValue(result.anchorCount);
+  window.asciiRoomPreview.spatialSurfaceCount =
       sizeReceiptValue(result.spatialSurfaceCount);
-  window.asciiRoomPreviewAssetTextWritten = result.assetText.ok;
-  window.asciiRoomPreviewAssetTextBytes =
+  window.asciiRoomPreview.assetTextWritten = result.assetText.ok;
+  window.asciiRoomPreview.assetTextBytes =
       sizeReceiptValue(result.assetText.text.size());
 }
 

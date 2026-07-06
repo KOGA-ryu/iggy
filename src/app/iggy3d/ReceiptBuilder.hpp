@@ -46,6 +46,9 @@
 #include "app/iggy3d/gameplay/GameplayMovementInfo.hpp"
 #include "app/iggy3d/room_editor/RoomEditorOverlayState.hpp"
 #include "app/iggy3d/room_editor/RoomEditorPreviewState.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomDraftState.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomPreviewState.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomActivationState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -266,46 +269,9 @@ struct ProductAppWindowState {
       "startup_vulkan_first_submit_not_requested";
   ProductWorldSetupState worldSetup;
   ProductWorldCreationState worldCreation;
-  std::string asciiRoomDraftText;
-  std::string asciiRoomDraftRoomId = "ascii_preview";
-  std::string asciiRoomDraftSourceName = "automation_ascii_room";
-  std::string asciiRoomPreviewStatus = "not_requested";
-  std::string asciiRoomPreviewReasonCode = "not_requested";
-  std::string asciiRoomPreviewFailedStage = "not_started";
-  std::string asciiRoomPreviewRoomId = "none";
-  std::string asciiRoomPreviewSourceName = "none";
-  bool asciiRoomPreviewReady = false;
-  std::uint64_t asciiRoomPreviewWidth = 0;
-  std::uint64_t asciiRoomPreviewHeight = 0;
-  std::uint64_t asciiRoomPreviewFloorCount = 0;
-  std::uint64_t asciiRoomPreviewWallCount = 0;
-  std::uint64_t asciiRoomPreviewObjectCount = 0;
-  std::uint64_t asciiRoomPreviewMarkerCount = 0;
-  std::uint64_t asciiRoomPreviewElevatedFloorCount = 0;
-  std::uint64_t asciiRoomPreviewRampCount = 0;
-  std::uint64_t asciiRoomPreviewBlockedSlopeCount = 0;
-  std::uint64_t asciiRoomPreviewStaticMeshCount = 0;
-  std::uint64_t asciiRoomPreviewAnchorCount = 0;
-  std::uint64_t asciiRoomPreviewSpatialSurfaceCount = 0;
-  bool asciiRoomPreviewAssetTextWritten = false;
-  std::uint64_t asciiRoomPreviewAssetTextBytes = 0;
-  std::string asciiRoomActivationStatus = "not_requested";
-  std::string asciiRoomActivationReasonCode = "not_requested";
-  std::string asciiRoomActivationRoomId = "none";
-  std::string asciiRoomActivationPackageId = "none";
-  std::string asciiRoomActivationScenarioId = "none";
-  bool asciiRoomActivationSessionCreated = false;
-  bool asciiRoomActivationPlayerSpawned = false;
-  std::uint64_t asciiRoomActivationPlayerCount = 0;
-  std::uint64_t asciiRoomActivationEntityCount = 0;
-  std::uint64_t asciiRoomActivationNpcCount = 0;
-  std::uint64_t asciiRoomActivationPickupCount = 0;
-  std::uint64_t asciiRoomActivationDoorCount = 0;
-  std::uint64_t asciiRoomActivationMarkerEntityCount = 0;
-  std::uint64_t asciiRoomActivationObjectiveCount = 0;
-  std::uint64_t asciiRoomActivationWallCount = 0;
-  std::uint64_t asciiRoomActivationMarkerCount = 0;
-  std::uint64_t asciiRoomActivationRuntimeHash = 0;
+  ProductAsciiRoomDraftState asciiRoomDraft;
+  ProductAsciiRoomPreviewState asciiRoomPreview;
+  ProductAsciiRoomActivationState asciiRoomActivation;
   ProductRoomEditingState roomEditing;
   std::string roomEditingLastOperation = "none";
   std::string roomEditingLastOperationStatus = "not_requested";

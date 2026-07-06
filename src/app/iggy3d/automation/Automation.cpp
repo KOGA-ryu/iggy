@@ -1172,12 +1172,12 @@ void recordWorldSetupDraftState(const WorldSetupDraft& draft,
   // branch-gate: BG-1004
   window.worldSetup.asciiRoomSourceName =
       draft.asciiRoomSourceName.empty() ? "none" : draft.asciiRoomSourceName;
-  window.asciiRoomDraftText = draft.asciiRoomText;
+  window.asciiRoomDraft.text = draft.asciiRoomText;
   // branch-gate: BG-1004
-  window.asciiRoomDraftRoomId =
+  window.asciiRoomDraft.roomId =
       draft.asciiRoomId.empty() ? "ascii_preview" : draft.asciiRoomId;
   // branch-gate: BG-1004
-  window.asciiRoomDraftSourceName =
+  window.asciiRoomDraft.sourceName =
       draft.asciiRoomSourceName.empty() ? "world_setup_ascii_room" :
                                           draft.asciiRoomSourceName;
   // branch-gate: BG-1004
@@ -1185,25 +1185,25 @@ void recordWorldSetupDraftState(const WorldSetupDraft& draft,
     buildProductAsciiRoomPreviewResult(window);
     return;
   }
-  window.asciiRoomPreviewStatus = "not_requested";
-  window.asciiRoomPreviewReasonCode = "not_requested";
-  window.asciiRoomPreviewFailedStage = "not_started";
-  window.asciiRoomPreviewRoomId = "none";
-  window.asciiRoomPreviewSourceName = "none";
-  window.asciiRoomPreviewReady = false;
-  window.asciiRoomPreviewWidth = 0;
-  window.asciiRoomPreviewHeight = 0;
-  window.asciiRoomPreviewFloorCount = 0;
-  window.asciiRoomPreviewWallCount = 0;
-  window.asciiRoomPreviewMarkerCount = 0;
-  window.asciiRoomPreviewElevatedFloorCount = 0;
-  window.asciiRoomPreviewRampCount = 0;
-  window.asciiRoomPreviewBlockedSlopeCount = 0;
-  window.asciiRoomPreviewStaticMeshCount = 0;
-  window.asciiRoomPreviewAnchorCount = 0;
-  window.asciiRoomPreviewSpatialSurfaceCount = 0;
-  window.asciiRoomPreviewAssetTextWritten = false;
-  window.asciiRoomPreviewAssetTextBytes = 0;
+  window.asciiRoomPreview.status = "not_requested";
+  window.asciiRoomPreview.reasonCode = "not_requested";
+  window.asciiRoomPreview.failedStage = "not_started";
+  window.asciiRoomPreview.roomId = "none";
+  window.asciiRoomPreview.sourceName = "none";
+  window.asciiRoomPreview.ready = false;
+  window.asciiRoomPreview.width = 0;
+  window.asciiRoomPreview.height = 0;
+  window.asciiRoomPreview.floorCount = 0;
+  window.asciiRoomPreview.wallCount = 0;
+  window.asciiRoomPreview.markerCount = 0;
+  window.asciiRoomPreview.elevatedFloorCount = 0;
+  window.asciiRoomPreview.rampCount = 0;
+  window.asciiRoomPreview.blockedSlopeCount = 0;
+  window.asciiRoomPreview.staticMeshCount = 0;
+  window.asciiRoomPreview.anchorCount = 0;
+  window.asciiRoomPreview.spatialSurfaceCount = 0;
+  window.asciiRoomPreview.assetTextWritten = false;
+  window.asciiRoomPreview.assetTextBytes = 0;
 }
 
 ProductDungeonDraftCursor dungeonDraftCursorFromWindow(
@@ -1798,12 +1798,12 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
 
   // branch-gate: BG-1004
   if (canonicalKey == "ascii_room.text") {
-    context.window.asciiRoomDraftText =
+    context.window.asciiRoomDraft.text =
         decodeProductAsciiRoomAutomationText(value);
-    context.window.asciiRoomPreviewStatus = "ascii_room_text_updated";
-    context.window.asciiRoomPreviewReasonCode = "ascii_room_text_updated";
-    context.window.asciiRoomPreviewFailedStage = "not_started";
-    context.window.asciiRoomPreviewReady = false;
+    context.window.asciiRoomPreview.status = "ascii_room_text_updated";
+    context.window.asciiRoomPreview.reasonCode = "ascii_room_text_updated";
+    context.window.asciiRoomPreview.failedStage = "not_started";
+    context.window.asciiRoomPreview.ready = false;
     markAutomationApplied(context.window, command, "ascii_room.text",
                           context.currentOwner(), "applied");
     return {true, true};
@@ -1818,7 +1818,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
       context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
-    context.window.asciiRoomDraftRoomId = std::string(roomId.value);
+    context.window.asciiRoomDraft.roomId = std::string(roomId.value);
     markAutomationApplied(context.window, command, "ascii_room.room_id",
                           context.currentOwner(), "applied");
     return {true, true};
@@ -1833,7 +1833,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
       context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
-    context.window.asciiRoomDraftSourceName = std::string(sourceName.value);
+    context.window.asciiRoomDraft.sourceName = std::string(sourceName.value);
     markAutomationApplied(context.window, command, "ascii_room.source_name",
                           context.currentOwner(), "applied");
     return {true, true};

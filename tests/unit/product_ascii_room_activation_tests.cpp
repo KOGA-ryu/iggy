@@ -35,9 +35,9 @@ const iggy3d::SceneItem* findSceneItem(const iggy3d::SceneProjectionResult& scen
 
 iggy3d::ProductAppWindowState trainingRoomWindow() {
   iggy3d::ProductAppWindowState window;
-  window.asciiRoomDraftText = std::string(kTrainingRoom);
-  window.asciiRoomDraftRoomId = "activation_training_room";
-  window.asciiRoomDraftSourceName = "unit/activation_training_room.iggyroom.txt";
+  window.asciiRoomDraft.text = std::string(kTrainingRoom);
+  window.asciiRoomDraft.roomId = "activation_training_room";
+  window.asciiRoomDraft.sourceName = "unit/activation_training_room.iggyroom.txt";
   return window;
 }
 
@@ -86,15 +86,15 @@ bool activatesSessionFromAsciiRoom() {
          expect(window.gameplayActive, "window gameplay active") &&
          expect(window.runtimeSessionCreated, "window runtime session") &&
          expect(window.runtimeStateHash == session->stateHash(), "window hash") &&
-         expect(window.asciiRoomActivationRuntimeHash == session->stateHash(),
+         expect(window.asciiRoomActivation.runtimeHash == session->stateHash(),
                 "activation hash") &&
-         expect(window.asciiRoomActivationNpcCount == 1U,
+         expect(window.asciiRoomActivation.npcCount == 1U,
                 "window activation npc count") &&
-         expect(window.asciiRoomActivationPickupCount == 1U,
+         expect(window.asciiRoomActivation.pickupCount == 1U,
                 "window activation pickup count") &&
-         expect(window.asciiRoomActivationDoorCount == 1U,
+         expect(window.asciiRoomActivation.doorCount == 1U,
                 "window activation door count") &&
-         expect(window.asciiRoomActivationMarkerEntityCount == 1U,
+         expect(window.asciiRoomActivation.markerEntityCount == 1U,
                 "window activation marker entity count") &&
          expect(window.activeRoom.loaded, "active room loaded") &&
          expect(window.activeRoom.status == "active_room_loaded",
@@ -152,11 +152,11 @@ bool activatesSessionFromAsciiRoom() {
 
 bool rejectsInvalidAsciiWithoutSession() {
   iggy3d::ProductAppWindowState window;
-  window.asciiRoomDraftText =
+  window.asciiRoomDraft.text =
       "...\n"
       "...\n";
-  window.asciiRoomDraftRoomId = "missing_spawn_room";
-  window.asciiRoomDraftSourceName = "unit/missing_spawn.iggyroom.txt";
+  window.asciiRoomDraft.roomId = "missing_spawn_room";
+  window.asciiRoomDraft.sourceName = "unit/missing_spawn.iggyroom.txt";
   std::optional<iggy3d::Session> session;
 
   const iggy3d::ProductAsciiRoomActivationResult result =
@@ -172,9 +172,9 @@ bool rejectsInvalidAsciiWithoutSession() {
          expect(!session.has_value(), "session absent") &&
          expect(!window.gameplayActive, "window gameplay inactive") &&
          expect(!window.runtimeSessionCreated, "window runtime absent") &&
-         expect(window.asciiRoomPreviewFailedStage == "grid",
+         expect(window.asciiRoomPreview.failedStage == "grid",
                 "preview failed at grid") &&
-         expect(window.asciiRoomActivationStatus ==
+         expect(window.asciiRoomActivation.status ==
                     "ascii_room_missing_player_spawn",
                 "window activation status") &&
          expect(!window.activeRoom.loaded, "active room not loaded") &&
@@ -188,7 +188,7 @@ bool rejectsInvalidAsciiWithoutSession() {
          expect(window.activeRoomCollision.reasonCode ==
                     "ascii_room_missing_player_spawn",
                 "active room collision failure reason") &&
-         expect(window.asciiRoomActivationSessionCreated == false,
+         expect(window.asciiRoomActivation.sessionCreated == false,
                 "window no activation session");
 }
 

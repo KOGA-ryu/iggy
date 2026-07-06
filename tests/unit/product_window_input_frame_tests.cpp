@@ -254,15 +254,15 @@ void setInputFrameClamberActiveRoom(iggy3d::ProductAppWindowState& window,
 iggy3d::ProductAppWindowState gameplayWindow(
     std::optional<iggy3d::Session>& session) {
   iggy3d::ProductAppWindowState window;
-  window.asciiRoomDraftText =
+  window.asciiRoomDraft.text =
       "#######\n"
       "#.....#\n"
       "#..P..#\n"
       "#.....#\n"
       "#..$.E#\n"
       "#######\n";
-  window.asciiRoomDraftRoomId = "input_frame_gameplay_room";
-  window.asciiRoomDraftSourceName =
+  window.asciiRoomDraft.roomId = "input_frame_gameplay_room";
+  window.asciiRoomDraft.sourceName =
       "unit/input_frame_gameplay_room.iggyroom.txt";
   const iggy3d::ProductAsciiRoomActivationResult activated =
       iggy3d::activateProductAsciiRoomPreview(session, window);
