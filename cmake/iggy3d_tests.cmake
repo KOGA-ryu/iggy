@@ -719,6 +719,10 @@ iggy3d_add_unit_test(aabb_grid_index_tests tests/unit/aabb_grid_index_tests.cpp)
 set_tests_properties(aabb_grid_index_tests PROPERTIES
   LABELS "unit;core;spatial;index;iggy3d")
 
+iggy3d_add_unit_test(oriented_box_tests tests/unit/oriented_box_tests.cpp)
+set_tests_properties(oriented_box_tests PROPERTIES
+  LABELS "unit;core;math;obb;iggy3d")
+
 iggy3d_add_unit_test(reasoning_graph_readout tests/unit/reasoning_graph_readout.cpp)
 set_tests_properties(reasoning_graph_readout PROPERTIES
   LABELS "unit;runtime;ai;reasoning;readout;iggy3d")
