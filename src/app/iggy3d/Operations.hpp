@@ -68,6 +68,9 @@ struct ProductCreativeBakedActiveRoomRefreshResult {
   std::string reasonCode = "product_creative_baked_room_not_requested";
   creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
   std::uint64_t objectCount = 0;
+  bool bakeMeasured = false;
+  std::uint64_t bakeElapsedMicroseconds = 0;
+  std::uint64_t bakedDocumentRevision = 0;
   creative::CreativeRoomBakeReceipt bakeReceipt;
   std::uint64_t staticMeshCount = 0;
   std::uint64_t anchorCount = 0;

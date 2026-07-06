@@ -93,6 +93,11 @@ void recordProductCreativeUiBakedRoomRefresh(
   window.creativeUiCommandBakedRoomRefreshAccepted = refresh.accepted;
   window.creativeUiCommandBakedRoomRefreshStatus = refresh.status;
   window.creativeUiCommandBakedRoomRefreshReasonCode = refresh.reasonCode;
+  window.creativeUiCommandBakedRoomBakeMeasured = refresh.bakeMeasured;
+  window.creativeUiCommandBakedRoomBakeElapsedMicroseconds =
+      refresh.bakeElapsedMicroseconds;
+  window.creativeUiCommandBakedRoomBakedDocumentRevision =
+      refresh.bakedDocumentRevision;
   window.creativeUiCommandBakedRoomStaticMeshCount =
       refresh.staticMeshCount;
   window.creativeUiCommandBakedRoomAnchorCount = refresh.anchorCount;
@@ -112,6 +117,11 @@ void recordProductCreativeBakedRoomAutoRefresh(
       refresh.clearedActiveRoom;
   window.creativeBakedRoomAutoRefreshStatus = refresh.status;
   window.creativeBakedRoomAutoRefreshReasonCode = refresh.reasonCode;
+  window.creativeBakedRoomAutoRefreshBakeMeasured = refresh.bakeMeasured;
+  window.creativeBakedRoomAutoRefreshBakeElapsedMicroseconds =
+      refresh.bakeElapsedMicroseconds;
+  window.creativeBakedRoomAutoRefreshBakedDocumentRevision =
+      refresh.bakedDocumentRevision;
   window.creativeBakedRoomAutoRefreshStaticMeshCount = refresh.staticMeshCount;
   window.creativeBakedRoomAutoRefreshAnchorCount = refresh.anchorCount;
   window.creativeBakedRoomAutoRefreshSpatialSurfaceCount =

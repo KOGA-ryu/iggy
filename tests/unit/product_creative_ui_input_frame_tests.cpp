@@ -48,6 +48,12 @@ bool expectReceiptField(const iggy3d::RenderReceipt& receipt,
   return expect(iggy3d::hasReceiptField(receipt, key, value), message);
 }
 
+bool expectReceiptKey(const iggy3d::RenderReceipt& receipt,
+                      std::string_view key,
+                      std::string_view message) {
+  return expect(iggy3d::hasReceiptField(receipt, key), message);
+}
+
 iggy3d::MouseClick clickAt(float x, float y) {
   iggy3d::MouseClick click;
   click.clicked = true;
@@ -580,7 +586,21 @@ bool defaultWindowReceiptFieldsAreNotRequested() {
          expectReceiptField(receipt,
                             "creative_baked_room_auto_refresh_status",
                             "product_creative_baked_room_not_requested",
-                            "default auto refresh status");
+                            "default auto refresh status") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_auto_refresh_bake_measured",
+                            "false",
+                            "default auto refresh bake not measured") &&
+         expectReceiptField(
+             receipt,
+             "creative_baked_room_auto_refresh_bake_elapsed_microseconds",
+             "0",
+             "default auto refresh bake elapsed") &&
+         expectReceiptField(
+             receipt,
+             "creative_baked_room_auto_refresh_baked_document_revision",
+             "0",
+             "default auto refresh bake revision");
 }
 
 bool recorderCopiesNoClickReceipt() {
@@ -1064,6 +1084,12 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
                 "injected tool row revision after") &&
          expect(!window.creativeBakedRoomAutoRefreshRequested,
                 "injected tool row no auto refresh") &&
+         expect(!window.creativeBakedRoomAutoRefreshBakeMeasured,
+                "injected tool row bake not measured") &&
+         expect(window.creativeBakedRoomAutoRefreshBakeElapsedMicroseconds == 0U,
+                "injected tool row bake elapsed") &&
+         expect(window.creativeBakedRoomAutoRefreshBakedDocumentRevision == 0U,
+                "injected tool row bake revision") &&
          expect(!window.creativeBakedRoomStale,
                 "injected tool row not stale");
 }
@@ -1140,6 +1166,12 @@ bool inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() {
                 "measure row revision after") &&
          expect(!window.creativeBakedRoomAutoRefreshRequested,
                 "measure row no auto refresh") &&
+         expect(!window.creativeBakedRoomAutoRefreshBakeMeasured,
+                "measure row bake not measured") &&
+         expect(window.creativeBakedRoomAutoRefreshBakeElapsedMicroseconds == 0U,
+                "measure row bake elapsed") &&
+         expect(window.creativeBakedRoomAutoRefreshBakedDocumentRevision == 0U,
+                "measure row bake revision") &&
          expect(!window.creativeBakedRoomStale,
                 "measure row not stale");
 }
@@ -1324,6 +1356,20 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
              "creative_baked_room_auto_refresh_status",
              "product_creative_baked_room_cleared_no_renderable_objects",
              "create injected auto refresh clear status") &&
+         expectReceiptField(
+             receipt,
+             "creative_baked_room_auto_refresh_bake_measured",
+             "true",
+             "create injected auto refresh bake measured receipt") &&
+         expectReceiptKey(
+             receipt,
+             "creative_baked_room_auto_refresh_bake_elapsed_microseconds",
+             "create injected auto refresh bake elapsed receipt") &&
+         expectReceiptField(
+             receipt,
+             "creative_baked_room_auto_refresh_baked_document_revision",
+             "1",
+             "create injected auto refresh bake revision receipt") &&
          expect(facade.document().objectCount() == 1U,
                 "create injected object count") &&
          expect(facade.document().revision() == 1U,
@@ -1345,6 +1391,10 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
          expect(window.creativeBakedRoomAutoRefreshStatus ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "create injected auto refresh status state") &&
+         expect(window.creativeBakedRoomAutoRefreshBakeMeasured,
+                "create injected auto refresh bake measured state") &&
+         expect(window.creativeBakedRoomAutoRefreshBakedDocumentRevision == 1U,
+                "create injected auto refresh bake revision state") &&
          expect(window.creativeBakedRoomAutoRefreshStaticMeshCount == 0U,
                 "create injected auto refresh mesh count") &&
          expect(!window.creativeBakedRoomStale,
@@ -1544,6 +1594,20 @@ bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
                             "creative_baked_room_auto_refresh_status",
                             "product_creative_baked_room_refreshed",
                             "crate injected receipt auto status") &&
+         expectReceiptField(
+             receipt,
+             "creative_baked_room_auto_refresh_bake_measured",
+             "true",
+             "crate injected receipt bake measured") &&
+         expectReceiptKey(
+             receipt,
+             "creative_baked_room_auto_refresh_bake_elapsed_microseconds",
+             "crate injected receipt bake elapsed") &&
+         expectReceiptField(
+             receipt,
+             "creative_baked_room_auto_refresh_baked_document_revision",
+             "1",
+             "crate injected receipt bake revision") &&
          expectReceiptField(receipt,
                             "creative_baked_room_stale",
                             "false",

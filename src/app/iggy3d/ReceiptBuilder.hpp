@@ -673,6 +673,9 @@ struct ProductAppWindowState {
       "product_creative_baked_room_not_requested";
   std::string creativeUiCommandBakedRoomRefreshReasonCode =
       "product_creative_baked_room_not_requested";
+  bool creativeUiCommandBakedRoomBakeMeasured = false;
+  std::uint64_t creativeUiCommandBakedRoomBakeElapsedMicroseconds = 0;
+  std::uint64_t creativeUiCommandBakedRoomBakedDocumentRevision = 0;
   std::uint64_t creativeUiCommandBakedRoomStaticMeshCount = 0;
   std::uint64_t creativeUiCommandBakedRoomAnchorCount = 0;
   std::uint64_t creativeUiCommandBakedRoomSpatialSurfaceCount = 0;
@@ -685,6 +688,9 @@ struct ProductAppWindowState {
       "product_creative_baked_room_not_requested";
   std::string creativeBakedRoomAutoRefreshReasonCode =
       "product_creative_baked_room_not_requested";
+  bool creativeBakedRoomAutoRefreshBakeMeasured = false;
+  std::uint64_t creativeBakedRoomAutoRefreshBakeElapsedMicroseconds = 0;
+  std::uint64_t creativeBakedRoomAutoRefreshBakedDocumentRevision = 0;
   std::uint64_t creativeBakedRoomAutoRefreshStaticMeshCount = 0;
   std::uint64_t creativeBakedRoomAutoRefreshAnchorCount = 0;
   std::uint64_t creativeBakedRoomAutoRefreshSpatialSurfaceCount = 0;

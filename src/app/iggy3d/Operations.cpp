@@ -1461,8 +1461,12 @@ ProductCreativeBakedActiveRoomRefreshResult refreshProductCreativeBakedActiveRoo
   bakeRequest.sourceSubset = request.sourceSubset;
   bakeRequest.includeHidden = request.includeHidden;
 
+  result.bakeMeasured = true;
+  result.bakedDocumentRevision = document.revision();
+  const auto bakeStarted = std::chrono::steady_clock::now();
   const creative::CreativeRoomBakeResult bake =
       creative::buildRoomAssetFromCreativeDocument(bakeRequest);
+  result.bakeElapsedMicroseconds = elapsedMicroseconds(bakeStarted);
   result.bakeReceipt = bake.receipt;
   result.staticMeshCount =
       static_cast<std::uint64_t>(bake.room.staticMeshes.size());

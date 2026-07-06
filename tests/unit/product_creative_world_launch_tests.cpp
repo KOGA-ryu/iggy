@@ -927,6 +927,11 @@ bool openLaunchRefreshesBakedActiveRoomFromSavedCreativeDocument() {
          expect(opened.bakedActiveRoomRefresh.reasonCode ==
                     "product_creative_baked_room_refreshed",
                 "open baked refresh reason") &&
+         expect(opened.bakedActiveRoomRefresh.bakeMeasured,
+                "open baked refresh measured") &&
+         expect(opened.bakedActiveRoomRefresh.bakedDocumentRevision ==
+                    openFacade.document().revision(),
+                "open baked refresh revision") &&
          expect(opened.bakedActiveRoomRefresh.bakeReceipt.accepted,
                 "open baked receipt accepted") &&
          expect(opened.bakedActiveRoomRefresh.staticMeshCount == 4U,
@@ -1786,6 +1791,9 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
                 "baked room refresh document id") &&
          expect(refreshed.objectCount == 6U,
                 "baked room refresh object count") &&
+         expect(refreshed.bakeMeasured, "baked room refresh measured") &&
+         expect(refreshed.bakedDocumentRevision == facade.document().revision(),
+                "baked room refresh revision") &&
          expect(refreshed.bakeReceipt.accepted,
                 "baked room bake accepted") &&
          expect(refreshed.bakeReceipt.status ==
@@ -1963,6 +1971,11 @@ bool manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() {
          expect(window.creativeUiCommandBakedRoomRefreshStatus ==
                     "product_creative_baked_room_refreshed",
                 "manual rebuild refresh status") &&
+         expect(window.creativeUiCommandBakedRoomBakeMeasured,
+                "manual rebuild refresh measured") &&
+         expect(window.creativeUiCommandBakedRoomBakedDocumentRevision ==
+                    facade.document().revision(),
+                "manual rebuild refresh revision") &&
          expect(window.creativeUiCommandBakedRoomStaticMeshCount == 4U,
                 "manual rebuild refresh static mesh count") &&
          expect(window.creativeUiCommandBakedRoomAnchorCount == 1U,
@@ -2068,6 +2081,11 @@ bool manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() {
          expect(window.creativeUiCommandBakedRoomRefreshReasonCode ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "manual empty rebuild refresh reason") &&
+         expect(window.creativeUiCommandBakedRoomBakeMeasured,
+                "manual empty rebuild refresh measured") &&
+         expect(window.creativeUiCommandBakedRoomBakedDocumentRevision ==
+                    app.facade.document().revision(),
+                "manual empty rebuild refresh revision") &&
          expect(window.creativeUiCommandBakedRoomStaticMeshCount == 0U,
                 "manual empty rebuild static mesh count") &&
          expect(window.creativeUiCommandBakedRoomAnchorCount == 0U,
@@ -2436,6 +2454,7 @@ bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
         !expect(!refreshed.accepted, "inactive bake rejected") ||
         !expect(refreshed.status == "product_creative_baked_room_inactive",
                 "inactive bake status") ||
+        !expect(!refreshed.bakeMeasured, "inactive bake not measured") ||
         !sentinelRoomStatePreserved(window)) {
       return false;
     }
@@ -2469,6 +2488,7 @@ bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
         !expect(refreshed.status ==
                     "product_creative_baked_room_session_missing",
                 "missing session bake status") ||
+        !expect(!refreshed.bakeMeasured, "missing session bake not measured") ||
         !sentinelRoomStatePreserved(window)) {
       return false;
     }
@@ -2504,6 +2524,7 @@ bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
         !expect(refreshed.status ==
                     "product_creative_baked_room_document_invalid",
                 "invalid doc bake status") ||
+        !expect(!refreshed.bakeMeasured, "invalid doc bake not measured") ||
         !sentinelRoomStatePreserved(window)) {
       return false;
     }
@@ -2537,6 +2558,9 @@ bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
                 "empty bake default did not clear active room") &&
          expect(refreshed.status == "creative_room_bake_no_renderable_objects",
                 "empty bake status mirrors RoomBake") &&
+         expect(refreshed.bakeMeasured, "empty bake measured") &&
+         expect(refreshed.bakedDocumentRevision == app.facade.document().revision(),
+                "empty bake revision") &&
          expect(refreshed.bakeReceipt.requested, "empty bake requested") &&
          expect(!refreshed.bakeReceipt.accepted, "empty bake receipt rejected") &&
          expect(refreshed.bakeReceipt.objectCount == 0U,
@@ -2579,6 +2603,11 @@ bool creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() {
          expect(launched.bakedActiveRoomRefresh.reasonCode ==
                     "creative_room_bake_no_renderable_objects",
                 "blank stage refresh reason") &&
+         expect(launched.bakedActiveRoomRefresh.bakeMeasured,
+                "blank stage refresh measured") &&
+         expect(launched.bakedActiveRoomRefresh.bakedDocumentRevision ==
+                    facade.document().revision(),
+                "blank stage refresh revision") &&
          expect(launched.bakedActiveRoomRefresh.bakeReceipt.requested,
                 "blank stage bake requested") &&
          expect(!launched.bakedActiveRoomRefresh.bakeReceipt.accepted,
