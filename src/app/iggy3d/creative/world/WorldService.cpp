@@ -22,18 +22,11 @@ bool isBlank(std::string_view value) noexcept {
   return true;
 }
 
-void setCreateStatus(CreativeWorldCreateResult& result,
-                     std::string reason) {
-  result.status = std::move(reason);
-  result.reasonCode = result.status;
-}
-
-void setOpenStatus(CreativeWorldOpenResult& result, std::string reason) {
-  result.status = std::move(reason);
-  result.reasonCode = result.status;
-}
-
-void setSaveStatus(CreativeWorldSaveResult& result, std::string reason) {
+// One status setter for all three world-result types (create/open/save): each
+// carries {status, reasonCode} and set them identically. A new result type gets
+// this for free.
+template <typename ResultT>
+void setResultStatus(ResultT& result, std::string reason) {
   result.status = std::move(reason);
   result.reasonCode = result.status;
 }
@@ -140,19 +133,19 @@ CreativeWorldCreateResult createCreativeWorld(
   result.templateId = request.templateId;
 
   if (request.saveRoot.empty()) {
-    setCreateStatus(result, "creative_world_save_root_missing");
+    setResultStatus(result, "creative_world_save_root_missing");
     return result;
   }
   if (isBlank(request.title)) {
-    setCreateStatus(result, "creative_world_title_missing");
+    setResultStatus(result, "creative_world_title_missing");
     return result;
   }
   if (isBlank(request.requestedAtUtc)) {
-    setCreateStatus(result, "creative_world_timestamp_missing");
+    setResultStatus(result, "creative_world_timestamp_missing");
     return result;
   }
   if (request.templateId != kEmptyTemplateId) {
-    setCreateStatus(result, "creative_world_template_unknown");
+    setResultStatus(result, "creative_world_template_unknown");
     return result;
   }
 
@@ -172,14 +165,14 @@ CreativeWorldCreateResult createCreativeWorld(
   result.documentIdScanEntryCount = documentId.scanEntryCount;
   result.documentIdScanStatus = std::string{documentId.scanStatus};
   if (result.documentId == creative::kInvalidDocumentId) {
-    setCreateStatus(result, "creative_world_document_id_unavailable");
+    setResultStatus(result, "creative_world_document_id_unavailable");
     return result;
   }
 
   result.document = creative::CreativeDocument::create(request.title);
   result.documentCreated = result.document.assignId(result.documentId);
   if (!result.documentCreated) {
-    setCreateStatus(result, "creative_world_document_create_failed");
+    setResultStatus(result, "creative_world_document_create_failed");
     return result;
   }
 
@@ -201,13 +194,13 @@ CreativeWorldCreateResult createCreativeWorld(
                                                      : result.saveWrite.record.id;
   result.path = result.saveWrite.record.path;
   if (!result.saveWrite.ok) {
-    setCreateStatus(result, result.saveWrite.reasonCode);
+    setResultStatus(result, result.saveWrite.reasonCode);
     return result;
   }
 
   result.accepted = true;
   result.initialSaveWritten = true;
-  setCreateStatus(result, "creative_world_created");
+  setResultStatus(result, "creative_world_created");
   return result;
 }
 
@@ -217,15 +210,15 @@ CreativeWorldOpenResult openCreativeWorld(
   result.saveId = request.saveId.empty() ? "none" : request.saveId;
 
   if (request.saveRoot.empty()) {
-    setOpenStatus(result, "creative_world_save_root_missing");
+    setResultStatus(result, "creative_world_save_root_missing");
     return result;
   }
   if (isBlank(request.saveId)) {
-    setOpenStatus(result, "creative_world_save_id_missing");
+    setResultStatus(result, "creative_world_save_id_missing");
     return result;
   }
   if (!isValidSaveFileId(request.saveId)) {
-    setOpenStatus(result, "creative_world_save_id_invalid");
+    setResultStatus(result, "creative_world_save_id_invalid");
     return result;
   }
 
@@ -234,13 +227,13 @@ CreativeWorldOpenResult openCreativeWorld(
       loadCreativeDocumentSave({result.path});
   mirrorOpenLoad(result, load);
   if (!load.ok) {
-    setOpenStatus(result, load.reasonCode);
+    setResultStatus(result, load.reasonCode);
     return result;
   }
 
   result.document = load.document;
   result.accepted = true;
-  setOpenStatus(result, "creative_world_opened");
+  setResultStatus(result, "creative_world_opened");
   return result;
 }
 
@@ -251,23 +244,23 @@ CreativeWorldSaveResult saveCreativeWorld(
   mirrorSaveDocumentState(result, request.document);
 
   if (request.document == nullptr) {
-    setSaveStatus(result, "creative_world_save_document_missing");
+    setResultStatus(result, "creative_world_save_document_missing");
     return result;
   }
   if (request.saveRoot.empty()) {
-    setSaveStatus(result, "creative_world_save_root_missing");
+    setResultStatus(result, "creative_world_save_root_missing");
     return result;
   }
   if (isBlank(request.saveId)) {
-    setSaveStatus(result, "creative_world_save_id_missing");
+    setResultStatus(result, "creative_world_save_id_missing");
     return result;
   }
   if (!isValidSaveFileId(request.saveId)) {
-    setSaveStatus(result, "creative_world_save_id_invalid");
+    setResultStatus(result, "creative_world_save_id_invalid");
     return result;
   }
   if (request.document->id() == creative::kInvalidDocumentId) {
-    setSaveStatus(result, "invalid_document_id");
+    setResultStatus(result, "invalid_document_id");
     return result;
   }
 
@@ -295,7 +288,7 @@ CreativeWorldSaveResult saveCreativeWorld(
   result.path = saveWrite.record.path.empty() ? result.path
                                               : saveWrite.record.path;
   if (!saveWrite.ok) {
-    setSaveStatus(result, saveWrite.reasonCode);
+    setResultStatus(result, saveWrite.reasonCode);
     result.dirtyFlagsAfter = request.document->dirtyFlags();
     return result;
   }
@@ -304,7 +297,7 @@ CreativeWorldSaveResult saveCreativeWorld(
   result.dirtyFlagsAfter = request.document->dirtyFlags();
   result.accepted = true;
   result.saved = true;
-  setSaveStatus(result, "creative_world_saved");
+  setResultStatus(result, "creative_world_saved");
   return result;
 }
 
