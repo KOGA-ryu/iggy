@@ -53,6 +53,8 @@
 #include "app/iggy3d/ProductCreativeUiInputState.hpp"
 #include "app/iggy3d/ProductCreativeDocumentRevisionState.hpp"
 #include "app/iggy3d/gameplay/CommandState.hpp"
+#include "app/iggy3d/gameplay/JumpState.hpp"
+#include "app/iggy3d/debug/NpcBehaviorDebugHudState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -316,12 +318,7 @@ struct ProductAppWindowState {
   ProductViewportState viewport;
   std::uint64_t sceneItemCount = 0;
   std::uint64_t debugItemCount = 0;
-  bool npcBehaviorDebugHudVisible = false;
-  bool npcBehaviorDebugHudDebugAvailable = false;
-  std::uint64_t npcBehaviorDebugHudLineCount = 0;
-  std::string npcBehaviorDebugHudStatus = "not_requested";
-  std::string npcBehaviorDebugHudReasonCode = "not_requested";
-  bool npcBehaviorDebugHudHasUnresolvedProfile = false;
+  ProductNpcBehaviorDebugHudState npcBehaviorDebugHud;
   PhysicsDebugHud physicsDebugHud;
   PositionHud positionHud;
   bool playerVisible = false;
@@ -330,25 +327,14 @@ struct ProductAppWindowState {
   bool rendererMutatedRuntime = false;
   bool scriptedGameplaySmoke = false;
   bool gameplayInputUsed = false;
+  std::string gameplayInputSource = "none";
+  bool gameplayInputSuppressed = false;
   ProductGameplayCommandState gameplayCommand;
   bool gameplayTickAdvanced = false;
   bool playerPositionChanged = false;
   ProductGameplayMovementInfo gameplayMovement;
   ProductWallRunState gameplayWallRun;
-  bool gameplayJumpRequested = false;
-  bool gameplayJumpAccepted = false;
-  bool gameplayJumpActive = false;
-  std::string gameplayJumpStatus = "not_requested";
-  std::string gameplayJumpReasonCode = "not_requested";
-  float gameplayJumpVelocityMetersPerSecond = 0.0F;
-  float gameplayJumpCoyoteSecondsRemaining = 0.0F;
-  float gameplayJumpBufferSecondsRemaining = 0.0F;
-  bool gameplayJumpHeld = false;
-  bool gameplayJumpCutApplied = false;
-  float gameplayJumpGroundY = 0.0F;
-  float gameplayJumpStartY = 0.0F;
-  float gameplayJumpFinalY = 0.0F;
-  float gameplayJumpHeightMeters = 0.0F;
+  ProductGameplayJumpState gameplayJump;
   ProductGameplayResetState gameplayReset;
   ProductGameplayTraversalState gameplayTraversal;
   ProductGameplayDashState gameplayDash;
@@ -363,13 +349,11 @@ struct ProductAppWindowState {
   bool interactionExecuted = false;
   bool attackExecuted = false;
   ProductTransitionState productTransition;
-  std::string gameplayInputSource = "none";
   std::string gameplayReachGate = "not_attempted";
   std::string gameplayLastRejection = "none";
   MenuOwner inputOwner = MenuOwner::None;
   InputAction lastInputAction = InputAction::None;
   bool lastInputAccepted = false;
-  bool gameplayInputSuppressed = false;
   ProductAutomationControlState automationControl;
   ProductVulkanRendererState productVulkanRenderer;
   bool productVulkanSurfaceCreated = false;

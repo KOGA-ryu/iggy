@@ -729,13 +729,13 @@ bool controllerSouthJumpsInGameplayPlayerMode() {
                 "gameplay south routes to jump") &&
          expect(window.controllerAction.inputAction == "game.jump",
                 "gameplay south records jump input action") &&
-         expect(window.gameplayJumpRequested,
+         expect(window.gameplayJump.requested,
                 "gameplay south requests jump") &&
-         expect(window.gameplayJumpAccepted, "gameplay south accepts jump") &&
-         expect(window.gameplayJumpActive, "gameplay south jump remains active") &&
-         expect(window.gameplayJumpStatus == "airborne",
+         expect(window.gameplayJump.accepted, "gameplay south accepts jump") &&
+         expect(window.gameplayJump.active, "gameplay south jump remains active") &&
+         expect(window.gameplayJump.status == "airborne",
                 "gameplay south jump airborne status") &&
-         expect(window.gameplayJumpReasonCode == "gameplay_jump_airborne",
+         expect(window.gameplayJump.reasonCode == "gameplay_jump_airborne",
                 "gameplay south jump airborne reason");
 }
 
@@ -764,7 +764,7 @@ bool controllerSouthDoesNotJumpWhenFrontendBlocksGameplay() {
     return expect(blocked.processed, label) &&
            expect(!blocked.actionApplied, label) &&
            expect(!blocked.actionAccepted, label) &&
-           expect(!window.gameplayJumpRequested, label) &&
+           expect(!window.gameplayJump.requested, label) &&
            expect(!window.gameplayCommand.submitted, label);
   };
 
@@ -971,14 +971,14 @@ bool controllerSouthJumpsFromClamberedWallTop() {
          expect(window.lastInputAction == iggy3d::InputAction::PlayerJump,
                 "wall top second south routes to jump") &&
          expect(jumped.actionApplied, "wall top second south action applied") &&
-         expect(window.gameplayJumpRequested, "wall top jump requested") &&
-         expect(window.gameplayJumpAccepted, "wall top jump accepted") &&
-         expect(window.gameplayJumpActive, "wall top jump active") &&
-         expect(window.gameplayJumpStatus == "airborne",
+         expect(window.gameplayJump.requested, "wall top jump requested") &&
+         expect(window.gameplayJump.accepted, "wall top jump accepted") &&
+         expect(window.gameplayJump.active, "wall top jump active") &&
+         expect(window.gameplayJump.status == "airborne",
                 "wall top jump airborne") &&
-         expect(window.gameplayJumpReasonCode == "gameplay_jump_airborne",
+         expect(window.gameplayJump.reasonCode == "gameplay_jump_airborne",
                 "wall top jump reason") &&
-         expect(window.gameplayJumpGroundY == clamberTopY,
+         expect(window.gameplayJump.groundY == clamberTopY,
                 "wall top jump uses clamber top as ground") &&
          expect(finalY > clamberTopY, "wall top jump raises player");
 }
@@ -3223,10 +3223,10 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
   window.gameplayWallRun.status = "wall_run_active";
   window.gameplayWallRun.reasonCode = "wall_run_active";
   window.gameplayWallRun.remainingSeconds = 0.5F;
-  window.gameplayJumpCoyoteSecondsRemaining = 0.08F;
-  window.gameplayJumpBufferSecondsRemaining = 0.06F;
-  window.gameplayJumpHeld = true;
-  window.gameplayJumpCutApplied = true;
+  window.gameplayJump.coyoteSecondsRemaining = 0.08F;
+  window.gameplayJump.bufferSecondsRemaining = 0.06F;
+  window.gameplayJump.held = true;
+  window.gameplayJump.cutApplied = true;
   iggy3d::ActionState actions;
   iggy3d::recordAction(actions,
                        iggy3d::InputAction::EditorNudgeX,
@@ -3258,10 +3258,10 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
          expect(!window.gameplayWallRun.active &&
                     window.gameplayWallRun.remainingSeconds == 0.0F,
                 "editor input clears wall-run active proof") &&
-         expect(window.gameplayJumpCoyoteSecondsRemaining == 0.0F &&
-                    window.gameplayJumpBufferSecondsRemaining == 0.0F &&
-                    !window.gameplayJumpHeld &&
-                    !window.gameplayJumpCutApplied,
+         expect(window.gameplayJump.coyoteSecondsRemaining == 0.0F &&
+                    window.gameplayJump.bufferSecondsRemaining == 0.0F &&
+                    !window.gameplayJump.held &&
+                    !window.gameplayJump.cutApplied,
                 "editor input clears jump timing");
 }
 

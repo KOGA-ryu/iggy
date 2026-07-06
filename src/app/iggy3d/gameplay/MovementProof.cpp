@@ -56,7 +56,7 @@ ProductMovementProofPacket buildProductMovementProofPacket(
   packet.horizontalSpeedMetersPerSecond =
       window.gameplayMovement.horizontalSpeedMetersPerSecond;
   packet.verticalVelocityMetersPerSecond =
-      window.gameplayJumpVelocityMetersPerSecond;
+      window.gameplayJump.velocityMetersPerSecond;
   packet.gradePercent = window.gameplayMovement.gradePercent;
   packet.profile = window.gameplayMovement.profile;
   packet.maxSpeedMetersPerSecond = window.gameplayMovement.maxSpeedMetersPerSecond;

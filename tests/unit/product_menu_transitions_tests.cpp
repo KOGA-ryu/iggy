@@ -35,10 +35,10 @@ void retainGroundVelocity(iggy3d::ProductAppWindowState& window) {
 }
 
 void retainJumpTiming(iggy3d::ProductAppWindowState& window) {
-  window.gameplayJumpCoyoteSecondsRemaining = 0.08F;
-  window.gameplayJumpBufferSecondsRemaining = 0.06F;
-  window.gameplayJumpHeld = true;
-  window.gameplayJumpCutApplied = true;
+  window.gameplayJump.coyoteSecondsRemaining = 0.08F;
+  window.gameplayJump.bufferSecondsRemaining = 0.06F;
+  window.gameplayJump.held = true;
+  window.gameplayJump.cutApplied = true;
 }
 
 void showCollisionOverlay(iggy3d::ProductAppWindowState& window) {
@@ -192,10 +192,10 @@ int main() {
   ok &= expect(window.gameplayMovement.groundVelocityX == 0.0F &&
                    window.gameplayMovement.groundVelocityZ == 0.0F,
                "pause clears retained ground velocity");
-  ok &= expect(window.gameplayJumpCoyoteSecondsRemaining == 0.0F &&
-                   window.gameplayJumpBufferSecondsRemaining == 0.0F &&
-                   !window.gameplayJumpHeld &&
-                   !window.gameplayJumpCutApplied,
+  ok &= expect(window.gameplayJump.coyoteSecondsRemaining == 0.0F &&
+                   window.gameplayJump.bufferSecondsRemaining == 0.0F &&
+                   !window.gameplayJump.held &&
+                   !window.gameplayJump.cutApplied,
                "pause clears jump timing state");
   ok &= expect(window.productTransition.sessionPreserved,
                "pause keeps session active");
@@ -359,10 +359,10 @@ int main() {
   ok &= expect(window.gameplayMovement.groundVelocityX == 0.0F &&
                    window.gameplayMovement.groundVelocityZ == 0.0F,
                "return to title clears retained ground velocity");
-  ok &= expect(window.gameplayJumpCoyoteSecondsRemaining == 0.0F &&
-                   window.gameplayJumpBufferSecondsRemaining == 0.0F &&
-                   !window.gameplayJumpHeld &&
-                   !window.gameplayJumpCutApplied,
+  ok &= expect(window.gameplayJump.coyoteSecondsRemaining == 0.0F &&
+                   window.gameplayJump.bufferSecondsRemaining == 0.0F &&
+                   !window.gameplayJump.held &&
+                   !window.gameplayJump.cutApplied,
                "return to title clears jump timing state");
   ok &= expect(window.inputOwner == iggy3d::MenuOwner::Starter,
                "return to title restores starter owner");

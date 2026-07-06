@@ -467,14 +467,14 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
     window.gameplayWallRun.gravityMultiplier = 1.0F;
     window.gameplayWallRun.speedMultiplier = 1.0F;
     // branch-gate: BG-1061
-    if (!window.gameplayJumpActive) {
+    if (!window.gameplayJump.active) {
       window.gameplayMovement.grounded = true;
       window.gameplayMovement.state = ProductGameplayMovementState::IdleGrounded;
     }
-    window.gameplayJumpCoyoteSecondsRemaining = 0.0F;
-    window.gameplayJumpBufferSecondsRemaining = 0.0F;
-    window.gameplayJumpHeld = false;
-    window.gameplayJumpCutApplied = false;
+    window.gameplayJump.coyoteSecondsRemaining = 0.0F;
+    window.gameplayJump.bufferSecondsRemaining = 0.0F;
+    window.gameplayJump.held = false;
+    window.gameplayJump.cutApplied = false;
   }
 
   // branch-gate: BG-1061

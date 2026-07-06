@@ -43,7 +43,7 @@ iggy3d::ProductAppWindowState movedWindow() {
       iggy3d::ProductGameplayMovementState::MovingGrounded;
   window.gameplayMovement.grounded = true;
   window.gameplayMovement.horizontalSpeedMetersPerSecond = 3.3F;
-  window.gameplayJumpVelocityMetersPerSecond = 0.0F;
+  window.gameplayJump.velocityMetersPerSecond = 0.0F;
   window.gameplayWallRun.candidateStatus = "wall_run_grounded";
   window.gameplayWallRun.candidateReasonCode = "wall_run_grounded";
   window.gameplayWallRun.approachSpeedMetersPerSecond = 3.3F;
@@ -134,7 +134,7 @@ bool movementProofPacketCopiesWindowProof() {
       iggy3d::ProductGameplayMovementState::WallRunning;
   window.gameplayMovement.grounded = false;
   window.gameplayMovement.horizontalSpeedMetersPerSecond = 5.5F;
-  window.gameplayJumpVelocityMetersPerSecond = -1.75F;
+  window.gameplayJump.velocityMetersPerSecond = -1.75F;
   window.gameplayMovement.gradePercent = -3.0F;
   window.gameplayMovement.profile = "manual_first_person_sprint";
   window.gameplayMovement.maxSpeedMetersPerSecond = 6.2F;

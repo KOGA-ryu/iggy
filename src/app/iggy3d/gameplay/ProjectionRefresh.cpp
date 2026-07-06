@@ -246,12 +246,12 @@ DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
 
 void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
                              const NpcBehaviorDebugHud& hud) {
-  window.npcBehaviorDebugHudVisible = hud.visible;
-  window.npcBehaviorDebugHudDebugAvailable = hud.debugAvailable;
-  window.npcBehaviorDebugHudLineCount = static_cast<std::uint64_t>(hud.lineCount);
-  window.npcBehaviorDebugHudStatus = hud.status;
-  window.npcBehaviorDebugHudReasonCode = hud.reasonCode;
-  window.npcBehaviorDebugHudHasUnresolvedProfile =
+  window.npcBehaviorDebugHud.visible = hud.visible;
+  window.npcBehaviorDebugHud.debugAvailable = hud.debugAvailable;
+  window.npcBehaviorDebugHud.lineCount = static_cast<std::uint64_t>(hud.lineCount);
+  window.npcBehaviorDebugHud.status = hud.status;
+  window.npcBehaviorDebugHud.reasonCode = hud.reasonCode;
+  window.npcBehaviorDebugHud.hasUnresolvedProfile =
       npcBehaviorHudHasUnresolvedProfile(hud);
 }
 

@@ -849,13 +849,13 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                             settings.devToolsEnabled,
                             settings.debugOverlayEnabled);
   const NpcBehaviorDebugHud npcBehaviorHud{
-      window.npcBehaviorDebugHudVisible,
+      window.npcBehaviorDebugHud.visible,
       settings.devToolsEnabled,
       settings.debugOverlayEnabled,
-      window.npcBehaviorDebugHudDebugAvailable,
-      static_cast<std::size_t>(window.npcBehaviorDebugHudLineCount),
-      window.npcBehaviorDebugHudStatus,
-      window.npcBehaviorDebugHudReasonCode,
+      window.npcBehaviorDebugHud.debugAvailable,
+      static_cast<std::size_t>(window.npcBehaviorDebugHud.lineCount),
+      window.npcBehaviorDebugHud.status,
+      window.npcBehaviorDebugHud.reasonCode,
       {}};
   const PhysicsDebugHud physicsHud{
       window.physicsDebugHud.visible,
@@ -1799,30 +1799,30 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "gameplay_movement_max_speed_mps",
                      floatReceiptValue(movementProof.maxSpeedMetersPerSecond));
   appendReceiptField(receipt, "gameplay_jump_requested",
-                     window.gameplayJumpRequested);
+                     window.gameplayJump.requested);
   appendReceiptField(receipt, "gameplay_jump_accepted",
-                     window.gameplayJumpAccepted);
-  appendReceiptField(receipt, "gameplay_jump_active", window.gameplayJumpActive);
-  appendReceiptField(receipt, "gameplay_jump_status", window.gameplayJumpStatus);
+                     window.gameplayJump.accepted);
+  appendReceiptField(receipt, "gameplay_jump_active", window.gameplayJump.active);
+  appendReceiptField(receipt, "gameplay_jump_status", window.gameplayJump.status);
   appendReceiptField(receipt, "gameplay_jump_reason_code",
-                     window.gameplayJumpReasonCode);
+                     window.gameplayJump.reasonCode);
   appendReceiptField(receipt, "gameplay_jump_velocity_mps",
-                     floatReceiptValue(window.gameplayJumpVelocityMetersPerSecond));
+                     floatReceiptValue(window.gameplayJump.velocityMetersPerSecond));
   appendReceiptField(receipt, "gameplay_jump_coyote_seconds_remaining",
-                     floatReceiptValue(window.gameplayJumpCoyoteSecondsRemaining));
+                     floatReceiptValue(window.gameplayJump.coyoteSecondsRemaining));
   appendReceiptField(receipt, "gameplay_jump_buffer_seconds_remaining",
-                     floatReceiptValue(window.gameplayJumpBufferSecondsRemaining));
-  appendReceiptField(receipt, "gameplay_jump_held", window.gameplayJumpHeld);
+                     floatReceiptValue(window.gameplayJump.bufferSecondsRemaining));
+  appendReceiptField(receipt, "gameplay_jump_held", window.gameplayJump.held);
   appendReceiptField(receipt, "gameplay_jump_cut_applied",
-                     window.gameplayJumpCutApplied);
+                     window.gameplayJump.cutApplied);
   appendReceiptField(receipt, "gameplay_jump_ground_y",
-                     floatReceiptValue(window.gameplayJumpGroundY));
+                     floatReceiptValue(window.gameplayJump.groundY));
   appendReceiptField(receipt, "gameplay_jump_start_y",
-                     floatReceiptValue(window.gameplayJumpStartY));
+                     floatReceiptValue(window.gameplayJump.startY));
   appendReceiptField(receipt, "gameplay_jump_final_y",
-                     floatReceiptValue(window.gameplayJumpFinalY));
+                     floatReceiptValue(window.gameplayJump.finalY));
   appendReceiptField(receipt, "gameplay_jump_height_meters",
-                     floatReceiptValue(window.gameplayJumpHeightMeters));
+                     floatReceiptValue(window.gameplayJump.heightMeters));
   appendReceiptField(receipt, "gameplay_reset_triggered",
                      window.gameplayReset.triggered);
   appendReceiptField(receipt, "gameplay_reset_status",
@@ -1928,7 +1928,7 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      npcBehaviorHud.reasonCode);
   appendReceiptField(receipt,
                      "npc_behavior_debug_hud_has_unresolved_profile",
-                     window.npcBehaviorDebugHudHasUnresolvedProfile);
+                     window.npcBehaviorDebugHud.hasUnresolvedProfile);
   appendReceiptField(receipt, "physics_debug_hud_visible",
                      physicsHud.visible);
   appendReceiptField(receipt, "physics_debug_hud_line_count",

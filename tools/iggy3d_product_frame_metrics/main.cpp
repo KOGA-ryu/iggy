@@ -386,7 +386,7 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
       std::max(counters.renderBridgeItemMax,
                window.viewport.productViewFrameItemCount);
   const std::uint64_t debugHudLines =
-      projection.movementHud.lines.size() + window.npcBehaviorDebugHudLineCount +
+      projection.movementHud.lines.size() + window.npcBehaviorDebugHud.lineCount +
       window.physicsDebugHud.lineCount + window.positionHud.lineCount;
   counters.debugHudLineMax =
       std::max(counters.debugHudLineMax, debugHudLines);
@@ -398,7 +398,7 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
                static_cast<std::uint64_t>(window.physicsDebugHud.lineCount));
   counters.npcDebugHudLineMax =
       std::max(counters.npcDebugHudLineMax,
-               window.npcBehaviorDebugHudLineCount);
+               window.npcBehaviorDebugHud.lineCount);
   counters.collisionSurfaceMax =
       std::max(counters.collisionSurfaceMax,
                window.activeRoomCollision.querySurfaceCount);
@@ -425,7 +425,7 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
   counters.lastHorizontalSpeedMetersPerSecond =
       window.gameplayMovement.horizontalSpeedMetersPerSecond;
   counters.lastVerticalVelocityMetersPerSecond =
-      window.gameplayJumpVelocityMetersPerSecond;
+      window.gameplayJump.velocityMetersPerSecond;
 }
 
 ScenarioResult runScenario(const ScenarioSpec& spec,

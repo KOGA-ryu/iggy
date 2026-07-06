@@ -88,8 +88,8 @@ bool applyGameplayJumpActionState(ProductAutomationGameplayContext& context,
   applyProductGameplayActions(
       *context.activeSession, actions, context.window, "automation",
       productActiveRoomCollisionSurfaces(context.window.activeRoomCollision));
-  return context.window.gameplayJumpRequested &&
-         (context.window.gameplayJumpAccepted ||
+  return context.window.gameplayJump.requested &&
+         (context.window.gameplayJump.accepted ||
           context.window.gameplayTraversal.consumed);
 }
 
