@@ -445,6 +445,130 @@ bool floorWallCrateBakeToRoomAsset() {
                 "prop projectile surface mesh id");
 }
 
+bool adjacentStructuralFloorsCollapseToSingleGreedyMesh() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Greedy Floor Bake");
+  for (int z = 0; z < 5; ++z) {
+    for (int x = 0; x < 5; ++x) {
+      const double minX = static_cast<double>(x);
+      const double minZ = static_cast<double>(z);
+      const cr::CreativeDocumentCreateReceipt floor =
+          createObject(document,
+                       cr::CreativeObjectKind::Floor,
+                       {{minX, 0.0, minZ}, {minX + 1.0, 0.25, minZ + 1.0}});
+      if (!expect(floor.accepted, "greedy floor created")) {
+        return false;
+      }
+    }
+  }
+  const cr::CreativeDocumentCreateReceipt spawn =
+      createPoint(document,
+                  cr::CreativeObjectKind::SpawnPoint,
+                  {0.5, 0.0, 0.5});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+  const iggy3d::RoomStaticMeshAsset* mesh =
+      result.room.staticMeshes.empty() ? nullptr : &result.room.staticMeshes[0];
+  bool allMeshSourcesPresent = result.staticMeshSources.size() == 25U;
+  bool allSurfaceSourcesPresent = result.spatialSurfaceSources.size() == 25U;
+  if (mesh != nullptr) {
+    for (std::size_t index = 0; index < result.staticMeshSources.size();
+         ++index) {
+      allMeshSourcesPresent &=
+          result.staticMeshSources[index].objectId ==
+              static_cast<cr::CreativeObjectId>(index + 1U);
+      allMeshSourcesPresent &=
+          result.staticMeshSources[index].staticMeshId == mesh->id;
+    }
+    for (std::size_t index = 0; index < result.spatialSurfaceSources.size();
+         ++index) {
+      allSurfaceSourcesPresent &=
+          result.spatialSurfaceSources[index].objectId ==
+              static_cast<cr::CreativeObjectId>(index + 1U);
+      allSurfaceSourcesPresent &=
+          result.spatialSurfaceSources[index].sourceStaticMeshId == mesh->id;
+    }
+  }
+
+  return expect(spawn.accepted, "greedy spawn created") &&
+         expect(result.receipt.accepted, "greedy floor bake accepted") &&
+         expect(result.receipt.objectCount == 26U,
+                "greedy floor object count") &&
+         expect(result.receipt.consideredObjectCount == 26U,
+                "greedy floor considered count") &&
+         expect(result.receipt.bakedStaticMeshCount == 1U,
+                "greedy floor mesh count") &&
+         expect(result.receipt.bakedAnchorCount == 1U,
+                "greedy floor anchor count") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 25U,
+                "greedy floor surface count") &&
+         expect(result.room.staticMeshes.size() == 1U,
+                "greedy floor mesh vector count") &&
+         expect(result.room.spatialSurfaces.size() == 25U,
+                "greedy floor surface vector count") &&
+         expect(result.staticMeshSources.size() == 25U,
+                "greedy floor source vector count") &&
+         expect(result.spatialSurfaceSources.size() == 25U,
+                "greedy floor surface source vector count") &&
+         expect(mesh != nullptr, "greedy floor mesh exists") &&
+         expect(mesh != nullptr &&
+                    mesh->id == "creative_floor_greedy_1_0",
+                "greedy floor mesh id") &&
+         expect(mesh != nullptr && mesh->role == "floor",
+                "greedy floor role") &&
+         expect(mesh != nullptr &&
+                    mesh->meshId == "creative_floor_rect",
+                "greedy floor mesh asset id") &&
+         expect(mesh != nullptr &&
+                    mesh->materialId == "creative_floor",
+                "greedy floor material") &&
+         expect(mesh != nullptr &&
+                    sameVec3(mesh->positionMeters, {2.5F, 0.125F, 2.5F}),
+                "greedy floor center") &&
+         expect(mesh != nullptr &&
+                    sameVec3(mesh->sizeMeters, {5.0F, 0.25F, 5.0F}),
+                "greedy floor size") &&
+         expect(allMeshSourcesPresent,
+                "greedy floor all source ids recorded") &&
+         expect(allSurfaceSourcesPresent,
+                "greedy floor surface sources point to merged mesh") &&
+         expect(result.reachability.checked,
+                "greedy floor reachability checked") &&
+         expect(result.reachability.status ==
+                    cr::CreativeRoomBakeReachabilityStatus::Reachable,
+                "greedy floor reachable") &&
+         expect(result.reachability.walkableCellCount == 25U,
+                "greedy floor walkable cells") &&
+         expect(result.reachability.strandedCellCount == 0U,
+                "greedy floor no stranded cells");
+}
+
+bool nearAlignedGreedyFloorDoesNotExpandAcrossNeighborCell() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Near Aligned Greedy Floor Bake");
+  const cr::CreativeDocumentCreateReceipt floor =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{0.99995, 0.0, 0.0}, {1.99995, 0.25, 1.0}});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+  const iggy3d::RoomStaticMeshAsset* mesh =
+      result.room.staticMeshes.empty() ? nullptr : &result.room.staticMeshes[0];
+
+  return expect(floor.accepted, "near aligned floor created") &&
+         expect(result.receipt.accepted,
+                "near aligned floor bake accepted") &&
+         expect(result.receipt.bakedStaticMeshCount == 1U,
+                "near aligned floor mesh count") &&
+         expect(mesh != nullptr, "near aligned floor mesh exists") &&
+         expect(mesh != nullptr &&
+                    sameVec3(mesh->positionMeters, {1.5F, 0.125F, 0.5F}),
+                "near aligned floor center") &&
+         expect(mesh != nullptr &&
+                    sameVec3(mesh->sizeMeters, {1.0F, 0.25F, 1.0F}),
+                "near aligned floor size");
+}
+
 bool perpendicularWallsBakeTruthfulBlockerNormals() {
   cr::CreativeDocument document =
       cr::CreativeDocument::create("Wall Normal Bake Test");
@@ -915,8 +1039,8 @@ bool connectedWalkableLayoutReportsZeroStrandedCells() {
          expect(right.accepted, "connected right floor created") &&
          expect(spawn.accepted, "connected spawn created") &&
          expect(result.receipt.accepted, "connected bake accepted") &&
-         expect(result.receipt.bakedStaticMeshCount == 2U,
-                "connected mesh count stable") &&
+         expect(result.receipt.bakedStaticMeshCount == 1U,
+                "connected greedy mesh count") &&
          expect(result.receipt.bakedAnchorCount == 1U,
                 "connected anchor count stable") &&
          expect(result.receipt.bakedSpatialSurfaceCount == 2U,
@@ -1364,6 +1488,8 @@ int main() {
                   invalidBakeBoundsAreSkippedByRoomBake() &&
                   generatedRoomShellBakesChildrenAndSkipsRoomMetadata() &&
                   floorWallCrateBakeToRoomAsset() &&
+                  adjacentStructuralFloorsCollapseToSingleGreedyMesh() &&
+                  nearAlignedGreedyFloorDoesNotExpandAcrossNeighborCell() &&
                   perpendicularWallsBakeTruthfulBlockerNormals() &&
                   boundsBackedLineBakesAsPropGeometry() &&
                   endpointLineDescriptorStaysOutOfBake() &&

@@ -77,6 +77,8 @@ struct CreativeRoomBakeReachabilityReceipt {
 };
 
 struct CreativeRoomBakeStaticMeshSource {
+  // Greedy/static bake passes may merge multiple CreativeObjects into one
+  // RoomStaticMeshAsset. In that case multiple records share staticMeshId.
   CreativeObjectId objectId{kInvalidObjectId};
   std::string staticMeshId;
 };

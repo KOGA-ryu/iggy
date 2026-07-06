@@ -20,7 +20,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -28,7 +28,7 @@ None currently ready.
 
 ## Tier 2: Feature-Add Seams
 
-- `ready/E103-kernel-w6-greedy-mesh-floor-bake.md`
+None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 

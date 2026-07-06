@@ -82,3 +82,39 @@ Append:
 - Spatial surface policy:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completed
+
+- Files changed:
+  - `src/app/iggy3d/creative/adapters/RoomBake.hpp`
+  - `src/app/iggy3d/creative/adapters/RoomBake.cpp`
+  - `tests/unit/creative_document_room_bake_tests.cpp`
+  - `docs/creative_mode/builder_tasks/PRIORITY.md`
+  - `docs/creative_mode/builder_tasks/done/E103-kernel-w6-greedy-mesh-floor-bake.md`
+- Greedy grouping policy:
+  - Structural `Floor` objects only.
+  - Candidates must be bounds-backed, coplanar by floor `minY/maxY`, and same
+    floor role/material/mesh policy.
+  - A bounded 1m XZ grid is built only around each floor group.
+  - Non-aligned, overlapping, invalid, or oversized groups conservatively fall
+    back to the prior per-object floor mesh path.
+- Source attribution policy:
+  - `RoomAsset.staticMeshes` emits one floor mesh per greedy quad.
+  - `CreativeRoomBakeStaticMeshSource` remains the sidecar. Multiple records may
+    share one `staticMeshId` when several CreativeObjects contribute to one
+    merged mesh.
+  - The 5x5 proof records all 25 contributing object ids against the single
+    merged floor mesh.
+- Spatial surface policy:
+  - Walkable spatial surfaces remain per authored Floor object to preserve exact
+    existing collision/walkable coverage.
+  - Per-object walkable surfaces now point `sourceStaticMeshId` at the merged
+    greedy mesh id when their floor object was merged.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target creative_document_room_bake_tests render_room_mesh_geometry_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(creative_document_room_bake_tests|render_room_mesh_geometry_tests)$' --output-on-failure`
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - focused trailing whitespace scan over touched files
+- Concerns/deferred:
+  - This slice intentionally does not merge walkable surfaces, walls, props,
+    line geometry, openings, stairs, or non-1m-aligned floor regions.
