@@ -70,7 +70,7 @@ ProductVulkanGameplayReadiness evaluateProductVulkanGameplayReadiness(
   ProductVulkanGameplayReadiness readiness;
   readiness.backendBuilt = productWindowVulkanBackendBuilt();
   // branch-gate: BG-1069
-  if (!window.productVulkanRendererRequested) {
+  if (!window.productVulkanRenderer.requested) {
     readiness.status = "product_vulkan_not_requested";
     readiness.reasonCode = "product_vulkan_not_requested";
     return readiness;
@@ -82,7 +82,7 @@ ProductVulkanGameplayReadiness evaluateProductVulkanGameplayReadiness(
     return readiness;
   }
   // branch-gate: BG-1069
-  if (!window.productVulkanRendererCreated || !window.productVulkanRendererReady) {
+  if (!window.productVulkanRenderer.created || !window.productVulkanRenderer.ready) {
     readiness.status = "product_vulkan_renderer_unavailable";
     readiness.reasonCode = window.productVulkanReasonCode.empty()
                                ? "renderer_unavailable"
@@ -117,8 +117,8 @@ ProductVulkanGameplayReadiness evaluateProductVulkanGameplayReadiness(
 
 void recordProductVulkanRendererUnavailable(ProductAppWindowState& window,
                                             std::string_view reasonCode) {
-  window.productVulkanRendererCreated = false;
-  window.productVulkanRendererReady = false;
+  window.productVulkanRenderer.created = false;
+  window.productVulkanRenderer.ready = false;
   window.productVulkanSurfaceCreated = false;
   window.productVulkanSwapchainReady = false;
   window.productVulkanStatus = "renderer_unavailable";
@@ -128,16 +128,16 @@ void recordProductVulkanRendererUnavailable(ProductAppWindowState& window,
 void recordProductVulkanRendererReady(ProductAppWindowState& window,
                                       const RendererApi& renderer) {
   const RenderReceipt diagnostics = renderer.diagnostics();
-  window.productVulkanRendererCreated = renderer.hasBackend();
-  window.productVulkanRendererReady =
+  window.productVulkanRenderer.created = renderer.hasBackend();
+  window.productVulkanRenderer.ready =
       renderer.lifecycleState() == RendererLifecycleState::Ready;
   window.productVulkanSurfaceCreated =
-      window.productVulkanRendererReady ||
+      window.productVulkanRenderer.ready ||
       hasReceiptField(diagnostics, "surface_ready", "true");
   window.productVulkanSwapchainReady =
-      window.productVulkanRendererReady ||
+      window.productVulkanRenderer.ready ||
       receiptFieldValueOr(diagnostics, "swapchain_state", "none") == "ready";
-  window.productVulkanStatus = window.productVulkanRendererReady
+  window.productVulkanStatus = window.productVulkanRenderer.ready
                                    ? "renderer_ready"
                                    : "renderer_unavailable";
   window.productVulkanReasonCode =
@@ -166,9 +166,9 @@ void recordProductVulkanSubmit(ProductAppWindowState& window,
     // branch-gate: BG-1028
     if (window.productVulkanRenderingPath == "product_menu_ui" &&
         window.productVulkanRecordMode == "ui_primitives") {
-      window.productVulkanMenuVisible = true;
-      window.productVulkanMenuStatus = "product_vulkan_menu_frame_submitted";
-      window.productVulkanMenuReasonCode =
+      window.productVulkanMenu.visible = true;
+      window.productVulkanMenu.status = "product_vulkan_menu_frame_submitted";
+      window.productVulkanMenu.reasonCode =
           receiptFieldValueOr(submit.receipt, "reason_code", "product_menu_ui_presented");
     }
   } else {
@@ -179,22 +179,22 @@ void recordProductVulkanSubmit(ProductAppWindowState& window,
 void recordProductVulkanMenuUiDrawList(ProductAppWindowState& window,
                                        std::string_view menuSurface,
                                        const ProductUiDrawList& uiDrawList) {
-  window.productVulkanMenuRequested = true;
-  window.productVulkanMenuVisible = uiDrawList.ready;
-  window.productVulkanMenuStatus = uiDrawList.ready
+  window.productVulkanMenu.requested = true;
+  window.productVulkanMenu.visible = uiDrawList.ready;
+  window.productVulkanMenu.status = uiDrawList.ready
                                        ? "product_vulkan_menu_ui_ready"
                                        : "product_vulkan_menu_ui_not_ready";
-  window.productVulkanMenuReasonCode = uiDrawList.reasonCode;
-  window.productVulkanMenuSurface = std::string(menuSurface);
-  window.productVulkanMenuUiReady = uiDrawList.ready;
-  window.productVulkanMenuUiPartial = uiDrawList.partial;
-  window.productVulkanMenuUiStatus = uiDrawList.status;
-  window.productVulkanMenuUiReasonCode = uiDrawList.reasonCode;
-  window.productVulkanMenuUiPrimitiveCount = uiDrawList.primitiveCount;
-  window.productVulkanMenuUiTextCount = uiDrawList.textCount;
-  window.productVulkanMenuUiRectCount = uiDrawList.rectCount;
-  window.productVulkanMenuUiRowCount = uiDrawList.rowCount;
-  window.productVulkanMenuUiSelectedAction = uiDrawList.selectedAction;
+  window.productVulkanMenu.reasonCode = uiDrawList.reasonCode;
+  window.productVulkanMenu.surface = std::string(menuSurface);
+  window.productVulkanMenu.uiReady = uiDrawList.ready;
+  window.productVulkanMenu.uiPartial = uiDrawList.partial;
+  window.productVulkanMenu.uiStatus = uiDrawList.status;
+  window.productVulkanMenu.uiReasonCode = uiDrawList.reasonCode;
+  window.productVulkanMenu.uiPrimitiveCount = uiDrawList.primitiveCount;
+  window.productVulkanMenu.uiTextCount = uiDrawList.textCount;
+  window.productVulkanMenu.uiRectCount = uiDrawList.rectCount;
+  window.productVulkanMenu.uiRowCount = uiDrawList.rowCount;
+  window.productVulkanMenu.uiSelectedAction = uiDrawList.selectedAction;
 }
 
 ProductWindowRendererState createProductWindowRenderer(
@@ -255,7 +255,7 @@ ProductWindowRendererState createProductWindowRenderer(
         RendererApi(std::make_unique<VulkanBackend>(std::move(backendInfo)));
     recordProductVulkanRendererReady(window, renderer.vulkanRenderer);
     // branch-gate: BG-1028
-    if (!window.productVulkanRendererReady) {
+    if (!window.productVulkanRenderer.ready) {
       window.status = "product_vulkan_renderer_unavailable";
       return renderer;
     }

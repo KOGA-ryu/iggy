@@ -2064,8 +2064,8 @@ void submitProductGameplayCommand(Session& session,
     window.gameplayMovementStatus = "submitted";
     clearProductMovementDebug(window);
   }
-  window.gameplayCollisionSurfacesUsed = collisionSurfaces != nullptr;
-  window.gameplayCollisionSurfaceCount =
+  window.gameplayCollision.surfacesUsed = collisionSurfaces != nullptr;
+  window.gameplayCollision.surfaceCount =
       collisionSurfaces == nullptr
           ? 0U
           : static_cast<std::uint64_t>(collisionSurfaces->size());

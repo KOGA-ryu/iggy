@@ -645,13 +645,13 @@ void recordProductCreativeUiInputFrame(
   window.creativeUiInputReasonCode = receipt.reasonCode;
 
   if (receipt.clickPresent) {
-    window.creativeUiLastClickSeen = true;
-    window.creativeUiLastClickX = floatReceiptValue(receipt.clickX);
-    window.creativeUiLastClickY = floatReceiptValue(receipt.clickY);
-    window.creativeUiLastInputHit = receipt.hit;
-    window.creativeUiLastInputConsumed = receipt.consumed;
-    window.creativeUiLastInputStatus = receipt.status;
-    window.creativeUiLastInputSemanticId =
+    window.creativeUiLast.clickSeen = true;
+    window.creativeUiLast.clickX = floatReceiptValue(receipt.clickX);
+    window.creativeUiLast.clickY = floatReceiptValue(receipt.clickY);
+    window.creativeUiLast.inputHit = receipt.hit;
+    window.creativeUiLast.inputConsumed = receipt.consumed;
+    window.creativeUiLast.inputStatus = receipt.status;
+    window.creativeUiLast.inputSemanticId =
         receipt.semanticId.empty() ? "none" : receipt.semanticId;
   }
 }
@@ -681,13 +681,13 @@ void recordProductCreativeUiCommandFrame(
       receipt.mutationRequested ||
       (receipt.inputConsumed && !receipt.semanticId.empty());
   if (commandTouchedCreativeState) {
-    window.creativeUiLastCommandKind =
+    window.creativeUiLast.commandKind =
         std::string(productCreativeUiCommandKindReceiptName(receipt.commandKind));
-    window.creativeUiLastCommandStatus = receipt.status;
-    window.creativeUiLastCommandCreateRequested = receipt.createRequested;
-    window.creativeUiLastCommandCreateAccepted = receipt.createAccepted;
-    window.creativeUiLastCommandCreateChanged = receipt.createChanged;
-    window.creativeUiLastCommandCreateObjectId = receipt.createObjectId;
+    window.creativeUiLast.commandStatus = receipt.status;
+    window.creativeUiLast.commandCreateRequested = receipt.createRequested;
+    window.creativeUiLast.commandCreateAccepted = receipt.createAccepted;
+    window.creativeUiLast.commandCreateChanged = receipt.createChanged;
+    window.creativeUiLast.commandCreateObjectId = receipt.createObjectId;
   }
 }
 
@@ -1978,9 +1978,9 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "position_hud_pitch_degrees",
                      floatReceiptValue(window.positionHud.pitchDegrees));
   appendReceiptField(receipt, "gameplay_collision_surfaces_used",
-                     window.gameplayCollisionSurfacesUsed);
+                     window.gameplayCollision.surfacesUsed);
   appendReceiptField(receipt, "gameplay_collision_surface_count",
-                     window.gameplayCollisionSurfaceCount);
+                     window.gameplayCollision.surfaceCount);
   appendReceiptField(receipt, "physics_movement_planner_enabled",
                      window.physicsMovementPlanner.enabled);
   appendReceiptField(receipt, "physics_movement_planner_requested",
@@ -2348,13 +2348,13 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "automation_control_last_result",
                      window.automationControl.lastResult);
   appendReceiptField(receipt, "product_vulkan_renderer_requested",
-                     window.productVulkanRendererRequested);
+                     window.productVulkanRenderer.requested);
   appendReceiptField(receipt, "product_vulkan_backend_built",
                      vulkanGameplayReadiness.backendBuilt);
   appendReceiptField(receipt, "product_vulkan_renderer_created",
-                     window.productVulkanRendererCreated);
+                     window.productVulkanRenderer.created);
   appendReceiptField(receipt, "product_vulkan_renderer_ready",
-                     window.productVulkanRendererReady);
+                     window.productVulkanRenderer.ready);
   appendReceiptField(receipt, "product_vulkan_surface_created",
                      window.productVulkanSurfaceCreated);
   appendReceiptField(receipt, "product_vulkan_swapchain_ready",
@@ -2371,33 +2371,33 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "product_vulkan_record_mode",
                      window.productVulkanRecordMode);
   appendReceiptField(receipt, "product_vulkan_menu_requested",
-                     window.productVulkanMenuRequested);
+                     window.productVulkanMenu.requested);
   appendReceiptField(receipt, "product_vulkan_menu_visible",
-                     window.productVulkanMenuVisible);
+                     window.productVulkanMenu.visible);
   appendReceiptField(receipt, "product_vulkan_menu_status",
-                     window.productVulkanMenuStatus);
+                     window.productVulkanMenu.status);
   appendReceiptField(receipt, "product_vulkan_menu_reason_code",
-                     window.productVulkanMenuReasonCode);
+                     window.productVulkanMenu.reasonCode);
   appendReceiptField(receipt, "product_vulkan_menu_surface",
-                     window.productVulkanMenuSurface);
+                     window.productVulkanMenu.surface);
   appendReceiptField(receipt, "product_vulkan_menu_ui_ready",
-                     window.productVulkanMenuUiReady);
+                     window.productVulkanMenu.uiReady);
   appendReceiptField(receipt, "product_vulkan_menu_ui_partial",
-                     window.productVulkanMenuUiPartial);
+                     window.productVulkanMenu.uiPartial);
   appendReceiptField(receipt, "product_vulkan_menu_ui_status",
-                     window.productVulkanMenuUiStatus);
+                     window.productVulkanMenu.uiStatus);
   appendReceiptField(receipt, "product_vulkan_menu_ui_reason_code",
-                     window.productVulkanMenuUiReasonCode);
+                     window.productVulkanMenu.uiReasonCode);
   appendReceiptField(receipt, "product_vulkan_menu_ui_primitive_count",
-                     window.productVulkanMenuUiPrimitiveCount);
+                     window.productVulkanMenu.uiPrimitiveCount);
   appendReceiptField(receipt, "product_vulkan_menu_ui_text_count",
-                     window.productVulkanMenuUiTextCount);
+                     window.productVulkanMenu.uiTextCount);
   appendReceiptField(receipt, "product_vulkan_menu_ui_rect_count",
-                     window.productVulkanMenuUiRectCount);
+                     window.productVulkanMenu.uiRectCount);
   appendReceiptField(receipt, "product_vulkan_menu_ui_row_count",
-                     window.productVulkanMenuUiRowCount);
+                     window.productVulkanMenu.uiRowCount);
   appendReceiptField(receipt, "product_vulkan_menu_ui_selected_action",
-                     window.productVulkanMenuUiSelectedAction);
+                     window.productVulkanMenu.uiSelectedAction);
   appendReceiptField(receipt, "creative_ui_projection_requested",
                      window.creativeUiProjection.requested);
   appendReceiptField(receipt, "creative_ui_projection_ready",
@@ -2467,35 +2467,35 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "creative_ui_input_reason_code",
                      window.creativeUiInputReasonCode);
   appendReceiptField(receipt, "creative_ui_last_click_seen",
-                     window.creativeUiLastClickSeen);
+                     window.creativeUiLast.clickSeen);
   appendReceiptField(receipt, "creative_ui_last_click_x",
-                     window.creativeUiLastClickX);
+                     window.creativeUiLast.clickX);
   appendReceiptField(receipt, "creative_ui_last_click_y",
-                     window.creativeUiLastClickY);
+                     window.creativeUiLast.clickY);
   appendReceiptField(receipt, "creative_ui_last_input_hit",
-                     window.creativeUiLastInputHit);
+                     window.creativeUiLast.inputHit);
   appendReceiptField(receipt, "creative_ui_last_input_consumed",
-                     window.creativeUiLastInputConsumed);
+                     window.creativeUiLast.inputConsumed);
   appendReceiptField(receipt, "creative_ui_last_input_status",
-                     window.creativeUiLastInputStatus);
+                     window.creativeUiLast.inputStatus);
   appendReceiptField(receipt, "creative_ui_last_input_semantic_id",
-                     window.creativeUiLastInputSemanticId);
+                     window.creativeUiLast.inputSemanticId);
   appendReceiptField(receipt, "creative_ui_last_command_kind",
-                     window.creativeUiLastCommandKind);
+                     window.creativeUiLast.commandKind);
   appendReceiptField(receipt, "creative_ui_last_command_status",
-                     window.creativeUiLastCommandStatus);
+                     window.creativeUiLast.commandStatus);
   appendReceiptField(receipt,
                      "creative_ui_last_command_create_requested",
-                     window.creativeUiLastCommandCreateRequested);
+                     window.creativeUiLast.commandCreateRequested);
   appendReceiptField(receipt,
                      "creative_ui_last_command_create_accepted",
-                     window.creativeUiLastCommandCreateAccepted);
+                     window.creativeUiLast.commandCreateAccepted);
   appendReceiptField(receipt,
                      "creative_ui_last_command_create_changed",
-                     window.creativeUiLastCommandCreateChanged);
+                     window.creativeUiLast.commandCreateChanged);
   appendReceiptField(receipt,
                      "creative_ui_last_command_create_object_id",
-                     window.creativeUiLastCommandCreateObjectId);
+                     window.creativeUiLast.commandCreateObjectId);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_requested",
                      window.creativeUiInputDownstreamClickRequested);

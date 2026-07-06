@@ -644,8 +644,8 @@ bool recorderCopiesHitReceiptFields() {
 bool recorderLeavesOtherFieldsUntouched() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_before";
-  window.productVulkanMenuUiReady = true;
-  window.productVulkanMenuUiStatus = "vulkan_before";
+  window.productVulkanMenu.uiReady = true;
+  window.productVulkanMenu.uiStatus = "vulkan_before";
   window.creativeUiProjection.requested = true;
   window.creativeUiProjection.status = "projection_before";
   window.creativeUiInputRequested = true;
@@ -660,8 +660,8 @@ bool recorderLeavesOtherFieldsUntouched() {
   iggy3d::recordProductCreativeViewportPickFrame(window, receipt);
 
   return expect(window.status == "window_before", "window status kept") &&
-         expect(window.productVulkanMenuUiReady, "vulkan ready kept") &&
-         expect(window.productVulkanMenuUiStatus == "vulkan_before",
+         expect(window.productVulkanMenu.uiReady, "vulkan ready kept") &&
+         expect(window.productVulkanMenu.uiStatus == "vulkan_before",
                 "vulkan status kept") &&
          expect(window.creativeUiProjection.requested,
                 "projection requested kept") &&

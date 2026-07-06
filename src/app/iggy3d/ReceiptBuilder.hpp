@@ -39,6 +39,10 @@
 #include "app/iggy3d/gameplay/ResetState.hpp"
 #include "app/iggy3d/gameplay/TapeState.hpp"
 #include "app/iggy3d/automation/AutomationControlState.hpp"
+#include "app/iggy3d/ProductCreativeUiLastState.hpp"
+#include "app/iggy3d/window/ProductVulkanMenuState.hpp"
+#include "app/iggy3d/window/ProductVulkanRendererState.hpp"
+#include "app/iggy3d/gameplay/CollisionState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -478,8 +482,7 @@ struct ProductAppWindowState {
   ProductGameplayResetState gameplayReset;
   ProductGameplayTraversalState gameplayTraversal;
   ProductGameplayDashState gameplayDash;
-  bool gameplayCollisionSurfacesUsed = false;
-  std::uint64_t gameplayCollisionSurfaceCount = 0;
+  ProductGameplayCollisionState gameplayCollision;
   std::string gameplayTickReasonCode = "not_requested";
   ProductPhysicsMovementPlannerState physicsMovementPlanner;
   bool targetDiscovered = false;
@@ -500,9 +503,7 @@ struct ProductAppWindowState {
   bool lastInputAccepted = false;
   bool gameplayInputSuppressed = false;
   ProductAutomationControlState automationControl;
-  bool productVulkanRendererRequested = false;
-  bool productVulkanRendererCreated = false;
-  bool productVulkanRendererReady = false;
+  ProductVulkanRendererState productVulkanRenderer;
   bool productVulkanSurfaceCreated = false;
   bool productVulkanSwapchainReady = false;
   bool productVulkanFrameSubmitted = false;
@@ -511,20 +512,7 @@ struct ProductAppWindowState {
   std::string productVulkanReasonCode = "not_requested";
   std::string productVulkanRenderingPath = "none";
   std::string productVulkanRecordMode = "none";
-  bool productVulkanMenuRequested = false;
-  bool productVulkanMenuVisible = false;
-  std::string productVulkanMenuStatus = "vulkan_menu_not_requested";
-  std::string productVulkanMenuReasonCode = "vulkan_menu_not_requested";
-  std::string productVulkanMenuSurface = "none";
-  bool productVulkanMenuUiReady = false;
-  bool productVulkanMenuUiPartial = false;
-  std::string productVulkanMenuUiStatus = "product_vulkan_menu_ui_not_requested";
-  std::string productVulkanMenuUiReasonCode = "product_vulkan_menu_ui_not_requested";
-  std::uint64_t productVulkanMenuUiPrimitiveCount = 0;
-  std::uint64_t productVulkanMenuUiTextCount = 0;
-  std::uint64_t productVulkanMenuUiRectCount = 0;
-  std::uint64_t productVulkanMenuUiRowCount = 0;
-  std::string productVulkanMenuUiSelectedAction = "none";
+  ProductVulkanMenuState productVulkanMenu;
   ProductCreativeUiProjectionState creativeUiProjection;
   bool creativeUiInputRequested = false;
   bool creativeUiInputClickPresent = false;
@@ -541,19 +529,7 @@ struct ProductAppWindowState {
   std::string creativeUiInputSemanticId = "none";
   std::string creativeUiInputStatus = "creative_ui_input_not_requested";
   std::string creativeUiInputReasonCode = "creative_ui_input_not_requested";
-  bool creativeUiLastClickSeen = false;
-  std::string creativeUiLastClickX = "none";
-  std::string creativeUiLastClickY = "none";
-  bool creativeUiLastInputHit = false;
-  bool creativeUiLastInputConsumed = false;
-  std::string creativeUiLastInputStatus = "none";
-  std::string creativeUiLastInputSemanticId = "none";
-  std::string creativeUiLastCommandKind = "none";
-  std::string creativeUiLastCommandStatus = "none";
-  bool creativeUiLastCommandCreateRequested = false;
-  bool creativeUiLastCommandCreateAccepted = false;
-  bool creativeUiLastCommandCreateChanged = false;
-  std::uint64_t creativeUiLastCommandCreateObjectId = 0;
+  ProductCreativeUiLastState creativeUiLast;
   bool creativeUiInputDownstreamClickRequested = false;
   bool creativeUiInputDownstreamClickPresent = false;
   bool creativeUiInputDownstreamClickHigherPriority = false;

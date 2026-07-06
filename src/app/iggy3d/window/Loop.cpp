@@ -131,7 +131,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
   window.requested = request.options.windowMode == ProductWindowMode::Window;
   const bool useVulkanRenderer =
       productWindowRendererUsesVulkan(request.options.renderer);
-  window.productVulkanRendererRequested = useVulkanRenderer;
+  window.productVulkanRenderer.requested = useVulkanRenderer;
   (void)syncProductWindowInputOwnerFromActiveSurface(request.frontend, window);
   // branch-gate: BG-1031
   if (!window.requested) {

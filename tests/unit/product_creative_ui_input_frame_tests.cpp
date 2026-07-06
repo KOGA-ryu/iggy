@@ -759,7 +759,7 @@ bool recorderPreservesStickyClickAndCommandAcrossNoClickFrame() {
           iggy3d::ProductCreativeUiCommandFrameRequest{&app, clickReceipt});
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const std::uint64_t createdObjectId =
-      window.creativeUiLastCommandCreateObjectId;
+      window.creativeUiLast.commandCreateObjectId;
 
   iggy3d::ProductCreativeUiInputFrameRequest noClickRequest;
   noClickRequest.creativeUiDrawList = &drawList;
@@ -783,32 +783,32 @@ bool recorderPreservesStickyClickAndCommandAcrossNoClickFrame() {
                 "sticky per-frame no-click status") &&
          expect(window.creativeUiCommand.kind == "none",
                 "sticky per-frame command none") &&
-         expect(window.creativeUiLastClickSeen,
+         expect(window.creativeUiLast.clickSeen,
                 "sticky click seen retained") &&
-         expect(window.creativeUiLastClickX != "none",
+         expect(window.creativeUiLast.clickX != "none",
                 "sticky click x retained") &&
-         expect(window.creativeUiLastClickY != "none",
+         expect(window.creativeUiLast.clickY != "none",
                 "sticky click y retained") &&
-         expect(window.creativeUiLastInputHit,
+         expect(window.creativeUiLast.inputHit,
                 "sticky input hit retained") &&
-         expect(window.creativeUiLastInputConsumed,
+         expect(window.creativeUiLast.inputConsumed,
                 "sticky input consumed retained") &&
-         expect(window.creativeUiLastInputStatus ==
+         expect(window.creativeUiLast.inputStatus ==
                     "product_creative_ui_input_consumed",
                 "sticky input status retained") &&
-         expect(window.creativeUiLastInputSemanticId ==
+         expect(window.creativeUiLast.inputSemanticId ==
                     "creative.row.create.create_room",
                 "sticky input semantic retained") &&
-         expect(window.creativeUiLastCommandKind == "create_object",
+         expect(window.creativeUiLast.commandKind == "create_object",
                 "sticky command kind retained") &&
-         expect(window.creativeUiLastCommandStatus ==
+         expect(window.creativeUiLast.commandStatus ==
                     "product_creative_ui_command_applied",
                 "sticky command status retained") &&
-         expect(window.creativeUiLastCommandCreateRequested,
+         expect(window.creativeUiLast.commandCreateRequested,
                 "sticky create requested retained") &&
-         expect(window.creativeUiLastCommandCreateAccepted,
+         expect(window.creativeUiLast.commandCreateAccepted,
                 "sticky create accepted retained") &&
-         expect(window.creativeUiLastCommandCreateChanged,
+         expect(window.creativeUiLast.commandCreateChanged,
                 "sticky create changed retained") &&
          expect(createdObjectId != 0U, "sticky create object id retained") &&
          expectReceiptField(receipt,
@@ -873,9 +873,9 @@ bool recorderCopiesSuppressedDownstreamClickReceipt() {
 bool recorderLeavesOtherReceiptFieldsUntouched() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_status_before";
-  window.productVulkanMenuUiReady = true;
-  window.productVulkanMenuUiStatus = "vulkan_ui_before";
-  window.productVulkanMenuUiSelectedAction = "resume";
+  window.productVulkanMenu.uiReady = true;
+  window.productVulkanMenu.uiStatus = "vulkan_ui_before";
+  window.productVulkanMenu.uiSelectedAction = "resume";
   window.creativeUiProjection.requested = true;
   window.creativeUiProjection.ready = true;
   window.creativeUiProjection.status = "projection_before";
@@ -892,11 +892,11 @@ bool recorderLeavesOtherReceiptFieldsUntouched() {
 
   return expect(window.status == "window_status_before",
                 "window status unchanged") &&
-         expect(window.productVulkanMenuUiReady,
+         expect(window.productVulkanMenu.uiReady,
                 "vulkan ui ready unchanged") &&
-         expect(window.productVulkanMenuUiStatus == "vulkan_ui_before",
+         expect(window.productVulkanMenu.uiStatus == "vulkan_ui_before",
                 "vulkan ui status unchanged") &&
-         expect(window.productVulkanMenuUiSelectedAction == "resume",
+         expect(window.productVulkanMenu.uiSelectedAction == "resume",
                 "vulkan selected action unchanged") &&
          expect(window.creativeUiProjection.requested,
                 "projection requested unchanged") &&
@@ -1294,27 +1294,27 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
                 "create injected create message") &&
          expect(window.creativeUiCommand.create.reasonCode == "object_created",
                 "create injected create reason") &&
-         expect(window.creativeUiLastClickSeen,
+         expect(window.creativeUiLast.clickSeen,
                 "create injected sticky click seen") &&
-         expect(window.creativeUiLastInputHit,
+         expect(window.creativeUiLast.inputHit,
                 "create injected sticky input hit") &&
-         expect(window.creativeUiLastInputConsumed,
+         expect(window.creativeUiLast.inputConsumed,
                 "create injected sticky input consumed") &&
-         expect(window.creativeUiLastInputSemanticId ==
+         expect(window.creativeUiLast.inputSemanticId ==
                     "creative.row.create.create_room",
                 "create injected sticky input semantic") &&
-         expect(window.creativeUiLastCommandKind == "create_object",
+         expect(window.creativeUiLast.commandKind == "create_object",
                 "create injected sticky command kind") &&
-         expect(window.creativeUiLastCommandStatus ==
+         expect(window.creativeUiLast.commandStatus ==
                     "product_creative_ui_command_applied",
                 "create injected sticky command status") &&
-         expect(window.creativeUiLastCommandCreateRequested,
+         expect(window.creativeUiLast.commandCreateRequested,
                 "create injected sticky create requested") &&
-         expect(window.creativeUiLastCommandCreateAccepted,
+         expect(window.creativeUiLast.commandCreateAccepted,
                 "create injected sticky create accepted") &&
-         expect(window.creativeUiLastCommandCreateChanged,
+         expect(window.creativeUiLast.commandCreateChanged,
                 "create injected sticky create changed") &&
-         expect(window.creativeUiLastCommandCreateObjectId ==
+         expect(window.creativeUiLast.commandCreateObjectId ==
                     window.creativeUiCommand.create.objectId,
                 "create injected sticky object id") &&
          expectReceiptField(receipt,

@@ -404,7 +404,7 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
                window.activeRoomCollision.querySurfaceCount);
   counters.physicsMovementSurfaceMax =
       std::max(counters.physicsMovementSurfaceMax,
-               window.gameplayCollisionSurfaceCount);
+               window.gameplayCollision.surfaceCount);
   counters.physicsMovementSweepMax =
       std::max(counters.physicsMovementSweepMax,
                window.gameplayMovementCollisionSweepCount);

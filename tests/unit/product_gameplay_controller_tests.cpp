@@ -2062,7 +2062,7 @@ bool defaultOffMoveWithCollisionSurfacesUsesLegacyPath() {
   return expect(window.gameplayCommandAccepted, "legacy surfaces move accepted") &&
          expect(window.gameplayMovementStatus == "moved",
                 "legacy surfaces movement status") &&
-         expect(window.gameplayCollisionSurfacesUsed,
+         expect(window.gameplayCollision.surfacesUsed,
                 "legacy surfaces collision surfaces used") &&
          expect(!window.physicsMovementPlanner.enabled,
                 "legacy surfaces physics planner disabled") &&

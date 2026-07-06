@@ -788,9 +788,9 @@ bool productReceiptCarriesFirstPersonRoomPathProof() {
   iggy3d::applyGameplayProjectionMetrics(window, frame.scenePtr(), frame.debugPtr(),
                                          frame.drawListPtr(), frame.viewportFramePtr(),
                                          frame.renderBridgePtr(), frame.viewVisible);
-  window.productVulkanRendererRequested = true;
-  window.productVulkanRendererCreated = true;
-  window.productVulkanRendererReady = true;
+  window.productVulkanRenderer.requested = true;
+  window.productVulkanRenderer.created = true;
+  window.productVulkanRenderer.ready = true;
   window.productVulkanFrameSubmitted = true;
   window.productVulkanFrameSubmittedCount = 1U;
   window.productVulkanRenderingPath = "package_room_meshes";

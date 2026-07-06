@@ -792,9 +792,9 @@ bool recorderPreservesNeighboringFields() {
   window.creativeViewportPickStatus = "viewport_before";
   window.creativeUiProjection.requested = true;
   window.creativeUiProjection.status = "projection_before";
-  window.productVulkanMenuUiReady = true;
-  window.productVulkanMenuUiStatus = "vulkan_before";
-  window.productVulkanMenuUiSelectedAction = "resume";
+  window.productVulkanMenu.uiReady = true;
+  window.productVulkanMenu.uiStatus = "vulkan_before";
+  window.productVulkanMenu.uiSelectedAction = "resume";
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
       appliedCreateRoomReceipt();
@@ -821,10 +821,10 @@ bool recorderPreservesNeighboringFields() {
                 "projection requested kept") &&
          expect(window.creativeUiProjection.status == "projection_before",
                 "projection status kept") &&
-         expect(window.productVulkanMenuUiReady, "vulkan ready kept") &&
-         expect(window.productVulkanMenuUiStatus == "vulkan_before",
+         expect(window.productVulkanMenu.uiReady, "vulkan ready kept") &&
+         expect(window.productVulkanMenu.uiStatus == "vulkan_before",
                 "vulkan status kept") &&
-         expect(window.productVulkanMenuUiSelectedAction == "resume",
+         expect(window.productVulkanMenu.uiSelectedAction == "resume",
                 "vulkan action kept") &&
          expectReceiptFields(
              receipt,

@@ -54,15 +54,15 @@ void populateSelectedFacade(cr::Facade& facade) {
 }
 
 void prepopulateProductVulkanMenuUi(iggy3d::ProductAppWindowState& window) {
-  window.productVulkanMenuUiReady = true;
-  window.productVulkanMenuUiPartial = true;
-  window.productVulkanMenuUiStatus = "preexisting_ui_status";
-  window.productVulkanMenuUiReasonCode = "preexisting_ui_reason";
-  window.productVulkanMenuUiPrimitiveCount = 101;
-  window.productVulkanMenuUiTextCount = 102;
-  window.productVulkanMenuUiRectCount = 103;
-  window.productVulkanMenuUiRowCount = 104;
-  window.productVulkanMenuUiSelectedAction = "preexisting_action";
+  window.productVulkanMenu.uiReady = true;
+  window.productVulkanMenu.uiPartial = true;
+  window.productVulkanMenu.uiStatus = "preexisting_ui_status";
+  window.productVulkanMenu.uiReasonCode = "preexisting_ui_reason";
+  window.productVulkanMenu.uiPrimitiveCount = 101;
+  window.productVulkanMenu.uiTextCount = 102;
+  window.productVulkanMenu.uiRectCount = 103;
+  window.productVulkanMenu.uiRowCount = 104;
+  window.productVulkanMenu.uiSelectedAction = "preexisting_action";
 }
 
 iggy3d::ProductUiDrawList readyCreativeDrawList() {
@@ -398,24 +398,24 @@ bool productVulkanMenuUiFieldsAreUnchanged() {
                                                   720,
                                                   iggy3d::ProductUiThemeId::System}));
 
-  return expect(window.productVulkanMenuUiReady,
+  return expect(window.productVulkanMenu.uiReady,
                 "vulkan ui ready unchanged") &&
-         expect(window.productVulkanMenuUiPartial,
+         expect(window.productVulkanMenu.uiPartial,
                 "vulkan ui partial unchanged") &&
-         expect(window.productVulkanMenuUiStatus == "preexisting_ui_status",
+         expect(window.productVulkanMenu.uiStatus == "preexisting_ui_status",
                 "vulkan ui status unchanged") &&
-         expect(window.productVulkanMenuUiReasonCode ==
+         expect(window.productVulkanMenu.uiReasonCode ==
                     "preexisting_ui_reason",
                 "vulkan ui reason unchanged") &&
-         expect(window.productVulkanMenuUiPrimitiveCount == 101U,
+         expect(window.productVulkanMenu.uiPrimitiveCount == 101U,
                 "vulkan ui primitive count unchanged") &&
-         expect(window.productVulkanMenuUiTextCount == 102U,
+         expect(window.productVulkanMenu.uiTextCount == 102U,
                 "vulkan ui text count unchanged") &&
-         expect(window.productVulkanMenuUiRectCount == 103U,
+         expect(window.productVulkanMenu.uiRectCount == 103U,
                 "vulkan ui rect count unchanged") &&
-         expect(window.productVulkanMenuUiRowCount == 104U,
+         expect(window.productVulkanMenu.uiRowCount == 104U,
                 "vulkan ui row count unchanged") &&
-         expect(window.productVulkanMenuUiSelectedAction ==
+         expect(window.productVulkanMenu.uiSelectedAction ==
                     "preexisting_action",
                 "vulkan ui action unchanged");
 }
