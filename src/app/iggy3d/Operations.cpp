@@ -28,6 +28,11 @@ namespace iggy3d {
 
 namespace {
 
+constexpr const char* kCreativeRoomBakeNoRenderableObjects =
+    "creative_room_bake_no_renderable_objects";
+constexpr const char* kProductCreativeBakedRoomClearedNoRenderableObjects =
+    "product_creative_baked_room_cleared_no_renderable_objects";
+
 std::string packageLoadStatusName(PackageLoadStatus status) {
   switch (status) {
     case PackageLoadStatus::Ok:
@@ -547,6 +552,29 @@ void setCreativeBakedActiveRoomRefreshStatus(
     std::string reason) {
   result.status = std::move(reason);
   result.reasonCode = result.status;
+}
+
+std::string fallbackString(std::string_view value, std::string_view fallback) {
+  return value.empty() ? std::string(fallback) : std::string(value);
+}
+
+ProductActiveRoomState clearedCreativeBakedActiveRoom(
+    const ProductCreativeBakedActiveRoomRefreshRequest& request) {
+  ProductActiveRoomState activeRoom;
+  activeRoom.status = kProductCreativeBakedRoomClearedNoRenderableObjects;
+  activeRoom.reasonCode = kProductCreativeBakedRoomClearedNoRenderableObjects;
+  activeRoom.source = "creative_room_bake";
+  activeRoom.roomId = fallbackString(request.roomId, "creative_room");
+  activeRoom.sourceName = fallbackString(request.sourceName, "iggy3d.creative");
+  activeRoom.sourceSubset =
+      fallbackString(request.sourceSubset, "creative_document_bake");
+  activeRoom.room.id = activeRoom.roomId;
+  activeRoom.room.version = 1;
+  activeRoom.room.units = "m";
+  activeRoom.room.source = "iggy3d.creative_document";
+  activeRoom.room.sourceFile = activeRoom.sourceName;
+  activeRoom.room.sourceSubset = activeRoom.sourceSubset;
+  return activeRoom;
 }
 
 std::string idOrNone(std::string_view value) {
@@ -1448,6 +1476,25 @@ ProductCreativeBakedActiveRoomRefreshResult refreshProductCreativeBakedActiveRoo
   result.spatialSurfaceSourceCount =
       static_cast<std::uint64_t>(bake.spatialSurfaceSources.size());
   if (!bake.receipt.accepted) {
+    if (request.clearOnNoRenderable &&
+        bake.receipt.reasonCode == kCreativeRoomBakeNoRenderableObjects) {
+      window.activeRoom = clearedCreativeBakedActiveRoom(request);
+      window.activeRoomCollision =
+          buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
+
+      result.accepted = true;
+      result.clearedActiveRoom = true;
+      result.activeRoomLoaded = window.activeRoom.loaded;
+      result.activeRoomStatus = window.activeRoom.status;
+      result.collisionReady = window.activeRoomCollision.ready;
+      result.collisionQuerySurfaceCount =
+          window.activeRoomCollision.querySurfaceCount;
+      setCreativeBakedActiveRoomRefreshStatus(
+          result,
+          kProductCreativeBakedRoomClearedNoRenderableObjects);
+      recordProductCreativeBakedRoomFresh(window, document.id(), document.revision());
+      return result;
+    }
     setCreativeBakedActiveRoomRefreshStatus(result, bake.receipt.reasonCode);
     return result;
   }

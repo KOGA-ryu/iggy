@@ -1945,7 +1945,7 @@ bool manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() {
                 "manual rebuild dirty flags preserved");
 }
 
-bool manualRebuildRoomCommandPreservesRoomStateOnNoRenderableDocument() {
+bool manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() {
   const iggy3d::ProductAppOptions options =
       testOptions("manual_baked_room_no_renderable");
   iggy3d::FrontendState frontend;
@@ -1960,6 +1960,8 @@ bool manualRebuildRoomCommandPreservesRoomStateOnNoRenderableDocument() {
                           activeSession,
                           window,
                           app);
+  const cr::CreativeObjectDirtyFlags dirtyBefore =
+      app.facade.document().dirtyFlags();
   window.activeRoom = sentinelActiveRoom();
   window.activeRoomCollision = sentinelActiveRoomCollision();
   window.creativeBakedRoomStale = true;
@@ -1984,13 +1986,13 @@ bool manualRebuildRoomCommandPreservesRoomStateOnNoRenderableDocument() {
                 "manual empty rebuild command kind") &&
          expect(window.creativeUiCommandBakedRoomRefreshRequested,
                 "manual empty rebuild refresh requested") &&
-         expect(!window.creativeUiCommandBakedRoomRefreshAccepted,
-                "manual empty rebuild refresh rejected") &&
+         expect(window.creativeUiCommandBakedRoomRefreshAccepted,
+                "manual empty rebuild refresh accepted clear") &&
          expect(window.creativeUiCommandBakedRoomRefreshStatus ==
-                    "creative_room_bake_no_renderable_objects",
+                    "product_creative_baked_room_cleared_no_renderable_objects",
                 "manual empty rebuild refresh status") &&
          expect(window.creativeUiCommandBakedRoomRefreshReasonCode ==
-                    "creative_room_bake_no_renderable_objects",
+                    "product_creative_baked_room_cleared_no_renderable_objects",
                 "manual empty rebuild refresh reason") &&
          expect(window.creativeUiCommandBakedRoomStaticMeshCount == 0U,
                 "manual empty rebuild static mesh count") &&
@@ -2000,16 +2002,69 @@ bool manualRebuildRoomCommandPreservesRoomStateOnNoRenderableDocument() {
                 "manual empty rebuild spatial surface count") &&
          expect(!window.creativeUiCommandBakedRoomCollisionReady,
                 "manual empty rebuild collision not ready") &&
+         expect(window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount == 0U,
+                "manual empty rebuild collision query count") &&
          expect(window.creativeDocumentRevisionObserved,
                 "manual empty rebuild revision observed") &&
          expect(!window.creativeDocumentChangedThisFrame,
                 "manual empty rebuild no document mutation") &&
-         expect(window.creativeBakedRoomStale,
-                "manual empty rebuild keeps stale after rejection") &&
+         expect(!window.creativeBakedRoomStale,
+                "manual empty rebuild clears stale after clear") &&
+         expect(window.creativeBakedRoomStaleDocumentId ==
+                    app.facade.document().id(),
+                "manual empty rebuild fresh stale doc id") &&
+         expect(window.creativeBakedRoomStaleRevision ==
+                    app.facade.document().revision(),
+                "manual empty rebuild fresh stale revision") &&
          expect(window.creativeBakedRoomStaleStatus ==
-                    "creative_baked_room_stale_document_changed",
-                "manual empty rebuild stale status kept") &&
-         sentinelRoomStatePreserved(window);
+                    "creative_baked_room_fresh",
+                "manual empty rebuild stale status fresh") &&
+         expect(!window.activeRoom.loaded,
+                "manual empty rebuild active room unloaded") &&
+         expect(window.activeRoom.status ==
+                    "product_creative_baked_room_cleared_no_renderable_objects",
+                "manual empty rebuild active room clear status") &&
+         expect(window.activeRoom.reasonCode ==
+                    "product_creative_baked_room_cleared_no_renderable_objects",
+                "manual empty rebuild active room clear reason") &&
+         expect(window.activeRoom.source == "creative_room_bake",
+                "manual empty rebuild active room clear source") &&
+         expect(window.activeRoom.roomId == "iggy3d_creative_baked_room",
+                "manual empty rebuild active room clear room id") &&
+         expect(window.activeRoom.sourceName == "iggy3d.creative",
+                "manual empty rebuild active room clear source name") &&
+         expect(window.activeRoom.sourceSubset == "creative_document_bake",
+                "manual empty rebuild active room clear source subset") &&
+         expect(window.activeRoom.staticMeshCount == 0U,
+                "manual empty rebuild active room clear mesh count") &&
+         expect(window.activeRoom.anchorCount == 0U,
+                "manual empty rebuild active room clear anchor count") &&
+         expect(window.activeRoom.spatialSurfaceCount == 0U,
+                "manual empty rebuild active room clear surface count") &&
+         expect(window.activeRoom.room.staticMeshes.empty(),
+                "manual empty rebuild room static meshes empty") &&
+         expect(window.activeRoom.room.anchors.empty(),
+                "manual empty rebuild room anchors empty") &&
+         expect(window.activeRoom.room.spatialSurfaces.empty(),
+                "manual empty rebuild room surfaces empty") &&
+         expect(!window.activeRoomCollision.ready,
+                "manual empty rebuild collision unavailable") &&
+         expect(window.activeRoomCollision.status ==
+                    "active_room_collision_unavailable",
+                "manual empty rebuild collision clear status") &&
+         expect(window.activeRoomCollision.reasonCode ==
+                    "product_creative_baked_room_cleared_no_renderable_objects",
+                "manual empty rebuild collision clear reason") &&
+         expect(window.activeRoomCollision.querySurfaceCount == 0U,
+                "manual empty rebuild collision clear query count") &&
+         expect(window.activeCreativeSaveId == launched.saveId,
+                "manual empty rebuild active creative save preserved") &&
+         expect(window.activeCreativeDocumentId == launched.documentId,
+                "manual empty rebuild active creative document preserved") &&
+         expect(window.activeProductSaveId == "none",
+                "manual empty rebuild active product save unchanged") &&
+         expect(app.facade.document().dirtyFlags() == dirtyBefore,
+                "manual empty rebuild dirty flags preserved");
 }
 
 bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
@@ -2137,6 +2192,8 @@ bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
 
   return expect(launched.accepted, "empty bake setup launch accepted") &&
          expect(!refreshed.accepted, "empty bake rejected") &&
+         expect(!refreshed.clearedActiveRoom,
+                "empty bake default did not clear active room") &&
          expect(refreshed.status == "creative_room_bake_no_renderable_objects",
                 "empty bake status mirrors RoomBake") &&
          expect(refreshed.bakeReceipt.requested, "empty bake requested") &&
@@ -2297,7 +2354,7 @@ int main() {
       secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() &&
       refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() &&
       manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() &&
-      manualRebuildRoomCommandPreservesRoomStateOnNoRenderableDocument() &&
+      manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() &&
       refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() &&
       creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() &&
       creativeLaunchFramesCameraOnOrigin() &&

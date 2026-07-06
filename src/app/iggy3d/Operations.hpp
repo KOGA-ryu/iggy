@@ -58,10 +58,12 @@ struct ProductCreativeBakedActiveRoomRefreshRequest {
   std::string sourceName = "iggy3d.creative";
   std::string sourceSubset = "creative_document_bake";
   bool includeHidden = false;
+  bool clearOnNoRenderable = false;
 };
 
 struct ProductCreativeBakedActiveRoomRefreshResult {
   bool accepted = false;
+  bool clearedActiveRoom = false;
   std::string status = "product_creative_baked_room_not_requested";
   std::string reasonCode = "product_creative_baked_room_not_requested";
   creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;

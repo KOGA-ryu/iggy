@@ -1191,8 +1191,10 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   if (creativeUiCommandReceipt.commandKind ==
           ProductCreativeUiCommandKind::RebuildRoom &&
       context.creativeApp != nullptr) {
+    ProductCreativeBakedActiveRoomRefreshRequest refreshRequest;
+    refreshRequest.clearOnNoRenderable = true;
     const ProductCreativeBakedActiveRoomRefreshResult refresh =
-        refreshProductCreativeBakedActiveRoom({},
+        refreshProductCreativeBakedActiveRoom(refreshRequest,
                                              context.activeSession,
                                              context.window,
                                              *context.creativeApp);
