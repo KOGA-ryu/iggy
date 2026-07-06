@@ -713,6 +713,22 @@ void mirrorCreativeDocumentInstallResult(
   }
 }
 
+void mirrorCreativeBakedActiveRoomRefreshResult(
+    ProductCreativeNewWorldLaunchResult& result,
+    const ProductCreativeBakedActiveRoomRefreshResult& refresh) {
+  result.bakedActiveRoomRefreshRequested = true;
+  result.bakedActiveRoomRefreshAccepted = refresh.accepted;
+  result.bakedActiveRoomRefresh = refresh;
+}
+
+void mirrorCreativeBakedActiveRoomRefreshResult(
+    ProductCreativeOpenWorldLaunchResult& result,
+    const ProductCreativeBakedActiveRoomRefreshResult& refresh) {
+  result.bakedActiveRoomRefreshRequested = true;
+  result.bakedActiveRoomRefreshAccepted = refresh.accepted;
+  result.bakedActiveRoomRefresh = refresh;
+}
+
 void recordSelectedDeletedProductSaveSlot(const SaveSlotList& slots,
                                           const SaveSlotPreview* slot,
                                           ProductAppWindowState& window) {
@@ -1233,6 +1249,13 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
                                    result.documentId,
                                    result.objectCount,
                                    result.nextObjectId);
+  const ProductCreativeBakedActiveRoomRefreshResult bakedActiveRoom =
+      refreshProductCreativeBakedActiveRoom(
+          ProductCreativeBakedActiveRoomRefreshRequest{},
+          activeSession,
+          window,
+          creativeApp);
+  mirrorCreativeBakedActiveRoomRefreshResult(result, bakedActiveRoom);
   return result;
 }
 
@@ -1292,6 +1315,13 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
                                    result.documentId,
                                    result.objectCount,
                                    result.nextObjectId);
+  const ProductCreativeBakedActiveRoomRefreshResult bakedActiveRoom =
+      refreshProductCreativeBakedActiveRoom(
+          ProductCreativeBakedActiveRoomRefreshRequest{},
+          activeSession,
+          window,
+          creativeApp);
+  mirrorCreativeBakedActiveRoomRefreshResult(result, bakedActiveRoom);
   return result;
 }
 

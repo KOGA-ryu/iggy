@@ -53,61 +53,6 @@ struct ProductCreativeNewWorldLaunchRequest {
   std::string scenarioId = "creative.document";
 };
 
-struct ProductCreativeNewWorldLaunchResult {
-  bool accepted = false;
-  std::string status = "product_creative_new_world_not_requested";
-  std::string reasonCode = "product_creative_new_world_not_requested";
-  bool sessionCreated = false;
-  bool documentInstalled = false;
-  bool enteredGameplay = false;
-  std::string saveId = "none";
-  std::filesystem::path path;
-  std::string worldId;
-  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
-  std::uint64_t objectCount = 0;
-  creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
-  CreativeWorldCreateResult createResult;
-  creative::CreativeFacadeDocumentInstallReceipt installReceipt;
-};
-
-struct ProductCreativeOpenWorldLaunchRequest {
-  std::string saveId;
-};
-
-struct ProductCreativeOpenWorldLaunchResult {
-  bool accepted = false;
-  std::string status = "product_creative_open_world_not_requested";
-  std::string reasonCode = "product_creative_open_world_not_requested";
-  bool sessionCreated = false;
-  bool documentInstalled = false;
-  bool enteredGameplay = false;
-  std::string saveId = "none";
-  std::filesystem::path path;
-  std::string worldId;
-  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
-  std::uint64_t objectCount = 0;
-  creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
-  CreativeWorldOpenResult openResult;
-  creative::CreativeFacadeDocumentInstallReceipt installReceipt;
-};
-
-struct ProductCreativeCurrentWorldSaveResult {
-  bool accepted = false;
-  std::string status = "product_creative_save_not_requested";
-  std::string reasonCode = "product_creative_save_not_requested";
-  std::string saveId = "none";
-  std::filesystem::path path;
-  std::string worldId = "none";
-  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
-  std::uint64_t objectCount = 0;
-  creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
-  creative::CreativeObjectDirtyFlags dirtyFlagsBefore = 0;
-  creative::CreativeObjectDirtyFlags dirtyFlagsDrained = 0;
-  creative::CreativeObjectDirtyFlags dirtyFlagsAfter = 0;
-  bool saved = false;
-  CreativeWorldSaveResult saveResult;
-};
-
 struct ProductCreativeBakedActiveRoomRefreshRequest {
   std::string roomId = "iggy3d_creative_baked_room";
   std::string sourceName = "iggy3d.creative";
@@ -132,6 +77,67 @@ struct ProductCreativeBakedActiveRoomRefreshResult {
   std::string activeRoomStatus = "not_loaded";
   bool collisionReady = false;
   std::uint64_t collisionQuerySurfaceCount = 0;
+};
+
+struct ProductCreativeNewWorldLaunchResult {
+  bool accepted = false;
+  std::string status = "product_creative_new_world_not_requested";
+  std::string reasonCode = "product_creative_new_world_not_requested";
+  bool sessionCreated = false;
+  bool documentInstalled = false;
+  bool enteredGameplay = false;
+  std::string saveId = "none";
+  std::filesystem::path path;
+  std::string worldId;
+  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
+  std::uint64_t objectCount = 0;
+  creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
+  CreativeWorldCreateResult createResult;
+  creative::CreativeFacadeDocumentInstallReceipt installReceipt;
+  bool bakedActiveRoomRefreshRequested = false;
+  bool bakedActiveRoomRefreshAccepted = false;
+  ProductCreativeBakedActiveRoomRefreshResult bakedActiveRoomRefresh;
+};
+
+struct ProductCreativeOpenWorldLaunchRequest {
+  std::string saveId;
+};
+
+struct ProductCreativeOpenWorldLaunchResult {
+  bool accepted = false;
+  std::string status = "product_creative_open_world_not_requested";
+  std::string reasonCode = "product_creative_open_world_not_requested";
+  bool sessionCreated = false;
+  bool documentInstalled = false;
+  bool enteredGameplay = false;
+  std::string saveId = "none";
+  std::filesystem::path path;
+  std::string worldId;
+  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
+  std::uint64_t objectCount = 0;
+  creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
+  CreativeWorldOpenResult openResult;
+  creative::CreativeFacadeDocumentInstallReceipt installReceipt;
+  bool bakedActiveRoomRefreshRequested = false;
+  bool bakedActiveRoomRefreshAccepted = false;
+  ProductCreativeBakedActiveRoomRefreshResult bakedActiveRoomRefresh;
+};
+
+struct ProductCreativeCurrentWorldSaveResult {
+  bool accepted = false;
+  std::string status = "product_creative_save_not_requested";
+  std::string reasonCode = "product_creative_save_not_requested";
+  std::string saveId = "none";
+  std::filesystem::path path;
+  std::string worldId = "none";
+  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
+  std::uint64_t objectCount = 0;
+  creative::CreativeObjectId nextObjectId = creative::kInvalidObjectId;
+  creative::CreativeObjectDirtyFlags dirtyFlagsBefore = 0;
+  creative::CreativeObjectDirtyFlags dirtyFlagsDrained = 0;
+  creative::CreativeObjectDirtyFlags dirtyFlagsAfter = 0;
+  bool saved = false;
+  CreativeWorldSaveResult saveResult;
 };
 
 std::string_view productSaveFlowOperationName(ProductSaveFlowOperation operation);

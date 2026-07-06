@@ -690,6 +690,144 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
                 "open launch pointer clear");
 }
 
+bool openLaunchRefreshesBakedActiveRoomFromSavedCreativeDocument() {
+  const iggy3d::ProductAppOptions options = testOptions("open_baked_room");
+  iggy3d::FrontendState createFrontend;
+  std::optional<iggy3d::Session> createSession;
+  iggy3d::ProductAppWindowState createWindow;
+  cr::CreativeAppState createApp;
+  cr::Facade& createFacade = createApp.facade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult created =
+      launchCreativeWorld(options,
+                          launchRequest("Open Baked Source",
+                                        "2026-07-05T12:00:00Z"),
+                          createFrontend,
+                          createSession,
+                          createWindow,
+                          createApp);
+  const cr::CreativeDocumentCreateReceipt floor =
+      createBoundsObject(createFacade,
+                         cr::CreativeObjectKind::Floor,
+                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt wall =
+      createBoundsObject(createFacade,
+                         cr::CreativeObjectKind::Wall,
+                         {{5.0, 0.0, 0.0}, {9.0, 2.5, 0.25}});
+  const cr::CreativeDocumentCreateReceipt crate =
+      createBoundsObject(createFacade,
+                         cr::CreativeObjectKind::Crate,
+                         {{1.0, 0.0, 5.0}, {2.0, 1.0, 6.0}});
+  const cr::CreativeDocumentCreateReceipt beam =
+      createBoundsObject(createFacade,
+                         cr::CreativeObjectKind::Beam,
+                         {{0.0, 1.0, 0.0}, {4.0, 1.35, 0.35}});
+  const cr::CreativeDocumentCreateReceipt point =
+      createPointObject(createFacade,
+                        cr::CreativeObjectKind::PointLight,
+                        {6.25, 1.5, -2.75});
+  const cr::CreativeDocumentCreateReceipt path = createPatrolRoute(createFacade);
+  const iggy3d::CreativeWorldSaveResult saved =
+      iggy3d::saveCreativeWorld(
+          saveRequest(options,
+                      created.saveId,
+                      createFacade.documentForPersistence()));
+
+  iggy3d::FrontendState openFrontend;
+  std::optional<iggy3d::Session> openSession;
+  iggy3d::ProductAppWindowState openWindow;
+  cr::CreativeAppState openApp;
+  cr::Facade& openFacade = openApp.facade;
+  const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
+      openCreativeWorld(options,
+                        created.saveId,
+                        openFrontend,
+                        openSession,
+                        openWindow,
+                        openApp);
+  const iggy3d::SceneProjectionResult projection =
+      openSession.has_value()
+          ? iggy3d::buildSceneProjection(openSession->state(),
+                                         &openWindow.activeRoom.room)
+          : iggy3d::SceneProjectionResult{};
+
+  return expect(created.accepted, "open baked setup create accepted") &&
+         expect(floor.accepted, "open baked setup floor created") &&
+         expect(wall.accepted, "open baked setup wall created") &&
+         expect(crate.accepted, "open baked setup crate created") &&
+         expect(beam.accepted, "open baked setup beam created") &&
+         expect(point.accepted, "open baked setup point created") &&
+         expect(path.accepted, "open baked setup path created") &&
+         expect(saved.accepted, "open baked setup saved") &&
+         expect(createFacade.document().dirtyFlags() == 0U,
+                "open baked setup save drained dirty") &&
+         expect(opened.accepted, "open baked launch accepted") &&
+         expect(opened.status == "product_creative_world_opened",
+                "open baked launch status") &&
+         expect(opened.reasonCode == "product_creative_world_opened",
+                "open baked launch reason") &&
+         expect(opened.bakedActiveRoomRefreshRequested,
+                "open baked refresh requested") &&
+         expect(opened.bakedActiveRoomRefreshAccepted,
+                "open baked refresh accepted flag") &&
+         expect(opened.bakedActiveRoomRefresh.accepted,
+                "open baked refresh accepted") &&
+         expect(opened.bakedActiveRoomRefresh.status ==
+                    "product_creative_baked_room_refreshed",
+                "open baked refresh status") &&
+         expect(opened.bakedActiveRoomRefresh.reasonCode ==
+                    "product_creative_baked_room_refreshed",
+                "open baked refresh reason") &&
+         expect(opened.bakedActiveRoomRefresh.bakeReceipt.accepted,
+                "open baked receipt accepted") &&
+         expect(opened.bakedActiveRoomRefresh.staticMeshCount == 4U,
+                "open baked result static mesh count") &&
+         expect(opened.bakedActiveRoomRefresh.anchorCount == 1U,
+                "open baked result anchor count") &&
+         expect(opened.bakedActiveRoomRefresh.spatialSurfaceCount == 7U,
+                "open baked result surface count") &&
+         expect(opened.bakedActiveRoomRefresh.staticMeshSourceCount == 4U,
+                "open baked result source mesh count") &&
+         expect(opened.bakedActiveRoomRefresh.anchorSourceCount == 1U,
+                "open baked result source anchor count") &&
+         expect(opened.bakedActiveRoomRefresh.spatialSurfaceSourceCount == 7U,
+                "open baked result source surface count") &&
+         expect(openWindow.activeRoom.loaded, "open baked active room loaded") &&
+         expect(openWindow.activeRoom.staticMeshCount == 4U,
+                "open baked active mesh count") &&
+         expect(openWindow.activeRoom.anchorCount == 1U,
+                "open baked active anchor count") &&
+         expect(openWindow.activeRoom.spatialSurfaceCount == 7U,
+                "open baked active surface count") &&
+         expect(openWindow.activeRoomCollision.ready,
+                "open baked collision ready") &&
+         expect(openWindow.activeRoomCollision.querySurfaceCount == 7U,
+                "open baked collision query count") &&
+         expect(projection.room.loaded, "open baked projection loaded") &&
+         expect(countProjectedRole(projection.room, "floor") == 1U,
+                "open baked projection floor count") &&
+         expect(countProjectedRole(projection.room, "wall") == 1U,
+                "open baked projection wall count") &&
+         expect(countProjectedRole(projection.room, "prop") == 2U,
+                "open baked projection prop count") &&
+         expect(openWindow.interactionMode ==
+                    iggy3d::ProductInteractionMode::Creative,
+                "open baked creative mode") &&
+         expect(openWindow.activeCreativeSaveId == opened.saveId,
+                "open baked active creative save id") &&
+         expect(openWindow.activeCreativeDocumentId == opened.documentId,
+                "open baked active creative document id") &&
+         expect(openWindow.activeCreativeObjectCount == opened.objectCount,
+                "open baked active creative object count") &&
+         expect(openWindow.activeProductSaveId == "none",
+                "open baked active product save none") &&
+         expect(openFacade.document().objectCount() == 6U,
+                "open baked facade object count") &&
+         expect(openFacade.document().revision() == 0U,
+                "open baked facade clean revision") &&
+         expect(openFacade.document().dirtyFlags() == 0U,
+                "open baked facade clean dirty");
+}
+
 bool openBlankOrInvalidSaveIdRejectsBeforeSessionInstallAndModeSwitch() {
   {
     const iggy3d::ProductAppOptions options = testOptions("open_blank_id");
@@ -1737,6 +1875,24 @@ bool creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() {
          expect(window.gameplayActive, "blank stage gameplay active") &&
          expect(!window.activeRoom.loaded,
                 "blank stage active room not loaded") &&
+         expect(launched.bakedActiveRoomRefreshRequested,
+                "blank stage refresh requested") &&
+         expect(!launched.bakedActiveRoomRefreshAccepted,
+                "blank stage refresh not accepted") &&
+         expect(!launched.bakedActiveRoomRefresh.accepted,
+                "blank stage refresh result rejected") &&
+         expect(launched.bakedActiveRoomRefresh.status ==
+                    "creative_room_bake_no_renderable_objects",
+                "blank stage refresh status") &&
+         expect(launched.bakedActiveRoomRefresh.reasonCode ==
+                    "creative_room_bake_no_renderable_objects",
+                "blank stage refresh reason") &&
+         expect(launched.bakedActiveRoomRefresh.bakeReceipt.requested,
+                "blank stage bake requested") &&
+         expect(!launched.bakedActiveRoomRefresh.bakeReceipt.accepted,
+                "blank stage bake rejected") &&
+         expect(launched.bakedActiveRoomRefresh.bakeReceipt.objectCount == 0U,
+                "blank stage bake object count") &&
          expect(!window.activeRoom.hasAuthoredRoom,
                 "blank stage no authored demo room") &&
          expect(window.activeRoom.room.staticMeshes.empty(),
@@ -1834,6 +1990,7 @@ int main() {
       invalidAttemptTokenWritesNoCommittedSaveAndDoesNotEnterCreativeMode() &&
       secondLaunchClearsOldFacadeStateAndInstallsNewDocument() &&
       openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() &&
+      openLaunchRefreshesBakedActiveRoomFromSavedCreativeDocument() &&
       openBlankOrInvalidSaveIdRejectsBeforeSessionInstallAndModeSwitch() &&
       openProductSessionSaveRejectsAsMissingCreativeSection() &&
       productNewWorldLaunchClearsActiveCreativeIdentity() &&
