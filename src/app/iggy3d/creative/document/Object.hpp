@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -162,7 +163,9 @@ enum class CreativeObjectKind {
   ResourceNode,
   LootPoint,
   QuestMarker,
-  DialogueMarker
+  DialogueMarker,
+
+  Count
 };
 
 struct CreativeObject {
@@ -194,6 +197,13 @@ struct CreativeObject {
     std::optional<CreativeObjectId> parentId = std::nullopt);
 
 [[nodiscard]] std::string_view toString(CreativeObjectKind kind) noexcept;
+[[nodiscard]] std::string_view serializedObjectKindId(
+    CreativeObjectKind kind) noexcept;
+[[nodiscard]] bool parseSerializedObjectKindId(
+    std::string_view value,
+    CreativeObjectKind& out) noexcept;
+[[nodiscard]] std::span<const CreativeObjectKind> allCreativeObjectKinds()
+    noexcept;
 [[nodiscard]] bool isStructuralObject(CreativeObjectKind kind) noexcept;
 [[nodiscard]] bool isTerrainOrVolumeObject(CreativeObjectKind kind) noexcept;
 [[nodiscard]] bool isNavigationOrMovementObject(CreativeObjectKind kind) noexcept;

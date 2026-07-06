@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/tools/RoomShell.hpp"
 
 #include <array>
 #include <cmath>
@@ -553,6 +554,39 @@ bool repeatedCreateRoomCommandCreatesNewIdsAndRevisions() {
                 "repeat document revision");
 }
 
+bool createPaletteRowsRouteToDescriptorKinds() {
+  bool ok = true;
+  for (const iggy3d::ProductCreativeUiCommandCatalogEntry& slot :
+       iggy3d::productCreativeUiCreatePalette()) {
+    const cr::CreativeObjectDescriptor& descriptor =
+        cr::describeObject(slot.objectKind);
+    cr::CreativeAppState app;
+    cr::Facade& facade = app.facade;
+    facade.reset();
+
+    const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+        routeCommand(app, slot.semanticId);
+    const cr::CreativeObject* object = facade.findObject(receipt.createObjectId);
+
+    ok &= expect(iggy3d::productCreativeUiCreatePaletteEntryAllowed(slot),
+                 "create palette slot descriptor-allowed") &&
+          expect(receipt.commandKind ==
+                     iggy3d::ProductCreativeUiCommandKind::CreateObject,
+                 "create palette command kind") &&
+          expect(receipt.commandObjectKind == descriptor.kind,
+                 "create palette command object kind") &&
+          expect(receipt.createObjectKind == descriptor.kind,
+                 "create palette receipt object kind") &&
+          expect(receipt.createObjectName == descriptor.name,
+                 "create palette receipt object name") &&
+          expect(receipt.accepted && receipt.changed,
+                 "create palette command applied") &&
+          expect(object != nullptr && object->kind == descriptor.kind,
+                 "create palette object created");
+  }
+  return ok;
+}
+
 bool selectedTargetRowTogglesRoomVisibilityOff() {
   cr::CreativeAppState app;
   [[maybe_unused]] cr::Facade& facade = app.facade;
@@ -803,19 +837,14 @@ bool generateRoomShellInstallsGeneratedChildrenAtomically() {
   bool allGeneratedHaveParent = true;
   bool allGeneratedHaveTags = true;
   bool allGeneratedHaveCenteredTransforms = true;
-  const std::string sourceTag = "source_room_" + std::to_string(roomId);
   for (const cr::CreativeObject& object : facade.document().objects()) {
     if (object.parentId.has_value() && object.parentId.value() == roomId) {
       floorCount += object.kind == cr::CreativeObjectKind::Floor ? 1U : 0U;
       wallCount += object.kind == cr::CreativeObjectKind::Wall ? 1U : 0U;
       allGeneratedHaveParent &= object.parentId.value() == roomId;
-      bool hasGeneratedTag = false;
-      bool hasSourceTag = false;
-      for (const std::string& tag : object.tags) {
-        hasGeneratedTag |= tag == "generated_room_shell";
-        hasSourceTag |= tag == sourceTag;
-      }
-      allGeneratedHaveTags &= hasGeneratedTag && hasSourceTag;
+      allGeneratedHaveTags &= cr::creativeRoomShellObjectHasProvenance(
+          object,
+          roomId);
       allGeneratedHaveCenteredTransforms &=
           sameVec3(object.transform.position, centerOfBounds(object.bounds));
     }
@@ -924,8 +953,8 @@ bool generateRoomShellDuplicateRejectsWithoutMutation() {
   existing.kind = cr::CreativeObjectKind::Floor;
   existing.name = "Existing Shell Floor";
   existing.parentId = roomId;
-  existing.tags = {"generated_room_shell",
-                   "source_room_" + std::to_string(roomId)};
+  existing.tags = {std::string(cr::generatedRoomShellTag()),
+                   cr::sourceRoomShellTag(roomId)};
   const cr::CreativeDocumentCreateReceipt existingReceipt =
       facade.createDocumentObject(existing);
   selectTarget(facade, roomId);
@@ -947,6 +976,107 @@ bool generateRoomShellDuplicateRejectsWithoutMutation() {
                 "shell duplicate revision unchanged") &&
          expect(facade.document().objectCount() == objectCountBefore,
                 "shell duplicate object count unchanged");
+}
+
+bool removeRoomShellDeletesOnlyGeneratedChildrenAtomically() {
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
+  facade.reset();
+  static_cast<void>(facade.documentForPersistence().assignId(54U));
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  selectTarget(facade, roomId);
+  const iggy3d::ProductCreativeUiCommandFrameReceipt generated =
+      routeCommand(app, "creative.row.selection.generate_room_shell");
+
+  cr::CreativeDocumentCreateRequest manualChild;
+  manualChild.kind = cr::CreativeObjectKind::Floor;
+  manualChild.name = "Manual Room Child";
+  manualChild.parentId = roomId;
+  const cr::CreativeDocumentCreateReceipt manualChildReceipt =
+      facade.createDocumentObject(manualChild);
+
+  selectTarget(facade, roomId);
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(app, "creative.row.selection.remove_room_shell");
+
+  const std::uint64_t generatedChildCount =
+      cr::collectCreativeRoomShellChildIds(facade.document(), roomId).size();
+
+  return expect(generated.accepted, "shell remove setup generated") &&
+         expect(manualChildReceipt.accepted,
+                "shell remove manual child setup") &&
+         expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        RemoveSelectedRoomShell,
+                "shell remove command kind") &&
+         expect(receipt.semanticId ==
+                    "creative.row.selection.remove_room_shell",
+                "shell remove semantic") &&
+         expect(receipt.accepted, "shell remove accepted") &&
+         expect(receipt.changed, "shell remove changed") &&
+         expect(receipt.status == "product_creative_ui_command_applied",
+                "shell remove status") &&
+         expect(receipt.shellRequested, "shell remove requested") &&
+         expect(receipt.shellAccepted, "shell remove receipt accepted") &&
+         expect(receipt.shellChanged, "shell remove receipt changed") &&
+         expect(receipt.shellRoomObjectId == roomId, "shell remove room id") &&
+         expect(receipt.shellRemovedObjectCount == 5U,
+                "shell remove count") &&
+         expect(receipt.shellFloorCount == 1U, "shell remove floor count") &&
+         expect(receipt.shellWallCount == 4U, "shell remove wall count") &&
+         expect(receipt.shellRevisionBefore == revisionBefore,
+                "shell remove revision before") &&
+         expect(receipt.shellRevisionAfter == revisionBefore + 5U,
+                "shell remove revision after") &&
+         expect(receipt.shellStatus == "Removed",
+                "shell remove receipt status") &&
+         expect(receipt.shellReasonCode == "creative_room_shell_removed",
+                "shell remove receipt reason") &&
+         expect(facade.document().objectCount() == objectCountBefore - 5U,
+                "shell remove object count") &&
+         expect(generatedChildCount == 0U,
+                "shell remove generated children gone") &&
+         expect(facade.findObject(roomId) != nullptr,
+                "shell remove room remains") &&
+         expect(facade.findObject(manualChildReceipt.objectId) != nullptr,
+                "shell remove manual child remains") &&
+         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
+                "shell remove install clears selection");
+}
+
+bool removeRoomShellWithoutGeneratedChildrenRejectsWithoutMutation() {
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
+  facade.reset();
+  const cr::CreativeObjectId roomId = createRoom(facade);
+  selectTarget(facade, roomId);
+  const std::uint64_t revisionBefore = facade.document().revision();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(app, "creative.row.selection.remove_room_shell");
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        RemoveSelectedRoomShell,
+                "shell remove empty command kind") &&
+         expect(!receipt.accepted, "shell remove empty rejected") &&
+         expect(!receipt.changed, "shell remove empty unchanged") &&
+         expect(receipt.shellRequested, "shell remove empty requested") &&
+         expect(!receipt.shellAccepted,
+                "shell remove empty receipt rejected") &&
+         expect(receipt.shellStatus == "NoGeneratedShell",
+                "shell remove empty status") &&
+         expect(receipt.shellReasonCode ==
+                    "creative_room_shell_remove_not_found",
+                "shell remove empty reason") &&
+         expect(receipt.shellRemovedObjectCount == 0U,
+                "shell remove empty removed count") &&
+         expect(facade.document().revision() == revisionBefore,
+                "shell remove empty revision unchanged") &&
+         expect(facade.document().objectCount() == 1U,
+                "shell remove empty object count");
 }
 
 bool selectedTargetRowMissingObjectRejectsAndPreservesSelection() {
@@ -1180,6 +1310,85 @@ bool nonToolRowsRemainUnknownNoop() {
   return ok;
 }
 
+bool catalogRowsRouteToKnownCommandsAndHandlers() {
+  bool ok = true;
+  for (const iggy3d::ProductCreativeUiCommandCatalogEntry& entry :
+       iggy3d::productCreativeUiCommandCatalog()) {
+    const iggy3d::ProductCreativeUiCommandKindMetadata* metadata =
+        iggy3d::findProductCreativeUiCommandKindMetadata(entry.commandKind);
+    cr::CreativeAppState app;
+    const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+        routeCommand(app, entry.semanticId);
+    ok &= expect(receipt.semanticId == entry.semanticId,
+                 "catalog semantic routed") &&
+          expect(receipt.commandKind == entry.commandKind,
+                 "catalog command kind routed") &&
+          expect(receipt.status !=
+                     "product_creative_ui_command_unknown_semantic",
+                 "catalog row known semantic") &&
+          expect(receipt.status !=
+                     "product_creative_ui_command_unknown_command",
+                 "catalog row has handler") &&
+          expect(metadata != nullptr, "catalog row has kind metadata") &&
+          expect(metadata != nullptr && metadata->expectsHandler,
+                 "catalog row expects handler") &&
+          expect(iggy3d::productCreativeUiCommandKindHasHandler(
+                     entry.commandKind),
+                 "catalog command kind has handler");
+  }
+  return ok;
+}
+
+bool commandKindMetadataIsIndependentOfRowOrder() {
+  bool ok = true;
+  std::uint64_t setActiveToolRows = 0;
+  std::uint64_t commandCatalogCreateRows = 0;
+  for (const iggy3d::ProductCreativeUiCommandCatalogEntry& entry :
+       iggy3d::productCreativeUiCommandCatalog()) {
+    setActiveToolRows +=
+        entry.commandKind == iggy3d::ProductCreativeUiCommandKind::SetActiveTool
+            ? 1U
+            : 0U;
+    commandCatalogCreateRows +=
+        entry.commandKind == iggy3d::ProductCreativeUiCommandKind::CreateObject
+            ? 1U
+            : 0U;
+  }
+
+  for (const iggy3d::ProductCreativeUiCommandKindMetadata& metadata :
+       iggy3d::productCreativeUiCommandKindMetadataCatalog()) {
+    ok &= expect(!metadata.receiptName.empty(),
+                 "metadata receipt name present") &&
+          expect(iggy3d::productCreativeUiCommandKindReceiptName(
+                     metadata.commandKind) == metadata.receiptName,
+                 "metadata receipt name lookup") &&
+          expect(iggy3d::productCreativeUiCommandKindExpectsHandler(
+                     metadata.commandKind) == metadata.expectsHandler,
+                 "metadata handler expectation lookup");
+    if (metadata.expectsHandler) {
+      ok &= expect(iggy3d::productCreativeUiCommandKindHasHandler(
+                       metadata.commandKind),
+                   "metadata expected handler present");
+    }
+  }
+
+  return expect(setActiveToolRows == 4U,
+                "set active tool has duplicate rows") &&
+         expect(commandCatalogCreateRows == 0U,
+                "create object rows live outside command catalog") &&
+         expect(iggy3d::productCreativeUiCreatePalette().size() == 2U,
+                "create object palette row count") &&
+         expect(iggy3d::productCreativeUiCommandKindReceiptName(
+                    iggy3d::ProductCreativeUiCommandKind::SetActiveTool) ==
+                    "set_active_tool",
+                "set active tool receipt stable") &&
+         expect(iggy3d::productCreativeUiCommandKindReceiptName(
+                    iggy3d::ProductCreativeUiCommandKind::CreateObject) ==
+                    "create_object",
+                "create object receipt stable") &&
+         ok;
+}
+
 }  // namespace
 
 int main() {
@@ -1196,6 +1405,7 @@ int main() {
   ok &= undoCommandRestoresLatestSnapshotAndClearsTransientState();
   ok &= createRoomCommandCreatesGenericRoom();
   ok &= repeatedCreateRoomCommandCreatesNewIdsAndRevisions();
+  ok &= createPaletteRowsRouteToDescriptorKinds();
   ok &= selectedTargetRowTogglesRoomVisibilityOff();
   ok &= selectedTargetRowTogglesRoomVisibilityOnAgain();
   ok &= selectedTargetRowPreservesActiveTool();
@@ -1206,6 +1416,8 @@ int main() {
   ok &= generateRoomShellNoSelectionRejectsWithoutMutation();
   ok &= generateRoomShellNonRoomRejectsWithoutMutation();
   ok &= generateRoomShellDuplicateRejectsWithoutMutation();
+  ok &= removeRoomShellDeletesOnlyGeneratedChildrenAtomically();
+  ok &= removeRoomShellWithoutGeneratedChildrenRejectsWithoutMutation();
   ok &= selectedTargetRowMissingObjectRejectsAndPreservesSelection();
   ok &= selectedTargetRowIsDisplayOnlyNoop();
   ok &= inspectorLockedRowTogglesRoomLockedOn();
@@ -1213,5 +1425,7 @@ int main() {
   ok &= inspectorLockedRowNoSelectionRejects();
   ok &= lockedObjectRefusesVisibilityMutationWithReceipt();
   ok &= nonToolRowsRemainUnknownNoop();
+  ok &= catalogRowsRouteToKnownCommandsAndHandlers();
+  ok &= commandKindMetadataIsIndependentOfRowOrder();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

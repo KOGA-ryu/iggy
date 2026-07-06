@@ -1,7 +1,10 @@
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
+#include <array>
 #include <cstdlib>
 #include <iostream>
+#include <optional>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -71,6 +74,18 @@ cr::CreativeDocument makeDocumentWithCrate(cr::CreativeObjectId& crateId) {
   return document;
 }
 
+cr::CreativeDocumentCreateReceipt createObject(
+    cr::CreativeDocument& document,
+    cr::CreativeObjectKind kind,
+    std::string_view name,
+    std::optional<cr::CreativeObjectId> parentId = std::nullopt) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.name = std::string{name};
+  request.parentId = parentId;
+  return document.createObject(request);
+}
+
 cr::CreativeVec3 boundsSize(const cr::CreativeObject& object) {
   return cr::CreativeVec3{
       object.bounds.max.x - object.bounds.min.x,
@@ -85,6 +100,310 @@ bool sameVec3(cr::CreativeVec3 lhs, cr::CreativeVec3 rhs) {
 
 bool sameBounds(const cr::CreativeBounds& lhs, const cr::CreativeBounds& rhs) {
   return sameVec3(lhs.min, rhs.min) && sameVec3(lhs.max, rhs.max);
+}
+
+constexpr std::array kAuthoredMutationKinds{
+    cr::CreativeMutationKind::Rename,
+    cr::CreativeMutationKind::SetVisible,
+    cr::CreativeMutationKind::SetLocked,
+    cr::CreativeMutationKind::Move,
+    cr::CreativeMutationKind::Rotate,
+    cr::CreativeMutationKind::Scale,
+    cr::CreativeMutationKind::SetTransform,
+    cr::CreativeMutationKind::Resize,
+    cr::CreativeMutationKind::Stretch,
+    cr::CreativeMutationKind::SetBounds,
+    cr::CreativeMutationKind::SetHeight,
+    cr::CreativeMutationKind::SetRadius,
+    cr::CreativeMutationKind::SetThickness,
+    cr::CreativeMutationKind::SetLength,
+    cr::CreativeMutationKind::SetWidth,
+    cr::CreativeMutationKind::SetDepth,
+    cr::CreativeMutationKind::SetParent,
+    cr::CreativeMutationKind::ClearParent,
+    cr::CreativeMutationKind::AttachTo,
+    cr::CreativeMutationKind::DetachFrom,
+    cr::CreativeMutationKind::LinkTarget,
+    cr::CreativeMutationKind::UnlinkTarget,
+    cr::CreativeMutationKind::SetSocket,
+    cr::CreativeMutationKind::ClearSocket,
+    cr::CreativeMutationKind::AssignLayer,
+    cr::CreativeMutationKind::AddTag,
+    cr::CreativeMutationKind::RemoveTag,
+    cr::CreativeMutationKind::ClearTags,
+    cr::CreativeMutationKind::EditText,
+    cr::CreativeMutationKind::SetLabel,
+    cr::CreativeMutationKind::SetNotes,
+    cr::CreativeMutationKind::SetReferenceSource,
+    cr::CreativeMutationKind::SetBlueprintOpacity,
+    cr::CreativeMutationKind::SetTriggerShape,
+    cr::CreativeMutationKind::SetTriggerEvent,
+    cr::CreativeMutationKind::SetCondition,
+    cr::CreativeMutationKind::SetEventRelayTarget,
+    cr::CreativeMutationKind::SetSpawnerProfile,
+    cr::CreativeMutationKind::SetDespawnRule,
+    cr::CreativeMutationKind::SetSpawnFacing,
+    cr::CreativeMutationKind::SetCheckpointId,
+    cr::CreativeMutationKind::SetNavCost,
+    cr::CreativeMutationKind::SetPatrolRoute,
+    cr::CreativeMutationKind::SetJumpArc,
+    cr::CreativeMutationKind::SetClimbRule,
+    cr::CreativeMutationKind::SetWallRunRule,
+    cr::CreativeMutationKind::SetSlideRule,
+    cr::CreativeMutationKind::SetTestLaneKind,
+    cr::CreativeMutationKind::SetDistanceValue,
+    cr::CreativeMutationKind::SetSpeedValue,
+    cr::CreativeMutationKind::SetTimingWindow,
+    cr::CreativeMutationKind::SetProbeKind,
+    cr::CreativeMutationKind::SetExpectedResult,
+    cr::CreativeMutationKind::SetLightColor,
+    cr::CreativeMutationKind::SetLightIntensity,
+    cr::CreativeMutationKind::SetLightRadius,
+    cr::CreativeMutationKind::SetLightConeAngle,
+    cr::CreativeMutationKind::SetAudioRadius,
+    cr::CreativeMutationKind::SetAudioSource,
+    cr::CreativeMutationKind::SetMusicCue,
+    cr::CreativeMutationKind::SetCameraTarget,
+    cr::CreativeMutationKind::SetCameraRail,
+    cr::CreativeMutationKind::SetEnemyProfile,
+    cr::CreativeMutationKind::SetNpcProfile,
+    cr::CreativeMutationKind::SetResourceKind,
+    cr::CreativeMutationKind::SetLootTable,
+    cr::CreativeMutationKind::SetQuestId,
+    cr::CreativeMutationKind::SetDialogueId,
+    cr::CreativeMutationKind::SetDangerLevel,
+    cr::CreativeMutationKind::SetSafeZoneRule,
+};
+
+bool categoryPredicateMatches(cr::CreativeMutationKind kind,
+                              cr::CreativeMutationCategory category) {
+  switch (category) {
+  case cr::CreativeMutationCategory::Identity:
+    return cr::isIdentityMutation(kind);
+  case cr::CreativeMutationCategory::Transform:
+    return cr::isTransformMutation(kind);
+  case cr::CreativeMutationCategory::Shape:
+    return cr::isShapeMutation(kind);
+  case cr::CreativeMutationCategory::Relationship:
+    return cr::isRelationshipMutation(kind);
+  case cr::CreativeMutationCategory::Organization:
+    return cr::isOrganizationMutation(kind);
+  case cr::CreativeMutationCategory::Content:
+    return cr::isContentMutation(kind);
+  case cr::CreativeMutationCategory::Logic:
+    return cr::isLogicMutation(kind);
+  case cr::CreativeMutationCategory::Navigation:
+    return cr::isNavigationMutation(kind);
+  case cr::CreativeMutationCategory::Testing:
+    return cr::isTestingMutation(kind);
+  case cr::CreativeMutationCategory::Sensory:
+    return cr::isSensoryMutation(kind);
+  case cr::CreativeMutationCategory::Gameplay:
+    return cr::isGameplayMutation(kind);
+  case cr::CreativeMutationCategory::Unknown:
+    return false;
+  }
+
+  return false;
+}
+
+int categoryPredicateCount(cr::CreativeMutationKind kind) {
+  int count = 0;
+  count += cr::isIdentityMutation(kind) ? 1 : 0;
+  count += cr::isTransformMutation(kind) ? 1 : 0;
+  count += cr::isShapeMutation(kind) ? 1 : 0;
+  count += cr::isRelationshipMutation(kind) ? 1 : 0;
+  count += cr::isOrganizationMutation(kind) ? 1 : 0;
+  count += cr::isContentMutation(kind) ? 1 : 0;
+  count += cr::isLogicMutation(kind) ? 1 : 0;
+  count += cr::isNavigationMutation(kind) ? 1 : 0;
+  count += cr::isTestingMutation(kind) ? 1 : 0;
+  count += cr::isSensoryMutation(kind) ? 1 : 0;
+  count += cr::isGameplayMutation(kind) ? 1 : 0;
+  return count;
+}
+
+bool mutationMetadataRegistryIsInternallyConsistent() {
+  bool ok = expect(cr::toString(cr::CreativeMutationKind::Unknown) ==
+                       std::string_view{"Unknown"},
+                   "unknown mutation name") &&
+            expect(cr::categoryOf(cr::CreativeMutationKind::Unknown) ==
+                       cr::CreativeMutationCategory::Unknown,
+                   "unknown mutation category") &&
+            expect(!cr::requiresPayload(cr::CreativeMutationKind::Unknown),
+                   "unknown mutation no payload required") &&
+            expect(cr::payloadMatchesMutation(cr::CreativeMutationKind::Unknown,
+                                             cr::CreativeMutationPayload{}),
+                   "unknown mutation matches empty payload");
+
+  for (const cr::CreativeMutationKind kind : kAuthoredMutationKinds) {
+    const cr::CreativeMutationDescriptor descriptor = cr::describeMutation(kind);
+    ok = expect(cr::toString(kind) != std::string_view{"Unknown"},
+                "authored mutation has non-unknown name") &&
+         expect(cr::categoryOf(kind) != cr::CreativeMutationCategory::Unknown,
+                "authored mutation has non-unknown category") &&
+         expect(descriptor.kind == kind, "descriptor kind mirrors request") &&
+         expect(descriptor.name == cr::toString(kind),
+                "descriptor name mirrors registry") &&
+         expect(descriptor.category == cr::categoryOf(kind),
+                "descriptor category mirrors registry") &&
+         expect(descriptor.storagePolicy == cr::mutationStoragePolicy(kind),
+                "descriptor storage policy mirrors registry") &&
+         expect(descriptor.changesGeometry == cr::mutationChangesGeometry(kind),
+                "descriptor geometry flag mirrors registry") &&
+         expect(descriptor.changesRelationships ==
+                    cr::mutationChangesRelationships(kind),
+                "descriptor relationship flag mirrors registry") &&
+         expect(descriptor.changesRuntimeMeaning ==
+                    cr::mutationChangesRuntimeMeaning(kind),
+                "descriptor runtime flag mirrors registry") &&
+         expect(categoryPredicateCount(kind) == 1,
+                "exactly one category predicate is true") &&
+         expect(categoryPredicateMatches(kind, descriptor.category),
+                "matching category predicate is true") && ok;
+  }
+
+  return ok;
+}
+
+bool mutationStoragePolicySignalDistinguishesStoredAndFuturePlaceholders() {
+  const cr::CreativeMutationPayload boundsPayload = cr::makeBoundsPayload(
+      cr::CreativeBounds{cr::CreativeVec3{0.0, 0.0, 0.0},
+                         cr::CreativeVec3{1.0, 1.0, 1.0}});
+  const cr::CreativeMutationPayload pathPayload = cr::makePathPointsPayload(
+      {cr::CreativePathPoint{{0.0, 0.0, 0.0}},
+       cr::CreativePathPoint{{1.0, 0.0, 1.0}}});
+
+  return expect(cr::toString(cr::CreativeMutationStoragePolicy::Unknown) ==
+                    std::string_view{"Unknown"},
+                "storage policy unknown string") &&
+         expect(cr::toString(cr::CreativeMutationStoragePolicy::StoredObject) ==
+                    std::string_view{"StoredObject"},
+                "storage policy stored string") &&
+         expect(cr::toString(cr::CreativeMutationStoragePolicy::
+                                 FutureStoragePlaceholder) ==
+                    std::string_view{"FutureStoragePlaceholder"},
+                "storage policy future string") &&
+         expect(cr::toString(cr::CreativeMutationStoragePolicy::
+                                 PayloadDependent) ==
+                    std::string_view{"PayloadDependent"},
+                "storage policy payload dependent string") &&
+         expect(cr::mutationStoragePolicy(cr::CreativeMutationKind::Rename) ==
+                    cr::CreativeMutationStoragePolicy::StoredObject,
+                "rename storage policy") &&
+         expect(cr::mutationStoragePolicy(
+                    cr::CreativeMutationKind::SetTriggerShape) ==
+                    cr::CreativeMutationStoragePolicy::StoredObject,
+                "trigger shape storage policy") &&
+         expect(cr::mutationStoragePolicy(
+                    cr::CreativeMutationKind::SetLightIntensity) ==
+                    cr::CreativeMutationStoragePolicy::FutureStoragePlaceholder,
+                "light intensity future policy") &&
+         expect(cr::mutationStoragePolicy(
+                    cr::CreativeMutationKind::LinkTarget) ==
+                    cr::CreativeMutationStoragePolicy::FutureStoragePlaceholder,
+                "link target future policy") &&
+         expect(cr::mutationStoragePolicy(
+                    cr::CreativeMutationKind::ClearSocket) ==
+                    cr::CreativeMutationStoragePolicy::FutureStoragePlaceholder,
+                "clear socket future policy") &&
+         expect(cr::mutationStoragePolicy(
+                    cr::CreativeMutationKind::SetPatrolRoute) ==
+                    cr::CreativeMutationStoragePolicy::PayloadDependent,
+                "patrol route payload-dependent policy") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::SetTriggerShape, boundsPayload) ==
+                    cr::CreativeMutationStoragePolicy::StoredObject,
+                "trigger shape payload stored policy") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::SetLightIntensity,
+                    cr::makeScalarPayload(4.0)) ==
+                    cr::CreativeMutationStoragePolicy::FutureStoragePlaceholder,
+                "light intensity payload future policy") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::SetPatrolRoute, pathPayload) ==
+                    cr::CreativeMutationStoragePolicy::StoredObject,
+                "patrol route path payload stored policy") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::SetPatrolRoute,
+                    cr::makeTextPayload("legacy")) ==
+                    cr::CreativeMutationStoragePolicy::FutureStoragePlaceholder,
+                "patrol route text payload future policy") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::SetPatrolRoute,
+                    cr::makeStringIdPayload("legacy-id")) ==
+                    cr::CreativeMutationStoragePolicy::FutureStoragePlaceholder,
+                "patrol route string id payload future policy") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::SetPatrolRoute,
+                    cr::makeScalarPayload(1.0)) ==
+                    cr::CreativeMutationStoragePolicy::Unknown,
+                "patrol route wrong payload unknown policy") &&
+         expect(cr::mutationHasStoredObjectEffect(
+                    cr::CreativeMutationKind::SetPatrolRoute),
+                "patrol route has stored payload option") &&
+         expect(cr::mutationPayloadHasStoredObjectEffect(
+                    cr::CreativeMutationKind::SetPatrolRoute, pathPayload),
+                "patrol route path payload has stored effect") &&
+         expect(!cr::mutationPayloadHasStoredObjectEffect(
+                    cr::CreativeMutationKind::SetPatrolRoute,
+                    cr::makeTextPayload("legacy")),
+                "patrol route legacy payload has no stored effect") &&
+         expect(!cr::mutationHasStoredObjectEffect(
+                    cr::CreativeMutationKind::SetLightIntensity),
+                "future light intensity has no stored effect");
+}
+
+bool mutationPayloadMetadataMatchesExpectedPayloadFamilies() {
+  return expect(cr::requiresPayload(cr::CreativeMutationKind::Rename),
+                "rename requires payload") &&
+         expect(cr::payloadMatchesMutation(cr::CreativeMutationKind::Rename,
+                                          cr::makeRenamePayload("name")),
+                "rename payload matches") &&
+         expect(!cr::payloadMatchesMutation(cr::CreativeMutationKind::Rename,
+                                           cr::CreativeMutationPayload{}),
+                "rename empty payload rejected") &&
+         expect(!cr::requiresPayload(cr::CreativeMutationKind::ClearParent),
+                "clear parent no payload required") &&
+         expect(cr::payloadMatchesMutation(cr::CreativeMutationKind::ClearParent,
+                                          cr::CreativeMutationPayload{}),
+                "clear parent empty payload matches") &&
+         expect(!cr::payloadMatchesMutation(cr::CreativeMutationKind::ClearParent,
+                                           cr::makeRenamePayload("wrong")),
+                "clear parent wrong payload rejected") &&
+         expect(cr::payloadMatchesMutation(cr::CreativeMutationKind::SetBounds,
+                                          cr::makeBoundsPayload(
+                                              cr::CreativeBounds{
+                                                  cr::CreativeVec3{0.0, 0.0, 0.0},
+                                                  cr::CreativeVec3{1.0, 1.0, 1.0}})),
+                "set bounds payload matches") &&
+         expect(cr::payloadMatchesMutation(cr::CreativeMutationKind::SetTriggerShape,
+                                          cr::makeBoundsPayload(
+                                              cr::CreativeBounds{
+                                                  cr::CreativeVec3{0.0, 0.0, 0.0},
+                                                  cr::CreativeVec3{1.0, 1.0, 1.0}})),
+                "trigger shape payload matches bounds") &&
+         expect(cr::payloadMatchesMutation(cr::CreativeMutationKind::SetLightIntensity,
+                                          cr::makeScalarPayload(3.0)),
+                "scalar sensory payload matches") &&
+         expect(cr::payloadMatchesMutation(cr::CreativeMutationKind::SetCameraTarget,
+                                          cr::makeLinkPayload(42)),
+                "camera target link payload matches") &&
+         expect(cr::payloadMatchesMutation(
+                    cr::CreativeMutationKind::SetPatrolRoute,
+                    cr::makePathPointsPayload(
+                        {cr::CreativePathPoint{{0.0, 0.0, 0.0}},
+                         cr::CreativePathPoint{{1.0, 0.0, 1.0}}})),
+                "patrol route path points payload matches") &&
+         expect(cr::payloadMatchesMutation(cr::CreativeMutationKind::SetPatrolRoute,
+                                          cr::makeTextPayload("legacy")),
+                "patrol route legacy text payload matches") &&
+         expect(cr::payloadMatchesMutation(cr::CreativeMutationKind::SetPatrolRoute,
+                                          cr::makeStringIdPayload("legacy-id")),
+                "patrol route legacy string id payload matches") &&
+         expect(!cr::payloadMatchesMutation(cr::CreativeMutationKind::SetPatrolRoute,
+                                           cr::makeScalarPayload(1.0)),
+                "patrol route scalar payload rejected");
 }
 
 bool setVisibleMutatesThroughDocumentGateway() {
@@ -382,6 +701,143 @@ bool pointOnlyMovePreservesStoredBoundsField() {
                 "point move bounds field unchanged");
 }
 
+bool setParentNoChangePreservesRevision() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Document");
+  const cr::CreativeDocumentCreateReceipt parent =
+      createObject(document, cr::CreativeObjectKind::Group, "Parent");
+  const cr::CreativeDocumentCreateReceipt child =
+      createObject(document, cr::CreativeObjectKind::Group, "Child",
+                   parent.objectId);
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt = cr::applyDocumentMutation(
+      document, child.objectId, cr::CreativeMutationKind::SetParent,
+      cr::makeParentPayload(parent.objectId));
+  const cr::CreativeObject* childObject = document.findObject(child.objectId);
+
+  return expect(parent.accepted, "set parent no-change parent created") &&
+         expect(child.accepted, "set parent no-change child created") &&
+         expect(childObject != nullptr, "set parent no-change child exists") &&
+         expect(childObject != nullptr && childObject->parentId.has_value() &&
+                    *childObject->parentId == parent.objectId,
+                "set parent no-change parent unchanged") &&
+         expect(receipt.status == cr::CreativeDocumentMutationStatus::NoChange,
+                "set parent no-change status") &&
+         expect(receipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::NoChange,
+                "set parent no-change object status") &&
+         expect(receipt.allowed, "set parent no-change allowed") &&
+         expect(!receipt.changed, "set parent no-change changed false") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "set parent no-change revision before") &&
+         expect(receipt.revisionAfter == revisionBefore,
+                "set parent no-change revision after") &&
+         expect(document.revision() == revisionBefore,
+                "set parent no-change document revision stable");
+}
+
+bool relationshipMutationsRejectInvalidParentTargets() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Document");
+  const cr::CreativeDocumentCreateReceipt parent =
+      createObject(document, cr::CreativeObjectKind::Group, "Parent");
+  const cr::CreativeDocumentCreateReceipt child =
+      createObject(document, cr::CreativeObjectKind::Group, "Child");
+  const cr::CreativeDocumentCreateReceipt wallParent =
+      createObject(document, cr::CreativeObjectKind::Wall, "Wall Parent");
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt missing = cr::applyDocumentMutation(
+      document, child.objectId, cr::CreativeMutationKind::SetParent,
+      cr::makeParentPayload(9999));
+  const cr::CreativeDocumentMutationReceipt self = cr::applyDocumentMutation(
+      document, child.objectId, cr::CreativeMutationKind::SetParent,
+      cr::makeParentPayload(child.objectId));
+  const cr::CreativeDocumentMutationReceipt ownerUnsupported =
+      cr::applyDocumentMutation(
+          document, child.objectId, cr::CreativeMutationKind::AttachTo,
+          cr::makeAttachPayload(wallParent.objectId, "socket"));
+  const cr::CreativeObject* childObject = document.findObject(child.objectId);
+
+  return expect(parent.accepted, "relationship invalid parent setup parent") &&
+         expect(child.accepted, "relationship invalid parent setup child") &&
+         expect(wallParent.accepted,
+                "relationship invalid parent setup wall parent") &&
+         expect(childObject != nullptr,
+                "relationship invalid parent child exists") &&
+         expect(childObject != nullptr && !childObject->parentId.has_value(),
+                "relationship invalid parent leaves child unparented") &&
+         expect(missing.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "missing relationship parent status") &&
+         expect(missing.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::Rejected,
+                "missing relationship parent object status") &&
+         expect(missing.objectReceipt.message == "missing_parent",
+                "missing relationship parent reason") &&
+         expect(self.status == cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "self relationship parent status") &&
+         expect(self.objectReceipt.message == "invalid_parent",
+                "self relationship parent reason") &&
+         expect(ownerUnsupported.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "unsupported owner relationship status") &&
+         expect(ownerUnsupported.objectReceipt.message ==
+                    "parent_owner_unsupported",
+                "unsupported owner relationship reason") &&
+         expect(document.revision() == revisionBefore,
+                "invalid relationship parent revisions stable");
+}
+
+bool relationshipMutationsRejectParentCycles() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Document");
+  const cr::CreativeDocumentCreateReceipt root =
+      createObject(document, cr::CreativeObjectKind::Group, "Root");
+  const cr::CreativeDocumentCreateReceipt middle =
+      createObject(document, cr::CreativeObjectKind::Group, "Middle",
+                   root.objectId);
+  const cr::CreativeDocumentCreateReceipt leaf =
+      createObject(document, cr::CreativeObjectKind::Group, "Leaf",
+                   middle.objectId);
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt directCycle =
+      cr::applyDocumentMutation(
+          document, root.objectId, cr::CreativeMutationKind::SetParent,
+          cr::makeParentPayload(middle.objectId));
+  const cr::CreativeDocumentMutationReceipt indirectCycle =
+      cr::applyDocumentMutation(
+          document, root.objectId, cr::CreativeMutationKind::AttachTo,
+          cr::makeAttachPayload(leaf.objectId, "socket"));
+  const cr::CreativeObject* rootObject = document.findObject(root.objectId);
+  const cr::CreativeObject* middleObject =
+      document.findObject(middle.objectId);
+  const cr::CreativeObject* leafObject = document.findObject(leaf.objectId);
+
+  return expect(root.accepted, "parent cycle root created") &&
+         expect(middle.accepted, "parent cycle middle created") &&
+         expect(leaf.accepted, "parent cycle leaf created") &&
+         expect(rootObject != nullptr && !rootObject->parentId.has_value(),
+                "parent cycle root remains unparented") &&
+         expect(middleObject != nullptr && middleObject->parentId.has_value() &&
+                    *middleObject->parentId == root.objectId,
+                "parent cycle middle parent remains") &&
+         expect(leafObject != nullptr && leafObject->parentId.has_value() &&
+                    *leafObject->parentId == middle.objectId,
+                "parent cycle leaf parent remains") &&
+         expect(directCycle.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "direct parent cycle status") &&
+         expect(directCycle.objectReceipt.message == "parent_cycle",
+                "direct parent cycle reason") &&
+         expect(indirectCycle.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "indirect parent cycle status") &&
+         expect(indirectCycle.objectReceipt.message == "parent_cycle",
+                "indirect parent cycle reason") &&
+         expect(document.revision() == revisionBefore,
+                "parent cycle revisions stable");
+}
+
 bool missingObjectRejectsWithoutRevisionAdvance() {
   cr::CreativeObjectId roomId = cr::kInvalidObjectId;
   cr::CreativeDocument document = makeDocumentWithRoom(roomId);
@@ -433,9 +889,17 @@ bool descriptorAllowedTextSleeperVerbIsDocumentNoChange() {
   const cr::CreativeDocumentMutationReceipt receipt = cr::applyDocumentMutation(
       document, noteId, cr::CreativeMutationKind::EditText,
       cr::makeTextPayload("hello"));
+  const cr::CreativeMutationPayload payload = cr::makeTextPayload("hello");
 
   return expect(receipt.status == cr::CreativeDocumentMutationStatus::NoChange,
                 "text sleeper document no change") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::EditText, payload) ==
+                    cr::CreativeMutationStoragePolicy::FutureStoragePlaceholder,
+                "text sleeper future-storage policy") &&
+         expect(!cr::mutationPayloadHasStoredObjectEffect(
+                    cr::CreativeMutationKind::EditText, payload),
+                "text sleeper no stored effect") &&
          expect(receipt.objectKind == cr::CreativeObjectKind::Note,
                 "text sleeper object kind") &&
          expect(receipt.mutationKind == cr::CreativeMutationKind::EditText,
@@ -469,9 +933,17 @@ bool descriptorAllowedScalarSleeperVerbIsDocumentNoChange() {
   const cr::CreativeDocumentMutationReceipt receipt = cr::applyDocumentMutation(
       document, lightId, cr::CreativeMutationKind::SetLightIntensity,
       cr::makeScalarPayload(4.0));
+  const cr::CreativeMutationPayload payload = cr::makeScalarPayload(4.0);
 
   return expect(receipt.status == cr::CreativeDocumentMutationStatus::NoChange,
                 "scalar sleeper document no change") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::SetLightIntensity, payload) ==
+                    cr::CreativeMutationStoragePolicy::FutureStoragePlaceholder,
+                "scalar sleeper future-storage policy") &&
+         expect(!cr::mutationPayloadHasStoredObjectEffect(
+                    cr::CreativeMutationKind::SetLightIntensity, payload),
+                "scalar sleeper no stored effect") &&
          expect(receipt.objectKind == cr::CreativeObjectKind::PointLight,
                 "scalar sleeper object kind") &&
          expect(receipt.mutationKind ==
@@ -503,9 +975,17 @@ bool descriptorAllowedLinkSleeperVerbIsDocumentNoChange() {
   const cr::CreativeDocumentMutationReceipt receipt = cr::applyDocumentMutation(
       document, linkId, cr::CreativeMutationKind::LinkTarget,
       cr::makeLinkPayload(77));
+  const cr::CreativeMutationPayload payload = cr::makeLinkPayload(77);
 
   return expect(receipt.status == cr::CreativeDocumentMutationStatus::NoChange,
                 "link sleeper document no change") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::LinkTarget, payload) ==
+                    cr::CreativeMutationStoragePolicy::FutureStoragePlaceholder,
+                "link sleeper future-storage policy") &&
+         expect(!cr::mutationPayloadHasStoredObjectEffect(
+                    cr::CreativeMutationKind::LinkTarget, payload),
+                "link sleeper no stored effect") &&
          expect(receipt.objectKind == cr::CreativeObjectKind::NavLink,
                 "link sleeper object kind") &&
          expect(receipt.mutationKind == cr::CreativeMutationKind::LinkTarget,
@@ -909,13 +1389,19 @@ bool lockedObjectUnlockThenRenameApplies() {
 }
 
 int main() {
-  const bool ok = setVisibleMutatesThroughDocumentGateway() &&
+  const bool ok = mutationMetadataRegistryIsInternallyConsistent() &&
+                  mutationStoragePolicySignalDistinguishesStoredAndFuturePlaceholders() &&
+                  mutationPayloadMetadataMatchesExpectedPayloadFamilies() &&
+                  setVisibleMutatesThroughDocumentGateway() &&
                   settingAlreadyCurrentVisibilityIsNoChange() &&
                   setVisibleFalseThenTrueIncrementsForEachRealChange() &&
                   scalarDimensionAxisPolicyIsStable() &&
                   alreadyCurrentScalarDimensionIsNoChange() &&
                   boundedMoveTranslatesCrateBoundsExactlyOnce() &&
                   pointOnlyMovePreservesStoredBoundsField() &&
+                  setParentNoChangePreservesRevision() &&
+                  relationshipMutationsRejectInvalidParentTargets() &&
+                  relationshipMutationsRejectParentCycles() &&
                   cornerAnchorMoveTranslatesRoomBoundsAndKeepsIdentityTransform() &&
                   cornerAnchorMoveToCurrentCornerIsNoChange() &&
                   lockedRoomMoveRejectsWithoutBoundsChange() &&

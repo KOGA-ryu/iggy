@@ -4,6 +4,7 @@
 #include <iostream>
 #include <limits>
 #include <string_view>
+#include <utility>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -96,11 +97,20 @@ cr::CreativeObject restoredGroupObject() {
   return object;
 }
 
-cr::CreativeObject restoredCrateObject() {
+cr::CreativeObject restoredGroupObjectWithId(cr::CreativeObjectId id,
+                                             std::string name) {
+  cr::CreativeObject object = restoredGroupObject();
+  object.id = id;
+  object.name = std::move(name);
+  object.parentId.reset();
+  return object;
+}
+
+cr::CreativeObject restoredWallObject() {
   cr::CreativeObject object;
   object.id = 7;
-  object.kind = cr::CreativeObjectKind::Crate;
-  object.name = "Restored Crate";
+  object.kind = cr::CreativeObjectKind::Wall;
+  object.name = "Restored Wall";
   object.transform.position = {1.0, 2.0, 3.0};
   object.transform.rotation = {0.0, 0.5, 0.0};
   object.transform.scale = {1.0, 2.0, 3.0};
@@ -109,7 +119,7 @@ cr::CreativeObject restoredCrateObject() {
   object.visible = false;
   object.locked = true;
   object.parentId = 2;
-  object.tags = {"crate", "imported"};
+  object.tags = {"wall", "imported"};
   return object;
 }
 
@@ -122,7 +132,7 @@ cr::CreativeDocumentRestoreRequest validRestoreRequest() {
   request.snapSettings = authoredSnapSettings();
   request.worldBounds = authoredWorldBounds();
   request.nextObjectId = 42;
-  request.objects = {restoredGroupObject(), restoredCrateObject()};
+  request.objects = {restoredGroupObject(), restoredWallObject()};
   return request;
 }
 
@@ -273,7 +283,7 @@ bool restoreForLoadReplacesDocumentWithExactState() {
   const cr::CreativeDocumentRestoreReceipt receipt =
       document.restoreForLoad(request);
   const cr::CreativeObject* group = document.findObject(2);
-  const cr::CreativeObject* crate = document.findObject(7);
+  const cr::CreativeObject* wall = document.findObject(7);
 
   return expect(receipt.requested, "restore requested") &&
          expect(receipt.accepted, "restore accepted") &&
@@ -307,33 +317,195 @@ bool restoreForLoadReplacesDocumentWithExactState() {
          expect(document.revision() == 0U, "restore revision zero") &&
          expect(document.dirtyFlags() == 0U, "restore dirty zero") &&
          expect(document.containsObject(2), "restore index contains group") &&
-         expect(document.containsObject(7), "restore index contains crate") &&
+         expect(document.containsObject(7), "restore index contains wall") &&
          expect(group != nullptr && group->kind == cr::CreativeObjectKind::Group,
                 "restored group kind") &&
          expect(group != nullptr && group->name == "Restored Group",
                 "restored group name") &&
-         expect(crate != nullptr && crate->kind == cr::CreativeObjectKind::Crate,
-                "restored crate kind") &&
-         expect(crate != nullptr && crate->name == "Restored Crate",
-                "restored crate name") &&
-         expect(crate != nullptr &&
-                    sameVec3(crate->transform.position, {1.0, 2.0, 3.0}),
+         expect(wall != nullptr && wall->kind == cr::CreativeObjectKind::Wall,
+                "restored wall kind") &&
+         expect(wall != nullptr && wall->name == "Restored Wall",
+                "restored wall name") &&
+         expect(wall != nullptr &&
+                    sameVec3(wall->transform.position, {1.0, 2.0, 3.0}),
                 "restored transform") &&
-         expect(crate != nullptr &&
-                    sameBounds(crate->bounds,
+         expect(wall != nullptr &&
+                    sameBounds(wall->bounds,
                                {{1.0, 2.0, 3.0}, {3.0, 4.0, 5.0}}),
                 "restored bounds") &&
-         expect(crate != nullptr && crate->layerId == 9U,
+         expect(wall != nullptr && wall->layerId == 9U,
                 "restored layer") &&
-         expect(crate != nullptr && !crate->visible && crate->locked,
+         expect(wall != nullptr && !wall->visible && wall->locked,
                 "restored visibility lock") &&
-         expect(crate != nullptr && crate->parentId.has_value() &&
-                    *crate->parentId == 2U,
+         expect(wall != nullptr && wall->parentId.has_value() &&
+                    *wall->parentId == 2U,
                 "restored parent") &&
-         expect(crate != nullptr && crate->tags.size() == 2U &&
-                    crate->tags[0] == "crate" &&
-                    crate->tags[1] == "imported",
+         expect(wall != nullptr && wall->tags.size() == 2U &&
+                    wall->tags[0] == "wall" &&
+                    wall->tags[1] == "imported",
                 "restored tags");
+}
+
+bool restoreForLoadRejectsUnsupportedParentPayload() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Original");
+  static_cast<void>(document.assignId(44));
+  const cr::CreativeDocumentCreateReceipt original =
+      createRoom(document, "Original Room");
+  const cr::CreativeDocumentId originalId = document.id();
+  const std::string_view originalName = document.name();
+  const std::uint64_t originalRevision = document.revision();
+  const cr::CreativeObjectDirtyFlags originalDirty = document.dirtyFlags();
+  const cr::CreativeObjectId originalNextObjectId = document.nextObjectId();
+
+  auto unchanged = [&]() {
+    return document.id() == originalId && document.name() == originalName &&
+           document.revision() == originalRevision &&
+           document.dirtyFlags() == originalDirty &&
+           document.objectCount() == 1U &&
+           document.nextObjectId() == originalNextObjectId &&
+           document.findObject(original.objectId) != nullptr;
+  };
+
+  cr::CreativeDocumentRestoreRequest unsupported = validRestoreRequest();
+  unsupported.objects[1].kind = cr::CreativeObjectKind::Crate;
+  unsupported.objects[1].name = "Unsupported Parented Crate";
+  const cr::CreativeDocumentRestoreReceipt receipt =
+      document.restoreForLoad(unsupported);
+
+  return expect(original.accepted, "unsupported parent setup create accepted") &&
+         expect(!receipt.accepted, "unsupported parent rejected") &&
+         expect(receipt.status == cr::CreativeDocumentRestoreStatus::InvalidObject,
+                "unsupported parent status") &&
+         expect(receipt.reasonCode == "parent_unsupported",
+                "unsupported parent reason") &&
+         expect(unchanged(), "unsupported parent leaves unchanged");
+}
+
+bool restoreForLoadRejectsUnsupportedParentOwnerPayload() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Original");
+  static_cast<void>(document.assignId(45));
+  const cr::CreativeDocumentCreateReceipt original =
+      createRoom(document, "Original Room");
+  const cr::CreativeDocumentId originalId = document.id();
+  const std::string_view originalName = document.name();
+  const std::uint64_t originalRevision = document.revision();
+  const cr::CreativeObjectDirtyFlags originalDirty = document.dirtyFlags();
+  const cr::CreativeObjectId originalNextObjectId = document.nextObjectId();
+
+  auto unchanged = [&]() {
+    return document.id() == originalId && document.name() == originalName &&
+           document.revision() == originalRevision &&
+           document.dirtyFlags() == originalDirty &&
+           document.objectCount() == 1U &&
+           document.nextObjectId() == originalNextObjectId &&
+           document.findObject(original.objectId) != nullptr;
+  };
+
+  cr::CreativeDocumentRestoreRequest unsupportedOwner = validRestoreRequest();
+  cr::CreativeObject crateParent;
+  crateParent.id = 6;
+  crateParent.kind = cr::CreativeObjectKind::Crate;
+  crateParent.name = "Crate Parent";
+  crateParent.transform.position = {3.0, 0.5, 3.0};
+  crateParent.bounds = {{2.5, 0.0, 2.5}, {3.5, 1.0, 3.5}};
+  unsupportedOwner.objects = {restoredGroupObject(),
+                              crateParent,
+                              restoredWallObject()};
+  unsupportedOwner.objects.back().parentId = crateParent.id;
+
+  const cr::CreativeDocumentRestoreReceipt receipt =
+      document.restoreForLoad(unsupportedOwner);
+
+  return expect(original.accepted,
+                "unsupported parent owner setup create accepted") &&
+         expect(!receipt.accepted, "unsupported parent owner rejected") &&
+         expect(receipt.status == cr::CreativeDocumentRestoreStatus::InvalidObject,
+                "unsupported parent owner status") &&
+         expect(receipt.reasonCode == "parent_owner_unsupported",
+                "unsupported parent owner reason") &&
+         expect(unchanged(), "unsupported parent owner leaves unchanged");
+}
+
+bool restoreForLoadRejectsDirectParentCycle() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Original");
+  static_cast<void>(document.assignId(46));
+  const cr::CreativeDocumentCreateReceipt original =
+      createRoom(document, "Original Room");
+  const cr::CreativeDocumentId originalId = document.id();
+  const std::string_view originalName = document.name();
+  const std::uint64_t originalRevision = document.revision();
+  const cr::CreativeObjectDirtyFlags originalDirty = document.dirtyFlags();
+  const cr::CreativeObjectId originalNextObjectId = document.nextObjectId();
+
+  auto unchanged = [&]() {
+    return document.id() == originalId && document.name() == originalName &&
+           document.revision() == originalRevision &&
+           document.dirtyFlags() == originalDirty &&
+           document.objectCount() == 1U &&
+           document.nextObjectId() == originalNextObjectId &&
+           document.findObject(original.objectId) != nullptr;
+  };
+
+  cr::CreativeObject groupA = restoredGroupObjectWithId(2, "Group A");
+  cr::CreativeObject groupB = restoredGroupObjectWithId(3, "Group B");
+  groupA.parentId = groupB.id;
+  groupB.parentId = groupA.id;
+
+  cr::CreativeDocumentRestoreRequest cycle = validRestoreRequest();
+  cycle.objects = {groupA, groupB};
+  cycle.nextObjectId = 10;
+  const cr::CreativeDocumentRestoreReceipt receipt =
+      document.restoreForLoad(cycle);
+
+  return expect(original.accepted, "direct parent cycle setup accepted") &&
+         expect(!receipt.accepted, "direct parent cycle rejected") &&
+         expect(receipt.status == cr::CreativeDocumentRestoreStatus::InvalidObject,
+                "direct parent cycle status") &&
+         expect(receipt.reasonCode == "parent_cycle",
+                "direct parent cycle reason") &&
+         expect(unchanged(), "direct parent cycle leaves unchanged");
+}
+
+bool restoreForLoadRejectsIndirectParentCycle() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Original");
+  static_cast<void>(document.assignId(47));
+  const cr::CreativeDocumentCreateReceipt original =
+      createRoom(document, "Original Room");
+  const cr::CreativeDocumentId originalId = document.id();
+  const std::string_view originalName = document.name();
+  const std::uint64_t originalRevision = document.revision();
+  const cr::CreativeObjectDirtyFlags originalDirty = document.dirtyFlags();
+  const cr::CreativeObjectId originalNextObjectId = document.nextObjectId();
+
+  auto unchanged = [&]() {
+    return document.id() == originalId && document.name() == originalName &&
+           document.revision() == originalRevision &&
+           document.dirtyFlags() == originalDirty &&
+           document.objectCount() == 1U &&
+           document.nextObjectId() == originalNextObjectId &&
+           document.findObject(original.objectId) != nullptr;
+  };
+
+  cr::CreativeObject groupA = restoredGroupObjectWithId(2, "Group A");
+  cr::CreativeObject groupB = restoredGroupObjectWithId(3, "Group B");
+  cr::CreativeObject groupC = restoredGroupObjectWithId(4, "Group C");
+  groupA.parentId = groupC.id;
+  groupB.parentId = groupA.id;
+  groupC.parentId = groupB.id;
+
+  cr::CreativeDocumentRestoreRequest cycle = validRestoreRequest();
+  cycle.objects = {groupA, groupB, groupC};
+  cycle.nextObjectId = 10;
+  const cr::CreativeDocumentRestoreReceipt receipt =
+      document.restoreForLoad(cycle);
+
+  return expect(original.accepted, "indirect parent cycle setup accepted") &&
+         expect(!receipt.accepted, "indirect parent cycle rejected") &&
+         expect(receipt.status == cr::CreativeDocumentRestoreStatus::InvalidObject,
+                "indirect parent cycle status") &&
+         expect(receipt.reasonCode == "parent_cycle",
+                "indirect parent cycle reason") &&
+         expect(unchanged(), "indirect parent cycle leaves unchanged");
 }
 
 bool restoreForLoadRejectsBadInputsWithoutMutation() {
@@ -437,8 +609,9 @@ bool restoreForLoadPreservesObjectIdGapsAndCursor() {
   cr::CreativeDocument document;
   cr::CreativeDocumentRestoreRequest request = validRestoreRequest();
   request.objects.clear();
-  request.objects.push_back(restoredCrateObject());
+  request.objects.push_back(restoredWallObject());
   request.objects.front().id = 4;
+  request.objects.front().parentId.reset();
   request.nextObjectId = 100;
 
   const cr::CreativeDocumentRestoreReceipt receipt =
@@ -464,6 +637,10 @@ int main() {
                   createRemovePreserveSettingsAndNextObjectCursor() &&
                   resetRestoresSettingsAndNextObjectCursor() &&
                   restoreForLoadReplacesDocumentWithExactState() &&
+                  restoreForLoadRejectsUnsupportedParentPayload() &&
+                  restoreForLoadRejectsUnsupportedParentOwnerPayload() &&
+                  restoreForLoadRejectsDirectParentCycle() &&
+                  restoreForLoadRejectsIndirectParentCycle() &&
                   restoreForLoadRejectsBadInputsWithoutMutation() &&
                   restoreForLoadPreservesObjectIdGapsAndCursor();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

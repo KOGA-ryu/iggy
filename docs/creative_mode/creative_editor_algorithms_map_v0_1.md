@@ -1,11 +1,36 @@
-# Creative Editor — Algorithm Map (v0.1)
+# Creative Editor — Algorithm Map (v0.1, triaged 2026-07-06)
 
-Grounded in live recon of the `creative::` kernel + `apps/iggy3d_creative/main.cpp` and an
-8-agent research workflow (2026-07-06). Every recommendation is anchored to real `file:line`
-seams. **Cut algorithm slices from this map**; version-bump on corrections.
+Original map grounded in live recon of the `creative::` kernel +
+`apps/iggy3d_creative/main.cpp` and an 8-agent research workflow
+(2026-07-06). This file now has a triage layer: it is a planning map, not a
+complete current-state source of truth. Use the builder cards and completed card
+briefs for scoped implementation truth.
 
 Doctrine held against every entry: generic systems never per-kind; target-first (smallest
 algorithm that unlocks the target); leverage lives in the READERS; validate → REPAIR → receipt.
+
+## Triage status
+
+- **Current enough to keep as doctrine:** descriptor-driven/generic systems,
+  mutation receipts/revisions as the shared change signal, and
+  `CreativeBounds`/shape facts as the common reader surface.
+- **Stale current-state claims corrected below:** undo is not a
+  `CreativeDocument` kernel history service; after E46 the shared
+  `CreativeDocumentUndoStack` lives in `CreativeAppState`, and the standalone
+  app aliases it through `StandaloneUndo.hpp`. Standalone center-depth picking
+  was fixed by E42 and is no longer the current app behavior.
+- **Already covered by builder cards:** standalone picking (E42), shared undo
+  stack shape (E46), mutation metadata registry (E49), future-storage mutation
+  policy (E50), projection context cleanup (E52), active creative identity
+  mirrors (E54/E55), product input phase helpers (E62), descriptor layout
+  cleanup (E71), and parent graph validation (E74).
+- **Not re-verified by E53:** rotate/scale and ascii pipeline claims remain
+  prior recon notes, not guarantees of current behavior.
+- **Speculative until carded:** `CreativeObjectAABBIndex`, redo, `withUndo`,
+  snap expansion, marquee/multi-select, token generation, navmesh/parkour/PVS,
+  and other large roadmap algorithms. E53 did not create new cards for these
+  because the ready queue already has bounded cleanup work and no fresh code
+  evidence was gathered here for a smaller acceptance gate.
 
 ---
 
@@ -14,14 +39,18 @@ algorithm that unlocks the target); leverage lives in the READERS; validate → 
 The kernel already funnels **every** edit through one validated mutation path
 (`applyDocumentMutation` → `applyMutation`, DocumentMutation.hpp:128 / MutationApply.hpp:89)
 that returns a **dirty-flag receipt** (Transform | Bounds | …) and bumps a monotonic
-`revision_`, and it already keeps a **full-document snapshot ring** for undo.
+`revision_`. Current undo is app-scoped snapshot history: product live owns a
+`CreativeDocumentUndoStack` on `CreativeAppState`, and the standalone app wraps
+that same stack shape through `StandaloneUndo.hpp`. There is no kernel
+`CreativeDocument` history service or redo stack.
 
 So the editor's job now is **not to add per-kind machinery** — it is to add generic **READERS**
 of two things: `CreativeBounds` and the mutation receipt. Pick, snap, cull, overlap-check,
 undo/redo, and bake **all reduce to reading the same bounds + occupancy data through different
 queries.** That is the doctrine ("leverage in the readers") made literal.
 
-**The single highest-leverage move:** build ONE persistent `CreativeObjectAABBIndex` — a coarse
+**Candidate high-leverage move, not current truth:** build ONE persistent
+`CreativeObjectAABBIndex` — a coarse
 (8 m) hash-grid keyed by `objectId + CreativeBounds`, updated incrementally off the
 `Transform|Bounds` dirty flags every receipt already emits, rebuilt wholesale on undo/redo
 snapshot boundaries. It is the shared substrate under **four** otherwise-separate lanes at once:
@@ -37,13 +66,14 @@ algorithm — still do it first); the algorithms below land in **B** (delete + p
 (undo/redo), and a snap slice after.
 
 ### Picking (slice B)
-- **World-space ray-vs-AABB slab pick** — replaces the projected-center-depth tie-break at
-  `main.cpp:2361` that causes the crate-over-floor mis-pick. Nearest ray-entry `tmin` over the
-  `visualBoundsForObject` AABBs the loop already computes. Emits one `TargetRef` → existing
-  Select path unchanged. Effort **S**.
-- **`clipFromWorld` 4×4 inverse** (pixel→world ray) — the one new capability the slab needs
-  (app only does world→clip today). Build it first; the frustum marquee later reuses it. **S**.
-- **Hover highlight** — same slab pick per-frame (no click), written to the *already-wired*
+- **World-space ray-vs-AABB slab pick** — **covered by E42 for the standalone
+  app.** The old projected-center-depth tie-break is no longer current for
+  standalone selection. Product-live picking should still be evaluated at its
+  own seam before reusing this algorithm there.
+- **`clipFromWorld` 4×4 inverse** (pixel→world ray) — built app-locally by E42
+  for standalone picking; moving it to a shared math/tool seam is a future
+  extraction, not current work.
+- **Hover highlight** — still a candidate: same slab pick per-frame (no click), written to the *already-wired*
   `CreativeSelectionState.candidateTarget` via `updateSelectionCandidate`. Nearly free once the
   pick is a reusable `pickClosest(pixel)->TargetRef` helper. **S**.
 
@@ -56,11 +86,14 @@ algorithm — still do it first); the algorithms below land in **B** (delete + p
   pick results before deleting the scan. **S**.
 
 ### Undo/redo (slice C)
-- **Unify onto one snapshot ring** — collapse the two diverging rings to one owner (the app's
-  push-before / discard-on-failure pattern). Kind-agnostic by construction. **S**.
+- **Snapshot stack shape** — **covered by E46.** Product live stores snapshots
+  in `CreativeAppState::undoStack`; standalone aliases the same
+  `CreativeDocumentUndoStack` type through `StandaloneUndo.hpp` while retaining
+  app-local logging and capture behavior.
 - **Add a redo mirror ring** — the biggest gap: capture `facade.document()` into redo *before*
-  `installDocument` overwrites it; clear redo on any fresh push. **S**.
-- **Generic `withUndo` wrapper keyed off `Document.revision()` delta** — consolidates the 4×
+  `installDocument` overwrites it; clear redo on any fresh push. **Speculative /
+  deferred** until a dedicated UX slice chooses redo.
+- **Generic `withUndo` wrapper keyed off `Document.revision()` delta** — candidate consolidation for the 4×
   copy-pasted helpers (`main.cpp:1032/1058/1352/1382`) so every current + future command inherits
   undo/redo for free. **M**.
 - Coalescing is **already free**: Preview mutates only the ghost; the document changes once at
@@ -94,12 +127,15 @@ algorithms**, all riding shipped `ascii_room/` seams:
 
 ## 2. Dependency-ordered build order
 
+Rows that reference completed cards are no longer pending work. Remaining rows
+are candidate roadmap order, not approved builder scope.
+
 | # | Build | Unlocks |
 |---|-------|---------|
-| 1 | `clipFromWorld` inverse (pixel→ray) | slab pick + frustum marquee later |
-| 2 | World-space slab pick → `pickClosest()` helper + hover | correct single-hit pick (B), free hover |
+| 1 | `clipFromWorld` inverse (pixel→ray) | Done app-locally for standalone by E42; shared extraction remains optional |
+| 2 | World-space slab pick → `pickClosest()` helper + hover | Standalone slab pick done by E42; hover/product-live picking remain separate candidates |
 | 3 | `CreativeObjectAABBIndex` (fed by receipt, `rebuildFrom` on snapshot) | pick gather + overlap + cull + snap-neighborhood — **4 queries, 1 structure** |
-| 4 | Undo/redo unify + redo ring + `withUndo` wrapper | robust undo AND redo; the commit template rotate/scale clone |
+| 4 | Undo stack shape covered by E46; redo ring + `withUndo` wrapper remain candidates | robust redo and a reusable command template if a later slice chooses them |
 | 5 | 3D-widen snap → surface + pivot + incremental snap | vertical box-stacking; off-grid-preserving drags |
 | 6 | Rotate tool = single-axis screen-angle ring cloning Move-drag + angle snap | rotation authoring (validation/receipt/undo inherited free) |
 | 7 | Oriented-box render (8 corners from center+Euler) + ray-vs-OBB pick | rotation becomes **visible**; rotated objects pick true footprint |
@@ -221,9 +257,12 @@ is the same algorithm — build it once, reuse it four ways.
 
 ## 6. Model corrections (what recon changed)
 
-- **Undo is already half-built**: TWO diverging snapshot rings (kernel
-  `CreativeDocumentUndoStack` pops-on-apply + forbids redo; app `StandaloneUndoStack`), NO redo.
-  Slice C = unify + add redo, not build-from-scratch.
+- **Undo current-state correction**: after E46 there is one shared
+  `CreativeDocumentUndoStack` type and helper set in `CreativeAppState.hpp`.
+  Product live owns an instance on `CreativeAppState`; standalone aliases that
+  type as `StandaloneUndoStack` and keeps app-local wrappers/logging. This is
+  not a `CreativeDocument` kernel history service, and redo still does not
+  exist.
 - **Rotate/Scale kernel is DONE**: `CreativeMutationKind::Rotate/Scale`, `applyRotate/ScaleMutation`
   (absolute-set), `rotate/resizeDocumentObject`, `descriptorAllowsMutation` per-kind gate — all
   built + tested. Gap is only the app gizmo. And `transform.rotation`/`.scale` are **unread** →
@@ -231,8 +270,10 @@ is the same algorithm — build it once, reuse it four ways.
 - **The ascii→3D pipeline ships** (`src/app/iggy3d/ascii_room/`): `AsciiRoomCanvas` (draw
   primitives) → `parseAsciiRoomCanvas` → `buildAsciiRoomGrid` (validator + receipt) →
   `AsciiRoomToRoomAsset` (bake). Token-gen = one arrow (token → canvas draw-calls).
-- **The pick has a real bug**: center-depth tie-break steals clicks (crate-over-floor). Fix =
-  world-space slab (needs the `clipFromWorld` inverse).
+- **Standalone picking correction**: E42 replaced the standalone
+  projected-AABB center-depth chooser with a world-space ray/AABB helper.
+  Product-live picking should be audited separately before assuming the same
+  bug or the same fix applies there.
 
 ---
 

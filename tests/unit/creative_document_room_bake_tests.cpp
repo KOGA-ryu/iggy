@@ -36,6 +36,30 @@ std::size_t countRole(std::span<const iggy3d::RoomStaticMeshAsset> meshes,
   return count;
 }
 
+std::size_t countSurfaceNormal(
+    std::span<const iggy3d::RoomSpatialSurface> surfaces,
+    iggy3d::Vec3 normal) {
+  std::size_t count = 0;
+  for (const iggy3d::RoomSpatialSurface& surface : surfaces) {
+    if (sameVec3(surface.normal, normal)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+std::size_t countSurfaceNormal(
+    std::span<const iggy3d::CollisionSurfaceView> surfaces,
+    iggy3d::Vec3 normal) {
+  std::size_t count = 0;
+  for (const iggy3d::CollisionSurfaceView& surface : surfaces) {
+    if (sameVec3(surface.normal, normal)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
 std::size_t countProjectedRole(const iggy3d::SceneRoomProjection& room,
                                std::string_view role) {
   std::size_t count = 0;
@@ -189,6 +213,10 @@ bool generatedRoomShellBakesChildrenAndSkipsRoomMetadata() {
     floorRoleCount += mesh.role == "floor" ? 1U : 0U;
     wallRoleCount += mesh.role == "wall" ? 1U : 0U;
   }
+  const std::uint64_t xNormalSurfaceCount =
+      countSurfaceNormal(result.room.spatialSurfaces, {1.0F, 0.0F, 0.0F});
+  const std::uint64_t zNormalSurfaceCount =
+      countSurfaceNormal(result.room.spatialSurfaces, {0.0F, 0.0F, 1.0F});
   for (const cr::CreativeRoomBakeStaticMeshSource& source :
        result.staticMeshSources) {
     noRoomSource &= source.objectId != roomReceipt.objectId;
@@ -219,6 +247,10 @@ bool generatedRoomShellBakesChildrenAndSkipsRoomMetadata() {
                 "shell bake surface sources") &&
          expect(floorRoleCount == 1U, "shell bake floor role") &&
          expect(wallRoleCount == 4U, "shell bake wall roles") &&
+         expect(xNormalSurfaceCount == 4U,
+                "shell east/west wall blocker normals") &&
+         expect(zNormalSurfaceCount == 4U,
+                "shell north/south wall blocker normals") &&
          expect(noRoomSource, "shell bake sources are generated children");
 }
 
@@ -330,6 +362,74 @@ bool floorWallCrateBakeToRoomAsset() {
                 "prop projectile surface id") &&
          expect(surfaceSources[4].sourceStaticMeshId == "creative_object_3",
                 "prop projectile surface mesh id");
+}
+
+bool perpendicularWallsBakeTruthfulBlockerNormals() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Wall Normal Bake Test");
+  const cr::CreativeDocumentCreateReceipt xWall =
+      createObject(document,
+                   cr::CreativeObjectKind::Wall,
+                   {{0.0, 0.0, 0.0}, {4.0, 2.5, 0.25}});
+  const cr::CreativeDocumentCreateReceipt zWall =
+      createObject(document,
+                   cr::CreativeObjectKind::Wall,
+                   {{10.0, 0.0, 0.0}, {10.25, 2.5, 4.0}});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+  const iggy3d::ProductActiveRoomState active =
+      iggy3d::buildProductActiveRoomFromPackageRoom(
+          result.room, "iggy3d.creative", "creative.document");
+  const iggy3d::ProductActiveRoomCollisionState collision =
+      iggy3d::buildProductActiveRoomCollision(active);
+
+  const iggy3d::RoomSpatialSurface* xWallActor =
+      result.room.spatialSurfaces.size() > 0U ? &result.room.spatialSurfaces[0]
+                                               : nullptr;
+  const iggy3d::RoomSpatialSurface* xWallProjectile =
+      result.room.spatialSurfaces.size() > 1U ? &result.room.spatialSurfaces[1]
+                                               : nullptr;
+  const iggy3d::RoomSpatialSurface* zWallActor =
+      result.room.spatialSurfaces.size() > 2U ? &result.room.spatialSurfaces[2]
+                                               : nullptr;
+  const iggy3d::RoomSpatialSurface* zWallProjectile =
+      result.room.spatialSurfaces.size() > 3U ? &result.room.spatialSurfaces[3]
+                                               : nullptr;
+
+  return expect(xWall.accepted, "x wall created") &&
+         expect(zWall.accepted, "z wall created") &&
+         expect(result.receipt.accepted, "wall normal bake accepted") &&
+         expect(result.room.staticMeshes.size() == 2U,
+                "wall normal mesh count") &&
+         expect(result.room.spatialSurfaces.size() == 4U,
+                "wall normal surface count") &&
+         expect(xWallActor != nullptr, "x wall actor surface exists") &&
+         expect(xWallActor != nullptr &&
+                    sameVec3(xWallActor->normal, {0.0F, 0.0F, 1.0F}),
+                "x-running wall actor normal +z") &&
+         expect(xWallProjectile != nullptr,
+                "x wall projectile surface exists") &&
+         expect(xWallProjectile != nullptr &&
+                    sameVec3(xWallProjectile->normal, {0.0F, 0.0F, 1.0F}),
+                "x-running wall projectile normal +z") &&
+         expect(zWallActor != nullptr, "z wall actor surface exists") &&
+         expect(zWallActor != nullptr &&
+                    sameVec3(zWallActor->normal, {1.0F, 0.0F, 0.0F}),
+                "z-running wall actor normal +x") &&
+         expect(zWallProjectile != nullptr,
+                "z wall projectile surface exists") &&
+         expect(zWallProjectile != nullptr &&
+                    sameVec3(zWallProjectile->normal, {1.0F, 0.0F, 0.0F}),
+                "z-running wall projectile normal +x") &&
+         expect(collision.ready, "wall normal collision ready") &&
+         expect(collision.querySurfaceCount == 4U,
+                "wall normal collision query count") &&
+         expect(countSurfaceNormal(collision.surfaces.surfaces(),
+                                   {0.0F, 0.0F, 1.0F}) == 2U,
+                "collision x-wall normals") &&
+         expect(countSurfaceNormal(collision.surfaces.surfaces(),
+                                   {1.0F, 0.0F, 0.0F}) == 2U,
+                "collision z-wall normals");
 }
 
 bool boundsBackedLineBakesAsPropGeometry() {
@@ -517,6 +617,57 @@ bool semanticVolumeProjectionObjectsDoNotBakeStaticGeometry() {
          expect(result.anchorSources.empty(), "volumes no anchor sources");
 }
 
+bool boxProjectionTestingVolumesDoNotBakeStaticGeometry() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Testing Volumes");
+  const cr::CreativeDocumentCreateReceipt testLane =
+      createObject(document,
+                   cr::CreativeObjectKind::TestLane,
+                   {{0.0, 0.0, 0.0}, {3.0, 0.2, 12.0}});
+  const cr::CreativeDocumentCreateReceipt fallShaft =
+      createObject(document,
+                   cr::CreativeObjectKind::FallShaft,
+                   {{4.0, 0.0, 0.0}, {6.0, 8.0, 2.0}});
+  const cr::CreativeDocumentCreateReceipt timingGate =
+      createObject(document,
+                   cr::CreativeObjectKind::TimingGate,
+                   {{8.0, 0.0, 0.0}, {10.0, 2.0, 0.2}});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(testLane.accepted, "test lane create accepted") &&
+         expect(fallShaft.accepted, "fall shaft create accepted") &&
+         expect(timingGate.accepted, "timing gate create accepted") &&
+         expect(!result.receipt.accepted, "testing volumes not accepted") &&
+         expect(result.receipt.status ==
+                    cr::CreativeRoomBakeStatus::NoRenderableObjects,
+                "testing volumes no-renderable status") &&
+         expect(result.receipt.reasonCode ==
+                    "creative_room_bake_no_renderable_objects",
+                "testing volumes no-renderable reason") &&
+         expect(result.receipt.objectCount == 3U,
+                "testing volumes object count") &&
+         expect(result.receipt.consideredObjectCount == 3U,
+                "testing volumes considered count") &&
+         expect(result.receipt.skippedUnsupportedShapeCount == 3U,
+                "testing volumes unsupported shape count") &&
+         expect(result.receipt.skippedNoBoundsCount == 0U,
+                "testing volumes no-bounds count") &&
+         expect(result.receipt.bakedStaticMeshCount == 0U,
+                "testing volumes static mesh count") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 0U,
+                "testing volumes spatial surface count") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "testing volumes anchor count") &&
+         expect(result.room.staticMeshes.empty(),
+                "testing volumes no static meshes") &&
+         expect(result.room.spatialSurfaces.empty(),
+                "testing volumes no spatial surfaces") &&
+         expect(result.staticMeshSources.empty(),
+                "testing volumes no mesh sources") &&
+         expect(result.spatialSurfaceSources.empty(),
+                "testing volumes no surface sources");
+}
+
 bool pointObjectBakesToAnchorOnly() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Point Anchor");
   const cr::CreativeVec3 position = {6.25, 1.5, -2.75};
@@ -559,6 +710,88 @@ bool pointObjectBakesToAnchorOnly() {
                 "point anchor stable name") &&
          expect(sameVec3(anchor->positionMeters, {6.25F, 1.5F, -2.75F}),
                 "point anchor position");
+}
+
+bool productMeaningfulPointAnchorsUseDescriptorSemantics() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Point Anchor Semantics");
+  const cr::CreativeDocumentCreateReceipt spawn =
+      createPoint(document, cr::CreativeObjectKind::SpawnPoint);
+  const cr::CreativeDocumentCreateReceipt exit =
+      createPoint(document, cr::CreativeObjectKind::ExitPoint, {2.0, 0.0, 1.0});
+  const cr::CreativeDocumentCreateReceipt npc =
+      createPoint(document, cr::CreativeObjectKind::NpcSpawn, {3.0, 0.0, 1.0});
+  const cr::CreativeDocumentCreateReceipt loot =
+      createPoint(document, cr::CreativeObjectKind::LootPoint, {4.0, 0.0, 1.0});
+  const cr::CreativeDocumentCreateReceipt enemy =
+      createPoint(document, cr::CreativeObjectKind::EnemySpawn, {5.0, 0.0, 1.0});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(spawn.accepted, "semantic spawn create") &&
+         expect(exit.accepted, "semantic exit create") &&
+         expect(npc.accepted, "semantic npc create") &&
+         expect(loot.accepted, "semantic loot create") &&
+         expect(enemy.accepted, "semantic enemy create") &&
+         expect(result.receipt.accepted, "semantic point bake accepted") &&
+         expect(result.receipt.bakedAnchorCount == 5U,
+                "semantic point anchor count") &&
+         expect(result.receipt.bakedStaticMeshCount == 0U,
+                "semantic point no static meshes") &&
+         expect(result.room.anchors.size() == 5U,
+                "semantic point anchor vector count") &&
+         expect(result.anchorSources.size() == 5U,
+                "semantic point source count") &&
+         expect(result.room.anchors[0].kind == "spawn",
+                "spawn point anchor kind") &&
+         expect(result.room.anchors[1].kind == "exit",
+                "exit point anchor kind") &&
+         expect(result.room.anchors[2].kind == "npc",
+                "npc spawn anchor kind") &&
+         expect(result.room.anchors[3].kind == "pickup",
+                "loot point anchor kind") &&
+         expect(result.room.anchors[4].kind == "monster",
+                "enemy spawn anchor kind") &&
+         expect(result.anchorSources[0].objectId == spawn.objectId,
+                "spawn source object") &&
+         expect(result.anchorSources[1].objectId == exit.objectId,
+                "exit source object") &&
+         expect(result.anchorSources[2].objectId == npc.objectId,
+                "npc source object") &&
+         expect(result.anchorSources[3].objectId == loot.objectId,
+                "loot source object") &&
+         expect(result.anchorSources[4].objectId == enemy.objectId,
+                "enemy source object");
+}
+
+bool broadOccupancyPointsWithoutAnchorSemanticsDoNotBakeAnchors() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Broad Point Anchor Semantics");
+  const cr::CreativeDocumentCreateReceipt entrance =
+      createPoint(document, cr::CreativeObjectKind::EntrancePoint);
+  const cr::CreativeDocumentCreateReceipt quest =
+      createPoint(document, cr::CreativeObjectKind::QuestMarker, {2.0, 0.0, 1.0});
+  const cr::CreativeDocumentCreateReceipt dialogue =
+      createPoint(document,
+                  cr::CreativeObjectKind::DialogueMarker,
+                  {3.0, 0.0, 1.0});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(entrance.accepted, "broad entrance create") &&
+         expect(quest.accepted, "broad quest create") &&
+         expect(dialogue.accepted, "broad dialogue create") &&
+         expect(!result.receipt.accepted, "broad point bake not accepted") &&
+         expect(result.receipt.status ==
+                    cr::CreativeRoomBakeStatus::NoRenderableObjects,
+                "broad point no renderable status") &&
+         expect(result.receipt.skippedUnsupportedAnchorCount == 3U,
+                "broad point unsupported anchor count") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "broad point no baked anchors") &&
+         expect(result.room.anchors.empty(), "broad point no anchors") &&
+         expect(result.anchorSources.empty(),
+                "broad point no anchor sources");
 }
 
 bool hiddenPointAnchorsAreSkippedUnlessIncluded() {
@@ -725,6 +958,112 @@ bool unsupportedAndMetadataObjectsAreSkipped() {
                 "unsupported no surface sources");
 }
 
+bool representativeBakeClassificationsRemainStable() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Bake Classification");
+  const cr::CreativeDocumentCreateReceipt hidden =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{-5.0, 0.0, -5.0}, {-1.0, 0.25, -1.0}},
+                   false);
+  const cr::CreativeDocumentCreateReceipt editorOnly =
+      createPoint(document, cr::CreativeObjectKind::Note);
+  const cr::CreativeDocumentCreateReceipt roomMetadata =
+      createObject(document,
+                   cr::CreativeObjectKind::Room,
+                   {{0.0, 0.0, 0.0}, {10.0, 4.0, 10.0}});
+  const cr::CreativeDocumentCreateReceipt anchor =
+      createPoint(document,
+                  cr::CreativeObjectKind::PointLight,
+                  {1.0, 2.0, 3.0});
+  const cr::CreativeDocumentCreateReceipt unsupportedPoint =
+      createPoint(document, cr::CreativeObjectKind::Socket);
+  const cr::CreativeDocumentCreateReceipt safeLine =
+      createObject(document,
+                   cr::CreativeObjectKind::Beam,
+                   {{0.0, 1.0, 0.0}, {4.0, 1.35, 0.35}});
+  const cr::CreativeDocumentCreateReceipt endpointLine =
+      createDefaultObject(document, cr::CreativeObjectKind::NavLink);
+  const cr::CreativeDocumentCreateReceipt boxVolume =
+      createObject(document,
+                   cr::CreativeObjectKind::WaterVolume,
+                   {{0.0, 0.0, 5.0}, {4.0, 1.0, 9.0}});
+  const cr::CreativeDocumentCreateReceipt floor =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{0.0, 0.0, 10.0}, {4.0, 0.25, 14.0}});
+  const cr::CreativeDocumentCreateReceipt wall =
+      createObject(document,
+                   cr::CreativeObjectKind::Wall,
+                   {{5.0, 0.0, 10.0}, {9.0, 2.5, 10.25}});
+  const cr::CreativeDocumentCreateReceipt prop =
+      createObject(document,
+                   cr::CreativeObjectKind::Crate,
+                   {{1.0, 0.0, 15.0}, {2.0, 1.0, 16.0}});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+  const std::vector<iggy3d::RoomStaticMeshAsset>& meshes =
+      result.room.staticMeshes;
+
+  return expect(hidden.accepted, "classification hidden create") &&
+         expect(editorOnly.accepted, "classification editor create") &&
+         expect(roomMetadata.accepted, "classification room create") &&
+         expect(anchor.accepted, "classification anchor create") &&
+         expect(unsupportedPoint.accepted,
+                "classification unsupported point create") &&
+         expect(safeLine.accepted, "classification safe line create") &&
+         expect(endpointLine.accepted,
+                "classification endpoint line create") &&
+         expect(boxVolume.accepted, "classification box volume create") &&
+         expect(floor.accepted, "classification floor create") &&
+         expect(wall.accepted, "classification wall create") &&
+         expect(prop.accepted, "classification prop create") &&
+         expect(result.receipt.accepted, "classification bake accepted") &&
+         expect(result.receipt.objectCount == 11U,
+                "classification object count") &&
+         expect(result.receipt.consideredObjectCount == 8U,
+                "classification considered count") &&
+         expect(result.receipt.skippedHiddenCount == 1U,
+                "classification hidden count") &&
+         expect(result.receipt.skippedEditorOnlyCount == 1U,
+                "classification editor-only count") &&
+         expect(result.receipt.skippedRoomMetadataCount == 1U,
+                "classification room metadata count") &&
+         expect(result.receipt.skippedUnsupportedAnchorCount == 1U,
+                "classification unsupported point count") &&
+         expect(result.receipt.skippedUnsupportedShapeCount == 2U,
+                "classification unsupported shape count") &&
+         expect(result.receipt.skippedNoBoundsCount == 0U,
+                "classification no-bounds count") &&
+         expect(result.receipt.bakedAnchorCount == 1U,
+                "classification anchor count") &&
+         expect(result.receipt.bakedStaticMeshCount == 4U,
+                "classification mesh count") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 7U,
+                "classification surface count") &&
+         expect(result.anchorSources.size() == 1U,
+                "classification anchor source count") &&
+         expect(result.anchorSources[0].objectId == anchor.objectId,
+                "classification anchor source object") &&
+         expect(result.staticMeshSources.size() == 4U,
+                "classification mesh source count") &&
+         expect(result.staticMeshSources[0].objectId == safeLine.objectId,
+                "classification line source") &&
+         expect(result.staticMeshSources[1].objectId == floor.objectId,
+                "classification floor source") &&
+         expect(result.staticMeshSources[2].objectId == wall.objectId,
+                "classification wall source") &&
+         expect(result.staticMeshSources[3].objectId == prop.objectId,
+                "classification prop source") &&
+         expect(meshes.size() == 4U, "classification mesh vector count") &&
+         expect(countRole(meshes, "floor") == 1U,
+                "classification floor role") &&
+         expect(countRole(meshes, "wall") == 1U,
+                "classification wall role") &&
+         expect(countRole(meshes, "prop") == 2U,
+                "classification prop roles");
+}
+
 }  // namespace
 
 int main() {
@@ -732,14 +1071,19 @@ int main() {
                   emptyDocumentHasNoRenderableObjects() &&
                   generatedRoomShellBakesChildrenAndSkipsRoomMetadata() &&
                   floorWallCrateBakeToRoomAsset() &&
+                  perpendicularWallsBakeTruthfulBlockerNormals() &&
                   boundsBackedLineBakesAsPropGeometry() &&
                   endpointLineDescriptorStaysOutOfBake() &&
                   semanticVolumeProjectionObjectsDoNotBakeStaticGeometry() &&
+                  boxProjectionTestingVolumesDoNotBakeStaticGeometry() &&
                   pointObjectBakesToAnchorOnly() &&
+                  productMeaningfulPointAnchorsUseDescriptorSemantics() &&
+                  broadOccupancyPointsWithoutAnchorSemanticsDoNotBakeAnchors() &&
                   bakedRoomProjectsAndLoadsIntoActiveRoom() &&
                   hiddenObjectsAreSkippedUnlessIncluded() &&
                   hiddenPointAnchorsAreSkippedUnlessIncluded() &&
                   editorOnlyPointIsSkipped() &&
-                  unsupportedAndMetadataObjectsAreSkipped();
+                  unsupportedAndMetadataObjectsAreSkipped() &&
+                  representativeBakeClassificationsRemainStable();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/bridge/ViewportPickFrame.hpp"
 
 #include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
@@ -67,10 +68,12 @@ cr::CreativeSpatialProjectionRequest projectionRequest() {
 
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
+  cr::CreativeActiveIdentity identity;
+  identity.saveId = "creative_save";
+  identity.worldId = "world_001";
+  identity.documentId = 42U;
+  iggy3d::mirrorProductActiveCreativeIdentity(identity, window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreativeSaveId = "creative_save";
-  window.activeCreativeWorldId = "world_001";
-  window.activeCreativeDocumentId = 42U;
   return window;
 }
 

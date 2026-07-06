@@ -218,6 +218,7 @@ void appendVec3Text(std::string& text, double x, double y, double z) {
       break;
     case creative::CreativeUiRowKind::InspectorDeleteSelected:
     case creative::CreativeUiRowKind::InspectorGenerateRoomShell:
+    case creative::CreativeUiRowKind::InspectorRemoveRoomShell:
       break;
     case creative::CreativeUiRowKind::InspectorBounds:
       // min/max are shown; size is carried in the row fields (max-min) for the

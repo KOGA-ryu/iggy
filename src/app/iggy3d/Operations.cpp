@@ -26,6 +26,47 @@
 
 namespace iggy3d {
 
+void mirrorProductActiveCreativeIdentity(
+    const creative::CreativeActiveIdentity& identity,
+    ProductAppWindowState& window) {
+  window.activeCreativeSaveId =
+      identity.saveId.empty() ? "none" : identity.saveId;
+  window.activeCreativeSavePath =
+      identity.savePath.empty() ? "none" : identity.savePath;
+  window.activeCreativeWorldId =
+      identity.worldId.empty() ? "none" : identity.worldId;
+  window.activeCreativeDocumentId = identity.documentId;
+  window.activeCreativeObjectCount = identity.objectCount;
+  window.activeCreativeNextObjectId = identity.nextObjectId;
+  window.activeCreativeSaveStatus =
+      identity.saveStatus.empty() ? "creative_world_save_not_requested"
+                                  : identity.saveStatus;
+  window.activeCreativeSaveReasonCode =
+      identity.saveReasonCode.empty() ? "creative_world_save_not_requested"
+                                      : identity.saveReasonCode;
+  window.activeCreativeSaveDirtyFlagsBefore =
+      identity.saveDirtyFlagsBefore;
+  window.activeCreativeSaveDirtyFlagsDrained =
+      identity.saveDirtyFlagsDrained;
+  window.activeCreativeSaveDirtyFlagsAfter = identity.saveDirtyFlagsAfter;
+  window.activeCreativeSaveSavedAtUtc =
+      identity.saveSavedAtUtc.empty() ? "none" : identity.saveSavedAtUtc;
+}
+
+void clearProductActiveCreativeIdentity(
+    ProductAppWindowState& window,
+    creative::CreativeActiveIdentity* identity) {
+  creative::CreativeActiveIdentity cleared;
+  if (identity != nullptr) {
+    identity->clear();
+    mirrorProductActiveCreativeIdentity(*identity, window);
+  } else {
+    mirrorProductActiveCreativeIdentity(cleared, window);
+  }
+  window.creativeUndoAvailable = false;
+  window.creativeUndoDepth = 0;
+}
+
 namespace {
 
 constexpr const char* kCreativeRoomBakeNoRenderableObjects =
@@ -577,6 +618,161 @@ ProductActiveRoomState clearedCreativeBakedActiveRoom(
   return activeRoom;
 }
 
+class ProductCreativeBakedRoomRefreshService {
+ public:
+  ProductCreativeBakedRoomRefreshService(
+      const ProductCreativeBakedActiveRoomRefreshRequest& request,
+      const std::optional<Session>& activeSession,
+      ProductAppWindowState& window,
+      const creative::CreativeAppState& creativeApp)
+      : request_(request),
+        activeSession_(activeSession),
+        window_(window),
+        creativeApp_(creativeApp) {}
+
+  ProductCreativeBakedActiveRoomRefreshResult execute() {
+    const creative::CreativeDocument& document = creativeApp_.facade.document();
+    result_.documentId = document.id();
+    result_.objectCount = document.objectCount();
+
+    if (!passesPreconditions(document)) {
+      return result_;
+    }
+
+    const creative::CreativeRoomBakeResult bake = bakeDocument(document);
+    mirrorBakeResult(bake);
+    if (!bake.receipt.accepted) {
+      return handleRejectedBake(document, bake);
+    }
+
+    return installBakedRoom(document, bake.room);
+  }
+
+ private:
+  bool passesPreconditions(const creative::CreativeDocument& document) {
+    if (window_.interactionMode != ProductInteractionMode::Creative) {
+      setCreativeBakedActiveRoomRefreshStatus(
+          result_,
+          "product_creative_baked_room_inactive");
+      return false;
+    }
+    if (!activeSession_.has_value()) {
+      setCreativeBakedActiveRoomRefreshStatus(
+          result_,
+          "product_creative_baked_room_session_missing");
+      return false;
+    }
+    if (document.id() == creative::kInvalidDocumentId || !document.isValid()) {
+      setCreativeBakedActiveRoomRefreshStatus(
+          result_,
+          "product_creative_baked_room_document_invalid");
+      return false;
+    }
+    return true;
+  }
+
+  creative::CreativeRoomBakeRequest bakeRequestFor(
+      const creative::CreativeDocument& document) const {
+    creative::CreativeRoomBakeRequest bakeRequest;
+    bakeRequest.document = &document;
+    bakeRequest.roomId = request_.roomId;
+    bakeRequest.sourceName = request_.sourceName;
+    bakeRequest.sourceSubset = request_.sourceSubset;
+    bakeRequest.includeHidden = request_.includeHidden;
+    return bakeRequest;
+  }
+
+  creative::CreativeRoomBakeResult bakeDocument(
+      const creative::CreativeDocument& document) {
+    const creative::CreativeRoomBakeRequest bakeRequest =
+        bakeRequestFor(document);
+    result_.bakeMeasured = true;
+    result_.bakedDocumentRevision = document.revision();
+    const auto bakeStarted = std::chrono::steady_clock::now();
+    const creative::CreativeRoomBakeResult bake =
+        creative::buildRoomAssetFromCreativeDocument(bakeRequest);
+    result_.bakeElapsedMicroseconds = elapsedMicroseconds(bakeStarted);
+    return bake;
+  }
+
+  void mirrorBakeResult(const creative::CreativeRoomBakeResult& bake) {
+    result_.bakeReceipt = bake.receipt;
+    result_.staticMeshCount =
+        static_cast<std::uint64_t>(bake.room.staticMeshes.size());
+    result_.anchorCount = static_cast<std::uint64_t>(bake.room.anchors.size());
+    result_.spatialSurfaceCount =
+        static_cast<std::uint64_t>(bake.room.spatialSurfaces.size());
+    result_.staticMeshSourceCount =
+        static_cast<std::uint64_t>(bake.staticMeshSources.size());
+    result_.anchorSourceCount =
+        static_cast<std::uint64_t>(bake.anchorSources.size());
+    result_.spatialSurfaceSourceCount =
+        static_cast<std::uint64_t>(bake.spatialSurfaceSources.size());
+  }
+
+  ProductCreativeBakedActiveRoomRefreshResult handleRejectedBake(
+      const creative::CreativeDocument& document,
+      const creative::CreativeRoomBakeResult& bake) {
+    if (request_.clearOnNoRenderable &&
+        bake.receipt.reasonCode == kCreativeRoomBakeNoRenderableObjects) {
+      window_.activeRoom = clearedCreativeBakedActiveRoom(request_);
+      window_.activeRoomCollision =
+          buildProductActiveRoomCollision(window_.activeRoom,
+                                          activeSession_->state());
+
+      result_.accepted = true;
+      result_.clearedActiveRoom = true;
+      mirrorActiveRoomState();
+      setCreativeBakedActiveRoomRefreshStatus(
+          result_,
+          kProductCreativeBakedRoomClearedNoRenderableObjects);
+      recordProductCreativeBakedRoomFresh(window_,
+                                          document.id(),
+                                          document.revision());
+      return result_;
+    }
+
+    setCreativeBakedActiveRoomRefreshStatus(result_, bake.receipt.reasonCode);
+    return result_;
+  }
+
+  ProductCreativeBakedActiveRoomRefreshResult installBakedRoom(
+      const creative::CreativeDocument& document,
+      const RoomAsset& room) {
+    ProductActiveRoomState activeRoom = buildProductActiveRoomFromPackageRoom(
+        room, "iggy3d.creative", "creative.document");
+    ProductActiveRoomCollisionState collision =
+        buildProductActiveRoomCollision(activeRoom, activeSession_->state());
+
+    window_.activeRoom = std::move(activeRoom);
+    window_.activeRoomCollision = std::move(collision);
+
+    mirrorActiveRoomState();
+    result_.accepted = true;
+    setCreativeBakedActiveRoomRefreshStatus(
+        result_,
+        "product_creative_baked_room_refreshed");
+    recordProductCreativeBakedRoomFresh(window_,
+                                        document.id(),
+                                        document.revision());
+    return result_;
+  }
+
+  void mirrorActiveRoomState() {
+    result_.activeRoomLoaded = window_.activeRoom.loaded;
+    result_.activeRoomStatus = window_.activeRoom.status;
+    result_.collisionReady = window_.activeRoomCollision.ready;
+    result_.collisionQuerySurfaceCount =
+        window_.activeRoomCollision.querySurfaceCount;
+  }
+
+  const ProductCreativeBakedActiveRoomRefreshRequest& request_;
+  const std::optional<Session>& activeSession_;
+  ProductAppWindowState& window_;
+  const creative::CreativeAppState& creativeApp_;
+  ProductCreativeBakedActiveRoomRefreshResult result_;
+};
+
 std::string idOrNone(std::string_view value) {
   return value.empty() ? "none" : std::string(value);
 }
@@ -587,33 +783,6 @@ std::string pathOrNone(const std::filesystem::path& path) {
 
 bool missingWindowIdentity(std::string_view value) {
   return value.empty() || value == "none";
-}
-
-// SLICE 2 (PART B): every write below lands in BOTH the god-struct mirror on
-// `window` (kept so the receipt + the ~106 identity tests stay green) AND the
-// creative container's own identity (the new source of truth). The two are held
-// in strict lockstep here so a later slice can flip the readers over without a
-// value drift.
-void clearActiveCreativeSaveIdentity(
-    ProductAppWindowState& window,
-    creative::CreativeActiveIdentity* identity = nullptr) {
-  if (identity != nullptr) {
-    identity->clear();
-  }
-  window.activeCreativeSaveId = "none";
-  window.activeCreativeSavePath = "none";
-  window.activeCreativeWorldId = "none";
-  window.activeCreativeDocumentId = creative::kInvalidDocumentId;
-  window.activeCreativeObjectCount = 0;
-  window.activeCreativeNextObjectId = creative::kInvalidObjectId;
-  window.activeCreativeSaveStatus = "creative_world_save_not_requested";
-  window.activeCreativeSaveReasonCode = "creative_world_save_not_requested";
-  window.activeCreativeSaveDirtyFlagsBefore = 0;
-  window.activeCreativeSaveDirtyFlagsDrained = 0;
-  window.activeCreativeSaveDirtyFlagsAfter = 0;
-  window.activeCreativeSaveSavedAtUtc = "none";
-  window.creativeUndoAvailable = false;
-  window.creativeUndoDepth = 0;
 }
 
 void recordActiveCreativeSaveIdentity(
@@ -637,18 +806,7 @@ void recordActiveCreativeSaveIdentity(
   identity.saveDirtyFlagsDrained = 0;
   identity.saveDirtyFlagsAfter = 0;
   identity.saveSavedAtUtc = "none";
-  window.activeCreativeSaveId = idOrNone(saveId);
-  window.activeCreativeSavePath = pathOrNone(path);
-  window.activeCreativeWorldId = idOrNone(worldId);
-  window.activeCreativeDocumentId = documentId;
-  window.activeCreativeObjectCount = objectCount;
-  window.activeCreativeNextObjectId = nextObjectId;
-  window.activeCreativeSaveStatus = "creative_world_save_not_requested";
-  window.activeCreativeSaveReasonCode = "creative_world_save_not_requested";
-  window.activeCreativeSaveDirtyFlagsBefore = 0;
-  window.activeCreativeSaveDirtyFlagsDrained = 0;
-  window.activeCreativeSaveDirtyFlagsAfter = 0;
-  window.activeCreativeSaveSavedAtUtc = "none";
+  mirrorProductActiveCreativeIdentity(identity, window);
 }
 
 void recordActiveCreativeSaveResult(
@@ -662,22 +820,13 @@ void recordActiveCreativeSaveResult(
   identity.saveDirtyFlagsAfter = result.dirtyFlagsAfter;
   identity.saveSavedAtUtc =
       result.saveResult.savedAtUtc.empty() ? "none" : result.saveResult.savedAtUtc;
-  window.activeCreativeSaveStatus = result.status;
-  window.activeCreativeSaveReasonCode = result.reasonCode;
-  window.activeCreativeSaveDirtyFlagsBefore = result.dirtyFlagsBefore;
-  window.activeCreativeSaveDirtyFlagsDrained = result.dirtyFlagsDrained;
-  window.activeCreativeSaveDirtyFlagsAfter = result.dirtyFlagsAfter;
-  window.activeCreativeSaveSavedAtUtc =
-      result.saveResult.savedAtUtc.empty() ? "none" : result.saveResult.savedAtUtc;
   if (result.accepted && result.saved) {
-    recordActiveCreativeSaveIdentity(window,
-                                     identity,
-                                     result.saveId,
-                                     result.path,
-                                     result.worldId,
-                                     result.documentId,
-                                     result.objectCount,
-                                     result.nextObjectId);
+    identity.saveId = idOrNone(result.saveId);
+    identity.savePath = pathOrNone(result.path);
+    identity.worldId = idOrNone(result.worldId);
+    identity.documentId = result.documentId;
+    identity.objectCount = result.objectCount;
+    identity.nextObjectId = result.nextObjectId;
     identity.saveStatus = result.status;
     identity.saveReasonCode = result.reasonCode;
     identity.saveDirtyFlagsBefore = result.dirtyFlagsBefore;
@@ -685,14 +834,8 @@ void recordActiveCreativeSaveResult(
     identity.saveDirtyFlagsAfter = result.dirtyFlagsAfter;
     identity.saveSavedAtUtc =
         result.saveResult.savedAtUtc.empty() ? "none" : result.saveResult.savedAtUtc;
-    window.activeCreativeSaveStatus = result.status;
-    window.activeCreativeSaveReasonCode = result.reasonCode;
-    window.activeCreativeSaveDirtyFlagsBefore = result.dirtyFlagsBefore;
-    window.activeCreativeSaveDirtyFlagsDrained = result.dirtyFlagsDrained;
-    window.activeCreativeSaveDirtyFlagsAfter = result.dirtyFlagsAfter;
-    window.activeCreativeSaveSavedAtUtc =
-        result.saveResult.savedAtUtc.empty() ? "none" : result.saveResult.savedAtUtc;
   }
+  mirrorProductActiveCreativeIdentity(identity, window);
 }
 
 void mirrorCreativeWorldCreateResult(
@@ -1199,7 +1342,7 @@ void launchProductNewWorld(const ProductAppOptions& options,
   }
 
   window.launchStatus = initialSave.status;
-  clearActiveCreativeSaveIdentity(window);
+  clearProductActiveCreativeIdentity(window);
   window.interactionMode = ProductInteractionMode::Player;
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
 }
@@ -1368,14 +1511,15 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
     ProductAppWindowState& window) {
   (void)source;
   creative::Facade& facade = creativeApp.facade;
+  const creative::CreativeActiveIdentity& identity = creativeApp.identity;
 
   ProductCreativeCurrentWorldSaveResult result;
-  result.saveId = window.activeCreativeSaveId;
+  result.saveId = identity.saveId;
   result.path =
-      missingWindowIdentity(window.activeCreativeSavePath)
+      missingWindowIdentity(identity.savePath)
           ? std::filesystem::path{}
-          : std::filesystem::path{window.activeCreativeSavePath};
-  result.worldId = window.activeCreativeWorldId;
+          : std::filesystem::path{identity.savePath};
+  result.worldId = identity.worldId;
   result.documentId = facade.document().id();
   result.objectCount = facade.document().objectCount();
   result.nextObjectId = facade.document().nextObjectId();
@@ -1387,7 +1531,7 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
     recordActiveCreativeSaveResult(window, creativeApp.identity, result);
     return result;
   }
-  if (missingWindowIdentity(window.activeCreativeSaveId)) {
+  if (missingWindowIdentity(identity.saveId)) {
     setCurrentCreativeSaveStatus(result, "product_creative_save_id_missing");
     recordActiveCreativeSaveResult(window, creativeApp.identity, result);
     return result;
@@ -1401,11 +1545,11 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
 
   CreativeWorldSaveRequest request;
   request.saveRoot = options.saveRoot;
-  request.saveId = window.activeCreativeSaveId;
+  request.saveId = identity.saveId;
   request.attemptToken = "attempt_002";
   request.document = &facade.documentForPersistence();
-  if (!missingWindowIdentity(window.activeCreativeWorldId)) {
-    request.worldId = window.activeCreativeWorldId;
+  if (!missingWindowIdentity(identity.worldId)) {
+    request.worldId = identity.worldId;
   }
   request.savedAtUtc = productSaveTimestampNowUtc();
 
@@ -1441,98 +1585,12 @@ ProductCreativeBakedActiveRoomRefreshResult refreshProductCreativeBakedActiveRoo
     const std::optional<Session>& activeSession,
     ProductAppWindowState& window,
     const creative::CreativeAppState& creativeApp) {
-  ProductCreativeBakedActiveRoomRefreshResult result;
-  const creative::CreativeDocument& document = creativeApp.facade.document();
-  result.documentId = document.id();
-  result.objectCount = document.objectCount();
-
-  if (window.interactionMode != ProductInteractionMode::Creative) {
-    setCreativeBakedActiveRoomRefreshStatus(
-        result,
-        "product_creative_baked_room_inactive");
-    return result;
-  }
-  if (!activeSession.has_value()) {
-    setCreativeBakedActiveRoomRefreshStatus(
-        result,
-        "product_creative_baked_room_session_missing");
-    return result;
-  }
-  if (document.id() == creative::kInvalidDocumentId || !document.isValid()) {
-    setCreativeBakedActiveRoomRefreshStatus(
-        result,
-        "product_creative_baked_room_document_invalid");
-    return result;
-  }
-
-  creative::CreativeRoomBakeRequest bakeRequest;
-  bakeRequest.document = &document;
-  bakeRequest.roomId = request.roomId;
-  bakeRequest.sourceName = request.sourceName;
-  bakeRequest.sourceSubset = request.sourceSubset;
-  bakeRequest.includeHidden = request.includeHidden;
-
-  result.bakeMeasured = true;
-  result.bakedDocumentRevision = document.revision();
-  const auto bakeStarted = std::chrono::steady_clock::now();
-  const creative::CreativeRoomBakeResult bake =
-      creative::buildRoomAssetFromCreativeDocument(bakeRequest);
-  result.bakeElapsedMicroseconds = elapsedMicroseconds(bakeStarted);
-  result.bakeReceipt = bake.receipt;
-  result.staticMeshCount =
-      static_cast<std::uint64_t>(bake.room.staticMeshes.size());
-  result.anchorCount = static_cast<std::uint64_t>(bake.room.anchors.size());
-  result.spatialSurfaceCount =
-      static_cast<std::uint64_t>(bake.room.spatialSurfaces.size());
-  result.staticMeshSourceCount =
-      static_cast<std::uint64_t>(bake.staticMeshSources.size());
-  result.anchorSourceCount =
-      static_cast<std::uint64_t>(bake.anchorSources.size());
-  result.spatialSurfaceSourceCount =
-      static_cast<std::uint64_t>(bake.spatialSurfaceSources.size());
-  if (!bake.receipt.accepted) {
-    if (request.clearOnNoRenderable &&
-        bake.receipt.reasonCode == kCreativeRoomBakeNoRenderableObjects) {
-      window.activeRoom = clearedCreativeBakedActiveRoom(request);
-      window.activeRoomCollision =
-          buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
-
-      result.accepted = true;
-      result.clearedActiveRoom = true;
-      result.activeRoomLoaded = window.activeRoom.loaded;
-      result.activeRoomStatus = window.activeRoom.status;
-      result.collisionReady = window.activeRoomCollision.ready;
-      result.collisionQuerySurfaceCount =
-          window.activeRoomCollision.querySurfaceCount;
-      setCreativeBakedActiveRoomRefreshStatus(
-          result,
-          kProductCreativeBakedRoomClearedNoRenderableObjects);
-      recordProductCreativeBakedRoomFresh(window, document.id(), document.revision());
-      return result;
-    }
-    setCreativeBakedActiveRoomRefreshStatus(result, bake.receipt.reasonCode);
-    return result;
-  }
-
-  ProductActiveRoomState activeRoom = buildProductActiveRoomFromPackageRoom(
-      bake.room, "iggy3d.creative", "creative.document");
-  ProductActiveRoomCollisionState collision =
-      buildProductActiveRoomCollision(activeRoom, activeSession->state());
-
-  window.activeRoom = std::move(activeRoom);
-  window.activeRoomCollision = std::move(collision);
-
-  result.activeRoomLoaded = window.activeRoom.loaded;
-  result.activeRoomStatus = window.activeRoom.status;
-  result.collisionReady = window.activeRoomCollision.ready;
-  result.collisionQuerySurfaceCount =
-      window.activeRoomCollision.querySurfaceCount;
-  result.accepted = true;
-  setCreativeBakedActiveRoomRefreshStatus(
-      result,
-      "product_creative_baked_room_refreshed");
-  recordProductCreativeBakedRoomFresh(window, document.id(), document.revision());
-  return result;
+  return ProductCreativeBakedRoomRefreshService{
+      request,
+      activeSession,
+      window,
+      creativeApp,
+  }.execute();
 }
 
 void launchProductSaveSlot(const ProductAppOptions& options,
@@ -1608,7 +1666,7 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   }
   window.launchStatus = loaded.status;
   window.runtimeStateHash = activeSession->stateHash();
-  clearActiveCreativeSaveIdentity(window);
+  clearProductActiveCreativeIdentity(window);
   window.interactionMode = ProductInteractionMode::Player;
   enterProductGameplayTransition(frontend, window, launchAction);
 }

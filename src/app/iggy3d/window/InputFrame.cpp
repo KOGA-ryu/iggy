@@ -25,6 +25,7 @@
 #include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/ProductCreativeBakedRoomRefresh.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"
 #include "app/platform/SdlWindow.hpp"
@@ -85,51 +86,6 @@ ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
     InputAction action,
     FrontendSettings* settings,
     bool* closeRequested);
-
-void recordProductCreativeUiBakedRoomRefresh(
-    ProductAppWindowState& window,
-    const ProductCreativeBakedActiveRoomRefreshResult& refresh) {
-  window.creativeUiCommandBakedRoomRefreshRequested = true;
-  window.creativeUiCommandBakedRoomRefreshAccepted = refresh.accepted;
-  window.creativeUiCommandBakedRoomRefreshStatus = refresh.status;
-  window.creativeUiCommandBakedRoomRefreshReasonCode = refresh.reasonCode;
-  window.creativeUiCommandBakedRoomBakeMeasured = refresh.bakeMeasured;
-  window.creativeUiCommandBakedRoomBakeElapsedMicroseconds =
-      refresh.bakeElapsedMicroseconds;
-  window.creativeUiCommandBakedRoomBakedDocumentRevision =
-      refresh.bakedDocumentRevision;
-  window.creativeUiCommandBakedRoomStaticMeshCount =
-      refresh.staticMeshCount;
-  window.creativeUiCommandBakedRoomAnchorCount = refresh.anchorCount;
-  window.creativeUiCommandBakedRoomSpatialSurfaceCount =
-      refresh.spatialSurfaceCount;
-  window.creativeUiCommandBakedRoomCollisionReady = refresh.collisionReady;
-  window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount =
-      refresh.collisionQuerySurfaceCount;
-}
-
-void recordProductCreativeBakedRoomAutoRefresh(
-    ProductAppWindowState& window,
-    const ProductCreativeBakedActiveRoomRefreshResult& refresh) {
-  window.creativeBakedRoomAutoRefreshRequested = true;
-  window.creativeBakedRoomAutoRefreshAccepted = refresh.accepted;
-  window.creativeBakedRoomAutoRefreshClearedActiveRoom =
-      refresh.clearedActiveRoom;
-  window.creativeBakedRoomAutoRefreshStatus = refresh.status;
-  window.creativeBakedRoomAutoRefreshReasonCode = refresh.reasonCode;
-  window.creativeBakedRoomAutoRefreshBakeMeasured = refresh.bakeMeasured;
-  window.creativeBakedRoomAutoRefreshBakeElapsedMicroseconds =
-      refresh.bakeElapsedMicroseconds;
-  window.creativeBakedRoomAutoRefreshBakedDocumentRevision =
-      refresh.bakedDocumentRevision;
-  window.creativeBakedRoomAutoRefreshStaticMeshCount = refresh.staticMeshCount;
-  window.creativeBakedRoomAutoRefreshAnchorCount = refresh.anchorCount;
-  window.creativeBakedRoomAutoRefreshSpatialSurfaceCount =
-      refresh.spatialSurfaceCount;
-  window.creativeBakedRoomAutoRefreshCollisionReady = refresh.collisionReady;
-  window.creativeBakedRoomAutoRefreshCollisionQuerySurfaceCount =
-      refresh.collisionQuerySurfaceCount;
-}
 
 ProductCreativeDocumentRevisionSnapshot
 captureProductCreativeDocumentRevision(
@@ -1034,6 +990,401 @@ ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPre
   return result;
 }
 
+struct ProductCreativeDocumentInputOrchestrationRequest {
+  ProductWindowInputFrameContext& context;
+  MouseClick click;
+  bool higherPriorityMouseConsumed = false;
+  bool frontendMouseOwnsInput = false;
+};
+
+struct ProductCreativeDocumentInputOrchestrationResult {
+  MouseClick downstreamClick;
+  creative::TargetRef pointerTarget;
+  bool creativeDocumentActive = false;
+  bool creativeDocumentInputHandled = false;
+};
+
+struct ProductCreativeDocumentRevisionPhaseState {
+  ProductCreativeDocumentRevisionSnapshot revisionBefore;
+  creative::CreativeDocument undoSnapshotBefore;
+  bool undoSnapshotBeforeAvailable = false;
+};
+
+struct ProductCreativeUiCommandPhaseResult {
+  ProductCreativeUiInputFrameReceipt inputReceipt;
+  ProductCreativeUiCommandFrameReceipt commandReceipt;
+};
+
+struct ProductCreativeViewportInputPhaseResult {
+  MouseClick downstreamClick;
+  creative::TargetRef pointerTarget;
+};
+
+[[nodiscard]] bool canDispatchProductCreativeDocumentInput(
+    const ProductWindowInputFrameContext& context,
+    bool creativeDocumentActive) {
+  return context.window.gameplayActive && context.activeSession.has_value() &&
+         !frontendBlocksGameplayInput(context.frontend) &&
+         creativeDocumentActive;
+}
+
+[[nodiscard]] MouseClick productCreativeUiClickForFrame(
+    ProductWindowInputFrameContext& context,
+    const ProductCreativeDocumentInputOrchestrationRequest& request) {
+  MouseClick creativeUiClick = productWindowClickForHitTest(
+      request.click,
+      context.sdlWindow,
+      context.creativeUiDrawList == nullptr
+          ? 1280U
+          : context.creativeUiDrawList->virtualWidth,
+      context.creativeUiDrawList == nullptr
+          ? 720U
+          : context.creativeUiDrawList->virtualHeight);
+  // Branch-gate: BG-1029. Surfaces visually above gameplay own the click even
+  // when the pointer misses a specific row, and a row hit consumes before the
+  // Creative overlay can route a hidden/behind click.
+  if (request.frontendMouseOwnsInput || request.higherPriorityMouseConsumed) {
+    creativeUiClick.clicked = false;
+  }
+  return creativeUiClick;
+}
+
+[[nodiscard]] ProductCreativeDocumentRevisionPhaseState
+beginProductCreativeDocumentRevisionPhase(
+    const ProductWindowInputFrameContext& context) {
+  ProductCreativeDocumentRevisionPhaseState phase;
+  phase.revisionBefore =
+      captureProductCreativeDocumentRevision(context.creativeApp);
+  if (context.creativeApp != nullptr &&
+      context.creativeApp->facade.document().isValid() &&
+      context.creativeApp->facade.document().id() !=
+          creative::kInvalidDocumentId) {
+    phase.undoSnapshotBefore = context.creativeApp->facade.document();
+    phase.undoSnapshotBeforeAvailable = true;
+  }
+  return phase;
+}
+
+ProductCreativeUiCommandPhaseResult processProductCreativeUiCommandPhase(
+    ProductWindowInputFrameContext& context,
+    MouseClick creativeUiClick) {
+  ProductCreativeUiCommandPhaseResult result;
+  const ProductCreativeUiInputFrameReceipt creativeUiInputReceipt =
+      routeProductCreativeUiInputFrame(ProductCreativeUiInputFrameRequest{
+          context.creativeUiDrawList,
+          creativeUiClick,
+      });
+  recordProductCreativeUiInputFrame(context.window, creativeUiInputReceipt);
+  result.inputReceipt = creativeUiInputReceipt;
+
+  const ProductCreativeUiCommandFrameReceipt creativeUiCommandReceipt =
+      routeProductCreativeUiCommandFrame(ProductCreativeUiCommandFrameRequest{
+          context.creativeApp,
+          creativeUiInputReceipt,
+      });
+  recordProductCreativeUiCommandFrame(context.window, creativeUiCommandReceipt);
+  result.commandReceipt = creativeUiCommandReceipt;
+
+  if (creativeUiCommandReceipt.commandKind ==
+          ProductCreativeUiCommandKind::RebuildRoom &&
+      context.creativeApp != nullptr) {
+    ProductCreativeBakedActiveRoomRefreshRequest refreshRequest;
+    refreshRequest.clearOnNoRenderable = true;
+    const ProductCreativeBakedActiveRoomRefreshResult refresh =
+        refreshProductCreativeBakedActiveRoom(refreshRequest,
+                                             context.activeSession,
+                                             context.window,
+                                             *context.creativeApp);
+    recordProductCreativeUiBakedRoomRefresh(context.window, refresh);
+  }
+  return result;
+}
+
+ProductCreativeViewportInputPhaseResult processProductCreativeViewportInputPhase(
+    ProductWindowInputFrameContext& context,
+    const ProductCreativeDocumentInputOrchestrationRequest& request) {
+  ProductCreativeViewportInputPhaseResult result;
+  result.downstreamClick = request.click;
+  const ProductCreativeUiDownstreamClickReceipt downstreamClickReceipt =
+      routeProductCreativeUiDownstreamClick(
+          ProductCreativeUiDownstreamClickRequest{
+              request.click,
+          context.window.creativeUiInputConsumed,
+          request.higherPriorityMouseConsumed ||
+              request.frontendMouseOwnsInput,
+          });
+  recordProductCreativeUiDownstreamClick(context.window,
+                                         downstreamClickReceipt);
+  result.downstreamClick = downstreamClickReceipt.downstreamClick;
+
+  const ProductCreativeViewportPickFrameReceipt viewportPickReceipt =
+      routeProductCreativeViewportPickFrame(
+          ProductCreativeViewportPickFrameRequest{
+              &context.window,
+              context.creativeApp,
+              result.downstreamClick,
+              downstreamClickReceipt.suppressed,
+              context.creativeViewportPickViewport,
+              context.creativeViewportPickProjectionRequest,
+              context.creativeViewportPickZ,
+              context.creativeViewportPickDepthMode,
+          });
+  recordProductCreativeViewportPickFrame(context.window, viewportPickReceipt);
+  if (viewportPickReceipt.picked) {
+    result.pointerTarget = viewportPickReceipt.target;
+  }
+  return result;
+}
+
+struct ProductCreativePointerLifecyclePhaseResult {
+  ProductCreativePointerLifecycleEvent lifecycle;
+  creative::TargetRef lifecycleTarget;
+};
+
+ProductCreativePointerLifecyclePhaseResult
+processProductCreativePointerLifecyclePhase(
+    ProductWindowInputFrameContext& context,
+    MouseClick click,
+    const KeyboardCreativeToolKeyPresses& creativeToolKeys) {
+  ProductCreativePointerLifecyclePhaseResult result;
+
+  // TL-3 pointer gesture lifecycle. Press flows through the pick chain via
+  // `downstreamClick`; here we synthesize the Move (held drag) and Release
+  // (gesture END) from raw held-button state. Automation drives clicks through
+  // the override socket and does not update the raw button state, so the
+  // real-mouse lifecycle stays inert under an override (TV1-K owns the
+  // injected-gesture channel). A tool switch this frame resets the held-state
+  // first, so a button held across a switch cannot fire a phantom Release into
+  // the newly-selected tool. Coordinates are raw window-pixel space — the SAME
+  // space the pick/press already consume.
+  creative::Tool toolKeyTarget = creative::Tool::Select;
+  if (productCreativeToolKeyTarget(creativeToolKeys, toolKeyTarget)) {
+    resetProductCreativePointerLifecycle(
+        context.inputFrame.creativePointerLifecycle);
+  }
+  // branch-gate: BG-1029
+  if (context.clickOverride.pointerLifecycle.enabled) {
+    // Injected-gesture channel (test/automation): a scripted pointer sample
+    // drives the SAME raw resolver so the window-plumbing lifecycle
+    // (press-hold-release) is reachable headless, where there is no real SDL
+    // mouse. A real mouse under an override stays inert (no lifecycle); only
+    // an explicit scripted sample drives this.
+    const ProductCreativePointerSample pointerSample{
+        context.clickOverride.pointerLifecycle.primaryButtonDown,
+        context.clickOverride.pointerLifecycle.x,
+        context.clickOverride.pointerLifecycle.y};
+    result.lifecycle = resolveProductCreativePointerLifecycle(
+        context.inputFrame.creativePointerLifecycle, pointerSample);
+  } else if (!context.clickOverride.enabled) {
+    const ProductCreativePointerSample pointerSample{
+        context.inputFrame.mouse.leftWasDown,
+        click.x,
+        click.y};
+    result.lifecycle = resolveProductCreativePointerLifecycle(
+        context.inputFrame.creativePointerLifecycle, pointerSample);
+  }
+
+  // TV1-G: a Move-drag Move/Release carries the destination anchor. Reuse the
+  // pick's pointer->grid-cell conversion (TD-7: the drag plane is the SCREEN
+  // plane, world XY; Z is resolved by the facade from the start anchor). The
+  // dragged object is the facade's active drag target (filled on the Press) —
+  // this is the pointerLifecycleTarget seam.
+  const bool lifecycleCarriesGesture =
+      result.lifecycle.phase == ProductCreativePointerLifecyclePhase::Move ||
+      result.lifecycle.phase == ProductCreativePointerLifecyclePhase::Release;
+  if (lifecycleCarriesGesture && context.creativeApp != nullptr) {
+    const creative::CreativeToolState& toolState =
+        context.creativeApp->facade.toolState();
+    if (toolState.moveDragActive) {
+      result.lifecycleTarget = toolState.moveDragTarget;
+      const creative::CreativeGridCoord3 coord =
+          creative::pointerToCreativeGridCoord(
+              context.creativeViewportPickViewport,
+              context.creativeViewportPickProjectionRequest.gridSize,
+              result.lifecycle.x,
+              result.lifecycle.y,
+              context.creativeViewportPickZ);
+      // TD-7: the creative viewport is a FRONT view (screen = world XY), so the
+      // drag axes must match the projection for the object to track the cursor:
+      // `coord.x` is world X (screen-horizontal) and `coord.y` is world Y
+      // (screen-vertical). The held axis is DEPTH — world Z — which the facade
+      // overrides with the object's start anchor. The `.z` field below is a
+      // placeholder the facade replaces with the start anchor Z.
+      result.lifecycle.hasWorldDestination = true;
+      result.lifecycle.worldDestination = {
+          static_cast<double>(coord.x),
+          static_cast<double>(coord.y),
+          0.0,
+      };
+    }
+  }
+  return result;
+}
+
+void processProductCreativeNavigateFlyPhase(
+    ProductWindowInputFrameContext& context) {
+  // TV1-H (TD-8): Navigate = fly camera, gated STRICTLY to the active tool being
+  // Navigate in creative document mode. A tool-key press this frame has already
+  // landed in the facade above, so we read the RESULT here. When Navigate is
+  // active, WASD + Space/Ctrl + Shift drive the fly kernel (the SAME
+  // applyProductCreativeFlyInput map_maker uses) and relative mouse motion
+  // drives look; the mouse-capture policy re-engages relative capture for the
+  // look (keyed on the mirror flag below). For every other tool the fly stays
+  // dead and the free cursor drives UI/pick — movement is enabled ONLY here,
+  // and only the fly-movement keys, never general gameplay keyboard input.
+  const bool navigateActive =
+      context.creativeApp != nullptr &&
+      context.creativeApp->facade.toolState().activeTool ==
+          creative::Tool::Navigate;
+  context.window.creativeNavigateActive = navigateActive;
+  if (!navigateActive) {
+    return;
+  }
+
+  // Seed the fly anchor from the current view on entering Navigate so the camera
+  // starts where the fixed first-person anchor already is.
+  ensureCreativeFlyAnchor(context.window, &*context.activeSession);
+  ActionState flyActions;
+  pollKeyboardCreativeFlyActions(flyActions);
+  pollMouseGameplayActions(context.inputFrame.mouse, flyActions);
+  // Mouse-look first so the fly moves relative to the updated heading.
+  applyProductCameraActions(flyActions,
+                            context.window.viewport,
+                            context.settings,
+                            "creative_navigate");
+  (void)applyProductWindowCreativeFlyActions(
+      context.window, &*context.activeSession, flyActions);
+}
+
+bool processProductCreativeDocumentToolDispatchPhase(
+    ProductWindowInputFrameContext& context,
+    const ProductCreativeViewportInputPhaseResult& viewportInput) {
+  // Keyboard stays dead for gameplay in creative document mode; the only keys
+  // polled are the four direct tool keys (TL-2, keys 1/2/3/4).
+  const KeyboardCreativeToolKeyPresses creativeToolKeys =
+      pollKeyboardCreativeToolKeys(context.inputFrame.keyboard);
+  const ProductCreativePointerLifecyclePhaseResult lifecycle =
+      processProductCreativePointerLifecyclePhase(
+          context, viewportInput.downstreamClick, creativeToolKeys);
+
+  ActionState gameplayActions;
+  ProductCreativeInputActionsRequest creativeRequest;
+  creativeRequest.window = &context.window;
+  creativeRequest.creative = context.creativeApp;
+  creativeRequest.actions = &gameplayActions;
+  creativeRequest.toolKeys = creativeToolKeys;
+  creativeRequest.click = viewportInput.downstreamClick;
+  creativeRequest.pointerTarget = viewportInput.pointerTarget;
+  creativeRequest.pointerLifecycle = lifecycle.lifecycle;
+  creativeRequest.pointerLifecycleTarget = lifecycle.lifecycleTarget;
+  (void)processProductCreativeInputActions(creativeRequest);
+
+  processProductCreativeNavigateFlyPhase(context);
+  return true;
+}
+
+void finalizeProductCreativeDocumentInputPhase(
+    ProductWindowInputFrameContext& context,
+    bool creativeDocumentActive,
+    const ProductCreativeUiCommandFrameReceipt& creativeUiCommandReceipt,
+    const ProductCreativeDocumentRevisionPhaseState& revisionPhase) {
+  const ProductCreativeDocumentRevisionSnapshot creativeRevisionAfter =
+      captureProductCreativeDocumentRevision(context.creativeApp);
+  recordProductCreativeDocumentRevisionFrame(
+      context.window,
+      revisionPhase.revisionBefore.observed && creativeRevisionAfter.observed,
+      revisionPhase.revisionBefore.documentId,
+      revisionPhase.revisionBefore.revision,
+      creativeRevisionAfter.documentId,
+      creativeRevisionAfter.revision);
+  const bool creativeDocumentChanged =
+      revisionPhase.revisionBefore.observed && creativeRevisionAfter.observed &&
+      (revisionPhase.revisionBefore.documentId !=
+           creativeRevisionAfter.documentId ||
+       revisionPhase.revisionBefore.revision != creativeRevisionAfter.revision);
+  const bool creativeDocumentRevisionChangedForUndo =
+      revisionPhase.revisionBefore.observed && creativeRevisionAfter.observed &&
+      revisionPhase.revisionBefore.documentId ==
+          creativeRevisionAfter.documentId &&
+      revisionPhase.revisionBefore.revision != creativeRevisionAfter.revision;
+  const bool undoCommandApplied =
+      creativeUiCommandReceipt.commandKind ==
+          ProductCreativeUiCommandKind::UndoLastDocumentChange &&
+      creativeUiCommandReceipt.accepted && creativeUiCommandReceipt.changed;
+  if (creativeDocumentRevisionChangedForUndo && !undoCommandApplied &&
+      revisionPhase.undoSnapshotBeforeAvailable &&
+      context.creativeApp != nullptr) {
+    creative::pushCreativeUndoSnapshot(context.creativeApp->undoStack,
+                                       revisionPhase.undoSnapshotBefore);
+  }
+  if (creativeDocumentChanged && context.creativeApp != nullptr) {
+    ProductCreativeBakedActiveRoomRefreshRequest refreshRequest;
+    refreshRequest.clearOnNoRenderable = true;
+    const ProductCreativeBakedActiveRoomRefreshResult refresh =
+        refreshProductCreativeBakedActiveRoom(refreshRequest,
+                                             context.activeSession,
+                                             context.window,
+                                             *context.creativeApp);
+    recordProductCreativeBakedRoomAutoRefresh(context.window, refresh);
+  }
+  if (context.creativeApp != nullptr) {
+    context.window.creativeUndoAvailable =
+        creative::creativeUndoAvailable(context.creativeApp->undoStack);
+    context.window.creativeUndoDepth =
+        creative::creativeUndoDepth(context.creativeApp->undoStack);
+  } else {
+    context.window.creativeUndoAvailable = false;
+    context.window.creativeUndoDepth = 0;
+  }
+
+  // If the creative-document dispatch path did not run this frame (frontend
+  // menu open over the world, pause, no session), drop any held-state so a
+  // gesture interrupted mid-drag cannot fire a phantom Release on resume. Also
+  // clear the Navigate mirror (TV1-H) so a pause over a Navigate world releases
+  // capture rather than staying captured behind the menu.
+  if (!creativeDocumentActive || !context.window.gameplayActive ||
+      !context.activeSession.has_value() ||
+      frontendBlocksGameplayInput(context.frontend)) {
+    resetProductCreativePointerLifecycle(
+        context.inputFrame.creativePointerLifecycle);
+    context.window.creativeNavigateActive = false;
+  }
+}
+
+ProductCreativeDocumentInputOrchestrationResult
+processProductCreativeDocumentInputOrchestration(
+    ProductCreativeDocumentInputOrchestrationRequest request) {
+  ProductWindowInputFrameContext& context = request.context;
+  ProductCreativeDocumentInputOrchestrationResult result;
+  result.downstreamClick = request.click;
+  result.creativeDocumentActive =
+      productCreativeDocumentEditorActiveForWindow(context.window);
+
+  const ProductCreativeDocumentRevisionPhaseState revisionPhase =
+      beginProductCreativeDocumentRevisionPhase(context);
+  const MouseClick creativeUiClick =
+      productCreativeUiClickForFrame(context, request);
+  const ProductCreativeUiCommandPhaseResult commandPhase =
+      processProductCreativeUiCommandPhase(context, creativeUiClick);
+  const ProductCreativeViewportInputPhaseResult viewportInput =
+      processProductCreativeViewportInputPhase(context, request);
+  result.downstreamClick = viewportInput.downstreamClick;
+  result.pointerTarget = viewportInput.pointerTarget;
+
+  if (canDispatchProductCreativeDocumentInput(context,
+                                              result.creativeDocumentActive)) {
+    result.creativeDocumentInputHandled =
+        processProductCreativeDocumentToolDispatchPhase(context, viewportInput);
+  }
+
+  finalizeProductCreativeDocumentInputPhase(context,
+                                            result.creativeDocumentActive,
+                                            commandPhase.commandReceipt,
+                                            revisionPhase);
+
+  return result;
+}
+
 void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   ActionState actionState;
   ProductOpeningMenuInputContext menuContext{
@@ -1185,218 +1536,26 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       higherPriorityMouseConsumed = true;
     }
   }
-  MouseClick creativeUiClick = productWindowClickForHitTest(
-      click,
-      context.sdlWindow,
-      context.creativeUiDrawList == nullptr
-          ? 1280U
-          : context.creativeUiDrawList->virtualWidth,
-      context.creativeUiDrawList == nullptr
-          ? 720U
-          : context.creativeUiDrawList->virtualHeight);
-  // Branch-gate: BG-1029. Surfaces visually above gameplay own the click even
-  // when the pointer misses a specific row, and a row hit consumes before the
-  // Creative overlay can route a hidden/behind click.
-  if (frontendMouseOwnsInput || higherPriorityMouseConsumed) {
-    creativeUiClick.clicked = false;
-  }
-  const ProductCreativeDocumentRevisionSnapshot creativeRevisionBefore =
-      captureProductCreativeDocumentRevision(context.creativeApp);
-  creative::CreativeDocument creativeUndoSnapshotBefore;
-  bool creativeUndoSnapshotBeforeAvailable = false;
-  if (context.creativeApp != nullptr &&
-      context.creativeApp->facade.document().isValid() &&
-      context.creativeApp->facade.document().id() !=
-          creative::kInvalidDocumentId) {
-    creativeUndoSnapshotBefore = context.creativeApp->facade.document();
-    creativeUndoSnapshotBeforeAvailable = true;
-  }
-  const ProductCreativeUiInputFrameReceipt creativeUiInputReceipt =
-      routeProductCreativeUiInputFrame(ProductCreativeUiInputFrameRequest{
-          context.creativeUiDrawList,
-          creativeUiClick,
-      });
-  recordProductCreativeUiInputFrame(
-      context.window, creativeUiInputReceipt);
-  const ProductCreativeUiCommandFrameReceipt creativeUiCommandReceipt =
-      routeProductCreativeUiCommandFrame(ProductCreativeUiCommandFrameRequest{
-          context.creativeApp,
-          creativeUiInputReceipt,
-      });
-  recordProductCreativeUiCommandFrame(context.window,
-                                      creativeUiCommandReceipt);
-  if (creativeUiCommandReceipt.commandKind ==
-          ProductCreativeUiCommandKind::RebuildRoom &&
-      context.creativeApp != nullptr) {
-    ProductCreativeBakedActiveRoomRefreshRequest refreshRequest;
-    refreshRequest.clearOnNoRenderable = true;
-    const ProductCreativeBakedActiveRoomRefreshResult refresh =
-        refreshProductCreativeBakedActiveRoom(refreshRequest,
-                                             context.activeSession,
-                                             context.window,
-                                             *context.creativeApp);
-    recordProductCreativeUiBakedRoomRefresh(context.window, refresh);
-  }
-  const ProductCreativeUiDownstreamClickReceipt downstreamClickReceipt =
-      routeProductCreativeUiDownstreamClick(
-          ProductCreativeUiDownstreamClickRequest{
+  const ProductCreativeDocumentInputOrchestrationResult creativeInput =
+      processProductCreativeDocumentInputOrchestration(
+          ProductCreativeDocumentInputOrchestrationRequest{
+              context,
               click,
-              context.window.creativeUiInputConsumed,
-              higherPriorityMouseConsumed || frontendMouseOwnsInput,
+              higherPriorityMouseConsumed,
+              frontendMouseOwnsInput,
           });
-  recordProductCreativeUiDownstreamClick(context.window,
-                                         downstreamClickReceipt);
-  const MouseClick downstreamClick = downstreamClickReceipt.downstreamClick;
-  const ProductCreativeViewportPickFrameReceipt viewportPickReceipt =
-      routeProductCreativeViewportPickFrame(
-          ProductCreativeViewportPickFrameRequest{
-              &context.window,
-              context.creativeApp,
-              downstreamClick,
-              downstreamClickReceipt.suppressed,
-              context.creativeViewportPickViewport,
-              context.creativeViewportPickProjectionRequest,
-              context.creativeViewportPickZ,
-              context.creativeViewportPickDepthMode,
-          });
-  recordProductCreativeViewportPickFrame(context.window, viewportPickReceipt);
-  creative::TargetRef creativePointerTarget;
-  if (viewportPickReceipt.picked) {
-    creativePointerTarget = viewportPickReceipt.target;
-  }
 
   // branch-gate: BG-1029
   if (context.window.gameplayActive && context.activeSession.has_value() &&
       !frontendBlocksGameplayInput(context.frontend)) {
     ActionState gameplayActions;
-    const bool creativeDocumentActive =
-        productCreativeDocumentEditorActiveForWindow(context.window);
-    // branch-gate: BG-1029
-    if (creativeDocumentActive) {
-      // Keyboard stays dead for gameplay in creative document mode; the only
-      // keys polled are the four direct tool keys (TL-2, keys 1/2/3/4).
-      const KeyboardCreativeToolKeyPresses creativeToolKeys =
-          pollKeyboardCreativeToolKeys(context.inputFrame.keyboard);
-
-      // TL-3 pointer gesture lifecycle. Press flows through the pick chain via
-      // `downstreamClick`; here we synthesize the Move (held drag) and Release
-      // (gesture END) from raw held-button state. Automation drives clicks
-      // through the override socket and does not update the raw button state,
-      // so the real-mouse lifecycle stays inert under an override (TV1-K owns
-      // the injected-gesture channel). A tool switch this frame resets the
-      // held-state first, so a button held across a switch cannot fire a
-      // phantom Release into the newly-selected tool. Coordinates are raw
-      // window-pixel space — the SAME space the pick/press already consume.
-      creative::Tool toolKeyTarget = creative::Tool::Select;
-      if (productCreativeToolKeyTarget(creativeToolKeys, toolKeyTarget)) {
-        resetProductCreativePointerLifecycle(
-            context.inputFrame.creativePointerLifecycle);
-      }
-      ProductCreativePointerLifecycleEvent creativePointerLifecycle;
-      // branch-gate: BG-1029
-      if (context.clickOverride.pointerLifecycle.enabled) {
-        // Injected-gesture channel (test/automation): a scripted pointer sample
-        // drives the SAME raw resolver so the window-plumbing lifecycle
-        // (press-hold-release) is reachable headless, where there is no real
-        // SDL mouse. A real mouse under an override stays inert (no lifecycle);
-        // only an explicit scripted sample drives this.
-        const ProductCreativePointerSample pointerSample{
-            context.clickOverride.pointerLifecycle.primaryButtonDown,
-            context.clickOverride.pointerLifecycle.x,
-            context.clickOverride.pointerLifecycle.y};
-        creativePointerLifecycle = resolveProductCreativePointerLifecycle(
-            context.inputFrame.creativePointerLifecycle, pointerSample);
-      } else if (!context.clickOverride.enabled) {
-        const ProductCreativePointerSample pointerSample{
-            context.inputFrame.mouse.leftWasDown, click.x, click.y};
-        creativePointerLifecycle = resolveProductCreativePointerLifecycle(
-            context.inputFrame.creativePointerLifecycle, pointerSample);
-      }
-
-      // TV1-G: a Move-drag Move/Release carries the destination anchor. Reuse
-      // the pick's pointer->grid-cell conversion (TD-7: the drag plane is the
-      // SCREEN plane, world XY; Z is resolved by the facade from the start
-      // anchor). The dragged object is the facade's active drag target (filled
-      // on the Press) — this is the pointerLifecycleTarget seam.
-      creative::TargetRef creativePointerLifecycleTarget;
-      const bool lifecycleCarriesGesture =
-          creativePointerLifecycle.phase ==
-              ProductCreativePointerLifecyclePhase::Move ||
-          creativePointerLifecycle.phase ==
-              ProductCreativePointerLifecyclePhase::Release;
-      if (lifecycleCarriesGesture && context.creativeApp != nullptr) {
-        const creative::CreativeToolState& toolState =
-            context.creativeApp->facade.toolState();
-        if (toolState.moveDragActive) {
-          creativePointerLifecycleTarget = toolState.moveDragTarget;
-          const creative::CreativeGridCoord3 coord =
-              creative::pointerToCreativeGridCoord(
-                  context.creativeViewportPickViewport,
-                  context.creativeViewportPickProjectionRequest.gridSize,
-                  creativePointerLifecycle.x,
-                  creativePointerLifecycle.y,
-                  context.creativeViewportPickZ);
-          // TD-7: the creative viewport is a FRONT view (screen = world XY), so
-          // the drag axes must match the projection for the object to track the
-          // cursor: `coord.x` is world X (screen-horizontal) and `coord.y` is
-          // world Y (screen-vertical). The held axis is DEPTH — world Z — which
-          // the facade overrides with the object's start anchor. The `.z` field
-          // below is a placeholder the facade replaces with the start anchor Z.
-          creativePointerLifecycle.hasWorldDestination = true;
-          creativePointerLifecycle.worldDestination = {
-              static_cast<double>(coord.x),
-              static_cast<double>(coord.y),
-              0.0,
-          };
-        }
-      }
-
-      ProductCreativeInputActionsRequest creativeRequest;
-      creativeRequest.window = &context.window;
-      creativeRequest.creative = context.creativeApp;
-      creativeRequest.actions = &gameplayActions;
-      creativeRequest.toolKeys = creativeToolKeys;
-      creativeRequest.click = downstreamClick;
-      creativeRequest.pointerTarget = creativePointerTarget;
-      creativeRequest.pointerLifecycle = creativePointerLifecycle;
-      creativeRequest.pointerLifecycleTarget = creativePointerLifecycleTarget;
-      (void)processProductCreativeInputActions(creativeRequest);
-
-      // TV1-H (TD-8): Navigate = fly camera, gated STRICTLY to the active tool
-      // being Navigate in creative document mode. A tool-key press this frame
-      // has already landed in the facade above, so we read the RESULT here.
-      // When Navigate is active, WASD + Space/Ctrl + Shift drive the fly kernel
-      // (the SAME applyProductCreativeFlyInput map_maker uses) and relative
-      // mouse motion drives look; the mouse-capture policy re-engages relative
-      // capture for the look (keyed on the mirror flag below). For every other
-      // tool the fly stays dead and the free cursor drives UI/pick — movement
-      // is enabled ONLY here, and only the fly-movement keys, never general
-      // gameplay keyboard input.
-      const bool navigateActive =
-          context.creativeApp != nullptr &&
-          context.creativeApp->facade.toolState().activeTool ==
-              creative::Tool::Navigate;
-      context.window.creativeNavigateActive = navigateActive;
-      if (navigateActive) {
-        // Seed the fly anchor from the current view on entering Navigate so the
-        // camera starts where the fixed first-person anchor already is.
-        ensureCreativeFlyAnchor(context.window, &*context.activeSession);
-        ActionState flyActions;
-        pollKeyboardCreativeFlyActions(flyActions);
-        pollMouseGameplayActions(context.inputFrame.mouse, flyActions);
-        // Mouse-look first so the fly moves relative to the updated heading.
-        applyProductCameraActions(flyActions, context.window.viewport,
-                                  context.settings, "creative_navigate");
-        (void)applyProductWindowCreativeFlyActions(
-            context.window, &*context.activeSession, flyActions);
-      }
-    } else {
+    if (!creativeInput.creativeDocumentInputHandled) {
       context.window.creativeNavigateActive = false;
       if (context.window.roomEditing.ready) {
         (void)processProductWindowEditorMousePickPreview({
             context.frontend,
             context.window,
-            downstreamClick,
+            creativeInput.downstreamClick,
             productRoomEditorMousePickViewportConfig(context.window),
             productRoomEditorMousePickAnchor(&*context.activeSession),
         });
@@ -1418,77 +1577,19 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
             gameplayActions);
         pollMouseGameplayActions(context.inputFrame.mouse, gameplayActions);
       }
-      (void)processProductCreativeInputActions(ProductCreativeInputActionsRequest{
-          &context.window,
-          context.creativeApp,
-          &gameplayActions,
-          {},
-          downstreamClick,
-          creativePointerTarget,
-      });
+      ProductCreativeInputActionsRequest creativeRequest;
+      creativeRequest.window = &context.window;
+      creativeRequest.creative = context.creativeApp;
+      creativeRequest.actions = &gameplayActions;
+      creativeRequest.click = creativeInput.downstreamClick;
+      creativeRequest.pointerTarget = creativeInput.pointerTarget;
+      (void)processProductCreativeInputActions(creativeRequest);
       (void)applyProductWindowInputActions(context.frontend,
                                            context.window,
                                            &*context.activeSession,
                                            &context.settings, gameplayActions,
                                            "action_map");
     }
-  }
-  const ProductCreativeDocumentRevisionSnapshot creativeRevisionAfter =
-      captureProductCreativeDocumentRevision(context.creativeApp);
-  recordProductCreativeDocumentRevisionFrame(
-      context.window,
-      creativeRevisionBefore.observed && creativeRevisionAfter.observed,
-      creativeRevisionBefore.documentId,
-      creativeRevisionBefore.revision,
-      creativeRevisionAfter.documentId,
-      creativeRevisionAfter.revision);
-  const bool creativeDocumentChanged =
-      creativeRevisionBefore.observed && creativeRevisionAfter.observed &&
-      (creativeRevisionBefore.documentId != creativeRevisionAfter.documentId ||
-       creativeRevisionBefore.revision != creativeRevisionAfter.revision);
-  const bool creativeDocumentRevisionChangedForUndo =
-      creativeRevisionBefore.observed && creativeRevisionAfter.observed &&
-      creativeRevisionBefore.documentId == creativeRevisionAfter.documentId &&
-      creativeRevisionBefore.revision != creativeRevisionAfter.revision;
-  const bool undoCommandApplied =
-      creativeUiCommandReceipt.commandKind ==
-          ProductCreativeUiCommandKind::UndoLastDocumentChange &&
-      creativeUiCommandReceipt.accepted && creativeUiCommandReceipt.changed;
-  if (creativeDocumentRevisionChangedForUndo && !undoCommandApplied &&
-      creativeUndoSnapshotBeforeAvailable && context.creativeApp != nullptr) {
-    creative::pushCreativeUndoSnapshot(context.creativeApp->undoStack,
-                                       creativeUndoSnapshotBefore);
-  }
-  if (creativeDocumentChanged && context.creativeApp != nullptr) {
-    ProductCreativeBakedActiveRoomRefreshRequest refreshRequest;
-    refreshRequest.clearOnNoRenderable = true;
-    const ProductCreativeBakedActiveRoomRefreshResult refresh =
-        refreshProductCreativeBakedActiveRoom(refreshRequest,
-                                             context.activeSession,
-                                             context.window,
-                                             *context.creativeApp);
-    recordProductCreativeBakedRoomAutoRefresh(context.window, refresh);
-  }
-  if (context.creativeApp != nullptr) {
-    context.window.creativeUndoAvailable =
-        creative::creativeUndoAvailable(context.creativeApp->undoStack);
-    context.window.creativeUndoDepth =
-        creative::creativeUndoDepth(context.creativeApp->undoStack);
-  } else {
-    context.window.creativeUndoAvailable = false;
-    context.window.creativeUndoDepth = 0;
-  }
-  // If the creative-document dispatch path did not run this frame (frontend
-  // menu open over the world, pause, no session), drop any held-state so a
-  // gesture interrupted mid-drag cannot fire a phantom Release on resume. Also
-  // clear the Navigate mirror (TV1-H) so a pause over a Navigate world releases
-  // capture rather than staying captured behind the menu.
-  if (!productCreativeDocumentEditorActiveForWindow(context.window) ||
-      !context.window.gameplayActive || !context.activeSession.has_value() ||
-      frontendBlocksGameplayInput(context.frontend)) {
-    resetProductCreativePointerLifecycle(
-        context.inputFrame.creativePointerLifecycle);
-    context.window.creativeNavigateActive = false;
   }
   updateProductWindowMouseCapture(context.frontend,
                                   context.window,

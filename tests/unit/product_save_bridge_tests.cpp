@@ -165,11 +165,11 @@ cr::CreativeObject creativeGroupObjectFixture() {
   return object;
 }
 
-cr::CreativeObject creativeCrateObjectFixture() {
+cr::CreativeObject creativeWallObjectFixture() {
   cr::CreativeObject object;
   object.id = 7;
-  object.kind = cr::CreativeObjectKind::Crate;
-  object.name = "Creative Crate";
+  object.kind = cr::CreativeObjectKind::Wall;
+  object.name = "Creative Wall";
   object.transform.position = {1.0 / 3.0, 2.0, 0.125};
   object.transform.rotation = {0.0, 0.5, 0.0};
   object.transform.scale = {1.0, 2.0, 3.0};
@@ -178,7 +178,7 @@ cr::CreativeObject creativeCrateObjectFixture() {
   object.visible = false;
   object.locked = true;
   object.parentId = 2;
-  object.tags = {"crate", "saved"};
+  object.tags = {"wall", "saved"};
   return object;
 }
 
@@ -191,7 +191,7 @@ cr::CreativeDocumentRestoreRequest creativeRestoreFixture() {
   request.snapSettings = creativeSnapFixture();
   request.worldBounds = creativeWorldBoundsFixture();
   request.nextObjectId = 100;
-  request.objects = {creativeGroupObjectFixture(), creativeCrateObjectFixture()};
+  request.objects = {creativeGroupObjectFixture(), creativeWallObjectFixture()};
   return request;
 }
 
@@ -541,7 +541,7 @@ bool creativeDurableSaveWritesFinalAndLoads() {
                 "creative section document id") &&
          expect(decoded.envelope.creativeDocument.objects.size() == 2U,
                 "creative section object count") &&
-         expect(decoded.envelope.creativeDocument.objects[1].kind == "Crate",
+         expect(decoded.envelope.creativeDocument.objects[1].kind == "Wall",
                 "creative section kind string") &&
          expect(decoded.envelope.creativeDocument.objects[1].hasParent,
                 "creative section parent flag") &&

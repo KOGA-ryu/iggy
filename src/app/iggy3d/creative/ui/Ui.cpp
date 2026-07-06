@@ -1,6 +1,6 @@
 #include "app/iggy3d/creative/ui/Ui.hpp"
 
-#include <array>
+#include "app/iggy3d/creative/bridge/UiCommandCatalog.hpp"
 
 namespace iggy3d::creative {
 namespace {
@@ -72,41 +72,20 @@ void appendRow(CreativeUiModel& model, CreativeUiRow row) {
   model.rows.push_back(row);
 }
 
-struct CreativeUiToolRowSpec {
-  Tool tool = Tool::Select;
-  std::string_view id;
-  std::string_view label;
-};
-
-inline constexpr std::array<CreativeUiToolRowSpec, 4> kCreativeUiToolRows = {{
-    {Tool::Select, "tool_select", "Select"},
-    {Tool::Move, "tool_move", "Move"},
-    {Tool::Measure, "tool_measure", "Measure"},
-    {Tool::Navigate, "tool_navigate", "Navigate"},
-}};
-
-struct CreativeUiCreateRowSpec {
-  CreativeObjectKind objectKind = CreativeObjectKind::Unknown;
-  std::string_view id;
-  std::string_view label;
-};
-
-inline constexpr std::array<CreativeUiCreateRowSpec, 2> kCreativeUiCreateRows =
-    {{
-        {CreativeObjectKind::Room, "create_room", "Create Room"},
-        {CreativeObjectKind::Crate, "create_crate", "Create Crate"},
-    }};
-
 void appendToolsPanel(CreativeUiModel& model,
                       const CreativeUiBuildRequest& request) {
   const std::size_t panelIndex =
       beginPanel(model, CreativeUiPanelKind::Tools, true, true);
 
-  for (const CreativeUiToolRowSpec& spec : kCreativeUiToolRows) {
+  for (const iggy3d::ProductCreativeUiCommandCatalogEntry& spec :
+       iggy3d::productCreativeUiCommandCatalog()) {
+    if (spec.commandKind != iggy3d::ProductCreativeUiCommandKind::SetActiveTool) {
+      continue;
+    }
     CreativeUiRow row;
     row.kind = CreativeUiRowKind::ToolButton;
     row.panel = CreativeUiPanelKind::Tools;
-    row.id = spec.id;
+    row.id = spec.rowId;
     row.label = spec.label;
     row.tool = spec.tool;
     row.flags = enabledVisibleFlags();
@@ -116,25 +95,35 @@ void appendToolsPanel(CreativeUiModel& model,
     appendRow(model, row);
   }
 
-  CreativeUiRow rebuildRow;
-  rebuildRow.kind = CreativeUiRowKind::RebuildRoom;
-  rebuildRow.panel = CreativeUiPanelKind::Tools;
-  rebuildRow.id = "rebuild_room";
-  rebuildRow.label = "Rebuild Room";
-  rebuildRow.flags = enabledVisibleFlags();
-  appendRow(model, rebuildRow);
-
-  CreativeUiRow undoRow;
-  undoRow.kind = CreativeUiRowKind::ToolUndo;
-  undoRow.panel = CreativeUiPanelKind::Tools;
-  undoRow.id = "undo";
-  undoRow.label = "Undo";
-  undoRow.flags = visibleFlags();
-  undoRow.data0 = request.undoDepth;
-  if (request.undoAvailable && request.undoDepth > 0U) {
-    undoRow.flags |= kCreativeUiRowFlagEnabled;
+  if (const iggy3d::ProductCreativeUiCommandCatalogEntry* rebuild =
+          iggy3d::findFirstProductCreativeUiCommandRowByKind(
+              iggy3d::ProductCreativeUiCommandKind::RebuildRoom);
+      rebuild != nullptr) {
+    CreativeUiRow rebuildRow;
+    rebuildRow.kind = CreativeUiRowKind::RebuildRoom;
+    rebuildRow.panel = CreativeUiPanelKind::Tools;
+    rebuildRow.id = rebuild->rowId;
+    rebuildRow.label = rebuild->label;
+    rebuildRow.flags = enabledVisibleFlags();
+    appendRow(model, rebuildRow);
   }
-  appendRow(model, undoRow);
+
+  if (const iggy3d::ProductCreativeUiCommandCatalogEntry* undo =
+          iggy3d::findFirstProductCreativeUiCommandRowByKind(
+              iggy3d::ProductCreativeUiCommandKind::UndoLastDocumentChange);
+      undo != nullptr) {
+    CreativeUiRow undoRow;
+    undoRow.kind = CreativeUiRowKind::ToolUndo;
+    undoRow.panel = CreativeUiPanelKind::Tools;
+    undoRow.id = undo->rowId;
+    undoRow.label = undo->label;
+    undoRow.flags = visibleFlags();
+    undoRow.data0 = request.undoDepth;
+    if (request.undoAvailable && request.undoDepth > 0U) {
+      undoRow.flags |= kCreativeUiRowFlagEnabled;
+    }
+    appendRow(model, undoRow);
+  }
 
   finishPanel(model, panelIndex);
 }
@@ -143,11 +132,15 @@ void appendCreatePanel(CreativeUiModel& model) {
   const std::size_t panelIndex =
       beginPanel(model, CreativeUiPanelKind::Create, true, true);
 
-  for (const CreativeUiCreateRowSpec& spec : kCreativeUiCreateRows) {
+  for (const iggy3d::ProductCreativeUiCommandCatalogEntry& spec :
+       iggy3d::productCreativeUiCreatePalette()) {
+    if (!iggy3d::productCreativeUiCreatePaletteEntryAllowed(spec)) {
+      continue;
+    }
     CreativeUiRow row;
     row.kind = CreativeUiRowKind::CreateObject;
     row.panel = CreativeUiPanelKind::Create;
-    row.id = spec.id;
+    row.id = spec.rowId;
     row.label = spec.label;
     row.objectKind = spec.objectKind;
     row.flags = enabledVisibleFlags();
@@ -262,40 +255,76 @@ void appendSelectionPanel(CreativeUiModel& model,
   nameRow.name = summary != nullptr ? summary->name : std::string_view{};
   appendRow(model, nameRow);
 
-  // Visible (COMMAND -> ToggleSelectedObjectVisibility, TD-4).
-  CreativeUiRow visibleRow = makeInspectorRow(CreativeUiRowKind::InspectorVisible,
-                                              "inspector_visible",
-                                              "Inspector Visible",
-                                              target);
-  applyObjectSummary(visibleRow, summary);
-  appendRow(model, visibleRow);
+  if (const iggy3d::ProductCreativeUiCommandCatalogEntry* visible =
+          iggy3d::findFirstProductCreativeUiCommandRowByKind(
+              iggy3d::ProductCreativeUiCommandKind::
+                  ToggleSelectedObjectVisibility);
+      visible != nullptr) {
+    CreativeUiRow visibleRow = makeInspectorRow(
+        CreativeUiRowKind::InspectorVisible,
+        visible->rowId,
+        visible->label,
+        target);
+    applyObjectSummary(visibleRow, summary);
+    appendRow(model, visibleRow);
+  }
 
-  // Locked (COMMAND -> ToggleSelectedObjectLocked, TD-4).
-  CreativeUiRow lockedRow = makeInspectorRow(CreativeUiRowKind::InspectorLocked,
-                                             "inspector_locked",
-                                             "Inspector Locked",
-                                             target);
-  applyObjectSummary(lockedRow, summary);
-  appendRow(model, lockedRow);
+  if (const iggy3d::ProductCreativeUiCommandCatalogEntry* locked =
+          iggy3d::findFirstProductCreativeUiCommandRowByKind(
+              iggy3d::ProductCreativeUiCommandKind::ToggleSelectedObjectLocked);
+      locked != nullptr) {
+    CreativeUiRow lockedRow = makeInspectorRow(
+        CreativeUiRowKind::InspectorLocked,
+        locked->rowId,
+        locked->label,
+        target);
+    applyObjectSummary(lockedRow, summary);
+    appendRow(model, lockedRow);
+  }
 
-  // Delete (COMMAND -> DeleteSelectedObject, TD-4).
-  CreativeUiRow deleteRow = makeInspectorRow(
-      CreativeUiRowKind::InspectorDeleteSelected,
-      "delete_selected",
-      "Delete Selected",
-      target);
-  applyObjectSummary(deleteRow, summary);
-  appendRow(model, deleteRow);
+  if (const iggy3d::ProductCreativeUiCommandCatalogEntry* deleteCommand =
+          iggy3d::findFirstProductCreativeUiCommandRowByKind(
+              iggy3d::ProductCreativeUiCommandKind::DeleteSelectedObject);
+      deleteCommand != nullptr) {
+    CreativeUiRow deleteRow = makeInspectorRow(
+        CreativeUiRowKind::InspectorDeleteSelected,
+        deleteCommand->rowId,
+        deleteCommand->label,
+        target);
+    applyObjectSummary(deleteRow, summary);
+    appendRow(model, deleteRow);
+  }
 
   if (summary != nullptr && summary->objectKind == CreativeObjectKind::Room) {
-    // Generate Shell creates authored Floor/Wall children from Room metadata.
-    CreativeUiRow shellRow = makeInspectorRow(
-        CreativeUiRowKind::InspectorGenerateRoomShell,
-        "generate_room_shell",
-        "Generate Room Shell",
-        target);
-    applyObjectSummary(shellRow, summary);
-    appendRow(model, shellRow);
+    if (const iggy3d::ProductCreativeUiCommandCatalogEntry* shell =
+            iggy3d::findFirstProductCreativeUiCommandRowByKind(
+                iggy3d::ProductCreativeUiCommandKind::
+                    GenerateSelectedRoomShell);
+        shell != nullptr) {
+      CreativeUiRow shellRow = makeInspectorRow(
+          CreativeUiRowKind::InspectorGenerateRoomShell,
+          shell->rowId,
+          shell->label,
+          target);
+      applyObjectSummary(shellRow, summary);
+      appendRow(model, shellRow);
+    }
+
+    if (summary->hasGeneratedRoomShell) {
+      if (const iggy3d::ProductCreativeUiCommandCatalogEntry* removeShell =
+              iggy3d::findFirstProductCreativeUiCommandRowByKind(
+                  iggy3d::ProductCreativeUiCommandKind::
+                      RemoveSelectedRoomShell);
+          removeShell != nullptr) {
+        CreativeUiRow removeShellRow = makeInspectorRow(
+            CreativeUiRowKind::InspectorRemoveRoomShell,
+            removeShell->rowId,
+            removeShell->label,
+            target);
+        applyObjectSummary(removeShellRow, summary);
+        appendRow(model, removeShellRow);
+      }
+    }
   }
 
   // Bounds min/max/size (display, TD-9).

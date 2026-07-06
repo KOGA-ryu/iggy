@@ -23,6 +23,25 @@ enum class BakedRoomRole {
   Prop,
 };
 
+enum class RoomBakeObjectDecision {
+  SkipHidden,
+  SkipEditorOnly,
+  SkipRoomMetadata,
+  SkipUnsupportedAnchor,
+  BakeAnchor,
+  SkipUnsupportedShape,
+  SkipNoBounds,
+  BakeStaticMesh,
+};
+
+struct RoomBakeObjectClassification {
+  RoomBakeObjectDecision decision{RoomBakeObjectDecision::SkipUnsupportedShape};
+  bool countedAsConsidered{true};
+  BakeBounds bounds{};
+  BakedRoomRole role{BakedRoomRole::Unsupported};
+  std::string_view anchorKind{};
+};
+
 [[nodiscard]] bool finite(double value) noexcept {
   return std::isfinite(value);
 }
@@ -96,20 +115,11 @@ enum class BakedRoomRole {
          occupancySupportsRuntimeRoomGeometry(descriptor.occupancyKind);
 }
 
-[[nodiscard]] bool occupancySupportsRuntimeRoomAnchor(
-    CreativeSpatialOccupancyKind occupancy) noexcept {
-  return occupancy == CreativeSpatialOccupancyKind::Navigation ||
-         occupancy == CreativeSpatialOccupancyKind::Gameplay ||
-         occupancy == CreativeSpatialOccupancyKind::Light ||
-         occupancy == CreativeSpatialOccupancyKind::Audio ||
-         occupancy == CreativeSpatialOccupancyKind::Camera;
-}
-
 [[nodiscard]] bool descriptorSupportsRuntimeRoomAnchor(
     const CreativeObjectDescriptor& descriptor) noexcept {
   return descriptor.shapeKind == CreativeObjectShapeKind::Point &&
          descriptor.hasTransform &&
-         occupancySupportsRuntimeRoomAnchor(descriptor.occupancyKind);
+         descriptor.runtimeAnchorSemantic != CreativeRuntimeAnchorSemantic::None;
 }
 
 [[nodiscard]] bool projectionSupportsBoundsBackedLineGeometry(
@@ -242,34 +252,14 @@ enum class BakedRoomRole {
 
 [[nodiscard]] std::string_view anchorKindForDescriptor(
     const CreativeObjectDescriptor& descriptor) noexcept {
-  switch (descriptor.occupancyKind) {
-    case CreativeSpatialOccupancyKind::Navigation:
-      return "navigation";
-    case CreativeSpatialOccupancyKind::Gameplay:
-      return "gameplay";
-    case CreativeSpatialOccupancyKind::Light:
-      return "light";
-    case CreativeSpatialOccupancyKind::Audio:
-      return "audio";
-    case CreativeSpatialOccupancyKind::Camera:
-      return "camera";
-    case CreativeSpatialOccupancyKind::Unknown:
-    case CreativeSpatialOccupancyKind::Structural:
-    case CreativeSpatialOccupancyKind::Collision:
-    case CreativeSpatialOccupancyKind::Trigger:
-    case CreativeSpatialOccupancyKind::Testing:
-    case CreativeSpatialOccupancyKind::Authoring:
-      return "";
-  }
-  return "";
+  return toString(descriptor.runtimeAnchorSemantic);
 }
 
-[[nodiscard]] RoomAnchorAsset anchorForObject(
-    const CreativeObject& object,
-    const CreativeObjectDescriptor& descriptor) {
+[[nodiscard]] RoomAnchorAsset anchorForObject(const CreativeObject& object,
+                                              std::string_view anchorKind) {
   RoomAnchorAsset anchor;
   anchor.id = stableObjectId(object, "anchor");
-  anchor.kind = std::string(anchorKindForDescriptor(descriptor));
+  anchor.kind = std::string(anchorKind);
   anchor.runtimeStableName = stableObjectId(object);
   anchor.positionMeters = toVec3(object.transform.position);
   return anchor;
@@ -289,6 +279,22 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
     mesh.wallEndMeters = {bounds.center.x, bounds.min.y, bounds.max.z};
     mesh.wallThicknessMeters = bounds.size.x;
   }
+}
+
+[[nodiscard]] Vec3 wallBlockerNormal(BakeBounds bounds) noexcept {
+  return bounds.size.x >= bounds.size.z ? Vec3{0.0F, 0.0F, 1.0F}
+                                        : Vec3{1.0F, 0.0F, 0.0F};
+}
+
+[[nodiscard]] Vec3 blockerNormalForRole(BakeBounds bounds,
+                                        BakedRoomRole role) noexcept {
+  if (role == BakedRoomRole::Wall) {
+    return wallBlockerNormal(bounds);
+  }
+
+  // Generic prop/blocker boxes do not describe a selected face. Keep the legacy
+  // stable default normal until a richer box-face surface policy exists.
+  return {0.0F, 0.0F, 1.0F};
 }
 
 [[nodiscard]] RoomStaticMeshAsset staticMeshForObject(
@@ -341,14 +347,15 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
 
 [[nodiscard]] RoomSpatialSurface actorBlockerSurfaceForObject(
     const CreativeObject& object,
-    BakeBounds bounds) {
+    BakeBounds bounds,
+    Vec3 normal) {
   RoomSpatialSurface surface;
   surface.id = stableObjectId(object, "actor_blocker");
   surface.sourceStaticMeshId = stableObjectId(object);
   surface.shape = RoomSpatialSurfaceShape::Box;
   surface.role = RoomSpatialSurfaceRole::Blocker;
   surface.pointsMeters = boxExtentPoints(bounds);
-  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.normal = normal;
   surface.traversalTags = {"blocker"};
   surface.collisionMask = {"actor"};
   surface.blocksActor = true;
@@ -358,14 +365,15 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
 
 [[nodiscard]] RoomSpatialSurface projectileBlockerSurfaceForObject(
     const CreativeObject& object,
-    BakeBounds bounds) {
+    BakeBounds bounds,
+    Vec3 normal) {
   RoomSpatialSurface surface;
   surface.id = stableObjectId(object, "projectile_blocker");
   surface.sourceStaticMeshId = stableObjectId(object);
   surface.shape = RoomSpatialSurfaceShape::Box;
   surface.role = RoomSpatialSurfaceRole::ProjectileBlocker;
   surface.pointsMeters = boxExtentPoints(bounds);
-  surface.normal = {0.0F, 0.0F, 1.0F};
+  surface.normal = normal;
   surface.traversalTags = {"projectile_blocker"};
   surface.collisionMask = {"projectile"};
   surface.blocksActor = false;
@@ -395,15 +403,98 @@ void appendSpatialSurfaces(RoomAsset& room,
 
   if (descriptor.occupancyKind == CreativeSpatialOccupancyKind::Structural ||
       descriptor.occupancyKind == CreativeSpatialOccupancyKind::Collision) {
+    const Vec3 normal = blockerNormalForRole(bounds, role);
     RoomSpatialSurface actorSurface =
-        actorBlockerSurfaceForObject(object, bounds);
+        actorBlockerSurfaceForObject(object, bounds, normal);
     appendSpatialSurfaceSource(sources, object.id, actorSurface);
     room.spatialSurfaces.push_back(std::move(actorSurface));
 
     RoomSpatialSurface projectileSurface =
-        projectileBlockerSurfaceForObject(object, bounds);
+        projectileBlockerSurfaceForObject(object, bounds, normal);
     appendSpatialSurfaceSource(sources, object.id, projectileSurface);
     room.spatialSurfaces.push_back(std::move(projectileSurface));
+  }
+}
+
+[[nodiscard]] RoomBakeObjectClassification classifyRoomBakeObject(
+    const CreativeObject& object,
+    const CreativeObjectDescriptor& descriptor,
+    bool includeHidden) noexcept {
+  if (!object.visible && !includeHidden) {
+    return {RoomBakeObjectDecision::SkipHidden, false};
+  }
+
+  if (descriptor.isEditorOnly) {
+    return {RoomBakeObjectDecision::SkipEditorOnly, false};
+  }
+
+  if (object.kind == CreativeObjectKind::Room) {
+    return {RoomBakeObjectDecision::SkipRoomMetadata, false};
+  }
+
+  RoomBakeObjectClassification classification;
+  classification.countedAsConsidered = true;
+  if (descriptor.shapeKind == CreativeObjectShapeKind::Point) {
+    if (!descriptorSupportsRuntimeRoomAnchor(descriptor) ||
+        !validAnchorPosition(object.transform.position)) {
+      classification.decision = RoomBakeObjectDecision::SkipUnsupportedAnchor;
+      return classification;
+    }
+
+    classification.decision = RoomBakeObjectDecision::BakeAnchor;
+    classification.anchorKind = anchorKindForDescriptor(descriptor);
+    return classification;
+  }
+
+  if (!descriptorSupportsStaticMeshBake(descriptor)) {
+    classification.decision = RoomBakeObjectDecision::SkipUnsupportedShape;
+    return classification;
+  }
+
+  if (!descriptor.hasBounds) {
+    classification.decision = RoomBakeObjectDecision::SkipNoBounds;
+    return classification;
+  }
+
+  if (!validBakeBounds(object.bounds, classification.bounds)) {
+    classification.decision = RoomBakeObjectDecision::SkipNoBounds;
+    return classification;
+  }
+
+  classification.role = roleForObject(descriptor, classification.bounds);
+  if (classification.role == BakedRoomRole::Unsupported) {
+    classification.decision = RoomBakeObjectDecision::SkipUnsupportedShape;
+    return classification;
+  }
+
+  classification.decision = RoomBakeObjectDecision::BakeStaticMesh;
+  return classification;
+}
+
+void applySkipClassification(CreativeRoomBakeReceipt& receipt,
+                             RoomBakeObjectDecision decision) {
+  switch (decision) {
+    case RoomBakeObjectDecision::SkipHidden:
+      ++receipt.skippedHiddenCount;
+      return;
+    case RoomBakeObjectDecision::SkipEditorOnly:
+      ++receipt.skippedEditorOnlyCount;
+      return;
+    case RoomBakeObjectDecision::SkipRoomMetadata:
+      ++receipt.skippedRoomMetadataCount;
+      return;
+    case RoomBakeObjectDecision::SkipUnsupportedAnchor:
+      ++receipt.skippedUnsupportedAnchorCount;
+      return;
+    case RoomBakeObjectDecision::SkipUnsupportedShape:
+      ++receipt.skippedUnsupportedShapeCount;
+      return;
+    case RoomBakeObjectDecision::SkipNoBounds:
+      ++receipt.skippedNoBoundsCount;
+      return;
+    case RoomBakeObjectDecision::BakeAnchor:
+    case RoomBakeObjectDecision::BakeStaticMesh:
+      return;
   }
 }
 
@@ -463,67 +554,35 @@ CreativeRoomBakeResult buildRoomAssetFromCreativeDocument(
 
   result.receipt.objectCount = document.objectCount();
   for (const CreativeObject& object : document.objects()) {
-    if (!object.visible && !request.includeHidden) {
-      ++result.receipt.skippedHiddenCount;
-      continue;
-    }
-
     const CreativeObjectDescriptor& descriptor = describeObject(object.kind);
-    if (descriptor.isEditorOnly) {
-      ++result.receipt.skippedEditorOnlyCount;
-      continue;
+    const RoomBakeObjectClassification classification =
+        classifyRoomBakeObject(object, descriptor, request.includeHidden);
+    if (classification.countedAsConsidered) {
+      ++result.receipt.consideredObjectCount;
     }
 
-    if (object.kind == CreativeObjectKind::Room) {
-      ++result.receipt.skippedRoomMetadataCount;
-      continue;
-    }
-
-    ++result.receipt.consideredObjectCount;
-    if (descriptor.shapeKind == CreativeObjectShapeKind::Point) {
-      if (!descriptorSupportsRuntimeRoomAnchor(descriptor) ||
-          !validAnchorPosition(object.transform.position)) {
-        ++result.receipt.skippedUnsupportedAnchorCount;
-        continue;
-      }
-
-      RoomAnchorAsset anchor = anchorForObject(object, descriptor);
+    if (classification.decision == RoomBakeObjectDecision::BakeAnchor) {
+      RoomAnchorAsset anchor = anchorForObject(object, classification.anchorKind);
       result.anchorSources.push_back({object.id, anchor.id});
       result.room.anchors.push_back(std::move(anchor));
       continue;
     }
 
-    if (!descriptorSupportsStaticMeshBake(descriptor)) {
-      ++result.receipt.skippedUnsupportedShapeCount;
+    if (classification.decision == RoomBakeObjectDecision::BakeStaticMesh) {
+      RoomStaticMeshAsset mesh =
+          staticMeshForObject(object, classification.bounds, classification.role);
+      result.staticMeshSources.push_back({object.id, mesh.id});
+      result.room.staticMeshes.push_back(std::move(mesh));
+      appendSpatialSurfaces(result.room,
+                            result.spatialSurfaceSources,
+                            object,
+                            descriptor,
+                            classification.bounds,
+                            classification.role);
       continue;
     }
 
-    if (!descriptor.hasBounds) {
-      ++result.receipt.skippedNoBoundsCount;
-      continue;
-    }
-
-    BakeBounds bounds;
-    if (!validBakeBounds(object.bounds, bounds)) {
-      ++result.receipt.skippedNoBoundsCount;
-      continue;
-    }
-
-    const BakedRoomRole role = roleForObject(descriptor, bounds);
-    if (role == BakedRoomRole::Unsupported) {
-      ++result.receipt.skippedUnsupportedShapeCount;
-      continue;
-    }
-
-    RoomStaticMeshAsset mesh = staticMeshForObject(object, bounds, role);
-    result.staticMeshSources.push_back({object.id, mesh.id});
-    result.room.staticMeshes.push_back(std::move(mesh));
-    appendSpatialSurfaces(result.room,
-                          result.spatialSurfaceSources,
-                          object,
-                          descriptor,
-                          bounds,
-                          role);
+    applySkipClassification(result.receipt, classification.decision);
   }
 
   result.receipt.bakedStaticMeshCount = result.room.staticMeshes.size();

@@ -46,10 +46,12 @@ bool expectNear(float actual,
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
+  iggy3d::creative::CreativeActiveIdentity identity;
+  identity.saveId = "creative_save";
+  identity.worldId = "world_001";
+  identity.documentId = 42U;
+  iggy3d::mirrorProductActiveCreativeIdentity(identity, window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreativeSaveId = "creative_save";
-  window.activeCreativeWorldId = "world_001";
-  window.activeCreativeDocumentId = 42U;
 }
 
 // Test-local convenience: openingMenuActionAt now takes the same
@@ -288,6 +290,14 @@ iggy3d::MouseClick clickAt(float x, float y) {
   click.x = x;
   click.y = y;
   return click;
+}
+
+iggy3d::ProductWindowInputClickOverride clickOverrideFor(
+    iggy3d::MouseClick click) {
+  iggy3d::ProductWindowInputClickOverride clickOverride;
+  clickOverride.enabled = true;
+  clickOverride.click = click;
+  return clickOverride;
 }
 
 iggy3d::MouseClick clickPauseAction(const iggy3d::FrontendState& frontend,
@@ -1121,7 +1131,7 @@ bool pauseMouseClickResumesBeforeCreativeOverlayInput() {
           {},
           0,
           iggy3d::creative::CreativeViewportPickDepthMode::FixedZ,
-          {true, resumeClick},
+          clickOverrideFor(resumeClick),
       });
 
   return expect(resumeClick.clicked, "pause resume process click found") &&
@@ -1136,7 +1146,7 @@ bool pauseMouseClickResumesBeforeCreativeOverlayInput() {
          expect(window.creativeUiInputStatus ==
                     "product_creative_ui_input_no_click",
                 "creative ui records no click behind pause") &&
-         expect(window.creativeUiCommandKind == "none",
+         expect(window.creativeUiCommand.kind == "none",
                 "creative command does not fire behind pause") &&
          expect(window.creativeUiInputDownstreamClickSuppressed,
                 "pause-owned click suppresses downstream creative/gameplay click") &&
@@ -1155,10 +1165,7 @@ bool pauseMouseClickResumesInActiveCreativeWorld() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
   window.gameplayActive = true;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreativeSaveId = "creative_save";
-  window.activeCreativeWorldId = "world_001";
-  window.activeCreativeDocumentId = 42U;
+  markCreativeDocumentWindow(window);
   bool closeRequested = false;
   (void)iggy3d::applyProductSystemPauseMenuAction(
       iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
@@ -1204,7 +1211,7 @@ bool pauseMouseClickResumesInActiveCreativeWorld() {
           {},
           0,
           iggy3d::creative::CreativeViewportPickDepthMode::FixedZ,
-          {true, resumeClick},
+          clickOverrideFor(resumeClick),
       });
 
   return expect(resumeClick.clicked, "active-world pause resume click found") &&
@@ -2578,10 +2585,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
   iggy3d::FrontendState creativeWorld = gameplayFrontend();
   iggy3d::ProductAppWindowState creativeWorldWindow;
   creativeWorldWindow.gameplayActive = true;
-  creativeWorldWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  creativeWorldWindow.activeCreativeSaveId = "creative_save";
-  creativeWorldWindow.activeCreativeWorldId = "world_001";
-  creativeWorldWindow.activeCreativeDocumentId = 42U;
+  markCreativeDocumentWindow(creativeWorldWindow);
   creativeWorldWindow.mapMakerStatus = "map_maker_enabled";
   creativeWorldWindow.viewport.creativeFlyActive = true;
   const iggy3d::ProductWindowTopLevelToggleResult creativeWorldM =
@@ -2996,10 +3000,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   iggy3d::FrontendState creativeWorld = gameplayFrontend();
   iggy3d::ProductAppWindowState creativeWorldWindow;
   creativeWorldWindow.gameplayActive = true;
-  creativeWorldWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  creativeWorldWindow.activeCreativeSaveId = "creative_save";
-  creativeWorldWindow.activeCreativeWorldId = "world_001";
-  creativeWorldWindow.activeCreativeDocumentId = 42U;
+  markCreativeDocumentWindow(creativeWorldWindow);
   creativeWorldWindow.mapMakerStatus = "map_maker_enabled";
   creativeWorldWindow.viewport.creativeFlyActive = true;
   const iggy3d::ProductMenuActionResult creativeWorldBlocked =

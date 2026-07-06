@@ -131,11 +131,11 @@ cr::CreativeObject restoredGroupObject() {
   return object;
 }
 
-cr::CreativeObject restoredCrateObject() {
+cr::CreativeObject restoredWallObject() {
   cr::CreativeObject object;
   object.id = 7;
-  object.kind = cr::CreativeObjectKind::Crate;
-  object.name = "Precise Crate";
+  object.kind = cr::CreativeObjectKind::Wall;
+  object.name = "Precise Wall";
   object.transform.position = {kOneThird, 2.0, kPrecise};
   object.transform.rotation = {0.0, kPrecise, 1.5};
   object.transform.scale = {1.0, 2.0, 3.0};
@@ -144,7 +144,7 @@ cr::CreativeObject restoredCrateObject() {
   object.visible = false;
   object.locked = true;
   object.parentId = 2;
-  object.tags = {"crate", "imported"};
+  object.tags = {"wall", "imported"};
   return object;
 }
 
@@ -170,7 +170,7 @@ cr::CreativeDocumentRestoreRequest authoredRestoreRequest() {
   request.snapSettings = authoredSnapSettings();
   request.worldBounds = authoredWorldBounds();
   request.nextObjectId = 100;
-  request.objects = {restoredGroupObject(), restoredCrateObject()};
+  request.objects = {restoredGroupObject(), restoredWallObject()};
   return request;
 }
 
@@ -217,7 +217,7 @@ iggy3d::SaveEnvelope minimalEnvelope() {
 bool sectionObjectMatches(const iggy3d::SaveCreativeDocumentObjectRecord& save,
                           const cr::CreativeObject& object) {
   return save.id == object.id &&
-         save.kind == std::string{cr::toString(object.kind)} &&
+         save.kind == std::string{cr::serializedObjectKindId(object.kind)} &&
          save.name == object.name &&
          save.transform.position.x == object.transform.position.x &&
          save.transform.position.y == object.transform.position.y &&
@@ -256,7 +256,7 @@ bool buildSectionCopiesDocumentExactly() {
   const cr::CreativeDocument document = authoredDocument();
   const cr::CreativeDocumentRestoreRequest original = authoredRestoreRequest();
   const cr::CreativeObject& group = original.objects[0];
-  const cr::CreativeObject& crate = original.objects[1];
+  const cr::CreativeObject& wall = original.objects[1];
   const iggy3d::ProductCreativeDocumentSectionBuildResult result =
       iggy3d::buildSaveCreativeDocumentSection(document);
   const iggy3d::SaveCreativeDocumentSection& section = result.section;
@@ -314,8 +314,8 @@ bool buildSectionCopiesDocumentExactly() {
          expect(section.objects.size() == 2U, "section object count") &&
          expect(sectionObjectMatches(section.objects[0], group),
                 "section group object") &&
-         expect(sectionObjectMatches(section.objects[1], crate),
-                "section crate object");
+         expect(sectionObjectMatches(section.objects[1], wall),
+                "section wall object");
 }
 
 bool encodeDecodeAndRestoreRoundTripsDocument() {
@@ -342,7 +342,7 @@ bool encodeDecodeAndRestoreRoundTripsDocument() {
 
   const cr::CreativeDocument& restoredDocument = restored.document;
   const cr::CreativeObject* restoredGroup = restoredDocument.findObject(2);
-  const cr::CreativeObject* restoredCrate = restoredDocument.findObject(7);
+  const cr::CreativeObject* restoredWall = restoredDocument.findObject(7);
   const cr::CreativeDocumentRestoreRequest original =
       authoredRestoreRequest();
 
@@ -391,12 +391,12 @@ bool encodeDecodeAndRestoreRoundTripsDocument() {
          expect(restoredGroup != nullptr &&
                     documentObjectMatches(*restoredGroup, original.objects[0]),
                 "restored group") &&
-         expect(restoredCrate != nullptr &&
-                    documentObjectMatches(*restoredCrate, original.objects[1]),
-                "restored crate") &&
-         expect(restoredCrate != nullptr &&
-                    restoredCrate->transform.position.x == kOneThird &&
-                    restoredCrate->transform.position.z == kPrecise &&
+         expect(restoredWall != nullptr &&
+                    documentObjectMatches(*restoredWall, original.objects[1]),
+                "restored wall") &&
+         expect(restoredWall != nullptr &&
+                    restoredWall->transform.position.x == kOneThird &&
+                    restoredWall->transform.position.z == kPrecise &&
                     restoredDocument.gridSettings().cellSizeMeters ==
                         kOneThird &&
                     restoredDocument.documentSnapSettings().stepX == kPrecise,
@@ -498,6 +498,9 @@ bool restoreRejectsInvalidPathPayloads() {
 bool restoreRejectsNonPathObjectCarryingPathPoints() {
   iggy3d::SaveCreativeDocumentSection section =
       iggy3d::buildSaveCreativeDocumentSection(authoredDocument()).section;
+  if (section.objects.size() < 2U) {
+    return expect(false, "nonpath path setup object count");
+  }
   section.objects[1].pathPoints = {
       {1.0, 0.0, 2.0},
       {3.0, 0.0, 4.0},
@@ -514,6 +517,111 @@ bool restoreRejectsNonPathObjectCarryingPathPoints() {
                 "nonpath path points reason") &&
          expect(result.document.objectCount() == 0U,
                 "nonpath path returns empty document");
+}
+
+bool restoreRejectsUnsupportedParentPayload() {
+  iggy3d::SaveCreativeDocumentSection section =
+      iggy3d::buildSaveCreativeDocumentSection(authoredDocument()).section;
+  if (section.objects.size() < 2U) {
+    return expect(false, "unsupported parent setup object count");
+  }
+  section.objects[1].kind = "Crate";
+  section.objects[1].name = "Unsupported Parented Crate";
+
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
+      iggy3d::restoreCreativeDocumentFromSaveSection(section);
+
+  return expect(!result.receipt.accepted,
+                "unsupported parent restore rejected") &&
+         expect(result.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::InvalidObject,
+                "unsupported parent restore status") &&
+         expect(result.receipt.reasonCode == "parent_unsupported",
+                "unsupported parent restore reason") &&
+         expect(result.document.objectCount() == 0U,
+                "unsupported parent returns empty document");
+}
+
+bool restoreRejectsMissingParentPayload() {
+  iggy3d::SaveCreativeDocumentSection section =
+      iggy3d::buildSaveCreativeDocumentSection(authoredDocument()).section;
+  if (section.objects.size() < 2U) {
+    return expect(false, "missing parent setup object count");
+  }
+  section.objects[1].parentId = 404;
+
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
+      iggy3d::restoreCreativeDocumentFromSaveSection(section);
+
+  return expect(!result.receipt.accepted,
+                "missing parent restore rejected") &&
+         expect(result.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::InvalidObject,
+                "missing parent restore status") &&
+         expect(result.receipt.reasonCode == "missing_parent",
+                "missing parent restore reason") &&
+         expect(result.document.objectCount() == 0U,
+                "missing parent returns empty document");
+}
+
+bool restoreRejectsUnsupportedParentOwnerPayload() {
+  iggy3d::SaveCreativeDocumentSection section =
+      iggy3d::buildSaveCreativeDocumentSection(authoredDocument()).section;
+  if (section.objects.size() < 2U) {
+    return expect(false, "unsupported owner setup object count");
+  }
+
+  iggy3d::SaveCreativeDocumentObjectRecord crateParent = section.objects[1];
+  crateParent.id = 6;
+  crateParent.kind = "Crate";
+  crateParent.name = "Unsupported Owner Crate";
+  crateParent.hasParent = false;
+  crateParent.parentId = cr::kInvalidObjectId;
+
+  iggy3d::SaveCreativeDocumentObjectRecord wallChild = section.objects[1];
+  wallChild.parentId = crateParent.id;
+  section.objects = {section.objects[0], crateParent, wallChild};
+
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
+      iggy3d::restoreCreativeDocumentFromSaveSection(section);
+
+  return expect(!result.receipt.accepted,
+                "unsupported owner restore rejected") &&
+         expect(result.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::InvalidObject,
+                "unsupported owner restore status") &&
+         expect(result.receipt.reasonCode == "parent_owner_unsupported",
+                "unsupported owner restore reason") &&
+         expect(result.document.objectCount() == 0U,
+                "unsupported owner returns empty document");
+}
+
+bool restoreRejectsParentCyclePayload() {
+  iggy3d::SaveCreativeDocumentSection section =
+      iggy3d::buildSaveCreativeDocumentSection(authoredDocument()).section;
+  if (section.objects.size() < 2U) {
+    return expect(false, "parent cycle setup object count");
+  }
+
+  section.objects[0].kind = "Group";
+  section.objects[0].hasParent = true;
+  section.objects[0].parentId = section.objects[1].id;
+  section.objects[1].kind = "Group";
+  section.objects[1].name = "Cycled Group";
+  section.objects[1].hasParent = true;
+  section.objects[1].parentId = section.objects[0].id;
+
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
+      iggy3d::restoreCreativeDocumentFromSaveSection(section);
+
+  return expect(!result.receipt.accepted, "parent cycle restore rejected") &&
+         expect(result.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::InvalidObject,
+                "parent cycle restore status") &&
+         expect(result.receipt.reasonCode == "parent_cycle",
+                "parent cycle restore reason") &&
+         expect(result.document.objectCount() == 0U,
+                "parent cycle returns empty document");
 }
 
 bool buildRejectsDocumentWithInvalidId() {
@@ -554,6 +662,9 @@ bool restoreRejectsMissingSection() {
 
 bool restoreRejectsInvalidObjectKind() {
   iggy3d::SaveCreativeDocumentSection section = validSection();
+  if (section.objects.size() < 2U) {
+    return expect(false, "invalid kind setup object count");
+  }
   section.objects[1].kind = "DefinitelyNotAKind";
   const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
       iggy3d::restoreCreativeDocumentFromSaveSection(section);
@@ -569,8 +680,31 @@ bool restoreRejectsInvalidObjectKind() {
                 "invalid kind returns empty document");
 }
 
+bool restoreRejectsDisplayNameAsObjectKind() {
+  iggy3d::SaveCreativeDocumentSection section = validSection();
+  if (section.objects.size() < 2U) {
+    return expect(false, "display name kind setup object count");
+  }
+  section.objects[1].kind = "Moving Platform";
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
+      iggy3d::restoreCreativeDocumentFromSaveSection(section);
+
+  return expect(!result.receipt.accepted, "display name kind rejected") &&
+         expect(result.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::
+                        InvalidObjectKind,
+                "display name kind status") &&
+         expect(result.receipt.reasonCode == "invalid_object_kind",
+                "display name kind reason") &&
+         expect(result.document.objectCount() == 0U,
+                "display name kind returns empty document");
+}
+
 bool restoreRejectsDuplicateObjectIds() {
   iggy3d::SaveCreativeDocumentSection section = validSection();
+  if (section.objects.size() < 2U) {
+    return expect(false, "duplicate id setup object count");
+  }
   section.objects[1].id = section.objects[0].id;
   const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
       iggy3d::restoreCreativeDocumentFromSaveSection(section);
@@ -586,6 +720,9 @@ bool restoreRejectsDuplicateObjectIds() {
 
 bool restoreRejectsBadNextObjectId() {
   iggy3d::SaveCreativeDocumentSection section = validSection();
+  if (section.objects.size() < 2U) {
+    return expect(false, "bad next setup object count");
+  }
   section.nextObjectId = section.objects[1].id;
   const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
       iggy3d::restoreCreativeDocumentFromSaveSection(section);
@@ -662,9 +799,14 @@ int main() {
   ok = restoreSectionRestoresPathPoints() && ok;
   ok = restoreRejectsInvalidPathPayloads() && ok;
   ok = restoreRejectsNonPathObjectCarryingPathPoints() && ok;
+  ok = restoreRejectsUnsupportedParentPayload() && ok;
+  ok = restoreRejectsMissingParentPayload() && ok;
+  ok = restoreRejectsUnsupportedParentOwnerPayload() && ok;
+  ok = restoreRejectsParentCyclePayload() && ok;
   ok = buildRejectsDocumentWithInvalidId() && ok;
   ok = restoreRejectsMissingSection() && ok;
   ok = restoreRejectsInvalidObjectKind() && ok;
+  ok = restoreRejectsDisplayNameAsObjectKind() && ok;
   ok = restoreRejectsDuplicateObjectIds() && ok;
   ok = restoreRejectsBadNextObjectId() && ok;
   ok = restoreRejectsInvalidSnapModeAndAxes() && ok;

@@ -481,9 +481,40 @@ bool legacyPatrolRoutePayloadsRemainFutureStorageNoChange() {
       cr::applyDocumentMutation(
           document, created.objectId, cr::CreativeMutationKind::SetPatrolRoute,
           cr::makeStringIdPayload("route-b"));
+  const cr::CreativeMutationPayload pathPayload =
+      cr::makePathPointsPayload(updatedPathPoints());
+  const cr::CreativeMutationPayload textPayload = cr::makeTextPayload("route-a");
+  const cr::CreativeMutationPayload stringIdPayload =
+      cr::makeStringIdPayload("route-b");
   const cr::CreativeObject* object = document.findObject(created.objectId);
 
   return expect(created.accepted, "path legacy setup accepted") &&
+         expect(cr::mutationStoragePolicy(
+                    cr::CreativeMutationKind::SetPatrolRoute) ==
+                    cr::CreativeMutationStoragePolicy::PayloadDependent,
+                "path legacy mutation is payload-dependent") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::SetPatrolRoute, pathPayload) ==
+                    cr::CreativeMutationStoragePolicy::StoredObject,
+                "path points payload stored policy") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::SetPatrolRoute, textPayload) ==
+                    cr::CreativeMutationStoragePolicy::FutureStoragePlaceholder,
+                "path legacy text future policy") &&
+         expect(cr::mutationPayloadStoragePolicy(
+                    cr::CreativeMutationKind::SetPatrolRoute,
+                    stringIdPayload) ==
+                    cr::CreativeMutationStoragePolicy::FutureStoragePlaceholder,
+                "path legacy string id future policy") &&
+         expect(cr::mutationPayloadHasStoredObjectEffect(
+                    cr::CreativeMutationKind::SetPatrolRoute, pathPayload),
+                "path points payload has stored effect") &&
+         expect(!cr::mutationPayloadHasStoredObjectEffect(
+                    cr::CreativeMutationKind::SetPatrolRoute, textPayload),
+                "path legacy text has no stored effect") &&
+         expect(!cr::mutationPayloadHasStoredObjectEffect(
+                    cr::CreativeMutationKind::SetPatrolRoute, stringIdPayload),
+                "path legacy string id has no stored effect") &&
          expect(textReceipt.status ==
                     cr::CreativeDocumentMutationStatus::NoChange,
                 "path legacy text no change") &&

@@ -130,6 +130,23 @@ enum class CreativeSpatialOccupancyKind {
     Authoring,
 };
 
+enum class CreativeRuntimeAnchorSemantic {
+    None,
+    Spawn,
+    Exit,
+    Npc,
+    Monster,
+    Pickup,
+    Light,
+    Audio,
+    Camera,
+};
+
+enum class CreativeAuthoringPaletteVisibility {
+    Hidden,
+    Brush,
+};
+
 enum class CreativeObjectDirtyFlag : std::uint64_t {
     None = 0,
     Identity = 1ull << 0,
@@ -167,6 +184,10 @@ struct CreativeObjectDescriptor {
         CreativeSpatialProjectionProfile::Unknown};
     CreativeSpatialOccupancyKind occupancyKind{
         CreativeSpatialOccupancyKind::Unknown};
+    CreativeRuntimeAnchorSemantic runtimeAnchorSemantic{
+        CreativeRuntimeAnchorSemantic::None};
+    CreativeAuthoringPaletteVisibility authoringPaletteVisibility{
+        CreativeAuthoringPaletteVisibility::Hidden};
 
     std::string_view name{};
     std::string_view displayName{};
@@ -179,9 +200,6 @@ struct CreativeObjectDescriptor {
     bool hasBounds{false};
     bool canHaveParent{false};
     bool canOwnChildren{false};
-    bool canBeHidden{true};
-    bool canBeLocked{true};
-    bool canBeTagged{true};
     bool isRuntimeMeaningful{false};
     bool isEditorOnly{false};
 };
@@ -193,6 +211,7 @@ struct CreativeObjectDescriptor {
 [[nodiscard]] std::string_view toString(CreativeObjectCategory category) noexcept;
 [[nodiscard]] std::string_view toString(CreativeObjectProfile profile) noexcept;
 [[nodiscard]] std::string_view toString(CreativeObjectShapeKind shapeKind) noexcept;
+[[nodiscard]] std::string_view toString(CreativeRuntimeAnchorSemantic semantic) noexcept;
 [[nodiscard]] std::string_view toString(CreativeObjectDirtyFlag flag) noexcept;
 
 [[nodiscard]] CreativeObjectCategory categoryOf(CreativeObjectKind kind) noexcept;
@@ -210,6 +229,8 @@ struct CreativeObjectDescriptor {
 [[nodiscard]] bool objectCanOwnChildren(CreativeObjectKind kind) noexcept;
 [[nodiscard]] bool objectIsRuntimeMeaningful(CreativeObjectKind kind) noexcept;
 [[nodiscard]] bool objectIsEditorOnly(CreativeObjectKind kind) noexcept;
+[[nodiscard]] bool descriptorShowsInAuthoringBrushPalette(const CreativeObjectDescriptor& descriptor) noexcept;
+[[nodiscard]] bool objectShowsInAuthoringBrushPalette(CreativeObjectKind kind) noexcept;
 
 [[nodiscard]] bool objectUsesProfile(CreativeObjectKind kind, CreativeObjectProfile profile) noexcept;
 [[nodiscard]] bool objectUsesCategory(CreativeObjectKind kind, CreativeObjectCategory category) noexcept;

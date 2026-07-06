@@ -333,8 +333,7 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
     returnProductToTitleTransition(frontend, window, context.settings);
     if (context.creativeApp != nullptr) {
       creative::clearCreativeUndoStack(context.creativeApp->undoStack);
-      window.creativeUndoAvailable = false;
-      window.creativeUndoDepth = 0;
+      clearProductActiveCreativeIdentity(window, &context.creativeApp->identity);
     }
     context.activeSession.reset();
     return {true, true};

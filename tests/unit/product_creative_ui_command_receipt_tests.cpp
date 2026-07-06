@@ -6,6 +6,8 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <array>
+#include <initializer_list>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -39,6 +41,259 @@ bool expectReceiptField(const iggy3d::RenderReceipt& receipt,
                         std::string_view value,
                         std::string_view message) {
   return expect(iggy3d::hasReceiptField(receipt, key, value), message);
+}
+
+struct ReceiptFieldExpectation {
+  std::string_view key;
+  std::string_view value;
+  std::string_view message;
+};
+
+bool expectReceiptFields(
+    const iggy3d::RenderReceipt& receipt,
+    std::initializer_list<ReceiptFieldExpectation> expectations,
+    std::string_view group) {
+  bool ok = true;
+  for (const ReceiptFieldExpectation& expectation : expectations) {
+    std::string message(group);
+    message.append(": ");
+    message.append(expectation.message);
+    ok = expectReceiptField(receipt,
+                            expectation.key,
+                            expectation.value,
+                            message) &&
+         ok;
+  }
+  return ok;
+}
+
+template <std::size_t Size>
+bool expectReceiptFields(
+    const iggy3d::RenderReceipt& receipt,
+    const std::array<ReceiptFieldExpectation, Size>& expectations,
+    std::string_view group) {
+  bool ok = true;
+  for (const ReceiptFieldExpectation& expectation : expectations) {
+    std::string message(group);
+    message.append(": ");
+    message.append(expectation.message);
+    ok = expectReceiptField(receipt,
+                            expectation.key,
+                            expectation.value,
+                            message) &&
+         ok;
+  }
+  return ok;
+}
+
+constexpr std::array<ReceiptFieldExpectation, 14>
+    kDefaultCommandCoreReceiptFields{{
+        {"creative_ui_command_requested", "false", "requested"},
+        {"creative_ui_command_facade_available", "false", "facade"},
+        {"creative_ui_command_input_consumed", "false", "consumed"},
+        {"creative_ui_command_input_enabled", "false", "enabled"},
+        {"creative_ui_command_accepted", "false", "accepted"},
+        {"creative_ui_command_changed", "false", "changed"},
+        {"creative_ui_command_kind", "none", "kind"},
+        {"creative_ui_command_tool", "none", "tool"},
+        {"creative_ui_command_object_kind", "Unknown", "object kind"},
+        {"creative_ui_command_tool_before", "Select", "tool before"},
+        {"creative_ui_command_tool_after", "Select", "tool after"},
+        {"creative_ui_command_semantic_id", "none", "semantic"},
+        {"creative_ui_command_status",
+         "product_creative_ui_command_not_requested",
+         "status"},
+        {"creative_ui_command_reason_code",
+         "product_creative_ui_command_not_requested",
+         "reason"},
+    }};
+
+constexpr std::array<ReceiptFieldExpectation, 16>
+    kDefaultCommandMutationReceiptFields{{
+        {"creative_ui_command_mutation_requested", "false", "requested"},
+        {"creative_ui_command_mutation_accepted", "false", "accepted"},
+        {"creative_ui_command_mutation_changed", "false", "changed"},
+        {"creative_ui_command_mutation_status", "Unknown", "status"},
+        {"creative_ui_command_document_mutation_status",
+         "Unknown",
+         "document status"},
+        {"creative_ui_command_mutation_kind", "Unknown", "kind"},
+        {"creative_ui_command_mutation_target", "0", "target"},
+        {"creative_ui_command_mutation_object_id", "0", "object id"},
+        {"creative_ui_command_mutation_object_kind",
+         "Unknown",
+         "object kind"},
+        {"creative_ui_command_visible_before", "false", "visible before"},
+        {"creative_ui_command_visible_after", "false", "visible after"},
+        {"creative_ui_command_locked_before", "false", "locked before"},
+        {"creative_ui_command_locked_after", "false", "locked after"},
+        {"creative_ui_command_revision_before", "0", "revision before"},
+        {"creative_ui_command_revision_after", "0", "revision after"},
+        {"creative_ui_command_mutation_message", "none", "message"},
+    }};
+
+constexpr std::array<ReceiptFieldExpectation, 12>
+    kDefaultCommandCreateReceiptFields{{
+        {"creative_ui_command_create_requested", "false", "requested"},
+        {"creative_ui_command_create_accepted", "false", "accepted"},
+        {"creative_ui_command_create_changed", "false", "changed"},
+        {"creative_ui_command_create_status", "Unknown", "status"},
+        {"creative_ui_command_create_object_id", "0", "object id"},
+        {"creative_ui_command_create_object_kind", "Unknown", "object kind"},
+        {"creative_ui_command_create_object_name", "none", "object name"},
+        {"creative_ui_command_create_revision_before",
+         "0",
+         "revision before"},
+        {"creative_ui_command_create_revision_after",
+         "0",
+         "revision after"},
+        {"creative_ui_command_create_dirty_flags", "0", "dirty flags"},
+        {"creative_ui_command_create_message", "none", "message"},
+        {"creative_ui_command_create_reason_code", "none", "reason"},
+    }};
+
+constexpr std::array<ReceiptFieldExpectation, 13>
+    kDefaultCommandDeleteReceiptFields{{
+        {"creative_ui_command_delete_requested", "false", "requested"},
+        {"creative_ui_command_delete_accepted", "false", "accepted"},
+        {"creative_ui_command_delete_changed", "false", "changed"},
+        {"creative_ui_command_delete_removed", "false", "removed"},
+        {"creative_ui_command_delete_object_id", "0", "object id"},
+        {"creative_ui_command_delete_object_kind", "Unknown", "object kind"},
+        {"creative_ui_command_delete_object_name", "none", "object name"},
+        {"creative_ui_command_delete_revision_before",
+         "0",
+         "revision before"},
+        {"creative_ui_command_delete_revision_after",
+         "0",
+         "revision after"},
+        {"creative_ui_command_delete_dirty_flags", "0", "dirty flags"},
+        {"creative_ui_command_delete_status", "Unknown", "status"},
+        {"creative_ui_command_delete_message", "none", "message"},
+        {"creative_ui_command_delete_reason_code", "none", "reason"},
+    }};
+
+constexpr std::array<ReceiptFieldExpectation, 14>
+    kDefaultCommandUndoReceiptFields{{
+        {"creative_ui_command_undo_requested", "false", "requested"},
+        {"creative_ui_command_undo_accepted", "false", "accepted"},
+        {"creative_ui_command_undo_changed", "false", "changed"},
+        {"creative_ui_command_undo_had_snapshot", "false", "snapshot"},
+        {"creative_ui_command_undo_document_id", "0", "document"},
+        {"creative_ui_command_undo_revision_before",
+         "0",
+         "revision before"},
+        {"creative_ui_command_undo_revision_after", "0", "revision after"},
+        {"creative_ui_command_undo_object_count_before",
+         "0",
+         "object count before"},
+        {"creative_ui_command_undo_object_count_after",
+         "0",
+         "object count after"},
+        {"creative_ui_command_undo_depth_before", "0", "depth before"},
+        {"creative_ui_command_undo_depth_after", "0", "depth after"},
+        {"creative_ui_command_undo_status",
+         "creative_undo_not_requested",
+         "status"},
+        {"creative_ui_command_undo_message",
+         "creative_undo_not_requested",
+         "message"},
+        {"creative_ui_command_undo_reason_code",
+         "creative_undo_not_requested",
+         "reason"},
+    }};
+
+constexpr std::array<ReceiptFieldExpectation, 13>
+    kDefaultCommandRoomShellReceiptFields{{
+        {"creative_ui_command_shell_requested", "false", "requested"},
+        {"creative_ui_command_shell_accepted", "false", "accepted"},
+        {"creative_ui_command_shell_changed", "false", "changed"},
+        {"creative_ui_command_shell_room_object_id", "0", "room id"},
+        {"creative_ui_command_shell_generated_object_count",
+         "0",
+         "generated count"},
+        {"creative_ui_command_shell_removed_object_count",
+         "0",
+         "removed count"},
+        {"creative_ui_command_shell_floor_count", "0", "floor count"},
+        {"creative_ui_command_shell_wall_count", "0", "wall count"},
+        {"creative_ui_command_shell_revision_before",
+         "0",
+         "revision before"},
+        {"creative_ui_command_shell_revision_after", "0", "revision after"},
+        {"creative_ui_command_shell_status",
+         "creative_room_shell_not_requested",
+         "status"},
+        {"creative_ui_command_shell_reason_code",
+         "creative_room_shell_not_requested",
+         "reason"},
+        {"creative_ui_command_shell_message",
+         "creative_room_shell_not_requested",
+         "message"},
+    }};
+
+// Manual command refresh intentionally omits cleared_active_room. The separate
+// auto-refresh receipt namespace owns that key because only auto-refresh needs
+// to distinguish renderable rebuilds from same-frame no-renderable clears.
+constexpr std::array<ReceiptFieldExpectation, 12>
+    kDefaultCommandBakedRoomRefreshReceiptFields{{
+        {"creative_ui_command_baked_room_refresh_requested",
+         "false",
+         "requested"},
+        {"creative_ui_command_baked_room_refresh_accepted",
+         "false",
+         "accepted"},
+        {"creative_ui_command_baked_room_refresh_status",
+         "product_creative_baked_room_not_requested",
+         "status"},
+        {"creative_ui_command_baked_room_refresh_reason_code",
+         "product_creative_baked_room_not_requested",
+         "reason"},
+        {"creative_ui_command_baked_room_bake_measured", "false", "measured"},
+        {"creative_ui_command_baked_room_bake_elapsed_microseconds",
+         "0",
+         "elapsed"},
+        {"creative_ui_command_baked_room_baked_document_revision",
+         "0",
+         "document revision"},
+        {"creative_ui_command_baked_room_static_mesh_count",
+         "0",
+         "static meshes"},
+        {"creative_ui_command_baked_room_anchor_count", "0", "anchors"},
+        {"creative_ui_command_baked_room_spatial_surface_count",
+         "0",
+         "surfaces"},
+        {"creative_ui_command_baked_room_collision_ready",
+         "false",
+         "collision ready"},
+        {"creative_ui_command_baked_room_collision_query_surface_count",
+         "0",
+         "query surfaces"},
+    }};
+
+bool expectDefaultCommandReceiptSchema(
+    const iggy3d::RenderReceipt& receipt) {
+  return expectReceiptFields(receipt,
+                             kDefaultCommandCoreReceiptFields,
+                             "default command core") &&
+         expectReceiptFields(receipt,
+                             kDefaultCommandMutationReceiptFields,
+                             "default mutation") &&
+         expectReceiptFields(receipt,
+                             kDefaultCommandCreateReceiptFields,
+                             "default create") &&
+         expectReceiptFields(receipt,
+                             kDefaultCommandDeleteReceiptFields,
+                             "default delete") &&
+         expectReceiptFields(receipt,
+                             kDefaultCommandUndoReceiptFields,
+                             "default undo") &&
+         expectReceiptFields(receipt,
+                             kDefaultCommandRoomShellReceiptFields,
+                             "default room shell") &&
+         expectReceiptFields(receipt,
+                             kDefaultCommandBakedRoomRefreshReceiptFields,
+                             "default baked room refresh");
 }
 
 iggy3d::ProductCreativeUiInputFrameReceipt commandInput(
@@ -181,266 +436,7 @@ bool defaultWindowReceiptCarriesNotRequestedFields() {
   const iggy3d::ProductAppWindowState window;
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
-  return expectReceiptField(receipt,
-                            "creative_ui_command_requested",
-                            "false",
-                            "default requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_facade_available",
-                            "false",
-                            "default facade") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_input_consumed",
-                            "false",
-                            "default consumed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_input_enabled",
-                            "false",
-                            "default enabled") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_accepted",
-                            "false",
-                            "default accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_changed",
-                            "false",
-                            "default changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_kind",
-                            "none",
-                            "default kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_tool_before",
-                            "Select",
-                            "default tool before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_tool_after",
-                            "Select",
-                            "default tool after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_semantic_id",
-                            "none",
-                            "default semantic") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_status",
-                            "product_creative_ui_command_not_requested",
-                            "default status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_reason_code",
-                            "product_creative_ui_command_not_requested",
-                            "default reason") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_requested",
-                            "false",
-                            "default mutation requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_accepted",
-                            "false",
-                            "default mutation accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_changed",
-                            "false",
-                            "default mutation changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_status",
-                            "Unknown",
-                            "default mutation status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_document_mutation_status",
-                            "Unknown",
-                            "default document mutation status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_kind",
-                            "Unknown",
-                            "default mutation kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_target",
-                            "0",
-                            "default mutation target") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_object_id",
-                            "0",
-                            "default mutation object") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_object_kind",
-                            "Unknown",
-                            "default mutation object kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_visible_before",
-                            "false",
-                            "default visible before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_visible_after",
-                            "false",
-                            "default visible after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_revision_before",
-                            "0",
-                            "default revision before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_revision_after",
-                            "0",
-                            "default revision after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_message",
-                            "none",
-                            "default mutation message") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_requested",
-                            "false",
-                            "default create requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_accepted",
-                            "false",
-                            "default create accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_changed",
-                            "false",
-                            "default create changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_status",
-                            "Unknown",
-                            "default create status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_object_id",
-                            "0",
-                            "default create object id") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_object_kind",
-                            "Unknown",
-                            "default create object kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_object_name",
-                            "none",
-                            "default create object name") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_revision_before",
-                            "0",
-                            "default create revision before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_revision_after",
-                            "0",
-                            "default create revision after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_dirty_flags",
-                            "0",
-                            "default create dirty flags") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_message",
-                            "none",
-                            "default create message") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_reason_code",
-                            "none",
-                            "default create reason") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_requested",
-                            "false",
-                            "default delete requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_accepted",
-                            "false",
-                            "default delete accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_changed",
-                            "false",
-                            "default delete changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_removed",
-                            "false",
-                            "default delete removed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_object_id",
-                            "0",
-                            "default delete object id") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_object_kind",
-                            "Unknown",
-                            "default delete object kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_object_name",
-                            "none",
-                            "default delete object name") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_revision_before",
-                            "0",
-                            "default delete revision before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_revision_after",
-                            "0",
-                            "default delete revision after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_dirty_flags",
-                            "0",
-                            "default delete dirty flags") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_status",
-                            "Unknown",
-                            "default delete status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_message",
-                            "none",
-                            "default delete message") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_reason_code",
-                            "none",
-                            "default delete reason") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_requested",
-                            "false",
-                            "default undo requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_accepted",
-                            "false",
-                            "default undo accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_changed",
-                            "false",
-                            "default undo changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_had_snapshot",
-                            "false",
-                            "default undo snapshot") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_document_id",
-                            "0",
-                            "default undo document") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_revision_before",
-                            "0",
-                            "default undo revision before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_revision_after",
-                            "0",
-                            "default undo revision after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_object_count_before",
-                            "0",
-                            "default undo object count before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_object_count_after",
-                            "0",
-                            "default undo object count after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_depth_before",
-                            "0",
-                            "default undo depth before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_depth_after",
-                            "0",
-                            "default undo depth after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_status",
-                            "creative_undo_not_requested",
-                            "default undo status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_message",
-                            "creative_undo_not_requested",
-                            "default undo message") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_reason_code",
-                            "creative_undo_not_requested",
-                            "default undo reason");
+  return expectDefaultCommandReceiptSchema(receipt);
 }
 
 bool defaultCommandReceiptRecordsSafely() {
@@ -449,50 +445,26 @@ bool defaultCommandReceiptRecordsSafely() {
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
-  return expectReceiptField(receipt,
-                            "creative_ui_command_requested",
-                            "false",
-                            "record default requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_kind",
-                            "none",
-                            "record default kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_tool_before",
-                            "Select",
-                            "record default before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_tool_after",
-                            "Select",
-                            "record default after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_semantic_id",
-                            "none",
-                            "record default semantic") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_status",
-                            "product_creative_ui_command_not_requested",
-                            "record default status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_reason_code",
-                            "product_creative_ui_command_not_requested",
-                            "record default reason") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_status",
-                            "Unknown",
-                            "record default mutation status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_message",
-                            "none",
-                            "record default mutation message") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_status",
-                            "Unknown",
-                            "record default create status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_message",
-                            "none",
-                            "record default create message");
+  return expectReceiptFields(
+      receipt,
+      {
+          {"creative_ui_command_requested", "false", "requested"},
+          {"creative_ui_command_kind", "none", "kind"},
+          {"creative_ui_command_tool_before", "Select", "tool before"},
+          {"creative_ui_command_tool_after", "Select", "tool after"},
+          {"creative_ui_command_semantic_id", "none", "semantic"},
+          {"creative_ui_command_status",
+           "product_creative_ui_command_not_requested", "status"},
+          {"creative_ui_command_reason_code",
+           "product_creative_ui_command_not_requested", "reason"},
+          {"creative_ui_command_mutation_status", "Unknown",
+           "mutation status"},
+          {"creative_ui_command_mutation_message", "none",
+           "mutation message"},
+          {"creative_ui_command_create_status", "Unknown", "create status"},
+          {"creative_ui_command_create_message", "none", "create message"},
+      },
+      "record default command");
 }
 
 bool nullFacadeCommandReceiptRecordsFields() {
@@ -502,46 +474,25 @@ bool nullFacadeCommandReceiptRecordsFields() {
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
-  return expectReceiptField(receipt,
-                            "creative_ui_command_requested",
-                            "true",
-                            "null facade requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_facade_available",
-                            "false",
-                            "null facade unavailable") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_input_consumed",
-                            "true",
-                            "null facade consumed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_input_enabled",
-                            "true",
-                            "null facade enabled") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_kind",
-                            "none",
-                            "null facade kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_tool_before",
-                            "Select",
-                            "null facade before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_tool_after",
-                            "Select",
-                            "null facade after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_semantic_id",
-                            "creative.row.tools.tool_select",
-                            "null facade semantic") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_status",
-                            "product_creative_ui_command_facade_missing",
-                            "null facade status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_reason_code",
-                            "product_creative_ui_command_facade_missing",
-                            "null facade reason");
+  return expectReceiptFields(
+      receipt,
+      {
+          {"creative_ui_command_requested", "true", "requested"},
+          {"creative_ui_command_facade_available", "false",
+           "facade unavailable"},
+          {"creative_ui_command_input_consumed", "true", "consumed"},
+          {"creative_ui_command_input_enabled", "true", "enabled"},
+          {"creative_ui_command_kind", "none", "kind"},
+          {"creative_ui_command_tool_before", "Select", "tool before"},
+          {"creative_ui_command_tool_after", "Select", "tool after"},
+          {"creative_ui_command_semantic_id",
+           "creative.row.tools.tool_select", "semantic"},
+          {"creative_ui_command_status",
+           "product_creative_ui_command_facade_missing", "status"},
+          {"creative_ui_command_reason_code",
+           "product_creative_ui_command_facade_missing", "reason"},
+      },
+      "null facade command");
 }
 
 bool toolSelectNoChangeCommandReceiptRecordsFields() {
@@ -551,54 +502,26 @@ bool toolSelectNoChangeCommandReceiptRecordsFields() {
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
-  return expectReceiptField(receipt,
-                            "creative_ui_command_requested",
-                            "true",
-                            "tool select requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_facade_available",
-                            "true",
-                            "tool select facade") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_input_consumed",
-                            "true",
-                            "tool select consumed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_input_enabled",
-                            "true",
-                            "tool select enabled") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_accepted",
-                            "true",
-                            "tool select accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_changed",
-                            "false",
-                            "tool select unchanged") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_kind",
-                            "set_active_tool",
-                            "tool select kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_tool_before",
-                            "Select",
-                            "tool select before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_tool_after",
-                            "Select",
-                            "tool select after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_semantic_id",
-                            "creative.row.tools.tool_select",
-                            "tool select semantic") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_status",
-                            "product_creative_ui_command_no_change",
-                            "tool select status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_reason_code",
-                            "product_creative_ui_command_no_change",
-                            "tool select reason");
+  return expectReceiptFields(
+      receipt,
+      {
+          {"creative_ui_command_requested", "true", "requested"},
+          {"creative_ui_command_facade_available", "true", "facade"},
+          {"creative_ui_command_input_consumed", "true", "consumed"},
+          {"creative_ui_command_input_enabled", "true", "enabled"},
+          {"creative_ui_command_accepted", "true", "accepted"},
+          {"creative_ui_command_changed", "false", "unchanged"},
+          {"creative_ui_command_kind", "set_active_tool", "kind"},
+          {"creative_ui_command_tool_before", "Select", "tool before"},
+          {"creative_ui_command_tool_after", "Select", "tool after"},
+          {"creative_ui_command_semantic_id",
+           "creative.row.tools.tool_select", "semantic"},
+          {"creative_ui_command_status", "product_creative_ui_command_no_change",
+           "status"},
+          {"creative_ui_command_reason_code",
+           "product_creative_ui_command_no_change", "reason"},
+      },
+      "tool select command");
 }
 
 bool toggleCommandReceiptRecordsMutationFields() {
@@ -614,78 +537,44 @@ bool toggleCommandReceiptRecordsMutationFields() {
   const std::string revisionAfter =
       std::to_string(commandReceipt.revisionAfter);
 
-  return expectReceiptField(receipt,
-                            "creative_ui_command_kind",
-                            "toggle_selected_object_visibility",
-                            "toggle kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_status",
-                            "product_creative_ui_command_applied",
-                            "toggle status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_accepted",
-                            "true",
-                            "toggle accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_changed",
-                            "true",
-                            "toggle changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_requested",
-                            "true",
-                            "toggle mutation requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_accepted",
-                            "true",
-                            "toggle mutation accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_changed",
-                            "true",
-                            "toggle mutation changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_status",
-                            "Applied",
-                            "toggle mutation status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_document_mutation_status",
-                            "Applied",
-                            "toggle document mutation status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_kind",
-                            "SetVisible",
-                            "toggle mutation kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_target",
-                            objectId,
-                            "toggle mutation target") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_object_id",
-                            objectId,
-                            "toggle mutation object") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_object_kind",
-                            "Room",
-                            "toggle mutation object kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_visible_before",
-                            "true",
-                            "toggle visible before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_visible_after",
-                            "false",
-                            "toggle visible after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_revision_before",
-                            revisionBefore,
-                            "toggle revision before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_revision_after",
-                            revisionAfter,
-                            "toggle revision after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_message",
-                            "document mutation applied through object mutation pipeline",
-                            "toggle mutation message");
+  return expectReceiptFields(
+      receipt,
+      {
+          {"creative_ui_command_kind", "toggle_selected_object_visibility",
+           "kind"},
+          {"creative_ui_command_status", "product_creative_ui_command_applied",
+           "status"},
+          {"creative_ui_command_accepted", "true", "accepted"},
+          {"creative_ui_command_changed", "true", "changed"},
+          {"creative_ui_command_mutation_requested", "true",
+           "mutation requested"},
+          {"creative_ui_command_mutation_accepted", "true",
+           "mutation accepted"},
+          {"creative_ui_command_mutation_changed", "true",
+           "mutation changed"},
+          {"creative_ui_command_mutation_status", "Applied",
+           "mutation status"},
+          {"creative_ui_command_document_mutation_status", "Applied",
+           "document mutation status"},
+          {"creative_ui_command_mutation_kind", "SetVisible",
+           "mutation kind"},
+          {"creative_ui_command_mutation_target", objectId,
+           "mutation target"},
+          {"creative_ui_command_mutation_object_id", objectId,
+           "mutation object"},
+          {"creative_ui_command_mutation_object_kind", "Room",
+           "mutation object kind"},
+          {"creative_ui_command_visible_before", "true", "visible before"},
+          {"creative_ui_command_visible_after", "false", "visible after"},
+          {"creative_ui_command_revision_before", revisionBefore,
+           "revision before"},
+          {"creative_ui_command_revision_after", revisionAfter,
+           "revision after"},
+          {"creative_ui_command_mutation_message",
+           "document mutation applied through object mutation pipeline",
+           "mutation message"},
+      },
+      "toggle command");
 }
 
 bool lockCommandReceiptRecordsLockedFields() {
@@ -695,40 +584,31 @@ bool lockCommandReceiptRecordsLockedFields() {
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
-  return expectReceiptField(receipt,
-                            "creative_ui_command_kind",
-                            "toggle_selected_object_locked",
-                            "lock kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_status",
-                            "product_creative_ui_command_applied",
-                            "lock status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_mutation_kind",
-                            "SetLocked",
-                            "lock mutation kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_locked_before",
-                            "false",
-                            "lock locked before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_locked_after",
-                            "true",
-                            "lock locked after");
+  return expectReceiptFields(
+      receipt,
+      {
+          {"creative_ui_command_kind", "toggle_selected_object_locked", "kind"},
+          {"creative_ui_command_status", "product_creative_ui_command_applied",
+           "status"},
+          {"creative_ui_command_mutation_kind", "SetLocked",
+           "mutation kind"},
+          {"creative_ui_command_locked_before", "false", "locked before"},
+          {"creative_ui_command_locked_after", "true", "locked after"},
+      },
+      "lock command");
 }
 
 bool defaultWindowReceiptCarriesLockedFields() {
   const iggy3d::ProductAppWindowState window;
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
-  return expectReceiptField(receipt,
-                            "creative_ui_command_locked_before",
-                            "false",
-                            "default locked before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_locked_after",
-                            "false",
-                            "default locked after");
+  return expectReceiptFields(
+      receipt,
+      {
+          {"creative_ui_command_locked_before", "false", "locked before"},
+          {"creative_ui_command_locked_after", "false", "locked after"},
+      },
+      "default locked fields");
 }
 
 bool createRoomCommandReceiptRecordsCreateFields() {
@@ -746,70 +626,32 @@ bool createRoomCommandReceiptRecordsCreateFields() {
   const std::string dirtyFlags =
       std::to_string(commandReceipt.createDirtyFlags);
 
-  return expectReceiptField(receipt,
-                            "creative_ui_command_kind",
-                            "create_object",
-                            "create kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_status",
-                            "product_creative_ui_command_applied",
-                            "create status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_accepted",
-                            "true",
-                            "create accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_changed",
-                            "true",
-                            "create changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_requested",
-                            "true",
-                            "create requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_accepted",
-                            "true",
-                            "create receipt accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_changed",
-                            "true",
-                            "create receipt changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_status",
-                            "Created",
-                            "create receipt status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_object_id",
-                            objectId,
-                            "create object id") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_object_kind",
-                            "Room",
-                            "create object kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_object_name",
-                            "Room",
-                            "create object name") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_revision_before",
-                            revisionBefore,
-                            "create revision before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_revision_after",
-                            revisionAfter,
-                            "create revision after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_dirty_flags",
-                            dirtyFlags,
-                            "create dirty flags") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_message",
-                            "object_created",
-                            "create message") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_create_reason_code",
-                            "object_created",
-                            "create reason");
+  return expectReceiptFields(
+      receipt,
+      {
+          {"creative_ui_command_kind", "create_object", "kind"},
+          {"creative_ui_command_status", "product_creative_ui_command_applied",
+           "status"},
+          {"creative_ui_command_accepted", "true", "accepted"},
+          {"creative_ui_command_changed", "true", "changed"},
+          {"creative_ui_command_create_requested", "true", "requested"},
+          {"creative_ui_command_create_accepted", "true", "receipt accepted"},
+          {"creative_ui_command_create_changed", "true", "receipt changed"},
+          {"creative_ui_command_create_status", "Created", "receipt status"},
+          {"creative_ui_command_create_object_id", objectId, "object id"},
+          {"creative_ui_command_create_object_kind", "Room", "object kind"},
+          {"creative_ui_command_create_object_name", "Room", "object name"},
+          {"creative_ui_command_create_revision_before", revisionBefore,
+           "revision before"},
+          {"creative_ui_command_create_revision_after", revisionAfter,
+           "revision after"},
+          {"creative_ui_command_create_dirty_flags", dirtyFlags,
+           "dirty flags"},
+          {"creative_ui_command_create_message", "object_created", "message"},
+          {"creative_ui_command_create_reason_code", "object_created",
+           "reason"},
+      },
+      "create room command");
 }
 
 bool deleteCommandReceiptRecordsDeleteFields() {
@@ -827,74 +669,34 @@ bool deleteCommandReceiptRecordsDeleteFields() {
   const std::string dirtyFlags =
       std::to_string(commandReceipt.deleteDirtyFlags);
 
-  return expectReceiptField(receipt,
-                            "creative_ui_command_kind",
-                            "delete_selected_object",
-                            "delete kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_status",
-                            "product_creative_ui_command_applied",
-                            "delete status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_accepted",
-                            "true",
-                            "delete accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_changed",
-                            "true",
-                            "delete changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_requested",
-                            "true",
-                            "delete requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_accepted",
-                            "true",
-                            "delete receipt accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_changed",
-                            "true",
-                            "delete receipt changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_removed",
-                            "true",
-                            "delete removed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_object_id",
-                            objectId,
-                            "delete object id") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_object_kind",
-                            "Crate",
-                            "delete object kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_object_name",
-                            "Crate A",
-                            "delete object name") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_revision_before",
-                            revisionBefore,
-                            "delete revision before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_revision_after",
-                            revisionAfter,
-                            "delete revision after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_dirty_flags",
-                            dirtyFlags,
-                            "delete dirty flags") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_status",
-                            "Removed",
-                            "delete receipt status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_message",
-                            "object_removed",
-                            "delete message") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_delete_reason_code",
-                            "object_removed",
-                            "delete reason");
+  return expectReceiptFields(
+      receipt,
+      {
+          {"creative_ui_command_kind", "delete_selected_object", "kind"},
+          {"creative_ui_command_status", "product_creative_ui_command_applied",
+           "status"},
+          {"creative_ui_command_accepted", "true", "accepted"},
+          {"creative_ui_command_changed", "true", "changed"},
+          {"creative_ui_command_delete_requested", "true", "requested"},
+          {"creative_ui_command_delete_accepted", "true", "receipt accepted"},
+          {"creative_ui_command_delete_changed", "true", "receipt changed"},
+          {"creative_ui_command_delete_removed", "true", "removed"},
+          {"creative_ui_command_delete_object_id", objectId, "object id"},
+          {"creative_ui_command_delete_object_kind", "Crate", "object kind"},
+          {"creative_ui_command_delete_object_name", "Crate A",
+           "object name"},
+          {"creative_ui_command_delete_revision_before", revisionBefore,
+           "revision before"},
+          {"creative_ui_command_delete_revision_after", revisionAfter,
+           "revision after"},
+          {"creative_ui_command_delete_dirty_flags", dirtyFlags,
+           "dirty flags"},
+          {"creative_ui_command_delete_status", "Removed", "receipt status"},
+          {"creative_ui_command_delete_message", "object_removed", "message"},
+          {"creative_ui_command_delete_reason_code", "object_removed",
+           "reason"},
+      },
+      "delete command");
 }
 
 bool undoCommandReceiptRecordsUndoFields() {
@@ -903,75 +705,38 @@ bool undoCommandReceiptRecordsUndoFields() {
   iggy3d::ProductAppWindowState window;
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
+  const std::string documentId = std::to_string(commandReceipt.undoDocumentId);
 
-  return expectReceiptField(receipt,
-                            "creative_ui_command_kind",
-                            "undo_last_document_change",
-                            "undo kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_status",
-                            "product_creative_ui_command_applied",
-                            "undo command status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_accepted",
-                            "true",
-                            "undo accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_changed",
-                            "true",
-                            "undo changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_requested",
-                            "true",
-                            "undo requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_accepted",
-                            "true",
-                            "undo receipt accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_changed",
-                            "true",
-                            "undo receipt changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_had_snapshot",
-                            "true",
-                            "undo had snapshot") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_revision_before",
-                            "1",
-                            "undo revision before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_revision_after",
-                            "0",
-                            "undo revision after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_object_count_before",
-                            "1",
-                            "undo object count before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_object_count_after",
-                            "0",
-                            "undo object count after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_depth_before",
-                            "1",
-                            "undo depth before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_depth_after",
-                            "0",
-                            "undo depth after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_status",
-                            "creative_undo_applied",
-                            "undo status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_message",
-                            "creative_undo_applied",
-                            "undo message") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_undo_reason_code",
-                            "creative_undo_applied",
-                            "undo reason");
+  return expectReceiptFields(
+      receipt,
+      {
+          {"creative_ui_command_kind", "undo_last_document_change", "kind"},
+          {"creative_ui_command_status", "product_creative_ui_command_applied",
+           "command status"},
+          {"creative_ui_command_accepted", "true", "accepted"},
+          {"creative_ui_command_changed", "true", "changed"},
+          {"creative_ui_command_undo_requested", "true", "requested"},
+          {"creative_ui_command_undo_accepted", "true", "receipt accepted"},
+          {"creative_ui_command_undo_changed", "true", "receipt changed"},
+          {"creative_ui_command_undo_had_snapshot", "true", "had snapshot"},
+          {"creative_ui_command_undo_document_id", documentId, "document id"},
+          {"creative_ui_command_undo_revision_before", "1",
+           "revision before"},
+          {"creative_ui_command_undo_revision_after", "0", "revision after"},
+          {"creative_ui_command_undo_object_count_before", "1",
+           "object count before"},
+          {"creative_ui_command_undo_object_count_after", "0",
+           "object count after"},
+          {"creative_ui_command_undo_depth_before", "1", "depth before"},
+          {"creative_ui_command_undo_depth_after", "0", "depth after"},
+          {"creative_ui_command_undo_status", "creative_undo_applied",
+           "status"},
+          {"creative_ui_command_undo_message", "creative_undo_applied",
+           "message"},
+          {"creative_ui_command_undo_reason_code", "creative_undo_applied",
+           "reason"},
+      },
+      "undo command");
 }
 
 bool roomShellCommandReceiptRecordsShellFields() {
@@ -980,71 +745,38 @@ bool roomShellCommandReceiptRecordsShellFields() {
   iggy3d::ProductAppWindowState window;
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
+  const std::string roomObjectId =
+      std::to_string(commandReceipt.shellRoomObjectId);
 
-  return expectReceiptField(receipt,
-                            "creative_ui_command_kind",
-                            "generate_selected_room_shell",
-                            "shell kind") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_status",
-                            "product_creative_ui_command_applied",
-                            "shell command status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_accepted",
-                            "true",
-                            "shell accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_changed",
-                            "true",
-                            "shell changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_requested",
-                            "true",
-                            "shell requested") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_accepted",
-                            "true",
-                            "shell receipt accepted") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_changed",
-                            "true",
-                            "shell receipt changed") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_room_object_id",
-                            std::to_string(commandReceipt.shellRoomObjectId),
-                            "shell room id") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_generated_object_count",
-                            "5",
-                            "shell generated count") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_floor_count",
-                            "1",
-                            "shell floor count") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_wall_count",
-                            "4",
-                            "shell wall count") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_revision_before",
-                            "1",
-                            "shell revision before") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_revision_after",
-                            "6",
-                            "shell revision after") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_status",
-                            "Generated",
-                            "shell status") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_reason_code",
-                            "creative_room_shell_generated",
-                            "shell reason") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_shell_message",
-                            "creative_room_shell_generated",
-                            "shell message");
+  return expectReceiptFields(
+      receipt,
+      {
+          {"creative_ui_command_kind", "generate_selected_room_shell", "kind"},
+          {"creative_ui_command_status", "product_creative_ui_command_applied",
+           "command status"},
+          {"creative_ui_command_accepted", "true", "accepted"},
+          {"creative_ui_command_changed", "true", "changed"},
+          {"creative_ui_command_shell_requested", "true", "requested"},
+          {"creative_ui_command_shell_accepted", "true", "receipt accepted"},
+          {"creative_ui_command_shell_changed", "true", "receipt changed"},
+          {"creative_ui_command_shell_room_object_id", roomObjectId,
+           "room id"},
+          {"creative_ui_command_shell_generated_object_count", "5",
+           "generated count"},
+          {"creative_ui_command_shell_removed_object_count", "0",
+           "removed count"},
+          {"creative_ui_command_shell_floor_count", "1", "floor count"},
+          {"creative_ui_command_shell_wall_count", "4", "wall count"},
+          {"creative_ui_command_shell_revision_before", "1",
+           "revision before"},
+          {"creative_ui_command_shell_revision_after", "6", "revision after"},
+          {"creative_ui_command_shell_status", "Generated", "status"},
+          {"creative_ui_command_shell_reason_code",
+           "creative_room_shell_generated", "reason"},
+          {"creative_ui_command_shell_message", "creative_room_shell_generated",
+           "message"},
+      },
+      "room shell command");
 }
 
 bool recorderPreservesNeighboringFields() {
@@ -1094,34 +826,23 @@ bool recorderPreservesNeighboringFields() {
                 "vulkan status kept") &&
          expect(window.productVulkanMenuUiSelectedAction == "resume",
                 "vulkan action kept") &&
-         expectReceiptField(receipt,
-                            "window_status",
-                            "window_before",
-                            "receipt window status kept") &&
-         expectReceiptField(receipt,
-                            "creative_ui_input_status",
-                            "input_before",
-                            "receipt input status kept") &&
-         expectReceiptField(receipt,
-                            "creative_ui_input_downstream_click_status",
-                            "downstream_before",
-                            "receipt downstream status kept") &&
-         expectReceiptField(receipt,
-                            "creative_viewport_pick_status",
-                            "viewport_before",
-                            "receipt viewport status kept") &&
-         expectReceiptField(receipt,
-                            "creative_ui_projection_status",
-                            "projection_before",
-                            "receipt projection status kept") &&
-         expectReceiptField(receipt,
-                            "product_vulkan_menu_ui_status",
-                            "vulkan_before",
-                            "receipt vulkan status kept") &&
-         expectReceiptField(receipt,
-                            "creative_ui_command_status",
-                            "product_creative_ui_command_applied",
-                            "receipt command status recorded");
+         expectReceiptFields(
+             receipt,
+             {
+                 {"window_status", "window_before", "window status"},
+                 {"creative_ui_input_status", "input_before", "input status"},
+                 {"creative_ui_input_downstream_click_status",
+                  "downstream_before", "downstream status"},
+                 {"creative_viewport_pick_status", "viewport_before",
+                  "viewport status"},
+                 {"creative_ui_projection_status", "projection_before",
+                  "projection status"},
+                 {"product_vulkan_menu_ui_status", "vulkan_before",
+                  "vulkan status"},
+                 {"creative_ui_command_status",
+                  "product_creative_ui_command_applied", "command status"},
+             },
+             "neighboring receipt fields");
 }
 
 }  // namespace

@@ -2,24 +2,13 @@
 
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/bridge/UiCommandCatalog.hpp"
 #include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
 
 #include <cstdint>
 #include <string>
 
 namespace iggy3d {
-
-enum class ProductCreativeUiCommandKind : std::uint8_t {
-  None,
-  ToggleSelectedObjectVisibility,
-  ToggleSelectedObjectLocked,
-  SetActiveTool,
-  CreateObject,
-  RebuildRoom,
-  UndoLastDocumentChange,
-  DeleteSelectedObject,
-  GenerateSelectedRoomShell,
-};
 
 struct ProductCreativeUiCommandFrameRequest {
   creative::CreativeAppState* creative = nullptr;
@@ -108,6 +97,7 @@ struct ProductCreativeUiCommandFrameReceipt {
   bool shellChanged = false;
   creative::CreativeObjectId shellRoomObjectId = creative::kInvalidObjectId;
   std::uint64_t shellGeneratedObjectCount = 0;
+  std::uint64_t shellRemovedObjectCount = 0;
   std::uint64_t shellFloorCount = 0;
   std::uint64_t shellWallCount = 0;
   std::uint64_t shellRevisionBefore = 0;
@@ -123,5 +113,8 @@ struct ProductCreativeUiCommandFrameReceipt {
 [[nodiscard]] ProductCreativeUiCommandFrameReceipt
 routeProductCreativeUiCommandFrame(
     const ProductCreativeUiCommandFrameRequest& request);
+
+[[nodiscard]] bool productCreativeUiCommandKindHasHandler(
+    ProductCreativeUiCommandKind commandKind) noexcept;
 
 }  // namespace iggy3d

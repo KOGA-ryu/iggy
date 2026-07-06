@@ -8,6 +8,7 @@
 #include "app/iggy3d/creative/bridge/InputFrame.hpp"
 #include "app/iggy3d/creative/bridge/UiCommandFrame.hpp"
 #include "app/iggy3d/creative/bridge/UiWindowFrame.hpp"
+#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 
@@ -63,10 +64,12 @@ iggy3d::MouseClick clickAt(float x, float y) {
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
+  iggy3d::creative::CreativeActiveIdentity identity;
+  identity.saveId = "creative_save";
+  identity.worldId = "world_001";
+  identity.documentId = 42U;
+  iggy3d::mirrorProductActiveCreativeIdentity(identity, window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreativeSaveId = "creative_save";
-  window.activeCreativeWorldId = "world_001";
-  window.activeCreativeDocumentId = 42U;
 }
 
 void assignValidDocumentId(iggy3d::creative::Facade& facade) {
@@ -298,16 +301,12 @@ bool unrenderableOverlayInputDoesNotSuppressToolClick() {
   [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(iggy3d::creative::Tool::Measure));
+  iggy3d::ProductCreativeInputActionsRequest toolRequest;
+  toolRequest.window = &window;
+  toolRequest.creative = &app;
+  toolRequest.click = downstream.downstreamClick;
   const iggy3d::ProductCreativeInputFrameReceipt toolReceipt =
-      iggy3d::processProductCreativeInputActions(
-          iggy3d::ProductCreativeInputActionsRequest{
-              &window,
-              &app,
-              nullptr,
-              {},
-              downstream.downstreamClick,
-              {},
-          });
+      iggy3d::processProductCreativeInputActions(toolRequest);
 
   return expect(!availability.inputAvailable,
                 "unrenderable input unavailable") &&
@@ -782,7 +781,7 @@ bool recorderPreservesStickyClickAndCommandAcrossNoClickFrame() {
          expect(window.creativeUiInputStatus ==
                     "product_creative_ui_input_no_click",
                 "sticky per-frame no-click status") &&
-         expect(window.creativeUiCommandKind == "none",
+         expect(window.creativeUiCommand.kind == "none",
                 "sticky per-frame command none") &&
          expect(window.creativeUiLastClickSeen,
                 "sticky click seen retained") &&
@@ -974,25 +973,25 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
          expect(window.creativeUiInputDownstreamClickStatus ==
                     "product_creative_ui_downstream_click_no_click",
                 "input frame downstream status") &&
-         expect(window.creativeUiCommandRequested,
+         expect(window.creativeUiCommand.requested,
                 "input frame command requested") &&
-         expect(window.creativeUiCommandFacadeAvailable,
+         expect(window.creativeUiCommand.facadeAvailable,
                 "input frame command facade available") &&
-         expect(!window.creativeUiCommandInputConsumed,
+         expect(!window.creativeUiCommand.inputConsumed,
                 "input frame command input not consumed") &&
-         expect(!window.creativeUiCommandAccepted,
+         expect(!window.creativeUiCommand.accepted,
                 "input frame command not accepted") &&
-         expect(!window.creativeUiCommandChanged,
+         expect(!window.creativeUiCommand.changed,
                 "input frame command unchanged") &&
-         expect(window.creativeUiCommandKind == "none",
+         expect(window.creativeUiCommand.kind == "none",
                 "input frame command kind none") &&
-         expect(window.creativeUiCommandToolBefore == "Select",
+         expect(window.creativeUiCommand.toolBefore == "Select",
                 "input frame command tool before") &&
-         expect(window.creativeUiCommandToolAfter == "Select",
+         expect(window.creativeUiCommand.toolAfter == "Select",
                 "input frame command tool after") &&
-         expect(window.creativeUiCommandSemanticId == "none",
+         expect(window.creativeUiCommand.semanticId == "none",
                 "input frame command semantic none") &&
-         expect(window.creativeUiCommandStatus ==
+         expect(window.creativeUiCommand.status ==
                     "product_creative_ui_command_not_consumed",
                 "input frame command status") &&
          expect(facade.toolState().activeTool ==
@@ -1052,19 +1051,19 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
          expect(window.creativeUiInputSemanticId ==
                     "creative.row.tools.tool_select",
                 "injected row semantic") &&
-         expect(window.creativeUiCommandRequested,
+         expect(window.creativeUiCommand.requested,
                 "injected command requested") &&
-         expect(window.creativeUiCommandAccepted,
+         expect(window.creativeUiCommand.accepted,
                 "injected command accepted") &&
-         expect(!window.creativeUiCommandChanged,
+         expect(!window.creativeUiCommand.changed,
                 "injected command unchanged") &&
-         expect(window.creativeUiCommandKind == "set_active_tool",
+         expect(window.creativeUiCommand.kind == "set_active_tool",
                 "injected command kind") &&
-         expect(window.creativeUiCommandToolBefore == "Select",
+         expect(window.creativeUiCommand.toolBefore == "Select",
                 "injected command tool before") &&
-         expect(window.creativeUiCommandToolAfter == "Select",
+         expect(window.creativeUiCommand.toolAfter == "Select",
                 "injected command tool after") &&
-         expect(window.creativeUiCommandStatus ==
+         expect(window.creativeUiCommand.status ==
                     "product_creative_ui_command_no_change",
                 "injected command status") &&
          expect(facade.toolState().activeTool ==
@@ -1094,13 +1093,13 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
                 "injected tool row revision before") &&
          expect(window.creativeDocumentRevisionAfterFrame == 0U,
                 "injected tool row revision after") &&
-         expect(!window.creativeBakedRoomAutoRefreshRequested,
+         expect(!window.creativeBakedRoomAutoRefresh.requested,
                 "injected tool row no auto refresh") &&
-         expect(!window.creativeBakedRoomAutoRefreshBakeMeasured,
+         expect(!window.creativeBakedRoomAutoRefresh.bakeMeasured,
                 "injected tool row bake not measured") &&
-         expect(window.creativeBakedRoomAutoRefreshBakeElapsedMicroseconds == 0U,
+         expect(window.creativeBakedRoomAutoRefresh.bakeElapsedMicroseconds == 0U,
                 "injected tool row bake elapsed") &&
-         expect(window.creativeBakedRoomAutoRefreshBakedDocumentRevision == 0U,
+         expect(window.creativeBakedRoomAutoRefresh.bakedDocumentRevision == 0U,
                 "injected tool row bake revision") &&
          expect(!window.creativeBakedRoomStale,
                 "injected tool row not stale");
@@ -1157,13 +1156,13 @@ bool inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() {
   });
 
   return expect(measureHit != nullptr, "measure row hit exists") &&
-         expect(window.creativeUiCommandAccepted,
+         expect(window.creativeUiCommand.accepted,
                 "measure row command accepted") &&
-         expect(window.creativeUiCommandChanged,
+         expect(window.creativeUiCommand.changed,
                 "measure row tool changed") &&
-         expect(window.creativeUiCommandKind == "set_active_tool",
+         expect(window.creativeUiCommand.kind == "set_active_tool",
                 "measure row command kind") &&
-         expect(window.creativeUiCommandToolAfter == "Measure",
+         expect(window.creativeUiCommand.toolAfter == "Measure",
                 "measure row tool after") &&
          expect(facade.toolState().activeTool ==
                     iggy3d::creative::Tool::Measure,
@@ -1176,13 +1175,13 @@ bool inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() {
                 "measure row revision before") &&
          expect(window.creativeDocumentRevisionAfterFrame == 0U,
                 "measure row revision after") &&
-         expect(!window.creativeBakedRoomAutoRefreshRequested,
+         expect(!window.creativeBakedRoomAutoRefresh.requested,
                 "measure row no auto refresh") &&
-         expect(!window.creativeBakedRoomAutoRefreshBakeMeasured,
+         expect(!window.creativeBakedRoomAutoRefresh.bakeMeasured,
                 "measure row bake not measured") &&
-         expect(window.creativeBakedRoomAutoRefreshBakeElapsedMicroseconds == 0U,
+         expect(window.creativeBakedRoomAutoRefresh.bakeElapsedMicroseconds == 0U,
                 "measure row bake elapsed") &&
-         expect(window.creativeBakedRoomAutoRefreshBakedDocumentRevision == 0U,
+         expect(window.creativeBakedRoomAutoRefresh.bakedDocumentRevision == 0U,
                 "measure row bake revision") &&
          expect(!window.creativeBakedRoomStale,
                 "measure row not stale");
@@ -1244,7 +1243,7 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
   });
 
   const iggy3d::creative::CreativeObject* created =
-      facade.findObject(window.creativeUiCommandCreateObjectId);
+      facade.findObject(window.creativeUiCommand.create.objectId);
   const iggy3d::creative::CreativeUiBuildReceipt rebuiltUi =
       facade.buildUiModel();
   iggy3d::ProductCreativeUiDrawListRequest rebuiltDrawRequest;
@@ -1255,7 +1254,7 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
       findPrimitive(rebuiltDrawList, "creative.row.create.create_room");
   const iggy3d::RenderReceipt receipt = receiptFor(window);
   const std::string createdObjectId =
-      std::to_string(window.creativeUiCommandCreateObjectId);
+      std::to_string(window.creativeUiCommand.create.objectId);
 
   return expect(createHit != nullptr, "create injected hit exists") &&
          expect(window.creativeUiInputConsumed,
@@ -1263,37 +1262,37 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
          expect(window.creativeUiInputSemanticId ==
                     "creative.row.create.create_room",
                 "create injected row semantic") &&
-         expect(window.creativeUiCommandRequested,
+         expect(window.creativeUiCommand.requested,
                 "create injected command requested") &&
-         expect(window.creativeUiCommandAccepted,
+         expect(window.creativeUiCommand.accepted,
                 "create injected command accepted") &&
-         expect(window.creativeUiCommandChanged,
+         expect(window.creativeUiCommand.changed,
                 "create injected command changed") &&
-         expect(window.creativeUiCommandKind == "create_object",
+         expect(window.creativeUiCommand.kind == "create_object",
                 "create injected command kind") &&
-         expect(window.creativeUiCommandCreateRequested,
+         expect(window.creativeUiCommand.create.requested,
                 "create injected create requested") &&
-         expect(window.creativeUiCommandCreateAccepted,
+         expect(window.creativeUiCommand.create.accepted,
                 "create injected create accepted") &&
-         expect(window.creativeUiCommandCreateChanged,
+         expect(window.creativeUiCommand.create.changed,
                 "create injected create changed") &&
-         expect(window.creativeUiCommandCreateStatus == "Created",
+         expect(window.creativeUiCommand.create.status == "Created",
                 "create injected create status") &&
-         expect(window.creativeUiCommandCreateObjectId != 0U,
+         expect(window.creativeUiCommand.create.objectId != 0U,
                 "create injected object id") &&
-         expect(window.creativeUiCommandCreateObjectKind == "Room",
+         expect(window.creativeUiCommand.create.objectKind == "Room",
                 "create injected object kind") &&
-         expect(window.creativeUiCommandCreateObjectName == "Room",
+         expect(window.creativeUiCommand.create.objectName == "Room",
                 "create injected object name") &&
-         expect(window.creativeUiCommandCreateRevisionBefore == 0U,
+         expect(window.creativeUiCommand.create.revisionBefore == 0U,
                 "create injected revision before") &&
-         expect(window.creativeUiCommandCreateRevisionAfter == 1U,
+         expect(window.creativeUiCommand.create.revisionAfter == 1U,
                 "create injected revision after") &&
-         expect(window.creativeUiCommandCreateDirtyFlags != 0U,
+         expect(window.creativeUiCommand.create.dirtyFlags != 0U,
                 "create injected dirty flags") &&
-         expect(window.creativeUiCommandCreateMessage == "object_created",
+         expect(window.creativeUiCommand.create.message == "object_created",
                 "create injected create message") &&
-         expect(window.creativeUiCommandCreateReasonCode == "object_created",
+         expect(window.creativeUiCommand.create.reasonCode == "object_created",
                 "create injected create reason") &&
          expect(window.creativeUiLastClickSeen,
                 "create injected sticky click seen") &&
@@ -1316,7 +1315,7 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
          expect(window.creativeUiLastCommandCreateChanged,
                 "create injected sticky create changed") &&
          expect(window.creativeUiLastCommandCreateObjectId ==
-                    window.creativeUiCommandCreateObjectId,
+                    window.creativeUiCommand.create.objectId,
                 "create injected sticky object id") &&
          expectReceiptField(receipt,
                             "creative_ui_last_click_seen",
@@ -1394,20 +1393,20 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
                 "create injected frame revision before") &&
          expect(window.creativeDocumentRevisionAfterFrame == 1U,
                 "create injected frame revision after") &&
-         expect(window.creativeBakedRoomAutoRefreshRequested,
+         expect(window.creativeBakedRoomAutoRefresh.requested,
                 "create injected auto refresh requested state") &&
-         expect(window.creativeBakedRoomAutoRefreshAccepted,
+         expect(window.creativeBakedRoomAutoRefresh.accepted,
                 "create injected auto refresh accepted state") &&
-         expect(window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+         expect(window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "create injected auto refresh cleared state") &&
-         expect(window.creativeBakedRoomAutoRefreshStatus ==
+         expect(window.creativeBakedRoomAutoRefresh.status ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "create injected auto refresh status state") &&
-         expect(window.creativeBakedRoomAutoRefreshBakeMeasured,
+         expect(window.creativeBakedRoomAutoRefresh.bakeMeasured,
                 "create injected auto refresh bake measured state") &&
-         expect(window.creativeBakedRoomAutoRefreshBakedDocumentRevision == 1U,
+         expect(window.creativeBakedRoomAutoRefresh.bakedDocumentRevision == 1U,
                 "create injected auto refresh bake revision state") &&
-         expect(window.creativeBakedRoomAutoRefreshStaticMeshCount == 0U,
+         expect(window.creativeBakedRoomAutoRefresh.staticMeshCount == 0U,
                 "create injected auto refresh mesh count") &&
          expect(!window.creativeBakedRoomStale,
                 "create injected baked room fresh") &&
@@ -1522,7 +1521,7 @@ bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
   });
 
   const iggy3d::creative::CreativeObject* created =
-      facade.findObject(window.creativeUiCommandCreateObjectId);
+      facade.findObject(window.creativeUiCommand.create.objectId);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
   return expect(createHit != nullptr, "crate injected hit exists") &&
@@ -1531,17 +1530,17 @@ bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
          expect(window.creativeUiInputSemanticId ==
                     "creative.row.create.create_crate",
                 "crate injected row semantic") &&
-         expect(window.creativeUiCommandAccepted,
+         expect(window.creativeUiCommand.accepted,
                 "crate injected command accepted") &&
-         expect(window.creativeUiCommandChanged,
+         expect(window.creativeUiCommand.changed,
                 "crate injected command changed") &&
-         expect(window.creativeUiCommandKind == "create_object",
+         expect(window.creativeUiCommand.kind == "create_object",
                 "crate injected command kind") &&
-         expect(window.creativeUiCommandCreateAccepted,
+         expect(window.creativeUiCommand.create.accepted,
                 "crate injected create accepted") &&
-         expect(window.creativeUiCommandCreateChanged,
+         expect(window.creativeUiCommand.create.changed,
                 "crate injected create changed") &&
-         expect(window.creativeUiCommandCreateObjectKind == "Crate",
+         expect(window.creativeUiCommand.create.objectKind == "Crate",
                 "crate injected object kind") &&
          expect(facade.document().objectCount() == 1U,
                 "crate injected object count") &&
@@ -1560,24 +1559,24 @@ bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
                 "crate injected revision before") &&
          expect(window.creativeDocumentRevisionAfterFrame == 1U,
                 "crate injected revision after") &&
-         expect(window.creativeBakedRoomAutoRefreshRequested,
+         expect(window.creativeBakedRoomAutoRefresh.requested,
                 "crate injected auto refresh requested") &&
-         expect(window.creativeBakedRoomAutoRefreshAccepted,
+         expect(window.creativeBakedRoomAutoRefresh.accepted,
                 "crate injected auto refresh accepted") &&
-         expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+         expect(!window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "crate injected auto refresh did not clear") &&
-         expect(window.creativeBakedRoomAutoRefreshStatus ==
+         expect(window.creativeBakedRoomAutoRefresh.status ==
                     "product_creative_baked_room_refreshed",
                 "crate injected auto refresh status") &&
-         expect(window.creativeBakedRoomAutoRefreshStaticMeshCount == 1U,
+         expect(window.creativeBakedRoomAutoRefresh.staticMeshCount == 1U,
                 "crate injected auto refresh mesh count") &&
-         expect(window.creativeBakedRoomAutoRefreshAnchorCount == 0U,
+         expect(window.creativeBakedRoomAutoRefresh.anchorCount == 0U,
                 "crate injected auto refresh anchor count") &&
-         expect(window.creativeBakedRoomAutoRefreshSpatialSurfaceCount == 2U,
+         expect(window.creativeBakedRoomAutoRefresh.spatialSurfaceCount == 2U,
                 "crate injected auto refresh surface count") &&
-         expect(window.creativeBakedRoomAutoRefreshCollisionReady,
+         expect(window.creativeBakedRoomAutoRefresh.collisionReady,
                 "crate injected auto refresh collision ready") &&
-         expect(window.creativeBakedRoomAutoRefreshCollisionQuerySurfaceCount == 2U,
+         expect(window.creativeBakedRoomAutoRefresh.collisionQuerySurfaceCount == 2U,
                 "crate injected auto refresh collision query count") &&
          expect(!window.creativeBakedRoomStale,
                 "crate injected baked room fresh") &&

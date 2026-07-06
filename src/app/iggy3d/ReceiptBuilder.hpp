@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
@@ -11,6 +12,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/Options.hpp"
+#include "app/iggy3d/ProductCreativeBakedRoomRefresh.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
@@ -32,6 +34,128 @@ struct ProductCreativeUiDownstreamClickReceipt;
 struct ProductCreativeUiCommandFrameReceipt;
 struct ProductCreativeViewportPickFrameReceipt;
 struct ProductCreativeWireframeFrameReceipt;
+
+struct ProductCreativeUiCommandMutationDiagnostics {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  std::string status = "Unknown";
+  std::string documentStatus = "Unknown";
+  std::string kind = "Unknown";
+  std::uint64_t target = 0;
+  std::uint64_t objectId = 0;
+  std::string objectKind = "Unknown";
+  bool visibleBefore = false;
+  bool visibleAfter = false;
+  bool lockedBefore = false;
+  bool lockedAfter = false;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  std::string message = "none";
+};
+
+struct ProductCreativeUiCommandCreateDiagnostics {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  std::string status = "Unknown";
+  std::uint64_t objectId = 0;
+  std::string objectKind = "Unknown";
+  std::string objectName = "none";
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  std::uint64_t dirtyFlags = 0;
+  std::string message = "none";
+  std::string reasonCode = "none";
+};
+
+struct ProductCreativeUiCommandDeleteDiagnostics {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  bool removed = false;
+  std::uint64_t objectId = 0;
+  std::string objectKind = "Unknown";
+  std::string objectName = "none";
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  std::uint64_t dirtyFlags = 0;
+  std::string status = "Unknown";
+  std::string message = "none";
+  std::string reasonCode = "none";
+};
+
+struct ProductCreativeUiCommandUndoDiagnostics {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  bool hadSnapshot = false;
+  std::uint64_t documentId = 0;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  std::uint64_t objectCountBefore = 0;
+  std::uint64_t objectCountAfter = 0;
+  std::uint64_t depthBefore = 0;
+  std::uint64_t depthAfter = 0;
+  std::string status = "creative_undo_not_requested";
+  std::string message = "creative_undo_not_requested";
+  std::string reasonCode = "creative_undo_not_requested";
+};
+
+struct ProductCreativeUiCommandRoomShellDiagnostics {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  std::uint64_t roomObjectId = 0;
+  std::uint64_t generatedObjectCount = 0;
+  std::uint64_t removedObjectCount = 0;
+  std::uint64_t floorCount = 0;
+  std::uint64_t wallCount = 0;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  std::string status = "creative_room_shell_not_requested";
+  std::string reasonCode = "creative_room_shell_not_requested";
+  std::string message = "creative_room_shell_not_requested";
+};
+
+struct ProductCreativeBakedRoomRefreshDiagnostics {
+  bool requested = false;
+  bool accepted = false;
+  bool clearedActiveRoom = false;
+  std::string status = "product_creative_baked_room_not_requested";
+  std::string reasonCode = "product_creative_baked_room_not_requested";
+  bool bakeMeasured = false;
+  std::uint64_t bakeElapsedMicroseconds = 0;
+  std::uint64_t bakedDocumentRevision = 0;
+  std::uint64_t staticMeshCount = 0;
+  std::uint64_t anchorCount = 0;
+  std::uint64_t spatialSurfaceCount = 0;
+  bool collisionReady = false;
+  std::uint64_t collisionQuerySurfaceCount = 0;
+};
+
+struct ProductCreativeUiCommandDiagnostics {
+  bool requested = false;
+  bool facadeAvailable = false;
+  bool inputConsumed = false;
+  bool inputEnabled = false;
+  bool accepted = false;
+  bool changed = false;
+  std::string kind = "none";
+  std::string tool = "none";
+  std::string objectKind = "Unknown";
+  std::string toolBefore = "Select";
+  std::string toolAfter = "Select";
+  std::string semanticId = "none";
+  std::string status = "product_creative_ui_command_not_requested";
+  std::string reasonCode = "product_creative_ui_command_not_requested";
+  ProductCreativeUiCommandMutationDiagnostics mutation;
+  ProductCreativeUiCommandCreateDiagnostics create;
+  ProductCreativeUiCommandDeleteDiagnostics deleteObject;
+  ProductCreativeUiCommandUndoDiagnostics undo;
+  ProductCreativeUiCommandRoomShellDiagnostics shell;
+  ProductCreativeBakedRoomRefreshDiagnostics bakedRoomRefresh;
+};
 
 struct ProductAppWindowState {
   bool requested = false;
@@ -625,122 +749,8 @@ struct ProductAppWindowState {
       "creative_ui_input_downstream_click_not_requested";
   std::string creativeUiInputDownstreamClickReasonCode =
       "creative_ui_input_downstream_click_not_requested";
-  bool creativeUiCommandRequested = false;
-  bool creativeUiCommandFacadeAvailable = false;
-  bool creativeUiCommandInputConsumed = false;
-  bool creativeUiCommandInputEnabled = false;
-  bool creativeUiCommandAccepted = false;
-  bool creativeUiCommandChanged = false;
-  std::string creativeUiCommandKind = "none";
-  std::string creativeUiCommandTool = "none";
-  std::string creativeUiCommandObjectKind = "Unknown";
-  std::string creativeUiCommandToolBefore = "Select";
-  std::string creativeUiCommandToolAfter = "Select";
-  std::string creativeUiCommandSemanticId = "none";
-  std::string creativeUiCommandStatus =
-      "product_creative_ui_command_not_requested";
-  std::string creativeUiCommandReasonCode =
-      "product_creative_ui_command_not_requested";
-  bool creativeUiCommandMutationRequested = false;
-  bool creativeUiCommandMutationAccepted = false;
-  bool creativeUiCommandMutationChanged = false;
-  std::string creativeUiCommandMutationStatus = "Unknown";
-  std::string creativeUiCommandDocumentMutationStatus = "Unknown";
-  std::string creativeUiCommandMutationKind = "Unknown";
-  std::uint64_t creativeUiCommandMutationTarget = 0;
-  std::uint64_t creativeUiCommandMutationObjectId = 0;
-  std::string creativeUiCommandMutationObjectKind = "Unknown";
-  bool creativeUiCommandVisibleBefore = false;
-  bool creativeUiCommandVisibleAfter = false;
-  bool creativeUiCommandLockedBefore = false;
-  bool creativeUiCommandLockedAfter = false;
-  std::uint64_t creativeUiCommandRevisionBefore = 0;
-  std::uint64_t creativeUiCommandRevisionAfter = 0;
-  std::string creativeUiCommandMutationMessage = "none";
-  bool creativeUiCommandCreateRequested = false;
-  bool creativeUiCommandCreateAccepted = false;
-  bool creativeUiCommandCreateChanged = false;
-  std::string creativeUiCommandCreateStatus = "Unknown";
-  std::uint64_t creativeUiCommandCreateObjectId = 0;
-  std::string creativeUiCommandCreateObjectKind = "Unknown";
-  std::string creativeUiCommandCreateObjectName = "none";
-  std::uint64_t creativeUiCommandCreateRevisionBefore = 0;
-  std::uint64_t creativeUiCommandCreateRevisionAfter = 0;
-  std::uint64_t creativeUiCommandCreateDirtyFlags = 0;
-  std::string creativeUiCommandCreateMessage = "none";
-  std::string creativeUiCommandCreateReasonCode = "none";
-  bool creativeUiCommandDeleteRequested = false;
-  bool creativeUiCommandDeleteAccepted = false;
-  bool creativeUiCommandDeleteChanged = false;
-  bool creativeUiCommandDeleteRemoved = false;
-  std::uint64_t creativeUiCommandDeleteObjectId = 0;
-  std::string creativeUiCommandDeleteObjectKind = "Unknown";
-  std::string creativeUiCommandDeleteObjectName = "none";
-  std::uint64_t creativeUiCommandDeleteRevisionBefore = 0;
-  std::uint64_t creativeUiCommandDeleteRevisionAfter = 0;
-  std::uint64_t creativeUiCommandDeleteDirtyFlags = 0;
-  std::string creativeUiCommandDeleteStatus = "Unknown";
-  std::string creativeUiCommandDeleteMessage = "none";
-  std::string creativeUiCommandDeleteReasonCode = "none";
-  bool creativeUiCommandUndoRequested = false;
-  bool creativeUiCommandUndoAccepted = false;
-  bool creativeUiCommandUndoChanged = false;
-  bool creativeUiCommandUndoHadSnapshot = false;
-  std::uint64_t creativeUiCommandUndoDocumentId = 0;
-  std::uint64_t creativeUiCommandUndoRevisionBefore = 0;
-  std::uint64_t creativeUiCommandUndoRevisionAfter = 0;
-  std::uint64_t creativeUiCommandUndoObjectCountBefore = 0;
-  std::uint64_t creativeUiCommandUndoObjectCountAfter = 0;
-  std::uint64_t creativeUiCommandUndoDepthBefore = 0;
-  std::uint64_t creativeUiCommandUndoDepthAfter = 0;
-  std::string creativeUiCommandUndoStatus = "creative_undo_not_requested";
-  std::string creativeUiCommandUndoMessage = "creative_undo_not_requested";
-  std::string creativeUiCommandUndoReasonCode =
-      "creative_undo_not_requested";
-  bool creativeUiCommandShellRequested = false;
-  bool creativeUiCommandShellAccepted = false;
-  bool creativeUiCommandShellChanged = false;
-  std::uint64_t creativeUiCommandShellRoomObjectId = 0;
-  std::uint64_t creativeUiCommandShellGeneratedObjectCount = 0;
-  std::uint64_t creativeUiCommandShellFloorCount = 0;
-  std::uint64_t creativeUiCommandShellWallCount = 0;
-  std::uint64_t creativeUiCommandShellRevisionBefore = 0;
-  std::uint64_t creativeUiCommandShellRevisionAfter = 0;
-  std::string creativeUiCommandShellStatus =
-      "creative_room_shell_not_requested";
-  std::string creativeUiCommandShellReasonCode =
-      "creative_room_shell_not_requested";
-  std::string creativeUiCommandShellMessage =
-      "creative_room_shell_not_requested";
-  bool creativeUiCommandBakedRoomRefreshRequested = false;
-  bool creativeUiCommandBakedRoomRefreshAccepted = false;
-  std::string creativeUiCommandBakedRoomRefreshStatus =
-      "product_creative_baked_room_not_requested";
-  std::string creativeUiCommandBakedRoomRefreshReasonCode =
-      "product_creative_baked_room_not_requested";
-  bool creativeUiCommandBakedRoomBakeMeasured = false;
-  std::uint64_t creativeUiCommandBakedRoomBakeElapsedMicroseconds = 0;
-  std::uint64_t creativeUiCommandBakedRoomBakedDocumentRevision = 0;
-  std::uint64_t creativeUiCommandBakedRoomStaticMeshCount = 0;
-  std::uint64_t creativeUiCommandBakedRoomAnchorCount = 0;
-  std::uint64_t creativeUiCommandBakedRoomSpatialSurfaceCount = 0;
-  bool creativeUiCommandBakedRoomCollisionReady = false;
-  std::uint64_t creativeUiCommandBakedRoomCollisionQuerySurfaceCount = 0;
-  bool creativeBakedRoomAutoRefreshRequested = false;
-  bool creativeBakedRoomAutoRefreshAccepted = false;
-  bool creativeBakedRoomAutoRefreshClearedActiveRoom = false;
-  std::string creativeBakedRoomAutoRefreshStatus =
-      "product_creative_baked_room_not_requested";
-  std::string creativeBakedRoomAutoRefreshReasonCode =
-      "product_creative_baked_room_not_requested";
-  bool creativeBakedRoomAutoRefreshBakeMeasured = false;
-  std::uint64_t creativeBakedRoomAutoRefreshBakeElapsedMicroseconds = 0;
-  std::uint64_t creativeBakedRoomAutoRefreshBakedDocumentRevision = 0;
-  std::uint64_t creativeBakedRoomAutoRefreshStaticMeshCount = 0;
-  std::uint64_t creativeBakedRoomAutoRefreshAnchorCount = 0;
-  std::uint64_t creativeBakedRoomAutoRefreshSpatialSurfaceCount = 0;
-  bool creativeBakedRoomAutoRefreshCollisionReady = false;
-  std::uint64_t creativeBakedRoomAutoRefreshCollisionQuerySurfaceCount = 0;
+  ProductCreativeUiCommandDiagnostics creativeUiCommand;
+  ProductCreativeBakedRoomRefreshDiagnostics creativeBakedRoomAutoRefresh;
   bool creativeViewportPickRequested = false;
   bool creativeViewportPickActive = false;
   bool creativeViewportPickClickPresent = false;
@@ -825,6 +835,12 @@ void recordProductCreativeUiDownstreamClick(
 void recordProductCreativeUiCommandFrame(
     ProductAppWindowState& window,
     const ProductCreativeUiCommandFrameReceipt& receipt);
+void recordProductCreativeUiBakedRoomRefresh(
+    ProductAppWindowState& window,
+    const ProductCreativeBakedActiveRoomRefreshResult& refresh);
+void recordProductCreativeBakedRoomAutoRefresh(
+    ProductAppWindowState& window,
+    const ProductCreativeBakedActiveRoomRefreshResult& refresh);
 void recordProductCreativeViewportPickFrame(
     ProductAppWindowState& window,
     const ProductCreativeViewportPickFrameReceipt& receipt);

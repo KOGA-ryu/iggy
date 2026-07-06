@@ -142,6 +142,72 @@ std::string_view validateRestoredPathPayload(
   return object.pathPoints.empty() ? std::string_view{} : "path_unsupported";
 }
 
+std::string_view validateRestoredParentPayload(
+    const CreativeObjectDescriptor& descriptor,
+    const CreativeObject& object,
+    std::span<const CreativeObject> restoredObjects,
+    const std::unordered_map<CreativeObjectId, std::size_t>& restoredIndex)
+    noexcept {
+  if (!object.parentId.has_value()) {
+    return {};
+  }
+
+  if (!descriptor.canHaveParent) {
+    return "parent_unsupported";
+  }
+
+  const CreativeObjectId parentId = *object.parentId;
+  if (parentId == kInvalidObjectId || parentId == object.id) {
+    return "invalid_parent";
+  }
+
+  const auto parentIt = restoredIndex.find(parentId);
+  if (parentIt == restoredIndex.end()) {
+    return "missing_parent";
+  }
+
+  const CreativeObject& parentObject = restoredObjects[parentIt->second];
+  const CreativeObjectDescriptor& parentDescriptor =
+      describeObject(parentObject.kind);
+  return parentDescriptor.canOwnChildren
+             ? std::string_view{}
+             : std::string_view{"parent_owner_unsupported"};
+}
+
+bool objectHasChildren(std::span<const CreativeObject> objects,
+                       CreativeObjectId parentId) noexcept {
+  for (const CreativeObject& object : objects) {
+    if (object.parentId.has_value() && *object.parentId == parentId) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool parentGraphContainsCycle(
+    std::span<const CreativeObject> objects,
+    const std::unordered_map<CreativeObjectId, std::size_t>& objectIndex)
+    noexcept {
+  for (const CreativeObject& object : objects) {
+    std::optional<CreativeObjectId> parentId = object.parentId;
+    std::size_t hopCount = 0;
+    while (parentId.has_value()) {
+      if (*parentId == object.id || hopCount >= objects.size()) {
+        return true;
+      }
+
+      const auto parentIt = objectIndex.find(*parentId);
+      if (parentIt == objectIndex.end()) {
+        break;
+      }
+      parentId = objects[parentIt->second].parentId;
+      ++hopCount;
+    }
+  }
+
+  return false;
+}
+
 bool isValidUnits(CreativeUnits units) noexcept {
   return units == CreativeUnits::Meters;
 }
@@ -199,6 +265,8 @@ std::string_view toString(CreativeDocumentRemoveStatus status) noexcept {
       return "MissingObject";
     case CreativeDocumentRemoveStatus::LockedObject:
       return "LockedObject";
+    case CreativeDocumentRemoveStatus::ParentHasChildren:
+      return "ParentHasChildren";
     case CreativeDocumentRemoveStatus::Removed:
       return "Removed";
   }
@@ -225,6 +293,30 @@ std::string_view toString(CreativeDocumentRestoreStatus status) noexcept {
       return "Restored";
   }
   return "Unknown";
+}
+
+std::string_view validateCreativeObjectParentGraph(
+    std::span<const CreativeObject> objects) {
+  std::unordered_map<CreativeObjectId, std::size_t> objectIndex;
+  objectIndex.reserve(objects.size());
+  for (std::size_t index = 0; index < objects.size(); ++index) {
+    objectIndex.emplace(objects[index].id, index);
+  }
+
+  for (const CreativeObject& object : objects) {
+    const CreativeObjectDescriptor& descriptor = describeObject(object.kind);
+    const std::string_view parentValidation =
+        validateRestoredParentPayload(descriptor, object, objects, objectIndex);
+    if (!parentValidation.empty()) {
+      return parentValidation;
+    }
+  }
+
+  if (parentGraphContainsCycle(objects, objectIndex)) {
+    return "parent_cycle";
+  }
+
+  return {};
 }
 
 CreativeDocument CreativeDocument::create(std::string name) {
@@ -437,6 +529,15 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
                       "missing_parent");
       return receipt;
     }
+    const CreativeObject* parentObject = findObject(*request.parentId);
+    const CreativeObjectDescriptor& parentDescriptor =
+        describeObject(parentObject->kind);
+    if (!parentDescriptor.canOwnChildren) {
+      setCreateStatus(receipt,
+                      CreativeDocumentCreateStatus::Rejected,
+                      "parent_owner_unsupported");
+      return receipt;
+    }
   }
 
   if (request.hasTransformOverride && !descriptor.hasTransform) {
@@ -450,27 +551,6 @@ CreativeDocumentCreateReceipt CreativeDocument::createObject(
     setCreateStatus(receipt,
                     CreativeDocumentCreateStatus::Rejected,
                     "bounds_override_unsupported");
-    return receipt;
-  }
-
-  if (request.hasVisibleOverride && !descriptor.canBeHidden) {
-    setCreateStatus(receipt,
-                    CreativeDocumentCreateStatus::Rejected,
-                    "visibility_override_unsupported");
-    return receipt;
-  }
-
-  if (request.hasLockedOverride && !descriptor.canBeLocked) {
-    setCreateStatus(receipt,
-                    CreativeDocumentCreateStatus::Rejected,
-                    "locked_override_unsupported");
-    return receipt;
-  }
-
-  if (!request.tags.empty() && !descriptor.canBeTagged) {
-    setCreateStatus(receipt,
-                    CreativeDocumentCreateStatus::Rejected,
-                    "tags_unsupported");
     return receipt;
   }
 
@@ -563,6 +643,13 @@ CreativeDocumentRemoveReceipt CreativeDocument::removeDocumentObject(
     setRemoveStatus(receipt,
                     CreativeDocumentRemoveStatus::LockedObject,
                     "object is locked");
+    return receipt;
+  }
+
+  if (objectHasChildren(objects_, request.objectId)) {
+    setRemoveStatus(receipt,
+                    CreativeDocumentRemoveStatus::ParentHasChildren,
+                    "parent_has_children");
     return receipt;
   }
 
@@ -706,6 +793,15 @@ CreativeDocumentRestoreReceipt CreativeDocument::restoreForLoad(
     if (object.id > maxObjectId) {
       maxObjectId = object.id;
     }
+  }
+
+  const std::string_view parentGraphValidation =
+      validateCreativeObjectParentGraph(request.objects);
+  if (!parentGraphValidation.empty()) {
+    setRestoreStatus(receipt,
+                     CreativeDocumentRestoreStatus::InvalidObject,
+                     parentGraphValidation);
+    return receipt;
   }
 
   if (request.nextObjectId == kInvalidObjectId ||

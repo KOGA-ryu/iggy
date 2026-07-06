@@ -62,30 +62,6 @@ const PauseSaveFlowConfig& pauseSaveFlowConfigFor(
   return kPauseSaveFlowConfigs[static_cast<std::size_t>(kind)];
 }
 
-// SLICE 2 (PART B): clear the creative container's identity (the source of
-// truth) via its single clear() method, and keep the god-struct mirror on
-// `window` in lockstep so the receipt + identity tests stay green. `identity`
-// is optional because the caller only holds a container when creative is live.
-void clearPauseFlowActiveCreativeIdentity(
-    ProductAppWindowState& window,
-    creative::CreativeActiveIdentity* identity = nullptr) {
-  if (identity != nullptr) {
-    identity->clear();
-  }
-  window.activeCreativeSaveId = "none";
-  window.activeCreativeSavePath = "none";
-  window.activeCreativeWorldId = "none";
-  window.activeCreativeDocumentId = creative::kInvalidDocumentId;
-  window.activeCreativeObjectCount = 0;
-  window.activeCreativeNextObjectId = creative::kInvalidObjectId;
-  window.activeCreativeSaveStatus = "creative_world_save_not_requested";
-  window.activeCreativeSaveReasonCode = "creative_world_save_not_requested";
-  window.activeCreativeSaveDirtyFlagsBefore = 0;
-  window.activeCreativeSaveDirtyFlagsDrained = 0;
-  window.activeCreativeSaveDirtyFlagsAfter = 0;
-  window.activeCreativeSaveSavedAtUtc = "none";
-}
-
 void recordPauseCreativeFacadeMissing(ProductPauseSaveFlowResult& result,
                                       ProductAppWindowState& window) {
   constexpr std::string_view reason = "product_creative_save_facade_missing";
@@ -101,6 +77,16 @@ void recordPauseCreativeFacadeMissing(ProductPauseSaveFlowResult& result,
   window.launchStatus = std::string{reason};
   window.activeCreativeSaveStatus = std::string{reason};
   window.activeCreativeSaveReasonCode = std::string{reason};
+}
+
+bool productCreativeDocumentEditorActiveForSource(
+    const ProductAppWindowState& window,
+    const creative::CreativeAppState* creativeApp) {
+  if (creativeApp != nullptr) {
+    return window.interactionMode == ProductInteractionMode::Creative &&
+           productCreativeWorldActiveForIdentity(creativeApp->identity);
+  }
+  return productCreativeDocumentEditorActiveForWindow(window);
 }
 
 ProductPauseSaveFlowResult executeCreativePauseSaveFlow(
@@ -142,7 +128,7 @@ ProductPauseSaveFlowResult executeCreativePauseSaveFlow(
     } else {
       returnProductToTitleTransition(frontend, window, *settings);
     }
-    clearPauseFlowActiveCreativeIdentity(
+    clearProductActiveCreativeIdentity(
         window, creativeApp != nullptr ? &creativeApp->identity : nullptr);
   }
   kPauseSaveSessionAppliers[result.sessionReset](activeSession);
@@ -192,7 +178,7 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
     creative::CreativeAppState* creativeApp) {
-  if (productCreativeDocumentEditorActiveForWindow(window)) {
+  if (productCreativeDocumentEditorActiveForSource(window, creativeApp)) {
     return executeCreativePauseSaveFlow(kind,
                                         options,
                                         frontend,
@@ -228,7 +214,7 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     ProductAppWindowState& window,
     FrontendSettings& settings,
     creative::CreativeAppState* creativeApp) {
-  if (productCreativeDocumentEditorActiveForWindow(window)) {
+  if (productCreativeDocumentEditorActiveForSource(window, creativeApp)) {
     return executeCreativePauseSaveFlow(kind,
                                         options,
                                         frontend,

@@ -958,6 +958,48 @@ private:
     }
   }
 
+  void writeCreativeDocumentObjectTags(
+      const std::string& prefix,
+      const SaveCreativeDocumentObjectRecord& object) {
+    line(prefix + "tag.count", unsignedText(object.tags.size()));
+    for (std::size_t tag = 0; tag < object.tags.size(); ++tag) {
+      lineString(prefix + "tag." + std::to_string(tag), object.tags[tag]);
+    }
+  }
+
+  void writeCreativeDocumentObjectPathPoints(
+      const std::string& prefix,
+      const SaveCreativeDocumentObjectRecord& object) {
+    if (object.pathPoints.empty()) {
+      return;
+    }
+    line(prefix + "pathPoint.count", unsignedText(object.pathPoints.size()));
+    for (std::size_t point = 0; point < object.pathPoints.size(); ++point) {
+      lineCreativeVec3(prefix + "pathPoint." + std::to_string(point) + ".position",
+                       object.pathPoints[point]);
+    }
+  }
+
+  void writeCreativeDocumentObject(
+      const std::string& prefix,
+      const SaveCreativeDocumentObjectRecord& object) {
+    line(prefix + "id", unsignedText(object.id));
+    lineString(prefix + "kind", object.kind);
+    lineString(prefix + "name", object.name);
+    lineCreativeVec3(prefix + "transform.position", object.transform.position);
+    lineCreativeVec3(prefix + "transform.rotation", object.transform.rotation);
+    lineCreativeVec3(prefix + "transform.scale", object.transform.scale);
+    lineCreativeVec3(prefix + "bounds.min", object.bounds.min);
+    lineCreativeVec3(prefix + "bounds.max", object.bounds.max);
+    line(prefix + "layerId", unsignedText(object.layerId));
+    lineBool(prefix + "visible", object.visible);
+    lineBool(prefix + "locked", object.locked);
+    lineBool(prefix + "hasParent", object.hasParent);
+    line(prefix + "parentId", unsignedText(object.parentId));
+    writeCreativeDocumentObjectTags(prefix, object);
+    writeCreativeDocumentObjectPathPoints(prefix, object);
+  }
+
   void writeCreativeDocument() {
     if (!envelope_.creativeDocument.present) {
       return;
@@ -988,30 +1030,7 @@ private:
     for (std::size_t index = 0; index < section.objects.size(); ++index) {
       const SaveCreativeDocumentObjectRecord& object = section.objects[index];
       const std::string p = "creativeDocument.object." + std::to_string(index) + ".";
-      line(p + "id", unsignedText(object.id));
-      lineString(p + "kind", object.kind);
-      lineString(p + "name", object.name);
-      lineCreativeVec3(p + "transform.position", object.transform.position);
-      lineCreativeVec3(p + "transform.rotation", object.transform.rotation);
-      lineCreativeVec3(p + "transform.scale", object.transform.scale);
-      lineCreativeVec3(p + "bounds.min", object.bounds.min);
-      lineCreativeVec3(p + "bounds.max", object.bounds.max);
-      line(p + "layerId", unsignedText(object.layerId));
-      lineBool(p + "visible", object.visible);
-      lineBool(p + "locked", object.locked);
-      lineBool(p + "hasParent", object.hasParent);
-      line(p + "parentId", unsignedText(object.parentId));
-      line(p + "tag.count", unsignedText(object.tags.size()));
-      for (std::size_t tag = 0; tag < object.tags.size(); ++tag) {
-        lineString(p + "tag." + std::to_string(tag), object.tags[tag]);
-      }
-      if (!object.pathPoints.empty()) {
-        line(p + "pathPoint.count", unsignedText(object.pathPoints.size()));
-        for (std::size_t point = 0; point < object.pathPoints.size(); ++point) {
-          lineCreativeVec3(p + "pathPoint." + std::to_string(point) + ".position",
-                           object.pathPoints[point]);
-        }
-      }
+      writeCreativeDocumentObject(p, object);
     }
   }
 
@@ -1618,6 +1637,30 @@ private:
     }
   }
 
+  void readCreativeDocumentObject(const std::string& prefix,
+                                  SaveCreativeDocumentObjectRecord& object) {
+    readUnsigned(prefix + "id", object.id);
+    readString(prefix + "kind", object.kind);
+    readString(prefix + "name", object.name);
+    readCreativeVec3(prefix + "transform.position",
+                     object.transform.position);
+    readCreativeVec3(prefix + "transform.rotation",
+                     object.transform.rotation);
+    readCreativeVec3(prefix + "transform.scale", object.transform.scale);
+    readCreativeVec3(prefix + "bounds.min", object.bounds.min);
+    readCreativeVec3(prefix + "bounds.max", object.bounds.max);
+    readUnsigned(prefix + "layerId", object.layerId);
+    readBool(prefix + "visible", object.visible);
+    readBool(prefix + "locked", object.locked);
+    readBool(prefix + "hasParent", object.hasParent);
+    readUnsigned(prefix + "parentId", object.parentId);
+    readStringVector(prefix + "tag.count", prefix + "tag.", object.tags);
+    readOptionalCreativeVec3Vector(prefix + "pathPoint.count",
+                                   prefix + "pathPoint.",
+                                   ".position",
+                                   object.pathPoints);
+  }
+
   void readCreativeDocument() {
     if (!nextKeyIs("creativeDocument.present")) {
       return;
@@ -1653,24 +1696,7 @@ private:
     for (std::size_t index = 0; index < section.objects.size(); ++index) {
       SaveCreativeDocumentObjectRecord& object = section.objects[index];
       const std::string p = "creativeDocument.object." + std::to_string(index) + ".";
-      readUnsigned(p + "id", object.id);
-      readString(p + "kind", object.kind);
-      readString(p + "name", object.name);
-      readCreativeVec3(p + "transform.position", object.transform.position);
-      readCreativeVec3(p + "transform.rotation", object.transform.rotation);
-      readCreativeVec3(p + "transform.scale", object.transform.scale);
-      readCreativeVec3(p + "bounds.min", object.bounds.min);
-      readCreativeVec3(p + "bounds.max", object.bounds.max);
-      readUnsigned(p + "layerId", object.layerId);
-      readBool(p + "visible", object.visible);
-      readBool(p + "locked", object.locked);
-      readBool(p + "hasParent", object.hasParent);
-      readUnsigned(p + "parentId", object.parentId);
-      readStringVector(p + "tag.count", p + "tag.", object.tags);
-      readOptionalCreativeVec3Vector(p + "pathPoint.count",
-                                     p + "pathPoint.",
-                                     ".position",
-                                     object.pathPoints);
+      readCreativeDocumentObject(p, object);
     }
   }
 

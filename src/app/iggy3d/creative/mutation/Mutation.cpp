@@ -3,6 +3,7 @@
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
 
 #include <algorithm>
+#include <array>
 #include <utility>
 
 namespace iggy3d::creative {
@@ -52,6 +53,344 @@ void appendRelationshipMutations(std::vector<CreativeMutationKind>& mutations) {
     mutations.push_back(CreativeMutationKind::ClearSocket);
 }
 
+enum class CreativeMutationPayloadKind {
+    NoPayload,
+    Rename,
+    Visibility,
+    Lock,
+    Move,
+    Rotate,
+    Scale,
+    SetTransform,
+    Resize,
+    Stretch,
+    SetBounds,
+    Scalar,
+    SetParent,
+    AttachTo,
+    LinkTarget,
+    SetSocket,
+    AssignLayer,
+    Tag,
+    TextOrStringId,
+    ReferenceSource,
+    Color,
+    AudioSource,
+    PathPointsOrLegacyText
+};
+
+struct CreativeMutationMetadataRow {
+    CreativeMutationKind kind{CreativeMutationKind::Unknown};
+    std::string_view name{"Unknown"};
+    CreativeMutationCategory category{CreativeMutationCategory::Unknown};
+    CreativeMutationStoragePolicy storagePolicy{CreativeMutationStoragePolicy::Unknown};
+    bool changesGeometry{false};
+    bool changesRelationships{false};
+    bool changesRuntimeMeaning{false};
+    CreativeMutationPayloadKind payloadKind{CreativeMutationPayloadKind::NoPayload};
+};
+
+[[nodiscard]] constexpr bool mutationCategoryChangesGeometry(CreativeMutationCategory category) noexcept {
+    return category == CreativeMutationCategory::Transform || category == CreativeMutationCategory::Shape;
+}
+
+[[nodiscard]] constexpr bool mutationCategoryChangesRelationships(CreativeMutationCategory category) noexcept {
+    return category == CreativeMutationCategory::Relationship;
+}
+
+[[nodiscard]] constexpr bool mutationCategoryChangesRuntimeMeaning(CreativeMutationCategory category) noexcept {
+    return category == CreativeMutationCategory::Logic || category == CreativeMutationCategory::Navigation ||
+           category == CreativeMutationCategory::Testing || category == CreativeMutationCategory::Sensory ||
+           category == CreativeMutationCategory::Gameplay;
+}
+
+[[nodiscard]] constexpr CreativeMutationMetadataRow mutationMetadata(
+    CreativeMutationKind kind,
+    std::string_view name,
+    CreativeMutationCategory category,
+    CreativeMutationPayloadKind payloadKind,
+    bool alsoChangesGeometry = false,
+    bool alsoChangesRelationships = false,
+    CreativeMutationStoragePolicy storagePolicy = CreativeMutationStoragePolicy::StoredObject) noexcept {
+    return CreativeMutationMetadataRow{
+        kind,
+        name,
+        category,
+        storagePolicy,
+        mutationCategoryChangesGeometry(category) || alsoChangesGeometry,
+        mutationCategoryChangesRelationships(category) || alsoChangesRelationships,
+        mutationCategoryChangesRuntimeMeaning(category),
+        payloadKind,
+    };
+}
+
+constexpr std::array kCreativeMutationMetadataRows{
+    mutationMetadata(CreativeMutationKind::Unknown, "Unknown", CreativeMutationCategory::Unknown,
+                     CreativeMutationPayloadKind::NoPayload, false, false, CreativeMutationStoragePolicy::Unknown),
+
+    mutationMetadata(CreativeMutationKind::Rename, "Rename", CreativeMutationCategory::Identity,
+                     CreativeMutationPayloadKind::Rename),
+    mutationMetadata(CreativeMutationKind::SetVisible, "SetVisible", CreativeMutationCategory::Identity,
+                     CreativeMutationPayloadKind::Visibility),
+    mutationMetadata(CreativeMutationKind::SetLocked, "SetLocked", CreativeMutationCategory::Identity,
+                     CreativeMutationPayloadKind::Lock),
+
+    mutationMetadata(CreativeMutationKind::Move, "Move", CreativeMutationCategory::Transform,
+                     CreativeMutationPayloadKind::Move),
+    mutationMetadata(CreativeMutationKind::Rotate, "Rotate", CreativeMutationCategory::Transform,
+                     CreativeMutationPayloadKind::Rotate),
+    mutationMetadata(CreativeMutationKind::Scale, "Scale", CreativeMutationCategory::Transform,
+                     CreativeMutationPayloadKind::Scale),
+    mutationMetadata(CreativeMutationKind::SetTransform, "SetTransform", CreativeMutationCategory::Transform,
+                     CreativeMutationPayloadKind::SetTransform),
+
+    mutationMetadata(CreativeMutationKind::Resize, "Resize", CreativeMutationCategory::Shape,
+                     CreativeMutationPayloadKind::Resize),
+    mutationMetadata(CreativeMutationKind::Stretch, "Stretch", CreativeMutationCategory::Shape,
+                     CreativeMutationPayloadKind::Stretch),
+    mutationMetadata(CreativeMutationKind::SetBounds, "SetBounds", CreativeMutationCategory::Shape,
+                     CreativeMutationPayloadKind::SetBounds),
+    mutationMetadata(CreativeMutationKind::SetHeight, "SetHeight", CreativeMutationCategory::Shape,
+                     CreativeMutationPayloadKind::Scalar),
+    mutationMetadata(CreativeMutationKind::SetRadius, "SetRadius", CreativeMutationCategory::Shape,
+                     CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetThickness, "SetThickness", CreativeMutationCategory::Shape,
+                     CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetLength, "SetLength", CreativeMutationCategory::Shape,
+                     CreativeMutationPayloadKind::Scalar),
+    mutationMetadata(CreativeMutationKind::SetWidth, "SetWidth", CreativeMutationCategory::Shape,
+                     CreativeMutationPayloadKind::Scalar),
+    mutationMetadata(CreativeMutationKind::SetDepth, "SetDepth", CreativeMutationCategory::Shape,
+                     CreativeMutationPayloadKind::Scalar),
+
+    mutationMetadata(CreativeMutationKind::SetParent, "SetParent", CreativeMutationCategory::Relationship,
+                     CreativeMutationPayloadKind::SetParent),
+    mutationMetadata(CreativeMutationKind::ClearParent, "ClearParent", CreativeMutationCategory::Relationship,
+                     CreativeMutationPayloadKind::NoPayload),
+    mutationMetadata(CreativeMutationKind::AttachTo, "AttachTo", CreativeMutationCategory::Relationship,
+                     CreativeMutationPayloadKind::AttachTo),
+    mutationMetadata(CreativeMutationKind::DetachFrom, "DetachFrom", CreativeMutationCategory::Relationship,
+                     CreativeMutationPayloadKind::NoPayload),
+    mutationMetadata(CreativeMutationKind::LinkTarget, "LinkTarget", CreativeMutationCategory::Relationship,
+                     CreativeMutationPayloadKind::LinkTarget, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::UnlinkTarget, "UnlinkTarget", CreativeMutationCategory::Relationship,
+                     CreativeMutationPayloadKind::NoPayload, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetSocket, "SetSocket", CreativeMutationCategory::Relationship,
+                     CreativeMutationPayloadKind::SetSocket, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::ClearSocket, "ClearSocket", CreativeMutationCategory::Relationship,
+                     CreativeMutationPayloadKind::NoPayload, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+
+    mutationMetadata(CreativeMutationKind::AssignLayer, "AssignLayer", CreativeMutationCategory::Organization,
+                     CreativeMutationPayloadKind::AssignLayer),
+    mutationMetadata(CreativeMutationKind::AddTag, "AddTag", CreativeMutationCategory::Organization,
+                     CreativeMutationPayloadKind::Tag),
+    mutationMetadata(CreativeMutationKind::RemoveTag, "RemoveTag", CreativeMutationCategory::Organization,
+                     CreativeMutationPayloadKind::Tag),
+    mutationMetadata(CreativeMutationKind::ClearTags, "ClearTags", CreativeMutationCategory::Organization,
+                     CreativeMutationPayloadKind::NoPayload),
+
+    mutationMetadata(CreativeMutationKind::EditText, "EditText", CreativeMutationCategory::Content,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetLabel, "SetLabel", CreativeMutationCategory::Content,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetNotes, "SetNotes", CreativeMutationCategory::Content,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetReferenceSource, "SetReferenceSource", CreativeMutationCategory::Content,
+                     CreativeMutationPayloadKind::ReferenceSource, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetBlueprintOpacity, "SetBlueprintOpacity",
+                     CreativeMutationCategory::Content, CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+
+    mutationMetadata(CreativeMutationKind::SetTriggerShape, "SetTriggerShape", CreativeMutationCategory::Logic,
+                     CreativeMutationPayloadKind::SetBounds, true),
+    mutationMetadata(CreativeMutationKind::SetTriggerEvent, "SetTriggerEvent", CreativeMutationCategory::Logic,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetCondition, "SetCondition", CreativeMutationCategory::Logic,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetEventRelayTarget, "SetEventRelayTarget",
+                     CreativeMutationCategory::Logic, CreativeMutationPayloadKind::LinkTarget, false, true,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetSpawnerProfile, "SetSpawnerProfile", CreativeMutationCategory::Logic,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetDespawnRule, "SetDespawnRule", CreativeMutationCategory::Logic,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+
+    mutationMetadata(CreativeMutationKind::SetSpawnFacing, "SetSpawnFacing", CreativeMutationCategory::Navigation,
+                     CreativeMutationPayloadKind::Rotate),
+    mutationMetadata(CreativeMutationKind::SetCheckpointId, "SetCheckpointId", CreativeMutationCategory::Navigation,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetNavCost, "SetNavCost", CreativeMutationCategory::Navigation,
+                     CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetPatrolRoute, "SetPatrolRoute", CreativeMutationCategory::Navigation,
+                     CreativeMutationPayloadKind::PathPointsOrLegacyText, false, false,
+                     CreativeMutationStoragePolicy::PayloadDependent),
+    mutationMetadata(CreativeMutationKind::SetJumpArc, "SetJumpArc", CreativeMutationCategory::Navigation,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetClimbRule, "SetClimbRule", CreativeMutationCategory::Navigation,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetWallRunRule, "SetWallRunRule", CreativeMutationCategory::Navigation,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetSlideRule, "SetSlideRule", CreativeMutationCategory::Navigation,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+
+    mutationMetadata(CreativeMutationKind::SetTestLaneKind, "SetTestLaneKind", CreativeMutationCategory::Testing,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetDistanceValue, "SetDistanceValue", CreativeMutationCategory::Testing,
+                     CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetSpeedValue, "SetSpeedValue", CreativeMutationCategory::Testing,
+                     CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetTimingWindow, "SetTimingWindow", CreativeMutationCategory::Testing,
+                     CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetProbeKind, "SetProbeKind", CreativeMutationCategory::Testing,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetExpectedResult, "SetExpectedResult", CreativeMutationCategory::Testing,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+
+    mutationMetadata(CreativeMutationKind::SetLightColor, "SetLightColor", CreativeMutationCategory::Sensory,
+                     CreativeMutationPayloadKind::Color, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetLightIntensity, "SetLightIntensity", CreativeMutationCategory::Sensory,
+                     CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetLightRadius, "SetLightRadius", CreativeMutationCategory::Sensory,
+                     CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetLightConeAngle, "SetLightConeAngle", CreativeMutationCategory::Sensory,
+                     CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetAudioRadius, "SetAudioRadius", CreativeMutationCategory::Sensory,
+                     CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetAudioSource, "SetAudioSource", CreativeMutationCategory::Sensory,
+                     CreativeMutationPayloadKind::AudioSource, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetMusicCue, "SetMusicCue", CreativeMutationCategory::Sensory,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetCameraTarget, "SetCameraTarget", CreativeMutationCategory::Sensory,
+                     CreativeMutationPayloadKind::LinkTarget, false, true,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetCameraRail, "SetCameraRail", CreativeMutationCategory::Sensory,
+                     CreativeMutationPayloadKind::LinkTarget, false, true,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+
+    mutationMetadata(CreativeMutationKind::SetEnemyProfile, "SetEnemyProfile", CreativeMutationCategory::Gameplay,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetNpcProfile, "SetNpcProfile", CreativeMutationCategory::Gameplay,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetResourceKind, "SetResourceKind", CreativeMutationCategory::Gameplay,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetLootTable, "SetLootTable", CreativeMutationCategory::Gameplay,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetQuestId, "SetQuestId", CreativeMutationCategory::Gameplay,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetDialogueId, "SetDialogueId", CreativeMutationCategory::Gameplay,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetDangerLevel, "SetDangerLevel", CreativeMutationCategory::Gameplay,
+                     CreativeMutationPayloadKind::Scalar, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+    mutationMetadata(CreativeMutationKind::SetSafeZoneRule, "SetSafeZoneRule", CreativeMutationCategory::Gameplay,
+                     CreativeMutationPayloadKind::TextOrStringId, false, false,
+                     CreativeMutationStoragePolicy::FutureStoragePlaceholder),
+};
+
+[[nodiscard]] const CreativeMutationMetadataRow* metadataFor(CreativeMutationKind kind) noexcept {
+    const auto it = std::find_if(kCreativeMutationMetadataRows.begin(), kCreativeMutationMetadataRows.end(),
+                                 [kind](const CreativeMutationMetadataRow& row) {
+                                     return row.kind == kind;
+                                 });
+    return it != kCreativeMutationMetadataRows.end() ? &(*it) : nullptr;
+}
+
+[[nodiscard]] bool payloadMatchesKind(CreativeMutationPayloadKind payloadKind,
+                                      const CreativeMutationPayload& payload) noexcept {
+    const auto& value = payload.value;
+
+    switch (payloadKind) {
+    case CreativeMutationPayloadKind::NoPayload:
+        return std::holds_alternative<std::monostate>(value);
+    case CreativeMutationPayloadKind::Rename:
+        return std::holds_alternative<RenameMutation>(value);
+    case CreativeMutationPayloadKind::Visibility:
+        return std::holds_alternative<VisibilityMutation>(value);
+    case CreativeMutationPayloadKind::Lock:
+        return std::holds_alternative<LockMutation>(value);
+    case CreativeMutationPayloadKind::Move:
+        return std::holds_alternative<MoveMutation>(value);
+    case CreativeMutationPayloadKind::Rotate:
+        return std::holds_alternative<RotateMutation>(value);
+    case CreativeMutationPayloadKind::Scale:
+        return std::holds_alternative<ScaleMutation>(value);
+    case CreativeMutationPayloadKind::SetTransform:
+        return std::holds_alternative<SetTransformMutation>(value);
+    case CreativeMutationPayloadKind::Resize:
+        return std::holds_alternative<ResizeMutation>(value);
+    case CreativeMutationPayloadKind::Stretch:
+        return std::holds_alternative<StretchMutation>(value);
+    case CreativeMutationPayloadKind::SetBounds:
+        return std::holds_alternative<SetBoundsMutation>(value);
+    case CreativeMutationPayloadKind::Scalar:
+        return std::holds_alternative<ScalarMutation>(value);
+    case CreativeMutationPayloadKind::SetParent:
+        return std::holds_alternative<SetParentMutation>(value);
+    case CreativeMutationPayloadKind::AttachTo:
+        return std::holds_alternative<AttachToMutation>(value);
+    case CreativeMutationPayloadKind::LinkTarget:
+        return std::holds_alternative<LinkTargetMutation>(value);
+    case CreativeMutationPayloadKind::SetSocket:
+        return std::holds_alternative<SetSocketMutation>(value);
+    case CreativeMutationPayloadKind::AssignLayer:
+        return std::holds_alternative<AssignLayerMutation>(value);
+    case CreativeMutationPayloadKind::Tag:
+        return std::holds_alternative<TagMutation>(value);
+    case CreativeMutationPayloadKind::TextOrStringId:
+        return std::holds_alternative<TextMutation>(value) || std::holds_alternative<StringIdMutation>(value);
+    case CreativeMutationPayloadKind::ReferenceSource:
+        return std::holds_alternative<ReferenceSourceMutation>(value);
+    case CreativeMutationPayloadKind::Color:
+        return std::holds_alternative<ColorMutation>(value);
+    case CreativeMutationPayloadKind::AudioSource:
+        return std::holds_alternative<AudioSourceMutation>(value);
+    case CreativeMutationPayloadKind::PathPointsOrLegacyText:
+        return std::holds_alternative<PathPointsMutation>(value) || std::holds_alternative<TextMutation>(value) ||
+               std::holds_alternative<StringIdMutation>(value);
+    }
+
+    return false;
+}
+
 } // namespace
 
 std::string_view toString(CreativeMutationCategory category) noexcept {
@@ -74,136 +413,31 @@ std::string_view toString(CreativeMutationCategory category) noexcept {
 }
 
 std::string_view toString(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::Unknown: return "Unknown";
+    const CreativeMutationMetadataRow* metadata = metadataFor(kind);
+    return metadata != nullptr ? metadata->name : "Unknown";
+}
 
-    case CreativeMutationKind::Rename: return "Rename";
-    case CreativeMutationKind::SetVisible: return "SetVisible";
-    case CreativeMutationKind::SetLocked: return "SetLocked";
-
-    case CreativeMutationKind::Move: return "Move";
-    case CreativeMutationKind::Rotate: return "Rotate";
-    case CreativeMutationKind::Scale: return "Scale";
-    case CreativeMutationKind::SetTransform: return "SetTransform";
-
-    case CreativeMutationKind::Resize: return "Resize";
-    case CreativeMutationKind::Stretch: return "Stretch";
-    case CreativeMutationKind::SetBounds: return "SetBounds";
-    case CreativeMutationKind::SetHeight: return "SetHeight";
-    case CreativeMutationKind::SetRadius: return "SetRadius";
-    case CreativeMutationKind::SetThickness: return "SetThickness";
-    case CreativeMutationKind::SetLength: return "SetLength";
-    case CreativeMutationKind::SetWidth: return "SetWidth";
-    case CreativeMutationKind::SetDepth: return "SetDepth";
-
-    case CreativeMutationKind::SetParent: return "SetParent";
-    case CreativeMutationKind::ClearParent: return "ClearParent";
-    case CreativeMutationKind::AttachTo: return "AttachTo";
-    case CreativeMutationKind::DetachFrom: return "DetachFrom";
-    case CreativeMutationKind::LinkTarget: return "LinkTarget";
-    case CreativeMutationKind::UnlinkTarget: return "UnlinkTarget";
-    case CreativeMutationKind::SetSocket: return "SetSocket";
-    case CreativeMutationKind::ClearSocket: return "ClearSocket";
-
-    case CreativeMutationKind::AssignLayer: return "AssignLayer";
-    case CreativeMutationKind::AddTag: return "AddTag";
-    case CreativeMutationKind::RemoveTag: return "RemoveTag";
-    case CreativeMutationKind::ClearTags: return "ClearTags";
-
-    case CreativeMutationKind::EditText: return "EditText";
-    case CreativeMutationKind::SetLabel: return "SetLabel";
-    case CreativeMutationKind::SetNotes: return "SetNotes";
-    case CreativeMutationKind::SetReferenceSource: return "SetReferenceSource";
-    case CreativeMutationKind::SetBlueprintOpacity: return "SetBlueprintOpacity";
-
-    case CreativeMutationKind::SetTriggerShape: return "SetTriggerShape";
-    case CreativeMutationKind::SetTriggerEvent: return "SetTriggerEvent";
-    case CreativeMutationKind::SetCondition: return "SetCondition";
-    case CreativeMutationKind::SetEventRelayTarget: return "SetEventRelayTarget";
-    case CreativeMutationKind::SetSpawnerProfile: return "SetSpawnerProfile";
-    case CreativeMutationKind::SetDespawnRule: return "SetDespawnRule";
-
-    case CreativeMutationKind::SetSpawnFacing: return "SetSpawnFacing";
-    case CreativeMutationKind::SetCheckpointId: return "SetCheckpointId";
-    case CreativeMutationKind::SetNavCost: return "SetNavCost";
-    case CreativeMutationKind::SetPatrolRoute: return "SetPatrolRoute";
-    case CreativeMutationKind::SetJumpArc: return "SetJumpArc";
-    case CreativeMutationKind::SetClimbRule: return "SetClimbRule";
-    case CreativeMutationKind::SetWallRunRule: return "SetWallRunRule";
-    case CreativeMutationKind::SetSlideRule: return "SetSlideRule";
-
-    case CreativeMutationKind::SetTestLaneKind: return "SetTestLaneKind";
-    case CreativeMutationKind::SetDistanceValue: return "SetDistanceValue";
-    case CreativeMutationKind::SetSpeedValue: return "SetSpeedValue";
-    case CreativeMutationKind::SetTimingWindow: return "SetTimingWindow";
-    case CreativeMutationKind::SetProbeKind: return "SetProbeKind";
-    case CreativeMutationKind::SetExpectedResult: return "SetExpectedResult";
-
-    case CreativeMutationKind::SetLightColor: return "SetLightColor";
-    case CreativeMutationKind::SetLightIntensity: return "SetLightIntensity";
-    case CreativeMutationKind::SetLightRadius: return "SetLightRadius";
-    case CreativeMutationKind::SetLightConeAngle: return "SetLightConeAngle";
-    case CreativeMutationKind::SetAudioRadius: return "SetAudioRadius";
-    case CreativeMutationKind::SetAudioSource: return "SetAudioSource";
-    case CreativeMutationKind::SetMusicCue: return "SetMusicCue";
-    case CreativeMutationKind::SetCameraTarget: return "SetCameraTarget";
-    case CreativeMutationKind::SetCameraRail: return "SetCameraRail";
-
-    case CreativeMutationKind::SetEnemyProfile: return "SetEnemyProfile";
-    case CreativeMutationKind::SetNpcProfile: return "SetNpcProfile";
-    case CreativeMutationKind::SetResourceKind: return "SetResourceKind";
-    case CreativeMutationKind::SetLootTable: return "SetLootTable";
-    case CreativeMutationKind::SetQuestId: return "SetQuestId";
-    case CreativeMutationKind::SetDialogueId: return "SetDialogueId";
-    case CreativeMutationKind::SetDangerLevel: return "SetDangerLevel";
-    case CreativeMutationKind::SetSafeZoneRule: return "SetSafeZoneRule";
+std::string_view toString(CreativeMutationStoragePolicy policy) noexcept {
+    switch (policy) {
+    case CreativeMutationStoragePolicy::Unknown: return "Unknown";
+    case CreativeMutationStoragePolicy::StoredObject: return "StoredObject";
+    case CreativeMutationStoragePolicy::FutureStoragePlaceholder: return "FutureStoragePlaceholder";
+    case CreativeMutationStoragePolicy::PayloadDependent: return "PayloadDependent";
     }
 
     return "Unknown";
 }
 
 CreativeMutationCategory categoryOf(CreativeMutationKind kind) noexcept {
-    if (isIdentityMutation(kind)) {
-        return CreativeMutationCategory::Identity;
-    }
-    if (isTransformMutation(kind)) {
-        return CreativeMutationCategory::Transform;
-    }
-    if (isShapeMutation(kind)) {
-        return CreativeMutationCategory::Shape;
-    }
-    if (isRelationshipMutation(kind)) {
-        return CreativeMutationCategory::Relationship;
-    }
-    if (isOrganizationMutation(kind)) {
-        return CreativeMutationCategory::Organization;
-    }
-    if (isContentMutation(kind)) {
-        return CreativeMutationCategory::Content;
-    }
-    if (isLogicMutation(kind)) {
-        return CreativeMutationCategory::Logic;
-    }
-    if (isNavigationMutation(kind)) {
-        return CreativeMutationCategory::Navigation;
-    }
-    if (isTestingMutation(kind)) {
-        return CreativeMutationCategory::Testing;
-    }
-    if (isSensoryMutation(kind)) {
-        return CreativeMutationCategory::Sensory;
-    }
-    if (isGameplayMutation(kind)) {
-        return CreativeMutationCategory::Gameplay;
-    }
-
-    return CreativeMutationCategory::Unknown;
+    const CreativeMutationMetadataRow* metadata = metadataFor(kind);
+    return metadata != nullptr ? metadata->category : CreativeMutationCategory::Unknown;
 }
 
 CreativeMutationDescriptor describeMutation(CreativeMutationKind kind) noexcept {
     return CreativeMutationDescriptor{
         kind,
         categoryOf(kind),
+        mutationStoragePolicy(kind),
         toString(kind),
         "authored creative object mutation",
         mutationChangesGeometry(kind),
@@ -213,175 +447,105 @@ CreativeMutationDescriptor describeMutation(CreativeMutationKind kind) noexcept 
 }
 
 bool isIdentityMutation(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::Rename:
-    case CreativeMutationKind::SetVisible:
-    case CreativeMutationKind::SetLocked:
-        return true;
-    default:
-        return false;
-    }
+    return categoryOf(kind) == CreativeMutationCategory::Identity;
 }
 
 bool isTransformMutation(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::Move:
-    case CreativeMutationKind::Rotate:
-    case CreativeMutationKind::Scale:
-    case CreativeMutationKind::SetTransform:
-        return true;
-    default:
-        return false;
-    }
+    return categoryOf(kind) == CreativeMutationCategory::Transform;
 }
 
 bool isShapeMutation(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::Resize:
-    case CreativeMutationKind::Stretch:
-    case CreativeMutationKind::SetBounds:
-    case CreativeMutationKind::SetHeight:
-    case CreativeMutationKind::SetRadius:
-    case CreativeMutationKind::SetThickness:
-    case CreativeMutationKind::SetLength:
-    case CreativeMutationKind::SetWidth:
-    case CreativeMutationKind::SetDepth:
-        return true;
-    default:
-        return false;
-    }
+    return categoryOf(kind) == CreativeMutationCategory::Shape;
 }
 
 bool isRelationshipMutation(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::SetParent:
-    case CreativeMutationKind::ClearParent:
-    case CreativeMutationKind::AttachTo:
-    case CreativeMutationKind::DetachFrom:
-    case CreativeMutationKind::LinkTarget:
-    case CreativeMutationKind::UnlinkTarget:
-    case CreativeMutationKind::SetSocket:
-    case CreativeMutationKind::ClearSocket:
-        return true;
-    default:
-        return false;
-    }
+    return categoryOf(kind) == CreativeMutationCategory::Relationship;
 }
 
 bool isOrganizationMutation(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::AssignLayer:
-    case CreativeMutationKind::AddTag:
-    case CreativeMutationKind::RemoveTag:
-    case CreativeMutationKind::ClearTags:
-        return true;
-    default:
-        return false;
-    }
+    return categoryOf(kind) == CreativeMutationCategory::Organization;
 }
 
 bool isContentMutation(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::EditText:
-    case CreativeMutationKind::SetLabel:
-    case CreativeMutationKind::SetNotes:
-    case CreativeMutationKind::SetReferenceSource:
-    case CreativeMutationKind::SetBlueprintOpacity:
-        return true;
-    default:
-        return false;
-    }
+    return categoryOf(kind) == CreativeMutationCategory::Content;
 }
 
 bool isLogicMutation(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::SetTriggerShape:
-    case CreativeMutationKind::SetTriggerEvent:
-    case CreativeMutationKind::SetCondition:
-    case CreativeMutationKind::SetEventRelayTarget:
-    case CreativeMutationKind::SetSpawnerProfile:
-    case CreativeMutationKind::SetDespawnRule:
-        return true;
-    default:
-        return false;
-    }
+    return categoryOf(kind) == CreativeMutationCategory::Logic;
 }
 
 bool isNavigationMutation(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::SetSpawnFacing:
-    case CreativeMutationKind::SetCheckpointId:
-    case CreativeMutationKind::SetNavCost:
-    case CreativeMutationKind::SetPatrolRoute:
-    case CreativeMutationKind::SetJumpArc:
-    case CreativeMutationKind::SetClimbRule:
-    case CreativeMutationKind::SetWallRunRule:
-    case CreativeMutationKind::SetSlideRule:
-        return true;
-    default:
-        return false;
-    }
+    return categoryOf(kind) == CreativeMutationCategory::Navigation;
 }
 
 bool isTestingMutation(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::SetTestLaneKind:
-    case CreativeMutationKind::SetDistanceValue:
-    case CreativeMutationKind::SetSpeedValue:
-    case CreativeMutationKind::SetTimingWindow:
-    case CreativeMutationKind::SetProbeKind:
-    case CreativeMutationKind::SetExpectedResult:
-        return true;
-    default:
-        return false;
-    }
+    return categoryOf(kind) == CreativeMutationCategory::Testing;
 }
 
 bool isSensoryMutation(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::SetLightColor:
-    case CreativeMutationKind::SetLightIntensity:
-    case CreativeMutationKind::SetLightRadius:
-    case CreativeMutationKind::SetLightConeAngle:
-    case CreativeMutationKind::SetAudioRadius:
-    case CreativeMutationKind::SetAudioSource:
-    case CreativeMutationKind::SetMusicCue:
-    case CreativeMutationKind::SetCameraTarget:
-    case CreativeMutationKind::SetCameraRail:
-        return true;
-    default:
-        return false;
-    }
+    return categoryOf(kind) == CreativeMutationCategory::Sensory;
 }
 
 bool isGameplayMutation(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::SetEnemyProfile:
-    case CreativeMutationKind::SetNpcProfile:
-    case CreativeMutationKind::SetResourceKind:
-    case CreativeMutationKind::SetLootTable:
-    case CreativeMutationKind::SetQuestId:
-    case CreativeMutationKind::SetDialogueId:
-    case CreativeMutationKind::SetDangerLevel:
-    case CreativeMutationKind::SetSafeZoneRule:
-        return true;
-    default:
-        return false;
-    }
+    return categoryOf(kind) == CreativeMutationCategory::Gameplay;
 }
 
 bool mutationChangesGeometry(CreativeMutationKind kind) noexcept {
-    return isTransformMutation(kind) || isShapeMutation(kind) || kind == CreativeMutationKind::SetTriggerShape;
+    const CreativeMutationMetadataRow* metadata = metadataFor(kind);
+    return metadata != nullptr && metadata->changesGeometry;
 }
 
 bool mutationChangesRelationships(CreativeMutationKind kind) noexcept {
-    return isRelationshipMutation(kind) || kind == CreativeMutationKind::SetEventRelayTarget ||
-           kind == CreativeMutationKind::SetCameraTarget || kind == CreativeMutationKind::SetCameraRail;
+    const CreativeMutationMetadataRow* metadata = metadataFor(kind);
+    return metadata != nullptr && metadata->changesRelationships;
 }
 
 bool mutationChangesRuntimeMeaning(CreativeMutationKind kind) noexcept {
-    return isLogicMutation(kind) || isNavigationMutation(kind) || isTestingMutation(kind) ||
-           isSensoryMutation(kind) || isGameplayMutation(kind);
+    const CreativeMutationMetadataRow* metadata = metadataFor(kind);
+    return metadata != nullptr && metadata->changesRuntimeMeaning;
+}
+
+CreativeMutationStoragePolicy mutationStoragePolicy(CreativeMutationKind kind) noexcept {
+    const CreativeMutationMetadataRow* metadata = metadataFor(kind);
+    return metadata != nullptr ? metadata->storagePolicy : CreativeMutationStoragePolicy::Unknown;
+}
+
+CreativeMutationStoragePolicy mutationPayloadStoragePolicy(
+    CreativeMutationKind kind,
+    const CreativeMutationPayload& payload) noexcept {
+    const CreativeMutationMetadataRow* metadata = metadataFor(kind);
+    if (metadata == nullptr || !payloadMatchesKind(metadata->payloadKind, payload)) {
+        return CreativeMutationStoragePolicy::Unknown;
+    }
+
+    if (metadata->storagePolicy != CreativeMutationStoragePolicy::PayloadDependent) {
+        return metadata->storagePolicy;
+    }
+
+    if (kind == CreativeMutationKind::SetPatrolRoute &&
+        std::holds_alternative<PathPointsMutation>(payload.value)) {
+        return CreativeMutationStoragePolicy::StoredObject;
+    }
+
+    if (kind == CreativeMutationKind::SetPatrolRoute &&
+        (std::holds_alternative<TextMutation>(payload.value) ||
+         std::holds_alternative<StringIdMutation>(payload.value))) {
+        return CreativeMutationStoragePolicy::FutureStoragePlaceholder;
+    }
+
+    return CreativeMutationStoragePolicy::Unknown;
+}
+
+bool mutationHasStoredObjectEffect(CreativeMutationKind kind) noexcept {
+    const CreativeMutationStoragePolicy policy = mutationStoragePolicy(kind);
+    return policy == CreativeMutationStoragePolicy::StoredObject ||
+           policy == CreativeMutationStoragePolicy::PayloadDependent;
+}
+
+bool mutationPayloadHasStoredObjectEffect(
+    CreativeMutationKind kind,
+    const CreativeMutationPayload& payload) noexcept {
+    return mutationPayloadStoragePolicy(kind, payload) == CreativeMutationStoragePolicy::StoredObject;
 }
 
 std::vector<CreativeMutationKind> allowedMutations(CreativeObjectKind objectKind) {
@@ -389,6 +553,7 @@ std::vector<CreativeMutationKind> allowedMutations(CreativeObjectKind objectKind
 
     switch (objectKind) {
     case CreativeObjectKind::Unknown:
+    case CreativeObjectKind::Count:
         return {};
 
     case CreativeObjectKind::Room:
@@ -624,131 +789,13 @@ bool canMutate(CreativeObjectKind objectKind, CreativeMutationKind mutationKind)
 }
 
 bool requiresPayload(CreativeMutationKind kind) noexcept {
-    switch (kind) {
-    case CreativeMutationKind::Unknown:
-    case CreativeMutationKind::ClearParent:
-    case CreativeMutationKind::DetachFrom:
-    case CreativeMutationKind::UnlinkTarget:
-    case CreativeMutationKind::ClearSocket:
-    case CreativeMutationKind::ClearTags:
-        return false;
-    default:
-        return true;
-    }
+    const CreativeMutationMetadataRow* metadata = metadataFor(kind);
+    return metadata != nullptr && metadata->payloadKind != CreativeMutationPayloadKind::NoPayload;
 }
 
 bool payloadMatchesMutation(CreativeMutationKind kind, const CreativeMutationPayload& payload) noexcept {
-    const auto& value = payload.value;
-
-    switch (kind) {
-    case CreativeMutationKind::Unknown:
-        return std::holds_alternative<std::monostate>(value);
-
-    case CreativeMutationKind::Rename:
-        return std::holds_alternative<RenameMutation>(value);
-    case CreativeMutationKind::SetVisible:
-        return std::holds_alternative<VisibilityMutation>(value);
-    case CreativeMutationKind::SetLocked:
-        return std::holds_alternative<LockMutation>(value);
-
-    case CreativeMutationKind::Move:
-        return std::holds_alternative<MoveMutation>(value);
-    case CreativeMutationKind::Rotate:
-    case CreativeMutationKind::SetSpawnFacing:
-        return std::holds_alternative<RotateMutation>(value);
-    case CreativeMutationKind::Scale:
-        return std::holds_alternative<ScaleMutation>(value);
-    case CreativeMutationKind::SetTransform:
-        return std::holds_alternative<SetTransformMutation>(value);
-
-    case CreativeMutationKind::Resize:
-        return std::holds_alternative<ResizeMutation>(value);
-    case CreativeMutationKind::Stretch:
-        return std::holds_alternative<StretchMutation>(value);
-    case CreativeMutationKind::SetBounds:
-    case CreativeMutationKind::SetTriggerShape:
-        return std::holds_alternative<SetBoundsMutation>(value);
-    case CreativeMutationKind::SetHeight:
-    case CreativeMutationKind::SetRadius:
-    case CreativeMutationKind::SetThickness:
-    case CreativeMutationKind::SetLength:
-    case CreativeMutationKind::SetWidth:
-    case CreativeMutationKind::SetDepth:
-    case CreativeMutationKind::SetBlueprintOpacity:
-    case CreativeMutationKind::SetLightIntensity:
-    case CreativeMutationKind::SetLightRadius:
-    case CreativeMutationKind::SetLightConeAngle:
-    case CreativeMutationKind::SetAudioRadius:
-    case CreativeMutationKind::SetNavCost:
-    case CreativeMutationKind::SetDistanceValue:
-    case CreativeMutationKind::SetSpeedValue:
-    case CreativeMutationKind::SetTimingWindow:
-    case CreativeMutationKind::SetDangerLevel:
-        return std::holds_alternative<ScalarMutation>(value);
-
-    case CreativeMutationKind::SetParent:
-        return std::holds_alternative<SetParentMutation>(value);
-    case CreativeMutationKind::AttachTo:
-        return std::holds_alternative<AttachToMutation>(value);
-    case CreativeMutationKind::LinkTarget:
-    case CreativeMutationKind::SetEventRelayTarget:
-    case CreativeMutationKind::SetCameraTarget:
-    case CreativeMutationKind::SetCameraRail:
-        return std::holds_alternative<LinkTargetMutation>(value);
-    case CreativeMutationKind::SetPatrolRoute:
-        return std::holds_alternative<PathPointsMutation>(value) ||
-               std::holds_alternative<TextMutation>(value) ||
-               std::holds_alternative<StringIdMutation>(value);
-    case CreativeMutationKind::SetSocket:
-        return std::holds_alternative<SetSocketMutation>(value);
-
-    case CreativeMutationKind::AssignLayer:
-        return std::holds_alternative<AssignLayerMutation>(value);
-    case CreativeMutationKind::AddTag:
-    case CreativeMutationKind::RemoveTag:
-        return std::holds_alternative<TagMutation>(value);
-
-    case CreativeMutationKind::EditText:
-    case CreativeMutationKind::SetLabel:
-    case CreativeMutationKind::SetNotes:
-    case CreativeMutationKind::SetTriggerEvent:
-    case CreativeMutationKind::SetCondition:
-    case CreativeMutationKind::SetSpawnerProfile:
-    case CreativeMutationKind::SetDespawnRule:
-    case CreativeMutationKind::SetCheckpointId:
-    case CreativeMutationKind::SetTestLaneKind:
-    case CreativeMutationKind::SetProbeKind:
-    case CreativeMutationKind::SetExpectedResult:
-    case CreativeMutationKind::SetEnemyProfile:
-    case CreativeMutationKind::SetNpcProfile:
-    case CreativeMutationKind::SetResourceKind:
-    case CreativeMutationKind::SetLootTable:
-    case CreativeMutationKind::SetQuestId:
-    case CreativeMutationKind::SetDialogueId:
-    case CreativeMutationKind::SetSafeZoneRule:
-    case CreativeMutationKind::SetJumpArc:
-    case CreativeMutationKind::SetClimbRule:
-    case CreativeMutationKind::SetWallRunRule:
-    case CreativeMutationKind::SetSlideRule:
-    case CreativeMutationKind::SetMusicCue:
-        return std::holds_alternative<TextMutation>(value) || std::holds_alternative<StringIdMutation>(value);
-
-    case CreativeMutationKind::SetReferenceSource:
-        return std::holds_alternative<ReferenceSourceMutation>(value);
-    case CreativeMutationKind::SetLightColor:
-        return std::holds_alternative<ColorMutation>(value);
-    case CreativeMutationKind::SetAudioSource:
-        return std::holds_alternative<AudioSourceMutation>(value);
-
-    case CreativeMutationKind::ClearParent:
-    case CreativeMutationKind::DetachFrom:
-    case CreativeMutationKind::UnlinkTarget:
-    case CreativeMutationKind::ClearSocket:
-    case CreativeMutationKind::ClearTags:
-        return std::holds_alternative<std::monostate>(value);
-    }
-
-    return false;
+    const CreativeMutationMetadataRow* metadata = metadataFor(kind);
+    return metadata != nullptr && payloadMatchesKind(metadata->payloadKind, payload);
 }
 
 CreativeMutationPayload makeRenamePayload(std::string name) {

@@ -304,7 +304,18 @@ target_link_libraries(iggy3d_app PRIVATE iggy3d)
 set_target_properties(iggy3d_app PROPERTIES OUTPUT_NAME iggy3d)
 iggy3d_apply_warnings(iggy3d_app)
 
-add_executable(iggy3d_creative apps/iggy3d_creative/main.cpp)
+add_executable(iggy3d_creative
+  apps/iggy3d_creative/main.cpp
+  apps/iggy3d_creative/CreativeRendererBootstrap.cpp
+  apps/iggy3d_creative/StandaloneBrushPalette.cpp
+  apps/iggy3d_creative/StandaloneCaptureScenario.cpp
+  apps/iggy3d_creative/StandaloneGizmo.cpp
+  apps/iggy3d_creative/StandalonePathEditing.cpp
+  apps/iggy3d_creative/StandalonePersistenceProof.cpp
+  apps/iggy3d_creative/StandalonePicking.cpp
+  apps/iggy3d_creative/StandalonePlacement.cpp
+  apps/iggy3d_creative/StandalonePreviewProxies.cpp
+  apps/iggy3d_creative/StandaloneRoomBakePreview.cpp)
 target_link_libraries(iggy3d_creative PRIVATE iggy3d)
 iggy3d_apply_warnings(iggy3d_creative)
 

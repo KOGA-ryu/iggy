@@ -814,11 +814,19 @@ bool batchCancelOnlyWhenPressed() {
 }
 
 iggy3d::ProductCreativePointerLifecycleEvent lifecycleMove(float x, float y) {
-  return {iggy3d::ProductCreativePointerLifecyclePhase::Move, x, y};
+  iggy3d::ProductCreativePointerLifecycleEvent event;
+  event.phase = iggy3d::ProductCreativePointerLifecyclePhase::Move;
+  event.x = x;
+  event.y = y;
+  return event;
 }
 
 iggy3d::ProductCreativePointerLifecycleEvent lifecycleRelease(float x, float y) {
-  return {iggy3d::ProductCreativePointerLifecyclePhase::Release, x, y};
+  iggy3d::ProductCreativePointerLifecycleEvent event;
+  event.phase = iggy3d::ProductCreativePointerLifecyclePhase::Release;
+  event.x = x;
+  event.y = y;
+  return event;
 }
 
 // FLAGSHIP: a full Measure gesture through the WINDOW/frame entry finally ENDS.

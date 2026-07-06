@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/document/DocumentSnap.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/tools/RoomShell.hpp"
 
 #include <limits>
 #include <span>
@@ -198,6 +199,14 @@ void setInstallStatus(CreativeFacadeDocumentInstallReceipt& receipt,
   receipt.message = status;
 }
 
+void setBatchCreateStatus(CreativeFacadeDocumentBatchCreateReceipt& receipt,
+                          CreativeFacadeDocumentBatchCreateStatus status,
+                          std::string_view reason) noexcept {
+  receipt.status = status;
+  receipt.reasonCode = reason;
+  receipt.message = reason;
+}
+
 [[nodiscard]] CreativeFacadeMutationReceipt toggleSelectedObjectMutation(
     CreativeDocument& document,
     TargetRef selectedTarget,
@@ -292,6 +301,23 @@ std::string_view toString(CreativeFacadeMutationStatus status) noexcept {
       return "NoChange";
     case CreativeFacadeMutationStatus::Rejected:
       return "Rejected";
+  }
+  return "Unknown";
+}
+
+std::string_view toString(CreativeFacadeDocumentBatchCreateStatus status)
+    noexcept {
+  switch (status) {
+    case CreativeFacadeDocumentBatchCreateStatus::Unknown:
+      return "Unknown";
+    case CreativeFacadeDocumentBatchCreateStatus::Empty:
+      return "Empty";
+    case CreativeFacadeDocumentBatchCreateStatus::CreateRejected:
+      return "CreateRejected";
+    case CreativeFacadeDocumentBatchCreateStatus::InstallRejected:
+      return "InstallRejected";
+    case CreativeFacadeDocumentBatchCreateStatus::Applied:
+      return "Applied";
   }
   return "Unknown";
 }
@@ -480,6 +506,9 @@ CreativeUiBuildReceipt Facade::buildUiModel(
     summary.exists = true;
     summary.visible = object.visible;
     summary.locked = object.locked;
+    summary.hasGeneratedRoomShell =
+        object.kind == CreativeObjectKind::Room &&
+        creativeRoomHasGeneratedShellChildren(document_, object.id);
     summary.name = object.name;
     summary.objectId = object.id;
     summary.layerId = object.layerId;
@@ -804,6 +833,63 @@ CreativeFacadeDocumentInstallReceipt Facade::installDocument(
   receipt.nextDirtyFlags = document_.dirtyFlags();
   receipt.activeToolAfter = toolState_.activeTool;
   setInstallStatus(receipt, "creative_facade_document_installed");
+  return receipt;
+}
+
+CreativeFacadeDocumentBatchCreateReceipt Facade::createDocumentObjectsAtomically(
+    std::span<const CreativeDocumentCreateRequest> requests) {
+  CreativeFacadeDocumentBatchCreateReceipt receipt;
+  receipt.requested = true;
+  receipt.revisionBefore = document_.revision();
+  receipt.revisionAfter = receipt.revisionBefore;
+  receipt.attemptedCreateCount = requests.size();
+
+  if (requests.empty()) {
+    setBatchCreateStatus(receipt,
+                         CreativeFacadeDocumentBatchCreateStatus::Empty,
+                         "creative_facade_batch_create_empty");
+    return receipt;
+  }
+
+  CreativeDocument stagedDocument = document_;
+  for (std::size_t index = 0; index < requests.size(); ++index) {
+    const CreativeDocumentCreateReceipt createReceipt =
+        stagedDocument.createObject(requests[index]);
+    if (createReceipt.accepted && createReceipt.objectCreated &&
+        createReceipt.changed) {
+      ++receipt.appliedCreateCount;
+      continue;
+    }
+
+    receipt.hasFailedCreate = true;
+    receipt.firstFailedCreateIndex = index;
+    receipt.firstFailedCreateStatus = createReceipt.status;
+    receipt.firstFailedCreateReasonCode = createReceipt.reasonCode;
+    receipt.firstFailedCreateMessage = createReceipt.message;
+    setBatchCreateStatus(receipt,
+                         CreativeFacadeDocumentBatchCreateStatus::
+                             CreateRejected,
+                         "creative_facade_batch_create_create_rejected");
+    return receipt;
+  }
+
+  receipt.installAttempted = true;
+  receipt.installReceipt = installDocument(std::move(stagedDocument));
+  receipt.revisionAfter = document_.revision();
+  if (!receipt.installReceipt.accepted || !receipt.installReceipt.changed) {
+    setBatchCreateStatus(receipt,
+                         CreativeFacadeDocumentBatchCreateStatus::
+                             InstallRejected,
+                         "creative_facade_batch_create_install_rejected");
+    return receipt;
+  }
+
+  receipt.accepted = true;
+  receipt.changed = true;
+  receipt.revisionAfter = document_.revision();
+  setBatchCreateStatus(receipt,
+                       CreativeFacadeDocumentBatchCreateStatus::Applied,
+                       "creative_facade_batch_create_applied");
   return receipt;
 }
 

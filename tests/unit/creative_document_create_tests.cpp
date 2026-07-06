@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 
+#include <array>
 #include <cstdlib>
 #include <iostream>
 #include <string_view>
@@ -165,6 +166,74 @@ bool nameAndBoundsOverridesRespectDescriptorPolicy() {
          expect(object->tags[1] == "entry", "override second tag");
 }
 
+bool authoredStateOverridesAreUniversalForRepresentativeDescriptors() {
+  cr::CreativeDocument document;
+
+  cr::CreativeDocumentCreateRequest lightRequest;
+  lightRequest.kind = cr::CreativeObjectKind::PointLight;
+  lightRequest.visible = false;
+  lightRequest.hasVisibleOverride = true;
+  lightRequest.locked = true;
+  lightRequest.hasLockedOverride = true;
+  lightRequest.tags = {"lighting", "hidden"};
+  const cr::CreativeDocumentCreateReceipt light =
+      document.createObject(lightRequest);
+
+  cr::CreativeDocumentCreateRequest noteRequest;
+  noteRequest.kind = cr::CreativeObjectKind::Note;
+  noteRequest.visible = false;
+  noteRequest.hasVisibleOverride = true;
+  noteRequest.locked = true;
+  noteRequest.hasLockedOverride = true;
+  noteRequest.tags = {"authoring"};
+  const cr::CreativeDocumentCreateReceipt note =
+      document.createObject(noteRequest);
+
+  cr::CreativeDocumentCreateRequest routeRequest;
+  routeRequest.kind = cr::CreativeObjectKind::PatrolRoute;
+  routeRequest.hasPathOverride = true;
+  routeRequest.pathPoints = {
+      cr::CreativePathPoint{{0.0, 0.0, 0.0}},
+      cr::CreativePathPoint{{1.0, 0.0, 1.0}},
+  };
+  routeRequest.visible = false;
+  routeRequest.hasVisibleOverride = true;
+  routeRequest.locked = true;
+  routeRequest.hasLockedOverride = true;
+  routeRequest.tags = {"route"};
+  const cr::CreativeDocumentCreateReceipt route =
+      document.createObject(routeRequest);
+
+  const cr::CreativeObject* lightObject = document.findObject(light.objectId);
+  const cr::CreativeObject* noteObject = document.findObject(note.objectId);
+  const cr::CreativeObject* routeObject = document.findObject(route.objectId);
+
+  return expect(light.accepted, "point light state override accepted") &&
+         expect(lightObject != nullptr, "point light override findable") &&
+         expect(lightObject != nullptr && !lightObject->visible,
+                "point light override hidden") &&
+         expect(lightObject != nullptr && lightObject->locked,
+                "point light override locked") &&
+         expect(lightObject != nullptr && lightObject->tags.size() == 2U,
+                "point light override tags") &&
+         expect(note.accepted, "note state override accepted") &&
+         expect(noteObject != nullptr, "note override findable") &&
+         expect(noteObject != nullptr && !noteObject->visible,
+                "note override hidden") &&
+         expect(noteObject != nullptr && noteObject->locked,
+                "note override locked") &&
+         expect(noteObject != nullptr && noteObject->tags.size() == 1U,
+                "note override tags") &&
+         expect(route.accepted, "patrol route state override accepted") &&
+         expect(routeObject != nullptr, "patrol route override findable") &&
+         expect(routeObject != nullptr && !routeObject->visible,
+                "patrol route override hidden") &&
+         expect(routeObject != nullptr && routeObject->locked,
+                "patrol route override locked") &&
+         expect(routeObject != nullptr && routeObject->tags.size() == 1U,
+                "patrol route override tags");
+}
+
 bool unsupportedOverridesRejectWithoutMutation() {
   cr::CreativeDocument document;
   cr::CreativeDocumentCreateRequest parentRequest;
@@ -212,6 +281,37 @@ bool unsupportedOverridesRejectWithoutMutation() {
                 "transform reject revision after") &&
          expect(document.objectCount() == 1U,
                 "transform reject object count stable");
+}
+
+bool parentOwnerUnsupportedRejectsWithoutMutation() {
+  cr::CreativeDocument document;
+
+  cr::CreativeDocumentCreateRequest crateRequest;
+  crateRequest.kind = cr::CreativeObjectKind::Crate;
+  const cr::CreativeDocumentCreateReceipt crate =
+      document.createObject(crateRequest);
+
+  cr::CreativeDocumentCreateRequest wallRequest;
+  wallRequest.kind = cr::CreativeObjectKind::Wall;
+  wallRequest.parentId = crate.objectId;
+  const std::uint64_t revisionBeforeReject = document.revision();
+  const cr::CreativeDocumentCreateReceipt rejected =
+      document.createObject(wallRequest);
+
+  return expect(crate.accepted, "parent owner setup crate accepted") &&
+         expect(!rejected.accepted, "parent owner reject not accepted") &&
+         expect(rejected.status == cr::CreativeDocumentCreateStatus::Rejected,
+                "parent owner reject status") &&
+         expect(rejected.reasonCode == "parent_owner_unsupported",
+                "parent owner reject reason") &&
+         expect(rejected.revisionBefore == revisionBeforeReject,
+                "parent owner reject revision before") &&
+         expect(rejected.revisionAfter == revisionBeforeReject,
+                "parent owner reject revision after") &&
+         expect(document.objectCount() == 1U,
+                "parent owner reject object count stable") &&
+         expect(document.findObject(crate.objectId) != nullptr,
+                "parent owner reject parent remains");
 }
 
 bool receiptedCreateWithOverridesSharesAllocator() {
@@ -321,6 +421,136 @@ bool facadeGenericCreateFailureRecordsFailureOnly() {
                 "facade invalid rooms created");
 }
 
+bool facadeBatchCreateAppliesAllRequestsAtomically() {
+  cr::Facade facade;
+  static_cast<void>(facade.documentForPersistence().assignId(7U));
+
+  std::array<cr::CreativeDocumentCreateRequest, 2> requests{};
+  requests[0].kind = cr::CreativeObjectKind::Room;
+  requests[0].name = "Batch Room";
+  requests[1].kind = cr::CreativeObjectKind::Crate;
+  requests[1].name = "Batch Crate";
+
+  const cr::CreativeFacadeDocumentBatchCreateReceipt receipt =
+      facade.createDocumentObjectsAtomically(requests);
+
+  return expect(receipt.requested, "batch requested") &&
+         expect(receipt.accepted, "batch accepted") &&
+         expect(receipt.changed, "batch changed") &&
+         expect(receipt.status ==
+                    cr::CreativeFacadeDocumentBatchCreateStatus::Applied,
+                "batch applied status") &&
+         expect(receipt.reasonCode == "creative_facade_batch_create_applied",
+                "batch applied reason") &&
+         expect(receipt.revisionBefore == 0U, "batch revision before") &&
+         expect(receipt.revisionAfter == 2U, "batch revision after") &&
+         expect(receipt.attemptedCreateCount == 2U,
+                "batch attempted count") &&
+         expect(receipt.appliedCreateCount == 2U,
+                "batch applied count") &&
+         expect(!receipt.hasFailedCreate, "batch no failed create") &&
+         expect(receipt.installAttempted, "batch install attempted") &&
+         expect(receipt.installReceipt.accepted, "batch install accepted") &&
+         expect(receipt.installReceipt.changed, "batch install changed") &&
+         expect(facade.document().objectCount() == 2U,
+                "batch object count") &&
+         expect(facade.document().revision() == 2U,
+                "batch document revision") &&
+         expect(facade.document().findObject(1U) != nullptr,
+                "batch first object installed") &&
+         expect(facade.document().findObject(2U) != nullptr,
+                "batch second object installed");
+}
+
+bool facadeBatchCreateRejectionPreservesLiveDocument() {
+  cr::Facade facade;
+  static_cast<void>(facade.documentForPersistence().assignId(8U));
+
+  std::array<cr::CreativeDocumentCreateRequest, 2> requests{};
+  requests[0].kind = cr::CreativeObjectKind::Room;
+  requests[0].name = "Staged Only Room";
+  requests[1].kind = cr::CreativeObjectKind::Wall;
+  requests[1].parentId = 999U;
+
+  const cr::CreativeFacadeDocumentBatchCreateReceipt receipt =
+      facade.createDocumentObjectsAtomically(requests);
+
+  return expect(receipt.requested, "batch reject requested") &&
+         expect(!receipt.accepted, "batch reject not accepted") &&
+         expect(!receipt.changed, "batch reject unchanged") &&
+         expect(receipt.status ==
+                    cr::CreativeFacadeDocumentBatchCreateStatus::
+                        CreateRejected,
+                "batch create rejected status") &&
+         expect(receipt.reasonCode ==
+                    "creative_facade_batch_create_create_rejected",
+                "batch create rejected reason") &&
+         expect(receipt.revisionBefore == 0U,
+                "batch reject revision before") &&
+         expect(receipt.revisionAfter == 0U,
+                "batch reject revision after") &&
+         expect(receipt.attemptedCreateCount == 2U,
+                "batch reject attempted count") &&
+         expect(receipt.appliedCreateCount == 1U,
+                "batch reject staged applied count") &&
+         expect(receipt.hasFailedCreate, "batch failed create") &&
+         expect(receipt.firstFailedCreateIndex == 1U,
+                "batch failed create index") &&
+         expect(receipt.firstFailedCreateStatus ==
+                    cr::CreativeDocumentCreateStatus::Rejected,
+                "batch failed create status") &&
+         expect(receipt.firstFailedCreateReasonCode == "missing_parent",
+                "batch failed create reason") &&
+         expect(!receipt.installAttempted, "batch reject no install") &&
+         expect(facade.document().objectCount() == 0U,
+                "batch reject live object count") &&
+         expect(facade.document().revision() == 0U,
+                "batch reject live revision");
+}
+
+bool facadeBatchCreateInstallFailurePreservesLiveDocument() {
+  cr::Facade facade;
+
+  std::array<cr::CreativeDocumentCreateRequest, 1> requests{};
+  requests[0].kind = cr::CreativeObjectKind::Room;
+  requests[0].name = "Missing Id Room";
+
+  const cr::CreativeFacadeDocumentBatchCreateReceipt receipt =
+      facade.createDocumentObjectsAtomically(requests);
+
+  return expect(receipt.requested, "batch install fail requested") &&
+         expect(!receipt.accepted, "batch install fail not accepted") &&
+         expect(!receipt.changed, "batch install fail unchanged") &&
+         expect(receipt.status ==
+                    cr::CreativeFacadeDocumentBatchCreateStatus::
+                        InstallRejected,
+                "batch install rejected status") &&
+         expect(receipt.reasonCode ==
+                    "creative_facade_batch_create_install_rejected",
+                "batch install rejected reason") &&
+         expect(receipt.revisionBefore == 0U,
+                "batch install fail revision before") &&
+         expect(receipt.revisionAfter == 0U,
+                "batch install fail revision after") &&
+         expect(receipt.attemptedCreateCount == 1U,
+                "batch install fail attempted count") &&
+         expect(receipt.appliedCreateCount == 1U,
+                "batch install fail applied count") &&
+         expect(!receipt.hasFailedCreate,
+                "batch install fail no create failure") &&
+         expect(receipt.installAttempted,
+                "batch install fail attempted install") &&
+         expect(!receipt.installReceipt.accepted,
+                "batch install fail rejected install") &&
+         expect(receipt.installReceipt.reasonCode ==
+                    "creative_facade_document_id_missing",
+                "batch install fail reason") &&
+         expect(facade.document().objectCount() == 0U,
+                "batch install fail live object count") &&
+         expect(facade.document().revision() == 0U,
+                "batch install fail live revision");
+}
+
 }  // namespace
 
 int main() {
@@ -329,9 +559,14 @@ int main() {
                   secondGenericCreateGetsNewIdAndRevision() &&
                   unknownKindRejectsWithoutRevisionChange() &&
                   nameAndBoundsOverridesRespectDescriptorPolicy() &&
+                  authoredStateOverridesAreUniversalForRepresentativeDescriptors() &&
                   unsupportedOverridesRejectWithoutMutation() &&
+                  parentOwnerUnsupportedRejectsWithoutMutation() &&
                   receiptedCreateWithOverridesSharesAllocator() &&
                   facadeGenericCreateWrapsDocumentAndPreservesInteractionState() &&
-                  facadeGenericCreateFailureRecordsFailureOnly();
+                  facadeGenericCreateFailureRecordsFailureOnly() &&
+                  facadeBatchCreateAppliesAllRequestsAtomically() &&
+                  facadeBatchCreateRejectionPreservesLiveDocument() &&
+                  facadeBatchCreateInstallFailurePreservesLiveDocument();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

@@ -34,6 +34,7 @@ enum class CreativeDocumentRemoveStatus : std::uint8_t {
   InvalidObjectId,
   MissingObject,
   LockedObject,
+  ParentHasChildren,
   Removed,
 };
 
@@ -144,6 +145,9 @@ struct CreativeDocumentRestoreReceipt {
     CreativeDocumentRemoveStatus status) noexcept;
 [[nodiscard]] std::string_view toString(
     CreativeDocumentRestoreStatus status) noexcept;
+
+[[nodiscard]] std::string_view validateCreativeObjectParentGraph(
+    std::span<const CreativeObject> objects);
 
 // CreativeDocument is the authored content container for one creative work.
 // It owns the durable content truth: document identity, revision, and later the

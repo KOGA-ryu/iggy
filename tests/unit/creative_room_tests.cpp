@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 
 #include <cstdlib>
@@ -150,10 +151,12 @@ bool facadeRoomCommandsCountMetrics() {
 bool objectVocabularyKeepsRoomClassified() {
   return expect(cr::toString(cr::CreativeObjectKind::Room) == "Room",
                 "room string") &&
-         expect(cr::isStructuralObject(cr::CreativeObjectKind::Room),
-                "room structural classification") &&
-         expect(!cr::isGameplayObject(cr::CreativeObjectKind::Room),
-                "room not gameplay classification");
+         expect(cr::objectUsesCategory(cr::CreativeObjectKind::Room,
+                                       cr::CreativeObjectCategory::Structural),
+                "room structural descriptor classification") &&
+         expect(!cr::objectUsesCategory(cr::CreativeObjectKind::Room,
+                                        cr::CreativeObjectCategory::Gameplay),
+                "room not gameplay descriptor classification");
 }
 
 }  // namespace

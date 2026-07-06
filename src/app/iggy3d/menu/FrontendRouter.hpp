@@ -11,6 +11,10 @@
 
 namespace iggy3d {
 
+namespace creative {
+struct CreativeActiveIdentity;
+}  // namespace creative
+
 struct ProductAppWindowState;
 struct StarterScreenModel;
 struct SettingsRouteContext;
@@ -103,6 +107,10 @@ ProductActiveSurfaceFrame resolveProductActiveSurface(
     const ProductActiveSurfaceContext& context);
 bool productMapMakerLiveForWindow(const FrontendState& frontend,
                                   const ProductAppWindowState& window);
+bool productCreativeWorldActiveForIdentity(
+    const creative::CreativeActiveIdentity& identity);
+bool productCreativeWorldActiveForWindowMirror(
+    const ProductAppWindowState& window);
 bool productCreativeWorldActiveForWindow(const ProductAppWindowState& window);
 bool productCreativeDocumentEditorActiveForWindow(
     const ProductAppWindowState& window);

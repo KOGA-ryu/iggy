@@ -40,6 +40,7 @@ enum class CreativeUiRowKind : std::uint8_t {
   InspectorLocked,
   InspectorDeleteSelected,
   InspectorGenerateRoomShell,
+  InspectorRemoveRoomShell,
   InspectorBounds,
   InspectorPosition,
   InspectorLayer,
@@ -81,6 +82,7 @@ struct CreativeUiObjectSummary {
   bool exists = false;
   bool visible = false;
   bool locked = false;
+  bool hasGeneratedRoomShell = false;
   std::string_view name;
   CreativeObjectId objectId = kInvalidObjectId;
   CreativeLayerId layerId = kDefaultLayerId;

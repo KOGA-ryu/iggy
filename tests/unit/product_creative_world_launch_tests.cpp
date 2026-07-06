@@ -5,6 +5,7 @@
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
+#include "app/iggy3d/save/Flow.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/RenderDiagnostics.hpp"
@@ -68,6 +69,44 @@ cr::Id targetId(cr::CreativeObjectId objectId) {
   return static_cast<cr::Id>(objectId);
 }
 
+bool expectActiveCreativeIdentityMirrorsWindow(
+    const cr::CreativeActiveIdentity& identity,
+    const iggy3d::ProductAppWindowState& window,
+    std::string_view label) {
+  const std::string prefix{label};
+  bool ok = true;
+  ok &= expect(identity.saveId == window.activeCreativeSaveId,
+               prefix + " identity save id mirrors window");
+  ok &= expect(identity.savePath == window.activeCreativeSavePath,
+               prefix + " identity save path mirrors window");
+  ok &= expect(identity.worldId == window.activeCreativeWorldId,
+               prefix + " identity world id mirrors window");
+  ok &= expect(identity.documentId == window.activeCreativeDocumentId,
+               prefix + " identity document id mirrors window");
+  ok &= expect(identity.objectCount == window.activeCreativeObjectCount,
+               prefix + " identity object count mirrors window");
+  ok &= expect(identity.nextObjectId == window.activeCreativeNextObjectId,
+               prefix + " identity next object id mirrors window");
+  ok &= expect(identity.saveStatus == window.activeCreativeSaveStatus,
+               prefix + " identity save status mirrors window");
+  ok &= expect(identity.saveReasonCode ==
+                   window.activeCreativeSaveReasonCode,
+               prefix + " identity save reason mirrors window");
+  ok &= expect(identity.saveDirtyFlagsBefore ==
+                   window.activeCreativeSaveDirtyFlagsBefore,
+               prefix + " identity dirty before mirrors window");
+  ok &= expect(identity.saveDirtyFlagsDrained ==
+                   window.activeCreativeSaveDirtyFlagsDrained,
+               prefix + " identity dirty drained mirrors window");
+  ok &= expect(identity.saveDirtyFlagsAfter ==
+                   window.activeCreativeSaveDirtyFlagsAfter,
+               prefix + " identity dirty after mirrors window");
+  ok &= expect(identity.saveSavedAtUtc ==
+                   window.activeCreativeSaveSavedAtUtc,
+               prefix + " identity saved timestamp mirrors window");
+  return ok;
+}
+
 iggy3d::ProductCreativeNewWorldLaunchResult launchCreativeWorld(
     const iggy3d::ProductAppOptions& options,
     const iggy3d::ProductCreativeNewWorldLaunchRequest& request,
@@ -122,6 +161,30 @@ cr::CreativeDocumentCreateReceipt createBoundsObject(
   return facade.createDocumentObject(request);
 }
 
+cr::CreativeDocumentCreateReceipt createDefaultFloor(cr::Facade& facade) {
+  return createBoundsObject(facade,
+                            cr::CreativeObjectKind::Floor,
+                            {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+}
+
+cr::CreativeDocumentCreateReceipt createDefaultWall(cr::Facade& facade) {
+  return createBoundsObject(facade,
+                            cr::CreativeObjectKind::Wall,
+                            {{5.0, 0.0, 0.0}, {9.0, 2.5, 0.25}});
+}
+
+cr::CreativeDocumentCreateReceipt createDefaultCrate(cr::Facade& facade) {
+  return createBoundsObject(facade,
+                            cr::CreativeObjectKind::Crate,
+                            {{1.0, 0.0, 5.0}, {2.0, 1.0, 6.0}});
+}
+
+cr::CreativeDocumentCreateReceipt createDefaultBeam(cr::Facade& facade) {
+  return createBoundsObject(facade,
+                            cr::CreativeObjectKind::Beam,
+                            {{0.0, 1.0, 0.0}, {4.0, 1.35, 0.35}});
+}
+
 cr::CreativeDocumentCreateReceipt createPointObject(
     cr::Facade& facade,
     cr::CreativeObjectKind kind,
@@ -131,6 +194,12 @@ cr::CreativeDocumentCreateReceipt createPointObject(
   request.transform.position = position;
   request.hasTransformOverride = true;
   return facade.createDocumentObject(request);
+}
+
+cr::CreativeDocumentCreateReceipt createDefaultPointLight(cr::Facade& facade) {
+  return createPointObject(facade,
+                           cr::CreativeObjectKind::PointLight,
+                           {6.25, 1.5, -2.75});
 }
 
 cr::CreativeDocumentCreateReceipt createPatrolRoute(cr::Facade& facade) {
@@ -143,6 +212,27 @@ cr::CreativeDocumentCreateReceipt createPatrolRoute(cr::Facade& facade) {
       cr::CreativePathPoint{{2.0, 0.0, 2.0}},
   };
   return facade.createDocumentObject(request);
+}
+
+struct BakedCreativeProofObjects {
+  cr::CreativeDocumentCreateReceipt floor;
+  cr::CreativeDocumentCreateReceipt wall;
+  cr::CreativeDocumentCreateReceipt crate;
+  cr::CreativeDocumentCreateReceipt beam;
+  cr::CreativeDocumentCreateReceipt point;
+  cr::CreativeDocumentCreateReceipt path;
+};
+
+BakedCreativeProofObjects createBakedCreativeProofObjects(
+    cr::Facade& facade) {
+  BakedCreativeProofObjects objects;
+  objects.floor = createDefaultFloor(facade);
+  objects.wall = createDefaultWall(facade);
+  objects.crate = createDefaultCrate(facade);
+  objects.beam = createDefaultBeam(facade);
+  objects.point = createDefaultPointLight(facade);
+  objects.path = createPatrolRoute(facade);
+  return objects;
 }
 
 std::size_t countProjectedRole(const iggy3d::SceneRoomProjection& room,
@@ -177,6 +267,11 @@ iggy3d::ProductActiveRoomCollisionState sentinelActiveRoomCollision() {
   return collision;
 }
 
+void installSentinelRoomState(iggy3d::ProductAppWindowState& window) {
+  window.activeRoom = sentinelActiveRoom();
+  window.activeRoomCollision = sentinelActiveRoomCollision();
+}
+
 bool sentinelRoomStatePreserved(const iggy3d::ProductAppWindowState& window) {
   return expect(window.activeRoom.status == "sentinel_active_room",
                 "sentinel active room preserved") &&
@@ -188,6 +283,17 @@ bool sentinelRoomStatePreserved(const iggy3d::ProductAppWindowState& window) {
                 "sentinel collision preserved") &&
          expect(window.activeRoomCollision.querySurfaceCount == 77U,
                 "sentinel collision query count preserved");
+}
+
+void markCreativeBakedRoomStale(iggy3d::ProductAppWindowState& window,
+                                const cr::CreativeDocument& document) {
+  window.creativeBakedRoomStale = true;
+  window.creativeBakedRoomStaleDocumentId = document.id();
+  window.creativeBakedRoomStaleRevision = document.revision();
+  window.creativeBakedRoomStaleStatus =
+      "creative_baked_room_stale_document_changed";
+  window.creativeBakedRoomStaleReasonCode =
+      "creative_baked_room_stale_document_changed";
 }
 
 iggy3d::MouseClick clickAt(float x, float y) {
@@ -319,6 +425,21 @@ bool clickCreativeGenerateRoomShellThroughInputFrame(
       window,
       app,
       "creative.row.selection.generate_room_shell");
+}
+
+bool clickCreativeRemoveRoomShellThroughInputFrame(
+    const iggy3d::ProductAppOptions& options,
+    iggy3d::FrontendState& frontend,
+    std::optional<iggy3d::Session>& activeSession,
+    iggy3d::ProductAppWindowState& window,
+    cr::CreativeAppState& app) {
+  return clickCreativeUiRowThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app,
+      "creative.row.selection.remove_room_shell");
 }
 
 bool clickCreativeUndoThroughInputFrame(
@@ -520,6 +641,9 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
          expect(window.activeCreativeSaveStatus ==
                     "creative_world_save_not_requested",
                 "creative launch active creative save status") &&
+         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+                                                   window,
+                                                   "creative launch") &&
          expect(facade.document().id() == launched.documentId,
                 "creative launch facade document id") &&
          expect(facade.document().name() == "Creative Direct",
@@ -872,6 +996,9 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
                 "open launch active creative object count") &&
          expect(openWindow.activeCreativeNextObjectId == opened.nextObjectId,
                 "open launch active creative next id") &&
+         expectActiveCreativeIdentityMirrorsWindow(openApp.identity,
+                                                   openWindow,
+                                                   "open launch") &&
          expect(openFacade.document().id() == created.documentId,
                 "open launch facade document id") &&
          expect(openFacade.document().name() == "Opened Name",
@@ -911,27 +1038,8 @@ bool openLaunchRefreshesBakedActiveRoomFromSavedCreativeDocument() {
                           createSession,
                           createWindow,
                           createApp);
-  const cr::CreativeDocumentCreateReceipt floor =
-      createBoundsObject(createFacade,
-                         cr::CreativeObjectKind::Floor,
-                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
-  const cr::CreativeDocumentCreateReceipt wall =
-      createBoundsObject(createFacade,
-                         cr::CreativeObjectKind::Wall,
-                         {{5.0, 0.0, 0.0}, {9.0, 2.5, 0.25}});
-  const cr::CreativeDocumentCreateReceipt crate =
-      createBoundsObject(createFacade,
-                         cr::CreativeObjectKind::Crate,
-                         {{1.0, 0.0, 5.0}, {2.0, 1.0, 6.0}});
-  const cr::CreativeDocumentCreateReceipt beam =
-      createBoundsObject(createFacade,
-                         cr::CreativeObjectKind::Beam,
-                         {{0.0, 1.0, 0.0}, {4.0, 1.35, 0.35}});
-  const cr::CreativeDocumentCreateReceipt point =
-      createPointObject(createFacade,
-                        cr::CreativeObjectKind::PointLight,
-                        {6.25, 1.5, -2.75});
-  const cr::CreativeDocumentCreateReceipt path = createPatrolRoute(createFacade);
+  const BakedCreativeProofObjects objects =
+      createBakedCreativeProofObjects(createFacade);
   const iggy3d::CreativeWorldSaveResult saved =
       iggy3d::saveCreativeWorld(
           saveRequest(options,
@@ -957,12 +1065,12 @@ bool openLaunchRefreshesBakedActiveRoomFromSavedCreativeDocument() {
           : iggy3d::SceneProjectionResult{};
 
   return expect(created.accepted, "open baked setup create accepted") &&
-         expect(floor.accepted, "open baked setup floor created") &&
-         expect(wall.accepted, "open baked setup wall created") &&
-         expect(crate.accepted, "open baked setup crate created") &&
-         expect(beam.accepted, "open baked setup beam created") &&
-         expect(point.accepted, "open baked setup point created") &&
-         expect(path.accepted, "open baked setup path created") &&
+         expect(objects.floor.accepted, "open baked setup floor created") &&
+         expect(objects.wall.accepted, "open baked setup wall created") &&
+         expect(objects.crate.accepted, "open baked setup crate created") &&
+         expect(objects.beam.accepted, "open baked setup beam created") &&
+         expect(objects.point.accepted, "open baked setup point created") &&
+         expect(objects.path.accepted, "open baked setup path created") &&
          expect(saved.accepted, "open baked setup saved") &&
          expect(createFacade.document().dirtyFlags() == 0U,
                 "open baked setup save drained dirty") &&
@@ -1292,6 +1400,9 @@ bool currentCreativeWorldSaveDrainsDirtyAndPersistsDocument() {
                 "current save active dirty after") &&
          expect(window.activeCreativeSaveSavedAtUtc != "none",
                 "current save saved timestamp") &&
+         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+                                                   window,
+                                                   "current save") &&
          expect(opened.accepted, "current save reopen accepted") &&
          expect(opened.objectCount == 1U, "current save reopen object count") &&
          expect(openFacade.document().findObject(createdObject.objectId) != nullptr,
@@ -1320,7 +1431,8 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
         facade.createDocumentObject(cr::CreativeObjectKind::Room);
     const cr::CreativeObjectDirtyFlags dirtyBefore =
         facade.document().dirtyFlags();
-    window.activeCreativeSaveId = "none";
+    app.identity.saveId = "none";
+    iggy3d::mirrorProductActiveCreativeIdentity(app.identity, window);
 
     const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
         iggy3d::saveProductCurrentCreativeWorld(options, app, "unit", window);
@@ -1338,7 +1450,10 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
                 "missing id facade dirty preserved") ||
         !expect(window.activeCreativeSaveStatus ==
                     "product_creative_save_id_missing",
-                "missing id window status")) {
+                "missing id window status") ||
+        !expectActiveCreativeIdentityMirrorsWindow(app.identity,
+                                                   window,
+                                                   "missing id save")) {
       return false;
     }
   }
@@ -1378,7 +1493,10 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
                 "inactive facade dirty preserved") ||
         !expect(window.activeCreativeSaveStatus ==
                     "product_creative_save_inactive",
-                "inactive window status")) {
+                "inactive window status") ||
+        !expectActiveCreativeIdentityMirrorsWindow(app.identity,
+                                                   window,
+                                                   "inactive save")) {
       return false;
     }
   }
@@ -1386,9 +1504,10 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
   const iggy3d::ProductAppOptions options = testOptions("current_save_invalid_doc");
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreativeSaveId = "save_001";
-  window.activeCreativeWorldId = "world_0001";
   cr::CreativeAppState app;
+  app.identity.saveId = "save_001";
+  app.identity.worldId = "world_0001";
+  iggy3d::mirrorProductActiveCreativeIdentity(app.identity, window);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
       iggy3d::saveProductCurrentCreativeWorld(options, app, "unit", window);
@@ -1400,7 +1519,10 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
          expect(saved.dirtyFlagsAfter == 0U, "invalid doc dirty after") &&
          expect(window.activeCreativeSaveStatus ==
                     "product_creative_save_document_id_missing",
-                "invalid doc window status");
+                "invalid doc window status") &&
+         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+                                                   window,
+                                                   "invalid doc save");
 }
 
 bool pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() {
@@ -1469,6 +1591,9 @@ bool pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() {
                 "pause creative save remains creative") &&
          expect(window.activeProductSaveId == "none",
                 "pause creative save does not set product save id") &&
+         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+                                                   window,
+                                                   "pause creative save") &&
          expect(opened.accepted, "pause creative save reopen accepted") &&
          expect(opened.objectCount == 1U, "pause creative save reopen object") &&
          expect(openFacade.document().findObject(createdObject.objectId) != nullptr,
@@ -1519,6 +1644,45 @@ bool pauseCreativeSaveNullFacadeFailsClosed() {
                 "pause creative null keeps active session") &&
          expect(window.activeProductSaveId == "none",
                 "pause creative null does not set product save id");
+}
+
+bool pauseSaveUsesCreativeIdentityInsteadOfStaleWindowMirror() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("pause_stale_creative_identity");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.activeCreativeSaveId = "stale_save";
+  window.activeCreativeWorldId = "stale_world";
+  window.activeCreativeDocumentId = 42U;
+  window.activeCreativeObjectCount = 3U;
+  window.activeCreativeNextObjectId = 7U;
+
+  const iggy3d::ProductPauseSaveFlowResult saved =
+      iggy3d::executeProductPauseSaveFlow(
+          iggy3d::ProductPauseSaveFlowKind::Save,
+          options,
+          frontend,
+          activeSession,
+          window,
+          &app);
+
+  return expect(!app.identity.worldActive(),
+                "stale mirror setup has inactive source identity") &&
+         expect(!saved.creativeSaveRequested,
+                "stale mirror does not request creative save") &&
+         expect(saved.write.status == "product_save_session_missing",
+                "stale mirror routes to product save fallback") &&
+         expect(saved.launchStatus == "product_save_session_missing",
+                "stale mirror launch status from product save") &&
+         expect(window.activeCreativeSaveStatus ==
+                    "creative_world_save_not_requested",
+                "stale mirror leaves creative save mirror unchanged") &&
+         expect(window.activeCreativeSaveId == "stale_save",
+                "stale mirror compatibility field preserved");
 }
 
 bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
@@ -1590,6 +1754,9 @@ bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
                 "pause creative save exit dirty drained") &&
          expect(window.activeProductSaveId == "none",
                 "pause creative save exit does not set product save id") &&
+         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+                                                   window,
+                                                   "pause creative save exit") &&
          expect(opened.accepted, "pause creative save exit reopen accepted") &&
          expect(opened.objectCount == 1U,
                 "pause creative save exit reopen object") &&
@@ -1617,7 +1784,8 @@ bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
       facade.createDocumentObject(cr::CreativeObjectKind::Room);
   const cr::CreativeObjectDirtyFlags dirtyBefore =
       facade.document().dirtyFlags();
-  window.activeCreativeSaveId = "none";
+  app.identity.saveId = "none";
+  iggy3d::mirrorProductActiveCreativeIdentity(app.identity, window);
   const iggy3d::ProductMenuActionResult saved =
       confirmPauseAction(options,
                          iggy3d::FrontendAction::SaveAndExit,
@@ -1648,7 +1816,11 @@ bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
                 "pause creative save exit failure dirty preserved") &&
          expect(window.activeCreativeSaveStatus ==
                     "product_creative_save_id_missing",
-                "pause creative save exit failure active status");
+                "pause creative save exit failure active status") &&
+         expectActiveCreativeIdentityMirrorsWindow(
+             app.identity,
+             window,
+             "pause creative save exit failure");
 }
 
 bool pauseCreativeReturnToTitleClearsUndoStack() {
@@ -1696,7 +1868,14 @@ bool pauseCreativeReturnToTitleClearsUndoStack() {
          expect(!window.creativeUndoAvailable,
                 "pause return window undo unavailable") &&
          expect(window.creativeUndoDepth == 0U,
-                "pause return window undo depth");
+                "pause return window undo depth") &&
+         expect(window.activeCreativeSaveId == "none",
+                "pause return active creative save id cleared") &&
+         expect(window.activeCreativeDocumentId == cr::kInvalidDocumentId,
+                "pause return active creative document id cleared") &&
+         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+                                                   window,
+                                                   "pause return");
 }
 
 bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
@@ -1858,27 +2037,8 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
                           activeSession,
                           window,
                           app);
-  const cr::CreativeDocumentCreateReceipt floor =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Floor,
-                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
-  const cr::CreativeDocumentCreateReceipt wall =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Wall,
-                         {{5.0, 0.0, 0.0}, {9.0, 2.5, 0.25}});
-  const cr::CreativeDocumentCreateReceipt crate =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Crate,
-                         {{1.0, 0.0, 5.0}, {2.0, 1.0, 6.0}});
-  const cr::CreativeDocumentCreateReceipt beam =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Beam,
-                         {{0.0, 1.0, 0.0}, {4.0, 1.35, 0.35}});
-  const cr::CreativeDocumentCreateReceipt point =
-      createPointObject(facade,
-                        cr::CreativeObjectKind::PointLight,
-                        {6.25, 1.5, -2.75});
-  const cr::CreativeDocumentCreateReceipt path = createPatrolRoute(facade);
+  const BakedCreativeProofObjects objects =
+      createBakedCreativeProofObjects(facade);
   const cr::CreativeObjectDirtyFlags dirtyBefore =
       facade.document().dirtyFlags();
 
@@ -1896,12 +2056,12 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
 
   return expect(launched.accepted, "baked room setup launch accepted") &&
          expect(activeSession.has_value(), "baked room active session") &&
-         expect(floor.accepted, "baked room floor created") &&
-         expect(wall.accepted, "baked room wall created") &&
-         expect(crate.accepted, "baked room crate created") &&
-         expect(beam.accepted, "baked room beam created") &&
-         expect(point.accepted, "baked room point created") &&
-         expect(path.accepted, "baked room path created") &&
+         expect(objects.floor.accepted, "baked room floor created") &&
+         expect(objects.wall.accepted, "baked room wall created") &&
+         expect(objects.crate.accepted, "baked room crate created") &&
+         expect(objects.beam.accepted, "baked room beam created") &&
+         expect(objects.point.accepted, "baked room point created") &&
+         expect(objects.path.accepted, "baked room path created") &&
          expect(dirtyBefore != 0U, "baked room dirty before refresh") &&
          expect(refreshed.accepted, "baked room refresh accepted") &&
          expect(refreshed.status ==
@@ -1999,170 +2159,188 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
                 "baked room dirty flags preserved");
 }
 
-bool manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() {
-  const iggy3d::ProductAppOptions options =
-      testOptions("manual_baked_room_rebuild");
+struct ManualRebuildRoomScenario {
+  iggy3d::ProductAppOptions options;
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
   cr::CreativeAppState app;
-  cr::Facade& facade = app.facade;
-  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
-      launchCreativeWorld(options,
+  iggy3d::ProductCreativeNewWorldLaunchResult launched;
+  BakedCreativeProofObjects objects;
+  cr::CreativeObjectDirtyFlags dirtyBefore = 0;
+  std::uint64_t undoDepthBeforeCommand = 0;
+  bool activeRoomLoadedBeforeCommand = false;
+  bool clicked = false;
+  iggy3d::SceneProjectionResult projection;
+};
+
+ManualRebuildRoomScenario runManualRebuildRoomScenario(std::string_view name) {
+  ManualRebuildRoomScenario scenario;
+  scenario.options = testOptions(name);
+  scenario.launched =
+      launchCreativeWorld(scenario.options,
                           launchRequest("Manual Baked Active Room",
                                         "2026-07-05T12:10:00Z"),
-                          frontend,
-                          activeSession,
-                          window,
-                          app);
-  const cr::CreativeDocumentCreateReceipt floor =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Floor,
-                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
-  const cr::CreativeDocumentCreateReceipt wall =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Wall,
-                         {{5.0, 0.0, 0.0}, {9.0, 2.5, 0.25}});
-  const cr::CreativeDocumentCreateReceipt crate =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Crate,
-                         {{1.0, 0.0, 5.0}, {2.0, 1.0, 6.0}});
-  const cr::CreativeDocumentCreateReceipt beam =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Beam,
-                         {{0.0, 1.0, 0.0}, {4.0, 1.35, 0.35}});
-  const cr::CreativeDocumentCreateReceipt point =
-      createPointObject(facade,
-                        cr::CreativeObjectKind::PointLight,
-                        {6.25, 1.5, -2.75});
-  const cr::CreativeDocumentCreateReceipt path = createPatrolRoute(facade);
-  const cr::CreativeObjectDirtyFlags dirtyBefore =
-      facade.document().dirtyFlags();
-  cr::pushCreativeUndoSnapshot(app.undoStack, facade.document());
-  const std::uint64_t undoDepthBeforeCommand =
-      cr::creativeUndoDepth(app.undoStack);
-  window.creativeUndoAvailable = cr::creativeUndoAvailable(app.undoStack);
-  window.creativeUndoDepth = undoDepthBeforeCommand;
-  const bool activeRoomLoadedBeforeCommand = window.activeRoom.loaded;
-  window.creativeBakedRoomStale = true;
-  window.creativeBakedRoomStaleDocumentId = facade.document().id();
-  window.creativeBakedRoomStaleRevision = facade.document().revision();
-  window.creativeBakedRoomStaleStatus =
-      "creative_baked_room_stale_document_changed";
-  window.creativeBakedRoomStaleReasonCode =
-      "creative_baked_room_stale_document_changed";
+                          scenario.frontend,
+                          scenario.activeSession,
+                          scenario.window,
+                          scenario.app);
+  cr::Facade& facade = scenario.app.facade;
+  scenario.objects = createBakedCreativeProofObjects(facade);
+  scenario.dirtyBefore = facade.document().dirtyFlags();
+  cr::pushCreativeUndoSnapshot(scenario.app.undoStack, facade.document());
+  scenario.undoDepthBeforeCommand =
+      cr::creativeUndoDepth(scenario.app.undoStack);
+  scenario.window.creativeUndoAvailable =
+      cr::creativeUndoAvailable(scenario.app.undoStack);
+  scenario.window.creativeUndoDepth = scenario.undoDepthBeforeCommand;
+  scenario.activeRoomLoadedBeforeCommand = scenario.window.activeRoom.loaded;
+  markCreativeBakedRoomStale(scenario.window, facade.document());
 
-  const bool clicked = clickCreativeRebuildRoomThroughInputFrame(
-      options,
-      frontend,
-      activeSession,
-      window,
-      app);
-  const iggy3d::SceneProjectionResult projection =
-      activeSession.has_value()
-          ? iggy3d::buildSceneProjection(activeSession->state(),
-                                         &window.activeRoom.room)
+  scenario.clicked = clickCreativeRebuildRoomThroughInputFrame(
+      scenario.options,
+      scenario.frontend,
+      scenario.activeSession,
+      scenario.window,
+      scenario.app);
+  scenario.projection =
+      scenario.activeSession.has_value()
+          ? iggy3d::buildSceneProjection(scenario.activeSession->state(),
+                                         &scenario.window.activeRoom.room)
           : iggy3d::SceneProjectionResult{};
+  return scenario;
+}
 
-  return expect(launched.accepted, "manual rebuild setup launch accepted") &&
-         expect(activeSession.has_value(), "manual rebuild active session") &&
-         expect(!launched.bakedActiveRoomRefreshAccepted,
+bool manualRebuildRoomCommandReportsRefreshThroughInputFrame() {
+  ManualRebuildRoomScenario scenario =
+      runManualRebuildRoomScenario("manual_baked_room_rebuild_command");
+  cr::Facade& facade = scenario.app.facade;
+
+  return expect(scenario.launched.accepted,
+                "manual rebuild setup launch accepted") &&
+         expect(scenario.activeSession.has_value(),
+                "manual rebuild active session") &&
+         expect(!scenario.launched.bakedActiveRoomRefreshAccepted,
                 "manual rebuild launch starts blank") &&
-         expect(!activeRoomLoadedBeforeCommand,
+         expect(!scenario.activeRoomLoadedBeforeCommand,
                 "manual rebuild active room starts blank") &&
-         expect(floor.accepted, "manual rebuild floor created") &&
-         expect(wall.accepted, "manual rebuild wall created") &&
-         expect(crate.accepted, "manual rebuild crate created") &&
-         expect(beam.accepted, "manual rebuild beam created") &&
-         expect(point.accepted, "manual rebuild point created") &&
-         expect(path.accepted, "manual rebuild path created") &&
-         expect(dirtyBefore != 0U, "manual rebuild dirty before command") &&
-         expect(clicked, "manual rebuild row clicked through input frame") &&
-         expect(window.creativeUiInputConsumed,
+         expect(scenario.objects.floor.accepted,
+                "manual rebuild floor created") &&
+         expect(scenario.objects.wall.accepted,
+                "manual rebuild wall created") &&
+         expect(scenario.objects.crate.accepted,
+                "manual rebuild crate created") &&
+         expect(scenario.objects.beam.accepted,
+                "manual rebuild beam created") &&
+         expect(scenario.objects.point.accepted,
+                "manual rebuild point created") &&
+         expect(scenario.objects.path.accepted,
+                "manual rebuild path created") &&
+         expect(scenario.dirtyBefore != 0U,
+                "manual rebuild dirty before command") &&
+         expect(scenario.clicked,
+                "manual rebuild row clicked through input frame") &&
+         expect(scenario.window.creativeUiInputConsumed,
                 "manual rebuild ui input consumed") &&
-         expect(window.creativeUiInputSemanticId ==
+         expect(scenario.window.creativeUiInputSemanticId ==
                     "creative.row.tools.rebuild_room",
                 "manual rebuild ui semantic") &&
-         expect(window.creativeUiCommandAccepted,
+         expect(scenario.window.creativeUiCommand.accepted,
                 "manual rebuild command accepted") &&
-         expect(!window.creativeUiCommandChanged,
+         expect(!scenario.window.creativeUiCommand.changed,
                 "manual rebuild command no document change") &&
-         expect(window.creativeUiCommandKind == "rebuild_room",
+         expect(scenario.window.creativeUiCommand.kind == "rebuild_room",
                 "manual rebuild command kind") &&
-         expect(window.creativeUiCommandStatus ==
+         expect(scenario.window.creativeUiCommand.status ==
                     "product_creative_ui_command_rebuild_room_requested",
                 "manual rebuild command status") &&
-         expect(window.creativeUiCommandBakedRoomRefreshRequested,
+         expect(scenario.window.creativeUiCommand.bakedRoomRefresh.requested,
                 "manual rebuild refresh requested") &&
-         expect(window.creativeUiCommandBakedRoomRefreshAccepted,
+         expect(scenario.window.creativeUiCommand.bakedRoomRefresh.accepted,
                 "manual rebuild refresh accepted") &&
-         expect(window.creativeUiCommandBakedRoomRefreshStatus ==
+         expect(scenario.window.creativeUiCommand.bakedRoomRefresh.status ==
                     "product_creative_baked_room_refreshed",
                 "manual rebuild refresh status") &&
-         expect(window.creativeUiCommandBakedRoomBakeMeasured,
+         expect(scenario.window.creativeUiCommand.bakedRoomRefresh.bakeMeasured,
                 "manual rebuild refresh measured") &&
-         expect(window.creativeUiCommandBakedRoomBakedDocumentRevision ==
+         expect(scenario.window.creativeUiCommand.bakedRoomRefresh.bakedDocumentRevision ==
                     facade.document().revision(),
                 "manual rebuild refresh revision") &&
-         expect(window.creativeUiCommandBakedRoomStaticMeshCount == 4U,
+         expect(scenario.window.creativeUiCommand.bakedRoomRefresh.staticMeshCount == 4U,
                 "manual rebuild refresh static mesh count") &&
-         expect(window.creativeUiCommandBakedRoomAnchorCount == 1U,
+         expect(scenario.window.creativeUiCommand.bakedRoomRefresh.anchorCount == 1U,
                 "manual rebuild refresh anchor count") &&
-         expect(window.creativeUiCommandBakedRoomSpatialSurfaceCount == 7U,
+         expect(scenario.window.creativeUiCommand.bakedRoomRefresh.spatialSurfaceCount == 7U,
                 "manual rebuild refresh spatial surface count") &&
-         expect(window.creativeUiCommandBakedRoomCollisionReady,
+         expect(scenario.window.creativeUiCommand.bakedRoomRefresh.collisionReady,
                 "manual rebuild refresh collision ready") &&
-         expect(window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount == 7U,
+         expect(scenario.window.creativeUiCommand.bakedRoomRefresh.collisionQuerySurfaceCount == 7U,
                 "manual rebuild refresh collision query count") &&
-         expect(window.creativeDocumentRevisionObserved,
+         expect(scenario.window.creativeDocumentRevisionObserved,
                 "manual rebuild revision observed") &&
-         expect(!window.creativeDocumentChangedThisFrame,
+         expect(!scenario.window.creativeDocumentChangedThisFrame,
                 "manual rebuild no document mutation") &&
-         expect(cr::creativeUndoDepth(app.undoStack) == undoDepthBeforeCommand,
+         expect(cr::creativeUndoDepth(scenario.app.undoStack) ==
+                    scenario.undoDepthBeforeCommand,
                 "manual rebuild undo depth preserved") &&
-         expect(window.creativeUndoAvailable,
+         expect(scenario.window.creativeUndoAvailable,
                 "manual rebuild window undo available preserved") &&
-         expect(window.creativeUndoDepth == undoDepthBeforeCommand,
+         expect(scenario.window.creativeUndoDepth ==
+                    scenario.undoDepthBeforeCommand,
                 "manual rebuild window undo depth preserved") &&
-         expect(!window.creativeBakedRoomStale,
+         expect(!scenario.window.creativeBakedRoomStale,
                 "manual rebuild clears stale on accepted refresh") &&
-         expect(window.creativeBakedRoomStaleDocumentId ==
+         expect(scenario.window.creativeBakedRoomStaleDocumentId ==
                     facade.document().id(),
                 "manual rebuild stale doc id fresh") &&
-         expect(window.creativeBakedRoomStaleRevision ==
+         expect(scenario.window.creativeBakedRoomStaleRevision ==
                     facade.document().revision(),
                 "manual rebuild stale revision fresh") &&
-         expect(window.creativeBakedRoomStaleStatus ==
+         expect(scenario.window.creativeBakedRoomStaleStatus ==
                     "creative_baked_room_fresh",
-                "manual rebuild stale status fresh") &&
-         expect(window.activeRoom.loaded,
+                "manual rebuild stale status fresh");
+}
+
+bool manualRebuildRoomCommandLoadsActiveRoomThroughInputFrame() {
+  ManualRebuildRoomScenario scenario =
+      runManualRebuildRoomScenario("manual_baked_room_rebuild_active_room");
+  cr::Facade& facade = scenario.app.facade;
+
+  return expect(scenario.launched.accepted,
+                "manual rebuild active setup launch accepted") &&
+         expect(scenario.clicked,
+                "manual rebuild active row clicked") &&
+         expect(scenario.window.activeRoom.loaded,
                 "manual rebuild active room loaded") &&
-         expect(window.activeRoom.staticMeshCount == 4U,
+         expect(scenario.window.activeRoom.staticMeshCount == 4U,
                 "manual rebuild active mesh count") &&
-         expect(window.activeRoom.anchorCount == 1U,
+         expect(scenario.window.activeRoom.anchorCount == 1U,
                 "manual rebuild active anchor count") &&
-         expect(window.activeRoom.spatialSurfaceCount == 7U,
+         expect(scenario.window.activeRoom.spatialSurfaceCount == 7U,
                 "manual rebuild active surface count") &&
-         expect(window.activeRoomCollision.ready,
+         expect(scenario.window.activeRoomCollision.ready,
                 "manual rebuild collision ready") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 7U,
+         expect(scenario.window.activeRoomCollision.querySurfaceCount == 7U,
                 "manual rebuild collision query count") &&
-         expect(projection.room.loaded, "manual rebuild projection loaded") &&
-         expect(countProjectedRole(projection.room, "floor") == 1U,
+         expect(scenario.projection.room.loaded,
+                "manual rebuild projection loaded") &&
+         expect(countProjectedRole(scenario.projection.room, "floor") == 1U,
                 "manual rebuild projection floor count") &&
-         expect(countProjectedRole(projection.room, "wall") == 1U,
+         expect(countProjectedRole(scenario.projection.room, "wall") == 1U,
                 "manual rebuild projection wall count") &&
-         expect(countProjectedRole(projection.room, "prop") == 2U,
+         expect(countProjectedRole(scenario.projection.room, "prop") == 2U,
                 "manual rebuild projection prop count") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+         expect(scenario.window.interactionMode ==
+                    iggy3d::ProductInteractionMode::Creative,
                 "manual rebuild interaction remains creative") &&
-         expect(window.activeCreativeSaveId == launched.saveId,
+         expect(scenario.window.activeCreativeSaveId == scenario.launched.saveId,
                 "manual rebuild active creative save preserved") &&
-         expect(window.activeCreativeDocumentId == launched.documentId,
+         expect(scenario.window.activeCreativeDocumentId ==
+                    scenario.launched.documentId,
                 "manual rebuild active creative document preserved") &&
-         expect(window.activeProductSaveId == "none",
+         expect(scenario.window.activeProductSaveId == "none",
                 "manual rebuild active product save unchanged") &&
-         expect(facade.document().dirtyFlags() == dirtyBefore,
+         expect(facade.document().dirtyFlags() == scenario.dirtyBefore,
                 "manual rebuild dirty flags preserved");
 }
 
@@ -2183,15 +2361,8 @@ bool manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() {
                           app);
   const cr::CreativeObjectDirtyFlags dirtyBefore =
       app.facade.document().dirtyFlags();
-  window.activeRoom = sentinelActiveRoom();
-  window.activeRoomCollision = sentinelActiveRoomCollision();
-  window.creativeBakedRoomStale = true;
-  window.creativeBakedRoomStaleDocumentId = app.facade.document().id();
-  window.creativeBakedRoomStaleRevision = app.facade.document().revision();
-  window.creativeBakedRoomStaleStatus =
-      "creative_baked_room_stale_document_changed";
-  window.creativeBakedRoomStaleReasonCode =
-      "creative_baked_room_stale_document_changed";
+  installSentinelRoomState(window);
+  markCreativeBakedRoomStale(window, app.facade.document());
 
   const bool clicked = clickCreativeRebuildRoomThroughInputFrame(
       options,
@@ -2203,32 +2374,32 @@ bool manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() {
   return expect(launched.accepted,
                 "manual empty rebuild setup launch accepted") &&
          expect(clicked, "manual empty rebuild clicked") &&
-         expect(window.creativeUiCommandKind == "rebuild_room",
+         expect(window.creativeUiCommand.kind == "rebuild_room",
                 "manual empty rebuild command kind") &&
-         expect(window.creativeUiCommandBakedRoomRefreshRequested,
+         expect(window.creativeUiCommand.bakedRoomRefresh.requested,
                 "manual empty rebuild refresh requested") &&
-         expect(window.creativeUiCommandBakedRoomRefreshAccepted,
+         expect(window.creativeUiCommand.bakedRoomRefresh.accepted,
                 "manual empty rebuild refresh accepted clear") &&
-         expect(window.creativeUiCommandBakedRoomRefreshStatus ==
+         expect(window.creativeUiCommand.bakedRoomRefresh.status ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "manual empty rebuild refresh status") &&
-         expect(window.creativeUiCommandBakedRoomRefreshReasonCode ==
+         expect(window.creativeUiCommand.bakedRoomRefresh.reasonCode ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "manual empty rebuild refresh reason") &&
-         expect(window.creativeUiCommandBakedRoomBakeMeasured,
+         expect(window.creativeUiCommand.bakedRoomRefresh.bakeMeasured,
                 "manual empty rebuild refresh measured") &&
-         expect(window.creativeUiCommandBakedRoomBakedDocumentRevision ==
+         expect(window.creativeUiCommand.bakedRoomRefresh.bakedDocumentRevision ==
                     app.facade.document().revision(),
                 "manual empty rebuild refresh revision") &&
-         expect(window.creativeUiCommandBakedRoomStaticMeshCount == 0U,
+         expect(window.creativeUiCommand.bakedRoomRefresh.staticMeshCount == 0U,
                 "manual empty rebuild static mesh count") &&
-         expect(window.creativeUiCommandBakedRoomAnchorCount == 0U,
+         expect(window.creativeUiCommand.bakedRoomRefresh.anchorCount == 0U,
                 "manual empty rebuild anchor count") &&
-         expect(window.creativeUiCommandBakedRoomSpatialSurfaceCount == 0U,
+         expect(window.creativeUiCommand.bakedRoomRefresh.spatialSurfaceCount == 0U,
                 "manual empty rebuild spatial surface count") &&
-         expect(!window.creativeUiCommandBakedRoomCollisionReady,
+         expect(!window.creativeUiCommand.bakedRoomRefresh.collisionReady,
                 "manual empty rebuild collision not ready") &&
-         expect(window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount == 0U,
+         expect(window.creativeUiCommand.bakedRoomRefresh.collisionQuerySurfaceCount == 0U,
                 "manual empty rebuild collision query count") &&
          expect(window.creativeDocumentRevisionObserved,
                 "manual empty rebuild revision observed") &&
@@ -2293,207 +2464,507 @@ bool manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() {
                 "manual empty rebuild dirty flags preserved");
 }
 
-bool generateRoomShellFromSelectedRoomBakesAndUndoClearsThroughInputFrame() {
-  const iggy3d::ProductAppOptions options =
-      testOptions("generate_room_shell");
+struct GeneratedRoomShellScenario {
+  iggy3d::ProductAppOptions options;
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
   cr::CreativeAppState app;
-  cr::Facade& facade = app.facade;
-  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
-      launchCreativeWorld(options,
-                          launchRequest("Generate Room Shell",
-                                        "2026-07-05T13:25:00Z"),
-                          frontend,
-                          activeSession,
-                          window,
-                          app);
-
-  const bool createRoomClicked = clickCreativeUiRowThroughInputFrame(
-      options,
-      frontend,
-      activeSession,
-      window,
-      app,
-      "creative.row.create.create_room");
-  const cr::CreativeObjectId roomId = window.creativeUiCommandCreateObjectId;
-  const bool metadataRoomOnlyAfterCreate =
-      facade.document().objectCount() == 1U &&
-      facade.findObject(roomId) != nullptr && !window.activeRoom.loaded &&
-      window.creativeBakedRoomAutoRefreshAccepted &&
-      window.creativeBakedRoomAutoRefreshClearedActiveRoom;
-  const std::uint64_t undoDepthAfterCreate =
-      cr::creativeUndoDepth(app.undoStack);
-  const bool selected = selectFacadeObject(facade, roomId);
-
-  const bool shellClicked = clickCreativeGenerateRoomShellThroughInputFrame(
-      options,
-      frontend,
-      activeSession,
-      window,
-      app);
-
+  iggy3d::ProductCreativeNewWorldLaunchResult launched;
+  cr::CreativeObjectId roomId = cr::kInvalidObjectId;
+  bool createRoomClicked = false;
+  bool metadataRoomOnlyAfterCreate = false;
+  std::uint64_t undoDepthAfterCreate = 0;
+  bool selected = false;
+  bool shellClicked = false;
   std::uint64_t generatedFloorCount = 0;
   std::uint64_t generatedWallCount = 0;
   std::uint64_t bakedFloorRoleCount = 0;
   std::uint64_t bakedWallRoleCount = 0;
+  std::string shellInputSemantic;
+  std::string shellCommandKind;
+  bool shellCommandAccepted = false;
+  bool shellCommandChanged = false;
+  bool shellReceiptRequested = false;
+  bool shellReceiptAccepted = false;
+  bool shellReceiptChanged = false;
+  cr::CreativeObjectId shellReceiptRoomObjectId = cr::kInvalidObjectId;
+  std::uint64_t shellGeneratedObjectCount = 0;
+  std::uint64_t shellFloorCount = 0;
+  std::uint64_t shellWallCount = 0;
+  std::string shellReasonCode;
+  std::uint64_t shellDocumentObjectCount = 0;
+  bool shellSelectionCleared = false;
+  bool shellDocumentChanged = false;
+  bool shellAutoRefreshRequested = false;
+  bool shellAutoRefreshAccepted = false;
+  bool shellAutoRefreshCleared = false;
+  std::uint64_t shellAutoRefreshStaticMeshCount = 0;
+  std::uint64_t shellAutoRefreshSpatialSurfaceCount = 0;
+  bool shellAutoRefreshCollisionReady = false;
+  bool shellActiveRoomLoaded = false;
+  std::uint64_t shellActiveRoomStaticMeshCount = 0;
+  std::uint64_t shellActiveRoomSpatialSurfaceCount = 0;
+  bool shellActiveRoomCollisionReady = false;
+  std::uint64_t shellActiveRoomCollisionQuerySurfaceCount = 0;
+  bool shellBakedRoomStale = false;
+  std::uint64_t shellWindowUndoDepth = 0;
+  std::uint64_t undoDepthAfterShell = 0;
+};
+
+GeneratedRoomShellScenario generateRoomShellScenario(std::string_view name) {
+  GeneratedRoomShellScenario scenario;
+  scenario.options = testOptions(name);
+  scenario.launched =
+      launchCreativeWorld(scenario.options,
+                          launchRequest("Generate Room Shell",
+                                        "2026-07-05T13:25:00Z"),
+                          scenario.frontend,
+                          scenario.activeSession,
+                          scenario.window,
+                          scenario.app);
+
+  cr::Facade& facade = scenario.app.facade;
+  scenario.createRoomClicked = clickCreativeUiRowThroughInputFrame(
+      scenario.options,
+      scenario.frontend,
+      scenario.activeSession,
+      scenario.window,
+      scenario.app,
+      "creative.row.create.create_room");
+  scenario.roomId = scenario.window.creativeUiCommand.create.objectId;
+  scenario.metadataRoomOnlyAfterCreate =
+      facade.document().objectCount() == 1U &&
+      facade.findObject(scenario.roomId) != nullptr &&
+      !scenario.window.activeRoom.loaded &&
+      scenario.window.creativeBakedRoomAutoRefresh.accepted &&
+      scenario.window.creativeBakedRoomAutoRefresh.clearedActiveRoom;
+  scenario.undoDepthAfterCreate =
+      cr::creativeUndoDepth(scenario.app.undoStack);
+  scenario.selected = selectFacadeObject(facade, scenario.roomId);
+
+  scenario.shellClicked = clickCreativeGenerateRoomShellThroughInputFrame(
+      scenario.options,
+      scenario.frontend,
+      scenario.activeSession,
+      scenario.window,
+      scenario.app);
+
   for (const cr::CreativeObject& object : facade.document().objects()) {
-    if (object.parentId.has_value() && object.parentId.value() == roomId) {
-      generatedFloorCount += object.kind == cr::CreativeObjectKind::Floor ? 1U : 0U;
-      generatedWallCount += object.kind == cr::CreativeObjectKind::Wall ? 1U : 0U;
+    if (object.parentId.has_value() &&
+        object.parentId.value() == scenario.roomId) {
+      scenario.generatedFloorCount +=
+          object.kind == cr::CreativeObjectKind::Floor ? 1U : 0U;
+      scenario.generatedWallCount +=
+          object.kind == cr::CreativeObjectKind::Wall ? 1U : 0U;
     }
   }
   for (const iggy3d::RoomStaticMeshAsset& mesh :
-       window.activeRoom.room.staticMeshes) {
-    bakedFloorRoleCount += mesh.role == "floor" ? 1U : 0U;
-    bakedWallRoleCount += mesh.role == "wall" ? 1U : 0U;
+       scenario.window.activeRoom.room.staticMeshes) {
+    scenario.bakedFloorRoleCount += mesh.role == "floor" ? 1U : 0U;
+    scenario.bakedWallRoleCount += mesh.role == "wall" ? 1U : 0U;
   }
-  const std::string shellInputSemantic = window.creativeUiInputSemanticId;
-  const std::string shellCommandKind = window.creativeUiCommandKind;
-  const bool shellCommandAccepted = window.creativeUiCommandAccepted;
-  const bool shellCommandChanged = window.creativeUiCommandChanged;
-  const bool shellReceiptRequested = window.creativeUiCommandShellRequested;
-  const bool shellReceiptAccepted = window.creativeUiCommandShellAccepted;
-  const bool shellReceiptChanged = window.creativeUiCommandShellChanged;
-  const cr::CreativeObjectId shellReceiptRoomObjectId =
-      window.creativeUiCommandShellRoomObjectId;
-  const std::uint64_t shellGeneratedObjectCount =
-      window.creativeUiCommandShellGeneratedObjectCount;
-  const std::uint64_t shellFloorCount = window.creativeUiCommandShellFloorCount;
-  const std::uint64_t shellWallCount = window.creativeUiCommandShellWallCount;
-  const std::string shellReasonCode =
-      window.creativeUiCommandShellReasonCode;
-  const std::uint64_t shellDocumentObjectCount =
-      facade.document().objectCount();
-  const bool shellSelectionCleared =
+
+  scenario.shellInputSemantic = scenario.window.creativeUiInputSemanticId;
+  scenario.shellCommandKind = scenario.window.creativeUiCommand.kind;
+  scenario.shellCommandAccepted = scenario.window.creativeUiCommand.accepted;
+  scenario.shellCommandChanged = scenario.window.creativeUiCommand.changed;
+  scenario.shellReceiptRequested =
+      scenario.window.creativeUiCommand.shell.requested;
+  scenario.shellReceiptAccepted =
+      scenario.window.creativeUiCommand.shell.accepted;
+  scenario.shellReceiptChanged =
+      scenario.window.creativeUiCommand.shell.changed;
+  scenario.shellReceiptRoomObjectId =
+      scenario.window.creativeUiCommand.shell.roomObjectId;
+  scenario.shellGeneratedObjectCount =
+      scenario.window.creativeUiCommand.shell.generatedObjectCount;
+  scenario.shellFloorCount =
+      scenario.window.creativeUiCommand.shell.floorCount;
+  scenario.shellWallCount =
+      scenario.window.creativeUiCommand.shell.wallCount;
+  scenario.shellReasonCode =
+      scenario.window.creativeUiCommand.shell.reasonCode;
+  scenario.shellDocumentObjectCount = facade.document().objectCount();
+  scenario.shellSelectionCleared =
       facade.selectionState().selectedTarget.value == cr::kInvalidId;
-  const bool shellDocumentChanged = window.creativeDocumentChangedThisFrame;
-  const bool shellAutoRefreshRequested =
-      window.creativeBakedRoomAutoRefreshRequested;
-  const bool shellAutoRefreshAccepted =
-      window.creativeBakedRoomAutoRefreshAccepted;
-  const bool shellAutoRefreshCleared =
-      window.creativeBakedRoomAutoRefreshClearedActiveRoom;
-  const std::uint64_t shellAutoRefreshStaticMeshCount =
-      window.creativeBakedRoomAutoRefreshStaticMeshCount;
-  const std::uint64_t shellAutoRefreshSpatialSurfaceCount =
-      window.creativeBakedRoomAutoRefreshSpatialSurfaceCount;
-  const bool shellAutoRefreshCollisionReady =
-      window.creativeBakedRoomAutoRefreshCollisionReady;
-  const bool shellActiveRoomLoaded = window.activeRoom.loaded;
-  const std::uint64_t shellActiveRoomStaticMeshCount =
-      window.activeRoom.staticMeshCount;
-  const std::uint64_t shellActiveRoomSpatialSurfaceCount =
-      window.activeRoom.spatialSurfaceCount;
-  const bool shellActiveRoomCollisionReady = window.activeRoomCollision.ready;
-  const std::uint64_t shellActiveRoomCollisionQuerySurfaceCount =
-      window.activeRoomCollision.querySurfaceCount;
-  const bool shellBakedRoomStale = window.creativeBakedRoomStale;
-  const std::uint64_t shellWindowUndoDepth = window.creativeUndoDepth;
-  const std::uint64_t undoDepthAfterShell =
-      cr::creativeUndoDepth(app.undoStack);
+  scenario.shellDocumentChanged =
+      scenario.window.creativeDocumentChangedThisFrame;
+  scenario.shellAutoRefreshRequested =
+      scenario.window.creativeBakedRoomAutoRefresh.requested;
+  scenario.shellAutoRefreshAccepted =
+      scenario.window.creativeBakedRoomAutoRefresh.accepted;
+  scenario.shellAutoRefreshCleared =
+      scenario.window.creativeBakedRoomAutoRefresh.clearedActiveRoom;
+  scenario.shellAutoRefreshStaticMeshCount =
+      scenario.window.creativeBakedRoomAutoRefresh.staticMeshCount;
+  scenario.shellAutoRefreshSpatialSurfaceCount =
+      scenario.window.creativeBakedRoomAutoRefresh.spatialSurfaceCount;
+  scenario.shellAutoRefreshCollisionReady =
+      scenario.window.creativeBakedRoomAutoRefresh.collisionReady;
+  scenario.shellActiveRoomLoaded = scenario.window.activeRoom.loaded;
+  scenario.shellActiveRoomStaticMeshCount =
+      scenario.window.activeRoom.staticMeshCount;
+  scenario.shellActiveRoomSpatialSurfaceCount =
+      scenario.window.activeRoom.spatialSurfaceCount;
+  scenario.shellActiveRoomCollisionReady =
+      scenario.window.activeRoomCollision.ready;
+  scenario.shellActiveRoomCollisionQuerySurfaceCount =
+      scenario.window.activeRoomCollision.querySurfaceCount;
+  scenario.shellBakedRoomStale = scenario.window.creativeBakedRoomStale;
+  scenario.shellWindowUndoDepth = scenario.window.creativeUndoDepth;
+  scenario.undoDepthAfterShell =
+      cr::creativeUndoDepth(scenario.app.undoStack);
+  return scenario;
+}
 
-  const bool undoClicked = clickCreativeUndoThroughInputFrame(
-      options,
-      frontend,
-      activeSession,
-      window,
-      app);
+bool generateRoomShellFromSelectedRoomBakesThroughInputFrame() {
+  GeneratedRoomShellScenario scenario =
+      generateRoomShellScenario("generate_room_shell");
 
-  return expect(launched.accepted, "shell launch accepted") &&
-         expect(createRoomClicked, "shell create room clicked") &&
-         expect(roomId != cr::kInvalidObjectId, "shell room created id") &&
-         expect(metadataRoomOnlyAfterCreate,
+  return expect(scenario.launched.accepted, "shell launch accepted") &&
+         expect(scenario.createRoomClicked, "shell create room clicked") &&
+         expect(scenario.roomId != cr::kInvalidObjectId,
+                "shell room created id") &&
+         expect(scenario.metadataRoomOnlyAfterCreate,
                 "create room stays metadata-only no-renderable") &&
-         expect(undoDepthAfterCreate == 1U,
+         expect(scenario.undoDepthAfterCreate == 1U,
                 "shell undo depth after create room") &&
-         expect(selected, "shell room selected") &&
-         expect(shellClicked, "shell row clicked") &&
-         expect(shellInputSemantic ==
+         expect(scenario.selected, "shell room selected") &&
+         expect(scenario.shellClicked, "shell row clicked") &&
+         expect(scenario.shellInputSemantic ==
                     "creative.row.selection.generate_room_shell",
                 "shell input semantic") &&
-         expect(shellCommandKind ==
+         expect(scenario.shellCommandKind ==
                     "generate_selected_room_shell",
                 "shell command kind") &&
-         expect(shellCommandAccepted, "shell command accepted") &&
-         expect(shellCommandChanged, "shell command changed") &&
-         expect(shellReceiptRequested, "shell receipt requested") &&
-         expect(shellReceiptAccepted, "shell receipt accepted") &&
-         expect(shellReceiptChanged, "shell receipt changed") &&
-         expect(shellReceiptRoomObjectId == roomId, "shell receipt room id") &&
-         expect(shellGeneratedObjectCount == 5U,
+         expect(scenario.shellCommandAccepted, "shell command accepted") &&
+         expect(scenario.shellCommandChanged, "shell command changed") &&
+         expect(scenario.shellReceiptRequested, "shell receipt requested") &&
+         expect(scenario.shellReceiptAccepted, "shell receipt accepted") &&
+         expect(scenario.shellReceiptChanged, "shell receipt changed") &&
+         expect(scenario.shellReceiptRoomObjectId == scenario.roomId,
+                "shell receipt room id") &&
+         expect(scenario.shellGeneratedObjectCount == 5U,
                 "shell generated object count") &&
-         expect(shellFloorCount == 1U, "shell floor count") &&
-         expect(shellWallCount == 4U, "shell wall count") &&
-         expect(shellReasonCode == "creative_room_shell_generated",
+         expect(scenario.shellFloorCount == 1U, "shell floor count") &&
+         expect(scenario.shellWallCount == 4U, "shell wall count") &&
+         expect(scenario.shellReasonCode == "creative_room_shell_generated",
                 "shell reason") &&
-         expect(shellDocumentObjectCount == 6U, "shell object count") &&
-         expect(generatedFloorCount == 1U, "shell generated floor") &&
-         expect(generatedWallCount == 4U, "shell generated walls") &&
-         expect(shellSelectionCleared, "shell install clears selection") &&
-         expect(shellDocumentChanged, "shell document changed") &&
-         expect(shellAutoRefreshRequested, "shell auto refresh requested") &&
-         expect(shellAutoRefreshAccepted, "shell auto refresh accepted") &&
-         expect(!shellAutoRefreshCleared, "shell auto refresh not cleared") &&
-         expect(shellAutoRefreshStaticMeshCount == 5U,
+         expect(scenario.shellDocumentObjectCount == 6U,
+                "shell object count") &&
+         expect(scenario.generatedFloorCount == 1U,
+                "shell generated floor") &&
+         expect(scenario.generatedWallCount == 4U,
+                "shell generated walls") &&
+         expect(scenario.shellSelectionCleared,
+                "shell install clears selection") &&
+         expect(scenario.shellDocumentChanged, "shell document changed") &&
+         expect(scenario.shellAutoRefreshRequested,
+                "shell auto refresh requested") &&
+         expect(scenario.shellAutoRefreshAccepted,
+                "shell auto refresh accepted") &&
+         expect(!scenario.shellAutoRefreshCleared,
+                "shell auto refresh not cleared") &&
+         expect(scenario.shellAutoRefreshStaticMeshCount == 5U,
                 "shell auto mesh count") &&
-         expect(shellAutoRefreshSpatialSurfaceCount == 9U,
+         expect(scenario.shellAutoRefreshSpatialSurfaceCount == 9U,
                 "shell auto surface count") &&
-         expect(shellAutoRefreshCollisionReady,
+         expect(scenario.shellAutoRefreshCollisionReady,
                 "shell auto collision ready") &&
-         expect(shellActiveRoomLoaded, "shell active room loaded") &&
-         expect(shellActiveRoomStaticMeshCount == 5U,
+         expect(scenario.shellActiveRoomLoaded, "shell active room loaded") &&
+         expect(scenario.shellActiveRoomStaticMeshCount == 5U,
                 "shell active mesh count") &&
-         expect(shellActiveRoomSpatialSurfaceCount == 9U,
+         expect(scenario.shellActiveRoomSpatialSurfaceCount == 9U,
                 "shell active surface count") &&
-         expect(bakedFloorRoleCount == 1U, "shell baked floor role") &&
-         expect(bakedWallRoleCount == 4U, "shell baked wall role") &&
-         expect(shellActiveRoomCollisionReady, "shell collision ready") &&
-         expect(shellActiveRoomCollisionQuerySurfaceCount == 9U,
+         expect(scenario.bakedFloorRoleCount == 1U,
+                "shell baked floor role") &&
+         expect(scenario.bakedWallRoleCount == 4U,
+                "shell baked wall role") &&
+         expect(scenario.shellActiveRoomCollisionReady,
+                "shell collision ready") &&
+         expect(scenario.shellActiveRoomCollisionQuerySurfaceCount == 9U,
                 "shell collision query count") &&
-         expect(undoDepthAfterShell == 2U,
+         expect(scenario.undoDepthAfterShell == 2U,
                 "shell undo depth after shell") &&
-         expect(shellWindowUndoDepth == 2U, "shell window undo depth") &&
-         expect(!shellBakedRoomStale, "shell stale fresh") &&
+         expect(scenario.shellWindowUndoDepth == 2U,
+                "shell window undo depth") &&
+         expect(!scenario.shellBakedRoomStale, "shell stale fresh");
+}
+
+bool generatedRoomShellParentDeleteRejectsThroughInputFrame() {
+  GeneratedRoomShellScenario scenario =
+      generateRoomShellScenario("generate_room_shell_parent_delete");
+  cr::Facade& facade = scenario.app.facade;
+
+  const bool reselectedForParentDelete =
+      selectFacadeObject(facade, scenario.roomId);
+  const std::uint64_t revisionBeforeParentDelete =
+      facade.document().revision();
+  const std::uint64_t objectCountBeforeParentDelete =
+      facade.document().objectCount();
+  const std::uint64_t undoDepthBeforeParentDelete =
+      cr::creativeUndoDepth(scenario.app.undoStack);
+  const bool activeRoomLoadedBeforeParentDelete =
+      scenario.window.activeRoom.loaded;
+  const std::uint64_t activeMeshCountBeforeParentDelete =
+      scenario.window.activeRoom.staticMeshCount;
+  const std::uint64_t activeSurfaceCountBeforeParentDelete =
+      scenario.window.activeRoom.spatialSurfaceCount;
+
+  const bool parentDeleteClicked = clickCreativeDeleteSelectedThroughInputFrame(
+      scenario.options,
+      scenario.frontend,
+      scenario.activeSession,
+      scenario.window,
+      scenario.app);
+  const std::string parentDeleteCommandKind =
+      scenario.window.creativeUiCommand.kind;
+  const bool parentDeleteCommandAccepted =
+      scenario.window.creativeUiCommand.accepted;
+  const bool parentDeleteCommandChanged =
+      scenario.window.creativeUiCommand.changed;
+  const bool parentDeleteRequested =
+      scenario.window.creativeUiCommand.deleteObject.requested;
+  const bool parentDeleteAccepted =
+      scenario.window.creativeUiCommand.deleteObject.accepted;
+  const bool parentDeleteChanged =
+      scenario.window.creativeUiCommand.deleteObject.changed;
+  const bool parentDeleteRemoved =
+      scenario.window.creativeUiCommand.deleteObject.removed;
+  const cr::CreativeObjectId parentDeleteObjectId =
+      scenario.window.creativeUiCommand.deleteObject.objectId;
+  const std::string parentDeleteObjectKind =
+      scenario.window.creativeUiCommand.deleteObject.objectKind;
+  const std::uint64_t parentDeleteRevisionBefore =
+      scenario.window.creativeUiCommand.deleteObject.revisionBefore;
+  const std::uint64_t parentDeleteRevisionAfter =
+      scenario.window.creativeUiCommand.deleteObject.revisionAfter;
+  const std::string parentDeleteStatus =
+      scenario.window.creativeUiCommand.deleteObject.status;
+  const std::string parentDeleteReasonCode =
+      scenario.window.creativeUiCommand.deleteObject.reasonCode;
+  const bool parentDeleteDocumentChanged =
+      scenario.window.creativeDocumentChangedThisFrame;
+  const bool parentDeleteAutoRefreshRequested =
+      scenario.window.creativeBakedRoomAutoRefresh.requested;
+  const bool parentDeleteActiveRoomLoaded = scenario.window.activeRoom.loaded;
+  const std::uint64_t parentDeleteActiveRoomStaticMeshCount =
+      scenario.window.activeRoom.staticMeshCount;
+  const std::uint64_t parentDeleteActiveRoomSpatialSurfaceCount =
+      scenario.window.activeRoom.spatialSurfaceCount;
+  const std::uint64_t undoDepthAfterParentDelete =
+      cr::creativeUndoDepth(scenario.app.undoStack);
+  const std::uint64_t objectCountAfterParentDelete =
+      facade.document().objectCount();
+  const std::uint64_t revisionAfterParentDelete =
+      facade.document().revision();
+  const bool parentDeleteSelectionStillRoom =
+      facade.selectionState().selectedTarget.value == scenario.roomId;
+
+  return expect(scenario.launched.accepted,
+                "shell parent delete launch accepted") &&
+         expect(scenario.shellClicked, "shell parent delete setup shell") &&
+         expect(reselectedForParentDelete,
+                "shell parent delete room reselected") &&
+         expect(parentDeleteClicked, "shell parent delete clicked") &&
+         expect(parentDeleteCommandKind == "delete_selected_object",
+                "shell parent delete command kind") &&
+         expect(!parentDeleteCommandAccepted,
+                "shell parent delete command rejected") &&
+         expect(!parentDeleteCommandChanged,
+                "shell parent delete command unchanged") &&
+         expect(parentDeleteRequested,
+                "shell parent delete requested") &&
+         expect(!parentDeleteAccepted,
+                "shell parent delete receipt rejected") &&
+         expect(!parentDeleteChanged,
+                "shell parent delete receipt unchanged") &&
+         expect(!parentDeleteRemoved,
+                "shell parent delete not removed") &&
+         expect(parentDeleteObjectId == scenario.roomId,
+                "shell parent delete object id") &&
+         expect(parentDeleteObjectKind == "Room",
+                "shell parent delete object kind") &&
+         expect(parentDeleteRevisionBefore == revisionBeforeParentDelete,
+                "shell parent delete revision before") &&
+         expect(parentDeleteRevisionAfter == revisionBeforeParentDelete,
+                "shell parent delete revision after") &&
+         expect(parentDeleteStatus == "ParentHasChildren",
+                "shell parent delete status") &&
+         expect(parentDeleteReasonCode == "parent_has_children",
+                "shell parent delete reason") &&
+         expect(objectCountAfterParentDelete == objectCountBeforeParentDelete,
+                "shell parent delete object count unchanged") &&
+         expect(revisionAfterParentDelete == revisionBeforeParentDelete,
+                "shell parent delete revision unchanged") &&
+         expect(!parentDeleteDocumentChanged,
+                "shell parent delete no document change") &&
+         expect(!parentDeleteAutoRefreshRequested,
+                "shell parent delete no auto refresh") &&
+         expect(parentDeleteActiveRoomLoaded ==
+                    activeRoomLoadedBeforeParentDelete,
+                "shell parent delete active room loaded unchanged") &&
+         expect(parentDeleteActiveRoomStaticMeshCount ==
+                    activeMeshCountBeforeParentDelete,
+                "shell parent delete active mesh count unchanged") &&
+         expect(parentDeleteActiveRoomSpatialSurfaceCount ==
+                    activeSurfaceCountBeforeParentDelete,
+                "shell parent delete active surface count unchanged") &&
+         expect(undoDepthAfterParentDelete == undoDepthBeforeParentDelete,
+                "shell parent delete undo depth unchanged") &&
+         expect(parentDeleteSelectionStillRoom,
+                "shell parent delete selection remains");
+}
+
+bool removeGeneratedRoomShellAndUndoRestoresThroughInputFrame() {
+  GeneratedRoomShellScenario scenario =
+      generateRoomShellScenario("generate_room_shell_remove_undo");
+  cr::Facade& facade = scenario.app.facade;
+  const bool reselectedForRemove = selectFacadeObject(facade, scenario.roomId);
+  const bool removeShellClicked = clickCreativeRemoveRoomShellThroughInputFrame(
+      scenario.options,
+      scenario.frontend,
+      scenario.activeSession,
+      scenario.window,
+      scenario.app);
+  const std::string removeShellInputSemantic =
+      scenario.window.creativeUiInputSemanticId;
+  const std::string removeShellCommandKind =
+      scenario.window.creativeUiCommand.kind;
+  const bool removeShellCommandAccepted =
+      scenario.window.creativeUiCommand.accepted;
+  const bool removeShellCommandChanged =
+      scenario.window.creativeUiCommand.changed;
+  const bool removeShellRequested =
+      scenario.window.creativeUiCommand.shell.requested;
+  const bool removeShellAccepted =
+      scenario.window.creativeUiCommand.shell.accepted;
+  const bool removeShellChanged =
+      scenario.window.creativeUiCommand.shell.changed;
+  const std::uint64_t removeShellRemovedObjectCount =
+      scenario.window.creativeUiCommand.shell.removedObjectCount;
+  const std::uint64_t removeShellFloorCount =
+      scenario.window.creativeUiCommand.shell.floorCount;
+  const std::uint64_t removeShellWallCount =
+      scenario.window.creativeUiCommand.shell.wallCount;
+  const std::string removeShellStatus =
+      scenario.window.creativeUiCommand.shell.status;
+  const std::string removeShellReasonCode =
+      scenario.window.creativeUiCommand.shell.reasonCode;
+  const bool removeShellDocumentChanged =
+      scenario.window.creativeDocumentChangedThisFrame;
+  const bool removeShellAutoRefreshRequested =
+      scenario.window.creativeBakedRoomAutoRefresh.requested;
+  const bool removeShellAutoRefreshAccepted =
+      scenario.window.creativeBakedRoomAutoRefresh.accepted;
+  const bool removeShellAutoRefreshCleared =
+      scenario.window.creativeBakedRoomAutoRefresh.clearedActiveRoom;
+  const std::uint64_t removeShellDocumentObjectCount =
+      facade.document().objectCount();
+  const bool removeShellActiveRoomLoaded = scenario.window.activeRoom.loaded;
+  const std::uint64_t removeShellActiveRoomStaticMeshCount =
+      scenario.window.activeRoom.staticMeshCount;
+  const bool removeShellActiveRoomCollisionReady =
+      scenario.window.activeRoomCollision.ready;
+  const std::uint64_t removeShellActiveRoomCollisionQuerySurfaceCount =
+      scenario.window.activeRoomCollision.querySurfaceCount;
+  const bool removeShellStale = scenario.window.creativeBakedRoomStale;
+  const std::uint64_t undoDepthAfterRemoveShell =
+      cr::creativeUndoDepth(scenario.app.undoStack);
+
+  const bool undoClicked = clickCreativeUndoThroughInputFrame(
+      scenario.options,
+      scenario.frontend,
+      scenario.activeSession,
+      scenario.window,
+      scenario.app);
+
+  return expect(scenario.launched.accepted, "shell remove launch accepted") &&
+         expect(scenario.shellClicked, "shell remove setup shell") &&
+         expect(reselectedForRemove, "shell remove room reselected") &&
+         expect(removeShellClicked, "shell remove row clicked") &&
+         expect(removeShellInputSemantic ==
+                    "creative.row.selection.remove_room_shell",
+                "shell remove input semantic") &&
+         expect(removeShellCommandKind == "remove_selected_room_shell",
+                "shell remove command kind") &&
+         expect(removeShellCommandAccepted,
+                "shell remove command accepted") &&
+         expect(removeShellCommandChanged, "shell remove command changed") &&
+         expect(removeShellRequested, "shell remove requested") &&
+         expect(removeShellAccepted, "shell remove accepted") &&
+         expect(removeShellChanged, "shell remove changed") &&
+         expect(removeShellRemovedObjectCount == 5U,
+                "shell remove removed count") &&
+         expect(removeShellFloorCount == 1U, "shell remove floor count") &&
+         expect(removeShellWallCount == 4U, "shell remove wall count") &&
+         expect(removeShellStatus == "Removed",
+                "shell remove receipt status") &&
+         expect(removeShellReasonCode == "creative_room_shell_removed",
+                "shell remove receipt reason") &&
+         expect(removeShellDocumentChanged, "shell remove document changed") &&
+         expect(removeShellAutoRefreshRequested,
+                "shell remove auto refresh requested") &&
+         expect(removeShellAutoRefreshAccepted,
+                "shell remove auto refresh accepted") &&
+         expect(removeShellAutoRefreshCleared,
+                "shell remove auto refresh cleared") &&
+         expect(removeShellDocumentObjectCount == 1U,
+                "shell remove leaves metadata room") &&
+         expect(!removeShellActiveRoomLoaded,
+                "shell remove active room unloaded") &&
+         expect(removeShellActiveRoomStaticMeshCount == 0U,
+                "shell remove active mesh count") &&
+         expect(!removeShellActiveRoomCollisionReady,
+                "shell remove collision unavailable") &&
+         expect(removeShellActiveRoomCollisionQuerySurfaceCount == 0U,
+                "shell remove collision count") &&
+         expect(!removeShellStale, "shell remove stale fresh") &&
+         expect(undoDepthAfterRemoveShell == 3U,
+                "shell remove undo depth") &&
          expect(undoClicked, "shell undo clicked") &&
-         expect(window.creativeUiCommandKind == "undo_last_document_change",
+         expect(scenario.window.creativeUiCommand.kind ==
+                    "undo_last_document_change",
                 "shell undo command kind") &&
-         expect(window.creativeUiCommandUndoAccepted,
+         expect(scenario.window.creativeUiCommand.undo.accepted,
                 "shell undo accepted") &&
-         expect(window.creativeUiCommandUndoObjectCountBefore == 6U,
+         expect(scenario.window.creativeUiCommand.undo.objectCountBefore == 1U,
                 "shell undo object count before") &&
-         expect(window.creativeUiCommandUndoObjectCountAfter == 1U,
+         expect(scenario.window.creativeUiCommand.undo.objectCountAfter == 6U,
                 "shell undo object count after") &&
-         expect(facade.document().objectCount() == 1U,
+         expect(facade.document().objectCount() == 6U,
                 "shell undo object count restored") &&
-         expect(facade.findObject(roomId) != nullptr,
+         expect(facade.findObject(scenario.roomId) != nullptr,
                 "shell undo room remains") &&
-         expect(window.creativeBakedRoomAutoRefreshRequested,
+         expect(scenario.window.creativeBakedRoomAutoRefresh.requested,
                 "shell undo auto refresh requested") &&
-         expect(window.creativeBakedRoomAutoRefreshAccepted,
+         expect(scenario.window.creativeBakedRoomAutoRefresh.accepted,
                 "shell undo auto refresh accepted") &&
-         expect(window.creativeBakedRoomAutoRefreshClearedActiveRoom,
-                "shell undo cleared active room") &&
-         expect(!window.activeRoom.loaded,
-                "shell undo active room unloaded") &&
-         expect(window.activeRoom.staticMeshCount == 0U,
+         expect(!scenario.window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
+                "shell undo reloaded active room") &&
+         expect(scenario.window.activeRoom.loaded,
+                "shell undo active room loaded") &&
+         expect(scenario.window.activeRoom.staticMeshCount == 5U,
                 "shell undo active mesh count") &&
-         expect(!window.activeRoomCollision.ready,
-                "shell undo collision not ready") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 0U,
+         expect(scenario.window.activeRoom.spatialSurfaceCount == 9U,
+                "shell undo active surface count") &&
+         expect(scenario.window.activeRoomCollision.ready,
+                "shell undo collision ready") &&
+         expect(scenario.window.activeRoomCollision.querySurfaceCount == 9U,
                 "shell undo collision count") &&
-         expect(cr::creativeUndoDepth(app.undoStack) == 1U,
-                "shell undo leaves earlier create snapshot") &&
-         expect(window.creativeUndoDepth == 1U,
+         expect(cr::creativeUndoDepth(scenario.app.undoStack) == 2U,
+                "shell undo leaves earlier snapshots") &&
+         expect(scenario.window.creativeUndoDepth == 2U,
                 "shell undo window depth after undo") &&
-         expect(!window.creativeBakedRoomStale,
+         expect(!scenario.window.creativeBakedRoomStale,
                 "shell undo stale fresh") &&
-         expect(window.activeCreativeSaveId == launched.saveId,
+         expect(scenario.window.activeCreativeSaveId == scenario.launched.saveId,
                 "shell active creative save preserved") &&
-         expect(window.activeCreativeDocumentId == launched.documentId,
+         expect(scenario.window.activeCreativeDocumentId ==
+                    scenario.launched.documentId,
                 "shell active creative document preserved") &&
-         expect(window.activeProductSaveId == "none",
+         expect(scenario.window.activeProductSaveId == "none",
                 "shell active product save unchanged") &&
          expect(facade.document().dirtyFlags() != 0U,
                 "shell dirty flags not drained");
@@ -2548,13 +3019,13 @@ bool disabledUndoRowDoesNotRouteThroughInputFrame() {
          expect(window.creativeUiInputStatus ==
                     "product_creative_ui_input_hit_disabled",
                 "disabled undo input status") &&
-         expect(window.creativeUiCommandKind == "none",
+         expect(window.creativeUiCommand.kind == "none",
                 "disabled undo no command kind") &&
-         expect(!window.creativeUiCommandAccepted,
+         expect(!window.creativeUiCommand.accepted,
                 "disabled undo command not accepted") &&
          expect(!window.creativeDocumentChangedThisFrame,
                 "disabled undo no document change") &&
-         expect(!window.creativeBakedRoomAutoRefreshRequested,
+         expect(!window.creativeBakedRoomAutoRefresh.requested,
                 "disabled undo no auto refresh");
 }
 
@@ -2583,7 +3054,7 @@ bool undoAfterCreateCrateRestoresEmptyDocumentThroughInputFrame() {
       app,
       "creative.row.create.create_crate");
   const cr::CreativeObjectId createdObjectId =
-      window.creativeUiCommandCreateObjectId;
+      window.creativeUiCommand.create.objectId;
   const bool undoAvailableAfterCreate =
       cr::creativeUndoAvailable(app.undoStack);
   const std::uint64_t undoDepthAfterCreate =
@@ -2620,43 +3091,43 @@ bool undoAfterCreateCrateRestoresEmptyDocumentThroughInputFrame() {
                 "undo create selection clear") &&
          expect(window.creativeUiInputSemanticId == "creative.row.tools.undo",
                 "undo create semantic") &&
-         expect(window.creativeUiCommandKind == "undo_last_document_change",
+         expect(window.creativeUiCommand.kind == "undo_last_document_change",
                 "undo create command kind") &&
-         expect(window.creativeUiCommandAccepted,
+         expect(window.creativeUiCommand.accepted,
                 "undo create command accepted") &&
-         expect(window.creativeUiCommandChanged,
+         expect(window.creativeUiCommand.changed,
                 "undo create command changed") &&
-         expect(window.creativeUiCommandUndoRequested,
+         expect(window.creativeUiCommand.undo.requested,
                 "undo create requested") &&
-         expect(window.creativeUiCommandUndoAccepted,
+         expect(window.creativeUiCommand.undo.accepted,
                 "undo create accepted") &&
-         expect(window.creativeUiCommandUndoChanged,
+         expect(window.creativeUiCommand.undo.changed,
                 "undo create changed") &&
-         expect(window.creativeUiCommandUndoHadSnapshot,
+         expect(window.creativeUiCommand.undo.hadSnapshot,
                 "undo create had snapshot") &&
-         expect(window.creativeUiCommandUndoDocumentId == launched.documentId,
+         expect(window.creativeUiCommand.undo.documentId == launched.documentId,
                 "undo create document id") &&
-         expect(window.creativeUiCommandUndoRevisionBefore == 1U,
+         expect(window.creativeUiCommand.undo.revisionBefore == 1U,
                 "undo create revision before") &&
-         expect(window.creativeUiCommandUndoRevisionAfter == 0U,
+         expect(window.creativeUiCommand.undo.revisionAfter == 0U,
                 "undo create revision after") &&
-         expect(window.creativeUiCommandUndoObjectCountBefore == 1U,
+         expect(window.creativeUiCommand.undo.objectCountBefore == 1U,
                 "undo create object count before") &&
-         expect(window.creativeUiCommandUndoObjectCountAfter == 0U,
+         expect(window.creativeUiCommand.undo.objectCountAfter == 0U,
                 "undo create object count after") &&
-         expect(window.creativeUiCommandUndoDepthBefore == 1U,
+         expect(window.creativeUiCommand.undo.depthBefore == 1U,
                 "undo create depth before") &&
-         expect(window.creativeUiCommandUndoDepthAfter == 0U,
+         expect(window.creativeUiCommand.undo.depthAfter == 0U,
                 "undo create depth after") &&
-         expect(window.creativeUiCommandUndoStatus == "creative_undo_applied",
+         expect(window.creativeUiCommand.undo.status == "creative_undo_applied",
                 "undo create undo status") &&
          expect(window.creativeDocumentChangedThisFrame,
                 "undo create document changed") &&
-         expect(window.creativeBakedRoomAutoRefreshRequested,
+         expect(window.creativeBakedRoomAutoRefresh.requested,
                 "undo create auto refresh requested") &&
-         expect(window.creativeBakedRoomAutoRefreshAccepted,
+         expect(window.creativeBakedRoomAutoRefresh.accepted,
                 "undo create auto refresh accepted") &&
-         expect(window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+         expect(window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "undo create active room cleared") &&
          expect(!window.activeRoom.loaded,
                 "undo create active room unloaded") &&
@@ -2688,10 +3159,7 @@ bool undoAfterDeleteSelectedRestoresRenderableThroughInputFrame() {
                           activeSession,
                           window,
                           app);
-  const cr::CreativeDocumentCreateReceipt floor =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Floor,
-                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt floor = createDefaultFloor(facade);
   const iggy3d::ProductCreativeBakedActiveRoomRefreshResult initialRefresh =
       iggy3d::refreshProductCreativeBakedActiveRoom({},
                                                     activeSession,
@@ -2736,19 +3204,19 @@ bool undoAfterDeleteSelectedRestoresRenderableThroughInputFrame() {
                 "undo delete revision restored") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "undo delete selection clear") &&
-         expect(window.creativeUiCommandKind == "undo_last_document_change",
+         expect(window.creativeUiCommand.kind == "undo_last_document_change",
                 "undo delete command kind") &&
-         expect(window.creativeUiCommandUndoAccepted,
+         expect(window.creativeUiCommand.undo.accepted,
                 "undo delete accepted") &&
-         expect(window.creativeUiCommandUndoObjectCountBefore == 0U,
+         expect(window.creativeUiCommand.undo.objectCountBefore == 0U,
                 "undo delete object count before") &&
-         expect(window.creativeUiCommandUndoObjectCountAfter == 1U,
+         expect(window.creativeUiCommand.undo.objectCountAfter == 1U,
                 "undo delete object count after") &&
-         expect(window.creativeBakedRoomAutoRefreshRequested,
+         expect(window.creativeBakedRoomAutoRefresh.requested,
                 "undo delete auto refresh requested") &&
-         expect(window.creativeBakedRoomAutoRefreshAccepted,
+         expect(window.creativeBakedRoomAutoRefresh.accepted,
                 "undo delete auto refresh accepted") &&
-         expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+         expect(!window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "undo delete active room not cleared") &&
          expect(window.activeRoom.loaded,
                 "undo delete active room loaded") &&
@@ -2784,10 +3252,7 @@ bool undoAfterVisibilityToggleRestoresBakedRoomThroughInputFrame() {
                           activeSession,
                           window,
                           app);
-  const cr::CreativeDocumentCreateReceipt floor =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Floor,
-                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt floor = createDefaultFloor(facade);
   const iggy3d::ProductCreativeBakedActiveRoomRefreshResult initialRefresh =
       iggy3d::refreshProductCreativeBakedActiveRoom({},
                                                     activeSession,
@@ -2829,19 +3294,19 @@ bool undoAfterVisibilityToggleRestoresBakedRoomThroughInputFrame() {
                 "undo visibility object count") &&
          expect(facade.document().revision() == 1U,
                 "undo visibility revision restored") &&
-         expect(window.creativeUiCommandKind == "undo_last_document_change",
+         expect(window.creativeUiCommand.kind == "undo_last_document_change",
                 "undo visibility command kind") &&
-         expect(window.creativeUiCommandUndoAccepted,
+         expect(window.creativeUiCommand.undo.accepted,
                 "undo visibility accepted") &&
-         expect(window.creativeUiCommandUndoObjectCountBefore == 1U,
+         expect(window.creativeUiCommand.undo.objectCountBefore == 1U,
                 "undo visibility object count before") &&
-         expect(window.creativeUiCommandUndoObjectCountAfter == 1U,
+         expect(window.creativeUiCommand.undo.objectCountAfter == 1U,
                 "undo visibility object count after") &&
-         expect(window.creativeBakedRoomAutoRefreshRequested,
+         expect(window.creativeBakedRoomAutoRefresh.requested,
                 "undo visibility auto refresh requested") &&
-         expect(window.creativeBakedRoomAutoRefreshAccepted,
+         expect(window.creativeBakedRoomAutoRefresh.accepted,
                 "undo visibility auto refresh accepted") &&
-         expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+         expect(!window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "undo visibility active room not cleared") &&
          expect(window.activeRoom.loaded,
                 "undo visibility active room loaded") &&
@@ -2873,22 +3338,12 @@ bool autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() {
                           activeSession,
                           window,
                           app);
-  const cr::CreativeDocumentCreateReceipt floor =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Floor,
-                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt floor = createDefaultFloor(facade);
   const bool selected = selectFacadeObject(facade, floor.objectId);
   const cr::CreativeObjectDirtyFlags dirtyAfterCreate =
       facade.document().dirtyFlags();
-  window.activeRoom = sentinelActiveRoom();
-  window.activeRoomCollision = sentinelActiveRoomCollision();
-  window.creativeBakedRoomStale = true;
-  window.creativeBakedRoomStaleDocumentId = facade.document().id();
-  window.creativeBakedRoomStaleRevision = facade.document().revision();
-  window.creativeBakedRoomStaleStatus =
-      "creative_baked_room_stale_document_changed";
-  window.creativeBakedRoomStaleReasonCode =
-      "creative_baked_room_stale_document_changed";
+  installSentinelRoomState(window);
+  markCreativeBakedRoomStale(window, facade.document());
 
   bool ok = expect(launched.accepted, "auto visibility launch accepted") &&
             expect(floor.accepted, "auto visibility floor created") &&
@@ -2909,18 +3364,18 @@ bool autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() {
   ok &= expect(hideClicked, "auto visibility hide clicked") &&
         expect(hidden != nullptr && !hidden->visible,
                "auto visibility floor hidden") &&
-        expect(window.creativeUiCommandKind ==
+        expect(window.creativeUiCommand.kind ==
                    "toggle_selected_object_visibility",
                "auto visibility command kind hide") &&
         expect(window.creativeDocumentChangedThisFrame,
                "auto visibility hide document changed") &&
-        expect(window.creativeBakedRoomAutoRefreshRequested,
+        expect(window.creativeBakedRoomAutoRefresh.requested,
                "auto visibility hide auto requested") &&
-        expect(window.creativeBakedRoomAutoRefreshAccepted,
+        expect(window.creativeBakedRoomAutoRefresh.accepted,
                "auto visibility hide auto accepted") &&
-        expect(window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+        expect(window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                "auto visibility hide cleared") &&
-        expect(window.creativeBakedRoomAutoRefreshStatus ==
+        expect(window.creativeBakedRoomAutoRefresh.status ==
                    "product_creative_baked_room_cleared_no_renderable_objects",
                "auto visibility hide clear status") &&
         expect(!window.activeRoom.loaded,
@@ -2951,20 +3406,20 @@ bool autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() {
                "auto visibility floor visible again") &&
         expect(window.creativeDocumentChangedThisFrame,
                "auto visibility show document changed") &&
-        expect(window.creativeBakedRoomAutoRefreshRequested,
+        expect(window.creativeBakedRoomAutoRefresh.requested,
                "auto visibility show auto requested") &&
-        expect(window.creativeBakedRoomAutoRefreshAccepted,
+        expect(window.creativeBakedRoomAutoRefresh.accepted,
                "auto visibility show auto accepted") &&
-        expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+        expect(!window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                "auto visibility show not cleared") &&
-        expect(window.creativeBakedRoomAutoRefreshStatus ==
+        expect(window.creativeBakedRoomAutoRefresh.status ==
                    "product_creative_baked_room_refreshed",
                "auto visibility show refresh status") &&
-        expect(window.creativeBakedRoomAutoRefreshStaticMeshCount == 1U,
+        expect(window.creativeBakedRoomAutoRefresh.staticMeshCount == 1U,
                "auto visibility show mesh count") &&
-        expect(window.creativeBakedRoomAutoRefreshSpatialSurfaceCount == 1U,
+        expect(window.creativeBakedRoomAutoRefresh.spatialSurfaceCount == 1U,
                "auto visibility show surface count") &&
-        expect(window.creativeBakedRoomAutoRefreshCollisionReady,
+        expect(window.creativeBakedRoomAutoRefresh.collisionReady,
                "auto visibility show collision ready") &&
         expect(window.activeRoom.loaded,
                "auto visibility show active room loaded") &&
@@ -3004,10 +3459,7 @@ bool deleteSelectedRenderableClearsBakedRoomThroughInputFrame() {
                           activeSession,
                           window,
                           app);
-  const cr::CreativeDocumentCreateReceipt floor =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Floor,
-                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt floor = createDefaultFloor(facade);
   const iggy3d::ProductCreativeBakedActiveRoomRefreshResult initialRefresh =
       iggy3d::refreshProductCreativeBakedActiveRoom({},
                                                     activeSession,
@@ -3046,41 +3498,41 @@ bool deleteSelectedRenderableClearsBakedRoomThroughInputFrame() {
          expect(window.creativeUiInputSemanticId ==
                     "creative.row.selection.delete_selected",
                 "delete clear ui semantic") &&
-         expect(window.creativeUiCommandKind == "delete_selected_object",
+         expect(window.creativeUiCommand.kind == "delete_selected_object",
                 "delete clear command kind") &&
-         expect(window.creativeUiCommandAccepted,
+         expect(window.creativeUiCommand.accepted,
                 "delete clear command accepted") &&
-         expect(window.creativeUiCommandChanged,
+         expect(window.creativeUiCommand.changed,
                 "delete clear command changed") &&
-         expect(window.creativeUiCommandDeleteRequested,
+         expect(window.creativeUiCommand.deleteObject.requested,
                 "delete clear requested") &&
-         expect(window.creativeUiCommandDeleteAccepted,
+         expect(window.creativeUiCommand.deleteObject.accepted,
                 "delete clear delete accepted") &&
-         expect(window.creativeUiCommandDeleteChanged,
+         expect(window.creativeUiCommand.deleteObject.changed,
                 "delete clear delete changed") &&
-         expect(window.creativeUiCommandDeleteRemoved,
+         expect(window.creativeUiCommand.deleteObject.removed,
                 "delete clear delete removed") &&
-         expect(window.creativeUiCommandDeleteObjectId == floor.objectId,
+         expect(window.creativeUiCommand.deleteObject.objectId == floor.objectId,
                 "delete clear object id") &&
-         expect(window.creativeUiCommandDeleteObjectKind == "Floor",
+         expect(window.creativeUiCommand.deleteObject.objectKind == "Floor",
                 "delete clear object kind") &&
-         expect(window.creativeUiCommandDeleteRevisionBefore ==
+         expect(window.creativeUiCommand.deleteObject.revisionBefore ==
                     revisionBeforeDelete,
                 "delete clear revision before") &&
-         expect(window.creativeUiCommandDeleteRevisionAfter ==
+         expect(window.creativeUiCommand.deleteObject.revisionAfter ==
                     revisionBeforeDelete + 1U,
                 "delete clear revision after") &&
-         expect(window.creativeUiCommandDeleteStatus == "Removed",
+         expect(window.creativeUiCommand.deleteObject.status == "Removed",
                 "delete clear delete status") &&
          expect(window.creativeDocumentChangedThisFrame,
                 "delete clear document changed") &&
-         expect(window.creativeBakedRoomAutoRefreshRequested,
+         expect(window.creativeBakedRoomAutoRefresh.requested,
                 "delete clear auto requested") &&
-         expect(window.creativeBakedRoomAutoRefreshAccepted,
+         expect(window.creativeBakedRoomAutoRefresh.accepted,
                 "delete clear auto accepted") &&
-         expect(window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+         expect(window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "delete clear auto cleared") &&
-         expect(window.creativeBakedRoomAutoRefreshStatus ==
+         expect(window.creativeBakedRoomAutoRefresh.status ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "delete clear auto status") &&
          expect(!window.activeRoom.loaded,
@@ -3123,14 +3575,8 @@ bool deleteOneOfTwoRenderablesRebuildsRemainingBakedRoomThroughInputFrame() {
                           activeSession,
                           window,
                           app);
-  const cr::CreativeDocumentCreateReceipt floor =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Floor,
-                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
-  const cr::CreativeDocumentCreateReceipt crate =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Crate,
-                         {{1.0, 0.0, 5.0}, {2.0, 1.0, 6.0}});
+  const cr::CreativeDocumentCreateReceipt floor = createDefaultFloor(facade);
+  const cr::CreativeDocumentCreateReceipt crate = createDefaultCrate(facade);
   const iggy3d::ProductCreativeBakedActiveRoomRefreshResult initialRefresh =
       iggy3d::refreshProductCreativeBakedActiveRoom({},
                                                     activeSession,
@@ -3166,28 +3612,28 @@ bool deleteOneOfTwoRenderablesRebuildsRemainingBakedRoomThroughInputFrame() {
                 "delete rebuild revision advanced") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "delete rebuild selection cleared") &&
-         expect(window.creativeUiCommandKind == "delete_selected_object",
+         expect(window.creativeUiCommand.kind == "delete_selected_object",
                 "delete rebuild command kind") &&
-         expect(window.creativeUiCommandDeleteObjectId == crate.objectId,
+         expect(window.creativeUiCommand.deleteObject.objectId == crate.objectId,
                 "delete rebuild object id") &&
-         expect(window.creativeUiCommandDeleteObjectKind == "Crate",
+         expect(window.creativeUiCommand.deleteObject.objectKind == "Crate",
                 "delete rebuild object kind") &&
          expect(window.creativeDocumentChangedThisFrame,
                 "delete rebuild document changed") &&
-         expect(window.creativeBakedRoomAutoRefreshRequested,
+         expect(window.creativeBakedRoomAutoRefresh.requested,
                 "delete rebuild auto requested") &&
-         expect(window.creativeBakedRoomAutoRefreshAccepted,
+         expect(window.creativeBakedRoomAutoRefresh.accepted,
                 "delete rebuild auto accepted") &&
-         expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+         expect(!window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "delete rebuild auto not cleared") &&
-         expect(window.creativeBakedRoomAutoRefreshStatus ==
+         expect(window.creativeBakedRoomAutoRefresh.status ==
                     "product_creative_baked_room_refreshed",
                 "delete rebuild auto status") &&
-         expect(window.creativeBakedRoomAutoRefreshStaticMeshCount == 1U,
+         expect(window.creativeBakedRoomAutoRefresh.staticMeshCount == 1U,
                 "delete rebuild auto mesh count") &&
-         expect(window.creativeBakedRoomAutoRefreshSpatialSurfaceCount == 1U,
+         expect(window.creativeBakedRoomAutoRefresh.spatialSurfaceCount == 1U,
                 "delete rebuild auto surface count") &&
-         expect(window.creativeBakedRoomAutoRefreshCollisionReady,
+         expect(window.creativeBakedRoomAutoRefresh.collisionReady,
                 "delete rebuild auto collision ready") &&
          expect(window.activeRoom.loaded,
                 "delete rebuild active room loaded") &&
@@ -3212,194 +3658,250 @@ bool deleteOneOfTwoRenderablesRebuildsRemainingBakedRoomThroughInputFrame() {
                 "delete rebuild dirty flags not drained");
 }
 
-bool autoRefreshMoveCommitAndIgnoresNoChangeReleaseThroughInputFrame() {
-  const iggy3d::ProductAppOptions options =
-      testOptions("auto_move_baked_room");
+struct AutoMoveScenario {
+  iggy3d::ProductAppOptions options;
   iggy3d::FrontendState frontend;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
   cr::CreativeAppState app;
-  cr::Facade& facade = app.facade;
   iggy3d::ProductWindowInputFrameState inputFrame;
-  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
-      launchCreativeWorld(options,
+  iggy3d::ProductCreativeNewWorldLaunchResult launched;
+  cr::CreativeDocumentCreateReceipt floor;
+  iggy3d::ProductCreativeBakedActiveRoomRefreshResult initialRefresh;
+  float initialCenterX = 0.0F;
+  float initialCenterY = 0.0F;
+  std::uint64_t revisionBeforeMove = 0;
+  float movedCenterX = 0.0F;
+  float movedCenterY = 0.0F;
+  std::uint64_t revisionBeforeNoChange = 0;
+  float undoCenterX = 0.0F;
+  float undoCenterY = 0.0F;
+  bool undoClicked = false;
+};
+
+AutoMoveScenario makeAutoMoveScenario(std::string_view name) {
+  AutoMoveScenario scenario;
+  scenario.options = testOptions(name);
+  scenario.launched =
+      launchCreativeWorld(scenario.options,
                           launchRequest("Auto Move Baked Room",
                                         "2026-07-05T12:40:00Z"),
-                          frontend,
-                          activeSession,
-                          window,
-                          app);
-  const cr::CreativeDocumentCreateReceipt floor =
-      createBoundsObject(facade,
-                         cr::CreativeObjectKind::Floor,
-                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
-  const iggy3d::ProductCreativeBakedActiveRoomRefreshResult initialRefresh =
-      iggy3d::refreshProductCreativeBakedActiveRoom({},
-                                                    activeSession,
-                                                    window,
-                                                    app);
-  const float initialCenterX =
-      window.activeRoom.room.staticMeshes.empty()
+                          scenario.frontend,
+                          scenario.activeSession,
+                          scenario.window,
+                          scenario.app);
+  cr::Facade& facade = scenario.app.facade;
+  scenario.floor = createDefaultFloor(facade);
+  scenario.initialRefresh =
+      iggy3d::refreshProductCreativeBakedActiveRoom(
+          {},
+          scenario.activeSession,
+          scenario.window,
+          scenario.app);
+  scenario.initialCenterX =
+      scenario.window.activeRoom.room.staticMeshes.empty()
           ? 0.0F
-          : window.activeRoom.room.staticMeshes.front().positionMeters.x;
-  const float initialCenterY =
-      window.activeRoom.room.staticMeshes.empty()
+          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.x;
+  scenario.initialCenterY =
+      scenario.window.activeRoom.room.staticMeshes.empty()
           ? 0.0F
-          : window.activeRoom.room.staticMeshes.front().positionMeters.y;
-  const std::uint64_t revisionBeforeMove = facade.document().revision();
+          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.y;
+  return scenario;
+}
+
+void runAutoMoveCommit(AutoMoveScenario& scenario) {
+  cr::Facade& facade = scenario.app.facade;
+  scenario.revisionBeforeMove = facade.document().revision();
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));
   static_cast<void>(facade.dispatchToolInput(
       pointerInput(cr::CreativeToolInputKind::PointerPress,
                    0.0,
                    0.0,
-                   targetId(floor.objectId))));
-  inputFrame.creativePointerLifecycle.primaryButtonHeld = true;
-  inputFrame.creativePointerLifecycle.lastPointerX = 0.0F;
-  inputFrame.creativePointerLifecycle.lastPointerY = 0.0F;
+                   targetId(scenario.floor.objectId))));
+  scenario.inputFrame.creativePointerLifecycle.primaryButtonHeld = true;
+  scenario.inputFrame.creativePointerLifecycle.lastPointerX = 0.0F;
+  scenario.inputFrame.creativePointerLifecycle.lastPointerY = 0.0F;
 
-  runCreativePointerLifecycleFrame(options,
-                                   frontend,
-                                   activeSession,
-                                   window,
-                                   app,
-                                   inputFrame,
+  runCreativePointerLifecycleFrame(scenario.options,
+                                   scenario.frontend,
+                                   scenario.activeSession,
+                                   scenario.window,
+                                   scenario.app,
+                                   scenario.inputFrame,
                                    false,
                                    60.0F,
                                    60.0F);
 
-  const float movedCenterX =
-      window.activeRoom.room.staticMeshes.empty()
+  scenario.movedCenterX =
+      scenario.window.activeRoom.room.staticMeshes.empty()
           ? 0.0F
-          : window.activeRoom.room.staticMeshes.front().positionMeters.x;
-  const float movedCenterY =
-      window.activeRoom.room.staticMeshes.empty()
+          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.x;
+  scenario.movedCenterY =
+      scenario.window.activeRoom.room.staticMeshes.empty()
           ? 0.0F
-          : window.activeRoom.room.staticMeshes.front().positionMeters.y;
+          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.y;
+}
 
-  bool ok = expect(launched.accepted, "auto move launch accepted") &&
-            expect(floor.accepted, "auto move floor created") &&
-            expect(initialRefresh.accepted, "auto move initial refresh") &&
-            expect(window.activeRoom.loaded,
+void runAutoMoveNoChangeRelease(AutoMoveScenario& scenario) {
+  cr::Facade& facade = scenario.app.facade;
+  scenario.revisionBeforeNoChange = facade.document().revision();
+  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
+  static_cast<void>(facade.dispatchToolInput(
+      pointerInput(cr::CreativeToolInputKind::PointerPress,
+                   6.0,
+                   6.0,
+                   targetId(scenario.floor.objectId))));
+  scenario.inputFrame.creativePointerLifecycle.primaryButtonHeld = true;
+  scenario.inputFrame.creativePointerLifecycle.lastPointerX = 60.0F;
+  scenario.inputFrame.creativePointerLifecycle.lastPointerY = 60.0F;
+
+  runCreativePointerLifecycleFrame(scenario.options,
+                                   scenario.frontend,
+                                   scenario.activeSession,
+                                   scenario.window,
+                                   scenario.app,
+                                   scenario.inputFrame,
+                                   false,
+                                   60.0F,
+                                   60.0F);
+}
+
+void runAutoMoveUndo(AutoMoveScenario& scenario) {
+  scenario.undoClicked = clickCreativeUndoThroughInputFrame(
+      scenario.options,
+      scenario.frontend,
+      scenario.activeSession,
+      scenario.window,
+      scenario.app);
+  scenario.undoCenterX =
+      scenario.window.activeRoom.room.staticMeshes.empty()
+          ? 0.0F
+          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.x;
+  scenario.undoCenterY =
+      scenario.window.activeRoom.room.staticMeshes.empty()
+          ? 0.0F
+          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.y;
+}
+
+bool autoRefreshMoveCommitRefreshesBakedRoomThroughInputFrame() {
+  AutoMoveScenario scenario = makeAutoMoveScenario("auto_move_baked_room");
+  runAutoMoveCommit(scenario);
+  cr::Facade& facade = scenario.app.facade;
+
+  return expect(scenario.launched.accepted, "auto move launch accepted") &&
+         expect(scenario.floor.accepted, "auto move floor created") &&
+         expect(scenario.initialRefresh.accepted, "auto move initial refresh") &&
+         expect(scenario.window.activeRoom.loaded,
                    "auto move active room loaded after move") &&
-            expect(facade.document().revision() == revisionBeforeMove + 1U,
+         expect(facade.document().revision() == scenario.revisionBeforeMove + 1U,
                    "auto move revision advanced") &&
-            expect(window.creativeDocumentChangedThisFrame,
+         expect(scenario.window.creativeDocumentChangedThisFrame,
                    "auto move document changed") &&
-            expect(window.creativeBakedRoomAutoRefreshRequested,
+         expect(scenario.window.creativeBakedRoomAutoRefresh.requested,
                    "auto move auto requested") &&
-            expect(window.creativeBakedRoomAutoRefreshAccepted,
+         expect(scenario.window.creativeBakedRoomAutoRefresh.accepted,
                    "auto move auto accepted") &&
-            expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+         expect(!scenario.window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                    "auto move not cleared") &&
-            expect(window.creativeBakedRoomAutoRefreshStatus ==
+         expect(scenario.window.creativeBakedRoomAutoRefresh.status ==
                        "product_creative_baked_room_refreshed",
                    "auto move refresh status") &&
-            expect(window.activeRoom.staticMeshCount == 1U,
+         expect(scenario.window.activeRoom.staticMeshCount == 1U,
                    "auto move mesh count") &&
-            expect(window.activeRoomCollision.ready,
+         expect(scenario.window.activeRoomCollision.ready,
                    "auto move collision ready") &&
-            expect(window.activeRoomCollision.querySurfaceCount == 1U,
+         expect(scenario.window.activeRoomCollision.querySurfaceCount == 1U,
                    "auto move collision query count") &&
-            expect(movedCenterX != initialCenterX || movedCenterY != initialCenterY,
+         expect(scenario.movedCenterX != scenario.initialCenterX ||
+                    scenario.movedCenterY != scenario.initialCenterY,
                    "auto move baked mesh center changed") &&
-            expect(cr::creativeUndoDepth(app.undoStack) == 1U,
+         expect(cr::creativeUndoDepth(scenario.app.undoStack) == 1U,
                    "auto move undo depth after move") &&
-            expect(window.creativeUndoAvailable,
+         expect(scenario.window.creativeUndoAvailable,
                    "auto move window undo available after move") &&
-            expect(window.creativeUndoDepth == 1U,
+         expect(scenario.window.creativeUndoDepth == 1U,
                    "auto move window undo depth after move") &&
-            expect(!window.creativeBakedRoomStale,
+         expect(!scenario.window.creativeBakedRoomStale,
                    "auto move stale cleared");
+}
 
-  const std::uint64_t revisionBeforeNoChange = facade.document().revision();
-  static_cast<void>(facade.setActiveTool(cr::Tool::Move));
-  static_cast<void>(facade.dispatchToolInput(
-      pointerInput(cr::CreativeToolInputKind::PointerPress,
-                   6.0,
-                   6.0,
-                   targetId(floor.objectId))));
-  inputFrame.creativePointerLifecycle.primaryButtonHeld = true;
-  inputFrame.creativePointerLifecycle.lastPointerX = 60.0F;
-  inputFrame.creativePointerLifecycle.lastPointerY = 60.0F;
+bool autoRefreshNoChangeMoveReleaseDoesNotRefreshThroughInputFrame() {
+  AutoMoveScenario scenario = makeAutoMoveScenario("auto_move_no_change");
+  runAutoMoveCommit(scenario);
+  runAutoMoveNoChangeRelease(scenario);
+  cr::Facade& facade = scenario.app.facade;
 
-  runCreativePointerLifecycleFrame(options,
-                                   frontend,
-                                   activeSession,
-                                   window,
-                                   app,
-                                   inputFrame,
-                                   false,
-                                   60.0F,
-                                   60.0F);
-
-  ok &= expect(facade.document().revision() == revisionBeforeNoChange,
+  return expect(scenario.launched.accepted,
+                "auto move no-change launch accepted") &&
+         expect(scenario.floor.accepted,
+                "auto move no-change floor created") &&
+         expect(scenario.initialRefresh.accepted,
+                "auto move no-change initial refresh") &&
+         expect(facade.document().revision() == scenario.revisionBeforeNoChange,
                "auto move no-change revision unchanged") &&
-        expect(window.creativeDocumentRevisionObserved,
+        expect(scenario.window.creativeDocumentRevisionObserved,
                "auto move no-change revision observed") &&
-        expect(!window.creativeDocumentChangedThisFrame,
+        expect(!scenario.window.creativeDocumentChangedThisFrame,
                "auto move no-change not changed") &&
-        expect(!window.creativeBakedRoomAutoRefreshRequested,
+        expect(!scenario.window.creativeBakedRoomAutoRefresh.requested,
                "auto move no-change no auto refresh") &&
-        expect(cr::creativeUndoDepth(app.undoStack) == 1U,
+        expect(cr::creativeUndoDepth(scenario.app.undoStack) == 1U,
                "auto move no-change undo depth unchanged") &&
-        expect(window.creativeUndoDepth == 1U,
+        expect(scenario.window.creativeUndoDepth == 1U,
                "auto move no-change window undo depth unchanged") &&
-        expect(window.activeRoom.loaded,
+        expect(scenario.window.activeRoom.loaded,
                "auto move no-change active room remains loaded") &&
-        expect(!window.creativeBakedRoomStale,
+        expect(!scenario.window.creativeBakedRoomStale,
                "auto move no-change remains fresh") &&
-        expect(window.activeCreativeSaveId == launched.saveId,
+        expect(scenario.window.activeCreativeSaveId == scenario.launched.saveId,
                "auto move active creative save preserved") &&
-        expect(window.activeProductSaveId == "none",
+        expect(scenario.window.activeProductSaveId == "none",
                "auto move active product save unchanged") &&
         expect(facade.document().dirtyFlags() != 0U,
                "auto move dirty flags not drained");
+}
 
-  const bool undoClicked = clickCreativeUndoThroughInputFrame(
-      options,
-      frontend,
-      activeSession,
-      window,
-      app);
-  const float undoCenterX =
-      window.activeRoom.room.staticMeshes.empty()
-          ? 0.0F
-          : window.activeRoom.room.staticMeshes.front().positionMeters.x;
-  const float undoCenterY =
-      window.activeRoom.room.staticMeshes.empty()
-          ? 0.0F
-          : window.activeRoom.room.staticMeshes.front().positionMeters.y;
-  ok &= expect(undoClicked, "auto move undo clicked") &&
-        expect(window.creativeUiCommandKind == "undo_last_document_change",
+bool undoAfterMoveCommitRestoresBakedRoomThroughInputFrame() {
+  AutoMoveScenario scenario = makeAutoMoveScenario("auto_move_undo");
+  runAutoMoveCommit(scenario);
+  runAutoMoveNoChangeRelease(scenario);
+  runAutoMoveUndo(scenario);
+
+  return expect(scenario.launched.accepted, "auto move undo launch accepted") &&
+        expect(scenario.floor.accepted, "auto move undo floor created") &&
+        expect(scenario.initialRefresh.accepted,
+               "auto move undo initial refresh") &&
+        expect(scenario.undoClicked, "auto move undo clicked") &&
+        expect(scenario.window.creativeUiCommand.kind ==
+                   "undo_last_document_change",
                "auto move undo command kind") &&
-        expect(window.creativeUiCommandUndoAccepted,
+        expect(scenario.window.creativeUiCommand.undo.accepted,
                "auto move undo accepted") &&
-        expect(window.creativeUiCommandUndoChanged,
+        expect(scenario.window.creativeUiCommand.undo.changed,
                "auto move undo changed") &&
-        expect(window.creativeUiCommandUndoDepthBefore == 1U,
+        expect(scenario.window.creativeUiCommand.undo.depthBefore == 1U,
                "auto move undo depth before") &&
-        expect(window.creativeUiCommandUndoDepthAfter == 0U,
+        expect(scenario.window.creativeUiCommand.undo.depthAfter == 0U,
                "auto move undo depth after") &&
-        expect(window.creativeDocumentChangedThisFrame,
+        expect(scenario.window.creativeDocumentChangedThisFrame,
                "auto move undo document changed") &&
-        expect(window.creativeBakedRoomAutoRefreshRequested,
+        expect(scenario.window.creativeBakedRoomAutoRefresh.requested,
                "auto move undo auto refresh requested") &&
-        expect(window.creativeBakedRoomAutoRefreshAccepted,
+        expect(scenario.window.creativeBakedRoomAutoRefresh.accepted,
                "auto move undo auto refresh accepted") &&
-        expect(window.activeRoom.loaded,
+        expect(scenario.window.activeRoom.loaded,
                "auto move undo active room loaded") &&
-        expect(window.activeRoom.staticMeshCount == 1U,
+        expect(scenario.window.activeRoom.staticMeshCount == 1U,
                "auto move undo mesh count") &&
-        expect(window.activeRoomCollision.ready,
+        expect(scenario.window.activeRoomCollision.ready,
                "auto move undo collision ready") &&
-        expect(undoCenterX == initialCenterX && undoCenterY == initialCenterY,
+        expect(scenario.undoCenterX == scenario.initialCenterX &&
+                   scenario.undoCenterY == scenario.initialCenterY,
                "auto move undo mesh center restored") &&
-        expect(!cr::creativeUndoAvailable(app.undoStack),
+        expect(!cr::creativeUndoAvailable(scenario.app.undoStack),
                "auto move undo no redo stack") &&
-        expect(window.creativeUndoDepth == 0U,
+        expect(scenario.window.creativeUndoDepth == 0U,
                "auto move undo window undo depth");
-
-  return ok;
 }
 
 bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
@@ -3417,8 +3919,7 @@ bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
                             activeSession,
                             window,
                             app);
-    window.activeRoom = sentinelActiveRoom();
-    window.activeRoomCollision = sentinelActiveRoomCollision();
+    installSentinelRoomState(window);
     window.interactionMode = iggy3d::ProductInteractionMode::Player;
 
     const iggy3d::ProductCreativeBakedActiveRoomRefreshResult refreshed =
@@ -3450,8 +3951,7 @@ bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
                             activeSession,
                             window,
                             app);
-    window.activeRoom = sentinelActiveRoom();
-    window.activeRoomCollision = sentinelActiveRoomCollision();
+    installSentinelRoomState(window);
     activeSession.reset();
 
     const iggy3d::ProductCreativeBakedActiveRoomRefreshResult refreshed =
@@ -3484,8 +3984,7 @@ bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
                             activeSession,
                             window,
                             app);
-    window.activeRoom = sentinelActiveRoom();
-    window.activeRoomCollision = sentinelActiveRoomCollision();
+    installSentinelRoomState(window);
     app.facade.reset();
 
     const iggy3d::ProductCreativeBakedActiveRoomRefreshResult refreshed =
@@ -3519,8 +4018,7 @@ bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
                           activeSession,
                           window,
                           app);
-  window.activeRoom = sentinelActiveRoom();
-  window.activeRoomCollision = sentinelActiveRoomCollision();
+  installSentinelRoomState(window);
 
   const iggy3d::ProductCreativeBakedActiveRoomRefreshResult refreshed =
       iggy3d::refreshProductCreativeBakedActiveRoom({},
@@ -3695,14 +4193,18 @@ int main() {
       currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() &&
       pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() &&
       pauseCreativeSaveNullFacadeFailsClosed() &&
+      pauseSaveUsesCreativeIdentityInsteadOfStaleWindowMirror() &&
       pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() &&
       pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() &&
       pauseCreativeReturnToTitleClearsUndoStack() &&
       secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() &&
       refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() &&
-      manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() &&
+      manualRebuildRoomCommandReportsRefreshThroughInputFrame() &&
+      manualRebuildRoomCommandLoadsActiveRoomThroughInputFrame() &&
       manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() &&
-      generateRoomShellFromSelectedRoomBakesAndUndoClearsThroughInputFrame() &&
+      generateRoomShellFromSelectedRoomBakesThroughInputFrame() &&
+      generatedRoomShellParentDeleteRejectsThroughInputFrame() &&
+      removeGeneratedRoomShellAndUndoRestoresThroughInputFrame() &&
       disabledUndoRowDoesNotRouteThroughInputFrame() &&
       undoAfterCreateCrateRestoresEmptyDocumentThroughInputFrame() &&
       undoAfterDeleteSelectedRestoresRenderableThroughInputFrame() &&
@@ -3710,7 +4212,9 @@ int main() {
       autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() &&
       deleteSelectedRenderableClearsBakedRoomThroughInputFrame() &&
       deleteOneOfTwoRenderablesRebuildsRemainingBakedRoomThroughInputFrame() &&
-      autoRefreshMoveCommitAndIgnoresNoChangeReleaseThroughInputFrame() &&
+      autoRefreshMoveCommitRefreshesBakedRoomThroughInputFrame() &&
+      autoRefreshNoChangeMoveReleaseDoesNotRefreshThroughInputFrame() &&
+      undoAfterMoveCommitRestoresBakedRoomThroughInputFrame() &&
       refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() &&
       creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() &&
       creativeLaunchFramesCameraOnOrigin() &&

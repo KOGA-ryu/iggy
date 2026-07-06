@@ -105,6 +105,15 @@ inline void pushCreativeUndoSnapshot(CreativeDocumentUndoStack& undoStack,
   undoStack.documents.push_back(document);
 }
 
+inline bool discardCreativeUndoSnapshot(CreativeDocumentUndoStack& undoStack,
+                                        std::uint64_t depthBefore) {
+  if (creativeUndoDepth(undoStack) <= depthBefore) {
+    return false;
+  }
+  undoStack.documents.pop_back();
+  return true;
+}
+
 // Self-contained home for creative's app-scoped state. SLICE 1 wrapped only the
 // logical Facade; SLICE 2 adds the active-world identity so the product app can
 // read creative's own state for routing/save instead of the god-struct.
@@ -115,14 +124,15 @@ struct CreativeAppState {
 };
 
 [[nodiscard]] inline CreativeDocumentUndoApplyReceipt
-applyLastCreativeUndoSnapshot(CreativeAppState& appState) {
+applyLastCreativeUndoSnapshot(Facade& facade,
+                              CreativeDocumentUndoStack& undoStack) {
   CreativeDocumentUndoApplyReceipt receipt;
   receipt.requested = true;
-  receipt.revisionBefore = appState.facade.document().revision();
-  receipt.objectCountBefore = appState.facade.document().objectCount();
-  receipt.depthBefore = creativeUndoDepth(appState.undoStack);
+  receipt.revisionBefore = facade.document().revision();
+  receipt.objectCountBefore = facade.document().objectCount();
+  receipt.depthBefore = creativeUndoDepth(undoStack);
 
-  if (!creativeUndoAvailable(appState.undoStack)) {
+  if (!creativeUndoAvailable(undoStack)) {
     receipt.depthAfter = receipt.depthBefore;
     receipt.revisionAfter = receipt.revisionBefore;
     receipt.objectCountAfter = receipt.objectCountBefore;
@@ -133,17 +143,17 @@ applyLastCreativeUndoSnapshot(CreativeAppState& appState) {
   }
 
   receipt.hadSnapshot = true;
-  CreativeDocument snapshot = appState.undoStack.documents.back();
+  CreativeDocument snapshot = undoStack.documents.back();
   receipt.documentId = snapshot.id();
-  receipt.installReceipt = appState.facade.installDocument(std::move(snapshot));
+  receipt.installReceipt = facade.installDocument(std::move(snapshot));
   receipt.accepted = receipt.installReceipt.accepted;
   receipt.changed = receipt.installReceipt.changed;
   if (receipt.installReceipt.accepted) {
-    appState.undoStack.documents.pop_back();
+    undoStack.documents.pop_back();
   }
-  receipt.revisionAfter = appState.facade.document().revision();
-  receipt.objectCountAfter = appState.facade.document().objectCount();
-  receipt.depthAfter = creativeUndoDepth(appState.undoStack);
+  receipt.revisionAfter = facade.document().revision();
+  receipt.objectCountAfter = facade.document().objectCount();
+  receipt.depthAfter = creativeUndoDepth(undoStack);
   receipt.status = receipt.accepted ? "creative_undo_applied"
                                     : "creative_undo_rejected";
   receipt.reasonCode =
@@ -153,6 +163,11 @@ applyLastCreativeUndoSnapshot(CreativeAppState& appState) {
       receipt.accepted ? "creative_undo_applied"
                        : std::string(receipt.installReceipt.message);
   return receipt;
+}
+
+[[nodiscard]] inline CreativeDocumentUndoApplyReceipt
+applyLastCreativeUndoSnapshot(CreativeAppState& appState) {
+  return applyLastCreativeUndoSnapshot(appState.facade, appState.undoStack);
 }
 
 }  // namespace iggy3d::creative

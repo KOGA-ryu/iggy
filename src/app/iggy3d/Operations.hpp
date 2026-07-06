@@ -12,8 +12,8 @@
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/Options.hpp"
+#include "app/iggy3d/ProductCreativeBakedRoomRefresh.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
-#include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/creative/world/WorldService.hpp"
 #include "app/input/InputAction.hpp"
@@ -51,37 +51,6 @@ struct ProductCreativeNewWorldLaunchRequest {
   std::string attemptToken = "attempt_001";
   std::string packageId = "iggy3d.creative";
   std::string scenarioId = "creative.document";
-};
-
-struct ProductCreativeBakedActiveRoomRefreshRequest {
-  std::string roomId = "iggy3d_creative_baked_room";
-  std::string sourceName = "iggy3d.creative";
-  std::string sourceSubset = "creative_document_bake";
-  bool includeHidden = false;
-  bool clearOnNoRenderable = false;
-};
-
-struct ProductCreativeBakedActiveRoomRefreshResult {
-  bool accepted = false;
-  bool clearedActiveRoom = false;
-  std::string status = "product_creative_baked_room_not_requested";
-  std::string reasonCode = "product_creative_baked_room_not_requested";
-  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
-  std::uint64_t objectCount = 0;
-  bool bakeMeasured = false;
-  std::uint64_t bakeElapsedMicroseconds = 0;
-  std::uint64_t bakedDocumentRevision = 0;
-  creative::CreativeRoomBakeReceipt bakeReceipt;
-  std::uint64_t staticMeshCount = 0;
-  std::uint64_t anchorCount = 0;
-  std::uint64_t spatialSurfaceCount = 0;
-  std::uint64_t staticMeshSourceCount = 0;
-  std::uint64_t anchorSourceCount = 0;
-  std::uint64_t spatialSurfaceSourceCount = 0;
-  bool activeRoomLoaded = false;
-  std::string activeRoomStatus = "not_loaded";
-  bool collisionReady = false;
-  std::uint64_t collisionQuerySurfaceCount = 0;
 };
 
 struct ProductCreativeNewWorldLaunchResult {
@@ -144,6 +113,14 @@ struct ProductCreativeCurrentWorldSaveResult {
   bool saved = false;
   CreativeWorldSaveResult saveResult;
 };
+
+void mirrorProductActiveCreativeIdentity(
+    const creative::CreativeActiveIdentity& identity,
+    ProductAppWindowState& window);
+
+void clearProductActiveCreativeIdentity(
+    ProductAppWindowState& window,
+    creative::CreativeActiveIdentity* identity = nullptr);
 
 std::string_view productSaveFlowOperationName(ProductSaveFlowOperation operation);
 

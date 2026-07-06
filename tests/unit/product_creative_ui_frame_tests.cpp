@@ -1,5 +1,6 @@
 #include "app/iggy3d/creative/ui/UiFrame.hpp"
 
+#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 
@@ -84,16 +85,16 @@ void prepopulateCreativeProjection(iggy3d::ProductAppWindowState& window) {
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
+  cr::CreativeActiveIdentity identity;
+  identity.saveId = "creative_save";
+  identity.worldId = "world_001";
+  identity.documentId = 42U;
+  iggy3d::mirrorProductActiveCreativeIdentity(identity, window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreativeSaveId = "creative_save";
-  window.activeCreativeWorldId = "world_001";
-  window.activeCreativeDocumentId = 42U;
 }
 
 void clearCreativeDocumentIdentity(iggy3d::ProductAppWindowState& window) {
-  window.activeCreativeSaveId = "none";
-  window.activeCreativeWorldId = "none";
-  window.activeCreativeDocumentId = 0U;
+  iggy3d::clearProductActiveCreativeIdentity(window);
 }
 
 bool activeRuleUsesCreativeDocumentIdentity() {

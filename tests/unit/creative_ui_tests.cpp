@@ -1,8 +1,13 @@
 #include "app/iggy3d/creative/ui/Ui.hpp"
 
+#include "app/iggy3d/creative/bridge/UiCommandCatalog.hpp"
+
+#include <array>
 #include <cstddef>
 #include <cstdlib>
 #include <iostream>
+#include <span>
+#include <string>
 #include <string_view>
 
 namespace {
@@ -54,6 +59,65 @@ const cr::CreativeUiRow& firstPanelRow(const cr::CreativeUiModel& model,
                                        cr::CreativeUiPanelKind kind) {
   const cr::CreativeUiPanel& uiPanel = panel(model, kind);
   return model.rows[uiPanel.firstRow];
+}
+
+std::string_view panelName(cr::CreativeUiPanelKind kind) {
+  switch (kind) {
+    case cr::CreativeUiPanelKind::Tools:
+      return "tools";
+    case cr::CreativeUiPanelKind::Create:
+      return "create";
+    case cr::CreativeUiPanelKind::Status:
+      return "status";
+    case cr::CreativeUiPanelKind::Selection:
+      return "selection";
+    case cr::CreativeUiPanelKind::Measurement:
+      return "measurement";
+    case cr::CreativeUiPanelKind::Ghost:
+      return "ghost";
+    case cr::CreativeUiPanelKind::Snap:
+      return "snap";
+  }
+  return "unknown";
+}
+
+bool isCommandRow(cr::CreativeUiRowKind kind) {
+  switch (kind) {
+    case cr::CreativeUiRowKind::ToolButton:
+    case cr::CreativeUiRowKind::RebuildRoom:
+    case cr::CreativeUiRowKind::ToolUndo:
+    case cr::CreativeUiRowKind::CreateObject:
+    case cr::CreativeUiRowKind::InspectorVisible:
+    case cr::CreativeUiRowKind::InspectorLocked:
+    case cr::CreativeUiRowKind::InspectorDeleteSelected:
+    case cr::CreativeUiRowKind::InspectorGenerateRoomShell:
+    case cr::CreativeUiRowKind::InspectorRemoveRoomShell:
+      return true;
+    case cr::CreativeUiRowKind::StatusSummary:
+    case cr::CreativeUiRowKind::SelectedTarget:
+    case cr::CreativeUiRowKind::InspectorEmpty:
+    case cr::CreativeUiRowKind::InspectorKind:
+    case cr::CreativeUiRowKind::InspectorId:
+    case cr::CreativeUiRowKind::InspectorName:
+    case cr::CreativeUiRowKind::InspectorBounds:
+    case cr::CreativeUiRowKind::InspectorPosition:
+    case cr::CreativeUiRowKind::InspectorLayer:
+    case cr::CreativeUiRowKind::MeasurementState:
+    case cr::CreativeUiRowKind::MeasurementStartPoint:
+    case cr::CreativeUiRowKind::MeasurementCurrentPoint:
+    case cr::CreativeUiRowKind::GhostPreview:
+    case cr::CreativeUiRowKind::SnapSettings:
+      return false;
+  }
+  return false;
+}
+
+std::string semanticIdForRow(const cr::CreativeUiRow& row) {
+  std::string semantic = "creative.row.";
+  semantic.append(panelName(row.panel));
+  semantic.push_back('.');
+  semantic.append(row.id);
+  return semantic;
 }
 
 bool defaultModelDeterministic() {
@@ -148,6 +212,42 @@ bool defaultModelDeterministic() {
                 "default status row") &&
          expect(model.rows[10].kind == cr::CreativeUiRowKind::SnapSettings,
                 "default snap row");
+}
+
+bool createPanelRowsFollowProductDescriptorPalette() {
+  const cr::CreativeUiBuildReceipt receipt = buildDefault();
+  const cr::CreativeUiModel& model = receipt.model;
+  const cr::CreativeUiPanel& createPanel =
+      panel(model, cr::CreativeUiPanelKind::Create);
+  const std::span<const iggy3d::ProductCreativeUiCommandCatalogEntry> palette =
+      iggy3d::productCreativeUiCreatePalette();
+
+  bool ok = expect(palette.size() == 2U, "product create palette size") &&
+            expect(createPanel.rowCount == palette.size(),
+                   "create panel follows product palette size");
+  for (std::size_t index = 0; index < palette.size(); ++index) {
+    const iggy3d::ProductCreativeUiCommandCatalogEntry& slot =
+        palette[index];
+    const cr::CreativeObjectDescriptor& descriptor =
+        cr::describeObject(slot.objectKind);
+    const cr::CreativeUiRow& row = model.rows[createPanel.firstRow + index];
+
+    ok = expect(iggy3d::productCreativeUiCreatePaletteEntryAllowed(slot),
+                "create palette slot allowed by descriptor policy") &&
+         expect(descriptor.kind == slot.objectKind,
+                "create palette slot maps valid descriptor") &&
+         expect(!descriptor.isEditorOnly,
+                "create palette descriptor is not editor-only") &&
+         expect(row.kind == cr::CreativeUiRowKind::CreateObject,
+                "create palette row kind") &&
+         expect(row.id == slot.rowId, "create palette row id") &&
+         expect(row.label == slot.label, "create palette row label") &&
+         expect(row.objectKind == descriptor.kind,
+                "create palette row object kind") &&
+         ok;
+  }
+
+  return ok;
 }
 
 bool undoAvailabilityControlsToolRowState() {
@@ -392,6 +492,22 @@ bool selectedRoomShowsGenerateRoomShellRowOnlyForRoom() {
   const cr::CreativeUiRow* shellRow =
       rowOfKind(roomReceipt.model,
                 cr::CreativeUiRowKind::InspectorGenerateRoomShell);
+  const cr::CreativeUiRow* removeShellAbsent =
+      rowOfKind(roomReceipt.model,
+                cr::CreativeUiRowKind::InspectorRemoveRoomShell);
+
+  cr::CreativeUiBuildRequest generatedShellRequest =
+      cr::makeDefaultCreativeUiBuildRequest();
+  generatedShellRequest.selectionState.selectedTarget.value = 9;
+  cr::CreativeUiObjectSummary generatedShellSummary =
+      objectSummary(9, cr::CreativeObjectKind::Room, true);
+  generatedShellSummary.hasGeneratedRoomShell = true;
+  generatedShellRequest.objectSummaries.push_back(generatedShellSummary);
+  const cr::CreativeUiBuildReceipt generatedShellReceipt =
+      cr::buildCreativeUiModel(generatedShellRequest);
+  const cr::CreativeUiRow* removeShellRow =
+      rowOfKind(generatedShellReceipt.model,
+                cr::CreativeUiRowKind::InspectorRemoveRoomShell);
 
   cr::CreativeUiBuildRequest crateRequest =
       cr::makeDefaultCreativeUiBuildRequest();
@@ -410,9 +526,24 @@ bool selectedRoomShowsGenerateRoomShellRowOnlyForRoom() {
                 "room shell object kind") &&
          expect(hasFlag(shellRow->flags, cr::kCreativeUiRowFlagEnabled),
                 "room shell enabled") &&
+         expect(removeShellAbsent == nullptr,
+                "room shell remove absent without generated children") &&
+         expect(removeShellRow != nullptr, "room shell remove present") &&
+         expect(removeShellRow->id == "remove_room_shell",
+                "room shell remove id") &&
+         expect(removeShellRow->label == "Remove Room Shell",
+                "room shell remove label") &&
+         expect(removeShellRow->target.value == 9U,
+                "room shell remove target") &&
+         expect(hasFlag(removeShellRow->flags, cr::kCreativeUiRowFlagEnabled),
+                "room shell remove enabled") &&
          expect(panel(roomReceipt.model, cr::CreativeUiPanelKind::Selection)
                     .rowCount == 11U,
                 "room selection row count includes shell") &&
+         expect(panel(generatedShellReceipt.model,
+                      cr::CreativeUiPanelKind::Selection)
+                    .rowCount == 12U,
+                "generated shell row count includes remove") &&
          expect(rowOfKind(crateReceipt.model,
                           cr::CreativeUiRowKind::InspectorGenerateRoomShell) ==
                     nullptr,
@@ -560,6 +691,49 @@ bool panelsReferenceRowsByIndexAndCount() {
   return ok;
 }
 
+bool commandRowsResolveThroughSharedCatalog() {
+  cr::CreativeUiBuildRequest selectedRoom =
+      cr::makeDefaultCreativeUiBuildRequest();
+  selectedRoom.selectionState.selectedTarget.value = 77;
+  selectedRoom.objectSummaries = {
+      objectSummary(cr::Id{77}, cr::CreativeObjectKind::Room, true),
+  };
+
+  const std::array<cr::CreativeUiBuildReceipt, 2> receipts = {
+      buildDefault(),
+      cr::buildCreativeUiModel(selectedRoom),
+  };
+
+  bool ok = true;
+  std::size_t commandRowCount = 0;
+  for (const cr::CreativeUiBuildReceipt& receipt : receipts) {
+    for (const cr::CreativeUiRow& row : receipt.model.rows) {
+      if (!isCommandRow(row.kind)) {
+        continue;
+      }
+      ++commandRowCount;
+      const std::string semanticId = semanticIdForRow(row);
+      const iggy3d::ProductCreativeUiCommandCatalogEntry* entry =
+          iggy3d::findProductCreativeUiCommandBySemanticId(semanticId);
+      ok &= expect(entry != nullptr, "command row has catalog entry");
+      if (entry == nullptr) {
+        continue;
+      }
+      ok &= expect(entry->rowId == row.id, "catalog row id matches") &&
+            expect(entry->label == row.label, "catalog label matches");
+      if (row.kind == cr::CreativeUiRowKind::ToolButton) {
+        ok &= expect(entry->tool == row.tool, "catalog tool payload matches");
+      }
+      if (row.kind == cr::CreativeUiRowKind::CreateObject) {
+        ok &= expect(entry->objectKind == row.objectKind,
+                     "catalog object payload matches");
+      }
+    }
+  }
+
+  return expect(commandRowCount == 20U, "catalog command row count") && ok;
+}
+
 bool repeatedBuildProducesSameRows() {
   cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
   request.toolState.activeTool = cr::Tool::Measure;
@@ -586,6 +760,7 @@ bool repeatedBuildProducesSameRows() {
 
 int main() {
   const bool ok = defaultModelDeterministic() &&
+                  createPanelRowsFollowProductDescriptorPalette() &&
                   undoAvailabilityControlsToolRowState() &&
                   toolPaletteMarksExactlyOneActiveRowPerTool() &&
                   selectedTargetRowAppearsOnlyWhenNonzero() &&
@@ -599,6 +774,7 @@ int main() {
                   ghostRowAppearsOnlyWhenVisible() &&
                   snapSettingsRowReflectsModeAxesStepsAndOrigin() &&
                   panelsReferenceRowsByIndexAndCount() &&
+                  commandRowsResolveThroughSharedCatalog() &&
                   repeatedBuildProducesSameRows();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

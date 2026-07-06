@@ -1,0 +1,54 @@
+#pragma once
+
+#include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/creative/document/Object.hpp"
+#include "app/iggy3d/creative/tools/Tools.hpp"
+#include "core/math/Vec3.hpp"
+#include "render/FrameInput.hpp"
+
+#include "StandalonePicking.hpp"
+#include "StandaloneUndo.hpp"
+
+#include <array>
+#include <cstddef>
+#include <string_view>
+
+namespace iggy3d_creative_app {
+namespace cr = iggy3d::creative;
+
+enum class GizmoAxis { None, X, Y, Z };
+
+struct GizmoAxisShaft {
+  GizmoAxis axis = GizmoAxis::None;
+  iggy3d::Vec3 tip{0.0F, 0.0F, 0.0F};
+  iggy3d::RenderLineColor color{1.0F, 1.0F, 1.0F, 1.0F};
+};
+
+[[nodiscard]] cr::CreativeToolMoveHeldAxis heldAxisForGrabbedAxis(
+    GizmoAxis grabbed);
+[[nodiscard]] const char* gizmoAxisName(GizmoAxis axis);
+
+void logObjectPlacement(const char* phase, const cr::CreativeObject* object);
+void logUndoMovePlacement(const char* phase,
+                          cr::CreativeObjectId objectId,
+                          const cr::CreativeObject* object);
+void logMoveDispatch(const char* phase,
+                     const cr::CreativeFacadeToolDispatchReceipt& receipt);
+
+[[nodiscard]] cr::CreativeFacadeToolDispatchReceipt dispatchMoveReleaseWithUndo(
+    cr::CreativeAppState& appState,
+    StandaloneUndoStack& undoStack,
+    const cr::CreativeToolInputPacket& release,
+    cr::CreativeObjectId objectId,
+    std::string_view source);
+
+[[nodiscard]] GizmoAxis pickGizmoAxisFromProjectedShafts(
+    const std::array<GizmoAxisShaft, 3>& shafts,
+    ScreenPoint centerScreen,
+    const std::array<ScreenPoint, 3>& tipScreens,
+    float px,
+    float py,
+    float thresholdPx);
+
+}  // namespace iggy3d_creative_app

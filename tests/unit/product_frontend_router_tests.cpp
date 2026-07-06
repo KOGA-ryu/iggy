@@ -5,6 +5,7 @@
 #include "app/frontend/SaveBrowser.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/frontend/StarterScreen.hpp"
+#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 
 #include <array>
@@ -47,6 +48,18 @@ iggy3d::ProductActiveSurfaceContext activeSurfaceContextFor(
   return context;
 }
 
+iggy3d::creative::CreativeActiveIdentity liveCreativeIdentity() {
+  iggy3d::creative::CreativeActiveIdentity identity;
+  identity.saveId = "creative_save";
+  identity.worldId = "world_001";
+  identity.documentId = 42U;
+  return identity;
+}
+
+void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
+  iggy3d::mirrorProductActiveCreativeIdentity(liveCreativeIdentity(), window);
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+}
 
 bool surfaceNamesAreStable() {
   return expect(iggy3d::productFrontendSurfaceName(
@@ -618,16 +631,16 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
 
   iggy3d::ProductAppWindowState document;
   document.gameplayActive = true;
-  document.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(document);
   document.mapMakerStatus = "map_maker_enabled";
-  document.activeCreativeSaveId = "creative_save";
-  document.activeCreativeWorldId = "world_001";
-  document.activeCreativeDocumentId = 42U;
 
   iggy3d::ProductAppWindowState staleIdentity;
   staleIdentity.gameplayActive = true;
   staleIdentity.interactionMode = iggy3d::ProductInteractionMode::Player;
   staleIdentity.activeCreativeDocumentId = 42U;
+  const iggy3d::creative::CreativeActiveIdentity liveIdentity =
+      liveCreativeIdentity();
+  const iggy3d::creative::CreativeActiveIdentity inactiveIdentity;
 
   iggy3d::ProductAppOptions options;
   iggy3d::ProductWorldTemplate world;
@@ -655,6 +668,15 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
          expect(iggy3d::productCreativeSurfaceKindForWindow(frontend, none) ==
                     iggy3d::ProductCreativeSurfaceKind::None,
                 "default surface none") &&
+         expect(!iggy3d::productCreativeWorldActiveForIdentity(
+                    inactiveIdentity),
+                "inactive identity not active") &&
+         expect(iggy3d::productCreativeWorldActiveForIdentity(liveIdentity),
+                "live identity active") &&
+         expect(iggy3d::productCreativeWorldActiveForWindowMirror(document),
+                "window mirror fallback active") &&
+         expect(!iggy3d::productCreativeWorldActiveForWindowMirror(none),
+                "empty window mirror inactive") &&
          expect(iggy3d::productCreativeSurfaceKindForWindow(frontend, legacy) ==
                     iggy3d::ProductCreativeSurfaceKind::LegacyMapMaker,
                 "legacy map maker surface") &&
@@ -683,11 +705,8 @@ bool creativeDocumentIdentitySuppressesRoomEditorSurface() {
 
   iggy3d::ProductAppWindowState window;
   window.gameplayActive = true;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  markCreativeDocumentWindow(window);
   window.roomEditing.ready = true;
-  window.activeCreativeSaveId = "creative_save";
-  window.activeCreativeWorldId = "world_001";
-  window.activeCreativeDocumentId = 42U;
 
   const iggy3d::ProductActiveSurfaceFrame surface =
       iggy3d::resolveProductActiveSurface(

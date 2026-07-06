@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -136,8 +137,44 @@ struct CreativeFacadeDocumentInstallReceipt {
   std::string_view message = "creative_facade_document_not_requested";
 };
 
+enum class CreativeFacadeDocumentBatchCreateStatus : std::uint8_t {
+  Unknown,
+  Empty,
+  CreateRejected,
+  InstallRejected,
+  Applied,
+};
+
+struct CreativeFacadeDocumentBatchCreateReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  CreativeFacadeDocumentBatchCreateStatus status =
+      CreativeFacadeDocumentBatchCreateStatus::Unknown;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  std::uint64_t attemptedCreateCount = 0;
+  std::uint64_t appliedCreateCount = 0;
+  bool hasFailedCreate = false;
+  std::uint64_t firstFailedCreateIndex = 0;
+  CreativeDocumentCreateStatus firstFailedCreateStatus =
+      CreativeDocumentCreateStatus::Unknown;
+  std::string_view firstFailedCreateReasonCode =
+      "document_create_not_requested";
+  std::string_view firstFailedCreateMessage =
+      "document_create_not_requested";
+  bool installAttempted = false;
+  CreativeFacadeDocumentInstallReceipt installReceipt;
+  std::string_view reasonCode =
+      "creative_facade_batch_create_not_requested";
+  std::string_view message =
+      "creative_facade_batch_create_not_requested";
+};
+
 [[nodiscard]] std::string_view toString(
     CreativeFacadeMutationStatus status) noexcept;
+[[nodiscard]] std::string_view toString(
+    CreativeFacadeDocumentBatchCreateStatus status) noexcept;
 
 class Facade {
  public:
@@ -174,6 +211,9 @@ class Facade {
       CreativeObjectId id);
   [[nodiscard]] CreativeFacadeDocumentInstallReceipt installDocument(
       CreativeDocument document);
+  [[nodiscard]] CreativeFacadeDocumentBatchCreateReceipt
+  createDocumentObjectsAtomically(
+      std::span<const CreativeDocumentCreateRequest> requests);
   [[nodiscard]] const CreativeObject* findObject(
       CreativeObjectId id) const noexcept;
   [[nodiscard]] const CreativeDocument& document() const noexcept;

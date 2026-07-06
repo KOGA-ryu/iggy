@@ -50,20 +50,55 @@ bool expectLacksDirtyFlag(cr::CreativeObjectDirtyFlags flags,
   return expect(!cr::hasDirtyFlag(flags, flag), message);
 }
 
+bool kindIsInCreativeObjectInventory(cr::CreativeObjectKind kind) {
+  for (const cr::CreativeObjectKind knownKind : cr::allCreativeObjectKinds()) {
+    if (knownKind == kind) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::uint64_t descriptorCountForKind(
+    std::span<const cr::CreativeObjectDescriptor> descriptors,
+    cr::CreativeObjectKind kind) {
+  std::uint64_t count = 0;
+  for (const cr::CreativeObjectDescriptor& descriptor : descriptors) {
+    count += descriptor.kind == kind ? 1U : 0U;
+  }
+  return count;
+}
+
 bool descriptorTableRowsAreStableAndUnique() {
   const std::span<const cr::CreativeObjectDescriptor> descriptors =
       cr::allObjectDescriptors();
-  bool ok = expect(descriptors.size() == 108U,
-                   "current descriptor table has every known object kind") &&
+  const std::span<const cr::CreativeObjectKind> knownKinds =
+      cr::allCreativeObjectKinds();
+  bool ok = expect(descriptors.size() == knownKinds.size(),
+                   "descriptor table has one row for every known object kind") &&
             expect(descriptors.front().kind == cr::CreativeObjectKind::Unknown,
                    "unknown descriptor is first");
+
+  for (const cr::CreativeObjectKind kind : knownKinds) {
+    const cr::CreativeObjectDescriptor& described =
+        cr::describeObject(kind);
+    ok = expect(descriptorCountForKind(descriptors, kind) == 1U,
+                "known object kind has exactly one descriptor row") &&
+         expect(described.kind == kind,
+                "describeObject returns in-range known kind") &&
+         expect(described.name == cr::toString(kind),
+                "known object kind string matches descriptor name") &&
+         ok;
+  }
 
   for (std::size_t i = 0; i < descriptors.size(); ++i) {
     const cr::CreativeObjectDescriptor& descriptor = descriptors[i];
     const cr::CreativeObjectDescriptor& described =
         cr::describeObject(descriptor.kind);
 
-    ok = expect(described.kind == descriptor.kind,
+    ok = expect(kindIsInCreativeObjectInventory(descriptor.kind),
+                "descriptor kind is in known object inventory") &&
+         expect(described.kind == descriptor.kind,
                 "describeObject round-trips descriptor kind") &&
          expect(cr::categoryOf(descriptor.kind) == descriptor.category,
                 "categoryOf matches descriptor") &&
@@ -114,6 +149,103 @@ bool descriptorTableRowsAreStableAndUnique() {
   return ok;
 }
 
+bool serializedObjectKindIdsAreStableAndUnique() {
+  bool ok = true;
+  for (const cr::CreativeObjectKind kind : cr::allCreativeObjectKinds()) {
+    const std::string_view serializedId = cr::serializedObjectKindId(kind);
+    cr::CreativeObjectKind parsed = cr::CreativeObjectKind::Unknown;
+    if (kind == cr::CreativeObjectKind::Unknown) {
+      ok = expect(serializedId == "Unknown", "unknown serialized id") &&
+           expect(!cr::parseSerializedObjectKindId(serializedId, parsed),
+                  "unknown serialized id does not parse as authored kind") &&
+           ok;
+      continue;
+    }
+
+    ok = expect(!serializedId.empty(), "serialized kind id is non-empty") &&
+         expect(serializedId != "Unknown",
+                "authored kind serialized id is explicit") &&
+         expect(serializedId == cr::toString(kind),
+                "current serialized kind id preserves legacy save string") &&
+         expect(cr::parseSerializedObjectKindId(serializedId, parsed),
+                "serialized kind id parses") &&
+         expect(parsed == kind, "serialized kind id round-trips") &&
+         ok;
+
+    for (const cr::CreativeObjectKind other : cr::allCreativeObjectKinds()) {
+      if (other == kind || other == cr::CreativeObjectKind::Unknown) {
+        continue;
+      }
+      ok = expect(cr::serializedObjectKindId(other) != serializedId,
+                  "serialized kind ids are unique") &&
+           ok;
+    }
+  }
+
+  cr::CreativeObjectKind parsed = cr::CreativeObjectKind::Unknown;
+  const cr::CreativeObjectDescriptor& movingPlatform =
+      cr::describeObject(cr::CreativeObjectKind::MovingPlatform);
+  ok = expect(cr::serializedObjectKindId(movingPlatform.kind) ==
+                  "MovingPlatform",
+              "moving platform serialized id is compact legacy token") &&
+       expect(movingPlatform.displayName == "Moving Platform",
+              "moving platform display name remains human readable") &&
+       expect(!cr::parseSerializedObjectKindId(movingPlatform.displayName,
+                                               parsed),
+              "display labels are not serialized kind ids") &&
+       expect(!cr::parseSerializedObjectKindId("", parsed),
+              "empty serialized kind id rejected") &&
+       expect(!cr::parseSerializedObjectKindId("DefinitelyNotAKind", parsed),
+              "invalid serialized kind id rejected") &&
+       ok;
+  return ok;
+}
+
+bool legacyCategoryPredicatesFollowDescriptorTruth() {
+  bool ok = true;
+  for (const cr::CreativeObjectKind kind : cr::allCreativeObjectKinds()) {
+    ok = expect(cr::isStructuralObject(kind) ==
+                    cr::objectUsesCategory(
+                        kind, cr::CreativeObjectCategory::Structural),
+                "structural predicate follows descriptor category") &&
+         expect(cr::isTerrainOrVolumeObject(kind) ==
+                    cr::objectUsesCategory(
+                        kind, cr::CreativeObjectCategory::TerrainOrVolume),
+                "terrain or volume predicate follows descriptor category") &&
+         expect(cr::isNavigationOrMovementObject(kind) ==
+                    cr::objectUsesCategory(
+                        kind,
+                        cr::CreativeObjectCategory::NavigationOrMovement),
+                "navigation or movement predicate follows descriptor category") &&
+         expect(cr::isLogicObject(kind) ==
+                    cr::objectUsesCategory(kind,
+                                           cr::CreativeObjectCategory::Logic),
+                "logic predicate follows descriptor category") &&
+         expect(cr::isTestingObject(kind) ==
+                    cr::objectUsesCategory(kind,
+                                           cr::CreativeObjectCategory::Testing),
+                "testing predicate follows descriptor category") &&
+         expect(cr::isVisualDressingObject(kind) ==
+                    cr::objectUsesCategory(
+                        kind, cr::CreativeObjectCategory::VisualDressing),
+                "visual dressing predicate follows descriptor category") &&
+         expect(cr::isLightSoundOrCameraObject(kind) ==
+                    cr::objectUsesCategory(
+                        kind, cr::CreativeObjectCategory::LightSoundOrCamera),
+                "light sound camera predicate follows descriptor category") &&
+         expect(cr::isAuthoringMetaObject(kind) ==
+                    cr::objectUsesCategory(
+                        kind, cr::CreativeObjectCategory::AuthoringMeta),
+                "authoring meta predicate follows descriptor category") &&
+         expect(cr::isGameplayObject(kind) ==
+                    cr::objectUsesCategory(
+                        kind, cr::CreativeObjectCategory::Gameplay),
+                "gameplay predicate follows descriptor category") &&
+         ok;
+  }
+  return ok;
+}
+
 bool shapeKindStringsAreStable() {
   return expect(cr::toString(cr::CreativeObjectShapeKind::Unknown) ==
                     "Unknown",
@@ -133,6 +265,34 @@ bool shapeKindStringsAreStable() {
          expect(cr::toString(cr::CreativeObjectShapeKind::MeshProxy) ==
                     "MeshProxy",
                 "mesh proxy shape string");
+}
+
+bool runtimeAnchorSemanticStringsAreStable() {
+  return expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::None).empty(),
+                "none anchor semantic string") &&
+         expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::Spawn) ==
+                    "spawn",
+                "spawn anchor semantic string") &&
+         expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::Exit) ==
+                    "exit",
+                "exit anchor semantic string") &&
+         expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::Npc) == "npc",
+                "npc anchor semantic string") &&
+         expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::Monster) ==
+                    "monster",
+                "monster anchor semantic string") &&
+         expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::Pickup) ==
+                    "pickup",
+                "pickup anchor semantic string") &&
+         expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::Light) ==
+                    "light",
+                "light anchor semantic string") &&
+         expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::Audio) ==
+                    "audio",
+                "audio anchor semantic string") &&
+         expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::Camera) ==
+                    "camera",
+                "camera anchor semantic string");
 }
 
 bool spatialProjectionProfileStringsAreStable() {
@@ -180,9 +340,6 @@ bool roomDescriptorPinsShapeBearingProjectionContract() {
          expect(descriptor.hasBounds, "room is shape-bearing") &&
          expect(!descriptor.canHaveParent, "room cannot have parent") &&
          expect(descriptor.canOwnChildren, "room can own children") &&
-         expect(descriptor.canBeHidden, "room can be hidden") &&
-         expect(descriptor.canBeLocked, "room can be locked") &&
-         expect(descriptor.canBeTagged, "room can be tagged") &&
          expect(descriptor.isRuntimeMeaningful, "room runtime meaningful") &&
          expect(!descriptor.isEditorOnly, "room is not editor-only") &&
          expect(descriptor.defaults.visible, "room default visible") &&
@@ -241,6 +398,10 @@ bool roomDescriptorPinsShapeBearingProjectionContract() {
 bool unknownDescriptorRemainsInvalidAndNonProjectable() {
   const cr::CreativeObjectDescriptor& descriptor =
       cr::describeObject(cr::CreativeObjectKind::Unknown);
+  const cr::CreativeObjectDescriptor& sentinelDescriptor =
+      cr::describeObject(cr::CreativeObjectKind::Count);
+  const cr::CreativeObjectDescriptor& invalidDescriptor =
+      cr::describeObject(static_cast<cr::CreativeObjectKind>(999999U));
 
   return expect(descriptor.kind == cr::CreativeObjectKind::Unknown,
                 "unknown descriptor kind") &&
@@ -276,7 +437,16 @@ bool unknownDescriptorRemainsInvalidAndNonProjectable() {
                 "unknown descriptor projection no projection") &&
          expect(descriptor.occupancyKind ==
                     cr::CreativeSpatialOccupancyKind::Unknown,
-                "unknown descriptor occupancy unknown");
+                "unknown descriptor occupancy unknown") &&
+         expect(sentinelDescriptor.kind == cr::CreativeObjectKind::Unknown,
+                "count sentinel describes as unknown") &&
+         expect(invalidDescriptor.kind == cr::CreativeObjectKind::Unknown,
+                "invalid cast describes as unknown") &&
+         expect(cr::toString(cr::CreativeObjectKind::Count) == "Unknown",
+                "count sentinel string unknown") &&
+         expect(cr::toString(static_cast<cr::CreativeObjectKind>(999999U)) ==
+                    "Unknown",
+                "invalid cast string unknown");
 }
 
 bool representativeDescriptorsPinShapeFacts() {
@@ -324,6 +494,212 @@ bool representativeDescriptorsPinShapeFacts() {
                                "enemy spawn shape descriptor");
 }
 
+bool representativeDescriptorsPinRuntimeAnchorSemantics() {
+  return expect(cr::describeObject(cr::CreativeObjectKind::SpawnPoint)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::Spawn,
+                "spawn point runtime anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::ExitPoint)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::Exit,
+                "exit point runtime anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::EnemySpawn)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::Monster,
+                "enemy spawn runtime anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::NpcSpawn)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::Npc,
+                "npc spawn runtime anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::LootPoint)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::Pickup,
+                "loot point runtime anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::PointLight)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::Light,
+                "point light metadata anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::SoundEmitter)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::Audio,
+                "sound emitter metadata anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::CameraMarker)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::Camera,
+                "camera marker metadata anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::EntrancePoint)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::None,
+                "entrance point has no session anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::QuestMarker)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::None,
+                "quest marker does not inherit gameplay anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::Socket)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::None,
+                "socket has no runtime anchor semantic");
+}
+
+bool representativeDescriptorsPinCapabilityFacts() {
+  const cr::CreativeObjectDescriptor& wall =
+      cr::describeObject(cr::CreativeObjectKind::Wall);
+  const cr::CreativeObjectDescriptor& crate =
+      cr::describeObject(cr::CreativeObjectKind::Crate);
+  const cr::CreativeObjectDescriptor& pointLight =
+      cr::describeObject(cr::CreativeObjectKind::PointLight);
+  const cr::CreativeObjectDescriptor& note =
+      cr::describeObject(cr::CreativeObjectKind::Note);
+  const cr::CreativeObjectDescriptor& navLink =
+      cr::describeObject(cr::CreativeObjectKind::NavLink);
+  const cr::CreativeObjectDescriptor& patrolRoute =
+      cr::describeObject(cr::CreativeObjectKind::PatrolRoute);
+  const cr::CreativeObjectDescriptor& group =
+      cr::describeObject(cr::CreativeObjectKind::Group);
+  const cr::CreativeObjectDescriptor& prefab =
+      cr::describeObject(cr::CreativeObjectKind::PrefabInstance);
+  const cr::CreativeObjectDescriptor& testLane =
+      cr::describeObject(cr::CreativeObjectKind::TestLane);
+
+  return expect(wall.hasTransform, "wall has transform") &&
+         expect(wall.hasBounds, "wall has bounds") &&
+         expect(wall.canHaveParent, "wall can have parent") &&
+         expect(!wall.canOwnChildren, "wall cannot own children") &&
+         expect(wall.isRuntimeMeaningful, "wall runtime meaningful") &&
+         expect(!wall.isEditorOnly, "wall not editor-only") &&
+         expect(crate.hasTransform, "crate has transform") &&
+         expect(crate.hasBounds, "crate has bounds") &&
+         expect(!crate.canHaveParent, "crate cannot have parent") &&
+         expect(!crate.canOwnChildren, "crate cannot own children") &&
+         expect(!crate.isRuntimeMeaningful, "crate not runtime meaningful") &&
+         expect(!crate.isEditorOnly, "crate not editor-only") &&
+         expect(pointLight.hasTransform, "point light has transform") &&
+         expect(!pointLight.hasBounds, "point light has no bounds") &&
+         expect(!pointLight.canHaveParent, "point light cannot have parent") &&
+         expect(!pointLight.canOwnChildren, "point light cannot own children") &&
+         expect(!pointLight.isRuntimeMeaningful,
+                "point light not runtime meaningful") &&
+         expect(!pointLight.isEditorOnly, "point light not editor-only") &&
+         expect(note.hasTransform, "note has transform") &&
+         expect(!note.hasBounds, "note has no bounds") &&
+         expect(!note.canHaveParent, "note cannot have parent") &&
+         expect(!note.canOwnChildren, "note cannot own children") &&
+         expect(!note.isRuntimeMeaningful, "note not runtime meaningful") &&
+         expect(note.isEditorOnly, "note editor-only") &&
+         expect(!navLink.hasTransform, "nav link has no transform") &&
+         expect(!navLink.hasBounds, "nav link has no bounds") &&
+         expect(!navLink.canHaveParent, "nav link cannot have parent") &&
+         expect(!navLink.canOwnChildren, "nav link cannot own children") &&
+         expect(navLink.isRuntimeMeaningful, "nav link runtime meaningful") &&
+         expect(!navLink.isEditorOnly, "nav link not editor-only") &&
+         expect(!patrolRoute.hasTransform, "patrol route has no transform") &&
+         expect(!patrolRoute.hasBounds, "patrol route has no bounds") &&
+         expect(!patrolRoute.canHaveParent,
+                "patrol route cannot have parent") &&
+         expect(patrolRoute.canOwnChildren,
+                "patrol route can own children") &&
+         expect(patrolRoute.isRuntimeMeaningful,
+                "patrol route runtime meaningful") &&
+         expect(!patrolRoute.isEditorOnly, "patrol route not editor-only") &&
+         expect(group.hasTransform, "group has transform") &&
+         expect(!group.hasBounds, "group has no bounds") &&
+         expect(group.canHaveParent, "group can have parent") &&
+         expect(group.canOwnChildren, "group can own children") &&
+         expect(!group.isRuntimeMeaningful, "group not runtime meaningful") &&
+         expect(!group.isEditorOnly, "group not editor-only") &&
+         expect(prefab.hasTransform, "prefab has transform") &&
+         expect(prefab.hasBounds, "prefab has bounds") &&
+         expect(prefab.canHaveParent, "prefab can have parent") &&
+         expect(prefab.canOwnChildren, "prefab can own children") &&
+         expect(prefab.isRuntimeMeaningful, "prefab runtime meaningful") &&
+         expect(!prefab.isEditorOnly, "prefab not editor-only") &&
+         expect(testLane.hasTransform, "test lane has transform") &&
+         expect(testLane.hasBounds, "test lane has bounds") &&
+         expect(!testLane.canHaveParent, "test lane cannot have parent") &&
+         expect(testLane.canOwnChildren, "test lane can own children") &&
+         expect(!testLane.isRuntimeMeaningful,
+                "test lane not runtime meaningful") &&
+         expect(!testLane.isEditorOnly, "test lane not editor-only");
+}
+
+bool representativeDescriptorsPinAuthoringBrushPaletteVisibility() {
+  const cr::CreativeObjectDescriptor& room =
+      cr::describeObject(cr::CreativeObjectKind::Room);
+  const cr::CreativeObjectDescriptor& crate =
+      cr::describeObject(cr::CreativeObjectKind::Crate);
+  const cr::CreativeObjectDescriptor& wall =
+      cr::describeObject(cr::CreativeObjectKind::Wall);
+  const cr::CreativeObjectDescriptor& beam =
+      cr::describeObject(cr::CreativeObjectKind::Beam);
+  const cr::CreativeObjectDescriptor& pointLight =
+      cr::describeObject(cr::CreativeObjectKind::PointLight);
+  const cr::CreativeObjectDescriptor& patrolRoute =
+      cr::describeObject(cr::CreativeObjectKind::PatrolRoute);
+  const cr::CreativeObjectDescriptor& testLane =
+      cr::describeObject(cr::CreativeObjectKind::TestLane);
+  const cr::CreativeObjectDescriptor& fallShaft =
+      cr::describeObject(cr::CreativeObjectKind::FallShaft);
+  const cr::CreativeObjectDescriptor& timingGate =
+      cr::describeObject(cr::CreativeObjectKind::TimingGate);
+  const cr::CreativeObjectDescriptor& note =
+      cr::describeObject(cr::CreativeObjectKind::Note);
+  const cr::CreativeObjectDescriptor& measurementLine =
+      cr::describeObject(cr::CreativeObjectKind::MeasurementLine);
+  bool helpersFollowDescriptorIntent = true;
+  for (const cr::CreativeObjectDescriptor& descriptor :
+       cr::allObjectDescriptors()) {
+    helpersFollowDescriptorIntent =
+        expect(cr::descriptorShowsInAuthoringBrushPalette(descriptor) ==
+                   (descriptor.authoringPaletteVisibility ==
+                    cr::CreativeAuthoringPaletteVisibility::Brush),
+               "authoring palette helper reads descriptor intent") &&
+        helpersFollowDescriptorIntent;
+  }
+
+  return expect(helpersFollowDescriptorIntent,
+                "authoring palette helpers follow descriptor intent") &&
+         expect(room.authoringPaletteVisibility ==
+                    cr::CreativeAuthoringPaletteVisibility::Hidden,
+                "room descriptor explicitly hidden from brush palette") &&
+         expect(!cr::descriptorShowsInAuthoringBrushPalette(room),
+                "room metadata hidden from brush palette") &&
+         expect(!cr::objectShowsInAuthoringBrushPalette(
+                    cr::CreativeObjectKind::Room),
+                "room object hidden from brush palette") &&
+         expect(crate.authoringPaletteVisibility ==
+                    cr::CreativeAuthoringPaletteVisibility::Brush,
+                "crate descriptor explicitly visible in brush palette") &&
+         expect(cr::descriptorShowsInAuthoringBrushPalette(crate),
+                "crate visible in brush palette") &&
+         expect(cr::objectShowsInAuthoringBrushPalette(
+                    cr::CreativeObjectKind::Crate),
+                "crate object visible in brush palette") &&
+         expect(cr::descriptorShowsInAuthoringBrushPalette(wall),
+                "wall visible in brush palette") &&
+         expect(cr::descriptorShowsInAuthoringBrushPalette(beam),
+                "beam visible in brush palette") &&
+         expect(cr::descriptorShowsInAuthoringBrushPalette(pointLight),
+                "point light visible in brush palette") &&
+         expect(cr::descriptorShowsInAuthoringBrushPalette(patrolRoute),
+                "patrol route visible in brush palette") &&
+         expect(testLane.authoringPaletteVisibility ==
+                    cr::CreativeAuthoringPaletteVisibility::Hidden,
+                "test lane descriptor explicitly hidden from brush palette") &&
+         expect(!cr::descriptorShowsInAuthoringBrushPalette(testLane),
+                "test lane box volume hidden from brush palette") &&
+         expect(!cr::descriptorShowsInAuthoringBrushPalette(fallShaft),
+                "fall shaft box volume hidden from brush palette") &&
+         expect(!cr::descriptorShowsInAuthoringBrushPalette(timingGate),
+                "timing gate box volume hidden from brush palette") &&
+         expect(note.authoringPaletteVisibility ==
+                    cr::CreativeAuthoringPaletteVisibility::Hidden,
+                "editor-only note explicitly hidden from brush palette") &&
+         expect(!cr::descriptorShowsInAuthoringBrushPalette(note),
+                "note editor-only descriptor hidden from brush palette") &&
+         expect(!cr::descriptorShowsInAuthoringBrushPalette(measurementLine),
+                "measurement line editor-only descriptor hidden from brush palette");
+}
+
 bool shapeAndProjectionCanDifferByDesign() {
   const cr::CreativeObjectDescriptor& wall =
       cr::describeObject(cr::CreativeObjectKind::Wall);
@@ -347,6 +723,85 @@ bool shapeAndProjectionCanDifferByDesign() {
          expect(patrolRoute.projectionProfile ==
                     cr::CreativeSpatialProjectionProfile::PathProjection,
                 "patrol route projection path");
+}
+
+bool boxVolumeTestingDescriptorsAreNonRuntimeHelpers() {
+  const cr::CreativeObjectDescriptor& testLane =
+      cr::describeObject(cr::CreativeObjectKind::TestLane);
+  const cr::CreativeObjectDescriptor& fallShaft =
+      cr::describeObject(cr::CreativeObjectKind::FallShaft);
+  const cr::CreativeObjectDescriptor& timingGate =
+      cr::describeObject(cr::CreativeObjectKind::TimingGate);
+
+  return expect(testLane.shapeKind == cr::CreativeObjectShapeKind::BoxVolume,
+                "test lane box volume") &&
+         expect(testLane.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::BoxProjection,
+                "test lane box projection") &&
+         expect(testLane.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Testing,
+                "test lane testing occupancy") &&
+         expect(!testLane.isRuntimeMeaningful,
+                "test lane not runtime meaningful") &&
+         expect(!testLane.isEditorOnly, "test lane not editor-only") &&
+         expect(fallShaft.shapeKind == cr::CreativeObjectShapeKind::BoxVolume,
+                "fall shaft box volume") &&
+         expect(fallShaft.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::BoxProjection,
+                "fall shaft box projection") &&
+         expect(fallShaft.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Testing,
+                "fall shaft testing occupancy") &&
+         expect(!fallShaft.isRuntimeMeaningful,
+                "fall shaft not runtime meaningful") &&
+         expect(!fallShaft.isEditorOnly, "fall shaft not editor-only") &&
+         expect(timingGate.shapeKind == cr::CreativeObjectShapeKind::BoxVolume,
+                "timing gate box volume") &&
+         expect(timingGate.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::BoxProjection,
+                "timing gate box projection") &&
+         expect(timingGate.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Testing,
+                "timing gate testing occupancy") &&
+         expect(!timingGate.isRuntimeMeaningful,
+                "timing gate not runtime meaningful") &&
+         expect(!timingGate.isEditorOnly, "timing gate not editor-only");
+}
+
+bool volumeProjectionDescriptorsAreSemanticVolumes() {
+  const cr::CreativeObjectDescriptor& trigger =
+      cr::describeObject(cr::CreativeObjectKind::TriggerZone);
+  const cr::CreativeObjectDescriptor& alert =
+      cr::describeObject(cr::CreativeObjectKind::AlertZone);
+  const cr::CreativeObjectDescriptor& boundary =
+      cr::describeObject(cr::CreativeObjectKind::BoundaryVolume);
+
+  return expect(trigger.shapeKind == cr::CreativeObjectShapeKind::BoxVolume,
+                "trigger zone box volume") &&
+         expect(trigger.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::VolumeProjection,
+                "trigger zone volume projection") &&
+         expect(trigger.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Trigger,
+                "trigger zone trigger occupancy") &&
+         expect(alert.shapeKind == cr::CreativeObjectShapeKind::BoxVolume,
+                "alert zone box volume") &&
+         expect(alert.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::VolumeProjection,
+                "alert zone volume projection") &&
+         expect(alert.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Gameplay,
+                "alert zone gameplay occupancy") &&
+         expect(alert.isRuntimeMeaningful,
+                "alert zone runtime meaningful metadata") &&
+         expect(boundary.shapeKind == cr::CreativeObjectShapeKind::BoxVolume,
+                "boundary volume box volume") &&
+         expect(boundary.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::VolumeProjection,
+                "boundary volume projection") &&
+         expect(boundary.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Collision,
+                "boundary collision occupancy");
 }
 
 bool representativeDescriptorsPinSpatialFacts() {
@@ -533,12 +988,20 @@ bool mutationDirtyFlagsFollowDescriptorSpatialColumns() {
 
 int main() {
   const bool ok = descriptorTableRowsAreStableAndUnique() &&
+                  serializedObjectKindIdsAreStableAndUnique() &&
+                  legacyCategoryPredicatesFollowDescriptorTruth() &&
                   shapeKindStringsAreStable() &&
+                  runtimeAnchorSemanticStringsAreStable() &&
                   spatialProjectionProfileStringsAreStable() &&
                   roomDescriptorPinsShapeBearingProjectionContract() &&
                   unknownDescriptorRemainsInvalidAndNonProjectable() &&
                   representativeDescriptorsPinShapeFacts() &&
+                  representativeDescriptorsPinRuntimeAnchorSemantics() &&
+                  representativeDescriptorsPinCapabilityFacts() &&
+                  representativeDescriptorsPinAuthoringBrushPaletteVisibility() &&
                   shapeAndProjectionCanDifferByDesign() &&
+                  boxVolumeTestingDescriptorsAreNonRuntimeHelpers() &&
+                  volumeProjectionDescriptorsAreSemanticVolumes() &&
                   representativeDescriptorsPinSpatialFacts() &&
                   mutationDirtyFlagsFollowDescriptorSpatialColumns();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

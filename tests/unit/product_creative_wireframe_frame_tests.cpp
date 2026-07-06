@@ -727,8 +727,8 @@ bool recorderPreservesExistingFields() {
   window.status = "window_before";
   window.creativeUiInputRequested = true;
   window.creativeUiInputStatus = "input_before";
-  window.creativeUiCommandRequested = true;
-  window.creativeUiCommandStatus = "command_before";
+  window.creativeUiCommand.requested = true;
+  window.creativeUiCommand.status = "command_before";
   window.creativeViewportPickRequested = true;
   window.creativeViewportPickStatus = "pick_before";
   window.activeCreativeSaveStatus = "save_before";
@@ -747,9 +747,9 @@ bool recorderPreservesExistingFields() {
                 "creative input requested kept") &&
          expect(window.creativeUiInputStatus == "input_before",
                 "creative input status kept") &&
-         expect(window.creativeUiCommandRequested,
+         expect(window.creativeUiCommand.requested,
                 "creative command requested kept") &&
-         expect(window.creativeUiCommandStatus == "command_before",
+         expect(window.creativeUiCommand.status == "command_before",
                 "creative command status kept") &&
          expect(window.creativeViewportPickRequested,
                 "viewport pick requested kept") &&

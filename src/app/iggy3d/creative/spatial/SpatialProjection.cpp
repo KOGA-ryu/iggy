@@ -20,6 +20,17 @@ namespace {
          object.kind != CreativeObjectKind::Unknown;
 }
 
+struct CreativeSpatialProjectionContext {
+  const CreativeObject& object;
+  const CreativeSpatialProjectionRequest& request;
+  CreativeSpatialProjectionProfile profile =
+      CreativeSpatialProjectionProfile::Unknown;
+  CreativeSpatialOccupancyKind occupancyKind =
+      CreativeSpatialOccupancyKind::Unknown;
+  bool rejected = false;
+  CreativeSpatialProjectionReceipt rejection;
+};
+
 [[nodiscard]] CreativeSpatialProjectionReceipt makeReceipt(
     CreativeSpatialProjectionStatus status,
     const CreativeObject& object,
@@ -84,6 +95,42 @@ namespace {
                      occupancyKind,
                      {},
                      "object_hidden");
+}
+
+[[nodiscard]] CreativeSpatialProjectionContext makeProjectionContext(
+    const CreativeObject& object,
+    const CreativeSpatialProjectionRequest& request,
+    CreativeSpatialProjectionProfile profile,
+    bool validateRequest = true) {
+  CreativeSpatialProjectionContext context{
+      object,
+      request,
+      profile,
+      occupancyKindForObject(object.kind),
+      false,
+      {},
+  };
+
+  if (validateRequest && !isValidRequest(request)) {
+    context.rejected = true;
+    context.rejection =
+        rejectInvalidGrid(object, context.profile, context.occupancyKind);
+    return context;
+  }
+  if (!isValidObject(object)) {
+    context.rejected = true;
+    context.rejection =
+        rejectInvalidObject(object, context.profile, context.occupancyKind);
+    return context;
+  }
+  if (!object.visible) {
+    context.rejected = true;
+    context.rejection =
+        rejectHiddenObject(object, context.profile, context.occupancyKind);
+    return context;
+  }
+
+  return context;
 }
 
 [[nodiscard]] bool boundsOutsideGrid(CreativeGridBounds3 bounds,
@@ -229,16 +276,10 @@ void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
     const CreativeObject& object,
     const CreativeSpatialProjectionRequest& request,
     CreativeSpatialProjectionProfile profile) {
-  const CreativeSpatialOccupancyKind occupancyKind =
-      occupancyKindForObject(object.kind);
-  if (!isValidRequest(request)) {
-    return rejectInvalidGrid(object, profile, occupancyKind);
-  }
-  if (!isValidObject(object)) {
-    return rejectInvalidObject(object, profile, occupancyKind);
-  }
-  if (!object.visible) {
-    return rejectHiddenObject(object, profile, occupancyKind);
+  const CreativeSpatialProjectionContext context =
+      makeProjectionContext(object, request, profile);
+  if (context.rejected) {
+    return context.rejection;
   }
 
   CreativeGridBounds3 bounds =
@@ -246,8 +287,8 @@ void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
   if (!request.clampToGrid && boundsOutsideGrid(bounds, request.gridSize)) {
     return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
                        object,
-                       profile,
-                       occupancyKind,
+                       context.profile,
+                       context.occupancyKind,
                        bounds,
                        "out_of_bounds");
   }
@@ -256,8 +297,8 @@ void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
   if (isEmptyGridBounds(bounds)) {
     return makeReceipt(CreativeSpatialProjectionStatus::EmptyProjection,
                        object,
-                       profile,
-                       occupancyKind,
+                       context.profile,
+                       context.occupancyKind,
                        bounds,
                        "empty_projection");
   }
@@ -265,8 +306,8 @@ void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
   CreativeSpatialProjectionReceipt receipt =
       makeReceipt(CreativeSpatialProjectionStatus::Projected,
                   object,
-                  profile,
-                  occupancyKind,
+                  context.profile,
+                  context.occupancyKind,
                   bounds,
                   "projected");
   receipt.cells.reserve(static_cast<std::size_t>(cellCount(bounds)));
@@ -274,7 +315,7 @@ void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
                   request.gridSize,
                   bounds,
                   object,
-                  occupancyKind);
+                  context.occupancyKind);
   return receipt;
 }
 
@@ -472,35 +513,28 @@ CreativeSpatialProjectionReceipt projectObjectToGrid(
     const CreativeSpatialProjectionRequest& request) {
   const CreativeSpatialProjectionProfile profile =
       projectionProfileForObject(object.kind);
-  const CreativeSpatialOccupancyKind occupancyKind =
-      occupancyKindForObject(object.kind);
-
-  if (!isValidRequest(request)) {
-    return rejectInvalidGrid(object, profile, occupancyKind);
-  }
-  if (!isValidObject(object)) {
-    return rejectInvalidObject(object, profile, occupancyKind);
-  }
-  if (!object.visible) {
-    return rejectHiddenObject(object, profile, occupancyKind);
+  const CreativeSpatialProjectionContext context =
+      makeProjectionContext(object, request, profile);
+  if (context.rejected) {
+    return context.rejection;
   }
   if (!request.includeAuthoringOnly &&
-      occupancyKind == CreativeSpatialOccupancyKind::Authoring) {
+      context.occupancyKind == CreativeSpatialOccupancyKind::Authoring) {
     return makeReceipt(CreativeSpatialProjectionStatus::NoProjection,
                        object,
-                       profile,
-                       occupancyKind,
+                       context.profile,
+                       context.occupancyKind,
                        {},
                        "authoring_excluded");
   }
 
-  switch (profile) {
+  switch (context.profile) {
     case CreativeSpatialProjectionProfile::Unknown:
     case CreativeSpatialProjectionProfile::NoProjection:
       return makeReceipt(CreativeSpatialProjectionStatus::NoProjection,
                          object,
-                         profile,
-                         occupancyKind,
+                         context.profile,
+                         context.occupancyKind,
                          {},
                          "no_projection");
     case CreativeSpatialProjectionProfile::PointProjection:
@@ -520,7 +554,7 @@ CreativeSpatialProjectionReceipt projectObjectToGrid(
   return makeReceipt(CreativeSpatialProjectionStatus::NoProjection,
                      object,
                      CreativeSpatialProjectionProfile::Unknown,
-                     occupancyKind,
+                     context.occupancyKind,
                      {},
                      "no_projection");
 }
@@ -528,18 +562,12 @@ CreativeSpatialProjectionReceipt projectObjectToGrid(
 CreativeSpatialProjectionReceipt projectPointObjectToGrid(
     const CreativeObject& object,
     const CreativeSpatialProjectionRequest& request) {
-  const CreativeSpatialProjectionProfile profile =
-      CreativeSpatialProjectionProfile::PointProjection;
-  const CreativeSpatialOccupancyKind occupancyKind =
-      occupancyKindForObject(object.kind);
-  if (!isValidRequest(request)) {
-    return rejectInvalidGrid(object, profile, occupancyKind);
-  }
-  if (!isValidObject(object)) {
-    return rejectInvalidObject(object, profile, occupancyKind);
-  }
-  if (!object.visible) {
-    return rejectHiddenObject(object, profile, occupancyKind);
+  const CreativeSpatialProjectionContext context = makeProjectionContext(
+      object,
+      request,
+      CreativeSpatialProjectionProfile::PointProjection);
+  if (context.rejected) {
+    return context.rejection;
   }
 
   CreativeGridCoord3 coord =
@@ -547,8 +575,8 @@ CreativeSpatialProjectionReceipt projectPointObjectToGrid(
   if (!isInsideGrid(coord, request.gridSize)) {
     return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
                        object,
-                       profile,
-                       occupancyKind,
+                       context.profile,
+                       context.occupancyKind,
                        pointBounds(coord),
                        "out_of_bounds");
   }
@@ -556,8 +584,8 @@ CreativeSpatialProjectionReceipt projectPointObjectToGrid(
   CreativeSpatialProjectionReceipt receipt =
       makeReceipt(CreativeSpatialProjectionStatus::Projected,
                   object,
-                  profile,
-                  occupancyKind,
+                  context.profile,
+                  context.occupancyKind,
                   pointBounds(coord),
                   "projected");
   receipt.cells.reserve(1);
@@ -566,7 +594,7 @@ CreativeSpatialProjectionReceipt projectPointObjectToGrid(
                                               coord,
                                               object.id,
                                               object.kind,
-                                              occupancyKind});
+                                              context.occupancyKind});
   return receipt;
 }
 
@@ -590,18 +618,12 @@ CreativeSpatialProjectionReceipt projectVolumeObjectToGrid(
 CreativeSpatialProjectionReceipt projectLineObjectToGrid(
     const CreativeObject& object,
     const CreativeSpatialProjectionRequest& request) {
-  const CreativeSpatialProjectionProfile profile =
-      CreativeSpatialProjectionProfile::LineProjection;
-  const CreativeSpatialOccupancyKind occupancyKind =
-      occupancyKindForObject(object.kind);
-  if (!isValidRequest(request)) {
-    return rejectInvalidGrid(object, profile, occupancyKind);
-  }
-  if (!isValidObject(object)) {
-    return rejectInvalidObject(object, profile, occupancyKind);
-  }
-  if (!object.visible) {
-    return rejectHiddenObject(object, profile, occupancyKind);
+  const CreativeSpatialProjectionContext context = makeProjectionContext(
+      object,
+      request,
+      CreativeSpatialProjectionProfile::LineProjection);
+  if (context.rejected) {
+    return context.rejection;
   }
 
   CreativeGridCoord3 start =
@@ -612,8 +634,8 @@ CreativeSpatialProjectionReceipt projectLineObjectToGrid(
       !isInsideGrid(end, request.gridSize)) {
     return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
                        object,
-                       profile,
-                       occupancyKind,
+                       context.profile,
+                       context.occupancyKind,
                        lineBounds(start, end),
                        "out_of_bounds");
   }
@@ -621,8 +643,8 @@ CreativeSpatialProjectionReceipt projectLineObjectToGrid(
   CreativeSpatialProjectionReceipt receipt =
       makeReceipt(CreativeSpatialProjectionStatus::Projected,
                   object,
-                  profile,
-                  occupancyKind,
+                  context.profile,
+                  context.occupancyKind,
                   lineBounds(start, end),
                   "projected");
   appendSampledLineCells(receipt.cells,
@@ -630,7 +652,7 @@ CreativeSpatialProjectionReceipt projectLineObjectToGrid(
                          start,
                          end,
                          object,
-                         occupancyKind,
+                         context.occupancyKind,
                          false);
 
   if (receipt.cells.empty()) {
@@ -643,24 +665,18 @@ CreativeSpatialProjectionReceipt projectLineObjectToGrid(
 CreativeSpatialProjectionReceipt projectPathObjectToGrid(
     const CreativeObject& object,
     const CreativeSpatialProjectionRequest& request) {
-  const CreativeSpatialProjectionProfile profile =
-      CreativeSpatialProjectionProfile::PathProjection;
-  const CreativeSpatialOccupancyKind occupancyKind =
-      occupancyKindForObject(object.kind);
-  if (!isValidRequest(request)) {
-    return rejectInvalidGrid(object, profile, occupancyKind);
-  }
-  if (!isValidObject(object)) {
-    return rejectInvalidObject(object, profile, occupancyKind);
-  }
-  if (!object.visible) {
-    return rejectHiddenObject(object, profile, occupancyKind);
+  const CreativeSpatialProjectionContext context = makeProjectionContext(
+      object,
+      request,
+      CreativeSpatialProjectionProfile::PathProjection);
+  if (context.rejected) {
+    return context.rejection;
   }
   if (!pathPointsAreValid(object.pathPoints)) {
     return makeReceipt(CreativeSpatialProjectionStatus::EmptyProjection,
                        object,
-                       profile,
-                       occupancyKind,
+                       context.profile,
+                       context.occupancyKind,
                        {},
                        "invalid_path_points");
   }
@@ -673,8 +689,8 @@ CreativeSpatialProjectionReceipt projectPathObjectToGrid(
     if (!isInsideGrid(coord, request.gridSize)) {
       return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
                          object,
-                         profile,
-                         occupancyKind,
+                         context.profile,
+                         context.occupancyKind,
                          pointBounds(coord),
                          "out_of_bounds");
     }
@@ -690,8 +706,8 @@ CreativeSpatialProjectionReceipt projectPathObjectToGrid(
   CreativeSpatialProjectionReceipt receipt =
       makeReceipt(CreativeSpatialProjectionStatus::Projected,
                   object,
-                  profile,
-                  occupancyKind,
+                  context.profile,
+                  context.occupancyKind,
                   projectedBounds,
                   "projected");
   for (std::size_t index = 0; index < coords.size() - 1U; ++index) {
@@ -700,7 +716,7 @@ CreativeSpatialProjectionReceipt projectPathObjectToGrid(
                            coords[index],
                            coords[index + 1U],
                            object,
-                           occupancyKind,
+                           context.occupancyKind,
                            true);
   }
 
@@ -714,21 +730,18 @@ CreativeSpatialProjectionReceipt projectPathObjectToGrid(
 CreativeSpatialProjectionReceipt projectLinkObjectToGrid(
     const CreativeObject& object,
     const CreativeSpatialProjectionRequest& request) {
-  (void)request;
-  const CreativeSpatialProjectionProfile profile =
-      CreativeSpatialProjectionProfile::LinkProjection;
-  const CreativeSpatialOccupancyKind occupancyKind =
-      occupancyKindForObject(object.kind);
-  if (!isValidObject(object)) {
-    return rejectInvalidObject(object, profile, occupancyKind);
-  }
-  if (!object.visible) {
-    return rejectHiddenObject(object, profile, occupancyKind);
+  const CreativeSpatialProjectionContext context = makeProjectionContext(
+      object,
+      request,
+      CreativeSpatialProjectionProfile::LinkProjection,
+      false);
+  if (context.rejected) {
+    return context.rejection;
   }
   return makeReceipt(CreativeSpatialProjectionStatus::NoProjection,
                      object,
-                     profile,
-                     occupancyKind,
+                     context.profile,
+                     context.occupancyKind,
                      {},
                      "no_projection");
 }

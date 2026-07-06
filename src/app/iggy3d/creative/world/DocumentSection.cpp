@@ -190,27 +190,11 @@ void setStatus(ProductCreativeDocumentSectionReceipt& receipt,
   return creative::isValidCreativeDocumentSnapSettings(out);
 }
 
-[[nodiscard]] bool parseObjectKind(std::string_view value,
-                                   creative::CreativeObjectKind& out) noexcept {
-  if (value.empty()) {
-    return false;
-  }
-  for (const creative::CreativeObjectDescriptor& descriptor :
-       creative::allObjectDescriptors()) {
-    if (descriptor.kind != creative::CreativeObjectKind::Unknown &&
-        descriptor.name == value) {
-      out = descriptor.kind;
-      return true;
-    }
-  }
-  return false;
-}
-
 [[nodiscard]] SaveCreativeDocumentObjectRecord toSaveObject(
     const creative::CreativeObject& object) {
   SaveCreativeDocumentObjectRecord record;
   record.id = object.id;
-  record.kind = std::string{creative::toString(object.kind)};
+  record.kind = std::string{creative::serializedObjectKindId(object.kind)};
   record.name = object.name;
   record.transform = toSaveTransform(object.transform);
   record.bounds = toSaveBounds(object.bounds);
@@ -231,7 +215,7 @@ void setStatus(ProductCreativeDocumentSectionReceipt& receipt,
     const SaveCreativeDocumentObjectRecord& record,
     creative::CreativeObject& out) noexcept {
   creative::CreativeObjectKind kind = creative::CreativeObjectKind::Unknown;
-  if (!parseObjectKind(record.kind, kind)) {
+  if (!creative::parseSerializedObjectKindId(record.kind, kind)) {
     return false;
   }
   out.id = record.id;

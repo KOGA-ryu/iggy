@@ -147,6 +147,13 @@ enum class CreativeMutationKind {
     SetSafeZoneRule
 };
 
+enum class CreativeMutationStoragePolicy {
+    Unknown,
+    StoredObject,
+    FutureStoragePlaceholder,
+    PayloadDependent
+};
+
 struct RenameMutation {
     std::string name{};
 };
@@ -290,6 +297,7 @@ struct CreativeMutationRule {
 struct CreativeMutationDescriptor {
     CreativeMutationKind kind{CreativeMutationKind::Unknown};
     CreativeMutationCategory category{CreativeMutationCategory::Unknown};
+    CreativeMutationStoragePolicy storagePolicy{CreativeMutationStoragePolicy::Unknown};
     std::string_view name{};
     std::string_view purpose{};
     bool changesGeometry{false};
@@ -299,6 +307,7 @@ struct CreativeMutationDescriptor {
 
 [[nodiscard]] std::string_view toString(CreativeMutationCategory category) noexcept;
 [[nodiscard]] std::string_view toString(CreativeMutationKind kind) noexcept;
+[[nodiscard]] std::string_view toString(CreativeMutationStoragePolicy policy) noexcept;
 [[nodiscard]] CreativeMutationCategory categoryOf(CreativeMutationKind kind) noexcept;
 [[nodiscard]] CreativeMutationDescriptor describeMutation(CreativeMutationKind kind) noexcept;
 
@@ -317,6 +326,14 @@ struct CreativeMutationDescriptor {
 [[nodiscard]] bool mutationChangesGeometry(CreativeMutationKind kind) noexcept;
 [[nodiscard]] bool mutationChangesRelationships(CreativeMutationKind kind) noexcept;
 [[nodiscard]] bool mutationChangesRuntimeMeaning(CreativeMutationKind kind) noexcept;
+[[nodiscard]] CreativeMutationStoragePolicy mutationStoragePolicy(CreativeMutationKind kind) noexcept;
+[[nodiscard]] CreativeMutationStoragePolicy mutationPayloadStoragePolicy(
+    CreativeMutationKind kind,
+    const CreativeMutationPayload& payload) noexcept;
+[[nodiscard]] bool mutationHasStoredObjectEffect(CreativeMutationKind kind) noexcept;
+[[nodiscard]] bool mutationPayloadHasStoredObjectEffect(
+    CreativeMutationKind kind,
+    const CreativeMutationPayload& payload) noexcept;
 
 [[nodiscard]] bool canMutate(CreativeObjectKind objectKind, CreativeMutationKind mutationKind) noexcept;
 [[nodiscard]] std::vector<CreativeMutationKind> allowedMutations(CreativeObjectKind objectKind);

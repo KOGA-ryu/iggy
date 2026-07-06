@@ -1,9 +1,145 @@
 
 #include "app/iggy3d/creative/document/Object.hpp"
 
+#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+
+#include <array>
+#include <cstddef>
 #include <utility>
 
 namespace iggy3d::creative {
+namespace {
+
+constexpr std::size_t creativeObjectKindCount() noexcept {
+    return static_cast<std::size_t>(CreativeObjectKind::Count);
+}
+
+constexpr auto makeAllCreativeObjectKinds() noexcept {
+    std::array<CreativeObjectKind, creativeObjectKindCount()> kinds{};
+    for (std::size_t index = 0; index < kinds.size(); ++index) {
+        kinds[index] = static_cast<CreativeObjectKind>(index);
+    }
+    return kinds;
+}
+
+constexpr auto kAllCreativeObjectKinds = makeAllCreativeObjectKinds();
+
+constexpr auto kSerializedCreativeObjectKindIds =
+    std::to_array<std::string_view>({
+        "Unknown",
+        "Room",
+        "Wall",
+        "Floor",
+        "Ceiling",
+        "Roof",
+        "Door",
+        "Window",
+        "Stair",
+        "Ramp",
+        "Platform",
+        "MovingPlatform",
+        "Column",
+        "Pillar",
+        "Beam",
+        "Arch",
+        "Fence",
+        "Railing",
+        "Bridge",
+        "Ladder",
+        "TerrainPatch",
+        "WaterVolume",
+        "LavaVolume",
+        "Pit",
+        "Slope",
+        "Cliff",
+        "CaveOpening",
+        "BoundaryVolume",
+        "KillPlane",
+        "SpawnPoint",
+        "ExitPoint",
+        "EntrancePoint",
+        "Checkpoint",
+        "NavRegion",
+        "NavLink",
+        "JumpLink",
+        "ClimbLink",
+        "WallRunSurface",
+        "SlideSurface",
+        "CoverPoint",
+        "PatrolNode",
+        "TriggerZone",
+        "Switch",
+        "Lever",
+        "PressurePlate",
+        "Button",
+        "ConditionGate",
+        "EventRelay",
+        "Spawner",
+        "DespawnZone",
+        "ScriptMarker",
+        "TestLane",
+        "DistanceMarker",
+        "SpeedMarker",
+        "JumpTarget",
+        "CoyoteTimeLedge",
+        "FallShaft",
+        "CollisionProbe",
+        "PhysicsProbe",
+        "TimingGate",
+        "TestStart",
+        "TestEnd",
+        "Prop",
+        "Decal",
+        "Sign",
+        "Banner",
+        "FoliagePatch",
+        "Rock",
+        "Crate",
+        "Barrel",
+        "Furniture",
+        "Decoration",
+        "PointLight",
+        "SpotLight",
+        "AreaLight",
+        "AmbientZone",
+        "ReverbZone",
+        "SoundEmitter",
+        "MusicZone",
+        "CameraMarker",
+        "CameraRail",
+        "CameraTarget",
+        "CutsceneMarker",
+        "Note",
+        "Label",
+        "Comment",
+        "MeasurementMarker",
+        "MeasurementLine",
+        "MeasurementBox",
+        "GridAnchor",
+        "SnapAnchor",
+        "ReferenceImage",
+        "BlueprintOverlay",
+        "Group",
+        "PrefabInstance",
+        "Socket",
+        "AttachmentPoint",
+        "EnemySpawn",
+        "NpcSpawn",
+        "PatrolRoute",
+        "InterestPoint",
+        "AlertZone",
+        "SafeZone",
+        "DangerZone",
+        "ResourceNode",
+        "LootPoint",
+        "QuestMarker",
+        "DialogueMarker",
+    });
+
+static_assert(kSerializedCreativeObjectKindIds.size() ==
+              creativeObjectKindCount());
+
+}  // namespace
 
 CreativeObject makeRoomObject(
     CreativeObjectId id,
@@ -148,188 +284,78 @@ std::string_view toString(CreativeObjectKind kind) noexcept {
     case CreativeObjectKind::LootPoint: return "LootPoint";
     case CreativeObjectKind::QuestMarker: return "QuestMarker";
     case CreativeObjectKind::DialogueMarker: return "DialogueMarker";
+    case CreativeObjectKind::Count: return "Unknown";
     }
 
     return "Unknown";
 }
 
-bool isStructuralObject(CreativeObjectKind kind) noexcept {
-    switch (kind) {
-    case CreativeObjectKind::Room:
-    case CreativeObjectKind::Wall:
-    case CreativeObjectKind::Floor:
-    case CreativeObjectKind::Ceiling:
-    case CreativeObjectKind::Roof:
-    case CreativeObjectKind::Door:
-    case CreativeObjectKind::Window:
-    case CreativeObjectKind::Stair:
-    case CreativeObjectKind::Ramp:
-    case CreativeObjectKind::Platform:
-    case CreativeObjectKind::MovingPlatform:
-    case CreativeObjectKind::Column:
-    case CreativeObjectKind::Pillar:
-    case CreativeObjectKind::Beam:
-    case CreativeObjectKind::Arch:
-    case CreativeObjectKind::Fence:
-    case CreativeObjectKind::Railing:
-    case CreativeObjectKind::Bridge:
-    case CreativeObjectKind::Ladder:
-        return true;
-    default:
+std::string_view serializedObjectKindId(CreativeObjectKind kind) noexcept {
+    const auto index = static_cast<std::size_t>(kind);
+    if (index >= kSerializedCreativeObjectKindIds.size()) {
+        return "Unknown";
+    }
+    return kSerializedCreativeObjectKindIds[index];
+}
+
+bool parseSerializedObjectKindId(std::string_view value,
+                                 CreativeObjectKind& out) noexcept {
+    if (value.empty()) {
         return false;
     }
+    for (const CreativeObjectKind kind : allCreativeObjectKinds()) {
+        if (kind == CreativeObjectKind::Unknown) {
+            continue;
+        }
+        if (serializedObjectKindId(kind) == value) {
+            out = kind;
+            return true;
+        }
+    }
+    return false;
+}
+
+std::span<const CreativeObjectKind> allCreativeObjectKinds() noexcept {
+    return std::span<const CreativeObjectKind>{kAllCreativeObjectKinds.data(),
+                                               kAllCreativeObjectKinds.size()};
+}
+
+bool isStructuralObject(CreativeObjectKind kind) noexcept {
+    return objectUsesCategory(kind, CreativeObjectCategory::Structural);
 }
 
 bool isTerrainOrVolumeObject(CreativeObjectKind kind) noexcept {
-    switch (kind) {
-    case CreativeObjectKind::TerrainPatch:
-    case CreativeObjectKind::WaterVolume:
-    case CreativeObjectKind::LavaVolume:
-    case CreativeObjectKind::Pit:
-    case CreativeObjectKind::Slope:
-    case CreativeObjectKind::Cliff:
-    case CreativeObjectKind::CaveOpening:
-    case CreativeObjectKind::BoundaryVolume:
-    case CreativeObjectKind::KillPlane:
-        return true;
-    default:
-        return false;
-    }
+    return objectUsesCategory(kind, CreativeObjectCategory::TerrainOrVolume);
 }
 
 bool isNavigationOrMovementObject(CreativeObjectKind kind) noexcept {
-    switch (kind) {
-    case CreativeObjectKind::SpawnPoint:
-    case CreativeObjectKind::ExitPoint:
-    case CreativeObjectKind::EntrancePoint:
-    case CreativeObjectKind::Checkpoint:
-    case CreativeObjectKind::NavRegion:
-    case CreativeObjectKind::NavLink:
-    case CreativeObjectKind::JumpLink:
-    case CreativeObjectKind::ClimbLink:
-    case CreativeObjectKind::WallRunSurface:
-    case CreativeObjectKind::SlideSurface:
-    case CreativeObjectKind::CoverPoint:
-    case CreativeObjectKind::PatrolNode:
-        return true;
-    default:
-        return false;
-    }
+    return objectUsesCategory(kind,
+                              CreativeObjectCategory::NavigationOrMovement);
 }
 
 bool isLogicObject(CreativeObjectKind kind) noexcept {
-    switch (kind) {
-    case CreativeObjectKind::TriggerZone:
-    case CreativeObjectKind::Switch:
-    case CreativeObjectKind::Lever:
-    case CreativeObjectKind::PressurePlate:
-    case CreativeObjectKind::Button:
-    case CreativeObjectKind::ConditionGate:
-    case CreativeObjectKind::EventRelay:
-    case CreativeObjectKind::Spawner:
-    case CreativeObjectKind::DespawnZone:
-    case CreativeObjectKind::ScriptMarker:
-        return true;
-    default:
-        return false;
-    }
+    return objectUsesCategory(kind, CreativeObjectCategory::Logic);
 }
 
 bool isTestingObject(CreativeObjectKind kind) noexcept {
-    switch (kind) {
-    case CreativeObjectKind::TestLane:
-    case CreativeObjectKind::DistanceMarker:
-    case CreativeObjectKind::SpeedMarker:
-    case CreativeObjectKind::JumpTarget:
-    case CreativeObjectKind::CoyoteTimeLedge:
-    case CreativeObjectKind::FallShaft:
-    case CreativeObjectKind::CollisionProbe:
-    case CreativeObjectKind::PhysicsProbe:
-    case CreativeObjectKind::TimingGate:
-    case CreativeObjectKind::TestStart:
-    case CreativeObjectKind::TestEnd:
-        return true;
-    default:
-        return false;
-    }
+    return objectUsesCategory(kind, CreativeObjectCategory::Testing);
 }
 
 bool isVisualDressingObject(CreativeObjectKind kind) noexcept {
-    switch (kind) {
-    case CreativeObjectKind::Prop:
-    case CreativeObjectKind::Decal:
-    case CreativeObjectKind::Sign:
-    case CreativeObjectKind::Banner:
-    case CreativeObjectKind::FoliagePatch:
-    case CreativeObjectKind::Rock:
-    case CreativeObjectKind::Crate:
-    case CreativeObjectKind::Barrel:
-    case CreativeObjectKind::Furniture:
-    case CreativeObjectKind::Decoration:
-        return true;
-    default:
-        return false;
-    }
+    return objectUsesCategory(kind, CreativeObjectCategory::VisualDressing);
 }
 
 bool isLightSoundOrCameraObject(CreativeObjectKind kind) noexcept {
-    switch (kind) {
-    case CreativeObjectKind::PointLight:
-    case CreativeObjectKind::SpotLight:
-    case CreativeObjectKind::AreaLight:
-    case CreativeObjectKind::AmbientZone:
-    case CreativeObjectKind::ReverbZone:
-    case CreativeObjectKind::SoundEmitter:
-    case CreativeObjectKind::MusicZone:
-    case CreativeObjectKind::CameraMarker:
-    case CreativeObjectKind::CameraRail:
-    case CreativeObjectKind::CameraTarget:
-    case CreativeObjectKind::CutsceneMarker:
-        return true;
-    default:
-        return false;
-    }
+    return objectUsesCategory(kind,
+                              CreativeObjectCategory::LightSoundOrCamera);
 }
 
 bool isAuthoringMetaObject(CreativeObjectKind kind) noexcept {
-    switch (kind) {
-    case CreativeObjectKind::Note:
-    case CreativeObjectKind::Label:
-    case CreativeObjectKind::Comment:
-    case CreativeObjectKind::MeasurementMarker:
-    case CreativeObjectKind::MeasurementLine:
-    case CreativeObjectKind::MeasurementBox:
-    case CreativeObjectKind::GridAnchor:
-    case CreativeObjectKind::SnapAnchor:
-    case CreativeObjectKind::ReferenceImage:
-    case CreativeObjectKind::BlueprintOverlay:
-    case CreativeObjectKind::Group:
-    case CreativeObjectKind::PrefabInstance:
-    case CreativeObjectKind::Socket:
-    case CreativeObjectKind::AttachmentPoint:
-        return true;
-    default:
-        return false;
-    }
+    return objectUsesCategory(kind, CreativeObjectCategory::AuthoringMeta);
 }
 
 bool isGameplayObject(CreativeObjectKind kind) noexcept {
-    switch (kind) {
-    case CreativeObjectKind::EnemySpawn:
-    case CreativeObjectKind::NpcSpawn:
-    case CreativeObjectKind::PatrolRoute:
-    case CreativeObjectKind::InterestPoint:
-    case CreativeObjectKind::AlertZone:
-    case CreativeObjectKind::SafeZone:
-    case CreativeObjectKind::DangerZone:
-    case CreativeObjectKind::ResourceNode:
-    case CreativeObjectKind::LootPoint:
-    case CreativeObjectKind::QuestMarker:
-    case CreativeObjectKind::DialogueMarker:
-        return true;
-    default:
-        return false;
-    }
+    return objectUsesCategory(kind, CreativeObjectCategory::Gameplay);
 }
 
 } // namespace iggy3d::creative

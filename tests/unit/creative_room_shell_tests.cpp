@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -66,14 +67,16 @@ cr::CreativeDocumentCreateReceipt createObject(
   return document.createObject(request);
 }
 
-bool requestHasTag(const cr::CreativeDocumentCreateRequest& request,
-                   std::string_view tag) {
-  for (const std::string& value : request.tags) {
-    if (value == tag) {
-      return true;
-    }
+bool applyShellRequests(cr::CreativeDocument& document,
+                        const cr::CreativeRoomShellBuildResult& shell) {
+  bool accepted = shell.receipt.accepted;
+  for (const cr::CreativeDocumentCreateRequest& createRequest :
+       shell.createRequests) {
+    const cr::CreativeDocumentCreateReceipt createReceipt =
+        document.createObject(createRequest);
+    accepted &= createReceipt.accepted;
   }
-  return false;
+  return accepted;
 }
 
 bool defaultRoomBuildsFiveShellRequests() {
@@ -87,17 +90,13 @@ bool defaultRoomBuildsFiveShellRequests() {
   const cr::CreativeRoomShellBuildResult result =
       cr::buildCreativeRoomShellCreateRequests(request);
 
-  const std::string sourceTag =
-      "source_room_" + std::to_string(roomReceipt.objectId);
-
   bool tagsOk = true;
   bool anchorsOk = true;
   for (const cr::CreativeDocumentCreateRequest& createRequest :
        result.createRequests) {
-    tagsOk &= requestHasTag(createRequest, "generated_room_shell") &&
-              requestHasTag(createRequest, sourceTag) &&
-              createRequest.parentId.has_value() &&
-              createRequest.parentId.value() == roomReceipt.objectId &&
+    tagsOk &= cr::creativeRoomShellCreateRequestHasProvenance(
+                  createRequest,
+                  roomReceipt.objectId) &&
               createRequest.hasBoundsOverride && createRequest.visible;
     anchorsOk &= createRequest.hasTransformOverride &&
                  near(createRequest.transform.position.x,
@@ -110,7 +109,7 @@ bool defaultRoomBuildsFiveShellRequests() {
 
   return expect(result.receipt.accepted, "shell accepted") &&
          expect(result.receipt.status ==
-                    cr::CreativeRoomShellBuildStatus::Generated,
+                    cr::CreativeRoomShellStatus::Generated,
                 "shell status") &&
          expect(result.receipt.reasonCode == "creative_room_shell_generated",
                 "shell reason") &&
@@ -144,6 +143,85 @@ bool defaultRoomBuildsFiveShellRequests() {
          expectBounds(result.createRequests[4].bounds,
                       {{9.75, 0.0, 0.0}, {10.0, 4.0, 10.0}},
                       "east bounds");
+}
+
+bool provenanceHelpersRecognizeGeneratedRequestsAndObjects() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Provenance");
+  const cr::CreativeDocumentCreateReceipt roomReceipt =
+      createObject(document, cr::CreativeObjectKind::Room, "Room");
+
+  cr::CreativeRoomShellBuildRequest shellRequest;
+  shellRequest.document = &document;
+  shellRequest.roomObjectId = roomReceipt.objectId;
+  const cr::CreativeRoomShellBuildResult shell =
+      cr::buildCreativeRoomShellCreateRequests(shellRequest);
+
+  cr::CreativeDocumentCreateRequest hiddenGenerated =
+      shell.createRequests.empty() ? cr::CreativeDocumentCreateRequest{}
+                                   : shell.createRequests.front();
+  hiddenGenerated.visible = false;
+  hiddenGenerated.hasVisibleOverride = true;
+  const cr::CreativeDocumentCreateReceipt hiddenReceipt =
+      document.createObject(hiddenGenerated);
+
+  cr::CreativeDocumentCreateRequest unrelatedTagged;
+  unrelatedTagged.kind = cr::CreativeObjectKind::Floor;
+  unrelatedTagged.name = "Tagged But Not Parent";
+  unrelatedTagged.tags = {
+      std::string(cr::generatedRoomShellTag()),
+      cr::sourceRoomShellTag(roomReceipt.objectId),
+  };
+  const cr::CreativeDocumentCreateReceipt unrelatedReceipt =
+      document.createObject(unrelatedTagged);
+
+  const cr::CreativeObject* hiddenObject =
+      document.findObject(hiddenReceipt.objectId);
+  const cr::CreativeObject* unrelatedObject =
+      document.findObject(unrelatedReceipt.objectId);
+  const std::vector<cr::CreativeObjectId> collected =
+      cr::collectCreativeRoomShellChildIds(document, roomReceipt.objectId);
+
+  bool allRequestsHaveProvenance = shell.receipt.accepted;
+  for (const cr::CreativeDocumentCreateRequest& createRequest :
+       shell.createRequests) {
+    allRequestsHaveProvenance &=
+        cr::creativeRoomShellCreateRequestHasProvenance(
+            createRequest,
+            roomReceipt.objectId);
+  }
+
+  return expect(!cr::generatedRoomShellTag().empty(),
+                "generated tag value present") &&
+         expect(cr::sourceRoomShellTag(roomReceipt.objectId).find(
+                    std::to_string(roomReceipt.objectId)) !=
+                    std::string::npos,
+                "source tag carries room id") &&
+         expect(allRequestsHaveProvenance,
+                "all generated requests have provenance") &&
+         expect(hiddenReceipt.accepted, "hidden generated setup accepted") &&
+         expect(hiddenObject != nullptr, "hidden generated findable") &&
+         expect(hiddenObject != nullptr && !hiddenObject->visible,
+                "hidden generated is hidden") &&
+         expect(hiddenObject != nullptr &&
+                    cr::creativeRoomShellObjectHasProvenance(
+                        *hiddenObject,
+                        roomReceipt.objectId),
+                "hidden generated object provenance") &&
+         expect(unrelatedReceipt.accepted, "unrelated tagged accepted") &&
+         expect(unrelatedObject != nullptr, "unrelated tagged findable") &&
+         expect(unrelatedObject != nullptr &&
+                    !cr::creativeRoomShellObjectHasProvenance(
+                        *unrelatedObject,
+                        roomReceipt.objectId),
+                "non-parented tagged object ignored") &&
+         expect(collected.size() == 1U, "collected generated count") &&
+         expect(!collected.empty() &&
+                    collected.front() == hiddenReceipt.objectId,
+                "collected hidden generated id") &&
+         expect(cr::creativeRoomHasGeneratedShellChildren(
+                    document,
+                    roomReceipt.objectId),
+                "room reports hidden generated child");
 }
 
 bool nonOriginGeneratedChildMoveTranslatesFromCenterAnchor() {
@@ -206,6 +284,98 @@ bool nonOriginGeneratedChildMoveTranslatesFromCenterAnchor() {
                 "offset child bounds checked");
 }
 
+bool restoreRejectsGeneratedShellChildWithMissingParent() {
+  cr::CreativeDocument source = cr::CreativeDocument::create("Shell Source");
+  const cr::CreativeDocumentCreateReceipt roomReceipt =
+      createObject(source, cr::CreativeObjectKind::Room, "Room");
+
+  cr::CreativeRoomShellBuildRequest shellRequest;
+  shellRequest.document = &source;
+  shellRequest.roomObjectId = roomReceipt.objectId;
+  const cr::CreativeRoomShellBuildResult shell =
+      cr::buildCreativeRoomShellCreateRequests(shellRequest);
+  const bool shellCreated = applyShellRequests(source, shell);
+
+  cr::CreativeDocumentRestoreRequest request;
+  request.documentId = 9001;
+  request.name = "Dangling Shell";
+  request.nextObjectId = source.nextObjectId();
+  for (const cr::CreativeObject& object : source.objects()) {
+    if (object.id != roomReceipt.objectId) {
+      request.objects.push_back(object);
+    }
+  }
+
+  cr::CreativeDocument target = cr::CreativeDocument::create("Target");
+  const cr::CreativeDocumentCreateReceipt existing =
+      createObject(target, cr::CreativeObjectKind::Crate, "Existing");
+  const std::uint64_t revisionBefore = target.revision();
+  const cr::CreativeDocumentRestoreReceipt restored =
+      target.restoreForLoad(request);
+
+  return expect(roomReceipt.accepted, "restore parent setup room") &&
+         expect(shellCreated, "restore parent setup shell") &&
+         expect(existing.accepted, "restore parent existing setup") &&
+         expect(!restored.accepted, "restore missing parent rejected") &&
+         expect(restored.status ==
+                    cr::CreativeDocumentRestoreStatus::InvalidObject,
+                "restore missing parent status") &&
+         expect(restored.reasonCode == "missing_parent",
+                "restore missing parent reason") &&
+         expect(target.objectCount() == 1U,
+                "restore missing parent object count unchanged") &&
+         expect(target.containsObject(existing.objectId),
+                "restore missing parent existing remains") &&
+         expect(target.revision() == revisionBefore,
+                "restore missing parent revision unchanged");
+}
+
+bool deletingRoomWithGeneratedShellChildrenRejects() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Shell Delete");
+  const cr::CreativeDocumentCreateReceipt roomReceipt =
+      createObject(document, cr::CreativeObjectKind::Room, "Room");
+
+  cr::CreativeRoomShellBuildRequest shellRequest;
+  shellRequest.document = &document;
+  shellRequest.roomObjectId = roomReceipt.objectId;
+  const cr::CreativeRoomShellBuildResult shell =
+      cr::buildCreativeRoomShellCreateRequests(shellRequest);
+  const bool shellCreated = applyShellRequests(document, shell);
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeObjectDirtyFlags dirtyBefore = document.dirtyFlags();
+
+  const cr::CreativeDocumentRemoveReceipt removed =
+      document.removeDocumentObject(roomReceipt.objectId);
+
+  std::uint64_t childCount = 0;
+  for (const cr::CreativeObject& object : document.objects()) {
+    if (object.parentId.has_value() &&
+        object.parentId.value() == roomReceipt.objectId) {
+      ++childCount;
+    }
+  }
+
+  return expect(roomReceipt.accepted, "parent delete room setup") &&
+         expect(shellCreated, "parent delete shell setup") &&
+         expect(!removed.accepted, "parent delete rejected") &&
+         expect(!removed.changed, "parent delete unchanged") &&
+         expect(!removed.objectRemoved, "parent delete not removed") &&
+         expect(removed.status ==
+                    cr::CreativeDocumentRemoveStatus::ParentHasChildren,
+                "parent delete status") &&
+         expect(removed.reasonCode == "parent_has_children",
+                "parent delete reason") &&
+         expect(document.containsObject(roomReceipt.objectId),
+                "parent delete room remains") &&
+         expect(childCount == 5U, "parent delete children remain") &&
+         expect(document.objectCount() == 6U,
+                "parent delete object count unchanged") &&
+         expect(document.revision() == revisionBefore,
+                "parent delete revision unchanged") &&
+         expect(document.dirtyFlags() == dirtyBefore,
+                "parent delete dirty unchanged");
+}
+
 bool missingDocumentRejects() {
   cr::CreativeRoomShellBuildRequest request;
   request.roomObjectId = 1;
@@ -215,7 +385,7 @@ bool missingDocumentRejects() {
 
   return expect(!result.receipt.accepted, "missing document not accepted") &&
          expect(result.receipt.status ==
-                    cr::CreativeRoomShellBuildStatus::DocumentMissing,
+                    cr::CreativeRoomShellStatus::DocumentMissing,
                 "missing document status") &&
          expect(result.receipt.reasonCode ==
                     "creative_room_shell_document_missing",
@@ -234,7 +404,7 @@ bool noSelectionRejects() {
 
   return expect(!result.receipt.accepted, "no selection not accepted") &&
          expect(result.receipt.status ==
-                    cr::CreativeRoomShellBuildStatus::NoRoomSelected,
+                    cr::CreativeRoomShellStatus::NoRoomSelected,
                 "no selection status") &&
          expect(result.receipt.reasonCode ==
                     "creative_room_shell_no_room_selected",
@@ -254,7 +424,7 @@ bool nonRoomSelectionRejects() {
 
   return expect(!result.receipt.accepted, "non-room not accepted") &&
          expect(result.receipt.status ==
-                    cr::CreativeRoomShellBuildStatus::SelectedNotRoom,
+                    cr::CreativeRoomShellStatus::SelectedNotRoom,
                 "non-room status") &&
          expect(result.receipt.reasonCode ==
                     "creative_room_shell_selected_not_room",
@@ -275,7 +445,7 @@ bool invalidBoundsReject() {
 
   return expect(!result.receipt.accepted, "invalid bounds not accepted") &&
          expect(result.receipt.status ==
-                    cr::CreativeRoomShellBuildStatus::InvalidBounds,
+                    cr::CreativeRoomShellStatus::InvalidBounds,
                 "invalid bounds status") &&
          expect(result.receipt.reasonCode ==
                     "creative_room_shell_invalid_bounds",
@@ -291,8 +461,8 @@ bool duplicateShellTagsReject() {
   generated.kind = cr::CreativeObjectKind::Floor;
   generated.name = "Existing Shell Floor";
   generated.parentId = roomReceipt.objectId;
-  generated.tags = {"generated_room_shell",
-                    "source_room_" + std::to_string(roomReceipt.objectId)};
+  generated.tags = {std::string(cr::generatedRoomShellTag()),
+                    cr::sourceRoomShellTag(roomReceipt.objectId)};
   const cr::CreativeDocumentCreateReceipt generatedReceipt =
       document.createObject(generated);
 
@@ -305,7 +475,7 @@ bool duplicateShellTagsReject() {
   return expect(generatedReceipt.accepted, "existing shell setup accepted") &&
          expect(!result.receipt.accepted, "duplicate not accepted") &&
          expect(result.receipt.status ==
-                    cr::CreativeRoomShellBuildStatus::AlreadyExists,
+                    cr::CreativeRoomShellStatus::AlreadyExists,
                 "duplicate status") &&
          expect(result.receipt.reasonCode ==
                     "creative_room_shell_already_exists",
@@ -313,15 +483,101 @@ bool duplicateShellTagsReject() {
          expect(result.createRequests.empty(), "duplicate no requests");
 }
 
+bool findGeneratedShellChildrenUsesParentAndProvenanceTags() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Shell Remove");
+  const cr::CreativeDocumentCreateReceipt roomReceipt =
+      createObject(document, cr::CreativeObjectKind::Room, "Room");
+
+  cr::CreativeRoomShellBuildRequest shellRequest;
+  shellRequest.document = &document;
+  shellRequest.roomObjectId = roomReceipt.objectId;
+  const cr::CreativeRoomShellBuildResult shell =
+      cr::buildCreativeRoomShellCreateRequests(shellRequest);
+  const bool shellCreated = applyShellRequests(document, shell);
+
+  cr::CreativeDocumentCreateRequest arbitraryChild;
+  arbitraryChild.kind = cr::CreativeObjectKind::Floor;
+  arbitraryChild.name = "Manual Child";
+  arbitraryChild.parentId = roomReceipt.objectId;
+  const cr::CreativeDocumentCreateReceipt arbitraryChildReceipt =
+      document.createObject(arbitraryChild);
+
+  cr::CreativeRoomShellRemoveRequest removeRequest;
+  removeRequest.document = &document;
+  removeRequest.roomObjectId = roomReceipt.objectId;
+  const cr::CreativeRoomShellRemoveResult remove =
+      cr::findCreativeRoomShellChildren(removeRequest);
+
+  bool excludesArbitraryChild = true;
+  for (const cr::CreativeObjectId objectId : remove.objectIds) {
+    excludesArbitraryChild &= objectId != arbitraryChildReceipt.objectId;
+  }
+
+  return expect(roomReceipt.accepted, "remove finder room setup") &&
+         expect(shellCreated, "remove finder shell setup") &&
+         expect(arbitraryChildReceipt.accepted,
+                "remove finder manual child setup") &&
+         expect(cr::creativeRoomHasGeneratedShellChildren(
+                    document,
+                    roomReceipt.objectId),
+                "room reports generated shell children") &&
+         expect(remove.receipt.accepted, "remove finder accepted") &&
+         expect(remove.receipt.status ==
+                    cr::CreativeRoomShellStatus::Removed,
+                "remove finder status") &&
+         expect(remove.receipt.reasonCode == "creative_room_shell_removed",
+                "remove finder reason") &&
+         expect(remove.receipt.removedObjectCount == 5U,
+                "remove finder removed count") &&
+         expect(remove.receipt.floorObjectCount == 1U,
+                "remove finder floor count") &&
+         expect(remove.receipt.wallObjectCount == 4U,
+                "remove finder wall count") &&
+         expect(remove.objectIds.size() == 5U, "remove finder id count") &&
+         expect(excludesArbitraryChild,
+                "remove finder excludes arbitrary child");
+}
+
+bool findGeneratedShellChildrenRejectsWhenNoneExist() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Shell Empty");
+  const cr::CreativeDocumentCreateReceipt roomReceipt =
+      createObject(document, cr::CreativeObjectKind::Room, "Room");
+
+  cr::CreativeRoomShellRemoveRequest request;
+  request.document = &document;
+  request.roomObjectId = roomReceipt.objectId;
+  const cr::CreativeRoomShellRemoveResult result =
+      cr::findCreativeRoomShellChildren(request);
+
+  return expect(roomReceipt.accepted, "remove empty room setup") &&
+         expect(!cr::creativeRoomHasGeneratedShellChildren(
+                    document,
+                    roomReceipt.objectId),
+                "remove empty no generated children") &&
+         expect(!result.receipt.accepted, "remove empty rejected") &&
+         expect(result.receipt.status ==
+                    cr::CreativeRoomShellStatus::NoGeneratedShell,
+                "remove empty status") &&
+         expect(result.receipt.reasonCode ==
+                    "creative_room_shell_remove_not_found",
+                "remove empty reason") &&
+         expect(result.objectIds.empty(), "remove empty no ids");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = defaultRoomBuildsFiveShellRequests() &&
+                  provenanceHelpersRecognizeGeneratedRequestsAndObjects() &&
                   nonOriginGeneratedChildMoveTranslatesFromCenterAnchor() &&
+                  restoreRejectsGeneratedShellChildWithMissingParent() &&
+                  deletingRoomWithGeneratedShellChildrenRejects() &&
                   missingDocumentRejects() &&
                   noSelectionRejects() &&
                   nonRoomSelectionRejects() &&
                   invalidBoundsReject() &&
-                  duplicateShellTagsReject();
+                  duplicateShellTagsReject() &&
+                  findGeneratedShellChildrenUsesParentAndProvenanceTags() &&
+                  findGeneratedShellChildrenRejectsWhenNoneExist();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

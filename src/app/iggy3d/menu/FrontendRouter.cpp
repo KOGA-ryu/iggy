@@ -1,6 +1,7 @@
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 
 namespace iggy3d {
 namespace {
@@ -312,6 +313,16 @@ bool productMapMakerLiveForWindow(const FrontendState& frontend,
 }
 
 bool productCreativeWorldActiveForWindow(const ProductAppWindowState& window) {
+  return productCreativeWorldActiveForWindowMirror(window);
+}
+
+bool productCreativeWorldActiveForIdentity(
+    const creative::CreativeActiveIdentity& identity) {
+  return identity.worldActive();
+}
+
+bool productCreativeWorldActiveForWindowMirror(
+    const ProductAppWindowState& window) {
   return (!window.activeCreativeSaveId.empty() &&
           window.activeCreativeSaveId != "none") ||
          (!window.activeCreativeWorldId.empty() &&
