@@ -4,8 +4,10 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 namespace cr = iggy3d::creative;
@@ -52,6 +54,43 @@ bool sameTransform(cr::CreativeTransform lhs, cr::CreativeTransform rhs) {
   return sameVec3(lhs.position, rhs.position) &&
          sameVec3(lhs.rotation, rhs.rotation) &&
          sameVec3(lhs.scale, rhs.scale);
+}
+
+bool samePathPoints(std::span<const cr::CreativePathPoint> lhs,
+                    std::span<const cr::CreativePathPoint> rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < lhs.size(); ++index) {
+    if (!sameVec3(lhs[index].position, rhs[index].position)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool savePathPointsMatch(
+    std::span<const iggy3d::SaveCreativeDocumentVec3Record> lhs,
+    std::span<const cr::CreativePathPoint> rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (std::size_t index = 0; index < lhs.size(); ++index) {
+    if (lhs[index].x != rhs[index].position.x ||
+        lhs[index].y != rhs[index].position.y ||
+        lhs[index].z != rhs[index].position.z) {
+      return false;
+    }
+  }
+  return true;
+}
+
+std::vector<cr::CreativePathPoint> authoredPathPoints() {
+  return {
+      cr::CreativePathPoint{{kOneThird, 0.0, kPrecise}},
+      cr::CreativePathPoint{{4.0, kOneThird, 6.0}},
+      cr::CreativePathPoint{{7.0, 0.0, 8.0}},
+  };
 }
 
 cr::CreativeGridSettings authoredGridSettings() {
@@ -109,6 +148,19 @@ cr::CreativeObject restoredCrateObject() {
   return object;
 }
 
+cr::CreativeObject restoredPatrolRouteObject() {
+  cr::CreativeObject object;
+  object.id = 11;
+  object.kind = cr::CreativeObjectKind::PatrolRoute;
+  object.name = "Precise Route";
+  object.layerId = 5;
+  object.visible = true;
+  object.locked = false;
+  object.tags = {"route", "patrol"};
+  object.pathPoints = authoredPathPoints();
+  return object;
+}
+
 cr::CreativeDocumentRestoreRequest authoredRestoreRequest() {
   cr::CreativeDocumentRestoreRequest request;
   request.documentId = 9001;
@@ -122,12 +174,35 @@ cr::CreativeDocumentRestoreRequest authoredRestoreRequest() {
   return request;
 }
 
+cr::CreativeDocumentRestoreRequest authoredPathRestoreRequest() {
+  cr::CreativeDocumentRestoreRequest request;
+  request.documentId = 9002;
+  request.name = "Path Creative";
+  request.units = cr::CreativeUnits::Meters;
+  request.gridSettings = authoredGridSettings();
+  request.snapSettings = authoredSnapSettings();
+  request.worldBounds = authoredWorldBounds();
+  request.nextObjectId = 25;
+  request.objects = {restoredPatrolRouteObject()};
+  return request;
+}
+
 cr::CreativeDocument authoredDocument() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Before");
   const cr::CreativeDocumentRestoreReceipt restored =
       document.restoreForLoad(authoredRestoreRequest());
   if (!restored.accepted) {
     std::cerr << "FAIL: authored document restore setup\n";
+  }
+  return document;
+}
+
+cr::CreativeDocument authoredPathDocument() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Before Path");
+  const cr::CreativeDocumentRestoreReceipt restored =
+      document.restoreForLoad(authoredPathRestoreRequest());
+  if (!restored.accepted) {
+    std::cerr << "FAIL: authored path document restore setup\n";
   }
   return document;
 }
@@ -163,7 +238,8 @@ bool sectionObjectMatches(const iggy3d::SaveCreativeDocumentObjectRecord& save,
          save.locked == object.locked &&
          save.hasParent == object.parentId.has_value() &&
          save.parentId == object.parentId.value_or(cr::kInvalidObjectId) &&
-         save.tags == object.tags;
+         save.tags == object.tags &&
+         savePathPointsMatch(save.pathPoints, object.pathPoints);
 }
 
 bool documentObjectMatches(const cr::CreativeObject& lhs,
@@ -172,7 +248,8 @@ bool documentObjectMatches(const cr::CreativeObject& lhs,
          sameTransform(lhs.transform, rhs.transform) &&
          sameBounds(lhs.bounds, rhs.bounds) && lhs.layerId == rhs.layerId &&
          lhs.visible == rhs.visible && lhs.locked == rhs.locked &&
-         lhs.parentId == rhs.parentId && lhs.tags == rhs.tags;
+         lhs.parentId == rhs.parentId && lhs.tags == rhs.tags &&
+         samePathPoints(lhs.pathPoints, rhs.pathPoints);
 }
 
 bool buildSectionCopiesDocumentExactly() {
@@ -200,7 +277,8 @@ bool buildSectionCopiesDocumentExactly() {
                     "creative_document_section_converted",
                 "build receipt reason") &&
          expect(section.present, "section present") &&
-         expect(section.version == 1U, "section version") &&
+         expect(section.version == iggy3d::kSaveCreativeDocumentSectionVersion,
+                "section version") &&
          expect(section.documentId == document.id(), "section document id") &&
          expect(section.name == document.name(), "section name") &&
          expect(section.units == "Meters", "section units") &&
@@ -323,6 +401,119 @@ bool encodeDecodeAndRestoreRoundTripsDocument() {
                         kOneThird &&
                     restoredDocument.documentSnapSettings().stepX == kPrecise,
                 "precise doubles restored exactly");
+}
+
+bool buildSectionCopiesPathPoints() {
+  const cr::CreativeDocument document = authoredPathDocument();
+  const cr::CreativeDocumentRestoreRequest original =
+      authoredPathRestoreRequest();
+  const cr::CreativeObject& route = original.objects[0];
+  const iggy3d::ProductCreativeDocumentSectionBuildResult result =
+      iggy3d::buildSaveCreativeDocumentSection(document);
+  const iggy3d::SaveCreativeDocumentSection& section = result.section;
+
+  return expect(result.receipt.accepted, "path build accepted") &&
+         expect(section.objects.size() == 1U, "path build object count") &&
+         expect(section.objects[0].kind == "PatrolRoute",
+                "path build kind") &&
+         expect(section.objects[0].pathPoints.size() == 3U,
+                "path build path count") &&
+         expect(savePathPointsMatch(section.objects[0].pathPoints,
+                                    route.pathPoints),
+                "path build points exact");
+}
+
+bool restoreSectionRestoresPathPoints() {
+  const cr::CreativeDocument document = authoredPathDocument();
+  const iggy3d::SaveCreativeDocumentSection section =
+      iggy3d::buildSaveCreativeDocumentSection(document).section;
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
+      iggy3d::restoreCreativeDocumentFromSaveSection(section);
+  const cr::CreativeObject* route = result.document.findObject(11);
+
+  return expect(result.receipt.accepted, "path restore accepted") &&
+         expect(result.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::Converted,
+                "path restore converted") &&
+         expect(result.document.id() == 9002U, "path restore document id") &&
+         expect(result.document.objectCount() == 1U,
+                "path restore object count") &&
+         expect(result.document.nextObjectId() == 25U,
+                "path restore next object id") &&
+         expect(result.document.revision() == 0U,
+                "path restore revision zero") &&
+         expect(result.document.dirtyFlags() == 0U,
+                "path restore dirty zero") &&
+         expect(route != nullptr, "path restore route findable") &&
+         expect(route != nullptr &&
+                    samePathPoints(route->pathPoints, authoredPathPoints()),
+                "path restore points exact");
+}
+
+bool restoreRejectsInvalidPathPayloads() {
+  const iggy3d::SaveCreativeDocumentSection valid =
+      iggy3d::buildSaveCreativeDocumentSection(authoredPathDocument()).section;
+
+  iggy3d::SaveCreativeDocumentSection missing = valid;
+  missing.objects[0].pathPoints.clear();
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult missingResult =
+      iggy3d::restoreCreativeDocumentFromSaveSection(missing);
+
+  iggy3d::SaveCreativeDocumentSection onePoint = valid;
+  onePoint.objects[0].pathPoints.resize(1U);
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult onePointResult =
+      iggy3d::restoreCreativeDocumentFromSaveSection(onePoint);
+
+  iggy3d::SaveCreativeDocumentSection nonFinite = valid;
+  nonFinite.objects[0].pathPoints[1].x =
+      std::numeric_limits<double>::quiet_NaN();
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult nonFiniteResult =
+      iggy3d::restoreCreativeDocumentFromSaveSection(nonFinite);
+
+  return expect(!missingResult.receipt.accepted,
+                "missing path points rejected") &&
+         expect(missingResult.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::InvalidObject,
+                "missing path points status") &&
+         expect(missingResult.receipt.reasonCode == "invalid_path_points",
+                "missing path points reason") &&
+         expect(missingResult.document.objectCount() == 0U,
+                "missing path returns empty document") &&
+         expect(!onePointResult.receipt.accepted,
+                "one path point rejected") &&
+         expect(onePointResult.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::InvalidObject,
+                "one path point status") &&
+         expect(onePointResult.receipt.reasonCode == "invalid_path_points",
+                "one path point reason") &&
+         expect(!nonFiniteResult.receipt.accepted,
+                "nonfinite path point rejected") &&
+         expect(nonFiniteResult.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::InvalidObject,
+                "nonfinite path point status") &&
+         expect(nonFiniteResult.receipt.reasonCode == "invalid_path_points",
+                "nonfinite path point reason");
+}
+
+bool restoreRejectsNonPathObjectCarryingPathPoints() {
+  iggy3d::SaveCreativeDocumentSection section =
+      iggy3d::buildSaveCreativeDocumentSection(authoredDocument()).section;
+  section.objects[1].pathPoints = {
+      {1.0, 0.0, 2.0},
+      {3.0, 0.0, 4.0},
+  };
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
+      iggy3d::restoreCreativeDocumentFromSaveSection(section);
+
+  return expect(!result.receipt.accepted,
+                "nonpath path points rejected") &&
+         expect(result.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::InvalidObject,
+                "nonpath path points status") &&
+         expect(result.receipt.reasonCode == "path_unsupported",
+                "nonpath path points reason") &&
+         expect(result.document.objectCount() == 0U,
+                "nonpath path returns empty document");
 }
 
 bool buildRejectsDocumentWithInvalidId() {
@@ -467,6 +658,10 @@ int main() {
   bool ok = true;
   ok = buildSectionCopiesDocumentExactly() && ok;
   ok = encodeDecodeAndRestoreRoundTripsDocument() && ok;
+  ok = buildSectionCopiesPathPoints() && ok;
+  ok = restoreSectionRestoresPathPoints() && ok;
+  ok = restoreRejectsInvalidPathPayloads() && ok;
+  ok = restoreRejectsNonPathObjectCarryingPathPoints() && ok;
   ok = buildRejectsDocumentWithInvalidId() && ok;
   ok = restoreRejectsMissingSection() && ok;
   ok = restoreRejectsInvalidObjectKind() && ok;

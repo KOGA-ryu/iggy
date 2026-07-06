@@ -54,6 +54,16 @@ void setStatus(ProductCreativeDocumentSectionReceipt& receipt,
   return {toCreativeVec3(record.min), toCreativeVec3(record.max)};
 }
 
+[[nodiscard]] SaveCreativeDocumentVec3Record toSavePathPoint(
+    creative::CreativePathPoint point) noexcept {
+  return toSaveVec3(point.position);
+}
+
+[[nodiscard]] creative::CreativePathPoint toCreativePathPoint(
+    SaveCreativeDocumentVec3Record record) noexcept {
+  return {toCreativeVec3(record)};
+}
+
 [[nodiscard]] std::string_view toSaveUnits(
     creative::CreativeUnits units) noexcept {
   switch (units) {
@@ -210,6 +220,10 @@ void setStatus(ProductCreativeDocumentSectionReceipt& receipt,
   record.hasParent = object.parentId.has_value();
   record.parentId = object.parentId.value_or(creative::kInvalidObjectId);
   record.tags = object.tags;
+  record.pathPoints.reserve(object.pathPoints.size());
+  for (const creative::CreativePathPoint& point : object.pathPoints) {
+    record.pathPoints.push_back(toSavePathPoint(point));
+  }
   return record;
 }
 
@@ -232,6 +246,10 @@ void setStatus(ProductCreativeDocumentSectionReceipt& receipt,
                      ? std::optional<creative::CreativeObjectId>{record.parentId}
                      : std::nullopt;
   out.tags = record.tags;
+  out.pathPoints.reserve(record.pathPoints.size());
+  for (const SaveCreativeDocumentVec3Record& point : record.pathPoints) {
+    out.pathPoints.push_back(toCreativePathPoint(point));
+  }
   return true;
 }
 
@@ -399,7 +417,7 @@ ProductCreativeDocumentSectionBuildResult buildSaveCreativeDocumentSection(
   }
 
   result.section.present = true;
-  result.section.version = 1;
+  result.section.version = kSaveCreativeDocumentSectionVersion;
   result.section.documentId = document.id();
   result.section.name = std::string{document.name()};
   result.section.units = std::string{units};

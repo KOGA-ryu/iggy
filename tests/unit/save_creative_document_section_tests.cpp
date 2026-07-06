@@ -24,6 +24,36 @@ std::string replaceFirst(std::string text,
   return text;
 }
 
+std::string replaceValueForKey(std::string text,
+                               std::string_view key,
+                               std::string_view replacement) {
+  const std::string needle = std::string{key} + "=";
+  const std::size_t pos = text.find(needle);
+  if (pos == std::string::npos) {
+    return text;
+  }
+  const std::size_t valueBegin = pos + needle.size();
+  const std::size_t valueEnd = text.find('\n', valueBegin);
+  text.replace(valueBegin,
+               valueEnd == std::string::npos ? std::string::npos
+                                              : valueEnd - valueBegin,
+               replacement);
+  return text;
+}
+
+std::string eraseLineForKey(std::string text, std::string_view key) {
+  const std::string needle = std::string{key} + "=";
+  const std::size_t pos = text.find(needle);
+  if (pos == std::string::npos) {
+    return text;
+  }
+  const std::size_t lineEnd = text.find('\n', pos);
+  text.erase(pos,
+             lineEnd == std::string::npos ? std::string::npos
+                                          : lineEnd + 1U - pos);
+  return text;
+}
+
 iggy3d::SaveEnvelope minimalEnvelope() {
   iggy3d::SaveEnvelope envelope;
   envelope.metadata.savedStateHash = 0;
@@ -37,9 +67,9 @@ bool defaultEnvelopeOmitsCreativeDocumentSection() {
   const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(encoded.encodedText);
 
   return expect(encoded.status == iggy3d::SaveCodecStatus::Ok, "default encode ok") &&
-         expect(encoded.encodedText.find("metadata.schemaVersion=2\n") !=
+         expect(encoded.encodedText.find("metadata.schemaVersion=3\n") !=
                     std::string::npos,
-                "schema v2 metadata encoded") &&
+                "schema v3 metadata encoded") &&
          expect(encoded.encodedText.find("creativeDocument.present=") ==
                     std::string::npos,
                 "creative document absent by default") &&
@@ -58,7 +88,7 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
 
   iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
   section.present = true;
-  section.version = 1;
+  section.version = iggy3d::kSaveCreativeDocumentSectionVersion;
   section.documentId = 77;
   section.name = "Creative Save = Alpha";
   section.units = "Meters";
@@ -81,8 +111,8 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
 
   iggy3d::SaveCreativeDocumentObjectRecord object;
   object.id = 42;
-  object.kind = "Room";
-  object.name = "Visible Room";
+  object.kind = "PatrolRoute";
+  object.name = "Visible Route";
   object.transform.position = {kOneThird, 2.0, kPrecise};
   object.transform.rotation = {0.0, kPrecise, 1.5};
   object.transform.scale = {1.0, 2.0, 3.0};
@@ -94,6 +124,11 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
   object.hasParent = true;
   object.parentId = 7;
   object.tags = {"boss=room", "line\nbreak"};
+  object.pathPoints = {
+      {kOneThird, 0.0, kPrecise},
+      {kPrecise, kOneThird, 4.75},
+      {-7.25, 2.5, kOneThird},
+  };
   section.objects.push_back(object);
 
   const iggy3d::SaveEncodeResult encoded = iggy3d::encodeSaveEnvelope(envelope);
@@ -127,7 +162,7 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
             expect(encoded.encodedText.find("creativeDocument.grid.cellSizeMeters=0.333\n") ==
                        std::string::npos,
                    "creative double not fixed-three truncated") &&
-            expect(encoded.encodedText.find("creativeDocument.object.0.kind=Room\n") !=
+            expect(encoded.encodedText.find("creativeDocument.object.0.kind=PatrolRoute\n") !=
                        std::string::npos,
                    "object kind encoded") &&
             expect(encoded.encodedText.find("creativeDocument.object.0.hasParent=true\n") !=
@@ -136,6 +171,14 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
             expect(encoded.encodedText.find("creativeDocument.object.0.tag.count=2\n") !=
                        std::string::npos,
                    "object tag count encoded") &&
+            expect(encoded.encodedText.find(
+                       "creativeDocument.object.0.pathPoint.count=3\n") !=
+                       std::string::npos,
+                   "object path point count encoded") &&
+            expect(encoded.encodedText.find(
+                       "creativeDocument.object.0.pathPoint.1.position=") !=
+                       std::string::npos,
+                   "object path point position encoded") &&
             expect(decoded.status == iggy3d::SaveCodecStatus::Ok, "creative decode ok") &&
             expect(decodedSection.present, "creative present decoded") &&
             expect(decodedSection.documentId == 77U, "document id decoded") &&
@@ -168,9 +211,9 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
 
   ok = ok && expect(decodedObject != nullptr && decodedObject->id == 42U,
                     "object id decoded") &&
-       expect(decodedObject != nullptr && decodedObject->kind == "Room",
+       expect(decodedObject != nullptr && decodedObject->kind == "PatrolRoute",
               "object kind decoded") &&
-       expect(decodedObject != nullptr && decodedObject->name == "Visible Room",
+       expect(decodedObject != nullptr && decodedObject->name == "Visible Route",
               "object name decoded") &&
        expect(decodedObject != nullptr &&
                   decodedObject->transform.position.x == kOneThird &&
@@ -193,19 +236,87 @@ bool creativeDocumentSectionRoundTripsThroughSaveCodec() {
        expect(decodedObject != nullptr && decodedObject->tags.size() == 2U &&
                   decodedObject->tags[0] == "boss=room" &&
                   decodedObject->tags[1] == "line\nbreak",
-              "object tags decoded");
+              "object tags decoded") &&
+       expect(decodedObject != nullptr && decodedObject->pathPoints.size() == 3U,
+              "object path point count decoded") &&
+       expect(decodedObject != nullptr &&
+                  decodedObject->pathPoints[0].x == kOneThird &&
+                  decodedObject->pathPoints[0].z == kPrecise &&
+                  decodedObject->pathPoints[1].x == kPrecise &&
+                  decodedObject->pathPoints[1].y == kOneThird &&
+                  decodedObject->pathPoints[2].x == -7.25 &&
+                  decodedObject->pathPoints[2].z == kOneThird,
+              "object path points decoded exactly");
   return ok;
 }
 
-bool schemaCompatibilityAcceptsV1AndRejectsTooNew() {
+bool malformedCreativeDocumentPathPointKeysReject() {
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  iggy3d::SaveCreativeDocumentSection& section = envelope.creativeDocument;
+  section.present = true;
+  section.documentId = 77;
+  section.name = "Malformed Path";
+  section.units = "Meters";
+  section.nextObjectId = 43;
+
+  iggy3d::SaveCreativeDocumentObjectRecord object;
+  object.id = 42;
+  object.kind = "PatrolRoute";
+  object.name = "Route";
+  object.pathPoints = {
+      {1.0 / 3.0, 0.0, 0.1234567890123},
+      {2.0, 0.0, 3.0},
+  };
+  section.objects.push_back(object);
+
+  const iggy3d::SaveEncodeResult encoded = iggy3d::encodeSaveEnvelope(envelope);
+  const iggy3d::SaveDecodeResult invalidCount =
+      iggy3d::decodeSaveEnvelope(replaceValueForKey(
+          encoded.encodedText,
+          "creativeDocument.object.0.pathPoint.count",
+          "not_a_number"));
+  const iggy3d::SaveDecodeResult invalidPosition =
+      iggy3d::decodeSaveEnvelope(replaceValueForKey(
+          encoded.encodedText,
+          "creativeDocument.object.0.pathPoint.1.position",
+          "nan,0,0"));
+  const iggy3d::SaveDecodeResult missingIndexedPosition =
+      iggy3d::decodeSaveEnvelope(eraseLineForKey(
+          encoded.encodedText,
+          "creativeDocument.object.0.pathPoint.1.position"));
+
+  return expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
+                "path malformed setup encode ok") &&
+         expect(invalidCount.status == iggy3d::SaveCodecStatus::InvalidNumber,
+                "invalid path point count status") &&
+         expect(invalidCount.diagnosticKey ==
+                    "creativeDocument.object.0.pathPoint.count",
+                "invalid path point count key") &&
+         expect(invalidPosition.status ==
+                    iggy3d::SaveCodecStatus::InvalidNumber,
+                "invalid path point position status") &&
+         expect(invalidPosition.diagnosticKey ==
+                    "creativeDocument.object.0.pathPoint.1.position",
+                "invalid path point position key") &&
+         expect(missingIndexedPosition.status != iggy3d::SaveCodecStatus::Ok,
+                "missing indexed path point rejected");
+}
+
+bool schemaCompatibilityAcceptsV1V2AndRejectsTooNew() {
   iggy3d::SaveEnvelope envelope = minimalEnvelope();
   const iggy3d::SaveEncodeResult encoded = iggy3d::encodeSaveEnvelope(envelope);
   const std::string v1Text =
-      replaceFirst(encoded.encodedText, "metadata.schemaVersion=2\n",
+      replaceFirst(encoded.encodedText, "metadata.schemaVersion=3\n",
                    "metadata.schemaVersion=1\n");
+  const std::string v2Text =
+      replaceFirst(encoded.encodedText, "metadata.schemaVersion=3\n",
+                   "metadata.schemaVersion=2\n");
   const iggy3d::SaveDecodeResult decoded = iggy3d::decodeSaveEnvelope(v1Text);
+  const iggy3d::SaveDecodeResult decodedV2 = iggy3d::decodeSaveEnvelope(v2Text);
   const iggy3d::SaveCompatibilityResult v1Compatibility =
       iggy3d::checkSaveCompatibility({decoded.envelope, "", ""});
+  const iggy3d::SaveCompatibilityResult v2Compatibility =
+      iggy3d::checkSaveCompatibility({decodedV2.envelope, "", ""});
 
   iggy3d::SaveEnvelope tooNew = minimalEnvelope();
   tooNew.metadata.schemaVersion = iggy3d::kSaveSchemaVersion + 1U;
@@ -218,6 +329,10 @@ bool schemaCompatibilityAcceptsV1AndRejectsTooNew() {
                 "v1 save defaults creative document absent") &&
          expect(v1Compatibility.status == iggy3d::SaveCompatibilityStatus::Compatible,
                 "v1 compatibility accepted") &&
+         expect(decodedV2.status == iggy3d::SaveCodecStatus::Ok, "v2 decode ok") &&
+         expect(decodedV2.envelope.metadata.schemaVersion == 2U, "v2 schema decoded") &&
+         expect(v2Compatibility.status == iggy3d::SaveCompatibilityStatus::Compatible,
+                "v2 compatibility accepted") &&
          expect(tooNewCompatibility.status ==
                     iggy3d::SaveCompatibilityStatus::UnsupportedSchemaVersion,
                 "too new schema rejected") &&
@@ -231,6 +346,7 @@ int main() {
   bool ok = true;
   ok = defaultEnvelopeOmitsCreativeDocumentSection() && ok;
   ok = creativeDocumentSectionRoundTripsThroughSaveCodec() && ok;
-  ok = schemaCompatibilityAcceptsV1AndRejectsTooNew() && ok;
+  ok = malformedCreativeDocumentPathPointKeysReject() && ok;
+  ok = schemaCompatibilityAcceptsV1V2AndRejectsTooNew() && ok;
   return ok ? 0 : 1;
 }

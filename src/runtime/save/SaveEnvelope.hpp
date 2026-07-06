@@ -23,9 +23,10 @@
 
 namespace iggy3d {
 
-inline constexpr std::uint32_t kSaveSchemaVersion = 2;
+inline constexpr std::uint32_t kSaveSchemaVersion = 3;
 inline constexpr std::uint32_t kMinimumReadableSaveSchemaVersion = 1;
 inline constexpr std::uint32_t kRuntimeSaveVersion = 1;
+inline constexpr std::uint32_t kSaveCreativeDocumentSectionVersion = 2;
 
 struct SaveEnvelopeMetadata {
   std::uint32_t schemaVersion = kSaveSchemaVersion;
@@ -188,11 +189,12 @@ struct SaveCreativeDocumentObjectRecord {
   bool hasParent = false;
   std::uint64_t parentId = 0;
   std::vector<std::string> tags;
+  std::vector<SaveCreativeDocumentVec3Record> pathPoints;
 };
 
 struct SaveCreativeDocumentSection {
   bool present = false;
-  std::uint32_t version = 1;
+  std::uint32_t version = kSaveCreativeDocumentSectionVersion;
   std::uint64_t documentId = 0;
   std::string name;
   std::string units = "Meters";

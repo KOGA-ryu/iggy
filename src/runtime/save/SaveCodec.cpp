@@ -1005,6 +1005,13 @@ private:
       for (std::size_t tag = 0; tag < object.tags.size(); ++tag) {
         lineString(p + "tag." + std::to_string(tag), object.tags[tag]);
       }
+      if (!object.pathPoints.empty()) {
+        line(p + "pathPoint.count", unsignedText(object.pathPoints.size()));
+        for (std::size_t point = 0; point < object.pathPoints.size(); ++point) {
+          lineCreativeVec3(p + "pathPoint." + std::to_string(point) + ".position",
+                           object.pathPoints[point]);
+        }
+      }
     }
   }
 
@@ -1494,6 +1501,24 @@ private:
     }
   }
 
+  void readOptionalCreativeVec3Vector(
+      const std::string& countKey,
+      const std::string& itemPrefix,
+      const std::string& itemSuffix,
+      std::vector<SaveCreativeDocumentVec3Record>& out) {
+    if (!nextKeyIs(countKey)) {
+      out.clear();
+      return;
+    }
+    std::uint64_t count = 0;
+    readUnsigned(countKey, count);
+    out.resize(static_cast<std::size_t>(count));
+    for (std::size_t index = 0; index < out.size(); ++index) {
+      readCreativeVec3(itemPrefix + std::to_string(index) + itemSuffix,
+                       out[index]);
+    }
+  }
+
   void readAuthoredRoomSemantics(const std::string& p,
                                  SaveAuthoredRoomSemanticsRecord& semantics) {
     readString(p + "materialId", semantics.materialId);
@@ -1642,6 +1667,10 @@ private:
       readBool(p + "hasParent", object.hasParent);
       readUnsigned(p + "parentId", object.parentId);
       readStringVector(p + "tag.count", p + "tag.", object.tags);
+      readOptionalCreativeVec3Vector(p + "pathPoint.count",
+                                     p + "pathPoint.",
+                                     ".position",
+                                     object.pathPoints);
     }
   }
 
