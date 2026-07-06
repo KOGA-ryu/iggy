@@ -355,6 +355,8 @@ struct BrushFootprint {
   float sizeZ = 1.0F;
 };
 
+constexpr float kPointMarkerSizeMeters = 0.35F;
+
 bool positiveFinite(float value) {
   return std::isfinite(value) && value > 0.0F;
 }
@@ -406,6 +408,19 @@ bool descriptorSupportsBoxPlacement(
   return false;
 }
 
+bool descriptorSupportsPointPlacement(
+    const creative::CreativeObjectDescriptor& descriptor) {
+  return descriptor.kind != creative::CreativeObjectKind::Unknown &&
+         descriptor.shapeKind == creative::CreativeObjectShapeKind::Point &&
+         descriptor.hasTransform && !descriptor.hasBounds;
+}
+
+bool descriptorSupportsBrushPlacement(
+    const creative::CreativeObjectDescriptor& descriptor) {
+  return descriptorSupportsBoxPlacement(descriptor) ||
+         descriptorSupportsPointPlacement(descriptor);
+}
+
 BrushFootprint brushFootprintForDescriptor(
     const creative::CreativeObjectDescriptor& descriptor) {
   BrushFootprint footprint = descriptorBoundsFootprint(descriptor);
@@ -430,7 +445,7 @@ std::vector<creative::CreativeObjectKind> buildBrushPaletteFromDescriptors() {
   std::vector<creative::CreativeObjectKind> palette;
   for (const creative::CreativeObjectDescriptor& descriptor :
        creative::allObjectDescriptors()) {
-    if (descriptorSupportsBoxPlacement(descriptor)) {
+    if (descriptorSupportsBrushPlacement(descriptor)) {
       palette.push_back(descriptor.kind);
     }
   }
@@ -460,6 +475,11 @@ creative::CreativeObjectKind nextBrushKind(
 
 std::string_view renderRoleForDescriptor(
     const creative::CreativeObjectDescriptor& descriptor) {
+  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Point) {
+    // Existing renderer role with a distinct blue color. This is a coarse
+    // standalone marker role until the render layer grows a named point style.
+    return "spell";
+  }
   const BrushFootprint footprint = descriptorBoundsFootprint(descriptor);
   if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Surface &&
       descriptor.occupancyKind ==
@@ -478,6 +498,33 @@ std::string_view renderRoleForDescriptor(
     return "wall";
   }
   return "prop";
+}
+
+struct VisualBounds {
+  Vec3 min;
+  Vec3 max;
+};
+
+VisualBounds pointMarkerBounds(const creative::CreativeVec3& position) {
+  const float half = kPointMarkerSizeMeters * 0.5F;
+  const Vec3 center = toVec3(position);
+  return {{center.x - half, center.y - half, center.z - half},
+          {center.x + half, center.y + half, center.z + half}};
+}
+
+VisualBounds visualBoundsForObject(const creative::CreativeObject& object) {
+  const creative::CreativeObjectDescriptor& descriptor =
+      creative::describeObject(object.kind);
+  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Point) {
+    return pointMarkerBounds(object.transform.position);
+  }
+  return {toVec3(object.bounds.min), toVec3(object.bounds.max)};
+}
+
+Vec3 visualBoundsCenter(VisualBounds bounds) {
+  return {(bounds.min.x + bounds.max.x) * 0.5F,
+          (bounds.min.y + bounds.max.y) * 0.5F,
+          (bounds.min.z + bounds.max.z) * 0.5F};
 }
 
 // Snap a world XZ ground point to the nearest 1 m cell CENTER: floor to the cell
@@ -499,10 +546,6 @@ creative::CreativeDocumentCreateReceipt placeBrushObject(
     Vec3 cellCenter, std::uint64_t ordinal) {
   const creative::CreativeObjectDescriptor& descriptor =
       creative::describeObject(brush);
-  const BrushFootprint fp = brushFootprintForDescriptor(descriptor);
-  const double halfX = static_cast<double>(fp.sizeX) * 0.5;
-  const double halfZ = static_cast<double>(fp.sizeZ) * 0.5;
-  const double height = static_cast<double>(fp.height);
   const double cx = static_cast<double>(cellCenter.x);
   const double cz = static_cast<double>(cellCenter.z);
 
@@ -510,14 +553,26 @@ creative::CreativeDocumentCreateReceipt placeBrushObject(
   request.kind = brush;  // <-- the ONLY per-kind input: pure data, no branch.
   request.name = std::string(creative::toString(brush)) + " placed#" +
                  std::to_string(ordinal);
-  // Position = cell center at half-height so the box straddles the footprint
-  // and rests on Y=0.
-  request.transform.position = {cx, height * 0.5, cz};
-  request.hasTransformOverride = true;
-  // Footprint centered in XZ on the cell, min.y=0 so it sits ON the ground.
-  request.bounds = {{cx - halfX, 0.0, cz - halfZ},
-                    {cx + halfX, height, cz + halfZ}};
-  request.hasBoundsOverride = true;
+  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Point &&
+      descriptor.hasTransform && !descriptor.hasBounds) {
+    // Point-shape authored truth is the transform anchor. The marker box used
+    // for render/hit/wire feedback is app-local visualization only.
+    request.transform.position = {cx, 0.0, cz};
+    request.hasTransformOverride = true;
+  } else {
+    const BrushFootprint fp = brushFootprintForDescriptor(descriptor);
+    const double halfX = static_cast<double>(fp.sizeX) * 0.5;
+    const double halfZ = static_cast<double>(fp.sizeZ) * 0.5;
+    const double height = static_cast<double>(fp.height);
+    // Position = cell center at half-height so the box straddles the footprint
+    // and rests on Y=0.
+    request.transform.position = {cx, height * 0.5, cz};
+    request.hasTransformOverride = true;
+    // Footprint centered in XZ on the cell, min.y=0 so it sits ON the ground.
+    request.bounds = {{cx - halfX, 0.0, cz - halfZ},
+                      {cx + halfX, height, cz + halfZ}};
+    request.hasBoundsOverride = true;
+  }
   request.visible = true;
   request.hasVisibleOverride = true;
   request.locked = false;
@@ -527,13 +582,15 @@ creative::CreativeDocumentCreateReceipt placeBrushObject(
       facade.createDocumentObject(request);
   SDL_Log("iggy3d_creative: PLACE dropped objectId=%llu kind='%s' "
           "pos=(%.3f, %.3f, %.3f) bounds=[(%.3f,%.3f,%.3f)..(%.3f,%.3f,%.3f)] "
-          "accepted=%d",
+          "shape='%s' boundsOverride=%d accepted=%d",
           static_cast<unsigned long long>(receipt.objectId),
           std::string(creative::toString(receipt.objectKind)).c_str(),
           request.transform.position.x, request.transform.position.y,
           request.transform.position.z, request.bounds.min.x,
           request.bounds.min.y, request.bounds.min.z, request.bounds.max.x,
           request.bounds.max.y, request.bounds.max.z,
+          std::string(creative::toString(descriptor.shapeKind)).c_str(),
+          request.hasBoundsOverride ? 1 : 0,
           receipt.accepted ? 1 : 0);
   return receipt;
 }
@@ -1309,9 +1366,9 @@ int main(int argc, char** argv) {
     placeMode = true;
     placeBrush = firstBrushKind(brushPalette);
   }
-  // --capture placement script (SLICE 7): place two crates and one wall on
-  // frames 3..5 so the scene grows before the save/load proof.
-  // Each is a (worldX, worldZ, kind) target fed to the SAME createDocumentObject.
+  // --capture placement script: place box/surface proof objects, undo one extra
+  // create, then add one Point representative before save/load. Each entry is a
+  // (worldX, worldZ, kind) target fed to the SAME createDocumentObject path.
   struct CapturePlacement {
     std::uint64_t frame;
     double worldX;
@@ -1320,16 +1377,19 @@ int main(int argc, char** argv) {
     bool deleteProofTarget = false;
     bool moveProofTarget = false;
     bool createUndoProofTarget = false;
+    bool pointProofTarget = false;
   };
-  const std::array<CapturePlacement, 4> capturePlacements{{
+  const std::array<CapturePlacement, 5> capturePlacements{{
       {3U, 2.0, 2.0, creative::CreativeObjectKind::Crate, false, true,
-       false},
+       false, false},
       {4U, 4.0, 2.0, creative::CreativeObjectKind::Crate, true, false,
-       false},
+       false, false},
       {5U, -2.0, 2.0, creative::CreativeObjectKind::Wall, false, false,
-       false},
+       false, false},
       {6U, 6.0, 2.0, creative::CreativeObjectKind::Crate, false, false,
-       true},
+       true, false},
+      {14U, 6.0, 2.0, creative::CreativeObjectKind::PointLight, false, false,
+       false, true},
   }};
 
   // ---- SAVE / LOAD state (SLICE 7) ---------------------------------------
@@ -1341,10 +1401,10 @@ int main(int argc, char** argv) {
   bool prevKeyBackspace = false;
   bool prevKeyZ = false;
   StandaloneUndoStack undoStack;
-  // --capture round-trip proof: first prove no-selection delete is a no-op,
-  // then delete one placed Crate, undo it, SAVE (8), CLEAR (10), LOAD (12),
-  // snapshot AFTER + emit the ROUNDTRIP line. The BEFORE snapshot (taken
-  // pre-clear, post-undo) holds the restored proof scene to compare against AFTER.
+  // --capture round-trip proof: prove create/delete/move undo, add a Point
+  // marker, undo its move, then SAVE/CLEAR/LOAD the six-object scene. The
+  // BEFORE snapshot (taken pre-clear, post-undo) holds the restored proof scene
+  // to compare against AFTER.
   std::vector<ObjectSnapshotEntry> roundtripBefore;
   std::size_t roundtripCountAfterClear = 0;
   bool roundtripSaved = false;
@@ -1358,6 +1418,10 @@ int main(int argc, char** argv) {
   bool captureMovePreviewAttempted = false;
   bool captureMoveCommitAttempted = false;
   bool captureMoveUndoAttempted = false;
+  bool capturePointMoveBeginAttempted = false;
+  bool capturePointMoveCommitAttempted = false;
+  bool capturePointMoveUndoAttempted = false;
+  bool capturePointHitProxyLogged = false;
   constexpr std::uint64_t kCaptureDeleteNoSelectionFrame = 2U;
   constexpr std::uint64_t kCaptureCreateUndoFrame = 7U;
   constexpr std::uint64_t kCaptureDeleteFrame = 8U;
@@ -1366,14 +1430,19 @@ int main(int argc, char** argv) {
   constexpr std::uint64_t kCaptureMovePreviewFrame = 11U;
   constexpr std::uint64_t kCaptureMoveCommitFrame = 12U;
   constexpr std::uint64_t kCaptureMoveUndoFrame = 13U;
-  constexpr std::uint64_t kCaptureSaveFrame = 14U;
-  constexpr std::uint64_t kCaptureClearFrame = 16U;
-  constexpr std::uint64_t kCaptureLoadFrame = 18U;
+  constexpr std::uint64_t kCapturePointMoveBeginFrame = 15U;
+  constexpr std::uint64_t kCapturePointMoveCommitFrame = 16U;
+  constexpr std::uint64_t kCapturePointMoveUndoFrame = 17U;
+  constexpr std::uint64_t kCaptureSaveFrame = 18U;
+  constexpr std::uint64_t kCaptureClearFrame = 19U;
+  constexpr std::uint64_t kCaptureLoadFrame = 20U;
   creative::CreativeObjectId captureCreateUndoTargetId =
       creative::kInvalidObjectId;
   creative::CreativeObjectId captureDeleteTargetId = creative::kInvalidObjectId;
   creative::CreativeObjectId captureMoveTargetId = creative::kInvalidObjectId;
+  creative::CreativeObjectId capturePointTargetId = creative::kInvalidObjectId;
   creative::CreativeToolWorldPoint captureMoveDestination{};
+  creative::CreativeToolWorldPoint capturePointMoveDestination{};
 
   std::uint64_t frameIndex = 0;
   std::uint32_t lastWidth = 0;
@@ -1535,8 +1604,9 @@ int main(int argc, char** argv) {
       if (!obj.visible) {
         continue;  // Skip hidden objects (still authored, just not drawn).
       }
-      const Vec3 boxMin = toVec3(obj.bounds.min);
-      const Vec3 boxMax = toVec3(obj.bounds.max);
+      const VisualBounds visualBounds = visualBoundsForObject(obj);
+      const Vec3 boxMin = visualBounds.min;
+      const Vec3 boxMax = visualBounds.max;
       SceneRoomMeshItem mesh;
       mesh.id = "creative.object_" + std::to_string(obj.id);
       mesh.role = std::string(
@@ -1601,21 +1671,31 @@ int main(int argc, char** argv) {
       if (!obj.visible) {
         continue;
       }
-      const Vec3 boxMin = toVec3(obj.bounds.min);
-      const Vec3 boxMax = toVec3(obj.bounds.max);
+      const VisualBounds visualBounds = visualBoundsForObject(obj);
+      const Vec3 boxMin = visualBounds.min;
+      const Vec3 boxMax = visualBounds.max;
       ObjectScreenHit hit;
       hit.id = obj.id;
       hit.aabb = projectBoxToScreen(frame.camera.clipFromWorld, boxMin, boxMax,
                                     extent.width, extent.height);
-      const Vec3 center{(boxMin.x + boxMax.x) * 0.5F,
-                        (boxMin.y + boxMax.y) * 0.5F,
-                        (boxMin.z + boxMax.z) * 0.5F};
+      const Vec3 center = visualBoundsCenter(visualBounds);
       hit.centerDepth = clipW(frame.camera.clipFromWorld, center);
       objectHits.push_back(hit);
       if (obj.id == floorObjectId) {
         haveFloorBounds = true;
         floorBoxMin = boxMin;
         floorBoxMax = boxMax;
+      }
+      if (!capturePath.empty() && !capturePointHitProxyLogged &&
+          obj.id == capturePointTargetId) {
+        SDL_Log("iggy3d_creative: POINT hit proxy objectId=%llu "
+                "aabbValid=%d marker=[(%.3f, %.3f, %.3f).."
+                "(%.3f, %.3f, %.3f)] screen=[%.1f, %.1f..%.1f, %.1f]",
+                static_cast<unsigned long long>(capturePointTargetId),
+                hit.aabb.valid ? 1 : 0, boxMin.x, boxMin.y, boxMin.z,
+                boxMax.x, boxMax.y, boxMax.z, hit.aabb.minX, hit.aabb.minY,
+                hit.aabb.maxX, hit.aabb.maxY);
+        capturePointHitProxyLogged = true;
       }
     }
 
@@ -1748,6 +1828,17 @@ int main(int argc, char** argv) {
                       "kind='%s'",
                       static_cast<unsigned long long>(captureMoveTargetId),
                       std::string(creative::toString(receipt.objectKind)).c_str());
+            }
+            if (p.pointProofTarget && receipt.accepted) {
+              capturePointTargetId = receipt.objectId;
+              SDL_Log("iggy3d_creative: POINT capture target objectId=%llu "
+                      "kind='%s' shape='%s' boundsOverride=%d",
+                      static_cast<unsigned long long>(capturePointTargetId),
+                      std::string(creative::toString(receipt.objectKind)).c_str(),
+                      std::string(creative::toString(
+                          creative::describeObject(receipt.objectKind).shapeKind))
+                          .c_str(),
+                      0);
             }
           }
         }
@@ -1882,6 +1973,95 @@ int main(int argc, char** argv) {
       }
     }
 
+    // ---- POINT SHAPE PROOF (D1, --capture) --------------------------------
+    // PointLight is only the deterministic representative brush here. Rendering,
+    // hit bounds, selection and Move use descriptor shape facts, not this kind.
+    if (!capturePath.empty()) {
+      if (frameIndex == kCapturePointMoveBeginFrame &&
+          !capturePointMoveBeginAttempted) {
+        placeMode = false;
+        (void)appState.facade.setActiveTool(creative::Tool::Move);
+        (void)selectObjectForCapture(appState.facade, capturePointTargetId,
+                                     "capture_point_move");
+        const creative::CreativeObject* pointTarget =
+            appState.facade.findObject(capturePointTargetId);
+        if (pointTarget != nullptr) {
+          const VisualBounds markerBounds = visualBoundsForObject(*pointTarget);
+          capturePointMoveDestination = {
+              pointTarget->transform.position.x + 1.0,
+              pointTarget->transform.position.y,
+              pointTarget->transform.position.z};
+          SDL_Log("iggy3d_creative: POINT before move objectId=%llu "
+                  "pos=(%.3f, %.3f, %.3f) marker=[(%.3f, %.3f, %.3f).."
+                  "(%.3f, %.3f, %.3f)]",
+                  static_cast<unsigned long long>(capturePointTargetId),
+                  pointTarget->transform.position.x,
+                  pointTarget->transform.position.y,
+                  pointTarget->transform.position.z, markerBounds.min.x,
+                  markerBounds.min.y, markerBounds.min.z, markerBounds.max.x,
+                  markerBounds.max.y, markerBounds.max.z);
+          creative::CreativeToolInputPacket press;
+          press.kind = creative::CreativeToolInputKind::PointerPress;
+          press.pointer.button = creative::CreativeToolPointerButton::Primary;
+          press.pointer.target =
+              creative::TargetRef{static_cast<creative::Id>(
+                  capturePointTargetId)};
+          const creative::CreativeFacadeToolDispatchReceipt receipt =
+              appState.facade.dispatchToolInput(press);
+          logMoveDispatch("POINT_MOVE_PRESS", receipt);
+        }
+        capturePointMoveBeginAttempted = true;
+      } else if (frameIndex == kCapturePointMoveCommitFrame &&
+                 !capturePointMoveCommitAttempted) {
+        creative::CreativeToolInputPacket release;
+        release.kind = creative::CreativeToolInputKind::PointerRelease;
+        release.pointer.button = creative::CreativeToolPointerButton::Primary;
+        release.pointer.hasWorldDestination = true;
+        release.pointer.worldDestination = capturePointMoveDestination;
+        release.pointer.moveHeldAxis = heldAxisForGrabbedAxis(GizmoAxis::X);
+        const creative::CreativeFacadeToolDispatchReceipt receipt =
+            dispatchMoveReleaseWithUndo(appState, undoStack, release,
+                                        capturePointTargetId,
+                                        "capture_point_move_commit");
+        logMoveDispatch("POINT_MOVE_RELEASE", receipt);
+        const creative::CreativeObject* pointTarget =
+            appState.facade.findObject(capturePointTargetId);
+        if (pointTarget != nullptr) {
+          const VisualBounds markerBounds = visualBoundsForObject(*pointTarget);
+          SDL_Log("iggy3d_creative: POINT after move objectId=%llu "
+                  "pos=(%.3f, %.3f, %.3f) marker=[(%.3f, %.3f, %.3f).."
+                  "(%.3f, %.3f, %.3f)]",
+                  static_cast<unsigned long long>(capturePointTargetId),
+                  pointTarget->transform.position.x,
+                  pointTarget->transform.position.y,
+                  pointTarget->transform.position.z, markerBounds.min.x,
+                  markerBounds.min.y, markerBounds.min.z, markerBounds.max.x,
+                  markerBounds.max.y, markerBounds.max.z);
+        }
+        capturePointMoveCommitAttempted = true;
+      } else if (frameIndex == kCapturePointMoveUndoFrame &&
+                 !capturePointMoveUndoAttempted) {
+        (void)undoLastSnapshot(appState, undoStack, "capture_point_move_undo");
+        placeMode = true;
+        placeBrush = creative::CreativeObjectKind::Wall;
+        const creative::CreativeObject* pointTarget =
+            appState.facade.findObject(capturePointTargetId);
+        if (pointTarget != nullptr) {
+          const VisualBounds markerBounds = visualBoundsForObject(*pointTarget);
+          SDL_Log("iggy3d_creative: POINT after undo objectId=%llu "
+                  "pos=(%.3f, %.3f, %.3f) marker=[(%.3f, %.3f, %.3f).."
+                  "(%.3f, %.3f, %.3f)]",
+                  static_cast<unsigned long long>(capturePointTargetId),
+                  pointTarget->transform.position.x,
+                  pointTarget->transform.position.y,
+                  pointTarget->transform.position.z, markerBounds.min.x,
+                  markerBounds.min.y, markerBounds.min.z, markerBounds.max.x,
+                  markerBounds.max.y, markerBounds.max.z);
+        }
+        capturePointMoveUndoAttempted = true;
+      }
+    }
+
     // ---- SAVE / LOAD ROUND-TRIP (SLICE 7, --capture) -----------------------
     // On fixed frames, drive the lossless round-trip and log the proof. The
     // placements above grow the scene, create/delete/move undo return it to the
@@ -1941,8 +2121,9 @@ int main(int argc, char** argv) {
     Vec3 selBoxMin{-0.5F, 0.0F, -0.5F};
     Vec3 selBoxMax{0.5F, 1.0F, 0.5F};
     if (hasSelection) {
-      selBoxMin = toVec3(selected->bounds.min);
-      selBoxMax = toVec3(selected->bounds.max);
+      const VisualBounds selectedVisualBounds = visualBoundsForObject(*selected);
+      selBoxMin = selectedVisualBounds.min;
+      selBoxMax = selectedVisualBounds.max;
     }
 
     // ---- GIZMO GEOMETRY (SLICE 4) ------------------------------------------
@@ -2285,6 +2466,30 @@ int main(int argc, char** argv) {
     // so it lives here in the frame-loop body. When nothing is selected we skip
     // the gizmo and the selection box is empty, so this is just dbg.lines.
     std::vector<RenderCreativeWireframeDebugLine> combinedWireLines = dbg.lines;
+    std::size_t pointMarkerEdgeCount = 0;
+    for (const creative::CreativeObject& obj :
+         appState.facade.document().objects()) {
+      const creative::CreativeObjectDescriptor& descriptor =
+          creative::describeObject(obj.kind);
+      if (!obj.visible ||
+          descriptor.shapeKind != creative::CreativeObjectShapeKind::Point) {
+        continue;
+      }
+      const VisualBounds markerBounds = visualBoundsForObject(obj);
+      const bool sel =
+          hasSelection &&
+          obj.id == static_cast<creative::CreativeObjectId>(selectedId);
+      const std::size_t before = combinedWireLines.size();
+      appendWireframeBoxEdges(
+          combinedWireLines, markerBounds.min, markerBounds.max,
+          sel ? RenderLineColor{1.0F, 1.0F, 0.0F, 1.0F}
+              : RenderLineColor{0.34F, 0.62F, 0.88F, 1.0F},
+          sel ? 0.06F : 0.035F);
+      for (std::size_t i = before; i < combinedWireLines.size(); ++i) {
+        combinedWireLines[i].objectId = obj.id;
+      }
+      pointMarkerEdgeCount += combinedWireLines.size() - before;
+    }
     if (hasSelection) {
       for (const GizmoAxisShaft& shaft : gizmoShafts) {
         RenderCreativeWireframeDebugLine gizmoLine;
@@ -2306,12 +2511,22 @@ int main(int argc, char** argv) {
     // next frame if the aim moves.
     std::size_t ghostEdgeCount = 0;
     if (placeMode) {
-      const BrushFootprint fp =
-          brushFootprintForDescriptor(creative::describeObject(placeBrush));
-      const Vec3 ghostMin{aimCellCenter.x - fp.sizeX * 0.5F, 0.0F,
-                          aimCellCenter.z - fp.sizeZ * 0.5F};
-      const Vec3 ghostMax{aimCellCenter.x + fp.sizeX * 0.5F, fp.height,
-                          aimCellCenter.z + fp.sizeZ * 0.5F};
+      const creative::CreativeObjectDescriptor& brushDescriptor =
+          creative::describeObject(placeBrush);
+      Vec3 ghostMin{};
+      Vec3 ghostMax{};
+      if (brushDescriptor.shapeKind == creative::CreativeObjectShapeKind::Point) {
+        const VisualBounds markerBounds = pointMarkerBounds(
+            creative::CreativeVec3{aimCellCenter.x, 0.0, aimCellCenter.z});
+        ghostMin = markerBounds.min;
+        ghostMax = markerBounds.max;
+      } else {
+        const BrushFootprint fp = brushFootprintForDescriptor(brushDescriptor);
+        ghostMin = {aimCellCenter.x - fp.sizeX * 0.5F, 0.0F,
+                    aimCellCenter.z - fp.sizeZ * 0.5F};
+        ghostMax = {aimCellCenter.x + fp.sizeX * 0.5F, fp.height,
+                    aimCellCenter.z + fp.sizeZ * 0.5F};
+      }
       const std::size_t before = combinedWireLines.size();
       appendWireframeBoxEdges(combinedWireLines, ghostMin, ghostMax,
                               RenderLineColor{0.0F, 1.0F, 0.0F, 1.0F},
@@ -2368,14 +2583,16 @@ int main(int argc, char** argv) {
       loggedSelection = true;
       SDL_Log("iggy3d_creative: frame %llu submit outcome=%d reason='%s' "
               "meshes=%zu selectedTarget=%u hasSelection=%d selBoxLines=%zu "
-              "gizmoLines=%zu combinedWireLines=%zu uiRects=%zu glyphs=%zu",
+              "pointMarkerLines=%zu gizmoLines=%zu combinedWireLines=%zu "
+              "uiRects=%zu glyphs=%zu",
               static_cast<unsigned long long>(frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(),
               scene.room.meshes.size(), selectedId, hasSelection ? 1 : 0,
-              dbg.lines.size(), combinedWireLines.size() - dbg.lines.size(),
-              combinedWireLines.size(), menuFrame.rects.size(),
-              glyphs.size());
+              dbg.lines.size(), pointMarkerEdgeCount,
+              combinedWireLines.size() - dbg.lines.size() -
+                  pointMarkerEdgeCount,
+              combinedWireLines.size(), menuFrame.rects.size(), glyphs.size());
     }
 
     if (maxFrames != 0U && frameIndex >= maxFrames) {
@@ -2387,13 +2604,15 @@ int main(int argc, char** argv) {
               : "<none>";
       SDL_Log("iggy3d_creative: FINAL frame %llu submit outcome=%d reason='%s' "
               "selectedTarget=%u selectedKind='%s' hasSelection=%d selBoxLines=%zu "
-              "gizmoLines=%zu combinedWireLines=%zu placeMode=%d brush='%s' "
-              "ghostEdges=%zu placed=%llu objectCount=%llu",
+              "pointMarkerLines=%zu gizmoLines=%zu combinedWireLines=%zu "
+              "placeMode=%d brush='%s' ghostEdges=%zu placed=%llu "
+              "objectCount=%llu",
               static_cast<unsigned long long>(frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(), selectedId, selKind,
-              hasSelection ? 1 : 0, dbg.lines.size(),
-              combinedWireLines.size() - dbg.lines.size(),
+              hasSelection ? 1 : 0, dbg.lines.size(), pointMarkerEdgeCount,
+              combinedWireLines.size() - dbg.lines.size() -
+                  pointMarkerEdgeCount,
               combinedWireLines.size(), placeMode ? 1 : 0,
               std::string(creative::toString(placeBrush)).c_str(),
               ghostEdgeCount, static_cast<unsigned long long>(placedCount),
