@@ -177,41 +177,6 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     FrontendState& frontend,
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
-    creative::CreativeAppState* creativeApp) {
-  if (productCreativeDocumentEditorActiveForSource(window, creativeApp)) {
-    return executeCreativePauseSaveFlow(kind,
-                                        options,
-                                        frontend,
-                                        activeSession,
-                                        window,
-                                        nullptr,
-                                        creativeApp);
-  }
-  return executeProductPauseSaveFlow(
-      kind, options, frontend, activeSession, window);
-}
-
-ProductPauseSaveFlowResult executeProductPauseSaveFlow(
-    ProductPauseSaveFlowKind kind,
-    const ProductAppOptions& options,
-    FrontendState& frontend,
-    std::optional<Session>& activeSession,
-    ProductAppWindowState& window,
-    FrontendSettings& settings) {
-  ProductPauseSaveFlowResult result =
-      executeProductPauseSaveFlow(kind, options, frontend, activeSession, window);
-  if (result.returnedToTitle) {  // branch-gate: BG-1017
-    clearProductGameplayOnlyModes(window, settings);
-  }
-  return result;
-}
-
-ProductPauseSaveFlowResult executeProductPauseSaveFlow(
-    ProductPauseSaveFlowKind kind,
-    const ProductAppOptions& options,
-    FrontendState& frontend,
-    std::optional<Session>& activeSession,
-    ProductAppWindowState& window,
     FrontendSettings& settings,
     creative::CreativeAppState* creativeApp) {
   if (productCreativeDocumentEditorActiveForSource(window, creativeApp)) {

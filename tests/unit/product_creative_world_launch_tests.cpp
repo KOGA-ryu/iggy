@@ -1650,6 +1650,7 @@ bool pauseSaveUsesCreativeIdentityInsteadOfStaleWindowMirror() {
   const iggy3d::ProductAppOptions options =
       testOptions("pause_stale_creative_identity");
   iggy3d::FrontendState frontend;
+  iggy3d::FrontendSettings settings;
   std::optional<iggy3d::Session> activeSession;
   iggy3d::ProductAppWindowState window;
   cr::CreativeAppState app;
@@ -1668,6 +1669,7 @@ bool pauseSaveUsesCreativeIdentityInsteadOfStaleWindowMirror() {
           frontend,
           activeSession,
           window,
+          settings,
           &app);
 
   return expect(!app.identity.worldActive(),

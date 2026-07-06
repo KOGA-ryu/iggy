@@ -69,6 +69,32 @@ std::uint64_t descriptorCountForKind(
   return count;
 }
 
+bool descriptorLookupIsTotalForEveryEnumKind() {
+  bool ok = true;
+  const std::span<const cr::CreativeObjectKind> knownKinds =
+      cr::allCreativeObjectKinds();
+  const std::size_t expectedKindCount =
+      static_cast<std::size_t>(cr::CreativeObjectKind::Count);
+
+  ok = expect(knownKinds.size() == expectedKindCount,
+              "known object inventory covers every enum value before Count") &&
+       ok;
+
+  for (std::size_t index = 0; index < expectedKindCount; ++index) {
+    const cr::CreativeObjectKind kind =
+        static_cast<cr::CreativeObjectKind>(index);
+    const cr::CreativeObjectDescriptor& descriptor = cr::describeObject(kind);
+
+    ok = expect(index < knownKinds.size() && knownKinds[index] == kind,
+                "known object inventory follows enum order") &&
+         expect(descriptor.kind == kind,
+                "describeObject returns descriptor for requested enum kind") &&
+         ok;
+  }
+
+  return ok;
+}
+
 bool descriptorTableRowsAreStableAndUnique() {
   const std::span<const cr::CreativeObjectDescriptor> descriptors =
       cr::allObjectDescriptors();
@@ -987,7 +1013,8 @@ bool mutationDirtyFlagsFollowDescriptorSpatialColumns() {
 }  // namespace
 
 int main() {
-  const bool ok = descriptorTableRowsAreStableAndUnique() &&
+  const bool ok = descriptorLookupIsTotalForEveryEnumKind() &&
+                  descriptorTableRowsAreStableAndUnique() &&
                   serializedObjectKindIdsAreStableAndUnique() &&
                   legacyCategoryPredicatesFollowDescriptorTruth() &&
                   shapeKindStringsAreStable() &&

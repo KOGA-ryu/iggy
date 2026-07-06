@@ -51,22 +51,6 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
     FrontendState& frontend,
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
-    creative::CreativeAppState* creativeApp);
-
-ProductPauseSaveFlowResult executeProductPauseSaveFlow(
-    ProductPauseSaveFlowKind kind,
-    const ProductAppOptions& options,
-    FrontendState& frontend,
-    std::optional<Session>& activeSession,
-    ProductAppWindowState& window,
-    FrontendSettings& settings);
-
-ProductPauseSaveFlowResult executeProductPauseSaveFlow(
-    ProductPauseSaveFlowKind kind,
-    const ProductAppOptions& options,
-    FrontendState& frontend,
-    std::optional<Session>& activeSession,
-    ProductAppWindowState& window,
     FrontendSettings& settings,
     creative::CreativeAppState* creativeApp);
 
