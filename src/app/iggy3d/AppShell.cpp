@@ -1,76 +1,12 @@
 #include "app/iggy3d/AppShell.hpp"
 
 #include <iostream>
-#include <optional>
-#include <utility>
 
-#include "app/frontend/FrontendState.hpp"
-#include "app/iggy3d/creative/CreativeAppState.hpp"
-#include "app/iggy3d/Operations.hpp"
-#include "app/iggy3d/view/CameraController.hpp"
+#include "app/iggy3d/AppKernel.hpp"
 #include "app/iggy3d/Options.hpp"
-#include "app/iggy3d/automation/AutomationControl.hpp"
-#include "app/iggy3d/automation/AutomationDispatch.hpp"
-#include "app/iggy3d/menu/InputRouter.hpp"
-#include "app/iggy3d/world/BuiltinDungeon.hpp"
-#include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
-#include "app/iggy3d/gameplay/TapeRunner.hpp"
-#include "app/iggy3d/menu/Transitions.hpp"
-#include "app/iggy3d/gameplay/ScriptedDriver.hpp"
-#include "app/iggy3d/window/Loop.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
-#include "app/iggy3d/save/SaveBridge.hpp"
-#include "app/input/ActionState.hpp"
-#include "runtime/session/Session.hpp"
 
 namespace iggy3d {
-
-namespace {
-
-FrontendInputBackend settingsInputBackendFromOptions(ProductInputBackend backend) {
-  switch (backend) {
-    case ProductInputBackend::Keyboard:
-      return FrontendInputBackend::Keyboard;
-    case ProductInputBackend::Gamepad:
-      return FrontendInputBackend::Gamepad;
-    case ProductInputBackend::Auto:
-      return FrontendInputBackend::Auto;
-  }
-  return FrontendInputBackend::Auto;
-}
-
-FrontendRendererChoice settingsRendererFromOptions(ProductRendererRequest renderer) {
-  switch (renderer) {
-    case ProductRendererRequest::Null:
-      return FrontendRendererChoice::Null;
-    case ProductRendererRequest::Vulkan:
-      return FrontendRendererChoice::Vulkan;
-  }
-  return FrontendRendererChoice::Null;
-}
-
-FrontendWindowMode settingsWindowModeFromOptions(ProductWindowMode mode) {
-  switch (mode) {
-    case ProductWindowMode::NoWindow:
-      return FrontendWindowMode::NoWindow;
-    case ProductWindowMode::Window:
-      return FrontendWindowMode::Window;
-  }
-  return FrontendWindowMode::NoWindow;
-}
-
-FrontendSettings productFrontendSettingsFromOptions(const ProductAppOptions& options) {
-  FrontendSettings settings = defaultFrontendSettings();
-  settings.inputBackend = settingsInputBackendFromOptions(options.inputBackend);
-  settings.renderer = settingsRendererFromOptions(options.renderer);
-  settings.windowMode = settingsWindowModeFromOptions(options.windowMode);
-  settings.cameraMode = FrontendCameraMode::FirstPerson;
-  settings.devToolsEnabled = true;
-  settings.debugOverlayEnabled = options.debugOverlay;
-  return settings;
-}
-
-}  // namespace
 
 int runProductApp(int argc, char** argv) {
   const ProductAppOptionsParseResult parsed = parseProductAppOptions(argc, argv);
@@ -82,94 +18,15 @@ int runProductApp(int argc, char** argv) {
     RenderReceipt receipt;
     appendReceiptField(receipt, "app", "iggy3d");
     appendReceiptField(receipt, "result", "fail");
-    appendReceiptField(receipt, "reason_code", productAppOptionStatusReason(parsed.status));
+    appendReceiptField(receipt, "reason_code",
+                       productAppOptionStatusReason(parsed.status));
     appendReceiptField(receipt, "option", parsed.option);
     std::cout << formatRenderReceipt(receipt);
     return 2;
   }
 
-  const ProductAppOptions& options = parsed.options;
-  const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
-  ProductSaveBridgeResult saves =
-      scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
-  FrontendSettings settings = productFrontendSettingsFromOptions(options);
-  std::optional<Session> activeSession;
-  creative::CreativeAppState creativeApp;
-  creativeApp.facade.reset();
-  // branch-gate: BG-1026
-  WorldSetupDraft worldSetupDraft = options.devPackageOverride.empty()
-                                        ? makeProductDefaultWorldSetupDraft()
-                                        : makeDefaultWorldSetupDraft();
-  ProductAppWindowState window;
-  recordWorldSetupDraftState(worldSetupDraft, window);
-
-  FrontendState frontend;
-  initializeProductStarterTransition(frontend, window, saves.slots.compatibleCount > 0);
-
-  if (options.autoNewWorld) {
-    launchProductNewWorld(options, worldSetupDraft, frontend, activeSession, window);
-  }
-  if (options.scriptedGameplaySmoke) {
-    runScriptedProductGameplaySmoke(activeSession, window);
-    ActionState scriptedLook;
-    recordAction(scriptedLook, InputAction::PlayerLookX, true, false, false, 1.0F);
-    recordAction(scriptedLook, InputAction::PlayerLookY, true, false, false, 0.5F);
-    applyProductCameraActions(scriptedLook, window.viewport, settings, "scripted");
-  }
-
-  FrontendSettingsTab automationSettingsTab = FrontendSettingsTab::None;
-  bool automationCloseRequested = false;
-  ProductAutomationControlContext automationControlContext{
-      options.automationControlPath, frontend, window, automationSettingsTab,
-      [&frontend, &saves, &options, &automationSettingsTab, &activeSession,
-       &worldSetupDraft, &window, &settings, &automationCloseRequested,
-       &creativeApp](
-          const ProductAutomationCommand& command) {
-        return applyProductAutomationAppCommand(
-            command, ProductAutomationAppContext{
-                         frontend, saves, options, settings,
-                         automationSettingsTab,
-                         activeSession, worldSetupDraft, window,
-                         automationCloseRequested, &creativeApp});
-      },
-      [&frontend, &window]() { return productInputOwnerFor(frontend, window); },
-  };
-  applyProductAutomationControl(automationControlContext);
-  if (!automationCloseRequested) {
-    runProductGameplayTapeFromOptions(
-        ProductGameplayTapeOptionsRunRequest{options, activeSession, window});
-  }
-  saves = scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
-  if (automationCloseRequested) {
-    window.status = "automation_close_requested";
-  }
-
-  // The loop returns the true end-of-session catalog (in-window soft-delete / new-world fold
-  // into it); consume it as the single source of truth for the receipt — no exit-time re-scan.
-  ProductWindowLoopResult loopResult = runProductWindowLoop(ProductWindowLoopRequest{
-      options,
-      world,
-      frontend,
-      activeSession,
-      worldSetupDraft,
-      window,
-      settings,
-      saves,
-      &creativeApp});
-  window = std::move(loopResult.window);
-  saves = std::move(loopResult.saves);
-  refreshProductGameplayProjectionMetrics(
-      ProductGameplayProjectionRefreshRequest{activeSession, window,
-                                              settings.devToolsEnabled,
-                                              settings.debugOverlayEnabled,
-                                              options.renderer, frontend});
-
-  if (options.printRenderReceipt) {
-    std::cout << formatRenderReceipt(
-        buildProductAppReceipt(options, world, frontend, settings, window, saves));
-  }
-
-  return window.requested && !window.created ? 77 : 0;
+  AppKernel kernel;
+  return kernel.run(parsed.options);
 }
 
 }  // namespace iggy3d

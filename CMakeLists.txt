@@ -41,6 +41,7 @@ target_sources(iggy3d
     src/app/CliParser.cpp
     src/app/PackageRuntimeLookup.cpp
     src/app/iggy3d/AppShell.cpp
+    src/app/iggy3d/AppKernel.cpp
     src/app/iggy3d/ascii_room/AsciiRoomGrid.cpp
     src/app/iggy3d/ascii_room/AsciiRoomSource.cpp
     src/app/iggy3d/ascii_room/AsciiRoomCanvas.cpp
