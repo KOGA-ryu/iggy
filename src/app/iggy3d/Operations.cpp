@@ -10,6 +10,7 @@
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
+#include "app/iggy3d/CreativeReasoningActivation.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ascii_room/Package.hpp"
 #include "app/iggy3d/ascii_room/Preview.hpp"
@@ -1591,8 +1592,15 @@ ProductCreativeBakedActiveRoomRefreshResult refreshProductCreativeBakedActiveRoo
     std::optional<Session>& activeSession,
     ProductAppWindowState& window,
     const creative::CreativeAppState& creativeApp) {
+  // Default the activation hook to the reasoning-graph fill: build the L4 graph from the baked room
+  // and install it, so the shipped stealth guard reasons over the authored room instead of the
+  // empty-graph fallback. Callers may still supply their own hook (tests do).
+  ProductCreativeBakedActiveRoomRefreshRequest resolved = request;
+  if (!resolved.activationHook) {
+    resolved.activationHook = &activateCreativeReasoningGraph;
+  }
   return ProductCreativeBakedRoomRefreshService{
-      request,
+      resolved,
       activeSession,
       window,
       creativeApp,

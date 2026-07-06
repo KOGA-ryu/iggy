@@ -92,6 +92,7 @@ target_sources(iggy3d
     src/app/iggy3d/debug/PositionHud.cpp
     src/app/iggy3d/world/PackageSessionSeed.cpp
     src/app/iggy3d/Operations.cpp
+    src/app/iggy3d/CreativeReasoningActivation.cpp
     src/app/iggy3d/Options.cpp
     src/app/iggy3d/automation/Automation.cpp
     src/app/iggy3d/automation/AutomationControl.cpp
