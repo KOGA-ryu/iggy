@@ -1,8 +1,6 @@
 #include "app/iggy3d/CreativeReasoningActivation.hpp"
 
-#include <span>
-
-#include "core/math/Vec3.hpp"
+#include "app/iggy3d/PatrolRouteWaypoints.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"
 #include "runtime/session/Session.hpp"
 
@@ -10,10 +8,10 @@ namespace iggy3d {
 
 void activateCreativeReasoningGraph(Session& session, const RoomAsset& room,
                                     const creative::CreativeDocument& document) {
-  // Patrol waypoints (authored PatrolRoute) arrive with patrolRouteWaypointsFromDocument; the baked
-  // room's anchors already seed the reasoning nodes today.
-  (void)document;
-  session.setReasoningGraph(buildReasoningGraph(room, std::span<const Vec3>{}));
+  // The baked room's anchors seed exit / objective / reference nodes; authored PatrolRoute path
+  // points become the guard's patrolPost nodes. Both feed the same deterministic build-once graph.
+  const PatrolRouteWaypoints patrol = patrolRouteWaypointsFromDocument(document);
+  session.setReasoningGraph(buildReasoningGraph(room, patrol.waypoints));
 }
 
 }  // namespace iggy3d

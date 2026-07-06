@@ -11,9 +11,8 @@ class Session;
 // session, so the shipped stealth guard reasons over the AUTHORED room instead of the empty-graph
 // fallback. buildReasoningGraph is pure + deterministic. Matches ProductCreativeBakedRoomActivationHook.
 //
-// Patrol waypoints are empty for now: the room's baked anchors already seed spawn/npc/objective/
-// cover/... nodes. Patrol-post nodes arrive when patrolRouteWaypointsFromDocument extracts authored
-// PatrolRoute waypoints (blocked on Line-endpoint storage).
+// The room's baked anchors seed spawn/npc/objective/cover/... nodes; authored PatrolRoute path
+// points become patrolPost nodes via patrolRouteWaypointsFromDocument.
 void activateCreativeReasoningGraph(Session& session, const RoomAsset& room,
                                     const creative::CreativeDocument& document);
 

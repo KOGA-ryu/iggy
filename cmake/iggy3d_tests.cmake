@@ -703,6 +703,10 @@ iggy3d_add_unit_test(recon_intel_tests tests/unit/recon_intel_tests.cpp)
 set_tests_properties(recon_intel_tests PROPERTIES
   LABELS "unit;runtime;ai;recon;iggy3d")
 
+iggy3d_add_unit_test(patrol_route_waypoints_tests tests/unit/patrol_route_waypoints_tests.cpp)
+set_tests_properties(patrol_route_waypoints_tests PROPERTIES
+  LABELS "unit;app;creative;reasoning;iggy3d")
+
 iggy3d_add_unit_test(reachability_tests tests/unit/reachability_tests.cpp)
 set_tests_properties(reachability_tests PROPERTIES
   LABELS "unit;core;grid;reachability;iggy3d")
