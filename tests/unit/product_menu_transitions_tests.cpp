@@ -50,22 +50,22 @@ void showCollisionOverlay(iggy3d::ProductAppWindowState& window) {
 void showRoomEditorTransients(iggy3d::ProductAppWindowState& window) {
   window.roomEditing.ready = true;
   window.roomEditorCursorReady = true;
-  window.roomEditorOverlayVisible = true;
-  window.roomEditorOverlayStatus = "room_editor_overlay_visible";
-  window.roomEditorOverlayReasonCode = window.roomEditorOverlayStatus;
-  window.roomEditorOverlayItemCount = 3;
-  window.roomEditorPreviewActive = true;
+  window.roomEditorOverlay.visible = true;
+  window.roomEditorOverlay.status = "room_editor_overlay_visible";
+  window.roomEditorOverlay.reasonCode = window.roomEditorOverlay.status;
+  window.roomEditorOverlay.itemCount = 3;
+  window.roomEditorPreview.active = true;
   window.roomEditorPlacementPreview.ok = true;
-  window.roomEditorPreviewVisible = true;
-  window.roomEditorPreviewStatus = "room_editor_preview_ready";
-  window.roomEditorPreviewReasonCode = window.roomEditorPreviewStatus;
-  window.roomEditorPreviewCandidateId = "preview_floor";
-  window.roomEditorPreviewTool = "wall";
-  window.roomEditorPreviewGridX = 4;
-  window.roomEditorPreviewGridZ = 5;
-  window.roomEditorPreviewBeforeDrawCount = 7;
-  window.roomEditorPreviewAfterDrawCount = 8;
-  window.roomEditorPreviewOptimizedDrawDelta = 1;
+  window.roomEditorPreview.visible = true;
+  window.roomEditorPreview.status = "room_editor_preview_ready";
+  window.roomEditorPreview.reasonCode = window.roomEditorPreview.status;
+  window.roomEditorPreview.candidateId = "preview_floor";
+  window.roomEditorPreview.tool = "wall";
+  window.roomEditorPreview.gridX = 4;
+  window.roomEditorPreview.gridZ = 5;
+  window.roomEditorPreview.beforeDrawCount = 7;
+  window.roomEditorPreview.afterDrawCount = 8;
+  window.roomEditorPreview.optimizedDrawDelta = 1;
   window.roomEditorHud.visible = true;
   window.roomEditorHud.status = "room_editor_hud_visible";
   window.roomEditorHud.reasonCode = window.roomEditorHud.status;
@@ -384,13 +384,13 @@ int main() {
                "return to title preserves room editing document");
   ok &= expect(!window.roomEditorCursorReady,
                "return to title clears room editor cursor transient");
-  ok &= expect(!window.roomEditorOverlayVisible,
+  ok &= expect(!window.roomEditorOverlay.visible,
                "return to title clears room editor overlay");
-  ok &= expect(!window.roomEditorPreviewActive,
+  ok &= expect(!window.roomEditorPreview.active,
                "return to title clears room editor preview active");
-  ok &= expect(!window.roomEditorPreviewVisible,
+  ok &= expect(!window.roomEditorPreview.visible,
                "return to title clears room editor preview visible");
-  ok &= expect(window.roomEditorPreviewStatus ==
+  ok &= expect(window.roomEditorPreview.status ==
                    "room_editor_preview_not_requested",
                "return to title clears room editor preview status");
   ok &= expect(!window.roomEditorHud.visible,

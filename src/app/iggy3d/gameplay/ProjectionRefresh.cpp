@@ -267,13 +267,13 @@ void copyPositionHud(ProductAppWindowState& window,
 
 void copyProductRoomEditorOverlay(ProductAppWindowState& window,
                                   const ProductRoomEditorOverlay& overlay) {
-  window.roomEditorOverlayVisible = overlay.visible;
-  window.roomEditorOverlayStatus = overlay.status;
-  window.roomEditorOverlayReasonCode = overlay.reasonCode;
-  window.roomEditorOverlayItemCount = overlay.itemCount;
-  window.roomEditorOverlayWorldX = overlay.worldPosition.x;
-  window.roomEditorOverlayWorldY = overlay.worldPosition.y;
-  window.roomEditorOverlayWorldZ = overlay.worldPosition.z;
+  window.roomEditorOverlay.visible = overlay.visible;
+  window.roomEditorOverlay.status = overlay.status;
+  window.roomEditorOverlay.reasonCode = overlay.reasonCode;
+  window.roomEditorOverlay.itemCount = overlay.itemCount;
+  window.roomEditorOverlay.worldX = overlay.worldPosition.x;
+  window.roomEditorOverlay.worldY = overlay.worldPosition.y;
+  window.roomEditorOverlay.worldZ = overlay.worldPosition.z;
 }
 
 void copyProductRoomEditorHud(ProductAppWindowState& window,
@@ -299,39 +299,39 @@ void copyTopDownMapOverlay(ProductAppWindowState& window,
 void copyProductRoomEditorPreviewOverlay(
     ProductAppWindowState& window,
     const ProductRoomEditorPreviewOverlay& overlay) {
-  window.roomEditorPreviewVisible = overlay.visible;
-  if (window.roomEditorPreviewActive) {  // branch-gate: BG-1050
-    window.roomEditorPreviewStatus = window.roomEditorPlacementPreview.status;
+  window.roomEditorPreview.visible = overlay.visible;
+  if (window.roomEditorPreview.active) {  // branch-gate: BG-1050
+    window.roomEditorPreview.status = window.roomEditorPlacementPreview.status;
   } else {
     const bool shouldCopyOverlayStatus =
-        window.roomEditorPreviewStatus == "room_editor_preview_not_requested";
+        window.roomEditorPreview.status == "room_editor_preview_not_requested";
     if (shouldCopyOverlayStatus) {  // branch-gate: BG-1052
-      window.roomEditorPreviewStatus = overlay.status;
+      window.roomEditorPreview.status = overlay.status;
     }
   }
-  if (window.roomEditorPreviewActive) {  // branch-gate: BG-1050
-    window.roomEditorPreviewReasonCode =
+  if (window.roomEditorPreview.active) {  // branch-gate: BG-1050
+    window.roomEditorPreview.reasonCode =
         window.roomEditorPlacementPreview.reasonCode;
   } else {
     const bool shouldCopyOverlayReason =
-        window.roomEditorPreviewReasonCode == "room_editor_preview_not_requested";
+        window.roomEditorPreview.reasonCode == "room_editor_preview_not_requested";
     if (shouldCopyOverlayReason) {  // branch-gate: BG-1052
-      window.roomEditorPreviewReasonCode = overlay.reasonCode;
+      window.roomEditorPreview.reasonCode = overlay.reasonCode;
     }
   }
-  window.roomEditorPreviewCandidateId = overlay.candidateId;
-  window.roomEditorPreviewTool = overlay.toolName;
-  window.roomEditorPreviewGridX = overlay.gridX;
-  window.roomEditorPreviewGridZ = overlay.gridZ;
-  window.roomEditorPreviewOptimizedDrawDelta = overlay.optimizedDrawDelta;
-  window.roomEditorPreviewOptimizedTriangleDelta =
+  window.roomEditorPreview.candidateId = overlay.candidateId;
+  window.roomEditorPreview.tool = overlay.toolName;
+  window.roomEditorPreview.gridX = overlay.gridX;
+  window.roomEditorPreview.gridZ = overlay.gridZ;
+  window.roomEditorPreview.optimizedDrawDelta = overlay.optimizedDrawDelta;
+  window.roomEditorPreview.optimizedTriangleDelta =
       overlay.optimizedTriangleDelta;
 }
 
 const ProductRoomEditorPlacementPreviewResult* activeRoomEditorPlacementPreview(
     const ProductAppWindowState& window) {
   // branch-gate: BG-1050
-  if (window.roomEditorPreviewActive) {
+  if (window.roomEditorPreview.active) {
     return &window.roomEditorPlacementPreview;
   }
   return nullptr;

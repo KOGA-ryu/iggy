@@ -1327,7 +1327,7 @@ bool roomEditorSurfaceShowsEditorHudOnly() {
                 "editor surface hides physics debug geometry") &&
          expect(window.roomEditorHud.visible,
                 "editor window records room editor HUD visible") &&
-         expect(window.roomEditorOverlayVisible,
+         expect(window.roomEditorOverlay.visible,
                 "editor window records room editor overlay visible") &&
          expect(!window.positionHud.visible,
                 "editor window records position HUD hidden") &&

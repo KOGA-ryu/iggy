@@ -1498,59 +1498,59 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "room_editor_last_primitive_id",
                      window.roomEditorLastPrimitiveId);
   appendReceiptField(receipt, "room_editor_overlay_visible",
-                     window.roomEditorOverlayVisible);
+                     window.roomEditorOverlay.visible);
   appendReceiptField(receipt, "room_editor_overlay_status",
-                     window.roomEditorOverlayStatus);
+                     window.roomEditorOverlay.status);
   appendReceiptField(receipt, "room_editor_overlay_reason_code",
-                     window.roomEditorOverlayReasonCode);
+                     window.roomEditorOverlay.reasonCode);
   appendReceiptField(receipt, "room_editor_overlay_item_count",
-                     window.roomEditorOverlayItemCount);
+                     window.roomEditorOverlay.itemCount);
   appendReceiptField(receipt, "room_editor_overlay_world_x",
-                     floatReceiptValue(window.roomEditorOverlayWorldX));
+                     floatReceiptValue(window.roomEditorOverlay.worldX));
   appendReceiptField(receipt, "room_editor_overlay_world_y",
-                     floatReceiptValue(window.roomEditorOverlayWorldY));
+                     floatReceiptValue(window.roomEditorOverlay.worldY));
   appendReceiptField(receipt, "room_editor_overlay_world_z",
-                     floatReceiptValue(window.roomEditorOverlayWorldZ));
+                     floatReceiptValue(window.roomEditorOverlay.worldZ));
   appendReceiptField(receipt, "room_editor_preview_pending",
-                     window.roomEditorPreviewActive);
+                     window.roomEditorPreview.active);
   appendReceiptField(receipt, "room_editor_preview_visible",
-                     window.roomEditorPreviewVisible);
+                     window.roomEditorPreview.visible);
   appendReceiptField(receipt, "room_editor_preview_status",
-                     window.roomEditorPreviewStatus);
+                     window.roomEditorPreview.status);
   appendReceiptField(receipt, "room_editor_preview_reason_code",
-                     window.roomEditorPreviewReasonCode);
+                     window.roomEditorPreview.reasonCode);
   appendReceiptField(receipt, "room_editor_preview_candidate_id",
-                     window.roomEditorPreviewCandidateId);
+                     window.roomEditorPreview.candidateId);
   appendReceiptField(receipt, "room_editor_preview_tool",
-                     window.roomEditorPreviewTool);
+                     window.roomEditorPreview.tool);
   appendReceiptField(receipt, "room_editor_preview_grid_x",
-                     std::to_string(window.roomEditorPreviewGridX));
+                     std::to_string(window.roomEditorPreview.gridX));
   appendReceiptField(receipt, "room_editor_preview_grid_z",
-                     std::to_string(window.roomEditorPreviewGridZ));
+                     std::to_string(window.roomEditorPreview.gridZ));
   appendReceiptField(receipt, "room_editor_preview_before_draw_count",
-                     std::to_string(window.roomEditorPreviewBeforeDrawCount));
+                     std::to_string(window.roomEditorPreview.beforeDrawCount));
   appendReceiptField(receipt, "room_editor_preview_after_draw_count",
-                     std::to_string(window.roomEditorPreviewAfterDrawCount));
+                     std::to_string(window.roomEditorPreview.afterDrawCount));
   appendReceiptField(
       receipt,
       "room_editor_preview_avoided_draw_count_delta",
-      std::to_string(window.roomEditorPreviewAvoidedDrawCountDelta));
+      std::to_string(window.roomEditorPreview.avoidedDrawCountDelta));
   appendReceiptField(
       receipt,
       "room_editor_preview_before_triangle_count",
-      std::to_string(window.roomEditorPreviewBeforeTriangleCount));
+      std::to_string(window.roomEditorPreview.beforeTriangleCount));
   appendReceiptField(receipt,
                      "room_editor_preview_after_triangle_count",
-                     std::to_string(window.roomEditorPreviewAfterTriangleCount));
+                     std::to_string(window.roomEditorPreview.afterTriangleCount));
   appendReceiptField(
       receipt,
       "room_editor_preview_avoided_triangle_count_delta",
-      std::to_string(window.roomEditorPreviewAvoidedTriangleCountDelta));
+      std::to_string(window.roomEditorPreview.avoidedTriangleCountDelta));
   appendReceiptField(receipt, "room_editor_preview_optimized_draw_delta",
-                     std::to_string(window.roomEditorPreviewOptimizedDrawDelta));
+                     std::to_string(window.roomEditorPreview.optimizedDrawDelta));
   appendReceiptField(receipt, "room_editor_preview_optimized_triangle_delta",
                      std::to_string(
-                         window.roomEditorPreviewOptimizedTriangleDelta));
+                         window.roomEditorPreview.optimizedTriangleDelta));
   appendReceiptField(receipt, "room_editor_hud_visible",
                      window.roomEditorHud.visible);
   appendReceiptField(receipt, "room_editor_hud_status",

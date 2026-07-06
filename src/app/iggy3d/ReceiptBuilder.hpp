@@ -44,6 +44,8 @@
 #include "app/iggy3d/window/ProductVulkanRendererState.hpp"
 #include "app/iggy3d/gameplay/CollisionState.hpp"
 #include "app/iggy3d/gameplay/GameplayMovementInfo.hpp"
+#include "app/iggy3d/room_editor/RoomEditorOverlayState.hpp"
+#include "app/iggy3d/room_editor/RoomEditorPreviewState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -318,30 +320,9 @@ struct ProductAppWindowState {
   std::string roomEditorLastOperation = "none";
   bool roomEditorLastOperationAccepted = false;
   std::string roomEditorLastPrimitiveId = "none";
-  bool roomEditorOverlayVisible = false;
-  std::string roomEditorOverlayStatus = "room_editor_overlay_not_ready";
-  std::string roomEditorOverlayReasonCode = "room_editor_overlay_not_ready";
-  std::uint64_t roomEditorOverlayItemCount = 0;
-  float roomEditorOverlayWorldX = 0.0F;
-  float roomEditorOverlayWorldY = 0.0F;
-  float roomEditorOverlayWorldZ = 0.0F;
-  bool roomEditorPreviewActive = false;
+  ProductRoomEditorOverlayState roomEditorOverlay;
+  ProductRoomEditorPreviewState roomEditorPreview;
   ProductRoomEditorPlacementPreviewResult roomEditorPlacementPreview;
-  bool roomEditorPreviewVisible = false;
-  std::string roomEditorPreviewStatus = "room_editor_preview_not_requested";
-  std::string roomEditorPreviewReasonCode = "room_editor_preview_not_requested";
-  std::string roomEditorPreviewCandidateId = "none";
-  std::string roomEditorPreviewTool = "floor";
-  std::int32_t roomEditorPreviewGridX = 0;
-  std::int32_t roomEditorPreviewGridZ = 0;
-  std::uint64_t roomEditorPreviewBeforeDrawCount = 0;
-  std::uint64_t roomEditorPreviewAfterDrawCount = 0;
-  std::int64_t roomEditorPreviewAvoidedDrawCountDelta = 0;
-  std::uint64_t roomEditorPreviewBeforeTriangleCount = 0;
-  std::uint64_t roomEditorPreviewAfterTriangleCount = 0;
-  std::int64_t roomEditorPreviewAvoidedTriangleCountDelta = 0;
-  std::int64_t roomEditorPreviewOptimizedDrawDelta = 0;
-  std::int64_t roomEditorPreviewOptimizedTriangleDelta = 0;
   ProductRoomEditorHud roomEditorHud;
   ProductActiveRoomState activeRoom;
   ProductActiveRoomCollisionState activeRoomCollision;

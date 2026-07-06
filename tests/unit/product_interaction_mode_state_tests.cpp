@@ -85,9 +85,9 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
   const iggy3d::ProductRoomEditingStartResult started =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
   iggy3d::recordProductRoomEditingStart(window, started, "unit_edit_room");
-  window.roomEditorPreviewActive = true;
-  window.roomEditorPreviewVisible = true;
-  window.roomEditorOverlayVisible = true;
+  window.roomEditorPreview.active = true;
+  window.roomEditorPreview.visible = true;
+  window.roomEditorOverlay.visible = true;
   window.roomEditorHud.visible = true;
   window.viewport.productDrawRoomEditorCursorVisible = true;
   window.viewport.productDrawRoomEditorCursorCount = 1;
@@ -114,9 +114,9 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
          expect(!window.roomEditorCursorReady, "room editor cursor no longer ready") &&
          expect(window.roomEditorStatus == "room_editor_not_ready",
                 "room editor leave status") &&
-         expect(!window.roomEditorOverlayVisible, "room editor overlay hidden") &&
-         expect(!window.roomEditorPreviewVisible, "room editor preview hidden") &&
-         expect(!window.roomEditorPreviewActive, "room editor preview inactive") &&
+         expect(!window.roomEditorOverlay.visible, "room editor overlay hidden") &&
+         expect(!window.roomEditorPreview.visible, "room editor preview hidden") &&
+         expect(!window.roomEditorPreview.active, "room editor preview inactive") &&
          expect(!window.roomEditorHud.visible, "room editor hud hidden") &&
          expect(!window.viewport.productDrawRoomEditorCursorVisible,
                 "room editor cursor draw hidden") &&

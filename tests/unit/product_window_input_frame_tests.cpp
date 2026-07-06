@@ -419,17 +419,17 @@ bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
          expect(window.roomEditorCursor.selectedTool ==
                     iggy3d::ProductRoomEditorTool::Wall,
                 "creative mouse pick preserves tool") &&
-         expect(window.roomEditorPreviewVisible,
+         expect(window.roomEditorPreview.visible,
                 "creative mouse preview visible") &&
-         expect(window.roomEditorPreviewStatus == "room_editor_preview_ready",
+         expect(window.roomEditorPreview.status == "room_editor_preview_ready",
                 "creative mouse preview receipt status") &&
-         expect(window.roomEditorPreviewCandidateId == "edit_wall_1",
+         expect(window.roomEditorPreview.candidateId == "edit_wall_1",
                 "creative mouse preview candidate") &&
-         expect(window.roomEditorPreviewTool == "wall",
+         expect(window.roomEditorPreview.tool == "wall",
                 "creative mouse preview tool") &&
-         expect(window.roomEditorPreviewGridX == 2,
+         expect(window.roomEditorPreview.gridX == 2,
                 "creative mouse preview grid x") &&
-         expect(window.roomEditorPreviewGridZ == 0,
+         expect(window.roomEditorPreview.gridZ == 0,
                 "creative mouse preview grid z") &&
          expect(window.roomEditing.documentFloorCount == initialFloors,
                 "creative mouse leaves floor count") &&
@@ -460,7 +460,7 @@ bool playerClickDoesNotRunEditorPickPreview() {
                 "player mouse mode-blocked status") &&
          expect(window.roomEditorCursor.gridX == 0,
                 "player mouse leaves cursor x") &&
-         expect(!window.roomEditorPreviewVisible,
+         expect(!window.roomEditorPreview.visible,
                 "player mouse leaves preview hidden") &&
          expect(window.roomEditing.documentWallCount == initialWalls,
                 "player mouse leaves wall count");
@@ -480,7 +480,7 @@ bool notReadyClickDoesNotMutateEditorState() {
          expect(result.status == "room_editor_not_ready",
                 "not-ready mouse click status") &&
          expect(!window.roomEditing.ready, "not-ready leaves editing off") &&
-         expect(!window.roomEditorPreviewVisible,
+         expect(!window.roomEditorPreview.visible,
                 "not-ready leaves preview hidden");
 }
 
@@ -505,7 +505,7 @@ bool invalidClickPropagatesMousePickRejectionWithoutMutation() {
                     "room_editor_mouse_pick_invalid_input",
                 "invalid mouse pick receipt status") &&
          expect(!window.lastInputAccepted, "invalid mouse input not accepted") &&
-         expect(!window.roomEditorPreviewVisible,
+         expect(!window.roomEditorPreview.visible,
                 "invalid mouse leaves preview hidden") &&
          expect(window.roomEditing.documentWallCount == initialWalls,
                 "invalid mouse leaves wall count");
@@ -536,9 +536,9 @@ bool controllerSouthStagesThenConfirmsPlacement() {
              "first south stages preview") &&
       expect(window.roomEditorLastOperation == "editor.place",
              "first south operation is editor place") &&
-      expect(window.roomEditorPreviewActive, "first south preview pending") &&
-      expect(window.roomEditorPreviewVisible, "first south preview visible") &&
-      expect(window.roomEditorPreviewCandidateId == "edit_wall_1",
+      expect(window.roomEditorPreview.active, "first south preview pending") &&
+      expect(window.roomEditorPreview.visible, "first south preview visible") &&
+      expect(window.roomEditorPreview.candidateId == "edit_wall_1",
              "first south candidate id") &&
       expect(window.roomEditing.documentWallCount == initialWalls,
              "first south does not mutate walls");
@@ -559,9 +559,9 @@ bool controllerSouthStagesThenConfirmsPlacement() {
                 "second south confirm status") &&
          expect(window.roomEditorLastOperation == "editor.place",
                 "second south operation is editor place") &&
-         expect(!window.roomEditorPreviewActive,
+         expect(!window.roomEditorPreview.active,
                 "second south clears pending preview") &&
-         expect(!window.roomEditorPreviewVisible,
+         expect(!window.roomEditorPreview.visible,
                 "second south hides preview") &&
          expect(window.roomEditorLastPrimitiveId == "edit_wall_1",
                 "second south primitive id") &&
@@ -602,9 +602,9 @@ bool controllerMoveInvalidatesPendingPreview() {
                 "dpad right moves cursor") &&
          expect(window.roomEditorStatus == "room_editor_cursor_moved",
                 "dpad move cursor status") &&
-         expect(!window.roomEditorPreviewActive,
+         expect(!window.roomEditorPreview.active,
                 "dpad move clears pending preview") &&
-         expect(!window.roomEditorPreviewVisible,
+         expect(!window.roomEditorPreview.visible,
                 "dpad move hides preview") &&
          expect(window.roomEditing.documentWallCount == initialWalls,
                 "dpad move does not mutate walls");
@@ -621,7 +621,7 @@ bool backCancelsPendingPreviewBeforePauseRoute() {
           window, iggy3d::InputAction::EditorPlace);
   const bool stageOk =
       expect(staged.ok, "back test stages preview") &&
-      expect(window.roomEditorPreviewActive, "back test preview active") &&
+      expect(window.roomEditorPreview.active, "back test preview active") &&
       expect(window.roomEditing.documentWallCount == initialWalls,
              "back test stage leaves walls");
 
@@ -640,9 +640,9 @@ bool backCancelsPendingPreviewBeforePauseRoute() {
                 "back cancel status") &&
          expect(window.roomEditorLastOperation == "editor.preview_cancel",
                 "back cancel operation") &&
-         expect(!window.roomEditorPreviewActive,
+         expect(!window.roomEditorPreview.active,
                 "back cancel clears pending preview") &&
-         expect(!window.roomEditorPreviewVisible, "back cancel hides preview") &&
+         expect(!window.roomEditorPreview.visible, "back cancel hides preview") &&
          expect(window.roomEditing.documentWallCount == initialWalls,
                 "back cancel leaves walls");
 }
@@ -657,7 +657,7 @@ bool backWithoutPreviewFallsThroughPolicy() {
 
   return expect(!cancelled, "back without preview not consumed") &&
          expect(window.roomEditing.ready, "back without preview keeps editor ready") &&
-         expect(!window.roomEditorPreviewActive,
+         expect(!window.roomEditorPreview.active,
                 "back without preview leaves preview inactive") &&
          expect(window.roomEditing.documentWallCount == initialWalls,
                 "back without preview leaves walls");
@@ -696,9 +696,9 @@ bool controllerEastCancelsPendingPreviewWithoutMutation() {
                 "east cancel status") &&
          expect(window.roomEditorLastOperation == "editor.preview_cancel",
                 "east cancel operation") &&
-         expect(!window.roomEditorPreviewActive,
+         expect(!window.roomEditorPreview.active,
                 "east cancel clears pending preview") &&
-         expect(!window.roomEditorPreviewVisible, "east cancel hides preview") &&
+         expect(!window.roomEditorPreview.visible, "east cancel hides preview") &&
          expect(window.roomEditing.documentWallCount == initialWalls,
                 "east cancel leaves walls");
 }

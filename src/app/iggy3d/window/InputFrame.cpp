@@ -725,7 +725,7 @@ bool cancelProductRoomEditorPendingPreviewFromBack(
     const FrontendState& frontend,
     ProductAppWindowState& window) {
   // branch-gate: BG-1055
-  if (!window.roomEditing.ready || !window.roomEditorPreviewActive) {
+  if (!window.roomEditing.ready || !window.roomEditorPreview.active) {
     return false;
   }
   const ProductRoomEditorPreviewInputResult cancelled =

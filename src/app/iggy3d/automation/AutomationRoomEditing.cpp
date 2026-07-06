@@ -27,57 +27,57 @@ std::int64_t signedRoomEditorPreviewDelta(T before, T after) {
 }  // namespace
 
 void clearProductRoomEditorPreview(ProductAppWindowState& window) {
-  window.roomEditorPreviewActive = false;
+  window.roomEditorPreview.active = false;
   window.roomEditorPlacementPreview = {};
-  window.roomEditorPreviewVisible = false;
-  window.roomEditorPreviewStatus = "room_editor_preview_not_requested";
-  window.roomEditorPreviewReasonCode = "room_editor_preview_not_requested";
-  window.roomEditorPreviewCandidateId = "none";
-  window.roomEditorPreviewTool = "floor";
-  window.roomEditorPreviewGridX = 0;
-  window.roomEditorPreviewGridZ = 0;
-  window.roomEditorPreviewBeforeDrawCount = 0;
-  window.roomEditorPreviewAfterDrawCount = 0;
-  window.roomEditorPreviewAvoidedDrawCountDelta = 0;
-  window.roomEditorPreviewBeforeTriangleCount = 0;
-  window.roomEditorPreviewAfterTriangleCount = 0;
-  window.roomEditorPreviewAvoidedTriangleCountDelta = 0;
-  window.roomEditorPreviewOptimizedDrawDelta = 0;
-  window.roomEditorPreviewOptimizedTriangleDelta = 0;
+  window.roomEditorPreview.visible = false;
+  window.roomEditorPreview.status = "room_editor_preview_not_requested";
+  window.roomEditorPreview.reasonCode = "room_editor_preview_not_requested";
+  window.roomEditorPreview.candidateId = "none";
+  window.roomEditorPreview.tool = "floor";
+  window.roomEditorPreview.gridX = 0;
+  window.roomEditorPreview.gridZ = 0;
+  window.roomEditorPreview.beforeDrawCount = 0;
+  window.roomEditorPreview.afterDrawCount = 0;
+  window.roomEditorPreview.avoidedDrawCountDelta = 0;
+  window.roomEditorPreview.beforeTriangleCount = 0;
+  window.roomEditorPreview.afterTriangleCount = 0;
+  window.roomEditorPreview.avoidedTriangleCountDelta = 0;
+  window.roomEditorPreview.optimizedDrawDelta = 0;
+  window.roomEditorPreview.optimizedTriangleDelta = 0;
 }
 
 void markProductRoomEditorPreviewCleared(ProductAppWindowState& window,
                                          std::string_view status) {
   clearProductRoomEditorPreview(window);
-  window.roomEditorPreviewStatus = std::string(status);
-  window.roomEditorPreviewReasonCode = window.roomEditorPreviewStatus;
+  window.roomEditorPreview.status = std::string(status);
+  window.roomEditorPreview.reasonCode = window.roomEditorPreview.status;
 }
 
 void recordProductRoomEditorPreviewResult(
     ProductAppWindowState& window,
     const ProductRoomEditorPlacementPreviewResult& result) {
-  window.roomEditorPreviewActive = true;
+  window.roomEditorPreview.active = true;
   window.roomEditorPlacementPreview = result;
-  window.roomEditorPreviewVisible = result.ok;
-  window.roomEditorPreviewStatus = result.status;
-  window.roomEditorPreviewReasonCode = result.reasonCode;
-  window.roomEditorPreviewCandidateId = result.primitiveId;
-  window.roomEditorPreviewTool = result.tool;
-  window.roomEditorPreviewGridX = result.gridX;
-  window.roomEditorPreviewGridZ = result.gridZ;
-  window.roomEditorPreviewBeforeDrawCount = result.before.optimizedDrawCount;
-  window.roomEditorPreviewAfterDrawCount = result.after.optimizedDrawCount;
-  window.roomEditorPreviewAvoidedDrawCountDelta =
+  window.roomEditorPreview.visible = result.ok;
+  window.roomEditorPreview.status = result.status;
+  window.roomEditorPreview.reasonCode = result.reasonCode;
+  window.roomEditorPreview.candidateId = result.primitiveId;
+  window.roomEditorPreview.tool = result.tool;
+  window.roomEditorPreview.gridX = result.gridX;
+  window.roomEditorPreview.gridZ = result.gridZ;
+  window.roomEditorPreview.beforeDrawCount = result.before.optimizedDrawCount;
+  window.roomEditorPreview.afterDrawCount = result.after.optimizedDrawCount;
+  window.roomEditorPreview.avoidedDrawCountDelta =
       signedRoomEditorPreviewDelta(result.before.drawCountAvoided,
                                    result.after.drawCountAvoided);
-  window.roomEditorPreviewBeforeTriangleCount =
+  window.roomEditorPreview.beforeTriangleCount =
       result.before.optimizedTriangleCount;
-  window.roomEditorPreviewAfterTriangleCount = result.after.optimizedTriangleCount;
-  window.roomEditorPreviewAvoidedTriangleCountDelta =
+  window.roomEditorPreview.afterTriangleCount = result.after.optimizedTriangleCount;
+  window.roomEditorPreview.avoidedTriangleCountDelta =
       signedRoomEditorPreviewDelta(result.before.triangleCountAvoided,
                                    result.after.triangleCountAvoided);
-  window.roomEditorPreviewOptimizedDrawDelta = result.optimizedDrawDelta;
-  window.roomEditorPreviewOptimizedTriangleDelta = result.optimizedTriangleDelta;
+  window.roomEditorPreview.optimizedDrawDelta = result.optimizedDrawDelta;
+  window.roomEditorPreview.optimizedTriangleDelta = result.optimizedTriangleDelta;
 }
 
 void copyRoomEditingStateToWindow(ProductAppWindowState& window,
@@ -149,10 +149,10 @@ bool recordProductRoomEditingLeave(const FrontendState& frontend,
   window.roomEditorLastOperation = std::string(operation);
   window.roomEditorLastOperationAccepted = true;
   window.roomEditorLastPrimitiveId = "none";
-  window.roomEditorOverlayVisible = false;
-  window.roomEditorOverlayStatus = "room_editor_overlay_not_ready";
-  window.roomEditorOverlayReasonCode = window.roomEditorOverlayStatus;
-  window.roomEditorOverlayItemCount = 0;
+  window.roomEditorOverlay.visible = false;
+  window.roomEditorOverlay.status = "room_editor_overlay_not_ready";
+  window.roomEditorOverlay.reasonCode = window.roomEditorOverlay.status;
+  window.roomEditorOverlay.itemCount = 0;
   window.roomEditorHud.visible = false;
   window.roomEditorHud.status = "room_editor_hud_not_ready";
   window.roomEditorHud.reasonCode = window.roomEditorHud.status;
@@ -356,7 +356,7 @@ bool productRoomEditorPreviewMatchesCursor(const ProductAppWindowState& window) 
   const ProductRoomEditorPlacementPreviewResult& preview =
       window.roomEditorPlacementPreview;
   const ProductRoomEditorCursorState& cursor = window.roomEditorCursor;
-  return window.roomEditorPreviewActive && preview.ok &&
+  return window.roomEditorPreview.active && preview.ok &&
          preview.candidateCommandReady && preview.gridX == cursor.gridX &&
          preview.gridZ == cursor.gridZ &&
          preview.storyIndex == cursor.storyIndex &&
@@ -941,7 +941,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1051
-    if (!context.window.roomEditorPreviewActive ||
+    if (!context.window.roomEditorPreview.active ||
         !context.window.roomEditorPlacementPreview.ok ||
         !context.window.roomEditorPlacementPreview.candidateCommandReady) {
       return failRoomEditorPreviewAutomation(
