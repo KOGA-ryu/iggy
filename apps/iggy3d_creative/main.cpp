@@ -804,20 +804,21 @@ void appendPathProxyMeshesToScene(const creative::CreativeObject& object,
   }
 }
 
-bool objectHasBakedStaticMesh(
+bool objectHasBakedStaticMeshSource(
     const creative::CreativeObject& object,
-    const std::vector<RoomStaticMeshAsset>& bakedStaticMeshes) {
-  const std::string objectMeshId =
-      "creative_object_" + std::to_string(object.id);
-  return std::any_of(bakedStaticMeshes.begin(), bakedStaticMeshes.end(),
-                     [&](const RoomStaticMeshAsset& mesh) {
-                       return mesh.id == objectMeshId;
-                     });
+    const std::vector<creative::CreativeRoomBakeStaticMeshSource>&
+        bakedStaticMeshSources) {
+  return std::any_of(
+      bakedStaticMeshSources.begin(), bakedStaticMeshSources.end(),
+      [&](const creative::CreativeRoomBakeStaticMeshSource& source) {
+        return source.objectId == object.id;
+      });
 }
 
 std::size_t appendStandalonePreviewProxiesToScene(
     const creative::CreativeDocument& document,
-    const std::vector<RoomStaticMeshAsset>& bakedStaticMeshes,
+    const std::vector<creative::CreativeRoomBakeStaticMeshSource>&
+        bakedStaticMeshSources,
     SceneProjectionResult& scene) {
   std::size_t appended = 0;
   for (const creative::CreativeObject& obj : document.objects()) {
@@ -827,7 +828,7 @@ std::size_t appendStandalonePreviewProxiesToScene(
     const creative::CreativeObjectDescriptor& descriptor =
         creative::describeObject(obj.kind);
     const std::string_view role = renderRoleForDescriptor(descriptor);
-    if (objectHasBakedStaticMesh(obj, bakedStaticMeshes)) {
+    if (objectHasBakedStaticMeshSource(obj, bakedStaticMeshSources)) {
       continue;
     }
     if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Path) {
@@ -2179,7 +2180,7 @@ int main(int argc, char** argv) {
     appendGridDotsToScene(gridSnapshot, scene);
     const std::size_t standalonePreviewMeshCount =
         appendStandalonePreviewProxiesToScene(appState.facade.document(),
-                                              roomBake.room.staticMeshes,
+                                              roomBake.staticMeshSources,
                                               scene);
     if (!scene.room.meshes.empty()) {
       scene.room.staticMeshCount = scene.room.meshes.size();
