@@ -707,6 +707,10 @@ iggy3d_add_unit_test(reachability_tests tests/unit/reachability_tests.cpp)
 set_tests_properties(reachability_tests PROPERTIES
   LABELS "unit;core;grid;reachability;iggy3d")
 
+iggy3d_add_unit_test(greedy_mesh_tests tests/unit/greedy_mesh_tests.cpp)
+set_tests_properties(greedy_mesh_tests PROPERTIES
+  LABELS "unit;core;grid;mesh;iggy3d")
+
 iggy3d_add_unit_test(reasoning_graph_readout tests/unit/reasoning_graph_readout.cpp)
 set_tests_properties(reasoning_graph_readout PROPERTIES
   LABELS "unit;runtime;ai;reasoning;readout;iggy3d")

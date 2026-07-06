@@ -16,6 +16,7 @@ target_sources(iggy3d
   PRIVATE
     src/core/hash/StableHash.cpp
     src/core/grid/Reachability.cpp
+    src/core/grid/GreedyMesh.cpp
     src/core/math/Vec3.cpp
     src/core/math/Transform3.cpp
     src/core/math/Aabb3.cpp
