@@ -62,7 +62,11 @@ ProductCreativeUiProjection buildProductCreativeUiProjection(
   if (model != nullptr) {
     projection.receipt.usedModel = true;
   } else if (request.creative != nullptr) {
-    facadeUiReceipt = request.creative->facade.buildUiModel();
+    creative::CreativeUiBuildOptions options;
+    options.undoAvailable =
+        creative::creativeUndoAvailable(request.creative->undoStack);
+    options.undoDepth = creative::creativeUndoDepth(request.creative->undoStack);
+    facadeUiReceipt = request.creative->facade.buildUiModel(options);
     model = &facadeUiReceipt.model;
     projection.receipt.usedFacade = true;
   }

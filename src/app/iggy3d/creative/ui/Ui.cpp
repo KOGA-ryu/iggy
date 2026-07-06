@@ -13,6 +13,10 @@ namespace {
   return kCreativeUiRowFlagVisible | kCreativeUiRowFlagEnabled;
 }
 
+[[nodiscard]] CreativeUiRowFlagMask visibleFlags() noexcept {
+  return kCreativeUiRowFlagVisible;
+}
+
 [[nodiscard]] CreativeUiRowFlagMask targetFlag(TargetRef target) noexcept {
   return hasTarget(target) ? kCreativeUiRowFlagHasTarget
                            : kCreativeUiRowFlagNone;
@@ -125,7 +129,11 @@ void appendToolsPanel(CreativeUiModel& model,
   undoRow.panel = CreativeUiPanelKind::Tools;
   undoRow.id = "undo";
   undoRow.label = "Undo";
-  undoRow.flags = enabledVisibleFlags();
+  undoRow.flags = visibleFlags();
+  undoRow.data0 = request.undoDepth;
+  if (request.undoAvailable && request.undoDepth > 0U) {
+    undoRow.flags |= kCreativeUiRowFlagEnabled;
+  }
   appendRow(model, undoRow);
 
   finishPanel(model, panelIndex);
@@ -444,6 +452,8 @@ CreativeUiBuildReceipt buildCreativeUiModel(CreativeUiBuildRequest request) {
   receipt.model.measurementActive = request.measurementState.active;
   receipt.model.hasMeasurement = request.measurementState.hasMeasurement;
   receipt.model.ghostVisible = request.ghostState.visible;
+  receipt.model.undoAvailable = request.undoAvailable;
+  receipt.model.undoDepth = request.undoDepth;
 
   receipt.model.panels.reserve(7);
   receipt.model.rows.reserve(21);

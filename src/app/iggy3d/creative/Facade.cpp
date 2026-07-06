@@ -453,12 +453,19 @@ CreativeFacadeToolDispatchReceipt Facade::dispatchToolInput(
 }
 
 CreativeUiBuildReceipt Facade::buildUiModel() const {
+  return buildUiModel(CreativeUiBuildOptions{});
+}
+
+CreativeUiBuildReceipt Facade::buildUiModel(
+    CreativeUiBuildOptions options) const {
   CreativeUiBuildRequest request;
   request.toolState = toolState_;
   request.selectionState = selectionState_;
   request.measurementState = measurementState_;
   request.snapSettings = snapSettings_;
   request.ghostState = ghostState_;
+  request.undoAvailable = options.undoAvailable;
+  request.undoDepth = options.undoDepth;
   const std::span<const CreativeObject> objects = document_.objects();
   request.objectSummaries.reserve(objects.size());
   for (const CreativeObject& object : objects) {

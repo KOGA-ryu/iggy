@@ -126,6 +126,8 @@ struct CreativeUiModel {
   bool measurementActive = false;
   bool hasMeasurement = false;
   bool ghostVisible = false;
+  bool undoAvailable = false;
+  std::uint64_t undoDepth = 0;
 };
 
 struct CreativeUiBuildRequest {
@@ -135,6 +137,13 @@ struct CreativeUiBuildRequest {
   CreativeSnapSettings snapSettings;
   CreativeGhostState ghostState;
   std::vector<CreativeUiObjectSummary> objectSummaries;
+  bool undoAvailable = false;
+  std::uint64_t undoDepth = 0;
+};
+
+struct CreativeUiBuildOptions {
+  bool undoAvailable = false;
+  std::uint64_t undoDepth = 0;
 };
 
 struct CreativeUiBuildReceipt {

@@ -158,6 +158,8 @@ class Facade {
   [[nodiscard]] CreativeFacadeToolDispatchReceipt dispatchToolInput(
       const CreativeToolInputPacket& input);
   [[nodiscard]] CreativeUiBuildReceipt buildUiModel() const;
+  [[nodiscard]] CreativeUiBuildReceipt buildUiModel(
+      CreativeUiBuildOptions options) const;
   [[nodiscard]] CreativeFacadeMutationReceipt
   toggleSelectedObjectVisibility();
   [[nodiscard]] CreativeFacadeMutationReceipt toggleSelectedObjectLocked();

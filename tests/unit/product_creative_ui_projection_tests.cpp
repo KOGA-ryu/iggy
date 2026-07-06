@@ -28,6 +28,17 @@ const iggy3d::ProductUiPrimitive* findPrimitive(
   return nullptr;
 }
 
+const iggy3d::UiHitRegion* findHitRegion(
+    const iggy3d::ProductUiDrawList& list,
+    std::string_view semanticId) {
+  for (const iggy3d::UiHitRegion& hit : list.hitRegions) {
+    if (hit.semanticId == semanticId) {
+      return &hit;
+    }
+  }
+  return nullptr;
+}
+
 cr::CreativeUiModel defaultCreativeUiModel() {
   return cr::buildCreativeUiModel(cr::makeDefaultCreativeUiBuildRequest()).model;
 }
@@ -190,6 +201,31 @@ bool facadeInputBuildsFromFacadeState() {
          countsMirrorDrawList(projection);
 }
 
+bool facadeInputEnablesUndoFromAppStack() {
+  cr::CreativeAppState app;
+  static_cast<void>(app.facade.documentForPersistence().assignId(12U));
+  cr::pushCreativeUndoSnapshot(app.undoStack, app.facade.document());
+  iggy3d::ProductCreativeUiProjectionRequest request;
+  request.creative = &app;
+  const iggy3d::ProductCreativeUiProjection projection =
+      iggy3d::buildProductCreativeUiProjection(request);
+
+  const iggy3d::ProductUiPrimitive* undoPrimitive =
+      findPrimitive(projection.drawList, "creative.row.tools.undo");
+  const iggy3d::UiHitRegion* undoHit =
+      findHitRegion(projection.drawList, "creative.row.tools.undo");
+
+  return expect(projection.receipt.ready, "undo stack projection ready") &&
+         expect(projection.receipt.usedFacade, "undo stack facade used") &&
+         expect(projection.receipt.disabledRowCount == 0U,
+                "undo stack disabled row count") &&
+         expect(undoPrimitive != nullptr, "undo stack primitive") &&
+         expect(undoHit != nullptr, "undo stack hit") &&
+         expect(undoPrimitive->enabled, "undo stack primitive enabled") &&
+         expect(undoHit->enabled, "undo stack hit enabled") &&
+         countsMirrorDrawList(projection);
+}
+
 bool modelTakesPrecedenceOverFacade() {
   const cr::CreativeUiModel model = defaultCreativeUiModel();
   cr::CreativeAppState app;
@@ -260,6 +296,7 @@ int main() {
   const bool ok = nullInputFailsClosed() &&
                   modelInputBuildsReadyProjection() &&
                   facadeInputBuildsFromFacadeState() &&
+                  facadeInputEnablesUndoFromAppStack() &&
                   modelTakesPrecedenceOverFacade() &&
                   populatedModelHasNonzeroCounts() &&
                   primitivesRemainNonInteractive();

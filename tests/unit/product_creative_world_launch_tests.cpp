@@ -1,6 +1,7 @@
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/ui/UiDrawList.hpp"
+#include "app/iggy3d/creative/ui/UiProjection.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
@@ -219,11 +220,12 @@ const iggy3d::UiHitRegion* findHitRegion(
   return nullptr;
 }
 
-iggy3d::ProductUiDrawList creativeUiDrawListForFacade(cr::Facade& facade) {
-  const cr::CreativeUiBuildReceipt ui = facade.buildUiModel();
-  iggy3d::ProductCreativeUiDrawListRequest request;
-  request.model = &ui.model;
-  return iggy3d::buildProductCreativeUiDrawList(request);
+iggy3d::ProductUiDrawList creativeUiDrawListForApp(cr::CreativeAppState& app) {
+  iggy3d::ProductCreativeUiProjectionRequest request;
+  request.creative = &app;
+  const iggy3d::ProductCreativeUiProjection projection =
+      iggy3d::buildProductCreativeUiProjection(request);
+  return projection.drawList;
 }
 
 bool clickCreativeUiRowThroughInputFrame(
@@ -241,7 +243,7 @@ bool clickCreativeUiRowThroughInputFrame(
   bool closeRequested = false;
 
   const iggy3d::ProductUiDrawList drawList =
-      creativeUiDrawListForFacade(app.facade);
+      creativeUiDrawListForApp(app);
   const iggy3d::UiHitRegion* hit = findHitRegion(drawList, semanticId);
   if (hit == nullptr) {
     return false;
@@ -1633,6 +1635,54 @@ bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
                 "pause creative save exit failure active status");
 }
 
+bool pauseCreativeReturnToTitleClearsUndoStack() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("pause_creative_return_title_undo");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Pause Creative Return",
+                                        "2026-07-05T14:00:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  const cr::CreativeDocumentCreateReceipt createdObject =
+      facade.createDocumentObject(cr::CreativeObjectKind::Room);
+  cr::pushCreativeUndoSnapshot(app.undoStack, facade.document());
+  window.creativeUndoAvailable = cr::creativeUndoAvailable(app.undoStack);
+  window.creativeUndoDepth = cr::creativeUndoDepth(app.undoStack);
+
+  const iggy3d::ProductMenuActionResult returned =
+      confirmPauseAction(options,
+                         iggy3d::FrontendAction::ReturnToTitle,
+                         frontend,
+                         activeSession,
+                         window,
+                         &app);
+
+  return expect(launched.accepted, "pause return launch accepted") &&
+         expect(createdObject.accepted, "pause return object created") &&
+         expect(returned.handled && returned.accepted,
+                "pause return handled") &&
+         expect(frontend.screen == iggy3d::FrontendScreen::Starter,
+                "pause return starter") &&
+         expect(frontend.status == "returned_to_title",
+                "pause return status") &&
+         expect(!activeSession.has_value(), "pause return session reset") &&
+         expect(!window.gameplayActive, "pause return gameplay inactive") &&
+         expect(!cr::creativeUndoAvailable(app.undoStack),
+                "pause return undo stack cleared") &&
+         expect(!window.creativeUndoAvailable,
+                "pause return window undo unavailable") &&
+         expect(window.creativeUndoDepth == 0U,
+                "pause return window undo depth");
+}
+
 bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
   const iggy3d::ProductAppOptions options = testOptions("open_second");
 
@@ -2225,6 +2275,65 @@ bool manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() {
                 "manual empty rebuild active product save unchanged") &&
          expect(app.facade.document().dirtyFlags() == dirtyBefore,
                 "manual empty rebuild dirty flags preserved");
+}
+
+bool disabledUndoRowDoesNotRouteThroughInputFrame() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("undo_disabled_no_history");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Undo Disabled",
+                                        "2026-07-05T13:05:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+
+  const bool undoClicked = clickCreativeUndoThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app);
+
+  return expect(launched.accepted, "disabled undo launch accepted") &&
+         expect(undoClicked, "disabled undo row clicked") &&
+         expect(!cr::creativeUndoAvailable(app.undoStack),
+                "disabled undo no app stack") &&
+         expect(!window.creativeUndoAvailable,
+                "disabled undo window unavailable") &&
+         expect(window.creativeUndoDepth == 0U,
+                "disabled undo window depth") &&
+         expect(facade.document().revision() == revisionBefore,
+                "disabled undo revision unchanged") &&
+         expect(facade.document().objectCount() == objectCountBefore,
+                "disabled undo object count unchanged") &&
+         expect(window.creativeUiInputSemanticId == "creative.row.tools.undo",
+                "disabled undo semantic") &&
+         expect(window.creativeUiInputHit,
+                "disabled undo input hit") &&
+         expect(!window.creativeUiInputConsumed,
+                "disabled undo input not consumed") &&
+         expect(!window.creativeUiInputEnabled,
+                "disabled undo input disabled") &&
+         expect(window.creativeUiInputStatus ==
+                    "product_creative_ui_input_hit_disabled",
+                "disabled undo input status") &&
+         expect(window.creativeUiCommandKind == "none",
+                "disabled undo no command kind") &&
+         expect(!window.creativeUiCommandAccepted,
+                "disabled undo command not accepted") &&
+         expect(!window.creativeDocumentChangedThisFrame,
+                "disabled undo no document change") &&
+         expect(!window.creativeBakedRoomAutoRefreshRequested,
+                "disabled undo no auto refresh");
 }
 
 bool undoAfterCreateCrateRestoresEmptyDocumentThroughInputFrame() {
@@ -3366,10 +3475,12 @@ int main() {
       pauseCreativeSaveNullFacadeFailsClosed() &&
       pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() &&
       pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() &&
+      pauseCreativeReturnToTitleClearsUndoStack() &&
       secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() &&
       refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() &&
       manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() &&
       manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() &&
+      disabledUndoRowDoesNotRouteThroughInputFrame() &&
       undoAfterCreateCrateRestoresEmptyDocumentThroughInputFrame() &&
       undoAfterDeleteSelectedRestoresRenderableThroughInputFrame() &&
       undoAfterVisibilityToggleRestoresBakedRoomThroughInputFrame() &&

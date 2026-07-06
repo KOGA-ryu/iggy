@@ -331,6 +331,11 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
   // branch-gate: BG-1017
   if (frontend.selectedAction == FrontendAction::ReturnToTitle) {
     returnProductToTitleTransition(frontend, window, context.settings);
+    if (context.creativeApp != nullptr) {
+      creative::clearCreativeUndoStack(context.creativeApp->undoStack);
+      window.creativeUndoAvailable = false;
+      window.creativeUndoDepth = 0;
+    }
     context.activeSession.reset();
     return {true, true};
   }

@@ -123,6 +123,13 @@ cr::CreativeUiModel defaultCreativeUiModel() {
   return cr::buildCreativeUiModel(cr::makeDefaultCreativeUiBuildRequest()).model;
 }
 
+cr::CreativeUiModel undoAvailableCreativeUiModel() {
+  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
+  request.undoAvailable = true;
+  request.undoDepth = 1;
+  return cr::buildCreativeUiModel(request).model;
+}
+
 cr::CreativeUiModel populatedCreativeUiModel() {
   cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
   request.selectionState.selectedTarget.value = 42;
@@ -177,7 +184,7 @@ cr::CreativeUiModel inspectorCreativeUiModel() {
 }
 
 cr::CreativeUiModel disabledRowCreativeUiModel() {
-  cr::CreativeUiModel model = defaultCreativeUiModel();
+  cr::CreativeUiModel model = undoAvailableCreativeUiModel();
   for (cr::CreativeUiRow& row : model.rows) {
     if (row.id == "tool_select") {
       row.flags &= ~cr::kCreativeUiRowFlagEnabled;
@@ -609,7 +616,7 @@ bool countersMatchPrimitiveContents() {
          expect(list.textCount == textCount, "text count") &&
          expect(list.rectCount == panelCount, "rect count") &&
          expect(list.rowCount == textCount, "row count") &&
-         expect(list.disabledRowCount == 0U, "disabled row count") &&
+         expect(list.disabledRowCount == 1U, "disabled row count") &&
          expect(list.hitRegionCount == list.hitRegions.size(),
                 "hit count size") &&
          expect(list.hitRegionCount == list.rowCount, "hit count row count");
@@ -637,6 +644,47 @@ bool disabledRowsEmitDisabledHitRegions() {
          expect(rowHitMatchesTextPrimitive(
                     list, "creative.row.tools.tool_select"),
                 "disabled hit matches primitive");
+}
+
+bool undoRowAvailabilityControlsHitRegion() {
+  const cr::CreativeUiModel disabledModel = defaultCreativeUiModel();
+  iggy3d::ProductCreativeUiDrawListRequest disabledRequest;
+  disabledRequest.model = &disabledModel;
+  const iggy3d::ProductUiDrawList disabledList =
+      iggy3d::buildProductCreativeUiDrawList(disabledRequest);
+  const iggy3d::ProductUiPrimitive* disabledPrimitive =
+      findPrimitive(disabledList, "creative.row.tools.undo");
+  const iggy3d::UiHitRegion* disabledHit =
+      findHitRegion(disabledList, "creative.row.tools.undo");
+
+  const cr::CreativeUiModel enabledModel = undoAvailableCreativeUiModel();
+  iggy3d::ProductCreativeUiDrawListRequest enabledRequest;
+  enabledRequest.model = &enabledModel;
+  const iggy3d::ProductUiDrawList enabledList =
+      iggy3d::buildProductCreativeUiDrawList(enabledRequest);
+  const iggy3d::ProductUiPrimitive* enabledPrimitive =
+      findPrimitive(enabledList, "creative.row.tools.undo");
+  const iggy3d::UiHitRegion* enabledHit =
+      findHitRegion(enabledList, "creative.row.tools.undo");
+
+  return expect(disabledList.disabledRowCount == 1U,
+                "undo disabled row count") &&
+         expect(disabledPrimitive != nullptr, "undo disabled primitive") &&
+         expect(disabledHit != nullptr, "undo disabled hit") &&
+         expect(!disabledPrimitive->enabled, "undo primitive disabled") &&
+         expect(!disabledHit->enabled, "undo hit disabled") &&
+         expect(rowHitMatchesTextPrimitive(disabledList,
+                                           "creative.row.tools.undo"),
+                "undo disabled hit matches primitive") &&
+         expect(enabledList.disabledRowCount == 0U,
+                "undo enabled row count") &&
+         expect(enabledPrimitive != nullptr, "undo enabled primitive") &&
+         expect(enabledHit != nullptr, "undo enabled hit") &&
+         expect(enabledPrimitive->enabled, "undo primitive enabled") &&
+         expect(enabledHit->enabled, "undo hit enabled") &&
+         expect(rowHitMatchesTextPrimitive(enabledList,
+                                           "creative.row.tools.undo"),
+                "undo enabled hit matches primitive");
 }
 
 bool inspectorRowsRenderExactTextForKnownObject() {
@@ -753,6 +801,7 @@ int main() {
                   populatedModelTextStaysInsidePrimitiveRects() &&
                   selectedTargetVisibilityTextHandlesHiddenAndUnknown() &&
                   countersMatchPrimitiveContents() &&
+                  undoRowAvailabilityControlsHitRegion() &&
                   disabledRowsEmitDisabledHitRegions() &&
                   inspectorRowsRenderExactTextForKnownObject() &&
                   repeatedBuildIsStable();

@@ -122,6 +122,12 @@ bool defaultModelDeterministic() {
                 "default undo row") &&
          expect(model.rows[5].id == "undo", "default undo id") &&
          expect(model.rows[5].label == "Undo", "default undo label") &&
+         expect(hasFlag(model.rows[5].flags, cr::kCreativeUiRowFlagVisible),
+                "default undo visible") &&
+         expect(!hasFlag(model.rows[5].flags, cr::kCreativeUiRowFlagEnabled),
+                "default undo disabled") &&
+         expect(!model.undoAvailable, "default undo unavailable") &&
+         expect(model.undoDepth == 0U, "default undo depth") &&
          expect(model.rows[6].kind == cr::CreativeUiRowKind::CreateObject,
                 "default create room row") &&
          expect(model.rows[6].id == "create_room",
@@ -142,6 +148,29 @@ bool defaultModelDeterministic() {
                 "default status row") &&
          expect(model.rows[10].kind == cr::CreativeUiRowKind::SnapSettings,
                 "default snap row");
+}
+
+bool undoAvailabilityControlsToolRowState() {
+  cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
+  request.undoAvailable = true;
+  request.undoDepth = 2;
+  const cr::CreativeUiBuildReceipt receipt = cr::buildCreativeUiModel(request);
+  const cr::CreativeUiModel& model = receipt.model;
+  const cr::CreativeUiRow& row = model.rows[5];
+
+  return expect(receipt.rowCount == 11U, "undo available row count stable") &&
+         expect(panel(model, cr::CreativeUiPanelKind::Tools).rowCount == 6U,
+                "undo available tools row count") &&
+         expect(row.kind == cr::CreativeUiRowKind::ToolUndo,
+                "undo available row kind") &&
+         expect(row.id == "undo", "undo available row id") &&
+         expect(hasFlag(row.flags, cr::kCreativeUiRowFlagVisible),
+                "undo available row visible") &&
+         expect(hasFlag(row.flags, cr::kCreativeUiRowFlagEnabled),
+                "undo available row enabled") &&
+         expect(row.data0 == 2U, "undo available row depth") &&
+         expect(model.undoAvailable, "undo available model flag") &&
+         expect(model.undoDepth == 2U, "undo available model depth");
 }
 
 std::size_t activeToolRowCount(const cr::CreativeUiModel& model) {
@@ -515,6 +544,7 @@ bool repeatedBuildProducesSameRows() {
 
 int main() {
   const bool ok = defaultModelDeterministic() &&
+                  undoAvailabilityControlsToolRowState() &&
                   toolPaletteMarksExactlyOneActiveRowPerTool() &&
                   selectedTargetRowAppearsOnlyWhenNonzero() &&
                   selectedVisibleObjectSummaryMarksRowVisible() &&
