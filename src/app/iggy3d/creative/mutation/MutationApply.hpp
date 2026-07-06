@@ -127,6 +127,7 @@ struct CreativeMutationApplyOptions {
 [[nodiscard]] CreativeMutationApplyReceipt applyLinkMutation(CreativeObject& object, CreativeMutationKind mutationKind, const LinkTargetMutation& mutation);
 [[nodiscard]] CreativeMutationApplyReceipt applySocketMutation(CreativeObject& object, CreativeMutationKind mutationKind, const SetSocketMutation& mutation);
 [[nodiscard]] CreativeMutationApplyReceipt applyTextMutation(CreativeObject& object, CreativeMutationKind mutationKind, const TextMutation& mutation);
+[[nodiscard]] CreativeMutationApplyReceipt applyPathPointsMutation(CreativeObject& object, CreativeMutationKind mutationKind, const PathPointsMutation& mutation);
 [[nodiscard]] CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation);
 [[nodiscard]] CreativeMutationApplyReceipt applyColorMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ColorMutation& mutation);
 [[nodiscard]] CreativeMutationApplyReceipt applyAudioSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const AudioSourceMutation& mutation);

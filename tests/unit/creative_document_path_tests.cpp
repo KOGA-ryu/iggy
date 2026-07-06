@@ -1,4 +1,5 @@
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/document/DocumentMutation.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -27,6 +28,14 @@ std::vector<cr::CreativePathPoint> authoredPathPoints() {
       cr::CreativePathPoint{{1.0, 0.0, 2.0}},
       cr::CreativePathPoint{{4.0, 0.0, 6.0}},
       cr::CreativePathPoint{{7.0, 0.0, 8.0}},
+  };
+}
+
+std::vector<cr::CreativePathPoint> updatedPathPoints() {
+  return {
+      cr::CreativePathPoint{{2.0, 0.0, 3.0}},
+      cr::CreativePathPoint{{5.0, 0.0, 7.0}},
+      cr::CreativePathPoint{{8.0, 0.0, 9.0}},
   };
 }
 
@@ -283,6 +292,227 @@ bool restoreForLoadRejectsNonPathPathPayload() {
                 "nonpath restore revision unchanged");
 }
 
+bool patrolRoutePathMutationAppliesStoredPoints() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(patrolRouteCreateRequest());
+  const std::vector<cr::CreativePathPoint> expected = updatedPathPoints();
+  const cr::CreativeObjectDirtyFlags expectedDirty =
+      cr::dirtyFlagsForMutation(cr::CreativeObjectKind::PatrolRoute,
+                                cr::CreativeMutationKind::SetPatrolRoute);
+  (void)document.drainDirtyFlags();
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt =
+      cr::applyDocumentMutation(
+          document, created.objectId, cr::CreativeMutationKind::SetPatrolRoute,
+          cr::makePathPointsPayload(expected));
+  const cr::CreativeObject* object = document.findObject(created.objectId);
+
+  return expect(created.accepted, "path mutation setup accepted") &&
+         expect(receipt.status == cr::CreativeDocumentMutationStatus::Applied,
+                "path mutation document applied") &&
+         expect(receipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::Applied,
+                "path mutation object applied") &&
+         expect(receipt.objectKind == cr::CreativeObjectKind::PatrolRoute,
+                "path mutation object kind") &&
+         expect(receipt.mutationKind ==
+                    cr::CreativeMutationKind::SetPatrolRoute,
+                "path mutation kind") &&
+         expect(receipt.changed, "path mutation changed") &&
+         expect(receipt.allowed, "path mutation allowed") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "path mutation revision before") &&
+         expect(receipt.revisionAfter == revisionBefore + 1U,
+                "path mutation revision after") &&
+         expect(document.revision() == revisionBefore + 1U,
+                "path mutation document revision advanced") &&
+         expect(receipt.dirtyFlags == expectedDirty,
+                "path mutation dirty flags") &&
+         expect(expectedDirty != 0U, "path mutation dirty nonzero") &&
+         expect(cr::hasDirtyFlag(expectedDirty,
+                                 cr::CreativeObjectDirtyFlag::Gameplay),
+                "path mutation dirty gameplay") &&
+         expect(cr::hasDirtyFlag(expectedDirty,
+                                 cr::CreativeObjectDirtyFlag::Logic),
+                "path mutation dirty logic") &&
+         expect(document.dirtyFlags() == expectedDirty,
+                "path mutation document dirty accumulated") &&
+         expect(receipt.objectReceipt.message == "object path points changed",
+                "path mutation message") &&
+         expect(object != nullptr, "path mutation object findable") &&
+         expect(object != nullptr &&
+                    samePathPoints(object->pathPoints, expected),
+                "path mutation points exact");
+}
+
+bool patrolRoutePathMutationSamePointsNoChange() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(patrolRouteCreateRequest());
+  (void)document.drainDirtyFlags();
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt =
+      cr::applyDocumentMutation(
+          document, created.objectId, cr::CreativeMutationKind::SetPatrolRoute,
+          cr::makePathPointsPayload(authoredPathPoints()));
+  const cr::CreativeObject* object = document.findObject(created.objectId);
+
+  return expect(created.accepted, "path no-change setup accepted") &&
+         expect(receipt.status == cr::CreativeDocumentMutationStatus::NoChange,
+                "path no-change document status") &&
+         expect(receipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::NoChange,
+                "path no-change object status") &&
+         expect(!receipt.changed, "path no-change changed false") &&
+         expect(receipt.allowed, "path no-change allowed") &&
+         expect(receipt.dirtyFlags == 0U, "path no-change dirty zero") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "path no-change revision before") &&
+         expect(receipt.revisionAfter == revisionBefore,
+                "path no-change revision after") &&
+         expect(document.revision() == revisionBefore,
+                "path no-change document revision unchanged") &&
+         expect(document.dirtyFlags() == 0U,
+                "path no-change document dirty zero") &&
+         expect(receipt.objectReceipt.message ==
+                    "object path points already match requested path",
+                "path no-change message") &&
+         expect(object != nullptr, "path no-change object findable") &&
+         expect(object != nullptr &&
+                    samePathPoints(object->pathPoints, authoredPathPoints()),
+                "path no-change points preserved");
+}
+
+bool patrolRoutePathMutationRejectsInvalidPoints() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(patrolRouteCreateRequest());
+  const std::vector<cr::CreativePathPoint> original = authoredPathPoints();
+  (void)document.drainDirtyFlags();
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt shortReceipt =
+      cr::applyDocumentMutation(
+          document, created.objectId, cr::CreativeMutationKind::SetPatrolRoute,
+          cr::makePathPointsPayload({cr::CreativePathPoint{{1.0, 0.0, 2.0}}}));
+
+  std::vector<cr::CreativePathPoint> nonFinite = updatedPathPoints();
+  nonFinite[1].position.z = std::numeric_limits<double>::quiet_NaN();
+  const cr::CreativeDocumentMutationReceipt nonFiniteReceipt =
+      cr::applyDocumentMutation(
+          document, created.objectId, cr::CreativeMutationKind::SetPatrolRoute,
+          cr::makePathPointsPayload(nonFinite));
+  const cr::CreativeObject* object = document.findObject(created.objectId);
+
+  return expect(created.accepted, "path invalid setup accepted") &&
+         expect(shortReceipt.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "path short document failed") &&
+         expect(shortReceipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::Rejected,
+                "path short object rejected") &&
+         expect(shortReceipt.objectReceipt.message == "path points are invalid",
+                "path short message") &&
+         expect(nonFiniteReceipt.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "path nonfinite document failed") &&
+         expect(nonFiniteReceipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::Rejected,
+                "path nonfinite object rejected") &&
+         expect(nonFiniteReceipt.objectReceipt.message ==
+                    "path points are invalid",
+                "path nonfinite message") &&
+         expect(document.revision() == revisionBefore,
+                "path invalid revision unchanged") &&
+         expect(document.dirtyFlags() == 0U, "path invalid dirty zero") &&
+         expect(object != nullptr, "path invalid object findable") &&
+         expect(object != nullptr && samePathPoints(object->pathPoints, original),
+                "path invalid points preserved");
+}
+
+bool nonPathPathMutationRejectsDeterministically() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentCreateReceipt room = createRoom(document);
+  (void)document.drainDirtyFlags();
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt =
+      cr::applyDocumentMutation(
+          document, room.objectId, cr::CreativeMutationKind::SetPatrolRoute,
+          cr::makePathPointsPayload(updatedPathPoints()));
+
+  return expect(room.accepted, "nonpath path mutation setup accepted") &&
+         expect(receipt.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "nonpath path mutation document failed") &&
+         expect(receipt.objectKind == cr::CreativeObjectKind::Room,
+                "nonpath path mutation object kind") &&
+         expect(receipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::UnsupportedMutation,
+                "nonpath path mutation unsupported") &&
+         expect(receipt.objectReceipt.message ==
+                    "object kind does not allow this mutation",
+                "nonpath path mutation message") &&
+         expect(!receipt.changed, "nonpath path mutation changed false") &&
+         expect(!receipt.allowed, "nonpath path mutation allowed false") &&
+         expect(receipt.dirtyFlags == 0U, "nonpath path mutation dirty zero") &&
+         expect(document.revision() == revisionBefore,
+                "nonpath path mutation revision unchanged") &&
+         expect(document.dirtyFlags() == 0U,
+                "nonpath path mutation document dirty zero");
+}
+
+bool legacyPatrolRoutePayloadsRemainFutureStorageNoChange() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(patrolRouteCreateRequest());
+  const std::vector<cr::CreativePathPoint> original = authoredPathPoints();
+  (void)document.drainDirtyFlags();
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt textReceipt =
+      cr::applyDocumentMutation(
+          document, created.objectId, cr::CreativeMutationKind::SetPatrolRoute,
+          cr::makeTextPayload("route-a"));
+  const cr::CreativeDocumentMutationReceipt stringIdReceipt =
+      cr::applyDocumentMutation(
+          document, created.objectId, cr::CreativeMutationKind::SetPatrolRoute,
+          cr::makeStringIdPayload("route-b"));
+  const cr::CreativeObject* object = document.findObject(created.objectId);
+
+  return expect(created.accepted, "path legacy setup accepted") &&
+         expect(textReceipt.status ==
+                    cr::CreativeDocumentMutationStatus::NoChange,
+                "path legacy text no change") &&
+         expect(textReceipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::NoChange,
+                "path legacy text object no change") &&
+         expect(textReceipt.objectReceipt.message ==
+                    "mutation has no stored object field yet",
+                "path legacy text message") &&
+         expect(stringIdReceipt.status ==
+                    cr::CreativeDocumentMutationStatus::NoChange,
+                "path legacy string id no change") &&
+         expect(stringIdReceipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::NoChange,
+                "path legacy string id object no change") &&
+         expect(stringIdReceipt.objectReceipt.message ==
+                    "mutation has no stored object field yet",
+                "path legacy string id message") &&
+         expect(textReceipt.dirtyFlags == 0U, "path legacy text dirty zero") &&
+         expect(stringIdReceipt.dirtyFlags == 0U,
+                "path legacy string id dirty zero") &&
+         expect(document.revision() == revisionBefore,
+                "path legacy revision unchanged") &&
+         expect(document.dirtyFlags() == 0U, "path legacy dirty zero") &&
+         expect(object != nullptr, "path legacy object findable") &&
+         expect(object != nullptr && samePathPoints(object->pathPoints, original),
+                "path legacy points preserved");
+}
+
 bool documentCopyPreservesPathPayload() {
   cr::CreativeDocument document;
   const cr::CreativeDocumentCreateReceipt created =
@@ -314,6 +544,11 @@ int main() {
                   restoreForLoadPreservesPathPayload() &&
                   restoreForLoadRejectsInvalidPathWithoutMutation() &&
                   restoreForLoadRejectsNonPathPathPayload() &&
+                  patrolRoutePathMutationAppliesStoredPoints() &&
+                  patrolRoutePathMutationSamePointsNoChange() &&
+                  patrolRoutePathMutationRejectsInvalidPoints() &&
+                  nonPathPathMutationRejectsDeterministically() &&
+                  legacyPatrolRoutePayloadsRemainFutureStorageNoChange() &&
                   documentCopyPreservesPathPayload();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

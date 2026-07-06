@@ -3,7 +3,9 @@
 #include "app/iggy3d/creative/mutation/MutationApply.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <utility>
+#include <vector>
 
 namespace iggy3d::creative {
 namespace {
@@ -52,6 +54,34 @@ namespace {
 
 [[nodiscard]] bool sameBounds(const CreativeBounds& lhs, const CreativeBounds& rhs) noexcept {
     return sameVec3(lhs.min, rhs.min) && sameVec3(lhs.max, rhs.max);
+}
+
+[[nodiscard]] bool samePathPoints(const std::vector<CreativePathPoint>& lhs, const std::vector<CreativePathPoint>& rhs) noexcept {
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+
+    for (std::size_t index = 0; index < lhs.size(); ++index) {
+        if (!sameVec3(lhs[index].position, rhs[index].position)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+[[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
+    return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+}
+
+[[nodiscard]] bool validPathPoints(const std::vector<CreativePathPoint>& pathPoints) noexcept {
+    if (pathPoints.size() < 2U) {
+        return false;
+    }
+
+    return std::all_of(pathPoints.begin(), pathPoints.end(), [](const CreativePathPoint& point) {
+        return finiteVec3(point.position);
+    });
 }
 
 [[nodiscard]] CreativeVec3 boundsSize(const CreativeBounds& bounds) noexcept {
@@ -241,7 +271,6 @@ namespace {
     case CreativeMutationKind::SetQuestId:
     case CreativeMutationKind::SetDialogueId:
     case CreativeMutationKind::SetSafeZoneRule:
-    case CreativeMutationKind::SetPatrolRoute:
     case CreativeMutationKind::SetJumpArc:
     case CreativeMutationKind::SetClimbRule:
     case CreativeMutationKind::SetWallRunRule:
@@ -250,6 +279,17 @@ namespace {
         if (std::holds_alternative<TextMutation>(value)) {
             return applyTextMutation(object, mutationKind, std::get<TextMutation>(value));
         }
+        return applyStringIdMutation(object, mutationKind, std::get<StringIdMutation>(value));
+
+    case CreativeMutationKind::SetPatrolRoute:
+        if (std::holds_alternative<PathPointsMutation>(value)) {
+            return applyPathPointsMutation(object, mutationKind, std::get<PathPointsMutation>(value));
+        }
+
+        if (std::holds_alternative<TextMutation>(value)) {
+            return applyTextMutation(object, mutationKind, std::get<TextMutation>(value));
+        }
+
         return applyStringIdMutation(object, mutationKind, std::get<StringIdMutation>(value));
 
     case CreativeMutationKind::SetReferenceSource:
@@ -576,6 +616,23 @@ CreativeMutationApplyReceipt applySocketMutation(CreativeObject& object, Creativ
 CreativeMutationApplyReceipt applyTextMutation(CreativeObject& object, CreativeMutationKind mutationKind, const TextMutation& mutation) {
     (void)mutation;
     return makeFutureStorageNoChangeReceipt(object, mutationKind);
+}
+
+CreativeMutationApplyReceipt applyPathPointsMutation(CreativeObject& object, CreativeMutationKind mutationKind, const PathPointsMutation& mutation) {
+    if (describeObject(object.kind).shapeKind != CreativeObjectShapeKind::Path) {
+        return rejectMutation(object, mutationKind, CreativeMutationApplyStatus::UnsupportedMutation, "object kind does not store path points");
+    }
+
+    if (!validPathPoints(mutation.pathPoints)) {
+        return rejectMutation(object, mutationKind, CreativeMutationApplyStatus::Rejected, "path points are invalid");
+    }
+
+    if (samePathPoints(object.pathPoints, mutation.pathPoints)) {
+        return makeNoChangeReceipt(object, mutationKind, "object path points already match requested path");
+    }
+
+    object.pathPoints = mutation.pathPoints;
+    return makeAppliedReceipt(object, mutationKind, "object path points changed");
 }
 
 CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation) {

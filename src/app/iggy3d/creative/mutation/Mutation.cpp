@@ -695,6 +695,10 @@ bool payloadMatchesMutation(CreativeMutationKind kind, const CreativeMutationPay
     case CreativeMutationKind::SetCameraTarget:
     case CreativeMutationKind::SetCameraRail:
         return std::holds_alternative<LinkTargetMutation>(value);
+    case CreativeMutationKind::SetPatrolRoute:
+        return std::holds_alternative<PathPointsMutation>(value) ||
+               std::holds_alternative<TextMutation>(value) ||
+               std::holds_alternative<StringIdMutation>(value);
     case CreativeMutationKind::SetSocket:
         return std::holds_alternative<SetSocketMutation>(value);
 
@@ -722,7 +726,6 @@ bool payloadMatchesMutation(CreativeMutationKind kind, const CreativeMutationPay
     case CreativeMutationKind::SetQuestId:
     case CreativeMutationKind::SetDialogueId:
     case CreativeMutationKind::SetSafeZoneRule:
-    case CreativeMutationKind::SetPatrolRoute:
     case CreativeMutationKind::SetJumpArc:
     case CreativeMutationKind::SetClimbRule:
     case CreativeMutationKind::SetWallRunRule:
@@ -834,6 +837,10 @@ CreativeMutationPayload makeAudioSourcePayload(std::string source) {
 
 CreativeMutationPayload makeStringIdPayload(std::string id) {
     return CreativeMutationPayload{StringIdMutation{std::move(id)}};
+}
+
+CreativeMutationPayload makePathPointsPayload(std::vector<CreativePathPoint> pathPoints) {
+    return CreativeMutationPayload{PathPointsMutation{std::move(pathPoints)}};
 }
 
 CreativeMutationPayload makeObjectKindPayload(CreativeObjectKind kind) {

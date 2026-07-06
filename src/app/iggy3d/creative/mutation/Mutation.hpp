@@ -236,6 +236,10 @@ struct StringIdMutation {
     std::string id{};
 };
 
+struct PathPointsMutation {
+    std::vector<CreativePathPoint> pathPoints{};
+};
+
 struct ObjectKindMutation {
     CreativeObjectKind kind{CreativeObjectKind::Unknown};
 };
@@ -265,6 +269,7 @@ struct CreativeMutationPayload {
         ColorMutation,
         AudioSourceMutation,
         StringIdMutation,
+        PathPointsMutation,
         ObjectKindMutation>;
 
     Value value{};
@@ -341,6 +346,7 @@ struct CreativeMutationDescriptor {
 [[nodiscard]] CreativeMutationPayload makeColorPayload(CreativeRgba color);
 [[nodiscard]] CreativeMutationPayload makeAudioSourcePayload(std::string source);
 [[nodiscard]] CreativeMutationPayload makeStringIdPayload(std::string id);
+[[nodiscard]] CreativeMutationPayload makePathPointsPayload(std::vector<CreativePathPoint> pathPoints);
 [[nodiscard]] CreativeMutationPayload makeObjectKindPayload(CreativeObjectKind kind);
 
 } // namespace iggy3d::creative
