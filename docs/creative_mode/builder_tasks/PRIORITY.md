@@ -16,7 +16,7 @@ use this index only to decide which ready card to claim next.
 
 ## Currently Claimed
 
-None.
+- `claimed/E107-roombake-greedy-floor-ordering-guards.md`
 
 ## Pull Next
 
