@@ -752,6 +752,10 @@ iggy3d_add_unit_test(reachability_tests tests/unit/reachability_tests.cpp)
 set_tests_properties(reachability_tests PROPERTIES
   LABELS "unit;core;grid;reachability;iggy3d")
 
+iggy3d_add_unit_test(grid_footprint_tests tests/unit/grid_footprint_tests.cpp)
+set_tests_properties(grid_footprint_tests PROPERTIES
+  LABELS "unit;core;grid;footprint;iggy3d")
+
 iggy3d_add_unit_test(greedy_mesh_tests tests/unit/greedy_mesh_tests.cpp)
 set_tests_properties(greedy_mesh_tests PROPERTIES
   LABELS "unit;core;grid;mesh;iggy3d")

@@ -1,7 +1,8 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
+#include "app/iggy3d/creative/adapters/RoomBakeReachability.hpp"
 
+#include "core/grid/GridFootprint.hpp"
 #include "core/grid/GreedyMesh.hpp"
-#include "core/grid/Reachability.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -77,19 +78,6 @@ struct RoomBakeObjectClassification {
   std::string_view anchorKind{};
 };
 
-struct ReachabilityFootprint {
-  std::int32_t minCellX = 0;
-  std::int32_t minCellZ = 0;
-  std::int32_t maxCellXExclusive = 0;
-  std::int32_t maxCellZExclusive = 0;
-};
-
-struct ReachabilityProjection {
-  ReachabilityGrid grid;
-  std::int32_t originCellX = 0;
-  std::int32_t originCellZ = 0;
-};
-
 struct BakeStaticMeshEntry {
   const CreativeObject* object = nullptr;
   const CreativeObjectDescriptor* descriptor = nullptr;
@@ -97,16 +85,9 @@ struct BakeStaticMeshEntry {
   std::size_t documentIndex = 0;
 };
 
-struct GreedyFloorFootprint {
-  std::int32_t minCellX = 0;
-  std::int32_t minCellZ = 0;
-  std::int32_t maxCellXExclusive = 0;
-  std::int32_t maxCellZExclusive = 0;
-};
-
 struct GreedyFloorCandidate {
   const BakeStaticMeshEntry* entry = nullptr;
-  GreedyFloorFootprint footprint;
+  GridFootprint footprint;
 };
 
 struct GreedyFloorGroup {
@@ -124,23 +105,12 @@ struct GreedyFloorMesh {
   std::size_t firstDocumentIndex = 0;
 };
 
-enum class ReachabilityProjectionStatus {
-  Built,
-  NoWalkableCells,
-  GridTooLarge,
-};
-
 [[nodiscard]] bool finite(double value) noexcept {
   return std::isfinite(value);
 }
 
 [[nodiscard]] bool finite(CreativeVec3 value) noexcept {
   return finite(value.x) && finite(value.y) && finite(value.z);
-}
-
-[[nodiscard]] bool finiteVec3(Vec3 value) noexcept {
-  return std::isfinite(value.x) && std::isfinite(value.y) &&
-         std::isfinite(value.z);
 }
 
 [[nodiscard]] bool fitsFloat(double value) noexcept {
@@ -607,82 +577,21 @@ void setStatus(CreativeRoomBakeReceipt& receipt,
   receipt.accepted = accepted;
 }
 
-void setReachabilityStatus(CreativeRoomBakeReachabilityReceipt& receipt,
-                           CreativeRoomBakeReachabilityStatus status,
-                           std::string reasonCode,
-                           bool checked = false) {
-  receipt.status = status;
-  receipt.reasonCode = std::move(reasonCode);
-  receipt.message = receipt.reasonCode;
-  receipt.checked = checked;
-}
-
-[[nodiscard]] CreativeRoomBakeReachabilityReceipt
-initialReachabilityReceipt(const CreativeRoomBakeRequest& request) {
-  CreativeRoomBakeReachabilityReceipt receipt;
-  receipt.requested = request.validateReachability;
-  receipt.cellSizeMeters = request.reachabilityCellSizeMeters;
-  if (!receipt.requested) {
-    setReachabilityStatus(
-        receipt,
-        CreativeRoomBakeReachabilityStatus::NotRequested,
-        "creative_room_bake_reachability_not_requested");
-    return receipt;
-  }
-
-  setReachabilityStatus(receipt,
-                        CreativeRoomBakeReachabilityStatus::NotChecked,
-                        "creative_room_bake_reachability_not_checked");
-  return receipt;
-}
-
-[[nodiscard]] bool cellCoordFor(float value,
-                                float cellSizeMeters,
-                                bool exclusiveMax,
-                                std::int32_t& out) noexcept {
-  const double scaled = static_cast<double>(value) /
-                        static_cast<double>(cellSizeMeters);
-  const double cell = exclusiveMax ? std::ceil(scaled) : std::floor(scaled);
-  if (!std::isfinite(cell) ||
-      cell < static_cast<double>(std::numeric_limits<std::int32_t>::min()) ||
-      cell > static_cast<double>(std::numeric_limits<std::int32_t>::max())) {
-    return false;
-  }
-  out = static_cast<std::int32_t>(cell);
-  return true;
-}
-
-[[nodiscard]] bool alignedGreedyFloorCellCoordFor(float value,
-                                                  float cellSizeMeters,
-                                                  std::int32_t& out) noexcept {
-  const double scaled = static_cast<double>(value) /
-                        static_cast<double>(cellSizeMeters);
-  const double rounded = std::round(scaled);
-  if (!std::isfinite(scaled) || std::fabs(scaled - rounded) > 0.0001 ||
-      rounded <
-          static_cast<double>(std::numeric_limits<std::int32_t>::min()) ||
-      rounded >
-          static_cast<double>(std::numeric_limits<std::int32_t>::max())) {
-    return false;
-  }
-  out = static_cast<std::int32_t>(rounded);
-  return true;
-}
-
 [[nodiscard]] bool greedyFloorFootprintForBounds(
     BakeBounds bounds,
     float cellSizeMeters,
-    GreedyFloorFootprint& out) noexcept {
-  return alignedGreedyFloorCellCoordFor(
-             bounds.min.x, cellSizeMeters, out.minCellX) &&
-         alignedGreedyFloorCellCoordFor(
-             bounds.min.z, cellSizeMeters, out.minCellZ) &&
-         alignedGreedyFloorCellCoordFor(
-             bounds.max.x, cellSizeMeters, out.maxCellXExclusive) &&
-         alignedGreedyFloorCellCoordFor(
-             bounds.max.z, cellSizeMeters, out.maxCellZExclusive) &&
-         out.maxCellXExclusive > out.minCellX &&
-         out.maxCellZExclusive > out.minCellZ;
+    GridFootprint& out) noexcept {
+  const GridFootprintResult result =
+      gridFootprintForAlignedBounds(bounds.min.x,
+                                    bounds.min.z,
+                                    bounds.max.x,
+                                    bounds.max.z,
+                                    cellSizeMeters);
+  if (!result.ok) {
+    return false;
+  }
+  out = result.footprint;
+  return true;
 }
 
 [[nodiscard]] bool isGreedyFloorCandidate(
@@ -871,7 +780,7 @@ void appendGreedyFloorSource(std::vector<const BakeStaticMeshEntry*>& sources,
 
 void appendFloorGroup(std::vector<GreedyFloorGroup>& groups,
                       const BakeStaticMeshEntry& entry,
-                      GreedyFloorFootprint footprint) {
+                      GridFootprint footprint) {
   const std::string meshId(meshIdForRole(BakedRoomRole::Floor));
   const std::string materialId(materialIdForRole(BakedRoomRole::Floor));
   const std::string role(roleName(BakedRoomRole::Floor));
@@ -906,7 +815,7 @@ void appendFloorGroup(std::vector<GreedyFloorGroup>& groups,
       continue;
     }
 
-    GreedyFloorFootprint footprint;
+    GridFootprint footprint;
     if (!greedyFloorFootprintForBounds(entry.classification.bounds,
                                        kGreedyFloorCellSizeMeters,
                                        footprint)) {
@@ -964,7 +873,7 @@ void appendGreedyFloorMesh(
 [[nodiscard]] bool walkableFootprintForSurface(
     const RoomSpatialSurface& surface,
     float cellSizeMeters,
-    ReachabilityFootprint& out) {
+    GridFootprint& out) {
   if (surface.role != RoomSpatialSurfaceRole::Walkable ||
       surface.pointsMeters.empty()) {
     return false;
@@ -982,28 +891,27 @@ void appendGreedyFloorMesh(
     max.z = std::max(max.z, point.z);
   }
 
-  if (!(max.x > min.x) || !(max.z > min.z)) {
+  const GridFootprintResult result =
+      gridFootprintForContainingBounds(min.x,
+                                       min.z,
+                                       max.x,
+                                       max.z,
+                                       cellSizeMeters);
+  if (!result.ok) {
     return false;
   }
-
-  return cellCoordFor(min.x, cellSizeMeters, false, out.minCellX) &&
-         cellCoordFor(min.z, cellSizeMeters, false, out.minCellZ) &&
-         cellCoordFor(max.x, cellSizeMeters, true,
-                      out.maxCellXExclusive) &&
-         cellCoordFor(max.z, cellSizeMeters, true,
-                      out.maxCellZExclusive) &&
-         out.maxCellXExclusive > out.minCellX &&
-         out.maxCellZExclusive > out.minCellZ;
+  out = result.footprint;
+  return true;
 }
 
 [[nodiscard]] ReachabilityProjectionStatus buildReachabilityProjection(
     const RoomAsset& room,
     float cellSizeMeters,
     ReachabilityProjection& out) {
-  std::vector<ReachabilityFootprint> footprints;
+  std::vector<GridFootprint> footprints;
   footprints.reserve(room.spatialSurfaces.size());
   for (const RoomSpatialSurface& surface : room.spatialSurfaces) {
-    ReachabilityFootprint footprint;
+    GridFootprint footprint;
     if (walkableFootprintForSurface(surface, cellSizeMeters, footprint)) {
       footprints.push_back(footprint);
     }
@@ -1017,7 +925,7 @@ void appendGreedyFloorMesh(
   std::int32_t minZ = footprints.front().minCellZ;
   std::int32_t maxX = footprints.front().maxCellXExclusive;
   std::int32_t maxZ = footprints.front().maxCellZExclusive;
-  for (const ReachabilityFootprint& footprint : footprints) {
+  for (const GridFootprint& footprint : footprints) {
     minX = std::min(minX, footprint.minCellX);
     minZ = std::min(minZ, footprint.minCellZ);
     maxX = std::max(maxX, footprint.maxCellXExclusive);
@@ -1045,7 +953,7 @@ void appendGreedyFloorMesh(
           static_cast<std::size_t>(out.grid.depth),
       0);
 
-  for (const ReachabilityFootprint& footprint : footprints) {
+  for (const GridFootprint& footprint : footprints) {
     for (std::int32_t z = footprint.minCellZ;
          z < footprint.maxCellZExclusive; ++z) {
       for (std::int32_t x = footprint.minCellX;
@@ -1078,15 +986,16 @@ void appendGreedyFloorMesh(
     return false;
   }
 
-  std::int32_t cellX = 0;
-  std::int32_t cellZ = 0;
-  if (!cellCoordFor(anchor.positionMeters.x, cellSizeMeters, false, cellX) ||
-      !cellCoordFor(anchor.positionMeters.z, cellSizeMeters, false, cellZ)) {
+  const GridCellCoordResult seed =
+      gridCellForPoint(anchor.positionMeters.x,
+                       anchor.positionMeters.z,
+                       cellSizeMeters);
+  if (!seed.ok) {
     return false;
   }
 
-  const std::int32_t localX = cellX - projection.originCellX;
-  const std::int32_t localZ = cellZ - projection.originCellZ;
+  const std::int32_t localX = seed.cell.x - projection.originCellX;
+  const std::int32_t localZ = seed.cell.z - projection.originCellZ;
   if (localX < 0 || localZ < 0 || localX >= projection.grid.width ||
       localZ >= projection.grid.depth) {
     return false;

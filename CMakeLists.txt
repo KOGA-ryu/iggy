@@ -25,6 +25,7 @@ endif()
 target_sources(iggy3d
   PRIVATE
     src/core/hash/StableHash.cpp
+    src/core/grid/GridFootprint.cpp
     src/core/grid/Reachability.cpp
     src/core/grid/GreedyMesh.cpp
     src/core/geom/StairMesh.cpp
