@@ -105,3 +105,38 @@ Append:
 - Behavior preserved:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completed
+
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/creative/adapters/RoomBake.cpp`
+  - `src/app/iggy3d/creative/adapters/RoomBakeReachability.hpp`
+  - `src/app/iggy3d/creative/adapters/RoomBakeReachability.cpp`
+  - `docs/creative_mode/builder_tasks/PRIORITY.md`
+  - `docs/creative_mode/builder_tasks/done/E105-roombake-reachability-extraction.md`
+- Extraction shape:
+  - Added `validateCreativeRoomBakeReachability(const RoomAsset&, const
+    CreativeRoomBakeRequest&)` as the post-bake validator entrypoint.
+  - Added `initialCreativeRoomBakeReachabilityReceipt(...)` so early RoomBake
+    failure returns keep the existing reachability default/not-requested state.
+  - Moved walkable-grid projection, anchor seed filtering, blocked seed
+    accounting, `floodFillReachability(...)` invocation, and reachability
+    status/reason filling into `RoomBakeReachability.cpp`.
+- Behavior preserved:
+  - Main RoomBake object classification, mesh emission, greedy floor grouping,
+    source sidecars, anchors, and walkable surface generation are unchanged.
+  - Reachability statuses/reason codes/counts remain covered by existing
+    `creative_document_room_bake_tests`.
+  - The extracted helper continues using the E104 `GridFootprint` primitive.
+- Tests/checks run:
+  - `cmake -S /Users/kogaryu/iggy3d -B /Users/kogaryu/iggy3d/build`
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d creative_document_room_bake_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^creative_document_room_bake_tests$' --output-on-failure`
+  - final combined focused build/ctest listed in the slice brief
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - focused trailing whitespace scan over touched files
+- Concerns/deferred:
+  - No new focused helper test target was added because existing RoomBake tests
+    already pin no-walkable, no-seed, grid-too-large, connected, and island
+    reachability behavior through the public adapter output.

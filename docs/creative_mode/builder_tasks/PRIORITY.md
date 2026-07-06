@@ -16,7 +16,7 @@ use this index only to decide which ready card to claim next.
 
 ## Currently Claimed
 
-- `claimed/E105-roombake-reachability-extraction.md`
+None.
 
 ## Pull Next
 
