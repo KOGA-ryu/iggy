@@ -377,6 +377,11 @@ iggy3d_add_unit_test(creative_document_path_tests
 set_tests_properties(creative_document_path_tests PROPERTIES
   LABELS "unit;app;creative;document;path;iggy3d")
 
+iggy3d_add_unit_test(creative_document_room_bake_tests
+  tests/unit/creative_document_room_bake_tests.cpp)
+set_tests_properties(creative_document_room_bake_tests PROPERTIES
+  LABELS "unit;app;creative;document;room_bake;iggy3d")
+
 iggy3d_add_unit_test(creative_document_save_section_tests
   tests/unit/creative_document_save_section_tests.cpp)
 set_tests_properties(creative_document_save_section_tests PROPERTIES
