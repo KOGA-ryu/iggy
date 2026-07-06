@@ -29,7 +29,7 @@ Mat4 operator*(const Mat4& lhs, const Mat4& rhs) {
   return out;
 }
 
-Vec3 transformPoint(const Mat4& matrix, Vec3 point) {
+ProjectedPoint3 projectPoint(const Mat4& matrix, Vec3 point) {
   const float x = at(matrix, 0, 0) * point.x + at(matrix, 0, 1) * point.y +
                   at(matrix, 0, 2) * point.z + at(matrix, 0, 3);
   const float y = at(matrix, 1, 0) * point.x + at(matrix, 1, 1) * point.y +
@@ -38,10 +38,15 @@ Vec3 transformPoint(const Mat4& matrix, Vec3 point) {
                   at(matrix, 2, 2) * point.z + at(matrix, 2, 3);
   const float w = at(matrix, 3, 0) * point.x + at(matrix, 3, 1) * point.y +
                   at(matrix, 3, 2) * point.z + at(matrix, 3, 3);
+  Vec3 ndc{x, y, z};
   if (std::isfinite(w) && w != 0.0F && w != 1.0F) {
-    return {x / w, y / w, z / w};
+    ndc = {x / w, y / w, z / w};
   }
-  return {x, y, z};
+  return {ndc, w, isFinite(ndc) && std::isfinite(w)};
+}
+
+Vec3 transformPoint(const Mat4& matrix, Vec3 point) {
+  return projectPoint(matrix, point).ndc;
 }
 
 bool isFinite(const Mat4& matrix) {

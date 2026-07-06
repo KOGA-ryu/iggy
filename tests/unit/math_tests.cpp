@@ -92,14 +92,49 @@ bool aabbTests() {
                 "Aabb closest");
 }
 
+iggy3d::Mat4 mat4ProjectionWithConstantW(float w) {
+  iggy3d::Mat4 matrix{{{}}};
+  matrix.m[0] = 2.0F;
+  matrix.m[3] = 1.0F;
+  matrix.m[5] = 3.0F;
+  matrix.m[7] = 2.0F;
+  matrix.m[10] = 4.0F;
+  matrix.m[11] = 3.0F;
+  matrix.m[15] = w;
+  return matrix;
+}
+
 bool mat4Tests() {
   using namespace iggy3d;
   const Mat4 identity = identityMat4();
+  const Vec3 point{1.0F, 1.0F, 1.0F};
+  const Vec3 rawProjected{3.0F, 5.0F, 7.0F};
+  const ProjectedPoint3 divided = projectPoint(mat4ProjectionWithConstantW(2.0F), point);
+  const ProjectedPoint3 identityW = projectPoint(mat4ProjectionWithConstantW(1.0F), point);
+  const ProjectedPoint3 zeroW = projectPoint(mat4ProjectionWithConstantW(0.0F), point);
+  const ProjectedPoint3 infiniteW =
+      projectPoint(mat4ProjectionWithConstantW(std::numeric_limits<float>::infinity()), point);
+  const ProjectedPoint3 negativeW = projectPoint(mat4ProjectionWithConstantW(-2.0F), point);
   return expect(at(identity, 0, 0) == 1.0F && at(identity, 3, 3) == 1.0F, "Mat4 identity") &&
          expect(isFinite(identity), "Mat4 identity finite") &&
          expect(nearlyEqual(transformPoint(identity, Vec3{1.0F, 2.0F, 3.0F}),
                             Vec3{1.0F, 2.0F, 3.0F}),
-                "Mat4 identity transform");
+                "Mat4 identity transform") &&
+         expect(nearlyEqual(divided.ndc, Vec3{1.5F, 2.5F, 3.5F}) && divided.w == 2.0F &&
+                    divided.finite,
+                "Mat4 projectPoint divides finite non-unit w") &&
+         expect(nearlyEqual(transformPoint(mat4ProjectionWithConstantW(2.0F), point), divided.ndc),
+                "Mat4 transformPoint remains projectPoint compatibility wrapper") &&
+         expect(nearlyEqual(identityW.ndc, rawProjected) && identityW.w == 1.0F && identityW.finite,
+                "Mat4 projectPoint preserves raw coordinates for w one") &&
+         expect(nearlyEqual(zeroW.ndc, rawProjected) && zeroW.w == 0.0F && zeroW.finite,
+                "Mat4 projectPoint preserves raw finite coordinates for w zero") &&
+         expect(nearlyEqual(infiniteW.ndc, rawProjected) && std::isinf(infiniteW.w) &&
+                    !infiniteW.finite,
+                "Mat4 projectPoint marks non-finite w") &&
+         expect(nearlyEqual(negativeW.ndc, Vec3{-1.5F, -2.5F, -3.5F}) && negativeW.w == -2.0F &&
+                    negativeW.finite,
+                "Mat4 projectPoint divides negative finite w");
 }
 
 bool hashTests() {
