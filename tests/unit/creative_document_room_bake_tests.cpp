@@ -60,6 +60,14 @@ cr::CreativeDocumentCreateReceipt createObject(
   return document.createObject(request);
 }
 
+cr::CreativeDocumentCreateReceipt createDefaultObject(
+    cr::CreativeDocument& document,
+    cr::CreativeObjectKind kind) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  return document.createObject(request);
+}
+
 cr::CreativeDocumentCreateReceipt createPoint(
     cr::CreativeDocument& document,
     cr::CreativeObjectKind kind,
@@ -210,6 +218,97 @@ bool floorWallCrateBakeToRoomAsset() {
                 "prop center") &&
          expect(sameVec3(meshes[2].sizeMeters, {1.0F, 1.0F, 1.0F}),
                 "prop size");
+}
+
+bool boundsBackedLineBakesAsPropGeometry() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Line Geometry");
+  const cr::CreativeDocumentCreateReceipt created =
+      createObject(document,
+                   cr::CreativeObjectKind::Beam,
+                   {{0.0, 1.0, 0.0}, {4.0, 1.35, 0.35}});
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  const iggy3d::RoomStaticMeshAsset* mesh =
+      result.room.staticMeshes.empty() ? nullptr : &result.room.staticMeshes[0];
+  const iggy3d::RoomSpatialSurface* actorSurface =
+      result.room.spatialSurfaces.empty() ? nullptr
+                                          : &result.room.spatialSurfaces[0];
+  const iggy3d::RoomSpatialSurface* projectileSurface =
+      result.room.spatialSurfaces.size() < 2U
+          ? nullptr
+          : &result.room.spatialSurfaces[1];
+
+  return expect(created.accepted, "line create accepted") &&
+         expect(result.receipt.accepted, "line bake accepted") &&
+         expect(result.receipt.status == cr::CreativeRoomBakeStatus::Baked,
+                "line bake status") &&
+         expect(result.receipt.objectCount == 1U, "line object count") &&
+         expect(result.receipt.consideredObjectCount == 1U,
+                "line considered count") &&
+         expect(result.receipt.bakedStaticMeshCount == 1U,
+                "line mesh count") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 2U,
+                "line surface count") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "line anchor count") &&
+         expect(result.room.staticMeshes.size() == 1U,
+                "line mesh vector count") &&
+         expect(result.room.anchors.empty(), "line no anchors") &&
+         expect(mesh != nullptr, "line mesh exists") &&
+         expect(mesh->id == "creative_object_1", "line mesh id") &&
+         expect(mesh->role == "prop", "line mesh role") &&
+         expect(mesh->meshId == "creative_box_proxy", "line mesh id stable") &&
+         expect(mesh->materialId == "creative_prop", "line material stable") &&
+         expect(sameVec3(mesh->positionMeters, {2.0F, 1.175F, 0.175F}),
+                "line center") &&
+         expect(sameVec3(mesh->sizeMeters, {4.0F, 0.35F, 0.35F}),
+                "line size") &&
+         expect(actorSurface != nullptr, "line actor surface exists") &&
+         expect(actorSurface->sourceStaticMeshId == "creative_object_1",
+                "line actor surface source") &&
+         expect(actorSurface->role == iggy3d::RoomSpatialSurfaceRole::Blocker,
+                "line actor surface role") &&
+         expect(actorSurface->blocksActor, "line actor blocks actor") &&
+         expect(!actorSurface->blocksProjectile,
+                "line actor does not block projectile") &&
+         expect(projectileSurface != nullptr,
+                "line projectile surface exists") &&
+         expect(projectileSurface->sourceStaticMeshId == "creative_object_1",
+                "line projectile surface source") &&
+         expect(projectileSurface->role ==
+                    iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker,
+                "line projectile surface role") &&
+         expect(!projectileSurface->blocksActor,
+                "line projectile does not block actor") &&
+         expect(projectileSurface->blocksProjectile,
+                "line projectile blocks projectile");
+}
+
+bool endpointLineDescriptorStaysOutOfBake() {
+  cr::CreativeDocument document = cr::CreativeDocument::create("Line Link");
+  const cr::CreativeDocumentCreateReceipt created =
+      createDefaultObject(document, cr::CreativeObjectKind::NavLink);
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(created.accepted, "endpoint line create accepted") &&
+         expect(!result.receipt.accepted, "endpoint line not accepted") &&
+         expect(result.receipt.status ==
+                    cr::CreativeRoomBakeStatus::NoRenderableObjects,
+                "endpoint line status") &&
+         expect(result.receipt.objectCount == 1U,
+                "endpoint line object count") &&
+         expect(result.receipt.consideredObjectCount == 1U,
+                "endpoint line considered count") &&
+         expect(result.receipt.skippedUnsupportedShapeCount == 1U,
+                "endpoint line unsupported shape") &&
+         expect(result.receipt.skippedNoBoundsCount == 0U,
+                "endpoint line no bounds count") &&
+         expect(result.receipt.bakedStaticMeshCount == 0U,
+                "endpoint line mesh count") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "endpoint line anchor count") &&
+         expect(result.room.staticMeshes.empty(), "endpoint line no meshes") &&
+         expect(result.room.anchors.empty(), "endpoint line no anchors");
 }
 
 bool pointObjectBakesToAnchorOnly() {
@@ -371,9 +470,7 @@ bool unsupportedAndMetadataObjectsAreSkipped() {
                      {{0.0, 0.0, 0.0}, {10.0, 4.0, 10.0}});
   (void)createPoint(document, cr::CreativeObjectKind::Note);
   (void)createPoint(document, cr::CreativeObjectKind::Socket);
-  (void)createObject(document,
-                     cr::CreativeObjectKind::Beam,
-                     {{0.0, 0.0, 0.0}, {4.0, 0.35, 0.35}});
+  (void)createDefaultObject(document, cr::CreativeObjectKind::NavLink);
   (void)createPath(document);
 
   const cr::CreativeRoomBakeResult result = bake(document);
@@ -406,6 +503,8 @@ int main() {
   const bool ok = nullDocumentRejects() &&
                   emptyDocumentHasNoRenderableObjects() &&
                   floorWallCrateBakeToRoomAsset() &&
+                  boundsBackedLineBakesAsPropGeometry() &&
+                  endpointLineDescriptorStaysOutOfBake() &&
                   pointObjectBakesToAnchorOnly() &&
                   bakedRoomProjectsAndLoadsIntoActiveRoom() &&
                   hiddenObjectsAreSkippedUnlessIncluded() &&

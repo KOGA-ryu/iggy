@@ -111,6 +111,36 @@ enum class BakedRoomRole {
          occupancySupportsRuntimeRoomAnchor(descriptor.occupancyKind);
 }
 
+[[nodiscard]] bool projectionSupportsBoundsBackedLineGeometry(
+    CreativeSpatialProjectionProfile projection) noexcept {
+  return projection == CreativeSpatialProjectionProfile::BoxProjection ||
+         projection == CreativeSpatialProjectionProfile::LineProjection;
+}
+
+[[nodiscard]] bool descriptorSupportsBoundsBackedLineGeometry(
+    const CreativeObjectDescriptor& descriptor) noexcept {
+  return descriptor.shapeKind == CreativeObjectShapeKind::Line &&
+         descriptor.hasBounds &&
+         projectionSupportsBoundsBackedLineGeometry(descriptor.projectionProfile);
+}
+
+[[nodiscard]] bool descriptorSupportsStaticMeshBake(
+    const CreativeObjectDescriptor& descriptor) noexcept {
+  switch (descriptor.shapeKind) {
+    case CreativeObjectShapeKind::Surface:
+    case CreativeObjectShapeKind::MeshProxy:
+    case CreativeObjectShapeKind::BoxVolume:
+      return true;
+    case CreativeObjectShapeKind::Line:
+      return descriptorSupportsBoundsBackedLineGeometry(descriptor);
+    case CreativeObjectShapeKind::Unknown:
+    case CreativeObjectShapeKind::Point:
+    case CreativeObjectShapeKind::Path:
+      return false;
+  }
+  return false;
+}
+
 [[nodiscard]] bool horizontalSurface(BakeBounds bounds) noexcept {
   return bounds.size.y <= bounds.size.x && bounds.size.y <= bounds.size.z;
 }
@@ -140,9 +170,13 @@ enum class BakedRoomRole {
     case CreativeObjectShapeKind::MeshProxy:
     case CreativeObjectShapeKind::BoxVolume:
       return BakedRoomRole::Prop;
+    case CreativeObjectShapeKind::Line:
+      if (descriptorSupportsBoundsBackedLineGeometry(descriptor)) {
+        return BakedRoomRole::Prop;
+      }
+      return BakedRoomRole::Unsupported;
     case CreativeObjectShapeKind::Unknown:
     case CreativeObjectShapeKind::Point:
-    case CreativeObjectShapeKind::Line:
     case CreativeObjectShapeKind::Path:
       return BakedRoomRole::Unsupported;
   }
@@ -438,9 +472,7 @@ CreativeRoomBakeResult buildRoomAssetFromCreativeDocument(
       continue;
     }
 
-    if (descriptor.shapeKind != CreativeObjectShapeKind::Surface &&
-        descriptor.shapeKind != CreativeObjectShapeKind::MeshProxy &&
-        descriptor.shapeKind != CreativeObjectShapeKind::BoxVolume) {
+    if (!descriptorSupportsStaticMeshBake(descriptor)) {
       ++result.receipt.skippedUnsupportedShapeCount;
       continue;
     }
