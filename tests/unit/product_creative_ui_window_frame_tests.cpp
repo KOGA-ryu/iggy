@@ -218,9 +218,9 @@ bool logicalDimensionsAreUsedWhenDrawableIsHighDpi() {
                 "logical draw list width") &&
          expect(frame.projection.drawList.virtualHeight == 720U,
                 "logical draw list height") &&
-         expect(window.creativeUiProjectionVirtualWidth == 1280U,
+         expect(window.creativeUiProjection.virtualWidth == 1280U,
                 "logical width used") &&
-         expect(window.creativeUiProjectionVirtualHeight == 720U,
+         expect(window.creativeUiProjection.virtualHeight == 720U,
                 "logical height used");
 }
 
@@ -241,11 +241,11 @@ bool fallbackDimensionsAreUsedWhenDrawableZero() {
                                                       iggy3d::ProductUiThemeId::Journal});
 
   return expect(frame.receipt.ready, "fallback frame ready") &&
-         expect(window.creativeUiProjectionVirtualWidth == 1366U,
+         expect(window.creativeUiProjection.virtualWidth == 1366U,
                 "fallback width used") &&
-         expect(window.creativeUiProjectionVirtualHeight == 768U,
+         expect(window.creativeUiProjection.virtualHeight == 768U,
                 "fallback height used") &&
-         expect(window.creativeUiProjectionTheme == "journal",
+         expect(window.creativeUiProjection.theme == "journal",
                 "fallback theme copied");
 }
 
@@ -266,9 +266,9 @@ bool guardDimensionsAreUsedWhenDrawableAndFallbackZero() {
                                                       iggy3d::ProductUiThemeId::System});
 
   return expect(frame.receipt.ready, "guard frame ready") &&
-         expect(window.creativeUiProjectionVirtualWidth == 1280U,
+         expect(window.creativeUiProjection.virtualWidth == 1280U,
                 "guard width used") &&
-         expect(window.creativeUiProjectionVirtualHeight == 720U,
+         expect(window.creativeUiProjection.virtualHeight == 720U,
                 "guard height used");
 }
 
@@ -293,21 +293,21 @@ bool inactiveWindowRecordsInactiveProjection() {
          expect(frame.receipt.recorded, "inactive recorded") &&
          expect(frame.receipt.status == "product_creative_ui_frame_inactive",
                 "inactive status") &&
-         expect(!window.creativeUiProjectionRequested,
+         expect(!window.creativeUiProjection.requested,
                 "inactive requested false") &&
-         expect(!window.creativeUiProjectionReady, "inactive ready false") &&
-         expect(window.creativeUiProjectionStatus ==
+         expect(!window.creativeUiProjection.ready, "inactive ready false") &&
+         expect(window.creativeUiProjection.status ==
                     "product_creative_ui_frame_inactive",
                 "inactive window status") &&
-         expect(window.creativeUiProjectionPrimitiveCount == 0U,
+         expect(window.creativeUiProjection.primitiveCount == 0U,
                 "inactive primitive count zero") &&
-         expect(window.creativeUiProjectionTextCount == 0U,
+         expect(window.creativeUiProjection.textCount == 0U,
                 "inactive text count zero") &&
-         expect(window.creativeUiProjectionRectCount == 0U,
+         expect(window.creativeUiProjection.rectCount == 0U,
                 "inactive rect count zero") &&
-         expect(window.creativeUiProjectionRowCount == 0U,
+         expect(window.creativeUiProjection.rowCount == 0U,
                 "inactive row count zero") &&
-         expect(window.creativeUiProjectionHitRegionCount == 0U,
+         expect(window.creativeUiProjection.hitRegionCount == 0U,
                 "inactive hit count zero");
 }
 
@@ -332,25 +332,25 @@ bool creativeWindowWithFacadeRecordsReadyProjection() {
          expect(frame.receipt.projected, "ready projected") &&
          expect(frame.receipt.recorded, "ready recorded") &&
          expect(frame.receipt.ready, "ready frame ready") &&
-         expect(window.creativeUiProjectionReady, "window ready") &&
-         expect(window.creativeUiProjectionUsedFacade, "window used facade") &&
-         expect(!window.creativeUiProjectionUsedModel, "window model unused") &&
-         expect(window.creativeUiProjectionPanelCount > 0U,
+         expect(window.creativeUiProjection.ready, "window ready") &&
+         expect(window.creativeUiProjection.usedFacade, "window used facade") &&
+         expect(!window.creativeUiProjection.usedModel, "window model unused") &&
+         expect(window.creativeUiProjection.panelCount > 0U,
                 "panel count nonzero") &&
-         expect(window.creativeUiProjectionModelRowCount > 0U,
+         expect(window.creativeUiProjection.modelRowCount > 0U,
                 "model row count nonzero") &&
-         expect(window.creativeUiProjectionPrimitiveCount > 0U,
+         expect(window.creativeUiProjection.primitiveCount > 0U,
                 "primitive count nonzero") &&
-         expect(window.creativeUiProjectionTextCount > 0U,
+         expect(window.creativeUiProjection.textCount > 0U,
                 "text count nonzero") &&
-         expect(window.creativeUiProjectionRectCount > 0U,
+         expect(window.creativeUiProjection.rectCount > 0U,
                 "rect count nonzero") &&
-         expect(window.creativeUiProjectionRowCount > 0U,
+         expect(window.creativeUiProjection.rowCount > 0U,
                 "row count nonzero") &&
-         expect(window.creativeUiProjectionHitRegionCount > 0U,
+         expect(window.creativeUiProjection.hitRegionCount > 0U,
                 "hit count nonzero") &&
-         expect(window.creativeUiProjectionHitRegionCount ==
-                    window.creativeUiProjectionRowCount,
+         expect(window.creativeUiProjection.hitRegionCount ==
+                    window.creativeUiProjection.rowCount,
                 "hit count mirrors row count");
 }
 
@@ -375,10 +375,10 @@ bool creativeWindowWithNullFacadeRecordsFacadeMissing() {
          expect(frame.receipt.status ==
                     "product_creative_ui_frame_facade_missing",
                 "missing frame status") &&
-         expect(window.creativeUiProjectionStatus ==
+         expect(window.creativeUiProjection.status ==
                     "product_creative_ui_frame_facade_missing",
                 "missing window status") &&
-         expect(window.creativeUiProjectionPrimitiveCount == 0U,
+         expect(window.creativeUiProjection.primitiveCount == 0U,
                 "missing primitive count zero");
 }
 
@@ -474,12 +474,12 @@ bool noWindowLoopDoesNotCallBridge() {
   const iggy3d::RenderReceipt receipt = receiptFor(loopResult.window);
 
   return expect(!loopResult.window.requested, "no-window not requested") &&
-         expect(loopResult.window.creativeUiProjectionStatus ==
+         expect(loopResult.window.creativeUiProjection.status ==
                     "creative_ui_projection_not_requested",
                 "no-window bridge not called") &&
-         expect(!loopResult.window.creativeUiProjectionRequested,
+         expect(!loopResult.window.creativeUiProjection.requested,
                 "no-window creative requested false") &&
-         expect(loopResult.window.creativeUiProjectionPrimitiveCount == 0U,
+         expect(loopResult.window.creativeUiProjection.primitiveCount == 0U,
                 "no-window primitive count zero") &&
          expectReceiptField(receipt,
                             "creative_ui_projection_status",

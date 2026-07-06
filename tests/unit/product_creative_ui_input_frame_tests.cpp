@@ -876,10 +876,10 @@ bool recorderLeavesOtherReceiptFieldsUntouched() {
   window.productVulkanMenuUiReady = true;
   window.productVulkanMenuUiStatus = "vulkan_ui_before";
   window.productVulkanMenuUiSelectedAction = "resume";
-  window.creativeUiProjectionRequested = true;
-  window.creativeUiProjectionReady = true;
-  window.creativeUiProjectionStatus = "projection_before";
-  window.creativeUiProjectionHitRegionCount = 12;
+  window.creativeUiProjection.requested = true;
+  window.creativeUiProjection.ready = true;
+  window.creativeUiProjection.status = "projection_before";
+  window.creativeUiProjection.hitRegionCount = 12;
   window.creativeUiInputRequested = true;
   window.creativeUiInputConsumed = true;
   window.creativeUiInputStatus = "route_before";
@@ -898,13 +898,13 @@ bool recorderLeavesOtherReceiptFieldsUntouched() {
                 "vulkan ui status unchanged") &&
          expect(window.productVulkanMenuUiSelectedAction == "resume",
                 "vulkan selected action unchanged") &&
-         expect(window.creativeUiProjectionRequested,
+         expect(window.creativeUiProjection.requested,
                 "projection requested unchanged") &&
-         expect(window.creativeUiProjectionReady,
+         expect(window.creativeUiProjection.ready,
                 "projection ready unchanged") &&
-         expect(window.creativeUiProjectionStatus == "projection_before",
+         expect(window.creativeUiProjection.status == "projection_before",
                 "projection status unchanged") &&
-         expect(window.creativeUiProjectionHitRegionCount == 12U,
+         expect(window.creativeUiProjection.hitRegionCount == 12U,
                 "projection hit count unchanged") &&
          expect(window.creativeUiInputRequested,
                 "route requested unchanged") &&

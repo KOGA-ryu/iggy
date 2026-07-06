@@ -34,6 +34,9 @@
 #include "app/iggy3d/gameplay/OutcomeState.hpp"
 #include "app/iggy3d/gameplay/PhysicsMovementPlannerState.hpp"
 #include "app/iggy3d/menu/ProductTransitionState.hpp"
+#include "app/iggy3d/ProductCreativeUiProjectionState.hpp"
+#include "app/iggy3d/gameplay/TargetState.hpp"
+#include "app/iggy3d/gameplay/ResetState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -470,13 +473,7 @@ struct ProductAppWindowState {
   float gameplayJumpStartY = 0.0F;
   float gameplayJumpFinalY = 0.0F;
   float gameplayJumpHeightMeters = 0.0F;
-  bool gameplayResetTriggered = false;
-  std::string gameplayResetStatus = "not_requested";
-  std::string gameplayResetReasonCode = "not_requested";
-  std::string gameplayResetSpawnAnchorId = "none";
-  std::string gameplayResetSourceAnchorId = "none";
-  float gameplayResetStartY = 0.0F;
-  float gameplayResetFinalY = 0.0F;
+  ProductGameplayResetState gameplayReset;
   ProductGameplayTraversalState gameplayTraversal;
   ProductGameplayDashState gameplayDash;
   bool gameplayCollisionSurfacesUsed = false;
@@ -484,13 +481,7 @@ struct ProductAppWindowState {
   std::string gameplayTickReasonCode = "not_requested";
   ProductPhysicsMovementPlannerState physicsMovementPlanner;
   bool targetDiscovered = false;
-  std::string gameplayTargetStatus = "not_requested";
-  std::string gameplayTargetAction = "none";
-  std::uint64_t gameplayTargetEntityId = 0;
-  std::string gameplayTargetStableName = "none";
-  std::string gameplayTargetKind = "none";
-  float gameplayTargetDistanceMeters = 0.0F;
-  bool gameplayTargetSupportsCommand = false;
+  ProductGameplayTargetState gameplayTarget;
   ProductGameplayOutcomeState gameplayOutcome;
   std::string sessionOutcome = "None";
   bool gameplayTapeRequested = false;
@@ -577,25 +568,7 @@ struct ProductAppWindowState {
   std::uint64_t productVulkanMenuUiRectCount = 0;
   std::uint64_t productVulkanMenuUiRowCount = 0;
   std::string productVulkanMenuUiSelectedAction = "none";
-  bool creativeUiProjectionRequested = false;
-  bool creativeUiProjectionReady = false;
-  bool creativeUiProjectionPartial = false;
-  std::string creativeUiProjectionStatus = "creative_ui_projection_not_requested";
-  std::string creativeUiProjectionReasonCode =
-      "creative_ui_projection_not_requested";
-  bool creativeUiProjectionUsedModel = false;
-  bool creativeUiProjectionUsedFacade = false;
-  std::uint32_t creativeUiProjectionVirtualWidth = 0;
-  std::uint32_t creativeUiProjectionVirtualHeight = 0;
-  std::string creativeUiProjectionTheme = "none";
-  std::uint64_t creativeUiProjectionPanelCount = 0;
-  std::uint64_t creativeUiProjectionModelRowCount = 0;
-  std::uint64_t creativeUiProjectionPrimitiveCount = 0;
-  std::uint64_t creativeUiProjectionTextCount = 0;
-  std::uint64_t creativeUiProjectionRectCount = 0;
-  std::uint64_t creativeUiProjectionRowCount = 0;
-  std::uint64_t creativeUiProjectionDisabledRowCount = 0;
-  std::uint64_t creativeUiProjectionHitRegionCount = 0;
+  ProductCreativeUiProjectionState creativeUiProjection;
   bool creativeUiInputRequested = false;
   bool creativeUiInputClickPresent = false;
   bool creativeUiInputDrawListAvailable = false;

@@ -646,8 +646,8 @@ bool recorderLeavesOtherFieldsUntouched() {
   window.status = "window_before";
   window.productVulkanMenuUiReady = true;
   window.productVulkanMenuUiStatus = "vulkan_before";
-  window.creativeUiProjectionRequested = true;
-  window.creativeUiProjectionStatus = "projection_before";
+  window.creativeUiProjection.requested = true;
+  window.creativeUiProjection.status = "projection_before";
   window.creativeUiInputRequested = true;
   window.creativeUiInputStatus = "input_before";
   window.creativeUiInputDownstreamClickRequested = true;
@@ -663,9 +663,9 @@ bool recorderLeavesOtherFieldsUntouched() {
          expect(window.productVulkanMenuUiReady, "vulkan ready kept") &&
          expect(window.productVulkanMenuUiStatus == "vulkan_before",
                 "vulkan status kept") &&
-         expect(window.creativeUiProjectionRequested,
+         expect(window.creativeUiProjection.requested,
                 "projection requested kept") &&
-         expect(window.creativeUiProjectionStatus == "projection_before",
+         expect(window.creativeUiProjection.status == "projection_before",
                 "projection status kept") &&
          expect(window.creativeUiInputRequested, "input requested kept") &&
          expect(window.creativeUiInputStatus == "input_before",

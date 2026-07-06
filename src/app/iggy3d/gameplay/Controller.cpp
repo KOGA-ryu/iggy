@@ -569,16 +569,16 @@ void recordProductGameplayReset(ProductAppWindowState& window,
                                 const RoomAnchorAsset* source,
                                 float startY,
                                 float finalY) {
-  window.gameplayResetTriggered = true;
-  window.gameplayResetStatus = "reset";
-  window.gameplayResetReasonCode = std::string(reason);
+  window.gameplayReset.triggered = true;
+  window.gameplayReset.status = "reset";
+  window.gameplayReset.reasonCode = std::string(reason);
   // branch-gate: BG-1185
-  window.gameplayResetSpawnAnchorId = spawn.id.empty() ? "spawn" : spawn.id;
+  window.gameplayReset.spawnAnchorId = spawn.id.empty() ? "spawn" : spawn.id;
   // branch-gate: BG-1186
-  window.gameplayResetSourceAnchorId =
+  window.gameplayReset.sourceAnchorId =
       source == nullptr || source->id.empty() ? "none" : source->id;
-  window.gameplayResetStartY = startY;
-  window.gameplayResetFinalY = finalY;
+  window.gameplayReset.startY = startY;
+  window.gameplayReset.finalY = finalY;
 }
 
 bool resetProductPlayerToSpawn(Session& session,
@@ -1822,13 +1822,13 @@ bool productMovementDebugChangedPosition(const ProductAppWindowState& window) {
 
 void clearProductTargetProof(ProductAppWindowState& window) {
   window.targetDiscovered = false;
-  window.gameplayTargetStatus = "not_requested";
-  window.gameplayTargetAction = "none";
-  window.gameplayTargetEntityId = 0;
-  window.gameplayTargetStableName = "none";
-  window.gameplayTargetKind = "none";
-  window.gameplayTargetDistanceMeters = 0.0F;
-  window.gameplayTargetSupportsCommand = false;
+  window.gameplayTarget.status = "not_requested";
+  window.gameplayTarget.action = "none";
+  window.gameplayTarget.entityId = 0;
+  window.gameplayTarget.stableName = "none";
+  window.gameplayTarget.kind = "none";
+  window.gameplayTarget.distanceMeters = 0.0F;
+  window.gameplayTarget.supportsCommand = false;
 }
 
 void clearProductOutcomeProof(ProductAppWindowState& window) {
@@ -1923,29 +1923,29 @@ void recordProductTargetProof(const Session& session,
                               CommandKind kind,
                               const TargetQueryResult& target) {
   window.targetDiscovered = target.status == TargetQueryStatus::Found;
-  window.gameplayTargetStatus = targetQueryStatusName(target.status);
-  window.gameplayTargetAction = commandKindName(kind);
-  window.gameplayTargetEntityId = toUint64(target.target);
-  window.gameplayTargetStableName = "none";
-  window.gameplayTargetKind = "none";
-  window.gameplayTargetDistanceMeters = target.distanceMeters;
-  window.gameplayTargetSupportsCommand = target.targetSupportsCommand;
+  window.gameplayTarget.status = targetQueryStatusName(target.status);
+  window.gameplayTarget.action = commandKindName(kind);
+  window.gameplayTarget.entityId = toUint64(target.target);
+  window.gameplayTarget.stableName = "none";
+  window.gameplayTarget.kind = "none";
+  window.gameplayTarget.distanceMeters = target.distanceMeters;
+  window.gameplayTarget.supportsCommand = target.targetSupportsCommand;
 
   if (!window.targetDiscovered) {
-    window.gameplayTargetEntityId = 0;
-    window.gameplayTargetDistanceMeters = 0.0F;
-    window.gameplayTargetSupportsCommand = false;
+    window.gameplayTarget.entityId = 0;
+    window.gameplayTarget.distanceMeters = 0.0F;
+    window.gameplayTarget.supportsCommand = false;
     return;
   }
 
   const EntityState* entity = session.state().world.findById(target.target);
   if (entity == nullptr) {
-    window.gameplayTargetStatus = "found_missing_entity";
+    window.gameplayTarget.status = "found_missing_entity";
     return;
   }
-  window.gameplayTargetStableName =
+  window.gameplayTarget.stableName =
       entity->stableName.empty() ? "none" : entity->stableName;
-  window.gameplayTargetKind = entityKindName(entity->kind);
+  window.gameplayTarget.kind = entityKindName(entity->kind);
 }
 
 void recordProductMovementDebug(const Session& session, ProductAppWindowState& window) {

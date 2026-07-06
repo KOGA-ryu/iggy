@@ -1876,14 +1876,14 @@ bool productResetZoneReturnsPlayerToSpawn() {
                                       activeSurfaces(window));
 
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
-  return expect(window.gameplayResetTriggered, "reset zone triggered") &&
-         expect(window.gameplayResetStatus == "reset",
+  return expect(window.gameplayReset.triggered, "reset zone triggered") &&
+         expect(window.gameplayReset.status == "reset",
                 "reset zone status") &&
-         expect(window.gameplayResetReasonCode == "gameplay_reset_zone",
+         expect(window.gameplayReset.reasonCode == "gameplay_reset_zone",
                 "reset zone reason") &&
-         expect(window.gameplayResetSpawnAnchorId == "marker_player_spawn_r0_c0",
+         expect(window.gameplayReset.spawnAnchorId == "marker_player_spawn_r0_c0",
                 "reset zone spawn anchor") &&
-         expect(window.gameplayResetSourceAnchorId == "marker_reset_zone_r0_c1",
+         expect(window.gameplayReset.sourceAnchorId == "marker_reset_zone_r0_c1",
                 "reset zone source anchor") &&
          expect(!window.gameplayJumpActive, "reset zone clears jump") &&
          expect(nearlyEqual(final.x, 0.0F), "reset zone final x") &&
@@ -1907,17 +1907,17 @@ bool productFallOutBelowLowestFloorReturnsPlayerToSpawn() {
                                       activeSurfaces(window));
 
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
-  return expect(window.gameplayResetTriggered, "fall reset triggered") &&
-         expect(window.gameplayResetStatus == "reset", "fall reset status") &&
-         expect(window.gameplayResetReasonCode == "gameplay_reset_fall_out",
+  return expect(window.gameplayReset.triggered, "fall reset triggered") &&
+         expect(window.gameplayReset.status == "reset", "fall reset status") &&
+         expect(window.gameplayReset.reasonCode == "gameplay_reset_fall_out",
                 "fall reset reason") &&
-         expect(window.gameplayResetSpawnAnchorId == "marker_player_spawn_r0_c0",
+         expect(window.gameplayReset.spawnAnchorId == "marker_player_spawn_r0_c0",
                 "fall reset spawn anchor") &&
-         expect(window.gameplayResetSourceAnchorId == "none",
+         expect(window.gameplayReset.sourceAnchorId == "none",
                 "fall reset source none") &&
-         expect(nearlyEqual(window.gameplayResetStartY, -7.0F),
+         expect(nearlyEqual(window.gameplayReset.startY, -7.0F),
                 "fall reset start y") &&
-         expect(nearlyEqual(window.gameplayResetFinalY, 0.05F),
+         expect(nearlyEqual(window.gameplayReset.finalY, 0.05F),
                 "fall reset final proof y") &&
          expect(!window.gameplayJumpActive, "fall reset clears jump") &&
          expect(nearlyEqual(final.x, 0.0F), "fall reset final x") &&
