@@ -16,10 +16,10 @@ iggy3d::Vec3 snapGroundToCellCenter(double worldX,
                                     double worldZ,
                                     double cellSize) {
   const float cell = static_cast<float>(cellSize);
-  const iggy3d::Vec3 snapped = iggy3d::snapVec3ToGrid(
+  const iggy3d::Vec3 snapped = iggy3d::snapVec3ToCellCenter(
       {static_cast<float>(worldX), 0.0F, static_cast<float>(worldZ)},
       {cell, cell, cell},
-      {cell * 0.5F, cell * 0.5F, cell * 0.5F},
+      {0.0F, 0.0F, 0.0F},
       0x5u);
   return {snapped.x, 0.0F, snapped.z};
 }

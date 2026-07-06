@@ -29,10 +29,10 @@ bool sameVec3(Vec3 lhs, Vec3 rhs) {
 
 Vec3 expectedCellCenter(double worldX, double worldZ, double cellSize) {
   const float cell = static_cast<float>(cellSize);
-  Vec3 expected = iggy3d::snapVec3ToGrid(
+  Vec3 expected = iggy3d::snapVec3ToCellCenter(
       {static_cast<float>(worldX), 0.0F, static_cast<float>(worldZ)},
       {cell, cell, cell},
-      {cell * 0.5F, cell * 0.5F, cell * 0.5F},
+      {0.0F, 0.0F, 0.0F},
       0x5u);
   expected.y = 0.0F;
   return expected;
@@ -45,6 +45,15 @@ bool groundSnapUsesCoreCellCenterMath() {
          expect(near(snapped.x, 1.5F), "1m cell x center") &&
          expect(near(snapped.y, 0.0F), "1m cell y remains ground") &&
          expect(near(snapped.z, -1.5F), "1m cell z center");
+}
+
+bool groundSnapUsesContainingCellAtOriginBoundary() {
+  const Vec3 snapped = snapGroundToCellCenter(0.0, 0.0, 1.0);
+  return expect(sameVec3(snapped, expectedCellCenter(0.0, 0.0, 1.0)),
+                "origin boundary snap matches containing-cell core") &&
+         expect(near(snapped.x, 0.5F), "origin boundary x uses upper cell") &&
+         expect(near(snapped.y, 0.0F), "origin boundary y remains ground") &&
+         expect(near(snapped.z, 0.5F), "origin boundary z uses upper cell");
 }
 
 bool groundSnapSupportsLargerCellsAndLeavesYAtZero() {
@@ -60,6 +69,7 @@ bool groundSnapSupportsLargerCellsAndLeavesYAtZero() {
 
 int main() {
   const bool ok = groundSnapUsesCoreCellCenterMath() &&
+                  groundSnapUsesContainingCellAtOriginBoundary() &&
                   groundSnapSupportsLargerCellsAndLeavesYAtZero();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
