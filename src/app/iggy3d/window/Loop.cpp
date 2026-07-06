@@ -166,10 +166,10 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
       ProductWindowRendererRequest{request.options.renderer, &createInfo,
                                    &sdlWindow, &window});
   if (useVulkanRenderer) {
-    window.startupVulkanRendererInitMeasured = true;
-    window.startupVulkanRendererInitMicroseconds =
+    window.startup.vulkanRendererInitMeasured = true;
+    window.startup.vulkanRendererInitMicroseconds =
         elapsedMicroseconds(rendererStarted);
-    window.startupVulkanRendererInitStatus =
+    window.startup.vulkanRendererInitStatus =
         renderer.ready ? "startup_vulkan_renderer_init_ready"
                        : window.productVulkanReasonCode;
   }
@@ -216,9 +216,9 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
                                             eventState.windowHeight});
     if (creativeUiFrame.receipt.active) {
       recordFirstStartupMeasurement(
-          window.startupCreativeUiFirstFrameMeasured,
-          window.startupCreativeUiFirstFrameMicroseconds,
-          window.startupCreativeUiFirstFrameStatus,
+          window.startup.creativeUiFirstFrameMeasured,
+          window.startup.creativeUiFirstFrameMicroseconds,
+          window.startup.creativeUiFirstFrameStatus,
           creativeUiStarted,
           creativeUiFrame.receipt.status);
     }
@@ -263,9 +263,9 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
             creativeWireframeProjectionRequest()});
     if (wireframeFrame.receipt.active) {
       recordFirstStartupMeasurement(
-          window.startupCreativeWireframeFirstFrameMeasured,
-          window.startupCreativeWireframeFirstFrameMicroseconds,
-          window.startupCreativeWireframeFirstFrameStatus,
+          window.startup.creativeWireframeFirstFrameMeasured,
+          window.startup.creativeWireframeFirstFrameMicroseconds,
+          window.startup.creativeWireframeFirstFrameStatus,
           wireframeStarted,
           wireframeFrame.receipt.status);
     }
