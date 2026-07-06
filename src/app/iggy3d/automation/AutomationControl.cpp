@@ -23,29 +23,29 @@ void applyProductAutomationControl(ProductAutomationControlContext& context) {
     // branch-gate: BG-1014
     if (!context.applyCommand(command)) {
       // branch-gate: BG-1014
-      if (context.window.automationControlLastKey == "none") {
-        context.window.automationControlLastKey = command.key;
+      if (context.window.automationControl.lastKey == "none") {
+        context.window.automationControl.lastKey = command.key;
       }
       // branch-gate: BG-1014
-      if (context.window.automationControlLastAction == "none") {
+      if (context.window.automationControl.lastAction == "none") {
         // branch-gate: BG-1014
-        context.window.automationControlLastAction =
+        context.window.automationControl.lastAction =
             command.value.empty() ? "none" : command.value;
       }
-      context.window.automationControlLastOwner = context.currentOwner();
-      context.window.automationControlLastResult = "failed";
+      context.window.automationControl.lastOwner = context.currentOwner();
+      context.window.automationControl.lastResult = "failed";
       // branch-gate: BG-1014
-      if (automationFailurePreservesLoaded(context.window.automationControlStatus)) {
-        context.window.automationControlStatus = "command_failed";
+      if (automationFailurePreservesLoaded(context.window.automationControl.status)) {
+        context.window.automationControl.status = "command_failed";
       } else {
-        context.window.automationControlLoaded = false;
+        context.window.automationControl.loaded = false;
       }
       return;
     }
   }
   // branch-gate: BG-1014
-  if (context.window.automationControlStatus == "loaded" && commands.empty()) {
-    context.window.automationControlLastResult = "none";
+  if (context.window.automationControl.status == "loaded" && commands.empty()) {
+    context.window.automationControl.lastResult = "none";
   }
   context.window.selectedSettingsTab = context.settingsTab;
   syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);

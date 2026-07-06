@@ -214,7 +214,7 @@ bool rejectProductRoomEditorNotReady(ProductAppWindowState& window,
   window.roomEditorLastOperation = std::string(operation);
   window.roomEditorLastOperationAccepted = false;
   window.roomEditorLastPrimitiveId = "none";
-  window.automationControlStatus = "command_failed";
+  window.automationControl.status = "command_failed";
   return false;
 }
 
@@ -529,7 +529,7 @@ ProductAutomationExecutionResult failRoomEditorPreviewAutomation(
     const ProductAutomationCommandDispatchSpec& automationSpec,
     ProductAutomationRoomEditingContext& context,
     std::string_view reasonCode) {
-  context.window.automationControlStatus = "command_failed";
+  context.window.automationControl.status = "command_failed";
   markProductRoomEditorPreviewCleared(context.window, reasonCode);
   markAutomationApplied(context.window, command, automationSpec.canonicalKey,
                         context.currentOwner(), "failed");
@@ -620,7 +620,7 @@ ProductAutomationExecutionResult applyRoomEditorCursorResult(
                                       result);
   // branch-gate: BG-1006
   if (!result.ok) {
-    context.window.automationControlStatus = "command_failed";
+    context.window.automationControl.status = "command_failed";
   }
   // branch-gate: BG-1006
   markAutomationApplied(context.window, command, automationSpec.canonicalKey,
@@ -642,7 +642,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditStart) {
     // branch-gate: BG-1006
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1006
@@ -668,7 +668,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditStartActive) {
     // branch-gate: BG-1006
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1006
@@ -694,7 +694,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
         splitProductAutomationCsv(value);
     // branch-gate: BG-1006
     if (editorInputs.empty()) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
 
@@ -706,7 +706,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       float actionValue = 1.0F;
       // branch-gate: BG-1006
       if (!parseProductRoomEditorInputAction(token, editorAction, actionValue)) {
-        context.window.automationControlStatus = "invalid_value";
+        context.window.automationControl.status = "invalid_value";
         return failRoomEditingAutomation();
       }
       lastAction = editorAction;
@@ -729,7 +729,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
                                                   context.window);
       // branch-gate: BG-1006
       if (!routed.accepted || routed.owner != MenuOwner::Editor) {
-        context.window.automationControlStatus = "owner_unavailable";
+        context.window.automationControl.status = "owner_unavailable";
         markAutomationApplied(context.window, command, inputActionName(editorAction),
                               routed.owner, "failed");
         return failRoomEditingAutomation();
@@ -741,7 +741,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
             applyProductRoomEditorPreviewInputAction(context.window, editorAction);
         // branch-gate: BG-1054
         if (!previewResult.ok) {
-          context.window.automationControlStatus = "command_failed";
+          context.window.automationControl.status = "command_failed";
           markAutomationApplied(context.window, command, inputActionName(editorAction),
                                 routed.owner, "failed");
           return failRoomEditingAutomation();
@@ -759,7 +759,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       recordProductRoomEditorActionResult(context.window, result);
       // branch-gate: BG-1006
       if (!result.ok) {
-        context.window.automationControlStatus = "command_failed";
+        context.window.automationControl.status = "command_failed";
         markAutomationApplied(context.window, command, inputActionName(editorAction),
                               routed.owner, "failed");
         return failRoomEditingAutomation();
@@ -769,7 +769,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
 
     // branch-gate: BG-1006
     if (!anyApplied) {
-      context.window.automationControlStatus = "command_failed";
+      context.window.automationControl.status = "command_failed";
       markAutomationApplied(context.window, command, "editor.input", lastOwner,
                             "failed");
       return failRoomEditingAutomation();
@@ -784,7 +784,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     ProductRoomEditorDirection direction = ProductRoomEditorDirection::Up;
     // branch-gate: BG-1006
     if (!parseProductRoomEditorDirection(value, direction)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1006
@@ -802,7 +802,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     ProductRoomEditorTool tool = ProductRoomEditorTool::Floor;
     // branch-gate: BG-1006
     if (!parseProductRoomEditorTool(value, tool)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1006
@@ -818,7 +818,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorCycleTool) {
     // branch-gate: BG-1006
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1006
@@ -842,7 +842,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     ProductRoomEditorDirection direction = ProductRoomEditorDirection::Up;
     // branch-gate: BG-1006
     if (!parseProductRoomEditorDirection(value, direction)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1006
@@ -860,7 +860,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     const RoomEditorMousePickValue pick = parseRoomEditorMousePickValue(value);
     // branch-gate: BG-1044
     if (!pick.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1044
@@ -880,7 +880,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
                                         automationSpec.canonicalKey);
     // branch-gate: BG-1044
     if (!result.ok) {
-      context.window.automationControlStatus = "command_failed";
+      context.window.automationControl.status = "command_failed";
     }
     // branch-gate: BG-1044
     markAutomationApplied(context.window, command, automationSpec.canonicalKey,
@@ -893,7 +893,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorPreview) {
     // branch-gate: BG-1049
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1049
@@ -913,7 +913,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     recordProductRoomEditorPreviewResult(context.window, result);
     // branch-gate: BG-1049
     if (!result.ok) {
-      context.window.automationControlStatus = "command_failed";
+      context.window.automationControl.status = "command_failed";
     }
     // branch-gate: BG-1049
     markAutomationApplied(context.window, command, automationSpec.canonicalKey,
@@ -927,7 +927,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       ProductAutomationCommandId::RoomEditorPreviewConfirm) {
     // branch-gate: BG-1051
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1051
@@ -959,7 +959,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       ProductAutomationCommandId::RoomEditorPreviewCancel) {
     // branch-gate: BG-1051
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1051
@@ -984,7 +984,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditorPlace) {
     // branch-gate: BG-1006
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1006
@@ -1006,7 +1006,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
                                         automationSpec.canonicalKey);
     // branch-gate: BG-1006
     if (!result.ok) {
-      context.window.automationControlStatus = "command_failed";
+      context.window.automationControl.status = "command_failed";
     }
     // branch-gate: BG-1006
     markAutomationApplied(context.window, command, automationSpec.canonicalKey,
@@ -1020,7 +1020,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     RoomEditCommand edit;
     // branch-gate: BG-1006
     if (!parseProductAutomationFloorCommand(value, edit)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     ProductRoomEditingOperationResult result = applyProductRoomEditAutomation(
@@ -1033,7 +1033,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     RoomEditCommand edit;
     // branch-gate: BG-1006
     if (!parseProductAutomationWallCommand(value, edit)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     ProductRoomEditingOperationResult result = applyProductRoomEditAutomation(
@@ -1045,7 +1045,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditDeleteFloor) {
     // branch-gate: BG-1006
     if (value.empty()) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     const RoomEditCommand edit = deleteFloorCommand(std::string(value));
@@ -1058,7 +1058,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditDeleteWall) {
     // branch-gate: BG-1006
     if (value.empty()) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     const RoomEditCommand edit = deleteWallCommand(std::string(value));
@@ -1071,7 +1071,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditUndo) {
     // branch-gate: BG-1006
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1006
@@ -1090,7 +1090,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
   if (automationSpec.commandId == ProductAutomationCommandId::RoomEditRedo) {
     // branch-gate: BG-1006
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1006

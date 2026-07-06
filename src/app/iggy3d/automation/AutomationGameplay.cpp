@@ -45,7 +45,7 @@ bool gameplayAutomationReady(ProductAutomationGameplayContext& context) {
       context.activeSession != nullptr) {
     return true;
   }
-  context.window.automationControlStatus = "owner_unavailable";
+  context.window.automationControl.status = "owner_unavailable";
   return false;
 }
 
@@ -208,7 +208,7 @@ bool applyControllerInputSequence(ProductAutomationGameplayContext& context,
   const std::vector<std::string_view> tokens = splitProductAutomationCsv(value);
   // branch-gate: BG-1062
   if (tokens.empty()) {
-    context.window.automationControlStatus = "invalid_value";
+    context.window.automationControl.status = "invalid_value";
     return false;
   }
 
@@ -219,7 +219,7 @@ bool applyControllerInputSequence(ProductAutomationGameplayContext& context,
     GamepadControllerActionSample sample;
     // branch-gate: BG-1062
     if (!parseControllerInputToken(token, sample)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return false;
     }
     ProductControllerSampleInputResult result =
@@ -251,7 +251,7 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
     bool boolValue = false;
     // branch-gate: BG-1010
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failGameplayAutomation();
     }
     context.window.physicsMovementPlanner.enabled = boolValue;
@@ -271,7 +271,7 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
     Vec3 position;
     // branch-gate: BG-1010
     if (!parseGameplayPosition(value, position)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failGameplayAutomation();
     }
     const bool positioned =
@@ -310,7 +310,7 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
         resolveProductGameplayAxisAutomation(value);
     // branch-gate: BG-1010
     if (!axisResult.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failGameplayAutomation();
     }
     const bool moved = applyAutomationGameplayAxis(context, axis->action,
@@ -338,7 +338,7 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
     bool boolValue = false;
     // branch-gate: BG-1010
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failGameplayAutomation();
     }
     // branch-gate: BG-1010
@@ -360,7 +360,7 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
     bool boolValue = false;
     // branch-gate: BG-1010
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return failGameplayAutomation();
     }
     // branch-gate: BG-1010

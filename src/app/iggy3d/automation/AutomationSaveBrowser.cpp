@@ -31,7 +31,7 @@ bool requireLoadSaveChildScreen(ProductAutomationSaveBrowserContext& context,
   if (context.frontend.childScreen == FrontendScreen::LoadSave) {
     return true;
   }
-  context.window.automationControlStatus = "owner_unavailable";
+  context.window.automationControl.status = "owner_unavailable";
   markAutomationApplied(context.window, command, operation,
                         context.currentOwner(), "failed");
   return false;
@@ -44,16 +44,16 @@ bool resolveSaveBrowserBool(ProductAutomationSaveBrowserContext& context,
   if (resolveProductSaveBrowserBoolAutomation(value, boolValue)) {
     return true;
   }
-  context.window.automationControlStatus = "invalid_value";
+  context.window.automationControl.status = "invalid_value";
   return false;
 }
 
 void recordSaveSelectionParseStatus(ProductAutomationSaveBrowserContext& context,
                                     bool valid) {
   // branch-gate: BG-1008
-  context.window.automationControlStatus =
+  context.window.automationControl.status =
       std::array<std::string_view, 2>{
-          context.window.automationControlStatus,
+          context.window.automationControl.status,
           std::string_view{"invalid_value"}}[!valid];
 }
 
@@ -146,7 +146,7 @@ ProductAutomationExecutionResult applyProductSaveBrowserAutomationCommand(
     }
     // branch-gate: BG-1008
     if (!context.window.deletedSaveBrowserOpen) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, automationSpec.canonicalKey,
                             context.currentOwner(), "failed");
       return failSaveBrowserAutomation();
@@ -192,7 +192,7 @@ ProductAutomationExecutionResult applyProductSaveBrowserAutomationCommand(
     }
     // branch-gate: BG-1008
     if (!context.window.deletedSaveBrowserOpen) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, automationSpec.canonicalKey,
                             context.currentOwner(), "failed");
       return failSaveBrowserAutomation();

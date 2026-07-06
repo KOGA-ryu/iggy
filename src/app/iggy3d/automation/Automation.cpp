@@ -350,19 +350,19 @@ bool hasProductAutomationKey(const std::vector<ProductAutomationCommand>& comman
 bool readProductAutomationCommands(const std::filesystem::path& path,
                                    ProductAppWindowState& window,
                                    std::vector<ProductAutomationCommand>& commands) {
-  window.automationControlRequested = !path.empty();
+  window.automationControl.requested = !path.empty();
   // branch-gate: BG-1001
-  window.automationControlPath = path.empty() ? "" : path.generic_string();
+  window.automationControl.path = path.empty() ? "" : path.generic_string();
   // branch-gate: BG-1001
   if (path.empty()) {
     return false;
   }
-  window.automationControlScope = "frontend_menu";
+  window.automationControl.scope = "frontend_menu";
   std::ifstream input(path);
   // branch-gate: BG-1001
   if (!input) {
-    window.automationControlStatus = "read_failed";
-    window.automationControlLastResult = "failed";
+    window.automationControl.status = "read_failed";
+    window.automationControl.lastResult = "failed";
     return false;
   }
 
@@ -372,27 +372,27 @@ bool readProductAutomationCommands(const std::filesystem::path& path,
     if (line.empty()) {
       continue;
     }
-    ++window.automationControlLineCount;
+    ++window.automationControl.lineCount;
     const std::size_t equals = line.find('=');
     // branch-gate: BG-1001
     if (equals == std::string::npos || equals == 0U) {
-      window.automationControlStatus = "parse_error";
-      window.automationControlLastKey = "none";
-      window.automationControlLastResult = "failed";
+      window.automationControl.status = "parse_error";
+      window.automationControl.lastKey = "none";
+      window.automationControl.lastResult = "failed";
       return false;
     }
     ProductAutomationCommand command{line.substr(0, equals), line.substr(equals + 1U)};
     // branch-gate: BG-1001
     if (hasProductAutomationKey(commands, command.key)) {
-      window.automationControlStatus = "duplicate_key";
-      window.automationControlLastKey = command.key;
-      window.automationControlLastResult = "failed";
+      window.automationControl.status = "duplicate_key";
+      window.automationControl.lastKey = command.key;
+      window.automationControl.lastResult = "failed";
       return false;
     }
     commands.push_back(std::move(command));
   }
-  window.automationControlLoaded = true;
-  window.automationControlStatus = "loaded";
+  window.automationControl.loaded = true;
+  window.automationControl.status = "loaded";
   return true;
 }
 
@@ -1306,14 +1306,14 @@ void markAutomationApplied(ProductAppWindowState& window,
                            std::string_view action,
                            MenuOwner owner,
                            std::string_view result) {
-  window.automationControlLastKey = command.key;
-  window.automationControlLastAction = std::string(action);
-  window.automationControlLastOwner = owner;
-  window.automationControlLastResult = std::string(result);
+  window.automationControl.lastKey = command.key;
+  window.automationControl.lastAction = std::string(action);
+  window.automationControl.lastOwner = owner;
+  window.automationControl.lastResult = std::string(result);
   // branch-gate: BG-1002
   if (result == "applied") {
-    ++window.automationControlAppliedCount;
-    window.automationControlStatus = "applied";
+    ++window.automationControl.appliedCount;
+    window.automationControl.status = "applied";
   }
 }
 
@@ -1329,13 +1329,13 @@ ProductAutomationExecutionResult applyProductCommonAutomationCommand(
     MenuOwner expectedOwner = MenuOwner::None;
     // branch-gate: BG-1002
     if (!parseProductAutomationOwner(value, expectedOwner)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     const MenuOwner currentOwner = context.currentOwner();
     // branch-gate: BG-1002
     if (currentOwner != expectedOwner) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, menuOwnerName(expectedOwner),
                             currentOwner, "failed");
       return {true, false};
@@ -1351,13 +1351,13 @@ ProductAutomationExecutionResult applyProductCommonAutomationCommand(
         resolveProductMenuInputAutomation(value);
     // branch-gate: BG-1002
     if (!menuInput.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     const bool routed = context.routeInput(menuInput.inputAction);
     // branch-gate: BG-1002
     markAutomationApplied(context.window, command, inputActionName(menuInput.inputAction),
-                          context.window.automationControlLastOwner,
+                          context.window.automationControl.lastOwner,
                           routed ? "applied" : "ignored");
     return {true, routed};
   }
@@ -1368,7 +1368,7 @@ ProductAutomationExecutionResult applyProductCommonAutomationCommand(
         resolveProductMenuShortcutAutomation(automationSpec, value);
     // branch-gate: BG-1002
     if (!shortcut.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     // branch-gate: BG-1002
@@ -1380,7 +1380,7 @@ ProductAutomationExecutionResult applyProductCommonAutomationCommand(
     const bool routed = context.routeInput(shortcut.inputAction);
     // branch-gate: BG-1002
     markAutomationApplied(context.window, command, inputActionName(shortcut.inputAction),
-                          context.window.automationControlLastOwner,
+                          context.window.automationControl.lastOwner,
                           routed ? "applied" : "ignored");
     return {true, routed};
   }
@@ -1391,7 +1391,7 @@ ProductAutomationExecutionResult applyProductCommonAutomationCommand(
         resolveProductFrontendSelectAutomation(value);
     // branch-gate: BG-1002
     if (!select.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     context.frontend.selectedAction = select.action;
@@ -1406,7 +1406,7 @@ ProductAutomationExecutionResult applyProductCommonAutomationCommand(
         resolveProductSettingsTabAutomation(value);
     // branch-gate: BG-1002
     if (!settingsResult.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     context.settingsTab = settingsResult.settingsTab;
@@ -1423,7 +1423,7 @@ ProductAutomationExecutionResult applyProductCommonAutomationCommand(
         resolveProductDevToolsCategoryAutomation(value);
     // branch-gate: BG-1002
     if (!devToolsResult.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     const FrontendDevToolsCategory category = devToolsResult.category;
@@ -1448,7 +1448,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     bool boolValue = false;
     // branch-gate: BG-1004
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     // branch-gate: BG-1004
@@ -1459,7 +1459,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     }
     // branch-gate: BG-1004
     if (context.frontend.childScreen != FrontendScreen::NewWorld) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, "world.create",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1470,7 +1470,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     context.window.worldSetup.dungeonDraftEditMode = editMode;
     markAutomationApplied(context.window, command,
                           inputActionName(InputAction::MenuConfirm),
-                          context.window.automationControlLastOwner,
+                          context.window.automationControl.lastOwner,
                           // branch-gate: BG-1004
                           routed ? "applied" : "failed");
     return {true, routed};
@@ -1480,7 +1480,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
   if (canonicalKey == "world.title") {
     // branch-gate: BG-1004
     if (context.frontend.childScreen != FrontendScreen::NewWorld) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, "world.title",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1497,7 +1497,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
   if (canonicalKey == "world.dungeon_id") {
     // branch-gate: BG-1004
     if (context.frontend.childScreen != FrontendScreen::NewWorld) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, "world.dungeon_id",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1506,7 +1506,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
         resolveProductNonEmptyStringAutomation(value);
     const std::size_t index = productBuiltinDungeonIndexForRoomId(dungeonId.value);
     const auto fail = [&]() -> ProductAutomationExecutionResult {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       markAutomationApplied(context.window, command, "world.dungeon_id",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1536,12 +1536,12 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     bool boolValue = false;
     // branch-gate: BG-1004
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     // branch-gate: BG-1004
     if (context.frontend.childScreen != FrontendScreen::NewWorld) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, "world.draft_edit_mode",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1565,7 +1565,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
   if (canonicalKey == "world.draft_move") {
     // branch-gate: BG-1004
     if (context.frontend.childScreen != FrontendScreen::NewWorld) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, "world.draft_move",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1575,7 +1575,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
       context.window.worldSetup.dungeonDraftStatus = "dungeon_draft_edit_mode_off";
       context.window.worldSetup.dungeonDraftReasonCode =
           "dungeon_draft_edit_mode_off";
-      context.window.automationControlStatus = "command_failed";
+      context.window.automationControl.status = "command_failed";
       markAutomationApplied(context.window, command, "world.draft_move",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1584,7 +1584,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
         resolveProductDungeonDraftDirectionAutomation(value);
     // branch-gate: BG-1004
     if (!direction.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       markAutomationApplied(context.window, command, "world.draft_move",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1600,7 +1600,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
                           moved.ok ? "applied" : "failed");
     // branch-gate: BG-1004
     if (!moved.ok) {
-      context.window.automationControlStatus = "command_failed";
+      context.window.automationControl.status = "command_failed";
     }
     return {true, moved.ok};
   }
@@ -1609,7 +1609,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
   if (canonicalKey == "world.draft_paint") {
     // branch-gate: BG-1004
     if (context.frontend.childScreen != FrontendScreen::NewWorld) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, "world.draft_paint",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1618,7 +1618,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
         resolveProductDungeonDraftPaintAutomation(value);
     // branch-gate: BG-1004
     if (!paint.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       markAutomationApplied(context.window, command, "world.draft_paint",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1632,7 +1632,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
                           painted ? "applied" : "failed");
     // branch-gate: BG-1004
     if (!painted) {
-      context.window.automationControlStatus = "command_failed";
+      context.window.automationControl.status = "command_failed";
     }
     return {true, painted};
   }
@@ -1641,7 +1641,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
   if (canonicalKey == "world.draft_cell") {
     // branch-gate: BG-1004
     if (context.frontend.childScreen != FrontendScreen::NewWorld) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, "world.draft_cell",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1654,7 +1654,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
             : ProductDungeonDraftCellAutomationResult{};
     // branch-gate: BG-1004
     if (!cell.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       markAutomationApplied(context.window, command, "world.draft_cell",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1670,7 +1670,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
                           painted.ok ? "applied" : "failed");
     // branch-gate: BG-1004
     if (!painted.ok) {
-      context.window.automationControlStatus = "command_failed";
+      context.window.automationControl.status = "command_failed";
     }
     return {true, painted.ok};
   }
@@ -1679,7 +1679,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
   if (canonicalKey == "world.ascii_room_text") {
     // branch-gate: BG-1004
     if (context.frontend.childScreen != FrontendScreen::NewWorld) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, "world.ascii_room_text",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1698,7 +1698,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
   if (canonicalKey == "world.ascii_room_id") {
     // branch-gate: BG-1004
     if (context.frontend.childScreen != FrontendScreen::NewWorld) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, "world.ascii_room_id",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1707,7 +1707,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
         resolveProductNonEmptyStringAutomation(value);
     // branch-gate: BG-1004
     if (!asciiRoomId.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       markAutomationApplied(context.window, command, "world.ascii_room_id",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1725,7 +1725,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
   if (canonicalKey == "world.ascii_room_source_name") {
     // branch-gate: BG-1004
     if (context.frontend.childScreen != FrontendScreen::NewWorld) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command,
                             "world.ascii_room_source_name",
                             context.currentOwner(), "failed");
@@ -1735,7 +1735,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
         resolveProductNonEmptyStringAutomation(value);
     // branch-gate: BG-1004
     if (!asciiRoomSourceName.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       markAutomationApplied(context.window, command,
                             "world.ascii_room_source_name",
                             context.currentOwner(), "failed");
@@ -1756,7 +1756,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
   if (canonicalKey == "world.ascii_room_file") {
     // branch-gate: BG-1165
     if (context.frontend.childScreen != FrontendScreen::NewWorld) {
-      context.window.automationControlStatus = "owner_unavailable";
+      context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, "world.ascii_room_file",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1764,7 +1764,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     const ProductNonEmptyStringAutomationResult asciiRoomFile =
         resolveProductNonEmptyStringAutomation(value);
     const auto fail = [&]() -> ProductAutomationExecutionResult {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       markAutomationApplied(context.window, command, "world.ascii_room_file",
                             context.currentOwner(), "failed");
       return {true, false};
@@ -1815,7 +1815,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
         resolveProductNonEmptyStringAutomation(value);
     // branch-gate: BG-1004
     if (!roomId.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     context.window.asciiRoomDraftRoomId = std::string(roomId.value);
@@ -1830,7 +1830,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
         resolveProductNonEmptyStringAutomation(value);
     // branch-gate: BG-1004
     if (!sourceName.valid) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     context.window.asciiRoomDraftSourceName = std::string(sourceName.value);
@@ -1844,7 +1844,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     bool boolValue = false;
     // branch-gate: BG-1004
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     // branch-gate: BG-1004
@@ -1866,7 +1866,7 @@ ProductAutomationExecutionResult applyProductWorldSetupAutomationCommand(
     bool boolValue = false;
     // branch-gate: BG-1004
     if (!resolveProductAutomationBool(value, boolValue)) {
-      context.window.automationControlStatus = "invalid_value";
+      context.window.automationControl.status = "invalid_value";
       return {true, false};
     }
     // branch-gate: BG-1004

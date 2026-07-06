@@ -26,7 +26,7 @@ bool resolveSystemBool(ProductAutomationSystemContext& context,
   if (resolveProductAutomationBool(value, boolValue)) {
     return true;
   }
-  context.window.automationControlStatus = "invalid_value";
+  context.window.automationControl.status = "invalid_value";
   return false;
 }
 
@@ -36,7 +36,7 @@ ProductAutomationExecutionResult applyRoutedSystemInput(
     InputAction action) {
   const bool routed = context.routeInput(action);
   markAutomationApplied(context.window, command, inputActionName(action),
-                        context.window.automationControlLastOwner,
+                        context.window.automationControl.lastOwner,
                         // branch-gate: BG-1012
                         routed ? "applied" : "ignored");
   return passSystemAutomation(routed);

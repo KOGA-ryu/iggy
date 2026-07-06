@@ -374,12 +374,12 @@ int main() {
     std::vector<iggy3d::ProductAutomationCommand> commands;
     expect(iggy3d::readProductAutomationCommands(automationPath, window, commands),
            "automation control file loads");
-    expect(window.automationControlRequested,
+    expect(window.automationControl.requested,
            "automation control requested is recorded");
-    expect(window.automationControlLoaded, "automation control loaded is recorded");
-    expect(window.automationControlStatus == "loaded",
+    expect(window.automationControl.loaded, "automation control loaded is recorded");
+    expect(window.automationControl.status == "loaded",
            "automation control status is loaded");
-    expect(window.automationControlLineCount == 2U,
+    expect(window.automationControl.lineCount == 2U,
            "automation control line count tracks parsed lines");
     expect(commands.size() == 2U, "automation control command count is stable");
     expect(commands[0].key == "menu.input" && commands[0].value == "up",
@@ -395,9 +395,9 @@ int main() {
     std::vector<iggy3d::ProductAutomationCommand> commands;
     expect(!iggy3d::readProductAutomationCommands(automationPath, window, commands),
            "duplicate automation control keys are rejected");
-    expect(window.automationControlStatus == "duplicate_key",
+    expect(window.automationControl.status == "duplicate_key",
            "duplicate automation control status is stable");
-    expect(window.automationControlLastKey == "menu.input",
+    expect(window.automationControl.lastKey == "menu.input",
            "duplicate automation control last key is stable");
     expect(commands.size() == 1U, "duplicate automation control preserves prior rows");
   }

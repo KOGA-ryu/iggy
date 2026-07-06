@@ -42,7 +42,7 @@ bool routeAutomationInput(FrontendState& frontend,
       frontend, saves, options, settingsTab, activeSession, worldSetupDraft,
       window, closeRequested, settings, creativeApp};
   routeProductOpeningMenuInput(action, actionState, menuContext);
-  window.automationControlLastOwner = productInputOwnerFor(frontend, window);
+  window.automationControl.lastOwner = productInputOwnerFor(frontend, window);
   return window.lastInputAccepted || action == InputAction::None;
 }
 
@@ -149,7 +149,7 @@ bool applyProductAutomationCommand(
     return accepted;
   }
 
-  context.window.automationControlStatus = "unknown_key";
+  context.window.automationControl.status = "unknown_key";
   return false;
 }
 

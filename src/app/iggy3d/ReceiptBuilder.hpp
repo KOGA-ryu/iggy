@@ -37,6 +37,8 @@
 #include "app/iggy3d/ProductCreativeUiProjectionState.hpp"
 #include "app/iggy3d/gameplay/TargetState.hpp"
 #include "app/iggy3d/gameplay/ResetState.hpp"
+#include "app/iggy3d/gameplay/TapeState.hpp"
+#include "app/iggy3d/automation/AutomationControlState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -484,42 +486,7 @@ struct ProductAppWindowState {
   ProductGameplayTargetState gameplayTarget;
   ProductGameplayOutcomeState gameplayOutcome;
   std::string sessionOutcome = "None";
-  bool gameplayTapeRequested = false;
-  bool gameplayTapeLoaded = false;
-  std::string gameplayTapePath = "none";
-  std::string gameplayTapeStatus = "not_requested";
-  std::string gameplayTapeReasonCode = "not_requested";
-  std::uint64_t gameplayTapeLineCount = 0;
-  std::uint64_t gameplayTapeStepCount = 0;
-  std::uint64_t gameplayTapeExecutedStepCount = 0;
-  std::uint64_t gameplayTapeExpectedRejectedStepCount = 0;
-  std::uint64_t gameplayTapeExpectedBlockedStepCount = 0;
-  std::string gameplayTapeFailedStep = "none";
-  std::uint64_t gameplayTapeFailedSourceLine = 0;
-  std::string gameplayTapeFailedAction = "none";
-  std::string gameplayTapeFailedTarget = "none";
-  std::string gameplayTapeFailedRejection = "none";
-  std::string gameplayTapeFailedMovementBlock = "none";
-  std::string gameplayTapeLastAction = "none";
-  std::string gameplayTapeLastTarget = "none";
-  std::string gameplayTapeLastMovementBlock = "none";
-  bool gameplayTapeKeyCollected = false;
-  bool gameplayTapeSecretDoorOpened = false;
-  bool gameplayTapeTreasureCollected = false;
-  bool gameplayTapeNpcTargetable = false;
-  bool gameplayTapeNpcDefeated = false;
-  bool gameplayTapeExitObjectiveComplete = false;
-  bool gameplayTapeLoopComplete = false;
-  bool gameplayTapeAiCommandLogged = false;
-  bool gameplayTapeAiAttackLogged = false;
-  bool gameplayTapeAiWaitLogged = false;
-  bool gameplayTapeAiPlayerDamaged = false;
-  std::int32_t gameplayTapeAiPlayerHpBefore = 0;
-  std::int32_t gameplayTapeAiPlayerHpAfter = 0;
-  std::string gameplayTapeAiActorId = "none";
-  std::string gameplayTapeAiTargetId = "none";
-  std::string gameplayTapeAiBehavior = "none";
-  std::string gameplayTapeAiIntent = "none";
+  ProductGameplayTapeState gameplayTape;
   bool interactionExecuted = false;
   bool attackExecuted = false;
   ProductTransitionState productTransition;
@@ -532,17 +499,7 @@ struct ProductAppWindowState {
   InputAction lastInputAction = InputAction::None;
   bool lastInputAccepted = false;
   bool gameplayInputSuppressed = false;
-  bool automationControlRequested = false;
-  bool automationControlLoaded = false;
-  std::string automationControlPath;
-  std::string automationControlStatus = "not_requested";
-  std::string automationControlScope = "none";
-  std::uint64_t automationControlLineCount = 0;
-  std::uint64_t automationControlAppliedCount = 0;
-  std::string automationControlLastKey = "none";
-  std::string automationControlLastAction = "none";
-  MenuOwner automationControlLastOwner = MenuOwner::None;
-  std::string automationControlLastResult = "none";
+  ProductAutomationControlState automationControl;
   bool productVulkanRendererRequested = false;
   bool productVulkanRendererCreated = false;
   bool productVulkanRendererReady = false;
