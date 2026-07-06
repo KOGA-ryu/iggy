@@ -1,5 +1,6 @@
 #include "core/hash/StableHash.hpp"
 #include "core/math/Aabb3.hpp"
+#include "core/math/EulerRotation.hpp"
 #include "core/math/Mat4.hpp"
 #include "core/math/Transform3.hpp"
 #include "core/math/Vec3.hpp"
@@ -60,6 +61,21 @@ bool transformTests() {
                 "Transform TRS honors rotation");
 }
 
+bool eulerRotationTests() {
+  using namespace iggy3d;
+  return expect(nearlyEqual(rotateEulerXyz(Vec3{1.0F, 2.0F, 3.0F}, vec3Zero()),
+                            Vec3{1.0F, 2.0F, 3.0F}),
+                "Euler identity rotation") &&
+         expect(nearlyEqual(rotateEulerXyz(Vec3{2.0F, 3.0F, 4.0F},
+                                           Vec3{0.0F, kHalfPi, 0.0F}),
+                            Vec3{4.0F, 3.0F, -2.0F}),
+                "Euler +Y rotation matches TRS helper") &&
+         expect(nearlyEqual(rotateEulerXyz(vec3UnitY(),
+                                           Vec3{kHalfPi, kHalfPi, 0.0F}),
+                            vec3UnitX()),
+                "Euler order is X then Y then Z");
+}
+
 bool aabbTests() {
   using namespace iggy3d;
   const Aabb3 box = makeAabb3(Vec3{0.0F, 0.0F, 0.0F}, Vec3{2.0F, 2.0F, 2.0F});
@@ -112,7 +128,7 @@ bool hashTests() {
 }  // namespace
 
 int main() {
-  const bool ok = vec3Tests() && transformTests() && aabbTests() && mat4Tests() &&
-                  hashTests();
+  const bool ok = vec3Tests() && transformTests() && eulerRotationTests() &&
+                  aabbTests() && mat4Tests() && hashTests();
   return ok ? 0 : 1;
 }

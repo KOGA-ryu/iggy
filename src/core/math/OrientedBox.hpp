@@ -19,9 +19,8 @@ namespace iggy3d {
 //     inserted into / queried against the AabbGridIndex broadphase (which keys AABBs).
 //   - contains() / intersectsRay() -> the exact rotated narrow phase, run only on the few
 //     candidates the broadphase gathers.
-// Rotation convention: this kernel is the first place Transform3::rotationEulerRadians is actually
-// honored (Transform3::transformPoint applies only scale + translation). It uses intrinsic
-// X-then-Y-then-Z Euler (R = Rz * Ry * Rx), Y-up, and places a local point as
+// Rotation convention: uses rotateEulerXyz(), intrinsic X-then-Y-then-Z Euler
+// (R = Rz * Ry * Rx), Y-up, and places a local point as
 // world = position + R * (scale . local).
 struct OrientedBox {
   Transform3 transform{};  // world placement: position + euler rotation + scale

@@ -1,43 +1,19 @@
 #include "core/math/OrientedBox.hpp"
 
+#include "core/math/EulerRotation.hpp"
+
 #include <cmath>
 
 namespace iggy3d {
 
 namespace {
 
-// Euler rotation, intrinsic X-then-Y-then-Z (R = Rz * Ry * Rx), Y-up. This kernel DEFINES the
-// convention: Transform3::transformPoint applies only scale + translation -- rotationEulerRadians
-// is stored but unread everywhere in the tree -- so an oriented box has to honor rotation itself.
-Vec3 rotateEuler(Vec3 p, Vec3 eulerRadians) {
-  const float cx = std::cos(eulerRadians.x);
-  const float sx = std::sin(eulerRadians.x);
-  const float cy = std::cos(eulerRadians.y);
-  const float sy = std::sin(eulerRadians.y);
-  const float cz = std::cos(eulerRadians.z);
-  const float sz = std::sin(eulerRadians.z);
-
-  // Rx
-  float y1 = p.y * cx - p.z * sx;
-  float z1 = p.y * sx + p.z * cx;
-  float x1 = p.x;
-  // Ry
-  float x2 = x1 * cy + z1 * sy;
-  float z2 = -x1 * sy + z1 * cy;
-  float y2 = y1;
-  // Rz
-  float x3 = x2 * cz - y2 * sz;
-  float y3 = x2 * sz + y2 * cz;
-  float z3 = z2;
-  return Vec3{x3, y3, z3};
-}
-
 // Full TRS placement of a local point: world = translate + rotate(scale . local).
 Vec3 placeLocal(const Transform3& transform, Vec3 localPoint) {
   const Vec3 scaled{localPoint.x * transform.scale.x,
                     localPoint.y * transform.scale.y,
                     localPoint.z * transform.scale.z};
-  return transform.position + rotateEuler(scaled, transform.rotationEulerRadians);
+  return transform.position + rotateEulerXyz(scaled, transform.rotationEulerRadians);
 }
 
 // The oriented box's world frame: its center and its three world-space edge axes. Each axis is
