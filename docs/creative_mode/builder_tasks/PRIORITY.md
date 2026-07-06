@@ -20,7 +20,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E108-roombake-greedy-floor-plan-extraction.md`
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -32,7 +32,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-- `ready/E108-roombake-greedy-floor-plan-extraction.md`
+None currently ready.
 
 ## Parking Lot
 

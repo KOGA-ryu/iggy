@@ -1,13 +1,9 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
+#include "app/iggy3d/creative/adapters/RoomBakeGreedyFloors.hpp"
 #include "app/iggy3d/creative/adapters/RoomBakeReachability.hpp"
 
-#include "core/grid/GridFootprint.hpp"
-#include "core/grid/GreedyMesh.hpp"
-
-#include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <iterator>
 #include <limits>
 #include <string>
 #include <utility>
@@ -83,26 +79,6 @@ struct BakeStaticMeshEntry {
   const CreativeObjectDescriptor* descriptor = nullptr;
   RoomBakeObjectClassification classification;
   std::size_t documentIndex = 0;
-};
-
-struct GreedyFloorCandidate {
-  const BakeStaticMeshEntry* entry = nullptr;
-  GridFootprint footprint;
-};
-
-struct GreedyFloorGroup {
-  float minY = 0.0F;
-  float maxY = 0.0F;
-  std::string meshId;
-  std::string materialId;
-  std::string role;
-  std::vector<GreedyFloorCandidate> candidates;
-};
-
-struct GreedyFloorMesh {
-  RoomStaticMeshAsset mesh;
-  std::vector<const BakeStaticMeshEntry*> sources;
-  std::size_t firstDocumentIndex = 0;
 };
 
 [[nodiscard]] bool finite(double value) noexcept {
@@ -291,14 +267,20 @@ struct GreedyFloorMesh {
 }
 
 [[nodiscard]] std::string stableObjectId(
-    const CreativeObject& object,
+    CreativeObjectId objectId,
     std::string_view suffix = {}) {
-  std::string id = "creative_object_" + std::to_string(object.id);
+  std::string id = "creative_object_" + std::to_string(objectId);
   if (!suffix.empty()) {
     id += "_";
     id += suffix;
   }
   return id;
+}
+
+[[nodiscard]] std::string stableObjectId(
+    const CreativeObject& object,
+    std::string_view suffix = {}) {
+  return stableObjectId(object.id, suffix);
 }
 
 [[nodiscard]] std::string_view anchorKindForDescriptor(
@@ -365,22 +347,6 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   return mesh;
 }
 
-[[nodiscard]] RoomStaticMeshAsset staticMeshForBounds(std::string id,
-                                                      BakeBounds bounds,
-                                                      BakedRoomRole role) {
-  RoomStaticMeshAsset mesh;
-  mesh.id = std::move(id);
-  mesh.meshId = std::string(meshIdForRole(role));
-  mesh.materialId = std::string(materialIdForRole(role));
-  mesh.role = std::string(roleName(role));
-  mesh.positionMeters = bounds.center;
-  mesh.sizeMeters = bounds.size;
-  if (role == BakedRoomRole::Wall) {
-    setWallSegmentFields(mesh, bounds);
-  }
-  return mesh;
-}
-
 [[nodiscard]] std::vector<Vec3> topFacePoints(BakeBounds bounds) {
   return {{bounds.min.x, bounds.max.y, bounds.min.z},
           {bounds.max.x, bounds.max.y, bounds.min.z},
@@ -396,11 +362,11 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
 }
 
 [[nodiscard]] RoomSpatialSurface walkableSurfaceForObject(
-    const CreativeObject& object,
+    CreativeObjectId objectId,
     BakeBounds bounds,
     std::string sourceStaticMeshId) {
   RoomSpatialSurface surface;
-  surface.id = stableObjectId(object, "walkable");
+  surface.id = stableObjectId(objectId, "walkable");
   surface.sourceStaticMeshId = std::move(sourceStaticMeshId);
   surface.shape = RoomSpatialSurfaceShape::Plane;
   surface.role = RoomSpatialSurfaceRole::Walkable;
@@ -411,6 +377,13 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   surface.blocksActor = false;
   surface.blocksProjectile = false;
   return surface;
+}
+
+[[nodiscard]] RoomSpatialSurface walkableSurfaceForObject(
+    const CreativeObject& object,
+    BakeBounds bounds,
+    std::string sourceStaticMeshId) {
+  return walkableSurfaceForObject(object.id, bounds, std::move(sourceStaticMeshId));
 }
 
 [[nodiscard]] RoomSpatialSurface actorBlockerSurfaceForObject(
@@ -577,294 +550,69 @@ void setStatus(CreativeRoomBakeReceipt& receipt,
   receipt.accepted = accepted;
 }
 
-[[nodiscard]] bool greedyFloorFootprintForBounds(
-    BakeBounds bounds,
-    float cellSizeMeters,
-    GridFootprint& out) noexcept {
-  const GridFootprintResult result =
-      gridFootprintForAlignedBounds(bounds.min.x,
-                                    bounds.min.z,
-                                    bounds.max.x,
-                                    bounds.max.z,
-                                    cellSizeMeters);
-  if (!result.ok) {
-    return false;
-  }
-  out = result.footprint;
-  return true;
-}
-
 [[nodiscard]] bool isGreedyFloorCandidate(
     const BakeStaticMeshEntry& entry) noexcept {
   return entry.object != nullptr && entry.descriptor != nullptr &&
          entry.classification.role == BakedRoomRole::Floor &&
          entry.object->kind == CreativeObjectKind::Floor &&
          entry.descriptor->shapeKind == CreativeObjectShapeKind::Surface &&
-         entry.descriptor->occupancyKind ==
-             CreativeSpatialOccupancyKind::Structural;
+             entry.descriptor->occupancyKind ==
+                 CreativeSpatialOccupancyKind::Structural;
 }
 
-void appendGreedyFloorSource(std::vector<const BakeStaticMeshEntry*>& sources,
-                             const BakeStaticMeshEntry* entry) {
-  if (entry == nullptr) {
-    return;
-  }
-  if (std::find(sources.begin(), sources.end(), entry) == sources.end()) {
-    sources.push_back(entry);
-  }
-}
-
-[[nodiscard]] std::string greedyFloorMeshId(
-    const std::vector<const BakeStaticMeshEntry*>& sources,
-    std::size_t meshIndex) {
-  if (sources.size() == 1U && sources.front() != nullptr &&
-      sources.front()->object != nullptr) {
-    return stableObjectId(*sources.front()->object);
-  }
-
-  CreativeObjectId firstId{kInvalidObjectId};
-  if (!sources.empty() && sources.front() != nullptr &&
-      sources.front()->object != nullptr) {
-    firstId = sources.front()->object->id;
-  }
-  return "creative_floor_greedy_" + std::to_string(firstId) + "_" +
-         std::to_string(meshIndex);
-}
-
-[[nodiscard]] GreedyFloorMesh fallbackFloorMesh(
+[[nodiscard]] RoomBakeGreedyFloorInput greedyFloorInputForEntry(
     const BakeStaticMeshEntry& entry) {
-  GreedyFloorMesh mesh;
-  mesh.sources = {&entry};
-  mesh.firstDocumentIndex = entry.documentIndex;
-  mesh.mesh = staticMeshForObject(*entry.object,
-                                  entry.classification.bounds,
-                                  BakedRoomRole::Floor);
-  return mesh;
+  return {entry.object->id,
+          entry.documentIndex,
+          entry.classification.bounds.min,
+          entry.classification.bounds.max,
+          entry.classification.bounds.center,
+          entry.classification.bounds.size,
+          stableObjectId(*entry.object)};
 }
 
-[[nodiscard]] std::vector<GreedyFloorMesh> fallbackFloorMeshes(
-    const GreedyFloorGroup& group) {
-  std::vector<GreedyFloorMesh> meshes;
-  meshes.reserve(group.candidates.size());
-  for (const GreedyFloorCandidate& candidate : group.candidates) {
-    if (candidate.entry != nullptr) {
-      meshes.push_back(fallbackFloorMesh(*candidate.entry));
-    }
-  }
-  return meshes;
+[[nodiscard]] RoomBakeGreedyFloorPolicy greedyFloorPolicy() {
+  RoomBakeGreedyFloorPolicy policy;
+  policy.cellSizeMeters = 1.0F;
+  policy.maxCells = 1'000'000;
+  policy.meshId = std::string(meshIdForRole(BakedRoomRole::Floor));
+  policy.materialId = std::string(materialIdForRole(BakedRoomRole::Floor));
+  policy.role = std::string(roleName(BakedRoomRole::Floor));
+  return policy;
 }
 
-[[nodiscard]] std::vector<GreedyFloorMesh> buildGreedyFloorMeshesForGroup(
-    const GreedyFloorGroup& group,
-    float cellSizeMeters) {
-  if (group.candidates.empty()) {
-    return {};
-  }
-
-  std::int32_t minCellX = group.candidates.front().footprint.minCellX;
-  std::int32_t minCellZ = group.candidates.front().footprint.minCellZ;
-  std::int32_t maxCellX = group.candidates.front().footprint.maxCellXExclusive;
-  std::int32_t maxCellZ = group.candidates.front().footprint.maxCellZExclusive;
-  for (const GreedyFloorCandidate& candidate : group.candidates) {
-    minCellX = std::min(minCellX, candidate.footprint.minCellX);
-    minCellZ = std::min(minCellZ, candidate.footprint.minCellZ);
-    maxCellX = std::max(maxCellX, candidate.footprint.maxCellXExclusive);
-    maxCellZ = std::max(maxCellZ, candidate.footprint.maxCellZExclusive);
-  }
-
-  const std::int64_t width64 =
-      static_cast<std::int64_t>(maxCellX) - static_cast<std::int64_t>(minCellX);
-  const std::int64_t depth64 =
-      static_cast<std::int64_t>(maxCellZ) - static_cast<std::int64_t>(minCellZ);
-  constexpr std::int64_t kMaxGreedyFloorCells = 1'000'000;
-  if (width64 <= 0 || depth64 <= 0 ||
-      width64 >
-          static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::max()) ||
-      depth64 >
-          static_cast<std::int64_t>(std::numeric_limits<std::int32_t>::max()) ||
-      width64 * depth64 > kMaxGreedyFloorCells) {
-    return fallbackFloorMeshes(group);
-  }
-
-  GreedyMeshGrid grid;
-  grid.width = static_cast<std::int32_t>(width64);
-  grid.depth = static_cast<std::int32_t>(depth64);
-  const std::size_t cellCount =
-      static_cast<std::size_t>(grid.width) *
-      static_cast<std::size_t>(grid.depth);
-  grid.keys.assign(cellCount, 0U);
-  std::vector<const BakeStaticMeshEntry*> cellOwners(cellCount, nullptr);
-  const auto cellIndex = [&](std::int32_t localX,
-                             std::int32_t localZ) -> std::size_t {
-    return static_cast<std::size_t>(localZ) *
-               static_cast<std::size_t>(grid.width) +
-           static_cast<std::size_t>(localX);
-  };
-
-  for (const GreedyFloorCandidate& candidate : group.candidates) {
-    if (candidate.entry == nullptr) {
-      return fallbackFloorMeshes(group);
-    }
-    for (std::int32_t z = candidate.footprint.minCellZ;
-         z < candidate.footprint.maxCellZExclusive; ++z) {
-      for (std::int32_t x = candidate.footprint.minCellX;
-           x < candidate.footprint.maxCellXExclusive; ++x) {
-        const std::int32_t localX = x - minCellX;
-        const std::int32_t localZ = z - minCellZ;
-        const std::size_t index = cellIndex(localX, localZ);
-        if (cellOwners[index] != nullptr) {
-          return fallbackFloorMeshes(group);
-        }
-        cellOwners[index] = candidate.entry;
-        grid.keys[index] = 1U;
-      }
-    }
-  }
-
-  const GreedyMeshReceipt receipt = greedyMeshGrid(grid);
-  if (!receipt.ok) {
-    return fallbackFloorMeshes(group);
-  }
-
-  std::vector<GreedyFloorMesh> meshes;
-  meshes.reserve(receipt.quads.size());
-  for (std::size_t quadIndex = 0; quadIndex < receipt.quads.size();
-       ++quadIndex) {
-    const GreedyQuad& quad = receipt.quads[quadIndex];
-    GreedyFloorMesh greedyMesh;
-    greedyMesh.firstDocumentIndex = std::numeric_limits<std::size_t>::max();
-    for (std::int32_t dz = 0; dz < quad.depth; ++dz) {
-      for (std::int32_t dx = 0; dx < quad.width; ++dx) {
-        const BakeStaticMeshEntry* source =
-            cellOwners[cellIndex(quad.x + dx, quad.z + dz)];
-        appendGreedyFloorSource(greedyMesh.sources, source);
-      }
-    }
-    std::sort(greedyMesh.sources.begin(),
-              greedyMesh.sources.end(),
-              [](const BakeStaticMeshEntry* lhs,
-                 const BakeStaticMeshEntry* rhs) {
-                return lhs->documentIndex < rhs->documentIndex;
-              });
-    for (const BakeStaticMeshEntry* source : greedyMesh.sources) {
-      greedyMesh.firstDocumentIndex =
-          std::min(greedyMesh.firstDocumentIndex, source->documentIndex);
-    }
-
-    BakeBounds bounds;
-    bounds.min = {
-        static_cast<float>(minCellX + quad.x) * cellSizeMeters,
-        group.minY,
-        static_cast<float>(minCellZ + quad.z) * cellSizeMeters,
-    };
-    bounds.max = {
-        static_cast<float>(minCellX + quad.x + quad.width) * cellSizeMeters,
-        group.maxY,
-        static_cast<float>(minCellZ + quad.z + quad.depth) * cellSizeMeters,
-    };
-    bounds.size = {bounds.max.x - bounds.min.x,
-                   bounds.max.y - bounds.min.y,
-                   bounds.max.z - bounds.min.z};
-    bounds.center = {bounds.min.x + bounds.size.x * 0.5F,
-                     bounds.min.y + bounds.size.y * 0.5F,
-                     bounds.min.z + bounds.size.z * 0.5F};
-    greedyMesh.mesh = staticMeshForBounds(
-        greedyFloorMeshId(greedyMesh.sources, quadIndex),
-        bounds,
-        BakedRoomRole::Floor);
-    meshes.push_back(std::move(greedyMesh));
-  }
-
-  return meshes;
-}
-
-void appendFloorGroup(std::vector<GreedyFloorGroup>& groups,
-                      const BakeStaticMeshEntry& entry,
-                      GridFootprint footprint) {
-  const std::string meshId(meshIdForRole(BakedRoomRole::Floor));
-  const std::string materialId(materialIdForRole(BakedRoomRole::Floor));
-  const std::string role(roleName(BakedRoomRole::Floor));
-  for (GreedyFloorGroup& group : groups) {
-    if (group.minY == entry.classification.bounds.min.y &&
-        group.maxY == entry.classification.bounds.max.y &&
-        group.meshId == meshId &&
-        group.materialId == materialId &&
-        group.role == role) {
-      group.candidates.push_back({&entry, footprint});
-      return;
-    }
-  }
-
-  GreedyFloorGroup group;
-  group.minY = entry.classification.bounds.min.y;
-  group.maxY = entry.classification.bounds.max.y;
-  group.meshId = meshId;
-  group.materialId = materialId;
-  group.role = role;
-  group.candidates.push_back({&entry, footprint});
-  groups.push_back(std::move(group));
-}
-
-[[nodiscard]] std::vector<GreedyFloorMesh> buildGreedyFloorMeshes(
+[[nodiscard]] std::vector<RoomBakeGreedyFloorMeshPlan> buildGreedyFloorMeshes(
     const std::vector<BakeStaticMeshEntry>& entries) {
-  constexpr float kGreedyFloorCellSizeMeters = 1.0F;
-  std::vector<GreedyFloorGroup> groups;
-  std::vector<GreedyFloorMesh> fallbackMeshes;
+  std::vector<RoomBakeGreedyFloorInput> inputs;
+  inputs.reserve(entries.size());
   for (const BakeStaticMeshEntry& entry : entries) {
     if (!isGreedyFloorCandidate(entry)) {
       continue;
     }
-
-    GridFootprint footprint;
-    if (!greedyFloorFootprintForBounds(entry.classification.bounds,
-                                       kGreedyFloorCellSizeMeters,
-                                       footprint)) {
-      fallbackMeshes.push_back(fallbackFloorMesh(entry));
-      continue;
-    }
-    appendFloorGroup(groups, entry, footprint);
+    inputs.push_back(greedyFloorInputForEntry(entry));
   }
+  return buildRoomBakeGreedyFloorPlan(inputs, greedyFloorPolicy());
+}
 
-  std::vector<GreedyFloorMesh> meshes = std::move(fallbackMeshes);
-  for (const GreedyFloorGroup& group : groups) {
-    std::vector<GreedyFloorMesh> groupMeshes =
-        buildGreedyFloorMeshesForGroup(group, kGreedyFloorCellSizeMeters);
-    meshes.insert(meshes.end(),
-                  std::make_move_iterator(groupMeshes.begin()),
-                  std::make_move_iterator(groupMeshes.end()));
-  }
-
-  std::sort(meshes.begin(),
-            meshes.end(),
-            [](const GreedyFloorMesh& lhs, const GreedyFloorMesh& rhs) {
-              if (lhs.firstDocumentIndex != rhs.firstDocumentIndex) {
-                return lhs.firstDocumentIndex < rhs.firstDocumentIndex;
-              }
-              return lhs.mesh.id < rhs.mesh.id;
-            });
-  return meshes;
+[[nodiscard]] BakeBounds bakeBoundsFromGreedyFloorSource(
+    const RoomBakeGreedyFloorSource& source) noexcept {
+  return {source.min, source.max, source.center, source.size};
 }
 
 void appendGreedyFloorMesh(
     RoomAsset& room,
     std::vector<CreativeRoomBakeStaticMeshSource>& meshSources,
     std::vector<CreativeRoomBakeSpatialSurfaceSource>& surfaceSources,
-    const GreedyFloorMesh& greedyMesh) {
-  for (const BakeStaticMeshEntry* source : greedyMesh.sources) {
-    if (source == nullptr || source->object == nullptr) {
-      continue;
-    }
-    meshSources.push_back({source->object->id, greedyMesh.mesh.id});
+    const RoomBakeGreedyFloorMeshPlan& greedyMesh) {
+  for (const RoomBakeGreedyFloorSource& source : greedyMesh.sources) {
+    meshSources.push_back({source.objectId, greedyMesh.mesh.id});
   }
-  for (const BakeStaticMeshEntry* source : greedyMesh.sources) {
-    if (source == nullptr || source->object == nullptr) {
-      continue;
-    }
+  for (const RoomBakeGreedyFloorSource& source : greedyMesh.sources) {
     RoomSpatialSurface surface =
-        walkableSurfaceForObject(*source->object,
-                                 source->classification.bounds,
+        walkableSurfaceForObject(source.objectId,
+                                 bakeBoundsFromGreedyFloorSource(source),
                                  greedyMesh.mesh.id);
-    appendSpatialSurfaceSource(surfaceSources, source->object->id, surface);
+    appendSpatialSurfaceSource(surfaceSources, source.objectId, surface);
     room.spatialSurfaces.push_back(std::move(surface));
   }
   room.staticMeshes.push_back(greedyMesh.mesh);
@@ -972,7 +720,7 @@ CreativeRoomBakeResult buildRoomAssetFromCreativeDocument(
     ++documentIndex;
   }
 
-  const std::vector<GreedyFloorMesh> greedyFloorMeshes =
+  const std::vector<RoomBakeGreedyFloorMeshPlan> greedyFloorMeshes =
       buildGreedyFloorMeshes(staticMeshEntries);
   std::size_t nextGreedyFloorMesh = 0;
   for (const BakeStaticMeshEntry& entry : staticMeshEntries) {

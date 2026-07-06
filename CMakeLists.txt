@@ -65,6 +65,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/spatial/Snap.cpp
     src/app/iggy3d/creative/document/DocumentSnap.cpp
     src/app/iggy3d/creative/adapters/RoomBake.cpp
+    src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.cpp
     src/app/iggy3d/creative/adapters/RoomBakeReachability.cpp
     src/app/iggy3d/creative/spatial/Ghost.cpp
     src/app/iggy3d/creative/tools/Placement.cpp

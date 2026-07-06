@@ -127,3 +127,45 @@ Append:
 - Tests/checks run:
 - Concerns/deferred:
 
+## Completed
+
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/creative/adapters/RoomBake.cpp`
+  - `src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.hpp`
+  - `src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.cpp`
+  - `docs/creative_mode/builder_tasks/claimed/E108-roombake-greedy-floor-plan-extraction.md`
+  - `docs/creative_mode/builder_tasks/PRIORITY.md`
+- Extraction shape:
+  - Added adapter-private `RoomBakeGreedyFloors.hpp/.cpp`.
+  - Added pure plan API:
+    - `RoomBakeGreedyFloorInput`
+    - `RoomBakeGreedyFloorPolicy`
+    - `RoomBakeGreedyFloorSource`
+    - `RoomBakeGreedyFloorMeshPlan`
+    - `buildRoomBakeGreedyFloorPlan(...)`
+  - Moved aligned floor footprint conversion, Y-layer grouping, bounded dense
+    grid construction, max-cell fallback, overlap fallback, `greedyMeshGrid(...)`
+    invocation, quad source dedupe/sorting, fallback per-object floor mesh
+    planning, and merged floor mesh id construction into the helper.
+  - Kept descriptor/object eligibility in `RoomBake.cpp` through
+    `isGreedyFloorCandidate(...)`.
+  - Kept `RoomAsset` assembly, receipt counts, static mesh source sidecars,
+    spatial surface source sidecars, and per-authored-floor walkable surface
+    policy in `RoomBake.cpp`.
+- Behavior preserved:
+  - No RoomBake eligibility or output policy changes.
+  - E107 interleaved ordering, nonaligned fallback, and separated-island gap
+    guards pass unchanged.
+  - Existing 25-floor collapse and near-aligned floor guards pass unchanged.
+  - Greedy floor surfaces still remain per authored Floor object and point at
+    the merged mesh id when merged.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d creative_document_room_bake_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^creative_document_room_bake_tests$' --output-on-failure`
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - focused trailing-whitespace scan over touched files
+- Concerns/deferred:
+  - The helper is still adapter-private and not a public RoomBake API.
+  - Wall/prop/line greedy grouping and merged walkable-surface policy remain
+    intentionally deferred.
