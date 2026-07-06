@@ -139,12 +139,12 @@ bool receiptCarriesTopDownMapFields() {
            true,
            false,
            29U});
-  window.topDownMapVisible = overlay.visible;
-  window.topDownMapPurpose = overlay.purpose;
-  window.topDownMapSize = overlay.size;
-  window.topDownMapStatus = overlay.status;
-  window.topDownMapReasonCode = overlay.reasonCode;
-  window.topDownMapItemCount = overlay.itemCount;
+  window.topDownMap.visible = overlay.visible;
+  window.topDownMap.purpose = overlay.purpose;
+  window.topDownMap.size = overlay.size;
+  window.topDownMap.status = overlay.status;
+  window.topDownMap.reasonCode = overlay.reasonCode;
+  window.topDownMap.itemCount = overlay.itemCount;
   const iggy3d::RenderReceipt receipt =
       iggy3d::buildProductAppReceipt(options, world, frontend, settings, window, saves);
   return expect(iggy3d::hasReceiptField(receipt, "top_down_map_visible", "true"),

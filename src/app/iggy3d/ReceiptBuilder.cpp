@@ -999,14 +999,14 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.interactionModeHud.mode);
   appendReceiptField(receipt, "interaction_mode_hud_label",
                      window.interactionModeHud.label);
-  appendReceiptField(receipt, "top_down_map_visible", window.topDownMapVisible);
-  appendReceiptField(receipt, "top_down_map_purpose", window.topDownMapPurpose);
-  appendReceiptField(receipt, "top_down_map_size", window.topDownMapSize);
-  appendReceiptField(receipt, "top_down_map_status", window.topDownMapStatus);
+  appendReceiptField(receipt, "top_down_map_visible", window.topDownMap.visible);
+  appendReceiptField(receipt, "top_down_map_purpose", window.topDownMap.purpose);
+  appendReceiptField(receipt, "top_down_map_size", window.topDownMap.size);
+  appendReceiptField(receipt, "top_down_map_status", window.topDownMap.status);
   appendReceiptField(receipt, "top_down_map_reason_code",
-                     window.topDownMapReasonCode);
+                     window.topDownMap.reasonCode);
   appendReceiptField(receipt, "top_down_map_item_count",
-                     window.topDownMapItemCount);
+                     window.topDownMap.itemCount);
   appendReceiptField(receipt, "mouse_capture_requested",
                      window.mouseCaptureRequested);
   appendReceiptField(receipt, "mouse_capture_active", window.mouseCaptureActive);

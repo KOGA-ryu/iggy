@@ -15,6 +15,7 @@
 #include "app/iggy3d/ProductCreativeBakedRoomRefresh.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/iggy3d/debug/InteractionModeHud.hpp"
+#include "app/iggy3d/debug/TopDownMapState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -183,12 +184,7 @@ struct ProductAppWindowState {
   std::uint64_t mapMakerGridDotCount = 0;
   std::uint64_t mapMakerGridMajorDotCount = 0;
   InteractionModeHud interactionModeHud;
-  bool topDownMapVisible = false;
-  std::string topDownMapPurpose = "hidden";
-  std::string topDownMapSize = "hidden";
-  std::string topDownMapStatus = "top_down_map_hidden";
-  std::string topDownMapReasonCode = "top_down_map_hidden";
-  std::uint64_t topDownMapItemCount = 0;
+  ProductTopDownMapState topDownMap;
   bool devCollisionOverlayVisible = false;
   std::string devCollisionOverlayStatus = "dev_collision_overlay_hidden";
   std::string devCollisionOverlayReasonCode = "dev_collision_overlay_hidden";
