@@ -2,7 +2,7 @@
 
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/Operations.hpp"
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"

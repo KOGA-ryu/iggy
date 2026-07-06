@@ -5,7 +5,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/Options.hpp"
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 
 namespace iggy3d {

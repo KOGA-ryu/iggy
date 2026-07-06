@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 
 namespace {
 

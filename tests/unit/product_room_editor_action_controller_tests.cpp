@@ -1,5 +1,5 @@
 #include "app/iggy3d/room_editor/ActionController.hpp"
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
 
 #include <iostream>

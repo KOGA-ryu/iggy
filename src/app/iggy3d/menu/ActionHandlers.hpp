@@ -5,7 +5,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/Options.hpp"
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/input/InputAction.hpp"
 #include "runtime/session/Session.hpp"
 

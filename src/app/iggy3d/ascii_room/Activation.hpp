@@ -5,7 +5,7 @@
 #include <optional>
 #include <string>
 
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "runtime/session/Session.hpp"
 
 namespace iggy3d {

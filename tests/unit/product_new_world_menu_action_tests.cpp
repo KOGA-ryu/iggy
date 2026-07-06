@@ -10,7 +10,7 @@
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/world/DungeonDraft.hpp"
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/input/InputAction.hpp"

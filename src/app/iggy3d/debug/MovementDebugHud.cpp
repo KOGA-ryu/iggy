@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "app/iggy3d/gameplay/MovementProof.hpp"
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 
 namespace iggy3d {
 namespace {

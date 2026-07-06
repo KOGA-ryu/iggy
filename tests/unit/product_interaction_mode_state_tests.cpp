@@ -1,3 +1,4 @@
+#include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"

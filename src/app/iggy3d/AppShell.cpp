@@ -4,7 +4,7 @@
 
 #include "app/iggy3d/AppKernel.hpp"
 #include "app/iggy3d/Options.hpp"
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 
 namespace iggy3d {
 

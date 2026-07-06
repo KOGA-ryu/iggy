@@ -14,7 +14,7 @@
 #include "app/iggy3d/ascii_room/Preview.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/world/DungeonDraft.hpp"
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
 #include "app/iggy3d/room_editor/ActionController.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"

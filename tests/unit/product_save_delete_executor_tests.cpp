@@ -21,7 +21,7 @@
 // the real fix.
 
 #include "app/iggy3d/Operations.hpp"
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/world/PackageSessionSeed.hpp"

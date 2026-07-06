@@ -2,7 +2,7 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
-#include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/input/GamepadInput.hpp"
 
 namespace iggy3d {
