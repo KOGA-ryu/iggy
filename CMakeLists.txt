@@ -164,6 +164,17 @@ target_sources(iggy3d
     src/app/iggy3d/world/Creation.cpp
     src/app/iggy3d/creative/world/WorldService.cpp
     src/app/iggy3d/ReceiptBuilder.cpp
+    src/app/iggy3d/receipt/ReceiptFields.cpp
+    src/app/iggy3d/receipt/FrontendSettingsWindowFields.cpp
+    src/app/iggy3d/receipt/StartupWorldBuildoutFields.cpp
+    src/app/iggy3d/receipt/SaveStateFields.cpp
+    src/app/iggy3d/receipt/GameplayRuntimeMovementFields.cpp
+    src/app/iggy3d/receipt/DebugHudFields.cpp
+    src/app/iggy3d/receipt/GameplaySceneStateFields.cpp
+    src/app/iggy3d/receipt/FeedbackSurfaceAutomationVulkanFields.cpp
+    src/app/iggy3d/receipt/CreativeUiFields.cpp
+    src/app/iggy3d/receipt/CreativePickWireframeFields.cpp
+    src/app/iggy3d/receipt/TailFields.cpp
     src/app/iggy3d/save/SaveBridge.cpp
     src/app/frontend/FrontendState.cpp
     src/app/frontend/FrontendRoute.cpp
