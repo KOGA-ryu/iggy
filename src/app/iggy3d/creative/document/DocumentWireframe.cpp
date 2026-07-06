@@ -65,7 +65,9 @@ void setSegmentReceiptStatus(CreativeDocumentWireframeSegmentReceipt& receipt,
       break;
     case CreativeDocumentWireframeItemKind::Line:
       if (projectionReceipt.profile ==
-          CreativeSpatialProjectionProfile::PathProjection) {
+              CreativeSpatialProjectionProfile::PathProjection ||
+          projectionReceipt.profile ==
+              CreativeSpatialProjectionProfile::LinkProjection) {
         item.pathPoints.reserve(object.pathPoints.size());
         for (const CreativePathPoint& point : object.pathPoints) {
           item.pathPoints.push_back(point.position);

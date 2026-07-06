@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
+#include <array>
 #include <cmath>
 #include <string>
 #include <string_view>
@@ -233,47 +234,43 @@ CreativeRoomShellBuildResult buildCreativeRoomShellCreateRequests(
       sourceRoomShellTag(request.roomObjectId),
   };
 
-  result.createRequests.reserve(5);
-  result.createRequests.push_back(makeShellCreateRequest(
-      CreativeObjectKind::Floor,
-      "Room Shell Floor",
-      {{bounds.min.x, bounds.min.y, bounds.min.z},
-       {bounds.max.x, bounds.min.y + floorHeight, bounds.max.z}},
-      request.roomObjectId,
-      tags,
-      room->visible));
-  result.createRequests.push_back(makeShellCreateRequest(
-      CreativeObjectKind::Wall,
-      "Room Shell Wall North",
-      {{bounds.min.x, bounds.min.y, bounds.min.z},
-       {bounds.max.x, bounds.max.y, bounds.min.z + wallThickness}},
-      request.roomObjectId,
-      tags,
-      room->visible));
-  result.createRequests.push_back(makeShellCreateRequest(
-      CreativeObjectKind::Wall,
-      "Room Shell Wall South",
-      {{bounds.min.x, bounds.min.y, bounds.max.z - wallThickness},
-       {bounds.max.x, bounds.max.y, bounds.max.z}},
-      request.roomObjectId,
-      tags,
-      room->visible));
-  result.createRequests.push_back(makeShellCreateRequest(
-      CreativeObjectKind::Wall,
-      "Room Shell Wall West",
-      {{bounds.min.x, bounds.min.y, bounds.min.z},
-       {bounds.min.x + wallThickness, bounds.max.y, bounds.max.z}},
-      request.roomObjectId,
-      tags,
-      room->visible));
-  result.createRequests.push_back(makeShellCreateRequest(
-      CreativeObjectKind::Wall,
-      "Room Shell Wall East",
-      {{bounds.max.x - wallThickness, bounds.min.y, bounds.min.z},
-       {bounds.max.x, bounds.max.y, bounds.max.z}},
-      request.roomObjectId,
-      tags,
-      room->visible));
+  struct GeneratedRoomShellPiece {
+    CreativeObjectKind kind = CreativeObjectKind::Unknown;
+    const char* name = "";
+    CreativeBounds bounds{};
+  };
+  const std::array<GeneratedRoomShellPiece, 5> pieces{{
+      {CreativeObjectKind::Floor,
+       "Room Shell Floor",
+       {{bounds.min.x, bounds.min.y, bounds.min.z},
+        {bounds.max.x, bounds.min.y + floorHeight, bounds.max.z}}},
+      {CreativeObjectKind::Wall,
+       "Room Shell Wall North",
+       {{bounds.min.x, bounds.min.y, bounds.min.z},
+        {bounds.max.x, bounds.max.y, bounds.min.z + wallThickness}}},
+      {CreativeObjectKind::Wall,
+       "Room Shell Wall South",
+       {{bounds.min.x, bounds.min.y, bounds.max.z - wallThickness},
+        {bounds.max.x, bounds.max.y, bounds.max.z}}},
+      {CreativeObjectKind::Wall,
+       "Room Shell Wall West",
+       {{bounds.min.x, bounds.min.y, bounds.min.z},
+        {bounds.min.x + wallThickness, bounds.max.y, bounds.max.z}}},
+      {CreativeObjectKind::Wall,
+       "Room Shell Wall East",
+       {{bounds.max.x - wallThickness, bounds.min.y, bounds.min.z},
+        {bounds.max.x, bounds.max.y, bounds.max.z}}},
+  }};
+
+  result.createRequests.reserve(pieces.size());
+  for (const GeneratedRoomShellPiece& piece : pieces) {
+    result.createRequests.push_back(makeShellCreateRequest(piece.kind,
+                                                           piece.name,
+                                                           piece.bounds,
+                                                           request.roomObjectId,
+                                                           tags,
+                                                           room->visible));
+  }
 
   result.receipt.accepted = true;
   result.receipt.generatedRequestCount = result.createRequests.size();

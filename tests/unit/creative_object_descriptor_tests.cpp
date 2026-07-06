@@ -863,14 +863,19 @@ bool representativeDescriptorsPinSpatialFacts() {
              "patrol route spatial descriptor") &&
          expectSpatialDescriptor(
              cr::CreativeObjectKind::NavLink,
-             cr::CreativeSpatialProjectionProfile::NoProjection,
+             cr::CreativeSpatialProjectionProfile::LinkProjection,
              cr::CreativeSpatialOccupancyKind::Navigation,
              "nav link spatial descriptor") &&
          expectSpatialDescriptor(
              cr::CreativeObjectKind::JumpLink,
-             cr::CreativeSpatialProjectionProfile::NoProjection,
+             cr::CreativeSpatialProjectionProfile::LinkProjection,
              cr::CreativeSpatialOccupancyKind::Navigation,
              "jump link spatial descriptor") &&
+         expectSpatialDescriptor(
+             cr::CreativeObjectKind::ClimbLink,
+             cr::CreativeSpatialProjectionProfile::LinkProjection,
+             cr::CreativeSpatialOccupancyKind::Navigation,
+             "climb link spatial descriptor") &&
          expectSpatialDescriptor(
              cr::CreativeObjectKind::Group,
              cr::CreativeSpatialProjectionProfile::NoProjection,

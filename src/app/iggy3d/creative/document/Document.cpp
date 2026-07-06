@@ -96,11 +96,15 @@ bool isPathDescriptor(const CreativeObjectDescriptor& descriptor) noexcept {
   return descriptor.shapeKind == CreativeObjectShapeKind::Path;
 }
 
-bool pathPointsAreValid(std::span<const CreativePathPoint> pathPoints) noexcept {
-  if (pathPoints.size() < 2U) {
-    return false;
-  }
+bool isEndpointLineDescriptor(
+    const CreativeObjectDescriptor& descriptor) noexcept {
+  return descriptor.shapeKind == CreativeObjectShapeKind::Line &&
+         descriptor.projectionProfile ==
+             CreativeSpatialProjectionProfile::LinkProjection &&
+         !descriptor.hasBounds;
+}
 
+bool pathPointsAreFinite(std::span<const CreativePathPoint> pathPoints) noexcept {
   for (const CreativePathPoint& point : pathPoints) {
     if (!isFiniteVec3(point.position)) {
       return false;
@@ -108,6 +112,15 @@ bool pathPointsAreValid(std::span<const CreativePathPoint> pathPoints) noexcept 
   }
 
   return true;
+}
+
+bool pathPointsAreValid(std::span<const CreativePathPoint> pathPoints) noexcept {
+  return pathPoints.size() >= 2U && pathPointsAreFinite(pathPoints);
+}
+
+bool lineEndpointsAreValid(
+    std::span<const CreativePathPoint> pathPoints) noexcept {
+  return pathPoints.size() == 2U && pathPointsAreFinite(pathPoints);
 }
 
 std::string_view validateCreatePathPayload(
@@ -125,6 +138,16 @@ std::string_view validateCreatePathPayload(
     return {};
   }
 
+  if (isEndpointLineDescriptor(descriptor)) {
+    if (!request.hasPathOverride) {
+      return "line_endpoint_override_required";
+    }
+    if (!lineEndpointsAreValid(request.pathPoints)) {
+      return "invalid_line_endpoints";
+    }
+    return {};
+  }
+
   if (hasPathPayload) {
     return "path_unsupported";
   }
@@ -137,6 +160,11 @@ std::string_view validateRestoredPathPayload(
   if (isPathDescriptor(descriptor)) {
     return pathPointsAreValid(object.pathPoints) ? std::string_view{}
                                                 : "invalid_path_points";
+  }
+
+  if (isEndpointLineDescriptor(descriptor)) {
+    return lineEndpointsAreValid(object.pathPoints) ? std::string_view{}
+                                                    : "invalid_line_endpoints";
   }
 
   return object.pathPoints.empty() ? std::string_view{} : "path_unsupported";

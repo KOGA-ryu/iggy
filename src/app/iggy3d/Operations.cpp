@@ -622,7 +622,7 @@ class ProductCreativeBakedRoomRefreshService {
  public:
   ProductCreativeBakedRoomRefreshService(
       const ProductCreativeBakedActiveRoomRefreshRequest& request,
-      const std::optional<Session>& activeSession,
+      std::optional<Session>& activeSession,
       ProductAppWindowState& window,
       const creative::CreativeAppState& creativeApp)
       : request_(request),
@@ -747,6 +747,12 @@ class ProductCreativeBakedRoomRefreshService {
     window_.activeRoom = std::move(activeRoom);
     window_.activeRoomCollision = std::move(collision);
 
+    if (request_.activationHook) {
+      request_.activationHook(*activeSession_,
+                              window_.activeRoom.room,
+                              document);
+    }
+
     mirrorActiveRoomState();
     result_.accepted = true;
     setCreativeBakedActiveRoomRefreshStatus(
@@ -767,7 +773,7 @@ class ProductCreativeBakedRoomRefreshService {
   }
 
   const ProductCreativeBakedActiveRoomRefreshRequest& request_;
-  const std::optional<Session>& activeSession_;
+  std::optional<Session>& activeSession_;
   ProductAppWindowState& window_;
   const creative::CreativeAppState& creativeApp_;
   ProductCreativeBakedActiveRoomRefreshResult result_;
@@ -1582,7 +1588,7 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
 
 ProductCreativeBakedActiveRoomRefreshResult refreshProductCreativeBakedActiveRoom(
     const ProductCreativeBakedActiveRoomRefreshRequest& request,
-    const std::optional<Session>& activeSession,
+    std::optional<Session>& activeSession,
     ProductAppWindowState& window,
     const creative::CreativeAppState& creativeApp) {
   return ProductCreativeBakedRoomRefreshService{

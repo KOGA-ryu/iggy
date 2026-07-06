@@ -93,6 +93,13 @@ std::vector<cr::CreativePathPoint> authoredPathPoints() {
   };
 }
 
+std::vector<cr::CreativePathPoint> authoredLineEndpoints() {
+  return {
+      cr::CreativePathPoint{{kPrecise, 0.0, kOneThird}},
+      cr::CreativePathPoint{{4.0, 0.0, 6.0}},
+  };
+}
+
 cr::CreativeGridSettings authoredGridSettings() {
   cr::CreativeGridSettings settings;
   settings.origin = {kOneThird, kPrecise, -7.25};
@@ -161,6 +168,19 @@ cr::CreativeObject restoredPatrolRouteObject() {
   return object;
 }
 
+cr::CreativeObject restoredNavLinkObject() {
+  cr::CreativeObject object;
+  object.id = 12;
+  object.kind = cr::CreativeObjectKind::NavLink;
+  object.name = "Precise Link";
+  object.layerId = 6;
+  object.visible = true;
+  object.locked = false;
+  object.tags = {"link", "navigation"};
+  object.pathPoints = authoredLineEndpoints();
+  return object;
+}
+
 cr::CreativeDocumentRestoreRequest authoredRestoreRequest() {
   cr::CreativeDocumentRestoreRequest request;
   request.documentId = 9001;
@@ -183,7 +203,7 @@ cr::CreativeDocumentRestoreRequest authoredPathRestoreRequest() {
   request.snapSettings = authoredSnapSettings();
   request.worldBounds = authoredWorldBounds();
   request.nextObjectId = 25;
-  request.objects = {restoredPatrolRouteObject()};
+  request.objects = {restoredPatrolRouteObject(), restoredNavLinkObject()};
   return request;
 }
 
@@ -408,19 +428,27 @@ bool buildSectionCopiesPathPoints() {
   const cr::CreativeDocumentRestoreRequest original =
       authoredPathRestoreRequest();
   const cr::CreativeObject& route = original.objects[0];
+  const cr::CreativeObject& link = original.objects[1];
   const iggy3d::ProductCreativeDocumentSectionBuildResult result =
       iggy3d::buildSaveCreativeDocumentSection(document);
   const iggy3d::SaveCreativeDocumentSection& section = result.section;
 
   return expect(result.receipt.accepted, "path build accepted") &&
-         expect(section.objects.size() == 1U, "path build object count") &&
+         expect(section.objects.size() == 2U, "path build object count") &&
          expect(section.objects[0].kind == "PatrolRoute",
                 "path build kind") &&
          expect(section.objects[0].pathPoints.size() == 3U,
                 "path build path count") &&
          expect(savePathPointsMatch(section.objects[0].pathPoints,
                                     route.pathPoints),
-                "path build points exact");
+                "path build points exact") &&
+         expect(section.objects[1].kind == "NavLink",
+                "line endpoint build kind") &&
+         expect(section.objects[1].pathPoints.size() == 2U,
+                "line endpoint build path count") &&
+         expect(savePathPointsMatch(section.objects[1].pathPoints,
+                                    link.pathPoints),
+                "line endpoint build points exact");
 }
 
 bool restoreSectionRestoresPathPoints() {
@@ -430,13 +458,14 @@ bool restoreSectionRestoresPathPoints() {
   const iggy3d::ProductCreativeDocumentSectionRestoreResult result =
       iggy3d::restoreCreativeDocumentFromSaveSection(section);
   const cr::CreativeObject* route = result.document.findObject(11);
+  const cr::CreativeObject* link = result.document.findObject(12);
 
   return expect(result.receipt.accepted, "path restore accepted") &&
          expect(result.receipt.status ==
                     iggy3d::ProductCreativeDocumentSectionStatus::Converted,
                 "path restore converted") &&
          expect(result.document.id() == 9002U, "path restore document id") &&
-         expect(result.document.objectCount() == 1U,
+         expect(result.document.objectCount() == 2U,
                 "path restore object count") &&
          expect(result.document.nextObjectId() == 25U,
                 "path restore next object id") &&
@@ -447,7 +476,57 @@ bool restoreSectionRestoresPathPoints() {
          expect(route != nullptr, "path restore route findable") &&
          expect(route != nullptr &&
                     samePathPoints(route->pathPoints, authoredPathPoints()),
-                "path restore points exact");
+                "path restore points exact") &&
+         expect(link != nullptr, "line endpoint restore link findable") &&
+         expect(link != nullptr &&
+                    samePathPoints(link->pathPoints,
+                                   authoredLineEndpoints()),
+                "line endpoint restore points exact");
+}
+
+bool encodeDecodeAndRestoreRoundTripsPathAndLineEndpointPayloads() {
+  const cr::CreativeDocument document = authoredPathDocument();
+  const iggy3d::ProductCreativeDocumentSectionBuildResult built =
+      iggy3d::buildSaveCreativeDocumentSection(document);
+  iggy3d::SaveEnvelope envelope = minimalEnvelope();
+  envelope.creativeDocument = built.section;
+
+  const iggy3d::SaveEncodeResult encoded = iggy3d::encodeSaveEnvelope(envelope);
+  const iggy3d::SaveDecodeResult decoded =
+      iggy3d::decodeSaveEnvelope(encoded.encodedText);
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult restored =
+      iggy3d::restoreCreativeDocumentFromSaveSection(
+          decoded.envelope.creativeDocument);
+  const cr::CreativeObject* route = restored.document.findObject(11);
+  const cr::CreativeObject* link = restored.document.findObject(12);
+
+  return expect(built.receipt.accepted,
+                "path line endpoint codec build accepted") &&
+         expect(encoded.status == iggy3d::SaveCodecStatus::Ok,
+                "path line endpoint codec encode ok") &&
+         expect(encoded.encodedText.find(
+                    "creativeDocument.object.1.kind=NavLink\n") !=
+                    std::string::npos,
+                "line endpoint kind encoded") &&
+         expect(encoded.encodedText.find(
+                    "creativeDocument.object.1.pathPoint.count=2\n") !=
+                    std::string::npos,
+                "line endpoint point count encoded") &&
+         expect(decoded.status == iggy3d::SaveCodecStatus::Ok,
+                "path line endpoint codec decode ok") &&
+         expect(restored.receipt.accepted,
+                "path line endpoint codec restore accepted") &&
+         expect(restored.document.objectCount() == 2U,
+                "path line endpoint codec object count") &&
+         expect(route != nullptr, "path line endpoint codec route findable") &&
+         expect(route != nullptr &&
+                    samePathPoints(route->pathPoints, authoredPathPoints()),
+                "path line endpoint codec route points") &&
+         expect(link != nullptr, "path line endpoint codec link findable") &&
+         expect(link != nullptr &&
+                    samePathPoints(link->pathPoints,
+                                   authoredLineEndpoints()),
+                "path line endpoint codec link endpoints");
 }
 
 bool restoreRejectsInvalidPathPayloads() {
@@ -493,6 +572,37 @@ bool restoreRejectsInvalidPathPayloads() {
                 "nonfinite path point status") &&
          expect(nonFiniteResult.receipt.reasonCode == "invalid_path_points",
                 "nonfinite path point reason");
+}
+
+bool restoreRejectsInvalidLineEndpointPayloads() {
+  const iggy3d::SaveCreativeDocumentSection valid =
+      iggy3d::buildSaveCreativeDocumentSection(authoredPathDocument()).section;
+
+  iggy3d::SaveCreativeDocumentSection tooMany = valid;
+  tooMany.objects[1].pathPoints.push_back({7.0, 0.0, 8.0});
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult tooManyResult =
+      iggy3d::restoreCreativeDocumentFromSaveSection(tooMany);
+
+  iggy3d::SaveCreativeDocumentSection nonFinite = valid;
+  nonFinite.objects[1].pathPoints[0].x =
+      std::numeric_limits<double>::quiet_NaN();
+  const iggy3d::ProductCreativeDocumentSectionRestoreResult nonFiniteResult =
+      iggy3d::restoreCreativeDocumentFromSaveSection(nonFinite);
+
+  return expect(!tooManyResult.receipt.accepted,
+                "too many line endpoints rejected") &&
+         expect(tooManyResult.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::InvalidObject,
+                "too many line endpoints status") &&
+         expect(tooManyResult.receipt.reasonCode == "invalid_line_endpoints",
+                "too many line endpoints reason") &&
+         expect(!nonFiniteResult.receipt.accepted,
+                "nonfinite line endpoint rejected") &&
+         expect(nonFiniteResult.receipt.status ==
+                    iggy3d::ProductCreativeDocumentSectionStatus::InvalidObject,
+                "nonfinite line endpoint status") &&
+         expect(nonFiniteResult.receipt.reasonCode == "invalid_line_endpoints",
+                "nonfinite line endpoint reason");
 }
 
 bool restoreRejectsNonPathObjectCarryingPathPoints() {
@@ -797,7 +907,9 @@ int main() {
   ok = encodeDecodeAndRestoreRoundTripsDocument() && ok;
   ok = buildSectionCopiesPathPoints() && ok;
   ok = restoreSectionRestoresPathPoints() && ok;
+  ok = encodeDecodeAndRestoreRoundTripsPathAndLineEndpointPayloads() && ok;
   ok = restoreRejectsInvalidPathPayloads() && ok;
+  ok = restoreRejectsInvalidLineEndpointPayloads() && ok;
   ok = restoreRejectsNonPathObjectCarryingPathPoints() && ok;
   ok = restoreRejectsUnsupportedParentPayload() && ok;
   ok = restoreRejectsMissingParentPayload() && ok;

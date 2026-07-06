@@ -7,6 +7,36 @@
 #include <utility>
 
 namespace iggy3d::creative {
+
+bool creativeRoomBakeBoundsAreValid(CreativeBounds bounds) noexcept {
+  if (!std::isfinite(bounds.min.x) || !std::isfinite(bounds.min.y) ||
+      !std::isfinite(bounds.min.z) || !std::isfinite(bounds.max.x) ||
+      !std::isfinite(bounds.max.y) || !std::isfinite(bounds.max.z) ||
+      !(bounds.max.x > bounds.min.x) || !(bounds.max.y > bounds.min.y) ||
+      !(bounds.max.z > bounds.min.z)) {
+    return false;
+  }
+
+  const double sizeX = bounds.max.x - bounds.min.x;
+  const double sizeY = bounds.max.y - bounds.min.y;
+  const double sizeZ = bounds.max.z - bounds.min.z;
+  const double centerX = bounds.min.x + sizeX * 0.5;
+  const double centerY = bounds.min.y + sizeY * 0.5;
+  const double centerZ = bounds.min.z + sizeZ * 0.5;
+  const double maxFloat = static_cast<double>(std::numeric_limits<float>::max());
+  const double values[] = {bounds.min.x, bounds.min.y, bounds.min.z,
+                           bounds.max.x, bounds.max.y, bounds.max.z,
+                           sizeX,        sizeY,        sizeZ,
+                           centerX,      centerY,      centerZ};
+  for (const double value : values) {
+    if (std::fabs(value) > maxFloat) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 namespace {
 
 struct BakeBounds {
@@ -70,9 +100,7 @@ struct RoomBakeObjectClassification {
 
 [[nodiscard]] bool validBakeBounds(CreativeBounds bounds,
                                    BakeBounds& baked) noexcept {
-  if (!finite(bounds.min) || !finite(bounds.max) ||
-      !(bounds.max.x > bounds.min.x) || !(bounds.max.y > bounds.min.y) ||
-      !(bounds.max.z > bounds.min.z)) {
+  if (!creativeRoomBakeBoundsAreValid(bounds)) {
     return false;
   }
 
@@ -82,16 +110,6 @@ struct RoomBakeObjectClassification {
   const double centerX = bounds.min.x + sizeX * 0.5;
   const double centerY = bounds.min.y + sizeY * 0.5;
   const double centerZ = bounds.min.z + sizeZ * 0.5;
-  const double maxFloat = static_cast<double>(std::numeric_limits<float>::max());
-  const double values[] = {bounds.min.x, bounds.min.y, bounds.min.z,
-                           bounds.max.x, bounds.max.y, bounds.max.z,
-                           sizeX,        sizeY,        sizeZ,
-                           centerX,      centerY,      centerZ};
-  for (const double value : values) {
-    if (std::fabs(value) > maxFloat) {
-      return false;
-    }
-  }
 
   baked.min = {toFloat(bounds.min.x), toFloat(bounds.min.y),
                toFloat(bounds.min.z)};

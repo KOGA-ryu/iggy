@@ -1,11 +1,19 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 
 namespace iggy3d {
+
+class Session;
+
+using ProductCreativeBakedRoomActivationHook = std::function<void(
+    Session&,
+    const RoomAsset&,
+    const creative::CreativeDocument&)>;
 
 struct ProductCreativeBakedActiveRoomRefreshRequest {
   std::string roomId = "iggy3d_creative_baked_room";
@@ -13,6 +21,7 @@ struct ProductCreativeBakedActiveRoomRefreshRequest {
   std::string sourceSubset = "creative_document_bake";
   bool includeHidden = false;
   bool clearOnNoRenderable = false;
+  ProductCreativeBakedRoomActivationHook activationHook;
 };
 
 struct ProductCreativeBakedActiveRoomRefreshResult {

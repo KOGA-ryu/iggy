@@ -71,8 +71,10 @@ cr::CreativeObject makeLinkObject(cr::CreativeObjectId objectId) {
   object.id = objectId;
   object.kind = cr::CreativeObjectKind::NavLink;
   object.name = "Nav Link";
-  object.bounds = cr::CreativeBounds{cr::CreativeVec3{-1.0, 0.0, 0.0},
-                                    cr::CreativeVec3{3.0, 0.0, 0.0}};
+  object.pathPoints = {
+      cr::CreativePathPoint{{1.0, 0.0, 0.0}},
+      cr::CreativePathPoint{{3.0, 0.0, 0.0}},
+  };
   return object;
 }
 
@@ -534,18 +536,64 @@ bool offGridPathEndpointDoesNotClampToBorder() {
                 "off-grid path no clamped border cell");
 }
 
-bool linkProjectionDoesNotEmitBorderCells() {
+bool linkProjectionSamplesStoredEndpoints() {
   const cr::CreativeObject object = makeLinkObject(49);
+  const cr::CreativeSpatialProjectionRequest request = makeRequest();
+
+  const cr::CreativeSpatialProjectionReceipt receipt =
+      cr::projectLinkObjectToGrid(object, request);
+
+  return expect(receipt.status == cr::CreativeSpatialProjectionStatus::Projected,
+                "link projection projected") &&
+         expect(receipt.message == "projected",
+                "link projection message") &&
+         expect(receipt.profile ==
+                    cr::CreativeSpatialProjectionProfile::LinkProjection,
+                "link projection profile") &&
+         expect(receipt.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Navigation,
+                "link projection occupancy") &&
+         expect(receipt.cells.size() == 3U, "link projection cell count") &&
+         expect(hasCellAt(receipt, object.id, cr::CreativeGridCoord3{1, 0, 0},
+                          request.gridSize),
+                "link projection start cell") &&
+         expect(hasCellAt(receipt, object.id, cr::CreativeGridCoord3{2, 0, 0},
+                          request.gridSize),
+                "link projection middle cell") &&
+         expect(hasCellAt(receipt, object.id, cr::CreativeGridCoord3{3, 0, 0},
+                          request.gridSize),
+                "link projection end cell");
+}
+
+bool invalidLinkEndpointsDoNotProject() {
+  cr::CreativeObject object = makeLinkObject(49);
+  object.pathPoints.pop_back();
+  const cr::CreativeSpatialProjectionRequest request = makeRequest();
+
+  const cr::CreativeSpatialProjectionReceipt receipt =
+      cr::projectLinkObjectToGrid(object, request);
+
+  return expect(receipt.status ==
+                    cr::CreativeSpatialProjectionStatus::EmptyProjection,
+                "invalid link endpoint empty") &&
+         expect(receipt.message == "invalid_line_endpoints",
+                "invalid link endpoint message") &&
+         expect(receipt.cells.empty(), "invalid link endpoint no cells");
+}
+
+bool offGridLinkEndpointDoesNotClampToBorder() {
+  cr::CreativeObject object = makeLinkObject(49);
+  object.pathPoints.front().position.x = -1.0;
   cr::CreativeSpatialProjectionRequest request = makeRequest();
   request.clampToGrid = true;
 
   const cr::CreativeSpatialProjectionReceipt receipt =
       cr::projectLinkObjectToGrid(object, request);
 
-  return expect(receipt.status == cr::CreativeSpatialProjectionStatus::NoProjection,
-                "link projection no projection") &&
-         expect(receipt.message == "no_projection",
-                "link projection message") &&
+  return expect(receipt.status == cr::CreativeSpatialProjectionStatus::OutOfBounds,
+                "off-grid link out of bounds") &&
+         expect(receipt.message == "out_of_bounds",
+                "off-grid link message") &&
          expect(receipt.cells.empty(), "link projection no cells") &&
          expect(!hasCellAt(receipt, object.id, cr::CreativeGridCoord3{0, 0, 0},
                            request.gridSize),
@@ -639,7 +687,9 @@ int main() {
                   pathProjectionSamplesAdjacentSegmentsWithStableDedupe() &&
                   hiddenPathProjectsNoCells() &&
                   offGridPathEndpointDoesNotClampToBorder() &&
-                  linkProjectionDoesNotEmitBorderCells() &&
+                  linkProjectionSamplesStoredEndpoints() &&
+                  invalidLinkEndpointsDoNotProject() &&
+                  offGridLinkEndpointDoesNotClampToBorder() &&
                   aggregateIgnoresOffGridPointBorderArtifact() &&
                   boundedMoveShiftsCrateProjectionCells();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

@@ -84,6 +84,19 @@ namespace {
     });
 }
 
+[[nodiscard]] bool validLineEndpoints(const std::vector<CreativePathPoint>& pathPoints) noexcept {
+    return pathPoints.size() == 2U &&
+           std::all_of(pathPoints.begin(), pathPoints.end(), [](const CreativePathPoint& point) {
+               return finiteVec3(point.position);
+           });
+}
+
+[[nodiscard]] bool objectStoresLineEndpoints(const CreativeObjectDescriptor& descriptor) noexcept {
+    return descriptor.shapeKind == CreativeObjectShapeKind::Line &&
+           descriptor.projectionProfile == CreativeSpatialProjectionProfile::LinkProjection &&
+           !descriptor.hasBounds;
+}
+
 [[nodiscard]] CreativeVec3 boundsSize(const CreativeBounds& bounds) noexcept {
     return CreativeVec3{
         bounds.max.x - bounds.min.x,
@@ -619,20 +632,34 @@ CreativeMutationApplyReceipt applyTextMutation(CreativeObject& object, CreativeM
 }
 
 CreativeMutationApplyReceipt applyPathPointsMutation(CreativeObject& object, CreativeMutationKind mutationKind, const PathPointsMutation& mutation) {
-    if (describeObject(object.kind).shapeKind != CreativeObjectShapeKind::Path) {
+    const CreativeObjectDescriptor& descriptor = describeObject(object.kind);
+    const bool storesPath = descriptor.shapeKind == CreativeObjectShapeKind::Path;
+    const bool storesLineEndpoints = objectStoresLineEndpoints(descriptor);
+    if (!storesPath && !storesLineEndpoints) {
         return rejectMutation(object, mutationKind, CreativeMutationApplyStatus::UnsupportedMutation, "object kind does not store path points");
     }
 
-    if (!validPathPoints(mutation.pathPoints)) {
+    if (storesLineEndpoints && !validLineEndpoints(mutation.pathPoints)) {
+        return rejectMutation(object, mutationKind, CreativeMutationApplyStatus::Rejected, "line endpoints are invalid");
+    }
+
+    if (storesPath && !validPathPoints(mutation.pathPoints)) {
         return rejectMutation(object, mutationKind, CreativeMutationApplyStatus::Rejected, "path points are invalid");
     }
 
     if (samePathPoints(object.pathPoints, mutation.pathPoints)) {
-        return makeNoChangeReceipt(object, mutationKind, "object path points already match requested path");
+        return makeNoChangeReceipt(
+            object,
+            mutationKind,
+            storesLineEndpoints ? "object line endpoints already match requested endpoints"
+                                : "object path points already match requested path");
     }
 
     object.pathPoints = mutation.pathPoints;
-    return makeAppliedReceipt(object, mutationKind, "object path points changed");
+    return makeAppliedReceipt(
+        object,
+        mutationKind,
+        storesLineEndpoints ? "object line endpoints changed" : "object path points changed");
 }
 
 CreativeMutationApplyReceipt applyReferenceSourceMutation(CreativeObject& object, CreativeMutationKind mutationKind, const ReferenceSourceMutation& mutation) {

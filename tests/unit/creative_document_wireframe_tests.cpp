@@ -66,6 +66,20 @@ cr::CreativeObjectId createPathObject(cr::CreativeDocument& document) {
   return receipt.objectId;
 }
 
+cr::CreativeObjectId createLinkObject(cr::CreativeDocument& document) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::NavLink;
+  request.name = "Nav Link";
+  request.hasPathOverride = true;
+  request.pathPoints = {
+      cr::CreativePathPoint{{2.0, 0.0, 2.0}},
+      cr::CreativePathPoint{{5.0, 0.0, 2.0}},
+  };
+  const cr::CreativeDocumentCreateReceipt receipt =
+      document.createObject(request);
+  return receipt.objectId;
+}
+
 bool emptyDocumentReturnsStableEmptyReceipt() {
   const cr::CreativeDocument document;
   const cr::CreativeDocumentWireframeBuildResult result =
@@ -292,6 +306,59 @@ bool patrolRoutePathEmitsOrderedGameplayLineSegments() {
                 "path second segment") &&
          expect(segmentList[1].style == cr::CreativeDocumentWireframeStyle::Gameplay,
                 "path second segment style");
+}
+
+bool navLinkEndpointsEmitNavigationLineSegment() {
+  cr::CreativeDocument document;
+  const cr::CreativeObjectId linkId = createLinkObject(document);
+
+  const cr::CreativeDocumentWireframeBuildResult list =
+      cr::buildCreativeDocumentWireframeList(document, makeProjectionRequest());
+  const cr::CreativeDocumentWireframeSegmentBuildResult segments =
+      cr::buildCreativeDocumentWireframeSegments(document,
+                                                makeProjectionRequest());
+  const cr::CreativeDocumentWireframeItem& item = list.drawList.items[0];
+  const std::vector<cr::CreativeDocumentWireframeSegment>& segmentList =
+      segments.segmentList.segments;
+
+  return expect(linkId != cr::kInvalidObjectId, "link created") &&
+         expect(list.receipt.status == cr::CreativeDocumentWireframeStatus::Built,
+                "link list built") &&
+         expect(list.receipt.projectedObjectCount == 1U,
+                "link projected count") &&
+         expect(list.receipt.itemCount == 1U, "link item count") &&
+         expect(item.itemKind == cr::CreativeDocumentWireframeItemKind::Line,
+                "link item is line") &&
+         expect(item.objectId == linkId, "link item id") &&
+         expect(item.objectKind == cr::CreativeObjectKind::NavLink,
+                "link item object kind") &&
+         expect(item.projectionProfile ==
+                    cr::CreativeSpatialProjectionProfile::LinkProjection,
+                "link item projection") &&
+         expect(item.occupancyKind ==
+                    cr::CreativeSpatialOccupancyKind::Navigation,
+                "link item occupancy") &&
+         expect(item.style == cr::CreativeDocumentWireframeStyle::Navigation,
+                "link item style") &&
+         expect(item.pathPoints.size() == 2U, "link item point count") &&
+         expect(sameVec3(item.pathPoints[0], {2.0, 0.0, 2.0}),
+                "link item point 0") &&
+         expect(sameVec3(item.pathPoints[1], {5.0, 0.0, 2.0}),
+                "link item point 1") &&
+         expect(segments.receipt.lineItemCount == 1U,
+                "link segment line item") &&
+         expect(segments.receipt.segmentCount == 1U,
+                "link segment count") &&
+         expect(segmentList.size() == 1U, "link segment vector count") &&
+         expect(sameSegment(segmentList[0],
+                            linkId,
+                            cr::CreativeDocumentWireframeSegmentKind::Line,
+                            {2.0, 0.0, 2.0},
+                            {5.0, 0.0, 2.0}),
+                "link segment endpoints") &&
+         expect(segmentList[0].style ==
+                    cr::CreativeDocumentWireframeStyle::Navigation,
+                "link segment style");
 }
 
 bool objectSpanUnknownObjectIsCountedButNotRendered() {
@@ -595,6 +662,7 @@ int main() {
                   visibilityToggleRemovesAndRestoresItem() &&
                   multipleVisibleObjectsPreserveDocumentOrder() &&
                   patrolRoutePathEmitsOrderedGameplayLineSegments() &&
+                  navLinkEndpointsEmitNavigationLineSegment() &&
                   objectSpanUnknownObjectIsCountedButNotRendered() &&
                   invalidProjectionSettingsFailClosed() &&
                   roomDefaultBoxEmitsTwelveStableEdges() &&

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <limits>
 #include <span>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -39,6 +40,20 @@ std::vector<cr::CreativePathPoint> updatedPathPoints() {
   };
 }
 
+std::vector<cr::CreativePathPoint> authoredLineEndpoints() {
+  return {
+      cr::CreativePathPoint{{1.0, 0.0, 2.0}},
+      cr::CreativePathPoint{{4.0, 0.0, 6.0}},
+  };
+}
+
+std::vector<cr::CreativePathPoint> updatedLineEndpoints() {
+  return {
+      cr::CreativePathPoint{{2.0, 0.0, 3.0}},
+      cr::CreativePathPoint{{5.0, 0.0, 7.0}},
+  };
+}
+
 bool samePathPoints(std::span<const cr::CreativePathPoint> lhs,
                     std::span<const cr::CreativePathPoint> rhs) {
   if (lhs.size() != rhs.size()) {
@@ -61,12 +76,31 @@ cr::CreativeDocumentCreateRequest patrolRouteCreateRequest() {
   return request;
 }
 
+cr::CreativeDocumentCreateRequest lineEndpointCreateRequest(
+    cr::CreativeObjectKind kind) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.name = std::string{cr::toString(kind)} + " A";
+  request.hasPathOverride = true;
+  request.pathPoints = authoredLineEndpoints();
+  return request;
+}
+
 cr::CreativeObject restoredPatrolRouteObject() {
   cr::CreativeObject object;
   object.id = 7;
   object.kind = cr::CreativeObjectKind::PatrolRoute;
   object.name = "Restored Route";
   object.pathPoints = authoredPathPoints();
+  return object;
+}
+
+cr::CreativeObject restoredNavLinkObject() {
+  cr::CreativeObject object;
+  object.id = 9;
+  object.kind = cr::CreativeObjectKind::NavLink;
+  object.name = "Restored Nav Link";
+  object.pathPoints = authoredLineEndpoints();
   return object;
 }
 
@@ -197,6 +231,101 @@ bool nonPathCreateRejectsPathPayload() {
          expect(document.revision() == 0U, "nonpath path revision");
 }
 
+bool traversalLinkCreateStoresExactLineEndpoints() {
+  bool ok = true;
+  for (const cr::CreativeObjectKind kind :
+       {cr::CreativeObjectKind::NavLink,
+        cr::CreativeObjectKind::JumpLink,
+        cr::CreativeObjectKind::ClimbLink}) {
+    cr::CreativeDocument document;
+    const cr::CreativeObjectDescriptor& descriptor = cr::describeObject(kind);
+    const cr::CreativeDocumentCreateReceipt receipt =
+        document.createObject(lineEndpointCreateRequest(kind));
+    const cr::CreativeObject* object = document.findObject(receipt.objectId);
+
+    ok = expect(receipt.requested, "line endpoint create requested") &&
+         expect(receipt.accepted, "line endpoint create accepted") &&
+         expect(receipt.changed, "line endpoint create changed") &&
+         expect(receipt.objectCreated, "line endpoint object created") &&
+         expect(receipt.status == cr::CreativeDocumentCreateStatus::Created,
+                "line endpoint create status") &&
+         expect(receipt.reasonCode == "object_created",
+                "line endpoint create reason") &&
+         expect(receipt.creationDirtyFlags == descriptor.creationDirtyFlags,
+                "line endpoint dirty flags") &&
+         expect(document.objectCount() == 1U,
+                "line endpoint object count") &&
+         expect(document.revision() == 1U,
+                "line endpoint document revision") &&
+         expect(object != nullptr, "line endpoint object findable") &&
+         expect(object != nullptr && object->kind == kind,
+                "line endpoint object kind") &&
+         expect(object != nullptr &&
+                    samePathPoints(object->pathPoints,
+                                   authoredLineEndpoints()),
+                "line endpoints exact") &&
+         ok;
+  }
+  return ok;
+}
+
+bool traversalLinkCreateRequiresEndpointOverride() {
+  cr::CreativeDocument document;
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::NavLink;
+
+  const cr::CreativeDocumentCreateReceipt receipt =
+      document.createObject(request);
+
+  return expect(!receipt.accepted, "missing endpoints not accepted") &&
+         expect(receipt.status == cr::CreativeDocumentCreateStatus::Rejected,
+                "missing endpoints status") &&
+         expect(receipt.reasonCode == "line_endpoint_override_required",
+                "missing endpoints reason") &&
+         expect(document.objectCount() == 0U,
+                "missing endpoints object count") &&
+         expect(document.revision() == 0U, "missing endpoints revision");
+}
+
+bool traversalLinkCreateRejectsInvalidEndpointCount() {
+  cr::CreativeDocument document;
+  cr::CreativeDocumentCreateRequest request =
+      lineEndpointCreateRequest(cr::CreativeObjectKind::JumpLink);
+  request.pathPoints = authoredPathPoints();
+
+  const cr::CreativeDocumentCreateReceipt receipt =
+      document.createObject(request);
+
+  return expect(!receipt.accepted, "three endpoints not accepted") &&
+         expect(receipt.status == cr::CreativeDocumentCreateStatus::Rejected,
+                "three endpoints status") &&
+         expect(receipt.reasonCode == "invalid_line_endpoints",
+                "three endpoints reason") &&
+         expect(document.objectCount() == 0U,
+                "three endpoints object count") &&
+         expect(document.revision() == 0U, "three endpoints revision");
+}
+
+bool traversalLinkCreateRejectsNonFiniteEndpoint() {
+  cr::CreativeDocument document;
+  cr::CreativeDocumentCreateRequest request =
+      lineEndpointCreateRequest(cr::CreativeObjectKind::ClimbLink);
+  request.pathPoints[1].position.x =
+      std::numeric_limits<double>::infinity();
+
+  const cr::CreativeDocumentCreateReceipt receipt =
+      document.createObject(request);
+
+  return expect(!receipt.accepted, "nonfinite endpoint not accepted") &&
+         expect(receipt.status == cr::CreativeDocumentCreateStatus::Rejected,
+                "nonfinite endpoint status") &&
+         expect(receipt.reasonCode == "invalid_line_endpoints",
+                "nonfinite endpoint reason") &&
+         expect(document.objectCount() == 0U,
+                "nonfinite endpoint object count") &&
+         expect(document.revision() == 0U, "nonfinite endpoint revision");
+}
+
 bool restoreForLoadPreservesPathPayload() {
   cr::CreativeDocument document;
   const cr::CreativeDocumentRestoreRequest request =
@@ -223,6 +352,34 @@ bool restoreForLoadPreservesPathPayload() {
          expect(object != nullptr &&
                     samePathPoints(object->pathPoints, authoredPathPoints()),
                 "path restore points exact");
+}
+
+bool restoreForLoadPreservesLineEndpoints() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentRestoreRequest request =
+      restoreRequestWith(restoredNavLinkObject());
+
+  const cr::CreativeDocumentRestoreReceipt receipt =
+      document.restoreForLoad(request);
+  const cr::CreativeObject* object = document.findObject(9);
+
+  return expect(receipt.accepted, "line endpoint restore accepted") &&
+         expect(receipt.status == cr::CreativeDocumentRestoreStatus::Restored,
+                "line endpoint restore status") &&
+         expect(receipt.reasonCode == "document_restored",
+                "line endpoint restore reason") &&
+         expect(object != nullptr, "line endpoint restore object findable") &&
+         expect(object != nullptr &&
+                    object->kind == cr::CreativeObjectKind::NavLink,
+                "line endpoint restore kind") &&
+         expect(object != nullptr &&
+                    samePathPoints(object->pathPoints,
+                                   authoredLineEndpoints()),
+                "line endpoint restore points exact") &&
+         expect(document.revision() == 0U,
+                "line endpoint restore clean revision") &&
+         expect(document.dirtyFlags() == 0U,
+                "line endpoint restore clean dirty");
 }
 
 bool restoreForLoadRejectsInvalidPathWithoutMutation() {
@@ -262,6 +419,34 @@ bool restoreForLoadRejectsInvalidPathWithoutMutation() {
                 "invalid restore revision unchanged") &&
          expect(document.dirtyFlags() == dirtyBefore,
                 "invalid restore dirty unchanged");
+}
+
+bool restoreForLoadRejectsInvalidLineEndpointsWithoutMutation() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentCreateReceipt existing = createRoom(document);
+  const std::uint64_t revisionBefore = document.revision();
+  const cr::CreativeObjectDirtyFlags dirtyBefore = document.dirtyFlags();
+
+  cr::CreativeObject invalidLink = restoredNavLinkObject();
+  invalidLink.pathPoints = authoredPathPoints();
+  const cr::CreativeDocumentRestoreReceipt receipt =
+      document.restoreForLoad(restoreRequestWith(invalidLink));
+
+  return expect(existing.accepted, "line endpoint reject setup accepted") &&
+         expect(!receipt.accepted, "invalid line endpoint restore rejected") &&
+         expect(receipt.status ==
+                    cr::CreativeDocumentRestoreStatus::InvalidObject,
+                "invalid line endpoint restore status") &&
+         expect(receipt.reasonCode == "invalid_line_endpoints",
+                "invalid line endpoint restore reason") &&
+         expect(document.objectCount() == 1U,
+                "invalid line endpoint restore object count") &&
+         expect(document.containsObject(existing.objectId),
+                "invalid line endpoint existing remains") &&
+         expect(document.revision() == revisionBefore,
+                "invalid line endpoint revision unchanged") &&
+         expect(document.dirtyFlags() == dirtyBefore,
+                "invalid line endpoint dirty unchanged");
 }
 
 bool restoreForLoadRejectsNonPathPathPayload() {
@@ -465,6 +650,78 @@ bool nonPathPathMutationRejectsDeterministically() {
                 "nonpath path mutation document dirty zero");
 }
 
+bool traversalLinkEndpointMutationAppliesStoredPoints() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(
+          lineEndpointCreateRequest(cr::CreativeObjectKind::NavLink));
+  (void)document.drainDirtyFlags();
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt =
+      cr::applyDocumentMutation(
+          document, created.objectId, cr::CreativeMutationKind::SetPatrolRoute,
+          cr::makePathPointsPayload(updatedLineEndpoints()));
+  const cr::CreativeObject* object = document.findObject(created.objectId);
+
+  return expect(created.accepted, "line endpoint mutation setup accepted") &&
+         expect(receipt.status == cr::CreativeDocumentMutationStatus::Applied,
+                "line endpoint mutation document applied") &&
+         expect(receipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::Applied,
+                "line endpoint mutation object applied") &&
+         expect(receipt.objectKind == cr::CreativeObjectKind::NavLink,
+                "line endpoint mutation object kind") &&
+         expect(receipt.changed, "line endpoint mutation changed") &&
+         expect(receipt.allowed, "line endpoint mutation allowed") &&
+         expect(receipt.revisionBefore == revisionBefore,
+                "line endpoint mutation revision before") &&
+         expect(receipt.revisionAfter == revisionBefore + 1U,
+                "line endpoint mutation revision after") &&
+         expect(receipt.objectReceipt.message ==
+                    "object line endpoints changed",
+                "line endpoint mutation message") &&
+         expect(object != nullptr, "line endpoint mutation object findable") &&
+         expect(object != nullptr &&
+                    samePathPoints(object->pathPoints,
+                                   updatedLineEndpoints()),
+                "line endpoint mutation points exact");
+}
+
+bool traversalLinkEndpointMutationRejectsInvalidCount() {
+  cr::CreativeDocument document;
+  const cr::CreativeDocumentCreateReceipt created =
+      document.createObject(
+          lineEndpointCreateRequest(cr::CreativeObjectKind::JumpLink));
+  (void)document.drainDirtyFlags();
+  const std::uint64_t revisionBefore = document.revision();
+
+  const cr::CreativeDocumentMutationReceipt receipt =
+      cr::applyDocumentMutation(
+          document, created.objectId, cr::CreativeMutationKind::SetPatrolRoute,
+          cr::makePathPointsPayload(authoredPathPoints()));
+  const cr::CreativeObject* object = document.findObject(created.objectId);
+
+  return expect(created.accepted, "line endpoint invalid setup accepted") &&
+         expect(receipt.status ==
+                    cr::CreativeDocumentMutationStatus::ApplyFailed,
+                "line endpoint invalid document failed") &&
+         expect(receipt.objectReceipt.status ==
+                    cr::CreativeMutationApplyStatus::Rejected,
+                "line endpoint invalid object rejected") &&
+         expect(receipt.objectReceipt.message == "line endpoints are invalid",
+                "line endpoint invalid message") &&
+         expect(document.revision() == revisionBefore,
+                "line endpoint invalid revision unchanged") &&
+         expect(document.dirtyFlags() == 0U,
+                "line endpoint invalid dirty zero") &&
+         expect(object != nullptr, "line endpoint invalid object findable") &&
+         expect(object != nullptr &&
+                    samePathPoints(object->pathPoints,
+                                   authoredLineEndpoints()),
+                "line endpoint invalid preserved");
+}
+
 bool legacyPatrolRoutePayloadsRemainFutureStorageNoChange() {
   cr::CreativeDocument document;
   const cr::CreativeDocumentCreateReceipt created =
@@ -572,13 +829,21 @@ int main() {
                   patrolRouteCreateRejectsShortPath() &&
                   patrolRouteCreateRejectsNonFinitePathPoint() &&
                   nonPathCreateRejectsPathPayload() &&
+                  traversalLinkCreateStoresExactLineEndpoints() &&
+                  traversalLinkCreateRequiresEndpointOverride() &&
+                  traversalLinkCreateRejectsInvalidEndpointCount() &&
+                  traversalLinkCreateRejectsNonFiniteEndpoint() &&
                   restoreForLoadPreservesPathPayload() &&
+                  restoreForLoadPreservesLineEndpoints() &&
                   restoreForLoadRejectsInvalidPathWithoutMutation() &&
+                  restoreForLoadRejectsInvalidLineEndpointsWithoutMutation() &&
                   restoreForLoadRejectsNonPathPathPayload() &&
                   patrolRoutePathMutationAppliesStoredPoints() &&
                   patrolRoutePathMutationSamePointsNoChange() &&
                   patrolRoutePathMutationRejectsInvalidPoints() &&
                   nonPathPathMutationRejectsDeterministically() &&
+                  traversalLinkEndpointMutationAppliesStoredPoints() &&
+                  traversalLinkEndpointMutationRejectsInvalidCount() &&
                   legacyPatrolRoutePayloadsRemainFutureStorageNoChange() &&
                   documentCopyPreservesPathPayload();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

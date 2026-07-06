@@ -71,6 +71,9 @@ struct CreativeRoomBakeResult {
 
 [[nodiscard]] std::string_view toString(CreativeRoomBakeStatus status) noexcept;
 
+[[nodiscard]] bool creativeRoomBakeBoundsAreValid(
+    CreativeBounds bounds) noexcept;
+
 [[nodiscard]] CreativeRoomBakeResult buildRoomAssetFromCreativeDocument(
     const CreativeRoomBakeRequest& request);
 

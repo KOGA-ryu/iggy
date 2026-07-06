@@ -7,6 +7,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -85,14 +86,6 @@ cr::CreativeDocumentCreateReceipt createObject(
   return document.createObject(request);
 }
 
-cr::CreativeDocumentCreateReceipt createDefaultObject(
-    cr::CreativeDocument& document,
-    cr::CreativeObjectKind kind) {
-  cr::CreativeDocumentCreateRequest request;
-  request.kind = kind;
-  return document.createObject(request);
-}
-
 cr::CreativeDocumentCreateReceipt createPoint(
     cr::CreativeDocument& document,
     cr::CreativeObjectKind kind,
@@ -115,6 +108,19 @@ cr::CreativeDocumentCreateReceipt createPath(cr::CreativeDocument& document) {
       cr::CreativePathPoint{{0.0, 0.0, 0.0}},
       cr::CreativePathPoint{{2.0, 0.0, 0.0}},
       cr::CreativePathPoint{{2.0, 0.0, 2.0}},
+  };
+  return document.createObject(request);
+}
+
+cr::CreativeDocumentCreateReceipt createEndpointLine(
+    cr::CreativeDocument& document,
+    cr::CreativeObjectKind kind = cr::CreativeObjectKind::NavLink) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.hasPathOverride = true;
+  request.pathPoints = {
+      cr::CreativePathPoint{{0.0, 0.0, 0.0}},
+      cr::CreativePathPoint{{2.0, 0.0, 0.0}},
   };
   return document.createObject(request);
 }
@@ -182,6 +188,81 @@ bool emptyDocumentHasNoRenderableObjects() {
          expect(result.room.source == "iggy3d.creative_document",
                 "empty room source") &&
          expect(result.room.units == "m", "empty room units");
+}
+
+bool roomBakeBoundsPredicatePinsSurvivalPolicy() {
+  const double maxFloat =
+      static_cast<double>(std::numeric_limits<float>::max());
+  const cr::CreativeBounds sane{{-1.0, 0.0, -2.0}, {3.0, 0.25, 4.0}};
+  const cr::CreativeBounds zeroWidth{{0.0, 0.0, 0.0}, {0.0, 0.25, 4.0}};
+  const cr::CreativeBounds invertedHeight{{0.0, 2.0, 0.0}, {4.0, 1.0, 4.0}};
+  const cr::CreativeBounds nonFinite{
+      {0.0, 0.0, 0.0},
+      {std::numeric_limits<double>::infinity(), 1.0, 1.0}};
+  const cr::CreativeBounds exceedsFloat{{0.0, 0.0, 0.0},
+                                        {maxFloat * 2.0, 1.0, 1.0}};
+
+  return expect(cr::creativeRoomBakeBoundsAreValid(sane),
+                "bounds predicate accepts sane bounds") &&
+         expect(!cr::creativeRoomBakeBoundsAreValid(zeroWidth),
+                "bounds predicate rejects zero-width bounds") &&
+         expect(!cr::creativeRoomBakeBoundsAreValid(invertedHeight),
+                "bounds predicate rejects inverted bounds") &&
+         expect(!cr::creativeRoomBakeBoundsAreValid(nonFinite),
+                "bounds predicate rejects non-finite bounds") &&
+         expect(!cr::creativeRoomBakeBoundsAreValid(exceedsFloat),
+                "bounds predicate rejects over-float bounds");
+}
+
+bool invalidBakeBoundsAreSkippedByRoomBake() {
+  const double maxFloat =
+      static_cast<double>(std::numeric_limits<float>::max());
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Invalid Bake Bounds");
+  const cr::CreativeDocumentCreateReceipt zeroWidth =
+      createObject(document,
+                   cr::CreativeObjectKind::Floor,
+                   {{0.0, 0.0, 0.0}, {0.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt invertedHeight =
+      createObject(document,
+                   cr::CreativeObjectKind::Wall,
+                   {{1.0, 2.0, 0.0}, {5.0, 1.0, 0.25}});
+  const cr::CreativeDocumentCreateReceipt exceedsFloat =
+      createObject(document,
+                   cr::CreativeObjectKind::Crate,
+                   {{0.0, 0.0, 0.0}, {maxFloat * 2.0, 1.0, 1.0}});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+
+  return expect(zeroWidth.accepted, "zero-width object created") &&
+         expect(invertedHeight.accepted, "inverted-height object created") &&
+         expect(exceedsFloat.accepted, "over-float object created") &&
+         expect(!result.receipt.accepted, "invalid bounds bake rejected") &&
+         expect(result.receipt.status ==
+                    cr::CreativeRoomBakeStatus::NoRenderableObjects,
+                "invalid bounds no-renderable status") &&
+         expect(result.receipt.reasonCode ==
+                    "creative_room_bake_no_renderable_objects",
+                "invalid bounds no-renderable reason") &&
+         expect(result.receipt.objectCount == 3U,
+                "invalid bounds object count") &&
+         expect(result.receipt.consideredObjectCount == 3U,
+                "invalid bounds considered count") &&
+         expect(result.receipt.skippedNoBoundsCount == 3U,
+                "invalid bounds skipped as no-bounds") &&
+         expect(result.receipt.skippedUnsupportedShapeCount == 0U,
+                "invalid bounds not unsupported shape") &&
+         expect(result.receipt.bakedStaticMeshCount == 0U,
+                "invalid bounds no meshes") &&
+         expect(result.receipt.bakedSpatialSurfaceCount == 0U,
+                "invalid bounds no surfaces") &&
+         expect(result.receipt.bakedAnchorCount == 0U,
+                "invalid bounds no anchors") &&
+         expect(result.room.staticMeshes.empty(),
+                "invalid bounds mesh vector empty") &&
+         expect(result.room.spatialSurfaces.empty(),
+                "invalid bounds surface vector empty") &&
+         expect(result.room.anchors.empty(), "invalid bounds anchor vector empty");
 }
 
 bool generatedRoomShellBakesChildrenAndSkipsRoomMetadata() {
@@ -532,8 +613,7 @@ bool boundsBackedLineBakesAsPropGeometry() {
 
 bool endpointLineDescriptorStaysOutOfBake() {
   cr::CreativeDocument document = cr::CreativeDocument::create("Line Link");
-  const cr::CreativeDocumentCreateReceipt created =
-      createDefaultObject(document, cr::CreativeObjectKind::NavLink);
+  const cr::CreativeDocumentCreateReceipt created = createEndpointLine(document);
   const cr::CreativeRoomBakeResult result = bake(document);
 
   return expect(created.accepted, "endpoint line create accepted") &&
@@ -927,7 +1007,7 @@ bool unsupportedAndMetadataObjectsAreSkipped() {
                      {{0.0, 0.0, 0.0}, {10.0, 4.0, 10.0}});
   (void)createPoint(document, cr::CreativeObjectKind::Note);
   (void)createPoint(document, cr::CreativeObjectKind::Socket);
-  (void)createDefaultObject(document, cr::CreativeObjectKind::NavLink);
+  (void)createEndpointLine(document);
   (void)createPath(document);
 
   const cr::CreativeRoomBakeResult result = bake(document);
@@ -983,7 +1063,7 @@ bool representativeBakeClassificationsRemainStable() {
                    cr::CreativeObjectKind::Beam,
                    {{0.0, 1.0, 0.0}, {4.0, 1.35, 0.35}});
   const cr::CreativeDocumentCreateReceipt endpointLine =
-      createDefaultObject(document, cr::CreativeObjectKind::NavLink);
+      createEndpointLine(document);
   const cr::CreativeDocumentCreateReceipt boxVolume =
       createObject(document,
                    cr::CreativeObjectKind::WaterVolume,
@@ -1069,6 +1149,8 @@ bool representativeBakeClassificationsRemainStable() {
 int main() {
   const bool ok = nullDocumentRejects() &&
                   emptyDocumentHasNoRenderableObjects() &&
+                  roomBakeBoundsPredicatePinsSurvivalPolicy() &&
+                  invalidBakeBoundsAreSkippedByRoomBake() &&
                   generatedRoomShellBakesChildrenAndSkipsRoomMetadata() &&
                   floorWallCrateBakeToRoomAsset() &&
                   perpendicularWallsBakeTruthfulBlockerNormals() &&

@@ -9,6 +9,7 @@
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/RenderDiagnostics.hpp"
+#include "runtime/ai/ReasoningGraph.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -2043,13 +2044,30 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
       createBakedCreativeProofObjects(facade);
   const cr::CreativeObjectDirtyFlags dirtyBefore =
       facade.document().dirtyFlags();
+  bool activationHookCalled = false;
+  std::uint64_t activationHookDocumentId = 0;
+  std::size_t activationHookStaticMeshCount = 0;
+  iggy3d::ProductCreativeBakedActiveRoomRefreshRequest refreshRequest;
+  refreshRequest.activationHook =
+      [&](iggy3d::Session& session,
+          const iggy3d::RoomAsset& room,
+          const cr::CreativeDocument& document) {
+        activationHookCalled = true;
+        activationHookDocumentId = document.id();
+        activationHookStaticMeshCount = room.staticMeshes.size();
+        iggy3d::ReasoningGraph graph;
+        graph.nodes.push_back({7U,
+                               iggy3d::ReasoningNodeKind::reference,
+                               {1.0F, 2.0F, 3.0F},
+                               "e97_activation_hook"});
+        session.setReasoningGraph(graph);
+      };
 
   const iggy3d::ProductCreativeBakedActiveRoomRefreshResult refreshed =
-      iggy3d::refreshProductCreativeBakedActiveRoom(
-          {},
-          activeSession,
-          window,
-          app);
+      iggy3d::refreshProductCreativeBakedActiveRoom(refreshRequest,
+                                                    activeSession,
+                                                    window,
+                                                    app);
   const iggy3d::SceneProjectionResult projection =
       activeSession.has_value()
           ? iggy3d::buildSceneProjection(activeSession->state(),
@@ -2115,6 +2133,21 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
                 "baked room collision ready result") &&
          expect(refreshed.collisionQuerySurfaceCount == 7U,
                 "baked room collision query count result") &&
+         expect(activationHookCalled, "baked room activation hook called") &&
+         expect(activationHookDocumentId == launched.documentId,
+                "baked room activation hook document") &&
+         expect(activationHookStaticMeshCount == 4U,
+                "baked room activation hook mesh count") &&
+         expect(activeSession.has_value() &&
+                    activeSession->state().reasoningGraph.nodes.size() == 1U,
+                "baked room activation hook graph node count") &&
+         expect(activeSession.has_value() &&
+                    activeSession->state().reasoningGraph.nodes[0].id == 7U,
+                "baked room activation hook graph node id") &&
+         expect(activeSession.has_value() &&
+                    activeSession->state().reasoningGraph.nodes[0].sourceLabel ==
+                        "e97_activation_hook",
+                "baked room activation hook graph source") &&
          expect(window.activeRoom.loaded, "baked room window active loaded") &&
          expect(window.activeRoom.roomId == "iggy3d_creative_baked_room",
                 "baked room window active room id") &&

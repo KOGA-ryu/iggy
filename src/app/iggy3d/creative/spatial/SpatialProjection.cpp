@@ -223,6 +223,16 @@ void fillBoundsCells(std::vector<CreativeSpatialCell>& cells,
                      });
 }
 
+[[nodiscard]] bool lineEndpointsAreValid(
+    std::span<const CreativePathPoint> pathPoints) noexcept {
+  return pathPoints.size() == 2U &&
+         std::all_of(pathPoints.begin(),
+                     pathPoints.end(),
+                     [](const CreativePathPoint& point) {
+                       return finiteVec3(point.position);
+                     });
+}
+
 [[nodiscard]] bool sameCoord(CreativeGridCoord3 lhs,
                              CreativeGridCoord3 rhs) noexcept {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
@@ -731,19 +741,53 @@ CreativeSpatialProjectionReceipt projectLinkObjectToGrid(
     const CreativeObject& object,
     const CreativeSpatialProjectionRequest& request) {
   const CreativeSpatialProjectionContext context = makeProjectionContext(
-      object,
-      request,
-      CreativeSpatialProjectionProfile::LinkProjection,
-      false);
+      object, request, CreativeSpatialProjectionProfile::LinkProjection);
   if (context.rejected) {
     return context.rejection;
   }
-  return makeReceipt(CreativeSpatialProjectionStatus::NoProjection,
-                     object,
-                     context.profile,
-                     context.occupancyKind,
-                     {},
-                     "no_projection");
+  if (!lineEndpointsAreValid(object.pathPoints)) {
+    return makeReceipt(CreativeSpatialProjectionStatus::EmptyProjection,
+                       object,
+                       context.profile,
+                       context.occupancyKind,
+                       {},
+                       "invalid_line_endpoints");
+  }
+
+  const CreativeGridCoord3 start =
+      worldToGridCoord(object.pathPoints[0].position, request.cellSize);
+  const CreativeGridCoord3 end =
+      worldToGridCoord(object.pathPoints[1].position, request.cellSize);
+  if (!isInsideGrid(start, request.gridSize) ||
+      !isInsideGrid(end, request.gridSize)) {
+    return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
+                       object,
+                       context.profile,
+                       context.occupancyKind,
+                       lineBounds(start, end),
+                       "out_of_bounds");
+  }
+
+  CreativeSpatialProjectionReceipt receipt =
+      makeReceipt(CreativeSpatialProjectionStatus::Projected,
+                  object,
+                  context.profile,
+                  context.occupancyKind,
+                  lineBounds(start, end),
+                  "projected");
+  appendSampledLineCells(receipt.cells,
+                         request.gridSize,
+                         start,
+                         end,
+                         object,
+                         context.occupancyKind,
+                         true);
+
+  if (receipt.cells.empty()) {
+    receipt.status = CreativeSpatialProjectionStatus::EmptyProjection;
+    receipt.message = "empty_projection";
+  }
+  return receipt;
 }
 
 CreativeSpatialProjectionReceipt projectObjectsToGrid(
