@@ -126,9 +126,11 @@
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
+#include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
+#include "app/iggy3d/creative/mutation/Mutation.hpp"
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
@@ -357,9 +359,80 @@ struct BrushFootprint {
 
 constexpr float kPointMarkerSizeMeters = 0.35F;
 constexpr float kLineProxyThicknessMeters = 0.16F;
+constexpr float kPathProxyThicknessMeters = 0.16F;
 
 bool positiveFinite(float value) {
   return std::isfinite(value) && value > 0.0F;
+}
+
+bool finiteCreativeVec3(const creative::CreativeVec3& value) {
+  return std::isfinite(value.x) && std::isfinite(value.y) &&
+         std::isfinite(value.z);
+}
+
+bool validPathPoints(const std::vector<creative::CreativePathPoint>& points) {
+  if (points.size() < 2U) {
+    return false;
+  }
+  return std::all_of(points.begin(), points.end(),
+                     [](const creative::CreativePathPoint& point) {
+                       return finiteCreativeVec3(point.position);
+                     });
+}
+
+bool samePathPoints(const std::vector<creative::CreativePathPoint>& lhs,
+                    const std::vector<creative::CreativePathPoint>& rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  constexpr double kEps = 1.0e-6;
+  for (std::size_t index = 0; index < lhs.size(); ++index) {
+    const creative::CreativeVec3& a = lhs[index].position;
+    const creative::CreativeVec3& b = rhs[index].position;
+    if (std::fabs(a.x - b.x) >= kEps || std::fabs(a.y - b.y) >= kEps ||
+        std::fabs(a.z - b.z) >= kEps) {
+      return false;
+    }
+  }
+  return true;
+}
+
+std::string pathPointsSummary(
+    const std::vector<creative::CreativePathPoint>& points) {
+  std::string summary;
+  for (std::size_t index = 0; index < points.size(); ++index) {
+    char buffer[96];
+    std::snprintf(buffer, sizeof(buffer), "%s(%.3f,%.3f,%.3f)",
+                  index == 0U ? "" : "->", points[index].position.x,
+                  points[index].position.y, points[index].position.z);
+    summary += buffer;
+  }
+  return summary;
+}
+
+std::vector<creative::CreativePathPoint> translatePathPoints(
+    const std::vector<creative::CreativePathPoint>& points,
+    creative::CreativeVec3 delta) {
+  std::vector<creative::CreativePathPoint> translated;
+  translated.reserve(points.size());
+  for (const creative::CreativePathPoint& point : points) {
+    translated.push_back(creative::CreativePathPoint{
+        {point.position.x + delta.x,
+         point.position.y + delta.y,
+         point.position.z + delta.z}});
+  }
+  return translated;
+}
+
+std::vector<creative::CreativePathPoint> initialPathPointsForAnchor(
+    Vec3 cellCenter) {
+  const double cx = static_cast<double>(cellCenter.x);
+  const double cz = static_cast<double>(cellCenter.z);
+  return {
+      creative::CreativePathPoint{{cx - 1.0, 0.0, cz - 0.5}},
+      creative::CreativePathPoint{{cx + 1.0, 0.0, cz - 0.5}},
+      creative::CreativePathPoint{{cx + 1.0, 0.0, cz + 1.5}},
+  };
 }
 
 BrushFootprint descriptorBoundsFootprint(
@@ -435,11 +508,20 @@ bool descriptorSupportsPointPlacement(
          descriptor.hasTransform && !descriptor.hasBounds;
 }
 
+bool descriptorSupportsPathPlacement(
+    const creative::CreativeObjectDescriptor& descriptor) {
+  return descriptor.kind != creative::CreativeObjectKind::Unknown &&
+         descriptor.shapeKind == creative::CreativeObjectShapeKind::Path &&
+         descriptor.projectionProfile ==
+             creative::CreativeSpatialProjectionProfile::PathProjection;
+}
+
 bool descriptorSupportsBrushPlacement(
     const creative::CreativeObjectDescriptor& descriptor) {
   return descriptorSupportsBoxPlacement(descriptor) ||
          descriptorSupportsLinePlacement(descriptor) ||
-         descriptorSupportsPointPlacement(descriptor);
+         descriptorSupportsPointPlacement(descriptor) ||
+         descriptorSupportsPathPlacement(descriptor);
 }
 
 bool descriptorAvailableInStandaloneBrushPalette(
@@ -529,6 +611,9 @@ std::string_view renderRoleForDescriptor(
   if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Line) {
     return "rail";
   }
+  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Path) {
+    return "rail";
+  }
   const BrushFootprint footprint = descriptorBoundsFootprint(descriptor);
   if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Surface &&
       descriptor.occupancyKind ==
@@ -598,11 +683,63 @@ VisualBounds lineProxyBounds(VisualBounds authoredBounds) {
   return proxy;
 }
 
+VisualBounds pathProxyBounds(
+    const std::vector<creative::CreativePathPoint>& pathPoints) {
+  if (!validPathPoints(pathPoints)) {
+    return {{-0.5F, 0.0F, -0.5F}, {0.5F, kPathProxyThicknessMeters, 0.5F}};
+  }
+
+  const float halfThickness = kPathProxyThicknessMeters * 0.5F;
+  Vec3 min{static_cast<float>(pathPoints.front().position.x),
+           static_cast<float>(pathPoints.front().position.y),
+           static_cast<float>(pathPoints.front().position.z)};
+  Vec3 max = min;
+  for (const creative::CreativePathPoint& point : pathPoints) {
+    const Vec3 p = toVec3(point.position);
+    min.x = std::min(min.x, p.x);
+    min.y = std::min(min.y, p.y);
+    min.z = std::min(min.z, p.z);
+    max.x = std::max(max.x, p.x);
+    max.y = std::max(max.y, p.y);
+    max.z = std::max(max.z, p.z);
+  }
+  return {{min.x - halfThickness, min.y - halfThickness,
+           min.z - halfThickness},
+          {max.x + halfThickness, max.y + halfThickness,
+           max.z + halfThickness}};
+}
+
+VisualBounds pathSegmentProxyBounds(creative::CreativeVec3 start,
+                                    creative::CreativeVec3 end) {
+  const float halfThickness = kPathProxyThicknessMeters * 0.5F;
+  const Vec3 a = toVec3(start);
+  const Vec3 b = toVec3(end);
+  return {{std::min(a.x, b.x) - halfThickness,
+           std::min(a.y, b.y) - halfThickness,
+           std::min(a.z, b.z) - halfThickness},
+          {std::max(a.x, b.x) + halfThickness,
+           std::max(a.y, b.y) + halfThickness,
+           std::max(a.z, b.z) + halfThickness}};
+}
+
+bool pathSegmentAxisAligned(creative::CreativeVec3 start,
+                            creative::CreativeVec3 end) {
+  constexpr double kEps = 1.0e-6;
+  const bool sameX = std::fabs(start.x - end.x) < kEps;
+  const bool sameY = std::fabs(start.y - end.y) < kEps;
+  const bool sameZ = std::fabs(start.z - end.z) < kEps;
+  return (sameX && sameY && !sameZ) || (sameX && sameZ && !sameY) ||
+         (sameY && sameZ && !sameX);
+}
+
 VisualBounds visualBoundsForObject(const creative::CreativeObject& object) {
   const creative::CreativeObjectDescriptor& descriptor =
       creative::describeObject(object.kind);
   if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Point) {
     return pointMarkerBounds(object.transform.position);
+  }
+  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Path) {
+    return pathProxyBounds(object.pathPoints);
   }
   const VisualBounds authoredBounds{toVec3(object.bounds.min),
                                     toVec3(object.bounds.max)};
@@ -616,6 +753,32 @@ Vec3 visualBoundsCenter(VisualBounds bounds) {
   return {(bounds.min.x + bounds.max.x) * 0.5F,
           (bounds.min.y + bounds.max.y) * 0.5F,
           (bounds.min.z + bounds.max.z) * 0.5F};
+}
+
+void appendPathProxyMeshesToScene(const creative::CreativeObject& object,
+                                  SceneProjectionResult& scene,
+                                  std::string_view role) {
+  if (!validPathPoints(object.pathPoints)) {
+    return;
+  }
+  for (std::size_t index = 0; index < object.pathPoints.size() - 1U; ++index) {
+    const creative::CreativeVec3 start = object.pathPoints[index].position;
+    const creative::CreativeVec3 end = object.pathPoints[index + 1U].position;
+    if (!pathSegmentAxisAligned(start, end)) {
+      continue;
+    }
+    const VisualBounds segmentBounds = pathSegmentProxyBounds(start, end);
+    SceneRoomMeshItem mesh;
+    mesh.id = "creative.object_" + std::to_string(object.id) + ".path_" +
+              std::to_string(index);
+    mesh.role = std::string(role);
+    mesh.materialId = "creative_object";
+    mesh.position = visualBoundsCenter(segmentBounds);
+    mesh.size = {segmentBounds.max.x - segmentBounds.min.x,
+                 segmentBounds.max.y - segmentBounds.min.y,
+                 segmentBounds.max.z - segmentBounds.min.z};
+    scene.room.meshes.push_back(std::move(mesh));
+  }
 }
 
 // Snap a world XZ ground point to the nearest 1 m cell CENTER: floor to the cell
@@ -644,8 +807,13 @@ creative::CreativeDocumentCreateReceipt placeBrushObject(
   request.kind = brush;  // <-- the ONLY per-kind input: pure data, no branch.
   request.name = std::string(creative::toString(brush)) + " placed#" +
                  std::to_string(ordinal);
-  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Point &&
-      descriptor.hasTransform && !descriptor.hasBounds) {
+  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Path &&
+      descriptor.projectionProfile ==
+          creative::CreativeSpatialProjectionProfile::PathProjection) {
+    request.hasPathOverride = true;
+    request.pathPoints = initialPathPointsForAnchor(cellCenter);
+  } else if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Point &&
+             descriptor.hasTransform && !descriptor.hasBounds) {
     // Point-shape authored truth is the transform anchor. The marker box used
     // for render/hit/wire feedback is app-local visualization only.
     request.transform.position = {cx, 0.0, cz};
@@ -673,7 +841,8 @@ creative::CreativeDocumentCreateReceipt placeBrushObject(
       facade.createDocumentObject(request);
   SDL_Log("iggy3d_creative: PLACE dropped objectId=%llu kind='%s' "
           "pos=(%.3f, %.3f, %.3f) bounds=[(%.3f,%.3f,%.3f)..(%.3f,%.3f,%.3f)] "
-          "shape='%s' boundsOverride=%d accepted=%d",
+          "shape='%s' transformOverride=%d boundsOverride=%d pathOverride=%d "
+          "pathPointCount=%zu pathPoints='%s' accepted=%d",
           static_cast<unsigned long long>(receipt.objectId),
           std::string(creative::toString(receipt.objectKind)).c_str(),
           request.transform.position.x, request.transform.position.y,
@@ -681,7 +850,11 @@ creative::CreativeDocumentCreateReceipt placeBrushObject(
           request.bounds.min.y, request.bounds.min.z, request.bounds.max.x,
           request.bounds.max.y, request.bounds.max.z,
           std::string(creative::toString(descriptor.shapeKind)).c_str(),
+          request.hasTransformOverride ? 1 : 0,
           request.hasBoundsOverride ? 1 : 0,
+          request.hasPathOverride ? 1 : 0,
+          request.pathPoints.size(),
+          pathPointsSummary(request.pathPoints).c_str(),
           receipt.accepted ? 1 : 0);
   return receipt;
 }
@@ -913,6 +1086,32 @@ void appendWireframeBoxEdges(std::vector<RenderCreativeWireframeDebugLine>& out,
   }
 }
 
+void appendPathPolylineLines(
+    std::vector<RenderCreativeWireframeDebugLine>& out,
+    const std::vector<creative::CreativePathPoint>& pathPoints,
+    RenderLineColor color,
+    float thickness,
+    creative::CreativeObjectId objectId = creative::kInvalidObjectId) {
+  if (!validPathPoints(pathPoints)) {
+    return;
+  }
+  out.reserve(out.size() + pathPoints.size() - 1U);
+  for (std::size_t index = 0; index < pathPoints.size() - 1U; ++index) {
+    const creative::CreativeVec3 start = pathPoints[index].position;
+    const creative::CreativeVec3 end = pathPoints[index + 1U].position;
+    if (!pathSegmentAxisAligned(start, end)) {
+      continue;
+    }
+    RenderCreativeWireframeDebugLine line;
+    line.start = toVec3(start);
+    line.end = toVec3(end);
+    line.color = color;
+    line.objectId = objectId;
+    line.thickness = thickness;
+    out.push_back(line);
+  }
+}
+
 // ---- SLICE 4: gizmo helpers -------------------------------------------------
 
 // A single world point projected to pixel space (same NDC->pixel maths as
@@ -1097,6 +1296,80 @@ creative::CreativeFacadeToolDispatchReceipt dispatchMoveReleaseWithUndo(
   return receipt;
 }
 
+creative::CreativeDocumentMutationReceipt movePathObjectWithUndo(
+    creative::CreativeAppState& appState,
+    StandaloneUndoStack& undoStack,
+    creative::CreativeObjectId objectId,
+    creative::CreativeVec3 delta,
+    std::string_view source) {
+  const creative::CreativeObject* beforeObject =
+      appState.facade.findObject(objectId);
+  const std::size_t undoDepthBefore = undoStack.documents.size();
+  if (beforeObject == nullptr) {
+    SDL_Log("iggy3d_creative: PATH move skipped source='%s' objectId=%llu "
+            "reason='missing_object'",
+            std::string(source).c_str(),
+            static_cast<unsigned long long>(objectId));
+    return {};
+  }
+  const creative::CreativeObjectDescriptor& descriptor =
+      creative::describeObject(beforeObject->kind);
+  if (descriptor.shapeKind != creative::CreativeObjectShapeKind::Path) {
+    SDL_Log("iggy3d_creative: PATH move skipped source='%s' objectId=%llu "
+            "kind='%s' shape='%s'",
+            std::string(source).c_str(),
+            static_cast<unsigned long long>(objectId),
+            std::string(creative::toString(beforeObject->kind)).c_str(),
+            std::string(creative::toString(descriptor.shapeKind)).c_str());
+    return {};
+  }
+
+  const std::vector<creative::CreativePathPoint> beforePoints =
+      beforeObject->pathPoints;
+  const std::vector<creative::CreativePathPoint> afterPoints =
+      translatePathPoints(beforePoints, delta);
+  SDL_Log("iggy3d_creative: PATH before move objectId=%llu kind='%s' "
+          "shape='%s' projection='%s' pathPointCount=%zu pathPoints='%s' "
+          "delta=(%.3f, %.3f, %.3f)",
+          static_cast<unsigned long long>(objectId),
+          std::string(creative::toString(beforeObject->kind)).c_str(),
+          std::string(creative::toString(descriptor.shapeKind)).c_str(),
+          std::string(creative::toString(descriptor.projectionProfile)).c_str(),
+          beforePoints.size(), pathPointsSummary(beforePoints).c_str(), delta.x,
+          delta.y, delta.z);
+
+  pushUndoSnapshot(undoStack, appState.facade, source);
+  const creative::CreativeDocumentMutationReceipt receipt =
+      creative::applyDocumentMutation(
+          appState.facade.documentForPersistence(),
+          objectId,
+          creative::CreativeMutationKind::SetPatrolRoute,
+          creative::makePathPointsPayload(afterPoints));
+  if (receipt.status != creative::CreativeDocumentMutationStatus::Applied ||
+      !receipt.changed) {
+    discardUndoSnapshot(undoStack, undoDepthBefore, source, receipt.message);
+  }
+
+  const creative::CreativeObject* afterObject =
+      appState.facade.findObject(objectId);
+  SDL_Log("iggy3d_creative: PATH move commit source='%s' objectId=%llu "
+          "status='%s' allowed=%d changed=%d revisionBefore=%llu "
+          "revisionAfter=%llu dirtyFlags=%llu depthBefore=%zu depthAfter=%zu "
+          "before='%s' after='%s'",
+          std::string(source).c_str(),
+          static_cast<unsigned long long>(objectId),
+          std::string(creative::toString(receipt.status)).c_str(),
+          receipt.allowed ? 1 : 0, receipt.changed ? 1 : 0,
+          static_cast<unsigned long long>(receipt.revisionBefore),
+          static_cast<unsigned long long>(receipt.revisionAfter),
+          static_cast<unsigned long long>(receipt.dirtyFlags), undoDepthBefore,
+          undoStack.documents.size(), pathPointsSummary(beforePoints).c_str(),
+          afterObject != nullptr
+              ? pathPointsSummary(afterObject->pathPoints).c_str()
+              : "<missing>");
+  return receipt;
+}
+
 // ---- SLICE 7: save / load helpers -------------------------------------------
 
 // A minimal per-object snapshot captured from the live document: id + kind +
@@ -1108,6 +1381,7 @@ struct ObjectSnapshotEntry {
   creative::CreativeVec3 position{};
   creative::CreativeVec3 boundsMin{};
   creative::CreativeVec3 boundsMax{};
+  std::vector<creative::CreativePathPoint> pathPoints;
 };
 
 // Snapshot EVERY object currently in the document (order preserved). Read-only —
@@ -1123,6 +1397,7 @@ std::vector<ObjectSnapshotEntry> snapshotDocument(
     e.position = obj.transform.position;
     e.boundsMin = obj.bounds.min;
     e.boundsMax = obj.bounds.max;
+    e.pathPoints = obj.pathPoints;
     out.push_back(e);
   }
   return out;
@@ -1135,11 +1410,13 @@ void logDocumentSnapshot(const char* phase,
   for (const ObjectSnapshotEntry& e : snap) {
     SDL_Log("iggy3d_creative: SNAPSHOT %s   id=%llu kind='%s' "
             "pos=(%.3f, %.3f, %.3f) "
-            "bounds=[(%.3f,%.3f,%.3f)..(%.3f,%.3f,%.3f)]",
+            "bounds=[(%.3f,%.3f,%.3f)..(%.3f,%.3f,%.3f)] "
+            "pathPointCount=%zu pathPoints='%s'",
             phase, static_cast<unsigned long long>(e.id),
             std::string(creative::toString(e.kind)).c_str(), e.position.x,
             e.position.y, e.position.z, e.boundsMin.x, e.boundsMin.y,
-            e.boundsMin.z, e.boundsMax.x, e.boundsMax.y, e.boundsMax.z);
+            e.boundsMin.z, e.boundsMax.x, e.boundsMax.y, e.boundsMax.z,
+            e.pathPoints.size(), pathPointsSummary(e.pathPoints).c_str());
   }
 }
 
@@ -1160,7 +1437,8 @@ bool snapshotsMatch(const std::vector<ObjectSnapshotEntry>& before,
     if (before[i].kind != after[i].kind ||
         !vecEq(before[i].position, after[i].position) ||
         !vecEq(before[i].boundsMin, after[i].boundsMin) ||
-        !vecEq(before[i].boundsMax, after[i].boundsMax)) {
+        !vecEq(before[i].boundsMax, after[i].boundsMax) ||
+        !samePathPoints(before[i].pathPoints, after[i].pathPoints)) {
       return false;
     }
   }
@@ -1431,6 +1709,10 @@ int main(int argc, char** argv) {
   float interactiveGrabCursorY = 0.0F;
   ScreenPoint interactiveGrabCenterScreen;
   ScreenPoint interactiveGrabTipScreen;
+  bool interactivePathMoveActive = false;
+  creative::CreativeObjectId interactivePathMoveObjectId =
+      creative::kInvalidObjectId;
+  creative::CreativeToolWorldPoint interactivePathMoveStartGround{};
   // --capture: log the grabbed axis exactly once.
   bool loggedGizmoGrab = false;
 
@@ -1470,20 +1752,23 @@ int main(int argc, char** argv) {
     bool createUndoProofTarget = false;
     bool pointProofTarget = false;
     bool lineProofTarget = false;
+    bool pathProofTarget = false;
   };
-  const std::array<CapturePlacement, 6> capturePlacements{{
+  const std::array<CapturePlacement, 7> capturePlacements{{
       {3U, 2.0, 2.0, creative::CreativeObjectKind::Crate, false, true,
-       false, false, false},
+       false, false, false, false},
       {4U, 4.0, 2.0, creative::CreativeObjectKind::Crate, true, false,
-       false, false, false},
+       false, false, false, false},
       {5U, -2.0, 2.0, creative::CreativeObjectKind::Wall, false, false,
-       false, false, false},
+       false, false, false, false},
       {6U, 6.0, 2.0, creative::CreativeObjectKind::Crate, false, false,
-       true, false, false},
+       true, false, false, false},
       {14U, 6.0, 2.0, creative::CreativeObjectKind::PointLight, false, false,
-       false, true, false},
+       false, true, false, false},
       {18U, 9.0, 4.0, creative::CreativeObjectKind::Beam, false, false,
-       false, false, true},
+       false, false, true, false},
+      {22U, 10.0, 1.0, creative::CreativeObjectKind::PatrolRoute, false, false,
+       false, false, false, true},
   }};
 
   // ---- SAVE / LOAD state (SLICE 7) ---------------------------------------
@@ -1496,7 +1781,7 @@ int main(int argc, char** argv) {
   bool prevKeyZ = false;
   StandaloneUndoStack undoStack;
   // --capture round-trip proof: prove create/delete/move undo, add Point and
-  // Line markers, undo their moves, then SAVE/CLEAR/LOAD the seven-object scene. The
+  // Line + Path markers, undo their moves, then SAVE/CLEAR/LOAD the eight-object scene. The
   // BEFORE snapshot (taken pre-clear, post-undo) holds the restored proof scene
   // to compare against AFTER.
   std::vector<ObjectSnapshotEntry> roundtripBefore;
@@ -1520,6 +1805,9 @@ int main(int argc, char** argv) {
   bool captureLineMoveCommitAttempted = false;
   bool captureLineMoveUndoAttempted = false;
   bool captureLineHitProxyLogged = false;
+  bool capturePathMoveAttempted = false;
+  bool capturePathMoveUndoAttempted = false;
+  bool capturePathHitProxyLogged = false;
   constexpr std::uint64_t kCaptureDeleteNoSelectionFrame = 2U;
   constexpr std::uint64_t kCaptureCreateUndoFrame = 7U;
   constexpr std::uint64_t kCaptureDeleteFrame = 8U;
@@ -1534,15 +1822,18 @@ int main(int argc, char** argv) {
   constexpr std::uint64_t kCaptureLineMoveBeginFrame = 19U;
   constexpr std::uint64_t kCaptureLineMoveCommitFrame = 20U;
   constexpr std::uint64_t kCaptureLineMoveUndoFrame = 21U;
-  constexpr std::uint64_t kCaptureSaveFrame = 22U;
-  constexpr std::uint64_t kCaptureClearFrame = 23U;
-  constexpr std::uint64_t kCaptureLoadFrame = 24U;
+  constexpr std::uint64_t kCapturePathMoveFrame = 23U;
+  constexpr std::uint64_t kCapturePathMoveUndoFrame = 24U;
+  constexpr std::uint64_t kCaptureSaveFrame = 25U;
+  constexpr std::uint64_t kCaptureClearFrame = 26U;
+  constexpr std::uint64_t kCaptureLoadFrame = 27U;
   creative::CreativeObjectId captureCreateUndoTargetId =
       creative::kInvalidObjectId;
   creative::CreativeObjectId captureDeleteTargetId = creative::kInvalidObjectId;
   creative::CreativeObjectId captureMoveTargetId = creative::kInvalidObjectId;
   creative::CreativeObjectId capturePointTargetId = creative::kInvalidObjectId;
   creative::CreativeObjectId captureLineTargetId = creative::kInvalidObjectId;
+  creative::CreativeObjectId capturePathTargetId = creative::kInvalidObjectId;
   creative::CreativeToolWorldPoint captureMoveDestination{};
   creative::CreativeToolWorldPoint capturePointMoveDestination{};
   creative::CreativeToolWorldPoint captureLineMoveDestination{};
@@ -1707,13 +1998,21 @@ int main(int argc, char** argv) {
       if (!obj.visible) {
         continue;  // Skip hidden objects (still authored, just not drawn).
       }
+      const creative::CreativeObjectDescriptor& descriptor =
+          creative::describeObject(obj.kind);
+      const std::string_view role = renderRoleForDescriptor(descriptor);
+      if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Path) {
+        const std::size_t before = scene.room.meshes.size();
+        appendPathProxyMeshesToScene(obj, scene, role);
+        anyPropVisible = anyPropVisible || scene.room.meshes.size() > before;
+        continue;
+      }
       const VisualBounds visualBounds = visualBoundsForObject(obj);
       const Vec3 boxMin = visualBounds.min;
       const Vec3 boxMax = visualBounds.max;
       SceneRoomMeshItem mesh;
       mesh.id = "creative.object_" + std::to_string(obj.id);
-      mesh.role = std::string(
-          renderRoleForDescriptor(creative::describeObject(obj.kind)));
+      mesh.role = std::string(role);
       mesh.materialId = "creative_object";
       mesh.position = {(boxMin.x + boxMax.x) * 0.5F,
                        (boxMin.y + boxMax.y) * 0.5F,
@@ -1810,6 +2109,19 @@ int main(int argc, char** argv) {
                 boxMax.x, boxMax.y, boxMax.z, hit.aabb.minX, hit.aabb.minY,
                 hit.aabb.maxX, hit.aabb.maxY);
         captureLineHitProxyLogged = true;
+      }
+      if (!capturePath.empty() && !capturePathHitProxyLogged &&
+          obj.id == capturePathTargetId) {
+        SDL_Log("iggy3d_creative: PATH hit proxy objectId=%llu "
+                "aabbValid=%d visual=[(%.3f, %.3f, %.3f).."
+                "(%.3f, %.3f, %.3f)] screen=[%.1f, %.1f..%.1f, %.1f] "
+                "pathPointCount=%zu pathPoints='%s'",
+                static_cast<unsigned long long>(capturePathTargetId),
+                hit.aabb.valid ? 1 : 0, boxMin.x, boxMin.y, boxMin.z,
+                boxMax.x, boxMax.y, boxMax.z, hit.aabb.minX, hit.aabb.minY,
+                hit.aabb.maxX, hit.aabb.maxY, obj.pathPoints.size(),
+                pathPointsSummary(obj.pathPoints).c_str());
+        capturePathHitProxyLogged = true;
       }
     }
 
@@ -1982,6 +2294,38 @@ int main(int argc, char** argv) {
                       lineTarget != nullptr ? 1 : 0, lineVisual.min.x,
                       lineVisual.min.y, lineVisual.min.z, lineVisual.max.x,
                       lineVisual.max.y, lineVisual.max.z);
+            }
+            if (p.pathProofTarget && receipt.accepted) {
+              capturePathTargetId = receipt.objectId;
+              const creative::CreativeObject* pathTarget =
+                  appState.facade.findObject(capturePathTargetId);
+              const VisualBounds pathVisual =
+                  pathTarget != nullptr
+                      ? visualBoundsForObject(*pathTarget)
+                      : VisualBounds{};
+              SDL_Log("iggy3d_creative: PATH capture target objectId=%llu "
+                      "kind='%s' shape='%s' projection='%s' occupancy='%s' "
+                      "pathOverride=1 pathPointCount=%zu pathPoints='%s' "
+                      "visual=[(%.3f, %.3f, %.3f)..(%.3f, %.3f, %.3f)]",
+                      static_cast<unsigned long long>(capturePathTargetId),
+                      std::string(creative::toString(receipt.objectKind)).c_str(),
+                      std::string(creative::toString(
+                          creative::describeObject(receipt.objectKind).shapeKind))
+                          .c_str(),
+                      std::string(creative::toString(
+                          creative::describeObject(receipt.objectKind)
+                              .projectionProfile))
+                          .c_str(),
+                      std::string(creative::toString(
+                          creative::describeObject(receipt.objectKind)
+                              .occupancyKind))
+                          .c_str(),
+                      pathTarget != nullptr ? pathTarget->pathPoints.size() : 0U,
+                      pathTarget != nullptr
+                          ? pathPointsSummary(pathTarget->pathPoints).c_str()
+                          : "",
+                      pathVisual.min.x, pathVisual.min.y, pathVisual.min.z,
+                      pathVisual.max.x, pathVisual.max.y, pathVisual.max.z);
             }
           }
         }
@@ -2313,10 +2657,49 @@ int main(int argc, char** argv) {
       }
     }
 
+    // ---- PATH SHAPE PROOF (D3f, --capture) --------------------------------
+    // PatrolRoute is only the deterministic representative. Placement stores
+    // ordered pathPoints; whole-route move translates those points through the
+    // public SetPatrolRoute mutation payload, then snapshot undo restores them.
+    if (!capturePath.empty()) {
+      if (frameIndex == kCapturePathMoveFrame && !capturePathMoveAttempted) {
+        placeMode = false;
+        (void)selectObjectForCapture(appState.facade, capturePathTargetId,
+                                     "capture_path_move");
+        const creative::CreativeDocumentMutationReceipt receipt =
+            movePathObjectWithUndo(appState, undoStack, capturePathTargetId,
+                                   {1.0, 0.0, 1.0},
+                                   "capture_path_move_commit");
+        SDL_Log("iggy3d_creative: PATH mutation receipt status='%s' changed=%d "
+                "revisionBefore=%llu revisionAfter=%llu dirtyFlags=%llu",
+                std::string(creative::toString(receipt.status)).c_str(),
+                receipt.changed ? 1 : 0,
+                static_cast<unsigned long long>(receipt.revisionBefore),
+                static_cast<unsigned long long>(receipt.revisionAfter),
+                static_cast<unsigned long long>(receipt.dirtyFlags));
+        capturePathMoveAttempted = true;
+      } else if (frameIndex == kCapturePathMoveUndoFrame &&
+                 !capturePathMoveUndoAttempted) {
+        (void)undoLastSnapshot(appState, undoStack, "capture_path_move_undo");
+        placeMode = true;
+        placeBrush = creative::CreativeObjectKind::Wall;
+        const creative::CreativeObject* pathTarget =
+            appState.facade.findObject(capturePathTargetId);
+        if (pathTarget != nullptr) {
+          SDL_Log("iggy3d_creative: PATH after undo objectId=%llu "
+                  "pathPointCount=%zu pathPoints='%s'",
+                  static_cast<unsigned long long>(capturePathTargetId),
+                  pathTarget->pathPoints.size(),
+                  pathPointsSummary(pathTarget->pathPoints).c_str());
+        }
+        capturePathMoveUndoAttempted = true;
+      }
+    }
+
     // ---- SAVE / LOAD ROUND-TRIP (SLICE 7, --capture) -----------------------
     // On fixed frames, drive the lossless round-trip and log the proof. The
     // placements above grow the scene, create/delete/move undo return it to the
-    // intended seven-object proof, then SAVE/CLEAR/LOAD proves persistence. The
+    // intended eight-object proof, then SAVE/CLEAR/LOAD proves persistence. The
     // whole sequence reuses the kernel's creative-save/open — no new
     // serialization here. All reads go through document().objects(), so no
     // hardcoded id can dangle after the clear or the load.
@@ -2570,6 +2953,41 @@ int main(int argc, char** argv) {
           }
         }
 
+        const bool selectedIsPath =
+            selected != nullptr &&
+            creative::describeObject(selected->kind).shapeKind ==
+                creative::CreativeObjectShapeKind::Path;
+        if (selectedIsPath) {
+          if (lDown && !interactivePathMoveActive) {
+            interactivePathMoveActive = true;
+            interactivePathMoveObjectId = selectedObjectId;
+            interactivePathMoveStartGround = ground;
+            SDL_Log("iggy3d_creative: PATH interactive move begin objectId=%llu "
+                    "ground=(%.3f, %.3f, %.3f) pathPoints='%s'",
+                    static_cast<unsigned long long>(selectedObjectId),
+                    ground.x, ground.y, ground.z,
+                    pathPointsSummary(selected->pathPoints).c_str());
+          } else if (!lDown && interactivePathMoveActive) {
+            const creative::CreativeVec3 delta{
+                ground.x - interactivePathMoveStartGround.x,
+                0.0,
+                ground.z - interactivePathMoveStartGround.z};
+            const creative::CreativeDocumentMutationReceipt receipt =
+                movePathObjectWithUndo(appState,
+                                       undoStack,
+                                       interactivePathMoveObjectId,
+                                       delta,
+                                       "path_move_interactive_release");
+            SDL_Log("iggy3d_creative: PATH interactive move release objectId=%llu "
+                    "status='%s' changed=%d delta=(%.3f, %.3f, %.3f)",
+                    static_cast<unsigned long long>(
+                        interactivePathMoveObjectId),
+                    std::string(creative::toString(receipt.status)).c_str(),
+                    receipt.changed ? 1 : 0, delta.x, delta.y, delta.z);
+            interactivePathMoveActive = false;
+            interactivePathMoveObjectId = creative::kInvalidObjectId;
+          }
+        } else {
         // Build the pointer packet's worldDestination + moveHeldAxis. When an
         // axis handle is grabbed, project the cursor delta since grab onto the
         // shaft's screen direction, scale it to world length along the axis, and
@@ -2663,9 +3081,15 @@ int main(int argc, char** argv) {
           logMoveDispatch("RELEASE", r);
           interactiveGrabbedAxis = GizmoAxis::None;
         }
+        }
       } else if (moveDragButtonDown) {
         moveDragButtonDown = false;  // Alt released mid-drag: drop the latch.
         interactiveGrabbedAxis = GizmoAxis::None;
+      } else if (interactivePathMoveActive) {
+        SDL_Log("iggy3d_creative: PATH interactive move cancelled objectId=%llu",
+                static_cast<unsigned long long>(interactivePathMoveObjectId));
+        interactivePathMoveActive = false;
+        interactivePathMoveObjectId = creative::kInvalidObjectId;
       }
     }
 
@@ -2791,7 +3215,17 @@ int main(int argc, char** argv) {
           creative::describeObject(placeBrush);
       Vec3 ghostMin{};
       Vec3 ghostMax{};
-      if (brushDescriptor.shapeKind == creative::CreativeObjectShapeKind::Point) {
+      if (brushDescriptor.shapeKind == creative::CreativeObjectShapeKind::Path) {
+        const std::vector<creative::CreativePathPoint> ghostPath =
+            initialPathPointsForAnchor(aimCellCenter);
+        const std::size_t before = combinedWireLines.size();
+        appendPathPolylineLines(combinedWireLines,
+                                ghostPath,
+                                RenderLineColor{0.0F, 1.0F, 0.0F, 1.0F},
+                                kGizmoThickness);
+        ghostEdgeCount = combinedWireLines.size() - before;
+      } else if (brushDescriptor.shapeKind ==
+                 creative::CreativeObjectShapeKind::Point) {
         const VisualBounds markerBounds = pointMarkerBounds(
             creative::CreativeVec3{aimCellCenter.x, 0.0, aimCellCenter.z});
         ghostMin = markerBounds.min;
@@ -2810,11 +3244,13 @@ int main(int argc, char** argv) {
         ghostMin = ghostBounds.min;
         ghostMax = ghostBounds.max;
       }
-      const std::size_t before = combinedWireLines.size();
-      appendWireframeBoxEdges(combinedWireLines, ghostMin, ghostMax,
-                              RenderLineColor{0.0F, 1.0F, 0.0F, 1.0F},
-                              kGizmoThickness);
-      ghostEdgeCount = combinedWireLines.size() - before;
+      if (brushDescriptor.shapeKind != creative::CreativeObjectShapeKind::Path) {
+        const std::size_t before = combinedWireLines.size();
+        appendWireframeBoxEdges(combinedWireLines, ghostMin, ghostMax,
+                                RenderLineColor{0.0F, 1.0F, 0.0F, 1.0F},
+                                kGizmoThickness);
+        ghostEdgeCount = combinedWireLines.size() - before;
+      }
     }
     (void)ghostEdgeCount;
     RenderCreativeWireframeDebugFrame combinedWireFrame;
