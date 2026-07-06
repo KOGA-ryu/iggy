@@ -13,6 +13,7 @@
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/creative/world/WorldService.hpp"
 #include "app/input/InputAction.hpp"
@@ -107,6 +108,32 @@ struct ProductCreativeCurrentWorldSaveResult {
   CreativeWorldSaveResult saveResult;
 };
 
+struct ProductCreativeBakedActiveRoomRefreshRequest {
+  std::string roomId = "iggy3d_creative_baked_room";
+  std::string sourceName = "iggy3d.creative";
+  std::string sourceSubset = "creative_document_bake";
+  bool includeHidden = false;
+};
+
+struct ProductCreativeBakedActiveRoomRefreshResult {
+  bool accepted = false;
+  std::string status = "product_creative_baked_room_not_requested";
+  std::string reasonCode = "product_creative_baked_room_not_requested";
+  creative::CreativeDocumentId documentId = creative::kInvalidDocumentId;
+  std::uint64_t objectCount = 0;
+  creative::CreativeRoomBakeReceipt bakeReceipt;
+  std::uint64_t staticMeshCount = 0;
+  std::uint64_t anchorCount = 0;
+  std::uint64_t spatialSurfaceCount = 0;
+  std::uint64_t staticMeshSourceCount = 0;
+  std::uint64_t anchorSourceCount = 0;
+  std::uint64_t spatialSurfaceSourceCount = 0;
+  bool activeRoomLoaded = false;
+  std::string activeRoomStatus = "not_loaded";
+  bool collisionReady = false;
+  std::uint64_t collisionQuerySurfaceCount = 0;
+};
+
 std::string_view productSaveFlowOperationName(ProductSaveFlowOperation operation);
 
 ProductWorldTemplate productWorldTemplateFromOptions(
@@ -177,6 +204,11 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
     creative::CreativeAppState& creativeApp,
     std::string_view source,
     ProductAppWindowState& window);
+ProductCreativeBakedActiveRoomRefreshResult refreshProductCreativeBakedActiveRoom(
+    const ProductCreativeBakedActiveRoomRefreshRequest& request,
+    const std::optional<Session>& activeSession,
+    ProductAppWindowState& window,
+    const creative::CreativeAppState& creativeApp);
 void launchProductContinueSave(const ProductAppOptions& options,
                                const ProductWorldTemplate& world,
                                const ProductSaveBridgeResult& saves,

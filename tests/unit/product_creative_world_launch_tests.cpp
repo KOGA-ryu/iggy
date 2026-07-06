@@ -3,6 +3,7 @@
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
+#include "projection/scene/SceneProjection.hpp"
 #include "render/RenderDiagnostics.hpp"
 
 #include <cstdlib>
@@ -105,6 +106,85 @@ iggy3d::CreativeWorldSaveRequest saveRequest(
   request.saveId = std::string{saveId};
   request.document = &document;
   return request;
+}
+
+cr::CreativeDocumentCreateReceipt createBoundsObject(
+    cr::Facade& facade,
+    cr::CreativeObjectKind kind,
+    cr::CreativeBounds bounds) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.bounds = bounds;
+  request.hasBoundsOverride = true;
+  return facade.createDocumentObject(request);
+}
+
+cr::CreativeDocumentCreateReceipt createPointObject(
+    cr::Facade& facade,
+    cr::CreativeObjectKind kind,
+    cr::CreativeVec3 position) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = kind;
+  request.transform.position = position;
+  request.hasTransformOverride = true;
+  return facade.createDocumentObject(request);
+}
+
+cr::CreativeDocumentCreateReceipt createPatrolRoute(cr::Facade& facade) {
+  cr::CreativeDocumentCreateRequest request;
+  request.kind = cr::CreativeObjectKind::PatrolRoute;
+  request.hasPathOverride = true;
+  request.pathPoints = {
+      cr::CreativePathPoint{{0.0, 0.0, 0.0}},
+      cr::CreativePathPoint{{2.0, 0.0, 0.0}},
+      cr::CreativePathPoint{{2.0, 0.0, 2.0}},
+  };
+  return facade.createDocumentObject(request);
+}
+
+std::size_t countProjectedRole(const iggy3d::SceneRoomProjection& room,
+                               std::string_view role) {
+  std::size_t count = 0;
+  for (const iggy3d::SceneRoomMeshItem& mesh : room.meshes) {
+    if (mesh.role == role) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+iggy3d::ProductActiveRoomState sentinelActiveRoom() {
+  iggy3d::ProductActiveRoomState activeRoom;
+  activeRoom.loaded = true;
+  activeRoom.status = "sentinel_active_room";
+  activeRoom.reasonCode = "sentinel_active_room";
+  activeRoom.roomId = "sentinel_room";
+  activeRoom.staticMeshCount = 99;
+  activeRoom.room.id = "sentinel_room";
+  return activeRoom;
+}
+
+iggy3d::ProductActiveRoomCollisionState sentinelActiveRoomCollision() {
+  iggy3d::ProductActiveRoomCollisionState collision;
+  collision.ready = true;
+  collision.status = "sentinel_collision";
+  collision.reasonCode = "sentinel_collision";
+  collision.roomId = "sentinel_room";
+  collision.querySurfaceCount = 77;
+  return collision;
+}
+
+bool sentinelRoomStatePreserved(const iggy3d::ProductAppWindowState& window) {
+  return expect(window.activeRoom.status == "sentinel_active_room",
+                "sentinel active room preserved") &&
+         expect(window.activeRoom.staticMeshCount == 99U,
+                "sentinel active room mesh count preserved") &&
+         expect(window.activeRoom.room.id == "sentinel_room",
+                "sentinel active room id preserved") &&
+         expect(window.activeRoomCollision.status == "sentinel_collision",
+                "sentinel collision preserved") &&
+         expect(window.activeRoomCollision.querySurfaceCount == 77U,
+                "sentinel collision query count preserved");
 }
 
 iggy3d::ProductMenuActionResult confirmPauseAction(
@@ -1347,6 +1427,293 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
                 "second open pointer target invalid");
 }
 
+bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
+  const iggy3d::ProductAppOptions options = testOptions("baked_room_refresh");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Baked Active Room",
+                                        "2026-07-05T11:00:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  const cr::CreativeDocumentCreateReceipt floor =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Floor,
+                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const cr::CreativeDocumentCreateReceipt wall =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Wall,
+                         {{5.0, 0.0, 0.0}, {9.0, 2.5, 0.25}});
+  const cr::CreativeDocumentCreateReceipt crate =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Crate,
+                         {{1.0, 0.0, 5.0}, {2.0, 1.0, 6.0}});
+  const cr::CreativeDocumentCreateReceipt beam =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Beam,
+                         {{0.0, 1.0, 0.0}, {4.0, 1.35, 0.35}});
+  const cr::CreativeDocumentCreateReceipt point =
+      createPointObject(facade,
+                        cr::CreativeObjectKind::PointLight,
+                        {6.25, 1.5, -2.75});
+  const cr::CreativeDocumentCreateReceipt path = createPatrolRoute(facade);
+  const cr::CreativeObjectDirtyFlags dirtyBefore =
+      facade.document().dirtyFlags();
+
+  const iggy3d::ProductCreativeBakedActiveRoomRefreshResult refreshed =
+      iggy3d::refreshProductCreativeBakedActiveRoom(
+          {},
+          activeSession,
+          window,
+          app);
+  const iggy3d::SceneProjectionResult projection =
+      activeSession.has_value()
+          ? iggy3d::buildSceneProjection(activeSession->state(),
+                                         &window.activeRoom.room)
+          : iggy3d::SceneProjectionResult{};
+
+  return expect(launched.accepted, "baked room setup launch accepted") &&
+         expect(activeSession.has_value(), "baked room active session") &&
+         expect(floor.accepted, "baked room floor created") &&
+         expect(wall.accepted, "baked room wall created") &&
+         expect(crate.accepted, "baked room crate created") &&
+         expect(beam.accepted, "baked room beam created") &&
+         expect(point.accepted, "baked room point created") &&
+         expect(path.accepted, "baked room path created") &&
+         expect(dirtyBefore != 0U, "baked room dirty before refresh") &&
+         expect(refreshed.accepted, "baked room refresh accepted") &&
+         expect(refreshed.status ==
+                    "product_creative_baked_room_refreshed",
+                "baked room refresh status") &&
+         expect(refreshed.reasonCode ==
+                    "product_creative_baked_room_refreshed",
+                "baked room refresh reason") &&
+         expect(refreshed.documentId == launched.documentId,
+                "baked room refresh document id") &&
+         expect(refreshed.objectCount == 6U,
+                "baked room refresh object count") &&
+         expect(refreshed.bakeReceipt.accepted,
+                "baked room bake accepted") &&
+         expect(refreshed.bakeReceipt.status ==
+                    cr::CreativeRoomBakeStatus::Baked,
+                "baked room bake status") &&
+         expect(refreshed.bakeReceipt.objectCount == 6U,
+                "baked room bake object count") &&
+         expect(refreshed.bakeReceipt.consideredObjectCount == 6U,
+                "baked room bake considered count") &&
+         expect(refreshed.bakeReceipt.bakedStaticMeshCount == 4U,
+                "baked room bake static mesh count") &&
+         expect(refreshed.bakeReceipt.bakedAnchorCount == 1U,
+                "baked room bake anchor count") &&
+         expect(refreshed.bakeReceipt.bakedSpatialSurfaceCount == 7U,
+                "baked room bake spatial surface count") &&
+         expect(refreshed.bakeReceipt.skippedUnsupportedShapeCount == 1U,
+                "baked room bake unsupported path count") &&
+         expect(refreshed.staticMeshCount == 4U,
+                "baked room static mesh count") &&
+         expect(refreshed.anchorCount == 1U, "baked room anchor count") &&
+         expect(refreshed.spatialSurfaceCount == 7U,
+                "baked room spatial surface count") &&
+         expect(refreshed.staticMeshSourceCount == 4U,
+                "baked room mesh source count") &&
+         expect(refreshed.anchorSourceCount == 1U,
+                "baked room anchor source count") &&
+         expect(refreshed.spatialSurfaceSourceCount == 7U,
+                "baked room surface source count") &&
+         expect(refreshed.activeRoomLoaded,
+                "baked room active room loaded result") &&
+         expect(refreshed.activeRoomStatus == "active_room_loaded",
+                "baked room active room status result") &&
+         expect(refreshed.collisionReady,
+                "baked room collision ready result") &&
+         expect(refreshed.collisionQuerySurfaceCount == 7U,
+                "baked room collision query count result") &&
+         expect(window.activeRoom.loaded, "baked room window active loaded") &&
+         expect(window.activeRoom.roomId == "iggy3d_creative_baked_room",
+                "baked room window active room id") &&
+         expect(window.activeRoom.sourceName == "iggy3d.creative",
+                "baked room window source name") &&
+         expect(window.activeRoom.sourceSubset == "creative_document_bake",
+                "baked room window source subset") &&
+         expect(window.activeRoom.staticMeshCount == 4U,
+                "baked room window mesh count") &&
+         expect(window.activeRoom.anchorCount == 1U,
+                "baked room window anchor count") &&
+         expect(window.activeRoom.spatialSurfaceCount == 7U,
+                "baked room window surface count") &&
+         expect(window.activeRoom.walkableSurfaceCount == 1U,
+                "baked room walkable count") &&
+         expect(window.activeRoom.actorBlockerSurfaceCount == 3U,
+                "baked room actor blocker count") &&
+         expect(window.activeRoom.projectileBlockerSurfaceCount == 3U,
+                "baked room projectile blocker count") &&
+         expect(window.activeRoomCollision.ready,
+                "baked room window collision ready") &&
+         expect(window.activeRoomCollision.querySurfaceCount == 7U,
+                "baked room window collision query count") &&
+         expect(window.activeRoomCollision.surfaces.size() == 7U,
+                "baked room window collision surface set count") &&
+         expect(projection.room.loaded, "baked room projection loaded") &&
+         expect(countProjectedRole(projection.room, "floor") == 1U,
+                "baked room projection floor count") &&
+         expect(countProjectedRole(projection.room, "wall") == 1U,
+                "baked room projection wall count") &&
+         expect(countProjectedRole(projection.room, "prop") == 2U,
+                "baked room projection prop count") &&
+         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+                "baked room interaction remains creative") &&
+         expect(window.activeCreativeSaveId == launched.saveId,
+                "baked room active creative save id preserved") &&
+         expect(window.activeCreativeDocumentId == launched.documentId,
+                "baked room active creative document id preserved") &&
+         expect(window.activeCreativeObjectCount == launched.objectCount,
+                "baked room active creative object count unchanged") &&
+         expect(window.activeProductSaveId == "none",
+                "baked room active product save id unchanged") &&
+         expect(facade.document().dirtyFlags() == dirtyBefore,
+                "baked room dirty flags preserved");
+}
+
+bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
+  {
+    const iggy3d::ProductAppOptions options = testOptions("baked_room_inactive");
+    iggy3d::FrontendState frontend;
+    std::optional<iggy3d::Session> activeSession;
+    iggy3d::ProductAppWindowState window;
+    cr::CreativeAppState app;
+    const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+        launchCreativeWorld(options,
+                            launchRequest("Baked Inactive",
+                                          "2026-07-05T11:10:00Z"),
+                            frontend,
+                            activeSession,
+                            window,
+                            app);
+    window.activeRoom = sentinelActiveRoom();
+    window.activeRoomCollision = sentinelActiveRoomCollision();
+    window.interactionMode = iggy3d::ProductInteractionMode::Player;
+
+    const iggy3d::ProductCreativeBakedActiveRoomRefreshResult refreshed =
+        iggy3d::refreshProductCreativeBakedActiveRoom({},
+                                                      activeSession,
+                                                      window,
+                                                      app);
+    if (!expect(launched.accepted, "inactive bake setup launch accepted") ||
+        !expect(!refreshed.accepted, "inactive bake rejected") ||
+        !expect(refreshed.status == "product_creative_baked_room_inactive",
+                "inactive bake status") ||
+        !sentinelRoomStatePreserved(window)) {
+      return false;
+    }
+  }
+
+  {
+    const iggy3d::ProductAppOptions options = testOptions("baked_room_no_session");
+    iggy3d::FrontendState frontend;
+    std::optional<iggy3d::Session> activeSession;
+    iggy3d::ProductAppWindowState window;
+    cr::CreativeAppState app;
+    const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+        launchCreativeWorld(options,
+                            launchRequest("Baked Missing Session",
+                                          "2026-07-05T11:20:00Z"),
+                            frontend,
+                            activeSession,
+                            window,
+                            app);
+    window.activeRoom = sentinelActiveRoom();
+    window.activeRoomCollision = sentinelActiveRoomCollision();
+    activeSession.reset();
+
+    const iggy3d::ProductCreativeBakedActiveRoomRefreshResult refreshed =
+        iggy3d::refreshProductCreativeBakedActiveRoom({},
+                                                      activeSession,
+                                                      window,
+                                                      app);
+    if (!expect(launched.accepted, "missing session setup launch accepted") ||
+        !expect(!refreshed.accepted, "missing session bake rejected") ||
+        !expect(refreshed.status ==
+                    "product_creative_baked_room_session_missing",
+                "missing session bake status") ||
+        !sentinelRoomStatePreserved(window)) {
+      return false;
+    }
+  }
+
+  {
+    const iggy3d::ProductAppOptions options = testOptions("baked_room_invalid_doc");
+    iggy3d::FrontendState frontend;
+    std::optional<iggy3d::Session> activeSession;
+    iggy3d::ProductAppWindowState window;
+    cr::CreativeAppState app;
+    const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+        launchCreativeWorld(options,
+                            launchRequest("Baked Invalid Document",
+                                          "2026-07-05T11:30:00Z"),
+                            frontend,
+                            activeSession,
+                            window,
+                            app);
+    window.activeRoom = sentinelActiveRoom();
+    window.activeRoomCollision = sentinelActiveRoomCollision();
+    app.facade.reset();
+
+    const iggy3d::ProductCreativeBakedActiveRoomRefreshResult refreshed =
+        iggy3d::refreshProductCreativeBakedActiveRoom({},
+                                                      activeSession,
+                                                      window,
+                                                      app);
+    if (!expect(launched.accepted, "invalid doc setup launch accepted") ||
+        !expect(app.facade.document().id() == cr::kInvalidDocumentId,
+                "invalid doc setup facade reset") ||
+        !expect(!refreshed.accepted, "invalid doc bake rejected") ||
+        !expect(refreshed.status ==
+                    "product_creative_baked_room_document_invalid",
+                "invalid doc bake status") ||
+        !sentinelRoomStatePreserved(window)) {
+      return false;
+    }
+  }
+
+  const iggy3d::ProductAppOptions options = testOptions("baked_room_empty_doc");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Baked Empty Document",
+                                        "2026-07-05T11:40:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  window.activeRoom = sentinelActiveRoom();
+  window.activeRoomCollision = sentinelActiveRoomCollision();
+
+  const iggy3d::ProductCreativeBakedActiveRoomRefreshResult refreshed =
+      iggy3d::refreshProductCreativeBakedActiveRoom({},
+                                                    activeSession,
+                                                    window,
+                                                    app);
+
+  return expect(launched.accepted, "empty bake setup launch accepted") &&
+         expect(!refreshed.accepted, "empty bake rejected") &&
+         expect(refreshed.status == "creative_room_bake_no_renderable_objects",
+                "empty bake status mirrors RoomBake") &&
+         expect(refreshed.bakeReceipt.requested, "empty bake requested") &&
+         expect(!refreshed.bakeReceipt.accepted, "empty bake receipt rejected") &&
+         expect(refreshed.bakeReceipt.objectCount == 0U,
+                "empty bake object count") &&
+         sentinelRoomStatePreserved(window);
+}
+
 // F0 (blank stage): the creative launch must NOT install the first_room demo
 // room; window.activeRoom stays empty for a creative world.
 bool creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() {
@@ -1477,6 +1844,8 @@ int main() {
       pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() &&
       pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() &&
       secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() &&
+      refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() &&
+      refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() &&
       creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() &&
       creativeLaunchFramesCameraOnOrigin() &&
       creativeFrameShowsGroundGrid();
