@@ -356,6 +356,7 @@ struct BrushFootprint {
 };
 
 constexpr float kPointMarkerSizeMeters = 0.35F;
+constexpr float kLineProxyThicknessMeters = 0.16F;
 
 bool positiveFinite(float value) {
   return std::isfinite(value) && value > 0.0F;
@@ -396,16 +397,35 @@ bool descriptorSupportsBoxPlacement(
   }
   switch (descriptor.shapeKind) {
     case creative::CreativeObjectShapeKind::BoxVolume:
-    case creative::CreativeObjectShapeKind::Line:
     case creative::CreativeObjectShapeKind::Surface:
     case creative::CreativeObjectShapeKind::MeshProxy:
       return true;
     case creative::CreativeObjectShapeKind::Unknown:
+    case creative::CreativeObjectShapeKind::Line:
     case creative::CreativeObjectShapeKind::Point:
     case creative::CreativeObjectShapeKind::Path:
       return false;
   }
   return false;
+}
+
+bool descriptorSupportsLinePlacement(
+    const creative::CreativeObjectDescriptor& descriptor) {
+  if (descriptor.kind == creative::CreativeObjectKind::Unknown ||
+      descriptor.shapeKind != creative::CreativeObjectShapeKind::Line ||
+      !descriptor.hasTransform || !descriptor.hasBounds) {
+    return false;
+  }
+
+  const BrushFootprint footprint = descriptorBoundsFootprint(descriptor);
+  if (!validBrushFootprint(footprint)) {
+    return false;
+  }
+
+  return descriptor.projectionProfile ==
+             creative::CreativeSpatialProjectionProfile::BoxProjection ||
+         descriptor.projectionProfile ==
+             creative::CreativeSpatialProjectionProfile::LineProjection;
 }
 
 bool descriptorSupportsPointPlacement(
@@ -418,6 +438,7 @@ bool descriptorSupportsPointPlacement(
 bool descriptorSupportsBrushPlacement(
     const creative::CreativeObjectDescriptor& descriptor) {
   return descriptorSupportsBoxPlacement(descriptor) ||
+         descriptorSupportsLinePlacement(descriptor) ||
          descriptorSupportsPointPlacement(descriptor);
 }
 
@@ -480,6 +501,9 @@ std::string_view renderRoleForDescriptor(
     // standalone marker role until the render layer grows a named point style.
     return "spell";
   }
+  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Line) {
+    return "rail";
+  }
   const BrushFootprint footprint = descriptorBoundsFootprint(descriptor);
   if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Surface &&
       descriptor.occupancyKind ==
@@ -491,11 +515,6 @@ std::string_view renderRoleForDescriptor(
     if (isStandingSurfaceFootprint(footprint)) {
       return "wall";
     }
-  }
-  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Line &&
-      descriptor.occupancyKind ==
-          creative::CreativeSpatialOccupancyKind::Structural) {
-    return "wall";
   }
   return "prop";
 }
@@ -512,13 +531,60 @@ VisualBounds pointMarkerBounds(const creative::CreativeVec3& position) {
           {center.x + half, center.y + half, center.z + half}};
 }
 
+enum class VisualMajorAxis { X, Y, Z };
+
+VisualMajorAxis majorAxisForBounds(VisualBounds bounds) {
+  const float extentX = bounds.max.x - bounds.min.x;
+  const float extentY = bounds.max.y - bounds.min.y;
+  const float extentZ = bounds.max.z - bounds.min.z;
+  if (extentY > extentX && extentY >= extentZ) {
+    return VisualMajorAxis::Y;
+  }
+  if (extentZ > extentX && extentZ > extentY) {
+    return VisualMajorAxis::Z;
+  }
+  return VisualMajorAxis::X;
+}
+
+VisualBounds lineProxyBounds(VisualBounds authoredBounds) {
+  const VisualMajorAxis majorAxis = majorAxisForBounds(authoredBounds);
+  const Vec3 center{(authoredBounds.min.x + authoredBounds.max.x) * 0.5F,
+                    (authoredBounds.min.y + authoredBounds.max.y) * 0.5F,
+                    (authoredBounds.min.z + authoredBounds.max.z) * 0.5F};
+  const float halfThickness = kLineProxyThicknessMeters * 0.5F;
+  VisualBounds proxy{{center.x - halfThickness, center.y - halfThickness,
+                      center.z - halfThickness},
+                     {center.x + halfThickness, center.y + halfThickness,
+                      center.z + halfThickness}};
+  switch (majorAxis) {
+    case VisualMajorAxis::X:
+      proxy.min.x = authoredBounds.min.x;
+      proxy.max.x = authoredBounds.max.x;
+      break;
+    case VisualMajorAxis::Y:
+      proxy.min.y = authoredBounds.min.y;
+      proxy.max.y = authoredBounds.max.y;
+      break;
+    case VisualMajorAxis::Z:
+      proxy.min.z = authoredBounds.min.z;
+      proxy.max.z = authoredBounds.max.z;
+      break;
+  }
+  return proxy;
+}
+
 VisualBounds visualBoundsForObject(const creative::CreativeObject& object) {
   const creative::CreativeObjectDescriptor& descriptor =
       creative::describeObject(object.kind);
   if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Point) {
     return pointMarkerBounds(object.transform.position);
   }
-  return {toVec3(object.bounds.min), toVec3(object.bounds.max)};
+  const VisualBounds authoredBounds{toVec3(object.bounds.min),
+                                    toVec3(object.bounds.max)};
+  if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Line) {
+    return lineProxyBounds(authoredBounds);
+  }
+  return authoredBounds;
 }
 
 Vec3 visualBoundsCenter(VisualBounds bounds) {
@@ -1367,8 +1433,8 @@ int main(int argc, char** argv) {
     placeBrush = firstBrushKind(brushPalette);
   }
   // --capture placement script: place box/surface proof objects, undo one extra
-  // create, then add one Point representative before save/load. Each entry is a
-  // (worldX, worldZ, kind) target fed to the SAME createDocumentObject path.
+  // create, then add Point and Line representatives before save/load. Each entry
+  // is a (worldX, worldZ, kind) target fed to the SAME createDocumentObject path.
   struct CapturePlacement {
     std::uint64_t frame;
     double worldX;
@@ -1378,18 +1444,21 @@ int main(int argc, char** argv) {
     bool moveProofTarget = false;
     bool createUndoProofTarget = false;
     bool pointProofTarget = false;
+    bool lineProofTarget = false;
   };
-  const std::array<CapturePlacement, 5> capturePlacements{{
+  const std::array<CapturePlacement, 6> capturePlacements{{
       {3U, 2.0, 2.0, creative::CreativeObjectKind::Crate, false, true,
-       false, false},
+       false, false, false},
       {4U, 4.0, 2.0, creative::CreativeObjectKind::Crate, true, false,
-       false, false},
+       false, false, false},
       {5U, -2.0, 2.0, creative::CreativeObjectKind::Wall, false, false,
-       false, false},
+       false, false, false},
       {6U, 6.0, 2.0, creative::CreativeObjectKind::Crate, false, false,
-       true, false},
+       true, false, false},
       {14U, 6.0, 2.0, creative::CreativeObjectKind::PointLight, false, false,
-       false, true},
+       false, true, false},
+      {18U, 9.0, 4.0, creative::CreativeObjectKind::Beam, false, false,
+       false, false, true},
   }};
 
   // ---- SAVE / LOAD state (SLICE 7) ---------------------------------------
@@ -1401,8 +1470,8 @@ int main(int argc, char** argv) {
   bool prevKeyBackspace = false;
   bool prevKeyZ = false;
   StandaloneUndoStack undoStack;
-  // --capture round-trip proof: prove create/delete/move undo, add a Point
-  // marker, undo its move, then SAVE/CLEAR/LOAD the six-object scene. The
+  // --capture round-trip proof: prove create/delete/move undo, add Point and
+  // Line markers, undo their moves, then SAVE/CLEAR/LOAD the seven-object scene. The
   // BEFORE snapshot (taken pre-clear, post-undo) holds the restored proof scene
   // to compare against AFTER.
   std::vector<ObjectSnapshotEntry> roundtripBefore;
@@ -1422,6 +1491,10 @@ int main(int argc, char** argv) {
   bool capturePointMoveCommitAttempted = false;
   bool capturePointMoveUndoAttempted = false;
   bool capturePointHitProxyLogged = false;
+  bool captureLineMoveBeginAttempted = false;
+  bool captureLineMoveCommitAttempted = false;
+  bool captureLineMoveUndoAttempted = false;
+  bool captureLineHitProxyLogged = false;
   constexpr std::uint64_t kCaptureDeleteNoSelectionFrame = 2U;
   constexpr std::uint64_t kCaptureCreateUndoFrame = 7U;
   constexpr std::uint64_t kCaptureDeleteFrame = 8U;
@@ -1433,16 +1506,21 @@ int main(int argc, char** argv) {
   constexpr std::uint64_t kCapturePointMoveBeginFrame = 15U;
   constexpr std::uint64_t kCapturePointMoveCommitFrame = 16U;
   constexpr std::uint64_t kCapturePointMoveUndoFrame = 17U;
-  constexpr std::uint64_t kCaptureSaveFrame = 18U;
-  constexpr std::uint64_t kCaptureClearFrame = 19U;
-  constexpr std::uint64_t kCaptureLoadFrame = 20U;
+  constexpr std::uint64_t kCaptureLineMoveBeginFrame = 19U;
+  constexpr std::uint64_t kCaptureLineMoveCommitFrame = 20U;
+  constexpr std::uint64_t kCaptureLineMoveUndoFrame = 21U;
+  constexpr std::uint64_t kCaptureSaveFrame = 22U;
+  constexpr std::uint64_t kCaptureClearFrame = 23U;
+  constexpr std::uint64_t kCaptureLoadFrame = 24U;
   creative::CreativeObjectId captureCreateUndoTargetId =
       creative::kInvalidObjectId;
   creative::CreativeObjectId captureDeleteTargetId = creative::kInvalidObjectId;
   creative::CreativeObjectId captureMoveTargetId = creative::kInvalidObjectId;
   creative::CreativeObjectId capturePointTargetId = creative::kInvalidObjectId;
+  creative::CreativeObjectId captureLineTargetId = creative::kInvalidObjectId;
   creative::CreativeToolWorldPoint captureMoveDestination{};
   creative::CreativeToolWorldPoint capturePointMoveDestination{};
+  creative::CreativeToolWorldPoint captureLineMoveDestination{};
 
   std::uint64_t frameIndex = 0;
   std::uint32_t lastWidth = 0;
@@ -1697,6 +1775,17 @@ int main(int argc, char** argv) {
                 hit.aabb.maxX, hit.aabb.maxY);
         capturePointHitProxyLogged = true;
       }
+      if (!capturePath.empty() && !captureLineHitProxyLogged &&
+          obj.id == captureLineTargetId) {
+        SDL_Log("iggy3d_creative: LINE hit proxy objectId=%llu "
+                "aabbValid=%d visual=[(%.3f, %.3f, %.3f).."
+                "(%.3f, %.3f, %.3f)] screen=[%.1f, %.1f..%.1f, %.1f]",
+                static_cast<unsigned long long>(captureLineTargetId),
+                hit.aabb.valid ? 1 : 0, boxMin.x, boxMin.y, boxMin.z,
+                boxMax.x, boxMax.y, boxMax.z, hit.aabb.minX, hit.aabb.minY,
+                hit.aabb.maxX, hit.aabb.maxY);
+        captureLineHitProxyLogged = true;
+      }
     }
 
     bool clickRequested = false;
@@ -1839,6 +1928,35 @@ int main(int argc, char** argv) {
                           creative::describeObject(receipt.objectKind).shapeKind))
                           .c_str(),
                       0);
+            }
+            if (p.lineProofTarget && receipt.accepted) {
+              captureLineTargetId = receipt.objectId;
+              const creative::CreativeObject* lineTarget =
+                  appState.facade.findObject(captureLineTargetId);
+              const VisualBounds lineVisual =
+                  lineTarget != nullptr
+                      ? visualBoundsForObject(*lineTarget)
+                      : VisualBounds{};
+              SDL_Log("iggy3d_creative: LINE capture target objectId=%llu "
+                      "kind='%s' shape='%s' projection='%s' occupancy='%s' "
+                      "boundsOverride=%d visual=[(%.3f, %.3f, %.3f).."
+                      "(%.3f, %.3f, %.3f)]",
+                      static_cast<unsigned long long>(captureLineTargetId),
+                      std::string(creative::toString(receipt.objectKind)).c_str(),
+                      std::string(creative::toString(
+                          creative::describeObject(receipt.objectKind).shapeKind))
+                          .c_str(),
+                      std::string(creative::toString(
+                          creative::describeObject(receipt.objectKind)
+                              .projectionProfile))
+                          .c_str(),
+                      std::string(creative::toString(
+                          creative::describeObject(receipt.objectKind)
+                              .occupancyKind))
+                          .c_str(),
+                      lineTarget != nullptr ? 1 : 0, lineVisual.min.x,
+                      lineVisual.min.y, lineVisual.min.z, lineVisual.max.x,
+                      lineVisual.max.y, lineVisual.max.z);
             }
           }
         }
@@ -2062,10 +2180,118 @@ int main(int argc, char** argv) {
       }
     }
 
+    // ---- LINE SHAPE PROOF (D2, --capture) ---------------------------------
+    // Beam is only the deterministic representative here. Rendering, hit bounds,
+    // selection and Move use descriptor Line shape facts and bounds-backed
+    // document truth, not this kind name.
+    if (!capturePath.empty()) {
+      if (frameIndex == kCaptureLineMoveBeginFrame &&
+          !captureLineMoveBeginAttempted) {
+        placeMode = false;
+        (void)appState.facade.setActiveTool(creative::Tool::Move);
+        (void)selectObjectForCapture(appState.facade, captureLineTargetId,
+                                     "capture_line_move");
+        const creative::CreativeObject* lineTarget =
+            appState.facade.findObject(captureLineTargetId);
+        if (lineTarget != nullptr) {
+          const VisualBounds authoredBounds{toVec3(lineTarget->bounds.min),
+                                            toVec3(lineTarget->bounds.max)};
+          const VisualBounds lineVisual = visualBoundsForObject(*lineTarget);
+          captureLineMoveDestination = {
+              lineTarget->transform.position.x,
+              lineTarget->transform.position.y,
+              lineTarget->transform.position.z + 1.0};
+          SDL_Log("iggy3d_creative: LINE before move objectId=%llu "
+                  "pos=(%.3f, %.3f, %.3f) authored=[(%.3f, %.3f, %.3f).."
+                  "(%.3f, %.3f, %.3f)] visual=[(%.3f, %.3f, %.3f).."
+                  "(%.3f, %.3f, %.3f)]",
+                  static_cast<unsigned long long>(captureLineTargetId),
+                  lineTarget->transform.position.x,
+                  lineTarget->transform.position.y,
+                  lineTarget->transform.position.z, authoredBounds.min.x,
+                  authoredBounds.min.y, authoredBounds.min.z,
+                  authoredBounds.max.x, authoredBounds.max.y,
+                  authoredBounds.max.z, lineVisual.min.x, lineVisual.min.y,
+                  lineVisual.min.z, lineVisual.max.x, lineVisual.max.y,
+                  lineVisual.max.z);
+          creative::CreativeToolInputPacket press;
+          press.kind = creative::CreativeToolInputKind::PointerPress;
+          press.pointer.button = creative::CreativeToolPointerButton::Primary;
+          press.pointer.target =
+              creative::TargetRef{static_cast<creative::Id>(
+                  captureLineTargetId)};
+          const creative::CreativeFacadeToolDispatchReceipt receipt =
+              appState.facade.dispatchToolInput(press);
+          logMoveDispatch("LINE_MOVE_PRESS", receipt);
+        }
+        captureLineMoveBeginAttempted = true;
+      } else if (frameIndex == kCaptureLineMoveCommitFrame &&
+                 !captureLineMoveCommitAttempted) {
+        creative::CreativeToolInputPacket release;
+        release.kind = creative::CreativeToolInputKind::PointerRelease;
+        release.pointer.button = creative::CreativeToolPointerButton::Primary;
+        release.pointer.hasWorldDestination = true;
+        release.pointer.worldDestination = captureLineMoveDestination;
+        release.pointer.moveHeldAxis = heldAxisForGrabbedAxis(GizmoAxis::Z);
+        const creative::CreativeFacadeToolDispatchReceipt receipt =
+            dispatchMoveReleaseWithUndo(appState, undoStack, release,
+                                        captureLineTargetId,
+                                        "capture_line_move_commit");
+        logMoveDispatch("LINE_MOVE_RELEASE", receipt);
+        const creative::CreativeObject* lineTarget =
+            appState.facade.findObject(captureLineTargetId);
+        if (lineTarget != nullptr) {
+          const VisualBounds authoredBounds{toVec3(lineTarget->bounds.min),
+                                            toVec3(lineTarget->bounds.max)};
+          const VisualBounds lineVisual = visualBoundsForObject(*lineTarget);
+          SDL_Log("iggy3d_creative: LINE after move objectId=%llu "
+                  "pos=(%.3f, %.3f, %.3f) authored=[(%.3f, %.3f, %.3f).."
+                  "(%.3f, %.3f, %.3f)] visual=[(%.3f, %.3f, %.3f).."
+                  "(%.3f, %.3f, %.3f)]",
+                  static_cast<unsigned long long>(captureLineTargetId),
+                  lineTarget->transform.position.x,
+                  lineTarget->transform.position.y,
+                  lineTarget->transform.position.z, authoredBounds.min.x,
+                  authoredBounds.min.y, authoredBounds.min.z,
+                  authoredBounds.max.x, authoredBounds.max.y,
+                  authoredBounds.max.z, lineVisual.min.x, lineVisual.min.y,
+                  lineVisual.min.z, lineVisual.max.x, lineVisual.max.y,
+                  lineVisual.max.z);
+        }
+        captureLineMoveCommitAttempted = true;
+      } else if (frameIndex == kCaptureLineMoveUndoFrame &&
+                 !captureLineMoveUndoAttempted) {
+        (void)undoLastSnapshot(appState, undoStack, "capture_line_move_undo");
+        placeMode = true;
+        placeBrush = creative::CreativeObjectKind::Wall;
+        const creative::CreativeObject* lineTarget =
+            appState.facade.findObject(captureLineTargetId);
+        if (lineTarget != nullptr) {
+          const VisualBounds authoredBounds{toVec3(lineTarget->bounds.min),
+                                            toVec3(lineTarget->bounds.max)};
+          const VisualBounds lineVisual = visualBoundsForObject(*lineTarget);
+          SDL_Log("iggy3d_creative: LINE after undo objectId=%llu "
+                  "pos=(%.3f, %.3f, %.3f) authored=[(%.3f, %.3f, %.3f).."
+                  "(%.3f, %.3f, %.3f)] visual=[(%.3f, %.3f, %.3f).."
+                  "(%.3f, %.3f, %.3f)]",
+                  static_cast<unsigned long long>(captureLineTargetId),
+                  lineTarget->transform.position.x,
+                  lineTarget->transform.position.y,
+                  lineTarget->transform.position.z, authoredBounds.min.x,
+                  authoredBounds.min.y, authoredBounds.min.z,
+                  authoredBounds.max.x, authoredBounds.max.y,
+                  authoredBounds.max.z, lineVisual.min.x, lineVisual.min.y,
+                  lineVisual.min.z, lineVisual.max.x, lineVisual.max.y,
+                  lineVisual.max.z);
+        }
+        captureLineMoveUndoAttempted = true;
+      }
+    }
+
     // ---- SAVE / LOAD ROUND-TRIP (SLICE 7, --capture) -----------------------
     // On fixed frames, drive the lossless round-trip and log the proof. The
     // placements above grow the scene, create/delete/move undo return it to the
-    // intended five-object proof, then SAVE/CLEAR/LOAD proves persistence. The
+    // intended seven-object proof, then SAVE/CLEAR/LOAD proves persistence. The
     // whole sequence reuses the kernel's creative-save/open — no new
     // serialization here. All reads go through document().objects(), so no
     // hardcoded id can dangle after the clear or the load.
@@ -2465,30 +2691,55 @@ int main(int argc, char** argv) {
     // vector so the renderer draws both. The vector must outlive submitFrame(),
     // so it lives here in the frame-loop body. When nothing is selected we skip
     // the gizmo and the selection box is empty, so this is just dbg.lines.
-    std::vector<RenderCreativeWireframeDebugLine> combinedWireLines = dbg.lines;
+    std::vector<RenderCreativeWireframeDebugLine> combinedWireLines;
+    combinedWireLines.reserve(dbg.lines.size() + 48);
+    std::size_t documentWireLineCount = 0;
+    for (const RenderCreativeWireframeDebugLine& line : dbg.lines) {
+      const creative::CreativeObject* object =
+          line.objectId != creative::kInvalidObjectId
+              ? appState.facade.findObject(line.objectId)
+              : nullptr;
+      if (object != nullptr &&
+          creative::describeObject(object->kind).shapeKind ==
+              creative::CreativeObjectShapeKind::Line) {
+        continue;
+      }
+      combinedWireLines.push_back(line);
+    }
+    documentWireLineCount = combinedWireLines.size();
     std::size_t pointMarkerEdgeCount = 0;
+    std::size_t lineMarkerEdgeCount = 0;
     for (const creative::CreativeObject& obj :
          appState.facade.document().objects()) {
       const creative::CreativeObjectDescriptor& descriptor =
           creative::describeObject(obj.kind);
-      if (!obj.visible ||
-          descriptor.shapeKind != creative::CreativeObjectShapeKind::Point) {
+      if (!obj.visible) {
         continue;
       }
-      const VisualBounds markerBounds = visualBoundsForObject(obj);
       const bool sel =
           hasSelection &&
           obj.id == static_cast<creative::CreativeObjectId>(selectedId);
+      if (descriptor.shapeKind != creative::CreativeObjectShapeKind::Point &&
+          descriptor.shapeKind != creative::CreativeObjectShapeKind::Line) {
+        continue;
+      }
+      const VisualBounds markerBounds = visualBoundsForObject(obj);
       const std::size_t before = combinedWireLines.size();
       appendWireframeBoxEdges(
           combinedWireLines, markerBounds.min, markerBounds.max,
           sel ? RenderLineColor{1.0F, 1.0F, 0.0F, 1.0F}
-              : RenderLineColor{0.34F, 0.62F, 0.88F, 1.0F},
+              : descriptor.shapeKind == creative::CreativeObjectShapeKind::Line
+                    ? RenderLineColor{0.86F, 0.68F, 0.28F, 1.0F}
+                    : RenderLineColor{0.34F, 0.62F, 0.88F, 1.0F},
           sel ? 0.06F : 0.035F);
       for (std::size_t i = before; i < combinedWireLines.size(); ++i) {
         combinedWireLines[i].objectId = obj.id;
       }
-      pointMarkerEdgeCount += combinedWireLines.size() - before;
+      if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Line) {
+        lineMarkerEdgeCount += combinedWireLines.size() - before;
+      } else {
+        pointMarkerEdgeCount += combinedWireLines.size() - before;
+      }
     }
     if (hasSelection) {
       for (const GizmoAxisShaft& shaft : gizmoShafts) {
@@ -2522,10 +2773,17 @@ int main(int argc, char** argv) {
         ghostMax = markerBounds.max;
       } else {
         const BrushFootprint fp = brushFootprintForDescriptor(brushDescriptor);
-        ghostMin = {aimCellCenter.x - fp.sizeX * 0.5F, 0.0F,
-                    aimCellCenter.z - fp.sizeZ * 0.5F};
-        ghostMax = {aimCellCenter.x + fp.sizeX * 0.5F, fp.height,
-                    aimCellCenter.z + fp.sizeZ * 0.5F};
+        const VisualBounds authoredGhost{
+            {aimCellCenter.x - fp.sizeX * 0.5F, 0.0F,
+             aimCellCenter.z - fp.sizeZ * 0.5F},
+            {aimCellCenter.x + fp.sizeX * 0.5F, fp.height,
+             aimCellCenter.z + fp.sizeZ * 0.5F}};
+        const VisualBounds ghostBounds =
+            brushDescriptor.shapeKind == creative::CreativeObjectShapeKind::Line
+                ? lineProxyBounds(authoredGhost)
+                : authoredGhost;
+        ghostMin = ghostBounds.min;
+        ghostMax = ghostBounds.max;
       }
       const std::size_t before = combinedWireLines.size();
       appendWireframeBoxEdges(combinedWireLines, ghostMin, ghostMax,
@@ -2583,15 +2841,15 @@ int main(int argc, char** argv) {
       loggedSelection = true;
       SDL_Log("iggy3d_creative: frame %llu submit outcome=%d reason='%s' "
               "meshes=%zu selectedTarget=%u hasSelection=%d selBoxLines=%zu "
-              "pointMarkerLines=%zu gizmoLines=%zu combinedWireLines=%zu "
-              "uiRects=%zu glyphs=%zu",
+              "pointMarkerLines=%zu lineMarkerLines=%zu gizmoLines=%zu "
+              "combinedWireLines=%zu uiRects=%zu glyphs=%zu",
               static_cast<unsigned long long>(frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(),
               scene.room.meshes.size(), selectedId, hasSelection ? 1 : 0,
-              dbg.lines.size(), pointMarkerEdgeCount,
-              combinedWireLines.size() - dbg.lines.size() -
-                  pointMarkerEdgeCount,
+              documentWireLineCount, pointMarkerEdgeCount, lineMarkerEdgeCount,
+              combinedWireLines.size() - documentWireLineCount -
+                  pointMarkerEdgeCount - lineMarkerEdgeCount,
               combinedWireLines.size(), menuFrame.rects.size(), glyphs.size());
     }
 
@@ -2604,15 +2862,16 @@ int main(int argc, char** argv) {
               : "<none>";
       SDL_Log("iggy3d_creative: FINAL frame %llu submit outcome=%d reason='%s' "
               "selectedTarget=%u selectedKind='%s' hasSelection=%d selBoxLines=%zu "
-              "pointMarkerLines=%zu gizmoLines=%zu combinedWireLines=%zu "
-              "placeMode=%d brush='%s' ghostEdges=%zu placed=%llu "
-              "objectCount=%llu",
+              "pointMarkerLines=%zu lineMarkerLines=%zu gizmoLines=%zu "
+              "combinedWireLines=%zu placeMode=%d brush='%s' ghostEdges=%zu "
+              "placed=%llu objectCount=%llu",
               static_cast<unsigned long long>(frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(), selectedId, selKind,
-              hasSelection ? 1 : 0, dbg.lines.size(), pointMarkerEdgeCount,
-              combinedWireLines.size() - dbg.lines.size() -
-                  pointMarkerEdgeCount,
+              hasSelection ? 1 : 0, documentWireLineCount,
+              pointMarkerEdgeCount, lineMarkerEdgeCount,
+              combinedWireLines.size() - documentWireLineCount -
+                  pointMarkerEdgeCount - lineMarkerEdgeCount,
               combinedWireLines.size(), placeMode ? 1 : 0,
               std::string(creative::toString(placeBrush)).c_str(),
               ghostEdgeCount, static_cast<unsigned long long>(placedCount),
