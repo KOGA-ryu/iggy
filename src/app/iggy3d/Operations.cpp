@@ -1469,6 +1469,7 @@ ProductCreativeBakedActiveRoomRefreshResult refreshProductCreativeBakedActiveRoo
   setCreativeBakedActiveRoomRefreshStatus(
       result,
       "product_creative_baked_room_refreshed");
+  recordProductCreativeBakedRoomFresh(window, document.id(), document.revision());
   return result;
 }
 

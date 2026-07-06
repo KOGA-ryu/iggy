@@ -254,6 +254,18 @@ struct ProductAppWindowState {
   std::uint64_t activeCreativeDocumentId = 0;
   std::uint64_t activeCreativeObjectCount = 0;
   std::uint64_t activeCreativeNextObjectId = 0;
+  bool creativeDocumentRevisionObserved = false;
+  bool creativeDocumentChangedThisFrame = false;
+  std::uint64_t creativeDocumentRevisionDocumentId = 0;
+  std::uint64_t creativeDocumentRevisionBeforeFrame = 0;
+  std::uint64_t creativeDocumentRevisionAfterFrame = 0;
+  bool creativeBakedRoomStale = false;
+  std::uint64_t creativeBakedRoomStaleDocumentId = 0;
+  std::uint64_t creativeBakedRoomStaleRevision = 0;
+  std::string creativeBakedRoomStaleStatus =
+      "creative_baked_room_not_observed";
+  std::string creativeBakedRoomStaleReasonCode =
+      "creative_baked_room_not_observed";
   // TV1-H: mirrors the creative facade's active tool being Navigate this frame.
   // Contexts that only carry the window (mouse-capture policy, projection
   // camera-anchor override) read this instead of the facade so the fly camera
@@ -756,5 +768,15 @@ void recordProductCreativeViewportPickFrame(
 void recordProductCreativeWireframeFrame(
     ProductAppWindowState& window,
     const ProductCreativeWireframeFrameReceipt& receipt);
+void recordProductCreativeDocumentRevisionFrame(
+    ProductAppWindowState& window,
+    bool observed,
+    std::uint64_t documentIdBefore,
+    std::uint64_t revisionBefore,
+    std::uint64_t documentIdAfter,
+    std::uint64_t revisionAfter);
+void recordProductCreativeBakedRoomFresh(ProductAppWindowState& window,
+                                         std::uint64_t documentId,
+                                         std::uint64_t revision);
 
 }  // namespace iggy3d

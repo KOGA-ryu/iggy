@@ -31,6 +31,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <string>
 
 namespace iggy3d {
@@ -53,6 +54,12 @@ using ProductWindowTopLevelToggleHandler = ProductWindowTopLevelToggleResult (*)
     InputAction action,
     FrontendSettings* settings,
     bool* closeRequested);
+
+struct ProductCreativeDocumentRevisionSnapshot {
+  bool observed = false;
+  std::uint64_t documentId = 0;
+  std::uint64_t revision = 0;
+};
 
 struct ProductWindowTopLevelToggleRow {
   InputAction action = InputAction::None;
@@ -94,6 +101,25 @@ void recordProductCreativeUiBakedRoomRefresh(
   window.creativeUiCommandBakedRoomCollisionReady = refresh.collisionReady;
   window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount =
       refresh.collisionQuerySurfaceCount;
+}
+
+ProductCreativeDocumentRevisionSnapshot
+captureProductCreativeDocumentRevision(
+    const creative::CreativeAppState* creativeApp) noexcept {
+  ProductCreativeDocumentRevisionSnapshot snapshot;
+  if (creativeApp == nullptr) {
+    return snapshot;
+  }
+
+  const creative::CreativeDocument& document = creativeApp->facade.document();
+  if (!document.isValid()) {
+    return snapshot;
+  }
+
+  snapshot.observed = true;
+  snapshot.documentId = document.id();
+  snapshot.revision = document.revision();
+  return snapshot;
 }
 
 static constexpr std::array kProductWindowFunctionKeyBindings{
@@ -1146,6 +1172,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   if (frontendMouseOwnsInput || higherPriorityMouseConsumed) {
     creativeUiClick.clicked = false;
   }
+  const ProductCreativeDocumentRevisionSnapshot creativeRevisionBefore =
+      captureProductCreativeDocumentRevision(context.creativeApp);
   const ProductCreativeUiInputFrameReceipt creativeUiInputReceipt =
       routeProductCreativeUiInputFrame(ProductCreativeUiInputFrameRequest{
           context.creativeUiDrawList,
@@ -1366,6 +1394,15 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                                            "action_map");
     }
   }
+  const ProductCreativeDocumentRevisionSnapshot creativeRevisionAfter =
+      captureProductCreativeDocumentRevision(context.creativeApp);
+  recordProductCreativeDocumentRevisionFrame(
+      context.window,
+      creativeRevisionBefore.observed && creativeRevisionAfter.observed,
+      creativeRevisionBefore.documentId,
+      creativeRevisionBefore.revision,
+      creativeRevisionAfter.documentId,
+      creativeRevisionAfter.revision);
   // If the creative-document dispatch path did not run this frame (frontend
   // menu open over the world, pause, no session), drop any held-state so a
   // gesture interrupted mid-drag cannot fire a phantom Release on resume. Also

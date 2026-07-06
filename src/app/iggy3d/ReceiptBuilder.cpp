@@ -312,6 +312,49 @@ void recordProductCreativeUiCommandFrame(
   }
 }
 
+void recordProductCreativeDocumentRevisionFrame(
+    ProductAppWindowState& window,
+    bool observed,
+    std::uint64_t documentIdBefore,
+    std::uint64_t revisionBefore,
+    std::uint64_t documentIdAfter,
+    std::uint64_t revisionAfter) {
+  window.creativeDocumentRevisionObserved = observed;
+  window.creativeDocumentChangedThisFrame = false;
+  window.creativeDocumentRevisionDocumentId = observed ? documentIdAfter : 0U;
+  window.creativeDocumentRevisionBeforeFrame = observed ? revisionBefore : 0U;
+  window.creativeDocumentRevisionAfterFrame = observed ? revisionAfter : 0U;
+  if (!observed) {
+    return;
+  }
+
+  const bool documentReplaced = documentIdBefore != documentIdAfter;
+  const bool revisionChanged = revisionBefore != revisionAfter;
+  if (!documentReplaced && !revisionChanged) {
+    return;
+  }
+
+  window.creativeDocumentChangedThisFrame = true;
+  window.creativeBakedRoomStale = true;
+  window.creativeBakedRoomStaleDocumentId = documentIdAfter;
+  window.creativeBakedRoomStaleRevision = revisionAfter;
+  window.creativeBakedRoomStaleStatus =
+      documentReplaced ? "creative_baked_room_stale_document_replaced"
+                       : "creative_baked_room_stale_document_changed";
+  window.creativeBakedRoomStaleReasonCode =
+      window.creativeBakedRoomStaleStatus;
+}
+
+void recordProductCreativeBakedRoomFresh(ProductAppWindowState& window,
+                                         std::uint64_t documentId,
+                                         std::uint64_t revision) {
+  window.creativeBakedRoomStale = false;
+  window.creativeBakedRoomStaleDocumentId = documentId;
+  window.creativeBakedRoomStaleRevision = revision;
+  window.creativeBakedRoomStaleStatus = "creative_baked_room_fresh";
+  window.creativeBakedRoomStaleReasonCode = "creative_baked_room_fresh";
+}
+
 void recordProductCreativeViewportPickFrame(
     ProductAppWindowState& window,
     const ProductCreativeViewportPickFrameReceipt& receipt) {
@@ -2188,6 +2231,26 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt,
                      "creative_ui_command_baked_room_collision_query_surface_count",
                      window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount);
+  appendReceiptField(receipt, "creative_document_revision_observed",
+                     window.creativeDocumentRevisionObserved);
+  appendReceiptField(receipt, "creative_document_changed_this_frame",
+                     window.creativeDocumentChangedThisFrame);
+  appendReceiptField(receipt, "creative_document_revision_document_id",
+                     window.creativeDocumentRevisionDocumentId);
+  appendReceiptField(receipt, "creative_document_revision_before_frame",
+                     window.creativeDocumentRevisionBeforeFrame);
+  appendReceiptField(receipt, "creative_document_revision_after_frame",
+                     window.creativeDocumentRevisionAfterFrame);
+  appendReceiptField(receipt, "creative_baked_room_stale",
+                     window.creativeBakedRoomStale);
+  appendReceiptField(receipt, "creative_baked_room_stale_document_id",
+                     window.creativeBakedRoomStaleDocumentId);
+  appendReceiptField(receipt, "creative_baked_room_stale_revision",
+                     window.creativeBakedRoomStaleRevision);
+  appendReceiptField(receipt, "creative_baked_room_stale_status",
+                     window.creativeBakedRoomStaleStatus);
+  appendReceiptField(receipt, "creative_baked_room_stale_reason_code",
+                     window.creativeBakedRoomStaleReasonCode);
   appendReceiptField(receipt, "creative_viewport_pick_requested",
                      window.creativeViewportPickRequested);
   appendReceiptField(receipt, "creative_viewport_pick_active",

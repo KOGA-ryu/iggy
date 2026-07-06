@@ -544,7 +544,23 @@ bool defaultWindowReceiptFieldsAreNotRequested() {
          expectReceiptField(receipt,
                             "creative_ui_input_downstream_click_reason_code",
                             "creative_ui_input_downstream_click_not_requested",
-                            "default downstream reason");
+                            "default downstream reason") &&
+         expectReceiptField(receipt,
+                            "creative_document_revision_observed",
+                            "false",
+                            "default revision not observed") &&
+         expectReceiptField(receipt,
+                            "creative_document_changed_this_frame",
+                            "false",
+                            "default document unchanged") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_stale",
+                            "false",
+                            "default baked room not stale") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_stale_status",
+                            "creative_baked_room_not_observed",
+                            "default baked room stale status");
 }
 
 bool recorderCopiesNoClickReceipt() {
@@ -1016,7 +1032,90 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
                     iggy3d::creative::kInvalidId,
                 "injected no pointer selection") &&
          expect(!facade.measurementState().active,
-                "injected no measurement dispatch");
+                "injected no measurement dispatch") &&
+         expect(window.creativeDocumentRevisionObserved,
+                "injected revision observed") &&
+         expect(!window.creativeDocumentChangedThisFrame,
+                "injected tool row document unchanged") &&
+         expect(window.creativeDocumentRevisionBeforeFrame == 0U,
+                "injected tool row revision before") &&
+         expect(window.creativeDocumentRevisionAfterFrame == 0U,
+                "injected tool row revision after") &&
+         expect(!window.creativeBakedRoomStale,
+                "injected tool row not stale");
+}
+
+bool inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() {
+  iggy3d::FrontendState frontend;
+  iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
+  iggy3d::ProductSaveBridgeResult saves;
+  iggy3d::ProductAppOptions options;
+  iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::Input;
+  std::optional<iggy3d::Session> activeSession;
+  activeSession.emplace();
+  iggy3d::WorldSetupDraft worldSetupDraft;
+  iggy3d::ProductAppWindowState window;
+  window.gameplayActive = true;
+  markCreativeDocumentWindow(window);
+  iggy3d::FrontendSettings settings;
+  iggy3d::ProductWindowInputFrameState inputFrame;
+  iggy3d::creative::CreativeAppState app;
+  iggy3d::creative::Facade& facade = app.facade;
+  facade.reset();
+  bool closeRequested = false;
+
+  const iggy3d::ProductUiDrawList drawList = defaultCreativeDrawList();
+  const iggy3d::UiHitRegion* measureHit =
+      findHitRegion(drawList, "creative.row.tools.tool_measure");
+  iggy3d::ProductWindowInputClickOverride clickOverride;
+  clickOverride.enabled = true;
+  if (measureHit != nullptr) {
+    clickOverride.click = clickAt(measureHit->rect.x, measureHit->rect.y);
+  }
+
+  iggy3d::processProductWindowInputFrame(iggy3d::ProductWindowInputFrameContext{
+      frontend,
+      saves,
+      options,
+      settingsTab,
+      activeSession,
+      worldSetupDraft,
+      window,
+      settings,
+      inputFrame,
+      closeRequested,
+      nullptr,
+      &app,
+      &drawList,
+      {},
+      {},
+      0,
+      iggy3d::creative::CreativeViewportPickDepthMode::FixedZ,
+      clickOverride,
+  });
+
+  return expect(measureHit != nullptr, "measure row hit exists") &&
+         expect(window.creativeUiCommandAccepted,
+                "measure row command accepted") &&
+         expect(window.creativeUiCommandChanged,
+                "measure row tool changed") &&
+         expect(window.creativeUiCommandKind == "set_active_tool",
+                "measure row command kind") &&
+         expect(window.creativeUiCommandToolAfter == "Measure",
+                "measure row tool after") &&
+         expect(facade.toolState().activeTool ==
+                    iggy3d::creative::Tool::Measure,
+                "measure row facade tool") &&
+         expect(window.creativeDocumentRevisionObserved,
+                "measure row revision observed") &&
+         expect(!window.creativeDocumentChangedThisFrame,
+                "measure row document unchanged") &&
+         expect(window.creativeDocumentRevisionBeforeFrame == 0U,
+                "measure row revision before") &&
+         expect(window.creativeDocumentRevisionAfterFrame == 0U,
+                "measure row revision after") &&
+         expect(!window.creativeBakedRoomStale,
+                "measure row not stale");
 }
 
 bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
@@ -1164,10 +1263,43 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
                             "creative_ui_last_command_create_object_id",
                             createdObjectId,
                             "create injected receipt sticky object id") &&
+         expectReceiptField(receipt,
+                            "creative_document_revision_observed",
+                            "true",
+                            "create injected revision observed receipt") &&
+         expectReceiptField(receipt,
+                            "creative_document_changed_this_frame",
+                            "true",
+                            "create injected changed receipt") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_stale",
+                            "true",
+                            "create injected stale receipt") &&
+         expectReceiptField(receipt,
+                            "creative_baked_room_stale_status",
+                            "creative_baked_room_stale_document_changed",
+                            "create injected stale status receipt") &&
          expect(facade.document().objectCount() == 1U,
                 "create injected object count") &&
          expect(facade.document().revision() == 1U,
                 "create injected document revision") &&
+         expect(window.creativeDocumentRevisionObserved,
+                "create injected revision observed") &&
+         expect(window.creativeDocumentChangedThisFrame,
+                "create injected document changed") &&
+         expect(window.creativeDocumentRevisionBeforeFrame == 0U,
+                "create injected frame revision before") &&
+         expect(window.creativeDocumentRevisionAfterFrame == 1U,
+                "create injected frame revision after") &&
+         expect(window.creativeBakedRoomStale,
+                "create injected stale baked room") &&
+         expect(window.creativeBakedRoomStaleRevision == 1U,
+                "create injected stale revision") &&
+         expect(window.creativeBakedRoomStaleStatus ==
+                    "creative_baked_room_stale_document_changed",
+                "create injected stale status") &&
+         expect(!window.activeRoom.loaded,
+                "create injected does not auto-refresh active room") &&
          expect(created != nullptr, "create injected object exists") &&
          expect(created != nullptr &&
                     created->kind ==
@@ -1306,6 +1438,7 @@ int main() {
                   recorderLeavesOtherReceiptFieldsUntouched() &&
                   inputFrameNoClickNullDrawListRecordsNoClick() &&
                   inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() &&
+                  inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() &&
                   inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() &&
                   inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;

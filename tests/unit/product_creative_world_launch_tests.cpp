@@ -1834,6 +1834,13 @@ bool manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() {
   const cr::CreativeObjectDirtyFlags dirtyBefore =
       facade.document().dirtyFlags();
   const bool activeRoomLoadedBeforeCommand = window.activeRoom.loaded;
+  window.creativeBakedRoomStale = true;
+  window.creativeBakedRoomStaleDocumentId = facade.document().id();
+  window.creativeBakedRoomStaleRevision = facade.document().revision();
+  window.creativeBakedRoomStaleStatus =
+      "creative_baked_room_stale_document_changed";
+  window.creativeBakedRoomStaleReasonCode =
+      "creative_baked_room_stale_document_changed";
 
   const bool clicked = clickCreativeRebuildRoomThroughInputFrame(
       options,
@@ -1892,6 +1899,21 @@ bool manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() {
                 "manual rebuild refresh collision ready") &&
          expect(window.creativeUiCommandBakedRoomCollisionQuerySurfaceCount == 7U,
                 "manual rebuild refresh collision query count") &&
+         expect(window.creativeDocumentRevisionObserved,
+                "manual rebuild revision observed") &&
+         expect(!window.creativeDocumentChangedThisFrame,
+                "manual rebuild no document mutation") &&
+         expect(!window.creativeBakedRoomStale,
+                "manual rebuild clears stale on accepted refresh") &&
+         expect(window.creativeBakedRoomStaleDocumentId ==
+                    facade.document().id(),
+                "manual rebuild stale doc id fresh") &&
+         expect(window.creativeBakedRoomStaleRevision ==
+                    facade.document().revision(),
+                "manual rebuild stale revision fresh") &&
+         expect(window.creativeBakedRoomStaleStatus ==
+                    "creative_baked_room_fresh",
+                "manual rebuild stale status fresh") &&
          expect(window.activeRoom.loaded,
                 "manual rebuild active room loaded") &&
          expect(window.activeRoom.staticMeshCount == 4U,
@@ -1940,6 +1962,13 @@ bool manualRebuildRoomCommandPreservesRoomStateOnNoRenderableDocument() {
                           app);
   window.activeRoom = sentinelActiveRoom();
   window.activeRoomCollision = sentinelActiveRoomCollision();
+  window.creativeBakedRoomStale = true;
+  window.creativeBakedRoomStaleDocumentId = app.facade.document().id();
+  window.creativeBakedRoomStaleRevision = app.facade.document().revision();
+  window.creativeBakedRoomStaleStatus =
+      "creative_baked_room_stale_document_changed";
+  window.creativeBakedRoomStaleReasonCode =
+      "creative_baked_room_stale_document_changed";
 
   const bool clicked = clickCreativeRebuildRoomThroughInputFrame(
       options,
@@ -1971,6 +2000,15 @@ bool manualRebuildRoomCommandPreservesRoomStateOnNoRenderableDocument() {
                 "manual empty rebuild spatial surface count") &&
          expect(!window.creativeUiCommandBakedRoomCollisionReady,
                 "manual empty rebuild collision not ready") &&
+         expect(window.creativeDocumentRevisionObserved,
+                "manual empty rebuild revision observed") &&
+         expect(!window.creativeDocumentChangedThisFrame,
+                "manual empty rebuild no document mutation") &&
+         expect(window.creativeBakedRoomStale,
+                "manual empty rebuild keeps stale after rejection") &&
+         expect(window.creativeBakedRoomStaleStatus ==
+                    "creative_baked_room_stale_document_changed",
+                "manual empty rebuild stale status kept") &&
          sentinelRoomStatePreserved(window);
 }
 
