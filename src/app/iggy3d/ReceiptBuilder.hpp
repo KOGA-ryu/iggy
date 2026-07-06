@@ -43,6 +43,7 @@
 #include "app/iggy3d/window/ProductVulkanMenuState.hpp"
 #include "app/iggy3d/window/ProductVulkanRendererState.hpp"
 #include "app/iggy3d/gameplay/CollisionState.hpp"
+#include "app/iggy3d/gameplay/GameplayMovementInfo.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -423,48 +424,8 @@ struct ProductAppWindowState {
   bool gameplayCommandAccepted = false;
   bool gameplayTickAdvanced = false;
   bool playerPositionChanged = false;
-  bool gameplayMovementAttempted = false;
-  bool gameplayMovementBlocked = false;
-  std::string gameplayMovementStatus = "not_requested";
-  bool gameplayMovementDebugAvailable = false;
-  std::string gameplayMovementReasonCode = "not_requested";
-  std::string gameplayMovementBlockedReason = "none";
-  std::string gameplayMovementHitSurfaceId = "none";
-  bool gameplayMovementGroundSnapApplied = false;
-  bool gameplayMovementClamped = false;
-  bool gameplayMovementSlid = false;
-  std::uint64_t gameplayMovementCollisionSweepCount = 0;
-  std::string gameplayMovementPolicyBand = "none";
-  std::string gameplayMovementSlopeTravelDirection = "stationary";
-  float gameplayMovementSlopeAngleDegrees = 0.0F;
-  float gameplayMovementSpeedMultiplier = 1.0F;
-  float gameplayMovementStartX = 0.0F;
-  float gameplayMovementStartY = 0.0F;
-  float gameplayMovementStartZ = 0.0F;
-  float gameplayMovementFinalX = 0.0F;
-  float gameplayMovementFinalY = 0.0F;
-  float gameplayMovementFinalZ = 0.0F;
-  float gameplayMovementHorizontalDistanceMeters = 0.0F;
-  float gameplayMovementVerticalDeltaMeters = 0.0F;
-  float gameplayMovementGroundVelocityX = 0.0F;
-  float gameplayMovementGroundVelocityZ = 0.0F;
-  ProductGameplayMovementState gameplayMovementState =
-      ProductGameplayMovementState::IdleGrounded;
-  bool gameplayMovementGrounded = true;
-  float gameplayMovementHorizontalSpeedMetersPerSecond = 0.0F;
+  ProductGameplayMovementInfo gameplayMovement;
   ProductWallRunState gameplayWallRun;
-  float gameplayMovementGradePercent = 0.0F;
-  std::string gameplayMovementProfile =
-      std::string{kProductGameplayMovementTuning.walkProfile};
-  float gameplayMovementMaxSpeedMetersPerSecond =
-      kProductGameplayMovementTuning.walkSpeedMetersPerSecond;
-  ProductGameplayMovementTuning gameplayMovementTuning =
-      productGameplayMovementTuning();
-  ProductGameplayMovementTuningField gameplayMovementTuningSelectedField =
-      ProductGameplayMovementTuningField::WalkSpeed;
-  bool gameplayMovementTuningVisible = false;
-  std::string gameplayMovementTuningStatus = "movement_tuning_ready";
-  std::string gameplayMovementTuningReasonCode = "movement_tuning_ready";
   bool gameplayJumpRequested = false;
   bool gameplayJumpAccepted = false;
   bool gameplayJumpActive = false;

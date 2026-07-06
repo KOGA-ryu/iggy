@@ -279,45 +279,45 @@ void recordProductGameplayTapeMovementDebug(
   }
 
   const MovementResult& movement = transient.lastMovementResult;
-  window.gameplayMovementDebugAvailable = true;
+  window.gameplayMovement.debugAvailable = true;
   // branch-gate: BG-1120
-  window.gameplayMovementReasonCode =
+  window.gameplayMovement.reasonCode =
       movement.reasonCode.empty() ? movementBlockedReasonName(movement.blocked)
                                   : movement.reasonCode;
-  window.gameplayMovementBlockedReason =
+  window.gameplayMovement.blockedReason =
       movementBlockedReasonName(movement.blocked);
   // branch-gate: BG-1120
-  window.gameplayMovementHitSurfaceId =
+  window.gameplayMovement.hitSurfaceId =
       movement.hitSurfaceId.empty() ? "none" : movement.hitSurfaceId;
-  window.gameplayMovementGroundSnapApplied = movement.groundSnapApplied;
-  window.gameplayMovementClamped = movement.movementClamped;
-  window.gameplayMovementSlid = movement.movementSlid;
-  window.gameplayMovementCollisionSweepCount = movement.collisionSweepCount;
+  window.gameplayMovement.groundSnapApplied = movement.groundSnapApplied;
+  window.gameplayMovement.clamped = movement.movementClamped;
+  window.gameplayMovement.slid = movement.movementSlid;
+  window.gameplayMovement.collisionSweepCount = movement.collisionSweepCount;
   // branch-gate: BG-1120
-  window.gameplayMovementPolicyBand =
+  window.gameplayMovement.policyBand =
       movement.movementPolicyBand.empty() ? "none" : movement.movementPolicyBand;
-  window.gameplayMovementSlopeTravelDirection = movement.slopeTravelDirection;
-  window.gameplayMovementSlopeAngleDegrees = movement.slopeAngleDegrees;
-  window.gameplayMovementSpeedMultiplier = movement.speedMultiplier;
-  window.gameplayMovementStartX = movement.start.x;
-  window.gameplayMovementStartY = movement.start.y;
-  window.gameplayMovementStartZ = movement.start.z;
-  window.gameplayMovementFinalX = movement.finalPosition.x;
-  window.gameplayMovementFinalY = movement.finalPosition.y;
-  window.gameplayMovementFinalZ = movement.finalPosition.z;
-  window.gameplayMovementHorizontalDistanceMeters =
+  window.gameplayMovement.slopeTravelDirection = movement.slopeTravelDirection;
+  window.gameplayMovement.slopeAngleDegrees = movement.slopeAngleDegrees;
+  window.gameplayMovement.speedMultiplier = movement.speedMultiplier;
+  window.gameplayMovement.startX = movement.start.x;
+  window.gameplayMovement.startY = movement.start.y;
+  window.gameplayMovement.startZ = movement.start.z;
+  window.gameplayMovement.finalX = movement.finalPosition.x;
+  window.gameplayMovement.finalY = movement.finalPosition.y;
+  window.gameplayMovement.finalZ = movement.finalPosition.z;
+  window.gameplayMovement.horizontalDistanceMeters =
       movement.horizontalDistanceMeters;
-  window.gameplayMovementVerticalDeltaMeters = movement.verticalDeltaMeters;
-  window.gameplayMovementGradePercent = movement.gradePercent;
+  window.gameplayMovement.verticalDeltaMeters = movement.verticalDeltaMeters;
+  window.gameplayMovement.gradePercent = movement.gradePercent;
 
   // branch-gate: BG-1120
   if (run.lastAction == "move") {
-    window.gameplayMovementAttempted = true;
-    window.gameplayMovementBlocked =
+    window.gameplayMovement.attempted = true;
+    window.gameplayMovement.blocked =
         movement.blocked != MovementBlockedReason::None;
     // branch-gate: BG-1120
-    window.gameplayMovementStatus =
-        window.gameplayMovementBlocked ? "blocked" : "moved";
+    window.gameplayMovement.status =
+        window.gameplayMovement.blocked ? "blocked" : "moved";
   }
 }
 

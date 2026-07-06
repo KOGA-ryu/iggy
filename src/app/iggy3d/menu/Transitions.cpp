@@ -44,15 +44,15 @@ void clearProductMapMakerMode(ProductAppWindowState& window) {
 }
 
 void clearProductGameplayMovementTuning(ProductAppWindowState& window) {
-  window.gameplayMovementTuningVisible = false;
-  window.gameplayMovementTuningStatus = "movement_tuning_hidden";
-  window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
+  window.gameplayMovement.tuningVisible = false;
+  window.gameplayMovement.tuningStatus = "movement_tuning_hidden";
+  window.gameplayMovement.tuningReasonCode = window.gameplayMovement.tuningStatus;
 }
 
 void clearProductGameplayGroundVelocity(ProductAppWindowState& window) {
-  window.gameplayMovementGroundVelocityX = 0.0F;
-  window.gameplayMovementGroundVelocityZ = 0.0F;
-  window.gameplayMovementHorizontalSpeedMetersPerSecond = 0.0F;
+  window.gameplayMovement.groundVelocityX = 0.0F;
+  window.gameplayMovement.groundVelocityZ = 0.0F;
+  window.gameplayMovement.horizontalSpeedMetersPerSecond = 0.0F;
   window.gameplayWallRun.candidateAvailable = false;
   window.gameplayWallRun.candidateStatus = "wall_run_grounded";
   window.gameplayWallRun.candidateReasonCode = window.gameplayWallRun.candidateStatus;
@@ -71,8 +71,8 @@ void clearProductGameplayGroundVelocity(ProductAppWindowState& window) {
   window.gameplayWallRun.speedMultiplier = 1.0F;
   // branch-gate: BG-1161
   if (!window.gameplayJumpActive) {
-    window.gameplayMovementGrounded = true;
-    window.gameplayMovementState = ProductGameplayMovementState::IdleGrounded;
+    window.gameplayMovement.grounded = true;
+    window.gameplayMovement.state = ProductGameplayMovementState::IdleGrounded;
   }
 }
 

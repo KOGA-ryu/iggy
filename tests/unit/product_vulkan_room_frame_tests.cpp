@@ -165,17 +165,17 @@ void seedPhysicsMovementStats(std::optional<iggy3d::Session>& session,
 }
 
 void seedMovementDebugFacts(iggy3d::ProductAppWindowState& window) {
-  window.gameplayMovementDebugAvailable = true;
-  window.gameplayMovementStatus = "moved";
-  window.gameplayMovementReasonCode = "movement_ok";
-  window.gameplayMovementBlockedReason = "movement_ok";
-  window.gameplayMovementHitSurfaceId = "none";
-  window.gameplayMovementGroundSnapApplied = true;
-  window.gameplayMovementPolicyBand = "flat";
-  window.gameplayMovementSpeedMultiplier = 1.0F;
-  window.gameplayMovementFinalX = -1.0F;
-  window.gameplayMovementFinalY = 0.0F;
-  window.gameplayMovementFinalZ = -1.0F;
+  window.gameplayMovement.debugAvailable = true;
+  window.gameplayMovement.status = "moved";
+  window.gameplayMovement.reasonCode = "movement_ok";
+  window.gameplayMovement.blockedReason = "movement_ok";
+  window.gameplayMovement.hitSurfaceId = "none";
+  window.gameplayMovement.groundSnapApplied = true;
+  window.gameplayMovement.policyBand = "flat";
+  window.gameplayMovement.speedMultiplier = 1.0F;
+  window.gameplayMovement.finalX = -1.0F;
+  window.gameplayMovement.finalY = 0.0F;
+  window.gameplayMovement.finalZ = -1.0F;
 }
 
 void seedPhysicsMovementStatsAndGeometry(std::optional<iggy3d::Session>& session) {
@@ -950,14 +950,14 @@ bool vulkanGameplayFrameCarriesMovementTuningUiOverlay() {
           720U,
           0.0F,
           0.0F,
-          window.gameplayMovementTuning,
-          window.gameplayMovementTuningSelectedField,
+          window.gameplayMovement.tuning,
+          window.gameplayMovement.tuningSelectedField,
           false);
   const iggy3d::FrameInput& hiddenFrame =
       iggy3d::refreshProductVulkanGameplayFrameInput(hidden);
 
-  window.gameplayMovementTuningVisible = true;
-  window.gameplayMovementTuningSelectedField =
+  window.gameplayMovement.tuningVisible = true;
+  window.gameplayMovement.tuningSelectedField =
       iggy3d::ProductGameplayMovementTuningField::JumpImpulse;
   iggy3d::ProductVulkanGameplayFrame visible =
       iggy3d::buildProductVulkanGameplayFrame(
@@ -967,9 +967,9 @@ bool vulkanGameplayFrameCarriesMovementTuningUiOverlay() {
           720U,
           0.0F,
           0.0F,
-          window.gameplayMovementTuning,
-          window.gameplayMovementTuningSelectedField,
-          window.gameplayMovementTuningVisible);
+          window.gameplayMovement.tuning,
+          window.gameplayMovement.tuningSelectedField,
+          window.gameplayMovement.tuningVisible);
   const iggy3d::FrameInput& visibleFrame =
       iggy3d::refreshProductVulkanGameplayFrameInput(visible);
   const VulkanUiCounts hiddenUi = uiCountsFor(hiddenFrame);
@@ -1009,8 +1009,8 @@ bool vulkanGameplayFrameCarriesDevToolsOverlay() {
           720U,
           0.0F,
           0.0F,
-          window.gameplayMovementTuning,
-          window.gameplayMovementTuningSelectedField,
+          window.gameplayMovement.tuning,
+          window.gameplayMovement.tuningSelectedField,
           false,
           false,
           iggy3d::FrontendDevToolsCategory::Movement);
@@ -1025,8 +1025,8 @@ bool vulkanGameplayFrameCarriesDevToolsOverlay() {
           720U,
           0.0F,
           0.0F,
-          window.gameplayMovementTuning,
-          window.gameplayMovementTuningSelectedField,
+          window.gameplayMovement.tuning,
+          window.gameplayMovement.tuningSelectedField,
           false,
           true,
           iggy3d::FrontendDevToolsCategory::Movement);

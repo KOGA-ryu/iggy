@@ -169,41 +169,41 @@ TargetQueryResult queryProductGameplayTarget(const Session& session, CommandKind
 }
 
 void clearProductMovementDebug(ProductAppWindowState& window) {
-  window.gameplayMovementDebugAvailable = false;
-  window.gameplayMovementReasonCode = "not_requested";
-  window.gameplayMovementBlockedReason = "none";
-  window.gameplayMovementHitSurfaceId = "none";
-  window.gameplayMovementGroundSnapApplied = false;
-  window.gameplayMovementClamped = false;
-  window.gameplayMovementSlid = false;
-  window.gameplayMovementCollisionSweepCount = 0;
-  window.gameplayMovementPolicyBand = "none";
-  window.gameplayMovementSlopeTravelDirection = "stationary";
-  window.gameplayMovementSlopeAngleDegrees = 0.0F;
-  window.gameplayMovementSpeedMultiplier = 1.0F;
-  window.gameplayMovementStartX = 0.0F;
-  window.gameplayMovementStartY = 0.0F;
-  window.gameplayMovementStartZ = 0.0F;
-  window.gameplayMovementFinalX = 0.0F;
-  window.gameplayMovementFinalY = 0.0F;
-  window.gameplayMovementFinalZ = 0.0F;
-  window.gameplayMovementHorizontalDistanceMeters = 0.0F;
-  window.gameplayMovementVerticalDeltaMeters = 0.0F;
-  window.gameplayMovementGradePercent = 0.0F;
+  window.gameplayMovement.debugAvailable = false;
+  window.gameplayMovement.reasonCode = "not_requested";
+  window.gameplayMovement.blockedReason = "none";
+  window.gameplayMovement.hitSurfaceId = "none";
+  window.gameplayMovement.groundSnapApplied = false;
+  window.gameplayMovement.clamped = false;
+  window.gameplayMovement.slid = false;
+  window.gameplayMovement.collisionSweepCount = 0;
+  window.gameplayMovement.policyBand = "none";
+  window.gameplayMovement.slopeTravelDirection = "stationary";
+  window.gameplayMovement.slopeAngleDegrees = 0.0F;
+  window.gameplayMovement.speedMultiplier = 1.0F;
+  window.gameplayMovement.startX = 0.0F;
+  window.gameplayMovement.startY = 0.0F;
+  window.gameplayMovement.startZ = 0.0F;
+  window.gameplayMovement.finalX = 0.0F;
+  window.gameplayMovement.finalY = 0.0F;
+  window.gameplayMovement.finalZ = 0.0F;
+  window.gameplayMovement.horizontalDistanceMeters = 0.0F;
+  window.gameplayMovement.verticalDeltaMeters = 0.0F;
+  window.gameplayMovement.gradePercent = 0.0F;
 }
 
 float productHorizontalMovementSpeedMetersPerSecond(
     const ProductAppWindowState& window) {
   const float speedSquared =
-      window.gameplayMovementGroundVelocityX *
-          window.gameplayMovementGroundVelocityX +
-      window.gameplayMovementGroundVelocityZ *
-          window.gameplayMovementGroundVelocityZ;
+      window.gameplayMovement.groundVelocityX *
+          window.gameplayMovement.groundVelocityX +
+      window.gameplayMovement.groundVelocityZ *
+          window.gameplayMovement.groundVelocityZ;
   const float retainedSpeed = std::sqrt(std::max(0.0F, speedSquared));
-  const float dt = std::max(0.0F, window.gameplayMovementTuning.inputStepSeconds);
+  const float dt = std::max(0.0F, window.gameplayMovement.tuning.inputStepSeconds);
   // branch-gate: BG-1161
   const float debugSpeed =
-      dt > 0.0F ? window.gameplayMovementHorizontalDistanceMeters / dt : 0.0F;
+      dt > 0.0F ? window.gameplayMovement.horizontalDistanceMeters / dt : 0.0F;
   return std::max(retainedSpeed, debugSpeed);
 }
 
@@ -268,11 +268,11 @@ ProductWallRunActiveEvaluationResult productWallRunActiveRecorded(
   result.reasonCode = std::string{reason};
   result.remainingSeconds = remainingSeconds;
   result.durationSeconds =
-      std::clamp(window.gameplayMovementTuning.wallRunDurationSeconds, 0.1F, 2.0F);
+      std::clamp(window.gameplayMovement.tuning.wallRunDurationSeconds, 0.1F, 2.0F);
   result.gravityMultiplier =
-      std::clamp(window.gameplayMovementTuning.wallRunGravityMultiplier, 0.0F, 1.0F);
+      std::clamp(window.gameplayMovement.tuning.wallRunGravityMultiplier, 0.0F, 1.0F);
   result.speedMultiplier =
-      std::clamp(window.gameplayMovementTuning.wallRunSpeedMultiplier, 0.25F, 2.0F);
+      std::clamp(window.gameplayMovement.tuning.wallRunSpeedMultiplier, 0.25F, 2.0F);
   return result;
 }
 
@@ -317,19 +317,19 @@ void clearProductWallRunActiveProof(ProductAppWindowState& window,
 }
 
 void updateProductMovementStateProof(ProductAppWindowState& window) {
-  window.gameplayMovementHorizontalSpeedMetersPerSecond =
+  window.gameplayMovement.horizontalSpeedMetersPerSecond =
       productHorizontalMovementSpeedMetersPerSecond(window);
-  window.gameplayMovementGrounded = !window.gameplayJumpActive;
+  window.gameplayMovement.grounded = !window.gameplayJumpActive;
 
   const bool blockedOrSliding =
-      window.gameplayMovementBlocked ||
-      window.gameplayMovementClamped ||
-      window.gameplayMovementSlid ||
-      (window.gameplayMovementBlockedReason != "none" &&
-       window.gameplayMovementBlockedReason != "movement_ok");
+      window.gameplayMovement.blocked ||
+      window.gameplayMovement.clamped ||
+      window.gameplayMovement.slid ||
+      (window.gameplayMovement.blockedReason != "none" &&
+       window.gameplayMovement.blockedReason != "movement_ok");
   // branch-gate: BG-1161
   if (blockedOrSliding) {
-    window.gameplayMovementState =
+    window.gameplayMovement.state =
         ProductGameplayMovementState::BlockedOrSliding;
     return;
   }
@@ -338,24 +338,24 @@ void updateProductMovementStateProof(ProductAppWindowState& window) {
   if (window.gameplayJumpActive) {
     // branch-gate: BG-1157
     if (window.gameplayWallRun.active) {
-      window.gameplayMovementState = ProductGameplayMovementState::WallRunning;
+      window.gameplayMovement.state = ProductGameplayMovementState::WallRunning;
       return;
     }
     // branch-gate: BG-1161
-    if (window.gameplayMovementReasonCode == "airborne_manual_move" &&
-        window.gameplayMovementHorizontalDistanceMeters >
+    if (window.gameplayMovement.reasonCode == "airborne_manual_move" &&
+        window.gameplayMovement.horizontalDistanceMeters >
             kMovementStateDistanceEpsilonMeters) {
-      window.gameplayMovementState =
+      window.gameplayMovement.state =
           ProductGameplayMovementState::AirborneControl;
       return;
     }
     // branch-gate: BG-1153
     if (window.gameplayJumpStatus == "accepted") {
-      window.gameplayMovementState = ProductGameplayMovementState::Jumping;
+      window.gameplayMovement.state = ProductGameplayMovementState::Jumping;
       return;
     }
     // branch-gate: BG-1153
-    window.gameplayMovementState =
+    window.gameplayMovement.state =
         window.gameplayJumpVelocityMetersPerSecond > 0.0F
             ? ProductGameplayMovementState::Rising
             : ProductGameplayMovementState::Falling;
@@ -363,14 +363,14 @@ void updateProductMovementStateProof(ProductAppWindowState& window) {
   }
 
   const bool horizontalVelocityActive =
-      window.gameplayMovementHorizontalSpeedMetersPerSecond >
+      window.gameplayMovement.horizontalSpeedMetersPerSecond >
       kMovementStateSpeedEpsilonMetersPerSecond;
   const bool movementDebugMoved =
-      window.gameplayMovementStatus == "moved" &&
-      window.gameplayMovementHorizontalDistanceMeters >
+      window.gameplayMovement.status == "moved" &&
+      window.gameplayMovement.horizontalDistanceMeters >
           kMovementStateDistanceEpsilonMeters;
   // branch-gate: BG-1161
-  window.gameplayMovementState =
+  window.gameplayMovement.state =
       horizontalVelocityActive || movementDebugMoved
           ? ProductGameplayMovementState::MovingGrounded
           : ProductGameplayMovementState::IdleGrounded;
@@ -393,11 +393,11 @@ std::string_view manualFirstPersonMovementProfile(
 }
 
 void recordProductMovementProfile(ProductAppWindowState& window, bool sprinting) {
-  window.gameplayMovementProfile =
-      std::string{manualFirstPersonMovementProfile(window.gameplayMovementTuning,
+  window.gameplayMovement.profile =
+      std::string{manualFirstPersonMovementProfile(window.gameplayMovement.tuning,
                                                    sprinting)};
-  window.gameplayMovementMaxSpeedMetersPerSecond =
-      manualFirstPersonMaxSpeedMetersPerSecond(window.gameplayMovementTuning,
+  window.gameplayMovement.maxSpeedMetersPerSecond =
+      manualFirstPersonMaxSpeedMetersPerSecond(window.gameplayMovement.tuning,
                                                sprinting);
 }
 
@@ -655,7 +655,7 @@ bool beginProductFallIfUnsupported(Session& session,
   window.gameplayJumpActive = true;
   window.gameplayJumpVelocityMetersPerSecond = 0.0F;
   window.gameplayJumpCoyoteSecondsRemaining =
-      window.gameplayMovementTuning.coyoteTimeSeconds;
+      window.gameplayMovement.tuning.coyoteTimeSeconds;
   window.gameplayJumpCutApplied = false;
   window.gameplayJumpHeld = false;
   float groundY = groundedEntity->transform.position.y;
@@ -705,7 +705,7 @@ bool productJumpBufferLive(const ProductAppWindowState& window) {
 
 void bufferProductJump(ProductAppWindowState& window) {
   window.gameplayJumpBufferSecondsRemaining =
-      window.gameplayMovementTuning.jumpBufferSeconds;
+      window.gameplayMovement.tuning.jumpBufferSeconds;
 }
 
 void beginProductJumpArc(Session& session,
@@ -713,7 +713,7 @@ void beginProductJumpArc(Session& session,
                          const EntityState& actor,
                          float groundY,
                          std::string_view reason) {
-  const ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
+  const ProductGameplayMovementTuning& tuning = window.gameplayMovement.tuning;
   window.gameplayJumpAccepted = true;
   window.gameplayJumpActive = true;
   window.gameplayJumpVelocityMetersPerSecond =
@@ -752,7 +752,7 @@ bool tryProductCoyoteJump(Session& session, ProductAppWindowState& window) {
 }
 
 void applyProductJumpReleaseCut(ProductAppWindowState& window) {
-  ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
+  ProductGameplayMovementTuning& tuning = window.gameplayMovement.tuning;
   window.gameplayJumpHeld = false;
   // branch-gate: BG-1153
   if (!window.gameplayJumpActive || window.gameplayJumpCutApplied ||
@@ -1008,9 +1008,9 @@ std::string wallRunSideName(Vec3 awayNormal, float yawDegrees) {
 
 bool productMovementDebugAlongWall(const ProductAppWindowState& window,
                                    Vec3 awayNormal) {
-  Vec3 travel{window.gameplayMovementFinalX - window.gameplayMovementStartX,
+  Vec3 travel{window.gameplayMovement.finalX - window.gameplayMovement.startX,
               0.0F,
-              window.gameplayMovementFinalZ - window.gameplayMovementStartZ};
+              window.gameplayMovement.finalZ - window.gameplayMovement.startZ};
   const float travelLenSq = lengthSquared(travel);
   // branch-gate: BG-1161
   if (!isFinite(travel) || travelLenSq <= kMovementStateDistanceEpsilonMeters) {
@@ -1105,11 +1105,11 @@ ProductWallRunActiveEvaluationResult evaluateProductWallRunActiveWithoutJumpExit
     return productWallRunActiveRejected("wall_run_input_away");
   }
 
-  const float dt = std::max(0.0F, window.gameplayMovementTuning.inputStepSeconds);
+  const float dt = std::max(0.0F, window.gameplayMovement.tuning.inputStepSeconds);
   // branch-gate: BG-1157
   if (!window.gameplayWallRun.active) {
     const float remaining =
-        std::clamp(window.gameplayMovementTuning.wallRunDurationSeconds,
+        std::clamp(window.gameplayMovement.tuning.wallRunDurationSeconds,
                    0.1F,
                    2.0F);
     ProductWallRunActiveEvaluationResult result =
@@ -1135,19 +1135,19 @@ ProductWallRunCandidateEvaluationResult evaluateProductWallRunCandidate(
   const ProductAppWindowState& window = request.window;
   ProductWallRunCandidateEvaluationResult result;
   result.approachSpeedMetersPerSecond =
-      window.gameplayMovementHorizontalSpeedMetersPerSecond;
+      window.gameplayMovement.horizontalSpeedMetersPerSecond;
 
   // branch-gate: BG-1153
   if (!window.gameplayJumpActive) {
     return productWallRunCandidateRejected("wall_run_grounded");
   }
   const float minSpeed =
-      std::max(0.0F, window.gameplayMovementTuning.wallRunMinSpeedMetersPerSecond);
+      std::max(0.0F, window.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond);
   // branch-gate: BG-1161
-  if (window.gameplayMovementHorizontalSpeedMetersPerSecond < minSpeed) {
+  if (window.gameplayMovement.horizontalSpeedMetersPerSecond < minSpeed) {
     result = productWallRunCandidateRejected("wall_run_low_speed");
     result.approachSpeedMetersPerSecond =
-        window.gameplayMovementHorizontalSpeedMetersPerSecond;
+        window.gameplayMovement.horizontalSpeedMetersPerSecond;
     return result;
   }
   // branch-gate: BG-1157
@@ -1165,12 +1165,12 @@ ProductWallRunCandidateEvaluationResult evaluateProductWallRunCandidate(
       findWallRunSurface(*request.collisionSurfaces,
                          actor->transform.position,
                          awayNormal,
-                         window.gameplayMovementTuning);
+                         window.gameplayMovement.tuning);
   // branch-gate: BG-1157
   if (surface == nullptr) {
     result = productWallRunCandidateRejected("wall_run_no_wall_contact");
     result.approachSpeedMetersPerSecond =
-        window.gameplayMovementHorizontalSpeedMetersPerSecond;
+        window.gameplayMovement.horizontalSpeedMetersPerSecond;
     return result;
   }
   // branch-gate: BG-1161
@@ -1180,7 +1180,7 @@ ProductWallRunCandidateEvaluationResult evaluateProductWallRunCandidate(
     result.surfaceId = surface->id.empty() ? "wall_run_surface" : surface->id;
     result.normal = {awayNormal.x, surface->normal.y, awayNormal.z};
     result.approachSpeedMetersPerSecond =
-        window.gameplayMovementHorizontalSpeedMetersPerSecond;
+        window.gameplayMovement.horizontalSpeedMetersPerSecond;
     return result;
   }
 
@@ -1192,7 +1192,7 @@ ProductWallRunCandidateEvaluationResult evaluateProductWallRunCandidate(
   result.surfaceId = surface->id.empty() ? "wall_run_surface" : surface->id;
   result.normal = {awayNormal.x, surface->normal.y, awayNormal.z};
   result.approachSpeedMetersPerSecond =
-      window.gameplayMovementHorizontalSpeedMetersPerSecond;
+      window.gameplayMovement.horizontalSpeedMetersPerSecond;
   return result;
 }
 
@@ -1241,7 +1241,7 @@ void recordProductWallJumpTraversalProof(ProductAppWindowState& window,
 }
 
 bool tryProductWallJump(Session& session, ProductAppWindowState& window) {
-  const ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
+  const ProductGameplayMovementTuning& tuning = window.gameplayMovement.tuning;
   const SpatialSurfaceSet* surfaces =
       productActiveRoomCollisionSurfaces(window.activeRoomCollision);
   const EntityId actor = productPlayerActor(session);
@@ -1330,7 +1330,7 @@ bool tryProductTraversalJump(Session& session, ProductAppWindowState& window) {
 void advanceProductJump(Session& session,
                         ProductAppWindowState& window,
                         const SpatialSurfaceSet* collisionSurfaces) {
-  const ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
+  const ProductGameplayMovementTuning& tuning = window.gameplayMovement.tuning;
   const float dt = std::max(0.0F, tuning.inputStepSeconds);
   window.gameplayJumpBufferSecondsRemaining =
       std::max(0.0F, window.gameplayJumpBufferSecondsRemaining - dt);
@@ -1509,7 +1509,7 @@ Vec3 manualFirstPersonDirection(float moveX, float moveY, float yawDegrees) {
 }
 
 void advanceProductDashCooldown(ProductAppWindowState& window) {
-  const ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
+  const ProductGameplayMovementTuning& tuning = window.gameplayMovement.tuning;
   // branch-gate: BG-1155
   if (window.gameplayDash.cooldownRemainingSeconds <= 0.0F) {
     window.gameplayDash.cooldownRemainingSeconds = 0.0F;
@@ -1536,7 +1536,7 @@ void submitProductDash(Session& session,
                        float moveY,
                        std::string_view source,
                        const SpatialSurfaceSet* collisionSurfaces) {
-  const ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
+  const ProductGameplayMovementTuning& tuning = window.gameplayMovement.tuning;
   clearProductTargetProof(window);
   clearProductOutcomeProof(window);
   window.gameplayInputUsed = true;
@@ -1572,8 +1572,8 @@ void submitProductDash(Session& session,
       tuning.dashCooldownSeconds;
   window.gameplayDash.directionX = direction.x;
   window.gameplayDash.directionZ = direction.z;
-  window.gameplayMovementProfile = std::string{tuning.dashProfile};
-  window.gameplayMovementMaxSpeedMetersPerSecond =
+  window.gameplayMovement.profile = std::string{tuning.dashProfile};
+  window.gameplayMovement.maxSpeedMetersPerSecond =
       tuning.dashSpeedMetersPerSecond;
 
   CommandRecord command;
@@ -1655,10 +1655,10 @@ Vec3 clampHorizontalVelocity(Vec3 velocity, float maxSpeed) {
 
 bool horizontalVelocityActive(const ProductAppWindowState& window) {
   const float speedSquared =
-      window.gameplayMovementGroundVelocityX *
-          window.gameplayMovementGroundVelocityX +
-      window.gameplayMovementGroundVelocityZ *
-          window.gameplayMovementGroundVelocityZ;
+      window.gameplayMovement.groundVelocityX *
+          window.gameplayMovement.groundVelocityX +
+      window.gameplayMovement.groundVelocityZ *
+          window.gameplayMovement.groundVelocityZ;
   return speedSquared > 0.000001F;
 }
 
@@ -1666,11 +1666,11 @@ Vec3 updateProductGroundMovementVelocity(ProductAppWindowState& window,
                                          float moveX,
                                          float moveY,
                                          bool sprinting) {
-  const ProductGameplayMovementTuning& tuning = window.gameplayMovementTuning;
+  const ProductGameplayMovementTuning& tuning = window.gameplayMovement.tuning;
   const float dt = std::max(0.0F, tuning.inputStepSeconds);
-  Vec3 current{window.gameplayMovementGroundVelocityX,
+  Vec3 current{window.gameplayMovement.groundVelocityX,
                0.0F,
-               window.gameplayMovementGroundVelocityZ};
+               window.gameplayMovement.groundVelocityZ};
   const Vec3 target = manualFirstPersonDesiredVelocity(
       moveX, moveY, window.viewport.cameraYawDegrees, sprinting, tuning);
   const bool hasIntent = target.x != 0.0F || target.z != 0.0F;
@@ -1682,8 +1682,8 @@ Vec3 updateProductGroundMovementVelocity(ProductAppWindowState& window,
   Vec3 next = moveHorizontalVelocityToward(
       current, target, std::max(0.0F, rate) * dt);
   next = clampHorizontalVelocity(next, maxSpeed);
-  window.gameplayMovementGroundVelocityX = next.x;
-  window.gameplayMovementGroundVelocityZ = next.z;
+  window.gameplayMovement.groundVelocityX = next.x;
+  window.gameplayMovement.groundVelocityZ = next.z;
   return next;
 }
 
@@ -1692,28 +1692,28 @@ void recordProductAirborneMovementDebug(ProductAppWindowState& window,
                                         Vec3 finalPosition) {
   const MovementTravelFacts facts =
       computeMovementTravelFacts(start, finalPosition);
-  window.gameplayMovementDebugAvailable = true;
-  window.gameplayMovementReasonCode = "airborne_manual_move";
-  window.gameplayMovementBlockedReason = "movement_ok";
-  window.gameplayMovementHitSurfaceId = "none";
-  window.gameplayMovementGroundSnapApplied = false;
-  window.gameplayMovementClamped = false;
-  window.gameplayMovementSlid = false;
-  window.gameplayMovementCollisionSweepCount = 0;
-  window.gameplayMovementPolicyBand = "airborne";
-  window.gameplayMovementSlopeTravelDirection =
+  window.gameplayMovement.debugAvailable = true;
+  window.gameplayMovement.reasonCode = "airborne_manual_move";
+  window.gameplayMovement.blockedReason = "movement_ok";
+  window.gameplayMovement.hitSurfaceId = "none";
+  window.gameplayMovement.groundSnapApplied = false;
+  window.gameplayMovement.clamped = false;
+  window.gameplayMovement.slid = false;
+  window.gameplayMovement.collisionSweepCount = 0;
+  window.gameplayMovement.policyBand = "airborne";
+  window.gameplayMovement.slopeTravelDirection =
       movementTravelDirectionName(facts.direction);
-  window.gameplayMovementSlopeAngleDegrees = 0.0F;
-  window.gameplayMovementSpeedMultiplier = 1.0F;
-  window.gameplayMovementStartX = start.x;
-  window.gameplayMovementStartY = start.y;
-  window.gameplayMovementStartZ = start.z;
-  window.gameplayMovementFinalX = finalPosition.x;
-  window.gameplayMovementFinalY = finalPosition.y;
-  window.gameplayMovementFinalZ = finalPosition.z;
-  window.gameplayMovementHorizontalDistanceMeters = facts.horizontalDistanceMeters;
-  window.gameplayMovementVerticalDeltaMeters = facts.verticalDeltaMeters;
-  window.gameplayMovementGradePercent = facts.gradePercent;
+  window.gameplayMovement.slopeAngleDegrees = 0.0F;
+  window.gameplayMovement.speedMultiplier = 1.0F;
+  window.gameplayMovement.startX = start.x;
+  window.gameplayMovement.startY = start.y;
+  window.gameplayMovement.startZ = start.z;
+  window.gameplayMovement.finalX = finalPosition.x;
+  window.gameplayMovement.finalY = finalPosition.y;
+  window.gameplayMovement.finalZ = finalPosition.z;
+  window.gameplayMovement.horizontalDistanceMeters = facts.horizontalDistanceMeters;
+  window.gameplayMovement.verticalDeltaMeters = facts.verticalDeltaMeters;
+  window.gameplayMovement.gradePercent = facts.gradePercent;
 }
 
 void recordProductLedgeFallMovementDebug(ProductAppWindowState& window,
@@ -1721,28 +1721,28 @@ void recordProductLedgeFallMovementDebug(ProductAppWindowState& window,
                                          Vec3 finalPosition) {
   const MovementTravelFacts facts =
       computeMovementTravelFacts(start, finalPosition);
-  window.gameplayMovementDebugAvailable = true;
-  window.gameplayMovementReasonCode = "grounded_ledge_fall";
-  window.gameplayMovementBlockedReason = "movement_ok";
-  window.gameplayMovementHitSurfaceId = "none";
-  window.gameplayMovementGroundSnapApplied = false;
-  window.gameplayMovementClamped = false;
-  window.gameplayMovementSlid = false;
-  window.gameplayMovementCollisionSweepCount = 0;
-  window.gameplayMovementPolicyBand = "falling";
-  window.gameplayMovementSlopeTravelDirection =
+  window.gameplayMovement.debugAvailable = true;
+  window.gameplayMovement.reasonCode = "grounded_ledge_fall";
+  window.gameplayMovement.blockedReason = "movement_ok";
+  window.gameplayMovement.hitSurfaceId = "none";
+  window.gameplayMovement.groundSnapApplied = false;
+  window.gameplayMovement.clamped = false;
+  window.gameplayMovement.slid = false;
+  window.gameplayMovement.collisionSweepCount = 0;
+  window.gameplayMovement.policyBand = "falling";
+  window.gameplayMovement.slopeTravelDirection =
       movementTravelDirectionName(facts.direction);
-  window.gameplayMovementSlopeAngleDegrees = 0.0F;
-  window.gameplayMovementSpeedMultiplier = 1.0F;
-  window.gameplayMovementStartX = start.x;
-  window.gameplayMovementStartY = start.y;
-  window.gameplayMovementStartZ = start.z;
-  window.gameplayMovementFinalX = finalPosition.x;
-  window.gameplayMovementFinalY = finalPosition.y;
-  window.gameplayMovementFinalZ = finalPosition.z;
-  window.gameplayMovementHorizontalDistanceMeters = facts.horizontalDistanceMeters;
-  window.gameplayMovementVerticalDeltaMeters = facts.verticalDeltaMeters;
-  window.gameplayMovementGradePercent = facts.gradePercent;
+  window.gameplayMovement.slopeAngleDegrees = 0.0F;
+  window.gameplayMovement.speedMultiplier = 1.0F;
+  window.gameplayMovement.startX = start.x;
+  window.gameplayMovement.startY = start.y;
+  window.gameplayMovement.startZ = start.z;
+  window.gameplayMovement.finalX = finalPosition.x;
+  window.gameplayMovement.finalY = finalPosition.y;
+  window.gameplayMovement.finalZ = finalPosition.z;
+  window.gameplayMovement.horizontalDistanceMeters = facts.horizontalDistanceMeters;
+  window.gameplayMovement.verticalDeltaMeters = facts.verticalDeltaMeters;
+  window.gameplayMovement.gradePercent = facts.gradePercent;
 }
 
 void submitProductAirborneMove(Session& session,
@@ -1761,8 +1761,8 @@ void submitProductAirborneMove(Session& session,
   window.gameplayReachGate = "not_attempted";
   window.gameplayLastRejection = "none";
   window.gameplayTickAdvanced = false;
-  window.gameplayMovementAttempted = true;
-  window.gameplayMovementBlocked = false;
+  window.gameplayMovement.attempted = true;
+  window.gameplayMovement.blocked = false;
   recordProductMovementProfile(window, sprinting);
 
   const Vec3 start = actor.transform.position;
@@ -1772,51 +1772,51 @@ void submitProductAirborneMove(Session& session,
                                  moveY,
                                  window.viewport.cameraYawDegrees,
                                  sprinting,
-                                 window.gameplayMovementTuning,
-                                 window.gameplayMovementTuning.airControlMultiplier);
+                                 window.gameplayMovement.tuning,
+                                 window.gameplayMovement.tuning.airControlMultiplier);
   // branch-gate: BG-1157
   if (window.gameplayWallRun.active) {
     Vec3 wallRunDirection;
     // branch-gate: BG-1157
     if (wallRunTangentDirection(window, moveX, moveY, wallRunDirection)) {
       const float speed =
-          manualFirstPersonMaxSpeedMetersPerSecond(window.gameplayMovementTuning,
+          manualFirstPersonMaxSpeedMetersPerSecond(window.gameplayMovement.tuning,
                                                    sprinting) *
-          std::clamp(window.gameplayMovementTuning.wallRunSpeedMultiplier,
+          std::clamp(window.gameplayMovement.tuning.wallRunSpeedMultiplier,
                      0.25F,
                      2.0F);
       finalPosition = start + wallRunDirection *
                                   (speed *
-                                   window.gameplayMovementTuning.inputStepSeconds);
+                                   window.gameplayMovement.tuning.inputStepSeconds);
     } else {
       clearProductWallRunActiveProof(window, "wall_run_input_away");
     }
   }
   // branch-gate: BG-1161
   if (!setProductPlayerPosition(session, actor.id, finalPosition)) {
-    window.gameplayMovementBlocked = true;
-    window.gameplayMovementStatus = "mutation_failed";
+    window.gameplayMovement.blocked = true;
+    window.gameplayMovement.status = "mutation_failed";
     window.gameplayCommandStatus = "mutation_failed";
-    window.gameplayMovementReasonCode = "airborne_manual_move_mutation_failed";
+    window.gameplayMovement.reasonCode = "airborne_manual_move_mutation_failed";
     return;
   }
 
-  window.gameplayMovementStatus = "moved";
+  window.gameplayMovement.status = "moved";
   window.playerPositionChanged = true;
   recordProductAirborneMovementDebug(window, start, finalPosition);
   window.runtimeStateHash = session.stateHash();
 }
 
 bool productMovementDebugChangedPosition(const ProductAppWindowState& window) {
-  if (!window.gameplayMovementDebugAvailable) {
+  if (!window.gameplayMovement.debugAvailable) {
     return false;
   }
-  const Vec3 start{window.gameplayMovementStartX,
-                   window.gameplayMovementStartY,
-                   window.gameplayMovementStartZ};
-  const Vec3 final{window.gameplayMovementFinalX,
-                   window.gameplayMovementFinalY,
-                   window.gameplayMovementFinalZ};
+  const Vec3 start{window.gameplayMovement.startX,
+                   window.gameplayMovement.startY,
+                   window.gameplayMovement.startZ};
+  const Vec3 final{window.gameplayMovement.finalX,
+                   window.gameplayMovement.finalY,
+                   window.gameplayMovement.finalZ};
   return !nearlyEqual(start, final);
 }
 
@@ -1956,31 +1956,31 @@ void recordProductMovementDebug(const Session& session, ProductAppWindowState& w
   }
 
   const MovementResult& movement = transient.lastMovementResult;
-  window.gameplayMovementDebugAvailable = true;
-  window.gameplayMovementReasonCode =
+  window.gameplayMovement.debugAvailable = true;
+  window.gameplayMovement.reasonCode =
       movement.reasonCode.empty() ? movementBlockedReasonName(movement.blocked)
                                   : movement.reasonCode;
-  window.gameplayMovementBlockedReason = movementBlockedReasonName(movement.blocked);
-  window.gameplayMovementHitSurfaceId =
+  window.gameplayMovement.blockedReason = movementBlockedReasonName(movement.blocked);
+  window.gameplayMovement.hitSurfaceId =
       movement.hitSurfaceId.empty() ? "none" : movement.hitSurfaceId;
-  window.gameplayMovementGroundSnapApplied = movement.groundSnapApplied;
-  window.gameplayMovementClamped = movement.movementClamped;
-  window.gameplayMovementSlid = movement.movementSlid;
-  window.gameplayMovementCollisionSweepCount = movement.collisionSweepCount;
-  window.gameplayMovementPolicyBand =
+  window.gameplayMovement.groundSnapApplied = movement.groundSnapApplied;
+  window.gameplayMovement.clamped = movement.movementClamped;
+  window.gameplayMovement.slid = movement.movementSlid;
+  window.gameplayMovement.collisionSweepCount = movement.collisionSweepCount;
+  window.gameplayMovement.policyBand =
       movement.movementPolicyBand.empty() ? "none" : movement.movementPolicyBand;
-  window.gameplayMovementSlopeTravelDirection = movement.slopeTravelDirection;
-  window.gameplayMovementSlopeAngleDegrees = movement.slopeAngleDegrees;
-  window.gameplayMovementSpeedMultiplier = movement.speedMultiplier;
-  window.gameplayMovementStartX = movement.start.x;
-  window.gameplayMovementStartY = movement.start.y;
-  window.gameplayMovementStartZ = movement.start.z;
-  window.gameplayMovementFinalX = movement.finalPosition.x;
-  window.gameplayMovementFinalY = movement.finalPosition.y;
-  window.gameplayMovementFinalZ = movement.finalPosition.z;
-  window.gameplayMovementHorizontalDistanceMeters = movement.horizontalDistanceMeters;
-  window.gameplayMovementVerticalDeltaMeters = movement.verticalDeltaMeters;
-  window.gameplayMovementGradePercent = movement.gradePercent;
+  window.gameplayMovement.slopeTravelDirection = movement.slopeTravelDirection;
+  window.gameplayMovement.slopeAngleDegrees = movement.slopeAngleDegrees;
+  window.gameplayMovement.speedMultiplier = movement.speedMultiplier;
+  window.gameplayMovement.startX = movement.start.x;
+  window.gameplayMovement.startY = movement.start.y;
+  window.gameplayMovement.startZ = movement.start.z;
+  window.gameplayMovement.finalX = movement.finalPosition.x;
+  window.gameplayMovement.finalY = movement.finalPosition.y;
+  window.gameplayMovement.finalZ = movement.finalPosition.z;
+  window.gameplayMovement.horizontalDistanceMeters = movement.horizontalDistanceMeters;
+  window.gameplayMovement.verticalDeltaMeters = movement.verticalDeltaMeters;
+  window.gameplayMovement.gradePercent = movement.gradePercent;
 }
 
 bool commandMovementHasPhysicsFrameStats(const Session& session,
@@ -2013,8 +2013,8 @@ bool applyProductLedgeFallMoveFallback(Session& session,
                                        Vec3 before,
                                        const SpatialSurfaceSet* collisionSurfaces) {
   const bool ledgeBlockedReason =
-      window.gameplayMovementBlockedReason == "no_walkable_ground" ||
-      window.gameplayMovementBlockedReason == "slope_rejected";
+      window.gameplayMovement.blockedReason == "no_walkable_ground" ||
+      window.gameplayMovement.blockedReason == "slope_rejected";
   // branch-gate: BG-1188
   if (window.gameplayJumpActive ||
       command.kind != CommandKind::Move ||
@@ -2041,8 +2041,8 @@ bool applyProductLedgeFallMoveFallback(Session& session,
   }
 
   window.playerPositionChanged = true;
-  window.gameplayMovementBlocked = false;
-  window.gameplayMovementStatus = "moved";
+  window.gameplayMovement.blocked = false;
+  window.gameplayMovement.status = "moved";
   recordProductLedgeFallMovementDebug(window, before, finalPosition);
   beginProductFallIfUnsupported(session, window, collisionSurfaces);
   window.runtimeStateHash = session.stateHash();
@@ -2059,9 +2059,9 @@ void submitProductGameplayCommand(Session& session,
   window.gameplayCommandSubmitted = true;
   window.gameplayCommandKind = commandKindName(command.kind);
   if (command.kind == CommandKind::Move) {
-    window.gameplayMovementAttempted = true;
-    window.gameplayMovementBlocked = false;
-    window.gameplayMovementStatus = "submitted";
+    window.gameplayMovement.attempted = true;
+    window.gameplayMovement.blocked = false;
+    window.gameplayMovement.status = "submitted";
     clearProductMovementDebug(window);
   }
   window.gameplayCollision.surfacesUsed = collisionSurfaces != nullptr;
@@ -2109,21 +2109,21 @@ void submitProductGameplayCommand(Session& session,
   }
   if (command.kind == CommandKind::Move && window.gameplayCommandAccepted) {
     const bool runtimeMovementBlocked =
-        window.gameplayMovementDebugAvailable &&
-        window.gameplayMovementBlockedReason != "movement_ok";
+        window.gameplayMovement.debugAvailable &&
+        window.gameplayMovement.blockedReason != "movement_ok";
     const bool runtimeMovementChanged = productMovementDebugChangedPosition(window);
     window.playerPositionChanged =
         window.playerPositionChanged || movedThisCommand || runtimeMovementChanged;
     if (!window.gameplayTickAdvanced) {
-      window.gameplayMovementStatus = "tick_failed";
+      window.gameplayMovement.status = "tick_failed";
     } else if (runtimeMovementBlocked) {
-      window.gameplayMovementBlocked = true;
-      window.gameplayMovementStatus = "blocked";
+      window.gameplayMovement.blocked = true;
+      window.gameplayMovement.status = "blocked";
     } else if (movedThisCommand || runtimeMovementChanged) {
-      window.gameplayMovementStatus = "moved";
+      window.gameplayMovement.status = "moved";
     } else {
-      window.gameplayMovementBlocked = true;
-      window.gameplayMovementStatus = "blocked";
+      window.gameplayMovement.blocked = true;
+      window.gameplayMovement.status = "blocked";
     }
     const bool ledgeFallFallbackApplied =
         applyProductLedgeFallMoveFallback(
@@ -2148,8 +2148,8 @@ void submitProductMove(Session& session,
   const EntityState* actor = productPlayerEntity(session);
   if (actor == nullptr) {
     window.gameplayCommandStatus = "missing_player";
-    window.gameplayMovementGroundVelocityX = 0.0F;
-    window.gameplayMovementGroundVelocityZ = 0.0F;
+    window.gameplayMovement.groundVelocityX = 0.0F;
+    window.gameplayMovement.groundVelocityZ = 0.0F;
     return;
   }
   recordProductMovementProfile(window, sprinting);
@@ -2157,15 +2157,15 @@ void submitProductMove(Session& session,
   // directly so holding movement with jump does not get snapped back to ground.
   // branch-gate: BG-1161
   if (window.gameplayJumpActive) {
-    window.gameplayMovementGroundVelocityX = 0.0F;
-    window.gameplayMovementGroundVelocityZ = 0.0F;
+    window.gameplayMovement.groundVelocityX = 0.0F;
+    window.gameplayMovement.groundVelocityZ = 0.0F;
     submitProductAirborneMove(session, window, *actor, moveX, moveY, sprinting, source);
     return;
   }
   const Vec3 retainedVelocity =
       updateProductGroundMovementVelocity(window, moveX, moveY, sprinting);
   const Vec3 retainedDelta =
-      retainedVelocity * window.gameplayMovementTuning.inputStepSeconds;
+      retainedVelocity * window.gameplayMovement.tuning.inputStepSeconds;
   // branch-gate: BG-1161
   if (retainedDelta.x == 0.0F && retainedDelta.z == 0.0F) {
     return;

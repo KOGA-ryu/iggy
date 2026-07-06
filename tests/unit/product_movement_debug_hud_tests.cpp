@@ -30,26 +30,26 @@ bool hasLine(const iggy3d::MovementDebugHud& hud,
 iggy3d::ProductAppWindowState movedWindow() {
   iggy3d::ProductAppWindowState window;
   window.gameplayActive = true;
-  window.gameplayMovementAttempted = true;
-  window.gameplayMovementStatus = "moved";
-  window.gameplayMovementDebugAvailable = true;
-  window.gameplayMovementReasonCode = "movement_ok";
-  window.gameplayMovementBlockedReason = "movement_ok";
-  window.gameplayMovementHitSurfaceId = "none";
-  window.gameplayMovementGroundSnapApplied = true;
-  window.gameplayMovementPolicyBand = "flat";
-  window.gameplayMovementSpeedMultiplier = 1.0F;
-  window.gameplayMovementState =
+  window.gameplayMovement.attempted = true;
+  window.gameplayMovement.status = "moved";
+  window.gameplayMovement.debugAvailable = true;
+  window.gameplayMovement.reasonCode = "movement_ok";
+  window.gameplayMovement.blockedReason = "movement_ok";
+  window.gameplayMovement.hitSurfaceId = "none";
+  window.gameplayMovement.groundSnapApplied = true;
+  window.gameplayMovement.policyBand = "flat";
+  window.gameplayMovement.speedMultiplier = 1.0F;
+  window.gameplayMovement.state =
       iggy3d::ProductGameplayMovementState::MovingGrounded;
-  window.gameplayMovementGrounded = true;
-  window.gameplayMovementHorizontalSpeedMetersPerSecond = 3.3F;
+  window.gameplayMovement.grounded = true;
+  window.gameplayMovement.horizontalSpeedMetersPerSecond = 3.3F;
   window.gameplayJumpVelocityMetersPerSecond = 0.0F;
   window.gameplayWallRun.candidateStatus = "wall_run_grounded";
   window.gameplayWallRun.candidateReasonCode = "wall_run_grounded";
   window.gameplayWallRun.approachSpeedMetersPerSecond = 3.3F;
-  window.gameplayMovementFinalX = -1.0F;
-  window.gameplayMovementFinalY = 0.0F;
-  window.gameplayMovementFinalZ = -1.0F;
+  window.gameplayMovement.finalX = -1.0F;
+  window.gameplayMovement.finalY = 0.0F;
+  window.gameplayMovement.finalZ = -1.0F;
   return window;
 }
 
@@ -78,10 +78,10 @@ bool movementTuningReceiptRowsUseDescriptorTable() {
   iggy3d::FrontendSettings settings;
   iggy3d::ProductAppWindowState window;
   iggy3d::ProductSaveBridgeResult saves;
-  window.gameplayMovementTuning.walkSpeedMetersPerSecond = 4.25F;
-  window.gameplayMovementTuning.invertLookEnabled = 1.0F;
-  window.gameplayMovementTuning.wallRunDurationSeconds = 1.25F;
-  window.gameplayMovementTuningSelectedField =
+  window.gameplayMovement.tuning.walkSpeedMetersPerSecond = 4.25F;
+  window.gameplayMovement.tuning.invertLookEnabled = 1.0F;
+  window.gameplayMovement.tuning.wallRunDurationSeconds = 1.25F;
+  window.gameplayMovement.tuningSelectedField =
       iggy3d::ProductGameplayMovementTuningField::WallRunDuration;
 
   const iggy3d::RenderReceipt receipt =
@@ -116,28 +116,28 @@ bool movementTuningReceiptRowsUseDescriptorTable() {
 
 bool movementProofPacketCopiesWindowProof() {
   iggy3d::ProductAppWindowState window = movedWindow();
-  window.gameplayMovementAttempted = true;
-  window.gameplayMovementBlocked = true;
-  window.gameplayMovementStatus = "blocked";
-  window.gameplayMovementReasonCode = "blocked_by_collision";
-  window.gameplayMovementBlockedReason = "blocked_by_collision";
-  window.gameplayMovementHitSurfaceId = "wall_r0_c1_actor_blocker";
-  window.gameplayMovementClamped = true;
-  window.gameplayMovementSlid = true;
-  window.gameplayMovementCollisionSweepCount = 2U;
-  window.gameplayMovementSlopeAngleDegrees = 12.5F;
-  window.gameplayMovementHorizontalDistanceMeters = 0.75F;
-  window.gameplayMovementVerticalDeltaMeters = -0.25F;
-  window.gameplayMovementGroundVelocityX = 1.25F;
-  window.gameplayMovementGroundVelocityZ = -0.5F;
-  window.gameplayMovementState =
+  window.gameplayMovement.attempted = true;
+  window.gameplayMovement.blocked = true;
+  window.gameplayMovement.status = "blocked";
+  window.gameplayMovement.reasonCode = "blocked_by_collision";
+  window.gameplayMovement.blockedReason = "blocked_by_collision";
+  window.gameplayMovement.hitSurfaceId = "wall_r0_c1_actor_blocker";
+  window.gameplayMovement.clamped = true;
+  window.gameplayMovement.slid = true;
+  window.gameplayMovement.collisionSweepCount = 2U;
+  window.gameplayMovement.slopeAngleDegrees = 12.5F;
+  window.gameplayMovement.horizontalDistanceMeters = 0.75F;
+  window.gameplayMovement.verticalDeltaMeters = -0.25F;
+  window.gameplayMovement.groundVelocityX = 1.25F;
+  window.gameplayMovement.groundVelocityZ = -0.5F;
+  window.gameplayMovement.state =
       iggy3d::ProductGameplayMovementState::WallRunning;
-  window.gameplayMovementGrounded = false;
-  window.gameplayMovementHorizontalSpeedMetersPerSecond = 5.5F;
+  window.gameplayMovement.grounded = false;
+  window.gameplayMovement.horizontalSpeedMetersPerSecond = 5.5F;
   window.gameplayJumpVelocityMetersPerSecond = -1.75F;
-  window.gameplayMovementGradePercent = -3.0F;
-  window.gameplayMovementProfile = "manual_first_person_sprint";
-  window.gameplayMovementMaxSpeedMetersPerSecond = 6.2F;
+  window.gameplayMovement.gradePercent = -3.0F;
+  window.gameplayMovement.profile = "manual_first_person_sprint";
+  window.gameplayMovement.maxSpeedMetersPerSecond = 6.2F;
   window.gameplayWallRun.candidateAvailable = true;
   window.gameplayWallRun.candidateStatus = "wall_run_candidate";
   window.gameplayWallRun.candidateReasonCode = "wall_run_candidate";
@@ -201,7 +201,7 @@ bool movementProofFeedsReceiptAndHudConsistently() {
   settings.debugOverlayEnabled = true;
   iggy3d::ProductAppWindowState window = movedWindow();
   iggy3d::ProductSaveBridgeResult saves;
-  window.gameplayMovementState =
+  window.gameplayMovement.state =
       iggy3d::ProductGameplayMovementState::WallRunning;
   window.gameplayWallRun.active = true;
   window.gameplayWallRun.status = "wall_run_active";
@@ -293,16 +293,16 @@ int main() {
   ok &= expect(hasLine(moved, "SNAP", "true"), "moved snap display");
 
   iggy3d::ProductAppWindowState blocked = movedWindow();
-  blocked.gameplayMovementBlocked = true;
-  blocked.gameplayMovementState =
+  blocked.gameplayMovement.blocked = true;
+  blocked.gameplayMovement.state =
       iggy3d::ProductGameplayMovementState::BlockedOrSliding;
-  blocked.gameplayMovementStatus = "blocked";
-  blocked.gameplayMovementReasonCode = "blocked_by_collision";
-  blocked.gameplayMovementBlockedReason = "blocked_by_collision";
-  blocked.gameplayMovementHitSurfaceId = "wall_r0_c1_actor_blocker";
-  blocked.gameplayMovementGroundSnapApplied = false;
-  blocked.gameplayMovementClamped = true;
-  blocked.gameplayMovementPolicyBand = "none";
+  blocked.gameplayMovement.status = "blocked";
+  blocked.gameplayMovement.reasonCode = "blocked_by_collision";
+  blocked.gameplayMovement.blockedReason = "blocked_by_collision";
+  blocked.gameplayMovement.hitSurfaceId = "wall_r0_c1_actor_blocker";
+  blocked.gameplayMovement.groundSnapApplied = false;
+  blocked.gameplayMovement.clamped = true;
+  blocked.gameplayMovement.policyBand = "none";
   blocked.gameplayWallRun.candidateAvailable = true;
   blocked.gameplayWallRun.candidateStatus = "wall_run_candidate";
   blocked.gameplayWallRun.candidateReasonCode = "wall_run_candidate";

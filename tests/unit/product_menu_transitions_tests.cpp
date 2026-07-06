@@ -24,14 +24,14 @@ void activateMapMaker(iggy3d::ProductAppWindowState& window) {
 }
 
 void showMovementTuning(iggy3d::ProductAppWindowState& window) {
-  window.gameplayMovementTuningVisible = true;
-  window.gameplayMovementTuningStatus = "movement_tuning_visible";
-  window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
+  window.gameplayMovement.tuningVisible = true;
+  window.gameplayMovement.tuningStatus = "movement_tuning_visible";
+  window.gameplayMovement.tuningReasonCode = window.gameplayMovement.tuningStatus;
 }
 
 void retainGroundVelocity(iggy3d::ProductAppWindowState& window) {
-  window.gameplayMovementGroundVelocityX = 1.25F;
-  window.gameplayMovementGroundVelocityZ = -2.5F;
+  window.gameplayMovement.groundVelocityX = 1.25F;
+  window.gameplayMovement.groundVelocityZ = -2.5F;
 }
 
 void retainJumpTiming(iggy3d::ProductAppWindowState& window) {
@@ -189,8 +189,8 @@ int main() {
   ok &= expect(window.inputOwner == iggy3d::MenuOwner::Pause,
                "pause owns input");
   ok &= expect(window.gameplayInputSuppressed, "pause suppresses gameplay input");
-  ok &= expect(window.gameplayMovementGroundVelocityX == 0.0F &&
-                   window.gameplayMovementGroundVelocityZ == 0.0F,
+  ok &= expect(window.gameplayMovement.groundVelocityX == 0.0F &&
+                   window.gameplayMovement.groundVelocityZ == 0.0F,
                "pause clears retained ground velocity");
   ok &= expect(window.gameplayJumpCoyoteSecondsRemaining == 0.0F &&
                    window.gameplayJumpBufferSecondsRemaining == 0.0F &&
@@ -205,7 +205,7 @@ int main() {
                "pause returns interaction mode to player");
   ok &= expect(!window.viewport.creativeFlyActive,
                "pause clears creative fly active");
-  ok &= expect(!window.gameplayMovementTuningVisible,
+  ok &= expect(!window.gameplayMovement.tuningVisible,
                "pause clears movement tuning");
   ok &= expect(settings.debugOverlayEnabled,
                "pause preserves debug overlay setting");
@@ -244,7 +244,7 @@ int main() {
                "settings keeps map maker inactive");
   ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                "settings keeps player interaction mode");
-  ok &= expect(!window.gameplayMovementTuningVisible,
+  ok &= expect(!window.gameplayMovement.tuningVisible,
                "settings keeps movement tuning cleared");
   const iggy3d::RenderReceipt settingsReceipt =
       receiptFor(frontend, settings, window);
@@ -274,7 +274,7 @@ int main() {
                "pause remembers settings row");
   ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
                "settings back keeps map maker inactive");
-  ok &= expect(!window.gameplayMovementTuningVisible,
+  ok &= expect(!window.gameplayMovement.tuningVisible,
                "settings back keeps movement tuning cleared");
 
   showMovementTuning(window);
@@ -288,7 +288,7 @@ int main() {
   ok &= expect(window.gameplayInputSuppressed, "dev tools suppress gameplay input");
   ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
                "dev tools keeps map maker inactive");
-  ok &= expect(!window.gameplayMovementTuningVisible,
+  ok &= expect(!window.gameplayMovement.tuningVisible,
                "dev tools clears movement tuning");
   const iggy3d::RenderReceipt devToolsReceipt =
       receiptFor(frontend, settings, window);
@@ -323,7 +323,7 @@ int main() {
                "resume does not restore map maker");
   ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                "resume stays player mode");
-  ok &= expect(!window.gameplayMovementTuningVisible,
+  ok &= expect(!window.gameplayMovement.tuningVisible,
                "resume does not restore movement tuning");
   window.roomEditing.ready = true;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
@@ -356,8 +356,8 @@ int main() {
   ok &= expect(frontend.returnToTitleRequested, "return to title requested");
   ok &= expect(!window.gameplayActive, "return to title clears gameplay active");
   ok &= expect(!window.runtimeSessionCreated, "return to title clears session flag");
-  ok &= expect(window.gameplayMovementGroundVelocityX == 0.0F &&
-                   window.gameplayMovementGroundVelocityZ == 0.0F,
+  ok &= expect(window.gameplayMovement.groundVelocityX == 0.0F &&
+                   window.gameplayMovement.groundVelocityZ == 0.0F,
                "return to title clears retained ground velocity");
   ok &= expect(window.gameplayJumpCoyoteSecondsRemaining == 0.0F &&
                    window.gameplayJumpBufferSecondsRemaining == 0.0F &&
@@ -372,7 +372,7 @@ int main() {
                "return to title clears map maker live state");
   ok &= expect(!window.viewport.creativeFlyActive,
                "return to title clears creative fly active");
-  ok &= expect(!window.gameplayMovementTuningVisible,
+  ok &= expect(!window.gameplayMovement.tuningVisible,
                "return to title clears movement tuning");
   ok &= expect(!settings.debugOverlayEnabled,
                "return to title clears debug overlay setting");

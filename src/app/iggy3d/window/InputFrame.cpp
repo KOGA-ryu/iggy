@@ -446,9 +446,9 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
 
   // branch-gate: BG-1061
   if (window.roomEditing.ready) {
-    window.gameplayMovementGroundVelocityX = 0.0F;
-    window.gameplayMovementGroundVelocityZ = 0.0F;
-    window.gameplayMovementHorizontalSpeedMetersPerSecond = 0.0F;
+    window.gameplayMovement.groundVelocityX = 0.0F;
+    window.gameplayMovement.groundVelocityZ = 0.0F;
+    window.gameplayMovement.horizontalSpeedMetersPerSecond = 0.0F;
     window.gameplayWallRun.candidateAvailable = false;
     window.gameplayWallRun.candidateStatus = "wall_run_grounded";
     window.gameplayWallRun.candidateReasonCode =
@@ -468,8 +468,8 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
     window.gameplayWallRun.speedMultiplier = 1.0F;
     // branch-gate: BG-1061
     if (!window.gameplayJumpActive) {
-      window.gameplayMovementGrounded = true;
-      window.gameplayMovementState = ProductGameplayMovementState::IdleGrounded;
+      window.gameplayMovement.grounded = true;
+      window.gameplayMovement.state = ProductGameplayMovementState::IdleGrounded;
     }
     window.gameplayJumpCoyoteSecondsRemaining = 0.0F;
     window.gameplayJumpBufferSecondsRemaining = 0.0F;
@@ -489,9 +489,9 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   if (settings != nullptr) {
     FrontendSettings movementTunedSettings = *settings;
     movementTunedSettings.lookSensitivity =
-        window.gameplayMovementTuning.lookSensitivity;
+        window.gameplayMovement.tuning.lookSensitivity;
     movementTunedSettings.invertLook =
-        productGameplayMovementTuningInvertLook(window.gameplayMovementTuning);
+        productGameplayMovementTuningInvertLook(window.gameplayMovement.tuning);
     applyProductCameraActions(acceptedGameplayActions, window.viewport,
                               movementTunedSettings,
                               inputSource);
@@ -752,45 +752,45 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
       clearProductGameplayMovementTuning(window);
       result.status = "movement_tuning_gameplay_inactive";
       result.reasonCode = result.status;
-      window.gameplayMovementTuningStatus = result.status;
-      window.gameplayMovementTuningReasonCode = result.reasonCode;
+      window.gameplayMovement.tuningStatus = result.status;
+      window.gameplayMovement.tuningReasonCode = result.reasonCode;
       frontend.status = result.status;
       return result;
     }
 
-    window.gameplayMovementTuningVisible = !window.gameplayMovementTuningVisible;
+    window.gameplayMovement.tuningVisible = !window.gameplayMovement.tuningVisible;
     result.accepted = true;
-    result.status = window.gameplayMovementTuningVisible ? "movement_tuning_visible"
+    result.status = window.gameplayMovement.tuningVisible ? "movement_tuning_visible"
                                                          : "movement_tuning_hidden";
     result.reasonCode = result.status;
-    window.gameplayMovementTuningStatus = result.status;
-    window.gameplayMovementTuningReasonCode = result.reasonCode;
+    window.gameplayMovement.tuningStatus = result.status;
+    window.gameplayMovement.tuningReasonCode = result.reasonCode;
     frontend.status = result.status;
     return result;
   }
 
   // branch-gate: BG-1212
-  if (!gameplaySurfaceActive && window.gameplayMovementTuningVisible) {
+  if (!gameplaySurfaceActive && window.gameplayMovement.tuningVisible) {
     clearProductGameplayMovementTuning(window);
   }
 
   // branch-gate: BG-1212
-  if (!gameplaySurfaceActive || !window.gameplayMovementTuningVisible) {
+  if (!gameplaySurfaceActive || !window.gameplayMovement.tuningVisible) {
     return result;
   }
 
   // branch-gate: BG-1212
   if (action == InputAction::MenuConfirm || action == InputAction::MenuDown) {
-    window.gameplayMovementTuningSelectedField =
+    window.gameplayMovement.tuningSelectedField =
         nextProductGameplayMovementTuningField(
-            window.gameplayMovementTuningSelectedField);
+            window.gameplayMovement.tuningSelectedField);
     result.handled = true;
     result.accepted = true;
     result.status = "movement_tuning_field_selected";
   } else if (action == InputAction::MenuUp) {  // branch-gate: BG-1212
-    window.gameplayMovementTuningSelectedField =
+    window.gameplayMovement.tuningSelectedField =
         previousProductGameplayMovementTuningField(
-            window.gameplayMovementTuningSelectedField);
+            window.gameplayMovement.tuningSelectedField);
     result.handled = true;
     result.accepted = true;
     result.status = "movement_tuning_field_selected";
@@ -800,8 +800,8 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
     const int direction =
         action == InputAction::MenuLeft ? -1 : 1;  // branch-gate: BG-1212
     (void)adjustProductGameplayMovementTuning(
-        window.gameplayMovementTuning,
-        window.gameplayMovementTuningSelectedField,
+        window.gameplayMovement.tuning,
+        window.gameplayMovement.tuningSelectedField,
         direction);
     result.handled = true;
     result.accepted = true;
@@ -811,8 +811,8 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
   // branch-gate: BG-1212
   if (result.handled) {
     result.reasonCode = result.status;
-    window.gameplayMovementTuningStatus = result.status;
-    window.gameplayMovementTuningReasonCode = result.reasonCode;
+    window.gameplayMovement.tuningStatus = result.status;
+    window.gameplayMovement.tuningReasonCode = result.reasonCode;
     frontend.status = result.status;
   }
   return result;
@@ -844,10 +844,10 @@ ProductMovementTuningInputResult applyProductWindowMovementTuningHeldInput(
   const bool gameplaySurfaceActive =
       resolvedSurfaceAcceptsGameplayInput(frontend, window);
   // branch-gate: BG-1212
-  if (!gameplaySurfaceActive || !window.gameplayMovementTuningVisible) {
+  if (!gameplaySurfaceActive || !window.gameplayMovement.tuningVisible) {
     resetMovementTuningRepeat(repeat);
     // branch-gate: BG-1212
-    if (!gameplaySurfaceActive && window.gameplayMovementTuningVisible) {
+    if (!gameplaySurfaceActive && window.gameplayMovement.tuningVisible) {
       (void)applyProductWindowMovementTuningInput(frontend,
                                                   window,
                                                   InputAction::None);
@@ -1567,7 +1567,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
             gameplayActions);
       } else {
         // branch-gate: BG-1212
-        if (!context.window.gameplayMovementTuningVisible) {
+        if (!context.window.gameplayMovement.tuningVisible) {
           pollKeyboardGameplayActions(context.inputFrame.keyboard,
                                       gameplayActions);
         }

@@ -127,12 +127,12 @@ ProductMenuActionResult applyGameplayMovementTuningAction(
     FrontendState& frontend) {
   // branch-gate: BG-1206
   if (action == InputAction::MenuConfirm) {
-    window.gameplayMovementTuningSelectedField =
+    window.gameplayMovement.tuningSelectedField =
         nextProductGameplayMovementTuningField(
-            window.gameplayMovementTuningSelectedField);
-    window.gameplayMovementTuningStatus = "movement_tuning_field_selected";
-    window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
-    frontend.status = window.gameplayMovementTuningStatus;
+            window.gameplayMovement.tuningSelectedField);
+    window.gameplayMovement.tuningStatus = "movement_tuning_field_selected";
+    window.gameplayMovement.tuningReasonCode = window.gameplayMovement.tuningStatus;
+    frontend.status = window.gameplayMovement.tuningStatus;
     return {true, true};
   }
   // branch-gate: BG-1206
@@ -140,12 +140,12 @@ ProductMenuActionResult applyGameplayMovementTuningAction(
     // branch-gate: BG-1209
     const int direction = action == InputAction::MenuLeft ? -1 : 1;
     (void)adjustProductGameplayMovementTuning(
-        window.gameplayMovementTuning,
-        window.gameplayMovementTuningSelectedField,
+        window.gameplayMovement.tuning,
+        window.gameplayMovement.tuningSelectedField,
         direction);
-    window.gameplayMovementTuningStatus = "movement_tuning_adjusted";
-    window.gameplayMovementTuningReasonCode = window.gameplayMovementTuningStatus;
-    frontend.status = window.gameplayMovementTuningStatus;
+    window.gameplayMovement.tuningStatus = "movement_tuning_adjusted";
+    window.gameplayMovement.tuningReasonCode = window.gameplayMovement.tuningStatus;
+    frontend.status = window.gameplayMovement.tuningStatus;
     return {true, true};
   }
   return {false, false};

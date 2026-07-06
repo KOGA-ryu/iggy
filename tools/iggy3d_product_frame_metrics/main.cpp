@@ -407,23 +407,23 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
                window.gameplayCollision.surfaceCount);
   counters.physicsMovementSweepMax =
       std::max(counters.physicsMovementSweepMax,
-               window.gameplayMovementCollisionSweepCount);
+               window.gameplayMovement.collisionSweepCount);
   if (window.gameplayWallRun.candidateAvailable) {
     ++counters.wallRunCandidateFrameCount;
   }
   if (window.gameplayWallRun.active) {
     ++counters.wallRunActiveFrameCount;
   }
-  if (window.gameplayMovementState ==
+  if (window.gameplayMovement.state ==
       iggy3d::ProductGameplayMovementState::WallRunning) {
     ++counters.wallRunningStateFrameCount;
   }
   counters.lastMovementState =
       std::string(iggy3d::productGameplayMovementStateName(
-          window.gameplayMovementState));
+          window.gameplayMovement.state));
   counters.lastWallRunStatus = window.gameplayWallRun.status;
   counters.lastHorizontalSpeedMetersPerSecond =
-      window.gameplayMovementHorizontalSpeedMetersPerSecond;
+      window.gameplayMovement.horizontalSpeedMetersPerSecond;
   counters.lastVerticalVelocityMetersPerSecond =
       window.gameplayJumpVelocityMetersPerSecond;
 }
