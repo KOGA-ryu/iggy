@@ -303,6 +303,20 @@ bool clickCreativeDeleteSelectedThroughInputFrame(
       "creative.row.selection.delete_selected");
 }
 
+bool clickCreativeUndoThroughInputFrame(
+    const iggy3d::ProductAppOptions& options,
+    iggy3d::FrontendState& frontend,
+    std::optional<iggy3d::Session>& activeSession,
+    iggy3d::ProductAppWindowState& window,
+    cr::CreativeAppState& app) {
+  return clickCreativeUiRowThroughInputFrame(options,
+                                            frontend,
+                                            activeSession,
+                                            window,
+                                            app,
+                                            "creative.row.tools.undo");
+}
+
 void runCreativePointerLifecycleFrame(
     const iggy3d::ProductAppOptions& options,
     iggy3d::FrontendState& frontend,
@@ -701,6 +715,9 @@ bool secondLaunchClearsOldFacadeStateAndInstallsNewDocument() {
                    9.0,
                    10.0,
                    targetId(createdObject.objectId))));
+  cr::pushCreativeUndoSnapshot(app.undoStack, facade.document());
+  window.creativeUndoAvailable = cr::creativeUndoAvailable(app.undoStack);
+  window.creativeUndoDepth = cr::creativeUndoDepth(app.undoStack);
 
   const iggy3d::ProductCreativeNewWorldLaunchResult second =
       launchCreativeWorld(options,
@@ -735,6 +752,12 @@ bool secondLaunchClearsOldFacadeStateAndInstallsNewDocument() {
                 "second launch facade name") &&
          expect(facade.document().objectCount() == 0U,
                 "second launch no leaked objects") &&
+         expect(!cr::creativeUndoAvailable(app.undoStack),
+                "second launch undo stack cleared") &&
+         expect(!window.creativeUndoAvailable,
+                "second launch window undo unavailable") &&
+         expect(window.creativeUndoDepth == 0U,
+                "second launch window undo depth") &&
          expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
                 "second launch selection invalid") &&
          expect(!facade.measurementState().hasMeasurement,
@@ -1171,6 +1194,9 @@ bool currentCreativeWorldSaveDrainsDirtyAndPersistsDocument() {
   const cr::CreativeObjectDirtyFlags dirtyBefore =
       facade.document().dirtyFlags();
   const std::uint64_t revisionBefore = facade.document().revision();
+  cr::pushCreativeUndoSnapshot(app.undoStack, facade.document());
+  window.creativeUndoAvailable = cr::creativeUndoAvailable(app.undoStack);
+  window.creativeUndoDepth = cr::creativeUndoDepth(app.undoStack);
 
   const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
       iggy3d::saveProductCurrentCreativeWorld(options, app, "unit", window);
@@ -1215,6 +1241,12 @@ bool currentCreativeWorldSaveDrainsDirtyAndPersistsDocument() {
                 "current save facade dirty drained") &&
          expect(facade.document().revision() == revisionBefore,
                 "current save revision preserved") &&
+         expect(!cr::creativeUndoAvailable(app.undoStack),
+                "current save undo stack cleared") &&
+         expect(!window.creativeUndoAvailable,
+                "current save window undo unavailable") &&
+         expect(window.creativeUndoDepth == 0U,
+                "current save window undo depth") &&
          expect(window.activeCreativeSaveId == launched.saveId,
                 "current save active id") &&
          expect(window.activeCreativeSavePath == launched.path.generic_string(),
@@ -1678,6 +1710,10 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
                    9.0,
                    10.0,
                    targetId(firstObject.objectId))));
+  cr::pushCreativeUndoSnapshot(openApp.undoStack, openFacade.document());
+  openWindow.creativeUndoAvailable =
+      cr::creativeUndoAvailable(openApp.undoStack);
+  openWindow.creativeUndoDepth = cr::creativeUndoDepth(openApp.undoStack);
 
   const iggy3d::ProductCreativeOpenWorldLaunchResult secondOpened =
       openCreativeWorld(options,
@@ -1722,6 +1758,12 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
                 "second open no leaked objects") &&
          expect(openFacade.document().revision() == 0U,
                 "second open revision clean") &&
+         expect(!cr::creativeUndoAvailable(openApp.undoStack),
+                "second open undo stack cleared") &&
+         expect(!openWindow.creativeUndoAvailable,
+                "second open window undo unavailable") &&
+         expect(openWindow.creativeUndoDepth == 0U,
+                "second open window undo depth") &&
          expect(openFacade.document().dirtyFlags() == 0U,
                 "second open dirty clean") &&
          expect(openFacade.selectionState().selectedTarget.value ==
@@ -1930,6 +1972,11 @@ bool manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() {
   const cr::CreativeDocumentCreateReceipt path = createPatrolRoute(facade);
   const cr::CreativeObjectDirtyFlags dirtyBefore =
       facade.document().dirtyFlags();
+  cr::pushCreativeUndoSnapshot(app.undoStack, facade.document());
+  const std::uint64_t undoDepthBeforeCommand =
+      cr::creativeUndoDepth(app.undoStack);
+  window.creativeUndoAvailable = cr::creativeUndoAvailable(app.undoStack);
+  window.creativeUndoDepth = undoDepthBeforeCommand;
   const bool activeRoomLoadedBeforeCommand = window.activeRoom.loaded;
   window.creativeBakedRoomStale = true;
   window.creativeBakedRoomStaleDocumentId = facade.document().id();
@@ -2005,6 +2052,12 @@ bool manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() {
                 "manual rebuild revision observed") &&
          expect(!window.creativeDocumentChangedThisFrame,
                 "manual rebuild no document mutation") &&
+         expect(cr::creativeUndoDepth(app.undoStack) == undoDepthBeforeCommand,
+                "manual rebuild undo depth preserved") &&
+         expect(window.creativeUndoAvailable,
+                "manual rebuild window undo available preserved") &&
+         expect(window.creativeUndoDepth == undoDepthBeforeCommand,
+                "manual rebuild window undo depth preserved") &&
          expect(!window.creativeBakedRoomStale,
                 "manual rebuild clears stale on accepted refresh") &&
          expect(window.creativeBakedRoomStaleDocumentId ==
@@ -2172,6 +2225,305 @@ bool manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() {
                 "manual empty rebuild active product save unchanged") &&
          expect(app.facade.document().dirtyFlags() == dirtyBefore,
                 "manual empty rebuild dirty flags preserved");
+}
+
+bool undoAfterCreateCrateRestoresEmptyDocumentThroughInputFrame() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("undo_create_crate");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Undo Create Crate",
+                                        "2026-07-05T13:10:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+
+  const bool createClicked = clickCreativeUiRowThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app,
+      "creative.row.create.create_crate");
+  const cr::CreativeObjectId createdObjectId =
+      window.creativeUiCommandCreateObjectId;
+  const bool undoAvailableAfterCreate =
+      cr::creativeUndoAvailable(app.undoStack);
+  const std::uint64_t undoDepthAfterCreate =
+      cr::creativeUndoDepth(app.undoStack);
+  const bool activeRoomLoadedAfterCreate = window.activeRoom.loaded;
+
+  const bool undoClicked = clickCreativeUndoThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app);
+
+  return expect(launched.accepted, "undo create launch accepted") &&
+         expect(createClicked, "undo create crate clicked") &&
+         expect(createdObjectId != cr::kInvalidObjectId,
+                "undo create object id") &&
+         expect(facade.findObject(createdObjectId) == nullptr,
+                "undo create object removed") &&
+         expect(undoAvailableAfterCreate,
+                "undo create undo available after create") &&
+         expect(undoDepthAfterCreate == 1U,
+                "undo create undo depth after create") &&
+         expect(activeRoomLoadedAfterCreate,
+                "undo create active room loaded after create") &&
+         expect(undoClicked, "undo create undo clicked") &&
+         expect(facade.document().objectCount() == 0U,
+                "undo create object count restored") &&
+         expect(facade.document().revision() == 0U,
+                "undo create revision restored") &&
+         expect(facade.document().dirtyFlags() == 0U,
+                "undo create dirty flags restored") &&
+         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
+                "undo create selection clear") &&
+         expect(window.creativeUiInputSemanticId == "creative.row.tools.undo",
+                "undo create semantic") &&
+         expect(window.creativeUiCommandKind == "undo_last_document_change",
+                "undo create command kind") &&
+         expect(window.creativeUiCommandAccepted,
+                "undo create command accepted") &&
+         expect(window.creativeUiCommandChanged,
+                "undo create command changed") &&
+         expect(window.creativeUiCommandUndoRequested,
+                "undo create requested") &&
+         expect(window.creativeUiCommandUndoAccepted,
+                "undo create accepted") &&
+         expect(window.creativeUiCommandUndoChanged,
+                "undo create changed") &&
+         expect(window.creativeUiCommandUndoHadSnapshot,
+                "undo create had snapshot") &&
+         expect(window.creativeUiCommandUndoDocumentId == launched.documentId,
+                "undo create document id") &&
+         expect(window.creativeUiCommandUndoRevisionBefore == 1U,
+                "undo create revision before") &&
+         expect(window.creativeUiCommandUndoRevisionAfter == 0U,
+                "undo create revision after") &&
+         expect(window.creativeUiCommandUndoObjectCountBefore == 1U,
+                "undo create object count before") &&
+         expect(window.creativeUiCommandUndoObjectCountAfter == 0U,
+                "undo create object count after") &&
+         expect(window.creativeUiCommandUndoDepthBefore == 1U,
+                "undo create depth before") &&
+         expect(window.creativeUiCommandUndoDepthAfter == 0U,
+                "undo create depth after") &&
+         expect(window.creativeUiCommandUndoStatus == "creative_undo_applied",
+                "undo create undo status") &&
+         expect(window.creativeDocumentChangedThisFrame,
+                "undo create document changed") &&
+         expect(window.creativeBakedRoomAutoRefreshRequested,
+                "undo create auto refresh requested") &&
+         expect(window.creativeBakedRoomAutoRefreshAccepted,
+                "undo create auto refresh accepted") &&
+         expect(window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+                "undo create active room cleared") &&
+         expect(!window.activeRoom.loaded,
+                "undo create active room unloaded") &&
+         expect(!window.activeRoomCollision.ready,
+                "undo create collision unavailable") &&
+         expect(!window.creativeBakedRoomStale,
+                "undo create stale fresh") &&
+         expect(!cr::creativeUndoAvailable(app.undoStack),
+                "undo create no redo stack") &&
+         expect(!window.creativeUndoAvailable,
+                "undo create window undo unavailable") &&
+         expect(window.creativeUndoDepth == 0U,
+                "undo create window undo depth");
+}
+
+bool undoAfterDeleteSelectedRestoresRenderableThroughInputFrame() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("undo_delete_selected");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Undo Delete Selected",
+                                        "2026-07-05T13:20:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  const cr::CreativeDocumentCreateReceipt floor =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Floor,
+                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const iggy3d::ProductCreativeBakedActiveRoomRefreshResult initialRefresh =
+      iggy3d::refreshProductCreativeBakedActiveRoom({},
+                                                    activeSession,
+                                                    window,
+                                                    app);
+  const bool selected = selectFacadeObject(facade, floor.objectId);
+  const bool deleteClicked = clickCreativeDeleteSelectedThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app);
+  const bool undoAvailableAfterDelete =
+      cr::creativeUndoAvailable(app.undoStack);
+  const std::uint64_t undoDepthAfterDelete =
+      cr::creativeUndoDepth(app.undoStack);
+
+  const bool undoClicked = clickCreativeUndoThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app);
+  const cr::CreativeObject* restored = facade.findObject(floor.objectId);
+
+  return expect(launched.accepted, "undo delete launch accepted") &&
+         expect(floor.accepted, "undo delete floor created") &&
+         expect(initialRefresh.accepted, "undo delete initial refresh") &&
+         expect(selected, "undo delete floor selected") &&
+         expect(deleteClicked, "undo delete clicked") &&
+         expect(undoAvailableAfterDelete,
+                "undo delete undo available after delete") &&
+         expect(undoDepthAfterDelete == 1U,
+                "undo delete undo depth after delete") &&
+         expect(undoClicked, "undo delete undo clicked") &&
+         expect(restored != nullptr, "undo delete floor restored") &&
+         expect(restored != nullptr && restored->kind == cr::CreativeObjectKind::Floor,
+                "undo delete restored floor kind") &&
+         expect(facade.document().objectCount() == 1U,
+                "undo delete object count restored") &&
+         expect(facade.document().revision() == 1U,
+                "undo delete revision restored") &&
+         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
+                "undo delete selection clear") &&
+         expect(window.creativeUiCommandKind == "undo_last_document_change",
+                "undo delete command kind") &&
+         expect(window.creativeUiCommandUndoAccepted,
+                "undo delete accepted") &&
+         expect(window.creativeUiCommandUndoObjectCountBefore == 0U,
+                "undo delete object count before") &&
+         expect(window.creativeUiCommandUndoObjectCountAfter == 1U,
+                "undo delete object count after") &&
+         expect(window.creativeBakedRoomAutoRefreshRequested,
+                "undo delete auto refresh requested") &&
+         expect(window.creativeBakedRoomAutoRefreshAccepted,
+                "undo delete auto refresh accepted") &&
+         expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+                "undo delete active room not cleared") &&
+         expect(window.activeRoom.loaded,
+                "undo delete active room loaded") &&
+         expect(window.activeRoom.staticMeshCount == 1U,
+                "undo delete active mesh count") &&
+         expect(window.activeRoom.spatialSurfaceCount == 1U,
+                "undo delete active surface count") &&
+         expect(window.activeRoomCollision.ready,
+                "undo delete collision ready") &&
+         expect(window.activeRoomCollision.querySurfaceCount == 1U,
+                "undo delete collision query count") &&
+         expect(!window.creativeBakedRoomStale,
+                "undo delete stale fresh") &&
+         expect(!cr::creativeUndoAvailable(app.undoStack),
+                "undo delete no redo stack") &&
+         expect(window.creativeUndoDepth == 0U,
+                "undo delete window undo depth");
+}
+
+bool undoAfterVisibilityToggleRestoresBakedRoomThroughInputFrame() {
+  const iggy3d::ProductAppOptions options =
+      testOptions("undo_visibility_toggle");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  const iggy3d::ProductCreativeNewWorldLaunchResult launched =
+      launchCreativeWorld(options,
+                          launchRequest("Undo Visibility Toggle",
+                                        "2026-07-05T13:30:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  const cr::CreativeDocumentCreateReceipt floor =
+      createBoundsObject(facade,
+                         cr::CreativeObjectKind::Floor,
+                         {{0.0, 0.0, 0.0}, {4.0, 0.25, 4.0}});
+  const iggy3d::ProductCreativeBakedActiveRoomRefreshResult initialRefresh =
+      iggy3d::refreshProductCreativeBakedActiveRoom({},
+                                                    activeSession,
+                                                    window,
+                                                    app);
+  const bool selected = selectFacadeObject(facade, floor.objectId);
+  const bool hideClicked = clickCreativeUiRowThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app,
+      "creative.row.selection.inspector_visible");
+  const cr::CreativeObject* hidden = facade.findObject(floor.objectId);
+  const bool undoAvailableAfterHide =
+      cr::creativeUndoAvailable(app.undoStack);
+
+  const bool undoClicked = clickCreativeUndoThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app);
+  const cr::CreativeObject* restored = facade.findObject(floor.objectId);
+
+  return expect(launched.accepted, "undo visibility launch accepted") &&
+         expect(floor.accepted, "undo visibility floor created") &&
+         expect(initialRefresh.accepted, "undo visibility initial refresh") &&
+         expect(selected, "undo visibility floor selected") &&
+         expect(hideClicked, "undo visibility hide clicked") &&
+         expect(hidden != nullptr && !hidden->visible,
+                "undo visibility floor hidden") &&
+         expect(undoAvailableAfterHide,
+                "undo visibility undo available after hide") &&
+         expect(undoClicked, "undo visibility undo clicked") &&
+         expect(restored != nullptr && restored->visible,
+                "undo visibility floor visible restored") &&
+         expect(facade.document().objectCount() == 1U,
+                "undo visibility object count") &&
+         expect(facade.document().revision() == 1U,
+                "undo visibility revision restored") &&
+         expect(window.creativeUiCommandKind == "undo_last_document_change",
+                "undo visibility command kind") &&
+         expect(window.creativeUiCommandUndoAccepted,
+                "undo visibility accepted") &&
+         expect(window.creativeUiCommandUndoObjectCountBefore == 1U,
+                "undo visibility object count before") &&
+         expect(window.creativeUiCommandUndoObjectCountAfter == 1U,
+                "undo visibility object count after") &&
+         expect(window.creativeBakedRoomAutoRefreshRequested,
+                "undo visibility auto refresh requested") &&
+         expect(window.creativeBakedRoomAutoRefreshAccepted,
+                "undo visibility auto refresh accepted") &&
+         expect(!window.creativeBakedRoomAutoRefreshClearedActiveRoom,
+                "undo visibility active room not cleared") &&
+         expect(window.activeRoom.loaded,
+                "undo visibility active room loaded") &&
+         expect(window.activeRoom.staticMeshCount == 1U,
+                "undo visibility active mesh count") &&
+         expect(window.activeRoomCollision.ready,
+                "undo visibility collision ready") &&
+         expect(!window.creativeBakedRoomStale,
+                "undo visibility stale fresh") &&
+         expect(!cr::creativeUndoAvailable(app.undoStack),
+                "undo visibility no redo stack") &&
+         expect(window.creativeUndoDepth == 0U,
+                "undo visibility window undo depth");
 }
 
 bool autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() {
@@ -2619,6 +2971,12 @@ bool autoRefreshMoveCommitAndIgnoresNoChangeReleaseThroughInputFrame() {
                    "auto move collision query count") &&
             expect(movedCenterX != initialCenterX || movedCenterY != initialCenterY,
                    "auto move baked mesh center changed") &&
+            expect(cr::creativeUndoDepth(app.undoStack) == 1U,
+                   "auto move undo depth after move") &&
+            expect(window.creativeUndoAvailable,
+                   "auto move window undo available after move") &&
+            expect(window.creativeUndoDepth == 1U,
+                   "auto move window undo depth after move") &&
             expect(!window.creativeBakedRoomStale,
                    "auto move stale cleared");
 
@@ -2651,6 +3009,10 @@ bool autoRefreshMoveCommitAndIgnoresNoChangeReleaseThroughInputFrame() {
                "auto move no-change not changed") &&
         expect(!window.creativeBakedRoomAutoRefreshRequested,
                "auto move no-change no auto refresh") &&
+        expect(cr::creativeUndoDepth(app.undoStack) == 1U,
+               "auto move no-change undo depth unchanged") &&
+        expect(window.creativeUndoDepth == 1U,
+               "auto move no-change window undo depth unchanged") &&
         expect(window.activeRoom.loaded,
                "auto move no-change active room remains loaded") &&
         expect(!window.creativeBakedRoomStale,
@@ -2661,6 +3023,50 @@ bool autoRefreshMoveCommitAndIgnoresNoChangeReleaseThroughInputFrame() {
                "auto move active product save unchanged") &&
         expect(facade.document().dirtyFlags() != 0U,
                "auto move dirty flags not drained");
+
+  const bool undoClicked = clickCreativeUndoThroughInputFrame(
+      options,
+      frontend,
+      activeSession,
+      window,
+      app);
+  const float undoCenterX =
+      window.activeRoom.room.staticMeshes.empty()
+          ? 0.0F
+          : window.activeRoom.room.staticMeshes.front().positionMeters.x;
+  const float undoCenterY =
+      window.activeRoom.room.staticMeshes.empty()
+          ? 0.0F
+          : window.activeRoom.room.staticMeshes.front().positionMeters.y;
+  ok &= expect(undoClicked, "auto move undo clicked") &&
+        expect(window.creativeUiCommandKind == "undo_last_document_change",
+               "auto move undo command kind") &&
+        expect(window.creativeUiCommandUndoAccepted,
+               "auto move undo accepted") &&
+        expect(window.creativeUiCommandUndoChanged,
+               "auto move undo changed") &&
+        expect(window.creativeUiCommandUndoDepthBefore == 1U,
+               "auto move undo depth before") &&
+        expect(window.creativeUiCommandUndoDepthAfter == 0U,
+               "auto move undo depth after") &&
+        expect(window.creativeDocumentChangedThisFrame,
+               "auto move undo document changed") &&
+        expect(window.creativeBakedRoomAutoRefreshRequested,
+               "auto move undo auto refresh requested") &&
+        expect(window.creativeBakedRoomAutoRefreshAccepted,
+               "auto move undo auto refresh accepted") &&
+        expect(window.activeRoom.loaded,
+               "auto move undo active room loaded") &&
+        expect(window.activeRoom.staticMeshCount == 1U,
+               "auto move undo mesh count") &&
+        expect(window.activeRoomCollision.ready,
+               "auto move undo collision ready") &&
+        expect(undoCenterX == initialCenterX && undoCenterY == initialCenterY,
+               "auto move undo mesh center restored") &&
+        expect(!cr::creativeUndoAvailable(app.undoStack),
+               "auto move undo no redo stack") &&
+        expect(window.creativeUndoDepth == 0U,
+               "auto move undo window undo depth");
 
   return ok;
 }
@@ -2964,6 +3370,9 @@ int main() {
       refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() &&
       manualRebuildRoomCommandRefreshesBakedActiveRoomThroughInputFrame() &&
       manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() &&
+      undoAfterCreateCrateRestoresEmptyDocumentThroughInputFrame() &&
+      undoAfterDeleteSelectedRestoresRenderableThroughInputFrame() &&
+      undoAfterVisibilityToggleRestoresBakedRoomThroughInputFrame() &&
       autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() &&
       deleteSelectedRenderableClearsBakedRoomThroughInputFrame() &&
       deleteOneOfTwoRenderablesRebuildsRemainingBakedRoomThroughInputFrame() &&

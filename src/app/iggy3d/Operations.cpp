@@ -612,6 +612,8 @@ void clearActiveCreativeSaveIdentity(
   window.activeCreativeSaveDirtyFlagsDrained = 0;
   window.activeCreativeSaveDirtyFlagsAfter = 0;
   window.activeCreativeSaveSavedAtUtc = "none";
+  window.creativeUndoAvailable = false;
+  window.creativeUndoDepth = 0;
 }
 
 void recordActiveCreativeSaveIdentity(
@@ -1262,6 +1264,9 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
     clearProductGameplayLaunchState(activeSession, window);
     return result;
   }
+  creative::clearCreativeUndoStack(creativeApp.undoStack);
+  window.creativeUndoAvailable = false;
+  window.creativeUndoDepth = 0;
 
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
   window.interactionMode = ProductInteractionMode::Creative;
@@ -1328,6 +1333,9 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
     clearProductGameplayLaunchState(activeSession, window);
     return result;
   }
+  creative::clearCreativeUndoStack(creativeApp.undoStack);
+  window.creativeUndoAvailable = false;
+  window.creativeUndoDepth = 0;
 
   enterProductGameplayTransition(frontend, window, FrontendAction::Load);
   window.interactionMode = ProductInteractionMode::Creative;
@@ -1421,6 +1429,9 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
 
   result.accepted = true;
   setCurrentCreativeSaveStatus(result, "product_creative_world_saved");
+  creative::clearCreativeUndoStack(creativeApp.undoStack);
+  window.creativeUndoAvailable = false;
+  window.creativeUndoDepth = 0;
   recordActiveCreativeSaveResult(window, creativeApp.identity, result);
   return result;
 }

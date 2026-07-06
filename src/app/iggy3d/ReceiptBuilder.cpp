@@ -119,6 +119,8 @@ std::string_view productCreativeUiCommandKindReceiptName(
       return "create_object";
     case ProductCreativeUiCommandKind::RebuildRoom:
       return "rebuild_room";
+    case ProductCreativeUiCommandKind::UndoLastDocumentChange:
+      return "undo_last_document_change";
     case ProductCreativeUiCommandKind::DeleteSelectedObject:
       return "delete_selected_object";
   }
@@ -322,6 +324,25 @@ void recordProductCreativeUiCommandFrame(
       receipt.deleteMessage.empty() ? "none" : receipt.deleteMessage;
   window.creativeUiCommandDeleteReasonCode =
       receipt.deleteReasonCode.empty() ? "none" : receipt.deleteReasonCode;
+  window.creativeUiCommandUndoRequested = receipt.undoRequested;
+  window.creativeUiCommandUndoAccepted = receipt.undoAccepted;
+  window.creativeUiCommandUndoChanged = receipt.undoChanged;
+  window.creativeUiCommandUndoHadSnapshot = receipt.undoHadSnapshot;
+  window.creativeUiCommandUndoDocumentId = receipt.undoDocumentId;
+  window.creativeUiCommandUndoRevisionBefore = receipt.undoRevisionBefore;
+  window.creativeUiCommandUndoRevisionAfter = receipt.undoRevisionAfter;
+  window.creativeUiCommandUndoObjectCountBefore =
+      receipt.undoObjectCountBefore;
+  window.creativeUiCommandUndoObjectCountAfter = receipt.undoObjectCountAfter;
+  window.creativeUiCommandUndoDepthBefore = receipt.undoDepthBefore;
+  window.creativeUiCommandUndoDepthAfter = receipt.undoDepthAfter;
+  window.creativeUiCommandUndoStatus =
+      receipt.undoStatus.empty() ? "creative_undo_not_requested"
+                                 : receipt.undoStatus;
+  window.creativeUiCommandUndoMessage =
+      receipt.undoMessage.empty() ? "none" : receipt.undoMessage;
+  window.creativeUiCommandUndoReasonCode =
+      receipt.undoReasonCode.empty() ? "none" : receipt.undoReasonCode;
   window.creativeUiCommandBakedRoomRefreshRequested = false;
   window.creativeUiCommandBakedRoomRefreshAccepted = false;
   window.creativeUiCommandBakedRoomRefreshStatus =
@@ -2273,6 +2294,34 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeUiCommandDeleteMessage);
   appendReceiptField(receipt, "creative_ui_command_delete_reason_code",
                      window.creativeUiCommandDeleteReasonCode);
+  appendReceiptField(receipt, "creative_ui_command_undo_requested",
+                     window.creativeUiCommandUndoRequested);
+  appendReceiptField(receipt, "creative_ui_command_undo_accepted",
+                     window.creativeUiCommandUndoAccepted);
+  appendReceiptField(receipt, "creative_ui_command_undo_changed",
+                     window.creativeUiCommandUndoChanged);
+  appendReceiptField(receipt, "creative_ui_command_undo_had_snapshot",
+                     window.creativeUiCommandUndoHadSnapshot);
+  appendReceiptField(receipt, "creative_ui_command_undo_document_id",
+                     window.creativeUiCommandUndoDocumentId);
+  appendReceiptField(receipt, "creative_ui_command_undo_revision_before",
+                     window.creativeUiCommandUndoRevisionBefore);
+  appendReceiptField(receipt, "creative_ui_command_undo_revision_after",
+                     window.creativeUiCommandUndoRevisionAfter);
+  appendReceiptField(receipt, "creative_ui_command_undo_object_count_before",
+                     window.creativeUiCommandUndoObjectCountBefore);
+  appendReceiptField(receipt, "creative_ui_command_undo_object_count_after",
+                     window.creativeUiCommandUndoObjectCountAfter);
+  appendReceiptField(receipt, "creative_ui_command_undo_depth_before",
+                     window.creativeUiCommandUndoDepthBefore);
+  appendReceiptField(receipt, "creative_ui_command_undo_depth_after",
+                     window.creativeUiCommandUndoDepthAfter);
+  appendReceiptField(receipt, "creative_ui_command_undo_status",
+                     window.creativeUiCommandUndoStatus);
+  appendReceiptField(receipt, "creative_ui_command_undo_message",
+                     window.creativeUiCommandUndoMessage);
+  appendReceiptField(receipt, "creative_ui_command_undo_reason_code",
+                     window.creativeUiCommandUndoReasonCode);
   appendReceiptField(receipt,
                      "creative_ui_command_baked_room_refresh_requested",
                      window.creativeUiCommandBakedRoomRefreshRequested);
@@ -2356,6 +2405,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      window.creativeDocumentRevisionBeforeFrame);
   appendReceiptField(receipt, "creative_document_revision_after_frame",
                      window.creativeDocumentRevisionAfterFrame);
+  appendReceiptField(receipt, "creative_undo_available",
+                     window.creativeUndoAvailable);
+  appendReceiptField(receipt, "creative_undo_depth",
+                     window.creativeUndoDepth);
   appendReceiptField(receipt, "creative_baked_room_stale",
                      window.creativeBakedRoomStale);
   appendReceiptField(receipt, "creative_baked_room_stale_document_id",

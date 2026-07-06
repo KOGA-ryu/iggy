@@ -259,6 +259,8 @@ struct ProductAppWindowState {
   std::uint64_t creativeDocumentRevisionDocumentId = 0;
   std::uint64_t creativeDocumentRevisionBeforeFrame = 0;
   std::uint64_t creativeDocumentRevisionAfterFrame = 0;
+  bool creativeUndoAvailable = false;
+  std::uint64_t creativeUndoDepth = 0;
   bool creativeBakedRoomStale = false;
   std::uint64_t creativeBakedRoomStaleDocumentId = 0;
   std::uint64_t creativeBakedRoomStaleRevision = 0;
@@ -680,6 +682,21 @@ struct ProductAppWindowState {
   std::string creativeUiCommandDeleteStatus = "Unknown";
   std::string creativeUiCommandDeleteMessage = "none";
   std::string creativeUiCommandDeleteReasonCode = "none";
+  bool creativeUiCommandUndoRequested = false;
+  bool creativeUiCommandUndoAccepted = false;
+  bool creativeUiCommandUndoChanged = false;
+  bool creativeUiCommandUndoHadSnapshot = false;
+  std::uint64_t creativeUiCommandUndoDocumentId = 0;
+  std::uint64_t creativeUiCommandUndoRevisionBefore = 0;
+  std::uint64_t creativeUiCommandUndoRevisionAfter = 0;
+  std::uint64_t creativeUiCommandUndoObjectCountBefore = 0;
+  std::uint64_t creativeUiCommandUndoObjectCountAfter = 0;
+  std::uint64_t creativeUiCommandUndoDepthBefore = 0;
+  std::uint64_t creativeUiCommandUndoDepthAfter = 0;
+  std::string creativeUiCommandUndoStatus = "creative_undo_not_requested";
+  std::string creativeUiCommandUndoMessage = "creative_undo_not_requested";
+  std::string creativeUiCommandUndoReasonCode =
+      "creative_undo_not_requested";
   bool creativeUiCommandBakedRoomRefreshRequested = false;
   bool creativeUiCommandBakedRoomRefreshAccepted = false;
   std::string creativeUiCommandBakedRoomRefreshStatus =

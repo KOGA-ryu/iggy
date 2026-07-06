@@ -173,6 +173,7 @@ void appendVec3Text(std::string& text, double x, double y, double z) {
       break;
     case creative::CreativeUiRowKind::CreateObject:
     case creative::CreativeUiRowKind::RebuildRoom:
+    case creative::CreativeUiRowKind::ToolUndo:
       break;
     case creative::CreativeUiRowKind::StatusSummary:
       text = "Creative: ";

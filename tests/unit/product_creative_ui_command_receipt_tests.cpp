@@ -146,6 +146,21 @@ iggy3d::ProductCreativeUiCommandFrameReceipt appliedDeleteReceipt() {
   return iggy3d::routeProductCreativeUiCommandFrame(request);
 }
 
+iggy3d::ProductCreativeUiCommandFrameReceipt appliedUndoReceipt() {
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  facade.reset();
+  static_cast<void>(facade.documentForPersistence().assignId(42U));
+  cr::pushCreativeUndoSnapshot(app.undoStack, facade.document());
+  static_cast<void>(
+      createObject(facade, cr::CreativeObjectKind::Crate, "Crate A"));
+
+  iggy3d::ProductCreativeUiCommandFrameRequest request;
+  request.creative = &app;
+  request.inputReceipt = commandInput("creative.row.tools.undo");
+  return iggy3d::routeProductCreativeUiCommandFrame(request);
+}
+
 bool defaultWindowReceiptCarriesNotRequestedFields() {
   const iggy3d::ProductAppWindowState window;
   const iggy3d::RenderReceipt receipt = receiptFor(window);
@@ -353,7 +368,63 @@ bool defaultWindowReceiptCarriesNotRequestedFields() {
          expectReceiptField(receipt,
                             "creative_ui_command_delete_reason_code",
                             "none",
-                            "default delete reason");
+                            "default delete reason") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_requested",
+                            "false",
+                            "default undo requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_accepted",
+                            "false",
+                            "default undo accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_changed",
+                            "false",
+                            "default undo changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_had_snapshot",
+                            "false",
+                            "default undo snapshot") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_document_id",
+                            "0",
+                            "default undo document") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_revision_before",
+                            "0",
+                            "default undo revision before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_revision_after",
+                            "0",
+                            "default undo revision after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_object_count_before",
+                            "0",
+                            "default undo object count before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_object_count_after",
+                            "0",
+                            "default undo object count after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_depth_before",
+                            "0",
+                            "default undo depth before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_depth_after",
+                            "0",
+                            "default undo depth after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_status",
+                            "creative_undo_not_requested",
+                            "default undo status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_message",
+                            "creative_undo_not_requested",
+                            "default undo message") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_reason_code",
+                            "creative_undo_not_requested",
+                            "default undo reason");
 }
 
 bool defaultCommandReceiptRecordsSafely() {
@@ -810,6 +881,83 @@ bool deleteCommandReceiptRecordsDeleteFields() {
                             "delete reason");
 }
 
+bool undoCommandReceiptRecordsUndoFields() {
+  const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
+      appliedUndoReceipt();
+  iggy3d::ProductAppWindowState window;
+  iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  return expectReceiptField(receipt,
+                            "creative_ui_command_kind",
+                            "undo_last_document_change",
+                            "undo kind") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_status",
+                            "product_creative_ui_command_applied",
+                            "undo command status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_accepted",
+                            "true",
+                            "undo accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_changed",
+                            "true",
+                            "undo changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_requested",
+                            "true",
+                            "undo requested") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_accepted",
+                            "true",
+                            "undo receipt accepted") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_changed",
+                            "true",
+                            "undo receipt changed") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_had_snapshot",
+                            "true",
+                            "undo had snapshot") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_revision_before",
+                            "1",
+                            "undo revision before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_revision_after",
+                            "0",
+                            "undo revision after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_object_count_before",
+                            "1",
+                            "undo object count before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_object_count_after",
+                            "0",
+                            "undo object count after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_depth_before",
+                            "1",
+                            "undo depth before") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_depth_after",
+                            "0",
+                            "undo depth after") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_status",
+                            "creative_undo_applied",
+                            "undo status") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_message",
+                            "creative_undo_applied",
+                            "undo message") &&
+         expectReceiptField(receipt,
+                            "creative_ui_command_undo_reason_code",
+                            "creative_undo_applied",
+                            "undo reason");
+}
+
 bool recorderPreservesNeighboringFields() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_before";
@@ -899,6 +1047,7 @@ int main() {
                   defaultWindowReceiptCarriesLockedFields() &&
                   createRoomCommandReceiptRecordsCreateFields() &&
                   deleteCommandReceiptRecordsDeleteFields() &&
+                  undoCommandReceiptRecordsUndoFields() &&
                   recorderPreservesNeighboringFields();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

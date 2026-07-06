@@ -3,7 +3,10 @@
 #include "app/iggy3d/creative/Facade.hpp"
 
 #include <cstdint>
+#include <cstddef>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace iggy3d::creative {
 
@@ -53,12 +56,103 @@ struct CreativeActiveIdentity {
   }
 };
 
+struct CreativeDocumentUndoStack {
+  std::vector<CreativeDocument> documents;
+  std::size_t maxDepth = 32;
+};
+
+struct CreativeDocumentUndoApplyReceipt {
+  bool requested = false;
+  bool accepted = false;
+  bool changed = false;
+  bool hadSnapshot = false;
+  CreativeDocumentId documentId = kInvalidDocumentId;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+  std::uint64_t objectCountBefore = 0;
+  std::uint64_t objectCountAfter = 0;
+  std::uint64_t depthBefore = 0;
+  std::uint64_t depthAfter = 0;
+  std::string status = "creative_undo_not_requested";
+  std::string reasonCode = "creative_undo_not_requested";
+  std::string message = "creative_undo_not_requested";
+  CreativeFacadeDocumentInstallReceipt installReceipt;
+};
+
+[[nodiscard]] inline bool creativeUndoAvailable(
+    const CreativeDocumentUndoStack& undoStack) noexcept {
+  return !undoStack.documents.empty();
+}
+
+[[nodiscard]] inline std::uint64_t creativeUndoDepth(
+    const CreativeDocumentUndoStack& undoStack) noexcept {
+  return static_cast<std::uint64_t>(undoStack.documents.size());
+}
+
+inline void clearCreativeUndoStack(
+    CreativeDocumentUndoStack& undoStack) noexcept {
+  undoStack.documents.clear();
+}
+
+inline void pushCreativeUndoSnapshot(CreativeDocumentUndoStack& undoStack,
+                                     const CreativeDocument& document) {
+  if (!document.isValid() || document.id() == kInvalidDocumentId) {
+    return;
+  }
+  if (undoStack.documents.size() >= undoStack.maxDepth) {
+    undoStack.documents.erase(undoStack.documents.begin());
+  }
+  undoStack.documents.push_back(document);
+}
+
 // Self-contained home for creative's app-scoped state. SLICE 1 wrapped only the
 // logical Facade; SLICE 2 adds the active-world identity so the product app can
 // read creative's own state for routing/save instead of the god-struct.
 struct CreativeAppState {
   Facade facade;
   CreativeActiveIdentity identity;
+  CreativeDocumentUndoStack undoStack;
 };
+
+[[nodiscard]] inline CreativeDocumentUndoApplyReceipt
+applyLastCreativeUndoSnapshot(CreativeAppState& appState) {
+  CreativeDocumentUndoApplyReceipt receipt;
+  receipt.requested = true;
+  receipt.revisionBefore = appState.facade.document().revision();
+  receipt.objectCountBefore = appState.facade.document().objectCount();
+  receipt.depthBefore = creativeUndoDepth(appState.undoStack);
+
+  if (!creativeUndoAvailable(appState.undoStack)) {
+    receipt.depthAfter = receipt.depthBefore;
+    receipt.revisionAfter = receipt.revisionBefore;
+    receipt.objectCountAfter = receipt.objectCountBefore;
+    receipt.status = "creative_undo_empty";
+    receipt.reasonCode = "creative_undo_empty";
+    receipt.message = "creative_undo_empty";
+    return receipt;
+  }
+
+  receipt.hadSnapshot = true;
+  CreativeDocument snapshot = appState.undoStack.documents.back();
+  receipt.documentId = snapshot.id();
+  receipt.installReceipt = appState.facade.installDocument(std::move(snapshot));
+  receipt.accepted = receipt.installReceipt.accepted;
+  receipt.changed = receipt.installReceipt.changed;
+  if (receipt.installReceipt.accepted) {
+    appState.undoStack.documents.pop_back();
+  }
+  receipt.revisionAfter = appState.facade.document().revision();
+  receipt.objectCountAfter = appState.facade.document().objectCount();
+  receipt.depthAfter = creativeUndoDepth(appState.undoStack);
+  receipt.status = receipt.accepted ? "creative_undo_applied"
+                                    : "creative_undo_rejected";
+  receipt.reasonCode =
+      receipt.accepted ? "creative_undo_applied"
+                       : std::string(receipt.installReceipt.reasonCode);
+  receipt.message =
+      receipt.accepted ? "creative_undo_applied"
+                       : std::string(receipt.installReceipt.message);
+  return receipt;
+}
 
 }  // namespace iggy3d::creative

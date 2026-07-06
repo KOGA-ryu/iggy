@@ -21,7 +21,7 @@ struct ProductCreativeUiCommandRow {
       creative::CreativeObjectKind::Unknown;
 };
 
-constexpr std::array<ProductCreativeUiCommandRow, 10>
+constexpr std::array<ProductCreativeUiCommandRow, 11>
     kProductCreativeUiCommandRows = {{
         {"creative.row.tools.tool_select",
          ProductCreativeUiCommandKind::SetActiveTool,
@@ -41,6 +41,10 @@ constexpr std::array<ProductCreativeUiCommandRow, 10>
          creative::CreativeObjectKind::Unknown},
         {"creative.row.tools.rebuild_room",
          ProductCreativeUiCommandKind::RebuildRoom,
+         creative::Tool::Select,
+         creative::CreativeObjectKind::Unknown},
+        {"creative.row.tools.undo",
+         ProductCreativeUiCommandKind::UndoLastDocumentChange,
          creative::Tool::Select,
          creative::CreativeObjectKind::Unknown},
         {"creative.row.create.create_room",
@@ -154,6 +158,25 @@ void copyDeleteReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
   receipt.deleteReasonCode = std::string(deleteReceipt.reasonCode);
 }
 
+void copyUndoReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
+                     const creative::CreativeDocumentUndoApplyReceipt&
+                         undoReceipt) {
+  receipt.undoRequested = undoReceipt.requested;
+  receipt.undoAccepted = undoReceipt.accepted;
+  receipt.undoChanged = undoReceipt.changed;
+  receipt.undoHadSnapshot = undoReceipt.hadSnapshot;
+  receipt.undoDocumentId = undoReceipt.documentId;
+  receipt.undoRevisionBefore = undoReceipt.revisionBefore;
+  receipt.undoRevisionAfter = undoReceipt.revisionAfter;
+  receipt.undoObjectCountBefore = undoReceipt.objectCountBefore;
+  receipt.undoObjectCountAfter = undoReceipt.objectCountAfter;
+  receipt.undoDepthBefore = undoReceipt.depthBefore;
+  receipt.undoDepthAfter = undoReceipt.depthAfter;
+  receipt.undoStatus = undoReceipt.status;
+  receipt.undoReasonCode = undoReceipt.reasonCode;
+  receipt.undoMessage = undoReceipt.message;
+}
+
 }  // namespace
 
 ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
@@ -233,6 +256,24 @@ ProductCreativeUiCommandFrameReceipt routeProductCreativeUiCommandFrame(
     receipt.toolAfter = facade.toolState().activeTool;
     setNoopStatus(receipt,
                   "product_creative_ui_command_rebuild_room_requested");
+    return receipt;
+  }
+
+  if (receipt.commandKind ==
+      ProductCreativeUiCommandKind::UndoLastDocumentChange) {
+    const creative::CreativeDocumentUndoApplyReceipt undoReceipt =
+        creative::applyLastCreativeUndoSnapshot(*request.creative);
+    copyUndoReceipt(receipt, undoReceipt);
+    receipt.accepted = undoReceipt.accepted;
+    receipt.changed = undoReceipt.changed;
+    receipt.toolAfter = facade.toolState().activeTool;
+    if (undoReceipt.accepted && undoReceipt.changed) {
+      setNoopStatus(receipt, "product_creative_ui_command_applied");
+    } else if (undoReceipt.accepted) {
+      setNoopStatus(receipt, "product_creative_ui_command_no_change");
+    } else {
+      setNoopStatus(receipt, "product_creative_ui_command_rejected");
+    }
     return receipt;
   }
 

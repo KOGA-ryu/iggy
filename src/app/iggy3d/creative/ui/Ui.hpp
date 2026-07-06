@@ -28,6 +28,7 @@ enum class CreativeUiPanelKind : std::uint8_t {
 enum class CreativeUiRowKind : std::uint8_t {
   ToolButton,
   RebuildRoom,
+  ToolUndo,
   CreateObject,
   StatusSummary,
   SelectedTarget,

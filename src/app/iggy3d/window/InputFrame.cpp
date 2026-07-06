@@ -1202,6 +1202,15 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   }
   const ProductCreativeDocumentRevisionSnapshot creativeRevisionBefore =
       captureProductCreativeDocumentRevision(context.creativeApp);
+  creative::CreativeDocument creativeUndoSnapshotBefore;
+  bool creativeUndoSnapshotBeforeAvailable = false;
+  if (context.creativeApp != nullptr &&
+      context.creativeApp->facade.document().isValid() &&
+      context.creativeApp->facade.document().id() !=
+          creative::kInvalidDocumentId) {
+    creativeUndoSnapshotBefore = context.creativeApp->facade.document();
+    creativeUndoSnapshotBeforeAvailable = true;
+  }
   const ProductCreativeUiInputFrameReceipt creativeUiInputReceipt =
       routeProductCreativeUiInputFrame(ProductCreativeUiInputFrameRequest{
           context.creativeUiDrawList,
@@ -1437,6 +1446,19 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       creativeRevisionBefore.observed && creativeRevisionAfter.observed &&
       (creativeRevisionBefore.documentId != creativeRevisionAfter.documentId ||
        creativeRevisionBefore.revision != creativeRevisionAfter.revision);
+  const bool creativeDocumentRevisionChangedForUndo =
+      creativeRevisionBefore.observed && creativeRevisionAfter.observed &&
+      creativeRevisionBefore.documentId == creativeRevisionAfter.documentId &&
+      creativeRevisionBefore.revision != creativeRevisionAfter.revision;
+  const bool undoCommandApplied =
+      creativeUiCommandReceipt.commandKind ==
+          ProductCreativeUiCommandKind::UndoLastDocumentChange &&
+      creativeUiCommandReceipt.accepted && creativeUiCommandReceipt.changed;
+  if (creativeDocumentRevisionChangedForUndo && !undoCommandApplied &&
+      creativeUndoSnapshotBeforeAvailable && context.creativeApp != nullptr) {
+    creative::pushCreativeUndoSnapshot(context.creativeApp->undoStack,
+                                       creativeUndoSnapshotBefore);
+  }
   if (creativeDocumentChanged && context.creativeApp != nullptr) {
     ProductCreativeBakedActiveRoomRefreshRequest refreshRequest;
     refreshRequest.clearOnNoRenderable = true;
@@ -1446,6 +1468,15 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                                              context.window,
                                              *context.creativeApp);
     recordProductCreativeBakedRoomAutoRefresh(context.window, refresh);
+  }
+  if (context.creativeApp != nullptr) {
+    context.window.creativeUndoAvailable =
+        creative::creativeUndoAvailable(context.creativeApp->undoStack);
+    context.window.creativeUndoDepth =
+        creative::creativeUndoDepth(context.creativeApp->undoStack);
+  } else {
+    context.window.creativeUndoAvailable = false;
+    context.window.creativeUndoDepth = 0;
   }
   // If the creative-document dispatch path did not run this frame (frontend
   // menu open over the world, pause, no session), drop any held-state so a

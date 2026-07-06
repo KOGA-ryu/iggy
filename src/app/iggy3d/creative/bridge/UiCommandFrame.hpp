@@ -16,6 +16,7 @@ enum class ProductCreativeUiCommandKind : std::uint8_t {
   SetActiveTool,
   CreateObject,
   RebuildRoom,
+  UndoLastDocumentChange,
   DeleteSelectedObject,
 };
 
@@ -87,6 +88,20 @@ struct ProductCreativeUiCommandFrameReceipt {
   std::string deleteStatus = "Unknown";
   std::string deleteMessage;
   std::string deleteReasonCode;
+  bool undoRequested = false;
+  bool undoAccepted = false;
+  bool undoChanged = false;
+  bool undoHadSnapshot = false;
+  creative::CreativeDocumentId undoDocumentId = creative::kInvalidDocumentId;
+  std::uint64_t undoRevisionBefore = 0;
+  std::uint64_t undoRevisionAfter = 0;
+  std::uint64_t undoObjectCountBefore = 0;
+  std::uint64_t undoObjectCountAfter = 0;
+  std::uint64_t undoDepthBefore = 0;
+  std::uint64_t undoDepthAfter = 0;
+  std::string undoStatus = "creative_undo_not_requested";
+  std::string undoReasonCode = "creative_undo_not_requested";
+  std::string undoMessage = "creative_undo_not_requested";
   std::string semanticId;
   std::string status = "product_creative_ui_command_not_requested";
   std::string reasonCode = "product_creative_ui_command_not_requested";

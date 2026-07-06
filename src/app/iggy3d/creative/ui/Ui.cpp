@@ -120,6 +120,14 @@ void appendToolsPanel(CreativeUiModel& model,
   rebuildRow.flags = enabledVisibleFlags();
   appendRow(model, rebuildRow);
 
+  CreativeUiRow undoRow;
+  undoRow.kind = CreativeUiRowKind::ToolUndo;
+  undoRow.panel = CreativeUiPanelKind::Tools;
+  undoRow.id = "undo";
+  undoRow.label = "Undo";
+  undoRow.flags = enabledVisibleFlags();
+  appendRow(model, undoRow);
+
   finishPanel(model, panelIndex);
 }
 

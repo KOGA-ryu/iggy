@@ -337,6 +337,108 @@ bool rebuildRoomCommandRequestsExternalRefreshWithoutDocumentMutation() {
                 "rebuild revision unchanged");
 }
 
+bool undoCommandNoHistoryRejectsWithoutMutation() {
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  facade.reset();
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(app, "creative.row.tools.undo");
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        UndoLastDocumentChange,
+                "undo empty command kind") &&
+         expect(receipt.semanticId == "creative.row.tools.undo",
+                "undo empty semantic") &&
+         expect(!receipt.accepted, "undo empty not accepted") &&
+         expect(!receipt.changed, "undo empty unchanged") &&
+         expect(receipt.status == "product_creative_ui_command_rejected",
+                "undo empty command status") &&
+         expect(receipt.undoRequested, "undo empty requested") &&
+         expect(!receipt.undoAccepted, "undo empty receipt not accepted") &&
+         expect(!receipt.undoChanged, "undo empty receipt unchanged") &&
+         expect(!receipt.undoHadSnapshot, "undo empty no snapshot") &&
+         expect(receipt.undoRevisionBefore == revisionBefore,
+                "undo empty revision before") &&
+         expect(receipt.undoRevisionAfter == revisionBefore,
+                "undo empty revision after") &&
+         expect(receipt.undoObjectCountBefore == objectCountBefore,
+                "undo empty object count before") &&
+         expect(receipt.undoObjectCountAfter == objectCountBefore,
+                "undo empty object count after") &&
+         expect(receipt.undoDepthBefore == 0U, "undo empty depth before") &&
+         expect(receipt.undoDepthAfter == 0U, "undo empty depth after") &&
+         expect(receipt.undoStatus == "creative_undo_empty",
+                "undo empty status") &&
+         expect(receipt.undoReasonCode == "creative_undo_empty",
+                "undo empty reason") &&
+         expect(facade.document().revision() == revisionBefore,
+                "undo empty document revision unchanged") &&
+         expect(facade.document().objectCount() == objectCountBefore,
+                "undo empty document object count unchanged");
+}
+
+bool undoCommandRestoresLatestSnapshotAndClearsTransientState() {
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  facade.reset();
+  static_cast<void>(facade.documentForPersistence().assignId(42U));
+  cr::pushCreativeUndoSnapshot(app.undoStack, facade.document());
+
+  const cr::CreativeObjectId crateId =
+      createObject(facade, cr::CreativeObjectKind::Crate, "Crate A");
+  selectTarget(facade, crateId);
+  static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
+  const std::uint64_t revisionBefore = facade.document().revision();
+  const std::uint64_t objectCountBefore = facade.document().objectCount();
+
+  const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
+      routeCommand(app, "creative.row.tools.undo");
+
+  return expect(receipt.commandKind ==
+                    iggy3d::ProductCreativeUiCommandKind::
+                        UndoLastDocumentChange,
+                "undo command kind") &&
+         expect(receipt.accepted, "undo accepted") &&
+         expect(receipt.changed, "undo changed") &&
+         expect(receipt.status == "product_creative_ui_command_applied",
+                "undo command status") &&
+         expect(receipt.undoRequested, "undo requested") &&
+         expect(receipt.undoAccepted, "undo receipt accepted") &&
+         expect(receipt.undoChanged, "undo receipt changed") &&
+         expect(receipt.undoHadSnapshot, "undo had snapshot") &&
+         expect(receipt.undoDocumentId == facade.document().id(),
+                "undo document id") &&
+         expect(receipt.undoRevisionBefore == revisionBefore,
+                "undo revision before") &&
+         expect(receipt.undoRevisionAfter == 0U, "undo revision after") &&
+         expect(receipt.undoObjectCountBefore == objectCountBefore,
+                "undo object count before") &&
+         expect(receipt.undoObjectCountAfter == 0U,
+                "undo object count after") &&
+         expect(receipt.undoDepthBefore == 1U, "undo depth before") &&
+         expect(receipt.undoDepthAfter == 0U, "undo depth after") &&
+         expect(receipt.undoStatus == "creative_undo_applied",
+                "undo status") &&
+         expect(receipt.undoReasonCode == "creative_undo_applied",
+                "undo reason") &&
+         expect(facade.findObject(crateId) == nullptr,
+                "undo restored object absence") &&
+         expect(facade.document().objectCount() == 0U,
+                "undo restored object count") &&
+         expect(facade.document().revision() == 0U,
+                "undo restored revision") &&
+         expect(facade.selectionState().selectedTarget.value == cr::kInvalidId,
+                "undo selection cleared") &&
+         expect(facade.toolState().activeTool == cr::Tool::Select,
+                "undo install resets tool") &&
+         expect(cr::creativeUndoDepth(app.undoStack) == 0U,
+                "undo stack popped");
+}
+
 bool createRoomCommandCreatesGenericRoom() {
   cr::CreativeAppState app;
   [[maybe_unused]] cr::Facade& facade = app.facade;
@@ -910,6 +1012,8 @@ int main() {
   ok &= clickingActiveToolButtonPreservesVisibleGhost();
   ok &= clickingActiveToolButtonPreservesActiveMeasurement();
   ok &= rebuildRoomCommandRequestsExternalRefreshWithoutDocumentMutation();
+  ok &= undoCommandNoHistoryRejectsWithoutMutation();
+  ok &= undoCommandRestoresLatestSnapshotAndClearsTransientState();
   ok &= createRoomCommandCreatesGenericRoom();
   ok &= repeatedCreateRoomCommandCreatesNewIdsAndRevisions();
   ok &= selectedTargetRowTogglesRoomVisibilityOff();
