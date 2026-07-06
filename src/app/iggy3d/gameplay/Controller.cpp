@@ -1754,10 +1754,10 @@ void submitProductAirborneMove(Session& session,
                                std::string_view source) {
   window.gameplayInputUsed = true;
   window.gameplayInputSource = std::string{source};
-  window.gameplayCommandSubmitted = false;
-  window.gameplayCommandKind = "move";
-  window.gameplayCommandAccepted = false;
-  window.gameplayCommandStatus = "airborne";
+  window.gameplayCommand.submitted = false;
+  window.gameplayCommand.kind = "move";
+  window.gameplayCommand.accepted = false;
+  window.gameplayCommand.status = "airborne";
   window.gameplayReachGate = "not_attempted";
   window.gameplayLastRejection = "none";
   window.gameplayTickAdvanced = false;
@@ -1796,7 +1796,7 @@ void submitProductAirborneMove(Session& session,
   if (!setProductPlayerPosition(session, actor.id, finalPosition)) {
     window.gameplayMovement.blocked = true;
     window.gameplayMovement.status = "mutation_failed";
-    window.gameplayCommandStatus = "mutation_failed";
+    window.gameplayCommand.status = "mutation_failed";
     window.gameplayMovement.reasonCode = "airborne_manual_move_mutation_failed";
     return;
   }
@@ -1907,7 +1907,7 @@ void recordProductInteractionOutcomeProof(
           ? static_cast<std::uint64_t>(eventCountAfter - before.eventCountBefore)
           : 0U;
 
-  if (!window.gameplayCommandAccepted) {
+  if (!window.gameplayCommand.accepted) {
     window.gameplayOutcome.status = "rejected";
     return;
   }
@@ -2056,8 +2056,8 @@ void submitProductGameplayCommand(Session& session,
   const EntityState* beforePlayer = productPlayerEntity(session);
   const Vec3 before = beforePlayer == nullptr ? Vec3{} : beforePlayer->transform.position;
   window.gameplayInputUsed = true;
-  window.gameplayCommandSubmitted = true;
-  window.gameplayCommandKind = commandKindName(command.kind);
+  window.gameplayCommand.submitted = true;
+  window.gameplayCommand.kind = commandKindName(command.kind);
   if (command.kind == CommandKind::Move) {
     window.gameplayMovement.attempted = true;
     window.gameplayMovement.blocked = false;
@@ -2077,13 +2077,13 @@ void submitProductGameplayCommand(Session& session,
   }
 
   const SessionCommandResult submitted = session.submitCommand(command);
-  window.gameplayCommandAccepted =
+  window.gameplayCommand.accepted =
       submitted.command.admission == CommandAdmissionStatus::Accepted;
   window.gameplayLastRejection = commandRejectionReasonName(submitted.command.rejection);
   window.gameplayReachGate = reachGateName(submitted.command.rejection);
-  window.gameplayCommandStatus = window.gameplayCommandAccepted ? "accepted" : "rejected";
+  window.gameplayCommand.status = window.gameplayCommand.accepted ? "accepted" : "rejected";
 
-  if (window.gameplayCommandAccepted) {
+  if (window.gameplayCommand.accepted) {
     const StatusResult tick =
         tickProductGameplayCommand(session, window, collisionSurfaces);
     window.gameplayTickAdvanced = tick.status == ResultStatus::Ok;
@@ -2107,7 +2107,7 @@ void submitProductGameplayCommand(Session& session,
     movedThisCommand = !nearlyEqual(before, afterPlayer->transform.position);
     window.playerPositionChanged = window.playerPositionChanged || movedThisCommand;
   }
-  if (command.kind == CommandKind::Move && window.gameplayCommandAccepted) {
+  if (command.kind == CommandKind::Move && window.gameplayCommand.accepted) {
     const bool runtimeMovementBlocked =
         window.gameplayMovement.debugAvailable &&
         window.gameplayMovement.blockedReason != "movement_ok";
@@ -2147,7 +2147,7 @@ void submitProductMove(Session& session,
   clearProductOutcomeProof(window);
   const EntityState* actor = productPlayerEntity(session);
   if (actor == nullptr) {
-    window.gameplayCommandStatus = "missing_player";
+    window.gameplayCommand.status = "missing_player";
     window.gameplayMovement.groundVelocityX = 0.0F;
     window.gameplayMovement.groundVelocityZ = 0.0F;
     return;
@@ -2196,8 +2196,8 @@ void submitProductTargetCommand(Session& session,
   if (!window.targetDiscovered) {
     window.gameplayInputUsed = true;
     window.gameplayInputSource = std::string(source);
-    window.gameplayCommandKind = commandKindName(kind);
-    window.gameplayCommandStatus = "no_target";
+    window.gameplayCommand.kind = commandKindName(kind);
+    window.gameplayCommand.status = "no_target";
     window.gameplayReachGate = "not_attempted";
     if (kind == CommandKind::Interact) {
       window.gameplayOutcome.status = "no_target";
@@ -2232,7 +2232,7 @@ void submitProductTargetCommand(Session& session,
   if (kind == CommandKind::Interact) {
     recordProductInteractionOutcomeProof(session, window, outcomeBefore);
   }
-  if (kind == CommandKind::Interact && window.gameplayCommandAccepted &&
+  if (kind == CommandKind::Interact && window.gameplayCommand.accepted &&
       window.gameplayTickAdvanced) {
     window.interactionExecuted = true;
     if (window.activeRoom.loaded) {
@@ -2240,7 +2240,7 @@ void submitProductTargetCommand(Session& session,
           buildProductActiveRoomCollision(window.activeRoom, session.state());
     }
   }
-  if (kind == CommandKind::Attack && window.gameplayCommandAccepted &&
+  if (kind == CommandKind::Attack && window.gameplayCommand.accepted &&
       window.gameplayTickAdvanced) {
     window.attackExecuted = true;
   }
@@ -2406,10 +2406,10 @@ void applyProductResetActionPhase(Session& session,
   clearProductOutcomeProof(window);
   window.gameplayInputUsed = true;
   window.gameplayInputSource = std::string(source);
-  window.gameplayCommandKind = "reset";
-  window.gameplayCommandSubmitted = true;
-  window.gameplayCommandAccepted = reset.reset;
-  window.gameplayCommandStatus = reset.reset ? "accepted" : "rejected";  // branch-gate: BG-1155
+  window.gameplayCommand.kind = "reset";
+  window.gameplayCommand.submitted = true;
+  window.gameplayCommand.accepted = reset.reset;
+  window.gameplayCommand.status = reset.reset ? "accepted" : "rejected";  // branch-gate: BG-1155
   window.runtimeStateHash = session.stateHash();
 }
 

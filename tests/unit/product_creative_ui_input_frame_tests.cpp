@@ -1085,13 +1085,13 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
                 "injected no pointer selection") &&
          expect(!facade.measurementState().active,
                 "injected no measurement dispatch") &&
-         expect(window.creativeDocumentRevisionObserved,
+         expect(window.creativeDocumentRevision.observed,
                 "injected revision observed") &&
          expect(!window.creativeDocumentChangedThisFrame,
                 "injected tool row document unchanged") &&
-         expect(window.creativeDocumentRevisionBeforeFrame == 0U,
+         expect(window.creativeDocumentRevision.beforeFrame == 0U,
                 "injected tool row revision before") &&
-         expect(window.creativeDocumentRevisionAfterFrame == 0U,
+         expect(window.creativeDocumentRevision.afterFrame == 0U,
                 "injected tool row revision after") &&
          expect(!window.creativeBakedRoomAutoRefresh.requested,
                 "injected tool row no auto refresh") &&
@@ -1167,13 +1167,13 @@ bool inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() {
          expect(facade.toolState().activeTool ==
                     iggy3d::creative::Tool::Measure,
                 "measure row facade tool") &&
-         expect(window.creativeDocumentRevisionObserved,
+         expect(window.creativeDocumentRevision.observed,
                 "measure row revision observed") &&
          expect(!window.creativeDocumentChangedThisFrame,
                 "measure row document unchanged") &&
-         expect(window.creativeDocumentRevisionBeforeFrame == 0U,
+         expect(window.creativeDocumentRevision.beforeFrame == 0U,
                 "measure row revision before") &&
-         expect(window.creativeDocumentRevisionAfterFrame == 0U,
+         expect(window.creativeDocumentRevision.afterFrame == 0U,
                 "measure row revision after") &&
          expect(!window.creativeBakedRoomAutoRefresh.requested,
                 "measure row no auto refresh") &&
@@ -1385,13 +1385,13 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
                 "create injected object count") &&
          expect(facade.document().revision() == 1U,
                 "create injected document revision") &&
-         expect(window.creativeDocumentRevisionObserved,
+         expect(window.creativeDocumentRevision.observed,
                 "create injected revision observed") &&
          expect(window.creativeDocumentChangedThisFrame,
                 "create injected document changed") &&
-         expect(window.creativeDocumentRevisionBeforeFrame == 0U,
+         expect(window.creativeDocumentRevision.beforeFrame == 0U,
                 "create injected frame revision before") &&
-         expect(window.creativeDocumentRevisionAfterFrame == 1U,
+         expect(window.creativeDocumentRevision.afterFrame == 1U,
                 "create injected frame revision after") &&
          expect(window.creativeBakedRoomAutoRefresh.requested,
                 "create injected auto refresh requested state") &&
@@ -1551,13 +1551,13 @@ bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
                     created->kind ==
                         iggy3d::creative::CreativeObjectKind::Crate,
                 "crate injected object crate") &&
-         expect(window.creativeDocumentRevisionObserved,
+         expect(window.creativeDocumentRevision.observed,
                 "crate injected revision observed") &&
          expect(window.creativeDocumentChangedThisFrame,
                 "crate injected document changed") &&
-         expect(window.creativeDocumentRevisionBeforeFrame == 0U,
+         expect(window.creativeDocumentRevision.beforeFrame == 0U,
                 "crate injected revision before") &&
-         expect(window.creativeDocumentRevisionAfterFrame == 1U,
+         expect(window.creativeDocumentRevision.afterFrame == 1U,
                 "crate injected revision after") &&
          expect(window.creativeBakedRoomAutoRefresh.requested,
                 "crate injected auto refresh requested") &&

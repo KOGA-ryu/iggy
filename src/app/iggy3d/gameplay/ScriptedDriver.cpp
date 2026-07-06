@@ -73,7 +73,7 @@ void approachProductGameplayTarget(Session& session, ProductAppWindowState& wind
     applyProductGameplayActions(
         session, actions, window, "scripted",
         productActiveRoomCollisionSurfaces(window.activeRoomCollision));
-    if (!window.gameplayCommandAccepted) {
+    if (!window.gameplayCommand.accepted) {
       return;
     }
   }
@@ -84,7 +84,7 @@ void approachProductGameplayTarget(Session& session, ProductAppWindowState& wind
 void runScriptedProductGameplaySmoke(std::optional<Session>& activeSession,
                                      ProductAppWindowState& window) {
   if (!activeSession.has_value()) {
-    window.gameplayCommandStatus = "missing_session";
+    window.gameplayCommand.status = "missing_session";
     return;
   }
 

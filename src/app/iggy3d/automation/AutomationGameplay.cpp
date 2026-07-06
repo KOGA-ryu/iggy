@@ -66,8 +66,8 @@ bool applyGameplayActionState(ProductAutomationGameplayContext& context,
   applyProductGameplayActions(
       *context.activeSession, actions, context.window, "automation",
       productActiveRoomCollisionSurfaces(context.window.activeRoomCollision));
-  return context.window.gameplayCommandSubmitted &&
-         context.window.gameplayCommandAccepted &&
+  return context.window.gameplayCommand.submitted &&
+         context.window.gameplayCommand.accepted &&
          context.window.gameplayTickAdvanced;
 }
 

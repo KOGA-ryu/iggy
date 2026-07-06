@@ -527,7 +527,7 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
     applyProductGameplayActions(*activeSession, gameplayActionsForSession, window,
                                 inputSource, collisionSurfaces);
     result.actionApplied = !acceptedGameplayActions.entries.empty();
-    result.actionAccepted = window.gameplayCommandAccepted || mapMakerActionAccepted;
+    result.actionAccepted = window.gameplayCommand.accepted || mapMakerActionAccepted;
   } else if (mapMakerLive) {  // branch-gate: BG-1205
     result.actionApplied = mapMakerActionApplied;
     result.actionAccepted = mapMakerActionAccepted;

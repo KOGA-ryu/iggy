@@ -765,7 +765,7 @@ bool controllerSouthDoesNotJumpWhenFrontendBlocksGameplay() {
            expect(!blocked.actionApplied, label) &&
            expect(!blocked.actionAccepted, label) &&
            expect(!window.gameplayJumpRequested, label) &&
-           expect(!window.gameplayCommandSubmitted, label);
+           expect(!window.gameplayCommand.submitted, label);
   };
 
   return blockedJump(iggy3d::FrontendScreen::Settings,
@@ -833,9 +833,9 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
          expect(iggy3d::nearlyEqual(beforePosition,
                                     afterPlayer->transform.position),
                 "map maker movement does not move player body") &&
-         expect(!window.gameplayCommandSubmitted,
+         expect(!window.gameplayCommand.submitted,
                 "map maker movement does not submit player move command") &&
-         expect(window.gameplayCommandStatus != "creative_fly_owns_movement",
+         expect(window.gameplayCommand.status != "creative_fly_owns_movement",
                 "map maker movement avoids pause-like owner status");
 }
 
@@ -890,7 +890,7 @@ bool creativeDocumentSuppressesProductControllerMovement() {
                 "creative document surface kind") &&
          expect(!window.viewport.creativeFlyActive,
                 "creative document does not run creative fly") &&
-         expect(!window.gameplayCommandSubmitted,
+         expect(!window.gameplayCommand.submitted,
                 "creative document does not submit gameplay command") &&
          expect(iggy3d::nearlyEqual(beforePosition,
                                     afterPlayer->transform.position),

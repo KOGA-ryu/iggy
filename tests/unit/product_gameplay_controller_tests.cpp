@@ -456,7 +456,7 @@ bool runManualMove(float moveX,
   if (capturedWindow != nullptr) {
     *capturedWindow = window;
   }
-  return expect(window.gameplayCommandAccepted, "manual move accepted") &&
+  return expect(window.gameplayCommand.accepted, "manual move accepted") &&
          expect(window.gameplayMovement.status == "moved",
                 "manual movement status");
 }
@@ -468,7 +468,7 @@ bool productMoveUsesTunedManualStep() {
     return false;
   }
 
-  return expect(window.gameplayCommandAccepted, "move accepted") &&
+  return expect(window.gameplayCommand.accepted, "move accepted") &&
          expect(window.gameplayMovement.status == "moved", "movement status") &&
          expect(!window.physicsMovementPlanner.enabled,
                 "default physics planner disabled") &&
@@ -572,7 +572,7 @@ bool productMoveNormalizesDiagonalToTunedStep() {
                                       "unit/gameplay_controller_step");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayCommandAccepted, "diagonal move accepted") &&
+  return expect(window.gameplayCommand.accepted, "diagonal move accepted") &&
          expect(window.gameplayMovement.status == "moved",
                 "diagonal movement status") &&
          expect(window.gameplayMovement.profile == kExpectedManualFirstPersonProfile,
@@ -598,7 +598,7 @@ bool productSprintUsesSprintProfileAndStep() {
                                       "unit/gameplay_controller_sprint");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayCommandAccepted, "sprint move accepted") &&
+  return expect(window.gameplayCommand.accepted, "sprint move accepted") &&
          expect(window.gameplayMovement.status == "moved",
                 "sprint movement status") &&
          expect(window.gameplayMovement.profile ==
@@ -634,7 +634,7 @@ bool productMoveUsesRuntimeTunedWindowSpeed() {
                                       "unit/gameplay_controller_runtime_tuning");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayCommandAccepted, "runtime tuned move accepted") &&
+  return expect(window.gameplayCommand.accepted, "runtime tuned move accepted") &&
          expect(nearlyEqual(window.gameplayMovement.maxSpeedMetersPerSecond, 1.2F),
                 "runtime tuned speed proof") &&
          expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
@@ -663,7 +663,7 @@ bool productMoveUsesRuntimeTunedGroundAcceleration() {
                                       "unit/gameplay_controller_accel_tuning");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayCommandAccepted,
+  return expect(window.gameplayCommand.accepted,
                 "runtime acceleration tuned move accepted") &&
          expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
                             expectedStep),
@@ -752,7 +752,7 @@ bool productGroundDecelerationDecaysRetainedVelocity() {
                                       "unit/gameplay_controller_decel_release");
   const float decayedSpeed = std::fabs(window.gameplayMovement.groundVelocityZ);
 
-  return expect(window.gameplayCommandAccepted,
+  return expect(window.gameplayCommand.accepted,
                 "deceleration submits retained movement") &&
          expect(window.gameplayMovement.horizontalDistanceMeters > 0.0F,
                 "deceleration keeps moving after release") &&
@@ -871,7 +871,7 @@ bool productJumpCanMoveForwardInSameFrame() {
                 "jump forward movement reason") &&
          expect(window.gameplayMovement.policyBand == "airborne",
                 "jump forward movement policy") &&
-         expect(!window.gameplayCommandSubmitted,
+         expect(!window.gameplayCommand.submitted,
                 "jump forward avoids grounded command") &&
          expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
                             kExpectedManualFirstPersonStepMeters),
@@ -2059,7 +2059,7 @@ bool defaultOffMoveWithCollisionSurfacesUsesLegacyPath() {
                                       "unit/gameplay_controller_legacy_surfaces",
                                       surfaces);
 
-  return expect(window.gameplayCommandAccepted, "legacy surfaces move accepted") &&
+  return expect(window.gameplayCommand.accepted, "legacy surfaces move accepted") &&
          expect(window.gameplayMovement.status == "moved",
                 "legacy surfaces movement status") &&
          expect(window.gameplayCollision.surfacesUsed,
@@ -2096,7 +2096,7 @@ bool optInMoveWithCollisionSurfacesUsesPhysicsPlanner() {
                                       "unit/gameplay_controller_physics_surfaces",
                                       surfaces);
 
-  return expect(window.gameplayCommandAccepted, "physics move accepted") &&
+  return expect(window.gameplayCommand.accepted, "physics move accepted") &&
          expect(window.physicsMovementPlanner.enabled,
                 "physics planner enabled") &&
          expect(window.physicsMovementPlanner.requested,
@@ -2128,7 +2128,7 @@ bool optInMoveWithoutCollisionSurfacesRecordsNoSurfaces() {
   iggy3d::applyProductGameplayActions(*session, forwardMoveActions(), window,
                                       "unit/gameplay_controller_physics_no_surfaces");
 
-  return expect(window.gameplayCommandAccepted,
+  return expect(window.gameplayCommand.accepted,
                 "physics no surfaces move accepted") &&
          expect(window.physicsMovementPlanner.enabled,
                 "physics no surfaces planner enabled") &&

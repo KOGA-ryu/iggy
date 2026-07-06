@@ -51,6 +51,8 @@
 #include "app/iggy3d/ascii_room/AsciiRoomActivationState.hpp"
 #include "app/iggy3d/ProductStartupState.hpp"
 #include "app/iggy3d/ProductCreativeUiInputState.hpp"
+#include "app/iggy3d/ProductCreativeDocumentRevisionState.hpp"
+#include "app/iggy3d/gameplay/CommandState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -264,11 +266,8 @@ struct ProductAppWindowState {
   bool productSaveSessionSaved = false;
   std::string activeProductSaveId = "none";
   ProductActiveCreativeState activeCreative;
-  bool creativeDocumentRevisionObserved = false;
+  ProductCreativeDocumentRevisionState creativeDocumentRevision;
   bool creativeDocumentChangedThisFrame = false;
-  std::uint64_t creativeDocumentRevisionDocumentId = 0;
-  std::uint64_t creativeDocumentRevisionBeforeFrame = 0;
-  std::uint64_t creativeDocumentRevisionAfterFrame = 0;
   ProductCreativeUndoState creativeUndo;
   bool creativeBakedRoomStale = false;
   std::uint64_t creativeBakedRoomStaleDocumentId = 0;
@@ -331,8 +330,7 @@ struct ProductAppWindowState {
   bool rendererMutatedRuntime = false;
   bool scriptedGameplaySmoke = false;
   bool gameplayInputUsed = false;
-  bool gameplayCommandSubmitted = false;
-  bool gameplayCommandAccepted = false;
+  ProductGameplayCommandState gameplayCommand;
   bool gameplayTickAdvanced = false;
   bool playerPositionChanged = false;
   ProductGameplayMovementInfo gameplayMovement;
@@ -366,8 +364,6 @@ struct ProductAppWindowState {
   bool attackExecuted = false;
   ProductTransitionState productTransition;
   std::string gameplayInputSource = "none";
-  std::string gameplayCommandKind = "none";
-  std::string gameplayCommandStatus = "not_requested";
   std::string gameplayReachGate = "not_attempted";
   std::string gameplayLastRejection = "none";
   MenuOwner inputOwner = MenuOwner::None;

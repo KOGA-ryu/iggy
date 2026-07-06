@@ -713,11 +713,11 @@ void recordProductCreativeDocumentRevisionFrame(
     std::uint64_t documentIdAfter,
     std::uint64_t revisionAfter) {
   resetProductCreativeBakedRoomAutoRefresh(window);
-  window.creativeDocumentRevisionObserved = observed;
+  window.creativeDocumentRevision.observed = observed;
   window.creativeDocumentChangedThisFrame = false;
-  window.creativeDocumentRevisionDocumentId = observed ? documentIdAfter : 0U;
-  window.creativeDocumentRevisionBeforeFrame = observed ? revisionBefore : 0U;
-  window.creativeDocumentRevisionAfterFrame = observed ? revisionAfter : 0U;
+  window.creativeDocumentRevision.documentId = observed ? documentIdAfter : 0U;
+  window.creativeDocumentRevision.beforeFrame = observed ? revisionBefore : 0U;
+  window.creativeDocumentRevision.afterFrame = observed ? revisionAfter : 0U;
   if (!observed) {
     return;
   }
@@ -1690,10 +1690,10 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "scripted_gameplay_smoke", window.scriptedGameplaySmoke);
   appendReceiptField(receipt, "gameplay_input_used", window.gameplayInputUsed);
   appendReceiptField(receipt, "gameplay_input_source", window.gameplayInputSource);
-  appendReceiptField(receipt, "gameplay_command_submitted", window.gameplayCommandSubmitted);
-  appendReceiptField(receipt, "gameplay_command_kind", window.gameplayCommandKind);
-  appendReceiptField(receipt, "gameplay_command_status", window.gameplayCommandStatus);
-  appendReceiptField(receipt, "gameplay_command_accepted", window.gameplayCommandAccepted);
+  appendReceiptField(receipt, "gameplay_command_submitted", window.gameplayCommand.submitted);
+  appendReceiptField(receipt, "gameplay_command_kind", window.gameplayCommand.kind);
+  appendReceiptField(receipt, "gameplay_command_status", window.gameplayCommand.status);
+  appendReceiptField(receipt, "gameplay_command_accepted", window.gameplayCommand.accepted);
   appendReceiptField(receipt, "gameplay_tick_advanced", window.gameplayTickAdvanced);
   appendReceiptField(receipt, "gameplay_tick_reason_code",
                      window.gameplayTickReasonCode);
@@ -2518,15 +2518,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendProductCreativeBakedRoomAutoRefreshFields(
       receipt, window.creativeBakedRoomAutoRefresh);
   appendReceiptField(receipt, "creative_document_revision_observed",
-                     window.creativeDocumentRevisionObserved);
+                     window.creativeDocumentRevision.observed);
   appendReceiptField(receipt, "creative_document_changed_this_frame",
                      window.creativeDocumentChangedThisFrame);
   appendReceiptField(receipt, "creative_document_revision_document_id",
-                     window.creativeDocumentRevisionDocumentId);
+                     window.creativeDocumentRevision.documentId);
   appendReceiptField(receipt, "creative_document_revision_before_frame",
-                     window.creativeDocumentRevisionBeforeFrame);
+                     window.creativeDocumentRevision.beforeFrame);
   appendReceiptField(receipt, "creative_document_revision_after_frame",
-                     window.creativeDocumentRevisionAfterFrame);
+                     window.creativeDocumentRevision.afterFrame);
   appendReceiptField(receipt, "creative_undo_available",
                      window.creativeUndo.available);
   appendReceiptField(receipt, "creative_undo_depth",

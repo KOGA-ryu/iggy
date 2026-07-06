@@ -2311,7 +2311,7 @@ bool manualRebuildRoomCommandReportsRefreshThroughInputFrame() {
                 "manual rebuild refresh collision ready") &&
          expect(scenario.window.creativeUiCommand.bakedRoomRefresh.collisionQuerySurfaceCount == 7U,
                 "manual rebuild refresh collision query count") &&
-         expect(scenario.window.creativeDocumentRevisionObserved,
+         expect(scenario.window.creativeDocumentRevision.observed,
                 "manual rebuild revision observed") &&
          expect(!scenario.window.creativeDocumentChangedThisFrame,
                 "manual rebuild no document mutation") &&
@@ -2436,7 +2436,7 @@ bool manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() {
                 "manual empty rebuild collision not ready") &&
          expect(window.creativeUiCommand.bakedRoomRefresh.collisionQuerySurfaceCount == 0U,
                 "manual empty rebuild collision query count") &&
-         expect(window.creativeDocumentRevisionObserved,
+         expect(window.creativeDocumentRevision.observed,
                 "manual empty rebuild revision observed") &&
          expect(!window.creativeDocumentChangedThisFrame,
                 "manual empty rebuild no document mutation") &&
@@ -3874,7 +3874,7 @@ bool autoRefreshNoChangeMoveReleaseDoesNotRefreshThroughInputFrame() {
                 "auto move no-change initial refresh") &&
          expect(facade.document().revision() == scenario.revisionBeforeNoChange,
                "auto move no-change revision unchanged") &&
-        expect(scenario.window.creativeDocumentRevisionObserved,
+        expect(scenario.window.creativeDocumentRevision.observed,
                "auto move no-change revision observed") &&
         expect(!scenario.window.creativeDocumentChangedThisFrame,
                "auto move no-change not changed") &&

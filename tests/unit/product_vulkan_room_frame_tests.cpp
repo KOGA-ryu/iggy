@@ -1206,10 +1206,10 @@ bool creativeDocumentSurfaceHidesLegacyGameplayHudAndFeedback() {
   window.activeCreative.documentId = 42U;
   window.mapMakerStatus = "map_maker_enabled";
   window.mapMakerReasonCode = window.mapMakerStatus;
-  window.gameplayCommandSubmitted = true;
-  window.gameplayCommandKind = "move";
-  window.gameplayCommandStatus = "accepted";
-  window.gameplayCommandAccepted = true;
+  window.gameplayCommand.submitted = true;
+  window.gameplayCommand.kind = "move";
+  window.gameplayCommand.status = "accepted";
+  window.gameplayCommand.accepted = true;
   window.gameplayReachGate = "pass";
 
   iggy3d::FrontendState frontend;

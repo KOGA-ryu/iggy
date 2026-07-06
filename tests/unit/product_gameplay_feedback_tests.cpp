@@ -46,10 +46,10 @@ int main() {
   attackWindow.gameplayActive = true;
   attackWindow.targetDiscovered = true;
   attackWindow.gameplayReachGate = "pass";
-  attackWindow.gameplayCommandSubmitted = true;
-  attackWindow.gameplayCommandAccepted = true;
-  attackWindow.gameplayCommandKind = "attack";
-  attackWindow.gameplayCommandStatus = "accepted";
+  attackWindow.gameplayCommand.submitted = true;
+  attackWindow.gameplayCommand.accepted = true;
+  attackWindow.gameplayCommand.kind = "attack";
+  attackWindow.gameplayCommand.status = "accepted";
   attackWindow.gameplayLastRejection = "none";
   attackWindow.attackExecuted = true;
   const iggy3d::GameplayFeedback attack =
@@ -70,8 +70,8 @@ int main() {
   iggy3d::ProductAppWindowState noTargetWindow;
   noTargetWindow.gameplayActive = true;
   noTargetWindow.gameplayInputUsed = true;
-  noTargetWindow.gameplayCommandKind = "interact";
-  noTargetWindow.gameplayCommandStatus = "no_target";
+  noTargetWindow.gameplayCommand.kind = "interact";
+  noTargetWindow.gameplayCommand.status = "no_target";
   noTargetWindow.gameplayReachGate = "not_attempted";
   const iggy3d::GameplayFeedback noTarget =
       iggy3d::buildGameplayFeedback(noTargetWindow);
@@ -85,9 +85,9 @@ int main() {
 
   iggy3d::ProductAppWindowState rejectedWindow;
   rejectedWindow.gameplayActive = true;
-  rejectedWindow.gameplayCommandSubmitted = true;
-  rejectedWindow.gameplayCommandKind = "attack";
-  rejectedWindow.gameplayCommandStatus = "rejected";
+  rejectedWindow.gameplayCommand.submitted = true;
+  rejectedWindow.gameplayCommand.kind = "attack";
+  rejectedWindow.gameplayCommand.status = "rejected";
   rejectedWindow.gameplayReachGate = "fail";
   rejectedWindow.gameplayLastRejection = "out_of_range";
   const iggy3d::GameplayFeedback rejected =
