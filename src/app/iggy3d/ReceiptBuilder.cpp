@@ -908,13 +908,13 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                      settings.debugOverlayEnabled);
   appendReceiptField(receipt,
                      "dev_collision_overlay_visible",
-                     window.devCollisionOverlayVisible);
+                     window.devCollisionOverlay.visible);
   appendReceiptField(receipt,
                      "dev_collision_overlay_status",
-                     window.devCollisionOverlayStatus);
+                     window.devCollisionOverlay.status);
   appendReceiptField(receipt,
                      "dev_collision_overlay_reason_code",
-                     window.devCollisionOverlayReasonCode);
+                     window.devCollisionOverlay.reasonCode);
   appendReceiptField(receipt,
                      "gameplay_movement_tuning_status",
                      window.gameplayMovementTuningStatus);
@@ -1008,43 +1008,43 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "top_down_map_item_count",
                      window.topDownMap.itemCount);
   appendReceiptField(receipt, "mouse_capture_requested",
-                     window.mouseCaptureRequested);
-  appendReceiptField(receipt, "mouse_capture_active", window.mouseCaptureActive);
-  appendReceiptField(receipt, "mouse_capture_status", window.mouseCaptureStatus);
+                     window.mouseCapture.requested);
+  appendReceiptField(receipt, "mouse_capture_active", window.mouseCapture.active);
+  appendReceiptField(receipt, "mouse_capture_status", window.mouseCapture.status);
   appendReceiptField(receipt, "mouse_capture_reason_code",
-                     window.mouseCaptureReasonCode);
-  appendReceiptField(receipt, "mouse_capture_mode", window.mouseCaptureMode);
+                     window.mouseCapture.reasonCode);
+  appendReceiptField(receipt, "mouse_capture_mode", window.mouseCapture.mode);
   appendReceiptField(receipt, "mouse_capture_input_owner",
-                     window.mouseCaptureInputOwner);
+                     window.mouseCapture.inputOwner);
   appendReceiptField(receipt,
                      "controller_mode_toggle_requested",
-                     window.controllerModeToggleRequested);
+                     window.controllerModeToggle.requested);
   appendReceiptField(receipt,
                      "controller_mode_toggle_accepted",
-                     window.controllerModeToggleAccepted);
+                     window.controllerModeToggle.accepted);
   appendReceiptField(receipt,
                      "controller_mode_toggle_status",
-                     window.controllerModeToggleStatus);
+                     window.controllerModeToggle.status);
   appendReceiptField(receipt,
                      "controller_mode_toggle_reason_code",
-                     window.controllerModeToggleReasonCode);
+                     window.controllerModeToggle.reasonCode);
   appendReceiptField(receipt,
                      "controller_mode_toggle_surface",
-                     window.controllerModeToggleSurface);
+                     window.controllerModeToggle.surface);
   appendReceiptField(receipt, "controller_action_mapped",
-                     window.controllerActionMapped);
+                     window.controllerAction.mapped);
   appendReceiptField(receipt, "controller_action_status",
-                     window.controllerActionStatus);
+                     window.controllerAction.status);
   appendReceiptField(receipt, "controller_action_reason_code",
-                     window.controllerActionReasonCode);
+                     window.controllerAction.reasonCode);
   appendReceiptField(receipt, "controller_action_control",
-                     window.controllerActionControl);
+                     window.controllerAction.control);
   appendReceiptField(receipt, "controller_action_mode",
-                     window.controllerActionMode);
+                     window.controllerAction.mode);
   appendReceiptField(receipt, "controller_action_surface",
-                     window.controllerActionSurface);
+                     window.controllerAction.surface);
   appendReceiptField(receipt, "controller_action_input_action",
-                     window.controllerActionInputAction);
+                     window.controllerAction.inputAction);
   appendReceiptField(receipt, "dev_tools_category",
                      frontendDevToolsCategoryName(frontend.devToolsCategory));
   appendReceiptField(receipt, "launch_action", window.launchAction);

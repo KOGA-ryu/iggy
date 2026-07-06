@@ -45,11 +45,11 @@ ProductInteractionModeToggleResult applyProductInteractionModeFrameToggle(
 
   request.chordState = result.chordState;
   request.window.interactionMode = result.mode;
-  request.window.controllerModeToggleRequested = result.toggleRequested;
-  request.window.controllerModeToggleAccepted = result.toggleAccepted;
-  request.window.controllerModeToggleStatus = result.status;
-  request.window.controllerModeToggleReasonCode = result.reasonCode;
-  request.window.controllerModeToggleSurface = productInputSurfaceName(surface);
+  request.window.controllerModeToggle.requested = result.toggleRequested;
+  request.window.controllerModeToggle.accepted = result.toggleAccepted;
+  request.window.controllerModeToggle.status = result.status;
+  request.window.controllerModeToggle.reasonCode = result.reasonCode;
+  request.window.controllerModeToggle.surface = productInputSurfaceName(surface);
   return result;
 }
 

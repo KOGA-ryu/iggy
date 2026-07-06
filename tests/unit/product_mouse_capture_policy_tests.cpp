@@ -307,12 +307,12 @@ bool receiptCarriesMouseCaptureProof() {
   iggy3d::FrontendSettings settings;
   iggy3d::ProductSaveBridgeResult saves;
   iggy3d::ProductAppWindowState window;
-  window.mouseCaptureRequested = true;
-  window.mouseCaptureActive = true;
-  window.mouseCaptureStatus = "mouse_capture_active";
-  window.mouseCaptureReasonCode = "mouse_capture_active";
-  window.mouseCaptureMode = "relative";
-  window.mouseCaptureInputOwner = "gameplay";
+  window.mouseCapture.requested = true;
+  window.mouseCapture.active = true;
+  window.mouseCapture.status = "mouse_capture_active";
+  window.mouseCapture.reasonCode = "mouse_capture_active";
+  window.mouseCapture.mode = "relative";
+  window.mouseCapture.inputOwner = "gameplay";
   // TV1-H: the Navigate mirror is receipt-visible (fly active state).
   window.creativeNavigateActive = true;
 

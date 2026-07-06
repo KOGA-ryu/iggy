@@ -68,12 +68,12 @@ void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
       productCreativeDocumentEditorActiveForWindow(window),
       window.creativeNavigateActive,
   });
-  window.mouseCaptureRequested = policy.requested;
-  window.mouseCaptureActive = false;
-  window.mouseCaptureStatus = policy.status;
-  window.mouseCaptureReasonCode = policy.reasonCode;
-  window.mouseCaptureMode = policy.mode;
-  window.mouseCaptureInputOwner = policy.inputOwner;
+  window.mouseCapture.requested = policy.requested;
+  window.mouseCapture.active = false;
+  window.mouseCapture.status = policy.status;
+  window.mouseCapture.reasonCode = policy.reasonCode;
+  window.mouseCapture.mode = policy.mode;
+  window.mouseCapture.inputOwner = policy.inputOwner;
 }
 
 creative::CreativeSpatialProjectionRequest

@@ -16,6 +16,10 @@
 #include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/TopDownMapState.hpp"
+#include "app/iggy3d/debug/DevCollisionOverlayState.hpp"
+#include "app/iggy3d/input/ControllerActionState.hpp"
+#include "app/iggy3d/input/ControllerModeToggleState.hpp"
+#include "app/iggy3d/window/MouseCaptureState.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
@@ -185,27 +189,10 @@ struct ProductAppWindowState {
   std::uint64_t mapMakerGridMajorDotCount = 0;
   InteractionModeHud interactionModeHud;
   ProductTopDownMapState topDownMap;
-  bool devCollisionOverlayVisible = false;
-  std::string devCollisionOverlayStatus = "dev_collision_overlay_hidden";
-  std::string devCollisionOverlayReasonCode = "dev_collision_overlay_hidden";
-  bool mouseCaptureRequested = false;
-  bool mouseCaptureActive = false;
-  std::string mouseCaptureStatus = "mouse_capture_not_requested";
-  std::string mouseCaptureReasonCode = "mouse_capture_gameplay_inactive";
-  std::string mouseCaptureMode = "none";
-  std::string mouseCaptureInputOwner = "none";
-  bool controllerModeToggleRequested = false;
-  bool controllerModeToggleAccepted = false;
-  std::string controllerModeToggleStatus = "interaction_mode_toggle_not_requested";
-  std::string controllerModeToggleReasonCode = "interaction_mode_toggle_not_requested";
-  std::string controllerModeToggleSurface = "none";
-  bool controllerActionMapped = false;
-  std::string controllerActionStatus = "controller_action_not_requested";
-  std::string controllerActionReasonCode = "controller_action_not_requested";
-  std::string controllerActionControl = "none";
-  std::string controllerActionMode = "player";
-  std::string controllerActionSurface = "none";
-  std::string controllerActionInputAction = "none";
+  ProductDevCollisionOverlayState devCollisionOverlay;
+  ProductMouseCaptureState mouseCapture;
+  ProductControllerModeToggleState controllerModeToggle;
+  ProductControllerActionState controllerAction;
   FrontendSettingsTab selectedSettingsTab = FrontendSettingsTab::None;
   bool runtimeSessionCreated = false;
   bool gameplayActive = false;

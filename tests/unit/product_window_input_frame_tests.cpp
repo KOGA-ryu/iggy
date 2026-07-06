@@ -727,7 +727,7 @@ bool controllerSouthJumpsInGameplayPlayerMode() {
                 "gameplay south does not suppress gameplay") &&
          expect(window.lastInputAction == iggy3d::InputAction::PlayerJump,
                 "gameplay south routes to jump") &&
-         expect(window.controllerActionInputAction == "game.jump",
+         expect(window.controllerAction.inputAction == "game.jump",
                 "gameplay south records jump input action") &&
          expect(window.gameplayJumpRequested,
                 "gameplay south requests jump") &&
@@ -816,7 +816,7 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
                 "map maker movement owner gameplay") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "map maker movement remains creative mode") &&
-         expect(window.controllerActionMode == "player",
+         expect(window.controllerAction.mode == "player",
                 "map maker movement keeps controller fly mapping") &&
          expect(!window.gameplayInputSuppressed,
                 "map maker movement does not suppress gameplay input") &&
@@ -916,20 +916,20 @@ bool controllerChordToggleRecordsCreativeConsumption() {
          expect(!toggled.actionApplied, "chord toggle emits no gameplay action") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "chord toggle enters creative mode") &&
-         expect(window.controllerModeToggleRequested,
+         expect(window.controllerModeToggle.requested,
                 "chord toggle requested") &&
-         expect(window.controllerModeToggleAccepted,
+         expect(window.controllerModeToggle.accepted,
                 "chord toggle accepted") &&
-         expect(window.controllerModeToggleStatus == "interaction_mode_toggled",
+         expect(window.controllerModeToggle.status == "interaction_mode_toggled",
                 "chord toggle status") &&
-         expect(window.controllerActionStatus ==
+         expect(window.controllerAction.status ==
                     "controller_action_chord_consumed",
                 "chord toggle consumes controller action") &&
-         expect(window.controllerActionMode == "creative",
+         expect(window.controllerAction.mode == "creative",
                 "chord toggle records post-toggle mode") &&
-         expect(window.controllerActionSurface == "gameplay",
+         expect(window.controllerAction.surface == "gameplay",
                 "chord toggle surface gameplay") &&
-         expect(window.controllerActionInputAction == "none",
+         expect(window.controllerAction.inputAction == "none",
                 "chord toggle no mapped action");
 }
 
@@ -966,7 +966,7 @@ bool controllerSouthJumpsFromClamberedWallTop() {
                            ->transform.position.y;
 
   return expect(clambered.actionApplied, "wall top first south action applied") &&
-         expect(window.controllerActionInputAction == "game.jump",
+         expect(window.controllerAction.inputAction == "game.jump",
                 "wall top second south records jump action") &&
          expect(window.lastInputAction == iggy3d::InputAction::PlayerJump,
                 "wall top second south routes to jump") &&
@@ -2260,9 +2260,9 @@ bool collisionOverlayActionTogglesDistinctWindowState() {
   const bool enabledOk =
       expect(enabled.handled, "collision overlay enable handled") &&
       expect(enabled.accepted, "collision overlay enable accepted") &&
-      expect(window.devCollisionOverlayVisible,
+      expect(window.devCollisionOverlay.visible,
              "collision overlay window flag enabled") &&
-      expect(window.devCollisionOverlayStatus ==
+      expect(window.devCollisionOverlay.status ==
                  "dev_collision_overlay_enabled",
              "collision overlay enabled status") &&
       expect(!settings.debugOverlayEnabled,
@@ -2280,9 +2280,9 @@ bool collisionOverlayActionTogglesDistinctWindowState() {
   const bool disabledOk =
       expect(disabled.handled, "collision overlay disable handled") &&
       expect(disabled.accepted, "collision overlay disable accepted") &&
-      expect(!window.devCollisionOverlayVisible,
+      expect(!window.devCollisionOverlay.visible,
              "collision overlay window flag hidden") &&
-      expect(window.devCollisionOverlayStatus ==
+      expect(window.devCollisionOverlay.status ==
                  "dev_collision_overlay_hidden",
              "collision overlay hidden status") &&
       expect(!settings.debugOverlayEnabled,
@@ -2297,7 +2297,7 @@ bool collisionOverlayActionTogglesDistinctWindowState() {
          expect(devTools.accepted, "dev toggle after collision accepted") &&
          expect(iggy3d::frontendDevToolsOpen(frontend),
                 "dev toggle still opens dev tools") &&
-         expect(!window.devCollisionOverlayVisible,
+         expect(!window.devCollisionOverlay.visible,
                 "dev toggle does not toggle collision overlay");
 }
 
@@ -2561,7 +2561,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
   const bool f2Ok =
       expect(f2.handled, "top-level F2 handled") &&
       expect(f2.accepted, "top-level F2 accepted") &&
-      expect(collisionWindow.devCollisionOverlayVisible,
+      expect(collisionWindow.devCollisionOverlay.visible,
              "top-level F2 toggles collision overlay") &&
       expect(!settings.debugOverlayEnabled,
              "top-level F2 does not mutate debug setting");

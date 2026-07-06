@@ -43,14 +43,14 @@ bool defaultStateIsPlayerMode() {
   const iggy3d::ProductAppWindowState window;
   return expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "default interaction mode is player") &&
-         expect(!window.controllerModeToggleRequested,
+         expect(!window.controllerModeToggle.requested,
                 "default toggle not requested") &&
-         expect(!window.controllerModeToggleAccepted,
+         expect(!window.controllerModeToggle.accepted,
                 "default toggle not accepted") &&
-         expect(window.controllerModeToggleStatus ==
+         expect(window.controllerModeToggle.status ==
                     "interaction_mode_toggle_not_requested",
                 "default toggle status") &&
-         expect(window.controllerModeToggleSurface == "none",
+         expect(window.controllerModeToggle.surface == "none",
                 "default toggle surface");
 }
 
@@ -295,9 +295,9 @@ bool gameplayChordTogglesAndLatches() {
          expect(pressedAgain.toggleAccepted, "re-pressed chord accepted") &&
          expect(pressedAgain.mode == iggy3d::ProductInteractionMode::Player,
                 "re-pressed chord toggles player") &&
-         expect(window.controllerModeToggleSurface == "gameplay",
+         expect(window.controllerModeToggle.surface == "gameplay",
                 "gameplay toggle surface") &&
-         expect(window.controllerModeToggleStatus ==
+         expect(window.controllerModeToggle.status ==
                     "interaction_mode_toggled",
                 "final toggle status");
 }
@@ -316,7 +316,7 @@ bool roomEditorSurfaceAllowsToggle() {
   return expect(result.toggleAccepted, "room editor chord accepted") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "room editor toggles mode") &&
-         expect(window.controllerModeToggleSurface == "room_editor",
+         expect(window.controllerModeToggle.surface == "room_editor",
                 "room editor surface recorded");
 }
 
@@ -333,13 +333,13 @@ bool blockedSurfaceDoesNotToggle() {
          expect(!result.toggleAccepted, "starter chord rejected") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "starter preserves player mode") &&
-         expect(window.controllerModeToggleStatus ==
+         expect(window.controllerModeToggle.status ==
                     "interaction_mode_surface_blocked",
                 "starter blocked status") &&
-         expect(window.controllerModeToggleReasonCode ==
+         expect(window.controllerModeToggle.reasonCode ==
                     "interaction_mode_surface_blocked",
                 "starter blocked reason") &&
-         expect(window.controllerModeToggleSurface == "starter",
+         expect(window.controllerModeToggle.surface == "starter",
                 "starter surface recorded");
 }
 
@@ -352,11 +352,11 @@ bool receiptFieldsExposeInteractionModeProof() {
   iggy3d::ProductSaveBridgeResult saves;
 
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.controllerModeToggleRequested = true;
-  window.controllerModeToggleAccepted = true;
-  window.controllerModeToggleStatus = "interaction_mode_toggled";
-  window.controllerModeToggleReasonCode = "interaction_mode_toggled";
-  window.controllerModeToggleSurface = "gameplay";
+  window.controllerModeToggle.requested = true;
+  window.controllerModeToggle.accepted = true;
+  window.controllerModeToggle.status = "interaction_mode_toggled";
+  window.controllerModeToggle.reasonCode = "interaction_mode_toggled";
+  window.controllerModeToggle.surface = "gameplay";
 
   const iggy3d::RenderReceipt receipt =
       iggy3d::buildProductAppReceipt(options, world, frontend, settings, window,

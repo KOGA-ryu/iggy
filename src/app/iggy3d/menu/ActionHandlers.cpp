@@ -849,15 +849,15 @@ ProductMenuActionResult applyProductSystemPauseMenuAction(
     return {true, true};
   }
   if (action == InputAction::DevCollisionOverlay) {  // branch-gate: BG-1124
-    context.window.devCollisionOverlayVisible =
-        !context.window.devCollisionOverlayVisible;
-    context.window.devCollisionOverlayStatus =
-        context.window.devCollisionOverlayVisible
+    context.window.devCollisionOverlay.visible =
+        !context.window.devCollisionOverlay.visible;
+    context.window.devCollisionOverlay.status =
+        context.window.devCollisionOverlay.visible
             ? "dev_collision_overlay_enabled"
             : "dev_collision_overlay_hidden";
-    context.window.devCollisionOverlayReasonCode =
-        context.window.devCollisionOverlayStatus;
-    context.frontend.status = context.window.devCollisionOverlayStatus;
+    context.window.devCollisionOverlay.reasonCode =
+        context.window.devCollisionOverlay.status;
+    context.frontend.status = context.window.devCollisionOverlay.status;
     return {true, true};
   }
   // branch-gate: BG-1124
