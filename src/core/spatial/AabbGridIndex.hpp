@@ -47,12 +47,15 @@ struct AabbGridQueryResult {
 // Results are de-duplicated and returned in ascending id order (deterministic, platform-stable).
 //
 // Maintenance mirrors the mutation receipt: insert()/remove() on dirty-flag deltas, rebuildFrom()
-// on snapshot boundaries. Invalid (min !< max) or non-finite bounds are rejected. Bounds whose
-// cells fall outside the representable range are also rejected rather than silently truncated.
+// on snapshot boundaries. Inverted (min > max) or non-finite bounds are rejected; zero-extent
+// bounds are valid and index deterministically into their containing cell. Bounds whose cells fall
+// outside the representable range are also rejected rather than silently truncated.
 class AabbGridIndex {
  public:
   using ItemId = std::uint64_t;
 
+  // Non-finite, zero, or negative cell sizes preserve the legacy invalid-input fallback and
+  // normalize to the default 8 m cells.
   explicit AabbGridIndex(float cellSizeMeters = 8.0F);
 
   [[nodiscard]] float cellSizeMeters() const noexcept { return cellSizeMeters_; }
@@ -91,6 +94,9 @@ class AabbGridIndex {
   // Cell coords are biased into [0, 2*kCellBias) and packed 21 bits each into a 64-bit key.
   static constexpr std::int64_t kCellBias = 1 << 20;
 
+  // Conservative cell coverage: both min and max endpoints are floored, so an AABB whose max lies
+  // exactly on a grid line also occupies the adjacent cell. This intentionally over-keeps
+  // candidates for broadphase safety; exact intersects() remains the caller's narrow phase.
   [[nodiscard]] bool cellRange(const Aabb3& bounds, std::int64_t& minX,
                                std::int64_t& minY, std::int64_t& minZ,
                                std::int64_t& maxX, std::int64_t& maxY,

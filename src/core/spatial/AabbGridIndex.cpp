@@ -14,7 +14,9 @@ constexpr std::int64_t kCellUpper = (std::int64_t{1} << 20);  // == kCellBias
 }  // namespace
 
 AabbGridIndex::AabbGridIndex(float cellSizeMeters)
-    : cellSizeMeters_(cellSizeMeters > 0.0F ? cellSizeMeters : 8.0F) {}
+    : cellSizeMeters_(std::isfinite(cellSizeMeters) && cellSizeMeters > 0.0F
+                          ? cellSizeMeters
+                          : 8.0F) {}
 
 std::uint64_t AabbGridIndex::packCell(std::int64_t x, std::int64_t y,
                                       std::int64_t z) noexcept {

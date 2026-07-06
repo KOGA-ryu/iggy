@@ -57,6 +57,21 @@ bool emptyIndexQueriesEmpty() {
                 "empty index stats zero");
 }
 
+bool invalidCellSizesNormalizeToDefault() {
+  const float inf = std::numeric_limits<float>::infinity();
+  const float nan = std::numeric_limits<float>::quiet_NaN();
+  return expect(AabbGridIndex(0.0F).cellSizeMeters() == 8.0F,
+                "zero cell size falls back") &&
+         expect(AabbGridIndex(-1.0F).cellSizeMeters() == 8.0F,
+                "negative cell size falls back") &&
+         expect(AabbGridIndex(inf).cellSizeMeters() == 8.0F,
+                "infinite cell size falls back") &&
+         expect(AabbGridIndex(nan).cellSizeMeters() == 8.0F,
+                "nan cell size falls back") &&
+         expect(AabbGridIndex(2.0F).cellSizeMeters() == 2.0F,
+                "positive finite cell size preserved");
+}
+
 bool singleItemHitAndMiss() {
   AabbGridIndex index;
   const bool inserted = index.insert(42, box(0, 0, 0, 2, 2, 2));
@@ -67,6 +82,42 @@ bool singleItemHitAndMiss() {
          expect(index.size() == 1U, "size one after insert") &&
          expect(contains(hit, 42), "overlapping query hits") &&
          expect(miss.empty(), "distant query misses");
+}
+
+bool zeroExtentBoundsIndexDeterministically() {
+  AabbGridIndex index(1.0F);
+  const bool inserted = index.insert(77, box(2, 2, 2, 2, 2, 2));
+  const std::vector<AabbGridIndex::ItemId> exact =
+      index.query(box(2, 2, 2, 2, 2, 2));
+  const std::vector<AabbGridIndex::ItemId> containing =
+      index.query(box(1.5F, 1.5F, 1.5F, 2.5F, 2.5F, 2.5F));
+  const std::vector<AabbGridIndex::ItemId> adjacent =
+      index.query(box(3.1F, 3.1F, 3.1F, 3.2F, 3.2F, 3.2F));
+
+  return expect(inserted, "zero extent insert accepted") &&
+         expect(index.size() == 1U, "zero extent item counted") &&
+         expect(contains(exact, 77), "zero extent exact query returns item") &&
+         expect(contains(containing, 77),
+                "zero extent containing query returns item") &&
+         expect(adjacent.empty(), "zero extent unrelated cell misses");
+}
+
+bool exactBoundaryMaxEndpointIsConservative() {
+  AabbGridIndex index(1.0F);
+  const Aabb3 itemBounds = box(0, 0, 0, 1, 1, 1);
+  const Aabb3 adjacentQuery =
+      box(1.01F, 0.25F, 0.25F, 1.25F, 0.75F, 0.75F);
+  const bool inserted = index.insert(88, itemBounds);
+  const std::vector<AabbGridIndex::ItemId> left =
+      index.query(box(0.25F, 0.25F, 0.25F, 0.75F, 0.75F, 0.75F));
+  const std::vector<AabbGridIndex::ItemId> right = index.query(adjacentQuery);
+
+  return expect(inserted, "boundary insert accepted") &&
+         expect(contains(left, 88), "boundary item queryable from min cell") &&
+         expect(!intersects(itemBounds, adjacentQuery),
+                "boundary adjacent query is narrow-phase miss") &&
+         expect(contains(right, 88),
+                "boundary item conservatively queryable from adjacent max cell");
 }
 
 // THE broadphase invariant: the index candidate set is a SUPERSET of the true
@@ -223,7 +274,11 @@ bool queryCheckedReportsWhetherQueryRan() {
 }  // namespace
 
 int main() {
-  const bool ok = emptyIndexQueriesEmpty() && singleItemHitAndMiss() &&
+  const bool ok = emptyIndexQueriesEmpty() &&
+                  invalidCellSizesNormalizeToDefault() &&
+                  singleItemHitAndMiss() &&
+                  zeroExtentBoundsIndexDeterministically() &&
+                  exactBoundaryMaxEndpointIsConservative() &&
                   broadphaseNeverDropsTrueOverlap() &&
                   queryResultsAscendingAndDeduped() && insertReplaceMovesItem() &&
                   removeDropsItem() && rebuildMatchesIncrementalInserts() &&
