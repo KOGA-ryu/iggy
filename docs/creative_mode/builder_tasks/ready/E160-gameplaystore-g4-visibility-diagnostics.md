@@ -2,7 +2,7 @@
 
 ## Status
 
-Blocked until reviewer commits E159 and releases this card to `ready/`.
+Ready. E159 is committed; claim this card next.
 
 ## Objective
 
