@@ -81,16 +81,6 @@ roomVisible	GameplayStore
 objectiveVisible	GameplayStore
 rendererMutatedRuntime	GameplayStore
 scriptedGameplaySmoke	GameplayStore
-targetDiscovered	GameplayStore
-gameplayTarget	GameplayStore
-gameplayOutcome	GameplayStore
-sessionOutcome	GameplayStore
-gameplayTape	GameplayStore
-interactionExecuted	GameplayStore
-attackExecuted	GameplayStore
-productTransition	GameplayStore
-gameplayReachGate	GameplayStore
-gameplayLastRejection	GameplayStore
 lastInputAction	InputDeviceStore
 lastInputAccepted	InputDeviceStore
 automationControl	FrontendWindowShell

@@ -1214,7 +1214,7 @@ bool creativeDocumentSurfaceHidesLegacyGameplayHudAndFeedback() {
   window.gameplay.gameplayCommand.kind = "move";
   window.gameplay.gameplayCommand.status = "accepted";
   window.gameplay.gameplayCommand.accepted = true;
-  window.gameplayReachGate = "pass";
+  window.gameplay.gameplayReachGate = "pass";
 
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Gameplay;

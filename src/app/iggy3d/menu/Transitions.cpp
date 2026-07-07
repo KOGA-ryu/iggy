@@ -14,11 +14,11 @@ void setTransition(ProductAppWindowState& window,
                    bool returnedToGameplay,
                    bool returnedToTitle,
                    bool sessionPreserved) {
-  window.productTransition.lastAction = std::move(action);
-  window.productTransition.status = std::move(status);
-  window.productTransition.returnedToGameplay = returnedToGameplay;
-  window.productTransition.returnedToTitle = returnedToTitle;
-  window.productTransition.sessionPreserved = sessionPreserved;
+  window.gameplay.productTransition.lastAction = std::move(action);
+  window.gameplay.productTransition.status = std::move(status);
+  window.gameplay.productTransition.returnedToGameplay = returnedToGameplay;
+  window.gameplay.productTransition.returnedToTitle = returnedToTitle;
+  window.gameplay.productTransition.sessionPreserved = sessionPreserved;
 }
 
 void clearProductPauseOwnedTransientModes(ProductAppWindowState& window) {

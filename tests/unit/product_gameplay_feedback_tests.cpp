@@ -44,14 +44,14 @@ int main() {
 
   iggy3d::ProductAppWindowState attackWindow;
   attackWindow.gameplay.gameplayActive = true;
-  attackWindow.targetDiscovered = true;
-  attackWindow.gameplayReachGate = "pass";
+  attackWindow.gameplay.targetDiscovered = true;
+  attackWindow.gameplay.gameplayReachGate = "pass";
   attackWindow.gameplay.gameplayCommand.submitted = true;
   attackWindow.gameplay.gameplayCommand.accepted = true;
   attackWindow.gameplay.gameplayCommand.kind = "attack";
   attackWindow.gameplay.gameplayCommand.status = "accepted";
-  attackWindow.gameplayLastRejection = "none";
-  attackWindow.attackExecuted = true;
+  attackWindow.gameplay.gameplayLastRejection = "none";
+  attackWindow.gameplay.attackExecuted = true;
   const iggy3d::GameplayFeedback attack =
       iggy3d::buildGameplayFeedback(attackWindow);
   ok &= expect(attack.targetFeedbackVisible, "attack target feedback visible");
@@ -72,7 +72,7 @@ int main() {
   noTargetWindow.gameplay.gameplayInputUsed = true;
   noTargetWindow.gameplay.gameplayCommand.kind = "interact";
   noTargetWindow.gameplay.gameplayCommand.status = "no_target";
-  noTargetWindow.gameplayReachGate = "not_attempted";
+  noTargetWindow.gameplay.gameplayReachGate = "not_attempted";
   const iggy3d::GameplayFeedback noTarget =
       iggy3d::buildGameplayFeedback(noTargetWindow);
   ok &= expect(noTarget.targetFeedbackVisible, "no target feedback visible");
@@ -88,8 +88,8 @@ int main() {
   rejectedWindow.gameplay.gameplayCommand.submitted = true;
   rejectedWindow.gameplay.gameplayCommand.kind = "attack";
   rejectedWindow.gameplay.gameplayCommand.status = "rejected";
-  rejectedWindow.gameplayReachGate = "fail";
-  rejectedWindow.gameplayLastRejection = "out_of_range";
+  rejectedWindow.gameplay.gameplayReachGate = "fail";
+  rejectedWindow.gameplay.gameplayLastRejection = "out_of_range";
   const iggy3d::GameplayFeedback rejected =
       iggy3d::buildGameplayFeedback(rejectedWindow);
   ok &= expect(rejected.combatFeedbackVisible, "rejected combat feedback visible");

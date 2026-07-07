@@ -44,8 +44,8 @@ void approachProductGameplayTarget(Session& session, ProductAppWindowState& wind
                                      session.state().config.interactionRangeMeters, true});
     const CommandRejectionReason reachReason = rejectionReasonForReach(reach);
     if (reachReason == CommandRejectionReason::None) {
-      window.targetDiscovered = true;
-      window.gameplayReachGate = "pass";
+      window.gameplay.targetDiscovered = true;
+      window.gameplay.gameplayReachGate = "pass";
       return;
     }
     if (reach.status != ReachQueryStatus::OutOfRange) {

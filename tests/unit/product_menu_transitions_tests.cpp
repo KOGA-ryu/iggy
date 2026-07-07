@@ -121,7 +121,7 @@ int main() {
   ok &= expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Starter,
                "starter owns input");
   ok &= expect(liveSurface(frontend, window).gameplayInputSuppressed, "starter suppresses gameplay input");
-  ok &= expect(window.productTransition.status == "starter_ready",
+  ok &= expect(window.gameplay.productTransition.status == "starter_ready",
                "starter transition status");
   iggy3d::FrontendSettings settings;
   iggy3d::ProductAppWindowState staleStarterWindow = window;
@@ -153,9 +153,9 @@ int main() {
   ok &= expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
                "gameplay input owner");
   ok &= expect(!liveSurface(frontend, window).gameplayInputSuppressed, "gameplay input accepted");
-  ok &= expect(window.productTransition.returnedToGameplay,
+  ok &= expect(window.gameplay.productTransition.returnedToGameplay,
                "gameplay transition returned to gameplay");
-  ok &= expect(window.productTransition.sessionPreserved,
+  ok &= expect(window.gameplay.productTransition.sessionPreserved,
                "gameplay launch preserves session");
   const iggy3d::RenderReceipt gameplayReceipt =
       receiptFor(frontend, settings, window);
@@ -204,7 +204,7 @@ int main() {
                    !window.gameplay.gameplayJump.held &&
                    !window.gameplay.gameplayJump.cutApplied,
                "pause clears jump timing state");
-  ok &= expect(window.productTransition.sessionPreserved,
+  ok &= expect(window.gameplay.productTransition.sessionPreserved,
                "pause keeps session active");
   ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
                "pause clears map maker live state");
@@ -324,7 +324,7 @@ int main() {
   ok &= expect(!frontend.inputOwned, "resume releases frontend input");
   ok &= expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
                "resume restores gameplay owner");
-  ok &= expect(window.productTransition.returnedToGameplay,
+  ok &= expect(window.gameplay.productTransition.returnedToGameplay,
                "resume transition status");
   ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
                "resume does not restore map maker");
@@ -406,9 +406,9 @@ int main() {
                "return to title clears room editor cursor draw");
   ok &= expect(!window.viewport.productDrawRoomEditorPreviewVisible,
                "return to title clears room editor preview draw");
-  ok &= expect(window.productTransition.returnedToTitle,
+  ok &= expect(window.gameplay.productTransition.returnedToTitle,
                "return to title transition status");
-  ok &= expect(!window.productTransition.sessionPreserved,
+  ok &= expect(!window.gameplay.productTransition.sessionPreserved,
                "return to title does not preserve session");
   const iggy3d::RenderReceipt receipt =
       receiptFor(frontend, settings, window);

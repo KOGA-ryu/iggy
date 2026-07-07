@@ -1760,8 +1760,8 @@ void submitProductAirborneMove(Session& session,
   window.gameplay.gameplayCommand.kind = "move";
   window.gameplay.gameplayCommand.accepted = false;
   window.gameplay.gameplayCommand.status = "airborne";
-  window.gameplayReachGate = "not_attempted";
-  window.gameplayLastRejection = "none";
+  window.gameplay.gameplayReachGate = "not_attempted";
+  window.gameplay.gameplayLastRejection = "none";
   window.gameplay.gameplayTickAdvanced = false;
   window.gameplay.gameplayMovement.attempted = true;
   window.gameplay.gameplayMovement.blocked = false;
@@ -1823,24 +1823,24 @@ bool productMovementDebugChangedPosition(const ProductAppWindowState& window) {
 }
 
 void clearProductTargetProof(ProductAppWindowState& window) {
-  window.targetDiscovered = false;
-  window.gameplayTarget.status = "not_requested";
-  window.gameplayTarget.action = "none";
-  window.gameplayTarget.entityId = 0;
-  window.gameplayTarget.stableName = "none";
-  window.gameplayTarget.kind = "none";
-  window.gameplayTarget.distanceMeters = 0.0F;
-  window.gameplayTarget.supportsCommand = false;
+  window.gameplay.targetDiscovered = false;
+  window.gameplay.gameplayTarget.status = "not_requested";
+  window.gameplay.gameplayTarget.action = "none";
+  window.gameplay.gameplayTarget.entityId = 0;
+  window.gameplay.gameplayTarget.stableName = "none";
+  window.gameplay.gameplayTarget.kind = "none";
+  window.gameplay.gameplayTarget.distanceMeters = 0.0F;
+  window.gameplay.gameplayTarget.supportsCommand = false;
 }
 
 void clearProductOutcomeProof(ProductAppWindowState& window) {
-  window.gameplayOutcome.status = "not_requested";
-  window.gameplayOutcome.targetActiveAfter = false;
-  window.gameplayOutcome.inventoryChanged = false;
-  window.gameplayOutcome.itemId = "none";
-  window.gameplayOutcome.itemCount = 0;
-  window.gameplayOutcome.objectiveChanged = false;
-  window.gameplayOutcome.eventCount = 0;
+  window.gameplay.gameplayOutcome.status = "not_requested";
+  window.gameplay.gameplayOutcome.targetActiveAfter = false;
+  window.gameplay.gameplayOutcome.inventoryChanged = false;
+  window.gameplay.gameplayOutcome.itemId = "none";
+  window.gameplay.gameplayOutcome.itemCount = 0;
+  window.gameplay.gameplayOutcome.objectiveChanged = false;
+  window.gameplay.gameplayOutcome.eventCount = 0;
 }
 
 std::uint32_t inventoryItemCount(const InventoryState& inventory,
@@ -1888,66 +1888,66 @@ void recordProductInteractionOutcomeProof(
     ProductAppWindowState& window,
     const ProductInteractionOutcomeSnapshot& before) {
   const EntityState* target = session.state().world.findById(before.target);
-  window.gameplayOutcome.targetActiveAfter =
+  window.gameplay.gameplayOutcome.targetActiveAfter =
       target != nullptr && target->active;
-  window.gameplayOutcome.itemId = before.itemId.empty() ? "none" : before.itemId;
+  window.gameplay.gameplayOutcome.itemId = before.itemId.empty() ? "none" : before.itemId;
   const std::uint32_t itemCountAfter =
       inventoryItemCount(session.state().inventory,
                          before.playerSlot,
                          before.itemId);
-  window.gameplayOutcome.itemCount = itemCountAfter;
-  window.gameplayOutcome.inventoryChanged =
+  window.gameplay.gameplayOutcome.itemCount = itemCountAfter;
+  window.gameplay.gameplayOutcome.inventoryChanged =
       itemCountAfter != before.itemCountBefore;
   const bool objectiveCompleteAfter =
       !before.objectiveId.empty() &&
       objectiveComplete(session.state().objectives, before.objectiveId);
-  window.gameplayOutcome.objectiveChanged =
+  window.gameplay.gameplayOutcome.objectiveChanged =
       objectiveCompleteAfter != before.objectiveCompleteBefore;
   const std::size_t eventCountAfter = session.state().transient.events.size();
-  window.gameplayOutcome.eventCount =
+  window.gameplay.gameplayOutcome.eventCount =
       eventCountAfter >= before.eventCountBefore
           ? static_cast<std::uint64_t>(eventCountAfter - before.eventCountBefore)
           : 0U;
 
   if (!window.gameplay.gameplayCommand.accepted) {
-    window.gameplayOutcome.status = "rejected";
+    window.gameplay.gameplayOutcome.status = "rejected";
     return;
   }
   if (!window.gameplay.gameplayTickAdvanced) {
-    window.gameplayOutcome.status = "tick_failed";
+    window.gameplay.gameplayOutcome.status = "tick_failed";
     return;
   }
-  window.gameplayOutcome.status = "succeeded";
+  window.gameplay.gameplayOutcome.status = "succeeded";
 }
 
 void recordProductTargetProof(const Session& session,
                               ProductAppWindowState& window,
                               CommandKind kind,
                               const TargetQueryResult& target) {
-  window.targetDiscovered = target.status == TargetQueryStatus::Found;
-  window.gameplayTarget.status = targetQueryStatusName(target.status);
-  window.gameplayTarget.action = commandKindName(kind);
-  window.gameplayTarget.entityId = toUint64(target.target);
-  window.gameplayTarget.stableName = "none";
-  window.gameplayTarget.kind = "none";
-  window.gameplayTarget.distanceMeters = target.distanceMeters;
-  window.gameplayTarget.supportsCommand = target.targetSupportsCommand;
+  window.gameplay.targetDiscovered = target.status == TargetQueryStatus::Found;
+  window.gameplay.gameplayTarget.status = targetQueryStatusName(target.status);
+  window.gameplay.gameplayTarget.action = commandKindName(kind);
+  window.gameplay.gameplayTarget.entityId = toUint64(target.target);
+  window.gameplay.gameplayTarget.stableName = "none";
+  window.gameplay.gameplayTarget.kind = "none";
+  window.gameplay.gameplayTarget.distanceMeters = target.distanceMeters;
+  window.gameplay.gameplayTarget.supportsCommand = target.targetSupportsCommand;
 
-  if (!window.targetDiscovered) {
-    window.gameplayTarget.entityId = 0;
-    window.gameplayTarget.distanceMeters = 0.0F;
-    window.gameplayTarget.supportsCommand = false;
+  if (!window.gameplay.targetDiscovered) {
+    window.gameplay.gameplayTarget.entityId = 0;
+    window.gameplay.gameplayTarget.distanceMeters = 0.0F;
+    window.gameplay.gameplayTarget.supportsCommand = false;
     return;
   }
 
   const EntityState* entity = session.state().world.findById(target.target);
   if (entity == nullptr) {
-    window.gameplayTarget.status = "found_missing_entity";
+    window.gameplay.gameplayTarget.status = "found_missing_entity";
     return;
   }
-  window.gameplayTarget.stableName =
+  window.gameplay.gameplayTarget.stableName =
       entity->stableName.empty() ? "none" : entity->stableName;
-  window.gameplayTarget.kind = entityKindName(entity->kind);
+  window.gameplay.gameplayTarget.kind = entityKindName(entity->kind);
 }
 
 void recordProductMovementDebug(const Session& session, ProductAppWindowState& window) {
@@ -2081,8 +2081,8 @@ void submitProductGameplayCommand(Session& session,
   const SessionCommandResult submitted = session.submitCommand(command);
   window.gameplay.gameplayCommand.accepted =
       submitted.command.admission == CommandAdmissionStatus::Accepted;
-  window.gameplayLastRejection = commandRejectionReasonName(submitted.command.rejection);
-  window.gameplayReachGate = reachGateName(submitted.command.rejection);
+  window.gameplay.gameplayLastRejection = commandRejectionReasonName(submitted.command.rejection);
+  window.gameplay.gameplayReachGate = reachGateName(submitted.command.rejection);
   window.gameplay.gameplayCommand.status = window.gameplay.gameplayCommand.accepted ? "accepted" : "rejected";
 
   if (window.gameplay.gameplayCommand.accepted) {
@@ -2195,14 +2195,14 @@ void submitProductTargetCommand(Session& session,
   const EntityId actor = productPlayerActor(session);
   const TargetQueryResult target = queryProductGameplayTarget(session, kind);
   recordProductTargetProof(session, window, kind, target);
-  if (!window.targetDiscovered) {
+  if (!window.gameplay.targetDiscovered) {
     window.gameplay.gameplayInputUsed = true;
     window.gameplay.gameplayInputSource = std::string(source);
     window.gameplay.gameplayCommand.kind = commandKindName(kind);
     window.gameplay.gameplayCommand.status = "no_target";
-    window.gameplayReachGate = "not_attempted";
+    window.gameplay.gameplayReachGate = "not_attempted";
     if (kind == CommandKind::Interact) {
-      window.gameplayOutcome.status = "no_target";
+      window.gameplay.gameplayOutcome.status = "no_target";
     }
     return;
   }
@@ -2211,7 +2211,7 @@ void submitProductTargetCommand(Session& session,
       queryReach(ReachQueryRequest{&session.state().world, actor, target.target, false, {},
                                    session.state().config.interactionRangeMeters, true});
   const CommandRejectionReason reachReason = rejectionReasonForReach(reach);
-  window.gameplayReachGate = reachGateName(reachReason);
+  window.gameplay.gameplayReachGate = reachGateName(reachReason);
 
   CommandRecord command;
   command.playerSlot = 0;
@@ -2236,11 +2236,11 @@ void submitProductTargetCommand(Session& session,
   }
   if (kind == CommandKind::Interact && window.gameplay.gameplayCommand.accepted &&
       window.gameplay.gameplayTickAdvanced) {
-    window.interactionExecuted = true;
+    window.gameplay.interactionExecuted = true;
   }
   if (kind == CommandKind::Attack && window.gameplay.gameplayCommand.accepted &&
       window.gameplay.gameplayTickAdvanced) {
-    window.attackExecuted = true;
+    window.gameplay.attackExecuted = true;
   }
 }
 

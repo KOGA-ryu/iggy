@@ -69,118 +69,118 @@ void appendProductGameplaySceneStateFields(RenderReceipt& receipt, const Product
                      window.gameplay.physicsMovementPlanner.status);
   appendReceiptField(receipt, "physics_movement_planner_reason_code",
                      window.gameplay.physicsMovementPlanner.reasonCode);
-  appendReceiptField(receipt, "target_discovered", window.targetDiscovered);
+  appendReceiptField(receipt, "target_discovered", window.gameplay.targetDiscovered);
   appendReceiptField(receipt, "gameplay_target_status",
-                     window.gameplayTarget.status);
+                     window.gameplay.gameplayTarget.status);
   appendReceiptField(receipt, "gameplay_target_action",
-                     window.gameplayTarget.action);
+                     window.gameplay.gameplayTarget.action);
   appendReceiptField(receipt, "gameplay_target_entity_id",
-                     window.gameplayTarget.entityId);
+                     window.gameplay.gameplayTarget.entityId);
   appendReceiptField(receipt, "gameplay_target_stable_name",
-                     window.gameplayTarget.stableName);
-  appendReceiptField(receipt, "gameplay_target_kind", window.gameplayTarget.kind);
+                     window.gameplay.gameplayTarget.stableName);
+  appendReceiptField(receipt, "gameplay_target_kind", window.gameplay.gameplayTarget.kind);
   appendReceiptField(receipt, "gameplay_target_distance_meters",
-                     floatReceiptValue(window.gameplayTarget.distanceMeters));
+                     floatReceiptValue(window.gameplay.gameplayTarget.distanceMeters));
   appendReceiptField(receipt, "gameplay_target_supports_command",
-                     window.gameplayTarget.supportsCommand);
+                     window.gameplay.gameplayTarget.supportsCommand);
   appendReceiptField(receipt, "gameplay_outcome_status",
-                     window.gameplayOutcome.status);
+                     window.gameplay.gameplayOutcome.status);
   appendReceiptField(receipt, "gameplay_outcome_target_active_after",
-                     window.gameplayOutcome.targetActiveAfter);
+                     window.gameplay.gameplayOutcome.targetActiveAfter);
   appendReceiptField(receipt, "gameplay_outcome_inventory_changed",
-                     window.gameplayOutcome.inventoryChanged);
+                     window.gameplay.gameplayOutcome.inventoryChanged);
   appendReceiptField(receipt, "gameplay_outcome_item_id",
-                     window.gameplayOutcome.itemId);
+                     window.gameplay.gameplayOutcome.itemId);
   appendReceiptField(receipt, "gameplay_outcome_item_count",
-                     window.gameplayOutcome.itemCount);
+                     window.gameplay.gameplayOutcome.itemCount);
   appendReceiptField(receipt, "gameplay_outcome_objective_changed",
-                     window.gameplayOutcome.objectiveChanged);
+                     window.gameplay.gameplayOutcome.objectiveChanged);
   appendReceiptField(receipt, "gameplay_outcome_event_count",
-                     window.gameplayOutcome.eventCount);
-  appendReceiptField(receipt, "session_outcome", window.sessionOutcome);
+                     window.gameplay.gameplayOutcome.eventCount);
+  appendReceiptField(receipt, "session_outcome", window.gameplay.sessionOutcome);
   appendReceiptField(receipt, "gameplay_tape_requested",
-                     window.gameplayTape.requested);
-  appendReceiptField(receipt, "gameplay_tape_loaded", window.gameplayTape.loaded);
-  appendReceiptField(receipt, "gameplay_tape_path", window.gameplayTape.path);
-  appendReceiptField(receipt, "gameplay_tape_status", window.gameplayTape.status);
+                     window.gameplay.gameplayTape.requested);
+  appendReceiptField(receipt, "gameplay_tape_loaded", window.gameplay.gameplayTape.loaded);
+  appendReceiptField(receipt, "gameplay_tape_path", window.gameplay.gameplayTape.path);
+  appendReceiptField(receipt, "gameplay_tape_status", window.gameplay.gameplayTape.status);
   appendReceiptField(receipt, "gameplay_tape_reason_code",
-                     window.gameplayTape.reasonCode);
+                     window.gameplay.gameplayTape.reasonCode);
   appendReceiptField(receipt, "gameplay_tape_line_count",
-                     window.gameplayTape.lineCount);
+                     window.gameplay.gameplayTape.lineCount);
   appendReceiptField(receipt, "gameplay_tape_step_count",
-                     window.gameplayTape.stepCount);
+                     window.gameplay.gameplayTape.stepCount);
   appendReceiptField(receipt, "gameplay_tape_executed_step_count",
-                     window.gameplayTape.executedStepCount);
+                     window.gameplay.gameplayTape.executedStepCount);
   appendReceiptField(receipt, "gameplay_tape_expected_rejected_step_count",
-                     window.gameplayTape.expectedRejectedStepCount);
+                     window.gameplay.gameplayTape.expectedRejectedStepCount);
   appendReceiptField(receipt, "gameplay_tape_expected_blocked_step_count",
-                     window.gameplayTape.expectedBlockedStepCount);
+                     window.gameplay.gameplayTape.expectedBlockedStepCount);
   appendReceiptField(receipt, "gameplay_tape_failed_step",
-                     window.gameplayTape.failedStep);
+                     window.gameplay.gameplayTape.failedStep);
   appendReceiptField(receipt, "gameplay_tape_failed_source_line",
-                     window.gameplayTape.failedSourceLine);
+                     window.gameplay.gameplayTape.failedSourceLine);
   appendReceiptField(receipt, "gameplay_tape_failed_action",
-                     window.gameplayTape.failedAction);
+                     window.gameplay.gameplayTape.failedAction);
   appendReceiptField(receipt, "gameplay_tape_failed_target",
-                     window.gameplayTape.failedTarget);
+                     window.gameplay.gameplayTape.failedTarget);
   appendReceiptField(receipt, "gameplay_tape_failed_rejection",
-                     window.gameplayTape.failedRejection);
+                     window.gameplay.gameplayTape.failedRejection);
   appendReceiptField(receipt, "gameplay_tape_failed_movement_block",
-                     window.gameplayTape.failedMovementBlock);
+                     window.gameplay.gameplayTape.failedMovementBlock);
   appendReceiptField(receipt, "gameplay_tape_last_action",
-                     window.gameplayTape.lastAction);
+                     window.gameplay.gameplayTape.lastAction);
   appendReceiptField(receipt, "gameplay_tape_last_target",
-                     window.gameplayTape.lastTarget);
+                     window.gameplay.gameplayTape.lastTarget);
   appendReceiptField(receipt, "gameplay_tape_last_movement_block",
-                     window.gameplayTape.lastMovementBlock);
+                     window.gameplay.gameplayTape.lastMovementBlock);
   appendReceiptField(receipt, "gameplay_tape_key_collected",
-                     window.gameplayTape.keyCollected);
+                     window.gameplay.gameplayTape.keyCollected);
   appendReceiptField(receipt, "gameplay_tape_secret_door_opened",
-                     window.gameplayTape.secretDoorOpened);
+                     window.gameplay.gameplayTape.secretDoorOpened);
   appendReceiptField(receipt, "gameplay_tape_treasure_collected",
-                     window.gameplayTape.treasureCollected);
+                     window.gameplay.gameplayTape.treasureCollected);
   appendReceiptField(receipt, "gameplay_tape_npc_targetable",
-                     window.gameplayTape.npcTargetable);
+                     window.gameplay.gameplayTape.npcTargetable);
   appendReceiptField(receipt, "gameplay_tape_npc_defeated",
-                     window.gameplayTape.npcDefeated);
+                     window.gameplay.gameplayTape.npcDefeated);
   appendReceiptField(receipt, "gameplay_tape_exit_objective_complete",
-                     window.gameplayTape.exitObjectiveComplete);
+                     window.gameplay.gameplayTape.exitObjectiveComplete);
   appendReceiptField(receipt, "gameplay_tape_loop_complete",
-                     window.gameplayTape.loopComplete);
+                     window.gameplay.gameplayTape.loopComplete);
   appendReceiptField(receipt, "gameplay_tape_ai_command_logged",
-                     window.gameplayTape.aiCommandLogged);
+                     window.gameplay.gameplayTape.aiCommandLogged);
   appendReceiptField(receipt, "gameplay_tape_ai_attack_logged",
-                     window.gameplayTape.aiAttackLogged);
+                     window.gameplay.gameplayTape.aiAttackLogged);
   appendReceiptField(receipt, "gameplay_tape_ai_wait_logged",
-                     window.gameplayTape.aiWaitLogged);
+                     window.gameplay.gameplayTape.aiWaitLogged);
   appendReceiptField(receipt, "gameplay_tape_ai_player_damaged",
-                     window.gameplayTape.aiPlayerDamaged);
+                     window.gameplay.gameplayTape.aiPlayerDamaged);
   appendReceiptField(receipt, "gameplay_tape_ai_player_hp_before",
-                     static_cast<std::uint64_t>(window.gameplayTape.aiPlayerHpBefore));
+                     static_cast<std::uint64_t>(window.gameplay.gameplayTape.aiPlayerHpBefore));
   appendReceiptField(receipt, "gameplay_tape_ai_player_hp_after",
-                     static_cast<std::uint64_t>(window.gameplayTape.aiPlayerHpAfter));
+                     static_cast<std::uint64_t>(window.gameplay.gameplayTape.aiPlayerHpAfter));
   appendReceiptField(receipt, "gameplay_tape_ai_actor_id",
-                     window.gameplayTape.aiActorId);
+                     window.gameplay.gameplayTape.aiActorId);
   appendReceiptField(receipt, "gameplay_tape_ai_target_id",
-                     window.gameplayTape.aiTargetId);
+                     window.gameplay.gameplayTape.aiTargetId);
   appendReceiptField(receipt, "gameplay_tape_ai_behavior",
-                     window.gameplayTape.aiBehavior);
+                     window.gameplay.gameplayTape.aiBehavior);
   appendReceiptField(receipt, "gameplay_tape_ai_intent",
-                     window.gameplayTape.aiIntent);
-  appendReceiptField(receipt, "gameplay_reach_gate", window.gameplayReachGate);
-  appendReceiptField(receipt, "gameplay_last_rejection", window.gameplayLastRejection);
-  appendReceiptField(receipt, "interaction_executed", window.interactionExecuted);
-  appendReceiptField(receipt, "attack_executed", window.attackExecuted);
+                     window.gameplay.gameplayTape.aiIntent);
+  appendReceiptField(receipt, "gameplay_reach_gate", window.gameplay.gameplayReachGate);
+  appendReceiptField(receipt, "gameplay_last_rejection", window.gameplay.gameplayLastRejection);
+  appendReceiptField(receipt, "interaction_executed", window.gameplay.interactionExecuted);
+  appendReceiptField(receipt, "attack_executed", window.gameplay.attackExecuted);
   appendReceiptField(receipt, "product_transition_last_action",
-                     window.productTransition.lastAction);
+                     window.gameplay.productTransition.lastAction);
   appendReceiptField(receipt, "product_transition_status",
-                     window.productTransition.status);
+                     window.gameplay.productTransition.status);
   appendReceiptField(receipt, "product_transition_returned_to_gameplay",
-                     window.productTransition.returnedToGameplay);
+                     window.gameplay.productTransition.returnedToGameplay);
   appendReceiptField(receipt, "product_transition_returned_to_title",
-                     window.productTransition.returnedToTitle);
+                     window.gameplay.productTransition.returnedToTitle);
   appendReceiptField(receipt, "product_transition_session_preserved",
-                     window.productTransition.sessionPreserved);
+                     window.gameplay.productTransition.sessionPreserved);
   appendReceiptField(receipt, "camera_controller", window.viewport.cameraController);
   appendReceiptField(receipt, "camera_mode", window.viewport.cameraMode);
   appendReceiptField(receipt, "camera_controller_active",

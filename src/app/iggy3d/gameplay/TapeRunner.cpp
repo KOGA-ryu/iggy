@@ -356,54 +356,54 @@ StatusResult tickProductGameplayTape(Session& session,
 
 void recordProductGameplayTapeParse(const ProductGameplayTapeParseResult& parsed,
                                     ProductAppWindowState& window) {
-  window.gameplayTape.loaded = parsed.ok;
-  window.gameplayTape.status = parsed.status;
-  window.gameplayTape.reasonCode = parsed.reasonCode;
-  window.gameplayTape.lineCount = parsed.lineCount;
-  window.gameplayTape.stepCount =
+  window.gameplay.gameplayTape.loaded = parsed.ok;
+  window.gameplay.gameplayTape.status = parsed.status;
+  window.gameplay.gameplayTape.reasonCode = parsed.reasonCode;
+  window.gameplay.gameplayTape.lineCount = parsed.lineCount;
+  window.gameplay.gameplayTape.stepCount =
       static_cast<std::uint64_t>(parsed.tape.steps.size());
-  window.gameplayTape.failedStep = failedTapeStepReceiptValue(parsed.failedLine);
-  window.gameplayTape.failedSourceLine = parsed.failedLine;
-  window.gameplayTape.failedAction = "none";
-  window.gameplayTape.failedTarget = parsed.failedToken;
-  window.gameplayTape.failedRejection = "none";
+  window.gameplay.gameplayTape.failedStep = failedTapeStepReceiptValue(parsed.failedLine);
+  window.gameplay.gameplayTape.failedSourceLine = parsed.failedLine;
+  window.gameplay.gameplayTape.failedAction = "none";
+  window.gameplay.gameplayTape.failedTarget = parsed.failedToken;
+  window.gameplay.gameplayTape.failedRejection = "none";
 }
 
 void recordProductGameplayTapeRun(const ProductGameplayTapeRunResult& run,
                                   ProductAppWindowState& window) {
-  window.gameplayTape.status = run.status;
-  window.gameplayTape.reasonCode = run.reasonCode;
-  window.gameplayTape.stepCount = run.stepCount;
-  window.gameplayTape.executedStepCount = run.executedStepCount;
-  window.gameplayTape.expectedRejectedStepCount = run.expectedRejectedStepCount;
-  window.gameplayTape.expectedBlockedStepCount = run.expectedBlockedStepCount;
-  window.gameplayTape.failedStep = failedTapeStepReceiptValue(run.failedStepIndex);
-  window.gameplayTape.failedSourceLine = run.failedSourceLine;
-  window.gameplayTape.failedAction = run.failedAction;
-  window.gameplayTape.failedTarget = run.failedTarget;
-  window.gameplayTape.failedRejection = run.failedRejection;
-  window.gameplayTape.failedMovementBlock = run.failedMovementBlock;
-  window.gameplayTape.lastAction = run.lastAction;
-  window.gameplayTape.lastTarget = run.lastTarget;
-  window.gameplayTape.lastMovementBlock = run.lastMovementBlock;
-  window.gameplayTape.keyCollected = run.keyCollected;
-  window.gameplayTape.secretDoorOpened = run.secretDoorOpened;
-  window.gameplayTape.treasureCollected = run.treasureCollected;
-  window.gameplayTape.npcTargetable = run.npcTargetable;
-  window.gameplayTape.npcDefeated = run.npcDefeated;
-  window.gameplayTape.exitObjectiveComplete = run.exitObjectiveComplete;
-  window.gameplayTape.loopComplete = run.loopComplete;
-  window.gameplayTape.aiCommandLogged = run.aiCommandLogged;
-  window.gameplayTape.aiAttackLogged = run.aiAttackLogged;
-  window.gameplayTape.aiWaitLogged = run.aiWaitLogged;
-  window.gameplayTape.aiPlayerDamaged = run.aiPlayerDamaged;
-  window.gameplayTape.aiPlayerHpBefore = run.aiPlayerHpBefore;
-  window.gameplayTape.aiPlayerHpAfter = run.aiPlayerHpAfter;
-  window.gameplayTape.aiActorId = run.aiActorId;
-  window.gameplayTape.aiTargetId = run.aiTargetId;
-  window.gameplayTape.aiBehavior = run.aiBehavior;
-  window.gameplayTape.aiIntent = run.aiIntent;
-  window.sessionOutcome = run.sessionOutcome;
+  window.gameplay.gameplayTape.status = run.status;
+  window.gameplay.gameplayTape.reasonCode = run.reasonCode;
+  window.gameplay.gameplayTape.stepCount = run.stepCount;
+  window.gameplay.gameplayTape.executedStepCount = run.executedStepCount;
+  window.gameplay.gameplayTape.expectedRejectedStepCount = run.expectedRejectedStepCount;
+  window.gameplay.gameplayTape.expectedBlockedStepCount = run.expectedBlockedStepCount;
+  window.gameplay.gameplayTape.failedStep = failedTapeStepReceiptValue(run.failedStepIndex);
+  window.gameplay.gameplayTape.failedSourceLine = run.failedSourceLine;
+  window.gameplay.gameplayTape.failedAction = run.failedAction;
+  window.gameplay.gameplayTape.failedTarget = run.failedTarget;
+  window.gameplay.gameplayTape.failedRejection = run.failedRejection;
+  window.gameplay.gameplayTape.failedMovementBlock = run.failedMovementBlock;
+  window.gameplay.gameplayTape.lastAction = run.lastAction;
+  window.gameplay.gameplayTape.lastTarget = run.lastTarget;
+  window.gameplay.gameplayTape.lastMovementBlock = run.lastMovementBlock;
+  window.gameplay.gameplayTape.keyCollected = run.keyCollected;
+  window.gameplay.gameplayTape.secretDoorOpened = run.secretDoorOpened;
+  window.gameplay.gameplayTape.treasureCollected = run.treasureCollected;
+  window.gameplay.gameplayTape.npcTargetable = run.npcTargetable;
+  window.gameplay.gameplayTape.npcDefeated = run.npcDefeated;
+  window.gameplay.gameplayTape.exitObjectiveComplete = run.exitObjectiveComplete;
+  window.gameplay.gameplayTape.loopComplete = run.loopComplete;
+  window.gameplay.gameplayTape.aiCommandLogged = run.aiCommandLogged;
+  window.gameplay.gameplayTape.aiAttackLogged = run.aiAttackLogged;
+  window.gameplay.gameplayTape.aiWaitLogged = run.aiWaitLogged;
+  window.gameplay.gameplayTape.aiPlayerDamaged = run.aiPlayerDamaged;
+  window.gameplay.gameplayTape.aiPlayerHpBefore = run.aiPlayerHpBefore;
+  window.gameplay.gameplayTape.aiPlayerHpAfter = run.aiPlayerHpAfter;
+  window.gameplay.gameplayTape.aiActorId = run.aiActorId;
+  window.gameplay.gameplayTape.aiTargetId = run.aiTargetId;
+  window.gameplay.gameplayTape.aiBehavior = run.aiBehavior;
+  window.gameplay.gameplayTape.aiIntent = run.aiIntent;
+  window.gameplay.sessionOutcome = run.sessionOutcome;
   window.runtimeStateHash = run.runtimeStateHash;
   // branch-gate: BG-1032
   if (!run.ok) {
@@ -563,8 +563,8 @@ void runProductGameplayTapeFromOptions(
     return;
   }
 
-  request.window.gameplayTape.requested = true;
-  request.window.gameplayTape.path = request.options.gameplayTapePath.generic_string();
+  request.window.gameplay.gameplayTape.requested = true;
+  request.window.gameplay.gameplayTape.path = request.options.gameplayTapePath.generic_string();
   const ProductGameplayTapeParseResult parsed =
       loadProductGameplayTapeFile(request.options.gameplayTapePath);
   recordProductGameplayTapeParse(parsed, request.window);

@@ -27,13 +27,9 @@
 #include "app/iggy3d/ProductCreativeUndoState.hpp"
 #include "app/iggy3d/gameplay/TraversalState.hpp"
 #include "app/iggy3d/gameplay/DashState.hpp"
-#include "app/iggy3d/gameplay/OutcomeState.hpp"
 #include "app/iggy3d/gameplay/PhysicsMovementPlannerState.hpp"
-#include "app/iggy3d/menu/ProductTransitionState.hpp"
 #include "app/iggy3d/ProductCreativeUiProjectionState.hpp"
-#include "app/iggy3d/gameplay/TargetState.hpp"
 #include "app/iggy3d/gameplay/ResetState.hpp"
-#include "app/iggy3d/gameplay/TapeState.hpp"
 #include "app/iggy3d/automation/AutomationControlState.hpp"
 #include "app/iggy3d/ProductCreativeUiLastState.hpp"
 #include "app/iggy3d/window/ProductVulkanMenuState.hpp"
@@ -275,16 +271,6 @@ struct ProductAppWindowState {
   bool objectiveVisible = false;
   bool rendererMutatedRuntime = false;
   bool scriptedGameplaySmoke = false;
-  bool targetDiscovered = false;
-  ProductGameplayTargetState gameplayTarget;
-  ProductGameplayOutcomeState gameplayOutcome;
-  std::string sessionOutcome = "None";
-  ProductGameplayTapeState gameplayTape;
-  bool interactionExecuted = false;
-  bool attackExecuted = false;
-  ProductTransitionState productTransition;
-  std::string gameplayReachGate = "not_attempted";
-  std::string gameplayLastRejection = "none";
   InputAction lastInputAction = InputAction::None;
   bool lastInputAccepted = false;
   ProductAutomationControlState automationControl;

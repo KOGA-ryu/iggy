@@ -46,10 +46,10 @@ FeedbackTone commandTone(const std::string& status) {
 }
 
 std::string resultStatusFor(const ProductAppWindowState& window) {
-  if (window.attackExecuted) {
+  if (window.gameplay.attackExecuted) {
     return "attack_executed";
   }
-  if (window.interactionExecuted) {
+  if (window.gameplay.interactionExecuted) {
     return "interaction_executed";
   }
   if (window.gameplay.gameplayCommand.kind == "reset" && window.gameplay.gameplayCommand.accepted) {
@@ -95,29 +95,29 @@ GameplayFeedback buildGameplayFeedback(
   feedback.visible = window.gameplay.gameplayActive;
   feedback.commandKind = window.gameplay.gameplayCommand.kind;
   feedback.commandStatus = window.gameplay.gameplayCommand.status;
-  feedback.reachStatus = window.gameplayReachGate;
-  feedback.rejectionReason = window.gameplayLastRejection;
+  feedback.reachStatus = window.gameplay.gameplayReachGate;
+  feedback.rejectionReason = window.gameplay.gameplayLastRejection;
   feedback.resultStatus = resultStatusFor(window);
 
   feedback.targetStatus =
-      window.targetDiscovered
+      window.gameplay.targetDiscovered
           ? "discovered"
           : (isTargetCommand(window) && window.gameplay.gameplayCommand.status == "no_target"
                  ? "no_target"
                  : "not_attempted");
 
   feedback.targetFeedbackVisible =
-      feedback.visible && (window.targetDiscovered || isTargetCommand(window));
+      feedback.visible && (window.gameplay.targetDiscovered || isTargetCommand(window));
   feedback.commandFeedbackVisible =
       feedback.visible &&
       (window.gameplay.gameplayCommand.submitted || window.gameplay.gameplayCommand.status != "not_requested");
   feedback.reachFeedbackVisible =
       feedback.visible && feedback.reachStatus != "not_attempted";
   feedback.combatFeedbackVisible =
-      feedback.visible && (window.attackExecuted || feedback.commandKind == "attack");
+      feedback.visible && (window.gameplay.attackExecuted || feedback.commandKind == "attack");
   feedback.interactionFeedbackVisible =
       feedback.visible &&
-      (window.interactionExecuted || feedback.commandKind == "interact");
+      (window.gameplay.interactionExecuted || feedback.commandKind == "interact");
 
   addLine(feedback, "TARGET", feedback.targetStatus, targetTone(feedback.targetStatus),
           feedback.visible);

@@ -940,13 +940,13 @@ void refreshProductGameplayProjectionMetrics(
                                             request.creativeApp});
   // branch-gate: BG-1025
   if (!frame.hasGameplayProjection) {
-    window.sessionOutcome = "None";
+    window.gameplay.sessionOutcome = "None";
     applyGameplayProjectionMetrics(window, nullptr, nullptr, nullptr, nullptr, nullptr,
                                    false);
     return;
   }
 
-  window.sessionOutcome = std::string(productGameplayTapeSessionOutcomeName(
+  window.gameplay.sessionOutcome = std::string(productGameplayTapeSessionOutcomeName(
       request.activeSession->state().outcome));
   applyGameplayProjectionMetrics(window, frame.scenePtr(), frame.debugPtr(),
                                  frame.drawListPtr(), frame.viewportFramePtr(),
