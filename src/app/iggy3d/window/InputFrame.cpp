@@ -252,10 +252,12 @@ void recordProductWindowControllerActions(
     ProductControllerActionRoutingState& controllerAction,
     const GamepadControllerActionSample& sample,
     bool controllerModeChordRequested,
-    ActionState& actions) {
+    ActionState& actions,
+    const creative::CreativeAppState* creativeApp = nullptr) {
   const ProductInputSurface surface = productInputSurfaceFor(frontend, window);
   // branch-gate: BG-1205
-  const bool mapMakerLive = productMapMakerLiveForWindow(frontend, window);
+  const bool mapMakerLive =
+      productMapMakerLiveForSource(frontend, window, creativeApp);
   const ProductInteractionMode actionMode =
       mapMakerLive ? ProductInteractionMode::Player : window.interactionMode;
   const ProductInteractionMode proofMode =
@@ -424,7 +426,8 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
     Session* activeSession,
     const FrontendSettings* settings,
     const ActionState& gameplayActions,
-    std::string_view inputSource) {
+    std::string_view inputSource,
+    const creative::CreativeAppState* creativeApp = nullptr) {
   ProductControllerSampleInputResult result;
   result.processed = true;
   result.status = "controller_sample_processed";
@@ -511,7 +514,8 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   bool mapMakerActionApplied = false;
   bool mapMakerActionAccepted = false;
   ActionState gameplayActionsForSession = acceptedGameplayActions;
-  const bool mapMakerLive = productMapMakerLiveForWindow(frontend, window);
+  const bool mapMakerLive =
+      productMapMakerLiveForSource(frontend, window, creativeApp);
   if (mapMakerLive) {
     const ProductCreativeFlyResult fly =
         applyProductWindowCreativeFlyActions(window, activeSession,
@@ -569,12 +573,12 @@ ProductWindowTopLevelToggleResult dispatchProductWindowSystemToggleAction(
     InputAction action,
     FrontendSettings* settings,
     bool* closeRequested,
-    creative::CreativeAppState*) {
+    creative::CreativeAppState* creativeApp) {
   bool ignoredCloseRequested = false;
   bool& closeTarget =
       closeRequested == nullptr ? ignoredCloseRequested : *closeRequested;  // branch-gate: BG-1194
   const ProductMenuActionResult menuResult = applyProductSystemPauseMenuAction(
-      action, {frontend, window, closeTarget, settings});
+      action, {frontend, window, closeTarget, settings, creativeApp});
   return {menuResult.handled, menuResult.accepted, action};
 }
 
@@ -611,13 +615,15 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
     Session* activeSession,
     const FrontendSettings* settings,
     const ActionState& gameplayActions,
-    std::string_view inputSource) {
+    std::string_view inputSource,
+    creative::CreativeAppState* creativeApp) {
   return applyProductWindowInputActionsImpl(frontend,
                                             window,
                                             activeSession,
                                             settings,
                                             gameplayActions,
-                                            inputSource);
+                                            inputSource,
+                                            creativeApp);
 }
 
 void dispatchProductOpeningMenuMouseHit(
@@ -911,7 +917,9 @@ ProductControllerSampleInputResult processProductControllerActionSample(
       });
   const bool controllerModeChordRequested = modeToggle.toggleRequested;
 
-  if (productCreativeDocumentEditorActiveForWindow(context.window)) {
+  if (context.creativeApp != nullptr &&
+      productCreativeDocumentEditorActiveForSource(context.window,
+                                                   context.creativeApp)) {
     ProductControllerSampleInputResult result;
     result.processed = true;
     result.status = "controller_sample_creative_document_suppressed";
@@ -925,7 +933,8 @@ ProductControllerSampleInputResult processProductControllerActionSample(
                                        context.controllerAction,
                                        sample,
                                        controllerModeChordRequested,
-                                       controllerActions);
+                                       controllerActions,
+                                       context.creativeApp);
 
   // branch-gate: BG-1061
   if (!context.window.gameplayActive || context.activeSession == nullptr ||
@@ -942,7 +951,8 @@ ProductControllerSampleInputResult processProductControllerActionSample(
                                         context.activeSession,
                                         context.settings,
                                         controllerActions,
-                                        context.inputSource);
+                                        context.inputSource,
+                                        context.creativeApp);
 }
 
 ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPreview(
@@ -1586,7 +1596,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
         recordProductWindowControllerActions(
             context.frontend, context.window, context.inputFrame.controllerAction,
             gamepadControllerSample, controllerModeChordRequested,
-            gameplayActions);
+            gameplayActions, context.creativeApp);
       } else {
         // branch-gate: BG-1212
         if (!context.window.gameplayMovement.tuningVisible) {
@@ -1596,7 +1606,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
         recordProductWindowControllerActions(
             context.frontend, context.window, context.inputFrame.controllerAction,
             gamepadControllerSample, controllerModeChordRequested,
-            gameplayActions);
+            gameplayActions, context.creativeApp);
         pollMouseGameplayActions(context.inputFrame.mouse, gameplayActions);
       }
       ProductCreativeInputActionsRequest creativeRequest;
@@ -1610,7 +1620,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                                            context.window,
                                            &*context.activeSession,
                                            &context.settings, gameplayActions,
-                                           "action_map");
+                                           "action_map",
+                                           context.creativeApp);
     }
   }
   updateProductWindowMouseCapture(context.frontend,

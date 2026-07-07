@@ -222,7 +222,7 @@ iggy3d::ProductSaveCatalogEntry creativeCatalogEntry(
   return entry;
 }
 
-bool activeCreativeSaveSlotIsDisabledForProductLoad() {
+bool creativeSaveSlotIsDisabledForProductLoad() {
   const iggy3d::SaveSlotPreview slot =
       iggy3d::saveSlotPreviewFromCatalogEntry(
           creativeCatalogEntry(iggy3d::ProductSaveCatalogLocation::Active));
@@ -255,7 +255,7 @@ int main() {
                   sidecarSnapshotUpdatesPresentationOnly() &&
                   emptySidecarFallsBackWithoutDisablingSave() &&
                   corruptSaveIsVisibleDisabledRow() && deterministicOrdering() &&
-                  activeCreativeSaveSlotIsDisabledForProductLoad() &&
+                  creativeSaveSlotIsDisabledForProductLoad() &&
                   deletedCreativeSaveSlotStaysEnabledForRecovery();
   return ok ? 0 : 1;
 }

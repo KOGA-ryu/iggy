@@ -55,9 +55,6 @@ bool expectReceiptField(const iggy3d::RenderReceipt& receipt,
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreative.saveId = "creative_save";
-  window.activeCreative.worldId = "world_001";
-  window.activeCreative.documentId = 42U;
   return window;
 }
 
@@ -126,9 +123,9 @@ bool activeRuleUsesCreativeDocumentIdentity() {
 
   return expect(!iggy3d::productCreativeWireframeFrameActiveForWindow(player),
                 "player wireframe inactive") &&
-         expect(!iggy3d::productCreativeWireframeFrameActiveForWindow(
+         expect(iggy3d::productCreativeWireframeFrameActiveForWindow(
                     legacyCreative),
-                "legacy creative wireframe inactive") &&
+                "creative mode wireframe active") &&
          expect(iggy3d::productCreativeWireframeFrameActiveForWindow(
                     documentCreative),
                 "document creative wireframe active");
@@ -748,7 +745,6 @@ bool recorderPreservesExistingFields() {
   window.creativeUiCommand.status = "command_before";
   window.creativeViewportPickRequested = true;
   window.creativeViewportPickStatus = "pick_before";
-  window.activeCreative.saveStatus = "save_before";
   window.productVulkanMenu.uiReady = true;
   window.productVulkanMenu.uiStatus = "vulkan_before";
 
@@ -772,8 +768,6 @@ bool recorderPreservesExistingFields() {
                 "viewport pick requested kept") &&
          expect(window.creativeViewportPickStatus == "pick_before",
                 "viewport pick status kept") &&
-         expect(window.activeCreative.saveStatus == "save_before",
-                "creative save status kept") &&
          expect(window.productVulkanMenu.uiReady, "vulkan ready kept") &&
          expect(window.productVulkanMenu.uiStatus == "vulkan_before",
                 "vulkan status kept");

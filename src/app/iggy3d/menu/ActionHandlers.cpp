@@ -333,7 +333,9 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
     returnProductToTitleTransition(frontend, window, context.settings);
     if (context.creativeApp != nullptr) {
       creative::clearCreativeUndoStack(context.creativeApp->undoStack);
-      clearProductActiveCreativeIdentity(window, &context.creativeApp->identity);
+      context.window.creativeUndo.available = false;
+      context.window.creativeUndo.depth = 0;
+      context.creativeApp->identity.clear();
     }
     context.activeSession.reset();
     return {true, true};
@@ -806,7 +808,9 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
       return {true, false};
     }
     const bool enable =
-        !productMapMakerLiveForWindow(context.frontend, context.window);
+        !productMapMakerLiveForSource(context.frontend,
+                                      context.window,
+                                      context.creativeApp);
     // branch-gate: BG-1205
     context.window.interactionMode =
         enable ? ProductInteractionMode::Creative : ProductInteractionMode::Player;
@@ -873,7 +877,13 @@ ProductMenuActionResult applyProductSystemPauseMenuAction(
   ProductAppWindowState& window = context.window;
   // branch-gate: BG-1023
   if (frontend.screen == FrontendScreen::Gameplay && window.gameplayActive) {
+    const bool preserveCreativeMode =
+        productCreativeDocumentEditorActiveForSource(window,
+                                                     context.creativeApp);
     openProductPauseTransition(frontend, window, FrontendAction::Resume);
+    if (preserveCreativeMode) {
+      window.interactionMode = ProductInteractionMode::Creative;
+    }
     frontend.status = "pause_opened_from_gameplay";
     return {true, true};
   }

@@ -178,7 +178,7 @@ void applyProductOpeningMenuAction(InputAction action,
       applyProductSystemPauseMenuAction(
           action,
           {context.frontend, context.window, context.closeRequested,
-           &context.settings});
+           &context.settings, context.creativeApp});
   // branch-gate: BG-1024
   if (systemPause.handled) {
     return;

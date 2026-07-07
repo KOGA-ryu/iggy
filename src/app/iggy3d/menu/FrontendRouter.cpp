@@ -312,8 +312,16 @@ bool productMapMakerLiveForWindow(const FrontendState& frontend,
          ProductCreativeSurfaceKind::LegacyMapMaker;
 }
 
+bool productMapMakerLiveForSource(const FrontendState& frontend,
+                                  const ProductAppWindowState& window,
+                                  const creative::CreativeAppState* creativeApp) {
+  return productCreativeSurfaceKindForSource(frontend, window, creativeApp) ==
+         ProductCreativeSurfaceKind::LegacyMapMaker;
+}
+
 bool productCreativeWorldActiveForWindow(const ProductAppWindowState& window) {
-  return productCreativeWorldActiveForWindowMirror(window);
+  (void)window;
+  return false;
 }
 
 bool productCreativeWorldActiveForIdentity(
@@ -330,19 +338,10 @@ bool productCreativeWorldActiveForSource(
   return productCreativeWorldActiveForWindow(window);
 }
 
-bool productCreativeWorldActiveForWindowMirror(
-    const ProductAppWindowState& window) {
-  return (!window.activeCreative.saveId.empty() &&
-          window.activeCreative.saveId != "none") ||
-         (!window.activeCreative.worldId.empty() &&
-          window.activeCreative.worldId != "none") ||
-         window.activeCreative.documentId != 0;
-}
-
 bool productCreativeDocumentEditorActiveForWindow(
     const ProductAppWindowState& window) {
   return window.interactionMode == ProductInteractionMode::Creative &&
-         productCreativeWorldActiveForWindow(window);
+         !window.roomEditing.ready && !mapMakerExplicitlyEnabled(window);
 }
 
 bool productCreativeDocumentEditorActiveForSource(
@@ -358,13 +357,10 @@ bool productCreativeDocumentEditorActiveForSource(
 ProductCreativeSurfaceKind productCreativeSurfaceKindForWindow(
     const FrontendState& frontend,
     const ProductAppWindowState& window) {
-  if (productCreativeDocumentEditorActiveForWindow(window)) {
-    return ProductCreativeSurfaceKind::CreativeDocument;
-  }
-
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
   if (window.interactionMode == ProductInteractionMode::Creative &&
+      !window.roomEditing.ready &&
       mapMakerExplicitlyEnabled(window) &&
       surface.activeSurface == ProductFrontendSurface::Gameplay &&
       surface.inputOwner == MenuOwner::Gameplay &&
@@ -373,6 +369,16 @@ ProductCreativeSurfaceKind productCreativeSurfaceKindForWindow(
   }
 
   return ProductCreativeSurfaceKind::None;
+}
+
+ProductCreativeSurfaceKind productCreativeSurfaceKindForSource(
+    const FrontendState& frontend,
+    const ProductAppWindowState& window,
+    const creative::CreativeAppState* creativeApp) {
+  if (productCreativeDocumentEditorActiveForSource(window, creativeApp)) {
+    return ProductCreativeSurfaceKind::CreativeDocument;
+  }
+  return productCreativeSurfaceKindForWindow(frontend, window);
 }
 
 void syncProductWindowInputOwnerFromActiveSurface(

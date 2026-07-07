@@ -7,6 +7,7 @@
 #include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/menu/PauseUi.hpp"
 #include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
@@ -46,11 +47,6 @@ bool expectNear(float actual,
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
-  iggy3d::creative::CreativeActiveIdentity identity;
-  identity.saveId = "creative_save";
-  identity.worldId = "world_001";
-  identity.documentId = 42U;
-  iggy3d::mirrorProductActiveCreativeIdentity(identity, window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
 }
 
@@ -850,6 +846,10 @@ bool creativeDocumentSuppressesProductControllerMovement() {
   markCreativeDocumentWindow(window);
   window.mapMakerStatus = "map_maker_enabled";
   window.mapMakerReasonCode = window.mapMakerStatus;
+  iggy3d::creative::CreativeAppState app;
+  app.identity.saveId = "creative_save";
+  app.identity.worldId = "creative_world";
+  app.identity.documentId = 42U;
 
   const iggy3d::EntityId actor = session->state().players.actorForSlot(0);
   const iggy3d::EntityState* beforePlayer =
@@ -864,7 +864,7 @@ bool creativeDocumentSuppressesProductControllerMovement() {
 
   const iggy3d::ProductControllerSampleInputResult blocked =
       iggy3d::processProductControllerActionSample(
-          {frontend, window, &*session, chord, routing, nullptr, "unit"},
+          {frontend, window, &*session, chord, routing, nullptr, "unit", &app},
           iggy3d::productControllerActionSampleForControl(
               iggy3d::ProductControllerControl::LeftStickUp));
   const iggy3d::EntityState* afterPlayer =
@@ -883,11 +883,13 @@ bool creativeDocumentSuppressesProductControllerMovement() {
          expect(blocked.status ==
                     "controller_sample_creative_document_suppressed",
                 "creative document suppression status") &&
-         expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
-                "creative document is not legacy map maker") &&
-         expect(iggy3d::productCreativeSurfaceKindForWindow(frontend, window) ==
+         expect(!iggy3d::productMapMakerLiveForSource(frontend, window, &app),
+                "creative document source is not legacy map maker") &&
+         expect(iggy3d::productCreativeSurfaceKindForSource(frontend,
+                                                            window,
+                                                            &app) ==
                     iggy3d::ProductCreativeSurfaceKind::CreativeDocument,
-                "creative document surface kind") &&
+                "creative document source surface kind") &&
          expect(!window.viewport.creativeFlyActive,
                 "creative document does not run creative fly") &&
          expect(!window.gameplayCommand.submitted,
@@ -1160,7 +1162,7 @@ bool pauseMouseClickResumesBeforeCreativeOverlayInput() {
 // The prior guard skipped the block whenever the creative editor was active,
 // but a paused creative world keeps interactionMode==Creative, so the pause menu
 // (still drawn) became mouse-dead. Here the world is truly active
-// (activeCreative* set) AND paused; the Resume click must still route.
+// (Creative mode set) AND paused; the Resume click must still route.
 bool pauseMouseClickResumesInActiveCreativeWorld() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
@@ -2588,13 +2590,18 @@ bool topLevelToggleFunnelPreservesPolicies() {
   markCreativeDocumentWindow(creativeWorldWindow);
   creativeWorldWindow.mapMakerStatus = "map_maker_enabled";
   creativeWorldWindow.viewport.creativeFlyActive = true;
+  iggy3d::creative::CreativeAppState creativeWorldApp;
+  creativeWorldApp.identity.saveId = "creative_save";
+  creativeWorldApp.identity.worldId = "creative_world";
+  creativeWorldApp.identity.documentId = 77U;
   const iggy3d::ProductWindowTopLevelToggleResult creativeWorldM =
       iggy3d::dispatchProductWindowTopLevelToggleAction(
           creativeWorld,
           creativeWorldWindow,
           iggy3d::InputAction::MapMakerToggle,
           &settings,
-          &closeRequested);
+          &closeRequested,
+          &creativeWorldApp);
   const bool creativeWorldMOk =
       expect(creativeWorldM.handled, "top-level creative M handled") &&
       expect(!creativeWorldM.accepted, "top-level creative M rejected") &&
@@ -3003,10 +3010,14 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   markCreativeDocumentWindow(creativeWorldWindow);
   creativeWorldWindow.mapMakerStatus = "map_maker_enabled";
   creativeWorldWindow.viewport.creativeFlyActive = true;
+  iggy3d::creative::CreativeAppState creativeWorldApp;
+  creativeWorldApp.identity.saveId = "creative_save";
+  creativeWorldApp.identity.worldId = "creative_world";
+  creativeWorldApp.identity.documentId = 91U;
   const iggy3d::ProductMenuActionResult creativeWorldBlocked =
       iggy3d::applyProductGameplayMapMakerToggleAction(
           iggy3d::InputAction::MapMakerToggle,
-          {creativeWorld, creativeWorldWindow});
+          {creativeWorld, creativeWorldWindow, &creativeWorldApp});
   const bool creativeWorldBlockedOk =
       expect(creativeWorldBlocked.handled,
              "creative world map maker toggle handled") &&

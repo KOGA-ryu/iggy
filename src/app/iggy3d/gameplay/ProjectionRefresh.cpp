@@ -752,7 +752,9 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
       request.developerToolsEnabled,
       request.debugOverlayEnabled && hudSurface.gameplayHudVisible);
   const bool mapMakerLive =
-      productMapMakerLiveForWindow(request.frontend, window);
+      productMapMakerLiveForSource(request.frontend,
+                                   window,
+                                   request.creativeApp);
   // F0: a creative-document world (the blank stage) shows the ground grid too.
   const bool creativeStageGridLive =
       productCreativeDocumentEditorActiveForSource(window,

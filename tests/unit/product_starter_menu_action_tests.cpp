@@ -533,18 +533,18 @@ bool creativeOpenWorldLaunchesThroughStarterAction() {
                 "creative open revision clean") &&
          expect(facade.document().dirtyFlags() == 0U,
                 "creative open dirty clean") &&
-         expect(harness.window.activeCreative.saveId == created.saveId,
+         expect(app.identity.saveId == created.saveId,
                 "creative open active creative save id") &&
-         expect(harness.window.activeCreative.savePath ==
+         expect(app.identity.savePath ==
                     created.path.generic_string(),
                 "creative open active creative save path") &&
-         expect(harness.window.activeCreative.worldId == created.worldId,
+         expect(app.identity.worldId == created.worldId,
                 "creative open active creative world id") &&
-         expect(harness.window.activeCreative.documentId == created.documentId,
+         expect(app.identity.documentId == created.documentId,
                 "creative open active creative document id") &&
-         expect(harness.window.activeCreative.objectCount == 0U,
+         expect(app.identity.objectCount == 0U,
                 "creative open active creative object count") &&
-         expect(harness.window.activeCreative.nextObjectId ==
+         expect(app.identity.nextObjectId ==
                     facade.document().nextObjectId(),
                 "creative open active creative next id") &&
          expect(harness.window.activeProductSaveId == "none",
@@ -667,7 +667,7 @@ bool creativeOpenWorldIgnoresProductOnlySaves() {
                 "product continue still sees product save") &&
          expect(productContinue.selectedSaveId != "none",
                 "product continue selected product save") &&
-         expect(harness.window.activeCreative.saveId == "none",
+         expect(app.identity.saveId == "none",
                 "creative open product-only no active creative id") &&
          expect(harness.window.activeProductSaveId == "none",
                 "creative open product-only no active product id");
@@ -689,11 +689,11 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
   const iggy3d::ProductInteractionMode launchInteractionMode =
       harness.window.interactionMode;
   const std::string launchStatus = harness.window.launchStatus;
-  const std::string launchedSaveId = harness.window.activeCreative.saveId;
-  const std::string launchedSavePath = harness.window.activeCreative.savePath;
-  const std::string launchedWorldId = harness.window.activeCreative.worldId;
+  const std::string launchedSaveId = app.identity.saveId;
+  const std::string launchedSavePath = app.identity.savePath;
+  const std::string launchedWorldId = app.identity.worldId;
   const std::uint64_t launchedDocumentId =
-      harness.window.activeCreative.documentId;
+      app.identity.documentId;
   const bool launchNoProductSaveId =
       harness.window.activeProductSaveId == "none";
   const std::uint64_t launchObjectCount = facade.document().objectCount();
@@ -726,13 +726,13 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
   const bool productContinueAfterSaveExit =
       productContinueSelectsNoSave(harness.options.saveRoot);
   const bool creativeIdentityCleared =
-      harness.window.activeCreative.saveId == "none" &&
-      harness.window.activeCreative.savePath == "none" &&
-      harness.window.activeCreative.worldId == "none" &&
-      harness.window.activeCreative.documentId ==
+      app.identity.saveId == "none" &&
+      app.identity.savePath == "none" &&
+      app.identity.worldId == "none" &&
+      app.identity.documentId ==
           iggy3d::creative::kInvalidDocumentId &&
-      harness.window.activeCreative.objectCount == 0U &&
-      harness.window.activeCreative.nextObjectId ==
+      app.identity.objectCount == 0U &&
+      app.identity.nextObjectId ==
           iggy3d::creative::kInvalidObjectId;
 
   iggy3d::creative::CreativeAppState reopenedApp;
@@ -883,17 +883,17 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
                 "lifecycle reopened room visible") &&
          expect(reopenedRoom != nullptr && !reopenedRoom->locked,
                 "lifecycle reopened room unlocked") &&
-         expect(harness.window.activeCreative.saveId == launchedSaveId,
+         expect(reopenedApp.identity.saveId == launchedSaveId,
                 "lifecycle reopen restores active creative save") &&
-         expect(harness.window.activeCreative.savePath == launchedSavePath,
+         expect(reopenedApp.identity.savePath == launchedSavePath,
                 "lifecycle reopen restores active creative path") &&
-         expect(harness.window.activeCreative.worldId == launchedWorldId,
+         expect(reopenedApp.identity.worldId == launchedWorldId,
                 "lifecycle reopen restores active creative world") &&
-         expect(harness.window.activeCreative.documentId == launchedDocumentId,
+         expect(reopenedApp.identity.documentId == launchedDocumentId,
                 "lifecycle reopen restores active creative document") &&
-         expect(harness.window.activeCreative.objectCount == 1U,
+         expect(reopenedApp.identity.objectCount == 1U,
                 "lifecycle reopen active creative object count") &&
-         expect(harness.window.activeCreative.nextObjectId == 2U,
+         expect(reopenedApp.identity.nextObjectId == 2U,
                 "lifecycle reopen active creative next id") &&
          expect(harness.window.activeProductSaveId == "none",
                 "lifecycle reopen no product save id") &&

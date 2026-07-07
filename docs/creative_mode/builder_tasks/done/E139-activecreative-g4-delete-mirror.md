@@ -94,3 +94,63 @@ Append:
 - Receipt golden changed?:
 - Suite:
 - Concerns/deferred:
+
+## Completed Brief
+
+- Files changed/deleted:
+  - Deleted `src/app/iggy3d/ProductActiveCreativeState.hpp`.
+  - Removed `ProductAppWindowState::activeCreative` storage from `src/app/iggy3d/ProductAppWindowState.hpp`.
+  - Updated source routing/lifecycle files:
+    `src/app/iggy3d/Operations.hpp`,
+    `src/app/iggy3d/Operations.cpp`,
+    `src/app/iggy3d/ReceiptBuilder.cpp`,
+    `src/app/iggy3d/gameplay/ProjectionRefresh.cpp`,
+    `src/app/iggy3d/menu/ActionHandlers.hpp`,
+    `src/app/iggy3d/menu/ActionHandlers.cpp`,
+    `src/app/iggy3d/menu/FrontendRouter.hpp`,
+    `src/app/iggy3d/menu/FrontendRouter.cpp`,
+    `src/app/iggy3d/menu/InputRouter.cpp`,
+    `src/app/iggy3d/save/Flow.cpp`,
+    `src/app/iggy3d/window/InputFrame.hpp`,
+    `src/app/iggy3d/window/InputFrame.cpp`.
+  - Updated focused product/creative tests to use `creative::CreativeAppState::identity`
+    or source-aware routing helpers instead of the deleted window mirror.
+  - Removed the `activeCreative` ownership row from
+    `docs/god_struct_member_ownership.tsv`.
+- Flow divergence resolution:
+  - The null-facade pause-save branch now records explicit `creativeSave`
+    missing-facade defaults on the flow/window result without reading or writing
+    a window active-creative mirror.
+  - Return-to-title clears source-owned `creativeApp.identity` when available
+    and also clears the product window undo mirrors.
+- Mirror funnel deleted:
+  - Removed `mirrorProductActiveCreativeIdentity(...)` and
+    `clearProductActiveCreativeIdentity(...)` declarations, definitions, and
+    call sites.
+  - Creative world launch/open/save identity ownership now remains in
+    `creative::CreativeAppState::identity`.
+- Routing predicate cleanup:
+  - Removed `productCreativeWorldActiveForWindowMirror(...)`.
+  - Added/used source-aware routing helpers so product input/projection/menu
+    paths prefer `CreativeAppState::identity` when a source app is available,
+    while preserving conservative window-only fallbacks for legacy/no-source
+    tests.
+- TSV row removed:
+  - `docs/god_struct_member_ownership.tsv` no longer lists `activeCreative`.
+- Final grep result:
+  - `rg -n "activeCreative|ProductActiveCreativeState|mirrorProductActiveCreativeIdentity|clearProductActiveCreativeIdentity|productCreativeWorldActiveForWindowMirror" /Users/kogaryu/iggy3d/src /Users/kogaryu/iggy3d/tests /Users/kogaryu/iggy3d/docs/god_struct_member_ownership.tsv`
+    returned no hits.
+- Receipt golden changed?:
+  - No. `git diff -- tests/golden/product_receipt_key_order.golden` is empty,
+    and `./build/product_receipt_key_order_tests` reported
+    `1031 fields match golden`.
+- Suite:
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10` passed.
+  - Focused E139 ctest cluster passed: 15/15.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure`
+    passed: 260/260.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched/new files passed.
+- Concerns/deferred:
+  - `Testing/Temporary/LastTest.log` remains dirty from CTest output and was
+    intentionally left untouched.

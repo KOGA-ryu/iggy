@@ -114,14 +114,6 @@ struct ProductCreativeCurrentWorldSaveResult {
   CreativeWorldSaveResult saveResult;
 };
 
-void mirrorProductActiveCreativeIdentity(
-    const creative::CreativeActiveIdentity& identity,
-    ProductAppWindowState& window);
-
-void clearProductActiveCreativeIdentity(
-    ProductAppWindowState& window,
-    creative::CreativeActiveIdentity* identity = nullptr);
-
 std::string_view productSaveFlowOperationName(ProductSaveFlowOperation operation);
 
 ProductWorldTemplate productWorldTemplateFromOptions(

@@ -102,6 +102,7 @@ struct ProductControllerSampleInputContext {
   ProductControllerActionRoutingState& controllerAction;
   const FrontendSettings* settings = nullptr;
   std::string_view inputSource = "controller";
+  creative::CreativeAppState* creativeApp = nullptr;
 };
 
 struct ProductControllerSampleInputResult {
@@ -196,7 +197,8 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
     Session* activeSession,
     const FrontendSettings* settings,
     const ActionState& gameplayActions,
-    std::string_view inputSource);
+    std::string_view inputSource,
+    creative::CreativeAppState* creativeApp = nullptr);
 ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPreview(
     ProductWindowEditorMousePickPreviewContext context);
 

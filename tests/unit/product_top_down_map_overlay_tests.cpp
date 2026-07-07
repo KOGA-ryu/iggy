@@ -74,7 +74,7 @@ bool creativeEditingUsesEditorOverview() {
          expect(overlay.itemCount == 17U, "creative overview item count");
 }
 
-bool activeCreativeWorldHidesTopDownMap() {
+bool creativeWorldHidesTopDownMap() {
   const iggy3d::TopDownMapOverlay overlay =
       iggy3d::buildTopDownMapOverlay(
           {iggy3d::ProductRendererRequest::Vulkan,
@@ -175,7 +175,7 @@ int main() {
   ok &= inactiveGameplayHidesTopDownMap();
   ok &= playerGameplayUsesCompactMinimap();
   ok &= creativeEditingUsesEditorOverview();
-  ok &= activeCreativeWorldHidesTopDownMap();
+  ok &= creativeWorldHidesTopDownMap();
   ok &= nullPlayerGameplayUsesDiagnosticFallback();
   ok &= unknownInteractionModeFailsClosed();
   ok &= receiptCarriesTopDownMapFields();

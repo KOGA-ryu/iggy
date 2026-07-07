@@ -5,6 +5,7 @@
 #include "app/iggy3d/window/FramePresenter.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "core/math/Mat4.hpp"
 #include "core/math/Vec3.hpp"
 #include "render/FrameInput.hpp"
@@ -1201,9 +1202,10 @@ bool creativeDocumentSurfaceHidesLegacyGameplayHudAndFeedback() {
   seedMovementDebugFacts(window);
   seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreative.saveId = "creative_save";
-  window.activeCreative.worldId = "world_001";
-  window.activeCreative.documentId = 42U;
+  iggy3d::creative::CreativeAppState app;
+  app.identity.saveId = "creative_save";
+  app.identity.worldId = "world_001";
+  app.identity.documentId = 42U;
   window.mapMakerStatus = "map_maker_enabled";
   window.mapMakerReasonCode = window.mapMakerStatus;
   window.gameplayCommand.submitted = true;
@@ -1224,7 +1226,8 @@ bool creativeDocumentSurfaceHidesLegacyGameplayHudAndFeedback() {
               true,
               true,
               iggy3d::ProductRendererRequest::Vulkan,
-              frontend});
+              frontend,
+              &app});
   iggy3d::ProductVulkanGameplayFrame vulkanFrame =
       iggy3d::buildProductVulkanGameplayFrame(
           projection,

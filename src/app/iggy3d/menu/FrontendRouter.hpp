@@ -108,13 +108,14 @@ ProductActiveSurfaceFrame resolveProductActiveSurface(
     const ProductActiveSurfaceContext& context);
 bool productMapMakerLiveForWindow(const FrontendState& frontend,
                                   const ProductAppWindowState& window);
+bool productMapMakerLiveForSource(const FrontendState& frontend,
+                                  const ProductAppWindowState& window,
+                                  const creative::CreativeAppState* creativeApp);
 bool productCreativeWorldActiveForIdentity(
     const creative::CreativeActiveIdentity& identity);
 bool productCreativeWorldActiveForSource(
     const ProductAppWindowState& window,
     const creative::CreativeAppState* creativeApp);
-bool productCreativeWorldActiveForWindowMirror(
-    const ProductAppWindowState& window);
 bool productCreativeWorldActiveForWindow(const ProductAppWindowState& window);
 bool productCreativeDocumentEditorActiveForWindow(
     const ProductAppWindowState& window);
@@ -124,6 +125,10 @@ bool productCreativeDocumentEditorActiveForSource(
 ProductCreativeSurfaceKind productCreativeSurfaceKindForWindow(
     const FrontendState& frontend,
     const ProductAppWindowState& window);
+ProductCreativeSurfaceKind productCreativeSurfaceKindForSource(
+    const FrontendState& frontend,
+    const ProductAppWindowState& window,
+    const creative::CreativeAppState* creativeApp);
 void syncProductWindowInputOwnerFromActiveSurface(
     ProductAppWindowState& window,
     const ProductActiveSurfaceFrame& surface);

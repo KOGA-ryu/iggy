@@ -39,9 +39,15 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   RenderReceipt receipt;
   const ProductActiveSurfaceFrame activeSurface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
+  const bool sourceCreativeDocument =
+      window.interactionMode == ProductInteractionMode::Creative &&
+      productCreativeWorldActiveForIdentity(creativeIdentity);
   const ProductCreativeSurfaceKind creativeSurface =
-      productCreativeSurfaceKindForWindow(frontend, window);
-  const bool mapMakerLive = productMapMakerLiveForWindow(frontend, window);
+      sourceCreativeDocument
+          ? ProductCreativeSurfaceKind::CreativeDocument
+          : productCreativeSurfaceKindForWindow(frontend, window);
+  const bool mapMakerLive =
+      creativeSurface == ProductCreativeSurfaceKind::LegacyMapMaker;
   const GameplayFeedback feedback = buildGameplayFeedback(window);
   const ProductMovementProofPacket movementProof =
       buildProductMovementProofPacket(window);

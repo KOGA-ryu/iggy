@@ -29,7 +29,6 @@
 #include "app/iggy3d/gameplay/WallRunState.hpp"
 #include "app/iggy3d/save/SelectedProductSaveState.hpp"
 #include "app/iggy3d/ProductCreativeUndoState.hpp"
-#include "app/iggy3d/ProductActiveCreativeState.hpp"
 #include "app/iggy3d/gameplay/TraversalState.hpp"
 #include "app/iggy3d/gameplay/DashState.hpp"
 #include "app/iggy3d/gameplay/OutcomeState.hpp"
@@ -264,7 +263,6 @@ struct ProductAppWindowState {
   std::string productSaveSaveId = "none";
   bool productSaveSessionSaved = false;
   std::string activeProductSaveId = "none";
-  ProductActiveCreativeState activeCreative;
   ProductCreativeDocumentRevisionState creativeDocumentRevision;
   bool creativeDocumentChangedThisFrame = false;
   ProductCreativeUndoState creativeUndo;

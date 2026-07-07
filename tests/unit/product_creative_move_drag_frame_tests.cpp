@@ -44,9 +44,6 @@ iggy3d::FrontendState gameplayFrontend() {
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreative.saveId = "creative_save";
-  window.activeCreative.worldId = "world_001";
-  window.activeCreative.documentId = 42U;
   window.gameplayActive = true;
 }
 

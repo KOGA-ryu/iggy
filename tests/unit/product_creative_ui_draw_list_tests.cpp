@@ -238,7 +238,7 @@ bool defaultModelProducesReadyDrawList() {
                 "default theme");
 }
 
-bool primitivesAreNonInteractiveCreativeSemantics() {
+bool primitivesAreNonInteractiveDocumentSemantics() {
   const cr::CreativeUiModel model = populatedCreativeUiModel();
   iggy3d::ProductCreativeUiDrawListRequest request;
   request.model = &model;
@@ -805,7 +805,7 @@ bool repeatedBuildIsStable() {
 int main() {
   const bool ok = nullModelFailsClosed() &&
                   defaultModelProducesReadyDrawList() &&
-                  primitivesAreNonInteractiveCreativeSemantics() &&
+                  primitivesAreNonInteractiveDocumentSemantics() &&
                   defaultModelEmitsVisiblePanelsAndRowsOnly() &&
                   toolPaletteTextMarksOnlyActiveToolAcrossAllFourTools() &&
                   defaultModelUsesSeparatedPanelZones() &&

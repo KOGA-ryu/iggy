@@ -28,47 +28,6 @@
 
 namespace iggy3d {
 
-void mirrorProductActiveCreativeIdentity(
-    const creative::CreativeActiveIdentity& identity,
-    ProductAppWindowState& window) {
-  window.activeCreative.saveId =
-      identity.saveId.empty() ? "none" : identity.saveId;
-  window.activeCreative.savePath =
-      identity.savePath.empty() ? "none" : identity.savePath;
-  window.activeCreative.worldId =
-      identity.worldId.empty() ? "none" : identity.worldId;
-  window.activeCreative.documentId = identity.documentId;
-  window.activeCreative.objectCount = identity.objectCount;
-  window.activeCreative.nextObjectId = identity.nextObjectId;
-  window.activeCreative.saveStatus =
-      identity.saveStatus.empty() ? "creative_world_save_not_requested"
-                                  : identity.saveStatus;
-  window.activeCreative.saveReasonCode =
-      identity.saveReasonCode.empty() ? "creative_world_save_not_requested"
-                                      : identity.saveReasonCode;
-  window.activeCreative.saveDirtyFlagsBefore =
-      identity.saveDirtyFlagsBefore;
-  window.activeCreative.saveDirtyFlagsDrained =
-      identity.saveDirtyFlagsDrained;
-  window.activeCreative.saveDirtyFlagsAfter = identity.saveDirtyFlagsAfter;
-  window.activeCreative.saveSavedAtUtc =
-      identity.saveSavedAtUtc.empty() ? "none" : identity.saveSavedAtUtc;
-}
-
-void clearProductActiveCreativeIdentity(
-    ProductAppWindowState& window,
-    creative::CreativeActiveIdentity* identity) {
-  creative::CreativeActiveIdentity cleared;
-  if (identity != nullptr) {
-    identity->clear();
-    mirrorProductActiveCreativeIdentity(*identity, window);
-  } else {
-    mirrorProductActiveCreativeIdentity(cleared, window);
-  }
-  window.creativeUndo.available = false;
-  window.creativeUndo.depth = 0;
-}
-
 namespace {
 
 constexpr const char* kCreativeRoomBakeNoRenderableObjects =
@@ -794,7 +753,6 @@ bool missingWindowIdentity(std::string_view value) {
 }
 
 void recordActiveCreativeSaveIdentity(
-    ProductAppWindowState& window,
     creative::CreativeActiveIdentity& identity,
     std::string_view saveId,
     const std::filesystem::path& path,
@@ -814,11 +772,9 @@ void recordActiveCreativeSaveIdentity(
   identity.saveDirtyFlagsDrained = 0;
   identity.saveDirtyFlagsAfter = 0;
   identity.saveSavedAtUtc = "none";
-  mirrorProductActiveCreativeIdentity(identity, window);
 }
 
 void recordActiveCreativeSaveResult(
-    ProductAppWindowState& window,
     creative::CreativeActiveIdentity& identity,
     const ProductCreativeCurrentWorldSaveResult& result) {
   identity.saveStatus = result.status;
@@ -843,7 +799,6 @@ void recordActiveCreativeSaveResult(
     identity.saveSavedAtUtc =
         result.saveResult.savedAtUtc.empty() ? "none" : result.saveResult.savedAtUtc;
   }
-  mirrorProductActiveCreativeIdentity(identity, window);
 }
 
 void mirrorCreativeWorldCreateResult(
@@ -1350,7 +1305,6 @@ void launchProductNewWorld(const ProductAppOptions& options,
   }
 
   window.launchStatus = initialSave.status;
-  clearProductActiveCreativeIdentity(window);
   window.interactionMode = ProductInteractionMode::Player;
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
 }
@@ -1425,8 +1379,7 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
   result.accepted = true;
   setCreativeNewWorldLaunchStatus(result, "product_creative_world_launched");
   window.launchStatus = result.reasonCode;
-  recordActiveCreativeSaveIdentity(window,
-                                   creativeApp.identity,
+  recordActiveCreativeSaveIdentity(creativeApp.identity,
                                    result.saveId,
                                    result.path,
                                    result.worldId,
@@ -1494,8 +1447,7 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
   result.accepted = true;
   setCreativeOpenWorldLaunchStatus(result, "product_creative_world_opened");
   window.launchStatus = result.reasonCode;
-  recordActiveCreativeSaveIdentity(window,
-                                   creativeApp.identity,
+  recordActiveCreativeSaveIdentity(creativeApp.identity,
                                    result.saveId,
                                    result.path,
                                    result.worldId,
@@ -1536,18 +1488,18 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
 
   if (window.interactionMode != ProductInteractionMode::Creative) {
     setCurrentCreativeSaveStatus(result, "product_creative_save_inactive");
-    recordActiveCreativeSaveResult(window, creativeApp.identity, result);
+    recordActiveCreativeSaveResult(creativeApp.identity, result);
     return result;
   }
   if (missingWindowIdentity(identity.saveId)) {
     setCurrentCreativeSaveStatus(result, "product_creative_save_id_missing");
-    recordActiveCreativeSaveResult(window, creativeApp.identity, result);
+    recordActiveCreativeSaveResult(creativeApp.identity, result);
     return result;
   }
   if (facade.document().id() == creative::kInvalidDocumentId) {
     setCurrentCreativeSaveStatus(result,
                                  "product_creative_save_document_id_missing");
-    recordActiveCreativeSaveResult(window, creativeApp.identity, result);
+    recordActiveCreativeSaveResult(creativeApp.identity, result);
     return result;
   }
 
@@ -1575,7 +1527,7 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
   result.saved = saved.saved;
   if (!saved.accepted || !saved.saved) {
     setCurrentCreativeSaveStatus(result, saved.reasonCode);
-    recordActiveCreativeSaveResult(window, creativeApp.identity, result);
+    recordActiveCreativeSaveResult(creativeApp.identity, result);
     return result;
   }
 
@@ -1584,7 +1536,7 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
   creative::clearCreativeUndoStack(creativeApp.undoStack);
   window.creativeUndo.available = false;
   window.creativeUndo.depth = 0;
-  recordActiveCreativeSaveResult(window, creativeApp.identity, result);
+  recordActiveCreativeSaveResult(creativeApp.identity, result);
   return result;
 }
 
@@ -1679,7 +1631,6 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   (void)ensureActiveRoomCollisionFresh(window, &*activeSession);
   window.launchStatus = loaded.status;
   window.runtimeStateHash = activeSession->stateHash();
-  clearProductActiveCreativeIdentity(window);
   window.interactionMode = ProductInteractionMode::Player;
   enterProductGameplayTransition(frontend, window, launchAction);
 }

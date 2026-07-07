@@ -68,15 +68,13 @@ void recordPauseCreativeFacadeMissing(ProductPauseSaveFlowResult& result,
   result.creativeSaveRequested = true;
   result.creativeSave.status = std::string{reason};
   result.creativeSave.reasonCode = std::string{reason};
-  result.creativeSave.saveId = window.activeCreative.saveId;
-  result.creativeSave.worldId = window.activeCreative.worldId;
-  result.creativeSave.documentId = window.activeCreative.documentId;
-  result.creativeSave.objectCount = window.activeCreative.objectCount;
-  result.creativeSave.nextObjectId = window.activeCreative.nextObjectId;
+  result.creativeSave.saveId = "none";
+  result.creativeSave.worldId = "none";
+  result.creativeSave.documentId = creative::kInvalidDocumentId;
+  result.creativeSave.objectCount = 0U;
+  result.creativeSave.nextObjectId = creative::kInvalidObjectId;
   result.launchStatus = std::string{reason};
   window.launchStatus = std::string{reason};
-  window.activeCreative.saveStatus = std::string{reason};
-  window.activeCreative.saveReasonCode = std::string{reason};
 }
 
 ProductPauseSaveFlowResult executeCreativePauseSaveFlow(
@@ -118,8 +116,9 @@ ProductPauseSaveFlowResult executeCreativePauseSaveFlow(
     } else {
       returnProductToTitleTransition(frontend, window, *settings);
     }
-    clearProductActiveCreativeIdentity(
-        window, creativeApp != nullptr ? &creativeApp->identity : nullptr);
+    if (creativeApp != nullptr) {
+      creativeApp->identity.clear();
+    }
   }
   kPauseSaveSessionAppliers[result.sessionReset](activeSession);
   return result;

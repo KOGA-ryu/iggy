@@ -99,30 +99,25 @@ void prepopulateCreativeProjection(iggy3d::ProductAppWindowState& window) {
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
-  cr::CreativeActiveIdentity identity;
-  identity.saveId = "creative_save";
-  identity.worldId = "world_001";
-  identity.documentId = 42U;
-  iggy3d::mirrorProductActiveCreativeIdentity(identity, window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
 }
 
 void clearCreativeDocumentIdentity(iggy3d::ProductAppWindowState& window) {
-  iggy3d::clearProductActiveCreativeIdentity(window);
+  window.interactionMode = iggy3d::ProductInteractionMode::Player;
 }
 
 bool activeRuleUsesCreativeDocumentIdentity() {
   iggy3d::ProductAppWindowState window;
   const bool playerActive = iggy3d::productCreativeUiActiveForWindow(window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  const bool legacyCreativeActive =
+  const bool creativeModeActive =
       iggy3d::productCreativeUiActiveForWindow(window);
   markCreativeDocumentWindow(window);
   const bool documentCreativeActive =
       iggy3d::productCreativeUiActiveForWindow(window);
 
   return expect(!playerActive, "player inactive") &&
-         expect(!legacyCreativeActive, "legacy creative inactive") &&
+         expect(creativeModeActive, "creative mode active") &&
          expect(documentCreativeActive, "document creative active");
 }
 

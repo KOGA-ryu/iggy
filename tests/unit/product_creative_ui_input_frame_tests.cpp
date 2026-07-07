@@ -70,11 +70,6 @@ iggy3d::MouseClick clickAt(float x, float y) {
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
-  iggy3d::creative::CreativeActiveIdentity identity;
-  identity.saveId = "creative_save";
-  identity.worldId = "world_001";
-  identity.documentId = 42U;
-  iggy3d::mirrorProductActiveCreativeIdentity(identity, window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
 }
 

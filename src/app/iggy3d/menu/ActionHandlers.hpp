@@ -81,6 +81,7 @@ struct ProductSystemPauseMenuActionContext {
   ProductAppWindowState& window;
   bool& closeRequested;
   FrontendSettings* settings = nullptr;
+  creative::CreativeAppState* creativeApp = nullptr;
 };
 
 struct ProductGameplayMapMakerToggleActionContext {

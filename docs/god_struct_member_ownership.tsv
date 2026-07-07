@@ -69,7 +69,6 @@ productSaveSource	SaveSessionStore
 productSaveSaveId	SaveSessionStore
 productSaveSessionSaved	SaveSessionStore
 activeProductSaveId	SaveSessionStore
-activeCreative	delete
 creativeDocumentRevision	CreativeAuthoringStore
 creativeDocumentChangedThisFrame	CreativeAuthoringStore
 creativeUndo	CreativeAuthoringStore

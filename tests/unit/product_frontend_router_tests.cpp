@@ -58,7 +58,6 @@ iggy3d::creative::CreativeActiveIdentity liveCreativeIdentity() {
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
-  iggy3d::mirrorProductActiveCreativeIdentity(liveCreativeIdentity(), window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
 }
 
@@ -638,7 +637,6 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
   iggy3d::ProductAppWindowState staleIdentity;
   staleIdentity.gameplayActive = true;
   staleIdentity.interactionMode = iggy3d::ProductInteractionMode::Player;
-  staleIdentity.activeCreative.documentId = 42U;
   const iggy3d::creative::CreativeActiveIdentity liveIdentity =
       liveCreativeIdentity();
   const iggy3d::creative::CreativeActiveIdentity inactiveIdentity;
@@ -655,7 +653,8 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
                                      frontend,
                                      settings,
                                      document,
-                                     saves);
+                                     saves,
+                                     liveIdentity);
 
   return expect(iggy3d::productCreativeSurfaceKindName(
                     iggy3d::ProductCreativeSurfaceKind::None) == "none",
@@ -683,10 +682,16 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
                     staleIdentity,
                     &liveApp),
                 "source document editor requires creative mode") &&
-         expect(iggy3d::productCreativeWorldActiveForWindowMirror(document),
-                "window mirror fallback active") &&
-         expect(!iggy3d::productCreativeWorldActiveForWindowMirror(none),
-                "empty window mirror inactive") &&
+         expect(!iggy3d::productCreativeWorldActiveForWindow(document),
+                "window world fallback inactive without source identity") &&
+         expect(!iggy3d::productCreativeDocumentEditorActiveForWindow(document),
+                "window editor fallback cannot override explicit map maker") &&
+         expect(iggy3d::productCreativeDocumentEditorActiveForSource(
+                    document,
+                    &liveApp),
+                "source editor fallback active in creative mode") &&
+         expect(!iggy3d::productCreativeWorldActiveForWindow(none),
+                "empty window fallback inactive") &&
          expect(iggy3d::productCreativeSurfaceKindForWindow(frontend, legacy) ==
                     iggy3d::ProductCreativeSurfaceKind::LegacyMapMaker,
                 "legacy map maker surface") &&
@@ -694,10 +699,15 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
                 "legacy map maker live") &&
          expect(iggy3d::productCreativeSurfaceKindForWindow(frontend,
                                                             document) ==
+                    iggy3d::ProductCreativeSurfaceKind::LegacyMapMaker,
+                "window-only classifier keeps legacy map maker") &&
+         expect(iggy3d::productMapMakerLiveForWindow(frontend, document),
+                "window-only classifier keeps map maker live") &&
+         expect(iggy3d::productCreativeSurfaceKindForSource(frontend,
+                                                            document,
+                                                            &liveApp) ==
                     iggy3d::ProductCreativeSurfaceKind::CreativeDocument,
-                "document surface wins over stale map maker status") &&
-         expect(!iggy3d::productMapMakerLiveForWindow(frontend, document),
-                "document surface blocks map maker") &&
+                "source classifier uses creative document identity") &&
          expect(iggy3d::productCreativeSurfaceKindForWindow(frontend,
                                                             staleIdentity) ==
                     iggy3d::ProductCreativeSurfaceKind::None,
@@ -708,7 +718,7 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
                 "receipt mirrors creative document surface kind");
 }
 
-bool creativeDocumentIdentitySuppressesRoomEditorSurface() {
+bool windowOnlyCreativeModeKeepsRoomEditorSurface() {
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Gameplay;
   frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
@@ -723,12 +733,12 @@ bool creativeDocumentIdentitySuppressesRoomEditorSurface() {
           iggy3d::productActiveSurfaceContextForWindow(frontend, window));
 
   return expect(surface.activeSurface ==
-                    iggy3d::ProductFrontendSurface::Gameplay,
-                "creative document does not become room editor surface") &&
-         expect(surface.inputSurface == iggy3d::ProductInputSurface::Gameplay,
-                "creative document keeps gameplay backdrop input surface") &&
-         expect(surface.inputOwner == iggy3d::MenuOwner::Gameplay,
-                "creative document keeps gameplay owner for backdrop");
+                    iggy3d::ProductFrontendSurface::Editor,
+                "window-only creative mode keeps room editor surface") &&
+         expect(surface.inputSurface == iggy3d::ProductInputSurface::RoomEditor,
+                "window-only creative mode keeps room editor input surface") &&
+         expect(surface.inputOwner == iggy3d::MenuOwner::Editor,
+                "window-only creative mode keeps room editor owner");
 }
 
 bool inputOwnerCacheSyncUsesResolvedActiveSurface() {
@@ -821,7 +831,7 @@ int main() {
                   activeSurfaceMatrixCoversCurrentRoutes() &&
                   activeSurfaceWindowContextPreservesLegacyGameplayGate() &&
                   creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() &&
-                  creativeDocumentIdentitySuppressesRoomEditorSurface() &&
+                  windowOnlyCreativeModeKeepsRoomEditorSurface() &&
                   inputOwnerCacheSyncUsesResolvedActiveSurface();
   return ok ? 0 : 1;
 }

@@ -30,9 +30,6 @@ void markCreativeAppIdentity(cr::CreativeAppState& app) {
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreative.saveId = "creative_save";
-  window.activeCreative.worldId = "world_001";
-  window.activeCreative.documentId = 42U;
   return window;
 }
 
@@ -60,14 +57,13 @@ bool activeRuleUsesCreativeDocumentIdentity() {
   iggy3d::ProductAppWindowState window;
   const bool playerActive = iggy3d::productCreativeInputActiveForWindow(window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  const bool legacyCreativeActive =
+  const bool creativeModeActive =
       iggy3d::productCreativeInputActiveForWindow(window);
-  window.activeCreative.documentId = 42U;
   const bool documentCreativeActive =
       iggy3d::productCreativeInputActiveForWindow(window);
 
   return expect(!playerActive, "player inactive") &&
-         expect(!legacyCreativeActive, "legacy creative inactive") &&
+         expect(creativeModeActive, "creative mode active") &&
          expect(documentCreativeActive, "document creative active");
 }
 
@@ -116,7 +112,7 @@ bool inactiveWindowNoopsAndDoesNotMutateFacade() {
                 "inactive document unchanged");
 }
 
-bool activeCreativeNullFacadeReportsMissing() {
+bool creativeNullFacadeReportsMissing() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   iggy3d::ProductCreativeInputFrameRequest request;
   request.window = &window;
@@ -1041,7 +1037,7 @@ int main() {
   ok &= activeRuleUsesCreativeDocumentIdentity();
   ok &= nullWindowReturnsWindowMissing();
   ok &= inactiveWindowNoopsAndDoesNotMutateFacade();
-  ok &= activeCreativeNullFacadeReportsMissing();
+  ok &= creativeNullFacadeReportsMissing();
   ok &= toolKeysMapDirectlyToTools();
   ok &= heldToolKeyRecordsNoPressEdge();
   ok &= clickPacketMapsMouseClick();

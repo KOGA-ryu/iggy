@@ -70,41 +70,23 @@ cr::Id targetId(cr::CreativeObjectId objectId) {
   return static_cast<cr::Id>(objectId);
 }
 
-bool expectActiveCreativeIdentityMirrorsWindow(
+bool expectCreativeIdentityIsNormalized(
     const cr::CreativeActiveIdentity& identity,
-    const iggy3d::ProductAppWindowState& window,
+    const iggy3d::ProductAppWindowState&,
     std::string_view label) {
   const std::string prefix{label};
   bool ok = true;
-  ok &= expect(identity.saveId == window.activeCreative.saveId,
-               prefix + " identity save id mirrors window");
-  ok &= expect(identity.savePath == window.activeCreative.savePath,
-               prefix + " identity save path mirrors window");
-  ok &= expect(identity.worldId == window.activeCreative.worldId,
-               prefix + " identity world id mirrors window");
-  ok &= expect(identity.documentId == window.activeCreative.documentId,
-               prefix + " identity document id mirrors window");
-  ok &= expect(identity.objectCount == window.activeCreative.objectCount,
-               prefix + " identity object count mirrors window");
-  ok &= expect(identity.nextObjectId == window.activeCreative.nextObjectId,
-               prefix + " identity next object id mirrors window");
-  ok &= expect(identity.saveStatus == window.activeCreative.saveStatus,
-               prefix + " identity save status mirrors window");
-  ok &= expect(identity.saveReasonCode ==
-                   window.activeCreative.saveReasonCode,
-               prefix + " identity save reason mirrors window");
-  ok &= expect(identity.saveDirtyFlagsBefore ==
-                   window.activeCreative.saveDirtyFlagsBefore,
-               prefix + " identity dirty before mirrors window");
-  ok &= expect(identity.saveDirtyFlagsDrained ==
-                   window.activeCreative.saveDirtyFlagsDrained,
-               prefix + " identity dirty drained mirrors window");
-  ok &= expect(identity.saveDirtyFlagsAfter ==
-                   window.activeCreative.saveDirtyFlagsAfter,
-               prefix + " identity dirty after mirrors window");
-  ok &= expect(identity.saveSavedAtUtc ==
-                   window.activeCreative.saveSavedAtUtc,
-               prefix + " identity saved timestamp mirrors window");
+  ok &= expect(!identity.saveId.empty(), prefix + " identity save id normalized");
+  ok &= expect(!identity.savePath.empty(),
+               prefix + " identity save path normalized");
+  ok &= expect(!identity.worldId.empty(),
+               prefix + " identity world id normalized");
+  ok &= expect(!identity.saveStatus.empty(),
+               prefix + " identity save status normalized");
+  ok &= expect(!identity.saveReasonCode.empty(),
+               prefix + " identity save reason normalized");
+  ok &= expect(!identity.saveSavedAtUtc.empty(),
+               prefix + " identity saved timestamp normalized");
   return ok;
 }
 
@@ -519,7 +501,8 @@ iggy3d::ProductMenuActionResult confirmPauseAction(
   iggy3d::FrontendSettings settings;
 
   (void)iggy3d::applyProductSystemPauseMenuAction(
-      iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
+      iggy3d::InputAction::SystemPause,
+      {frontend, window, closeRequested, nullptr, app});
   frontend.selectedAction = action;
   return iggy3d::applyProductPauseMenuAction(
       iggy3d::InputAction::MenuConfirm,
@@ -627,22 +610,22 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
                 "creative launch document id scan status") &&
          expect(window.activeProductSaveId == "none",
                 "creative launch does not set product save id") &&
-         expect(window.activeCreative.saveId == launched.saveId,
+         expect(app.identity.saveId == launched.saveId,
                 "creative launch active creative save id") &&
-         expect(window.activeCreative.savePath == launched.path.generic_string(),
+         expect(app.identity.savePath == launched.path.generic_string(),
                 "creative launch active creative save path") &&
-         expect(window.activeCreative.worldId == launched.worldId,
+         expect(app.identity.worldId == launched.worldId,
                 "creative launch active creative world id") &&
-         expect(window.activeCreative.documentId == launched.documentId,
+         expect(app.identity.documentId == launched.documentId,
                 "creative launch active creative document id") &&
-         expect(window.activeCreative.objectCount == launched.objectCount,
+         expect(app.identity.objectCount == launched.objectCount,
                 "creative launch active creative object count") &&
-         expect(window.activeCreative.nextObjectId == launched.nextObjectId,
+         expect(app.identity.nextObjectId == launched.nextObjectId,
                 "creative launch active creative next id") &&
-         expect(window.activeCreative.saveStatus ==
+         expect(app.identity.saveStatus ==
                     "creative_world_save_not_requested",
                 "creative launch active creative save status") &&
-         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+         expectCreativeIdentityIsNormalized(app.identity,
                                                    window,
                                                    "creative launch") &&
          expect(facade.document().id() == launched.documentId,
@@ -985,19 +968,19 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
                 "open launch window status") &&
          expect(openWindow.activeProductSaveId == "none",
                 "open launch does not set product save id") &&
-         expect(openWindow.activeCreative.saveId == opened.saveId,
+         expect(openApp.identity.saveId == opened.saveId,
                 "open launch active creative save id") &&
-         expect(openWindow.activeCreative.savePath == opened.path.generic_string(),
+         expect(openApp.identity.savePath == opened.path.generic_string(),
                 "open launch active creative save path") &&
-         expect(openWindow.activeCreative.worldId == opened.worldId,
+         expect(openApp.identity.worldId == opened.worldId,
                 "open launch active creative world id") &&
-         expect(openWindow.activeCreative.documentId == opened.documentId,
+         expect(openApp.identity.documentId == opened.documentId,
                 "open launch active creative document id") &&
-         expect(openWindow.activeCreative.objectCount == opened.objectCount,
+         expect(openApp.identity.objectCount == opened.objectCount,
                 "open launch active creative object count") &&
-         expect(openWindow.activeCreative.nextObjectId == opened.nextObjectId,
+         expect(openApp.identity.nextObjectId == opened.nextObjectId,
                 "open launch active creative next id") &&
-         expectActiveCreativeIdentityMirrorsWindow(openApp.identity,
+         expectCreativeIdentityIsNormalized(openApp.identity,
                                                    openWindow,
                                                    "open launch") &&
          expect(openFacade.document().id() == created.documentId,
@@ -1132,11 +1115,11 @@ bool openLaunchRefreshesBakedActiveRoomFromSavedCreativeDocument() {
          expect(openWindow.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "open baked creative mode") &&
-         expect(openWindow.activeCreative.saveId == opened.saveId,
+         expect(openApp.identity.saveId == opened.saveId,
                 "open baked active creative save id") &&
-         expect(openWindow.activeCreative.documentId == opened.documentId,
+         expect(openApp.identity.documentId == opened.documentId,
                 "open baked active creative document id") &&
-         expect(openWindow.activeCreative.objectCount == opened.objectCount,
+         expect(openApp.identity.objectCount == opened.objectCount,
                 "open baked active creative object count") &&
          expect(openWindow.activeProductSaveId == "none",
                 "open baked active product save none") &&
@@ -1263,7 +1246,7 @@ bool productNewWorldLaunchClearsActiveCreativeIdentity() {
                           activeSession,
                           window,
                           app);
-  const std::string creativeSaveId = window.activeCreative.saveId;
+  const std::string creativeSaveId = app.identity.saveId;
 
   iggy3d::WorldSetupDraft draft =
       iggy3d::makeDefaultWorldSetupDraft("product_after_creative");
@@ -1284,21 +1267,13 @@ bool productNewWorldLaunchClearsActiveCreativeIdentity() {
                 "product clear active product save id") &&
          expect(window.activeProductSaveId != creativeSaveId,
                 "product clear product id differs creative id") &&
-         expect(window.activeCreative.saveId == "none",
-                "product clear active creative save id") &&
-         expect(window.activeCreative.savePath == "none",
-                "product clear active creative save path") &&
-         expect(window.activeCreative.worldId == "none",
-                "product clear active creative world id") &&
-         expect(window.activeCreative.documentId == cr::kInvalidDocumentId,
-                "product clear active creative document id") &&
-         expect(window.activeCreative.objectCount == 0U,
-                "product clear active creative object count") &&
-         expect(window.activeCreative.nextObjectId == cr::kInvalidObjectId,
-                "product clear active creative next id") &&
-         expect(window.activeCreative.saveStatus ==
+         expect(app.identity.saveId == creativeSaveId,
+                "product launch preserves creative app identity save id") &&
+         expect(app.identity.worldActive(),
+                "product launch leaves creative app identity owned by creative") &&
+         expect(app.identity.saveStatus ==
                     "creative_world_save_not_requested",
-                "product clear active creative save status");
+                "product launch leaves creative app identity save status");
 }
 
 bool currentCreativeWorldSaveDrainsDirtyAndPersistsDocument() {
@@ -1374,34 +1349,34 @@ bool currentCreativeWorldSaveDrainsDirtyAndPersistsDocument() {
                 "current save window undo unavailable") &&
          expect(window.creativeUndo.depth == 0U,
                 "current save window undo depth") &&
-         expect(window.activeCreative.saveId == launched.saveId,
+         expect(app.identity.saveId == launched.saveId,
                 "current save active id") &&
-         expect(window.activeCreative.savePath == launched.path.generic_string(),
+         expect(app.identity.savePath == launched.path.generic_string(),
                 "current save active path") &&
-         expect(window.activeCreative.worldId == launched.worldId,
+         expect(app.identity.worldId == launched.worldId,
                 "current save active world id") &&
-         expect(window.activeCreative.documentId == launched.documentId,
+         expect(app.identity.documentId == launched.documentId,
                 "current save active document id") &&
-         expect(window.activeCreative.objectCount == 1U,
+         expect(app.identity.objectCount == 1U,
                 "current save active object count") &&
-         expect(window.activeCreative.nextObjectId ==
+         expect(app.identity.nextObjectId ==
                     facade.document().nextObjectId(),
                 "current save active next object id") &&
-         expect(window.activeCreative.saveStatus ==
+         expect(app.identity.saveStatus ==
                     "product_creative_world_saved",
                 "current save active status") &&
-         expect(window.activeCreative.saveReasonCode ==
+         expect(app.identity.saveReasonCode ==
                     "product_creative_world_saved",
                 "current save active reason") &&
-         expect(window.activeCreative.saveDirtyFlagsBefore == dirtyBefore,
+         expect(app.identity.saveDirtyFlagsBefore == dirtyBefore,
                 "current save active dirty before") &&
-         expect(window.activeCreative.saveDirtyFlagsDrained == dirtyBefore,
+         expect(app.identity.saveDirtyFlagsDrained == dirtyBefore,
                 "current save active dirty drained") &&
-         expect(window.activeCreative.saveDirtyFlagsAfter == 0U,
+         expect(app.identity.saveDirtyFlagsAfter == 0U,
                 "current save active dirty after") &&
-         expect(window.activeCreative.saveSavedAtUtc != "none",
+         expect(app.identity.saveSavedAtUtc != "none",
                 "current save saved timestamp") &&
-         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+         expectCreativeIdentityIsNormalized(app.identity,
                                                    window,
                                                    "current save") &&
          expect(opened.accepted, "current save reopen accepted") &&
@@ -1433,7 +1408,6 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
     const cr::CreativeObjectDirtyFlags dirtyBefore =
         facade.document().dirtyFlags();
     app.identity.saveId = "none";
-    iggy3d::mirrorProductActiveCreativeIdentity(app.identity, window);
 
     const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
         iggy3d::saveProductCurrentCreativeWorld(options, app, "unit", window);
@@ -1449,10 +1423,10 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
                 "missing id dirty after") ||
         !expect(facade.document().dirtyFlags() == dirtyBefore,
                 "missing id facade dirty preserved") ||
-        !expect(window.activeCreative.saveStatus ==
+        !expect(app.identity.saveStatus ==
                     "product_creative_save_id_missing",
                 "missing id window status") ||
-        !expectActiveCreativeIdentityMirrorsWindow(app.identity,
+        !expectCreativeIdentityIsNormalized(app.identity,
                                                    window,
                                                    "missing id save")) {
       return false;
@@ -1492,10 +1466,10 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
                 "inactive dirty after") ||
         !expect(facade.document().dirtyFlags() == dirtyBefore,
                 "inactive facade dirty preserved") ||
-        !expect(window.activeCreative.saveStatus ==
+        !expect(app.identity.saveStatus ==
                     "product_creative_save_inactive",
                 "inactive window status") ||
-        !expectActiveCreativeIdentityMirrorsWindow(app.identity,
+        !expectCreativeIdentityIsNormalized(app.identity,
                                                    window,
                                                    "inactive save")) {
       return false;
@@ -1508,7 +1482,6 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
   cr::CreativeAppState app;
   app.identity.saveId = "save_001";
   app.identity.worldId = "world_0001";
-  iggy3d::mirrorProductActiveCreativeIdentity(app.identity, window);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
       iggy3d::saveProductCurrentCreativeWorld(options, app, "unit", window);
@@ -1518,10 +1491,10 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
                 "invalid doc status") &&
          expect(saved.dirtyFlagsBefore == 0U, "invalid doc dirty before") &&
          expect(saved.dirtyFlagsAfter == 0U, "invalid doc dirty after") &&
-         expect(window.activeCreative.saveStatus ==
+         expect(app.identity.saveStatus ==
                     "product_creative_save_document_id_missing",
                 "invalid doc window status") &&
-         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+         expectCreativeIdentityIsNormalized(app.identity,
                                                    window,
                                                    "invalid doc save");
 }
@@ -1575,14 +1548,14 @@ bool pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() {
                 "pause creative save frontend status") &&
          expect(window.launchStatus == "product_creative_world_saved",
                 "pause creative save launch status") &&
-         expect(window.activeCreative.saveStatus ==
+         expect(app.identity.saveStatus ==
                     "product_creative_world_saved",
                 "pause creative save active status") &&
-         expect(window.activeCreative.saveDirtyFlagsBefore == dirtyBefore,
+         expect(app.identity.saveDirtyFlagsBefore == dirtyBefore,
                 "pause creative save dirty before mirrored") &&
-         expect(window.activeCreative.saveDirtyFlagsDrained == dirtyBefore,
+         expect(app.identity.saveDirtyFlagsDrained == dirtyBefore,
                 "pause creative save dirty drained mirrored") &&
-         expect(window.activeCreative.saveDirtyFlagsAfter == 0U,
+         expect(app.identity.saveDirtyFlagsAfter == 0U,
                 "pause creative save dirty after mirrored") &&
          expect(facade.document().dirtyFlags() == 0U,
                 "pause creative save facade dirty drained") &&
@@ -1592,7 +1565,7 @@ bool pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() {
                 "pause creative save remains creative") &&
          expect(window.activeProductSaveId == "none",
                 "pause creative save does not set product save id") &&
-         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+         expectCreativeIdentityIsNormalized(app.identity,
                                                    window,
                                                    "pause creative save") &&
          expect(opened.accepted, "pause creative save reopen accepted") &&
@@ -1636,9 +1609,9 @@ bool pauseCreativeSaveNullFacadeFailsClosed() {
                 "pause creative null frontend status") &&
          expect(window.launchStatus == "product_creative_save_facade_missing",
                 "pause creative null launch status") &&
-         expect(window.activeCreative.saveStatus ==
-                    "product_creative_save_facade_missing",
-                "pause creative null active status") &&
+         expect(app.identity.saveStatus ==
+                    "creative_world_save_not_requested",
+                "pause creative null preserves active status") &&
          expect(facade.document().dirtyFlags() == dirtyBefore,
                 "pause creative null dirty preserved") &&
          expect(activeSession.has_value(),
@@ -1657,11 +1630,7 @@ bool pauseSaveUsesCreativeIdentityInsteadOfStaleWindowMirror() {
   cr::CreativeAppState app;
 
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.activeCreative.saveId = "stale_save";
-  window.activeCreative.worldId = "stale_world";
-  window.activeCreative.documentId = 42U;
-  window.activeCreative.objectCount = 3U;
-  window.activeCreative.nextObjectId = 7U;
+  const std::string saveIdBefore = app.identity.saveId;
 
   const iggy3d::ProductPauseSaveFlowResult saved =
       iggy3d::executeProductPauseSaveFlow(
@@ -1674,18 +1643,18 @@ bool pauseSaveUsesCreativeIdentityInsteadOfStaleWindowMirror() {
           &app);
 
   return expect(!app.identity.worldActive(),
-                "stale mirror setup has inactive source identity") &&
+                "null facade setup has inactive source identity") &&
          expect(!saved.creativeSaveRequested,
-                "stale mirror does not request creative save") &&
+                "null facade does not request creative save") &&
          expect(saved.write.status == "product_save_session_missing",
-                "stale mirror routes to product save fallback") &&
+                "null facade routes to product save fallback") &&
          expect(saved.launchStatus == "product_save_session_missing",
-                "stale mirror launch status from product save") &&
-         expect(window.activeCreative.saveStatus ==
+                "null facade launch status from product save") &&
+         expect(app.identity.saveStatus ==
                     "creative_world_save_not_requested",
-                "stale mirror leaves creative save mirror unchanged") &&
-         expect(window.activeCreative.saveId == "stale_save",
-                "stale mirror compatibility field preserved");
+                "null facade leaves identity unchanged") &&
+         expect(app.identity.saveId == saveIdBefore,
+                "null facade preserves source identity");
 }
 
 bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
@@ -1748,16 +1717,16 @@ bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
                 "pause creative save exit clears gameplay active") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "pause creative save exit player mode") &&
-         expect(window.activeCreative.saveId == "none",
+         expect(app.identity.saveId == "none",
                 "pause creative save exit clears active creative id") &&
-         expect(window.activeCreative.saveStatus ==
+         expect(app.identity.saveStatus ==
                     "creative_world_save_not_requested",
                 "pause creative save exit clears save status") &&
          expect(facade.document().dirtyFlags() == 0U,
                 "pause creative save exit dirty drained") &&
          expect(window.activeProductSaveId == "none",
                 "pause creative save exit does not set product save id") &&
-         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+         expectCreativeIdentityIsNormalized(app.identity,
                                                    window,
                                                    "pause creative save exit") &&
          expect(opened.accepted, "pause creative save exit reopen accepted") &&
@@ -1788,7 +1757,6 @@ bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
   const cr::CreativeObjectDirtyFlags dirtyBefore =
       facade.document().dirtyFlags();
   app.identity.saveId = "none";
-  iggy3d::mirrorProductActiveCreativeIdentity(app.identity, window);
   const iggy3d::ProductMenuActionResult saved =
       confirmPauseAction(options,
                          iggy3d::FrontendAction::SaveAndExit,
@@ -1817,10 +1785,10 @@ bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
                 "pause creative save exit failure stays creative") &&
          expect(facade.document().dirtyFlags() == dirtyBefore,
                 "pause creative save exit failure dirty preserved") &&
-         expect(window.activeCreative.saveStatus ==
+         expect(app.identity.saveStatus ==
                     "product_creative_save_id_missing",
                 "pause creative save exit failure active status") &&
-         expectActiveCreativeIdentityMirrorsWindow(
+         expectCreativeIdentityIsNormalized(
              app.identity,
              window,
              "pause creative save exit failure");
@@ -1872,11 +1840,11 @@ bool pauseCreativeReturnToTitleClearsUndoStack() {
                 "pause return window undo unavailable") &&
          expect(window.creativeUndo.depth == 0U,
                 "pause return window undo depth") &&
-         expect(window.activeCreative.saveId == "none",
+         expect(app.identity.saveId == "none",
                 "pause return active creative save id cleared") &&
-         expect(window.activeCreative.documentId == cr::kInvalidDocumentId,
+         expect(app.identity.documentId == cr::kInvalidDocumentId,
                 "pause return active creative document id cleared") &&
-         expectActiveCreativeIdentityMirrorsWindow(app.identity,
+         expectCreativeIdentityIsNormalized(app.identity,
                                                    window,
                                                    "pause return");
 }
@@ -2182,11 +2150,11 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
                 "baked room projection prop count") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "baked room interaction remains creative") &&
-         expect(window.activeCreative.saveId == launched.saveId,
+         expect(app.identity.saveId == launched.saveId,
                 "baked room active creative save id preserved") &&
-         expect(window.activeCreative.documentId == launched.documentId,
+         expect(app.identity.documentId == launched.documentId,
                 "baked room active creative document id preserved") &&
-         expect(window.activeCreative.objectCount == launched.objectCount,
+         expect(app.identity.objectCount == launched.objectCount,
                 "baked room active creative object count unchanged") &&
          expect(window.activeProductSaveId == "none",
                 "baked room active product save id unchanged") &&
@@ -2368,9 +2336,9 @@ bool manualRebuildRoomCommandLoadsActiveRoomThroughInputFrame() {
          expect(scenario.window.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "manual rebuild interaction remains creative") &&
-         expect(scenario.window.activeCreative.saveId == scenario.launched.saveId,
+         expect(scenario.app.identity.saveId == scenario.launched.saveId,
                 "manual rebuild active creative save preserved") &&
-         expect(scenario.window.activeCreative.documentId ==
+         expect(scenario.app.identity.documentId ==
                     scenario.launched.documentId,
                 "manual rebuild active creative document preserved") &&
          expect(scenario.window.activeProductSaveId == "none",
@@ -2489,9 +2457,9 @@ bool manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() {
                 "manual empty rebuild collision clear reason") &&
          expect(window.activeRoomCollision.querySurfaceCount == 0U,
                 "manual empty rebuild collision clear query count") &&
-         expect(window.activeCreative.saveId == launched.saveId,
+         expect(app.identity.saveId == launched.saveId,
                 "manual empty rebuild active creative save preserved") &&
-         expect(window.activeCreative.documentId == launched.documentId,
+         expect(app.identity.documentId == launched.documentId,
                 "manual empty rebuild active creative document preserved") &&
          expect(window.activeProductSaveId == "none",
                 "manual empty rebuild active product save unchanged") &&
@@ -2994,9 +2962,9 @@ bool removeGeneratedRoomShellAndUndoRestoresThroughInputFrame() {
                 "shell undo window depth after undo") &&
          expect(!scenario.window.creativeBakedRoomStale,
                 "shell undo stale fresh") &&
-         expect(scenario.window.activeCreative.saveId == scenario.launched.saveId,
+         expect(scenario.app.identity.saveId == scenario.launched.saveId,
                 "shell active creative save preserved") &&
-         expect(scenario.window.activeCreative.documentId ==
+         expect(scenario.app.identity.documentId ==
                     scenario.launched.documentId,
                 "shell active creative document preserved") &&
          expect(scenario.window.activeProductSaveId == "none",
@@ -3468,7 +3436,7 @@ bool autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() {
                "auto visibility show collision query count") &&
         expect(!window.creativeBakedRoomStale,
                "auto visibility show stale cleared") &&
-        expect(window.activeCreative.saveId == launched.saveId,
+        expect(app.identity.saveId == launched.saveId,
                "auto visibility active creative save preserved") &&
         expect(window.activeProductSaveId == "none",
                "auto visibility active product save unchanged") &&
@@ -3583,9 +3551,9 @@ bool deleteSelectedRenderableClearsBakedRoomThroughInputFrame() {
          expect(window.creativeBakedRoomStaleStatus ==
                     "creative_baked_room_fresh",
                 "delete clear stale status") &&
-         expect(window.activeCreative.saveId == launched.saveId,
+         expect(app.identity.saveId == launched.saveId,
                 "delete clear active creative save preserved") &&
-         expect(window.activeCreative.documentId == launched.documentId,
+         expect(app.identity.documentId == launched.documentId,
                 "delete clear active creative document preserved") &&
          expect(window.activeProductSaveId == "none",
                 "delete clear active product save unchanged") &&
@@ -3682,9 +3650,9 @@ bool deleteOneOfTwoRenderablesRebuildsRemainingBakedRoomThroughInputFrame() {
                 "delete rebuild collision query count") &&
          expect(!window.creativeBakedRoomStale,
                 "delete rebuild stale fresh") &&
-         expect(window.activeCreative.saveId == launched.saveId,
+         expect(app.identity.saveId == launched.saveId,
                 "delete rebuild active creative save preserved") &&
-         expect(window.activeCreative.documentId == launched.documentId,
+         expect(app.identity.documentId == launched.documentId,
                 "delete rebuild active creative document preserved") &&
          expect(window.activeProductSaveId == "none",
                 "delete rebuild active product save unchanged") &&
@@ -3888,7 +3856,7 @@ bool autoRefreshNoChangeMoveReleaseDoesNotRefreshThroughInputFrame() {
                "auto move no-change active room remains loaded") &&
         expect(!scenario.window.creativeBakedRoomStale,
                "auto move no-change remains fresh") &&
-        expect(scenario.window.activeCreative.saveId == scenario.launched.saveId,
+        expect(scenario.app.identity.saveId == scenario.launched.saveId,
                "auto move active creative save preserved") &&
         expect(scenario.window.activeProductSaveId == "none",
                "auto move active product save unchanged") &&

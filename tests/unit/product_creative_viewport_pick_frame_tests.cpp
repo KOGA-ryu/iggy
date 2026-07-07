@@ -74,11 +74,6 @@ cr::CreativeSpatialProjectionRequest projectionRequest() {
 
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
-  cr::CreativeActiveIdentity identity;
-  identity.saveId = "creative_save";
-  identity.worldId = "world_001";
-  identity.documentId = 42U;
-  iggy3d::mirrorProductActiveCreativeIdentity(identity, window);
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   return window;
 }
@@ -133,9 +128,9 @@ bool activeRuleUsesCreativeDocumentIdentity() {
 
   return expect(!iggy3d::productCreativeViewportPickActiveForWindow(player),
                 "player inactive") &&
-         expect(!iggy3d::productCreativeViewportPickActiveForWindow(
+         expect(iggy3d::productCreativeViewportPickActiveForWindow(
                     legacyCreative),
-                "legacy creative inactive") &&
+                "creative mode active") &&
          expect(iggy3d::productCreativeViewportPickActiveForWindow(
                     documentCreative),
                 "document creative active");
