@@ -15,7 +15,8 @@ bool projectWorldToScreen(const FrameInput& frame, Vec3 world, ScreenPoint& out)
   if (frame.viewport.width == 0U || frame.viewport.height == 0U) {
     return false;
   }
-  const Vec3 ndc = transformPoint(frame.camera.clipFromWorld, world);
+  const ProjectedPoint3 projected = projectPoint(frame.camera.clipFromWorld, world);
+  const Vec3 ndc = projected.ndc;
   if (!isFinite(ndc) || ndc.z < -0.05F || ndc.z > 1.05F ||
       ndc.x < -1.20F || ndc.x > 1.20F || ndc.y < -1.20F ||
       ndc.y > 1.20F) {
