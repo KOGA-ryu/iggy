@@ -118,6 +118,7 @@ struct ProductWindowEditorMousePickPreviewContext {
   MouseClick click;
   ProductViewportFrameConfig viewportConfig;
   Vec3 anchorWorld;
+  creative::CreativeAppState* creativeApp = nullptr;
 };
 
 struct ProductWindowEditorMousePickPreviewResult {
@@ -177,7 +178,8 @@ ProductWindowTopLevelToggleResult dispatchProductWindowTopLevelToggleAction(
     ProductAppWindowState& window,
     InputAction action,
     FrontendSettings* settings = nullptr,
-    bool* closeRequested = nullptr);
+    bool* closeRequested = nullptr,
+    creative::CreativeAppState* creativeApp = nullptr);
 ProductMovementTuningInputResult applyProductWindowMovementTuningHeldInput(
     FrontendState& frontend,
     ProductAppWindowState& window,

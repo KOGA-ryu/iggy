@@ -13,6 +13,7 @@ namespace iggy3d {
 
 namespace creative {
 struct CreativeActiveIdentity;
+struct CreativeAppState;
 }  // namespace creative
 
 struct ProductAppWindowState;
@@ -114,6 +115,9 @@ bool productCreativeWorldActiveForWindowMirror(
 bool productCreativeWorldActiveForWindow(const ProductAppWindowState& window);
 bool productCreativeDocumentEditorActiveForWindow(
     const ProductAppWindowState& window);
+bool productCreativeDocumentEditorActiveForSource(
+    const ProductAppWindowState& window,
+    const creative::CreativeAppState* creativeApp);
 ProductCreativeSurfaceKind productCreativeSurfaceKindForWindow(
     const FrontendState& frontend,
     const ProductAppWindowState& window);

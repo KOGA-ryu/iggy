@@ -128,7 +128,8 @@ int AppKernel::run(const ProductAppOptions& options) {
       ProductGameplayProjectionRefreshRequest{activeSession, window,
                                               settings.devToolsEnabled,
                                               settings.debugOverlayEnabled,
-                                              options.renderer, frontend});
+                                              options.renderer, frontend,
+                                              &creativeApp});
 
   if (options.printRenderReceipt) {
     std::cout << formatRenderReceipt(

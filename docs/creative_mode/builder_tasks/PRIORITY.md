@@ -23,21 +23,20 @@ ratified; L slice, compiler-guarded, thread-first-delete-last).
 
 ## Currently Claimed
 
-None.
+E137.
 
 ## Pull Next
 
-1. **E136** — ActiveCreative G1 source predicate plumbing. Additive only; no
-   routing behavior switch.
-2. **E137** — ActiveCreative G2 routing callers. Depends on E136.
-3. **E138** — ActiveCreative G3 receipt identity threading. Depends on E136-E137.
-4. **E139** — ActiveCreative G4 delete mirror. Depends on E136-E138.
+1. **E137** — ActiveCreative G2 routing callers. Depends on completed E136.
+2. **E138** — ActiveCreative G3 receipt identity threading. Depends on E136-E137.
+3. **E139** — ActiveCreative G4 delete mirror. Depends on E136-E138.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E136-E139** — activeCreative mirror delete (deficit #2, L,
+- **E137-E139** — activeCreative mirror delete (deficit #2, L,
   compiler-guarded). Behavior-preserving; coverage + receipt truth-gates fire by
-  design. Builder should claim them in numeric order only.
+  design. E136 is done; builder should claim the remaining gates in numeric
+  order only.
 
 ## Tier 2: Feature-Add Seams
 

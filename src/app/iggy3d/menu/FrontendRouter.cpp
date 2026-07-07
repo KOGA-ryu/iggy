@@ -336,6 +336,16 @@ bool productCreativeDocumentEditorActiveForWindow(
          productCreativeWorldActiveForWindow(window);
 }
 
+bool productCreativeDocumentEditorActiveForSource(
+    const ProductAppWindowState& window,
+    const creative::CreativeAppState* creativeApp) {
+  if (creativeApp != nullptr) {
+    return window.interactionMode == ProductInteractionMode::Creative &&
+           productCreativeWorldActiveForIdentity(creativeApp->identity);
+  }
+  return productCreativeDocumentEditorActiveForWindow(window);
+}
+
 ProductCreativeSurfaceKind productCreativeSurfaceKindForWindow(
     const FrontendState& frontend,
     const ProductAppWindowState& window) {

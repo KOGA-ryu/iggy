@@ -55,7 +55,8 @@ using ProductWindowTopLevelToggleHandler = ProductWindowTopLevelToggleResult (*)
     ProductAppWindowState& window,
     InputAction action,
     FrontendSettings* settings,
-    bool* closeRequested);
+    bool* closeRequested,
+    creative::CreativeAppState* creativeApp);
 
 struct ProductCreativeDocumentRevisionSnapshot {
   bool observed = false;
@@ -74,19 +75,22 @@ ProductWindowTopLevelToggleResult dispatchProductWindowSystemToggleAction(
     ProductAppWindowState& window,
     InputAction action,
     FrontendSettings* settings,
-    bool* closeRequested);
+    bool* closeRequested,
+    creative::CreativeAppState* creativeApp);
 ProductWindowTopLevelToggleResult dispatchProductWindowMovementTuningToggleAction(
     FrontendState& frontend,
     ProductAppWindowState& window,
     InputAction action,
     FrontendSettings* settings,
-    bool* closeRequested);
+    bool* closeRequested,
+    creative::CreativeAppState* creativeApp);
 ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
     FrontendState& frontend,
     ProductAppWindowState& window,
     InputAction action,
     FrontendSettings* settings,
-    bool* closeRequested);
+    bool* closeRequested,
+    creative::CreativeAppState* creativeApp);
 
 ProductCreativeDocumentRevisionSnapshot
 captureProductCreativeDocumentRevision(
@@ -561,7 +565,8 @@ ProductWindowTopLevelToggleResult dispatchProductWindowSystemToggleAction(
     ProductAppWindowState& window,
     InputAction action,
     FrontendSettings* settings,
-    bool* closeRequested) {
+    bool* closeRequested,
+    creative::CreativeAppState*) {
   bool ignoredCloseRequested = false;
   bool& closeTarget =
       closeRequested == nullptr ? ignoredCloseRequested : *closeRequested;  // branch-gate: BG-1194
@@ -575,7 +580,8 @@ ProductWindowTopLevelToggleResult dispatchProductWindowMovementTuningToggleActio
     ProductAppWindowState& window,
     InputAction action,
     FrontendSettings*,
-    bool*) {
+    bool*,
+    creative::CreativeAppState*) {
   const ProductMovementTuningInputResult tuningResult =
       applyProductWindowMovementTuningInput(frontend, window, action);
   return {tuningResult.handled, tuningResult.accepted, action};
@@ -586,9 +592,11 @@ ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
     ProductAppWindowState& window,
     InputAction action,
     FrontendSettings*,
-    bool*) {
+    bool*,
+    creative::CreativeAppState* creativeApp) {
   const ProductMenuActionResult mapMakerResult =
-      applyProductGameplayMapMakerToggleAction(action, {frontend, window});
+      applyProductGameplayMapMakerToggleAction(action,
+                                               {frontend, window, creativeApp});
   return {mapMakerResult.handled, mapMakerResult.accepted, action};
 }
 
@@ -826,11 +834,13 @@ ProductWindowTopLevelToggleResult dispatchProductWindowTopLevelToggleAction(
     ProductAppWindowState& window,
     InputAction action,
     FrontendSettings* settings,
-    bool* closeRequested) {
+    bool* closeRequested,
+    creative::CreativeAppState* creativeApp) {
   for (const ProductWindowTopLevelToggleRow& row : kProductWindowTopLevelToggleRows) {
     // branch-gate: BG-1194
     if (row.action == action) {
-      return row.handler(frontend, window, action, settings, closeRequested);
+      return row.handler(frontend, window, action, settings, closeRequested,
+                         creativeApp);
     }
   }
   return {};
@@ -1412,7 +1422,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                                                 context.window,
                                                 keyboardMenuAction,
                                                 &context.settings,
-                                                &context.closeRequested);
+                                                &context.closeRequested,
+                                                context.creativeApp);
   // branch-gate: BG-1194
   if (topLevelToggle.handled) {
     recordAction(actionState,
@@ -1453,7 +1464,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                                                   context.window,
                                                   gamepadAction,
                                                   &context.settings,
-                                                  &context.closeRequested);
+                                                  &context.closeRequested,
+                                                  context.creativeApp);
     // branch-gate: BG-1194
     if (gamepadToggle.handled) {
       recordAction(actionState,
@@ -1561,6 +1573,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
             creativeInput.downstreamClick,
             productRoomEditorMousePickViewportConfig(context.window),
             productRoomEditorMousePickAnchor(&*context.activeSession),
+            context.creativeApp,
         });
         pollKeyboardRoomEditorActions(context.inputFrame.keyboard,
                                       gameplayActions);

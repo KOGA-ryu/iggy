@@ -24,6 +24,10 @@
 
 namespace iggy3d {
 
+namespace creative {
+struct CreativeAppState;
+}  // namespace creative
+
 struct ProductGameplayProjectionRefreshRequest {
   const std::optional<Session>& activeSession;
   ProductAppWindowState& window;
@@ -37,6 +41,7 @@ struct ProductGameplayProjectionRefreshRequest {
     state.status = "gameplay_active";
     return state;
   }();
+  const creative::CreativeAppState* creativeApp = nullptr;
 };
 
 struct ProductGameplayProjectionFrameRequest {
@@ -52,6 +57,7 @@ struct ProductGameplayProjectionFrameRequest {
     state.status = "gameplay_active";
     return state;
   }();
+  const creative::CreativeAppState* creativeApp = nullptr;
 };
 
 struct ProductGameplayProjectionFrame {

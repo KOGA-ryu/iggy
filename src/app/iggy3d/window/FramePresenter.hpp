@@ -20,6 +20,9 @@
 namespace iggy3d {
 
 struct ProductCreativeWireframeDebugLineList;
+namespace creative {
+struct CreativeAppState;
+}  // namespace creative
 
 struct ProductVulkanMenuFrameRequest {
   const ProductUiDrawList* uiDrawList = nullptr;
@@ -65,6 +68,7 @@ struct ProductWindowFramePresenterRequest {
   const ProductUiDrawList* creativeUiDrawList = nullptr;
   const ProductCreativeWireframeDebugLineList* creativeWireframeDebugLineList =
       nullptr;
+  const creative::CreativeAppState* creativeApp = nullptr;
 };
 
 ProductVulkanMenuFrame buildProductVulkanStarterMenuFrame(

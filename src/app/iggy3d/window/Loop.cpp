@@ -280,12 +280,13 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         buildProductGameplayProjectionFrame(ProductGameplayProjectionFrameRequest{
             request.activeSession, window, request.settings.devToolsEnabled,
             request.settings.debugOverlayEnabled, request.options.renderer,
-            request.frontend});
+            request.frontend, request.creativeApp});
 
     presentProductWindowFrame(ProductWindowFramePresenterRequest{
         request.options, request.world, request.frontend, settingsTab,
         request.worldSetupDraft, window, saves, sdlWindow, renderer,
-        projectionFrame, creativeUiDrawList, creativeWireframeDebugLines});
+        projectionFrame, creativeUiDrawList, creativeWireframeDebugLines,
+        request.creativeApp});
     ++window.framesPresented;
 
     // branch-gate: BG-1031

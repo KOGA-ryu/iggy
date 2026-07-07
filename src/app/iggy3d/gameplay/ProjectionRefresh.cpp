@@ -924,7 +924,8 @@ void refreshProductGameplayProjectionMetrics(
                                             request.developerToolsEnabled,
                                             request.debugOverlayEnabled,
                                             request.rendererRequest,
-                                            request.frontend});
+                                            request.frontend,
+                                            request.creativeApp});
   // branch-gate: BG-1025
   if (!frame.hasGameplayProjection) {
     window.sessionOutcome = "None";
