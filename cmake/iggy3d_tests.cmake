@@ -106,6 +106,10 @@ iggy3d_add_unit_test(product_gameplay_feedback_tests tests/unit/product_gameplay
 set_tests_properties(product_gameplay_feedback_tests PROPERTIES
   LABELS "unit;app;product;feedback;iggy3d")
 
+iggy3d_add_unit_test(product_receipt_key_order_tests tests/unit/product_receipt_key_order_tests.cpp)
+set_tests_properties(product_receipt_key_order_tests PROPERTIES
+  LABELS "unit;app;product;receipt;oracle;iggy3d")
+
 iggy3d_add_unit_test(product_gameplay_controller_tests
   tests/unit/product_gameplay_controller_tests.cpp)
 set_tests_properties(product_gameplay_controller_tests PROPERTIES
