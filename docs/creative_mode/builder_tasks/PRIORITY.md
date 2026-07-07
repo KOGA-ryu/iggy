@@ -19,6 +19,12 @@ single compiler-guided pass OR an accessor-seam slice (planner/reviewer choose).
 Disjoint from completed RoomStore/SaveSessionStore work; `runtimeSessionCreated`
 now belongs to GameplayStore.
 
+**Also staged as PARENT cards (blocked/, for a slicer-Codex to gate):** `E155`
+ViewportStore fold (#6 — fold 11 mapMaker* into ProductViewportState, ~92
+repoints, small/low-risk) and `E156` InputDeviceStore (#7 — 11 fields, ~265
+repoints; **dominant hazard: `interactionMode` is a real field on 6+ foreign
+structs, so compiler-guided only, never sed**). Both recon-grounded + spot-verified.
+
 ## Claim Policy
 
 1. If a task listed under **Pull Next** is present in `ready/`, claim the first
