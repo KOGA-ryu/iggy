@@ -1,7 +1,7 @@
 # E153 — SaveSessionStore bulk-move (god-struct decomposition #5)
 
-**STATUS: STAGED in `blocked/` — pending planner release.** Move to `ready/` (or on a "go")
-to let Codex claim it. Recon-grounded (workflow `wal28mbzs`, 2026-07-07) against HEAD `36ceeac3`.
+**STATUS: READY — claim after E148-E152 unless planner changes priority.**
+Recon-grounded (workflow `wal28mbzs`, 2026-07-07) against HEAD `36ceeac3`.
 **Separate track from the RoomStore regroup (E148–E152, `activeRoom`) already in `ready/`** — disjoint
 field sets, so either order is fine; do this after RoomStore unless directed otherwise.
 

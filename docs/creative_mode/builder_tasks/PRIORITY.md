@@ -13,9 +13,9 @@ single-source. Builder should pull E148-E152 in numeric order.
 
 **Also complete:** the 2 dead write-only fields `window.inputOwner` /
 `window.gameplayInputSuppressed` were deleted (`36ceeac3`) — god-struct now 153
-members. **Staged next (blocked/, pending release):** `E153` SaveSessionStore
-bulk-move (decomposition #5, 31 fields, recon-grounded handoff) — a separate
-track from RoomStore with a disjoint field set.
+members. **Queued next:** `E153` SaveSessionStore bulk-move (decomposition #5,
+31 fields, recon-grounded handoff) — a separate track from RoomStore with a
+disjoint field set. Claim it after E148-E152 unless planner changes priority.
 
 ## Claim Policy
 
@@ -38,6 +38,7 @@ None.
 3. **E150** — RoomStore G3 production readers and receipts.
 4. **E151** — RoomStore G4 test fixture migration.
 5. **E152** — RoomStore G5 final storage move.
+6. **E153** — SaveSessionStore bulk-move.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -45,6 +46,9 @@ None.
   `roomEditing.activeRoom` and `roomEditing.activeRoomCollision` as producer
   state. Use the accessor seam first; move storage/delete old top-level fields
   only in E152.
+- **E153** — SaveSessionStore bulk-move. Structural regroup only; move 31
+  save-session fields into a nested store, leave `runtimeSessionCreated` as
+  GameplayStore, and keep the receipt golden byte-identical.
 
 ## Tier 2: Feature-Add Seams
 
