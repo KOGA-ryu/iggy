@@ -14,7 +14,27 @@ reclassified from "use-after-free" to a **mid-frame stale read of valid memory**
 new invariant pins the session-hash no-bypass precondition; (5) a TapeRunner equivalence lemma; (6) a closed
 `reasonCode` enum + decision order; (7) disambiguated multi-write bump discipline.
 
-**Chosen name — `ActiveRoomCollisionFreshness` (a freshness `Store` + one `ensure` verb).**
+## Gate 1 — RATIFIED 2026-07-07 (with conditions)
+
+Reviewer signed §1–§12. Approved decisions: **(1)** the frame-boundary seam; **(2)** I7 accepted as a named
+load-bearing precondition; **(3)** staged bake removal (direct writer-bakes may remain through G4; G5 must
+remove them and prove readers now depend on the freshness seam); **(4)** naming — with a tweak.
+
+**Ratification conditions (binding on all downstream gates):**
+- **C1 (naming):** the type/path is **`ActiveRoomCollisionFreshnessStore`** (an owned freshness store). Where
+  the body below or the G2 card writes `ActiveRoomCollisionFreshness.{hpp,cpp}`, read
+  `ActiveRoomCollisionFreshnessStore.{hpp,cpp}`. The public verb remains `ensureActiveRoomCollisionFresh`; the
+  POD remains `ProductActiveRoomCollisionFreshnessResult`. No `Kernel`.
+- **C2 (I7 re-audit every gate):** because I7 is documented, not structurally enforced, **every gate G2–G7
+  must re-run the I7 audit** (grep for `entity.active`/`setActive` writes outside the hashed session command
+  path — must stay empty) until I7 is either structurally enforced or the session-hash dependency is removed.
+- **C3 (removal checklist):** the direct-rebake callsite inventory is produced at
+  `docs/active_room_collision_rebake_removal_checklist.md` — the removal checklist for G4/G5. G2 re-runs the
+  greps and reconciles drift; G2 does not remove any callsite.
+
+---
+
+**Chosen name — `ActiveRoomCollisionFreshnessStore` (an owned freshness `Store` + one `ensure` verb).**
 One-line responsibility: *the single owner of the `activeRoom → activeRoomCollision` derived-truth pair — it
 stamps every collision bake with the room revision + session hash it was built from, and rebakes on demand
 iff either has drifted, so no reader observes a stale blob.* Naming compliance (`core_spine_work_rules.md:20-25`):
