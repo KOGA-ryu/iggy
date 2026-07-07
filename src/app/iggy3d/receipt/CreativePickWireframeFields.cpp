@@ -22,6 +22,7 @@
 namespace iggy3d {
 
 void appendProductCreativePickWireframeFields(RenderReceipt& receipt, const ProductAppWindowState& window, const ProductVulkanGameplayReadiness& vulkanGameplayReadiness) {
+  const CreativeAuthoringStore& authoring = window.creativeAuthoring;
   appendReceiptField(receipt, "creative_viewport_pick_requested",
                      window.creativeViewportPickRequested);
   appendReceiptField(receipt, "creative_viewport_pick_active",
@@ -69,60 +70,60 @@ void appendProductCreativePickWireframeFields(RenderReceipt& receipt, const Prod
   appendReceiptField(receipt, "creative_viewport_pick_cell_index",
                      window.creativeViewportPickCellIndex);
   appendReceiptField(receipt, "creative_wireframe_requested",
-                     window.creativeWireframeRequested);
+                     authoring.creativeWireframeRequested);
   appendReceiptField(receipt, "creative_wireframe_active",
-                     window.creativeWireframeActive);
+                     authoring.creativeWireframeActive);
   appendReceiptField(receipt, "creative_wireframe_facade_available",
-                     window.creativeWireframeFacadeAvailable);
+                     authoring.creativeWireframeFacadeAvailable);
   appendReceiptField(receipt, "creative_wireframe_document_available",
-                     window.creativeWireframeDocumentAvailable);
+                     authoring.creativeWireframeDocumentAvailable);
   appendReceiptField(receipt, "creative_wireframe_source_available",
-                     window.creativeWireframeSourceAvailable);
+                     authoring.creativeWireframeSourceAvailable);
   appendReceiptField(receipt, "creative_wireframe_object_count",
-                     window.creativeWireframeObjectCount);
+                     authoring.creativeWireframeObjectCount);
   appendReceiptField(receipt, "creative_wireframe_visible_object_count",
-                     window.creativeWireframeVisibleObjectCount);
+                     authoring.creativeWireframeVisibleObjectCount);
   appendReceiptField(receipt, "creative_wireframe_item_count",
-                     window.creativeWireframeItemCount);
+                     authoring.creativeWireframeItemCount);
   appendReceiptField(receipt, "creative_wireframe_segment_count",
-                     window.creativeWireframeSegmentCount);
+                     authoring.creativeWireframeSegmentCount);
   appendReceiptField(receipt, "creative_wireframe_box_item_count",
-                     window.creativeWireframeBoxItemCount);
+                     authoring.creativeWireframeBoxItemCount);
   appendReceiptField(receipt, "creative_wireframe_line_item_count",
-                     window.creativeWireframeLineItemCount);
+                     authoring.creativeWireframeLineItemCount);
   appendReceiptField(receipt, "creative_wireframe_point_item_count",
-                     window.creativeWireframePointItemCount);
+                     authoring.creativeWireframePointItemCount);
   appendReceiptField(receipt,
                      "creative_wireframe_skipped_degenerate_count",
-                     window.creativeWireframeSkippedDegenerateCount);
+                     authoring.creativeWireframeSkippedDegenerateCount);
   appendReceiptField(receipt, "creative_wireframe_status",
-                     window.creativeWireframeStatus);
+                     authoring.creativeWireframeStatus);
   appendReceiptField(receipt, "creative_wireframe_reason_code",
-                     window.creativeWireframeReasonCode);
+                     authoring.creativeWireframeReasonCode);
   appendReceiptField(receipt, "creative_wireframe_wireframe_status",
-                     window.creativeWireframeWireframeStatus);
+                     authoring.creativeWireframeWireframeStatus);
   appendReceiptField(receipt, "creative_wireframe_wireframe_reason_code",
-                     window.creativeWireframeWireframeReasonCode);
+                     authoring.creativeWireframeWireframeReasonCode);
   appendReceiptField(receipt, "creative_wireframe_segment_status",
-                     window.creativeWireframeSegmentStatus);
+                     authoring.creativeWireframeSegmentStatus);
   appendReceiptField(receipt, "creative_wireframe_segment_reason_code",
-                     window.creativeWireframeSegmentReasonCode);
+                     authoring.creativeWireframeSegmentReasonCode);
   appendReceiptField(receipt, "creative_wireframe_debug_line_requested",
-                     window.creativeWireframeDebugLineRequested);
+                     authoring.creativeWireframeDebugLineRequested);
   appendReceiptField(receipt, "creative_wireframe_debug_line_source_available",
-                     window.creativeWireframeDebugLineSourceAvailable);
+                     authoring.creativeWireframeDebugLineSourceAvailable);
   appendReceiptField(receipt,
                      "creative_wireframe_debug_line_input_segment_count",
-                     window.creativeWireframeDebugLineInputSegmentCount);
+                     authoring.creativeWireframeDebugLineInputSegmentCount);
   appendReceiptField(receipt, "creative_wireframe_debug_line_count",
-                     window.creativeWireframeDebugLineCount);
+                     authoring.creativeWireframeDebugLineCount);
   appendReceiptField(receipt,
                      "creative_wireframe_debug_line_skipped_degenerate_count",
-                     window.creativeWireframeDebugLineSkippedDegenerateCount);
+                     authoring.creativeWireframeDebugLineSkippedDegenerateCount);
   appendReceiptField(receipt, "creative_wireframe_debug_line_status",
-                     window.creativeWireframeDebugLineStatus);
+                     authoring.creativeWireframeDebugLineStatus);
   appendReceiptField(receipt, "creative_wireframe_debug_line_reason_code",
-                     window.creativeWireframeDebugLineReasonCode);
+                     authoring.creativeWireframeDebugLineReasonCode);
   appendReceiptField(receipt, "product_vulkan_gameplay_ready",
                      vulkanGameplayReadiness.ready);
   appendReceiptField(receipt, "product_vulkan_gameplay_status",

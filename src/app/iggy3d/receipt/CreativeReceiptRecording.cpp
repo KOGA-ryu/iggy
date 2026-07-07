@@ -16,6 +16,7 @@
 #include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
 #include "app/iggy3d/creative/bridge/ViewportPickFrame.hpp"
 #include "app/iggy3d/creative/bridge/WireframeFrame.hpp"
+#include "app/iggy3d/ProductCreativeBakedRoomRefresh.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 #include "app/iggy3d/receipt/ReceiptFields.hpp"
@@ -453,42 +454,43 @@ void recordProductCreativeViewportPickFrame(
 void recordProductCreativeWireframeFrame(
     ProductAppWindowState& window,
     const ProductCreativeWireframeFrameReceipt& receipt) {
-  window.creativeWireframeRequested = receipt.requested;
-  window.creativeWireframeActive = receipt.active;
-  window.creativeWireframeFacadeAvailable = receipt.facadeAvailable;
-  window.creativeWireframeDocumentAvailable = receipt.documentAvailable;
-  window.creativeWireframeSourceAvailable = receipt.sourceAvailable;
-  window.creativeWireframeObjectCount = receipt.objectCount;
-  window.creativeWireframeVisibleObjectCount = receipt.visibleObjectCount;
-  window.creativeWireframeItemCount = receipt.itemCount;
-  window.creativeWireframeSegmentCount = receipt.segmentCount;
-  window.creativeWireframeBoxItemCount = receipt.boxItemCount;
-  window.creativeWireframeLineItemCount = receipt.lineItemCount;
-  window.creativeWireframePointItemCount = receipt.pointItemCount;
-  window.creativeWireframeSkippedDegenerateCount =
+  CreativeAuthoringStore& authoring = window.creativeAuthoring;
+  authoring.creativeWireframeRequested = receipt.requested;
+  authoring.creativeWireframeActive = receipt.active;
+  authoring.creativeWireframeFacadeAvailable = receipt.facadeAvailable;
+  authoring.creativeWireframeDocumentAvailable = receipt.documentAvailable;
+  authoring.creativeWireframeSourceAvailable = receipt.sourceAvailable;
+  authoring.creativeWireframeObjectCount = receipt.objectCount;
+  authoring.creativeWireframeVisibleObjectCount = receipt.visibleObjectCount;
+  authoring.creativeWireframeItemCount = receipt.itemCount;
+  authoring.creativeWireframeSegmentCount = receipt.segmentCount;
+  authoring.creativeWireframeBoxItemCount = receipt.boxItemCount;
+  authoring.creativeWireframeLineItemCount = receipt.lineItemCount;
+  authoring.creativeWireframePointItemCount = receipt.pointItemCount;
+  authoring.creativeWireframeSkippedDegenerateCount =
       receipt.skippedDegenerateCount;
-  window.creativeWireframeStatus = receipt.status;
-  window.creativeWireframeReasonCode = receipt.reasonCode;
-  window.creativeWireframeWireframeStatus =
+  authoring.creativeWireframeStatus = receipt.status;
+  authoring.creativeWireframeReasonCode = receipt.reasonCode;
+  authoring.creativeWireframeWireframeStatus =
       std::string(creative::toString(receipt.wireframeStatus));
-  window.creativeWireframeWireframeReasonCode =
+  authoring.creativeWireframeWireframeReasonCode =
       receipt.wireframeReasonCode.empty() ? "none"
                                           : receipt.wireframeReasonCode;
-  window.creativeWireframeSegmentStatus =
+  authoring.creativeWireframeSegmentStatus =
       std::string(creative::toString(receipt.segmentStatus));
-  window.creativeWireframeSegmentReasonCode =
+  authoring.creativeWireframeSegmentReasonCode =
       receipt.segmentReasonCode.empty() ? "none" : receipt.segmentReasonCode;
-  window.creativeWireframeDebugLineRequested = receipt.debugLineRequested;
-  window.creativeWireframeDebugLineSourceAvailable =
+  authoring.creativeWireframeDebugLineRequested = receipt.debugLineRequested;
+  authoring.creativeWireframeDebugLineSourceAvailable =
       receipt.debugLineSourceAvailable;
-  window.creativeWireframeDebugLineInputSegmentCount =
+  authoring.creativeWireframeDebugLineInputSegmentCount =
       receipt.debugLineInputSegmentCount;
-  window.creativeWireframeDebugLineCount = receipt.debugLineCount;
-  window.creativeWireframeDebugLineSkippedDegenerateCount =
+  authoring.creativeWireframeDebugLineCount = receipt.debugLineCount;
+  authoring.creativeWireframeDebugLineSkippedDegenerateCount =
       receipt.debugLineSkippedDegenerateCount;
-  window.creativeWireframeDebugLineStatus =
+  authoring.creativeWireframeDebugLineStatus =
       std::string(toString(receipt.debugLineStatus));
-  window.creativeWireframeDebugLineReasonCode =
+  authoring.creativeWireframeDebugLineReasonCode =
       receipt.debugLineReasonCode.empty() ? "none" : receipt.debugLineReasonCode;
 }
 

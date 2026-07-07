@@ -1,6 +1,6 @@
 # E168 — CreativeAuthoringStore G1: wireframe fields + shared diagnostics header
 
-**STATUS: READY.** Parent: `blocked/E161-creativeauthoringstore-bulk-move.md`.
+**STATUS: DONE.** Parent: `blocked/E161-creativeauthoringstore-bulk-move.md`.
 **Commit convention:** `claude: planned. codex: ...`.
 
 ## Goal
@@ -149,3 +149,77 @@ diffs, stop and report instead of regenerating.
 - any remaining dirty `Testing/Temporary/LastTest.log` note
 
 No stage, commit, push, or window launch.
+
+## Completion Brief
+
+Files changed:
+- `docs/creative_mode/builder_tasks/done/E168-creativeauthoringstore-g1-wireframe.md`
+- `docs/god_struct_member_ownership.tsv`
+- `src/app/iggy3d/ProductAppWindowState.hpp`
+- `src/app/iggy3d/creative/CreativeAuthoringStore.hpp`
+- `src/app/iggy3d/creative/CreativeUiCommandDiagnostics.hpp`
+- `src/app/iggy3d/receipt/CreativePickWireframeFields.cpp`
+- `src/app/iggy3d/receipt/CreativeReceiptRecording.cpp`
+
+Diagnostics structs moved:
+- Moved the inline creative diagnostics structs out of
+  `ProductAppWindowState.hpp` into
+  `src/app/iggy3d/creative/CreativeUiCommandDiagnostics.hpp`.
+- Moved structs:
+  `ProductCreativeUiCommandMutationDiagnostics`,
+  `ProductCreativeUiCommandCreateDiagnostics`,
+  `ProductCreativeUiCommandDeleteDiagnostics`,
+  `ProductCreativeUiCommandUndoDiagnostics`,
+  `ProductCreativeUiCommandRoomShellDiagnostics`,
+  `ProductCreativeBakedRoomRefreshDiagnostics`, and
+  `ProductCreativeUiCommandDiagnostics`.
+
+Fields moved:
+- Added `ProductAppWindowState::creativeAuthoring`.
+- Added `CreativeAuthoringStore` with exactly the 26 requested
+  `creativeWireframe*` telemetry fields, preserving type/default/order.
+- Repointed `recordProductCreativeWireframeFrame(...)` writes and
+  `appendProductCreativePickWireframeFields(...)` receipt reads to
+  `window.creativeAuthoring.<field>`.
+- Removed the 26 top-level `creativeWireframe*` rows from
+  `docs/god_struct_member_ownership.tsv` and added
+  `creativeAuthoring	CreativeAuthoringStore`.
+
+Receipt golden result:
+- `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed:
+  `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+  produced no output.
+
+Ownership coverage result:
+- `/Users/kogaryu/iggy3d/build/product_god_struct_ownership_coverage_tests`
+  passed:
+  `god-struct ownership coverage: assigned=90 CreativeAuthoringStore=61 DebugHudStore=1 FrontendWindowShell=16 GameplayStore=1 InputDeviceStore=1 PresentPathStore=1 RoomStore=1 SaveSessionStore=1 ViewportStore=2 app-global-remainder=4 delete=1`.
+
+Required grep results:
+- Direct `window.creativeWireframe*` telemetry grep: no output.
+- `ProductAppWindowState.hpp` flat `creativeWireframe*` telemetry grep:
+  no output.
+- TSV `^creativeWireframe` grep: no output.
+- Foreign `creativeWireframeDebug*` hits remain in render/projection/startup
+  payloads and tests, including `RenderFrame::creativeWireframeDebug`,
+  Vulkan geometry diagnostics, `FramePresenter` debug-line payload plumbing,
+  and render debug-line tests. Those were intentionally not moved.
+
+Full suite result:
+- `cmake --build /Users/kogaryu/iggy3d/build -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure`
+  passed: `100% tests passed, 0 tests failed out of 260`.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files produced no output.
+
+Deferred slices still untouched:
+- Did not move viewport pick, room editor, ASCII/world setup, UI command,
+  stale, undo, revision, navigate, or auto-refresh fields.
+- Did not move render/projection `creativeWireframeDebug*` payload structs.
+- Did not mark the parent `CreativeAuthoringStore` target complete.
+
+Dirty notes:
+- `Testing/Temporary/LastTest.log` is not reported dirty by
+  `git status --short`.
+- No stage, commit, push, or window launch performed.

@@ -11,9 +11,10 @@
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/Options.hpp"
-#include "app/iggy3d/ProductCreativeBakedRoomRefresh.hpp"
 #include "app/iggy3d/input/InputDeviceStore.hpp"
 #include "app/iggy3d/debug/DebugHudStore.hpp"
+#include "app/iggy3d/creative/CreativeAuthoringStore.hpp"
+#include "app/iggy3d/creative/CreativeUiCommandDiagnostics.hpp"
 #include "app/iggy3d/world/WorldSetupState.hpp"
 #include "app/iggy3d/world/WorldCreationState.hpp"
 #include "app/iggy3d/gameplay/WallRunState.hpp"
@@ -49,128 +50,6 @@
 
 namespace iggy3d {
 
-struct ProductCreativeUiCommandMutationDiagnostics {
-  bool requested = false;
-  bool accepted = false;
-  bool changed = false;
-  std::string status = "Unknown";
-  std::string documentStatus = "Unknown";
-  std::string kind = "Unknown";
-  std::uint64_t target = 0;
-  std::uint64_t objectId = 0;
-  std::string objectKind = "Unknown";
-  bool visibleBefore = false;
-  bool visibleAfter = false;
-  bool lockedBefore = false;
-  bool lockedAfter = false;
-  std::uint64_t revisionBefore = 0;
-  std::uint64_t revisionAfter = 0;
-  std::string message = "none";
-};
-
-struct ProductCreativeUiCommandCreateDiagnostics {
-  bool requested = false;
-  bool accepted = false;
-  bool changed = false;
-  std::string status = "Unknown";
-  std::uint64_t objectId = 0;
-  std::string objectKind = "Unknown";
-  std::string objectName = "none";
-  std::uint64_t revisionBefore = 0;
-  std::uint64_t revisionAfter = 0;
-  std::uint64_t dirtyFlags = 0;
-  std::string message = "none";
-  std::string reasonCode = "none";
-};
-
-struct ProductCreativeUiCommandDeleteDiagnostics {
-  bool requested = false;
-  bool accepted = false;
-  bool changed = false;
-  bool removed = false;
-  std::uint64_t objectId = 0;
-  std::string objectKind = "Unknown";
-  std::string objectName = "none";
-  std::uint64_t revisionBefore = 0;
-  std::uint64_t revisionAfter = 0;
-  std::uint64_t dirtyFlags = 0;
-  std::string status = "Unknown";
-  std::string message = "none";
-  std::string reasonCode = "none";
-};
-
-struct ProductCreativeUiCommandUndoDiagnostics {
-  bool requested = false;
-  bool accepted = false;
-  bool changed = false;
-  bool hadSnapshot = false;
-  std::uint64_t documentId = 0;
-  std::uint64_t revisionBefore = 0;
-  std::uint64_t revisionAfter = 0;
-  std::uint64_t objectCountBefore = 0;
-  std::uint64_t objectCountAfter = 0;
-  std::uint64_t depthBefore = 0;
-  std::uint64_t depthAfter = 0;
-  std::string status = "creative_undo_not_requested";
-  std::string message = "creative_undo_not_requested";
-  std::string reasonCode = "creative_undo_not_requested";
-};
-
-struct ProductCreativeUiCommandRoomShellDiagnostics {
-  bool requested = false;
-  bool accepted = false;
-  bool changed = false;
-  std::uint64_t roomObjectId = 0;
-  std::uint64_t generatedObjectCount = 0;
-  std::uint64_t removedObjectCount = 0;
-  std::uint64_t floorCount = 0;
-  std::uint64_t wallCount = 0;
-  std::uint64_t revisionBefore = 0;
-  std::uint64_t revisionAfter = 0;
-  std::string status = "creative_room_shell_not_requested";
-  std::string reasonCode = "creative_room_shell_not_requested";
-  std::string message = "creative_room_shell_not_requested";
-};
-
-struct ProductCreativeBakedRoomRefreshDiagnostics {
-  bool requested = false;
-  bool accepted = false;
-  bool clearedActiveRoom = false;
-  std::string status = "product_creative_baked_room_not_requested";
-  std::string reasonCode = "product_creative_baked_room_not_requested";
-  bool bakeMeasured = false;
-  std::uint64_t bakeElapsedMicroseconds = 0;
-  std::uint64_t bakedDocumentRevision = 0;
-  std::uint64_t staticMeshCount = 0;
-  std::uint64_t anchorCount = 0;
-  std::uint64_t spatialSurfaceCount = 0;
-  bool collisionReady = false;
-  std::uint64_t collisionQuerySurfaceCount = 0;
-};
-
-struct ProductCreativeUiCommandDiagnostics {
-  bool requested = false;
-  bool facadeAvailable = false;
-  bool inputConsumed = false;
-  bool inputEnabled = false;
-  bool accepted = false;
-  bool changed = false;
-  std::string kind = "none";
-  std::string tool = "none";
-  std::string objectKind = "Unknown";
-  std::string toolBefore = "Select";
-  std::string toolAfter = "Select";
-  std::string semanticId = "none";
-  std::string status = "product_creative_ui_command_not_requested";
-  std::string reasonCode = "product_creative_ui_command_not_requested";
-  ProductCreativeUiCommandMutationDiagnostics mutation;
-  ProductCreativeUiCommandCreateDiagnostics create;
-  ProductCreativeUiCommandDeleteDiagnostics deleteObject;
-  ProductCreativeUiCommandUndoDiagnostics undo;
-  ProductCreativeUiCommandRoomShellDiagnostics shell;
-  ProductCreativeBakedRoomRefreshDiagnostics bakedRoomRefresh;
-};
-
 struct ProductAppWindowState {
   bool requested = false;
   bool sdlAvailable = false;
@@ -183,6 +62,7 @@ struct ProductAppWindowState {
   bool gamepadMenuSelectUsed = false;
   InputDeviceStore inputDevice;
   DebugHudStore debugHud;
+  CreativeAuthoringStore creativeAuthoring;
   FrontendSettingsTab selectedSettingsTab = FrontendSettingsTab::None;
   GameplayStore gameplay;
   std::string launchAction = "none";
@@ -266,34 +146,6 @@ struct ProductAppWindowState {
   std::string creativeViewportPickOccupancyKind = "Unknown";
   std::uint64_t creativeViewportPickTarget = 0;
   std::uint64_t creativeViewportPickCellIndex = 0;
-  bool creativeWireframeRequested = false;
-  bool creativeWireframeActive = false;
-  bool creativeWireframeFacadeAvailable = false;
-  bool creativeWireframeDocumentAvailable = false;
-  bool creativeWireframeSourceAvailable = false;
-  std::uint64_t creativeWireframeObjectCount = 0;
-  std::uint64_t creativeWireframeVisibleObjectCount = 0;
-  std::uint64_t creativeWireframeItemCount = 0;
-  std::uint64_t creativeWireframeSegmentCount = 0;
-  std::uint64_t creativeWireframeBoxItemCount = 0;
-  std::uint64_t creativeWireframeLineItemCount = 0;
-  std::uint64_t creativeWireframePointItemCount = 0;
-  std::uint64_t creativeWireframeSkippedDegenerateCount = 0;
-  std::string creativeWireframeStatus =
-      "creative_wireframe_frame_not_requested";
-  std::string creativeWireframeReasonCode =
-      "creative_wireframe_frame_not_requested";
-  std::string creativeWireframeWireframeStatus = "Unknown";
-  std::string creativeWireframeWireframeReasonCode = "none";
-  std::string creativeWireframeSegmentStatus = "Unknown";
-  std::string creativeWireframeSegmentReasonCode = "none";
-  bool creativeWireframeDebugLineRequested = false;
-  bool creativeWireframeDebugLineSourceAvailable = false;
-  std::uint64_t creativeWireframeDebugLineInputSegmentCount = 0;
-  std::uint64_t creativeWireframeDebugLineCount = 0;
-  std::uint64_t creativeWireframeDebugLineSkippedDegenerateCount = 0;
-  std::string creativeWireframeDebugLineStatus = "Unknown";
-  std::string creativeWireframeDebugLineReasonCode = "none";
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;
