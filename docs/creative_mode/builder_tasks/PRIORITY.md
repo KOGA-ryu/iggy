@@ -6,8 +6,8 @@ use this index only to decide which ready card to claim next.
 
 The current pipeline is a **gated spine change** (the activeRoom→collision
 freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
-Gate-1 ratified). Gates G2–G5 are done. Do not pre-load G6–G7 until G5 is
-reviewed and committed.
+Gate-1 ratified). **Gates G2–G5 done → G6 seeded** (stress/shutdown, test-only).
+Do not pre-load G7 until G6 is reviewed and committed.
 
 ## Claim Policy
 
@@ -25,11 +25,14 @@ None.
 
 ## Pull Next
 
-None currently ready.
+1. **E133 (E-ARCF-G6)** — freshness store stress + shutdown: N-permutation order
+   stress, session-reset-then-`ensure`, empty-room thrash (I5). Test-only; no
+   production change. Read preflight §6/§9/§5-I5 first.
 
 ## Tier 1: Correctness And Compatibility
 
-None currently ready.
+- **E133 (E-ARCF-G6)** — Gate 6 stress/shutdown (tests only). G7 (receipt wiring +
+  ownership audit + architecture receipt) held until G6 is reviewed/committed.
 
 ## Tier 2: Feature-Add Seams
 
@@ -43,7 +46,8 @@ None currently ready.
 
 Held — do NOT promote to `ready/` on a guess:
 
-- **Freshness-guard gates G6–G7** — held; seed after G5 is reviewed/committed
+- **Freshness-guard gate G7** (receipt `reasonCode` wiring + naming/ownership audit
+  + architecture receipt) — held; seed after G6 is reviewed/committed
   (`docs/active_room_collision_freshness_preflight_v0_2.md` Gate 1–7 table).
 - **Ownership-deficit queue** (`docs/ownership_deficit_audit.md`) landing onto the
   decomposition map (`docs/god_struct_decomposition_target_map.md`):
