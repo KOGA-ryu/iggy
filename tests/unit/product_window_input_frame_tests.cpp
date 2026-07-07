@@ -2277,9 +2277,9 @@ bool collisionOverlayActionTogglesDistinctWindowState() {
   const bool enabledOk =
       expect(enabled.handled, "collision overlay enable handled") &&
       expect(enabled.accepted, "collision overlay enable accepted") &&
-      expect(window.devCollisionOverlay.visible,
+      expect(window.debugHud.devCollisionOverlay.visible,
              "collision overlay window flag enabled") &&
-      expect(window.devCollisionOverlay.status ==
+      expect(window.debugHud.devCollisionOverlay.status ==
                  "dev_collision_overlay_enabled",
              "collision overlay enabled status") &&
       expect(!settings.debugOverlayEnabled,
@@ -2297,9 +2297,9 @@ bool collisionOverlayActionTogglesDistinctWindowState() {
   const bool disabledOk =
       expect(disabled.handled, "collision overlay disable handled") &&
       expect(disabled.accepted, "collision overlay disable accepted") &&
-      expect(!window.devCollisionOverlay.visible,
+      expect(!window.debugHud.devCollisionOverlay.visible,
              "collision overlay window flag hidden") &&
-      expect(window.devCollisionOverlay.status ==
+      expect(window.debugHud.devCollisionOverlay.status ==
                  "dev_collision_overlay_hidden",
              "collision overlay hidden status") &&
       expect(!settings.debugOverlayEnabled,
@@ -2314,7 +2314,7 @@ bool collisionOverlayActionTogglesDistinctWindowState() {
          expect(devTools.accepted, "dev toggle after collision accepted") &&
          expect(iggy3d::frontendDevToolsOpen(frontend),
                 "dev toggle still opens dev tools") &&
-         expect(!window.devCollisionOverlay.visible,
+         expect(!window.debugHud.devCollisionOverlay.visible,
                 "dev toggle does not toggle collision overlay");
 }
 
@@ -2578,7 +2578,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
   const bool f2Ok =
       expect(f2.handled, "top-level F2 handled") &&
       expect(f2.accepted, "top-level F2 accepted") &&
-      expect(collisionWindow.devCollisionOverlay.visible,
+      expect(collisionWindow.debugHud.devCollisionOverlay.visible,
              "top-level F2 toggles collision overlay") &&
       expect(!settings.debugOverlayEnabled,
              "top-level F2 does not mutate debug setting");

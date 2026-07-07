@@ -249,23 +249,24 @@ DebugProjectionResult buildProductDebugProjectionWithNpcBehavior(
 
 void copyNpcBehaviorDebugHud(ProductAppWindowState& window,
                              const NpcBehaviorDebugHud& hud) {
-  window.npcBehaviorDebugHud.visible = hud.visible;
-  window.npcBehaviorDebugHud.debugAvailable = hud.debugAvailable;
-  window.npcBehaviorDebugHud.lineCount = static_cast<std::uint64_t>(hud.lineCount);
-  window.npcBehaviorDebugHud.status = hud.status;
-  window.npcBehaviorDebugHud.reasonCode = hud.reasonCode;
-  window.npcBehaviorDebugHud.hasUnresolvedProfile =
+  window.debugHud.npcBehaviorDebugHud.visible = hud.visible;
+  window.debugHud.npcBehaviorDebugHud.debugAvailable = hud.debugAvailable;
+  window.debugHud.npcBehaviorDebugHud.lineCount =
+      static_cast<std::uint64_t>(hud.lineCount);
+  window.debugHud.npcBehaviorDebugHud.status = hud.status;
+  window.debugHud.npcBehaviorDebugHud.reasonCode = hud.reasonCode;
+  window.debugHud.npcBehaviorDebugHud.hasUnresolvedProfile =
       npcBehaviorHudHasUnresolvedProfile(hud);
 }
 
 void copyPhysicsDebugHud(ProductAppWindowState& window,
                          const PhysicsDebugHud& hud) {
-  window.physicsDebugHud = hud;
+  window.debugHud.physicsDebugHud = hud;
 }
 
 void copyPositionHud(ProductAppWindowState& window,
                      const PositionHud& hud) {
-  window.positionHud = hud;
+  window.debugHud.positionHud = hud;
 }
 
 void copyProductRoomEditorOverlay(ProductAppWindowState& window,
@@ -291,12 +292,12 @@ void copyInteractionModeHud(ProductAppWindowState& window,
 
 void copyTopDownMapOverlay(ProductAppWindowState& window,
                                   const TopDownMapOverlay& overlay) {
-  window.topDownMap.visible = overlay.visible;
-  window.topDownMap.purpose = overlay.purpose;
-  window.topDownMap.size = overlay.size;
-  window.topDownMap.status = overlay.status;
-  window.topDownMap.reasonCode = overlay.reasonCode;
-  window.topDownMap.itemCount = overlay.itemCount;
+  window.debugHud.topDownMap.visible = overlay.visible;
+  window.debugHud.topDownMap.purpose = overlay.purpose;
+  window.debugHud.topDownMap.size = overlay.size;
+  window.debugHud.topDownMap.status = overlay.status;
+  window.debugHud.topDownMap.reasonCode = overlay.reasonCode;
+  window.debugHud.topDownMap.itemCount = overlay.itemCount;
 }
 
 void copyProductRoomEditorPreviewOverlay(

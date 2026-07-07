@@ -59,23 +59,24 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                             settings.devToolsEnabled,
                             settings.debugOverlayEnabled);
   const NpcBehaviorDebugHud npcBehaviorHud{
-      window.npcBehaviorDebugHud.visible,
+      window.debugHud.npcBehaviorDebugHud.visible,
       settings.devToolsEnabled,
       settings.debugOverlayEnabled,
-      window.npcBehaviorDebugHud.debugAvailable,
-      static_cast<std::size_t>(window.npcBehaviorDebugHud.lineCount),
-      window.npcBehaviorDebugHud.status,
-      window.npcBehaviorDebugHud.reasonCode,
+      window.debugHud.npcBehaviorDebugHud.debugAvailable,
+      static_cast<std::size_t>(
+          window.debugHud.npcBehaviorDebugHud.lineCount),
+      window.debugHud.npcBehaviorDebugHud.status,
+      window.debugHud.npcBehaviorDebugHud.reasonCode,
       {}};
   const PhysicsDebugHud physicsHud{
-      window.physicsDebugHud.visible,
+      window.debugHud.physicsDebugHud.visible,
       settings.devToolsEnabled,
       settings.debugOverlayEnabled,
-      window.physicsDebugHud.debugAvailable,
-      window.physicsDebugHud.lineCount,
-      window.physicsDebugHud.status,
-      window.physicsDebugHud.reasonCode,
-      window.physicsDebugHud.hasWarnings,
+      window.debugHud.physicsDebugHud.debugAvailable,
+      window.debugHud.physicsDebugHud.lineCount,
+      window.debugHud.physicsDebugHud.status,
+      window.debugHud.physicsDebugHud.reasonCode,
+      window.debugHud.physicsDebugHud.hasWarnings,
       {}};
   appendProductFrontendSettingsWindowFields(receipt, options, frontend, settings, window, creativeSurface, mapMakerLive);
   appendProductStartupWorldBuildoutFields(receipt, frontend, window, saves);

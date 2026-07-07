@@ -483,13 +483,13 @@ bool productPhysicsDebugHudUnavailableWithoutMovementStats() {
   ok = expect(frame.physicsHud.reasonCode == "physics_debug_unavailable",
               "unavailable physics HUD reason") &&
        ok;
-  ok = expect(window.physicsDebugHud.debugAvailable,
+  ok = expect(window.debugHud.physicsDebugHud.debugAvailable,
               "window physics debug projection available") &&
        ok;
-  ok = expect(window.physicsDebugHud.lineCount == 0U,
+  ok = expect(window.debugHud.physicsDebugHud.lineCount == 0U,
               "window physics debug line count zero") &&
        ok;
-  ok = expect(window.physicsDebugHud.status == "physics_debug_unavailable",
+  ok = expect(window.debugHud.physicsDebugHud.status == "physics_debug_unavailable",
               "window physics debug unavailable status") &&
        ok;
   ok = expect(iggy3d::hasReceiptField(receipt,
@@ -572,14 +572,14 @@ bool productPhysicsDebugHudReadyFromMovementStats() {
        ok;
   ok = expect(!frame.physicsHud.hasWarnings, "ready physics HUD no warnings") &&
        ok;
-  ok = expect(window.physicsDebugHud.visible, "window physics HUD visible") && ok;
-  ok = expect(window.physicsDebugHud.lineCount == 4U,
+  ok = expect(window.debugHud.physicsDebugHud.visible, "window physics HUD visible") && ok;
+  ok = expect(window.debugHud.physicsDebugHud.lineCount == 4U,
               "window physics HUD line count") &&
        ok;
-  ok = expect(window.physicsDebugHud.status == "physics_debug_ready",
+  ok = expect(window.debugHud.physicsDebugHud.status == "physics_debug_ready",
               "window physics HUD ready status") &&
        ok;
-  ok = expect(!window.physicsDebugHud.hasWarnings,
+  ok = expect(!window.debugHud.physicsDebugHud.hasWarnings,
               "window physics HUD no warnings") &&
        ok;
   ok = expect(frame.positionHud.visible, "ready position HUD visible") && ok;
@@ -592,11 +592,11 @@ bool productPhysicsDebugHudReadyFromMovementStats() {
   ok = expect(frame.positionHud.lines.size() == 3U,
               "ready position HUD line count") &&
        ok;
-  ok = expect(window.positionHud.visible, "window position HUD visible") && ok;
-  ok = expect(window.positionHud.lineCount == 3U,
+  ok = expect(window.debugHud.positionHud.visible, "window position HUD visible") && ok;
+  ok = expect(window.debugHud.positionHud.lineCount == 3U,
               "window position HUD line count") &&
        ok;
-  ok = expect(window.positionHud.facing == "north",
+  ok = expect(window.debugHud.positionHud.facing == "north",
               "window position HUD facing") &&
        ok;
   return ok;
@@ -627,7 +627,7 @@ bool productPhysicsDebugHudWarningFromMovementStats() {
   ok = expect(frame.physicsHud.visible, "warning physics HUD visible") && ok;
   ok = expect(frame.physicsHud.hasWarnings, "warning physics HUD has warnings") &&
        ok;
-  ok = expect(window.physicsDebugHud.hasWarnings,
+  ok = expect(window.debugHud.physicsDebugHud.hasWarnings,
               "window physics HUD has warnings") &&
        ok;
   return ok;
@@ -1187,10 +1187,10 @@ bool gameplayDebugHudsHideOnMenuSurfaces() {
                 surface.label) &&
          ok;
     ok = expect(!projection.drawList.physicsDebugVisible, surface.label) && ok;
-    ok = expect(!window.positionHud.visible, surface.label) && ok;
-    ok = expect(window.positionHud.debugAvailable, surface.label) && ok;
-    ok = expect(!window.physicsDebugHud.visible, surface.label) && ok;
-    ok = expect(window.physicsDebugHud.lineCount == 4U, surface.label) && ok;
+    ok = expect(!window.debugHud.positionHud.visible, surface.label) && ok;
+    ok = expect(window.debugHud.positionHud.debugAvailable, surface.label) && ok;
+    ok = expect(!window.debugHud.physicsDebugHud.visible, surface.label) && ok;
+    ok = expect(window.debugHud.physicsDebugHud.lineCount == 4U, surface.label) && ok;
   }
   return ok;
 }
@@ -1334,9 +1334,9 @@ bool roomEditorSurfaceShowsEditorHudOnly() {
                 "editor window records room editor HUD visible") &&
          expect(window.roomEditorOverlay.visible,
                 "editor window records room editor overlay visible") &&
-         expect(!window.positionHud.visible,
+         expect(!window.debugHud.positionHud.visible,
                 "editor window records position HUD hidden") &&
-         expect(window.positionHud.debugAvailable,
+         expect(window.debugHud.positionHud.debugAvailable,
                 "editor hidden position HUD keeps projection availability");
 }
 

@@ -130,9 +130,10 @@ void clearProductRoomEditorTransientModes(ProductAppWindowState& window) {
 
 void clearProductGameplayOnlyModes(ProductAppWindowState& window) {
   clearProductMenuOwnedTransientModes(window);
-  window.devCollisionOverlay.visible = false;
-  window.devCollisionOverlay.status = "dev_collision_overlay_hidden";
-  window.devCollisionOverlay.reasonCode = window.devCollisionOverlay.status;
+  window.debugHud.devCollisionOverlay.visible = false;
+  window.debugHud.devCollisionOverlay.status = "dev_collision_overlay_hidden";
+  window.debugHud.devCollisionOverlay.reasonCode =
+      window.debugHud.devCollisionOverlay.status;
   clearProductRoomEditorTransientModes(window);
 }
 

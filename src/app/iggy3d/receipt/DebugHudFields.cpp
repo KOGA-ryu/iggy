@@ -64,7 +64,7 @@ void appendProductDebugHudFields(RenderReceipt& receipt, const ProductAppWindowS
                      npcBehaviorHud.reasonCode);
   appendReceiptField(receipt,
                      "npc_behavior_debug_hud_has_unresolved_profile",
-                     window.npcBehaviorDebugHud.hasUnresolvedProfile);
+                     window.debugHud.npcBehaviorDebugHud.hasUnresolvedProfile);
   appendReceiptField(receipt, "physics_debug_hud_visible",
                      physicsHud.visible);
   appendReceiptField(receipt, "physics_debug_hud_line_count",

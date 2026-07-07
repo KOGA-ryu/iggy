@@ -13,8 +13,7 @@
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ProductCreativeBakedRoomRefresh.hpp"
 #include "app/iggy3d/input/InputDeviceStore.hpp"
-#include "app/iggy3d/debug/TopDownMapState.hpp"
-#include "app/iggy3d/debug/DevCollisionOverlayState.hpp"
+#include "app/iggy3d/debug/DebugHudStore.hpp"
 #include "app/iggy3d/world/WorldSetupState.hpp"
 #include "app/iggy3d/world/WorldCreationState.hpp"
 #include "app/iggy3d/gameplay/WallRunState.hpp"
@@ -41,9 +40,6 @@
 #include "app/iggy3d/ProductCreativeDocumentRevisionState.hpp"
 #include "app/iggy3d/gameplay/CommandState.hpp"
 #include "app/iggy3d/gameplay/JumpState.hpp"
-#include "app/iggy3d/debug/NpcBehaviorDebugHudState.hpp"
-#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
-#include "app/iggy3d/debug/PositionHud.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
@@ -186,8 +182,7 @@ struct ProductAppWindowState {
   bool mouseMenuSelectUsed = false;
   bool gamepadMenuSelectUsed = false;
   InputDeviceStore inputDevice;
-  ProductTopDownMapState topDownMap;
-  ProductDevCollisionOverlayState devCollisionOverlay;
+  DebugHudStore debugHud;
   FrontendSettingsTab selectedSettingsTab = FrontendSettingsTab::None;
   GameplayStore gameplay;
   std::string launchAction = "none";
@@ -238,9 +233,6 @@ struct ProductAppWindowState {
   // Window-owned monotonic creative world generation used by viewport fly state.
   std::uint64_t creativeWorldEpoch = 0;
   ProductViewportState viewport;
-  ProductNpcBehaviorDebugHudState npcBehaviorDebugHud;
-  PhysicsDebugHud physicsDebugHud;
-  PositionHud positionHud;
   ProductAutomationControlState automationControl;
   ProductVulkanRendererState productVulkanRenderer;
   bool productVulkanSurfaceCreated = false;

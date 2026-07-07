@@ -8,8 +8,7 @@ selectedRowDrawn	FrontendWindowShell
 mouseMenuSelectUsed	FrontendWindowShell
 gamepadMenuSelectUsed	FrontendWindowShell
 inputDevice	InputDeviceStore
-topDownMap	DebugHudStore
-devCollisionOverlay	DebugHudStore
+debugHud	DebugHudStore
 selectedSettingsTab	FrontendWindowShell
 gameplay	GameplayStore
 launchAction	FrontendWindowShell
@@ -53,9 +52,6 @@ creativeNavigateActive	CreativeAuthoringStore
 runtimeStateHash	delete
 creativeWorldEpoch	ViewportStore
 viewport	ViewportStore
-npcBehaviorDebugHud	DebugHudStore
-physicsDebugHud	DebugHudStore
-positionHud	DebugHudStore
 automationControl	FrontendWindowShell
 productVulkanRenderer	PresentPathStore
 productVulkanSurfaceCreated	app-global-remainder

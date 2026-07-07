@@ -51,9 +51,10 @@ void retainJumpTiming(iggy3d::ProductAppWindowState& window) {
 }
 
 void showCollisionOverlay(iggy3d::ProductAppWindowState& window) {
-  window.devCollisionOverlay.visible = true;
-  window.devCollisionOverlay.status = "dev_collision_overlay_enabled";
-  window.devCollisionOverlay.reasonCode = window.devCollisionOverlay.status;
+  window.debugHud.devCollisionOverlay.visible = true;
+  window.debugHud.devCollisionOverlay.status = "dev_collision_overlay_enabled";
+  window.debugHud.devCollisionOverlay.reasonCode =
+      window.debugHud.devCollisionOverlay.status;
 }
 
 void showRoomEditorTransients(iggy3d::ProductAppWindowState& window) {
@@ -217,7 +218,7 @@ int main() {
                "pause clears movement tuning");
   ok &= expect(settings.debugOverlayEnabled,
                "pause preserves debug overlay setting");
-  ok &= expect(window.devCollisionOverlay.visible,
+  ok &= expect(window.debugHud.devCollisionOverlay.visible,
                "pause preserves collision overlay state");
   const iggy3d::RenderReceipt pauseReceipt =
       receiptFor(frontend, settings, window);
@@ -385,9 +386,10 @@ int main() {
                "return to title clears movement tuning");
   ok &= expect(!settings.debugOverlayEnabled,
                "return to title clears debug overlay setting");
-  ok &= expect(!window.devCollisionOverlay.visible,
+  ok &= expect(!window.debugHud.devCollisionOverlay.visible,
                "return to title clears collision overlay");
-  ok &= expect(window.devCollisionOverlay.status == "dev_collision_overlay_hidden",
+  ok &= expect(window.debugHud.devCollisionOverlay.status ==
+                   "dev_collision_overlay_hidden",
                "return to title collision overlay status hidden");
   ok &= expect(window.roomEditing.ready,
                "return to title preserves room editing document");

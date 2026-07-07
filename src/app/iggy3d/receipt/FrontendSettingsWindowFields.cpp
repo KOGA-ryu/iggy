@@ -63,13 +63,13 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
                      settings.debugOverlayEnabled);
   appendReceiptField(receipt,
                      "dev_collision_overlay_visible",
-                     window.devCollisionOverlay.visible);
+                     window.debugHud.devCollisionOverlay.visible);
   appendReceiptField(receipt,
                      "dev_collision_overlay_status",
-                     window.devCollisionOverlay.status);
+                     window.debugHud.devCollisionOverlay.status);
   appendReceiptField(receipt,
                      "dev_collision_overlay_reason_code",
-                     window.devCollisionOverlay.reasonCode);
+                     window.debugHud.devCollisionOverlay.reasonCode);
   appendReceiptField(receipt,
                      "gameplay_movement_tuning_status",
                      window.gameplay.gameplayMovement.tuningStatus);
@@ -157,14 +157,18 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
                      window.inputDevice.interactionModeHud.mode);
   appendReceiptField(receipt, "interaction_mode_hud_label",
                      window.inputDevice.interactionModeHud.label);
-  appendReceiptField(receipt, "top_down_map_visible", window.topDownMap.visible);
-  appendReceiptField(receipt, "top_down_map_purpose", window.topDownMap.purpose);
-  appendReceiptField(receipt, "top_down_map_size", window.topDownMap.size);
-  appendReceiptField(receipt, "top_down_map_status", window.topDownMap.status);
+  appendReceiptField(receipt, "top_down_map_visible",
+                     window.debugHud.topDownMap.visible);
+  appendReceiptField(receipt, "top_down_map_purpose",
+                     window.debugHud.topDownMap.purpose);
+  appendReceiptField(receipt, "top_down_map_size",
+                     window.debugHud.topDownMap.size);
+  appendReceiptField(receipt, "top_down_map_status",
+                     window.debugHud.topDownMap.status);
   appendReceiptField(receipt, "top_down_map_reason_code",
-                     window.topDownMap.reasonCode);
+                     window.debugHud.topDownMap.reasonCode);
   appendReceiptField(receipt, "top_down_map_item_count",
-                     window.topDownMap.itemCount);
+                     window.debugHud.topDownMap.itemCount);
   appendReceiptField(receipt, "mouse_capture_requested",
                      window.inputDevice.mouseCapture.requested);
   appendReceiptField(receipt, "mouse_capture_active", window.inputDevice.mouseCapture.active);

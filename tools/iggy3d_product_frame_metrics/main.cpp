@@ -389,8 +389,8 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
       std::max(counters.renderBridgeItemMax,
                window.viewport.productViewFrameItemCount);
   const std::uint64_t debugHudLines =
-      projection.movementHud.lines.size() + window.npcBehaviorDebugHud.lineCount +
-      window.physicsDebugHud.lineCount + window.positionHud.lineCount;
+      projection.movementHud.lines.size() + window.debugHud.npcBehaviorDebugHud.lineCount +
+      window.debugHud.physicsDebugHud.lineCount + window.debugHud.positionHud.lineCount;
   counters.debugHudLineMax =
       std::max(counters.debugHudLineMax, debugHudLines);
   counters.movementDebugHudLineMax =
@@ -398,10 +398,10 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
                static_cast<std::uint64_t>(projection.movementHud.lines.size()));
   counters.physicsDebugHudLineMax =
       std::max(counters.physicsDebugHudLineMax,
-               static_cast<std::uint64_t>(window.physicsDebugHud.lineCount));
+               static_cast<std::uint64_t>(window.debugHud.physicsDebugHud.lineCount));
   counters.npcDebugHudLineMax =
       std::max(counters.npcDebugHudLineMax,
-               window.npcBehaviorDebugHud.lineCount);
+               window.debugHud.npcBehaviorDebugHud.lineCount);
   counters.collisionSurfaceMax =
       std::max(counters.collisionSurfaceMax,
                iggy3d::activeRoomCollision(window).querySurfaceCount);
