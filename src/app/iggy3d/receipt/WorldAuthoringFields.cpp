@@ -149,54 +149,54 @@ void appendProductWorldAuthoringFields(RenderReceipt& receipt, const ProductAppW
                      window.asciiRoomActivation.markerCount);
   appendReceiptField(receipt, "ascii_room_activation_runtime_hash",
                      window.asciiRoomActivation.runtimeHash);
-  appendReceiptField(receipt, "room_editing_ready", window.roomEditing.ready);
-  appendReceiptField(receipt, "room_editing_status", window.roomEditing.status);
+  appendReceiptField(receipt, "room_editing_ready", window.creativeAuthoring.roomEditing.ready);
+  appendReceiptField(receipt, "room_editing_status", window.creativeAuthoring.roomEditing.status);
   appendReceiptField(receipt, "room_editing_reason_code",
-                     window.roomEditing.reasonCode);
+                     window.creativeAuthoring.roomEditing.reasonCode);
   appendReceiptField(receipt, "room_editing_floor_count",
-                     window.roomEditing.documentFloorCount);
+                     window.creativeAuthoring.roomEditing.documentFloorCount);
   appendReceiptField(receipt, "room_editing_wall_count",
-                     window.roomEditing.documentWallCount);
+                     window.creativeAuthoring.roomEditing.documentWallCount);
   appendReceiptField(receipt, "room_editing_object_count",
-                     window.roomEditing.documentObjectCount);
+                     window.creativeAuthoring.roomEditing.documentObjectCount);
   appendReceiptField(receipt, "room_editing_active_room_loaded",
-                     window.roomEditing.activeRoom.loaded);
+                     window.creativeAuthoring.roomEditing.activeRoom.loaded);
   appendReceiptField(receipt, "room_editing_active_room_static_mesh_count",
-                     window.roomEditing.activeRoomStaticMeshCount);
+                     window.creativeAuthoring.roomEditing.activeRoomStaticMeshCount);
   appendReceiptField(receipt, "room_editing_active_room_spatial_surface_count",
-                     window.roomEditing.activeRoomSpatialSurfaceCount);
+                     window.creativeAuthoring.roomEditing.activeRoomSpatialSurfaceCount);
   appendReceiptField(receipt, "room_editing_authored_floor_count",
-                     window.roomEditing.activeRoomAuthoredFloorCount);
+                     window.creativeAuthoring.roomEditing.activeRoomAuthoredFloorCount);
   appendReceiptField(receipt, "room_editing_authored_wall_count",
-                     window.roomEditing.activeRoomAuthoredWallCount);
+                     window.creativeAuthoring.roomEditing.activeRoomAuthoredWallCount);
   appendReceiptField(receipt, "room_editing_authored_object_count",
-                     window.roomEditing.activeRoomAuthoredObjectCount);
+                     window.creativeAuthoring.roomEditing.activeRoomAuthoredObjectCount);
   appendReceiptField(receipt, "room_editing_collision_ready",
-                     window.roomEditing.activeRoomCollision.ready);
+                     window.creativeAuthoring.roomEditing.activeRoomCollision.ready);
   appendReceiptField(receipt, "room_editing_collision_surface_count",
-                     window.roomEditing.collisionQuerySurfaceCount);
+                     window.creativeAuthoring.roomEditing.collisionQuerySurfaceCount);
   appendReceiptField(receipt, "room_editing_collision_walkable_surface_count",
-                     window.roomEditing.collisionWalkableSurfaceCount);
+                     window.creativeAuthoring.roomEditing.collisionWalkableSurfaceCount);
   appendReceiptField(receipt, "room_editing_collision_actor_blocker_count",
-                     window.roomEditing.collisionActorBlockerSurfaceCount);
+                     window.creativeAuthoring.roomEditing.collisionActorBlockerSurfaceCount);
   appendReceiptField(receipt, "room_editing_collision_projectile_blocker_count",
-                     window.roomEditing.collisionProjectileBlockerSurfaceCount);
+                     window.creativeAuthoring.roomEditing.collisionProjectileBlockerSurfaceCount);
   appendReceiptField(receipt, "room_editing_undo_depth",
-                     window.roomEditing.undoDepth);
+                     window.creativeAuthoring.roomEditing.undoDepth);
   appendReceiptField(receipt, "room_editing_redo_depth",
-                     window.roomEditing.redoDepth);
+                     window.creativeAuthoring.roomEditing.redoDepth);
   appendReceiptField(receipt, "room_editing_last_operation",
-                     window.roomEditingLastOperation);
+                     window.creativeAuthoring.roomEditingLastOperation);
   appendReceiptField(receipt, "room_editing_last_operation_status",
-                     window.roomEditingLastOperationStatus);
+                     window.creativeAuthoring.roomEditingLastOperationStatus);
   appendReceiptField(receipt, "room_editing_last_operation_reason_code",
-                     window.roomEditingLastOperationReasonCode);
+                     window.creativeAuthoring.roomEditingLastOperationReasonCode);
   appendReceiptField(receipt, "room_editing_last_input_source",
-                     window.roomEditingLastInputSource);
+                     window.creativeAuthoring.roomEditingLastInputSource);
   appendReceiptField(receipt, "room_editing_last_operation_accepted",
-                     window.roomEditingLastOperationAccepted);
+                     window.creativeAuthoring.roomEditingLastOperationAccepted);
   appendReceiptField(receipt, "room_editing_last_primitive_id",
-                     window.roomEditingLastPrimitiveId);
+                     window.creativeAuthoring.roomEditingLastPrimitiveId);
 }
 
 }  // namespace iggy3d

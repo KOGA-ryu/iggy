@@ -240,8 +240,8 @@ void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
     recordAction(singleAction, entry.action, entry.down, entry.pressed,
                  entry.released, entry.value);
     const ProductRoomEditorActionResult result =
-        applyProductRoomEditorActions(window.roomEditing,
-                                      window.roomEditorCursor,
+        applyProductRoomEditorActions(window.creativeAuthoring.roomEditing,
+                                      window.creativeAuthoring.roomEditorCursor,
                                       singleAction,
                                       ProductRoomAuthoringInputSource::Hotkey);
     recordProductRoomEditorActionResult(window, result);
@@ -415,7 +415,7 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   ActionState acceptedGameplayActions;
   ActionState acceptedEditorActions;
   InputRoutingContext routingContext;
-  routingContext.owners.editor = window.roomEditing.ready;
+  routingContext.owners.editor = window.creativeAuthoring.roomEditing.ready;
   routingContext.owners.gameplay = true;
   for (const ActionStateEntry& entry : gameplayActions.entries) {
     const InputRoutingResult routed = routeInputAction(routingContext, entry.action);
@@ -435,7 +435,7 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   }
 
   // branch-gate: BG-1061
-  if (window.roomEditing.ready) {
+  if (window.creativeAuthoring.roomEditing.ready) {
     window.gameplay.gameplayMovement.groundVelocityX = 0.0F;
     window.gameplay.gameplayMovement.groundVelocityZ = 0.0F;
     window.gameplay.gameplayMovement.horizontalSpeedMetersPerSecond = 0.0F;
@@ -471,7 +471,7 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   if (!acceptedEditorActions.entries.empty()) {
     applyProductWindowRoomEditorActions(window, acceptedEditorActions);
     result.actionApplied = true;
-    result.actionAccepted = window.roomEditorLastOperationAccepted;
+    result.actionAccepted = window.creativeAuthoring.roomEditorLastOperationAccepted;
     return result;
   }
 
@@ -725,7 +725,7 @@ bool cancelProductRoomEditorPendingPreviewFromBack(
     const FrontendState& frontend,
     ProductAppWindowState& window) {
   // branch-gate: BG-1055
-  if (!window.roomEditing.ready || !window.roomEditorPreview.active) {
+  if (!window.creativeAuthoring.roomEditing.ready || !window.creativeAuthoring.roomEditorPreview.active) {
     return false;
   }
   const ProductRoomEditorPreviewInputResult cancelled =
@@ -958,7 +958,7 @@ ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPre
     return result;
   }
   // branch-gate: BG-1063
-  if (!context.window.roomEditing.ready) {
+  if (!context.window.creativeAuthoring.roomEditing.ready) {
     result.status = "room_editor_not_ready";
     result.reasonCode = result.status;
     return result;
@@ -966,8 +966,8 @@ ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPre
 
   const ProductRoomEditorActionResult pickResult =
       applyProductRoomEditorMousePickAutomation(
-          context.window.roomEditing,
-          context.window.roomEditorCursor,
+          context.window.creativeAuthoring.roomEditing,
+          context.window.creativeAuthoring.roomEditorCursor,
           context.click.x,
           context.click.y,
           context.viewportConfig,
@@ -988,8 +988,8 @@ ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPre
   }
 
   const ProductRoomEditorPlacementPreviewResult preview =
-      buildProductRoomEditorPreviewAutomation(context.window.roomEditing,
-                                              context.window.roomEditorCursor);
+      buildProductRoomEditorPreviewAutomation(context.window.creativeAuthoring.roomEditing,
+                                              context.window.creativeAuthoring.roomEditorCursor);
   recordProductRoomEditorPreviewResult(context.window, preview);
   result.previewBuilt = true;
   result.accepted = preview.ok;
@@ -1537,8 +1537,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     uiRequest.gameplayActive = context.window.gameplay.gameplayActive;
     uiRequest.saveRootWritable = !context.options.saveRoot.empty();
     uiRequest.developerToolsEnabled = true;
-    uiRequest.activeRoomEditable = context.window.roomEditing.ready;
-    uiRequest.roomEditingReady = context.window.roomEditing.ready;
+    uiRequest.activeRoomEditable = context.window.creativeAuthoring.roomEditing.ready;
+    uiRequest.roomEditingReady = context.window.creativeAuthoring.roomEditing.ready;
     const OpeningMenuHitTestResult hit =
         openingMenuActionAt(uiRequest, menuClick.x, menuClick.y);
     // branch-gate: BG-1029
@@ -1563,7 +1563,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
     ActionState gameplayActions;
     if (!creativeInput.creativeDocumentInputHandled) {
       context.window.creativeNavigateActive = false;
-      if (context.window.roomEditing.ready) {
+      if (context.window.creativeAuthoring.roomEditing.ready) {
         (void)processProductWindowEditorMousePickPreview({
             context.frontend,
             context.window,

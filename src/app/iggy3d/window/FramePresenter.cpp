@@ -827,8 +827,8 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
         pauseContext.saveRootWritable = !request.options.saveRoot.empty();
         pauseContext.compatibleSaveCount = request.saves.slots.compatibleCount;
         pauseContext.developerToolsEnabled = true;
-        pauseContext.activeRoomEditable = request.window.roomEditing.ready;
-        pauseContext.roomEditingReady = request.window.roomEditing.ready;
+        pauseContext.activeRoomEditable = request.window.creativeAuthoring.roomEditing.ready;
+        pauseContext.roomEditingReady = request.window.creativeAuthoring.roomEditing.ready;
         const PauseMenuModel pauseModel =
             buildPauseMenuModel(pauseContext, request.frontend.selectedAction);
         ProductPauseUiRequest pauseUiRequest;

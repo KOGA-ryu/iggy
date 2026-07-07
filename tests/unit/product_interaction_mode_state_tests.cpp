@@ -74,7 +74,7 @@ bool roomEditingStartSetsCreativeMode() {
                                      saves);
 
   return expect(started.ok, "room editing start accepted") &&
-         expect(window.roomEditing.ready, "room editing ready") &&
+         expect(window.creativeAuthoring.roomEditing.ready, "room editing ready") &&
          expect(window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "room editing start sets creative mode") &&
@@ -90,10 +90,10 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
   const iggy3d::ProductRoomEditingStartResult started =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
   iggy3d::recordProductRoomEditingStart(window, started, "unit_edit_room");
-  window.roomEditorPreview.active = true;
-  window.roomEditorPreview.visible = true;
-  window.roomEditorOverlay.visible = true;
-  window.roomEditorHud.visible = true;
+  window.creativeAuthoring.roomEditorPreview.active = true;
+  window.creativeAuthoring.roomEditorPreview.visible = true;
+  window.creativeAuthoring.roomEditorOverlay.visible = true;
+  window.creativeAuthoring.roomEditorHud.visible = true;
   window.viewport.productDrawRoomEditorCursorVisible = true;
   window.viewport.productDrawRoomEditorCursorCount = 1;
   const std::string activeRoomId = iggy3d::activeRoom(window).roomId;
@@ -109,8 +109,8 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
 
   return expect(started.ok, "room editing start accepted for leave") &&
          expect(left, "room editing leave accepted") &&
-         expect(!window.roomEditing.ready, "room editing no longer ready") &&
-         expect(window.roomEditing.status == "product_room_editing_left",
+         expect(!window.creativeAuthoring.roomEditing.ready, "room editing no longer ready") &&
+         expect(window.creativeAuthoring.roomEditing.status == "product_room_editing_left",
                 "room editing leave status") &&
          expect(window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Player,
@@ -119,13 +119,13 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
                 "room editing leave returns gameplay owner") &&
          expect(!surfaceAfterLeave.gameplayInputSuppressed,
                 "room editing leave unsuppresses gameplay") &&
-         expect(!window.roomEditorCursorReady, "room editor cursor no longer ready") &&
-         expect(window.roomEditorStatus == "room_editor_not_ready",
+         expect(!window.creativeAuthoring.roomEditorCursorReady, "room editor cursor no longer ready") &&
+         expect(window.creativeAuthoring.roomEditorStatus == "room_editor_not_ready",
                 "room editor leave status") &&
-         expect(!window.roomEditorOverlay.visible, "room editor overlay hidden") &&
-         expect(!window.roomEditorPreview.visible, "room editor preview hidden") &&
-         expect(!window.roomEditorPreview.active, "room editor preview inactive") &&
-         expect(!window.roomEditorHud.visible, "room editor hud hidden") &&
+         expect(!window.creativeAuthoring.roomEditorOverlay.visible, "room editor overlay hidden") &&
+         expect(!window.creativeAuthoring.roomEditorPreview.visible, "room editor preview hidden") &&
+         expect(!window.creativeAuthoring.roomEditorPreview.active, "room editor preview inactive") &&
+         expect(!window.creativeAuthoring.roomEditorHud.visible, "room editor hud hidden") &&
          expect(!window.viewport.productDrawRoomEditorCursorVisible,
                 "room editor cursor draw hidden") &&
          expect(iggy3d::activeRoom(window).loaded, "active room still loaded") &&
@@ -148,10 +148,10 @@ bool roomEditingLeaveRejectsWhenNotReady() {
       iggy3d::recordProductRoomEditingLeave(frontend, window, "unit_leave_editor");
 
   return expect(!left, "not-ready leave rejected") &&
-         expect(!window.roomEditing.ready, "not-ready leave keeps editing off") &&
-         expect(window.roomEditingLastOperationStatus == "room_editor_not_ready",
+         expect(!window.creativeAuthoring.roomEditing.ready, "not-ready leave keeps editing off") &&
+         expect(window.creativeAuthoring.roomEditingLastOperationStatus == "room_editor_not_ready",
                 "not-ready leave status") &&
-         expect(window.roomEditorStatus == "room_editor_not_ready",
+         expect(window.creativeAuthoring.roomEditorStatus == "room_editor_not_ready",
                 "not-ready editor status") &&
          expect(window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Player,
@@ -261,7 +261,7 @@ bool surfaceDerivationIsConservative() {
     frontend.childScreen = row.childScreen;
     iggy3d::ProductAppWindowState window;
     window.gameplay.gameplayActive = row.gameplayActive;
-    window.roomEditing.ready = row.roomEditingReady;
+    window.creativeAuthoring.roomEditing.ready = row.roomEditingReady;
     ok = expect(iggy3d::productInputSurfaceFor(frontend, window) ==
                     row.expected,
                 "surface derivation case") &&
@@ -318,7 +318,7 @@ bool roomEditorSurfaceAllowsToggle() {
   frontend.screen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState window;
   window.gameplay.gameplayActive = true;
-  window.roomEditing.ready = true;
+  window.creativeAuthoring.roomEditing.ready = true;
   iggy3d::ProductControllerModeChordState chordState;
 
   const iggy3d::ProductInteractionModeToggleResult result =

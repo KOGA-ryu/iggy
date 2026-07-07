@@ -31,8 +31,6 @@
 #include "app/iggy3d/window/ProductVulkanMenuState.hpp"
 #include "app/iggy3d/gameplay/CollisionState.hpp"
 #include "app/iggy3d/gameplay/GameplayMovementInfo.hpp"
-#include "app/iggy3d/room_editor/RoomEditorOverlayState.hpp"
-#include "app/iggy3d/room_editor/RoomEditorPreviewState.hpp"
 #include "app/iggy3d/ascii_room/AsciiRoomDraftState.hpp"
 #include "app/iggy3d/ascii_room/AsciiRoomPreviewState.hpp"
 #include "app/iggy3d/ascii_room/AsciiRoomActivationState.hpp"
@@ -41,10 +39,6 @@
 #include "app/iggy3d/ProductCreativeDocumentRevisionState.hpp"
 #include "app/iggy3d/gameplay/CommandState.hpp"
 #include "app/iggy3d/gameplay/JumpState.hpp"
-#include "app/iggy3d/room_editor/Cursor.hpp"
-#include "app/iggy3d/room_editor/Preview.hpp"
-#include "app/iggy3d/room_editor/EditingState.hpp"
-#include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/view/ViewportState.hpp"
 #include "render/RenderDiagnostics.hpp"
 
@@ -74,24 +68,6 @@ struct ProductAppWindowState {
   ProductAsciiRoomDraftState asciiRoomDraft;
   ProductAsciiRoomPreviewState asciiRoomPreview;
   ProductAsciiRoomActivationState asciiRoomActivation;
-  ProductRoomEditingState roomEditing;
-  std::string roomEditingLastOperation = "none";
-  std::string roomEditingLastOperationStatus = "not_requested";
-  std::string roomEditingLastOperationReasonCode = "not_requested";
-  std::string roomEditingLastInputSource = "none";
-  bool roomEditingLastOperationAccepted = false;
-  std::string roomEditingLastPrimitiveId = "none";
-  bool roomEditorCursorReady = false;
-  ProductRoomEditorCursorState roomEditorCursor;
-  std::string roomEditorStatus = "not_requested";
-  std::string roomEditorReasonCode = "not_requested";
-  std::string roomEditorLastOperation = "none";
-  bool roomEditorLastOperationAccepted = false;
-  std::string roomEditorLastPrimitiveId = "none";
-  ProductRoomEditorOverlayState roomEditorOverlay;
-  ProductRoomEditorPreviewState roomEditorPreview;
-  ProductRoomEditorPlacementPreviewResult roomEditorPlacementPreview;
-  ProductRoomEditorHud roomEditorHud;
   ProductRoomStore room;
   SaveSessionStore saveSession;
   ProductCreativeDocumentRevisionState creativeDocumentRevision;

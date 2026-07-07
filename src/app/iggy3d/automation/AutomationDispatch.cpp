@@ -183,7 +183,7 @@ bool applyProductAutomationAppCommand(const ProductAutomationCommand& command,
       },
       [&context](InputAction action) {
         InputRoutingContext routingContext;
-        routingContext.owners.editor = context.window.roomEditing.ready;
+        routingContext.owners.editor = context.window.creativeAuthoring.roomEditing.ready;
         routingContext.owners.gameplay = true;
         return routeInputAction(routingContext, action);
       },

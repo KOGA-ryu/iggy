@@ -137,8 +137,8 @@ iggy3d::ProductAppWindowState editingWindow() {
   const iggy3d::ProductRoomEditingStartResult started =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
   iggy3d::recordProductRoomEditingStart(window, started, "unit_edit_room");
-  window.roomEditorCursor = {};
-  window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  window.creativeAuthoring.roomEditorCursor = {};
+  window.creativeAuthoring.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
   return window;
 }
 
@@ -387,12 +387,12 @@ iggy3d::OpeningMenuHitTestResult hitArea(iggy3d::OpeningMenuHitArea area) {
 bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
   const iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
-  const std::uint64_t initialFloors = window.roomEditing.documentFloorCount;
-  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+  const std::uint64_t initialFloors = window.creativeAuthoring.roomEditing.documentFloorCount;
+  const std::uint64_t initialWalls = window.creativeAuthoring.roomEditing.documentWallCount;
   const std::uint64_t initialWalkable =
-      window.roomEditing.collisionWalkableSurfaceCount;
+      window.creativeAuthoring.roomEditing.collisionWalkableSurfaceCount;
   const std::uint64_t initialBlockers =
-      window.roomEditing.collisionActorBlockerSurfaceCount;
+      window.creativeAuthoring.roomEditing.collisionActorBlockerSurfaceCount;
 
   const iggy3d::ProductWindowEditorMousePickPreviewResult result =
       iggy3d::processProductWindowEditorMousePickPreview(
@@ -414,36 +414,36 @@ bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
          expect(window.inputDevice.lastInputAccepted, "creative mouse input accepted") &&
          expect(liveSurface(frontend, window).gameplayInputSuppressed,
                 "creative mouse suppresses gameplay input") &&
-         expect(window.roomEditorStatus == "room_editor_mouse_pick_mapped",
+         expect(window.creativeAuthoring.roomEditorStatus == "room_editor_mouse_pick_mapped",
                 "creative mouse pick status") &&
-         expect(window.roomEditorLastOperation == "room_editor.mouse_pick",
+         expect(window.creativeAuthoring.roomEditorLastOperation == "room_editor.mouse_pick",
                 "creative mouse pick operation") &&
-         expect(window.roomEditorCursor.gridX == 2,
+         expect(window.creativeAuthoring.roomEditorCursor.gridX == 2,
                 "creative mouse pick cursor x") &&
-         expect(window.roomEditorCursor.gridZ == 0,
+         expect(window.creativeAuthoring.roomEditorCursor.gridZ == 0,
                 "creative mouse pick cursor z") &&
-         expect(window.roomEditorCursor.selectedTool ==
+         expect(window.creativeAuthoring.roomEditorCursor.selectedTool ==
                     iggy3d::ProductRoomEditorTool::Wall,
                 "creative mouse pick preserves tool") &&
-         expect(window.roomEditorPreview.visible,
+         expect(window.creativeAuthoring.roomEditorPreview.visible,
                 "creative mouse preview visible") &&
-         expect(window.roomEditorPreview.status == "room_editor_preview_ready",
+         expect(window.creativeAuthoring.roomEditorPreview.status == "room_editor_preview_ready",
                 "creative mouse preview receipt status") &&
-         expect(window.roomEditorPreview.candidateId == "edit_wall_1",
+         expect(window.creativeAuthoring.roomEditorPreview.candidateId == "edit_wall_1",
                 "creative mouse preview candidate") &&
-         expect(window.roomEditorPreview.tool == "wall",
+         expect(window.creativeAuthoring.roomEditorPreview.tool == "wall",
                 "creative mouse preview tool") &&
-         expect(window.roomEditorPreview.gridX == 2,
+         expect(window.creativeAuthoring.roomEditorPreview.gridX == 2,
                 "creative mouse preview grid x") &&
-         expect(window.roomEditorPreview.gridZ == 0,
+         expect(window.creativeAuthoring.roomEditorPreview.gridZ == 0,
                 "creative mouse preview grid z") &&
-         expect(window.roomEditing.documentFloorCount == initialFloors,
+         expect(window.creativeAuthoring.roomEditing.documentFloorCount == initialFloors,
                 "creative mouse leaves floor count") &&
-         expect(window.roomEditing.documentWallCount == initialWalls,
+         expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls,
                 "creative mouse leaves wall count") &&
-         expect(window.roomEditing.collisionWalkableSurfaceCount == initialWalkable,
+         expect(window.creativeAuthoring.roomEditing.collisionWalkableSurfaceCount == initialWalkable,
                 "creative mouse leaves walkable collision") &&
-         expect(window.roomEditing.collisionActorBlockerSurfaceCount ==
+         expect(window.creativeAuthoring.roomEditing.collisionActorBlockerSurfaceCount ==
                     initialBlockers,
                 "creative mouse leaves blocker collision");
 }
@@ -452,7 +452,7 @@ bool playerClickDoesNotRunEditorPickPreview() {
   const iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
   window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Player;
-  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+  const std::uint64_t initialWalls = window.creativeAuthoring.roomEditing.documentWallCount;
 
   const iggy3d::ProductWindowEditorMousePickPreviewResult result =
       iggy3d::processProductWindowEditorMousePickPreview(
@@ -464,11 +464,11 @@ bool playerClickDoesNotRunEditorPickPreview() {
          expect(!result.accepted, "player mouse click not accepted") &&
          expect(result.status == "room_editor_mouse_pick_preview_mode_blocked",
                 "player mouse mode-blocked status") &&
-         expect(window.roomEditorCursor.gridX == 0,
+         expect(window.creativeAuthoring.roomEditorCursor.gridX == 0,
                 "player mouse leaves cursor x") &&
-         expect(!window.roomEditorPreview.visible,
+         expect(!window.creativeAuthoring.roomEditorPreview.visible,
                 "player mouse leaves preview hidden") &&
-         expect(window.roomEditing.documentWallCount == initialWalls,
+         expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls,
                 "player mouse leaves wall count");
 }
 
@@ -485,15 +485,15 @@ bool notReadyClickDoesNotMutateEditorState() {
   return expect(!result.handled, "not-ready mouse click not handled") &&
          expect(result.status == "room_editor_not_ready",
                 "not-ready mouse click status") &&
-         expect(!window.roomEditing.ready, "not-ready leaves editing off") &&
-         expect(!window.roomEditorPreview.visible,
+         expect(!window.creativeAuthoring.roomEditing.ready, "not-ready leaves editing off") &&
+         expect(!window.creativeAuthoring.roomEditorPreview.visible,
                 "not-ready leaves preview hidden");
 }
 
 bool invalidClickPropagatesMousePickRejectionWithoutMutation() {
   const iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
-  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+  const std::uint64_t initialWalls = window.creativeAuthoring.roomEditing.documentWallCount;
 
   const iggy3d::ProductWindowEditorMousePickPreviewResult result =
       iggy3d::processProductWindowEditorMousePickPreview(
@@ -507,24 +507,24 @@ bool invalidClickPropagatesMousePickRejectionWithoutMutation() {
          expect(!result.accepted, "invalid mouse click not accepted") &&
          expect(result.status == "room_editor_mouse_pick_invalid_input",
                 "invalid mouse pick status") &&
-         expect(window.roomEditorStatus ==
+         expect(window.creativeAuthoring.roomEditorStatus ==
                     "room_editor_mouse_pick_invalid_input",
                 "invalid mouse pick receipt status") &&
          expect(!window.inputDevice.lastInputAccepted, "invalid mouse input not accepted") &&
-         expect(!window.roomEditorPreview.visible,
+         expect(!window.creativeAuthoring.roomEditorPreview.visible,
                 "invalid mouse leaves preview hidden") &&
-         expect(window.roomEditing.documentWallCount == initialWalls,
+         expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls,
                 "invalid mouse leaves wall count");
 }
 
 bool controllerSouthStagesThenConfirmsPlacement() {
   const iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
-  window.roomEditorCursor.gridX = 1;
+  window.creativeAuthoring.roomEditorCursor.gridX = 1;
   iggy3d::Session session;
   iggy3d::ProductControllerModeChordState chord;
   iggy3d::ProductControllerActionRoutingState routing;
-  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+  const std::uint64_t initialWalls = window.creativeAuthoring.roomEditing.documentWallCount;
 
   const iggy3d::GamepadControllerActionSample south =
       iggy3d::productControllerActionSampleForControl(
@@ -538,15 +538,15 @@ bool controllerSouthStagesThenConfirmsPlacement() {
       expect(staged.actionAccepted, "first south stages accepted preview") &&
       expect(window.inputDevice.lastInputAction == iggy3d::InputAction::EditorPlace,
              "first south routes to editor place") &&
-      expect(window.roomEditorStatus == "room_editor_preview_ready",
+      expect(window.creativeAuthoring.roomEditorStatus == "room_editor_preview_ready",
              "first south stages preview") &&
-      expect(window.roomEditorLastOperation == "editor.place",
+      expect(window.creativeAuthoring.roomEditorLastOperation == "editor.place",
              "first south operation is editor place") &&
-      expect(window.roomEditorPreview.active, "first south preview pending") &&
-      expect(window.roomEditorPreview.visible, "first south preview visible") &&
-      expect(window.roomEditorPreview.candidateId == "edit_wall_1",
+      expect(window.creativeAuthoring.roomEditorPreview.active, "first south preview pending") &&
+      expect(window.creativeAuthoring.roomEditorPreview.visible, "first south preview visible") &&
+      expect(window.creativeAuthoring.roomEditorPreview.candidateId == "edit_wall_1",
              "first south candidate id") &&
-      expect(window.roomEditing.documentWallCount == initialWalls,
+      expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls,
              "first south does not mutate walls");
 
   (void)iggy3d::processProductControllerActionSample(
@@ -561,21 +561,21 @@ bool controllerSouthStagesThenConfirmsPlacement() {
          expect(confirmed.actionAccepted, "second south confirms preview") &&
          expect(window.inputDevice.lastInputAction == iggy3d::InputAction::EditorPlace,
                 "second south routes to editor place") &&
-         expect(window.roomEditorStatus == "room_editor_preview_confirmed",
+         expect(window.creativeAuthoring.roomEditorStatus == "room_editor_preview_confirmed",
                 "second south confirm status") &&
-         expect(window.roomEditorLastOperation == "editor.place",
+         expect(window.creativeAuthoring.roomEditorLastOperation == "editor.place",
                 "second south operation is editor place") &&
-         expect(!window.roomEditorPreview.active,
+         expect(!window.creativeAuthoring.roomEditorPreview.active,
                 "second south clears pending preview") &&
-         expect(!window.roomEditorPreview.visible,
+         expect(!window.creativeAuthoring.roomEditorPreview.visible,
                 "second south hides preview") &&
-         expect(window.roomEditorLastPrimitiveId == "edit_wall_1",
+         expect(window.creativeAuthoring.roomEditorLastPrimitiveId == "edit_wall_1",
                 "second south primitive id") &&
-         expect(window.roomEditing.documentWallCount == initialWalls + 1U,
+         expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls + 1U,
                 "second south mutates walls") &&
-         expect(window.roomEditingLastOperation == "editor.place",
+         expect(window.creativeAuthoring.roomEditingLastOperation == "editor.place",
                 "second south editing operation") &&
-         expect(window.roomEditingLastOperationAccepted,
+         expect(window.creativeAuthoring.roomEditingLastOperationAccepted,
                 "second south editing accepted");
 }
 
@@ -585,7 +585,7 @@ bool controllerMoveInvalidatesPendingPreview() {
   iggy3d::Session session;
   iggy3d::ProductControllerModeChordState chord;
   iggy3d::ProductControllerActionRoutingState routing;
-  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+  const std::uint64_t initialWalls = window.creativeAuthoring.roomEditing.documentWallCount;
 
   (void)iggy3d::processProductControllerActionSample(
       {frontend, window, &session, chord, routing, nullptr, "unit"},
@@ -604,31 +604,31 @@ bool controllerMoveInvalidatesPendingPreview() {
          expect(moved.actionAccepted, "dpad move accepted") &&
          expect(window.inputDevice.lastInputAction == iggy3d::InputAction::EditorNudgeX,
                 "dpad right routes to nudge x") &&
-         expect(window.roomEditorCursor.gridX == 1,
+         expect(window.creativeAuthoring.roomEditorCursor.gridX == 1,
                 "dpad right moves cursor") &&
-         expect(window.roomEditorStatus == "room_editor_cursor_moved",
+         expect(window.creativeAuthoring.roomEditorStatus == "room_editor_cursor_moved",
                 "dpad move cursor status") &&
-         expect(!window.roomEditorPreview.active,
+         expect(!window.creativeAuthoring.roomEditorPreview.active,
                 "dpad move clears pending preview") &&
-         expect(!window.roomEditorPreview.visible,
+         expect(!window.creativeAuthoring.roomEditorPreview.visible,
                 "dpad move hides preview") &&
-         expect(window.roomEditing.documentWallCount == initialWalls,
+         expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls,
                 "dpad move does not mutate walls");
 }
 
 bool backCancelsPendingPreviewBeforePauseRoute() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
-  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
-  window.roomEditorCursor.gridX = 1;
+  const std::uint64_t initialWalls = window.creativeAuthoring.roomEditing.documentWallCount;
+  window.creativeAuthoring.roomEditorCursor.gridX = 1;
 
   const iggy3d::ProductRoomEditorPreviewInputResult staged =
       iggy3d::applyProductRoomEditorPreviewInputAction(
           window, iggy3d::InputAction::EditorPlace);
   const bool stageOk =
       expect(staged.ok, "back test stages preview") &&
-      expect(window.roomEditorPreview.active, "back test preview active") &&
-      expect(window.roomEditing.documentWallCount == initialWalls,
+      expect(window.creativeAuthoring.roomEditorPreview.active, "back test preview active") &&
+      expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls,
              "back test stage leaves walls");
 
   const bool cancelled =
@@ -642,41 +642,41 @@ bool backCancelsPendingPreviewBeforePauseRoute() {
          expect(window.inputDevice.lastInputAccepted, "back cancel input accepted") &&
          expect(liveSurface(frontend, window).gameplayInputSuppressed,
                 "back cancel suppresses gameplay input") &&
-         expect(window.roomEditorStatus == "room_editor_preview_cancelled",
+         expect(window.creativeAuthoring.roomEditorStatus == "room_editor_preview_cancelled",
                 "back cancel status") &&
-         expect(window.roomEditorLastOperation == "editor.preview_cancel",
+         expect(window.creativeAuthoring.roomEditorLastOperation == "editor.preview_cancel",
                 "back cancel operation") &&
-         expect(!window.roomEditorPreview.active,
+         expect(!window.creativeAuthoring.roomEditorPreview.active,
                 "back cancel clears pending preview") &&
-         expect(!window.roomEditorPreview.visible, "back cancel hides preview") &&
-         expect(window.roomEditing.documentWallCount == initialWalls,
+         expect(!window.creativeAuthoring.roomEditorPreview.visible, "back cancel hides preview") &&
+         expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls,
                 "back cancel leaves walls");
 }
 
 bool backWithoutPreviewFallsThroughPolicy() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
-  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+  const std::uint64_t initialWalls = window.creativeAuthoring.roomEditing.documentWallCount;
 
   const bool cancelled =
       iggy3d::cancelProductRoomEditorPendingPreviewFromBack(frontend, window);
 
   return expect(!cancelled, "back without preview not consumed") &&
-         expect(window.roomEditing.ready, "back without preview keeps editor ready") &&
-         expect(!window.roomEditorPreview.active,
+         expect(window.creativeAuthoring.roomEditing.ready, "back without preview keeps editor ready") &&
+         expect(!window.creativeAuthoring.roomEditorPreview.active,
                 "back without preview leaves preview inactive") &&
-         expect(window.roomEditing.documentWallCount == initialWalls,
+         expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls,
                 "back without preview leaves walls");
 }
 
 bool controllerEastCancelsPendingPreviewWithoutMutation() {
   const iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
-  window.roomEditorCursor.gridX = 1;
+  window.creativeAuthoring.roomEditorCursor.gridX = 1;
   iggy3d::Session session;
   iggy3d::ProductControllerModeChordState chord;
   iggy3d::ProductControllerActionRoutingState routing;
-  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+  const std::uint64_t initialWalls = window.creativeAuthoring.roomEditing.documentWallCount;
 
   const iggy3d::ProductControllerSampleInputResult staged =
       iggy3d::processProductControllerActionSample(
@@ -698,14 +698,14 @@ bool controllerEastCancelsPendingPreviewWithoutMutation() {
          expect(cancelled.actionAccepted, "east cancel action accepted") &&
          expect(window.inputDevice.lastInputAction == iggy3d::InputAction::EditorCancelPreview,
                 "east cancel routes to editor cancel preview") &&
-         expect(window.roomEditorStatus == "room_editor_preview_cancelled",
+         expect(window.creativeAuthoring.roomEditorStatus == "room_editor_preview_cancelled",
                 "east cancel status") &&
-         expect(window.roomEditorLastOperation == "editor.preview_cancel",
+         expect(window.creativeAuthoring.roomEditorLastOperation == "editor.preview_cancel",
                 "east cancel operation") &&
-         expect(!window.roomEditorPreview.active,
+         expect(!window.creativeAuthoring.roomEditorPreview.active,
                 "east cancel clears pending preview") &&
-         expect(!window.roomEditorPreview.visible, "east cancel hides preview") &&
-         expect(window.roomEditing.documentWallCount == initialWalls,
+         expect(!window.creativeAuthoring.roomEditorPreview.visible, "east cancel hides preview") &&
+         expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls,
                 "east cancel leaves walls");
 }
 
@@ -1599,7 +1599,7 @@ bool editorBackOpensPauseWithoutLeavingEditor() {
                 "editor back opens pause") &&
          expect(frontend.selectedAction == iggy3d::FrontendAction::Resume,
                 "editor back starts pause on resume") &&
-         expect(window.roomEditing.ready,
+         expect(window.creativeAuthoring.roomEditing.ready,
                 "editor back keeps room editing ready for leave action") &&
          expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Pause,
                 "editor back routes input owner to pause") &&
@@ -3271,7 +3271,7 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
 
   return expect(result.processed, "editor input processed") &&
          expect(result.actionApplied, "editor input applied") &&
-         expect(window.roomEditorLastOperationAccepted,
+         expect(window.creativeAuthoring.roomEditorLastOperationAccepted,
                 "editor input accepted") &&
          expect(window.gameplay.gameplayMovement.groundVelocityX == 0.0F &&
                     window.gameplay.gameplayMovement.groundVelocityZ == 0.0F,

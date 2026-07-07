@@ -30,62 +30,62 @@ std::int64_t signedRoomEditorPreviewDelta(T before, T after) {
 }  // namespace
 
 void clearProductRoomEditorPreview(ProductAppWindowState& window) {
-  window.roomEditorPreview.active = false;
-  window.roomEditorPlacementPreview = {};
-  window.roomEditorPreview.visible = false;
-  window.roomEditorPreview.status = "room_editor_preview_not_requested";
-  window.roomEditorPreview.reasonCode = "room_editor_preview_not_requested";
-  window.roomEditorPreview.candidateId = "none";
-  window.roomEditorPreview.tool = "floor";
-  window.roomEditorPreview.gridX = 0;
-  window.roomEditorPreview.gridZ = 0;
-  window.roomEditorPreview.beforeDrawCount = 0;
-  window.roomEditorPreview.afterDrawCount = 0;
-  window.roomEditorPreview.avoidedDrawCountDelta = 0;
-  window.roomEditorPreview.beforeTriangleCount = 0;
-  window.roomEditorPreview.afterTriangleCount = 0;
-  window.roomEditorPreview.avoidedTriangleCountDelta = 0;
-  window.roomEditorPreview.optimizedDrawDelta = 0;
-  window.roomEditorPreview.optimizedTriangleDelta = 0;
+  window.creativeAuthoring.roomEditorPreview.active = false;
+  window.creativeAuthoring.roomEditorPlacementPreview = {};
+  window.creativeAuthoring.roomEditorPreview.visible = false;
+  window.creativeAuthoring.roomEditorPreview.status = "room_editor_preview_not_requested";
+  window.creativeAuthoring.roomEditorPreview.reasonCode = "room_editor_preview_not_requested";
+  window.creativeAuthoring.roomEditorPreview.candidateId = "none";
+  window.creativeAuthoring.roomEditorPreview.tool = "floor";
+  window.creativeAuthoring.roomEditorPreview.gridX = 0;
+  window.creativeAuthoring.roomEditorPreview.gridZ = 0;
+  window.creativeAuthoring.roomEditorPreview.beforeDrawCount = 0;
+  window.creativeAuthoring.roomEditorPreview.afterDrawCount = 0;
+  window.creativeAuthoring.roomEditorPreview.avoidedDrawCountDelta = 0;
+  window.creativeAuthoring.roomEditorPreview.beforeTriangleCount = 0;
+  window.creativeAuthoring.roomEditorPreview.afterTriangleCount = 0;
+  window.creativeAuthoring.roomEditorPreview.avoidedTriangleCountDelta = 0;
+  window.creativeAuthoring.roomEditorPreview.optimizedDrawDelta = 0;
+  window.creativeAuthoring.roomEditorPreview.optimizedTriangleDelta = 0;
 }
 
 void markProductRoomEditorPreviewCleared(ProductAppWindowState& window,
                                          std::string_view status) {
   clearProductRoomEditorPreview(window);
-  window.roomEditorPreview.status = std::string(status);
-  window.roomEditorPreview.reasonCode = window.roomEditorPreview.status;
+  window.creativeAuthoring.roomEditorPreview.status = std::string(status);
+  window.creativeAuthoring.roomEditorPreview.reasonCode = window.creativeAuthoring.roomEditorPreview.status;
 }
 
 void recordProductRoomEditorPreviewResult(
     ProductAppWindowState& window,
     const ProductRoomEditorPlacementPreviewResult& result) {
-  window.roomEditorPreview.active = true;
-  window.roomEditorPlacementPreview = result;
-  window.roomEditorPreview.visible = result.ok;
-  window.roomEditorPreview.status = result.status;
-  window.roomEditorPreview.reasonCode = result.reasonCode;
-  window.roomEditorPreview.candidateId = result.primitiveId;
-  window.roomEditorPreview.tool = result.tool;
-  window.roomEditorPreview.gridX = result.gridX;
-  window.roomEditorPreview.gridZ = result.gridZ;
-  window.roomEditorPreview.beforeDrawCount = result.before.optimizedDrawCount;
-  window.roomEditorPreview.afterDrawCount = result.after.optimizedDrawCount;
-  window.roomEditorPreview.avoidedDrawCountDelta =
+  window.creativeAuthoring.roomEditorPreview.active = true;
+  window.creativeAuthoring.roomEditorPlacementPreview = result;
+  window.creativeAuthoring.roomEditorPreview.visible = result.ok;
+  window.creativeAuthoring.roomEditorPreview.status = result.status;
+  window.creativeAuthoring.roomEditorPreview.reasonCode = result.reasonCode;
+  window.creativeAuthoring.roomEditorPreview.candidateId = result.primitiveId;
+  window.creativeAuthoring.roomEditorPreview.tool = result.tool;
+  window.creativeAuthoring.roomEditorPreview.gridX = result.gridX;
+  window.creativeAuthoring.roomEditorPreview.gridZ = result.gridZ;
+  window.creativeAuthoring.roomEditorPreview.beforeDrawCount = result.before.optimizedDrawCount;
+  window.creativeAuthoring.roomEditorPreview.afterDrawCount = result.after.optimizedDrawCount;
+  window.creativeAuthoring.roomEditorPreview.avoidedDrawCountDelta =
       signedRoomEditorPreviewDelta(result.before.drawCountAvoided,
                                    result.after.drawCountAvoided);
-  window.roomEditorPreview.beforeTriangleCount =
+  window.creativeAuthoring.roomEditorPreview.beforeTriangleCount =
       result.before.optimizedTriangleCount;
-  window.roomEditorPreview.afterTriangleCount = result.after.optimizedTriangleCount;
-  window.roomEditorPreview.avoidedTriangleCountDelta =
+  window.creativeAuthoring.roomEditorPreview.afterTriangleCount = result.after.optimizedTriangleCount;
+  window.creativeAuthoring.roomEditorPreview.avoidedTriangleCountDelta =
       signedRoomEditorPreviewDelta(result.before.triangleCountAvoided,
                                    result.after.triangleCountAvoided);
-  window.roomEditorPreview.optimizedDrawDelta = result.optimizedDrawDelta;
-  window.roomEditorPreview.optimizedTriangleDelta = result.optimizedTriangleDelta;
+  window.creativeAuthoring.roomEditorPreview.optimizedDrawDelta = result.optimizedDrawDelta;
+  window.creativeAuthoring.roomEditorPreview.optimizedTriangleDelta = result.optimizedTriangleDelta;
 }
 
 void copyRoomEditingStateToWindow(ProductAppWindowState& window,
                                   const ProductRoomEditingState& state) {
-  window.roomEditing = state;
+  window.creativeAuthoring.roomEditing = state;
   // branch-gate: BG-1006
   if (state.ready) {
     activeRoom(window) = state.activeRoom;
@@ -99,39 +99,39 @@ void copyRoomEditingStateToWindow(ProductAppWindowState& window,
 void recordProductRoomEditingStart(ProductAppWindowState& window,
                                    const ProductRoomEditingStartResult& result,
                                    std::string_view operation) {
-  window.roomEditingLastOperation = std::string(operation);
-  window.roomEditingLastOperationStatus = result.status;
-  window.roomEditingLastOperationReasonCode = result.reasonCode;
-  window.roomEditingLastInputSource =
+  window.creativeAuthoring.roomEditingLastOperation = std::string(operation);
+  window.creativeAuthoring.roomEditingLastOperationStatus = result.status;
+  window.creativeAuthoring.roomEditingLastOperationReasonCode = result.reasonCode;
+  window.creativeAuthoring.roomEditingLastInputSource =
       productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Script);
-  window.roomEditingLastOperationAccepted = result.ok;
-  window.roomEditingLastPrimitiveId = "none";
+  window.creativeAuthoring.roomEditingLastOperationAccepted = result.ok;
+  window.creativeAuthoring.roomEditingLastPrimitiveId = "none";
   clearProductRoomEditorPreview(window);
   copyRoomEditingStateToWindow(window, result.state);
   // branch-gate: BG-1006
   if (result.ok) {
     window.inputDevice.interactionMode = ProductInteractionMode::Creative;
-    window.roomEditorCursorReady = true;
-    window.roomEditorCursor = ProductRoomEditorCursorState{};
-    window.roomEditorStatus = "room_editor_cursor_ready";
-    window.roomEditorReasonCode = "room_editor_cursor_ready";
-    window.roomEditorLastOperation = "none";
-    window.roomEditorLastOperationAccepted = false;
-    window.roomEditorLastPrimitiveId = "none";
+    window.creativeAuthoring.roomEditorCursorReady = true;
+    window.creativeAuthoring.roomEditorCursor = ProductRoomEditorCursorState{};
+    window.creativeAuthoring.roomEditorStatus = "room_editor_cursor_ready";
+    window.creativeAuthoring.roomEditorReasonCode = "room_editor_cursor_ready";
+    window.creativeAuthoring.roomEditorLastOperation = "none";
+    window.creativeAuthoring.roomEditorLastOperationAccepted = false;
+    window.creativeAuthoring.roomEditorLastPrimitiveId = "none";
   }
 }
 
 bool recordProductRoomEditingLeave(const FrontendState& frontend,
                                    ProductAppWindowState& window,
                                    std::string_view operation) {
-  window.roomEditingLastOperation = std::string(operation);
-  window.roomEditingLastPrimitiveId = "none";
-  if (!window.roomEditing.ready) {  // branch-gate: BG-1006
-    window.roomEditingLastOperationStatus = "room_editor_not_ready";
-    window.roomEditingLastOperationReasonCode = "room_editor_not_ready";
-    window.roomEditingLastInputSource =
+  window.creativeAuthoring.roomEditingLastOperation = std::string(operation);
+  window.creativeAuthoring.roomEditingLastPrimitiveId = "none";
+  if (!window.creativeAuthoring.roomEditing.ready) {  // branch-gate: BG-1006
+    window.creativeAuthoring.roomEditingLastOperationStatus = "room_editor_not_ready";
+    window.creativeAuthoring.roomEditingLastOperationReasonCode = "room_editor_not_ready";
+    window.creativeAuthoring.roomEditingLastInputSource =
         productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Script);
-    window.roomEditingLastOperationAccepted = false;
+    window.creativeAuthoring.roomEditingLastOperationAccepted = false;
     rejectProductRoomEditorNotReady(window, operation);
     return false;
   }
@@ -140,29 +140,29 @@ bool recordProductRoomEditingLeave(const FrontendState& frontend,
   leftState.status = "product_room_editing_left";
   leftState.reasonCode = leftState.status;
   copyRoomEditingStateToWindow(window, leftState);
-  window.roomEditingLastOperationStatus = "product_room_editing_left";
-  window.roomEditingLastOperationReasonCode = window.roomEditingLastOperationStatus;
-  window.roomEditingLastInputSource =
+  window.creativeAuthoring.roomEditingLastOperationStatus = "product_room_editing_left";
+  window.creativeAuthoring.roomEditingLastOperationReasonCode = window.creativeAuthoring.roomEditingLastOperationStatus;
+  window.creativeAuthoring.roomEditingLastInputSource =
       productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Script);
-  window.roomEditingLastOperationAccepted = true;
+  window.creativeAuthoring.roomEditingLastOperationAccepted = true;
   window.inputDevice.interactionMode = ProductInteractionMode::Player;
   syncProductWindowInputOwnerFromActiveSurface(frontend, window);
-  window.roomEditorCursorReady = false;
-  window.roomEditorStatus = "room_editor_not_ready";
-  window.roomEditorReasonCode = "room_editor_not_ready";
-  window.roomEditorLastOperation = std::string(operation);
-  window.roomEditorLastOperationAccepted = true;
-  window.roomEditorLastPrimitiveId = "none";
-  window.roomEditorOverlay.visible = false;
-  window.roomEditorOverlay.status = "room_editor_overlay_not_ready";
-  window.roomEditorOverlay.reasonCode = window.roomEditorOverlay.status;
-  window.roomEditorOverlay.itemCount = 0;
-  window.roomEditorHud.visible = false;
-  window.roomEditorHud.status = "room_editor_hud_not_ready";
-  window.roomEditorHud.reasonCode = window.roomEditorHud.status;
-  window.roomEditorHud.lastOperation = std::string(operation);
-  window.roomEditorHud.lastOperationAccepted = true;
-  window.roomEditorHud.lastPrimitiveId = "none";
+  window.creativeAuthoring.roomEditorCursorReady = false;
+  window.creativeAuthoring.roomEditorStatus = "room_editor_not_ready";
+  window.creativeAuthoring.roomEditorReasonCode = "room_editor_not_ready";
+  window.creativeAuthoring.roomEditorLastOperation = std::string(operation);
+  window.creativeAuthoring.roomEditorLastOperationAccepted = true;
+  window.creativeAuthoring.roomEditorLastPrimitiveId = "none";
+  window.creativeAuthoring.roomEditorOverlay.visible = false;
+  window.creativeAuthoring.roomEditorOverlay.status = "room_editor_overlay_not_ready";
+  window.creativeAuthoring.roomEditorOverlay.reasonCode = window.creativeAuthoring.roomEditorOverlay.status;
+  window.creativeAuthoring.roomEditorOverlay.itemCount = 0;
+  window.creativeAuthoring.roomEditorHud.visible = false;
+  window.creativeAuthoring.roomEditorHud.status = "room_editor_hud_not_ready";
+  window.creativeAuthoring.roomEditorHud.reasonCode = window.creativeAuthoring.roomEditorHud.status;
+  window.creativeAuthoring.roomEditorHud.lastOperation = std::string(operation);
+  window.creativeAuthoring.roomEditorHud.lastOperationAccepted = true;
+  window.creativeAuthoring.roomEditorHud.lastPrimitiveId = "none";
   window.viewport.productDrawRoomEditorCursorVisible = false;
   window.viewport.productDrawRoomEditorCursorCount = 0;
   window.viewport.productDrawRoomEditorPreviewVisible = false;
@@ -182,14 +182,14 @@ void recordProductRoomEditingOperation(
     ProductAppWindowState& window,
     std::string_view operation,
     const ProductRoomEditingOperationResult& result) {
-  window.roomEditingLastOperation = std::string(operation);
-  window.roomEditingLastOperationStatus = result.status;
-  window.roomEditingLastOperationReasonCode = result.reasonCode;
-  window.roomEditingLastInputSource =
+  window.creativeAuthoring.roomEditingLastOperation = std::string(operation);
+  window.creativeAuthoring.roomEditingLastOperationStatus = result.status;
+  window.creativeAuthoring.roomEditingLastOperationReasonCode = result.reasonCode;
+  window.creativeAuthoring.roomEditingLastInputSource =
       productRoomAuthoringInputSourceName(result.inputSource);
-  window.roomEditingLastOperationAccepted = result.accepted;
+  window.creativeAuthoring.roomEditingLastOperationAccepted = result.accepted;
   // branch-gate: BG-1006
-  window.roomEditingLastPrimitiveId =
+  window.creativeAuthoring.roomEditingLastPrimitiveId =
       result.edit.primitiveId.empty() ? std::string{"none"}
                                       : result.edit.primitiveId;
   clearProductRoomEditorPreview(window);
@@ -200,24 +200,24 @@ void recordProductRoomEditorCursorResult(
     ProductAppWindowState& window,
     std::string_view operation,
     const ProductRoomEditorCursorResult& result) {
-  window.roomEditorCursorReady = window.roomEditing.ready;
-  window.roomEditorCursor = result.state;
-  window.roomEditorStatus = result.status;
-  window.roomEditorReasonCode = result.reasonCode;
-  window.roomEditorLastOperation = std::string(operation);
-  window.roomEditorLastOperationAccepted = result.ok;
-  window.roomEditorLastPrimitiveId = "none";
+  window.creativeAuthoring.roomEditorCursorReady = window.creativeAuthoring.roomEditing.ready;
+  window.creativeAuthoring.roomEditorCursor = result.state;
+  window.creativeAuthoring.roomEditorStatus = result.status;
+  window.creativeAuthoring.roomEditorReasonCode = result.reasonCode;
+  window.creativeAuthoring.roomEditorLastOperation = std::string(operation);
+  window.creativeAuthoring.roomEditorLastOperationAccepted = result.ok;
+  window.creativeAuthoring.roomEditorLastPrimitiveId = "none";
   clearProductRoomEditorPreview(window);
 }
 
 bool rejectProductRoomEditorNotReady(ProductAppWindowState& window,
                                      std::string_view operation) {
-  window.roomEditorCursorReady = false;
-  window.roomEditorStatus = "room_editor_not_ready";
-  window.roomEditorReasonCode = "room_editor_not_ready";
-  window.roomEditorLastOperation = std::string(operation);
-  window.roomEditorLastOperationAccepted = false;
-  window.roomEditorLastPrimitiveId = "none";
+  window.creativeAuthoring.roomEditorCursorReady = false;
+  window.creativeAuthoring.roomEditorStatus = "room_editor_not_ready";
+  window.creativeAuthoring.roomEditorReasonCode = "room_editor_not_ready";
+  window.creativeAuthoring.roomEditorLastOperation = std::string(operation);
+  window.creativeAuthoring.roomEditorLastOperationAccepted = false;
+  window.creativeAuthoring.roomEditorLastPrimitiveId = "none";
   window.automationControl.status = "command_failed";
   return false;
 }
@@ -226,28 +226,28 @@ void recordProductRoomEditorActionResult(
     ProductAppWindowState& window,
     const ProductRoomEditorActionResult& result,
     std::string_view operationOverride) {
-  window.roomEditing = result.editing;
+  window.creativeAuthoring.roomEditing = result.editing;
   copyRoomEditingStateToWindow(window, result.editing);
-  window.roomEditorCursorReady = result.editing.ready;
-  window.roomEditorCursor = result.cursor;
-  window.roomEditorStatus = result.status;
-  window.roomEditorReasonCode = result.reasonCode;
+  window.creativeAuthoring.roomEditorCursorReady = result.editing.ready;
+  window.creativeAuthoring.roomEditorCursor = result.cursor;
+  window.creativeAuthoring.roomEditorStatus = result.status;
+  window.creativeAuthoring.roomEditorReasonCode = result.reasonCode;
   // branch-gate: BG-1006
-  window.roomEditorLastOperation =
+  window.creativeAuthoring.roomEditorLastOperation =
       operationOverride.empty() ? result.operation : std::string(operationOverride);
-  window.roomEditorLastOperationAccepted = result.operationAccepted;
-  window.roomEditorLastPrimitiveId = result.primitiveId;
+  window.creativeAuthoring.roomEditorLastOperationAccepted = result.operationAccepted;
+  window.creativeAuthoring.roomEditorLastPrimitiveId = result.primitiveId;
   clearProductRoomEditorPreview(window);
 
   // branch-gate: BG-1006
   if (result.status == "room_editor_command_applied") {
-    window.roomEditingLastOperation = window.roomEditorLastOperation;
-    window.roomEditingLastOperationStatus = "product_room_editing_edit_applied";
-    window.roomEditingLastOperationReasonCode = "product_room_editing_edit_applied";
-    window.roomEditingLastInputSource =
+    window.creativeAuthoring.roomEditingLastOperation = window.creativeAuthoring.roomEditorLastOperation;
+    window.creativeAuthoring.roomEditingLastOperationStatus = "product_room_editing_edit_applied";
+    window.creativeAuthoring.roomEditingLastOperationReasonCode = "product_room_editing_edit_applied";
+    window.creativeAuthoring.roomEditingLastInputSource =
         productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Hotkey);
-    window.roomEditingLastOperationAccepted = result.operationAccepted;
-    window.roomEditingLastPrimitiveId = result.primitiveId;
+    window.creativeAuthoring.roomEditingLastOperationAccepted = result.operationAccepted;
+    window.creativeAuthoring.roomEditingLastPrimitiveId = result.primitiveId;
   }
 }
 
@@ -358,9 +358,9 @@ ProductRoomEditorPreviewInputResult baseProductRoomEditorPreviewInputResult(
 
 bool productRoomEditorPreviewMatchesCursor(const ProductAppWindowState& window) {
   const ProductRoomEditorPlacementPreviewResult& preview =
-      window.roomEditorPlacementPreview;
-  const ProductRoomEditorCursorState& cursor = window.roomEditorCursor;
-  return window.roomEditorPreview.active && preview.ok &&
+      window.creativeAuthoring.roomEditorPlacementPreview;
+  const ProductRoomEditorCursorState& cursor = window.creativeAuthoring.roomEditorCursor;
+  return window.creativeAuthoring.roomEditorPreview.active && preview.ok &&
          preview.candidateCommandReady && preview.gridX == cursor.gridX &&
          preview.gridZ == cursor.gridZ &&
          preview.storyIndex == cursor.storyIndex &&
@@ -372,12 +372,12 @@ bool productRoomEditorPreviewMatchesCursor(const ProductAppWindowState& window) 
 void recordProductRoomEditorPreviewInputReceipt(
     ProductAppWindowState& window,
     const ProductRoomEditorPreviewInputResult& result) {
-  window.roomEditorCursorReady = window.roomEditing.ready;
-  window.roomEditorStatus = result.status;
-  window.roomEditorReasonCode = result.reasonCode;
-  window.roomEditorLastOperation = result.operation;
-  window.roomEditorLastOperationAccepted = result.operationAccepted;
-  window.roomEditorLastPrimitiveId = result.primitiveId;
+  window.creativeAuthoring.roomEditorCursorReady = window.creativeAuthoring.roomEditing.ready;
+  window.creativeAuthoring.roomEditorStatus = result.status;
+  window.creativeAuthoring.roomEditorReasonCode = result.reasonCode;
+  window.creativeAuthoring.roomEditorLastOperation = result.operation;
+  window.creativeAuthoring.roomEditorLastOperationAccepted = result.operationAccepted;
+  window.creativeAuthoring.roomEditorLastPrimitiveId = result.primitiveId;
 }
 
 ProductRoomEditorPreviewInputResult rejectProductRoomEditorPreviewInputNotReady(
@@ -397,8 +397,8 @@ ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputBuild(
   ProductRoomEditorPreviewInputResult result =
       baseProductRoomEditorPreviewInputResult(action);
   const ProductRoomEditorPlacementPreviewResult preview =
-      buildProductRoomEditorPreviewAutomation(window.roomEditing,
-                                              window.roomEditorCursor);
+      buildProductRoomEditorPreviewAutomation(window.creativeAuthoring.roomEditing,
+                                              window.creativeAuthoring.roomEditorCursor);
   recordProductRoomEditorPreviewResult(window, preview);
   result.ok = preview.ok;
   result.status = preview.status;
@@ -426,7 +426,7 @@ ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputConfirm(
 
   ProductRoomEditingOperationResult applied =
       confirmProductRoomEditorPreviewAutomation(
-          window.roomEditing, window.roomEditorPlacementPreview);
+          window.creativeAuthoring.roomEditing, window.creativeAuthoring.roomEditorPlacementPreview);
   recordProductRoomEditingOperation(window, result.operation, applied);
   result.ok = applied.accepted;
   result.operationAccepted = applied.accepted;
@@ -494,7 +494,7 @@ ProductRoomEditorPreviewInputResult applyProductRoomEditorPreviewInputAction(
     return result;
   }
   // branch-gate: BG-1054
-  if (!window.roomEditing.ready) {
+  if (!window.creativeAuthoring.roomEditing.ready) {
     return rejectProductRoomEditorPreviewInputNotReady(window, action);
   }
 
@@ -592,7 +592,7 @@ bool roomEditorReady(ProductAutomationRoomEditingContext& context,
                      const ProductAutomationCommand& command,
                      std::string_view operation) {
   // branch-gate: BG-1006
-  if (context.window.roomEditing.ready) {
+  if (context.window.creativeAuthoring.roomEditing.ready) {
     return true;
   }
   rejectProductRoomEditorNotReady(context.window, operation);
@@ -718,7 +718,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       if (context.frontend.screen != FrontendScreen::Gameplay ||
           !context.window.gameplay.gameplayActive ||
           !context.activeSessionAvailable ||
-          !context.window.roomEditing.ready) {
+          !context.window.creativeAuthoring.roomEditing.ready) {
         rejectProductRoomEditorNotReady(context.window, inputActionName(editorAction));
         markAutomationApplied(context.window, command, inputActionName(editorAction),
                               context.currentOwner(), "failed");
@@ -758,7 +758,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       recordAction(actions, editorAction, true, true, false, actionValue);
       const ProductRoomEditorActionResult result =
           applyProductEditorInputAutomation(
-              context.window.roomEditing, context.window.roomEditorCursor, actions,
+              context.window.creativeAuthoring.roomEditing, context.window.creativeAuthoring.roomEditorCursor, actions,
               ProductRoomAuthoringInputSource::Hotkey);
       recordProductRoomEditorActionResult(context.window, result);
       // branch-gate: BG-1006
@@ -797,7 +797,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     }
     return applyRoomEditorCursorResult(
         command, automationSpec, context,
-        applyProductRoomEditorMoveAutomation(context.window.roomEditorCursor,
+        applyProductRoomEditorMoveAutomation(context.window.creativeAuthoring.roomEditorCursor,
                                              direction));
   }
 
@@ -815,7 +815,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     }
     return applyRoomEditorCursorResult(
         command, automationSpec, context,
-        applyProductRoomEditorToolAutomation(context.window.roomEditorCursor, tool));
+        applyProductRoomEditorToolAutomation(context.window.creativeAuthoring.roomEditorCursor, tool));
   }
 
   // branch-gate: BG-1006
@@ -837,7 +837,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     }
     return applyRoomEditorCursorResult(
         command, automationSpec, context,
-        applyProductRoomEditorCycleToolAutomation(context.window.roomEditorCursor));
+        applyProductRoomEditorCycleToolAutomation(context.window.creativeAuthoring.roomEditorCursor));
   }
 
   // branch-gate: BG-1006
@@ -856,7 +856,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     return applyRoomEditorCursorResult(
         command, automationSpec, context,
         applyProductRoomEditorWallDirectionAutomation(
-            context.window.roomEditorCursor, direction));
+            context.window.creativeAuthoring.roomEditorCursor, direction));
   }
 
   // branch-gate: BG-1044
@@ -874,8 +874,8 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
 
     const ProductRoomEditorActionResult result =
         applyProductRoomEditorMousePickAutomation(
-            context.window.roomEditing,
-            context.window.roomEditorCursor,
+            context.window.creativeAuthoring.roomEditing,
+            context.window.creativeAuthoring.roomEditorCursor,
             pick.screenX,
             pick.screenY,
             productRoomEditorMousePickViewportConfig(context.window),
@@ -912,8 +912,8 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     }
 
     const ProductRoomEditorPlacementPreviewResult result =
-        buildProductRoomEditorPreviewAutomation(context.window.roomEditing,
-                                                context.window.roomEditorCursor);
+        buildProductRoomEditorPreviewAutomation(context.window.creativeAuthoring.roomEditing,
+                                                context.window.creativeAuthoring.roomEditorCursor);
     recordProductRoomEditorPreviewResult(context.window, result);
     // branch-gate: BG-1049
     if (!result.ok) {
@@ -945,16 +945,16 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       return failRoomEditingAutomation();
     }
     // branch-gate: BG-1051
-    if (!context.window.roomEditorPreview.active ||
-        !context.window.roomEditorPlacementPreview.ok ||
-        !context.window.roomEditorPlacementPreview.candidateCommandReady) {
+    if (!context.window.creativeAuthoring.roomEditorPreview.active ||
+        !context.window.creativeAuthoring.roomEditorPlacementPreview.ok ||
+        !context.window.creativeAuthoring.roomEditorPlacementPreview.candidateCommandReady) {
       return failRoomEditorPreviewAutomation(
           command, automationSpec, context, "room_editor_preview_confirm_missing");
     }
 
     ProductRoomEditingOperationResult result =
         confirmProductRoomEditorPreviewAutomation(
-            context.window.roomEditing, context.window.roomEditorPlacementPreview);
+            context.window.creativeAuthoring.roomEditing, context.window.creativeAuthoring.roomEditorPlacementPreview);
     return applyRoomEditingOperationResult(command, automationSpec, context, result);
   }
 
@@ -1004,7 +1004,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
 
     const ProductRoomEditorActionResult result =
         applyProductRoomEditorPlaceAutomation(
-            context.window.roomEditing, context.window.roomEditorCursor,
+            context.window.creativeAuthoring.roomEditing, context.window.creativeAuthoring.roomEditorCursor,
             ProductRoomAuthoringInputSource::Hotkey);
     recordProductRoomEditorActionResult(context.window, result,
                                         automationSpec.canonicalKey);
@@ -1028,7 +1028,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       return failRoomEditingAutomation();
     }
     ProductRoomEditingOperationResult result = applyProductRoomEditAutomation(
-        {context.window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
+        {context.window.creativeAuthoring.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
     return applyRoomEditingOperationResult(command, automationSpec, context, result);
   }
 
@@ -1041,7 +1041,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       return failRoomEditingAutomation();
     }
     ProductRoomEditingOperationResult result = applyProductRoomEditAutomation(
-        {context.window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
+        {context.window.creativeAuthoring.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
     return applyRoomEditingOperationResult(command, automationSpec, context, result);
   }
 
@@ -1054,7 +1054,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     }
     const RoomEditCommand edit = deleteFloorCommand(std::string(value));
     ProductRoomEditingOperationResult result = applyProductRoomEditAutomation(
-        {context.window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
+        {context.window.creativeAuthoring.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
     return applyRoomEditingOperationResult(command, automationSpec, context, result);
   }
 
@@ -1067,7 +1067,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     }
     const RoomEditCommand edit = deleteWallCommand(std::string(value));
     ProductRoomEditingOperationResult result = applyProductRoomEditAutomation(
-        {context.window.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
+        {context.window.creativeAuthoring.roomEditing, ProductRoomAuthoringInputSource::Script, edit});
     return applyRoomEditingOperationResult(command, automationSpec, context, result);
   }
 
@@ -1086,7 +1086,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     }
     ProductRoomEditingOperationResult result =
         undoProductRoomEditAutomation(
-            {context.window.roomEditing, ProductRoomAuthoringInputSource::Script});
+            {context.window.creativeAuthoring.roomEditing, ProductRoomAuthoringInputSource::Script});
     return applyRoomEditingOperationResult(command, automationSpec, context, result);
   }
 
@@ -1105,7 +1105,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     }
     ProductRoomEditingOperationResult result =
         redoProductRoomEditAutomation(
-            {context.window.roomEditing, ProductRoomAuthoringInputSource::Script});
+            {context.window.creativeAuthoring.roomEditing, ProductRoomAuthoringInputSource::Script});
     return applyRoomEditingOperationResult(command, automationSpec, context, result);
   }
 

@@ -1286,12 +1286,12 @@ bool roomEditorSurfaceShowsEditorHudOnly() {
   }
   seedMovementDebugFacts(window);
   seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
-  window.roomEditing.ready = true;
+  window.creativeAuthoring.roomEditing.ready = true;
   window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
-  window.roomEditorCursor.wallDirection = iggy3d::ProductRoomEditorDirection::Right;
-  window.roomEditorCursor.gridX = 2;
-  window.roomEditorCursor.gridZ = 3;
+  window.creativeAuthoring.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  window.creativeAuthoring.roomEditorCursor.wallDirection = iggy3d::ProductRoomEditorDirection::Right;
+  window.creativeAuthoring.roomEditorCursor.gridX = 2;
+  window.creativeAuthoring.roomEditorCursor.gridZ = 3;
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Gameplay;
   frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
@@ -1330,9 +1330,9 @@ bool roomEditorSurfaceShowsEditorHudOnly() {
                 "editor surface preserves physics debug lines") &&
          expect(!projection.drawList.physicsDebugVisible,
                 "editor surface hides physics debug geometry") &&
-         expect(window.roomEditorHud.visible,
+         expect(window.creativeAuthoring.roomEditorHud.visible,
                 "editor window records room editor HUD visible") &&
-         expect(window.roomEditorOverlay.visible,
+         expect(window.creativeAuthoring.roomEditorOverlay.visible,
                 "editor window records room editor overlay visible") &&
          expect(!window.debugHud.positionHud.visible,
                 "editor window records position HUD hidden") &&

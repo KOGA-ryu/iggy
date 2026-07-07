@@ -1,6 +1,12 @@
 #pragma once
 
 #include "app/iggy3d/creative/CreativeUiCommandDiagnostics.hpp"
+#include "app/iggy3d/room_editor/Cursor.hpp"
+#include "app/iggy3d/room_editor/EditingState.hpp"
+#include "app/iggy3d/room_editor/Presentation.hpp"
+#include "app/iggy3d/room_editor/Preview.hpp"
+#include "app/iggy3d/room_editor/RoomEditorOverlayState.hpp"
+#include "app/iggy3d/room_editor/RoomEditorPreviewState.hpp"
 
 #include <cstdint>
 #include <string>
@@ -8,6 +14,24 @@
 namespace iggy3d {
 
 struct CreativeAuthoringStore {
+  ProductRoomEditingState roomEditing;
+  std::string roomEditingLastOperation = "none";
+  std::string roomEditingLastOperationStatus = "not_requested";
+  std::string roomEditingLastOperationReasonCode = "not_requested";
+  std::string roomEditingLastInputSource = "none";
+  bool roomEditingLastOperationAccepted = false;
+  std::string roomEditingLastPrimitiveId = "none";
+  bool roomEditorCursorReady = false;
+  ProductRoomEditorCursorState roomEditorCursor;
+  std::string roomEditorStatus = "not_requested";
+  std::string roomEditorReasonCode = "not_requested";
+  std::string roomEditorLastOperation = "none";
+  bool roomEditorLastOperationAccepted = false;
+  std::string roomEditorLastPrimitiveId = "none";
+  ProductRoomEditorOverlayState roomEditorOverlay;
+  ProductRoomEditorPreviewState roomEditorPreview;
+  ProductRoomEditorPlacementPreviewResult roomEditorPlacementPreview;
+  ProductRoomEditorHud roomEditorHud;
   bool creativeViewportPickRequested = false;
   bool creativeViewportPickActive = false;
   bool creativeViewportPickClickPresent = false;

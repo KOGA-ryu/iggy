@@ -593,7 +593,7 @@ bool activeSurfaceWindowContextPreservesLegacyGameplayGate() {
   const auto creativeGameplay = iggy3d::resolveProductActiveSurface(
       iggy3d::productActiveSurfaceContextForWindow(frontend, window));
 
-  window.roomEditing.ready = true;
+  window.creativeAuthoring.roomEditing.ready = true;
   const auto editor = iggy3d::resolveProductActiveSurface(
       iggy3d::productActiveSurfaceContextForWindow(frontend, window));
 
@@ -727,7 +727,7 @@ bool windowOnlyCreativeModeKeepsRoomEditorSurface() {
   iggy3d::ProductAppWindowState window;
   window.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(window);
-  window.roomEditing.ready = true;
+  window.creativeAuthoring.roomEditing.ready = true;
 
   const iggy3d::ProductActiveSurfaceFrame surface =
       iggy3d::resolveProductActiveSurface(
@@ -798,7 +798,7 @@ bool inputOwnerCacheSyncUsesResolvedActiveSurface() {
     frontend.childScreen = row.child;
     iggy3d::ProductAppWindowState window;
     window.gameplay.gameplayActive = row.gameplayActive;
-    window.roomEditing.ready = row.roomEditorReady;
+    window.creativeAuthoring.roomEditing.ready = row.roomEditorReady;
 
     const iggy3d::ProductActiveSurfaceFrame surface =
         iggy3d::syncProductWindowInputOwnerFromActiveSurface(frontend, window);

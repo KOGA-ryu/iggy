@@ -451,13 +451,13 @@ bool mousePickRejectsInvalidWithoutMutation() {
 
 bool previewInputBuildsAndConfirmsThroughEditingState() {
   iggy3d::ProductAppWindowState window;
-  window.roomEditing =
+  window.creativeAuthoring.roomEditing =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
-  window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
-  window.roomEditorCursor.gridX = 2;
-  const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
+  window.creativeAuthoring.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  window.creativeAuthoring.roomEditorCursor.gridX = 2;
+  const std::uint64_t initialWalls = window.creativeAuthoring.roomEditing.documentWallCount;
   const std::uint64_t initialBlockers =
-      window.roomEditing.collisionActorBlockerSurfaceCount;
+      window.creativeAuthoring.roomEditing.collisionActorBlockerSurfaceCount;
 
   const iggy3d::ProductRoomEditorPreviewInputResult preview =
       iggy3d::applyProductRoomEditorPreviewInputAction(
@@ -469,29 +469,29 @@ bool previewInputBuildsAndConfirmsThroughEditingState() {
                    "preview input operation") &&
             expect(preview.primitiveId == "edit_wall_1",
                    "preview input primitive") &&
-            expect(window.roomEditorPreview.active,
+            expect(window.creativeAuthoring.roomEditorPreview.active,
                    "preview input activates preview") &&
-            expect(window.roomEditorPreview.visible,
+            expect(window.creativeAuthoring.roomEditorPreview.visible,
                    "preview input visible") &&
-            expect(window.roomEditorPreview.beforeDrawCount > 0U,
+            expect(window.creativeAuthoring.roomEditorPreview.beforeDrawCount > 0U,
                    "preview input before draw count copied") &&
-            expect(window.roomEditorPreview.afterDrawCount ==
+            expect(window.creativeAuthoring.roomEditorPreview.afterDrawCount ==
                        static_cast<std::uint64_t>(
                            static_cast<std::int64_t>(
-                               window.roomEditorPreview.beforeDrawCount) +
-                           window.roomEditorPreview.optimizedDrawDelta),
+                               window.creativeAuthoring.roomEditorPreview.beforeDrawCount) +
+                           window.creativeAuthoring.roomEditorPreview.optimizedDrawDelta),
                    "preview input after draw count matches delta") &&
-            expect(window.roomEditorPreview.beforeTriangleCount > 0U,
+            expect(window.creativeAuthoring.roomEditorPreview.beforeTriangleCount > 0U,
                    "preview input before triangle count copied") &&
-            expect(window.roomEditorPreview.afterTriangleCount ==
+            expect(window.creativeAuthoring.roomEditorPreview.afterTriangleCount ==
                        static_cast<std::uint64_t>(
                            static_cast<std::int64_t>(
-                               window.roomEditorPreview.beforeTriangleCount) +
-                           window.roomEditorPreview.optimizedTriangleDelta),
+                               window.creativeAuthoring.roomEditorPreview.beforeTriangleCount) +
+                           window.creativeAuthoring.roomEditorPreview.optimizedTriangleDelta),
                    "preview input after triangle count matches delta") &&
-            expect(window.roomEditing.documentWallCount == initialWalls,
+            expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls,
                    "preview input leaves walls") &&
-            expect(window.roomEditing.collisionActorBlockerSurfaceCount ==
+            expect(window.creativeAuthoring.roomEditing.collisionActorBlockerSurfaceCount ==
                        initialBlockers,
                    "preview input leaves collision");
 
@@ -505,32 +505,32 @@ bool previewInputBuildsAndConfirmsThroughEditingState() {
                 "preview confirm operation") &&
          expect(confirmed.primitiveId == "edit_wall_1",
                 "preview confirm primitive") &&
-         expect(!window.roomEditorPreview.active, "preview confirm clears active") &&
-         expect(!window.roomEditorPreview.visible, "preview confirm hidden") &&
-         expect(window.roomEditing.documentWallCount == initialWalls + 1U,
+         expect(!window.creativeAuthoring.roomEditorPreview.active, "preview confirm clears active") &&
+         expect(!window.creativeAuthoring.roomEditorPreview.visible, "preview confirm hidden") &&
+         expect(window.creativeAuthoring.roomEditing.documentWallCount == initialWalls + 1U,
                 "preview confirm increments walls") &&
-         expect(window.roomEditing.collisionActorBlockerSurfaceCount ==
+         expect(window.creativeAuthoring.roomEditing.collisionActorBlockerSurfaceCount ==
                     initialBlockers + 1U,
                 "preview confirm increments collision") &&
-         expect(window.roomEditingLastOperation == "editor.preview_confirm",
+         expect(window.creativeAuthoring.roomEditingLastOperation == "editor.preview_confirm",
                 "preview confirm records room editing operation") &&
-         expect(window.roomEditingLastOperationStatus ==
+         expect(window.creativeAuthoring.roomEditingLastOperationStatus ==
                     "product_room_editing_edit_applied",
                 "preview confirm records edit applied") &&
-         expect(window.roomEditingLastPrimitiveId == "edit_wall_1",
+         expect(window.creativeAuthoring.roomEditingLastPrimitiveId == "edit_wall_1",
                 "preview confirm records editing primitive") &&
          ok;
 }
 
 bool previewInputCancelAndMissingConfirmDoNotMutate() {
   iggy3d::ProductAppWindowState cancelWindow;
-  cancelWindow.roomEditing =
+  cancelWindow.creativeAuthoring.roomEditing =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
-  cancelWindow.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
-  cancelWindow.roomEditorCursor.gridX = 2;
-  const std::uint64_t initialWalls = cancelWindow.roomEditing.documentWallCount;
+  cancelWindow.creativeAuthoring.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
+  cancelWindow.creativeAuthoring.roomEditorCursor.gridX = 2;
+  const std::uint64_t initialWalls = cancelWindow.creativeAuthoring.roomEditing.documentWallCount;
   const std::uint64_t initialBlockers =
-      cancelWindow.roomEditing.collisionActorBlockerSurfaceCount;
+      cancelWindow.creativeAuthoring.roomEditing.collisionActorBlockerSurfaceCount;
 
   const iggy3d::ProductRoomEditorPreviewInputResult preview =
       iggy3d::applyProductRoomEditorPreviewInputAction(
@@ -540,9 +540,9 @@ bool previewInputCancelAndMissingConfirmDoNotMutate() {
           cancelWindow, iggy3d::InputAction::EditorCancelPreview);
 
   iggy3d::ProductAppWindowState missingWindow;
-  missingWindow.roomEditing =
+  missingWindow.creativeAuthoring.roomEditing =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest()).state;
-  const std::uint64_t missingWalls = missingWindow.roomEditing.documentWallCount;
+  const std::uint64_t missingWalls = missingWindow.creativeAuthoring.roomEditing.documentWallCount;
   const iggy3d::ProductRoomEditorPreviewInputResult missing =
       iggy3d::applyProductRoomEditorPreviewInputAction(
           missingWindow, iggy3d::InputAction::EditorConfirmPreview);
@@ -553,33 +553,33 @@ bool previewInputCancelAndMissingConfirmDoNotMutate() {
                 "preview cancel status") &&
          expect(cancelled.operation == "editor.preview_cancel",
                 "preview cancel operation") &&
-         expect(!cancelWindow.roomEditorPreview.active,
+         expect(!cancelWindow.creativeAuthoring.roomEditorPreview.active,
                 "preview cancel clears active") &&
-         expect(cancelWindow.roomEditorPreview.beforeDrawCount == 0U,
+         expect(cancelWindow.creativeAuthoring.roomEditorPreview.beforeDrawCount == 0U,
                 "preview cancel clears before draw count") &&
-         expect(cancelWindow.roomEditorPreview.afterDrawCount == 0U,
+         expect(cancelWindow.creativeAuthoring.roomEditorPreview.afterDrawCount == 0U,
                 "preview cancel clears after draw count") &&
-         expect(cancelWindow.roomEditorPreview.avoidedDrawCountDelta == 0,
+         expect(cancelWindow.creativeAuthoring.roomEditorPreview.avoidedDrawCountDelta == 0,
                 "preview cancel clears avoided draw delta") &&
-         expect(cancelWindow.roomEditorPreview.beforeTriangleCount == 0U,
+         expect(cancelWindow.creativeAuthoring.roomEditorPreview.beforeTriangleCount == 0U,
                 "preview cancel clears before triangle count") &&
-         expect(cancelWindow.roomEditorPreview.afterTriangleCount == 0U,
+         expect(cancelWindow.creativeAuthoring.roomEditorPreview.afterTriangleCount == 0U,
                 "preview cancel clears after triangle count") &&
-         expect(cancelWindow.roomEditorPreview.avoidedTriangleCountDelta == 0,
+         expect(cancelWindow.creativeAuthoring.roomEditorPreview.avoidedTriangleCountDelta == 0,
                 "preview cancel clears avoided triangle delta") &&
-         expect(cancelWindow.roomEditing.documentWallCount == initialWalls,
+         expect(cancelWindow.creativeAuthoring.roomEditing.documentWallCount == initialWalls,
                 "preview cancel leaves walls") &&
-         expect(cancelWindow.roomEditing.collisionActorBlockerSurfaceCount ==
+         expect(cancelWindow.creativeAuthoring.roomEditing.collisionActorBlockerSurfaceCount ==
                     initialBlockers,
                 "preview cancel leaves collision") &&
-         expect(cancelWindow.roomEditorLastOperation == "editor.preview_cancel",
+         expect(cancelWindow.creativeAuthoring.roomEditorLastOperation == "editor.preview_cancel",
                 "preview cancel records editor operation") &&
          expect(!missing.ok, "missing preview confirm rejected") &&
          expect(missing.status == "room_editor_preview_confirm_missing",
                 "missing preview confirm status") &&
-         expect(missingWindow.roomEditing.documentWallCount == missingWalls,
+         expect(missingWindow.creativeAuthoring.roomEditing.documentWallCount == missingWalls,
                 "missing preview confirm leaves walls") &&
-         expect(!missingWindow.roomEditorPreview.active,
+         expect(!missingWindow.creativeAuthoring.roomEditorPreview.active,
                 "missing preview confirm no active preview");
 }
 

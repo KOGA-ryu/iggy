@@ -256,7 +256,7 @@ ProductActiveSurfaceContext productActiveSurfaceContextForWindow(
   context.gameplayActive = window.gameplay.gameplayActive;
   context.hasActiveSession = window.gameplay.gameplayActive;
   context.roomEditorReady =
-      window.roomEditing.ready && !productCreativeWorldActiveForWindow(window);
+      window.creativeAuthoring.roomEditing.ready && !productCreativeWorldActiveForWindow(window);
   context.interactionMode = window.inputDevice.interactionMode;
   return context;
 }
@@ -341,7 +341,7 @@ bool productCreativeWorldActiveForSource(
 bool productCreativeDocumentEditorActiveForWindow(
     const ProductAppWindowState& window) {
   return window.inputDevice.interactionMode == ProductInteractionMode::Creative &&
-         !window.roomEditing.ready && !mapMakerExplicitlyEnabled(window);
+         !window.creativeAuthoring.roomEditing.ready && !mapMakerExplicitlyEnabled(window);
 }
 
 bool productCreativeDocumentEditorActiveForSource(
@@ -360,7 +360,7 @@ ProductCreativeSurfaceKind productCreativeSurfaceKindForWindow(
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
   if (window.inputDevice.interactionMode == ProductInteractionMode::Creative &&
-      !window.roomEditing.ready &&
+      !window.creativeAuthoring.roomEditing.ready &&
       mapMakerExplicitlyEnabled(window) &&
       surface.activeSurface == ProductFrontendSurface::Gameplay &&
       surface.inputOwner == MenuOwner::Gameplay &&

@@ -58,32 +58,32 @@ void showCollisionOverlay(iggy3d::ProductAppWindowState& window) {
 }
 
 void showRoomEditorTransients(iggy3d::ProductAppWindowState& window) {
-  window.roomEditing.ready = true;
-  window.roomEditorCursorReady = true;
-  window.roomEditorOverlay.visible = true;
-  window.roomEditorOverlay.status = "room_editor_overlay_visible";
-  window.roomEditorOverlay.reasonCode = window.roomEditorOverlay.status;
-  window.roomEditorOverlay.itemCount = 3;
-  window.roomEditorPreview.active = true;
-  window.roomEditorPlacementPreview.ok = true;
-  window.roomEditorPreview.visible = true;
-  window.roomEditorPreview.status = "room_editor_preview_ready";
-  window.roomEditorPreview.reasonCode = window.roomEditorPreview.status;
-  window.roomEditorPreview.candidateId = "preview_floor";
-  window.roomEditorPreview.tool = "wall";
-  window.roomEditorPreview.gridX = 4;
-  window.roomEditorPreview.gridZ = 5;
-  window.roomEditorPreview.beforeDrawCount = 7;
-  window.roomEditorPreview.afterDrawCount = 8;
-  window.roomEditorPreview.optimizedDrawDelta = 1;
-  window.roomEditorHud.visible = true;
-  window.roomEditorHud.status = "room_editor_hud_visible";
-  window.roomEditorHud.reasonCode = window.roomEditorHud.status;
-  window.roomEditorHud.previewActive = true;
-  window.roomEditorHud.previewStatus = "room_editor_preview_ready";
-  window.roomEditorHud.previewCandidateId = "preview_floor";
-  window.roomEditorHud.previewOptimizedDrawDelta = 1;
-  window.roomEditorHud.lineCount = 4;
+  window.creativeAuthoring.roomEditing.ready = true;
+  window.creativeAuthoring.roomEditorCursorReady = true;
+  window.creativeAuthoring.roomEditorOverlay.visible = true;
+  window.creativeAuthoring.roomEditorOverlay.status = "room_editor_overlay_visible";
+  window.creativeAuthoring.roomEditorOverlay.reasonCode = window.creativeAuthoring.roomEditorOverlay.status;
+  window.creativeAuthoring.roomEditorOverlay.itemCount = 3;
+  window.creativeAuthoring.roomEditorPreview.active = true;
+  window.creativeAuthoring.roomEditorPlacementPreview.ok = true;
+  window.creativeAuthoring.roomEditorPreview.visible = true;
+  window.creativeAuthoring.roomEditorPreview.status = "room_editor_preview_ready";
+  window.creativeAuthoring.roomEditorPreview.reasonCode = window.creativeAuthoring.roomEditorPreview.status;
+  window.creativeAuthoring.roomEditorPreview.candidateId = "preview_floor";
+  window.creativeAuthoring.roomEditorPreview.tool = "wall";
+  window.creativeAuthoring.roomEditorPreview.gridX = 4;
+  window.creativeAuthoring.roomEditorPreview.gridZ = 5;
+  window.creativeAuthoring.roomEditorPreview.beforeDrawCount = 7;
+  window.creativeAuthoring.roomEditorPreview.afterDrawCount = 8;
+  window.creativeAuthoring.roomEditorPreview.optimizedDrawDelta = 1;
+  window.creativeAuthoring.roomEditorHud.visible = true;
+  window.creativeAuthoring.roomEditorHud.status = "room_editor_hud_visible";
+  window.creativeAuthoring.roomEditorHud.reasonCode = window.creativeAuthoring.roomEditorHud.status;
+  window.creativeAuthoring.roomEditorHud.previewActive = true;
+  window.creativeAuthoring.roomEditorHud.previewStatus = "room_editor_preview_ready";
+  window.creativeAuthoring.roomEditorHud.previewCandidateId = "preview_floor";
+  window.creativeAuthoring.roomEditorHud.previewOptimizedDrawDelta = 1;
+  window.creativeAuthoring.roomEditorHud.lineCount = 4;
   window.viewport.productDrawRoomEditorCursorVisible = true;
   window.viewport.productDrawRoomEditorCursorCount = 1;
   window.viewport.productDrawRoomEditorPreviewVisible = true;
@@ -336,7 +336,7 @@ int main() {
                "resume stays player mode");
   ok &= expect(!window.gameplay.gameplayMovement.tuningVisible,
                "resume does not restore movement tuning");
-  window.roomEditing.ready = true;
+  window.creativeAuthoring.roomEditing.ready = true;
   window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const iggy3d::RenderReceipt editorReceipt =
       receiptFor(frontend, settings, window);
@@ -391,22 +391,22 @@ int main() {
   ok &= expect(window.debugHud.devCollisionOverlay.status ==
                    "dev_collision_overlay_hidden",
                "return to title collision overlay status hidden");
-  ok &= expect(window.roomEditing.ready,
+  ok &= expect(window.creativeAuthoring.roomEditing.ready,
                "return to title preserves room editing document");
-  ok &= expect(!window.roomEditorCursorReady,
+  ok &= expect(!window.creativeAuthoring.roomEditorCursorReady,
                "return to title clears room editor cursor transient");
-  ok &= expect(!window.roomEditorOverlay.visible,
+  ok &= expect(!window.creativeAuthoring.roomEditorOverlay.visible,
                "return to title clears room editor overlay");
-  ok &= expect(!window.roomEditorPreview.active,
+  ok &= expect(!window.creativeAuthoring.roomEditorPreview.active,
                "return to title clears room editor preview active");
-  ok &= expect(!window.roomEditorPreview.visible,
+  ok &= expect(!window.creativeAuthoring.roomEditorPreview.visible,
                "return to title clears room editor preview visible");
-  ok &= expect(window.roomEditorPreview.status ==
+  ok &= expect(window.creativeAuthoring.roomEditorPreview.status ==
                    "room_editor_preview_not_requested",
                "return to title clears room editor preview status");
-  ok &= expect(!window.roomEditorHud.visible,
+  ok &= expect(!window.creativeAuthoring.roomEditorHud.visible,
                "return to title clears room editor hud");
-  ok &= expect(window.roomEditorHud.status == "room_editor_hud_not_ready",
+  ok &= expect(window.creativeAuthoring.roomEditorHud.status == "room_editor_hud_not_ready",
                "return to title room editor hud hidden status");
   ok &= expect(!window.viewport.productDrawRoomEditorCursorVisible,
                "return to title clears room editor cursor draw");

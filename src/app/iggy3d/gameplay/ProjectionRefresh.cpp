@@ -271,18 +271,18 @@ void copyPositionHud(ProductAppWindowState& window,
 
 void copyProductRoomEditorOverlay(ProductAppWindowState& window,
                                   const ProductRoomEditorOverlay& overlay) {
-  window.roomEditorOverlay.visible = overlay.visible;
-  window.roomEditorOverlay.status = overlay.status;
-  window.roomEditorOverlay.reasonCode = overlay.reasonCode;
-  window.roomEditorOverlay.itemCount = overlay.itemCount;
-  window.roomEditorOverlay.worldX = overlay.worldPosition.x;
-  window.roomEditorOverlay.worldY = overlay.worldPosition.y;
-  window.roomEditorOverlay.worldZ = overlay.worldPosition.z;
+  window.creativeAuthoring.roomEditorOverlay.visible = overlay.visible;
+  window.creativeAuthoring.roomEditorOverlay.status = overlay.status;
+  window.creativeAuthoring.roomEditorOverlay.reasonCode = overlay.reasonCode;
+  window.creativeAuthoring.roomEditorOverlay.itemCount = overlay.itemCount;
+  window.creativeAuthoring.roomEditorOverlay.worldX = overlay.worldPosition.x;
+  window.creativeAuthoring.roomEditorOverlay.worldY = overlay.worldPosition.y;
+  window.creativeAuthoring.roomEditorOverlay.worldZ = overlay.worldPosition.z;
 }
 
 void copyProductRoomEditorHud(ProductAppWindowState& window,
                               const ProductRoomEditorHud& hud) {
-  window.roomEditorHud = hud;
+  window.creativeAuthoring.roomEditorHud = hud;
 }
 
 void copyInteractionModeHud(ProductAppWindowState& window,
@@ -303,40 +303,40 @@ void copyTopDownMapOverlay(ProductAppWindowState& window,
 void copyProductRoomEditorPreviewOverlay(
     ProductAppWindowState& window,
     const ProductRoomEditorPreviewOverlay& overlay) {
-  window.roomEditorPreview.visible = overlay.visible;
-  if (window.roomEditorPreview.active) {  // branch-gate: BG-1050
-    window.roomEditorPreview.status = window.roomEditorPlacementPreview.status;
+  window.creativeAuthoring.roomEditorPreview.visible = overlay.visible;
+  if (window.creativeAuthoring.roomEditorPreview.active) {  // branch-gate: BG-1050
+    window.creativeAuthoring.roomEditorPreview.status = window.creativeAuthoring.roomEditorPlacementPreview.status;
   } else {
     const bool shouldCopyOverlayStatus =
-        window.roomEditorPreview.status == "room_editor_preview_not_requested";
+        window.creativeAuthoring.roomEditorPreview.status == "room_editor_preview_not_requested";
     if (shouldCopyOverlayStatus) {  // branch-gate: BG-1052
-      window.roomEditorPreview.status = overlay.status;
+      window.creativeAuthoring.roomEditorPreview.status = overlay.status;
     }
   }
-  if (window.roomEditorPreview.active) {  // branch-gate: BG-1050
-    window.roomEditorPreview.reasonCode =
-        window.roomEditorPlacementPreview.reasonCode;
+  if (window.creativeAuthoring.roomEditorPreview.active) {  // branch-gate: BG-1050
+    window.creativeAuthoring.roomEditorPreview.reasonCode =
+        window.creativeAuthoring.roomEditorPlacementPreview.reasonCode;
   } else {
     const bool shouldCopyOverlayReason =
-        window.roomEditorPreview.reasonCode == "room_editor_preview_not_requested";
+        window.creativeAuthoring.roomEditorPreview.reasonCode == "room_editor_preview_not_requested";
     if (shouldCopyOverlayReason) {  // branch-gate: BG-1052
-      window.roomEditorPreview.reasonCode = overlay.reasonCode;
+      window.creativeAuthoring.roomEditorPreview.reasonCode = overlay.reasonCode;
     }
   }
-  window.roomEditorPreview.candidateId = overlay.candidateId;
-  window.roomEditorPreview.tool = overlay.toolName;
-  window.roomEditorPreview.gridX = overlay.gridX;
-  window.roomEditorPreview.gridZ = overlay.gridZ;
-  window.roomEditorPreview.optimizedDrawDelta = overlay.optimizedDrawDelta;
-  window.roomEditorPreview.optimizedTriangleDelta =
+  window.creativeAuthoring.roomEditorPreview.candidateId = overlay.candidateId;
+  window.creativeAuthoring.roomEditorPreview.tool = overlay.toolName;
+  window.creativeAuthoring.roomEditorPreview.gridX = overlay.gridX;
+  window.creativeAuthoring.roomEditorPreview.gridZ = overlay.gridZ;
+  window.creativeAuthoring.roomEditorPreview.optimizedDrawDelta = overlay.optimizedDrawDelta;
+  window.creativeAuthoring.roomEditorPreview.optimizedTriangleDelta =
       overlay.optimizedTriangleDelta;
 }
 
 const ProductRoomEditorPlacementPreviewResult* activeRoomEditorPlacementPreview(
     const ProductAppWindowState& window) {
   // branch-gate: BG-1050
-  if (window.roomEditorPreview.active) {
-    return &window.roomEditorPlacementPreview;
+  if (window.creativeAuthoring.roomEditorPreview.active) {
+    return &window.creativeAuthoring.roomEditorPlacementPreview;
   }
   return nullptr;
 }
@@ -725,17 +725,17 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                          window.viewport.cameraPitchDegrees});
   copyPositionHud(window, frame.positionHud);
   frame.roomEditorOverlay =
-      buildProductRoomEditorOverlay(window.roomEditorCursor, false);
+      buildProductRoomEditorOverlay(window.creativeAuthoring.roomEditorCursor, false);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
   frame.roomEditorPreviewOverlay = buildProductRoomEditorPreviewOverlay(nullptr);
   copyProductRoomEditorPreviewOverlay(window, frame.roomEditorPreviewOverlay);
   frame.roomEditorHud = buildProductRoomEditorHud(
-      ProductRoomEditorHudRequest{window.roomEditing,
-                                  window.roomEditorCursor,
+      ProductRoomEditorHudRequest{window.creativeAuthoring.roomEditing,
+                                  window.creativeAuthoring.roomEditorCursor,
                                   hudSurface.roomEditorHudVisible,
-                                  window.roomEditorLastOperation,
-                                  window.roomEditorLastOperationAccepted,
-                                  window.roomEditorLastPrimitiveId,
+                                  window.creativeAuthoring.roomEditorLastOperation,
+                                  window.creativeAuthoring.roomEditorLastOperationAccepted,
+                                  window.creativeAuthoring.roomEditorLastPrimitiveId,
                                   activeRoomEditorPlacementPreview(window)});
   copyProductRoomEditorHud(window, frame.roomEditorHud);
 
@@ -797,7 +797,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                               frame.mapMakerGrid,
                                               frame.mapMakerCubePreview);
   frame.roomEditorOverlay =
-      buildProductRoomEditorOverlay(window.roomEditorCursor,
+      buildProductRoomEditorOverlay(window.creativeAuthoring.roomEditorCursor,
                                     hudSurface.roomEditorHudVisible);
   copyProductRoomEditorOverlay(window, frame.roomEditorOverlay);
   // branch-gate: BG-1050
@@ -805,12 +805,12 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
       activeRoomEditorPlacementPreview(window));
   copyProductRoomEditorPreviewOverlay(window, frame.roomEditorPreviewOverlay);
   frame.roomEditorHud = buildProductRoomEditorHud(
-      ProductRoomEditorHudRequest{window.roomEditing,
-                                  window.roomEditorCursor,
+      ProductRoomEditorHudRequest{window.creativeAuthoring.roomEditing,
+                                  window.creativeAuthoring.roomEditorCursor,
                                   hudSurface.roomEditorHudVisible,
-                                  window.roomEditorLastOperation,
-                                  window.roomEditorLastOperationAccepted,
-                                  window.roomEditorLastPrimitiveId,
+                                  window.creativeAuthoring.roomEditorLastOperation,
+                                  window.creativeAuthoring.roomEditorLastOperationAccepted,
+                                  window.creativeAuthoring.roomEditorLastPrimitiveId,
                                   activeRoomEditorPlacementPreview(window)});
   copyProductRoomEditorHud(window, frame.roomEditorHud);
   frame.drawList = buildProductPrimitiveDrawList(&frame.scene, &frame.debug,
