@@ -73,6 +73,15 @@ iggy3d_add_unit_test(product_vulkan_room_frame_tests
 set_tests_properties(product_vulkan_room_frame_tests PROPERTIES
   LABELS "unit;app;product;renderer;vulkan;room;iggy3d")
 
+iggy3d_add_unit_test(render_projectile_overlay_projection_tests
+  tests/unit/render_projectile_overlay_projection_tests.cpp)
+if(NOT IGGY3D_BUILD_VULKAN_BACKEND)
+  target_sources(render_projectile_overlay_projection_tests PRIVATE
+    src/render/vulkan/ProjectileOverlayProjection.cpp)
+endif()
+set_tests_properties(render_projectile_overlay_projection_tests PROPERTIES
+  LABELS "unit;render;vulkan;projectile;overlay;iggy3d")
+
 iggy3d_add_unit_test(product_vulkan_menu_frame_tests
   tests/unit/product_vulkan_menu_frame_tests.cpp)
 set_tests_properties(product_vulkan_menu_frame_tests PROPERTIES
@@ -1324,6 +1333,7 @@ if(IGGY3D_ENABLE_VULKAN_SMOKE)
         src/render/vulkan/Swapchain.cpp
         src/render/vulkan/FrameSync.cpp
         src/render/vulkan/CommandRecording.cpp
+        src/render/vulkan/ProjectileOverlayProjection.cpp
         src/render/vulkan/RenderLoop.cpp
         src/render/vulkan/ShaderModule.cpp
         src/render/vulkan/PipelineLayout.cpp

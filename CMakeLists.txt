@@ -315,6 +315,7 @@ if(IGGY3D_BUILD_VULKAN_BACKEND)
       src/render/vulkan/Swapchain.cpp
       src/render/vulkan/FrameSync.cpp
       src/render/vulkan/CommandRecording.cpp
+      src/render/vulkan/ProjectileOverlayProjection.cpp
       src/render/vulkan/RenderLoop.cpp
       src/render/vulkan/ShaderModule.cpp
       src/render/vulkan/PipelineLayout.cpp
