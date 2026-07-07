@@ -7,6 +7,7 @@
 
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/ascii_room/Package.hpp"
 #include "app/iggy3d/ascii_room/Preview.hpp"
 #include "app/iggy3d/world/PackageSessionSeed.hpp"
@@ -70,7 +71,7 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   recordProductAsciiRoomPreview(request.sourceName, request.roomId, preview, window);
   window.activeRoom = buildProductActiveRoomFromAsciiAuthoring(request, preview);
   bumpActiveRoomRevision(window);
-  window.activeRoomCollision = buildProductActiveRoomCollision(window.activeRoom);
+  (void)ensureActiveRoomCollisionFresh(window, nullptr);
   result.wallCount = preview.wallCount;
   result.markerCount = preview.markerCount;
   if (!preview.ok) {
@@ -115,9 +116,8 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   }
 
   activeSession = std::move(session.value);
-  window.activeRoomCollision =
-      buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
   bumpActiveRoomRevision(window);
+  (void)ensureActiveRoomCollisionFresh(window, &*activeSession);
   result.ok = true;
   result.status = "ascii_room_activated";
   result.reasonCode = "ascii_room_activated";

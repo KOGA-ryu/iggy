@@ -207,10 +207,33 @@ void fillLoopFacts(const Session& session, ProductGameplayTapeRunResult& result)
   result.runtimeStateHash = session.stateHash();
 }
 
-const SpatialSurfaceSet* currentCollisionSurfaces(
-    const ProductGameplayTapeRunRequest& request) {
+void ensureRequestCollisionFresh(const ProductGameplayTapeRunRequest& request) {
+  if (request.session == nullptr) {
+    return;
+  }
   if (request.window != nullptr) {
     (void)ensureActiveRoomCollisionFresh(*request.window, request.session);
+    return;
+  }
+  if (request.activeRoom == nullptr || request.activeRoomCollision == nullptr) {
+    return;
+  }
+
+  ProductAppWindowState window;
+  window.activeRoom = *request.activeRoom;
+  window.activeRoomCollision = *request.activeRoomCollision;
+  window.activeRoomRevision = window.activeRoomCollision.bakedFromRoomRevision;
+  if (window.activeRoomRevision == 0U) {
+    window.activeRoomRevision = 1U;
+  }
+  (void)ensureActiveRoomCollisionFresh(window, request.session);
+  *request.activeRoomCollision = std::move(window.activeRoomCollision);
+}
+
+const SpatialSurfaceSet* currentCollisionSurfaces(
+    const ProductGameplayTapeRunRequest& request) {
+  ensureRequestCollisionFresh(request);
+  if (request.window != nullptr) {
     const SpatialSurfaceSet* windowSurfaces =
         productActiveRoomCollisionSurfaces(request.window->activeRoomCollision);
     if (windowSurfaces != nullptr) {
@@ -225,15 +248,6 @@ const SpatialSurfaceSet* currentCollisionSurfaces(
     }
   }
   return request.collisionSurfaces;
-}
-
-void refreshActiveRoomCollision(const ProductGameplayTapeRunRequest& request) {
-  if (request.session == nullptr || request.activeRoom == nullptr ||
-      request.activeRoomCollision == nullptr || !request.activeRoom->loaded) {
-    return;
-  }
-  *request.activeRoomCollision =
-      buildProductActiveRoomCollision(*request.activeRoom, request.session->state());
 }
 
 ProductGameplayTapeRunResult fail(ProductGameplayTapeRunResult result,
@@ -499,7 +513,7 @@ ProductGameplayTapeRunResult runProductGameplayTape(
                   stepIndex,
                   &step);
     }
-    refreshActiveRoomCollision(request);
+    ensureRequestCollisionFresh(request);
     if (step.action == ProductGameplayTapeAction::Move) {
       const MovementBlockedReason movementBlock = lastMovementBlock(*request.session);
       result.lastMovementBlock =

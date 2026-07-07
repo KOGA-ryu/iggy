@@ -9,6 +9,7 @@
 #include "app/frontend/SaveBrowser.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/CreativeReasoningActivation.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
@@ -186,10 +187,9 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
   if (!package.rooms.empty()) {
     window.activeRoom = buildProductActiveRoomFromPackageRoom(
         package.rooms.front(), package.manifest.packageId, package.scenario.scenarioId);
-    window.activeRoomCollision =
-        buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
   }
   bumpActiveRoomRevision(window);
+  (void)ensureActiveRoomCollisionFresh(window, &*activeSession);
   window.runtimeSessionCreated = true;
   window.gameplayActive = true;
   window.runtimeStateHash = activeSession->stateHash();
@@ -720,10 +720,8 @@ class ProductCreativeBakedRoomRefreshService {
     if (request_.clearOnNoRenderable &&
         bake.receipt.reasonCode == kCreativeRoomBakeNoRenderableObjects) {
       window_.activeRoom = clearedCreativeBakedActiveRoom(request_);
-      window_.activeRoomCollision =
-          buildProductActiveRoomCollision(window_.activeRoom,
-                                          activeSession_->state());
       bumpActiveRoomRevision(window_);
+      (void)ensureActiveRoomCollisionFresh(window_, &*activeSession_);
 
       result_.accepted = true;
       result_.clearedActiveRoom = true;
@@ -746,12 +744,10 @@ class ProductCreativeBakedRoomRefreshService {
       const RoomAsset& room) {
     ProductActiveRoomState activeRoom = buildProductActiveRoomFromPackageRoom(
         room, "iggy3d.creative", "creative.document");
-    ProductActiveRoomCollisionState collision =
-        buildProductActiveRoomCollision(activeRoom, activeSession_->state());
 
     window_.activeRoom = std::move(activeRoom);
     bumpActiveRoomRevision(window_);
-    window_.activeRoomCollision = std::move(collision);
+    (void)ensureActiveRoomCollisionFresh(window_, &*activeSession_);
 
     if (request_.activationHook) {
       request_.activationHook(*activeSession_,
@@ -1330,9 +1326,8 @@ void launchProductNewWorld(const ProductAppOptions& options,
       return;
     }
     window.activeRoom = buildProductActiveRoomFromAsciiAuthoring(asciiRequest, asciiRoom);
-    window.activeRoomCollision =
-        buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
     bumpActiveRoomRevision(window);
+    (void)ensureActiveRoomCollisionFresh(window, &*activeSession);
     initialSaveAuthoredRoom = &asciiRoom.authoredRoom.authoredRoom;
   } else if (!createProductSession(options, activeSession, window)) {
     frontend.status = "opening_menu_new_world_failed";
@@ -1681,10 +1676,7 @@ void launchProductSaveSlot(const ProductAppOptions& options,
       return;
     }
   }
-  if (window.activeRoom.loaded) {
-    window.activeRoomCollision =
-        buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
-  }
+  (void)ensureActiveRoomCollisionFresh(window, &*activeSession);
   window.launchStatus = loaded.status;
   window.runtimeStateHash = activeSession->stateHash();
   clearProductActiveCreativeIdentity(window);

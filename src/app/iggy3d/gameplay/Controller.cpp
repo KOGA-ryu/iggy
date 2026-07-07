@@ -2236,10 +2236,6 @@ void submitProductTargetCommand(Session& session,
   if (kind == CommandKind::Interact && window.gameplayCommand.accepted &&
       window.gameplayTickAdvanced) {
     window.interactionExecuted = true;
-    if (window.activeRoom.loaded) {
-      window.activeRoomCollision =
-          buildProductActiveRoomCollision(window.activeRoom, session.state());
-    }
   }
   if (kind == CommandKind::Attack && window.gameplayCommand.accepted &&
       window.gameplayTickAdvanced) {

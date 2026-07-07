@@ -6,6 +6,7 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/input/ControllerActionMap.hpp"
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/gameplay/Controller.hpp"
@@ -49,6 +50,12 @@ bool gameplayAutomationReady(ProductAutomationGameplayContext& context) {
   return false;
 }
 
+const SpatialSurfaceSet* currentAutomationCollisionSurfaces(
+    ProductAutomationGameplayContext& context) {
+  (void)ensureActiveRoomCollisionFresh(context.window, context.activeSession);
+  return productActiveRoomCollisionSurfaces(context.window.activeRoomCollision);
+}
+
 bool applyGameplayActionState(ProductAutomationGameplayContext& context,
                               InputAction action,
                               const ActionState& actions) {
@@ -65,7 +72,8 @@ bool applyGameplayActionState(ProductAutomationGameplayContext& context,
 
   applyProductGameplayActions(
       *context.activeSession, actions, context.window, "automation",
-      productActiveRoomCollisionSurfaces(context.window.activeRoomCollision));
+      currentAutomationCollisionSurfaces(context));
+  (void)ensureActiveRoomCollisionFresh(context.window, context.activeSession);
   return context.window.gameplayCommand.submitted &&
          context.window.gameplayCommand.accepted &&
          context.window.gameplayTickAdvanced;
@@ -87,7 +95,8 @@ bool applyGameplayJumpActionState(ProductAutomationGameplayContext& context,
 
   applyProductGameplayActions(
       *context.activeSession, actions, context.window, "automation",
-      productActiveRoomCollisionSurfaces(context.window.activeRoomCollision));
+      currentAutomationCollisionSurfaces(context));
+  (void)ensureActiveRoomCollisionFresh(context.window, context.activeSession);
   return context.window.gameplayJump.requested &&
          (context.window.gameplayJump.accepted ||
           context.window.gameplayTraversal.consumed);

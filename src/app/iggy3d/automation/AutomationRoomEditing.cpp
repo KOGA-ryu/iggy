@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/ascii_room/Preview.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
@@ -88,7 +89,7 @@ void copyRoomEditingStateToWindow(ProductAppWindowState& window,
   if (state.ready) {
     window.activeRoom = state.activeRoom;
     bumpActiveRoomRevision(window);
-    window.activeRoomCollision = state.activeRoomCollision;
+    (void)ensureActiveRoomCollisionFresh(window, nullptr);
   } else {
     clearProductRoomEditorPreview(window);
   }

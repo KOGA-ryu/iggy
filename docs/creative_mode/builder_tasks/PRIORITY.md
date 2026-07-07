@@ -6,8 +6,8 @@ use this index only to decide which ready card to claim next.
 
 The current pipeline is a **gated spine change** (the activeRoom→collision
 freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
-Gate-1 ratified). It is fed one gate at a time — **G4 done → G5 seeded** (the
-mass-removal gate). Do not pre-load G6–G7.
+Gate-1 ratified). Gates G2–G5 are done. Do not pre-load G6–G7 until G5 is
+reviewed and committed.
 
 ## Claim Policy
 
@@ -25,16 +25,11 @@ None.
 
 ## Pull Next
 
-1. **E132 (E-ARCF-G5)** — remove the scattered rebakes: delete the Controller
-   mid-tick branch, redirect TapeRunner, remove the install-path direct bakes so
-   `ensure` is the only rebuild path. Behavior byte-identical; coverage grep must
-   be empty. Read preflight §G5 + the removal checklist §A–§D first.
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E132 (E-ARCF-G5)** — Gate 5 mass-removal. Behavior-identical (the removed
-  bakes were redundant with the G4 seam). Block, don't paper over, if a test reds.
-  G6–G7 held until reviewed/committed.
+None currently ready.
 
 ## Tier 2: Feature-Add Seams
 
@@ -48,7 +43,7 @@ None currently ready.
 
 Held — do NOT promote to `ready/` on a guess:
 
-- **Freshness-guard gates G6–G7** — held; seeded after G5 is reviewed/committed
+- **Freshness-guard gates G6–G7** — held; seed after G5 is reviewed/committed
   (`docs/active_room_collision_freshness_preflight_v0_2.md` Gate 1–7 table).
 - **Ownership-deficit queue** (`docs/ownership_deficit_audit.md`) landing onto the
   decomposition map (`docs/god_struct_decomposition_target_map.md`):
