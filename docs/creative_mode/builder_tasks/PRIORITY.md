@@ -5,10 +5,9 @@ files still live in `ready/`, `claimed/`, `done/`, or `blocked/`; builder should
 use this index only to decide which ready card to claim next.
 
 Current ready cards seed the complexity-reduction roadmap in
-`docs/complexity_audit_v0_1.md`. E124 is a read-only audit that PRODUCES the
-next implementation card — the bucket is kept small and fed one slice at a time
-on purpose. Do not pre-load implementation cards whose premise a prior slice
-could invalidate.
+`docs/complexity_audit_v0_1.md`. Read-only audits produce implementation cards;
+the bucket is kept small and fed one slice at a time on purpose. Do not pre-load
+implementation cards whose premise a prior slice could invalidate.
 
 ## Claim Policy
 
@@ -29,15 +28,16 @@ None.
 1. **E125** — Product Header Include Hygiene Pass 1 (mechanical, free build win).
 2. **E126** — TraversalTag Catalog Contract And Validator Parity (fixes the
    `clamber_candidate` validator drift without broad literal migration).
-3. **E124** — ProductPrimitiveDrawKind Metadata Audit (read-only).
+3. **E127** — ProductPrimitiveDrawKind Presentation Metadata Table (base
+   color/size centralization; dispatch and decorative render policy stay local).
 
 ## Tier 1: Correctness And Compatibility
 
-- **E124** — `ProductPrimitiveDrawKind` per-kind color drifted across 3 render
-  files (`ElevatedFloorTile` confirmed). Read-only audit first.
 - **E126** — traversal-tag validator parity from E122; retain
   `clamber_candidate` as valid content vocabulary but keep movement slot policy
   unchanged.
+- **E127** — centralize `ProductPrimitiveDrawKind` base color/size metadata from
+  E124 while preserving dynamic/decorative render policy.
 
 ## Tier 2: Feature-Add Seams
 
@@ -57,8 +57,8 @@ Held until their audit card returns — do NOT promote to `ready/` on a guess:
   movement, collision, and display/debug strings: do this after E126 lands and
   the catalog contract is stable. Do not migrate false-positive receipt/render
   strings blindly.
-- **Draw-kind metadata table implementation** (replace the 3 render switches with
-  one `constexpr` table + resolved drift values): held until **E124** returns.
+- Further draw-kind metadata cleanup after E127, if render owners decide to
+  centralize secondary/decorative colors.
 - Further include-hygiene passes (the remaining ~11 headers) after E125.
 - `activeRoom → activeRoomCollision` revision/dirty-guard service (audit finding
   #4, product-app / claude lane) — needs its own scoped card; see the audit
