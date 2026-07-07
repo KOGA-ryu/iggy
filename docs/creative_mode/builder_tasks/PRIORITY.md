@@ -16,6 +16,11 @@ single-source. Builder should pull E148-E152 in numeric order.
 members. **Queued next:** `E153` SaveSessionStore bulk-move (decomposition #5,
 31 fields, recon-grounded handoff) — a separate track from RoomStore with a
 disjoint field set. Claim it after E148-E152 unless planner changes priority.
+**Also staged (blocked/):** `E154` GameplayStore bulk-move (decomposition #8, 33
+fields incl. `runtimeSessionCreated`). **~1670 repoints — the biggest move; a
+single compiler-guided pass OR an accessor-seam slice (planner/reviewer choose).**
+Disjoint from RoomStore/SaveSessionStore; coordinates with E153 only on
+`runtimeSessionCreated` (whichever lands 2nd must not re-touch it).
 
 ## Claim Policy
 
