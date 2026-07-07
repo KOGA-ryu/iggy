@@ -27,13 +27,15 @@ void appendProductGameplayRuntimeMovementFields(RenderReceipt& receipt, const Pr
   appendReceiptField(receipt, "runtime_state_hash", window.runtimeStateHash);
   appendReceiptField(receipt, "gameplay_view_visible",
                      window.viewport.gameplayViewVisible);
-  appendReceiptField(receipt, "scene_item_count", window.sceneItemCount);
-  appendReceiptField(receipt, "debug_item_count", window.debugItemCount);
-  appendReceiptField(receipt, "player_visible", window.playerVisible);
-  appendReceiptField(receipt, "room_visible", window.roomVisible);
-  appendReceiptField(receipt, "objective_visible", window.objectiveVisible);
-  appendReceiptField(receipt, "renderer_mutated_runtime", window.rendererMutatedRuntime);
-  appendReceiptField(receipt, "scripted_gameplay_smoke", window.scriptedGameplaySmoke);
+  appendReceiptField(receipt, "scene_item_count", window.gameplay.sceneItemCount);
+  appendReceiptField(receipt, "debug_item_count", window.gameplay.debugItemCount);
+  appendReceiptField(receipt, "player_visible", window.gameplay.playerVisible);
+  appendReceiptField(receipt, "room_visible", window.gameplay.roomVisible);
+  appendReceiptField(receipt, "objective_visible", window.gameplay.objectiveVisible);
+  appendReceiptField(receipt, "renderer_mutated_runtime",
+                     window.gameplay.rendererMutatedRuntime);
+  appendReceiptField(receipt, "scripted_gameplay_smoke",
+                     window.gameplay.scriptedGameplaySmoke);
   appendReceiptField(receipt, "gameplay_input_used", window.gameplay.gameplayInputUsed);
   appendReceiptField(receipt, "gameplay_input_source", window.gameplay.gameplayInputSource);
   appendReceiptField(receipt, "gameplay_command_submitted", window.gameplay.gameplayCommand.submitted);

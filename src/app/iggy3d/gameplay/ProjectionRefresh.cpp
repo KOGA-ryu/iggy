@@ -541,12 +541,12 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.productFeedbackBridgeReady = false;
     window.viewport.productFeedbackBridgeLineCount = 0;
     clearProductVulkanRoomMeshProof(window.viewport);
-    window.sceneItemCount = 0;
-    window.debugItemCount = 0;
-    window.playerVisible = false;
-    window.roomVisible = false;
-    window.objectiveVisible = false;
-    window.rendererMutatedRuntime = false;
+    window.gameplay.sceneItemCount = 0;
+    window.gameplay.debugItemCount = 0;
+    window.gameplay.playerVisible = false;
+    window.gameplay.roomVisible = false;
+    window.gameplay.objectiveVisible = false;
+    window.gameplay.rendererMutatedRuntime = false;
     window.viewport.creativeFlyActive = false;
     window.viewport.creativeFlyStatus = "creative_fly_not_requested";
     window.viewport.creativeFlyReasonCode = window.viewport.creativeFlyStatus;
@@ -563,16 +563,17 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
   }
 
   window.viewport.gameplayViewVisible = viewVisible;
-  window.sceneItemCount = static_cast<std::uint64_t>(scene->items.size());
+  window.gameplay.sceneItemCount =
+      static_cast<std::uint64_t>(scene->items.size());
   // branch-gate: BG-1025
-  window.debugItemCount =
+  window.gameplay.debugItemCount =
       debug == nullptr ? 0U : static_cast<std::uint64_t>(debug->items.size());
-  window.playerVisible = scene->playerCount > 0;
-  window.roomVisible = true;
-  window.objectiveVisible =
+  window.gameplay.playerVisible = scene->playerCount > 0;
+  window.gameplay.roomVisible = true;
+  window.gameplay.objectiveVisible =
       scene->pickupCount > 0 || scene->interactableCount > 0 || scene->markerCount > 0 ||
       scene->room.loaded;
-  window.rendererMutatedRuntime = false;
+  window.gameplay.rendererMutatedRuntime = false;
   applyProductVulkanRoomMeshProof(window.viewport, scene->room);
   // branch-gate: BG-1025
   if (drawList != nullptr) {

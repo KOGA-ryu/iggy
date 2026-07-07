@@ -12,10 +12,10 @@ COMPLETE (E148-E152). The SaveSessionStore bulk move is COMPLETE (E153).
 
 **Also complete:** the 2 dead write-only fields `window.inputOwner` /
 `window.gameplayInputSuppressed` were deleted (`36ceeac3`) — god-struct now 153
-members. **Current work:** GameplayStore is decomposed from E154 into E157-E160.
-E157-E159 are COMPLETE. Only E160 is ready; it is the final GameplayStore slice.
-Disjoint from completed RoomStore/SaveSessionStore work; `runtimeSessionCreated`
-now belongs to GameplayStore.
+members. **GameplayStore is COMPLETE**: E154 was decomposed into E157-E160 and
+all four child slices are complete. Disjoint from completed
+RoomStore/SaveSessionStore work; `runtimeSessionCreated` now belongs to
+GameplayStore.
 
 **Also staged as PARENT cards (blocked/, for a slicer-Codex to gate):** `E155`
 ViewportStore fold (#6 — fold 11 mapMaker* into ProductViewportState, ~92
@@ -29,9 +29,9 @@ giant, 86 fields, ~1679 repoints, MUST slice by sub-domain), `E162` DebugHudStor
 (#9 — 5 fields, one gate), `E163` PresentPathStore (#11 — 9 productVulkan* members,
 one gate), `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
 remainder; **flags a reclaim of `gamepadMenuSelectUsed` from InputDeviceStore/E156 —
-needs planner confirm**). NOTE: E157-E160 are the GameplayStore slices (E154); my new
-cards start at E161 to avoid collision. **EXECUTION SERIALIZES on the god-struct —
-release/run one store at a time, re-anchoring each.**
+needs planner confirm**). NOTE: E157-E160 are the completed GameplayStore slices
+(E154); new cards start at E161 to avoid collision. **EXECUTION SERIALIZES on the
+god-struct — release/run one store at a time, re-anchoring each.**
 
 ## Claim Policy
 
@@ -49,12 +49,11 @@ None.
 
 ## Pull Next
 
-1. **E160** — GameplayStore G4 visibility/diagnostics and completion.
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E160** — move final visibility/render diagnostic state into `GameplayStore`
-  and mark GameplayStore complete.
+None currently ready.
 
 ## Tier 2: Feature-Add Seams
 
@@ -89,8 +88,7 @@ Held — do NOT promote to `ready/` on a guess:
     regroup only; NOT an ownership kill. Preserved the nested producer copy.
   - **#5 `SaveSessionStore`** — **COMPLETE as E153.** Structural regroup only;
     `runtimeSessionCreated` was corrected to GameplayStore ownership.
-  - **#8 `GameplayStore`** — parent E154 is decomposed. E157-E159 are complete,
-    and E160 is ready as the final slice.
+  - **#8 `GameplayStore`** — **COMPLETE as E157-E160.**
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
   - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).

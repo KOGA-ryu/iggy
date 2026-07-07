@@ -261,16 +261,9 @@ struct ProductAppWindowState {
   // Window-owned monotonic creative world generation used by viewport fly state.
   std::uint64_t creativeWorldEpoch = 0;
   ProductViewportState viewport;
-  std::uint64_t sceneItemCount = 0;
-  std::uint64_t debugItemCount = 0;
   ProductNpcBehaviorDebugHudState npcBehaviorDebugHud;
   PhysicsDebugHud physicsDebugHud;
   PositionHud positionHud;
-  bool playerVisible = false;
-  bool roomVisible = false;
-  bool objectiveVisible = false;
-  bool rendererMutatedRuntime = false;
-  bool scriptedGameplaySmoke = false;
   InputAction lastInputAction = InputAction::None;
   bool lastInputAccepted = false;
   ProductAutomationControlState automationControl;

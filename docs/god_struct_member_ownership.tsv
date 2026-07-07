@@ -71,16 +71,9 @@ creativeNavigateActive	CreativeAuthoringStore
 runtimeStateHash	delete
 creativeWorldEpoch	ViewportStore
 viewport	ViewportStore
-sceneItemCount	GameplayStore
-debugItemCount	GameplayStore
 npcBehaviorDebugHud	DebugHudStore
 physicsDebugHud	DebugHudStore
 positionHud	DebugHudStore
-playerVisible	GameplayStore
-roomVisible	GameplayStore
-objectiveVisible	GameplayStore
-rendererMutatedRuntime	GameplayStore
-scriptedGameplaySmoke	GameplayStore
 lastInputAction	InputDeviceStore
 lastInputAccepted	InputDeviceStore
 automationControl	FrontendWindowShell

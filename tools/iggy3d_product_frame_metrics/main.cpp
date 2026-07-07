@@ -374,8 +374,10 @@ bool initializeScenarioRuntime(const ScenarioSpec& spec,
 void collectCounters(const iggy3d::ProductAppWindowState& window,
                      const iggy3d::ProductGameplayProjectionFrame& projection,
                      ScenarioCounters& counters) {
-  counters.sceneItemMax = std::max(counters.sceneItemMax, window.sceneItemCount);
-  counters.debugItemMax = std::max(counters.debugItemMax, window.debugItemCount);
+  counters.sceneItemMax =
+      std::max(counters.sceneItemMax, window.gameplay.sceneItemCount);
+  counters.debugItemMax =
+      std::max(counters.debugItemMax, window.gameplay.debugItemCount);
   counters.drawItemMax =
       std::max(counters.drawItemMax, window.viewport.productDrawItemCount);
   counters.primitiveCountMax =

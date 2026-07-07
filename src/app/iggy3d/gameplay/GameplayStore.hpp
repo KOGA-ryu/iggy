@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 #include "app/iggy3d/gameplay/CollisionState.hpp"
@@ -45,6 +46,13 @@ struct GameplayStore {
   ProductTransitionState productTransition;
   std::string gameplayReachGate = "not_attempted";
   std::string gameplayLastRejection = "none";
+  std::uint64_t sceneItemCount = 0;
+  std::uint64_t debugItemCount = 0;
+  bool playerVisible = false;
+  bool roomVisible = false;
+  bool objectiveVisible = false;
+  bool rendererMutatedRuntime = false;
+  bool scriptedGameplaySmoke = false;
 };
 
 }  // namespace iggy3d

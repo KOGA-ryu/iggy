@@ -89,7 +89,7 @@ void runScriptedProductGameplaySmoke(std::optional<Session>& activeSession,
     return;
   }
 
-  window.scriptedGameplaySmoke = true;
+  window.gameplay.scriptedGameplaySmoke = true;
   if (queryProductGameplayTarget(*activeSession, CommandKind::Attack).status ==
       TargetQueryStatus::Found) {
     approachProductGameplayTarget(*activeSession, window);
