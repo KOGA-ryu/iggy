@@ -13,10 +13,9 @@ COMPLETE (E148-E152). The SaveSessionStore bulk move is COMPLETE (E153).
 **Also complete:** the 2 dead write-only fields `window.inputOwner` /
 `window.gameplayInputSuppressed` were deleted (`36ceeac3`) — god-struct now 153
 members. **Current work:** GameplayStore is decomposed from E154 into E157-E160.
-E157 is COMPLETE. Only E158 is ready; E159-E160 stay blocked and should be
-released one at a time after reviewer signs the prior slice. Disjoint from
-completed RoomStore/SaveSessionStore work; `runtimeSessionCreated` now belongs
-to GameplayStore.
+E157-E158 are COMPLETE. Only E159 is ready; E160 stays blocked and should be
+released after reviewer signs E159. Disjoint from completed RoomStore/
+SaveSessionStore work; `runtimeSessionCreated` now belongs to GameplayStore.
 
 **Also staged as PARENT cards (blocked/, for a slicer-Codex to gate):** `E155`
 ViewportStore fold (#6 — fold 11 mapMaker* into ProductViewportState, ~92
@@ -50,12 +49,12 @@ None.
 
 ## Pull Next
 
-1. **E158** — GameplayStore G2 movement/planner state.
+1. **E159** — GameplayStore G3 actions/outcomes/tape.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E158** — move only movement/planner state into `GameplayStore`. Keep
-  E159-E160 blocked until review.
+- **E159** — move only action/outcome/tape state into `GameplayStore`. Keep
+  E160 blocked until review.
 
 ## Tier 2: Feature-Add Seams
 
@@ -90,8 +89,8 @@ Held — do NOT promote to `ready/` on a guess:
     regroup only; NOT an ownership kill. Preserved the nested producer copy.
   - **#5 `SaveSessionStore`** — **COMPLETE as E153.** Structural regroup only;
     `runtimeSessionCreated` was corrected to GameplayStore ownership.
-  - **#8 `GameplayStore`** — parent E154 is decomposed. E157 is complete, E158
-    is ready, and E159-E160 are staged in `blocked/` for one-at-a-time release.
+  - **#8 `GameplayStore`** — parent E154 is decomposed. E157-E158 are complete,
+    E159 is ready, and E160 is staged in `blocked/` for one-at-a-time release.
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
   - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).

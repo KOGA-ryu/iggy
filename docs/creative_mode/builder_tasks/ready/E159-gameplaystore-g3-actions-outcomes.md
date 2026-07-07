@@ -2,7 +2,7 @@
 
 ## Status
 
-Blocked until reviewer commits E158 and releases this card to `ready/`.
+Ready. E158 is committed; claim this card next.
 
 ## Objective
 
