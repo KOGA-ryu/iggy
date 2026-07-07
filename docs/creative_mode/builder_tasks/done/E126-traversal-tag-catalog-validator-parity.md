@@ -129,3 +129,56 @@ Append:
 - `clamber_candidate` regression proof:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completed
+
+- Files changed:
+  - `CMakeLists.txt`
+  - `cmake/iggy3d_tests.cmake`
+  - `src/content/assets/TraversalTag.hpp`
+  - `src/content/assets/TraversalTag.cpp`
+  - `src/content/authoring/EditableRoomDocument.cpp`
+  - `src/content/assets/RoomAsset.cpp`
+  - `src/app/iggy3d/ascii_room/AsciiRoomAssetText.cpp`
+  - `tests/unit/traversal_tag_catalog_tests.cpp`
+- Catalog API:
+  - Added `iggy3d::TraversalTag` with the closed set:
+    `walkable`, `blocker`, `projectile_blocker`, `opening`, `clamber`,
+    `clamber_candidate`, `vault`, `wire_walk`, `no_player`, `debug_only`.
+  - Added `allTraversalTags()`, `traversalTagId(...)`,
+    `parseTraversalTag(...)`, and `validTraversalTag(...)`.
+  - Added classification helpers:
+    `isStructuralTraversalTag(...)`, `isMovementTraversalTag(...)`, and
+    `isAuthoringTraversalHintTag(...)`.
+  - `clamber_candidate` is valid content vocabulary and an authoring hint; it is
+    explicitly not classified as a movement traversal slot.
+- Validators routed:
+  - `EditableRoomDocument.cpp` semantic validation now calls
+    `validTraversalTag(...)`.
+  - `RoomAsset.cpp` spatial-surface traversal validation now calls
+    `validTraversalTag(...)`.
+  - `AsciiRoomAssetText.cpp` traversal export filtering now calls
+    `validTraversalTag(...)`.
+  - Role-specific RoomAsset invariants, collision masks, and movement traversal
+    slot behavior were left local/unchanged.
+- `clamber_candidate` regression proof:
+  - `traversal_tag_catalog_tests` verifies the catalog round-trips every id and
+    rejects an unknown id.
+  - It proves editable-room add-floor semantics accepts every catalog tag and
+    rejects `wall_jump`.
+  - It proves ASCII export preserves every catalog tag, including
+    `clamber_candidate`, and the resulting text parses back through
+    `RoomAsset` with the tag still present.
+  - It separately proves direct RoomAsset text with unknown `wall_jump` still
+    rejects with `room_unknown_traversal_tag`.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d traversal_tag_catalog_tests creative_document_room_bake_tests product_ascii_authoring_smoke product_ascii_room_activation_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(traversal_tag_catalog_tests|creative_document_room_bake_tests|product_ascii_authoring_smoke|product_ascii_room_activation_tests)$' --output-on-failure` passed, 4/4.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched/new files passed.
+- Concerns/deferred:
+  - Existing handwritten traversal string emitters/consumers remain for the
+    follow-up literal-migration card.
+  - ASCII authored-room/gameplay/material/terrain strings such as `crate`,
+    `ramp`, `blocked_slope`, and `terrain_*` remain out of this traversal
+    catalog by design.

@@ -25,16 +25,11 @@ None.
 
 ## Pull Next
 
-1. **E126** — TraversalTag Catalog Contract And Validator Parity (fixes the
-   `clamber_candidate` validator drift without broad literal migration).
-2. **E127** — ProductPrimitiveDrawKind Presentation Metadata Table (base
+1. **E127** — ProductPrimitiveDrawKind Presentation Metadata Table (base
    color/size centralization; dispatch and decorative render policy stay local).
 
 ## Tier 1: Correctness And Compatibility
 
-- **E126** — traversal-tag validator parity from E122; retain
-  `clamber_candidate` as valid content vocabulary but keep movement slot policy
-  unchanged.
 - **E127** — centralize `ProductPrimitiveDrawKind` base color/size metadata from
   E124 while preserving dynamic/decorative render policy.
 

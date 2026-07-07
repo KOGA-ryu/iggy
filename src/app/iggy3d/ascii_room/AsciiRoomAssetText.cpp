@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+#include "content/assets/TraversalTag.hpp"
+
 namespace iggy3d {
 namespace {
 
@@ -122,12 +124,6 @@ std::string roleName(RoomSpatialSurfaceRole role) {
   return "walkable";
 }
 
-bool parserCompatibleTraversalTag(std::string_view tag) {
-  return tag == "walkable" || tag == "blocker" || tag == "projectile_blocker" ||
-         tag == "opening" || tag == "clamber" || tag == "vault" ||
-         tag == "wire_walk" || tag == "no_player" || tag == "debug_only";
-}
-
 bool contains(const std::vector<std::string>& values, std::string_view expected) {
   for (const std::string& value : values) {
     if (value == expected) {
@@ -154,7 +150,7 @@ std::vector<std::string> traversalTagsForExport(const RoomSpatialSurface& surfac
     append("opening");
   }
   for (const std::string& tag : surface.traversalTags) {
-    if (parserCompatibleTraversalTag(tag)) {
+    if (validTraversalTag(tag)) {
       append(tag);
     }
   }

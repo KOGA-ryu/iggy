@@ -6,6 +6,8 @@
 #include <set>
 #include <sstream>
 
+#include "content/assets/TraversalTag.hpp"
+
 namespace iggy3d {
 namespace {
 
@@ -268,12 +270,6 @@ bool hasDuplicateStrings(const std::vector<std::string>& values) {
     }
   }
   return false;
-}
-
-bool validTraversalTag(std::string_view tag) {
-  return tag == "walkable" || tag == "blocker" || tag == "projectile_blocker" ||
-         tag == "opening" || tag == "clamber" || tag == "vault" ||
-         tag == "wire_walk" || tag == "no_player" || tag == "debug_only";
 }
 
 bool validCollisionMask(std::string_view mask) {

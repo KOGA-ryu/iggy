@@ -6,6 +6,7 @@
 #include <string_view>
 #include <utility>
 
+#include "content/assets/TraversalTag.hpp"
 #include "core/math/Aabb3.hpp"
 
 namespace iggy3d {
@@ -42,21 +43,13 @@ bool hasDuplicateStrings(const std::vector<std::string>& values) {
   return false;
 }
 
-bool validSemanticTag(std::string_view tag) {
-  return tag == "walkable" || tag == "blocker" ||
-         tag == "projectile_blocker" || tag == "opening" ||
-         tag == "clamber" || tag == "clamber_candidate" ||
-         tag == "vault" || tag == "wire_walk" || tag == "no_player" ||
-         tag == "debug_only";
-}
-
 bool validateSemantics(const EditableRoomSemantics& semantics) {
   if (!hasText(semantics.materialId) || hasDuplicateStrings(semantics.traversalTags) ||
       hasDuplicateStrings(semantics.gameplayTags)) {
     return false;
   }
   for (const std::string& tag : semantics.traversalTags) {
-    if (!validSemanticTag(tag)) {
+    if (!validTraversalTag(tag)) {
       return false;
     }
   }

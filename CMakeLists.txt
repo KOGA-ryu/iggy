@@ -207,6 +207,7 @@ target_sources(iggy3d
     src/content/authoring/EditableRoomDocument.cpp
     src/content/assets/MaterialAsset.cpp
     src/content/assets/MeshAsset.cpp
+    src/content/assets/TraversalTag.cpp
     src/content/assets/RoomAsset.cpp
     src/content/FixtureScenarioLoader.cpp
     src/runtime/player/PlayerRoster.cpp
