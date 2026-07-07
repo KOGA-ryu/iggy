@@ -1,7 +1,9 @@
 # Builder Task Buckets
 
-This directory is the handoff queue for Creative-mode repair and cleanup work.
-Tasks are file-based so the queue is visible in git, durable across Codex
+This is the **shared** builder handoff queue — repair and cleanup work across all
+lanes (creative, render, product-app, and claude-lane/spine), not creative-mode
+only. The builder claims and executes any lane; each card is lane-tagged by its
+author. Tasks are file-based so the queue is visible in git, durable across
 threads, and easy to review.
 
 ## Buckets
@@ -46,3 +48,7 @@ Append this section to the bottom of the task file:
 - Add tests that prove behavior, not only receipt-copy plumbing.
 - If a task exposes a broader architectural blocker, stop at the blocker and
   move the card to `blocked/` with exact file/line evidence.
+- **Spine / core-spine cards** (lane-tagged accordingly) carry their own gate
+  discipline (`docs/core_spine_work_rules.md`): they link a ratified Gate-0
+  preflight and implement exactly ONE review gate. Execute only the stated gate,
+  never collapse gates, and honor the preflight's Do-Not firewall.
