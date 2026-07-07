@@ -58,8 +58,6 @@ struct PathPointHandleHit {
   cr::CreativeVec3 position{};
 };
 
-[[nodiscard]] float clipW(const iggy3d::Mat4& clipFromWorld,
-                          iggy3d::Vec3 point);
 [[nodiscard]] ScreenAabb projectBoxToScreen(
     const iggy3d::Mat4& clipFromWorld,
     iggy3d::Vec3 boxMin,

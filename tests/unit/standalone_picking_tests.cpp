@@ -28,6 +28,7 @@ using iggy3d_creative_app::buildObjectVisualPickBounds;
 using iggy3d_creative_app::orientedVisualBoxForObject;
 using iggy3d_creative_app::pickNearestVisualBoundsObject;
 using iggy3d_creative_app::pickNearestVisualBoundsObjectBruteForce;
+using iggy3d_creative_app::projectPointToScreen;
 using iggy3d_creative_app::rayEntryDistanceForAabb;
 using iggy3d_creative_app::visualBoundsForObject;
 
@@ -82,6 +83,49 @@ Mat4 identityClip() {
   out.m[10] = 1.0F;
   out.m[15] = 1.0F;
   return out;
+}
+
+Mat4 projectionClipWithConstantW(float w) {
+  Mat4 out{};
+  out.m[0] = 0.5F;
+  out.m[5] = -0.5F;
+  out.m[15] = w;
+  return out;
+}
+
+bool standaloneProjectionRoutesThroughCoreProjectedPoint() {
+  const Vec3 point{1.0F, 1.0F, 1.0F};
+  const iggy3d_creative_app::ScreenPoint divided =
+      projectPointToScreen(projectionClipWithConstantW(2.0F), point, 200, 200);
+  const iggy3d_creative_app::ScreenPoint raw =
+      projectPointToScreen(projectionClipWithConstantW(1.0F), point, 200, 200);
+
+  return expect(divided.valid, "divided projection remains valid") &&
+         expect(near(divided.x, 125.0F) && near(divided.y, 125.0F),
+                "divided projection uses core ndc result") &&
+         expect(raw.valid, "unit-w projection remains valid") &&
+         expect(near(raw.x, 150.0F) && near(raw.y, 150.0F),
+                "unit-w projection preserves raw compatibility coordinates");
+}
+
+bool standaloneProjectionOwnsFrontFacingPolicy() {
+  const Vec3 point{1.0F, 1.0F, 1.0F};
+  const iggy3d_creative_app::ScreenPoint zeroW =
+      projectPointToScreen(projectionClipWithConstantW(0.0F), point, 200, 200);
+  const iggy3d_creative_app::ScreenPoint negativeW =
+      projectPointToScreen(projectionClipWithConstantW(-2.0F), point, 200, 200);
+  const iggy3d_creative_app::ScreenPoint infiniteW =
+      projectPointToScreen(projectionClipWithConstantW(
+                               std::numeric_limits<float>::infinity()),
+                           point,
+                           200,
+                           200);
+
+  return expect(!zeroW.valid, "standalone projection rejects zero clip w") &&
+         expect(!negativeW.valid,
+                "standalone projection rejects behind-camera negative clip w") &&
+         expect(!infiniteW.valid,
+                "standalone projection rejects non-finite clip w");
 }
 
 bool unrotatedObjectKeepsCheapAabbPath() {
@@ -271,6 +315,8 @@ bool broadphaseFallsBackWhenRayQueryExceedsGridRange() {
 int main() {
   const bool ok =
       unrotatedObjectKeepsCheapAabbPath() &&
+      standaloneProjectionRoutesThroughCoreProjectedPoint() &&
+      standaloneProjectionOwnsFrontFacingPolicy() &&
       rotatedObjectBuildsCenteredOrientedVisualBounds() &&
       rotatedPickHitsRealRotatedFaceOutsideStaleAabb() &&
       rotatedPickRejectsStaleOnlyAabbSpace() &&

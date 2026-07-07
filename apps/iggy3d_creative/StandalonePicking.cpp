@@ -166,13 +166,6 @@ void narrowPickCandidate(ObjectVisualPickResult& result,
 
 }  // namespace
 
-float clipW(const iggy3d::Mat4& clipFromWorld, iggy3d::Vec3 point) {
-  return iggy3d::at(clipFromWorld, 3, 0) * point.x +
-         iggy3d::at(clipFromWorld, 3, 1) * point.y +
-         iggy3d::at(clipFromWorld, 3, 2) * point.z +
-         iggy3d::at(clipFromWorld, 3, 3);
-}
-
 ScreenAabb projectBoxToScreen(const iggy3d::Mat4& clipFromWorld,
                               iggy3d::Vec3 boxMin,
                               iggy3d::Vec3 boxMax,
@@ -191,11 +184,12 @@ ScreenAabb projectBoxToScreen(const iggy3d::Mat4& clipFromWorld,
         (corner & 2) ? boxMax.y : boxMin.y,
         (corner & 4) ? boxMax.z : boxMin.z,
     };
-    const float w = clipW(clipFromWorld, world);
-    if (!(std::isfinite(w)) || w <= 0.0F) {
+    const iggy3d::ProjectedPoint3 projected =
+        iggy3d::projectPoint(clipFromWorld, world);
+    if (!std::isfinite(projected.w) || projected.w <= 0.0F) {
       continue;
     }
-    const iggy3d::Vec3 ndc = iggy3d::transformPoint(clipFromWorld, world);
+    const iggy3d::Vec3 ndc = projected.ndc;
     if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y)) {
       continue;
     }
@@ -219,11 +213,12 @@ ScreenPoint projectPointToScreen(const iggy3d::Mat4& clipFromWorld,
                                  std::uint32_t widthPx,
                                  std::uint32_t heightPx) {
   ScreenPoint out;
-  const float w = clipW(clipFromWorld, world);
-  if (!std::isfinite(w) || w <= 0.0F) {
+  const iggy3d::ProjectedPoint3 projected =
+      iggy3d::projectPoint(clipFromWorld, world);
+  if (!std::isfinite(projected.w) || projected.w <= 0.0F) {
     return out;
   }
-  const iggy3d::Vec3 ndc = iggy3d::transformPoint(clipFromWorld, world);
+  const iggy3d::Vec3 ndc = projected.ndc;
   if (!std::isfinite(ndc.x) || !std::isfinite(ndc.y)) {
     return out;
   }
@@ -401,7 +396,9 @@ std::vector<PathPointHandleHit> buildPathPointHandleHits(
                                      handleBounds.max,
                                      widthPx,
                                      heightPx);
-    handle.centerDepth = clipW(clipFromWorld, visualBoundsCenter(handleBounds));
+    const iggy3d::ProjectedPoint3 centerProjected =
+        iggy3d::projectPoint(clipFromWorld, visualBoundsCenter(handleBounds));
+    handle.centerDepth = centerProjected.w;
     handles.push_back(handle);
   }
   return handles;

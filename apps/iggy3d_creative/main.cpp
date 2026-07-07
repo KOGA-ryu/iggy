@@ -104,7 +104,6 @@ using iggy3d_creative_app::pushUndoSnapshot;
 using iggy3d_creative_app::nextBrushKind;
 using iggy3d_creative_app::appendPathPolylineLines;
 using iggy3d_creative_app::buildPathPointHandleHits;
-using iggy3d_creative_app::clipW;
 using iggy3d_creative_app::lineProxyBounds;
 using iggy3d_creative_app::ObjectVisualPickBounds;
 using iggy3d_creative_app::ObjectVisualPickResult;
@@ -1542,9 +1541,10 @@ int main(int argc, char** argv) {
       const Vec3 center{(selBoxMin.x + selBoxMax.x) * 0.5F,
                         (selBoxMin.y + selBoxMax.y) * 0.5F,
                         (selBoxMin.z + selBoxMax.z) * 0.5F};
-      const float w = clipW(frame.camera.clipFromWorld, center);
-      if (std::isfinite(w) && w > 0.0F) {
-        const Vec3 ndc = transformPoint(frame.camera.clipFromWorld, center);
+      const ProjectedPoint3 projected =
+          projectPoint(frame.camera.clipFromWorld, center);
+      if (std::isfinite(projected.w) && projected.w > 0.0F) {
+        const Vec3 ndc = projected.ndc;
         const float px = (ndc.x * 0.5F + 0.5F) * static_cast<float>(extent.width);
         const float py = (1.0F - (ndc.y * 0.5F + 0.5F)) *
                          static_cast<float>(extent.height);
