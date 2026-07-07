@@ -1,7 +1,6 @@
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <limits>
 #include <string>
@@ -11,6 +10,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/map_maker/Presentation.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
+#include "app/iggy3d/view/PrimitiveDrawMetadata.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneItem.hpp"
 #include "projection/scene/SceneProjection.hpp"
@@ -24,9 +24,6 @@ struct PhysicsDebugStyle {
 };
 
 constexpr ProductPrimitiveColor kPhysicsDebugSensorColor{245, 214, 96};
-constexpr ProductPrimitiveColor kPhysicsAabbSolidColor{105, 205, 228};
-constexpr ProductPrimitiveColor kPhysicsContactNormalSolidColor{236, 118, 86};
-constexpr ProductPrimitiveColor kPhysicsBroadphasePairSolidColor{166, 184, 177};
 
 bool hasTag(const std::vector<std::string>& tags, std::string_view expected) {
   for (const std::string& tag : tags) {
@@ -71,43 +68,6 @@ ProductPrimitiveDrawKind floorKindForSurface(const RoomSpatialSurface& surface) 
   return ProductPrimitiveDrawKind::FloorTile;
 }
 
-ProductPrimitiveColor colorForRoomKind(ProductPrimitiveDrawKind kind) {
-  switch (kind) {
-    case ProductPrimitiveDrawKind::FloorTile:
-      return {54, 78, 68};
-    case ProductPrimitiveDrawKind::ElevatedFloorTile:
-      return {92, 126, 102};
-    case ProductPrimitiveDrawKind::RampTile:
-      return {82, 139, 156};
-    case ProductPrimitiveDrawKind::BlockedSlopeTile:
-      return {184, 82, 74};
-    case ProductPrimitiveDrawKind::WallTile:
-      return {76, 86, 92};
-    case ProductPrimitiveDrawKind::PropTile:
-      return {151, 102, 58};
-    case ProductPrimitiveDrawKind::RoomEditorCursor:
-      return {245, 214, 96};
-    case ProductPrimitiveDrawKind::RoomEditorPlacementPreview:
-      return {105, 205, 228};
-    case ProductPrimitiveDrawKind::PlayerMarker:
-    case ProductPrimitiveDrawKind::NpcMarker:
-    case ProductPrimitiveDrawKind::PickupMarker:
-    case ProductPrimitiveDrawKind::InteractableMarker:
-    case ProductPrimitiveDrawKind::ObjectiveMarker:
-    case ProductPrimitiveDrawKind::TacticalMarker:
-    case ProductPrimitiveDrawKind::DebugMarker:
-    case ProductPrimitiveDrawKind::PlayerFocusIndicator:
-    case ProductPrimitiveDrawKind::DoorMarker:
-    case ProductPrimitiveDrawKind::PhysicsAabbDebug:
-    case ProductPrimitiveDrawKind::PhysicsContactNormalDebug:
-    case ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug:
-    case ProductPrimitiveDrawKind::MapMakerGridDot:
-    case ProductPrimitiveDrawKind::MapMakerCubePreview:
-      break;
-  }
-  return {112, 118, 120};
-}
-
 bool physicsDebugItemIsSensor(const DebugProjectionItem& item) {
   return item.valueCode == "sensor" || (item.hasScalar && item.scalarValue > 0.5F);
 }
@@ -122,27 +82,31 @@ std::string stableNameOrFallback(const DebugProjectionItem& item,
 }
 
 PhysicsDebugStyle physicsAabbDebugStyle(bool sensor) {
-  constexpr std::array<PhysicsDebugStyle, 2U> styles{
-      PhysicsDebugStyle{kPhysicsAabbSolidColor, 34.0F},
-      PhysicsDebugStyle{kPhysicsDebugSensorColor, 28.0F},
-  };
-  return styles[static_cast<std::size_t>(sensor)];
+  if (sensor) {
+    return {kPhysicsDebugSensorColor, 28.0F};
+  }
+  return {baseColorForProductPrimitiveDrawKind(ProductPrimitiveDrawKind::PhysicsAabbDebug),
+          markerSizeForProductPrimitiveDrawKind(ProductPrimitiveDrawKind::PhysicsAabbDebug)};
 }
 
 PhysicsDebugStyle physicsContactNormalDebugStyle(bool sensor) {
-  constexpr std::array<PhysicsDebugStyle, 2U> styles{
-      PhysicsDebugStyle{kPhysicsContactNormalSolidColor, 18.0F},
-      PhysicsDebugStyle{kPhysicsDebugSensorColor, 18.0F},
-  };
-  return styles[static_cast<std::size_t>(sensor)];
+  if (sensor) {
+    return {kPhysicsDebugSensorColor, 18.0F};
+  }
+  return {
+      baseColorForProductPrimitiveDrawKind(ProductPrimitiveDrawKind::PhysicsContactNormalDebug),
+      markerSizeForProductPrimitiveDrawKind(
+          ProductPrimitiveDrawKind::PhysicsContactNormalDebug)};
 }
 
 PhysicsDebugStyle physicsBroadphasePairDebugStyle(bool sensor) {
-  constexpr std::array<PhysicsDebugStyle, 2U> styles{
-      PhysicsDebugStyle{kPhysicsBroadphasePairSolidColor, 14.0F},
-      PhysicsDebugStyle{kPhysicsDebugSensorColor, 14.0F},
-  };
-  return styles[static_cast<std::size_t>(sensor)];
+  if (sensor) {
+    return {kPhysicsDebugSensorColor, 14.0F};
+  }
+  return {
+      baseColorForProductPrimitiveDrawKind(ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug),
+      markerSizeForProductPrimitiveDrawKind(
+          ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug)};
 }
 
 ProductPrimitiveDrawItem basePhysicsDebugItem(
@@ -170,8 +134,8 @@ ProductPrimitiveDrawItem itemFromWalkableSurface(const RoomSpatialSurface& surfa
   item.targetable = false;
   item.interactable = false;
   item.tactical = false;
-  item.color = colorForRoomKind(item.kind);
-  item.markerSize = 58.0F;
+  item.color = baseColorForProductPrimitiveDrawKind(item.kind);
+  item.markerSize = markerSizeForProductPrimitiveDrawKind(item.kind);
   return item;
 }
 
@@ -182,8 +146,8 @@ ProductPrimitiveDrawItem itemFromWallMesh(const RoomStaticMeshAsset& mesh) {
   item.worldPosition = mesh.positionMeters;
   item.worldBounds = aabbFromCenterExtents(mesh.positionMeters, mesh.sizeMeters * 0.5F);
   item.visible = true;
-  item.color = colorForRoomKind(item.kind);
-  item.markerSize = 62.0F;
+  item.color = baseColorForProductPrimitiveDrawKind(item.kind);
+  item.markerSize = markerSizeForProductPrimitiveDrawKind(item.kind);
   return item;
 }
 
@@ -196,13 +160,14 @@ ProductPrimitiveDrawItem itemFromPropMesh(const RoomStaticMeshAsset& mesh) {
   item.visible = true;
   // branch-gate: BG-1159
   item.color = mesh.role == "ledge" ? ProductPrimitiveColor{76, 132, 178}
-                                    : colorForRoomKind(item.kind);
+                                    : baseColorForProductPrimitiveDrawKind(item.kind);
   // branch-gate: BG-1190
   if (mesh.materialId == "reset_zone_marker") {
     item.color = {214, 74, 92};
   }
   // branch-gate: BG-1159
-  item.markerSize = mesh.role == "ledge" ? 52.0F : 42.0F;
+  item.markerSize = mesh.role == "ledge" ? 52.0F
+                                         : markerSizeForProductPrimitiveDrawKind(item.kind);
   // branch-gate: BG-1190
   if (mesh.materialId == "reset_zone_marker") {
     item.markerSize = 34.0F;
@@ -243,46 +208,46 @@ ProductPrimitiveDrawItem itemFromSceneItem(const SceneItem& item) {
   switch (item.kind) {
     case SceneItemKind::Player:
       draw.kind = ProductPrimitiveDrawKind::PlayerMarker;
-      draw.color = {80, 170, 236};
-      draw.markerSize = 26.0F;
+      draw.color = baseColorForProductPrimitiveDrawKind(draw.kind);
+      draw.markerSize = markerSizeForProductPrimitiveDrawKind(draw.kind);
       return draw;
     case SceneItemKind::Npc:
       draw.kind = ProductPrimitiveDrawKind::NpcMarker;
-      draw.color = {210, 78, 76};
-      draw.markerSize = 28.0F;
+      draw.color = baseColorForProductPrimitiveDrawKind(draw.kind);
+      draw.markerSize = markerSizeForProductPrimitiveDrawKind(draw.kind);
       return draw;
     case SceneItemKind::Pickup:
       draw.kind = ProductPrimitiveDrawKind::PickupMarker;
-      draw.color = {229, 196, 72};
-      draw.markerSize = 20.0F;
+      draw.color = baseColorForProductPrimitiveDrawKind(draw.kind);
+      draw.markerSize = markerSizeForProductPrimitiveDrawKind(draw.kind);
       return draw;
     case SceneItemKind::Interactable:
       if (item.entityKind == EntityKind::Door) {
         draw.kind = ProductPrimitiveDrawKind::DoorMarker;
-        draw.color = {220, 178, 86};
-        draw.markerSize = 24.0F;
+        draw.color = baseColorForProductPrimitiveDrawKind(draw.kind);
+        draw.markerSize = markerSizeForProductPrimitiveDrawKind(draw.kind);
         draw.doorOpen = false;
         draw.doorClosed = true;
         return draw;
       }
       draw.kind = ProductPrimitiveDrawKind::InteractableMarker;
-      draw.color = {198, 142, 222};
-      draw.markerSize = 22.0F;
+      draw.color = baseColorForProductPrimitiveDrawKind(draw.kind);
+      draw.markerSize = markerSizeForProductPrimitiveDrawKind(draw.kind);
       return draw;
     case SceneItemKind::ObjectiveMarker:
       draw.kind = ProductPrimitiveDrawKind::ObjectiveMarker;
-      draw.color = {126, 201, 176};
-      draw.markerSize = 18.0F;
+      draw.color = baseColorForProductPrimitiveDrawKind(draw.kind);
+      draw.markerSize = markerSizeForProductPrimitiveDrawKind(draw.kind);
       return draw;
     case SceneItemKind::TacticalMarker:
       draw.kind = ProductPrimitiveDrawKind::TacticalMarker;
-      draw.color = {126, 201, 176};
-      draw.markerSize = 18.0F;
+      draw.color = baseColorForProductPrimitiveDrawKind(draw.kind);
+      draw.markerSize = markerSizeForProductPrimitiveDrawKind(draw.kind);
       return draw;
     case SceneItemKind::DebugOnly:
       draw.kind = ProductPrimitiveDrawKind::DebugMarker;
-      draw.color = {112, 118, 120};
-      draw.markerSize = 14.0F;
+      draw.color = baseColorForProductPrimitiveDrawKind(draw.kind);
+      draw.markerSize = markerSizeForProductPrimitiveDrawKind(draw.kind);
       return draw;
   }
   return draw;
@@ -291,8 +256,8 @@ ProductPrimitiveDrawItem itemFromSceneItem(const SceneItem& item) {
 ProductPrimitiveDrawItem playerFocusIndicatorFor(const ProductPrimitiveDrawItem& player) {
   ProductPrimitiveDrawItem indicator = player;
   indicator.kind = ProductPrimitiveDrawKind::PlayerFocusIndicator;
-  indicator.color = {226, 230, 211};
-  indicator.markerSize = 36.0F;
+  indicator.color = baseColorForProductPrimitiveDrawKind(indicator.kind);
+  indicator.markerSize = markerSizeForProductPrimitiveDrawKind(indicator.kind);
   return indicator;
 }
 
@@ -524,8 +489,8 @@ void appendRoomEditorOverlay(const ProductRoomEditorOverlay* overlay,
   item.targetable = false;
   item.interactable = false;
   item.tactical = false;
-  item.color = colorForRoomKind(item.kind);
-  item.markerSize = 30.0F;
+  item.color = baseColorForProductPrimitiveDrawKind(item.kind);
+  item.markerSize = markerSizeForProductPrimitiveDrawKind(item.kind);
   list.items.push_back(item);
   updateCounts(list, item);
 }
@@ -559,7 +524,8 @@ void appendRoomEditorPlacementPreview(
   item.targetable = false;
   item.interactable = false;
   item.tactical = false;
-  item.color = colorForRoomKind(item.kind);
+  item.color = baseColorForProductPrimitiveDrawKind(item.kind);
+  item.markerSize = markerSizeForProductPrimitiveDrawKind(item.kind);
   // branch-gate: BG-1047
   item.markerSize = overlay->tool == ProductRoomEditorTool::Wall ? 58.0F : 52.0F;
   // branch-gate: BG-1047
@@ -606,9 +572,9 @@ void appendMapMakerGridOverlay(const ProductMapMakerGridOverlay* overlay,
     item.visible = true;
     // branch-gate: BG-1205
     item.color = dot.major ? ProductPrimitiveColor{136, 184, 226}
-                           : ProductPrimitiveColor{86, 130, 172};
+                           : baseColorForProductPrimitiveDrawKind(item.kind);
     // branch-gate: BG-1205
-    item.markerSize = dot.major ? 13.0F : 8.0F;
+    item.markerSize = dot.major ? 13.0F : markerSizeForProductPrimitiveDrawKind(item.kind);
     list.items.push_back(item);
     updateCounts(list, item);
   }
@@ -628,8 +594,8 @@ void appendMapMakerCubePreview(const ProductMapMakerCubePreview* preview,
   item.worldBounds =
       aabbFromCenterExtents(preview->centerWorld, preview->sizeMeters * 0.5F);
   item.visible = true;
-  item.color = {126, 221, 186};
-  item.markerSize = 54.0F;
+  item.color = baseColorForProductPrimitiveDrawKind(item.kind);
+  item.markerSize = markerSizeForProductPrimitiveDrawKind(item.kind);
   list.items.push_back(item);
   updateCounts(list, item);
 }

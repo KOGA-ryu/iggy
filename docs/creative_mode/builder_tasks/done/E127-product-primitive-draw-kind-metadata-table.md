@@ -123,3 +123,49 @@ Append:
 - Behavior-preservation tests:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completed
+
+- Files changed:
+  - `src/app/iggy3d/view/PrimitiveDrawMetadata.hpp`
+  - `src/app/iggy3d/view/PrimitiveDrawList.cpp`
+  - `tests/unit/product_primitive_draw_list_tests.cpp`
+- Metadata helper/API:
+  - Added header-only `ProductPrimitiveDrawKindMetadata` catalog keyed by
+    `ProductPrimitiveDrawKind`.
+  - Added `productPrimitiveDrawKindMetadataCatalog()`,
+    `findProductPrimitiveDrawKindMetadata(...)`,
+    `baseColorForProductPrimitiveDrawKind(...)`, and
+    `markerSizeForProductPrimitiveDrawKind(...)`.
+  - Catalog rows cover all 22 current primitive draw kinds.
+  - No layer/z/order field was added; draw ordering remains append order.
+- Dynamic/decorative policy:
+  - Routed base/default construction through the catalog for scene markers,
+    room floor/wall/prop defaults, room editor cursor/default placement preview,
+    solid physics debug defaults, map-maker minor grid dots, map-maker cube
+    preview, and player focus indicator.
+  - Kept dynamic variants local: door open/closed state, ledge/reset-zone prop
+    variants, placement preview wall/object/default sizing, physics sensor style,
+    and map-maker major grid dots.
+  - Kept decorative renderer-only colors local/out of scope: room/editor outlines,
+    tile stripes/insets/borders, door knob, prop detail colors, and map-maker
+    cube inner rect.
+- Behavior-preservation tests:
+  - `product_primitive_draw_list_tests` now pins every catalog row and helper
+    lookup for color/marker size.
+  - Existing draw-list assertions still prove scene item ordering/counts,
+    player focus insertion, room geometry item colors/sizes, physics debug
+    styles, map-maker variants, and room-editor preview behavior.
+  - `product_render_bridge_tests` remained green, proving bridge/counter behavior
+    did not change.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_primitive_draw_list_tests product_render_bridge_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_primitive_draw_list_tests|product_render_bridge_tests)$' --output-on-failure` passed, 2/2.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files passed.
+- Concerns/deferred:
+  - Renderer dispatch/decorative drawing remains intentionally local to
+    `OpeningMenuView`/presenter code; this slice only centralizes base
+    construction data.
+  - If future work adds secondary colors or layers, it should be an explicit
+    catalog expansion with tests, not inferred from this base metadata table.

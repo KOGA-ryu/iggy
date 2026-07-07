@@ -1,7 +1,8 @@
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
+#include "app/iggy3d/view/PrimitiveDrawMetadata.hpp"
 
-#include <iostream>
 #include <cmath>
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -45,6 +46,24 @@ bool expectColor(iggy3d::ProductPrimitiveColor actual,
                  const char* message) {
   return expect(actual.r == expected.r && actual.g == expected.g &&
                     actual.b == expected.b,
+                message);
+}
+
+bool expectMetadata(iggy3d::ProductPrimitiveDrawKind kind,
+                    iggy3d::ProductPrimitiveColor expectedColor,
+                    float expectedMarkerSize,
+                    const char* message) {
+  const iggy3d::ProductPrimitiveDrawKindMetadata* metadata =
+      iggy3d::findProductPrimitiveDrawKindMetadata(kind);
+  return expect(metadata != nullptr, message) &&
+         expect(metadata->kind == kind, message) &&
+         expectColor(metadata->baseColor, expectedColor, message) &&
+         expect(near(metadata->markerSize, expectedMarkerSize), message) &&
+         expectColor(iggy3d::baseColorForProductPrimitiveDrawKind(kind),
+                     expectedColor,
+                     message) &&
+         expect(near(iggy3d::markerSizeForProductPrimitiveDrawKind(kind),
+                     expectedMarkerSize),
                 message);
 }
 
@@ -145,7 +164,103 @@ iggy3d::RoomSpatialSurface doorBlocker(const char* id,
 
 }  // namespace
 
+bool productPrimitiveDrawKindMetadataPinsBasePresentation() {
+  bool ok = expect(iggy3d::productPrimitiveDrawKindMetadataCatalog().size() == 22U,
+                   "metadata row count");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::PlayerMarker,
+                       {80, 170, 236},
+                       26.0F,
+                       "player metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::NpcMarker,
+                       {210, 78, 76},
+                       28.0F,
+                       "npc metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::PickupMarker,
+                       {229, 196, 72},
+                       20.0F,
+                       "pickup metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::InteractableMarker,
+                       {198, 142, 222},
+                       22.0F,
+                       "interactable metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::ObjectiveMarker,
+                       {126, 201, 176},
+                       18.0F,
+                       "objective metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::TacticalMarker,
+                       {126, 201, 176},
+                       18.0F,
+                       "tactical metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::DebugMarker,
+                       {112, 118, 120},
+                       14.0F,
+                       "debug metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::PlayerFocusIndicator,
+                       {226, 230, 211},
+                       36.0F,
+                       "player focus metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::DoorMarker,
+                       {220, 178, 86},
+                       24.0F,
+                       "door metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::FloorTile,
+                       {54, 78, 68},
+                       58.0F,
+                       "floor metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::ElevatedFloorTile,
+                       {92, 126, 102},
+                       58.0F,
+                       "elevated floor metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::RampTile,
+                       {82, 139, 156},
+                       58.0F,
+                       "ramp metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::BlockedSlopeTile,
+                       {184, 82, 74},
+                       58.0F,
+                       "blocked slope metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::WallTile,
+                       {76, 86, 92},
+                       62.0F,
+                       "wall metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::PropTile,
+                       {151, 102, 58},
+                       42.0F,
+                       "prop metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::RoomEditorCursor,
+                       {245, 214, 96},
+                       30.0F,
+                       "room editor cursor metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::RoomEditorPlacementPreview,
+                       {105, 205, 228},
+                       52.0F,
+                       "room editor placement preview metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::PhysicsAabbDebug,
+                       {105, 205, 228},
+                       34.0F,
+                       "physics aabb metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::PhysicsContactNormalDebug,
+                       {236, 118, 86},
+                       18.0F,
+                       "physics contact normal metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::PhysicsBroadphasePairDebug,
+                       {166, 184, 177},
+                       14.0F,
+                       "physics broadphase pair metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::MapMakerGridDot,
+                       {86, 130, 172},
+                       8.0F,
+                       "map maker grid dot metadata");
+  ok &= expectMetadata(iggy3d::ProductPrimitiveDrawKind::MapMakerCubePreview,
+                       {126, 221, 186},
+                       54.0F,
+                       "map maker cube preview metadata");
+  return ok;
+}
+
 int main() {
+  bool ok = productPrimitiveDrawKindMetadataPinsBasePresentation();
+
   iggy3d::SceneProjectionResult scene;
   scene.items.push_back(sceneItem(iggy3d::SceneItemKind::Player, 1, "player"));
   scene.items.push_back(sceneItem(iggy3d::SceneItemKind::Npc, 2, "training_dummy"));
@@ -166,7 +281,6 @@ int main() {
   const iggy3d::ProductPrimitiveDrawList list =
       iggy3d::buildProductPrimitiveDrawList(&scene, &debug);
 
-  bool ok = true;
   ok &= expect(list.gridVisible, "grid visible with scene");
   ok &= expect(list.roomVisible, "room visible with scene items");
   ok &= expect(list.playerVisible, "player visible");

@@ -25,13 +25,11 @@ None.
 
 ## Pull Next
 
-1. **E127** — ProductPrimitiveDrawKind Presentation Metadata Table (base
-   color/size centralization; dispatch and decorative render policy stay local).
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E127** — centralize `ProductPrimitiveDrawKind` base color/size metadata from
-  E124 while preserving dynamic/decorative render policy.
+None currently ready.
 
 ## Tier 2: Feature-Add Seams
 
