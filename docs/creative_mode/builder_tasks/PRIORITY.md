@@ -23,20 +23,20 @@ ratified; L slice, compiler-guarded, thread-first-delete-last).
 
 ## Currently Claimed
 
-E137.
+E138.
 
 ## Pull Next
 
-1. **E137** — ActiveCreative G2 routing callers. Depends on completed E136.
-2. **E138** — ActiveCreative G3 receipt identity threading. Depends on E136-E137.
-3. **E139** — ActiveCreative G4 delete mirror. Depends on E136-E138.
+1. **E138** — ActiveCreative G3 receipt identity threading. Depends on
+   completed E136-E137.
+2. **E139** — ActiveCreative G4 delete mirror. Depends on E136-E138.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E137-E139** — activeCreative mirror delete (deficit #2, L,
+- **E138-E139** — activeCreative mirror delete (deficit #2, L,
   compiler-guarded). Behavior-preserving; coverage + receipt truth-gates fire by
-  design. E136 is done; builder should claim the remaining gates in numeric
-  order only.
+  design. E136 and E137 are done; builder should claim the remaining gates in
+  numeric order only.
 
 ## Tier 2: Feature-Add Seams
 
@@ -67,7 +67,10 @@ Held — do NOT promote to `ready/` on a guess:
   decomposition map (`docs/god_struct_decomposition_target_map.md`):
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — **NEXT real kill after #2.** Genuine
     unfixed freshness deficit in the proven exemplar shape (3 provenance writers, no
-    who/when stamp). Its own preflight.
+    who/when stamp). **Gate-0 preflight written: `blocked/E141`** (confirms M, tiny
+    churn). BLOCKED on (a) E139 landing and (b) **user picking A/B in §7** (re-seed on
+    session drift vs sticky) — the store shape hinges on it. Do not promote to ready/
+    until both clear.
   - **#1 `activeRoom`→`RoomStore`** — **HELD** (`blocked/E140`). Structural move only
     when it gates the kernel; NOT an ownership kill (see re-rank above). Preserve the
     nested producer copy.
