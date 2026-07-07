@@ -19,12 +19,21 @@ struct ProductSaveBridgeResult;
 struct ProductWorldTemplate;
 struct RenderReceipt;
 
+namespace creative {
+struct CreativeActiveIdentity;
+}  // namespace creative
+
+const creative::CreativeActiveIdentity& defaultProductReceiptCreativeIdentity();
+
 RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductWorldTemplate& world,
                                      const FrontendState& frontend,
                                      const FrontendSettings& settings,
                                      const ProductAppWindowState& window,
-                                     const ProductSaveBridgeResult& saves);
+                                     const ProductSaveBridgeResult& saves,
+                                     const creative::CreativeActiveIdentity&
+                                         creativeIdentity =
+                                             defaultProductReceiptCreativeIdentity());
 
 void recordProductPhysicsMovementPlannerTickProof(
     ProductAppWindowState& window,

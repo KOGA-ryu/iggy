@@ -16,12 +16,13 @@
 #include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
 #include "app/iggy3d/creative/bridge/ViewportPickFrame.hpp"
 #include "app/iggy3d/creative/bridge/WireframeFrame.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 
 namespace iggy3d {
 
-void appendProductSaveStateFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window) {
+void appendProductSaveStateFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window, const creative::CreativeActiveIdentity& creativeIdentity) {
   appendReceiptField(receipt, "product_save_status", window.productSaveStatus);
   appendReceiptField(receipt, "product_save_reason_code",
                      window.productSaveReasonCode);
@@ -33,29 +34,29 @@ void appendProductSaveStateFields(RenderReceipt& receipt, const FrontendState& f
                      window.productSaveSessionSaved);
   appendReceiptField(receipt, "active_product_save_id", window.activeProductSaveId);
   appendReceiptField(receipt, "active_creative_save_id",
-                     window.activeCreative.saveId);
+                     creativeIdentity.saveId);
   appendReceiptField(receipt, "active_creative_save_path",
-                     window.activeCreative.savePath);
+                     creativeIdentity.savePath);
   appendReceiptField(receipt, "active_creative_world_id",
-                     window.activeCreative.worldId);
+                     creativeIdentity.worldId);
   appendReceiptField(receipt, "active_creative_document_id",
-                     window.activeCreative.documentId);
+                     creativeIdentity.documentId);
   appendReceiptField(receipt, "active_creative_object_count",
-                     window.activeCreative.objectCount);
+                     creativeIdentity.objectCount);
   appendReceiptField(receipt, "active_creative_next_object_id",
-                     window.activeCreative.nextObjectId);
+                     creativeIdentity.nextObjectId);
   appendReceiptField(receipt, "active_creative_save_status",
-                     window.activeCreative.saveStatus);
+                     creativeIdentity.saveStatus);
   appendReceiptField(receipt, "active_creative_save_reason_code",
-                     window.activeCreative.saveReasonCode);
+                     creativeIdentity.saveReasonCode);
   appendReceiptField(receipt, "active_creative_save_dirty_flags_before",
-                     window.activeCreative.saveDirtyFlagsBefore);
+                     creativeIdentity.saveDirtyFlagsBefore);
   appendReceiptField(receipt, "active_creative_save_dirty_flags_drained",
-                     window.activeCreative.saveDirtyFlagsDrained);
+                     creativeIdentity.saveDirtyFlagsDrained);
   appendReceiptField(receipt, "active_creative_save_dirty_flags_after",
-                     window.activeCreative.saveDirtyFlagsAfter);
+                     creativeIdentity.saveDirtyFlagsAfter);
   appendReceiptField(receipt, "active_creative_save_saved_at_utc",
-                     window.activeCreative.saveSavedAtUtc);
+                     creativeIdentity.saveSavedAtUtc);
   appendReceiptField(receipt, "product_save_load_status",
                      window.productSaveLoadResult.status);
   appendReceiptField(receipt, "product_save_load_reason_code",

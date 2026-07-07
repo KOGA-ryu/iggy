@@ -13,6 +13,10 @@
 
 namespace iggy3d {
 
+namespace creative {
+struct CreativeActiveIdentity;
+}  // namespace creative
+
 // Shared receipt-field helper (promoted from ReceiptBuilder.cpp's anon namespace to
 // external linkage so the domain appenders below can share one definition).
 std::string floatReceiptValue(float value);
@@ -24,7 +28,7 @@ void appendProductStartupProbeFields(RenderReceipt& receipt, const FrontendState
 void appendProductWorldAuthoringFields(RenderReceipt& receipt, const ProductAppWindowState& window);
 void appendProductActiveRoomFields(RenderReceipt& receipt, const ProductAppWindowState& window);
 void appendProductStartupWorldBuildoutFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window, const ProductSaveBridgeResult& saves);
-void appendProductSaveStateFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window);
+void appendProductSaveStateFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window, const creative::CreativeActiveIdentity& creativeIdentity);
 void appendProductGameplayRuntimeMovementFields(RenderReceipt& receipt, const ProductAppWindowState& window, const ProductMovementProofPacket& movementProof);
 void appendProductDebugHudFields(RenderReceipt& receipt, const ProductAppWindowState& window, const MovementDebugHud& movementHud, const NpcBehaviorDebugHud& npcBehaviorHud, const PhysicsDebugHud& physicsHud);
 void appendProductGameplaySceneStateFields(RenderReceipt& receipt, const ProductAppWindowState& window);

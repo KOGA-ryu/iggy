@@ -133,7 +133,13 @@ int AppKernel::run(const ProductAppOptions& options) {
 
   if (options.printRenderReceipt) {
     std::cout << formatRenderReceipt(
-        buildProductAppReceipt(options, world, frontend, settings, window, saves));
+        buildProductAppReceipt(options,
+                               world,
+                               frontend,
+                               settings,
+                               window,
+                               saves,
+                               creativeApp.identity));
   }
 
   return window.requested && !window.created ? 77 : 0;

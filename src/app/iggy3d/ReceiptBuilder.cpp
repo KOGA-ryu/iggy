@@ -16,18 +16,26 @@
 #include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
 #include "app/iggy3d/creative/bridge/ViewportPickFrame.hpp"
 #include "app/iggy3d/creative/bridge/WireframeFrame.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 #include "app/iggy3d/receipt/ReceiptFields.hpp"
 
 namespace iggy3d {
 
+const creative::CreativeActiveIdentity& defaultProductReceiptCreativeIdentity() {
+  static const creative::CreativeActiveIdentity identity;
+  return identity;
+}
+
 RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductWorldTemplate& world,
                                      const FrontendState& frontend,
                                      const FrontendSettings& settings,
                                      const ProductAppWindowState& window,
-                                     const ProductSaveBridgeResult& saves) {
+                                     const ProductSaveBridgeResult& saves,
+                                     const creative::CreativeActiveIdentity&
+                                         creativeIdentity) {
   RenderReceipt receipt;
   const ProductActiveSurfaceFrame activeSurface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
@@ -65,7 +73,7 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
       {}};
   appendProductFrontendSettingsWindowFields(receipt, options, frontend, settings, window, creativeSurface, mapMakerLive);
   appendProductStartupWorldBuildoutFields(receipt, frontend, window, saves);
-  appendProductSaveStateFields(receipt, frontend, window);
+  appendProductSaveStateFields(receipt, frontend, window, creativeIdentity);
   appendProductGameplayRuntimeMovementFields(receipt, window, movementProof);
   appendProductDebugHudFields(receipt, window, movementHud, npcBehaviorHud, physicsHud);
   appendProductGameplaySceneStateFields(receipt, window);

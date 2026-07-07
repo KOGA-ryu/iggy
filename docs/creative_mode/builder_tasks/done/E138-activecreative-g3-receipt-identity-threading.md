@@ -88,3 +88,37 @@ Append:
 - Golden changed?:
 - Suite:
 - Concerns/deferred:
+
+## Completion Brief - 2026-07-07
+
+- Files changed:
+  - `src/app/iggy3d/ReceiptBuilder.hpp`
+  - `src/app/iggy3d/ReceiptBuilder.cpp`
+  - `src/app/iggy3d/receipt/ReceiptFields.hpp`
+  - `src/app/iggy3d/receipt/SaveStateFields.cpp`
+  - `src/app/iggy3d/AppKernel.cpp`
+- Receipt function signatures threaded:
+  - `buildProductAppReceipt(...)` now accepts a final defaulted `const creative::CreativeActiveIdentity&`.
+  - `appendProductSaveStateFields(...)` now receives `const creative::CreativeActiveIdentity&`.
+  - `defaultProductReceiptCreativeIdentity()` preserves source compatibility for existing receipt fixture callers that do not care about active creative identity values.
+- SaveStateFields source switched:
+  - All twelve `active_creative_*` receipt fields now read from the passed `creative::CreativeActiveIdentity`.
+  - Verified `rg -n "window\\.activeCreative" src/app/iggy3d/receipt/SaveStateFields.cpp` returns no matches.
+- Production caller:
+  - `src/app/iggy3d/AppKernel.cpp` passes `creativeApp.identity` into `buildProductAppReceipt(...)`.
+- Test caller update count/files:
+  - No receipt fixture source edits were required because the receipt builder default identity preserves default-call compatibility.
+  - E137 source-predicate tests remain intact in the same dirty stack.
+- Golden changed?:
+  - No. `./build/product_receipt_key_order_tests` passed with `1031 fields match golden (order + values)`.
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` is empty.
+- Suite:
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10` passed.
+  - First full CTest attempt hit transient temp-state fallout in eight product/menu tests; all eight passed when rerun directly.
+  - Full CTest rerun passed: `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure`.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over E138 touched files and this card passed.
+- Concerns/deferred:
+  - `window.activeCreative` mirror and funnel still exist for the final G4 delete gate.
+  - Flow.cpp save/pause divergence was not changed.
+  - `Testing/Temporary/LastTest.log` remains dirty from CTest output and was not touched.
