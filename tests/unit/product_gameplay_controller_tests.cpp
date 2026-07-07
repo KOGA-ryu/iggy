@@ -63,15 +63,15 @@ float horizontalDistance(iggy3d::Vec3 lhs, iggy3d::Vec3 rhs) {
 iggy3d::ProductAppWindowState makeGameplayWindow(
     std::optional<iggy3d::Session>& session) {
   iggy3d::ProductAppWindowState window;
-  window.asciiRoomDraft.text =
+  window.creativeAuthoring.asciiRoomDraft.text =
       "#######\n"
       "#.....#\n"
       "#..P..#\n"
       "#.....#\n"
       "#..$.E#\n"
       "#######\n";
-  window.asciiRoomDraft.roomId = "gameplay_controller_step_room";
-  window.asciiRoomDraft.sourceName = "unit/gameplay_controller_step_room.iggyroom.txt";
+  window.creativeAuthoring.asciiRoomDraft.roomId = "gameplay_controller_step_room";
+  window.creativeAuthoring.asciiRoomDraft.sourceName = "unit/gameplay_controller_step_room.iggyroom.txt";
   const iggy3d::ProductAsciiRoomActivationResult activation =
       iggy3d::activateProductAsciiRoomPreview(session, window);
   expect(activation.ok, "ascii room activation ok");

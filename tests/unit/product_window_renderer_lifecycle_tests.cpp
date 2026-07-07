@@ -383,7 +383,7 @@ bool inWindowNewWorldRefreshesCatalog() {
   std::optional<iggy3d::Session> activeSession;
   iggy3d::WorldSetupDraft worldSetupDraft;
   iggy3d::ProductAppWindowState window;
-  window.worldSetup.dungeonDraftEditMode = false;  // MenuConfirm launches the world (not paint)
+  window.creativeAuthoring.worldSetup.dungeonDraftEditMode = false;  // MenuConfirm launches the world (not paint)
   iggy3d::ProductSaveBridgeResult saves;          // empty catalog before the new world
 
   const bool emptyBefore = saves.slots.compatibleCount == 0;

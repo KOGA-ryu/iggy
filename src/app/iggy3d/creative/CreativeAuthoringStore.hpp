@@ -1,12 +1,17 @@
 #pragma once
 
 #include "app/iggy3d/creative/CreativeUiCommandDiagnostics.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomActivationState.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomDraftState.hpp"
+#include "app/iggy3d/ascii_room/AsciiRoomPreviewState.hpp"
 #include "app/iggy3d/room_editor/Cursor.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/room_editor/RoomEditorOverlayState.hpp"
 #include "app/iggy3d/room_editor/RoomEditorPreviewState.hpp"
+#include "app/iggy3d/world/WorldCreationState.hpp"
+#include "app/iggy3d/world/WorldSetupState.hpp"
 
 #include <cstdint>
 #include <string>
@@ -14,6 +19,11 @@
 namespace iggy3d {
 
 struct CreativeAuthoringStore {
+  ProductWorldSetupState worldSetup;
+  ProductWorldCreationState worldCreation;
+  ProductAsciiRoomDraftState asciiRoomDraft;
+  ProductAsciiRoomPreviewState asciiRoomPreview;
+  ProductAsciiRoomActivationState asciiRoomActivation;
   ProductRoomEditingState roomEditing;
   std::string roomEditingLastOperation = "none";
   std::string roomEditingLastOperationStatus = "not_requested";

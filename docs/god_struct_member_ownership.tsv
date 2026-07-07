@@ -16,11 +16,6 @@ launchAction	FrontendWindowShell
 launchStatus	FrontendWindowShell
 packageLoadStatus	FrontendWindowShell
 startup	FrontendWindowShell
-worldSetup	CreativeAuthoringStore
-worldCreation	CreativeAuthoringStore
-asciiRoomDraft	CreativeAuthoringStore
-asciiRoomPreview	CreativeAuthoringStore
-asciiRoomActivation	CreativeAuthoringStore
 room	RoomStore
 saveSession	SaveSessionStore
 creativeDocumentRevision	CreativeAuthoringStore

@@ -122,13 +122,13 @@ iggy3d::PhysicsAabbCollider debugCollider(iggy3d::PhysicsBodyId bodyId,
 iggy3d::ProductAppWindowState makeGameplayWindow(
     std::optional<iggy3d::Session>& session) {
   iggy3d::ProductAppWindowState window;
-  window.asciiRoomDraft.text =
+  window.creativeAuthoring.asciiRoomDraft.text =
       "#######\n"
       "#P..$.#\n"
       "#..E..#\n"
       "#######\n";
-  window.asciiRoomDraft.roomId = "vulkan_product_room_frame";
-  window.asciiRoomDraft.sourceName = "unit/vulkan_product_room_frame.iggyroom.txt";
+  window.creativeAuthoring.asciiRoomDraft.roomId = "vulkan_product_room_frame";
+  window.creativeAuthoring.asciiRoomDraft.sourceName = "unit/vulkan_product_room_frame.iggyroom.txt";
   window.viewport.cameraYawDegrees = 18.0F;
   window.viewport.cameraPitchDegrees = -3.0F;
   const iggy3d::ProductAsciiRoomActivationResult activation =

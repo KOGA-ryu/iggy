@@ -264,10 +264,10 @@ bool isPreviousBuiltinDungeonAction(InputAction action) {
 
 char selectedDungeonDraftGlyph(const ProductAppWindowState& window) {
   // branch-gate: BG-1147
-  if (window.worldSetup.dungeonDraftSelectedGlyph.empty()) {
+  if (window.creativeAuthoring.worldSetup.dungeonDraftSelectedGlyph.empty()) {
     return '.';
   }
-  return window.worldSetup.dungeonDraftSelectedGlyph.front();
+  return window.creativeAuthoring.worldSetup.dungeonDraftSelectedGlyph.front();
 }
 
 ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& context) {
@@ -394,7 +394,7 @@ ProductMenuActionResult confirmStarterNewWorld(
   context.frontend.selectedAction = FrontendAction::CreateAndEnter;
   context.frontend.status = "opening_menu_new_world_selected";
   recordWorldSetupDraftState(context.worldSetupDraft, context.window);
-  context.window.worldSetup.status = "world_setup_open";
+  context.window.creativeAuthoring.worldSetup.status = "world_setup_open";
   return {true, true};
 }
 
@@ -684,25 +684,25 @@ ProductMenuActionResult applyProductNewWorldMenuAction(
   recordWorldSetupDraftState(worldSetupDraft, window);
   // branch-gate: BG-1021
   if (action == InputAction::MenuNextTab) {
-    window.worldSetup.dungeonDraftEditMode =
-        !window.worldSetup.dungeonDraftEditMode;
+    window.creativeAuthoring.worldSetup.dungeonDraftEditMode =
+        !window.creativeAuthoring.worldSetup.dungeonDraftEditMode;
     worldSetupDraft.selectedField =
-        window.worldSetup.dungeonDraftEditMode ? WorldSetupField::AsciiRoom  // branch-gate: BG-1021
+        window.creativeAuthoring.worldSetup.dungeonDraftEditMode ? WorldSetupField::AsciiRoom  // branch-gate: BG-1021
                                               : WorldSetupField::Create;
-    window.worldSetup.dungeonDraftStatus =
-        window.worldSetup.dungeonDraftEditMode ? "dungeon_draft_edit_mode_on"
+    window.creativeAuthoring.worldSetup.dungeonDraftStatus =
+        window.creativeAuthoring.worldSetup.dungeonDraftEditMode ? "dungeon_draft_edit_mode_on"
                                               : "dungeon_draft_edit_mode_off";  // branch-gate: BG-1021
-    window.worldSetup.dungeonDraftReasonCode =
-        window.worldSetup.dungeonDraftStatus;
+    window.creativeAuthoring.worldSetup.dungeonDraftReasonCode =
+        window.creativeAuthoring.worldSetup.dungeonDraftStatus;
     resetDungeonDraftWindowCursor(worldSetupDraft, window);
-    frontend.status = window.worldSetup.dungeonDraftStatus;
+    frontend.status = window.creativeAuthoring.worldSetup.dungeonDraftStatus;
     return {true, true};
   }
 
   const std::optional<ProductDungeonDraftDirection> direction =
       dungeonDraftDirectionForAction(action);
   // branch-gate: BG-1021
-  if (window.worldSetup.dungeonDraftEditMode && direction.has_value()) {
+  if (window.creativeAuthoring.worldSetup.dungeonDraftEditMode && direction.has_value()) {
     const ProductDungeonDraftOperationResult moved =
         moveProductDungeonDraftCursor(worldSetupDraft,
                                       dungeonDraftCursorFromWindow(window),
@@ -712,18 +712,18 @@ ProductMenuActionResult applyProductNewWorldMenuAction(
     return {true, true};
   }
   // branch-gate: BG-1021
-  if (!window.worldSetup.dungeonDraftEditMode && direction.has_value()) {
+  if (!window.creativeAuthoring.worldSetup.dungeonDraftEditMode && direction.has_value()) {
     const bool previous = isPreviousBuiltinDungeonAction(action);
     const bool changed = previous
                              ? selectPreviousProductBuiltinDungeon(worldSetupDraft)
                              : selectNextProductBuiltinDungeon(worldSetupDraft);  // branch-gate: BG-1021
-    window.worldSetup.dungeonDraftModified = false;
-    window.worldSetup.dungeonDraftEditMode = false;
+    window.creativeAuthoring.worldSetup.dungeonDraftModified = false;
+    window.creativeAuthoring.worldSetup.dungeonDraftEditMode = false;
     resetDungeonDraftWindowCursor(worldSetupDraft, window);
     recordWorldSetupDraftState(worldSetupDraft, window);
     frontend.status =
         changed ? "new_world_dungeon_selection_changed" : "new_world_input_ignored";  // branch-gate: BG-1021
-    window.worldSetup.status =
+    window.creativeAuthoring.worldSetup.status =
         changed ? "world_setup_dungeon_selected" : "world_setup_dungeon_unavailable";  // branch-gate: BG-1021
     return {true, true};
   }
@@ -732,16 +732,16 @@ ProductMenuActionResult applyProductNewWorldMenuAction(
     frontend.childScreen = FrontendScreen::Gameplay;
     frontend.selectedAction = FrontendAction::NewWorld;
     frontend.status = "new_world_closed";
-    window.worldSetup.status = "world_setup_back";
+    window.creativeAuthoring.worldSetup.status = "world_setup_back";
     return {true, true};
   }
   // branch-gate: BG-1021
   if (action == InputAction::MenuConfirm) {
     // branch-gate: BG-1147
-    if (window.worldSetup.dungeonDraftEditMode) {
+    if (window.creativeAuthoring.worldSetup.dungeonDraftEditMode) {
       const bool painted = applyDungeonDraftPaintGlyph(
           worldSetupDraft, window, selectedDungeonDraftGlyph(window));
-      frontend.status = window.worldSetup.dungeonDraftStatus;
+      frontend.status = window.creativeAuthoring.worldSetup.dungeonDraftStatus;
       return {true, painted};
     }
     launchProductNewWorld(context.options, worldSetupDraft, frontend,

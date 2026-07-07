@@ -15,8 +15,6 @@
 #include "app/iggy3d/debug/DebugHudStore.hpp"
 #include "app/iggy3d/creative/CreativeAuthoringStore.hpp"
 #include "app/iggy3d/creative/CreativeUiCommandDiagnostics.hpp"
-#include "app/iggy3d/world/WorldSetupState.hpp"
-#include "app/iggy3d/world/WorldCreationState.hpp"
 #include "app/iggy3d/gameplay/WallRunState.hpp"
 #include "app/iggy3d/save/SaveSessionStore.hpp"
 #include "app/iggy3d/ProductCreativeUndoState.hpp"
@@ -31,9 +29,6 @@
 #include "app/iggy3d/window/ProductVulkanMenuState.hpp"
 #include "app/iggy3d/gameplay/CollisionState.hpp"
 #include "app/iggy3d/gameplay/GameplayMovementInfo.hpp"
-#include "app/iggy3d/ascii_room/AsciiRoomDraftState.hpp"
-#include "app/iggy3d/ascii_room/AsciiRoomPreviewState.hpp"
-#include "app/iggy3d/ascii_room/AsciiRoomActivationState.hpp"
 #include "app/iggy3d/ProductStartupState.hpp"
 #include "app/iggy3d/ProductCreativeUiInputState.hpp"
 #include "app/iggy3d/ProductCreativeDocumentRevisionState.hpp"
@@ -63,11 +58,6 @@ struct ProductAppWindowState {
   std::string launchStatus = "not_requested";
   std::string packageLoadStatus = "not_requested";
   ProductStartupState startup;
-  ProductWorldSetupState worldSetup;
-  ProductWorldCreationState worldCreation;
-  ProductAsciiRoomDraftState asciiRoomDraft;
-  ProductAsciiRoomPreviewState asciiRoomPreview;
-  ProductAsciiRoomActivationState asciiRoomActivation;
   ProductRoomStore room;
   SaveSessionStore saveSession;
   ProductCreativeDocumentRevisionState creativeDocumentRevision;

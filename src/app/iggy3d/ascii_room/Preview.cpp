@@ -39,9 +39,9 @@ std::string decodeProductAsciiRoomAutomationText(std::string_view value) {
 ProductAsciiRoomAuthoringRequest productAsciiRoomAuthoringRequestFromDraft(
     const ProductAppWindowState& window) {
   ProductAsciiRoomAuthoringRequest request;
-  request.sourceText = window.asciiRoomDraft.text;
-  request.roomId = window.asciiRoomDraft.roomId;
-  request.sourceName = window.asciiRoomDraft.sourceName;
+  request.sourceText = window.creativeAuthoring.asciiRoomDraft.text;
+  request.roomId = window.creativeAuthoring.asciiRoomDraft.roomId;
+  request.sourceName = window.creativeAuthoring.asciiRoomDraft.sourceName;
   return request;
 }
 
@@ -49,32 +49,32 @@ void recordProductAsciiRoomPreview(std::string_view sourceName,
                                    std::string_view roomId,
                                    const ProductAsciiRoomAuthoringResult& result,
                                    ProductAppWindowState& window) {
-  window.asciiRoomPreview.status = result.status;
-  window.asciiRoomPreview.reasonCode = result.reasonCode;
-  window.asciiRoomPreview.failedStage = result.failedStage;
-  window.asciiRoomPreview.roomId =
+  window.creativeAuthoring.asciiRoomPreview.status = result.status;
+  window.creativeAuthoring.asciiRoomPreview.reasonCode = result.reasonCode;
+  window.creativeAuthoring.asciiRoomPreview.failedStage = result.failedStage;
+  window.creativeAuthoring.asciiRoomPreview.roomId =
       roomId.empty() ? std::string{"none"} : std::string(roomId);
-  window.asciiRoomPreview.sourceName =
+  window.creativeAuthoring.asciiRoomPreview.sourceName =
       sourceName.empty() ? std::string{"none"} : std::string(sourceName);
-  window.asciiRoomPreview.ready = result.ok;
-  window.asciiRoomPreview.width = sizeReceiptValue(result.width);
-  window.asciiRoomPreview.height = sizeReceiptValue(result.height);
-  window.asciiRoomPreview.floorCount = sizeReceiptValue(result.floorCount);
-  window.asciiRoomPreview.wallCount = sizeReceiptValue(result.wallCount);
-  window.asciiRoomPreview.objectCount = sizeReceiptValue(result.objectCount);
-  window.asciiRoomPreview.markerCount = sizeReceiptValue(result.markerCount);
-  window.asciiRoomPreview.elevatedFloorCount =
+  window.creativeAuthoring.asciiRoomPreview.ready = result.ok;
+  window.creativeAuthoring.asciiRoomPreview.width = sizeReceiptValue(result.width);
+  window.creativeAuthoring.asciiRoomPreview.height = sizeReceiptValue(result.height);
+  window.creativeAuthoring.asciiRoomPreview.floorCount = sizeReceiptValue(result.floorCount);
+  window.creativeAuthoring.asciiRoomPreview.wallCount = sizeReceiptValue(result.wallCount);
+  window.creativeAuthoring.asciiRoomPreview.objectCount = sizeReceiptValue(result.objectCount);
+  window.creativeAuthoring.asciiRoomPreview.markerCount = sizeReceiptValue(result.markerCount);
+  window.creativeAuthoring.asciiRoomPreview.elevatedFloorCount =
       sizeReceiptValue(result.elevatedFloorCount);
-  window.asciiRoomPreview.rampCount = sizeReceiptValue(result.rampCount);
-  window.asciiRoomPreview.blockedSlopeCount =
+  window.creativeAuthoring.asciiRoomPreview.rampCount = sizeReceiptValue(result.rampCount);
+  window.creativeAuthoring.asciiRoomPreview.blockedSlopeCount =
       sizeReceiptValue(result.blockedSlopeCount);
-  window.asciiRoomPreview.staticMeshCount =
+  window.creativeAuthoring.asciiRoomPreview.staticMeshCount =
       sizeReceiptValue(result.staticMeshCount);
-  window.asciiRoomPreview.anchorCount = sizeReceiptValue(result.anchorCount);
-  window.asciiRoomPreview.spatialSurfaceCount =
+  window.creativeAuthoring.asciiRoomPreview.anchorCount = sizeReceiptValue(result.anchorCount);
+  window.creativeAuthoring.asciiRoomPreview.spatialSurfaceCount =
       sizeReceiptValue(result.spatialSurfaceCount);
-  window.asciiRoomPreview.assetTextWritten = result.assetText.ok;
-  window.asciiRoomPreview.assetTextBytes =
+  window.creativeAuthoring.asciiRoomPreview.assetTextWritten = result.assetText.ok;
+  window.creativeAuthoring.asciiRoomPreview.assetTextBytes =
       sizeReceiptValue(result.assetText.text.size());
 }
 

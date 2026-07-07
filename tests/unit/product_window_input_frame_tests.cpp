@@ -260,15 +260,15 @@ void setInputFrameClamberActiveRoom(iggy3d::ProductAppWindowState& window,
 iggy3d::ProductAppWindowState gameplayWindow(
     std::optional<iggy3d::Session>& session) {
   iggy3d::ProductAppWindowState window;
-  window.asciiRoomDraft.text =
+  window.creativeAuthoring.asciiRoomDraft.text =
       "#######\n"
       "#.....#\n"
       "#..P..#\n"
       "#.....#\n"
       "#..$.E#\n"
       "#######\n";
-  window.asciiRoomDraft.roomId = "input_frame_gameplay_room";
-  window.asciiRoomDraft.sourceName =
+  window.creativeAuthoring.asciiRoomDraft.roomId = "input_frame_gameplay_room";
+  window.creativeAuthoring.asciiRoomDraft.sourceName =
       "unit/input_frame_gameplay_room.iggyroom.txt";
   const iggy3d::ProductAsciiRoomActivationResult activated =
       iggy3d::activateProductAsciiRoomPreview(session, window);
@@ -1937,7 +1937,7 @@ bool openingMenuMouseDispatchRoutesNewWorldNavigationRows() {
   const bool previousOk =
       expect(harness.draft.asciiRoomId != nextDungeonId,
              "mouse previous dungeon changes draft") &&
-      expect(harness.window.worldSetup.status == "world_setup_dungeon_selected",
+      expect(harness.window.creativeAuthoring.worldSetup.status == "world_setup_dungeon_selected",
              "mouse previous dungeon window status");
 
   iggy3d::dispatchProductOpeningMenuMouseHit(

@@ -3,152 +3,152 @@
 namespace iggy3d {
 
 void appendProductWorldAuthoringFields(RenderReceipt& receipt, const ProductAppWindowState& window) {
-  appendReceiptField(receipt, "world_setup_title", window.worldSetup.title);
-  appendReceiptField(receipt, "world_setup_status", window.worldSetup.status);
+  appendReceiptField(receipt, "world_setup_title", window.creativeAuthoring.worldSetup.title);
+  appendReceiptField(receipt, "world_setup_status", window.creativeAuthoring.worldSetup.status);
   appendReceiptField(receipt,
                      "world_setup_dungeon_title",
-                     window.worldSetup.dungeonTitle);
+                     window.creativeAuthoring.worldSetup.dungeonTitle);
   appendReceiptField(receipt,
                      "world_setup_dungeon_index",
-                     window.worldSetup.dungeonIndex);
+                     window.creativeAuthoring.worldSetup.dungeonIndex);
   appendReceiptField(receipt,
                      "world_setup_dungeon_count",
-                     window.worldSetup.dungeonCount);
+                     window.creativeAuthoring.worldSetup.dungeonCount);
   appendReceiptField(receipt,
                      "world_setup_ascii_room_enabled",
-                     window.worldSetup.asciiRoomEnabled);
+                     window.creativeAuthoring.worldSetup.asciiRoomEnabled);
   appendReceiptField(receipt,
                      "world_setup_ascii_room_text_present",
-                     window.worldSetup.asciiRoomTextPresent);
+                     window.creativeAuthoring.worldSetup.asciiRoomTextPresent);
   appendReceiptField(receipt,
                      "world_setup_ascii_room_id",
-                     window.worldSetup.asciiRoomId);
+                     window.creativeAuthoring.worldSetup.asciiRoomId);
   appendReceiptField(receipt,
                      "world_setup_ascii_room_source_name",
-                     window.worldSetup.asciiRoomSourceName);
+                     window.creativeAuthoring.worldSetup.asciiRoomSourceName);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_edit_mode",
-                     window.worldSetup.dungeonDraftEditMode);
+                     window.creativeAuthoring.worldSetup.dungeonDraftEditMode);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_modified",
-                     window.worldSetup.dungeonDraftModified);
+                     window.creativeAuthoring.worldSetup.dungeonDraftModified);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_cursor_row",
-                     window.worldSetup.dungeonDraftCursorRow);
+                     window.creativeAuthoring.worldSetup.dungeonDraftCursorRow);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_cursor_column",
-                     window.worldSetup.dungeonDraftCursorColumn);
+                     window.creativeAuthoring.worldSetup.dungeonDraftCursorColumn);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_status",
-                     window.worldSetup.dungeonDraftStatus);
+                     window.creativeAuthoring.worldSetup.dungeonDraftStatus);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_reason_code",
-                     window.worldSetup.dungeonDraftReasonCode);
+                     window.creativeAuthoring.worldSetup.dungeonDraftReasonCode);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_selected_glyph",
-                     window.worldSetup.dungeonDraftSelectedGlyph);
+                     window.creativeAuthoring.worldSetup.dungeonDraftSelectedGlyph);
   appendReceiptField(receipt,
                      "world_setup_dungeon_draft_last_glyph",
-                     window.worldSetup.dungeonDraftLastGlyph);
-  appendReceiptField(receipt, "world_creation_status", window.worldCreation.status);
+                     window.creativeAuthoring.worldSetup.dungeonDraftLastGlyph);
+  appendReceiptField(receipt, "world_creation_status", window.creativeAuthoring.worldCreation.status);
   appendReceiptField(receipt, "world_creation_reason_code",
-                     window.worldCreation.reasonCode);
-  appendReceiptField(receipt, "world_creation_world_id", window.worldCreation.worldId);
+                     window.creativeAuthoring.worldCreation.reasonCode);
+  appendReceiptField(receipt, "world_creation_world_id", window.creativeAuthoring.worldCreation.worldId);
   appendReceiptField(receipt, "world_creation_world_title",
-                     window.worldCreation.worldTitle);
+                     window.creativeAuthoring.worldCreation.worldTitle);
   appendReceiptField(receipt,
                      "world_creation_ascii_room_requested",
-                     window.worldCreation.asciiRoomRequested);
+                     window.creativeAuthoring.worldCreation.asciiRoomRequested);
   appendReceiptField(receipt,
                      "world_creation_ascii_room_id",
-                     window.worldCreation.asciiRoomId);
+                     window.creativeAuthoring.worldCreation.asciiRoomId);
   appendReceiptField(receipt,
                      "world_creation_ascii_room_source_name",
-                     window.worldCreation.asciiRoomSourceName);
+                     window.creativeAuthoring.worldCreation.asciiRoomSourceName);
   appendReceiptField(receipt, "world_creation_initial_save_requested",
-                     window.worldCreation.initialSaveRequested);
+                     window.creativeAuthoring.worldCreation.initialSaveRequested);
   appendReceiptField(receipt, "world_creation_initial_save_written",
-                     window.worldCreation.initialSaveWritten);
+                     window.creativeAuthoring.worldCreation.initialSaveWritten);
   appendReceiptField(receipt, "world_creation_initial_save_id",
-                     window.worldCreation.initialSaveId);
+                     window.creativeAuthoring.worldCreation.initialSaveId);
   appendReceiptField(receipt, "world_creation_initial_save_title",
-                     window.worldCreation.initialSaveTitle);
+                     window.creativeAuthoring.worldCreation.initialSaveTitle);
   appendReceiptField(receipt, "world_creation_route_after_create",
-                     window.worldCreation.routeAfterCreate);
+                     window.creativeAuthoring.worldCreation.routeAfterCreate);
   appendReceiptField(receipt, "ascii_room_preview_status",
-                     window.asciiRoomPreview.status);
+                     window.creativeAuthoring.asciiRoomPreview.status);
   appendReceiptField(receipt, "ascii_room_preview_reason_code",
-                     window.asciiRoomPreview.reasonCode);
+                     window.creativeAuthoring.asciiRoomPreview.reasonCode);
   appendReceiptField(receipt, "ascii_room_preview_failed_stage",
-                     window.asciiRoomPreview.failedStage);
+                     window.creativeAuthoring.asciiRoomPreview.failedStage);
   appendReceiptField(receipt, "ascii_room_preview_room_id",
-                     window.asciiRoomPreview.roomId);
+                     window.creativeAuthoring.asciiRoomPreview.roomId);
   appendReceiptField(receipt, "ascii_room_preview_source_name",
-                     window.asciiRoomPreview.sourceName);
+                     window.creativeAuthoring.asciiRoomPreview.sourceName);
   appendReceiptField(receipt, "ascii_room_preview_ready",
-                     window.asciiRoomPreview.ready);
+                     window.creativeAuthoring.asciiRoomPreview.ready);
   appendReceiptField(receipt, "ascii_room_preview_width",
-                     window.asciiRoomPreview.width);
+                     window.creativeAuthoring.asciiRoomPreview.width);
   appendReceiptField(receipt, "ascii_room_preview_height",
-                     window.asciiRoomPreview.height);
+                     window.creativeAuthoring.asciiRoomPreview.height);
   appendReceiptField(receipt, "ascii_room_preview_floor_count",
-                     window.asciiRoomPreview.floorCount);
+                     window.creativeAuthoring.asciiRoomPreview.floorCount);
   appendReceiptField(receipt, "ascii_room_preview_wall_count",
-                     window.asciiRoomPreview.wallCount);
+                     window.creativeAuthoring.asciiRoomPreview.wallCount);
   appendReceiptField(receipt, "ascii_room_preview_object_count",
-                     window.asciiRoomPreview.objectCount);
+                     window.creativeAuthoring.asciiRoomPreview.objectCount);
   appendReceiptField(receipt, "ascii_room_preview_marker_count",
-                     window.asciiRoomPreview.markerCount);
+                     window.creativeAuthoring.asciiRoomPreview.markerCount);
   appendReceiptField(receipt, "ascii_room_preview_elevated_floor_count",
-                     window.asciiRoomPreview.elevatedFloorCount);
+                     window.creativeAuthoring.asciiRoomPreview.elevatedFloorCount);
   appendReceiptField(receipt, "ascii_room_preview_ramp_count",
-                     window.asciiRoomPreview.rampCount);
+                     window.creativeAuthoring.asciiRoomPreview.rampCount);
   appendReceiptField(receipt, "ascii_room_preview_blocked_slope_count",
-                     window.asciiRoomPreview.blockedSlopeCount);
+                     window.creativeAuthoring.asciiRoomPreview.blockedSlopeCount);
   appendReceiptField(receipt, "ascii_room_preview_static_mesh_count",
-                     window.asciiRoomPreview.staticMeshCount);
+                     window.creativeAuthoring.asciiRoomPreview.staticMeshCount);
   appendReceiptField(receipt, "ascii_room_preview_anchor_count",
-                     window.asciiRoomPreview.anchorCount);
+                     window.creativeAuthoring.asciiRoomPreview.anchorCount);
   appendReceiptField(receipt, "ascii_room_preview_spatial_surface_count",
-                     window.asciiRoomPreview.spatialSurfaceCount);
+                     window.creativeAuthoring.asciiRoomPreview.spatialSurfaceCount);
   appendReceiptField(receipt, "ascii_room_preview_asset_text_written",
-                     window.asciiRoomPreview.assetTextWritten);
+                     window.creativeAuthoring.asciiRoomPreview.assetTextWritten);
   appendReceiptField(receipt, "ascii_room_preview_asset_text_bytes",
-                     window.asciiRoomPreview.assetTextBytes);
+                     window.creativeAuthoring.asciiRoomPreview.assetTextBytes);
   appendReceiptField(receipt, "ascii_room_activation_status",
-                     window.asciiRoomActivation.status);
+                     window.creativeAuthoring.asciiRoomActivation.status);
   appendReceiptField(receipt, "ascii_room_activation_reason_code",
-                     window.asciiRoomActivation.reasonCode);
+                     window.creativeAuthoring.asciiRoomActivation.reasonCode);
   appendReceiptField(receipt, "ascii_room_activation_room_id",
-                     window.asciiRoomActivation.roomId);
+                     window.creativeAuthoring.asciiRoomActivation.roomId);
   appendReceiptField(receipt, "ascii_room_activation_package_id",
-                     window.asciiRoomActivation.packageId);
+                     window.creativeAuthoring.asciiRoomActivation.packageId);
   appendReceiptField(receipt, "ascii_room_activation_scenario_id",
-                     window.asciiRoomActivation.scenarioId);
+                     window.creativeAuthoring.asciiRoomActivation.scenarioId);
   appendReceiptField(receipt, "ascii_room_activation_session_created",
-                     window.asciiRoomActivation.sessionCreated);
+                     window.creativeAuthoring.asciiRoomActivation.sessionCreated);
   appendReceiptField(receipt, "ascii_room_activation_player_spawned",
-                     window.asciiRoomActivation.playerSpawned);
+                     window.creativeAuthoring.asciiRoomActivation.playerSpawned);
   appendReceiptField(receipt, "ascii_room_activation_player_count",
-                     window.asciiRoomActivation.playerCount);
+                     window.creativeAuthoring.asciiRoomActivation.playerCount);
   appendReceiptField(receipt, "ascii_room_activation_entity_count",
-                     window.asciiRoomActivation.entityCount);
+                     window.creativeAuthoring.asciiRoomActivation.entityCount);
   appendReceiptField(receipt, "ascii_room_activation_npc_count",
-                     window.asciiRoomActivation.npcCount);
+                     window.creativeAuthoring.asciiRoomActivation.npcCount);
   appendReceiptField(receipt, "ascii_room_activation_pickup_count",
-                     window.asciiRoomActivation.pickupCount);
+                     window.creativeAuthoring.asciiRoomActivation.pickupCount);
   appendReceiptField(receipt, "ascii_room_activation_door_count",
-                     window.asciiRoomActivation.doorCount);
+                     window.creativeAuthoring.asciiRoomActivation.doorCount);
   appendReceiptField(receipt, "ascii_room_activation_marker_entity_count",
-                     window.asciiRoomActivation.markerEntityCount);
+                     window.creativeAuthoring.asciiRoomActivation.markerEntityCount);
   appendReceiptField(receipt, "ascii_room_activation_objective_count",
-                     window.asciiRoomActivation.objectiveCount);
+                     window.creativeAuthoring.asciiRoomActivation.objectiveCount);
   appendReceiptField(receipt, "ascii_room_activation_wall_count",
-                     window.asciiRoomActivation.wallCount);
+                     window.creativeAuthoring.asciiRoomActivation.wallCount);
   appendReceiptField(receipt, "ascii_room_activation_marker_count",
-                     window.asciiRoomActivation.markerCount);
+                     window.creativeAuthoring.asciiRoomActivation.markerCount);
   appendReceiptField(receipt, "ascii_room_activation_runtime_hash",
-                     window.asciiRoomActivation.runtimeHash);
+                     window.creativeAuthoring.asciiRoomActivation.runtimeHash);
   appendReceiptField(receipt, "room_editing_ready", window.creativeAuthoring.roomEditing.ready);
   appendReceiptField(receipt, "room_editing_status", window.creativeAuthoring.roomEditing.status);
   appendReceiptField(receipt, "room_editing_reason_code",

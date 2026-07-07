@@ -24,25 +24,25 @@ std::uint64_t sizeReceiptValue(std::size_t value) {
 
 void recordActivationResult(const ProductAsciiRoomActivationResult& result,
                             ProductAppWindowState& window) {
-  window.asciiRoomActivation.status = result.status;
-  window.asciiRoomActivation.reasonCode = result.reasonCode;
-  window.asciiRoomActivation.roomId = result.roomId;
-  window.asciiRoomActivation.packageId = result.packageId;
-  window.asciiRoomActivation.scenarioId = result.scenarioId;
-  window.asciiRoomActivation.sessionCreated = result.sessionCreated;
-  window.asciiRoomActivation.playerSpawned = result.playerSpawned;
-  window.asciiRoomActivation.playerCount = sizeReceiptValue(result.playerCount);
-  window.asciiRoomActivation.entityCount = sizeReceiptValue(result.entityCount);
-  window.asciiRoomActivation.npcCount = sizeReceiptValue(result.npcCount);
-  window.asciiRoomActivation.pickupCount = sizeReceiptValue(result.pickupCount);
-  window.asciiRoomActivation.doorCount = sizeReceiptValue(result.doorCount);
-  window.asciiRoomActivation.markerEntityCount =
+  window.creativeAuthoring.asciiRoomActivation.status = result.status;
+  window.creativeAuthoring.asciiRoomActivation.reasonCode = result.reasonCode;
+  window.creativeAuthoring.asciiRoomActivation.roomId = result.roomId;
+  window.creativeAuthoring.asciiRoomActivation.packageId = result.packageId;
+  window.creativeAuthoring.asciiRoomActivation.scenarioId = result.scenarioId;
+  window.creativeAuthoring.asciiRoomActivation.sessionCreated = result.sessionCreated;
+  window.creativeAuthoring.asciiRoomActivation.playerSpawned = result.playerSpawned;
+  window.creativeAuthoring.asciiRoomActivation.playerCount = sizeReceiptValue(result.playerCount);
+  window.creativeAuthoring.asciiRoomActivation.entityCount = sizeReceiptValue(result.entityCount);
+  window.creativeAuthoring.asciiRoomActivation.npcCount = sizeReceiptValue(result.npcCount);
+  window.creativeAuthoring.asciiRoomActivation.pickupCount = sizeReceiptValue(result.pickupCount);
+  window.creativeAuthoring.asciiRoomActivation.doorCount = sizeReceiptValue(result.doorCount);
+  window.creativeAuthoring.asciiRoomActivation.markerEntityCount =
       sizeReceiptValue(result.markerEntityCount);
-  window.asciiRoomActivation.objectiveCount =
+  window.creativeAuthoring.asciiRoomActivation.objectiveCount =
       sizeReceiptValue(result.objectiveCount);
-  window.asciiRoomActivation.wallCount = sizeReceiptValue(result.wallCount);
-  window.asciiRoomActivation.markerCount = sizeReceiptValue(result.markerCount);
-  window.asciiRoomActivation.runtimeHash = result.runtimeStateHash;
+  window.creativeAuthoring.asciiRoomActivation.wallCount = sizeReceiptValue(result.wallCount);
+  window.creativeAuthoring.asciiRoomActivation.markerCount = sizeReceiptValue(result.markerCount);
+  window.creativeAuthoring.asciiRoomActivation.runtimeHash = result.runtimeStateHash;
 }
 
 ProductAsciiRoomActivationResult failedActivation(
@@ -61,9 +61,9 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
     std::optional<Session>& activeSession,
     ProductAppWindowState& window) {
   ProductAsciiRoomActivationResult result;
-  result.roomId = window.asciiRoomDraft.roomId.empty() ? "none" : window.asciiRoomDraft.roomId;
+  result.roomId = window.creativeAuthoring.asciiRoomDraft.roomId.empty() ? "none" : window.creativeAuthoring.asciiRoomDraft.roomId;
   result.packageId = std::string(kAsciiRoomPackageId);
-  result.scenarioId = productAsciiRoomScenarioIdForRoom(window.asciiRoomDraft.roomId);
+  result.scenarioId = productAsciiRoomScenarioIdForRoom(window.creativeAuthoring.asciiRoomDraft.roomId);
 
   const ProductAsciiRoomAuthoringRequest request =
       productAsciiRoomAuthoringRequestFromDraft(window);
