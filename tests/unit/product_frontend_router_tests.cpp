@@ -58,7 +58,7 @@ iggy3d::creative::CreativeActiveIdentity liveCreativeIdentity() {
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
 }
 
 bool surfaceNamesAreStable() {
@@ -589,7 +589,7 @@ bool activeSurfaceWindowContextPreservesLegacyGameplayGate() {
   const auto gameplay = iggy3d::resolveProductActiveSurface(
       iggy3d::productActiveSurfaceContextForWindow(frontend, window));
 
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const auto creativeGameplay = iggy3d::resolveProductActiveSurface(
       iggy3d::productActiveSurfaceContextForWindow(frontend, window));
 
@@ -625,7 +625,7 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
 
   iggy3d::ProductAppWindowState legacy;
   legacy.gameplay.gameplayActive = true;
-  legacy.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  legacy.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   legacy.viewport.mapMakerStatus = "map_maker_enabled";
   legacy.viewport.mapMakerReasonCode = legacy.viewport.mapMakerStatus;
 
@@ -636,7 +636,8 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
 
   iggy3d::ProductAppWindowState staleIdentity;
   staleIdentity.gameplay.gameplayActive = true;
-  staleIdentity.interactionMode = iggy3d::ProductInteractionMode::Player;
+  staleIdentity.inputDevice.interactionMode =
+      iggy3d::ProductInteractionMode::Player;
   const iggy3d::creative::CreativeActiveIdentity liveIdentity =
       liveCreativeIdentity();
   const iggy3d::creative::CreativeActiveIdentity inactiveIdentity;

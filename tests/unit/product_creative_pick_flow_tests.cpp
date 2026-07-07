@@ -34,7 +34,7 @@ void markCreativeAppIdentity(cr::CreativeAppState& app) {
 
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   return window;
 }
 

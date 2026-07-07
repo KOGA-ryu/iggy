@@ -110,7 +110,7 @@ void recordProductRoomEditingStart(ProductAppWindowState& window,
   copyRoomEditingStateToWindow(window, result.state);
   // branch-gate: BG-1006
   if (result.ok) {
-    window.interactionMode = ProductInteractionMode::Creative;
+    window.inputDevice.interactionMode = ProductInteractionMode::Creative;
     window.roomEditorCursorReady = true;
     window.roomEditorCursor = ProductRoomEditorCursorState{};
     window.roomEditorStatus = "room_editor_cursor_ready";
@@ -145,7 +145,7 @@ bool recordProductRoomEditingLeave(const FrontendState& frontend,
   window.roomEditingLastInputSource =
       productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Script);
   window.roomEditingLastOperationAccepted = true;
-  window.interactionMode = ProductInteractionMode::Player;
+  window.inputDevice.interactionMode = ProductInteractionMode::Player;
   syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   window.roomEditorCursorReady = false;
   window.roomEditorStatus = "room_editor_not_ready";

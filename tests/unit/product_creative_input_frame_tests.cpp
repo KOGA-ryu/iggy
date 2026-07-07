@@ -29,7 +29,7 @@ void markCreativeAppIdentity(cr::CreativeAppState& app) {
 
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   return window;
 }
 
@@ -56,7 +56,7 @@ iggy3d::KeyboardCreativeToolKeyPresses moveKeyPressed() {
 bool activeRuleUsesCreativeDocumentIdentity() {
   iggy3d::ProductAppWindowState window;
   const bool playerActive = iggy3d::productCreativeInputActiveForWindow(window);
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const bool creativeModeActive =
       iggy3d::productCreativeInputActiveForWindow(window);
   const bool documentCreativeActive =

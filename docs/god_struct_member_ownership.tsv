@@ -8,8 +8,6 @@ selectedRowDrawn	FrontendWindowShell
 mouseMenuSelectUsed	FrontendWindowShell
 gamepadMenuSelectUsed	FrontendWindowShell
 inputDevice	InputDeviceStore
-interactionMode	InputDeviceStore
-interactionModeHud	InputDeviceStore
 topDownMap	DebugHudStore
 devCollisionOverlay	DebugHudStore
 selectedSettingsTab	FrontendWindowShell

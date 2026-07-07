@@ -99,17 +99,17 @@ void prepopulateCreativeProjection(iggy3d::ProductAppWindowState& window) {
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
 }
 
 void clearCreativeDocumentIdentity(iggy3d::ProductAppWindowState& window) {
-  window.interactionMode = iggy3d::ProductInteractionMode::Player;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Player;
 }
 
 bool activeRuleUsesCreativeDocumentIdentity() {
   iggy3d::ProductAppWindowState window;
   const bool playerActive = iggy3d::productCreativeUiActiveForWindow(window);
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const bool creativeModeActive =
       iggy3d::productCreativeUiActiveForWindow(window);
   markCreativeDocumentWindow(window);
@@ -335,7 +335,7 @@ bool activeThenInactiveClearsPriorReadyProjection() {
   const iggy3d::ProductCreativeUiFrame activeFrame =
       iggy3d::buildProductCreativeUiFrame(request);
 
-  window.interactionMode = iggy3d::ProductInteractionMode::Player;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Player;
   clearCreativeDocumentIdentity(window);
   const iggy3d::ProductCreativeUiFrame inactiveFrame =
       iggy3d::buildProductCreativeUiFrame(request);

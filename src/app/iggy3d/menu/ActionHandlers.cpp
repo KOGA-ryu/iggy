@@ -816,7 +816,7 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
                                       context.window,
                                       context.creativeApp);
     // branch-gate: BG-1205
-    context.window.interactionMode =
+    context.window.inputDevice.interactionMode =
         enable ? ProductInteractionMode::Creative : ProductInteractionMode::Player;
     syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
     // branch-gate: BG-1205
@@ -887,7 +887,7 @@ ProductMenuActionResult applyProductSystemPauseMenuAction(
                                                      context.creativeApp);
     openProductPauseTransition(frontend, window, FrontendAction::Resume);
     if (preserveCreativeMode) {
-      window.interactionMode = ProductInteractionMode::Creative;
+      window.inputDevice.interactionMode = ProductInteractionMode::Creative;
     }
     frontend.status = "pause_opened_from_gameplay";
     return {true, true};

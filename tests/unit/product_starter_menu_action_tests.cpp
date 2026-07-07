@@ -341,7 +341,7 @@ bool creativeNewWorldLaunchesThroughStarterActionAndKeepsContinueSeparate() {
                 "creative starter gameplay active") &&
          expect(harness.frontend.screen == iggy3d::FrontendScreen::Gameplay,
                 "creative starter frontend gameplay") &&
-         expect(harness.window.interactionMode ==
+         expect(harness.window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "creative starter interaction mode") &&
          expect(harness.window.launchStatus ==
@@ -394,7 +394,7 @@ bool creativeNewWorldMissingFacadeFailsClosed() {
                 "missing facade no session") &&
          expect(!harness.window.gameplay.gameplayActive,
                 "missing facade no gameplay") &&
-         expect(harness.window.interactionMode ==
+         expect(harness.window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Player,
                 "missing facade player mode") &&
          expect(harness.window.launchStatus ==
@@ -447,7 +447,7 @@ bool creativeStarterLaunchCanOpenAndClosePauseWithMenuBackRoute() {
              "creative pause owns input") &&
       expect(liveSurface(harness.frontend, harness.window).gameplayInputSuppressed,
              "creative pause suppresses gameplay") &&
-      expect(harness.window.interactionMode ==
+      expect(harness.window.inputDevice.interactionMode ==
                  iggy3d::ProductInteractionMode::Creative,
              "creative pause preserves creative mode");
 
@@ -479,7 +479,7 @@ bool creativeStarterLaunchCanOpenAndClosePauseWithMenuBackRoute() {
                 "creative resumed gameplay owns input") &&
          expect(!liveSurface(harness.frontend, harness.window).gameplayInputSuppressed,
                 "creative resumed gameplay unsuppressed") &&
-         expect(harness.window.interactionMode ==
+         expect(harness.window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "creative resumed mode stays creative") &&
          expect(harness.window.gameplay.gameplayActive,
@@ -524,7 +524,7 @@ bool creativeOpenWorldLaunchesThroughStarterAction() {
                 "creative open gameplay active") &&
          expect(harness.frontend.screen == iggy3d::FrontendScreen::Gameplay,
                 "creative open frontend gameplay") &&
-         expect(harness.window.interactionMode ==
+         expect(harness.window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "creative open interaction mode") &&
          expect(harness.window.launchStatus ==
@@ -580,7 +580,7 @@ bool creativeOpenWorldWithoutCreativeSaveFailsClosed() {
                 "creative open empty no session") &&
          expect(!harness.window.gameplay.gameplayActive,
                 "creative open empty no gameplay") &&
-         expect(harness.window.interactionMode ==
+         expect(harness.window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Player,
                 "creative open empty stays player") &&
          expect(harness.window.launchStatus ==
@@ -620,7 +620,7 @@ bool creativeOpenWorldMissingFacadeFailsClosed() {
                 "creative open missing facade no session") &&
          expect(!harness.window.gameplay.gameplayActive,
                 "creative open missing facade no gameplay") &&
-         expect(harness.window.interactionMode ==
+         expect(harness.window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Player,
                 "creative open missing facade stays player") &&
          expect(harness.window.launchStatus ==
@@ -696,7 +696,7 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
   const bool launchSessionPresent = harness.activeSession.has_value();
   const bool launchGameplayActive = harness.window.gameplay.gameplayActive;
   const iggy3d::ProductInteractionMode launchInteractionMode =
-      harness.window.interactionMode;
+      harness.window.inputDevice.interactionMode;
   const std::string launchStatus = harness.window.launchStatus;
   const std::string launchedSaveId = app.identity.saveId;
   const std::string launchedSavePath = app.identity.savePath;
@@ -726,7 +726,7 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
   const bool saveExitSessionCleared = !harness.activeSession.has_value();
   const bool saveExitGameplayCleared = !harness.window.gameplay.gameplayActive;
   const iggy3d::ProductInteractionMode saveExitInteractionMode =
-      harness.window.interactionMode;
+      harness.window.inputDevice.interactionMode;
   const std::string saveExitLaunchStatus = harness.window.launchStatus;
   const iggy3d::creative::CreativeObjectDirtyFlags dirtyAfterSaveExit =
       facade.document().dirtyFlags();
@@ -852,7 +852,7 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
                 "lifecycle reopen active session") &&
          expect(harness.window.gameplay.gameplayActive,
                 "lifecycle reopen gameplay active") &&
-         expect(harness.window.interactionMode ==
+         expect(harness.window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "lifecycle reopen creative mode") &&
          expect(harness.window.launchStatus ==

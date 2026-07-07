@@ -286,7 +286,7 @@ void copyProductRoomEditorHud(ProductAppWindowState& window,
 
 void copyInteractionModeHud(ProductAppWindowState& window,
                                    const InteractionModeHud& hud) {
-  window.interactionModeHud = hud;
+  window.inputDevice.interactionModeHud = hud;
 }
 
 void copyTopDownMapOverlay(ProductAppWindowState& window,
@@ -686,14 +686,14 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   applyGameplayFeedbackVisibility(frame.feedback, hudSurface.gameplayHudVisible);
   frame.interactionModeHud = buildInteractionModeHud(
       InteractionModeHudRequest{
-          window.interactionMode,
+          window.inputDevice.interactionMode,
           hudSurface.gameplayHudVisible || hudSurface.roomEditorHudVisible,
           hudSurface.roomEditorHudVisible,
       });
   copyInteractionModeHud(window, frame.interactionModeHud);
   frame.topDownMapOverlay = buildTopDownMapOverlay(
       TopDownMapOverlayRequest{request.rendererRequest,
-                                      window.interactionMode,
+                                      window.inputDevice.interactionMode,
                                       hudSurface.gameplayHudVisible ||
                                       hudSurface.roomEditorHudVisible,
                                       hudSurface.roomEditorHudVisible,
@@ -821,7 +821,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                                  &frame.mapMakerCubePreview);
   frame.topDownMapOverlay = buildTopDownMapOverlay(
       TopDownMapOverlayRequest{request.rendererRequest,
-                                      window.interactionMode,
+                                      window.inputDevice.interactionMode,
                                       hudSurface.gameplayHudVisible ||
                                       hudSurface.roomEditorHudVisible,
                                       hudSurface.roomEditorHudVisible,
@@ -846,7 +846,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   applyGameplayFeedbackVisibility(frame.feedback, hudSurface.gameplayHudVisible);
   frame.interactionModeHud = buildInteractionModeHud(
       InteractionModeHudRequest{
-          window.interactionMode,
+          window.inputDevice.interactionMode,
           hudSurface.gameplayHudVisible || hudSurface.roomEditorHudVisible,
           hudSurface.roomEditorHudVisible,
       });

@@ -121,7 +121,8 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
                      window.inputDevice.gamepadMapping);
   appendReceiptField(receipt, "gamepad_menu_select_used", window.gamepadMenuSelectUsed);
   appendReceiptField(receipt, "interaction_mode",
-                     productInteractionModeName(window.interactionMode));
+                     productInteractionModeName(
+                         window.inputDevice.interactionMode));
   appendReceiptField(receipt, "creative_surface_kind",
                      productCreativeSurfaceKindName(creativeSurface));
   appendReceiptField(receipt, "map_maker_active", mapMakerLive);
@@ -147,15 +148,15 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
   appendReceiptField(receipt, "map_maker_grid_major_dot_count",
                      window.viewport.mapMakerGridMajorDotCount);
   appendReceiptField(receipt, "interaction_mode_hud_visible",
-                     window.interactionModeHud.visible);
+                     window.inputDevice.interactionModeHud.visible);
   appendReceiptField(receipt, "interaction_mode_hud_status",
-                     window.interactionModeHud.status);
+                     window.inputDevice.interactionModeHud.status);
   appendReceiptField(receipt, "interaction_mode_hud_reason_code",
-                     window.interactionModeHud.reasonCode);
+                     window.inputDevice.interactionModeHud.reasonCode);
   appendReceiptField(receipt, "interaction_mode_hud_mode",
-                     window.interactionModeHud.mode);
+                     window.inputDevice.interactionModeHud.mode);
   appendReceiptField(receipt, "interaction_mode_hud_label",
-                     window.interactionModeHud.label);
+                     window.inputDevice.interactionModeHud.label);
   appendReceiptField(receipt, "top_down_map_visible", window.topDownMap.visible);
   appendReceiptField(receipt, "top_down_map_purpose", window.topDownMap.purpose);
   appendReceiptField(receipt, "top_down_map_size", window.topDownMap.size);

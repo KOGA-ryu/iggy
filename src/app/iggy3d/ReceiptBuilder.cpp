@@ -40,7 +40,7 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   const ProductActiveSurfaceFrame activeSurface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
   const bool sourceCreativeDocument =
-      window.interactionMode == ProductInteractionMode::Creative &&
+      window.inputDevice.interactionMode == ProductInteractionMode::Creative &&
       productCreativeWorldActiveForIdentity(creativeIdentity);
   const ProductCreativeSurfaceKind creativeSurface =
       sourceCreativeDocument

@@ -74,7 +74,7 @@ cr::CreativeSpatialProjectionRequest projectionRequest() {
 
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   return window;
 }
 
@@ -121,9 +121,10 @@ iggy3d::ProductCreativeViewportPickFrameRequest baseRequest(
 
 bool activeRuleUsesCreativeDocumentIdentity() {
   iggy3d::ProductAppWindowState player;
-  player.interactionMode = iggy3d::ProductInteractionMode::Player;
+  player.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Player;
   iggy3d::ProductAppWindowState legacyCreative;
-  legacyCreative.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  legacyCreative.inputDevice.interactionMode =
+      iggy3d::ProductInteractionMode::Creative;
   iggy3d::ProductAppWindowState documentCreative = creativeWindow();
 
   return expect(!iggy3d::productCreativeViewportPickActiveForWindow(player),

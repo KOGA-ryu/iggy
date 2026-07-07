@@ -86,7 +86,7 @@ bool creativeNewWorldLaunchesThroughAutomationAppContext() {
          expect(activeSession.has_value(), "automation created runtime session") &&
          expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
                 "automation entered gameplay") &&
-         expect(window.interactionMode ==
+         expect(window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "automation entered creative mode") &&
          expect(window.launchStatus == "product_creative_world_launched",

@@ -236,7 +236,7 @@ bool creativeDocumentBakesAfterCreateMoveDeleteUndoNoWindow() {
   bool ok = true;
   ok &= expect(launched.accepted, "launch accepted");
   ok &= expect(activeSession.has_value(), "active session exists");
-  ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+  ok &= expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Creative,
                "creative interaction mode");
   const std::uint64_t revisionAfterLaunch = facade.document().revision();
   ok &= expect(revisionAfterLaunch == 0U, "blank launch revision");

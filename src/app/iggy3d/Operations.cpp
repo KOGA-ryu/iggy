@@ -615,7 +615,7 @@ class ProductCreativeBakedRoomRefreshService {
 
  private:
   bool passesPreconditions(const creative::CreativeDocument& document) {
-    if (window_.interactionMode != ProductInteractionMode::Creative) {
+    if (window_.inputDevice.interactionMode != ProductInteractionMode::Creative) {
       setCreativeBakedActiveRoomRefreshStatus(
           result_,
           "product_creative_baked_room_inactive");
@@ -1308,7 +1308,7 @@ void launchProductNewWorld(const ProductAppOptions& options,
   }
 
   window.launchStatus = initialSave.status;
-  window.interactionMode = ProductInteractionMode::Player;
+  window.inputDevice.interactionMode = ProductInteractionMode::Player;
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
 }
 
@@ -1377,7 +1377,7 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
   window.creativeUndo.depth = 0;
 
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
-  window.interactionMode = ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = ProductInteractionMode::Creative;
   result.enteredGameplay = true;
   result.accepted = true;
   setCreativeNewWorldLaunchStatus(result, "product_creative_world_launched");
@@ -1445,7 +1445,7 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
   window.creativeUndo.depth = 0;
 
   enterProductGameplayTransition(frontend, window, FrontendAction::Load);
-  window.interactionMode = ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = ProductInteractionMode::Creative;
   result.enteredGameplay = true;
   result.accepted = true;
   setCreativeOpenWorldLaunchStatus(result, "product_creative_world_opened");
@@ -1489,7 +1489,7 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
   result.dirtyFlagsBefore = facade.document().dirtyFlags();
   result.dirtyFlagsAfter = result.dirtyFlagsBefore;
 
-  if (window.interactionMode != ProductInteractionMode::Creative) {
+  if (window.inputDevice.interactionMode != ProductInteractionMode::Creative) {
     setCurrentCreativeSaveStatus(result, "product_creative_save_inactive");
     recordActiveCreativeSaveResult(creativeApp.identity, result);
     return result;
@@ -1634,7 +1634,7 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   (void)ensureActiveRoomCollisionFresh(window, &*activeSession);
   window.launchStatus = loaded.status;
   window.runtimeStateHash = activeSession->stateHash();
-  window.interactionMode = ProductInteractionMode::Player;
+  window.inputDevice.interactionMode = ProductInteractionMode::Player;
   enterProductGameplayTransition(frontend, window, launchAction);
 }
 

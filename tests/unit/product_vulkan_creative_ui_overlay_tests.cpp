@@ -27,7 +27,7 @@ void markCreativeAppIdentity(cr::CreativeAppState& app) {
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
 }
 
 iggy3d::ProductCreativeUiFrame readyCreativeUiFrame() {
@@ -45,7 +45,7 @@ iggy3d::ProductCreativeUiFrame readyCreativeUiFrame() {
 
 bool legacyCreativeWindowDoesNotBuildDocumentOverlay() {
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   cr::CreativeAppState app;
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();

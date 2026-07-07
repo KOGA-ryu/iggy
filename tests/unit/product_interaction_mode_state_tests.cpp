@@ -44,7 +44,8 @@ iggy3d::ProductAsciiRoomAuthoringRequest smallRoomRequest() {
 
 bool defaultStateIsPlayerMode() {
   const iggy3d::ProductAppWindowState window;
-  return expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+  return expect(window.inputDevice.interactionMode ==
+                    iggy3d::ProductInteractionMode::Player,
                 "default interaction mode is player") &&
          expect(!window.inputDevice.controllerModeToggle.requested,
                 "default toggle not requested") &&
@@ -74,7 +75,8 @@ bool roomEditingStartSetsCreativeMode() {
 
   return expect(started.ok, "room editing start accepted") &&
          expect(window.roomEditing.ready, "room editing ready") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+         expect(window.inputDevice.interactionMode ==
+                    iggy3d::ProductInteractionMode::Creative,
                 "room editing start sets creative mode") &&
          expect(iggy3d::hasReceiptField(receipt, "interaction_mode", "creative"),
                 "room editing start receipt interaction mode");
@@ -110,7 +112,8 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
          expect(!window.roomEditing.ready, "room editing no longer ready") &&
          expect(window.roomEditing.status == "product_room_editing_left",
                 "room editing leave status") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+         expect(window.inputDevice.interactionMode ==
+                    iggy3d::ProductInteractionMode::Player,
                 "room editing leave returns player mode") &&
          expect(surfaceAfterLeave.inputOwner == iggy3d::MenuOwner::Gameplay,
                 "room editing leave returns gameplay owner") &&
@@ -139,7 +142,7 @@ bool roomEditingLeaveRejectsWhenNotReady() {
   iggy3d::FrontendState frontend;
   iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Player;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Player;
 
   const bool left =
       iggy3d::recordProductRoomEditingLeave(frontend, window, "unit_leave_editor");
@@ -150,7 +153,8 @@ bool roomEditingLeaveRejectsWhenNotReady() {
                 "not-ready leave status") &&
          expect(window.roomEditorStatus == "room_editor_not_ready",
                 "not-ready editor status") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+         expect(window.inputDevice.interactionMode ==
+                    iggy3d::ProductInteractionMode::Player,
                 "not-ready leave keeps player mode");
 }
 
@@ -177,7 +181,8 @@ bool returnToTitleResetsCreativeModeToPlayer() {
   return expect(started.ok, "room editing start accepted for title reset") &&
          expect(frontend.screen == iggy3d::FrontendScreen::Starter,
                 "return to title opens starter") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+         expect(window.inputDevice.interactionMode ==
+                    iggy3d::ProductInteractionMode::Player,
                 "return to title resets player mode") &&
          expect(iggy3d::hasReceiptField(receipt, "interaction_mode", "player"),
                 "return to title receipt interaction mode");
@@ -288,7 +293,8 @@ bool gameplayChordTogglesAndLatches() {
   return expect(first.toggleAccepted, "first gameplay chord accepted") &&
          expect(first.mode == iggy3d::ProductInteractionMode::Creative,
                 "first gameplay chord sets creative") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+         expect(window.inputDevice.interactionMode ==
+                    iggy3d::ProductInteractionMode::Player,
                 "re-pressed gameplay chord returns player") &&
          expect(held.toggleRequested, "held chord requested") &&
          expect(!held.toggleAccepted, "held chord not accepted") &&
@@ -319,7 +325,8 @@ bool roomEditorSurfaceAllowsToggle() {
       iggy3d::applyProductInteractionModeFrameToggle(
           {frontend, window, chordState, fullChord()});
   return expect(result.toggleAccepted, "room editor chord accepted") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+         expect(window.inputDevice.interactionMode ==
+                    iggy3d::ProductInteractionMode::Creative,
                 "room editor toggles mode") &&
          expect(window.inputDevice.controllerModeToggle.surface == "room_editor",
                 "room editor surface recorded");
@@ -336,7 +343,8 @@ bool blockedSurfaceDoesNotToggle() {
           {frontend, window, chordState, fullChord()});
   return expect(result.toggleRequested, "starter chord requested") &&
          expect(!result.toggleAccepted, "starter chord rejected") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+         expect(window.inputDevice.interactionMode ==
+                    iggy3d::ProductInteractionMode::Player,
                 "starter preserves player mode") &&
          expect(window.inputDevice.controllerModeToggle.status ==
                     "interaction_mode_surface_blocked",
@@ -356,7 +364,7 @@ bool receiptFieldsExposeInteractionModeProof() {
   iggy3d::ProductAppWindowState window;
   iggy3d::ProductSaveBridgeResult saves;
 
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.inputDevice.controllerModeToggle.requested = true;
   window.inputDevice.controllerModeToggle.accepted = true;
   window.inputDevice.controllerModeToggle.status = "interaction_mode_toggled";

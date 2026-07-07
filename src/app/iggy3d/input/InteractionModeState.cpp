@@ -37,14 +37,14 @@ ProductInteractionModeToggleResult applyProductInteractionModeFrameToggle(
       productInputSurfaceFor(request.frontend, request.window);
   const ProductInteractionModeToggleResult result =
       applyProductInteractionModeToggle({
-          request.window.interactionMode,
+          request.window.inputDevice.interactionMode,
           surface,
           request.sample,
           request.chordState,
       });
 
   request.chordState = result.chordState;
-  request.window.interactionMode = result.mode;
+  request.window.inputDevice.interactionMode = result.mode;
   request.window.inputDevice.controllerModeToggle.requested =
       result.toggleRequested;
   request.window.inputDevice.controllerModeToggle.accepted =

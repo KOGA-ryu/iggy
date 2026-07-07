@@ -575,7 +575,7 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
          expect(window.gameplay.runtimeSessionCreated,
                 "creative launch window runtime session") &&
          expect(window.gameplay.gameplayActive, "creative launch gameplay active") &&
-         expect(window.interactionMode ==
+         expect(window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "creative launch interaction mode") &&
          expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
@@ -724,7 +724,7 @@ bool blankTitleOrTimestampRejectsBeforeSessionInstallAndModeSwitch() {
         !expect(!launched.documentInstalled, "blank title no install") ||
         !expect(!launched.enteredGameplay, "blank title no gameplay") ||
         !expect(!activeSession.has_value(), "blank title no active session") ||
-        !expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+        !expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "blank title player mode") ||
         !expect(facade.document().id() == cr::kInvalidDocumentId,
                 "blank title facade unchanged")) {
@@ -755,7 +755,7 @@ bool blankTitleOrTimestampRejectsBeforeSessionInstallAndModeSwitch() {
            expect(!launched.enteredGameplay, "blank timestamp no gameplay") &&
            expect(!activeSession.has_value(),
                   "blank timestamp no active session") &&
-           expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+           expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Player,
                   "blank timestamp player mode") &&
            expect(facade.document().id() == cr::kInvalidDocumentId,
                   "blank timestamp facade unchanged");
@@ -791,7 +791,7 @@ bool invalidAttemptTokenWritesNoCommittedSaveAndDoesNotEnterCreativeMode() {
          expect(!launched.enteredGameplay, "invalid attempt no gameplay") &&
          expect(!activeSession.has_value(),
                 "invalid attempt active session absent") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+         expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "invalid attempt player mode") &&
          expect(facade.document().id() == cr::kInvalidDocumentId,
                 "invalid attempt facade unchanged") &&
@@ -872,7 +872,7 @@ bool secondLaunchClearsOldFacadeStateAndInstallsNewDocument() {
                 "second launch pointer cleared") &&
          expect(activeSession.has_value(),
                 "second launch active session present") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+         expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "second launch creative mode") &&
          expect(facade.document().id() == 2U,
                 "second launch facade document id") &&
@@ -961,7 +961,7 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
          expect(openWindow.gameplay.runtimeSessionCreated,
                 "open launch runtime session window") &&
          expect(openWindow.gameplay.gameplayActive, "open launch gameplay active") &&
-         expect(openWindow.interactionMode ==
+         expect(openWindow.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "open launch creative mode") &&
          expect(openFrontend.childScreen == iggy3d::FrontendScreen::Gameplay,
@@ -1120,7 +1120,7 @@ bool openLaunchRefreshesBakedActiveRoomFromSavedCreativeDocument() {
                 "open baked projection wall count") &&
          expect(countProjectedRole(projection.room, "prop") == 2U,
                 "open baked projection prop count") &&
-         expect(openWindow.interactionMode ==
+         expect(openWindow.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "open baked creative mode") &&
          expect(openApp.identity.saveId == opened.saveId,
@@ -1157,7 +1157,7 @@ bool openBlankOrInvalidSaveIdRejectsBeforeSessionInstallAndModeSwitch() {
         !expect(!opened.documentInstalled, "open blank id no install") ||
         !expect(!opened.enteredGameplay, "open blank id no gameplay") ||
         !expect(!activeSession.has_value(), "open blank id no active session") ||
-        !expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+        !expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "open blank id player mode") ||
         !expect(facade.document().id() == cr::kInvalidDocumentId,
                 "open blank id facade unchanged")) {
@@ -1188,7 +1188,7 @@ bool openBlankOrInvalidSaveIdRejectsBeforeSessionInstallAndModeSwitch() {
            expect(!opened.enteredGameplay, "open invalid id no gameplay") &&
            expect(!activeSession.has_value(),
                   "open invalid id no active session") &&
-           expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+           expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Player,
                   "open invalid id player mode") &&
            expect(facade.document().id() == cr::kInvalidDocumentId,
                   "open invalid id facade unchanged");
@@ -1233,7 +1233,7 @@ bool openProductSessionSaveRejectsAsMissingCreativeSection() {
          expect(!opened.documentInstalled, "open product no install") &&
          expect(!opened.enteredGameplay, "open product no gameplay") &&
          expect(!openSession.has_value(), "open product active session absent") &&
-         expect(openWindow.interactionMode == iggy3d::ProductInteractionMode::Player,
+         expect(openWindow.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "open product player mode") &&
          expect(openFacade.document().id() == cr::kInvalidDocumentId,
                 "open product facade unchanged");
@@ -1269,7 +1269,7 @@ bool productNewWorldLaunchClearsActiveCreativeIdentity() {
                 "product clear runtime session present") &&
          expect(window.gameplay.gameplayActive,
                 "product clear gameplay active") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+         expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "product clear player interaction mode") &&
          expect(window.saveSession.activeProductSaveId != "none",
                 "product clear active product save id") &&
@@ -1460,7 +1460,7 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
         facade.createDocumentObject(cr::CreativeObjectKind::Room);
     const cr::CreativeObjectDirtyFlags dirtyBefore =
         facade.document().dirtyFlags();
-    window.interactionMode = iggy3d::ProductInteractionMode::Player;
+    window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Player;
 
     const iggy3d::ProductCreativeCurrentWorldSaveResult saved =
         iggy3d::saveProductCurrentCreativeWorld(options, app, "unit", window);
@@ -1486,7 +1486,7 @@ bool currentCreativeWorldSaveRejectsInvalidContextsWithoutDrain() {
 
   const iggy3d::ProductAppOptions options = testOptions("current_save_invalid_doc");
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   cr::CreativeAppState app;
   app.identity.saveId = "save_001";
   app.identity.worldId = "world_0001";
@@ -1569,7 +1569,7 @@ bool pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() {
                 "pause creative save facade dirty drained") &&
          expect(activeSession.has_value(),
                 "pause creative save keeps active session") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+         expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "pause creative save remains creative") &&
          expect(window.saveSession.activeProductSaveId == "none",
                 "pause creative save does not set product save id") &&
@@ -1637,7 +1637,7 @@ bool pauseSaveUsesCreativeIdentityInsteadOfStaleWindowMirror() {
   iggy3d::ProductAppWindowState window;
   cr::CreativeAppState app;
 
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const std::string saveIdBefore = app.identity.saveId;
 
   const iggy3d::ProductPauseSaveFlowResult saved =
@@ -1723,7 +1723,7 @@ bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
                 "pause creative save exit resets session") &&
          expect(!window.gameplay.gameplayActive,
                 "pause creative save exit clears gameplay active") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+         expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "pause creative save exit player mode") &&
          expect(app.identity.saveId == "none",
                 "pause creative save exit clears active creative id") &&
@@ -1789,7 +1789,7 @@ bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
                 "pause creative save exit failure keeps session") &&
          expect(window.gameplay.gameplayActive,
                 "pause creative save exit failure gameplay active") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+         expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "pause creative save exit failure stays creative") &&
          expect(facade.document().dirtyFlags() == dirtyBefore,
                 "pause creative save exit failure dirty preserved") &&
@@ -1971,7 +1971,7 @@ bool secondOpenClearsOldFacadeStateAndInstallsRestoredDocument() {
          expect(secondOpened.installReceipt.toolPointerCleared,
                 "second open pointer cleared") &&
          expect(openSession.has_value(), "second open active session") &&
-         expect(openWindow.interactionMode ==
+         expect(openWindow.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "second open creative mode") &&
          expect(openFacade.document().id() == secondCreated.documentId,
@@ -2156,7 +2156,7 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
                 "baked room projection wall count") &&
          expect(countProjectedRole(projection.room, "prop") == 2U,
                 "baked room projection prop count") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+         expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "baked room interaction remains creative") &&
          expect(app.identity.saveId == launched.saveId,
                 "baked room active creative save id preserved") &&
@@ -2341,7 +2341,7 @@ bool manualRebuildRoomCommandLoadsActiveRoomThroughInputFrame() {
                 "manual rebuild projection wall count") &&
          expect(countProjectedRole(scenario.projection.room, "prop") == 2U,
                 "manual rebuild projection prop count") &&
-         expect(scenario.window.interactionMode ==
+         expect(scenario.window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "manual rebuild interaction remains creative") &&
          expect(scenario.app.identity.saveId == scenario.launched.saveId,
@@ -3931,7 +3931,7 @@ bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
                             window,
                             app);
     installSentinelRoomState(window);
-    window.interactionMode = iggy3d::ProductInteractionMode::Player;
+    window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Player;
 
     const iggy3d::ProductCreativeBakedActiveRoomRefreshResult refreshed =
         iggy3d::refreshProductCreativeBakedActiveRoom({},

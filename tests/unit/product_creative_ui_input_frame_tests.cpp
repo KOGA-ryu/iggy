@@ -71,7 +71,7 @@ iggy3d::MouseClick clickAt(float x, float y) {
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
 }
 
 void assignValidDocumentId(iggy3d::creative::Facade& facade) {

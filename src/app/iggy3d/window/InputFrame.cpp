@@ -261,10 +261,12 @@ void recordProductWindowControllerActions(
   const bool mapMakerLive =
       productMapMakerLiveForSource(frontend, window, creativeApp);
   const ProductInteractionMode actionMode =
-      mapMakerLive ? ProductInteractionMode::Player : window.interactionMode;
+      mapMakerLive ? ProductInteractionMode::Player
+                   : window.inputDevice.interactionMode;
   const ProductInteractionMode proofMode =
       // branch-gate: BG-1059
-      controllerModeChordRequested ? window.interactionMode : actionMode;
+      controllerModeChordRequested ? window.inputDevice.interactionMode
+                                   : actionMode;
   ProductControllerActionRoutingResult result =
       productControllerActionRoutingSkipped(
           surface, proofMode, "controller_action_chord_consumed");
@@ -320,7 +322,7 @@ void updateProductWindowMouseCapture(const FrontendState& frontend,
       productActiveSurfaceContextForWindow(frontend, window));
   const ProductMouseCapturePolicy policy = buildProductMouseCapturePolicy({
       window.gameplay.gameplayActive,
-      window.interactionMode,
+      window.inputDevice.interactionMode,
       surface.inputOwner,
       surface.gameplayInputSuppressed,
       productWindowFocused(sdlWindow),
@@ -949,7 +951,8 @@ ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPre
     return result;
   }
   // branch-gate: BG-1063
-  if (context.window.interactionMode != ProductInteractionMode::Creative) {
+  if (context.window.inputDevice.interactionMode !=
+      ProductInteractionMode::Creative) {
     result.status = "room_editor_mouse_pick_preview_mode_blocked";
     result.reasonCode = result.status;
     return result;

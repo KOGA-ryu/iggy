@@ -43,7 +43,7 @@ iggy3d::FrontendState gameplayFrontend() {
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.gameplay.gameplayActive = true;
 }
 

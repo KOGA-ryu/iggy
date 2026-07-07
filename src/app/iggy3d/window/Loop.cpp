@@ -63,7 +63,7 @@ void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
       productActiveSurfaceContextForWindow(frontend, window));
   const ProductMouseCapturePolicy policy = buildProductMouseCapturePolicy({
       window.gameplay.gameplayActive,
-      window.interactionMode,
+      window.inputDevice.interactionMode,
       surface.inputOwner,
       surface.gameplayInputSuppressed,
       true,

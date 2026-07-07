@@ -23,18 +23,18 @@ void setTransition(ProductAppWindowState& window,
 
 void clearProductPauseOwnedTransientModes(ProductAppWindowState& window) {
   const bool preserveCreativeWorldMode =
-      window.interactionMode == ProductInteractionMode::Creative &&
+      window.inputDevice.interactionMode == ProductInteractionMode::Creative &&
       productCreativeWorldActiveForWindow(window);
   clearProductMenuOwnedTransientModes(window);
   if (preserveCreativeWorldMode) {
-    window.interactionMode = ProductInteractionMode::Creative;
+    window.inputDevice.interactionMode = ProductInteractionMode::Creative;
   }
 }
 
 }  // namespace
 
 void clearProductMapMakerMode(ProductAppWindowState& window) {
-  window.interactionMode = ProductInteractionMode::Player;
+  window.inputDevice.interactionMode = ProductInteractionMode::Player;
   window.viewport.creativeFlyActive = false;
   window.viewport.creativeFlyStatus = "creative_fly_not_requested";
   window.viewport.creativeFlyReasonCode = window.viewport.creativeFlyStatus;

@@ -19,10 +19,10 @@ GameplayStore.
 
 **ViewportStore fold is COMPLETE as E155** (#6 — folded 11 mapMaker* fields into
 ProductViewportState). `E156` InputDeviceStore (#7) has been decomposed into
-E165-E167; **E165 and E166 are COMPLETE** and moved the device/action plus
-controller/capture fields into `ProductAppWindowState::inputDevice`. E167
-is READY. **Dominant hazard:** `interactionMode` is a
-real field on 6+ foreign structs, so compiler-guided only, never sed.
+E165-E167 and is **COMPLETE**. E165 moved the device/action fields, E166 moved
+controller/capture fields, and E167 moved `interactionMode` plus
+`interactionModeHud` into `ProductAppWindowState::inputDevice`.
+`gamepadMenuSelectUsed` remains in FrontendWindowShell.
 
 **Decomposition card set now COMPLETE (all 11 stores).** Remaining parents staged in
 `blocked/` (recon-grounded, `wdnplylk0`): `E161` CreativeAuthoringStore (#4 — the
@@ -50,7 +50,7 @@ None.
 
 ## Pull Next
 
-1. E167 — InputDeviceStore G3: interaction mode state.
+None.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -62,7 +62,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. E167 — InputDeviceStore G3: interaction mode state.
+None currently ready.
 
 ## Parking Lot
 
@@ -90,9 +90,9 @@ Held — do NOT promote to `ready/` on a guess:
   - **#5 `SaveSessionStore`** — **COMPLETE as E153.** Structural regroup only;
     `runtimeSessionCreated` was corrected to GameplayStore ownership.
   - **#6 `ViewportStore`** — **COMPLETE as E155.**
-  - **#7 `InputDeviceStore`** — **G1 COMPLETE as E165; G2 COMPLETE as E166; E167 READY.**
+  - **#7 `InputDeviceStore`** — **COMPLETE as E165-E167.**
     E165 moved the lower-risk device/last-input fields into `inputDevice`;
-    E166 moved controller/capture fields; E167 moves the high-collision
+    E166 moved controller/capture fields; E167 moved the high-collision
     interaction-mode fields last. `gamepadMenuSelectUsed` remains in
     FrontendWindowShell.
   - **#8 `GameplayStore`** — **COMPLETE as E157-E160.**

@@ -3,8 +3,10 @@
 #include <string>
 
 #include "app/input/InputAction.hpp"
+#include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/input/ControllerActionState.hpp"
 #include "app/iggy3d/input/ControllerModeToggleState.hpp"
+#include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/iggy3d/window/MouseCaptureState.hpp"
 
 namespace iggy3d {
@@ -18,6 +20,8 @@ struct InputDeviceStore {
   ProductMouseCaptureState mouseCapture;
   ProductControllerModeToggleState controllerModeToggle;
   ProductControllerActionState controllerAction;
+  ProductInteractionMode interactionMode = ProductInteractionMode::Player;
+  InteractionModeHud interactionModeHud;
 };
 
 }  // namespace iggy3d

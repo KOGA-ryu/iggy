@@ -12,9 +12,7 @@
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ProductCreativeBakedRoomRefresh.hpp"
-#include "app/iggy3d/input/InteractionMode.hpp"
 #include "app/iggy3d/input/InputDeviceStore.hpp"
-#include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/TopDownMapState.hpp"
 #include "app/iggy3d/debug/DevCollisionOverlayState.hpp"
 #include "app/iggy3d/world/WorldSetupState.hpp"
@@ -188,8 +186,6 @@ struct ProductAppWindowState {
   bool mouseMenuSelectUsed = false;
   bool gamepadMenuSelectUsed = false;
   InputDeviceStore inputDevice;
-  ProductInteractionMode interactionMode = ProductInteractionMode::Player;
-  InteractionModeHud interactionModeHud;
   ProductTopDownMapState topDownMap;
   ProductDevCollisionOverlayState devCollisionOverlay;
   FrontendSettingsTab selectedSettingsTab = FrontendSettingsTab::None;

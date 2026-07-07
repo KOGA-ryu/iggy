@@ -257,7 +257,7 @@ ProductActiveSurfaceContext productActiveSurfaceContextForWindow(
   context.hasActiveSession = window.gameplay.gameplayActive;
   context.roomEditorReady =
       window.roomEditing.ready && !productCreativeWorldActiveForWindow(window);
-  context.interactionMode = window.interactionMode;
+  context.interactionMode = window.inputDevice.interactionMode;
   return context;
 }
 
@@ -340,7 +340,7 @@ bool productCreativeWorldActiveForSource(
 
 bool productCreativeDocumentEditorActiveForWindow(
     const ProductAppWindowState& window) {
-  return window.interactionMode == ProductInteractionMode::Creative &&
+  return window.inputDevice.interactionMode == ProductInteractionMode::Creative &&
          !window.roomEditing.ready && !mapMakerExplicitlyEnabled(window);
 }
 
@@ -348,7 +348,7 @@ bool productCreativeDocumentEditorActiveForSource(
     const ProductAppWindowState& window,
     const creative::CreativeAppState* creativeApp) {
   if (creativeApp != nullptr) {
-    return window.interactionMode == ProductInteractionMode::Creative &&
+    return window.inputDevice.interactionMode == ProductInteractionMode::Creative &&
            productCreativeWorldActiveForIdentity(creativeApp->identity);
   }
   return productCreativeDocumentEditorActiveForWindow(window);
@@ -359,7 +359,7 @@ ProductCreativeSurfaceKind productCreativeSurfaceKindForWindow(
     const ProductAppWindowState& window) {
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
-  if (window.interactionMode == ProductInteractionMode::Creative &&
+  if (window.inputDevice.interactionMode == ProductInteractionMode::Creative &&
       !window.roomEditing.ready &&
       mapMakerExplicitlyEnabled(window) &&
       surface.activeSurface == ProductFrontendSurface::Gameplay &&

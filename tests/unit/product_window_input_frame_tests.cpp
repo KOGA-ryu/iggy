@@ -57,7 +57,7 @@ bool expectNear(float actual,
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
 }
 
 // Test-local convenience: openingMenuActionAt now takes the same
@@ -273,7 +273,7 @@ iggy3d::ProductAppWindowState gameplayWindow(
   const iggy3d::ProductAsciiRoomActivationResult activated =
       iggy3d::activateProductAsciiRoomPreview(session, window);
   expect(activated.ok, "input frame gameplay activation ok");
-  window.interactionMode = iggy3d::ProductInteractionMode::Player;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Player;
   return window;
 }
 
@@ -399,7 +399,7 @@ bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
           pickContext(frontend, window, clickAt(300.0F, 100.0F)));
 
   return expect(result.handled, "creative mouse click handled") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+         expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "edit room entry keeps creative mode") &&
          expect(result.picked, "creative mouse click picked") &&
          expect(result.previewBuilt, "creative mouse click built preview") &&
@@ -451,7 +451,7 @@ bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
 bool playerClickDoesNotRunEditorPickPreview() {
   const iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
-  window.interactionMode = iggy3d::ProductInteractionMode::Player;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Player;
   const std::uint64_t initialWalls = window.roomEditing.documentWallCount;
 
   const iggy3d::ProductWindowEditorMousePickPreviewResult result =
@@ -476,7 +476,7 @@ bool notReadyClickDoesNotMutateEditorState() {
   const iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
   window.gameplay.gameplayActive = true;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
 
   const iggy3d::ProductWindowEditorMousePickPreviewResult result =
       iggy3d::processProductWindowEditorMousePickPreview(
@@ -791,7 +791,7 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
   }
   window.viewport.mapMakerStatus = "map_maker_enabled";
   window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
 
   const iggy3d::EntityId actor = session->state().players.actorForSlot(0);
   const iggy3d::EntityState* beforePlayer = session->state().world.findById(actor);
@@ -820,7 +820,7 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
                 "map maker movement does not open pause") &&
          expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
                 "map maker movement owner gameplay") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+         expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "map maker movement remains creative mode") &&
          expect(window.inputDevice.controllerAction.mode == "player",
                 "map maker movement keeps controller fly mapping") &&
@@ -931,7 +931,7 @@ bool controllerChordToggleRecordsCreativeConsumption() {
 
   return expect(toggled.processed, "chord toggle processed") &&
          expect(!toggled.actionApplied, "chord toggle emits no gameplay action") &&
-         expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+         expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "chord toggle enters creative mode") &&
          expect(window.inputDevice.controllerModeToggle.requested,
                 "chord toggle requested") &&
@@ -1102,7 +1102,7 @@ bool pauseMouseClickResumesBeforeCreativeOverlayInput() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
   window.gameplay.gameplayActive = true;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   bool closeRequested = false;
   (void)iggy3d::applyProductSystemPauseMenuAction(
       iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
@@ -2620,7 +2620,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
   const bool creativeWorldMOk =
       expect(creativeWorldM.handled, "top-level creative M handled") &&
       expect(!creativeWorldM.accepted, "top-level creative M rejected") &&
-      expect(creativeWorldWindow.interactionMode ==
+      expect(creativeWorldWindow.inputDevice.interactionMode ==
                  iggy3d::ProductInteractionMode::Creative,
              "top-level creative M preserves creative mode") &&
       expect(!iggy3d::productMapMakerLiveForWindow(creativeWorld,
@@ -2637,7 +2637,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
   pauseMapMaker.childScreen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState pauseMapWindow;
   pauseMapWindow.gameplay.gameplayActive = true;
-  pauseMapWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  pauseMapWindow.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const iggy3d::ProductWindowTopLevelToggleResult blockedM =
       iggy3d::dispatchProductWindowTopLevelToggleAction(
           pauseMapMaker,
@@ -2983,7 +2983,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
       expect(enabled.accepted, "map maker toggle accepted") &&
       expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
              "map maker toggle keeps gameplay screen") &&
-      expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
+      expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Creative,
              "map maker toggle enters creative interaction mode") &&
       expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
              "map maker toggle keeps gameplay owner") &&
@@ -3008,7 +3008,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
       expect(disabled.accepted, "map maker disable accepted") &&
       expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
              "map maker disable keeps gameplay screen") &&
-      expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
+      expect(window.inputDevice.interactionMode == iggy3d::ProductInteractionMode::Player,
              "map maker disable returns to player interaction mode") &&
       expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
              "map maker disable keeps gameplay owner") &&
@@ -3038,7 +3038,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
              "creative world map maker toggle handled") &&
       expect(!creativeWorldBlocked.accepted,
              "creative world map maker toggle rejected") &&
-      expect(creativeWorldWindow.interactionMode ==
+      expect(creativeWorldWindow.inputDevice.interactionMode ==
                  iggy3d::ProductInteractionMode::Creative,
              "creative world preserves creative interaction mode") &&
       expect(!iggy3d::productMapMakerLiveForWindow(creativeWorld,
@@ -3062,7 +3062,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   const bool ignoredOk =
       expect(ignored.handled, "inactive map maker toggle handled") &&
       expect(!ignored.accepted, "inactive map maker toggle rejected") &&
-      expect(inactiveWindow.interactionMode ==
+      expect(inactiveWindow.inputDevice.interactionMode ==
                  iggy3d::ProductInteractionMode::Player,
              "inactive map maker preserves player mode") &&
       expect(inactiveWindow.viewport.mapMakerStatus == "map_maker_gameplay_inactive",
@@ -3073,7 +3073,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   pause.childScreen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState blockedWindow;
   blockedWindow.gameplay.gameplayActive = true;
-  blockedWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  blockedWindow.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   blockedWindow.viewport.creativeFlyActive = true;
   const iggy3d::ProductMenuActionResult blocked =
       iggy3d::applyProductGameplayMapMakerToggleAction(
@@ -3082,7 +3082,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   const bool blockedOk =
       expect(blocked.handled, "pause map maker toggle handled") &&
       expect(!blocked.accepted, "pause map maker toggle rejected") &&
-      expect(blockedWindow.interactionMode ==
+      expect(blockedWindow.inputDevice.interactionMode ==
                  iggy3d::ProductInteractionMode::Player,
              "pause map maker toggle returns player mode") &&
       expect(!iggy3d::productMapMakerLiveForWindow(pause, blockedWindow),
@@ -3094,7 +3094,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
 
   iggy3d::ProductAppWindowState staleWindow;
   staleWindow.gameplay.gameplayActive = true;
-  staleWindow.interactionMode = iggy3d::ProductInteractionMode::Player;
+  staleWindow.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Player;
   const bool staleCacheOk =
       expect(!iggy3d::productMapMakerLiveForWindow(frontend, staleWindow),
              "player mode is not map maker live");
@@ -3239,7 +3239,7 @@ bool movementTuningLookValuesDriveCameraInput() {
 bool editorOwnedInputClearsRetainedGroundVelocity() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.gameplay.gameplayMovement.groundVelocityX = 1.5F;
   window.gameplay.gameplayMovement.groundVelocityZ = -2.0F;
   window.gameplay.gameplayMovement.horizontalSpeedMetersPerSecond = 2.5F;

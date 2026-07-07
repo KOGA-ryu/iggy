@@ -1203,7 +1203,7 @@ bool creativeDocumentSurfaceHidesLegacyGameplayHudAndFeedback() {
   }
   seedMovementDebugFacts(window);
   seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   iggy3d::creative::CreativeAppState app;
   app.identity.saveId = "creative_save";
   app.identity.worldId = "world_001";
@@ -1287,7 +1287,7 @@ bool roomEditorSurfaceShowsEditorHudOnly() {
   seedMovementDebugFacts(window);
   seedPhysicsMovementStats(session, makeReadyPlayerPhysicsStats());
   window.roomEditing.ready = true;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.roomEditorCursor.selectedTool = iggy3d::ProductRoomEditorTool::Wall;
   window.roomEditorCursor.wallDirection = iggy3d::ProductRoomEditorDirection::Right;
   window.roomEditorCursor.gridX = 2;
@@ -1346,7 +1346,7 @@ bool gameplayMapMakerFrameCarriesGridOverlay() {
   if (!expect(session.has_value(), "map maker frame session created")) {
     return false;
   }
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.viewport.mapMakerStatus = "map_maker_enabled";
   window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
   window.creativeWorldEpoch = 1;
@@ -1448,7 +1448,7 @@ bool gameplayMapMakerFrameCarriesGridOverlay() {
 bool mapMakerFrameWithoutPlayerDoesNotLatchFlyAnchor() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window;
-  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.viewport.mapMakerStatus = "map_maker_enabled";
   window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
   window.creativeWorldEpoch = 1;
