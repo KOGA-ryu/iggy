@@ -6,10 +6,10 @@ use this index only to decide which ready card to claim next.
 
 **Collision freshness store slice COMPLETE** (G2–G7 done,
 `docs/active_room_collision_freshness_preflight_v0_2.md`). The `activeCreative`
-mirror delete is also COMPLETE (E136-E139). Current work: decomposition deficit
-#3 — move creative-fly anchor ownership into a freshness-aware store. Gate-0/1
-is ratified in `done/E141-creativefly-anchor-store-preflight.md`; builder
-should pull E142-E147 in numeric order.
+mirror delete is COMPLETE (E136-E139). The `creativeFly` anchor store is
+COMPLETE (E142-E147). Current work: structural `activeRoom` regroup into
+RoomStore. This is explicitly not an ownership kill; the owner is already
+single-source. Builder should pull E148-E152 in numeric order.
 
 ## Claim Policy
 
@@ -27,19 +27,18 @@ None.
 
 ## Pull Next
 
-1. **E142** — CreativeFly G2 store types and `creativeWorldEpoch`.
-2. **E143** — CreativeFly G3 store verbs and direct freshness tests.
-3. **E144** — CreativeFly G4 origin seed and camera consumer wiring.
-4. **E145** — CreativeFly G5 remaining seeder/integrator migration.
-5. **E146** — CreativeFly G6 stress and ordering guards.
-6. **E147** — CreativeFly G7 receipt update and legacy raw-field delete.
+1. **E148** — RoomStore G1 accessor seam.
+2. **E149** — RoomStore G2 production writers.
+3. **E150** — RoomStore G3 production readers and receipts.
+4. **E151** — RoomStore G4 test fixture migration.
+5. **E152** — RoomStore G5 final storage move.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E142-E147** — creativeFly anchor freshness store (deficit #3, M,
-  policy-sensitive). Preserve the three distinct seeding behaviors, use
-  `creativeWorldEpoch` rather than any content/session hash, and delete legacy
-  raw fields only in E147.
+- **E148-E152** — activeRoom RoomStore structural regroup. Preserve
+  `roomEditing.activeRoom` and `roomEditing.activeRoomCollision` as producer
+  state. Use the accessor seam first; move storage/delete old top-level fields
+  only in E152.
 
 ## Tier 2: Feature-Add Seams
 
@@ -59,22 +58,19 @@ Held — do NOT promote to `ready/` on a guess:
   NOTE: the audit's S/M/L ratings are directional — each slice needs its own
   preflight to confirm scope (E135 was rated S, proved L; **E140 re-ranked #1
   from 9.0 → hold**).
-- **RE-RANK (2026-07-07, `blocked/E140-activeroom-roomstore-preflight.md`):** after #2
-  clears, the next real ownership kill is **#3 `creativeFly`**, NOT #1. Recon found #1's
-  ownership payoff is already banked by the collision freshness store, and its nested
-  `roomEditing.activeRoom` is a load-bearing producer copy (do not delete). #1 is now a
-  high-churn (252 refs + 225 tests) zero-ownership mechanical regroup — deferred until
-  the decomposition actually gates the kernel.
+- **RE-RANK (2026-07-07, `done/E140-activeroom-roomstore-preflight.md`):** after #2
+  cleared, the next real ownership kill was **#3 `creativeFly`**, not #1. That work
+  is now complete. #1 is being promoted by explicit user direction as a structural
+  regroup only; preserve the nested `roomEditing.activeRoom` producer copy.
 - **Ownership-deficit queue** (`docs/ownership_deficit_audit.md`) landing onto the
   decomposition map (`docs/god_struct_decomposition_target_map.md`):
-  - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — **CURRENT WORK as E142-E147.**
+  - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — **COMPLETE as E142-E147.**
     Genuine freshness deficit. Gate-0/1 preflight `done/E141` v0.2 ratified:
     token is a new window-owned `creativeWorldEpoch` (NOT a content hash — two
     blank worlds hash identically), 3 seeders are NOT redundant (distinct
     yaw/pitch + latch behaviors), app-lane-only (stays out of the session gate).
-  - **#1 `activeRoom`→`RoomStore`** — **HELD** (`blocked/E140`). Structural move only
-    when it gates the kernel; NOT an ownership kill (see re-rank above). Preserve the
-    nested producer copy.
+  - **#1 `activeRoom`→`RoomStore`** — **CURRENT WORK as E148-E152.** Structural
+    regroup only; NOT an ownership kill. Preserve the nested producer copy.
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
   - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).

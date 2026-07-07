@@ -124,3 +124,13 @@ Append:
   - No source or test files changed.
 - Concerns/deferred:
   - I did not add a private `#include RenderLoop.cpp` style test or cast/hack `RenderLoop` internals because that would be brittle and outside the card's stop-and-report instruction.
+
+## Superseded / removed from blocked
+
+This stale blocker is removed from `blocked/`.
+
+The unblock path later landed through:
+- `E118-kernel-w17-render-projectile-overlay-policy-seam.md`
+- `E120-kernel-w18-render-projectile-overlay-projectpoint-routing.md`
+
+No new builder work should be claimed from this card.

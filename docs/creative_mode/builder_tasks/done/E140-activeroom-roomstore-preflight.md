@@ -125,3 +125,25 @@ Recommended re-rank of the pending ownership queue:
   ownership coverage TSV; both truth-gates fire by design on the field move.
 - Negative-grep gate at delete-last: `window\.activeRoom\b` → 0 (all migrated to the
   accessor/store), `roomEditing\.activeRoom` → **unchanged** (must survive).
+
+## Promoted and decomposed
+
+Promoted by user direction after E139/E142-E147 completed. This remains a
+**structural regroup**, not an ownership kill.
+
+Locked guardrails:
+- Preserve `roomEditing.activeRoom` and `roomEditing.activeRoomCollision`; they are the room editor producer working set.
+- Move only the window-owned active-room cluster:
+  - `activeRoom`
+  - `activeRoomRevision`
+  - `activeRoomCollision`
+  - `activeRoomCollisionFreshness`
+- Use an accessor seam before the final storage move.
+- Delete old top-level fields only after production and tests consume the accessor/store seam.
+
+Builder decomposition created:
+- `ready/E148-roomstore-g1-accessor-seam.md`
+- `ready/E149-roomstore-g2-production-writers.md`
+- `ready/E150-roomstore-g3-production-readers-and-receipts.md`
+- `ready/E151-roomstore-g4-test-fixture-migration.md`
+- `ready/E152-roomstore-g5-final-storage-move.md`
