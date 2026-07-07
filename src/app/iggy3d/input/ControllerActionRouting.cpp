@@ -295,14 +295,16 @@ GamepadControllerActionSample productControllerModeChordActionSample() {
 void recordProductControllerActionRoutingResult(
     ProductAppWindowState& window,
     const ProductControllerActionRoutingResult& result) {
-  window.controllerAction.mapped = result.mapped;
-  window.controllerAction.status = result.status;
-  window.controllerAction.reasonCode = result.reasonCode;
-  window.controllerAction.control = productControllerControlName(result.control);
-  window.controllerAction.mode =
+  window.inputDevice.controllerAction.mapped = result.mapped;
+  window.inputDevice.controllerAction.status = result.status;
+  window.inputDevice.controllerAction.reasonCode = result.reasonCode;
+  window.inputDevice.controllerAction.control =
+      productControllerControlName(result.control);
+  window.inputDevice.controllerAction.mode =
       productInteractionModeName(result.interactionMode);
-  window.controllerAction.surface = productInputSurfaceName(result.surface);
-  window.controllerAction.inputAction = inputActionName(result.action);
+  window.inputDevice.controllerAction.surface =
+      productInputSurfaceName(result.surface);
+  window.inputDevice.controllerAction.inputAction = inputActionName(result.action);
 }
 
 }  // namespace iggy3d

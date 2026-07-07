@@ -19,9 +19,9 @@ GameplayStore.
 
 **ViewportStore fold is COMPLETE as E155** (#6 — folded 11 mapMaker* fields into
 ProductViewportState). `E156` InputDeviceStore (#7) has been decomposed into
-E165-E167; **E165 is COMPLETE** and moved only `gamepadAvailable`,
-`gamepadName`, `gamepadMapping`, `lastInputAction`, and `lastInputAccepted` into
-`ProductAppWindowState::inputDevice`. E166 is ready; E167 remains blocked. **Dominant hazard:** `interactionMode` is a
+E165-E167; **E165 and E166 are COMPLETE** and moved the device/action plus
+controller/capture fields into `ProductAppWindowState::inputDevice`. E167
+remains blocked. **Dominant hazard:** `interactionMode` is a
 real field on 6+ foreign structs, so compiler-guided only, never sed.
 
 **Decomposition card set now COMPLETE (all 11 stores).** Remaining parents staged in
@@ -90,10 +90,11 @@ Held — do NOT promote to `ready/` on a guess:
   - **#5 `SaveSessionStore`** — **COMPLETE as E153.** Structural regroup only;
     `runtimeSessionCreated` was corrected to GameplayStore ownership.
   - **#6 `ViewportStore`** — **COMPLETE as E155.**
-  - **#7 `InputDeviceStore`** — **G1 COMPLETE as E165; E166 READY.** E165 moved
-    the lower-risk device/last-input fields into `inputDevice`; E166 moves
-    controller/capture; E167 moves the high-collision interaction-mode fields
-    last. `gamepadMenuSelectUsed` remains in FrontendWindowShell.
+  - **#7 `InputDeviceStore`** — **G1 COMPLETE as E165; G2 COMPLETE as E166.**
+    E165 moved the lower-risk device/last-input fields into `inputDevice`;
+    E166 moved controller/capture fields; E167 moves the high-collision
+    interaction-mode fields last. `gamepadMenuSelectUsed` remains in
+    FrontendWindowShell.
   - **#8 `GameplayStore`** — **COMPLETE as E157-E160.**
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.

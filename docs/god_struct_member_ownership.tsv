@@ -12,9 +12,6 @@ interactionMode	InputDeviceStore
 interactionModeHud	InputDeviceStore
 topDownMap	DebugHudStore
 devCollisionOverlay	DebugHudStore
-mouseCapture	InputDeviceStore
-controllerModeToggle	InputDeviceStore
-controllerAction	InputDeviceStore
 selectedSettingsTab	FrontendWindowShell
 gameplay	GameplayStore
 launchAction	FrontendWindowShell

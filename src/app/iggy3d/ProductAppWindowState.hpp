@@ -17,9 +17,6 @@
 #include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/TopDownMapState.hpp"
 #include "app/iggy3d/debug/DevCollisionOverlayState.hpp"
-#include "app/iggy3d/input/ControllerActionState.hpp"
-#include "app/iggy3d/input/ControllerModeToggleState.hpp"
-#include "app/iggy3d/window/MouseCaptureState.hpp"
 #include "app/iggy3d/world/WorldSetupState.hpp"
 #include "app/iggy3d/world/WorldCreationState.hpp"
 #include "app/iggy3d/gameplay/WallRunState.hpp"
@@ -195,9 +192,6 @@ struct ProductAppWindowState {
   InteractionModeHud interactionModeHud;
   ProductTopDownMapState topDownMap;
   ProductDevCollisionOverlayState devCollisionOverlay;
-  ProductMouseCaptureState mouseCapture;
-  ProductControllerModeToggleState controllerModeToggle;
-  ProductControllerActionState controllerAction;
   FrontendSettingsTab selectedSettingsTab = FrontendSettingsTab::None;
   GameplayStore gameplay;
   std::string launchAction = "none";

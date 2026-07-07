@@ -296,18 +296,18 @@ bool productWindowFocused(const SdlWindow* sdlWindow) {
 void recordProductMouseCaptureResult(ProductAppWindowState& window,
                                      const ProductMouseCapturePolicy& policy,
                                      const SdlMouseCaptureResult* platform) {
-  window.mouseCapture.requested = policy.requested;
-  window.mouseCapture.active = false;
-  window.mouseCapture.status = policy.status;
-  window.mouseCapture.reasonCode = policy.reasonCode;
-  window.mouseCapture.mode = policy.mode;
-  window.mouseCapture.inputOwner = policy.inputOwner;
+  window.inputDevice.mouseCapture.requested = policy.requested;
+  window.inputDevice.mouseCapture.active = false;
+  window.inputDevice.mouseCapture.status = policy.status;
+  window.inputDevice.mouseCapture.reasonCode = policy.reasonCode;
+  window.inputDevice.mouseCapture.mode = policy.mode;
+  window.inputDevice.mouseCapture.inputOwner = policy.inputOwner;
   // branch-gate: BG-1076
   if (platform != nullptr) {
-    window.mouseCapture.requested = platform->requested;
-    window.mouseCapture.active = platform->active;
-    window.mouseCapture.status = platform->status;
-    window.mouseCapture.reasonCode = platform->reasonCode;
+    window.inputDevice.mouseCapture.requested = platform->requested;
+    window.inputDevice.mouseCapture.active = platform->active;
+    window.inputDevice.mouseCapture.status = platform->status;
+    window.inputDevice.mouseCapture.reasonCode = platform->reasonCode;
   }
 }
 

@@ -334,17 +334,17 @@ bool noWindowGameplayReportsMouseCaptureNotApplied() {
                 "loop returns its final save catalog to the caller") &&
          expect(!result.requested, "no-window not requested") &&
          expect(!result.created, "no-window not created") &&
-         expect(!result.mouseCapture.requested,
+         expect(!result.inputDevice.mouseCapture.requested,
                 "no-window mouse capture not requested") &&
-         expect(!result.mouseCapture.active,
+         expect(!result.inputDevice.mouseCapture.active,
                 "no-window mouse capture not active") &&
-         expect(result.mouseCapture.status == "mouse_capture_not_requested",
+         expect(result.inputDevice.mouseCapture.status == "mouse_capture_not_requested",
                 "no-window mouse capture status") &&
-         expect(result.mouseCapture.reasonCode == "mouse_capture_no_window",
+         expect(result.inputDevice.mouseCapture.reasonCode == "mouse_capture_no_window",
                 "no-window mouse capture reason") &&
-         expect(result.mouseCapture.mode == "no_window",
+         expect(result.inputDevice.mouseCapture.mode == "no_window",
                 "no-window mouse capture mode") &&
-         expect(result.mouseCapture.inputOwner == "gameplay",
+         expect(result.inputDevice.mouseCapture.inputOwner == "gameplay",
                 "no-window mouse capture owner") &&
          expect(iggy3d::hasReceiptField(receipt, "settings_debug_overlay_enabled",
                                         "false"),

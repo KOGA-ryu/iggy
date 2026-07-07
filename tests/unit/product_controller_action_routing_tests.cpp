@@ -203,16 +203,16 @@ bool skippedRoutingRecordsChordConsumption() {
           "controller_action_chord_consumed");
   iggy3d::recordProductControllerActionRoutingResult(window, skipped);
 
-  return expect(!window.controllerAction.mapped, "skipped routing not mapped") &&
-         expect(window.controllerAction.status == "controller_action_chord_consumed",
+  return expect(!window.inputDevice.controllerAction.mapped, "skipped routing not mapped") &&
+         expect(window.inputDevice.controllerAction.status == "controller_action_chord_consumed",
                 "skipped routing status") &&
-         expect(window.controllerAction.control == "none",
+         expect(window.inputDevice.controllerAction.control == "none",
                 "skipped routing control") &&
-         expect(window.controllerAction.mode == "creative",
+         expect(window.inputDevice.controllerAction.mode == "creative",
                 "skipped routing mode") &&
-         expect(window.controllerAction.surface == "gameplay",
+         expect(window.inputDevice.controllerAction.surface == "gameplay",
                 "skipped routing surface") &&
-         expect(window.controllerAction.inputAction == "none",
+         expect(window.inputDevice.controllerAction.inputAction == "none",
                 "skipped routing action");
 }
 

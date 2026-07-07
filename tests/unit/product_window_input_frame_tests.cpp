@@ -733,7 +733,7 @@ bool controllerSouthJumpsInGameplayPlayerMode() {
                 "gameplay south does not suppress gameplay") &&
          expect(window.inputDevice.lastInputAction == iggy3d::InputAction::PlayerJump,
                 "gameplay south routes to jump") &&
-         expect(window.controllerAction.inputAction == "game.jump",
+         expect(window.inputDevice.controllerAction.inputAction == "game.jump",
                 "gameplay south records jump input action") &&
          expect(window.gameplay.gameplayJump.requested,
                 "gameplay south requests jump") &&
@@ -822,7 +822,7 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
                 "map maker movement owner gameplay") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "map maker movement remains creative mode") &&
-         expect(window.controllerAction.mode == "player",
+         expect(window.inputDevice.controllerAction.mode == "player",
                 "map maker movement keeps controller fly mapping") &&
          expect(!liveSurface(frontend, window).gameplayInputSuppressed,
                 "map maker movement does not suppress gameplay input") &&
@@ -933,20 +933,20 @@ bool controllerChordToggleRecordsCreativeConsumption() {
          expect(!toggled.actionApplied, "chord toggle emits no gameplay action") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "chord toggle enters creative mode") &&
-         expect(window.controllerModeToggle.requested,
+         expect(window.inputDevice.controllerModeToggle.requested,
                 "chord toggle requested") &&
-         expect(window.controllerModeToggle.accepted,
+         expect(window.inputDevice.controllerModeToggle.accepted,
                 "chord toggle accepted") &&
-         expect(window.controllerModeToggle.status == "interaction_mode_toggled",
+         expect(window.inputDevice.controllerModeToggle.status == "interaction_mode_toggled",
                 "chord toggle status") &&
-         expect(window.controllerAction.status ==
+         expect(window.inputDevice.controllerAction.status ==
                     "controller_action_chord_consumed",
                 "chord toggle consumes controller action") &&
-         expect(window.controllerAction.mode == "creative",
+         expect(window.inputDevice.controllerAction.mode == "creative",
                 "chord toggle records post-toggle mode") &&
-         expect(window.controllerAction.surface == "gameplay",
+         expect(window.inputDevice.controllerAction.surface == "gameplay",
                 "chord toggle surface gameplay") &&
-         expect(window.controllerAction.inputAction == "none",
+         expect(window.inputDevice.controllerAction.inputAction == "none",
                 "chord toggle no mapped action");
 }
 
@@ -983,7 +983,7 @@ bool controllerSouthJumpsFromClamberedWallTop() {
                            ->transform.position.y;
 
   return expect(clambered.actionApplied, "wall top first south action applied") &&
-         expect(window.controllerAction.inputAction == "game.jump",
+         expect(window.inputDevice.controllerAction.inputAction == "game.jump",
                 "wall top second south records jump action") &&
          expect(window.inputDevice.lastInputAction == iggy3d::InputAction::PlayerJump,
                 "wall top second south routes to jump") &&

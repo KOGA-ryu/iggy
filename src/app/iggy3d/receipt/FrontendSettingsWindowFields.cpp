@@ -165,43 +165,43 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
   appendReceiptField(receipt, "top_down_map_item_count",
                      window.topDownMap.itemCount);
   appendReceiptField(receipt, "mouse_capture_requested",
-                     window.mouseCapture.requested);
-  appendReceiptField(receipt, "mouse_capture_active", window.mouseCapture.active);
-  appendReceiptField(receipt, "mouse_capture_status", window.mouseCapture.status);
+                     window.inputDevice.mouseCapture.requested);
+  appendReceiptField(receipt, "mouse_capture_active", window.inputDevice.mouseCapture.active);
+  appendReceiptField(receipt, "mouse_capture_status", window.inputDevice.mouseCapture.status);
   appendReceiptField(receipt, "mouse_capture_reason_code",
-                     window.mouseCapture.reasonCode);
-  appendReceiptField(receipt, "mouse_capture_mode", window.mouseCapture.mode);
+                     window.inputDevice.mouseCapture.reasonCode);
+  appendReceiptField(receipt, "mouse_capture_mode", window.inputDevice.mouseCapture.mode);
   appendReceiptField(receipt, "mouse_capture_input_owner",
-                     window.mouseCapture.inputOwner);
+                     window.inputDevice.mouseCapture.inputOwner);
   appendReceiptField(receipt,
                      "controller_mode_toggle_requested",
-                     window.controllerModeToggle.requested);
+                     window.inputDevice.controllerModeToggle.requested);
   appendReceiptField(receipt,
                      "controller_mode_toggle_accepted",
-                     window.controllerModeToggle.accepted);
+                     window.inputDevice.controllerModeToggle.accepted);
   appendReceiptField(receipt,
                      "controller_mode_toggle_status",
-                     window.controllerModeToggle.status);
+                     window.inputDevice.controllerModeToggle.status);
   appendReceiptField(receipt,
                      "controller_mode_toggle_reason_code",
-                     window.controllerModeToggle.reasonCode);
+                     window.inputDevice.controllerModeToggle.reasonCode);
   appendReceiptField(receipt,
                      "controller_mode_toggle_surface",
-                     window.controllerModeToggle.surface);
+                     window.inputDevice.controllerModeToggle.surface);
   appendReceiptField(receipt, "controller_action_mapped",
-                     window.controllerAction.mapped);
+                     window.inputDevice.controllerAction.mapped);
   appendReceiptField(receipt, "controller_action_status",
-                     window.controllerAction.status);
+                     window.inputDevice.controllerAction.status);
   appendReceiptField(receipt, "controller_action_reason_code",
-                     window.controllerAction.reasonCode);
+                     window.inputDevice.controllerAction.reasonCode);
   appendReceiptField(receipt, "controller_action_control",
-                     window.controllerAction.control);
+                     window.inputDevice.controllerAction.control);
   appendReceiptField(receipt, "controller_action_mode",
-                     window.controllerAction.mode);
+                     window.inputDevice.controllerAction.mode);
   appendReceiptField(receipt, "controller_action_surface",
-                     window.controllerAction.surface);
+                     window.inputDevice.controllerAction.surface);
   appendReceiptField(receipt, "controller_action_input_action",
-                     window.controllerAction.inputAction);
+                     window.inputDevice.controllerAction.inputAction);
 }
 
 }  // namespace iggy3d
