@@ -26,8 +26,8 @@
 #include "app/iggy3d/gameplay/ResetState.hpp"
 #include "app/iggy3d/automation/AutomationControlState.hpp"
 #include "app/iggy3d/ProductCreativeUiLastState.hpp"
+#include "app/iggy3d/window/PresentPathStore.hpp"
 #include "app/iggy3d/window/ProductVulkanMenuState.hpp"
-#include "app/iggy3d/window/ProductVulkanRendererState.hpp"
 #include "app/iggy3d/gameplay/CollisionState.hpp"
 #include "app/iggy3d/gameplay/GameplayMovementInfo.hpp"
 #include "app/iggy3d/room_editor/RoomEditorOverlayState.hpp"
@@ -234,15 +234,7 @@ struct ProductAppWindowState {
   std::uint64_t creativeWorldEpoch = 0;
   ProductViewportState viewport;
   ProductAutomationControlState automationControl;
-  ProductVulkanRendererState productVulkanRenderer;
-  bool productVulkanSurfaceCreated = false;
-  bool productVulkanSwapchainReady = false;
-  bool productVulkanFrameSubmitted = false;
-  std::uint64_t productVulkanFrameSubmittedCount = 0;
-  std::string productVulkanStatus = "not_requested";
-  std::string productVulkanReasonCode = "not_requested";
-  std::string productVulkanRenderingPath = "none";
-  std::string productVulkanRecordMode = "none";
+  PresentPathStore presentPath;
   ProductVulkanMenuState productVulkanMenu;
   ProductCreativeUiProjectionState creativeUiProjection;
   ProductCreativeUiInputState creativeUiInput;

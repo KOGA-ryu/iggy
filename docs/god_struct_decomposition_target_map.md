@@ -16,8 +16,8 @@ Adversarial critique returned **NEEDS_FIXES**; these were verified against disk 
 - **Fire order** — only ranks **1–3** are a committed sequence (the live deficit slices). Ranks **4–11 are an
   UNORDERED "structural, unscheduled" bucket** (move-off-god-struct, no freshness debt, no readiness signal) — do
   not read 4<5<… as an order.
-- **Provisional stores** — **DebugHudStore #9** is now resolved as a real store; **PresentPathStore #11** (6 status
-  strings + a counter) may be **delete/inline/fold-into-remainder**, not a store; **FrontendWindowShell #10** is the
+- **Provisional stores** — **DebugHudStore #9** and **PresentPathStore #11** are now resolved as real stores;
+  **FrontendWindowShell #10** is the
   residual junk-drawer holding pen. Resolve delete-vs-store for each **before** standing it up.
 
 ---
@@ -34,7 +34,7 @@ Adversarial critique returned **NEEDS_FIXES**; these were verified against disk 
 
 `ProductAppWindowState` is a ~176-member god-struct because it is the junk drawer where every subsystem parked state that had no owner. The fix is not to patch scatter site by site — it is to **name the destination first**, then let each slice land toward it.
 
-The destination: **`ProductAppWindowState` becomes a thin composition of owned domain Stores that `AppKernel` holds**, plus a ~7-field app-global remainder of genuine window/SDL/surface lifecycle bits. Each Store owns exactly one domain's truth. **Three** Stores carry **derived** state and therefore a **freshness token** (the `activeRoomCollision` exemplar discipline — stamp `{revision, sessionHash}`, rebuild on demand iff drifted); the rest are plain owned state or write-once-per-frame telemetry that just needs a home.
+The destination: **`ProductAppWindowState` becomes a thin composition of owned domain Stores that `AppKernel` holds**, plus a ~4-field app-global remainder of genuine window/SDL lifecycle bits. Each Store owns exactly one domain's truth. **Three** Stores carry **derived** state and therefore a **freshness token** (the `activeRoomCollision` exemplar discipline — stamp `{revision, sessionHash}`, rebuild on demand iff drifted); the rest are plain owned state or write-once-per-frame telemetry that just needs a home.
 
 Two forces shape the map:
 
@@ -59,7 +59,7 @@ Two forces shape the map:
 | **8** | **GameplayStore** | `ProductAppWindowState::gameplay` now owns the gameplay lifecycle flags, command/movement/planner state, action/outcome/tape state, product transition state, and visibility/render diagnostics moved by E157-E160. | **NO / NO** — structural move complete; no freshness token was added because these fields remain flat count/status mirrors and stateless per-frame diagnostics. | **Still emitted through existing gameplay receipt appenders** — `GameplayRuntimeMovementFields.cpp` + `GameplaySceneStateFields.cpp` + `PhysicsReceiptRecording.cpp`; receipt shape was intentionally preserved. | **DONE as E157-E160.** Structural move-off-god-struct complete. |
 | **9** | **DebugHudStore** | `ProductAppWindowState::debugHud` now owns the five HUD/debug mirrors moved by E162: `topDownMap`, `devCollisionOverlay`, `npcBehaviorDebugHud`, `physicsDebugHud`, `positionHud`. | **NO / NO** — recomputed-and-recopied every projection frame; only readers are receipt emitters. | **Split across THREE** — `DebugHudFields.cpp` + `FrontendSettingsWindowFields.cpp` (topDownMap, devCollisionOverlay) + `GameplaySceneStateFields.cpp` (positionHud). **MISMATCH preserved without changing receipt keys.** | **DONE as E162.** Structural move into `src/app/iggy3d/debug/DebugHudStore.hpp`; no freshness token. |
 | **10** | **FrontendWindowShell** | `startup` (230), `launchAction` (227), `launchStatus` (228), `packageLoadStatus` (229), `openingMenuVisible` (198), `menuTextDrawn` (199), `selectedRowDrawn` (200), `mouseMenuSelectUsed` (201), `gamepadMenuSelectUsed` (203), `selectedSettingsTab` (224), `automationControl` (352), `productVulkanMenu` (362), `menuRowCount` (423), `framesPresented` (421), `eventPollCount` (422), `status` (424). | **NO / NO** — plain owned lifecycle/telemetry. | **Split across FOUR** — `StartupProbeFields.cpp` + `StartupWorldBuildoutFields.cpp` + `FrontendSettingsWindowFields.cpp` + `TailFields.cpp` (head=startup, tail=status). | **Not queued.** Structural move. |
-| **11** | **PresentPathStore** *(render/Vulkan present coordinator)* | `productVulkanRenderer` (353), `productVulkan{Status,ReasonCode,RenderingPath,RecordMode}` (358–361), `productVulkanFrameSubmittedCount` (357). | **NO / NO** — present-loop status mirrors. | `FeedbackSurfaceAutomationVulkanFields.cpp`. | **Not queued.** Structural move; sits beside the app-global surface/swapchain *existence* bits (§3), which stay on the window. |
+| **11** | **PresentPathStore** *(render/Vulkan present coordinator)* | `ProductAppWindowState::presentPath` now owns the nine present-loop members moved by E163: `productVulkanRenderer`, `productVulkanSurfaceCreated`, `productVulkanSwapchainReady`, `productVulkanFrameSubmitted`, `productVulkanFrameSubmittedCount`, `productVulkanStatus`, `productVulkanReasonCode`, `productVulkanRenderingPath`, `productVulkanRecordMode`. `productVulkanMenu` stays in FrontendWindowShell. | **NO / NO** — present-loop status mirrors. | `FeedbackSurfaceAutomationVulkanFields.cpp`; receipt key order preserved. | **DONE as E163.** Structural move into `src/app/iggy3d/window/PresentPathStore.hpp`; no freshness token. |
 
 > **Fire order (leverage × readiness):** **1** RoomStore (in flight via the collision guard) → **2** CreativeIdentityStore (cheapest standalone delete) → **3** CreativeFlyAnchorStore (its own preflight, latent-CS) → then structural Stores **4–11** as capacity allows. Only 1–3 have live deficit slices; 4–11 are move-off-god-struct with no freshness debt.
 
@@ -76,7 +76,7 @@ Two forces shape the map:
 
 ## 3. The app-global remainder — fields that genuinely STAY on the window
 
-SDL/window-existence and present-surface **lifecycle bits** — not domain truth, not derived caches. **Do not over-store them.**
+SDL/window-existence **lifecycle bits** — not domain truth, not derived caches. **Do not over-store them.**
 
 | Member | Line | Why it stays |
 |--------|------|--------------|
@@ -84,11 +84,9 @@ SDL/window-existence and present-surface **lifecycle bits** — not domain truth
 | `sdlAvailable` | 195 | SDL subsystem availability — app lifecycle. |
 | `created` | 196 | Window created — lifecycle bit. |
 | `drawable` | 197 | Drawable surface exists — lifecycle bit. |
-| `productVulkanSurfaceCreated` | 354 | Vulkan surface created — GPU-device/window lifecycle. |
-| `productVulkanSwapchainReady` | 355 | Swapchain ready — render-surface lifecycle. |
-| `productVulkanFrameSubmitted` | 356 | Frame-submitted — present lifecycle. |
 
-> **7 fields.** Everything else lands in a Store. Present *status/path/record/count* (357–361) go to **PresentPathStore #11** (the path's *state*), not here (surface/swapchain/submitted are the *existence* bits). If #11 is deferred, 357–361 may sit in the remainder transitionally; the target home is #11.
+> **4 fields.** Everything else lands in a Store. Present path/status/surface readiness lives in
+> **PresentPathStore #11** so the render receipt consumes one present-loop owner.
 
 ---
 
@@ -96,7 +94,7 @@ SDL/window-existence and present-surface **lifecycle bits** — not domain truth
 
 The god-struct is decomposed when **all four hold**:
 
-1. **`ProductAppWindowState` is a thin composition** — its body contains only the ~7 app-global lifecycle bits (§3). Every other member has moved into one of the 11 Stores.
+1. **`ProductAppWindowState` is a thin composition** — its body contains only the ~4 app-global lifecycle bits (§3). Every other member has moved into one of the 11 Stores.
 2. **`AppKernel` holds the 11 Stores** as members (alongside today's `activeSession`/`creativeApp`/`frontend`/`saves`/`settings`/`worldSetupDraft`) and is the sole composer.
 3. **The three derived Stores carry a freshness token + one `ensure*` verb** — RoomStore (`ensureActiveRoomCollisionFresh`, `{roomRevision, sessionHash}`), CreativeFlyAnchorStore (`ensureFreshAnchor(session)`), and the CreativeIdentity mirror is **deleted** (identity reads hit `creativeApp.identity` directly). No stored derived value survives without a provenance stamp.
 4. **The audit's DELETEs are gone** — `window.inputOwner`, `window.gameplayInputSuppressed`, `window.runtimeStateHash` are removed (not rehomed); their readers re-derive via `resolveProductActiveSurface` / `session.stateHash()`.

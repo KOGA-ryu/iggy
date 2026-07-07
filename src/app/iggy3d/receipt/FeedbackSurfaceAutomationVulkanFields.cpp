@@ -77,28 +77,28 @@ void appendProductFeedbackSurfaceAutomationVulkanFields(RenderReceipt& receipt, 
   appendReceiptField(receipt, "automation_control_last_result",
                      window.automationControl.lastResult);
   appendReceiptField(receipt, "product_vulkan_renderer_requested",
-                     window.productVulkanRenderer.requested);
+                     window.presentPath.productVulkanRenderer.requested);
   appendReceiptField(receipt, "product_vulkan_backend_built",
                      vulkanGameplayReadiness.backendBuilt);
   appendReceiptField(receipt, "product_vulkan_renderer_created",
-                     window.productVulkanRenderer.created);
+                     window.presentPath.productVulkanRenderer.created);
   appendReceiptField(receipt, "product_vulkan_renderer_ready",
-                     window.productVulkanRenderer.ready);
+                     window.presentPath.productVulkanRenderer.ready);
   appendReceiptField(receipt, "product_vulkan_surface_created",
-                     window.productVulkanSurfaceCreated);
+                     window.presentPath.productVulkanSurfaceCreated);
   appendReceiptField(receipt, "product_vulkan_swapchain_ready",
-                     window.productVulkanSwapchainReady);
+                     window.presentPath.productVulkanSwapchainReady);
   appendReceiptField(receipt, "product_vulkan_frame_submitted",
-                     window.productVulkanFrameSubmitted);
+                     window.presentPath.productVulkanFrameSubmitted);
   appendReceiptField(receipt, "product_vulkan_frame_submitted_count",
-                     window.productVulkanFrameSubmittedCount);
-  appendReceiptField(receipt, "product_vulkan_status", window.productVulkanStatus);
+                     window.presentPath.productVulkanFrameSubmittedCount);
+  appendReceiptField(receipt, "product_vulkan_status", window.presentPath.productVulkanStatus);
   appendReceiptField(receipt, "product_vulkan_reason_code",
-                     window.productVulkanReasonCode);
+                     window.presentPath.productVulkanReasonCode);
   appendReceiptField(receipt, "product_vulkan_rendering_path",
-                     window.productVulkanRenderingPath);
+                     window.presentPath.productVulkanRenderingPath);
   appendReceiptField(receipt, "product_vulkan_record_mode",
-                     window.productVulkanRecordMode);
+                     window.presentPath.productVulkanRecordMode);
   appendReceiptField(receipt, "product_vulkan_menu_requested",
                      window.productVulkanMenu.requested);
   appendReceiptField(receipt, "product_vulkan_menu_visible",

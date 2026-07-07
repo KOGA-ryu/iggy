@@ -134,7 +134,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
   window.requested = request.options.windowMode == ProductWindowMode::Window;
   const bool useVulkanRenderer =
       productWindowRendererUsesVulkan(request.options.renderer);
-  window.productVulkanRenderer.requested = useVulkanRenderer;
+  window.presentPath.productVulkanRenderer.requested = useVulkanRenderer;
   (void)syncProductWindowInputOwnerFromActiveSurface(request.frontend, window);
   // branch-gate: BG-1031
   if (!window.requested) {
@@ -175,7 +175,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         elapsedMicroseconds(rendererStarted);
     window.startup.vulkanRendererInitStatus =
         renderer.ready ? "startup_vulkan_renderer_init_ready"
-                       : window.productVulkanReasonCode;
+                       : window.presentPath.productVulkanReasonCode;
   }
   // branch-gate: BG-1031
   if (!renderer.ready) {

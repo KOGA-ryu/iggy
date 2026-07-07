@@ -848,12 +848,12 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
                                          submit);
       recordProductVulkanSubmit(request.window, submit);
     } else {
-      request.window.productVulkanStatus = "frame_not_submitted";
-      request.window.productVulkanReasonCode = "frame_not_drawable";
+      request.window.presentPath.productVulkanStatus = "frame_not_submitted";
+      request.window.presentPath.productVulkanReasonCode = "frame_not_drawable";
     }
   } else {
-    request.window.productVulkanStatus = "waiting_for_gameplay_room";
-    request.window.productVulkanReasonCode =
+    request.window.presentPath.productVulkanStatus = "waiting_for_gameplay_room";
+    request.window.presentPath.productVulkanReasonCode =
         "product_vulkan_waiting_for_gameplay_room";
     // branch-gate: BG-1072
     if (request.frontend.screen == FrontendScreen::Starter) {
@@ -891,8 +891,8 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
                                              submit);
           recordProductVulkanSubmit(request.window, submit);
         } else {
-          request.window.productVulkanStatus = "frame_not_submitted";
-          request.window.productVulkanReasonCode = menuFrame.reasonCode;
+          request.window.presentPath.productVulkanStatus = "frame_not_submitted";
+          request.window.presentPath.productVulkanReasonCode = menuFrame.reasonCode;
         }
       }
     }

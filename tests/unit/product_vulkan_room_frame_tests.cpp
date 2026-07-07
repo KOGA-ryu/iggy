@@ -791,13 +791,13 @@ bool productReceiptCarriesFirstPersonRoomPathProof() {
   iggy3d::applyGameplayProjectionMetrics(window, frame.scenePtr(), frame.debugPtr(),
                                          frame.drawListPtr(), frame.viewportFramePtr(),
                                          frame.renderBridgePtr(), frame.viewVisible);
-  window.productVulkanRenderer.requested = true;
-  window.productVulkanRenderer.created = true;
-  window.productVulkanRenderer.ready = true;
-  window.productVulkanFrameSubmitted = true;
-  window.productVulkanFrameSubmittedCount = 1U;
-  window.productVulkanRenderingPath = "package_room_meshes";
-  window.productVulkanRecordMode = "room_mesh_draws";
+  window.presentPath.productVulkanRenderer.requested = true;
+  window.presentPath.productVulkanRenderer.created = true;
+  window.presentPath.productVulkanRenderer.ready = true;
+  window.presentPath.productVulkanFrameSubmitted = true;
+  window.presentPath.productVulkanFrameSubmittedCount = 1U;
+  window.presentPath.productVulkanRenderingPath = "package_room_meshes";
+  window.presentPath.productVulkanRecordMode = "room_mesh_draws";
   window.viewport.productVulkanRoomMeshBackendPresented = true;
 
   iggy3d::ProductAppOptions options;

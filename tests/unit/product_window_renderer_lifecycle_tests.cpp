@@ -24,7 +24,7 @@ bool expect(bool condition, std::string_view message) {
 
 iggy3d::ProductAppWindowState requestedWindow() {
   iggy3d::ProductAppWindowState window;
-  window.productVulkanRenderer.requested = true;
+  window.presentPath.productVulkanRenderer.requested = true;
   return window;
 }
 
@@ -52,7 +52,7 @@ bool notRequestedReportsStableBlocker() {
 
 bool unavailableRendererReportsRuntimeBlockerWhenBackendBuilt() {
   iggy3d::ProductAppWindowState window = requestedWindow();
-  window.productVulkanReasonCode = "renderer_unavailable";
+  window.presentPath.productVulkanReasonCode = "renderer_unavailable";
   const iggy3d::ProductVulkanGameplayReadiness readiness =
       iggy3d::evaluateProductVulkanGameplayReadiness(window);
   if (!iggy3d::productWindowVulkanBackendBuilt()) {
@@ -71,8 +71,8 @@ bool unavailableRendererReportsRuntimeBlockerWhenBackendBuilt() {
 
 bool cpuMeshReadinessIsRequiredBeforeGameplayReady() {
   iggy3d::ProductAppWindowState window = requestedWindow();
-  window.productVulkanRenderer.created = true;
-  window.productVulkanRenderer.ready = true;
+  window.presentPath.productVulkanRenderer.created = true;
+  window.presentPath.productVulkanRenderer.ready = true;
   const iggy3d::ProductVulkanGameplayReadiness readiness =
       iggy3d::evaluateProductVulkanGameplayReadiness(window);
   if (!iggy3d::productWindowVulkanBackendBuilt()) {
@@ -88,10 +88,10 @@ bool cpuMeshReadinessIsRequiredBeforeGameplayReady() {
 
 bool frameSubmitIsRequiredBeforeGameplayReady() {
   iggy3d::ProductAppWindowState window = requestedWindow();
-  window.productVulkanRenderer.created = true;
-  window.productVulkanRenderer.ready = true;
+  window.presentPath.productVulkanRenderer.created = true;
+  window.presentPath.productVulkanRenderer.ready = true;
   window.viewport.productVulkanRoomMeshCpuReady = true;
-  window.productVulkanReasonCode = "product_vulkan_waiting_for_gameplay_room";
+  window.presentPath.productVulkanReasonCode = "product_vulkan_waiting_for_gameplay_room";
   const iggy3d::ProductVulkanGameplayReadiness readiness =
       iggy3d::evaluateProductVulkanGameplayReadiness(window);
   if (!iggy3d::productWindowVulkanBackendBuilt()) {
@@ -107,12 +107,12 @@ bool frameSubmitIsRequiredBeforeGameplayReady() {
 
 bool roomMeshBackendPresentationIsRequiredBeforeGameplayReady() {
   iggy3d::ProductAppWindowState window = requestedWindow();
-  window.productVulkanRenderer.created = true;
-  window.productVulkanRenderer.ready = true;
+  window.presentPath.productVulkanRenderer.created = true;
+  window.presentPath.productVulkanRenderer.ready = true;
   window.viewport.productVulkanRoomMeshCpuReady = true;
-  window.productVulkanFrameSubmitted = true;
-  window.productVulkanRenderingPath = "diagnostic";
-  window.productVulkanRecordMode = "none";
+  window.presentPath.productVulkanFrameSubmitted = true;
+  window.presentPath.productVulkanRenderingPath = "diagnostic";
+  window.presentPath.productVulkanRecordMode = "none";
   const iggy3d::ProductVulkanGameplayReadiness readiness =
       iggy3d::evaluateProductVulkanGameplayReadiness(window);
   if (!iggy3d::productWindowVulkanBackendBuilt()) {
@@ -128,12 +128,12 @@ bool roomMeshBackendPresentationIsRequiredBeforeGameplayReady() {
 
 bool roomMeshFramePathReportsGameplayReadyWhenBackendBuilt() {
   iggy3d::ProductAppWindowState window = requestedWindow();
-  window.productVulkanRenderer.created = true;
-  window.productVulkanRenderer.ready = true;
+  window.presentPath.productVulkanRenderer.created = true;
+  window.presentPath.productVulkanRenderer.ready = true;
   window.viewport.productVulkanRoomMeshCpuReady = true;
-  window.productVulkanFrameSubmitted = true;
-  window.productVulkanRenderingPath = "package_room_meshes";
-  window.productVulkanRecordMode = "room_mesh_draws";
+  window.presentPath.productVulkanFrameSubmitted = true;
+  window.presentPath.productVulkanRenderingPath = "package_room_meshes";
+  window.presentPath.productVulkanRecordMode = "room_mesh_draws";
   window.viewport.productVulkanRoomMeshBackendPresented = true;
   const iggy3d::ProductVulkanGameplayReadiness readiness =
       iggy3d::evaluateProductVulkanGameplayReadiness(window);
@@ -196,10 +196,10 @@ bool starterMenuSubmitMarksFramePresented() {
   iggy3d::appendReceiptField(submit.receipt, "reason_code", "product_menu_ui_presented");
   iggy3d::recordProductVulkanSubmit(window, submit);
 
-  return expect(window.productVulkanFrameSubmitted, "menu frame submitted") &&
-         expect(window.productVulkanRenderingPath == "product_menu_ui",
+  return expect(window.presentPath.productVulkanFrameSubmitted, "menu frame submitted") &&
+         expect(window.presentPath.productVulkanRenderingPath == "product_menu_ui",
                 "menu rendering path") &&
-         expect(window.productVulkanRecordMode == "ui_primitives",
+         expect(window.presentPath.productVulkanRecordMode == "ui_primitives",
                 "menu record mode") &&
          expect(window.productVulkanMenu.visible, "menu visible after submit") &&
          expect(window.productVulkanMenu.status ==
@@ -216,12 +216,12 @@ bool productReceiptCarriesReadinessFields() {
   iggy3d::FrontendSettings settings;
   iggy3d::ProductSaveBridgeResult saves;
   iggy3d::ProductAppWindowState window = requestedWindow();
-  window.productVulkanRenderer.created = true;
-  window.productVulkanRenderer.ready = true;
+  window.presentPath.productVulkanRenderer.created = true;
+  window.presentPath.productVulkanRenderer.ready = true;
   window.viewport.productVulkanRoomMeshCpuReady = true;
-  window.productVulkanFrameSubmitted = true;
-  window.productVulkanRenderingPath = "package_room_meshes";
-  window.productVulkanRecordMode = "room_mesh_draws";
+  window.presentPath.productVulkanFrameSubmitted = true;
+  window.presentPath.productVulkanRenderingPath = "package_room_meshes";
+  window.presentPath.productVulkanRecordMode = "room_mesh_draws";
   window.viewport.productVulkanRoomMeshBackendPresented = true;
   const iggy3d::FrontendState menuFrontend =
       starterFrontend(iggy3d::FrontendAction::NewWorld);

@@ -71,7 +71,7 @@ ProductVulkanGameplayReadiness evaluateProductVulkanGameplayReadiness(
   ProductVulkanGameplayReadiness readiness;
   readiness.backendBuilt = productWindowVulkanBackendBuilt();
   // branch-gate: BG-1069
-  if (!window.productVulkanRenderer.requested) {
+  if (!window.presentPath.productVulkanRenderer.requested) {
     readiness.status = "product_vulkan_not_requested";
     readiness.reasonCode = "product_vulkan_not_requested";
     return readiness;
@@ -83,11 +83,11 @@ ProductVulkanGameplayReadiness evaluateProductVulkanGameplayReadiness(
     return readiness;
   }
   // branch-gate: BG-1069
-  if (!window.productVulkanRenderer.created || !window.productVulkanRenderer.ready) {
+  if (!window.presentPath.productVulkanRenderer.created || !window.presentPath.productVulkanRenderer.ready) {
     readiness.status = "product_vulkan_renderer_unavailable";
-    readiness.reasonCode = window.productVulkanReasonCode.empty()
+    readiness.reasonCode = window.presentPath.productVulkanReasonCode.empty()
                                ? "renderer_unavailable"
-                               : window.productVulkanReasonCode;
+                               : window.presentPath.productVulkanReasonCode;
     return readiness;
   }
   // branch-gate: BG-1069
@@ -97,11 +97,11 @@ ProductVulkanGameplayReadiness evaluateProductVulkanGameplayReadiness(
     return readiness;
   }
   // branch-gate: BG-1069
-  if (!window.productVulkanFrameSubmitted) {
+  if (!window.presentPath.productVulkanFrameSubmitted) {
     readiness.status = "product_vulkan_frame_not_submitted";
-    readiness.reasonCode = window.productVulkanReasonCode.empty()
+    readiness.reasonCode = window.presentPath.productVulkanReasonCode.empty()
                                ? "frame_not_submitted"
-                               : window.productVulkanReasonCode;
+                               : window.presentPath.productVulkanReasonCode;
     return readiness;
   }
   // branch-gate: BG-1069
@@ -118,62 +118,62 @@ ProductVulkanGameplayReadiness evaluateProductVulkanGameplayReadiness(
 
 void recordProductVulkanRendererUnavailable(ProductAppWindowState& window,
                                             std::string_view reasonCode) {
-  window.productVulkanRenderer.created = false;
-  window.productVulkanRenderer.ready = false;
-  window.productVulkanSurfaceCreated = false;
-  window.productVulkanSwapchainReady = false;
-  window.productVulkanStatus = "renderer_unavailable";
-  window.productVulkanReasonCode = std::string(reasonCode);
+  window.presentPath.productVulkanRenderer.created = false;
+  window.presentPath.productVulkanRenderer.ready = false;
+  window.presentPath.productVulkanSurfaceCreated = false;
+  window.presentPath.productVulkanSwapchainReady = false;
+  window.presentPath.productVulkanStatus = "renderer_unavailable";
+  window.presentPath.productVulkanReasonCode = std::string(reasonCode);
 }
 
 void recordProductVulkanRendererReady(ProductAppWindowState& window,
                                       const RendererApi& renderer) {
   const RenderReceipt diagnostics = renderer.diagnostics();
-  window.productVulkanRenderer.created = renderer.hasBackend();
-  window.productVulkanRenderer.ready =
+  window.presentPath.productVulkanRenderer.created = renderer.hasBackend();
+  window.presentPath.productVulkanRenderer.ready =
       renderer.lifecycleState() == RendererLifecycleState::Ready;
-  window.productVulkanSurfaceCreated =
-      window.productVulkanRenderer.ready ||
+  window.presentPath.productVulkanSurfaceCreated =
+      window.presentPath.productVulkanRenderer.ready ||
       hasReceiptField(diagnostics, "surface_ready", "true");
-  window.productVulkanSwapchainReady =
-      window.productVulkanRenderer.ready ||
+  window.presentPath.productVulkanSwapchainReady =
+      window.presentPath.productVulkanRenderer.ready ||
       receiptFieldValueOr(diagnostics, "swapchain_state", "none") == "ready";
-  window.productVulkanStatus = window.productVulkanRenderer.ready
+  window.presentPath.productVulkanStatus = window.presentPath.productVulkanRenderer.ready
                                    ? "renderer_ready"
                                    : "renderer_unavailable";
-  window.productVulkanReasonCode =
+  window.presentPath.productVulkanReasonCode =
       receiptFieldValueOr(diagnostics, "reason_code", "renderer_unavailable");
 }
 
 void recordProductVulkanSubmit(ProductAppWindowState& window,
                                const RenderSubmitResult& submit) {
-  window.productVulkanRenderingPath =
+  window.presentPath.productVulkanRenderingPath =
       receiptFieldValueOr(submit.receipt, "rendering_path", "none");
-  window.productVulkanRecordMode =
+  window.presentPath.productVulkanRecordMode =
       receiptFieldValueOr(submit.receipt, "record_mode", "none");
-  window.productVulkanReasonCode = std::string(submit.reason.code);
+  window.presentPath.productVulkanReasonCode = std::string(submit.reason.code);
   // branch-gate: BG-1028
   if (submit.outcome == RenderOutcome::Ok) {
-    window.productVulkanSurfaceCreated = true;
-    window.productVulkanSwapchainReady = true;
-    window.productVulkanFrameSubmitted = true;
-    ++window.productVulkanFrameSubmittedCount;
-    window.productVulkanStatus = "frame_submitted";
+    window.presentPath.productVulkanSurfaceCreated = true;
+    window.presentPath.productVulkanSwapchainReady = true;
+    window.presentPath.productVulkanFrameSubmitted = true;
+    ++window.presentPath.productVulkanFrameSubmittedCount;
+    window.presentPath.productVulkanStatus = "frame_submitted";
     // branch-gate: BG-1028
-    if (window.productVulkanRenderingPath == "package_room_meshes" &&
-        window.productVulkanRecordMode == "room_mesh_draws") {
+    if (window.presentPath.productVulkanRenderingPath == "package_room_meshes" &&
+        window.presentPath.productVulkanRecordMode == "room_mesh_draws") {
       window.viewport.productVulkanRoomMeshBackendPresented = true;
     }
     // branch-gate: BG-1028
-    if (window.productVulkanRenderingPath == "product_menu_ui" &&
-        window.productVulkanRecordMode == "ui_primitives") {
+    if (window.presentPath.productVulkanRenderingPath == "product_menu_ui" &&
+        window.presentPath.productVulkanRecordMode == "ui_primitives") {
       window.productVulkanMenu.visible = true;
       window.productVulkanMenu.status = "product_vulkan_menu_frame_submitted";
       window.productVulkanMenu.reasonCode =
           receiptFieldValueOr(submit.receipt, "reason_code", "product_menu_ui_presented");
     }
   } else {
-    window.productVulkanStatus = "frame_not_submitted";
+    window.presentPath.productVulkanStatus = "frame_not_submitted";
   }
 }
 
@@ -256,7 +256,7 @@ ProductWindowRendererState createProductWindowRenderer(
         RendererApi(std::make_unique<VulkanBackend>(std::move(backendInfo)));
     recordProductVulkanRendererReady(window, renderer.vulkanRenderer);
     // branch-gate: BG-1028
-    if (!window.productVulkanRenderer.ready) {
+    if (!window.presentPath.productVulkanRenderer.ready) {
       window.status = "product_vulkan_renderer_unavailable";
       return renderer;
     }
@@ -298,9 +298,9 @@ void finalizeProductWindowRendererStatus(const ProductWindowRendererState& rende
                                          ProductAppWindowState& window) {
   // branch-gate: BG-1028
   if (renderer.useVulkanRenderer) {
-    window.status = window.productVulkanFrameSubmitted
+    window.status = window.presentPath.productVulkanFrameSubmitted
                         ? "product_vulkan_frame_presented"
-                        : window.productVulkanStatus;
+                        : window.presentPath.productVulkanStatus;
   } else {
     window.status = window.menuTextDrawn ? "opening_menu_text_ready"
                                          : "opening_menu_window_ready";
