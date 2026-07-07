@@ -6,8 +6,8 @@ use this index only to decide which ready card to claim next.
 
 The current pipeline is a **gated spine change** (the activeRoom→collision
 freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
-Gate-1 ratified). It is fed one gate at a time. Do not pre-load later gates
-(G5–G7).
+Gate-1 ratified). It is fed one gate at a time — **G4 done → G5 seeded** (the
+mass-removal gate). Do not pre-load G6–G7.
 
 ## Claim Policy
 
@@ -25,11 +25,16 @@ None.
 
 ## Pull Next
 
-None currently ready.
+1. **E132 (E-ARCF-G5)** — remove the scattered rebakes: delete the Controller
+   mid-tick branch, redirect TapeRunner, remove the install-path direct bakes so
+   `ensure` is the only rebuild path. Behavior byte-identical; coverage grep must
+   be empty. Read preflight §G5 + the removal checklist §A–§D first.
 
 ## Tier 1: Correctness And Compatibility
 
-None currently ready.
+- **E132 (E-ARCF-G5)** — Gate 5 mass-removal. Behavior-identical (the removed
+  bakes were redundant with the G4 seam). Block, don't paper over, if a test reds.
+  G6–G7 held until reviewed/committed.
 
 ## Tier 2: Feature-Add Seams
 
@@ -43,23 +48,22 @@ None currently ready.
 
 Held — do NOT promote to `ready/` on a guess:
 
-- **Freshness-guard gates G5–G7** — held; seeded one at a time after each prior
-  gate is reviewed/committed. **G5 note (from the decomposition map):** widen the
-  removal to sever BOTH nested duplicates — `roomEditing.activeRoom` **and**
-  `roomEditing.activeRoomCollision` (`EditingState.hpp:19-20`)
-  (`docs/active_room_collision_freshness_preflight_v0_2.md` Gate 1–7 table;
-  removal checklist `docs/active_room_collision_rebake_removal_checklist.md`).
+- **Freshness-guard gates G6–G7** — held; seeded after G5 is reviewed/committed
+  (`docs/active_room_collision_freshness_preflight_v0_2.md` Gate 1–7 table).
 - **Ownership-deficit queue** (`docs/ownership_deficit_audit.md`) landing onto the
-  decomposition map (`docs/god_struct_decomposition_target_map.md`): #2
-  `activeCreative`→delete (`CreativeIdentityStore`, cheapest, own Gate-0), #1
-  `activeRoom`→`RoomStore` (rides collision G4/G5), #3 `creativeFly`→
-  `CreativeFlyAnchorStore` (own preflight), + two delete-cleanups
-  (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).
+  decomposition map (`docs/god_struct_decomposition_target_map.md`):
+  - **#1 `activeRoom`→`RoomStore`** — the move-off-god-struct that severs the nested
+    `roomEditing.{activeRoom, activeRoomCollision}` duplicate storage
+    (`EditingState.hpp:19-20`). **Its OWN preflight** (NOT folded into collision G5,
+    which only removes rebakes per §11).
+  - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
+  - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
+  - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).
 - **Traversal-tag emitter/consumer migration** across RoomBake, ASCII room,
   movement, collision, and display/debug strings: after the catalog contract is
   stable. Do not migrate false-positive receipt/render strings blindly.
-- Further draw-kind metadata cleanup after E127, if render owners decide to
-  centralize secondary/decorative colors.
+- Further draw-kind metadata cleanup after E127, if render owners centralize
+  secondary/decorative colors.
 - Further include-hygiene passes (the remaining ~11 headers) after E125.
 - `npc_vision_lab` stale training_room fixture + the "same room checked in 3×"
   duplication smell — needs a single-source-of-truth card.
