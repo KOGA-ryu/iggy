@@ -4,10 +4,12 @@ This file ranks the task bucket without changing the bucket mechanics. Task
 files still live in `ready/`, `claimed/`, `done/`, or `blocked/`; builder should
 use this index only to decide which ready card to claim next.
 
-The current pipeline is a **gated spine change** (the activeRoom→collision
-freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
-Gate-1 ratified). Gates G2–G7 are done. The collision freshness store slice is
-complete.
+**Collision freshness store slice COMPLETE** (G2–G7 done,
+`docs/active_room_collision_freshness_preflight_v0_2.md`). Current work: decomposition
+deficit #2 — delete the `activeCreative` mirror — delivered as **ONE comprehensive
+card (E135)** for the slicer-Codex to decompose into builder slices (design:
+`docs/activecreative_mirror_delete_preflight_v0_2.md`, Gate-1 ratified; it's an L slice,
+compiler-guarded, thread-first-delete-last).
 
 ## Claim Policy
 
@@ -25,11 +27,15 @@ None.
 
 ## Pull Next
 
-None currently ready.
+1. **E135** — Delete `window.activeCreative` mirror (deficit #2). ONE comprehensive
+   card = the slicer-Codex's input; decompose into the 4 suggested slices (thread
+   `creativeApp`/`identity` everywhere first, delete the mirror last; leaf stays
+   mirror-backed until the delete). Design authority: the v0.2 preflight.
 
 ## Tier 1: Correctness And Compatibility
 
-None currently ready.
+- **E135** — activeCreative mirror delete (deficit #2, L, compiler-guarded).
+  Behavior-preserving; coverage + receipt truth-gates fire by design.
 
 ## Tier 2: Feature-Add Seams
 
@@ -43,9 +49,12 @@ None currently ready.
 
 Held — do NOT promote to `ready/` on a guess:
 
-- **After G7 = collision store done.** Next standalone landing on the decomposition
-  map: **#2 `activeCreative`→delete** (`CreativeIdentityStore`, cheapest, own Gate-0
-  preflight). Then #1 `activeRoom`→`RoomStore` (its own preflight) and #3 `creativeFly`.
+- **#2 `activeCreative`→delete is IN FLIGHT as E135** (turned out L, not the audit's
+  "cheapest S" — the mirror feeds a hot-path routing predicate; preflight v0.2). Next
+  landings after it: **#1 `activeRoom`→`RoomStore`** (its own preflight; severs the nested
+  `roomEditing.{activeRoom, activeRoomCollision}` duplicate) and **#3 `creativeFly`→`CreativeFlyAnchorStore`**.
+  NOTE: the audit's S/M/L ratings are directional — each slice needs its own preflight to
+  confirm scope (E135 was rated S, proved L).
 - **Ownership-deficit queue** (`docs/ownership_deficit_audit.md`) landing onto the
   decomposition map (`docs/god_struct_decomposition_target_map.md`):
   - **#1 `activeRoom`→`RoomStore`** — the move-off-god-struct that severs the nested
