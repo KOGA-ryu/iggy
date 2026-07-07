@@ -31,8 +31,8 @@ path/status fields now live under `ProductAppWindowState::presentPath`, while
 
 **Decomposition card set now COMPLETE through PresentPathStore.** CreativeAuthoringStore
 is now being sliced from parent `E161`; `E168` wireframe, `E169`
-viewport-pick, and `E170` room-editor are complete, and `E171` world/ascii is
-ready. Remaining
+viewport-pick, `E170` room-editor, and `E171` world/ascii are complete, and
+`E172` creative UI state is ready. Remaining
 parents staged in `blocked/` (recon-grounded, `wdnplylk0`): `E161` CreativeAuthoringStore (#4 — the
 giant, 86 fields, ~1679 repoints, MUST slice by sub-domain), `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
 remainder; **flags a reclaim of `gamepadMenuSelectUsed` from InputDeviceStore/E156 —
@@ -56,9 +56,9 @@ None.
 
 ## Pull Next
 
-1. `E171-creativeauthoringstore-g4-world-ascii.md` — fourth
-   CreativeAuthoringStore child. Move only `worldSetup`, `worldCreation`,
-   `asciiRoomDraft`, `asciiRoomPreview`, and `asciiRoomActivation`.
+1. `E172-creativeauthoringstore-g5-creative-ui-state.md` — final
+   CreativeAuthoringStore child. Move the remaining 14 creative UI, undo,
+   stale/refresh, navigate, and document revision fields.
 
 ## Tier 1: Correctness And Compatibility
 
