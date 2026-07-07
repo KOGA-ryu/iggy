@@ -40,13 +40,38 @@ grep -rn "refreshActiveRoomCollision" --include='*.cpp' src/app/iggy3d | grep -v
 |---|---|---|---|
 | 12 | `TapeRunner.cpp:221-227` (helper), `:226` (write), `:493` (callsite) | `refreshActiveRoomCollision` (unconditional) | **Redirect `:493` to `ensure`.** Equivalence lemma T-tape: TapeRunner re-derives the pointer per step (`:209`), so no captured pointer is invalidated; a no-op-tick step exercises the skip path, a door-toggle step the rebake path. |
 
-## D. Out of scope / definitions — do NOT touch
+## D. Editing-state mirror — G5 examine + justify (reviewer-listed, tracked not skipped)
 
-- `room_editor/EditingState.cpp:129` — writes `ProductRoomEditingState::activeRoomCollision` (a **non-window
-  mirror**), not `window.activeRoomCollision`. Its output reaches the window only via `AutomationRoomEditing.cpp:89`
-  (row 10), which IS the in-scope window write. The room-editor's own mirror is outside the freshness pair.
+| # | Site | Note | G5 action |
+|---|---|---|---|
+| 13 | `room_editor/EditingState.cpp:129` | Bakes `ProductRoomEditingState::activeRoomCollision` (the room-editor **mirror**, one-arg nullptr overload), which reaches the window only via `AutomationRoomEditing.cpp:89` (row 10). | **Examine:** if `state.activeRoomCollision` is consumed *only* by the `:89` copy, the mirror bake is redundant once the window's `ensure` rebakes after the copy — remove it. If the room editor reads the mirror's collision independently, **keep + justify** in the G5 brief. |
+
+## E. Definitions — do NOT touch (keep in `ActiveRoomCollision.cpp`)
+
 - `gameplay/ActiveRoomCollision.cpp:117` / `:122` — the two `buildProductActiveRoomCollision` overload
   **definitions**. The Store calls these; they are not callsites to remove.
+
+## Why the `AutomationRoomEditing.cpp:89` copy cannot cause a false-fresh (reviewer special-attention)
+
+`copyRoomEditingStateToWindow` does `window.activeRoom = state.activeRoom` (`:88`, whole-struct copy) then
+`window.activeRoomCollision = state.activeRoomCollision` (`:89`, whole-struct copy). Therefore:
+
+- The **revision counter lives on the window** (`ProductAppWindowState::activeRoomRevision`), **NOT** inside the
+  copied `ProductActiveRoomState` — the `:88` copy cannot carry or stomp it (preflight I2). G4 bumps the window
+  counter *after* the copy.
+- The **provenance fields** do ride the copied collision struct (`:89`), carrying the editing-state's values —
+  but that is harmless: the editing-state bake (`:129`) never runs through `ensure`, so its provenance stays the
+  default `0` (unstamped ⟹ always stale, preflight I3). The next frame-boundary `ensure` sees
+  `0 != window.activeRoomRevision` → rebakes + stamps with the window's `(revision, hash)`. **No
+  coincidental-equal-revision false-fresh is possible, precisely because `ensure` is the sole stamper and the
+  editing state never stamps.**
+
+## Scope guardrails (reviewer, 2026-07-07)
+
+This is a freshness-**store** seam cleanup — nothing more. Do **not** broaden scope, do **not** rename unrelated
+systems, do **not** build a generic kernel / dirty-channel framework. G2 adds the store/provenance/`ensure` stub
+**without removing** any site; by G5 every site in §A–§D is **removed or explicitly justified** so the production
+rebuild path is `ensureActiveRoomCollisionFresh(...)`, not scattered writer-bakes.
 
 ## Coverage assertion for G5
 
