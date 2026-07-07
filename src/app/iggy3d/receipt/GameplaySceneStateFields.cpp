@@ -56,19 +56,19 @@ void appendProductGameplaySceneStateFields(RenderReceipt& receipt, const Product
   appendReceiptField(receipt, "position_hud_pitch_degrees",
                      floatReceiptValue(window.positionHud.pitchDegrees));
   appendReceiptField(receipt, "gameplay_collision_surfaces_used",
-                     window.gameplayCollision.surfacesUsed);
+                     window.gameplay.gameplayCollision.surfacesUsed);
   appendReceiptField(receipt, "gameplay_collision_surface_count",
-                     window.gameplayCollision.surfaceCount);
+                     window.gameplay.gameplayCollision.surfaceCount);
   appendReceiptField(receipt, "physics_movement_planner_enabled",
-                     window.physicsMovementPlanner.enabled);
+                     window.gameplay.physicsMovementPlanner.enabled);
   appendReceiptField(receipt, "physics_movement_planner_requested",
-                     window.physicsMovementPlanner.requested);
+                     window.gameplay.physicsMovementPlanner.requested);
   appendReceiptField(receipt, "physics_movement_planner_used",
-                     window.physicsMovementPlanner.used);
+                     window.gameplay.physicsMovementPlanner.used);
   appendReceiptField(receipt, "physics_movement_planner_status",
-                     window.physicsMovementPlanner.status);
+                     window.gameplay.physicsMovementPlanner.status);
   appendReceiptField(receipt, "physics_movement_planner_reason_code",
-                     window.physicsMovementPlanner.reasonCode);
+                     window.gameplay.physicsMovementPlanner.reasonCode);
   appendReceiptField(receipt, "target_discovered", window.targetDiscovered);
   appendReceiptField(receipt, "gameplay_target_status",
                      window.gameplayTarget.status);

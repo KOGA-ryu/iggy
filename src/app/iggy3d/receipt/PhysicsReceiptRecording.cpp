@@ -27,10 +27,10 @@ void setPhysicsMovementPlannerProof(ProductAppWindowState& window,
                                     std::string status,
                                     bool requested,
                                     bool used) {
-  window.physicsMovementPlanner.requested = requested;
-  window.physicsMovementPlanner.used = used;
-  window.physicsMovementPlanner.status = std::move(status);
-  window.physicsMovementPlanner.reasonCode = window.physicsMovementPlanner.status;
+  window.gameplay.physicsMovementPlanner.requested = requested;
+  window.gameplay.physicsMovementPlanner.used = used;
+  window.gameplay.physicsMovementPlanner.status = std::move(status);
+  window.gameplay.physicsMovementPlanner.reasonCode = window.gameplay.physicsMovementPlanner.status;
 }
 
 }  // namespace

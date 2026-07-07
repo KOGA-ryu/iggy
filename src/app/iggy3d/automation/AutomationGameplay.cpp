@@ -75,8 +75,8 @@ bool applyGameplayActionState(ProductAutomationGameplayContext& context,
       *context.activeSession, actions, context.window, "automation",
       currentAutomationCollisionSurfaces(context));
   (void)ensureActiveRoomCollisionFresh(context.window, context.activeSession);
-  return context.window.gameplayCommand.submitted &&
-         context.window.gameplayCommand.accepted &&
+  return context.window.gameplay.gameplayCommand.submitted &&
+         context.window.gameplay.gameplayCommand.accepted &&
          context.window.gameplay.gameplayTickAdvanced;
 }
 
@@ -98,9 +98,9 @@ bool applyGameplayJumpActionState(ProductAutomationGameplayContext& context,
       *context.activeSession, actions, context.window, "automation",
       currentAutomationCollisionSurfaces(context));
   (void)ensureActiveRoomCollisionFresh(context.window, context.activeSession);
-  return context.window.gameplayJump.requested &&
-         (context.window.gameplayJump.accepted ||
-          context.window.gameplayTraversal.consumed);
+  return context.window.gameplay.gameplayJump.requested &&
+         (context.window.gameplay.gameplayJump.accepted ||
+          context.window.gameplay.gameplayTraversal.consumed);
 }
 
 bool parseGameplayPosition(std::string_view value, Vec3& out) {
@@ -264,7 +264,7 @@ ProductAutomationExecutionResult applyProductGameplayAutomationCommand(
       context.window.automationControl.status = "invalid_value";
       return failGameplayAutomation();
     }
-    context.window.physicsMovementPlanner.enabled = boolValue;
+    context.window.gameplay.physicsMovementPlanner.enabled = boolValue;
     // branch-gate: BG-1010
     if (!boolValue) {
       recordProductPhysicsMovementPlannerTickProof(context.window, false,

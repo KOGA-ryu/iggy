@@ -457,8 +457,8 @@ bool runManualMove(float moveX,
   if (capturedWindow != nullptr) {
     *capturedWindow = window;
   }
-  return expect(window.gameplayCommand.accepted, "manual move accepted") &&
-         expect(window.gameplayMovement.status == "moved",
+  return expect(window.gameplay.gameplayCommand.accepted, "manual move accepted") &&
+         expect(window.gameplay.gameplayMovement.status == "moved",
                 "manual movement status");
 }
 
@@ -469,29 +469,29 @@ bool productMoveUsesTunedManualStep() {
     return false;
   }
 
-  return expect(window.gameplayCommand.accepted, "move accepted") &&
-         expect(window.gameplayMovement.status == "moved", "movement status") &&
-         expect(!window.physicsMovementPlanner.enabled,
+  return expect(window.gameplay.gameplayCommand.accepted, "move accepted") &&
+         expect(window.gameplay.gameplayMovement.status == "moved", "movement status") &&
+         expect(!window.gameplay.physicsMovementPlanner.enabled,
                 "default physics planner disabled") &&
-         expect(!window.physicsMovementPlanner.requested,
+         expect(!window.gameplay.physicsMovementPlanner.requested,
                 "default physics planner not requested") &&
-         expect(!window.physicsMovementPlanner.used,
+         expect(!window.gameplay.physicsMovementPlanner.used,
                 "default physics planner not used") &&
-         expect(window.physicsMovementPlanner.status ==
+         expect(window.gameplay.physicsMovementPlanner.status ==
                     "physics_movement_planner_disabled",
                 "default physics planner status") &&
-         expect(window.gameplayMovement.profile == kExpectedManualFirstPersonProfile,
+         expect(window.gameplay.gameplayMovement.profile == kExpectedManualFirstPersonProfile,
                 "manual movement profile") &&
-         expect(window.gameplayMovement.state ==
+         expect(window.gameplay.gameplayMovement.state ==
                     iggy3d::ProductGameplayMovementState::MovingGrounded,
                 "manual movement state") &&
-         expect(window.gameplayMovement.grounded, "manual movement grounded") &&
-         expect(window.gameplayMovement.horizontalSpeedMetersPerSecond > 0.0F,
+         expect(window.gameplay.gameplayMovement.grounded, "manual movement grounded") &&
+         expect(window.gameplay.gameplayMovement.horizontalSpeedMetersPerSecond > 0.0F,
                 "manual movement horizontal speed proof") &&
-         expect(nearlyEqual(window.gameplayMovement.maxSpeedMetersPerSecond,
+         expect(nearlyEqual(window.gameplay.gameplayMovement.maxSpeedMetersPerSecond,
                             kExpectedManualFirstPersonSpeedMetersPerSecond),
                 "manual movement speed") &&
-         expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
+         expect(nearlyEqual(window.gameplay.gameplayMovement.horizontalDistanceMeters,
                             kExpectedManualFirstPersonStepMeters),
                 "horizontal distance is profile step") &&
          expect(nearlyEqual(delta.x, 0.0F), "forward x unchanged") &&
@@ -511,11 +511,11 @@ bool productMovementStateReportsIdleGroundedWithoutInput() {
                                       window,
                                       "unit/gameplay_controller_idle_state");
 
-  return expect(window.gameplayMovement.state ==
+  return expect(window.gameplay.gameplayMovement.state ==
                     iggy3d::ProductGameplayMovementState::IdleGrounded,
                 "idle grounded state") &&
-         expect(window.gameplayMovement.grounded, "idle grounded proof") &&
-         expect(nearlyEqual(window.gameplayMovement.horizontalSpeedMetersPerSecond,
+         expect(window.gameplay.gameplayMovement.grounded, "idle grounded proof") &&
+         expect(nearlyEqual(window.gameplay.gameplayMovement.horizontalSpeedMetersPerSecond,
                             0.0F),
                 "idle horizontal speed proof");
 }
@@ -573,12 +573,12 @@ bool productMoveNormalizesDiagonalToTunedStep() {
                                       "unit/gameplay_controller_step");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayCommand.accepted, "diagonal move accepted") &&
-         expect(window.gameplayMovement.status == "moved",
+  return expect(window.gameplay.gameplayCommand.accepted, "diagonal move accepted") &&
+         expect(window.gameplay.gameplayMovement.status == "moved",
                 "diagonal movement status") &&
-         expect(window.gameplayMovement.profile == kExpectedManualFirstPersonProfile,
+         expect(window.gameplay.gameplayMovement.profile == kExpectedManualFirstPersonProfile,
                 "diagonal movement profile") &&
-         expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
+         expect(nearlyEqual(window.gameplay.gameplayMovement.horizontalDistanceMeters,
                             kExpectedManualFirstPersonStepMeters),
                 "diagonal movement normalizes to profile step") &&
          expect(final.x > start.x, "diagonal includes right movement") &&
@@ -599,16 +599,16 @@ bool productSprintUsesSprintProfileAndStep() {
                                       "unit/gameplay_controller_sprint");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayCommand.accepted, "sprint move accepted") &&
-         expect(window.gameplayMovement.status == "moved",
+  return expect(window.gameplay.gameplayCommand.accepted, "sprint move accepted") &&
+         expect(window.gameplay.gameplayMovement.status == "moved",
                 "sprint movement status") &&
-         expect(window.gameplayMovement.profile ==
+         expect(window.gameplay.gameplayMovement.profile ==
                     kExpectedManualFirstPersonSprintProfile,
                 "sprint movement profile") &&
-         expect(nearlyEqual(window.gameplayMovement.maxSpeedMetersPerSecond,
+         expect(nearlyEqual(window.gameplay.gameplayMovement.maxSpeedMetersPerSecond,
                             kExpectedManualFirstPersonSprintSpeedMetersPerSecond),
                 "sprint movement speed") &&
-         expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
+         expect(nearlyEqual(window.gameplay.gameplayMovement.horizontalDistanceMeters,
                             kExpectedManualFirstPersonSprintStepMeters),
                 "sprint horizontal distance is sprint step") &&
          expect(nearlyEqual(final.x - start.x, 0.0F), "sprint x unchanged") &&
@@ -624,10 +624,10 @@ bool productMoveUsesRuntimeTunedWindowSpeed() {
     return false;
   }
 
-  window.gameplayMovement.tuning.walkSpeedMetersPerSecond = 1.2F;
+  window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond = 1.2F;
   const float expectedStep =
-      window.gameplayMovement.tuning.walkSpeedMetersPerSecond *
-      window.gameplayMovement.tuning.inputStepSeconds;
+      window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond *
+      window.gameplay.gameplayMovement.tuning.inputStepSeconds;
   const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
   iggy3d::applyProductGameplayActions(*session,
                                       manualMoveActions(0.0F, 1.0F),
@@ -635,10 +635,10 @@ bool productMoveUsesRuntimeTunedWindowSpeed() {
                                       "unit/gameplay_controller_runtime_tuning");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayCommand.accepted, "runtime tuned move accepted") &&
-         expect(nearlyEqual(window.gameplayMovement.maxSpeedMetersPerSecond, 1.2F),
+  return expect(window.gameplay.gameplayCommand.accepted, "runtime tuned move accepted") &&
+         expect(nearlyEqual(window.gameplay.gameplayMovement.maxSpeedMetersPerSecond, 1.2F),
                 "runtime tuned speed proof") &&
-         expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
+         expect(nearlyEqual(window.gameplay.gameplayMovement.horizontalDistanceMeters,
                             expectedStep),
                 "runtime tuned horizontal distance") &&
          expect(nearlyEqual(final.z - start.z, -expectedStep),
@@ -652,11 +652,11 @@ bool productMoveUsesRuntimeTunedGroundAcceleration() {
     return false;
   }
 
-  window.gameplayMovement.tuning.groundAccelerationMetersPerSecondSquared = 33.0F;
+  window.gameplay.gameplayMovement.tuning.groundAccelerationMetersPerSecondSquared = 33.0F;
   const float expectedStep =
-      window.gameplayMovement.tuning.groundAccelerationMetersPerSecondSquared *
-      window.gameplayMovement.tuning.inputStepSeconds *
-      window.gameplayMovement.tuning.inputStepSeconds;
+      window.gameplay.gameplayMovement.tuning.groundAccelerationMetersPerSecondSquared *
+      window.gameplay.gameplayMovement.tuning.inputStepSeconds *
+      window.gameplay.gameplayMovement.tuning.inputStepSeconds;
   const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
   iggy3d::applyProductGameplayActions(*session,
                                       manualMoveActions(0.0F, 1.0F),
@@ -664,9 +664,9 @@ bool productMoveUsesRuntimeTunedGroundAcceleration() {
                                       "unit/gameplay_controller_accel_tuning");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayCommand.accepted,
+  return expect(window.gameplay.gameplayCommand.accepted,
                 "runtime acceleration tuned move accepted") &&
-         expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
+         expect(nearlyEqual(window.gameplay.gameplayMovement.horizontalDistanceMeters,
                             expectedStep),
                 "runtime acceleration tuned horizontal distance") &&
          expect(nearlyEqual(final.z - start.z, -expectedStep),
@@ -680,19 +680,19 @@ bool productGroundAccelerationApproachesMaxSpeed() {
     return false;
   }
 
-  window.gameplayMovement.tuning.groundAccelerationMetersPerSecondSquared = 33.0F;
+  window.gameplay.gameplayMovement.tuning.groundAccelerationMetersPerSecondSquared = 33.0F;
   iggy3d::applyProductGameplayActions(*session,
                                       forwardMoveActions(),
                                       window,
                                       "unit/gameplay_controller_accel_ramp_first");
-  const float firstDistance = window.gameplayMovement.horizontalDistanceMeters;
+  const float firstDistance = window.gameplay.gameplayMovement.horizontalDistanceMeters;
   for (int frame = 0; frame < 8; ++frame) {
     iggy3d::applyProductGameplayActions(*session,
                                         forwardMoveActions(),
                                         window,
                                         "unit/gameplay_controller_accel_ramp_later");
   }
-  const float laterDistance = window.gameplayMovement.horizontalDistanceMeters;
+  const float laterDistance = window.gameplay.gameplayMovement.horizontalDistanceMeters;
 
   return expect(firstDistance < kExpectedManualFirstPersonStepMeters,
                 "first acceleration frame is below full speed") &&
@@ -712,9 +712,9 @@ bool productHigherGroundAccelerationReachesSpeedFaster() {
     return false;
   }
 
-  slowWindow.gameplayMovement.tuning.groundAccelerationMetersPerSecondSquared =
+  slowWindow.gameplay.gameplayMovement.tuning.groundAccelerationMetersPerSecondSquared =
       16.5F;
-  fastWindow.gameplayMovement.tuning.groundAccelerationMetersPerSecondSquared =
+  fastWindow.gameplay.gameplayMovement.tuning.groundAccelerationMetersPerSecondSquared =
       66.0F;
   iggy3d::applyProductGameplayActions(*slowSession,
                                       forwardMoveActions(),
@@ -725,11 +725,11 @@ bool productHigherGroundAccelerationReachesSpeedFaster() {
                                       fastWindow,
                                       "unit/gameplay_controller_accel_fast");
 
-  return expect(fastWindow.gameplayMovement.horizontalDistanceMeters >
-                    slowWindow.gameplayMovement.horizontalDistanceMeters,
+  return expect(fastWindow.gameplay.gameplayMovement.horizontalDistanceMeters >
+                    slowWindow.gameplay.gameplayMovement.horizontalDistanceMeters,
                 "higher acceleration moves farther on first frame") &&
-         expect(std::fabs(fastWindow.gameplayMovement.groundVelocityZ) >
-                    std::fabs(slowWindow.gameplayMovement.groundVelocityZ),
+         expect(std::fabs(fastWindow.gameplay.gameplayMovement.groundVelocityZ) >
+                    std::fabs(slowWindow.gameplay.gameplayMovement.groundVelocityZ),
                 "higher acceleration stores faster retained velocity");
 }
 
@@ -744,18 +744,18 @@ bool productGroundDecelerationDecaysRetainedVelocity() {
                                       forwardMoveActions(),
                                       window,
                                       "unit/gameplay_controller_decel_prime");
-  const float startingSpeed = std::fabs(window.gameplayMovement.groundVelocityZ);
-  window.gameplayMovement.tuning.groundDecelerationMetersPerSecondSquared = 33.0F;
+  const float startingSpeed = std::fabs(window.gameplay.gameplayMovement.groundVelocityZ);
+  window.gameplay.gameplayMovement.tuning.groundDecelerationMetersPerSecondSquared = 33.0F;
   iggy3d::ActionState noInput;
   iggy3d::applyProductGameplayActions(*session,
                                       noInput,
                                       window,
                                       "unit/gameplay_controller_decel_release");
-  const float decayedSpeed = std::fabs(window.gameplayMovement.groundVelocityZ);
+  const float decayedSpeed = std::fabs(window.gameplay.gameplayMovement.groundVelocityZ);
 
-  return expect(window.gameplayCommand.accepted,
+  return expect(window.gameplay.gameplayCommand.accepted,
                 "deceleration submits retained movement") &&
-         expect(window.gameplayMovement.horizontalDistanceMeters > 0.0F,
+         expect(window.gameplay.gameplayMovement.horizontalDistanceMeters > 0.0F,
                 "deceleration keeps moving after release") &&
          expect(decayedSpeed < startingSpeed,
                 "deceleration reduces retained speed") &&
@@ -781,9 +781,9 @@ bool productHigherGroundDecelerationStopsFaster() {
                                       forwardMoveActions(),
                                       fastWindow,
                                       "unit/gameplay_controller_decel_fast_prime");
-  slowWindow.gameplayMovement.tuning.groundDecelerationMetersPerSecondSquared =
+  slowWindow.gameplay.gameplayMovement.tuning.groundDecelerationMetersPerSecondSquared =
       16.5F;
-  fastWindow.gameplayMovement.tuning.groundDecelerationMetersPerSecondSquared =
+  fastWindow.gameplay.gameplayMovement.tuning.groundDecelerationMetersPerSecondSquared =
       66.0F;
   iggy3d::ActionState noInput;
   iggy3d::applyProductGameplayActions(*slowSession,
@@ -795,11 +795,11 @@ bool productHigherGroundDecelerationStopsFaster() {
                                       fastWindow,
                                       "unit/gameplay_controller_decel_fast");
 
-  return expect(fastWindow.gameplayMovement.horizontalDistanceMeters <
-                    slowWindow.gameplayMovement.horizontalDistanceMeters,
+  return expect(fastWindow.gameplay.gameplayMovement.horizontalDistanceMeters <
+                    slowWindow.gameplay.gameplayMovement.horizontalDistanceMeters,
                 "higher deceleration moves less after release") &&
-         expect(std::fabs(fastWindow.gameplayMovement.groundVelocityZ) <
-                    std::fabs(slowWindow.gameplayMovement.groundVelocityZ),
+         expect(std::fabs(fastWindow.gameplay.gameplayMovement.groundVelocityZ) <
+                    std::fabs(slowWindow.gameplay.gameplayMovement.groundVelocityZ),
                 "higher deceleration stores lower retained velocity");
 }
 
@@ -817,23 +817,23 @@ bool productJumpRaisesPlayerAndRecordsProof() {
                                       "unit/gameplay_controller_jump");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayJump.requested, "jump requested") &&
-         expect(window.gameplayJump.accepted, "jump accepted") &&
-         expect(window.gameplayJump.active, "jump remains active after first step") &&
-         expect(window.gameplayMovement.state ==
+  return expect(window.gameplay.gameplayJump.requested, "jump requested") &&
+         expect(window.gameplay.gameplayJump.accepted, "jump accepted") &&
+         expect(window.gameplay.gameplayJump.active, "jump remains active after first step") &&
+         expect(window.gameplay.gameplayMovement.state ==
                     iggy3d::ProductGameplayMovementState::Rising,
                 "jump movement state rising") &&
-         expect(!window.gameplayMovement.grounded, "jump airborne proof") &&
-         expect(window.gameplayJump.status == "airborne", "jump airborne status") &&
-         expect(window.gameplayJump.reasonCode == "gameplay_jump_airborne",
+         expect(!window.gameplay.gameplayMovement.grounded, "jump airborne proof") &&
+         expect(window.gameplay.gameplayJump.status == "airborne", "jump airborne status") &&
+         expect(window.gameplay.gameplayJump.reasonCode == "gameplay_jump_airborne",
                 "jump airborne reason") &&
          expect(window.gameplay.playerPositionChanged, "jump changed player position") &&
          expect(final.y > start.y, "jump raises player y") &&
-         expect(nearlyEqual(window.gameplayJump.groundY, start.y), "jump ground y") &&
-         expect(nearlyEqual(window.gameplayJump.startY, start.y), "jump start y") &&
-         expect(nearlyEqual(window.gameplayJump.finalY, final.y), "jump final y") &&
-         expect(window.gameplayJump.heightMeters > 0.0F, "jump height positive") &&
-         expect(window.gameplayJump.velocityMetersPerSecond <
+         expect(nearlyEqual(window.gameplay.gameplayJump.groundY, start.y), "jump ground y") &&
+         expect(nearlyEqual(window.gameplay.gameplayJump.startY, start.y), "jump start y") &&
+         expect(nearlyEqual(window.gameplay.gameplayJump.finalY, final.y), "jump final y") &&
+         expect(window.gameplay.gameplayJump.heightMeters > 0.0F, "jump height positive") &&
+         expect(window.gameplay.gameplayJump.velocityMetersPerSecond <
                     kExpectedManualFirstPersonJumpImpulseMetersPerSecond,
                 "jump velocity reduced by gravity");
 }
@@ -852,29 +852,29 @@ bool productJumpCanMoveForwardInSameFrame() {
                                       "unit/gameplay_controller_jump_forward");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayJump.requested, "jump forward jump requested") &&
-         expect(window.gameplayJump.accepted, "jump forward jump accepted") &&
-         expect(window.gameplayJump.active, "jump forward remains airborne") &&
-         expect(window.gameplayMovement.state ==
+  return expect(window.gameplay.gameplayJump.requested, "jump forward jump requested") &&
+         expect(window.gameplay.gameplayJump.accepted, "jump forward jump accepted") &&
+         expect(window.gameplay.gameplayJump.active, "jump forward remains airborne") &&
+         expect(window.gameplay.gameplayMovement.state ==
                     iggy3d::ProductGameplayMovementState::AirborneControl,
                 "jump forward airborne control state") &&
-         expect(!window.gameplayMovement.grounded,
+         expect(!window.gameplay.gameplayMovement.grounded,
                 "jump forward airborne proof") &&
-         expect(window.gameplayJump.status == "airborne",
+         expect(window.gameplay.gameplayJump.status == "airborne",
                 "jump forward jump airborne") &&
-         expect(window.gameplayMovement.attempted,
+         expect(window.gameplay.gameplayMovement.attempted,
                 "jump forward movement attempted") &&
-         expect(window.gameplayMovement.status == "moved",
+         expect(window.gameplay.gameplayMovement.status == "moved",
                 "jump forward movement status") &&
-         expect(window.gameplayMovement.debugAvailable,
+         expect(window.gameplay.gameplayMovement.debugAvailable,
                 "jump forward movement debug") &&
-         expect(window.gameplayMovement.reasonCode == "airborne_manual_move",
+         expect(window.gameplay.gameplayMovement.reasonCode == "airborne_manual_move",
                 "jump forward movement reason") &&
-         expect(window.gameplayMovement.policyBand == "airborne",
+         expect(window.gameplay.gameplayMovement.policyBand == "airborne",
                 "jump forward movement policy") &&
-         expect(!window.gameplayCommand.submitted,
+         expect(!window.gameplay.gameplayCommand.submitted,
                 "jump forward avoids grounded command") &&
-         expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
+         expect(nearlyEqual(window.gameplay.gameplayMovement.horizontalDistanceMeters,
                             kExpectedManualFirstPersonStepMeters),
                 "jump forward horizontal step") &&
          expect(final.y > start.y, "jump forward raises y") &&
@@ -889,11 +889,11 @@ bool productJumpAirControlScalesAirborneMove() {
     return false;
   }
 
-  window.gameplayMovement.tuning.airControlMultiplier = 0.25F;
+  window.gameplay.gameplayMovement.tuning.airControlMultiplier = 0.25F;
   const float expectedStep =
-      window.gameplayMovement.tuning.walkSpeedMetersPerSecond *
-      window.gameplayMovement.tuning.inputStepSeconds *
-      window.gameplayMovement.tuning.airControlMultiplier;
+      window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond *
+      window.gameplay.gameplayMovement.tuning.inputStepSeconds *
+      window.gameplay.gameplayMovement.tuning.airControlMultiplier;
   const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
   iggy3d::applyProductGameplayActions(*session,
                                       jumpForwardActions(),
@@ -901,11 +901,11 @@ bool productJumpAirControlScalesAirborneMove() {
                                       "unit/gameplay_controller_air_control");
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayJump.accepted,
+  return expect(window.gameplay.gameplayJump.accepted,
                 "air control tuned jump accepted") &&
-         expect(window.gameplayMovement.attempted,
+         expect(window.gameplay.gameplayMovement.attempted,
                 "air control tuned movement attempted") &&
-         expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
+         expect(nearlyEqual(window.gameplay.gameplayMovement.horizontalDistanceMeters,
                             expectedStep),
                 "air control tuned horizontal distance") &&
          expect(nearlyEqual(final.z - start.z, -expectedStep),
@@ -926,8 +926,8 @@ bool productJumpWithinCoyoteWindowSucceedsAfterLeavingGround() {
                                       window,
                                       "unit/gameplay_controller_coyote_leave",
                                       activeSurfaces(window));
-  const bool falling = window.gameplayJump.active &&
-                       window.gameplayJump.status == "falling";
+  const bool falling = window.gameplay.gameplayJump.active &&
+                       window.gameplay.gameplayJump.status == "falling";
   iggy3d::applyProductGameplayActions(*session,
                                       jumpActions(),
                                       window,
@@ -935,11 +935,11 @@ bool productJumpWithinCoyoteWindowSucceedsAfterLeavingGround() {
                                       activeSurfaces(window));
 
   return expect(falling, "coyote setup starts falling") &&
-         expect(window.gameplayJump.accepted, "coyote jump accepted") &&
-         expect(window.gameplayJump.active, "coyote jump active") &&
-         expect(window.gameplayJump.coyoteSecondsRemaining == 0.0F,
+         expect(window.gameplay.gameplayJump.accepted, "coyote jump accepted") &&
+         expect(window.gameplay.gameplayJump.active, "coyote jump active") &&
+         expect(window.gameplay.gameplayJump.coyoteSecondsRemaining == 0.0F,
                 "coyote jump consumes timer") &&
-         expect(window.gameplayJump.velocityMetersPerSecond > 0.0F,
+         expect(window.gameplay.gameplayJump.velocityMetersPerSecond > 0.0F,
                 "coyote jump has upward velocity");
 }
 
@@ -971,11 +971,11 @@ bool productJumpOutsideCoyoteWindowRejectsAndBuffers() {
                                       "unit/gameplay_controller_coyote_expired",
                                       activeSurfaces(window));
 
-  return expect(!window.gameplayJump.accepted,
+  return expect(!window.gameplay.gameplayJump.accepted,
                 "expired coyote jump rejected") &&
-         expect(window.gameplayJump.status == "already_airborne",
+         expect(window.gameplay.gameplayJump.status == "already_airborne",
                 "expired coyote jump status") &&
-         expect(window.gameplayJump.bufferSecondsRemaining > 0.0F,
+         expect(window.gameplay.gameplayJump.bufferSecondsRemaining > 0.0F,
                 "expired coyote jump is buffered");
 }
 
@@ -987,26 +987,26 @@ bool productBufferedJumpFiresOnLanding() {
   }
 
   setPlayerPosition(*session, {0.0F, 0.01F, 0.0F});
-  window.gameplayJump.active = true;
-  window.gameplayJump.velocityMetersPerSecond = -1.0F;
-  window.gameplayJump.groundY = 0.0F;
-  window.gameplayJump.startY = 0.01F;
+  window.gameplay.gameplayJump.active = true;
+  window.gameplay.gameplayJump.velocityMetersPerSecond = -1.0F;
+  window.gameplay.gameplayJump.groundY = 0.0F;
+  window.gameplay.gameplayJump.startY = 0.01F;
   iggy3d::applyProductGameplayActions(*session,
                                       jumpActions(),
                                       window,
                                       "unit/gameplay_controller_buffer_press");
-  const bool buffered = window.gameplayJump.bufferSecondsRemaining > 0.0F;
+  const bool buffered = window.gameplay.gameplayJump.bufferSecondsRemaining > 0.0F;
   iggy3d::applyProductGameplayActions(*session,
                                       noActions(),
                                       window,
                                       "unit/gameplay_controller_buffer_land");
 
   return expect(buffered, "jump press buffered before landing") &&
-         expect(window.gameplayJump.accepted, "buffered jump accepted on landing") &&
-         expect(window.gameplayJump.active, "buffered jump leaves player airborne") &&
-         expect(window.gameplayJump.bufferSecondsRemaining == 0.0F,
+         expect(window.gameplay.gameplayJump.accepted, "buffered jump accepted on landing") &&
+         expect(window.gameplay.gameplayJump.active, "buffered jump leaves player airborne") &&
+         expect(window.gameplay.gameplayJump.bufferSecondsRemaining == 0.0F,
                 "buffered jump consumes buffer") &&
-         expect(window.gameplayJump.velocityMetersPerSecond > 0.0F,
+         expect(window.gameplay.gameplayJump.velocityMetersPerSecond > 0.0F,
                 "buffered jump has upward velocity");
 }
 
@@ -1047,7 +1047,7 @@ bool productEarlyJumpReleaseCutsJumpHeight() {
     cutMaxY = std::max(cutMaxY, playerEntity(*cutSession)->transform.position.y);
   }
 
-  return expect(cutWindow.gameplayJump.cutApplied,
+  return expect(cutWindow.gameplay.gameplayJump.cutApplied,
                 "early release applies jump cut") &&
          expect(cutMaxY < heldMaxY, "early release produces lower jump");
 }
@@ -1064,16 +1064,16 @@ bool productFallGravityMultiplierDescendsFaster() {
 
   setPlayerPosition(*normalSession, {0.0F, 3.0F, 0.0F});
   setPlayerPosition(*fastSession, {0.0F, 3.0F, 0.0F});
-  normalWindow.gameplayJump.active = true;
-  normalWindow.gameplayJump.velocityMetersPerSecond = 0.0F;
-  normalWindow.gameplayJump.groundY = 0.0F;
-  normalWindow.gameplayJump.startY = 3.0F;
-  normalWindow.gameplayMovement.tuning.fallGravityMultiplier = 1.0F;
-  fastWindow.gameplayJump.active = true;
-  fastWindow.gameplayJump.velocityMetersPerSecond = 0.0F;
-  fastWindow.gameplayJump.groundY = 0.0F;
-  fastWindow.gameplayJump.startY = 3.0F;
-  fastWindow.gameplayMovement.tuning.fallGravityMultiplier = 3.0F;
+  normalWindow.gameplay.gameplayJump.active = true;
+  normalWindow.gameplay.gameplayJump.velocityMetersPerSecond = 0.0F;
+  normalWindow.gameplay.gameplayJump.groundY = 0.0F;
+  normalWindow.gameplay.gameplayJump.startY = 3.0F;
+  normalWindow.gameplay.gameplayMovement.tuning.fallGravityMultiplier = 1.0F;
+  fastWindow.gameplay.gameplayJump.active = true;
+  fastWindow.gameplay.gameplayJump.velocityMetersPerSecond = 0.0F;
+  fastWindow.gameplay.gameplayJump.groundY = 0.0F;
+  fastWindow.gameplay.gameplayJump.startY = 3.0F;
+  fastWindow.gameplay.gameplayMovement.tuning.fallGravityMultiplier = 3.0F;
 
   iggy3d::applyProductGameplayActions(*normalSession,
                                       noActions(),
@@ -1087,14 +1087,14 @@ bool productFallGravityMultiplierDescendsFaster() {
   return expect(playerEntity(*fastSession)->transform.position.y <
                     playerEntity(*normalSession)->transform.position.y,
                 "higher fall multiplier descends farther") &&
-         expect(normalWindow.gameplayMovement.state ==
+         expect(normalWindow.gameplay.gameplayMovement.state ==
                     iggy3d::ProductGameplayMovementState::Falling,
                 "normal fall state") &&
-         expect(fastWindow.gameplayMovement.state ==
+         expect(fastWindow.gameplay.gameplayMovement.state ==
                     iggy3d::ProductGameplayMovementState::Falling,
                 "fast fall state") &&
-         expect(fastWindow.gameplayJump.velocityMetersPerSecond <
-                    normalWindow.gameplayJump.velocityMetersPerSecond,
+         expect(fastWindow.gameplay.gameplayJump.velocityMetersPerSecond <
+                    normalWindow.gameplay.gameplayJump.velocityMetersPerSecond,
                 "higher fall multiplier has lower velocity");
 }
 
@@ -1105,21 +1105,21 @@ bool productMovementStateReportsBlockedOrSlidingFromCollisionProof() {
     return false;
   }
 
-  window.gameplayMovement.blocked = true;
-  window.gameplayMovement.clamped = true;
-  window.gameplayMovement.blockedReason = "blocked_by_collision";
-  window.gameplayMovement.hitSurfaceId = "unit_wall_actor_blocker";
+  window.gameplay.gameplayMovement.blocked = true;
+  window.gameplay.gameplayMovement.clamped = true;
+  window.gameplay.gameplayMovement.blockedReason = "blocked_by_collision";
+  window.gameplay.gameplayMovement.hitSurfaceId = "unit_wall_actor_blocker";
   iggy3d::applyProductGameplayActions(*session,
                                       noActions(),
                                       window,
                                       "unit/gameplay_controller_blocked_state");
 
-  return expect(window.gameplayMovement.state ==
+  return expect(window.gameplay.gameplayMovement.state ==
                     iggy3d::ProductGameplayMovementState::BlockedOrSliding,
                 "blocked or sliding state") &&
-         expect(window.gameplayMovement.grounded,
+         expect(window.gameplay.gameplayMovement.grounded,
                 "blocked state remains grounded") &&
-         expect(window.gameplayMovement.hitSurfaceId == "unit_wall_actor_blocker",
+         expect(window.gameplay.gameplayMovement.hitSurfaceId == "unit_wall_actor_blocker",
                 "blocked state keeps hit surface proof");
 }
 
@@ -1132,27 +1132,27 @@ bool productWallRunCandidateReportsAirborneSideWallContact() {
 
   setPlayerPosition(*session, {3.0F, 0.80F, 0.65F});
   setWallJumpActiveRoom(window, *session);
-  window.gameplayJump.active = true;
-  window.gameplayJump.velocityMetersPerSecond = 1.0F;
-  window.gameplayJump.groundY = 0.0F;
-  window.gameplayJump.startY = 0.80F;
+  window.gameplay.gameplayJump.active = true;
+  window.gameplay.gameplayJump.velocityMetersPerSecond = 1.0F;
+  window.gameplay.gameplayJump.groundY = 0.0F;
+  window.gameplay.gameplayJump.startY = 0.80F;
   iggy3d::applyProductGameplayActions(*session,
                                       manualMoveActions(1.0F, 0.0F),
                                       window,
                                       "unit/gameplay_controller_wall_run_candidate",
                                       activeSurfaces(window));
 
-  return expect(window.gameplayWallRun.candidateAvailable,
+  return expect(window.gameplay.gameplayWallRun.candidateAvailable,
                 "wall-run candidate available") &&
-         expect(window.gameplayWallRun.candidateStatus == "wall_run_candidate",
+         expect(window.gameplay.gameplayWallRun.candidateStatus == "wall_run_candidate",
                 "wall-run candidate status") &&
-         expect(window.gameplayWallRun.surfaceId ==
+         expect(window.gameplay.gameplayWallRun.surfaceId ==
                     "wall_jump_wall_actor_blocker",
                 "wall-run candidate surface") &&
-         expect(window.gameplayWallRun.approachSpeedMetersPerSecond >=
-                    window.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond,
+         expect(window.gameplay.gameplayWallRun.approachSpeedMetersPerSecond >=
+                    window.gameplay.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond,
                 "wall-run candidate speed") &&
-         expect(window.gameplayWallRun.side != "none",
+         expect(window.gameplay.gameplayWallRun.side != "none",
                 "wall-run candidate side proof");
 }
 
@@ -1171,9 +1171,9 @@ bool productWallRunCandidateRejectsGroundedContact() {
                                       "unit/gameplay_controller_wall_run_grounded",
                                       activeSurfaces(window));
 
-  return expect(!window.gameplayWallRun.candidateAvailable,
+  return expect(!window.gameplay.gameplayWallRun.candidateAvailable,
                 "grounded wall-run candidate rejected") &&
-         expect(window.gameplayWallRun.candidateReasonCode == "wall_run_grounded",
+         expect(window.gameplay.gameplayWallRun.candidateReasonCode == "wall_run_grounded",
                 "grounded wall-run reason");
 }
 
@@ -1186,20 +1186,20 @@ bool productWallRunCandidateRejectsLowSpeed() {
 
   setPlayerPosition(*session, {3.0F, 0.80F, 0.65F});
   setWallJumpActiveRoom(window, *session);
-  window.gameplayJump.active = true;
-  window.gameplayJump.velocityMetersPerSecond = 1.0F;
-  window.gameplayJump.groundY = 0.0F;
-  window.gameplayJump.startY = 0.80F;
-  window.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 10.0F;
+  window.gameplay.gameplayJump.active = true;
+  window.gameplay.gameplayJump.velocityMetersPerSecond = 1.0F;
+  window.gameplay.gameplayJump.groundY = 0.0F;
+  window.gameplay.gameplayJump.startY = 0.80F;
+  window.gameplay.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 10.0F;
   iggy3d::applyProductGameplayActions(*session,
                                       manualMoveActions(1.0F, 0.0F),
                                       window,
                                       "unit/gameplay_controller_wall_run_low_speed",
                                       activeSurfaces(window));
 
-  return expect(!window.gameplayWallRun.candidateAvailable,
+  return expect(!window.gameplay.gameplayWallRun.candidateAvailable,
                 "low-speed wall-run candidate rejected") &&
-         expect(window.gameplayWallRun.candidateReasonCode == "wall_run_low_speed",
+         expect(window.gameplay.gameplayWallRun.candidateReasonCode == "wall_run_low_speed",
                 "low-speed wall-run reason");
 }
 
@@ -1210,19 +1210,19 @@ bool productWallRunCandidateRejectsNoWallContact() {
     return false;
   }
 
-  window.gameplayJump.active = true;
-  window.gameplayJump.velocityMetersPerSecond = 1.0F;
-  window.gameplayJump.groundY = 0.0F;
-  window.gameplayJump.startY = 0.80F;
+  window.gameplay.gameplayJump.active = true;
+  window.gameplay.gameplayJump.velocityMetersPerSecond = 1.0F;
+  window.gameplay.gameplayJump.groundY = 0.0F;
+  window.gameplay.gameplayJump.startY = 0.80F;
   iggy3d::applyProductGameplayActions(*session,
                                       manualMoveActions(1.0F, 0.0F),
                                       window,
                                       "unit/gameplay_controller_wall_run_no_wall",
                                       activeSurfaces(window));
 
-  return expect(!window.gameplayWallRun.candidateAvailable,
+  return expect(!window.gameplay.gameplayWallRun.candidateAvailable,
                 "no-wall wall-run candidate rejected") &&
-         expect(window.gameplayWallRun.candidateReasonCode ==
+         expect(window.gameplay.gameplayWallRun.candidateReasonCode ==
                     "wall_run_no_wall_contact",
                 "no-wall wall-run reason");
 }
@@ -1241,16 +1241,16 @@ bool productWallRunMinSpeedTuningControlsCandidateThreshold() {
   setPlayerPosition(*fastSession, {3.0F, 0.80F, 0.65F});
   setWallJumpActiveRoom(slowWindow, *slowSession);
   setWallJumpActiveRoom(fastWindow, *fastSession);
-  slowWindow.gameplayJump.active = true;
-  slowWindow.gameplayJump.velocityMetersPerSecond = 1.0F;
-  slowWindow.gameplayJump.groundY = 0.0F;
-  slowWindow.gameplayJump.startY = 0.80F;
-  slowWindow.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 10.0F;
-  fastWindow.gameplayJump.active = true;
-  fastWindow.gameplayJump.velocityMetersPerSecond = 1.0F;
-  fastWindow.gameplayJump.groundY = 0.0F;
-  fastWindow.gameplayJump.startY = 0.80F;
-  fastWindow.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 0.5F;
+  slowWindow.gameplay.gameplayJump.active = true;
+  slowWindow.gameplay.gameplayJump.velocityMetersPerSecond = 1.0F;
+  slowWindow.gameplay.gameplayJump.groundY = 0.0F;
+  slowWindow.gameplay.gameplayJump.startY = 0.80F;
+  slowWindow.gameplay.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 10.0F;
+  fastWindow.gameplay.gameplayJump.active = true;
+  fastWindow.gameplay.gameplayJump.velocityMetersPerSecond = 1.0F;
+  fastWindow.gameplay.gameplayJump.groundY = 0.0F;
+  fastWindow.gameplay.gameplayJump.startY = 0.80F;
+  fastWindow.gameplay.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 0.5F;
 
   iggy3d::applyProductGameplayActions(*slowSession,
                                       manualMoveActions(1.0F, 0.0F),
@@ -1263,9 +1263,9 @@ bool productWallRunMinSpeedTuningControlsCandidateThreshold() {
                                       "unit/gameplay_controller_wall_run_low_threshold",
                                       activeSurfaces(fastWindow));
 
-  return expect(!slowWindow.gameplayWallRun.candidateAvailable,
+  return expect(!slowWindow.gameplay.gameplayWallRun.candidateAvailable,
                 "high wall-run speed threshold rejects") &&
-         expect(fastWindow.gameplayWallRun.candidateAvailable,
+         expect(fastWindow.gameplay.gameplayWallRun.candidateAvailable,
                 "low wall-run speed threshold accepts");
 }
 
@@ -1285,16 +1285,16 @@ bool productWallRunCandidateDoesNotChangeMovementOutput() {
   setPlayerPosition(*rejectedSession, {3.0F, 0.80F, 0.65F});
   setWallJumpActiveRoom(candidateWindow, *candidateSession);
   setWallJumpActiveRoom(rejectedWindow, *rejectedSession);
-  candidateWindow.gameplayJump.active = true;
-  candidateWindow.gameplayJump.velocityMetersPerSecond = 1.0F;
-  candidateWindow.gameplayJump.groundY = 0.0F;
-  candidateWindow.gameplayJump.startY = 0.80F;
-  candidateWindow.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 0.5F;
-  rejectedWindow.gameplayJump.active = true;
-  rejectedWindow.gameplayJump.velocityMetersPerSecond = 1.0F;
-  rejectedWindow.gameplayJump.groundY = 0.0F;
-  rejectedWindow.gameplayJump.startY = 0.80F;
-  rejectedWindow.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 10.0F;
+  candidateWindow.gameplay.gameplayJump.active = true;
+  candidateWindow.gameplay.gameplayJump.velocityMetersPerSecond = 1.0F;
+  candidateWindow.gameplay.gameplayJump.groundY = 0.0F;
+  candidateWindow.gameplay.gameplayJump.startY = 0.80F;
+  candidateWindow.gameplay.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 0.5F;
+  rejectedWindow.gameplay.gameplayJump.active = true;
+  rejectedWindow.gameplay.gameplayJump.velocityMetersPerSecond = 1.0F;
+  rejectedWindow.gameplay.gameplayJump.groundY = 0.0F;
+  rejectedWindow.gameplay.gameplayJump.startY = 0.80F;
+  rejectedWindow.gameplay.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 10.0F;
 
   iggy3d::applyProductGameplayActions(*candidateSession,
                                       manualMoveActions(1.0F, 0.0F),
@@ -1311,9 +1311,9 @@ bool productWallRunCandidateDoesNotChangeMovementOutput() {
       playerEntity(*candidateSession)->transform.position;
   const iggy3d::Vec3 rejectedFinal =
       playerEntity(*rejectedSession)->transform.position;
-  return expect(candidateWindow.gameplayWallRun.candidateAvailable,
+  return expect(candidateWindow.gameplay.gameplayWallRun.candidateAvailable,
                 "candidate comparison enabled") &&
-         expect(!rejectedWindow.gameplayWallRun.candidateAvailable,
+         expect(!rejectedWindow.gameplay.gameplayWallRun.candidateAvailable,
                 "candidate comparison rejected") &&
          expect(nearlyEqual(candidateFinal.x, rejectedFinal.x),
                 "wall-run candidate does not change final x") &&
@@ -1327,11 +1327,11 @@ void seedAirborneWallRunSetup(iggy3d::Session& session,
                               iggy3d::ProductAppWindowState& window) {
   setPlayerPosition(session, {3.0F, 0.80F, 0.65F});
   setWallJumpActiveRoom(window, session);
-  window.gameplayJump.active = true;
-  window.gameplayJump.velocityMetersPerSecond = -1.0F;
-  window.gameplayJump.groundY = 0.0F;
-  window.gameplayJump.startY = 0.80F;
-  window.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 0.5F;
+  window.gameplay.gameplayJump.active = true;
+  window.gameplay.gameplayJump.velocityMetersPerSecond = -1.0F;
+  window.gameplay.gameplayJump.groundY = 0.0F;
+  window.gameplay.gameplayJump.startY = 0.80F;
+  window.gameplay.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 0.5F;
 }
 
 bool enterWallRun(iggy3d::Session& session,
@@ -1341,7 +1341,7 @@ bool enterWallRun(iggy3d::Session& session,
                                       window,
                                       "unit/gameplay_controller_wall_run_enter",
                                       activeSurfaces(window));
-  return window.gameplayWallRun.active;
+  return window.gameplay.gameplayWallRun.active;
 }
 
 bool productWallRunCandidateEntersActiveState() {
@@ -1355,14 +1355,14 @@ bool productWallRunCandidateEntersActiveState() {
   const bool entered = enterWallRun(*session, window);
 
   return expect(entered, "wall-run enters active state") &&
-         expect(window.gameplayMovement.state ==
+         expect(window.gameplay.gameplayMovement.state ==
                     iggy3d::ProductGameplayMovementState::WallRunning,
                 "wall-run movement state") &&
-         expect(window.gameplayWallRun.status == "wall_run_active",
+         expect(window.gameplay.gameplayWallRun.status == "wall_run_active",
                 "wall-run active status") &&
-         expect(window.gameplayWallRun.reasonCode == "wall_run_started",
+         expect(window.gameplay.gameplayWallRun.reasonCode == "wall_run_started",
                 "wall-run start reason") &&
-         expect(window.gameplayWallRun.remainingSeconds > 0.0F,
+         expect(window.gameplay.gameplayWallRun.remainingSeconds > 0.0F,
                 "wall-run remaining time");
 }
 
@@ -1378,7 +1378,7 @@ bool productWallRunReducesFallingAgainstNormalAirborneFall() {
 
   seedAirborneWallRunSetup(*wallSession, wallWindow);
   seedAirborneWallRunSetup(*normalSession, normalWindow);
-  normalWindow.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 10.0F;
+  normalWindow.gameplay.gameplayMovement.tuning.wallRunMinSpeedMetersPerSecond = 10.0F;
   const bool entered = enterWallRun(*wallSession, wallWindow);
   iggy3d::applyProductGameplayActions(*normalSession,
                                       manualMoveActions(1.0F, 0.0F),
@@ -1404,8 +1404,8 @@ bool productWallRunReducesFallingAgainstNormalAirborneFall() {
       normalStartY - playerEntity(*normalSession)->transform.position.y;
   return expect(entered, "wall-run fall comparison enters") &&
          expect(wallFall < normalFall, "wall-run reduces falling") &&
-         expect(wallWindow.gameplayJump.velocityMetersPerSecond >
-                    normalWindow.gameplayJump.velocityMetersPerSecond,
+         expect(wallWindow.gameplay.gameplayJump.velocityMetersPerSecond >
+                    normalWindow.gameplay.gameplayJump.velocityMetersPerSecond,
                 "wall-run keeps vertical velocity higher");
 }
 
@@ -1440,9 +1440,9 @@ bool productWallRunTimerExpiryExits() {
   }
 
   seedAirborneWallRunSetup(*session, window);
-  window.gameplayMovement.tuning.wallRunDurationSeconds = 0.1F;
+  window.gameplay.gameplayMovement.tuning.wallRunDurationSeconds = 0.1F;
   const bool entered = enterWallRun(*session, window);
-  for (int frame = 0; frame < 10 && window.gameplayWallRun.active; ++frame) {
+  for (int frame = 0; frame < 10 && window.gameplay.gameplayWallRun.active; ++frame) {
     iggy3d::applyProductGameplayActions(
         *session,
         manualMoveActions(1.0F, 0.0F),
@@ -1452,8 +1452,8 @@ bool productWallRunTimerExpiryExits() {
   }
 
   return expect(entered, "wall-run timer enters") &&
-         expect(!window.gameplayWallRun.active, "wall-run timer exits") &&
-         expect(window.gameplayWallRun.reasonCode == "wall_run_expired",
+         expect(!window.gameplay.gameplayWallRun.active, "wall-run timer exits") &&
+         expect(window.gameplay.gameplayWallRun.reasonCode == "wall_run_expired",
                 "wall-run timer expiry reason");
 }
 
@@ -1473,8 +1473,8 @@ bool productWallRunInputStopExits() {
                                       activeSurfaces(window));
 
   return expect(entered, "wall-run input stop enters") &&
-         expect(!window.gameplayWallRun.active, "wall-run input stop exits") &&
-         expect(window.gameplayWallRun.reasonCode == "wall_run_input_stopped",
+         expect(!window.gameplay.gameplayWallRun.active, "wall-run input stop exits") &&
+         expect(window.gameplay.gameplayWallRun.reasonCode == "wall_run_input_stopped",
                 "wall-run input stop reason");
 }
 
@@ -1494,8 +1494,8 @@ bool productWallRunJumpInputExits() {
                                       activeSurfaces(window));
 
   return expect(entered, "wall-run jump exit enters") &&
-         expect(!window.gameplayWallRun.active, "wall-run jump exits") &&
-         expect(window.gameplayWallRun.reasonCode == "wall_run_exit_jump",
+         expect(!window.gameplay.gameplayWallRun.active, "wall-run jump exits") &&
+         expect(window.gameplay.gameplayWallRun.reasonCode == "wall_run_exit_jump",
                 "wall-run jump exit reason");
 }
 
@@ -1511,10 +1511,10 @@ bool productWallRunTuningChangesGravityAndDuration() {
 
   seedAirborneWallRunSetup(*slowSession, slowWindow);
   seedAirborneWallRunSetup(*fastSession, fastWindow);
-  slowWindow.gameplayMovement.tuning.wallRunGravityMultiplier = 0.1F;
-  slowWindow.gameplayMovement.tuning.wallRunDurationSeconds = 0.5F;
-  fastWindow.gameplayMovement.tuning.wallRunGravityMultiplier = 0.8F;
-  fastWindow.gameplayMovement.tuning.wallRunDurationSeconds = 1.0F;
+  slowWindow.gameplay.gameplayMovement.tuning.wallRunGravityMultiplier = 0.1F;
+  slowWindow.gameplay.gameplayMovement.tuning.wallRunDurationSeconds = 0.5F;
+  fastWindow.gameplay.gameplayMovement.tuning.wallRunGravityMultiplier = 0.8F;
+  fastWindow.gameplay.gameplayMovement.tuning.wallRunDurationSeconds = 1.0F;
   const bool slowEntered = enterWallRun(*slowSession, slowWindow);
   const bool fastEntered = enterWallRun(*fastSession, fastWindow);
   const float slowStartY = playerEntity(*slowSession)->transform.position.y;
@@ -1536,8 +1536,8 @@ bool productWallRunTuningChangesGravityAndDuration() {
 
   return expect(slowEntered && fastEntered, "wall-run tuning enters") &&
          expect(slowFall < fastFall, "wall-run gravity tuning changes fall") &&
-         expect(fastWindow.gameplayWallRun.durationSeconds >
-                    slowWindow.gameplayWallRun.durationSeconds,
+         expect(fastWindow.gameplay.gameplayWallRun.durationSeconds >
+                    slowWindow.gameplay.gameplayWallRun.durationSeconds,
                 "wall-run duration tuning recorded");
 }
 
@@ -1559,42 +1559,42 @@ bool productJumpUsesClamberTraversalWhenCandidateIsLocal() {
                                       "unit/gameplay_controller_clamber");
 
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
-  return expect(window.gameplayJump.requested, "clamber jump requested") &&
-         expect(!window.gameplayJump.accepted, "clamber skips jump arc") &&
-         expect(!window.gameplayJump.active, "clamber leaves jump inactive") &&
-         expect(window.gameplayJump.status == "traversal",
+  return expect(window.gameplay.gameplayJump.requested, "clamber jump requested") &&
+         expect(!window.gameplay.gameplayJump.accepted, "clamber skips jump arc") &&
+         expect(!window.gameplay.gameplayJump.active, "clamber leaves jump inactive") &&
+         expect(window.gameplay.gameplayJump.status == "traversal",
                 "clamber jump status") &&
-         expect(window.gameplayJump.reasonCode == "traversal_intent_applied",
+         expect(window.gameplay.gameplayJump.reasonCode == "traversal_intent_applied",
                 "clamber jump reason") &&
-         expect(window.gameplayTraversal.requested, "clamber requested") &&
-         expect(window.gameplayTraversal.consumed, "clamber consumed input") &&
-         expect(window.gameplayTraversal.accepted, "clamber accepted") &&
-         expect(!window.gameplayTraversal.fallbackJumpAllowed,
+         expect(window.gameplay.gameplayTraversal.requested, "clamber requested") &&
+         expect(window.gameplay.gameplayTraversal.consumed, "clamber consumed input") &&
+         expect(window.gameplay.gameplayTraversal.accepted, "clamber accepted") &&
+         expect(!window.gameplay.gameplayTraversal.fallbackJumpAllowed,
                 "clamber no jump fallback") &&
-         expect(window.gameplayTraversal.status == "traversal_intent_applied",
+         expect(window.gameplay.gameplayTraversal.status == "traversal_intent_applied",
                 "clamber traversal status") &&
-         expect(window.gameplayTraversal.reasonCode == "traversal_intent_applied",
+         expect(window.gameplay.gameplayTraversal.reasonCode == "traversal_intent_applied",
                 "clamber traversal reason") &&
-         expect(window.gameplayTraversal.mechanic == "clamber",
+         expect(window.gameplay.gameplayTraversal.mechanic == "clamber",
                 "clamber mechanic proof") &&
-         expect(window.gameplayTraversal.slotId == "clamber_block:clamber_top",
+         expect(window.gameplay.gameplayTraversal.slotId == "clamber_block:clamber_top",
                 "clamber slot proof") &&
-         expect(window.gameplayTraversal.targetId == "clamber_block",
+         expect(window.gameplay.gameplayTraversal.targetId == "clamber_block",
                 "clamber target proof") &&
-         expect(window.gameplayTraversal.landingSurfaceId == "clamber_top",
+         expect(window.gameplay.gameplayTraversal.landingSurfaceId == "clamber_top",
                 "clamber landing proof") &&
          expect(window.gameplay.playerPositionChanged, "clamber changed player position") &&
-         expect(nearlyEqual(window.gameplayTraversal.startX, start.x),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.startX, start.x),
                 "clamber start x") &&
-         expect(nearlyEqual(window.gameplayTraversal.startY, start.y),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.startY, start.y),
                 "clamber start y") &&
-         expect(nearlyEqual(window.gameplayTraversal.startZ, start.z),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.startZ, start.z),
                 "clamber start z") &&
-         expect(nearlyEqual(window.gameplayTraversal.finalX, final.x),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.finalX, final.x),
                 "clamber final x") &&
-         expect(nearlyEqual(window.gameplayTraversal.finalY, final.y),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.finalY, final.y),
                 "clamber final y") &&
-         expect(nearlyEqual(window.gameplayTraversal.finalZ, final.z),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.finalZ, final.z),
                 "clamber final z") &&
          expect(final.y > start.y, "clamber raises player");
 }
@@ -1616,39 +1616,39 @@ bool productJumpUsesWallJumpWhenAirborneNearWall() {
                                       "unit/gameplay_controller_wall_jump");
 
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
-  return expect(window.gameplayJump.requested, "wall jump requested") &&
-         expect(window.gameplayJump.accepted, "wall jump accepted") &&
-         expect(window.gameplayJump.active, "wall jump leaves jump active") &&
-         expect(window.gameplayJump.status == "wall_jump",
+  return expect(window.gameplay.gameplayJump.requested, "wall jump requested") &&
+         expect(window.gameplay.gameplayJump.accepted, "wall jump accepted") &&
+         expect(window.gameplay.gameplayJump.active, "wall jump leaves jump active") &&
+         expect(window.gameplay.gameplayJump.status == "wall_jump",
                 "wall jump status") &&
-         expect(window.gameplayJump.reasonCode == "gameplay_jump_wall_jump",
+         expect(window.gameplay.gameplayJump.reasonCode == "gameplay_jump_wall_jump",
                 "wall jump reason") &&
-         expect(window.gameplayTraversal.requested, "wall jump traversal requested") &&
-         expect(window.gameplayTraversal.consumed, "wall jump consumed input") &&
-         expect(window.gameplayTraversal.accepted, "wall jump traversal accepted") &&
-         expect(!window.gameplayTraversal.fallbackJumpAllowed,
+         expect(window.gameplay.gameplayTraversal.requested, "wall jump traversal requested") &&
+         expect(window.gameplay.gameplayTraversal.consumed, "wall jump consumed input") &&
+         expect(window.gameplay.gameplayTraversal.accepted, "wall jump traversal accepted") &&
+         expect(!window.gameplay.gameplayTraversal.fallbackJumpAllowed,
                 "wall jump no fallback") &&
-         expect(window.gameplayTraversal.mechanic == "wall_jump",
+         expect(window.gameplay.gameplayTraversal.mechanic == "wall_jump",
                 "wall jump mechanic proof") &&
-         expect(window.gameplayTraversal.slotId == "wall_jump_wall_actor_blocker",
+         expect(window.gameplay.gameplayTraversal.slotId == "wall_jump_wall_actor_blocker",
                 "wall jump slot proof") &&
-         expect(window.gameplayTraversal.targetId == "wall_jump_wall",
+         expect(window.gameplay.gameplayTraversal.targetId == "wall_jump_wall",
                 "wall jump target proof") &&
-         expect(window.gameplayTraversal.landingSurfaceId ==
+         expect(window.gameplay.gameplayTraversal.landingSurfaceId ==
                     "wall_jump_wall_actor_blocker",
                 "wall jump landing proof") &&
          expect(window.gameplay.playerPositionChanged, "wall jump changed player position") &&
-         expect(nearlyEqual(window.gameplayTraversal.startX, start.x),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.startX, start.x),
                 "wall jump start x") &&
-         expect(nearlyEqual(window.gameplayTraversal.startY, start.y),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.startY, start.y),
                 "wall jump start y") &&
-         expect(nearlyEqual(window.gameplayTraversal.startZ, start.z),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.startZ, start.z),
                 "wall jump start z") &&
-         expect(nearlyEqual(window.gameplayTraversal.finalX, final.x),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.finalX, final.x),
                 "wall jump final x") &&
-         expect(nearlyEqual(window.gameplayTraversal.finalY, final.y),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.finalY, final.y),
                 "wall jump final y") &&
-         expect(nearlyEqual(window.gameplayTraversal.finalZ, final.z),
+         expect(nearlyEqual(window.gameplay.gameplayTraversal.finalZ, final.z),
                 "wall jump final z") &&
          expect(final.y > start.y, "wall jump raises player") &&
          expect(final.z > start.z, "wall jump pushes away from wall");
@@ -1663,8 +1663,8 @@ bool productJumpRejectsWallJumpNearGenericWall() {
 
   setPlayerPosition(*session, {3.0F, 0.80F, 0.65F});
   setWallJumpActiveRoom(window, *session, false);
-  window.gameplayJump.active = true;
-  window.gameplayJump.velocityMetersPerSecond = 1.0F;
+  window.gameplay.gameplayJump.active = true;
+  window.gameplay.gameplayJump.velocityMetersPerSecond = 1.0F;
   const iggy3d::Vec3 start = playerEntity(*session)->transform.position;
 
   iggy3d::applyProductGameplayActions(*session,
@@ -1673,14 +1673,14 @@ bool productJumpRejectsWallJumpNearGenericWall() {
                                       "unit/gameplay_controller_generic_wall_jump");
 
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
-  return expect(window.gameplayJump.requested, "generic wall jump requested") &&
-         expect(!window.gameplayJump.accepted, "generic wall jump rejected") &&
-         expect(window.gameplayJump.status == "already_airborne",
+  return expect(window.gameplay.gameplayJump.requested, "generic wall jump requested") &&
+         expect(!window.gameplay.gameplayJump.accepted, "generic wall jump rejected") &&
+         expect(window.gameplay.gameplayJump.status == "already_airborne",
                 "generic wall jump status") &&
-         expect(window.gameplayJump.reasonCode ==
+         expect(window.gameplay.gameplayJump.reasonCode ==
                     "gameplay_jump_already_airborne",
                 "generic wall jump reason") &&
-         expect(!window.gameplayTraversal.accepted,
+         expect(!window.gameplay.gameplayTraversal.accepted,
                 "generic wall traversal rejected") &&
          expect(nearlyEqual(final.x, start.x), "generic wall x unchanged") &&
          expect(nearlyEqual(final.y, start.y), "generic wall y unchanged") &&
@@ -1705,12 +1705,12 @@ bool productJumpRejectsDoubleJumpWhileAirborne() {
                                       "unit/gameplay_controller_double_jump");
   const float secondY = playerEntity(*session)->transform.position.y;
 
-  return expect(window.gameplayJump.requested, "double jump requested") &&
-         expect(!window.gameplayJump.accepted, "double jump rejected") &&
-         expect(window.gameplayJump.active, "double jump still airborne") &&
-         expect(window.gameplayJump.status == "already_airborne",
+  return expect(window.gameplay.gameplayJump.requested, "double jump requested") &&
+         expect(!window.gameplay.gameplayJump.accepted, "double jump rejected") &&
+         expect(window.gameplay.gameplayJump.active, "double jump still airborne") &&
+         expect(window.gameplay.gameplayJump.status == "already_airborne",
                 "double jump status") &&
-         expect(window.gameplayJump.reasonCode ==
+         expect(window.gameplay.gameplayJump.reasonCode ==
                     "gameplay_jump_already_airborne",
                 "double jump reason") &&
          expect(nearlyEqual(firstY, secondY), "double jump does not add height");
@@ -1728,14 +1728,14 @@ bool productJumpFallsAndLands() {
                                       jumpActions(),
                                       window,
                                       "unit/gameplay_controller_jump");
-  bool observedAirborneHeight = window.gameplayJump.heightMeters > 0.0F;
+  bool observedAirborneHeight = window.gameplay.gameplayJump.heightMeters > 0.0F;
   const int landingTickBudget = static_cast<int>(std::ceil(
                                     2.0F *
-                                    window.gameplayMovement.tuning
+                                    window.gameplay.gameplayMovement.tuning
                                         .jumpImpulseMetersPerSecond /
-                                    window.gameplayMovement.tuning
+                                    window.gameplay.gameplayMovement.tuning
                                         .gravityMetersPerSecondSquared /
-                                    window.gameplayMovement.tuning
+                                    window.gameplay.gameplayMovement.tuning
                                         .inputStepSeconds)) +
                                 10;
   for (int tick = 0; tick < landingTickBudget; ++tick) {
@@ -1744,22 +1744,22 @@ bool productJumpFallsAndLands() {
                                         window,
                                         "unit/gameplay_controller_jump_tick");
     observedAirborneHeight =
-        observedAirborneHeight || window.gameplayJump.heightMeters > 0.0F;
+        observedAirborneHeight || window.gameplay.gameplayJump.heightMeters > 0.0F;
   }
   const float finalY = playerEntity(*session)->transform.position.y;
 
   return expect(observedAirborneHeight, "landing observed airborne height") &&
-         expect(!window.gameplayJump.active, "jump no longer active") &&
-         expect(window.gameplayJump.status == "landed", "jump landed status") &&
-         expect(window.gameplayJump.reasonCode == "gameplay_jump_landed",
+         expect(!window.gameplay.gameplayJump.active, "jump no longer active") &&
+         expect(window.gameplay.gameplayJump.status == "landed", "jump landed status") &&
+         expect(window.gameplay.gameplayJump.reasonCode == "gameplay_jump_landed",
                 "jump landed reason") &&
-         expect(nearlyEqual(window.gameplayJump.velocityMetersPerSecond, 0.0F),
+         expect(nearlyEqual(window.gameplay.gameplayJump.velocityMetersPerSecond, 0.0F),
                 "landed velocity zero") &&
-         expect(nearlyEqual(window.gameplayJump.groundY, groundY), "land ground") &&
+         expect(nearlyEqual(window.gameplay.gameplayJump.groundY, groundY), "land ground") &&
          expect(nearlyEqual(finalY, groundY), "landed player y") &&
-         expect(nearlyEqual(window.gameplayJump.finalY, groundY),
+         expect(nearlyEqual(window.gameplay.gameplayJump.finalY, groundY),
                 "landed final proof y") &&
-         expect(nearlyEqual(window.gameplayJump.heightMeters, 0.0F),
+         expect(nearlyEqual(window.gameplay.gameplayJump.heightMeters, 0.0F),
                 "landed height zero");
 }
 
@@ -1772,12 +1772,12 @@ bool productJumpLandsOnElevatedWalkableFloor() {
 
   setLayeredFloorActiveRoom(window, *session);
   setPlayerPosition(*session, {0.0F, 5.2F, 0.0F});
-  window.gameplayJump.active = true;
-  window.gameplayJump.velocityMetersPerSecond = -1.0F;
-  window.gameplayJump.groundY = 0.0F;
-  window.gameplayJump.startY = 5.2F;
+  window.gameplay.gameplayJump.active = true;
+  window.gameplay.gameplayJump.velocityMetersPerSecond = -1.0F;
+  window.gameplay.gameplayJump.groundY = 0.0F;
+  window.gameplay.gameplayJump.startY = 5.2F;
 
-  for (int tick = 0; tick < 50 && window.gameplayJump.active; ++tick) {
+  for (int tick = 0; tick < 50 && window.gameplay.gameplayJump.active; ++tick) {
     iggy3d::applyProductGameplayActions(*session,
                                         noActions(),
                                         window,
@@ -1786,12 +1786,12 @@ bool productJumpLandsOnElevatedWalkableFloor() {
   }
 
   const float finalY = playerEntity(*session)->transform.position.y;
-  return expect(!window.gameplayJump.active, "elevated landing inactive") &&
-         expect(window.gameplayJump.status == "landed", "elevated landing status") &&
+  return expect(!window.gameplay.gameplayJump.active, "elevated landing inactive") &&
+         expect(window.gameplay.gameplayJump.status == "landed", "elevated landing status") &&
          expect(nearlyEqual(finalY, 4.0F), "elevated landing y") &&
-         expect(nearlyEqual(window.gameplayJump.groundY, 4.0F),
+         expect(nearlyEqual(window.gameplay.gameplayJump.groundY, 4.0F),
                 "elevated landing ground y") &&
-         expect(nearlyEqual(window.gameplayJump.finalY, 4.0F),
+         expect(nearlyEqual(window.gameplay.gameplayJump.finalY, 4.0F),
                 "elevated landing proof y");
 }
 
@@ -1813,7 +1813,7 @@ bool productFallThroughHoleLandsOnLowerWalkableFloor() {
                                         "unit/gameplay_controller_hole_fall",
                                         activeSurfaces(window));
     observedFall = observedFall || playerEntity(*session)->transform.position.y < 4.0F;
-    if (!window.gameplayJump.active &&
+    if (!window.gameplay.gameplayJump.active &&
         nearlyEqual(playerEntity(*session)->transform.position.y, 0.0F)) {
       break;
     }
@@ -1821,10 +1821,10 @@ bool productFallThroughHoleLandsOnLowerWalkableFloor() {
 
   const float finalY = playerEntity(*session)->transform.position.y;
   return expect(observedFall, "hole fall observed downward motion") &&
-         expect(!window.gameplayJump.active, "hole fall inactive after landing") &&
-         expect(window.gameplayJump.status == "landed", "hole fall landed status") &&
+         expect(!window.gameplay.gameplayJump.active, "hole fall inactive after landing") &&
+         expect(window.gameplay.gameplayJump.status == "landed", "hole fall landed status") &&
          expect(nearlyEqual(finalY, 0.0F), "hole fall lands on lower floor") &&
-         expect(nearlyEqual(window.gameplayJump.groundY, 0.0F),
+         expect(nearlyEqual(window.gameplay.gameplayJump.groundY, 0.0F),
                 "hole fall ground y");
 }
 
@@ -1844,18 +1844,18 @@ bool productMoveOffUpperFloorStartsFallingImmediately() {
                                       activeSurfaces(window));
 
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
-  return expect(window.gameplayMovement.attempted, "move off floor attempted") &&
+  return expect(window.gameplay.gameplayMovement.attempted, "move off floor attempted") &&
          expect(window.gameplay.playerPositionChanged, "move off floor moved") &&
          expect(final.x > 1.35F, "move off floor leaves upper footprint") &&
-         expect(window.gameplayJump.active,
+         expect(window.gameplay.gameplayJump.active,
                 "move off floor starts falling immediately") &&
-         expect(window.gameplayJump.status == "falling",
+         expect(window.gameplay.gameplayJump.status == "falling",
                 "move off floor falling status") &&
-         expect(window.gameplayJump.reasonCode == "gameplay_jump_falling",
+         expect(window.gameplay.gameplayJump.reasonCode == "gameplay_jump_falling",
                 "move off floor falling reason") &&
-         expect(window.gameplayMovement.reasonCode == "grounded_ledge_fall",
+         expect(window.gameplay.gameplayMovement.reasonCode == "grounded_ledge_fall",
                 "move off floor movement reason") &&
-         expect(nearlyEqual(window.gameplayJump.groundY, 0.0F),
+         expect(nearlyEqual(window.gameplay.gameplayJump.groundY, 0.0F),
                 "move off floor targets lower floor") &&
          expect(nearlyEqual(final.y, 4.0F),
                 "move off floor starts fall from upper y");
@@ -1877,16 +1877,16 @@ bool productResetZoneReturnsPlayerToSpawn() {
                                       activeSurfaces(window));
 
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
-  return expect(window.gameplayReset.triggered, "reset zone triggered") &&
-         expect(window.gameplayReset.status == "reset",
+  return expect(window.gameplay.gameplayReset.triggered, "reset zone triggered") &&
+         expect(window.gameplay.gameplayReset.status == "reset",
                 "reset zone status") &&
-         expect(window.gameplayReset.reasonCode == "gameplay_reset_zone",
+         expect(window.gameplay.gameplayReset.reasonCode == "gameplay_reset_zone",
                 "reset zone reason") &&
-         expect(window.gameplayReset.spawnAnchorId == "marker_player_spawn_r0_c0",
+         expect(window.gameplay.gameplayReset.spawnAnchorId == "marker_player_spawn_r0_c0",
                 "reset zone spawn anchor") &&
-         expect(window.gameplayReset.sourceAnchorId == "marker_reset_zone_r0_c1",
+         expect(window.gameplay.gameplayReset.sourceAnchorId == "marker_reset_zone_r0_c1",
                 "reset zone source anchor") &&
-         expect(!window.gameplayJump.active, "reset zone clears jump") &&
+         expect(!window.gameplay.gameplayJump.active, "reset zone clears jump") &&
          expect(nearlyEqual(final.x, 0.0F), "reset zone final x") &&
          expect(nearlyEqual(final.y, 0.05F), "reset zone final y") &&
          expect(nearlyEqual(final.z, 0.0F), "reset zone final z");
@@ -1908,19 +1908,19 @@ bool productFallOutBelowLowestFloorReturnsPlayerToSpawn() {
                                       activeSurfaces(window));
 
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
-  return expect(window.gameplayReset.triggered, "fall reset triggered") &&
-         expect(window.gameplayReset.status == "reset", "fall reset status") &&
-         expect(window.gameplayReset.reasonCode == "gameplay_reset_fall_out",
+  return expect(window.gameplay.gameplayReset.triggered, "fall reset triggered") &&
+         expect(window.gameplay.gameplayReset.status == "reset", "fall reset status") &&
+         expect(window.gameplay.gameplayReset.reasonCode == "gameplay_reset_fall_out",
                 "fall reset reason") &&
-         expect(window.gameplayReset.spawnAnchorId == "marker_player_spawn_r0_c0",
+         expect(window.gameplay.gameplayReset.spawnAnchorId == "marker_player_spawn_r0_c0",
                 "fall reset spawn anchor") &&
-         expect(window.gameplayReset.sourceAnchorId == "none",
+         expect(window.gameplay.gameplayReset.sourceAnchorId == "none",
                 "fall reset source none") &&
-         expect(nearlyEqual(window.gameplayReset.startY, -7.0F),
+         expect(nearlyEqual(window.gameplay.gameplayReset.startY, -7.0F),
                 "fall reset start y") &&
-         expect(nearlyEqual(window.gameplayReset.finalY, 0.05F),
+         expect(nearlyEqual(window.gameplay.gameplayReset.finalY, 0.05F),
                 "fall reset final proof y") &&
-         expect(!window.gameplayJump.active, "fall reset clears jump") &&
+         expect(!window.gameplay.gameplayJump.active, "fall reset clears jump") &&
          expect(nearlyEqual(final.x, 0.0F), "fall reset final x") &&
          expect(nearlyEqual(final.y, 0.05F), "fall reset final y") &&
          expect(nearlyEqual(final.z, 0.0F), "fall reset final z");
@@ -1941,27 +1941,27 @@ bool productDashMovesForwardAndRecordsProof() {
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
   const float appliedDistance = horizontalDistance(start, final);
 
-  return expect(window.gameplayDash.requested, "dash requested") &&
-         expect(window.gameplayDash.accepted, "dash accepted") &&
-         expect(window.gameplayDash.status == "accepted", "dash status") &&
-         expect(window.gameplayDash.reasonCode == "gameplay_dash_accepted",
+  return expect(window.gameplay.gameplayDash.requested, "dash requested") &&
+         expect(window.gameplay.gameplayDash.accepted, "dash accepted") &&
+         expect(window.gameplay.gameplayDash.status == "accepted", "dash status") &&
+         expect(window.gameplay.gameplayDash.reasonCode == "gameplay_dash_accepted",
                 "dash reason") &&
-         expect(window.gameplayMovement.profile == kExpectedManualFirstPersonDashProfile,
+         expect(window.gameplay.gameplayMovement.profile == kExpectedManualFirstPersonDashProfile,
                 "dash movement profile") &&
-         expect(nearlyEqual(window.gameplayDash.distanceMeters,
+         expect(nearlyEqual(window.gameplay.gameplayDash.distanceMeters,
                             kExpectedManualFirstPersonDashDistanceMeters),
                 "dash distance proof") &&
-         expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
+         expect(nearlyEqual(window.gameplay.gameplayMovement.horizontalDistanceMeters,
                             appliedDistance),
                 "dash movement distance matches applied movement") &&
-         expect(window.gameplayMovement.horizontalDistanceMeters <=
+         expect(window.gameplay.gameplayMovement.horizontalDistanceMeters <=
                     kExpectedManualFirstPersonDashDistanceMeters,
                 "dash movement distance within requested dash") &&
-         expect(window.gameplayDash.cooldownRemainingSeconds > 0.0F,
+         expect(window.gameplay.gameplayDash.cooldownRemainingSeconds > 0.0F,
                 "dash cooldown set") &&
-         expect(nearlyEqual(window.gameplayDash.directionX, 0.0F),
+         expect(nearlyEqual(window.gameplay.gameplayDash.directionX, 0.0F),
                 "dash direction x") &&
-         expect(nearlyEqual(window.gameplayDash.directionZ, -1.0F),
+         expect(nearlyEqual(window.gameplay.gameplayDash.directionZ, -1.0F),
                 "dash direction z") &&
          expect(nearlyEqual(final.x - start.x, 0.0F), "dash x unchanged");
 }
@@ -1973,17 +1973,17 @@ bool productDashUsesRuntimeTunedWindowDistance() {
     return false;
   }
 
-  window.gameplayMovement.tuning.dashSpeedMetersPerSecond = 4.0F;
-  window.gameplayMovement.tuning.dashDurationSeconds = 0.25F;
+  window.gameplay.gameplayMovement.tuning.dashSpeedMetersPerSecond = 4.0F;
+  window.gameplay.gameplayMovement.tuning.dashDurationSeconds = 0.25F;
   iggy3d::applyProductGameplayActions(*session,
                                       dashActions(),
                                       window,
                                       "unit/gameplay_controller_runtime_dash");
 
-  return expect(window.gameplayDash.accepted, "runtime tuned dash accepted") &&
-         expect(nearlyEqual(window.gameplayDash.speedMetersPerSecond, 4.0F),
+  return expect(window.gameplay.gameplayDash.accepted, "runtime tuned dash accepted") &&
+         expect(nearlyEqual(window.gameplay.gameplayDash.speedMetersPerSecond, 4.0F),
                 "runtime tuned dash speed") &&
-         expect(nearlyEqual(window.gameplayDash.distanceMeters, 1.0F),
+         expect(nearlyEqual(window.gameplay.gameplayDash.distanceMeters, 1.0F),
                 "runtime tuned dash distance");
 }
 
@@ -2002,15 +2002,15 @@ bool productDashUsesMoveIntentDirection() {
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
   const float appliedDistance = horizontalDistance(start, final);
 
-  return expect(window.gameplayDash.accepted, "dash right accepted") &&
-         expect(nearlyEqual(window.gameplayDash.directionX, 1.0F),
+  return expect(window.gameplay.gameplayDash.accepted, "dash right accepted") &&
+         expect(nearlyEqual(window.gameplay.gameplayDash.directionX, 1.0F),
                 "dash right direction x") &&
-         expect(nearlyEqual(window.gameplayDash.directionZ, 0.0F),
+         expect(nearlyEqual(window.gameplay.gameplayDash.directionZ, 0.0F),
                 "dash right direction z") &&
-         expect(nearlyEqual(window.gameplayMovement.horizontalDistanceMeters,
+         expect(nearlyEqual(window.gameplay.gameplayMovement.horizontalDistanceMeters,
                             appliedDistance),
                 "dash right distance matches applied movement") &&
-         expect(window.gameplayMovement.horizontalDistanceMeters <=
+         expect(window.gameplay.gameplayMovement.horizontalDistanceMeters <=
                     kExpectedManualFirstPersonDashDistanceMeters,
                 "dash right distance within requested dash") &&
          expect(nearlyEqual(final.z - start.z, 0.0F), "dash right z unchanged");
@@ -2034,12 +2034,12 @@ bool productDashRejectsDuringCooldown() {
                                       "unit/gameplay_controller_dash_again");
   const iggy3d::Vec3 afterSecond = playerEntity(*session)->transform.position;
 
-  return expect(window.gameplayDash.requested, "cooldown dash requested") &&
-         expect(!window.gameplayDash.accepted, "cooldown dash rejected") &&
-         expect(window.gameplayDash.status == "cooldown", "cooldown dash status") &&
-         expect(window.gameplayDash.reasonCode == "gameplay_dash_cooldown",
+  return expect(window.gameplay.gameplayDash.requested, "cooldown dash requested") &&
+         expect(!window.gameplay.gameplayDash.accepted, "cooldown dash rejected") &&
+         expect(window.gameplay.gameplayDash.status == "cooldown", "cooldown dash status") &&
+         expect(window.gameplay.gameplayDash.reasonCode == "gameplay_dash_cooldown",
                 "cooldown dash reason") &&
-         expect(window.gameplayDash.cooldownRemainingSeconds > 0.0F,
+         expect(window.gameplay.gameplayDash.cooldownRemainingSeconds > 0.0F,
                 "cooldown remains") &&
          expect(nearlyEqual(afterFirst.x, afterSecond.x), "cooldown no x move") &&
          expect(nearlyEqual(afterFirst.z, afterSecond.z), "cooldown no z move");
@@ -2060,18 +2060,18 @@ bool defaultOffMoveWithCollisionSurfacesUsesLegacyPath() {
                                       "unit/gameplay_controller_legacy_surfaces",
                                       surfaces);
 
-  return expect(window.gameplayCommand.accepted, "legacy surfaces move accepted") &&
-         expect(window.gameplayMovement.status == "moved",
+  return expect(window.gameplay.gameplayCommand.accepted, "legacy surfaces move accepted") &&
+         expect(window.gameplay.gameplayMovement.status == "moved",
                 "legacy surfaces movement status") &&
-         expect(window.gameplayCollision.surfacesUsed,
+         expect(window.gameplay.gameplayCollision.surfacesUsed,
                 "legacy surfaces collision surfaces used") &&
-         expect(!window.physicsMovementPlanner.enabled,
+         expect(!window.gameplay.physicsMovementPlanner.enabled,
                 "legacy surfaces physics planner disabled") &&
-         expect(!window.physicsMovementPlanner.requested,
+         expect(!window.gameplay.physicsMovementPlanner.requested,
                 "legacy surfaces physics planner not requested") &&
-         expect(!window.physicsMovementPlanner.used,
+         expect(!window.gameplay.physicsMovementPlanner.used,
                 "legacy surfaces physics planner not used") &&
-         expect(window.physicsMovementPlanner.reasonCode ==
+         expect(window.gameplay.physicsMovementPlanner.reasonCode ==
                     "physics_movement_planner_disabled",
                 "legacy surfaces physics planner reason") &&
          expect(session->state().transient.lastMovementResultAvailable,
@@ -2091,20 +2091,20 @@ bool optInMoveWithCollisionSurfacesUsesPhysicsPlanner() {
   if (!expect(surfaces != nullptr, "physics surfaces available")) {
     return false;
   }
-  window.physicsMovementPlanner.enabled = true;
+  window.gameplay.physicsMovementPlanner.enabled = true;
 
   iggy3d::applyProductGameplayActions(*session, forwardMoveActions(), window,
                                       "unit/gameplay_controller_physics_surfaces",
                                       surfaces);
 
-  return expect(window.gameplayCommand.accepted, "physics move accepted") &&
-         expect(window.physicsMovementPlanner.enabled,
+  return expect(window.gameplay.gameplayCommand.accepted, "physics move accepted") &&
+         expect(window.gameplay.physicsMovementPlanner.enabled,
                 "physics planner enabled") &&
-         expect(window.physicsMovementPlanner.requested,
+         expect(window.gameplay.physicsMovementPlanner.requested,
                 "physics planner requested") &&
-         expect(window.physicsMovementPlanner.used,
+         expect(window.gameplay.physicsMovementPlanner.used,
                 "physics planner used") &&
-         expect(window.physicsMovementPlanner.status ==
+         expect(window.gameplay.physicsMovementPlanner.status ==
                     "physics_movement_planner_used",
                 "physics planner status used") &&
          expect(session->state().transient.lastMovementResultAvailable,
@@ -2112,9 +2112,9 @@ bool optInMoveWithCollisionSurfacesUsesPhysicsPlanner() {
          expect(session->state()
                     .transient.lastMovementResult.physicsFrameStatsAvailable,
                 "physics movement stats available") &&
-         expect(window.gameplayMovement.debugAvailable,
+         expect(window.gameplay.gameplayMovement.debugAvailable,
                 "physics movement debug available") &&
-         expect(window.gameplayMovement.collisionSweepCount >= 1U,
+         expect(window.gameplay.gameplayMovement.collisionSweepCount >= 1U,
                 "physics movement sweep count");
 }
 
@@ -2124,20 +2124,20 @@ bool optInMoveWithoutCollisionSurfacesRecordsNoSurfaces() {
   if (!expect(session.has_value(), "physics no surfaces session created")) {
     return false;
   }
-  window.physicsMovementPlanner.enabled = true;
+  window.gameplay.physicsMovementPlanner.enabled = true;
 
   iggy3d::applyProductGameplayActions(*session, forwardMoveActions(), window,
                                       "unit/gameplay_controller_physics_no_surfaces");
 
-  return expect(window.gameplayCommand.accepted,
+  return expect(window.gameplay.gameplayCommand.accepted,
                 "physics no surfaces move accepted") &&
-         expect(window.physicsMovementPlanner.enabled,
+         expect(window.gameplay.physicsMovementPlanner.enabled,
                 "physics no surfaces planner enabled") &&
-         expect(window.physicsMovementPlanner.requested,
+         expect(window.gameplay.physicsMovementPlanner.requested,
                 "physics no surfaces planner requested") &&
-         expect(!window.physicsMovementPlanner.used,
+         expect(!window.gameplay.physicsMovementPlanner.used,
                 "physics no surfaces planner not used") &&
-         expect(window.physicsMovementPlanner.status ==
+         expect(window.gameplay.physicsMovementPlanner.status ==
                     "physics_movement_planner_no_collision_surfaces",
                 "physics no surfaces planner status") &&
          expect(!session->state()

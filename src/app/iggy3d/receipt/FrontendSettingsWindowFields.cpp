@@ -72,18 +72,18 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
                      window.devCollisionOverlay.reasonCode);
   appendReceiptField(receipt,
                      "gameplay_movement_tuning_status",
-                     window.gameplayMovement.tuningStatus);
+                     window.gameplay.gameplayMovement.tuningStatus);
   appendReceiptField(receipt,
                      "gameplay_movement_tuning_reason_code",
-                     window.gameplayMovement.tuningReasonCode);
+                     window.gameplay.gameplayMovement.tuningReasonCode);
   appendReceiptField(receipt,
                      "gameplay_movement_tuning_visible",
-                     window.gameplayMovement.tuningVisible);
+                     window.gameplay.gameplayMovement.tuningVisible);
   appendReceiptField(
       receipt,
       "gameplay_movement_tuning_selected_field",
       productGameplayMovementTuningFieldName(
-          window.gameplayMovement.tuningSelectedField));
+          window.gameplay.gameplayMovement.tuningSelectedField));
   for (const ProductGameplayMovementTuningFieldDescriptor& descriptor :
        kProductGameplayMovementTuningFields) {
     const std::string receiptKey =
@@ -94,13 +94,13 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
           receipt,
           receiptKey,
           productGameplayMovementTuningFieldValue(
-              window.gameplayMovement.tuning, descriptor.field) >= 0.5F);
+              window.gameplay.gameplayMovement.tuning, descriptor.field) >= 0.5F);
     } else {
       appendReceiptField(
           receipt,
           receiptKey,
           floatReceiptValue(productGameplayMovementTuningFieldValue(
-              window.gameplayMovement.tuning, descriptor.field)));
+              window.gameplay.gameplayMovement.tuning, descriptor.field)));
     }
   }
   appendReceiptField(receipt, "window_requested", window.requested);

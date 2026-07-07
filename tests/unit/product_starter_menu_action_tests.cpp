@@ -138,10 +138,10 @@ bool productContinueSelectsNoSave(const std::filesystem::path& root) {
 }
 
 void showMovementTuning(StarterHarness& harness) {
-  harness.window.gameplayMovement.tuningVisible = true;
-  harness.window.gameplayMovement.tuningStatus = "movement_tuning_visible";
-  harness.window.gameplayMovement.tuningReasonCode =
-      harness.window.gameplayMovement.tuningStatus;
+  harness.window.gameplay.gameplayMovement.tuningVisible = true;
+  harness.window.gameplay.gameplayMovement.tuningStatus = "movement_tuning_visible";
+  harness.window.gameplay.gameplayMovement.tuningReasonCode =
+      harness.window.gameplay.gameplayMovement.tuningStatus;
 }
 
 bool selectionAndBackAreStable() {
@@ -228,14 +228,14 @@ bool childPanelActionsOpenExpectedSurfaces() {
                 "new world selects create") &&
          expect(newWorld.window.worldSetup.status == "world_setup_open",
                 "new world records draft state") &&
-         expect(!newWorld.window.gameplayMovement.tuningVisible,
+         expect(!newWorld.window.gameplay.gameplayMovement.tuningVisible,
                 "new world clears movement tuning") &&
          expect(loadResult.handled && loadResult.accepted, "load accepted") &&
          expect(loadSave.frontend.childScreen == iggy3d::FrontendScreen::LoadSave,
                 "load child") &&
          expect(loadSave.window.saveSession.selectedProductSave.id == "save_unit",
                 "load selected save") &&
-         expect(!loadSave.window.gameplayMovement.tuningVisible,
+         expect(!loadSave.window.gameplay.gameplayMovement.tuningVisible,
                 "load clears movement tuning") &&
          expect(settingsResult.handled && settingsResult.accepted,
                 "settings accepted") &&
@@ -243,7 +243,7 @@ bool childPanelActionsOpenExpectedSurfaces() {
                 "settings child") &&
          expect(settings.settingsTab == iggy3d::FrontendSettingsTab::Input,
                 "settings starts input tab") &&
-         expect(!settings.window.gameplayMovement.tuningVisible,
+         expect(!settings.window.gameplay.gameplayMovement.tuningVisible,
                 "settings clears movement tuning") &&
          expect(devToolsResult.handled && devToolsResult.accepted,
                 "dev tools accepted") &&
@@ -255,7 +255,7 @@ bool childPanelActionsOpenExpectedSurfaces() {
          expect(devTools.frontend.devToolsCategory ==
                     iggy3d::FrontendDevToolsCategory::Session,
                 "dev tools starts session") &&
-         expect(!devTools.window.gameplayMovement.tuningVisible,
+         expect(!devTools.window.gameplay.gameplayMovement.tuningVisible,
                 "dev tools clears movement tuning");
 }
 
@@ -296,12 +296,12 @@ bool deleteAndExitActionsAreExplicitRows() {
                 "delete does not auto-open confirmation") &&
          expect(deleteSave.window.saveSession.selectedProductSave.id == "save_unit",
                 "delete pre-selects first save") &&
-         expect(!deleteSave.window.gameplayMovement.tuningVisible,
+         expect(!deleteSave.window.gameplay.gameplayMovement.tuningVisible,
                 "delete clears movement tuning") &&
          expect(!deleteSave.closeRequested, "delete does not close") &&
          expect(exitResult.handled && exitResult.accepted, "exit accepted") &&
          expect(exit.closeRequested, "exit requests close") &&
-         expect(!exit.window.gameplayMovement.tuningVisible,
+         expect(!exit.window.gameplay.gameplayMovement.tuningVisible,
                 "exit clears movement tuning") &&
          expect(exit.frontend.status == "opening_menu_exit_requested",
                 "exit status");
@@ -347,7 +347,7 @@ bool creativeNewWorldLaunchesThroughStarterActionAndKeepsContinueSeparate() {
          expect(harness.window.launchStatus ==
                     "product_creative_world_launched",
                 "creative starter launch status") &&
-         expect(!harness.window.gameplayMovement.tuningVisible,
+         expect(!harness.window.gameplay.gameplayMovement.tuningVisible,
                 "creative starter clears movement tuning") &&
          expect(facade.document().id() !=
                     iggy3d::creative::kInvalidDocumentId,
@@ -403,7 +403,7 @@ bool creativeNewWorldMissingFacadeFailsClosed() {
          expect(harness.frontend.status ==
                     "product_creative_world_facade_missing",
                 "missing facade frontend status") &&
-         expect(!harness.window.gameplayMovement.tuningVisible,
+         expect(!harness.window.gameplay.gameplayMovement.tuningVisible,
                 "missing facade clears movement tuning") &&
          expect(creativeSaves.catalog.catalog.entries.empty(),
                 "missing facade writes no save");
@@ -530,7 +530,7 @@ bool creativeOpenWorldLaunchesThroughStarterAction() {
          expect(harness.window.launchStatus ==
                     "product_creative_world_opened",
                 "creative open launch status") &&
-         expect(!harness.window.gameplayMovement.tuningVisible,
+         expect(!harness.window.gameplay.gameplayMovement.tuningVisible,
                 "creative open clears movement tuning") &&
          expect(facade.document().id() == created.documentId,
                 "creative open document id") &&
@@ -589,7 +589,7 @@ bool creativeOpenWorldWithoutCreativeSaveFailsClosed() {
          expect(harness.frontend.status ==
                     "opening_menu_creative_open_world_unavailable",
                 "creative open empty frontend status") &&
-         expect(!harness.window.gameplayMovement.tuningVisible,
+         expect(!harness.window.gameplay.gameplayMovement.tuningVisible,
                 "creative open empty clears movement tuning") &&
          expect(facade.document().id() ==
                     iggy3d::creative::kInvalidDocumentId,
@@ -629,7 +629,7 @@ bool creativeOpenWorldMissingFacadeFailsClosed() {
          expect(harness.frontend.status ==
                     "product_creative_world_facade_missing",
                 "creative open missing facade frontend status") &&
-         expect(!harness.window.gameplayMovement.tuningVisible,
+         expect(!harness.window.gameplay.gameplayMovement.tuningVisible,
                 "creative open missing facade clears movement tuning");
 }
 

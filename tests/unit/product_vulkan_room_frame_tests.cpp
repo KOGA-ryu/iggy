@@ -168,17 +168,17 @@ void seedPhysicsMovementStats(std::optional<iggy3d::Session>& session,
 }
 
 void seedMovementDebugFacts(iggy3d::ProductAppWindowState& window) {
-  window.gameplayMovement.debugAvailable = true;
-  window.gameplayMovement.status = "moved";
-  window.gameplayMovement.reasonCode = "movement_ok";
-  window.gameplayMovement.blockedReason = "movement_ok";
-  window.gameplayMovement.hitSurfaceId = "none";
-  window.gameplayMovement.groundSnapApplied = true;
-  window.gameplayMovement.policyBand = "flat";
-  window.gameplayMovement.speedMultiplier = 1.0F;
-  window.gameplayMovement.finalX = -1.0F;
-  window.gameplayMovement.finalY = 0.0F;
-  window.gameplayMovement.finalZ = -1.0F;
+  window.gameplay.gameplayMovement.debugAvailable = true;
+  window.gameplay.gameplayMovement.status = "moved";
+  window.gameplay.gameplayMovement.reasonCode = "movement_ok";
+  window.gameplay.gameplayMovement.blockedReason = "movement_ok";
+  window.gameplay.gameplayMovement.hitSurfaceId = "none";
+  window.gameplay.gameplayMovement.groundSnapApplied = true;
+  window.gameplay.gameplayMovement.policyBand = "flat";
+  window.gameplay.gameplayMovement.speedMultiplier = 1.0F;
+  window.gameplay.gameplayMovement.finalX = -1.0F;
+  window.gameplay.gameplayMovement.finalY = 0.0F;
+  window.gameplay.gameplayMovement.finalZ = -1.0F;
 }
 
 void seedPhysicsMovementStatsAndGeometry(std::optional<iggy3d::Session>& session) {
@@ -953,14 +953,14 @@ bool vulkanGameplayFrameCarriesMovementTuningUiOverlay() {
           720U,
           0.0F,
           0.0F,
-          window.gameplayMovement.tuning,
-          window.gameplayMovement.tuningSelectedField,
+          window.gameplay.gameplayMovement.tuning,
+          window.gameplay.gameplayMovement.tuningSelectedField,
           false);
   const iggy3d::FrameInput& hiddenFrame =
       iggy3d::refreshProductVulkanGameplayFrameInput(hidden);
 
-  window.gameplayMovement.tuningVisible = true;
-  window.gameplayMovement.tuningSelectedField =
+  window.gameplay.gameplayMovement.tuningVisible = true;
+  window.gameplay.gameplayMovement.tuningSelectedField =
       iggy3d::ProductGameplayMovementTuningField::JumpImpulse;
   iggy3d::ProductVulkanGameplayFrame visible =
       iggy3d::buildProductVulkanGameplayFrame(
@@ -970,9 +970,9 @@ bool vulkanGameplayFrameCarriesMovementTuningUiOverlay() {
           720U,
           0.0F,
           0.0F,
-          window.gameplayMovement.tuning,
-          window.gameplayMovement.tuningSelectedField,
-          window.gameplayMovement.tuningVisible);
+          window.gameplay.gameplayMovement.tuning,
+          window.gameplay.gameplayMovement.tuningSelectedField,
+          window.gameplay.gameplayMovement.tuningVisible);
   const iggy3d::FrameInput& visibleFrame =
       iggy3d::refreshProductVulkanGameplayFrameInput(visible);
   const VulkanUiCounts hiddenUi = uiCountsFor(hiddenFrame);
@@ -1012,8 +1012,8 @@ bool vulkanGameplayFrameCarriesDevToolsOverlay() {
           720U,
           0.0F,
           0.0F,
-          window.gameplayMovement.tuning,
-          window.gameplayMovement.tuningSelectedField,
+          window.gameplay.gameplayMovement.tuning,
+          window.gameplay.gameplayMovement.tuningSelectedField,
           false,
           false,
           iggy3d::FrontendDevToolsCategory::Movement);
@@ -1028,8 +1028,8 @@ bool vulkanGameplayFrameCarriesDevToolsOverlay() {
           720U,
           0.0F,
           0.0F,
-          window.gameplayMovement.tuning,
-          window.gameplayMovement.tuningSelectedField,
+          window.gameplay.gameplayMovement.tuning,
+          window.gameplay.gameplayMovement.tuningSelectedField,
           false,
           true,
           iggy3d::FrontendDevToolsCategory::Movement);
@@ -1210,10 +1210,10 @@ bool creativeDocumentSurfaceHidesLegacyGameplayHudAndFeedback() {
   app.identity.documentId = 42U;
   window.mapMakerStatus = "map_maker_enabled";
   window.mapMakerReasonCode = window.mapMakerStatus;
-  window.gameplayCommand.submitted = true;
-  window.gameplayCommand.kind = "move";
-  window.gameplayCommand.status = "accepted";
-  window.gameplayCommand.accepted = true;
+  window.gameplay.gameplayCommand.submitted = true;
+  window.gameplay.gameplayCommand.kind = "move";
+  window.gameplay.gameplayCommand.status = "accepted";
+  window.gameplay.gameplayCommand.accepted = true;
   window.gameplayReachGate = "pass";
 
   iggy3d::FrontendState frontend;

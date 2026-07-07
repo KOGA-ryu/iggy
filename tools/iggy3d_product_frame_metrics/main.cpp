@@ -364,7 +364,7 @@ bool initializeScenarioRuntime(const ScenarioSpec& spec,
       return fail("wall_run_jump_failed");
     }
     if (!applyAutomationCommand(runtime, "game.move_x", "1") &&
-        !runtime.window.gameplayWallRun.active) {
+        !runtime.window.gameplay.gameplayWallRun.active) {
       return fail("wall_run_move_failed");
     }
   }
@@ -405,28 +405,28 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
                iggy3d::activeRoomCollision(window).querySurfaceCount);
   counters.physicsMovementSurfaceMax =
       std::max(counters.physicsMovementSurfaceMax,
-               window.gameplayCollision.surfaceCount);
+               window.gameplay.gameplayCollision.surfaceCount);
   counters.physicsMovementSweepMax =
       std::max(counters.physicsMovementSweepMax,
-               window.gameplayMovement.collisionSweepCount);
-  if (window.gameplayWallRun.candidateAvailable) {
+               window.gameplay.gameplayMovement.collisionSweepCount);
+  if (window.gameplay.gameplayWallRun.candidateAvailable) {
     ++counters.wallRunCandidateFrameCount;
   }
-  if (window.gameplayWallRun.active) {
+  if (window.gameplay.gameplayWallRun.active) {
     ++counters.wallRunActiveFrameCount;
   }
-  if (window.gameplayMovement.state ==
+  if (window.gameplay.gameplayMovement.state ==
       iggy3d::ProductGameplayMovementState::WallRunning) {
     ++counters.wallRunningStateFrameCount;
   }
   counters.lastMovementState =
       std::string(iggy3d::productGameplayMovementStateName(
-          window.gameplayMovement.state));
-  counters.lastWallRunStatus = window.gameplayWallRun.status;
+          window.gameplay.gameplayMovement.state));
+  counters.lastWallRunStatus = window.gameplay.gameplayWallRun.status;
   counters.lastHorizontalSpeedMetersPerSecond =
-      window.gameplayMovement.horizontalSpeedMetersPerSecond;
+      window.gameplay.gameplayMovement.horizontalSpeedMetersPerSecond;
   counters.lastVerticalVelocityMetersPerSecond =
-      window.gameplayJump.velocityMetersPerSecond;
+      window.gameplay.gameplayJump.velocityMetersPerSecond;
 }
 
 ScenarioResult runScenario(const ScenarioSpec& spec,

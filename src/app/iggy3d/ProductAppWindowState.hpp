@@ -275,16 +275,6 @@ struct ProductAppWindowState {
   bool objectiveVisible = false;
   bool rendererMutatedRuntime = false;
   bool scriptedGameplaySmoke = false;
-  ProductGameplayCommandState gameplayCommand;
-  ProductGameplayMovementInfo gameplayMovement;
-  ProductWallRunState gameplayWallRun;
-  ProductGameplayJumpState gameplayJump;
-  ProductGameplayResetState gameplayReset;
-  ProductGameplayTraversalState gameplayTraversal;
-  ProductGameplayDashState gameplayDash;
-  ProductGameplayCollisionState gameplayCollision;
-  std::string gameplayTickReasonCode = "not_requested";
-  ProductPhysicsMovementPlannerState physicsMovementPlanner;
   bool targetDiscovered = false;
   ProductGameplayTargetState gameplayTarget;
   ProductGameplayOutcomeState gameplayOutcome;

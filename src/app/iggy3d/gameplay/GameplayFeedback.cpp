@@ -8,8 +8,8 @@ namespace iggy3d {
 namespace {
 
 bool isTargetCommand(const ProductAppWindowState& window) {
-  return window.gameplayCommand.kind == "attack" ||
-         window.gameplayCommand.kind == "interact";
+  return window.gameplay.gameplayCommand.kind == "attack" ||
+         window.gameplay.gameplayCommand.kind == "interact";
 }
 
 FeedbackTone targetTone(const std::string& status) {
@@ -52,16 +52,16 @@ std::string resultStatusFor(const ProductAppWindowState& window) {
   if (window.interactionExecuted) {
     return "interaction_executed";
   }
-  if (window.gameplayCommand.kind == "reset" && window.gameplayCommand.accepted) {
+  if (window.gameplay.gameplayCommand.kind == "reset" && window.gameplay.gameplayCommand.accepted) {
     return "reset_executed";
   }
-  if (!window.gameplayCommand.submitted && window.gameplayCommand.status == "not_requested") {
+  if (!window.gameplay.gameplayCommand.submitted && window.gameplay.gameplayCommand.status == "not_requested") {
     return "not_attempted";
   }
-  if (window.gameplayCommand.status == "no_target") {
+  if (window.gameplay.gameplayCommand.status == "no_target") {
     return "no_target";
   }
-  return window.gameplayCommand.status;
+  return window.gameplay.gameplayCommand.status;
 }
 
 FeedbackTone resultTone(const std::string& status) {
@@ -93,8 +93,8 @@ GameplayFeedback buildGameplayFeedback(
     const ProductAppWindowState& window) {
   GameplayFeedback feedback;
   feedback.visible = window.gameplay.gameplayActive;
-  feedback.commandKind = window.gameplayCommand.kind;
-  feedback.commandStatus = window.gameplayCommand.status;
+  feedback.commandKind = window.gameplay.gameplayCommand.kind;
+  feedback.commandStatus = window.gameplay.gameplayCommand.status;
   feedback.reachStatus = window.gameplayReachGate;
   feedback.rejectionReason = window.gameplayLastRejection;
   feedback.resultStatus = resultStatusFor(window);
@@ -102,7 +102,7 @@ GameplayFeedback buildGameplayFeedback(
   feedback.targetStatus =
       window.targetDiscovered
           ? "discovered"
-          : (isTargetCommand(window) && window.gameplayCommand.status == "no_target"
+          : (isTargetCommand(window) && window.gameplay.gameplayCommand.status == "no_target"
                  ? "no_target"
                  : "not_attempted");
 
@@ -110,7 +110,7 @@ GameplayFeedback buildGameplayFeedback(
       feedback.visible && (window.targetDiscovered || isTargetCommand(window));
   feedback.commandFeedbackVisible =
       feedback.visible &&
-      (window.gameplayCommand.submitted || window.gameplayCommand.status != "not_requested");
+      (window.gameplay.gameplayCommand.submitted || window.gameplay.gameplayCommand.status != "not_requested");
   feedback.reachFeedbackVisible =
       feedback.visible && feedback.reachStatus != "not_attempted";
   feedback.combatFeedbackVisible =

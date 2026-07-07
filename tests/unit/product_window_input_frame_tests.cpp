@@ -735,13 +735,13 @@ bool controllerSouthJumpsInGameplayPlayerMode() {
                 "gameplay south routes to jump") &&
          expect(window.controllerAction.inputAction == "game.jump",
                 "gameplay south records jump input action") &&
-         expect(window.gameplayJump.requested,
+         expect(window.gameplay.gameplayJump.requested,
                 "gameplay south requests jump") &&
-         expect(window.gameplayJump.accepted, "gameplay south accepts jump") &&
-         expect(window.gameplayJump.active, "gameplay south jump remains active") &&
-         expect(window.gameplayJump.status == "airborne",
+         expect(window.gameplay.gameplayJump.accepted, "gameplay south accepts jump") &&
+         expect(window.gameplay.gameplayJump.active, "gameplay south jump remains active") &&
+         expect(window.gameplay.gameplayJump.status == "airborne",
                 "gameplay south jump airborne status") &&
-         expect(window.gameplayJump.reasonCode == "gameplay_jump_airborne",
+         expect(window.gameplay.gameplayJump.reasonCode == "gameplay_jump_airborne",
                 "gameplay south jump airborne reason");
 }
 
@@ -770,8 +770,8 @@ bool controllerSouthDoesNotJumpWhenFrontendBlocksGameplay() {
     return expect(blocked.processed, label) &&
            expect(!blocked.actionApplied, label) &&
            expect(!blocked.actionAccepted, label) &&
-           expect(!window.gameplayJump.requested, label) &&
-           expect(!window.gameplayCommand.submitted, label);
+           expect(!window.gameplay.gameplayJump.requested, label) &&
+           expect(!window.gameplay.gameplayCommand.submitted, label);
   };
 
   return blockedJump(iggy3d::FrontendScreen::Settings,
@@ -844,9 +844,9 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
          expect(iggy3d::nearlyEqual(beforePosition,
                                     afterPlayer->transform.position),
                 "map maker movement does not move player body") &&
-         expect(!window.gameplayCommand.submitted,
+         expect(!window.gameplay.gameplayCommand.submitted,
                 "map maker movement does not submit player move command") &&
-         expect(window.gameplayCommand.status != "creative_fly_owns_movement",
+         expect(window.gameplay.gameplayCommand.status != "creative_fly_owns_movement",
                 "map maker movement avoids pause-like owner status");
 }
 
@@ -907,7 +907,7 @@ bool creativeDocumentSuppressesProductControllerMovement() {
                 "creative document source surface kind") &&
          expect(!window.viewport.creativeFlyActive,
                 "creative document does not run creative fly") &&
-         expect(!window.gameplayCommand.submitted,
+         expect(!window.gameplay.gameplayCommand.submitted,
                 "creative document does not submit gameplay command") &&
          expect(iggy3d::nearlyEqual(beforePosition,
                                     afterPlayer->transform.position),
@@ -988,14 +988,14 @@ bool controllerSouthJumpsFromClamberedWallTop() {
          expect(window.lastInputAction == iggy3d::InputAction::PlayerJump,
                 "wall top second south routes to jump") &&
          expect(jumped.actionApplied, "wall top second south action applied") &&
-         expect(window.gameplayJump.requested, "wall top jump requested") &&
-         expect(window.gameplayJump.accepted, "wall top jump accepted") &&
-         expect(window.gameplayJump.active, "wall top jump active") &&
-         expect(window.gameplayJump.status == "airborne",
+         expect(window.gameplay.gameplayJump.requested, "wall top jump requested") &&
+         expect(window.gameplay.gameplayJump.accepted, "wall top jump accepted") &&
+         expect(window.gameplay.gameplayJump.active, "wall top jump active") &&
+         expect(window.gameplay.gameplayJump.status == "airborne",
                 "wall top jump airborne") &&
-         expect(window.gameplayJump.reasonCode == "gameplay_jump_airborne",
+         expect(window.gameplay.gameplayJump.reasonCode == "gameplay_jump_airborne",
                 "wall top jump reason") &&
-         expect(window.gameplayJump.groundY == clamberTopY,
+         expect(window.gameplay.gameplayJump.groundY == clamberTopY,
                 "wall top jump uses clamber top as ground") &&
          expect(finalY > clamberTopY, "wall top jump raises player");
 }
@@ -2527,7 +2527,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
   const bool tuningOk =
       expect(tuning.handled, "top-level F4 handled") &&
       expect(tuning.accepted, "top-level F4 accepted in gameplay") &&
-      expect(tuningWindow.gameplayMovement.tuningVisible,
+      expect(tuningWindow.gameplay.gameplayMovement.tuningVisible,
              "top-level F4 shows movement tuning");
 
   iggy3d::FrontendState pause = gameplayFrontend();
@@ -2535,7 +2535,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
   pause.childScreen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState pauseWindow;
   pauseWindow.gameplay.gameplayActive = true;
-  pauseWindow.gameplayMovement.tuningVisible = true;
+  pauseWindow.gameplay.gameplayMovement.tuningVisible = true;
   const iggy3d::ProductWindowTopLevelToggleResult blockedTuning =
       iggy3d::dispatchProductWindowTopLevelToggleAction(
           pause,
@@ -2546,7 +2546,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
   const bool blockedTuningOk =
       expect(blockedTuning.handled, "top-level pause F4 handled") &&
       expect(!blockedTuning.accepted, "top-level pause F4 rejected") &&
-      expect(!pauseWindow.gameplayMovement.tuningVisible,
+      expect(!pauseWindow.gameplay.gameplayMovement.tuningVisible,
              "top-level pause F4 clears stale tuning");
 
   iggy3d::FrontendState devTools = starterFrontend();
@@ -2660,7 +2660,7 @@ bool movementTuningGameplayInputIsLiveAndFocused() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
   window.gameplay.gameplayActive = true;
-  const float originalWalk = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+  const float originalWalk = window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
 
   const iggy3d::ProductMovementTuningInputResult shown =
       iggy3d::applyProductWindowMovementTuningInput(
@@ -2668,9 +2668,9 @@ bool movementTuningGameplayInputIsLiveAndFocused() {
   const bool showOk =
       expect(shown.handled, "movement tuning toggle handled") &&
       expect(shown.accepted, "movement tuning toggle accepted") &&
-      expect(window.gameplayMovement.tuningVisible,
+      expect(window.gameplay.gameplayMovement.tuningVisible,
              "movement tuning visible after F4") &&
-      expect(window.gameplayMovement.tuningStatus == "movement_tuning_visible",
+      expect(window.gameplay.gameplayMovement.tuningStatus == "movement_tuning_visible",
              "movement tuning visible status");
 
   const iggy3d::ProductMovementTuningInputResult increased =
@@ -2679,7 +2679,7 @@ bool movementTuningGameplayInputIsLiveAndFocused() {
   const bool increaseOk =
       expect(increased.handled, "movement tuning right handled") &&
       expect(increased.accepted, "movement tuning right accepted") &&
-      expect(window.gameplayMovement.tuning.walkSpeedMetersPerSecond > originalWalk,
+      expect(window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond > originalWalk,
              "movement tuning right increases walk");
 
   const iggy3d::ProductMovementTuningInputResult previous =
@@ -2688,7 +2688,7 @@ bool movementTuningGameplayInputIsLiveAndFocused() {
   const bool previousOk =
       expect(previous.handled, "movement tuning up handled") &&
       expect(previous.accepted, "movement tuning up accepted") &&
-      expect(window.gameplayMovement.tuningSelectedField ==
+      expect(window.gameplay.gameplayMovement.tuningSelectedField ==
                  iggy3d::ProductGameplayMovementTuningField::WallRunSpeedMultiplier,
              "movement tuning up wraps to previous field");
 
@@ -2698,7 +2698,7 @@ bool movementTuningGameplayInputIsLiveAndFocused() {
   const bool nextOk =
       expect(next.handled, "movement tuning down handled") &&
       expect(next.accepted, "movement tuning down accepted") &&
-      expect(window.gameplayMovement.tuningSelectedField ==
+      expect(window.gameplay.gameplayMovement.tuningSelectedField ==
                  iggy3d::ProductGameplayMovementTuningField::WalkSpeed,
              "movement tuning down returns to walk field");
 
@@ -2709,7 +2709,7 @@ bool movementTuningGameplayInputIsLiveAndFocused() {
   return showOk && increaseOk && previousOk && nextOk &&
          expect(hidden.handled, "movement tuning hide handled") &&
          expect(hidden.accepted, "movement tuning hide accepted") &&
-         expect(!window.gameplayMovement.tuningVisible,
+         expect(!window.gameplay.gameplayMovement.tuningVisible,
                 "movement tuning hidden after second F4");
 }
 
@@ -2717,15 +2717,15 @@ bool movementTuningSingleLeftRightPressAppliesOneStep() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
   window.gameplay.gameplayActive = true;
-  window.gameplayMovement.tuningVisible = true;
+  window.gameplay.gameplayMovement.tuningVisible = true;
   const auto& descriptor = iggy3d::productGameplayMovementTuningFieldDescriptor(
-      window.gameplayMovement.tuningSelectedField);
-  const float originalWalk = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+      window.gameplay.gameplayMovement.tuningSelectedField);
+  const float originalWalk = window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
 
   const iggy3d::ProductMovementTuningInputResult right =
       iggy3d::applyProductWindowMovementTuningInput(
           frontend, window, iggy3d::InputAction::MenuRight);
-  const float increasedWalk = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+  const float increasedWalk = window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
   const iggy3d::ProductMovementTuningInputResult left =
       iggy3d::applyProductWindowMovementTuningInput(
           frontend, window, iggy3d::InputAction::MenuLeft);
@@ -2737,7 +2737,7 @@ bool movementTuningSingleLeftRightPressAppliesOneStep() {
                     "movement tuning right single press applies one step") &&
          expect(left.handled, "movement tuning left single press handled") &&
          expect(left.accepted, "movement tuning left single press accepted") &&
-         expectNear(window.gameplayMovement.tuning.walkSpeedMetersPerSecond,
+         expectNear(window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond,
                     originalWalk,
                     "movement tuning left single press applies one step");
 }
@@ -2746,12 +2746,12 @@ bool movementTuningHeldRightRepeatsAfterDelay() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
   window.gameplay.gameplayActive = true;
-  window.gameplayMovement.tuningVisible = true;
+  window.gameplay.gameplayMovement.tuningVisible = true;
   iggy3d::ProductMovementTuningRepeatState repeat;
   constexpr iggy3d::ProductMovementTuningRepeatPolicy policy{3U, 2U};
   const auto& descriptor = iggy3d::productGameplayMovementTuningFieldDescriptor(
-      window.gameplayMovement.tuningSelectedField);
-  const float originalWalk = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+      window.gameplay.gameplayMovement.tuningSelectedField);
+  const float originalWalk = window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
 
   const iggy3d::ProductMovementTuningInputResult fresh =
       iggy3d::applyProductWindowMovementTuningInput(
@@ -2762,11 +2762,11 @@ bool movementTuningHeldRightRepeatsAfterDelay() {
   const iggy3d::ProductMovementTuningInputResult held2 =
       iggy3d::applyProductWindowMovementTuningHeldInput(
           frontend, window, repeat, false, true, policy);
-  const float beforeRepeat = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+  const float beforeRepeat = window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
   const iggy3d::ProductMovementTuningInputResult held3 =
       iggy3d::applyProductWindowMovementTuningHeldInput(
           frontend, window, repeat, false, true, policy);
-  const float firstRepeat = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+  const float firstRepeat = window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
   const iggy3d::ProductMovementTuningInputResult held4 =
       iggy3d::applyProductWindowMovementTuningHeldInput(
           frontend, window, repeat, false, true, policy);
@@ -2788,7 +2788,7 @@ bool movementTuningHeldRightRepeatsAfterDelay() {
                     "movement tuning first repeat applies existing step") &&
          expect(!held4.handled, "movement tuning interval frame waits") &&
          expect(held5.handled, "movement tuning repeats at interval") &&
-         expectNear(window.gameplayMovement.tuning.walkSpeedMetersPerSecond,
+         expectNear(window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond,
                     originalWalk + descriptor.step * 3.0F,
                     "movement tuning interval repeat applies existing step");
 }
@@ -2797,12 +2797,12 @@ bool movementTuningHeldRepeatReleaseResetsTiming() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
   window.gameplay.gameplayActive = true;
-  window.gameplayMovement.tuningVisible = true;
+  window.gameplay.gameplayMovement.tuningVisible = true;
   iggy3d::ProductMovementTuningRepeatState repeat;
   constexpr iggy3d::ProductMovementTuningRepeatPolicy policy{2U, 1U};
   const auto& descriptor = iggy3d::productGameplayMovementTuningFieldDescriptor(
-      window.gameplayMovement.tuningSelectedField);
-  const float originalWalk = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+      window.gameplay.gameplayMovement.tuningSelectedField);
+  const float originalWalk = window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
 
   (void)iggy3d::applyProductWindowMovementTuningInput(
       frontend, window, iggy3d::InputAction::MenuRight);
@@ -2811,7 +2811,7 @@ bool movementTuningHeldRepeatReleaseResetsTiming() {
   const iggy3d::ProductMovementTuningInputResult repeated =
       iggy3d::applyProductWindowMovementTuningHeldInput(
           frontend, window, repeat, false, true, policy);
-  const float afterRepeat = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+  const float afterRepeat = window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
   const iggy3d::ProductMovementTuningInputResult release =
       iggy3d::applyProductWindowMovementTuningHeldInput(
           frontend, window, repeat, false, false, policy);
@@ -2820,7 +2820,7 @@ bool movementTuningHeldRepeatReleaseResetsTiming() {
       iggy3d::applyProductWindowMovementTuningHeldInput(
           frontend, window, repeat, false, true, policy);
   const float afterPressAgain =
-      window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+      window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
 
   return expect(repeated.handled, "movement tuning held repeat before release") &&
          expectNear(afterRepeat,
@@ -2839,10 +2839,10 @@ bool movementTuningHeldConflictDoesNotAdjust() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
   window.gameplay.gameplayActive = true;
-  window.gameplayMovement.tuningVisible = true;
+  window.gameplay.gameplayMovement.tuningVisible = true;
   iggy3d::ProductMovementTuningRepeatState repeat;
   constexpr iggy3d::ProductMovementTuningRepeatPolicy policy{1U, 1U};
-  const float originalWalk = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+  const float originalWalk = window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
 
   const iggy3d::ProductMovementTuningInputResult conflict =
       iggy3d::applyProductWindowMovementTuningHeldInput(
@@ -2857,7 +2857,7 @@ bool movementTuningHeldConflictDoesNotAdjust() {
                 "movement tuning right restarts after conflict") &&
          expect(!rightAfterConflict.handled,
                 "movement tuning right after conflict waits one frame") &&
-         expectNear(window.gameplayMovement.tuning.walkSpeedMetersPerSecond,
+         expectNear(window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond,
                     originalWalk,
                     "movement tuning conflict does not adjust value");
 }
@@ -2868,12 +2868,12 @@ bool movementTuningHeldRepeatBlockedByMenuSurface() {
   frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState window;
   window.gameplay.gameplayActive = true;
-  window.gameplayMovement.tuningVisible = true;
+  window.gameplay.gameplayMovement.tuningVisible = true;
   iggy3d::ProductMovementTuningRepeatState repeat;
   repeat.heldDirection = 1;
   repeat.heldFrames = 12U;
   constexpr iggy3d::ProductMovementTuningRepeatPolicy policy{1U, 1U};
-  const float originalWalk = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+  const float originalWalk = window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
 
   const iggy3d::ProductMovementTuningInputResult blocked =
       iggy3d::applyProductWindowMovementTuningHeldInput(
@@ -2881,10 +2881,10 @@ bool movementTuningHeldRepeatBlockedByMenuSurface() {
 
   return expect(!blocked.handled, "movement tuning blocked hold not handled") &&
          expect(!blocked.accepted, "movement tuning blocked hold not accepted") &&
-         expectNear(window.gameplayMovement.tuning.walkSpeedMetersPerSecond,
+         expectNear(window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond,
                     originalWalk,
                     "movement tuning blocked hold does not adjust value") &&
-         expect(!window.gameplayMovement.tuningVisible,
+         expect(!window.gameplay.gameplayMovement.tuningVisible,
                 "movement tuning blocked hold clears stale overlay") &&
          expect(repeat.heldDirection == 0 && repeat.heldFrames == 0U,
                 "movement tuning blocked hold resets repeat state");
@@ -2953,15 +2953,15 @@ bool movementTuningToggleIgnoresFrontendBlockedSurfaces() {
     frontend.inputOwned = false;
     iggy3d::ProductAppWindowState window;
     window.gameplay.gameplayActive = true;
-    window.gameplayMovement.tuningVisible = true;
+    window.gameplay.gameplayMovement.tuningVisible = true;
 
     const iggy3d::ProductMovementTuningInputResult blocked =
         iggy3d::applyProductWindowMovementTuningInput(
             frontend, window, iggy3d::InputAction::MovementTuningToggle);
     ok = expect(blocked.handled, surface.label) && ok;
     ok = expect(!blocked.accepted, surface.label) && ok;
-    ok = expect(!window.gameplayMovement.tuningVisible, surface.label) && ok;
-    ok = expect(window.gameplayMovement.tuningStatus ==
+    ok = expect(!window.gameplay.gameplayMovement.tuningVisible, surface.label) && ok;
+    ok = expect(window.gameplay.gameplayMovement.tuningStatus ==
                     "movement_tuning_gameplay_inactive",
                 surface.label) &&
          ok;
@@ -3149,7 +3149,7 @@ bool gameplaySettingsAdjustMovementTuningLive() {
   frontend.childScreen = iggy3d::FrontendScreen::Settings;
   iggy3d::ProductAppWindowState window;
   iggy3d::FrontendSettingsTab tab = iggy3d::FrontendSettingsTab::Gameplay;
-  const float originalWalk = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
+  const float originalWalk = window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond;
 
   const iggy3d::ProductMenuActionResult increased =
       iggy3d::applyProductSettingsMenuAction(
@@ -3158,9 +3158,9 @@ bool gameplaySettingsAdjustMovementTuningLive() {
   const bool increasedOk =
       expect(increased.handled, "movement tuning right handled") &&
       expect(increased.accepted, "movement tuning right accepted") &&
-      expect(window.gameplayMovement.tuning.walkSpeedMetersPerSecond > originalWalk,
+      expect(window.gameplay.gameplayMovement.tuning.walkSpeedMetersPerSecond > originalWalk,
              "movement tuning increased walk speed") &&
-      expect(window.gameplayMovement.tuningStatus == "movement_tuning_adjusted",
+      expect(window.gameplay.gameplayMovement.tuningStatus == "movement_tuning_adjusted",
              "movement tuning adjusted status");
 
   const iggy3d::ProductMenuActionResult cycled =
@@ -3170,15 +3170,15 @@ bool gameplaySettingsAdjustMovementTuningLive() {
   const bool cycledOk =
       expect(cycled.handled, "movement tuning confirm handled") &&
       expect(cycled.accepted, "movement tuning confirm accepted") &&
-      expect(window.gameplayMovement.tuningSelectedField ==
+      expect(window.gameplay.gameplayMovement.tuningSelectedField ==
                  iggy3d::ProductGameplayMovementTuningField::SprintSpeed,
              "movement tuning selected sprint field") &&
-      expect(window.gameplayMovement.tuningStatus ==
+      expect(window.gameplay.gameplayMovement.tuningStatus ==
                  "movement_tuning_field_selected",
              "movement tuning selected status");
 
   const float originalSprint =
-      window.gameplayMovement.tuning.sprintSpeedMetersPerSecond;
+      window.gameplay.gameplayMovement.tuning.sprintSpeedMetersPerSecond;
   const iggy3d::ProductMenuActionResult decreased =
       iggy3d::applyProductSettingsMenuAction(
           iggy3d::InputAction::MenuLeft,
@@ -3186,7 +3186,7 @@ bool gameplaySettingsAdjustMovementTuningLive() {
   return increasedOk && cycledOk &&
          expect(decreased.handled, "movement tuning left handled") &&
          expect(decreased.accepted, "movement tuning left accepted") &&
-         expect(window.gameplayMovement.tuning.sprintSpeedMetersPerSecond <
+         expect(window.gameplay.gameplayMovement.tuning.sprintSpeedMetersPerSecond <
                     originalSprint,
                 "movement tuning decreased sprint speed");
 }
@@ -3195,8 +3195,8 @@ bool movementTuningLookValuesDriveCameraInput() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
   window.gameplay.gameplayActive = true;
-  window.gameplayMovement.tuning.lookSensitivity = 2.0F;
-  window.gameplayMovement.tuning.invertLookEnabled = 1.0F;
+  window.gameplay.gameplayMovement.tuning.lookSensitivity = 2.0F;
+  window.gameplay.gameplayMovement.tuning.invertLookEnabled = 1.0F;
   iggy3d::FrontendSettings settings;
   settings.lookSensitivity = 0.25F;
   settings.invertLook = false;
@@ -3240,19 +3240,19 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window = editingWindow();
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.gameplayMovement.groundVelocityX = 1.5F;
-  window.gameplayMovement.groundVelocityZ = -2.0F;
-  window.gameplayMovement.horizontalSpeedMetersPerSecond = 2.5F;
-  window.gameplayMovement.state =
+  window.gameplay.gameplayMovement.groundVelocityX = 1.5F;
+  window.gameplay.gameplayMovement.groundVelocityZ = -2.0F;
+  window.gameplay.gameplayMovement.horizontalSpeedMetersPerSecond = 2.5F;
+  window.gameplay.gameplayMovement.state =
       iggy3d::ProductGameplayMovementState::MovingGrounded;
-  window.gameplayWallRun.active = true;
-  window.gameplayWallRun.status = "wall_run_active";
-  window.gameplayWallRun.reasonCode = "wall_run_active";
-  window.gameplayWallRun.remainingSeconds = 0.5F;
-  window.gameplayJump.coyoteSecondsRemaining = 0.08F;
-  window.gameplayJump.bufferSecondsRemaining = 0.06F;
-  window.gameplayJump.held = true;
-  window.gameplayJump.cutApplied = true;
+  window.gameplay.gameplayWallRun.active = true;
+  window.gameplay.gameplayWallRun.status = "wall_run_active";
+  window.gameplay.gameplayWallRun.reasonCode = "wall_run_active";
+  window.gameplay.gameplayWallRun.remainingSeconds = 0.5F;
+  window.gameplay.gameplayJump.coyoteSecondsRemaining = 0.08F;
+  window.gameplay.gameplayJump.bufferSecondsRemaining = 0.06F;
+  window.gameplay.gameplayJump.held = true;
+  window.gameplay.gameplayJump.cutApplied = true;
   iggy3d::ActionState actions;
   iggy3d::recordAction(actions,
                        iggy3d::InputAction::EditorNudgeX,
@@ -3273,21 +3273,21 @@ bool editorOwnedInputClearsRetainedGroundVelocity() {
          expect(result.actionApplied, "editor input applied") &&
          expect(window.roomEditorLastOperationAccepted,
                 "editor input accepted") &&
-         expect(window.gameplayMovement.groundVelocityX == 0.0F &&
-                    window.gameplayMovement.groundVelocityZ == 0.0F,
+         expect(window.gameplay.gameplayMovement.groundVelocityX == 0.0F &&
+                    window.gameplay.gameplayMovement.groundVelocityZ == 0.0F,
                 "editor input clears retained ground velocity") &&
-         expect(window.gameplayMovement.horizontalSpeedMetersPerSecond == 0.0F,
+         expect(window.gameplay.gameplayMovement.horizontalSpeedMetersPerSecond == 0.0F,
                 "editor input clears horizontal speed proof") &&
-         expect(window.gameplayMovement.state ==
+         expect(window.gameplay.gameplayMovement.state ==
                     iggy3d::ProductGameplayMovementState::IdleGrounded,
                 "editor input resets movement state proof") &&
-         expect(!window.gameplayWallRun.active &&
-                    window.gameplayWallRun.remainingSeconds == 0.0F,
+         expect(!window.gameplay.gameplayWallRun.active &&
+                    window.gameplay.gameplayWallRun.remainingSeconds == 0.0F,
                 "editor input clears wall-run active proof") &&
-         expect(window.gameplayJump.coyoteSecondsRemaining == 0.0F &&
-                    window.gameplayJump.bufferSecondsRemaining == 0.0F &&
-                    !window.gameplayJump.held &&
-                    !window.gameplayJump.cutApplied,
+         expect(window.gameplay.gameplayJump.coyoteSecondsRemaining == 0.0F &&
+                    window.gameplay.gameplayJump.bufferSecondsRemaining == 0.0F &&
+                    !window.gameplay.gameplayJump.held &&
+                    !window.gameplay.gameplayJump.cutApplied,
                 "editor input clears jump timing");
 }
 

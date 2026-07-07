@@ -22,65 +22,65 @@ std::string wallRunHudLabel(std::string_view key) {
 ProductMovementProofPacket buildProductMovementProofPacket(
     const ProductAppWindowState& window) {
   ProductMovementProofPacket packet;
-  packet.debugAvailable = window.gameplayMovement.debugAvailable;
-  packet.attempted = window.gameplayMovement.attempted;
-  packet.blocked = window.gameplayMovement.blocked;
-  packet.status = window.gameplayMovement.status;
-  packet.reasonCode = window.gameplayMovement.reasonCode;
-  packet.blockedReason = window.gameplayMovement.blockedReason;
-  packet.hitSurfaceId = window.gameplayMovement.hitSurfaceId;
-  packet.groundSnapApplied = window.gameplayMovement.groundSnapApplied;
-  packet.movementClamped = window.gameplayMovement.clamped;
-  packet.movementSlid = window.gameplayMovement.slid;
-  packet.collisionSweepCount = window.gameplayMovement.collisionSweepCount;
-  packet.policyBand = window.gameplayMovement.policyBand;
-  packet.slopeTravelDirection = window.gameplayMovement.slopeTravelDirection;
-  packet.slopeAngleDegrees = window.gameplayMovement.slopeAngleDegrees;
-  packet.speedMultiplier = window.gameplayMovement.speedMultiplier;
-  packet.startX = window.gameplayMovement.startX;
-  packet.startY = window.gameplayMovement.startY;
-  packet.startZ = window.gameplayMovement.startZ;
-  packet.finalX = window.gameplayMovement.finalX;
-  packet.finalY = window.gameplayMovement.finalY;
-  packet.finalZ = window.gameplayMovement.finalZ;
+  packet.debugAvailable = window.gameplay.gameplayMovement.debugAvailable;
+  packet.attempted = window.gameplay.gameplayMovement.attempted;
+  packet.blocked = window.gameplay.gameplayMovement.blocked;
+  packet.status = window.gameplay.gameplayMovement.status;
+  packet.reasonCode = window.gameplay.gameplayMovement.reasonCode;
+  packet.blockedReason = window.gameplay.gameplayMovement.blockedReason;
+  packet.hitSurfaceId = window.gameplay.gameplayMovement.hitSurfaceId;
+  packet.groundSnapApplied = window.gameplay.gameplayMovement.groundSnapApplied;
+  packet.movementClamped = window.gameplay.gameplayMovement.clamped;
+  packet.movementSlid = window.gameplay.gameplayMovement.slid;
+  packet.collisionSweepCount = window.gameplay.gameplayMovement.collisionSweepCount;
+  packet.policyBand = window.gameplay.gameplayMovement.policyBand;
+  packet.slopeTravelDirection = window.gameplay.gameplayMovement.slopeTravelDirection;
+  packet.slopeAngleDegrees = window.gameplay.gameplayMovement.slopeAngleDegrees;
+  packet.speedMultiplier = window.gameplay.gameplayMovement.speedMultiplier;
+  packet.startX = window.gameplay.gameplayMovement.startX;
+  packet.startY = window.gameplay.gameplayMovement.startY;
+  packet.startZ = window.gameplay.gameplayMovement.startZ;
+  packet.finalX = window.gameplay.gameplayMovement.finalX;
+  packet.finalY = window.gameplay.gameplayMovement.finalY;
+  packet.finalZ = window.gameplay.gameplayMovement.finalZ;
   packet.horizontalDistanceMeters =
-      window.gameplayMovement.horizontalDistanceMeters;
-  packet.verticalDeltaMeters = window.gameplayMovement.verticalDeltaMeters;
-  packet.groundVelocityX = window.gameplayMovement.groundVelocityX;
-  packet.groundVelocityZ = window.gameplayMovement.groundVelocityZ;
-  packet.state = window.gameplayMovement.state;
+      window.gameplay.gameplayMovement.horizontalDistanceMeters;
+  packet.verticalDeltaMeters = window.gameplay.gameplayMovement.verticalDeltaMeters;
+  packet.groundVelocityX = window.gameplay.gameplayMovement.groundVelocityX;
+  packet.groundVelocityZ = window.gameplay.gameplayMovement.groundVelocityZ;
+  packet.state = window.gameplay.gameplayMovement.state;
   packet.stateName = std::string{productGameplayMovementStateName(packet.state)};
   packet.stateHudLabel =
       std::string{productGameplayMovementStateHudLabel(packet.state)};
-  packet.grounded = window.gameplayMovement.grounded;
+  packet.grounded = window.gameplay.gameplayMovement.grounded;
   packet.horizontalSpeedMetersPerSecond =
-      window.gameplayMovement.horizontalSpeedMetersPerSecond;
+      window.gameplay.gameplayMovement.horizontalSpeedMetersPerSecond;
   packet.verticalVelocityMetersPerSecond =
-      window.gameplayJump.velocityMetersPerSecond;
-  packet.gradePercent = window.gameplayMovement.gradePercent;
-  packet.profile = window.gameplayMovement.profile;
-  packet.maxSpeedMetersPerSecond = window.gameplayMovement.maxSpeedMetersPerSecond;
+      window.gameplay.gameplayJump.velocityMetersPerSecond;
+  packet.gradePercent = window.gameplay.gameplayMovement.gradePercent;
+  packet.profile = window.gameplay.gameplayMovement.profile;
+  packet.maxSpeedMetersPerSecond = window.gameplay.gameplayMovement.maxSpeedMetersPerSecond;
 
-  packet.wallRunCandidateAvailable = window.gameplayWallRun.candidateAvailable;
-  packet.wallRunCandidateStatus = window.gameplayWallRun.candidateStatus;
-  packet.wallRunCandidateReasonCode = window.gameplayWallRun.candidateReasonCode;
+  packet.wallRunCandidateAvailable = window.gameplay.gameplayWallRun.candidateAvailable;
+  packet.wallRunCandidateStatus = window.gameplay.gameplayWallRun.candidateStatus;
+  packet.wallRunCandidateReasonCode = window.gameplay.gameplayWallRun.candidateReasonCode;
   packet.wallRunCandidateReasonHudLabel =
       wallRunHudLabel(packet.wallRunCandidateReasonCode);
-  packet.wallRunSide = window.gameplayWallRun.side;
-  packet.wallRunSurfaceId = window.gameplayWallRun.surfaceId;
-  packet.wallRunNormalX = window.gameplayWallRun.normalX;
-  packet.wallRunNormalY = window.gameplayWallRun.normalY;
-  packet.wallRunNormalZ = window.gameplayWallRun.normalZ;
+  packet.wallRunSide = window.gameplay.gameplayWallRun.side;
+  packet.wallRunSurfaceId = window.gameplay.gameplayWallRun.surfaceId;
+  packet.wallRunNormalX = window.gameplay.gameplayWallRun.normalX;
+  packet.wallRunNormalY = window.gameplay.gameplayWallRun.normalY;
+  packet.wallRunNormalZ = window.gameplay.gameplayWallRun.normalZ;
   packet.wallRunApproachSpeedMetersPerSecond =
-      window.gameplayWallRun.approachSpeedMetersPerSecond;
-  packet.wallRunActive = window.gameplayWallRun.active;
-  packet.wallRunStatus = window.gameplayWallRun.status;
-  packet.wallRunReasonCode = window.gameplayWallRun.reasonCode;
+      window.gameplay.gameplayWallRun.approachSpeedMetersPerSecond;
+  packet.wallRunActive = window.gameplay.gameplayWallRun.active;
+  packet.wallRunStatus = window.gameplay.gameplayWallRun.status;
+  packet.wallRunReasonCode = window.gameplay.gameplayWallRun.reasonCode;
   packet.wallRunReasonHudLabel = wallRunHudLabel(packet.wallRunReasonCode);
-  packet.wallRunRemainingSeconds = window.gameplayWallRun.remainingSeconds;
-  packet.wallRunDurationSeconds = window.gameplayWallRun.durationSeconds;
-  packet.wallRunGravityMultiplier = window.gameplayWallRun.gravityMultiplier;
-  packet.wallRunSpeedMultiplier = window.gameplayWallRun.speedMultiplier;
+  packet.wallRunRemainingSeconds = window.gameplay.gameplayWallRun.remainingSeconds;
+  packet.wallRunDurationSeconds = window.gameplay.gameplayWallRun.durationSeconds;
+  packet.wallRunGravityMultiplier = window.gameplay.gameplayWallRun.gravityMultiplier;
+  packet.wallRunSpeedMultiplier = window.gameplay.gameplayWallRun.speedMultiplier;
   return packet;
 }
 

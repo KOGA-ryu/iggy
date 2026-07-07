@@ -36,13 +36,13 @@ void appendProductGameplayRuntimeMovementFields(RenderReceipt& receipt, const Pr
   appendReceiptField(receipt, "scripted_gameplay_smoke", window.scriptedGameplaySmoke);
   appendReceiptField(receipt, "gameplay_input_used", window.gameplay.gameplayInputUsed);
   appendReceiptField(receipt, "gameplay_input_source", window.gameplay.gameplayInputSource);
-  appendReceiptField(receipt, "gameplay_command_submitted", window.gameplayCommand.submitted);
-  appendReceiptField(receipt, "gameplay_command_kind", window.gameplayCommand.kind);
-  appendReceiptField(receipt, "gameplay_command_status", window.gameplayCommand.status);
-  appendReceiptField(receipt, "gameplay_command_accepted", window.gameplayCommand.accepted);
+  appendReceiptField(receipt, "gameplay_command_submitted", window.gameplay.gameplayCommand.submitted);
+  appendReceiptField(receipt, "gameplay_command_kind", window.gameplay.gameplayCommand.kind);
+  appendReceiptField(receipt, "gameplay_command_status", window.gameplay.gameplayCommand.status);
+  appendReceiptField(receipt, "gameplay_command_accepted", window.gameplay.gameplayCommand.accepted);
   appendReceiptField(receipt, "gameplay_tick_advanced", window.gameplay.gameplayTickAdvanced);
   appendReceiptField(receipt, "gameplay_tick_reason_code",
-                     window.gameplayTickReasonCode);
+                     window.gameplay.gameplayTickReasonCode);
   appendReceiptField(receipt, "player_position_changed", window.gameplay.playerPositionChanged);
   appendReceiptField(receipt, "gameplay_movement_attempted",
                      movementProof.attempted);
@@ -145,93 +145,93 @@ void appendProductGameplayRuntimeMovementFields(RenderReceipt& receipt, const Pr
   appendReceiptField(receipt, "gameplay_movement_max_speed_mps",
                      floatReceiptValue(movementProof.maxSpeedMetersPerSecond));
   appendReceiptField(receipt, "gameplay_jump_requested",
-                     window.gameplayJump.requested);
+                     window.gameplay.gameplayJump.requested);
   appendReceiptField(receipt, "gameplay_jump_accepted",
-                     window.gameplayJump.accepted);
-  appendReceiptField(receipt, "gameplay_jump_active", window.gameplayJump.active);
-  appendReceiptField(receipt, "gameplay_jump_status", window.gameplayJump.status);
+                     window.gameplay.gameplayJump.accepted);
+  appendReceiptField(receipt, "gameplay_jump_active", window.gameplay.gameplayJump.active);
+  appendReceiptField(receipt, "gameplay_jump_status", window.gameplay.gameplayJump.status);
   appendReceiptField(receipt, "gameplay_jump_reason_code",
-                     window.gameplayJump.reasonCode);
+                     window.gameplay.gameplayJump.reasonCode);
   appendReceiptField(receipt, "gameplay_jump_velocity_mps",
-                     floatReceiptValue(window.gameplayJump.velocityMetersPerSecond));
+                     floatReceiptValue(window.gameplay.gameplayJump.velocityMetersPerSecond));
   appendReceiptField(receipt, "gameplay_jump_coyote_seconds_remaining",
-                     floatReceiptValue(window.gameplayJump.coyoteSecondsRemaining));
+                     floatReceiptValue(window.gameplay.gameplayJump.coyoteSecondsRemaining));
   appendReceiptField(receipt, "gameplay_jump_buffer_seconds_remaining",
-                     floatReceiptValue(window.gameplayJump.bufferSecondsRemaining));
-  appendReceiptField(receipt, "gameplay_jump_held", window.gameplayJump.held);
+                     floatReceiptValue(window.gameplay.gameplayJump.bufferSecondsRemaining));
+  appendReceiptField(receipt, "gameplay_jump_held", window.gameplay.gameplayJump.held);
   appendReceiptField(receipt, "gameplay_jump_cut_applied",
-                     window.gameplayJump.cutApplied);
+                     window.gameplay.gameplayJump.cutApplied);
   appendReceiptField(receipt, "gameplay_jump_ground_y",
-                     floatReceiptValue(window.gameplayJump.groundY));
+                     floatReceiptValue(window.gameplay.gameplayJump.groundY));
   appendReceiptField(receipt, "gameplay_jump_start_y",
-                     floatReceiptValue(window.gameplayJump.startY));
+                     floatReceiptValue(window.gameplay.gameplayJump.startY));
   appendReceiptField(receipt, "gameplay_jump_final_y",
-                     floatReceiptValue(window.gameplayJump.finalY));
+                     floatReceiptValue(window.gameplay.gameplayJump.finalY));
   appendReceiptField(receipt, "gameplay_jump_height_meters",
-                     floatReceiptValue(window.gameplayJump.heightMeters));
+                     floatReceiptValue(window.gameplay.gameplayJump.heightMeters));
   appendReceiptField(receipt, "gameplay_reset_triggered",
-                     window.gameplayReset.triggered);
+                     window.gameplay.gameplayReset.triggered);
   appendReceiptField(receipt, "gameplay_reset_status",
-                     window.gameplayReset.status);
+                     window.gameplay.gameplayReset.status);
   appendReceiptField(receipt, "gameplay_reset_reason_code",
-                     window.gameplayReset.reasonCode);
+                     window.gameplay.gameplayReset.reasonCode);
   appendReceiptField(receipt, "gameplay_reset_spawn_anchor_id",
-                     window.gameplayReset.spawnAnchorId);
+                     window.gameplay.gameplayReset.spawnAnchorId);
   appendReceiptField(receipt, "gameplay_reset_source_anchor_id",
-                     window.gameplayReset.sourceAnchorId);
+                     window.gameplay.gameplayReset.sourceAnchorId);
   appendReceiptField(receipt, "gameplay_reset_start_y",
-                     floatReceiptValue(window.gameplayReset.startY));
+                     floatReceiptValue(window.gameplay.gameplayReset.startY));
   appendReceiptField(receipt, "gameplay_reset_final_y",
-                     floatReceiptValue(window.gameplayReset.finalY));
+                     floatReceiptValue(window.gameplay.gameplayReset.finalY));
   appendReceiptField(receipt, "gameplay_traversal_requested",
-                     window.gameplayTraversal.requested);
+                     window.gameplay.gameplayTraversal.requested);
   appendReceiptField(receipt, "gameplay_traversal_consumed",
-                     window.gameplayTraversal.consumed);
+                     window.gameplay.gameplayTraversal.consumed);
   appendReceiptField(receipt, "gameplay_traversal_accepted",
-                     window.gameplayTraversal.accepted);
+                     window.gameplay.gameplayTraversal.accepted);
   appendReceiptField(receipt, "gameplay_traversal_fallback_jump_allowed",
-                     window.gameplayTraversal.fallbackJumpAllowed);
+                     window.gameplay.gameplayTraversal.fallbackJumpAllowed);
   appendReceiptField(receipt, "gameplay_traversal_status",
-                     window.gameplayTraversal.status);
+                     window.gameplay.gameplayTraversal.status);
   appendReceiptField(receipt, "gameplay_traversal_reason_code",
-                     window.gameplayTraversal.reasonCode);
+                     window.gameplay.gameplayTraversal.reasonCode);
   appendReceiptField(receipt, "gameplay_traversal_mechanic",
-                     window.gameplayTraversal.mechanic);
+                     window.gameplay.gameplayTraversal.mechanic);
   appendReceiptField(receipt, "gameplay_traversal_slot_id",
-                     window.gameplayTraversal.slotId);
+                     window.gameplay.gameplayTraversal.slotId);
   appendReceiptField(receipt, "gameplay_traversal_target_id",
-                     window.gameplayTraversal.targetId);
+                     window.gameplay.gameplayTraversal.targetId);
   appendReceiptField(receipt, "gameplay_traversal_landing_surface_id",
-                     window.gameplayTraversal.landingSurfaceId);
+                     window.gameplay.gameplayTraversal.landingSurfaceId);
   appendReceiptField(receipt, "gameplay_traversal_start_x",
-                     floatReceiptValue(window.gameplayTraversal.startX));
+                     floatReceiptValue(window.gameplay.gameplayTraversal.startX));
   appendReceiptField(receipt, "gameplay_traversal_start_y",
-                     floatReceiptValue(window.gameplayTraversal.startY));
+                     floatReceiptValue(window.gameplay.gameplayTraversal.startY));
   appendReceiptField(receipt, "gameplay_traversal_start_z",
-                     floatReceiptValue(window.gameplayTraversal.startZ));
+                     floatReceiptValue(window.gameplay.gameplayTraversal.startZ));
   appendReceiptField(receipt, "gameplay_traversal_final_x",
-                     floatReceiptValue(window.gameplayTraversal.finalX));
+                     floatReceiptValue(window.gameplay.gameplayTraversal.finalX));
   appendReceiptField(receipt, "gameplay_traversal_final_y",
-                     floatReceiptValue(window.gameplayTraversal.finalY));
+                     floatReceiptValue(window.gameplay.gameplayTraversal.finalY));
   appendReceiptField(receipt, "gameplay_traversal_final_z",
-                     floatReceiptValue(window.gameplayTraversal.finalZ));
+                     floatReceiptValue(window.gameplay.gameplayTraversal.finalZ));
   appendReceiptField(receipt, "gameplay_dash_requested",
-                     window.gameplayDash.requested);
+                     window.gameplay.gameplayDash.requested);
   appendReceiptField(receipt, "gameplay_dash_accepted",
-                     window.gameplayDash.accepted);
-  appendReceiptField(receipt, "gameplay_dash_status", window.gameplayDash.status);
+                     window.gameplay.gameplayDash.accepted);
+  appendReceiptField(receipt, "gameplay_dash_status", window.gameplay.gameplayDash.status);
   appendReceiptField(receipt, "gameplay_dash_reason_code",
-                     window.gameplayDash.reasonCode);
+                     window.gameplay.gameplayDash.reasonCode);
   appendReceiptField(receipt, "gameplay_dash_speed_mps",
-                     floatReceiptValue(window.gameplayDash.speedMetersPerSecond));
+                     floatReceiptValue(window.gameplay.gameplayDash.speedMetersPerSecond));
   appendReceiptField(receipt, "gameplay_dash_distance_meters",
-                     floatReceiptValue(window.gameplayDash.distanceMeters));
+                     floatReceiptValue(window.gameplay.gameplayDash.distanceMeters));
   appendReceiptField(receipt, "gameplay_dash_cooldown_remaining_seconds",
-                     floatReceiptValue(window.gameplayDash.cooldownRemainingSeconds));
+                     floatReceiptValue(window.gameplay.gameplayDash.cooldownRemainingSeconds));
   appendReceiptField(receipt, "gameplay_dash_direction_x",
-                     floatReceiptValue(window.gameplayDash.directionX));
+                     floatReceiptValue(window.gameplay.gameplayDash.directionX));
   appendReceiptField(receipt, "gameplay_dash_direction_z",
-                     floatReceiptValue(window.gameplayDash.directionZ));
+                     floatReceiptValue(window.gameplay.gameplayDash.directionZ));
 }
 
 }  // namespace iggy3d

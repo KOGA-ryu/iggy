@@ -81,16 +81,6 @@ roomVisible	GameplayStore
 objectiveVisible	GameplayStore
 rendererMutatedRuntime	GameplayStore
 scriptedGameplaySmoke	GameplayStore
-gameplayCommand	GameplayStore
-gameplayMovement	GameplayStore
-gameplayWallRun	GameplayStore
-gameplayJump	GameplayStore
-gameplayReset	GameplayStore
-gameplayTraversal	GameplayStore
-gameplayDash	GameplayStore
-gameplayCollision	GameplayStore
-gameplayTickReasonCode	GameplayStore
-physicsMovementPlanner	GameplayStore
 targetDiscovered	GameplayStore
 gameplayTarget	GameplayStore
 gameplayOutcome	GameplayStore
