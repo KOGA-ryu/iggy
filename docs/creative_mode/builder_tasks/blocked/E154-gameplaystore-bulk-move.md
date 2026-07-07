@@ -8,17 +8,17 @@ Recon-grounded (workflow `wxhudv684`, 2026-07-07) against HEAD `20371ac1`.
 
 ---
 
-## ⚠ SCOPE FIRST — this is the biggest move yet (~1670 repoints)
+## SCOPE — large but mechanically uniform (~1670 repoints, LOW risk)
 
-Five times SaveSessionStore. Dominated by `gameplay/Controller.cpp` (~494 sites). It is **mechanically
-simple but large**, and it is riddled with the two traps that make `replace_all` **catastrophic** here
-(see HAZARDS). **Two ways to land it — planner/reviewer choose:**
-- **(A) Single compiler-guided move** (this card's method) — one big diff, mechanically safe if you obey
-  the compiler. Fastest to write, hardest to review.
-- **(B) Accessor-seam slice** (RoomStore E148–E152 pattern) — add `GameplayStore gameplay;` *alongside*
-  the flat fields, migrate readers in batches behind accessors, delete the flat fields last, over several
-  commits. Slower, far more reviewable. **Recommended if the 1670-line diff is a review problem.**
-This card specifies (A); if you pick (B), the field list / gates / hazards below still apply per slice.
+Biggest move by count, but **production code is 100% uniform**: every window var in `src`/`apps` is named
+`window` (verified — **0 mis-named**), so the dominant lane (`gameplay/Controller.cpp` ≈ 474 bare
+`window.gameplay*` sites) is pure mechanical repointing. The only non-uniform surface is a **42-var,
+test-only fixture tail** (named gameplay scenarios like `attackWindow`/`neutralWindow`/`openWindow`), all
+caught by the compiler. **No controller-brand or keyboard/gamepad duplication exists.** Two ways to land it:
+- **(A) Single compiler-guided move** (this card) — one large but low-risk diff. **Recommended.**
+- **(B) Accessor-seam slice** (RoomStore E148–E152 pattern) — only if a ~1670-line diff is a review burden;
+  it is NOT needed for safety.
+Field list / gates / hazards below apply either way.
 
 ## Goal
 
@@ -33,9 +33,11 @@ flat telemetry, not derived caches).
    (`gameplay_active`, `runtime_session_created`, `physics_movement_planner_*`, …), not C++ field names.
    A path repoint `window.X → window.gameplay.X` changes only the lvalue. **Any golden diff = a BUG
    (dropped/reordered `appendReceiptField`) — STOP, do NOT regenerate.**
-2. **COMPILER-GUIDED, NEVER `replace_all`.** This is not optional here — a text replace of `window.<field>`
-   silently misses ~60+ mis-named `ProductAppWindowState` vars and corrupts foreign types with the same
-   member names (HAZARDS). Delete the flat fields, add the member, and fix each compiler error.
+2. **COMPILER-GUIDED, NEVER `replace_all`.** A text replace of `window.<field>` silently misses the 42
+   test-fixture window vars (`openWindow`/`attackWindow`/…) and, via bare-token replace, corrupts foreign
+   types with the same member names (HAZARDS). Delete the flat fields, add the member, fix each compiler
+   error. (Production is uniform bare `window`, so risk is low — this rule is about the test tail + the
+   foreign-name collisions, not a minefield.)
 
 ## Method (single move, A)
 
@@ -68,24 +70,29 @@ sceneItemCount debugItemCount
   rvalues); `PhysicsReceiptRecording.cpp` `setPhysicsMovementPlannerProof` *writes* the member (no keys —
   repoint 4 lvalues). It is ALSO referenced in `Controller.cpp` and others — **let the compiler find those**.
 
-## HAZARDS (why replace_all is banned)
+## HAZARDS (all auto-handled by the nested-member + compiler method)
 
-- **Mis-named `ProductAppWindowState` vars (invisible to a `window.` replace — only the compiler sees them):**
-  in `Controller.cpp`: `fastWindow`, `slowWindow`, `normalWindow`, `candidateWindow`, `rejectedWindow`,
-  `wallWindow`, `cutWindow`; in tests: `attackWindow`, `noTargetWindow`, `neutralWindow`, `rejectedWindow`
-  (feedback), `pauseWindow`, `tuningWindow`, `creativeWorldWindow`, `staleWindow`, `staleStarterWindow`,
-  `openWindow`, `blocked`, `inactive` (movement-debug-hud copies). Several test files are **100% mis-named,
-  zero bare `window`** (`product_gameplay_feedback_tests.cpp`, `product_gameplay_tape_runner_tests.cpp`).
-- **Foreign-type bare-token collisions (never bare-token replace `playerVisible`/`gameplayActive`/etc.):**
-  `PrimitiveDrawList.hpp` and `RenderBridge` declare their OWN `playerVisible`/`roomVisible`/`objectiveVisible`;
-  `FrontendRouter.hpp`/`DrawList.hpp` context structs declare their own `gameplayActive`. **Do NOT sweep**
-  `product_render_bridge_tests.cpp` / `product_primitive_draw_list_tests.cpp` — their `playerVisible` reads
-  are on those foreign types (false positives). Anchor to `window.<field>` / fix compiler errors only.
+These only bite if you deviate into a bare text replace. The method makes them near-automatic.
+
+- **Mis-named window vars are a TEST-ONLY, compiler-caught tail — 0 in production.** Verified: `src`/`apps`
+  have **no** window var named anything but `window` (Controller.cpp's ~474 sites are all bare `window`).
+  The 42 mis-named vars are all in tests, each a named gameplay-scenario fixture: `openWindow`(×7),
+  `attackWindow`, `neutralWindow`, `noTargetWindow`, `rejectedWindow`, `blockedWindow`, `staleWindow`,
+  `pauseWindow`, `creativeWorldWindow`, `inactiveWindow`, … A `window.`-anchored replace would miss them —
+  which is exactly why you **fix compiler errors** instead. (`product_gameplay_feedback_tests.cpp` /
+  `product_gameplay_tape_runner_tests.cpp` are ~100% mis-named.) These are **scenario fixtures, NOT
+  controller/input-device variants** — there is no keyboard/gamepad duplication.
+- **Foreign structs share field names — but the compiler NEVER touches them under this method.**
+  `playerVisible`/`roomVisible`/`objectiveVisible` are also members of `PrimitiveDrawList`/`RenderBridge`;
+  `gameplayActive` lives on Presentation/MouseCapturePolicy/FrontendRouter-contexts/DrawList/
+  InteractionModeHud. Because you delete only `ProductAppWindowState`'s flat fields, the compiler errors
+  only on `window.<field>` (repoint those) and leaves `drawList.playerVisible` etc. untouched. This is ONLY
+  a hazard for a bare-token replace (`s/playerVisible/…/`) — banned. Corollary:
+  `product_render_bridge_tests.cpp` / `product_primitive_draw_list_tests.cpp` read the FOREIGN
+  `playerVisible` — do NOT "fix" them.
 - **Wrapper substrings (SAFE — repoint to `<wrapper>.window.gameplay.<field>`):** `context.window.*`
   (InputFrame), `request.window.*` (FramePresenter), `harness.window.*` (starter tests) — all hold a live
   `ProductAppWindowState& window`.
-- **Prefix-collision check CLEARED:** no gameplay field is a proper prefix of another; but this only helps
-  if you were anchoring `window.<field>\b` — which you should NOT rely on. Compiler-drive it.
 
 ## Scope table (compiler finds the exact set)
 
@@ -130,6 +137,6 @@ TSV row to GameplayStore. Whichever lands second must **not** re-touch it:
 
 ## Why safe
 
-Compiler = exhaustive reader-finder (it sees every `fastWindow`/`rejectedWindow` a grep/replace can't);
+Compiler = exhaustive reader-finder (it sees every `openWindow`/`rejectedWindow` test fixture a grep/replace can't);
 golden = byte-level behavior oracle; coverage gate = bidirectional member accounting. Green build +
 260/260 + unchanged golden + updated TSV = provably complete and behavior-preserving. No freshness debt.
