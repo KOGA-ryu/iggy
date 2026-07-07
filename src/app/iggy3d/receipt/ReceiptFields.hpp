@@ -20,6 +20,9 @@ std::string floatReceiptValue(float value);
 // Domain appenders extracted from buildProductAppReceipt (docs/appkernel_build_map, slice 3).
 // Each appends a contiguous, order-preserved run of receipt fields for one subsystem.
 void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const ProductAppOptions& options, const FrontendState& frontend, const FrontendSettings& settings, const ProductAppWindowState& window, ProductCreativeSurfaceKind creativeSurface, bool mapMakerLive);
+void appendProductStartupProbeFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window, const ProductSaveBridgeResult& saves);
+void appendProductWorldAuthoringFields(RenderReceipt& receipt, const ProductAppWindowState& window);
+void appendProductActiveRoomFields(RenderReceipt& receipt, const ProductAppWindowState& window);
 void appendProductStartupWorldBuildoutFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window, const ProductSaveBridgeResult& saves);
 void appendProductSaveStateFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window);
 void appendProductGameplayRuntimeMovementFields(RenderReceipt& receipt, const ProductAppWindowState& window, const ProductMovementProofPacket& movementProof);

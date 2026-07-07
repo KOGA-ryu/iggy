@@ -169,6 +169,9 @@ target_sources(iggy3d
     src/app/iggy3d/receipt/PhysicsReceiptRecording.cpp
     src/app/iggy3d/receipt/CreativeReceiptRecording.cpp
     src/app/iggy3d/receipt/FrontendSettingsWindowFields.cpp
+    src/app/iggy3d/receipt/StartupProbeFields.cpp
+    src/app/iggy3d/receipt/WorldAuthoringFields.cpp
+    src/app/iggy3d/receipt/ActiveRoomFields.cpp
     src/app/iggy3d/receipt/StartupWorldBuildoutFields.cpp
     src/app/iggy3d/receipt/SaveStateFields.cpp
     src/app/iggy3d/receipt/GameplayRuntimeMovementFields.cpp
