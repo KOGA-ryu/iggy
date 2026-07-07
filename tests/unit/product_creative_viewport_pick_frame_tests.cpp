@@ -726,11 +726,12 @@ bool inputFrameNoWindowNoClickRecordsInactiveViewportPick() {
       {},
   });
 
-  return expect(window.creativeViewportPickRequested,
+  const iggy3d::CreativeAuthoringStore& authoring = window.creativeAuthoring;
+  return expect(authoring.creativeViewportPickRequested,
                 "input frame pick requested") &&
-         expect(!window.creativeViewportPickActive,
+         expect(!authoring.creativeViewportPickActive,
                 "input frame pick inactive") &&
-         expect(window.creativeViewportPickStatus ==
+         expect(authoring.creativeViewportPickStatus ==
                     "product_creative_viewport_pick_inactive",
                 "input frame pick status");
 }

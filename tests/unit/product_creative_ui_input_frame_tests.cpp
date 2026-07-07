@@ -1079,11 +1079,11 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
                 "injected old state tool select") &&
          expect(window.creativeUiInput.downstreamClickSuppressed,
                 "injected downstream suppressed") &&
-         expect(window.creativeViewportPickClickSuppressed,
+         expect(window.creativeAuthoring.creativeViewportPickClickSuppressed,
                 "injected viewport click suppressed") &&
-         expect(!window.creativeViewportPickPicked,
+         expect(!window.creativeAuthoring.creativeViewportPickPicked,
                 "injected viewport did not pick") &&
-         expect(window.creativeViewportPickStatus ==
+         expect(window.creativeAuthoring.creativeViewportPickStatus ==
                     "product_creative_viewport_pick_no_click",
                 "injected viewport no-click status") &&
          expect(facade.selectionState().selectedTarget.value ==
@@ -1459,11 +1459,11 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
                 "create injected no measurement") &&
          expect(window.creativeUiInput.downstreamClickSuppressed,
                 "create injected downstream suppressed") &&
-         expect(window.creativeViewportPickClickSuppressed,
+         expect(window.creativeAuthoring.creativeViewportPickClickSuppressed,
                 "create injected viewport suppressed") &&
-         expect(!window.creativeViewportPickPicked,
+         expect(!window.creativeAuthoring.creativeViewportPickPicked,
                 "create injected viewport did not pick") &&
-         expect(window.creativeViewportPickStatus ==
+         expect(window.creativeAuthoring.creativeViewportPickStatus ==
                     "product_creative_viewport_pick_no_click",
                 "create injected viewport no-click") &&
          expect(rebuiltCreatePrimitive != nullptr,
@@ -1693,7 +1693,7 @@ bool inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool() {
                 "injected missing draw not consumed") &&
          expect(!window.creativeUiInput.downstreamClickSuppressed,
                 "injected missing draw not suppressed") &&
-         expect(window.creativeViewportPickStatus ==
+         expect(window.creativeAuthoring.creativeViewportPickStatus ==
                     "product_creative_viewport_pick_source_empty",
                 "injected missing draw viewport source empty") &&
          expect(facade.measurementState().active,

@@ -419,35 +419,36 @@ void recordProductCreativeBakedRoomFresh(ProductAppWindowState& window,
 void recordProductCreativeViewportPickFrame(
     ProductAppWindowState& window,
     const ProductCreativeViewportPickFrameReceipt& receipt) {
-  window.creativeViewportPickRequested = receipt.requested;
-  window.creativeViewportPickActive = receipt.active;
-  window.creativeViewportPickClickPresent = receipt.clickPresent;
-  window.creativeViewportPickClickSuppressed =
+  CreativeAuthoringStore& authoring = window.creativeAuthoring;
+  authoring.creativeViewportPickRequested = receipt.requested;
+  authoring.creativeViewportPickActive = receipt.active;
+  authoring.creativeViewportPickClickPresent = receipt.clickPresent;
+  authoring.creativeViewportPickClickSuppressed =
       receipt.downstreamClickSuppressed;
-  window.creativeViewportPickFacadeAvailable = receipt.facadeAvailable;
-  window.creativeViewportPickSourceAvailable = receipt.sourceAvailable;
-  window.creativeViewportPickProjected = receipt.projected;
-  window.creativeViewportPickPicked = receipt.picked;
-  window.creativeViewportPickObjectCount = receipt.objectCount;
-  window.creativeViewportPickProjectionCellCount =
+  authoring.creativeViewportPickFacadeAvailable = receipt.facadeAvailable;
+  authoring.creativeViewportPickSourceAvailable = receipt.sourceAvailable;
+  authoring.creativeViewportPickProjected = receipt.projected;
+  authoring.creativeViewportPickPicked = receipt.picked;
+  authoring.creativeViewportPickObjectCount = receipt.objectCount;
+  authoring.creativeViewportPickProjectionCellCount =
       receipt.projectionCellCount;
-  window.creativeViewportPickStatus = receipt.status;
-  window.creativeViewportPickReasonCode = receipt.reasonCode;
-  window.creativeViewportPickPickStatus =
+  authoring.creativeViewportPickStatus = receipt.status;
+  authoring.creativeViewportPickReasonCode = receipt.reasonCode;
+  authoring.creativeViewportPickPickStatus =
       std::string(creative::toString(receipt.pickStatus));
-  window.creativeViewportPickMessage =
+  authoring.creativeViewportPickMessage =
       receipt.pickMessage.empty() ? "none" : receipt.pickMessage;
-  window.creativeViewportPickCoordX = receipt.coord.x;
-  window.creativeViewportPickCoordY = receipt.coord.y;
-  window.creativeViewportPickCoordZ = receipt.coord.z;
-  window.creativeViewportPickGridIndex = receipt.gridIndex;
-  window.creativeViewportPickObjectId = receipt.objectId;
-  window.creativeViewportPickObjectKind =
+  authoring.creativeViewportPickCoordX = receipt.coord.x;
+  authoring.creativeViewportPickCoordY = receipt.coord.y;
+  authoring.creativeViewportPickCoordZ = receipt.coord.z;
+  authoring.creativeViewportPickGridIndex = receipt.gridIndex;
+  authoring.creativeViewportPickObjectId = receipt.objectId;
+  authoring.creativeViewportPickObjectKind =
       std::string(creative::toString(receipt.objectKind));
-  window.creativeViewportPickOccupancyKind =
+  authoring.creativeViewportPickOccupancyKind =
       std::string(creative::toString(receipt.occupancyKind));
-  window.creativeViewportPickTarget = receipt.target.value;
-  window.creativeViewportPickCellIndex =
+  authoring.creativeViewportPickTarget = receipt.target.value;
+  authoring.creativeViewportPickCellIndex =
       static_cast<std::uint64_t>(receipt.cellIndex);
 }
 

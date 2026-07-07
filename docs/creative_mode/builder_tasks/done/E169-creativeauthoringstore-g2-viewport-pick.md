@@ -1,6 +1,6 @@
 # E169 — CreativeAuthoringStore G2: viewport-pick fields
 
-**STATUS: READY.** Parent: `blocked/E161-creativeauthoringstore-bulk-move.md`.
+**STATUS: DONE.** Parent: `blocked/E161-creativeauthoringstore-bulk-move.md`.
 Depends on E168. **Commit convention:** `claude: planned. codex: ...`.
 
 ## Goal
@@ -129,3 +129,73 @@ diffs, stop and report instead of regenerating.
 - any remaining dirty `Testing/Temporary/LastTest.log` note
 
 No stage, commit, push, or window launch.
+
+## Completion Brief
+
+Files changed:
+- `docs/creative_mode/builder_tasks/done/E169-creativeauthoringstore-g2-viewport-pick.md`
+- `docs/god_struct_member_ownership.tsv`
+- `src/app/iggy3d/ProductAppWindowState.hpp`
+- `src/app/iggy3d/creative/CreativeAuthoringStore.hpp`
+- `src/app/iggy3d/receipt/CreativePickWireframeFields.cpp`
+- `src/app/iggy3d/receipt/CreativeReceiptRecording.cpp`
+- `tests/unit/product_creative_viewport_pick_frame_tests.cpp`
+- `tests/unit/product_creative_ui_input_frame_tests.cpp`
+- `tests/unit/product_creative_ui_command_receipt_tests.cpp`
+- `tests/unit/product_creative_wireframe_frame_tests.cpp`
+
+Fields moved:
+- Added the 23 requested `creativeViewportPick*` telemetry fields to
+  `CreativeAuthoringStore`, preserving exact type/default/order.
+- Removed those 23 flat fields from `ProductAppWindowState`.
+- Repointed viewport-pick recorder writes and pick/wireframe receipt reads to
+  `window.creativeAuthoring.<field>`.
+- Repointed focused tests that seed/assert those ProductAppWindowState
+  telemetry values.
+- Removed the 23 top-level `creativeViewportPick*` rows from
+  `docs/god_struct_member_ownership.tsv`; kept the existing
+  `creativeAuthoring	CreativeAuthoringStore` row.
+
+Receipt golden result:
+- `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed:
+  `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+  produced no output.
+
+Ownership coverage result:
+- `/Users/kogaryu/iggy3d/build/product_god_struct_ownership_coverage_tests`
+  passed:
+  `god-struct ownership coverage: assigned=67 CreativeAuthoringStore=38 DebugHudStore=1 FrontendWindowShell=16 GameplayStore=1 InputDeviceStore=1 PresentPathStore=1 RoomStore=1 SaveSessionStore=1 ViewportStore=2 app-global-remainder=4 delete=1`.
+
+Required grep results:
+- Direct `window.creativeViewportPick*` telemetry grep: no output.
+- `ProductAppWindowState.hpp` flat `creativeViewportPick*` telemetry grep:
+  no output.
+- TSV `^creativeViewportPick` grep: no output.
+- Remaining `creativeViewportPick*` hits are the moved
+  `window.creativeAuthoring.*` telemetry uses, the receipt bridge, the store
+  definition, and foreign request/context fields:
+  `ProductWindowInputFrameContext::creativeViewportPickViewport`,
+  `ProductWindowInputFrameContext::creativeViewportPickProjectionRequest`,
+  `ProductWindowInputFrameContext::creativeViewportPickZ`,
+  `ProductWindowInputFrameContext::creativeViewportPickDepthMode`, plus the
+  local `creativeViewportPickProjectionRequest()` helper. Those foreign
+  request/context fields were intentionally not moved.
+
+Full suite result:
+- `cmake --build /Users/kogaryu/iggy3d/build -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure`
+  passed: `100% tests passed, 0 tests failed out of 260`.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files produced no output.
+
+Deferred slices still untouched:
+- Did not move wireframe again, room editor, ASCII/world setup, UI command,
+  stale, undo, revision, navigate, or auto-refresh fields.
+- Did not move viewport-pick request/context fields.
+- Did not mark the parent `CreativeAuthoringStore` target complete.
+
+Dirty notes:
+- `Testing/Temporary/LastTest.log` is not reported dirty by
+  `git status --short`.
+- No stage, commit, push, or window launch performed.

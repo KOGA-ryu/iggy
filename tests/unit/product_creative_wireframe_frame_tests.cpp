@@ -744,8 +744,8 @@ bool recorderPreservesExistingFields() {
   window.creativeUiInput.status = "input_before";
   window.creativeUiCommand.requested = true;
   window.creativeUiCommand.status = "command_before";
-  window.creativeViewportPickRequested = true;
-  window.creativeViewportPickStatus = "pick_before";
+  window.creativeAuthoring.creativeViewportPickRequested = true;
+  window.creativeAuthoring.creativeViewportPickStatus = "pick_before";
   window.productVulkanMenu.uiReady = true;
   window.productVulkanMenu.uiStatus = "vulkan_before";
 
@@ -765,9 +765,10 @@ bool recorderPreservesExistingFields() {
                 "creative command requested kept") &&
          expect(window.creativeUiCommand.status == "command_before",
                 "creative command status kept") &&
-         expect(window.creativeViewportPickRequested,
+         expect(window.creativeAuthoring.creativeViewportPickRequested,
                 "viewport pick requested kept") &&
-         expect(window.creativeViewportPickStatus == "pick_before",
+         expect(window.creativeAuthoring.creativeViewportPickStatus ==
+                    "pick_before",
                 "viewport pick status kept") &&
          expect(window.productVulkanMenu.uiReady, "vulkan ready kept") &&
          expect(window.productVulkanMenu.uiStatus == "vulkan_before",

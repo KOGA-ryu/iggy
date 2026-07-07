@@ -795,8 +795,8 @@ bool recorderPreservesNeighboringFields() {
   window.creativeUiInput.downstreamClickRequested = true;
   window.creativeUiInput.downstreamClickSuppressed = true;
   window.creativeUiInput.downstreamClickStatus = "downstream_before";
-  window.creativeViewportPickRequested = true;
-  window.creativeViewportPickStatus = "viewport_before";
+  window.creativeAuthoring.creativeViewportPickRequested = true;
+  window.creativeAuthoring.creativeViewportPickStatus = "viewport_before";
   window.creativeUiProjection.requested = true;
   window.creativeUiProjection.status = "projection_before";
   window.productVulkanMenu.uiReady = true;
@@ -820,9 +820,10 @@ bool recorderPreservesNeighboringFields() {
          expect(window.creativeUiInput.downstreamClickStatus ==
                     "downstream_before",
                 "downstream status kept") &&
-         expect(window.creativeViewportPickRequested,
+         expect(window.creativeAuthoring.creativeViewportPickRequested,
                 "viewport requested kept") &&
-         expect(window.creativeViewportPickStatus == "viewport_before",
+         expect(window.creativeAuthoring.creativeViewportPickStatus ==
+                    "viewport_before",
                 "viewport status kept") &&
          expect(window.creativeUiProjection.requested,
                 "projection requested kept") &&
