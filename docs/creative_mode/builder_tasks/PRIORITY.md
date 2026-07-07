@@ -6,9 +6,8 @@ use this index only to decide which ready card to claim next.
 
 The current pipeline is a **gated spine change** (the activeRoom→collision
 freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
-Gate-1 ratified). It is fed one gate at a time — **G3 done → G4 seeded.** A
-parallel non-spine card (the god-struct coverage gate) rides alongside. Do not
-pre-load later gates (G5–G7).
+Gate-1 ratified). It is fed one gate at a time. A parallel non-spine card (the
+god-struct coverage gate) rides alongside. Do not pre-load later gates (G5–G7).
 
 ## Claim Policy
 
@@ -22,22 +21,16 @@ pre-load later gates (G5–G7).
 
 ## Currently Claimed
 
-None.
+- **E131** — god-struct ownership coverage gate (member→owner map + test; no
+  production change). The decomposition truth-gate.
 
 ## Pull Next
 
-1. **E130 (E-ARCF-G4)** — wire the freshness seam: bump `activeRoomRevision` at
-   every writer + call `ensure` at the frame boundary (first consumer). The
-   riskiest gate; T-order proves order-independence. Read preflight §6/§10 + the
-   removal checklist §A first.
-2. **E131** — god-struct ownership coverage gate (member→owner map + test; no
-   production change). The decomposition truth-gate.
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E130 (E-ARCF-G4)** — Gate 4 of the freshness guard (first consumer wired; no
-  direct bake removed yet — that is G5). Later gates G5–G7 held until each prior
-  gate is reviewed/committed.
+None currently ready.
 
 ## Tier 2: Feature-Add Seams
 
@@ -45,10 +38,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-- **E131** — god-struct ownership coverage gate: asserts every
-  `ProductAppWindowState` member is claimed by exactly one Store/remainder/delete
-  (`docs/god_struct_decomposition_target_map.md`). Turns decomposition progress
-  into green/red; blocks new un-owned fields.
+None currently ready.
 
 ## Parking Lot
 

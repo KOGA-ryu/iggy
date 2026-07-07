@@ -2,6 +2,7 @@
 
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/view/CameraController.hpp"
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/gameplay/Controller.hpp"
@@ -522,6 +523,7 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   }
   // branch-gate: BG-1061
   if (activeSession != nullptr) {
+    (void)ensureActiveRoomCollisionFresh(window, activeSession);
     const SpatialSurfaceSet* collisionSurfaces =
         productActiveRoomCollisionSurfaces(window.activeRoomCollision);
     applyProductGameplayActions(*activeSession, gameplayActionsForSession, window,

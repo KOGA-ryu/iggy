@@ -189,6 +189,7 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
     window.activeRoomCollision =
         buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
   }
+  bumpActiveRoomRevision(window);
   window.runtimeSessionCreated = true;
   window.gameplayActive = true;
   window.runtimeStateHash = activeSession->stateHash();
@@ -282,6 +283,7 @@ bool createCreativeBlankSession(std::optional<Session>& activeSession,
 
   window.activeRoom = {};
   window.activeRoomCollision = {};
+  bumpActiveRoomRevision(window);
   activeSession = std::move(session.value);
   window.runtimeSessionCreated = true;
   window.gameplayActive = true;
@@ -451,6 +453,7 @@ void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
   window.runtimeStateHash = 0;
   window.activeRoom = {};
   window.activeRoomCollision = {};
+  bumpActiveRoomRevision(window);
   activeSession.reset();
 }
 
@@ -720,6 +723,7 @@ class ProductCreativeBakedRoomRefreshService {
       window_.activeRoomCollision =
           buildProductActiveRoomCollision(window_.activeRoom,
                                           activeSession_->state());
+      bumpActiveRoomRevision(window_);
 
       result_.accepted = true;
       result_.clearedActiveRoom = true;
@@ -746,6 +750,7 @@ class ProductCreativeBakedRoomRefreshService {
         buildProductActiveRoomCollision(activeRoom, activeSession_->state());
 
     window_.activeRoom = std::move(activeRoom);
+    bumpActiveRoomRevision(window_);
     window_.activeRoomCollision = std::move(collision);
 
     if (request_.activationHook) {
@@ -1327,6 +1332,7 @@ void launchProductNewWorld(const ProductAppOptions& options,
     window.activeRoom = buildProductActiveRoomFromAsciiAuthoring(asciiRequest, asciiRoom);
     window.activeRoomCollision =
         buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
+    bumpActiveRoomRevision(window);
     initialSaveAuthoredRoom = &asciiRoom.authoredRoom.authoredRoom;
   } else if (!createProductSession(options, activeSession, window)) {
     frontend.status = "opening_menu_new_world_failed";
@@ -1662,6 +1668,7 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   if (loaded.authoredRoomPresent) {
     window.activeRoom =
         buildProductActiveRoomFromSavedAuthoredRoom(loaded.authoredRoom);
+    bumpActiveRoomRevision(window);
     const ProductSavedRoomMarkerBindingResult bound =
         bindSavedRoomMarkersToSession(window.activeRoom, *activeSession);
     recordSavedRoomMarkerBindingResult(bound, window);

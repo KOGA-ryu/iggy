@@ -7,6 +7,7 @@
 
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "runtime/ai/AiState.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
@@ -208,6 +209,14 @@ void fillLoopFacts(const Session& session, ProductGameplayTapeRunResult& result)
 
 const SpatialSurfaceSet* currentCollisionSurfaces(
     const ProductGameplayTapeRunRequest& request) {
+  if (request.window != nullptr) {
+    (void)ensureActiveRoomCollisionFresh(*request.window, request.session);
+    const SpatialSurfaceSet* windowSurfaces =
+        productActiveRoomCollisionSurfaces(request.window->activeRoomCollision);
+    if (windowSurfaces != nullptr) {
+      return windowSurfaces;
+    }
+  }
   if (request.activeRoomCollision != nullptr) {
     const SpatialSurfaceSet* activeSurfaces =
         productActiveRoomCollisionSurfaces(*request.activeRoomCollision);
@@ -563,7 +572,8 @@ void runProductGameplayTapeFromOptions(
           collisionSurfaces,
           &request.window.activeRoom,
           &request.window.activeRoomCollision,
-          request.window.physicsMovementPlanner.enabled});
+          request.window.physicsMovementPlanner.enabled,
+          &request.window});
   recordProductGameplayTapeRun(run, request.window);
   // branch-gate: BG-1120
   if (request.activeSession.has_value()) {

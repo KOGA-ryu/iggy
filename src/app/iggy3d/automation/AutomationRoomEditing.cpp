@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/ascii_room/Preview.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
 #include "app/iggy3d/room_editor/ActionController.hpp"
@@ -86,6 +87,7 @@ void copyRoomEditingStateToWindow(ProductAppWindowState& window,
   // branch-gate: BG-1006
   if (state.ready) {
     window.activeRoom = state.activeRoom;
+    bumpActiveRoomRevision(window);
     window.activeRoomCollision = state.activeRoomCollision;
   } else {
     clearProductRoomEditorPreview(window);

@@ -1,10 +1,15 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/Controller.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ascii_room/Editing.hpp"
+#include "app/input/ActionState.hpp"
+#include "app/input/InputAction.hpp"
 #include "runtime/collision/CollisionQuery.hpp"
+#include "runtime/interaction/InteractionDefinition.hpp"
+#include "runtime/replay/StateHash.hpp"
 #include "runtime/session/Session.hpp"
 #include "runtime/world/EntityState.hpp"
 #include "runtime/session/SessionState.hpp"
@@ -15,6 +20,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -94,6 +100,195 @@ iggy3d::Session doorSession(bool doorActive) {
   door.active = doorActive;
   (void)state.world.seedEntity(std::move(door));
   return iggy3d::Session(std::move(state));
+}
+
+iggy3d::ActionState interactActions() {
+  iggy3d::ActionState actions;
+  iggy3d::recordAction(actions,
+                       iggy3d::InputAction::PlayerInteract,
+                       true,
+                       true,
+                       false,
+                       1.0F);
+  return actions;
+}
+
+iggy3d::EntityState freshnessPlayer() {
+  iggy3d::EntityState player;
+  player.id = iggy3d::EntityId{1};
+  player.stableName = "freshness_player";
+  player.kind = iggy3d::EntityKind::Player;
+  player.transform.position = {0.0F, 0.0F, 0.0F};
+  player.localBounds = iggy3d::makeAabb3({-0.20F, 0.0F, -0.20F},
+                                         {0.20F, 1.80F, 0.20F});
+  return player;
+}
+
+iggy3d::EntityState freshnessDoor(iggy3d::EntityId id,
+                                  std::string stableName,
+                                  iggy3d::Vec3 position) {
+  iggy3d::EntityState door;
+  door.id = id;
+  door.stableName = std::move(stableName);
+  door.kind = iggy3d::EntityKind::Door;
+  door.transform.position = position;
+  door.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F},
+                                       {0.25F, 1.80F, 0.25F});
+  door.targeting.targetable = true;
+  door.targeting.actions = {iggy3d::TargetAction::Interact,
+                            iggy3d::TargetAction::Inspect};
+  door.interaction.kind = iggy3d::InteractionKind::OpenDoor;
+  door.interaction.primaryEffect = iggy3d::InteractionEffectKind::EmitEventOnly;
+  door.interaction.deactivateTargetOnSuccess = true;
+  return door;
+}
+
+iggy3d::Session twoDoorFreshnessSession() {
+  iggy3d::SessionState state;
+  state.lifecycle = iggy3d::SessionLifecycle::Playing;
+  (void)state.world.seedEntity(freshnessPlayer());
+  (void)state.world.seedEntity(
+      freshnessDoor(iggy3d::EntityId{2},
+                    "freshness_door_a",
+                    {1.40F, 0.0F, 0.0F}));
+  (void)state.world.seedEntity(
+      freshnessDoor(iggy3d::EntityId{3},
+                    "freshness_door_b",
+                    {0.70F, 0.0F, 0.0F}));
+  iggy3d::PlayerSlot slot;
+  slot.id = 0;
+  slot.kind = iggy3d::PlayerSlotKind::Local;
+  slot.actor = iggy3d::EntityId{1};
+  slot.stableName = "freshness_player_slot";
+  (void)state.players.addSlot(std::move(slot));
+  state.currentStateHash = iggy3d::computeStateHash(state);
+  return iggy3d::Session(std::move(state));
+}
+
+iggy3d::ProductAppWindowState twoDoorFreshnessWindow(
+    const iggy3d::Session& session) {
+  iggy3d::ProductAppWindowState window;
+  window.activeRoomRevision = 1U;
+  window.activeRoom =
+      packageActiveRoom("freshness_two_door_room",
+                        {walkableSurface("floor"),
+                         blockerSurface("door_a_blocker", "freshness_door_a"),
+                         blockerSurface("door_b_blocker", "freshness_door_b")});
+  window.activeRoomCollision =
+      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
+  window.activeRoomCollision.bakedFromRoomRevision = window.activeRoomRevision;
+  window.activeRoomCollision.bakedFromSessionHash =
+      session.state().currentStateHash;
+  return window;
+}
+
+void deactivateDoorThroughHashedTick(iggy3d::Session& session,
+                                     iggy3d::EntityId doorId) {
+  (void)session.mutableStateForOwnedSystems().world.setActive(doorId, false);
+  (void)session.tick();
+}
+
+void interactNearestDoor(iggy3d::Session& session,
+                         iggy3d::ProductAppWindowState& window) {
+  iggy3d::applyProductGameplayActions(session,
+                                      interactActions(),
+                                      window,
+                                      "unit/freshness_order",
+                                      iggy3d::productActiveRoomCollisionSurfaces(
+                                          window.activeRoomCollision));
+}
+
+struct CollisionReaderSnapshot {
+  std::uint64_t querySurfaceCount = 0;
+  std::uint64_t activeDoorBlockerSurfaceCount = 0;
+  std::uint64_t runtimeFilteredSurfaceCount = 0;
+  std::size_t surfaceSetSize = 0;
+  std::vector<std::string> surfaceIds;
+  std::uint64_t roomRevision = 0;
+  std::uint64_t sessionHash = 0;
+};
+
+CollisionReaderSnapshot readerSnapshot(
+    const iggy3d::ProductAppWindowState& window) {
+  const iggy3d::SpatialSurfaceSet* surfaces =
+      iggy3d::productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+  CollisionReaderSnapshot snapshot;
+  snapshot.querySurfaceCount = window.activeRoomCollision.querySurfaceCount;
+  snapshot.activeDoorBlockerSurfaceCount =
+      window.activeRoomCollision.activeDoorBlockerSurfaceCount;
+  snapshot.runtimeFilteredSurfaceCount =
+      window.activeRoomCollision.runtimeFilteredSurfaceCount;
+  snapshot.surfaceSetSize = surfaces == nullptr ? 0U : surfaces->size();
+  if (surfaces != nullptr) {
+    for (const iggy3d::CollisionSurfaceView& surface : surfaces->surfaces()) {
+      snapshot.surfaceIds.push_back(surface.id);
+    }
+  }
+  snapshot.roomRevision = window.activeRoomCollision.bakedFromRoomRevision;
+  snapshot.sessionHash = window.activeRoomCollision.bakedFromSessionHash;
+  return snapshot;
+}
+
+bool snapshotsMatch(const CollisionReaderSnapshot& lhs,
+                    const CollisionReaderSnapshot& rhs,
+                    std::string_view label) {
+  return expect(lhs.querySurfaceCount == rhs.querySurfaceCount,
+                std::string(label) + " query count") &&
+         expect(lhs.activeDoorBlockerSurfaceCount ==
+                    rhs.activeDoorBlockerSurfaceCount,
+                std::string(label) + " active door count") &&
+         expect(lhs.runtimeFilteredSurfaceCount ==
+                    rhs.runtimeFilteredSurfaceCount,
+                std::string(label) + " filtered count") &&
+         expect(lhs.surfaceSetSize == rhs.surfaceSetSize,
+                std::string(label) + " surface set size") &&
+         expect(lhs.surfaceIds == rhs.surfaceIds,
+                std::string(label) + " surface ids") &&
+         expect(lhs.roomRevision == rhs.roomRevision,
+                std::string(label) + " room revision stamp");
+}
+
+struct OrderRunResult {
+  bool ok = false;
+  CollisionReaderSnapshot snapshot;
+};
+
+OrderRunResult runDoorFreshnessOrder(bool deactivateBeforeInteract) {
+  iggy3d::Session session = twoDoorFreshnessSession();
+  iggy3d::ProductAppWindowState window = twoDoorFreshnessWindow(session);
+  bool ok = expect(window.activeRoomCollision.querySurfaceCount == 3U,
+                   "order baseline query count") &&
+            expect(window.activeRoomCollision.activeDoorBlockerSurfaceCount == 2U,
+                   "order baseline active door count");
+
+  if (deactivateBeforeInteract) {
+    deactivateDoorThroughHashedTick(session, iggy3d::EntityId{2});
+    interactNearestDoor(session, window);
+  } else {
+    interactNearestDoor(session, window);
+    deactivateDoorThroughHashedTick(session, iggy3d::EntityId{2});
+  }
+
+  const iggy3d::ProductActiveRoomCollisionFreshnessResult ensure =
+      iggy3d::ensureActiveRoomCollisionFresh(window, &session);
+  const iggy3d::EntityState* doorA =
+      session.state().world.findByStableName("freshness_door_a");
+  const iggy3d::EntityState* doorB =
+      session.state().world.findByStableName("freshness_door_b");
+  ok = ok && expect(ensure.rebaked, "order boundary ensure rebaked") &&
+       expect(ensure.observedRoomRevision == window.activeRoomRevision,
+              "order boundary observed room revision") &&
+       expect(ensure.observedSessionHash == session.state().currentStateHash,
+              "order boundary observed session hash") &&
+       expect(doorA != nullptr && !doorA->active, "order door a inactive") &&
+       expect(doorB != nullptr && !doorB->active, "order door b inactive") &&
+       expect(window.activeRoomCollision.querySurfaceCount == 1U,
+              "order final query count") &&
+       expect(window.activeRoomCollision.activeDoorBlockerSurfaceCount == 0U,
+              "order final active door count") &&
+       expect(window.activeRoomCollision.runtimeFilteredSurfaceCount == 2U,
+              "order final filtered count");
+  return {ok, readerSnapshot(window)};
 }
 
 bool idempotentAfterRebake(iggy3d::ProductAppWindowState& window,
@@ -309,6 +504,21 @@ bool freshnessStoreSkipsFreshCollision() {
                 "fresh skip room stamp unchanged") &&
          expect(window.activeRoomCollision.bakedFromSessionHash == 0U,
                 "fresh skip session stamp unchanged");
+}
+
+bool frameBoundaryEnsureMakesDoorCollisionOrderIndependent() {
+  const OrderRunResult nonInteractThenInteract = runDoorFreshnessOrder(true);
+  const OrderRunResult interactThenNonInteract = runDoorFreshnessOrder(false);
+  return nonInteractThenInteract.ok && interactThenNonInteract.ok &&
+         snapshotsMatch(nonInteractThenInteract.snapshot,
+                        interactThenNonInteract.snapshot,
+                        "order independent") &&
+         expect(nonInteractThenInteract.snapshot.querySurfaceCount == 1U,
+                "order independent floor remains") &&
+         expect(nonInteractThenInteract.snapshot.activeDoorBlockerSurfaceCount == 0U,
+                "order independent all doors filtered") &&
+         expect(nonInteractThenInteract.snapshot.runtimeFilteredSurfaceCount == 2U,
+                "order independent both door blockers filtered");
 }
 
 iggy3d::ProductActiveRoomState trainingActiveRoom() {
@@ -567,6 +777,7 @@ int main() {
                   freshnessStoreRebakesWhenRoomReplaced() &&
                   freshnessStoreRebakesWhenSessionHashChanges() &&
                   freshnessStoreRebakesUnloadedRoom() &&
+                  frameBoundaryEnsureMakesDoorCollisionOrderIndependent() &&
                   buildsCollisionFromLoadedAsciiRoom() &&
                   runtimeDoorStateFiltersDoorCollision() &&
                   buildsCollisionFromEditedRoomSnapshot() &&

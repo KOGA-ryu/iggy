@@ -69,6 +69,7 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
       buildProductAsciiRoomAuthoring(request);
   recordProductAsciiRoomPreview(request.sourceName, request.roomId, preview, window);
   window.activeRoom = buildProductActiveRoomFromAsciiAuthoring(request, preview);
+  bumpActiveRoomRevision(window);
   window.activeRoomCollision = buildProductActiveRoomCollision(window.activeRoom);
   result.wallCount = preview.wallCount;
   result.markerCount = preview.markerCount;
@@ -116,6 +117,7 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   activeSession = std::move(session.value);
   window.activeRoomCollision =
       buildProductActiveRoomCollision(window.activeRoom, activeSession->state());
+  bumpActiveRoomRevision(window);
   result.ok = true;
   result.status = "ascii_room_activated";
   result.reasonCode = "ascii_room_activated";

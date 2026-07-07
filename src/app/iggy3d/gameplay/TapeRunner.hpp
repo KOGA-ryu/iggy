@@ -13,6 +13,7 @@ namespace iggy3d {
 
 struct ProductActiveRoomCollisionState;
 struct ProductActiveRoomState;
+struct ProductAppWindowState;
 class Session;
 class SpatialSurfaceSet;
 
@@ -23,6 +24,7 @@ struct ProductGameplayTapeRunRequest {
   const ProductActiveRoomState* activeRoom = nullptr;
   ProductActiveRoomCollisionState* activeRoomCollision = nullptr;
   bool usePhysicsMovePlanner = false;
+  ProductAppWindowState* window = nullptr;
 };
 
 struct ProductGameplayTapeRunResult {

@@ -1,4 +1,7 @@
 #include "app/iggy3d/ascii_room/Authoring.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/Tape.hpp"
 #include "app/iggy3d/gameplay/TapeRunner.hpp"
 #include "app/iggy3d/world/PackageSessionSeed.hpp"
@@ -8,8 +11,10 @@
 #include <cstdlib>
 #include <iostream>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -76,6 +81,97 @@ std::string_view validLoopTape() {
          "expect_reject required_item_missing interact marker_exit_r1_c5\n"
          "interact marker_treasure_r1_c4\n"
          "interact marker_exit_r1_c5\n";
+}
+
+struct TapeCollisionSnapshot {
+  std::uint64_t querySurfaceCount = 0;
+  std::uint64_t activeDoorBlockerSurfaceCount = 0;
+  std::uint64_t runtimeFilteredSurfaceCount = 0;
+  std::size_t surfaceSetSize = 0;
+  std::vector<std::string> surfaceIds;
+};
+
+iggy3d::ProductActiveRoomState tapeActiveRoom(const iggy3d::RoomAsset& room) {
+  return iggy3d::buildProductActiveRoomFromPackageRoom(room,
+                                                       "unit",
+                                                       "tape_runner");
+}
+
+iggy3d::ProductAppWindowState tapeWindow(const iggy3d::RoomAsset& room,
+                                         const iggy3d::Session& session) {
+  iggy3d::ProductAppWindowState window;
+  window.activeRoom = tapeActiveRoom(room);
+  iggy3d::bumpActiveRoomRevision(window);
+  window.activeRoomCollision =
+      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
+  window.activeRoomCollision.bakedFromRoomRevision = window.activeRoomRevision;
+  window.activeRoomCollision.bakedFromSessionHash =
+      session.state().currentStateHash;
+  return window;
+}
+
+TapeCollisionSnapshot collisionSnapshot(
+    const iggy3d::ProductActiveRoomCollisionState& collision) {
+  const iggy3d::SpatialSurfaceSet* surfaces =
+      iggy3d::productActiveRoomCollisionSurfaces(collision);
+  TapeCollisionSnapshot snapshot;
+  snapshot.querySurfaceCount = collision.querySurfaceCount;
+  snapshot.activeDoorBlockerSurfaceCount =
+      collision.activeDoorBlockerSurfaceCount;
+  snapshot.runtimeFilteredSurfaceCount = collision.runtimeFilteredSurfaceCount;
+  snapshot.surfaceSetSize = surfaces == nullptr ? 0U : surfaces->size();
+  if (surfaces != nullptr) {
+    for (const iggy3d::CollisionSurfaceView& surface : surfaces->surfaces()) {
+      snapshot.surfaceIds.push_back(surface.id);
+    }
+  }
+  return snapshot;
+}
+
+bool tapeRunsMatch(const iggy3d::ProductGameplayTapeRunResult& lhs,
+                   const iggy3d::ProductGameplayTapeRunResult& rhs,
+                   std::string_view label) {
+  return expect(lhs.ok == rhs.ok, std::string(label) + " ok") &&
+         expect(lhs.status == rhs.status, std::string(label) + " status") &&
+         expect(lhs.reasonCode == rhs.reasonCode,
+                std::string(label) + " reason") &&
+         expect(lhs.stepCount == rhs.stepCount,
+                std::string(label) + " step count") &&
+         expect(lhs.executedStepCount == rhs.executedStepCount,
+                std::string(label) + " executed count") &&
+         expect(lhs.expectedRejectedStepCount == rhs.expectedRejectedStepCount,
+                std::string(label) + " rejected count") &&
+         expect(lhs.expectedBlockedStepCount == rhs.expectedBlockedStepCount,
+                std::string(label) + " blocked count") &&
+         expect(lhs.keyCollected == rhs.keyCollected,
+                std::string(label) + " key") &&
+         expect(lhs.secretDoorOpened == rhs.secretDoorOpened,
+                std::string(label) + " door") &&
+         expect(lhs.treasureCollected == rhs.treasureCollected,
+                std::string(label) + " treasure") &&
+         expect(lhs.exitObjectiveComplete == rhs.exitObjectiveComplete,
+                std::string(label) + " exit") &&
+         expect(lhs.loopComplete == rhs.loopComplete,
+                std::string(label) + " loop") &&
+         expect(lhs.sessionOutcome == rhs.sessionOutcome,
+                std::string(label) + " outcome");
+}
+
+bool tapeCollisionSnapshotsMatch(const TapeCollisionSnapshot& lhs,
+                                 const TapeCollisionSnapshot& rhs,
+                                 std::string_view label) {
+  return expect(lhs.querySurfaceCount == rhs.querySurfaceCount,
+                std::string(label) + " query count") &&
+         expect(lhs.activeDoorBlockerSurfaceCount ==
+                    rhs.activeDoorBlockerSurfaceCount,
+                std::string(label) + " active door count") &&
+         expect(lhs.runtimeFilteredSurfaceCount ==
+                    rhs.runtimeFilteredSurfaceCount,
+                std::string(label) + " filtered count") &&
+         expect(lhs.surfaceSetSize == rhs.surfaceSetSize,
+                std::string(label) + " surface set size") &&
+         expect(lhs.surfaceIds == rhs.surfaceIds,
+                std::string(label) + " surface ids");
 }
 
 iggy3d::ProductAsciiRoomAuthoringResult makeBlockedWallRoom() {
@@ -146,6 +242,59 @@ bool tapeCompletesAsciiLoop() {
          expect(run.sessionOutcome == "Victory", "victory outcome") &&
          expect(run.loopComplete, "loop complete") &&
          expect(session->state().clock.tickIndex == 6U, "six accepted ticks");
+}
+
+bool tapeWindowFreshnessMatchesUnconditionalRefreshBaseline() {
+  const iggy3d::ProductAsciiRoomAuthoringResult room = makeLoopRoom();
+  const iggy3d::ProductGameplayTapeParseResult parsed =
+      iggy3d::parseProductGameplayTape(validLoopTape());
+  std::optional<iggy3d::Session> baselineSession =
+      makeSessionFromRoom(room.roomAsset.room);
+  std::optional<iggy3d::Session> freshnessSession =
+      makeSessionFromRoom(room.roomAsset.room);
+  if (!expect(room.ok, "freshness tape room authored") ||
+      !expect(parsed.ok, "freshness tape parsed") ||
+      !expect(baselineSession.has_value(), "freshness baseline session") ||
+      !expect(freshnessSession.has_value(), "freshness window session")) {
+    return false;
+  }
+
+  iggy3d::ProductActiveRoomState baselineActive =
+      tapeActiveRoom(room.roomAsset.room);
+  iggy3d::ProductActiveRoomCollisionState baselineCollision =
+      iggy3d::buildProductActiveRoomCollision(baselineActive,
+                                              baselineSession->state());
+  const iggy3d::ProductGameplayTapeRunResult baseline =
+      iggy3d::runProductGameplayTape({&*baselineSession,
+                                      &parsed.tape,
+                                      nullptr,
+                                      &baselineActive,
+                                      &baselineCollision});
+
+  iggy3d::ProductAppWindowState window =
+      tapeWindow(room.roomAsset.room, *freshnessSession);
+  const iggy3d::ProductGameplayTapeRunResult freshness =
+      iggy3d::runProductGameplayTape({&*freshnessSession,
+                                      &parsed.tape,
+                                      nullptr,
+                                      &window.activeRoom,
+                                      &window.activeRoomCollision,
+                                      false,
+                                      &window});
+
+  const TapeCollisionSnapshot baselineSnapshot =
+      collisionSnapshot(baselineCollision);
+  const TapeCollisionSnapshot freshnessSnapshot =
+      collisionSnapshot(window.activeRoomCollision);
+  return tapeRunsMatch(baseline, freshness, "freshness tape") &&
+         tapeCollisionSnapshotsMatch(baselineSnapshot,
+                                     freshnessSnapshot,
+                                     "freshness tape collision") &&
+         expect(freshness.ok, "freshness tape run ok") &&
+         expect(freshness.secretDoorOpened, "freshness tape door opened") &&
+         expect(freshness.loopComplete, "freshness tape loop complete") &&
+         expect(freshnessSnapshot.activeDoorBlockerSurfaceCount == 0U,
+                "freshness tape final door filtered");
 }
 
 bool tapeAcceptsExpectedMovementBlock() {
@@ -332,6 +481,7 @@ bool tapeReportsMissingTarget() {
 
 int main() {
   const bool ok = tapeCompletesAsciiLoop() &&
+                  tapeWindowFreshnessMatchesUnconditionalRefreshBaseline() &&
                   tapeAcceptsExpectedMovementBlock() &&
                   tapeWaitLetsNpcAttackPlayer() &&
                   staleAiCommandsBeforeTapeDoNotSetAiReceiptFields() &&
