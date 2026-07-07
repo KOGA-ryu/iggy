@@ -36,12 +36,12 @@ void recordFirstVulkanSubmitMeasurement(
     ProductAppWindowState& window,
     std::chrono::steady_clock::time_point started,
     const RenderSubmitResult& submit) {
-  if (window.startup.vulkanFirstSubmitMeasured) {
+  if (window.frontendShell.startup.vulkanFirstSubmitMeasured) {
     return;
   }
-  window.startup.vulkanFirstSubmitMeasured = true;
-  window.startup.vulkanFirstSubmitMicroseconds = elapsedMicroseconds(started);
-  window.startup.vulkanFirstSubmitStatus = std::string{submit.reason.code};
+  window.frontendShell.startup.vulkanFirstSubmitMeasured = true;
+  window.frontendShell.startup.vulkanFirstSubmitMicroseconds = elapsedMicroseconds(started);
+  window.frontendShell.startup.vulkanFirstSubmitStatus = std::string{submit.reason.code};
 }
 
 bool drawableReady(const ProductVulkanMenuFrameRequest& request) {

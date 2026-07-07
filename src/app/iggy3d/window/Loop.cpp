@@ -170,10 +170,10 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
       ProductWindowRendererRequest{request.options.renderer, &createInfo,
                                    &sdlWindow, &window});
   if (useVulkanRenderer) {
-    window.startup.vulkanRendererInitMeasured = true;
-    window.startup.vulkanRendererInitMicroseconds =
+    window.frontendShell.startup.vulkanRendererInitMeasured = true;
+    window.frontendShell.startup.vulkanRendererInitMicroseconds =
         elapsedMicroseconds(rendererStarted);
-    window.startup.vulkanRendererInitStatus =
+    window.frontendShell.startup.vulkanRendererInitStatus =
         renderer.ready ? "startup_vulkan_renderer_init_ready"
                        : window.presentPath.productVulkanReasonCode;
   }
@@ -222,9 +222,9 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
                                             eventState.windowHeight});
     if (creativeUiFrame.receipt.active) {
       recordFirstStartupMeasurement(
-          window.startup.creativeUiFirstFrameMeasured,
-          window.startup.creativeUiFirstFrameMicroseconds,
-          window.startup.creativeUiFirstFrameStatus,
+          window.frontendShell.startup.creativeUiFirstFrameMeasured,
+          window.frontendShell.startup.creativeUiFirstFrameMicroseconds,
+          window.frontendShell.startup.creativeUiFirstFrameStatus,
           creativeUiStarted,
           creativeUiFrame.receipt.status);
     }
@@ -269,9 +269,9 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
             creativeWireframeProjectionRequest()});
     if (wireframeFrame.receipt.active) {
       recordFirstStartupMeasurement(
-          window.startup.creativeWireframeFirstFrameMeasured,
-          window.startup.creativeWireframeFirstFrameMicroseconds,
-          window.startup.creativeWireframeFirstFrameStatus,
+          window.frontendShell.startup.creativeWireframeFirstFrameMeasured,
+          window.frontendShell.startup.creativeWireframeFirstFrameMicroseconds,
+          window.frontendShell.startup.creativeWireframeFirstFrameStatus,
           wireframeStarted,
           wireframeFrame.receipt.status);
     }

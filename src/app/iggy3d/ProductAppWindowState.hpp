@@ -26,7 +26,6 @@
 #include "app/iggy3d/window/ProductVulkanMenuState.hpp"
 #include "app/iggy3d/gameplay/CollisionState.hpp"
 #include "app/iggy3d/gameplay/GameplayMovementInfo.hpp"
-#include "app/iggy3d/ProductStartupState.hpp"
 #include "app/iggy3d/gameplay/CommandState.hpp"
 #include "app/iggy3d/gameplay/JumpState.hpp"
 #include "app/iggy3d/view/ViewportState.hpp"
@@ -44,7 +43,6 @@ struct ProductAppWindowState {
   DebugHudStore debugHud;
   CreativeAuthoringStore creativeAuthoring;
   GameplayStore gameplay;
-  ProductStartupState startup;
   ProductRoomStore room;
   SaveSessionStore saveSession;
   std::uint64_t runtimeStateHash = 0;

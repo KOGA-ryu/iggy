@@ -7,7 +7,6 @@ inputDevice	InputDeviceStore
 debugHud	DebugHudStore
 creativeAuthoring	CreativeAuthoringStore
 gameplay	GameplayStore
-startup	FrontendWindowShell
 room	RoomStore
 saveSession	SaveSessionStore
 runtimeStateHash	delete

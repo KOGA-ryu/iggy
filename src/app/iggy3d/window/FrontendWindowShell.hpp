@@ -4,6 +4,7 @@
 #include <string>
 
 #include "app/frontend/SettingsMenu.hpp"
+#include "app/iggy3d/ProductStartupState.hpp"
 
 namespace iggy3d {
 
@@ -17,6 +18,7 @@ struct FrontendWindowShell {
   std::string launchAction = "none";
   std::string launchStatus = "not_requested";
   std::string packageLoadStatus = "not_requested";
+  ProductStartupState startup;
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;

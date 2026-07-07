@@ -777,21 +777,21 @@ bool recorderPreservesExistingFields() {
 
 bool startupFrameMeasurementFieldsAreReceiptOnlyScalars() {
   iggy3d::ProductAppWindowState window = creativeWindow();
-  window.startup.creativeUiFirstFrameMeasured = true;
-  window.startup.creativeUiFirstFrameMicroseconds = 17;
-  window.startup.creativeUiFirstFrameStatus =
+  window.frontendShell.startup.creativeUiFirstFrameMeasured = true;
+  window.frontendShell.startup.creativeUiFirstFrameMicroseconds = 17;
+  window.frontendShell.startup.creativeUiFirstFrameStatus =
       "product_creative_ui_frame_ready";
-  window.startup.creativeWireframeFirstFrameMeasured = true;
-  window.startup.creativeWireframeFirstFrameMicroseconds = 23;
-  window.startup.creativeWireframeFirstFrameStatus =
+  window.frontendShell.startup.creativeWireframeFirstFrameMeasured = true;
+  window.frontendShell.startup.creativeWireframeFirstFrameMicroseconds = 23;
+  window.frontendShell.startup.creativeWireframeFirstFrameStatus =
       "product_creative_wireframe_frame_built";
-  window.startup.vulkanRendererInitMeasured = true;
-  window.startup.vulkanRendererInitMicroseconds = 31;
-  window.startup.vulkanRendererInitStatus =
+  window.frontendShell.startup.vulkanRendererInitMeasured = true;
+  window.frontendShell.startup.vulkanRendererInitMicroseconds = 31;
+  window.frontendShell.startup.vulkanRendererInitStatus =
       "startup_vulkan_renderer_init_ready";
-  window.startup.vulkanFirstSubmitMeasured = true;
-  window.startup.vulkanFirstSubmitMicroseconds = 43;
-  window.startup.vulkanFirstSubmitStatus = "renderer_ok";
+  window.frontendShell.startup.vulkanFirstSubmitMeasured = true;
+  window.frontendShell.startup.vulkanFirstSubmitMicroseconds = 43;
+  window.frontendShell.startup.vulkanFirstSubmitStatus = "renderer_ok";
 
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 

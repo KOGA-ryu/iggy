@@ -102,9 +102,9 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
                                      ProductAppWindowState& window) {
   window.frontendShell.packageLoadStatus = packageLoadStatusName(package.status);
   if (package.status != PackageLoadStatus::Ok) {
-    window.startup.runtimeSessionCreateMeasured = false;
-    window.startup.runtimeSessionCreateMicroseconds = 0;
-    window.startup.runtimeSessionCreateStatus = "package_load_failed";
+    window.frontendShell.startup.runtimeSessionCreateMeasured = false;
+    window.frontendShell.startup.runtimeSessionCreateMicroseconds = 0;
+    window.frontendShell.startup.runtimeSessionCreateStatus = "package_load_failed";
     window.frontendShell.launchStatus = "package_load_failed";
     return false;
   }
@@ -113,10 +113,10 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
   const ProductPackageSessionSeedResult seed =
       buildProductPackageSessionSeed(package);
   if (!seed.ok) {
-    window.startup.runtimeSessionCreateMeasured = true;
-    window.startup.runtimeSessionCreateMicroseconds =
+    window.frontendShell.startup.runtimeSessionCreateMeasured = true;
+    window.frontendShell.startup.runtimeSessionCreateMicroseconds =
         elapsedMicroseconds(sessionStarted);
-    window.startup.runtimeSessionCreateStatus = seed.reasonCode;
+    window.frontendShell.startup.runtimeSessionCreateStatus = seed.reasonCode;
     window.frontendShell.launchStatus = seed.reasonCode;
     return false;
   }
@@ -130,16 +130,16 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
   if (session.status != ResultStatus::Ok) {
     window.frontendShell.launchStatus =
         session.error.code.empty() ? "session_create_failed" : session.error.code;
-    window.startup.runtimeSessionCreateMeasured = true;
-    window.startup.runtimeSessionCreateMicroseconds =
+    window.frontendShell.startup.runtimeSessionCreateMeasured = true;
+    window.frontendShell.startup.runtimeSessionCreateMicroseconds =
         elapsedMicroseconds(sessionStarted);
-    window.startup.runtimeSessionCreateStatus = window.frontendShell.launchStatus;
+    window.frontendShell.startup.runtimeSessionCreateStatus = window.frontendShell.launchStatus;
     return false;
   }
-  window.startup.runtimeSessionCreateMeasured = true;
-  window.startup.runtimeSessionCreateMicroseconds =
+  window.frontendShell.startup.runtimeSessionCreateMeasured = true;
+  window.frontendShell.startup.runtimeSessionCreateMicroseconds =
       elapsedMicroseconds(sessionStarted);
-  window.startup.runtimeSessionCreateStatus =
+  window.frontendShell.startup.runtimeSessionCreateStatus =
       "startup_runtime_session_created";
 
   activeRoom(window) = {};
@@ -163,18 +163,18 @@ bool createProductSession(const ProductAppOptions& options,
                           ProductAppWindowState& window) {
   const auto lookupStarted = std::chrono::steady_clock::now();
   const std::filesystem::path packagePath = defaultProductPackagePath(options);
-  window.startup.packagePath =
+  window.frontendShell.startup.packagePath =
       packagePath.empty() ? "none" : packagePath.generic_string();
-  window.startup.packageLookupMeasured = true;
-  window.startup.packageLookupMicroseconds =
+  window.frontendShell.startup.packageLookupMeasured = true;
+  window.frontendShell.startup.packageLookupMicroseconds =
       elapsedMicroseconds(lookupStarted);
-  window.startup.packageLookupStatus = "startup_package_lookup_resolved";
+  window.frontendShell.startup.packageLookupStatus = "startup_package_lookup_resolved";
 
   const auto loadStarted = std::chrono::steady_clock::now();
   const PackageLoadResult package = loadPackage({packagePath.generic_string()});
-  window.startup.packageLoadMeasured = true;
-  window.startup.packageLoadMicroseconds = elapsedMicroseconds(loadStarted);
-  window.startup.packageLoadStatus = packageLoadStatusName(package.status);
+  window.frontendShell.startup.packageLoadMeasured = true;
+  window.frontendShell.startup.packageLoadMicroseconds = elapsedMicroseconds(loadStarted);
+  window.frontendShell.startup.packageLoadStatus = packageLoadStatusName(package.status);
   return createProductSessionFromPackage(package, activeSession, window);
 }
 
@@ -188,16 +188,16 @@ bool createProductSession(const ProductAppOptions& options,
 bool createCreativeBlankSession(std::optional<Session>& activeSession,
                                 ProductAppWindowState& window) {
   const auto lookupStarted = std::chrono::steady_clock::now();
-  window.startup.packagePath = "creative_blank_stage";
-  window.startup.packageLookupMeasured = true;
-  window.startup.packageLookupMicroseconds = elapsedMicroseconds(lookupStarted);
-  window.startup.packageLookupStatus = "startup_package_lookup_resolved";
+  window.frontendShell.startup.packagePath = "creative_blank_stage";
+  window.frontendShell.startup.packageLookupMeasured = true;
+  window.frontendShell.startup.packageLookupMicroseconds = elapsedMicroseconds(lookupStarted);
+  window.frontendShell.startup.packageLookupStatus = "startup_package_lookup_resolved";
 
   const auto loadStarted = std::chrono::steady_clock::now();
   window.frontendShell.packageLoadStatus = "ok";
-  window.startup.packageLoadMeasured = true;
-  window.startup.packageLoadMicroseconds = elapsedMicroseconds(loadStarted);
-  window.startup.packageLoadStatus = "ok";
+  window.frontendShell.startup.packageLoadMeasured = true;
+  window.frontendShell.startup.packageLoadMicroseconds = elapsedMicroseconds(loadStarted);
+  window.frontendShell.startup.packageLoadStatus = "ok";
 
   const auto sessionStarted = std::chrono::steady_clock::now();
   FixtureScenarioSeed seed;
@@ -231,16 +231,16 @@ bool createCreativeBlankSession(std::optional<Session>& activeSession,
   if (session.status != ResultStatus::Ok) {
     window.frontendShell.launchStatus =
         session.error.code.empty() ? "session_create_failed" : session.error.code;
-    window.startup.runtimeSessionCreateMeasured = true;
-    window.startup.runtimeSessionCreateMicroseconds =
+    window.frontendShell.startup.runtimeSessionCreateMeasured = true;
+    window.frontendShell.startup.runtimeSessionCreateMicroseconds =
         elapsedMicroseconds(sessionStarted);
-    window.startup.runtimeSessionCreateStatus = window.frontendShell.launchStatus;
+    window.frontendShell.startup.runtimeSessionCreateStatus = window.frontendShell.launchStatus;
     return false;
   }
-  window.startup.runtimeSessionCreateMeasured = true;
-  window.startup.runtimeSessionCreateMicroseconds =
+  window.frontendShell.startup.runtimeSessionCreateMeasured = true;
+  window.frontendShell.startup.runtimeSessionCreateMicroseconds =
       elapsedMicroseconds(sessionStarted);
-  window.startup.runtimeSessionCreateStatus = "startup_runtime_session_created";
+  window.frontendShell.startup.runtimeSessionCreateStatus = "startup_runtime_session_created";
 
   activeRoom(window) = {};
   activeRoomCollision(window) = {};
@@ -1334,19 +1334,19 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
 
   const CreativeWorldCreateResult create = createCreativeWorld(createRequest);
   mirrorCreativeWorldCreateResult(result, create);
-  window.startup.creativeWorldIdScanMeasured = create.worldIdScanMeasured;
-  window.startup.creativeWorldIdScanMicroseconds =
+  window.frontendShell.startup.creativeWorldIdScanMeasured = create.worldIdScanMeasured;
+  window.frontendShell.startup.creativeWorldIdScanMicroseconds =
       create.worldIdScanMicroseconds;
-  window.startup.creativeWorldIdScanEntryCount =
+  window.frontendShell.startup.creativeWorldIdScanEntryCount =
       create.worldIdScanEntryCount;
-  window.startup.creativeWorldIdScanStatus = create.worldIdScanStatus;
-  window.startup.creativeDocumentIdScanMeasured =
+  window.frontendShell.startup.creativeWorldIdScanStatus = create.worldIdScanStatus;
+  window.frontendShell.startup.creativeDocumentIdScanMeasured =
       create.documentIdScanMeasured;
-  window.startup.creativeDocumentIdScanMicroseconds =
+  window.frontendShell.startup.creativeDocumentIdScanMicroseconds =
       create.documentIdScanMicroseconds;
-  window.startup.creativeDocumentIdScanEntryCount =
+  window.frontendShell.startup.creativeDocumentIdScanEntryCount =
       create.documentIdScanEntryCount;
-  window.startup.creativeDocumentIdScanStatus = create.documentIdScanStatus;
+  window.frontendShell.startup.creativeDocumentIdScanStatus = create.documentIdScanStatus;
   if (!create.accepted) {
     setCreativeNewWorldLaunchStatus(result, create.reasonCode);
     window.frontendShell.launchStatus = result.reasonCode;

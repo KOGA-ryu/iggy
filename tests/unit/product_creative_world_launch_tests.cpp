@@ -586,28 +586,28 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
                 "creative launch frontend gameplay") &&
          expect(window.frontendShell.launchStatus == "product_creative_world_launched",
                 "creative launch window status") &&
-         expect(window.startup.packageLookupMeasured,
+         expect(window.frontendShell.startup.packageLookupMeasured,
                 "creative launch package lookup measured") &&
-         expect(window.startup.packageLookupStatus ==
+         expect(window.frontendShell.startup.packageLookupStatus ==
                     "startup_package_lookup_resolved",
                 "creative launch package lookup status") &&
-         expect(window.startup.packageLoadMeasured,
+         expect(window.frontendShell.startup.packageLoadMeasured,
                 "creative launch package load measured") &&
-         expect(window.startup.packageLoadStatus == "ok",
+         expect(window.frontendShell.startup.packageLoadStatus == "ok",
                 "creative launch package load status") &&
-         expect(window.startup.runtimeSessionCreateMeasured,
+         expect(window.frontendShell.startup.runtimeSessionCreateMeasured,
                 "creative launch session create measured") &&
-         expect(window.startup.runtimeSessionCreateStatus ==
+         expect(window.frontendShell.startup.runtimeSessionCreateStatus ==
                     "startup_runtime_session_created",
                 "creative launch session create status") &&
-         expect(window.startup.creativeWorldIdScanMeasured,
+         expect(window.frontendShell.startup.creativeWorldIdScanMeasured,
                 "creative launch world id scan measured") &&
-         expect(window.startup.creativeWorldIdScanStatus ==
+         expect(window.frontendShell.startup.creativeWorldIdScanStatus ==
                     "product_world_id_scan_ready",
                 "creative launch world id scan status") &&
-         expect(window.startup.creativeDocumentIdScanMeasured,
+         expect(window.frontendShell.startup.creativeDocumentIdScanMeasured,
                 "creative launch document id scan measured") &&
-         expect(window.startup.creativeDocumentIdScanStatus ==
+         expect(window.frontendShell.startup.creativeDocumentIdScanStatus ==
                     "creative_document_id_scan_ready",
                 "creative launch document id scan status") &&
          expect(window.saveSession.activeProductSaveId == "none",
@@ -4107,9 +4107,9 @@ bool creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() {
          expect(launched.objectCount == 0U, "blank stage empty document") &&
          expect(facade.document().objectCount() == 0U,
                 "blank stage facade empty document") &&
-         expect(window.startup.packageLoadStatus == "ok",
+         expect(window.frontendShell.startup.packageLoadStatus == "ok",
                 "blank stage package load status ok") &&
-         expect(window.startup.runtimeSessionCreateStatus ==
+         expect(window.frontendShell.startup.runtimeSessionCreateStatus ==
                     "startup_runtime_session_created",
                 "blank stage session create status");
 }
