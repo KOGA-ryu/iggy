@@ -57,7 +57,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E177-god-struct-remainder-audit.md`
+1. `ready/E178-viewportstore-creative-world-epoch.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -69,7 +69,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E177-god-struct-remainder-audit.md`
+1. `ready/E178-viewportstore-creative-world-epoch.md`
 
 ## Parking Lot
 
@@ -112,7 +112,8 @@ Held — do NOT promote to `ready/` on a guess:
     moved the final deferred `productVulkanMenu` field.
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
-  - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).
+  - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`,
+    `runtimeStateHash`). `runtimeStateHash` remains pending after E177.
 - **Traversal-tag emitter/consumer migration** across RoomBake, ASCII room,
   movement, collision, and display/debug strings: after the catalog contract is
   stable. Do not migrate false-positive receipt/render strings blindly.
