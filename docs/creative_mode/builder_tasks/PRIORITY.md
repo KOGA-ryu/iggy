@@ -29,9 +29,7 @@ None.
 1. **E125** — Product Header Include Hygiene Pass 1 (mechanical, free build win).
 2. **E126** — TraversalTag Catalog Contract And Validator Parity (fixes the
    `clamber_candidate` validator drift without broad literal migration).
-3. **E123** — Creative Object Kind Switch Cleanup (small impl; blocks itself if
-   the descriptor lacks the fact).
-4. **E124** — ProductPrimitiveDrawKind Metadata Audit (read-only).
+3. **E124** — ProductPrimitiveDrawKind Metadata Audit (read-only).
 
 ## Tier 1: Correctness And Compatibility
 
@@ -43,8 +41,7 @@ None.
 
 ## Tier 2: Feature-Add Seams
 
-- **E123** — route creative `toString()` / `allowedMutations()` through the
-  descriptor facts they duplicate; drops object-kind add from 4 sites to 2.
+None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
