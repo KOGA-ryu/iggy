@@ -1,6 +1,8 @@
 # E154 — GameplayStore bulk-move (god-struct decomposition #8)
 
-**STATUS: STAGED in `blocked/` — pending planner release.** Move to `ready/` (or on a "go") to release.
+**STATUS: DECOMPOSED PARENT — do not claim directly.**
+Sliced into E157-E160 on 2026-07-07 so builder can send smaller briefs after
+each document and reviewer can release the next slice one at a time.
 Recon-grounded (workflow `wxhudv684`, 2026-07-07) against HEAD `20371ac1`.
 **Separate disjoint track from RoomStore (E148–E152) and SaveSessionStore (E153).**
 
@@ -140,3 +142,22 @@ TSV row to GameplayStore. Whichever lands second must **not** re-touch it:
 Compiler = exhaustive reader-finder (it sees every `openWindow`/`rejectedWindow` test fixture a grep/replace can't);
 golden = byte-level behavior oracle; coverage gate = bidirectional member accounting. Green build +
 260/260 + unchanged golden + updated TSV = provably complete and behavior-preserving. No freshness debt.
+
+## Decomposition
+
+- **E157** — GameplayStore G1: create the `GameplayStore` member and move the
+  lifecycle/input flags (`runtimeSessionCreated`, `gameplayActive`,
+  `gameplayInputUsed`, `gameplayInputSource`, `gameplayTickAdvanced`,
+  `playerPositionChanged`).
+- **E158** — GameplayStore G2: move movement/planner command state
+  (`gameplayCommand`, `gameplayMovement`, `gameplayWallRun`, `gameplayJump`,
+  `gameplayReset`, `gameplayTraversal`, `gameplayDash`, `gameplayCollision`,
+  `gameplayTickReasonCode`, `physicsMovementPlanner`).
+- **E159** — GameplayStore G3: move action/outcome/tape/transition state
+  (`targetDiscovered`, `gameplayTarget`, `gameplayOutcome`, `sessionOutcome`,
+  `gameplayTape`, `interactionExecuted`, `attackExecuted`,
+  `productTransition`, `gameplayReachGate`, `gameplayLastRejection`).
+- **E160** — GameplayStore G4: move visibility/render diagnostics
+  (`playerVisible`, `roomVisible`, `objectiveVisible`,
+  `rendererMutatedRuntime`, `scriptedGameplaySmoke`, `sceneItemCount`,
+  `debugItemCount`) and mark the target map complete.

@@ -12,12 +12,10 @@ COMPLETE (E148-E152). The SaveSessionStore bulk move is COMPLETE (E153).
 
 **Also complete:** the 2 dead write-only fields `window.inputOwner` /
 `window.gameplayInputSuppressed` were deleted (`36ceeac3`) — god-struct now 153
-members. **Staged next (blocked/):** `E154` GameplayStore bulk-move
-(decomposition #8, 33
-fields incl. `runtimeSessionCreated`). **~1670 repoints — the biggest move; a
-single compiler-guided pass OR an accessor-seam slice (planner/reviewer choose).**
-Disjoint from completed RoomStore/SaveSessionStore work; `runtimeSessionCreated`
-now belongs to GameplayStore.
+members. **Current work:** GameplayStore is decomposed from E154 into E157-E160.
+Only E157 is ready; E158-E160 stay blocked and should be released one at a time
+after reviewer signs the prior slice. Disjoint from completed RoomStore/
+SaveSessionStore work; `runtimeSessionCreated` now belongs to GameplayStore.
 
 **Also staged as PARENT cards (blocked/, for a slicer-Codex to gate):** `E155`
 ViewportStore fold (#6 — fold 11 mapMaker* into ProductViewportState, ~92
@@ -41,11 +39,14 @@ None.
 
 ## Pull Next
 
-None. `ready/` is intentionally empty until planner releases E154 or a new card.
+1. **E157** — GameplayStore G1 lifecycle/input flags.
 
 ## Tier 1: Correctness And Compatibility
 
-None currently ready.
+- **E157** — move only `runtimeSessionCreated`, `gameplayActive`,
+  `gameplayInputUsed`, `gameplayInputSource`, `gameplayTickAdvanced`, and
+  `playerPositionChanged` into `GameplayStore`. Keep E158-E160 blocked until
+  review.
 
 ## Tier 2: Feature-Add Seams
 
@@ -80,9 +81,8 @@ Held — do NOT promote to `ready/` on a guess:
     regroup only; NOT an ownership kill. Preserved the nested producer copy.
   - **#5 `SaveSessionStore`** — **COMPLETE as E153.** Structural regroup only;
     `runtimeSessionCreated` was corrected to GameplayStore ownership.
-  - **#8 `GameplayStore`** — staged in `blocked/E154-gameplaystore-bulk-move.md`;
-    release only after reviewing whether the single large compiler-guided move
-    or an accessor-seam split is preferable.
+  - **#8 `GameplayStore`** — parent E154 is decomposed. E157 is ready; E158-E160
+    are staged in `blocked/` and should be released one at a time after review.
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
   - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).
