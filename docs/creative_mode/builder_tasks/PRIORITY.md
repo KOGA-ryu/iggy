@@ -25,10 +25,9 @@ None.
 
 ## Pull Next
 
-1. **E125** — Product Header Include Hygiene Pass 1 (mechanical, free build win).
-2. **E126** — TraversalTag Catalog Contract And Validator Parity (fixes the
+1. **E126** — TraversalTag Catalog Contract And Validator Parity (fixes the
    `clamber_candidate` validator drift without broad literal migration).
-3. **E127** — ProductPrimitiveDrawKind Presentation Metadata Table (base
+2. **E127** — ProductPrimitiveDrawKind Presentation Metadata Table (base
    color/size centralization; dispatch and decorative render policy stay local).
 
 ## Tier 1: Correctness And Compatibility
@@ -45,9 +44,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-- **E125** — forward-declare `ProductAppWindowState` in `ReceiptBuilder.hpp` +
-  `RendererLifecycle.hpp` so the 62-include god-header stops re-parsing in ~40
-  TUs.
+None currently ready.
 
 ## Parking Lot
 

@@ -3,8 +3,15 @@
 #include <iostream>
 #include <string>
 
-#include "app/iggy3d/gameplay/MovementProof.hpp"
+#include "app/frontend/FrontendState.hpp"
+#include "app/frontend/SettingsMenu.hpp"
+#include "app/iggy3d/Options.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/gameplay/MovementProof.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
+#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
+#include "render/RenderDiagnostics.hpp"
 
 namespace {
 

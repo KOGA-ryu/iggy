@@ -85,3 +85,81 @@ Append:
 - ProductAppWindowState.hpp includer count (before → after):
 - Tests/checks run:
 - Concerns/deferred (or blocker if cascaded):
+
+## Completion Brief - E125
+
+### Headers Forward-Declared
+
+- `src/app/iggy3d/ReceiptBuilder.hpp`
+  - Removed `#include "app/iggy3d/ProductAppWindowState.hpp"`.
+  - Added `struct ProductAppWindowState;`.
+  - Also forward-declared declaration-only receipt fixture types previously
+    arriving through the transitive window-state include.
+  - Confirmed `ProductAppWindowState` use is by reference only in declarations.
+- `src/app/iggy3d/window/RendererLifecycle.hpp`
+  - Removed `#include "app/iggy3d/ProductAppWindowState.hpp"`.
+  - Added `struct ProductAppWindowState;`.
+  - Confirmed `ProductAppWindowState` use is by pointer/reference only in
+    declarations.
+
+### .cpp Partners With Full Type
+
+- `src/app/iggy3d/ReceiptBuilder.cpp` still receives the complete
+  `ProductAppWindowState` definition through
+  `src/app/iggy3d/receipt/ReceiptFields.hpp`, which still includes
+  `ProductAppWindowState.hpp`.
+- `src/app/iggy3d/window/RendererLifecycle.cpp` now directly includes
+  `app/iggy3d/ProductAppWindowState.hpp` because it reads/writes fields.
+
+### Direct Include Fallout Fixed
+
+The following concrete users relied on the old transitive include and now
+include their own dependency directly:
+
+- `src/app/iggy3d/AppKernel.hpp`
+  - `ProductAppWindowState` by value.
+  - `FrontendSettings` by value; added the direct settings include while there.
+- `src/app/iggy3d/window/Loop.hpp`
+  - `ProductAppWindowState` by value.
+- `src/app/iggy3d/gameplay/Controller.cpp`
+  - Mutates `ProductAppWindowState` fields.
+- `src/app/iggy3d/gameplay/TapeRunner.cpp`
+  - Mutates `ProductAppWindowState` fields.
+- `tests/unit/product_mouse_capture_policy_tests.cpp`
+- `tests/unit/product_receipt_key_order_tests.cpp`
+- `tests/unit/product_top_down_map_overlay_tests.cpp`
+- `tests/unit/product_creative_ui_projection_receipt_tests.cpp`
+- `tests/unit/product_creative_ui_command_receipt_tests.cpp`
+- `tests/unit/product_creative_ui_frame_tests.cpp`
+- `tests/unit/product_movement_debug_hud_tests.cpp`
+- `tests/unit/product_creative_no_window_bake_scenario_tests.cpp`
+
+These are direct include repairs only; no declarations, function bodies, or
+struct layouts changed.
+
+### Include Count
+
+- Command:
+  `grep -rl 'app/iggy3d/ProductAppWindowState.hpp' /Users/kogaryu/iggy3d/src /Users/kogaryu/iggy3d/apps /Users/kogaryu/iggy3d/tests | wc -l`
+- Before: `39`
+- After: `50`
+
+The raw direct include count increased because hidden transitive dependencies in
+receipt-focused tests and owner headers were made explicit. The hygiene win is
+that the two high-fanout headers no longer propagate
+`ProductAppWindowState.hpp` to all includers.
+
+### Tests / Checks Run
+
+- `cmake --build /Users/kogaryu/iggy3d/build -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure` passed:
+  `258/258`.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files passed.
+
+### Concerns / Deferred
+
+- This pass fixed the small, visible transitive fallout without reverting the
+  header forward declarations. Later include-hygiene passes should expect the
+  same pattern: direct include counts may rise while high-fanout propagation
+  drops.

@@ -4,6 +4,7 @@
 #include <string>
 
 #include "app/PackageRuntimeLookup.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "render/RenderDiagnostics.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)

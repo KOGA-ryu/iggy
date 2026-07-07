@@ -6,12 +6,13 @@
 struct SDL_Renderer;
 
 #include "app/iggy3d/Options.hpp"
-#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "render/RendererApi.hpp"
 
 namespace iggy3d {
+
+struct ProductAppWindowState;
 
 struct ProductWindowRendererRequest {
   ProductRendererRequest rendererRequest = ProductRendererRequest::Null;

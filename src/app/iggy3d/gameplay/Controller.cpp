@@ -8,6 +8,7 @@
 #include <string_view>
 
 #include "app/input/ActionState.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"

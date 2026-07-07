@@ -1,7 +1,9 @@
 #include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
+#include "app/iggy3d/input/InteractionMode.hpp"
 
 #include <cstdlib>
 #include <filesystem>

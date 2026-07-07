@@ -1,15 +1,23 @@
 #pragma once
 
-#include "app/iggy3d/ProductAppWindowState.hpp"
+#include <cstdint>
 
 namespace iggy3d {
 
+struct FrontendSettings;
+struct FrontendState;
+struct ProductAppOptions;
+struct ProductAppWindowState;
+struct ProductCreativeBakedActiveRoomRefreshResult;
 struct ProductCreativeUiProjectionReceipt;
 struct ProductCreativeUiInputFrameReceipt;
 struct ProductCreativeUiDownstreamClickReceipt;
 struct ProductCreativeUiCommandFrameReceipt;
 struct ProductCreativeViewportPickFrameReceipt;
 struct ProductCreativeWireframeFrameReceipt;
+struct ProductSaveBridgeResult;
+struct ProductWorldTemplate;
+struct RenderReceipt;
 
 RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductWorldTemplate& world,

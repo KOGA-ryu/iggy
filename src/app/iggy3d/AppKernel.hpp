@@ -2,10 +2,12 @@
 
 #include <optional>
 
-#include "app/frontend/FrontendState.hpp"        // FrontendState, FrontendSettings
+#include "app/frontend/SettingsMenu.hpp"           // FrontendSettings
+#include "app/frontend/FrontendState.hpp"          // FrontendState
 #include "app/frontend/WorldSetupModel.hpp"       // WorldSetupDraft
 #include "app/iggy3d/Options.hpp"                  // ProductAppOptions
-#include "app/iggy3d/ReceiptBuilder.hpp"           // ProductAppWindowState
+#include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"          // ProductSaveBridgeResult
 #include "runtime/session/Session.hpp"

@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "runtime/ai/AiState.hpp"
