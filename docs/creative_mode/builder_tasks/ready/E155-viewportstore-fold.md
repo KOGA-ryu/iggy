@@ -1,6 +1,6 @@
 # E155 — ViewportStore fold (god-struct decomposition #6) — PARENT
 
-**STATUS: STAGED in `blocked/` — parent card for a slicer-Codex to decompose into builder gates.**
+**STATUS: READY — claim next.**
 Recon-grounded + spot-verified (workflow `wkqdxuj2u`, 2026-07-07). **Commit convention:** `claude: planned. codex: …`.
 
 > **Tree is mid-flight** — RoomStore (E148–E152) and SaveSessionStore (E153) just landed; the god-struct is

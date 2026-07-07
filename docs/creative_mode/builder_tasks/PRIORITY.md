@@ -17,9 +17,9 @@ all four child slices are complete. Disjoint from completed
 RoomStore/SaveSessionStore work; `runtimeSessionCreated` now belongs to
 GameplayStore.
 
-**Also staged as PARENT cards (blocked/, for a slicer-Codex to gate):** `E155`
-ViewportStore fold (#6 — fold 11 mapMaker* into ProductViewportState, ~92
-repoints, small/low-risk) and `E156` InputDeviceStore (#7 — 11 fields, ~265
+**Next ready card:** `E155` ViewportStore fold (#6 — fold 11 mapMaker* into
+ProductViewportState, ~92 repoints, small/low-risk). `E156` InputDeviceStore
+(#7 — 11 fields, ~265
 repoints; **dominant hazard: `interactionMode` is a real field on 6+ foreign
 structs, so compiler-guided only, never sed**). Both recon-grounded + spot-verified.
 
@@ -49,7 +49,7 @@ None.
 
 ## Pull Next
 
-None currently ready.
+1. E155 — ViewportStore fold.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -61,7 +61,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-None currently ready.
+1. E155 — ViewportStore fold.
 
 ## Parking Lot
 
