@@ -56,13 +56,21 @@ Held — do NOT promote to `ready/` on a guess:
   landings after it: **#1 `activeRoom`→`RoomStore`** (its own preflight; severs the nested
   `roomEditing.{activeRoom, activeRoomCollision}` duplicate) and **#3 `creativeFly`→`CreativeFlyAnchorStore`**.
   NOTE: the audit's S/M/L ratings are directional — each slice needs its own preflight to
-  confirm scope (E135 was rated S, proved L).
+  confirm scope (E135 was rated S, proved L; **E140 re-ranked #1 from 9.0 → hold**).
+- **RE-RANK (2026-07-07, `blocked/E140-activeroom-roomstore-preflight.md`):** after #2
+  clears, the next real ownership kill is **#3 `creativeFly`**, NOT #1. Recon found #1's
+  ownership payoff is already banked by the collision freshness store, and its nested
+  `roomEditing.activeRoom` is a load-bearing producer copy (do not delete). #1 is now a
+  high-churn (252 refs + 225 tests) zero-ownership mechanical regroup — deferred until
+  the decomposition actually gates the kernel.
 - **Ownership-deficit queue** (`docs/ownership_deficit_audit.md`) landing onto the
   decomposition map (`docs/god_struct_decomposition_target_map.md`):
-  - **#1 `activeRoom`→`RoomStore`** — the move-off-god-struct that severs the nested
-    `roomEditing.{activeRoom, activeRoomCollision}` duplicate storage
-    (`EditingState.hpp:19-20`). **Its OWN preflight** (NOT folded into collision G5,
-    which only removes rebakes per §11).
+  - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — **NEXT real kill after #2.** Genuine
+    unfixed freshness deficit in the proven exemplar shape (3 provenance writers, no
+    who/when stamp). Its own preflight.
+  - **#1 `activeRoom`→`RoomStore`** — **HELD** (`blocked/E140`). Structural move only
+    when it gates the kernel; NOT an ownership kill (see re-rank above). Preserve the
+    nested producer copy.
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
   - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).
