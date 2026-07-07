@@ -375,37 +375,37 @@ bool recordingDoesNotOverwriteProductVulkanMenuUiFields() {
       iggy3d::buildProductCreativeUiProjection(request);
 
   iggy3d::ProductAppWindowState window;
-  window.productVulkanMenu.uiReady = true;
-  window.productVulkanMenu.uiPartial = true;
-  window.productVulkanMenu.uiStatus = "preexisting_ui_status";
-  window.productVulkanMenu.uiReasonCode = "preexisting_ui_reason";
-  window.productVulkanMenu.uiPrimitiveCount = 101;
-  window.productVulkanMenu.uiTextCount = 102;
-  window.productVulkanMenu.uiRectCount = 103;
-  window.productVulkanMenu.uiRowCount = 104;
-  window.productVulkanMenu.uiSelectedAction = "preexisting_action";
+  window.frontendShell.productVulkanMenu.uiReady = true;
+  window.frontendShell.productVulkanMenu.uiPartial = true;
+  window.frontendShell.productVulkanMenu.uiStatus = "preexisting_ui_status";
+  window.frontendShell.productVulkanMenu.uiReasonCode = "preexisting_ui_reason";
+  window.frontendShell.productVulkanMenu.uiPrimitiveCount = 101;
+  window.frontendShell.productVulkanMenu.uiTextCount = 102;
+  window.frontendShell.productVulkanMenu.uiRectCount = 103;
+  window.frontendShell.productVulkanMenu.uiRowCount = 104;
+  window.frontendShell.productVulkanMenu.uiSelectedAction = "preexisting_action";
 
   iggy3d::recordProductCreativeUiProjection(window, projection.receipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
-  return expect(window.productVulkanMenu.uiReady,
+  return expect(window.frontendShell.productVulkanMenu.uiReady,
                 "vulkan ui ready untouched") &&
-         expect(window.productVulkanMenu.uiPartial,
+         expect(window.frontendShell.productVulkanMenu.uiPartial,
                 "vulkan ui partial untouched") &&
-         expect(window.productVulkanMenu.uiStatus == "preexisting_ui_status",
+         expect(window.frontendShell.productVulkanMenu.uiStatus == "preexisting_ui_status",
                 "vulkan ui status untouched") &&
-         expect(window.productVulkanMenu.uiReasonCode ==
+         expect(window.frontendShell.productVulkanMenu.uiReasonCode ==
                     "preexisting_ui_reason",
                 "vulkan ui reason untouched") &&
-         expect(window.productVulkanMenu.uiPrimitiveCount == 101U,
+         expect(window.frontendShell.productVulkanMenu.uiPrimitiveCount == 101U,
                 "vulkan ui primitive count untouched") &&
-         expect(window.productVulkanMenu.uiTextCount == 102U,
+         expect(window.frontendShell.productVulkanMenu.uiTextCount == 102U,
                 "vulkan ui text count untouched") &&
-         expect(window.productVulkanMenu.uiRectCount == 103U,
+         expect(window.frontendShell.productVulkanMenu.uiRectCount == 103U,
                 "vulkan ui rect count untouched") &&
-         expect(window.productVulkanMenu.uiRowCount == 104U,
+         expect(window.frontendShell.productVulkanMenu.uiRowCount == 104U,
                 "vulkan ui row count untouched") &&
-         expect(window.productVulkanMenu.uiSelectedAction ==
+         expect(window.frontendShell.productVulkanMenu.uiSelectedAction ==
                     "preexisting_action",
                 "vulkan ui action untouched") &&
          expectReceiptField(receipt,

@@ -156,27 +156,27 @@ bool starterMenuUiDrawListStatusIsStable() {
   const iggy3d::ProductUiDrawList drawList =
       iggy3d::buildProductStarterUiDrawList({&frontend, 0U, 1280U, 720U});
   iggy3d::recordProductVulkanMenuUiDrawList(window, "starter", drawList);
-  return expect(window.productVulkanMenu.requested, "menu requested") &&
-         expect(window.productVulkanMenu.visible, "menu visible") &&
-         expect(window.productVulkanMenu.status == "product_vulkan_menu_ui_ready",
+  return expect(window.frontendShell.productVulkanMenu.requested, "menu requested") &&
+         expect(window.frontendShell.productVulkanMenu.visible, "menu visible") &&
+         expect(window.frontendShell.productVulkanMenu.status == "product_vulkan_menu_ui_ready",
                 "menu ui ready status") &&
-         expect(window.productVulkanMenu.reasonCode == "product_ui_draw_list_ready",
+         expect(window.frontendShell.productVulkanMenu.reasonCode == "product_ui_draw_list_ready",
                 "menu ui ready reason") &&
-         expect(window.productVulkanMenu.surface == "starter",
+         expect(window.frontendShell.productVulkanMenu.surface == "starter",
                 "menu ui surface") &&
-         expect(window.productVulkanMenu.uiReady, "menu ui ready") &&
-         expect(!window.productVulkanMenu.uiPartial, "menu ui not partial") &&
-         expect(window.productVulkanMenu.uiStatus == "product_ui_draw_list_ready",
+         expect(window.frontendShell.productVulkanMenu.uiReady, "menu ui ready") &&
+         expect(!window.frontendShell.productVulkanMenu.uiPartial, "menu ui not partial") &&
+         expect(window.frontendShell.productVulkanMenu.uiStatus == "product_ui_draw_list_ready",
                 "menu ui draw list status") &&
-         expect(window.productVulkanMenu.uiPrimitiveCount == 26U,
+         expect(window.frontendShell.productVulkanMenu.uiPrimitiveCount == 26U,
                 "menu ui primitive count") &&
-         expect(window.productVulkanMenu.uiTextCount == 13U,
+         expect(window.frontendShell.productVulkanMenu.uiTextCount == 13U,
                 "menu ui text count") &&
-         expect(window.productVulkanMenu.uiRectCount == 13U,
+         expect(window.frontendShell.productVulkanMenu.uiRectCount == 13U,
                 "menu ui rect count") &&
-         expect(window.productVulkanMenu.uiRowCount == 9U,
+         expect(window.frontendShell.productVulkanMenu.uiRowCount == 9U,
                 "menu ui row count") &&
-         expect(window.productVulkanMenu.uiSelectedAction == "new_world",
+         expect(window.frontendShell.productVulkanMenu.uiSelectedAction == "new_world",
                 "menu ui selected action");
 }
 
@@ -201,11 +201,11 @@ bool starterMenuSubmitMarksFramePresented() {
                 "menu rendering path") &&
          expect(window.presentPath.productVulkanRecordMode == "ui_primitives",
                 "menu record mode") &&
-         expect(window.productVulkanMenu.visible, "menu visible after submit") &&
-         expect(window.productVulkanMenu.status ==
+         expect(window.frontendShell.productVulkanMenu.visible, "menu visible after submit") &&
+         expect(window.frontendShell.productVulkanMenu.status ==
                     "product_vulkan_menu_frame_submitted",
                 "menu submitted status") &&
-         expect(window.productVulkanMenu.reasonCode == "product_menu_ui_presented",
+         expect(window.frontendShell.productVulkanMenu.reasonCode == "product_menu_ui_presented",
                 "menu submitted reason");
 }
 

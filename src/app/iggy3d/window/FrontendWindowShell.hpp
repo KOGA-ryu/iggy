@@ -5,6 +5,7 @@
 
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/ProductStartupState.hpp"
+#include "app/iggy3d/window/ProductVulkanMenuState.hpp"
 
 namespace iggy3d {
 
@@ -19,6 +20,7 @@ struct FrontendWindowShell {
   std::string launchStatus = "not_requested";
   std::string packageLoadStatus = "not_requested";
   ProductStartupState startup;
+  ProductVulkanMenuState productVulkanMenu;
   std::uint64_t framesPresented = 0;
   std::uint64_t eventPollCount = 0;
   std::uint64_t menuRowCount = 0;

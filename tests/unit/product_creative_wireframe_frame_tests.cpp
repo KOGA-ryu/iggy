@@ -746,8 +746,8 @@ bool recorderPreservesExistingFields() {
   window.creativeAuthoring.creativeUiCommand.status = "command_before";
   window.creativeAuthoring.creativeViewportPickRequested = true;
   window.creativeAuthoring.creativeViewportPickStatus = "pick_before";
-  window.productVulkanMenu.uiReady = true;
-  window.productVulkanMenu.uiStatus = "vulkan_before";
+  window.frontendShell.productVulkanMenu.uiReady = true;
+  window.frontendShell.productVulkanMenu.uiStatus = "vulkan_before";
 
   iggy3d::ProductCreativeWireframeFrameReceipt receipt;
   receipt.requested = true;
@@ -770,8 +770,8 @@ bool recorderPreservesExistingFields() {
          expect(window.creativeAuthoring.creativeViewportPickStatus ==
                     "pick_before",
                 "viewport pick status kept") &&
-         expect(window.productVulkanMenu.uiReady, "vulkan ready kept") &&
-         expect(window.productVulkanMenu.uiStatus == "vulkan_before",
+         expect(window.frontendShell.productVulkanMenu.uiReady, "vulkan ready kept") &&
+         expect(window.frontendShell.productVulkanMenu.uiStatus == "vulkan_before",
                 "vulkan status kept");
 }
 

@@ -23,7 +23,6 @@
 #include "app/iggy3d/automation/AutomationControlState.hpp"
 #include "app/iggy3d/window/FrontendWindowShell.hpp"
 #include "app/iggy3d/window/PresentPathStore.hpp"
-#include "app/iggy3d/window/ProductVulkanMenuState.hpp"
 #include "app/iggy3d/gameplay/CollisionState.hpp"
 #include "app/iggy3d/gameplay/GameplayMovementInfo.hpp"
 #include "app/iggy3d/gameplay/CommandState.hpp"
@@ -51,7 +50,6 @@ struct ProductAppWindowState {
   ProductViewportState viewport;
   ProductAutomationControlState automationControl;
   PresentPathStore presentPath;
-  ProductVulkanMenuState productVulkanMenu;
 };
 
 }  // namespace iggy3d

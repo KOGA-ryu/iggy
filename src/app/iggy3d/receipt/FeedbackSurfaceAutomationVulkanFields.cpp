@@ -100,33 +100,33 @@ void appendProductFeedbackSurfaceAutomationVulkanFields(RenderReceipt& receipt, 
   appendReceiptField(receipt, "product_vulkan_record_mode",
                      window.presentPath.productVulkanRecordMode);
   appendReceiptField(receipt, "product_vulkan_menu_requested",
-                     window.productVulkanMenu.requested);
+                     window.frontendShell.productVulkanMenu.requested);
   appendReceiptField(receipt, "product_vulkan_menu_visible",
-                     window.productVulkanMenu.visible);
+                     window.frontendShell.productVulkanMenu.visible);
   appendReceiptField(receipt, "product_vulkan_menu_status",
-                     window.productVulkanMenu.status);
+                     window.frontendShell.productVulkanMenu.status);
   appendReceiptField(receipt, "product_vulkan_menu_reason_code",
-                     window.productVulkanMenu.reasonCode);
+                     window.frontendShell.productVulkanMenu.reasonCode);
   appendReceiptField(receipt, "product_vulkan_menu_surface",
-                     window.productVulkanMenu.surface);
+                     window.frontendShell.productVulkanMenu.surface);
   appendReceiptField(receipt, "product_vulkan_menu_ui_ready",
-                     window.productVulkanMenu.uiReady);
+                     window.frontendShell.productVulkanMenu.uiReady);
   appendReceiptField(receipt, "product_vulkan_menu_ui_partial",
-                     window.productVulkanMenu.uiPartial);
+                     window.frontendShell.productVulkanMenu.uiPartial);
   appendReceiptField(receipt, "product_vulkan_menu_ui_status",
-                     window.productVulkanMenu.uiStatus);
+                     window.frontendShell.productVulkanMenu.uiStatus);
   appendReceiptField(receipt, "product_vulkan_menu_ui_reason_code",
-                     window.productVulkanMenu.uiReasonCode);
+                     window.frontendShell.productVulkanMenu.uiReasonCode);
   appendReceiptField(receipt, "product_vulkan_menu_ui_primitive_count",
-                     window.productVulkanMenu.uiPrimitiveCount);
+                     window.frontendShell.productVulkanMenu.uiPrimitiveCount);
   appendReceiptField(receipt, "product_vulkan_menu_ui_text_count",
-                     window.productVulkanMenu.uiTextCount);
+                     window.frontendShell.productVulkanMenu.uiTextCount);
   appendReceiptField(receipt, "product_vulkan_menu_ui_rect_count",
-                     window.productVulkanMenu.uiRectCount);
+                     window.frontendShell.productVulkanMenu.uiRectCount);
   appendReceiptField(receipt, "product_vulkan_menu_ui_row_count",
-                     window.productVulkanMenu.uiRowCount);
+                     window.frontendShell.productVulkanMenu.uiRowCount);
   appendReceiptField(receipt, "product_vulkan_menu_ui_selected_action",
-                     window.productVulkanMenu.uiSelectedAction);
+                     window.frontendShell.productVulkanMenu.uiSelectedAction);
 }
 
 }  // namespace iggy3d

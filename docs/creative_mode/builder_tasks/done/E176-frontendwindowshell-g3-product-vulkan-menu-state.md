@@ -123,3 +123,57 @@ Report:
   docs.
 
 Do not stage, commit, push, or launch a window.
+
+## Completion Brief
+
+- Files changed:
+  - `docs/creative_mode/builder_tasks/PRIORITY.md`
+  - `docs/creative_mode/builder_tasks/blocked/E164-frontendwindowshell-ruling.md`
+  - `docs/god_struct_decomposition_target_map.md`
+  - `docs/god_struct_member_ownership.tsv`
+  - `src/app/iggy3d/ProductAppWindowState.hpp`
+  - `src/app/iggy3d/receipt/FeedbackSurfaceAutomationVulkanFields.cpp`
+  - `src/app/iggy3d/window/FrontendWindowShell.hpp`
+  - `src/app/iggy3d/window/RendererLifecycle.cpp`
+  - `tests/unit/product_creative_ui_command_receipt_tests.cpp`
+  - `tests/unit/product_creative_ui_frame_tests.cpp`
+  - `tests/unit/product_creative_ui_input_frame_tests.cpp`
+  - `tests/unit/product_creative_ui_projection_receipt_tests.cpp`
+  - `tests/unit/product_creative_ui_window_frame_tests.cpp`
+  - `tests/unit/product_creative_viewport_pick_frame_tests.cpp`
+  - `tests/unit/product_creative_wireframe_frame_tests.cpp`
+  - `tests/unit/product_window_renderer_lifecycle_tests.cpp`
+  - this task card after move to `done/`
+- Move scope:
+  - Moved only `ProductAppWindowState::productVulkanMenu` into `ProductAppWindowState::frontendShell.productVulkanMenu`.
+  - Added `ProductVulkanMenuState productVulkanMenu` to `FrontendWindowShell`.
+  - Removed the flat `ProductAppWindowState::productVulkanMenu` member and its direct include.
+  - Repointed existing production/test accesses from `window.productVulkanMenu` to `window.frontendShell.productVulkanMenu`.
+- Explicit non-moves:
+  - `automationControl`, `runtimeStateHash`, and `creativeWorldEpoch` stayed flat.
+  - SDL/window lifecycle fields stayed flat.
+  - `presentPath` and other existing stores were not moved or reshaped.
+- Receipt golden:
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed.
+  - Output: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+  - `git diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Ownership coverage:
+  - `/Users/kogaryu/iggy3d/build/product_god_struct_ownership_coverage_tests` passed.
+  - Output: `god-struct ownership coverage: assigned=16 CreativeAuthoringStore=1 DebugHudStore=1 FrontendWindowShell=1 GameplayStore=1 InputDeviceStore=1 PresentPathStore=1 RoomStore=1 SaveSessionStore=1 ViewportStore=2 app-global-remainder=5 delete=1`.
+- Required grep results:
+  - `rg -n "window\\.productVulkanMenu\\b" /Users/kogaryu/iggy3d/src /Users/kogaryu/iggy3d/tests --glob '*.cpp' --glob '*.hpp'` produced no output.
+  - `rg -n "\\bproductVulkanMenu\\b" /Users/kogaryu/iggy3d/src/app/iggy3d/ProductAppWindowState.hpp` produced no output.
+  - `rg -n "^productVulkanMenu\\b" /Users/kogaryu/iggy3d/docs/god_struct_member_ownership.tsv` produced no output.
+  - `rg -n "^frontendShell\\b" /Users/kogaryu/iggy3d/docs/god_struct_member_ownership.tsv` reported `frontendShell	FrontendWindowShell`.
+  - `rg -n "^automationControl\\s+app-global-remainder$" /Users/kogaryu/iggy3d/docs/god_struct_member_ownership.tsv` reported `automationControl	app-global-remainder`.
+  - Retained/deferred flat-field scan remained non-empty as expected: `automationControl` 133 hits, `creativeWorldEpoch` 23 hits, `runtimeStateHash` 24 hits.
+- Verification:
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure` passed: 260/260.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files passed.
+- Docs/state:
+  - `docs/god_struct_member_ownership.tsv` no longer has a `productVulkanMenu` top-level row; ownership is via `frontendShell	FrontendWindowShell`.
+  - `docs/god_struct_decomposition_target_map.md`, `PRIORITY.md`, and parent `E164` now mark FrontendWindowShell complete as E174-E176.
+- Concerns:
+  - None for E176. No stage, commit, push, or window launch performed.

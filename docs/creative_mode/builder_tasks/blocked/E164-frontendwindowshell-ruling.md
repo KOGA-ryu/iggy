@@ -1,11 +1,11 @@
 # E164 — FrontendWindowShell (god-struct decomposition #10) — RULING + move
 
-**STATUS: STAGED in `blocked/`.** Recon-grounded + spot-verified (workflow `wdnplylk0`).
+**STATUS: COMPLETE as E173-E176.** Recon-grounded + spot-verified (workflow `wdnplylk0`).
 **Commit convention:** `claude: planned. codex: …`. This is the residual "junk-drawer" resolution.
-Children released so far: `done/E173-frontendwindowshell-g0-current-state-audit.md`;
+Children completed: `done/E173-frontendwindowshell-g0-current-state-audit.md`;
 `done/E174-frontendwindowshell-g1-scalar-menu-state.md`;
 `done/E175-frontendwindowshell-g2-startup-state.md`;
-`ready/E176-frontendwindowshell-g3-product-vulkan-menu-state.md`.
+`done/E176-frontendwindowshell-g3-product-vulkan-menu-state.md`.
 
 > **EXECUTION SERIALIZES** on `ProductAppWindowState.hpp`; run AFTER #4/#6/#7/#9/#11 so the true leftover set is
 > visible. Re-anchor at slice time.
@@ -53,4 +53,4 @@ pairs with `mouseMenuSelectUsed` (already in the shell). **E156 has been updated
 - **G1:** stand up `FrontendWindowShell`, move scalar menu/status fields, and retarget `automationControl`
   ownership to `app-global-remainder`. **DONE as E174.**
 - **G2:** move `startup` into the existing `FrontendWindowShell`. **DONE as E175.**
-- **G3:** move `productVulkanMenu` into `FrontendWindowShell`; final map/PRIORITY docs. **READY as E176.**
+- **G3:** move `productVulkanMenu` into `FrontendWindowShell`; final map/PRIORITY docs. **DONE as E176.**

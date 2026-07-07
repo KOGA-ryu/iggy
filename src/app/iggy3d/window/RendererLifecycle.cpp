@@ -167,9 +167,9 @@ void recordProductVulkanSubmit(ProductAppWindowState& window,
     // branch-gate: BG-1028
     if (window.presentPath.productVulkanRenderingPath == "product_menu_ui" &&
         window.presentPath.productVulkanRecordMode == "ui_primitives") {
-      window.productVulkanMenu.visible = true;
-      window.productVulkanMenu.status = "product_vulkan_menu_frame_submitted";
-      window.productVulkanMenu.reasonCode =
+      window.frontendShell.productVulkanMenu.visible = true;
+      window.frontendShell.productVulkanMenu.status = "product_vulkan_menu_frame_submitted";
+      window.frontendShell.productVulkanMenu.reasonCode =
           receiptFieldValueOr(submit.receipt, "reason_code", "product_menu_ui_presented");
     }
   } else {
@@ -180,22 +180,22 @@ void recordProductVulkanSubmit(ProductAppWindowState& window,
 void recordProductVulkanMenuUiDrawList(ProductAppWindowState& window,
                                        std::string_view menuSurface,
                                        const ProductUiDrawList& uiDrawList) {
-  window.productVulkanMenu.requested = true;
-  window.productVulkanMenu.visible = uiDrawList.ready;
-  window.productVulkanMenu.status = uiDrawList.ready
+  window.frontendShell.productVulkanMenu.requested = true;
+  window.frontendShell.productVulkanMenu.visible = uiDrawList.ready;
+  window.frontendShell.productVulkanMenu.status = uiDrawList.ready
                                        ? "product_vulkan_menu_ui_ready"
                                        : "product_vulkan_menu_ui_not_ready";
-  window.productVulkanMenu.reasonCode = uiDrawList.reasonCode;
-  window.productVulkanMenu.surface = std::string(menuSurface);
-  window.productVulkanMenu.uiReady = uiDrawList.ready;
-  window.productVulkanMenu.uiPartial = uiDrawList.partial;
-  window.productVulkanMenu.uiStatus = uiDrawList.status;
-  window.productVulkanMenu.uiReasonCode = uiDrawList.reasonCode;
-  window.productVulkanMenu.uiPrimitiveCount = uiDrawList.primitiveCount;
-  window.productVulkanMenu.uiTextCount = uiDrawList.textCount;
-  window.productVulkanMenu.uiRectCount = uiDrawList.rectCount;
-  window.productVulkanMenu.uiRowCount = uiDrawList.rowCount;
-  window.productVulkanMenu.uiSelectedAction = uiDrawList.selectedAction;
+  window.frontendShell.productVulkanMenu.reasonCode = uiDrawList.reasonCode;
+  window.frontendShell.productVulkanMenu.surface = std::string(menuSurface);
+  window.frontendShell.productVulkanMenu.uiReady = uiDrawList.ready;
+  window.frontendShell.productVulkanMenu.uiPartial = uiDrawList.partial;
+  window.frontendShell.productVulkanMenu.uiStatus = uiDrawList.status;
+  window.frontendShell.productVulkanMenu.uiReasonCode = uiDrawList.reasonCode;
+  window.frontendShell.productVulkanMenu.uiPrimitiveCount = uiDrawList.primitiveCount;
+  window.frontendShell.productVulkanMenu.uiTextCount = uiDrawList.textCount;
+  window.frontendShell.productVulkanMenu.uiRectCount = uiDrawList.rectCount;
+  window.frontendShell.productVulkanMenu.uiRowCount = uiDrawList.rowCount;
+  window.frontendShell.productVulkanMenu.uiSelectedAction = uiDrawList.selectedAction;
 }
 
 ProductWindowRendererState createProductWindowRenderer(

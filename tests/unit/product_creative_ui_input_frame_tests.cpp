@@ -877,9 +877,9 @@ bool recorderCopiesSuppressedDownstreamClickReceipt() {
 bool recorderLeavesOtherReceiptFieldsUntouched() {
   iggy3d::ProductAppWindowState window;
   window.frontendShell.status = "window_status_before";
-  window.productVulkanMenu.uiReady = true;
-  window.productVulkanMenu.uiStatus = "vulkan_ui_before";
-  window.productVulkanMenu.uiSelectedAction = "resume";
+  window.frontendShell.productVulkanMenu.uiReady = true;
+  window.frontendShell.productVulkanMenu.uiStatus = "vulkan_ui_before";
+  window.frontendShell.productVulkanMenu.uiSelectedAction = "resume";
   window.creativeAuthoring.creativeUiProjection.requested = true;
   window.creativeAuthoring.creativeUiProjection.ready = true;
   window.creativeAuthoring.creativeUiProjection.status = "projection_before";
@@ -896,11 +896,11 @@ bool recorderLeavesOtherReceiptFieldsUntouched() {
 
   return expect(window.frontendShell.status == "window_status_before",
                 "window status unchanged") &&
-         expect(window.productVulkanMenu.uiReady,
+         expect(window.frontendShell.productVulkanMenu.uiReady,
                 "vulkan ui ready unchanged") &&
-         expect(window.productVulkanMenu.uiStatus == "vulkan_ui_before",
+         expect(window.frontendShell.productVulkanMenu.uiStatus == "vulkan_ui_before",
                 "vulkan ui status unchanged") &&
-         expect(window.productVulkanMenu.uiSelectedAction == "resume",
+         expect(window.frontendShell.productVulkanMenu.uiSelectedAction == "resume",
                 "vulkan selected action unchanged") &&
          expect(window.creativeAuthoring.creativeUiProjection.requested,
                 "projection requested unchanged") &&
