@@ -1,6 +1,6 @@
 # E167 — InputDeviceStore G3: Interaction Mode State
 
-**STATUS: BLOCKED — release only after E166 is reviewed and committed.**
+**STATUS: READY — claim next.**
 Parent: `blocked/E156-inputdevicestore-bulk-move.md`.
 Commit convention: `claude: planned. codex: ...`.
 
