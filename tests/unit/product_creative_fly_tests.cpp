@@ -1,4 +1,7 @@
 #include "app/iggy3d/creative/camera/Fly.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
+#include "app/iggy3d/view/ViewportState.hpp"
 
 #include <cmath>
 #include <iostream>
@@ -93,11 +96,244 @@ bool normalizesVerticalAndSprints() {
          expect(idle.reasonCode == "creative_fly_no_input", "idle reason");
 }
 
+bool anchorStoreDefaultsAreUnavailable() {
+  iggy3d::ProductCreativeFlyAnchorStore store;
+  iggy3d::ProductViewportState viewport;
+
+  return expect(store.provenance ==
+                    iggy3d::ProductCreativeFlyAnchorProvenance::Unseeded,
+                "default store unseeded") &&
+         expect(!iggy3d::productCreativeFlyAnchorAvailable(store),
+                "default store unavailable") &&
+         expect(!iggy3d::productCreativeFlyAnchorFreshForEpoch(store, 0),
+                "default store not fresh") &&
+         expect(!iggy3d::productCreativeFlyAnchorAvailable(
+                    viewport.creativeFlyAnchor),
+                "viewport store default unavailable");
+}
+
+bool anchorProvenanceNamesAreStable() {
+  using iggy3d::ProductCreativeFlyAnchorProvenance;
+
+  return expect(iggy3d::productCreativeFlyAnchorProvenanceName(
+                    ProductCreativeFlyAnchorProvenance::Unseeded) ==
+                    "Unseeded",
+                "unseeded name") &&
+         expect(iggy3d::productCreativeFlyAnchorProvenanceName(
+                    ProductCreativeFlyAnchorProvenance::OriginFramed) ==
+                    "OriginFramed",
+                "origin framed name") &&
+         expect(iggy3d::productCreativeFlyAnchorProvenanceName(
+                    ProductCreativeFlyAnchorProvenance::PlayerSeeded) ==
+                    "PlayerSeeded",
+                "player seeded name") &&
+         expect(iggy3d::productCreativeFlyAnchorProvenanceName(
+                    ProductCreativeFlyAnchorProvenance::SceneSeeded) ==
+                    "SceneSeeded",
+                "scene seeded name") &&
+         expect(iggy3d::productCreativeFlyAnchorProvenanceName(
+                    ProductCreativeFlyAnchorProvenance::FlyIntegrated) ==
+                    "FlyIntegrated",
+                "fly integrated name");
+}
+
+bool anchorFreshnessRequiresMatchingEpochAndSeededProvenance() {
+  using iggy3d::ProductCreativeFlyAnchorProvenance;
+
+  iggy3d::ProductCreativeFlyAnchorStore store;
+  store.positionMeters = {1.0F, 2.0F, 3.0F};
+  store.provenance = ProductCreativeFlyAnchorProvenance::PlayerSeeded;
+  store.seededFromWorldEpoch = 7;
+
+  iggy3d::ProductCreativeFlyAnchorStore unseededForEpoch;
+  unseededForEpoch.seededFromWorldEpoch = 7;
+
+  return expect(iggy3d::productCreativeFlyAnchorAvailable(store),
+                "seeded store available") &&
+         expect(iggy3d::productCreativeFlyAnchorFreshForEpoch(store, 7),
+                "matching epoch fresh") &&
+         expect(!iggy3d::productCreativeFlyAnchorFreshForEpoch(store, 6),
+                "stale epoch not fresh") &&
+         expect(!iggy3d::productCreativeFlyAnchorFreshForEpoch(
+                    unseededForEpoch, 7),
+                "unseeded matching epoch not fresh");
+}
+
+bool originSeedStampsCurrentEpochAndLegacyFields() {
+  using iggy3d::ProductCreativeFlyAnchorProvenance;
+
+  iggy3d::ProductAppWindowState window;
+  window.creativeWorldEpoch = 3;
+
+  const iggy3d::ProductCreativeFlyAnchorStore& store =
+      iggy3d::seedCreativeFlyAnchorFromOrigin(window);
+
+  return expect(store.provenance ==
+                    ProductCreativeFlyAnchorProvenance::OriginFramed,
+                "origin provenance") &&
+         expect(store.seededFromWorldEpoch == 3, "origin epoch") &&
+         expect(vecNear(store.positionMeters, {0.0F, 6.0F, 10.0F}),
+                "origin position") &&
+         expect(vecNear(window.viewport.creativeFlyAnchor.positionMeters,
+                        {0.0F, 6.0F, 10.0F}),
+                "origin stores position");
+}
+
+bool ensureFreshReseedsWhenEpochChanges() {
+  using iggy3d::ProductCreativeFlyAnchorProvenance;
+
+  iggy3d::ProductAppWindowState window;
+  window.runtimeStateHash = 42;
+  window.creativeWorldEpoch = 1;
+  iggy3d::recordCreativeFlyAnchorIntegrated(window, {9.0F, 8.0F, 7.0F});
+
+  const std::uint64_t sameRuntimeHash = window.runtimeStateHash;
+  iggy3d::bumpCreativeWorldEpoch(window);
+  const iggy3d::ProductCreativeFlyAnchorStore& store =
+      iggy3d::ensureFreshCreativeFlyAnchor(window, nullptr);
+
+  return expect(window.runtimeStateHash == sameRuntimeHash,
+                "runtime hash unchanged") &&
+         expect(store.seededFromWorldEpoch == 2, "reseeded epoch") &&
+         expect(store.provenance ==
+                    ProductCreativeFlyAnchorProvenance::PlayerSeeded,
+                "reseeded via session ensure path") &&
+         expect(vecNear(store.positionMeters, {}), "null session fallback") &&
+         expect(vecNear(window.viewport.creativeFlyAnchor.positionMeters, {}),
+                "ensure stores position");
+}
+
+bool ensureFreshDoesNotRewriteFreshAnchor() {
+  using iggy3d::ProductCreativeFlyAnchorProvenance;
+
+  iggy3d::ProductAppWindowState window;
+  window.creativeWorldEpoch = 5;
+  iggy3d::seedCreativeFlyAnchorFromScene(window, {4.0F, 5.0F, 6.0F});
+
+  const iggy3d::ProductCreativeFlyAnchorStore& store =
+      iggy3d::ensureFreshCreativeFlyAnchor(window, nullptr);
+
+  return expect(store.seededFromWorldEpoch == 5, "fresh epoch unchanged") &&
+         expect(store.provenance ==
+                    ProductCreativeFlyAnchorProvenance::SceneSeeded,
+                "fresh provenance unchanged") &&
+         expect(vecNear(store.positionMeters, {4.0F, 5.0F, 6.0F}),
+                "fresh position unchanged");
+}
+
+bool sceneAndIntegratedSeedsStampProvenanceAndEpoch() {
+  using iggy3d::ProductCreativeFlyAnchorProvenance;
+
+  iggy3d::ProductAppWindowState window;
+  window.creativeWorldEpoch = 8;
+
+  const iggy3d::ProductCreativeFlyAnchorStore& scene =
+      iggy3d::seedCreativeFlyAnchorFromScene(window, {1.0F, 2.0F, 3.0F});
+  const bool sceneOk =
+      scene.provenance == ProductCreativeFlyAnchorProvenance::SceneSeeded &&
+      scene.seededFromWorldEpoch == 8 &&
+      vecNear(scene.positionMeters, {1.0F, 2.0F, 3.0F});
+
+  const iggy3d::ProductCreativeFlyAnchorStore& integrated =
+      iggy3d::recordCreativeFlyAnchorIntegrated(window, {7.0F, 6.0F, 5.0F});
+
+  return expect(sceneOk, "scene seed stamps state") &&
+         expect(integrated.provenance ==
+                    ProductCreativeFlyAnchorProvenance::FlyIntegrated,
+                "integrated provenance") &&
+         expect(integrated.seededFromWorldEpoch == 8, "integrated epoch") &&
+         expect(vecNear(integrated.positionMeters, {7.0F, 6.0F, 5.0F}),
+                "integrated position") &&
+         expect(vecNear(window.viewport.creativeFlyAnchor.positionMeters,
+                        {7.0F, 6.0F, 5.0F}),
+                "integrated stores position");
+}
+
+bool originSeedWinsBeforeLazyEnsureInSameEpoch() {
+  using iggy3d::ProductCreativeFlyAnchorProvenance;
+
+  iggy3d::ProductAppWindowState window;
+  iggy3d::bumpCreativeWorldEpoch(window);
+  iggy3d::seedCreativeFlyAnchorFromOrigin(window);
+  const iggy3d::ProductCreativeFlyAnchorStore& ensured =
+      iggy3d::ensureFreshCreativeFlyAnchor(window, nullptr);
+
+  return expect(ensured.seededFromWorldEpoch == window.creativeWorldEpoch,
+                "origin ensure epoch") &&
+         expect(ensured.provenance ==
+                    ProductCreativeFlyAnchorProvenance::OriginFramed,
+                "origin ensure keeps provenance") &&
+         expect(vecNear(ensured.positionMeters, {0.0F, 6.0F, 10.0F}),
+                "origin ensure keeps position");
+}
+
+bool integrationThenNextOriginFrameReseedsForNewEpoch() {
+  using iggy3d::ProductCreativeFlyAnchorProvenance;
+
+  iggy3d::ProductAppWindowState window;
+  iggy3d::bumpCreativeWorldEpoch(window);
+  iggy3d::seedCreativeFlyAnchorFromOrigin(window);
+  iggy3d::recordCreativeFlyAnchorIntegrated(window, {3.0F, 4.0F, 5.0F});
+  const bool integrated =
+      window.viewport.creativeFlyAnchor.provenance ==
+          ProductCreativeFlyAnchorProvenance::FlyIntegrated &&
+      iggy3d::productCreativeFlyAnchorFreshForEpoch(
+          window.viewport.creativeFlyAnchor, window.creativeWorldEpoch);
+
+  iggy3d::bumpCreativeWorldEpoch(window);
+  iggy3d::seedCreativeFlyAnchorFromOrigin(window);
+
+  return expect(integrated, "integrated anchor fresh before next epoch") &&
+         expect(window.viewport.creativeFlyAnchor.provenance ==
+                    ProductCreativeFlyAnchorProvenance::OriginFramed,
+                "next origin frame reseeds provenance") &&
+         expect(window.viewport.creativeFlyAnchor.seededFromWorldEpoch ==
+                    window.creativeWorldEpoch,
+                "next origin frame reseeds epoch") &&
+         expect(vecNear(window.viewport.creativeFlyAnchor.positionMeters,
+                        {0.0F, 6.0F, 10.0F}),
+                "next origin frame resets position");
+}
+
+bool repeatedEnsureIsIdempotentWithinEpoch() {
+  using iggy3d::ProductCreativeFlyAnchorProvenance;
+
+  iggy3d::ProductAppWindowState window;
+  window.creativeWorldEpoch = 11;
+  const iggy3d::ProductCreativeFlyAnchorStore first =
+      iggy3d::ensureFreshCreativeFlyAnchor(window, nullptr);
+  const iggy3d::ProductCreativeFlyAnchorStore second =
+      iggy3d::ensureFreshCreativeFlyAnchor(window, nullptr);
+
+  return expect(first.seededFromWorldEpoch == 11,
+                "first ensure stamps epoch") &&
+         expect(second.seededFromWorldEpoch == first.seededFromWorldEpoch,
+                "second ensure keeps epoch") &&
+         expect(second.provenance == first.provenance,
+                "second ensure keeps provenance") &&
+         expect(second.provenance ==
+                    ProductCreativeFlyAnchorProvenance::PlayerSeeded,
+                "ensure provenance player seeded") &&
+         expect(vecNear(second.positionMeters, first.positionMeters),
+                "second ensure keeps position");
+}
+
 }  // namespace
 
 int main() {
   const bool ok = disabledAndInvalidDoNotMove() &&
-                  appliesYawRelativeMovement() && normalizesVerticalAndSprints();
+                  appliesYawRelativeMovement() &&
+                  normalizesVerticalAndSprints() &&
+                  anchorStoreDefaultsAreUnavailable() &&
+                  anchorProvenanceNamesAreStable() &&
+                  anchorFreshnessRequiresMatchingEpochAndSeededProvenance() &&
+                  originSeedStampsCurrentEpochAndLegacyFields() &&
+                  ensureFreshReseedsWhenEpochChanges() &&
+                  ensureFreshDoesNotRewriteFreshAnchor() &&
+                  sceneAndIntegratedSeedsStampProvenanceAndEpoch() &&
+                  originSeedWinsBeforeLazyEnsureInSameEpoch() &&
+                  integrationThenNextOriginFrameReseedsForNewEpoch() &&
+                  repeatedEnsureIsIdempotentWithinEpoch();
   if (!ok) {
     return 1;
   }

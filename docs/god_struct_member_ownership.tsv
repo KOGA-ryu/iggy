@@ -103,6 +103,7 @@ deletedSelectedSaveEnabled	SaveSessionStore
 deletedSelectedSaveStatus	SaveSessionStore
 saveRecover	SaveSessionStore
 runtimeStateHash	delete
+creativeWorldEpoch	ViewportStore
 viewport	ViewportStore
 sceneItemCount	GameplayStore
 debugItemCount	GameplayStore

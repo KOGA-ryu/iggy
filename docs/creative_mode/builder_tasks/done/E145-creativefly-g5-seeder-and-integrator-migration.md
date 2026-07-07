@@ -75,3 +75,51 @@ Append:
 - Direct raw-field writer grep:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completed Brief
+
+- Files changed:
+  - Updated `src/app/iggy3d/window/InputFrame.cpp`.
+  - Updated `src/app/iggy3d/gameplay/ProjectionRefresh.cpp`.
+  - Updated `tests/unit/product_window_input_frame_tests.cpp`.
+  - Updated `tests/unit/product_vulkan_room_frame_tests.cpp`.
+- InputFrame seeder migration:
+  - Removed the local `activePlayerPositionOrOrigin(...)` and
+    `ensureCreativeFlyAnchor(...)` raw-field writer helpers from
+    `InputFrame.cpp`.
+  - `applyProductWindowCreativeFlyActions(...)` now starts from
+    `ensureFreshCreativeFlyAnchor(window, activeSession)`.
+  - The creative Navigate path now calls
+    `ensureFreshCreativeFlyAnchor(context.window, &*context.activeSession)`
+    after the existing Navigate-active guard.
+- Integrator migration:
+  - `creativeFlyActive`, `creativeFlyStatus`, `creativeFlyReasonCode`, and
+    `creativeFlySpeedMetersPerSecond` remain in `window.viewport`.
+  - Applied fly movement now records the final anchor via
+    `recordCreativeFlyAnchorIntegrated(...)`, which mirrors legacy fields for
+    compatibility.
+- mapMakerAnchorFor behavior preserved:
+  - Fresh store anchors are returned directly.
+  - Scene player anchors seed through `seedCreativeFlyAnchorFromScene(...)` and
+    are returned.
+  - No-player scene projection returns `{}` without latching store or legacy
+    anchor fields, preserving retry-next-frame behavior.
+- Direct raw-field writer grep:
+  - `rg -n "creativeFlyAnchorValid\\s*=|creativeFlyPositionMeters\\s*=" /Users/kogaryu/iggy3d/src/app/iggy3d --glob '*.cpp' --glob '*.hpp'`
+    reports only:
+    - `src/app/iggy3d/view/CreativeFlyAnchorStore.cpp` compatibility mirror
+      writes.
+    - `src/app/iggy3d/view/ViewportState.hpp` legacy field initializer, which
+      remains until G7.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_window_input_frame_tests product_creative_navigate_fly_tests product_vulkan_room_frame_tests product_creative_world_launch_tests -j10`
+    passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_window_input_frame_tests|product_creative_navigate_fly_tests|product_vulkan_room_frame_tests|product_creative_world_launch_tests)$' --output-on-failure`
+    passed: 4/4.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched/new files passed.
+- Concerns/deferred:
+  - Legacy raw fields and receipt migration remain for G7.
+  - G6 still needs stress ordering coverage for epoch/open/reseed behavior.
+  - `Testing/Temporary/LastTest.log` remains dirty from CTest output and was
+    intentionally left untouched.

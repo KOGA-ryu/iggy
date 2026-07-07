@@ -92,3 +92,43 @@ Append:
 - Legacy fields preserved:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completed Brief
+
+- Files changed:
+  - Added `src/app/iggy3d/view/CreativeFlyAnchorStore.hpp`.
+  - Updated `src/app/iggy3d/view/ViewportState.hpp`.
+  - Updated `src/app/iggy3d/ProductAppWindowState.hpp`.
+  - Updated `docs/god_struct_member_ownership.tsv`.
+  - Updated `tests/unit/product_creative_fly_tests.cpp`.
+- Epoch field added:
+  - Added `ProductAppWindowState::creativeWorldEpoch = 0`.
+  - Ownership TSV records `creativeWorldEpoch` under `ViewportStore`.
+  - No production writer/consumer was added in this gate.
+- Store/API shape:
+  - Added `ProductCreativeFlyAnchorProvenance` with:
+    `Unseeded`, `OriginFramed`, `PlayerSeeded`, `SceneSeeded`,
+    `FlyIntegrated`.
+  - Added `ProductCreativeFlyAnchorStore` with `positionMeters`,
+    `provenance`, and `seededFromWorldEpoch`.
+  - Added pure header helpers:
+    `productCreativeFlyAnchorProvenanceName(...)`,
+    `productCreativeFlyAnchorAvailable(...)`,
+    `productCreativeFlyAnchorFreshForEpoch(...)`.
+  - Added `ProductViewportState::creativeFlyAnchor`.
+- Legacy fields preserved:
+  - `ProductViewportState::creativeFlyAnchorValid` remains.
+  - `ProductViewportState::creativeFlyPositionMeters` remains.
+  - Existing fly behavior and receipt fields were not changed.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_creative_fly_tests product_god_struct_ownership_coverage_tests -j10`
+    passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_creative_fly_tests|product_god_struct_ownership_coverage_tests)$' --output-on-failure`
+    passed: 2/2.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched/new files passed.
+- Concerns/deferred:
+  - Store writers, freshness migration, camera consumer migration, receipt
+    changes, and legacy field deletion remain for later G3-G7 cards.
+  - `Testing/Temporary/LastTest.log` remains dirty from CTest output and was
+    intentionally left untouched.

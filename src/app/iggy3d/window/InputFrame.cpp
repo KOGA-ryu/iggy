@@ -16,6 +16,7 @@
 #include "app/iggy3d/creative/bridge/UiCommandFrame.hpp"
 #include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
 #include "app/iggy3d/creative/bridge/ViewportPickFrame.hpp"
+#include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "app/iggy3d/room_editor/ActionController.hpp"
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
@@ -336,31 +337,6 @@ void updateProductWindowMouseCapture(const FrontendState& frontend,
   recordProductMouseCaptureResult(window, policy, &platform);
 }
 
-Vec3 activePlayerPositionOrOrigin(const Session* activeSession) {
-  // branch-gate: BG-1205
-  if (activeSession == nullptr) {
-    return {};
-  }
-  const EntityId playerActor = activeSession->state().players.actorForSlot(0);
-  const EntityState* player = activeSession->state().world.findById(playerActor);
-  // branch-gate: BG-1205
-  if (player == nullptr) {
-    return {};
-  }
-  return player->transform.position;
-}
-
-void ensureCreativeFlyAnchor(ProductAppWindowState& window,
-                             const Session* activeSession) {
-  // branch-gate: BG-1205
-  if (window.viewport.creativeFlyAnchorValid) {
-    return;
-  }
-  window.viewport.creativeFlyPositionMeters =
-      activePlayerPositionOrOrigin(activeSession);
-  window.viewport.creativeFlyAnchorValid = true;
-}
-
 bool mapMakerConsumesGameplayAction(InputAction action) {
   constexpr std::array kConsumedActions{
       InputAction::PlayerMoveX,
@@ -391,7 +367,8 @@ ProductCreativeFlyResult applyProductWindowCreativeFlyActions(
     ProductAppWindowState& window,
     const Session* activeSession,
     const ActionState& actions) {
-  ensureCreativeFlyAnchor(window, activeSession);
+  const ProductCreativeFlyAnchorStore& anchor =
+      ensureFreshCreativeFlyAnchor(window, activeSession);
   ProductCreativeFlyConfig config;
   config.enabled = true;
   ProductCreativeFlyInput input;
@@ -407,15 +384,14 @@ ProductCreativeFlyResult applyProductWindowCreativeFlyActions(
   input.cameraYawDegrees = window.viewport.cameraYawDegrees;
   input.cameraPitchDegrees = window.viewport.cameraPitchDegrees;
   const ProductCreativeFlyResult fly =
-      applyProductCreativeFlyInput(config, input,
-                                   window.viewport.creativeFlyPositionMeters);
+      applyProductCreativeFlyInput(config, input, anchor.positionMeters);
   window.viewport.creativeFlyActive = true;
   window.viewport.creativeFlyStatus = fly.reasonCode;
   window.viewport.creativeFlyReasonCode = fly.reasonCode;
   window.viewport.creativeFlySpeedMetersPerSecond = fly.speedMetersPerSecond;
   // branch-gate: BG-1205
   if (fly.applied) {
-    window.viewport.creativeFlyPositionMeters = fly.finalPositionMeters;
+    recordCreativeFlyAnchorIntegrated(window, fly.finalPositionMeters);
   }
   return fly;
 }
@@ -1270,7 +1246,7 @@ void processProductCreativeNavigateFlyPhase(
 
   // Seed the fly anchor from the current view on entering Navigate so the camera
   // starts where the fixed first-person anchor already is.
-  ensureCreativeFlyAnchor(context.window, &*context.activeSession);
+  ensureFreshCreativeFlyAnchor(context.window, &*context.activeSession);
   ActionState flyActions;
   pollKeyboardCreativeFlyActions(flyActions);
   pollMouseGameplayActions(context.inputFrame.mouse, flyActions);

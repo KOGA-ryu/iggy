@@ -10,6 +10,7 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
+#include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/platform/SdlWindow.hpp"
@@ -822,10 +823,15 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
                 "map maker movement activates creative fly") &&
          expect(window.viewport.creativeFlyStatus == "creative_fly_applied",
                 "map maker movement applies creative fly") &&
-         expect(window.viewport.creativeFlyAnchorValid,
-                "map maker movement has creative anchor") &&
-         expect(window.viewport.creativeFlyPositionMeters.z < beforePosition.z,
-                "map maker movement advances creative camera forward") &&
+         expect(iggy3d::productCreativeFlyAnchorAvailable(
+                    window.viewport.creativeFlyAnchor),
+                "map maker movement has store anchor") &&
+         expect(window.viewport.creativeFlyAnchor.provenance ==
+                    iggy3d::ProductCreativeFlyAnchorProvenance::FlyIntegrated,
+                "map maker movement records integrated provenance") &&
+         expect(window.viewport.creativeFlyAnchor.positionMeters.z <
+                    beforePosition.z,
+                "map maker movement advances store camera forward") &&
          expect(iggy3d::nearlyEqual(beforePosition,
                                     afterPlayer->transform.position),
                 "map maker movement does not move player body") &&

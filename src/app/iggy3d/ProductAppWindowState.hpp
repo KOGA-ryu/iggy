@@ -310,6 +310,8 @@ struct ProductAppWindowState {
   std::string deletedSelectedSaveStatus = "none";
   ProductSaveRecoverState saveRecover;
   std::uint64_t runtimeStateHash = 0;
+  // Window-owned monotonic creative world generation used by viewport fly state.
+  std::uint64_t creativeWorldEpoch = 0;
   ProductViewportState viewport;
   std::uint64_t sceneItemCount = 0;
   std::uint64_t debugItemCount = 0;

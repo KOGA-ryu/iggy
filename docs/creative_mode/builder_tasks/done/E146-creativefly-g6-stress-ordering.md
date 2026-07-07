@@ -59,3 +59,41 @@ Append:
 - No-player scene guard:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completed Brief
+
+- Files changed:
+  - Updated `tests/unit/product_creative_fly_tests.cpp`.
+  - Updated `tests/unit/product_creative_world_launch_tests.cpp`.
+  - Reused the no-player scene guard added in
+    `tests/unit/product_vulkan_room_frame_tests.cpp`.
+- Cross-world result:
+  - Added a same-window blank world A -> blank world B launch regression.
+  - The test integrates the world-A fly anchor, launches world B, and verifies
+    `creativeWorldEpoch` increments while the second anchor is origin-framed and
+    fresh for the new epoch.
+  - It asserts the blank runtime hash remains unchanged, proving freshness does
+    not rely on `Session::stateHash()` / `runtimeStateHash` drift.
+- Ordering/idempotence guards:
+  - Origin seed wins before lazy ensure in the same epoch.
+  - Integration changes provenance to `FlyIntegrated`.
+  - The next origin-frame seed after an epoch bump resets position/provenance to
+    `OriginFramed`.
+  - Repeated `ensureFreshCreativeFlyAnchor(...)` calls in one epoch keep
+    position/provenance stable.
+- No-player scene guard:
+  - `mapMakerFrameWithoutPlayerDoesNotLatchFlyAnchor()` exercises the projection
+    path with no active session/player scene item and verifies no camera
+    override, no legacy latch, and no store seed.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_creative_world_launch_tests product_window_input_frame_tests product_vulkan_room_frame_tests product_creative_fly_tests -j10`
+    passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_creative_world_launch_tests|product_window_input_frame_tests|product_vulkan_room_frame_tests|product_creative_fly_tests)$' --output-on-failure`
+    passed: 4/4.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched/new files passed.
+- Concerns/deferred:
+  - Receipt fields still expose legacy anchor data until G7.
+  - Legacy raw field deletion remains for G7.
+  - `Testing/Temporary/LastTest.log` remains dirty from CTest output and was
+    intentionally left untouched.

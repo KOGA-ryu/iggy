@@ -63,3 +63,43 @@ Append:
 - Legacy field compatibility:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completed Brief
+
+- Files changed:
+  - Updated `src/app/iggy3d/Operations.cpp`.
+  - Updated `src/app/iggy3d/gameplay/ProjectionRefresh.cpp`.
+  - Updated `tests/unit/product_creative_world_launch_tests.cpp`.
+  - Updated `tests/unit/product_vulkan_room_frame_tests.cpp`.
+- Origin seed wiring:
+  - `frameCreativeStageCameraOnOrigin(...)` now calls
+    `bumpCreativeWorldEpoch(window)` exactly once per invocation, then seeds the
+    fly anchor through `seedCreativeFlyAnchorFromOrigin(window)`.
+  - The caller still owns and writes `cameraYawDegrees = 0` and
+    `cameraPitchDegrees = -30`.
+  - New/open creative launch tests assert the epoch is bumped and the origin
+    store anchor is fresh for that epoch.
+- Camera consumer wiring:
+  - `ProjectionRefresh.cpp` now gates `frame.cameraAnchorOverrideAvailable` on
+    `productCreativeFlyAnchorFreshForEpoch(window.viewport.creativeFlyAnchor,
+    window.creativeWorldEpoch)`.
+  - `frame.cameraAnchorOverrideMeters` now reads
+    `window.viewport.creativeFlyAnchor.positionMeters`.
+  - Downstream viewport framing and frame presenter fan-out were unchanged.
+- Legacy field compatibility:
+  - The origin helper still mirrors `creativeFlyAnchorValid` and
+    `creativeFlyPositionMeters`, so existing receipt fields remain compatible.
+  - Named tests that fabricated raw camera state now seed the store helper.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_creative_world_launch_tests product_vulkan_room_frame_tests product_creative_fly_tests -j10`
+    passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_creative_world_launch_tests|product_vulkan_room_frame_tests|product_creative_fly_tests)$' --output-on-failure`
+    passed: 3/3.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched/new files passed.
+- Concerns/deferred:
+  - `InputFrame.cpp` lazy session/origin seeders and `mapMakerAnchorFor(...)`
+    remain on legacy fields until G5.
+  - Legacy raw fields and receipt migration remain for G7.
+  - `Testing/Temporary/LastTest.log` remains dirty from CTest output and was
+    intentionally left untouched.

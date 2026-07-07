@@ -3,6 +3,7 @@
 #include <string>
 #include <cstdint>
 
+#include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "core/math/Vec3.hpp"
 
 namespace iggy3d {
@@ -17,8 +18,7 @@ struct ProductViewportState {
   float cameraYawDegrees = 0.0F;
   float cameraPitchDegrees = 0.0F;
   bool cameraHeadingVisible = false;
-  bool creativeFlyAnchorValid = false;
-  Vec3 creativeFlyPositionMeters;
+  ProductCreativeFlyAnchorStore creativeFlyAnchor;
   bool creativeFlyActive = false;
   float creativeFlySpeedMetersPerSecond = 0.0F;
   std::string creativeFlyStatus = "creative_fly_not_requested";

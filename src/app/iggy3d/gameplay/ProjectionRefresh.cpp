@@ -8,6 +8,7 @@
 
 #include "app/iggy3d/gameplay/TapeRunner.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
+#include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
 #include "runtime/ai/NpcBehaviorDebugSnapshot.hpp"
 #include "runtime/ai/NpcBehaviorProfile.hpp"
@@ -352,16 +353,15 @@ Vec3 playerAnchorFromScene(const SceneProjectionResult& scene, bool& found) {
 
 Vec3 mapMakerAnchorFor(ProductAppWindowState& window,
                        const SceneProjectionResult& scene) {
-  // branch-gate: BG-1205
-  if (window.viewport.creativeFlyAnchorValid) {
-    return window.viewport.creativeFlyPositionMeters;
+  if (productCreativeFlyAnchorFreshForEpoch(window.viewport.creativeFlyAnchor,
+                                            window.creativeWorldEpoch)) {
+    return window.viewport.creativeFlyAnchor.positionMeters;
   }
   bool playerFound = false;
   const Vec3 playerPosition = playerAnchorFromScene(scene, playerFound);
   // branch-gate: BG-1205
   if (playerFound) {
-    window.viewport.creativeFlyPositionMeters = playerPosition;
-    window.viewport.creativeFlyAnchorValid = true;
+    seedCreativeFlyAnchorFromScene(window, playerPosition);
     return playerPosition;
   }
   return {};
@@ -775,10 +775,14 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
       window.creativeNavigateActive;
   // F0: even before Navigate is engaged, the blank creative stage frames its
   // fly-camera pose (origin-framed on entry) so the origin grid is in view.
+  const bool creativeFlyAnchorFresh =
+      productCreativeFlyAnchorFreshForEpoch(window.viewport.creativeFlyAnchor,
+                                            window.creativeWorldEpoch);
   frame.cameraAnchorOverrideAvailable =
       (mapMakerLive || creativeNavigateOverride || creativeStageGridLive) &&
-      window.viewport.creativeFlyAnchorValid;
-  frame.cameraAnchorOverrideMeters = window.viewport.creativeFlyPositionMeters;
+      creativeFlyAnchorFresh;
+  frame.cameraAnchorOverrideMeters =
+      window.viewport.creativeFlyAnchor.positionMeters;
   frame.mapMakerCubePreview = buildProductMapMakerCubePreview(
       mapMakerLive,
       frame.cameraAnchorOverrideMeters,

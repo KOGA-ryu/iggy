@@ -16,6 +16,7 @@
 #include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
 #include "app/iggy3d/creative/bridge/ViewportPickFrame.hpp"
 #include "app/iggy3d/creative/bridge/WireframeFrame.hpp"
+#include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 #include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 
@@ -203,14 +204,20 @@ void appendProductGameplaySceneStateFields(RenderReceipt& receipt, const Product
   appendReceiptField(receipt, "creative_fly_speed_mps",
                      floatReceiptValue(
                          window.viewport.creativeFlySpeedMetersPerSecond));
-  appendReceiptField(receipt, "creative_fly_anchor_valid",
-                     window.viewport.creativeFlyAnchorValid);
+  appendReceiptField(receipt, "creative_fly_anchor_provenance",
+                     std::string(productCreativeFlyAnchorProvenanceName(
+                         window.viewport.creativeFlyAnchor.provenance)));
+  appendReceiptField(receipt, "creative_fly_anchor_world_epoch",
+                     window.viewport.creativeFlyAnchor.seededFromWorldEpoch);
   appendReceiptField(receipt, "creative_fly_world_x",
-                     floatReceiptValue(window.viewport.creativeFlyPositionMeters.x));
+                     floatReceiptValue(
+                         window.viewport.creativeFlyAnchor.positionMeters.x));
   appendReceiptField(receipt, "creative_fly_world_y",
-                     floatReceiptValue(window.viewport.creativeFlyPositionMeters.y));
+                     floatReceiptValue(
+                         window.viewport.creativeFlyAnchor.positionMeters.y));
   appendReceiptField(receipt, "creative_fly_world_z",
-                     floatReceiptValue(window.viewport.creativeFlyPositionMeters.z));
+                     floatReceiptValue(
+                         window.viewport.creativeFlyAnchor.positionMeters.z));
   appendReceiptField(receipt, "product_draw_item_count",
                      window.viewport.productDrawItemCount);
   appendReceiptField(receipt, "product_draw_grid_visible",

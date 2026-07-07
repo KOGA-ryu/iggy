@@ -658,7 +658,8 @@ creative_fly_active	false
 creative_fly_status	creative_fly_not_requested
 creative_fly_reason_code	creative_fly_not_requested
 creative_fly_speed_mps	0.000
-creative_fly_anchor_valid	false
+creative_fly_anchor_provenance	Unseeded
+creative_fly_anchor_world_epoch	0
 creative_fly_world_x	0.000
 creative_fly_world_y	0.000
 creative_fly_world_z	0.000

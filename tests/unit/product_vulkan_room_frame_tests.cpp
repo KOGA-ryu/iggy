@@ -6,6 +6,7 @@
 #include "app/iggy3d/window/RendererLifecycle.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "core/math/Mat4.hpp"
 #include "core/math/Vec3.hpp"
 #include "render/FrameInput.hpp"
@@ -1347,8 +1348,8 @@ bool gameplayMapMakerFrameCarriesGridOverlay() {
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.mapMakerStatus = "map_maker_enabled";
   window.mapMakerReasonCode = window.mapMakerStatus;
-  window.viewport.creativeFlyAnchorValid = true;
-  window.viewport.creativeFlyPositionMeters = {0.0F, 2.0F, 0.0F};
+  window.creativeWorldEpoch = 1;
+  iggy3d::seedCreativeFlyAnchorFromScene(window, {0.0F, 2.0F, 0.0F});
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Gameplay;
   frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
@@ -1443,6 +1444,34 @@ bool gameplayMapMakerFrameCarriesGridOverlay() {
                 "map maker hud vulkan text");
 }
 
+bool mapMakerFrameWithoutPlayerDoesNotLatchFlyAnchor() {
+  std::optional<iggy3d::Session> session;
+  iggy3d::ProductAppWindowState window;
+  window.interactionMode = iggy3d::ProductInteractionMode::Creative;
+  window.mapMakerStatus = "map_maker_enabled";
+  window.mapMakerReasonCode = window.mapMakerStatus;
+  window.creativeWorldEpoch = 1;
+  iggy3d::FrontendState frontend;
+  frontend.screen = iggy3d::FrontendScreen::Gameplay;
+  frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
+
+  const iggy3d::ProductGameplayProjectionFrame projection =
+      iggy3d::buildProductGameplayProjectionFrame(
+          iggy3d::ProductGameplayProjectionFrameRequest{
+              session,
+              window,
+              false,
+              false,
+              iggy3d::ProductRendererRequest::Vulkan,
+              frontend});
+
+  return expect(!projection.cameraAnchorOverrideAvailable,
+                "no-player map maker has no camera override") &&
+         expect(!iggy3d::productCreativeFlyAnchorAvailable(
+                    window.viewport.creativeFlyAnchor),
+                "no-player map maker does not seed store anchor");
+}
+
 }  // namespace
 
 int main() {
@@ -1461,7 +1490,8 @@ int main() {
                   roomEditorSurfaceShowsEditorHudOnly() &&
                   vulkanGameplayFrameCarriesMovementTuningUiOverlay() &&
                   vulkanGameplayFrameCarriesDevToolsOverlay() &&
-                  gameplayMapMakerFrameCarriesGridOverlay();
+                  gameplayMapMakerFrameCarriesGridOverlay() &&
+                  mapMakerFrameWithoutPlayerDoesNotLatchFlyAnchor();
   if (!ok) {
     return EXIT_FAILURE;
   }

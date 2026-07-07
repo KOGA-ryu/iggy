@@ -20,6 +20,7 @@
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/world/PackageSessionSeed.hpp"
 #include "app/iggy3d/save/RoomMarkerBinding.hpp"
+#include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "app/iggy3d/world/Creation.hpp"
 #include "content/PackageLoader.hpp"
 #include "core/math/Aabb3.hpp"
@@ -254,8 +255,8 @@ bool createCreativeBlankSession(std::optional<Session>& activeSession,
 // F0: place the creative fly camera on the world origin and pitch it down so
 // the origin ground grid (where objects will be created) is framed on entry.
 void frameCreativeStageCameraOnOrigin(ProductAppWindowState& window) {
-  window.viewport.creativeFlyPositionMeters = {0.0F, 6.0F, 10.0F};
-  window.viewport.creativeFlyAnchorValid = true;
+  bumpCreativeWorldEpoch(window);
+  seedCreativeFlyAnchorFromOrigin(window);
   window.viewport.cameraYawDegrees = 0.0F;
   window.viewport.cameraPitchDegrees = -30.0F;
 }

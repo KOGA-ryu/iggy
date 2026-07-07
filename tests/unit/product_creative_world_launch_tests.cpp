@@ -6,6 +6,7 @@
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/save/Flow.hpp"
+#include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/RenderDiagnostics.hpp"
@@ -968,6 +969,12 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
                 "open launch window status") &&
          expect(openWindow.activeProductSaveId == "none",
                 "open launch does not set product save id") &&
+         expect(openWindow.creativeWorldEpoch == 1U,
+                "open launch creative world epoch bumped") &&
+         expect(iggy3d::productCreativeFlyAnchorFreshForEpoch(
+                    openWindow.viewport.creativeFlyAnchor,
+                    openWindow.creativeWorldEpoch),
+                "open launch fly anchor fresh") &&
          expect(openApp.identity.saveId == opened.saveId,
                 "open launch active creative save id") &&
          expect(openApp.identity.savePath == opened.path.generic_string(),
@@ -4124,18 +4131,85 @@ bool creativeLaunchFramesCameraOnOrigin() {
                           app);
 
   return expect(launched.accepted, "origin camera launch accepted") &&
-         expect(window.viewport.creativeFlyAnchorValid,
-                "origin camera fly anchor valid") &&
-         expect(window.viewport.creativeFlyPositionMeters.x == 0.0F,
-                "origin camera anchor x at origin") &&
-         expect(window.viewport.creativeFlyPositionMeters.y > 0.0F,
-                "origin camera anchor elevated") &&
-         expect(window.viewport.creativeFlyPositionMeters.z > 0.0F,
-                "origin camera anchor pulled back") &&
+         expect(window.creativeWorldEpoch == 1U,
+                "origin camera world epoch bumped") &&
+         expect(window.viewport.creativeFlyAnchor.provenance ==
+                    iggy3d::ProductCreativeFlyAnchorProvenance::OriginFramed,
+                "origin camera store provenance") &&
+         expect(window.viewport.creativeFlyAnchor.seededFromWorldEpoch ==
+                    window.creativeWorldEpoch,
+                "origin camera store epoch") &&
+         expect(iggy3d::productCreativeFlyAnchorFreshForEpoch(
+                    window.viewport.creativeFlyAnchor,
+                    window.creativeWorldEpoch),
+                "origin camera store fresh") &&
+         expect(window.viewport.creativeFlyAnchor.positionMeters.x == 0.0F,
+                "origin camera store x at origin") &&
+         expect(window.viewport.creativeFlyAnchor.positionMeters.y > 0.0F,
+                "origin camera store elevated") &&
+         expect(window.viewport.creativeFlyAnchor.positionMeters.z > 0.0F,
+                "origin camera store pulled back") &&
          expect(window.viewport.cameraYawDegrees == 0.0F,
                 "origin camera yaw faces origin") &&
          expect(window.viewport.cameraPitchDegrees < 0.0F,
                 "origin camera pitched down toward ground");
+}
+
+bool creativeFlyAnchorReseedsAcrossBlankWorldLaunchesByEpoch() {
+  const iggy3d::ProductAppOptions options = testOptions("fly_epoch_worlds");
+  iggy3d::FrontendState frontend;
+  std::optional<iggy3d::Session> activeSession;
+  iggy3d::ProductAppWindowState window;
+  cr::CreativeAppState app;
+
+  const iggy3d::ProductCreativeNewWorldLaunchResult first =
+      launchCreativeWorld(options,
+                          launchRequest("Fly Epoch A",
+                                        "2026-07-05T09:30:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+  const std::uint64_t firstEpoch = window.creativeWorldEpoch;
+  const std::uint64_t firstRuntimeHash = window.runtimeStateHash;
+  iggy3d::recordCreativeFlyAnchorIntegrated(window, {9.0F, 9.0F, 9.0F});
+  const bool integratedA =
+      window.viewport.creativeFlyAnchor.provenance ==
+          iggy3d::ProductCreativeFlyAnchorProvenance::FlyIntegrated &&
+      window.viewport.creativeFlyAnchor.seededFromWorldEpoch == firstEpoch;
+
+  const iggy3d::ProductCreativeNewWorldLaunchResult second =
+      launchCreativeWorld(options,
+                          launchRequest("Fly Epoch B",
+                                        "2026-07-05T09:31:00Z"),
+                          frontend,
+                          activeSession,
+                          window,
+                          app);
+
+  return expect(first.accepted, "fly epoch first launch accepted") &&
+         expect(second.accepted, "fly epoch second launch accepted") &&
+         expect(integratedA, "fly epoch first anchor integrated") &&
+         expect(window.creativeWorldEpoch == firstEpoch + 1U,
+                "fly epoch increments across launches") &&
+         expect(window.runtimeStateHash == firstRuntimeHash,
+                "fly epoch test does not depend on runtime hash drift") &&
+         expect(window.viewport.creativeFlyAnchor.provenance ==
+                    iggy3d::ProductCreativeFlyAnchorProvenance::OriginFramed,
+                "fly epoch second launch origin provenance") &&
+         expect(window.viewport.creativeFlyAnchor.seededFromWorldEpoch ==
+                    window.creativeWorldEpoch,
+                "fly epoch second launch store epoch") &&
+         expect(iggy3d::productCreativeFlyAnchorFreshForEpoch(
+                    window.viewport.creativeFlyAnchor,
+                    window.creativeWorldEpoch),
+                "fly epoch second launch anchor fresh") &&
+         expect(window.viewport.creativeFlyAnchor.positionMeters.x == 0.0F,
+                "fly epoch second launch origin x") &&
+         expect(window.viewport.creativeFlyAnchor.positionMeters.y > 0.0F,
+                "fly epoch second launch origin elevated") &&
+         expect(window.viewport.creativeFlyAnchor.positionMeters.z > 0.0F,
+                "fly epoch second launch origin pulled back");
 }
 
 // F0: the ground grid is present in the projected frame for a creative world.
@@ -4221,6 +4295,7 @@ int main() {
       refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() &&
       creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() &&
       creativeLaunchFramesCameraOnOrigin() &&
+      creativeFlyAnchorReseedsAcrossBlankWorldLaunchesByEpoch() &&
       creativeFrameShowsGroundGrid();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

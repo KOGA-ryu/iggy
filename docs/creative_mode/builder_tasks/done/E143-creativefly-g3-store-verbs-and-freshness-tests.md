@@ -70,3 +70,44 @@ Append:
 - Compatibility mirror behavior:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completed Brief
+
+- Files changed:
+  - Updated `src/app/iggy3d/view/CreativeFlyAnchorStore.hpp`.
+  - Added `src/app/iggy3d/view/CreativeFlyAnchorStore.cpp`.
+  - Updated `CMakeLists.txt` to compile the new store implementation.
+  - Updated `tests/unit/product_creative_fly_tests.cpp`.
+- Helper verbs added:
+  - `bumpCreativeWorldEpoch(ProductAppWindowState&)`.
+  - `seedCreativeFlyAnchorFromOrigin(ProductAppWindowState&)`.
+  - `ensureFreshCreativeFlyAnchor(ProductAppWindowState&, const Session*)`.
+  - `seedCreativeFlyAnchorFromScene(ProductAppWindowState&, Vec3)`.
+  - `recordCreativeFlyAnchorIntegrated(ProductAppWindowState&, Vec3)`.
+- Freshness semantics:
+  - Fresh means non-`Unseeded` provenance and
+    `seededFromWorldEpoch == window.creativeWorldEpoch`.
+  - `bumpCreativeWorldEpoch(...)` increments the window-owned epoch.
+  - Origin seed uses `{0, 6, 10}`, `OriginFramed`, and the current epoch.
+  - `ensureFreshCreativeFlyAnchor(...)` preserves a fresh store and reseeds when
+    unseeded/stale using the active player's position or `{}` when no session or
+    player is available.
+  - Scene and integrated writes stamp the supplied position, current epoch, and
+    `SceneSeeded` / `FlyIntegrated` provenance respectively.
+- Compatibility mirror behavior:
+  - Every helper that writes the store also mirrors
+    `window.viewport.creativeFlyAnchorValid = true` and
+    `window.viewport.creativeFlyPositionMeters = positionMeters`.
+  - No production call sites were migrated in this gate.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_creative_fly_tests -j10`
+    passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_creative_fly_tests$' --output-on-failure`
+    passed.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched/new files passed.
+- Concerns/deferred:
+  - Production origin, lazy seeder, scene seeder, camera consumer, receipt, and
+    legacy-field deletion work remains for G4-G7.
+  - `Testing/Temporary/LastTest.log` remains dirty from CTest output and was
+    intentionally left untouched.
