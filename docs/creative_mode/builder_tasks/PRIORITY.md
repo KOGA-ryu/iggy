@@ -24,6 +24,16 @@ repoints, small/low-risk) and `E156` InputDeviceStore (#7 — 11 fields, ~265
 repoints; **dominant hazard: `interactionMode` is a real field on 6+ foreign
 structs, so compiler-guided only, never sed**). Both recon-grounded + spot-verified.
 
+**Decomposition card set now COMPLETE (all 11 stores).** Remaining parents staged in
+`blocked/` (recon-grounded, `wdnplylk0`): `E161` CreativeAuthoringStore (#4 — the
+giant, 86 fields, ~1679 repoints, MUST slice by sub-domain), `E162` DebugHudStore
+(#9 — 5 fields, one gate), `E163` PresentPathStore (#11 — 9 productVulkan* members,
+one gate), `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
+remainder; **flags a reclaim of `gamepadMenuSelectUsed` from InputDeviceStore/E156 —
+needs planner confirm**). NOTE: E157-E160 are the GameplayStore slices (E154); my new
+cards start at E161 to avoid collision. **EXECUTION SERIALIZES on the god-struct —
+release/run one store at a time, re-anchoring each.**
+
 ## Claim Policy
 
 1. If a task listed under **Pull Next** is present in `ready/`, claim the first
