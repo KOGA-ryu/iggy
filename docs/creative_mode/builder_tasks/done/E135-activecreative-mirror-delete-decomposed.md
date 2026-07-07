@@ -104,3 +104,15 @@ Natural seams = the preflight's 4 gates, each its own suite-green commit; the le
 - `grep activeCreative src` → zero?:
 - Suite / coverage / receipt oracle:
 - Concerns/deferred:
+
+## Decomposition Brief - Codex
+
+- This parent work order was too large for one builder slice and has been
+  decomposed into four ready cards:
+  - `E136-activecreative-g1-source-predicate-plumbing.md`
+  - `E137-activecreative-g2-routing-callers.md`
+  - `E138-activecreative-g3-receipt-identity-threading.md`
+  - `E139-activecreative-g4-delete-mirror.md`
+- The parent is retained in `done/` as design input only. Builder should not
+  claim this file directly.
+- `PRIORITY.md` now pulls E136-E139 in numeric order.

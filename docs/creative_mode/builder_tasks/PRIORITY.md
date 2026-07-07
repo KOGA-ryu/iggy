@@ -5,11 +5,11 @@ files still live in `ready/`, `claimed/`, `done/`, or `blocked/`; builder should
 use this index only to decide which ready card to claim next.
 
 **Collision freshness store slice COMPLETE** (G2–G7 done,
-`docs/active_room_collision_freshness_preflight_v0_2.md`). Current work: decomposition
-deficit #2 — delete the `activeCreative` mirror — delivered as **ONE comprehensive
-card (E135)** for the slicer-Codex to decompose into builder slices (design:
-`docs/activecreative_mirror_delete_preflight_v0_2.md`, Gate-1 ratified; it's an L slice,
-compiler-guarded, thread-first-delete-last).
+`docs/active_room_collision_freshness_preflight_v0_2.md`). Current work:
+decomposition deficit #2 — delete the `activeCreative` mirror. The oversized
+parent card E135 has been decomposed into four builder-sized gates E136-E139
+(design: `docs/activecreative_mirror_delete_preflight_v0_2.md`, Gate-1
+ratified; L slice, compiler-guarded, thread-first-delete-last).
 
 ## Claim Policy
 
@@ -27,15 +27,17 @@ None.
 
 ## Pull Next
 
-1. **E135** — Delete `window.activeCreative` mirror (deficit #2). ONE comprehensive
-   card = the slicer-Codex's input; decompose into the 4 suggested slices (thread
-   `creativeApp`/`identity` everywhere first, delete the mirror last; leaf stays
-   mirror-backed until the delete). Design authority: the v0.2 preflight.
+1. **E136** — ActiveCreative G1 source predicate plumbing. Additive only; no
+   routing behavior switch.
+2. **E137** — ActiveCreative G2 routing callers. Depends on E136.
+3. **E138** — ActiveCreative G3 receipt identity threading. Depends on E136-E137.
+4. **E139** — ActiveCreative G4 delete mirror. Depends on E136-E138.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E135** — activeCreative mirror delete (deficit #2, L, compiler-guarded).
-  Behavior-preserving; coverage + receipt truth-gates fire by design.
+- **E136-E139** — activeCreative mirror delete (deficit #2, L,
+  compiler-guarded). Behavior-preserving; coverage + receipt truth-gates fire by
+  design. Builder should claim them in numeric order only.
 
 ## Tier 2: Feature-Add Seams
 
@@ -49,8 +51,9 @@ None currently ready.
 
 Held — do NOT promote to `ready/` on a guess:
 
-- **#2 `activeCreative`→delete is IN FLIGHT as E135** (turned out L, not the audit's
-  "cheapest S" — the mirror feeds a hot-path routing predicate; preflight v0.2). Next
+- **#2 `activeCreative`→delete is IN FLIGHT as E136-E139** (turned out L, not
+  the audit's "cheapest S" — the mirror feeds a hot-path routing predicate;
+  preflight v0.2). E135 is retained as the decomposed parent in `done/`. Next
   landings after it: **#1 `activeRoom`→`RoomStore`** (its own preflight; severs the nested
   `roomEditing.{activeRoom, activeRoomCollision}` duplicate) and **#3 `creativeFly`→`CreativeFlyAnchorStore`**.
   NOTE: the audit's S/M/L ratings are directional — each slice needs its own preflight to
