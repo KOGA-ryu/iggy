@@ -117,7 +117,6 @@ rendererMutatedRuntime	GameplayStore
 scriptedGameplaySmoke	GameplayStore
 gameplayInputUsed	GameplayStore
 gameplayInputSource	GameplayStore
-gameplayInputSuppressed	delete
 gameplayCommand	GameplayStore
 gameplayTickAdvanced	GameplayStore
 playerPositionChanged	GameplayStore
@@ -140,7 +139,6 @@ attackExecuted	GameplayStore
 productTransition	GameplayStore
 gameplayReachGate	GameplayStore
 gameplayLastRejection	GameplayStore
-inputOwner	delete
 lastInputAction	InputDeviceStore
 lastInputAccepted	InputDeviceStore
 automationControl	FrontendWindowShell

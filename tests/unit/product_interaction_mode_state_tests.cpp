@@ -1,5 +1,6 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
@@ -100,6 +101,8 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
 
   const bool left =
       iggy3d::recordProductRoomEditingLeave(frontend, window, "unit_leave_editor");
+  const iggy3d::ProductActiveSurfaceFrame surfaceAfterLeave =
+      iggy3d::syncProductWindowInputOwnerFromActiveSurface(frontend, window);
 
   return expect(started.ok, "room editing start accepted for leave") &&
          expect(left, "room editing leave accepted") &&
@@ -108,9 +111,9 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
                 "room editing leave status") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "room editing leave returns player mode") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+         expect(surfaceAfterLeave.inputOwner == iggy3d::MenuOwner::Gameplay,
                 "room editing leave returns gameplay owner") &&
-         expect(!window.gameplayInputSuppressed,
+         expect(!surfaceAfterLeave.gameplayInputSuppressed,
                 "room editing leave unsuppresses gameplay") &&
          expect(!window.roomEditorCursorReady, "room editor cursor no longer ready") &&
          expect(window.roomEditorStatus == "room_editor_not_ready",

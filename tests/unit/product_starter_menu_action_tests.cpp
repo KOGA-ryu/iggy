@@ -1,4 +1,5 @@
 #include "app/iggy3d/menu/ActionHandlers.hpp"
+#include "app/iggy3d/menu/FrontendRouter.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -22,6 +23,14 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+// window no longer mirrors input-owner/gameplay-suppression; live source is the
+// resolved active surface (pure function of frontend+window).
+iggy3d::ProductActiveSurfaceFrame liveSurface(
+    const iggy3d::FrontendState& frontend,
+    iggy3d::ProductAppWindowState& window) {
+  return iggy3d::syncProductWindowInputOwnerFromActiveSurface(frontend, window);
 }
 
 iggy3d::SaveSlotPreview compatibleSlot(std::string_view id) {
@@ -434,9 +443,9 @@ bool creativeStarterLaunchCanOpenAndClosePauseWithMenuBackRoute() {
   const bool openedPause =
       expect(harness.frontend.screen == iggy3d::FrontendScreen::Pause,
              "creative menu back opens pause") &&
-      expect(harness.window.inputOwner == iggy3d::MenuOwner::Pause,
+      expect(liveSurface(harness.frontend, harness.window).inputOwner == iggy3d::MenuOwner::Pause,
              "creative pause owns input") &&
-      expect(harness.window.gameplayInputSuppressed,
+      expect(liveSurface(harness.frontend, harness.window).gameplayInputSuppressed,
              "creative pause suppresses gameplay") &&
       expect(harness.window.interactionMode ==
                  iggy3d::ProductInteractionMode::Creative,
@@ -466,9 +475,9 @@ bool creativeStarterLaunchCanOpenAndClosePauseWithMenuBackRoute() {
          openedPause &&
          expect(harness.frontend.screen == iggy3d::FrontendScreen::Gameplay,
                 "creative second menu back resumes gameplay") &&
-         expect(harness.window.inputOwner == iggy3d::MenuOwner::Gameplay,
+         expect(liveSurface(harness.frontend, harness.window).inputOwner == iggy3d::MenuOwner::Gameplay,
                 "creative resumed gameplay owns input") &&
-         expect(!harness.window.gameplayInputSuppressed,
+         expect(!liveSurface(harness.frontend, harness.window).gameplayInputSuppressed,
                 "creative resumed gameplay unsuppressed") &&
          expect(harness.window.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,

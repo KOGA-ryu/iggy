@@ -129,9 +129,6 @@ ProductCreativeSurfaceKind productCreativeSurfaceKindForSource(
     const FrontendState& frontend,
     const ProductAppWindowState& window,
     const creative::CreativeAppState* creativeApp);
-void syncProductWindowInputOwnerFromActiveSurface(
-    ProductAppWindowState& window,
-    const ProductActiveSurfaceFrame& surface);
 ProductActiveSurfaceFrame syncProductWindowInputOwnerFromActiveSurface(
     const FrontendState& frontend,
     ProductAppWindowState& window);

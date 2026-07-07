@@ -798,8 +798,6 @@ bool inputOwnerCacheSyncUsesResolvedActiveSurface() {
     iggy3d::ProductAppWindowState window;
     window.gameplayActive = row.gameplayActive;
     window.roomEditing.ready = row.roomEditorReady;
-    window.inputOwner = iggy3d::MenuOwner::Gameplay;
-    window.gameplayInputSuppressed = false;
 
     const iggy3d::ProductActiveSurfaceFrame surface =
         iggy3d::syncProductWindowInputOwnerFromActiveSurface(frontend, window);
@@ -809,12 +807,6 @@ bool inputOwnerCacheSyncUsesResolvedActiveSurface() {
          ok;
     ok = expect(surface.gameplayInputSuppressed == row.expectedSuppressed,
                 (prefix + "surface suppression").c_str()) &&
-         ok;
-    ok = expect(window.inputOwner == row.expectedOwner,
-                (prefix + "window owner").c_str()) &&
-         ok;
-    ok = expect(window.gameplayInputSuppressed == row.expectedSuppressed,
-                (prefix + "window suppression").c_str()) &&
          ok;
   }
   return ok;

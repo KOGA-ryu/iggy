@@ -40,6 +40,14 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
+// The window no longer mirrors input-owner / gameplay-suppression; the live
+// source is the resolved active surface (a pure function of frontend+window).
+iggy3d::ProductActiveSurfaceFrame liveSurface(
+    const iggy3d::FrontendState& frontend,
+    iggy3d::ProductAppWindowState& window) {
+  return iggy3d::syncProductWindowInputOwnerFromActiveSurface(frontend, window);
+}
+
 bool expectNear(float actual,
                 float expected,
                 std::string_view message,
@@ -397,13 +405,13 @@ bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
          expect(result.accepted, "creative mouse click preview accepted") &&
          expect(result.status == "room_editor_preview_ready",
                 "creative mouse preview status") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::Editor,
+         expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Editor,
                 "creative mouse input owner editor") &&
          expect(window.lastInputAction ==
                     iggy3d::InputAction::EditorPreviewPlacement,
                 "creative mouse semantic action") &&
          expect(window.lastInputAccepted, "creative mouse input accepted") &&
-         expect(window.gameplayInputSuppressed,
+         expect(liveSurface(frontend, window).gameplayInputSuppressed,
                 "creative mouse suppresses gameplay input") &&
          expect(window.roomEditorStatus == "room_editor_mouse_pick_mapped",
                 "creative mouse pick status") &&
@@ -626,12 +634,12 @@ bool backCancelsPendingPreviewBeforePauseRoute() {
       iggy3d::cancelProductRoomEditorPendingPreviewFromBack(frontend, window);
 
   return stageOk && expect(cancelled, "back cancels pending preview") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::Editor,
+         expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Editor,
                 "back cancel owner editor") &&
          expect(window.lastInputAction == iggy3d::InputAction::EditorCancelPreview,
                 "back cancel records editor cancel action") &&
          expect(window.lastInputAccepted, "back cancel input accepted") &&
-         expect(window.gameplayInputSuppressed,
+         expect(liveSurface(frontend, window).gameplayInputSuppressed,
                 "back cancel suppresses gameplay input") &&
          expect(window.roomEditorStatus == "room_editor_preview_cancelled",
                 "back cancel status") &&
@@ -717,10 +725,10 @@ bool controllerSouthJumpsInGameplayPlayerMode() {
               iggy3d::ProductControllerControl::SouthButton));
 
   return expect(jumped.actionApplied, "gameplay south action applied") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+         expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
                 "gameplay south owner gameplay") &&
          expect(window.lastInputAccepted, "gameplay south input accepted") &&
-         expect(!window.gameplayInputSuppressed,
+         expect(!liveSurface(frontend, window).gameplayInputSuppressed,
                 "gameplay south does not suppress gameplay") &&
          expect(window.lastInputAction == iggy3d::InputAction::PlayerJump,
                 "gameplay south routes to jump") &&
@@ -809,13 +817,13 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
                 "map maker movement keeps gameplay screen") &&
          expect(frontend.screen != iggy3d::FrontendScreen::Pause,
                 "map maker movement does not open pause") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+         expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
                 "map maker movement owner gameplay") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "map maker movement remains creative mode") &&
          expect(window.controllerAction.mode == "player",
                 "map maker movement keeps controller fly mapping") &&
-         expect(!window.gameplayInputSuppressed,
+         expect(!liveSurface(frontend, window).gameplayInputSuppressed,
                 "map maker movement does not suppress gameplay input") &&
          expect(iggy3d::productMapMakerLiveForWindow(frontend, window),
                 "map maker remains live") &&
@@ -1260,7 +1268,7 @@ bool pauseSettingsConfirmOpensSettingsPanel() {
                 "pause settings renders settings detail surface") &&
          expect(settingsTab == iggy3d::FrontendSettingsTab::Input,
                 "pause settings starts on input tab") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::Settings,
+         expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Settings,
                 "pause settings input owner");
 }
 
@@ -1303,7 +1311,7 @@ bool pauseSettingsInputDispatchRoutesToSettings() {
                 "pause settings input dispatch advances settings tab") &&
          expect(frontend.selectedAction == selectedBefore,
                 "pause settings input dispatch does not move starter row") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::Settings,
+         expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Settings,
                 "pause settings input dispatch owner") &&
          expect(window.lastInputAccepted,
                 "pause settings input dispatch accepted");
@@ -1340,7 +1348,7 @@ bool starterSettingsInputDispatchRoutesToSettings() {
                 "starter settings dispatch advances settings tab") &&
          expect(frontend.selectedAction == selectedBefore,
                 "starter settings dispatch does not move starter row") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::Settings,
+         expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Settings,
                 "starter settings dispatch owner") &&
          expect(window.lastInputAccepted, "starter settings dispatch accepted");
 }
@@ -1377,7 +1385,7 @@ bool pauseInputDispatchRoutesToPauseHandler() {
                 "pause dispatch advances pause selection") &&
          expect(frontend.status == "pause_menu_selection_changed",
                 "pause dispatch status") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::Pause,
+         expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Pause,
                 "pause dispatch owner");
 }
 
@@ -1414,7 +1422,7 @@ bool devOverlayInputDispatchRoutesToDevToolsHandler() {
                 "dev overlay dispatch advances devtools category") &&
          expect(frontend.status == "dev_overlay_selection_changed",
                 "dev overlay dispatch status") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::DevTools,
+         expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::DevTools,
                 "dev overlay dispatch owner");
 }
 
@@ -1592,7 +1600,7 @@ bool editorBackOpensPauseWithoutLeavingEditor() {
                 "editor back starts pause on resume") &&
          expect(window.roomEditing.ready,
                 "editor back keeps room editing ready for leave action") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::Pause,
+         expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Pause,
                 "editor back routes input owner to pause") &&
          expect(window.lastInputAction == iggy3d::InputAction::SystemPause,
                 "editor back records system pause action") &&
@@ -1898,7 +1906,7 @@ bool openingMenuMouseDispatchRoutesStarterAndSettingsHits() {
   return starterOk && tabOk &&
          expect(settings.frontend.screen == iggy3d::FrontendScreen::Pause,
                 "mouse settings back returns pause") &&
-         expect(settings.window.inputOwner == iggy3d::MenuOwner::Pause,
+         expect(liveSurface(settings.frontend, settings.window).inputOwner == iggy3d::MenuOwner::Pause,
                 "mouse settings back owner pause");
 }
 
@@ -2041,7 +2049,7 @@ bool devToggleOpensAndClosesDevToolsSurfaces() {
     const bool openedChild =
         frontend.childScreen == iggy3d::FrontendScreen::StarterDevTools;
     const bool openedFlag = iggy3d::frontendDevToolsOpen(frontend);
-    const iggy3d::MenuOwner openedOwner = window.inputOwner;
+    const iggy3d::MenuOwner openedOwner = liveSurface(frontend, window).inputOwner;
     const iggy3d::ProductMenuActionResult closed =
         iggy3d::applyProductSystemPauseMenuAction(
             iggy3d::InputAction::DevToggle,
@@ -2080,7 +2088,7 @@ bool devToggleOpensAndClosesDevToolsSurfaces() {
              "gameplay dev toggle opens overlay") &&
       expect(iggy3d::frontendDevToolsOpen(frontend),
              "gameplay dev tools open") &&
-      expect(window.inputOwner == iggy3d::MenuOwner::DevTools,
+      expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::DevTools,
              "gameplay dev toggle owner");
   const iggy3d::ProductMenuActionResult closed =
       iggy3d::applyProductSystemPauseMenuAction(
@@ -2091,7 +2099,7 @@ bool devToggleOpensAndClosesDevToolsSurfaces() {
          expect(closed.accepted, "gameplay dev close accepted") &&
          expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
                 "gameplay dev toggle closes overlay") &&
-         expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+         expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
                 "gameplay dev close owner") &&
          expect(!closeRequested, "gameplay dev toggle no close");
 }
@@ -2976,9 +2984,9 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
              "map maker toggle keeps gameplay screen") &&
       expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
              "map maker toggle enters creative interaction mode") &&
-      expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+      expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
              "map maker toggle keeps gameplay owner") &&
-      expect(!window.gameplayInputSuppressed,
+      expect(!liveSurface(frontend, window).gameplayInputSuppressed,
              "map maker toggle does not suppress gameplay input") &&
       expect(iggy3d::productInputOwnerFor(frontend, window) ==
                  iggy3d::MenuOwner::Gameplay,
@@ -3001,7 +3009,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
              "map maker disable keeps gameplay screen") &&
       expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
              "map maker disable returns to player interaction mode") &&
-      expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+      expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
              "map maker disable keeps gameplay owner") &&
       expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
              "map maker live false in player mode") &&

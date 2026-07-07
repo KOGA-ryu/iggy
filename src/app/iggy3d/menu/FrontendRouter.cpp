@@ -381,19 +381,11 @@ ProductCreativeSurfaceKind productCreativeSurfaceKindForSource(
   return productCreativeSurfaceKindForWindow(frontend, window);
 }
 
-void syncProductWindowInputOwnerFromActiveSurface(
-    ProductAppWindowState& window,
-    const ProductActiveSurfaceFrame& surface) {
-  window.inputOwner = surface.inputOwner;
-  window.gameplayInputSuppressed = surface.gameplayInputSuppressed;
-}
-
 ProductActiveSurfaceFrame syncProductWindowInputOwnerFromActiveSurface(
     const FrontendState& frontend,
     ProductAppWindowState& window) {
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
-  syncProductWindowInputOwnerFromActiveSurface(window, surface);
   return surface;
 }
 

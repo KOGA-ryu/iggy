@@ -14,6 +14,14 @@ bool expect(bool condition, const char* message) {
   return true;
 }
 
+// window no longer mirrors input-owner/gameplay-suppression; live source is the
+// resolved active surface (pure function of frontend+window).
+iggy3d::ProductActiveSurfaceFrame liveSurface(
+    const iggy3d::FrontendState& frontend,
+    iggy3d::ProductAppWindowState& window) {
+  return iggy3d::syncProductWindowInputOwnerFromActiveSurface(frontend, window);
+}
+
 void activateMapMaker(iggy3d::ProductAppWindowState& window) {
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.viewport.creativeFlyActive = true;
@@ -110,17 +118,15 @@ int main() {
                "starter screen initialized");
   ok &= expect(frontend.selectedAction == iggy3d::FrontendAction::NewWorld,
                "starter selects new world without compatible save");
-  ok &= expect(window.inputOwner == iggy3d::MenuOwner::Starter,
+  ok &= expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Starter,
                "starter owns input");
-  ok &= expect(window.gameplayInputSuppressed, "starter suppresses gameplay input");
+  ok &= expect(liveSurface(frontend, window).gameplayInputSuppressed, "starter suppresses gameplay input");
   ok &= expect(window.productTransition.status == "starter_ready",
                "starter transition status");
   iggy3d::FrontendSettings settings;
   iggy3d::ProductAppWindowState staleStarterWindow = window;
   staleStarterWindow.gameplayActive = true;
   staleStarterWindow.runtimeSessionCreated = true;
-  staleStarterWindow.inputOwner = iggy3d::MenuOwner::Gameplay;
-  staleStarterWindow.gameplayInputSuppressed = false;
   const iggy3d::RenderReceipt staleStarterReceipt =
       receiptFor(frontend, settings, staleStarterWindow);
   ok &= expectReceiptField(staleStarterReceipt, "active_surface", "starter",
@@ -144,9 +150,9 @@ int main() {
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
                "gameplay screen after launch");
   ok &= expect(!frontend.inputOwned, "gameplay owns no frontend input");
-  ok &= expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+  ok &= expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
                "gameplay input owner");
-  ok &= expect(!window.gameplayInputSuppressed, "gameplay input accepted");
+  ok &= expect(!liveSurface(frontend, window).gameplayInputSuppressed, "gameplay input accepted");
   ok &= expect(window.productTransition.returnedToGameplay,
                "gameplay transition returned to gameplay");
   ok &= expect(window.productTransition.sessionPreserved,
@@ -187,9 +193,9 @@ int main() {
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Pause,
                "pause screen opened");
   ok &= expect(iggy3d::frontendPauseMenuOpen(frontend), "pause menu open");
-  ok &= expect(window.inputOwner == iggy3d::MenuOwner::Pause,
+  ok &= expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Pause,
                "pause owns input");
-  ok &= expect(window.gameplayInputSuppressed, "pause suppresses gameplay input");
+  ok &= expect(liveSurface(frontend, window).gameplayInputSuppressed, "pause suppresses gameplay input");
   ok &= expect(window.gameplayMovement.groundVelocityX == 0.0F &&
                    window.gameplayMovement.groundVelocityZ == 0.0F,
                "pause clears retained ground velocity");
@@ -239,7 +245,7 @@ int main() {
                "settings parent is pause");
   ok &= expect(settingsTab == iggy3d::FrontendSettingsTab::Input,
                "settings opens input tab");
-  ok &= expect(window.inputOwner == iggy3d::MenuOwner::Settings,
+  ok &= expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Settings,
                "settings owns input");
   ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
                "settings keeps map maker inactive");
@@ -284,9 +290,9 @@ int main() {
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::DevOverlay,
                "dev overlay opened");
   ok &= expect(iggy3d::frontendDevToolsOpen(frontend), "dev tools open");
-  ok &= expect(window.inputOwner == iggy3d::MenuOwner::DevTools,
+  ok &= expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::DevTools,
                "dev tools own input");
-  ok &= expect(window.gameplayInputSuppressed, "dev tools suppress gameplay input");
+  ok &= expect(liveSurface(frontend, window).gameplayInputSuppressed, "dev tools suppress gameplay input");
   ok &= expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
                "dev tools keeps map maker inactive");
   ok &= expect(!window.gameplayMovement.tuningVisible,
@@ -316,7 +322,7 @@ int main() {
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
                "resume returns to gameplay");
   ok &= expect(!frontend.inputOwned, "resume releases frontend input");
-  ok &= expect(window.inputOwner == iggy3d::MenuOwner::Gameplay,
+  ok &= expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
                "resume restores gameplay owner");
   ok &= expect(window.productTransition.returnedToGameplay,
                "resume transition status");
@@ -328,8 +334,6 @@ int main() {
                "resume does not restore movement tuning");
   window.roomEditing.ready = true;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.inputOwner = iggy3d::MenuOwner::Gameplay;
-  window.gameplayInputSuppressed = false;
   const iggy3d::RenderReceipt editorReceipt =
       receiptFor(frontend, settings, window);
   ok &= expectReceiptField(editorReceipt, "active_surface", "editor",
@@ -365,7 +369,7 @@ int main() {
                    !window.gameplayJump.held &&
                    !window.gameplayJump.cutApplied,
                "return to title clears jump timing state");
-  ok &= expect(window.inputOwner == iggy3d::MenuOwner::Starter,
+  ok &= expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Starter,
                "return to title restores starter owner");
   ok &= expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                "return to title resets interaction mode");

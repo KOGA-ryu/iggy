@@ -213,7 +213,6 @@ void routeProductOpeningMenuInput(InputAction inputAction,
   const InputRoutingResult routed = routeInputAction(routingContext, inputAction);
   context.window.lastInputAction = routed.action;
   context.window.lastInputAccepted = routed.accepted;
-  syncProductWindowInputOwnerFromActiveSurface(context.window, surface);
   // branch-gate: BG-1024
   if (routed.accepted) {
     applyProductOpeningMenuAction(routed.action, context);

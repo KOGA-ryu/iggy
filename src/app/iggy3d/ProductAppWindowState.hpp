@@ -325,7 +325,6 @@ struct ProductAppWindowState {
   bool scriptedGameplaySmoke = false;
   bool gameplayInputUsed = false;
   std::string gameplayInputSource = "none";
-  bool gameplayInputSuppressed = false;
   ProductGameplayCommandState gameplayCommand;
   bool gameplayTickAdvanced = false;
   bool playerPositionChanged = false;
@@ -348,7 +347,6 @@ struct ProductAppWindowState {
   ProductTransitionState productTransition;
   std::string gameplayReachGate = "not_attempted";
   std::string gameplayLastRejection = "none";
-  MenuOwner inputOwner = MenuOwner::None;
   InputAction lastInputAction = InputAction::None;
   bool lastInputAccepted = false;
   ProductAutomationControlState automationControl;
