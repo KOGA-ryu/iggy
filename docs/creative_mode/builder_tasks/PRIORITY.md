@@ -26,10 +26,10 @@ controller/capture fields, and E167 moved `interactionMode` plus
 `E162` DebugHudStore (#9) is **COMPLETE**: the five HUD/debug mirrors now live
 under `ProductAppWindowState::debugHud`.
 
-**Decomposition card set now COMPLETE through DebugHudStore.** Remaining parents staged in
+**Decomposition card set now COMPLETE through DebugHudStore.** Next ready card is
+`E163` PresentPathStore (#11 — 9 productVulkan* members, one gate). Remaining parents staged in
 `blocked/` (recon-grounded, `wdnplylk0`): `E161` CreativeAuthoringStore (#4 — the
-giant, 86 fields, ~1679 repoints, MUST slice by sub-domain), `E163` PresentPathStore (#11 — 9 productVulkan* members,
-one gate), `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
+giant, 86 fields, ~1679 repoints, MUST slice by sub-domain), `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
 remainder; **flags a reclaim of `gamepadMenuSelectUsed` from InputDeviceStore/E156 —
 needs planner confirm**). NOTE: E157-E160 are the completed GameplayStore slices
 (E154); new cards start at E161 to avoid collision. **EXECUTION SERIALIZES on the
@@ -51,7 +51,7 @@ None.
 
 ## Pull Next
 
-None currently ready.
+1. E163 — PresentPathStore bulk move.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -63,7 +63,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-None currently ready.
+1. E163 — PresentPathStore bulk move.
 
 ## Parking Lot
 
@@ -98,6 +98,7 @@ Held — do NOT promote to `ready/` on a guess:
     FrontendWindowShell.
   - **#8 `GameplayStore`** — **COMPLETE as E157-E160.**
   - **#9 `DebugHudStore`** — **COMPLETE as E162.**
+  - **#11 `PresentPathStore`** — **READY as E163.**
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
   - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).
