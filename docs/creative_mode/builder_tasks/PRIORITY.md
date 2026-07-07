@@ -33,7 +33,7 @@ path/status fields now live under `ProductAppWindowState::presentPath`, while
 CreativeAuthoringStore (#4) is **COMPLETE** as E168-E172: wireframe,
 viewport-pick, room-editor, world/ascii, and creative UI state are now under
 `ProductAppWindowState::creativeAuthoring`. Remaining
-parents staged in `blocked/` (recon-grounded, `wdnplylk0`): `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
+parent `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
 remainder; **COMPLETE** as E174-E176: scalar/menu, startup, and
 `productVulkanMenu` now live under `ProductAppWindowState::frontendShell`).
 NOTE:
@@ -57,7 +57,7 @@ None.
 
 ## Pull Next
 
-None currently ready.
+1. `ready/E177-god-struct-remainder-audit.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -69,7 +69,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-None currently ready.
+1. `ready/E177-god-struct-remainder-audit.md`
 
 ## Parking Lot
 

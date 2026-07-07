@@ -1,11 +1,11 @@
 # E161 — CreativeAuthoringStore bulk-move (god-struct decomposition #4) — PARENT
 
-**STATUS: STAGED in `blocked/` — parent card; MUST be sliced (largest store in the tree).**
+**STATUS: COMPLETE — parent card implemented as E168-E172.**
 Children released so far: `done/E168-creativeauthoringstore-g1-wireframe.md`;
 `done/E169-creativeauthoringstore-g2-viewport-pick.md`;
 `done/E170-creativeauthoringstore-g3-room-editor.md`;
 `done/E171-creativeauthoringstore-g4-world-ascii.md`;
-`ready/E172-creativeauthoringstore-g5-creative-ui-state.md`.
+`done/E172-creativeauthoringstore-g5-creative-ui-state.md`.
 Recon-grounded + spot-verified (workflow `wdnplylk0`). **Commit convention:** `claude: planned. codex: …`.
 
 > **Tree mid-flight + EXECUTION SERIALIZES** on `ProductAppWindowState.hpp` — do after prior moves land;
