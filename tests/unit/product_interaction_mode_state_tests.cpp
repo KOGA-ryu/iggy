@@ -1,4 +1,5 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
@@ -93,11 +94,11 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
   window.roomEditorHud.visible = true;
   window.viewport.productDrawRoomEditorCursorVisible = true;
   window.viewport.productDrawRoomEditorCursorCount = 1;
-  const std::string activeRoomId = window.activeRoom.roomId;
-  const std::uint64_t activeFloorCount = window.activeRoom.authoredFloorCount;
-  const std::uint64_t activeWallCount = window.activeRoom.authoredWallCount;
+  const std::string activeRoomId = iggy3d::activeRoom(window).roomId;
+  const std::uint64_t activeFloorCount = iggy3d::activeRoom(window).authoredFloorCount;
+  const std::uint64_t activeWallCount = iggy3d::activeRoom(window).authoredWallCount;
   const std::uint64_t activeCollisionCount =
-      window.activeRoomCollision.querySurfaceCount;
+      iggy3d::activeRoomCollision(window).querySurfaceCount;
 
   const bool left =
       iggy3d::recordProductRoomEditingLeave(frontend, window, "unit_leave_editor");
@@ -124,13 +125,13 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
          expect(!window.roomEditorHud.visible, "room editor hud hidden") &&
          expect(!window.viewport.productDrawRoomEditorCursorVisible,
                 "room editor cursor draw hidden") &&
-         expect(window.activeRoom.loaded, "active room still loaded") &&
-         expect(window.activeRoom.roomId == activeRoomId, "active room id preserved") &&
-         expect(window.activeRoom.authoredFloorCount == activeFloorCount,
+         expect(iggy3d::activeRoom(window).loaded, "active room still loaded") &&
+         expect(iggy3d::activeRoom(window).roomId == activeRoomId, "active room id preserved") &&
+         expect(iggy3d::activeRoom(window).authoredFloorCount == activeFloorCount,
                 "active floor count preserved") &&
-         expect(window.activeRoom.authoredWallCount == activeWallCount,
+         expect(iggy3d::activeRoom(window).authoredWallCount == activeWallCount,
                 "active wall count preserved") &&
-         expect(window.activeRoomCollision.querySurfaceCount == activeCollisionCount,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == activeCollisionCount,
                 "active collision count preserved");
 }
 

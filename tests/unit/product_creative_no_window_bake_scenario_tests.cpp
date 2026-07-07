@@ -1,5 +1,6 @@
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
@@ -120,9 +121,9 @@ bool expectRefreshForFloorAndCrate(
     std::string_view label) {
   const std::string prefix{label};
   const iggy3d::RoomStaticMeshAsset* floor =
-      findMeshByRole(window.activeRoom.room, "floor");
+      findMeshByRole(iggy3d::activeRoom(window).room, "floor");
   const iggy3d::RoomStaticMeshAsset* crate =
-      findMeshByRole(window.activeRoom.room, "prop");
+      findMeshByRole(iggy3d::activeRoom(window).room, "prop");
 
   return expect(refreshed.accepted, prefix + " refresh accepted") &&
          expect(refreshed.status == "product_creative_baked_room_refreshed",
@@ -160,14 +161,14 @@ bool expectRefreshForFloorAndCrate(
                 prefix + " collision ready result") &&
          expect(refreshed.collisionQuerySurfaceCount == 3U,
                 prefix + " collision query count result") &&
-         expect(window.activeRoom.loaded, prefix + " active room loaded") &&
-         expect(window.activeRoom.staticMeshCount == 2U,
+         expect(iggy3d::activeRoom(window).loaded, prefix + " active room loaded") &&
+         expect(iggy3d::activeRoom(window).staticMeshCount == 2U,
                 prefix + " active mesh count") &&
-         expect(window.activeRoom.spatialSurfaceCount == 3U,
+         expect(iggy3d::activeRoom(window).spatialSurfaceCount == 3U,
                 prefix + " active surface count") &&
-         expect(window.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(window).ready,
                 prefix + " active collision ready") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 3U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 3U,
                 prefix + " active collision query count") &&
          expect(floor != nullptr, prefix + " floor mesh present") &&
          expect(crate != nullptr, prefix + " crate mesh present") &&
@@ -181,9 +182,9 @@ bool expectRefreshForFloorOnly(
     const iggy3d::ProductAppWindowState& window,
     const cr::CreativeDocument& document) {
   const iggy3d::RoomStaticMeshAsset* floor =
-      findMeshByRole(window.activeRoom.room, "floor");
+      findMeshByRole(iggy3d::activeRoom(window).room, "floor");
   const iggy3d::RoomStaticMeshAsset* prop =
-      findMeshByRole(window.activeRoom.room, "prop");
+      findMeshByRole(iggy3d::activeRoom(window).room, "prop");
 
   return expect(refreshed.accepted, "floor-only refresh accepted") &&
          expect(refreshed.status == "product_creative_baked_room_refreshed",
@@ -203,14 +204,14 @@ bool expectRefreshForFloorOnly(
                 "floor-only mesh source count") &&
          expect(refreshed.spatialSurfaceSourceCount == 1U,
                 "floor-only surface source count") &&
-         expect(window.activeRoom.loaded, "floor-only active room loaded") &&
-         expect(window.activeRoom.staticMeshCount == 1U,
+         expect(iggy3d::activeRoom(window).loaded, "floor-only active room loaded") &&
+         expect(iggy3d::activeRoom(window).staticMeshCount == 1U,
                 "floor-only active mesh count") &&
-         expect(window.activeRoom.spatialSurfaceCount == 1U,
+         expect(iggy3d::activeRoom(window).spatialSurfaceCount == 1U,
                 "floor-only active surface count") &&
-         expect(window.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(window).ready,
                 "floor-only collision ready") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 1U,
                 "floor-only collision query count") &&
          expect(floor != nullptr, "floor-only floor present") &&
          expect(prop == nullptr, "floor-only prop removed");

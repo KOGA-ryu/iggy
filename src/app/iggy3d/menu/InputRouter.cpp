@@ -88,7 +88,7 @@ void dispatchConfirmDialogAction(const ProductActiveSurfaceFrame& surface,
                                  ProductOpeningMenuInputContext context) {
   // branch-gate: BG-1024
   if (surface.inputSurface == ProductInputSurface::SaveBrowser &&
-      context.window.saveDelete.confirmationOpen) {
+      context.window.saveSession.saveDelete.confirmationOpen) {
     dispatchDeleteConfirmAction(action, context);
     return;
   }

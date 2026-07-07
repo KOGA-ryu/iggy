@@ -11,6 +11,7 @@
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
@@ -502,7 +503,7 @@ float horizontalDistanceSquared(Vec3 lhs, Vec3 rhs) {
 
 const RoomAnchorAsset* findRoomAnchorByKind(const ProductAppWindowState& window,
                                             std::string_view kind) {
-  for (const RoomAnchorAsset& anchor : window.activeRoom.room.anchors) {
+  for (const RoomAnchorAsset& anchor : activeRoom(window).room.anchors) {
     // branch-gate: BG-1175
     if (anchor.kind == kind) {
       return &anchor;
@@ -548,7 +549,7 @@ const RoomAnchorAsset* findResetZoneAt(const ProductAppWindowState& window,
                                        Vec3 position) {
   const float radiusSq =
       kGameplayResetZoneRadiusMeters * kGameplayResetZoneRadiusMeters;
-  for (const RoomAnchorAsset& anchor : window.activeRoom.room.anchors) {
+  for (const RoomAnchorAsset& anchor : activeRoom(window).room.anchors) {
     // branch-gate: BG-1179
     if (anchor.kind != "reset_zone") {
       continue;
@@ -615,7 +616,7 @@ bool applyProductGameplayResetIfNeeded(Session& session,
                                        const SpatialSurfaceSet* surfaces) {
   const EntityState* entity = productPlayerEntity(session);
   // branch-gate: BG-1181
-  if (entity == nullptr || !window.activeRoom.loaded) {
+  if (entity == nullptr || !activeRoom(window).loaded) {
     return false;
   }
 
@@ -729,7 +730,7 @@ void beginProductJumpArc(Session& session,
   window.gameplayJump.reasonCode = std::string{reason};
   advanceProductJump(session,
                      window,
-                     productActiveRoomCollisionSurfaces(window.activeRoomCollision));
+                     productActiveRoomCollisionSurfaces(activeRoomCollision(window)));
 }
 
 bool tryProductCoyoteJump(Session& session, ProductAppWindowState& window) {
@@ -1244,7 +1245,7 @@ void recordProductWallJumpTraversalProof(ProductAppWindowState& window,
 bool tryProductWallJump(Session& session, ProductAppWindowState& window) {
   const ProductGameplayMovementTuning& tuning = window.gameplayMovement.tuning;
   const SpatialSurfaceSet* surfaces =
-      productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+      productActiveRoomCollisionSurfaces(activeRoomCollision(window));
   const EntityId actor = productPlayerActor(session);
   const EntityState* entity = session.state().world.findById(actor);
   // branch-gate: BG-1157
@@ -1290,9 +1291,9 @@ bool tryProductWallJump(Session& session, ProductAppWindowState& window) {
 bool tryProductTraversalJump(Session& session, ProductAppWindowState& window) {
   clearProductTraversalProof(window);
   const SpatialSurfaceSet* surfaces =
-      productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+      productActiveRoomCollisionSurfaces(activeRoomCollision(window));
   // branch-gate: BG-1156
-  if (!window.activeRoom.loaded || surfaces == nullptr) {
+  if (!activeRoom(window).loaded || surfaces == nullptr) {
     return false;
   }
 
@@ -1302,7 +1303,7 @@ bool tryProductTraversalJump(Session& session, ProductAppWindowState& window) {
   request.forward = manualFirstPersonDirection(0.0F,
                                                1.0F,
                                                window.viewport.cameraYawDegrees);
-  request.room = &window.activeRoom.room;
+  request.room = &activeRoom(window).room;
   request.collisionSurfaces = surfaces;
 
   SessionState& state = session.mutableStateForOwnedSystems();

@@ -125,3 +125,36 @@ The compiler is the exhaustive reader-finder (grep undercounts and can't see `op
 enforces the member accounting bidirectionally. **Green build + 260/260 + unchanged golden + updated
 TSV = provably complete and behavior-preserving.** No freshness debt, no derived truth — the cheapest
 kind of decomposition, exactly what the bulk-move method is for.
+
+## Completion Brief
+
+- Files changed:
+  - `CMakeLists.txt`
+  - `docs/god_struct_decomposition_target_map.md`
+  - `docs/god_struct_member_ownership.tsv`
+  - `src/app/iggy3d/ProductAppWindowState.hpp`
+  - `src/app/iggy3d/save/SaveSessionStore.hpp`
+  - Save/session production and receipt call sites under `src/app/iggy3d/`
+  - Save/session test call sites under `tests/unit/`
+  - `tools/iggy3d_product_frame_metrics/main.cpp`
+- Store shape:
+  - Added `iggy3d::SaveSessionStore` as a typed save/session state bucket.
+  - Moved the 31 listed save/session fields from `ProductAppWindowState` into `ProductAppWindowState::saveSession`.
+  - Left `runtimeSessionCreated` top-level and retargeted its ownership row to `GameplayStore`.
+- Repoint policy:
+  - Production and test users now read/write `window.saveSession.<field>` or equivalent wrapper-window paths.
+  - Receipt key names and ordering were preserved; `tests/golden/product_receipt_key_order.golden` is unchanged.
+- Docs/accounting:
+  - Replaced the 31 moved TSV rows with `saveSession	SaveSessionStore`.
+  - Marked target-map SaveSessionStore bulk move as done and recorded the `runtimeSessionCreated` exclusion.
+  - `PRIORITY.md` was not updated because `/Users/kogaryu/iggy3d/PRIORITY.md` is absent in this checkout.
+- Verification:
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10` passed.
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed: `1032 fields match golden`.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -j8 --output-on-failure` passed: `260/260`.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over changed files passed.
+  - Negative grep for old `window.<save-session-field>` access passed.
+  - Negative grep for removed `ProductAppWindowState` save/session member declarations passed.
+- Concerns/deferred:
+  - `runtimeSessionCreated` remains a top-level gameplay flag until the later GameplayStore move.

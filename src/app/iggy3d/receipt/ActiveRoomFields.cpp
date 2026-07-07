@@ -1,72 +1,79 @@
 #include "app/iggy3d/receipt/ReceiptFields.hpp"
 
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
+
 namespace iggy3d {
 
 void appendProductActiveRoomFields(RenderReceipt& receipt, const ProductAppWindowState& window) {
-  appendReceiptField(receipt, "active_room_loaded", window.activeRoom.loaded);
-  appendReceiptField(receipt, "active_room_status", window.activeRoom.status);
+  const ProductActiveRoomState& room = activeRoom(window);
+  const ProductActiveRoomCollisionState& collision = activeRoomCollision(window);
+  const ProductActiveRoomCollisionFreshnessResult& freshness =
+      activeRoomCollisionFreshness(window);
+
+  appendReceiptField(receipt, "active_room_loaded", room.loaded);
+  appendReceiptField(receipt, "active_room_status", room.status);
   appendReceiptField(receipt, "active_room_reason_code",
-                     window.activeRoom.reasonCode);
-  appendReceiptField(receipt, "active_room_source", window.activeRoom.source);
-  appendReceiptField(receipt, "active_room_id", window.activeRoom.roomId);
+                     room.reasonCode);
+  appendReceiptField(receipt, "active_room_source", room.source);
+  appendReceiptField(receipt, "active_room_id", room.roomId);
   appendReceiptField(receipt, "active_room_source_name",
-                     window.activeRoom.sourceName);
+                     room.sourceName);
   appendReceiptField(receipt, "active_room_source_subset",
-                     window.activeRoom.sourceSubset);
+                     room.sourceSubset);
   appendReceiptField(receipt, "active_room_has_authored_room",
-                     window.activeRoom.hasAuthoredRoom);
+                     room.hasAuthoredRoom);
   appendReceiptField(receipt, "active_room_authored_floor_count",
-                     window.activeRoom.authoredFloorCount);
+                     room.authoredFloorCount);
   appendReceiptField(receipt, "active_room_authored_wall_count",
-                     window.activeRoom.authoredWallCount);
+                     room.authoredWallCount);
   appendReceiptField(receipt, "active_room_authored_object_count",
-                     window.activeRoom.authoredObjectCount);
+                     room.authoredObjectCount);
   appendReceiptField(receipt, "active_room_authored_marker_count",
-                     window.activeRoom.authoredMarkerCount);
+                     room.authoredMarkerCount);
   appendReceiptField(receipt, "active_room_static_mesh_count",
-                     window.activeRoom.staticMeshCount);
+                     room.staticMeshCount);
   appendReceiptField(receipt, "active_room_anchor_count",
-                     window.activeRoom.anchorCount);
+                     room.anchorCount);
   appendReceiptField(receipt, "active_room_opening_count",
-                     window.activeRoom.openingCount);
+                     room.openingCount);
   appendReceiptField(receipt, "active_room_spatial_surface_count",
-                     window.activeRoom.spatialSurfaceCount);
+                     room.spatialSurfaceCount);
   appendReceiptField(receipt, "active_room_walkable_surface_count",
-                     window.activeRoom.walkableSurfaceCount);
+                     room.walkableSurfaceCount);
   appendReceiptField(receipt, "active_room_actor_blocker_count",
-                     window.activeRoom.actorBlockerSurfaceCount);
+                     room.actorBlockerSurfaceCount);
   appendReceiptField(receipt, "active_room_projectile_blocker_count",
-                     window.activeRoom.projectileBlockerSurfaceCount);
+                     room.projectileBlockerSurfaceCount);
   appendReceiptField(receipt, "active_room_collision_ready",
-                     window.activeRoomCollision.ready);
+                     collision.ready);
   appendReceiptField(receipt, "active_room_collision_status",
-                     window.activeRoomCollision.status);
+                     collision.status);
   appendReceiptField(receipt, "active_room_collision_reason_code",
-                     window.activeRoomCollision.reasonCode);
+                     collision.reasonCode);
   appendReceiptField(receipt, "active_room_collision_room_id",
-                     window.activeRoomCollision.roomId);
+                     collision.roomId);
   appendReceiptField(receipt, "active_room_collision_spatial_surface_count",
-                     window.activeRoomCollision.spatialSurfaceCount);
+                     collision.spatialSurfaceCount);
   appendReceiptField(receipt, "active_room_collision_query_surface_count",
-                     window.activeRoomCollision.querySurfaceCount);
+                     collision.querySurfaceCount);
   appendReceiptField(receipt, "active_room_collision_walkable_surface_count",
-                     window.activeRoomCollision.walkableSurfaceCount);
+                     collision.walkableSurfaceCount);
   appendReceiptField(receipt, "active_room_collision_actor_blocker_count",
-                     window.activeRoomCollision.actorBlockerSurfaceCount);
+                     collision.actorBlockerSurfaceCount);
   appendReceiptField(receipt, "active_room_collision_projectile_blocker_count",
-                     window.activeRoomCollision.projectileBlockerSurfaceCount);
+                     collision.projectileBlockerSurfaceCount);
   appendReceiptField(receipt, "active_room_collision_runtime_owned_surface_count",
-                     window.activeRoomCollision.runtimeOwnedSurfaceCount);
+                     collision.runtimeOwnedSurfaceCount);
   appendReceiptField(receipt, "active_room_collision_runtime_filtered_surface_count",
-                     window.activeRoomCollision.runtimeFilteredSurfaceCount);
+                     collision.runtimeFilteredSurfaceCount);
   appendReceiptField(receipt, "active_room_collision_door_blocker_count",
-                     window.activeRoomCollision.doorBlockerSurfaceCount);
+                     collision.doorBlockerSurfaceCount);
   appendReceiptField(receipt, "active_room_collision_active_door_blocker_count",
-                     window.activeRoomCollision.activeDoorBlockerSurfaceCount);
+                     collision.activeDoorBlockerSurfaceCount);
   appendReceiptField(receipt, "active_room_collision_freshness_rebaked",
-                     window.activeRoomCollisionFreshness.rebaked);
+                     freshness.rebaked);
   appendReceiptField(receipt, "active_room_collision_freshness_reason_code",
-                     window.activeRoomCollisionFreshness.reasonCode);
+                     freshness.reasonCode);
 }
 
 }  // namespace iggy3d

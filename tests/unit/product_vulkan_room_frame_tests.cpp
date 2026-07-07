@@ -1,6 +1,7 @@
 #include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
 #include "app/iggy3d/window/RendererLifecycle.hpp"
@@ -237,11 +238,11 @@ bool productGameplayBuildsFirstPersonRoomFrame() {
 
   bool ok = true;
   ok = expect(window.gameplayActive, "gameplay active") && ok;
-  ok = expect(window.activeRoom.loaded, "active room loaded") && ok;
+  ok = expect(iggy3d::activeRoom(window).loaded, "active room loaded") && ok;
   ok = expect(frame.hasGameplayProjection, "projection frame built") && ok;
   ok = expect(frame.viewVisible, "gameplay view visible") && ok;
   ok = expect(frame.scene.room.loaded, "scene room loaded") && ok;
-  ok = expect(frame.scene.room.assetId == window.activeRoom.roomId,
+  ok = expect(frame.scene.room.assetId == iggy3d::activeRoom(window).roomId,
               "scene room matches active room") &&
        ok;
   ok = expect(renderFrame.projections.scene == &frame.scene,
@@ -282,7 +283,7 @@ bool productGameplayBuildsFirstPersonRoomFrame() {
               "clipFromWorld composition") &&
        ok;
   ok = expect(geometry.ready, "room mesh CPU geometry ready") && ok;
-  ok = expect(geometry.sourceRoomAssetId == window.activeRoom.roomId,
+  ok = expect(geometry.sourceRoomAssetId == iggy3d::activeRoom(window).roomId,
               "geometry asset id") &&
        ok;
   ok = expect(!geometry.vertices.empty(), "room mesh vertices present") && ok;
@@ -296,7 +297,7 @@ bool productGameplayBuildsFirstPersonRoomFrame() {
   ok = expect(window.viewport.productVulkanRoomMeshSource == "scene_room_projection",
               "window CPU mesh source") &&
        ok;
-  ok = expect(window.viewport.productVulkanRoomAssetId == window.activeRoom.roomId,
+  ok = expect(window.viewport.productVulkanRoomAssetId == iggy3d::activeRoom(window).roomId,
               "window CPU mesh room id") &&
        ok;
   ok = expect(window.viewport.productVulkanRoomVertexCount == geometry.vertices.size(),

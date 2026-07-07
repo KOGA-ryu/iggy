@@ -23,16 +23,16 @@
 namespace iggy3d {
 
 void appendProductSaveStateFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window, const creative::CreativeActiveIdentity& creativeIdentity) {
-  appendReceiptField(receipt, "product_save_status", window.productSaveStatus);
+  appendReceiptField(receipt, "product_save_status", window.saveSession.productSaveStatus);
   appendReceiptField(receipt, "product_save_reason_code",
-                     window.productSaveReasonCode);
+                     window.saveSession.productSaveReasonCode);
   appendReceiptField(receipt, "product_save_durable_reason",
-                     window.productSaveDurableReason);
-  appendReceiptField(receipt, "product_save_source", window.productSaveSource);
-  appendReceiptField(receipt, "product_save_save_id", window.productSaveSaveId);
+                     window.saveSession.productSaveDurableReason);
+  appendReceiptField(receipt, "product_save_source", window.saveSession.productSaveSource);
+  appendReceiptField(receipt, "product_save_save_id", window.saveSession.productSaveSaveId);
   appendReceiptField(receipt, "product_save_session_saved",
-                     window.productSaveSessionSaved);
-  appendReceiptField(receipt, "active_product_save_id", window.activeProductSaveId);
+                     window.saveSession.productSaveSessionSaved);
+  appendReceiptField(receipt, "active_product_save_id", window.saveSession.activeProductSaveId);
   appendReceiptField(receipt, "active_creative_save_id",
                      creativeIdentity.saveId);
   appendReceiptField(receipt, "active_creative_save_path",
@@ -58,73 +58,73 @@ void appendProductSaveStateFields(RenderReceipt& receipt, const FrontendState& f
   appendReceiptField(receipt, "active_creative_save_saved_at_utc",
                      creativeIdentity.saveSavedAtUtc);
   appendReceiptField(receipt, "product_save_load_status",
-                     window.productSaveLoadResult.status);
+                     window.saveSession.productSaveLoadResult.status);
   appendReceiptField(receipt, "product_save_load_reason_code",
-                     window.productSaveLoadResult.reasonCode);
+                     window.saveSession.productSaveLoadResult.reasonCode);
   appendReceiptField(receipt, "product_save_load_save_id",
-                     window.productSaveLoadResult.record.id);
+                     window.saveSession.productSaveLoadResult.record.id);
   appendReceiptField(receipt, "product_save_load_source",
-                     window.productSaveLoadSource);
+                     window.saveSession.productSaveLoadSource);
   appendReceiptField(receipt, "product_save_load_selected_id",
-                     window.productSaveLoadSelectedId);
+                     window.saveSession.productSaveLoadSelectedId);
   appendReceiptField(receipt, "product_save_load_selected_enabled",
-                     window.productSaveLoadSelectedEnabled);
+                     window.saveSession.productSaveLoadSelectedEnabled);
   appendReceiptField(receipt,
                      "product_save_load_authored_room_present",
-                     window.productSaveLoadResult.authoredRoomPresent);
+                     window.saveSession.productSaveLoadResult.authoredRoomPresent);
   appendReceiptField(receipt,
                      "product_save_load_authored_room_id",
-                     window.productSaveLoadResult.authoredRoomId);
+                     window.saveSession.productSaveLoadResult.authoredRoomId);
   appendReceiptField(receipt,
                      "product_save_load_authored_floor_count",
-                     window.productSaveLoadResult.authoredFloorCount);
+                     window.saveSession.productSaveLoadResult.authoredFloorCount);
   appendReceiptField(receipt,
                      "product_save_load_authored_wall_count",
-                     window.productSaveLoadResult.authoredWallCount);
+                     window.saveSession.productSaveLoadResult.authoredWallCount);
   appendReceiptField(receipt,
                      "product_save_load_authored_object_count",
-                     window.productSaveLoadResult.authoredObjectCount);
+                     window.saveSession.productSaveLoadResult.authoredObjectCount);
   appendReceiptField(receipt,
                      "product_save_load_authored_marker_count",
-                     window.productSaveLoadResult.authoredMarkerCount);
+                     window.saveSession.productSaveLoadResult.authoredMarkerCount);
   appendReceiptField(receipt, "saved_marker_bind_status",
-                     window.savedMarkerBind.status);
+                     window.saveSession.savedMarkerBind.status);
   appendReceiptField(receipt, "saved_marker_bind_reason_code",
-                     window.savedMarkerBind.reasonCode);
+                     window.saveSession.savedMarkerBind.reasonCode);
   appendReceiptField(receipt, "saved_marker_bind_requested",
-                     window.savedMarkerBind.requested);
+                     window.saveSession.savedMarkerBind.requested);
   appendReceiptField(receipt, "saved_marker_bind_session_replaced",
-                     window.savedMarkerBind.sessionReplaced);
+                     window.saveSession.savedMarkerBind.sessionReplaced);
   appendReceiptField(receipt, "saved_marker_bind_room_id",
-                     window.savedMarkerBind.roomId);
+                     window.saveSession.savedMarkerBind.roomId);
   appendReceiptField(receipt, "saved_marker_bind_marker_count",
-                     window.savedMarkerBind.markerCount);
+                     window.saveSession.savedMarkerBind.markerCount);
   appendReceiptField(receipt, "saved_marker_bind_seed_entity_count",
-                     window.savedMarkerBind.seedEntityCount);
+                     window.saveSession.savedMarkerBind.seedEntityCount);
   appendReceiptField(receipt, "saved_marker_bind_added_entity_count",
-                     window.savedMarkerBind.addedEntityCount);
+                     window.saveSession.savedMarkerBind.addedEntityCount);
   appendReceiptField(receipt, "saved_marker_bind_existing_entity_count",
-                     window.savedMarkerBind.existingEntityCount);
+                     window.saveSession.savedMarkerBind.existingEntityCount);
   appendReceiptField(receipt, "saved_marker_bind_added_objective_count",
-                     window.savedMarkerBind.addedObjectiveCount);
+                     window.saveSession.savedMarkerBind.addedObjectiveCount);
   appendReceiptField(receipt, "saved_marker_bind_existing_objective_count",
-                     window.savedMarkerBind.existingObjectiveCount);
+                     window.saveSession.savedMarkerBind.existingObjectiveCount);
   appendReceiptField(receipt, "saved_marker_bind_added_combatant_count",
-                     window.savedMarkerBind.addedCombatantCount);
+                     window.saveSession.savedMarkerBind.addedCombatantCount);
   appendReceiptField(receipt, "saved_marker_bind_existing_combatant_count",
-                     window.savedMarkerBind.existingCombatantCount);
+                     window.saveSession.savedMarkerBind.existingCombatantCount);
   appendReceiptField(receipt, "saved_marker_bind_pickup_count",
-                     window.savedMarkerBind.pickupCount);
+                     window.saveSession.savedMarkerBind.pickupCount);
   appendReceiptField(receipt, "saved_marker_bind_door_count",
-                     window.savedMarkerBind.doorCount);
+                     window.saveSession.savedMarkerBind.doorCount);
   appendReceiptField(receipt, "saved_marker_bind_marker_entity_count",
-                     window.savedMarkerBind.markerEntityCount);
+                     window.saveSession.savedMarkerBind.markerEntityCount);
   appendReceiptField(receipt, "saved_marker_bind_npc_count",
-                     window.savedMarkerBind.npcCount);
+                     window.saveSession.savedMarkerBind.npcCount);
   appendReceiptField(receipt, "saved_marker_bind_previous_hash",
-                     window.savedMarkerBind.previousHash);
+                     window.saveSession.savedMarkerBind.previousHash);
   appendReceiptField(receipt, "saved_marker_bind_bound_hash",
-                     window.savedMarkerBind.boundHash);
+                     window.saveSession.savedMarkerBind.boundHash);
   appendReceiptField(receipt, "room_editor_cursor_ready",
                      window.roomEditorCursorReady);
   appendReceiptField(receipt, "room_editor_grid_x",
@@ -239,94 +239,94 @@ void appendProductSaveStateFields(RenderReceipt& receipt, const FrontendState& f
   appendReceiptField(receipt,
                      "save_browser_mode",
                      frontendSaveBrowserModeName(frontend.saveBrowserMode));
-  appendReceiptField(receipt, "selected_save_id", window.selectedProductSave.id);
+  appendReceiptField(receipt, "selected_save_id", window.saveSession.selectedProductSave.id);
   appendReceiptField(receipt, "selected_save_enabled",
-                     window.selectedProductSave.enabled);
+                     window.saveSession.selectedProductSave.enabled);
   appendReceiptField(receipt, "selected_save_status",
-                     window.selectedProductSave.status);
-  appendReceiptField(receipt, "save_slot_browser_mode", window.saveSlotBrowserMode);
-  appendReceiptField(receipt, "save_slot_ring_count", window.saveSlotRingCount);
+                     window.saveSession.selectedProductSave.status);
+  appendReceiptField(receipt, "save_slot_browser_mode", window.saveSession.saveSlotBrowserMode);
+  appendReceiptField(receipt, "save_slot_ring_count", window.saveSession.saveSlotRingCount);
   appendReceiptField(receipt,
                      "save_slot_ring_selected_index",
-                     window.saveSlotRingSelectedIndex);
+                     window.saveSession.saveSlotRingSelectedIndex);
   appendReceiptField(receipt,
                      "save_slot_ring_selected_id",
-                     window.saveSlotRingSelectedId);
+                     window.saveSession.saveSlotRingSelectedId);
   appendReceiptField(receipt,
                      "save_slot_ring_selected_status",
-                     window.saveSlotRingSelectedStatus);
+                     window.saveSession.saveSlotRingSelectedStatus);
   appendReceiptField(receipt, "save_slot_action_command",
-                     window.saveSlotActionCommand);
+                     window.saveSession.saveSlotActionCommand);
   appendReceiptField(receipt, "save_slot_action_enabled",
-                     window.saveSlotActionEnabled);
+                     window.saveSession.saveSlotActionEnabled);
   appendReceiptField(receipt,
                      "save_slot_action_confirmation_required",
-                     window.saveSlotActionConfirmationRequired);
+                     window.saveSession.saveSlotActionConfirmationRequired);
   appendReceiptField(receipt, "save_slot_action_status",
-                     window.saveSlotActionStatus);
-  appendReceiptField(receipt, "save_flow_operation", window.saveFlow.operation);
+                     window.saveSession.saveSlotActionStatus);
+  appendReceiptField(receipt, "save_flow_operation", window.saveSession.saveFlow.operation);
   appendReceiptField(receipt,
                      "save_flow_source_surface",
-                     window.saveFlow.sourceSurface);
-  appendReceiptField(receipt, "save_flow_status", window.saveFlow.status);
+                     window.saveSession.saveFlow.sourceSurface);
+  appendReceiptField(receipt, "save_flow_status", window.saveSession.saveFlow.status);
   appendReceiptField(receipt,
                      "save_flow_reason_code",
-                     window.saveFlow.reasonCode);
+                     window.saveSession.saveFlow.reasonCode);
   appendReceiptField(receipt,
                      "save_flow_affected_slot_id",
-                     window.saveFlow.affectedSlotId);
+                     window.saveSession.saveFlow.affectedSlotId);
   appendReceiptField(receipt,
                      "save_flow_active_count_before",
-                     window.saveFlow.activeCountBefore);
+                     window.saveSession.saveFlow.activeCountBefore);
   appendReceiptField(receipt,
                      "save_flow_active_count_after",
-                     window.saveFlow.activeCountAfter);
+                     window.saveSession.saveFlow.activeCountAfter);
   appendReceiptField(receipt,
                      "save_flow_deleted_count_after",
-                     window.saveFlow.deletedCountAfter);
+                     window.saveSession.saveFlow.deletedCountAfter);
   appendReceiptField(receipt,
                      "save_flow_selected_slot_after",
-                     window.saveFlow.selectedSlotAfter);
+                     window.saveSession.saveFlow.selectedSlotAfter);
   appendReceiptField(receipt, "save_delete_confirmation_open",
-                     window.saveDelete.confirmationOpen);
+                     window.saveSession.saveDelete.confirmationOpen);
   appendReceiptField(receipt, "save_delete_candidate_id",
-                     window.saveDelete.candidateId);
+                     window.saveSession.saveDelete.candidateId);
   appendReceiptField(receipt, "save_delete_candidate_enabled",
-                     window.saveDelete.candidateEnabled);
-  appendReceiptField(receipt, "save_delete_status", window.saveDelete.status);
+                     window.saveSession.saveDelete.candidateEnabled);
+  appendReceiptField(receipt, "save_delete_status", window.saveSession.saveDelete.status);
   appendReceiptField(receipt, "save_delete_reason_code",
-                     window.saveDelete.reasonCode);
-  appendReceiptField(receipt, "save_delete_type", window.saveDelete.type);
+                     window.saveSession.saveDelete.reasonCode);
+  appendReceiptField(receipt, "save_delete_type", window.saveSession.saveDelete.type);
   appendReceiptField(receipt, "save_delete_recoverable",
-                     window.saveDelete.recoverable);
-  appendReceiptField(receipt, "save_delete_executed", window.saveDelete.executed);
+                     window.saveSession.saveDelete.recoverable);
+  appendReceiptField(receipt, "save_delete_executed", window.saveSession.saveDelete.executed);
   appendReceiptField(receipt, "deleted_save_browser_open",
-                     window.deletedSaveBrowserOpen);
-  appendReceiptField(receipt, "deleted_save_count", window.deletedSaveCount);
+                     window.saveSession.deletedSaveBrowserOpen);
+  appendReceiptField(receipt, "deleted_save_count", window.saveSession.deletedSaveCount);
   appendReceiptField(receipt, "deleted_compatible_save_count",
-                     window.deletedCompatibleSaveCount);
+                     window.saveSession.deletedCompatibleSaveCount);
   appendReceiptField(receipt, "deleted_selected_save_id",
-                     window.deletedSelectedSaveId);
+                     window.saveSession.deletedSelectedSaveId);
   appendReceiptField(receipt, "deleted_selected_save_enabled",
-                     window.deletedSelectedSaveEnabled);
+                     window.saveSession.deletedSelectedSaveEnabled);
   appendReceiptField(receipt, "deleted_selected_save_status",
-                     window.deletedSelectedSaveStatus);
-  appendReceiptField(receipt, "save_recover_status", window.saveRecover.status);
+                     window.saveSession.deletedSelectedSaveStatus);
+  appendReceiptField(receipt, "save_recover_status", window.saveSession.saveRecover.status);
   appendReceiptField(receipt, "save_recover_reason_code",
-                     window.saveRecover.reasonCode);
+                     window.saveSession.saveRecover.reasonCode);
   appendReceiptField(receipt, "save_recover_executed",
-                     window.saveRecover.executed);
-  appendReceiptField(receipt, "save_recover_save_id", window.saveRecover.saveId);
+                     window.saveSession.saveRecover.executed);
+  appendReceiptField(receipt, "save_recover_save_id", window.saveSession.saveRecover.saveId);
   appendReceiptField(receipt, "save_recover_snapshot_recovered",
-                     window.saveRecover.snapshotRecovered);
+                     window.saveSession.saveRecover.snapshotRecovered);
   appendReceiptField(receipt, "save_recover_snapshot_missing",
-                     window.saveRecover.snapshotMissing);
+                     window.saveSession.saveRecover.snapshotMissing);
   appendReceiptField(receipt, "product_save_load_previous_hash",
-                     window.productSaveLoadResult.previousHash);
+                     window.saveSession.productSaveLoadResult.previousHash);
   appendReceiptField(receipt, "product_save_load_loaded_hash",
-                     window.productSaveLoadResult.loadedHash);
+                     window.saveSession.productSaveLoadResult.loadedHash);
   appendReceiptField(receipt, "product_save_load_session_loaded",
-                     window.productSaveLoadResult.sessionLoaded);
+                     window.saveSession.productSaveLoadResult.sessionLoaded);
 }
 
 }  // namespace iggy3d

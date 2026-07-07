@@ -7,6 +7,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/ascii_room/Preview.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
 #include "app/iggy3d/room_editor/ActionController.hpp"
@@ -87,7 +88,7 @@ void copyRoomEditingStateToWindow(ProductAppWindowState& window,
   window.roomEditing = state;
   // branch-gate: BG-1006
   if (state.ready) {
-    window.activeRoom = state.activeRoom;
+    activeRoom(window) = state.activeRoom;
     bumpActiveRoomRevision(window);
     (void)ensureActiveRoomCollisionFresh(window, nullptr);
   } else {
@@ -682,7 +683,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
     }
 
     const ProductRoomEditingStartResult started =
-        startProductRoomEditAutomationFromActiveRoom({context.window.activeRoom});
+        startProductRoomEditAutomationFromActiveRoom({activeRoom(context.window)});
     recordProductRoomEditingStart(context.window, started, automationSpec.canonicalKey);
     // branch-gate: BG-1006
     markAutomationApplied(context.window, command, automationSpec.canonicalKey,

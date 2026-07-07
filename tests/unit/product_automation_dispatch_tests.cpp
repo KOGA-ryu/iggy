@@ -94,7 +94,7 @@ bool creativeNewWorldLaunchesThroughAutomationAppContext() {
          expect(app.identity.saveId != "none" &&
                     !app.identity.saveId.empty(),
                 "automation records creative save id") &&
-         expect(window.activeProductSaveId == "none",
+         expect(window.saveSession.activeProductSaveId == "none",
                 "automation does not set product save id") &&
          expect(facade.document().id() !=
                     iggy3d::creative::kInvalidDocumentId,

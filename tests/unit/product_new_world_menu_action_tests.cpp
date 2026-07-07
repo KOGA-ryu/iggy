@@ -11,6 +11,7 @@
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/world/DungeonDraft.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/input/InputAction.hpp"
@@ -202,20 +203,20 @@ bool manualDungeonSelectorCanCreateObjectCrateRoom() {
   ok = expect(window.worldCreation.asciiRoomId == "object_crate_room",
               "created room id") &&
        ok;
-  ok = expect(window.activeRoom.loaded, "created active room loaded") && ok;
-  ok = expect(window.activeRoom.roomId == "object_crate_room",
+  ok = expect(iggy3d::activeRoom(window).loaded, "created active room loaded") && ok;
+  ok = expect(iggy3d::activeRoom(window).roomId == "object_crate_room",
               "active room id") &&
        ok;
-  ok = expect(window.activeRoom.authoredObjectCount == 1U,
+  ok = expect(iggy3d::activeRoom(window).authoredObjectCount == 1U,
               "active room authored object count") &&
        ok;
-  ok = expect(window.activeRoom.staticMeshCount == 36U,
+  ok = expect(iggy3d::activeRoom(window).staticMeshCount == 36U,
               "active room static mesh count") &&
        ok;
-  ok = expect(window.activeRoomCollision.ready,
+  ok = expect(iggy3d::activeRoomCollision(window).ready,
               "active room collision ready") &&
        ok;
-  ok = expect(window.activeRoomCollision.querySurfaceCount == 57U,
+  ok = expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 57U,
               "active room collision surface count") &&
        ok;
   return ok;
@@ -281,20 +282,20 @@ bool manualDungeonSelectorCanCreateMovementGym() {
   ok = expect(window.worldCreation.asciiRoomId == "movement_gym",
               "movement gym created room id") &&
        ok;
-  ok = expect(window.activeRoom.loaded, "movement gym active room loaded") && ok;
-  ok = expect(window.activeRoom.roomId == "movement_gym",
+  ok = expect(iggy3d::activeRoom(window).loaded, "movement gym active room loaded") && ok;
+  ok = expect(iggy3d::activeRoom(window).roomId == "movement_gym",
               "movement gym active room id") &&
        ok;
-  ok = expect(window.activeRoom.authoredObjectCount == 10U,
+  ok = expect(iggy3d::activeRoom(window).authoredObjectCount == 10U,
               "movement gym authored object count") &&
        ok;
-  ok = expect(window.activeRoom.staticMeshCount == 1045U,
+  ok = expect(iggy3d::activeRoom(window).staticMeshCount == 1045U,
               "movement gym static mesh count") &&
        ok;
-  ok = expect(window.activeRoomCollision.ready,
+  ok = expect(iggy3d::activeRoomCollision(window).ready,
               "movement gym collision ready") &&
        ok;
-  ok = expect(window.activeRoomCollision.walkableSurfaceCount == 780U,
+  ok = expect(iggy3d::activeRoomCollision(window).walkableSurfaceCount == 780U,
               "movement gym ledge top walkable surface count") &&
        ok;
   return ok;

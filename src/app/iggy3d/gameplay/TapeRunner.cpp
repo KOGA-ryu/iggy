@@ -9,6 +9,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "runtime/ai/AiState.hpp"
 #include "runtime/inventory/InventorySystem.hpp"
 #include "runtime/movement/MovementSystem.hpp"
@@ -220,11 +221,11 @@ void ensureRequestCollisionFresh(const ProductGameplayTapeRunRequest& request) {
   }
 
   ProductAppWindowState window;
-  window.activeRoom = *request.activeRoom;
-  window.activeRoomCollision = *request.activeRoomCollision;
+  activeRoom(window) = *request.activeRoom;
+  activeRoomCollision(window) = *request.activeRoomCollision;
   bumpActiveRoomRevision(window);
   (void)ensureActiveRoomCollisionFresh(window, request.session);
-  *request.activeRoomCollision = std::move(window.activeRoomCollision);
+  *request.activeRoomCollision = std::move(activeRoomCollision(window));
 }
 
 const SpatialSurfaceSet* currentCollisionSurfaces(
@@ -232,7 +233,7 @@ const SpatialSurfaceSet* currentCollisionSurfaces(
   ensureRequestCollisionFresh(request);
   if (request.window != nullptr) {
     const SpatialSurfaceSet* windowSurfaces =
-        productActiveRoomCollisionSurfaces(request.window->activeRoomCollision);
+        productActiveRoomCollisionSurfaces(activeRoomCollision(*request.window));
     if (windowSurfaces != nullptr) {
       return windowSurfaces;
     }
@@ -574,15 +575,15 @@ void runProductGameplayTapeFromOptions(
   }
 
   const SpatialSurfaceSet* collisionSurfaces =
-      productActiveRoomCollisionSurfaces(request.window.activeRoomCollision);
+      productActiveRoomCollisionSurfaces(activeRoomCollision(request.window));
   const ProductGameplayTapeRunResult run = runProductGameplayTape(
       ProductGameplayTapeRunRequest{
           // branch-gate: BG-1032
           request.activeSession.has_value() ? &*request.activeSession : nullptr,
           &parsed.tape,
           collisionSurfaces,
-          &request.window.activeRoom,
-          &request.window.activeRoomCollision,
+          &activeRoom(request.window),
+          &activeRoomCollision(request.window),
           request.window.physicsMovementPlanner.enabled,
           &request.window});
   recordProductGameplayTapeRun(run, request.window);

@@ -33,6 +33,7 @@
 
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "runtime/session/Session.hpp"
 
 #include <utility>
@@ -48,7 +49,7 @@ std::string rebakeReasonCode(const ProductAppWindowState& window,
                              const ProductActiveRoomCollisionState& collision,
                              bool roomMismatch,
                              bool sessionMismatch) {
-  if (!window.activeRoom.loaded) {
+  if (!activeRoom(window).loaded) {
     return "rebaked_unloaded";
   }
   if (!collision.ready || collision.querySurfaceCount == 0U) {
@@ -72,10 +73,10 @@ ProductActiveRoomCollisionFreshnessResult ensureActiveRoomCollisionFresh(
     ProductAppWindowState& window,
     const Session* session) {
   ProductActiveRoomCollisionFreshnessResult result;
-  result.observedRoomRevision = window.activeRoomRevision;
+  result.observedRoomRevision = activeRoomRevision(window);
   result.observedSessionHash = effectiveSessionHash(session);
 
-  ProductActiveRoomCollisionState& existing = window.activeRoomCollision;
+  ProductActiveRoomCollisionState& existing = activeRoomCollision(window);
   const bool roomMismatch =
       existing.bakedFromRoomRevision != result.observedRoomRevision;
   const bool sessionMismatch =
@@ -87,15 +88,15 @@ ProductActiveRoomCollisionFreshnessResult ensureActiveRoomCollisionFresh(
 
   ProductActiveRoomCollisionState collision =
       session != nullptr
-          ? buildProductActiveRoomCollision(window.activeRoom, session->state())
-          : buildProductActiveRoomCollision(window.activeRoom);
+          ? buildProductActiveRoomCollision(activeRoom(window), session->state())
+          : buildProductActiveRoomCollision(activeRoom(window));
   collision.bakedFromRoomRevision = result.observedRoomRevision;
   collision.bakedFromSessionHash = result.observedSessionHash;
 
   result.rebaked = true;
   result.reasonCode =
       rebakeReasonCode(window, collision, roomMismatch, sessionMismatch);
-  window.activeRoomCollision = std::move(collision);
+  activeRoomCollision(window) = std::move(collision);
   return result;
 }
 

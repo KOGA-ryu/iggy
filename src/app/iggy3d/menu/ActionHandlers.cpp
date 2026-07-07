@@ -14,6 +14,7 @@
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
 #include "app/iggy3d/save/Flow.hpp"
 #include "app/iggy3d/automation/Automation.hpp"
@@ -280,7 +281,7 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
   // branch-gate: BG-1017
   if (frontend.selectedAction == FrontendAction::EditRoom) {
     const ProductRoomEditingStartResult started =
-        startProductRoomAuthoringFromActiveRoom({window.activeRoom});
+        startProductRoomAuthoringFromActiveRoom({activeRoom(window)});
     recordProductRoomEditingStart(window, started, "pause_edit_room");
     frontend.status =
         started.ok ? "pause_edit_room_requested" : "pause_edit_room_failed";  // branch-gate: BG-1017
@@ -354,7 +355,7 @@ ProductMenuActionResult handlePauseConfirm(ProductPauseMenuActionContext& contex
   if (frontend.selectedAction == FrontendAction::LoadSave) {
     frontend.childScreen = FrontendScreen::LoadSave;
     frontend.saveBrowserMode = FrontendSaveBrowserMode::Load;
-    window.saveSlotBrowserMode =
+    window.saveSession.saveSlotBrowserMode =
         std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
     initializeSelectedProductSaveSlot(context.saves.slots, window);
     frontend.status = "pause_load_save_opened";
@@ -473,7 +474,7 @@ ProductMenuActionResult confirmStarterLoadSave(
   clearProductGameplayMovementTuning(context.window);
   context.frontend.childScreen = FrontendScreen::LoadSave;
   context.frontend.saveBrowserMode = FrontendSaveBrowserMode::Load;
-  context.window.saveSlotBrowserMode =
+  context.window.saveSession.saveSlotBrowserMode =
       std::string(frontendSaveBrowserModeName(context.frontend.saveBrowserMode));
   initializeSelectedProductSaveSlot(context.saves.slots, context.window);
   context.frontend.status = "opening_menu_load_save_selected";
@@ -485,7 +486,7 @@ ProductMenuActionResult confirmStarterDelete(ProductStarterMenuActionContext con
   context.frontend.childScreen = FrontendScreen::LoadSave;
   context.frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
   context.frontend.selectedAction = FrontendAction::Delete;
-  context.window.saveSlotBrowserMode =
+  context.window.saveSession.saveSlotBrowserMode =
       std::string(frontendSaveBrowserModeName(context.frontend.saveBrowserMode));
   initializeSelectedProductSaveSlot(context.saves.slots, context.window);
   context.frontend.status = "delete_world_browser_open";
@@ -642,7 +643,7 @@ ProductMenuActionResult applyProductLoadSaveMenuAction(
     InputAction action,
     ProductLoadSaveMenuActionContext context) {
   FrontendState& frontend = context.frontend;
-  context.window.saveSlotBrowserMode =
+  context.window.saveSession.saveSlotBrowserMode =
       std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
   // branch-gate: BG-1020
   if (action == InputAction::MenuBack) {

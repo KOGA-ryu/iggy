@@ -82,3 +82,55 @@ Append:
 - Negative grep results:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completion Brief - E152
+
+- Files changed:
+  - `CMakeLists.txt`
+  - `docs/god_struct_member_ownership.tsv`
+  - `src/app/iggy3d/ProductAppWindowState.hpp`
+  - `src/app/iggy3d/gameplay/ProductRoomStore.hpp`
+  - `src/app/iggy3d/gameplay/ProductRoomStore.cpp`
+  - `tools/iggy3d_product_frame_metrics/main.cpp`
+  - `tests/unit/product_active_room_state_tests.cpp`
+  - `docs/creative_mode/builder_tasks/claimed/E152-roomstore-g5-final-storage-move.md`
+- Store storage moved:
+  - Added `ProductRoomStore` storage containing `activeRoom`,
+    `activeRoomRevision`, `activeRoomCollision`, and
+    `activeRoomCollisionFreshness`.
+  - Added `ProductRoomStore room;` to `ProductAppWindowState`.
+  - `activeRoom(...)`, `activeRoomRevision(...)`,
+    `activeRoomCollision(...)`, and `activeRoomCollisionFreshness(...)` now
+    return `window.room.*` references from `ProductRoomStore.cpp`.
+- Top-level fields deleted:
+  - Removed `ProductAppWindowState::activeRoom`,
+    `ProductAppWindowState::activeRoomRevision`,
+    `ProductAppWindowState::activeRoomCollision`, and
+    `ProductAppWindowState::activeRoomCollisionFreshness`.
+  - Updated the E148 accessor alias test to prove aliasing against
+    `window.room.*`.
+- Ownership TSV change:
+  - Removed the four old top-level `RoomStore` rows.
+  - Added `room	RoomStore`.
+  - `product_god_struct_ownership_coverage_tests` passed.
+- Receipt oracle result:
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests`
+  - `receipt key-order oracle: 1032 fields match golden (order + values)`
+- Negative grep results:
+  - `rg -n "window\\.activeRoom\\b|window\\.activeRoomRevision\\b|window\\.activeRoomCollision\\b|window\\.activeRoomCollisionFreshness\\b" /Users/kogaryu/iggy3d/src /Users/kogaryu/iggy3d/tests --glob '*.cpp' --glob '*.hpp'`
+  - No matches.
+  - `rg -n "ProductAppWindowState.*activeRoom|activeRoomRevision|activeRoomCollision|activeRoomCollisionFreshness" /Users/kogaryu/iggy3d/src/app/iggy3d/ProductAppWindowState.hpp`
+  - No matches.
+  - `rg -n "roomEditing\\.activeRoom\\b|roomEditing\\.activeRoomCollision\\b" /Users/kogaryu/iggy3d/src /Users/kogaryu/iggy3d/tests --glob '*.cpp' --glob '*.hpp'`
+  - Still reports only the intentional `WorldAuthoringFields.cpp`
+    `window.roomEditing.activeRoom` and
+    `window.roomEditing.activeRoomCollision` receipt reads.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10`
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_god_struct_ownership_coverage_tests|product_receipt_key_order_tests|product_active_room_collision_tests|product_active_room_state_tests|product_creative_no_window_bake_scenario_tests|product_creative_world_launch_tests|product_gameplay_tape_runner_tests|product_window_input_frame_tests|product_room_editing_state_tests)$' --output-on-failure`
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - Focused trailing-whitespace scan over touched/new files.
+- Concerns/deferred:
+  - The room-editor producer state remains intentionally separate at
+    `roomEditing.activeRoom` / `roomEditing.activeRoomCollision`.

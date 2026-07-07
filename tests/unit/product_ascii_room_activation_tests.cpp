@@ -5,6 +5,7 @@
 #include <optional>
 #include <string_view>
 
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "projection/scene/SceneProjection.hpp"
 
 namespace {
@@ -96,50 +97,50 @@ bool activatesSessionFromAsciiRoom() {
                 "window activation door count") &&
          expect(window.asciiRoomActivation.markerEntityCount == 1U,
                 "window activation marker entity count") &&
-         expect(window.activeRoom.loaded, "active room loaded") &&
-         expect(window.activeRoom.status == "active_room_loaded",
+         expect(iggy3d::activeRoom(window).loaded, "active room loaded") &&
+         expect(iggy3d::activeRoom(window).status == "active_room_loaded",
                 "active room status") &&
-         expect(window.activeRoom.source == "ascii_room", "active room source") &&
-         expect(window.activeRoom.roomId == "activation_training_room",
+         expect(iggy3d::activeRoom(window).source == "ascii_room", "active room source") &&
+         expect(iggy3d::activeRoom(window).roomId == "activation_training_room",
                 "active room id") &&
-         expect(window.activeRoom.staticMeshCount == 36U,
+         expect(iggy3d::activeRoom(window).staticMeshCount == 36U,
                 "active room meshes") &&
-         expect(window.activeRoom.spatialSurfaceCount == 56U,
+         expect(iggy3d::activeRoom(window).spatialSurfaceCount == 56U,
                 "active room surfaces") &&
-         expect(window.activeRoom.walkableSurfaceCount == 15U,
+         expect(iggy3d::activeRoom(window).walkableSurfaceCount == 15U,
                 "walkable surfaces") &&
-         expect(window.activeRoom.actorBlockerSurfaceCount == 21U,
+         expect(iggy3d::activeRoom(window).actorBlockerSurfaceCount == 21U,
                 "actor blockers") &&
-         expect(window.activeRoom.projectileBlockerSurfaceCount == 21U,
+         expect(iggy3d::activeRoom(window).projectileBlockerSurfaceCount == 21U,
                 "projectile blockers") &&
-         expect(window.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(window).ready,
                 "active room collision ready") &&
-         expect(window.activeRoomCollision.status ==
+         expect(iggy3d::activeRoomCollision(window).status ==
                     "active_room_collision_ready",
                 "active room collision status") &&
-         expect(window.activeRoomCollision.reasonCode ==
+         expect(iggy3d::activeRoomCollision(window).reasonCode ==
                     "active_room_collision_ready",
                 "active room collision reason") &&
-         expect(window.activeRoomCollision.roomId ==
+         expect(iggy3d::activeRoomCollision(window).roomId ==
                     "activation_training_room",
                 "active room collision id") &&
-         expect(window.activeRoomCollision.spatialSurfaceCount == 56U,
+         expect(iggy3d::activeRoomCollision(window).spatialSurfaceCount == 56U,
                 "active room collision source count") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 56U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 56U,
                 "active room collision query count") &&
-         expect(window.activeRoomCollision.walkableSurfaceCount == 15U,
+         expect(iggy3d::activeRoomCollision(window).walkableSurfaceCount == 15U,
                 "active room collision walkable count") &&
-         expect(window.activeRoomCollision.actorBlockerSurfaceCount == 21U,
+         expect(iggy3d::activeRoomCollision(window).actorBlockerSurfaceCount == 21U,
                 "active room collision actor blocker count") &&
-         expect(window.activeRoomCollision.projectileBlockerSurfaceCount == 21U,
+         expect(iggy3d::activeRoomCollision(window).projectileBlockerSurfaceCount == 21U,
                 "active room collision projectile blocker count") &&
-         expect(window.activeRoomCollision.runtimeOwnedSurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(window).runtimeOwnedSurfaceCount == 1U,
                 "active room collision runtime owned count") &&
-         expect(window.activeRoomCollision.runtimeFilteredSurfaceCount == 0U,
+         expect(iggy3d::activeRoomCollision(window).runtimeFilteredSurfaceCount == 0U,
                 "active room collision runtime filtered count") &&
-         expect(window.activeRoomCollision.doorBlockerSurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(window).doorBlockerSurfaceCount == 1U,
                 "active room collision door blocker count") &&
-         expect(window.activeRoomCollision.activeDoorBlockerSurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(window).activeDoorBlockerSurfaceCount == 1U,
                 "active room collision active door blocker count") &&
          expect(player != nullptr && player->kind == iggy3d::SceneItemKind::Player,
                 "player projected") &&
@@ -177,15 +178,15 @@ bool rejectsInvalidAsciiWithoutSession() {
          expect(window.asciiRoomActivation.status ==
                     "ascii_room_missing_player_spawn",
                 "window activation status") &&
-         expect(!window.activeRoom.loaded, "active room not loaded") &&
-         expect(window.activeRoom.status == "ascii_room_missing_player_spawn",
+         expect(!iggy3d::activeRoom(window).loaded, "active room not loaded") &&
+         expect(iggy3d::activeRoom(window).status == "ascii_room_missing_player_spawn",
                 "active room failure status") &&
-         expect(!window.activeRoomCollision.ready,
+         expect(!iggy3d::activeRoomCollision(window).ready,
                 "active room collision not ready") &&
-         expect(window.activeRoomCollision.status ==
+         expect(iggy3d::activeRoomCollision(window).status ==
                     "active_room_collision_unavailable",
                 "active room collision failure status") &&
-         expect(window.activeRoomCollision.reasonCode ==
+         expect(iggy3d::activeRoomCollision(window).reasonCode ==
                     "ascii_room_missing_player_spawn",
                 "active room collision failure reason") &&
          expect(window.asciiRoomActivation.sessionCreated == false,

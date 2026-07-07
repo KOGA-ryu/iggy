@@ -3,6 +3,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/Controller.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ascii_room/Editing.hpp"
 #include "app/input/ActionState.hpp"
@@ -169,16 +170,16 @@ iggy3d::Session twoDoorFreshnessSession() {
 iggy3d::ProductAppWindowState twoDoorFreshnessWindow(
     const iggy3d::Session& session) {
   iggy3d::ProductAppWindowState window;
-  window.activeRoomRevision = 1U;
-  window.activeRoom =
+  iggy3d::activeRoomRevision(window) = 1U;
+  iggy3d::activeRoom(window) =
       packageActiveRoom("freshness_two_door_room",
                         {walkableSurface("floor"),
                          blockerSurface("door_a_blocker", "freshness_door_a"),
                          blockerSurface("door_b_blocker", "freshness_door_b")});
-  window.activeRoomCollision =
-      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
-  window.activeRoomCollision.bakedFromRoomRevision = window.activeRoomRevision;
-  window.activeRoomCollision.bakedFromSessionHash =
+  iggy3d::activeRoomCollision(window) =
+      iggy3d::buildProductActiveRoomCollision(iggy3d::activeRoom(window), session.state());
+  iggy3d::activeRoomCollision(window).bakedFromRoomRevision = iggy3d::activeRoomRevision(window);
+  iggy3d::activeRoomCollision(window).bakedFromSessionHash =
       session.state().currentStateHash;
   return window;
 }
@@ -196,7 +197,7 @@ void interactNearestDoor(iggy3d::Session& session,
                                       window,
                                       "unit/freshness_order",
                                       iggy3d::productActiveRoomCollisionSurfaces(
-                                          window.activeRoomCollision));
+                                          iggy3d::activeRoomCollision(window)));
 }
 
 struct CollisionReaderSnapshot {
@@ -212,21 +213,21 @@ struct CollisionReaderSnapshot {
 CollisionReaderSnapshot readerSnapshot(
     const iggy3d::ProductAppWindowState& window) {
   const iggy3d::SpatialSurfaceSet* surfaces =
-      iggy3d::productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+      iggy3d::productActiveRoomCollisionSurfaces(iggy3d::activeRoomCollision(window));
   CollisionReaderSnapshot snapshot;
-  snapshot.querySurfaceCount = window.activeRoomCollision.querySurfaceCount;
+  snapshot.querySurfaceCount = iggy3d::activeRoomCollision(window).querySurfaceCount;
   snapshot.activeDoorBlockerSurfaceCount =
-      window.activeRoomCollision.activeDoorBlockerSurfaceCount;
+      iggy3d::activeRoomCollision(window).activeDoorBlockerSurfaceCount;
   snapshot.runtimeFilteredSurfaceCount =
-      window.activeRoomCollision.runtimeFilteredSurfaceCount;
+      iggy3d::activeRoomCollision(window).runtimeFilteredSurfaceCount;
   snapshot.surfaceSetSize = surfaces == nullptr ? 0U : surfaces->size();
   if (surfaces != nullptr) {
     for (const iggy3d::CollisionSurfaceView& surface : surfaces->surfaces()) {
       snapshot.surfaceIds.push_back(surface.id);
     }
   }
-  snapshot.roomRevision = window.activeRoomCollision.bakedFromRoomRevision;
-  snapshot.sessionHash = window.activeRoomCollision.bakedFromSessionHash;
+  snapshot.roomRevision = iggy3d::activeRoomCollision(window).bakedFromRoomRevision;
+  snapshot.sessionHash = iggy3d::activeRoomCollision(window).bakedFromSessionHash;
   return snapshot;
 }
 
@@ -257,9 +258,9 @@ struct OrderRunResult {
 OrderRunResult runDoorFreshnessOrder(bool deactivateBeforeInteract) {
   iggy3d::Session session = twoDoorFreshnessSession();
   iggy3d::ProductAppWindowState window = twoDoorFreshnessWindow(session);
-  bool ok = expect(window.activeRoomCollision.querySurfaceCount == 3U,
+  bool ok = expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 3U,
                    "order baseline query count") &&
-            expect(window.activeRoomCollision.activeDoorBlockerSurfaceCount == 2U,
+            expect(iggy3d::activeRoomCollision(window).activeDoorBlockerSurfaceCount == 2U,
                    "order baseline active door count");
 
   if (deactivateBeforeInteract) {
@@ -277,17 +278,17 @@ OrderRunResult runDoorFreshnessOrder(bool deactivateBeforeInteract) {
   const iggy3d::EntityState* doorB =
       session.state().world.findByStableName("freshness_door_b");
   ok = ok && expect(ensure.rebaked, "order boundary ensure rebaked") &&
-       expect(ensure.observedRoomRevision == window.activeRoomRevision,
+       expect(ensure.observedRoomRevision == iggy3d::activeRoomRevision(window),
               "order boundary observed room revision") &&
        expect(ensure.observedSessionHash == session.state().currentStateHash,
               "order boundary observed session hash") &&
        expect(doorA != nullptr && !doorA->active, "order door a inactive") &&
        expect(doorB != nullptr && !doorB->active, "order door b inactive") &&
-       expect(window.activeRoomCollision.querySurfaceCount == 1U,
+       expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 1U,
               "order final query count") &&
-       expect(window.activeRoomCollision.activeDoorBlockerSurfaceCount == 0U,
+       expect(iggy3d::activeRoomCollision(window).activeDoorBlockerSurfaceCount == 0U,
               "order final active door count") &&
-       expect(window.activeRoomCollision.runtimeFilteredSurfaceCount == 2U,
+       expect(iggy3d::activeRoomCollision(window).runtimeFilteredSurfaceCount == 2U,
               "order final filtered count");
   return {ok, readerSnapshot(window)};
 }
@@ -296,84 +297,84 @@ bool idempotentAfterRebake(iggy3d::ProductAppWindowState& window,
                            const iggy3d::Session* session,
                            std::string_view message) {
   const iggy3d::ProductActiveRoomCollisionState before =
-      window.activeRoomCollision;
+      iggy3d::activeRoomCollision(window);
   const iggy3d::ProductActiveRoomCollisionFreshnessResult second =
       iggy3d::ensureActiveRoomCollisionFresh(window, session);
   return expect(!second.rebaked, std::string(message) + " idempotent skip") &&
          expect(second.reasonCode == "skipped_fresh",
                 std::string(message) + " idempotent reason") &&
-         expect(window.activeRoomCollision.ready == before.ready,
+         expect(iggy3d::activeRoomCollision(window).ready == before.ready,
                 std::string(message) + " ready unchanged") &&
-         expect(window.activeRoomCollision.status == before.status,
+         expect(iggy3d::activeRoomCollision(window).status == before.status,
                 std::string(message) + " status unchanged") &&
-         expect(window.activeRoomCollision.reasonCode == before.reasonCode,
+         expect(iggy3d::activeRoomCollision(window).reasonCode == before.reasonCode,
                 std::string(message) + " collision reason unchanged") &&
-         expect(window.activeRoomCollision.roomId == before.roomId,
+         expect(iggy3d::activeRoomCollision(window).roomId == before.roomId,
                 std::string(message) + " room id unchanged") &&
-         expect(window.activeRoomCollision.querySurfaceCount ==
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount ==
                     before.querySurfaceCount,
                 std::string(message) + " query count unchanged") &&
-         expect(window.activeRoomCollision.runtimeFilteredSurfaceCount ==
+         expect(iggy3d::activeRoomCollision(window).runtimeFilteredSurfaceCount ==
                     before.runtimeFilteredSurfaceCount,
                 std::string(message) + " filtered count unchanged") &&
-         expect(window.activeRoomCollision.activeDoorBlockerSurfaceCount ==
+         expect(iggy3d::activeRoomCollision(window).activeDoorBlockerSurfaceCount ==
                     before.activeDoorBlockerSurfaceCount,
                 std::string(message) + " active door count unchanged") &&
-         expect(window.activeRoomCollision.bakedFromRoomRevision ==
+         expect(iggy3d::activeRoomCollision(window).bakedFromRoomRevision ==
                     before.bakedFromRoomRevision,
                 std::string(message) + " room stamp unchanged") &&
-         expect(window.activeRoomCollision.bakedFromSessionHash ==
+         expect(iggy3d::activeRoomCollision(window).bakedFromSessionHash ==
                     before.bakedFromSessionHash,
                 std::string(message) + " session stamp unchanged");
 }
 
 bool freshnessStoreRebakesWhenRoomReplaced() {
   iggy3d::ProductAppWindowState window;
-  window.activeRoomRevision = 1U;
-  window.activeRoom =
+  iggy3d::activeRoomRevision(window) = 1U;
+  iggy3d::activeRoom(window) =
       packageActiveRoom("floor_and_crate",
                         {walkableSurface("floor"),
                          blockerSurface("crate_actor"),
                          blockerSurface("crate_projectile")});
-  window.activeRoomCollision =
-      iggy3d::buildProductActiveRoomCollision(window.activeRoom);
-  window.activeRoomCollision.bakedFromRoomRevision = window.activeRoomRevision;
-  window.activeRoomCollision.bakedFromSessionHash = 0U;
+  iggy3d::activeRoomCollision(window) =
+      iggy3d::buildProductActiveRoomCollision(iggy3d::activeRoom(window));
+  iggy3d::activeRoomCollision(window).bakedFromRoomRevision = iggy3d::activeRoomRevision(window);
+  iggy3d::activeRoomCollision(window).bakedFromSessionHash = 0U;
 
   const bool baseline =
-      expect(window.activeRoomCollision.querySurfaceCount == 3U,
+      expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 3U,
              "room stale baseline query count") &&
-      expect(window.activeRoomCollision.bakedFromRoomRevision ==
-                 window.activeRoomRevision,
+      expect(iggy3d::activeRoomCollision(window).bakedFromRoomRevision ==
+                 iggy3d::activeRoomRevision(window),
              "room stale baseline provenance");
-  window.activeRoom = packageActiveRoom("floor_only", {walkableSurface("floor")});
+  iggy3d::activeRoom(window) = packageActiveRoom("floor_only", {walkableSurface("floor")});
   iggy3d::bumpActiveRoomRevision(window);
 
   const bool mismatch =
-      expect(window.activeRoom.spatialSurfaceCount == 1U,
+      expect(iggy3d::activeRoom(window).spatialSurfaceCount == 1U,
              "room stale new authored count") &&
-      expect(window.activeRoomCollision.querySurfaceCount == 3U,
+      expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 3U,
              "room stale old query count remains before ensure") &&
-      expect(window.activeRoomCollision.bakedFromRoomRevision !=
-                 window.activeRoomRevision,
+      expect(iggy3d::activeRoomCollision(window).bakedFromRoomRevision !=
+                 iggy3d::activeRoomRevision(window),
              "room stale provenance mismatch before ensure");
 
   const iggy3d::ProductActiveRoomCollisionFreshnessResult result =
       iggy3d::ensureActiveRoomCollisionFresh(window, nullptr);
   const iggy3d::SpatialSurfaceSet* surfaces =
-      iggy3d::productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+      iggy3d::productActiveRoomCollisionSurfaces(iggy3d::activeRoomCollision(window));
 
   return baseline && mismatch &&
          expect(result.rebaked, "room stale rebaked") &&
          expect(result.reasonCode == "rebaked_room", "room stale reason") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 1U,
                 "room stale query count refreshed") &&
-         expect(window.activeRoomCollision.roomId == "floor_only",
+         expect(iggy3d::activeRoomCollision(window).roomId == "floor_only",
                 "room stale room id refreshed") &&
-         expect(window.activeRoomCollision.bakedFromRoomRevision ==
-                    window.activeRoomRevision,
+         expect(iggy3d::activeRoomCollision(window).bakedFromRoomRevision ==
+                    iggy3d::activeRoomRevision(window),
                 "room stale room revision stamped") &&
-         expect(window.activeRoomCollision.bakedFromSessionHash == 0U,
+         expect(iggy3d::activeRoomCollision(window).bakedFromSessionHash == 0U,
                 "room stale null session hash stamped") &&
          expect(surfaces != nullptr && surfaces->size() == 1U,
                 "room stale reader surface count") &&
@@ -382,27 +383,27 @@ bool freshnessStoreRebakesWhenRoomReplaced() {
 
 bool freshnessStoreRebakesWhenSessionHashChanges() {
   iggy3d::ProductAppWindowState window;
-  window.activeRoomRevision = 1U;
-  window.activeRoom =
+  iggy3d::activeRoomRevision(window) = 1U;
+  iggy3d::activeRoom(window) =
       packageActiveRoom("door_room",
                         {walkableSurface("floor"),
                          blockerSurface("door_blocker", "freshness_door")});
   iggy3d::Session session = doorSession(true);
-  window.activeRoomCollision =
-      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
-  window.activeRoomCollision.bakedFromRoomRevision = window.activeRoomRevision;
-  window.activeRoomCollision.bakedFromSessionHash =
+  iggy3d::activeRoomCollision(window) =
+      iggy3d::buildProductActiveRoomCollision(iggy3d::activeRoom(window), session.state());
+  iggy3d::activeRoomCollision(window).bakedFromRoomRevision = iggy3d::activeRoomRevision(window);
+  iggy3d::activeRoomCollision(window).bakedFromSessionHash =
       session.state().currentStateHash;
 
   const std::uint64_t baselineHash = session.state().currentStateHash;
   const bool baseline =
-      expect(window.activeRoomCollision.runtimeOwnedSurfaceCount == 1U,
+      expect(iggy3d::activeRoomCollision(window).runtimeOwnedSurfaceCount == 1U,
              "session stale baseline runtime owned") &&
-      expect(window.activeRoomCollision.activeDoorBlockerSurfaceCount == 1U,
+      expect(iggy3d::activeRoomCollision(window).activeDoorBlockerSurfaceCount == 1U,
              "session stale baseline active door") &&
-      expect(window.activeRoomCollision.runtimeFilteredSurfaceCount == 0U,
+      expect(iggy3d::activeRoomCollision(window).runtimeFilteredSurfaceCount == 0U,
              "session stale baseline no filter") &&
-      expect(window.activeRoomCollision.querySurfaceCount == 2U,
+      expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 2U,
              "session stale baseline query count");
 
   const iggy3d::WorldMutationResult mutation =
@@ -423,18 +424,18 @@ bool freshnessStoreRebakesWhenSessionHashChanges() {
          expect(result.reasonCode == "rebaked_session", "session stale reason") &&
          expect(result.observedSessionHash == session.state().currentStateHash,
                 "session stale observed hash") &&
-         expect(window.activeRoomCollision.runtimeOwnedSurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(window).runtimeOwnedSurfaceCount == 1U,
                 "session stale two-arg overload used") &&
-         expect(window.activeRoomCollision.runtimeFilteredSurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(window).runtimeFilteredSurfaceCount == 1U,
                 "session stale runtime filtered") &&
-         expect(window.activeRoomCollision.activeDoorBlockerSurfaceCount == 0U,
+         expect(iggy3d::activeRoomCollision(window).activeDoorBlockerSurfaceCount == 0U,
                 "session stale active door cleared") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 1U,
                 "session stale query count drops") &&
-         expect(window.activeRoomCollision.bakedFromRoomRevision ==
-                    window.activeRoomRevision,
+         expect(iggy3d::activeRoomCollision(window).bakedFromRoomRevision ==
+                    iggy3d::activeRoomRevision(window),
                 "session stale room stamp") &&
-         expect(window.activeRoomCollision.bakedFromSessionHash ==
+         expect(iggy3d::activeRoomCollision(window).bakedFromSessionHash ==
                     session.state().currentStateHash,
                 "session stale session stamp") &&
          idempotentAfterRebake(window, &session, "session stale");
@@ -442,21 +443,21 @@ bool freshnessStoreRebakesWhenSessionHashChanges() {
 
 bool freshnessStoreRebakesUnloadedRoom() {
   iggy3d::ProductAppWindowState window;
-  window.activeRoomRevision = 1U;
-  window.activeRoom = packageActiveRoom("loaded_room", {walkableSurface("floor")});
-  window.activeRoomCollision =
-      iggy3d::buildProductActiveRoomCollision(window.activeRoom);
-  window.activeRoomCollision.bakedFromRoomRevision = window.activeRoomRevision;
-  window.activeRoomCollision.bakedFromSessionHash = 0U;
+  iggy3d::activeRoomRevision(window) = 1U;
+  iggy3d::activeRoom(window) = packageActiveRoom("loaded_room", {walkableSurface("floor")});
+  iggy3d::activeRoomCollision(window) =
+      iggy3d::buildProductActiveRoomCollision(iggy3d::activeRoom(window));
+  iggy3d::activeRoomCollision(window).bakedFromRoomRevision = iggy3d::activeRoomRevision(window);
+  iggy3d::activeRoomCollision(window).bakedFromSessionHash = 0U;
 
   const bool baseline =
-      expect(window.activeRoom.loaded, "unloaded stale baseline loaded") &&
-      expect(window.activeRoomCollision.ready, "unloaded stale baseline ready");
-  window.activeRoom = {};
+      expect(iggy3d::activeRoom(window).loaded, "unloaded stale baseline loaded") &&
+      expect(iggy3d::activeRoomCollision(window).ready, "unloaded stale baseline ready");
+  iggy3d::activeRoom(window) = {};
   iggy3d::bumpActiveRoomRevision(window);
   const bool stale =
-      expect(!window.activeRoom.loaded, "unloaded stale room cleared") &&
-      expect(window.activeRoomCollision.ready,
+      expect(!iggy3d::activeRoom(window).loaded, "unloaded stale room cleared") &&
+      expect(iggy3d::activeRoomCollision(window).ready,
              "unloaded stale collision still ready before ensure");
 
   const iggy3d::ProductActiveRoomCollisionFreshnessResult result =
@@ -466,44 +467,44 @@ bool freshnessStoreRebakesUnloadedRoom() {
          expect(result.rebaked, "unloaded stale rebaked") &&
          expect(result.reasonCode == "rebaked_unloaded",
                 "unloaded stale reason") &&
-         expect(!window.activeRoomCollision.ready,
+         expect(!iggy3d::activeRoomCollision(window).ready,
                 "unloaded stale collision unavailable") &&
-         expect(window.activeRoomCollision.status ==
+         expect(iggy3d::activeRoomCollision(window).status ==
                     "active_room_collision_unavailable",
                 "unloaded stale status") &&
-         expect(window.activeRoomCollision.reasonCode == "not_loaded",
+         expect(iggy3d::activeRoomCollision(window).reasonCode == "not_loaded",
                 "unloaded stale collision reason from active room") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 0U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 0U,
                 "unloaded stale query count") &&
          expect(iggy3d::productActiveRoomCollisionSurfaces(
-                    window.activeRoomCollision) == nullptr,
+                    iggy3d::activeRoomCollision(window)) == nullptr,
                 "unloaded stale no surface pointer") &&
-         expect(window.activeRoomCollision.bakedFromRoomRevision ==
-                    window.activeRoomRevision,
+         expect(iggy3d::activeRoomCollision(window).bakedFromRoomRevision ==
+                    iggy3d::activeRoomRevision(window),
                 "unloaded stale room stamp") &&
-         expect(window.activeRoomCollision.bakedFromSessionHash == 0U,
+         expect(iggy3d::activeRoomCollision(window).bakedFromSessionHash == 0U,
                 "unloaded stale session stamp") &&
          idempotentAfterRebake(window, nullptr, "unloaded stale");
 }
 
 bool freshnessStoreSkipsFreshCollision() {
   iggy3d::ProductAppWindowState window;
-  window.activeRoomRevision = 5U;
-  window.activeRoom = packageActiveRoom("fresh_room", {walkableSurface("floor")});
-  window.activeRoomCollision =
-      iggy3d::buildProductActiveRoomCollision(window.activeRoom);
-  window.activeRoomCollision.bakedFromRoomRevision = window.activeRoomRevision;
-  window.activeRoomCollision.bakedFromSessionHash = 0U;
+  iggy3d::activeRoomRevision(window) = 5U;
+  iggy3d::activeRoom(window) = packageActiveRoom("fresh_room", {walkableSurface("floor")});
+  iggy3d::activeRoomCollision(window) =
+      iggy3d::buildProductActiveRoomCollision(iggy3d::activeRoom(window));
+  iggy3d::activeRoomCollision(window).bakedFromRoomRevision = iggy3d::activeRoomRevision(window);
+  iggy3d::activeRoomCollision(window).bakedFromSessionHash = 0U;
 
   const iggy3d::ProductActiveRoomCollisionFreshnessResult result =
       iggy3d::ensureActiveRoomCollisionFresh(window, nullptr);
   return expect(!result.rebaked, "fresh skip no rebake") &&
          expect(result.reasonCode == "skipped_fresh", "fresh skip reason") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 1U,
                 "fresh skip query count unchanged") &&
-         expect(window.activeRoomCollision.bakedFromRoomRevision == 5U,
+         expect(iggy3d::activeRoomCollision(window).bakedFromRoomRevision == 5U,
                 "fresh skip room stamp unchanged") &&
-         expect(window.activeRoomCollision.bakedFromSessionHash == 0U,
+         expect(iggy3d::activeRoomCollision(window).bakedFromSessionHash == 0U,
                 "fresh skip session stamp unchanged");
 }
 
@@ -579,8 +580,8 @@ bool freshnessStoreDoorPermutationStressIsOrderIndependent() {
 bool freshnessStoreRebakesSessionlessAfterSessionReset() {
   std::optional<iggy3d::Session> activeSession = twoDoorFreshnessSession();
   iggy3d::ProductAppWindowState window;
-  window.activeRoomRevision = 1U;
-  window.activeRoom =
+  iggy3d::activeRoomRevision(window) = 1U;
+  iggy3d::activeRoom(window) =
       packageActiveRoom("session_reset_room",
                         {walkableSurface("floor"),
                          blockerSurface("door_a_blocker", "freshness_door_a"),
@@ -592,13 +593,13 @@ bool freshnessStoreRebakesSessionlessAfterSessionReset() {
   const std::uint64_t sessionHash = activeSession->state().currentStateHash;
   const bool withSessionOk =
       expect(withSession.rebaked, "session reset initial rebake") &&
-      expect(window.activeRoomCollision.bakedFromSessionHash == sessionHash,
+      expect(iggy3d::activeRoomCollision(window).bakedFromSessionHash == sessionHash,
              "session reset initial session stamp") &&
-      expect(window.activeRoomCollision.bakedFromSessionHash != 0U,
+      expect(iggy3d::activeRoomCollision(window).bakedFromSessionHash != 0U,
              "session reset initial nonzero session stamp") &&
-      expect(window.activeRoomCollision.runtimeFilteredSurfaceCount == 1U,
+      expect(iggy3d::activeRoomCollision(window).runtimeFilteredSurfaceCount == 1U,
              "session reset initial filtered door") &&
-      expect(window.activeRoomCollision.querySurfaceCount == 2U,
+      expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 2U,
              "session reset initial query count");
 
   activeSession.reset();
@@ -610,33 +611,33 @@ bool freshnessStoreRebakesSessionlessAfterSessionReset() {
                 "session reset null reason") &&
          expect(withoutSession.observedSessionHash == 0U,
                 "session reset observed null hash") &&
-         expect(window.activeRoomCollision.bakedFromRoomRevision ==
-                    window.activeRoomRevision,
+         expect(iggy3d::activeRoomCollision(window).bakedFromRoomRevision ==
+                    iggy3d::activeRoomRevision(window),
                 "session reset room stamp preserved") &&
-         expect(window.activeRoomCollision.bakedFromSessionHash == 0U,
+         expect(iggy3d::activeRoomCollision(window).bakedFromSessionHash == 0U,
                 "session reset null session stamp") &&
-         expect(window.activeRoomCollision.runtimeOwnedSurfaceCount == 2U,
+         expect(iggy3d::activeRoomCollision(window).runtimeOwnedSurfaceCount == 2U,
                 "session reset runtime-owned surfaces retained") &&
-         expect(window.activeRoomCollision.runtimeFilteredSurfaceCount == 0U,
+         expect(iggy3d::activeRoomCollision(window).runtimeFilteredSurfaceCount == 0U,
                 "session reset no null-session filtering") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 3U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 3U,
                 "session reset sessionless query count") &&
          idempotentAfterRebake(window, nullptr, "session reset");
 }
 
 bool freshnessStoreDoesNotThrashEmptyLoadedRoom() {
   iggy3d::ProductAppWindowState window;
-  window.activeRoomRevision = 1U;
-  window.activeRoom.loaded = true;
-  window.activeRoom.status = "active_room_loaded";
-  window.activeRoom.reasonCode = "active_room_loaded";
-  window.activeRoom.roomId = "empty_loaded_room";
-  window.activeRoom.room.id = "empty_loaded_room";
+  iggy3d::activeRoomRevision(window) = 1U;
+  iggy3d::activeRoom(window).loaded = true;
+  iggy3d::activeRoom(window).status = "active_room_loaded";
+  iggy3d::activeRoom(window).reasonCode = "active_room_loaded";
+  iggy3d::activeRoom(window).roomId = "empty_loaded_room";
+  iggy3d::activeRoom(window).room.id = "empty_loaded_room";
 
   const iggy3d::ProductActiveRoomCollisionFreshnessResult first =
       iggy3d::ensureActiveRoomCollisionFresh(window, nullptr);
   const iggy3d::ProductActiveRoomCollisionState firstCollision =
-      window.activeRoomCollision;
+      iggy3d::activeRoomCollision(window);
   bool ok = expect(first.rebaked, "empty thrash first rebake") &&
             expect(first.reasonCode == "rebaked_empty",
                    "empty thrash first reason") &&
@@ -645,7 +646,7 @@ bool freshnessStoreDoesNotThrashEmptyLoadedRoom() {
                        "active_room_collision_missing_surfaces",
                    "empty thrash collision reason") &&
             expect(firstCollision.bakedFromRoomRevision ==
-                       window.activeRoomRevision,
+                       iggy3d::activeRoomRevision(window),
                    "empty thrash room stamp") &&
             expect(firstCollision.bakedFromSessionHash == 0U,
                    "empty thrash session stamp") &&
@@ -662,20 +663,20 @@ bool freshnessStoreDoesNotThrashEmptyLoadedRoom() {
                 "empty thrash skipped frame " + std::to_string(frame)) &&
          expect(next.reasonCode == "skipped_fresh",
                 "empty thrash reason frame " + std::to_string(frame)) &&
-         expect(window.activeRoomCollision.ready == firstCollision.ready,
+         expect(iggy3d::activeRoomCollision(window).ready == firstCollision.ready,
                 "empty thrash ready unchanged " + std::to_string(frame)) &&
-         expect(window.activeRoomCollision.status == firstCollision.status,
+         expect(iggy3d::activeRoomCollision(window).status == firstCollision.status,
                 "empty thrash status unchanged " + std::to_string(frame)) &&
-         expect(window.activeRoomCollision.reasonCode ==
+         expect(iggy3d::activeRoomCollision(window).reasonCode ==
                     firstCollision.reasonCode,
                 "empty thrash reason unchanged " + std::to_string(frame)) &&
-         expect(window.activeRoomCollision.querySurfaceCount ==
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount ==
                     firstCollision.querySurfaceCount,
                 "empty thrash query unchanged " + std::to_string(frame)) &&
-         expect(window.activeRoomCollision.bakedFromRoomRevision ==
+         expect(iggy3d::activeRoomCollision(window).bakedFromRoomRevision ==
                     firstCollision.bakedFromRoomRevision,
                 "empty thrash room stamp unchanged " + std::to_string(frame)) &&
-         expect(window.activeRoomCollision.bakedFromSessionHash ==
+         expect(iggy3d::activeRoomCollision(window).bakedFromSessionHash ==
                     firstCollision.bakedFromSessionHash,
                 "empty thrash session stamp unchanged " + std::to_string(frame)) &&
          ok;

@@ -8,10 +8,8 @@
 #include "app/input/InputAction.hpp"
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
-#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
-#include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
-#include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ProductCreativeBakedRoomRefresh.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
@@ -23,11 +21,8 @@
 #include "app/iggy3d/window/MouseCaptureState.hpp"
 #include "app/iggy3d/world/WorldSetupState.hpp"
 #include "app/iggy3d/world/WorldCreationState.hpp"
-#include "app/iggy3d/save/SaveFlowState.hpp"
-#include "app/iggy3d/save/SaveDeleteState.hpp"
-#include "app/iggy3d/save/SaveRecoverState.hpp"
 #include "app/iggy3d/gameplay/WallRunState.hpp"
-#include "app/iggy3d/save/SelectedProductSaveState.hpp"
+#include "app/iggy3d/save/SaveSessionStore.hpp"
 #include "app/iggy3d/ProductCreativeUndoState.hpp"
 #include "app/iggy3d/gameplay/TraversalState.hpp"
 #include "app/iggy3d/gameplay/DashState.hpp"
@@ -62,8 +57,6 @@
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/view/ViewportState.hpp"
-#include "app/iggy3d/save/RoomMarkerBinding.hpp"
-#include "app/iggy3d/save/SaveBridge.hpp"
 #include "render/RenderDiagnostics.hpp"
 
 namespace iggy3d {
@@ -251,18 +244,8 @@ struct ProductAppWindowState {
   ProductRoomEditorPreviewState roomEditorPreview;
   ProductRoomEditorPlacementPreviewResult roomEditorPlacementPreview;
   ProductRoomEditorHud roomEditorHud;
-  ProductActiveRoomState activeRoom;
-  // Window-owned monotonic room generation; whole activeRoom copies cannot stomp it.
-  std::uint64_t activeRoomRevision = 0;
-  ProductActiveRoomCollisionState activeRoomCollision;
-  ProductActiveRoomCollisionFreshnessResult activeRoomCollisionFreshness;
-  std::string productSaveStatus = "not_requested";
-  std::string productSaveReasonCode = "not_requested";
-  std::string productSaveDurableReason = "not_requested";
-  std::string productSaveSource = "none";
-  std::string productSaveSaveId = "none";
-  bool productSaveSessionSaved = false;
-  std::string activeProductSaveId = "none";
+  ProductRoomStore room;
+  SaveSessionStore saveSession;
   ProductCreativeDocumentRevisionState creativeDocumentRevision;
   bool creativeDocumentChangedThisFrame = false;
   ProductCreativeUndoState creativeUndo;
@@ -278,37 +261,6 @@ struct ProductAppWindowState {
   // camera-anchor override) read this instead of the facade so the fly camera
   // and its capture re-engage are gated on Navigate-active-in-creative-document.
   bool creativeNavigateActive = false;
-  // Typed load result stored directly (was a flat mirror of the fields of
-  // ProductSaveLoadResult). The save-selection fields below are a separate
-  // concern (set at selection/input time, not part of the load result) and
-  // stay flat.
-  ProductSaveLoadResult productSaveLoadResult;
-  std::string productSaveLoadSource = "none";
-  std::string productSaveLoadSelectedId = "none";
-  bool productSaveLoadSelectedEnabled = false;
-  // Typed result stored directly (was a 19-field string mirror flattened by
-  // the orchestration and read back by ReceiptBuilder). Its defaults match the
-  // former flat-field defaults, so the emitted receipt is unchanged.
-  ProductSavedRoomMarkerBindingResult savedMarkerBind;
-  ProductSelectedProductSaveState selectedProductSave;
-  std::string saveSlotBrowserMode = "load";
-  std::uint64_t saveSlotRingCount = 0;
-  std::uint64_t saveSlotRingSelectedIndex = 0;
-  std::string saveSlotRingSelectedId = "none";
-  std::string saveSlotRingSelectedStatus = "empty";
-  std::string saveSlotActionCommand = "none";
-  bool saveSlotActionEnabled = false;
-  bool saveSlotActionConfirmationRequired = false;
-  std::string saveSlotActionStatus = "not_requested";
-  ProductSaveFlowState saveFlow;
-  ProductSaveDeleteState saveDelete;
-  bool deletedSaveBrowserOpen = false;
-  std::uint64_t deletedSaveCount = 0;
-  std::uint64_t deletedCompatibleSaveCount = 0;
-  std::string deletedSelectedSaveId = "none";
-  bool deletedSelectedSaveEnabled = false;
-  std::string deletedSelectedSaveStatus = "none";
-  ProductSaveRecoverState saveRecover;
   std::uint64_t runtimeStateHash = 0;
   // Window-owned monotonic creative world generation used by viewport fly state.
   std::uint64_t creativeWorldEpoch = 0;

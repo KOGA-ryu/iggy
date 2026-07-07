@@ -3,6 +3,7 @@
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/view/CameraController.hpp"
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/gameplay/Controller.hpp"
@@ -510,10 +511,10 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   }
   // branch-gate: BG-1061
   if (activeSession != nullptr) {
-    window.activeRoomCollisionFreshness =
+    activeRoomCollisionFreshness(window) =
         ensureActiveRoomCollisionFresh(window, activeSession);
     const SpatialSurfaceSet* collisionSurfaces =
-        productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+        productActiveRoomCollisionSurfaces(activeRoomCollision(window));
     applyProductGameplayActions(*activeSession, gameplayActionsForSession, window,
                                 inputSource, collisionSurfaces);
     result.actionApplied = !acceptedGameplayActions.entries.empty();
@@ -647,14 +648,14 @@ void dispatchProductOpeningMenuMouseHit(
       return;
     case OpeningMenuHitArea::LoadSaveLoad:
       context.frontend.saveBrowserMode = FrontendSaveBrowserMode::Load;
-      context.window.saveSlotBrowserMode =
+      context.window.saveSession.saveSlotBrowserMode =
           std::string(frontendSaveBrowserModeName(context.frontend.saveBrowserMode));
       routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
                                    context);
       return;
     case OpeningMenuHitArea::LoadSaveDelete:
       context.frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
-      context.window.saveSlotBrowserMode =
+      context.window.saveSession.saveSlotBrowserMode =
           std::string(frontendSaveBrowserModeName(context.frontend.saveBrowserMode));
       routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
                                    context);
@@ -1527,8 +1528,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
              context.window.worldSetup.dungeonDraftCursorColumn,
              context.window.worldSetup.dungeonDraftSelectedGlyph,
              context.window.worldSetup.dungeonDraftLastGlyph,
-             context.window.selectedProductSave.id,
-             context.window.saveDelete.candidateId});
+             context.window.saveSession.selectedProductSave.id,
+             context.window.saveSession.saveDelete.candidateId});
     uiRequest.gameplayActive = context.window.gameplayActive;
     uiRequest.saveRootWritable = !context.options.saveRoot.empty();
     uiRequest.developerToolsEnabled = true;

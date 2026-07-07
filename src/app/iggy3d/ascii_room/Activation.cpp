@@ -8,6 +8,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/ascii_room/Package.hpp"
 #include "app/iggy3d/ascii_room/Preview.hpp"
 #include "app/iggy3d/world/PackageSessionSeed.hpp"
@@ -69,7 +70,7 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   const ProductAsciiRoomAuthoringResult preview =
       buildProductAsciiRoomAuthoring(request);
   recordProductAsciiRoomPreview(request.sourceName, request.roomId, preview, window);
-  window.activeRoom = buildProductActiveRoomFromAsciiAuthoring(request, preview);
+  activeRoom(window) = buildProductActiveRoomFromAsciiAuthoring(request, preview);
   bumpActiveRoomRevision(window);
   (void)ensureActiveRoomCollisionFresh(window, nullptr);
   result.wallCount = preview.wallCount;
@@ -81,7 +82,7 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   }
 
   const PackageLoadResult package =
-      makeProductAsciiRoomPackage(window.activeRoom.room,
+      makeProductAsciiRoomPackage(activeRoom(window).room,
                                   result.packageId,
                                   result.scenarioId);
 

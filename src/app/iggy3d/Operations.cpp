@@ -11,6 +11,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/CreativeReasoningActivation.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ascii_room/Package.hpp"
@@ -141,11 +142,11 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
   window.startup.runtimeSessionCreateStatus =
       "startup_runtime_session_created";
 
-  window.activeRoom = {};
-  window.activeRoomCollision = {};
+  activeRoom(window) = {};
+  activeRoomCollision(window) = {};
   activeSession = std::move(session.value);
   if (!package.rooms.empty()) {
-    window.activeRoom = buildProductActiveRoomFromPackageRoom(
+    activeRoom(window) = buildProductActiveRoomFromPackageRoom(
         package.rooms.front(), package.manifest.packageId, package.scenario.scenarioId);
   }
   bumpActiveRoomRevision(window);
@@ -180,9 +181,9 @@ bool createProductSession(const ProductAppOptions& options,
 // F0 (blank stage): a CREATIVE world must stand on its own empty canvas, not
 // the first_room demo ("Loop Keep") that createProductSession installs. Build a
 // minimal session that seeds ONLY a local player at the world origin and leaves
-// window.activeRoom empty, so no demo room geometry projects. The map_maker
-// grid (surfaced for the creative-document surface in ProjectionRefresh) draws
-// the visible ground grid around the origin. Product / LegacyMapMaker launches
+// active-room state empty, so no demo room geometry projects. The map_maker grid
+// (surfaced for the creative-document surface in ProjectionRefresh) draws the
+// visible ground grid around the origin. Product / LegacyMapMaker launches
 // keep calling createProductSession untouched.
 bool createCreativeBlankSession(std::optional<Session>& activeSession,
                                 ProductAppWindowState& window) {
@@ -241,8 +242,8 @@ bool createCreativeBlankSession(std::optional<Session>& activeSession,
       elapsedMicroseconds(sessionStarted);
   window.startup.runtimeSessionCreateStatus = "startup_runtime_session_created";
 
-  window.activeRoom = {};
-  window.activeRoomCollision = {};
+  activeRoom(window) = {};
+  activeRoomCollision(window) = {};
   bumpActiveRoomRevision(window);
   activeSession = std::move(session.value);
   window.runtimeSessionCreated = true;
@@ -369,40 +370,40 @@ void recordProductWorldInitialSaveResult(
           : initialSave.creation.initialSavePlan.worldTitle;
   window.worldCreation.routeAfterCreate =
       std::string(initialSave.creation.routeAfterCreate);
-  window.productSaveStatus = initialSave.saveWrite.status;
-  window.productSaveReasonCode = initialSave.saveWrite.reasonCode;
-  window.productSaveDurableReason = initialSave.saveWrite.durableReason;
-  window.productSaveSource = "initial_world";
-  window.productSaveSaveId = initialSave.saveWrite.record.id.empty()
+  window.saveSession.productSaveStatus = initialSave.saveWrite.status;
+  window.saveSession.productSaveReasonCode = initialSave.saveWrite.reasonCode;
+  window.saveSession.productSaveDurableReason = initialSave.saveWrite.durableReason;
+  window.saveSession.productSaveSource = "initial_world";
+  window.saveSession.productSaveSaveId = initialSave.saveWrite.record.id.empty()
                                  ? "none"
                                  : initialSave.saveWrite.record.id;
-  window.productSaveSessionSaved = initialSave.saveWrite.ok;
+  window.saveSession.productSaveSessionSaved = initialSave.saveWrite.ok;
   if (initialSave.saveWrite.ok && !initialSave.saveWrite.record.id.empty()) {
-    window.activeProductSaveId = initialSave.saveWrite.record.id;
+    window.saveSession.activeProductSaveId = initialSave.saveWrite.record.id;
   }
 }
 
 void recordProductSaveLoadResult(const ProductSaveLoadResult& loaded,
                                  ProductAppWindowState& window) {
-  window.productSaveLoadResult = loaded;
+  window.saveSession.productSaveLoadResult = loaded;
   // Normalize an empty save id to "none" at the producer so ReceiptBuilder
   // stays a straight read of the typed result (preserves the prior receipt).
-  if (window.productSaveLoadResult.record.id.empty()) {
-    window.productSaveLoadResult.record.id = "none";
+  if (window.saveSession.productSaveLoadResult.record.id.empty()) {
+    window.saveSession.productSaveLoadResult.record.id = "none";
   }
   if (loaded.ok && !loaded.record.id.empty()) {
-    window.activeProductSaveId = loaded.record.id;
+    window.saveSession.activeProductSaveId = loaded.record.id;
   }
 }
 
 void recordSavedRoomMarkerBindingResult(
     const ProductSavedRoomMarkerBindingResult& bound,
     ProductAppWindowState& window) {
-  window.savedMarkerBind = bound;
+  window.saveSession.savedMarkerBind = bound;
   // Normalize an empty room id to "none" at the producer so ReceiptBuilder
   // stays a straight read of the typed result (preserves the prior receipt).
-  if (window.savedMarkerBind.roomId.empty()) {
-    window.savedMarkerBind.roomId = "none";
+  if (window.saveSession.savedMarkerBind.roomId.empty()) {
+    window.saveSession.savedMarkerBind.roomId = "none";
   }
 }
 
@@ -411,8 +412,8 @@ void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
   window.gameplayActive = false;
   window.runtimeSessionCreated = false;
   window.runtimeStateHash = 0;
-  window.activeRoom = {};
-  window.activeRoomCollision = {};
+  activeRoom(window) = {};
+  activeRoomCollision(window) = {};
   bumpActiveRoomRevision(window);
   activeSession.reset();
 }
@@ -420,24 +421,24 @@ void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
 void recordProductSaveWriteResult(std::string_view source,
                                   const ProductSaveWriteResult& written,
                                   ProductAppWindowState& window) {
-  window.productSaveStatus = written.status;
-  window.productSaveReasonCode = written.reasonCode;
-  window.productSaveDurableReason = written.durableReason;
-  window.productSaveSource = std::string(source);
-  window.productSaveSaveId = written.record.id.empty() ? "none" : written.record.id;
-  window.productSaveSessionSaved = written.ok;
+  window.saveSession.productSaveStatus = written.status;
+  window.saveSession.productSaveReasonCode = written.reasonCode;
+  window.saveSession.productSaveDurableReason = written.durableReason;
+  window.saveSession.productSaveSource = std::string(source);
+  window.saveSession.productSaveSaveId = written.record.id.empty() ? "none" : written.record.id;
+  window.saveSession.productSaveSessionSaved = written.ok;
   if (written.ok && !written.record.id.empty()) {
-    window.activeProductSaveId = written.record.id;
+    window.saveSession.activeProductSaveId = written.record.id;
   }
 }
 
 void recordProductSaveLoadSelection(std::string_view source,
                                     const SaveSlotPreview* slot,
                                     ProductAppWindowState& window) {
-  window.productSaveLoadSource = std::string(source);
-  window.productSaveLoadSelectedId =
+  window.saveSession.productSaveLoadSource = std::string(source);
+  window.saveSession.productSaveLoadSelectedId =
       slot == nullptr || slot->id.empty() ? "none" : slot->id;
-  window.productSaveLoadSelectedEnabled = slot != nullptr && slot->enabled;
+  window.saveSession.productSaveLoadSelectedEnabled = slot != nullptr && slot->enabled;
 }
 
 const SaveSlotPreview* saveSlotById(const SaveSlotList& slots,
@@ -465,46 +466,46 @@ void recordSelectedProductSaveSlot(const SaveSlotList& slots,
   const SaveSlotRingModel ring =
       // branch-gate: BG-1020
       buildSaveSlotRingModel(slots, slot == nullptr ? "none" : slot->id);
-  window.saveSlotRingCount = static_cast<std::uint64_t>(ring.items.size());
-  window.saveSlotRingSelectedIndex = ring.selectedIndex;
-  window.saveSlotRingSelectedId = ring.selectedSlotId;
-  window.saveSlotRingSelectedStatus = ring.selectedStatus;
+  window.saveSession.saveSlotRingCount = static_cast<std::uint64_t>(ring.items.size());
+  window.saveSession.saveSlotRingSelectedIndex = ring.selectedIndex;
+  window.saveSession.saveSlotRingSelectedId = ring.selectedSlotId;
+  window.saveSession.saveSlotRingSelectedStatus = ring.selectedStatus;
 
   if (slots.slots.empty()) {
-    window.selectedProductSave.id = "none";
-    window.selectedProductSave.enabled = false;
-    window.selectedProductSave.status = "empty";
+    window.saveSession.selectedProductSave.id = "none";
+    window.saveSession.selectedProductSave.enabled = false;
+    window.saveSession.selectedProductSave.status = "empty";
     return;
   }
   if (slot == nullptr) {
-    window.selectedProductSave.id = "none";
-    window.selectedProductSave.enabled = false;
-    window.selectedProductSave.status = "missing";
+    window.saveSession.selectedProductSave.id = "none";
+    window.saveSession.selectedProductSave.enabled = false;
+    window.saveSession.selectedProductSave.status = "missing";
     return;
   }
-  window.selectedProductSave.id = slot->id.empty() ? "none" : slot->id;
-  window.selectedProductSave.enabled = slot->enabled;
-  window.selectedProductSave.status = slot->enabled ? "selected" : "disabled";
+  window.saveSession.selectedProductSave.id = slot->id.empty() ? "none" : slot->id;
+  window.saveSession.selectedProductSave.enabled = slot->enabled;
+  window.saveSession.selectedProductSave.status = slot->enabled ? "selected" : "disabled";
 }
 
 void recordProductSaveSlotAction(ProductAppWindowState& window,
                                  const SaveSlotActionSpec& action,
                                  std::string_view status) {
-  window.saveSlotActionCommand = std::string(saveSlotCommandName(action.command));
-  window.saveSlotActionEnabled = action.enabled;
-  window.saveSlotActionConfirmationRequired = action.confirmationRequired;
-  window.saveSlotActionStatus = std::string(status);
+  window.saveSession.saveSlotActionCommand = std::string(saveSlotCommandName(action.command));
+  window.saveSession.saveSlotActionEnabled = action.enabled;
+  window.saveSession.saveSlotActionConfirmationRequired = action.confirmationRequired;
+  window.saveSession.saveSlotActionStatus = std::string(status);
 }
 
 void recordProductSaveFlowRequest(const ProductSaveFlowRequest& request,
                                   ProductAppWindowState& window) {
-  window.saveFlow.operation =
+  window.saveSession.saveFlow.operation =
       std::string(productSaveFlowOperationName(request.operation));
   // branch-gate: BG-1020
-  window.saveFlow.sourceSurface = request.sourceSurface.empty()
+  window.saveSession.saveFlow.sourceSurface = request.sourceSurface.empty()
                                      ? "none"
                                      : request.sourceSurface;
-  window.saveFlow.affectedSlotId =
+  window.saveSession.saveFlow.affectedSlotId =
       // branch-gate: BG-1020
       request.slotId.empty() ? "none" : request.slotId;
 }
@@ -513,20 +514,20 @@ void recordProductSaveFlowResult(ProductSaveFlowOperation operation,
                                  std::string_view sourceSurface,
                                  const ProductSaveFlowResult& result,
                                  ProductAppWindowState& window) {
-  window.saveFlow.operation =
+  window.saveSession.saveFlow.operation =
       std::string(productSaveFlowOperationName(operation));
   // branch-gate: BG-1020
-  window.saveFlow.sourceSurface =
+  window.saveSession.saveFlow.sourceSurface =
       sourceSurface.empty() ? "none" : std::string(sourceSurface);
-  window.saveFlow.status = result.status;
-  window.saveFlow.reasonCode = result.reason;
-  window.saveFlow.affectedSlotId =
+  window.saveSession.saveFlow.status = result.status;
+  window.saveSession.saveFlow.reasonCode = result.reason;
+  window.saveSession.saveFlow.affectedSlotId =
       // branch-gate: BG-1020
       result.affectedSlotId.empty() ? "none" : result.affectedSlotId;
-  window.saveFlow.activeCountBefore = result.activeCountBefore;
-  window.saveFlow.activeCountAfter = result.activeCountAfter;
-  window.saveFlow.deletedCountAfter = result.deletedCountAfter;
-  window.saveFlow.selectedSlotAfter =
+  window.saveSession.saveFlow.activeCountBefore = result.activeCountBefore;
+  window.saveSession.saveFlow.activeCountAfter = result.activeCountAfter;
+  window.saveSession.saveFlow.deletedCountAfter = result.deletedCountAfter;
+  window.saveSession.saveFlow.selectedSlotAfter =
       // branch-gate: BG-1020
       result.selectedSlotAfter.empty() ? "none" : result.selectedSlotAfter;
 }
@@ -679,7 +680,7 @@ class ProductCreativeBakedRoomRefreshService {
       const creative::CreativeRoomBakeResult& bake) {
     if (request_.clearOnNoRenderable &&
         bake.receipt.reasonCode == kCreativeRoomBakeNoRenderableObjects) {
-      window_.activeRoom = clearedCreativeBakedActiveRoom(request_);
+      activeRoom(window_) = clearedCreativeBakedActiveRoom(request_);
       bumpActiveRoomRevision(window_);
       (void)ensureActiveRoomCollisionFresh(window_, &*activeSession_);
 
@@ -702,16 +703,16 @@ class ProductCreativeBakedRoomRefreshService {
   ProductCreativeBakedActiveRoomRefreshResult installBakedRoom(
       const creative::CreativeDocument& document,
       const RoomAsset& room) {
-    ProductActiveRoomState activeRoom = buildProductActiveRoomFromPackageRoom(
+    ProductActiveRoomState bakedActiveRoom = buildProductActiveRoomFromPackageRoom(
         room, "iggy3d.creative", "creative.document");
 
-    window_.activeRoom = std::move(activeRoom);
+    activeRoom(window_) = std::move(bakedActiveRoom);
     bumpActiveRoomRevision(window_);
     (void)ensureActiveRoomCollisionFresh(window_, &*activeSession_);
 
     if (request_.activationHook) {
       request_.activationHook(*activeSession_,
-                              window_.activeRoom.room,
+                              activeRoom(window_).room,
                               document);
     }
 
@@ -727,11 +728,11 @@ class ProductCreativeBakedRoomRefreshService {
   }
 
   void mirrorActiveRoomState() {
-    result_.activeRoomLoaded = window_.activeRoom.loaded;
-    result_.activeRoomStatus = window_.activeRoom.status;
-    result_.collisionReady = window_.activeRoomCollision.ready;
+    result_.activeRoomLoaded = activeRoom(window_).loaded;
+    result_.activeRoomStatus = activeRoom(window_).status;
+    result_.collisionReady = activeRoomCollision(window_).ready;
     result_.collisionQuerySurfaceCount =
-        window_.activeRoomCollision.querySurfaceCount;
+        activeRoomCollision(window_).querySurfaceCount;
   }
 
   const ProductCreativeBakedActiveRoomRefreshRequest& request_;
@@ -870,29 +871,29 @@ void recordSelectedDeletedProductSaveSlot(const SaveSlotList& slots,
                                           const SaveSlotPreview* slot,
                                           ProductAppWindowState& window) {
   if (slots.slots.empty()) {
-    window.deletedSelectedSaveId = "none";
-    window.deletedSelectedSaveEnabled = false;
-    window.deletedSelectedSaveStatus = "empty";
+    window.saveSession.deletedSelectedSaveId = "none";
+    window.saveSession.deletedSelectedSaveEnabled = false;
+    window.saveSession.deletedSelectedSaveStatus = "empty";
     return;
   }
   if (slot == nullptr) {
-    window.deletedSelectedSaveId = "none";
-    window.deletedSelectedSaveEnabled = false;
-    window.deletedSelectedSaveStatus = "missing";
+    window.saveSession.deletedSelectedSaveId = "none";
+    window.saveSession.deletedSelectedSaveEnabled = false;
+    window.saveSession.deletedSelectedSaveStatus = "missing";
     return;
   }
-  window.deletedSelectedSaveId = slot->id.empty() ? "none" : slot->id;
-  window.deletedSelectedSaveEnabled = slot->enabled;
-  window.deletedSelectedSaveStatus = slot->enabled ? "selected" : "disabled";
+  window.saveSession.deletedSelectedSaveId = slot->id.empty() ? "none" : slot->id;
+  window.saveSession.deletedSelectedSaveEnabled = slot->enabled;
+  window.saveSession.deletedSelectedSaveStatus = slot->enabled ? "selected" : "disabled";
 }
 
 const SaveSlotPreview* initializeSelectedDeletedProductSaveSlot(
     const SaveSlotList& slots,
     ProductAppWindowState& window) {
   const SaveSlotPreview* current =
-      window.deletedSelectedSaveId == "none"
+      window.saveSession.deletedSelectedSaveId == "none"
           ? nullptr
-          : saveSlotById(slots, window.deletedSelectedSaveId);
+          : saveSlotById(slots, window.saveSession.deletedSelectedSaveId);
   const SaveSlotPreview* selected =
       current == nullptr ? firstSelectableSaveSlot(slots) : current;
   recordSelectedDeletedProductSaveSlot(slots, selected, window);
@@ -944,13 +945,13 @@ ProductSaveWriteResult writeProductCurrentSessionSave(
 
   ProductSaveWriteRequest request;
   request.saveRoot = options.saveRoot;
-  request.saveIdHint = window.activeProductSaveId == "none"
+  request.saveIdHint = window.saveSession.activeProductSaveId == "none"
                            ? std::string{}
-                           : window.activeProductSaveId;
+                           : window.saveSession.activeProductSaveId;
   request.attemptToken = "attempt_002";
   request.state = &activeSession->state();
-  if (window.activeRoom.hasAuthoredRoom) {
-    request.authoredRoom = &window.activeRoom.authoredRoom;
+  if (activeRoom(window).hasAuthoredRoom) {
+    request.authoredRoom = &activeRoom(window).authoredRoom;
   }
   // A pause/progress save is a manual save and advances the save time. The
   // remaining identity (worldId/worldTitle/saveTitle/createdAtUtc) is left
@@ -967,9 +968,9 @@ const SaveSlotPreview* initializeSelectedProductSaveSlot(
     const SaveSlotList& slots,
     ProductAppWindowState& window) {
   const SaveSlotPreview* current =
-      window.selectedProductSave.id == "none"
+      window.saveSession.selectedProductSave.id == "none"
           ? nullptr
-          : saveSlotById(slots, window.selectedProductSave.id);
+          : saveSlotById(slots, window.saveSession.selectedProductSave.id);
   const SaveSlotPreview* selected =
       current == nullptr ? firstSelectableSaveSlot(slots) : current;
   recordSelectedProductSaveSlot(slots, selected, window);
@@ -986,7 +987,7 @@ const SaveSlotPreview* moveSelectedProductSaveSlot(const SaveSlotList& slots,
 
   const bool previous = action == InputAction::MenuUp;
   const std::string selectedId =
-      nextSaveSlotRingSelection(slots, window.selectedProductSave.id, previous);
+      nextSaveSlotRingSelection(slots, window.saveSession.selectedProductSave.id, previous);
   const SaveSlotPreview* selected = saveSlotById(slots, selectedId);
   recordSelectedProductSaveSlot(slots, selected, window);
   return selected;
@@ -1008,9 +1009,9 @@ ProductSaveBridgeResult scanDeletedProductSavesForOptions(
 
 void recordDeletedProductSaveSlots(const ProductSaveBridgeResult& deletedSaves,
                                    ProductAppWindowState& window) {
-  window.deletedSaveCount =
+  window.saveSession.deletedSaveCount =
       static_cast<std::uint64_t>(deletedSaves.slots.slots.size());
-  window.deletedCompatibleSaveCount = deletedSaves.slots.compatibleCount;
+  window.saveSession.deletedCompatibleSaveCount = deletedSaves.slots.compatibleCount;
 }
 
 bool selectDeletedProductSaveSlotById(const SaveSlotList& slots,
@@ -1027,11 +1028,11 @@ void openDeletedProductSaveBrowser(const ProductAppOptions& options,
   const ProductSaveBridgeResult deletedSaves =
       scanDeletedProductSavesForOptions(options);
   recordDeletedProductSaveSlots(deletedSaves, window);
-  window.deletedSaveBrowserOpen = true;
+  window.saveSession.deletedSaveBrowserOpen = true;
   initializeSelectedDeletedProductSaveSlot(deletedSaves.slots, window);
   frontend.childScreen = FrontendScreen::LoadSave;
   frontend.saveBrowserMode = FrontendSaveBrowserMode::Load;
-  window.saveSlotBrowserMode =
+  window.saveSession.saveSlotBrowserMode =
       std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
   frontend.status = "deleted_save_browser_open";
 }
@@ -1043,20 +1044,20 @@ void executeProductSaveRecover(const ProductAppOptions& options,
       scanDeletedProductSavesForOptions(options);
   recordDeletedProductSaveSlots(deletedBefore, window);
   const SaveSlotPreview* selected =
-      window.deletedSelectedSaveId == "none"
+      window.saveSession.deletedSelectedSaveId == "none"
           ? initializeSelectedDeletedProductSaveSlot(deletedBefore.slots, window)
-          : saveSlotById(deletedBefore.slots, window.deletedSelectedSaveId);
+          : saveSlotById(deletedBefore.slots, window.saveSession.deletedSelectedSaveId);
   recordSelectedDeletedProductSaveSlot(deletedBefore.slots, selected, window);
 
   const std::string recoverId =
       selected == nullptr || selected->id.empty() ? "none" : selected->id;
-  window.saveRecover.saveId = recoverId;
-  window.saveRecover.snapshotRecovered = false;
-  window.saveRecover.snapshotMissing = false;
+  window.saveSession.saveRecover.saveId = recoverId;
+  window.saveSession.saveRecover.snapshotRecovered = false;
+  window.saveSession.saveRecover.snapshotMissing = false;
   if (recoverId == "none") {
-    window.saveRecover.status = "product_save_recover_id_missing";
-    window.saveRecover.reasonCode = "product_save_recover_id_missing";
-    window.saveRecover.executed = false;
+    window.saveSession.saveRecover.status = "product_save_recover_id_missing";
+    window.saveSession.saveRecover.reasonCode = "product_save_recover_id_missing";
+    window.saveSession.saveRecover.executed = false;
     frontend.childScreen = FrontendScreen::LoadSave;
     frontend.status = "save_recover_failed";
     return;
@@ -1070,16 +1071,16 @@ void executeProductSaveRecover(const ProductAppOptions& options,
       world.scenarioId,
   });
   const ProductSaveRecoverResult& recovered = mutation.recover;
-  window.saveRecover.status = recovered.status;
-  window.saveRecover.reasonCode = recovered.reasonCode;
-  window.saveRecover.executed = recovered.ok;
-  window.saveRecover.saveId = recovered.saveId.empty() ? "none" : recovered.saveId;
-  window.saveRecover.snapshotRecovered = recovered.snapshotRecovered;
-  window.saveRecover.snapshotMissing = recovered.snapshotMissing;
+  window.saveSession.saveRecover.status = recovered.status;
+  window.saveSession.saveRecover.reasonCode = recovered.reasonCode;
+  window.saveSession.saveRecover.executed = recovered.ok;
+  window.saveSession.saveRecover.saveId = recovered.saveId.empty() ? "none" : recovered.saveId;
+  window.saveSession.saveRecover.snapshotRecovered = recovered.snapshotRecovered;
+  window.saveSession.saveRecover.snapshotMissing = recovered.snapshotMissing;
 
   recordDeletedProductSaveSlots(mutation.deletedSaves, window);
   if (recovered.ok) {
-    window.deletedSaveBrowserOpen = false;
+    window.saveSession.deletedSaveBrowserOpen = false;
     recordSelectedDeletedProductSaveSlot(mutation.deletedSaves.slots, nullptr, window);
     selectProductSaveSlotById(mutation.activeSaves.slots, recovered.saveId, window);
   }
@@ -1093,12 +1094,12 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
                                        ProductAppWindowState& window,
                                        FrontendState& frontend) {
   frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
-  window.saveSlotBrowserMode =
+  window.saveSession.saveSlotBrowserMode =
       std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
   const SaveSlotPreview* slot =
-      window.selectedProductSave.id == "none"
+      window.saveSession.selectedProductSave.id == "none"
           ? nullptr
-          : saveSlotById(slots, window.selectedProductSave.id);
+          : saveSlotById(slots, window.saveSession.selectedProductSave.id);
   if (slot == nullptr) {
     recordSelectedProductSaveSlot(slots, nullptr, window);
     recordProductSaveSlotAction(
@@ -1110,16 +1111,16 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
                            true,
                            "save_delete_unavailable"},
         "save_slot_action_disabled");
-    window.saveDelete.confirmationOpen = false;
-    window.saveDelete.candidateId = "none";
-    window.saveDelete.candidateEnabled = false;
-    window.saveDelete.status =
+    window.saveSession.saveDelete.confirmationOpen = false;
+    window.saveSession.saveDelete.candidateId = "none";
+    window.saveSession.saveDelete.candidateEnabled = false;
+    window.saveSession.saveDelete.status =
         slots.slots.empty() ? "save_delete_unavailable" : "save_delete_missing";
-    window.saveDelete.reasonCode = window.saveDelete.status;
-    window.saveDelete.type = "soft";
-    window.saveDelete.recoverable = false;
-    window.saveDelete.executed = false;
-    frontend.status = window.saveDelete.status;
+    window.saveSession.saveDelete.reasonCode = window.saveSession.saveDelete.status;
+    window.saveSession.saveDelete.type = "soft";
+    window.saveSession.saveDelete.recoverable = false;
+    window.saveSession.saveDelete.executed = false;
+    frontend.status = window.saveSession.saveDelete.status;
     return;
   }
 
@@ -1133,14 +1134,14 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
                          true,
                          "none"},
       "save_slot_action_confirm_requested");
-  window.saveDelete.confirmationOpen = true;
-  window.saveDelete.candidateId = slot->id.empty() ? "none" : slot->id;
-  window.saveDelete.candidateEnabled = slot->enabled;
-  window.saveDelete.status = "confirm_open";
-  window.saveDelete.reasonCode = "confirm_open";
-  window.saveDelete.type = "soft";
-  window.saveDelete.recoverable = false;
-  window.saveDelete.executed = false;
+  window.saveSession.saveDelete.confirmationOpen = true;
+  window.saveSession.saveDelete.candidateId = slot->id.empty() ? "none" : slot->id;
+  window.saveSession.saveDelete.candidateEnabled = slot->enabled;
+  window.saveSession.saveDelete.status = "confirm_open";
+  window.saveSession.saveDelete.reasonCode = "confirm_open";
+  window.saveSession.saveDelete.type = "soft";
+  window.saveSession.saveDelete.recoverable = false;
+  window.saveSession.saveDelete.executed = false;
   frontend.childScreen = FrontendScreen::DeleteConfirm;
   frontend.selectedAction = FrontendAction::Delete;
   frontend.status = "save_delete_confirm_open";
@@ -1148,15 +1149,15 @@ void openProductSaveDeleteConfirmation(const SaveSlotList& slots,
 
 void cancelProductSaveDeleteConfirmation(ProductAppWindowState& window,
                                          FrontendState& frontend) {
-  window.saveDelete.confirmationOpen = false;
-  window.saveDelete.status = "cancelled";
-  window.saveDelete.reasonCode = "cancelled";
-  window.saveDelete.type = "soft";
-  window.saveDelete.recoverable = false;
-  window.saveDelete.executed = false;
+  window.saveSession.saveDelete.confirmationOpen = false;
+  window.saveSession.saveDelete.status = "cancelled";
+  window.saveSession.saveDelete.reasonCode = "cancelled";
+  window.saveSession.saveDelete.type = "soft";
+  window.saveSession.saveDelete.recoverable = false;
+  window.saveSession.saveDelete.executed = false;
   frontend.childScreen = FrontendScreen::LoadSave;
   frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
-  window.saveSlotBrowserMode =
+  window.saveSession.saveSlotBrowserMode =
       std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
   frontend.status = "save_delete_cancelled";
 }
@@ -1170,31 +1171,31 @@ ProductSaveFlowResult executeProductSaveSoftDelete(
   flow.activeCountBefore = static_cast<std::uint64_t>(saves.slots.slots.size());
   ProductSaveFlowRequest request;
   request.operation = ProductSaveFlowOperation::Delete;
-  request.slotId = window.saveDelete.candidateId;
+  request.slotId = window.saveSession.saveDelete.candidateId;
   request.sourceSurface = "delete_world_browser";
-  request.confirmationToken = window.saveDelete.confirmationOpen
+  request.confirmationToken = window.saveSession.saveDelete.confirmationOpen
                                   ? "delete_confirm_open"
                                   : "delete_confirm_missing";
   recordProductSaveFlowRequest(request, window);
-  window.saveDelete.confirmationOpen = false;
-  window.saveDelete.type = "soft";
-  window.saveDelete.recoverable = false;
-  if (window.saveDelete.candidateId == "none" ||
-      window.saveDelete.candidateId.empty()) {
-    window.saveDelete.status = "product_save_delete_id_missing";
-    window.saveDelete.reasonCode = "product_save_delete_id_missing";
-    window.saveDelete.executed = false;
+  window.saveSession.saveDelete.confirmationOpen = false;
+  window.saveSession.saveDelete.type = "soft";
+  window.saveSession.saveDelete.recoverable = false;
+  if (window.saveSession.saveDelete.candidateId == "none" ||
+      window.saveSession.saveDelete.candidateId.empty()) {
+    window.saveSession.saveDelete.status = "product_save_delete_id_missing";
+    window.saveSession.saveDelete.reasonCode = "product_save_delete_id_missing";
+    window.saveSession.saveDelete.executed = false;
     frontend.childScreen = FrontendScreen::LoadSave;
     frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
-    window.saveSlotBrowserMode =
+    window.saveSession.saveSlotBrowserMode =
         std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
     frontend.status = "save_delete_failed";
-    flow.status = window.saveDelete.status;
-    flow.reason = window.saveDelete.reasonCode;
+    flow.status = window.saveSession.saveDelete.status;
+    flow.reason = window.saveSession.saveDelete.reasonCode;
     flow.affectedSlotId = "none";
     flow.activeCountAfter = flow.activeCountBefore;
-    flow.deletedCountAfter = window.deletedSaveCount;
-    flow.selectedSlotAfter = window.selectedProductSave.id;
+    flow.deletedCountAfter = window.saveSession.deletedSaveCount;
+    flow.selectedSlotAfter = window.saveSession.selectedProductSave.id;
     recordProductSaveFlowResult(ProductSaveFlowOperation::Delete,
                                 "delete_world_browser",
                                 flow,
@@ -1205,23 +1206,23 @@ ProductSaveFlowResult executeProductSaveSoftDelete(
   const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
   const ProductSaveMutationResult mutation = softDeleteProductSaveAndRefresh({
       options.saveRoot,
-      window.saveDelete.candidateId,
+      window.saveSession.saveDelete.candidateId,
       world.packageId,
       world.scenarioId,
   });
   const ProductSaveSoftDeleteResult& deleted = mutation.softDelete;
-  window.saveDelete.status = deleted.status;
-  window.saveDelete.reasonCode = deleted.reasonCode;
-  window.saveDelete.executed = deleted.ok;
-  window.saveDelete.recoverable = deleted.ok;
+  window.saveSession.saveDelete.status = deleted.status;
+  window.saveSession.saveDelete.reasonCode = deleted.reasonCode;
+  window.saveSession.saveDelete.executed = deleted.ok;
+  window.saveSession.saveDelete.recoverable = deleted.ok;
   flow.ok = deleted.ok;
   flow.status = deleted.status;
   flow.reason = deleted.reasonCode;
   // branch-gate: BG-1020
   flow.affectedSlotId = deleted.saveId.empty() ? "none" : deleted.saveId;
   if (deleted.ok) {
-    window.selectedProductSave.enabled = false;
-    window.selectedProductSave.status = "missing";
+    window.saveSession.selectedProductSave.enabled = false;
+    window.saveSession.selectedProductSave.status = "missing";
     saves = mutation.activeSaves;
     initializeSelectedProductSaveSlot(saves.slots, window);
   }
@@ -1229,10 +1230,10 @@ ProductSaveFlowResult executeProductSaveSoftDelete(
   flow.activeCountAfter = static_cast<std::uint64_t>(saves.slots.slots.size());
   flow.deletedCountAfter =
       static_cast<std::uint64_t>(mutation.deletedSaves.slots.slots.size());
-  flow.selectedSlotAfter = window.selectedProductSave.id;
+  flow.selectedSlotAfter = window.saveSession.selectedProductSave.id;
   frontend.childScreen = FrontendScreen::LoadSave;
   frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
-  window.saveSlotBrowserMode =
+  window.saveSession.saveSlotBrowserMode =
       std::string(frontendSaveBrowserModeName(frontend.saveBrowserMode));
   frontend.status = deleted.ok ? "save_delete_soft_deleted" : "save_delete_failed";
   recordProductSaveFlowResult(ProductSaveFlowOperation::Delete,
@@ -1281,7 +1282,8 @@ void launchProductNewWorld(const ProductAppOptions& options,
       frontend.status = "opening_menu_new_world_failed";
       return;
     }
-    window.activeRoom = buildProductActiveRoomFromAsciiAuthoring(asciiRequest, asciiRoom);
+    activeRoom(window) =
+        buildProductActiveRoomFromAsciiAuthoring(asciiRequest, asciiRoom);
     bumpActiveRoomRevision(window);
     (void)ensureActiveRoomCollisionFresh(window, &*activeSession);
     initialSaveAuthoredRoom = &asciiRoom.authoredRoom.authoredRoom;
@@ -1573,8 +1575,8 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   recordProductSaveLoadSelection(source, slot, window);
   if (slot == nullptr) {
     window.launchStatus = "no_compatible_save";
-    window.productSaveLoadResult.status = "no_compatible_save";
-    window.productSaveLoadResult.reasonCode = "no_compatible_save";
+    window.saveSession.productSaveLoadResult.status = "no_compatible_save";
+    window.saveSession.productSaveLoadResult.reasonCode = "no_compatible_save";
     frontend.status = source == "load_save_selector"
                           ? "load_save_action_disabled"
                           : "opening_menu_action_disabled";
@@ -1584,8 +1586,8 @@ void launchProductSaveSlot(const ProductAppOptions& options,
     const std::string reason =
         slot->reason.empty() ? "save_slot_disabled" : slot->reason;
     window.launchStatus = reason;
-    window.productSaveLoadResult.status = reason;
-    window.productSaveLoadResult.reasonCode = reason;
+    window.saveSession.productSaveLoadResult.status = reason;
+    window.saveSession.productSaveLoadResult.reasonCode = reason;
     frontend.status = "load_save_action_disabled";
     return;
   }
@@ -1614,11 +1616,11 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   }
 
   if (loaded.authoredRoomPresent) {
-    window.activeRoom =
+    activeRoom(window) =
         buildProductActiveRoomFromSavedAuthoredRoom(loaded.authoredRoom);
     bumpActiveRoomRevision(window);
     const ProductSavedRoomMarkerBindingResult bound =
-        bindSavedRoomMarkersToSession(window.activeRoom, *activeSession);
+        bindSavedRoomMarkersToSession(activeRoom(window), *activeSession);
     recordSavedRoomMarkerBindingResult(bound, window);
     if (!bound.ok) {
       window.launchStatus = bound.reasonCode;

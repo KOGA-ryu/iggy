@@ -233,7 +233,7 @@ bool childPanelActionsOpenExpectedSurfaces() {
          expect(loadResult.handled && loadResult.accepted, "load accepted") &&
          expect(loadSave.frontend.childScreen == iggy3d::FrontendScreen::LoadSave,
                 "load child") &&
-         expect(loadSave.window.selectedProductSave.id == "save_unit",
+         expect(loadSave.window.saveSession.selectedProductSave.id == "save_unit",
                 "load selected save") &&
          expect(!loadSave.window.gameplayMovement.tuningVisible,
                 "load clears movement tuning") &&
@@ -285,16 +285,16 @@ bool deleteAndExitActionsAreExplicitRows() {
          expect(deleteSave.frontend.saveBrowserMode ==
                     iggy3d::FrontendSaveBrowserMode::Delete,
                 "delete opens explicit delete browser mode") &&
-         expect(deleteSave.window.saveSlotBrowserMode == "delete",
+         expect(deleteSave.window.saveSession.saveSlotBrowserMode == "delete",
                 "delete records browser mode") &&
          expect(deleteSave.frontend.selectedAction ==
                     iggy3d::FrontendAction::Delete,
                 "delete keeps starter action proof") &&
          expect(deleteSave.frontend.status == "delete_world_browser_open",
                 "delete browser status") &&
-         expect(!deleteSave.window.saveDelete.confirmationOpen,
+         expect(!deleteSave.window.saveSession.saveDelete.confirmationOpen,
                 "delete does not auto-open confirmation") &&
-         expect(deleteSave.window.selectedProductSave.id == "save_unit",
+         expect(deleteSave.window.saveSession.selectedProductSave.id == "save_unit",
                 "delete pre-selects first save") &&
          expect(!deleteSave.window.gameplayMovement.tuningVisible,
                 "delete clears movement tuning") &&
@@ -556,7 +556,7 @@ bool creativeOpenWorldLaunchesThroughStarterAction() {
          expect(app.identity.nextObjectId ==
                     facade.document().nextObjectId(),
                 "creative open active creative next id") &&
-         expect(harness.window.activeProductSaveId == "none",
+         expect(harness.window.saveSession.activeProductSaveId == "none",
                 "creative open does not set product save id") &&
          expect(!productContinue.selected,
                 "creative open keeps product continue separate");
@@ -678,7 +678,7 @@ bool creativeOpenWorldIgnoresProductOnlySaves() {
                 "product continue selected product save") &&
          expect(app.identity.saveId == "none",
                 "creative open product-only no active creative id") &&
-         expect(harness.window.activeProductSaveId == "none",
+         expect(harness.window.saveSession.activeProductSaveId == "none",
                 "creative open product-only no active product id");
 }
 
@@ -704,7 +704,7 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
   const std::uint64_t launchedDocumentId =
       app.identity.documentId;
   const bool launchNoProductSaveId =
-      harness.window.activeProductSaveId == "none";
+      harness.window.saveSession.activeProductSaveId == "none";
   const std::uint64_t launchObjectCount = facade.document().objectCount();
   const bool productContinueAfterLaunch =
       productContinueSelectsNoSave(harness.options.saveRoot);
@@ -731,7 +731,7 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
   const iggy3d::creative::CreativeObjectDirtyFlags dirtyAfterSaveExit =
       facade.document().dirtyFlags();
   const bool saveExitNoProductSaveId =
-      harness.window.activeProductSaveId == "none";
+      harness.window.saveSession.activeProductSaveId == "none";
   const bool productContinueAfterSaveExit =
       productContinueSelectsNoSave(harness.options.saveRoot);
   const bool creativeIdentityCleared =
@@ -904,7 +904,7 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
                 "lifecycle reopen active creative object count") &&
          expect(reopenedApp.identity.nextObjectId == 2U,
                 "lifecycle reopen active creative next id") &&
-         expect(harness.window.activeProductSaveId == "none",
+         expect(harness.window.saveSession.activeProductSaveId == "none",
                 "lifecycle reopen no product save id") &&
          expect(productContinueAfterReopen,
                 "lifecycle product continue ignores reopened creative");

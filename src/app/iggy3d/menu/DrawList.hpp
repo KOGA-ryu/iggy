@@ -130,7 +130,7 @@ struct ProductStarterUiDraftState {
   std::string dungeonDraftSelectedGlyph = ".";
   std::string dungeonDraftLastGlyph = "none";
   std::string selectedSaveId;
-  // The save the delete-confirm panel is about to delete (window.saveDelete.candidateId).
+  // The save the delete-confirm panel is about to delete (window.saveSession.saveDelete.candidateId).
   std::string deleteCandidateId{};
 };
 
@@ -155,7 +155,7 @@ struct ProductUiDrawListRequest {
   // the save-browser model so the drawn row highlight matches the row the
   // player navigated to instead of always defaulting to the first slot.
   std::string selectedSaveId;
-  // The save the delete-confirm panel is about to delete (window.saveDelete.candidateId),
+  // The save the delete-confirm panel is about to delete (window.saveSession.saveDelete.candidateId),
   // resolved to a real title/status via resolveProductDeleteConfirmModel. Default member
   // initializer keeps positional aggregate-init sites (hand-built test requests) warning-free.
   std::string deleteCandidateId{};

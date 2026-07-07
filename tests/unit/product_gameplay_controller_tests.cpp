@@ -9,6 +9,7 @@
 #include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/input/ActionState.hpp"
 #include "content/assets/RoomAsset.hpp"
 #include "core/math/Transform3.hpp"
@@ -84,7 +85,7 @@ const iggy3d::EntityState* playerEntity(const iggy3d::Session& session) {
 
 const iggy3d::SpatialSurfaceSet* activeSurfaces(
     const iggy3d::ProductAppWindowState& window) {
-  return iggy3d::productActiveRoomCollisionSurfaces(window.activeRoomCollision);
+  return iggy3d::productActiveRoomCollisionSurfaces(iggy3d::activeRoomCollision(window));
 }
 
 iggy3d::RoomSpatialSurface clamberFloorSurface() {
@@ -298,54 +299,54 @@ void setPlayerPosition(iggy3d::Session& session, iggy3d::Vec3 position) {
 
 void setClamberActiveRoom(iggy3d::ProductAppWindowState& window,
                           const iggy3d::Session& session) {
-  window.activeRoom.loaded = true;
-  window.activeRoom.status = "loaded";
-  window.activeRoom.reasonCode = "active_room_loaded";
-  window.activeRoom.source = "unit";
-  window.activeRoom.roomId = "product_clamber_test";
-  window.activeRoom.sourceName = "unit/product_clamber_test";
-  window.activeRoom.room = makeProductClamberRoom();
-  window.activeRoom.staticMeshCount = window.activeRoom.room.staticMeshes.size();
-  window.activeRoom.spatialSurfaceCount = window.activeRoom.room.spatialSurfaces.size();
-  window.activeRoom.walkableSurfaceCount = 2U;
-  window.activeRoom.actorBlockerSurfaceCount = 1U;
-  window.activeRoomCollision =
-      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
+  iggy3d::activeRoom(window).loaded = true;
+  iggy3d::activeRoom(window).status = "loaded";
+  iggy3d::activeRoom(window).reasonCode = "active_room_loaded";
+  iggy3d::activeRoom(window).source = "unit";
+  iggy3d::activeRoom(window).roomId = "product_clamber_test";
+  iggy3d::activeRoom(window).sourceName = "unit/product_clamber_test";
+  iggy3d::activeRoom(window).room = makeProductClamberRoom();
+  iggy3d::activeRoom(window).staticMeshCount = iggy3d::activeRoom(window).room.staticMeshes.size();
+  iggy3d::activeRoom(window).spatialSurfaceCount = iggy3d::activeRoom(window).room.spatialSurfaces.size();
+  iggy3d::activeRoom(window).walkableSurfaceCount = 2U;
+  iggy3d::activeRoom(window).actorBlockerSurfaceCount = 1U;
+  iggy3d::activeRoomCollision(window) =
+      iggy3d::buildProductActiveRoomCollision(iggy3d::activeRoom(window), session.state());
 }
 
 void setWallJumpActiveRoom(iggy3d::ProductAppWindowState& window,
                            const iggy3d::Session& session,
                            bool authoredWallJump = true) {
-  window.activeRoom.loaded = true;
-  window.activeRoom.status = "loaded";
-  window.activeRoom.reasonCode = "active_room_loaded";
-  window.activeRoom.source = "unit";
-  window.activeRoom.roomId = "product_wall_jump_test";
-  window.activeRoom.sourceName = "unit/product_wall_jump_test";
-  window.activeRoom.room = makeProductWallJumpRoom(authoredWallJump);
-  window.activeRoom.staticMeshCount = window.activeRoom.room.staticMeshes.size();
-  window.activeRoom.spatialSurfaceCount = window.activeRoom.room.spatialSurfaces.size();
-  window.activeRoom.walkableSurfaceCount = 1U;
-  window.activeRoom.actorBlockerSurfaceCount = 1U;
-  window.activeRoomCollision =
-      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
+  iggy3d::activeRoom(window).loaded = true;
+  iggy3d::activeRoom(window).status = "loaded";
+  iggy3d::activeRoom(window).reasonCode = "active_room_loaded";
+  iggy3d::activeRoom(window).source = "unit";
+  iggy3d::activeRoom(window).roomId = "product_wall_jump_test";
+  iggy3d::activeRoom(window).sourceName = "unit/product_wall_jump_test";
+  iggy3d::activeRoom(window).room = makeProductWallJumpRoom(authoredWallJump);
+  iggy3d::activeRoom(window).staticMeshCount = iggy3d::activeRoom(window).room.staticMeshes.size();
+  iggy3d::activeRoom(window).spatialSurfaceCount = iggy3d::activeRoom(window).room.spatialSurfaces.size();
+  iggy3d::activeRoom(window).walkableSurfaceCount = 1U;
+  iggy3d::activeRoom(window).actorBlockerSurfaceCount = 1U;
+  iggy3d::activeRoomCollision(window) =
+      iggy3d::buildProductActiveRoomCollision(iggy3d::activeRoom(window), session.state());
 }
 
 void setLayeredFloorActiveRoom(iggy3d::ProductAppWindowState& window,
                                const iggy3d::Session& session) {
-  window.activeRoom.loaded = true;
-  window.activeRoom.status = "loaded";
-  window.activeRoom.reasonCode = "active_room_loaded";
-  window.activeRoom.source = "unit";
-  window.activeRoom.roomId = "product_layered_floor_test";
-  window.activeRoom.sourceName = "unit/product_layered_floor_test";
-  window.activeRoom.room = makeProductLayeredFloorRoom();
-  window.activeRoom.staticMeshCount = window.activeRoom.room.staticMeshes.size();
-  window.activeRoom.spatialSurfaceCount = window.activeRoom.room.spatialSurfaces.size();
-  window.activeRoom.walkableSurfaceCount = 2U;
-  window.activeRoom.actorBlockerSurfaceCount = 0U;
-  window.activeRoomCollision =
-      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
+  iggy3d::activeRoom(window).loaded = true;
+  iggy3d::activeRoom(window).status = "loaded";
+  iggy3d::activeRoom(window).reasonCode = "active_room_loaded";
+  iggy3d::activeRoom(window).source = "unit";
+  iggy3d::activeRoom(window).roomId = "product_layered_floor_test";
+  iggy3d::activeRoom(window).sourceName = "unit/product_layered_floor_test";
+  iggy3d::activeRoom(window).room = makeProductLayeredFloorRoom();
+  iggy3d::activeRoom(window).staticMeshCount = iggy3d::activeRoom(window).room.staticMeshes.size();
+  iggy3d::activeRoom(window).spatialSurfaceCount = iggy3d::activeRoom(window).room.spatialSurfaces.size();
+  iggy3d::activeRoom(window).walkableSurfaceCount = 2U;
+  iggy3d::activeRoom(window).actorBlockerSurfaceCount = 0U;
+  iggy3d::activeRoomCollision(window) =
+      iggy3d::buildProductActiveRoomCollision(iggy3d::activeRoom(window), session.state());
 }
 
 iggy3d::ActionState forwardMoveActions() {

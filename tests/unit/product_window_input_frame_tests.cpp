@@ -1,6 +1,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
@@ -240,20 +241,20 @@ void setInputFramePlayerPosition(iggy3d::Session& session, iggy3d::Vec3 position
 
 void setInputFrameClamberActiveRoom(iggy3d::ProductAppWindowState& window,
                                     const iggy3d::Session& session) {
-  window.activeRoom.loaded = true;
-  window.activeRoom.status = "loaded";
-  window.activeRoom.reasonCode = "active_room_loaded";
-  window.activeRoom.source = "unit";
-  window.activeRoom.roomId = "input_frame_clamber_test";
-  window.activeRoom.sourceName = "unit/input_frame_clamber_test";
-  window.activeRoom.room = inputFrameClamberRoom();
-  window.activeRoom.staticMeshCount = window.activeRoom.room.staticMeshes.size();
-  window.activeRoom.spatialSurfaceCount =
-      window.activeRoom.room.spatialSurfaces.size();
-  window.activeRoom.walkableSurfaceCount = 2U;
-  window.activeRoom.actorBlockerSurfaceCount = 1U;
-  window.activeRoomCollision =
-      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
+  iggy3d::activeRoom(window).loaded = true;
+  iggy3d::activeRoom(window).status = "loaded";
+  iggy3d::activeRoom(window).reasonCode = "active_room_loaded";
+  iggy3d::activeRoom(window).source = "unit";
+  iggy3d::activeRoom(window).roomId = "input_frame_clamber_test";
+  iggy3d::activeRoom(window).sourceName = "unit/input_frame_clamber_test";
+  iggy3d::activeRoom(window).room = inputFrameClamberRoom();
+  iggy3d::activeRoom(window).staticMeshCount = iggy3d::activeRoom(window).room.staticMeshes.size();
+  iggy3d::activeRoom(window).spatialSurfaceCount =
+      iggy3d::activeRoom(window).room.spatialSurfaces.size();
+  iggy3d::activeRoom(window).walkableSurfaceCount = 2U;
+  iggy3d::activeRoom(window).actorBlockerSurfaceCount = 1U;
+  iggy3d::activeRoomCollision(window) =
+      iggy3d::buildProductActiveRoomCollision(iggy3d::activeRoom(window), session.state());
 }
 
 iggy3d::ProductAppWindowState gameplayWindow(
@@ -1032,9 +1033,9 @@ bool starterDeleteButtonOpensSelectableBrowser() {
                 "starter delete opens selectable browser") &&
          expect(frontend.selectedAction == iggy3d::FrontendAction::Delete,
                 "starter delete selected action is delete") &&
-         expect(!window.saveDelete.confirmationOpen,
+         expect(!window.saveSession.saveDelete.confirmationOpen,
                 "starter delete does not auto-open confirmation") &&
-         expect(window.selectedProductSave.id == "save_unit",
+         expect(window.saveSession.selectedProductSave.id == "save_unit",
                 "starter delete pre-selects first save") &&
          expect(!closeRequested, "starter delete does not close app");
 }
@@ -1432,7 +1433,7 @@ bool confirmDialogDispatchDoesNotFallThroughToStarter() {
     frontend.childScreen = iggy3d::FrontendScreen::DeleteConfirm;
     frontend.selectedAction = iggy3d::FrontendAction::Continue;
     iggy3d::ProductAppWindowState window;
-    window.saveDelete.confirmationOpen = true;
+    window.saveSession.saveDelete.confirmationOpen = true;
     bool closeRequested = false;
     iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
     std::optional<iggy3d::Session> activeSession;
@@ -1457,7 +1458,7 @@ bool confirmDialogDispatchDoesNotFallThroughToStarter() {
     const bool deleteOk =
         expect(frontend.childScreen == iggy3d::FrontendScreen::LoadSave,
                "delete confirm back returns to save browser") &&
-        expect(!window.saveDelete.confirmationOpen,
+        expect(!window.saveSession.saveDelete.confirmationOpen,
                "delete confirm back cancels delete") &&
         expect(frontend.status == "save_delete_cancelled",
                "delete confirm back status") &&
@@ -1653,7 +1654,7 @@ bool pauseLoadOpensBrowserInLoadModeOverStaleResidue() {
       iggy3d::InputAction::SystemPause, {frontend, window, closeRequested});
   // Seed a STALE Delete residue that a correct opener must overwrite.
   frontend.saveBrowserMode = iggy3d::FrontendSaveBrowserMode::Delete;
-  window.saveSlotBrowserMode = "delete";
+  window.saveSession.saveSlotBrowserMode = "delete";
   frontend.selectedAction = iggy3d::FrontendAction::LoadSave;
   const iggy3d::ProductMenuActionResult opened =
       iggy3d::applyProductPauseMenuAction(
@@ -1668,7 +1669,7 @@ bool pauseLoadOpensBrowserInLoadModeOverStaleResidue() {
                 "pause load keeps the pause surface (Pause-owned child)") &&
          expect(frontend.saveBrowserMode == iggy3d::FrontendSaveBrowserMode::Load,
                 "pause load sets Load mode over the stale Delete") &&
-         expect(window.saveSlotBrowserMode == "load",
+         expect(window.saveSession.saveSlotBrowserMode == "load",
                 "pause load mirrors the mode string in lockstep");
 }
 
@@ -1960,7 +1961,7 @@ bool openingMenuMouseDispatchRoutesLoadSaveRows() {
                                              slot.actionState,
                                              slot.context());
   const bool slotOk =
-      expect(slot.window.selectedProductSave.id == "save_unit",
+      expect(slot.window.saveSession.selectedProductSave.id == "save_unit",
              "mouse load slot selects save") &&
       expect(slot.frontend.status == "load_save_selection_changed",
              "mouse load slot status");
@@ -1985,7 +1986,7 @@ bool openingMenuMouseDispatchRoutesLoadSaveRows() {
       expect(deleteSave.frontend.childScreen ==
                  iggy3d::FrontendScreen::DeleteConfirm,
              "mouse load delete opens confirm") &&
-      expect(deleteSave.window.saveDelete.confirmationOpen,
+      expect(deleteSave.window.saveSession.saveDelete.confirmationOpen,
              "mouse load delete confirmation open");
 
   MouseDispatchHarness back;

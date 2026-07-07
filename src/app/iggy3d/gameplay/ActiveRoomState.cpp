@@ -6,6 +6,7 @@
 
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/ascii_room/AsciiRoomToRoomAsset.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/room_editor/EditableRoomToAuthoredRoom.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/room_editor/AuthoringController.hpp"
@@ -212,7 +213,7 @@ ProductActiveRoomState buildProductActiveRoomFromRoomAuthoringSnapshot(
 }
 
 void bumpActiveRoomRevision(ProductAppWindowState& window) {
-  ++window.activeRoomRevision;
+  ++activeRoomRevision(window);
 }
 
 }  // namespace iggy3d

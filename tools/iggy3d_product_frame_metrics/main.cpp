@@ -4,6 +4,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/Controller.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
@@ -401,7 +402,7 @@ void collectCounters(const iggy3d::ProductAppWindowState& window,
                window.npcBehaviorDebugHud.lineCount);
   counters.collisionSurfaceMax =
       std::max(counters.collisionSurfaceMax,
-               window.activeRoomCollision.querySurfaceCount);
+               iggy3d::activeRoomCollision(window).querySurfaceCount);
   counters.physicsMovementSurfaceMax =
       std::max(counters.physicsMovementSurfaceMax,
                window.gameplayCollision.surfaceCount);
@@ -468,7 +469,7 @@ ScenarioResult runScenario(const ScenarioSpec& spec,
     iggy3d::applyProductGameplayActions(
         *runtime.activeSession, actions, runtime.window, "product_frame_metrics",
         iggy3d::productActiveRoomCollisionSurfaces(
-            runtime.window.activeRoomCollision));
+            iggy3d::activeRoomCollision(runtime.window)));
     result.timings.tickOrGameplayUpdateNs +=
         elapsedNs(updateBegin, Clock::now(), noTiming);
 
@@ -503,12 +504,13 @@ ScenarioResult runScenario(const ScenarioSpec& spec,
       std::string(iggy3d::productFrontendSurfaceName(activeSurface.activeSurface));
   result.inputOwner = std::string(iggy3d::menuOwnerName(activeSurface.inputOwner));
   result.gameplayInputSuppressed = activeSurface.gameplayInputSuppressed;
-  result.roomId = runtime.window.activeRoom.roomId;
+  result.roomId = iggy3d::activeRoom(runtime.window).roomId;
   result.roomFloorCount = runtime.window.viewport.productDrawFloorTileCount;
   result.roomWallCount = runtime.window.viewport.productDrawWallTileCount;
-  result.roomSurfaceCount = runtime.window.activeRoom.spatialSurfaceCount;
+  result.roomSurfaceCount =
+      iggy3d::activeRoom(runtime.window).spatialSurfaceCount;
   result.roomCollisionSurfaceCount =
-      runtime.window.activeRoomCollision.querySurfaceCount;
+      iggy3d::activeRoomCollision(runtime.window).querySurfaceCount;
   result.timings.totalNs = elapsedNs(totalBegin, Clock::now(), noTiming);
   result.ok = true;
   result.status = "product_frame_metrics_ready";

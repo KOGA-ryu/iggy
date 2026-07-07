@@ -85,7 +85,7 @@ ProductAutomationExecutionResult applyProductSaveBrowserAutomationCommand(
         selectProductSaveSlotById(context.saves.slots, saveSelection.saveId,
                                   context.window);
     // branch-gate: BG-1008
-    markAutomationApplied(context.window, command, context.window.selectedProductSave.id,
+    markAutomationApplied(context.window, command, context.window.saveSession.selectedProductSave.id,
                           context.currentOwner(), selected ? "applied" : "ignored");
     return passSaveBrowserAutomation(selected);
   }
@@ -145,7 +145,7 @@ ProductAutomationExecutionResult applyProductSaveBrowserAutomationCommand(
       return failSaveBrowserAutomation();
     }
     // branch-gate: BG-1008
-    if (!context.window.deletedSaveBrowserOpen) {
+    if (!context.window.saveSession.deletedSaveBrowserOpen) {
       context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, automationSpec.canonicalKey,
                             context.currentOwner(), "failed");
@@ -166,7 +166,7 @@ ProductAutomationExecutionResult applyProductSaveBrowserAutomationCommand(
         selectDeletedProductSaveSlotById(deletedSaves.slots, saveSelection.saveId,
                                          context.window);
     markAutomationApplied(context.window, command,
-                          context.window.deletedSelectedSaveId,
+                          context.window.saveSession.deletedSelectedSaveId,
                           context.currentOwner(),
                           // branch-gate: BG-1008
                           selected ? "applied" : "ignored");
@@ -191,7 +191,7 @@ ProductAutomationExecutionResult applyProductSaveBrowserAutomationCommand(
       return failSaveBrowserAutomation();
     }
     // branch-gate: BG-1008
-    if (!context.window.deletedSaveBrowserOpen) {
+    if (!context.window.saveSession.deletedSaveBrowserOpen) {
       context.window.automationControl.status = "owner_unavailable";
       markAutomationApplied(context.window, command, automationSpec.canonicalKey,
                             context.currentOwner(), "failed");
@@ -201,8 +201,8 @@ ProductAutomationExecutionResult applyProductSaveBrowserAutomationCommand(
     markAutomationApplied(context.window, command, automationSpec.canonicalKey,
                           context.currentOwner(),
                           // branch-gate: BG-1008
-                          context.window.saveRecover.executed ? "applied" : "failed");
-    return passSaveBrowserAutomation(context.window.saveRecover.executed);
+                          context.window.saveSession.saveRecover.executed ? "applied" : "failed");
+    return passSaveBrowserAutomation(context.window.saveSession.saveRecover.executed);
   }
 
   return unhandledSaveBrowserAutomation();

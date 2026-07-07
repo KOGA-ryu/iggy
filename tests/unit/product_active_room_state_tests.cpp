@@ -1,5 +1,6 @@
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ascii_room/Editing.hpp"
 
@@ -26,13 +27,85 @@ bool expect(bool condition, std::string_view message) {
 
 bool activeRoomRevisionDefaultsAndBumps() {
   iggy3d::ProductAppWindowState window;
-  bool ok = expect(window.activeRoomRevision == 0U, "active room revision default");
+  bool ok =
+      expect(iggy3d::activeRoomRevision(window) == 0U,
+             "active room revision default");
 
   iggy3d::bumpActiveRoomRevision(window);
-  ok = ok && expect(window.activeRoomRevision == 1U, "active room revision first bump");
+  ok = ok && expect(iggy3d::activeRoomRevision(window) == 1U,
+                    "active room revision first bump");
   iggy3d::bumpActiveRoomRevision(window);
   iggy3d::bumpActiveRoomRevision(window);
-  ok = ok && expect(window.activeRoomRevision == 3U, "active room revision third bump");
+  ok = ok && expect(iggy3d::activeRoomRevision(window) == 3U,
+                    "active room revision third bump");
+  return ok;
+}
+
+bool roomStoreAccessorsAliasWindowOwnedFields() {
+  iggy3d::ProductAppWindowState window;
+  bool ok = expect(&iggy3d::activeRoom(window) == &window.room.activeRoom,
+                   "active room accessor aliases field") &&
+            expect(&iggy3d::activeRoomRevision(window) ==
+                       &window.room.activeRoomRevision,
+                   "active room revision accessor aliases field") &&
+            expect(&iggy3d::activeRoomCollision(window) ==
+                       &window.room.activeRoomCollision,
+                   "active room collision accessor aliases field") &&
+            expect(&iggy3d::activeRoomCollisionFreshness(window) ==
+                       &window.room.activeRoomCollisionFreshness,
+                   "active room collision freshness accessor aliases field");
+
+  iggy3d::activeRoom(window).loaded = true;
+  iggy3d::activeRoom(window).roomId = "room_store_alias";
+  iggy3d::activeRoomRevision(window) = 42U;
+  iggy3d::activeRoomCollision(window).ready = true;
+  iggy3d::activeRoomCollision(window).querySurfaceCount = 7U;
+  iggy3d::activeRoomCollisionFreshness(window).rebaked = true;
+  iggy3d::activeRoomCollisionFreshness(window).observedRoomRevision = 42U;
+
+  ok = ok && expect(window.room.activeRoom.loaded, "active room write-through loaded") &&
+       expect(window.room.activeRoom.roomId == "room_store_alias",
+              "active room write-through room id") &&
+       expect(window.room.activeRoomRevision == 42U,
+              "active room revision write-through") &&
+       expect(window.room.activeRoomCollision.ready,
+              "active room collision write-through ready") &&
+       expect(window.room.activeRoomCollision.querySurfaceCount == 7U,
+              "active room collision write-through query count") &&
+       expect(window.room.activeRoomCollisionFreshness.rebaked,
+              "active room collision freshness write-through rebaked") &&
+       expect(window.room.activeRoomCollisionFreshness.observedRoomRevision == 42U,
+              "active room collision freshness write-through revision");
+
+  const iggy3d::ProductAppWindowState& constWindow = window;
+  ok = ok &&
+       expect(&iggy3d::activeRoom(constWindow) ==
+                  static_cast<const iggy3d::ProductActiveRoomState*>(
+                      &window.room.activeRoom),
+              "const active room accessor aliases field") &&
+       expect(&iggy3d::activeRoomRevision(constWindow) ==
+                  static_cast<const std::uint64_t*>(
+                      &window.room.activeRoomRevision),
+              "const active room revision accessor aliases field") &&
+       expect(&iggy3d::activeRoomCollision(constWindow) ==
+                  static_cast<const iggy3d::ProductActiveRoomCollisionState*>(
+                      &window.room.activeRoomCollision),
+              "const active room collision accessor aliases field") &&
+       expect(&iggy3d::activeRoomCollisionFreshness(constWindow) ==
+                  static_cast<
+                      const iggy3d::ProductActiveRoomCollisionFreshnessResult*>(
+                      &window.room.activeRoomCollisionFreshness),
+              "const active room collision freshness accessor aliases field") &&
+       expect(iggy3d::activeRoom(constWindow).loaded,
+              "const active room exposes loaded value") &&
+       expect(iggy3d::activeRoomRevision(constWindow) == 42U,
+              "const active room revision exposes value") &&
+       expect(iggy3d::activeRoomCollision(constWindow).querySurfaceCount == 7U,
+              "const active room collision exposes query count") &&
+       expect(iggy3d::activeRoomCollisionFreshness(constWindow)
+                  .observedRoomRevision == 42U,
+              "const active room collision freshness exposes revision");
+
   return ok;
 }
 
@@ -296,6 +369,7 @@ bool rejectsUnreadyEditableRoomSnapshot() {
 
 int main() {
   const bool ok = activeRoomRevisionDefaultsAndBumps() &&
+                  roomStoreAccessorsAliasWindowOwnedFields() &&
                   buildsLoadedStateFromAsciiAuthoring() &&
                   recordsAuthoringFailureWithoutRoomOwnership() &&
                   buildsLoadedStateFromPackageRoom() &&

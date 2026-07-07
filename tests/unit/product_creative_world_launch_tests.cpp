@@ -2,6 +2,7 @@
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/ui/UiDrawList.hpp"
 #include "app/iggy3d/creative/ui/UiProjection.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
@@ -252,20 +253,20 @@ iggy3d::ProductActiveRoomCollisionState sentinelActiveRoomCollision() {
 }
 
 void installSentinelRoomState(iggy3d::ProductAppWindowState& window) {
-  window.activeRoom = sentinelActiveRoom();
-  window.activeRoomCollision = sentinelActiveRoomCollision();
+  iggy3d::activeRoom(window) = sentinelActiveRoom();
+  iggy3d::activeRoomCollision(window) = sentinelActiveRoomCollision();
 }
 
 bool sentinelRoomStatePreserved(const iggy3d::ProductAppWindowState& window) {
-  return expect(window.activeRoom.status == "sentinel_active_room",
+  return expect(iggy3d::activeRoom(window).status == "sentinel_active_room",
                 "sentinel active room preserved") &&
-         expect(window.activeRoom.staticMeshCount == 99U,
+         expect(iggy3d::activeRoom(window).staticMeshCount == 99U,
                 "sentinel active room mesh count preserved") &&
-         expect(window.activeRoom.room.id == "sentinel_room",
+         expect(iggy3d::activeRoom(window).room.id == "sentinel_room",
                 "sentinel active room id preserved") &&
-         expect(window.activeRoomCollision.status == "sentinel_collision",
+         expect(iggy3d::activeRoomCollision(window).status == "sentinel_collision",
                 "sentinel collision preserved") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 77U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 77U,
                 "sentinel collision query count preserved");
 }
 
@@ -609,7 +610,7 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
          expect(window.startup.creativeDocumentIdScanStatus ==
                     "creative_document_id_scan_ready",
                 "creative launch document id scan status") &&
-         expect(window.activeProductSaveId == "none",
+         expect(window.saveSession.activeProductSaveId == "none",
                 "creative launch does not set product save id") &&
          expect(app.identity.saveId == launched.saveId,
                 "creative launch active creative save id") &&
@@ -967,7 +968,7 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
                 "open launch frontend gameplay") &&
          expect(openWindow.launchStatus == "product_creative_world_opened",
                 "open launch window status") &&
-         expect(openWindow.activeProductSaveId == "none",
+         expect(openWindow.saveSession.activeProductSaveId == "none",
                 "open launch does not set product save id") &&
          expect(openWindow.creativeWorldEpoch == 1U,
                 "open launch creative world epoch bumped") &&
@@ -1052,7 +1053,7 @@ bool openLaunchRefreshesBakedActiveRoomFromSavedCreativeDocument() {
   const iggy3d::SceneProjectionResult projection =
       openSession.has_value()
           ? iggy3d::buildSceneProjection(openSession->state(),
-                                         &openWindow.activeRoom.room)
+                                         &iggy3d::activeRoom(openWindow).room)
           : iggy3d::SceneProjectionResult{};
 
   return expect(created.accepted, "open baked setup create accepted") &&
@@ -1101,16 +1102,16 @@ bool openLaunchRefreshesBakedActiveRoomFromSavedCreativeDocument() {
                 "open baked result source anchor count") &&
          expect(opened.bakedActiveRoomRefresh.spatialSurfaceSourceCount == 7U,
                 "open baked result source surface count") &&
-         expect(openWindow.activeRoom.loaded, "open baked active room loaded") &&
-         expect(openWindow.activeRoom.staticMeshCount == 4U,
+         expect(iggy3d::activeRoom(openWindow).loaded, "open baked active room loaded") &&
+         expect(iggy3d::activeRoom(openWindow).staticMeshCount == 4U,
                 "open baked active mesh count") &&
-         expect(openWindow.activeRoom.anchorCount == 1U,
+         expect(iggy3d::activeRoom(openWindow).anchorCount == 1U,
                 "open baked active anchor count") &&
-         expect(openWindow.activeRoom.spatialSurfaceCount == 7U,
+         expect(iggy3d::activeRoom(openWindow).spatialSurfaceCount == 7U,
                 "open baked active surface count") &&
-         expect(openWindow.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(openWindow).ready,
                 "open baked collision ready") &&
-         expect(openWindow.activeRoomCollision.querySurfaceCount == 7U,
+         expect(iggy3d::activeRoomCollision(openWindow).querySurfaceCount == 7U,
                 "open baked collision query count") &&
          expect(projection.room.loaded, "open baked projection loaded") &&
          expect(countProjectedRole(projection.room, "floor") == 1U,
@@ -1128,7 +1129,7 @@ bool openLaunchRefreshesBakedActiveRoomFromSavedCreativeDocument() {
                 "open baked active creative document id") &&
          expect(openApp.identity.objectCount == opened.objectCount,
                 "open baked active creative object count") &&
-         expect(openWindow.activeProductSaveId == "none",
+         expect(openWindow.saveSession.activeProductSaveId == "none",
                 "open baked active product save none") &&
          expect(openFacade.document().objectCount() == 6U,
                 "open baked facade object count") &&
@@ -1215,7 +1216,7 @@ bool openProductSessionSaveRejectsAsMissingCreativeSection() {
   [[maybe_unused]] cr::Facade& openFacade = openApp.facade;
   const iggy3d::ProductCreativeOpenWorldLaunchResult opened =
       openCreativeWorld(options,
-                        productWindow.activeProductSaveId,
+                        productWindow.saveSession.activeProductSaveId,
                         openFrontend,
                         openSession,
                         openWindow,
@@ -1223,7 +1224,7 @@ bool openProductSessionSaveRejectsAsMissingCreativeSection() {
 
   return expect(productSession.has_value(),
                 "open product setup session created") &&
-         expect(productWindow.activeProductSaveId != "none",
+         expect(productWindow.saveSession.activeProductSaveId != "none",
                 "open product setup save id") &&
          expect(!opened.accepted, "open product rejected") &&
          expect(opened.status == "missing_creative_document_section",
@@ -1270,9 +1271,9 @@ bool productNewWorldLaunchClearsActiveCreativeIdentity() {
                 "product clear gameplay active") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "product clear player interaction mode") &&
-         expect(window.activeProductSaveId != "none",
+         expect(window.saveSession.activeProductSaveId != "none",
                 "product clear active product save id") &&
-         expect(window.activeProductSaveId != creativeSaveId,
+         expect(window.saveSession.activeProductSaveId != creativeSaveId,
                 "product clear product id differs creative id") &&
          expect(app.identity.saveId == creativeSaveId,
                 "product launch preserves creative app identity save id") &&
@@ -1570,7 +1571,7 @@ bool pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() {
                 "pause creative save keeps active session") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "pause creative save remains creative") &&
-         expect(window.activeProductSaveId == "none",
+         expect(window.saveSession.activeProductSaveId == "none",
                 "pause creative save does not set product save id") &&
          expectCreativeIdentityIsNormalized(app.identity,
                                                    window,
@@ -1623,7 +1624,7 @@ bool pauseCreativeSaveNullFacadeFailsClosed() {
                 "pause creative null dirty preserved") &&
          expect(activeSession.has_value(),
                 "pause creative null keeps active session") &&
-         expect(window.activeProductSaveId == "none",
+         expect(window.saveSession.activeProductSaveId == "none",
                 "pause creative null does not set product save id");
 }
 
@@ -1731,7 +1732,7 @@ bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
                 "pause creative save exit clears save status") &&
          expect(facade.document().dirtyFlags() == 0U,
                 "pause creative save exit dirty drained") &&
-         expect(window.activeProductSaveId == "none",
+         expect(window.saveSession.activeProductSaveId == "none",
                 "pause creative save exit does not set product save id") &&
          expectCreativeIdentityIsNormalized(app.identity,
                                                    window,
@@ -2046,7 +2047,7 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
   const iggy3d::SceneProjectionResult projection =
       activeSession.has_value()
           ? iggy3d::buildSceneProjection(activeSession->state(),
-                                         &window.activeRoom.room)
+                                         &iggy3d::activeRoom(window).room)
           : iggy3d::SceneProjectionResult{};
 
   return expect(launched.accepted, "baked room setup launch accepted") &&
@@ -2123,30 +2124,30 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
                     activeSession->state().reasoningGraph.nodes[0].sourceLabel ==
                         "e97_activation_hook",
                 "baked room activation hook graph source") &&
-         expect(window.activeRoom.loaded, "baked room window active loaded") &&
-         expect(window.activeRoom.roomId == "iggy3d_creative_baked_room",
+         expect(iggy3d::activeRoom(window).loaded, "baked room window active loaded") &&
+         expect(iggy3d::activeRoom(window).roomId == "iggy3d_creative_baked_room",
                 "baked room window active room id") &&
-         expect(window.activeRoom.sourceName == "iggy3d.creative",
+         expect(iggy3d::activeRoom(window).sourceName == "iggy3d.creative",
                 "baked room window source name") &&
-         expect(window.activeRoom.sourceSubset == "creative_document_bake",
+         expect(iggy3d::activeRoom(window).sourceSubset == "creative_document_bake",
                 "baked room window source subset") &&
-         expect(window.activeRoom.staticMeshCount == 4U,
+         expect(iggy3d::activeRoom(window).staticMeshCount == 4U,
                 "baked room window mesh count") &&
-         expect(window.activeRoom.anchorCount == 1U,
+         expect(iggy3d::activeRoom(window).anchorCount == 1U,
                 "baked room window anchor count") &&
-         expect(window.activeRoom.spatialSurfaceCount == 7U,
+         expect(iggy3d::activeRoom(window).spatialSurfaceCount == 7U,
                 "baked room window surface count") &&
-         expect(window.activeRoom.walkableSurfaceCount == 1U,
+         expect(iggy3d::activeRoom(window).walkableSurfaceCount == 1U,
                 "baked room walkable count") &&
-         expect(window.activeRoom.actorBlockerSurfaceCount == 3U,
+         expect(iggy3d::activeRoom(window).actorBlockerSurfaceCount == 3U,
                 "baked room actor blocker count") &&
-         expect(window.activeRoom.projectileBlockerSurfaceCount == 3U,
+         expect(iggy3d::activeRoom(window).projectileBlockerSurfaceCount == 3U,
                 "baked room projectile blocker count") &&
-         expect(window.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(window).ready,
                 "baked room window collision ready") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 7U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 7U,
                 "baked room window collision query count") &&
-         expect(window.activeRoomCollision.surfaces.size() == 7U,
+         expect(iggy3d::activeRoomCollision(window).surfaces.size() == 7U,
                 "baked room window collision surface set count") &&
          expect(projection.room.loaded, "baked room projection loaded") &&
          expect(countProjectedRole(projection.room, "floor") == 1U,
@@ -2163,7 +2164,7 @@ bool refreshCreativeBakedActiveRoomBuildsRoomCollisionAndProjection() {
                 "baked room active creative document id preserved") &&
          expect(app.identity.objectCount == launched.objectCount,
                 "baked room active creative object count unchanged") &&
-         expect(window.activeProductSaveId == "none",
+         expect(window.saveSession.activeProductSaveId == "none",
                 "baked room active product save id unchanged") &&
          expect(facade.document().dirtyFlags() == dirtyBefore,
                 "baked room dirty flags preserved");
@@ -2204,7 +2205,7 @@ ManualRebuildRoomScenario runManualRebuildRoomScenario(std::string_view name) {
   scenario.window.creativeUndo.available =
       cr::creativeUndoAvailable(scenario.app.undoStack);
   scenario.window.creativeUndo.depth = scenario.undoDepthBeforeCommand;
-  scenario.activeRoomLoadedBeforeCommand = scenario.window.activeRoom.loaded;
+  scenario.activeRoomLoadedBeforeCommand = iggy3d::activeRoom(scenario.window).loaded;
   markCreativeBakedRoomStale(scenario.window, facade.document());
 
   scenario.clicked = clickCreativeRebuildRoomThroughInputFrame(
@@ -2216,7 +2217,7 @@ ManualRebuildRoomScenario runManualRebuildRoomScenario(std::string_view name) {
   scenario.projection =
       scenario.activeSession.has_value()
           ? iggy3d::buildSceneProjection(scenario.activeSession->state(),
-                                         &scenario.window.activeRoom.room)
+                                         &iggy3d::activeRoom(scenario.window).room)
           : iggy3d::SceneProjectionResult{};
   return scenario;
 }
@@ -2320,17 +2321,17 @@ bool manualRebuildRoomCommandLoadsActiveRoomThroughInputFrame() {
                 "manual rebuild active setup launch accepted") &&
          expect(scenario.clicked,
                 "manual rebuild active row clicked") &&
-         expect(scenario.window.activeRoom.loaded,
+         expect(iggy3d::activeRoom(scenario.window).loaded,
                 "manual rebuild active room loaded") &&
-         expect(scenario.window.activeRoom.staticMeshCount == 4U,
+         expect(iggy3d::activeRoom(scenario.window).staticMeshCount == 4U,
                 "manual rebuild active mesh count") &&
-         expect(scenario.window.activeRoom.anchorCount == 1U,
+         expect(iggy3d::activeRoom(scenario.window).anchorCount == 1U,
                 "manual rebuild active anchor count") &&
-         expect(scenario.window.activeRoom.spatialSurfaceCount == 7U,
+         expect(iggy3d::activeRoom(scenario.window).spatialSurfaceCount == 7U,
                 "manual rebuild active surface count") &&
-         expect(scenario.window.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(scenario.window).ready,
                 "manual rebuild collision ready") &&
-         expect(scenario.window.activeRoomCollision.querySurfaceCount == 7U,
+         expect(iggy3d::activeRoomCollision(scenario.window).querySurfaceCount == 7U,
                 "manual rebuild collision query count") &&
          expect(scenario.projection.room.loaded,
                 "manual rebuild projection loaded") &&
@@ -2348,7 +2349,7 @@ bool manualRebuildRoomCommandLoadsActiveRoomThroughInputFrame() {
          expect(scenario.app.identity.documentId ==
                     scenario.launched.documentId,
                 "manual rebuild active creative document preserved") &&
-         expect(scenario.window.activeProductSaveId == "none",
+         expect(scenario.window.saveSession.activeProductSaveId == "none",
                 "manual rebuild active product save unchanged") &&
          expect(facade.document().dirtyFlags() == scenario.dirtyBefore,
                 "manual rebuild dirty flags preserved");
@@ -2426,49 +2427,49 @@ bool manualRebuildRoomCommandClearsRoomStateOnNoRenderableDocument() {
          expect(window.creativeBakedRoomStaleStatus ==
                     "creative_baked_room_fresh",
                 "manual empty rebuild stale status fresh") &&
-         expect(!window.activeRoom.loaded,
+         expect(!iggy3d::activeRoom(window).loaded,
                 "manual empty rebuild active room unloaded") &&
-         expect(window.activeRoom.status ==
+         expect(iggy3d::activeRoom(window).status ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "manual empty rebuild active room clear status") &&
-         expect(window.activeRoom.reasonCode ==
+         expect(iggy3d::activeRoom(window).reasonCode ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "manual empty rebuild active room clear reason") &&
-         expect(window.activeRoom.source == "creative_room_bake",
+         expect(iggy3d::activeRoom(window).source == "creative_room_bake",
                 "manual empty rebuild active room clear source") &&
-         expect(window.activeRoom.roomId == "iggy3d_creative_baked_room",
+         expect(iggy3d::activeRoom(window).roomId == "iggy3d_creative_baked_room",
                 "manual empty rebuild active room clear room id") &&
-         expect(window.activeRoom.sourceName == "iggy3d.creative",
+         expect(iggy3d::activeRoom(window).sourceName == "iggy3d.creative",
                 "manual empty rebuild active room clear source name") &&
-         expect(window.activeRoom.sourceSubset == "creative_document_bake",
+         expect(iggy3d::activeRoom(window).sourceSubset == "creative_document_bake",
                 "manual empty rebuild active room clear source subset") &&
-         expect(window.activeRoom.staticMeshCount == 0U,
+         expect(iggy3d::activeRoom(window).staticMeshCount == 0U,
                 "manual empty rebuild active room clear mesh count") &&
-         expect(window.activeRoom.anchorCount == 0U,
+         expect(iggy3d::activeRoom(window).anchorCount == 0U,
                 "manual empty rebuild active room clear anchor count") &&
-         expect(window.activeRoom.spatialSurfaceCount == 0U,
+         expect(iggy3d::activeRoom(window).spatialSurfaceCount == 0U,
                 "manual empty rebuild active room clear surface count") &&
-         expect(window.activeRoom.room.staticMeshes.empty(),
+         expect(iggy3d::activeRoom(window).room.staticMeshes.empty(),
                 "manual empty rebuild room static meshes empty") &&
-         expect(window.activeRoom.room.anchors.empty(),
+         expect(iggy3d::activeRoom(window).room.anchors.empty(),
                 "manual empty rebuild room anchors empty") &&
-         expect(window.activeRoom.room.spatialSurfaces.empty(),
+         expect(iggy3d::activeRoom(window).room.spatialSurfaces.empty(),
                 "manual empty rebuild room surfaces empty") &&
-         expect(!window.activeRoomCollision.ready,
+         expect(!iggy3d::activeRoomCollision(window).ready,
                 "manual empty rebuild collision unavailable") &&
-         expect(window.activeRoomCollision.status ==
+         expect(iggy3d::activeRoomCollision(window).status ==
                     "active_room_collision_unavailable",
                 "manual empty rebuild collision clear status") &&
-         expect(window.activeRoomCollision.reasonCode ==
+         expect(iggy3d::activeRoomCollision(window).reasonCode ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "manual empty rebuild collision clear reason") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 0U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 0U,
                 "manual empty rebuild collision clear query count") &&
          expect(app.identity.saveId == launched.saveId,
                 "manual empty rebuild active creative save preserved") &&
          expect(app.identity.documentId == launched.documentId,
                 "manual empty rebuild active creative document preserved") &&
-         expect(window.activeProductSaveId == "none",
+         expect(window.saveSession.activeProductSaveId == "none",
                 "manual empty rebuild active product save unchanged") &&
          expect(app.facade.document().dirtyFlags() == dirtyBefore,
                 "manual empty rebuild dirty flags preserved");
@@ -2546,7 +2547,7 @@ GeneratedRoomShellScenario generateRoomShellScenario(std::string_view name) {
   scenario.metadataRoomOnlyAfterCreate =
       facade.document().objectCount() == 1U &&
       facade.findObject(scenario.roomId) != nullptr &&
-      !scenario.window.activeRoom.loaded &&
+      !iggy3d::activeRoom(scenario.window).loaded &&
       scenario.window.creativeBakedRoomAutoRefresh.accepted &&
       scenario.window.creativeBakedRoomAutoRefresh.clearedActiveRoom;
   scenario.undoDepthAfterCreate =
@@ -2570,7 +2571,7 @@ GeneratedRoomShellScenario generateRoomShellScenario(std::string_view name) {
     }
   }
   for (const iggy3d::RoomStaticMeshAsset& mesh :
-       scenario.window.activeRoom.room.staticMeshes) {
+       iggy3d::activeRoom(scenario.window).room.staticMeshes) {
     scenario.bakedFloorRoleCount += mesh.role == "floor" ? 1U : 0U;
     scenario.bakedWallRoleCount += mesh.role == "wall" ? 1U : 0U;
   }
@@ -2612,15 +2613,15 @@ GeneratedRoomShellScenario generateRoomShellScenario(std::string_view name) {
       scenario.window.creativeBakedRoomAutoRefresh.spatialSurfaceCount;
   scenario.shellAutoRefreshCollisionReady =
       scenario.window.creativeBakedRoomAutoRefresh.collisionReady;
-  scenario.shellActiveRoomLoaded = scenario.window.activeRoom.loaded;
+  scenario.shellActiveRoomLoaded = iggy3d::activeRoom(scenario.window).loaded;
   scenario.shellActiveRoomStaticMeshCount =
-      scenario.window.activeRoom.staticMeshCount;
+      iggy3d::activeRoom(scenario.window).staticMeshCount;
   scenario.shellActiveRoomSpatialSurfaceCount =
-      scenario.window.activeRoom.spatialSurfaceCount;
+      iggy3d::activeRoom(scenario.window).spatialSurfaceCount;
   scenario.shellActiveRoomCollisionReady =
-      scenario.window.activeRoomCollision.ready;
+      iggy3d::activeRoomCollision(scenario.window).ready;
   scenario.shellActiveRoomCollisionQuerySurfaceCount =
-      scenario.window.activeRoomCollision.querySurfaceCount;
+      iggy3d::activeRoomCollision(scenario.window).querySurfaceCount;
   scenario.shellBakedRoomStale = scenario.window.creativeBakedRoomStale;
   scenario.shellWindowUndoDepth = scenario.window.creativeUndo.depth;
   scenario.undoDepthAfterShell =
@@ -2716,11 +2717,11 @@ bool generatedRoomShellParentDeleteRejectsThroughInputFrame() {
   const std::uint64_t undoDepthBeforeParentDelete =
       cr::creativeUndoDepth(scenario.app.undoStack);
   const bool activeRoomLoadedBeforeParentDelete =
-      scenario.window.activeRoom.loaded;
+      iggy3d::activeRoom(scenario.window).loaded;
   const std::uint64_t activeMeshCountBeforeParentDelete =
-      scenario.window.activeRoom.staticMeshCount;
+      iggy3d::activeRoom(scenario.window).staticMeshCount;
   const std::uint64_t activeSurfaceCountBeforeParentDelete =
-      scenario.window.activeRoom.spatialSurfaceCount;
+      iggy3d::activeRoom(scenario.window).spatialSurfaceCount;
 
   const bool parentDeleteClicked = clickCreativeDeleteSelectedThroughInputFrame(
       scenario.options,
@@ -2758,11 +2759,11 @@ bool generatedRoomShellParentDeleteRejectsThroughInputFrame() {
       scenario.window.creativeDocumentChangedThisFrame;
   const bool parentDeleteAutoRefreshRequested =
       scenario.window.creativeBakedRoomAutoRefresh.requested;
-  const bool parentDeleteActiveRoomLoaded = scenario.window.activeRoom.loaded;
+  const bool parentDeleteActiveRoomLoaded = iggy3d::activeRoom(scenario.window).loaded;
   const std::uint64_t parentDeleteActiveRoomStaticMeshCount =
-      scenario.window.activeRoom.staticMeshCount;
+      iggy3d::activeRoom(scenario.window).staticMeshCount;
   const std::uint64_t parentDeleteActiveRoomSpatialSurfaceCount =
-      scenario.window.activeRoom.spatialSurfaceCount;
+      iggy3d::activeRoom(scenario.window).spatialSurfaceCount;
   const std::uint64_t undoDepthAfterParentDelete =
       cr::creativeUndoDepth(scenario.app.undoStack);
   const std::uint64_t objectCountAfterParentDelete =
@@ -2872,13 +2873,13 @@ bool removeGeneratedRoomShellAndUndoRestoresThroughInputFrame() {
       scenario.window.creativeBakedRoomAutoRefresh.clearedActiveRoom;
   const std::uint64_t removeShellDocumentObjectCount =
       facade.document().objectCount();
-  const bool removeShellActiveRoomLoaded = scenario.window.activeRoom.loaded;
+  const bool removeShellActiveRoomLoaded = iggy3d::activeRoom(scenario.window).loaded;
   const std::uint64_t removeShellActiveRoomStaticMeshCount =
-      scenario.window.activeRoom.staticMeshCount;
+      iggy3d::activeRoom(scenario.window).staticMeshCount;
   const bool removeShellActiveRoomCollisionReady =
-      scenario.window.activeRoomCollision.ready;
+      iggy3d::activeRoomCollision(scenario.window).ready;
   const std::uint64_t removeShellActiveRoomCollisionQuerySurfaceCount =
-      scenario.window.activeRoomCollision.querySurfaceCount;
+      iggy3d::activeRoomCollision(scenario.window).querySurfaceCount;
   const bool removeShellStale = scenario.window.creativeBakedRoomStale;
   const std::uint64_t undoDepthAfterRemoveShell =
       cr::creativeUndoDepth(scenario.app.undoStack);
@@ -2953,15 +2954,15 @@ bool removeGeneratedRoomShellAndUndoRestoresThroughInputFrame() {
                 "shell undo auto refresh accepted") &&
          expect(!scenario.window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "shell undo reloaded active room") &&
-         expect(scenario.window.activeRoom.loaded,
+         expect(iggy3d::activeRoom(scenario.window).loaded,
                 "shell undo active room loaded") &&
-         expect(scenario.window.activeRoom.staticMeshCount == 5U,
+         expect(iggy3d::activeRoom(scenario.window).staticMeshCount == 5U,
                 "shell undo active mesh count") &&
-         expect(scenario.window.activeRoom.spatialSurfaceCount == 9U,
+         expect(iggy3d::activeRoom(scenario.window).spatialSurfaceCount == 9U,
                 "shell undo active surface count") &&
-         expect(scenario.window.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(scenario.window).ready,
                 "shell undo collision ready") &&
-         expect(scenario.window.activeRoomCollision.querySurfaceCount == 9U,
+         expect(iggy3d::activeRoomCollision(scenario.window).querySurfaceCount == 9U,
                 "shell undo collision count") &&
          expect(cr::creativeUndoDepth(scenario.app.undoStack) == 2U,
                 "shell undo leaves earlier snapshots") &&
@@ -2974,7 +2975,7 @@ bool removeGeneratedRoomShellAndUndoRestoresThroughInputFrame() {
          expect(scenario.app.identity.documentId ==
                     scenario.launched.documentId,
                 "shell active creative document preserved") &&
-         expect(scenario.window.activeProductSaveId == "none",
+         expect(scenario.window.saveSession.activeProductSaveId == "none",
                 "shell active product save unchanged") &&
          expect(facade.document().dirtyFlags() != 0U,
                 "shell dirty flags not drained");
@@ -3069,7 +3070,7 @@ bool undoAfterCreateCrateRestoresEmptyDocumentThroughInputFrame() {
       cr::creativeUndoAvailable(app.undoStack);
   const std::uint64_t undoDepthAfterCreate =
       cr::creativeUndoDepth(app.undoStack);
-  const bool activeRoomLoadedAfterCreate = window.activeRoom.loaded;
+  const bool activeRoomLoadedAfterCreate = iggy3d::activeRoom(window).loaded;
 
   const bool undoClicked = clickCreativeUndoThroughInputFrame(
       options,
@@ -3139,9 +3140,9 @@ bool undoAfterCreateCrateRestoresEmptyDocumentThroughInputFrame() {
                 "undo create auto refresh accepted") &&
          expect(window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "undo create active room cleared") &&
-         expect(!window.activeRoom.loaded,
+         expect(!iggy3d::activeRoom(window).loaded,
                 "undo create active room unloaded") &&
-         expect(!window.activeRoomCollision.ready,
+         expect(!iggy3d::activeRoomCollision(window).ready,
                 "undo create collision unavailable") &&
          expect(!window.creativeBakedRoomStale,
                 "undo create stale fresh") &&
@@ -3228,15 +3229,15 @@ bool undoAfterDeleteSelectedRestoresRenderableThroughInputFrame() {
                 "undo delete auto refresh accepted") &&
          expect(!window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "undo delete active room not cleared") &&
-         expect(window.activeRoom.loaded,
+         expect(iggy3d::activeRoom(window).loaded,
                 "undo delete active room loaded") &&
-         expect(window.activeRoom.staticMeshCount == 1U,
+         expect(iggy3d::activeRoom(window).staticMeshCount == 1U,
                 "undo delete active mesh count") &&
-         expect(window.activeRoom.spatialSurfaceCount == 1U,
+         expect(iggy3d::activeRoom(window).spatialSurfaceCount == 1U,
                 "undo delete active surface count") &&
-         expect(window.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(window).ready,
                 "undo delete collision ready") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 1U,
                 "undo delete collision query count") &&
          expect(!window.creativeBakedRoomStale,
                 "undo delete stale fresh") &&
@@ -3318,11 +3319,11 @@ bool undoAfterVisibilityToggleRestoresBakedRoomThroughInputFrame() {
                 "undo visibility auto refresh accepted") &&
          expect(!window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "undo visibility active room not cleared") &&
-         expect(window.activeRoom.loaded,
+         expect(iggy3d::activeRoom(window).loaded,
                 "undo visibility active room loaded") &&
-         expect(window.activeRoom.staticMeshCount == 1U,
+         expect(iggy3d::activeRoom(window).staticMeshCount == 1U,
                 "undo visibility active mesh count") &&
-         expect(window.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(window).ready,
                 "undo visibility collision ready") &&
          expect(!window.creativeBakedRoomStale,
                 "undo visibility stale fresh") &&
@@ -3388,12 +3389,12 @@ bool autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() {
         expect(window.creativeBakedRoomAutoRefresh.status ==
                    "product_creative_baked_room_cleared_no_renderable_objects",
                "auto visibility hide clear status") &&
-        expect(!window.activeRoom.loaded,
+        expect(!iggy3d::activeRoom(window).loaded,
                "auto visibility hide active room unloaded") &&
-        expect(window.activeRoom.status ==
+        expect(iggy3d::activeRoom(window).status ==
                    "product_creative_baked_room_cleared_no_renderable_objects",
                "auto visibility hide active room status") &&
-        expect(!window.activeRoomCollision.ready,
+        expect(!iggy3d::activeRoomCollision(window).ready,
                "auto visibility hide collision unavailable") &&
         expect(!window.creativeBakedRoomStale,
                "auto visibility hide stale cleared") &&
@@ -3431,21 +3432,21 @@ bool autoRefreshVisibilityToggleClearsAndRestoresBakedRoomThroughInputFrame() {
                "auto visibility show surface count") &&
         expect(window.creativeBakedRoomAutoRefresh.collisionReady,
                "auto visibility show collision ready") &&
-        expect(window.activeRoom.loaded,
+        expect(iggy3d::activeRoom(window).loaded,
                "auto visibility show active room loaded") &&
-        expect(window.activeRoom.staticMeshCount == 1U,
+        expect(iggy3d::activeRoom(window).staticMeshCount == 1U,
                "auto visibility show active mesh count") &&
-        expect(window.activeRoom.spatialSurfaceCount == 1U,
+        expect(iggy3d::activeRoom(window).spatialSurfaceCount == 1U,
                "auto visibility show active surface count") &&
-        expect(window.activeRoomCollision.ready,
+        expect(iggy3d::activeRoomCollision(window).ready,
                "auto visibility show active collision ready") &&
-        expect(window.activeRoomCollision.querySurfaceCount == 1U,
+        expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 1U,
                "auto visibility show collision query count") &&
         expect(!window.creativeBakedRoomStale,
                "auto visibility show stale cleared") &&
         expect(app.identity.saveId == launched.saveId,
                "auto visibility active creative save preserved") &&
-        expect(window.activeProductSaveId == "none",
+        expect(window.saveSession.activeProductSaveId == "none",
                "auto visibility active product save unchanged") &&
         expect(facade.document().dirtyFlags() != 0U,
                "auto visibility dirty flags not drained");
@@ -3475,7 +3476,7 @@ bool deleteSelectedRenderableClearsBakedRoomThroughInputFrame() {
                                                     activeSession,
                                                     window,
                                                     app);
-  const bool activeRoomLoadedBeforeDelete = window.activeRoom.loaded;
+  const bool activeRoomLoadedBeforeDelete = iggy3d::activeRoom(window).loaded;
   const bool selected = selectFacadeObject(facade, floor.objectId);
   const cr::CreativeObjectDirtyFlags dirtyBeforeDelete =
       facade.document().dirtyFlags();
@@ -3545,13 +3546,13 @@ bool deleteSelectedRenderableClearsBakedRoomThroughInputFrame() {
          expect(window.creativeBakedRoomAutoRefresh.status ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "delete clear auto status") &&
-         expect(!window.activeRoom.loaded,
+         expect(!iggy3d::activeRoom(window).loaded,
                 "delete clear active room unloaded") &&
-         expect(window.activeRoom.staticMeshCount == 0U,
+         expect(iggy3d::activeRoom(window).staticMeshCount == 0U,
                 "delete clear active mesh count") &&
-         expect(!window.activeRoomCollision.ready,
+         expect(!iggy3d::activeRoomCollision(window).ready,
                 "delete clear collision unavailable") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 0U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 0U,
                 "delete clear collision query count") &&
          expect(!window.creativeBakedRoomStale,
                 "delete clear stale fresh") &&
@@ -3562,7 +3563,7 @@ bool deleteSelectedRenderableClearsBakedRoomThroughInputFrame() {
                 "delete clear active creative save preserved") &&
          expect(app.identity.documentId == launched.documentId,
                 "delete clear active creative document preserved") &&
-         expect(window.activeProductSaveId == "none",
+         expect(window.saveSession.activeProductSaveId == "none",
                 "delete clear active product save unchanged") &&
          expect(dirtyBeforeDelete != 0U, "delete clear dirty before") &&
          expect(facade.document().dirtyFlags() != 0U,
@@ -3645,15 +3646,15 @@ bool deleteOneOfTwoRenderablesRebuildsRemainingBakedRoomThroughInputFrame() {
                 "delete rebuild auto surface count") &&
          expect(window.creativeBakedRoomAutoRefresh.collisionReady,
                 "delete rebuild auto collision ready") &&
-         expect(window.activeRoom.loaded,
+         expect(iggy3d::activeRoom(window).loaded,
                 "delete rebuild active room loaded") &&
-         expect(window.activeRoom.staticMeshCount == 1U,
+         expect(iggy3d::activeRoom(window).staticMeshCount == 1U,
                 "delete rebuild active mesh count") &&
-         expect(window.activeRoom.spatialSurfaceCount == 1U,
+         expect(iggy3d::activeRoom(window).spatialSurfaceCount == 1U,
                 "delete rebuild active surface count") &&
-         expect(window.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(window).ready,
                 "delete rebuild active collision ready") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 1U,
                 "delete rebuild collision query count") &&
          expect(!window.creativeBakedRoomStale,
                 "delete rebuild stale fresh") &&
@@ -3661,7 +3662,7 @@ bool deleteOneOfTwoRenderablesRebuildsRemainingBakedRoomThroughInputFrame() {
                 "delete rebuild active creative save preserved") &&
          expect(app.identity.documentId == launched.documentId,
                 "delete rebuild active creative document preserved") &&
-         expect(window.activeProductSaveId == "none",
+         expect(window.saveSession.activeProductSaveId == "none",
                 "delete rebuild active product save unchanged") &&
          expect(dirtyBeforeDelete != 0U, "delete rebuild dirty before") &&
          expect(facade.document().dirtyFlags() != 0U,
@@ -3709,13 +3710,13 @@ AutoMoveScenario makeAutoMoveScenario(std::string_view name) {
           scenario.window,
           scenario.app);
   scenario.initialCenterX =
-      scenario.window.activeRoom.room.staticMeshes.empty()
+      iggy3d::activeRoom(scenario.window).room.staticMeshes.empty()
           ? 0.0F
-          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.x;
+          : iggy3d::activeRoom(scenario.window).room.staticMeshes.front().positionMeters.x;
   scenario.initialCenterY =
-      scenario.window.activeRoom.room.staticMeshes.empty()
+      iggy3d::activeRoom(scenario.window).room.staticMeshes.empty()
           ? 0.0F
-          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.y;
+          : iggy3d::activeRoom(scenario.window).room.staticMeshes.front().positionMeters.y;
   return scenario;
 }
 
@@ -3743,13 +3744,13 @@ void runAutoMoveCommit(AutoMoveScenario& scenario) {
                                    60.0F);
 
   scenario.movedCenterX =
-      scenario.window.activeRoom.room.staticMeshes.empty()
+      iggy3d::activeRoom(scenario.window).room.staticMeshes.empty()
           ? 0.0F
-          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.x;
+          : iggy3d::activeRoom(scenario.window).room.staticMeshes.front().positionMeters.x;
   scenario.movedCenterY =
-      scenario.window.activeRoom.room.staticMeshes.empty()
+      iggy3d::activeRoom(scenario.window).room.staticMeshes.empty()
           ? 0.0F
-          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.y;
+          : iggy3d::activeRoom(scenario.window).room.staticMeshes.front().positionMeters.y;
 }
 
 void runAutoMoveNoChangeRelease(AutoMoveScenario& scenario) {
@@ -3784,13 +3785,13 @@ void runAutoMoveUndo(AutoMoveScenario& scenario) {
       scenario.window,
       scenario.app);
   scenario.undoCenterX =
-      scenario.window.activeRoom.room.staticMeshes.empty()
+      iggy3d::activeRoom(scenario.window).room.staticMeshes.empty()
           ? 0.0F
-          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.x;
+          : iggy3d::activeRoom(scenario.window).room.staticMeshes.front().positionMeters.x;
   scenario.undoCenterY =
-      scenario.window.activeRoom.room.staticMeshes.empty()
+      iggy3d::activeRoom(scenario.window).room.staticMeshes.empty()
           ? 0.0F
-          : scenario.window.activeRoom.room.staticMeshes.front().positionMeters.y;
+          : iggy3d::activeRoom(scenario.window).room.staticMeshes.front().positionMeters.y;
 }
 
 bool autoRefreshMoveCommitRefreshesBakedRoomThroughInputFrame() {
@@ -3801,7 +3802,7 @@ bool autoRefreshMoveCommitRefreshesBakedRoomThroughInputFrame() {
   return expect(scenario.launched.accepted, "auto move launch accepted") &&
          expect(scenario.floor.accepted, "auto move floor created") &&
          expect(scenario.initialRefresh.accepted, "auto move initial refresh") &&
-         expect(scenario.window.activeRoom.loaded,
+         expect(iggy3d::activeRoom(scenario.window).loaded,
                    "auto move active room loaded after move") &&
          expect(facade.document().revision() == scenario.revisionBeforeMove + 1U,
                    "auto move revision advanced") &&
@@ -3816,11 +3817,11 @@ bool autoRefreshMoveCommitRefreshesBakedRoomThroughInputFrame() {
          expect(scenario.window.creativeBakedRoomAutoRefresh.status ==
                        "product_creative_baked_room_refreshed",
                    "auto move refresh status") &&
-         expect(scenario.window.activeRoom.staticMeshCount == 1U,
+         expect(iggy3d::activeRoom(scenario.window).staticMeshCount == 1U,
                    "auto move mesh count") &&
-         expect(scenario.window.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(scenario.window).ready,
                    "auto move collision ready") &&
-         expect(scenario.window.activeRoomCollision.querySurfaceCount == 1U,
+         expect(iggy3d::activeRoomCollision(scenario.window).querySurfaceCount == 1U,
                    "auto move collision query count") &&
          expect(scenario.movedCenterX != scenario.initialCenterX ||
                     scenario.movedCenterY != scenario.initialCenterY,
@@ -3859,13 +3860,13 @@ bool autoRefreshNoChangeMoveReleaseDoesNotRefreshThroughInputFrame() {
                "auto move no-change undo depth unchanged") &&
         expect(scenario.window.creativeUndo.depth == 1U,
                "auto move no-change window undo depth unchanged") &&
-        expect(scenario.window.activeRoom.loaded,
+        expect(iggy3d::activeRoom(scenario.window).loaded,
                "auto move no-change active room remains loaded") &&
         expect(!scenario.window.creativeBakedRoomStale,
                "auto move no-change remains fresh") &&
         expect(scenario.app.identity.saveId == scenario.launched.saveId,
                "auto move active creative save preserved") &&
-        expect(scenario.window.activeProductSaveId == "none",
+        expect(scenario.window.saveSession.activeProductSaveId == "none",
                "auto move active product save unchanged") &&
         expect(facade.document().dirtyFlags() != 0U,
                "auto move dirty flags not drained");
@@ -3899,11 +3900,11 @@ bool undoAfterMoveCommitRestoresBakedRoomThroughInputFrame() {
                "auto move undo auto refresh requested") &&
         expect(scenario.window.creativeBakedRoomAutoRefresh.accepted,
                "auto move undo auto refresh accepted") &&
-        expect(scenario.window.activeRoom.loaded,
+        expect(iggy3d::activeRoom(scenario.window).loaded,
                "auto move undo active room loaded") &&
-        expect(scenario.window.activeRoom.staticMeshCount == 1U,
+        expect(iggy3d::activeRoom(scenario.window).staticMeshCount == 1U,
                "auto move undo mesh count") &&
-        expect(scenario.window.activeRoomCollision.ready,
+        expect(iggy3d::activeRoomCollision(scenario.window).ready,
                "auto move undo collision ready") &&
         expect(scenario.undoCenterX == scenario.initialCenterX &&
                    scenario.undoCenterY == scenario.initialCenterY,
@@ -4053,7 +4054,7 @@ bool refreshCreativeBakedActiveRoomFailuresPreserveExistingRoomState() {
 }
 
 // F0 (blank stage): the creative launch must NOT install the first_room demo
-// room; window.activeRoom stays empty for a creative world.
+// room; iggy3d::activeRoom(window) stays empty for a creative world.
 bool creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() {
   const iggy3d::ProductAppOptions options = testOptions("blank_stage");
   iggy3d::FrontendState frontend;
@@ -4073,7 +4074,7 @@ bool creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() {
   return expect(launched.accepted, "blank stage launch accepted") &&
          expect(activeSession.has_value(), "blank stage session present") &&
          expect(window.gameplayActive, "blank stage gameplay active") &&
-         expect(!window.activeRoom.loaded,
+         expect(!iggy3d::activeRoom(window).loaded,
                 "blank stage active room not loaded") &&
          expect(launched.bakedActiveRoomRefreshRequested,
                 "blank stage refresh requested") &&
@@ -4098,9 +4099,9 @@ bool creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() {
                 "blank stage bake rejected") &&
          expect(launched.bakedActiveRoomRefresh.bakeReceipt.objectCount == 0U,
                 "blank stage bake object count") &&
-         expect(!window.activeRoom.hasAuthoredRoom,
+         expect(!iggy3d::activeRoom(window).hasAuthoredRoom,
                 "blank stage no authored demo room") &&
-         expect(window.activeRoom.room.staticMeshes.empty(),
+         expect(iggy3d::activeRoom(window).room.staticMeshes.empty(),
                 "blank stage room has no demo meshes") &&
          expect(launched.objectCount == 0U, "blank stage empty document") &&
          expect(facade.document().objectCount() == 0U,

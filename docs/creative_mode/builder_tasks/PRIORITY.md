@@ -7,20 +7,17 @@ use this index only to decide which ready card to claim next.
 **Collision freshness store slice COMPLETE** (G2–G7 done,
 `docs/active_room_collision_freshness_preflight_v0_2.md`). The `activeCreative`
 mirror delete is COMPLETE (E136-E139). The `creativeFly` anchor store is
-COMPLETE (E142-E147). Current work: structural `activeRoom` regroup into
-RoomStore. This is explicitly not an ownership kill; the owner is already
-single-source. Builder should pull E148-E152 in numeric order.
+COMPLETE (E142-E147). The structural `activeRoom` regroup into RoomStore is
+COMPLETE (E148-E152). The SaveSessionStore bulk move is COMPLETE (E153).
 
 **Also complete:** the 2 dead write-only fields `window.inputOwner` /
 `window.gameplayInputSuppressed` were deleted (`36ceeac3`) — god-struct now 153
-members. **Queued next:** `E153` SaveSessionStore bulk-move (decomposition #5,
-31 fields, recon-grounded handoff) — a separate track from RoomStore with a
-disjoint field set. Claim it after E148-E152 unless planner changes priority.
-**Also staged (blocked/):** `E154` GameplayStore bulk-move (decomposition #8, 33
+members. **Staged next (blocked/):** `E154` GameplayStore bulk-move
+(decomposition #8, 33
 fields incl. `runtimeSessionCreated`). **~1670 repoints — the biggest move; a
 single compiler-guided pass OR an accessor-seam slice (planner/reviewer choose).**
-Disjoint from RoomStore/SaveSessionStore; coordinates with E153 only on
-`runtimeSessionCreated` (whichever lands 2nd must not re-touch it).
+Disjoint from completed RoomStore/SaveSessionStore work; `runtimeSessionCreated`
+now belongs to GameplayStore.
 
 ## Claim Policy
 
@@ -38,22 +35,11 @@ None.
 
 ## Pull Next
 
-1. **E148** — RoomStore G1 accessor seam.
-2. **E149** — RoomStore G2 production writers.
-3. **E150** — RoomStore G3 production readers and receipts.
-4. **E151** — RoomStore G4 test fixture migration.
-5. **E152** — RoomStore G5 final storage move.
-6. **E153** — SaveSessionStore bulk-move.
+None. `ready/` is intentionally empty until planner releases E154 or a new card.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E148-E152** — activeRoom RoomStore structural regroup. Preserve
-  `roomEditing.activeRoom` and `roomEditing.activeRoomCollision` as producer
-  state. Use the accessor seam first; move storage/delete old top-level fields
-  only in E152.
-- **E153** — SaveSessionStore bulk-move. Structural regroup only; move 31
-  save-session fields into a nested store, leave `runtimeSessionCreated` as
-  GameplayStore, and keep the receipt golden byte-identical.
+None currently ready.
 
 ## Tier 2: Feature-Add Seams
 
@@ -84,8 +70,13 @@ Held — do NOT promote to `ready/` on a guess:
     token is a new window-owned `creativeWorldEpoch` (NOT a content hash — two
     blank worlds hash identically), 3 seeders are NOT redundant (distinct
     yaw/pitch + latch behaviors), app-lane-only (stays out of the session gate).
-  - **#1 `activeRoom`→`RoomStore`** — **CURRENT WORK as E148-E152.** Structural
-    regroup only; NOT an ownership kill. Preserve the nested producer copy.
+  - **#1 `activeRoom`→`RoomStore`** — **COMPLETE as E148-E152.** Structural
+    regroup only; NOT an ownership kill. Preserved the nested producer copy.
+  - **#5 `SaveSessionStore`** — **COMPLETE as E153.** Structural regroup only;
+    `runtimeSessionCreated` was corrected to GameplayStore ownership.
+  - **#8 `GameplayStore`** — staged in `blocked/E154-gameplaystore-bulk-move.md`;
+    release only after reviewing whether the single large compiler-guided move
+    or an accessor-seam split is preferable.
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
   - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).

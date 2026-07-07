@@ -66,3 +66,30 @@ Append:
 - Storage unchanged proof:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completion Brief - E148
+
+- Files changed:
+  - `src/app/iggy3d/gameplay/ProductRoomStore.hpp`
+  - `tests/unit/product_active_room_state_tests.cpp`
+  - `docs/creative_mode/builder_tasks/claimed/E148-roomstore-g1-accessor-seam.md`
+- Accessor seam added:
+  - Added header-only `iggy3d::activeRoom(...)`,
+    `iggy3d::activeRoomRevision(...)`, `iggy3d::activeRoomCollision(...)`,
+    and `iggy3d::activeRoomCollisionFreshness(...)` accessors with const and
+    non-const overloads.
+- Storage unchanged proof:
+  - The accessors return references directly to the existing top-level
+    `ProductAppWindowState` fields: `activeRoom`, `activeRoomRevision`,
+    `activeRoomCollision`, and `activeRoomCollisionFreshness`.
+  - `product_active_room_state_tests` now checks pointer aliasing for const and
+    non-const accessors, and verifies non-const write-through mutates the same
+    window-owned fields.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_active_room_state_tests product_active_room_collision_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_active_room_state_tests|product_active_room_collision_tests)$' --output-on-failure`
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - Focused trailing-whitespace scan over touched/new files.
+- Concerns/deferred:
+  - No production call sites were migrated. E149 can start routing production
+    reads/writes through this seam without moving storage yet.

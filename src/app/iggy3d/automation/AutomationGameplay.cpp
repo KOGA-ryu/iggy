@@ -7,6 +7,7 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/input/ControllerActionMap.hpp"
 #include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/gameplay/Controller.hpp"
@@ -53,7 +54,7 @@ bool gameplayAutomationReady(ProductAutomationGameplayContext& context) {
 const SpatialSurfaceSet* currentAutomationCollisionSurfaces(
     ProductAutomationGameplayContext& context) {
   (void)ensureActiveRoomCollisionFresh(context.window, context.activeSession);
-  return productActiveRoomCollisionSurfaces(context.window.activeRoomCollision);
+  return productActiveRoomCollisionSurfaces(activeRoomCollision(context.window));
 }
 
 bool applyGameplayActionState(ProductAutomationGameplayContext& context,

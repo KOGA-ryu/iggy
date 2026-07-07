@@ -7,6 +7,7 @@
 #include <utility>
 
 #include "app/iggy3d/gameplay/TapeRunner.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "render/vulkan/BufferImageResources.hpp"
@@ -741,11 +742,11 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   }
 
   // branch-gate: BG-1027
-  const RoomAsset* activeRoom =
-      window.activeRoom.loaded ? &window.activeRoom.room : nullptr;
+  const RoomAsset* activeRoomAsset =
+      activeRoom(window).loaded ? &activeRoom(window).room : nullptr;
   SceneProjectionConfig sceneConfig;
   sceneConfig.includeNpcVisionDebug = request.debugOverlayEnabled;
-  frame.scene = buildSceneProjection(request.activeSession->state(), activeRoom,
+  frame.scene = buildSceneProjection(request.activeSession->state(), activeRoomAsset,
                                      sceneConfig);
   frame.debug = buildProductDebugProjectionWithNpcBehavior(
       request.activeSession->state(),
@@ -810,8 +811,8 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
                                   activeRoomEditorPlacementPreview(window)});
   copyProductRoomEditorHud(window, frame.roomEditorHud);
   frame.drawList = buildProductPrimitiveDrawList(&frame.scene, &frame.debug,
-                                                 activeRoom,
-                                                 &window.activeRoomCollision,
+                                                 activeRoomAsset,
+                                                 &activeRoomCollision(window),
                                                  &frame.roomEditorOverlay,
                                                  &frame.roomEditorPreviewOverlay,
                                                  &frame.mapMakerGridOverlay,

@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
 
 #include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/ui/Ui.hpp"
@@ -1422,12 +1423,12 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
          expect(window.creativeBakedRoomStaleStatus ==
                     "creative_baked_room_fresh",
                 "create injected fresh status") &&
-         expect(!window.activeRoom.loaded,
+         expect(!iggy3d::activeRoom(window).loaded,
                 "create injected metadata clears active room") &&
-         expect(window.activeRoom.status ==
+         expect(iggy3d::activeRoom(window).status ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "create injected active room clear status") &&
-         expect(!window.activeRoomCollision.ready,
+         expect(!iggy3d::activeRoomCollision(window).ready,
                 "create injected collision unavailable") &&
          expect(created != nullptr, "create injected object exists") &&
          expect(created != nullptr &&
@@ -1591,15 +1592,15 @@ bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
          expect(window.creativeBakedRoomStaleStatus ==
                     "creative_baked_room_fresh",
                 "crate injected stale status fresh") &&
-         expect(window.activeRoom.loaded,
+         expect(iggy3d::activeRoom(window).loaded,
                 "crate injected active room loaded") &&
-         expect(window.activeRoom.staticMeshCount == 1U,
+         expect(iggy3d::activeRoom(window).staticMeshCount == 1U,
                 "crate injected active room mesh count") &&
-         expect(window.activeRoom.spatialSurfaceCount == 2U,
+         expect(iggy3d::activeRoom(window).spatialSurfaceCount == 2U,
                 "crate injected active room surface count") &&
-         expect(window.activeRoomCollision.ready,
+         expect(iggy3d::activeRoomCollision(window).ready,
                 "crate injected collision ready") &&
-         expect(window.activeRoomCollision.querySurfaceCount == 2U,
+         expect(iggy3d::activeRoomCollision(window).querySurfaceCount == 2U,
                 "crate injected collision query count") &&
          expectReceiptField(receipt,
                             "creative_baked_room_auto_refresh_requested",

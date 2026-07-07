@@ -1,5 +1,6 @@
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/Tape.hpp"
@@ -100,12 +101,12 @@ iggy3d::ProductActiveRoomState tapeActiveRoom(const iggy3d::RoomAsset& room) {
 iggy3d::ProductAppWindowState tapeWindow(const iggy3d::RoomAsset& room,
                                          const iggy3d::Session& session) {
   iggy3d::ProductAppWindowState window;
-  window.activeRoom = tapeActiveRoom(room);
+  iggy3d::activeRoom(window) = tapeActiveRoom(room);
   iggy3d::bumpActiveRoomRevision(window);
-  window.activeRoomCollision =
-      iggy3d::buildProductActiveRoomCollision(window.activeRoom, session.state());
-  window.activeRoomCollision.bakedFromRoomRevision = window.activeRoomRevision;
-  window.activeRoomCollision.bakedFromSessionHash =
+  iggy3d::activeRoomCollision(window) =
+      iggy3d::buildProductActiveRoomCollision(iggy3d::activeRoom(window), session.state());
+  iggy3d::activeRoomCollision(window).bakedFromRoomRevision = iggy3d::activeRoomRevision(window);
+  iggy3d::activeRoomCollision(window).bakedFromSessionHash =
       session.state().currentStateHash;
   return window;
 }
@@ -277,15 +278,15 @@ bool tapeWindowFreshnessMatchesUnconditionalRefreshBaseline() {
       iggy3d::runProductGameplayTape({&*freshnessSession,
                                       &parsed.tape,
                                       nullptr,
-                                      &window.activeRoom,
-                                      &window.activeRoomCollision,
+                                      &iggy3d::activeRoom(window),
+                                      &iggy3d::activeRoomCollision(window),
                                       false,
                                       &window});
 
   const TapeCollisionSnapshot baselineSnapshot =
       collisionSnapshot(baselineCollision);
   const TapeCollisionSnapshot freshnessSnapshot =
-      collisionSnapshot(window.activeRoomCollision);
+      collisionSnapshot(iggy3d::activeRoomCollision(window));
   return tapeRunsMatch(baseline, freshness, "freshness tape") &&
          tapeCollisionSnapshotsMatch(baselineSnapshot,
                                      freshnessSnapshot,
