@@ -1,6 +1,6 @@
 # E166 — InputDeviceStore G2: Controller + Mouse Capture State
 
-**STATUS: BLOCKED — release only after E165 is reviewed and committed.**
+**STATUS: READY — claim next.**
 Parent: `blocked/E156-inputdevicestore-bulk-move.md`.
 Commit convention: `claude: planned. codex: ...`.
 
