@@ -5,10 +5,10 @@ files still live in `ready/`, `claimed/`, `done/`, or `blocked/`; builder should
 use this index only to decide which ready card to claim next.
 
 Current ready cards seed the complexity-reduction roadmap in
-`docs/complexity_audit_v0_1.md`. Two of them (E122, E124) are read-only audits
-that PRODUCE the next implementation cards — the bucket is kept small and fed one
-slice at a time on purpose. Do not pre-load implementation cards whose premise a
-prior slice could invalidate.
+`docs/complexity_audit_v0_1.md`. E124 is a read-only audit that PRODUCES the
+next implementation card — the bucket is kept small and fed one slice at a time
+on purpose. Do not pre-load implementation cards whose premise a prior slice
+could invalidate.
 
 ## Claim Policy
 
@@ -26,18 +26,20 @@ None.
 
 ## Pull Next
 
-1. **E122** — TraversalTag Catalog Audit (read-only; unblocks the one HIGH seam).
-2. **E125** — Product Header Include Hygiene Pass 1 (mechanical, free build win).
+1. **E125** — Product Header Include Hygiene Pass 1 (mechanical, free build win).
+2. **E126** — TraversalTag Catalog Contract And Validator Parity (fixes the
+   `clamber_candidate` validator drift without broad literal migration).
 3. **E123** — Creative Object Kind Switch Cleanup (small impl; blocks itself if
    the descriptor lacks the fact).
 4. **E124** — ProductPrimitiveDrawKind Metadata Audit (read-only).
 
 ## Tier 1: Correctness And Compatibility
 
-- **E122** — traversal-tag vocabulary has no owner; two validators already
-  drifted on `clamber_candidate` (confirmed live bug). Read-only audit first.
 - **E124** — `ProductPrimitiveDrawKind` per-kind color drifted across 3 render
   files (`ElevatedFloorTile` confirmed). Read-only audit first.
+- **E126** — traversal-tag validator parity from E122; retain
+  `clamber_candidate` as valid content vocabulary but keep movement slot policy
+  unchanged.
 
 ## Tier 2: Feature-Add Seams
 
@@ -54,9 +56,10 @@ None.
 
 Held until their audit card returns — do NOT promote to `ready/` on a guess:
 
-- **Traversal-tag catalog implementation** (the `TraversalTag` single-source
-  migration across ~13 files + drift resolution): held until **E122** returns
-  the exact map. E122 drafts this as E126 (+ a per-lane split if needed).
+- **Traversal-tag emitter/consumer migration** across RoomBake, ASCII room,
+  movement, collision, and display/debug strings: do this after E126 lands and
+  the catalog contract is stable. Do not migrate false-positive receipt/render
+  strings blindly.
 - **Draw-kind metadata table implementation** (replace the 3 render switches with
   one `constexpr` table + resolved drift values): held until **E124** returns.
 - Further include-hygiene passes (the remaining ~11 headers) after E125.
