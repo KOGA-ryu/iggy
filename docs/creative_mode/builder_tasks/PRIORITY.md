@@ -30,7 +30,8 @@ path/status fields now live under `ProductAppWindowState::presentPath`, while
 `productVulkanMenu` remains for FrontendWindowShell.
 
 **Decomposition card set now COMPLETE through PresentPathStore.** CreativeAuthoringStore
-is now being sliced from parent `E161`; first child is `E168` wireframe. Remaining
+is now being sliced from parent `E161`; `E168` wireframe is complete and `E169`
+viewport-pick is ready. Remaining
 parents staged in `blocked/` (recon-grounded, `wdnplylk0`): `E161` CreativeAuthoringStore (#4 — the
 giant, 86 fields, ~1679 repoints, MUST slice by sub-domain), `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
 remainder; **flags a reclaim of `gamepadMenuSelectUsed` from InputDeviceStore/E156 —
@@ -54,9 +55,9 @@ None.
 
 ## Pull Next
 
-1. `E168-creativeauthoringstore-g1-wireframe.md` — first CreativeAuthoringStore child.
-   Move only the `creativeWireframe*` ProductAppWindowState fields and set up the
-   shared diagnostics/store headers.
+1. `E169-creativeauthoringstore-g2-viewport-pick.md` — second
+   CreativeAuthoringStore child. Move only the 23 ProductAppWindowState
+   `creativeViewportPick*` telemetry fields.
 
 ## Tier 1: Correctness And Compatibility
 
