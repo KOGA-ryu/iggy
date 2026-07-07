@@ -789,16 +789,16 @@ bool roomShellCommandReceiptRecordsShellFields() {
 bool recorderPreservesNeighboringFields() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_before";
-  window.creativeUiInput.requested = true;
-  window.creativeUiInput.consumed = true;
-  window.creativeUiInput.status = "input_before";
-  window.creativeUiInput.downstreamClickRequested = true;
-  window.creativeUiInput.downstreamClickSuppressed = true;
-  window.creativeUiInput.downstreamClickStatus = "downstream_before";
+  window.creativeAuthoring.creativeUiInput.requested = true;
+  window.creativeAuthoring.creativeUiInput.consumed = true;
+  window.creativeAuthoring.creativeUiInput.status = "input_before";
+  window.creativeAuthoring.creativeUiInput.downstreamClickRequested = true;
+  window.creativeAuthoring.creativeUiInput.downstreamClickSuppressed = true;
+  window.creativeAuthoring.creativeUiInput.downstreamClickStatus = "downstream_before";
   window.creativeAuthoring.creativeViewportPickRequested = true;
   window.creativeAuthoring.creativeViewportPickStatus = "viewport_before";
-  window.creativeUiProjection.requested = true;
-  window.creativeUiProjection.status = "projection_before";
+  window.creativeAuthoring.creativeUiProjection.requested = true;
+  window.creativeAuthoring.creativeUiProjection.status = "projection_before";
   window.productVulkanMenu.uiReady = true;
   window.productVulkanMenu.uiStatus = "vulkan_before";
   window.productVulkanMenu.uiSelectedAction = "resume";
@@ -809,15 +809,15 @@ bool recorderPreservesNeighboringFields() {
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
   return expect(window.status == "window_before", "window status kept") &&
-         expect(window.creativeUiInput.requested, "input requested kept") &&
-         expect(window.creativeUiInput.consumed, "input consumed kept") &&
-         expect(window.creativeUiInput.status == "input_before",
+         expect(window.creativeAuthoring.creativeUiInput.requested, "input requested kept") &&
+         expect(window.creativeAuthoring.creativeUiInput.consumed, "input consumed kept") &&
+         expect(window.creativeAuthoring.creativeUiInput.status == "input_before",
                 "input status kept") &&
-         expect(window.creativeUiInput.downstreamClickRequested,
+         expect(window.creativeAuthoring.creativeUiInput.downstreamClickRequested,
                 "downstream requested kept") &&
-         expect(window.creativeUiInput.downstreamClickSuppressed,
+         expect(window.creativeAuthoring.creativeUiInput.downstreamClickSuppressed,
                 "downstream suppressed kept") &&
-         expect(window.creativeUiInput.downstreamClickStatus ==
+         expect(window.creativeAuthoring.creativeUiInput.downstreamClickStatus ==
                     "downstream_before",
                 "downstream status kept") &&
          expect(window.creativeAuthoring.creativeViewportPickRequested,
@@ -825,9 +825,9 @@ bool recorderPreservesNeighboringFields() {
          expect(window.creativeAuthoring.creativeViewportPickStatus ==
                     "viewport_before",
                 "viewport status kept") &&
-         expect(window.creativeUiProjection.requested,
+         expect(window.creativeAuthoring.creativeUiProjection.requested,
                 "projection requested kept") &&
-         expect(window.creativeUiProjection.status == "projection_before",
+         expect(window.creativeAuthoring.creativeUiProjection.status == "projection_before",
                 "projection status kept") &&
          expect(window.productVulkanMenu.uiReady, "vulkan ready kept") &&
          expect(window.productVulkanMenu.uiStatus == "vulkan_before",

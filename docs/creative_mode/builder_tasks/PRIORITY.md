@@ -29,12 +29,11 @@ under `ProductAppWindowState::debugHud`.
 path/status fields now live under `ProductAppWindowState::presentPath`, while
 `productVulkanMenu` remains for FrontendWindowShell.
 
-**Decomposition card set now COMPLETE through PresentPathStore.** CreativeAuthoringStore
-is now being sliced from parent `E161`; `E168` wireframe, `E169`
-viewport-pick, `E170` room-editor, and `E171` world/ascii are complete, and
-`E172` creative UI state is ready. Remaining
-parents staged in `blocked/` (recon-grounded, `wdnplylk0`): `E161` CreativeAuthoringStore (#4 — the
-giant, 86 fields, ~1679 repoints, MUST slice by sub-domain), `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
+**Decomposition card set now COMPLETE through CreativeAuthoringStore.** `E161`
+CreativeAuthoringStore (#4) is **COMPLETE** as E168-E172: wireframe,
+viewport-pick, room-editor, world/ascii, and creative UI state are now under
+`ProductAppWindowState::creativeAuthoring`. Remaining
+parents staged in `blocked/` (recon-grounded, `wdnplylk0`): `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
 remainder; **flags a reclaim of `gamepadMenuSelectUsed` from InputDeviceStore/E156 —
 needs planner confirm**). NOTE: E157-E160 are the completed GameplayStore slices
 (E154); new cards start at E161 to avoid collision. **EXECUTION SERIALIZES on the
@@ -56,9 +55,7 @@ None.
 
 ## Pull Next
 
-1. `E172-creativeauthoringstore-g5-creative-ui-state.md` — final
-   CreativeAuthoringStore child. Move the remaining 14 creative UI, undo,
-   stale/refresh, navigate, and document revision fields.
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -106,6 +103,7 @@ Held — do NOT promote to `ready/` on a guess:
   - **#8 `GameplayStore`** — **COMPLETE as E157-E160.**
   - **#9 `DebugHudStore`** — **COMPLETE as E162.**
   - **#11 `PresentPathStore`** — **COMPLETE as E163.**
+  - **#4 `CreativeAuthoringStore`** — **COMPLETE as E168-E172.**
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
   - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).

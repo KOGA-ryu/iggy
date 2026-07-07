@@ -78,24 +78,24 @@ void populateSelectedFacade(cr::Facade& facade) {
 }
 
 void prepopulateCreativeProjection(iggy3d::ProductAppWindowState& window) {
-  window.creativeUiProjection.requested = true;
-  window.creativeUiProjection.ready = true;
-  window.creativeUiProjection.partial = true;
-  window.creativeUiProjection.status = "stale_ready";
-  window.creativeUiProjection.reasonCode = "stale_ready";
-  window.creativeUiProjection.usedModel = true;
-  window.creativeUiProjection.usedFacade = true;
-  window.creativeUiProjection.virtualWidth = 640;
-  window.creativeUiProjection.virtualHeight = 360;
-  window.creativeUiProjection.theme = "journal";
-  window.creativeUiProjection.panelCount = 11;
-  window.creativeUiProjection.modelRowCount = 12;
-  window.creativeUiProjection.primitiveCount = 13;
-  window.creativeUiProjection.textCount = 14;
-  window.creativeUiProjection.rectCount = 15;
-  window.creativeUiProjection.rowCount = 16;
-  window.creativeUiProjection.disabledRowCount = 17;
-  window.creativeUiProjection.hitRegionCount = 18;
+  window.creativeAuthoring.creativeUiProjection.requested = true;
+  window.creativeAuthoring.creativeUiProjection.ready = true;
+  window.creativeAuthoring.creativeUiProjection.partial = true;
+  window.creativeAuthoring.creativeUiProjection.status = "stale_ready";
+  window.creativeAuthoring.creativeUiProjection.reasonCode = "stale_ready";
+  window.creativeAuthoring.creativeUiProjection.usedModel = true;
+  window.creativeAuthoring.creativeUiProjection.usedFacade = true;
+  window.creativeAuthoring.creativeUiProjection.virtualWidth = 640;
+  window.creativeAuthoring.creativeUiProjection.virtualHeight = 360;
+  window.creativeAuthoring.creativeUiProjection.theme = "journal";
+  window.creativeAuthoring.creativeUiProjection.panelCount = 11;
+  window.creativeAuthoring.creativeUiProjection.modelRowCount = 12;
+  window.creativeAuthoring.creativeUiProjection.primitiveCount = 13;
+  window.creativeAuthoring.creativeUiProjection.textCount = 14;
+  window.creativeAuthoring.creativeUiProjection.rectCount = 15;
+  window.creativeAuthoring.creativeUiProjection.rowCount = 16;
+  window.creativeAuthoring.creativeUiProjection.disabledRowCount = 17;
+  window.creativeAuthoring.creativeUiProjection.hitRegionCount = 18;
 }
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
@@ -160,30 +160,30 @@ bool inactiveWindowRecordsInactiveProjection() {
          expect(!frame.receipt.ready, "inactive not ready") &&
          expect(frame.receipt.status == "product_creative_ui_frame_inactive",
                 "inactive frame status") &&
-         expect(!window.creativeUiProjection.requested,
+         expect(!window.creativeAuthoring.creativeUiProjection.requested,
                 "inactive projection not requested") &&
-         expect(!window.creativeUiProjection.ready,
+         expect(!window.creativeAuthoring.creativeUiProjection.ready,
                 "inactive projection not ready") &&
-         expect(window.creativeUiProjection.status ==
+         expect(window.creativeAuthoring.creativeUiProjection.status ==
                     "product_creative_ui_frame_inactive",
                 "inactive window status") &&
-         expect(window.creativeUiProjection.virtualWidth == 1440U,
+         expect(window.creativeAuthoring.creativeUiProjection.virtualWidth == 1440U,
                 "inactive width copied") &&
-         expect(window.creativeUiProjection.virtualHeight == 900U,
+         expect(window.creativeAuthoring.creativeUiProjection.virtualHeight == 900U,
                 "inactive height copied") &&
-         expect(window.creativeUiProjection.theme == "journal",
+         expect(window.creativeAuthoring.creativeUiProjection.theme == "journal",
                 "inactive theme copied") &&
-         expect(window.creativeUiProjection.panelCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.panelCount == 0U,
                 "inactive panel count cleared") &&
-         expect(window.creativeUiProjection.primitiveCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.primitiveCount == 0U,
                 "inactive primitive count cleared") &&
-         expect(window.creativeUiProjection.textCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.textCount == 0U,
                 "inactive text count cleared") &&
-         expect(window.creativeUiProjection.rectCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.rectCount == 0U,
                 "inactive rect count cleared") &&
-         expect(window.creativeUiProjection.rowCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.rowCount == 0U,
                 "inactive row count cleared") &&
-         expect(window.creativeUiProjection.hitRegionCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.hitRegionCount == 0U,
                 "inactive hit count cleared") &&
          expectReceiptField(receipt,
                             "creative_ui_projection_status",
@@ -228,18 +228,18 @@ bool creativeWindowMissingFacadeRecordsFailure() {
          expect(frame.receipt.status ==
                     "product_creative_ui_frame_facade_missing",
                 "missing facade frame status") &&
-         expect(window.creativeUiProjection.requested,
+         expect(window.creativeAuthoring.creativeUiProjection.requested,
                 "missing facade projection requested") &&
-         expect(!window.creativeUiProjection.ready,
+         expect(!window.creativeAuthoring.creativeUiProjection.ready,
                 "missing facade projection not ready") &&
-         expect(!window.creativeUiProjection.usedFacade,
+         expect(!window.creativeAuthoring.creativeUiProjection.usedFacade,
                 "missing facade used facade false") &&
-         expect(window.creativeUiProjection.status ==
+         expect(window.creativeAuthoring.creativeUiProjection.status ==
                     "product_creative_ui_frame_facade_missing",
                 "missing facade window status") &&
-         expect(window.creativeUiProjection.primitiveCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.primitiveCount == 0U,
                 "missing facade primitive count zero") &&
-         expect(window.creativeUiProjection.hitRegionCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.hitRegionCount == 0U,
                 "missing facade hit count zero") &&
          expectReceiptField(receipt,
                             "creative_ui_projection_status",
@@ -279,37 +279,37 @@ bool creativeWindowWithFacadeProjectsAndRecords() {
          expect(frame.receipt.projected, "active projected") &&
          expect(frame.receipt.recorded, "active recorded") &&
          expect(frame.receipt.ready, "active ready") &&
-         expect(window.creativeUiProjection.ready, "window ready") &&
-         expect(window.creativeUiProjection.usedFacade, "window used facade") &&
-         expect(!window.creativeUiProjection.usedModel, "window model unused") &&
-         expect(window.creativeUiProjection.panelCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.ready, "window ready") &&
+         expect(window.creativeAuthoring.creativeUiProjection.usedFacade, "window used facade") &&
+         expect(!window.creativeAuthoring.creativeUiProjection.usedModel, "window model unused") &&
+         expect(window.creativeAuthoring.creativeUiProjection.panelCount > 0U,
                 "panel count nonzero") &&
-         expect(window.creativeUiProjection.modelRowCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.modelRowCount > 0U,
                 "model row count nonzero") &&
-         expect(window.creativeUiProjection.primitiveCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.primitiveCount > 0U,
                 "primitive count nonzero") &&
-         expect(window.creativeUiProjection.textCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.textCount > 0U,
                 "text count nonzero") &&
-         expect(window.creativeUiProjection.rectCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.rectCount > 0U,
                 "rect count nonzero") &&
-         expect(window.creativeUiProjection.rowCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.rowCount > 0U,
                 "row count nonzero") &&
-         expect(window.creativeUiProjection.hitRegionCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.hitRegionCount > 0U,
                 "hit count nonzero") &&
-         expect(window.creativeUiProjection.hitRegionCount ==
-                    window.creativeUiProjection.rowCount,
+         expect(window.creativeAuthoring.creativeUiProjection.hitRegionCount ==
+                    window.creativeAuthoring.creativeUiProjection.rowCount,
                 "hit count mirrors row count") &&
          expect(frame.receipt.primitiveCount ==
-                    window.creativeUiProjection.primitiveCount,
+                    window.creativeAuthoring.creativeUiProjection.primitiveCount,
                 "frame primitive count copied") &&
-         expect(frame.receipt.textCount == window.creativeUiProjection.textCount,
+         expect(frame.receipt.textCount == window.creativeAuthoring.creativeUiProjection.textCount,
                 "frame text count copied") &&
-         expect(frame.receipt.rectCount == window.creativeUiProjection.rectCount,
+         expect(frame.receipt.rectCount == window.creativeAuthoring.creativeUiProjection.rectCount,
                 "frame rect count copied") &&
-         expect(frame.receipt.rowCount == window.creativeUiProjection.rowCount,
+         expect(frame.receipt.rowCount == window.creativeAuthoring.creativeUiProjection.rowCount,
                 "frame row count copied") &&
          expect(frame.receipt.hitRegionCount ==
-                    window.creativeUiProjection.hitRegionCount,
+                    window.creativeAuthoring.creativeUiProjection.hitRegionCount,
                 "frame hit count copied") &&
          expectReceiptField(receipt,
                             "creative_ui_projection_used_facade",
@@ -341,21 +341,21 @@ bool activeThenInactiveClearsPriorReadyProjection() {
       iggy3d::buildProductCreativeUiFrame(request);
 
   return expect(activeFrame.receipt.ready, "first active ready") &&
-         expect(window.creativeUiProjection.status ==
+         expect(window.creativeAuthoring.creativeUiProjection.status ==
                     "product_creative_ui_frame_inactive",
                 "cleared inactive status") &&
-         expect(!window.creativeUiProjection.requested,
+         expect(!window.creativeAuthoring.creativeUiProjection.requested,
                 "cleared inactive requested") &&
-         expect(!window.creativeUiProjection.ready, "cleared inactive ready") &&
-         expect(!window.creativeUiProjection.usedFacade,
+         expect(!window.creativeAuthoring.creativeUiProjection.ready, "cleared inactive ready") &&
+         expect(!window.creativeAuthoring.creativeUiProjection.usedFacade,
                 "cleared inactive facade") &&
-         expect(window.creativeUiProjection.primitiveCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.primitiveCount == 0U,
                 "cleared primitive count") &&
-         expect(window.creativeUiProjection.textCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.textCount == 0U,
                 "cleared text count") &&
-         expect(window.creativeUiProjection.rectCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.rectCount == 0U,
                 "cleared rect count") &&
-         expect(window.creativeUiProjection.rowCount == 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.rowCount == 0U,
                 "cleared row count") &&
          expect(!inactiveFrame.receipt.projected,
                 "inactive frame not projected") &&

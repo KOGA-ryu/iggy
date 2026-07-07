@@ -258,22 +258,22 @@ bool modelProjectionRecordsReceiptFields() {
                             "creative_ui_projection_theme",
                             "journal",
                             "model theme") &&
-         expect(window.creativeUiProjection.panelCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.panelCount > 0U,
                 "model panel count nonzero") &&
-         expect(window.creativeUiProjection.modelRowCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.modelRowCount > 0U,
                 "model row count nonzero") &&
-         expect(window.creativeUiProjection.primitiveCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.primitiveCount > 0U,
                 "model primitive count nonzero") &&
-         expect(window.creativeUiProjection.textCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.textCount > 0U,
                 "model text count nonzero") &&
-         expect(window.creativeUiProjection.rectCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.rectCount > 0U,
                 "model rect count nonzero") &&
-         expect(window.creativeUiProjection.rowCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.rowCount > 0U,
                 "model draw row count nonzero") &&
-         expect(window.creativeUiProjection.hitRegionCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.hitRegionCount > 0U,
                 "model hit count nonzero") &&
-         expect(window.creativeUiProjection.hitRegionCount ==
-                    window.creativeUiProjection.rowCount,
+         expect(window.creativeAuthoring.creativeUiProjection.hitRegionCount ==
+                    window.creativeAuthoring.creativeUiProjection.rowCount,
                 "model hit count mirrors row count") &&
          expectRecordedCounts(receipt, projection);
 }
@@ -304,11 +304,11 @@ bool facadeProjectionRecordsReceiptFields() {
                             "creative_ui_projection_used_facade",
                             "true",
                             "facade used") &&
-         expect(window.creativeUiProjection.panelCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.panelCount > 0U,
                 "facade panel count nonzero") &&
-         expect(window.creativeUiProjection.modelRowCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.modelRowCount > 0U,
                 "facade model row count nonzero") &&
-         expect(window.creativeUiProjection.primitiveCount > 0U,
+         expect(window.creativeAuthoring.creativeUiProjection.primitiveCount > 0U,
                 "facade primitive count nonzero") &&
          expectRecordedCounts(receipt, projection);
 }

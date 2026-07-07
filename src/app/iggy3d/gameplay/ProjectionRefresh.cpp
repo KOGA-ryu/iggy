@@ -776,7 +776,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   const bool creativeNavigateOverride =
       productCreativeDocumentEditorActiveForSource(window,
                                                    request.creativeApp) &&
-      window.creativeNavigateActive;
+      window.creativeAuthoring.creativeNavigateActive;
   // F0: even before Navigate is engaged, the blank creative stage frames its
   // fly-camera pose (origin-framed on entry) so the origin grid is in view.
   const bool creativeFlyAnchorFresh =

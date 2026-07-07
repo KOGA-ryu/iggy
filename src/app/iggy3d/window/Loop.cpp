@@ -69,7 +69,7 @@ void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
       true,
       false,
       productCreativeDocumentEditorActiveForSource(window, creativeApp),
-      window.creativeNavigateActive,
+      window.creativeAuthoring.creativeNavigateActive,
   });
   window.inputDevice.mouseCapture.requested = policy.requested;
   window.inputDevice.mouseCapture.active = false;

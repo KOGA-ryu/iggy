@@ -314,149 +314,150 @@ void appendProductCreativeUiCommandFields(
 }  // namespace
 
 void appendProductCreativeUiFields(RenderReceipt& receipt, const ProductAppWindowState& window) {
+  const auto& authoring = window.creativeAuthoring;
   appendReceiptField(receipt, "creative_ui_projection_requested",
-                     window.creativeUiProjection.requested);
+                     authoring.creativeUiProjection.requested);
   appendReceiptField(receipt, "creative_ui_projection_ready",
-                     window.creativeUiProjection.ready);
+                     authoring.creativeUiProjection.ready);
   appendReceiptField(receipt, "creative_ui_projection_partial",
-                     window.creativeUiProjection.partial);
+                     authoring.creativeUiProjection.partial);
   appendReceiptField(receipt, "creative_ui_projection_status",
-                     window.creativeUiProjection.status);
+                     authoring.creativeUiProjection.status);
   appendReceiptField(receipt, "creative_ui_projection_reason_code",
-                     window.creativeUiProjection.reasonCode);
+                     authoring.creativeUiProjection.reasonCode);
   appendReceiptField(receipt, "creative_ui_projection_used_model",
-                     window.creativeUiProjection.usedModel);
+                     authoring.creativeUiProjection.usedModel);
   appendReceiptField(receipt, "creative_ui_projection_used_facade",
-                     window.creativeUiProjection.usedFacade);
+                     authoring.creativeUiProjection.usedFacade);
   appendReceiptField(receipt, "creative_ui_projection_virtual_width",
                      static_cast<std::uint64_t>(
-                         window.creativeUiProjection.virtualWidth));
+                         authoring.creativeUiProjection.virtualWidth));
   appendReceiptField(receipt, "creative_ui_projection_virtual_height",
                      static_cast<std::uint64_t>(
-                         window.creativeUiProjection.virtualHeight));
+                         authoring.creativeUiProjection.virtualHeight));
   appendReceiptField(receipt, "creative_ui_projection_theme",
-                     window.creativeUiProjection.theme);
+                     authoring.creativeUiProjection.theme);
   appendReceiptField(receipt, "creative_ui_projection_panel_count",
-                     window.creativeUiProjection.panelCount);
+                     authoring.creativeUiProjection.panelCount);
   appendReceiptField(receipt, "creative_ui_projection_model_row_count",
-                     window.creativeUiProjection.modelRowCount);
+                     authoring.creativeUiProjection.modelRowCount);
   appendReceiptField(receipt, "creative_ui_projection_primitive_count",
-                     window.creativeUiProjection.primitiveCount);
+                     authoring.creativeUiProjection.primitiveCount);
   appendReceiptField(receipt, "creative_ui_projection_text_count",
-                     window.creativeUiProjection.textCount);
+                     authoring.creativeUiProjection.textCount);
   appendReceiptField(receipt, "creative_ui_projection_rect_count",
-                     window.creativeUiProjection.rectCount);
+                     authoring.creativeUiProjection.rectCount);
   appendReceiptField(receipt, "creative_ui_projection_row_count",
-                     window.creativeUiProjection.rowCount);
+                     authoring.creativeUiProjection.rowCount);
   appendReceiptField(receipt, "creative_ui_projection_disabled_row_count",
-                     window.creativeUiProjection.disabledRowCount);
+                     authoring.creativeUiProjection.disabledRowCount);
   appendReceiptField(receipt, "creative_ui_projection_hit_region_count",
-                     window.creativeUiProjection.hitRegionCount);
+                     authoring.creativeUiProjection.hitRegionCount);
   appendReceiptField(receipt, "creative_ui_input_requested",
-                     window.creativeUiInput.requested);
+                     authoring.creativeUiInput.requested);
   appendReceiptField(receipt, "creative_ui_input_click_present",
-                     window.creativeUiInput.clickPresent);
+                     authoring.creativeUiInput.clickPresent);
   appendReceiptField(receipt, "creative_ui_input_draw_list_available",
-                     window.creativeUiInput.drawListAvailable);
+                     authoring.creativeUiInput.drawListAvailable);
   appendReceiptField(receipt, "creative_ui_input_routed",
-                     window.creativeUiInput.routed);
+                     authoring.creativeUiInput.routed);
   appendReceiptField(receipt, "creative_ui_input_hit",
-                     window.creativeUiInput.hit);
+                     authoring.creativeUiInput.hit);
   appendReceiptField(receipt, "creative_ui_input_consumed",
-                     window.creativeUiInput.consumed);
+                     authoring.creativeUiInput.consumed);
   appendReceiptField(receipt, "creative_ui_input_enabled",
-                     window.creativeUiInput.enabled);
+                     authoring.creativeUiInput.enabled);
   appendReceiptField(receipt, "creative_ui_input_surface",
-                     window.creativeUiInput.surface);
+                     authoring.creativeUiInput.surface);
   appendReceiptField(receipt, "creative_ui_input_kind",
-                     window.creativeUiInput.kind);
+                     authoring.creativeUiInput.kind);
   appendReceiptField(receipt, "creative_ui_input_action",
-                     window.creativeUiInput.action);
+                     authoring.creativeUiInput.action);
   appendReceiptField(receipt, "creative_ui_input_layer_index",
-                     window.creativeUiInput.layerIndex);
+                     authoring.creativeUiInput.layerIndex);
   appendReceiptField(receipt, "creative_ui_input_region_index",
-                     window.creativeUiInput.regionIndex);
+                     authoring.creativeUiInput.regionIndex);
   appendReceiptField(receipt, "creative_ui_input_semantic_id",
-                     window.creativeUiInput.semanticId);
+                     authoring.creativeUiInput.semanticId);
   appendReceiptField(receipt, "creative_ui_input_status",
-                     window.creativeUiInput.status);
+                     authoring.creativeUiInput.status);
   appendReceiptField(receipt, "creative_ui_input_reason_code",
-                     window.creativeUiInput.reasonCode);
+                     authoring.creativeUiInput.reasonCode);
   appendReceiptField(receipt, "creative_ui_last_click_seen",
-                     window.creativeUiLast.clickSeen);
+                     authoring.creativeUiLast.clickSeen);
   appendReceiptField(receipt, "creative_ui_last_click_x",
-                     window.creativeUiLast.clickX);
+                     authoring.creativeUiLast.clickX);
   appendReceiptField(receipt, "creative_ui_last_click_y",
-                     window.creativeUiLast.clickY);
+                     authoring.creativeUiLast.clickY);
   appendReceiptField(receipt, "creative_ui_last_input_hit",
-                     window.creativeUiLast.inputHit);
+                     authoring.creativeUiLast.inputHit);
   appendReceiptField(receipt, "creative_ui_last_input_consumed",
-                     window.creativeUiLast.inputConsumed);
+                     authoring.creativeUiLast.inputConsumed);
   appendReceiptField(receipt, "creative_ui_last_input_status",
-                     window.creativeUiLast.inputStatus);
+                     authoring.creativeUiLast.inputStatus);
   appendReceiptField(receipt, "creative_ui_last_input_semantic_id",
-                     window.creativeUiLast.inputSemanticId);
+                     authoring.creativeUiLast.inputSemanticId);
   appendReceiptField(receipt, "creative_ui_last_command_kind",
-                     window.creativeUiLast.commandKind);
+                     authoring.creativeUiLast.commandKind);
   appendReceiptField(receipt, "creative_ui_last_command_status",
-                     window.creativeUiLast.commandStatus);
+                     authoring.creativeUiLast.commandStatus);
   appendReceiptField(receipt,
                      "creative_ui_last_command_create_requested",
-                     window.creativeUiLast.commandCreateRequested);
+                     authoring.creativeUiLast.commandCreateRequested);
   appendReceiptField(receipt,
                      "creative_ui_last_command_create_accepted",
-                     window.creativeUiLast.commandCreateAccepted);
+                     authoring.creativeUiLast.commandCreateAccepted);
   appendReceiptField(receipt,
                      "creative_ui_last_command_create_changed",
-                     window.creativeUiLast.commandCreateChanged);
+                     authoring.creativeUiLast.commandCreateChanged);
   appendReceiptField(receipt,
                      "creative_ui_last_command_create_object_id",
-                     window.creativeUiLast.commandCreateObjectId);
+                     authoring.creativeUiLast.commandCreateObjectId);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_requested",
-                     window.creativeUiInput.downstreamClickRequested);
+                     authoring.creativeUiInput.downstreamClickRequested);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_present",
-                     window.creativeUiInput.downstreamClickPresent);
+                     authoring.creativeUiInput.downstreamClickPresent);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_higher_priority",
-                     window.creativeUiInput.downstreamClickHigherPriority);
+                     authoring.creativeUiInput.downstreamClickHigherPriority);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_suppressed",
-                     window.creativeUiInput.downstreamClickSuppressed);
+                     authoring.creativeUiInput.downstreamClickSuppressed);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_status",
-                     window.creativeUiInput.downstreamClickStatus);
+                     authoring.creativeUiInput.downstreamClickStatus);
   appendReceiptField(receipt,
                      "creative_ui_input_downstream_click_reason_code",
-                     window.creativeUiInput.downstreamClickReasonCode);
-  appendProductCreativeUiCommandFields(receipt, window.creativeUiCommand);
+                     authoring.creativeUiInput.downstreamClickReasonCode);
+  appendProductCreativeUiCommandFields(receipt, authoring.creativeUiCommand);
   appendProductCreativeBakedRoomAutoRefreshFields(
-      receipt, window.creativeBakedRoomAutoRefresh);
+      receipt, authoring.creativeBakedRoomAutoRefresh);
   appendReceiptField(receipt, "creative_document_revision_observed",
-                     window.creativeDocumentRevision.observed);
+                     authoring.creativeDocumentRevision.observed);
   appendReceiptField(receipt, "creative_document_changed_this_frame",
-                     window.creativeDocumentChangedThisFrame);
+                     authoring.creativeDocumentChangedThisFrame);
   appendReceiptField(receipt, "creative_document_revision_document_id",
-                     window.creativeDocumentRevision.documentId);
+                     authoring.creativeDocumentRevision.documentId);
   appendReceiptField(receipt, "creative_document_revision_before_frame",
-                     window.creativeDocumentRevision.beforeFrame);
+                     authoring.creativeDocumentRevision.beforeFrame);
   appendReceiptField(receipt, "creative_document_revision_after_frame",
-                     window.creativeDocumentRevision.afterFrame);
+                     authoring.creativeDocumentRevision.afterFrame);
   appendReceiptField(receipt, "creative_undo_available",
-                     window.creativeUndo.available);
+                     authoring.creativeUndo.available);
   appendReceiptField(receipt, "creative_undo_depth",
-                     window.creativeUndo.depth);
+                     authoring.creativeUndo.depth);
   appendReceiptField(receipt, "creative_baked_room_stale",
-                     window.creativeBakedRoomStale);
+                     authoring.creativeBakedRoomStale);
   appendReceiptField(receipt, "creative_baked_room_stale_document_id",
-                     window.creativeBakedRoomStaleDocumentId);
+                     authoring.creativeBakedRoomStaleDocumentId);
   appendReceiptField(receipt, "creative_baked_room_stale_revision",
-                     window.creativeBakedRoomStaleRevision);
+                     authoring.creativeBakedRoomStaleRevision);
   appendReceiptField(receipt, "creative_baked_room_stale_status",
-                     window.creativeBakedRoomStaleStatus);
+                     authoring.creativeBakedRoomStaleStatus);
   appendReceiptField(receipt, "creative_baked_room_stale_reason_code",
-                     window.creativeBakedRoomStaleReasonCode);
+                     authoring.creativeBakedRoomStaleReasonCode);
 }
 
 }  // namespace iggy3d

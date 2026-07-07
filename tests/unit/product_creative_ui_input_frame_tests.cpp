@@ -763,7 +763,7 @@ bool recorderPreservesStickyClickAndCommandAcrossNoClickFrame() {
           iggy3d::ProductCreativeUiCommandFrameRequest{&app, clickReceipt});
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const std::uint64_t createdObjectId =
-      window.creativeUiLast.commandCreateObjectId;
+      window.creativeAuthoring.creativeUiLast.commandCreateObjectId;
 
   iggy3d::ProductCreativeUiInputFrameRequest noClickRequest;
   noClickRequest.creativeUiDrawList = &drawList;
@@ -782,37 +782,37 @@ bool recorderPreservesStickyClickAndCommandAcrossNoClickFrame() {
          expect(commandReceipt.commandKind ==
                     iggy3d::ProductCreativeUiCommandKind::CreateObject,
                 "sticky command create room") &&
-         expect(window.creativeUiInput.status ==
+         expect(window.creativeAuthoring.creativeUiInput.status ==
                     "product_creative_ui_input_no_click",
                 "sticky per-frame no-click status") &&
-         expect(window.creativeUiCommand.kind == "none",
+         expect(window.creativeAuthoring.creativeUiCommand.kind == "none",
                 "sticky per-frame command none") &&
-         expect(window.creativeUiLast.clickSeen,
+         expect(window.creativeAuthoring.creativeUiLast.clickSeen,
                 "sticky click seen retained") &&
-         expect(window.creativeUiLast.clickX != "none",
+         expect(window.creativeAuthoring.creativeUiLast.clickX != "none",
                 "sticky click x retained") &&
-         expect(window.creativeUiLast.clickY != "none",
+         expect(window.creativeAuthoring.creativeUiLast.clickY != "none",
                 "sticky click y retained") &&
-         expect(window.creativeUiLast.inputHit,
+         expect(window.creativeAuthoring.creativeUiLast.inputHit,
                 "sticky input hit retained") &&
-         expect(window.creativeUiLast.inputConsumed,
+         expect(window.creativeAuthoring.creativeUiLast.inputConsumed,
                 "sticky input consumed retained") &&
-         expect(window.creativeUiLast.inputStatus ==
+         expect(window.creativeAuthoring.creativeUiLast.inputStatus ==
                     "product_creative_ui_input_consumed",
                 "sticky input status retained") &&
-         expect(window.creativeUiLast.inputSemanticId ==
+         expect(window.creativeAuthoring.creativeUiLast.inputSemanticId ==
                     "creative.row.create.create_room",
                 "sticky input semantic retained") &&
-         expect(window.creativeUiLast.commandKind == "create_object",
+         expect(window.creativeAuthoring.creativeUiLast.commandKind == "create_object",
                 "sticky command kind retained") &&
-         expect(window.creativeUiLast.commandStatus ==
+         expect(window.creativeAuthoring.creativeUiLast.commandStatus ==
                     "product_creative_ui_command_applied",
                 "sticky command status retained") &&
-         expect(window.creativeUiLast.commandCreateRequested,
+         expect(window.creativeAuthoring.creativeUiLast.commandCreateRequested,
                 "sticky create requested retained") &&
-         expect(window.creativeUiLast.commandCreateAccepted,
+         expect(window.creativeAuthoring.creativeUiLast.commandCreateAccepted,
                 "sticky create accepted retained") &&
-         expect(window.creativeUiLast.commandCreateChanged,
+         expect(window.creativeAuthoring.creativeUiLast.commandCreateChanged,
                 "sticky create changed retained") &&
          expect(createdObjectId != 0U, "sticky create object id retained") &&
          expectReceiptField(receipt,
@@ -880,13 +880,13 @@ bool recorderLeavesOtherReceiptFieldsUntouched() {
   window.productVulkanMenu.uiReady = true;
   window.productVulkanMenu.uiStatus = "vulkan_ui_before";
   window.productVulkanMenu.uiSelectedAction = "resume";
-  window.creativeUiProjection.requested = true;
-  window.creativeUiProjection.ready = true;
-  window.creativeUiProjection.status = "projection_before";
-  window.creativeUiProjection.hitRegionCount = 12;
-  window.creativeUiInput.requested = true;
-  window.creativeUiInput.consumed = true;
-  window.creativeUiInput.status = "route_before";
+  window.creativeAuthoring.creativeUiProjection.requested = true;
+  window.creativeAuthoring.creativeUiProjection.ready = true;
+  window.creativeAuthoring.creativeUiProjection.status = "projection_before";
+  window.creativeAuthoring.creativeUiProjection.hitRegionCount = 12;
+  window.creativeAuthoring.creativeUiInput.requested = true;
+  window.creativeAuthoring.creativeUiInput.consumed = true;
+  window.creativeAuthoring.creativeUiInput.status = "route_before";
 
   iggy3d::ProductCreativeUiDownstreamClickRequest request;
   request.click = clickAt(51.0F, 52.0F);
@@ -902,19 +902,19 @@ bool recorderLeavesOtherReceiptFieldsUntouched() {
                 "vulkan ui status unchanged") &&
          expect(window.productVulkanMenu.uiSelectedAction == "resume",
                 "vulkan selected action unchanged") &&
-         expect(window.creativeUiProjection.requested,
+         expect(window.creativeAuthoring.creativeUiProjection.requested,
                 "projection requested unchanged") &&
-         expect(window.creativeUiProjection.ready,
+         expect(window.creativeAuthoring.creativeUiProjection.ready,
                 "projection ready unchanged") &&
-         expect(window.creativeUiProjection.status == "projection_before",
+         expect(window.creativeAuthoring.creativeUiProjection.status == "projection_before",
                 "projection status unchanged") &&
-         expect(window.creativeUiProjection.hitRegionCount == 12U,
+         expect(window.creativeAuthoring.creativeUiProjection.hitRegionCount == 12U,
                 "projection hit count unchanged") &&
-         expect(window.creativeUiInput.requested,
+         expect(window.creativeAuthoring.creativeUiInput.requested,
                 "route requested unchanged") &&
-         expect(window.creativeUiInput.consumed,
+         expect(window.creativeAuthoring.creativeUiInput.consumed,
                 "route consumed unchanged") &&
-         expect(window.creativeUiInput.status == "route_before",
+         expect(window.creativeAuthoring.creativeUiInput.status == "route_before",
                 "route status unchanged");
 }
 
@@ -955,48 +955,48 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
       {},
   });
 
-  return expect(window.creativeUiInput.requested,
+  return expect(window.creativeAuthoring.creativeUiInput.requested,
                 "input frame requested") &&
-         expect(!window.creativeUiInput.clickPresent,
+         expect(!window.creativeAuthoring.creativeUiInput.clickPresent,
                 "input frame no click") &&
-         expect(!window.creativeUiInput.drawListAvailable,
+         expect(!window.creativeAuthoring.creativeUiInput.drawListAvailable,
                 "input frame no draw list") &&
-         expect(!window.creativeUiInput.routed,
+         expect(!window.creativeAuthoring.creativeUiInput.routed,
                 "input frame not routed") &&
-         expect(window.creativeUiInput.status ==
+         expect(window.creativeAuthoring.creativeUiInput.status ==
                     "product_creative_ui_input_no_click",
                 "input frame status") &&
-         expect(window.creativeUiInput.reasonCode ==
+         expect(window.creativeAuthoring.creativeUiInput.reasonCode ==
                     "product_creative_ui_input_no_click",
                 "input frame reason") &&
-         expect(window.creativeUiInput.downstreamClickRequested,
+         expect(window.creativeAuthoring.creativeUiInput.downstreamClickRequested,
                 "input frame downstream requested") &&
-         expect(!window.creativeUiInput.downstreamClickPresent,
+         expect(!window.creativeAuthoring.creativeUiInput.downstreamClickPresent,
                 "input frame downstream no click") &&
-         expect(!window.creativeUiInput.downstreamClickSuppressed,
+         expect(!window.creativeAuthoring.creativeUiInput.downstreamClickSuppressed,
                 "input frame downstream not suppressed") &&
-         expect(window.creativeUiInput.downstreamClickStatus ==
+         expect(window.creativeAuthoring.creativeUiInput.downstreamClickStatus ==
                     "product_creative_ui_downstream_click_no_click",
                 "input frame downstream status") &&
-         expect(window.creativeUiCommand.requested,
+         expect(window.creativeAuthoring.creativeUiCommand.requested,
                 "input frame command requested") &&
-         expect(window.creativeUiCommand.facadeAvailable,
+         expect(window.creativeAuthoring.creativeUiCommand.facadeAvailable,
                 "input frame command facade available") &&
-         expect(!window.creativeUiCommand.inputConsumed,
+         expect(!window.creativeAuthoring.creativeUiCommand.inputConsumed,
                 "input frame command input not consumed") &&
-         expect(!window.creativeUiCommand.accepted,
+         expect(!window.creativeAuthoring.creativeUiCommand.accepted,
                 "input frame command not accepted") &&
-         expect(!window.creativeUiCommand.changed,
+         expect(!window.creativeAuthoring.creativeUiCommand.changed,
                 "input frame command unchanged") &&
-         expect(window.creativeUiCommand.kind == "none",
+         expect(window.creativeAuthoring.creativeUiCommand.kind == "none",
                 "input frame command kind none") &&
-         expect(window.creativeUiCommand.toolBefore == "Select",
+         expect(window.creativeAuthoring.creativeUiCommand.toolBefore == "Select",
                 "input frame command tool before") &&
-         expect(window.creativeUiCommand.toolAfter == "Select",
+         expect(window.creativeAuthoring.creativeUiCommand.toolAfter == "Select",
                 "input frame command tool after") &&
-         expect(window.creativeUiCommand.semanticId == "none",
+         expect(window.creativeAuthoring.creativeUiCommand.semanticId == "none",
                 "input frame command semantic none") &&
-         expect(window.creativeUiCommand.status ==
+         expect(window.creativeAuthoring.creativeUiCommand.status ==
                     "product_creative_ui_command_not_consumed",
                 "input frame command status") &&
          expect(facade.toolState().activeTool ==
@@ -1052,24 +1052,24 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
       clickOverride,
   });
 
-  return expect(window.creativeUiInput.consumed,
+  return expect(window.creativeAuthoring.creativeUiInput.consumed,
                 "injected row click consumed") &&
-         expect(window.creativeUiInput.semanticId ==
+         expect(window.creativeAuthoring.creativeUiInput.semanticId ==
                     "creative.row.tools.tool_select",
                 "injected row semantic") &&
-         expect(window.creativeUiCommand.requested,
+         expect(window.creativeAuthoring.creativeUiCommand.requested,
                 "injected command requested") &&
-         expect(window.creativeUiCommand.accepted,
+         expect(window.creativeAuthoring.creativeUiCommand.accepted,
                 "injected command accepted") &&
-         expect(!window.creativeUiCommand.changed,
+         expect(!window.creativeAuthoring.creativeUiCommand.changed,
                 "injected command unchanged") &&
-         expect(window.creativeUiCommand.kind == "set_active_tool",
+         expect(window.creativeAuthoring.creativeUiCommand.kind == "set_active_tool",
                 "injected command kind") &&
-         expect(window.creativeUiCommand.toolBefore == "Select",
+         expect(window.creativeAuthoring.creativeUiCommand.toolBefore == "Select",
                 "injected command tool before") &&
-         expect(window.creativeUiCommand.toolAfter == "Select",
+         expect(window.creativeAuthoring.creativeUiCommand.toolAfter == "Select",
                 "injected command tool after") &&
-         expect(window.creativeUiCommand.status ==
+         expect(window.creativeAuthoring.creativeUiCommand.status ==
                     "product_creative_ui_command_no_change",
                 "injected command status") &&
          expect(facade.toolState().activeTool ==
@@ -1077,7 +1077,7 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
                 "injected facade tool select") &&
          expect(facade.state().tool == iggy3d::creative::Tool::Select,
                 "injected old state tool select") &&
-         expect(window.creativeUiInput.downstreamClickSuppressed,
+         expect(window.creativeAuthoring.creativeUiInput.downstreamClickSuppressed,
                 "injected downstream suppressed") &&
          expect(window.creativeAuthoring.creativeViewportPickClickSuppressed,
                 "injected viewport click suppressed") &&
@@ -1091,23 +1091,23 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
                 "injected no pointer selection") &&
          expect(!facade.measurementState().active,
                 "injected no measurement dispatch") &&
-         expect(window.creativeDocumentRevision.observed,
+         expect(window.creativeAuthoring.creativeDocumentRevision.observed,
                 "injected revision observed") &&
-         expect(!window.creativeDocumentChangedThisFrame,
+         expect(!window.creativeAuthoring.creativeDocumentChangedThisFrame,
                 "injected tool row document unchanged") &&
-         expect(window.creativeDocumentRevision.beforeFrame == 0U,
+         expect(window.creativeAuthoring.creativeDocumentRevision.beforeFrame == 0U,
                 "injected tool row revision before") &&
-         expect(window.creativeDocumentRevision.afterFrame == 0U,
+         expect(window.creativeAuthoring.creativeDocumentRevision.afterFrame == 0U,
                 "injected tool row revision after") &&
-         expect(!window.creativeBakedRoomAutoRefresh.requested,
+         expect(!window.creativeAuthoring.creativeBakedRoomAutoRefresh.requested,
                 "injected tool row no auto refresh") &&
-         expect(!window.creativeBakedRoomAutoRefresh.bakeMeasured,
+         expect(!window.creativeAuthoring.creativeBakedRoomAutoRefresh.bakeMeasured,
                 "injected tool row bake not measured") &&
-         expect(window.creativeBakedRoomAutoRefresh.bakeElapsedMicroseconds == 0U,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.bakeElapsedMicroseconds == 0U,
                 "injected tool row bake elapsed") &&
-         expect(window.creativeBakedRoomAutoRefresh.bakedDocumentRevision == 0U,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.bakedDocumentRevision == 0U,
                 "injected tool row bake revision") &&
-         expect(!window.creativeBakedRoomStale,
+         expect(!window.creativeAuthoring.creativeBakedRoomStale,
                 "injected tool row not stale");
 }
 
@@ -1163,34 +1163,34 @@ bool inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() {
   });
 
   return expect(measureHit != nullptr, "measure row hit exists") &&
-         expect(window.creativeUiCommand.accepted,
+         expect(window.creativeAuthoring.creativeUiCommand.accepted,
                 "measure row command accepted") &&
-         expect(window.creativeUiCommand.changed,
+         expect(window.creativeAuthoring.creativeUiCommand.changed,
                 "measure row tool changed") &&
-         expect(window.creativeUiCommand.kind == "set_active_tool",
+         expect(window.creativeAuthoring.creativeUiCommand.kind == "set_active_tool",
                 "measure row command kind") &&
-         expect(window.creativeUiCommand.toolAfter == "Measure",
+         expect(window.creativeAuthoring.creativeUiCommand.toolAfter == "Measure",
                 "measure row tool after") &&
          expect(facade.toolState().activeTool ==
                     iggy3d::creative::Tool::Measure,
                 "measure row facade tool") &&
-         expect(window.creativeDocumentRevision.observed,
+         expect(window.creativeAuthoring.creativeDocumentRevision.observed,
                 "measure row revision observed") &&
-         expect(!window.creativeDocumentChangedThisFrame,
+         expect(!window.creativeAuthoring.creativeDocumentChangedThisFrame,
                 "measure row document unchanged") &&
-         expect(window.creativeDocumentRevision.beforeFrame == 0U,
+         expect(window.creativeAuthoring.creativeDocumentRevision.beforeFrame == 0U,
                 "measure row revision before") &&
-         expect(window.creativeDocumentRevision.afterFrame == 0U,
+         expect(window.creativeAuthoring.creativeDocumentRevision.afterFrame == 0U,
                 "measure row revision after") &&
-         expect(!window.creativeBakedRoomAutoRefresh.requested,
+         expect(!window.creativeAuthoring.creativeBakedRoomAutoRefresh.requested,
                 "measure row no auto refresh") &&
-         expect(!window.creativeBakedRoomAutoRefresh.bakeMeasured,
+         expect(!window.creativeAuthoring.creativeBakedRoomAutoRefresh.bakeMeasured,
                 "measure row bake not measured") &&
-         expect(window.creativeBakedRoomAutoRefresh.bakeElapsedMicroseconds == 0U,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.bakeElapsedMicroseconds == 0U,
                 "measure row bake elapsed") &&
-         expect(window.creativeBakedRoomAutoRefresh.bakedDocumentRevision == 0U,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.bakedDocumentRevision == 0U,
                 "measure row bake revision") &&
-         expect(!window.creativeBakedRoomStale,
+         expect(!window.creativeAuthoring.creativeBakedRoomStale,
                 "measure row not stale");
 }
 
@@ -1251,7 +1251,7 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
   });
 
   const iggy3d::creative::CreativeObject* created =
-      facade.findObject(window.creativeUiCommand.create.objectId);
+      facade.findObject(window.creativeAuthoring.creativeUiCommand.create.objectId);
   const iggy3d::creative::CreativeUiBuildReceipt rebuiltUi =
       facade.buildUiModel();
   iggy3d::ProductCreativeUiDrawListRequest rebuiltDrawRequest;
@@ -1262,68 +1262,68 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
       findPrimitive(rebuiltDrawList, "creative.row.create.create_room");
   const iggy3d::RenderReceipt receipt = receiptFor(window);
   const std::string createdObjectId =
-      std::to_string(window.creativeUiCommand.create.objectId);
+      std::to_string(window.creativeAuthoring.creativeUiCommand.create.objectId);
 
   return expect(createHit != nullptr, "create injected hit exists") &&
-         expect(window.creativeUiInput.consumed,
+         expect(window.creativeAuthoring.creativeUiInput.consumed,
                 "create injected row click consumed") &&
-         expect(window.creativeUiInput.semanticId ==
+         expect(window.creativeAuthoring.creativeUiInput.semanticId ==
                     "creative.row.create.create_room",
                 "create injected row semantic") &&
-         expect(window.creativeUiCommand.requested,
+         expect(window.creativeAuthoring.creativeUiCommand.requested,
                 "create injected command requested") &&
-         expect(window.creativeUiCommand.accepted,
+         expect(window.creativeAuthoring.creativeUiCommand.accepted,
                 "create injected command accepted") &&
-         expect(window.creativeUiCommand.changed,
+         expect(window.creativeAuthoring.creativeUiCommand.changed,
                 "create injected command changed") &&
-         expect(window.creativeUiCommand.kind == "create_object",
+         expect(window.creativeAuthoring.creativeUiCommand.kind == "create_object",
                 "create injected command kind") &&
-         expect(window.creativeUiCommand.create.requested,
+         expect(window.creativeAuthoring.creativeUiCommand.create.requested,
                 "create injected create requested") &&
-         expect(window.creativeUiCommand.create.accepted,
+         expect(window.creativeAuthoring.creativeUiCommand.create.accepted,
                 "create injected create accepted") &&
-         expect(window.creativeUiCommand.create.changed,
+         expect(window.creativeAuthoring.creativeUiCommand.create.changed,
                 "create injected create changed") &&
-         expect(window.creativeUiCommand.create.status == "Created",
+         expect(window.creativeAuthoring.creativeUiCommand.create.status == "Created",
                 "create injected create status") &&
-         expect(window.creativeUiCommand.create.objectId != 0U,
+         expect(window.creativeAuthoring.creativeUiCommand.create.objectId != 0U,
                 "create injected object id") &&
-         expect(window.creativeUiCommand.create.objectKind == "Room",
+         expect(window.creativeAuthoring.creativeUiCommand.create.objectKind == "Room",
                 "create injected object kind") &&
-         expect(window.creativeUiCommand.create.objectName == "Room",
+         expect(window.creativeAuthoring.creativeUiCommand.create.objectName == "Room",
                 "create injected object name") &&
-         expect(window.creativeUiCommand.create.revisionBefore == 0U,
+         expect(window.creativeAuthoring.creativeUiCommand.create.revisionBefore == 0U,
                 "create injected revision before") &&
-         expect(window.creativeUiCommand.create.revisionAfter == 1U,
+         expect(window.creativeAuthoring.creativeUiCommand.create.revisionAfter == 1U,
                 "create injected revision after") &&
-         expect(window.creativeUiCommand.create.dirtyFlags != 0U,
+         expect(window.creativeAuthoring.creativeUiCommand.create.dirtyFlags != 0U,
                 "create injected dirty flags") &&
-         expect(window.creativeUiCommand.create.message == "object_created",
+         expect(window.creativeAuthoring.creativeUiCommand.create.message == "object_created",
                 "create injected create message") &&
-         expect(window.creativeUiCommand.create.reasonCode == "object_created",
+         expect(window.creativeAuthoring.creativeUiCommand.create.reasonCode == "object_created",
                 "create injected create reason") &&
-         expect(window.creativeUiLast.clickSeen,
+         expect(window.creativeAuthoring.creativeUiLast.clickSeen,
                 "create injected sticky click seen") &&
-         expect(window.creativeUiLast.inputHit,
+         expect(window.creativeAuthoring.creativeUiLast.inputHit,
                 "create injected sticky input hit") &&
-         expect(window.creativeUiLast.inputConsumed,
+         expect(window.creativeAuthoring.creativeUiLast.inputConsumed,
                 "create injected sticky input consumed") &&
-         expect(window.creativeUiLast.inputSemanticId ==
+         expect(window.creativeAuthoring.creativeUiLast.inputSemanticId ==
                     "creative.row.create.create_room",
                 "create injected sticky input semantic") &&
-         expect(window.creativeUiLast.commandKind == "create_object",
+         expect(window.creativeAuthoring.creativeUiLast.commandKind == "create_object",
                 "create injected sticky command kind") &&
-         expect(window.creativeUiLast.commandStatus ==
+         expect(window.creativeAuthoring.creativeUiLast.commandStatus ==
                     "product_creative_ui_command_applied",
                 "create injected sticky command status") &&
-         expect(window.creativeUiLast.commandCreateRequested,
+         expect(window.creativeAuthoring.creativeUiLast.commandCreateRequested,
                 "create injected sticky create requested") &&
-         expect(window.creativeUiLast.commandCreateAccepted,
+         expect(window.creativeAuthoring.creativeUiLast.commandCreateAccepted,
                 "create injected sticky create accepted") &&
-         expect(window.creativeUiLast.commandCreateChanged,
+         expect(window.creativeAuthoring.creativeUiLast.commandCreateChanged,
                 "create injected sticky create changed") &&
-         expect(window.creativeUiLast.commandCreateObjectId ==
-                    window.creativeUiCommand.create.objectId,
+         expect(window.creativeAuthoring.creativeUiLast.commandCreateObjectId ==
+                    window.creativeAuthoring.creativeUiCommand.create.objectId,
                 "create injected sticky object id") &&
          expectReceiptField(receipt,
                             "creative_ui_last_click_seen",
@@ -1393,34 +1393,34 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
                 "create injected object count") &&
          expect(facade.document().revision() == 1U,
                 "create injected document revision") &&
-         expect(window.creativeDocumentRevision.observed,
+         expect(window.creativeAuthoring.creativeDocumentRevision.observed,
                 "create injected revision observed") &&
-         expect(window.creativeDocumentChangedThisFrame,
+         expect(window.creativeAuthoring.creativeDocumentChangedThisFrame,
                 "create injected document changed") &&
-         expect(window.creativeDocumentRevision.beforeFrame == 0U,
+         expect(window.creativeAuthoring.creativeDocumentRevision.beforeFrame == 0U,
                 "create injected frame revision before") &&
-         expect(window.creativeDocumentRevision.afterFrame == 1U,
+         expect(window.creativeAuthoring.creativeDocumentRevision.afterFrame == 1U,
                 "create injected frame revision after") &&
-         expect(window.creativeBakedRoomAutoRefresh.requested,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.requested,
                 "create injected auto refresh requested state") &&
-         expect(window.creativeBakedRoomAutoRefresh.accepted,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.accepted,
                 "create injected auto refresh accepted state") &&
-         expect(window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "create injected auto refresh cleared state") &&
-         expect(window.creativeBakedRoomAutoRefresh.status ==
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.status ==
                     "product_creative_baked_room_cleared_no_renderable_objects",
                 "create injected auto refresh status state") &&
-         expect(window.creativeBakedRoomAutoRefresh.bakeMeasured,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.bakeMeasured,
                 "create injected auto refresh bake measured state") &&
-         expect(window.creativeBakedRoomAutoRefresh.bakedDocumentRevision == 1U,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.bakedDocumentRevision == 1U,
                 "create injected auto refresh bake revision state") &&
-         expect(window.creativeBakedRoomAutoRefresh.staticMeshCount == 0U,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.staticMeshCount == 0U,
                 "create injected auto refresh mesh count") &&
-         expect(!window.creativeBakedRoomStale,
+         expect(!window.creativeAuthoring.creativeBakedRoomStale,
                 "create injected baked room fresh") &&
-         expect(window.creativeBakedRoomStaleRevision == 1U,
+         expect(window.creativeAuthoring.creativeBakedRoomStaleRevision == 1U,
                 "create injected fresh revision") &&
-         expect(window.creativeBakedRoomStaleStatus ==
+         expect(window.creativeAuthoring.creativeBakedRoomStaleStatus ==
                     "creative_baked_room_fresh",
                 "create injected fresh status") &&
          expect(!iggy3d::activeRoom(window).loaded,
@@ -1457,7 +1457,7 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
                 "create injected selection invalid") &&
          expect(!facade.measurementState().active,
                 "create injected no measurement") &&
-         expect(window.creativeUiInput.downstreamClickSuppressed,
+         expect(window.creativeAuthoring.creativeUiInput.downstreamClickSuppressed,
                 "create injected downstream suppressed") &&
          expect(window.creativeAuthoring.creativeViewportPickClickSuppressed,
                 "create injected viewport suppressed") &&
@@ -1530,26 +1530,26 @@ bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
   });
 
   const iggy3d::creative::CreativeObject* created =
-      facade.findObject(window.creativeUiCommand.create.objectId);
+      facade.findObject(window.creativeAuthoring.creativeUiCommand.create.objectId);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
   return expect(createHit != nullptr, "crate injected hit exists") &&
-         expect(window.creativeUiInput.consumed,
+         expect(window.creativeAuthoring.creativeUiInput.consumed,
                 "crate injected row click consumed") &&
-         expect(window.creativeUiInput.semanticId ==
+         expect(window.creativeAuthoring.creativeUiInput.semanticId ==
                     "creative.row.create.create_crate",
                 "crate injected row semantic") &&
-         expect(window.creativeUiCommand.accepted,
+         expect(window.creativeAuthoring.creativeUiCommand.accepted,
                 "crate injected command accepted") &&
-         expect(window.creativeUiCommand.changed,
+         expect(window.creativeAuthoring.creativeUiCommand.changed,
                 "crate injected command changed") &&
-         expect(window.creativeUiCommand.kind == "create_object",
+         expect(window.creativeAuthoring.creativeUiCommand.kind == "create_object",
                 "crate injected command kind") &&
-         expect(window.creativeUiCommand.create.accepted,
+         expect(window.creativeAuthoring.creativeUiCommand.create.accepted,
                 "crate injected create accepted") &&
-         expect(window.creativeUiCommand.create.changed,
+         expect(window.creativeAuthoring.creativeUiCommand.create.changed,
                 "crate injected create changed") &&
-         expect(window.creativeUiCommand.create.objectKind == "Crate",
+         expect(window.creativeAuthoring.creativeUiCommand.create.objectKind == "Crate",
                 "crate injected object kind") &&
          expect(facade.document().objectCount() == 1U,
                 "crate injected object count") &&
@@ -1560,36 +1560,36 @@ bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
                     created->kind ==
                         iggy3d::creative::CreativeObjectKind::Crate,
                 "crate injected object crate") &&
-         expect(window.creativeDocumentRevision.observed,
+         expect(window.creativeAuthoring.creativeDocumentRevision.observed,
                 "crate injected revision observed") &&
-         expect(window.creativeDocumentChangedThisFrame,
+         expect(window.creativeAuthoring.creativeDocumentChangedThisFrame,
                 "crate injected document changed") &&
-         expect(window.creativeDocumentRevision.beforeFrame == 0U,
+         expect(window.creativeAuthoring.creativeDocumentRevision.beforeFrame == 0U,
                 "crate injected revision before") &&
-         expect(window.creativeDocumentRevision.afterFrame == 1U,
+         expect(window.creativeAuthoring.creativeDocumentRevision.afterFrame == 1U,
                 "crate injected revision after") &&
-         expect(window.creativeBakedRoomAutoRefresh.requested,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.requested,
                 "crate injected auto refresh requested") &&
-         expect(window.creativeBakedRoomAutoRefresh.accepted,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.accepted,
                 "crate injected auto refresh accepted") &&
-         expect(!window.creativeBakedRoomAutoRefresh.clearedActiveRoom,
+         expect(!window.creativeAuthoring.creativeBakedRoomAutoRefresh.clearedActiveRoom,
                 "crate injected auto refresh did not clear") &&
-         expect(window.creativeBakedRoomAutoRefresh.status ==
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.status ==
                     "product_creative_baked_room_refreshed",
                 "crate injected auto refresh status") &&
-         expect(window.creativeBakedRoomAutoRefresh.staticMeshCount == 1U,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.staticMeshCount == 1U,
                 "crate injected auto refresh mesh count") &&
-         expect(window.creativeBakedRoomAutoRefresh.anchorCount == 0U,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.anchorCount == 0U,
                 "crate injected auto refresh anchor count") &&
-         expect(window.creativeBakedRoomAutoRefresh.spatialSurfaceCount == 2U,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.spatialSurfaceCount == 2U,
                 "crate injected auto refresh surface count") &&
-         expect(window.creativeBakedRoomAutoRefresh.collisionReady,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.collisionReady,
                 "crate injected auto refresh collision ready") &&
-         expect(window.creativeBakedRoomAutoRefresh.collisionQuerySurfaceCount == 2U,
+         expect(window.creativeAuthoring.creativeBakedRoomAutoRefresh.collisionQuerySurfaceCount == 2U,
                 "crate injected auto refresh collision query count") &&
-         expect(!window.creativeBakedRoomStale,
+         expect(!window.creativeAuthoring.creativeBakedRoomStale,
                 "crate injected baked room fresh") &&
-         expect(window.creativeBakedRoomStaleStatus ==
+         expect(window.creativeAuthoring.creativeBakedRoomStaleStatus ==
                     "creative_baked_room_fresh",
                 "crate injected stale status fresh") &&
          expect(iggy3d::activeRoom(window).loaded,
@@ -1680,18 +1680,18 @@ bool inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool() {
       clickOverride,
   });
 
-  return expect(window.creativeUiInput.requested,
+  return expect(window.creativeAuthoring.creativeUiInput.requested,
                 "injected missing draw requested") &&
-         expect(window.creativeUiInput.clickPresent,
+         expect(window.creativeAuthoring.creativeUiInput.clickPresent,
                 "injected missing draw click") &&
-         expect(!window.creativeUiInput.drawListAvailable,
+         expect(!window.creativeAuthoring.creativeUiInput.drawListAvailable,
                 "injected missing draw unavailable") &&
-         expect(window.creativeUiInput.status ==
+         expect(window.creativeAuthoring.creativeUiInput.status ==
                     "product_creative_ui_input_draw_list_missing",
                 "injected missing draw status") &&
-         expect(!window.creativeUiInput.consumed,
+         expect(!window.creativeAuthoring.creativeUiInput.consumed,
                 "injected missing draw not consumed") &&
-         expect(!window.creativeUiInput.downstreamClickSuppressed,
+         expect(!window.creativeAuthoring.creativeUiInput.downstreamClickSuppressed,
                 "injected missing draw not suppressed") &&
          expect(window.creativeAuthoring.creativeViewportPickStatus ==
                     "product_creative_viewport_pick_source_empty",

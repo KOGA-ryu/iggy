@@ -1154,20 +1154,20 @@ bool pauseMouseClickResumesBeforeCreativeOverlayInput() {
   return expect(resumeClick.clicked, "pause resume process click found") &&
          expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
                 "pause click resumes gameplay") &&
-         expect(window.creativeUiInput.requested,
+         expect(window.creativeAuthoring.creativeUiInput.requested,
                 "creative ui input receipt recorded") &&
-         expect(!window.creativeUiInput.clickPresent,
+         expect(!window.creativeAuthoring.creativeUiInput.clickPresent,
                 "pause-owned click is not routed to creative ui") &&
-         expect(!window.creativeUiInput.consumed,
+         expect(!window.creativeAuthoring.creativeUiInput.consumed,
                 "pause-owned click is not consumed by creative ui") &&
-         expect(window.creativeUiInput.status ==
+         expect(window.creativeAuthoring.creativeUiInput.status ==
                     "product_creative_ui_input_no_click",
                 "creative ui records no click behind pause") &&
-         expect(window.creativeUiCommand.kind == "none",
+         expect(window.creativeAuthoring.creativeUiCommand.kind == "none",
                 "creative command does not fire behind pause") &&
-         expect(window.creativeUiInput.downstreamClickSuppressed,
+         expect(window.creativeAuthoring.creativeUiInput.downstreamClickSuppressed,
                 "pause-owned click suppresses downstream creative/gameplay click") &&
-         expect(window.creativeUiInput.downstreamClickStatus ==
+         expect(window.creativeAuthoring.creativeUiInput.downstreamClickStatus ==
                     "product_creative_ui_downstream_click_higher_priority",
                 "downstream receipt names higher-priority ui");
 }
@@ -1234,7 +1234,7 @@ bool pauseMouseClickResumesInActiveCreativeWorld() {
   return expect(resumeClick.clicked, "active-world pause resume click found") &&
          expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
                 "active-world pause click resumes gameplay") &&
-         expect(!window.creativeUiInput.consumed,
+         expect(!window.creativeAuthoring.creativeUiInput.consumed,
                 "active-world pause click not consumed by creative ui");
 }
 

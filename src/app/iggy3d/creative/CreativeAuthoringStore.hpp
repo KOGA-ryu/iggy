@@ -10,6 +10,11 @@
 #include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/room_editor/RoomEditorOverlayState.hpp"
 #include "app/iggy3d/room_editor/RoomEditorPreviewState.hpp"
+#include "app/iggy3d/ProductCreativeDocumentRevisionState.hpp"
+#include "app/iggy3d/ProductCreativeUiInputState.hpp"
+#include "app/iggy3d/ProductCreativeUiLastState.hpp"
+#include "app/iggy3d/ProductCreativeUiProjectionState.hpp"
+#include "app/iggy3d/ProductCreativeUndoState.hpp"
 #include "app/iggy3d/world/WorldCreationState.hpp"
 #include "app/iggy3d/world/WorldSetupState.hpp"
 
@@ -42,6 +47,26 @@ struct CreativeAuthoringStore {
   ProductRoomEditorPreviewState roomEditorPreview;
   ProductRoomEditorPlacementPreviewResult roomEditorPlacementPreview;
   ProductRoomEditorHud roomEditorHud;
+  ProductCreativeDocumentRevisionState creativeDocumentRevision;
+  bool creativeDocumentChangedThisFrame = false;
+  ProductCreativeUndoState creativeUndo;
+  bool creativeBakedRoomStale = false;
+  std::uint64_t creativeBakedRoomStaleDocumentId = 0;
+  std::uint64_t creativeBakedRoomStaleRevision = 0;
+  std::string creativeBakedRoomStaleStatus =
+      "creative_baked_room_not_observed";
+  std::string creativeBakedRoomStaleReasonCode =
+      "creative_baked_room_not_observed";
+  // TV1-H: mirrors the creative facade's active tool being Navigate this frame.
+  // Contexts that only carry the window (mouse-capture policy, projection
+  // camera-anchor override) read this instead of the facade so the fly camera
+  // and its capture re-engage are gated on Navigate-active-in-creative-document.
+  bool creativeNavigateActive = false;
+  ProductCreativeUiProjectionState creativeUiProjection;
+  ProductCreativeUiInputState creativeUiInput;
+  ProductCreativeUiLastState creativeUiLast;
+  ProductCreativeUiCommandDiagnostics creativeUiCommand;
+  ProductCreativeBakedRoomRefreshDiagnostics creativeBakedRoomAutoRefresh;
   bool creativeViewportPickRequested = false;
   bool creativeViewportPickActive = false;
   bool creativeViewportPickClickPresent = false;

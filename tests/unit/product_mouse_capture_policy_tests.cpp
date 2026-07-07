@@ -318,7 +318,7 @@ bool receiptCarriesMouseCaptureProof() {
   window.inputDevice.mouseCapture.mode = "relative";
   window.inputDevice.mouseCapture.inputOwner = "gameplay";
   // TV1-H: the Navigate mirror is receipt-visible (fly active state).
-  window.creativeNavigateActive = true;
+  window.creativeAuthoring.creativeNavigateActive = true;
 
   const iggy3d::RenderReceipt receipt =
       iggy3d::buildProductAppReceipt(options, world, frontend, settings, window,

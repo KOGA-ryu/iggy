@@ -1373,8 +1373,8 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
     return result;
   }
   creative::clearCreativeUndoStack(creativeApp.undoStack);
-  window.creativeUndo.available = false;
-  window.creativeUndo.depth = 0;
+  window.creativeAuthoring.creativeUndo.available = false;
+  window.creativeAuthoring.creativeUndo.depth = 0;
 
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
   window.inputDevice.interactionMode = ProductInteractionMode::Creative;
@@ -1441,8 +1441,8 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
     return result;
   }
   creative::clearCreativeUndoStack(creativeApp.undoStack);
-  window.creativeUndo.available = false;
-  window.creativeUndo.depth = 0;
+  window.creativeAuthoring.creativeUndo.available = false;
+  window.creativeAuthoring.creativeUndo.depth = 0;
 
   enterProductGameplayTransition(frontend, window, FrontendAction::Load);
   window.inputDevice.interactionMode = ProductInteractionMode::Creative;
@@ -1537,8 +1537,8 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
   result.accepted = true;
   setCurrentCreativeSaveStatus(result, "product_creative_world_saved");
   creative::clearCreativeUndoStack(creativeApp.undoStack);
-  window.creativeUndo.available = false;
-  window.creativeUndo.depth = 0;
+  window.creativeAuthoring.creativeUndo.available = false;
+  window.creativeAuthoring.creativeUndo.depth = 0;
   recordActiveCreativeSaveResult(creativeApp.identity, result);
   return result;
 }

@@ -740,10 +740,10 @@ bool recorderCopiesRoomReceiptFields() {
 bool recorderPreservesExistingFields() {
   iggy3d::ProductAppWindowState window;
   window.status = "window_before";
-  window.creativeUiInput.requested = true;
-  window.creativeUiInput.status = "input_before";
-  window.creativeUiCommand.requested = true;
-  window.creativeUiCommand.status = "command_before";
+  window.creativeAuthoring.creativeUiInput.requested = true;
+  window.creativeAuthoring.creativeUiInput.status = "input_before";
+  window.creativeAuthoring.creativeUiCommand.requested = true;
+  window.creativeAuthoring.creativeUiCommand.status = "command_before";
   window.creativeAuthoring.creativeViewportPickRequested = true;
   window.creativeAuthoring.creativeViewportPickStatus = "pick_before";
   window.productVulkanMenu.uiReady = true;
@@ -757,13 +757,13 @@ bool recorderPreservesExistingFields() {
   iggy3d::recordProductCreativeWireframeFrame(window, receipt);
 
   return expect(window.status == "window_before", "window status kept") &&
-         expect(window.creativeUiInput.requested,
+         expect(window.creativeAuthoring.creativeUiInput.requested,
                 "creative input requested kept") &&
-         expect(window.creativeUiInput.status == "input_before",
+         expect(window.creativeAuthoring.creativeUiInput.status == "input_before",
                 "creative input status kept") &&
-         expect(window.creativeUiCommand.requested,
+         expect(window.creativeAuthoring.creativeUiCommand.requested,
                 "creative command requested kept") &&
-         expect(window.creativeUiCommand.status == "command_before",
+         expect(window.creativeAuthoring.creativeUiCommand.status == "command_before",
                 "creative command status kept") &&
          expect(window.creativeAuthoring.creativeViewportPickRequested,
                 "viewport pick requested kept") &&

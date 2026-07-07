@@ -1,6 +1,6 @@
 # E172 — CreativeAuthoringStore G5: Creative UI State Final Move
 
-**STATUS: READY.** Parent: `blocked/E161-creativeauthoringstore-bulk-move.md`.
+**STATUS: DONE.** Parent: `blocked/E161-creativeauthoringstore-bulk-move.md`.
 
 ## Goal
 
@@ -137,3 +137,82 @@ Report:
   moved again.
 
 Do not stage, commit, push, or launch a window.
+
+## Completion Brief
+
+- Files changed:
+  - `docs/creative_mode/builder_tasks/PRIORITY.md`
+  - `docs/creative_mode/builder_tasks/done/E172-creativeauthoringstore-g5-creative-ui-state.md`
+  - `docs/god_struct_decomposition_target_map.md`
+  - `docs/god_struct_member_ownership.tsv`
+  - `src/app/iggy3d/Operations.cpp`
+  - `src/app/iggy3d/ProductAppWindowState.hpp`
+  - `src/app/iggy3d/creative/CreativeAuthoringStore.hpp`
+  - `src/app/iggy3d/gameplay/ProjectionRefresh.cpp`
+  - `src/app/iggy3d/menu/ActionHandlers.cpp`
+  - `src/app/iggy3d/receipt/CreativeReceiptRecording.cpp`
+  - `src/app/iggy3d/receipt/CreativeUiFields.cpp`
+  - `src/app/iggy3d/receipt/GameplaySceneStateFields.cpp`
+  - `src/app/iggy3d/window/InputFrame.cpp`
+  - `src/app/iggy3d/window/Loop.cpp`
+  - `tests/unit/product_creative_ui_command_receipt_tests.cpp`
+  - `tests/unit/product_creative_ui_frame_tests.cpp`
+  - `tests/unit/product_creative_ui_input_frame_tests.cpp`
+  - `tests/unit/product_creative_ui_projection_receipt_tests.cpp`
+  - `tests/unit/product_creative_ui_window_frame_tests.cpp`
+  - `tests/unit/product_creative_viewport_pick_frame_tests.cpp`
+  - `tests/unit/product_creative_wireframe_frame_tests.cpp`
+  - `tests/unit/product_creative_world_launch_tests.cpp`
+  - `tests/unit/product_mouse_capture_policy_tests.cpp`
+  - `tests/unit/product_window_input_frame_tests.cpp`
+- Moved fields:
+  - `creativeDocumentRevision`
+  - `creativeDocumentChangedThisFrame`
+  - `creativeUndo`
+  - `creativeBakedRoomStale`
+  - `creativeBakedRoomStaleDocumentId`
+  - `creativeBakedRoomStaleRevision`
+  - `creativeBakedRoomStaleStatus`
+  - `creativeBakedRoomStaleReasonCode`
+  - `creativeNavigateActive`
+  - `creativeUiProjection`
+  - `creativeUiInput`
+  - `creativeUiLast`
+  - `creativeUiCommand`
+  - `creativeBakedRoomAutoRefresh`
+- Receipt golden result:
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests`
+    passed: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+  - `git diff -- tests/golden/product_receipt_key_order.golden` produced no
+    output.
+- Ownership coverage result:
+  - `/Users/kogaryu/iggy3d/build/product_god_struct_ownership_coverage_tests`
+    passed: `god-struct ownership coverage: assigned=30 CreativeAuthoringStore=1 DebugHudStore=1 FrontendWindowShell=16 GameplayStore=1 InputDeviceStore=1 PresentPathStore=1 RoomStore=1 SaveSessionStore=1 ViewportStore=2 app-global-remainder=4 delete=1`.
+- Required grep results:
+  - Old `window.<moved-field>` storage grep over `src` and `tests`: no output.
+  - `ProductAppWindowState.hpp` moved-field grep: no output.
+  - old top-level `god_struct_member_ownership.tsv` rows grep: no output.
+- Broad old-flat-access scan classification:
+  - `src/app/iggy3d/receipt/CreativeReceiptRecording.cpp`: 70 hits, all
+    intentional local `CreativeAuthoringStore` alias access.
+  - `src/app/iggy3d/receipt/CreativeUiFields.cpp`: 66 hits, all intentional
+    local `CreativeAuthoringStore` alias access.
+  - `src/app/iggy3d/window/MouseCapturePolicy.cpp`: 1 hit,
+    `ProductMouseCapturePolicyRequest::creativeNavigateActive`, a foreign
+    policy request field intentionally not moved.
+- Target-map and priority updates:
+  - `docs/god_struct_decomposition_target_map.md` marks
+    `CreativeAuthoringStore` as `DONE as E168-E172`.
+  - `docs/creative_mode/builder_tasks/PRIORITY.md` marks
+    `E161`/CreativeAuthoringStore complete as E168-E172 and clears Pull Next.
+- Full suite result:
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure`
+    passed: `100% tests passed, 0 tests failed out of 260`.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files produced no output.
+- Confirmation:
+  - `ProductRoomStore room` was not moved.
+  - Already-moved wireframe, viewport-pick, room-editor, world setup, and ASCII
+    room fields were not moved again.
+  - No stage, commit, push, or window launch was performed.

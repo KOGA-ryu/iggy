@@ -328,7 +328,7 @@ void updateProductWindowMouseCapture(const FrontendState& frontend,
       productWindowFocused(sdlWindow),
       sdlWindow != nullptr,
       productCreativeDocumentEditorActiveForSource(window, creativeApp),
-      window.creativeNavigateActive,
+      window.creativeAuthoring.creativeNavigateActive,
   });
   // branch-gate: BG-1076
   if (sdlWindow == nullptr) {
@@ -1117,7 +1117,7 @@ ProductCreativeViewportInputPhaseResult processProductCreativeViewportInputPhase
       routeProductCreativeUiDownstreamClick(
           ProductCreativeUiDownstreamClickRequest{
               request.click,
-          context.window.creativeUiInput.consumed,
+          context.window.creativeAuthoring.creativeUiInput.consumed,
           request.higherPriorityMouseConsumed ||
               request.frontendMouseOwnsInput,
           });
@@ -1244,7 +1244,7 @@ void processProductCreativeNavigateFlyPhase(
       context.creativeApp != nullptr &&
       context.creativeApp->facade.toolState().activeTool ==
           creative::Tool::Navigate;
-  context.window.creativeNavigateActive = navigateActive;
+  context.window.creativeAuthoring.creativeNavigateActive = navigateActive;
   if (!navigateActive) {
     return;
   }
@@ -1336,13 +1336,13 @@ void finalizeProductCreativeDocumentInputPhase(
     recordProductCreativeBakedRoomAutoRefresh(context.window, refresh);
   }
   if (context.creativeApp != nullptr) {
-    context.window.creativeUndo.available =
+    context.window.creativeAuthoring.creativeUndo.available =
         creative::creativeUndoAvailable(context.creativeApp->undoStack);
-    context.window.creativeUndo.depth =
+    context.window.creativeAuthoring.creativeUndo.depth =
         creative::creativeUndoDepth(context.creativeApp->undoStack);
   } else {
-    context.window.creativeUndo.available = false;
-    context.window.creativeUndo.depth = 0;
+    context.window.creativeAuthoring.creativeUndo.available = false;
+    context.window.creativeAuthoring.creativeUndo.depth = 0;
   }
 
   // If the creative-document dispatch path did not run this frame (frontend
@@ -1355,7 +1355,7 @@ void finalizeProductCreativeDocumentInputPhase(
       frontendBlocksGameplayInput(context.frontend)) {
     resetProductCreativePointerLifecycle(
         context.inputFrame.creativePointerLifecycle);
-    context.window.creativeNavigateActive = false;
+    context.window.creativeAuthoring.creativeNavigateActive = false;
   }
 }
 
@@ -1562,7 +1562,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
       !frontendBlocksGameplayInput(context.frontend)) {
     ActionState gameplayActions;
     if (!creativeInput.creativeDocumentInputHandled) {
-      context.window.creativeNavigateActive = false;
+      context.window.creativeAuthoring.creativeNavigateActive = false;
       if (context.window.creativeAuthoring.roomEditing.ready) {
         (void)processProductWindowEditorMousePickPreview({
             context.frontend,

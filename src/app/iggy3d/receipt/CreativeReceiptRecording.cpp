@@ -28,12 +28,12 @@ std::string_view creativeToolReceiptName(creative::Tool tool) noexcept;
 
 ProductCreativeBakedRoomRefreshDiagnostics&
 uiCommandBakedRoomRefreshFields(ProductAppWindowState& window) noexcept {
-  return window.creativeUiCommand.bakedRoomRefresh;
+  return window.creativeAuthoring.creativeUiCommand.bakedRoomRefresh;
 }
 
 ProductCreativeBakedRoomRefreshDiagnostics&
 autoBakedRoomRefreshFields(ProductAppWindowState& window) noexcept {
-  return window.creativeBakedRoomAutoRefresh;
+  return window.creativeAuthoring.creativeBakedRoomAutoRefresh;
 }
 
 void resetProductCreativeBakedRoomRefreshDiagnostics(
@@ -267,58 +267,60 @@ std::string_view creativeToolReceiptName(creative::Tool tool) noexcept {
 void recordProductCreativeUiProjection(
     ProductAppWindowState& window,
     const ProductCreativeUiProjectionReceipt& receipt) {
-  window.creativeUiProjection.requested = receipt.requested;
-  window.creativeUiProjection.ready = receipt.ready;
-  window.creativeUiProjection.partial = receipt.partial;
-  window.creativeUiProjection.status = std::string(receipt.status);
-  window.creativeUiProjection.reasonCode = std::string(receipt.reasonCode);
-  window.creativeUiProjection.usedModel = receipt.usedModel;
-  window.creativeUiProjection.usedFacade = receipt.usedFacade;
-  window.creativeUiProjection.virtualWidth = receipt.virtualWidth;
-  window.creativeUiProjection.virtualHeight = receipt.virtualHeight;
-  window.creativeUiProjection.theme =
+  CreativeAuthoringStore& authoring = window.creativeAuthoring;
+  authoring.creativeUiProjection.requested = receipt.requested;
+  authoring.creativeUiProjection.ready = receipt.ready;
+  authoring.creativeUiProjection.partial = receipt.partial;
+  authoring.creativeUiProjection.status = std::string(receipt.status);
+  authoring.creativeUiProjection.reasonCode = std::string(receipt.reasonCode);
+  authoring.creativeUiProjection.usedModel = receipt.usedModel;
+  authoring.creativeUiProjection.usedFacade = receipt.usedFacade;
+  authoring.creativeUiProjection.virtualWidth = receipt.virtualWidth;
+  authoring.creativeUiProjection.virtualHeight = receipt.virtualHeight;
+  authoring.creativeUiProjection.theme =
       std::string(productUiThemeReceiptName(receipt.theme));
-  window.creativeUiProjection.panelCount = receipt.panelCount;
-  window.creativeUiProjection.modelRowCount = receipt.modelRowCount;
-  window.creativeUiProjection.primitiveCount = receipt.primitiveCount;
-  window.creativeUiProjection.textCount = receipt.textCount;
-  window.creativeUiProjection.rectCount = receipt.rectCount;
-  window.creativeUiProjection.rowCount = receipt.rowCount;
-  window.creativeUiProjection.disabledRowCount = receipt.disabledRowCount;
-  window.creativeUiProjection.hitRegionCount = receipt.hitRegionCount;
+  authoring.creativeUiProjection.panelCount = receipt.panelCount;
+  authoring.creativeUiProjection.modelRowCount = receipt.modelRowCount;
+  authoring.creativeUiProjection.primitiveCount = receipt.primitiveCount;
+  authoring.creativeUiProjection.textCount = receipt.textCount;
+  authoring.creativeUiProjection.rectCount = receipt.rectCount;
+  authoring.creativeUiProjection.rowCount = receipt.rowCount;
+  authoring.creativeUiProjection.disabledRowCount = receipt.disabledRowCount;
+  authoring.creativeUiProjection.hitRegionCount = receipt.hitRegionCount;
 }
 
 void recordProductCreativeUiInputFrame(
     ProductAppWindowState& window,
     const ProductCreativeUiInputFrameReceipt& receipt) {
-  window.creativeUiInput.requested = receipt.requested;
-  window.creativeUiInput.clickPresent = receipt.clickPresent;
-  window.creativeUiInput.drawListAvailable = receipt.drawListAvailable;
-  window.creativeUiInput.routed = receipt.routed;
-  window.creativeUiInput.hit = receipt.hit;
-  window.creativeUiInput.consumed = receipt.consumed;
-  window.creativeUiInput.enabled = receipt.enabled;
-  window.creativeUiInput.surface =
+  CreativeAuthoringStore& authoring = window.creativeAuthoring;
+  authoring.creativeUiInput.requested = receipt.requested;
+  authoring.creativeUiInput.clickPresent = receipt.clickPresent;
+  authoring.creativeUiInput.drawListAvailable = receipt.drawListAvailable;
+  authoring.creativeUiInput.routed = receipt.routed;
+  authoring.creativeUiInput.hit = receipt.hit;
+  authoring.creativeUiInput.consumed = receipt.consumed;
+  authoring.creativeUiInput.enabled = receipt.enabled;
+  authoring.creativeUiInput.surface =
       std::string(productUiHitSurfaceReceiptName(receipt.surface));
-  window.creativeUiInput.kind = std::string(uiHitKindReceiptName(receipt.kind));
-  window.creativeUiInput.action = std::string(frontendActionName(receipt.action));
-  window.creativeUiInput.layerIndex =
+  authoring.creativeUiInput.kind = std::string(uiHitKindReceiptName(receipt.kind));
+  authoring.creativeUiInput.action = std::string(frontendActionName(receipt.action));
+  authoring.creativeUiInput.layerIndex =
       static_cast<std::uint64_t>(receipt.layerIndex);
-  window.creativeUiInput.regionIndex =
+  authoring.creativeUiInput.regionIndex =
       static_cast<std::uint64_t>(receipt.regionIndex);
-  window.creativeUiInput.semanticId =
+  authoring.creativeUiInput.semanticId =
       receipt.semanticId.empty() ? "none" : receipt.semanticId;
-  window.creativeUiInput.status = receipt.status;
-  window.creativeUiInput.reasonCode = receipt.reasonCode;
+  authoring.creativeUiInput.status = receipt.status;
+  authoring.creativeUiInput.reasonCode = receipt.reasonCode;
 
   if (receipt.clickPresent) {
-    window.creativeUiLast.clickSeen = true;
-    window.creativeUiLast.clickX = floatReceiptValue(receipt.clickX);
-    window.creativeUiLast.clickY = floatReceiptValue(receipt.clickY);
-    window.creativeUiLast.inputHit = receipt.hit;
-    window.creativeUiLast.inputConsumed = receipt.consumed;
-    window.creativeUiLast.inputStatus = receipt.status;
-    window.creativeUiLast.inputSemanticId =
+    authoring.creativeUiLast.clickSeen = true;
+    authoring.creativeUiLast.clickX = floatReceiptValue(receipt.clickX);
+    authoring.creativeUiLast.clickY = floatReceiptValue(receipt.clickY);
+    authoring.creativeUiLast.inputHit = receipt.hit;
+    authoring.creativeUiLast.inputConsumed = receipt.consumed;
+    authoring.creativeUiLast.inputStatus = receipt.status;
+    authoring.creativeUiLast.inputSemanticId =
         receipt.semanticId.empty() ? "none" : receipt.semanticId;
   }
 }
@@ -326,19 +328,21 @@ void recordProductCreativeUiInputFrame(
 void recordProductCreativeUiDownstreamClick(
     ProductAppWindowState& window,
     const ProductCreativeUiDownstreamClickReceipt& receipt) {
-  window.creativeUiInput.downstreamClickRequested = receipt.requested;
-  window.creativeUiInput.downstreamClickPresent = receipt.clickPresent;
-  window.creativeUiInput.downstreamClickHigherPriority =
+  CreativeAuthoringStore& authoring = window.creativeAuthoring;
+  authoring.creativeUiInput.downstreamClickRequested = receipt.requested;
+  authoring.creativeUiInput.downstreamClickPresent = receipt.clickPresent;
+  authoring.creativeUiInput.downstreamClickHigherPriority =
       receipt.higherPriorityUiConsumed;
-  window.creativeUiInput.downstreamClickSuppressed = receipt.suppressed;
-  window.creativeUiInput.downstreamClickStatus = receipt.status;
-  window.creativeUiInput.downstreamClickReasonCode = receipt.reasonCode;
+  authoring.creativeUiInput.downstreamClickSuppressed = receipt.suppressed;
+  authoring.creativeUiInput.downstreamClickStatus = receipt.status;
+  authoring.creativeUiInput.downstreamClickReasonCode = receipt.reasonCode;
 }
 
 void recordProductCreativeUiCommandFrame(
     ProductAppWindowState& window,
     const ProductCreativeUiCommandFrameReceipt& receipt) {
-  copyProductCreativeUiCommandDiagnostics(window.creativeUiCommand, receipt);
+  CreativeAuthoringStore& authoring = window.creativeAuthoring;
+  copyProductCreativeUiCommandDiagnostics(authoring.creativeUiCommand, receipt);
   resetProductCreativeUiCommandBakedRoomRefresh(window);
 
   const bool commandTouchedCreativeState =
@@ -348,13 +352,13 @@ void recordProductCreativeUiCommandFrame(
       receipt.mutationRequested ||
       (receipt.inputConsumed && !receipt.semanticId.empty());
   if (commandTouchedCreativeState) {
-    window.creativeUiLast.commandKind =
+    authoring.creativeUiLast.commandKind =
         std::string(productCreativeUiCommandKindReceiptName(receipt.commandKind));
-    window.creativeUiLast.commandStatus = receipt.status;
-    window.creativeUiLast.commandCreateRequested = receipt.createRequested;
-    window.creativeUiLast.commandCreateAccepted = receipt.createAccepted;
-    window.creativeUiLast.commandCreateChanged = receipt.createChanged;
-    window.creativeUiLast.commandCreateObjectId = receipt.createObjectId;
+    authoring.creativeUiLast.commandStatus = receipt.status;
+    authoring.creativeUiLast.commandCreateRequested = receipt.createRequested;
+    authoring.creativeUiLast.commandCreateAccepted = receipt.createAccepted;
+    authoring.creativeUiLast.commandCreateChanged = receipt.createChanged;
+    authoring.creativeUiLast.commandCreateObjectId = receipt.createObjectId;
   }
 }
 
@@ -379,12 +383,13 @@ void recordProductCreativeDocumentRevisionFrame(
     std::uint64_t revisionBefore,
     std::uint64_t documentIdAfter,
     std::uint64_t revisionAfter) {
+  CreativeAuthoringStore& authoring = window.creativeAuthoring;
   resetProductCreativeBakedRoomAutoRefresh(window);
-  window.creativeDocumentRevision.observed = observed;
-  window.creativeDocumentChangedThisFrame = false;
-  window.creativeDocumentRevision.documentId = observed ? documentIdAfter : 0U;
-  window.creativeDocumentRevision.beforeFrame = observed ? revisionBefore : 0U;
-  window.creativeDocumentRevision.afterFrame = observed ? revisionAfter : 0U;
+  authoring.creativeDocumentRevision.observed = observed;
+  authoring.creativeDocumentChangedThisFrame = false;
+  authoring.creativeDocumentRevision.documentId = observed ? documentIdAfter : 0U;
+  authoring.creativeDocumentRevision.beforeFrame = observed ? revisionBefore : 0U;
+  authoring.creativeDocumentRevision.afterFrame = observed ? revisionAfter : 0U;
   if (!observed) {
     return;
   }
@@ -395,25 +400,26 @@ void recordProductCreativeDocumentRevisionFrame(
     return;
   }
 
-  window.creativeDocumentChangedThisFrame = true;
-  window.creativeBakedRoomStale = true;
-  window.creativeBakedRoomStaleDocumentId = documentIdAfter;
-  window.creativeBakedRoomStaleRevision = revisionAfter;
-  window.creativeBakedRoomStaleStatus =
+  authoring.creativeDocumentChangedThisFrame = true;
+  authoring.creativeBakedRoomStale = true;
+  authoring.creativeBakedRoomStaleDocumentId = documentIdAfter;
+  authoring.creativeBakedRoomStaleRevision = revisionAfter;
+  authoring.creativeBakedRoomStaleStatus =
       documentReplaced ? "creative_baked_room_stale_document_replaced"
                        : "creative_baked_room_stale_document_changed";
-  window.creativeBakedRoomStaleReasonCode =
-      window.creativeBakedRoomStaleStatus;
+  authoring.creativeBakedRoomStaleReasonCode =
+      authoring.creativeBakedRoomStaleStatus;
 }
 
 void recordProductCreativeBakedRoomFresh(ProductAppWindowState& window,
                                          std::uint64_t documentId,
                                          std::uint64_t revision) {
-  window.creativeBakedRoomStale = false;
-  window.creativeBakedRoomStaleDocumentId = documentId;
-  window.creativeBakedRoomStaleRevision = revision;
-  window.creativeBakedRoomStaleStatus = "creative_baked_room_fresh";
-  window.creativeBakedRoomStaleReasonCode = "creative_baked_room_fresh";
+  CreativeAuthoringStore& authoring = window.creativeAuthoring;
+  authoring.creativeBakedRoomStale = false;
+  authoring.creativeBakedRoomStaleDocumentId = documentId;
+  authoring.creativeBakedRoomStaleRevision = revision;
+  authoring.creativeBakedRoomStaleStatus = "creative_baked_room_fresh";
+  authoring.creativeBakedRoomStaleReasonCode = "creative_baked_room_fresh";
 }
 
 void recordProductCreativeViewportPickFrame(
