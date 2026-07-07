@@ -6,8 +6,8 @@ use this index only to decide which ready card to claim next.
 
 The current pipeline is a **gated spine change** (the activeRoom→collision
 freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
-Gate-1 ratified). **Gates G2–G5 done → G6 seeded** (stress/shutdown, test-only).
-Do not pre-load G7 until G6 is reviewed and committed.
+Gate-1 ratified). Gates G2–G6 are done. Do not pre-load G7 until G6 is
+reviewed and committed.
 
 ## Claim Policy
 
@@ -25,14 +25,11 @@ None.
 
 ## Pull Next
 
-1. **E133 (E-ARCF-G6)** — freshness store stress + shutdown: N-permutation order
-   stress, session-reset-then-`ensure`, empty-room thrash (I5). Test-only; no
-   production change. Read preflight §6/§9/§5-I5 first.
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E133 (E-ARCF-G6)** — Gate 6 stress/shutdown (tests only). G7 (receipt wiring +
-  ownership audit + architecture receipt) held until G6 is reviewed/committed.
+None currently ready.
 
 ## Tier 2: Feature-Add Seams
 

@@ -74,3 +74,18 @@ Append:
 - C2 I7 re-audit:
 - Suite verbatim:
 - Concerns/deferred:
+
+## Completion Brief - Codex
+
+- Files changed (tests only): `tests/unit/product_active_room_collision_tests.cpp`.
+- Permutation stress (how many orderings; identical?): added six deterministic orderings of the fixed two-door command multiset `{door_a, door_a, door_b, door_b}` over the runtime-owned door ids. Each ordering runs through frame-boundary `ensureActiveRoomCollisionFresh(...)`; the reader-visible snapshot matches the baseline (`querySurfaceCount=1`, `activeDoorBlockerSurfaceCount=0`, `runtimeFilteredSurfaceCount=2`, `surfaceSetSize=1`, `roomRevision=1`) and the session hash remains identical/nonzero.
+- Session-reset-then-ensure result: added a session reset proof that first bakes with a nonzero session hash and one filtered runtime-owned door, then drops the session and calls `ensure(window, nullptr)`. The sessionless ensure rebakes with reason `rebaked_session`, stamps `bakedFromSessionHash=0`, keeps both runtime-owned surfaces unfiltered, exposes all three query surfaces, and remains idempotent afterward.
+- Empty-room thrash result (exactly-one-bake?): added a loaded empty-room proof where the first ensure returns `rebaked_empty` and produces an unavailable collision state with zero query surfaces; twelve subsequent ensures all return `skipped_fresh` with byte-identical observed state and exactly one total rebake.
+- C2 I7 re-audit: clean. `entity.active =` scan outside expected save/runtime fixture paths produced no output. `setActive(` scan outside expected world/interaction/creative seams produced no output beyond the audit separator.
+- Suite verbatim:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_active_room_collision_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_active_room_collision_tests$' --output-on-failure` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build` passed, 260/260.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over `tests/unit/product_active_room_collision_tests.cpp` and this card passed.
+- Concerns/deferred: no production files changed. `Testing/Temporary/LastTest.log` remains dirty from CTest output and was left untouched.
