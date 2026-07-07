@@ -66,11 +66,13 @@ Held — do NOT promote to `ready/` on a guess:
 - **Ownership-deficit queue** (`docs/ownership_deficit_audit.md`) landing onto the
   decomposition map (`docs/god_struct_decomposition_target_map.md`):
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — **NEXT real kill after #2.** Genuine
-    unfixed freshness deficit in the proven exemplar shape (3 provenance writers, no
-    who/when stamp). **Gate-0 preflight written: `blocked/E141`** (confirms M, tiny
-    churn). BLOCKED on (a) E139 landing and (b) **user picking A/B in §7** (re-seed on
-    session drift vs sticky) — the store shape hinges on it. Do not promote to ready/
-    until both clear.
+    unfixed freshness deficit. **Gate-0 preflight `blocked/E141` v0.2** — decision A
+    (re-seed on world-open drift) LOCKED and hardened by adversarial verification
+    (workflow `wuu7jt0jx`): token is a new window-owned `creativeWorldEpoch` (NOT a
+    content hash — two blank worlds hash identically), 3 seeders are NOT redundant
+    (distinct yaw/pitch + latch behaviors), app-lane-only (stays out of the session
+    gate). BLOCKED on (a) E139 landing and (b) Gate-1 ratification of the §7 checklist.
+    Ready to decompose into G2–G7 once ratified.
   - **#1 `activeRoom`→`RoomStore`** — **HELD** (`blocked/E140`). Structural move only
     when it gates the kernel; NOT an ownership kill (see re-rank above). Preserve the
     nested producer copy.

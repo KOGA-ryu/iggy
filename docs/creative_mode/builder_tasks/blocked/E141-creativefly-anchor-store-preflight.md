@@ -1,127 +1,179 @@
-# E141 — `creativeFly` anchor → `CreativeFlyAnchorStore` — GATE-0 PREFLIGHT
+# E141 — `creativeFly` anchor → `CreativeFlyAnchorStore` — GATE-0 PREFLIGHT (v0.2)
 
-**STATUS: BLOCKED — held, not claimable.** Two gates must clear first:
-1. **#2 `activeCreative` delete must land** (E139 done) — sequencing, one ownership
-   kill at a time.
-2. **Gate-1 ratification by the user** — this is a spine-adjacent freshness store
-   (`docs/core_spine_work_rules.md`); it does not become a `ready/` card until
-   ratified with the §7 open question resolved.
+**STATUS: BLOCKED — held, not claimable.** Gates before it becomes a `ready/` card:
+1. **#2 `activeCreative` delete lands** (E139 done) — one ownership kill at a time.
+2. **Gate-1 ratification** — spine-adjacent freshness store
+   (`docs/core_spine_work_rules.md`).
 
-Deficit #3 from `docs/ownership_deficit_audit.md` (row 3, score 3.0, rated **M** —
-**preflight CONFIRMS M**, unlike #2 (S→L) and #1 (9.0→hold)). Traced per
-`docs/ownership_trace_method.md`. Recon only — **no code edits**, disjoint from the
-in-flight `activeCreative` work.
+**Decision A is LOCKED** (re-seed on world-open drift) and **survives adversarial
+verification** (workflow `wuu7jt0jx`, 4 verifiers + completeness critic, 2026-07-07).
+The direction is sound; v0.2 folds in one blocker fix + three shape corrections the
+verification surfaced. Traced per `docs/ownership_trace_method.md`.
+
+> **v0.1 → v0.2 changelog (what the adversarial pass caught):**
+> - **BLOCKER fixed** — the freshness token must be a *stable per-world-open identity*,
+>   NOT a content hash. Every hash source in-tree (`Session::stateHash()` /
+>   `runtimeStateHash` = `currentStateHash`) fails two ways: it drifts per-tick (re-seeds
+>   mid-fly, snapping the camera) *and* two blank creative worlds hash identically (so the
+>   blank-A→blank-B swap A exists to fix would silently not fire). **Resolution:** new
+>   window-owned monotonic `creativeWorldEpoch`, mirroring `activeRoomRevision`.
+> - **Retracted "3 seeders are redundant"** — they have 3 *distinct* behaviors (§3).
+> - **Rescoped the leak** (§2) — the creative lane already re-seeds on launch; the real
+>   stale-anchor surface is the *bypass* paths (map_maker / raw session swap).
+> - **Provenance race** between origin-frame and drift re-seed resolved via epoch
+>   precedence (§4).
+> - Added the missed second caller, the render-frame fan-out, 3 existing test
+>   migrations, and the standalone-app out-of-scope note.
+> - **All line numbers are approximate** — `Operations.cpp`/`InputFrame.cpp`/
+>   `ProjectionRefresh.cpp` are dirty in the working tree and drifted twice during
+>   verification. Cited by **function name**; re-anchor against HEAD at card-cut time.
 
 ---
 
-## 1. The field cluster
+## 1. The field cluster & what is NOT in scope
 
-`ViewportState.hpp:20–21` (nested in `ProductViewportState`, itself nested in the
-god-struct's `window.viewport`):
+`ViewportState.hpp:20–21` (nested in `ProductViewportState` → `window.viewport`):
 
 ```
-bool creativeFlyAnchorValid = false;   // 20  — the latch
-Vec3 creativeFlyPositionMeters;        // 21  — the anchor
-// siblings NOT in scope for this slice: creativeFlyActive/Speed/Status/ReasonCode (22–25)
+bool creativeFlyAnchorValid = false;   // the one-way latch (deleted by this slice)
+Vec3 creativeFlyPositionMeters;        // the anchor (moves to the store)
 ```
 
-## 2. The confirmed deficit (grep → read → verified)
+**In scope:** the anchor pair only.
+**NOT in scope, but entangled (must be handled, not moved):**
+- Siblings `creativeFlyActive/Speed/Status/ReasonCode` (ViewportState.hpp:22–25) — stay
+  on `window.viewport`. They are **co-mutated with the anchor** in two blocks (§6); the
+  store split fractures those blocks, so the integrator/eager-seed callers keep writing
+  siblings even after the anchor moves.
+- Camera pose `cameraYawDegrees/cameraPitchDegrees` — the eager seeder co-writes these
+  (§3); they stay on the viewport.
+- **Standalone app parallel anchor** — `apps/iggy3d_creative/main.cpp` keeps its OWN
+  local `Vec3 flyPos{0,6,12}` (note: `{0,6,12}`, *different* from the window path's
+  `{0,6,10}`), integrated at `main.cpp:~545` and framed at `~643`. It never touches
+  `window.viewport`. The store verb is window-scoped and **does not reconcile it** — a
+  known parallel-anchor divergence, explicitly out of scope for this slice.
 
-**Not a derived cache — a lazily-seeded accumulator with no invalidation authority.**
+## 2. The confirmed deficit — RESCOPED
 
-**4 writers, 3 seed provenances + 1 integrator:**
+**Not a derived cache — a lazily-seeded accumulator whose latch is never reset.**
+Verified independently:
+- `creativeFlyAnchorValid` is written `=true` by 3 seeders and never `=false` anywhere
+  but its default initializer. No `window.viewport = {}` reset exists (the `frame.viewport
+  = {...}` hits are render width/height/DPI, a different struct).
+- The window is **persistent**: `window` and `activeSession` are separate app-lifetime
+  members (`AppKernel.hpp:28–29`), the loop runs once (`AppKernel.cpp:~122`), sessions
+  swap mid-loop. So window state outlives sessions.
+- **The asymmetry that IS the bug:** `clearProductGameplayLaunchState` (session teardown)
+  zeroes `runtimeStateHash`, `activeRoom`, `activeRoomCollision`, and `activeSession` —
+  but leaves `creativeFly*` latched. The anchor outlives even a full session drop.
 
-| site | role | provenance |
+**RESCOPE (v0.2):** the creative launch paths (`frameCreativeStageCameraOnOrigin`, called
+on New-World *and* Open-World) already re-seed the anchor to origin on world open — so the
+blanket "rides world A into world B, never invalidated" is **false for the creative lane**.
+The genuine stale-anchor surface is the paths that **bypass** the origin frame: the legacy
+`map_maker` surface and any raw session swap without a creative launch. Decision A is
+justified against *that* surface (plus it makes the origin-frame reset principled instead
+of incidental).
+
+## 3. Writers & readers — corrected census (classify before touching)
+
+**Writers — 5 callsites, NOT "4 writers", and the seeders are NOT redundant:**
+
+| writer | behavior beyond the anchor | verdict |
 |---|---|---|
-| `Operations.cpp:298–299` `frameCreativeStageCameraOnOrigin` | seed (eager) | origin `{0,6,10}`, pitch −30° |
-| `InputFrame.cpp:357–359` `ensureCreativeFlyAnchor` | seed (lazy, `if !valid`) | player-or-origin |
-| `ProjectionRefresh.cpp:363–364` (getter) | seed (lazy, `if !valid`) | scene player pose |
-| `InputFrame.cpp:416` fly-integrate | **integrator** (`if fly.applied`) | accumulates delta each frame |
+| `frameCreativeStageCameraOnOrigin` (Operations.cpp `~256`) — called at `~1359` (New World) **and** `~1427` (Open World) | **also writes `cameraYawDegrees=0`, `cameraPitchDegrees=-30`** | eager seed → `store.seedFromOrigin()`; **keep the yaw/pitch writes in the caller** |
+| `ensureCreativeFlyAnchor` (InputFrame.cpp `~351`) — called at `~517` (map_maker) **and** `~1263` (creativeNavigate) | **always latches** valid=true, even on the origin `{}` fallback | lazy seed → ensure verb; **two callers**; `~1263` passes `&*context.activeSession` (raw optional deref) — preserve the `navigateActive` precondition against the verb's nullable `Session*` |
+| `mapMakerAnchorFor` (ProjectionRefresh.cpp `~353`) | `!playerFound` branch returns `{}` **without latching** (retry next frame); its return value is authoritative (grid `anchorWorld` + `planeY`) | seed-**and-return** verb; **must preserve the no-latch-on-no-player branch** |
+| integrator (InputFrame.cpp `~410–416`) | co-writes the 4 siblings in the same block | keep; stamps `provenance = FlyIntegrated` |
 
-**The three defects, all verified:**
-1. **Ambiguous provenance** — whichever seeder hits the `!valid` guard *first* wins,
-   seeding from a *different source*; nothing records which. (`grep creativeFly.*session` → **zero** stamps.)
-2. **No invalidation authority** — `grep 'creativeFlyAnchorValid = false'` → **only the
-   default**. Never reset. No `window.viewport = {}` reset exists in product code (the
-   two `frame.viewport = {...}` hits are the render frame's width/height/DPI — a
-   different struct). Once latched true, true for the life of the **persistent**
-   `ProductAppWindowState`.
-3. **Session-lifetime mismatch** — the window persists while sessions are swapped in
-   (same shape that forced the collision store's `sessionHash` token). So a seed from
-   world A's player rides into world B: `frame.cameraAnchorOverrideMeters`
-   (`ProjectionRefresh.cpp:778–779`) and the receipt read stale coordinates until the
-   next fly input drags them elsewhere.
+The three seeders read **three different sources** (origin constant; Session player via
+`activePlayerPositionOrOrigin`; Scene projection via `playerAnchorFromScene`) and have
+**three different latch behaviors** — the store's ensure verb takes the source per
+callsite; it is not one canonical player read.
 
-## 3. Classification of every reader (7 logical sites)
+**Readers — the camera consumer + its downstream fan-out + receipt:**
+- `ProjectionRefresh.cpp:~778–779` — gates `cameraAnchorOverrideAvailable` on
+  `creativeFlyAnchorValid`, reads the anchor → `frame.cameraAnchorOverrideMeters`. **Migrate
+  in lockstep** (the gate's truth value changes when the latch becomes
+  `provenance≠Unseeded && epoch matches`).
+- Downstream of the override (read the *derived* frame field, **no edit needed**):
+  eye-framing `ProjectionRefresh.cpp:~900`, `ViewportFraming.cpp:~53`,
+  `FramePresenter.cpp:~1013`. Listed so the blast radius is honest.
+- Receipt `GameplaySceneStateFields.cpp:~207–213` — projection; rebuild from
+  `store.anchor()` + `store.provenance()`.
 
-| site | class | migration |
-|---|---|---|
-| `ProjectionRefresh.cpp:778–779` → `frame.cameraAnchorOverrideMeters` | **truth read** (the camera consumer) | read through `store.anchor()` after `ensureFreshAnchor` |
-| `ProjectionRefresh.cpp:356–357` (getter guard + return) | **seed-or-return** — collapses into the ensure verb | becomes the store's ensure body |
-| `InputFrame.cpp:354` (`ensureCreativeFlyAnchor` guard) | **seed** — collapses into ensure verb | delete; call `ensureFreshAnchor` |
-| `InputFrame.cpp:409` (feeds `applyProductCreativeFlyInput`, in/out) | **integrator input** (legitimate owner mutation) | keep; mutate through store |
-| `GameplaySceneStateFields.cpp:207–213` (receipt: valid + xyz) | **projection** | rebuild from `store.anchor()` + `store.provenance()` |
-| `Operations.cpp:298` (origin frame) | **eager seed** | route through `store.seedFromOrigin()` (explicit provenance) |
-
-**No hit conflates the anchor with an unrelated value; the 3 seeders are genuinely
-redundant and collapse to one verb.** This is a real ownership kill, not a re-house.
-
-## 4. Proposed shape (exemplar, one level smaller)
-
-One owner holding the anchor + provenance + session token; one ensure verb:
+## 4. Proposed shape — the epoch token (blocker resolution)
 
 ```cpp
+// NEW window field — mirrors activeRoomRevision (ProductAppWindowState.hpp:256).
+// Bumped ONCE per world-open, inside frameCreativeStageCameraOnOrigin. Stable
+// (not per-tick), distinct per open (two blank worlds differ). NOT a content hash.
+std::uint64_t creativeWorldEpoch = 0;
+
 struct CreativeFlyAnchorStore {
   Vec3 positionMeters;
   enum class Provenance { Unseeded, OriginFramed, PlayerSeeded, SceneSeeded, FlyIntegrated };
   Provenance provenance = Provenance::Unseeded;
-  std::uint64_t seededFromSessionHash = 0;   // 0 = unseeded
+  std::uint64_t seededFromWorldEpoch = 0;   // which world-open seeded this
 };
 
-// The ONE verb. Re-seeds iff unseeded OR the session drifted; otherwise keeps the
-// integrated value. Records provenance. Mirrors ensureActiveRoomCollisionFresh.
+// Freshness = provenance != Unseeded && seededFromWorldEpoch == window.creativeWorldEpoch.
+// Re-seeds when the epoch drifted (new world open) OR unseeded. Records provenance.
 const Vec3& ensureFreshCreativeFlyAnchor(ProductAppWindowState& window,
                                          const Session* activeSession);
+void seedCreativeFlyAnchorFromOrigin(ProductAppWindowState& window);  // used by the origin frame
 ```
 
-- The 3 lazy/eager seeders → callers of `ensureFreshCreativeFlyAnchor` (or an explicit
-  `seedFromOrigin` for the eager stage-frame path).
-- `InputFrame.cpp:416` integrator stays, but stamps `provenance = FlyIntegrated`.
-- `creativeFlyAnchorValid` **is deleted** — replaced by `provenance != Unseeded &&
-  seededFromSessionHash == currentHash`. The one-way latch becomes a real freshness token.
+**Provenance-race resolution:** `frameCreativeStageCameraOnOrigin` is the thing that
+**bumps `creativeWorldEpoch`** and calls `seedCreativeFlyAnchorFromOrigin` — so on world
+open the origin seed is authoritative *for that epoch*, and the lazy seeders only fire when
+the anchor is unseeded for the current epoch. No last-writer race. `creativeFlyAnchorValid`
+is deleted; its readers switch to the freshness predicate.
 
-## 5. Truth-gates that fire by design
+## 5. Truth-gates (3 existing test migrations + 1 net-new)
 
-- **Receipt golden** (`RECEIPT_GOLDEN_REGEN=1`) — the receipt gains
-  `creative_fly_anchor_provenance` / session-stamp keys, loses the raw `valid` bool.
-- **God-struct ownership coverage TSV** — the two viewport fields change owner row.
-- **New behavioral test** — the exemplar's own test shape: seed in session A, swap to
-  session B, assert the anchor re-seeds (today it does NOT — this test fails pre-fix,
-  passes post-fix; it *is* the bug reproduction).
+- **Migrate (existing, will break on the field move):**
+  - `product_vulkan_room_frame_tests.cpp:~1344` — fabricator sets the raw anchor; reseed via store.
+  - `product_creative_world_launch_tests.cpp:~4134` — co-asserts anchor **and** `yaw==0`,
+    `pitch<0`; reroute the anchor reads, keep the yaw/pitch asserts (proves §3's entanglement).
+  - `product_window_input_frame_tests.cpp:~824` — asserts valid + integrator-moved z; reroute.
+- **Net-new (the bug reproduction):** open world A, seed the anchor, open world B (distinct
+  `creativeWorldEpoch`) — assert a re-seed **even if the two sessions' state hashes coincide**
+  (guards the blank-A→blank-B corollary). Fails pre-fix, passes post-fix.
+- Receipt golden (`RECEIPT_GOLDEN_REGEN=1`): gains `creative_fly_anchor_provenance` +
+  `..._world_epoch`, drops the raw `valid` bool. God-struct ownership TSV: two viewport
+  fields change owner row; `creativeWorldEpoch` is a new window-owned field.
 
-## 6. Sizing — confirmed M, design-heavy not churn-heavy
+## 6. Sizing — M, design-heavy, with two entanglement seams
 
-25 total refs (17 non-test), ~7 logical readers. Churn is trivial next to #1's 477.
-The cost is **policy**, concentrated in §7. Gate sequence mirrors the collision store
-(G2 types → G3 dirty-check + failing cross-session test → G4 wire the ensure seam →
-G5 remove scattered seeders → G6 stress → G7 receipt audit).
+Field-ref census is small (~16 field refs / ~8 non-test — v0.1's "25/27" was wrong).
+Churn is trivial. The cost is **policy + entanglement**:
+- **Co-mutation block 1 (eager):** anchor + `yaw=0`/`pitch=-30` — split so the caller keeps pose.
+- **Co-mutation block 2 (integrator):** anchor + 4 siblings — split so the caller keeps siblings.
+- Gate sequence mirrors the collision store: G2 store types + `creativeWorldEpoch` field →
+  G3 failing cross-world test + freshness predicate → G4 wire ensure/seedFromOrigin +
+  migrate the camera consumer → G5 collapse the 3 seeders (preserving their 3 behaviors) →
+  G6 stress → G7 receipt audit.
 
-## 7. THE OPEN QUESTION for Gate-1 (must be answered before this is built)
+## 7. Gate-1 checklist (what ratification must confirm)
 
-**When is a re-seed the correct behavior, vs. sticky-by-design?**
+1. **Token = window-owned `creativeWorldEpoch`** (new field, bumped in the origin frame),
+   NOT `Session::stateHash()`/`runtimeStateHash`. Confirm the app-lane-only scope (no
+   session/runtime edit → stays out of the core-spine session gate).
+2. **Epoch precedence** — origin-frame bumps + seeds; lazy seeders fill only within-epoch.
+3. **Preserve the 3 seed behaviors** — origin keeps yaw/pitch; map_maker keeps no-latch-on-
+   no-player; both `ensureCreativeFlyAnchor` callers (incl. the `&*activeSession` deref).
+4. **Migrate the camera consumer in lockstep** so the override does not flicker on drift.
+5. **3 existing tests + 1 new test** in scope; standalone-app anchor explicitly out.
 
-The camera anchor being sticky *within* a session is correct (you don't want it
-snapping back while you fly). The question is the **boundary**: on world/session load,
-should the fly anchor reset to that world's player/origin, or persist the last
-position? Recon proves it currently **persists** (never invalidated) — but I cannot
-tell from the code whether that is intended UX or a latent bug. Two ratifiable answers:
+**Once ratified and #2 lands, decompose into G2–G7.** Until then, held in `blocked/`.
 
-- **(A) Re-seed on session drift** (full exemplar): `sessionHash` mismatch forces a
-  re-seed. Fixes the cross-world stale-anchor. **Recommended** — matches the collision
-  store's session discipline and the "no stored state outlives its provenance" law.
-- **(B) Sticky is intended** (lighter): keep persistence, but still collapse the 3
-  seeders to one verb and record provenance for the receipt. Drops the session token.
-  Smaller, but leaves the anchor able to outlive its seeding session.
+## 8. Adversarial-verification audit trail
 
-**Do not build until the user picks A or B.** The whole store shape (token vs.
-no-token) hinges on it. Recommendation: **A**.
+Workflow `wuu7jt0jx` (transcript under `.../subagents/workflows/wf_9faca7cb-4ab`):
+invalidation-hunt + window-lifetime **confirmed** persistence and the never-reset latch;
+missed-access-sweep + collapse-safety returned **nuanced**, surfacing the token trap, the
+provenance race, the yaw/pitch and no-latch behavioral differences, the second caller, the
+render fan-out, and the 3 test migrations. Completeness critic: **decision A survives,
+gateSequenceReady = false** until the token blocker + 3 shape corrections are folded in —
+which is what v0.2 does.
