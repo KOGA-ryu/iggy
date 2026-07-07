@@ -1,6 +1,6 @@
 # E162 — DebugHudStore bulk-move (god-struct decomposition #9) — PARENT
 
-**STATUS: STAGED in `blocked/`.** Recon-grounded + spot-verified (workflow `wdnplylk0`).
+**STATUS: READY — claim next.** Recon-grounded + spot-verified (workflow `wdnplylk0`).
 **Commit convention:** `claude: planned. codex: …`.
 
 > **EXECUTION SERIALIZES** on `ProductAppWindowState.hpp`; re-anchor at slice time.

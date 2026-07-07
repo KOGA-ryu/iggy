@@ -1,6 +1,6 @@
 # E156 — InputDeviceStore bulk-move (god-struct decomposition #7) — PARENT
 
-**STATUS: DECOMPOSED PARENT in `blocked/` — do not claim directly. Child cards: E165-E167.**
+**STATUS: COMPLETE PARENT — implemented through child cards E165-E167.**
 Recon-grounded + spot-verified (workflow `wkqdxuj2u`, 2026-07-07). **Commit convention:** `claude: planned. codex: …`.
 
 > **Tree is mid-flight** (RoomStore/E153 just landed). **Anchor by field NAME; re-verify lines at slice time.**
@@ -90,3 +90,17 @@ thing a text tool cannot. Golden + coverage gate prove behavior + accounting.
 - **G2** — migrate **test** readers (the ~50 mis-named aliases + harness files); ctest 260/260.
 - **G3** — TSV edit + map/PRIORITY docs; golden confirmed unchanged.
 (Given the interactionMode collision density, keeping G1 production-only + G2 tests makes review tractable.)
+
+---
+
+## Parent Completion Brief
+
+Completed through:
+
+- E165 — device/action state: `gamepadAvailable`, `gamepadName`, `gamepadMapping`, `lastInputAction`, `lastInputAccepted`.
+- E166 — controller/capture state: `mouseCapture`, `controllerModeToggle`, `controllerAction`.
+- E167 — interaction mode state: `interactionMode`, `interactionModeHud`.
+
+`ProductAppWindowState` now owns a single `InputDeviceStore inputDevice` member
+for this store. `gamepadMenuSelectUsed` intentionally remains flat and assigned
+to FrontendWindowShell.
