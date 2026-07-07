@@ -2,6 +2,7 @@
 
 **STATUS: STAGED in `blocked/`.** Recon-grounded + spot-verified (workflow `wdnplylk0`).
 **Commit convention:** `claude: planned. codex: …`. This is the residual "junk-drawer" resolution.
+Children released so far: `ready/E173-frontendwindowshell-g0-current-state-audit.md`.
 
 > **EXECUTION SERIALIZES** on `ProductAppWindowState.hpp`; run AFTER #4/#6/#7/#9/#11 so the true leftover set is
 > visible. Re-anchor at slice time.

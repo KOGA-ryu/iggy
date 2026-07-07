@@ -55,7 +55,9 @@ None.
 
 ## Pull Next
 
-None currently ready.
+1. `E173-frontendwindowshell-g0-current-state-audit.md` — read-only
+   current-state audit after E172. Reconcile the `automationControl` ownership
+   contradiction before releasing any FrontendWindowShell move.
 
 ## Tier 1: Correctness And Compatibility
 
