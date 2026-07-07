@@ -123,27 +123,27 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
   appendReceiptField(receipt, "creative_surface_kind",
                      productCreativeSurfaceKindName(creativeSurface));
   appendReceiptField(receipt, "map_maker_active", mapMakerLive);
-  appendReceiptField(receipt, "map_maker_status", window.mapMakerStatus);
+  appendReceiptField(receipt, "map_maker_status", window.viewport.mapMakerStatus);
   appendReceiptField(receipt, "map_maker_reason_code",
-                     window.mapMakerReasonCode);
+                     window.viewport.mapMakerReasonCode);
   appendReceiptField(receipt, "map_maker_grid_visible",
-                     window.mapMakerGridVisible);
+                     window.viewport.mapMakerGridVisible);
   appendReceiptField(receipt, "map_maker_grid_status",
-                     window.mapMakerGridStatus);
+                     window.viewport.mapMakerGridStatus);
   appendReceiptField(receipt, "map_maker_grid_reason_code",
-                     window.mapMakerGridReasonCode);
+                     window.viewport.mapMakerGridReasonCode);
   appendReceiptField(receipt, "map_maker_grid_pitch_meters",
-                     floatReceiptValue(window.mapMakerGridPitchMeters));
+                     floatReceiptValue(window.viewport.mapMakerGridPitchMeters));
   appendReceiptField(receipt, "map_maker_grid_major_step_meters",
-                     floatReceiptValue(window.mapMakerGridMajorStepMeters));
+                     floatReceiptValue(window.viewport.mapMakerGridMajorStepMeters));
   appendReceiptField(receipt, "map_maker_grid_plane_y",
-                     floatReceiptValue(window.mapMakerGridPlaneY));
+                     floatReceiptValue(window.viewport.mapMakerGridPlaneY));
   appendReceiptField(receipt, "map_maker_grid_layer_count",
-                     window.mapMakerGridLayerCount);
+                     window.viewport.mapMakerGridLayerCount);
   appendReceiptField(receipt, "map_maker_grid_dot_count",
-                     window.mapMakerGridDotCount);
+                     window.viewport.mapMakerGridDotCount);
   appendReceiptField(receipt, "map_maker_grid_major_dot_count",
-                     window.mapMakerGridMajorDotCount);
+                     window.viewport.mapMakerGridMajorDotCount);
   appendReceiptField(receipt, "interaction_mode_hud_visible",
                      window.interactionModeHud.visible);
   appendReceiptField(receipt, "interaction_mode_hud_status",

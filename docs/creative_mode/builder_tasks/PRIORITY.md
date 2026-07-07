@@ -17,11 +17,11 @@ all four child slices are complete. Disjoint from completed
 RoomStore/SaveSessionStore work; `runtimeSessionCreated` now belongs to
 GameplayStore.
 
-**Next ready card:** `E155` ViewportStore fold (#6 — fold 11 mapMaker* into
-ProductViewportState, ~92 repoints, small/low-risk). `E156` InputDeviceStore
-(#7 — 11 fields, ~265
-repoints; **dominant hazard: `interactionMode` is a real field on 6+ foreign
-structs, so compiler-guided only, never sed**). Both recon-grounded + spot-verified.
+**ViewportStore fold is COMPLETE as E155** (#6 — folded 11 mapMaker* fields into
+ProductViewportState). `E156` InputDeviceStore (#7 — 11 fields, ~265 repoints;
+**dominant hazard: `interactionMode` is a real field on 6+ foreign structs, so
+compiler-guided only, never sed**) remains blocked until planner slices/releases
+it.
 
 **Decomposition card set now COMPLETE (all 11 stores).** Remaining parents staged in
 `blocked/` (recon-grounded, `wdnplylk0`): `E161` CreativeAuthoringStore (#4 — the
@@ -49,7 +49,7 @@ None.
 
 ## Pull Next
 
-1. E155 — ViewportStore fold.
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -61,7 +61,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. E155 — ViewportStore fold.
+None currently ready.
 
 ## Parking Lot
 
@@ -88,6 +88,7 @@ Held — do NOT promote to `ready/` on a guess:
     regroup only; NOT an ownership kill. Preserved the nested producer copy.
   - **#5 `SaveSessionStore`** — **COMPLETE as E153.** Structural regroup only;
     `runtimeSessionCreated` was corrected to GameplayStore ownership.
+  - **#6 `ViewportStore`** — **COMPLETE as E155.**
   - **#8 `GameplayStore`** — **COMPLETE as E157-E160.**
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.

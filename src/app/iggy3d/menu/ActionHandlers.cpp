@@ -791,8 +791,10 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
     if (productCreativeWorldActiveForSource(context.window,
                                             context.creativeApp)) {
       context.frontend.status = "map_maker_toggle_creative_world_active";
-      context.window.mapMakerStatus = "map_maker_creative_world_active";
-      context.window.mapMakerReasonCode = context.window.mapMakerStatus;
+      context.window.viewport.mapMakerStatus =
+          "map_maker_creative_world_active";
+      context.window.viewport.mapMakerReasonCode =
+          context.window.viewport.mapMakerStatus;
       context.window.viewport.creativeFlyActive = false;
       context.window.viewport.creativeFlyStatus = "creative_fly_not_requested";
       context.window.viewport.creativeFlyReasonCode =
@@ -804,8 +806,9 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
     if (!resolvedSurfaceAcceptsGameplayInput(context.frontend, context.window)) {
       clearProductMapMakerMode(context.window);
       context.frontend.status = "map_maker_toggle_ignored";
-      context.window.mapMakerStatus = "map_maker_gameplay_inactive";
-      context.window.mapMakerReasonCode = context.window.mapMakerStatus;
+      context.window.viewport.mapMakerStatus = "map_maker_gameplay_inactive";
+      context.window.viewport.mapMakerReasonCode =
+          context.window.viewport.mapMakerStatus;
       return {true, false};
     }
     const bool enable =
@@ -817,9 +820,10 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
         enable ? ProductInteractionMode::Creative : ProductInteractionMode::Player;
     syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
     // branch-gate: BG-1205
-    context.window.mapMakerStatus =
+    context.window.viewport.mapMakerStatus =
         enable ? "map_maker_enabled" : "map_maker_disabled";
-    context.window.mapMakerReasonCode = context.window.mapMakerStatus;
+    context.window.viewport.mapMakerReasonCode =
+        context.window.viewport.mapMakerStatus;
     context.window.viewport.creativeFlyActive = enable;
     // branch-gate: BG-1205
     if (!enable) {
@@ -828,7 +832,7 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
           context.window.viewport.creativeFlyStatus;
       context.window.viewport.creativeFlySpeedMetersPerSecond = 0.0F;
     }
-    context.frontend.status = context.window.mapMakerStatus;
+    context.frontend.status = context.window.viewport.mapMakerStatus;
     return {true, true};
   }
 

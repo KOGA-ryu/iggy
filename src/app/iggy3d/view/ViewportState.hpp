@@ -18,6 +18,17 @@ struct ProductViewportState {
   float cameraYawDegrees = 0.0F;
   float cameraPitchDegrees = 0.0F;
   bool cameraHeadingVisible = false;
+  std::string mapMakerStatus = "map_maker_inactive";
+  std::string mapMakerReasonCode = "map_maker_inactive";
+  bool mapMakerGridVisible = false;
+  std::string mapMakerGridStatus = "map_maker_grid_disabled";
+  std::string mapMakerGridReasonCode = "map_maker_grid_disabled";
+  float mapMakerGridPitchMeters = 1.0F;
+  float mapMakerGridMajorStepMeters = 5.0F;
+  float mapMakerGridPlaneY = 0.0F;
+  std::uint64_t mapMakerGridLayerCount = 0;
+  std::uint64_t mapMakerGridDotCount = 0;
+  std::uint64_t mapMakerGridMajorDotCount = 0;
   ProductCreativeFlyAnchorStore creativeFlyAnchor;
   bool creativeFlyActive = false;
   float creativeFlySpeedMetersPerSecond = 0.0F;

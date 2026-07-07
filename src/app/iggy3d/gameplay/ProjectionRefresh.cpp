@@ -380,8 +380,9 @@ ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
   const bool gridActive =
       window.gameplay.gameplayActive && (mapMakerLive || creativeStageGridLive);
   // branch-gate: BG-1205
-  window.mapMakerStatus = active ? "map_maker_active" : "map_maker_inactive";
-  window.mapMakerReasonCode = window.mapMakerStatus;
+  window.viewport.mapMakerStatus =
+      active ? "map_maker_active" : "map_maker_inactive";
+  window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
   // branch-gate: BG-1205
   if (!active) {
     window.viewport.creativeFlyActive = false;
@@ -402,16 +403,16 @@ ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
   config.planeY = mapMakerLive ? std::floor(anchor.y) : 0.0F;
   const ProductMapMakerGridSnapshot grid =
       buildProductMapMakerGridSnapshot(config);
-  window.mapMakerGridVisible = grid.visible;
-  window.mapMakerGridStatus =
+  window.viewport.mapMakerGridVisible = grid.visible;
+  window.viewport.mapMakerGridStatus =
       std::string(productMapMakerGridStatusName(grid.status));
-  window.mapMakerGridReasonCode = grid.reasonCode;
-  window.mapMakerGridPitchMeters = grid.pitchMeters;
-  window.mapMakerGridMajorStepMeters = grid.majorStepMeters;
-  window.mapMakerGridPlaneY = grid.planeY;
-  window.mapMakerGridLayerCount = grid.layerCount;
-  window.mapMakerGridDotCount = grid.dotCount;
-  window.mapMakerGridMajorDotCount = grid.majorDotCount;
+  window.viewport.mapMakerGridReasonCode = grid.reasonCode;
+  window.viewport.mapMakerGridPitchMeters = grid.pitchMeters;
+  window.viewport.mapMakerGridMajorStepMeters = grid.majorStepMeters;
+  window.viewport.mapMakerGridPlaneY = grid.planeY;
+  window.viewport.mapMakerGridLayerCount = grid.layerCount;
+  window.viewport.mapMakerGridDotCount = grid.dotCount;
+  window.viewport.mapMakerGridMajorDotCount = grid.majorDotCount;
   return grid;
 }
 
@@ -551,14 +552,14 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
     window.viewport.creativeFlyStatus = "creative_fly_not_requested";
     window.viewport.creativeFlyReasonCode = window.viewport.creativeFlyStatus;
     window.viewport.creativeFlySpeedMetersPerSecond = 0.0F;
-    window.mapMakerStatus = "map_maker_inactive";
-    window.mapMakerReasonCode = window.mapMakerStatus;
-    window.mapMakerGridVisible = false;
-    window.mapMakerGridStatus = "map_maker_grid_disabled";
-    window.mapMakerGridReasonCode = window.mapMakerGridStatus;
-    window.mapMakerGridLayerCount = 0;
-    window.mapMakerGridDotCount = 0;
-    window.mapMakerGridMajorDotCount = 0;
+    window.viewport.mapMakerStatus = "map_maker_inactive";
+    window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
+    window.viewport.mapMakerGridVisible = false;
+    window.viewport.mapMakerGridStatus = "map_maker_grid_disabled";
+    window.viewport.mapMakerGridReasonCode = window.viewport.mapMakerGridStatus;
+    window.viewport.mapMakerGridLayerCount = 0;
+    window.viewport.mapMakerGridDotCount = 0;
+    window.viewport.mapMakerGridMajorDotCount = 0;
     return;
   }
 

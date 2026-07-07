@@ -28,8 +28,8 @@ void activateMapMaker(iggy3d::ProductAppWindowState& window) {
   window.viewport.creativeFlyStatus = "creative_fly_applied";
   window.viewport.creativeFlyReasonCode = window.viewport.creativeFlyStatus;
   window.viewport.creativeFlySpeedMetersPerSecond = 8.0F;
-  window.mapMakerStatus = "map_maker_active";
-  window.mapMakerReasonCode = window.mapMakerStatus;
+  window.viewport.mapMakerStatus = "map_maker_active";
+  window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
 }
 
 void showMovementTuning(iggy3d::ProductAppWindowState& window) {

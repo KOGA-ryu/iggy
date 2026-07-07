@@ -41,8 +41,8 @@ ProductFrontendSurface surfaceForParentOwner(MenuOwner owner) {
 }
 
 bool mapMakerExplicitlyEnabled(const ProductAppWindowState& window) {
-  return window.mapMakerStatus == "map_maker_enabled" ||
-         window.mapMakerStatus == "map_maker_active";
+  return window.viewport.mapMakerStatus == "map_maker_enabled" ||
+         window.viewport.mapMakerStatus == "map_maker_active";
 }
 
 ProductInputSurface inputSurfaceForActiveSurface(

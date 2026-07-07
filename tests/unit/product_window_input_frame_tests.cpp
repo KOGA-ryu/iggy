@@ -789,8 +789,8 @@ bool mapMakerMovementStaysGameplayOwnedAndDoesNotPause() {
   if (!expect(session.has_value(), "map maker movement session created")) {
     return false;
   }
-  window.mapMakerStatus = "map_maker_enabled";
-  window.mapMakerReasonCode = window.mapMakerStatus;
+  window.viewport.mapMakerStatus = "map_maker_enabled";
+  window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
 
   const iggy3d::EntityId actor = session->state().players.actorForSlot(0);
@@ -859,8 +859,8 @@ bool creativeDocumentSuppressesProductControllerMovement() {
     return false;
   }
   markCreativeDocumentWindow(window);
-  window.mapMakerStatus = "map_maker_enabled";
-  window.mapMakerReasonCode = window.mapMakerStatus;
+  window.viewport.mapMakerStatus = "map_maker_enabled";
+  window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
   iggy3d::creative::CreativeAppState app;
   app.identity.saveId = "creative_save";
   app.identity.worldId = "creative_world";
@@ -2603,7 +2603,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
   iggy3d::ProductAppWindowState creativeWorldWindow;
   creativeWorldWindow.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(creativeWorldWindow);
-  creativeWorldWindow.mapMakerStatus = "map_maker_enabled";
+  creativeWorldWindow.viewport.mapMakerStatus = "map_maker_enabled";
   creativeWorldWindow.viewport.creativeFlyActive = true;
   iggy3d::creative::CreativeAppState creativeWorldApp;
   creativeWorldApp.identity.saveId = "creative_save";
@@ -2628,7 +2628,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
              "top-level creative M blocks map maker live state") &&
       expect(!creativeWorldWindow.viewport.creativeFlyActive,
              "top-level creative M clears stale creative fly") &&
-      expect(creativeWorldWindow.mapMakerStatus ==
+      expect(creativeWorldWindow.viewport.mapMakerStatus ==
                  "map_maker_creative_world_active",
              "top-level creative M status");
 
@@ -2994,7 +2994,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
              "map maker toggle owner derives as gameplay") &&
       expect(iggy3d::productMapMakerLiveForWindow(frontend, window),
              "map maker live derives from creative gameplay") &&
-      expect(window.mapMakerStatus == "map_maker_enabled",
+      expect(window.viewport.mapMakerStatus == "map_maker_enabled",
              "map maker enabled status") &&
       expect(frontend.status == "map_maker_enabled",
              "map maker frontend status");
@@ -3014,7 +3014,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
              "map maker disable keeps gameplay owner") &&
       expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
              "map maker live false in player mode") &&
-      expect(window.mapMakerStatus == "map_maker_disabled",
+      expect(window.viewport.mapMakerStatus == "map_maker_disabled",
              "map maker disabled status") &&
       expect(!window.viewport.creativeFlyActive,
              "map maker disable clears creative fly active");
@@ -3023,7 +3023,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   iggy3d::ProductAppWindowState creativeWorldWindow;
   creativeWorldWindow.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(creativeWorldWindow);
-  creativeWorldWindow.mapMakerStatus = "map_maker_enabled";
+  creativeWorldWindow.viewport.mapMakerStatus = "map_maker_enabled";
   creativeWorldWindow.viewport.creativeFlyActive = true;
   iggy3d::creative::CreativeAppState creativeWorldApp;
   creativeWorldApp.identity.saveId = "creative_save";
@@ -3046,7 +3046,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
              "creative world blocks map maker live") &&
       expect(!creativeWorldWindow.viewport.creativeFlyActive,
              "creative world clears stale creative fly") &&
-      expect(creativeWorldWindow.mapMakerStatus ==
+      expect(creativeWorldWindow.viewport.mapMakerStatus ==
                  "map_maker_creative_world_active",
              "creative world map maker status") &&
       expect(creativeWorld.status ==
@@ -3065,7 +3065,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
       expect(inactiveWindow.interactionMode ==
                  iggy3d::ProductInteractionMode::Player,
              "inactive map maker preserves player mode") &&
-      expect(inactiveWindow.mapMakerStatus == "map_maker_gameplay_inactive",
+      expect(inactiveWindow.viewport.mapMakerStatus == "map_maker_gameplay_inactive",
              "inactive map maker status");
 
   iggy3d::FrontendState pause = gameplayFrontend();
@@ -3089,7 +3089,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
              "pause map maker live remains false") &&
       expect(!blockedWindow.viewport.creativeFlyActive,
              "pause map maker toggle clears creative fly") &&
-      expect(blockedWindow.mapMakerStatus == "map_maker_gameplay_inactive",
+      expect(blockedWindow.viewport.mapMakerStatus == "map_maker_gameplay_inactive",
              "pause map maker inactive status");
 
   iggy3d::ProductAppWindowState staleWindow;

@@ -1208,8 +1208,8 @@ bool creativeDocumentSurfaceHidesLegacyGameplayHudAndFeedback() {
   app.identity.saveId = "creative_save";
   app.identity.worldId = "world_001";
   app.identity.documentId = 42U;
-  window.mapMakerStatus = "map_maker_enabled";
-  window.mapMakerReasonCode = window.mapMakerStatus;
+  window.viewport.mapMakerStatus = "map_maker_enabled";
+  window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
   window.gameplay.gameplayCommand.submitted = true;
   window.gameplay.gameplayCommand.kind = "move";
   window.gameplay.gameplayCommand.status = "accepted";
@@ -1347,8 +1347,8 @@ bool gameplayMapMakerFrameCarriesGridOverlay() {
     return false;
   }
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.mapMakerStatus = "map_maker_enabled";
-  window.mapMakerReasonCode = window.mapMakerStatus;
+  window.viewport.mapMakerStatus = "map_maker_enabled";
+  window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
   window.creativeWorldEpoch = 1;
   iggy3d::seedCreativeFlyAnchorFromScene(window, {0.0F, 2.0F, 0.0F});
   iggy3d::FrontendState frontend;
@@ -1428,8 +1428,8 @@ bool gameplayMapMakerFrameCarriesGridOverlay() {
                 "map maker render bridge cube count") &&
          expect(iggy3d::productMapMakerLiveForWindow(frontend, window),
                 "map maker window live") &&
-         expect(window.mapMakerGridVisible, "map maker window grid visible") &&
-         expect(window.mapMakerGridLayerCount == projection.mapMakerGrid.layerCount,
+         expect(window.viewport.mapMakerGridVisible, "map maker window grid visible") &&
+         expect(window.viewport.mapMakerGridLayerCount == projection.mapMakerGrid.layerCount,
                 "map maker window layer count") &&
          expect(window.viewport.productDrawMapMakerGridVisible,
                 "map maker draw receipt visible") &&
@@ -1449,8 +1449,8 @@ bool mapMakerFrameWithoutPlayerDoesNotLatchFlyAnchor() {
   std::optional<iggy3d::Session> session;
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.mapMakerStatus = "map_maker_enabled";
-  window.mapMakerReasonCode = window.mapMakerStatus;
+  window.viewport.mapMakerStatus = "map_maker_enabled";
+  window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
   window.creativeWorldEpoch = 1;
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Gameplay;

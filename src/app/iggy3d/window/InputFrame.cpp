@@ -500,8 +500,8 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
     // The map_maker surface tags its status here; the shared fly wrapper stays
     // surface-neutral so the creative-document Navigate path (TV1-H) can reuse
     // it without stamping a map_maker label.
-    window.mapMakerStatus = "map_maker_active";
-    window.mapMakerReasonCode = window.mapMakerStatus;
+    window.viewport.mapMakerStatus = "map_maker_active";
+    window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
     mapMakerActionApplied = !acceptedGameplayActions.entries.empty();
     mapMakerActionAccepted =
         mapMakerActionApplied &&

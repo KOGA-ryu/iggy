@@ -87,3 +87,51 @@ This is small enough to be **one gate**, but if slicing:
 - **G2** — migrate the **test** readers (incl. the 5 mis-named vars); ctest 260/260.
 - **G3** — TSV edit + map/PRIORITY docs; golden confirmed unchanged.
 (G1+G2 can reasonably merge — the compiler forces both to land together to compile.)
+
+---
+
+## Completion Brief
+
+- Files changed:
+  - `src/app/iggy3d/view/ViewportState.hpp`
+  - `src/app/iggy3d/ProductAppWindowState.hpp`
+  - `src/app/iggy3d/menu/FrontendRouter.cpp`
+  - `src/app/iggy3d/gameplay/ProjectionRefresh.cpp`
+  - `src/app/iggy3d/menu/Transitions.cpp`
+  - `src/app/iggy3d/menu/ActionHandlers.cpp`
+  - `src/app/iggy3d/window/InputFrame.cpp`
+  - `src/app/iggy3d/receipt/FrontendSettingsWindowFields.cpp`
+  - `tests/unit/product_window_input_frame_tests.cpp`
+  - `tests/unit/product_vulkan_room_frame_tests.cpp`
+  - `tests/unit/product_menu_transitions_tests.cpp`
+  - `tests/unit/product_creative_world_launch_tests.cpp`
+  - `tests/unit/product_frontend_router_tests.cpp`
+  - `docs/god_struct_member_ownership.tsv`
+  - `docs/god_struct_decomposition_target_map.md`
+  - `docs/creative_mode/builder_tasks/PRIORITY.md`
+  - `docs/creative_mode/builder_tasks/done/E155-viewportstore-fold.md`
+- Fold completed:
+  - Moved all 11 flat `ProductAppWindowState` map-maker viewport/grid fields into `ProductViewportState`.
+  - Folded fields: `mapMakerStatus`, `mapMakerReasonCode`, `mapMakerGridVisible`, `mapMakerGridStatus`, `mapMakerGridReasonCode`, `mapMakerGridPitchMeters`, `mapMakerGridMajorStepMeters`, `mapMakerGridPlaneY`, `mapMakerGridLayerCount`, `mapMakerGridDotCount`, `mapMakerGridMajorDotCount`.
+  - Repointed product source/tests to `window.viewport.mapMaker*` or the matching named `ProductAppWindowState` variable.
+  - Left foreign same-name draw-list/render/projection state untouched.
+- Receipt/ownership evidence:
+  - `product_receipt_key_order_tests`: passed; `receipt key-order oracle: 1032 fields match golden (order + values)`.
+  - No diff in `tests/golden/product_receipt_key_order.golden`.
+  - `product_god_struct_ownership_coverage_tests`: passed; `god-struct ownership coverage: assigned=136 CreativeAuthoringStore=86 DebugHudStore=5 FrontendWindowShell=15 GameplayStore=1 InputDeviceStore=11 PresentPathStore=6 RoomStore=1 SaveSessionStore=1 ViewportStore=2 app-global-remainder=7 delete=1`.
+  - Deleted the 11 old `mapMaker*	ViewportStore` top-level rows; kept the existing `viewport	ViewportStore` row.
+- Required grep result:
+  - Flat `ProductAppWindowState` declarations: none.
+  - Old `mapMaker*	ViewportStore` ownership rows: none.
+  - Flat `ProductAppWindowState` `mapMaker*` accesses after filtering foreign render/draw/projection types: none.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10` — passed.
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` — passed.
+  - `/Users/kogaryu/iggy3d/build/product_god_struct_ownership_coverage_tests` — passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure` — passed, 260/260.
+  - `git -C /Users/kogaryu/iggy3d diff --check` — passed.
+  - Focused trailing-whitespace scan over touched files — no hits.
+- Concerns/deferred:
+  - No stage, commit, push, or window launch.
+  - Receipt golden output stayed byte-identical.
+  - E156 remains blocked pending reviewer release.

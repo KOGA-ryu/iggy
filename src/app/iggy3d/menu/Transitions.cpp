@@ -39,8 +39,8 @@ void clearProductMapMakerMode(ProductAppWindowState& window) {
   window.viewport.creativeFlyStatus = "creative_fly_not_requested";
   window.viewport.creativeFlyReasonCode = window.viewport.creativeFlyStatus;
   window.viewport.creativeFlySpeedMetersPerSecond = 0.0F;
-  window.mapMakerStatus = "map_maker_inactive";
-  window.mapMakerReasonCode = window.mapMakerStatus;
+  window.viewport.mapMakerStatus = "map_maker_inactive";
+  window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
 }
 
 void clearProductGameplayMovementTuning(ProductAppWindowState& window) {

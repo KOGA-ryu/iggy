@@ -626,13 +626,13 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
   iggy3d::ProductAppWindowState legacy;
   legacy.gameplay.gameplayActive = true;
   legacy.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  legacy.mapMakerStatus = "map_maker_enabled";
-  legacy.mapMakerReasonCode = legacy.mapMakerStatus;
+  legacy.viewport.mapMakerStatus = "map_maker_enabled";
+  legacy.viewport.mapMakerReasonCode = legacy.viewport.mapMakerStatus;
 
   iggy3d::ProductAppWindowState document;
   document.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(document);
-  document.mapMakerStatus = "map_maker_enabled";
+  document.viewport.mapMakerStatus = "map_maker_enabled";
 
   iggy3d::ProductAppWindowState staleIdentity;
   staleIdentity.gameplay.gameplayActive = true;

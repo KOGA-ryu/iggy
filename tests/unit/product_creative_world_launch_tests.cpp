@@ -580,7 +580,7 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
                 "creative launch interaction mode") &&
          expect(!iggy3d::productMapMakerLiveForWindow(frontend, window),
                 "creative launch does not activate map maker") &&
-         expect(window.mapMakerStatus == "map_maker_inactive",
+         expect(window.viewport.mapMakerStatus == "map_maker_inactive",
                 "creative launch map maker inactive status") &&
          expect(frontend.childScreen == iggy3d::FrontendScreen::Gameplay,
                 "creative launch frontend gameplay") &&
@@ -4242,9 +4242,9 @@ bool creativeFrameShowsGroundGrid() {
   return expect(launched.accepted, "ground grid launch accepted") &&
          expect(iggy3d::productCreativeDocumentEditorActiveForWindow(window),
                 "ground grid creative document active") &&
-         expect(window.mapMakerGridVisible,
+         expect(window.viewport.mapMakerGridVisible,
                 "ground grid map maker grid visible") &&
-         expect(window.mapMakerGridDotCount > 0U,
+         expect(window.viewport.mapMakerGridDotCount > 0U,
                 "ground grid dot count nonzero") &&
          expect(window.viewport.productDrawMapMakerGridVisible,
                 "ground grid draw list grid visible") &&
