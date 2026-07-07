@@ -177,3 +177,22 @@ provenance race, the yaw/pitch and no-latch behavioral differences, the second c
 render fan-out, and the 3 test migrations. Completeness critic: **decision A survives,
 gateSequenceReady = false** until the token blocker + 3 shape corrections are folded in —
 which is what v0.2 does.
+
+## Ratified and decomposed
+
+Gate-1 ratification complete after E139 landed.
+
+Locked decisions:
+- Token is `ProductAppWindowState::creativeWorldEpoch`, a window-owned monotonic epoch bumped on creative world origin framing. Do not use `Session::stateHash()` or `runtimeStateHash`.
+- Origin framing has precedence: it bumps the epoch, seeds the anchor for that epoch, and keeps yaw/pitch writes local to the caller.
+- Lazy seeders must fill only when the store is unseeded or stale for the current epoch.
+- Preserve the three seeding behaviors: origin seed, InputFrame session/origin fallback latch, and ProjectionRefresh scene-anchor no-latch-on-no-player behavior.
+- Standalone app fly position remains out of scope.
+
+Builder decomposition created:
+- `ready/E142-creativefly-g2-store-types-and-epoch.md`
+- `ready/E143-creativefly-g3-store-verbs-and-freshness-tests.md`
+- `ready/E144-creativefly-g4-origin-and-camera-consumer.md`
+- `ready/E145-creativefly-g5-seeder-and-integrator-migration.md`
+- `ready/E146-creativefly-g6-stress-ordering.md`
+- `ready/E147-creativefly-g7-receipt-and-legacy-field-delete.md`
