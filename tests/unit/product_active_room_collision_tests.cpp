@@ -1,5 +1,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ascii_room/Editing.hpp"
 #include "runtime/collision/CollisionQuery.hpp"
@@ -26,6 +28,36 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool collisionProvenanceDefaultsToZero() {
+  const iggy3d::ProductActiveRoomCollisionState collision;
+  return expect(collision.bakedFromRoomRevision == 0U,
+                "default baked room revision") &&
+         expect(collision.bakedFromSessionHash == 0U,
+                "default baked session hash");
+}
+
+bool freshnessStoreG2StubObservesWithoutRebakeOrStamp() {
+  iggy3d::ProductAppWindowState window;
+  window.activeRoomRevision = 7U;
+  window.activeRoomCollision.querySurfaceCount = 42U;
+  window.activeRoomCollision.bakedFromRoomRevision = 3U;
+  window.activeRoomCollision.bakedFromSessionHash = 5U;
+
+  const iggy3d::ProductActiveRoomCollisionFreshnessResult result =
+      iggy3d::ensureActiveRoomCollisionFresh(window, nullptr);
+
+  return expect(!result.rebaked, "g2 stub does not rebake") &&
+         expect(result.observedRoomRevision == 7U, "g2 stub observes room revision") &&
+         expect(result.observedSessionHash == 0U, "g2 stub observes null session hash") &&
+         expect(result.reasonCode == "g2_stub_no_rebake", "g2 stub reason") &&
+         expect(window.activeRoomCollision.querySurfaceCount == 42U,
+                "g2 stub leaves query count unchanged") &&
+         expect(window.activeRoomCollision.bakedFromRoomRevision == 3U,
+                "g2 stub does not stamp room revision") &&
+         expect(window.activeRoomCollision.bakedFromSessionHash == 5U,
+                "g2 stub does not stamp session hash");
 }
 
 iggy3d::ProductActiveRoomState trainingActiveRoom() {
@@ -279,7 +311,9 @@ bool rejectsLoadedRoomWithoutSurfaces() {
 }  // namespace
 
 int main() {
-  const bool ok = buildsCollisionFromLoadedAsciiRoom() &&
+  const bool ok = collisionProvenanceDefaultsToZero() &&
+                  freshnessStoreG2StubObservesWithoutRebakeOrStamp() &&
+                  buildsCollisionFromLoadedAsciiRoom() &&
                   runtimeDoorStateFiltersDoorCollision() &&
                   buildsCollisionFromEditedRoomSnapshot() &&
                   rejectsUnloadedActiveRoom() &&

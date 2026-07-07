@@ -78,6 +78,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/Palette.cpp
     src/app/iggy3d/creative/document/Block.cpp
     src/app/iggy3d/view/OpeningMenuView.cpp
+    src/app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.cpp
     src/app/iggy3d/gameplay/ActiveRoomCollision.cpp
     src/app/iggy3d/gameplay/ActiveRoomState.cpp
     src/app/iggy3d/world/BuiltinDungeon.cpp

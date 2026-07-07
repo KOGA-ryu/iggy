@@ -100,3 +100,50 @@ Append:
 - C2 I7 re-audit (grep + result):
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completed
+
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/ProductAppWindowState.hpp`
+  - `src/app/iggy3d/gameplay/ActiveRoomState.hpp`
+  - `src/app/iggy3d/gameplay/ActiveRoomState.cpp`
+  - `src/app/iggy3d/gameplay/ActiveRoomCollision.hpp`
+  - `src/app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp`
+  - `src/app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.cpp`
+  - `tests/unit/product_active_room_state_tests.cpp`
+  - `tests/unit/product_active_room_collision_tests.cpp`
+- Types added:
+  - `ProductAppWindowState::activeRoomRevision`, default `0`, window-owned beside `activeRoom`.
+  - `bumpActiveRoomRevision(ProductAppWindowState&)`, the only new revision mutator, increments by exactly one.
+  - `ProductActiveRoomCollisionState::bakedFromRoomRevision`, default `0`.
+  - `ProductActiveRoomCollisionState::bakedFromSessionHash`, default `0`.
+  - `ProductActiveRoomCollisionFreshnessResult` with `rebaked`, observed revision/hash, and `reasonCode`.
+  - `ensureActiveRoomCollisionFresh(ProductAppWindowState&, const Session*)` stub in `ActiveRoomCollisionFreshnessStore`.
+- Stub behavior confirmed:
+  - The G2 stub observes `window.activeRoomRevision` and `session->state().currentStateHash` when a session is present.
+  - With `session == nullptr`, observed session hash is `0`.
+  - It returns `rebaked=false` and `reasonCode="g2_stub_no_rebake"`.
+  - It does not rebuild, stamp, or mutate `window.activeRoomCollision`.
+- "No consumer" grep result:
+  - `rg -n "bumpActiveRoomRevision\(|ensureActiveRoomCollisionFresh\(" src --glob '*.cpp' --glob '*.hpp' | rg -v 'ActiveRoomState\.(cpp|hpp)|ActiveRoomCollisionFreshnessStore\.(cpp|hpp)'`
+  - Result: no output. There are no production consumers outside the new declarations/definitions.
+  - The broader source/test grep only finds the new tests plus the new declarations/definitions.
+- C3 removal-checklist reconciliation:
+  - Re-ran the three checklist greps for `buildProductActiveRoomCollision(...)`, `activeRoomCollision =`, and `refreshActiveRoomCollision`.
+  - Current callsite inventory matched the existing checklist; no checklist doc update was needed.
+  - No rebake callsites were removed or modified.
+- C2 I7 re-audit:
+  - `rg -n "setActive\(" src/app src/runtime | rg -v "creative|ActiveTool"`
+  - `rg -n "entity\.active\s*=" src/app src/runtime`
+  - Production active toggles remain routed through the existing interaction/session command path; direct assignments are seed/load/binding construction paths, not door-state bypasses.
+  - No G2 door-state or session-hash behavior was changed.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_active_room_state_tests product_active_room_collision_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure` (`100% tests passed, 0 tests failed out of 259`)
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - Focused trailing-whitespace scan over touched/new files.
+- Concerns/deferred:
+  - This intentionally does not bump room revisions at writers.
+  - This intentionally does not call `ensureActiveRoomCollisionFresh(...)` from readers/frame boundaries.
+  - The ensure function is still a no-rebake G2 stub; stale detection, stamping, writer adoption, and direct rebake removal stay for later gates.

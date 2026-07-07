@@ -252,6 +252,8 @@ struct ProductAppWindowState {
   ProductRoomEditorPlacementPreviewResult roomEditorPlacementPreview;
   ProductRoomEditorHud roomEditorHud;
   ProductActiveRoomState activeRoom;
+  // Window-owned monotonic room generation; whole activeRoom copies cannot stomp it.
+  std::uint64_t activeRoomRevision = 0;
   ProductActiveRoomCollisionState activeRoomCollision;
   std::string productSaveStatus = "not_requested";
   std::string productSaveReasonCode = "not_requested";

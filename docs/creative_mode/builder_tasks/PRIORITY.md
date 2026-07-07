@@ -4,10 +4,10 @@ This file ranks the task bucket without changing the bucket mechanics. Task
 files still live in `ready/`, `claimed/`, `done/`, or `blocked/`; builder should
 use this index only to decide which ready card to claim next.
 
-The current ready card is the first slice of a **gated spine change** (the
-activeRoom→collision freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
-Gate-1 ratified). It is fed one gate at a time on purpose — G3 is not seeded until
-G2 is reviewed and committed. Do not pre-load later gates.
+The current pipeline is a **gated spine change** (the activeRoom→collision
+freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
+Gate-1 ratified). It is fed one gate at a time on purpose — G3 is not seeded
+until G2 is reviewed and committed. Do not pre-load later gates.
 
 ## Claim Policy
 
@@ -25,14 +25,11 @@ None.
 
 ## Pull Next
 
-1. **E128 (E-ARCF-G2)** — ActiveRoomCollisionFreshnessStore: types + window
-   revision counter, NO consumer. Gated spine work; read the preflight + Gate-1
-   conditions C1–C3 first.
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E128 (E-ARCF-G2)** — Gate 2 of the freshness guard (types only, no consumer).
-  Later gates G3–G7 are held until each prior gate is reviewed/committed.
+None currently ready.
 
 ## Tier 2: Feature-Add Seams
 

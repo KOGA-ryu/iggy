@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/ascii_room/AsciiRoomToRoomAsset.hpp"
 #include "app/iggy3d/room_editor/EditableRoomToAuthoredRoom.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
@@ -208,6 +209,10 @@ ProductActiveRoomState buildProductActiveRoomFromRoomAuthoringSnapshot(
   fillRoomCounts(state);
   fillAuthoredCounts(state);
   return state;
+}
+
+void bumpActiveRoomRevision(ProductAppWindowState& window) {
+  ++window.activeRoomRevision;
 }
 
 }  // namespace iggy3d

@@ -1,4 +1,5 @@
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ascii_room/Editing.hpp"
 
@@ -21,6 +22,18 @@ bool expect(bool condition, std::string_view message) {
     std::cerr << "FAIL: " << message << '\n';
   }
   return condition;
+}
+
+bool activeRoomRevisionDefaultsAndBumps() {
+  iggy3d::ProductAppWindowState window;
+  bool ok = expect(window.activeRoomRevision == 0U, "active room revision default");
+
+  iggy3d::bumpActiveRoomRevision(window);
+  ok = ok && expect(window.activeRoomRevision == 1U, "active room revision first bump");
+  iggy3d::bumpActiveRoomRevision(window);
+  iggy3d::bumpActiveRoomRevision(window);
+  ok = ok && expect(window.activeRoomRevision == 3U, "active room revision third bump");
+  return ok;
 }
 
 iggy3d::ProductAsciiRoomAuthoringRequest trainingRequest() {
@@ -282,7 +295,8 @@ bool rejectsUnreadyEditableRoomSnapshot() {
 }  // namespace
 
 int main() {
-  const bool ok = buildsLoadedStateFromAsciiAuthoring() &&
+  const bool ok = activeRoomRevisionDefaultsAndBumps() &&
+                  buildsLoadedStateFromAsciiAuthoring() &&
                   recordsAuthoringFailureWithoutRoomOwnership() &&
                   buildsLoadedStateFromPackageRoom() &&
                   buildsLoadedStateFromSavedAuthoredRoom() &&

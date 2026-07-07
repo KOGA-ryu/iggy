@@ -23,6 +23,8 @@ struct ProductActiveRoomCollisionState {
   std::uint64_t runtimeFilteredSurfaceCount = 0;
   std::uint64_t doorBlockerSurfaceCount = 0;
   std::uint64_t activeDoorBlockerSurfaceCount = 0;
+  std::uint64_t bakedFromRoomRevision = 0;
+  std::uint64_t bakedFromSessionHash = 0;
   SpatialSurfaceSet surfaces;
 };
 
