@@ -55,9 +55,9 @@ None.
 
 ## Pull Next
 
-1. `E173-frontendwindowshell-g0-current-state-audit.md` — read-only
-   current-state audit after E172. Reconcile the `automationControl` ownership
-   contradiction before releasing any FrontendWindowShell move.
+1. `E174-frontendwindowshell-g1-scalar-menu-state.md` — first
+   FrontendWindowShell implementation slice. Create the shell, move scalar
+   menu/status fields, and retarget `automationControl` ownership only.
 
 ## Tier 1: Correctness And Compatibility
 
