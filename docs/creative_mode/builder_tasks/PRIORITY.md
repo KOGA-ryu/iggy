@@ -11,6 +11,12 @@ COMPLETE (E142-E147). Current work: structural `activeRoom` regroup into
 RoomStore. This is explicitly not an ownership kill; the owner is already
 single-source. Builder should pull E148-E152 in numeric order.
 
+**Also complete:** the 2 dead write-only fields `window.inputOwner` /
+`window.gameplayInputSuppressed` were deleted (`36ceeac3`) — god-struct now 153
+members. **Staged next (blocked/, pending release):** `E153` SaveSessionStore
+bulk-move (decomposition #5, 31 fields, recon-grounded handoff) — a separate
+track from RoomStore with a disjoint field set.
+
 ## Claim Policy
 
 1. If a task listed under **Pull Next** is present in `ready/`, claim the first
