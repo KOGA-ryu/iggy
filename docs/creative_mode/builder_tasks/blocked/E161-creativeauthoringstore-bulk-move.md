@@ -2,7 +2,8 @@
 
 **STATUS: STAGED in `blocked/` — parent card; MUST be sliced (largest store in the tree).**
 Children released so far: `done/E168-creativeauthoringstore-g1-wireframe.md`;
-`ready/E169-creativeauthoringstore-g2-viewport-pick.md`.
+`done/E169-creativeauthoringstore-g2-viewport-pick.md`;
+`ready/E170-creativeauthoringstore-g3-room-editor.md`.
 Recon-grounded + spot-verified (workflow `wdnplylk0`). **Commit convention:** `claude: planned. codex: …`.
 
 > **Tree mid-flight + EXECUTION SERIALIZES** on `ProductAppWindowState.hpp` — do after prior moves land;
