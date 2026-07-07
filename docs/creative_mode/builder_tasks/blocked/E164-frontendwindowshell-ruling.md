@@ -3,7 +3,8 @@
 **STATUS: STAGED in `blocked/`.** Recon-grounded + spot-verified (workflow `wdnplylk0`).
 **Commit convention:** `claude: planned. codex: …`. This is the residual "junk-drawer" resolution.
 Children released so far: `done/E173-frontendwindowshell-g0-current-state-audit.md`;
-`ready/E174-frontendwindowshell-g1-scalar-menu-state.md`.
+`done/E174-frontendwindowshell-g1-scalar-menu-state.md`;
+`ready/E175-frontendwindowshell-g2-startup-state.md`.
 
 > **EXECUTION SERIALIZES** on `ProductAppWindowState.hpp`; run AFTER #4/#6/#7/#9/#11 so the true leftover set is
 > visible. Re-anchor at slice time.
@@ -48,6 +49,7 @@ pairs with `mouseMenuSelectUsed` (already in the shell). **E156 has been updated
 ## Suggested slices
 
 - **STEP 0 (gate-neutral):** TSV `gamepadMenuSelectUsed` retarget (if the reclaim is accepted).
-- **G1:** stand up `FrontendWindowShell` (+ absorb `productVulkanMenu` from #11), move the menu/boot flags,
-  compiler-repoint; build + ctest 260/260.
-- **G2:** decide `automationControl`'s home (separate card if it needs one) + final map/PRIORITY docs.
+- **G1:** stand up `FrontendWindowShell`, move scalar menu/status fields, and retarget `automationControl`
+  ownership to `app-global-remainder`. **DONE as E174.**
+- **G2:** move `startup` into the existing `FrontendWindowShell`. **READY as E175.**
+- **G3:** move `productVulkanMenu` into `FrontendWindowShell`; final map/PRIORITY docs.
