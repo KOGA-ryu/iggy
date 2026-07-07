@@ -6,8 +6,8 @@ use this index only to decide which ready card to claim next.
 
 The current pipeline is a **gated spine change** (the activeRoom→collision
 freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
-Gate-1 ratified). Gates G2–G6 are done. Do not pre-load G7 until G6 is
-reviewed and committed.
+Gate-1 ratified). **Gates G2–G6 done → G7 seeded** (the finish: receipt
+instrumentation + audit + architecture receipt). G7 completes the collision store.
 
 ## Claim Policy
 
@@ -25,11 +25,15 @@ None.
 
 ## Pull Next
 
-None currently ready.
+1. **E134 (E-ARCF-G7)** — the finish: surface freshness `reasonCode` into the
+   receipt, run the naming/ownership audit, write the architecture receipt. Adds a
+   receipt field (regenerate the golden) + a window field (add to the ownership TSV
+   as `RoomStore`) — both truth-gates fire by design. Read preflight §G7/§8 first.
 
 ## Tier 1: Correctness And Compatibility
 
-None currently ready.
+- **E134 (E-ARCF-G7)** — Gate 7 finish (instrumentation + audit + architecture
+  receipt). Completes the `ActiveRoomCollisionFreshnessStore` slice.
 
 ## Tier 2: Feature-Add Seams
 
@@ -43,9 +47,9 @@ None currently ready.
 
 Held — do NOT promote to `ready/` on a guess:
 
-- **Freshness-guard gate G7** (receipt `reasonCode` wiring + naming/ownership audit
-  + architecture receipt) — held; seed after G6 is reviewed/committed
-  (`docs/active_room_collision_freshness_preflight_v0_2.md` Gate 1–7 table).
+- **After G7 = collision store done.** Next standalone landing on the decomposition
+  map: **#2 `activeCreative`→delete** (`CreativeIdentityStore`, cheapest, own Gate-0
+  preflight). Then #1 `activeRoom`→`RoomStore` (its own preflight) and #3 `creativeFly`.
 - **Ownership-deficit queue** (`docs/ownership_deficit_audit.md`) landing onto the
   decomposition map (`docs/god_struct_decomposition_target_map.md`):
   - **#1 `activeRoom`→`RoomStore`** — the move-off-god-struct that severs the nested
