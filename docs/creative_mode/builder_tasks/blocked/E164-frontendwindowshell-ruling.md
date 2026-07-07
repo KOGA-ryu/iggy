@@ -18,22 +18,21 @@ After all other stores move out, the leftover top-level members are **not** homo
 - **MOVES into `FrontendWindowShell`:** the coherent opening-menu / boot-screen flags — `openingMenuVisible`,
   `menuTextDrawn`, `selectedRowDrawn`, `mouseMenuSelectUsed`, and the gamepad-menu flag (see coordination), plus
   the `productVulkanMenu` present-menu state carved out of #11. ~16 members, **~40 repoints.**
-- **FLAG (do not silently absorb):** `automationControl` is a mis-fit here — it's automation/test-harness state,
-  not window-shell. Recon recommends flagging it for its own home rather than dumping it in the shell. Surface it
-  to the planner; don't fold it in on a guess.
+- **RULED (planner-confirmed): `automationControl` STAYS app-global — do NOT put it in the shell.** It's a
+  distinct cross-cutting domain (127 refs; its own `automation_control_*` receipt fields; the test/scripting
+  driver state), already a clean nested struct. It stays as its own top-level member in the app-global
+  remainder — analogous to `activeSession`/`creativeApp` — **not** a store, **not** the shell. Keep its TSV row
+  under the app-global-remainder owner label (same as `requested`/`sdlAvailable`/…). No move; no code change to it.
 
-## ⚠ CROSS-CARD COORDINATION — reclaim `gamepadMenuSelectUsed` from InputDeviceStore (E156)
+## CROSS-CARD COORDINATION — `gamepadMenuSelectUsed` reclaimed from InputDeviceStore (E156) — CONFIRMED
 
-Recon found `gamepadMenuSelectUsed` is **mis-filed into InputDeviceStore #7 (E156)**. It is a *menu-selection*
-flag that pairs with `mouseMenuSelectUsed` (they sit adjacent on the god-struct, `:195`/`:197`), not a gamepad
-*device* property like `gamepadAvailable`/`gamepadName`/`gamepadMapping`. **Recommended: it belongs in
-FrontendWindowShell.**
-
-**Action for the planner/slicer:** this is a judgment call (device-flag vs menu-flag). If accepted:
-- **Gate-neutral pre-step** (do while both are still flat, zero code change): correct the TSV row
+**Planner-confirmed:** `gamepadMenuSelectUsed` moves to **FrontendWindowShell**, out of InputDeviceStore #7.
+Verified: it is a *menu-selection* flag written beside `mouseMenuSelectUsed` in `InputFrame.cpp` menu-select
+tracking (`:1453`/`:1542`) — not a device property like `gamepadAvailable`/`gamepadName`/`gamepadMapping`. It
+pairs with `mouseMenuSelectUsed` (already in the shell). **E156 has been updated to drop it (now 10 fields).**
+- **Gate-neutral pre-step** (while both are still flat, zero code change): retarget the TSV row
   `gamepadMenuSelectUsed` from `InputDeviceStore` → `FrontendWindowShell`.
-- **Remove `gamepadMenuSelectUsed` from E156's InputDeviceStore field list** so #7 doesn't claim it.
-If rejected, leave it in InputDeviceStore and drop it from this card. **Confirm before either store executes.**
+- It then moves into `FrontendWindowShell` with `mouseMenuSelectUsed` in G1.
 
 ## LAW & gates
 

@@ -9,27 +9,30 @@ Recon-grounded + spot-verified (workflow `wkqdxuj2u`, 2026-07-07). **Commit conv
 
 ## Goal
 
-Move the **11 input-device/capture fields** off the god-struct into a new `InputDeviceStore` struct in its own
+Move the **10 input-device/capture fields** off the god-struct into a new `InputDeviceStore` struct in its own
 header; god-struct holds one `InputDeviceStore inputDevice;` member. **Plain owned state, no derived truth, no
 freshness token.**
 
-## The 11 fields
+## The 10 fields
 
 ```
-gamepadAvailable gamepadMenuSelectUsed gamepadName gamepadMapping
+gamepadAvailable gamepadName gamepadMapping
 interactionMode interactionModeHud
 mouseCapture controllerModeToggle controllerAction
 lastInputAction lastInputAccepted
 ```
 
+- **`gamepadMenuSelectUsed` was RECLAIMED to FrontendWindowShell #10 (E164) — planner-confirmed.** It is a
+  *menu-selection* flag paired with `mouseMenuSelectUsed` (both written in `InputFrame.cpp` menu-select
+  tracking, `:1453`/`:1542`), not a device property. **Do NOT move it here.**
 - The map's two **DELETEs** (`inputOwner`, `gameplayInputSuppressed`) are **already done** (`36ceeac3`) — not here.
 - `mouseCapture.inputOwner` (receipt-only) **stays inside `mouseCapture`** and moves with it as one unit.
 
 ## Member design
 
-Create `src/app/iggy3d/input/InputDeviceStore.hpp` — `struct InputDeviceStore { …11 fields verbatim… };` with
+Create `src/app/iggy3d/input/InputDeviceStore.hpp` — `struct InputDeviceStore { …10 fields verbatim… };` with
 the types' existing includes (InteractionMode, InteractionModeHud, MouseCaptureState, ControllerModeToggleState,
-ControllerActionState, InputAction). Replace the 11 flat god-struct fields with `InputDeviceStore inputDevice;`.
+ControllerActionState, InputAction). Replace the 10 flat god-struct fields with `InputDeviceStore inputDevice;`.
 
 ## LAW
 
@@ -55,7 +58,7 @@ the compiler reports** (it distinguishes `window.interactionMode` from `routing.
 
 ## Method
 
-1. Create `InputDeviceStore.hpp`; replace the 11 flat fields in `ProductAppWindowState.hpp` with
+1. Create `InputDeviceStore.hpp`; replace the 10 flat fields in `ProductAppWindowState.hpp` with
    `InputDeviceStore inputDevice;`. 2. Build; repoint each error `<obj>.<field> → <obj>.inputDevice.<field>`
    (incl. the `window_` alias in Operations.cpp). 3. ctest 260/260. 4. TSV/docs.
 
@@ -68,7 +71,7 @@ fields are lighter. **~50 mis-named `ProductAppWindowState` test aliases** exist
 
 ## TSV edit
 
-Delete the 11 `*␉InputDeviceStore` rows (they already carry the target label), add one `inputDevice␉InputDeviceStore`
+Delete the 10 `*␉InputDeviceStore` rows (they already carry the target label), add one `inputDevice␉InputDeviceStore`
 row. (`InputDeviceStore` is already a valid owner.)
 
 ## GATES
