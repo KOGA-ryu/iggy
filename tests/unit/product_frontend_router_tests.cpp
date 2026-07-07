@@ -7,6 +7,7 @@
 #include "app/frontend/StarterScreen.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/iggy3d/creative/CreativeAppState.hpp"
 
 #include <array>
 #include <iostream>
@@ -641,6 +642,8 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
   const iggy3d::creative::CreativeActiveIdentity liveIdentity =
       liveCreativeIdentity();
   const iggy3d::creative::CreativeActiveIdentity inactiveIdentity;
+  iggy3d::creative::CreativeAppState liveApp;
+  liveApp.identity = liveIdentity;
 
   iggy3d::ProductAppOptions options;
   iggy3d::ProductWorldTemplate world;
@@ -673,6 +676,13 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
                 "inactive identity not active") &&
          expect(iggy3d::productCreativeWorldActiveForIdentity(liveIdentity),
                 "live identity active") &&
+         expect(iggy3d::productCreativeWorldActiveForSource(staleIdentity,
+                                                            &liveApp),
+                "source world active ignores interaction mode") &&
+         expect(!iggy3d::productCreativeDocumentEditorActiveForSource(
+                    staleIdentity,
+                    &liveApp),
+                "source document editor requires creative mode") &&
          expect(iggy3d::productCreativeWorldActiveForWindowMirror(document),
                 "window mirror fallback active") &&
          expect(!iggy3d::productCreativeWorldActiveForWindowMirror(none),

@@ -78,7 +78,9 @@ ProductCreativeWireframeFrameBuildResult buildProductCreativeWireframeFrame(
     return result;
   }
 
-  receipt.active = productCreativeWireframeFrameActiveForWindow(*request.window);
+  receipt.active =
+      productCreativeDocumentEditorActiveForSource(*request.window,
+                                                   request.creative);
   if (!receipt.active) {
     setStatus(receipt, "product_creative_wireframe_frame_inactive");
     return result;

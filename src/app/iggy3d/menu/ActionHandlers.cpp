@@ -785,7 +785,8 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
     ProductGameplayMapMakerToggleActionContext context) {
   // branch-gate: BG-1205
   if (action == InputAction::MapMakerToggle) {
-    if (productCreativeWorldActiveForWindow(context.window)) {
+    if (productCreativeWorldActiveForSource(context.window,
+                                            context.creativeApp)) {
       context.frontend.status = "map_maker_toggle_creative_world_active";
       context.window.mapMakerStatus = "map_maker_creative_world_active";
       context.window.mapMakerReasonCode = context.window.mapMakerStatus;

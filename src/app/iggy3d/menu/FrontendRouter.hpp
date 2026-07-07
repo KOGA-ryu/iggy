@@ -110,6 +110,9 @@ bool productMapMakerLiveForWindow(const FrontendState& frontend,
                                   const ProductAppWindowState& window);
 bool productCreativeWorldActiveForIdentity(
     const creative::CreativeActiveIdentity& identity);
+bool productCreativeWorldActiveForSource(
+    const ProductAppWindowState& window,
+    const creative::CreativeAppState* creativeApp);
 bool productCreativeWorldActiveForWindowMirror(
     const ProductAppWindowState& window);
 bool productCreativeWorldActiveForWindow(const ProductAppWindowState& window);

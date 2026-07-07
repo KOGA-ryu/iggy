@@ -24,6 +24,12 @@ bool expect(bool condition, std::string_view message) {
   return true;
 }
 
+void markCreativeAppIdentity(cr::CreativeAppState& app) {
+  app.identity.saveId = "creative_save";
+  app.identity.worldId = "world_001";
+  app.identity.documentId = 42U;
+}
+
 iggy3d::RenderReceipt receiptFor(const iggy3d::ProductAppWindowState& window) {
   iggy3d::ProductAppOptions options;
   iggy3d::ProductWorldTemplate world;
@@ -79,6 +85,7 @@ iggy3d::ProductAppWindowState creativeWindow() {
 
 cr::Facade facadeWithRoom() {
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::Room;
@@ -136,6 +143,7 @@ bool activeRuleUsesCreativeDocumentIdentity() {
 
 bool nullWindowFailsClosed() {
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   iggy3d::ProductCreativeViewportPickFrameRequest request;
@@ -159,6 +167,7 @@ bool nullWindowFailsClosed() {
 bool inactiveWindowDoesNotPick() {
   iggy3d::ProductAppWindowState window;
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   iggy3d::ProductCreativeViewportPickFrameRequest request =
@@ -179,6 +188,7 @@ bool inactiveWindowDoesNotPick() {
 bool noClickDoesNotPick() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   iggy3d::ProductCreativeViewportPickFrameRequest request =
@@ -198,6 +208,7 @@ bool noClickDoesNotPick() {
 bool suppressedClickDoesNotPick() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   iggy3d::ProductCreativeViewportPickFrameRequest request =
@@ -237,6 +248,7 @@ bool missingFacadeDoesNotPick() {
 bool emptyFacadeDocumentReportsSourceEmpty() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   iggy3d::ProductCreativeViewportPickFrameRequest request =
       baseRequest(window, app);
@@ -255,6 +267,7 @@ bool emptyFacadeDocumentReportsSourceEmpty() {
 bool facadeRoomProjectsAndHits() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
@@ -292,6 +305,7 @@ bool facadeRoomProjectsAndHits() {
 bool defaultDepthModeStaysFixedZ() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   iggy3d::ProductCreativeViewportPickFrameRequest request =
@@ -317,6 +331,7 @@ bool defaultDepthModeStaysFixedZ() {
 bool highestZDepthModePicksRoomAtZOneWithRequestZZero() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
@@ -347,6 +362,7 @@ bool highestZDepthModePicksRoomAtZOneWithRequestZZero() {
 bool hiddenRoomDoesNotProduceViewportPickHit() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
@@ -383,6 +399,7 @@ bool hiddenRoomDoesNotProduceViewportPickHit() {
 bool missWithProjectedCellsReportsMiss() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   iggy3d::ProductCreativeViewportPickFrameRequest request =
@@ -406,6 +423,7 @@ bool missWithProjectedCellsReportsMiss() {
 bool invalidViewportPropagatesThroughPick() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   iggy3d::ProductCreativeViewportPickFrameRequest request =
@@ -428,6 +446,7 @@ bool invalidViewportPropagatesThroughPick() {
 bool invalidGridPropagatesThroughPick() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   iggy3d::ProductCreativeViewportPickFrameRequest request =
@@ -541,6 +560,7 @@ bool defaultWindowReceiptFieldsAreNotRequested() {
 bool recorderCopiesHitReceiptFields() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;

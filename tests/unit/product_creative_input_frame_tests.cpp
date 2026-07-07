@@ -21,6 +21,12 @@ bool expect(bool condition, std::string_view message) {
   return true;
 }
 
+void markCreativeAppIdentity(cr::CreativeAppState& app) {
+  app.identity.saveId = "creative_save";
+  app.identity.worldId = "world_001";
+  app.identity.documentId = 42U;
+}
+
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
@@ -83,6 +89,7 @@ bool nullWindowReturnsWindowMissing() {
 bool inactiveWindowNoopsAndDoesNotMutateFacade() {
   iggy3d::ProductAppWindowState window;
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));
@@ -304,6 +311,7 @@ bool clickPacketPreservesPickedTarget() {
 bool toolKeyChangesFacadeToolWithoutDocumentMutation() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const std::uint64_t objectCountBefore = facade.document().objectCount();
@@ -336,6 +344,7 @@ bool toolKeyChangesFacadeToolWithoutDocumentMutation() {
 bool repeatedToolKeyDoesNotSpamToolChanged() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -360,6 +369,7 @@ bool repeatedToolKeyDoesNotSpamToolChanged() {
 bool selectClickWithPickedTargetUpdatesSelection() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   cr::TargetRef target;
@@ -391,6 +401,7 @@ bool moveClickWithPickedTargetSelects() {
   // Move selects like Select until the drag slice (TV1-F/G) lands.
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));
@@ -416,6 +427,7 @@ bool moveClickWithPickedTargetSelects() {
 bool navigateClickIsInert() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Navigate));
@@ -447,6 +459,7 @@ bool navigateClickIsInert() {
 bool clickWithMeasureActiveBeginsMeasurement() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
@@ -482,6 +495,7 @@ bool clickWithMeasureActiveBeginsMeasurement() {
 bool measureClickWithPickedTargetStoresMeasurementTarget() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
@@ -511,6 +525,7 @@ bool measureClickWithPickedTargetStoresMeasurementTarget() {
 bool editorCancelPreviewCancelsActiveMeasurement() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
@@ -543,6 +558,7 @@ bool editorCancelPreviewCancelsActiveMeasurement() {
 bool noApplicableInputReturnsNoop() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -597,6 +613,7 @@ bool batchNoopsForClosedInputs() {
       iggy3d::processProductCreativeInputActions(missingFacadeRequest);
 
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   iggy3d::ProductCreativeInputActionsRequest nullActionsRequest;
@@ -628,6 +645,7 @@ bool batchNoopsForClosedInputs() {
 bool batchHeldToolKeyDoesNotRedispatch() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   iggy3d::KeyboardInputState keyboard;
@@ -666,6 +684,7 @@ bool batchHeldToolKeyDoesNotRedispatch() {
 bool batchProcessesMultiplePressedToolKeysInKeyOrder() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -692,6 +711,7 @@ bool batchProcessesMultiplePressedToolKeysInKeyOrder() {
 bool batchPointerRunsAfterActionsWithUpdatedTool() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -724,6 +744,7 @@ bool batchPointerRunsAfterActionsWithUpdatedTool() {
 bool batchPointerUsesPickedTargetAfterToolAction() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -749,6 +770,7 @@ bool batchPointerUsesPickedTargetAfterToolAction() {
 bool invalidPointerTargetKeepsSelectionInvalid() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -768,6 +790,7 @@ bool invalidPointerTargetKeepsSelectionInvalid() {
 bool batchCancelOnlyWhenPressed() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
@@ -835,6 +858,7 @@ iggy3d::ProductCreativePointerLifecycleEvent lifecycleRelease(float x, float y) 
 bool measureGestureBeginsUpdatesAndEndsThroughFrameEntry() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
@@ -896,6 +920,7 @@ bool measureGestureBeginsUpdatesAndEndsThroughFrameEntry() {
 bool escMidMeasureCancelsThenReleaseIsInert() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Measure));
@@ -945,6 +970,7 @@ bool escMidMeasureCancelsThenReleaseIsInert() {
 bool selectMoveAndReleaseAreHarmlessNoOps() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();  // Select is the default tool.
 
@@ -976,6 +1002,7 @@ bool selectMoveAndReleaseAreHarmlessNoOps() {
 bool navigateLifecycleStaysInert() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(cr::Tool::Navigate));

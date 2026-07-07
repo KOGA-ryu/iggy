@@ -20,6 +20,12 @@ bool expect(bool condition, std::string_view message) {
   return true;
 }
 
+void markCreativeAppIdentity(cr::CreativeAppState& app) {
+  app.identity.saveId = "creative_save";
+  app.identity.worldId = "world_001";
+  app.identity.documentId = 42U;
+}
+
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.activeCreative.saveId = "creative_save";
@@ -31,6 +37,7 @@ iggy3d::ProductCreativeUiFrame readyCreativeUiFrame() {
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   return iggy3d::buildProductCreativeUiWindowFrame(

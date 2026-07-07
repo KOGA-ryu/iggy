@@ -28,7 +28,8 @@ namespace iggy3d {
 namespace {
 
 const char* productWindowTitle(const FrontendState& frontend,
-                               const ProductAppWindowState& window) {
+                               const ProductAppWindowState& window,
+                               const creative::CreativeAppState* creativeApp) {
   // The title must agree with what is actually DRAWN. The opening menu draws
   // while frontend.screen == Starter (the FramePresenter menu gate). The title,
   // historically, keyed only on window.gameplayActive + the creative predicate
@@ -46,7 +47,7 @@ const char* productWindowTitle(const FrontendState& frontend,
   if (window.gameplayActive) {
     // TV1-H (TL-5): the window title is creative-aware — the creative document
     // editor runs over the gameplay backdrop but is its own surface.
-    if (productCreativeDocumentEditorActiveForWindow(window)) {
+    if (productCreativeDocumentEditorActiveForSource(window, creativeApp)) {
       return "iggy3d - Creative";
     }
     return "iggy3d - Gameplay";
@@ -55,7 +56,9 @@ const char* productWindowTitle(const FrontendState& frontend,
 }
 
 void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
-                                      ProductAppWindowState& window) {
+                                      ProductAppWindowState& window,
+                                      const creative::CreativeAppState*
+                                          creativeApp) {
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
   const ProductMouseCapturePolicy policy = buildProductMouseCapturePolicy({
@@ -65,7 +68,7 @@ void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
       surface.gameplayInputSuppressed,
       true,
       false,
-      productCreativeDocumentEditorActiveForWindow(window),
+      productCreativeDocumentEditorActiveForSource(window, creativeApp),
       window.creativeNavigateActive,
   });
   window.mouseCapture.requested = policy.requested;
@@ -135,7 +138,8 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
   (void)syncProductWindowInputOwnerFromActiveSurface(request.frontend, window);
   // branch-gate: BG-1031
   if (!window.requested) {
-    recordNoWindowMouseCapturePolicy(request.frontend, window);
+    recordNoWindowMouseCapturePolicy(request.frontend, window,
+                                     request.creativeApp);
     return ProductWindowLoopResult{std::move(window), std::move(saves)};
   }
 
@@ -178,7 +182,8 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     return ProductWindowLoopResult{std::move(window), std::move(saves)};
   }
 
-  sdlWindow.setTitle(productWindowTitle(request.frontend, window));
+  sdlWindow.setTitle(
+      productWindowTitle(request.frontend, window, request.creativeApp));
   const auto start = std::chrono::steady_clock::now();
   ProductWindowInputFrameState inputFrame;
   initializeProductWindowInputFrameState(inputFrame, window);
@@ -188,7 +193,8 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
     sdlWindow.pollEvents();
     ++window.eventPollCount;
     window.drawable = sdlWindow.isDrawable();
-    sdlWindow.setTitle(productWindowTitle(request.frontend, window));
+    sdlWindow.setTitle(
+        productWindowTitle(request.frontend, window, request.creativeApp));
 
     const SdlDrawableExtent drawableExtent = sdlWindow.drawableExtent();
     const SdlWindowEventState& eventState = sdlWindow.eventState();

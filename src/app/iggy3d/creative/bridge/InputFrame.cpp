@@ -179,7 +179,9 @@ ProductCreativeInputFrameReceipt processProductCreativeInputFrame(
     return receipt;
   }
 
-  receipt.active = productCreativeInputActiveForWindow(*request.window);
+  receipt.active =
+      productCreativeDocumentEditorActiveForSource(*request.window,
+                                                   request.creative);
   if (!receipt.active) {
     receipt.status = "product_creative_input_inactive";
     receipt.reasonCode = "product_creative_input_inactive";
@@ -280,7 +282,9 @@ ProductCreativeInputFrameReceipt processProductCreativeInputActions(
     return receipt;
   }
 
-  receipt.active = productCreativeInputActiveForWindow(*request.window);
+  receipt.active =
+      productCreativeDocumentEditorActiveForSource(*request.window,
+                                                   request.creative);
   if (!receipt.active) {
     receipt.status = "product_creative_input_inactive";
     receipt.reasonCode = "product_creative_input_inactive";

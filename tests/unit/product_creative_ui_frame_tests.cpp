@@ -27,6 +27,12 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
+void markCreativeAppIdentity(cr::CreativeAppState& app) {
+  app.identity.saveId = "creative_save";
+  app.identity.worldId = "world_001";
+  app.identity.documentId = 42U;
+}
+
 iggy3d::RenderReceipt receiptFor(const iggy3d::ProductAppWindowState& window) {
   iggy3d::ProductAppOptions options;
   iggy3d::ProductWorldTemplate world;
@@ -262,6 +268,7 @@ bool creativeWindowWithFacadeProjectsAndRecords() {
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   populateSelectedFacade(facade);
 
@@ -323,6 +330,7 @@ bool activeThenInactiveClearsPriorReadyProjection() {
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -376,6 +384,7 @@ bool productVulkanMenuUiFieldsAreUnchanged() {
   window.productVulkanMenu.uiSelectedAction = "preexisting_action";
 
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   iggy3d::ProductCreativeUiFrameRequest request;
@@ -409,6 +418,7 @@ bool facadeStateIsNotMutatedByProjection() {
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   populateSelectedFacade(facade);
 

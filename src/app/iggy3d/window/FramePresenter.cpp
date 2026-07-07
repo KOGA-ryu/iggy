@@ -784,7 +784,8 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
     // branch-gate: BG-1030
     if (drawableExtent.width > 0U && drawableExtent.height > 0U) {
       const bool creativeEditorOverlayActive =
-          productCreativeDocumentEditorActiveForWindow(request.window) &&
+          productCreativeDocumentEditorActiveForSource(request.window,
+                                                       request.creativeApp) &&
           request.creativeUiDrawList != nullptr &&
           request.creativeUiDrawList->ready;
       ProductVulkanGameplayFrame renderFrame = buildProductVulkanGameplayFrame(

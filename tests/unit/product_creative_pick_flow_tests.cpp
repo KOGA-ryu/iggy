@@ -26,6 +26,12 @@ bool expect(bool condition, std::string_view message) {
   return true;
 }
 
+void markCreativeAppIdentity(cr::CreativeAppState& app) {
+  app.identity.saveId = "creative_save";
+  app.identity.worldId = "world_001";
+  app.identity.documentId = 42U;
+}
+
 iggy3d::ProductAppWindowState creativeWindow() {
   iggy3d::ProductAppWindowState window;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
@@ -58,6 +64,7 @@ cr::CreativeViewportPickViewport viewport() {
 
 cr::Facade facadeWithRoom() {
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   cr::CreativeDocumentCreateRequest request;
   request.kind = cr::CreativeObjectKind::Room;
@@ -143,6 +150,7 @@ iggy3d::ProductCreativeInputFrameReceipt dispatchPickedClick(
 bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
@@ -308,6 +316,7 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
 
 bool createRoomUiRowCommandCreatesRoomThroughFacade() {
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
   const cr::CreativeUiBuildReceipt initialUi = facade.buildUiModel();
@@ -387,6 +396,7 @@ bool createRoomUiRowCommandCreatesRoomThroughFacade() {
 bool selectPickUpdatesFacadeAndUiRows() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
@@ -429,6 +439,7 @@ bool moveToolKeyPickSelectsAndFeedsSelectionRow() {
   // selection panel is the only target surface.
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
@@ -460,6 +471,7 @@ bool moveToolKeyPickSelectsAndFeedsSelectionRow() {
 bool measurePickStoresTargetOnMeasurementRows() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = facade.document().objects()[0].id;
@@ -498,6 +510,7 @@ bool measurePickStoresTargetOnMeasurementRows() {
 bool missKeepsTargetInvalidAndSelectionUnchanged() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
 
@@ -525,6 +538,7 @@ bool missKeepsTargetInvalidAndSelectionUnchanged() {
 bool suppressedCreativeUiClickDoesNotPickOrSelect() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   app.facade = facadeWithRoom();
   [[maybe_unused]] cr::Facade& facade = app.facade;
 

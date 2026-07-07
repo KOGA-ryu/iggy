@@ -60,7 +60,8 @@ ProductCreativeUiFrame buildProductCreativeUiFrame(
   }
 
   ProductAppWindowState& window = *request.window;
-  if (!productCreativeUiActiveForWindow(window)) {
+  if (!productCreativeDocumentEditorActiveForSource(window,
+                                                    request.creative)) {
     frame.projection.receipt = makeFrameProjectionReceipt(
         request, false, "product_creative_ui_frame_inactive");
     recordProductCreativeUiProjection(window, frame.projection.receipt);

@@ -20,6 +20,12 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
+void markCreativeAppIdentity(cr::CreativeAppState& app) {
+  app.identity.saveId = "creative_save";
+  app.identity.worldId = "world_001";
+  app.identity.documentId = 42U;
+}
+
 iggy3d::RenderReceipt receiptFor(const iggy3d::ProductAppWindowState& window) {
   iggy3d::ProductAppOptions options;
   iggy3d::ProductWorldTemplate world;
@@ -198,6 +204,7 @@ bool overlayInputAvailabilityStatusesAreStable() {
 bool logicalDimensionsAreUsedWhenDrawableIsHighDpi() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -227,6 +234,7 @@ bool logicalDimensionsAreUsedWhenDrawableIsHighDpi() {
 bool fallbackDimensionsAreUsedWhenDrawableZero() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -252,6 +260,7 @@ bool fallbackDimensionsAreUsedWhenDrawableZero() {
 bool guardDimensionsAreUsedWhenDrawableAndFallbackZero() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -275,6 +284,7 @@ bool guardDimensionsAreUsedWhenDrawableAndFallbackZero() {
 bool inactiveWindowRecordsInactiveProjection() {
   iggy3d::ProductAppWindowState window;
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -314,6 +324,7 @@ bool inactiveWindowRecordsInactiveProjection() {
 bool creativeWindowWithFacadeRecordsReadyProjection() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   populateSelectedFacade(facade);
 
@@ -386,6 +397,7 @@ bool productVulkanMenuUiFieldsAreUnchanged() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   prepopulateProductVulkanMenuUi(window);
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 
@@ -423,6 +435,7 @@ bool productVulkanMenuUiFieldsAreUnchanged() {
 bool facadeStateIsNotMutatedByBridge() {
   iggy3d::ProductAppWindowState window = creativeWindow();
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   populateSelectedFacade(facade);
 
@@ -457,6 +470,7 @@ bool noWindowLoopDoesNotCallBridge() {
   iggy3d::FrontendSettings settings;
   iggy3d::ProductSaveBridgeResult saves;
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   facade.reset();
 

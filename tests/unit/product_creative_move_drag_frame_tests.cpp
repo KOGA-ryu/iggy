@@ -30,6 +30,12 @@ bool expect(bool condition, std::string_view message) {
   return true;
 }
 
+void markCreativeAppIdentity(cr::CreativeAppState& app) {
+  app.identity.saveId = "creative_save";
+  app.identity.worldId = "world_001";
+  app.identity.documentId = 42U;
+}
+
 iggy3d::FrontendState gameplayFrontend() {
   iggy3d::FrontendState frontend;
   iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
@@ -135,6 +141,7 @@ iggy3d::ProductWindowInputClickOverride lifecycleOverride(bool down,
 bool windowFrameDragMovesRoomToReleaseDestination() {
   WindowInputHarness harness;
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));
@@ -193,6 +200,7 @@ bool windowFrameDragMovesRoomToReleaseDestination() {
 bool windowFrameReleaseWithoutPressIsNoOp() {
   WindowInputHarness harness;
   cr::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] cr::Facade& facade = app.facade;
   const cr::CreativeObjectId roomId = createRoom(facade);
   static_cast<void>(facade.setActiveTool(cr::Tool::Move));

@@ -56,7 +56,9 @@ ProductCreativeViewportPickFrameReceipt routeProductCreativeViewportPickFrame(
     return receipt;
   }
 
-  receipt.active = productCreativeViewportPickActiveForWindow(*request.window);
+  receipt.active =
+      productCreativeDocumentEditorActiveForSource(*request.window,
+                                                   request.creative);
   if (!receipt.active) {
     setStatus(receipt, "product_creative_viewport_pick_inactive");
     return receipt;

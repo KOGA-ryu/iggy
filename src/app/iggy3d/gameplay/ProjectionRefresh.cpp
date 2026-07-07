@@ -35,8 +35,9 @@ struct ProductHudSurfacePolicy {
 
 ProductHudSurfacePolicy productHudSurfacePolicy(
     const FrontendState& frontend,
-    const ProductAppWindowState& window) {
-  if (productCreativeDocumentEditorActiveForWindow(window)) {
+    const ProductAppWindowState& window,
+    const creative::CreativeAppState* creativeApp) {
+  if (productCreativeDocumentEditorActiveForSource(window, creativeApp)) {
     return {};
   }
 
@@ -677,7 +678,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   ProductAppWindowState& window = request.window;
   ProductGameplayProjectionFrame frame;
   const ProductHudSurfacePolicy hudSurface =
-      productHudSurfacePolicy(request.frontend, window);
+      productHudSurfacePolicy(request.frontend, window, request.creativeApp);
   frame.feedback = buildGameplayFeedback(window);
   applyGameplayFeedbackVisibility(frame.feedback, hudSurface.gameplayHudVisible);
   frame.interactionModeHud = buildInteractionModeHud(
@@ -691,10 +692,11 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
       TopDownMapOverlayRequest{request.rendererRequest,
                                       window.interactionMode,
                                       hudSurface.gameplayHudVisible ||
-                                          hudSurface.roomEditorHudVisible,
+                                      hudSurface.roomEditorHudVisible,
                                       hudSurface.roomEditorHudVisible,
                                       0U,
-                                      productCreativeWorldActiveForWindow(window)});
+                                      productCreativeWorldActiveForSource(
+                                          window, request.creativeApp)});
   copyTopDownMapOverlay(window, frame.topDownMapOverlay);
   frame.movementHud = buildMovementDebugHud(window,
                                                    request.developerToolsEnabled,
@@ -753,7 +755,8 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
       productMapMakerLiveForWindow(request.frontend, window);
   // F0: a creative-document world (the blank stage) shows the ground grid too.
   const bool creativeStageGridLive =
-      productCreativeDocumentEditorActiveForWindow(window);
+      productCreativeDocumentEditorActiveForSource(window,
+                                                   request.creativeApp);
   frame.mapMakerGrid = buildMapMakerGridForFrame(window, frame.scene,
                                                  mapMakerLive,
                                                  creativeStageGridLive);
@@ -765,7 +768,8 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   // on Navigate-active-in-creative-document rather than on the map_maker
   // surface, so the fly position feeds the projected camera in either lane.
   const bool creativeNavigateOverride =
-      productCreativeDocumentEditorActiveForWindow(window) &&
+      productCreativeDocumentEditorActiveForSource(window,
+                                                   request.creativeApp) &&
       window.creativeNavigateActive;
   // F0: even before Navigate is engaged, the blank creative stage frames its
   // fly-camera pose (origin-framed on entry) so the origin grid is in view.
@@ -810,10 +814,11 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
       TopDownMapOverlayRequest{request.rendererRequest,
                                       window.interactionMode,
                                       hudSurface.gameplayHudVisible ||
-                                          hudSurface.roomEditorHudVisible,
+                                      hudSurface.roomEditorHudVisible,
                                       hudSurface.roomEditorHudVisible,
                                       frame.drawList.itemCount,
-                                      productCreativeWorldActiveForWindow(window)});
+                                      productCreativeWorldActiveForSource(
+                                          window, request.creativeApp)});
   copyTopDownMapOverlay(window, frame.topDownMapOverlay);
   frame.viewportFrame = buildProductViewportFrame(
       frame.drawList,

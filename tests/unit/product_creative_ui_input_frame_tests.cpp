@@ -28,6 +28,12 @@ bool expect(bool condition, std::string_view message) {
   return true;
 }
 
+void markCreativeAppIdentity(iggy3d::creative::CreativeAppState& app) {
+  app.identity.saveId = "creative_save";
+  app.identity.worldId = "world_001";
+  app.identity.documentId = 42U;
+}
+
 iggy3d::RenderReceipt receiptFor(const iggy3d::ProductAppWindowState& window) {
   iggy3d::ProductAppOptions options;
   iggy3d::ProductWorldTemplate world;
@@ -298,6 +304,7 @@ bool unrenderableOverlayInputDoesNotSuppressToolClick() {
   iggy3d::ProductAppWindowState window;
   markCreativeDocumentWindow(window);
   iggy3d::creative::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(iggy3d::creative::Tool::Measure));
@@ -735,6 +742,7 @@ bool recorderCopiesConsumedCreativeRowReceipt() {
 
 bool recorderPreservesStickyClickAndCommandAcrossNoClickFrame() {
   iggy3d::creative::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   const iggy3d::creative::CreativeUiBuildReceipt ui = facade.buildUiModel();
@@ -925,6 +933,7 @@ bool inputFrameNoClickNullDrawListRecordsNoClick() {
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
   iggy3d::creative::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   bool closeRequested = false;
@@ -1014,6 +1023,7 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
   iggy3d::creative::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   assignValidDocumentId(facade);
@@ -1120,6 +1130,7 @@ bool inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() {
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
   iggy3d::creative::CreativeAppState app;
+  markCreativeAppIdentity(app);
   iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   assignValidDocumentId(facade);
@@ -1202,6 +1213,7 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
   iggy3d::creative::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   assignValidDocumentId(facade);
@@ -1480,6 +1492,7 @@ bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
   iggy3d::creative::CreativeAppState app;
+  markCreativeAppIdentity(app);
   iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   assignValidDocumentId(facade);
@@ -1640,6 +1653,7 @@ bool inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool() {
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
   iggy3d::creative::CreativeAppState app;
+  markCreativeAppIdentity(app);
   [[maybe_unused]] iggy3d::creative::Facade& facade = app.facade;
   facade.reset();
   static_cast<void>(facade.setActiveTool(iggy3d::creative::Tool::Measure));

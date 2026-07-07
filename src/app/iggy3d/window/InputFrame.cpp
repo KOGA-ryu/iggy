@@ -278,10 +278,11 @@ void recordProductWindowControllerActions(
 
 bool productWindowEditorMousePickSurfaceReady(
     const FrontendState& frontend,
-    const ProductAppWindowState& window) {
+    const ProductAppWindowState& window,
+    const creative::CreativeAppState* creativeApp) {
   return frontend.screen == FrontendScreen::Gameplay && window.gameplayActive &&
          !frontendBlocksGameplayInput(frontend) &&
-         !productCreativeWorldActiveForWindow(window);
+         !productCreativeWorldActiveForSource(window, creativeApp);
 }
 
 bool productWindowFocused(const SdlWindow* sdlWindow) {
@@ -308,7 +309,9 @@ void recordProductMouseCaptureResult(ProductAppWindowState& window,
 
 void updateProductWindowMouseCapture(const FrontendState& frontend,
                                      ProductAppWindowState& window,
-                                     SdlWindow* sdlWindow) {
+                                     SdlWindow* sdlWindow,
+                                     const creative::CreativeAppState*
+                                         creativeApp) {
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
   const ProductMouseCapturePolicy policy = buildProductMouseCapturePolicy({
@@ -318,7 +321,7 @@ void updateProductWindowMouseCapture(const FrontendState& frontend,
       surface.gameplayInputSuppressed,
       productWindowFocused(sdlWindow),
       sdlWindow != nullptr,
-      productCreativeDocumentEditorActiveForWindow(window),
+      productCreativeDocumentEditorActiveForSource(window, creativeApp),
       window.creativeNavigateActive,
   });
   // branch-gate: BG-1076
@@ -951,7 +954,8 @@ ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPre
   }
   // branch-gate: BG-1063
   if (!productWindowEditorMousePickSurfaceReady(context.frontend,
-                                               context.window)) {
+                                                context.window,
+                                                context.creativeApp)) {
     result.status = "room_editor_mouse_pick_preview_surface_blocked";
     result.reasonCode = result.status;
     return result;
@@ -1371,7 +1375,8 @@ processProductCreativeDocumentInputOrchestration(
   ProductCreativeDocumentInputOrchestrationResult result;
   result.downstreamClick = request.click;
   result.creativeDocumentActive =
-      productCreativeDocumentEditorActiveForWindow(context.window);
+      productCreativeDocumentEditorActiveForSource(context.window,
+                                                   context.creativeApp);
 
   const ProductCreativeDocumentRevisionPhaseState revisionPhase =
       beginProductCreativeDocumentRevisionPhase(context);
@@ -1516,7 +1521,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   // hits HERE, so keep running the block whenever the frontend owns the mouse
   // (frontendMouseOwnsInput) — openingMenuActionAt routes the correct rows then.
   if (click.clicked &&
-      (!productCreativeDocumentEditorActiveForWindow(context.window) ||
+      (!productCreativeDocumentEditorActiveForSource(context.window,
+                                                    context.creativeApp) ||
        frontendMouseOwnsInput)) {
     const MouseClick menuClick =
         productWindowMenuClickForHitTest(click, context.sdlWindow);
@@ -1609,7 +1615,8 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   }
   updateProductWindowMouseCapture(context.frontend,
                                   context.window,
-                                  context.sdlWindow);
+                                  context.sdlWindow,
+                                  context.creativeApp);
 }
 
 InputAction productWindowFunctionKeyAction(const SdlWindowEventState& eventState) {

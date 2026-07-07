@@ -321,6 +321,15 @@ bool productCreativeWorldActiveForIdentity(
   return identity.worldActive();
 }
 
+bool productCreativeWorldActiveForSource(
+    const ProductAppWindowState& window,
+    const creative::CreativeAppState* creativeApp) {
+  if (creativeApp != nullptr) {
+    return productCreativeWorldActiveForIdentity(creativeApp->identity);
+  }
+  return productCreativeWorldActiveForWindow(window);
+}
+
 bool productCreativeWorldActiveForWindowMirror(
     const ProductAppWindowState& window) {
   return (!window.activeCreative.saveId.empty() &&
