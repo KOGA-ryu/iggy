@@ -125,8 +125,8 @@ int main() {
                "starter transition status");
   iggy3d::FrontendSettings settings;
   iggy3d::ProductAppWindowState staleStarterWindow = window;
-  staleStarterWindow.gameplayActive = true;
-  staleStarterWindow.runtimeSessionCreated = true;
+  staleStarterWindow.gameplay.gameplayActive = true;
+  staleStarterWindow.gameplay.runtimeSessionCreated = true;
   const iggy3d::RenderReceipt staleStarterReceipt =
       receiptFor(frontend, settings, staleStarterWindow);
   ok &= expectReceiptField(staleStarterReceipt, "active_surface", "starter",
@@ -143,8 +143,8 @@ int main() {
   ok &= expectReceiptField(staleStarterReceipt, "dev_tools_open", "false",
                            "stale starter receipt derives dev tools closed");
 
-  window.gameplayActive = true;
-  window.runtimeSessionCreated = true;
+  window.gameplay.gameplayActive = true;
+  window.gameplay.runtimeSessionCreated = true;
   enterProductGameplayTransition(frontend, window,
                                  iggy3d::FrontendAction::CreateAndEnter);
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Gameplay,
@@ -359,8 +359,8 @@ int main() {
   ok &= expect(frontend.screen == iggy3d::FrontendScreen::Starter,
                "return to title opens starter");
   ok &= expect(frontend.returnToTitleRequested, "return to title requested");
-  ok &= expect(!window.gameplayActive, "return to title clears gameplay active");
-  ok &= expect(!window.runtimeSessionCreated, "return to title clears session flag");
+  ok &= expect(!window.gameplay.gameplayActive, "return to title clears gameplay active");
+  ok &= expect(!window.gameplay.runtimeSessionCreated, "return to title clears session flag");
   ok &= expect(window.gameplayMovement.groundVelocityX == 0.0F &&
                    window.gameplayMovement.groundVelocityZ == 0.0F,
                "return to title clears retained ground velocity");

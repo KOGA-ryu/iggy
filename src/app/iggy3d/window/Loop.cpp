@@ -32,9 +32,9 @@ const char* productWindowTitle(const FrontendState& frontend,
                                const creative::CreativeAppState* creativeApp) {
   // The title must agree with what is actually DRAWN. The opening menu draws
   // while frontend.screen == Starter (the FramePresenter menu gate). The title,
-  // historically, keyed only on window.gameplayActive + the creative predicate
+  // historically, keyed only on window.gameplay.gameplayActive + the creative predicate
   // (window-side state). Those two sources can disagree if a build is only
-  // partially rebuilt (window.gameplayActive flips but the frontend.screen
+  // partially rebuilt (window.gameplay.gameplayActive flips but the frontend.screen
   // transition is not linked in) — which surfaces as the confusing "iggy3d -
   // Creative" title over a still-visible starter menu. Gate the title on the
   // SAME frontend surface the menu gate reads first, so they can never
@@ -44,7 +44,7 @@ const char* productWindowTitle(const FrontendState& frontend,
     return "iggy3d - Opening Menu";
   }
   // branch-gate: BG-1031
-  if (window.gameplayActive) {
+  if (window.gameplay.gameplayActive) {
     // TV1-H (TL-5): the window title is creative-aware — the creative document
     // editor runs over the gameplay backdrop but is its own surface.
     if (productCreativeDocumentEditorActiveForSource(window, creativeApp)) {
@@ -62,7 +62,7 @@ void recordNoWindowMouseCapturePolicy(const FrontendState& frontend,
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
   const ProductMouseCapturePolicy policy = buildProductMouseCapturePolicy({
-      window.gameplayActive,
+      window.gameplay.gameplayActive,
       window.interactionMode,
       surface.inputOwner,
       surface.gameplayInputSuppressed,
@@ -240,7 +240,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
                 window.drawable,
                 drawableExtent.width,
                 drawableExtent.height,
-                window.gameplayActive && request.activeSession.has_value()});
+                window.gameplay.gameplayActive && request.activeSession.has_value()});
     const ProductUiDrawList* creativeUiInputDrawList =
         creativeUiInputAvailability.inputAvailable ? creativeUiDrawList
                                                    : nullptr;

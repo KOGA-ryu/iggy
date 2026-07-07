@@ -84,8 +84,8 @@ bool activatesSessionFromAsciiRoom() {
                     "activation_training_room.runtime_loop",
                 "session scenario") &&
          expect(session->state().world.size() == 5U, "world entity count") &&
-         expect(window.gameplayActive, "window gameplay active") &&
-         expect(window.runtimeSessionCreated, "window runtime session") &&
+         expect(window.gameplay.gameplayActive, "window gameplay active") &&
+         expect(window.gameplay.runtimeSessionCreated, "window runtime session") &&
          expect(window.runtimeStateHash == session->stateHash(), "window hash") &&
          expect(window.asciiRoomActivation.runtimeHash == session->stateHash(),
                 "activation hash") &&
@@ -171,8 +171,8 @@ bool rejectsInvalidAsciiWithoutSession() {
          expect(!result.sessionCreated, "no session created") &&
          expect(!result.playerSpawned, "no player spawned") &&
          expect(!session.has_value(), "session absent") &&
-         expect(!window.gameplayActive, "window gameplay inactive") &&
-         expect(!window.runtimeSessionCreated, "window runtime absent") &&
+         expect(!window.gameplay.gameplayActive, "window gameplay inactive") &&
+         expect(!window.gameplay.runtimeSessionCreated, "window runtime absent") &&
          expect(window.asciiRoomPreview.failedStage == "grid",
                 "preview failed at grid") &&
          expect(window.asciiRoomActivation.status ==

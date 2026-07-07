@@ -253,8 +253,8 @@ ProductActiveSurfaceContext productActiveSurfaceContextForWindow(
     const ProductAppWindowState& window) {
   ProductActiveSurfaceContext context;
   context.frontend = frontend;
-  context.gameplayActive = window.gameplayActive;
-  context.hasActiveSession = window.gameplayActive;
+  context.gameplayActive = window.gameplay.gameplayActive;
+  context.hasActiveSession = window.gameplay.gameplayActive;
   context.roomEditorReady =
       window.roomEditing.ready && !productCreativeWorldActiveForWindow(window);
   context.interactionMode = window.interactionMode;

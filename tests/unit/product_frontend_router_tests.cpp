@@ -585,7 +585,7 @@ bool activeSurfaceWindowContextPreservesLegacyGameplayGate() {
   frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
 
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   const auto gameplay = iggy3d::resolveProductActiveSurface(
       iggy3d::productActiveSurfaceContextForWindow(frontend, window));
 
@@ -621,21 +621,21 @@ bool creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() {
   frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
 
   iggy3d::ProductAppWindowState none;
-  none.gameplayActive = true;
+  none.gameplay.gameplayActive = true;
 
   iggy3d::ProductAppWindowState legacy;
-  legacy.gameplayActive = true;
+  legacy.gameplay.gameplayActive = true;
   legacy.interactionMode = iggy3d::ProductInteractionMode::Creative;
   legacy.mapMakerStatus = "map_maker_enabled";
   legacy.mapMakerReasonCode = legacy.mapMakerStatus;
 
   iggy3d::ProductAppWindowState document;
-  document.gameplayActive = true;
+  document.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(document);
   document.mapMakerStatus = "map_maker_enabled";
 
   iggy3d::ProductAppWindowState staleIdentity;
-  staleIdentity.gameplayActive = true;
+  staleIdentity.gameplay.gameplayActive = true;
   staleIdentity.interactionMode = iggy3d::ProductInteractionMode::Player;
   const iggy3d::creative::CreativeActiveIdentity liveIdentity =
       liveCreativeIdentity();
@@ -724,7 +724,7 @@ bool windowOnlyCreativeModeKeepsRoomEditorSurface() {
   frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
 
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(window);
   window.roomEditing.ready = true;
 
@@ -796,7 +796,7 @@ bool inputOwnerCacheSyncUsesResolvedActiveSurface() {
     frontend.screen = row.screen;
     frontend.childScreen = row.child;
     iggy3d::ProductAppWindowState window;
-    window.gameplayActive = row.gameplayActive;
+    window.gameplay.gameplayActive = row.gameplayActive;
     window.roomEditing.ready = row.roomEditorReady;
 
     const iggy3d::ProductActiveSurfaceFrame surface =

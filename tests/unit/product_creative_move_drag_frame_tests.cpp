@@ -44,7 +44,7 @@ iggy3d::FrontendState gameplayFrontend() {
 
 void markCreativeDocumentWindow(iggy3d::ProductAppWindowState& window) {
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
 }
 
 iggy3d::MouseClick clickAt(float x, float y) {

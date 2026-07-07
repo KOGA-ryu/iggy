@@ -185,7 +185,7 @@ void openProductPauseTransition(FrontendState& frontend,
   openFrontendPause(frontend, selectedAction);
   syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "open_pause", "pause_ready", false, false,
-                window.gameplayActive);
+                window.gameplay.gameplayActive);
 }
 
 void openProductPauseSettingsTransition(FrontendState& frontend,
@@ -199,7 +199,7 @@ void openProductPauseSettingsTransition(FrontendState& frontend,
   frontend.status = "pause_settings_selected";
   syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "open_settings", "settings_from_pause", false, false,
-                window.gameplayActive);
+                window.gameplay.gameplayActive);
 }
 
 void openProductPauseDevToolsTransition(FrontendState& frontend,
@@ -210,7 +210,7 @@ void openProductPauseDevToolsTransition(FrontendState& frontend,
   frontend.status = "pause_dev_tools_selected";
   syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "open_dev_tools", "dev_overlay_from_pause", false, false,
-                window.gameplayActive);
+                window.gameplay.gameplayActive);
 }
 
 void closeProductOverlayToGameplayTransition(FrontendState& frontend,
@@ -218,13 +218,13 @@ void closeProductOverlayToGameplayTransition(FrontendState& frontend,
   closeFrontendOverlayToGameplay(frontend);
   syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "resume_gameplay", "gameplay_resumed", true, false,
-                window.gameplayActive);
+                window.gameplay.gameplayActive);
 }
 
 void returnProductToTitleTransition(FrontendState& frontend,
                                     ProductAppWindowState& window) {
-  window.gameplayActive = false;
-  window.runtimeSessionCreated = false;
+  window.gameplay.gameplayActive = false;
+  window.gameplay.runtimeSessionCreated = false;
   clearProductGameplayOnlyModes(window);
   applyReturnProductToTitleTransition(frontend, window);
 }
@@ -232,8 +232,8 @@ void returnProductToTitleTransition(FrontendState& frontend,
 void returnProductToTitleTransition(FrontendState& frontend,
                                     ProductAppWindowState& window,
                                     FrontendSettings& settings) {
-  window.gameplayActive = false;
-  window.runtimeSessionCreated = false;
+  window.gameplay.gameplayActive = false;
+  window.gameplay.runtimeSessionCreated = false;
   clearProductGameplayOnlyModes(window, settings);
   applyReturnProductToTitleTransition(frontend, window);
 }

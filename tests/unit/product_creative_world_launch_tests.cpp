@@ -572,9 +572,9 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
                 "creative launch durable save exists") &&
          expect(activeSession.has_value(),
                 "creative launch active session present") &&
-         expect(window.runtimeSessionCreated,
+         expect(window.gameplay.runtimeSessionCreated,
                 "creative launch window runtime session") &&
-         expect(window.gameplayActive, "creative launch gameplay active") &&
+         expect(window.gameplay.gameplayActive, "creative launch gameplay active") &&
          expect(window.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "creative launch interaction mode") &&
@@ -958,9 +958,9 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
          expect(opened.nextObjectId == savedDocument.nextObjectId(),
                 "open launch next object id") &&
          expect(openSession.has_value(), "open launch active session") &&
-         expect(openWindow.runtimeSessionCreated,
+         expect(openWindow.gameplay.runtimeSessionCreated,
                 "open launch runtime session window") &&
-         expect(openWindow.gameplayActive, "open launch gameplay active") &&
+         expect(openWindow.gameplay.gameplayActive, "open launch gameplay active") &&
          expect(openWindow.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "open launch creative mode") &&
@@ -1267,7 +1267,7 @@ bool productNewWorldLaunchClearsActiveCreativeIdentity() {
                 "product clear setup creative id recorded") &&
          expect(activeSession.has_value(),
                 "product clear runtime session present") &&
-         expect(window.gameplayActive,
+         expect(window.gameplay.gameplayActive,
                 "product clear gameplay active") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "product clear player interaction mode") &&
@@ -1721,7 +1721,7 @@ bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
                 "pause creative save exit launch status") &&
          expect(!activeSession.has_value(),
                 "pause creative save exit resets session") &&
-         expect(!window.gameplayActive,
+         expect(!window.gameplay.gameplayActive,
                 "pause creative save exit clears gameplay active") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Player,
                 "pause creative save exit player mode") &&
@@ -1787,7 +1787,7 @@ bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
                 "pause creative save exit failure launch status") &&
          expect(activeSession.has_value(),
                 "pause creative save exit failure keeps session") &&
-         expect(window.gameplayActive,
+         expect(window.gameplay.gameplayActive,
                 "pause creative save exit failure gameplay active") &&
          expect(window.interactionMode == iggy3d::ProductInteractionMode::Creative,
                 "pause creative save exit failure stays creative") &&
@@ -1841,7 +1841,7 @@ bool pauseCreativeReturnToTitleClearsUndoStack() {
          expect(frontend.status == "returned_to_title",
                 "pause return status") &&
          expect(!activeSession.has_value(), "pause return session reset") &&
-         expect(!window.gameplayActive, "pause return gameplay inactive") &&
+         expect(!window.gameplay.gameplayActive, "pause return gameplay inactive") &&
          expect(!cr::creativeUndoAvailable(app.undoStack),
                 "pause return undo stack cleared") &&
          expect(!window.creativeUndo.available,
@@ -4073,7 +4073,7 @@ bool creativeLaunchStandsOnBlankStageWithoutFirstRoomDemo() {
 
   return expect(launched.accepted, "blank stage launch accepted") &&
          expect(activeSession.has_value(), "blank stage session present") &&
-         expect(window.gameplayActive, "blank stage gameplay active") &&
+         expect(window.gameplay.gameplayActive, "blank stage gameplay active") &&
          expect(!iggy3d::activeRoom(window).loaded,
                 "blank stage active room not loaded") &&
          expect(launched.bakedActiveRoomRefreshRequested,

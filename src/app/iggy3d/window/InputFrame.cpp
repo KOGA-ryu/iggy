@@ -176,7 +176,7 @@ bool resolvedSurfaceAcceptsGameplayInput(const FrontendState& frontend,
                                          const ProductAppWindowState& window) {
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
-  return window.gameplayActive &&
+  return window.gameplay.gameplayActive &&
          surface.activeSurface == ProductFrontendSurface::Gameplay &&
          surface.inputOwner == MenuOwner::Gameplay &&
          !surface.gameplayInputSuppressed;
@@ -284,7 +284,7 @@ bool productWindowEditorMousePickSurfaceReady(
     const FrontendState& frontend,
     const ProductAppWindowState& window,
     const creative::CreativeAppState* creativeApp) {
-  return frontend.screen == FrontendScreen::Gameplay && window.gameplayActive &&
+  return frontend.screen == FrontendScreen::Gameplay && window.gameplay.gameplayActive &&
          !frontendBlocksGameplayInput(frontend) &&
          !productCreativeWorldActiveForSource(window, creativeApp);
 }
@@ -319,7 +319,7 @@ void updateProductWindowMouseCapture(const FrontendState& frontend,
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
   const ProductMouseCapturePolicy policy = buildProductMouseCapturePolicy({
-      window.gameplayActive,
+      window.gameplay.gameplayActive,
       window.interactionMode,
       surface.inputOwner,
       surface.gameplayInputSuppressed,
@@ -914,7 +914,7 @@ ProductControllerSampleInputResult processProductControllerActionSample(
                                        context.creativeApp);
 
   // branch-gate: BG-1061
-  if (!context.window.gameplayActive || context.activeSession == nullptr ||
+  if (!context.window.gameplay.gameplayActive || context.activeSession == nullptr ||
       frontendBlocksGameplayInput(context.frontend)) {
     ProductControllerSampleInputResult result;
     result.processed = true;
@@ -1027,7 +1027,7 @@ struct ProductCreativeViewportInputPhaseResult {
 [[nodiscard]] bool canDispatchProductCreativeDocumentInput(
     const ProductWindowInputFrameContext& context,
     bool creativeDocumentActive) {
-  return context.window.gameplayActive && context.activeSession.has_value() &&
+  return context.window.gameplay.gameplayActive && context.activeSession.has_value() &&
          !frontendBlocksGameplayInput(context.frontend) &&
          creativeDocumentActive;
 }
@@ -1346,7 +1346,7 @@ void finalizeProductCreativeDocumentInputPhase(
   // gesture interrupted mid-drag cannot fire a phantom Release on resume. Also
   // clear the Navigate mirror (TV1-H) so a pause over a Navigate world releases
   // capture rather than staying captured behind the menu.
-  if (!creativeDocumentActive || !context.window.gameplayActive ||
+  if (!creativeDocumentActive || !context.window.gameplay.gameplayActive ||
       !context.activeSession.has_value() ||
       frontendBlocksGameplayInput(context.frontend)) {
     resetProductCreativePointerLifecycle(
@@ -1530,7 +1530,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
              context.window.worldSetup.dungeonDraftLastGlyph,
              context.window.saveSession.selectedProductSave.id,
              context.window.saveSession.saveDelete.candidateId});
-    uiRequest.gameplayActive = context.window.gameplayActive;
+    uiRequest.gameplayActive = context.window.gameplay.gameplayActive;
     uiRequest.saveRootWritable = !context.options.saveRoot.empty();
     uiRequest.developerToolsEnabled = true;
     uiRequest.activeRoomEditable = context.window.roomEditing.ready;
@@ -1554,7 +1554,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
           });
 
   // branch-gate: BG-1029
-  if (context.window.gameplayActive && context.activeSession.has_value() &&
+  if (context.window.gameplay.gameplayActive && context.activeSession.has_value() &&
       !frontendBlocksGameplayInput(context.frontend)) {
     ActionState gameplayActions;
     if (!creativeInput.creativeDocumentInputHandled) {

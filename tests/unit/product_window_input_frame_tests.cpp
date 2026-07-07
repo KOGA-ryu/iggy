@@ -132,7 +132,7 @@ iggy3d::ProductViewportFrameConfig simpleViewportConfig() {
 
 iggy3d::ProductAppWindowState editingWindow() {
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
 
   const iggy3d::ProductRoomEditingStartResult started =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
@@ -475,7 +475,7 @@ bool playerClickDoesNotRunEditorPickPreview() {
 bool notReadyClickDoesNotMutateEditorState() {
   const iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
 
   const iggy3d::ProductWindowEditorMousePickPreviewResult result =
@@ -1062,7 +1062,7 @@ bool starterHitTestUsesCanonicalActionRows() {
 bool pauseHitTestUsesPauseActionRows() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   bool closeRequested = false;
   const iggy3d::ProductMenuActionResult paused =
       iggy3d::applyProductSystemPauseMenuAction(
@@ -1101,7 +1101,7 @@ bool pauseHitTestUsesPauseActionRows() {
 bool pauseMouseClickResumesBeforeCreativeOverlayInput() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   window.interactionMode = iggy3d::ProductInteractionMode::Creative;
   bool closeRequested = false;
   (void)iggy3d::applyProductSystemPauseMenuAction(
@@ -1181,7 +1181,7 @@ bool pauseMouseClickResumesBeforeCreativeOverlayInput() {
 bool pauseMouseClickResumesInActiveCreativeWorld() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(window);
   bool closeRequested = false;
   (void)iggy3d::applyProductSystemPauseMenuAction(
@@ -1241,7 +1241,7 @@ bool pauseMouseClickResumesInActiveCreativeWorld() {
 bool pauseSettingsConfirmOpensSettingsPanel() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   bool closeRequested = false;
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   std::optional<iggy3d::Session> activeSession;
@@ -1276,7 +1276,7 @@ bool pauseSettingsConfirmOpensSettingsPanel() {
 bool pauseSettingsInputDispatchRoutesToSettings() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   bool closeRequested = false;
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   std::optional<iggy3d::Session> activeSession;
@@ -1357,7 +1357,7 @@ bool starterSettingsInputDispatchRoutesToSettings() {
 bool pauseInputDispatchRoutesToPauseHandler() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   bool closeRequested = false;
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   std::optional<iggy3d::Session> activeSession;
@@ -1393,7 +1393,7 @@ bool pauseInputDispatchRoutesToPauseHandler() {
 bool devOverlayInputDispatchRoutesToDevToolsHandler() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   bool closeRequested = false;
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   std::optional<iggy3d::Session> activeSession;
@@ -1507,7 +1507,7 @@ bool gameplayAndEditorSurfacesDoNotFallThroughToStarter() {
     iggy3d::FrontendState frontend = gameplayFrontend();
     frontend.selectedAction = iggy3d::FrontendAction::Continue;
     iggy3d::ProductAppWindowState window;
-    window.gameplayActive = true;
+    window.gameplay.gameplayActive = true;
     bool closeRequested = false;
     iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
     std::optional<iggy3d::Session> activeSession;
@@ -1612,7 +1612,7 @@ bool editorBackOpensPauseWithoutLeavingEditor() {
 bool pauseSaveFlowLeavesStableFrontendStatus() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   bool closeRequested = false;
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   std::optional<iggy3d::Session> activeSession;
@@ -1642,7 +1642,7 @@ bool pauseSaveFlowLeavesStableFrontendStatus() {
 bool pauseLoadOpensBrowserInLoadModeOverStaleResidue() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   bool closeRequested = false;
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   std::optional<iggy3d::Session> activeSession;
@@ -1679,7 +1679,7 @@ bool pauseLoadOpensBrowserInLoadModeOverStaleResidue() {
 bool pauseOpenedBrowserBackReturnsToPause() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   bool closeRequested = false;
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   std::optional<iggy3d::Session> activeSession;
@@ -1730,7 +1730,7 @@ bool loadFromPauseReplacesTheActiveSession() {
   options.saveRoot = saveRoot;
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   bool closeRequested = false;
   iggy3d::FrontendSettingsTab settingsTab = iggy3d::FrontendSettingsTab::None;
   std::optional<iggy3d::Session> activeSession;
@@ -1884,7 +1884,7 @@ bool openingMenuMouseDispatchRoutesStarterAndSettingsHits() {
   settings.frontend = gameplayFrontend();
   settings.frontend.screen = iggy3d::FrontendScreen::Settings;
   settings.frontend.childScreen = iggy3d::FrontendScreen::Pause;
-  settings.window.gameplayActive = true;
+  settings.window.gameplay.gameplayActive = true;
   settings.settingsTab = iggy3d::FrontendSettingsTab::Input;
   iggy3d::OpeningMenuHitTestResult tabHit =
       hitArea(iggy3d::OpeningMenuHitArea::SettingsTab);
@@ -2076,7 +2076,7 @@ bool devToggleOpensAndClosesDevToolsSurfaces() {
 
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   bool closeRequested = false;
   const iggy3d::ProductMenuActionResult opened =
       iggy3d::applyProductSystemPauseMenuAction(
@@ -2108,7 +2108,7 @@ bool devToggleOpensAndClosesDevToolsSurfaces() {
 bool debugOverlayActionTogglesRuntimeOverlaySetting() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   iggy3d::FrontendSettings settings;
   bool closeRequested = false;
 
@@ -2183,7 +2183,7 @@ bool debugOverlayActionIgnoresFrontendBlockedSurfaces() {
     iggy3d::FrontendState frontend = starterFrontend();
     frontend.childScreen = iggy3d::FrontendScreen::NewWorld;
     iggy3d::ProductAppWindowState window;
-    window.gameplayActive = true;
+    window.gameplay.gameplayActive = true;
     iggy3d::FrontendSettings settings;
     settings.debugOverlayEnabled = false;
     bool closeRequested = false;
@@ -2209,7 +2209,7 @@ bool debugOverlayActionIgnoresFrontendBlockedSurfaces() {
     frontend.screen = iggy3d::FrontendScreen::Settings;
     frontend.childScreen = iggy3d::FrontendScreen::Pause;
     iggy3d::ProductAppWindowState window;
-    window.gameplayActive = true;
+    window.gameplay.gameplayActive = true;
     iggy3d::FrontendSettings settings;
     settings.debugOverlayEnabled = false;
     bool closeRequested = false;
@@ -2232,7 +2232,7 @@ bool debugOverlayActionIgnoresFrontendBlockedSurfaces() {
 
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   bool closeRequested = false;
   const iggy3d::ProductMenuActionResult opened =
       iggy3d::applyProductSystemPauseMenuAction(
@@ -2266,7 +2266,7 @@ bool debugOverlayActionIgnoresFrontendBlockedSurfaces() {
 bool collisionOverlayActionTogglesDistinctWindowState() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   iggy3d::FrontendSettings settings;
   bool closeRequested = false;
 
@@ -2483,7 +2483,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
 
   iggy3d::FrontendState gameplay = gameplayFrontend();
   iggy3d::ProductAppWindowState gameplayWindow;
-  gameplayWindow.gameplayActive = true;
+  gameplayWindow.gameplay.gameplayActive = true;
   const iggy3d::ProductWindowTopLevelToggleResult debug =
       iggy3d::dispatchProductWindowTopLevelToggleAction(
           gameplay,
@@ -2516,7 +2516,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
 
   iggy3d::FrontendState tuningFrontend = gameplayFrontend();
   iggy3d::ProductAppWindowState tuningWindow;
-  tuningWindow.gameplayActive = true;
+  tuningWindow.gameplay.gameplayActive = true;
   const iggy3d::ProductWindowTopLevelToggleResult tuning =
       iggy3d::dispatchProductWindowTopLevelToggleAction(
           tuningFrontend,
@@ -2534,7 +2534,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
   pause.screen = iggy3d::FrontendScreen::Pause;
   pause.childScreen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState pauseWindow;
-  pauseWindow.gameplayActive = true;
+  pauseWindow.gameplay.gameplayActive = true;
   pauseWindow.gameplayMovement.tuningVisible = true;
   const iggy3d::ProductWindowTopLevelToggleResult blockedTuning =
       iggy3d::dispatchProductWindowTopLevelToggleAction(
@@ -2566,7 +2566,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
 
   iggy3d::FrontendState collision = gameplayFrontend();
   iggy3d::ProductAppWindowState collisionWindow;
-  collisionWindow.gameplayActive = true;
+  collisionWindow.gameplay.gameplayActive = true;
   settings.debugOverlayEnabled = false;
   const iggy3d::ProductWindowTopLevelToggleResult f2 =
       iggy3d::dispatchProductWindowTopLevelToggleAction(
@@ -2585,7 +2585,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
 
   iggy3d::FrontendState mapMaker = gameplayFrontend();
   iggy3d::ProductAppWindowState mapMakerWindow;
-  mapMakerWindow.gameplayActive = true;
+  mapMakerWindow.gameplay.gameplayActive = true;
   const iggy3d::ProductWindowTopLevelToggleResult m =
       iggy3d::dispatchProductWindowTopLevelToggleAction(
           mapMaker,
@@ -2601,7 +2601,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
 
   iggy3d::FrontendState creativeWorld = gameplayFrontend();
   iggy3d::ProductAppWindowState creativeWorldWindow;
-  creativeWorldWindow.gameplayActive = true;
+  creativeWorldWindow.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(creativeWorldWindow);
   creativeWorldWindow.mapMakerStatus = "map_maker_enabled";
   creativeWorldWindow.viewport.creativeFlyActive = true;
@@ -2636,7 +2636,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
   pauseMapMaker.screen = iggy3d::FrontendScreen::Pause;
   pauseMapMaker.childScreen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState pauseMapWindow;
-  pauseMapWindow.gameplayActive = true;
+  pauseMapWindow.gameplay.gameplayActive = true;
   pauseMapWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
   const iggy3d::ProductWindowTopLevelToggleResult blockedM =
       iggy3d::dispatchProductWindowTopLevelToggleAction(
@@ -2659,7 +2659,7 @@ bool topLevelToggleFunnelPreservesPolicies() {
 bool movementTuningGameplayInputIsLiveAndFocused() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   const float originalWalk = window.gameplayMovement.tuning.walkSpeedMetersPerSecond;
 
   const iggy3d::ProductMovementTuningInputResult shown =
@@ -2716,7 +2716,7 @@ bool movementTuningGameplayInputIsLiveAndFocused() {
 bool movementTuningSingleLeftRightPressAppliesOneStep() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   window.gameplayMovement.tuningVisible = true;
   const auto& descriptor = iggy3d::productGameplayMovementTuningFieldDescriptor(
       window.gameplayMovement.tuningSelectedField);
@@ -2745,7 +2745,7 @@ bool movementTuningSingleLeftRightPressAppliesOneStep() {
 bool movementTuningHeldRightRepeatsAfterDelay() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   window.gameplayMovement.tuningVisible = true;
   iggy3d::ProductMovementTuningRepeatState repeat;
   constexpr iggy3d::ProductMovementTuningRepeatPolicy policy{3U, 2U};
@@ -2796,7 +2796,7 @@ bool movementTuningHeldRightRepeatsAfterDelay() {
 bool movementTuningHeldRepeatReleaseResetsTiming() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   window.gameplayMovement.tuningVisible = true;
   iggy3d::ProductMovementTuningRepeatState repeat;
   constexpr iggy3d::ProductMovementTuningRepeatPolicy policy{2U, 1U};
@@ -2838,7 +2838,7 @@ bool movementTuningHeldRepeatReleaseResetsTiming() {
 bool movementTuningHeldConflictDoesNotAdjust() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   window.gameplayMovement.tuningVisible = true;
   iggy3d::ProductMovementTuningRepeatState repeat;
   constexpr iggy3d::ProductMovementTuningRepeatPolicy policy{1U, 1U};
@@ -2867,7 +2867,7 @@ bool movementTuningHeldRepeatBlockedByMenuSurface() {
   frontend.screen = iggy3d::FrontendScreen::Pause;
   frontend.childScreen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   window.gameplayMovement.tuningVisible = true;
   iggy3d::ProductMovementTuningRepeatState repeat;
   repeat.heldDirection = 1;
@@ -2952,7 +2952,7 @@ bool movementTuningToggleIgnoresFrontendBlockedSurfaces() {
     frontend.childScreen = surface.childScreen;
     frontend.inputOwned = false;
     iggy3d::ProductAppWindowState window;
-    window.gameplayActive = true;
+    window.gameplay.gameplayActive = true;
     window.gameplayMovement.tuningVisible = true;
 
     const iggy3d::ProductMovementTuningInputResult blocked =
@@ -2972,7 +2972,7 @@ bool movementTuningToggleIgnoresFrontendBlockedSurfaces() {
 bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
 
   const iggy3d::ProductMenuActionResult enabled =
       iggy3d::applyProductGameplayMapMakerToggleAction(
@@ -3021,7 +3021,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
 
   iggy3d::FrontendState creativeWorld = gameplayFrontend();
   iggy3d::ProductAppWindowState creativeWorldWindow;
-  creativeWorldWindow.gameplayActive = true;
+  creativeWorldWindow.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(creativeWorldWindow);
   creativeWorldWindow.mapMakerStatus = "map_maker_enabled";
   creativeWorldWindow.viewport.creativeFlyActive = true;
@@ -3072,7 +3072,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
   pause.screen = iggy3d::FrontendScreen::Pause;
   pause.childScreen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState blockedWindow;
-  blockedWindow.gameplayActive = true;
+  blockedWindow.gameplay.gameplayActive = true;
   blockedWindow.interactionMode = iggy3d::ProductInteractionMode::Creative;
   blockedWindow.viewport.creativeFlyActive = true;
   const iggy3d::ProductMenuActionResult blocked =
@@ -3093,7 +3093,7 @@ bool mapMakerToggleUsesGameplayOnlyCreativeMode() {
              "pause map maker inactive status");
 
   iggy3d::ProductAppWindowState staleWindow;
-  staleWindow.gameplayActive = true;
+  staleWindow.gameplay.gameplayActive = true;
   staleWindow.interactionMode = iggy3d::ProductInteractionMode::Player;
   const bool staleCacheOk =
       expect(!iggy3d::productMapMakerLiveForWindow(frontend, staleWindow),
@@ -3194,7 +3194,7 @@ bool gameplaySettingsAdjustMovementTuningLive() {
 bool movementTuningLookValuesDriveCameraInput() {
   iggy3d::FrontendState frontend = gameplayFrontend();
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   window.gameplayMovement.tuning.lookSensitivity = 2.0F;
   window.gameplayMovement.tuning.invertLookEnabled = 1.0F;
   iggy3d::FrontendSettings settings;

@@ -55,7 +55,7 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
       evaluateProductVulkanGameplayReadiness(window);
   const MovementDebugHud movementHud =
       buildMovementDebugHud(movementProof,
-                            window.gameplayActive,
+                            window.gameplay.gameplayActive,
                             settings.devToolsEnabled,
                             settings.debugOverlayEnabled);
   const NpcBehaviorDebugHud npcBehaviorHud{
@@ -91,7 +91,7 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendReceiptField(receipt, "result", windowFailed ? "skip" : "pass");
   appendReceiptField(receipt, "reason_code",
                      windowFailed ? "sdl3_unavailable"
-                                  : (window.gameplayActive ? "product_gameplay_ready"
+                                  : (window.gameplay.gameplayActive ? "product_gameplay_ready"
                                                            : "opening_menu_ready"));
   return receipt;
 }

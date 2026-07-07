@@ -84,7 +84,7 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
   iggy3d::FrontendState frontend;
   iggy3d::enterFrontendGameplay(frontend, iggy3d::FrontendAction::NewWorld);
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   const iggy3d::ProductRoomEditingStartResult started =
       iggy3d::startProductRoomEditingFromAscii(smallRoomRequest());
   iggy3d::recordProductRoomEditingStart(window, started, "unit_edit_room");
@@ -162,8 +162,8 @@ bool returnToTitleResetsCreativeModeToPlayer() {
 
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Gameplay;
-  window.gameplayActive = true;
-  window.runtimeSessionCreated = true;
+  window.gameplay.gameplayActive = true;
+  window.gameplay.runtimeSessionCreated = true;
   iggy3d::returnProductToTitleTransition(frontend, window);
 
   iggy3d::ProductAppOptions options;
@@ -255,7 +255,7 @@ bool surfaceDerivationIsConservative() {
     frontend.screen = row.screen;
     frontend.childScreen = row.childScreen;
     iggy3d::ProductAppWindowState window;
-    window.gameplayActive = row.gameplayActive;
+    window.gameplay.gameplayActive = row.gameplayActive;
     window.roomEditing.ready = row.roomEditingReady;
     ok = expect(iggy3d::productInputSurfaceFor(frontend, window) ==
                     row.expected,
@@ -269,7 +269,7 @@ bool gameplayChordTogglesAndLatches() {
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   iggy3d::ProductControllerModeChordState chordState;
 
   const iggy3d::ProductInteractionModeToggleResult first =
@@ -311,7 +311,7 @@ bool roomEditorSurfaceAllowsToggle() {
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Gameplay;
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   window.roomEditing.ready = true;
   iggy3d::ProductControllerModeChordState chordState;
 

@@ -37,7 +37,7 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
                      frontendPauseMenuOpen(frontend));
   appendReceiptField(receipt, "dev_tools_open",
                      frontendDevToolsOpen(frontend));
-  appendReceiptField(receipt, "starter_world_suppressed", !window.gameplayActive);
+  appendReceiptField(receipt, "starter_world_suppressed", !window.gameplay.gameplayActive);
   appendReceiptField(receipt, "auto_new_world", options.autoNewWorld);
   appendReceiptField(receipt, "renderer_request", productRendererRequestName(options.renderer));
   appendReceiptField(receipt, "window_mode", productWindowModeName(options.windowMode));
@@ -108,7 +108,7 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
   appendReceiptField(receipt, "window_created", window.created);
   appendReceiptField(receipt, "window_drawable", window.drawable);
   appendReceiptField(receipt, "window_title",
-                     window.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
+                     window.gameplay.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
   appendReceiptField(receipt, "opening_menu_visible", window.openingMenuVisible);
   appendReceiptField(receipt, "menu_text_drawn", window.menuTextDrawn);
   appendReceiptField(receipt, "menu_selected_row_drawn", window.selectedRowDrawn);

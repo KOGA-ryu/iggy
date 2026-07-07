@@ -125,8 +125,8 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   result.sessionCreated = true;
   result.runtimeStateHash = activeSession->stateHash();
 
-  window.runtimeSessionCreated = true;
-  window.gameplayActive = true;
+  window.gameplay.runtimeSessionCreated = true;
+  window.gameplay.gameplayActive = true;
   window.launchAction = "ascii_room_activate";
   window.launchStatus = result.status;
   window.packageLoadStatus = "ascii_room_authoring";

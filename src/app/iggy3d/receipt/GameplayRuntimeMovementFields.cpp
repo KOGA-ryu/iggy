@@ -22,8 +22,8 @@
 namespace iggy3d {
 
 void appendProductGameplayRuntimeMovementFields(RenderReceipt& receipt, const ProductAppWindowState& window, const ProductMovementProofPacket& movementProof) {
-  appendReceiptField(receipt, "runtime_session_created", window.runtimeSessionCreated);
-  appendReceiptField(receipt, "gameplay_active", window.gameplayActive);
+  appendReceiptField(receipt, "runtime_session_created", window.gameplay.runtimeSessionCreated);
+  appendReceiptField(receipt, "gameplay_active", window.gameplay.gameplayActive);
   appendReceiptField(receipt, "runtime_state_hash", window.runtimeStateHash);
   appendReceiptField(receipt, "gameplay_view_visible",
                      window.viewport.gameplayViewVisible);
@@ -34,16 +34,16 @@ void appendProductGameplayRuntimeMovementFields(RenderReceipt& receipt, const Pr
   appendReceiptField(receipt, "objective_visible", window.objectiveVisible);
   appendReceiptField(receipt, "renderer_mutated_runtime", window.rendererMutatedRuntime);
   appendReceiptField(receipt, "scripted_gameplay_smoke", window.scriptedGameplaySmoke);
-  appendReceiptField(receipt, "gameplay_input_used", window.gameplayInputUsed);
-  appendReceiptField(receipt, "gameplay_input_source", window.gameplayInputSource);
+  appendReceiptField(receipt, "gameplay_input_used", window.gameplay.gameplayInputUsed);
+  appendReceiptField(receipt, "gameplay_input_source", window.gameplay.gameplayInputSource);
   appendReceiptField(receipt, "gameplay_command_submitted", window.gameplayCommand.submitted);
   appendReceiptField(receipt, "gameplay_command_kind", window.gameplayCommand.kind);
   appendReceiptField(receipt, "gameplay_command_status", window.gameplayCommand.status);
   appendReceiptField(receipt, "gameplay_command_accepted", window.gameplayCommand.accepted);
-  appendReceiptField(receipt, "gameplay_tick_advanced", window.gameplayTickAdvanced);
+  appendReceiptField(receipt, "gameplay_tick_advanced", window.gameplay.gameplayTickAdvanced);
   appendReceiptField(receipt, "gameplay_tick_reason_code",
                      window.gameplayTickReasonCode);
-  appendReceiptField(receipt, "player_position_changed", window.playerPositionChanged);
+  appendReceiptField(receipt, "player_position_changed", window.gameplay.playerPositionChanged);
   appendReceiptField(receipt, "gameplay_movement_attempted",
                      movementProof.attempted);
   appendReceiptField(receipt, "gameplay_movement_blocked",

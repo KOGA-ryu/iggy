@@ -315,7 +315,7 @@ bool noWindowGameplayReportsMouseCaptureNotApplied() {
   std::optional<iggy3d::Session> activeSession;
   iggy3d::WorldSetupDraft worldSetupDraft;
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   iggy3d::FrontendSettings settings;
   iggy3d::ProductSaveBridgeResult saves;
   saves.slots.compatibleCount = 7;  // sentinel: proves the returned catalog is THIS one

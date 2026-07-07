@@ -823,7 +823,7 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
       if (frontendPauseMenuOpen(request.frontend)) {
         PauseMenuContext pauseContext;
         pauseContext.pauseOpen = true;
-        pauseContext.runtimeSessionAvailable = request.window.gameplayActive;
+        pauseContext.runtimeSessionAvailable = request.window.gameplay.gameplayActive;
         pauseContext.saveRootWritable = !request.options.saveRoot.empty();
         pauseContext.compatibleSaveCount = request.saves.slots.compatibleCount;
         pauseContext.developerToolsEnabled = true;
@@ -916,7 +916,7 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           request.window.worldSetup.dungeonDraftCursorColumn,
                           request.window.worldSetup.dungeonDraftSelectedGlyph,
                           request.window.worldSetup.dungeonDraftLastGlyph,
-                          request.window.gameplayActive,
+                          request.window.gameplay.gameplayActive,
                           request.window.runtimeStateHash,
                           request.projectionFrame.viewportFramePtr(),
                           &request.projectionFrame.feedback,

@@ -29,8 +29,7 @@ mouseCapture	InputDeviceStore
 controllerModeToggle	InputDeviceStore
 controllerAction	InputDeviceStore
 selectedSettingsTab	FrontendWindowShell
-runtimeSessionCreated	GameplayStore
-gameplayActive	GameplayStore
+gameplay	GameplayStore
 launchAction	FrontendWindowShell
 launchStatus	FrontendWindowShell
 packageLoadStatus	FrontendWindowShell
@@ -82,11 +81,7 @@ roomVisible	GameplayStore
 objectiveVisible	GameplayStore
 rendererMutatedRuntime	GameplayStore
 scriptedGameplaySmoke	GameplayStore
-gameplayInputUsed	GameplayStore
-gameplayInputSource	GameplayStore
 gameplayCommand	GameplayStore
-gameplayTickAdvanced	GameplayStore
-playerPositionChanged	GameplayStore
 gameplayMovement	GameplayStore
 gameplayWallRun	GameplayStore
 gameplayJump	GameplayStore

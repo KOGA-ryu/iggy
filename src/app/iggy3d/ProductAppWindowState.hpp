@@ -8,6 +8,7 @@
 #include "app/input/InputAction.hpp"
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
+#include "app/iggy3d/gameplay/GameplayStore.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/Options.hpp"
@@ -215,8 +216,7 @@ struct ProductAppWindowState {
   ProductControllerModeToggleState controllerModeToggle;
   ProductControllerActionState controllerAction;
   FrontendSettingsTab selectedSettingsTab = FrontendSettingsTab::None;
-  bool runtimeSessionCreated = false;
-  bool gameplayActive = false;
+  GameplayStore gameplay;
   std::string launchAction = "none";
   std::string launchStatus = "not_requested";
   std::string packageLoadStatus = "not_requested";
@@ -275,11 +275,7 @@ struct ProductAppWindowState {
   bool objectiveVisible = false;
   bool rendererMutatedRuntime = false;
   bool scriptedGameplaySmoke = false;
-  bool gameplayInputUsed = false;
-  std::string gameplayInputSource = "none";
   ProductGameplayCommandState gameplayCommand;
-  bool gameplayTickAdvanced = false;
-  bool playerPositionChanged = false;
   ProductGameplayMovementInfo gameplayMovement;
   ProductWallRunState gameplayWallRun;
   ProductGameplayJumpState gameplayJump;

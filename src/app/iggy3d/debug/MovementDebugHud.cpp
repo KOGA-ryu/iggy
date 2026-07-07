@@ -85,7 +85,7 @@ MovementDebugHud buildMovementDebugHud(
   const ProductMovementProofPacket proof =
       buildProductMovementProofPacket(window);
   return buildMovementDebugHud(proof,
-                               window.gameplayActive,
+                               window.gameplay.gameplayActive,
                                developerToolsEnabled,
                                debugOverlayEnabled);
 }

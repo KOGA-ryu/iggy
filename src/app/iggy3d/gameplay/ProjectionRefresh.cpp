@@ -373,12 +373,12 @@ ProductMapMakerGridSnapshot buildMapMakerGridForFrame(
     const SceneProjectionResult& scene,
     bool mapMakerLive,
     bool creativeStageGridLive) {
-  const bool active = window.gameplayActive && mapMakerLive;
+  const bool active = window.gameplay.gameplayActive && mapMakerLive;
   // F0: the blank creative stage shows the SAME grid+ground reference without
   // being the LegacyMapMaker surface, so gate the grid geometry on either lane
   // while leaving the map_maker status/fly semantics keyed to mapMakerLive only.
   const bool gridActive =
-      window.gameplayActive && (mapMakerLive || creativeStageGridLive);
+      window.gameplay.gameplayActive && (mapMakerLive || creativeStageGridLive);
   // branch-gate: BG-1205
   window.mapMakerStatus = active ? "map_maker_active" : "map_maker_inactive";
   window.mapMakerReasonCode = window.mapMakerStatus;
@@ -478,7 +478,7 @@ void applyGameplayProjectionMetrics(ProductAppWindowState& window,
                                     const ProductRenderBridgeFrame* bridge,
                                     bool viewVisible) {
   // branch-gate: BG-1025
-  if (!window.gameplayActive || scene == nullptr) {
+  if (!window.gameplay.gameplayActive || scene == nullptr) {
     window.viewport.gameplayViewVisible = false;
     window.viewport.productDrawGridVisible = false;
     window.viewport.productDrawPlayerVisible = false;
@@ -737,7 +737,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   copyProductRoomEditorHud(window, frame.roomEditorHud);
 
   // branch-gate: BG-1027
-  if (!window.gameplayActive || !request.activeSession.has_value()) {
+  if (!window.gameplay.gameplayActive || !request.activeSession.has_value()) {
     return frame;
   }
 

@@ -178,7 +178,7 @@ ProductMenuActionResult applyProductDevToggleMenuAction(
     return {true, true};
   }
   // branch-gate: BG-1124
-  if (frontend.screen == FrontendScreen::Gameplay && window.gameplayActive) {
+  if (frontend.screen == FrontendScreen::Gameplay && window.gameplay.gameplayActive) {
     openProductPauseDevToolsTransition(frontend, window,
                                        FrontendDevToolsCategory::Session);
     return {true, true};
@@ -201,7 +201,7 @@ bool resolvedSurfaceAcceptsGameplayInput(const FrontendState& frontend,
                                          const ProductAppWindowState& window) {
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
-  return window.gameplayActive &&
+  return window.gameplay.gameplayActive &&
          surface.activeSurface == ProductFrontendSurface::Gameplay &&
          surface.inputOwner == MenuOwner::Gameplay &&
          !surface.gameplayInputSuppressed;
@@ -877,7 +877,7 @@ ProductMenuActionResult applyProductSystemPauseMenuAction(
   FrontendState& frontend = context.frontend;
   ProductAppWindowState& window = context.window;
   // branch-gate: BG-1023
-  if (frontend.screen == FrontendScreen::Gameplay && window.gameplayActive) {
+  if (frontend.screen == FrontendScreen::Gameplay && window.gameplay.gameplayActive) {
     const bool preserveCreativeMode =
         productCreativeDocumentEditorActiveForSource(window,
                                                      context.creativeApp);

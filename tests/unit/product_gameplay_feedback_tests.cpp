@@ -31,7 +31,7 @@ int main() {
   bool ok = true;
 
   iggy3d::ProductAppWindowState neutralWindow;
-  neutralWindow.gameplayActive = true;
+  neutralWindow.gameplay.gameplayActive = true;
   const iggy3d::GameplayFeedback neutral =
       iggy3d::buildGameplayFeedback(neutralWindow);
   ok &= expect(neutral.visible, "neutral gameplay feedback visible");
@@ -43,7 +43,7 @@ int main() {
                "neutral target line");
 
   iggy3d::ProductAppWindowState attackWindow;
-  attackWindow.gameplayActive = true;
+  attackWindow.gameplay.gameplayActive = true;
   attackWindow.targetDiscovered = true;
   attackWindow.gameplayReachGate = "pass";
   attackWindow.gameplayCommand.submitted = true;
@@ -68,8 +68,8 @@ int main() {
                "attack result line");
 
   iggy3d::ProductAppWindowState noTargetWindow;
-  noTargetWindow.gameplayActive = true;
-  noTargetWindow.gameplayInputUsed = true;
+  noTargetWindow.gameplay.gameplayActive = true;
+  noTargetWindow.gameplay.gameplayInputUsed = true;
   noTargetWindow.gameplayCommand.kind = "interact";
   noTargetWindow.gameplayCommand.status = "no_target";
   noTargetWindow.gameplayReachGate = "not_attempted";
@@ -84,7 +84,7 @@ int main() {
                "no target command line");
 
   iggy3d::ProductAppWindowState rejectedWindow;
-  rejectedWindow.gameplayActive = true;
+  rejectedWindow.gameplay.gameplayActive = true;
   rejectedWindow.gameplayCommand.submitted = true;
   rejectedWindow.gameplayCommand.kind = "attack";
   rejectedWindow.gameplayCommand.status = "rejected";

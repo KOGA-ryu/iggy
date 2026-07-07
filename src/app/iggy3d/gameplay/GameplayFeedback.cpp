@@ -92,7 +92,7 @@ void addLine(GameplayFeedback& feedback,
 GameplayFeedback buildGameplayFeedback(
     const ProductAppWindowState& window) {
   GameplayFeedback feedback;
-  feedback.visible = window.gameplayActive;
+  feedback.visible = window.gameplay.gameplayActive;
   feedback.commandKind = window.gameplayCommand.kind;
   feedback.commandStatus = window.gameplayCommand.status;
   feedback.reachStatus = window.gameplayReachGate;

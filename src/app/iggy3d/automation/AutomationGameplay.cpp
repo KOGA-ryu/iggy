@@ -43,7 +43,7 @@ ProductAutomationExecutionResult passGameplayAutomation(bool accepted) {
 bool gameplayAutomationReady(ProductAutomationGameplayContext& context) {
   // branch-gate: BG-1010
   if (context.frontend.screen == FrontendScreen::Gameplay &&
-      context.window.gameplayActive &&
+      context.window.gameplay.gameplayActive &&
       context.activeSession != nullptr) {
     return true;
   }
@@ -77,7 +77,7 @@ bool applyGameplayActionState(ProductAutomationGameplayContext& context,
   (void)ensureActiveRoomCollisionFresh(context.window, context.activeSession);
   return context.window.gameplayCommand.submitted &&
          context.window.gameplayCommand.accepted &&
-         context.window.gameplayTickAdvanced;
+         context.window.gameplay.gameplayTickAdvanced;
 }
 
 bool applyGameplayJumpActionState(ProductAutomationGameplayContext& context,
@@ -151,7 +151,7 @@ bool applyAutomationGameplayPlayerPosition(
 
   state.currentStateHash = computeStateHash(state);
   context.window.runtimeStateHash = context.activeSession->stateHash();
-  context.window.playerPositionChanged = true;
+  context.window.gameplay.playerPositionChanged = true;
   return true;
 }
 

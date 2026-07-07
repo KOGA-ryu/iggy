@@ -151,8 +151,8 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
   }
   bumpActiveRoomRevision(window);
   (void)ensureActiveRoomCollisionFresh(window, &*activeSession);
-  window.runtimeSessionCreated = true;
-  window.gameplayActive = true;
+  window.gameplay.runtimeSessionCreated = true;
+  window.gameplay.gameplayActive = true;
   window.runtimeStateHash = activeSession->stateHash();
   window.launchStatus = "runtime_session_created";
   return true;
@@ -246,8 +246,8 @@ bool createCreativeBlankSession(std::optional<Session>& activeSession,
   activeRoomCollision(window) = {};
   bumpActiveRoomRevision(window);
   activeSession = std::move(session.value);
-  window.runtimeSessionCreated = true;
-  window.gameplayActive = true;
+  window.gameplay.runtimeSessionCreated = true;
+  window.gameplay.gameplayActive = true;
   window.runtimeStateHash = activeSession->stateHash();
   window.launchStatus = "runtime_session_created";
   return true;
@@ -409,8 +409,8 @@ void recordSavedRoomMarkerBindingResult(
 
 void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
                                      ProductAppWindowState& window) {
-  window.gameplayActive = false;
-  window.runtimeSessionCreated = false;
+  window.gameplay.gameplayActive = false;
+  window.gameplay.runtimeSessionCreated = false;
   window.runtimeStateHash = 0;
   activeRoom(window) = {};
   activeRoomCollision(window) = {};

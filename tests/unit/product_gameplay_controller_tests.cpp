@@ -827,7 +827,7 @@ bool productJumpRaisesPlayerAndRecordsProof() {
          expect(window.gameplayJump.status == "airborne", "jump airborne status") &&
          expect(window.gameplayJump.reasonCode == "gameplay_jump_airborne",
                 "jump airborne reason") &&
-         expect(window.playerPositionChanged, "jump changed player position") &&
+         expect(window.gameplay.playerPositionChanged, "jump changed player position") &&
          expect(final.y > start.y, "jump raises player y") &&
          expect(nearlyEqual(window.gameplayJump.groundY, start.y), "jump ground y") &&
          expect(nearlyEqual(window.gameplayJump.startY, start.y), "jump start y") &&
@@ -1583,7 +1583,7 @@ bool productJumpUsesClamberTraversalWhenCandidateIsLocal() {
                 "clamber target proof") &&
          expect(window.gameplayTraversal.landingSurfaceId == "clamber_top",
                 "clamber landing proof") &&
-         expect(window.playerPositionChanged, "clamber changed player position") &&
+         expect(window.gameplay.playerPositionChanged, "clamber changed player position") &&
          expect(nearlyEqual(window.gameplayTraversal.startX, start.x),
                 "clamber start x") &&
          expect(nearlyEqual(window.gameplayTraversal.startY, start.y),
@@ -1637,7 +1637,7 @@ bool productJumpUsesWallJumpWhenAirborneNearWall() {
          expect(window.gameplayTraversal.landingSurfaceId ==
                     "wall_jump_wall_actor_blocker",
                 "wall jump landing proof") &&
-         expect(window.playerPositionChanged, "wall jump changed player position") &&
+         expect(window.gameplay.playerPositionChanged, "wall jump changed player position") &&
          expect(nearlyEqual(window.gameplayTraversal.startX, start.x),
                 "wall jump start x") &&
          expect(nearlyEqual(window.gameplayTraversal.startY, start.y),
@@ -1845,7 +1845,7 @@ bool productMoveOffUpperFloorStartsFallingImmediately() {
 
   const iggy3d::Vec3 final = playerEntity(*session)->transform.position;
   return expect(window.gameplayMovement.attempted, "move off floor attempted") &&
-         expect(window.playerPositionChanged, "move off floor moved") &&
+         expect(window.gameplay.playerPositionChanged, "move off floor moved") &&
          expect(final.x > 1.35F, "move off floor leaves upper footprint") &&
          expect(window.gameplayJump.active,
                 "move off floor starts falling immediately") &&

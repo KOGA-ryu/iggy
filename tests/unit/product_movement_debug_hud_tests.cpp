@@ -36,7 +36,7 @@ bool hasLine(const iggy3d::MovementDebugHud& hud,
 
 iggy3d::ProductAppWindowState movedWindow() {
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   window.gameplayMovement.attempted = true;
   window.gameplayMovement.status = "moved";
   window.gameplayMovement.debugAvailable = true;
@@ -254,7 +254,7 @@ int main() {
   ok &= movementProofFeedsReceiptAndHudConsistently();
 
   iggy3d::ProductAppWindowState inactive = movedWindow();
-  inactive.gameplayActive = false;
+  inactive.gameplay.gameplayActive = false;
   const iggy3d::MovementDebugHud inactiveHud =
       iggy3d::buildMovementDebugHud(inactive, true, true);
   ok &= expect(!inactiveHud.visible, "inactive gameplay hides movement hud");

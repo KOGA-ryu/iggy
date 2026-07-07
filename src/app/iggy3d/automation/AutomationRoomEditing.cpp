@@ -716,7 +716,7 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       lastAction = editorAction;
       // branch-gate: BG-1006
       if (context.frontend.screen != FrontendScreen::Gameplay ||
-          !context.window.gameplayActive ||
+          !context.window.gameplay.gameplayActive ||
           !context.activeSessionAvailable ||
           !context.window.roomEditing.ready) {
         rejectProductRoomEditorNotReady(context.window, inputActionName(editorAction));

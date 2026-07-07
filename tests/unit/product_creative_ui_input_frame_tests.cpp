@@ -1014,7 +1014,7 @@ bool inputFrameInjectedClickOnToolSelectRowSetsToolAndSuppressesClick() {
   activeSession.emplace();
   iggy3d::WorldSetupDraft worldSetupDraft;
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(window);
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
@@ -1121,7 +1121,7 @@ bool inputFrameInjectedClickOnToolMeasureRowDoesNotStaleBakedRoom() {
   activeSession.emplace();
   iggy3d::WorldSetupDraft worldSetupDraft;
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(window);
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
@@ -1204,7 +1204,7 @@ bool inputFrameInjectedClickOnCreateRoomRowCreatesRoomAndSuppressesClick() {
   activeSession.emplace();
   iggy3d::WorldSetupDraft worldSetupDraft;
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(window);
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
@@ -1483,7 +1483,7 @@ bool inputFrameInjectedClickOnCreateCrateRowAutoRefreshesBakedRoom() {
   activeSession.emplace();
   iggy3d::WorldSetupDraft worldSetupDraft;
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(window);
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;
@@ -1644,7 +1644,7 @@ bool inputFrameInjectedClickWithoutCreativeUiDrawListReachesCreativeTool() {
   activeSession.emplace();
   iggy3d::WorldSetupDraft worldSetupDraft;
   iggy3d::ProductAppWindowState window;
-  window.gameplayActive = true;
+  window.gameplay.gameplayActive = true;
   markCreativeDocumentWindow(window);
   iggy3d::FrontendSettings settings;
   iggy3d::ProductWindowInputFrameState inputFrame;

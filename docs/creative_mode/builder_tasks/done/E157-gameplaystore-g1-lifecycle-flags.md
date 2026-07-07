@@ -83,3 +83,37 @@ Keep the brief small:
 - Required grep result:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completion Brief
+
+- Files changed:
+  - `src/app/iggy3d/gameplay/GameplayStore.hpp`
+  - `src/app/iggy3d/ProductAppWindowState.hpp`
+  - `docs/god_struct_member_ownership.tsv`
+  - Production call sites in `Operations.cpp`, `ascii_room/Activation.cpp`, `automation/*`, `gameplay/*`, `menu/*`, `receipt/*`, `window/*`
+  - Focused unit tests that read or seed the moved lifecycle/input flags
+- Six fields moved:
+  - `runtimeSessionCreated`
+  - `gameplayActive`
+  - `gameplayInputUsed`
+  - `gameplayInputSource`
+  - `gameplayTickAdvanced`
+  - `playerPositionChanged`
+  - These now live at `ProductAppWindowState::gameplay.<field>` in `GameplayStore`.
+- Receipt/ownership result:
+  - Receipt keys and golden output stayed unchanged.
+  - `product_receipt_key_order_tests`: `1032 fields match golden`.
+  - `product_god_struct_ownership_coverage_tests`: passed, with `gameplay	GameplayStore` replacing the six individual top-level rows.
+- Required grep result:
+  - `rg -n "window\\.(runtimeSessionCreated|gameplayActive|gameplayInputUsed|gameplayInputSource|gameplayTickAdvanced|playerPositionChanged)\\b" /Users/kogaryu/iggy3d/src /Users/kogaryu/iggy3d/tests --glob '*.cpp' --glob '*.hpp'`: no matches.
+  - `rg -n "\\b(runtimeSessionCreated|gameplayActive|gameplayInputUsed|gameplayInputSource|gameplayTickAdvanced|playerPositionChanged)\\b" /Users/kogaryu/iggy3d/src/app/iggy3d/ProductAppWindowState.hpp`: no matches.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10`: passed.
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests`: passed.
+  - `/Users/kogaryu/iggy3d/build/product_god_struct_ownership_coverage_tests`: passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_receipt_key_order_tests|product_god_struct_ownership_coverage_tests|product_gameplay_controller_tests|product_window_input_frame_tests|product_menu_transitions_tests|product_ascii_room_activation_tests|product_interaction_mode_state_tests)$' --output-on-failure`: passed 7/7.
+  - `git -C /Users/kogaryu/iggy3d diff --check`: passed.
+  - Focused trailing-whitespace scan over changed files: passed.
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`: empty.
+- Concerns/deferred:
+  - E158-E160 remain deferred; movement/planner, action/outcome/tape, and visibility/render diagnostics were intentionally not moved.

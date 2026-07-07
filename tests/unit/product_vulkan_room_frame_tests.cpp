@@ -237,7 +237,7 @@ bool productGameplayBuildsFirstPersonRoomFrame() {
       renderFrame.camera.clipFromView * renderFrame.camera.viewFromWorld;
 
   bool ok = true;
-  ok = expect(window.gameplayActive, "gameplay active") && ok;
+  ok = expect(window.gameplay.gameplayActive, "gameplay active") && ok;
   ok = expect(iggy3d::activeRoom(window).loaded, "active room loaded") && ok;
   ok = expect(frame.hasGameplayProjection, "projection frame built") && ok;
   ok = expect(frame.viewVisible, "gameplay view visible") && ok;

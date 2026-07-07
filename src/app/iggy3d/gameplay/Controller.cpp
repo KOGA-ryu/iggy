@@ -606,7 +606,7 @@ bool resetProductPlayerToSpawn(Session& session,
   clearProductJumpTiming(window);
   window.gameplayJump.status = "reset";
   window.gameplayJump.reasonCode = std::string(reason);
-  window.playerPositionChanged = true;
+  window.gameplay.playerPositionChanged = true;
   window.runtimeStateHash = session.stateHash();
   return true;
 }
@@ -1283,7 +1283,7 @@ bool tryProductWallJump(Session& session, ProductAppWindowState& window) {
   recordProductJumpPosition(window, 0.0F, start.y, finalPosition.y);
   window.gameplayJump.status = "wall_jump";
   window.gameplayJump.reasonCode = "gameplay_jump_wall_jump";
-  window.playerPositionChanged = true;
+  window.gameplay.playerPositionChanged = true;
   window.runtimeStateHash = session.stateHash();
   return true;
 }
@@ -1324,7 +1324,7 @@ bool tryProductTraversalJump(Session& session, ProductAppWindowState& window) {
   }
   // branch-gate: BG-1156
   if (result.accepted) {
-    window.playerPositionChanged = true;
+    window.gameplay.playerPositionChanged = true;
   }
   return result.consumedInput;
 }
@@ -1405,8 +1405,8 @@ void advanceProductJump(Session& session,
     return;
   }
 
-  window.playerPositionChanged =
-      window.playerPositionChanged || std::fabs(previousY - nextY) > 0.0001F;
+  window.gameplay.playerPositionChanged =
+      window.gameplay.playerPositionChanged || std::fabs(previousY - nextY) > 0.0001F;
   window.gameplayJump.active = !landed;
   // branch-gate: BG-1153
   window.gameplayJump.velocityMetersPerSecond = landed ? 0.0F : nextVelocity;
@@ -1450,8 +1450,8 @@ void submitProductJump(Session& session,
                        std::string_view source) {
   clearProductTargetProof(window);
   clearProductOutcomeProof(window);
-  window.gameplayInputUsed = true;
-  window.gameplayInputSource = std::string{source};
+  window.gameplay.gameplayInputUsed = true;
+  window.gameplay.gameplayInputSource = std::string{source};
   window.gameplayJump.requested = true;
 
   // branch-gate: BG-1156
@@ -1541,8 +1541,8 @@ void submitProductDash(Session& session,
   const ProductGameplayMovementTuning& tuning = window.gameplayMovement.tuning;
   clearProductTargetProof(window);
   clearProductOutcomeProof(window);
-  window.gameplayInputUsed = true;
-  window.gameplayInputSource = std::string{source};
+  window.gameplay.gameplayInputUsed = true;
+  window.gameplay.gameplayInputSource = std::string{source};
   window.gameplayDash.requested = true;
 
   // branch-gate: BG-1155
@@ -1754,15 +1754,15 @@ void submitProductAirborneMove(Session& session,
                                float moveY,
                                bool sprinting,
                                std::string_view source) {
-  window.gameplayInputUsed = true;
-  window.gameplayInputSource = std::string{source};
+  window.gameplay.gameplayInputUsed = true;
+  window.gameplay.gameplayInputSource = std::string{source};
   window.gameplayCommand.submitted = false;
   window.gameplayCommand.kind = "move";
   window.gameplayCommand.accepted = false;
   window.gameplayCommand.status = "airborne";
   window.gameplayReachGate = "not_attempted";
   window.gameplayLastRejection = "none";
-  window.gameplayTickAdvanced = false;
+  window.gameplay.gameplayTickAdvanced = false;
   window.gameplayMovement.attempted = true;
   window.gameplayMovement.blocked = false;
   recordProductMovementProfile(window, sprinting);
@@ -1804,7 +1804,7 @@ void submitProductAirborneMove(Session& session,
   }
 
   window.gameplayMovement.status = "moved";
-  window.playerPositionChanged = true;
+  window.gameplay.playerPositionChanged = true;
   recordProductAirborneMovementDebug(window, start, finalPosition);
   window.runtimeStateHash = session.stateHash();
 }
@@ -1913,7 +1913,7 @@ void recordProductInteractionOutcomeProof(
     window.gameplayOutcome.status = "rejected";
     return;
   }
-  if (!window.gameplayTickAdvanced) {
+  if (!window.gameplay.gameplayTickAdvanced) {
     window.gameplayOutcome.status = "tick_failed";
     return;
   }
@@ -2042,7 +2042,7 @@ bool applyProductLedgeFallMoveFallback(Session& session,
     return false;
   }
 
-  window.playerPositionChanged = true;
+  window.gameplay.playerPositionChanged = true;
   window.gameplayMovement.blocked = false;
   window.gameplayMovement.status = "moved";
   recordProductLedgeFallMovementDebug(window, before, finalPosition);
@@ -2057,7 +2057,7 @@ void submitProductGameplayCommand(Session& session,
                                   const SpatialSurfaceSet* collisionSurfaces) {
   const EntityState* beforePlayer = productPlayerEntity(session);
   const Vec3 before = beforePlayer == nullptr ? Vec3{} : beforePlayer->transform.position;
-  window.gameplayInputUsed = true;
+  window.gameplay.gameplayInputUsed = true;
   window.gameplayCommand.submitted = true;
   window.gameplayCommand.kind = commandKindName(command.kind);
   if (command.kind == CommandKind::Move) {
@@ -2088,7 +2088,7 @@ void submitProductGameplayCommand(Session& session,
   if (window.gameplayCommand.accepted) {
     const StatusResult tick =
         tickProductGameplayCommand(session, window, collisionSurfaces);
-    window.gameplayTickAdvanced = tick.status == ResultStatus::Ok;
+    window.gameplay.gameplayTickAdvanced = tick.status == ResultStatus::Ok;
     window.gameplayTickReasonCode =
         tick.status == ResultStatus::Ok
             ? "ok"
@@ -2107,16 +2107,16 @@ void submitProductGameplayCommand(Session& session,
   bool movedThisCommand = false;
   if (afterPlayer != nullptr && beforePlayer != nullptr) {
     movedThisCommand = !nearlyEqual(before, afterPlayer->transform.position);
-    window.playerPositionChanged = window.playerPositionChanged || movedThisCommand;
+    window.gameplay.playerPositionChanged = window.gameplay.playerPositionChanged || movedThisCommand;
   }
   if (command.kind == CommandKind::Move && window.gameplayCommand.accepted) {
     const bool runtimeMovementBlocked =
         window.gameplayMovement.debugAvailable &&
         window.gameplayMovement.blockedReason != "movement_ok";
     const bool runtimeMovementChanged = productMovementDebugChangedPosition(window);
-    window.playerPositionChanged =
-        window.playerPositionChanged || movedThisCommand || runtimeMovementChanged;
-    if (!window.gameplayTickAdvanced) {
+    window.gameplay.playerPositionChanged =
+        window.gameplay.playerPositionChanged || movedThisCommand || runtimeMovementChanged;
+    if (!window.gameplay.gameplayTickAdvanced) {
       window.gameplayMovement.status = "tick_failed";
     } else if (runtimeMovementBlocked) {
       window.gameplayMovement.blocked = true;
@@ -2182,7 +2182,7 @@ void submitProductMove(Session& session,
   command.source = CommandSource::LocalPlayer;
   command.payload.target.hasPoint = true;
   command.payload.target.point = destination;
-  window.gameplayInputSource = std::string(source);
+  window.gameplay.gameplayInputSource = std::string(source);
   submitProductGameplayCommand(session, window, command, collisionSurfaces);
 }
 
@@ -2196,8 +2196,8 @@ void submitProductTargetCommand(Session& session,
   const TargetQueryResult target = queryProductGameplayTarget(session, kind);
   recordProductTargetProof(session, window, kind, target);
   if (!window.targetDiscovered) {
-    window.gameplayInputUsed = true;
-    window.gameplayInputSource = std::string(source);
+    window.gameplay.gameplayInputUsed = true;
+    window.gameplay.gameplayInputSource = std::string(source);
     window.gameplayCommand.kind = commandKindName(kind);
     window.gameplayCommand.status = "no_target";
     window.gameplayReachGate = "not_attempted";
@@ -2229,17 +2229,17 @@ void submitProductTargetCommand(Session& session,
                                                   command.playerSlot,
                                                   target.target)
           : ProductInteractionOutcomeSnapshot{};
-  window.gameplayInputSource = std::string(source);
+  window.gameplay.gameplayInputSource = std::string(source);
   submitProductGameplayCommand(session, window, command, collisionSurfaces);
   if (kind == CommandKind::Interact) {
     recordProductInteractionOutcomeProof(session, window, outcomeBefore);
   }
   if (kind == CommandKind::Interact && window.gameplayCommand.accepted &&
-      window.gameplayTickAdvanced) {
+      window.gameplay.gameplayTickAdvanced) {
     window.interactionExecuted = true;
   }
   if (kind == CommandKind::Attack && window.gameplayCommand.accepted &&
-      window.gameplayTickAdvanced) {
+      window.gameplay.gameplayTickAdvanced) {
     window.attackExecuted = true;
   }
 }
@@ -2402,8 +2402,8 @@ void applyProductResetActionPhase(Session& session,
   const SessionResetResult reset = session.resetToBaseline();
   clearProductTargetProof(window);
   clearProductOutcomeProof(window);
-  window.gameplayInputUsed = true;
-  window.gameplayInputSource = std::string(source);
+  window.gameplay.gameplayInputUsed = true;
+  window.gameplay.gameplayInputSource = std::string(source);
   window.gameplayCommand.kind = "reset";
   window.gameplayCommand.submitted = true;
   window.gameplayCommand.accepted = reset.reset;
