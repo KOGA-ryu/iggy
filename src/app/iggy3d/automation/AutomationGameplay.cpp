@@ -63,8 +63,8 @@ bool applyGameplayActionState(ProductAutomationGameplayContext& context,
   InputRoutingContext routingContext;
   routingContext.owners.gameplay = true;
   const InputRoutingResult routed = routeInputAction(routingContext, action);
-  context.window.lastInputAction = routed.action;
-  context.window.lastInputAccepted = routed.accepted;
+  context.window.inputDevice.lastInputAction = routed.action;
+  context.window.inputDevice.lastInputAccepted = routed.accepted;
   syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
   // branch-gate: BG-1010
   if (!routed.accepted) {
@@ -86,8 +86,8 @@ bool applyGameplayJumpActionState(ProductAutomationGameplayContext& context,
   routingContext.owners.gameplay = true;
   const InputRoutingResult routed =
       routeInputAction(routingContext, InputAction::PlayerJump);
-  context.window.lastInputAction = routed.action;
-  context.window.lastInputAccepted = routed.accepted;
+  context.window.inputDevice.lastInputAction = routed.action;
+  context.window.inputDevice.lastInputAccepted = routed.accepted;
   syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
   // branch-gate: BG-1010
   if (!routed.accepted) {

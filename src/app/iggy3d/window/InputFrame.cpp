@@ -417,8 +417,8 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   routingContext.owners.gameplay = true;
   for (const ActionStateEntry& entry : gameplayActions.entries) {
     const InputRoutingResult routed = routeInputAction(routingContext, entry.action);
-    window.lastInputAction = routed.action;
-    window.lastInputAccepted = routed.accepted;
+    window.inputDevice.lastInputAction = routed.action;
+    window.inputDevice.lastInputAccepted = routed.accepted;
     syncProductWindowInputOwnerFromActiveSurface(frontend, window);
     // branch-gate: BG-1061
     if (routed.accepted && routed.owner == MenuOwner::Editor &&
@@ -669,10 +669,11 @@ void dispatchProductOpeningMenuMouseHit(
 void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                             ProductAppWindowState& window) {
   initializeGamepadMenuState(state.gamepad);
-  window.gamepadAvailable = state.gamepad.gamepadAvailable;
-  window.gamepadName = state.gamepad.gamepadName;
+  window.inputDevice.gamepadAvailable = state.gamepad.gamepadAvailable;
+  window.inputDevice.gamepadName = state.gamepad.gamepadName;
   // branch-gate: BG-1029
-  window.gamepadMapping = state.gamepad.gamepadAvailable ? "sdl_gamepad" : "unavailable";
+  window.inputDevice.gamepadMapping =
+      state.gamepad.gamepadAvailable ? "sdl_gamepad" : "unavailable";
 }
 
 MouseClick normalizeProductWindowMenuClick(MouseClick click,
@@ -728,8 +729,8 @@ bool cancelProductRoomEditorPendingPreviewFromBack(
   const ProductRoomEditorPreviewInputResult cancelled =
       applyProductRoomEditorPreviewInputAction(window,
                                               InputAction::EditorCancelPreview);
-  window.lastInputAction = InputAction::EditorCancelPreview;
-  window.lastInputAccepted = cancelled.ok;
+  window.inputDevice.lastInputAction = InputAction::EditorCancelPreview;
+  window.inputDevice.lastInputAccepted = cancelled.ok;
   syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   return cancelled.ok;
 }
@@ -972,8 +973,8 @@ ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPre
   result.picked = pickResult.ok;
   result.status = pickResult.status;
   result.reasonCode = pickResult.reasonCode;
-  context.window.lastInputAction = InputAction::EditorPreviewPlacement;
-  context.window.lastInputAccepted = pickResult.ok;
+  context.window.inputDevice.lastInputAction = InputAction::EditorPreviewPlacement;
+  context.window.inputDevice.lastInputAccepted = pickResult.ok;
   syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
   recordProductRoomEditorActionResult(context.window,
                                       pickResult,

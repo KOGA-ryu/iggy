@@ -408,10 +408,10 @@ bool creativeClickPicksCursorAndBuildsPreviewWithoutMutation() {
                 "creative mouse preview status") &&
          expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Editor,
                 "creative mouse input owner editor") &&
-         expect(window.lastInputAction ==
+         expect(window.inputDevice.lastInputAction ==
                     iggy3d::InputAction::EditorPreviewPlacement,
                 "creative mouse semantic action") &&
-         expect(window.lastInputAccepted, "creative mouse input accepted") &&
+         expect(window.inputDevice.lastInputAccepted, "creative mouse input accepted") &&
          expect(liveSurface(frontend, window).gameplayInputSuppressed,
                 "creative mouse suppresses gameplay input") &&
          expect(window.roomEditorStatus == "room_editor_mouse_pick_mapped",
@@ -510,7 +510,7 @@ bool invalidClickPropagatesMousePickRejectionWithoutMutation() {
          expect(window.roomEditorStatus ==
                     "room_editor_mouse_pick_invalid_input",
                 "invalid mouse pick receipt status") &&
-         expect(!window.lastInputAccepted, "invalid mouse input not accepted") &&
+         expect(!window.inputDevice.lastInputAccepted, "invalid mouse input not accepted") &&
          expect(!window.roomEditorPreview.visible,
                 "invalid mouse leaves preview hidden") &&
          expect(window.roomEditing.documentWallCount == initialWalls,
@@ -536,7 +536,7 @@ bool controllerSouthStagesThenConfirmsPlacement() {
   const bool firstOk =
       expect(staged.actionApplied, "first south action applied") &&
       expect(staged.actionAccepted, "first south stages accepted preview") &&
-      expect(window.lastInputAction == iggy3d::InputAction::EditorPlace,
+      expect(window.inputDevice.lastInputAction == iggy3d::InputAction::EditorPlace,
              "first south routes to editor place") &&
       expect(window.roomEditorStatus == "room_editor_preview_ready",
              "first south stages preview") &&
@@ -559,7 +559,7 @@ bool controllerSouthStagesThenConfirmsPlacement() {
   return firstOk &&
          expect(confirmed.actionApplied, "second south action applied") &&
          expect(confirmed.actionAccepted, "second south confirms preview") &&
-         expect(window.lastInputAction == iggy3d::InputAction::EditorPlace,
+         expect(window.inputDevice.lastInputAction == iggy3d::InputAction::EditorPlace,
                 "second south routes to editor place") &&
          expect(window.roomEditorStatus == "room_editor_preview_confirmed",
                 "second south confirm status") &&
@@ -602,7 +602,7 @@ bool controllerMoveInvalidatesPendingPreview() {
 
   return expect(moved.actionApplied, "dpad move action applied") &&
          expect(moved.actionAccepted, "dpad move accepted") &&
-         expect(window.lastInputAction == iggy3d::InputAction::EditorNudgeX,
+         expect(window.inputDevice.lastInputAction == iggy3d::InputAction::EditorNudgeX,
                 "dpad right routes to nudge x") &&
          expect(window.roomEditorCursor.gridX == 1,
                 "dpad right moves cursor") &&
@@ -637,9 +637,9 @@ bool backCancelsPendingPreviewBeforePauseRoute() {
   return stageOk && expect(cancelled, "back cancels pending preview") &&
          expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Editor,
                 "back cancel owner editor") &&
-         expect(window.lastInputAction == iggy3d::InputAction::EditorCancelPreview,
+         expect(window.inputDevice.lastInputAction == iggy3d::InputAction::EditorCancelPreview,
                 "back cancel records editor cancel action") &&
-         expect(window.lastInputAccepted, "back cancel input accepted") &&
+         expect(window.inputDevice.lastInputAccepted, "back cancel input accepted") &&
          expect(liveSurface(frontend, window).gameplayInputSuppressed,
                 "back cancel suppresses gameplay input") &&
          expect(window.roomEditorStatus == "room_editor_preview_cancelled",
@@ -696,7 +696,7 @@ bool controllerEastCancelsPendingPreviewWithoutMutation() {
          expect(staged.actionAccepted, "east cancel test stages preview") &&
          expect(cancelled.actionApplied, "east cancel action applied") &&
          expect(cancelled.actionAccepted, "east cancel action accepted") &&
-         expect(window.lastInputAction == iggy3d::InputAction::EditorCancelPreview,
+         expect(window.inputDevice.lastInputAction == iggy3d::InputAction::EditorCancelPreview,
                 "east cancel routes to editor cancel preview") &&
          expect(window.roomEditorStatus == "room_editor_preview_cancelled",
                 "east cancel status") &&
@@ -728,10 +728,10 @@ bool controllerSouthJumpsInGameplayPlayerMode() {
   return expect(jumped.actionApplied, "gameplay south action applied") &&
          expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Gameplay,
                 "gameplay south owner gameplay") &&
-         expect(window.lastInputAccepted, "gameplay south input accepted") &&
+         expect(window.inputDevice.lastInputAccepted, "gameplay south input accepted") &&
          expect(!liveSurface(frontend, window).gameplayInputSuppressed,
                 "gameplay south does not suppress gameplay") &&
-         expect(window.lastInputAction == iggy3d::InputAction::PlayerJump,
+         expect(window.inputDevice.lastInputAction == iggy3d::InputAction::PlayerJump,
                 "gameplay south routes to jump") &&
          expect(window.controllerAction.inputAction == "game.jump",
                 "gameplay south records jump input action") &&
@@ -985,7 +985,7 @@ bool controllerSouthJumpsFromClamberedWallTop() {
   return expect(clambered.actionApplied, "wall top first south action applied") &&
          expect(window.controllerAction.inputAction == "game.jump",
                 "wall top second south records jump action") &&
-         expect(window.lastInputAction == iggy3d::InputAction::PlayerJump,
+         expect(window.inputDevice.lastInputAction == iggy3d::InputAction::PlayerJump,
                 "wall top second south routes to jump") &&
          expect(jumped.actionApplied, "wall top second south action applied") &&
          expect(window.gameplay.gameplayJump.requested, "wall top jump requested") &&
@@ -1314,7 +1314,7 @@ bool pauseSettingsInputDispatchRoutesToSettings() {
                 "pause settings input dispatch does not move starter row") &&
          expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Settings,
                 "pause settings input dispatch owner") &&
-         expect(window.lastInputAccepted,
+         expect(window.inputDevice.lastInputAccepted,
                 "pause settings input dispatch accepted");
 }
 
@@ -1351,7 +1351,7 @@ bool starterSettingsInputDispatchRoutesToSettings() {
                 "starter settings dispatch does not move starter row") &&
          expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Settings,
                 "starter settings dispatch owner") &&
-         expect(window.lastInputAccepted, "starter settings dispatch accepted");
+         expect(window.inputDevice.lastInputAccepted, "starter settings dispatch accepted");
 }
 
 bool pauseInputDispatchRoutesToPauseHandler() {
@@ -1603,9 +1603,9 @@ bool editorBackOpensPauseWithoutLeavingEditor() {
                 "editor back keeps room editing ready for leave action") &&
          expect(liveSurface(frontend, window).inputOwner == iggy3d::MenuOwner::Pause,
                 "editor back routes input owner to pause") &&
-         expect(window.lastInputAction == iggy3d::InputAction::SystemPause,
+         expect(window.inputDevice.lastInputAction == iggy3d::InputAction::SystemPause,
                 "editor back records system pause action") &&
-         expect(window.lastInputAccepted,
+         expect(window.inputDevice.lastInputAccepted,
                 "editor back system pause accepted");
 }
 
@@ -1877,7 +1877,7 @@ bool openingMenuMouseDispatchRoutesStarterAndSettingsHits() {
              "mouse starter action opens settings") &&
       expect(starter.settingsTab == iggy3d::FrontendSettingsTab::Input,
              "mouse starter settings tab") &&
-      expect(starter.window.lastInputAccepted,
+      expect(starter.window.inputDevice.lastInputAccepted,
              "mouse starter action accepted");
 
   MouseDispatchHarness settings;

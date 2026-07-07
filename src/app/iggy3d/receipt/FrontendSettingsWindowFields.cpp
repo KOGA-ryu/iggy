@@ -114,9 +114,11 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
   appendReceiptField(receipt, "menu_selected_row_drawn", window.selectedRowDrawn);
   appendReceiptField(receipt, "menu_row_count", window.menuRowCount);
   appendReceiptField(receipt, "mouse_menu_select_used", window.mouseMenuSelectUsed);
-  appendReceiptField(receipt, "gamepad_available", window.gamepadAvailable);
-  appendReceiptField(receipt, "gamepad_name", window.gamepadName);
-  appendReceiptField(receipt, "gamepad_mapping", window.gamepadMapping);
+  appendReceiptField(receipt, "gamepad_available",
+                     window.inputDevice.gamepadAvailable);
+  appendReceiptField(receipt, "gamepad_name", window.inputDevice.gamepadName);
+  appendReceiptField(receipt, "gamepad_mapping",
+                     window.inputDevice.gamepadMapping);
   appendReceiptField(receipt, "gamepad_menu_select_used", window.gamepadMenuSelectUsed);
   appendReceiptField(receipt, "interaction_mode",
                      productInteractionModeName(window.interactionMode));

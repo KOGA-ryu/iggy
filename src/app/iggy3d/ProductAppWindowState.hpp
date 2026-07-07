@@ -5,7 +5,6 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
-#include "app/input/InputAction.hpp"
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/gameplay/GameplayStore.hpp"
@@ -14,6 +13,7 @@
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ProductCreativeBakedRoomRefresh.hpp"
 #include "app/iggy3d/input/InteractionMode.hpp"
+#include "app/iggy3d/input/InputDeviceStore.hpp"
 #include "app/iggy3d/debug/InteractionModeHud.hpp"
 #include "app/iggy3d/debug/TopDownMapState.hpp"
 #include "app/iggy3d/debug/DevCollisionOverlayState.hpp"
@@ -189,10 +189,8 @@ struct ProductAppWindowState {
   bool menuTextDrawn = false;
   bool selectedRowDrawn = false;
   bool mouseMenuSelectUsed = false;
-  bool gamepadAvailable = false;
   bool gamepadMenuSelectUsed = false;
-  std::string gamepadName = "unavailable";
-  std::string gamepadMapping = "unavailable";
+  InputDeviceStore inputDevice;
   ProductInteractionMode interactionMode = ProductInteractionMode::Player;
   InteractionModeHud interactionModeHud;
   ProductTopDownMapState topDownMap;
@@ -253,8 +251,6 @@ struct ProductAppWindowState {
   ProductNpcBehaviorDebugHudState npcBehaviorDebugHud;
   PhysicsDebugHud physicsDebugHud;
   PositionHud positionHud;
-  InputAction lastInputAction = InputAction::None;
-  bool lastInputAccepted = false;
   ProductAutomationControlState automationControl;
   ProductVulkanRendererState productVulkanRenderer;
   bool productVulkanSurfaceCreated = false;

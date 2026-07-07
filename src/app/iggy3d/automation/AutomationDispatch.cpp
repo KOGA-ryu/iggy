@@ -43,7 +43,7 @@ bool routeAutomationInput(FrontendState& frontend,
       window, closeRequested, settings, creativeApp};
   routeProductOpeningMenuInput(action, actionState, menuContext);
   window.automationControl.lastOwner = productInputOwnerFor(frontend, window);
-  return window.lastInputAccepted || action == InputAction::None;
+  return window.inputDevice.lastInputAccepted || action == InputAction::None;
 }
 
 }  // namespace

@@ -50,8 +50,10 @@ void appendProductFeedbackSurfaceAutomationVulkanFields(RenderReceipt& receipt, 
                      "active_surface_mouse_capture_policy",
                      productActiveMouseCapturePolicyName(
                          activeSurface.mouseCapturePolicy));
-  appendReceiptField(receipt, "input_action_last", inputActionName(window.lastInputAction));
-  appendReceiptField(receipt, "input_action_accepted", window.lastInputAccepted);
+  appendReceiptField(receipt, "input_action_last",
+                     inputActionName(window.inputDevice.lastInputAction));
+  appendReceiptField(receipt, "input_action_accepted",
+                     window.inputDevice.lastInputAccepted);
   appendReceiptField(receipt, "gameplay_input_suppressed",
                      activeSurface.gameplayInputSuppressed);
   appendReceiptField(receipt, "automation_control_requested",

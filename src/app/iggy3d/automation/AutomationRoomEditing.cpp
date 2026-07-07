@@ -727,8 +727,8 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
 
       const InputRoutingResult routed = context.routeEditorInput(editorAction);
       lastOwner = routed.owner;
-      context.window.lastInputAction = routed.action;
-      context.window.lastInputAccepted = routed.accepted;
+      context.window.inputDevice.lastInputAction = routed.action;
+      context.window.inputDevice.lastInputAccepted = routed.accepted;
       syncProductWindowInputOwnerFromActiveSurface(context.frontend,
                                                   context.window);
       // branch-gate: BG-1006

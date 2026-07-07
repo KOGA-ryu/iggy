@@ -6,10 +6,8 @@ openingMenuVisible	FrontendWindowShell
 menuTextDrawn	FrontendWindowShell
 selectedRowDrawn	FrontendWindowShell
 mouseMenuSelectUsed	FrontendWindowShell
-gamepadAvailable	InputDeviceStore
-gamepadMenuSelectUsed	InputDeviceStore
-gamepadName	InputDeviceStore
-gamepadMapping	InputDeviceStore
+gamepadMenuSelectUsed	FrontendWindowShell
+inputDevice	InputDeviceStore
 interactionMode	InputDeviceStore
 interactionModeHud	InputDeviceStore
 topDownMap	DebugHudStore
@@ -63,8 +61,6 @@ viewport	ViewportStore
 npcBehaviorDebugHud	DebugHudStore
 physicsDebugHud	DebugHudStore
 positionHud	DebugHudStore
-lastInputAction	InputDeviceStore
-lastInputAccepted	InputDeviceStore
 automationControl	FrontendWindowShell
 productVulkanRenderer	PresentPathStore
 productVulkanSurfaceCreated	app-global-remainder

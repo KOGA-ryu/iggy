@@ -18,8 +18,10 @@ RoomStore/SaveSessionStore work; `runtimeSessionCreated` now belongs to
 GameplayStore.
 
 **ViewportStore fold is COMPLETE as E155** (#6 — folded 11 mapMaker* fields into
-ProductViewportState). `E156` InputDeviceStore (#7 — 10 fields, ~265 repoints)
-has been decomposed into E165-E167. **Dominant hazard:** `interactionMode` is a
+ProductViewportState). `E156` InputDeviceStore (#7) has been decomposed into
+E165-E167; **E165 is COMPLETE** and moved only `gamepadAvailable`,
+`gamepadName`, `gamepadMapping`, `lastInputAction`, and `lastInputAccepted` into
+`ProductAppWindowState::inputDevice`. E166/E167 remain blocked. **Dominant hazard:** `interactionMode` is a
 real field on 6+ foreign structs, so compiler-guided only, never sed.
 
 **Decomposition card set now COMPLETE (all 11 stores).** Remaining parents staged in
@@ -48,7 +50,7 @@ None.
 
 ## Pull Next
 
-1. E165 — InputDeviceStore G1: device + last input state.
+None.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -60,7 +62,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. E165 — InputDeviceStore G1: device + last input state.
+None.
 
 ## Parking Lot
 
@@ -88,9 +90,10 @@ Held — do NOT promote to `ready/` on a guess:
   - **#5 `SaveSessionStore`** — **COMPLETE as E153.** Structural regroup only;
     `runtimeSessionCreated` was corrected to GameplayStore ownership.
   - **#6 `ViewportStore`** — **COMPLETE as E155.**
-  - **#7 `InputDeviceStore`** — **DECOMPOSED as E165-E167.** E165 moves the
-    lower-risk device/last-input fields first; E166 moves controller/capture;
-    E167 moves the high-collision interaction-mode fields last.
+  - **#7 `InputDeviceStore`** — **G1 COMPLETE as E165.** E165 moved the
+    lower-risk device/last-input fields into `inputDevice`; E166 moves
+    controller/capture; E167 moves the high-collision interaction-mode fields
+    last. `gamepadMenuSelectUsed` remains in FrontendWindowShell.
   - **#8 `GameplayStore`** — **COMPLETE as E157-E160.**
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
