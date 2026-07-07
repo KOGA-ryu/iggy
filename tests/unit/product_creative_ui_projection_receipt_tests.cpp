@@ -216,11 +216,11 @@ bool modelProjectionRecordsReceiptFields() {
       iggy3d::buildProductCreativeUiProjection(request);
 
   iggy3d::ProductAppWindowState window;
-  const std::string statusBefore = window.status;
+  const std::string statusBefore = window.frontendShell.status;
   iggy3d::recordProductCreativeUiProjection(window, projection.receipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
-  return expect(window.status == statusBefore,
+  return expect(window.frontendShell.status == statusBefore,
                 "window status untouched") &&
          expectReceiptField(receipt,
                             "creative_ui_projection_requested",

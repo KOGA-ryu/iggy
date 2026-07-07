@@ -7,9 +7,9 @@ namespace iggy3d {
 void appendProductStartupProbeFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window, const ProductSaveBridgeResult& saves) {
   appendReceiptField(receipt, "dev_tools_category",
                      frontendDevToolsCategoryName(frontend.devToolsCategory));
-  appendReceiptField(receipt, "launch_action", window.launchAction);
-  appendReceiptField(receipt, "launch_status", window.launchStatus);
-  appendReceiptField(receipt, "package_load_status", window.packageLoadStatus);
+  appendReceiptField(receipt, "launch_action", window.frontendShell.launchAction);
+  appendReceiptField(receipt, "launch_status", window.frontendShell.launchStatus);
+  appendReceiptField(receipt, "package_load_status", window.frontendShell.packageLoadStatus);
   appendReceiptField(receipt, "startup_package_path",
                      window.startup.packagePath);
   appendReceiptField(receipt, "startup_package_lookup_measured",

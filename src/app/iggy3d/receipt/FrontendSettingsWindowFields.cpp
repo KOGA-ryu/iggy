@@ -45,7 +45,7 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
   appendReceiptField(receipt, "settings_input_backend",
                      frontendInputBackendName(settings.inputBackend));
   appendReceiptField(receipt, "settings_selected_tab",
-                     frontendSettingsTabName(window.selectedSettingsTab));
+                     frontendSettingsTabName(window.frontendShell.selectedSettingsTab));
   appendReceiptField(receipt, "settings_renderer",
                      frontendRendererChoiceName(settings.renderer));
   appendReceiptField(receipt, "settings_window_mode",
@@ -109,17 +109,17 @@ void appendProductFrontendSettingsWindowFields(RenderReceipt& receipt, const Pro
   appendReceiptField(receipt, "window_drawable", window.drawable);
   appendReceiptField(receipt, "window_title",
                      window.gameplay.gameplayActive ? "iggy3d - Gameplay" : "iggy3d - Opening Menu");
-  appendReceiptField(receipt, "opening_menu_visible", window.openingMenuVisible);
-  appendReceiptField(receipt, "menu_text_drawn", window.menuTextDrawn);
-  appendReceiptField(receipt, "menu_selected_row_drawn", window.selectedRowDrawn);
-  appendReceiptField(receipt, "menu_row_count", window.menuRowCount);
-  appendReceiptField(receipt, "mouse_menu_select_used", window.mouseMenuSelectUsed);
+  appendReceiptField(receipt, "opening_menu_visible", window.frontendShell.openingMenuVisible);
+  appendReceiptField(receipt, "menu_text_drawn", window.frontendShell.menuTextDrawn);
+  appendReceiptField(receipt, "menu_selected_row_drawn", window.frontendShell.selectedRowDrawn);
+  appendReceiptField(receipt, "menu_row_count", window.frontendShell.menuRowCount);
+  appendReceiptField(receipt, "mouse_menu_select_used", window.frontendShell.mouseMenuSelectUsed);
   appendReceiptField(receipt, "gamepad_available",
                      window.inputDevice.gamepadAvailable);
   appendReceiptField(receipt, "gamepad_name", window.inputDevice.gamepadName);
   appendReceiptField(receipt, "gamepad_mapping",
                      window.inputDevice.gamepadMapping);
-  appendReceiptField(receipt, "gamepad_menu_select_used", window.gamepadMenuSelectUsed);
+  appendReceiptField(receipt, "gamepad_menu_select_used", window.frontendShell.gamepadMenuSelectUsed);
   appendReceiptField(receipt, "interaction_mode",
                      productInteractionModeName(
                          window.inputDevice.interactionMode));

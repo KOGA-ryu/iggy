@@ -89,7 +89,7 @@ bool creativeNewWorldLaunchesThroughAutomationAppContext() {
          expect(window.inputDevice.interactionMode ==
                     iggy3d::ProductInteractionMode::Creative,
                 "automation entered creative mode") &&
-         expect(window.launchStatus == "product_creative_world_launched",
+         expect(window.frontendShell.launchStatus == "product_creative_world_launched",
                 "automation creative launch status") &&
          expect(app.identity.saveId != "none" &&
                     !app.identity.saveId.empty(),
@@ -113,7 +113,7 @@ bool creativeNewWorldLaunchesThroughAutomationAppContext() {
                 "automation save is not product loadable") &&
          expect(!productContinue.selected,
                 "automation creative save is ignored by product continue") &&
-         expect(window.launchStatus != "product_creative_world_facade_missing",
+         expect(window.frontendShell.launchStatus != "product_creative_world_facade_missing",
                 "automation facade was threaded into starter action");
 }
 

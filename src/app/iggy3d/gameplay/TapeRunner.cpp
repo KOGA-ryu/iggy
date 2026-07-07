@@ -407,7 +407,7 @@ void recordProductGameplayTapeRun(const ProductGameplayTapeRunResult& run,
   window.runtimeStateHash = run.runtimeStateHash;
   // branch-gate: BG-1032
   if (!run.ok) {
-    window.status = "gameplay_tape_failed";
+    window.frontendShell.status = "gameplay_tape_failed";
   }
 }
 
@@ -570,7 +570,7 @@ void runProductGameplayTapeFromOptions(
   recordProductGameplayTapeParse(parsed, request.window);
   // branch-gate: BG-1032
   if (!parsed.ok) {
-    request.window.status = "gameplay_tape_parse_failed";
+    request.window.frontendShell.status = "gameplay_tape_parse_failed";
     return;
   }
 

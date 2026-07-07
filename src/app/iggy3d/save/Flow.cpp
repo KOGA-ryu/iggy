@@ -74,7 +74,7 @@ void recordPauseCreativeFacadeMissing(ProductPauseSaveFlowResult& result,
   result.creativeSave.objectCount = 0U;
   result.creativeSave.nextObjectId = creative::kInvalidObjectId;
   result.launchStatus = std::string{reason};
-  window.launchStatus = std::string{reason};
+  window.frontendShell.launchStatus = std::string{reason};
 }
 
 ProductPauseSaveFlowResult executeCreativePauseSaveFlow(
@@ -98,7 +98,7 @@ ProductPauseSaveFlowResult executeCreativePauseSaveFlow(
     result.creativeSaveAccepted = result.creativeSave.accepted;
     result.creativeSaveSaved = result.creativeSave.saved;
     result.launchStatus = result.creativeSave.reasonCode;
-    window.launchStatus = result.launchStatus;
+    window.frontendShell.launchStatus = result.launchStatus;
   }
 
   const bool ok = result.creativeSaveAccepted && result.creativeSaveSaved;
@@ -152,7 +152,7 @@ ProductPauseSaveFlowResult executeProductPauseSaveFlow(
   result.sessionReset = result.returnedToTitle;
 
   frontend.status = frontendStatuses[result.write.ok];
-  window.launchStatus = result.launchStatus;
+  window.frontendShell.launchStatus = result.launchStatus;
   if (result.returnedToTitle) {  // branch-gate: BG-1017
     returnProductToTitleTransition(frontend, window);
   }

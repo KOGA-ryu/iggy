@@ -157,11 +157,11 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
   SdlWindow sdlWindow(createInfo);
   window.created = sdlWindow.nativeWindow() != nullptr;
   window.drawable = sdlWindow.isDrawable();
-  window.openingMenuVisible =
+  window.frontendShell.openingMenuVisible =
       window.created && request.frontend.screen == FrontendScreen::Starter;
   // branch-gate: BG-1031
   if (!window.created) {
-    window.status = "window_create_failed";
+    window.frontendShell.status = "window_create_failed";
     return ProductWindowLoopResult{std::move(window), std::move(saves)};
   }
 
@@ -191,7 +191,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
   FrontendSettingsTab settingsTab = FrontendSettingsTab::Input;
   while (sdlWindow.isOpen()) {
     sdlWindow.pollEvents();
-    ++window.eventPollCount;
+    ++window.frontendShell.eventPollCount;
     window.drawable = sdlWindow.isDrawable();
     sdlWindow.setTitle(
         productWindowTitle(request.frontend, window, request.creativeApp));
@@ -293,11 +293,11 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
         request.worldSetupDraft, window, saves, sdlWindow, renderer,
         projectionFrame, creativeUiDrawList, creativeWireframeDebugLines,
         request.creativeApp});
-    ++window.framesPresented;
+    ++window.frontendShell.framesPresented;
 
     // branch-gate: BG-1031
     if (request.options.frames > 0 &&
-        window.framesPresented >= request.options.frames) {
+        window.frontendShell.framesPresented >= request.options.frames) {
       break;
     }
     // branch-gate: BG-1031
@@ -318,7 +318,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
 
   shutdownProductWindowInputFrameState(inputFrame, &sdlWindow, &window);
   shutdownProductWindowRenderer(renderer);
-  window.selectedSettingsTab = settingsTab;
+  window.frontendShell.selectedSettingsTab = settingsTab;
   finalizeProductWindowRendererStatus(renderer, window);
   return ProductWindowLoopResult{std::move(window), std::move(saves)};
 #else
@@ -326,8 +326,8 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
   window.sdlAvailable = false;
   window.created = false;
   window.drawable = false;
-  window.openingMenuVisible = false;
-  window.status = "sdl3_unavailable";
+  window.frontendShell.openingMenuVisible = false;
+  window.frontendShell.status = "sdl3_unavailable";
   // BLIND on the box (this #else is preprocessed out with system SDL3 ON). Mirrors the SDL
   // returns exactly: `saves == request.saves` here (unmutated), returned with the window.
   return ProductWindowLoopResult{std::move(window), std::move(saves)};

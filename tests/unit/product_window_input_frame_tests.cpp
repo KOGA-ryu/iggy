@@ -1633,7 +1633,7 @@ bool pauseSaveFlowLeavesStableFrontendStatus() {
          expect(saved.accepted, "pause save accepted") &&
          expect(frontend.status == "pause_save_failed",
                 "pause save failure status remains stable") &&
-         expect(window.launchStatus == "product_save_session_missing",
+         expect(window.frontendShell.launchStatus == "product_save_session_missing",
                 "pause save failure launch status");
 }
 
@@ -1754,12 +1754,12 @@ bool loadFromPauseReplacesTheActiveSession() {
       iggy3d::InputAction::MenuConfirm,
       {frontend, options, saves, settingsTab, activeSession, window,
        closeRequested, settings});
-  window.launchStatus = "unset";
+  window.frontendShell.launchStatus = "unset";
   (void)iggy3d::applyProductLoadSaveMenuAction(
       iggy3d::InputAction::MenuConfirm,
       {frontend, options, saves, activeSession, window});
   const bool replaced =
-      activeSession.has_value() && window.launchStatus == "product_save_loaded";
+      activeSession.has_value() && window.frontendShell.launchStatus == "product_save_loaded";
 
   fs::remove_all(saveRoot, ec);
   return expect(hadSession, "new-world established an active session") &&

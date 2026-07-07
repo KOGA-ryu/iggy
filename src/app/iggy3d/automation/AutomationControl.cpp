@@ -47,7 +47,7 @@ void applyProductAutomationControl(ProductAutomationControlContext& context) {
   if (context.window.automationControl.status == "loaded" && commands.empty()) {
     context.window.automationControl.lastResult = "none";
   }
-  context.window.selectedSettingsTab = context.settingsTab;
+  context.window.frontendShell.selectedSettingsTab = context.settingsTab;
   syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
 }
 

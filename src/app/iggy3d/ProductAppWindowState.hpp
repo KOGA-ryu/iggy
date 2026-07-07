@@ -21,6 +21,7 @@
 #include "app/iggy3d/gameplay/PhysicsMovementPlannerState.hpp"
 #include "app/iggy3d/gameplay/ResetState.hpp"
 #include "app/iggy3d/automation/AutomationControlState.hpp"
+#include "app/iggy3d/window/FrontendWindowShell.hpp"
 #include "app/iggy3d/window/PresentPathStore.hpp"
 #include "app/iggy3d/window/ProductVulkanMenuState.hpp"
 #include "app/iggy3d/gameplay/CollisionState.hpp"
@@ -38,19 +39,11 @@ struct ProductAppWindowState {
   bool sdlAvailable = false;
   bool created = false;
   bool drawable = false;
-  bool openingMenuVisible = false;
-  bool menuTextDrawn = false;
-  bool selectedRowDrawn = false;
-  bool mouseMenuSelectUsed = false;
-  bool gamepadMenuSelectUsed = false;
+  FrontendWindowShell frontendShell;
   InputDeviceStore inputDevice;
   DebugHudStore debugHud;
   CreativeAuthoringStore creativeAuthoring;
-  FrontendSettingsTab selectedSettingsTab = FrontendSettingsTab::None;
   GameplayStore gameplay;
-  std::string launchAction = "none";
-  std::string launchStatus = "not_requested";
-  std::string packageLoadStatus = "not_requested";
   ProductStartupState startup;
   ProductRoomStore room;
   SaveSessionStore saveSession;
@@ -61,10 +54,6 @@ struct ProductAppWindowState {
   ProductAutomationControlState automationControl;
   PresentPathStore presentPath;
   ProductVulkanMenuState productVulkanMenu;
-  std::uint64_t framesPresented = 0;
-  std::uint64_t eventPollCount = 0;
-  std::uint64_t menuRowCount = 0;
-  std::string status = "window_not_requested";
 };
 
 }  // namespace iggy3d

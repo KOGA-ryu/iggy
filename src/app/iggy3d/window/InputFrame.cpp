@@ -1454,7 +1454,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
   const InputAction gamepadAction = pollGamepadMenuAction(context.inputFrame.gamepad);
   // branch-gate: BG-1029
   if (gamepadAction != InputAction::None) {
-    context.window.gamepadMenuSelectUsed = true;
+    context.window.frontendShell.gamepadMenuSelectUsed = true;
     const ProductWindowTopLevelToggleResult gamepadToggle =
         dispatchProductWindowTopLevelToggleAction(context.frontend,
                                                   context.window,
@@ -1543,7 +1543,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
         openingMenuActionAt(uiRequest, menuClick.x, menuClick.y);
     // branch-gate: BG-1029
     if (hit.hit) {
-      context.window.mouseMenuSelectUsed = true;
+      context.window.frontendShell.mouseMenuSelectUsed = true;
       dispatchProductOpeningMenuMouseHit(hit, click, actionState, menuContext);
       higherPriorityMouseConsumed = true;
     }

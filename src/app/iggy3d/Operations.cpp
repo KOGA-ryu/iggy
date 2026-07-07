@@ -100,12 +100,12 @@ ProductAsciiRoomAuthoringRequest productAsciiRoomAuthoringRequestFromWorldSetup(
 bool createProductSessionFromPackage(const PackageLoadResult& package,
                                      std::optional<Session>& activeSession,
                                      ProductAppWindowState& window) {
-  window.packageLoadStatus = packageLoadStatusName(package.status);
+  window.frontendShell.packageLoadStatus = packageLoadStatusName(package.status);
   if (package.status != PackageLoadStatus::Ok) {
     window.startup.runtimeSessionCreateMeasured = false;
     window.startup.runtimeSessionCreateMicroseconds = 0;
     window.startup.runtimeSessionCreateStatus = "package_load_failed";
-    window.launchStatus = "package_load_failed";
+    window.frontendShell.launchStatus = "package_load_failed";
     return false;
   }
 
@@ -117,7 +117,7 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
     window.startup.runtimeSessionCreateMicroseconds =
         elapsedMicroseconds(sessionStarted);
     window.startup.runtimeSessionCreateStatus = seed.reasonCode;
-    window.launchStatus = seed.reasonCode;
+    window.frontendShell.launchStatus = seed.reasonCode;
     return false;
   }
 
@@ -128,12 +128,12 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
 
   Result<Session> session = Session::create(create);
   if (session.status != ResultStatus::Ok) {
-    window.launchStatus =
+    window.frontendShell.launchStatus =
         session.error.code.empty() ? "session_create_failed" : session.error.code;
     window.startup.runtimeSessionCreateMeasured = true;
     window.startup.runtimeSessionCreateMicroseconds =
         elapsedMicroseconds(sessionStarted);
-    window.startup.runtimeSessionCreateStatus = window.launchStatus;
+    window.startup.runtimeSessionCreateStatus = window.frontendShell.launchStatus;
     return false;
   }
   window.startup.runtimeSessionCreateMeasured = true;
@@ -154,7 +154,7 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
   window.gameplay.runtimeSessionCreated = true;
   window.gameplay.gameplayActive = true;
   window.runtimeStateHash = activeSession->stateHash();
-  window.launchStatus = "runtime_session_created";
+  window.frontendShell.launchStatus = "runtime_session_created";
   return true;
 }
 
@@ -194,7 +194,7 @@ bool createCreativeBlankSession(std::optional<Session>& activeSession,
   window.startup.packageLookupStatus = "startup_package_lookup_resolved";
 
   const auto loadStarted = std::chrono::steady_clock::now();
-  window.packageLoadStatus = "ok";
+  window.frontendShell.packageLoadStatus = "ok";
   window.startup.packageLoadMeasured = true;
   window.startup.packageLoadMicroseconds = elapsedMicroseconds(loadStarted);
   window.startup.packageLoadStatus = "ok";
@@ -229,12 +229,12 @@ bool createCreativeBlankSession(std::optional<Session>& activeSession,
 
   Result<Session> session = Session::create(create);
   if (session.status != ResultStatus::Ok) {
-    window.launchStatus =
+    window.frontendShell.launchStatus =
         session.error.code.empty() ? "session_create_failed" : session.error.code;
     window.startup.runtimeSessionCreateMeasured = true;
     window.startup.runtimeSessionCreateMicroseconds =
         elapsedMicroseconds(sessionStarted);
-    window.startup.runtimeSessionCreateStatus = window.launchStatus;
+    window.startup.runtimeSessionCreateStatus = window.frontendShell.launchStatus;
     return false;
   }
   window.startup.runtimeSessionCreateMeasured = true;
@@ -249,7 +249,7 @@ bool createCreativeBlankSession(std::optional<Session>& activeSession,
   window.gameplay.runtimeSessionCreated = true;
   window.gameplay.gameplayActive = true;
   window.runtimeStateHash = activeSession->stateHash();
-  window.launchStatus = "runtime_session_created";
+  window.frontendShell.launchStatus = "runtime_session_created";
   return true;
 }
 
@@ -1248,12 +1248,12 @@ void launchProductNewWorld(const ProductAppOptions& options,
                            FrontendState& frontend,
                            std::optional<Session>& activeSession,
                            ProductAppWindowState& window) {
-  window.launchAction = "create_and_enter";
+  window.frontendShell.launchAction = "create_and_enter";
   const ProductWorldTemplate world = productWorldTemplateFromOptions(options);
   ProductWorldCreationResult creation =
       prepareProductWorldCreationFromDraft(options, world, worldSetupDraft, window);
   if (!creation.accepted) {
-    window.launchStatus = std::string(creation.reasonCode);
+    window.frontendShell.launchStatus = std::string(creation.reasonCode);
     frontend.status = "opening_menu_new_world_failed";
     return;
   }
@@ -1269,7 +1269,7 @@ void launchProductNewWorld(const ProductAppOptions& options,
                                   asciiRoom,
                                   window);
     if (!asciiRoom.ok) {
-      window.launchStatus = asciiRoom.reasonCode;
+      window.frontendShell.launchStatus = asciiRoom.reasonCode;
       frontend.status = "opening_menu_new_world_failed";
       return;
     }
@@ -1301,13 +1301,13 @@ void launchProductNewWorld(const ProductAppOptions& options,
       writeProductWorldInitialSaveDurably(initialSaveRequest);
   recordProductWorldInitialSaveResult(initialSave, window);
   if (!initialSave.ok) {
-    window.launchStatus = initialSave.reasonCode;
+    window.frontendShell.launchStatus = initialSave.reasonCode;
     clearProductGameplayLaunchState(activeSession, window);
     frontend.status = "opening_menu_new_world_failed";
     return;
   }
 
-  window.launchStatus = initialSave.status;
+  window.frontendShell.launchStatus = initialSave.status;
   window.inputDevice.interactionMode = ProductInteractionMode::Player;
   enterProductGameplayTransition(frontend, window, FrontendAction::CreateAndEnter);
 }
@@ -1321,7 +1321,7 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
     creative::CreativeAppState& creativeApp) {
   creative::Facade& facade = creativeApp.facade;
   ProductCreativeNewWorldLaunchResult result;
-  window.launchAction = "creative_create_and_enter";
+  window.frontendShell.launchAction = "creative_create_and_enter";
 
   CreativeWorldCreateRequest createRequest;
   createRequest.saveRoot = options.saveRoot;
@@ -1349,14 +1349,14 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
   window.startup.creativeDocumentIdScanStatus = create.documentIdScanStatus;
   if (!create.accepted) {
     setCreativeNewWorldLaunchStatus(result, create.reasonCode);
-    window.launchStatus = result.reasonCode;
+    window.frontendShell.launchStatus = result.reasonCode;
     return result;
   }
 
   // F0: enter a blank creative stage (empty ground grid at origin), NOT the
   // first_room demo. Product New World keeps createProductSession.
   if (!createCreativeBlankSession(activeSession, window)) {
-    setCreativeNewWorldLaunchStatus(result, window.launchStatus);
+    setCreativeNewWorldLaunchStatus(result, window.frontendShell.launchStatus);
     return result;
   }
   frameCreativeStageCameraOnOrigin(window);
@@ -1368,7 +1368,7 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
   mirrorCreativeDocumentInstallResult(result, install);
   if (!install.accepted) {
     setCreativeNewWorldLaunchStatus(result, std::string{install.reasonCode});
-    window.launchStatus = result.reasonCode;
+    window.frontendShell.launchStatus = result.reasonCode;
     clearProductGameplayLaunchState(activeSession, window);
     return result;
   }
@@ -1381,7 +1381,7 @@ ProductCreativeNewWorldLaunchResult launchProductCreativeNewWorld(
   result.enteredGameplay = true;
   result.accepted = true;
   setCreativeNewWorldLaunchStatus(result, "product_creative_world_launched");
-  window.launchStatus = result.reasonCode;
+  window.frontendShell.launchStatus = result.reasonCode;
   recordActiveCreativeSaveIdentity(creativeApp.identity,
                                    result.saveId,
                                    result.path,
@@ -1408,7 +1408,7 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
     creative::CreativeAppState& creativeApp) {
   creative::Facade& facade = creativeApp.facade;
   ProductCreativeOpenWorldLaunchResult result;
-  window.launchAction = "creative_open_and_enter";
+  window.frontendShell.launchAction = "creative_open_and_enter";
 
   CreativeWorldOpenRequest openRequest;
   openRequest.saveRoot = options.saveRoot;
@@ -1418,13 +1418,13 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
   mirrorCreativeWorldOpenResult(result, open);
   if (!open.accepted) {
     setCreativeOpenWorldLaunchStatus(result, open.reasonCode);
-    window.launchStatus = result.reasonCode;
+    window.frontendShell.launchStatus = result.reasonCode;
     return result;
   }
 
   // F0: opening a creative world also stands on the blank stage, not first_room.
   if (!createCreativeBlankSession(activeSession, window)) {
-    setCreativeOpenWorldLaunchStatus(result, window.launchStatus);
+    setCreativeOpenWorldLaunchStatus(result, window.frontendShell.launchStatus);
     return result;
   }
   frameCreativeStageCameraOnOrigin(window);
@@ -1436,7 +1436,7 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
   mirrorCreativeDocumentInstallResult(result, install);
   if (!install.accepted) {
     setCreativeOpenWorldLaunchStatus(result, std::string{install.reasonCode});
-    window.launchStatus = result.reasonCode;
+    window.frontendShell.launchStatus = result.reasonCode;
     clearProductGameplayLaunchState(activeSession, window);
     return result;
   }
@@ -1449,7 +1449,7 @@ ProductCreativeOpenWorldLaunchResult launchProductCreativeOpenWorld(
   result.enteredGameplay = true;
   result.accepted = true;
   setCreativeOpenWorldLaunchStatus(result, "product_creative_world_opened");
-  window.launchStatus = result.reasonCode;
+  window.frontendShell.launchStatus = result.reasonCode;
   recordActiveCreativeSaveIdentity(creativeApp.identity,
                                    result.saveId,
                                    result.path,
@@ -1571,10 +1571,10 @@ void launchProductSaveSlot(const ProductAppOptions& options,
                            FrontendState& frontend,
                            std::optional<Session>& activeSession,
                            ProductAppWindowState& window) {
-  window.launchAction = std::string(frontendActionName(launchAction));
+  window.frontendShell.launchAction = std::string(frontendActionName(launchAction));
   recordProductSaveLoadSelection(source, slot, window);
   if (slot == nullptr) {
-    window.launchStatus = "no_compatible_save";
+    window.frontendShell.launchStatus = "no_compatible_save";
     window.saveSession.productSaveLoadResult.status = "no_compatible_save";
     window.saveSession.productSaveLoadResult.reasonCode = "no_compatible_save";
     frontend.status = source == "load_save_selector"
@@ -1585,7 +1585,7 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   if (!slot->enabled || slot->compatibility != SaveSlotCompatibility::Compatible) {
     const std::string reason =
         slot->reason.empty() ? "save_slot_disabled" : slot->reason;
-    window.launchStatus = reason;
+    window.frontendShell.launchStatus = reason;
     window.saveSession.productSaveLoadResult.status = reason;
     window.saveSession.productSaveLoadResult.reasonCode = reason;
     frontend.status = "load_save_action_disabled";
@@ -1607,7 +1607,7 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   const ProductSaveLoadResult loaded = loadProductSessionSave(loadRequest);
   recordProductSaveLoadResult(loaded, window);
   if (!loaded.ok) {
-    window.launchStatus = loaded.reasonCode;
+    window.frontendShell.launchStatus = loaded.reasonCode;
     clearProductGameplayLaunchState(activeSession, window);
     frontend.status = source == "load_save_selector"
                           ? "load_save_launch_failed"
@@ -1623,7 +1623,7 @@ void launchProductSaveSlot(const ProductAppOptions& options,
         bindSavedRoomMarkersToSession(activeRoom(window), *activeSession);
     recordSavedRoomMarkerBindingResult(bound, window);
     if (!bound.ok) {
-      window.launchStatus = bound.reasonCode;
+      window.frontendShell.launchStatus = bound.reasonCode;
       clearProductGameplayLaunchState(activeSession, window);
       frontend.status = source == "load_save_selector"
                             ? "load_save_launch_failed"
@@ -1632,7 +1632,7 @@ void launchProductSaveSlot(const ProductAppOptions& options,
     }
   }
   (void)ensureActiveRoomCollisionFresh(window, &*activeSession);
-  window.launchStatus = loaded.status;
+  window.frontendShell.launchStatus = loaded.status;
   window.runtimeStateHash = activeSession->stateHash();
   window.inputDevice.interactionMode = ProductInteractionMode::Player;
   enterProductGameplayTransition(frontend, window, launchAction);

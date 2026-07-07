@@ -739,7 +739,7 @@ bool recorderCopiesRoomReceiptFields() {
 
 bool recorderPreservesExistingFields() {
   iggy3d::ProductAppWindowState window;
-  window.status = "window_before";
+  window.frontendShell.status = "window_before";
   window.creativeAuthoring.creativeUiInput.requested = true;
   window.creativeAuthoring.creativeUiInput.status = "input_before";
   window.creativeAuthoring.creativeUiCommand.requested = true;
@@ -756,7 +756,7 @@ bool recorderPreservesExistingFields() {
   receipt.segmentCount = 12;
   iggy3d::recordProductCreativeWireframeFrame(window, receipt);
 
-  return expect(window.status == "window_before", "window status kept") &&
+  return expect(window.frontendShell.status == "window_before", "window status kept") &&
          expect(window.creativeAuthoring.creativeUiInput.requested,
                 "creative input requested kept") &&
          expect(window.creativeAuthoring.creativeUiInput.status == "input_before",

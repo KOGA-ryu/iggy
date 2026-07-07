@@ -789,7 +789,7 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
           request.creativeUiDrawList != nullptr &&
           request.creativeUiDrawList->ready;
       ProductVulkanGameplayFrame renderFrame = buildProductVulkanGameplayFrame(
-          request.projectionFrame, request.window.framesPresented + 1U,
+          request.projectionFrame, request.window.frontendShell.framesPresented + 1U,
           drawableExtent.width, drawableExtent.height,
           request.window.viewport.cameraYawDegrees,
           request.window.viewport.cameraPitchDegrees,
@@ -812,7 +812,7 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
       if (request.creativeUiDrawList != nullptr) {
         appendCreativeUiOverlay(renderFrame,
                                 *request.creativeUiDrawList,
-                                request.window.framesPresented + 1U,
+                                request.window.frontendShell.framesPresented + 1U,
                                 drawableExtent.width,
                                 drawableExtent.height);
       }
@@ -836,7 +836,7 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
         const ProductUiDrawList pauseUi =
             buildProductPauseUiDrawList(pauseUiRequest);
         appendPauseMenuOverlay(renderFrame, pauseUi,
-                               request.window.framesPresented + 1U,
+                               request.window.frontendShell.framesPresented + 1U,
                                drawableExtent.width, drawableExtent.height);
       }
       const auto submitStarted = std::chrono::steady_clock::now();
@@ -878,7 +878,7 @@ void presentProductVulkanFrame(ProductWindowFramePresenterRequest request) {
       if (drawableExtent.width > 0U && drawableExtent.height > 0U && menuUi.ready) {
         ProductVulkanMenuFrame menuFrame = buildProductVulkanStarterMenuFrame(
             {&menuUi,
-             request.window.framesPresented + 1U,
+             request.window.frontendShell.framesPresented + 1U,
              drawableExtent.width,
              drawableExtent.height});
         // branch-gate: BG-1072
@@ -935,10 +935,10 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           request.window.saveSession.saveDelete.candidateId);
   request.window.viewport.cameraHeadingVisible =
       request.window.viewport.cameraHeadingVisible || view.cameraHeadingDrawn;
-  request.window.menuTextDrawn = request.window.menuTextDrawn || view.textDrawn;
-  request.window.selectedRowDrawn =
-      request.window.selectedRowDrawn || view.selectedRowDrawn;
-  request.window.menuRowCount = view.rowCount;
+  request.window.frontendShell.menuTextDrawn = request.window.frontendShell.menuTextDrawn || view.textDrawn;
+  request.window.frontendShell.selectedRowDrawn =
+      request.window.frontendShell.selectedRowDrawn || view.selectedRowDrawn;
+  request.window.frontendShell.menuRowCount = view.rowCount;
 }
 
 }  // namespace

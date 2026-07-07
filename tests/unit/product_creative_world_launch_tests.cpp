@@ -584,7 +584,7 @@ bool successfulLaunchCreatesSaveSessionInstallsDocumentAndEntersCreativeMode() {
                 "creative launch map maker inactive status") &&
          expect(frontend.childScreen == iggy3d::FrontendScreen::Gameplay,
                 "creative launch frontend gameplay") &&
-         expect(window.launchStatus == "product_creative_world_launched",
+         expect(window.frontendShell.launchStatus == "product_creative_world_launched",
                 "creative launch window status") &&
          expect(window.startup.packageLookupMeasured,
                 "creative launch package lookup measured") &&
@@ -966,7 +966,7 @@ bool openLaunchRestoresSavedCreativeDocumentAndEntersCreativeMode() {
                 "open launch creative mode") &&
          expect(openFrontend.childScreen == iggy3d::FrontendScreen::Gameplay,
                 "open launch frontend gameplay") &&
-         expect(openWindow.launchStatus == "product_creative_world_opened",
+         expect(openWindow.frontendShell.launchStatus == "product_creative_world_opened",
                 "open launch window status") &&
          expect(openWindow.saveSession.activeProductSaveId == "none",
                 "open launch does not set product save id") &&
@@ -1554,7 +1554,7 @@ bool pauseCreativeSaveWritesCreativeDocumentAndKeepsSession() {
                 "pause creative save handled") &&
          expect(frontend.status == "pause_creative_save_written",
                 "pause creative save frontend status") &&
-         expect(window.launchStatus == "product_creative_world_saved",
+         expect(window.frontendShell.launchStatus == "product_creative_world_saved",
                 "pause creative save launch status") &&
          expect(app.identity.saveStatus ==
                     "product_creative_world_saved",
@@ -1615,7 +1615,7 @@ bool pauseCreativeSaveNullFacadeFailsClosed() {
                 "pause creative null handled") &&
          expect(frontend.status == "pause_creative_save_failed",
                 "pause creative null frontend status") &&
-         expect(window.launchStatus == "product_creative_save_facade_missing",
+         expect(window.frontendShell.launchStatus == "product_creative_save_facade_missing",
                 "pause creative null launch status") &&
          expect(app.identity.saveStatus ==
                     "creative_world_save_not_requested",
@@ -1717,7 +1717,7 @@ bool pauseCreativeSaveAndExitWritesReturnsTitleAndClearsIdentity() {
                 "pause creative save exit returned starter") &&
          expect(frontend.status == "returned_to_title",
                 "pause creative save exit frontend returned") &&
-         expect(window.launchStatus == "product_creative_world_saved",
+         expect(window.frontendShell.launchStatus == "product_creative_world_saved",
                 "pause creative save exit launch status") &&
          expect(!activeSession.has_value(),
                 "pause creative save exit resets session") &&
@@ -1783,7 +1783,7 @@ bool pauseCreativeSaveAndExitFailureKeepsSessionAndDirtyState() {
                 "pause creative save exit failure stays paused") &&
          expect(frontend.status == "pause_creative_save_and_exit_failed",
                 "pause creative save exit failure frontend status") &&
-         expect(window.launchStatus == "product_creative_save_id_missing",
+         expect(window.frontendShell.launchStatus == "product_creative_save_id_missing",
                 "pause creative save exit failure launch status") &&
          expect(activeSession.has_value(),
                 "pause creative save exit failure keeps session") &&

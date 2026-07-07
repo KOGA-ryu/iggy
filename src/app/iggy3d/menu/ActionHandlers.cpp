@@ -402,7 +402,7 @@ ProductMenuActionResult confirmStarterCreativeNewWorld(
     ProductStarterMenuActionContext context) {
   clearProductGameplayMovementTuning(context.window);
   if (context.creativeApp == nullptr) {
-    context.window.launchStatus = "product_creative_world_facade_missing";
+    context.window.frontendShell.launchStatus = "product_creative_world_facade_missing";
     context.frontend.status = "product_creative_world_facade_missing";
     return {true, true};
   }
@@ -436,7 +436,7 @@ ProductMenuActionResult confirmStarterCreativeOpenWorld(
     ProductStarterMenuActionContext context) {
   clearProductGameplayMovementTuning(context.window);
   if (context.creativeApp == nullptr) {
-    context.window.launchStatus = "product_creative_world_facade_missing";
+    context.window.frontendShell.launchStatus = "product_creative_world_facade_missing";
     context.frontend.status = "product_creative_world_facade_missing";
     return {true, true};
   }
@@ -448,7 +448,7 @@ ProductMenuActionResult confirmStarterCreativeOpenWorld(
   const ProductCreativeWorldSelectionResult selection =
       selectCreativeWorldContinueSave(creativeSaves.catalog.catalog);
   if (!selection.selected) {
-    context.window.launchStatus = selection.reasonCode;
+    context.window.frontendShell.launchStatus = selection.reasonCode;
     context.frontend.status = "opening_menu_creative_open_world_unavailable";
     return {true, true};
   }

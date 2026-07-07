@@ -114,7 +114,7 @@ int AppKernel::run(const ProductAppOptions& options) {
   }
   saves = scanProductSaves(options.saveRoot, world.packageId, world.scenarioId);
   if (automationCloseRequested) {
-    window.status = "automation_close_requested";
+    window.frontendShell.status = "automation_close_requested";
   }
 
   // The loop returns the true end-of-session catalog (in-window soft-delete / new-world fold into

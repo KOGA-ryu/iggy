@@ -1410,7 +1410,7 @@ ProductAutomationExecutionResult applyProductCommonAutomationCommand(
       return {true, false};
     }
     context.settingsTab = settingsResult.settingsTab;
-    context.window.selectedSettingsTab = context.settingsTab;
+    context.window.frontendShell.selectedSettingsTab = context.settingsTab;
     markAutomationApplied(context.window, command,
                           frontendSettingsTabName(context.settingsTab),
                           context.currentOwner(), "applied");

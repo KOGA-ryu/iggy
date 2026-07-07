@@ -22,10 +22,10 @@
 namespace iggy3d {
 
 void appendProductTailFields(RenderReceipt& receipt, const ProductAppOptions& options, const ProductWorldTemplate& world, const ProductAppWindowState& window, const ProductSaveBridgeResult& saves) {
-  appendReceiptField(receipt, "event_poll_count", window.eventPollCount);
+  appendReceiptField(receipt, "event_poll_count", window.frontendShell.eventPollCount);
   appendReceiptField(receipt, "frames", static_cast<std::uint64_t>(options.frames));
-  appendReceiptField(receipt, "frames_presented", window.framesPresented);
-  appendReceiptField(receipt, "window_status", window.status);
+  appendReceiptField(receipt, "frames_presented", window.frontendShell.framesPresented);
+  appendReceiptField(receipt, "window_status", window.frontendShell.status);
   appendReceiptField(receipt, "save_root", saves.saveRoot.generic_string());
   appendReceiptField(receipt, "save_count",
                      static_cast<std::uint64_t>(saves.slots.slots.size()));

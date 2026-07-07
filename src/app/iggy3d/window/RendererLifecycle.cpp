@@ -219,7 +219,7 @@ ProductWindowRendererState createProductWindowRenderer(
     // branch-gate: BG-1028
     if (extensions.outcome != RenderOutcome::Ok) {
       recordProductVulkanRendererUnavailable(window, extensions.reason.code);
-      window.status = "product_vulkan_renderer_unavailable";
+      window.frontendShell.status = "product_vulkan_renderer_unavailable";
       return renderer;
     }
     VulkanBackendCreateInfo backendInfo;
@@ -257,13 +257,13 @@ ProductWindowRendererState createProductWindowRenderer(
     recordProductVulkanRendererReady(window, renderer.vulkanRenderer);
     // branch-gate: BG-1028
     if (!window.presentPath.productVulkanRenderer.ready) {
-      window.status = "product_vulkan_renderer_unavailable";
+      window.frontendShell.status = "product_vulkan_renderer_unavailable";
       return renderer;
     }
     renderer.ready = true;
 #else
     recordProductVulkanRendererUnavailable(window, "product_vulkan_backend_unavailable");
-    window.status = "product_vulkan_renderer_unavailable";
+    window.frontendShell.status = "product_vulkan_renderer_unavailable";
 #endif
     return renderer;
   }
@@ -272,7 +272,7 @@ ProductWindowRendererState createProductWindowRenderer(
   renderer.sdlRenderer = SDL_CreateRenderer(request.sdlWindow->nativeWindow(), nullptr);
   // branch-gate: BG-1028
   if (renderer.sdlRenderer == nullptr) {
-    window.status = "renderer_create_failed";
+    window.frontendShell.status = "renderer_create_failed";
     return renderer;
   }
   renderer.ready = true;
@@ -298,11 +298,11 @@ void finalizeProductWindowRendererStatus(const ProductWindowRendererState& rende
                                          ProductAppWindowState& window) {
   // branch-gate: BG-1028
   if (renderer.useVulkanRenderer) {
-    window.status = window.presentPath.productVulkanFrameSubmitted
+    window.frontendShell.status = window.presentPath.productVulkanFrameSubmitted
                         ? "product_vulkan_frame_presented"
                         : window.presentPath.productVulkanStatus;
   } else {
-    window.status = window.menuTextDrawn ? "opening_menu_text_ready"
+    window.frontendShell.status = window.frontendShell.menuTextDrawn ? "opening_menu_text_ready"
                                          : "opening_menu_window_ready";
   }
 }

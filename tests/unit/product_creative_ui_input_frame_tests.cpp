@@ -876,7 +876,7 @@ bool recorderCopiesSuppressedDownstreamClickReceipt() {
 
 bool recorderLeavesOtherReceiptFieldsUntouched() {
   iggy3d::ProductAppWindowState window;
-  window.status = "window_status_before";
+  window.frontendShell.status = "window_status_before";
   window.productVulkanMenu.uiReady = true;
   window.productVulkanMenu.uiStatus = "vulkan_ui_before";
   window.productVulkanMenu.uiSelectedAction = "resume";
@@ -894,7 +894,7 @@ bool recorderLeavesOtherReceiptFieldsUntouched() {
   iggy3d::recordProductCreativeUiDownstreamClick(
       window, iggy3d::routeProductCreativeUiDownstreamClick(request));
 
-  return expect(window.status == "window_status_before",
+  return expect(window.frontendShell.status == "window_status_before",
                 "window status unchanged") &&
          expect(window.productVulkanMenu.uiReady,
                 "vulkan ui ready unchanged") &&
