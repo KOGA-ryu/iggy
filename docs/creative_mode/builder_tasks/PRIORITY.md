@@ -6,8 +6,8 @@ use this index only to decide which ready card to claim next.
 
 The current pipeline is a **gated spine change** (the activeRoom→collision
 freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
-Gate-1 ratified). **Gates G2–G6 done → G7 seeded** (the finish: receipt
-instrumentation + audit + architecture receipt). G7 completes the collision store.
+Gate-1 ratified). Gates G2–G7 are done. The collision freshness store slice is
+complete.
 
 ## Claim Policy
 
@@ -25,15 +25,11 @@ None.
 
 ## Pull Next
 
-1. **E134 (E-ARCF-G7)** — the finish: surface freshness `reasonCode` into the
-   receipt, run the naming/ownership audit, write the architecture receipt. Adds a
-   receipt field (regenerate the golden) + a window field (add to the ownership TSV
-   as `RoomStore`) — both truth-gates fire by design. Read preflight §G7/§8 first.
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E134 (E-ARCF-G7)** — Gate 7 finish (instrumentation + audit + architecture
-  receipt). Completes the `ActiveRoomCollisionFreshnessStore` slice.
+None currently ready.
 
 ## Tier 2: Feature-Add Seams
 

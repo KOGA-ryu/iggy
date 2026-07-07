@@ -222,10 +222,7 @@ void ensureRequestCollisionFresh(const ProductGameplayTapeRunRequest& request) {
   ProductAppWindowState window;
   window.activeRoom = *request.activeRoom;
   window.activeRoomCollision = *request.activeRoomCollision;
-  window.activeRoomRevision = window.activeRoomCollision.bakedFromRoomRevision;
-  if (window.activeRoomRevision == 0U) {
-    window.activeRoomRevision = 1U;
-  }
+  bumpActiveRoomRevision(window);
   (void)ensureActiveRoomCollisionFresh(window, request.session);
   *request.activeRoomCollision = std::move(window.activeRoomCollision);
 }

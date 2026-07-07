@@ -87,3 +87,29 @@ Append:
 - C2 I7 re-audit:
 - Suite:
 - Concerns/deferred:
+
+## Completion Brief - Codex
+
+- Files changed:
+  - `src/app/iggy3d/ProductAppWindowState.hpp`
+  - `src/app/iggy3d/window/InputFrame.cpp`
+  - `src/app/iggy3d/receipt/ActiveRoomFields.cpp`
+  - `src/app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.cpp`
+  - `src/app/iggy3d/gameplay/TapeRunner.cpp`
+  - `docs/god_struct_member_ownership.tsv`
+  - `tests/golden/product_receipt_key_order.golden`
+- Window field added (name + owner tsv row): added `ProductActiveRoomCollisionFreshnessResult activeRoomCollisionFreshness` on `ProductAppWindowState`; ownership row is `activeRoomCollisionFreshness	RoomStore`.
+- Receipt fields emitted (keys + enum): appended `active_room_collision_freshness_rebaked` and `active_room_collision_freshness_reason_code` after existing `active_room_collision_*` fields. The reason code is sourced from the store result and stays in the closed set `skipped_fresh`, `rebaked_room`, `rebaked_session`, `rebaked_both`, `rebaked_unloaded`, `rebaked_empty`.
+- Receipt golden regenerated (field count before->after): `RECEIPT_GOLDEN_REGEN=1 ./build/product_receipt_key_order_tests` wrote 1031 fields; prior golden line count was 1029. New golden rows are `active_room_collision_freshness_rebaked	false` and `active_room_collision_freshness_reason_code	skipped_fresh`.
+- Naming/ownership audit greps (result): no stray `buildProductActiveRoomCollision(` production callsites outside `ActiveRoomCollisionFreshnessStore.cpp`, `ActiveRoomCollision.cpp` definitions, and the justified `room_editor/EditingState.cpp:129` mirror. Production `activeRoomRevision` direct-write audit is clean outside the default field and `bumpActiveRoomRevision` owner implementation; the legacy TapeRunner no-window adapter now seeds its temporary window via `bumpActiveRoomRevision(window)`.
+- Architecture receipt (location): comment block added at the top of `src/app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.cpp`, covering why, owns, not-owns, thread rules, shutdown rules, first consumer, and known limitations.
+- C2 I7 re-audit: clean. `entity.active =` scan outside expected save/runtime fixture paths produced no output. `setActive(` scan outside expected world/interaction/creative seams produced no output.
+- Suite:
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10` passed.
+  - `RECEIPT_GOLDEN_REGEN=1 ./build/product_receipt_key_order_tests` passed and regenerated the golden.
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_receipt_key_order_tests product_god_struct_ownership_coverage_tests product_active_room_collision_tests product_creative_no_window_bake_scenario_tests product_gameplay_tape_runner_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_receipt_key_order_tests|product_god_struct_ownership_coverage_tests|product_active_room_collision_tests|product_creative_no_window_bake_scenario_tests|product_gameplay_tape_runner_tests)$' --output-on-failure` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build` passed, 260/260.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over source/docs/card files passed. The regenerated golden still contains pre-existing intentional blank-value tab rows for empty receipt values; `diff --check` is clean.
+- Concerns/deferred: no stage/commit/push. `Testing/Temporary/LastTest.log` remains dirty from CTest output and was left untouched.

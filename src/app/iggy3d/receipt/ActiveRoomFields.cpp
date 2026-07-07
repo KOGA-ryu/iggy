@@ -63,6 +63,10 @@ void appendProductActiveRoomFields(RenderReceipt& receipt, const ProductAppWindo
                      window.activeRoomCollision.doorBlockerSurfaceCount);
   appendReceiptField(receipt, "active_room_collision_active_door_blocker_count",
                      window.activeRoomCollision.activeDoorBlockerSurfaceCount);
+  appendReceiptField(receipt, "active_room_collision_freshness_rebaked",
+                     window.activeRoomCollisionFreshness.rebaked);
+  appendReceiptField(receipt, "active_room_collision_freshness_reason_code",
+                     window.activeRoomCollisionFreshness.reasonCode);
 }
 
 }  // namespace iggy3d

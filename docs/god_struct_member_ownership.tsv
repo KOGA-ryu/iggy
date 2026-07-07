@@ -61,6 +61,7 @@ roomEditorHud	CreativeAuthoringStore
 activeRoom	RoomStore
 activeRoomRevision	RoomStore
 activeRoomCollision	RoomStore
+activeRoomCollisionFreshness	RoomStore
 productSaveStatus	SaveSessionStore
 productSaveReasonCode	SaveSessionStore
 productSaveDurableReason	SaveSessionStore

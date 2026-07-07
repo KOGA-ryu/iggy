@@ -523,7 +523,8 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   }
   // branch-gate: BG-1061
   if (activeSession != nullptr) {
-    (void)ensureActiveRoomCollisionFresh(window, activeSession);
+    window.activeRoomCollisionFreshness =
+        ensureActiveRoomCollisionFresh(window, activeSession);
     const SpatialSurfaceSet* collisionSurfaces =
         productActiveRoomCollisionSurfaces(window.activeRoomCollision);
     applyProductGameplayActions(*activeSession, gameplayActionsForSession, window,

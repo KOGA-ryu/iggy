@@ -9,6 +9,7 @@
 #include "app/frontend/MenuInput.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/Options.hpp"
@@ -255,6 +256,7 @@ struct ProductAppWindowState {
   // Window-owned monotonic room generation; whole activeRoom copies cannot stomp it.
   std::uint64_t activeRoomRevision = 0;
   ProductActiveRoomCollisionState activeRoomCollision;
+  ProductActiveRoomCollisionFreshnessResult activeRoomCollisionFreshness;
   std::string productSaveStatus = "not_requested";
   std::string productSaveReasonCode = "not_requested";
   std::string productSaveDurableReason = "not_requested";
