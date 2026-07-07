@@ -77,3 +77,45 @@ Append:
 - Multi-line/ambiguous members handled:
 - Tests/checks run:
 - Concerns/deferred:
+
+---
+
+## Completion Brief - 2026-07-07
+
+- Files changed:
+  - `cmake/iggy3d_tests.cmake`
+  - `docs/god_struct_member_ownership.tsv`
+  - `tests/unit/product_god_struct_ownership_coverage_tests.cpp`
+  - `docs/creative_mode/builder_tasks/done/E131-god-struct-ownership-coverage-gate.md`
+- Member count extracted vs assigned (coverage):
+  - Extracted current top-level `ProductAppWindowState` members: 213.
+  - Assigned TSV rows: 213.
+  - Coverage result: zero unassigned members, zero stale TSV rows, zero duplicate rows.
+- Per-owner summary (the progress snapshot):
+  - `CreativeAuthoringStore=86`
+  - `SaveSessionStore=32`
+  - `GameplayStore=32`
+  - `FrontendWindowShell=15`
+  - `ViewportStore=12`
+  - `InputDeviceStore=11`
+  - `app-global-remainder=7`
+  - `PresentPathStore=6`
+  - `DebugHudStore=5`
+  - `delete=4`
+  - `RoomStore=3`
+- Multi-line/ambiguous members handled:
+  - The test accumulates non-comment lines inside `ProductAppWindowState` until `;`, so split string initializers such as stale/pick/wireframe status fields are counted.
+  - Any declaration that cannot parse to a single member name fails loudly with the source line and declaration text.
+  - Current run found no ambiguous declarations.
+- Tests/checks run:
+  - `cmake -S /Users/kogaryu/iggy3d -B /Users/kogaryu/iggy3d/build` passed.
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_god_struct_ownership_coverage_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_god_struct_ownership_coverage_tests$' --output-on-failure` passed.
+  - `/Users/kogaryu/iggy3d/build/product_god_struct_ownership_coverage_tests` printed the 213-row per-owner summary above.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build` passed: 260/260.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files passed.
+- Concerns/deferred:
+  - `gamepadMenuSelectUsed` appears in both the input-device and frontend-shell prose lists in `docs/god_struct_decomposition_target_map.md`; the TSV assigns it to `InputDeviceStore` with the rest of gamepad device/input state. `mouseMenuSelectUsed` remains `FrontendWindowShell` per the shell list.
+  - This card adds only the ownership coverage gate; no production behavior or struct members were changed.
+  - `Testing/Temporary/LastTest.log` changed from CTest output and was left untouched.

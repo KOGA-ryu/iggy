@@ -6,8 +6,8 @@ use this index only to decide which ready card to claim next.
 
 The current pipeline is a **gated spine change** (the activeRoom→collision
 freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
-Gate-1 ratified). It is fed one gate at a time. A parallel non-spine card (the
-god-struct coverage gate) rides alongside. Do not pre-load later gates (G5–G7).
+Gate-1 ratified). It is fed one gate at a time. Do not pre-load later gates
+(G5–G7).
 
 ## Claim Policy
 
@@ -21,8 +21,7 @@ god-struct coverage gate) rides alongside. Do not pre-load later gates (G5–G7)
 
 ## Currently Claimed
 
-- **E131** — god-struct ownership coverage gate (member→owner map + test; no
-  production change). The decomposition truth-gate.
+None.
 
 ## Pull Next
 

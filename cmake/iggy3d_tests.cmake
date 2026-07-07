@@ -115,6 +115,11 @@ iggy3d_add_unit_test(product_receipt_key_order_tests tests/unit/product_receipt_
 set_tests_properties(product_receipt_key_order_tests PROPERTIES
   LABELS "unit;app;product;receipt;oracle;iggy3d")
 
+iggy3d_add_unit_test(product_god_struct_ownership_coverage_tests
+  tests/unit/product_god_struct_ownership_coverage_tests.cpp)
+set_tests_properties(product_god_struct_ownership_coverage_tests PROPERTIES
+  LABELS "unit;app;product;ownership;oracle;iggy3d")
+
 iggy3d_add_unit_test(product_gameplay_controller_tests
   tests/unit/product_gameplay_controller_tests.cpp)
 set_tests_properties(product_gameplay_controller_tests PROPERTIES
