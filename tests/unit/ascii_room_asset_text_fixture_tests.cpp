@@ -118,8 +118,31 @@ bool checkedInTextMatchesGeneratedExporterOutput() {
                 "exit anchor");
 }
 
+// Regenerate the checked-in fixture from the current exporter output. Gated behind an env var so a
+// deliberate exporter change (e.g. a new valid traversal tag) is a one-command update instead of a
+// hand-edit. Run from the repo root: ASCII_ROOM_FIXTURE_REGEN=1 ./build/ascii_room_asset_text_fixture_tests
+bool regenerateFixtureIfRequested() {
+  if (std::getenv("ASCII_ROOM_FIXTURE_REGEN") == nullptr) {
+    return false;
+  }
+  const iggy3d::RoomAsset expectedRoom = buildExpectedRoomAsset();
+  const iggy3d::AsciiRoomAssetTextResult generated =
+      iggy3d::writeAsciiRoomAssetText(expectedRoom);
+  std::ofstream out(std::filesystem::path{kRoomAssetFixturePath}, std::ios::binary);
+  if (!out) {
+    std::cerr << "[regen] cannot write " << kRoomAssetFixturePath << " (run from the repo root)\n";
+    return false;
+  }
+  out << generated.text;
+  std::cout << "[regen] wrote fixture " << kRoomAssetFixturePath << '\n';
+  return true;
+}
+
 }  // namespace
 
 int main() {
+  if (regenerateFixtureIfRequested()) {
+    return EXIT_SUCCESS;
+  }
   return checkedInTextMatchesGeneratedExporterOutput() ? EXIT_SUCCESS : EXIT_FAILURE;
 }
