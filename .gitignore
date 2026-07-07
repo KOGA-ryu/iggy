@@ -7,3 +7,6 @@ build-vulkan/
 
 # clangd compile database (symlink into build/)
 compile_commands.json
+
+# ctest scratch output (regenerated every run)
+Testing/
