@@ -1,6 +1,6 @@
 # E156 — InputDeviceStore bulk-move (god-struct decomposition #7) — PARENT
 
-**STATUS: STAGED in `blocked/` — parent card for a slicer-Codex to decompose into builder gates.**
+**STATUS: DECOMPOSED PARENT in `blocked/` — do not claim directly. Child cards: E165-E167.**
 Recon-grounded + spot-verified (workflow `wkqdxuj2u`, 2026-07-07). **Commit convention:** `claude: planned. codex: …`.
 
 > **Tree is mid-flight** (RoomStore/E153 just landed). **Anchor by field NAME; re-verify lines at slice time.**

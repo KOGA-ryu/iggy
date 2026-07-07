@@ -18,10 +18,9 @@ RoomStore/SaveSessionStore work; `runtimeSessionCreated` now belongs to
 GameplayStore.
 
 **ViewportStore fold is COMPLETE as E155** (#6 — folded 11 mapMaker* fields into
-ProductViewportState). `E156` InputDeviceStore (#7 — 11 fields, ~265 repoints;
-**dominant hazard: `interactionMode` is a real field on 6+ foreign structs, so
-compiler-guided only, never sed**) remains blocked until planner slices/releases
-it.
+ProductViewportState). `E156` InputDeviceStore (#7 — 10 fields, ~265 repoints)
+has been decomposed into E165-E167. **Dominant hazard:** `interactionMode` is a
+real field on 6+ foreign structs, so compiler-guided only, never sed.
 
 **Decomposition card set now COMPLETE (all 11 stores).** Remaining parents staged in
 `blocked/` (recon-grounded, `wdnplylk0`): `E161` CreativeAuthoringStore (#4 — the
@@ -49,7 +48,7 @@ None.
 
 ## Pull Next
 
-None currently ready.
+1. E165 — InputDeviceStore G1: device + last input state.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -61,7 +60,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-None currently ready.
+1. E165 — InputDeviceStore G1: device + last input state.
 
 ## Parking Lot
 
@@ -89,6 +88,9 @@ Held — do NOT promote to `ready/` on a guess:
   - **#5 `SaveSessionStore`** — **COMPLETE as E153.** Structural regroup only;
     `runtimeSessionCreated` was corrected to GameplayStore ownership.
   - **#6 `ViewportStore`** — **COMPLETE as E155.**
+  - **#7 `InputDeviceStore`** — **DECOMPOSED as E165-E167.** E165 moves the
+    lower-risk device/last-input fields first; E166 moves controller/capture;
+    E167 moves the high-collision interaction-mode fields last.
   - **#8 `GameplayStore`** — **COMPLETE as E157-E160.**
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
