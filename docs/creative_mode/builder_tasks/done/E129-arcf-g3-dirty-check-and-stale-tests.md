@@ -93,3 +93,48 @@ Append:
 - C3 checklist reconciliation (drift?):
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completed
+
+- Files changed:
+  - `src/app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.cpp`
+  - `tests/unit/product_active_room_collision_tests.cpp`
+  - `docs/active_room_collision_rebake_removal_checklist.md`
+- `ensure` decision order implemented:
+  - Computes `effectiveSessionHash` from `session->state().currentStateHash`, or `0` for `nullptr`.
+  - Fresh provenance match returns no-op with `rebaked=false` and `reasonCode="skipped_fresh"`.
+  - Stale provenance rebuilds through `buildProductActiveRoomCollision(window.activeRoom, session->state())` when a session is present, otherwise the one-arg overload.
+  - Rebuilt collision is stamped with `bakedFromRoomRevision=window.activeRoomRevision` and `bakedFromSessionHash=effectiveSessionHash`.
+  - Rebuild result codes are `rebaked_unloaded`, `rebaked_empty`, `rebaked_room`, `rebaked_session`, or `rebaked_both`.
+  - Removed the transitional `g2_stub_no_rebake` string from source/tests.
+- T-a / T-b / T-c + idempotence results:
+  - T-a: stale floor+crate collision over replaced floor-only room rebakes to `querySurfaceCount==1`, refreshed `roomId`, matching provenance, and a one-surface reader pointer.
+  - T-b: session hash mismatch after a non-interact tick with the door inactive rebakes through the two-arg overload, filters the runtime-owned door blocker, drops query count from `2` to `1`, and stamps the new session hash.
+  - T-c: stale ready collision over cleared `activeRoom` rebakes to the unloaded collision blob, `ready=false`, status `active_room_collision_unavailable`, `querySurfaceCount==0`, and no reader surface pointer.
+  - Immediate second `ensure` after each stale rebake returns `rebaked=false`, `reasonCode="skipped_fresh"`, and leaves counts/provenance unchanged.
+- "Still no consumer" grep result:
+  - `rg -n "bumpActiveRoomRevision\(|ensureActiveRoomCollisionFresh\(" /Users/kogaryu/iggy3d/src --glob '*.cpp' --glob '*.hpp' | rg -v 'ActiveRoomState\.(cpp|hpp)|ActiveRoomCollisionFreshnessStore\.(cpp|hpp)'`
+  - Result: no output. G3 adds no production writer bumps and no production reader ensures.
+  - Broader source/test grep finds only definitions/declarations plus the focused tests.
+- C2 I7 re-audit:
+  - `rg -n "setActive\(" /Users/kogaryu/iggy3d/src/app /Users/kogaryu/iggy3d/src/runtime | rg -v "creative|ActiveTool"`
+  - Result: `InteractionSystem.cpp` interaction-command calls plus `WorldState` declaration/definition.
+  - `rg -n "entity\.active\s*=" /Users/kogaryu/iggy3d/src/app /Users/kogaryu/iggy3d/src/runtime`
+  - Result: seed/load/binding construction assignments in `Session.cpp`, `SaveLoad.cpp`, and `RoomMarkerBinding.cpp`.
+  - No new production bypass of hashed session command/tick path was introduced.
+- C3 checklist reconciliation:
+  - Re-ran the three checklist greps for `buildProductActiveRoomCollision(...)`, `activeRoomCollision =`, and `refreshActiveRoomCollision`.
+  - The only intentional drift is the new Store-owned `buildProductActiveRoomCollision(...)` callsite; the checklist now records it under definitions/final seam to keep/exclude from G5 removal.
+  - No direct rebake callsites were removed or modified.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target product_active_room_collision_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_active_room_collision_tests$' --output-on-failure`
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_active_room_collision_tests product_active_room_state_tests product_receipt_key_order_tests product_creative_no_window_bake_scenario_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_active_room_collision_tests|product_active_room_state_tests|product_receipt_key_order_tests|product_creative_no_window_bake_scenario_tests)$' --output-on-failure`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure` (`100% tests passed, 0 tests failed out of 259`)
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - Focused trailing-whitespace scan over touched source/test/docs/card files.
+- Concerns/deferred:
+  - G3 still wires no production consumer. Writers do not bump and readers do not call `ensure` until later gates.
+  - Direct writer-bakes remain for staged install correctness until G4/G5.
+  - The T-b test uses a hand-built runtime room/session fixture and a non-interact session tick to exercise the session-hash stale branch without adding production routing.

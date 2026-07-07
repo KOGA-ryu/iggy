@@ -7,7 +7,7 @@ use this index only to decide which ready card to claim next.
 The current pipeline is a **gated spine change** (the activeRoom→collision
 freshness guard, `docs/active_room_collision_freshness_preflight_v0_2.md`,
 Gate-1 ratified). It is fed one gate at a time on purpose — the next gate is not
-seeded until the current one is reviewed and committed. **G2 done → G3 seeded.**
+seeded until the current one is reviewed and committed.
 Do not pre-load later gates.
 
 ## Claim Policy
@@ -26,14 +26,11 @@ None.
 
 ## Pull Next
 
-1. **E129 (E-ARCF-G3)** — ActiveRoomCollisionFreshnessStore: real dirty-check +
-   stamp in `ensure` + the T-a/T-b/T-c stale-case tests, STILL no consumer. Read
-   the preflight §8/§10 + Gate-1 conditions C1–C3 first.
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
-- **E129 (E-ARCF-G3)** — Gate 3 of the freshness guard (dirty-check + stale-case
-  tests, no consumer). Later gates G4–G7 held until each prior gate is reviewed/committed.
+None currently ready.
 
 ## Tier 2: Feature-Add Seams
 

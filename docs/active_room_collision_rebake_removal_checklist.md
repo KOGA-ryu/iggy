@@ -50,6 +50,8 @@ grep -rn "refreshActiveRoomCollision" --include='*.cpp' src/app/iggy3d | grep -v
 
 - `gameplay/ActiveRoomCollision.cpp:117` / `:122` — the two `buildProductActiveRoomCollision` overload
   **definitions**. The Store calls these; they are not callsites to remove.
+- `gameplay/ActiveRoomCollisionFreshnessStore.cpp` — the G3 Store-owned calls to those overloads. These are the
+  intended final rebake seam, not scattered writer-bakes; keep them and exclude them from the G5 removal grep.
 
 ## Why the `AutomationRoomEditing.cpp:89` copy cannot cause a false-fresh (reviewer special-attention)
 
