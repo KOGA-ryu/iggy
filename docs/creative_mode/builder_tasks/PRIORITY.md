@@ -34,8 +34,9 @@ CreativeAuthoringStore (#4) is **COMPLETE** as E168-E172: wireframe,
 viewport-pick, room-editor, world/ascii, and creative UI state are now under
 `ProductAppWindowState::creativeAuthoring`. Remaining
 parents staged in `blocked/` (recon-grounded, `wdnplylk0`): `E164` FrontendWindowShell (#10 — RULING: split store vs app-global
-remainder; G1 scalar/menu move is complete as E174; `startup` and
-`productVulkanMenu` remain split into smaller follow-up slices). NOTE:
+remainder; G1 scalar/menu move is complete as E174; G2 startup move is
+complete as E175; `productVulkanMenu` remains as the final follow-up slice).
+NOTE:
 E157-E160 are the completed GameplayStore slices
 (E154); new cards start at E161 to avoid collision. **EXECUTION SERIALIZES on the
 god-struct — release/run one store at a time, re-anchoring each.**
@@ -56,8 +57,8 @@ None.
 
 ## Pull Next
 
-1. `E175-frontendwindowshell-g2-startup-state.md` — move only `startup` into
-   the existing `FrontendWindowShell`; leave `productVulkanMenu`,
+1. `E176-frontendwindowshell-g3-product-vulkan-menu-state.md` — move only
+   `productVulkanMenu` into the existing `FrontendWindowShell`; leave
    `automationControl`, `runtimeStateHash`, and `creativeWorldEpoch` flat.
 
 ## Tier 1: Correctness And Compatibility
@@ -109,8 +110,8 @@ Held — do NOT promote to `ready/` on a guess:
   - **#4 `CreativeAuthoringStore`** — **COMPLETE as E168-E172.**
   - **#10 `FrontendWindowShell`** — **IN PROGRESS.** E173 audited the current
     state; E174 created the shell and moved scalar/menu/status state plus
-    retargeted `automationControl` ownership. E175 moves `startup`; a later
-    card handles `productVulkanMenu`.
+    retargeted `automationControl` ownership. E175 moved `startup`; E176 moves
+    the final deferred `productVulkanMenu` field.
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
   - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`).
