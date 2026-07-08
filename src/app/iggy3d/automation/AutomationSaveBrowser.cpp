@@ -3,10 +3,10 @@
 #include <array>
 
 #include "app/frontend/FrontendState.hpp"
-#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
+#include "app/iggy3d/save/SaveSlotOperations.hpp"
 
 namespace iggy3d {
 

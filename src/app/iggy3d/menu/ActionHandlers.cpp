@@ -13,6 +13,7 @@
 #include "app/iggy3d/world/DungeonDraft.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
+#include "app/iggy3d/save/SaveSlotOperations.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"

@@ -5,7 +5,7 @@
 // (ProductSaveBridgeResult). Continue, the Load list, and the receipt
 // save_count all read that one catalog, so the deleted map stayed visible
 // until the next app launch. The fix added the in-loop re-scan + selection
-// re-clamp to `executeProductSaveSoftDelete` (Operations.cpp), mirroring the
+// re-clamp to `executeProductSaveSoftDelete` (SaveSlotOperations.cpp), mirroring the
 // recover path:
 //     saves = scanProductSaves(...);
 //     initializeSelectedProductSaveSlot(saves.slots, window);
@@ -20,10 +20,10 @@
 // executeProductSaveSoftDelete and this test fails: that is the proof it locks
 // the real fix.
 
-#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
+#include "app/iggy3d/save/SaveSlotOperations.hpp"
 #include "app/iggy3d/world/PackageSessionSeed.hpp"
 #include "app/frontend/FrontendState.hpp"
 #include "content/PackageLoader.hpp"

@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -180,3 +180,93 @@ Report:
 - confirmation that current-session save/write, world launch/load, package
   bootstrap, save format, receipt keys, staging, commit, push, and window launch
   were not changed.
+
+## Completion Brief
+
+- Card moved to done: yes.
+- New header/source paths:
+  - `src/app/iggy3d/save/SaveSlotOperations.hpp`
+  - `src/app/iggy3d/save/SaveSlotOperations.cpp`
+- Public APIs moved from `Operations.hpp`:
+  - `ProductSaveFlowOperation`
+  - `ProductSaveFlowRequest`
+  - `ProductSaveFlowResult`
+  - `productSaveFlowOperationName(...)`
+  - `initializeSelectedProductSaveSlot(...)`
+  - `moveSelectedProductSaveSlot(...)`
+  - `selectProductSaveSlotById(...)`
+  - `scanDeletedProductSavesForOptions(...)`
+  - `recordDeletedProductSaveSlots(...)`
+  - `selectDeletedProductSaveSlotById(...)`
+  - `openDeletedProductSaveBrowser(...)`
+  - `executeProductSaveRecover(...)`
+  - `openProductSaveDeleteConfirmation(...)`
+  - `cancelProductSaveDeleteConfirmation(...)`
+  - `executeProductSaveSoftDelete(...)`
+- Private helpers moved to `SaveSlotOperations.cpp`:
+  - `firstSelectableSaveSlot(...)`
+  - `recordSelectedProductSaveSlot(...)`
+  - `recordProductSaveSlotAction(...)`
+  - `recordProductSaveFlowRequest(...)`
+  - `recordProductSaveFlowResult(...)`
+  - `recordSelectedDeletedProductSaveSlot(...)`
+  - `initializeSelectedDeletedProductSaveSlot(...)`
+- Helper intentionally duplicated/left:
+  - `saveSlotById(...)` remains file-local in `Operations.cpp` for
+    `launchProductContinueSave(...)`.
+  - A file-local copy also exists in `SaveSlotOperations.cpp` for the moved
+    save-slot cluster.
+  - Rationale: this follows the local-copy option from the card and avoids
+    exposing an extra helper or moving continue-save launch behavior.
+- Remaining `Operations.cpp` hits for moved save-slot APIs:
+  - `initializeSelectedProductSaveSlot(saves.slots, window)` remains in
+    `launchProductLoadSaveSelection(...)` as a caller.
+  - No declarations remain in `Operations.hpp`.
+  - No moved API definitions remain in `Operations.cpp`.
+- Caller include updates:
+  - `src/app/iggy3d/menu/ActionHandlers.cpp` includes
+    `app/iggy3d/save/SaveSlotOperations.hpp`.
+  - `src/app/iggy3d/automation/AutomationSaveBrowser.cpp` includes
+    `app/iggy3d/save/SaveSlotOperations.hpp` and no longer includes
+    `Operations.hpp`.
+  - `src/app/iggy3d/window/InputFrame.cpp` includes
+    `app/iggy3d/save/SaveSlotOperations.hpp`.
+  - `tests/unit/product_save_delete_executor_tests.cpp` includes
+    `app/iggy3d/save/SaveSlotOperations.hpp` and no longer includes
+    `Operations.hpp`.
+  - `src/app/iggy3d/Operations.cpp` includes
+    `app/iggy3d/save/SaveSlotOperations.hpp` for the remaining launch-load
+    call site.
+- CMake source-list update:
+  - Added `src/app/iggy3d/save/SaveSlotOperations.cpp` near the other
+    `src/app/iggy3d/save/*.cpp` sources.
+- Required greps:
+  - Moved API declaration/definition grep shows the public declarations and
+    definitions in `SaveSlotOperations.hpp/.cpp`.
+  - `Operations.hpp` has no hits.
+  - `Operations.cpp` has only the launch-load caller hit described above.
+  - Focused caller grep shows the expected production/test callers plus the new
+    save-slot source/header definitions.
+- Receipt golden result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+  - Result: empty.
+- Focused build:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_save_delete_executor_tests product_starter_menu_action_tests product_window_input_frame_tests product_automation_dispatch_tests product_save_catalog_tests product_save_bridge_tests product_receipt_key_order_tests -j10`
+  - Result: passed.
+  - Note: build emitted an existing unused-variable warning in
+    `tests/unit/product_starter_menu_action_tests.cpp`; this slice did not
+    touch that file.
+- Focused CTest:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_save_delete_executor_tests|product_starter_menu_action_tests|product_window_input_frame_tests|product_automation_dispatch_tests|product_save_catalog_tests|product_save_bridge_tests|product_receipt_key_order_tests)$' --output-on-failure`
+  - Result: 7/7 passed.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - Result: passed.
+  - Focused trailing-whitespace scan over touched files and this card.
+  - Result: clean.
+- Confirmed unchanged:
+  - Current-session save/write was not moved.
+  - World launch/load and package bootstrap were not moved.
+  - Save durable formats and parser/writer code were not changed.
+  - Receipt keys/order/values were not changed.
+  - No staging, commit, push, or window launch was performed.
