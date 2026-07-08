@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-None currently ready.
+1. `ready/E232-controller-split-g1-kinematics.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-None currently ready.
+1. `ready/E232-controller-split-g1-kinematics.md`
 
 ## Parking Lot
 
@@ -173,3 +173,8 @@ Held — do NOT promote to `ready/` on a guess:
   extracted `DebugHudView`; E228 extracted `MenuPanelsView`; E229 extracted
   `OpeningMenuHitTest`; E230 completed the final `OpeningMenuView` facade
   include cleanup.
+- `docs/refactor_targets.md` is the new current-HEAD effort-ranked refactor
+  backlog. `Controller.cpp` split target #2 is active: E231 preflighted the
+  current file shape and released E232 as the first G1 kinematics extraction
+  slice. Keep later controller wall/jump/dash/proof splits behind local
+  preflights/slices rather than attempting the whole file at once.
