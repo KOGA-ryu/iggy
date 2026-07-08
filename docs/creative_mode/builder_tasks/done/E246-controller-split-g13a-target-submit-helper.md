@@ -185,3 +185,91 @@ Stop and report instead of widening scope if:
   execution flag, or receipt golden output changes.
 - The new helper starts owning dash/move/jump action policy, movement proof,
   wall-run evaluation, reset handling, or command-execution internals.
+
+## Completion Brief
+
+Status: Done.
+
+Files changed:
+
+- `CMakeLists.txt`
+- `src/app/iggy3d/gameplay/Controller.cpp`
+- `src/app/iggy3d/gameplay/ControllerTargetActions.hpp`
+- `src/app/iggy3d/gameplay/ControllerTargetActions.cpp`
+- this task card
+
+Exact API moved/added:
+
+- Moved `queryProductGameplayTarget(...)` and
+  `submitProductTargetCommand(...)` out of `Controller.cpp`.
+- Added `ControllerTargetActions.hpp/.cpp`.
+- Exported only:
+  `void submitProductTargetCommand(Session&, ProductAppWindowState&, CommandKind, std::string_view, const SpatialSurfaceSet*)`.
+
+Helper ownership:
+
+- `submitProductTargetCommand(...)` is declared in
+  `ControllerTargetActions.hpp` and defined in
+  `ControllerTargetActions.cpp`.
+- `queryProductGameplayTarget(...)` is file-local in
+  `ControllerTargetActions.cpp`.
+- `Controller.cpp` retains `applyProductTargetActionPhase(...)` and target
+  submit call sites only.
+- Target/outcome proof calls for the target-submit path moved with the target
+  helper.
+
+Behavior preserved:
+
+- Target/outcome proof clearing before target handling is unchanged.
+- Actor lookup still uses `productPlayerActor(session)`.
+- Target query request shape is unchanged: world pointer, actor id, command
+  kind, zero aim radius, and existing targeting flags.
+- `recordProductTargetProof(...)` still runs before no-target handling.
+- No-target path fields are unchanged: `gameplayInputUsed`,
+  `gameplayInputSource`, command kind string, command status `no_target`,
+  reach gate `not_attempted`, and interact outcome status `no_target`.
+- Reach query request shape, `rejectionReasonForReach(...)` mapping, and
+  `reachGateName(...)` assignment are unchanged.
+- Interact/attack command payloads are unchanged, including attack damage `3`.
+- Interact outcome snapshot still occurs before command dispatch.
+- Dispatch still goes through `submitProductGameplayCommand(...)`.
+- Interact outcome proof recording after dispatch is unchanged.
+- `interactionExecuted` and `attackExecuted` assignment conditions are
+  unchanged.
+
+Scope confirmation:
+
+- `applyProductTargetActionPhase(...)`, `ProductGameplayInputIntent`, input
+  sampling, phase orchestration, dash action behavior, move action behavior,
+  jump action behavior, command execution implementation, target/outcome proof
+  implementation, reset action behavior, movement proof behavior, wall-run
+  proof/evaluation behavior, receipt keys/order/values, CMake test
+  definitions, staging, commit, push, broad CTest, and window launch were not
+  moved or changed.
+
+Required grep classification:
+
+- `ControllerTargetActions.hpp` contains the
+  `submitProductTargetCommand(...)` declaration.
+- `ControllerTargetActions.cpp` contains the
+  `submitProductTargetCommand(...)` definition and file-local
+  `queryProductGameplayTarget(...)` definition.
+- `Controller.cpp` contains `applyProductTargetActionPhase(...)` and target
+  submit call sites only.
+- Target/outcome proof calls for this submit path live in
+  `ControllerTargetActions.cpp`.
+- Focused forbidden dependency grep over `ControllerTargetActions.*` returned
+  no hits for dash submit, move submit, jump actions, input intent, phase
+  orchestration, movement proof implementation, wall-run evaluation,
+  command-execution internals, or ledge-fall fallback symbols.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+  produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files and this card passed.
