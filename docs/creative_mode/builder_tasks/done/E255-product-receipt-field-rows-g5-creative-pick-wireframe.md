@@ -241,3 +241,45 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, CMake, tests, golden, staging, commit,
   push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Completed.
+
+Files changed:
+
+- `src/app/iggy3d/receipt/CreativePickWireframeFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E255-product-receipt-field-rows-g5-creative-pick-wireframe.md`
+
+Implemented a file-local context and callback row table:
+
+- `CreativePickWireframeReceiptContext`
+- `CreativePickWireframeReceiptFieldRow`
+- `const std::array<CreativePickWireframeReceiptFieldRow, 52> kCreativePickWireframeReceiptFields`
+- `appendProductCreativePickWireframeFields(...)` now builds the context and iterates the ordered rows with `row.append(receipt, context, row.key)`.
+
+Row coverage:
+
+- Row count: 52
+- First key: `creative_viewport_pick_requested`
+- Last key: `product_vulkan_gameplay_reason_code`
+- Procedural rows left behind: none
+
+Required grep classifications:
+
+- `CreativePickWireframeReceiptContext`, `CreativePickWireframeReceiptFieldRow`, and `kCreativePickWireframeReceiptFields` exist in `CreativePickWireframeFields.cpp`.
+- `appendProductCreativePickWireframeFields(...)` remains the only public appender in the file.
+- `appendReceiptField(...)` count is 52, all inside row callbacks.
+- No `ProductAppReceiptContext` was introduced.
+- No shared `ReceiptFieldRow` helper was introduced.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_receipt_key_order_tests -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_receipt_key_order_tests$' --output-on-failure` passed.
+- Direct oracle passed: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over `CreativePickWireframeFields.cpp` and this card passed.
+
+No shared helper, CMake edit, tests edit, golden edit, staging, commit, push, broad CTest, or window launch was performed.
