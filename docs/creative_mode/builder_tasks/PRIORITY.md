@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E253-product-receipt-field-rows-g3-world-authoring.md`
+1. `ready/E254-product-receipt-field-rows-g4-feedback-surface-vulkan.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E253-product-receipt-field-rows-g3-world-authoring.md`
+1. `ready/E254-product-receipt-field-rows-g4-feedback-surface-vulkan.md`
 
 ## Parking Lot
 
@@ -195,5 +195,7 @@ Held — do NOT promote to `ready/` on a guess:
   G1 by table-driving only that section with no shared helper and no golden
   change. E252 completed G2 by table-driving
   `GameplayRuntimeMovementFields.cpp` with a file-local context and no golden
-  change. E253 is released as G3 for `WorldAuthoringFields.cpp`, the next
-  direct window-only receipt row candidate.
+  change. E253 completed G3 by table-driving `WorldAuthoringFields.cpp` with
+  no golden change. E254 is released as G4 for
+  `FeedbackSurfaceAutomationVulkanFields.cpp`, the next direct multi-context
+  receipt row candidate.
