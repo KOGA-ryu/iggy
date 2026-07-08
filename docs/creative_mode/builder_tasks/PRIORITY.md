@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E252-product-receipt-field-rows-g2-gameplay-runtime-movement.md`
+1. `ready/E253-product-receipt-field-rows-g3-world-authoring.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E252-product-receipt-field-rows-g2-gameplay-runtime-movement.md`
+1. `ready/E253-product-receipt-field-rows-g3-world-authoring.md`
 
 ## Parking Lot
 
@@ -193,5 +193,7 @@ Held — do NOT promote to `ready/` on a guess:
   E250 completed the read-only preflight and chose
   `GameplaySceneStateFields.cpp` as the safest one-file pilot. E251 completed
   G1 by table-driving only that section with no shared helper and no golden
-  change. E252 is released as G2 for `GameplayRuntimeMovementFields.cpp`, the
-  next direct receipt row candidate.
+  change. E252 completed G2 by table-driving
+  `GameplayRuntimeMovementFields.cpp` with a file-local context and no golden
+  change. E253 is released as G3 for `WorldAuthoringFields.cpp`, the next
+  direct window-only receipt row candidate.
