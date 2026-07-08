@@ -189,3 +189,88 @@ Stop and report instead of widening scope if:
   changes.
 - The new helper starts depending on session, command execution, collision
   surfaces, action submitters, wall-run evaluation, or movement proof writers.
+
+## Completion Brief
+
+Status: Done.
+
+Files changed:
+
+- `CMakeLists.txt`
+- `src/app/iggy3d/gameplay/Controller.cpp`
+- `src/app/iggy3d/gameplay/ControllerInputIntent.hpp`
+- `src/app/iggy3d/gameplay/ControllerInputIntent.cpp`
+- this task card
+
+Exact API moved/added:
+
+- Added `ControllerInputIntent.hpp/.cpp`.
+- Moved `ProductGameplayInputIntent`,
+  `sampleProductGameplayInputIntent(...)`, and
+  `productGameplayIntentHasMovement(...)` out of `Controller.cpp`.
+- Exported the `ProductGameplayInputIntent` struct with the existing fields:
+  `moveX`, `moveY`, `sprinting`, `jumpPressed`, `jumpReleased`, `dashPressed`,
+  `interactPressed`, `attackPressed`, and `resetPressed`.
+- Exported:
+  `ProductGameplayInputIntent sampleProductGameplayInputIntent(const ActionState&)`.
+- Exported:
+  `bool productGameplayIntentHasMovement(const ProductGameplayInputIntent&, const ProductAppWindowState&)`.
+
+Helper ownership:
+
+- `ProductGameplayInputIntent` definition lives in
+  `ControllerInputIntent.hpp`.
+- `sampleProductGameplayInputIntent(...)` and
+  `productGameplayIntentHasMovement(...)` declarations live in
+  `ControllerInputIntent.hpp`.
+- Their definitions live in `ControllerInputIntent.cpp`.
+- `Controller.cpp` retains call sites/usages only.
+- Among `Controller.cpp`, `ControllerInputIntent.hpp`, and
+  `ControllerInputIntent.cpp`, `productHorizontalVelocityActive(...)` is called
+  only from `ControllerInputIntent.cpp`.
+
+Behavior preserved:
+
+- `moveX` still comes from `InputAction::PlayerMoveX`.
+- `moveY` still comes from `InputAction::PlayerMoveY`.
+- `sprinting` still comes from `InputAction::PlayerSprint`.
+- `jumpPressed` and `jumpReleased` still come from `PlayerJump`.
+- `dashPressed` still comes from `PlayerDash`.
+- `interactPressed` still comes from `PlayerInteract`.
+- `attackPressed` still comes from `PlayerAttack`.
+- `resetPressed` still comes from `PlayerRetryOrReset`.
+- Movement intent remains true for `moveX != 0.0F`, `moveY != 0.0F`, or
+  `productHorizontalVelocityActive(window)`.
+
+Scope confirmation:
+
+- Phase helpers, `applyProductGameplayActions(...)`, dash/move/target/reset/jump
+  action behavior, wall-run evaluation behavior, movement proof behavior,
+  command execution behavior, receipt keys/order/values, CMake test
+  definitions, staging, commit, push, broad CTest, and window launch were not
+  moved or changed.
+
+Required grep classification:
+
+- `ControllerInputIntent.hpp` contains the `ProductGameplayInputIntent`
+  definition and declarations for `sampleProductGameplayInputIntent(...)` and
+  `productGameplayIntentHasMovement(...)`.
+- `ControllerInputIntent.cpp` contains the definitions for the sampling and
+  movement-intent helpers.
+- `Controller.cpp` contains `ProductGameplayInputIntent` usages and helper call
+  sites only.
+- Focused forbidden dependency grep over `ControllerInputIntent.*` returned no
+  hits for session, collision surfaces, command records/submission, action
+  submitters, phase orchestration, wall-run evaluation, or movement proof
+  symbols.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+  produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files and this card passed.

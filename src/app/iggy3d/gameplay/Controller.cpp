@@ -4,9 +4,9 @@
 #include <string>
 #include <string_view>
 
-#include "app/input/ActionState.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ControllerDashActions.hpp"
+#include "app/iggy3d/gameplay/ControllerInputIntent.hpp"
 #include "app/iggy3d/gameplay/ControllerJumpActions.hpp"
 #include "app/iggy3d/gameplay/ControllerJumpDashState.hpp"
 #include "app/iggy3d/gameplay/ControllerMovementProof.hpp"
@@ -21,41 +21,6 @@
 
 namespace iggy3d {
 namespace {
-
-struct ProductGameplayInputIntent {
-  float moveX = 0.0F;
-  float moveY = 0.0F;
-  bool sprinting = false;
-  bool jumpPressed = false;
-  bool jumpReleased = false;
-  bool dashPressed = false;
-  bool interactPressed = false;
-  bool attackPressed = false;
-  bool resetPressed = false;
-};
-
-ProductGameplayInputIntent sampleProductGameplayInputIntent(
-    const ActionState& actions) {
-  ProductGameplayInputIntent intent;
-  intent.moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
-  intent.moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
-  intent.sprinting = actionIsDown(actions, InputAction::PlayerSprint);
-  intent.jumpPressed = actionWasPressed(actions, InputAction::PlayerJump);
-  intent.jumpReleased = actionWasReleased(actions, InputAction::PlayerJump);
-  intent.dashPressed = actionWasPressed(actions, InputAction::PlayerDash);
-  intent.interactPressed = actionWasPressed(actions, InputAction::PlayerInteract);
-  intent.attackPressed = actionWasPressed(actions, InputAction::PlayerAttack);
-  intent.resetPressed =
-      actionWasPressed(actions, InputAction::PlayerRetryOrReset);
-  return intent;
-}
-
-bool productGameplayIntentHasMovement(
-    const ProductGameplayInputIntent& intent,
-    const ProductAppWindowState& window) {
-  return intent.moveX != 0.0F || intent.moveY != 0.0F ||
-         productHorizontalVelocityActive(window);
-}
 
 void updateProductJumpTimingPhase(Session& session,
                                   ProductAppWindowState& window,
