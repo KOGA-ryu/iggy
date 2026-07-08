@@ -256,3 +256,80 @@ Report:
   command-key block move, later frame-stage move, tests, receipt/golden files,
   broad CTest, interactive window launch, staging, commit, or push was
   performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/StandaloneDelete.hpp`
+- `apps/iggy3d_creative/StandaloneDelete.cpp`
+- `CMakeLists.txt`
+- this task card, moved to `done/`
+
+Helper API:
+
+```cpp
+namespace iggy3d_creative_app {
+
+[[nodiscard]] iggy3d::creative::CreativeDocumentRemoveReceipt
+deleteSelectedObject(iggy3d::creative::CreativeAppState& appState,
+                     std::string_view source,
+                     StandaloneUndoStack* undoStack = nullptr);
+
+}  // namespace iggy3d_creative_app
+```
+
+Extraction summary:
+
+- Moved the file-local `deleteSelectedObject(...)` definition out of
+  `main.cpp` into `StandaloneDelete.cpp`.
+- Preserved the current function name, selected-id source, object-count reads,
+  object-kind capture, undo snapshot push, remove call, rejected-delete undo
+  snapshot popback, final receipt return, and all delete/undo proof log
+  strings.
+- Removed one old helper definition from `main.cpp`.
+- Left exactly two `deleteSelectedObject(...)` call sites in `main.cpp`: the
+  interactive Delete/Backspace path and the capture scenario callback.
+
+CMake:
+
+- Added `apps/iggy3d_creative/StandaloneDelete.cpp` to the `iggy3d_creative`
+  executable source list, directly after
+  `apps/iggy3d_creative/StandaloneCaptureScenario.cpp`.
+- No other target source list was changed.
+
+Required grep classifications:
+
+- `StandaloneDelete.hpp` declares `deleteSelectedObject(...)`.
+- `StandaloneDelete.cpp` defines `deleteSelectedObject(...)`.
+- The `DELETE no selection`, `DELETE missing selection`, `UNDO discarded`, and
+  `DELETE removed` proof log strings live in `StandaloneDelete.cpp`.
+- `main.cpp` includes `StandaloneDelete.hpp`, has the `using` declaration, and
+  retains exactly two call sites.
+- `CMakeLists.txt` includes `apps/iggy3d_creative/StandaloneDelete.cpp` in the
+  `iggy3d_creative` executable source list.
+- No `EditorFrame` or `runCreativeEditorFrame(...)` was introduced.
+- E269's `CreativeEditorFrameInput.*`, E268's `CreativeEditorState`, and
+  E267's `appendStandaloneWireframeBoxEdges(...)` helper remain in place; no
+  old `appendWireframeBoxEdges(...)` helper was reintroduced.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan passed for touched source files,
+  `CMakeLists.txt`, and this card.
+
+Optional capture:
+
+- Skipped. No owner explicitly allowed a windowed/Vulkan capture check.
+
+Not performed:
+
+- No `EditorFrame`, `runCreativeEditorFrame(...)`, command-key block move,
+  later frame-stage move, tests, receipt/golden edits, broad CTest,
+  interactive window launch, staging, commit, or push.

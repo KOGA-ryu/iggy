@@ -388,6 +388,7 @@ add_executable(iggy3d_creative
   apps/iggy3d_creative/CreativeRendererBootstrap.cpp
   apps/iggy3d_creative/StandaloneBrushPalette.cpp
   apps/iggy3d_creative/StandaloneCaptureScenario.cpp
+  apps/iggy3d_creative/StandaloneDelete.cpp
   apps/iggy3d_creative/StandaloneFrustumCull.cpp
   apps/iggy3d_creative/StandaloneGizmo.cpp
   apps/iggy3d_creative/StandalonePathEditing.cpp
