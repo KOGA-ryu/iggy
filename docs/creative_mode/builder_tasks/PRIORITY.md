@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E225-openingmenuview-g1-sdldraw-helper-extraction.md`
+1. `ready/E226-openingmenuview-g2-scene-primitive-view-extraction.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E225-openingmenuview-g1-sdldraw-helper-extraction.md`
+1. `ready/E226-openingmenuview-g2-scene-primitive-view-extraction.md`
 
 ## Parking Lot
 
@@ -168,6 +168,7 @@ Held — do NOT promote to `ready/` on a guess:
   Note: the audit's object-kind switch cleanup item is stale in the current tree;
   `CreativeObjectKind` `toString(...)` and `allowedMutations(...)` already route
   through descriptor helpers.
-- `OpeningMenuView` split preflight is COMPLETE as E224. E225 is released as
-  G1 and should extract only the SDL glyph/draw helper block into `SdlDraw`
-  before any scene, HUD, menu-panel, or hit-test split.
+- `OpeningMenuView` split preflight is COMPLETE as E224. G1 `SdlDraw` helper
+  extraction is COMPLETE as E225. E226 is released as G2 and should extract only
+  scene/viewport primitive rendering into `ScenePrimitiveView`, leaving HUD,
+  menu-panel, hit-test, and facade behavior in place.
