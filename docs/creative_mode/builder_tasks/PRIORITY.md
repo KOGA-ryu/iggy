@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E186-traversal-clamber-fallback-policy-guards.md`
+1. `ready/E187-traversal-tag-movement-test-lab-routing.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E186-traversal-clamber-fallback-policy-guards.md`
+1. `ready/E187-traversal-tag-movement-test-lab-routing.md`
 
 ## Tier 2: Feature-Add Seams
 
