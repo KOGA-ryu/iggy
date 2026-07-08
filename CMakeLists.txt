@@ -109,6 +109,7 @@ target_sources(iggy3d
     src/app/iggy3d/gameplay/ControllerJumpDashState.cpp
     src/app/iggy3d/gameplay/ControllerKinematics.cpp
     src/app/iggy3d/gameplay/ControllerMovementProof.cpp
+    src/app/iggy3d/gameplay/ControllerTraversalProof.cpp
     src/app/iggy3d/gameplay/ControllerWallRunEvaluation.cpp
     src/app/iggy3d/gameplay/ControllerWallQueries.cpp
     src/app/iggy3d/gameplay/GameplayFeedback.cpp

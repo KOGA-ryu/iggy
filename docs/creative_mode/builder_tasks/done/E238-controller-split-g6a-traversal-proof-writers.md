@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Objective
 
@@ -118,3 +118,38 @@ Run a focused trailing-whitespace scan over touched files and this card.
   jump, dash, or movement behavior drift.
 
 No stage, commit, push, broad CTest, or window launch.
+
+## Completion Brief
+
+- Card moved to done: yes, after this brief was appended.
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/gameplay/Controller.cpp`
+  - `src/app/iggy3d/gameplay/ControllerTraversalProof.hpp`
+  - `src/app/iggy3d/gameplay/ControllerTraversalProof.cpp`
+  - `docs/creative_mode/builder_tasks/done/E238-controller-split-g6a-traversal-proof-writers.md`
+- Helper/API shape added:
+  - `ControllerTraversalProof.hpp/.cpp` exports `clearProductTraversalProof(...)`, `recordProductTraversalProof(...)`, and `recordProductWallJumpTraversalProof(...)`.
+  - The helper uses the existing runtime traversal stringifiers from `runtime/movement/MovementTraversal.hpp`; no duplicate traversal string table was introduced.
+  - `recordProductWallJumpTraversalProof(...)` remains only a proof writer and does not move wall-jump movement/mutation policy.
+- Controller migration:
+  - `Controller.cpp` now includes `ControllerTraversalProof.hpp` and retains call sites only for the moved helpers.
+  - Traversal execution, wall-jump mutation, jump/dash orchestration, reset/fall, command submission, target/outcome proof, movement proof, wall-run evaluation, and wall-surface queries were not moved.
+- CMake:
+  - Added `src/app/iggy3d/gameplay/ControllerTraversalProof.cpp` beside the other controller split sources.
+- Required grep classification:
+  - Moved helper declarations/definitions live in `ControllerTraversalProof.*`.
+  - `Controller.cpp` retains call sites only.
+  - No moved helper definition remains in `Controller.cpp`.
+  - Focused dependency grep over `ControllerTraversalProof.*` returned no hits for `Session`, `executeTraversalIntent`, command submission, reset/fall, wall-jump mutation, active-room ownership, target proof, or outcome proof.
+- Receipt golden result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure` passed.
+  - Required traversal proof `rg` classification was run.
+  - Focused dependency grep over `ControllerTraversalProof.*` was run.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card passed.
+- Concerns/deferred:
+  - None. No stage, commit, push, broad CTest, or window launch was performed.
