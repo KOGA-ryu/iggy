@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -130,3 +130,39 @@ Report:
 - whether loaded `npc_vision_lab` room now proves `clamber_candidate`;
 - tests/checks run;
 - any concerns/deferred work.
+
+## Completion Brief
+
+- Card moved to done: yes.
+- Files changed:
+  - `fixtures/demos/npc_vision_lab/assets/rooms/training_room.room.iggy3d.toml`
+  - `tests/unit/ascii_room_package_fixture_tests.cpp`
+- Fixture update:
+  - Replaced the stale `npc_vision_lab` package-local room asset with the current shared generated asset from `fixtures/rooms/ascii/training_room.room.iggy3d.toml`.
+  - Semantic diff is limited to the 20 missing wall/blocker `clamber_candidate` traversal tags. The final `cmp` proves the full file now matches byte-for-byte.
+- Byte parity:
+  - `cmp -s /Users/kogaryu/iggy3d/fixtures/rooms/ascii/training_room.room.iggy3d.toml /Users/kogaryu/iggy3d/fixtures/demos/ascii_training_room/assets/rooms/training_room.room.iggy3d.toml`: status `0`.
+  - `cmp -s /Users/kogaryu/iggy3d/fixtures/rooms/ascii/training_room.room.iggy3d.toml /Users/kogaryu/iggy3d/fixtures/demos/npc_vision_lab/assets/rooms/training_room.room.iggy3d.toml`: status `0`.
+- Package manifests:
+  - `fixtures/demos/ascii_training_room/package.iggy3d.toml` unchanged.
+  - `fixtures/demos/npc_vision_lab/package.iggy3d.toml` unchanged.
+  - Both manifests remain package-local and still reference `assets/rooms/training_room.room.iggy3d.toml`.
+- Parity/load guards added:
+  - Existing `ascii_training_room` package parity/load assertions were preserved.
+  - Added `npc_vision_lab` package-local room text parity against `fixtures/rooms/ascii/training_room.room.iggy3d.toml`.
+  - Added `loadPackage({"fixtures/demos/npc_vision_lab/package.iggy3d.toml"})` guard.
+  - Added assertions for package id `iggy3d.npc_vision_lab`, scenario id `npc_vision_lab.runtime_loop`, 3 asset refs, one room, non-empty mesh/material libraries, and expected floor/wall mesh plus debug floor/wall materials.
+  - Extracted shared training-room core room checks and now apply them to both package-loaded rooms: room id/source/source file/source subset, static mesh count 36, anchor count 5, spatial surface count 56, walkable count 15, blocker count 21, projectile blocker count 20, and the five expected anchors.
+- `clamber_candidate` proof:
+  - Added a small local traversal-tag helper.
+  - Loaded package room checks now assert exactly 20 blocker surfaces carry `clamber_candidate`, including the `npc_vision_lab` loaded room.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target ascii_room_asset_text_fixture_tests ascii_room_package_fixture_tests package_loader_tests product_ascii_package_smoke -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(ascii_room_asset_text_fixture_tests|ascii_room_package_fixture_tests|package_loader_tests|product_ascii_package_smoke)$' --output-on-failure` passed: 4/4.
+  - Both required `cmp -s` checks passed with status `0`.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files passed.
+  - Focused package/scenario manifest diff check was empty.
+- Concerns/deferred:
+  - No concerns for this slice.
+  - Manifest-level true single-source remains deferred because package assets are intentionally package-relative and loader path validation rejects absolute/parent paths.
