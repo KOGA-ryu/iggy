@@ -242,3 +242,45 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, CMake, tests, golden, staging, commit,
   push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Completed.
+
+Files changed:
+
+- `src/app/iggy3d/receipt/StartupProbeFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E256-product-receipt-field-rows-g6-startup-probe.md`
+
+Implemented a file-local context and callback row table:
+
+- `StartupProbeReceiptContext`
+- `StartupProbeReceiptFieldRow`
+- `const std::array<StartupProbeReceiptFieldRow, 38> kStartupProbeReceiptFields`
+- `appendProductStartupProbeFields(...)` now builds the context and iterates the ordered rows with `row.append(receipt, context, row.key)`.
+
+Row coverage:
+
+- Row count: 38
+- First key: `dev_tools_category`
+- Last key: `startup_vulkan_first_submit_status`
+- Procedural rows left behind: none
+
+Required grep classifications:
+
+- `StartupProbeReceiptContext`, `StartupProbeReceiptFieldRow`, and `kStartupProbeReceiptFields` exist in `StartupProbeFields.cpp`.
+- `appendProductStartupProbeFields(...)` remains the only public appender in the file.
+- `appendReceiptField(...)` count is 38, all inside row callbacks.
+- No `ProductAppReceiptContext` was introduced.
+- No shared `ReceiptFieldRow` helper was introduced.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_receipt_key_order_tests -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_receipt_key_order_tests$' --output-on-failure` passed.
+- Direct oracle passed: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over `StartupProbeFields.cpp` and this card passed.
+
+No shared helper, CMake edit, tests edit, golden edit, staging, commit, push, broad CTest, or window launch was performed.
