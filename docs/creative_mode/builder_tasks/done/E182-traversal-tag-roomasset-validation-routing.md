@@ -102,3 +102,37 @@ Completion brief must include:
 - confirmation that parser role strings, serializer format, movement parsing,
   collision role strings, ProductAppWindowState, and renderer/Vulkan were not
   changed
+
+## Completion Brief
+
+- Files changed:
+  - `src/content/assets/RoomAsset.cpp`
+  - `tests/unit/room_asset_loader_tests.cpp`
+  - `docs/creative_mode/builder_tasks/ready/E182-traversal-tag-roomasset-validation-routing.md` moved to `docs/creative_mode/builder_tasks/done/E182-traversal-tag-roomasset-validation-routing.md`
+- RoomAsset invariant checks routed through `TraversalTag`:
+  - walkable surface validation now checks `hasTraversalTag(surface, TraversalTag::Walkable)`
+  - blocker surface validation now checks `hasTraversalTag(surface, TraversalTag::Blocker)`
+  - projectile blocker surface validation now checks `hasTraversalTag(surface, TraversalTag::ProjectileBlocker)`
+  - opening surface validation now checks `hasTraversalTag(surface, TraversalTag::Opening)`
+  - unknown traversal tag validation still uses `validTraversalTag(tag)` and keeps `room_unknown_traversal_tag`
+- Tests added/kept:
+  - `room_asset_loader_tests` now covers missing required traversal tags for walkable, blocker, projectile blocker, and opening surfaces with the existing deterministic rejection reasons
+  - existing valid load/round-trip and unknown traversal tag coverage remains in place
+- Remaining raw traversal-like literals in `RoomAsset.cpp`:
+  - `parseShape(...)`: `"opening"` remains a file-format shape parser literal
+  - `parseRole(...)`: `"walkable"`, `"blocker"`, `"projectile_blocker"`, and `"opening"` remain file-format role parser literals
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d room_asset_loader_tests ascii_room_asset_text_tests ascii_room_to_room_asset_tests traversal_tag_catalog_tests product_ascii_room_activation_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(room_asset_loader_tests|ascii_room_asset_text_tests|ascii_room_to_room_asset_tests|traversal_tag_catalog_tests|product_ascii_room_activation_tests)$' --output-on-failure`
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure`
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - focused trailing-whitespace scan over touched files
+- Receipt golden result:
+  - `receipt key-order oracle: 1032 fields match golden (order + values)`
+- Full CTest result:
+  - `100% tests passed, 0 tests failed out of 260`
+- Scope confirmation:
+  - parser role strings, serializer format, movement parsing, collision role strings, `ProductAppWindowState`, and renderer/Vulkan were not changed
+- Concerns/deferred:
+  - none

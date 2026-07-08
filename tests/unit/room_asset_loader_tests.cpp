@@ -101,7 +101,8 @@ std::string walkableSurface(std::string_view id = "surface_a",
 
 std::string openingSurface(std::string_view openingId = "out",
                            bool blocksActor = false,
-                           bool blocksProjectile = false) {
+                           bool blocksProjectile = false,
+                           std::string_view traversalTags = "[\"opening\"]") {
   std::string text = R"(
 [[spatial_surfaces]]
 id = "opening_surface"
@@ -110,7 +111,9 @@ shape = "opening"
 role = "opening"
 points_ft = [[19.5, 0.0, 4.0], [19.5, 0.0, 14.0], [19.5, 8.0, 14.0], [19.5, 8.0, 4.0]]
 normal = [1.0, 0.0, 0.0]
-traversal_tags = ["opening"]
+traversal_tags = )";
+  text += traversalTags;
+  text += R"(
 collision_mask = []
 )";
   text += std::string("blocks_actor = ") + (blocksActor ? "true" : "false") + "\n";
@@ -121,8 +124,29 @@ collision_mask = []
   return text;
 }
 
-std::string projectileSurface() {
-  return R"(
+std::string blockerSurface(std::string_view traversalTags = "[\"blocker\"]") {
+  std::string text = R"(
+[[spatial_surfaces]]
+id = "blocker_surface"
+source_static_mesh = "north_wall"
+shape = "box"
+role = "blocker"
+points_ft = [[0.0, 0.0, 0.0], [20.0, 0.0, 0.0], [20.0, 9.0, 1.0], [0.0, 9.0, 1.0]]
+normal = [0.0, 0.0, 1.0]
+traversal_tags = )";
+  text += traversalTags;
+  text += R"(
+collision_mask = ["actor"]
+blocks_actor = true
+blocks_projectile = false
+opening_id = ""
+)";
+  return text;
+}
+
+std::string projectileSurface(
+    std::string_view traversalTags = "[\"projectile_blocker\"]") {
+  std::string text = R"(
 [[spatial_surfaces]]
 id = "projectile_surface"
 source_static_mesh = "spawn_crate"
@@ -130,12 +154,15 @@ shape = "box"
 role = "projectile_blocker"
 points_ft = [[3.0, 0.0, 15.0], [5.0, 0.0, 15.0], [5.0, 2.0, 17.0], [3.0, 2.0, 17.0]]
 normal = [0.0, 0.0, -1.0]
-traversal_tags = ["projectile_blocker"]
+traversal_tags = )";
+  text += traversalTags;
+  text += R"(
 collision_mask = ["projectile"]
 blocks_actor = false
 blocks_projectile = true
 opening_id = ""
 )";
+  return text;
 }
 
 bool parseFailsWith(std::string_view spatialRows, std::string_view reason) {
@@ -296,6 +323,18 @@ bool invalidSpatialSurfaceCasesReject() {
                                             "[20.0, 0.05, 18.0], [0.0, 0.05, 18.0]]",
                                             "[\"walkable\", \"magic\"]"),
                             "room_unknown_traversal_tag");
+  ok = ok && parseFailsWith(walkableSurface("missing_walkable_tag", "spawn_floor",
+                                            "[0.0, 1.0, 0.0]",
+                                            "[[0.0, 0.05, 0.0], [20.0, 0.05, 0.0], "
+                                            "[20.0, 0.05, 18.0], [0.0, 0.05, 18.0]]",
+                                            "[]"),
+                            "room_invalid_spatial_surface");
+  ok = ok && parseFailsWith(blockerSurface("[]"),
+                            "room_invalid_spatial_surface");
+  ok = ok && parseFailsWith(projectileSurface("[]"),
+                            "room_invalid_spatial_surface");
+  ok = ok && parseFailsWith(openingSurface("out", false, false, "[]"),
+                            "room_invalid_opening_surface");
   ok = ok && parseFailsWith(openingSurface("out", true, false),
                             "room_invalid_opening_surface");
   ok = ok && parseFailsWith(walkableSurface("missing_mesh", "missing_mesh"),

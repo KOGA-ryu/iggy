@@ -262,6 +262,10 @@ bool containsString(const std::vector<std::string>& values, std::string_view exp
   return false;
 }
 
+bool hasTraversalTag(const RoomSpatialSurface& surface, TraversalTag tag) {
+  return containsString(surface.traversalTags, traversalTagId(tag));
+}
+
 bool hasDuplicateStrings(const std::vector<std::string>& values) {
   std::set<std::string> seen;
   for (const std::string& value : values) {
@@ -553,24 +557,24 @@ RoomAssetParseResult parseRoomAssetText(const std::string& text) {
       }
     }
     if (surface.role == RoomSpatialSurfaceRole::Walkable &&
-        (!containsString(surface.traversalTags, "walkable") || surface.blocksActor ||
+        (!hasTraversalTag(surface, TraversalTag::Walkable) || surface.blocksActor ||
          surface.normal.y <= 0.0F)) {
       result.reason = "room_invalid_spatial_surface";
       return result;
     }
     if (surface.role == RoomSpatialSurfaceRole::Blocker &&
-        (!containsString(surface.traversalTags, "blocker") || !surface.blocksActor)) {
+        (!hasTraversalTag(surface, TraversalTag::Blocker) || !surface.blocksActor)) {
       result.reason = "room_invalid_spatial_surface";
       return result;
     }
     if (surface.role == RoomSpatialSurfaceRole::ProjectileBlocker &&
-        (!containsString(surface.traversalTags, "projectile_blocker") ||
+        (!hasTraversalTag(surface, TraversalTag::ProjectileBlocker) ||
          !surface.blocksProjectile)) {
       result.reason = "room_invalid_spatial_surface";
       return result;
     }
     if (surface.role == RoomSpatialSurfaceRole::Opening) {
-      if (!containsString(surface.traversalTags, "opening") || surface.blocksActor ||
+      if (!hasTraversalTag(surface, TraversalTag::Opening) || surface.blocksActor ||
           surface.blocksProjectile) {
         result.reason = "room_invalid_opening_surface";
         return result;
