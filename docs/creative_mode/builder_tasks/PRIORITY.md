@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-None.
+1. `ready/E209-operations-seam-split-preflight.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-None currently ready.
+1. `ready/E209-operations-seam-split-preflight.md`
 
 ## Parking Lot
 
@@ -144,6 +144,7 @@ Held — do NOT promote to `ready/` on a guess:
   resolver wrapper after window input-owner cache deletion. E200 removed ignored
   production calls, repointed tests/support to the direct resolver, and deleted
   the stale helper.
-- Remaining complexity-audit roadmap items (`OpeningMenuView` split,
-  `Operations.cpp` seam split after the identity-mirror removal, shared test
-  infrastructure) — see `docs/complexity_audit_v0_1.md` §3.
+- Remaining complexity-audit roadmap items: `E209` is released as the
+  read-only preflight for `Operations.cpp` seam split after identity-mirror
+  removal. `OpeningMenuView` split remains parked; see
+  `docs/complexity_audit_v0_1.md` §3.
