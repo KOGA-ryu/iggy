@@ -93,6 +93,7 @@ using iggy3d_creative_app::buildStandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::captureFrameToPng;
 using iggy3d_creative_app::createCreativeRenderer;
 using iggy3d_creative_app::resolveCreativeEditorAimCell;
+using iggy3d_creative_app::resolveCreativeEditorGroundPoint;
 using iggy3d_creative_app::applyCreativeEditorCommandInput;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::CreativeEditorState;
@@ -861,17 +862,8 @@ int main(int argc, char** argv) {
         const float cursorPx = mx * scaleX;
         const float cursorPy = my * scaleY;
 
-        // Camera-forward ray -> Y=0 plane -> world XZ ground point (fallback).
-        const Vec3 eye = frame.camera.worldEye;
-        const Vec3 fwd = frame.camera.worldForward;
-        creative::CreativeToolWorldPoint ground{eye.x, 0.0, eye.z};
-        if (std::fabs(fwd.y) > 1.0e-4F) {
-          const float t = -eye.y / fwd.y;  // eye.y + t*fwd.y == 0
-          if (t > 0.0F) {
-            ground.x = static_cast<double>(eye.x + fwd.x * t);
-            ground.z = static_cast<double>(eye.z + fwd.z * t);
-          }
-        }
+        const creative::CreativeToolWorldPoint ground =
+            resolveCreativeEditorGroundPoint(frame.camera);
 
         const bool selectedIsPath =
             selected != nullptr &&

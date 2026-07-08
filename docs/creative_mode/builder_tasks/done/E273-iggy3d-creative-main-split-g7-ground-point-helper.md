@@ -266,3 +266,90 @@ Report:
   interactive Move policy move, placement move, capture scenario move, later
   frame-stage move, tests, receipt/golden files, broad CTest, interactive
   window launch, staging, commit, or push was performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/CreativeEditorAim.hpp`
+- `apps/iggy3d_creative/CreativeEditorAim.cpp`
+- this task card, moved from `ready/` to `claimed/` and then `done/`
+
+Exact helper API shape:
+
+```cpp
+namespace iggy3d_creative_app {
+
+[[nodiscard]] iggy3d::creative::CreativeToolWorldPoint
+resolveCreativeEditorGroundPoint(const iggy3d::RenderCameraFrame& camera);
+
+[[nodiscard]] iggy3d::Vec3 resolveCreativeEditorAimCell(
+    const iggy3d::RenderCameraFrame& camera,
+    double placeCellSize);
+
+}  // namespace iggy3d_creative_app
+```
+
+The raw camera-forward to Y=0 ground-plane math moved into
+`resolveCreativeEditorGroundPoint(...)`, including `camera.worldEye`,
+`camera.worldForward`, fallback `ground{eye.x, 0.0, eye.z}`, the
+`std::fabs(fwd.y) > 1.0e-4F` near-parallel gate, positive-`t` update, and
+`ground.y == 0.0` preservation. `resolveCreativeEditorAimCell(...)` now calls
+the ground-point helper and passes `ground.x` / `ground.z` to
+`snapGroundToCellCenter(...)`.
+
+`main.cpp` still owns the interactive Move branch, path handling, gizmo
+handling, pointer packet construction, selection, placement, capture scenario,
+overlay construction, render-submit, and all downstream consumers. It now uses
+`resolveCreativeEditorAimCell(...)` for `aimCellCenter` and
+`resolveCreativeEditorGroundPoint(...)` for the interactive Move branch ground
+point.
+
+`CMakeLists.txt` was unchanged; `git diff -- CMakeLists.txt` produced no diff.
+
+Required grep classifications:
+
+- `CreativeEditorAim.hpp` declares both helper functions.
+- `CreativeEditorAim.cpp` defines both helper functions.
+- raw ground-plane `ground{...}`, `std::fabs(...)`, threshold, and positive-`t`
+  logic live in `CreativeEditorAim.cpp`.
+- `resolveCreativeEditorAimCell(...)` calls
+  `resolveCreativeEditorGroundPoint(...)` and still calls
+  `snapGroundToCellCenter(...)`.
+- `main.cpp` uses `resolveCreativeEditorAimCell(...)` for `aimCellCenter`.
+- `main.cpp` uses `resolveCreativeEditorGroundPoint(...)` for the interactive
+  Move branch ground point.
+- no raw `std::fabs(...)` ground-plane block remains in `main.cpp`.
+- `CreativeEditorCommandInput.*`, `CreativeEditorFrameInput.*`, and
+  `StandaloneDelete.*` remain the command-key, frame-begin input, and delete
+  helper owners.
+- no `EditorFrame` or `runCreativeEditorFrame(...)` was introduced.
+- E267's `appendStandaloneWireframeBoxEdges(...)` helper remains unchanged,
+  and no old `appendWireframeBoxEdges(...)` helper was reintroduced.
+
+Focused verification:
+
+```sh
+cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10
+ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure
+git -C /Users/kogaryu/iggy3d diff --check
+```
+
+Results:
+
+- focused build passed
+- focused CTest passed, 3/3 tests
+- `git diff --check` passed
+- focused trailing-whitespace scan over touched source files and this task
+  card passed
+
+Optional capture:
+
+- skipped; no owner explicitly allowed a windowed/Vulkan capture check for this
+  slice
+
+No `EditorFrame`, `runCreativeEditorFrame(...)`, interactive Move policy move,
+placement move, capture scenario move, later frame-stage move, tests,
+receipt/golden files, broad CTest, interactive window launch, staging, commit,
+or push was performed.

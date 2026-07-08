@@ -6,21 +6,27 @@
 
 namespace iggy3d_creative_app {
 
+iggy3d::creative::CreativeToolWorldPoint resolveCreativeEditorGroundPoint(
+    const iggy3d::RenderCameraFrame& camera) {
+  const iggy3d::Vec3 eye = camera.worldEye;
+  const iggy3d::Vec3 fwd = camera.worldForward;
+  iggy3d::creative::CreativeToolWorldPoint ground{eye.x, 0.0, eye.z};
+  if (std::fabs(fwd.y) > 1.0e-4F) {
+    const float t = -eye.y / fwd.y;  // eye.y + t*fwd.y == 0
+    if (t > 0.0F) {
+      ground.x = static_cast<double>(eye.x + fwd.x * t);
+      ground.z = static_cast<double>(eye.z + fwd.z * t);
+    }
+  }
+  return ground;
+}
+
 iggy3d::Vec3 resolveCreativeEditorAimCell(
     const iggy3d::RenderCameraFrame& camera,
     double placeCellSize) {
-  const iggy3d::Vec3 aimEye = camera.worldEye;
-  const iggy3d::Vec3 aimFwd = camera.worldForward;
-  double aimGroundX = static_cast<double>(aimEye.x);
-  double aimGroundZ = static_cast<double>(aimEye.z);
-  if (std::fabs(aimFwd.y) > 1.0e-4F) {
-    const float t = -aimEye.y / aimFwd.y;  // eye.y + t*fwd.y == 0
-    if (t > 0.0F) {
-      aimGroundX = static_cast<double>(aimEye.x + aimFwd.x * t);
-      aimGroundZ = static_cast<double>(aimEye.z + aimFwd.z * t);
-    }
-  }
-  return snapGroundToCellCenter(aimGroundX, aimGroundZ, placeCellSize);
+  const iggy3d::creative::CreativeToolWorldPoint ground =
+      resolveCreativeEditorGroundPoint(camera);
+  return snapGroundToCellCenter(ground.x, ground.z, placeCellSize);
 }
 
 }  // namespace iggy3d_creative_app
