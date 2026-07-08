@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E230-openingmenuview-g6-facade-include-cleanup.md`
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E230-openingmenuview-g6-facade-include-cleanup.md`
+None currently ready.
 
 ## Parking Lot
 
@@ -168,9 +168,8 @@ Held — do NOT promote to `ready/` on a guess:
   Note: the audit's object-kind switch cleanup item is stale in the current tree;
   `CreativeObjectKind` `toString(...)` and `allowedMutations(...)` already route
   through descriptor helpers.
-- `OpeningMenuView` split preflight is COMPLETE as E224. G1 `SdlDraw` helper
-  extraction is COMPLETE as E225. G2 `ScenePrimitiveView` extraction is
-  COMPLETE as E226. G3 `DebugHudView` extraction is COMPLETE as E227. G4
-  `MenuPanelsView` extraction is COMPLETE as E228. G5 `OpeningMenuHitTest`
-  split is COMPLETE as E229. E230 is released as G6 and should perform the final
-  `OpeningMenuView` facade include cleanup without behavior changes.
+- `OpeningMenuView` split is COMPLETE as E224-E230. E224 preflighted the
+  split; E225 extracted `SdlDraw`; E226 extracted `ScenePrimitiveView`; E227
+  extracted `DebugHudView`; E228 extracted `MenuPanelsView`; E229 extracted
+  `OpeningMenuHitTest`; E230 completed the final `OpeningMenuView` facade
+  include cleanup.
