@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E229-openingmenuview-g5-hit-test-split.md`
+1. `ready/E230-openingmenuview-g6-facade-include-cleanup.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E229-openingmenuview-g5-hit-test-split.md`
+1. `ready/E230-openingmenuview-g6-facade-include-cleanup.md`
 
 ## Parking Lot
 
@@ -171,6 +171,6 @@ Held — do NOT promote to `ready/` on a guess:
 - `OpeningMenuView` split preflight is COMPLETE as E224. G1 `SdlDraw` helper
   extraction is COMPLETE as E225. G2 `ScenePrimitiveView` extraction is
   COMPLETE as E226. G3 `DebugHudView` extraction is COMPLETE as E227. G4
-  `MenuPanelsView` extraction is COMPLETE as E228. E229 is released as G5 and
-  should split hit-test types/functions into `OpeningMenuHitTest`, leaving
-  drawing/facade behavior in `OpeningMenuView`.
+  `MenuPanelsView` extraction is COMPLETE as E228. G5 `OpeningMenuHitTest`
+  split is COMPLETE as E229. E230 is released as G6 and should perform the final
+  `OpeningMenuView` facade include cleanup without behavior changes.
