@@ -1,23 +1,13 @@
 #include "app/iggy3d/view/CameraController.hpp"
 
-#include <cmath>
-#include <iostream>
-#include <string_view>
+#include "ProductTestSupport.hpp"
 
 #include "app/input/ActionState.hpp"
 
 namespace {
 
-bool expect(bool condition, std::string_view message) {
-  if (!condition) {
-    std::cerr << "FAIL: " << message << '\n';
-  }
-  return condition;
-}
-
-bool nearlyEqual(float lhs, float rhs, float epsilon = 0.0001F) {
-  return std::fabs(lhs - rhs) <= epsilon;
-}
+using iggy3d::test::expect;
+using iggy3d::test::nearlyEqual;
 
 iggy3d::ActionState lookActions(float lookX, float lookY) {
   iggy3d::ActionState actions;

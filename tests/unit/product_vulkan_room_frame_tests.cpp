@@ -1,4 +1,5 @@
 #include "app/iggy3d/ascii_room/Activation.hpp"
+#include "ProductTestSupport.hpp"
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
@@ -19,33 +20,13 @@
 
 #include <cmath>
 #include <cstdlib>
-#include <iostream>
 #include <optional>
 #include <string_view>
 
 namespace {
 
-bool expect(bool condition, std::string_view message) {
-  if (!condition) {
-    std::cerr << "FAIL: " << message << '\n';
-  }
-  return condition;
-}
-
-bool nearlyEqual(float lhs, float rhs, float epsilon = 0.0001F) {
-  return std::fabs(lhs - rhs) <= epsilon;
-}
-
-bool nearlyEqual(const iggy3d::Mat4& lhs,
-                 const iggy3d::Mat4& rhs,
-                 float epsilon = 0.0001F) {
-  for (std::size_t i = 0; i < lhs.m.size(); ++i) {
-    if (!nearlyEqual(lhs.m[i], rhs.m[i], epsilon)) {
-      return false;
-    }
-  }
-  return true;
-}
+using iggy3d::test::expect;
+using iggy3d::test::nearlyEqual;
 
 std::size_t countDebugKind(const iggy3d::DebugProjectionResult& debug,
                            iggy3d::DebugProjectionKind kind) {

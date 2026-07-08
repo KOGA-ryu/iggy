@@ -7,9 +7,7 @@
 
 #include "app/input/KeyboardInput.hpp"
 
-#include <cmath>
-#include <iostream>
-#include <string_view>
+#include "ProductTestSupport.hpp"
 
 #include "app/input/ActionState.hpp"
 #include "app/input/InputAction.hpp"
@@ -17,14 +15,8 @@
 
 namespace {
 
-bool expect(bool condition, std::string_view message) {
-  if (!condition) {
-    std::cerr << "FAIL: " << message << '\n';
-  }
-  return condition;
-}
-
-bool near(float lhs, float rhs) { return std::fabs(lhs - rhs) <= 0.0001F; }
+using iggy3d::test::expect;
+using iggy3d::test::near;
 
 bool flyPollRecordsOnlyFlyAxes() {
   iggy3d::KeyboardCreativeFlyInputSample sample;

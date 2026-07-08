@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -120,3 +120,40 @@ Move this card to `blocked/` with evidence if:
 - Helpers intentionally left local:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completion Brief
+
+- Card moved to done: yes, after appending this brief.
+- Files changed:
+  - `tests/unit/ProductTestSupport.hpp`
+  - `tests/unit/product_camera_controller_tests.cpp`
+  - `tests/unit/product_gameplay_controller_tests.cpp`
+  - `tests/unit/product_vulkan_room_frame_tests.cpp`
+  - `tests/unit/product_creative_fly_tests.cpp`
+  - `tests/unit/product_creative_navigate_fly_tests.cpp`
+  - `docs/creative_mode/builder_tasks/claimed/E190-product-test-support-g1-assertions-numeric.md` moved to `done/`
+- Helper API added:
+  - `iggy3d::test::expect(bool, std::string_view)`
+  - `iggy3d::test::expect(bool, const char*)`
+  - `iggy3d::test::near(float, float, float epsilon = 0.0001F)`
+  - `iggy3d::test::nearlyEqual(float, float, float epsilon = 0.0001F)`
+  - `iggy3d::test::nearlyEqual(const Mat4&, const Mat4&, float epsilon = 0.0001F)`
+- Files migrated:
+  - `product_camera_controller_tests.cpp`: local `expect(...)` and float `nearlyEqual(...)` replaced with narrow `using` declarations.
+  - `product_gameplay_controller_tests.cpp`: local `expect(...)` and float `nearlyEqual(...)` replaced; behavior-specific `horizontalDistance(...)` kept local.
+  - `product_vulkan_room_frame_tests.cpp`: local `expect(...)`, float `nearlyEqual(...)`, and `Mat4` `nearlyEqual(...)` replaced.
+  - `product_creative_fly_tests.cpp`: local `expect(...)` and `near(...)` replaced; behavior-specific `vecNear(...)` kept local.
+  - `product_creative_navigate_fly_tests.cpp`: local `expect(...)` and `near(...)` replaced.
+- Helpers intentionally left local:
+  - `horizontalDistance(...)` in `product_gameplay_controller_tests.cpp`.
+  - `vecNear(...)` in `product_creative_fly_tests.cpp`.
+  - Product-specific fixtures, render/debug helpers, collision helpers, and scenario/harness code were not touched.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target product_camera_controller_tests product_gameplay_controller_tests product_vulkan_room_frame_tests product_creative_fly_tests product_creative_navigate_fly_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_camera_controller_tests|product_gameplay_controller_tests|product_vulkan_room_frame_tests|product_creative_fly_tests|product_creative_navigate_fly_tests)$' --output-on-failure` passed, 5/5.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files passed.
+- Concerns/deferred:
+  - No CMake changes were needed.
+  - No custom failure formatting or return behavior conflicts were found in the five migrated files.
+  - Receipt helpers, active-surface helpers, temp-root/options helpers, and large harness/scenario structs remain deferred to later cards.

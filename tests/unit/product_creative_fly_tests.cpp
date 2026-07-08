@@ -1,24 +1,17 @@
 #include "app/iggy3d/creative/camera/Fly.hpp"
+
+#include "ProductTestSupport.hpp"
+
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "app/iggy3d/view/ViewportState.hpp"
 
 #include <cmath>
-#include <iostream>
 
 namespace {
 
-bool expect(bool condition, const char* message) {
-  if (!condition) {
-    std::cerr << "FAIL: " << message << "\n";
-    return false;
-  }
-  return true;
-}
-
-bool near(float lhs, float rhs) {
-  return std::fabs(lhs - rhs) <= 0.0001F;
-}
+using iggy3d::test::expect;
+using iggy3d::test::near;
 
 bool vecNear(iggy3d::Vec3 lhs, iggy3d::Vec3 rhs) {
   return near(lhs.x, rhs.x) && near(lhs.y, rhs.y) && near(lhs.z, rhs.z);

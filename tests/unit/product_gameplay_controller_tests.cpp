@@ -1,8 +1,9 @@
 #include "app/iggy3d/gameplay/Controller.hpp"
 
+#include "ProductTestSupport.hpp"
+
 #include <cmath>
 #include <cstdlib>
-#include <iostream>
 #include <optional>
 #include <string_view>
 
@@ -43,16 +44,8 @@ constexpr float kExpectedManualFirstPersonDashDistanceMeters =
     iggy3d::kProductGameplayMovementTuning.dashSpeedMetersPerSecond *
     iggy3d::kProductGameplayMovementTuning.dashDurationSeconds;
 
-bool expect(bool condition, std::string_view message) {
-  if (!condition) {
-    std::cerr << "FAIL: " << message << '\n';
-  }
-  return condition;
-}
-
-bool nearlyEqual(float lhs, float rhs, float epsilon = 0.0001F) {
-  return std::fabs(lhs - rhs) <= epsilon;
-}
+using iggy3d::test::expect;
+using iggy3d::test::nearlyEqual;
 
 float horizontalDistance(iggy3d::Vec3 lhs, iggy3d::Vec3 rhs) {
   const float deltaX = rhs.x - lhs.x;
