@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -105,6 +106,22 @@ bool sameCoord(cr::CreativeGridCoord3 lhs, cr::CreativeGridCoord3 rhs) {
   return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
 
+bool sameBounds(cr::CreativeGridBounds3 lhs, cr::CreativeGridBounds3 rhs) {
+  return sameCoord(lhs.min, rhs.min) && sameCoord(lhs.max, rhs.max);
+}
+
+bool expectCoord(cr::CreativeGridCoord3 actual,
+                 cr::CreativeGridCoord3 expected,
+                 std::string_view message) {
+  return expect(sameCoord(actual, expected), message);
+}
+
+bool expectBounds(cr::CreativeGridBounds3 actual,
+                  cr::CreativeGridBounds3 expected,
+                  std::string_view message) {
+  return expect(sameBounds(actual, expected), message);
+}
+
 bool hasCellAt(const cr::CreativeSpatialProjectionReceipt& receipt,
                cr::CreativeObjectId objectId,
                cr::CreativeGridCoord3 coord,
@@ -130,6 +147,98 @@ bool rowMajorIndexRoundTripIsStable() {
          expect(roundTrip.x == coord.x, "row-major round trip x") &&
          expect(roundTrip.y == coord.y, "row-major round trip y") &&
          expect(roundTrip.z == coord.z, "row-major round trip z");
+}
+
+bool worldToGridCoordUsesContainingCellBoundaries() {
+  return expectCoord(cr::worldToGridCoord({1.25, 2.0, 0.01}, 1.0),
+                     {1, 2, 0},
+                     "positive containing cells") &&
+         expectCoord(cr::worldToGridCoord({1.999, 2.001, -0.001}, 1.0),
+                     {1, 2, -1},
+                     "fractional values around boundary") &&
+         expectCoord(cr::worldToGridCoord({-0.001, -1.0, -1.001}, 1.0),
+                     {-1, -1, -2},
+                     "negative containing cells");
+}
+
+bool worldBoundsToGridBoundsUsesHalfOpenBoundaries() {
+  return expectBounds(cr::worldBoundsToGridBounds({{1.0, 2.0, 0.0},
+                                                   {2.0, 3.0, 1.0}},
+                                                  1.0),
+                      {{1, 2, 0}, {2, 3, 1}},
+                      "exact max boundary stays half-open") &&
+         expectBounds(cr::worldBoundsToGridBounds({{0.25, -0.25, 0.0},
+                                                   {2.01, 0.99, 1.01}},
+                                                  1.0),
+                      {{0, -1, 0}, {3, 1, 2}},
+                      "fractional max boundary expands") &&
+         expectBounds(cr::worldBoundsToGridBounds({{-2.5, -0.1, -1.0},
+                                                   {-1.0, 1.0, 0.0}},
+                                                  1.0),
+                      {{-3, -1, -1}, {-1, 1, 0}},
+                      "negative min boundary floors");
+}
+
+bool invalidWorldToGridCoordInputsReturnDefault() {
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double inf = std::numeric_limits<double>::infinity();
+  const double tooLarge =
+      static_cast<double>(std::numeric_limits<std::int32_t>::max()) + 1024.0;
+  const cr::CreativeGridCoord3 zero{};
+  return expectCoord(cr::worldToGridCoord({1.0, 2.0, 3.0}, 0.0),
+                     zero,
+                     "zero cell size default") &&
+         expectCoord(cr::worldToGridCoord({1.0, 2.0, 3.0}, -1.0),
+                     zero,
+                     "negative cell size default") &&
+         expectCoord(cr::worldToGridCoord({1.0, 2.0, 3.0}, nan),
+                     zero,
+                     "nan cell size default") &&
+         expectCoord(cr::worldToGridCoord({1.0, 2.0, 3.0}, inf),
+                     zero,
+                     "infinite cell size default") &&
+         expectCoord(cr::worldToGridCoord({nan, 2.0, 3.0}, 1.0),
+                     zero,
+                     "nan coordinate default") &&
+         expectCoord(cr::worldToGridCoord({1.0, inf, 3.0}, 1.0),
+                     zero,
+                     "infinite coordinate default") &&
+         expectCoord(cr::worldToGridCoord({tooLarge, 0.0, 0.0}, 1.0),
+                     zero,
+                     "out-of-range coordinate default");
+}
+
+bool invalidWorldBoundsToGridBoundsInputsReturnDefault() {
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double inf = std::numeric_limits<double>::infinity();
+  const double tooLarge =
+      static_cast<double>(std::numeric_limits<std::int32_t>::max()) + 1024.0;
+  const cr::CreativeGridBounds3 zero{};
+  return expectBounds(cr::worldBoundsToGridBounds({{0.0, 0.0, 0.0},
+                                                   {1.0, 1.0, 1.0}},
+                                                  nan),
+                      zero,
+                      "nan cell size bounds default") &&
+         expectBounds(cr::worldBoundsToGridBounds({{0.0, 0.0, 0.0},
+                                                   {1.0, 1.0, 1.0}},
+                                                  inf),
+                      zero,
+                      "infinite cell size bounds default") &&
+         expectBounds(cr::worldBoundsToGridBounds({{nan, 0.0, 0.0},
+                                                   {1.0, 1.0, 1.0}},
+                                                  1.0),
+                      zero,
+                      "non-finite min bounds default") &&
+         expectBounds(cr::worldBoundsToGridBounds({{0.0, 0.0, 0.0},
+                                                   {1.0, inf, 1.0}},
+                                                  1.0),
+                      zero,
+                      "non-finite max bounds default") &&
+         expectBounds(cr::worldBoundsToGridBounds({{0.0, 0.0, 0.0},
+                                                   {tooLarge, 1.0, 1.0}},
+                                                  1.0),
+                      zero,
+                      "out-of-range max bounds default");
 }
 
 bool defaultRequestExcludesAuthoringOnlyObjects() {
@@ -326,6 +435,49 @@ bool offGridPointDoesNotProjectWhenClampDisabled() {
                 "off-grid point clamp false no border cell");
 }
 
+bool nonFinitePointDoesNotProjectOriginCell() {
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double inf = std::numeric_limits<double>::infinity();
+  const cr::CreativeSpatialProjectionRequest request = makeRequest();
+  const cr::CreativeObject nanObject = makePointObject(431, {nan, 2.0, 0.0});
+  const cr::CreativeObject infObject = makePointObject(432, {1.0, inf, 0.0});
+  const cr::CreativeSpatialProjectionReceipt nanReceipt =
+      cr::projectObjectToGrid(nanObject, request);
+  const cr::CreativeSpatialProjectionReceipt infReceipt =
+      cr::projectObjectToGrid(infObject, request);
+
+  return expect(nanReceipt.status == cr::CreativeSpatialProjectionStatus::OutOfBounds,
+                "nan point out of bounds") &&
+         expect(nanReceipt.message == "out_of_bounds", "nan point message") &&
+         expect(nanReceipt.cells.empty(), "nan point no cells") &&
+         expect(!hasCellAt(nanReceipt, nanObject.id, {0, 0, 0}, request.gridSize),
+                "nan point no origin cell") &&
+         expect(infReceipt.status == cr::CreativeSpatialProjectionStatus::OutOfBounds,
+                "inf point out of bounds") &&
+         expect(infReceipt.message == "out_of_bounds", "inf point message") &&
+         expect(infReceipt.cells.empty(), "inf point no cells") &&
+         expect(!hasCellAt(infReceipt, infObject.id, {0, 0, 0}, request.gridSize),
+                "inf point no origin cell");
+}
+
+bool maxIntPointDoesNotOverflowProjectionBounds() {
+  const double maxCell =
+      static_cast<double>(std::numeric_limits<std::int32_t>::max());
+  const cr::CreativeSpatialProjectionRequest request = makeRequest();
+  const cr::CreativeObject object = makePointObject(433, {maxCell, 0.0, 0.0});
+  const cr::CreativeSpatialProjectionReceipt receipt =
+      cr::projectObjectToGrid(object, request);
+
+  return expect(receipt.status == cr::CreativeSpatialProjectionStatus::OutOfBounds,
+                "max int point out of bounds") &&
+         expect(receipt.message == "out_of_bounds",
+                "max int point message") &&
+         expect(receipt.cells.empty(), "max int point no cells") &&
+         expectBounds(receipt.projectedBounds,
+                      {},
+                      "max int point safe empty bounds");
+}
+
 bool inGridPointProjectsAtExactRowMajorCell() {
   const cr::CreativeObject object =
       makePointObject(43, cr::CreativeVec3{3.0, 4.0, 1.0});
@@ -398,6 +550,34 @@ bool partialVolumeClampEmitsOnlyIntersectingCells() {
                 "partial volume no border-relocated cell");
 }
 
+bool invalidVolumeBoundsDoNotProjectOriginCell() {
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+  const double tooLarge =
+      static_cast<double>(std::numeric_limits<std::int32_t>::max()) + 1024.0;
+  const cr::CreativeSpatialProjectionRequest request = makeRequest();
+  const cr::CreativeObject nanObject =
+      makeVolumeObject(451, {{nan, 0.0, 0.0}, {1.0, 1.0, 1.0}});
+  const cr::CreativeObject rangeObject =
+      makeVolumeObject(452, {{0.0, 0.0, 0.0}, {tooLarge, 1.0, 1.0}});
+  const cr::CreativeSpatialProjectionReceipt nanReceipt =
+      cr::projectObjectToGrid(nanObject, request);
+  const cr::CreativeSpatialProjectionReceipt rangeReceipt =
+      cr::projectObjectToGrid(rangeObject, request);
+
+  return expect(nanReceipt.status == cr::CreativeSpatialProjectionStatus::OutOfBounds,
+                "nan bounds out of bounds") &&
+         expect(nanReceipt.message == "out_of_bounds", "nan bounds message") &&
+         expect(nanReceipt.cells.empty(), "nan bounds no cells") &&
+         expect(!hasCellAt(nanReceipt, nanObject.id, {0, 0, 0}, request.gridSize),
+                "nan bounds no origin cell") &&
+         expect(rangeReceipt.status == cr::CreativeSpatialProjectionStatus::OutOfBounds,
+                "range bounds out of bounds") &&
+         expect(rangeReceipt.message == "out_of_bounds", "range bounds message") &&
+         expect(rangeReceipt.cells.empty(), "range bounds no cells") &&
+         expect(!hasCellAt(rangeReceipt, rangeObject.id, {0, 0, 0}, request.gridSize),
+                "range bounds no origin cell");
+}
+
 bool offGridLineDoesNotClampEndpointsToBorder() {
   const cr::CreativeObject object = makeLineObject(
       46,
@@ -417,6 +597,28 @@ bool offGridLineDoesNotClampEndpointsToBorder() {
          expect(!hasCellAt(receipt, object.id, cr::CreativeGridCoord3{0, 0, 0},
                            request.gridSize),
                 "off-grid line no clamped border cell");
+}
+
+bool infiniteCellSizeRejectsProjectionRequests() {
+  cr::CreativeSpatialProjectionRequest request = makeRequest();
+  request.cellSize = std::numeric_limits<double>::infinity();
+  const cr::CreativeObject room = makeRoomObject(61);
+  const cr::CreativeSpatialProjectionReceipt single =
+      cr::projectObjectToGrid(room, request);
+  const std::vector<cr::CreativeObject> objects{room};
+  const cr::CreativeSpatialProjectionReceipt aggregate =
+      cr::projectObjectsToGrid(objects, request);
+
+  return expect(single.status == cr::CreativeSpatialProjectionStatus::InvalidGrid,
+                "single infinite cell invalid grid") &&
+         expect(single.message == "invalid_grid",
+                "single infinite cell message") &&
+         expect(single.cells.empty(), "single infinite cell no cells") &&
+         expect(aggregate.status == cr::CreativeSpatialProjectionStatus::InvalidGrid,
+                "aggregate infinite cell invalid grid") &&
+         expect(aggregate.message == "invalid_grid",
+                "aggregate infinite cell message") &&
+         expect(aggregate.cells.empty(), "aggregate infinite cell no cells");
 }
 
 bool pathProjectionSamplesAdjacentSegmentsWithStableDedupe() {
@@ -671,6 +873,10 @@ bool boundedMoveShiftsCrateProjectionCells() {
 
 int main() {
   const bool ok = rowMajorIndexRoundTripIsStable() &&
+                  worldToGridCoordUsesContainingCellBoundaries() &&
+                  worldBoundsToGridBoundsUsesHalfOpenBoundaries() &&
+                  invalidWorldToGridCoordInputsReturnDefault() &&
+                  invalidWorldBoundsToGridBoundsInputsReturnDefault() &&
                   defaultRequestExcludesAuthoringOnlyObjects() &&
                   explicitRequestIncludesAuthoringOnlyObjects() &&
                   visibleRoomStillProjects() &&
@@ -680,10 +886,14 @@ int main() {
                   hiddenAuthoringObjectReportsHiddenBeforeAuthoringExclusion() &&
                   offGridPointDoesNotClampToBorderWhenClampEnabled() &&
                   offGridPointDoesNotProjectWhenClampDisabled() &&
+                  nonFinitePointDoesNotProjectOriginCell() &&
+                  maxIntPointDoesNotOverflowProjectionBounds() &&
                   inGridPointProjectsAtExactRowMajorCell() &&
                   disjointVolumeClampIntersectsToEmptyProjection() &&
                   partialVolumeClampEmitsOnlyIntersectingCells() &&
+                  invalidVolumeBoundsDoNotProjectOriginCell() &&
                   offGridLineDoesNotClampEndpointsToBorder() &&
+                  infiniteCellSizeRejectsProjectionRequests() &&
                   pathProjectionSamplesAdjacentSegmentsWithStableDedupe() &&
                   hiddenPathProjectsNoCells() &&
                   offGridPathEndpointDoesNotClampToBorder() &&

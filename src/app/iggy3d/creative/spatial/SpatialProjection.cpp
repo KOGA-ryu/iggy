@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <limits>
 #include <span>
 #include <utility>
 #include <vector>
@@ -10,9 +11,13 @@
 namespace iggy3d::creative {
 namespace {
 
+[[nodiscard]] bool validCellSize(double cellSize) noexcept {
+  return std::isfinite(cellSize) && cellSize > 0.0;
+}
+
 [[nodiscard]] bool isValidRequest(
     const CreativeSpatialProjectionRequest& request) noexcept {
-  return isValidGridSize(request.gridSize) && request.cellSize > 0.0;
+  return isValidGridSize(request.gridSize) && validCellSize(request.cellSize);
 }
 
 [[nodiscard]] bool isValidObject(const CreativeObject& object) noexcept {
@@ -173,6 +178,16 @@ void fillBoundsCells(std::vector<CreativeSpatialCell>& cells,
   };
 }
 
+[[nodiscard]] bool canExpandCell(CreativeGridCoord3 coord) noexcept {
+  constexpr std::int32_t maxCell = std::numeric_limits<std::int32_t>::max();
+  return coord.x < maxCell && coord.y < maxCell && coord.z < maxCell;
+}
+
+[[nodiscard]] CreativeGridBounds3 pointBoundsOrDefault(
+    CreativeGridCoord3 coord) noexcept {
+  return canExpandCell(coord) ? pointBounds(coord) : CreativeGridBounds3{};
+}
+
 [[nodiscard]] CreativeGridBounds3 lineBounds(CreativeGridCoord3 start,
                                              CreativeGridCoord3 end) noexcept {
   return CreativeGridBounds3{
@@ -187,6 +202,18 @@ void fillBoundsCells(std::vector<CreativeSpatialCell>& cells,
           std::max(start.z, end.z) + 1,
       },
   };
+}
+
+[[nodiscard]] CreativeGridBounds3 lineBoundsOrDefault(
+    CreativeGridCoord3 start,
+    CreativeGridCoord3 end) noexcept {
+  const CreativeGridCoord3 maxCoord{
+      std::max(start.x, end.x),
+      std::max(start.y, end.y),
+      std::max(start.z, end.z),
+  };
+  return canExpandCell(maxCoord) ? lineBounds(start, end)
+                                 : CreativeGridBounds3{};
 }
 
 [[nodiscard]] CreativeGridBounds3 mergeBounds(CreativeGridBounds3 lhs,
@@ -208,6 +235,57 @@ void fillBoundsCells(std::vector<CreativeSpatialCell>& cells,
 [[nodiscard]] bool finiteVec3(CreativeVec3 value) noexcept {
   return std::isfinite(value.x) && std::isfinite(value.y) &&
          std::isfinite(value.z);
+}
+
+[[nodiscard]] bool checkedInt32(double value, std::int32_t& out) noexcept {
+  if (!std::isfinite(value) ||
+      value < static_cast<double>(std::numeric_limits<std::int32_t>::min()) ||
+      value > static_cast<double>(std::numeric_limits<std::int32_t>::max())) {
+    return false;
+  }
+  out = static_cast<std::int32_t>(value);
+  return true;
+}
+
+[[nodiscard]] bool tryWorldToGridCoord(CreativeVec3 position,
+                                       double cellSize,
+                                       CreativeGridCoord3& out) noexcept {
+  if (!validCellSize(cellSize) || !finiteVec3(position)) {
+    return false;
+  }
+
+  CreativeGridCoord3 coord;
+  if (!checkedInt32(std::floor(position.x / cellSize), coord.x) ||
+      !checkedInt32(std::floor(position.y / cellSize), coord.y) ||
+      !checkedInt32(std::floor(position.z / cellSize), coord.z)) {
+    return false;
+  }
+
+  out = coord;
+  return true;
+}
+
+[[nodiscard]] bool tryWorldBoundsToGridBounds(
+    CreativeBounds bounds,
+    double cellSize,
+    CreativeGridBounds3& out) noexcept {
+  if (!validCellSize(cellSize) || !finiteVec3(bounds.min) ||
+      !finiteVec3(bounds.max)) {
+    return false;
+  }
+
+  CreativeGridBounds3 gridBounds;
+  if (!checkedInt32(std::floor(bounds.min.x / cellSize), gridBounds.min.x) ||
+      !checkedInt32(std::floor(bounds.min.y / cellSize), gridBounds.min.y) ||
+      !checkedInt32(std::floor(bounds.min.z / cellSize), gridBounds.min.z) ||
+      !checkedInt32(std::ceil(bounds.max.x / cellSize), gridBounds.max.x) ||
+      !checkedInt32(std::ceil(bounds.max.y / cellSize), gridBounds.max.y) ||
+      !checkedInt32(std::ceil(bounds.max.z / cellSize), gridBounds.max.z)) {
+    return false;
+  }
+
+  out = gridBounds;
+  return true;
 }
 
 [[nodiscard]] bool pathPointsAreValid(
@@ -292,8 +370,15 @@ void appendSampledLineCells(std::vector<CreativeSpatialCell>& cells,
     return context.rejection;
   }
 
-  CreativeGridBounds3 bounds =
-      worldBoundsToGridBounds(object.bounds, request.cellSize);
+  CreativeGridBounds3 bounds{};
+  if (!tryWorldBoundsToGridBounds(object.bounds, request.cellSize, bounds)) {
+    return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
+                       object,
+                       context.profile,
+                       context.occupancyKind,
+                       {},
+                       "out_of_bounds");
+  }
   if (!request.clampToGrid && boundsOutsideGrid(bounds, request.gridSize)) {
     return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
                        object,
@@ -462,29 +547,17 @@ CreativeGridCoord3 toGridCoord(CreativeGridIndex index,
 
 CreativeGridCoord3 worldToGridCoord(CreativeVec3 position,
                                     double cellSize) noexcept {
-  if (cellSize <= 0.0) {
-    return {};
-  }
-  return CreativeGridCoord3{
-      static_cast<std::int32_t>(std::floor(position.x / cellSize)),
-      static_cast<std::int32_t>(std::floor(position.y / cellSize)),
-      static_cast<std::int32_t>(std::floor(position.z / cellSize)),
-  };
+  CreativeGridCoord3 coord;
+  return tryWorldToGridCoord(position, cellSize, coord) ? coord
+                                                       : CreativeGridCoord3{};
 }
 
 CreativeGridBounds3 worldBoundsToGridBounds(CreativeBounds bounds,
                                             double cellSize) noexcept {
-  if (cellSize <= 0.0) {
-    return {};
-  }
-  return CreativeGridBounds3{
-      worldToGridCoord(bounds.min, cellSize),
-      CreativeGridCoord3{
-          static_cast<std::int32_t>(std::ceil(bounds.max.x / cellSize)),
-          static_cast<std::int32_t>(std::ceil(bounds.max.y / cellSize)),
-          static_cast<std::int32_t>(std::ceil(bounds.max.z / cellSize)),
-      },
-  };
+  CreativeGridBounds3 gridBounds;
+  return tryWorldBoundsToGridBounds(bounds, cellSize, gridBounds)
+             ? gridBounds
+             : CreativeGridBounds3{};
 }
 
 CreativeGridBounds3 clampGridBounds(CreativeGridBounds3 bounds,
@@ -580,14 +653,21 @@ CreativeSpatialProjectionReceipt projectPointObjectToGrid(
     return context.rejection;
   }
 
-  CreativeGridCoord3 coord =
-      worldToGridCoord(object.transform.position, request.cellSize);
+  CreativeGridCoord3 coord;
+  if (!tryWorldToGridCoord(object.transform.position, request.cellSize, coord)) {
+    return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
+                       object,
+                       context.profile,
+                       context.occupancyKind,
+                       {},
+                       "out_of_bounds");
+  }
   if (!isInsideGrid(coord, request.gridSize)) {
     return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
                        object,
                        context.profile,
                        context.occupancyKind,
-                       pointBounds(coord),
+                       pointBoundsOrDefault(coord),
                        "out_of_bounds");
   }
 
@@ -636,17 +716,24 @@ CreativeSpatialProjectionReceipt projectLineObjectToGrid(
     return context.rejection;
   }
 
-  CreativeGridCoord3 start =
-      worldToGridCoord(object.bounds.min, request.cellSize);
-  CreativeGridCoord3 end =
-      worldToGridCoord(object.bounds.max, request.cellSize);
+  CreativeGridCoord3 start;
+  CreativeGridCoord3 end;
+  if (!tryWorldToGridCoord(object.bounds.min, request.cellSize, start) ||
+      !tryWorldToGridCoord(object.bounds.max, request.cellSize, end)) {
+    return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
+                       object,
+                       context.profile,
+                       context.occupancyKind,
+                       {},
+                       "out_of_bounds");
+  }
   if (!isInsideGrid(start, request.gridSize) ||
       !isInsideGrid(end, request.gridSize)) {
     return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
                        object,
                        context.profile,
                        context.occupancyKind,
-                       lineBounds(start, end),
+                       lineBoundsOrDefault(start, end),
                        "out_of_bounds");
   }
 
@@ -694,14 +781,21 @@ CreativeSpatialProjectionReceipt projectPathObjectToGrid(
   std::vector<CreativeGridCoord3> coords;
   coords.reserve(object.pathPoints.size());
   for (const CreativePathPoint& point : object.pathPoints) {
-    const CreativeGridCoord3 coord =
-        worldToGridCoord(point.position, request.cellSize);
+    CreativeGridCoord3 coord;
+    if (!tryWorldToGridCoord(point.position, request.cellSize, coord)) {
+      return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
+                         object,
+                         context.profile,
+                         context.occupancyKind,
+                         {},
+                         "out_of_bounds");
+    }
     if (!isInsideGrid(coord, request.gridSize)) {
       return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
                          object,
                          context.profile,
                          context.occupancyKind,
-                         pointBounds(coord),
+                         pointBoundsOrDefault(coord),
                          "out_of_bounds");
     }
     coords.push_back(coord);
@@ -754,17 +848,28 @@ CreativeSpatialProjectionReceipt projectLinkObjectToGrid(
                        "invalid_line_endpoints");
   }
 
-  const CreativeGridCoord3 start =
-      worldToGridCoord(object.pathPoints[0].position, request.cellSize);
-  const CreativeGridCoord3 end =
-      worldToGridCoord(object.pathPoints[1].position, request.cellSize);
+  CreativeGridCoord3 start;
+  CreativeGridCoord3 end;
+  if (!tryWorldToGridCoord(object.pathPoints[0].position,
+                           request.cellSize,
+                           start) ||
+      !tryWorldToGridCoord(object.pathPoints[1].position,
+                           request.cellSize,
+                           end)) {
+    return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
+                       object,
+                       context.profile,
+                       context.occupancyKind,
+                       {},
+                       "out_of_bounds");
+  }
   if (!isInsideGrid(start, request.gridSize) ||
       !isInsideGrid(end, request.gridSize)) {
     return makeReceipt(CreativeSpatialProjectionStatus::OutOfBounds,
                        object,
                        context.profile,
                        context.occupancyKind,
-                       lineBounds(start, end),
+                       lineBoundsOrDefault(start, end),
                        "out_of_bounds");
   }
 

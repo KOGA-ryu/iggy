@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -202,3 +202,52 @@ When done, report:
 - receipt golden result
 - diff/whitespace checks
 - confirmation that `GridFootprint` and core `Snap` were not touched
+
+## Completion Brief
+
+- Files changed:
+  - `src/app/iggy3d/creative/spatial/SpatialProjection.cpp`
+  - `tests/unit/creative_spatial_projection_tests.cpp`
+  - `docs/creative_mode/builder_tasks/done/E221-spatial-projection-3d-grid-guards.md`
+- Exact helper/guard shape added:
+  - Added file-local `validCellSize(double) noexcept`, requiring finite positive cell sizes.
+  - Added file-local `checkedInt32(double, std::int32_t&) noexcept`, rejecting non-finite and outside-`std::int32_t` computed cell coordinates.
+  - Added file-local `tryWorldToGridCoord(CreativeVec3, double, CreativeGridCoord3&) noexcept`, preserving per-axis `floor(position.axis / cellSize)` for finite in-range inputs.
+  - Added file-local `tryWorldBoundsToGridBounds(CreativeBounds, double, CreativeGridBounds3&) noexcept`, preserving min `floor(...)` and max `ceil(...)` half-open bounds semantics for finite in-range inputs.
+  - Added file-local `canExpandCell(...)`, `pointBoundsOrDefault(...)`, and `lineBoundsOrDefault(...)` so out-of-bounds receipts do not overflow half-open projected bounds when a finite converted coordinate is already at `std::int32_t::max()`.
+  - `isValidRequest(...)` now uses `validCellSize(...)`, so positive infinity rejects as an invalid grid.
+- Direct public helper invalid fallback behavior:
+  - `worldToGridCoord(...)` now wraps `tryWorldToGridCoord(...)` and returns default `{}` for invalid/non-finite/non-positive cell size, non-finite coordinates, non-finite computed cells, or out-of-int32-range computed cells.
+  - `worldBoundsToGridBounds(...)` now wraps `tryWorldBoundsToGridBounds(...)` and returns default `{}` for the same invalid cell-size/range/finite checks over min and max bounds.
+- Projection-level non-finite/range behavior:
+  - Point, box/volume, line, path, and link projection code uses the private `tryWorld*` helpers so guard failure is not confused with a valid origin cell.
+  - Point/box/volume/line/range conversion guard failures return `CreativeSpatialProjectionStatus::OutOfBounds`, message `"out_of_bounds"`, and no cells.
+  - Existing path/link non-finite validation remains on the existing `invalid_path_points` / `invalid_line_endpoints` paths before grid conversion.
+  - Single-object and aggregate requests with `cellSize = infinity` reject as `CreativeSpatialProjectionStatus::InvalidGrid`, message `"invalid_grid"`.
+- Tests added:
+  - `worldToGridCoordUsesContainingCellBoundaries()`
+  - `worldBoundsToGridBoundsUsesHalfOpenBoundaries()`
+  - `invalidWorldToGridCoordInputsReturnDefault()`
+  - `invalidWorldBoundsToGridBoundsInputsReturnDefault()`
+  - `nonFinitePointDoesNotProjectOriginCell()`
+  - `maxIntPointDoesNotOverflowProjectionBounds()`
+  - `invalidVolumeBoundsDoNotProjectOriginCell()`
+  - `infiniteCellSizeRejectsProjectionRequests()`
+- Required grep classification:
+  - `SpatialProjection.cpp` owns this 3D guard slice through `validCellSize`, `checkedInt32`, `tryWorldToGridCoord`, and `tryWorldBoundsToGridBounds`.
+  - Existing finite public helper and projection tests still pass.
+  - Remaining raw casts in `appendSampledLineCells(...)` are the existing integer line sampling policy and were intentionally left local/out of scope.
+  - Existing `toGridCoord(...)` integer index conversion casts were not changed.
+  - `GridFootprint.*` grep hits are only in `src/core/grid/GridFootprint.*`; creative spatial projection does not route through it in this slice.
+- Focused build/CTest result:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target creative_spatial_projection_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(creative_spatial_projection_tests|product_receipt_key_order_tests)$' --output-on-failure` passed, 2/2.
+- Receipt golden result:
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed: `1032 fields match golden (order + values)`.
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched source/test/card files returned no hits.
+- Confirmation:
+  - `src/core/grid/GridFootprint.*` and `src/core/math/Snap.*` were not touched.
+  - `SpatialProjection.hpp`, `appendSampledLineCells(...)`, `toGridIndex(...)`, `toGridCoord(...)`, receipt golden files, CMake, save/load, renderer/window code, staging, commit, push, and window launch were not changed.
