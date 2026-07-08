@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E201-product-header-include-hygiene-pass-2-menu.md`
+1. `ready/E202-product-header-include-hygiene-pass-3-input-routing.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E201-product-header-include-hygiene-pass-2-menu.md`
+1. `ready/E202-product-header-include-hygiene-pass-3-input-routing.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -122,8 +122,9 @@ Held — do NOT promote to `ready/` on a guess:
   literals before any additional migration card is written.
 - Further draw-kind metadata cleanup after E127, if render owners centralize
   secondary/decorative colors.
-- Further include-hygiene passes after E125: E201 is released as pass 2 for the
-  menu transition/action headers.
+- Further include-hygiene passes after E125: E201 completed pass 2 for the
+  menu transition/action headers. E202 is released as pass 3 for input-routing
+  headers.
 - **Product test infrastructure**: E189 audited duplicated product-test helpers.
   E190 added a header-only assertion/numeric helper over five tests. E191 added
   receipt helpers for four creative UI receipt/frame tests. E192 added the
