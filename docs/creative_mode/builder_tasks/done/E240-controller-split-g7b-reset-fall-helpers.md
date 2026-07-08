@@ -147,3 +147,59 @@ Run a focused trailing-whitespace scan over touched files and this card.
   jump, traversal, or command behavior drift.
 
 No stage, commit, push, broad CTest, or window launch.
+
+## Completion Brief
+
+Files changed:
+
+- `CMakeLists.txt`
+- `src/app/iggy3d/gameplay/Controller.cpp`
+- `src/app/iggy3d/gameplay/ControllerResetFall.hpp`
+- `src/app/iggy3d/gameplay/ControllerResetFall.cpp`
+- `docs/creative_mode/builder_tasks/done/E240-controller-split-g7b-reset-fall-helpers.md`
+
+Exact APIs moved/added:
+
+- Added `ControllerResetFall.hpp/.cpp`.
+- Exported `resetProductPlayerToSpawn(Session&, ProductAppWindowState&, std::string_view, const RoomAnchorAsset*)`.
+- Exported `applyProductGameplayResetIfNeeded(Session&, ProductAppWindowState&, const SpatialSurfaceSet*)`.
+- Exported `beginProductFallIfUnsupported(Session&, ProductAppWindowState&, const SpatialSurfaceSet*)`.
+
+Exact private helpers moved:
+
+- `kGameplayResetBelowLowestFloorMeters`
+- `kGameplayResetZoneRadiusMeters`
+- `kGameplayResetZoneVerticalToleranceMeters`
+- `horizontalDistanceSquared(...)`
+- `findRoomAnchorByKind(...)`
+- `findResetZoneAt(...)`
+- `recordProductGameplayReset(...)`
+
+Behavior preservation:
+
+- Reset-zone radius and vertical tolerance remain `0.70F` and `1.20F`.
+- Fall-out threshold remains `6.0F` below the lowest walkable floor.
+- Spawn anchor fallback id remains `"spawn"` and source anchor fallback id remains `"none"`.
+- Reset still clears jump active/velocity/timing, writes reset status/reason, and marks `playerPositionChanged`.
+- Unsupported-ground fall still sets jump active with zero velocity, seeds coyote time from movement tuning, records jump position, and uses status `"falling"` with reason `"gameplay_jump_falling"`.
+
+Scope notes:
+
+- `Controller.cpp` now includes `app/iggy3d/gameplay/ControllerResetFall.hpp` and retains call sites only for the exported helpers.
+- `CMakeLists.txt` now registers `src/app/iggy3d/gameplay/ControllerResetFall.cpp` next to the other controller split files.
+- No jump advancement, traversal execution, wall-jump mutation, wall-run evaluation, command submission, target/outcome proof, movement proof, ledge-fall fallback, receipt, staging, commit, push, broad CTest, or window launch changes were made.
+
+Required grep classification:
+
+- `rg -n "kGameplayReset|horizontalDistanceSquared|findRoomAnchorByKind|findResetZoneAt|recordProductGameplayReset|resetProductPlayerToSpawn|applyProductGameplayResetIfNeeded|beginProductFallIfUnsupported" ...` shows reset constants and lower-level helper definitions only in `ControllerResetFall.cpp`.
+- The same grep shows exported declarations in `ControllerResetFall.hpp` and exported definitions in `ControllerResetFall.cpp`.
+- The same grep shows `Controller.cpp` retains call sites only.
+- Focused dependency grep over `ControllerResetFall.*` returned no forbidden dependency hits for traversal execution, wall-jump mutation, wall-run evaluation, command submission, target proof, outcome proof, movement proof, or ledge-fall command fallback.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files and this card passed.
