@@ -5,12 +5,9 @@
 
 namespace iggy3d {
 
-// Pure grid/pivot snapping over the core float types -- the atomic rounding the whole editor
-// snap system stands on. Two `double` copies exist (creative/spatial/Snap::snapScalar 2D,
-// creative/document/DocumentSnap::snapCreativeDocumentScalar 3D) but both are trapped in the
-// creative lane; core had no snap math at all. This is its pure, deterministic, float home, so a
-// creative object inherits snapping the same way it inherits picking (AabbGridIndex) and rotated
-// hit-testing (OrientedBox): one core primitive, wrapped.
+// Pure grid/pivot snapping over the core scalar types -- the atomic rounding the whole editor
+// snap system stands on. Creative double wrappers delegate here so editor-facing precision stays
+// explicit while the guard policy remains shared.
 
 // Round `value` to the nearest multiple of `step` measured from `origin`:
 //   origin + round((value - origin) / step) * step
@@ -18,6 +15,9 @@ namespace iggy3d {
 // non-finite, OR when the result would overflow to non-finite -- snapping never invents a NaN/inf
 // or divides by zero. Bit-deterministic across toolchains (FP contraction is barred in the .cpp).
 [[nodiscard]] float snapScalarToGrid(float value, float step, float origin) noexcept;
+[[nodiscard]] double snapScalarToGrid(double value,
+                                      double step,
+                                      double origin) noexcept;
 
 // Per-axis grid snap of a point. Each axis is snapped independently via snapScalarToGrid, but only
 // for axes whose bit is set in `axisMask` (bit0 = X, bit1 = Y, bit2 = Z; default 0x7 = all three).

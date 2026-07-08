@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -212,3 +212,71 @@ When done, report:
 - receipt golden result
 - diff/whitespace checks
 - confirmation that `SpatialProjection` and `GridFootprint` were not touched
+
+## Completed
+
+- Files changed:
+  - `src/core/math/Snap.hpp`
+  - `src/core/math/Snap.cpp`
+  - `src/app/iggy3d/creative/spatial/Snap.cpp`
+  - `src/app/iggy3d/creative/document/DocumentSnap.cpp`
+  - `tests/unit/snap_kernel_tests.cpp`
+  - `tests/unit/creative_snap_tests.cpp`
+  - `tests/unit/creative_document_snap_tests.cpp`
+  - `docs/creative_mode/builder_tasks/done/E220-core-double-snap-scalar-creative-guard-parity.md`
+- Exact core helper/API added:
+  - Added `double snapScalarToGrid(double value, double step, double origin) noexcept`
+    in `src/core/math/Snap.hpp`.
+  - Added a file-local `snapScalarToGridChecked<Scalar>(...)` implementation in
+    `src/core/math/Snap.cpp`.
+  - Both `float` and `double` overloads use the same checked nearest-grid policy:
+    pass through unchanged on non-finite value/origin/step, non-positive step, or
+    non-finite computed result.
+  - Kept `#pragma STDC FP_CONTRACT OFF` in `Snap.cpp`.
+- Creative routing:
+  - `creative::snapScalar(double, double, double)` now delegates to
+    `iggy3d::snapScalarToGrid(double, double, double)`.
+  - `creative::snapCreativeDocumentScalar(double, double, double)` now delegates
+    to `iggy3d::snapScalarToGrid(double, double, double)`.
+  - Public creative wrapper names/signatures are unchanged.
+- Active/inactive non-finite step behavior:
+  - Creative 2D snap now validates only active axes and requires active steps to
+    be finite positive values.
+  - Disabled-mode settings remain valid.
+  - `kCreativeSnapAxisNone` remains valid and reports `snap_axes_disabled`.
+  - Inactive-axis invalid/non-finite steps no longer reject 2D creative snap.
+  - Document snap active-axis finite-positive validation, inactive-axis tolerance,
+    and unknown-axis rejection were preserved.
+- Precision and guard tests added:
+  - `snap_kernel_tests` now covers the double overload for normal rounding,
+    origin behavior, non-finite value/origin/step, non-positive step,
+    non-finite computed result fallback, and a large-value precision guard proving
+    the double overload does not route through `float`.
+  - `creative_snap_tests` now covers direct creative scalar non-finite
+    pass-through cases, overflow fallback, double precision retention, active
+    NaN/infinite step rejection, and inactive-axis invalid-step tolerance.
+  - `creative_document_snap_tests` now covers direct document scalar non-finite
+    pass-through cases, non-positive step pass-through, overflow fallback, double
+    precision retention, and active/inactive non-finite step settings behavior.
+- Required grep classification:
+  - `src/core/math/Snap.hpp/.cpp` own both checked scalar overloads.
+  - Creative scalar wrappers remain present and delegate to core.
+  - `SpatialProjection` and `GridFootprint` grep hits are unchanged and were not
+    edited in this slice.
+- Focused build/CTest result:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target snap_kernel_tests creative_snap_tests creative_document_snap_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(snap_kernel_tests|creative_snap_tests|creative_document_snap_tests)$' --output-on-failure` passed: 3/3 tests.
+- Receipt golden result:
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed:
+    `1032 fields match golden`.
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+    was empty.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card found no
+    hits.
+- Confirmation:
+  - `SpatialProjection.cpp`, `SpatialProjection.hpp`, `GridFootprint.cpp`, and
+    `GridFootprint.hpp` were not touched.
+  - No receipt golden, save/load format, renderer/window code, CMake test
+    definitions, staging, commit, push, or window launch changes were performed.

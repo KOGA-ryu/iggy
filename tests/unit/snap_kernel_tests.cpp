@@ -29,6 +29,10 @@ bool expect(bool condition, std::string_view message) {
 
 bool near(float a, float b, float tol = 1e-4F) { return std::fabs(a - b) <= tol; }
 
+bool near(double a, double b, double tol = 1e-9) {
+  return std::fabs(a - b) <= tol;
+}
+
 bool scalarSnapsToNearestMultiple() {
   return expect(near(snapScalarToGrid(2.3F, 1.0F, 0.0F), 2.0F), "2.3 -> 2") &&
          expect(near(snapScalarToGrid(2.7F, 1.0F, 0.0F), 3.0F), "2.7 -> 3") &&
@@ -64,6 +68,45 @@ bool scalarOverflowPassesThrough() {
   const float out = snapScalarToGrid(big, 1.0F, -big);
   return expect(std::isfinite(out), "overflow result stays finite") &&
          expect(near(out, big, 1.0F), "overflow falls back to the input value");
+}
+
+bool doubleScalarSnapsAndHonorsOrigin() {
+  return expect(near(snapScalarToGrid(2.2, 2.0, 1.0), 3.0),
+                "double scalar honors origin x") &&
+         expect(near(snapScalarToGrid(5.0, 3.0, 1.0), 4.0),
+                "double scalar honors origin y") &&
+         expect(near(snapScalarToGrid(-1.26, 0.5, 0.0), -1.5),
+                "double scalar snaps negative");
+}
+
+bool doubleScalarPassesThroughOnInvalidInputs() {
+  const double inf = std::numeric_limits<double>::infinity();
+  const double big = 1.0e308;
+  const double overflowOut = snapScalarToGrid(big, 1.0, -big);
+  return expect(std::isinf(snapScalarToGrid(inf, 1.0, 0.0)),
+                "double non-finite value passes through") &&
+         expect(near(snapScalarToGrid(5.0, 1.0, inf), 5.0),
+                "double non-finite origin passes through") &&
+         expect(near(snapScalarToGrid(5.0, inf, 0.0), 5.0),
+                "double non-finite step passes through") &&
+         expect(near(snapScalarToGrid(5.0, 0.0, 0.0), 5.0),
+                "double zero step passes through") &&
+         expect(near(snapScalarToGrid(5.0, -2.0, 0.0), 5.0),
+                "double negative step passes through") &&
+         expect(std::isfinite(overflowOut), "double overflow result stays finite") &&
+         expect(near(overflowOut, big, 1.0e292),
+                "double overflow falls back to input");
+}
+
+bool doubleScalarDoesNotRouteThroughFloat() {
+  const double value = 16777216.75;
+  const double out = snapScalarToGrid(value, 0.5, 0.0);
+  const float floatOut =
+      snapScalarToGrid(static_cast<float>(value), 0.5F, 0.0F);
+  return expect(out == 16777217.0,
+                "double scalar preserves large half-step precision") &&
+         expect(static_cast<double>(floatOut) != out,
+                "double scalar is not routed through float");
 }
 
 bool vec3SnapsEveryAxis() {
@@ -191,7 +234,10 @@ int main() {
   const bool ok = scalarSnapsToNearestMultiple() && scalarHonorsOrigin() &&
                   scalarPassThroughOnBadStep() &&
                   scalarPassThroughOnNonFiniteValue() &&
-                  scalarOverflowPassesThrough() && vec3SnapsEveryAxis() &&
+                  scalarOverflowPassesThrough() &&
+                  doubleScalarSnapsAndHonorsOrigin() &&
+                  doubleScalarPassesThroughOnInvalidInputs() &&
+                  doubleScalarDoesNotRouteThroughFloat() && vec3SnapsEveryAxis() &&
                   vec3AxisMaskHoldsAxis() && vec3PerAxisStepAndOrigin() &&
                   deltaSnapViaGrabOrigin() &&
                   cellCenterUsesContainingCellNotNearest() &&

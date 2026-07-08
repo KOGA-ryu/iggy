@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/document/DocumentSnap.hpp"
 
+#include "core/math/Snap.hpp"
+
 #include <algorithm>
 #include <cmath>
 
@@ -135,11 +137,7 @@ bool isValidCreativeDocumentSnapSettings(
 double snapCreativeDocumentScalar(double value,
                                   double step,
                                   double origin) noexcept {
-  if (!validStep(step)) {
-    return value;
-  }
-
-  return origin + std::round((value - origin) / step) * step;
+  return iggy3d::snapScalarToGrid(value, step, origin);
 }
 
 CreativeDocumentSnapReceipt snapCreativeDocumentPoint(

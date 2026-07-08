@@ -153,6 +153,39 @@ bool originRoundFormulaAppliesOnAllAxes() {
                     "scalar formula z");
 }
 
+bool scalarPassesThroughOnInvalidInputs() {
+  const double inf = std::numeric_limits<double>::infinity();
+  const double big = 1.0e308;
+  const double overflowOut = cr::snapCreativeDocumentScalar(big, 1.0, -big);
+  return expect(std::isinf(cr::snapCreativeDocumentScalar(inf, 1.0, 0.0)),
+                "document scalar non-finite value passes through") &&
+         expectNear(cr::snapCreativeDocumentScalar(5.0, 1.0, inf),
+                    5.0,
+                    "document scalar non-finite origin passes through") &&
+         expectNear(cr::snapCreativeDocumentScalar(5.0, inf, 0.0),
+                    5.0,
+                    "document scalar non-finite step passes through") &&
+         expectNear(cr::snapCreativeDocumentScalar(5.0, 0.0, 0.0),
+                    5.0,
+                    "document scalar zero step passes through") &&
+         expectNear(cr::snapCreativeDocumentScalar(5.0, -2.0, 0.0),
+                    5.0,
+                    "document scalar negative step passes through") &&
+         expect(std::isfinite(overflowOut),
+                "document scalar overflow result stays finite") &&
+         expectNear(overflowOut,
+                    big,
+                    "document scalar overflow falls back to input",
+                    1.0e292);
+}
+
+bool scalarPreservesDoublePrecision() {
+  const double value = 16777216.75;
+  return expect(cr::snapCreativeDocumentScalar(value, 0.5, 0.0) ==
+                    16777217.0,
+                "document scalar preserves double precision");
+}
+
 bool axisMasksSnapOnlyEnabledAxes() {
   cr::CreativeDocumentSnapSettings settings =
       cr::makeDefaultCreativeDocumentSnapSettings();
@@ -196,6 +229,33 @@ bool axisMasksSnapOnlyEnabledAxes() {
                      "none output") &&
          expect(noneReceipt.status == "document_snap_axes_disabled",
                 "none status");
+}
+
+bool activeNonFiniteStepsRejectAndInactiveStepsAreIgnored() {
+  cr::CreativeDocumentSnapSettings active =
+      cr::makeDefaultCreativeDocumentSnapSettings();
+  active.stepX = std::numeric_limits<double>::infinity();
+  const cr::CreativeDocumentSnapReceipt activeReceipt =
+      cr::snapCreativeDocumentPoint({1.2, 2.7, 3.4}, active);
+
+  cr::CreativeDocumentSnapSettings inactive =
+      cr::makeDefaultCreativeDocumentSnapSettings();
+  inactive.axes = cr::kCreativeDocumentSnapAxisY;
+  inactive.stepX = std::numeric_limits<double>::quiet_NaN();
+  inactive.stepZ = std::numeric_limits<double>::infinity();
+  const cr::CreativeDocumentSnapReceipt inactiveReceipt =
+      cr::snapCreativeDocumentPoint({1.2, 2.7, 3.4}, inactive);
+
+  return expect(!cr::isValidCreativeDocumentSnapSettings(active),
+                "active non-finite step invalid") &&
+         expect(!activeReceipt.accepted, "active non-finite not accepted") &&
+         expect(activeReceipt.status == "invalid_document_snap_settings",
+                "active non-finite invalid status") &&
+         expect(cr::isValidCreativeDocumentSnapSettings(inactive),
+                "inactive non-finite steps ignored") &&
+         expect(inactiveReceipt.accepted, "inactive invalid accepted") &&
+         expectPoint(inactiveReceipt.snappedPoint, 1.2, 3.0, 3.4,
+                     "inactive invalid output");
 }
 
 bool negativeCoordinatesRoundCorrectly() {
@@ -263,7 +323,10 @@ int main() {
                   disabledModePassesThroughPointAndBounds() &&
                   invalidGridStepsRejectAndReturnOriginal() &&
                   originRoundFormulaAppliesOnAllAxes() &&
+                  scalarPassesThroughOnInvalidInputs() &&
+                  scalarPreservesDoublePrecision() &&
                   axisMasksSnapOnlyEnabledAxes() &&
+                  activeNonFiniteStepsRejectAndInactiveStepsAreIgnored() &&
                   negativeCoordinatesRoundCorrectly() &&
                   alreadySnappedReportsUnchanged() &&
                   boundsSnapNormalizesPerAxisOrder();

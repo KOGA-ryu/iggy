@@ -1,5 +1,7 @@
 #include "app/iggy3d/creative/spatial/Snap.hpp"
 
+#include "core/math/Snap.hpp"
+
 #include <cmath>
 
 namespace iggy3d::creative {
@@ -15,6 +17,10 @@ namespace {
   return lhs.x == rhs.x && lhs.y == rhs.y;
 }
 
+[[nodiscard]] bool validStep(double step) noexcept {
+  return std::isfinite(step) && step > 0.0;
+}
+
 }  // namespace
 
 CreativeSnapSettings makeDefaultCreativeSnapSettings() noexcept {
@@ -26,15 +32,22 @@ bool isValidSnapSettings(CreativeSnapSettings settings) noexcept {
     return true;
   }
 
-  return settings.stepX > 0.0 && settings.stepY > 0.0;
+  if (settings.axes == kCreativeSnapAxisNone) {
+    return true;
+  }
+
+  if (hasAxis(settings.axes, kCreativeSnapAxisX) && !validStep(settings.stepX)) {
+    return false;
+  }
+  if (hasAxis(settings.axes, kCreativeSnapAxisY) && !validStep(settings.stepY)) {
+    return false;
+  }
+
+  return true;
 }
 
 double snapScalar(double value, double step, double origin) noexcept {
-  if (step <= 0.0) {
-    return value;
-  }
-
-  return origin + std::round((value - origin) / step) * step;
+  return iggy3d::snapScalarToGrid(value, step, origin);
 }
 
 CreativeSnapReceipt snapPoint(CreativeSnapPoint2 point,

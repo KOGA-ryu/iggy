@@ -12,17 +12,32 @@
 
 namespace iggy3d {
 
-float snapScalarToGrid(float value, float step, float origin) noexcept {
-  if (!std::isfinite(value) || !std::isfinite(origin) || !std::isfinite(step) ||
-      !(step > 0.0F)) {
+namespace {
+
+template <typename Scalar>
+[[nodiscard]] Scalar snapScalarToGridChecked(Scalar value,
+                                             Scalar step,
+                                             Scalar origin) noexcept {
+  if (!std::isfinite(value) || !std::isfinite(origin) ||
+      !std::isfinite(step) || !(step > Scalar{0})) {
     return value;
   }
-  const float snapped = std::round((value - origin) / step);
-  const float scaled = snapped * step;
-  const float result = origin + scaled;
+  const Scalar snapped = std::round((value - origin) / step);
+  const Scalar scaled = snapped * step;
+  const Scalar result = origin + scaled;
   // Finite inputs of large opposite magnitude can overflow the subtraction to +/-inf; never emit
   // a non-finite snap -- fall back to the unsnapped value (consistent with the guards above).
   return std::isfinite(result) ? result : value;
+}
+
+}  // namespace
+
+float snapScalarToGrid(float value, float step, float origin) noexcept {
+  return snapScalarToGridChecked(value, step, origin);
+}
+
+double snapScalarToGrid(double value, double step, double origin) noexcept {
+  return snapScalarToGridChecked(value, step, origin);
 }
 
 Vec3 snapVec3ToGrid(Vec3 value, Vec3 step, Vec3 origin,

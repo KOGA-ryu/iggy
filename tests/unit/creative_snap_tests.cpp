@@ -1,7 +1,9 @@
 #include "app/iggy3d/creative/spatial/Snap.hpp"
 
+#include <cmath>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <string_view>
 
 namespace {
@@ -19,6 +21,10 @@ bool expectPoint(cr::CreativeSnapPoint2 point,
                  double y,
                  std::string_view message) {
   return expect(point.x == x, message) && expect(point.y == y, message);
+}
+
+bool near(double a, double b, double tol = 1e-9) {
+  return std::fabs(a - b) <= tol;
 }
 
 bool defaultSettingsValidAndSnapToUnitGrid() {
@@ -66,6 +72,53 @@ bool invalidStepRejectsSnap() {
          expectPoint(receipt.outputPoint, 1.2, 2.7, "invalid output") &&
          expect(receipt.message == "invalid_snap_settings",
                 "invalid message");
+}
+
+bool nonFiniteActiveStepsRejectSnap() {
+  cr::CreativeSnapSettings infinityStep =
+      cr::makeDefaultCreativeSnapSettings();
+  infinityStep.stepX = std::numeric_limits<double>::infinity();
+  const cr::CreativeSnapReceipt infinityReceipt =
+      cr::snapPoint({1.2, 2.7}, infinityStep);
+
+  cr::CreativeSnapSettings nanStep = cr::makeDefaultCreativeSnapSettings();
+  nanStep.stepY = std::numeric_limits<double>::quiet_NaN();
+  const cr::CreativeSnapReceipt nanReceipt = cr::snapPoint({1.2, 2.7}, nanStep);
+
+  return expect(!cr::isValidSnapSettings(infinityStep),
+                "active infinity step invalid") &&
+         expect(!infinityReceipt.accepted, "active infinity not accepted") &&
+         expect(infinityReceipt.message == "invalid_snap_settings",
+                "active infinity invalid message") &&
+         expect(!cr::isValidSnapSettings(nanStep), "active nan step invalid") &&
+         expect(!nanReceipt.accepted, "active nan not accepted") &&
+         expect(nanReceipt.message == "invalid_snap_settings",
+                "active nan invalid message");
+}
+
+bool inactiveInvalidStepsDoNotRejectSnap() {
+  cr::CreativeSnapSettings xOnly = cr::makeDefaultCreativeSnapSettings();
+  xOnly.axes = cr::kCreativeSnapAxisX;
+  xOnly.stepY = std::numeric_limits<double>::infinity();
+  const cr::CreativeSnapReceipt xReceipt = cr::snapPoint({1.2, 2.7}, xOnly);
+
+  cr::CreativeSnapSettings none = cr::makeDefaultCreativeSnapSettings();
+  none.axes = cr::kCreativeSnapAxisNone;
+  none.stepX = 0.0;
+  none.stepY = std::numeric_limits<double>::quiet_NaN();
+  const cr::CreativeSnapReceipt noneReceipt = cr::snapPoint({1.2, 2.7}, none);
+
+  return expect(cr::isValidSnapSettings(xOnly),
+                "x-only ignores inactive invalid y step") &&
+         expect(xReceipt.accepted, "x-only inactive invalid accepted") &&
+         expectPoint(xReceipt.outputPoint, 1.0, 2.7,
+                     "x-only inactive invalid output") &&
+         expect(cr::isValidSnapSettings(none),
+                "axis-none ignores invalid steps") &&
+         expect(noneReceipt.accepted, "axis-none accepted") &&
+         expect(!noneReceipt.snapped, "axis-none not snapped") &&
+         expect(noneReceipt.message == "snap_axes_disabled",
+                "axis-none message");
 }
 
 bool nearestRoundingOnBothAxes() {
@@ -138,6 +191,28 @@ bool negativeCoordinatesRoundCorrectly() {
          expectPoint(receipt.outputPoint, -1.5, -3.0, "negative output");
 }
 
+bool scalarPassesThroughOnInvalidInputs() {
+  const double inf = std::numeric_limits<double>::infinity();
+  const double big = 1.0e308;
+  const double overflowOut = cr::snapScalar(big, 1.0, -big);
+  return expect(std::isinf(cr::snapScalar(inf, 1.0, 0.0)),
+                "creative scalar non-finite value passes through") &&
+         expect(near(cr::snapScalar(5.0, 1.0, inf), 5.0),
+                "creative scalar non-finite origin passes through") &&
+         expect(near(cr::snapScalar(5.0, inf, 0.0), 5.0),
+                "creative scalar non-finite step passes through") &&
+         expect(std::isfinite(overflowOut),
+                "creative scalar overflow result stays finite") &&
+         expect(near(overflowOut, big, 1.0e292),
+                "creative scalar overflow falls back to input");
+}
+
+bool scalarPreservesDoublePrecision() {
+  const double value = 16777216.75;
+  return expect(cr::snapScalar(value, 0.5, 0.0) == 16777217.0,
+                "creative scalar preserves double precision");
+}
+
 bool pointerPacketHelperPreservesMetadata() {
   cr::CreativeToolPointerPacket pointer;
   pointer.x = 1.2;
@@ -165,12 +240,16 @@ int main() {
   const bool ok = defaultSettingsValidAndSnapToUnitGrid() &&
                   disabledModeReturnsOriginalPoint() &&
                   invalidStepRejectsSnap() &&
+                  nonFiniteActiveStepsRejectSnap() &&
+                  inactiveInvalidStepsDoNotRejectSnap() &&
                   nearestRoundingOnBothAxes() &&
                   nonZeroOriginRounding() &&
                   xOnlySnappingPreservesY() &&
                   yOnlySnappingPreservesX() &&
                   alreadySnappedPointReportsUnchanged() &&
                   negativeCoordinatesRoundCorrectly() &&
+                  scalarPassesThroughOnInvalidInputs() &&
+                  scalarPreservesDoublePrecision() &&
                   pointerPacketHelperPreservesMetadata();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
