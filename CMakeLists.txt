@@ -114,6 +114,7 @@ target_sources(iggy3d
     src/app/iggy3d/gameplay/ControllerMovementProof.cpp
     src/app/iggy3d/gameplay/ControllerMoveActions.cpp
     src/app/iggy3d/gameplay/ControllerPlayerAccess.cpp
+    src/app/iggy3d/gameplay/ControllerResetActions.cpp
     src/app/iggy3d/gameplay/ControllerResetFall.cpp
     src/app/iggy3d/gameplay/ControllerTargetActions.cpp
     src/app/iggy3d/gameplay/ControllerTargetOutcomeProof.cpp

@@ -166,3 +166,78 @@ Stop and report instead of widening scope if:
   receipt golden output changes.
 - The new helper starts owning dash/move/target/jump action policy, movement
   proof, wall-run evaluation, target query/reach policy, or command execution.
+
+## Completion Brief
+
+Status: Done.
+
+Files changed:
+
+- `CMakeLists.txt`
+- `src/app/iggy3d/gameplay/Controller.cpp`
+- `src/app/iggy3d/gameplay/ControllerResetActions.hpp`
+- `src/app/iggy3d/gameplay/ControllerResetActions.cpp`
+- this task card
+
+Exact API moved/added:
+
+- Added `ControllerResetActions.hpp/.cpp`.
+- Moved the reset submission body out of
+  `applyProductResetActionPhase(...)`.
+- Added/exported:
+  `void submitProductReset(Session&, ProductAppWindowState&, std::string_view)`.
+
+Helper ownership:
+
+- `submitProductReset(...)` is declared in `ControllerResetActions.hpp` and
+  defined in `ControllerResetActions.cpp`.
+- `resetToBaseline(...)`, target/outcome proof clearing, and reset command
+  field writes live in `ControllerResetActions.cpp`.
+- `Controller.cpp` retains `applyProductResetActionPhase(...)`, the
+  `intent.resetPressed` guard, and a `submitProductReset(...)` call only.
+
+Behavior preserved:
+
+- Reset is still attempted only when `intent.resetPressed` is true.
+- `session.resetToBaseline()` still supplies accepted/rejected state.
+- Target and outcome proof clearing still happen before reset receipt writes.
+- `gameplayInputUsed` and `gameplayInputSource` writes are unchanged.
+- Command kind string remains `reset`.
+- `gameplayCommand.submitted = true` is unchanged.
+- `gameplayCommand.accepted = reset.reset` is unchanged.
+- Command status still maps to `accepted` or `rejected`.
+
+Scope confirmation:
+
+- `applyProductResetActionPhase(...)` guard/phase ownership,
+  `ProductGameplayInputIntent`, input sampling, phase orchestration, dash,
+  move, target, and jump action behavior, command execution implementation,
+  target/outcome proof implementation, movement proof behavior, wall-run
+  proof/evaluation behavior, receipt keys/order/values, CMake test
+  definitions, staging, commit, push, broad CTest, and window launch were not
+  moved or changed.
+
+Required grep classification:
+
+- `ControllerResetActions.hpp` contains the `submitProductReset(...)`
+  declaration.
+- `ControllerResetActions.cpp` contains the `submitProductReset(...)`
+  definition, `resetToBaseline(...)`, target/outcome proof clears, and reset
+  command field writes.
+- `Controller.cpp` contains `applyProductResetActionPhase(...)`,
+  `intent.resetPressed` guard, and the reset submit call site only.
+- Focused forbidden dependency grep over `ControllerResetActions.*` returned no
+  hits for dash, move, target, or jump submit; input intent; phase
+  orchestration; movement proof; wall-run evaluation; target query; or command
+  execution symbols.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+  produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files and this card passed.
