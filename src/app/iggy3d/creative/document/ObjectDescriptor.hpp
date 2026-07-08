@@ -140,6 +140,8 @@ enum class CreativeRuntimeAnchorSemantic {
     Light,
     Audio,
     Camera,
+    Cover,
+    PatrolPost,
 };
 
 enum class CreativeAuthoringPaletteVisibility {

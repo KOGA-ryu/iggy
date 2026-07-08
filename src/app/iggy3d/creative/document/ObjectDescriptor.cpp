@@ -712,7 +712,8 @@ constexpr auto kNavigationOrMovementDescriptors = std::to_array<CreativeObjectDe
         "AI cover marker",
         navigationCreationDirtyFlags(),
         markerDefaults(),
-        kHasTransform | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::Cover
     ),
     descriptor(
         CreativeObjectKind::PatrolNode,
@@ -726,7 +727,8 @@ constexpr auto kNavigationOrMovementDescriptors = std::to_array<CreativeObjectDe
         "AI patrol path point",
         navigationCreationDirtyFlags(),
         markerDefaults(),
-        kHasTransform | kRuntimeMeaningful | kAuthoringBrushPalette
+        kHasTransform | kRuntimeMeaningful | kAuthoringBrushPalette,
+        CreativeRuntimeAnchorSemantic::PatrolPost
     )
 });
 
@@ -1862,6 +1864,8 @@ std::string_view toString(CreativeRuntimeAnchorSemantic semantic) noexcept {
     case CreativeRuntimeAnchorSemantic::Light: return "light";
     case CreativeRuntimeAnchorSemantic::Audio: return "audio";
     case CreativeRuntimeAnchorSemantic::Camera: return "camera";
+    case CreativeRuntimeAnchorSemantic::Cover: return "cover";
+    case CreativeRuntimeAnchorSemantic::PatrolPost: return "patrol_post";
     }
 
     return "";

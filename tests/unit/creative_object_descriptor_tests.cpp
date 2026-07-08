@@ -318,7 +318,13 @@ bool runtimeAnchorSemanticStringsAreStable() {
                 "audio anchor semantic string") &&
          expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::Camera) ==
                     "camera",
-                "camera anchor semantic string");
+                "camera anchor semantic string") &&
+         expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::Cover) ==
+                    "cover",
+                "cover anchor semantic string") &&
+         expect(cr::toString(cr::CreativeRuntimeAnchorSemantic::PatrolPost) ==
+                    "patrol_post",
+                "patrol post anchor semantic string");
 }
 
 bool spatialProjectionProfileStringsAreStable() {
@@ -553,6 +559,14 @@ bool representativeDescriptorsPinRuntimeAnchorSemantics() {
                     .runtimeAnchorSemantic ==
                     cr::CreativeRuntimeAnchorSemantic::Camera,
                 "camera marker metadata anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::CoverPoint)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::Cover,
+                "cover point runtime anchor semantic") &&
+         expect(cr::describeObject(cr::CreativeObjectKind::PatrolNode)
+                    .runtimeAnchorSemantic ==
+                    cr::CreativeRuntimeAnchorSemantic::PatrolPost,
+                "patrol node runtime anchor semantic") &&
          expect(cr::describeObject(cr::CreativeObjectKind::EntrancePoint)
                     .runtimeAnchorSemantic ==
                     cr::CreativeRuntimeAnchorSemantic::None,

@@ -102,3 +102,64 @@ Completion brief must include:
 `chokepoint`, `high_ground`, and `hiding_spot` are also accepted by the
 reasoning reader, but no current ASCII glyphs or Creative object kinds author
 them. That is new authoring surface and belongs in a separate card.
+
+## Completion Brief - E180
+
+- Exact files changed:
+  - `src/app/iggy3d/creative/document/ObjectDescriptor.hpp`
+  - `src/app/iggy3d/creative/document/ObjectDescriptor.cpp`
+  - `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp`
+  - `tests/unit/creative_object_descriptor_tests.cpp`
+  - `tests/unit/creative_document_room_bake_tests.cpp`
+  - `tests/unit/ascii_room_to_room_asset_tests.cpp`
+  - task card moved from `ready/` to `done/`
+
+- Exact enum/string mappings added:
+  - `CreativeRuntimeAnchorSemantic::Cover -> "cover"`
+  - `CreativeRuntimeAnchorSemantic::PatrolPost -> "patrol_post"`
+
+- Exact descriptor rows changed:
+  - `CreativeObjectKind::CoverPoint` now uses
+    `CreativeRuntimeAnchorSemantic::Cover`.
+  - `CreativeObjectKind::PatrolNode` now uses
+    `CreativeRuntimeAnchorSemantic::PatrolPost`.
+
+- ASCII monster spawn mapping:
+  - `npc_spawn` remains `npc`.
+  - `monster_spawn` changed from the collapsed `npc` branch to `monster`.
+
+- Proving tests added/updated:
+  - `creative_object_descriptor_tests` now pins the new semantic strings and
+    the `CoverPoint` / `PatrolNode` descriptor rows.
+  - `creative_document_room_bake_tests` now creates a `CoverPoint` and a
+    `PatrolNode`, bakes them to RoomAsset anchors, builds a reasoning graph,
+    and proves one `ReasoningNodeKind::coverCluster` comes from `cover` and
+    one `ReasoningNodeKind::patrolPost` comes from `patrol_post`.
+  - `ascii_room_to_room_asset_tests` now builds an inline room with `N` and
+    `M`, proving `npc_spawn -> npc` and `monster_spawn -> monster`.
+
+- Test commands and results:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target creative_object_descriptor_tests creative_document_room_bake_tests reasoning_graph_tests ascii_room_to_room_asset_tests ascii_room_package_fixture_tests product_ascii_room_activation_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(creative_object_descriptor_tests|creative_document_room_bake_tests|reasoning_graph_tests|ascii_room_to_room_asset_tests|ascii_room_package_fixture_tests|product_ascii_room_activation_tests)$' --output-on-failure` passed: 6/6.
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed:
+    `receipt key-order oracle: 1032 fields match golden (order + values)`.
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10` passed. Existing unrelated
+    warnings remain in starter/menu test initializers and one unused test
+    variable.
+  - Full CTest passed: `100% tests passed, 0 tests failed out of 260`
+    (`/tmp/iggy3d_e180_ctest.log`).
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+    produced no output.
+  - Focused trailing-whitespace scan over touched files produced no output.
+
+- Scope confirmations:
+  - Save/load format was not changed.
+  - `ProductAppWindowState` and store decomposition were not changed.
+  - Renderer/Vulkan/window code was not changed.
+  - Runtime AI scoring and `ReasoningGraph.cpp` node semantics were not
+    changed; this slice only wired emitters to existing accepted strings.
+
+- Concerns/deferred:
+  - None for E180. `chokepoint`, `high_ground`, and `hiding_spot` remain future
+    authoring-surface work as stated in the card.

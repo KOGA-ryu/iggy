@@ -3,6 +3,7 @@
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "projection/scene/SceneProjection.hpp"
+#include "runtime/ai/ReasoningGraph.hpp"
 #include "runtime/session/SessionState.hpp"
 
 #include <cstdlib>
@@ -1165,6 +1166,56 @@ bool productMeaningfulPointAnchorsUseDescriptorSemantics() {
                 "enemy source object");
 }
 
+bool creativeAffordanceAnchorsBakeIntoReasoningGraphKinds() {
+  cr::CreativeDocument document =
+      cr::CreativeDocument::create("Affordance Anchors");
+  const cr::CreativeDocumentCreateReceipt cover =
+      createPoint(document, cr::CreativeObjectKind::CoverPoint, {7.0, 0.0, 1.0});
+  const cr::CreativeDocumentCreateReceipt patrol =
+      createPoint(document, cr::CreativeObjectKind::PatrolNode, {8.0, 0.0, 1.0});
+
+  const cr::CreativeRoomBakeResult result = bake(document);
+  const std::vector<iggy3d::Vec3> noWaypoints;
+  const iggy3d::ReasoningGraph graph =
+      iggy3d::buildReasoningGraph(result.room, noWaypoints);
+
+  std::size_t coverNodes = 0;
+  std::size_t patrolNodes = 0;
+  for (const iggy3d::ReasoningNode& node : graph.nodes) {
+    if (node.kind == iggy3d::ReasoningNodeKind::coverCluster &&
+        node.sourceLabel == "cover") {
+      ++coverNodes;
+    }
+    if (node.kind == iggy3d::ReasoningNodeKind::patrolPost &&
+        node.sourceLabel == "patrol_post") {
+      ++patrolNodes;
+    }
+  }
+
+  return expect(cover.accepted, "cover point create accepted") &&
+         expect(patrol.accepted, "patrol node create accepted") &&
+         expect(result.receipt.accepted, "affordance anchor bake accepted") &&
+         expect(result.receipt.bakedAnchorCount == 2U,
+                "affordance baked anchor count") &&
+         expect(result.receipt.bakedStaticMeshCount == 0U,
+                "affordance no static meshes") &&
+         expect(result.room.anchors.size() == 2U,
+                "affordance anchor vector count") &&
+         expect(result.room.anchors[0].kind == "cover",
+                "cover point anchor kind") &&
+         expect(result.room.anchors[1].kind == "patrol_post",
+                "patrol node anchor kind") &&
+         expect(result.anchorSources.size() == 2U,
+                "affordance anchor source count") &&
+         expect(result.anchorSources[0].objectId == cover.objectId,
+                "cover source object") &&
+         expect(result.anchorSources[1].objectId == patrol.objectId,
+                "patrol source object") &&
+         expect(graph.nodes.size() == 2U, "affordance graph node count") &&
+         expect(coverNodes == 1U, "cover anchor becomes coverCluster node") &&
+         expect(patrolNodes == 1U, "patrol_post anchor becomes patrolPost node");
+}
+
 bool disconnectedWalkableIslandsReportStrandedCells() {
   cr::CreativeDocument document =
       cr::CreativeDocument::create("Disconnected Floors");
@@ -1697,6 +1748,7 @@ int main() {
                   boxProjectionTestingVolumesDoNotBakeStaticGeometry() &&
                   pointObjectBakesToAnchorOnly() &&
                   productMeaningfulPointAnchorsUseDescriptorSemantics() &&
+                  creativeAffordanceAnchorsBakeIntoReasoningGraphKinds() &&
                   disconnectedWalkableIslandsReportStrandedCells() &&
                   connectedWalkableLayoutReportsZeroStrandedCells() &&
                   walkableLayoutWithoutSeedReportsNoUsableSeeds() &&

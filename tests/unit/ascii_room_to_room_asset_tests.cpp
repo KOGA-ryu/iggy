@@ -208,6 +208,19 @@ bool anchorsUseExpectedMarkerKinds() {
          expect(exit->kind == "exit", "exit kind");
 }
 
+bool npcAndMonsterSpawnsUseDistinctAnchorKinds() {
+  const auto result = buildInlineRoomAsset("######\n#PNME#\n######\n");
+  const auto* npc = findAnchor(result.room, "marker_npc_spawn_r1_c2");
+  const auto* monster = findAnchor(result.room, "marker_monster_spawn_r1_c3");
+  return expect(result.ok, "npc monster room asset ok") &&
+         expect(npc != nullptr, "npc spawn anchor exists") &&
+         expect(npc != nullptr && npc->kind == "npc",
+                "npc_spawn anchor remains npc") &&
+         expect(monster != nullptr, "monster spawn anchor exists") &&
+         expect(monster != nullptr && monster->kind == "monster",
+                "monster_spawn anchor becomes monster");
+}
+
 bool doorMeshAndBlockerUseRuntimeOwner() {
   const auto result = buildFixtureRoomAsset();
   const auto* mesh = findMesh(result.room, "marker_door_r2_c2_panel");
@@ -620,6 +633,7 @@ int main() {
   bool ok = true;
   ok = roomHeaderAndCountsMatchFixture() && ok;
   ok = anchorsUseExpectedMarkerKinds() && ok;
+  ok = npcAndMonsterSpawnsUseDistinctAnchorKinds() && ok;
   ok = doorMeshAndBlockerUseRuntimeOwner() && ok;
   ok = representativeFloorMeshAndSurfaceMatch() && ok;
   ok = representativeWallMeshAndSurfacesMatch() && ok;
