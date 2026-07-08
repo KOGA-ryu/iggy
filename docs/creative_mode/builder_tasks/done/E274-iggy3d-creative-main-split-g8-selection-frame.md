@@ -287,3 +287,94 @@ Report:
   move, capture scenario move, later frame-stage move, tests, receipt/golden
   files, broad CTest, interactive window launch, staging, commit, or push was
   performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/CreativeEditorSelection.hpp`
+- `apps/iggy3d_creative/CreativeEditorSelection.cpp`
+- `CMakeLists.txt`
+- this task card, moved from `ready/` to `claimed/` and then `done/`
+
+Exact helper API shape:
+
+```cpp
+namespace iggy3d_creative_app {
+
+struct CreativeEditorSelectionFrame {
+  iggy3d::creative::Id selectedId = 0;
+  const iggy3d::creative::CreativeObject* selected = nullptr;
+  bool hasSelection = false;
+  iggy3d::Vec3 boxMin{-0.5F, 0.0F, -0.5F};
+  iggy3d::Vec3 boxMax{0.5F, 1.0F, 0.5F};
+};
+
+[[nodiscard]] CreativeEditorSelectionFrame resolveCreativeEditorSelectionFrame(
+    const iggy3d::creative::Facade& facade);
+
+}  // namespace iggy3d_creative_app
+```
+
+The moved selection logic is the selected id read from
+`facade.selectionState().selectedTarget.value`, the non-zero `findObject(...)`
+lookup, visible-selection gating, default bounds, and selected visual bounds
+from `visualBoundsForObject(...)`. `main.cpp` still owns the downstream local
+names and all gizmo geometry, handle hit-test, move policy, overlay,
+dimension-label, final logging, submit, and selected-object consumers.
+
+CMake source-list placement:
+
+- `apps/iggy3d_creative/CreativeEditorSelection.cpp` was added to the
+  `iggy3d_creative` executable source list next to the other
+  `CreativeEditor*.cpp` helper sources.
+
+Required grep classifications:
+
+- `CreativeEditorSelection.hpp` declares `CreativeEditorSelectionFrame` and
+  `resolveCreativeEditorSelectionFrame(...)`.
+- `CreativeEditorSelection.cpp` defines
+  `resolveCreativeEditorSelectionFrame(...)`.
+- `selectionState()`, `selectedTarget`, `findObject(...)`,
+  visible-selection gating, default bounds, and `visualBoundsForObject(...)`
+  live in `CreativeEditorSelection.cpp`.
+- `main.cpp` includes `CreativeEditorSelection.hpp`, has the `using`
+  declarations, calls `resolveCreativeEditorSelectionFrame(...)`, and restores
+  the local `selectedId`, `selected`, `hasSelection`, `selBoxMin`, and
+  `selBoxMax` names for downstream code.
+- downstream selected-object consumers remain in `main.cpp`.
+- `CreativeEditorAim.*`, `CreativeEditorCommandInput.*`,
+  `CreativeEditorFrameInput.*`, and `StandaloneDelete.*` remain the aim/ground,
+  command-key, frame-begin input, and delete helper owners.
+- no `EditorFrame` or `runCreativeEditorFrame(...)` was introduced.
+- E267's `appendStandaloneWireframeBoxEdges(...)` helper remains unchanged,
+  and no old `appendWireframeBoxEdges(...)` helper was reintroduced.
+- `CreativeEditorSelection.cpp` appears in the `iggy3d_creative` executable
+  source list.
+
+Focused verification:
+
+```sh
+cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10
+ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure
+git -C /Users/kogaryu/iggy3d diff --check
+```
+
+Results:
+
+- focused build passed
+- focused CTest passed, 3/3 tests
+- `git diff --check` passed
+- focused trailing-whitespace scan over touched source files, `CMakeLists.txt`,
+  and this task card passed
+
+Optional capture:
+
+- skipped; no owner explicitly allowed a windowed/Vulkan capture check for this
+  slice
+
+No `EditorFrame`, `runCreativeEditorFrame(...)`, gizmo geometry move, handle
+hit-test move, interactive Move policy move, placement move, capture scenario
+move, later frame-stage move, tests, receipt/golden files, broad CTest,
+interactive window launch, staging, commit, or push was performed.

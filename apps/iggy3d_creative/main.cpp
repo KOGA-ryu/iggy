@@ -62,6 +62,7 @@
 #include "CreativeEditorCommandInput.hpp"
 #include "CreativeEditorFrameInput.hpp"
 #include "CreativeRendererBootstrap.hpp"
+#include "CreativeEditorSelection.hpp"
 #include "CreativeEditorState.hpp"
 #include "StandaloneCaptureScenario.hpp"
 #include "StandaloneCaptureScript.hpp"
@@ -98,6 +99,7 @@ using iggy3d_creative_app::applyCreativeEditorCommandInput;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::CreativeEditorState;
 using iggy3d_creative_app::CreativeEditorFrameInputResult;
+using iggy3d_creative_app::CreativeEditorSelectionFrame;
 using iggy3d_creative_app::deleteSelectedObject;
 using iggy3d_creative_app::firstBrushKind;
 using iggy3d_creative_app::dispatchMoveReleaseWithUndo;
@@ -126,6 +128,7 @@ using iggy3d_creative_app::placeBrushObjectWithUndo;
 using iggy3d_creative_app::pathPointsSummary;
 using iggy3d_creative_app::projectBoxToScreen;
 using iggy3d_creative_app::projectPointToScreen;
+using iggy3d_creative_app::resolveCreativeEditorSelectionFrame;
 using iggy3d_creative_app::ScreenPoint;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::appendStandaloneWireframeBoxEdges;
@@ -652,22 +655,13 @@ int main(int argc, char** argv) {
     // the Move — keys off the CURRENTLY SELECTED object id, looked up via the same
     // findObject the inspector uses. No hardcoded crate id, no kind check. When
     // nothing is selected we draw no gizmo/box and skip Move.
-    const creative::Id selectedId =
-        appState.facade.selectionState().selectedTarget.value;
-    const creative::CreativeObject* selected =
-        selectedId != 0
-            ? appState.facade.findObject(
-                  static_cast<creative::CreativeObjectId>(selectedId))
-            : nullptr;
-    const bool hasSelection = selected != nullptr && selected->visible;
-    // Selected object's world bounds (defaults are unused when !hasSelection).
-    Vec3 selBoxMin{-0.5F, 0.0F, -0.5F};
-    Vec3 selBoxMax{0.5F, 1.0F, 0.5F};
-    if (hasSelection) {
-      const VisualBounds selectedVisualBounds = visualBoundsForObject(*selected);
-      selBoxMin = selectedVisualBounds.min;
-      selBoxMax = selectedVisualBounds.max;
-    }
+    const CreativeEditorSelectionFrame selection =
+        resolveCreativeEditorSelectionFrame(appState.facade);
+    const creative::Id selectedId = selection.selectedId;
+    const creative::CreativeObject* selected = selection.selected;
+    const bool hasSelection = selection.hasSelection;
+    const Vec3 selBoxMin = selection.boxMin;
+    const Vec3 selBoxMax = selection.boxMax;
 
     // ---- GIZMO GEOMETRY -----------------------------------------------------
     // Build the 3 axis shafts at the selected object's center C = (min+max)/2.
