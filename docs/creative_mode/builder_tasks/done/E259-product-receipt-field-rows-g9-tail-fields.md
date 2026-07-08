@@ -250,3 +250,65 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, CMake, tests, golden, staging, commit,
   push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Status: Done.
+
+Files changed:
+
+- `src/app/iggy3d/receipt/TailFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E259-product-receipt-field-rows-g9-tail-fields.md`
+
+Refactor shape:
+
+- Added file-local `TailReceiptContext` with references to
+  `ProductAppOptions`, `ProductWorldTemplate`, `ProductAppWindowState`, and
+  `ProductSaveBridgeResult`.
+- Added file-local `TailReceiptFieldRow` with `std::string_view key` and an
+  append callback:
+  `void (*append)(RenderReceipt&, const TailReceiptContext&, std::string_view)`.
+- Added ordered `const std::array<TailReceiptFieldRow, 12>
+  kTailReceiptFields`.
+- `appendProductTailFields(...)` now builds a `TailReceiptContext` and iterates
+  the ordered rows.
+
+Row coverage:
+
+- Row count: 12.
+- First key: `event_poll_count`.
+- Last key: `normal_package_cli`.
+- Rows left procedural: none.
+- `static_cast<std::uint64_t>(...)`, `saves.saveRoot.generic_string()`, direct
+  bool/string/count values, and the `false` literal for `normal_package_cli`
+  remain inside row callbacks.
+
+Required grep classification:
+
+- `TailReceiptContext`, `TailReceiptFieldRow`, and `kTailReceiptFields` exist
+  only in `TailFields.cpp`.
+- `appendProductTailFields(...)` remains the public appender.
+- `appendReceiptField(...)` calls live inside row callbacks.
+- `rg -c "appendReceiptField\\(" TailFields.cpp` returned `12`.
+- No `ProductAppReceiptContext` or shared `ReceiptFieldRow` was introduced.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d
+  product_receipt_key_order_tests -j10`: passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R
+  '^product_receipt_key_order_tests$' --output-on-failure`: passed.
+- `(cd /Users/kogaryu/iggy3d &&
+  /Users/kogaryu/iggy3d/build/product_receipt_key_order_tests)`: passed with
+  `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff --
+  tests/golden/product_receipt_key_order.golden`: no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check`: passed.
+- Focused trailing-whitespace scan over `TailFields.cpp` and this task card:
+  passed.
+
+Scope confirmation:
+
+- No shared receipt helper, `ProductAppReceiptContext`, CMake, tests, fixtures,
+  receipt golden files, staging, commit, push, broad CTest, or window launch
+  were performed.

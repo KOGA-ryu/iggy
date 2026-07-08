@@ -1,5 +1,6 @@
 #include "app/iggy3d/receipt/ReceiptFields.hpp"
 
+#include <array>
 #include <charconv>
 #include <string>
 #include <string_view>
@@ -22,20 +23,127 @@
 
 namespace iggy3d {
 
-void appendProductTailFields(RenderReceipt& receipt, const ProductAppOptions& options, const ProductWorldTemplate& world, const ProductAppWindowState& window, const ProductSaveBridgeResult& saves) {
-  appendReceiptField(receipt, "event_poll_count", window.frontendShell.eventPollCount);
-  appendReceiptField(receipt, "frames", static_cast<std::uint64_t>(options.frames));
-  appendReceiptField(receipt, "frames_presented", window.frontendShell.framesPresented);
-  appendReceiptField(receipt, "window_status", window.frontendShell.status);
-  appendReceiptField(receipt, "save_root", saves.saveRoot.generic_string());
-  appendReceiptField(receipt, "save_count",
-                     static_cast<std::uint64_t>(saves.slots.slots.size()));
-  appendReceiptField(receipt, "compatible_save_count", saves.slots.compatibleCount);
-  appendReceiptField(receipt, "selected_package_id", world.packageId);
-  appendReceiptField(receipt, "selected_scenario_id", world.scenarioId);
-  appendReceiptField(receipt, "world_template_source", world.source);
-  appendReceiptField(receipt, "dev_package_override", !options.devPackageOverride.empty());
-  appendReceiptField(receipt, "normal_package_cli", false);
+namespace {
+
+struct TailReceiptContext {
+  const ProductAppOptions& options;
+  const ProductWorldTemplate& world;
+  const ProductAppWindowState& window;
+  const ProductSaveBridgeResult& saves;
+};
+
+struct TailReceiptFieldRow {
+  std::string_view key;
+  void (*append)(RenderReceipt& receipt,
+                 const TailReceiptContext& context,
+                 std::string_view key);
+};
+
+const std::array<TailReceiptFieldRow, 12> kTailReceiptFields{{
+    {"event_poll_count",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.frontendShell.eventPollCount);
+     }},
+    {"frames",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           static_cast<std::uint64_t>(context.options.frames));
+     }},
+    {"frames_presented",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(receipt, key, context.window.frontendShell.framesPresented);
+     }},
+    {"window_status",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(receipt, key, context.window.frontendShell.status);
+     }},
+    {"save_root",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(receipt, key, context.saves.saveRoot.generic_string());
+     }},
+    {"save_count",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           static_cast<std::uint64_t>(
+               context.saves.slots.slots.size()));
+     }},
+    {"compatible_save_count",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(receipt, key, context.saves.slots.compatibleCount);
+     }},
+    {"selected_package_id",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(receipt, key, context.world.packageId);
+     }},
+    {"selected_scenario_id",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(receipt, key, context.world.scenarioId);
+     }},
+    {"world_template_source",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(receipt, key, context.world.source);
+     }},
+    {"dev_package_override",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           !context.options.devPackageOverride.empty());
+     }},
+    {"normal_package_cli",
+     [](RenderReceipt& receipt,
+        const TailReceiptContext&,
+        std::string_view key) {
+       appendReceiptField(receipt, key, false);
+     }},
+}};
+
+}  // namespace
+
+void appendProductTailFields(RenderReceipt& receipt,
+                             const ProductAppOptions& options,
+                             const ProductWorldTemplate& world,
+                             const ProductAppWindowState& window,
+                             const ProductSaveBridgeResult& saves) {
+  const TailReceiptContext context{
+      options,
+      world,
+      window,
+      saves,
+  };
+
+  for (const TailReceiptFieldRow& row : kTailReceiptFields) {
+    row.append(receipt, context, row.key);
+  }
 }
 
 }  // namespace iggy3d
