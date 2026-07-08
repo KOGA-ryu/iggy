@@ -242,3 +242,134 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, CMake, tests, golden, staging, commit,
   push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Status: Done.
+
+### Files changed
+
+- `src/app/iggy3d/receipt/GameplayRuntimeMovementFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E252-product-receipt-field-rows-g2-gameplay-runtime-movement.md`
+
+No other receipt source, `ReceiptFields.hpp/.cpp`, `ReceiptBuilder.cpp`, CMake,
+tests, fixtures, or golden files were edited.
+
+### Context and row helper shape
+
+`GameplayRuntimeMovementFields.cpp` now has file-local context and row helper
+types plus an ordered row array:
+
+```cpp
+namespace {
+
+struct GameplayRuntimeMovementReceiptContext {
+  const ProductAppWindowState& window;
+  const ProductMovementProofPacket& movementProof;
+  std::uint64_t runtimeStateHash;
+};
+
+struct GameplayRuntimeMovementReceiptFieldRow {
+  std::string_view key;
+  void (*append)(RenderReceipt& receipt,
+                 const GameplayRuntimeMovementReceiptContext& context,
+                 std::string_view key);
+};
+
+const std::array<GameplayRuntimeMovementReceiptFieldRow, 116>
+    kGameplayRuntimeMovementReceiptFields{{ /* ordered rows */ }};
+
+}  // namespace
+```
+
+The public
+`appendProductGameplayRuntimeMovementFields(RenderReceipt&, const
+ProductAppWindowState&, const ProductMovementProofPacket&, std::uint64_t)`
+signature is unchanged. It builds a file-local context and iterates
+`kGameplayRuntimeMovementReceiptFields` in order.
+
+Each row stores the receipt key and a non-capturing append callback. The
+callbacks keep the original value expressions inside the row, including
+`floatReceiptValue(...)` and direct `runtimeStateHash` output through
+`context.runtimeStateHash`.
+
+### Row coverage
+
+- Row count: 116.
+- First receipt key: `runtime_session_created`.
+- Last receipt key: `gameplay_dash_direction_z`.
+- Rows left procedural: none.
+
+### Required grep classifications
+
+`rg -n "GameplayRuntimeMovementReceiptContext|GameplayRuntimeMovementReceiptFieldRow|kGameplayRuntimeMovementReceiptFields|appendProductGameplayRuntimeMovementFields|appendReceiptField\\(" ...`:
+
+- file-local `GameplayRuntimeMovementReceiptContext` exists;
+- file-local `GameplayRuntimeMovementReceiptFieldRow` exists;
+- `kGameplayRuntimeMovementReceiptFields` exists as a 116-row `std::array`;
+- `appendProductGameplayRuntimeMovementFields(...)` remains in
+  `GameplayRuntimeMovementFields.cpp`;
+- all 116 `appendReceiptField(...)` calls live inside row callbacks.
+
+`rg -n "ProductAppReceiptContext|ReceiptFieldRow|GameplayRuntimeMovementReceiptFieldRow" ...`:
+
+- no `ProductAppReceiptContext` hits;
+- no shared receipt row helper was added to `ReceiptBuilder.cpp` or
+  `ReceiptFields.hpp/.cpp`;
+- `GameplayRuntimeMovementReceiptFieldRow` appears only in
+  `GameplayRuntimeMovementFields.cpp`.
+
+`rg -c "appendReceiptField\\(" GameplayRuntimeMovementFields.cpp`:
+
+- `116`.
+
+### Verification
+
+Focused build:
+
+```sh
+cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_receipt_key_order_tests -j10
+```
+
+Result: passed.
+
+Focused CTest:
+
+```sh
+ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_receipt_key_order_tests$' --output-on-failure
+```
+
+Result: passed, 1/1 test.
+
+Direct receipt oracle:
+
+```sh
+/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests
+```
+
+Result: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+
+Receipt golden diff:
+
+```sh
+git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden
+```
+
+Result: no diff.
+
+Diff and whitespace checks:
+
+```sh
+git -C /Users/kogaryu/iggy3d diff --check
+```
+
+Result: passed.
+
+Focused trailing-whitespace scan:
+
+- `src/app/iggy3d/receipt/GameplayRuntimeMovementFields.cpp`: clean.
+- this task card: clean before move to `done/`; clean again after move.
+
+No shared helper, `ProductAppReceiptContext`, CMake edits, tests edits, golden
+edits/regeneration, staging, commit, push, broad CTest, or window launch was
+performed.
