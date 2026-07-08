@@ -2,9 +2,10 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
-#include "app/iggy3d/ProductAppWindowState.hpp"
 
 namespace iggy3d {
+
+struct ProductAppWindowState;
 
 void initializeProductStarterTransition(FrontendState& frontend,
                                         ProductAppWindowState& window,

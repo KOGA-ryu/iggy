@@ -3,6 +3,7 @@
 #include <string>
 #include <utility>
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 
 namespace iggy3d {

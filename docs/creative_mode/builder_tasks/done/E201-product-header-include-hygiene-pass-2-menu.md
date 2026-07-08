@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -123,3 +123,42 @@ Report:
 - receipt golden diff result;
 - `git diff --check` and trailing-whitespace results;
 - confirmation that no signatures, behavior, CMake, or receipt fields changed.
+
+## Completion Brief
+
+- Card moved to done: `/Users/kogaryu/iggy3d/docs/creative_mode/builder_tasks/done/E201-product-header-include-hygiene-pass-2-menu.md`
+- Files changed:
+  - `src/app/iggy3d/menu/Transitions.hpp`
+  - `src/app/iggy3d/menu/Transitions.cpp`
+  - `src/app/iggy3d/menu/ActionHandlers.hpp`
+  - `src/app/iggy3d/menu/ActionHandlers.cpp`
+  - `docs/creative_mode/builder_tasks/done/E201-product-header-include-hygiene-pass-2-menu.md`
+- Target headers forward-declared:
+  - `Transitions.hpp` removed `#include "app/iggy3d/ProductAppWindowState.hpp"` and now forward-declares `struct ProductAppWindowState;`.
+  - `ActionHandlers.hpp` removed `#include "app/iggy3d/ProductAppWindowState.hpp"` and now forward-declares `struct ProductAppWindowState;`.
+- Incomplete-type confirmation:
+  - `Transitions.hpp` uses `ProductAppWindowState` only as non-owning function parameters by reference.
+  - `ActionHandlers.hpp` uses `ProductAppWindowState` only as non-owning context members by reference.
+- `.cpp` partners with direct full-type includes:
+  - `Transitions.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` directly.
+  - `ActionHandlers.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` directly.
+- Fallout files given direct includes:
+  - None. The focused build passed without additional compile fallout.
+- Direct includer count for `ProductAppWindowState.hpp`:
+  - Before: 62
+  - After: 62
+  - Count stayed flat because two header includes moved to the two implementation files.
+- Focused build:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_menu_transitions_tests product_starter_menu_action_tests product_new_world_menu_action_tests product_window_input_frame_tests product_frontend_router_tests product_receipt_key_order_tests -j10` passed.
+- Focused CTest:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_menu_transitions_tests|product_starter_menu_action_tests|product_new_world_menu_action_tests|product_window_input_frame_tests|product_frontend_router_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 6/6.
+- Receipt golden diff:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card passed.
+- Confirmations:
+  - No function signatures changed.
+  - No behavior, routing policy, receipt fields, CMake, or receipt golden changed.
+- Concerns/deferred:
+  - None for this slice.
