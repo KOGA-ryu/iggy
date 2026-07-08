@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E260-product-receipt-field-rows-g10-save-state.md`
+1. `ready/E261-product-receipt-field-rows-g11-frontend-settings-window.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E260-product-receipt-field-rows-g10-save-state.md`
+1. `ready/E261-product-receipt-field-rows-g11-frontend-settings-window.md`
 
 ## Parking Lot
 
@@ -205,5 +205,8 @@ Held — do NOT promote to `ready/` on a guess:
   `ActiveRoomFields.cpp` with a file-local context and no golden change. E258
   completed G8 by table-driving `DebugHudFields.cpp` with a file-local context
   and no golden change. E259 completed G9 by table-driving `TailFields.cpp`
-  with a file-local context and no golden change. E260 is released as G10 for
-  `SaveStateFields.cpp`, the first wider-context mixed receipt row candidate.
+  with a file-local context and no golden change. E260 completed G10 by
+  table-driving `SaveStateFields.cpp` with a wider file-local context and no
+  golden change. E261 is released as G11 for
+  `FrontendSettingsWindowFields.cpp`, table-driving fixed rows around the
+  existing tuning descriptor loop.
