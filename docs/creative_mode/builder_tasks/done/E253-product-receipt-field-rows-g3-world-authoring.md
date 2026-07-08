@@ -226,3 +226,44 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, CMake, tests, golden, staging, commit,
   push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Completed.
+
+Files changed:
+
+- `src/app/iggy3d/receipt/WorldAuthoringFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E253-product-receipt-field-rows-g3-world-authoring.md`
+
+Implemented a file-local callback row table:
+
+- `WorldAuthoringReceiptFieldRow`
+- `const std::array<WorldAuthoringReceiptFieldRow, 91> kWorldAuthoringReceiptFields`
+- `appendProductWorldAuthoringFields(...)` now iterates the ordered rows and calls `row.append(receipt, window, row.key)`.
+
+Row coverage:
+
+- Row count: 91
+- First key: `world_setup_title`
+- Last key: `room_editing_last_primitive_id`
+- Procedural rows left behind: none
+
+Required grep classifications:
+
+- `WorldAuthoringReceiptFieldRow` and `kWorldAuthoringReceiptFields` exist only in `WorldAuthoringFields.cpp`.
+- `appendProductWorldAuthoringFields(...)` remains the only public appender in the file.
+- `appendReceiptField(...)` count is 91, all inside row callbacks.
+- No `ProductAppReceiptContext` was introduced.
+- No shared `ReceiptFieldRow` helper was introduced.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_receipt_key_order_tests -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_receipt_key_order_tests$' --output-on-failure` passed.
+- Direct oracle passed: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over `WorldAuthoringFields.cpp` and this card passed.
+
+No shared helper, CMake edit, tests edit, golden edit, staging, commit, push, broad CTest, or window launch was performed.
