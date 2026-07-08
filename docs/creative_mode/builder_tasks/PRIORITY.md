@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E262-product-receipt-field-rows-g12-creative-ui-main.md`
+1. `ready/E263-product-receipt-field-rows-g13-creative-ui-command-diagnostics.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E262-product-receipt-field-rows-g12-creative-ui-main.md`
+1. `ready/E263-product-receipt-field-rows-g13-creative-ui-command-diagnostics.md`
 
 ## Parking Lot
 
@@ -209,6 +209,8 @@ Held — do NOT promote to `ready/` on a guess:
   table-driving `SaveStateFields.cpp` with a wider file-local context and no
   golden change. E261 completed G11 by table-driving fixed rows in
   `FrontendSettingsWindowFields.cpp` around the existing tuning descriptor loop.
-  E262 is released as G12 for the fixed rows in
+  E262 completed G12 by table-driving the fixed rows in
   `CreativeUiFields.cpp`'s public appender while leaving command and baked-room
-  helper appenders procedural.
+  helper appenders procedural. E263 is released as G13 for the fixed creative
+  UI command diagnostic helper rows while still leaving baked-room refresh
+  diagnostics procedural.
