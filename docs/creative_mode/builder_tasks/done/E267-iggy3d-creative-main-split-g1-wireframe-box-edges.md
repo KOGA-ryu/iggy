@@ -229,3 +229,117 @@ Report:
 - confirmation that no `CreativeEditorState`, `EditorFrame`, frame-stage move,
   tests, receipt/golden files, broad CTest, interactive window launch, staging,
   commit, or push was performed.
+
+## Completion Brief - E267
+
+### Files changed
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/StandaloneWireframeBoxEdges.hpp`
+- `apps/iggy3d_creative/StandaloneWireframeBoxEdges.cpp`
+- `CMakeLists.txt`
+- `docs/creative_mode/builder_tasks/done/E267-iggy3d-creative-main-split-g1-wireframe-box-edges.md`
+
+### Helper API shape
+
+Added app-local helper in namespace `iggy3d_creative_app`:
+
+```cpp
+void appendStandaloneWireframeBoxEdges(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& out,
+    iggy3d::Vec3 boxMin,
+    iggy3d::Vec3 boxMax,
+    iggy3d::RenderLineColor color,
+    float thickness);
+```
+
+Header dependencies are `vector`, `core/math/Vec3.hpp`, and
+`render/FrameInput.hpp`.
+
+The implementation preserves the moved helper body behavior: same corner
+calculation, same edge order, same `out.reserve(out.size() + 12)`, same
+`line.start` / `line.end`, same `line.color`, same `line.objectId = 0`, same
+`line.thickness`, and same `out.push_back(line)`.
+
+### CMake source-list placement
+
+Added `apps/iggy3d_creative/StandaloneWireframeBoxEdges.cpp` to the
+`iggy3d_creative` executable source list in `CMakeLists.txt`, directly after
+`apps/iggy3d_creative/StandaloneRoomBakePreview.cpp` and alongside the other
+standalone helper sources.
+
+### Helper move counts
+
+- Old `appendWireframeBoxEdges(...)` definitions removed from `main.cpp`: 1.
+- Old `appendWireframeBoxEdges(...)` call sites removed from `main.cpp`: 3.
+- New `appendStandaloneWireframeBoxEdges(...)` call sites in `main.cpp`: 3.
+
+### Required grep classifications
+
+`rg -n "appendWireframeBoxEdges|appendStandaloneWireframeBoxEdges|StandaloneWireframeBoxEdges" ...`
+
+- No old `appendWireframeBoxEdges(...)` definition or call site remains.
+- `StandaloneWireframeBoxEdges.hpp` declares
+  `appendStandaloneWireframeBoxEdges(...)`.
+- `StandaloneWireframeBoxEdges.cpp` defines
+  `appendStandaloneWireframeBoxEdges(...)`.
+- `main.cpp` includes `StandaloneWireframeBoxEdges.hpp`.
+- `main.cpp` has the local `using` declaration and exactly three call sites for
+  `appendStandaloneWireframeBoxEdges(...)`.
+- `CMakeLists.txt` includes
+  `apps/iggy3d_creative/StandaloneWireframeBoxEdges.cpp` in the
+  `iggy3d_creative` executable source list.
+
+`rg -n "CreativeEditorState|EditorFrame|runCreativeEditorFrame|appendPathPolylineLines" ...`
+
+- No `CreativeEditorState`, `EditorFrame`, or `runCreativeEditorFrame` hits.
+- `appendPathPolylineLines(...)` remains owned by
+  `StandalonePreviewProxies.hpp/.cpp`, with only the existing `main.cpp` using
+  declaration and call site.
+
+### Focused build and CTest
+
+Passed:
+
+```sh
+cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10
+```
+
+Passed:
+
+```sh
+ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure
+```
+
+CTest result:
+
+- `standalone_picking_tests`: passed
+- `standalone_placement_tests`: passed
+- `standalone_frustum_cull_tests`: passed
+
+### Diff and whitespace checks
+
+Passed:
+
+```sh
+git -C /Users/kogaryu/iggy3d diff --check
+```
+
+Focused trailing-whitespace scan over touched source/CMake files and this task
+card: passed.
+
+### Optional capture
+
+Skipped. The card made `iggy3d_creative --capture` optional only with explicit
+owner approval for a windowed/Vulkan capture check, and no such approval was
+given for this slice.
+
+### Scope confirmation
+
+No `CreativeEditorState`, `EditorFrame`, `runCreativeEditorFrame`, frame-stage
+move, event handling change, camera input change, resize behavior change,
+placement change, selection change, capture scenario dispatch change,
+gizmo/path policy change, frustum culling change, submit change, shutdown
+change, logging change, capture script frame number change, object id change,
+seeded Floor/Crate setup change, save-root change, tests, receipt/golden files,
+broad CTest, interactive window launch, staging, commit, or push was performed.

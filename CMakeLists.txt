@@ -394,7 +394,8 @@ add_executable(iggy3d_creative
   apps/iggy3d_creative/StandalonePicking.cpp
   apps/iggy3d_creative/StandalonePlacement.cpp
   apps/iggy3d_creative/StandalonePreviewProxies.cpp
-  apps/iggy3d_creative/StandaloneRoomBakePreview.cpp)
+  apps/iggy3d_creative/StandaloneRoomBakePreview.cpp
+  apps/iggy3d_creative/StandaloneWireframeBoxEdges.cpp)
 target_link_libraries(iggy3d_creative PRIVATE iggy3d)
 iggy3d_apply_warnings(iggy3d_creative)
 

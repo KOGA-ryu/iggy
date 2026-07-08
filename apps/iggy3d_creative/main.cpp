@@ -71,6 +71,7 @@
 #include "StandalonePreviewProxies.hpp"
 #include "StandaloneRoomBakePreview.hpp"
 #include "StandaloneUndo.hpp"
+#include "StandaloneWireframeBoxEdges.hpp"
 
 namespace {
 
@@ -121,6 +122,7 @@ using iggy3d_creative_app::ScreenPoint;
 using iggy3d_creative_app::snapGroundToCellCenter;
 using iggy3d_creative_app::saveStandaloneScene;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
+using iggy3d_creative_app::appendStandaloneWireframeBoxEdges;
 using iggy3d_creative_app::toVec3;
 using iggy3d_creative_app::undoLastSnapshot;
 using iggy3d_creative_app::validPathPoints;
@@ -192,37 +194,6 @@ creative::CreativeDocumentRemoveReceipt deleteSelectedObject(
           static_cast<unsigned long long>(objectCountBefore),
           static_cast<unsigned long long>(objectCountAfter), selectionAfter);
   return receipt;
-}
-
-// Append the 12 AXIS-ALIGNED edges of a world box [boxMin, boxMax] as wireframe
-// lines of the given color into `out`. Each edge moves along exactly one world
-// axis, which is the only geometry the renderer's creativeDebugLineBox draws —
-// the same reason the gizmo shafts are single-axis. Used for the green Place
-// ghost preview, appended to the SAME combined vector as the selection box.
-void appendWireframeBoxEdges(std::vector<RenderCreativeWireframeDebugLine>& out,
-                            Vec3 boxMin, Vec3 boxMax, RenderLineColor color,
-                            float thickness) {
-  // 8 corners indexed by (x bit0, y bit1, z bit2).
-  const auto corner = [&](int c) -> Vec3 {
-    return {(c & 1) ? boxMax.x : boxMin.x, (c & 2) ? boxMax.y : boxMin.y,
-            (c & 4) ? boxMax.z : boxMin.z};
-  };
-  // 12 edges: pairs of corner indices differing in exactly one axis bit.
-  static constexpr int kEdges[12][2] = {
-      {0, 1}, {2, 3}, {4, 5}, {6, 7},  // along X
-      {0, 2}, {1, 3}, {4, 6}, {5, 7},  // along Y
-      {0, 4}, {1, 5}, {2, 6}, {3, 7},  // along Z
-  };
-  out.reserve(out.size() + 12);
-  for (const auto& e : kEdges) {
-    RenderCreativeWireframeDebugLine line;
-    line.start = corner(e[0]);
-    line.end = corner(e[1]);
-    line.color = color;
-    line.objectId = 0;  // Ghost is not a document object.
-    line.thickness = thickness;
-    out.push_back(line);
-  }
 }
 
 }  // namespace
@@ -1432,7 +1403,7 @@ int main(int argc, char** argv) {
       }
       const VisualBounds markerBounds = visualBoundsForObject(obj);
       const std::size_t before = combinedWireLines.size();
-      appendWireframeBoxEdges(
+      appendStandaloneWireframeBoxEdges(
           combinedWireLines, markerBounds.min, markerBounds.max,
           sel ? RenderLineColor{1.0F, 1.0F, 0.0F, 1.0F}
               : descriptor.shapeKind == creative::CreativeObjectShapeKind::Line
@@ -1452,11 +1423,12 @@ int main(int argc, char** argv) {
       for (const creative::CreativePathPoint& point : selected->pathPoints) {
         const VisualBounds handleBounds = pathPointHandleBounds(point.position);
         const std::size_t before = combinedWireLines.size();
-        appendWireframeBoxEdges(combinedWireLines,
-                                handleBounds.min,
-                                handleBounds.max,
-                                RenderLineColor{0.20F, 0.88F, 1.0F, 1.0F},
-                                0.035F);
+        appendStandaloneWireframeBoxEdges(
+            combinedWireLines,
+            handleBounds.min,
+            handleBounds.max,
+            RenderLineColor{0.20F, 0.88F, 1.0F, 1.0F},
+            0.035F);
         for (std::size_t i = before; i < combinedWireLines.size(); ++i) {
           combinedWireLines[i].objectId =
               static_cast<creative::CreativeObjectId>(selectedId);
@@ -1520,9 +1492,10 @@ int main(int argc, char** argv) {
       }
       if (brushDescriptor.shapeKind != creative::CreativeObjectShapeKind::Path) {
         const std::size_t before = combinedWireLines.size();
-        appendWireframeBoxEdges(combinedWireLines, ghostMin, ghostMax,
-                                RenderLineColor{0.0F, 1.0F, 0.0F, 1.0F},
-                                kGizmoThickness);
+        appendStandaloneWireframeBoxEdges(
+            combinedWireLines, ghostMin, ghostMax,
+            RenderLineColor{0.0F, 1.0F, 0.0F, 1.0F},
+            kGizmoThickness);
         ghostEdgeCount = combinedWireLines.size() - before;
       }
     }
