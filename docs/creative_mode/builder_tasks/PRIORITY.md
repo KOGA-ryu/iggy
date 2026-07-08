@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E271-iggy3d-creative-main-split-g5-command-input.md`
+1. `ready/E272-iggy3d-creative-main-split-g6-aim-ground-cell.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E271-iggy3d-creative-main-split-g5-command-input.md`
+1. `ready/E272-iggy3d-creative-main-split-g6-aim-ground-cell.md`
 
 ## Parking Lot
 
@@ -207,6 +207,9 @@ Held — do NOT promote to `ready/` on a guess:
   handle drawable/resize, apply fly-camera input, and return the current
   keyboard state/extent without changing downstream tool or render behavior.
   E270 moved the shared standalone selected-object delete helper out of
-  `main.cpp`. E271 is released to extract only the interactive command-key
-  block (tool switch, brush cycle, save/load/clear/delete/undo latches) while
-  leaving capture scenario and later movement/gizmo policy in `main.cpp`.
+  `main.cpp`. E271 extracted only the interactive command-key block (tool
+  switch, brush cycle, save/load/clear/delete/undo latches) while leaving
+  capture scenario and later movement/gizmo policy in `main.cpp`. E272 is
+  released to extract only the aim-ground-cell camera-ray helper used by
+  placement/capture previews, leaving placement and capture policy in
+  `main.cpp`.
