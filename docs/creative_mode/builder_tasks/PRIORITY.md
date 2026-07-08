@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E259-product-receipt-field-rows-g9-tail-fields.md`
+1. `ready/E260-product-receipt-field-rows-g10-save-state.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E259-product-receipt-field-rows-g9-tail-fields.md`
+1. `ready/E260-product-receipt-field-rows-g10-save-state.md`
 
 ## Parking Lot
 
@@ -204,5 +204,6 @@ Held — do NOT promote to `ready/` on a guess:
   file-local context and no golden change. E257 completed G7 by table-driving
   `ActiveRoomFields.cpp` with a file-local context and no golden change. E258
   completed G8 by table-driving `DebugHudFields.cpp` with a file-local context
-  and no golden change. E259 is released as G9 for `TailFields.cpp`, the
-  smallest remaining direct receipt row candidate.
+  and no golden change. E259 completed G9 by table-driving `TailFields.cpp`
+  with a file-local context and no golden change. E260 is released as G10 for
+  `SaveStateFields.cpp`, the first wider-context mixed receipt row candidate.
