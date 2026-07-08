@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -97,3 +97,51 @@ Report:
 - `diff --check` result;
 - confirmation that no source, test, CMake, fixture, receipt golden, production
   docs, staging, commit, push, or window launch was performed.
+
+## Completion Brief
+
+- Card moved to done:
+  `/Users/kogaryu/iggy3d/docs/creative_mode/builder_tasks/done/E208-product-header-include-hygiene-closure-audit.md`
+- Direct-header scan output:
+  ```text
+  /Users/kogaryu/iggy3d/src/app/iggy3d/AppKernel.hpp
+  /Users/kogaryu/iggy3d/src/app/iggy3d/window/Loop.hpp
+  /Users/kogaryu/iggy3d/tests/unit/ProductAsciiRoomWindowTestSupport.hpp
+  ```
+- Broad includer count:
+  - `grep -rl 'app/iggy3d/ProductAppWindowState.hpp' /Users/kogaryu/iggy3d/src /Users/kogaryu/iggy3d/apps /Users/kogaryu/iggy3d/tests | wc -l`
+    returned `83`.
+- Per-header classification:
+  - `src/app/iggy3d/AppKernel.hpp`: complete type required. `AppKernel`
+    stores `ProductAppWindowState window;` by value, so a forward declaration is
+    not sufficient.
+  - `src/app/iggy3d/window/Loop.hpp`: complete type required.
+    `ProductWindowLoopRequest` stores `ProductAppWindowState window;` by value,
+    and `ProductWindowLoopResult` stores `ProductAppWindowState window;` by
+    value. A forward declaration is not sufficient.
+  - `tests/unit/ProductAsciiRoomWindowTestSupport.hpp`: complete type required.
+    The inline `activateAsciiRoomWindowForTest(...)` helper returns
+    `ProductAppWindowState` by value, constructs a local
+    `ProductAppWindowState window;`, and writes
+    `creativeAuthoring.asciiRoomDraft`, `viewport`, and `inputDevice` fields.
+- Lane decision:
+  - **Lane closed.** All remaining direct header includes require complete
+    `ProductAppWindowState`; no safe follow-up include-hygiene implementation
+    card remains for this lane.
+- Suggested `PRIORITY.md` wording update for reviewer/planner:
+  - Remove `ready/E208-product-header-include-hygiene-closure-audit.md` from
+    **Pull Next** and Tier 3.
+  - Replace the include-hygiene parking-lot paragraph with:
+    `ProductAppWindowState include-hygiene lane is CLOSED after E208. E201-E207
+    removed all forward-declarable production/test-support header includes.
+    The remaining header includes are complete-type required:
+    AppKernel.hpp and window/Loop.hpp own ProductAppWindowState by value, and
+    ProductAsciiRoomWindowTestSupport.hpp constructs/writes ProductAppWindowState
+    in an inline helper.`
+- Checks:
+  - Passed: `git -C /Users/kogaryu/iggy3d diff --check`
+- Scope confirmation:
+  - No source, test, CMake, fixture, receipt golden, production docs, staging,
+    commit, push, or window launch was performed.
+- Concerns/deferred:
+  - None.
