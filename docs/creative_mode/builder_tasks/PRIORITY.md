@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E212-operations-split-g3-creative-world-operations.md`
+1. `ready/E213-operations-split-g4-session-launch-preflight.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E212-operations-split-g3-creative-world-operations.md`
+1. `ready/E213-operations-split-g4-session-launch-preflight.md`
 
 ## Parking Lot
 
@@ -148,6 +148,8 @@ Held — do NOT promote to `ready/` on a guess:
   preflight for `Operations.cpp` seam split after identity-mirror removal.
   `E210` completed G1 by extracting only the creative baked active-room refresh
   service. `E211` completed G2 by extracting the save-slot
-  browser/delete/recover operations. `E212` is released as G3 for creative world
-  launch/open/save operations. `OpeningMenuView` split remains parked; see
+  browser/delete/recover operations. `E212` completed G3 by extracting creative
+  world launch/open/save operations. `E213` is released as G4 read-only
+  preflight for remaining product session/world launch coupling.
+  `OpeningMenuView` split remains parked; see
   `docs/complexity_audit_v0_1.md` §3.
