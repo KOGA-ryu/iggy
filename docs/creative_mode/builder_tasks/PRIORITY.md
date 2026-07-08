@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E213-operations-split-g4-session-launch-preflight.md`
+1. `ready/E214-operations-split-g4a-product-world-template-resolution.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E213-operations-split-g4-session-launch-preflight.md`
+1. `ready/E214-operations-split-g4a-product-world-template-resolution.md`
 
 ## Parking Lot
 
@@ -149,7 +149,9 @@ Held — do NOT promote to `ready/` on a guess:
   `E210` completed G1 by extracting only the creative baked active-room refresh
   service. `E211` completed G2 by extracting the save-slot
   browser/delete/recover operations. `E212` completed G3 by extracting creative
-  world launch/open/save operations. `E213` is released as G4 read-only
-  preflight for remaining product session/world launch coupling.
+  world launch/open/save operations. `E213` completed G4 read-only preflight for
+  remaining product session/world launch coupling. `E214` is released as G4a to
+  extract only product package-path/world-template resolution before save/load
+  session launch work.
   `OpeningMenuView` split remains parked; see
   `docs/complexity_audit_v0_1.md` §3.
