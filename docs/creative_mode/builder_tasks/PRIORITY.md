@@ -11,11 +11,12 @@ COMPLETE (E142-E147). The structural `activeRoom` regroup into RoomStore is
 COMPLETE (E148-E152). The SaveSessionStore bulk move is COMPLETE (E153).
 
 **Also complete:** the 2 dead write-only fields `window.inputOwner` /
-`window.gameplayInputSuppressed` were deleted (`36ceeac3`) — god-struct now 153
-members. **GameplayStore is COMPLETE**: E154 was decomposed into E157-E160 and
-all four child slices are complete. Disjoint from completed
-RoomStore/SaveSessionStore work; `runtimeSessionCreated` now belongs to
-GameplayStore.
+`window.gameplayInputSuppressed` were deleted (`36ceeac3`). After E178, the
+god-struct remainder is 15 top-level members: 10 store members, 5 app-global
+scalars, and the pending `runtimeStateHash` delete. **GameplayStore is
+COMPLETE**: E154 was decomposed into E157-E160 and all four child slices are
+complete. Disjoint from completed RoomStore/SaveSessionStore work;
+`runtimeSessionCreated` now belongs to GameplayStore.
 
 **ViewportStore fold is COMPLETE as E155** (#6 — folded 11 mapMaker* fields into
 ProductViewportState). `E156` InputDeviceStore (#7) has been decomposed into
@@ -57,7 +58,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E178-viewportstore-creative-world-epoch.md`
+1. `ready/E179-runtime-state-hash-delete-rederive.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -69,7 +70,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E178-viewportstore-creative-world-epoch.md`
+1. `ready/E179-runtime-state-hash-delete-rederive.md`
 
 ## Parking Lot
 
