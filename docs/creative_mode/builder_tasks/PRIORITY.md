@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E194-product-test-fixture-builder-audit.md`
+1. `ready/E195-product-test-ascii-room-window-fixture-preflight.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E194-product-test-fixture-builder-audit.md`
+1. `ready/E195-product-test-ascii-room-window-fixture-preflight.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -127,8 +127,9 @@ Held — do NOT promote to `ready/` on a guess:
   E190 added a header-only assertion/numeric helper over five tests. E191 added
   receipt helpers for four creative UI receipt/frame tests. E192 added the
   duplicated active-surface wrapper helper. E193 added clean temp-root/options
-  setup. E194 is a read-only fixture-builder audit before any larger test
-  harness abstraction is allowed.
+  setup. E194 found no immediate neutral fixture-builder extraction. E195 is a
+  read-only preflight for the three ASCII-activated gameplay window helpers
+  before any helper is allowed.
 - `npc_vision_lab` stale training_room fixture + the "same room checked in 3×"
   duplication smell — needs a single-source-of-truth card.
 - Remaining complexity-audit roadmap items (`OpeningMenuView` split,
