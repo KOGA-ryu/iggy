@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E273-iggy3d-creative-main-split-g7-ground-point-helper.md`
+1. `ready/E274-iggy3d-creative-main-split-g8-selection-frame.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E273-iggy3d-creative-main-split-g7-ground-point-helper.md`
+1. `ready/E274-iggy3d-creative-main-split-g8-selection-frame.md`
 
 ## Parking Lot
 
@@ -212,5 +212,7 @@ Held — do NOT promote to `ready/` on a guess:
   capture scenario and later movement/gizmo policy in `main.cpp`. E272 is
   complete as the aim-ground-cell camera-ray helper used by placement/capture
   previews, leaving placement and capture policy in `main.cpp`. E273 is
-  released to share that same raw camera-ray-to-ground-point math with the
-  remaining interactive Move branch, without moving Move policy.
+  complete as the shared raw camera-ray-to-ground-point helper for the remaining
+  interactive Move branch, without moving Move policy. E274 is released to
+  extract only the current selection id/object/bounds resolution, leaving gizmo,
+  move, overlay, and logging policy in `main.cpp`.
