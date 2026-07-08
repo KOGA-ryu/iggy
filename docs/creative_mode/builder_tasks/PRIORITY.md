@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E272-iggy3d-creative-main-split-g6-aim-ground-cell.md`
+1. `ready/E273-iggy3d-creative-main-split-g7-ground-point-helper.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E272-iggy3d-creative-main-split-g6-aim-ground-cell.md`
+1. `ready/E273-iggy3d-creative-main-split-g7-ground-point-helper.md`
 
 ## Parking Lot
 
@@ -210,6 +210,7 @@ Held — do NOT promote to `ready/` on a guess:
   `main.cpp`. E271 extracted only the interactive command-key block (tool
   switch, brush cycle, save/load/clear/delete/undo latches) while leaving
   capture scenario and later movement/gizmo policy in `main.cpp`. E272 is
-  released to extract only the aim-ground-cell camera-ray helper used by
-  placement/capture previews, leaving placement and capture policy in
-  `main.cpp`.
+  complete as the aim-ground-cell camera-ray helper used by placement/capture
+  previews, leaving placement and capture policy in `main.cpp`. E273 is
+  released to share that same raw camera-ray-to-ground-point math with the
+  remaining interactive Move branch, without moving Move policy.
