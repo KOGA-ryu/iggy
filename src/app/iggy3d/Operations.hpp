@@ -17,12 +17,6 @@
 
 namespace iggy3d {
 
-ProductSaveWriteResult writeProductCurrentSessionSave(
-    const ProductAppOptions& options,
-    const std::optional<Session>& activeSession,
-    std::string_view source,
-    ProductAppWindowState& window);
-
 bool createCreativeBlankSession(std::optional<Session>& activeSession,
                                 ProductAppWindowState& window);
 void frameCreativeStageCameraOnOrigin(ProductAppWindowState& window);

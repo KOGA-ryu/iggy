@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -159,3 +159,40 @@ When done, report:
 - focused build/CTest results
 - diff/whitespace checks
 - confirmation that creative blank-stage wrappers were not moved
+
+## Completion Brief
+
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/Operations.hpp`
+  - `src/app/iggy3d/Operations.cpp`
+  - `src/app/iggy3d/save/Flow.cpp`
+  - `src/app/iggy3d/save/CurrentSessionSave.hpp`
+  - `src/app/iggy3d/save/CurrentSessionSave.cpp`
+  - this task card
+- Exact APIs moved/added:
+  - Removed from `Operations.hpp` and declared in `save/CurrentSessionSave.hpp`: `writeProductCurrentSessionSave(...)`.
+  - Moved into `save/CurrentSessionSave.cpp`: `recordProductSaveWriteResult(...)` and `writeProductCurrentSessionSave(...)`.
+  - Added `src/app/iggy3d/save/CurrentSessionSave.cpp` to the `iggy3d` library source list near other save sources.
+- New location:
+  - `writeProductCurrentSessionSave(...)` now lives in `src/app/iggy3d/save/CurrentSessionSave.cpp`, declared by `src/app/iggy3d/save/CurrentSessionSave.hpp`.
+- Caller include repair:
+  - `src/app/iggy3d/save/Flow.cpp` now includes `app/iggy3d/save/CurrentSessionSave.hpp` directly and no longer includes `app/iggy3d/Operations.hpp` for current-session save.
+- Remaining `Operations.hpp` include users:
+  - Direct Operations-owned API users remain: `src/app/iggy3d/creative/CreativeWorldOperations.cpp`, `src/app/iggy3d/world/ProductSessionLaunch.cpp`, and `src/app/iggy3d/world/ProductNewWorldLaunch.cpp` for creative blank-stage / gameplay-launch cleanup wrappers; `src/app/iggy3d/Operations.cpp` for its own declarations.
+  - Existing non-E217 include users remain in `src/app/iggy3d/window/InputFrame.cpp` and several product tests; they do not call `writeProductCurrentSessionSave(...)` and were not chased because this card explicitly says not to widen into include cleanup.
+- Required grep classifications:
+  - `Operations.hpp`: no `writeProductCurrentSessionSave(...)` declaration remains.
+  - `Operations.cpp`: no current-session save helper definitions remain.
+  - `CurrentSessionSave.hpp/.cpp`: own the moved public declaration/definition and private recorder.
+- Receipt golden result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- Focused build/CTest results:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_creative_world_launch_tests product_starter_menu_action_tests product_window_input_frame_tests product_save_bridge_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_creative_world_launch_tests|product_starter_menu_action_tests|product_window_input_frame_tests|product_save_bridge_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 5/5.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card found no hits.
+- Confirmations:
+  - Creative blank-stage wrappers were not moved.
+  - Product new-world launch, product session launch/bootstrap operations, save/load session launch, save-slot browser/delete/recover operations, product world-template operations, creative world operations, save/load durable format, save catalog behavior, receipt keys/order/values, CMake test definitions, staging, commit, push, and window launch were not changed.
