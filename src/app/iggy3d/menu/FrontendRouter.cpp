@@ -381,14 +381,6 @@ ProductCreativeSurfaceKind productCreativeSurfaceKindForSource(
   return productCreativeSurfaceKindForWindow(frontend, window);
 }
 
-ProductActiveSurfaceFrame syncProductWindowInputOwnerFromActiveSurface(
-    const FrontendState& frontend,
-    ProductAppWindowState& window) {
-  const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
-      productActiveSurfaceContextForWindow(frontend, window));
-  return surface;
-}
-
 ProductFrontendOwnerDecision chooseProductFrontendOwner(
     const ProductFrontendRouteContext& context) {
   const FrontendState& frontend = context.frontend;

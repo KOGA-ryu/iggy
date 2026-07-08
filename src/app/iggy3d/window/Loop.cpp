@@ -135,7 +135,6 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
   const bool useVulkanRenderer =
       productWindowRendererUsesVulkan(request.options.renderer);
   window.presentPath.productVulkanRenderer.requested = useVulkanRenderer;
-  (void)syncProductWindowInputOwnerFromActiveSurface(request.frontend, window);
   // branch-gate: BG-1031
   if (!window.requested) {
     recordNoWindowMouseCapturePolicy(request.frontend, window,

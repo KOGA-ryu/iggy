@@ -48,7 +48,6 @@ void applyProductAutomationControl(ProductAutomationControlContext& context) {
     context.window.automationControl.lastResult = "none";
   }
   context.window.frontendShell.selectedSettingsTab = context.settingsTab;
-  syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
 }
 
 }  // namespace iggy3d

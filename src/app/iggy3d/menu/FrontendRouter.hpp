@@ -129,9 +129,6 @@ ProductCreativeSurfaceKind productCreativeSurfaceKindForSource(
     const FrontendState& frontend,
     const ProductAppWindowState& window,
     const creative::CreativeAppState* creativeApp);
-ProductActiveSurfaceFrame syncProductWindowInputOwnerFromActiveSurface(
-    const FrontendState& frontend,
-    ProductAppWindowState& window);
 
 ProductFrontendOwnerDecision chooseProductFrontendOwner(
     const ProductFrontendRouteContext& context);

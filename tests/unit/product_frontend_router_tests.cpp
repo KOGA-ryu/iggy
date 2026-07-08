@@ -742,7 +742,7 @@ bool windowOnlyCreativeModeKeepsRoomEditorSurface() {
                 "window-only creative mode keeps room editor owner");
 }
 
-bool inputOwnerCacheSyncUsesResolvedActiveSurface() {
+bool windowContextResolveMatchesExpectedActiveSurface() {
   struct CacheCase {
     iggy3d::FrontendScreen screen = iggy3d::FrontendScreen::Starter;
     iggy3d::FrontendScreen child = iggy3d::FrontendScreen::Gameplay;
@@ -801,8 +801,9 @@ bool inputOwnerCacheSyncUsesResolvedActiveSurface() {
     window.creativeAuthoring.roomEditing.ready = row.roomEditorReady;
 
     const iggy3d::ProductActiveSurfaceFrame surface =
-        iggy3d::syncProductWindowInputOwnerFromActiveSurface(frontend, window);
-    const std::string prefix = std::string(row.label) + " cache sync ";
+        iggy3d::resolveProductActiveSurface(
+            iggy3d::productActiveSurfaceContextForWindow(frontend, window));
+    const std::string prefix = std::string(row.label) + " window context ";
     ok = expect(surface.inputOwner == row.expectedOwner,
                 (prefix + "surface owner").c_str()) &&
          ok;
@@ -825,6 +826,6 @@ int main() {
                   activeSurfaceWindowContextPreservesLegacyGameplayGate() &&
                   creativeSurfaceClassifierSplitsDocumentFromLegacyMapMaker() &&
                   windowOnlyCreativeModeKeepsRoomEditorSurface() &&
-                  inputOwnerCacheSyncUsesResolvedActiveSurface();
+                  windowContextResolveMatchesExpectedActiveSurface();
   return ok ? 0 : 1;
 }

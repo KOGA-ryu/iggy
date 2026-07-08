@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -155,3 +155,50 @@ Report:
 - `git diff --check` and trailing-whitespace results;
 - confirmation that active-surface routing policy, receipt golden, CMake, and
   unrelated tests were not changed.
+
+## Completion Brief
+
+- Card moved to done: `/Users/kogaryu/iggy3d/docs/creative_mode/builder_tasks/done/E200-remove-stale-active-surface-sync-wrapper.md`
+- Files changed:
+  - `src/app/iggy3d/automation/AutomationControl.cpp`
+  - `src/app/iggy3d/automation/AutomationGameplay.cpp`
+  - `src/app/iggy3d/automation/AutomationRoomEditing.cpp`
+  - `src/app/iggy3d/window/InputFrame.cpp`
+  - `src/app/iggy3d/window/Loop.cpp`
+  - `src/app/iggy3d/menu/Transitions.cpp`
+  - `src/app/iggy3d/menu/ActionHandlers.cpp`
+  - `src/app/iggy3d/menu/FrontendRouter.hpp`
+  - `src/app/iggy3d/menu/FrontendRouter.cpp`
+  - `tests/unit/ProductActiveSurfaceTestSupport.hpp`
+  - `tests/unit/product_frontend_router_tests.cpp`
+  - `tests/unit/product_interaction_mode_state_tests.cpp`
+  - `docs/creative_mode/builder_tasks/done/E200-remove-stale-active-surface-sync-wrapper.md`
+- Production no-op calls removed:
+  - `AutomationControl.cpp`: `applyProductAutomationControl(...)`
+  - `AutomationGameplay.cpp`: `applyGameplayActionState(...)`, `applyGameplayJumpActionState(...)`
+  - `AutomationRoomEditing.cpp`: `recordProductRoomEditingLeave(...)`, editor automation command dispatch loop
+  - `InputFrame.cpp`: `applyProductWindowInputActionsImpl(...)`, `cancelProductRoomEditorPendingPreviewFromBack(...)`, `applyProductWindowEditorMousePickPreview(...)`
+  - `Loop.cpp`: `runProductWindowLoop(...)`
+  - `Transitions.cpp`: `applyReturnProductToTitleTransition(...)`, `initializeProductStarterTransition(...)`, `enterProductGameplayTransition(...)`, `openProductPauseTransition(...)`, `openProductPauseSettingsTransition(...)`, `openProductPauseDevToolsTransition(...)`, `closeProductOverlayToGameplayTransition(...)`
+  - `ActionHandlers.cpp`: `openStarterDevTools(...)`, `applyProductGameplayMapMakerToggleAction(...)`
+- Test/support direct resolver repoints:
+  - `ProductActiveSurfaceTestSupport.hpp::liveSurface(...)` now returns `resolveProductActiveSurface(productActiveSurfaceContextForWindow(frontend, window))`.
+  - `product_frontend_router_tests.cpp` direct sync call repointed to direct resolve; test renamed from `inputOwnerCacheSyncUsesResolvedActiveSurface()` to `windowContextResolveMatchesExpectedActiveSurface()`.
+  - `product_interaction_mode_state_tests.cpp` computes `surfaceAfterLeave` through direct resolve.
+- Stale helper deleted:
+  - Removed `syncProductWindowInputOwnerFromActiveSurface(...)` declaration from `FrontendRouter.hpp`.
+  - Removed `syncProductWindowInputOwnerFromActiveSurface(...)` definition from `FrontendRouter.cpp`.
+- Final stale-wrapper grep:
+  - `rg -n "syncProductWindowInputOwnerFromActiveSurface\\(" /Users/kogaryu/iggy3d/src/app/iggy3d /Users/kogaryu/iggy3d/tests/unit --glob '*.cpp' --glob '*.hpp'` returned no hits.
+- Build/CTest:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_frontend_router_tests product_menu_transitions_tests product_starter_menu_action_tests product_window_input_frame_tests product_interaction_mode_state_tests product_automation_dispatch_tests product_room_editor_action_controller_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_frontend_router_tests|product_menu_transitions_tests|product_starter_menu_action_tests|product_window_input_frame_tests|product_interaction_mode_state_tests|product_automation_dispatch_tests|product_room_editor_action_controller_tests)$' --output-on-failure` passed: 7/7.
+- Checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card passed.
+- Confirmations:
+  - Active-surface routing policy was not changed.
+  - `resolveProductActiveSurface(...)` and `productActiveSurfaceContextForWindow(...)` behavior was not changed.
+  - Receipt golden, CMake, and unrelated tests were not changed.
+- Concerns/deferred:
+  - None for this slice.

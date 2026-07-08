@@ -7,7 +7,8 @@ namespace iggy3d::test {
 
 inline ProductActiveSurfaceFrame liveSurface(const FrontendState& frontend,
                                              ProductAppWindowState& window) {
-  return syncProductWindowInputOwnerFromActiveSurface(frontend, window);
+  return resolveProductActiveSurface(
+      productActiveSurfaceContextForWindow(frontend, window));
 }
 
 }  // namespace iggy3d::test

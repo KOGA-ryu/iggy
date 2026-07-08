@@ -151,7 +151,6 @@ void applyReturnProductToTitleTransition(FrontendState& frontend,
   frontend.returnToTitleRequested = true;
   frontend.inputOwned = true;
   frontend.status = "returned_to_title";
-  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "return_to_title", "returned_to_title", false, true, false);
 }
 
@@ -166,7 +165,6 @@ void initializeProductStarterTransition(FrontendState& frontend,
       hasCompatibleSave ? FrontendAction::Continue : FrontendAction::NewWorld;
   frontend.status = "opening_menu_ready";
   frontend.inputOwned = true;
-  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "startup", "starter_ready", false, false, false);
 }
 
@@ -175,7 +173,6 @@ void enterProductGameplayTransition(FrontendState& frontend,
                                     FrontendAction launchAction) {
   enterFrontendGameplay(frontend, launchAction);
   frontend.status = "gameplay_active";
-  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "launch_gameplay", "gameplay_active", true, false, true);
 }
 
@@ -184,7 +181,6 @@ void openProductPauseTransition(FrontendState& frontend,
                                 FrontendAction selectedAction) {
   clearProductPauseOwnedTransientModes(window);
   openFrontendPause(frontend, selectedAction);
-  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "open_pause", "pause_ready", false, false,
                 window.gameplay.gameplayActive);
 }
@@ -198,7 +194,6 @@ void openProductPauseSettingsTransition(FrontendState& frontend,
   settingsTab = FrontendSettingsTab::Input;
   frontend.inputOwned = true;
   frontend.status = "pause_settings_selected";
-  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "open_settings", "settings_from_pause", false, false,
                 window.gameplay.gameplayActive);
 }
@@ -209,7 +204,6 @@ void openProductPauseDevToolsTransition(FrontendState& frontend,
   clearProductMenuOwnedTransientModes(window);
   openFrontendDevOverlay(frontend, category);
   frontend.status = "pause_dev_tools_selected";
-  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "open_dev_tools", "dev_overlay_from_pause", false, false,
                 window.gameplay.gameplayActive);
 }
@@ -217,7 +211,6 @@ void openProductPauseDevToolsTransition(FrontendState& frontend,
 void closeProductOverlayToGameplayTransition(FrontendState& frontend,
                                              ProductAppWindowState& window) {
   closeFrontendOverlayToGameplay(frontend);
-  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   setTransition(window, "resume_gameplay", "gameplay_resumed", true, false,
                 window.gameplay.gameplayActive);
 }

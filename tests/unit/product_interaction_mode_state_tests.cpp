@@ -105,7 +105,8 @@ bool roomEditingLeaveReturnsPlayerModeAndPreservesActiveRoom() {
   const bool left =
       iggy3d::recordProductRoomEditingLeave(frontend, window, "unit_leave_editor");
   const iggy3d::ProductActiveSurfaceFrame surfaceAfterLeave =
-      iggy3d::syncProductWindowInputOwnerFromActiveSurface(frontend, window);
+      iggy3d::resolveProductActiveSurface(
+          iggy3d::productActiveSurfaceContextForWindow(frontend, window));
 
   return expect(started.ok, "room editing start accepted for leave") &&
          expect(left, "room editing leave accepted") &&

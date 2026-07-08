@@ -124,6 +124,7 @@ void recordProductRoomEditingStart(ProductAppWindowState& window,
 bool recordProductRoomEditingLeave(const FrontendState& frontend,
                                    ProductAppWindowState& window,
                                    std::string_view operation) {
+  (void)frontend;
   window.creativeAuthoring.roomEditingLastOperation = std::string(operation);
   window.creativeAuthoring.roomEditingLastPrimitiveId = "none";
   if (!window.creativeAuthoring.roomEditing.ready) {  // branch-gate: BG-1006
@@ -146,7 +147,6 @@ bool recordProductRoomEditingLeave(const FrontendState& frontend,
       productRoomAuthoringInputSourceName(ProductRoomAuthoringInputSource::Script);
   window.creativeAuthoring.roomEditingLastOperationAccepted = true;
   window.inputDevice.interactionMode = ProductInteractionMode::Player;
-  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   window.creativeAuthoring.roomEditorCursorReady = false;
   window.creativeAuthoring.roomEditorStatus = "room_editor_not_ready";
   window.creativeAuthoring.roomEditorReasonCode = "room_editor_not_ready";
@@ -729,8 +729,6 @@ ProductAutomationExecutionResult applyProductRoomEditingAutomationCommand(
       lastOwner = routed.owner;
       context.window.inputDevice.lastInputAction = routed.action;
       context.window.inputDevice.lastInputAccepted = routed.accepted;
-      syncProductWindowInputOwnerFromActiveSurface(context.frontend,
-                                                  context.window);
       // branch-gate: BG-1006
       if (!routed.accepted || routed.owner != MenuOwner::Editor) {
         context.window.automationControl.status = "owner_unavailable";

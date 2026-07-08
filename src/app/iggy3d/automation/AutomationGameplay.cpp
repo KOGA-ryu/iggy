@@ -65,7 +65,6 @@ bool applyGameplayActionState(ProductAutomationGameplayContext& context,
   const InputRoutingResult routed = routeInputAction(routingContext, action);
   context.window.inputDevice.lastInputAction = routed.action;
   context.window.inputDevice.lastInputAccepted = routed.accepted;
-  syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
   // branch-gate: BG-1010
   if (!routed.accepted) {
     return false;
@@ -88,7 +87,6 @@ bool applyGameplayJumpActionState(ProductAutomationGameplayContext& context,
       routeInputAction(routingContext, InputAction::PlayerJump);
   context.window.inputDevice.lastInputAction = routed.action;
   context.window.inputDevice.lastInputAccepted = routed.accepted;
-  syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
   // branch-gate: BG-1010
   if (!routed.accepted) {
     return false;

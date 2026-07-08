@@ -421,7 +421,6 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
     const InputRoutingResult routed = routeInputAction(routingContext, entry.action);
     window.inputDevice.lastInputAction = routed.action;
     window.inputDevice.lastInputAccepted = routed.accepted;
-    syncProductWindowInputOwnerFromActiveSurface(frontend, window);
     // branch-gate: BG-1061
     if (routed.accepted && routed.owner == MenuOwner::Editor &&
         inputActionGroup(entry.action) == InputActionGroup::Editor) {
@@ -724,6 +723,7 @@ void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
 bool cancelProductRoomEditorPendingPreviewFromBack(
     const FrontendState& frontend,
     ProductAppWindowState& window) {
+  (void)frontend;
   // branch-gate: BG-1055
   if (!window.creativeAuthoring.roomEditing.ready || !window.creativeAuthoring.roomEditorPreview.active) {
     return false;
@@ -733,7 +733,6 @@ bool cancelProductRoomEditorPendingPreviewFromBack(
                                               InputAction::EditorCancelPreview);
   window.inputDevice.lastInputAction = InputAction::EditorCancelPreview;
   window.inputDevice.lastInputAccepted = cancelled.ok;
-  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
   return cancelled.ok;
 }
 
@@ -978,7 +977,6 @@ ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPre
   result.reasonCode = pickResult.reasonCode;
   context.window.inputDevice.lastInputAction = InputAction::EditorPreviewPlacement;
   context.window.inputDevice.lastInputAccepted = pickResult.ok;
-  syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
   recordProductRoomEditorActionResult(context.window,
                                       pickResult,
                                       "room_editor.mouse_pick");

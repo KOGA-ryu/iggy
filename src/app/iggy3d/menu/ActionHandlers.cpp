@@ -163,10 +163,10 @@ void closeStarterDevTools(FrontendState& frontend, ProductAppWindowState&) {
 }
 
 void openStarterDevTools(FrontendState& frontend, ProductAppWindowState& window) {
+  (void)window;
   frontend.childScreen = FrontendScreen::StarterDevTools;
   frontend.devToolsCategory = FrontendDevToolsCategory::Session;
   frontend.status = "opening_menu_dev_tools_selected";
-  syncProductWindowInputOwnerFromActiveSurface(frontend, window);
 }
 
 ProductMenuActionResult applyProductDevToggleMenuAction(
@@ -818,7 +818,6 @@ ProductMenuActionResult applyProductGameplayMapMakerToggleAction(
     // branch-gate: BG-1205
     context.window.inputDevice.interactionMode =
         enable ? ProductInteractionMode::Creative : ProductInteractionMode::Player;
-    syncProductWindowInputOwnerFromActiveSurface(context.frontend, context.window);
     // branch-gate: BG-1205
     context.window.viewport.mapMakerStatus =
         enable ? "map_maker_enabled" : "map_maker_disabled";
