@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E249-controller-split-g16a-action-phase-orchestration.md`
+1. `ready/E250-product-receipt-fields-table-drive-preflight.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E249-controller-split-g16a-action-phase-orchestration.md`
+1. `ready/E250-product-receipt-fields-table-drive-preflight.md`
 
 ## Parking Lot
 
@@ -174,7 +174,7 @@ Held — do NOT promote to `ready/` on a guess:
   `OpeningMenuHitTest`; E230 completed the final `OpeningMenuView` facade
   include cleanup.
 - `docs/refactor_targets.md` is the new current-HEAD effort-ranked refactor
-  backlog. `Controller.cpp` split target #2 is active: E231 preflighted the
+  backlog. `Controller.cpp` split target #2 is COMPLETE: E231 preflighted the
   current file shape, E232 extracted the first G1 kinematics helper, E233
   extracted the G2 movement proof/debug writer helpers, E234 extracted the G3
   ground-query helpers, E235 extracted a narrowed G4a jump/dash state helper,
@@ -187,6 +187,8 @@ Held — do NOT promote to `ready/` on a guess:
   dash-submit helper. E245 extracted the G12a move-submit helper. E246 extracted
   the G13a target-submit helper. E247 extracted the G14a reset-action helper.
   E248 extracted the G15a input-intent helper. E249 is released as a G16a
-  action-phase orchestration helper. Keep later controller
-  wall/jump/dash/traversal splits behind local slices rather than attempting
-  the whole file at once.
+  action-phase orchestration helper, leaving `Controller.cpp` as a tiny public
+  facade.
+- `docs/refactor_targets.md` target #1 receipt field boilerplate is active next.
+  E250 is released as a read-only preflight before any order-pinned receipt
+  table-driving implementation.
