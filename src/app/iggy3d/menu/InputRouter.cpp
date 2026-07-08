@@ -1,5 +1,6 @@
 #include "app/iggy3d/menu/InputRouter.hpp"
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 

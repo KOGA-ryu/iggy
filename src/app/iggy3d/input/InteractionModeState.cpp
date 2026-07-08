@@ -1,5 +1,6 @@
 #include "app/iggy3d/input/InteractionModeState.hpp"
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 
 namespace iggy3d {

@@ -4,6 +4,8 @@
 #include <iostream>
 #include <string_view>
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
+
 namespace {
 
 bool expect(bool condition, std::string_view message) {

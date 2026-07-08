@@ -5,7 +5,6 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/Options.hpp"
-#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputAction.hpp"
 #include "app/input/InputRouter.hpp"
@@ -13,6 +12,7 @@
 
 namespace iggy3d {
 
+struct ProductAppWindowState;
 struct ProductSaveBridgeResult;
 struct WorldSetupDraft;
 namespace creative {

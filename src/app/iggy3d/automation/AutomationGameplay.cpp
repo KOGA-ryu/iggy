@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "app/frontend/FrontendState.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"

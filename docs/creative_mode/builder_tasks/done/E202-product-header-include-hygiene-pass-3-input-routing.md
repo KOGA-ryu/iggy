@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -127,3 +127,54 @@ Report:
 - receipt golden diff result;
 - `git diff --check` and trailing-whitespace results;
 - confirmation that no signatures, behavior, CMake, or receipt fields changed.
+
+## Completion Brief
+
+- Card moved to done: `/Users/kogaryu/iggy3d/docs/creative_mode/builder_tasks/done/E202-product-header-include-hygiene-pass-3-input-routing.md`
+- Files changed:
+  - `src/app/iggy3d/menu/InputRouter.hpp`
+  - `src/app/iggy3d/menu/InputRouter.cpp`
+  - `src/app/iggy3d/input/ControllerActionRouting.hpp`
+  - `src/app/iggy3d/input/ControllerActionRouting.cpp`
+  - `src/app/iggy3d/input/InteractionModeState.hpp`
+  - `src/app/iggy3d/input/InteractionModeState.cpp`
+  - `src/app/iggy3d/automation/AutomationGameplay.cpp`
+  - `src/app/iggy3d/window/InputFrame.cpp`
+  - `tests/unit/product_interaction_mode_state_tests.cpp`
+  - `tests/unit/product_controller_action_routing_tests.cpp`
+  - `docs/creative_mode/builder_tasks/done/E202-product-header-include-hygiene-pass-3-input-routing.md`
+- Target headers forward-declared:
+  - `InputRouter.hpp` removed `#include "app/iggy3d/ProductAppWindowState.hpp"` and now forward-declares `struct ProductAppWindowState;`.
+  - `ControllerActionRouting.hpp` removed `#include "app/iggy3d/ProductAppWindowState.hpp"` and now forward-declares `struct ProductAppWindowState;`.
+  - `InteractionModeState.hpp` removed `#include "app/iggy3d/ProductAppWindowState.hpp"` and now forward-declares `struct ProductAppWindowState;`.
+- Incomplete-type confirmation:
+  - `InputRouter.hpp` uses `ProductAppWindowState` only as non-owning context members and function parameters by reference.
+  - `ControllerActionRouting.hpp` uses `ProductAppWindowState` only as a non-owning function parameter by reference.
+  - `InteractionModeState.hpp` uses `ProductAppWindowState` only as non-owning request members and function parameters by reference.
+- `.cpp` partners with direct full-type includes:
+  - `InputRouter.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` directly.
+  - `ControllerActionRouting.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` directly.
+  - `InteractionModeState.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` directly.
+- Fallout files given direct includes:
+  - `AutomationGameplay.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` because it reads/writes `context.window`.
+  - `InputFrame.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` because it reads/writes `window`.
+  - `product_controller_action_routing_tests.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` because it instantiates `ProductAppWindowState`.
+  - `product_interaction_mode_state_tests.cpp` now includes direct fixture dependencies: `Options.hpp`, `ProductAppWindowState.hpp`, `SaveBridge.hpp`, and `DefaultWorldTemplate.hpp`.
+- Direct includer count for `ProductAppWindowState.hpp`:
+  - Before: 62
+  - After: 66
+  - Count rose because three header includes were removed and seven concrete users now include the full type directly.
+- Focused build:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_window_input_frame_tests product_starter_menu_action_tests product_interaction_mode_state_tests product_controller_action_routing_tests product_automation_dispatch_tests product_receipt_key_order_tests -j10` passed.
+- Focused CTest:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_window_input_frame_tests|product_starter_menu_action_tests|product_interaction_mode_state_tests|product_controller_action_routing_tests|product_automation_dispatch_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 6/6.
+- Receipt golden diff:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card passed.
+- Confirmations:
+  - No function signatures changed.
+  - No function bodies, struct layouts, behavior, routing policy, receipt fields, CMake, or receipt golden changed.
+- Concerns/deferred:
+  - None for this slice.

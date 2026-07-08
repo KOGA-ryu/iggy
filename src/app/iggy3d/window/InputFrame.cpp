@@ -1,5 +1,6 @@
 #include "app/iggy3d/window/InputFrame.hpp"
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"

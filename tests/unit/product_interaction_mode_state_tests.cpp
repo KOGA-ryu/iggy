@@ -1,10 +1,14 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
+#include "app/iggy3d/Options.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
+#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 
 #include <array>
 #include <iostream>
