@@ -245,3 +245,45 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, CMake, tests, golden, staging, commit,
   push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Completed.
+
+Files changed:
+
+- `src/app/iggy3d/receipt/DebugHudFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E258-product-receipt-field-rows-g8-debug-hud.md`
+
+Implemented a file-local context and callback row table:
+
+- `DebugHudReceiptContext`
+- `DebugHudReceiptFieldRow`
+- `const std::array<DebugHudReceiptFieldRow, 27> kDebugHudReceiptFields`
+- `appendProductDebugHudFields(...)` now builds the context and iterates the ordered rows with `row.append(receipt, context, row.key)`.
+
+Row coverage:
+
+- Row count: 27
+- First key: `movement_debug_hud_visible`
+- Last key: `physics_debug_hud_has_warnings`
+- Procedural rows left behind: none
+
+Required grep classifications:
+
+- `DebugHudReceiptContext`, `DebugHudReceiptFieldRow`, and `kDebugHudReceiptFields` exist in `DebugHudFields.cpp`.
+- `appendProductDebugHudFields(...)` remains the only public appender in the file.
+- `appendReceiptField(...)` count is 27, all inside row callbacks.
+- No `ProductAppReceiptContext` was introduced.
+- No shared `ReceiptFieldRow` helper was introduced.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_receipt_key_order_tests -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_receipt_key_order_tests$' --output-on-failure` passed.
+- Direct oracle passed: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over `DebugHudFields.cpp` and this card passed.
+
+No shared helper, CMake edit, tests edit, golden edit, staging, commit, push, broad CTest, or window launch was performed.
