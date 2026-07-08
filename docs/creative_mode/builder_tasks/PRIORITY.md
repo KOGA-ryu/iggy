@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E265-product-receipt-field-rows-closeout-preflight.md`
+1. `ready/E266-iggy3d-creative-main-split-preflight.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E265-product-receipt-field-rows-closeout-preflight.md`
+1. `ready/E266-iggy3d-creative-main-split-preflight.md`
 
 ## Parking Lot
 
@@ -189,33 +189,15 @@ Held — do NOT promote to `ready/` on a guess:
   E248 extracted the G15a input-intent helper. E249 is released as a G16a
   action-phase orchestration helper, leaving `Controller.cpp` as a tiny public
   facade.
-- `docs/refactor_targets.md` target #1 receipt field boilerplate is active next.
-  E250 completed the read-only preflight and chose
-  `GameplaySceneStateFields.cpp` as the safest one-file pilot. E251 completed
-  G1 by table-driving only that section with no shared helper and no golden
-  change. E252 completed G2 by table-driving
-  `GameplayRuntimeMovementFields.cpp` with a file-local context and no golden
-  change. E253 completed G3 by table-driving `WorldAuthoringFields.cpp` with
-  no golden change. E254 completed G4 by table-driving
-  `FeedbackSurfaceAutomationVulkanFields.cpp` with a file-local context and no
-  golden change. E255 completed G5 by table-driving
-  `CreativePickWireframeFields.cpp` with a file-local context and no golden
-  change. E256 completed G6 by table-driving `StartupProbeFields.cpp` with a
-  file-local context and no golden change. E257 completed G7 by table-driving
-  `ActiveRoomFields.cpp` with a file-local context and no golden change. E258
-  completed G8 by table-driving `DebugHudFields.cpp` with a file-local context
-  and no golden change. E259 completed G9 by table-driving `TailFields.cpp`
-  with a file-local context and no golden change. E260 completed G10 by
-  table-driving `SaveStateFields.cpp` with a wider file-local context and no
-  golden change. E261 completed G11 by table-driving fixed rows in
-  `FrontendSettingsWindowFields.cpp` around the existing tuning descriptor loop.
-  E262 completed G12 by table-driving the fixed rows in
-  `CreativeUiFields.cpp`'s public appender while leaving command and baked-room
-  helper appenders procedural. E263 completed G13 by table-driving the fixed
-  creative UI command diagnostic helper rows while still leaving baked-room
-  refresh diagnostics procedural. E264 completed G14 by table-driving the
-  remaining baked-room refresh diagnostic fixed rows while preserving the
-  optional `clearedActiveRoom` branch as procedural. E265 is released as a
-  read-only closeout/preflight to classify the remaining append sites and decide
-  whether a shared receipt row helper is worth a follow-up, or whether the
-  receipt-boilerplate target should close.
+- `docs/refactor_targets.md` target #1 receipt field boilerplate is COMPLETE as
+  E250-E265. E250 completed the read-only preflight and chose
+  `GameplaySceneStateFields.cpp` as the safest one-file pilot. E251-E264
+  table-drove every safe direct/mixed receipt field section while preserving the
+  receipt golden. E265 closed the lane: the remaining append sites are dynamic,
+  optional, top-level result policy, or aggregation-only, so a shared row helper
+  is deferred and `ProductAppReceiptContext` remains unnecessary for target #1.
+- `docs/refactor_targets.md` target #3 `Extract iggy3d_creative main()` is
+  active next because target #2 `Controller.cpp` split is complete. E266 is
+  released as a read-only preflight to map the current `apps/iggy3d_creative/main.cpp`
+  frame-loop seams, verify the standalone/capture test surface, and choose the
+  safest first extraction slice before any source edit.
