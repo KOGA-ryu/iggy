@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E258-product-receipt-field-rows-g8-debug-hud.md`
+1. `ready/E259-product-receipt-field-rows-g9-tail-fields.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E258-product-receipt-field-rows-g8-debug-hud.md`
+1. `ready/E259-product-receipt-field-rows-g9-tail-fields.md`
 
 ## Parking Lot
 
@@ -203,5 +203,6 @@ Held — do NOT promote to `ready/` on a guess:
   change. E256 completed G6 by table-driving `StartupProbeFields.cpp` with a
   file-local context and no golden change. E257 completed G7 by table-driving
   `ActiveRoomFields.cpp` with a file-local context and no golden change. E258
-  is released as G8 for `DebugHudFields.cpp`, the next direct receipt row
-  candidate.
+  completed G8 by table-driving `DebugHudFields.cpp` with a file-local context
+  and no golden change. E259 is released as G9 for `TailFields.cpp`, the
+  smallest remaining direct receipt row candidate.
