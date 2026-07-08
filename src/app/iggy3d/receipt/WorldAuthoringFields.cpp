@@ -1,5 +1,7 @@
 #include "app/iggy3d/receipt/ReceiptFields.hpp"
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
+
 namespace iggy3d {
 
 void appendProductWorldAuthoringFields(RenderReceipt& receipt, const ProductAppWindowState& window) {

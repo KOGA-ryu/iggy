@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -112,3 +112,65 @@ Report:
 - `diff --check` and whitespace-scan results;
 - confirmation that no signatures, function bodies, struct layouts, receipt
   fields, CMake, or receipt golden changed.
+
+## Completion Brief
+
+- Card moved to done:
+  `/Users/kogaryu/iggy3d/docs/creative_mode/builder_tasks/done/E206-product-header-include-hygiene-pass-7-receipt-fields.md`
+- Target header forward-declared:
+  - `src/app/iggy3d/receipt/ReceiptFields.hpp` no longer includes
+    `app/iggy3d/ProductAppWindowState.hpp`.
+  - It now forward-declares `ProductAppWindowState`.
+  - It also forward-declares `ProductWorldTemplate`, which had been a hidden
+    transitive declaration from `ProductAppWindowState.hpp` and is also used
+    only by const reference in this header.
+- Incomplete-type confirmation:
+  - `ReceiptFields.hpp` uses `ProductAppWindowState` only as
+    `const ProductAppWindowState&` in receipt appender declarations.
+  - `ReceiptFields.hpp` uses `ProductWorldTemplate` only as
+    `const ProductWorldTemplate&` in the tail appender declaration.
+- `.cpp` files given direct full-type includes:
+  - `src/app/iggy3d/ReceiptBuilder.cpp`
+  - `src/app/iggy3d/receipt/CreativePickWireframeFields.cpp`
+  - `src/app/iggy3d/receipt/CreativeReceiptRecording.cpp`
+  - `src/app/iggy3d/receipt/CreativeUiFields.cpp`
+  - `src/app/iggy3d/receipt/DebugHudFields.cpp`
+  - `src/app/iggy3d/receipt/FeedbackSurfaceAutomationVulkanFields.cpp`
+  - `src/app/iggy3d/receipt/FrontendSettingsWindowFields.cpp`
+  - `src/app/iggy3d/receipt/GameplayRuntimeMovementFields.cpp`
+  - `src/app/iggy3d/receipt/GameplaySceneStateFields.cpp`
+  - `src/app/iggy3d/receipt/PhysicsReceiptRecording.cpp`
+  - `src/app/iggy3d/receipt/SaveStateFields.cpp`
+  - `src/app/iggy3d/receipt/StartupProbeFields.cpp`
+  - `src/app/iggy3d/receipt/TailFields.cpp`
+  - `src/app/iggy3d/receipt/WorldAuthoringFields.cpp`
+- Fallout files:
+  - None outside the expected receipt implementation set and
+    `ReceiptBuilder.cpp`.
+  - The first build exposed only the missing `ProductWorldTemplate` forward
+    declaration in the target header; no signature/body changes were needed.
+- Direct includer count for `ProductAppWindowState.hpp`:
+  - Before edit: 70
+  - After edit: 83
+  - The raw count rose because one transitive receipt header include was
+    replaced with explicit full-type includes in concrete implementation files
+    that dereference or mutate window state.
+- Focused build result:
+  - Passed:
+    `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_receipt_key_order_tests product_creative_ui_command_receipt_tests product_creative_ui_projection_receipt_tests product_creative_ui_frame_tests product_creative_ui_window_frame_tests product_vulkan_room_frame_tests product_movement_debug_hud_tests product_top_down_map_overlay_tests -j10`
+- Focused CTest result:
+  - Passed:
+    `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_receipt_key_order_tests|product_creative_ui_command_receipt_tests|product_creative_ui_projection_receipt_tests|product_creative_ui_frame_tests|product_creative_ui_window_frame_tests|product_vulkan_room_frame_tests|product_movement_debug_hud_tests|product_top_down_map_overlay_tests)$' --output-on-failure`
+  - Result: 8/8 tests passed.
+- Receipt golden diff result:
+  - Empty diff:
+    `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+- Checks:
+  - Passed: `git -C /Users/kogaryu/iggy3d diff --check`
+  - Focused trailing-whitespace scan over touched files and this card found no
+    matches.
+- Scope confirmation:
+  - No signatures, function bodies, struct layouts, receipt fields, CMake, or
+    receipt golden files were changed.
+- Concerns/deferred:
+  - None.

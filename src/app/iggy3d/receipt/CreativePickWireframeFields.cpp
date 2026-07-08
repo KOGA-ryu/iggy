@@ -5,6 +5,7 @@
 #include <string_view>
 #include <utility>
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/GameplayFeedback.hpp"
 #include "app/iggy3d/gameplay/MovementProof.hpp"
 #include "app/iggy3d/debug/MovementDebugHud.hpp"
