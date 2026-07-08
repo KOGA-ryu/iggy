@@ -168,3 +168,75 @@ Stop and report instead of widening scope if:
   golden output changes.
 - The new helper starts owning move-submit, target-submit, target query, or
   command-execution internals.
+
+## Completion Brief
+
+Status: Done.
+
+Files changed:
+
+- `CMakeLists.txt`
+- `src/app/iggy3d/gameplay/Controller.cpp`
+- `src/app/iggy3d/gameplay/ControllerDashActions.hpp`
+- `src/app/iggy3d/gameplay/ControllerDashActions.cpp`
+- this task card
+
+Exact API moved/added:
+
+- Moved `submitProductDash(...)` out of `Controller.cpp`.
+- Added `ControllerDashActions.hpp/.cpp`.
+- Exported:
+  `void submitProductDash(Session&, ProductAppWindowState&, float, float, std::string_view, const SpatialSurfaceSet*)`.
+
+Behavior preserved:
+
+- Target and outcome proof clearing remain before dash handling.
+- `gameplayInputUsed`, `gameplayInputSource`, and `gameplayDash.requested`
+  writes are unchanged.
+- Cooldown rejection still writes `cooldown` /
+  `gameplay_dash_cooldown`.
+- Missing-player rejection still writes `missing_player` /
+  `gameplay_dash_missing_player`.
+- Dash direction still comes from `productManualFirstPersonDirection(...)`
+  using viewport camera yaw.
+- Dash distance still uses `dashSpeedMetersPerSecond * dashDurationSeconds`.
+- Accepted dash status/reason, speed, distance, cooldown, direction, movement
+  profile, and max-speed fields are unchanged.
+- Move command payload still dispatches through
+  `submitProductGameplayCommand(...)`.
+
+Scope confirmation:
+
+- `applyProductDashPhase(...)` remains in `Controller.cpp` and retains the
+  only `submitProductDash(...)` call there.
+- `rejectProductDash(...)` remains owned by `ControllerJumpDashState.*`.
+- `advanceProductDashCooldown(...)` remains owned by
+  `ControllerJumpDashState.*` and is still called from the jump-timing phase.
+- Movement submit, target submit, input-intent sampling, phase orchestration,
+  command-execution internals, jump actions, reset handling, target querying,
+  receipt keys/order/values, CMake test definitions, staging, commit, push,
+  broad CTest, and window launch were not touched.
+
+Required grep classification:
+
+- `ControllerDashActions.hpp` contains the `submitProductDash(...)`
+  declaration.
+- `ControllerDashActions.cpp` contains the `submitProductDash(...)` definition
+  and calls `rejectProductDash(...)` for the existing rejection cases.
+- `Controller.cpp` contains `applyProductDashPhase(...)`, the single
+  `submitProductDash(...)` call in that phase, and the existing
+  `advanceProductDashCooldown(...)` call from jump timing.
+- Focused forbidden dependency grep over `ControllerDashActions.*` returned no
+  hits for move-submit, target-submit, target query, input intent, phase
+  orchestration, command-execution internals, or ledge-fall fallback symbols.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+  produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files and this card passed.
