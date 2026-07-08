@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E257-product-receipt-field-rows-g7-active-room.md`
+1. `ready/E258-product-receipt-field-rows-g8-debug-hud.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E257-product-receipt-field-rows-g7-active-room.md`
+1. `ready/E258-product-receipt-field-rows-g8-debug-hud.md`
 
 ## Parking Lot
 
@@ -201,5 +201,7 @@ Held — do NOT promote to `ready/` on a guess:
   golden change. E255 completed G5 by table-driving
   `CreativePickWireframeFields.cpp` with a file-local context and no golden
   change. E256 completed G6 by table-driving `StartupProbeFields.cpp` with a
-  file-local context and no golden change. E257 is released as G7 for
-  `ActiveRoomFields.cpp`, the next direct receipt row candidate.
+  file-local context and no golden change. E257 completed G7 by table-driving
+  `ActiveRoomFields.cpp` with a file-local context and no golden change. E258
+  is released as G8 for `DebugHudFields.cpp`, the next direct receipt row
+  candidate.
