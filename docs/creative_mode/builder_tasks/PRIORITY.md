@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E191-product-test-support-g2-receipt-helpers.md`
+1. `ready/E192-product-test-support-g3-active-surface-helper.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E191-product-test-support-g2-receipt-helpers.md`
+1. `ready/E192-product-test-support-g3-active-surface-helper.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -124,9 +124,10 @@ Held — do NOT promote to `ready/` on a guess:
   secondary/decorative colors.
 - Further include-hygiene passes (the remaining ~11 headers) after E125.
 - **Product test infrastructure**: E189 audited duplicated product-test helpers.
-  E190 added a header-only assertion/numeric helper over five tests. E191 is
-  the next narrow slice for receipt helpers only. Keep later slices separate:
-  active-surface helpers, temp-root/options helpers, then fixture-builder audit.
+  E190 added a header-only assertion/numeric helper over five tests. E191 added
+  receipt helpers for four creative UI receipt/frame tests. E192 is the next
+  narrow slice for the duplicated active-surface wrapper only. Keep later slices
+  separate: temp-root/options helpers, then fixture-builder audit.
 - `npc_vision_lab` stale training_room fixture + the "same room checked in 3×"
   duplication smell — needs a single-source-of-truth card.
 - Remaining complexity-audit roadmap items (`OpeningMenuView` split,
