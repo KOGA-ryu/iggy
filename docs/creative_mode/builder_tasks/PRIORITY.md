@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E179-runtime-state-hash-delete-rederive.md`
+1. `ready/E180-affordance-anchor-wire-strings.md`
 
 ## Tier 1: Correctness And Compatibility
 
-None currently ready.
+1. `ready/E180-affordance-anchor-wire-strings.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E179-runtime-state-hash-delete-rederive.md`
+None currently ready.
 
 ## Parking Lot
 
