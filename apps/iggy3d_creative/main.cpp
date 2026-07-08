@@ -58,6 +58,7 @@
 #include "render/debug/DebugHudText.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
+#include "CreativeEditorFrameInput.hpp"
 #include "CreativeRendererBootstrap.hpp"
 #include "CreativeEditorState.hpp"
 #include "StandaloneCaptureScenario.hpp"
@@ -90,7 +91,9 @@ using iggy3d_creative_app::captureFrameToPng;
 using iggy3d_creative_app::clearToBlankScene;
 using iggy3d_creative_app::clearUndoStack;
 using iggy3d_creative_app::createCreativeRenderer;
+using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::CreativeEditorState;
+using iggy3d_creative_app::CreativeEditorFrameInputResult;
 using iggy3d_creative_app::firstBrushKind;
 using iggy3d_creative_app::dispatchMoveReleaseWithUndo;
 using iggy3d_creative_app::GizmoAxis;
@@ -406,69 +409,17 @@ int main(int argc, char** argv) {
   // eight-object scene. The schedule, flags, ids, and snapshots live in the
   // capture script helper; main only executes the current frame's authored step.
 
-  constexpr float kMouseSensitivity = 0.12F;
-
   while (window.isOpen()) {
-    window.pollEvents();
-    if (window.eventState().quitRequested) {
+    const CreativeEditorFrameInputResult frameInput =
+        beginCreativeEditorFrameInput(window, *backend, editor);
+    if (!frameInput.keepRunning) {
       break;
     }
-    if (!window.isDrawable()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    if (frameInput.skipFrame) {
       continue;
     }
-
-    const SdlDrawableExtent extent = window.drawableExtent();
-    if (extent.width == 0U || extent.height == 0U) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(16));
-      continue;
-    }
-    if (extent.width != editor.lastWidth || extent.height != editor.lastHeight) {
-      RenderViewport viewport;
-      viewport.width = extent.width;
-      viewport.height = extent.height;
-      viewport.aspectRatio =
-          static_cast<float>(extent.width) / static_cast<float>(extent.height);
-      backend->resize(viewport);
-      editor.lastWidth = extent.width;
-      editor.lastHeight = extent.height;
-    }
-
-    // INPUT: keyboard (WASD move, Space/LCtrl up/down, LShift sprint) +
-    // relative mouse (look).
-    const bool* keys = SDL_GetKeyboardState(nullptr);
-    ProductCreativeFlyInput flyInput;
-    if (keys != nullptr) {
-      // Fly camera axes: direction = right*moveX + forward*moveY + up*moveZ.
-      // So moveX = strafe (A/D), moveY = forward/back (W/S), moveZ = up/down
-      // (Space/LCtrl).
-      const float moveX = (keys[SDL_SCANCODE_D] ? 1.0F : 0.0F) -
-                          (keys[SDL_SCANCODE_A] ? 1.0F : 0.0F);
-      const float moveY = (keys[SDL_SCANCODE_W] ? 1.0F : 0.0F) -
-                          (keys[SDL_SCANCODE_S] ? 1.0F : 0.0F);
-      const float moveZ = (keys[SDL_SCANCODE_SPACE] ? 1.0F : 0.0F) -
-                          (keys[SDL_SCANCODE_LCTRL] ? 1.0F : 0.0F);
-      flyInput.moveX = moveX;
-      flyInput.moveY = moveY;
-      flyInput.moveZ = moveZ;
-      flyInput.sprinting = keys[SDL_SCANCODE_LSHIFT];
-    }
-
-    float mouseDx = 0.0F;
-    float mouseDy = 0.0F;
-    SDL_GetRelativeMouseState(&mouseDx, &mouseDy);
-    editor.yawDegrees += mouseDx * kMouseSensitivity;
-    editor.pitchDegrees =
-        std::clamp(editor.pitchDegrees - mouseDy * kMouseSensitivity, -80.0F, 80.0F);
-    flyInput.cameraYawDegrees = editor.yawDegrees;
-    flyInput.cameraPitchDegrees = editor.pitchDegrees;
-
-    // CAMERA: advance the fly position.
-    const ProductCreativeFlyResult flyResult =
-        applyProductCreativeFlyInput(editor.flyConfig, flyInput, editor.flyPos);
-    if (flyResult.applied) {
-      editor.flyPos = flyResult.finalPositionMeters;
-    }
+    const SdlDrawableExtent extent = frameInput.extent;
+    const bool* keys = frameInput.keyboardState;
 
     // ---- TOOL SWITCH: '1' -> Select, '2' -> Move ------------------
     // Edge-triggered so a held key flips the active tool once. Driven ONLY

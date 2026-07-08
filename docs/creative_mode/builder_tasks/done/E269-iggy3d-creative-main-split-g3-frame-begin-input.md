@@ -297,3 +297,94 @@ Report:
   frame-stage move, tool-switch/save/load policy move, tests, receipt/golden
   files, broad CTest, interactive window launch, staging, commit, or push was
   performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/CreativeEditorFrameInput.hpp`
+- `apps/iggy3d_creative/CreativeEditorFrameInput.cpp`
+- `CMakeLists.txt`
+- this task card, moved to `done/`
+
+Helper API:
+
+```cpp
+namespace iggy3d_creative_app {
+
+struct CreativeEditorFrameInputResult {
+  bool keepRunning = true;
+  bool skipFrame = false;
+  iggy3d::SdlDrawableExtent extent{};
+  const bool* keyboardState = nullptr;
+};
+
+CreativeEditorFrameInputResult beginCreativeEditorFrameInput(
+    iggy3d::SdlWindow& window,
+    iggy3d::VulkanBackend& backend,
+    CreativeEditorState& editor);
+
+}  // namespace iggy3d_creative_app
+```
+
+Extraction summary:
+
+- Moved frame-begin event polling, quit check, drawable/zero-size sleeps,
+  resize handling, SDL frame-begin keyboard/mouse sampling, mouse sensitivity,
+  pitch clamp, fly input construction, and fly position update into
+  `CreativeEditorFrameInput.cpp`.
+- Kept the `while (window.isOpen())` loop in `main.cpp`.
+- Kept loop-control decisions in `main.cpp` through
+  `frameInput.keepRunning` and `frameInput.skipFrame`.
+- Returned `extent` and `keyboardState` explicitly and restored them in
+  `main.cpp` as `const SdlDrawableExtent extent` and `const bool* keys` for
+  downstream code.
+
+CMake:
+
+- Added `apps/iggy3d_creative/CreativeEditorFrameInput.cpp` to the
+  `iggy3d_creative` executable source list, directly after
+  `apps/iggy3d_creative/main.cpp`.
+- No other target source list was changed.
+
+Required grep classifications:
+
+- `CreativeEditorFrameInputResult` is declared in
+  `CreativeEditorFrameInput.hpp`.
+- `beginCreativeEditorFrameInput(...)` is declared in the header, defined in
+  `CreativeEditorFrameInput.cpp`, and called from `main.cpp`.
+- `window.pollEvents()`, drawable checks, resize handling, frame-begin
+  `SDL_GetKeyboardState(nullptr)`, `SDL_GetRelativeMouseState(...)`,
+  `kMouseSensitivity`, and `applyProductCreativeFlyInput(...)` live in
+  `CreativeEditorFrameInput.cpp`.
+- `main.cpp` retains the loop, `keepRunning`/`skipFrame` handling, and explicit
+  `extent`/`keys` locals. Remaining `SDL_GetKeyboardState(...)` hits in
+  `main.cpp` are later selection/place/move input branches left in place by
+  this card.
+- No `EditorFrame` or `runCreativeEditorFrame(...)` was introduced.
+- E268's `CreativeEditorState` remains the state shell.
+- E267's `appendStandaloneWireframeBoxEdges(...)` helper remains unchanged; no
+  old `appendWireframeBoxEdges(...)` helper was reintroduced.
+- `CreativeEditorFrameInput.cpp` appears only in the `iggy3d_creative`
+  executable source list.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan passed for touched source files,
+  `CMakeLists.txt`, and this card.
+
+Optional capture:
+
+- Skipped. No owner explicitly allowed a windowed/Vulkan capture check.
+
+Not performed:
+
+- No `EditorFrame`, `runCreativeEditorFrame(...)`, later frame-stage move,
+  tool-switch/save/load policy move, tests, receipt/golden edits, broad CTest,
+  interactive window launch, staging, commit, or push.
