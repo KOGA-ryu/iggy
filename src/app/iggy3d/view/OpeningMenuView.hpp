@@ -18,8 +18,6 @@
 #include "app/iggy3d/view/PrimitiveDrawList.hpp"
 #include "app/iggy3d/room_editor/Presentation.hpp"
 #include "app/iggy3d/Options.hpp"
-#include "app/iggy3d/menu/DrawList.hpp"
-#include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/debug/TopDownMapOverlay.hpp"
 #include "app/iggy3d/view/ViewportFraming.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
@@ -38,43 +36,6 @@ struct OpeningMenuViewState {
   bool cameraHeadingDrawn = false;
   unsigned int rowCount = 0;
 };
-
-enum class OpeningMenuHitArea {
-  None,
-  StarterAction,
-  SettingsTab,
-  DevToolsCategory,
-  NewWorldCreate,
-  NewWorldBack,
-  NewWorldPreviousDungeon,
-  NewWorldNextDungeon,
-  LoadSaveSlot,
-  LoadSaveLoad,
-  LoadSaveDelete,
-  LoadSaveBack,
-  DeleteConfirmConfirm,
-  DeleteConfirmBack,
-  SettingsBack,
-  DevToolsBack,
-};
-
-struct OpeningMenuHitTestResult {
-  bool hit = false;
-  OpeningMenuHitArea area = OpeningMenuHitArea::None;
-  FrontendAction action = FrontendAction::None;
-  FrontendSettingsTab settingsTab = FrontendSettingsTab::None;
-  FrontendDevToolsCategory devToolsCategory = FrontendDevToolsCategory::None;
-  std::size_t saveSlotIndex = 0;
-};
-
-// Takes the SAME ProductUiDrawListRequest the frame draw path builds (via
-// buildProductStarterUiDrawListRequest) so the hit regions it reads are provably
-// the ones that were drawn — the request cannot diverge between draw and hit-test.
-OpeningMenuHitTestResult openingMenuActionAt(const ProductUiDrawListRequest& request,
-                                             float x,
-                                             float y);
-ProductFrontendSurface openingMenuDetailSurfaceFor(
-    const FrontendState& frontend);
 
 #if defined(IGGY3D_HAS_SDL3)
 OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,

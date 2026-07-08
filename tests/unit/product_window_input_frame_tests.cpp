@@ -13,7 +13,7 @@
 #include "app/iggy3d/room_editor/EditingState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
-#include "app/iggy3d/view/OpeningMenuView.hpp"
+#include "app/iggy3d/view/OpeningMenuHitTest.hpp"
 #include "app/iggy3d/world/ProductNewWorldLaunch.hpp"
 #include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"

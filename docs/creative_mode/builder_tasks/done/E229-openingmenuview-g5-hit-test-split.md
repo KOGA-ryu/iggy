@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -212,3 +212,83 @@ When done, report:
 - confirmation that drawing behavior, input dispatch behavior after hit result,
   menu panels, debug HUD, scene primitives, SDL helpers, CMake test definitions,
   staging, commit, push, and window launch were not touched
+
+## Completion Brief
+
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/view/OpeningMenuView.hpp`
+  - `src/app/iggy3d/view/OpeningMenuView.cpp`
+  - `src/app/iggy3d/view/OpeningMenuHitTest.hpp`
+  - `src/app/iggy3d/view/OpeningMenuHitTest.cpp`
+  - `src/app/iggy3d/window/InputFrame.cpp`
+  - `tests/unit/product_window_input_frame_tests.cpp`
+  - this task card
+- Exact helper/API shape created:
+  - Added `OpeningMenuHitTest.hpp/.cpp` under `src/app/iggy3d/view/`.
+  - `OpeningMenuHitTest.hpp` owns:
+    - `OpeningMenuHitArea`
+    - `OpeningMenuHitTestResult`
+    - `openingMenuUsesPauseRows(const FrontendState&)`
+    - `openingMenuActionOrderForFrontend(const FrontendState&)`
+    - `openingMenuDetailSurfaceFor(const FrontendState&)`
+    - `openingMenuActionAt(const ProductUiDrawListRequest&, float, float)`
+  - `OpeningMenuHitTest.cpp` owns the moved hit-test implementation and keeps
+    `uiRectContains(...)`, `hitRegionActionAt(...)`, and
+    `pauseMenuActionAt(...)` file-local.
+- What stayed in `OpeningMenuView.hpp/.cpp`:
+  - `OpeningMenuView.hpp` now keeps only `OpeningMenuViewState` and
+    `drawOpeningMenuView(...)`.
+  - `OpeningMenuView.cpp` retains `menuTitleForFrontend(...)`,
+    `roundedDegrees(...)`, `drawGameplayPanel(...)`, and
+    `drawOpeningMenuView(...)`.
+  - `OpeningMenuView.cpp` now calls
+    `openingMenuUsesPauseRows(...)`,
+    `openingMenuActionOrderForFrontend(...)`, and
+    `openingMenuDetailSurfaceFor(...)` from `OpeningMenuHitTest.hpp`.
+- CMake source-list placement:
+  - `OpeningMenuHitTest.cpp` at line 87
+  - `OpeningMenuView.cpp` at line 88
+  - `MenuPanelsView.cpp` at line 89
+  - `DebugHudView.cpp` at line 90
+  - `ScenePrimitiveView.cpp` at line 91
+  - `SdlDraw.cpp` at line 92
+- Direct caller include updates:
+  - `src/app/iggy3d/window/InputFrame.cpp` now includes
+    `app/iggy3d/view/OpeningMenuHitTest.hpp`.
+  - `tests/unit/product_window_input_frame_tests.cpp` now includes
+    `app/iggy3d/view/OpeningMenuHitTest.hpp`.
+  - `src/app/iggy3d/window/FramePresenter.cpp` remains on
+    `app/iggy3d/view/OpeningMenuView.hpp`.
+  - `src/app/iggy3d/window/InputFrame.hpp` stayed on its existing forward
+    declaration and was not changed.
+- Required grep classification:
+  - Hit-test result types live only in `OpeningMenuHitTest.hpp`.
+  - Public hit-test functions live in `OpeningMenuHitTest.hpp/.cpp`.
+  - `uiRectContains(...)`, `hitRegionActionAt(...)`, and
+    `pauseMenuActionAt(...)` are file-local in `OpeningMenuHitTest.cpp`.
+  - `OpeningMenuView.hpp` no longer exposes hit-test types or functions.
+  - `OpeningMenuView.cpp` retains `drawGameplayPanel(...)` and
+    `drawOpeningMenuView(...)`, and calls the shared row helper names only.
+  - `InputFrame.cpp` and `product_window_input_frame_tests.cpp` include/use
+    `OpeningMenuHitTest.hpp`.
+  - `CMakeLists.txt` includes `OpeningMenuHitTest.cpp` near the other view split
+    files.
+- Focused build result:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_window_input_frame_tests product_starter_menu_action_tests product_menu_transitions_tests product_primitive_draw_list_tests product_render_bridge_tests product_receipt_key_order_tests -j10`
+    passed.
+- Focused CTest result:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_window_input_frame_tests|product_starter_menu_action_tests|product_menu_transitions_tests|product_primitive_draw_list_tests|product_render_bridge_tests|product_receipt_key_order_tests)$' --output-on-failure`
+    passed, 6/6 tests.
+- Receipt golden diff result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+    was empty.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card was
+    clean.
+- Confirmation:
+  - Drawing behavior, input dispatch behavior after hit result, menu panels,
+    debug HUD, scene primitives, SDL helpers, CMake test definitions, receipt
+    golden, staging, commit, push, broad CTest, and window launch were not
+    touched/performed.
