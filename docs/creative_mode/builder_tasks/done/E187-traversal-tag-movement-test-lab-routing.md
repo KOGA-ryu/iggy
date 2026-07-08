@@ -106,3 +106,41 @@ Completion brief must include:
 - confirmation that movement slot construction, clamber fallback policy,
   RoomAsset/ASCII serialization, traversal catalog values, ProductAppWindowState,
   and renderer/Vulkan were not changed
+
+## Completion Brief
+
+Files changed:
+- `src/app/iggy3d/world/MovementTestLab.cpp`
+- `docs/creative_mode/builder_tasks/ready/E187-traversal-tag-movement-test-lab-routing.md` moved to `done/` after this brief
+
+How MovementTestLab now obtains durable `clamber`:
+- `MovementTestLab.cpp` now includes `content/assets/TraversalTag.hpp`.
+- `MovementLabObjectKindDescriptor` carries an optional durable `TraversalTag`.
+- `MovementLabObjectKind::Ledge` keeps local movement-lab tag `ledge`, then appends `traversalTagId(TraversalTag::Clamber)` in `traversalTagsFor(...)`.
+
+Generated output:
+- Traversal tag order is unchanged for ledge objects: `object`, `prop`, `movement_lab`, lane id, `ledge`, `clamber`.
+- Gameplay tags remain byte-identical because `authoredObjectFrom(...)` still copies `traversalTags` into `gameplayTags`.
+
+Remaining raw traversal-like literals in `MovementTestLab.cpp`:
+- `movement_clamber_ledge_proxy` remains as an asset/material id for the movement-lab ledge proxy, not a traversal payload.
+- No raw `"clamber"` traversal payload literal remains.
+
+Tests/checks run:
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_ascii_package_smoke product_gameplay_controls_smoke movement_traversal_slots_tests movement_traversal_tests traversal_tag_catalog_tests -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_ascii_package_smoke|product_gameplay_controls_smoke|movement_traversal_slots_tests|movement_traversal_tests|traversal_tag_catalog_tests)$' --output-on-failure` passed, 5/5.
+- Extra focused proof: `cmake --build /Users/kogaryu/iggy3d/build --target product_builtin_dungeon_tests -j10 && ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_builtin_dungeon_tests$' --output-on-failure` passed, 1/1. This is the existing direct guard for the movement-test-lab ledge clamber tag.
+- `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files passed.
+
+Receipt golden result:
+- Byte/order/value stable: `1032 fields match golden`.
+
+Confirmation:
+- Movement slot construction was not changed.
+- Clamber fallback policy was not changed.
+- RoomAsset/ASCII serialization was not changed.
+- Traversal catalog values were not changed.
+- ProductAppWindowState was not changed.
+- Renderer/Vulkan code was not changed.

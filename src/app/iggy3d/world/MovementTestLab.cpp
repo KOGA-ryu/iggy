@@ -6,6 +6,8 @@
 #include <string_view>
 #include <vector>
 
+#include "content/assets/TraversalTag.hpp"
+
 namespace iggy3d {
 namespace {
 
@@ -34,17 +36,19 @@ struct MovementLabObjectSpec {
 struct MovementLabObjectKindDescriptor {
   std::array<std::string_view, 2> tags;
   std::size_t tagCount = 0U;
+  TraversalTag durableTraversalTag = TraversalTag::Walkable;
+  bool hasDurableTraversalTag = false;
   bool blocksMovement = false;
 };
 
 constexpr std::array<MovementLabObjectKindDescriptor, kMovementLabObjectKindCount>
     kObjectKindDescriptors{{
-        {{{"marker", ""}}, 1U, false},
-        {{{"platform", ""}}, 1U, true},
-        {{{"wall_run", ""}}, 1U, true},
-        {{{"collision_slide", ""}}, 1U, true},
-        {{{"snag", "crate"}}, 2U, true},
-        {{{"ledge", "clamber"}}, 2U, true},
+        {{{"marker", ""}}, 1U, TraversalTag::Walkable, false, false},
+        {{{"platform", ""}}, 1U, TraversalTag::Walkable, false, true},
+        {{{"wall_run", ""}}, 1U, TraversalTag::Walkable, false, true},
+        {{{"collision_slide", ""}}, 1U, TraversalTag::Walkable, false, true},
+        {{{"snag", "crate"}}, 2U, TraversalTag::Walkable, false, true},
+        {{{"ledge", ""}}, 1U, TraversalTag::Clamber, true, true},
     }};
 
 constexpr std::array<MovementLabObjectSpec, 22> kMovementLabObjects{{
@@ -129,6 +133,9 @@ std::vector<std::string> traversalTagsFor(const MovementLabObjectSpec& spec) {
                                 std::string(spec.laneId)};
   for (std::size_t index = 0U; index < descriptor.tagCount; ++index) {
     tags.emplace_back(descriptor.tags[index]);
+  }
+  if (descriptor.hasDurableTraversalTag) {
+    tags.emplace_back(traversalTagId(descriptor.durableTraversalTag));
   }
   return tags;
 }
