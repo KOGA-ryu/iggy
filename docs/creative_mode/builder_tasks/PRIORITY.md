@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E242-controller-split-g9a-jump-actions.md`
+1. `ready/E243-controller-split-g10a-command-execution.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E242-controller-split-g9a-jump-actions.md`
+1. `ready/E243-controller-split-g10a-command-execution.md`
 
 ## Parking Lot
 
@@ -182,7 +182,7 @@ Held — do NOT promote to `ready/` on a guess:
   extracted as a G5b wall-run evaluation/publishing helper. E238 extracted the
   G6a traversal proof-writer helper. E239 extracted the G7a player/session
   access helper. E240 extracted the G7b reset/fall helper. E241 extracted the
-  G8a target/outcome proof helper. E242 is released as a G9a jump-actions
-  extraction. Keep later controller
+  G8a target/outcome proof helper. E242 extracted the G9a jump-actions helper.
+  E243 is released as a G10a command-execution extraction. Keep later controller
   wall/jump/dash/traversal splits behind local slices rather than attempting
   the whole file at once.
