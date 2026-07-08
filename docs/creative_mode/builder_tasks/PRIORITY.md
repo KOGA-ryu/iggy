@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E224-openingmenuview-split-preflight.md`
+1. `ready/E225-openingmenuview-g1-sdldraw-helper-extraction.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E224-openingmenuview-split-preflight.md`
+1. `ready/E225-openingmenuview-g1-sdldraw-helper-extraction.md`
 
 ## Parking Lot
 
@@ -168,5 +168,6 @@ Held — do NOT promote to `ready/` on a guess:
   Note: the audit's object-kind switch cleanup item is stale in the current tree;
   `CreativeObjectKind` `toString(...)` and `allowedMutations(...)` already route
   through descriptor helpers.
-- `OpeningMenuView` split is released as E224 for a read-only split preflight;
-  see `docs/complexity_audit_v0_1.md` section 3.
+- `OpeningMenuView` split preflight is COMPLETE as E224. E225 is released as
+  G1 and should extract only the SDL glyph/draw helper block into `SdlDraw`
+  before any scene, HUD, menu-panel, or hit-test split.
