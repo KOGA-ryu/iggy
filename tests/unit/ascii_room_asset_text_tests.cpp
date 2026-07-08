@@ -10,6 +10,8 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -100,6 +102,76 @@ bool vecNear(const iggy3d::Vec3& lhs, const iggy3d::Vec3& rhs) {
   return near(lhs.x, rhs.x) && near(lhs.y, rhs.y) && near(lhs.z, rhs.z);
 }
 
+std::size_t countOccurrences(std::string_view haystack, std::string_view needle) {
+  std::size_t count = 0;
+  std::size_t offset = 0;
+  while ((offset = haystack.find(needle, offset)) != std::string_view::npos) {
+    ++count;
+    offset += needle.size();
+  }
+  return count;
+}
+
+iggy3d::RoomSpatialSurface exportSurface(
+    std::string id,
+    iggy3d::RoomSpatialSurfaceRole role,
+    iggy3d::RoomSpatialSurfaceShape shape,
+    std::vector<std::string> traversalTags) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::move(id);
+  surface.sourceStaticMeshId = "mesh";
+  surface.shape = shape;
+  surface.role = role;
+  surface.pointsMeters = {{0.0F, 0.0F, 0.0F},
+                          {1.0F, 0.0F, 0.0F},
+                          {1.0F, 0.0F, 1.0F},
+                          {0.0F, 0.0F, 1.0F}};
+  surface.normal = {0.0F, 1.0F, 0.0F};
+  surface.traversalTags = std::move(traversalTags);
+  surface.collisionMask = {"actor"};
+  surface.runtimeOwnerStableName = surface.id;
+  return surface;
+}
+
+iggy3d::RoomAsset buildTraversalTagExportRoom() {
+  iggy3d::RoomAsset room;
+  room.id = "tag_export_room";
+  room.units = "m";
+  room.source = "test";
+  room.sourceFile = "tag_export_room";
+  room.sourceSubset = "unit";
+  iggy3d::RoomStaticMeshAsset mesh;
+  mesh.id = "mesh";
+  mesh.meshId = "mesh";
+  mesh.materialId = "material";
+  mesh.role = "floor";
+  mesh.positionMeters = {0.0F, 0.0F, 0.0F};
+  mesh.sizeMeters = {1.0F, 1.0F, 1.0F};
+  room.staticMeshes.push_back(mesh);
+  room.anchors.push_back({"spawn", "spawn", "spawn", {0.0F, 0.0F, 0.0F}});
+  room.spatialSurfaces.push_back(exportSurface(
+      "walk_surface",
+      iggy3d::RoomSpatialSurfaceRole::Walkable,
+      iggy3d::RoomSpatialSurfaceShape::Plane,
+      {"clamber", "walkable", "magic", "vault"}));
+  room.spatialSurfaces.push_back(exportSurface(
+      "block_surface",
+      iggy3d::RoomSpatialSurfaceRole::Blocker,
+      iggy3d::RoomSpatialSurfaceShape::Box,
+      {"debug_only", "blocker"}));
+  room.spatialSurfaces.push_back(exportSurface(
+      "projectile_surface",
+      iggy3d::RoomSpatialSurfaceRole::ProjectileBlocker,
+      iggy3d::RoomSpatialSurfaceShape::Plane,
+      {"wire_walk", "projectile_blocker"}));
+  room.spatialSurfaces.push_back(exportSurface(
+      "opening_surface",
+      iggy3d::RoomSpatialSurfaceRole::Opening,
+      iggy3d::RoomSpatialSurfaceShape::Opening,
+      {"no_player", "opening"}));
+  return room;
+}
+
 bool fixtureExportsAndParsesBack() {
   const iggy3d::RoomAsset original = buildFixtureRoomAsset();
   const iggy3d::AsciiRoomAssetTextResult written =
@@ -182,6 +254,29 @@ bool fixtureExportsAndParsesBack() {
                 "projectile parsed count");
 }
 
+bool traversalTagExportPreservesRoleFirstOrderAndDedup() {
+  const iggy3d::AsciiRoomAssetTextResult written =
+      iggy3d::writeAsciiRoomAssetText(buildTraversalTagExportRoom());
+
+  return expect(written.ok, "tag export write ok") &&
+         expect(countOccurrences(written.text, "traversal_tags = ") == 4U,
+                "tag export surface count") &&
+         expect(contains(written.text,
+                         "traversal_tags = [\"walkable\", \"clamber\", \"vault\"]"),
+                "walkable role tag first with input order") &&
+         expect(contains(written.text,
+                         "traversal_tags = [\"blocker\", \"debug_only\"]"),
+                "blocker role tag first deduped") &&
+         expect(contains(
+                    written.text,
+                    "traversal_tags = [\"projectile_blocker\", \"wire_walk\"]"),
+                "projectile role tag first deduped") &&
+         expect(contains(written.text,
+                         "traversal_tags = [\"opening\", \"no_player\"]"),
+                "opening role tag first deduped") &&
+         expect(!contains(written.text, "magic"), "unknown traversal tag omitted");
+}
+
 bool invalidInputRejects() {
   iggy3d::RoomAsset valid = buildFixtureRoomAsset();
 
@@ -229,6 +324,7 @@ bool invalidInputRejects() {
 int main() {
   bool ok = true;
   ok = fixtureExportsAndParsesBack() && ok;
+  ok = traversalTagExportPreservesRoleFirstOrderAndDedup() && ok;
   ok = invalidInputRejects() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

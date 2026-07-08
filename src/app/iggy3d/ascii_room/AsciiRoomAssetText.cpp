@@ -133,6 +133,10 @@ bool contains(const std::vector<std::string>& values, std::string_view expected)
   return false;
 }
 
+std::string tagString(TraversalTag tag) {
+  return std::string(traversalTagId(tag));
+}
+
 std::vector<std::string> traversalTagsForExport(const RoomSpatialSurface& surface) {
   std::vector<std::string> tags;
   const auto append = [&tags](std::string value) {
@@ -141,13 +145,13 @@ std::vector<std::string> traversalTagsForExport(const RoomSpatialSurface& surfac
     }
   };
   if (surface.role == RoomSpatialSurfaceRole::Walkable) {
-    append("walkable");
+    append(tagString(TraversalTag::Walkable));
   } else if (surface.role == RoomSpatialSurfaceRole::Blocker) {
-    append("blocker");
+    append(tagString(TraversalTag::Blocker));
   } else if (surface.role == RoomSpatialSurfaceRole::ProjectileBlocker) {
-    append("projectile_blocker");
+    append(tagString(TraversalTag::ProjectileBlocker));
   } else if (surface.role == RoomSpatialSurfaceRole::Opening) {
-    append("opening");
+    append(tagString(TraversalTag::Opening));
   }
   for (const std::string& tag : surface.traversalTags) {
     if (validTraversalTag(tag)) {

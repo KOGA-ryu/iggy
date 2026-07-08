@@ -100,3 +100,41 @@ Completion brief must include:
 - confirmation that role names, shape names, parser strings, RoomAsset
   validation, movement parsing, collision role strings, ProductAppWindowState,
   and renderer/Vulkan were not changed
+
+## Completion Brief
+
+- Files changed:
+  - `src/app/iggy3d/ascii_room/AsciiRoomAssetText.cpp`
+  - `tests/unit/ascii_room_asset_text_tests.cpp`
+  - `docs/creative_mode/builder_tasks/ready/E183-traversal-tag-ascii-asset-text-export-routing.md` moved to `docs/creative_mode/builder_tasks/done/E183-traversal-tag-ascii-asset-text-export-routing.md`
+- ASCII asset text export insertions now using `TraversalTag`:
+  - `RoomSpatialSurfaceRole::Walkable` inserts `TraversalTag::Walkable`
+  - `RoomSpatialSurfaceRole::Blocker` inserts `TraversalTag::Blocker`
+  - `RoomSpatialSurfaceRole::ProjectileBlocker` inserts `TraversalTag::ProjectileBlocker`
+  - `RoomSpatialSurfaceRole::Opening` inserts `TraversalTag::Opening`
+  - the inserted payload strings come from `traversalTagId(...)`
+- Export order/dedup behavior:
+  - unchanged by policy
+  - role-derived required tag still exports first
+  - valid input traversal tags still follow in input order
+  - duplicate role tags are still deduped
+  - unknown/non-catalog tags are still omitted
+- Proof added:
+  - `ascii_room_asset_text_tests` now builds a four-surface export fixture and pins exact `traversal_tags` output for walkable, blocker, projectile blocker, and opening roles
+  - the test covers required-tag-first ordering, input-order preservation, duplicate suppression, and unknown tag omission
+- Remaining raw traversal-like literals in `AsciiRoomAssetText.cpp`:
+  - `shapeName(...)`: `"opening"` remains a serialized shape-name output literal
+  - `roleName(...)`: `"walkable"`, `"blocker"`, `"projectile_blocker"`, and `"opening"` remain serialized role-name output literals
+  - `roleName(...)` fallback `"walkable"` remains the existing serialized role-name fallback
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d ascii_room_asset_text_tests ascii_room_asset_text_fixture_tests room_asset_loader_tests traversal_tag_catalog_tests product_ascii_room_activation_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(ascii_room_asset_text_tests|ascii_room_asset_text_fixture_tests|room_asset_loader_tests|traversal_tag_catalog_tests|product_ascii_room_activation_tests)$' --output-on-failure`
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests`
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - focused trailing-whitespace scan over touched files
+- Receipt golden result:
+  - `receipt key-order oracle: 1032 fields match golden (order + values)`
+- Scope confirmation:
+  - role names, shape names, parser strings, `RoomAsset` validation, movement parsing, collision role strings, `ProductAppWindowState`, and renderer/Vulkan were not changed
+- Concerns/deferred:
+  - full CTest was not run; this stayed within the single exporter file plus focused tests
