@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E239-controller-split-g7a-player-session-access.md`
+1. `ready/E240-controller-split-g7b-reset-fall-helpers.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E239-controller-split-g7a-player-session-access.md`
+1. `ready/E240-controller-split-g7b-reset-fall-helpers.md`
 
 ## Parking Lot
 
@@ -180,7 +180,8 @@ Held — do NOT promote to `ready/` on a guess:
   ground-query helpers, E235 extracted a narrowed G4a jump/dash state helper,
   E236 extracted a G5a wall-surface query/direction helper, and E237 is
   extracted as a G5b wall-run evaluation/publishing helper. E238 extracted the
-  G6a traversal proof-writer helper. E239 is released as a G7a player/session
-  access helper extraction. Keep later controller
+  G6a traversal proof-writer helper. E239 extracted the G7a player/session
+  access helper. E240 is released as a G7b reset/fall helper extraction. Keep
+  later controller
   wall/jump/dash/traversal splits behind local slices rather than attempting
   the whole file at once.
