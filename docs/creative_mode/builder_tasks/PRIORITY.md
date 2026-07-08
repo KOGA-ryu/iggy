@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E210-operations-split-g1-creative-baked-room-refresh.md`
+1. `ready/E211-operations-split-g2-save-slot-operations.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E210-operations-split-g1-creative-baked-room-refresh.md`
+1. `ready/E211-operations-split-g2-save-slot-operations.md`
 
 ## Parking Lot
 
@@ -146,6 +146,7 @@ Held — do NOT promote to `ready/` on a guess:
   the stale helper.
 - Remaining complexity-audit roadmap items: `E209` completed the read-only
   preflight for `Operations.cpp` seam split after identity-mirror removal.
-  `E210` is released as G1, extracting only the creative baked active-room
-  refresh service. `OpeningMenuView` split remains parked; see
+  `E210` completed G1 by extracting only the creative baked active-room refresh
+  service. `E211` is released as G2 for the save-slot browser/delete/recover
+  operations. `OpeningMenuView` split remains parked; see
   `docs/complexity_audit_v0_1.md` §3.
