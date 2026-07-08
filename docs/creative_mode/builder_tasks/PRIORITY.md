@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E214-operations-split-g4a-product-world-template-resolution.md`
+1. `ready/E215-operations-split-g4b-product-save-load-session-launch.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E214-operations-split-g4a-product-world-template-resolution.md`
+1. `ready/E215-operations-split-g4b-product-save-load-session-launch.md`
 
 ## Parking Lot
 
@@ -150,8 +150,9 @@ Held — do NOT promote to `ready/` on a guess:
   service. `E211` completed G2 by extracting the save-slot
   browser/delete/recover operations. `E212` completed G3 by extracting creative
   world launch/open/save operations. `E213` completed G4 read-only preflight for
-  remaining product session/world launch coupling. `E214` is released as G4a to
-  extract only product package-path/world-template resolution before save/load
-  session launch work.
+  remaining product session/world launch coupling. `E214` completed G4a by
+  extracting only product package-path/world-template resolution. `E215` is
+  released as G4b to extract product save/load session launch without moving
+  product new-world or current-session save/write behavior.
   `OpeningMenuView` split remains parked; see
   `docs/complexity_audit_v0_1.md` §3.
