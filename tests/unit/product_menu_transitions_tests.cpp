@@ -1,5 +1,6 @@
 #include "ProductActiveSurfaceTestSupport.hpp"
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"

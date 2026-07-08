@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -109,3 +109,56 @@ Report:
 - `diff --check` and whitespace-scan results;
 - confirmation that no helper signatures, helper behavior, receipt fields,
   CMake, production source, or receipt golden changed.
+
+## Completion Brief
+
+- Card moved to done:
+  `/Users/kogaryu/iggy3d/docs/creative_mode/builder_tasks/done/E207-product-test-support-include-hygiene.md`
+- Target test support headers forward-declared:
+  - `tests/unit/ProductActiveSurfaceTestSupport.hpp` no longer includes
+    `app/iggy3d/ProductAppWindowState.hpp` and now forward-declares
+    `ProductAppWindowState`.
+  - `tests/unit/ProductReceiptTestSupport.hpp` no longer includes
+    `app/iggy3d/ProductAppWindowState.hpp` and now forward-declares
+    `ProductAppWindowState`.
+- Incomplete-type confirmation:
+  - `ProductActiveSurfaceTestSupport.hpp` uses `ProductAppWindowState` only as
+    a non-owning reference passed to `productActiveSurfaceContextForWindow(...)`
+    and `resolveProductActiveSurface(...)`.
+  - `ProductReceiptTestSupport.hpp` uses `ProductAppWindowState` only as
+    `const ProductAppWindowState&` passed to `buildProductAppReceipt(...)`.
+- Fallout test files given direct full-type includes:
+  - `tests/unit/product_menu_transitions_tests.cpp` mutates
+    `ProductAppWindowState` fields and now includes the full type directly.
+  - `tests/unit/product_starter_menu_action_tests.cpp` stores
+    `ProductAppWindowState` in a harness and now includes the full type
+    directly.
+- Direct includer count for `ProductAppWindowState.hpp`:
+  - Before edit: 83
+  - After edit: 83
+  - The count stayed flat because two support-header includes were removed and
+    two concrete test owners now include the full type directly.
+- `ProductAsciiRoomWindowTestSupport.hpp` confirmation:
+  - Unchanged. It constructs and writes `ProductAppWindowState`, so it still
+    owns the complete-type include.
+- Focused build result:
+  - Passed:
+    `cmake --build /Users/kogaryu/iggy3d/build --target product_menu_transitions_tests product_starter_menu_action_tests product_window_input_frame_tests product_frontend_router_tests product_creative_ui_command_receipt_tests product_creative_ui_projection_receipt_tests product_creative_ui_frame_tests product_creative_ui_window_frame_tests product_receipt_key_order_tests -j10`
+- Focused CTest result:
+  - Passed:
+    `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_menu_transitions_tests|product_starter_menu_action_tests|product_window_input_frame_tests|product_frontend_router_tests|product_creative_ui_command_receipt_tests|product_creative_ui_projection_receipt_tests|product_creative_ui_frame_tests|product_creative_ui_window_frame_tests|product_receipt_key_order_tests)$' --output-on-failure`
+  - Result: 9/9 tests passed.
+- Receipt golden diff result:
+  - Empty diff:
+    `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+- Checks:
+  - Required target-header grep returned no
+    `ProductAppWindowState.hpp` hits in the two support headers.
+  - Passed: `git -C /Users/kogaryu/iggy3d diff --check`
+  - Focused trailing-whitespace scan over touched files and this card found no
+    matches.
+- Scope confirmation:
+  - No helper signatures, helper behavior, receipt fields, CMake, production
+    source, or receipt golden files were changed.
+- Concerns/deferred:
+  - None.

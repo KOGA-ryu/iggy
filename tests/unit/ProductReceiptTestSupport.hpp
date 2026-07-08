@@ -4,7 +4,6 @@
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/Options.hpp"
-#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
@@ -15,6 +14,10 @@
 #include <initializer_list>
 #include <string>
 #include <string_view>
+
+namespace iggy3d {
+struct ProductAppWindowState;
+}
 
 namespace iggy3d::test {
 
