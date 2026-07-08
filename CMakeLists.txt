@@ -105,6 +105,7 @@ target_sources(iggy3d
     src/app/iggy3d/ascii_room/Package.cpp
     src/app/iggy3d/ascii_room/Preview.cpp
     src/app/iggy3d/gameplay/Controller.cpp
+    src/app/iggy3d/gameplay/ControllerActionPhases.cpp
     src/app/iggy3d/gameplay/ControllerCommandExecution.cpp
     src/app/iggy3d/gameplay/ControllerDashActions.cpp
     src/app/iggy3d/gameplay/ControllerGroundQueries.cpp

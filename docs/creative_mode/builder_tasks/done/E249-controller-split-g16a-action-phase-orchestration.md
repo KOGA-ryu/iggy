@@ -202,3 +202,80 @@ Report:
 - Diff/whitespace check results.
 - Confirmation that no staging, commit, push, broad CTest, or window launch was
   performed.
+
+## Completion Brief
+
+Status: Done.
+
+Files changed:
+
+- `CMakeLists.txt`
+- `src/app/iggy3d/gameplay/Controller.cpp`
+- `src/app/iggy3d/gameplay/ControllerActionPhases.hpp`
+- `src/app/iggy3d/gameplay/ControllerActionPhases.cpp`
+- this task card
+
+Exact API added:
+
+- Added `ControllerActionPhases.hpp/.cpp`.
+- Exported only:
+  `void applyProductGameplayActionPhases(Session&, const ProductGameplayInputIntent&, ProductAppWindowState&, std::string_view, const SpatialSurfaceSet*)`.
+
+Helpers moved:
+
+- `updateProductJumpTimingPhase(...)`
+- `resolveProductWallRunCandidatePhase(...)`
+- `applyProductActiveMovementStatePhase(...)`
+- `publishProductMovementProofPhase(...)`
+- `applyProductDashPhase(...)`
+- `updateProductRetainedHorizontalVelocityPhase(...)`
+- `applyProductTargetActionPhase(...)`
+- `applyProductResetActionPhase(...)`
+
+What stayed in `Controller.cpp`:
+
+- Public facade `applyProductGameplayActions(...)`.
+- Input sampling call to `sampleProductGameplayInputIntent(actions)`.
+- Facade call to `applyProductGameplayActionPhases(...)`.
+
+Behavior preservation:
+
+- Phase order is unchanged:
+  1. `updateProductJumpTimingPhase(...)`
+  2. `applyProductDashPhase(...)`
+  3. dash early return when true
+  4. `updateProductRetainedHorizontalVelocityPhase(...)`
+  5. `applyProductTargetActionPhase(...)`
+  6. `applyProductResetActionPhase(...)`
+  7. `publishProductMovementProofPhase(...)`
+- Dash early-return behavior is unchanged.
+- Existing branch-gate comments moved with their phase helpers.
+- Existing call argument order inside the moved phase helpers is unchanged.
+
+Required grep classification:
+
+- `ControllerActionPhases.hpp` declares only
+  `applyProductGameplayActionPhases(...)`.
+- `ControllerActionPhases.cpp` defines
+  `applyProductGameplayActionPhases(...)` and owns the lower-level phase helper
+  definitions.
+- `Controller.cpp` retains `applyProductGameplayActions(...)` and only calls
+  `applyProductGameplayActionPhases(...)`.
+- Dependency grep over `ControllerActionPhases.*` returned no hits for
+  `ActionState`, `sampleProductGameplayInputIntent`,
+  `submitProductGameplayCommand`, `tickProductGameplayCommand`,
+  `applyProductLedgeFallMoveFallback`, `queryProductGameplayTarget`, or
+  `CommandRecord`.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+  produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files and this card passed.
+
+No staging, commit, push, broad CTest, or window launch was performed.
