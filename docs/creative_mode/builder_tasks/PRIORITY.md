@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E193-product-test-support-g4-temp-root-options.md`
+1. `ready/E194-product-test-fixture-builder-audit.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E193-product-test-support-g4-temp-root-options.md`
+1. `ready/E194-product-test-fixture-builder-audit.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -126,8 +126,9 @@ Held — do NOT promote to `ready/` on a guess:
 - **Product test infrastructure**: E189 audited duplicated product-test helpers.
   E190 added a header-only assertion/numeric helper over five tests. E191 added
   receipt helpers for four creative UI receipt/frame tests. E192 added the
-  duplicated active-surface wrapper helper. E193 is the next narrow slice for
-  clean temp-root/options setup only. Keep fixture-builder audit separate.
+  duplicated active-surface wrapper helper. E193 added clean temp-root/options
+  setup. E194 is a read-only fixture-builder audit before any larger test
+  harness abstraction is allowed.
 - `npc_vision_lab` stale training_room fixture + the "same room checked in 3×"
   duplication smell — needs a single-source-of-truth card.
 - Remaining complexity-audit roadmap items (`OpeningMenuView` split,
