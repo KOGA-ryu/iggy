@@ -172,3 +172,57 @@ Stop and report instead of widening scope if:
   or receipt golden output changes.
 - The new helper starts owning target query/reach policy or dash/move/target
   action policy.
+
+## Completion Brief
+
+Files changed:
+
+- `CMakeLists.txt`
+- `src/app/iggy3d/gameplay/Controller.cpp`
+- `src/app/iggy3d/gameplay/ControllerCommandExecution.hpp`
+- `src/app/iggy3d/gameplay/ControllerCommandExecution.cpp`
+- `docs/creative_mode/builder_tasks/done/E243-controller-split-g10a-command-execution.md`
+
+Exact API moved/added:
+
+- Added `ControllerCommandExecution.hpp/.cpp`.
+- Exported only `submitProductGameplayCommand(Session&, ProductAppWindowState&, CommandRecord, const SpatialSurfaceSet*)`.
+
+Exact file-local helpers moved:
+
+- `commandMovementHasPhysicsFrameStats(...)`
+- `tickProductGameplayCommand(...)`
+- `applyProductLedgeFallMoveFallback(...)`
+
+Behavior preservation:
+
+- Gameplay input used/submitted fields, command kind, accepted state, rejection reason, reach gate, and command status strings were preserved.
+- Move-command attempted/submitted setup and `clearProductMovementDebug(...)` remain in the command execution path.
+- Collision surface proof fields and physics movement planner tick proof are unchanged.
+- `session.submitCommand(...)`, `session.tick(...)`, and `session.tickWithOptions(...)` selection are unchanged.
+- Tick status and reason-code mapping are unchanged.
+- Accepted move commands still record movement debug before physics planner tick proof.
+- Player position changed detection and runtime movement blocked/moved/tick-failed behavior are unchanged.
+- Ledge-fall move fallback and the `beginProductFallIfUnsupported(...)` fallback call remain in the command execution path.
+
+Scope notes:
+
+- `Controller.cpp` now includes `app/iggy3d/gameplay/ControllerCommandExecution.hpp` and retains call sites only.
+- `CMakeLists.txt` now registers `src/app/iggy3d/gameplay/ControllerCommandExecution.cpp` next to the other controller split files.
+- Dash submit, move submit, target submit, target query/reach policy, input sampling, phase orchestration, jump action behavior, reset action behavior, movement proof implementation, target/outcome proof implementation, receipt keys/order/values, staging, commit, push, broad CTest, and window launch were not changed.
+
+Required grep classification:
+
+- `rg -n "commandMovementHasPhysicsFrameStats|tickProductGameplayCommand|applyProductLedgeFallMoveFallback|submitProductGameplayCommand" ...` shows `submitProductGameplayCommand(...)` declared in `ControllerCommandExecution.hpp`.
+- The same grep shows `submitProductGameplayCommand(...)` defined in `ControllerCommandExecution.cpp`.
+- The same grep shows `commandMovementHasPhysicsFrameStats(...)`, `tickProductGameplayCommand(...)`, and `applyProductLedgeFallMoveFallback(...)` defined only in `ControllerCommandExecution.cpp`.
+- The same grep shows `Controller.cpp` retains call sites only.
+- Focused dependency grep over `ControllerCommandExecution.*` returned no hits for `submitProductDash`, `submitProductMove`, `submitProductTargetCommand`, `queryProductGameplayTarget`, `sampleProductGameplayInputIntent`, `ProductGameplayInputIntent`, `applyProductDashPhase`, `updateProductRetainedHorizontalVelocityPhase`, `applyProductTargetActionPhase`, `applyProductResetActionPhase`, or `applyProductGameplayActions`.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files and this card passed.
