@@ -79,6 +79,14 @@ iggy3d::RoomAsset makeLegacyNamedClamberRoom() {
   return room;
 }
 
+iggy3d::RoomAsset makeClamberFallbackRoom(std::vector<std::string> topTags,
+                                          std::vector<std::string> blockerTags) {
+  iggy3d::RoomAsset room = makeRoom();
+  room.spatialSurfaces[0].traversalTags = std::move(topTags);
+  room.spatialSurfaces[1].traversalTags = std::move(blockerTags);
+  return room;
+}
+
 iggy3d::RoomAsset makeWireRoom() {
   iggy3d::RoomAsset room;
   room.id = "wire_slot_test";
@@ -162,6 +170,59 @@ bool clamberRequiresAuthoredSurfaceTags() {
       iggy3d::buildMovementTraversalSlotRegistry(room, {});
   return expect(registry.affordances.empty(), "legacy clamber no affordance") &&
          expect(registry.slots.empty(), "legacy clamber no slots");
+}
+
+bool topOnlyClamberUsesBlockerFallbackGeometry() {
+  const iggy3d::RoomAsset room =
+      makeClamberFallbackRoom({"walkable", "clamber"}, {"blocker"});
+  const iggy3d::MovementTraversalSlotRegistry registry =
+      iggy3d::buildMovementTraversalSlotRegistry(room, {});
+  if (!expect(registry.affordances.size() == 1U, "top-only affordance count") ||
+      !expect(registry.slots.size() == 1U, "top-only slot count")) {
+    return false;
+  }
+
+  const iggy3d::MovementTraversalAffordance& affordance = registry.affordances.front();
+  const iggy3d::MovementTraversalSlot& slot = registry.slots.front();
+  return expect(affordance.kind == iggy3d::MovementTraversalSlotKind::Clamber,
+                "top-only affordance kind") &&
+         expect(affordance.sourceSurfaceId == "tagged_top",
+                "top-only affordance source") &&
+         expect(affordance.authoredTag, "top-only authored flag") &&
+         expect(slot.kind == iggy3d::MovementTraversalSlotKind::Clamber,
+                "top-only slot kind") &&
+         expect(slot.authoredAffordance, "top-only slot authored") &&
+         expect(slot.affordanceSourceId == "tagged_top", "top-only slot source") &&
+         expect(slot.topSurfaceId == "tagged_top", "top-only top surface") &&
+         expect(slot.frontSurfaceId == "tagged_blocker",
+                "top-only blocker fallback");
+}
+
+bool blockerOnlyClamberUsesTopFallbackGeometry() {
+  const iggy3d::RoomAsset room =
+      makeClamberFallbackRoom({"walkable"}, {"blocker", "clamber"});
+  const iggy3d::MovementTraversalSlotRegistry registry =
+      iggy3d::buildMovementTraversalSlotRegistry(room, {});
+  if (!expect(registry.affordances.size() == 1U, "blocker-only affordance count") ||
+      !expect(registry.slots.size() == 1U, "blocker-only slot count")) {
+    return false;
+  }
+
+  const iggy3d::MovementTraversalAffordance& affordance = registry.affordances.front();
+  const iggy3d::MovementTraversalSlot& slot = registry.slots.front();
+  return expect(affordance.kind == iggy3d::MovementTraversalSlotKind::Clamber,
+                "blocker-only affordance kind") &&
+         expect(affordance.sourceSurfaceId == "tagged_blocker",
+                "blocker-only affordance source") &&
+         expect(affordance.authoredTag, "blocker-only authored flag") &&
+         expect(slot.kind == iggy3d::MovementTraversalSlotKind::Clamber,
+                "blocker-only slot kind") &&
+         expect(slot.authoredAffordance, "blocker-only slot authored") &&
+         expect(slot.affordanceSourceId == "tagged_blocker",
+                "blocker-only slot source") &&
+         expect(slot.topSurfaceId == "tagged_top", "blocker-only top fallback") &&
+         expect(slot.frontSurfaceId == "tagged_blocker",
+                "blocker-only blocker surface");
 }
 
 bool registryBuildsWireWalkSlot() {
@@ -348,6 +409,8 @@ bool selectorGatesByRangeFacingAndHeight() {
 int main() {
   const bool ok = registryBuildsMeasuredClamberSlot() &&
                   clamberRequiresAuthoredSurfaceTags() &&
+                  topOnlyClamberUsesBlockerFallbackGeometry() &&
+                  blockerOnlyClamberUsesTopFallbackGeometry() &&
                   registryBuildsWireWalkSlot() &&
                   authoredAffordanceTagsBuildSlotsWithoutMagicNames() &&
                   authoredAffordanceSuppressesLegacyNameFallback() &&

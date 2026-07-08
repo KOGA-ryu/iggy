@@ -105,3 +105,42 @@ Completion brief must include:
   renderer/Vulkan were untouched
 - tests/checks run
 - receipt golden result
+
+## Completion Brief
+
+- Files changed:
+  - `src/runtime/movement/MovementTraversalSlots.cpp`
+  - `tests/unit/movement_traversal_slots_tests.cpp`
+  - `docs/creative_mode/builder_tasks/ready/E186-traversal-clamber-fallback-policy-guards.md` moved to `docs/creative_mode/builder_tasks/done/E186-traversal-clamber-fallback-policy-guards.md`
+- Top-only fallback guard added:
+  - `topOnlyClamberUsesBlockerFallbackGeometry()` builds a room where the walkable top has durable `clamber` and the same-mesh actor blocker lacks it
+  - proves one authored clamber affordance and one clamber slot are created
+  - proves the affordance source is the top surface
+  - proves the slot uses the untagged blocker as fallback geometry
+- Blocker-only fallback guard added:
+  - `blockerOnlyClamberUsesTopFallbackGeometry()` builds a room where the walkable top lacks durable `clamber` and the same-mesh actor blocker has it
+  - proves one authored clamber affordance and one clamber slot are created
+  - proves the affordance source is the blocker surface
+  - proves the slot uses the untagged top as fallback geometry
+- Clarifying comment added:
+  - near `appendClamberSlot(...)`, documenting that durable `clamber` authorizes the mesh affordance, while top/blocker surfaces are measured helper geometry that prefer tagged surfaces but allow same-mesh untagged fallbacks
+- Behavior confirmation:
+  - no movement traversal behavior changed
+  - existing `movement_traversal_tests` stayed green, including the blocker-tagged clamber with untagged top fallback path
+- Untouched scope:
+  - `movementTraversalSlotKindName(...)` output unchanged
+  - legacy rail `vault`/`wire` fallbacks unchanged
+  - `RoomAsset`/ASCII serialization unchanged
+  - traversal catalog values unchanged
+  - `ProductAppWindowState` unchanged
+  - renderer/Vulkan unchanged
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d movement_traversal_slots_tests movement_traversal_tests traversal_tag_catalog_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(movement_traversal_slots_tests|movement_traversal_tests|traversal_tag_catalog_tests)$' --output-on-failure`
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests`
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - focused trailing-whitespace scan over touched files
+- Receipt golden result:
+  - `receipt key-order oracle: 1032 fields match golden (order + values)`
+- Concerns/deferred:
+  - full CTest was not run; this stayed within the two expected files plus focused tests

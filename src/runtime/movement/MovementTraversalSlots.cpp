@@ -294,6 +294,9 @@ void appendClamberSlot(MovementTraversalSlotRegistry& registry,
                        const MovementTraversalAffordance& affordance,
                        Vec3 offset) {
   const std::string_view clamberTag = traversalTagId(TraversalTag::Clamber);
+  // The durable clamber tag authorizes the mesh affordance. Top and blocker
+  // surfaces are measured helper geometry: prefer tagged surfaces, but same-mesh
+  // untagged helpers are valid fallbacks for existing authored rooms.
   const RoomSpatialSurface* top =
       findSurfaceForMesh(room, mesh.id, RoomSpatialSurfaceRole::Walkable, clamberTag);
   if (top == nullptr) {
