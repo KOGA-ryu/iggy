@@ -12,13 +12,13 @@
 #include <string_view>
 
 #include "app/frontend/WorldSetupModel.hpp"
-#include "app/iggy3d/menu/InputRouter.hpp"
-#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/creative/bridge/UiCommandFrame.hpp"
 #include "app/iggy3d/creative/world/WorldService.hpp"
+#include "app/iggy3d/menu/InputRouter.hpp"
+#include "app/iggy3d/world/ProductNewWorldLaunch.hpp"
 
 namespace {
 

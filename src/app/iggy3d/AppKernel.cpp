@@ -4,7 +4,6 @@
 #include <utility>
 
 #include "app/frontend/FrontendState.hpp"
-#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/automation/AutomationControl.hpp"
 #include "app/iggy3d/automation/AutomationDispatch.hpp"
@@ -17,6 +16,7 @@
 #include "app/iggy3d/view/CameraController.hpp"
 #include "app/iggy3d/window/Loop.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
+#include "app/iggy3d/world/ProductNewWorldLaunch.hpp"
 #include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
 #include "app/input/ActionState.hpp"
 

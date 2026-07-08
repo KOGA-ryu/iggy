@@ -1,6 +1,5 @@
 #include "ProductFilesystemTestSupport.hpp"
 
-#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/creative/BakedActiveRoomRefresh.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
@@ -14,6 +13,7 @@
 #include "app/iggy3d/save/Flow.hpp"
 #include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
+#include "app/iggy3d/world/ProductNewWorldLaunch.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/RenderDiagnostics.hpp"
 #include "runtime/ai/ReasoningGraph.hpp"

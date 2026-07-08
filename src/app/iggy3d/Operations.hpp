@@ -29,10 +29,4 @@ void frameCreativeStageCameraOnOrigin(ProductAppWindowState& window);
 void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
                                      ProductAppWindowState& window);
 
-void launchProductNewWorld(const ProductAppOptions& options,
-                           const WorldSetupDraft& worldSetupDraft,
-                           FrontendState& frontend,
-                           std::optional<Session>& activeSession,
-                           ProductAppWindowState& window);
-
 }  // namespace iggy3d
