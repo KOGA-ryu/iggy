@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -172,3 +172,69 @@ Report:
   package/session launch, request/result structs, receipt keys, status strings,
   CMake test definitions, renderer/Vulkan/projection, save/load format,
   staging, commit, push, or window launch were changed.
+
+## Completion Brief
+
+- Card moved to done: yes.
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/Operations.cpp`
+  - `src/app/iggy3d/Operations.hpp`
+  - `src/app/iggy3d/creative/BakedActiveRoomRefresh.hpp`
+  - `src/app/iggy3d/creative/BakedActiveRoomRefresh.cpp`
+  - `src/app/iggy3d/window/InputFrame.cpp`
+  - `tests/unit/product_creative_world_launch_tests.cpp`
+  - `tests/unit/product_creative_no_window_bake_scenario_tests.cpp`
+  - `docs/creative_mode/builder_tasks/done/E210-operations-split-g1-creative-baked-room-refresh.md`
+- New header/source:
+  - `src/app/iggy3d/creative/BakedActiveRoomRefresh.hpp`
+  - `src/app/iggy3d/creative/BakedActiveRoomRefresh.cpp`
+- Helpers moved out of `Operations.cpp`:
+  - `kCreativeRoomBakeNoRenderableObjects`
+  - `kProductCreativeBakedRoomClearedNoRenderableObjects`
+  - `setCreativeBakedActiveRoomRefreshStatus(...)`
+  - `fallbackString(...)`
+  - `clearedCreativeBakedActiveRoom(...)`
+  - `ProductCreativeBakedRoomRefreshService`
+  - `refreshProductCreativeBakedActiveRoom(...)`
+  - A file-local `elapsedMicroseconds(...)` equivalent was added in the new
+    source for bake timing; the existing `Operations.cpp` helper stayed in
+    place for other Operations paths.
+- Callers given the new include:
+  - `src/app/iggy3d/Operations.cpp` for creative launch/open internal calls.
+  - `src/app/iggy3d/window/InputFrame.cpp` for manual/auto refresh calls.
+  - `tests/unit/product_creative_world_launch_tests.cpp` for direct refresh
+    calls.
+  - `tests/unit/product_creative_no_window_bake_scenario_tests.cpp` for direct
+    refresh calls.
+- CMake source-list update:
+  - Added `src/app/iggy3d/creative/BakedActiveRoomRefresh.cpp` to the `iggy3d`
+    library source list near the other creative app sources.
+- Final `refreshProductCreativeBakedActiveRoom(...)` grep classification:
+  - `Operations.hpp`: no hits.
+  - `Operations.cpp`: two remaining call sites for creative launch/open.
+  - `creative/BakedActiveRoomRefresh.hpp`: declaration.
+  - `creative/BakedActiveRoomRefresh.cpp`: definition.
+- Focused build:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_creative_world_launch_tests product_creative_no_window_bake_scenario_tests product_creative_ui_input_frame_tests product_receipt_key_order_tests -j10`
+  - Result: passed.
+- Focused CTest:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_creative_world_launch_tests|product_creative_no_window_bake_scenario_tests|product_creative_ui_input_frame_tests|product_receipt_key_order_tests)$' --output-on-failure`
+  - Result: 4/4 passed.
+- Receipt golden diff:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+  - Result: empty.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - Result: passed.
+  - Focused trailing-whitespace scan over touched files and this card.
+  - Result: clean.
+- Confirmed unchanged:
+  - No creative launch/save operations were moved.
+  - No save-slot/delete/recover operations were moved.
+  - No package/session launch or world-template helpers were moved.
+  - `ProductCreativeBakedRoomRefresh.hpp` request/result structs were not
+    moved.
+  - No receipt keys/order/values, status/reason strings, CMake test
+    definitions, renderer/Vulkan/projection code, save/load format, staging,
+    commit, push, or window launch changes were made.

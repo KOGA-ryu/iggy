@@ -72,6 +72,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/spatial/Ghost.cpp
     src/app/iggy3d/creative/tools/Placement.cpp
     src/app/iggy3d/creative/tools/RoomShell.cpp
+    src/app/iggy3d/creative/BakedActiveRoomRefresh.cpp
     src/app/iggy3d/creative/ui/Ui.cpp
     src/app/iggy3d/creative/mutation/Metrics.cpp
     src/app/iggy3d/creative/Facade.cpp

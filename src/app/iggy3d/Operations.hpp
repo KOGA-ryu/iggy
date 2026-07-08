@@ -184,11 +184,6 @@ ProductCreativeCurrentWorldSaveResult saveProductCurrentCreativeWorld(
     creative::CreativeAppState& creativeApp,
     std::string_view source,
     ProductAppWindowState& window);
-ProductCreativeBakedActiveRoomRefreshResult refreshProductCreativeBakedActiveRoom(
-    const ProductCreativeBakedActiveRoomRefreshRequest& request,
-    std::optional<Session>& activeSession,
-    ProductAppWindowState& window,
-    const creative::CreativeAppState& creativeApp);
 void launchProductContinueSave(const ProductAppOptions& options,
                                const ProductWorldTemplate& world,
                                const ProductSaveBridgeResult& saves,
