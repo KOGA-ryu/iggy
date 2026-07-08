@@ -193,3 +193,94 @@ Stop and report instead of widening scope if:
   update, or receipt golden output changes.
 - The new helper starts owning target submit, target query/reach policy, dash
   action policy, jump action policy, or command-execution internals.
+
+## Completion Brief
+
+Status: Done.
+
+Files changed:
+
+- `CMakeLists.txt`
+- `src/app/iggy3d/gameplay/Controller.cpp`
+- `src/app/iggy3d/gameplay/ControllerMoveActions.hpp`
+- `src/app/iggy3d/gameplay/ControllerMoveActions.cpp`
+- this task card
+
+Exact API moved/added:
+
+- Moved `horizontalVelocityActive(...)`,
+  `updateProductGroundMovementVelocity(...)`,
+  `submitProductAirborneMove(...)`, and `submitProductMove(...)` out of
+  `Controller.cpp`.
+- Added `ControllerMoveActions.hpp/.cpp`.
+- Renamed/exported `horizontalVelocityActive(...)` as
+  `productHorizontalVelocityActive(const ProductAppWindowState&)`.
+- Exported:
+  `void submitProductMove(Session&, ProductAppWindowState&, float, float, bool, std::string_view, const SpatialSurfaceSet*)`.
+
+Helper ownership:
+
+- `productHorizontalVelocityActive(...)` and `submitProductMove(...)` are
+  declared in `ControllerMoveActions.hpp` and defined in
+  `ControllerMoveActions.cpp`.
+- `updateProductGroundMovementVelocity(...)` and
+  `submitProductAirborneMove(...)` are file-local in
+  `ControllerMoveActions.cpp`.
+- `Controller.cpp` retains `ProductGameplayInputIntent`,
+  `productGameplayIntentHasMovement(...)`,
+  `updateProductRetainedHorizontalVelocityPhase(...)`, and the movement submit
+  call sites only.
+
+Behavior preserved:
+
+- Retained-horizontal-velocity activity threshold is unchanged.
+- Ground acceleration/deceleration choice, velocity clamping, and
+  `groundVelocityX/Z` writes are unchanged.
+- Target/outcome proof clearing remains before move handling.
+- Missing-player status and velocity clearing are unchanged.
+- Movement profile recording is unchanged.
+- Airborne manual movement remains the X/Z path while jump/fall owns vertical
+  motion.
+- Wall-run tangent movement, speed multiplier clamp, and
+  `wall_run_input_away` clear reason are unchanged.
+- Airborne mutation failure status/reason, airborne moved status,
+  `playerPositionChanged`, and movement-debug recording are unchanged.
+- Ground retained velocity delta and zero-delta early return are unchanged.
+- Move command payload and dispatch through `submitProductGameplayCommand(...)`
+  are unchanged.
+- `gameplayInputSource` assignment before command dispatch is unchanged.
+
+Scope confirmation:
+
+- `ProductGameplayInputIntent`, input-intent sampling, phase orchestration,
+  dash action behavior, jump action behavior, target submit helpers, target
+  query/reach behavior, command-execution implementation, movement proof
+  implementation, wall-run query/evaluation implementations, reset action
+  behavior, receipt keys/order/values, CMake test definitions, staging, commit,
+  push, broad CTest, and window launch were not moved or changed.
+
+Required grep classification:
+
+- `ControllerMoveActions.hpp` contains the
+  `productHorizontalVelocityActive(...)` and `submitProductMove(...)`
+  declarations.
+- `ControllerMoveActions.cpp` contains the exported definitions plus file-local
+  `updateProductGroundMovementVelocity(...)` and
+  `submitProductAirborneMove(...)` definitions.
+- `Controller.cpp` contains `productGameplayIntentHasMovement(...)`,
+  `updateProductRetainedHorizontalVelocityPhase(...)`, and call sites only.
+- No `horizontalVelocityActive(...)` symbol remains.
+- Focused forbidden dependency grep over `ControllerMoveActions.*` returned no
+  hits for dash submit, target submit, target query, input intent, phase
+  orchestration, command-execution internals, or ledge-fall fallback symbols.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+  produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files and this card passed.
