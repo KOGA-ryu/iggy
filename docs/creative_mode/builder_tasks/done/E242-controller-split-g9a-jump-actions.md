@@ -155,3 +155,57 @@ Run a focused trailing-whitespace scan over touched files and this card.
   expose behavior drift.
 
 No stage, commit, push, broad CTest, or window launch.
+
+## Completion Brief
+
+Files changed:
+
+- `CMakeLists.txt`
+- `src/app/iggy3d/gameplay/Controller.cpp`
+- `src/app/iggy3d/gameplay/ControllerJumpActions.hpp`
+- `src/app/iggy3d/gameplay/ControllerJumpActions.cpp`
+- `docs/creative_mode/builder_tasks/done/E242-controller-split-g9a-jump-actions.md`
+
+Exact APIs moved/added:
+
+- Added `ControllerJumpActions.hpp/.cpp`.
+- Exported `advanceProductJump(Session&, ProductAppWindowState&, const SpatialSurfaceSet*)`.
+- Exported `submitProductJump(Session&, ProductAppWindowState&, std::string_view)`.
+
+Exact file-local helpers moved:
+
+- `beginProductJumpArc(...)`
+- `tryProductCoyoteJump(...)`
+- `tryProductWallJump(...)`
+- `tryProductTraversalJump(...)`
+
+Behavior preservation:
+
+- Accepted jumps still call `advanceProductJump(...)` immediately.
+- Traversal jump is still attempted before wall jump.
+- Wall jump is still attempted before coyote, buffered, and normal jump handling.
+- Buffered jump can still fire on landing.
+- Reset/fall checks remain inside jump advancement.
+- Landing still calls `clearProductWallRunActiveProof(window, "wall_run_landed")`.
+- Jump, traversal, wall-run, and mutation status/reason strings were not changed.
+
+Scope notes:
+
+- `Controller.cpp` now includes `app/iggy3d/gameplay/ControllerJumpActions.hpp` and retains call sites only for `submitProductJump(...)` and `advanceProductJump(...)`.
+- `CMakeLists.txt` now registers `src/app/iggy3d/gameplay/ControllerJumpActions.cpp` next to the other controller split files.
+- Input-intent sampling, dash submit, movement submit, target submit, gameplay command submission, session ticking, ledge-fall command fallback, target/outcome proof implementation, movement proof implementation, receipt keys/order/values, staging, commit, push, broad CTest, and window launch were not changed.
+
+Required grep classification:
+
+- `rg -n "beginProductJumpArc|tryProductCoyoteJump|tryProductWallJump|tryProductTraversalJump|advanceProductJump|submitProductJump" ...` shows exported declarations in `ControllerJumpActions.hpp`.
+- The same grep shows exported definitions and file-local helper definitions in `ControllerJumpActions.cpp`.
+- The same grep shows `Controller.cpp` retains call sites only for `advanceProductJump(...)` and `submitProductJump(...)`.
+- Focused dependency grep over `ControllerJumpActions.*` returned no forbidden dependency hits for dash submit, move submit, target action submit, gameplay command submission, session ticking, ledge-fall command fallback, input-intent sampling, target/outcome proof implementation, or movement proof implementation.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files and this card passed.
