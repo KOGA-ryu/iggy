@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Objective
 
@@ -109,3 +109,50 @@ Run a focused trailing-whitespace scan over touched files and this card.
 - Stop if focused gameplay controller or movement-debug HUD tests drift.
 
 No stage, commit, push, broad CTest, or window launch.
+
+## Completion Brief
+
+- Card moved to done: yes.
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/gameplay/Controller.cpp`
+  - `src/app/iggy3d/gameplay/ControllerMovementProof.hpp`
+  - `src/app/iggy3d/gameplay/ControllerMovementProof.cpp`
+  - this task card
+- Helper API added:
+  - `clearProductMovementDebug(...)`
+  - `productHorizontalMovementSpeedMetersPerSecond(...)`
+  - `updateProductMovementStateProof(...)`
+  - `recordProductMovementProfile(...)`
+  - `recordProductAirborneMovementDebug(...)`
+  - `recordProductLedgeFallMovementDebug(...)`
+  - `productMovementDebugChangedPosition(...)`
+  - `recordProductMovementDebug(...)`
+- Extraction summary:
+  - Moved only the requested movement debug/proof writer helpers from
+    `Controller.cpp` into `ControllerMovementProof.*`.
+  - `Controller.cpp` now includes `ControllerMovementProof.hpp` and retains
+    call sites only for the moved helpers.
+  - The new writer helper depends on `ProductAppWindowState`, `Session`,
+    `ControllerKinematics.hpp`, movement travel facts, and movement result
+    helpers already used by the moved functions.
+  - `MovementProof.hpp/.cpp` were unchanged.
+- CMake update:
+  - Added `src/app/iggy3d/gameplay/ControllerMovementProof.cpp` near
+    `Controller.cpp` and `ControllerKinematics.cpp` in the `iggy3d` library
+    source list.
+- Required grep classification:
+  - Declarations/definitions for the moved helpers live in
+    `ControllerMovementProof.hpp/.cpp`.
+  - `Controller.cpp` retains call sites only.
+- Verification:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_movement_debug_hud_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_movement_debug_hud_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 4/4.
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card was clean.
+- Confirmation:
+  - No changes to movement state policy, wall-run state, jump/dash/traversal
+    state, command submission, target/outcome proof, reset/fall policy,
+    `MovementProof.*`, receipt keys/order/values, staging, commit, push, broad
+    CTest, or window launch.
