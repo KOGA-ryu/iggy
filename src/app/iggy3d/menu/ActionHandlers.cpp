@@ -12,6 +12,7 @@
 #include "app/iggy3d/creative/CreativeWorldOperations.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/world/DungeonDraft.hpp"
+#include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/save/SaveSlotOperations.hpp"

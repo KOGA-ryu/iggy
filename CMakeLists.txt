@@ -51,6 +51,7 @@ target_sources(iggy3d
     src/app/iggy3d/ascii_room/AsciiRoomToEditableRoom.cpp
     src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp
     src/app/iggy3d/world/DefaultWorldTemplate.cpp
+    src/app/iggy3d/world/ProductWorldTemplateOperations.cpp
     src/app/iggy3d/room_editor/EditableRoomToAuthoredRoom.cpp
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp

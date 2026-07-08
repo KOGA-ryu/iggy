@@ -5,7 +5,6 @@
 #include <string>
 #include <utility>
 
-#include "app/PackageRuntimeLookup.hpp"
 #include "app/frontend/SaveBrowser.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
@@ -20,6 +19,7 @@
 #include "app/iggy3d/creative/CreativeWorldOperations.hpp"
 #include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
+#include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/world/PackageSessionSeed.hpp"
 #include "app/iggy3d/save/RoomMarkerBinding.hpp"
@@ -69,25 +69,6 @@ std::uint64_t elapsedMicroseconds(
       std::chrono::duration_cast<std::chrono::microseconds>(
           std::chrono::steady_clock::now() - started)
           .count());
-}
-
-std::filesystem::path defaultProductPackagePath(const ProductAppOptions& options) {
-  if (!options.devPackageOverride.empty()) {
-    return options.devPackageOverride;
-  }
-
-  PackageLookupConfig lookupConfig;
-  lookupConfig.packageMode = PackageMode::BuildTreeProduct;
-  lookupConfig.requireGraphicsRuntime = false;
-  lookupConfig.requireShaderRoot = false;
-  const PackageLookupResult lookup = resolvePackageRuntimeLookup(lookupConfig);
-  if (lookup.outcome == RenderOutcome::Ok && !lookup.lookup.resourceRoot.empty()) {
-    return lookup.lookup.resourceRoot / "demos" / "first_room" /
-           "package.iggy3d.toml";
-  }
-
-  return std::filesystem::path{"fixtures"} / "demos" / "first_room" /
-         "package.iggy3d.toml";
 }
 
 ProductAsciiRoomAuthoringRequest productAsciiRoomAuthoringRequestFromWorldSetup(
@@ -159,7 +140,7 @@ bool createProductSession(const ProductAppOptions& options,
                           std::optional<Session>& activeSession,
                           ProductAppWindowState& window) {
   const auto lookupStarted = std::chrono::steady_clock::now();
-  const std::filesystem::path packagePath = defaultProductPackagePath(options);
+  const std::filesystem::path packagePath = productPackagePathFromOptions(options);
   window.frontendShell.startup.packagePath =
       packagePath.empty() ? "none" : packagePath.generic_string();
   window.frontendShell.startup.packageLookupMeasured = true;
@@ -460,22 +441,6 @@ void frameCreativeStageCameraOnOrigin(ProductAppWindowState& window) {
 void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
                                      ProductAppWindowState& window) {
   clearProductGameplayLaunchStateImpl(activeSession, window);
-}
-
-ProductWorldTemplate productWorldTemplateFromOptions(
-    const ProductAppOptions& options) {
-  ProductWorldTemplate world =
-      options.devPackageOverride.empty()
-          ? defaultProductWorldTemplate()
-          : devOverrideProductWorldTemplate(
-                options.devPackageOverride.generic_string(), options.devScenario);
-  const PackageLoadResult package =
-      loadPackage({defaultProductPackagePath(options).generic_string()});
-  if (package.status == PackageLoadStatus::Ok) {
-    world.packageId = package.manifest.packageId;
-    world.scenarioId = package.scenario.scenarioId;
-  }
-  return world;
 }
 
 ProductSaveWriteResult writeProductCurrentSessionSave(

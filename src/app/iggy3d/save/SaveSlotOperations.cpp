@@ -4,9 +4,9 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SaveBrowser.hpp"
-#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
 
 namespace iggy3d {
 namespace {

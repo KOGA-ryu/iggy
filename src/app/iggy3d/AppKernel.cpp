@@ -17,6 +17,7 @@
 #include "app/iggy3d/view/CameraController.hpp"
 #include "app/iggy3d/window/Loop.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
+#include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
 #include "app/input/ActionState.hpp"
 
 namespace iggy3d {

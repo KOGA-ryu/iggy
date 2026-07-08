@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -168,3 +168,96 @@ When done, report:
 - focused build/CTest results
 - diff/whitespace checks
 - confirmation that session launch/new-world/save-write behavior was not moved
+
+## Completion Brief - Done
+
+- Card moved to done: yes.
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/AppKernel.cpp`
+  - `src/app/iggy3d/Operations.hpp`
+  - `src/app/iggy3d/Operations.cpp`
+  - `src/app/iggy3d/menu/ActionHandlers.cpp`
+  - `src/app/iggy3d/save/SaveSlotOperations.cpp`
+  - `src/app/iggy3d/world/ProductWorldTemplateOperations.hpp` (new)
+  - `src/app/iggy3d/world/ProductWorldTemplateOperations.cpp` (new)
+  - `tests/unit/product_window_input_frame_tests.cpp`
+  - this task card
+- Exact API moved/added:
+  - Added `std::filesystem::path productPackagePathFromOptions(const ProductAppOptions& options);`
+  - Moved `ProductWorldTemplate productWorldTemplateFromOptions(const ProductAppOptions& options);`
+    from `Operations.*` to `world/ProductWorldTemplateOperations.*`.
+- `productWorldTemplateFromOptions(...)` now lives in:
+  - declaration: `src/app/iggy3d/world/ProductWorldTemplateOperations.hpp`
+  - definition: `src/app/iggy3d/world/ProductWorldTemplateOperations.cpp`
+- `productPackagePathFromOptions(...)` preserves the prior
+  `defaultProductPackagePath(...)` policy:
+  - returns `options.devPackageOverride` when non-empty;
+  - otherwise calls `resolvePackageRuntimeLookup(...)` with
+    `PackageMode::BuildTreeProduct`, `requireGraphicsRuntime=false`, and
+    `requireShaderRoot=false`;
+  - returns `<resourceRoot>/demos/first_room/package.iggy3d.toml` when lookup
+    succeeds with a non-empty `resourceRoot`;
+  - otherwise returns `fixtures/demos/first_room/package.iggy3d.toml`.
+- Template behavior preservation:
+  - Uses `defaultProductWorldTemplate()` without dev override.
+  - Uses `devOverrideProductWorldTemplate(...)` with dev override.
+  - Loads the package at `productPackagePathFromOptions(options)` and mirrors
+    successful package/scenario ids exactly as before.
+  - Note: the current `ProductWorldTemplate` struct has no room-dimensions
+    fields, and the previous implementation did not mirror room dimensions; this
+    slice preserves the current package/scenario-only behavior.
+- CMake:
+  - Added `src/app/iggy3d/world/ProductWorldTemplateOperations.cpp` to the
+    `iggy3d` library source list next to `DefaultWorldTemplate.cpp`.
+- Direct caller include updates:
+  - `src/app/iggy3d/AppKernel.cpp`
+  - `src/app/iggy3d/menu/ActionHandlers.cpp`
+  - `src/app/iggy3d/save/SaveSlotOperations.cpp`
+  - `tests/unit/product_window_input_frame_tests.cpp`
+- Remaining `Operations.hpp` include users and why they remain:
+  - `src/app/iggy3d/AppKernel.cpp`: still calls `launchProductNewWorld(...)`.
+  - `src/app/iggy3d/menu/ActionHandlers.cpp`: still calls product new-world,
+    continue, and load-save launch APIs.
+  - `src/app/iggy3d/window/InputFrame.cpp`: existing Operations launch/save
+    dependency; not chased in this slice.
+  - `src/app/iggy3d/save/Flow.cpp`: still calls
+    `writeProductCurrentSessionSave(...)`.
+  - `src/app/iggy3d/creative/CreativeWorldOperations.cpp`: still calls the
+    E212 creative blank-stage/session wrappers.
+  - `src/app/iggy3d/Operations.cpp`: owns the remaining Operations API.
+  - Remaining test includes are direct users of still-owned Operations APIs or
+    were not chased because the card explicitly said not to widen include
+    cleanup.
+- Required grep classification:
+  - `Operations.hpp`: no `productWorldTemplateFromOptions(...)` declaration.
+  - `Operations.cpp`: no `defaultProductPackagePath(...)` helper definition.
+  - `Operations.cpp`: two allowed call sites remain, one to
+    `productPackagePathFromOptions(...)` inside `createProductSession(...)` and
+    one to `productWorldTemplateFromOptions(...)` inside
+    `launchProductNewWorld(...)`.
+  - New world-template files own the declarations/definitions for
+    `productPackagePathFromOptions(...)` and
+    `productWorldTemplateFromOptions(...)`.
+- Receipt golden result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+    produced no diff.
+- Focused build:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_starter_menu_action_tests product_window_input_frame_tests product_save_delete_executor_tests product_automation_dispatch_tests product_creative_world_launch_tests product_receipt_key_order_tests -j10`
+    passed.
+  - The build emitted the existing unrelated unused local `facade` warning in
+    `tests/unit/product_starter_menu_action_tests.cpp`; this slice did not touch
+    that code.
+- Focused CTest:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_starter_menu_action_tests|product_window_input_frame_tests|product_save_delete_executor_tests|product_automation_dispatch_tests|product_creative_world_launch_tests|product_receipt_key_order_tests)$' --output-on-failure`
+    passed: 6/6.
+- Diff/whitespace:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card produced
+    no output.
+- Confirmation:
+  - Session bootstrap, product new-world launch, save/load launch,
+    current-session save/write, creative blank-stage wrappers, save-slot
+    operations, package lookup policy, save catalog behavior, save/load format,
+    receipt keys/order/values, renderer/window/projection behavior, CMake test
+    definitions, staging, commit, push, and window launch were not changed.

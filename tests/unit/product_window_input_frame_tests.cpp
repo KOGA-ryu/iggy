@@ -15,6 +15,7 @@
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "app/iggy3d/view/OpeningMenuView.hpp"
+#include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "app/iggy3d/automation/AutomationRoomEditing.hpp"

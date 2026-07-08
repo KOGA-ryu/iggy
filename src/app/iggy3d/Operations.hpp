@@ -17,9 +17,6 @@
 
 namespace iggy3d {
 
-ProductWorldTemplate productWorldTemplateFromOptions(
-    const ProductAppOptions& options);
-
 ProductSaveWriteResult writeProductCurrentSessionSave(
     const ProductAppOptions& options,
     const std::optional<Session>& activeSession,
