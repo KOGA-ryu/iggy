@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Objective
 
@@ -142,3 +142,43 @@ Run a focused trailing-whitespace scan over touched files and this card.
   traversal, jump, dash, or movement behavior drift.
 
 No stage, commit, push, broad CTest, or window launch.
+
+## Completion Brief
+
+- Card moved to done: yes, after this brief was appended.
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/gameplay/Controller.cpp`
+  - `src/app/iggy3d/gameplay/ControllerWallRunEvaluation.hpp`
+  - `src/app/iggy3d/gameplay/ControllerWallRunEvaluation.cpp`
+  - `docs/creative_mode/builder_tasks/done/E237-controller-split-g5b-wall-run-evaluation.md`
+- Helper/API shape added:
+  - `ControllerWallRunEvaluation.hpp/.cpp` owns `ProductWallRunCandidateEvaluationResult`, `ProductWallRunActiveEvaluationResult`, `ProductWallRunEvaluationRequest`, and `ProductWallRunEvaluationResult`.
+  - Exported helper declarations/definitions are `publishProductWallRunEvaluation(...)`, `clearProductWallRunActiveProof(...)`, and `evaluateProductWallRun(...)`.
+  - `productWallRunCandidateRejected(...)`, `productWallRunActiveRejected(...)`, `productWallRunActiveRecorded(...)`, `publishProductWallRunCandidateEvaluation(...)`, `publishProductWallRunActiveEvaluation(...)`, `evaluateProductWallRunActiveWithoutJumpExit(...)`, and `evaluateProductWallRunCandidate(...)` are file-local in `ControllerWallRunEvaluation.cpp`.
+- Request shape change:
+  - `ProductWallRunEvaluationRequest` now carries `std::optional<Vec3> playerPosition` instead of `const Session&`.
+  - `Controller.cpp::resolveProductWallRunCandidatePhase(...)` still resolves the player entity locally and passes no player position when `productPlayerEntity(...)` returns null, preserving the existing `wall_run_missing_player` behavior.
+- Controller migration:
+  - `Controller.cpp` now includes `ControllerWallRunEvaluation.hpp` and retains only phase-level call sites/usages for the exported wall-run evaluation API.
+  - Wall-jump mutation, traversal execution/proof writing, jump/dash orchestration, reset/fall, command submission, target/outcome proof, movement proof, and wall-surface query helpers were not moved.
+- CMake:
+  - Added `src/app/iggy3d/gameplay/ControllerWallRunEvaluation.cpp` beside the other controller split sources.
+- Required grep classification:
+  - File-local construction/sub-evaluation helpers live only in `ControllerWallRunEvaluation.cpp`.
+  - Exported request/result declarations and exported helper declarations live in `ControllerWallRunEvaluation.hpp`.
+  - Exported helper definitions live in `ControllerWallRunEvaluation.cpp`.
+  - `Controller.cpp` retains call sites/usages only for exported helpers/types.
+  - No moved helper/type definition remains in `Controller.cpp`.
+  - Focused dependency grep over `ControllerWallRunEvaluation.*` returned no hits for `Session`, command submission, reset/fall, target/outcome proof, traversal execution, wall-jump mutation, or active-room ownership.
+- Receipt golden result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure` passed.
+  - Required wall-run evaluation `rg` classification was run.
+  - Focused dependency grep over `ControllerWallRunEvaluation.*` was run.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card passed.
+- Concerns/deferred:
+  - None. No stage, commit, push, broad CTest, or window launch was performed.
