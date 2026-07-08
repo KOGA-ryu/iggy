@@ -10,6 +10,7 @@
 #include "app/input/ActionState.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ControllerKinematics.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
@@ -154,7 +155,6 @@ void submitProductGameplayCommand(Session& session,
                                   ProductAppWindowState& window,
                                   CommandRecord command,
                                   const SpatialSurfaceSet* collisionSurfaces);
-Vec3 manualFirstPersonDirection(float moveX, float moveY, float yawDegrees);
 void advanceProductJump(Session& session,
                         ProductAppWindowState& window,
                         const SpatialSurfaceSet* collisionSurfaces);
@@ -378,29 +378,13 @@ void updateProductMovementStateProof(ProductAppWindowState& window) {
           : ProductGameplayMovementState::IdleGrounded;
 }
 
-float manualFirstPersonMaxSpeedMetersPerSecond(
-    const ProductGameplayMovementTuning& tuning,
-    bool sprinting) {
-  const std::array<float, 2U> speeds{tuning.walkSpeedMetersPerSecond,
-                                     tuning.sprintSpeedMetersPerSecond};
-  return speeds[static_cast<std::size_t>(sprinting)];
-}
-
-std::string_view manualFirstPersonMovementProfile(
-    const ProductGameplayMovementTuning& tuning,
-    bool sprinting) {
-  const std::array<std::string_view, 2U> profiles{tuning.walkProfile,
-                                                  tuning.sprintProfile};
-  return profiles[static_cast<std::size_t>(sprinting)];
-}
-
 void recordProductMovementProfile(ProductAppWindowState& window, bool sprinting) {
   window.gameplay.gameplayMovement.profile =
-      std::string{manualFirstPersonMovementProfile(window.gameplay.gameplayMovement.tuning,
-                                                   sprinting)};
+      std::string{productManualFirstPersonMovementProfile(
+          window.gameplay.gameplayMovement.tuning, sprinting)};
   window.gameplay.gameplayMovement.maxSpeedMetersPerSecond =
-      manualFirstPersonMaxSpeedMetersPerSecond(window.gameplay.gameplayMovement.tuning,
-                                               sprinting);
+      productManualFirstPersonMaxSpeedMetersPerSecond(
+          window.gameplay.gameplayMovement.tuning, sprinting);
 }
 
 bool setProductPlayerPosition(Session& session, EntityId actor, const Vec3& position) {
@@ -1045,8 +1029,8 @@ bool wallRunTangentDirectionFromNormal(const ProductAppWindowState& window,
     return false;
   }
   normal = normal / std::sqrt(lenSq);
-  const Vec3 desired =
-      manualFirstPersonDirection(moveX, moveY, window.viewport.cameraYawDegrees);
+  const Vec3 desired = productManualFirstPersonDirection(
+      moveX, moveY, window.viewport.cameraYawDegrees);
   const Vec3 tangent{-normal.z, 0.0F, normal.x};
   const float tangentDot = dot(desired, tangent);
   // branch-gate: BG-1157
@@ -1298,9 +1282,8 @@ bool tryProductTraversalJump(Session& session, ProductAppWindowState& window) {
   TraversalIntentRequest request;
   request.actor = productPlayerActor(session);
   request.jumpPressed = true;
-  request.forward = manualFirstPersonDirection(0.0F,
-                                               1.0F,
-                                               window.viewport.cameraYawDegrees);
+  request.forward = productManualFirstPersonDirection(
+      0.0F, 1.0F, window.viewport.cameraYawDegrees);
   request.room = &activeRoom(window).room;
   request.collisionSurfaces = surfaces;
 
@@ -1491,21 +1474,6 @@ void submitProductJump(Session& session,
                       "gameplay_jump_accepted");
 }
 
-Vec3 manualFirstPersonDirection(float moveX, float moveY, float yawDegrees) {
-  const float yawRadians = yawDegrees * kPi / 180.0F;
-  const float cosYaw = std::cos(yawRadians);
-  const float sinYaw = std::sin(yawRadians);
-  const Vec3 forward{sinYaw, 0.0F, -cosYaw};
-  const Vec3 right{cosYaw, 0.0F, sinYaw};
-  const Vec3 raw = right * moveX + forward * moveY;
-  const float magnitude = std::sqrt(raw.x * raw.x + raw.z * raw.z);
-  // branch-gate: BG-1155
-  if (magnitude <= 0.0001F) {
-    return forward;
-  }
-  return raw * (1.0F / magnitude);
-}
-
 void advanceProductDashCooldown(ProductAppWindowState& window) {
   const ProductGameplayMovementTuning& tuning = window.gameplay.gameplayMovement.tuning;
   // branch-gate: BG-1155
@@ -1554,8 +1522,8 @@ void submitProductDash(Session& session,
     return;
   }
 
-  const Vec3 direction =
-      manualFirstPersonDirection(moveX, moveY, window.viewport.cameraYawDegrees);
+  const Vec3 direction = productManualFirstPersonDirection(
+      moveX, moveY, window.viewport.cameraYawDegrees);
   const float dashDistance = tuning.dashSpeedMetersPerSecond *
                              tuning.dashDurationSeconds;
   Vec3 destination = actor->transform.position + direction * dashDistance;
@@ -1584,73 +1552,6 @@ void submitProductDash(Session& session,
   submitProductGameplayCommand(session, window, command, collisionSurfaces);
 }
 
-Vec3 manualFirstPersonMoveDelta(float moveX,
-                                float moveY,
-                                float yawDegrees,
-                                bool sprinting,
-                                const ProductGameplayMovementTuning& tuning,
-                                float responseMultiplier) {
-  const float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
-  const float scale = 1.0F / std::max(1.0F, magnitude);
-  const float stepMeters =
-      manualFirstPersonMaxSpeedMetersPerSecond(tuning, sprinting) *
-      tuning.inputStepSeconds *
-      std::clamp(responseMultiplier, 0.0F, 4.0F);
-  const float yawRadians = yawDegrees * kPi / 180.0F;
-  const float cosYaw = std::cos(yawRadians);
-  const float sinYaw = std::sin(yawRadians);
-  const Vec3 forward{sinYaw, 0.0F, -cosYaw};
-  const Vec3 right{cosYaw, 0.0F, sinYaw};
-  return (right * moveX + forward * moveY) * (scale * stepMeters);
-}
-
-Vec3 manualFirstPersonDesiredVelocity(float moveX,
-                                      float moveY,
-                                      float yawDegrees,
-                                      bool sprinting,
-                                      const ProductGameplayMovementTuning& tuning) {
-  const float magnitude = std::sqrt(moveX * moveX + moveY * moveY);
-  // branch-gate: BG-1161
-  if (magnitude <= 0.0F || !std::isfinite(magnitude)) {
-    return {};
-  }
-  const float scale = 1.0F / std::max(1.0F, magnitude);
-  const float speed =
-      manualFirstPersonMaxSpeedMetersPerSecond(tuning, sprinting);
-  const float yawRadians = yawDegrees * kPi / 180.0F;
-  const float cosYaw = std::cos(yawRadians);
-  const float sinYaw = std::sin(yawRadians);
-  const Vec3 forward{sinYaw, 0.0F, -cosYaw};
-  const Vec3 right{cosYaw, 0.0F, sinYaw};
-  return (right * moveX + forward * moveY) * (scale * speed);
-}
-
-Vec3 moveHorizontalVelocityToward(Vec3 current, Vec3 target, float maxDelta) {
-  Vec3 delta{target.x - current.x, 0.0F, target.z - current.z};
-  const float distance = std::sqrt(delta.x * delta.x + delta.z * delta.z);
-  // branch-gate: BG-1161
-  if (distance <= 0.0001F || !std::isfinite(distance)) {
-    return target;
-  }
-  // branch-gate: BG-1161
-  if (maxDelta >= distance) {
-    return target;
-  }
-  const float scale = std::max(0.0F, maxDelta) / distance;
-  return {current.x + delta.x * scale, 0.0F, current.z + delta.z * scale};
-}
-
-Vec3 clampHorizontalVelocity(Vec3 velocity, float maxSpeed) {
-  const float speed =
-      std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
-  // branch-gate: BG-1161
-  if (speed <= maxSpeed || speed <= 0.0001F || !std::isfinite(speed)) {
-    return velocity;
-  }
-  const float scale = maxSpeed / speed;
-  return {velocity.x * scale, 0.0F, velocity.z * scale};
-}
-
 bool horizontalVelocityActive(const ProductAppWindowState& window) {
   const float speedSquared =
       window.gameplay.gameplayMovement.groundVelocityX *
@@ -1669,17 +1570,17 @@ Vec3 updateProductGroundMovementVelocity(ProductAppWindowState& window,
   Vec3 current{window.gameplay.gameplayMovement.groundVelocityX,
                0.0F,
                window.gameplay.gameplayMovement.groundVelocityZ};
-  const Vec3 target = manualFirstPersonDesiredVelocity(
+  const Vec3 target = productManualFirstPersonDesiredVelocity(
       moveX, moveY, window.viewport.cameraYawDegrees, sprinting, tuning);
   const bool hasIntent = target.x != 0.0F || target.z != 0.0F;
   const float rate =
       hasIntent ? tuning.groundAccelerationMetersPerSecondSquared
                 : tuning.groundDecelerationMetersPerSecondSquared;  // branch-gate: BG-1161
   const float maxSpeed =
-      manualFirstPersonMaxSpeedMetersPerSecond(tuning, sprinting);
-  Vec3 next = moveHorizontalVelocityToward(
+      productManualFirstPersonMaxSpeedMetersPerSecond(tuning, sprinting);
+  Vec3 next = moveProductHorizontalVelocityToward(
       current, target, std::max(0.0F, rate) * dt);
-  next = clampHorizontalVelocity(next, maxSpeed);
+  next = clampProductHorizontalVelocity(next, maxSpeed);
   window.gameplay.gameplayMovement.groundVelocityX = next.x;
   window.gameplay.gameplayMovement.groundVelocityZ = next.z;
   return next;
@@ -1766,20 +1667,21 @@ void submitProductAirborneMove(Session& session,
   const Vec3 start = actor.transform.position;
   Vec3 finalPosition =
       start +
-      manualFirstPersonMoveDelta(moveX,
-                                 moveY,
-                                 window.viewport.cameraYawDegrees,
-                                 sprinting,
-                                 window.gameplay.gameplayMovement.tuning,
-                                 window.gameplay.gameplayMovement.tuning.airControlMultiplier);
+      productManualFirstPersonMoveDelta(
+          moveX,
+          moveY,
+          window.viewport.cameraYawDegrees,
+          sprinting,
+          window.gameplay.gameplayMovement.tuning,
+          window.gameplay.gameplayMovement.tuning.airControlMultiplier);
   // branch-gate: BG-1157
   if (window.gameplay.gameplayWallRun.active) {
     Vec3 wallRunDirection;
     // branch-gate: BG-1157
     if (wallRunTangentDirection(window, moveX, moveY, wallRunDirection)) {
       const float speed =
-          manualFirstPersonMaxSpeedMetersPerSecond(window.gameplay.gameplayMovement.tuning,
-                                                   sprinting) *
+          productManualFirstPersonMaxSpeedMetersPerSecond(
+              window.gameplay.gameplayMovement.tuning, sprinting) *
           std::clamp(window.gameplay.gameplayMovement.tuning.wallRunSpeedMultiplier,
                      0.25F,
                      2.0F);

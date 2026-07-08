@@ -125,6 +125,11 @@ iggy3d_add_unit_test(product_gameplay_controller_tests
 set_tests_properties(product_gameplay_controller_tests PROPERTIES
   LABELS "unit;app;product;gameplay;controls;iggy3d")
 
+iggy3d_add_unit_test(product_gameplay_controller_kinematics_tests
+  tests/unit/product_gameplay_controller_kinematics_tests.cpp)
+set_tests_properties(product_gameplay_controller_kinematics_tests PROPERTIES
+  LABELS "unit;app;product;gameplay;controls;kinematics;iggy3d")
+
 iggy3d_add_unit_test(product_camera_controller_tests
   tests/unit/product_camera_controller_tests.cpp)
 set_tests_properties(product_camera_controller_tests PROPERTIES

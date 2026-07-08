@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Objective
 
@@ -117,3 +117,55 @@ Run a focused trailing-whitespace scan over touched files and this card.
 - Stop if the focused gameplay controller tests expose any behavior drift.
 
 No stage, commit, push, broad CTest, or window launch.
+
+## Completion Brief
+
+- Card moved to done: yes.
+- Files changed:
+  - `CMakeLists.txt`
+  - `cmake/iggy3d_tests.cmake`
+  - `src/app/iggy3d/gameplay/Controller.cpp`
+  - `src/app/iggy3d/gameplay/ControllerKinematics.hpp`
+  - `src/app/iggy3d/gameplay/ControllerKinematics.cpp`
+  - `tests/unit/product_gameplay_controller_kinematics_tests.cpp`
+  - this task card
+- Helper API added:
+  - `productManualFirstPersonDirection(...)`
+  - `productManualFirstPersonMaxSpeedMetersPerSecond(...)`
+  - `productManualFirstPersonMovementProfile(...)`
+  - `productManualFirstPersonMoveDelta(...)`
+  - `productManualFirstPersonDesiredVelocity(...)`
+  - `moveProductHorizontalVelocityToward(...)`
+  - `clampProductHorizontalVelocity(...)`
+- Extraction summary:
+  - Moved only the pure first-person direction, speed/profile, move-delta,
+    desired-velocity, horizontal move-toward, and horizontal clamp math into
+    `ControllerKinematics.*`.
+  - `Controller.cpp` now includes `ControllerKinematics.hpp` and calls the new
+    helper names from dash, traversal/wall-run direction, ground movement, and
+    airborne movement paths.
+  - The new helper depends only on math/vector and movement tuning types; it
+    does not include or depend on session, window state, collision, or receipt
+    stores.
+- Tests added:
+  - `product_gameplay_controller_kinematics_tests` covers yaw-forward mapping,
+    yaw 90 mapping, diagonal normalization, zero-input forward fallback,
+    sprint/walk speed/profile selection, move delta scaling, desired velocity,
+    horizontal velocity move-toward, and horizontal clamp behavior.
+- CMake updates:
+  - Added `src/app/iggy3d/gameplay/ControllerKinematics.cpp` next to
+    `Controller.cpp` in the `iggy3d` library source list.
+  - Added `product_gameplay_controller_kinematics_tests` next to
+    `product_gameplay_controller_tests`.
+- Verification:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_kinematics_tests product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_kinematics_tests|product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 4/4.
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card was clean.
+- Confirmation:
+  - No `applyProductGameplayActions(...)` signature change.
+  - No jump, dash policy, wall jump, wall run, traversal, collision query,
+    target/outcome proof, command submission, reset/fall, receipt, save, CMake
+    test-definition widening beyond the requested target, staging, commit,
+    push, broad CTest, or window launch changes.
