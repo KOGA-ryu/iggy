@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E256-product-receipt-field-rows-g6-startup-probe.md`
+1. `ready/E257-product-receipt-field-rows-g7-active-room.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E256-product-receipt-field-rows-g6-startup-probe.md`
+1. `ready/E257-product-receipt-field-rows-g7-active-room.md`
 
 ## Parking Lot
 
@@ -200,5 +200,6 @@ Held — do NOT promote to `ready/` on a guess:
   `FeedbackSurfaceAutomationVulkanFields.cpp` with a file-local context and no
   golden change. E255 completed G5 by table-driving
   `CreativePickWireframeFields.cpp` with a file-local context and no golden
-  change. E256 is released as G6 for `StartupProbeFields.cpp`, the next direct
-  receipt row candidate.
+  change. E256 completed G6 by table-driving `StartupProbeFields.cpp` with a
+  file-local context and no golden change. E257 is released as G7 for
+  `ActiveRoomFields.cpp`, the next direct receipt row candidate.
