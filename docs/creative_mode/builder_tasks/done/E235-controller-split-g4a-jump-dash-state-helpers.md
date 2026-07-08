@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Objective
 
@@ -119,3 +119,37 @@ Run a focused trailing-whitespace scan over touched files and this card.
   traversal, or movement behavior drift.
 
 No stage, commit, push, broad CTest, or window launch.
+
+## Completion Brief
+
+- Card moved to done: yes, after this brief was appended.
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/gameplay/Controller.cpp`
+  - `src/app/iggy3d/gameplay/ControllerJumpDashState.hpp`
+  - `src/app/iggy3d/gameplay/ControllerJumpDashState.cpp`
+  - `docs/creative_mode/builder_tasks/done/E235-controller-split-g4a-jump-dash-state-helpers.md`
+- Helper/API shape added:
+  - `ControllerJumpDashState.hpp/.cpp` exports `recordProductJumpPosition(...)`, `clearProductJumpTiming(...)`, `rejectProductJump(...)`, `productJumpBufferLive(...)`, `bufferProductJump(...)`, `applyProductJumpReleaseCut(...)`, `advanceProductDashCooldown(...)`, and `rejectProductDash(...)`.
+  - The helper header forward-declares `ProductAppWindowState` and includes only `std::string_view`.
+  - The helper implementation depends on `ProductAppWindowState` and standard library utilities only.
+- Controller migration:
+  - `Controller.cpp` now includes `ControllerJumpDashState.hpp` and retains call sites only for the moved helpers.
+  - Jump submit/advance orchestration, dash submit orchestration, command submission, traversal, wall-jump, wall-run, reset/fall, target/outcome proof, movement proof, and ground-query helpers were not moved.
+- CMake:
+  - Added `src/app/iggy3d/gameplay/ControllerJumpDashState.cpp` beside the other controller split sources.
+- Required grep classification:
+  - Moved helper declarations/definitions live in `ControllerJumpDashState.*`.
+  - `Controller.cpp` retains call sites only.
+  - No moved helper remains defined in `Controller.cpp`.
+  - A focused dependency grep over `ControllerJumpDashState.*` found no `Session`, `SpatialSurfaceSet`, command, collision, traversal, wall-run, wall-jump, reset/fall, active-room, target, or outcome dependencies.
+- Receipt golden result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure` passed.
+  - Required jump/dash state `rg` classification was run.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card passed.
+- Concerns/deferred:
+  - None. No stage, commit, push, broad CTest, or window launch was performed.
