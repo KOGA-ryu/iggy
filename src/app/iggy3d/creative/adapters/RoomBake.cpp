@@ -1,6 +1,7 @@
 #include "app/iggy3d/creative/adapters/RoomBake.hpp"
 #include "app/iggy3d/creative/adapters/RoomBakeGreedyFloors.hpp"
 #include "app/iggy3d/creative/adapters/RoomBakeReachability.hpp"
+#include "content/assets/TraversalTag.hpp"
 
 #include <cmath>
 #include <cstddef>
@@ -372,7 +373,7 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   surface.role = RoomSpatialSurfaceRole::Walkable;
   surface.pointsMeters = topFacePoints(bounds);
   surface.normal = {0.0F, 1.0F, 0.0F};
-  surface.traversalTags = {"walkable"};
+  surface.traversalTags = {std::string(traversalTagId(TraversalTag::Walkable))};
   surface.collisionMask = {"actor"};
   surface.blocksActor = false;
   surface.blocksProjectile = false;
@@ -397,7 +398,7 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   surface.role = RoomSpatialSurfaceRole::Blocker;
   surface.pointsMeters = boxExtentPoints(bounds);
   surface.normal = normal;
-  surface.traversalTags = {"blocker"};
+  surface.traversalTags = {std::string(traversalTagId(TraversalTag::Blocker))};
   surface.collisionMask = {"actor"};
   surface.blocksActor = true;
   surface.blocksProjectile = false;
@@ -415,7 +416,8 @@ void setWallSegmentFields(RoomStaticMeshAsset& mesh, BakeBounds bounds) {
   surface.role = RoomSpatialSurfaceRole::ProjectileBlocker;
   surface.pointsMeters = boxExtentPoints(bounds);
   surface.normal = normal;
-  surface.traversalTags = {"projectile_blocker"};
+  surface.traversalTags = {
+      std::string(traversalTagId(TraversalTag::ProjectileBlocker))};
   surface.collisionMask = {"projectile"};
   surface.blocksActor = false;
   surface.blocksProjectile = true;

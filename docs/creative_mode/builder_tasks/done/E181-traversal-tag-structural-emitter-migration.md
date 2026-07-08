@@ -100,3 +100,83 @@ Completion brief must include:
 - receipt golden result
 - confirmation that movement parsing, collision role strings, save/load,
   ProductAppWindowState, and renderer/Vulkan were not changed
+
+## Completion Brief - E181
+
+- Exact files changed:
+  - `src/app/iggy3d/creative/adapters/RoomBake.cpp`
+  - `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.cpp`
+  - `src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.cpp`
+  - `src/content/authoring/EditableRoomDocument.cpp`
+  - task card moved from `ready/` to `done/`
+
+- Emitters/checks routed through `TraversalTag`:
+  - Creative RoomBake:
+    - walkable surface traversal tag now uses
+      `traversalTagId(TraversalTag::Walkable)`.
+    - actor blocker surface traversal tag now uses
+      `traversalTagId(TraversalTag::Blocker)`.
+    - projectile blocker surface traversal tag now uses
+      `traversalTagId(TraversalTag::ProjectileBlocker)`.
+  - ASCII AuthoredRoom conversion:
+    - floor semantics traversal tag now uses
+      `TraversalTag::Walkable`.
+    - wall semantics traversal tag now uses
+      `TraversalTag::ClamberCandidate`.
+    - movement clamber ledge traversal tag now uses
+      `TraversalTag::Clamber`; gameplay tags remain local gameplay vocabulary.
+  - ASCII RoomAsset conversion:
+    - actor blocker base tag now uses `TraversalTag::Blocker`.
+    - projectile blocker tags now use
+      `TraversalTag::ProjectileBlocker`.
+    - object actor blocker tag now uses `TraversalTag::Blocker`.
+    - object walkable top tags now use `TraversalTag::Walkable` and
+      `TraversalTag::Clamber`.
+    - door blocker tag now uses `TraversalTag::Blocker`.
+    - clamber traversal checks now compare against
+      `traversalTagId(TraversalTag::Clamber)`.
+  - EditableRoom runtime conversion:
+    - structural tag insertion/filtering now uses
+      `TraversalTag::Walkable`, `TraversalTag::Blocker`, and
+      `TraversalTag::ProjectileBlocker`.
+    - projectile blocker surface traversal tag now uses
+      `TraversalTag::ProjectileBlocker`.
+    - clamber wall checks now compare against
+      `traversalTagId(TraversalTag::Clamber)`.
+
+- Remaining raw traversal literals in touched files:
+  - `RoomBake.cpp`: `"walkable"` remains in `stableObjectId(..., "walkable")`;
+    this is a stable runtime surface id suffix, not a traversal tag payload.
+  - `RoomBake.cpp`: `"projectile_blocker"` remains in
+    `stableObjectId(..., "projectile_blocker")`; this is a stable runtime
+    surface id suffix, not a traversal tag payload.
+  - `AsciiRoomToAuthoredRoom.cpp`: `"clamber"` remains in
+    `semantics.gameplayTags`; this is the existing gameplay/material tag copy
+    for the clamber ledge object and is explicitly outside the traversal
+    payload migration.
+
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d traversal_tag_catalog_tests creative_document_room_bake_tests ascii_room_to_room_asset_tests ascii_room_to_authored_room_tests editable_room_document_tests product_ascii_room_activation_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(traversal_tag_catalog_tests|creative_document_room_bake_tests|ascii_room_to_room_asset_tests|ascii_room_to_authored_room_tests|editable_room_document_tests|product_ascii_room_activation_tests)$' --output-on-failure` passed: 6/6.
+  - Full CTest passed: `100% tests passed, 0 tests failed out of 260`
+    (`/tmp/iggy3d_e181_ctest.log`).
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+    produced no output.
+  - Focused trailing-whitespace scan over touched files produced no output.
+
+- Receipt golden result:
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed:
+    `receipt key-order oracle: 1032 fields match golden (order + values)`.
+
+- Scope confirmations:
+  - Movement parsing and movement mechanic display names were not changed.
+  - Collision role strings/stringifiers were not changed.
+  - Save/load format was not changed.
+  - `ProductAppWindowState` was not changed.
+  - Renderer/Vulkan/window code was not changed.
+
+- Concerns/deferred:
+  - None for E181. Non-catalog ASCII gameplay/material/terrain tags such as
+    `object`, `prop`, `ledge`, `blocked_slope`, `ramp`, and `terrain_*` remain
+    local by card scope.

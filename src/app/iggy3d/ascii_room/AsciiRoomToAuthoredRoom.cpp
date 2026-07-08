@@ -1,5 +1,7 @@
 #include "app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.hpp"
 
+#include "content/assets/TraversalTag.hpp"
+
 #include <cstdint>
 #include <cmath>
 #include <string>
@@ -42,10 +44,14 @@ void appendUnique(std::vector<std::string>& tags, std::string value) {
   tags.push_back(std::move(value));
 }
 
+std::string tagString(TraversalTag tag) {
+  return std::string(traversalTagId(tag));
+}
+
 SaveAuthoredRoomSemanticsRecord floorSemantics(const AsciiRoomCell& cell) {
   SaveAuthoredRoomSemanticsRecord semantics;
   semantics.materialId = "debug_floor";
-  semantics.traversalTags = {"walkable"};
+  semantics.traversalTags = {tagString(TraversalTag::Walkable)};
   semantics.gameplayTags = {"floor"};
   if (cell.terrainKind == AsciiRoomTerrainKind::BlockedSteepEast) {
     appendUnique(semantics.traversalTags, "blocked_slope");
@@ -72,7 +78,7 @@ SaveAuthoredRoomSemanticsRecord floorSemantics(const AsciiRoomCell& cell) {
 SaveAuthoredRoomSemanticsRecord wallSemantics(const AsciiRoomCell& cell) {
   SaveAuthoredRoomSemanticsRecord semantics;
   semantics.materialId = "debug_wall";
-  semantics.traversalTags = {"clamber_candidate"};
+  semantics.traversalTags = {tagString(TraversalTag::ClamberCandidate)};
   semantics.gameplayTags = {"wall"};
   // branch-gate: BG-1158
   if (!cell.traversalTag.empty()) {
@@ -90,7 +96,8 @@ SaveAuthoredRoomSemanticsRecord objectSemantics(std::string_view assetId) {
   semantics.materialId = std::string(assetId);
   // branch-gate: BG-1158
   if (assetId == "movement_clamber_ledge_proxy") {
-    semantics.traversalTags = {"object", "prop", "ledge", "clamber"};
+    semantics.traversalTags = {"object", "prop", "ledge",
+                               tagString(TraversalTag::Clamber)};
     semantics.gameplayTags = {"object", "prop", "ledge", "clamber"};
   } else {
     semantics.traversalTags = {"object", "prop", "crate"};

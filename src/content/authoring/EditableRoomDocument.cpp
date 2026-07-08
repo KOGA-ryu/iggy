@@ -33,6 +33,10 @@ void appendUnique(std::vector<std::string>& values, std::string value) {
   }
 }
 
+std::string tagString(TraversalTag tag) {
+  return std::string(traversalTagId(tag));
+}
+
 bool hasDuplicateStrings(const std::vector<std::string>& values) {
   std::set<std::string> seen;
   for (const std::string& value : values) {
@@ -214,11 +218,15 @@ Vec3 wallForwardNormal(const EditableRoomWall& wall) {
 
 std::vector<std::string> traversalTagsWithStructuralTag(
     const EditableRoomSemantics& semantics,
-    std::string structuralTag) {
+    TraversalTag structuralTag) {
+  const std::string walkable = tagString(TraversalTag::Walkable);
+  const std::string blocker = tagString(TraversalTag::Blocker);
+  const std::string projectileBlocker =
+      tagString(TraversalTag::ProjectileBlocker);
   std::vector<std::string> tags;
-  appendUnique(tags, std::move(structuralTag));
+  appendUnique(tags, tagString(structuralTag));
   for (const std::string& tag : semantics.traversalTags) {
-    if (tag != "walkable" && tag != "blocker" && tag != "projectile_blocker") {
+    if (tag != walkable && tag != blocker && tag != projectileBlocker) {
       appendUnique(tags, tag);
     }
   }
@@ -276,7 +284,8 @@ RoomSpatialSurface makeWalkableSurface(std::string id,
   surface.role = RoomSpatialSurfaceRole::Walkable;
   surface.pointsMeters = topFacePoints(bounds);
   surface.normal = {0.0F, 1.0F, 0.0F};
-  surface.traversalTags = traversalTagsWithStructuralTag(semantics, "walkable");
+  surface.traversalTags =
+      traversalTagsWithStructuralTag(semantics, TraversalTag::Walkable);
   surface.collisionMask = {"actor"};
   surface.blocksActor = false;
   surface.blocksProjectile = false;
@@ -295,7 +304,8 @@ RoomSpatialSurface makeActorBlockerSurface(std::string id,
   surface.role = RoomSpatialSurfaceRole::Blocker;
   surface.pointsMeters = boxExtentPoints(bounds);
   surface.normal = normal;
-  surface.traversalTags = traversalTagsWithStructuralTag(semantics, "blocker");
+  surface.traversalTags =
+      traversalTagsWithStructuralTag(semantics, TraversalTag::Blocker);
   surface.collisionMask = {"actor"};
   surface.blocksActor = true;
   surface.blocksProjectile = false;
@@ -313,7 +323,7 @@ RoomSpatialSurface makeProjectileBlockerSurface(std::string id,
   surface.role = RoomSpatialSurfaceRole::ProjectileBlocker;
   surface.pointsMeters = boxExtentPoints(bounds);
   surface.normal = normal;
-  surface.traversalTags = {"projectile_blocker"};
+  surface.traversalTags = {tagString(TraversalTag::ProjectileBlocker)};
   surface.collisionMask = {"projectile"};
   surface.blocksActor = false;
   surface.blocksProjectile = true;
@@ -341,7 +351,8 @@ void appendWallRuntime(RoomAsset& room, const EditableRoomWall& wall) {
     room.spatialSurfaces.push_back(makeProjectileBlockerSurface(
         wall.id + "_projectile_blocker", wall.id, bounds, normal));
   }
-  if (containsString(wall.semantics.traversalTags, "clamber")) {
+  if (containsString(wall.semantics.traversalTags,
+                     traversalTagId(TraversalTag::Clamber))) {
     room.spatialSurfaces.push_back(
         makeWalkableSurface(wall.id + "_top_walkable", wall.id, bounds, wall.semantics));
   }
@@ -571,7 +582,8 @@ std::vector<std::string> runtimeIdsForEditableWall(const EditableRoomWall& wall)
   if (wall.semantics.blocksProjectile) {
     ids.push_back(wall.id + "_projectile_blocker");
   }
-  if (containsString(wall.semantics.traversalTags, "clamber")) {
+  if (containsString(wall.semantics.traversalTags,
+                     traversalTagId(TraversalTag::Clamber))) {
     ids.push_back(wall.id + "_top_walkable");
   }
   return ids;

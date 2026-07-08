@@ -1,5 +1,7 @@
 #include "app/iggy3d/ascii_room/AsciiRoomToRoomAsset.hpp"
 
+#include "content/assets/TraversalTag.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <string>
@@ -22,6 +24,10 @@ bool near(float lhs, float rhs) {
 
 bool hasTag(const std::vector<std::string>& tags, std::string_view expected) {
   return std::find(tags.begin(), tags.end(), expected) != tags.end();
+}
+
+std::string tagString(TraversalTag tag) {
+  return std::string(traversalTagId(tag));
 }
 
 Vec3 midpoint(const SaveAuthoredRoomWallRecord& wall) {
@@ -69,7 +75,7 @@ std::vector<Vec3> wallBoxPoints(const SaveAuthoredRoomWallRecord& wall) {
 
 std::vector<std::string> actorBlockerTraversalTags(
     const SaveAuthoredRoomWallRecord& wall) {
-  std::vector<std::string> tags{"blocker"};
+  std::vector<std::string> tags{tagString(TraversalTag::Blocker)};
   for (const std::string& tag : wall.semantics.traversalTags) {
     if (std::find(tags.begin(), tags.end(), tag) == tags.end()) {
       tags.push_back(tag);
@@ -116,7 +122,10 @@ RoomStaticMeshAsset objectMesh(const SaveAuthoredRoomObjectRecord& object) {
   mesh.meshId = object.assetId;
   mesh.materialId = object.assetId;
   // branch-gate: BG-1157
-  mesh.role = hasTag(object.semantics.traversalTags, "clamber") ? "ledge" : "prop";
+  mesh.role = hasTag(object.semantics.traversalTags,
+                     traversalTagId(TraversalTag::Clamber))
+                  ? "ledge"
+                  : "prop";
   mesh.positionMeters = object.positionMeters;
   mesh.sizeMeters = object.sizeMeters;
   return mesh;
@@ -214,7 +223,7 @@ RoomSpatialSurface projectileBlockerSurface(const SaveAuthoredRoomWallRecord& wa
   surface.role = RoomSpatialSurfaceRole::ProjectileBlocker;
   surface.pointsMeters = wallBoxPoints(wall);
   surface.normal = {0.0F, 0.0F, 1.0F};
-  surface.traversalTags = {"projectile_blocker"};
+  surface.traversalTags = {tagString(TraversalTag::ProjectileBlocker)};
   surface.collisionMask = {"projectile"};
   surface.blocksActor = false;
   surface.blocksProjectile = true;
@@ -245,7 +254,7 @@ RoomSpatialSurface objectActorBlockerSurface(
   surface.role = RoomSpatialSurfaceRole::Blocker;
   surface.pointsMeters = objectBoxPoints(object);
   surface.normal = {0.0F, 0.0F, 1.0F};
-  surface.traversalTags = {"blocker"};
+  surface.traversalTags = {tagString(TraversalTag::Blocker)};
   for (const std::string& tag : object.semantics.traversalTags) {
     // branch-gate: BG-1132
     if (std::find(surface.traversalTags.begin(), surface.traversalTags.end(), tag) ==
@@ -278,7 +287,8 @@ RoomSpatialSurface objectWalkableTopSurface(
       {object.positionMeters.x - halfX, topY, object.positionMeters.z + halfZ},
   };
   surface.normal = {0.0F, 1.0F, 0.0F};
-  surface.traversalTags = {"walkable", "clamber"};
+  surface.traversalTags = {tagString(TraversalTag::Walkable),
+                           tagString(TraversalTag::Clamber)};
   surface.collisionMask = {"actor"};
   surface.blocksActor = false;
   surface.blocksProjectile = false;
@@ -295,7 +305,8 @@ RoomSpatialSurface objectProjectileBlockerSurface(
   surface.role = RoomSpatialSurfaceRole::ProjectileBlocker;
   surface.pointsMeters = objectBoxPoints(object);
   surface.normal = {0.0F, 0.0F, 1.0F};
-  surface.traversalTags = {"projectile_blocker", "object", "prop"};
+  surface.traversalTags = {tagString(TraversalTag::ProjectileBlocker), "object",
+                           "prop"};
   surface.collisionMask = {"projectile"};
   surface.blocksActor = false;
   surface.blocksProjectile = true;
@@ -329,7 +340,7 @@ RoomSpatialSurface doorBlockerSurface(
   surface.role = RoomSpatialSurfaceRole::Blocker;
   surface.pointsMeters = doorBoxPoints(marker, config);
   surface.normal = {0.0F, 0.0F, 1.0F};
-  surface.traversalTags = {"blocker"};
+  surface.traversalTags = {tagString(TraversalTag::Blocker)};
   surface.collisionMask = {"actor", "projectile"};
   surface.blocksActor = true;
   surface.blocksProjectile = true;
@@ -480,7 +491,8 @@ AsciiRoomToRoomAssetResult buildRoomAssetFromAsciiRoom(
   for (const SaveAuthoredRoomObjectRecord& object : authored.authoredRoom.objects) {
     result.room.staticMeshes.push_back(objectMesh(object));
     // branch-gate: BG-1157
-    if (hasTag(object.semantics.traversalTags, "clamber")) {
+    if (hasTag(object.semantics.traversalTags,
+               traversalTagId(TraversalTag::Clamber))) {
       result.room.spatialSurfaces.push_back(objectWalkableTopSurface(object));
       ++result.walkableSurfaceCount;
     }
