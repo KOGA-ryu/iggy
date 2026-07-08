@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E264-product-receipt-field-rows-g14-creative-ui-baked-room-refresh.md`
+1. `ready/E265-product-receipt-field-rows-closeout-preflight.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E264-product-receipt-field-rows-g14-creative-ui-baked-room-refresh.md`
+1. `ready/E265-product-receipt-field-rows-closeout-preflight.md`
 
 ## Parking Lot
 
@@ -213,6 +213,9 @@ Held — do NOT promote to `ready/` on a guess:
   `CreativeUiFields.cpp`'s public appender while leaving command and baked-room
   helper appenders procedural. E263 completed G13 by table-driving the fixed
   creative UI command diagnostic helper rows while still leaving baked-room
-  refresh diagnostics procedural. E264 is released as G14 for the remaining
-  baked-room refresh diagnostic fixed rows while preserving the optional
-  `clearedActiveRoom` branch as procedural.
+  refresh diagnostics procedural. E264 completed G14 by table-driving the
+  remaining baked-room refresh diagnostic fixed rows while preserving the
+  optional `clearedActiveRoom` branch as procedural. E265 is released as a
+  read-only closeout/preflight to classify the remaining append sites and decide
+  whether a shared receipt row helper is worth a follow-up, or whether the
+  receipt-boilerplate target should close.
