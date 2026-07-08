@@ -257,3 +257,67 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, `ProductAppReceiptContext`, CMake, tests,
   golden, staging, commit, push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Status: Done.
+
+Files changed:
+
+- `src/app/iggy3d/receipt/SaveStateFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E260-product-receipt-field-rows-g10-save-state.md`
+
+Refactor shape:
+
+- Added file-local `SaveStateReceiptContext` with references to
+  `FrontendState`, `ProductAppWindowState`, and
+  `creative::CreativeActiveIdentity`.
+- Added file-local `SaveStateReceiptFieldRow` with `std::string_view key` and
+  an append callback:
+  `void (*append)(RenderReceipt&, const SaveStateReceiptContext&,
+  std::string_view)`.
+- Added ordered `const std::array<SaveStateReceiptFieldRow, 146>
+  kSaveStateReceiptFields`.
+- `appendProductSaveStateFields(...)` now builds a `SaveStateReceiptContext`
+  and iterates the ordered rows.
+
+Row coverage:
+
+- Row count: 146.
+- First key: `product_save_status`.
+- Last key: `product_save_load_session_loaded`.
+- Rows left procedural: none.
+- `std::to_string(...)`, `floatReceiptValue(...)`,
+  `productRoomEditorToolName(...)`, `productRoomEditorDirectionName(...)`,
+  `frontendSaveBrowserModeName(...)`, and direct bool/string/count/hash values
+  remain inside row callbacks.
+
+Required grep classification:
+
+- `SaveStateReceiptContext`, `SaveStateReceiptFieldRow`, and
+  `kSaveStateReceiptFields` exist only in `SaveStateFields.cpp`.
+- `appendProductSaveStateFields(...)` remains the only public appender.
+- `appendReceiptField(...)` calls live inside row callbacks.
+- `rg -c "appendReceiptField\\(" SaveStateFields.cpp` returned `146`.
+- No `ProductAppReceiptContext` or shared `ReceiptFieldRow` was introduced.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d
+  product_receipt_key_order_tests -j10`: passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R
+  '^product_receipt_key_order_tests$' --output-on-failure`: passed.
+- `(cd /Users/kogaryu/iggy3d &&
+  /Users/kogaryu/iggy3d/build/product_receipt_key_order_tests)`: passed with
+  `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff --
+  tests/golden/product_receipt_key_order.golden`: no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check`: passed.
+- Focused trailing-whitespace scan over `SaveStateFields.cpp` and this task
+  card: passed.
+
+Scope confirmation:
+
+- No shared receipt helper, `ProductAppReceiptContext`, CMake, tests, fixtures,
+  receipt golden files, staging, commit, push, broad CTest, or window launch
+  were performed.

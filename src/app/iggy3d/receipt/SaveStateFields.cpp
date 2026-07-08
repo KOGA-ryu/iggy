@@ -1,5 +1,6 @@
 #include "app/iggy3d/receipt/ReceiptFields.hpp"
 
+#include <array>
 #include <charconv>
 #include <string>
 #include <string_view>
@@ -23,311 +24,1358 @@
 
 namespace iggy3d {
 
-void appendProductSaveStateFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window, const creative::CreativeActiveIdentity& creativeIdentity) {
-  appendReceiptField(receipt, "product_save_status", window.saveSession.productSaveStatus);
-  appendReceiptField(receipt, "product_save_reason_code",
-                     window.saveSession.productSaveReasonCode);
-  appendReceiptField(receipt, "product_save_durable_reason",
-                     window.saveSession.productSaveDurableReason);
-  appendReceiptField(receipt, "product_save_source", window.saveSession.productSaveSource);
-  appendReceiptField(receipt, "product_save_save_id", window.saveSession.productSaveSaveId);
-  appendReceiptField(receipt, "product_save_session_saved",
-                     window.saveSession.productSaveSessionSaved);
-  appendReceiptField(receipt, "active_product_save_id", window.saveSession.activeProductSaveId);
-  appendReceiptField(receipt, "active_creative_save_id",
-                     creativeIdentity.saveId);
-  appendReceiptField(receipt, "active_creative_save_path",
-                     creativeIdentity.savePath);
-  appendReceiptField(receipt, "active_creative_world_id",
-                     creativeIdentity.worldId);
-  appendReceiptField(receipt, "active_creative_document_id",
-                     creativeIdentity.documentId);
-  appendReceiptField(receipt, "active_creative_object_count",
-                     creativeIdentity.objectCount);
-  appendReceiptField(receipt, "active_creative_next_object_id",
-                     creativeIdentity.nextObjectId);
-  appendReceiptField(receipt, "active_creative_save_status",
-                     creativeIdentity.saveStatus);
-  appendReceiptField(receipt, "active_creative_save_reason_code",
-                     creativeIdentity.saveReasonCode);
-  appendReceiptField(receipt, "active_creative_save_dirty_flags_before",
-                     creativeIdentity.saveDirtyFlagsBefore);
-  appendReceiptField(receipt, "active_creative_save_dirty_flags_drained",
-                     creativeIdentity.saveDirtyFlagsDrained);
-  appendReceiptField(receipt, "active_creative_save_dirty_flags_after",
-                     creativeIdentity.saveDirtyFlagsAfter);
-  appendReceiptField(receipt, "active_creative_save_saved_at_utc",
-                     creativeIdentity.saveSavedAtUtc);
-  appendReceiptField(receipt, "product_save_load_status",
-                     window.saveSession.productSaveLoadResult.status);
-  appendReceiptField(receipt, "product_save_load_reason_code",
-                     window.saveSession.productSaveLoadResult.reasonCode);
-  appendReceiptField(receipt, "product_save_load_save_id",
-                     window.saveSession.productSaveLoadResult.record.id);
-  appendReceiptField(receipt, "product_save_load_source",
-                     window.saveSession.productSaveLoadSource);
-  appendReceiptField(receipt, "product_save_load_selected_id",
-                     window.saveSession.productSaveLoadSelectedId);
-  appendReceiptField(receipt, "product_save_load_selected_enabled",
-                     window.saveSession.productSaveLoadSelectedEnabled);
-  appendReceiptField(receipt,
-                     "product_save_load_authored_room_present",
-                     window.saveSession.productSaveLoadResult.authoredRoomPresent);
-  appendReceiptField(receipt,
-                     "product_save_load_authored_room_id",
-                     window.saveSession.productSaveLoadResult.authoredRoomId);
-  appendReceiptField(receipt,
-                     "product_save_load_authored_floor_count",
-                     window.saveSession.productSaveLoadResult.authoredFloorCount);
-  appendReceiptField(receipt,
-                     "product_save_load_authored_wall_count",
-                     window.saveSession.productSaveLoadResult.authoredWallCount);
-  appendReceiptField(receipt,
-                     "product_save_load_authored_object_count",
-                     window.saveSession.productSaveLoadResult.authoredObjectCount);
-  appendReceiptField(receipt,
-                     "product_save_load_authored_marker_count",
-                     window.saveSession.productSaveLoadResult.authoredMarkerCount);
-  appendReceiptField(receipt, "saved_marker_bind_status",
-                     window.saveSession.savedMarkerBind.status);
-  appendReceiptField(receipt, "saved_marker_bind_reason_code",
-                     window.saveSession.savedMarkerBind.reasonCode);
-  appendReceiptField(receipt, "saved_marker_bind_requested",
-                     window.saveSession.savedMarkerBind.requested);
-  appendReceiptField(receipt, "saved_marker_bind_session_replaced",
-                     window.saveSession.savedMarkerBind.sessionReplaced);
-  appendReceiptField(receipt, "saved_marker_bind_room_id",
-                     window.saveSession.savedMarkerBind.roomId);
-  appendReceiptField(receipt, "saved_marker_bind_marker_count",
-                     window.saveSession.savedMarkerBind.markerCount);
-  appendReceiptField(receipt, "saved_marker_bind_seed_entity_count",
-                     window.saveSession.savedMarkerBind.seedEntityCount);
-  appendReceiptField(receipt, "saved_marker_bind_added_entity_count",
-                     window.saveSession.savedMarkerBind.addedEntityCount);
-  appendReceiptField(receipt, "saved_marker_bind_existing_entity_count",
-                     window.saveSession.savedMarkerBind.existingEntityCount);
-  appendReceiptField(receipt, "saved_marker_bind_added_objective_count",
-                     window.saveSession.savedMarkerBind.addedObjectiveCount);
-  appendReceiptField(receipt, "saved_marker_bind_existing_objective_count",
-                     window.saveSession.savedMarkerBind.existingObjectiveCount);
-  appendReceiptField(receipt, "saved_marker_bind_added_combatant_count",
-                     window.saveSession.savedMarkerBind.addedCombatantCount);
-  appendReceiptField(receipt, "saved_marker_bind_existing_combatant_count",
-                     window.saveSession.savedMarkerBind.existingCombatantCount);
-  appendReceiptField(receipt, "saved_marker_bind_pickup_count",
-                     window.saveSession.savedMarkerBind.pickupCount);
-  appendReceiptField(receipt, "saved_marker_bind_door_count",
-                     window.saveSession.savedMarkerBind.doorCount);
-  appendReceiptField(receipt, "saved_marker_bind_marker_entity_count",
-                     window.saveSession.savedMarkerBind.markerEntityCount);
-  appendReceiptField(receipt, "saved_marker_bind_npc_count",
-                     window.saveSession.savedMarkerBind.npcCount);
-  appendReceiptField(receipt, "saved_marker_bind_previous_hash",
-                     window.saveSession.savedMarkerBind.previousHash);
-  appendReceiptField(receipt, "saved_marker_bind_bound_hash",
-                     window.saveSession.savedMarkerBind.boundHash);
-  appendReceiptField(receipt, "room_editor_cursor_ready",
-                     window.creativeAuthoring.roomEditorCursorReady);
-  appendReceiptField(receipt, "room_editor_grid_x",
-                     std::to_string(window.creativeAuthoring.roomEditorCursor.gridX));
-  appendReceiptField(receipt, "room_editor_grid_z",
-                     std::to_string(window.creativeAuthoring.roomEditorCursor.gridZ));
-  appendReceiptField(receipt, "room_editor_story_index",
-                     std::to_string(window.creativeAuthoring.roomEditorCursor.storyIndex));
-  appendReceiptField(receipt, "room_editor_cell_size_meters",
-                     floatReceiptValue(window.creativeAuthoring.roomEditorCursor.cellSizeMeters));
-  appendReceiptField(receipt, "room_editor_tool",
-                     productRoomEditorToolName(window.creativeAuthoring.roomEditorCursor.selectedTool));
-  appendReceiptField(receipt, "room_editor_wall_direction",
-                     productRoomEditorDirectionName(window.creativeAuthoring.roomEditorCursor.wallDirection));
-  appendReceiptField(receipt, "room_editor_status", window.creativeAuthoring.roomEditorStatus);
-  appendReceiptField(receipt, "room_editor_reason_code",
-                     window.creativeAuthoring.roomEditorReasonCode);
-  appendReceiptField(receipt, "room_editor_last_operation",
-                     window.creativeAuthoring.roomEditorLastOperation);
-  appendReceiptField(receipt, "room_editor_last_operation_accepted",
-                     window.creativeAuthoring.roomEditorLastOperationAccepted);
-  appendReceiptField(receipt, "room_editor_last_primitive_id",
-                     window.creativeAuthoring.roomEditorLastPrimitiveId);
-  appendReceiptField(receipt, "room_editor_overlay_visible",
-                     window.creativeAuthoring.roomEditorOverlay.visible);
-  appendReceiptField(receipt, "room_editor_overlay_status",
-                     window.creativeAuthoring.roomEditorOverlay.status);
-  appendReceiptField(receipt, "room_editor_overlay_reason_code",
-                     window.creativeAuthoring.roomEditorOverlay.reasonCode);
-  appendReceiptField(receipt, "room_editor_overlay_item_count",
-                     window.creativeAuthoring.roomEditorOverlay.itemCount);
-  appendReceiptField(receipt, "room_editor_overlay_world_x",
-                     floatReceiptValue(window.creativeAuthoring.roomEditorOverlay.worldX));
-  appendReceiptField(receipt, "room_editor_overlay_world_y",
-                     floatReceiptValue(window.creativeAuthoring.roomEditorOverlay.worldY));
-  appendReceiptField(receipt, "room_editor_overlay_world_z",
-                     floatReceiptValue(window.creativeAuthoring.roomEditorOverlay.worldZ));
-  appendReceiptField(receipt, "room_editor_preview_pending",
-                     window.creativeAuthoring.roomEditorPreview.active);
-  appendReceiptField(receipt, "room_editor_preview_visible",
-                     window.creativeAuthoring.roomEditorPreview.visible);
-  appendReceiptField(receipt, "room_editor_preview_status",
-                     window.creativeAuthoring.roomEditorPreview.status);
-  appendReceiptField(receipt, "room_editor_preview_reason_code",
-                     window.creativeAuthoring.roomEditorPreview.reasonCode);
-  appendReceiptField(receipt, "room_editor_preview_candidate_id",
-                     window.creativeAuthoring.roomEditorPreview.candidateId);
-  appendReceiptField(receipt, "room_editor_preview_tool",
-                     window.creativeAuthoring.roomEditorPreview.tool);
-  appendReceiptField(receipt, "room_editor_preview_grid_x",
-                     std::to_string(window.creativeAuthoring.roomEditorPreview.gridX));
-  appendReceiptField(receipt, "room_editor_preview_grid_z",
-                     std::to_string(window.creativeAuthoring.roomEditorPreview.gridZ));
-  appendReceiptField(receipt, "room_editor_preview_before_draw_count",
-                     std::to_string(window.creativeAuthoring.roomEditorPreview.beforeDrawCount));
-  appendReceiptField(receipt, "room_editor_preview_after_draw_count",
-                     std::to_string(window.creativeAuthoring.roomEditorPreview.afterDrawCount));
-  appendReceiptField(
-      receipt,
-      "room_editor_preview_avoided_draw_count_delta",
-      std::to_string(window.creativeAuthoring.roomEditorPreview.avoidedDrawCountDelta));
-  appendReceiptField(
-      receipt,
-      "room_editor_preview_before_triangle_count",
-      std::to_string(window.creativeAuthoring.roomEditorPreview.beforeTriangleCount));
-  appendReceiptField(receipt,
-                     "room_editor_preview_after_triangle_count",
-                     std::to_string(window.creativeAuthoring.roomEditorPreview.afterTriangleCount));
-  appendReceiptField(
-      receipt,
-      "room_editor_preview_avoided_triangle_count_delta",
-      std::to_string(window.creativeAuthoring.roomEditorPreview.avoidedTriangleCountDelta));
-  appendReceiptField(receipt, "room_editor_preview_optimized_draw_delta",
-                     std::to_string(window.creativeAuthoring.roomEditorPreview.optimizedDrawDelta));
-  appendReceiptField(receipt, "room_editor_preview_optimized_triangle_delta",
-                     std::to_string(
-                         window.creativeAuthoring.roomEditorPreview.optimizedTriangleDelta));
-  appendReceiptField(receipt, "room_editor_hud_visible",
-                     window.creativeAuthoring.roomEditorHud.visible);
-  appendReceiptField(receipt, "room_editor_hud_status",
-                     window.creativeAuthoring.roomEditorHud.status);
-  appendReceiptField(receipt, "room_editor_hud_reason_code",
-                     window.creativeAuthoring.roomEditorHud.reasonCode);
-  appendReceiptField(receipt, "room_editor_hud_tool",
-                     window.creativeAuthoring.roomEditorHud.toolName);
-  appendReceiptField(receipt, "room_editor_hud_wall_direction",
-                     window.creativeAuthoring.roomEditorHud.wallDirectionName);
-  appendReceiptField(receipt, "room_editor_hud_grid_x",
-                     std::to_string(window.creativeAuthoring.roomEditorHud.gridX));
-  appendReceiptField(receipt, "room_editor_hud_grid_z",
-                     std::to_string(window.creativeAuthoring.roomEditorHud.gridZ));
-  appendReceiptField(receipt, "room_editor_hud_last_operation",
-                     window.creativeAuthoring.roomEditorHud.lastOperation);
-  appendReceiptField(receipt, "room_editor_hud_last_operation_accepted",
-                     window.creativeAuthoring.roomEditorHud.lastOperationAccepted);
-  appendReceiptField(receipt, "room_editor_hud_last_primitive_id",
-                     window.creativeAuthoring.roomEditorHud.lastPrimitiveId);
-  appendReceiptField(receipt, "room_editor_hud_preview_active",
-                     window.creativeAuthoring.roomEditorHud.previewActive);
-  appendReceiptField(receipt, "room_editor_hud_preview_status",
-                     window.creativeAuthoring.roomEditorHud.previewStatus);
-  appendReceiptField(receipt, "room_editor_hud_preview_candidate_id",
-                     window.creativeAuthoring.roomEditorHud.previewCandidateId);
-  appendReceiptField(receipt, "room_editor_hud_preview_optimized_draw_delta",
-                     std::to_string(
-                         window.creativeAuthoring.roomEditorHud.previewOptimizedDrawDelta));
-  appendReceiptField(receipt, "room_editor_hud_preview_optimized_triangle_delta",
-                     std::to_string(
-                         window.creativeAuthoring.roomEditorHud.previewOptimizedTriangleDelta));
-  appendReceiptField(receipt, "room_editor_hud_line_count",
-                     std::to_string(window.creativeAuthoring.roomEditorHud.lineCount));
-  appendReceiptField(receipt,
-                     "save_browser_mode",
-                     frontendSaveBrowserModeName(frontend.saveBrowserMode));
-  appendReceiptField(receipt, "selected_save_id", window.saveSession.selectedProductSave.id);
-  appendReceiptField(receipt, "selected_save_enabled",
-                     window.saveSession.selectedProductSave.enabled);
-  appendReceiptField(receipt, "selected_save_status",
-                     window.saveSession.selectedProductSave.status);
-  appendReceiptField(receipt, "save_slot_browser_mode", window.saveSession.saveSlotBrowserMode);
-  appendReceiptField(receipt, "save_slot_ring_count", window.saveSession.saveSlotRingCount);
-  appendReceiptField(receipt,
-                     "save_slot_ring_selected_index",
-                     window.saveSession.saveSlotRingSelectedIndex);
-  appendReceiptField(receipt,
-                     "save_slot_ring_selected_id",
-                     window.saveSession.saveSlotRingSelectedId);
-  appendReceiptField(receipt,
-                     "save_slot_ring_selected_status",
-                     window.saveSession.saveSlotRingSelectedStatus);
-  appendReceiptField(receipt, "save_slot_action_command",
-                     window.saveSession.saveSlotActionCommand);
-  appendReceiptField(receipt, "save_slot_action_enabled",
-                     window.saveSession.saveSlotActionEnabled);
-  appendReceiptField(receipt,
-                     "save_slot_action_confirmation_required",
-                     window.saveSession.saveSlotActionConfirmationRequired);
-  appendReceiptField(receipt, "save_slot_action_status",
-                     window.saveSession.saveSlotActionStatus);
-  appendReceiptField(receipt, "save_flow_operation", window.saveSession.saveFlow.operation);
-  appendReceiptField(receipt,
-                     "save_flow_source_surface",
-                     window.saveSession.saveFlow.sourceSurface);
-  appendReceiptField(receipt, "save_flow_status", window.saveSession.saveFlow.status);
-  appendReceiptField(receipt,
-                     "save_flow_reason_code",
-                     window.saveSession.saveFlow.reasonCode);
-  appendReceiptField(receipt,
-                     "save_flow_affected_slot_id",
-                     window.saveSession.saveFlow.affectedSlotId);
-  appendReceiptField(receipt,
-                     "save_flow_active_count_before",
-                     window.saveSession.saveFlow.activeCountBefore);
-  appendReceiptField(receipt,
-                     "save_flow_active_count_after",
-                     window.saveSession.saveFlow.activeCountAfter);
-  appendReceiptField(receipt,
-                     "save_flow_deleted_count_after",
-                     window.saveSession.saveFlow.deletedCountAfter);
-  appendReceiptField(receipt,
-                     "save_flow_selected_slot_after",
-                     window.saveSession.saveFlow.selectedSlotAfter);
-  appendReceiptField(receipt, "save_delete_confirmation_open",
-                     window.saveSession.saveDelete.confirmationOpen);
-  appendReceiptField(receipt, "save_delete_candidate_id",
-                     window.saveSession.saveDelete.candidateId);
-  appendReceiptField(receipt, "save_delete_candidate_enabled",
-                     window.saveSession.saveDelete.candidateEnabled);
-  appendReceiptField(receipt, "save_delete_status", window.saveSession.saveDelete.status);
-  appendReceiptField(receipt, "save_delete_reason_code",
-                     window.saveSession.saveDelete.reasonCode);
-  appendReceiptField(receipt, "save_delete_type", window.saveSession.saveDelete.type);
-  appendReceiptField(receipt, "save_delete_recoverable",
-                     window.saveSession.saveDelete.recoverable);
-  appendReceiptField(receipt, "save_delete_executed", window.saveSession.saveDelete.executed);
-  appendReceiptField(receipt, "deleted_save_browser_open",
-                     window.saveSession.deletedSaveBrowserOpen);
-  appendReceiptField(receipt, "deleted_save_count", window.saveSession.deletedSaveCount);
-  appendReceiptField(receipt, "deleted_compatible_save_count",
-                     window.saveSession.deletedCompatibleSaveCount);
-  appendReceiptField(receipt, "deleted_selected_save_id",
-                     window.saveSession.deletedSelectedSaveId);
-  appendReceiptField(receipt, "deleted_selected_save_enabled",
-                     window.saveSession.deletedSelectedSaveEnabled);
-  appendReceiptField(receipt, "deleted_selected_save_status",
-                     window.saveSession.deletedSelectedSaveStatus);
-  appendReceiptField(receipt, "save_recover_status", window.saveSession.saveRecover.status);
-  appendReceiptField(receipt, "save_recover_reason_code",
-                     window.saveSession.saveRecover.reasonCode);
-  appendReceiptField(receipt, "save_recover_executed",
-                     window.saveSession.saveRecover.executed);
-  appendReceiptField(receipt, "save_recover_save_id", window.saveSession.saveRecover.saveId);
-  appendReceiptField(receipt, "save_recover_snapshot_recovered",
-                     window.saveSession.saveRecover.snapshotRecovered);
-  appendReceiptField(receipt, "save_recover_snapshot_missing",
-                     window.saveSession.saveRecover.snapshotMissing);
-  appendReceiptField(receipt, "product_save_load_previous_hash",
-                     window.saveSession.productSaveLoadResult.previousHash);
-  appendReceiptField(receipt, "product_save_load_loaded_hash",
-                     window.saveSession.productSaveLoadResult.loadedHash);
-  appendReceiptField(receipt, "product_save_load_session_loaded",
-                     window.saveSession.productSaveLoadResult.sessionLoaded);
+namespace {
+
+struct SaveStateReceiptContext {
+  const FrontendState& frontend;
+  const ProductAppWindowState& window;
+  const creative::CreativeActiveIdentity& creativeIdentity;
+};
+
+struct SaveStateReceiptFieldRow {
+  std::string_view key;
+  void (*append)(RenderReceipt& receipt,
+                 const SaveStateReceiptContext& context,
+                 std::string_view key);
+};
+
+const std::array<SaveStateReceiptFieldRow, 146> kSaveStateReceiptFields{{
+    {"product_save_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveStatus);
+     }},
+    {"product_save_reason_code",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveReasonCode);
+     }},
+    {"product_save_durable_reason",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveDurableReason);
+     }},
+    {"product_save_source",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveSource);
+     }},
+    {"product_save_save_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveSaveId);
+     }},
+    {"product_save_session_saved",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveSessionSaved);
+     }},
+    {"active_product_save_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.activeProductSaveId);
+     }},
+    {"active_creative_save_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.saveId);
+     }},
+    {"active_creative_save_path",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.savePath);
+     }},
+    {"active_creative_world_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.worldId);
+     }},
+    {"active_creative_document_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.documentId);
+     }},
+    {"active_creative_object_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.objectCount);
+     }},
+    {"active_creative_next_object_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.nextObjectId);
+     }},
+    {"active_creative_save_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.saveStatus);
+     }},
+    {"active_creative_save_reason_code",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.saveReasonCode);
+     }},
+    {"active_creative_save_dirty_flags_before",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.saveDirtyFlagsBefore);
+     }},
+    {"active_creative_save_dirty_flags_drained",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.saveDirtyFlagsDrained);
+     }},
+    {"active_creative_save_dirty_flags_after",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.saveDirtyFlagsAfter);
+     }},
+    {"active_creative_save_saved_at_utc",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.creativeIdentity.saveSavedAtUtc);
+     }},
+    {"product_save_load_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.status);
+     }},
+    {"product_save_load_reason_code",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.reasonCode);
+     }},
+    {"product_save_load_save_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.record.id);
+     }},
+    {"product_save_load_source",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadSource);
+     }},
+    {"product_save_load_selected_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadSelectedId);
+     }},
+    {"product_save_load_selected_enabled",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadSelectedEnabled);
+     }},
+    {"product_save_load_authored_room_present",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.authoredRoomPresent);
+     }},
+    {"product_save_load_authored_room_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.authoredRoomId);
+     }},
+    {"product_save_load_authored_floor_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.authoredFloorCount);
+     }},
+    {"product_save_load_authored_wall_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.authoredWallCount);
+     }},
+    {"product_save_load_authored_object_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.authoredObjectCount);
+     }},
+    {"product_save_load_authored_marker_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.authoredMarkerCount);
+     }},
+    {"saved_marker_bind_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.status);
+     }},
+    {"saved_marker_bind_reason_code",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.reasonCode);
+     }},
+    {"saved_marker_bind_requested",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.requested);
+     }},
+    {"saved_marker_bind_session_replaced",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.sessionReplaced);
+     }},
+    {"saved_marker_bind_room_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.roomId);
+     }},
+    {"saved_marker_bind_marker_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.markerCount);
+     }},
+    {"saved_marker_bind_seed_entity_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.seedEntityCount);
+     }},
+    {"saved_marker_bind_added_entity_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.addedEntityCount);
+     }},
+    {"saved_marker_bind_existing_entity_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.existingEntityCount);
+     }},
+    {"saved_marker_bind_added_objective_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.addedObjectiveCount);
+     }},
+    {"saved_marker_bind_existing_objective_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.existingObjectiveCount);
+     }},
+    {"saved_marker_bind_added_combatant_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.addedCombatantCount);
+     }},
+    {"saved_marker_bind_existing_combatant_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.existingCombatantCount);
+     }},
+    {"saved_marker_bind_pickup_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.pickupCount);
+     }},
+    {"saved_marker_bind_door_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.doorCount);
+     }},
+    {"saved_marker_bind_marker_entity_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.markerEntityCount);
+     }},
+    {"saved_marker_bind_npc_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.npcCount);
+     }},
+    {"saved_marker_bind_previous_hash",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.previousHash);
+     }},
+    {"saved_marker_bind_bound_hash",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.savedMarkerBind.boundHash);
+     }},
+    {"room_editor_cursor_ready",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorCursorReady);
+     }},
+    {"room_editor_grid_x",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorCursor.gridX));
+     }},
+    {"room_editor_grid_z",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorCursor.gridZ));
+     }},
+    {"room_editor_story_index",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorCursor.storyIndex));
+     }},
+    {"room_editor_cell_size_meters",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           floatReceiptValue(context.window.creativeAuthoring.roomEditorCursor.cellSizeMeters));
+     }},
+    {"room_editor_tool",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           productRoomEditorToolName(context.window.creativeAuthoring.roomEditorCursor.selectedTool));
+     }},
+    {"room_editor_wall_direction",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           productRoomEditorDirectionName(context.window.creativeAuthoring.roomEditorCursor.wallDirection));
+     }},
+    {"room_editor_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorStatus);
+     }},
+    {"room_editor_reason_code",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorReasonCode);
+     }},
+    {"room_editor_last_operation",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorLastOperation);
+     }},
+    {"room_editor_last_operation_accepted",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorLastOperationAccepted);
+     }},
+    {"room_editor_last_primitive_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorLastPrimitiveId);
+     }},
+    {"room_editor_overlay_visible",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorOverlay.visible);
+     }},
+    {"room_editor_overlay_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorOverlay.status);
+     }},
+    {"room_editor_overlay_reason_code",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorOverlay.reasonCode);
+     }},
+    {"room_editor_overlay_item_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorOverlay.itemCount);
+     }},
+    {"room_editor_overlay_world_x",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           floatReceiptValue(context.window.creativeAuthoring.roomEditorOverlay.worldX));
+     }},
+    {"room_editor_overlay_world_y",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           floatReceiptValue(context.window.creativeAuthoring.roomEditorOverlay.worldY));
+     }},
+    {"room_editor_overlay_world_z",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           floatReceiptValue(context.window.creativeAuthoring.roomEditorOverlay.worldZ));
+     }},
+    {"room_editor_preview_pending",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorPreview.active);
+     }},
+    {"room_editor_preview_visible",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorPreview.visible);
+     }},
+    {"room_editor_preview_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorPreview.status);
+     }},
+    {"room_editor_preview_reason_code",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorPreview.reasonCode);
+     }},
+    {"room_editor_preview_candidate_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorPreview.candidateId);
+     }},
+    {"room_editor_preview_tool",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorPreview.tool);
+     }},
+    {"room_editor_preview_grid_x",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorPreview.gridX));
+     }},
+    {"room_editor_preview_grid_z",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorPreview.gridZ));
+     }},
+    {"room_editor_preview_before_draw_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorPreview.beforeDrawCount));
+     }},
+    {"room_editor_preview_after_draw_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorPreview.afterDrawCount));
+     }},
+    {"room_editor_preview_avoided_draw_count_delta",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorPreview.avoidedDrawCountDelta));
+     }},
+    {"room_editor_preview_before_triangle_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorPreview.beforeTriangleCount));
+     }},
+    {"room_editor_preview_after_triangle_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorPreview.afterTriangleCount));
+     }},
+    {"room_editor_preview_avoided_triangle_count_delta",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorPreview.avoidedTriangleCountDelta));
+     }},
+    {"room_editor_preview_optimized_draw_delta",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorPreview.optimizedDrawDelta));
+     }},
+    {"room_editor_preview_optimized_triangle_delta",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(
+                                    context.window.creativeAuthoring.roomEditorPreview.optimizedTriangleDelta));
+     }},
+    {"room_editor_hud_visible",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorHud.visible);
+     }},
+    {"room_editor_hud_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorHud.status);
+     }},
+    {"room_editor_hud_reason_code",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorHud.reasonCode);
+     }},
+    {"room_editor_hud_tool",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorHud.toolName);
+     }},
+    {"room_editor_hud_wall_direction",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorHud.wallDirectionName);
+     }},
+    {"room_editor_hud_grid_x",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorHud.gridX));
+     }},
+    {"room_editor_hud_grid_z",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorHud.gridZ));
+     }},
+    {"room_editor_hud_last_operation",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorHud.lastOperation);
+     }},
+    {"room_editor_hud_last_operation_accepted",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorHud.lastOperationAccepted);
+     }},
+    {"room_editor_hud_last_primitive_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorHud.lastPrimitiveId);
+     }},
+    {"room_editor_hud_preview_active",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorHud.previewActive);
+     }},
+    {"room_editor_hud_preview_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorHud.previewStatus);
+     }},
+    {"room_editor_hud_preview_candidate_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.creativeAuthoring.roomEditorHud.previewCandidateId);
+     }},
+    {"room_editor_hud_preview_optimized_draw_delta",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(
+                                    context.window.creativeAuthoring.roomEditorHud.previewOptimizedDrawDelta));
+     }},
+    {"room_editor_hud_preview_optimized_triangle_delta",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(
+                                    context.window.creativeAuthoring.roomEditorHud.previewOptimizedTriangleDelta));
+     }},
+    {"room_editor_hud_line_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           std::to_string(context.window.creativeAuthoring.roomEditorHud.lineCount));
+     }},
+    {"save_browser_mode",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           frontendSaveBrowserModeName(context.frontend.saveBrowserMode));
+     }},
+    {"selected_save_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.selectedProductSave.id);
+     }},
+    {"selected_save_enabled",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.selectedProductSave.enabled);
+     }},
+    {"selected_save_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.selectedProductSave.status);
+     }},
+    {"save_slot_browser_mode",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveSlotBrowserMode);
+     }},
+    {"save_slot_ring_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveSlotRingCount);
+     }},
+    {"save_slot_ring_selected_index",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveSlotRingSelectedIndex);
+     }},
+    {"save_slot_ring_selected_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveSlotRingSelectedId);
+     }},
+    {"save_slot_ring_selected_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveSlotRingSelectedStatus);
+     }},
+    {"save_slot_action_command",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveSlotActionCommand);
+     }},
+    {"save_slot_action_enabled",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveSlotActionEnabled);
+     }},
+    {"save_slot_action_confirmation_required",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveSlotActionConfirmationRequired);
+     }},
+    {"save_slot_action_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveSlotActionStatus);
+     }},
+    {"save_flow_operation",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveFlow.operation);
+     }},
+    {"save_flow_source_surface",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveFlow.sourceSurface);
+     }},
+    {"save_flow_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveFlow.status);
+     }},
+    {"save_flow_reason_code",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveFlow.reasonCode);
+     }},
+    {"save_flow_affected_slot_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveFlow.affectedSlotId);
+     }},
+    {"save_flow_active_count_before",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveFlow.activeCountBefore);
+     }},
+    {"save_flow_active_count_after",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveFlow.activeCountAfter);
+     }},
+    {"save_flow_deleted_count_after",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveFlow.deletedCountAfter);
+     }},
+    {"save_flow_selected_slot_after",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveFlow.selectedSlotAfter);
+     }},
+    {"save_delete_confirmation_open",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveDelete.confirmationOpen);
+     }},
+    {"save_delete_candidate_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveDelete.candidateId);
+     }},
+    {"save_delete_candidate_enabled",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveDelete.candidateEnabled);
+     }},
+    {"save_delete_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveDelete.status);
+     }},
+    {"save_delete_reason_code",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveDelete.reasonCode);
+     }},
+    {"save_delete_type",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveDelete.type);
+     }},
+    {"save_delete_recoverable",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveDelete.recoverable);
+     }},
+    {"save_delete_executed",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveDelete.executed);
+     }},
+    {"deleted_save_browser_open",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.deletedSaveBrowserOpen);
+     }},
+    {"deleted_save_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.deletedSaveCount);
+     }},
+    {"deleted_compatible_save_count",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.deletedCompatibleSaveCount);
+     }},
+    {"deleted_selected_save_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.deletedSelectedSaveId);
+     }},
+    {"deleted_selected_save_enabled",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.deletedSelectedSaveEnabled);
+     }},
+    {"deleted_selected_save_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.deletedSelectedSaveStatus);
+     }},
+    {"save_recover_status",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveRecover.status);
+     }},
+    {"save_recover_reason_code",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveRecover.reasonCode);
+     }},
+    {"save_recover_executed",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveRecover.executed);
+     }},
+    {"save_recover_save_id",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveRecover.saveId);
+     }},
+    {"save_recover_snapshot_recovered",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveRecover.snapshotRecovered);
+     }},
+    {"save_recover_snapshot_missing",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.saveRecover.snapshotMissing);
+     }},
+    {"product_save_load_previous_hash",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.previousHash);
+     }},
+    {"product_save_load_loaded_hash",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.loadedHash);
+     }},
+    {"product_save_load_session_loaded",
+     [](RenderReceipt& receipt,
+        const SaveStateReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.window.saveSession.productSaveLoadResult.sessionLoaded);
+     }},
+}};
+
+}  // namespace
+
+void appendProductSaveStateFields(
+    RenderReceipt& receipt,
+    const FrontendState& frontend,
+    const ProductAppWindowState& window,
+    const creative::CreativeActiveIdentity& creativeIdentity) {
+  const SaveStateReceiptContext context{
+      frontend,
+      window,
+      creativeIdentity,
+  };
+
+  for (const SaveStateReceiptFieldRow& row : kSaveStateReceiptFields) {
+    row.append(receipt, context, row.key);
+  }
 }
+
 
 }  // namespace iggy3d
