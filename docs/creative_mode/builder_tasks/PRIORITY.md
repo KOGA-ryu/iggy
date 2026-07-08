@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E217-operations-split-g4d-current-session-save.md`
+1. `ready/E218-operations-split-g4e-remove-operations-shell.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E217-operations-split-g4d-current-session-save.md`
+1. `ready/E218-operations-split-g4e-remove-operations-shell.md`
 
 ## Parking Lot
 
@@ -155,8 +155,9 @@ Held — do NOT promote to `ready/` on a guess:
   completed G4b by extracting product save/load session launch without moving
   product new-world or current-session save/write behavior. `E216` completed
   G4c by extracting product new-world launch without moving current-session
-  save/write or creative blank-stage wrappers. `E217` is released as G4d to
-  extract current-session save/write without moving the creative blank-stage
-  wrappers.
+  save/write or creative blank-stage wrappers. `E217` completed G4d by
+  extracting current-session save/write without moving the creative blank-stage
+  wrappers. `E218` is released as G4e to move the final launch-state helpers and
+  delete the empty `Operations.*` shell if the compiler agrees.
   `OpeningMenuView` split remains parked; see
   `docs/complexity_audit_v0_1.md` §3.
