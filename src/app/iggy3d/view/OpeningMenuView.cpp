@@ -272,9 +272,10 @@ void drawPhysicsBroadphasePairDebugMarker(
 }
 
 void drawFocusIndicator(SDL_Renderer& renderer, const ProductViewportFramedItem& framed) {
+  const ProductPrimitiveDrawItem& item = framed.item;
   const float x = framed.screenX;
   const float y = framed.screenY;
-  setColor(renderer, 226, 230, 211);
+  setColor(renderer, item.color.r, item.color.g, item.color.b);
   fillRect(renderer, x - 18.0F, y - 2.0F, 36.0F, 4.0F);
   fillRect(renderer, x - 2.0F, y - 18.0F, 4.0F, 36.0F);
 }
@@ -287,7 +288,7 @@ void drawRoomEditorCursor(SDL_Renderer& renderer,
   const float size = item.markerSize;
   const float half = size * 0.5F;
 
-  setColor(renderer, 245, 214, 96);
+  setColor(renderer, item.color.r, item.color.g, item.color.b);
   fillRect(renderer, x - half, y - 2.0F, size, 4.0F);
   fillRect(renderer, x - 2.0F, y - half, 4.0F, size);
   setColor(renderer, 32, 42, 44);

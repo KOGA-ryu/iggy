@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -143,3 +143,33 @@ When done, report:
 - diff/whitespace checks
 - confirmation that metadata, draw-list, render-bridge, secondary colors, CMake,
   tests, staging, commit, push, and window launch were not touched
+
+## Completion Brief - E223
+
+- Files changed:
+  - `src/app/iggy3d/view/OpeningMenuView.cpp`
+  - `docs/creative_mode/builder_tasks/done/E223-openingmenuview-primitive-primary-metadata-handoff.md`
+- Exact primary color handoff shape:
+  - `drawFocusIndicator(...)` now reads `framed.item.color` through a local `const ProductPrimitiveDrawItem& item = framed.item` and calls `setColor(renderer, item.color.r, item.color.g, item.color.b)`.
+  - `drawRoomEditorCursor(...)` now uses its existing `item` alias and calls `setColor(renderer, item.color.r, item.color.g, item.color.b)` for the primary cursor cross.
+  - No `PrimitiveDrawMetadata.hpp` include was needed because `ProductViewportFramedItem` already carries the draw item color from the metadata-backed draw-list path.
+- Preserved focus/cursor sizes:
+  - Focus indicator still uses fixed `36.0F` span and `4.0F` thickness through the existing `fillRect(...)` calls.
+  - Focus indicator does not use perspective-scaled `framed.item.markerSize`.
+  - Room editor cursor still uses `item.markerSize`, `half = size * 0.5F`, and the existing 4-pixel cross / 3-pixel outline geometry.
+  - Room editor cursor outline color `{32,42,44}` remains local.
+- Grep classification:
+  - Required `OpeningMenuView.cpp` grep shows `drawFocusIndicator(...)` and `drawRoomEditorCursor(...)` now consume `item.color` for the primitive primary color.
+  - Remaining `{226,230,211}` hits are camera heading center dot, gameplay feedback title, position HUD text, ASCII/editor/menu panel text, and gameplay title text.
+  - Remaining `{245,214,96}` hits are room editor HUD title and movement tuning HUD title.
+  - Metadata/test grep shows `PlayerFocusIndicator` and `RoomEditorCursor` rows remain in `PrimitiveDrawMetadata.hpp` and are still pinned by `product_primitive_draw_list_tests.cpp`.
+- Focused build/CTest result:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_primitive_draw_list_tests product_render_bridge_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_primitive_draw_list_tests|product_render_bridge_tests|product_receipt_key_order_tests)$' --output-on-failure` passed, 3/3.
+- Receipt golden diff result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched source/card files returned no hits.
+- Confirmation:
+  - `PrimitiveDrawMetadata.hpp`, `PrimitiveDrawList.*`, `RenderBridge.*`, `FramePresenter.cpp`, secondary/decorative colors, tile/door/physics/map-maker drawing, draw dispatch, CMake, tests, receipt golden, staging, commit, push, and window launch were not touched.
