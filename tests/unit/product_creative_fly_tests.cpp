@@ -163,7 +163,7 @@ bool originSeedStampsCurrentEpochAndLegacyFields() {
   using iggy3d::ProductCreativeFlyAnchorProvenance;
 
   iggy3d::ProductAppWindowState window;
-  window.creativeWorldEpoch = 3;
+  window.viewport.creativeWorldEpoch = 3;
 
   const iggy3d::ProductCreativeFlyAnchorStore& store =
       iggy3d::seedCreativeFlyAnchorFromOrigin(window);
@@ -184,7 +184,7 @@ bool ensureFreshReseedsWhenEpochChanges() {
 
   iggy3d::ProductAppWindowState window;
   window.runtimeStateHash = 42;
-  window.creativeWorldEpoch = 1;
+  window.viewport.creativeWorldEpoch = 1;
   iggy3d::recordCreativeFlyAnchorIntegrated(window, {9.0F, 8.0F, 7.0F});
 
   const std::uint64_t sameRuntimeHash = window.runtimeStateHash;
@@ -207,7 +207,7 @@ bool ensureFreshDoesNotRewriteFreshAnchor() {
   using iggy3d::ProductCreativeFlyAnchorProvenance;
 
   iggy3d::ProductAppWindowState window;
-  window.creativeWorldEpoch = 5;
+  window.viewport.creativeWorldEpoch = 5;
   iggy3d::seedCreativeFlyAnchorFromScene(window, {4.0F, 5.0F, 6.0F});
 
   const iggy3d::ProductCreativeFlyAnchorStore& store =
@@ -225,7 +225,7 @@ bool sceneAndIntegratedSeedsStampProvenanceAndEpoch() {
   using iggy3d::ProductCreativeFlyAnchorProvenance;
 
   iggy3d::ProductAppWindowState window;
-  window.creativeWorldEpoch = 8;
+  window.viewport.creativeWorldEpoch = 8;
 
   const iggy3d::ProductCreativeFlyAnchorStore& scene =
       iggy3d::seedCreativeFlyAnchorFromScene(window, {1.0F, 2.0F, 3.0F});
@@ -258,7 +258,7 @@ bool originSeedWinsBeforeLazyEnsureInSameEpoch() {
   const iggy3d::ProductCreativeFlyAnchorStore& ensured =
       iggy3d::ensureFreshCreativeFlyAnchor(window, nullptr);
 
-  return expect(ensured.seededFromWorldEpoch == window.creativeWorldEpoch,
+  return expect(ensured.seededFromWorldEpoch == window.viewport.creativeWorldEpoch,
                 "origin ensure epoch") &&
          expect(ensured.provenance ==
                     ProductCreativeFlyAnchorProvenance::OriginFramed,
@@ -278,7 +278,7 @@ bool integrationThenNextOriginFrameReseedsForNewEpoch() {
       window.viewport.creativeFlyAnchor.provenance ==
           ProductCreativeFlyAnchorProvenance::FlyIntegrated &&
       iggy3d::productCreativeFlyAnchorFreshForEpoch(
-          window.viewport.creativeFlyAnchor, window.creativeWorldEpoch);
+          window.viewport.creativeFlyAnchor, window.viewport.creativeWorldEpoch);
 
   iggy3d::bumpCreativeWorldEpoch(window);
   iggy3d::seedCreativeFlyAnchorFromOrigin(window);
@@ -288,7 +288,7 @@ bool integrationThenNextOriginFrameReseedsForNewEpoch() {
                     ProductCreativeFlyAnchorProvenance::OriginFramed,
                 "next origin frame reseeds provenance") &&
          expect(window.viewport.creativeFlyAnchor.seededFromWorldEpoch ==
-                    window.creativeWorldEpoch,
+                    window.viewport.creativeWorldEpoch,
                 "next origin frame reseeds epoch") &&
          expect(vecNear(window.viewport.creativeFlyAnchor.positionMeters,
                         {0.0F, 6.0F, 10.0F}),
@@ -299,7 +299,7 @@ bool repeatedEnsureIsIdempotentWithinEpoch() {
   using iggy3d::ProductCreativeFlyAnchorProvenance;
 
   iggy3d::ProductAppWindowState window;
-  window.creativeWorldEpoch = 11;
+  window.viewport.creativeWorldEpoch = 11;
   const iggy3d::ProductCreativeFlyAnchorStore first =
       iggy3d::ensureFreshCreativeFlyAnchor(window, nullptr);
   const iggy3d::ProductCreativeFlyAnchorStore second =

@@ -29,6 +29,8 @@ struct ProductViewportState {
   std::uint64_t mapMakerGridLayerCount = 0;
   std::uint64_t mapMakerGridDotCount = 0;
   std::uint64_t mapMakerGridMajorDotCount = 0;
+  // Monotonic creative world generation used by viewport fly anchor freshness.
+  std::uint64_t creativeWorldEpoch = 0;
   ProductCreativeFlyAnchorStore creativeFlyAnchor;
   bool creativeFlyActive = false;
   float creativeFlySpeedMetersPerSecond = 0.0F;

@@ -27,15 +27,15 @@ ProductCreativeFlyAnchorStore& writeCreativeFlyAnchor(
   ProductCreativeFlyAnchorStore& store = window.viewport.creativeFlyAnchor;
   store.positionMeters = positionMeters;
   store.provenance = provenance;
-  store.seededFromWorldEpoch = window.creativeWorldEpoch;
+  store.seededFromWorldEpoch = window.viewport.creativeWorldEpoch;
   return store;
 }
 
 }  // namespace
 
 std::uint64_t bumpCreativeWorldEpoch(ProductAppWindowState& window) noexcept {
-  ++window.creativeWorldEpoch;
-  return window.creativeWorldEpoch;
+  ++window.viewport.creativeWorldEpoch;
+  return window.viewport.creativeWorldEpoch;
 }
 
 ProductCreativeFlyAnchorStore& seedCreativeFlyAnchorFromOrigin(
@@ -48,7 +48,7 @@ ProductCreativeFlyAnchorStore& ensureFreshCreativeFlyAnchor(
     ProductAppWindowState& window,
     const Session* activeSession) {
   ProductCreativeFlyAnchorStore& store = window.viewport.creativeFlyAnchor;
-  if (productCreativeFlyAnchorFreshForEpoch(store, window.creativeWorldEpoch)) {
+  if (productCreativeFlyAnchorFreshForEpoch(store, window.viewport.creativeWorldEpoch)) {
     return store;
   }
   return writeCreativeFlyAnchor(window, activePlayerPositionOrOrigin(activeSession),

@@ -45,8 +45,6 @@ struct ProductAppWindowState {
   ProductRoomStore room;
   SaveSessionStore saveSession;
   std::uint64_t runtimeStateHash = 0;
-  // Window-owned monotonic creative world generation used by viewport fly state.
-  std::uint64_t creativeWorldEpoch = 0;
   ProductViewportState viewport;
   ProductAutomationControlState automationControl;
   PresentPathStore presentPath;

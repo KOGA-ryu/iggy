@@ -10,7 +10,6 @@ gameplay	GameplayStore
 room	RoomStore
 saveSession	SaveSessionStore
 runtimeStateHash	delete
-creativeWorldEpoch	ViewportStore
 viewport	ViewportStore
 automationControl	app-global-remainder
 presentPath	PresentPathStore

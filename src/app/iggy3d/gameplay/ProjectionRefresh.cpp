@@ -356,7 +356,7 @@ Vec3 playerAnchorFromScene(const SceneProjectionResult& scene, bool& found) {
 Vec3 mapMakerAnchorFor(ProductAppWindowState& window,
                        const SceneProjectionResult& scene) {
   if (productCreativeFlyAnchorFreshForEpoch(window.viewport.creativeFlyAnchor,
-                                            window.creativeWorldEpoch)) {
+                                            window.viewport.creativeWorldEpoch)) {
     return window.viewport.creativeFlyAnchor.positionMeters;
   }
   bool playerFound = false;
@@ -781,7 +781,7 @@ ProductGameplayProjectionFrame buildProductGameplayProjectionFrame(
   // fly-camera pose (origin-framed on entry) so the origin grid is in view.
   const bool creativeFlyAnchorFresh =
       productCreativeFlyAnchorFreshForEpoch(window.viewport.creativeFlyAnchor,
-                                            window.creativeWorldEpoch);
+                                            window.viewport.creativeWorldEpoch);
   frame.cameraAnchorOverrideAvailable =
       (mapMakerLive || creativeNavigateOverride || creativeStageGridLive) &&
       creativeFlyAnchorFresh;

@@ -1349,7 +1349,7 @@ bool gameplayMapMakerFrameCarriesGridOverlay() {
   window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.viewport.mapMakerStatus = "map_maker_enabled";
   window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
-  window.creativeWorldEpoch = 1;
+  window.viewport.creativeWorldEpoch = 1;
   iggy3d::seedCreativeFlyAnchorFromScene(window, {0.0F, 2.0F, 0.0F});
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Gameplay;
@@ -1451,7 +1451,7 @@ bool mapMakerFrameWithoutPlayerDoesNotLatchFlyAnchor() {
   window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;
   window.viewport.mapMakerStatus = "map_maker_enabled";
   window.viewport.mapMakerReasonCode = window.viewport.mapMakerStatus;
-  window.creativeWorldEpoch = 1;
+  window.viewport.creativeWorldEpoch = 1;
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Gameplay;
   frontend.childScreen = iggy3d::FrontendScreen::Gameplay;

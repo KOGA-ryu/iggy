@@ -97,3 +97,49 @@ Append:
 - Focused/full test results.
 - Confirmation that `runtimeStateHash` and `automationControl` were untouched.
 - Any concerns/deferred work.
+
+## Completion Brief
+
+- Files changed:
+  - `docs/creative_mode/builder_tasks/done/E178-viewportstore-creative-world-epoch.md`
+  - `docs/god_struct_member_ownership.tsv`
+  - `src/app/iggy3d/ProductAppWindowState.hpp`
+  - `src/app/iggy3d/gameplay/ProjectionRefresh.cpp`
+  - `src/app/iggy3d/view/CreativeFlyAnchorStore.cpp`
+  - `src/app/iggy3d/view/ViewportState.hpp`
+  - `tests/unit/product_creative_fly_tests.cpp`
+  - `tests/unit/product_creative_world_launch_tests.cpp`
+  - `tests/unit/product_vulkan_room_frame_tests.cpp`
+- Exact field move:
+  - Added `std::uint64_t creativeWorldEpoch = 0;` to `ProductViewportState`.
+  - Removed top-level `ProductAppWindowState::creativeWorldEpoch`.
+  - Repointed current storage paths from `window.creativeWorldEpoch` to `window.viewport.creativeWorldEpoch`.
+  - Removed the top-level `creativeWorldEpoch	ViewportStore` row from `docs/god_struct_member_ownership.tsv`; the existing `viewport	ViewportStore` row remains.
+- Grep results:
+  - `rg -n "window\\.creativeWorldEpoch\\b|request\\.window\\.creativeWorldEpoch\\b" /Users/kogaryu/iggy3d/src /Users/kogaryu/iggy3d/tests --glob '*.cpp' --glob '*.hpp'` produced no output.
+  - `rg -n "\\bcreativeWorldEpoch\\b" /Users/kogaryu/iggy3d/src/app/iggy3d/ProductAppWindowState.hpp` produced no output.
+  - `rg -n "^creativeWorldEpoch\\b" /Users/kogaryu/iggy3d/docs/god_struct_member_ownership.tsv` produced no output.
+  - Retained expected hits:
+    - `src/app/iggy3d/view/ViewportState.hpp:33`
+    - `src/app/iggy3d/view/CreativeFlyAnchorStore.cpp:30,37,38,51`
+    - `src/app/iggy3d/gameplay/ProjectionRefresh.cpp:359,784`
+  - `runtimeStateHash` was intentionally not consumed by this slice; retained grep proof reported `runtimeStateHash hits=36` in the required scope.
+- Receipt golden result:
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed.
+  - Output: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no output.
+- Ownership coverage result:
+  - `/Users/kogaryu/iggy3d/build/product_god_struct_ownership_coverage_tests` passed.
+  - Output: `god-struct ownership coverage: assigned=15 CreativeAuthoringStore=1 DebugHudStore=1 FrontendWindowShell=1 GameplayStore=1 InputDeviceStore=1 PresentPathStore=1 RoomStore=1 SaveSessionStore=1 ViewportStore=1 app-global-remainder=5 delete=1`.
+- Focused/full test results:
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_creative_fly_tests|product_creative_world_launch_tests|product_vulkan_room_frame_tests|product_god_struct_ownership_coverage_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 5/5.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure` passed: 260/260.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files passed.
+- Confirmed non-scope fields:
+  - `runtimeStateHash` was not moved or deleted.
+  - `automationControl` was not moved or reshaped.
+- Concerns/deferred:
+  - None for E178. The separate `runtimeStateHash` delete/rederive work remains deferred.
+  - No stage, commit, push, or window launch performed.
