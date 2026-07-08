@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E274-iggy3d-creative-main-split-g8-selection-frame.md`
+1. `ready/E275-iggy3d-creative-main-split-g9-gizmo-frame.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E274-iggy3d-creative-main-split-g8-selection-frame.md`
+1. `ready/E275-iggy3d-creative-main-split-g9-gizmo-frame.md`
 
 ## Parking Lot
 
@@ -215,4 +215,6 @@ Held — do NOT promote to `ready/` on a guess:
   complete as the shared raw camera-ray-to-ground-point helper for the remaining
   interactive Move branch, without moving Move policy. E274 is released to
   extract only the current selection id/object/bounds resolution, leaving gizmo,
-  move, overlay, and logging policy in `main.cpp`.
+  move, overlay, and logging policy in `main.cpp`. E275 is released to extract
+  only gizmo-frame geometry and path-handle hit data, leaving path-handle
+  logging, Move policy, overlay, and submit in `main.cpp`.
