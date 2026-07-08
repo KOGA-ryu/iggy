@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E180-affordance-anchor-wire-strings.md`
+1. `ready/E181-traversal-tag-structural-emitter-migration.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E180-affordance-anchor-wire-strings.md`
+1. `ready/E181-traversal-tag-structural-emitter-migration.md`
 
 ## Tier 2: Feature-Add Seams
 
