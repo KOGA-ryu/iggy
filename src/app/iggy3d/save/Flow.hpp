@@ -10,11 +10,12 @@
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/Options.hpp"
-#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "runtime/session/Session.hpp"
 
 namespace iggy3d {
+
+struct ProductAppWindowState;
 
 namespace creative {
 struct CreativeAppState;

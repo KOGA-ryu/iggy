@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -123,3 +123,42 @@ Report:
 - receipt golden diff result;
 - `git diff --check` and trailing-whitespace results;
 - confirmation that no signatures, behavior, CMake, or receipt fields changed.
+
+## Completion Brief
+
+- Card moved to done: `/Users/kogaryu/iggy3d/docs/creative_mode/builder_tasks/done/E204-product-header-include-hygiene-pass-5-flow-scripted.md`
+- Files changed:
+  - `src/app/iggy3d/save/Flow.hpp`
+  - `src/app/iggy3d/save/Flow.cpp`
+  - `src/app/iggy3d/gameplay/ScriptedDriver.hpp`
+  - `src/app/iggy3d/gameplay/ScriptedDriver.cpp`
+  - `docs/creative_mode/builder_tasks/done/E204-product-header-include-hygiene-pass-5-flow-scripted.md`
+- Target headers forward-declared:
+  - `Flow.hpp` removed `#include "app/iggy3d/ProductAppWindowState.hpp"` and now forward-declares `struct ProductAppWindowState;`.
+  - `ScriptedDriver.hpp` removed `#include "app/iggy3d/ProductAppWindowState.hpp"` and now forward-declares `struct ProductAppWindowState;`.
+- Incomplete-type confirmation:
+  - `Flow.hpp` uses `ProductAppWindowState` only as non-owning function parameters by reference.
+  - `ScriptedDriver.hpp` uses `ProductAppWindowState` only as a non-owning function parameter by reference.
+- `.cpp` partners with direct full-type includes:
+  - `Flow.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` directly.
+  - `ScriptedDriver.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` directly.
+- Fallout files given direct includes:
+  - None. The focused build passed without additional compile fallout.
+- Direct includer count for `ProductAppWindowState.hpp`:
+  - Before: 68
+  - After: 68
+  - Count stayed flat because the two target header includes moved to their two implementation files.
+- Focused build:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_creative_world_launch_tests product_starter_menu_action_tests product_gameplay_controls_smoke product_receipt_key_order_tests -j10` passed.
+- Focused CTest:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_creative_world_launch_tests|product_starter_menu_action_tests|product_gameplay_controls_smoke|product_receipt_key_order_tests)$' --output-on-failure` passed: 4/4.
+- Receipt golden diff:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card passed.
+- Confirmations:
+  - No function signatures changed.
+  - No function bodies, struct layouts, save-flow behavior, scripted gameplay behavior, receipt fields, CMake, or receipt golden changed.
+- Concerns/deferred:
+  - None for this slice.

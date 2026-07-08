@@ -2,10 +2,9 @@
 
 #include <optional>
 
-#include "app/iggy3d/ProductAppWindowState.hpp"
-
 namespace iggy3d {
 
+struct ProductAppWindowState;
 class Session;
 
 void runScriptedProductGameplaySmoke(std::optional<Session>& activeSession,
