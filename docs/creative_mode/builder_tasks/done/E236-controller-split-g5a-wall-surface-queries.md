@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Objective
 
@@ -150,3 +150,39 @@ Run a focused trailing-whitespace scan over touched files and this card.
   traversal, jump, dash, or movement behavior drift.
 
 No stage, commit, push, broad CTest, or window launch.
+
+## Completion Brief
+
+- Card moved to done: yes, after this brief was appended.
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/gameplay/Controller.cpp`
+  - `src/app/iggy3d/gameplay/ControllerWallQueries.hpp`
+  - `src/app/iggy3d/gameplay/ControllerWallQueries.cpp`
+  - `docs/creative_mode/builder_tasks/done/E236-controller-split-g5a-wall-surface-queries.md`
+- Helper/API shape added:
+  - `ControllerWallQueries.hpp/.cpp` exports `findWallJumpSurface(...)`, `findWallRunSurface(...)`, `wallRunSideName(...)`, `productMovementDebugAlongWall(...)`, `wallRunProofNormal(...)`, `wallRunTangentDirectionFromNormal(...)`, and `wallRunTangentDirection(...)`.
+  - `actorBlockingSurface(...)`, `hasTraversalTag(...)`, `horizontalNormal(...)`, `isNearVerticalSurface(...)`, and `isNearWallRunSurface(...)` are file-local in `ControllerWallQueries.cpp`.
+  - Wall-query-only constants moved into `ControllerWallQueries.cpp`: `kPi`, `kMovementStateDistanceEpsilonMeters`, `kWallRunSurfaceVerticalSlackMeters`, and `kWallRunAlongWallDotThreshold`.
+- Controller migration:
+  - `Controller.cpp` now includes `ControllerWallQueries.hpp` and retains call sites only for the exported helpers.
+  - Wall-run evaluation/result structs, wall-run publish helpers, wall-jump mutation, traversal proof writing, jump/dash orchestration, command submission, reset/fall, target/outcome proof, movement proof, and active-room ownership were not moved.
+- CMake:
+  - Added `src/app/iggy3d/gameplay/ControllerWallQueries.cpp` beside the other controller split sources.
+- Required grep classification:
+  - Lower-level private helpers live only in `ControllerWallQueries.cpp`.
+  - Exported helper declarations/definitions live in `ControllerWallQueries.*`.
+  - `Controller.cpp` retains call sites only for exported helpers.
+  - No moved helper remains defined in `Controller.cpp`.
+  - Focused dependency grep over `ControllerWallQueries.*` returned no hits for `Session`, command submission, reset/fall, target/outcome proof, traversal execution, or active-room ownership.
+- Receipt golden result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure` passed.
+  - Required wall-query `rg` classification was run.
+  - Focused dependency grep over `ControllerWallQueries.*` was run.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card passed.
+- Concerns/deferred:
+  - None. No stage, commit, push, broad CTest, or window launch was performed.
