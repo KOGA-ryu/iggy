@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E200-remove-stale-active-surface-sync-wrapper.md`
+1. `ready/E201-product-header-include-hygiene-pass-2-menu.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E200-remove-stale-active-surface-sync-wrapper.md`
+1. `ready/E201-product-header-include-hygiene-pass-2-menu.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -122,7 +122,8 @@ Held — do NOT promote to `ready/` on a guess:
   literals before any additional migration card is written.
 - Further draw-kind metadata cleanup after E127, if render owners centralize
   secondary/decorative colors.
-- Further include-hygiene passes (the remaining ~11 headers) after E125.
+- Further include-hygiene passes after E125: E201 is released as pass 2 for the
+  menu transition/action headers.
 - **Product test infrastructure**: E189 audited duplicated product-test helpers.
   E190 added a header-only assertion/numeric helper over five tests. E191 added
   receipt helpers for four creative UI receipt/frame tests. E192 added the
@@ -136,9 +137,9 @@ Held — do NOT promote to `ready/` on a guess:
   shared generated asset and extended package parity/load coverage.
 - Active-surface sync tail: E199 proved
   `syncProductWindowInputOwnerFromActiveSurface(...)` is a misnamed no-op
-  resolver wrapper after window input-owner cache deletion. E200 is released to
-  remove ignored production calls, repoint tests/support to the direct resolver,
-  and delete the stale helper.
+  resolver wrapper after window input-owner cache deletion. E200 removed ignored
+  production calls, repointed tests/support to the direct resolver, and deleted
+  the stale helper.
 - Remaining complexity-audit roadmap items (`OpeningMenuView` split,
   `Operations.cpp` seam split after the identity-mirror removal, shared test
   infrastructure) — see `docs/complexity_audit_v0_1.md` §3.
