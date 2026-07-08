@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E181-traversal-tag-structural-emitter-migration.md`
+1. `ready/E182-traversal-tag-roomasset-validation-routing.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E181-traversal-tag-structural-emitter-migration.md`
+1. `ready/E182-traversal-tag-roomasset-validation-routing.md`
 
 ## Tier 2: Feature-Add Seams
 
