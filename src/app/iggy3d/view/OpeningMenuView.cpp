@@ -3,38 +3,23 @@
 #if defined(IGGY3D_HAS_SDL3)
 #include <SDL3/SDL.h>
 
-#include <algorithm>
-#include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
-#include <iomanip>
-#include <sstream>
 #include <string>
 #include <string_view>
-#include <vector>
 
-#include "app/frontend/DevToolsMenu.hpp"
 #include "app/frontend/FrontendState.hpp"
-#include "app/frontend/SettingsMenu.hpp"
-#include "projection/debug/DebugProjection.hpp"
-#include "app/iggy3d/world/BuiltinDungeon.hpp"
-#include "app/iggy3d/gameplay/GameplayFeedback.hpp"
-#include "app/iggy3d/debug/InteractionModeHud.hpp"
-#include "app/iggy3d/debug/MovementDebugHud.hpp"
-#include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
-#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
-#include "app/iggy3d/debug/PositionHud.hpp"
+#include "app/iggy3d/Options.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
-#include "app/iggy3d/menu/PauseUi.hpp"
-#include "app/iggy3d/menu/UiHitRouter.hpp"
-#include "app/iggy3d/room_editor/Presentation.hpp"
+#include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/view/DebugHudView.hpp"
 #include "app/iggy3d/view/MenuPanelsView.hpp"
 #include "app/iggy3d/view/OpeningMenuHitTest.hpp"
 #include "app/iggy3d/view/ScenePrimitiveView.hpp"
 #include "app/iggy3d/view/SdlDraw.hpp"
-#include "app/iggy3d/view/ViewportFraming.hpp"
+#include "projection/debug/DebugProjection.hpp"
 
 namespace iggy3d {
 namespace {
@@ -184,8 +169,10 @@ OpeningMenuViewState drawOpeningMenuView(SDL_Renderer& renderer,
     ++state.rowCount;
   }
 
+  ProductActiveSurfaceContext activeSurfaceContext;
+  activeSurfaceContext.frontend = frontend;
   const ProductFrontendSurface detailSurface =
-      openingMenuDetailSurfaceFor(frontend);
+      resolveProductActiveSurface(activeSurfaceContext).activeSurface;
   if (frontend.childScreen == FrontendScreen::StarterDevTools) {
     drawDevToolsPanel(renderer, frontend.devToolsCategory);
   } else if (detailSurface == ProductFrontendSurface::Settings) {

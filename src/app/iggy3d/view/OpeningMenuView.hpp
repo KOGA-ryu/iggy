@@ -4,23 +4,8 @@
 #include <cstdint>
 #include <string>
 
-#include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
-#include "app/frontend/WorldSetupModel.hpp"
-#include "app/iggy3d/world/DefaultWorldTemplate.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
-#include "app/iggy3d/gameplay/GameplayFeedback.hpp"
-#include "app/iggy3d/debug/InteractionModeHud.hpp"
-#include "app/iggy3d/debug/MovementDebugHud.hpp"
-#include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
-#include "app/iggy3d/debug/PhysicsDebugHud.hpp"
-#include "app/iggy3d/debug/PositionHud.hpp"
-#include "app/iggy3d/view/PrimitiveDrawList.hpp"
-#include "app/iggy3d/room_editor/Presentation.hpp"
-#include "app/iggy3d/Options.hpp"
-#include "app/iggy3d/debug/TopDownMapOverlay.hpp"
-#include "app/iggy3d/view/ViewportFraming.hpp"
-#include "app/iggy3d/save/SaveBridge.hpp"
 
 #if defined(IGGY3D_HAS_SDL3)
 struct SDL_Renderer;
@@ -29,6 +14,20 @@ struct SDL_Renderer;
 namespace iggy3d {
 
 struct DebugProjectionResult;
+struct FrontendState;
+struct GameplayFeedback;
+struct InteractionModeHud;
+struct MovementDebugHud;
+struct NpcBehaviorDebugHud;
+struct PhysicsDebugHud;
+struct PositionHud;
+struct ProductAppOptions;
+struct ProductRoomEditorHud;
+struct ProductSaveBridgeResult;
+struct ProductViewportFrame;
+struct ProductWorldTemplate;
+struct TopDownMapOverlay;
+struct WorldSetupDraft;
 
 struct OpeningMenuViewState {
   bool textDrawn = false;

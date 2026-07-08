@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -183,3 +183,63 @@ When done, report:
 - confirmation that behavior, `OpeningMenuHitTest.*`, `MenuPanelsView.*`,
   `DebugHudView.*`, `ScenePrimitiveView.*`, `SdlDraw.*`, CMake source lists,
   staging, commit, push, and window launch were not touched
+
+## Completion Brief
+
+- Files changed:
+  - `src/app/iggy3d/view/OpeningMenuView.hpp`
+  - `src/app/iggy3d/view/OpeningMenuView.cpp`
+  - this task card
+- Final `OpeningMenuView.hpp` include/forward-declare shape:
+  - Keeps only standard includes `<cstddef>`, `<cstdint>`, and `<string>`.
+  - Keeps `app/frontend/SettingsMenu.hpp` for `FrontendSettingsTab`.
+  - Keeps `app/iggy3d/gameplay/MovementTuning.hpp` for
+    `ProductGameplayMovementTuningField`.
+  - Forward-declares `DebugProjectionResult`, `FrontendState`,
+    `GameplayFeedback`, `InteractionModeHud`, `MovementDebugHud`,
+    `NpcBehaviorDebugHud`, `PhysicsDebugHud`, `PositionHud`,
+    `ProductAppOptions`, `ProductRoomEditorHud`, `ProductSaveBridgeResult`,
+    `ProductViewportFrame`, `ProductWorldTemplate`, `TopDownMapOverlay`, and
+    `WorldSetupDraft`.
+  - Still declares only `OpeningMenuViewState` and `drawOpeningMenuView(...)`.
+- Final `OpeningMenuView.cpp` direct include shape:
+  - Keeps SDL and standard includes for the remaining facade implementation:
+    `<cmath>`, `<cstddef>`, `<cstdint>`, `<string>`, and `<string_view>`.
+  - Keeps explicit app includes for complete types/free functions used directly:
+    `FrontendState.hpp`, `Options.hpp`, `DrawList.hpp`, `FrontendRouter.hpp`,
+    `SaveBridge.hpp`, `DebugHudView.hpp`, `MenuPanelsView.hpp`,
+    `OpeningMenuHitTest.hpp`, `ScenePrimitiveView.hpp`, `SdlDraw.hpp`, and
+    `DebugProjection.hpp`.
+  - Removed stale includes from split child implementations and payloads that
+    are now forward-declared through the facade.
+- Direct compile fallout files given explicit includes:
+  - None. `src/app/iggy3d/window/FramePresenter.cpp` compiled unchanged.
+- Required grep classification:
+  - `OpeningMenuView.hpp` no longer includes hit-test, menu draw-list,
+    primitive-draw-list, debug HUD payload, room-editor presentation, options,
+    save bridge, world template, or viewport framing headers.
+  - `OpeningMenuView.hpp` still declares `OpeningMenuViewState` and
+    `drawOpeningMenuView(...)`.
+  - `OpeningMenuView.hpp/.cpp` have no `OpeningMenuHitArea`,
+    `OpeningMenuHitTestResult`, `openingMenuActionAt(...)`, or
+    `openingMenuDetailSurfaceFor(...)` hits.
+  - `OpeningMenuView.cpp` keeps explicit direct includes for remaining facade
+    dependencies.
+- Focused build result:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_window_input_frame_tests product_starter_menu_action_tests product_menu_transitions_tests product_primitive_draw_list_tests product_render_bridge_tests product_receipt_key_order_tests -j10`
+    passed.
+- Focused CTest result:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_window_input_frame_tests|product_starter_menu_action_tests|product_menu_transitions_tests|product_primitive_draw_list_tests|product_render_bridge_tests|product_receipt_key_order_tests)$' --output-on-failure`
+    passed, 6/6 tests.
+- Receipt golden diff result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+    was empty.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card was
+    clean.
+- Confirmation:
+  - Behavior, `OpeningMenuHitTest.*`, `MenuPanelsView.*`, `DebugHudView.*`,
+    `ScenePrimitiveView.*`, `SdlDraw.*`, CMake source lists, receipt golden,
+    staging, commit, push, broad CTest, and window launch were not
+    touched/performed.
