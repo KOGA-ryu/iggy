@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E207-product-test-support-include-hygiene.md`
+1. `ready/E208-product-header-include-hygiene-closure-audit.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E207-product-test-support-include-hygiene.md`
+1. `ready/E208-product-header-include-hygiene-closure-audit.md`
 
 ## Parking Lot
 
@@ -127,8 +127,8 @@ Held — do NOT promote to `ready/` on a guess:
   headers. E203 completed pass 4 for ASCII room headers. E204 completed pass 5
   for save-flow and scripted-driver headers. E205 completed pass 6 for the
   gameplay projection refresh header. E206 completed pass 7 for receipt field
-  declarations. E207 is released for the remaining test-support
-  forward-declaration candidates.
+  declarations. E207 completed the remaining test-support forward-declaration
+  candidates. E208 is released as a read-only closure audit for this lane.
 - **Product test infrastructure**: E189 audited duplicated product-test helpers.
   E190 added a header-only assertion/numeric helper over five tests. E191 added
   receipt helpers for four creative UI receipt/frame tests. E192 added the
