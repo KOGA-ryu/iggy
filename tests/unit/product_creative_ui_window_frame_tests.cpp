@@ -1,11 +1,12 @@
 #include "app/iggy3d/creative/bridge/UiWindowFrame.hpp"
 
+#include "ProductReceiptTestSupport.hpp"
+
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/window/Loop.hpp"
 
 #include <cstdlib>
-#include <iostream>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -13,38 +14,14 @@
 namespace {
 namespace cr = iggy3d::creative;
 
-bool expect(bool condition, std::string_view message) {
-  if (!condition) {
-    std::cerr << "FAIL: " << message << '\n';
-  }
-  return condition;
-}
+using iggy3d::test::expect;
+using iggy3d::test::expectReceiptField;
+using iggy3d::test::receiptFor;
 
 void markCreativeAppIdentity(cr::CreativeAppState& app) {
   app.identity.saveId = "creative_save";
   app.identity.worldId = "world_001";
   app.identity.documentId = 42U;
-}
-
-iggy3d::RenderReceipt receiptFor(const iggy3d::ProductAppWindowState& window) {
-  iggy3d::ProductAppOptions options;
-  iggy3d::ProductWorldTemplate world;
-  iggy3d::FrontendState frontend;
-  iggy3d::FrontendSettings settings;
-  iggy3d::ProductSaveBridgeResult saves;
-  return iggy3d::buildProductAppReceipt(options,
-                                        world,
-                                        frontend,
-                                        settings,
-                                        window,
-                                        saves);
-}
-
-bool expectReceiptField(const iggy3d::RenderReceipt& receipt,
-                        std::string_view key,
-                        std::string_view value,
-                        std::string_view message) {
-  return expect(iggy3d::hasReceiptField(receipt, key, value), message);
 }
 
 void populateSelectedFacade(cr::Facade& facade) {

@@ -1,5 +1,7 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
 
+#include "ProductReceiptTestSupport.hpp"
+
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/Options.hpp"
@@ -14,84 +16,16 @@
 #include <cstdint>
 #include <cstdlib>
 #include <array>
-#include <initializer_list>
-#include <iostream>
 #include <string>
 #include <string_view>
 
 namespace {
 namespace cr = iggy3d::creative;
 
-bool expect(bool condition, std::string_view message) {
-  if (!condition) {
-    std::cerr << "FAIL: " << message << '\n';
-  }
-  return condition;
-}
-
-iggy3d::RenderReceipt receiptFor(const iggy3d::ProductAppWindowState& window) {
-  iggy3d::ProductAppOptions options;
-  iggy3d::ProductWorldTemplate world;
-  iggy3d::FrontendState frontend;
-  iggy3d::FrontendSettings settings;
-  iggy3d::ProductSaveBridgeResult saves;
-  return iggy3d::buildProductAppReceipt(options,
-                                        world,
-                                        frontend,
-                                        settings,
-                                        window,
-                                        saves);
-}
-
-bool expectReceiptField(const iggy3d::RenderReceipt& receipt,
-                        std::string_view key,
-                        std::string_view value,
-                        std::string_view message) {
-  return expect(iggy3d::hasReceiptField(receipt, key, value), message);
-}
-
-struct ReceiptFieldExpectation {
-  std::string_view key;
-  std::string_view value;
-  std::string_view message;
-};
-
-bool expectReceiptFields(
-    const iggy3d::RenderReceipt& receipt,
-    std::initializer_list<ReceiptFieldExpectation> expectations,
-    std::string_view group) {
-  bool ok = true;
-  for (const ReceiptFieldExpectation& expectation : expectations) {
-    std::string message(group);
-    message.append(": ");
-    message.append(expectation.message);
-    ok = expectReceiptField(receipt,
-                            expectation.key,
-                            expectation.value,
-                            message) &&
-         ok;
-  }
-  return ok;
-}
-
-template <std::size_t Size>
-bool expectReceiptFields(
-    const iggy3d::RenderReceipt& receipt,
-    const std::array<ReceiptFieldExpectation, Size>& expectations,
-    std::string_view group) {
-  bool ok = true;
-  for (const ReceiptFieldExpectation& expectation : expectations) {
-    std::string message(group);
-    message.append(": ");
-    message.append(expectation.message);
-    ok = expectReceiptField(receipt,
-                            expectation.key,
-                            expectation.value,
-                            message) &&
-         ok;
-  }
-  return ok;
-}
+using iggy3d::test::expect;
+using iggy3d::test::expectReceiptFields;
+using iggy3d::test::receiptFor;
+using iggy3d::test::ReceiptFieldExpectation;
 
 constexpr std::array<ReceiptFieldExpectation, 14>
     kDefaultCommandCoreReceiptFields{{

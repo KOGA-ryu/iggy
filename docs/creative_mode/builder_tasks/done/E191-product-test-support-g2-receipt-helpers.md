@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -169,3 +169,48 @@ Move this card to `blocked/` with evidence if:
 - Receipt golden result:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completion Brief
+
+- Card moved to done: yes, after appending this brief.
+- Files changed:
+  - `tests/unit/ProductReceiptTestSupport.hpp`
+  - `tests/unit/product_creative_ui_command_receipt_tests.cpp`
+  - `tests/unit/product_creative_ui_projection_receipt_tests.cpp`
+  - `tests/unit/product_creative_ui_frame_tests.cpp`
+  - `tests/unit/product_creative_ui_window_frame_tests.cpp`
+  - `docs/creative_mode/builder_tasks/claimed/E191-product-test-support-g2-receipt-helpers.md` moved to `done/`
+- Helper API added:
+  - `iggy3d::test::ReceiptFieldExpectation`
+  - `iggy3d::test::receiptFor(const ProductAppWindowState&)`
+  - `iggy3d::test::expectReceiptField(const RenderReceipt&, std::string_view, std::string_view, std::string_view)`
+  - `iggy3d::test::expectReceiptCount(const RenderReceipt&, std::string_view, std::uint64_t, std::string_view)`
+  - `iggy3d::test::expectReceiptFields(const RenderReceipt&, std::initializer_list<ReceiptFieldExpectation>, std::string_view)`
+  - `iggy3d::test::expectReceiptFields<Size>(const RenderReceipt&, const std::array<ReceiptFieldExpectation, Size>&, std::string_view)`
+- Files migrated:
+  - `product_creative_ui_command_receipt_tests.cpp`: local `expect(...)`, `receiptFor(...)`, `expectReceiptField(...)`, `ReceiptFieldExpectation`, and grouped `expectReceiptFields(...)` overloads replaced by narrow `iggy3d::test` using declarations.
+  - `product_creative_ui_projection_receipt_tests.cpp`: local `expect(...)`, `receiptFor(...)`, `expectReceiptField(...)`, and `expectReceiptCount(...)` replaced.
+  - `product_creative_ui_frame_tests.cpp`: local `expect(...)`, `receiptFor(...)`, `expectReceiptField(...)`, and `expectReceiptCount(...)` replaced.
+  - `product_creative_ui_window_frame_tests.cpp`: local `expect(...)`, `receiptFor(...)`, and `expectReceiptField(...)` replaced.
+- Helpers intentionally left local:
+  - `markCreativeAppIdentity(...)`
+  - `populateSelectedFacade(...)`
+  - `populatedCreativeUiModel(...)`
+  - `prepopulateCreativeProjection(...)`
+  - `prepopulateProductVulkanMenuUi(...)`
+  - `creativeWindow(...)`, draw-list builders, and other scenario/window setup helpers.
+- Receipt golden result:
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed with `receipt key-order oracle: 1032 fields match golden (order + values)`.
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target product_creative_ui_command_receipt_tests product_creative_ui_projection_receipt_tests product_creative_ui_frame_tests product_creative_ui_window_frame_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_creative_ui_command_receipt_tests|product_creative_ui_projection_receipt_tests|product_creative_ui_frame_tests|product_creative_ui_window_frame_tests|product_receipt_key_order_tests)$' --output-on-failure` passed, 5/5.
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests` passed.
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files passed.
+- Concerns/deferred:
+  - No production or CMake edits were needed.
+  - The shared receipt fixture matched all four migrated files.
+  - Receipt keys, expected values, test names, fixture data, and golden output were not changed.
+  - Active-surface helpers, temp-root/options helpers, large harness/scenario structs, and non-receipt product tests remain deferred.

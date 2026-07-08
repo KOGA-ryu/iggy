@@ -1,5 +1,7 @@
 #include "app/iggy3d/ReceiptBuilder.hpp"
 
+#include "ProductReceiptTestSupport.hpp"
+
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
 #include "app/iggy3d/Options.hpp"
@@ -12,51 +14,16 @@
 #include "render/RenderDiagnostics.hpp"
 
 #include <cstdlib>
-#include <iostream>
 #include <string>
 #include <string_view>
 
 namespace {
 namespace cr = iggy3d::creative;
 
-bool expect(bool condition, std::string_view message) {
-  if (!condition) {
-    std::cerr << "FAIL: " << message << '\n';
-  }
-  return condition;
-}
-
-iggy3d::RenderReceipt receiptFor(const iggy3d::ProductAppWindowState& window) {
-  iggy3d::ProductAppOptions options;
-  iggy3d::ProductWorldTemplate world;
-  iggy3d::FrontendState frontend;
-  iggy3d::FrontendSettings settings;
-  iggy3d::ProductSaveBridgeResult saves;
-  return iggy3d::buildProductAppReceipt(options,
-                                        world,
-                                        frontend,
-                                        settings,
-                                        window,
-                                        saves);
-}
-
-bool expectReceiptField(const iggy3d::RenderReceipt& receipt,
-                        std::string_view key,
-                        std::string_view value,
-                        std::string_view message) {
-  return expect(iggy3d::hasReceiptField(receipt, key, value), message);
-}
-
-bool expectReceiptCount(const iggy3d::RenderReceipt& receipt,
-                        std::string_view key,
-                        std::uint64_t value,
-                        std::string_view message) {
-  const std::string text = std::to_string(value);
-  return expectReceiptField(receipt,
-                            key,
-                            std::string_view(text.data(), text.size()),
-                            message);
-}
+using iggy3d::test::expect;
+using iggy3d::test::expectReceiptCount;
+using iggy3d::test::expectReceiptField;
+using iggy3d::test::receiptFor;
 
 cr::CreativeUiModel populatedCreativeUiModel() {
   cr::CreativeUiBuildRequest request = cr::makeDefaultCreativeUiBuildRequest();
