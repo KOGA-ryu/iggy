@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E228-openingmenuview-g4-menu-panels-view-extraction.md`
+1. `ready/E229-openingmenuview-g5-hit-test-split.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E228-openingmenuview-g4-menu-panels-view-extraction.md`
+1. `ready/E229-openingmenuview-g5-hit-test-split.md`
 
 ## Parking Lot
 
@@ -170,7 +170,7 @@ Held — do NOT promote to `ready/` on a guess:
   through descriptor helpers.
 - `OpeningMenuView` split preflight is COMPLETE as E224. G1 `SdlDraw` helper
   extraction is COMPLETE as E225. G2 `ScenePrimitiveView` extraction is
-  COMPLETE as E226. G3 `DebugHudView` extraction is COMPLETE as E227. E228 is
-  released as G4 and should extract render-only menu/panel helpers into
-  `MenuPanelsView`, leaving hit-test/action routing, menu action order
-  selection, gameplay panel orchestration, and facade behavior in place.
+  COMPLETE as E226. G3 `DebugHudView` extraction is COMPLETE as E227. G4
+  `MenuPanelsView` extraction is COMPLETE as E228. E229 is released as G5 and
+  should split hit-test types/functions into `OpeningMenuHitTest`, leaving
+  drawing/facade behavior in `OpeningMenuView`.
