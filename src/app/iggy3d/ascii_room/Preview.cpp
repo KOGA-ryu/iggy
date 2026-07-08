@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <string>
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
+
 namespace iggy3d {
 namespace {
 

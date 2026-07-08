@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -123,3 +123,45 @@ Report:
 - receipt golden diff result;
 - `git diff --check` and trailing-whitespace results;
 - confirmation that no signatures, behavior, CMake, or receipt fields changed.
+
+## Completion Brief
+
+- Card moved to done: `/Users/kogaryu/iggy3d/docs/creative_mode/builder_tasks/done/E203-product-header-include-hygiene-pass-4-ascii-room.md`
+- Files changed:
+  - `src/app/iggy3d/ascii_room/Activation.hpp`
+  - `src/app/iggy3d/ascii_room/Activation.cpp`
+  - `src/app/iggy3d/ascii_room/Preview.hpp`
+  - `src/app/iggy3d/ascii_room/Preview.cpp`
+  - `src/app/iggy3d/Operations.cpp`
+  - `tests/unit/product_ascii_room_activation_tests.cpp`
+  - `docs/creative_mode/builder_tasks/done/E203-product-header-include-hygiene-pass-4-ascii-room.md`
+- Target headers forward-declared:
+  - `Activation.hpp` removed `#include "app/iggy3d/ProductAppWindowState.hpp"` and now forward-declares `struct ProductAppWindowState;`.
+  - `Preview.hpp` removed `#include "app/iggy3d/ProductAppWindowState.hpp"` and now forward-declares `struct ProductAppWindowState;`.
+- Incomplete-type confirmation:
+  - `Activation.hpp` uses `ProductAppWindowState` only as a non-owning function parameter by reference.
+  - `Preview.hpp` uses `ProductAppWindowState` only as non-owning function parameters by reference.
+- `.cpp` partners with direct full-type includes:
+  - `Activation.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` directly.
+  - `Preview.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` directly.
+- Fallout files given direct includes:
+  - `Operations.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` because it reads/writes `window`.
+  - `product_ascii_room_activation_tests.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` because it returns and instantiates `ProductAppWindowState`.
+- Direct includer count for `ProductAppWindowState.hpp`:
+  - Before: 66
+  - After: 68
+  - Count rose because two header includes were removed and four concrete users now include the full type directly.
+- Focused build:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_ascii_room_activation_tests product_ascii_authoring_smoke product_ascii_package_smoke product_creative_no_window_bake_scenario_tests product_automation_dispatch_tests product_receipt_key_order_tests -j10` passed.
+- Focused CTest:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_ascii_room_activation_tests|product_ascii_authoring_smoke|product_ascii_package_smoke|product_creative_no_window_bake_scenario_tests|product_automation_dispatch_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 6/6.
+- Receipt golden diff:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card passed.
+- Confirmations:
+  - No function signatures changed.
+  - No function bodies, struct layouts, ASCII room behavior, package/session behavior, receipt fields, CMake, or receipt golden changed.
+- Concerns/deferred:
+  - None for this slice.

@@ -8,6 +8,7 @@
 #include "app/PackageRuntimeLookup.hpp"
 #include "app/frontend/SaveBrowser.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"

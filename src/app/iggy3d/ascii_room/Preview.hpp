@@ -4,9 +4,10 @@
 #include <string_view>
 
 #include "app/iggy3d/ascii_room/Authoring.hpp"
-#include "app/iggy3d/ProductAppWindowState.hpp"
 
 namespace iggy3d {
+
+struct ProductAppWindowState;
 
 std::string decodeProductAsciiRoomAutomationText(std::string_view value);
 ProductAsciiRoomAuthoringRequest productAsciiRoomAuthoringRequestFromDraft(

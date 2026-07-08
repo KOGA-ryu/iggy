@@ -5,6 +5,7 @@
 #include <optional>
 #include <string_view>
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "projection/scene/SceneProjection.hpp"
 
