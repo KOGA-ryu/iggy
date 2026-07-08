@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E209-operations-seam-split-preflight.md`
+1. `ready/E210-operations-split-g1-creative-baked-room-refresh.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E209-operations-seam-split-preflight.md`
+1. `ready/E210-operations-split-g1-creative-baked-room-refresh.md`
 
 ## Parking Lot
 
@@ -144,7 +144,8 @@ Held — do NOT promote to `ready/` on a guess:
   resolver wrapper after window input-owner cache deletion. E200 removed ignored
   production calls, repointed tests/support to the direct resolver, and deleted
   the stale helper.
-- Remaining complexity-audit roadmap items: `E209` is released as the
-  read-only preflight for `Operations.cpp` seam split after identity-mirror
-  removal. `OpeningMenuView` split remains parked; see
+- Remaining complexity-audit roadmap items: `E209` completed the read-only
+  preflight for `Operations.cpp` seam split after identity-mirror removal.
+  `E210` is released as G1, extracting only the creative baked active-room
+  refresh service. `OpeningMenuView` split remains parked; see
   `docs/complexity_audit_v0_1.md` §3.
