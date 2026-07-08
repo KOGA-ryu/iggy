@@ -3,6 +3,7 @@
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/creative/BakedActiveRoomRefresh.hpp"
+#include "app/iggy3d/creative/CreativeWorldOperations.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"

@@ -8,8 +8,8 @@
 
 #include "app/frontend/FrontendState.hpp"
 #include "app/frontend/SettingsMenu.hpp"
-#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/Options.hpp"
+#include "app/iggy3d/creative/CreativeWorldOperations.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "runtime/session/Session.hpp"
 

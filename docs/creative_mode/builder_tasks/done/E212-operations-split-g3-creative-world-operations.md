@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -178,3 +178,74 @@ Report:
 - confirmation that product new-world/load, package/session bootstrap,
   save-slot operations, baked-room refresh implementation, save formats,
   receipt keys, staging, commit, push, and window launch were not changed.
+
+## Completion Brief
+
+- Card moved to done: yes.
+- New header/source paths:
+  - `src/app/iggy3d/creative/CreativeWorldOperations.hpp`
+  - `src/app/iggy3d/creative/CreativeWorldOperations.cpp`
+- Public APIs/types moved from `Operations.hpp`:
+  - `ProductCreativeNewWorldLaunchRequest`
+  - `ProductCreativeNewWorldLaunchResult`
+  - `ProductCreativeOpenWorldLaunchRequest`
+  - `ProductCreativeOpenWorldLaunchResult`
+  - `ProductCreativeCurrentWorldSaveResult`
+  - `launchProductCreativeNewWorld(...)`
+  - `launchProductCreativeOpenWorld(...)`
+  - `saveProductCurrentCreativeWorld(...)`
+- Private helpers moved from `Operations.cpp`:
+  - `setCreativeNewWorldLaunchStatus(...)`
+  - `setCreativeOpenWorldLaunchStatus(...)`
+  - `setCurrentCreativeSaveStatus(...)`
+  - `idOrNone(...)`
+  - `pathOrNone(...)`
+  - `missingWindowIdentity(...)`
+  - `recordActiveCreativeSaveIdentity(...)`
+  - `recordActiveCreativeSaveResult(...)`
+  - `mirrorCreativeWorldCreateResult(...)`
+  - `mirrorCreativeWorldOpenResult(...)`
+  - `mirrorCreativeDocumentInstallResult(...)` overloads
+  - `mirrorCreativeBakedActiveRoomRefreshResult(...)` overloads
+- Narrow Operations seam kept in place:
+  - `createCreativeBlankSession(...)`
+  - `frameCreativeStageCameraOnOrigin(...)`
+  - `clearProductGameplayLaunchState(...)`
+  - Their implementations remain in `Operations.cpp` as file-local `*Impl`
+    helpers behind public wrappers so the new creative seam can call them
+    without moving product new-world/session launch implementation.
+- Remaining `Operations.cpp` hits for creative world APIs/helpers:
+  - Required grep found no moved creative world API/type/helper declarations or
+    definitions in `Operations.hpp` or `Operations.cpp`.
+  - `Operations.cpp` only keeps the narrow blank-stage/gameplay-launch helper
+    wrappers listed above; those are not creative world API/helper names from
+    the E212 move list.
+- Caller include updates:
+  - `src/app/iggy3d/menu/ActionHandlers.cpp`
+  - `src/app/iggy3d/save/Flow.hpp`
+  - `src/app/iggy3d/save/Flow.cpp`
+  - `tests/unit/product_creative_world_launch_tests.cpp`
+  - `tests/unit/product_creative_no_window_bake_scenario_tests.cpp`
+- CMake update:
+  - Added `src/app/iggy3d/creative/CreativeWorldOperations.cpp` to the
+    `iggy3d` library source list near other creative app sources.
+- Receipt golden result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+    produced no diff.
+- Focused build:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_creative_world_launch_tests product_creative_no_window_bake_scenario_tests product_starter_menu_action_tests product_window_input_frame_tests product_creative_ui_input_frame_tests product_receipt_key_order_tests -j10`
+    passed.
+  - The build emitted an existing warning in
+    `tests/unit/product_starter_menu_action_tests.cpp` for an unused local
+    `facade`; it was not part of this extraction.
+- Focused CTest:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_creative_world_launch_tests|product_creative_no_window_bake_scenario_tests|product_starter_menu_action_tests|product_window_input_frame_tests|product_creative_ui_input_frame_tests|product_receipt_key_order_tests)$' --output-on-failure`
+    passed: 6/6.
+- Diff and whitespace:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card produced
+    no output.
+- Confirmation:
+  - Product new-world/load, package/session bootstrap, save-slot operations,
+    baked-room refresh implementation, save formats, receipt keys, CMake test
+    definitions, staging, commit, push, and window launch were not changed.

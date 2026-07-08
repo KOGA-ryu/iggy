@@ -5,6 +5,7 @@
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
+#include "app/iggy3d/creative/CreativeWorldOperations.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 
