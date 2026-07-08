@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -178,3 +178,107 @@ When done, report:
 - confirmation that HUD/menu/hit-test/facade policy, `OpeningMenuView.hpp`,
   `SdlDraw.*`, CMake test definitions, staging, commit, push, and window launch
   were not touched
+
+## Completion Brief
+
+Card moved to done: yes.
+
+Files changed:
+
+- `CMakeLists.txt`
+- `src/app/iggy3d/view/OpeningMenuView.cpp`
+- `src/app/iggy3d/view/ScenePrimitiveView.hpp`
+- `src/app/iggy3d/view/ScenePrimitiveView.cpp`
+- `docs/creative_mode/builder_tasks/done/E226-openingmenuview-g2-scene-primitive-view-extraction.md`
+
+Exact helper/API shape created:
+
+- Added `src/app/iggy3d/view/ScenePrimitiveView.hpp` and `src/app/iggy3d/view/ScenePrimitiveView.cpp`.
+- The header is guarded by `#if defined(IGGY3D_HAS_SDL3)`, forward-declares `SDL_Renderer`, `ProductViewportFrame`, and `TopDownMapOverlay`, and exposes only:
+  - `void drawFirstPersonPrimitiveViewport(SDL_Renderer&, const ProductViewportFrame*);`
+  - `void drawTopDownMapPrimitives(SDL_Renderer&, const ProductViewportFrame*, const TopDownMapOverlay*);`
+- `ScenePrimitiveView.cpp` owns the moved scene/viewport primitive helpers:
+  - `drawMarker(...)`
+  - `drawPhysicsAabbDebugMarker(...)`
+  - `drawPhysicsContactNormalDebugMarker(...)`
+  - `drawPhysicsBroadphasePairDebugMarker(...)`
+  - `drawFocusIndicator(...)`
+  - `drawRoomEditorCursor(...)`
+  - `drawDoorMarker(...)`
+  - `drawRoomTile(...)`
+  - `drawPrimitiveItem(...)`
+  - `drawGrid(...)`
+  - `topDownMapTitle(...)`
+  - `topDownMapUsesCompactLayout(...)`
+  - `topDownMapAnchorFor(...)`
+  - `topDownMappedItem(...)`
+  - `drawFirstPersonPrimitiveViewport(...)`
+  - `drawTopDownMapPrimitives(...)`
+- All lower-level marker/tile/grid/top-down helpers remain file-local in `ScenePrimitiveView.cpp`.
+
+What stayed in `OpeningMenuView.cpp`:
+
+- `OpeningMenuView.cpp` now includes `app/iggy3d/view/ScenePrimitiveView.hpp`.
+- It retains only the two call sites in `drawGameplayPanel(...)`:
+  - `drawFirstPersonPrimitiveViewport(renderer, frame);`
+  - `drawTopDownMapPrimitives(renderer, frame, topDownMapOverlay);`
+- HUD functions, room-editor HUD, movement tuning HUD, menu rows/panels, hit-test/action routing, and `drawOpeningMenuView(...)` stayed in `OpeningMenuView.cpp`.
+
+CMake source-list placement:
+
+- Added `src/app/iggy3d/view/ScenePrimitiveView.cpp` immediately after `src/app/iggy3d/view/OpeningMenuView.cpp` and before `src/app/iggy3d/view/SdlDraw.cpp`.
+
+Required grep classification:
+
+- Definitions for all moved scene/viewport primitive helpers live in `ScenePrimitiveView.cpp`.
+- `ScenePrimitiveView.hpp` exposes only `drawFirstPersonPrimitiveViewport(...)` and `drawTopDownMapPrimitives(...)`.
+- `OpeningMenuView.cpp` retains only call sites for the two exported viewport helpers.
+- `CMakeLists.txt` has:
+  - `OpeningMenuView.cpp` at line 87
+  - `ScenePrimitiveView.cpp` at line 88
+  - `SdlDraw.cpp` at line 89
+
+Focused build result:
+
+```sh
+cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_window_input_frame_tests product_primitive_draw_list_tests product_render_bridge_tests product_receipt_key_order_tests -j10
+```
+
+Passed. The build compiled `src/app/iggy3d/view/ScenePrimitiveView.cpp` and rebuilt the listed test targets.
+
+Focused CTest result:
+
+```sh
+ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_window_input_frame_tests|product_primitive_draw_list_tests|product_render_bridge_tests|product_receipt_key_order_tests)$' --output-on-failure
+```
+
+Passed: 4/4 tests.
+
+Receipt golden diff result:
+
+```sh
+git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden
+```
+
+No diff.
+
+Diff/whitespace checks:
+
+```sh
+git -C /Users/kogaryu/iggy3d diff --check
+rg -n "[ \t]$" CMakeLists.txt src/app/iggy3d/view/OpeningMenuView.cpp src/app/iggy3d/view/ScenePrimitiveView.hpp src/app/iggy3d/view/ScenePrimitiveView.cpp docs/creative_mode/builder_tasks/done/E226-openingmenuview-g2-scene-primitive-view-extraction.md
+```
+
+Both clean; trailing-whitespace scan returned no hits.
+
+Confirmation:
+
+- HUD policy was not moved.
+- Menu panel policy was not moved.
+- Hit-test/action routing was not moved.
+- Facade policy and `drawOpeningMenuView(...)` were not moved.
+- `OpeningMenuView.hpp` was not changed.
+- `SdlDraw.*` was not changed.
+- CMake test definitions were not changed.
+- Receipt golden files were not changed.
+- No staging, commit, push, broad CTest, or window launch was performed.
