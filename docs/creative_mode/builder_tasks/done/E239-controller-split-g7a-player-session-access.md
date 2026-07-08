@@ -131,3 +131,46 @@ Run a focused trailing-whitespace scan over touched files and this card.
   behavior drift.
 
 No stage, commit, push, broad CTest, or window launch.
+
+## Completion Brief
+
+Files changed:
+
+- `CMakeLists.txt`
+- `src/app/iggy3d/gameplay/Controller.cpp`
+- `src/app/iggy3d/gameplay/ControllerPlayerAccess.hpp`
+- `src/app/iggy3d/gameplay/ControllerPlayerAccess.cpp`
+- `docs/creative_mode/builder_tasks/claimed/E239-controller-split-g7a-player-session-access.md`
+
+Exact APIs moved/added:
+
+- Added `ControllerPlayerAccess.hpp/.cpp`.
+- Moved `productPlayerActor(const Session&)`.
+- Moved `productPlayerEntity(const Session&)`.
+- Moved `setProductPlayerPosition(Session&, EntityId, const Vec3&)`.
+
+Behavior preservation:
+
+- `productPlayerActor(...)` still returns `session.state().players.actorForSlot(0)`.
+- `productPlayerEntity(...)` still resolves the actor through `session.state().world.findById(actor)`.
+- `setProductPlayerPosition(...)` still mutates only the copied transform position, calls `updateTransform(...)`, returns `false` for missing entity or failed mutation, and recomputes `state.currentStateHash` only after successful mutation.
+
+Scope notes:
+
+- `Controller.cpp` now includes `app/iggy3d/gameplay/ControllerPlayerAccess.hpp` and retains call sites only for the moved helpers.
+- `CMakeLists.txt` now registers `src/app/iggy3d/gameplay/ControllerPlayerAccess.cpp` next to the other controller split files.
+- No reset/fall, jump, traversal, wall-run, command submission, target/outcome proof, movement proof, active-room ownership, receipt, staging, commit, push, broad CTest, or window launch changes were made.
+
+Required grep classification:
+
+- `rg -n "productPlayerActor|productPlayerEntity|setProductPlayerPosition" ...` shows declarations/definitions in `ControllerPlayerAccess.*`.
+- The same grep shows `Controller.cpp` retains call sites only.
+- Focused dependency grep over `ControllerPlayerAccess.*` returned no forbidden dependency hits for `ProductAppWindowState`, `SpatialSurfaceSet`, `activeRoom`, reset/fall, jump/dash, traversal execution, wall query/evaluation, command submission, target/outcome proof, or movement proof.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched files and this card passed.

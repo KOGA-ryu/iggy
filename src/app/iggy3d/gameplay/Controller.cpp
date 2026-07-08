@@ -15,6 +15,7 @@
 #include "app/iggy3d/gameplay/ControllerJumpDashState.hpp"
 #include "app/iggy3d/gameplay/ControllerKinematics.hpp"
 #include "app/iggy3d/gameplay/ControllerMovementProof.hpp"
+#include "app/iggy3d/gameplay/ControllerPlayerAccess.hpp"
 #include "app/iggy3d/gameplay/ControllerTraversalProof.hpp"
 #include "app/iggy3d/gameplay/ControllerWallRunEvaluation.hpp"
 #include "app/iggy3d/gameplay/ControllerWallQueries.hpp"
@@ -140,15 +141,6 @@ std::string reachGateName(CommandRejectionReason reason) {
   return "not_attempted";
 }
 
-EntityId productPlayerActor(const Session& session) {
-  return session.state().players.actorForSlot(0);
-}
-
-const EntityState* productPlayerEntity(const Session& session) {
-  const EntityId actor = productPlayerActor(session);
-  return session.state().world.findById(actor);
-}
-
 void clearProductTargetProof(ProductAppWindowState& window);
 void clearProductOutcomeProof(ProductAppWindowState& window);
 void submitProductGameplayCommand(Session& session,
@@ -163,24 +155,6 @@ TargetQueryResult queryProductGameplayTarget(const Session& session, CommandKind
   const EntityId actor = productPlayerActor(session);
   return queryTarget(TargetQueryRequest{&session.state().world, actor, false, {},
                                         kind, 0.0F, false, true});
-}
-
-bool setProductPlayerPosition(Session& session, EntityId actor, const Vec3& position) {
-  SessionState& state = session.mutableStateForOwnedSystems();
-  const EntityState* entity = state.world.findById(actor);
-  // branch-gate: BG-1153
-  if (entity == nullptr) {
-    return false;
-  }
-  Transform3 transform = entity->transform;
-  transform.position = position;
-  const WorldMutationResult mutation = state.world.updateTransform(actor, transform);
-  // branch-gate: BG-1153
-  if (mutation.status != WorldStatus::Ok) {
-    return false;
-  }
-  state.currentStateHash = computeStateHash(state);
-  return true;
 }
 
 float horizontalDistanceSquared(Vec3 lhs, Vec3 rhs) {
