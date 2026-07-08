@@ -221,3 +221,126 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, CMake, tests, golden, staging, commit,
   push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Status: Done.
+
+### Files changed
+
+- `src/app/iggy3d/receipt/GameplaySceneStateFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E251-product-receipt-field-rows-g1-gameplay-scene-state.md`
+
+No other receipt source, `ReceiptFields.hpp/.cpp`, `ReceiptBuilder.cpp`, CMake,
+tests, fixtures, or golden files were edited.
+
+### Row helper shape
+
+`GameplaySceneStateFields.cpp` now has a file-local row type and ordered row
+array:
+
+```cpp
+namespace {
+
+struct GameplaySceneStateReceiptFieldRow {
+  std::string_view key;
+  void (*append)(RenderReceipt& receipt,
+                 const ProductAppWindowState& window,
+                 std::string_view key);
+};
+
+const std::array<GameplaySceneStateReceiptFieldRow, 178>
+    kGameplaySceneStateReceiptFields{{ /* ordered rows */ }};
+
+}  // namespace
+```
+
+Each row stores the receipt key and a non-capturing append callback. The
+callbacks keep the original value expressions inside the row, including
+`std::to_string(...)`, `static_cast<std::uint64_t>(...)`,
+`floatReceiptValue(...)`, and
+`std::string(productCreativeFlyAnchorProvenanceName(...))`.
+
+`appendProductGameplaySceneStateFields(RenderReceipt&, const
+ProductAppWindowState&)` remains the only public appender and now iterates
+`kGameplaySceneStateReceiptFields` in order.
+
+### Row coverage
+
+- Row count: 178.
+- First receipt key: `position_hud_visible`.
+- Last receipt key: `product_vulkan_room_geometry_signature`.
+- Rows left procedural: none.
+
+### Required grep classifications
+
+`rg -n "GameplaySceneStateReceiptFieldRow|kGameplaySceneStateReceiptFields|appendProductGameplaySceneStateFields|appendReceiptField\\(" ...`:
+
+- file-local `GameplaySceneStateReceiptFieldRow` exists;
+- `kGameplaySceneStateReceiptFields` exists as a 178-row `std::array`;
+- `appendProductGameplaySceneStateFields(...)` remains in
+  `GameplaySceneStateFields.cpp`;
+- all 178 `appendReceiptField(...)` calls live inside row callbacks.
+
+`rg -n "ProductAppReceiptContext|ReceiptFieldRow|GameplaySceneStateReceiptFieldRow" ...`:
+
+- no `ProductAppReceiptContext` hits;
+- no shared receipt row helper was added to `ReceiptBuilder.cpp` or
+  `ReceiptFields.hpp/.cpp`;
+- `GameplaySceneStateReceiptFieldRow` appears only in
+  `GameplaySceneStateFields.cpp`.
+
+`rg -c "appendReceiptField\\(" GameplaySceneStateFields.cpp`:
+
+- `178`.
+
+### Verification
+
+Focused build:
+
+```sh
+cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_receipt_key_order_tests -j10
+```
+
+Result: passed.
+
+Focused CTest:
+
+```sh
+ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_receipt_key_order_tests$' --output-on-failure
+```
+
+Result: passed, 1/1 test.
+
+Direct receipt oracle:
+
+```sh
+/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests
+```
+
+Result: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+
+Receipt golden diff:
+
+```sh
+git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden
+```
+
+Result: no diff.
+
+Diff and whitespace checks:
+
+```sh
+git -C /Users/kogaryu/iggy3d diff --check
+```
+
+Result: passed.
+
+Focused trailing-whitespace scan:
+
+- `src/app/iggy3d/receipt/GameplaySceneStateFields.cpp`: clean.
+- this task card: clean before move to `done/`; clean again after move.
+
+No shared helper, `ProductAppReceiptContext`, CMake edits, tests edits, golden
+edits/regeneration, staging, commit, push, broad CTest, or window launch was
+performed.

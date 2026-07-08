@@ -1,5 +1,6 @@
 #include "app/iggy3d/receipt/ReceiptFields.hpp"
 
+#include <array>
 #include <charconv>
 #include <string>
 #include <string_view>
@@ -23,364 +24,1094 @@
 
 namespace iggy3d {
 
+namespace {
+
+struct GameplaySceneStateReceiptFieldRow {
+  std::string_view key;
+  void (*append)(RenderReceipt& receipt,
+                 const ProductAppWindowState& window,
+                 std::string_view key);
+};
+
+const std::array<GameplaySceneStateReceiptFieldRow, 178>
+    kGameplaySceneStateReceiptFields{{
+        {"position_hud_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.debugHud.positionHud.visible);
+         }},
+        {"position_hud_line_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, static_cast<std::uint64_t>(window.debugHud.positionHud.lineCount));
+         }},
+        {"position_hud_debug_available",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.debugHud.positionHud.debugAvailable);
+         }},
+        {"position_hud_status",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.debugHud.positionHud.status);
+         }},
+        {"position_hud_reason_code",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.debugHud.positionHud.reasonCode);
+         }},
+        {"position_hud_player_position_available",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.debugHud.positionHud.playerPositionAvailable);
+         }},
+        {"position_hud_world_x",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.debugHud.positionHud.worldX));
+         }},
+        {"position_hud_world_y",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.debugHud.positionHud.worldY));
+         }},
+        {"position_hud_world_z",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.debugHud.positionHud.worldZ));
+         }},
+        {"position_hud_grid_x",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, std::to_string(window.debugHud.positionHud.gridX));
+         }},
+        {"position_hud_grid_y",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, std::to_string(window.debugHud.positionHud.gridY));
+         }},
+        {"position_hud_grid_z",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, std::to_string(window.debugHud.positionHud.gridZ));
+         }},
+        {"position_hud_layer_index",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, std::to_string(window.debugHud.positionHud.layerIndex));
+         }},
+        {"position_hud_facing",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.debugHud.positionHud.facing);
+         }},
+        {"position_hud_yaw_degrees",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.debugHud.positionHud.yawDegrees));
+         }},
+        {"position_hud_pitch_degrees",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.debugHud.positionHud.pitchDegrees));
+         }},
+        {"gameplay_collision_surfaces_used",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayCollision.surfacesUsed);
+         }},
+        {"gameplay_collision_surface_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayCollision.surfaceCount);
+         }},
+        {"physics_movement_planner_enabled",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.physicsMovementPlanner.enabled);
+         }},
+        {"physics_movement_planner_requested",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.physicsMovementPlanner.requested);
+         }},
+        {"physics_movement_planner_used",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.physicsMovementPlanner.used);
+         }},
+        {"physics_movement_planner_status",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.physicsMovementPlanner.status);
+         }},
+        {"physics_movement_planner_reason_code",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.physicsMovementPlanner.reasonCode);
+         }},
+        {"target_discovered",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.targetDiscovered);
+         }},
+        {"gameplay_target_status",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTarget.status);
+         }},
+        {"gameplay_target_action",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTarget.action);
+         }},
+        {"gameplay_target_entity_id",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTarget.entityId);
+         }},
+        {"gameplay_target_stable_name",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTarget.stableName);
+         }},
+        {"gameplay_target_kind",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTarget.kind);
+         }},
+        {"gameplay_target_distance_meters",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.gameplay.gameplayTarget.distanceMeters));
+         }},
+        {"gameplay_target_supports_command",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTarget.supportsCommand);
+         }},
+        {"gameplay_outcome_status",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayOutcome.status);
+         }},
+        {"gameplay_outcome_target_active_after",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayOutcome.targetActiveAfter);
+         }},
+        {"gameplay_outcome_inventory_changed",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayOutcome.inventoryChanged);
+         }},
+        {"gameplay_outcome_item_id",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayOutcome.itemId);
+         }},
+        {"gameplay_outcome_item_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayOutcome.itemCount);
+         }},
+        {"gameplay_outcome_objective_changed",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayOutcome.objectiveChanged);
+         }},
+        {"gameplay_outcome_event_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayOutcome.eventCount);
+         }},
+        {"session_outcome",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.sessionOutcome);
+         }},
+        {"gameplay_tape_requested",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.requested);
+         }},
+        {"gameplay_tape_loaded",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.loaded);
+         }},
+        {"gameplay_tape_path",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.path);
+         }},
+        {"gameplay_tape_status",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.status);
+         }},
+        {"gameplay_tape_reason_code",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.reasonCode);
+         }},
+        {"gameplay_tape_line_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.lineCount);
+         }},
+        {"gameplay_tape_step_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.stepCount);
+         }},
+        {"gameplay_tape_executed_step_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.executedStepCount);
+         }},
+        {"gameplay_tape_expected_rejected_step_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.expectedRejectedStepCount);
+         }},
+        {"gameplay_tape_expected_blocked_step_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.expectedBlockedStepCount);
+         }},
+        {"gameplay_tape_failed_step",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.failedStep);
+         }},
+        {"gameplay_tape_failed_source_line",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.failedSourceLine);
+         }},
+        {"gameplay_tape_failed_action",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.failedAction);
+         }},
+        {"gameplay_tape_failed_target",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.failedTarget);
+         }},
+        {"gameplay_tape_failed_rejection",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.failedRejection);
+         }},
+        {"gameplay_tape_failed_movement_block",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.failedMovementBlock);
+         }},
+        {"gameplay_tape_last_action",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.lastAction);
+         }},
+        {"gameplay_tape_last_target",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.lastTarget);
+         }},
+        {"gameplay_tape_last_movement_block",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.lastMovementBlock);
+         }},
+        {"gameplay_tape_key_collected",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.keyCollected);
+         }},
+        {"gameplay_tape_secret_door_opened",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.secretDoorOpened);
+         }},
+        {"gameplay_tape_treasure_collected",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.treasureCollected);
+         }},
+        {"gameplay_tape_npc_targetable",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.npcTargetable);
+         }},
+        {"gameplay_tape_npc_defeated",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.npcDefeated);
+         }},
+        {"gameplay_tape_exit_objective_complete",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.exitObjectiveComplete);
+         }},
+        {"gameplay_tape_loop_complete",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.loopComplete);
+         }},
+        {"gameplay_tape_ai_command_logged",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.aiCommandLogged);
+         }},
+        {"gameplay_tape_ai_attack_logged",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.aiAttackLogged);
+         }},
+        {"gameplay_tape_ai_wait_logged",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.aiWaitLogged);
+         }},
+        {"gameplay_tape_ai_player_damaged",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.aiPlayerDamaged);
+         }},
+        {"gameplay_tape_ai_player_hp_before",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, static_cast<std::uint64_t>(window.gameplay.gameplayTape.aiPlayerHpBefore));
+         }},
+        {"gameplay_tape_ai_player_hp_after",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, static_cast<std::uint64_t>(window.gameplay.gameplayTape.aiPlayerHpAfter));
+         }},
+        {"gameplay_tape_ai_actor_id",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.aiActorId);
+         }},
+        {"gameplay_tape_ai_target_id",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.aiTargetId);
+         }},
+        {"gameplay_tape_ai_behavior",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.aiBehavior);
+         }},
+        {"gameplay_tape_ai_intent",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayTape.aiIntent);
+         }},
+        {"gameplay_reach_gate",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayReachGate);
+         }},
+        {"gameplay_last_rejection",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.gameplayLastRejection);
+         }},
+        {"interaction_executed",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.interactionExecuted);
+         }},
+        {"attack_executed",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.attackExecuted);
+         }},
+        {"product_transition_last_action",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.productTransition.lastAction);
+         }},
+        {"product_transition_status",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.productTransition.status);
+         }},
+        {"product_transition_returned_to_gameplay",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.productTransition.returnedToGameplay);
+         }},
+        {"product_transition_returned_to_title",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.productTransition.returnedToTitle);
+         }},
+        {"product_transition_session_preserved",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.gameplay.productTransition.sessionPreserved);
+         }},
+        {"camera_controller",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.cameraController);
+         }},
+        {"camera_mode",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.cameraMode);
+         }},
+        {"camera_controller_active",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.cameraControllerActive);
+         }},
+        {"look_input_used",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.lookInputUsed);
+         }},
+        {"camera_input_source",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.cameraInputSource);
+         }},
+        {"camera_yaw_degrees",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.viewport.cameraYawDegrees));
+         }},
+        {"camera_pitch_degrees",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.viewport.cameraPitchDegrees));
+         }},
+        {"camera_heading_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.cameraHeadingVisible);
+         }},
+        {"creative_navigate_active",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.creativeAuthoring.creativeNavigateActive);
+         }},
+        {"creative_fly_active",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.creativeFlyActive);
+         }},
+        {"creative_fly_status",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.creativeFlyStatus);
+         }},
+        {"creative_fly_reason_code",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.creativeFlyReasonCode);
+         }},
+        {"creative_fly_speed_mps",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.viewport.creativeFlySpeedMetersPerSecond));
+         }},
+        {"creative_fly_anchor_provenance",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, std::string(productCreativeFlyAnchorProvenanceName(window.viewport.creativeFlyAnchor.provenance)));
+         }},
+        {"creative_fly_anchor_world_epoch",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.creativeFlyAnchor.seededFromWorldEpoch);
+         }},
+        {"creative_fly_world_x",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.viewport.creativeFlyAnchor.positionMeters.x));
+         }},
+        {"creative_fly_world_y",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.viewport.creativeFlyAnchor.positionMeters.y));
+         }},
+        {"creative_fly_world_z",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, floatReceiptValue(window.viewport.creativeFlyAnchor.positionMeters.z));
+         }},
+        {"product_draw_item_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawItemCount);
+         }},
+        {"product_draw_grid_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawGridVisible);
+         }},
+        {"product_draw_player_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawPlayerVisible);
+         }},
+        {"product_draw_room_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawRoomVisible);
+         }},
+        {"product_draw_objective_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawObjectiveVisible);
+         }},
+        {"product_draw_target_indicator_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawTargetIndicatorVisible);
+         }},
+        {"product_draw_door_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawDoorVisible);
+         }},
+        {"product_draw_open_door_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawOpenDoorVisible);
+         }},
+        {"product_draw_closed_door_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawClosedDoorVisible);
+         }},
+        {"product_draw_debug_marker_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawDebugMarkerCount);
+         }},
+        {"product_draw_door_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawDoorCount);
+         }},
+        {"product_draw_open_door_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawOpenDoorCount);
+         }},
+        {"product_draw_closed_door_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawClosedDoorCount);
+         }},
+        {"product_draw_room_geometry_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawRoomGeometryCount);
+         }},
+        {"product_draw_floor_tile_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawFloorTileCount);
+         }},
+        {"product_draw_elevated_floor_tile_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawElevatedFloorTileCount);
+         }},
+        {"product_draw_ramp_tile_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawRampTileCount);
+         }},
+        {"product_draw_blocked_slope_tile_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawBlockedSlopeTileCount);
+         }},
+        {"product_draw_wall_tile_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawWallTileCount);
+         }},
+        {"product_draw_prop_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawPropVisible);
+         }},
+        {"product_draw_prop_tile_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawPropTileCount);
+         }},
+        {"product_draw_room_editor_cursor_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawRoomEditorCursorVisible);
+         }},
+        {"product_draw_room_editor_cursor_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawRoomEditorCursorCount);
+         }},
+        {"product_draw_room_editor_preview_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawRoomEditorPreviewVisible);
+         }},
+        {"product_draw_room_editor_preview_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawRoomEditorPreviewCount);
+         }},
+        {"product_draw_physics_debug_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawPhysicsDebugVisible);
+         }},
+        {"product_draw_physics_debug_item_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawPhysicsDebugItemCount);
+         }},
+        {"product_draw_physics_aabb_debug_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawPhysicsAabbDebugCount);
+         }},
+        {"product_draw_physics_contact_normal_debug_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawPhysicsContactNormalDebugCount);
+         }},
+        {"product_draw_map_maker_grid_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawMapMakerGridVisible);
+         }},
+        {"product_draw_map_maker_grid_dot_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawMapMakerGridDotCount);
+         }},
+        {"product_draw_map_maker_major_grid_dot_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawMapMakerMajorGridDotCount);
+         }},
+        {"product_draw_map_maker_cube_preview_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawMapMakerCubePreviewVisible);
+         }},
+        {"product_draw_map_maker_cube_preview_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productDrawMapMakerCubePreviewCount);
+         }},
+        {"product_view_projection",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productViewProjection);
+         }},
+        {"product_view_yaw_applied",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productViewYawApplied);
+         }},
+        {"product_view_pitch_applied",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productViewPitchApplied);
+         }},
+        {"product_view_player_anchor_found",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productViewPlayerAnchorFound);
+         }},
+        {"product_render_bridge_ready",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgeReady);
+         }},
+        {"product_view_frame_ready",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productViewFrameReady);
+         }},
+        {"product_view_frame_item_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productViewFrameItemCount);
+         }},
+        {"product_view_frame_on_screen_item_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productViewFrameOnScreenItemCount);
+         }},
+        {"product_view_frame_target_item_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productViewFrameTargetItemCount);
+         }},
+        {"product_render_bridge_room_editor_cursor_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgeRoomEditorCursorVisible);
+         }},
+        {"product_render_bridge_room_editor_cursor_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgeRoomEditorCursorCount);
+         }},
+        {"product_render_bridge_room_editor_preview_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgeRoomEditorPreviewVisible);
+         }},
+        {"product_render_bridge_room_editor_preview_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgeRoomEditorPreviewCount);
+         }},
+        {"product_render_bridge_prop_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgePropVisible);
+         }},
+        {"product_render_bridge_prop_tile_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgePropTileCount);
+         }},
+        {"product_render_bridge_physics_debug_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgePhysicsDebugVisible);
+         }},
+        {"product_render_bridge_physics_debug_item_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgePhysicsDebugItemCount);
+         }},
+        {"product_render_bridge_physics_aabb_debug_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgePhysicsAabbDebugCount);
+         }},
+        {"product_render_bridge_physics_contact_normal_debug_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgePhysicsContactNormalDebugCount);
+         }},
+        {"product_render_bridge_map_maker_grid_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgeMapMakerGridVisible);
+         }},
+        {"product_render_bridge_map_maker_grid_dot_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgeMapMakerGridDotCount);
+         }},
+        {"product_render_bridge_map_maker_major_grid_dot_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgeMapMakerMajorGridDotCount);
+         }},
+        {"product_render_bridge_map_maker_cube_preview_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgeMapMakerCubePreviewVisible);
+         }},
+        {"product_render_bridge_map_maker_cube_preview_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productRenderBridgeMapMakerCubePreviewCount);
+         }},
+        {"product_feedback_bridge_ready",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productFeedbackBridgeReady);
+         }},
+        {"product_feedback_bridge_line_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productFeedbackBridgeLineCount);
+         }},
+        {"product_vulkan_room_mesh_cpu_ready",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomMeshCpuReady);
+         }},
+        {"product_vulkan_room_mesh_backend_presented",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomMeshBackendPresented);
+         }},
+        {"product_vulkan_room_mesh_source",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomMeshSource);
+         }},
+        {"product_vulkan_room_asset_id",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomAssetId);
+         }},
+        {"product_vulkan_room_floor_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomFloorVisible);
+         }},
+        {"product_vulkan_room_wall_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomWallVisible);
+         }},
+        {"product_vulkan_room_grid_visible",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomGridVisible);
+         }},
+        {"product_vulkan_room_source_mesh_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomSourceMeshCount);
+         }},
+        {"product_vulkan_room_vertex_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomVertexCount);
+         }},
+        {"product_vulkan_room_index_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomIndexCount);
+         }},
+        {"product_vulkan_room_draw_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomDrawCount);
+         }},
+        {"product_vulkan_room_floor_draw_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomFloorDrawCount);
+         }},
+        {"product_vulkan_room_wall_draw_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomWallDrawCount);
+         }},
+        {"product_vulkan_room_grid_line_draw_count",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomGridLineDrawCount);
+         }},
+        {"product_vulkan_room_grid_truncated",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomGridTruncated);
+         }},
+        {"product_vulkan_room_geometry_signature",
+         [](RenderReceipt& receipt,
+            const ProductAppWindowState& window,
+            std::string_view key) {
+           appendReceiptField(receipt, key, window.viewport.productVulkanRoomGeometrySignature);
+         }},
+    }};
+
+}  // namespace
+
 void appendProductGameplaySceneStateFields(RenderReceipt& receipt, const ProductAppWindowState& window) {
-  appendReceiptField(receipt, "position_hud_visible",
-                     window.debugHud.positionHud.visible);
-  appendReceiptField(receipt, "position_hud_line_count",
-                     static_cast<std::uint64_t>(
-                         window.debugHud.positionHud.lineCount));
-  appendReceiptField(receipt, "position_hud_debug_available",
-                     window.debugHud.positionHud.debugAvailable);
-  appendReceiptField(receipt, "position_hud_status",
-                     window.debugHud.positionHud.status);
-  appendReceiptField(receipt, "position_hud_reason_code",
-                     window.debugHud.positionHud.reasonCode);
-  appendReceiptField(receipt, "position_hud_player_position_available",
-                     window.debugHud.positionHud.playerPositionAvailable);
-  appendReceiptField(receipt, "position_hud_world_x",
-                     floatReceiptValue(window.debugHud.positionHud.worldX));
-  appendReceiptField(receipt, "position_hud_world_y",
-                     floatReceiptValue(window.debugHud.positionHud.worldY));
-  appendReceiptField(receipt, "position_hud_world_z",
-                     floatReceiptValue(window.debugHud.positionHud.worldZ));
-  appendReceiptField(receipt, "position_hud_grid_x",
-                     std::to_string(window.debugHud.positionHud.gridX));
-  appendReceiptField(receipt, "position_hud_grid_y",
-                     std::to_string(window.debugHud.positionHud.gridY));
-  appendReceiptField(receipt, "position_hud_grid_z",
-                     std::to_string(window.debugHud.positionHud.gridZ));
-  appendReceiptField(receipt, "position_hud_layer_index",
-                     std::to_string(window.debugHud.positionHud.layerIndex));
-  appendReceiptField(receipt, "position_hud_facing",
-                     window.debugHud.positionHud.facing);
-  appendReceiptField(receipt, "position_hud_yaw_degrees",
-                     floatReceiptValue(window.debugHud.positionHud.yawDegrees));
-  appendReceiptField(receipt, "position_hud_pitch_degrees",
-                     floatReceiptValue(window.debugHud.positionHud.pitchDegrees));
-  appendReceiptField(receipt, "gameplay_collision_surfaces_used",
-                     window.gameplay.gameplayCollision.surfacesUsed);
-  appendReceiptField(receipt, "gameplay_collision_surface_count",
-                     window.gameplay.gameplayCollision.surfaceCount);
-  appendReceiptField(receipt, "physics_movement_planner_enabled",
-                     window.gameplay.physicsMovementPlanner.enabled);
-  appendReceiptField(receipt, "physics_movement_planner_requested",
-                     window.gameplay.physicsMovementPlanner.requested);
-  appendReceiptField(receipt, "physics_movement_planner_used",
-                     window.gameplay.physicsMovementPlanner.used);
-  appendReceiptField(receipt, "physics_movement_planner_status",
-                     window.gameplay.physicsMovementPlanner.status);
-  appendReceiptField(receipt, "physics_movement_planner_reason_code",
-                     window.gameplay.physicsMovementPlanner.reasonCode);
-  appendReceiptField(receipt, "target_discovered", window.gameplay.targetDiscovered);
-  appendReceiptField(receipt, "gameplay_target_status",
-                     window.gameplay.gameplayTarget.status);
-  appendReceiptField(receipt, "gameplay_target_action",
-                     window.gameplay.gameplayTarget.action);
-  appendReceiptField(receipt, "gameplay_target_entity_id",
-                     window.gameplay.gameplayTarget.entityId);
-  appendReceiptField(receipt, "gameplay_target_stable_name",
-                     window.gameplay.gameplayTarget.stableName);
-  appendReceiptField(receipt, "gameplay_target_kind", window.gameplay.gameplayTarget.kind);
-  appendReceiptField(receipt, "gameplay_target_distance_meters",
-                     floatReceiptValue(window.gameplay.gameplayTarget.distanceMeters));
-  appendReceiptField(receipt, "gameplay_target_supports_command",
-                     window.gameplay.gameplayTarget.supportsCommand);
-  appendReceiptField(receipt, "gameplay_outcome_status",
-                     window.gameplay.gameplayOutcome.status);
-  appendReceiptField(receipt, "gameplay_outcome_target_active_after",
-                     window.gameplay.gameplayOutcome.targetActiveAfter);
-  appendReceiptField(receipt, "gameplay_outcome_inventory_changed",
-                     window.gameplay.gameplayOutcome.inventoryChanged);
-  appendReceiptField(receipt, "gameplay_outcome_item_id",
-                     window.gameplay.gameplayOutcome.itemId);
-  appendReceiptField(receipt, "gameplay_outcome_item_count",
-                     window.gameplay.gameplayOutcome.itemCount);
-  appendReceiptField(receipt, "gameplay_outcome_objective_changed",
-                     window.gameplay.gameplayOutcome.objectiveChanged);
-  appendReceiptField(receipt, "gameplay_outcome_event_count",
-                     window.gameplay.gameplayOutcome.eventCount);
-  appendReceiptField(receipt, "session_outcome", window.gameplay.sessionOutcome);
-  appendReceiptField(receipt, "gameplay_tape_requested",
-                     window.gameplay.gameplayTape.requested);
-  appendReceiptField(receipt, "gameplay_tape_loaded", window.gameplay.gameplayTape.loaded);
-  appendReceiptField(receipt, "gameplay_tape_path", window.gameplay.gameplayTape.path);
-  appendReceiptField(receipt, "gameplay_tape_status", window.gameplay.gameplayTape.status);
-  appendReceiptField(receipt, "gameplay_tape_reason_code",
-                     window.gameplay.gameplayTape.reasonCode);
-  appendReceiptField(receipt, "gameplay_tape_line_count",
-                     window.gameplay.gameplayTape.lineCount);
-  appendReceiptField(receipt, "gameplay_tape_step_count",
-                     window.gameplay.gameplayTape.stepCount);
-  appendReceiptField(receipt, "gameplay_tape_executed_step_count",
-                     window.gameplay.gameplayTape.executedStepCount);
-  appendReceiptField(receipt, "gameplay_tape_expected_rejected_step_count",
-                     window.gameplay.gameplayTape.expectedRejectedStepCount);
-  appendReceiptField(receipt, "gameplay_tape_expected_blocked_step_count",
-                     window.gameplay.gameplayTape.expectedBlockedStepCount);
-  appendReceiptField(receipt, "gameplay_tape_failed_step",
-                     window.gameplay.gameplayTape.failedStep);
-  appendReceiptField(receipt, "gameplay_tape_failed_source_line",
-                     window.gameplay.gameplayTape.failedSourceLine);
-  appendReceiptField(receipt, "gameplay_tape_failed_action",
-                     window.gameplay.gameplayTape.failedAction);
-  appendReceiptField(receipt, "gameplay_tape_failed_target",
-                     window.gameplay.gameplayTape.failedTarget);
-  appendReceiptField(receipt, "gameplay_tape_failed_rejection",
-                     window.gameplay.gameplayTape.failedRejection);
-  appendReceiptField(receipt, "gameplay_tape_failed_movement_block",
-                     window.gameplay.gameplayTape.failedMovementBlock);
-  appendReceiptField(receipt, "gameplay_tape_last_action",
-                     window.gameplay.gameplayTape.lastAction);
-  appendReceiptField(receipt, "gameplay_tape_last_target",
-                     window.gameplay.gameplayTape.lastTarget);
-  appendReceiptField(receipt, "gameplay_tape_last_movement_block",
-                     window.gameplay.gameplayTape.lastMovementBlock);
-  appendReceiptField(receipt, "gameplay_tape_key_collected",
-                     window.gameplay.gameplayTape.keyCollected);
-  appendReceiptField(receipt, "gameplay_tape_secret_door_opened",
-                     window.gameplay.gameplayTape.secretDoorOpened);
-  appendReceiptField(receipt, "gameplay_tape_treasure_collected",
-                     window.gameplay.gameplayTape.treasureCollected);
-  appendReceiptField(receipt, "gameplay_tape_npc_targetable",
-                     window.gameplay.gameplayTape.npcTargetable);
-  appendReceiptField(receipt, "gameplay_tape_npc_defeated",
-                     window.gameplay.gameplayTape.npcDefeated);
-  appendReceiptField(receipt, "gameplay_tape_exit_objective_complete",
-                     window.gameplay.gameplayTape.exitObjectiveComplete);
-  appendReceiptField(receipt, "gameplay_tape_loop_complete",
-                     window.gameplay.gameplayTape.loopComplete);
-  appendReceiptField(receipt, "gameplay_tape_ai_command_logged",
-                     window.gameplay.gameplayTape.aiCommandLogged);
-  appendReceiptField(receipt, "gameplay_tape_ai_attack_logged",
-                     window.gameplay.gameplayTape.aiAttackLogged);
-  appendReceiptField(receipt, "gameplay_tape_ai_wait_logged",
-                     window.gameplay.gameplayTape.aiWaitLogged);
-  appendReceiptField(receipt, "gameplay_tape_ai_player_damaged",
-                     window.gameplay.gameplayTape.aiPlayerDamaged);
-  appendReceiptField(receipt, "gameplay_tape_ai_player_hp_before",
-                     static_cast<std::uint64_t>(window.gameplay.gameplayTape.aiPlayerHpBefore));
-  appendReceiptField(receipt, "gameplay_tape_ai_player_hp_after",
-                     static_cast<std::uint64_t>(window.gameplay.gameplayTape.aiPlayerHpAfter));
-  appendReceiptField(receipt, "gameplay_tape_ai_actor_id",
-                     window.gameplay.gameplayTape.aiActorId);
-  appendReceiptField(receipt, "gameplay_tape_ai_target_id",
-                     window.gameplay.gameplayTape.aiTargetId);
-  appendReceiptField(receipt, "gameplay_tape_ai_behavior",
-                     window.gameplay.gameplayTape.aiBehavior);
-  appendReceiptField(receipt, "gameplay_tape_ai_intent",
-                     window.gameplay.gameplayTape.aiIntent);
-  appendReceiptField(receipt, "gameplay_reach_gate", window.gameplay.gameplayReachGate);
-  appendReceiptField(receipt, "gameplay_last_rejection", window.gameplay.gameplayLastRejection);
-  appendReceiptField(receipt, "interaction_executed", window.gameplay.interactionExecuted);
-  appendReceiptField(receipt, "attack_executed", window.gameplay.attackExecuted);
-  appendReceiptField(receipt, "product_transition_last_action",
-                     window.gameplay.productTransition.lastAction);
-  appendReceiptField(receipt, "product_transition_status",
-                     window.gameplay.productTransition.status);
-  appendReceiptField(receipt, "product_transition_returned_to_gameplay",
-                     window.gameplay.productTransition.returnedToGameplay);
-  appendReceiptField(receipt, "product_transition_returned_to_title",
-                     window.gameplay.productTransition.returnedToTitle);
-  appendReceiptField(receipt, "product_transition_session_preserved",
-                     window.gameplay.productTransition.sessionPreserved);
-  appendReceiptField(receipt, "camera_controller", window.viewport.cameraController);
-  appendReceiptField(receipt, "camera_mode", window.viewport.cameraMode);
-  appendReceiptField(receipt, "camera_controller_active",
-                     window.viewport.cameraControllerActive);
-  appendReceiptField(receipt, "look_input_used", window.viewport.lookInputUsed);
-  appendReceiptField(receipt, "camera_input_source", window.viewport.cameraInputSource);
-  appendReceiptField(receipt, "camera_yaw_degrees",
-                     floatReceiptValue(window.viewport.cameraYawDegrees));
-  appendReceiptField(receipt, "camera_pitch_degrees",
-                     floatReceiptValue(window.viewport.cameraPitchDegrees));
-  appendReceiptField(receipt, "camera_heading_visible",
-                     window.viewport.cameraHeadingVisible);
-  appendReceiptField(receipt, "creative_navigate_active",
-                     window.creativeAuthoring.creativeNavigateActive);
-  appendReceiptField(receipt, "creative_fly_active",
-                     window.viewport.creativeFlyActive);
-  appendReceiptField(receipt, "creative_fly_status",
-                     window.viewport.creativeFlyStatus);
-  appendReceiptField(receipt, "creative_fly_reason_code",
-                     window.viewport.creativeFlyReasonCode);
-  appendReceiptField(receipt, "creative_fly_speed_mps",
-                     floatReceiptValue(
-                         window.viewport.creativeFlySpeedMetersPerSecond));
-  appendReceiptField(receipt, "creative_fly_anchor_provenance",
-                     std::string(productCreativeFlyAnchorProvenanceName(
-                         window.viewport.creativeFlyAnchor.provenance)));
-  appendReceiptField(receipt, "creative_fly_anchor_world_epoch",
-                     window.viewport.creativeFlyAnchor.seededFromWorldEpoch);
-  appendReceiptField(receipt, "creative_fly_world_x",
-                     floatReceiptValue(
-                         window.viewport.creativeFlyAnchor.positionMeters.x));
-  appendReceiptField(receipt, "creative_fly_world_y",
-                     floatReceiptValue(
-                         window.viewport.creativeFlyAnchor.positionMeters.y));
-  appendReceiptField(receipt, "creative_fly_world_z",
-                     floatReceiptValue(
-                         window.viewport.creativeFlyAnchor.positionMeters.z));
-  appendReceiptField(receipt, "product_draw_item_count",
-                     window.viewport.productDrawItemCount);
-  appendReceiptField(receipt, "product_draw_grid_visible",
-                     window.viewport.productDrawGridVisible);
-  appendReceiptField(receipt, "product_draw_player_visible",
-                     window.viewport.productDrawPlayerVisible);
-  appendReceiptField(receipt, "product_draw_room_visible",
-                     window.viewport.productDrawRoomVisible);
-  appendReceiptField(receipt, "product_draw_objective_visible",
-                     window.viewport.productDrawObjectiveVisible);
-  appendReceiptField(receipt, "product_draw_target_indicator_visible",
-                     window.viewport.productDrawTargetIndicatorVisible);
-  appendReceiptField(receipt, "product_draw_door_visible",
-                     window.viewport.productDrawDoorVisible);
-  appendReceiptField(receipt, "product_draw_open_door_visible",
-                     window.viewport.productDrawOpenDoorVisible);
-  appendReceiptField(receipt, "product_draw_closed_door_visible",
-                     window.viewport.productDrawClosedDoorVisible);
-  appendReceiptField(receipt, "product_draw_debug_marker_count",
-                     window.viewport.productDrawDebugMarkerCount);
-  appendReceiptField(receipt, "product_draw_door_count",
-                     window.viewport.productDrawDoorCount);
-  appendReceiptField(receipt, "product_draw_open_door_count",
-                     window.viewport.productDrawOpenDoorCount);
-  appendReceiptField(receipt, "product_draw_closed_door_count",
-                     window.viewport.productDrawClosedDoorCount);
-  appendReceiptField(receipt, "product_draw_room_geometry_count",
-                     window.viewport.productDrawRoomGeometryCount);
-  appendReceiptField(receipt, "product_draw_floor_tile_count",
-                     window.viewport.productDrawFloorTileCount);
-  appendReceiptField(receipt, "product_draw_elevated_floor_tile_count",
-                     window.viewport.productDrawElevatedFloorTileCount);
-  appendReceiptField(receipt, "product_draw_ramp_tile_count",
-                     window.viewport.productDrawRampTileCount);
-  appendReceiptField(receipt, "product_draw_blocked_slope_tile_count",
-                     window.viewport.productDrawBlockedSlopeTileCount);
-  appendReceiptField(receipt, "product_draw_wall_tile_count",
-                     window.viewport.productDrawWallTileCount);
-  appendReceiptField(receipt, "product_draw_prop_visible",
-                     window.viewport.productDrawPropVisible);
-  appendReceiptField(receipt, "product_draw_prop_tile_count",
-                     window.viewport.productDrawPropTileCount);
-  appendReceiptField(receipt, "product_draw_room_editor_cursor_visible",
-                     window.viewport.productDrawRoomEditorCursorVisible);
-  appendReceiptField(receipt, "product_draw_room_editor_cursor_count",
-                     window.viewport.productDrawRoomEditorCursorCount);
-  appendReceiptField(receipt, "product_draw_room_editor_preview_visible",
-                     window.viewport.productDrawRoomEditorPreviewVisible);
-  appendReceiptField(receipt, "product_draw_room_editor_preview_count",
-                     window.viewport.productDrawRoomEditorPreviewCount);
-  appendReceiptField(receipt, "product_draw_physics_debug_visible",
-                     window.viewport.productDrawPhysicsDebugVisible);
-  appendReceiptField(receipt, "product_draw_physics_debug_item_count",
-                     window.viewport.productDrawPhysicsDebugItemCount);
-  appendReceiptField(receipt, "product_draw_physics_aabb_debug_count",
-                     window.viewport.productDrawPhysicsAabbDebugCount);
-  appendReceiptField(receipt,
-                     "product_draw_physics_contact_normal_debug_count",
-                     window.viewport.productDrawPhysicsContactNormalDebugCount);
-  appendReceiptField(receipt, "product_draw_map_maker_grid_visible",
-                     window.viewport.productDrawMapMakerGridVisible);
-  appendReceiptField(receipt, "product_draw_map_maker_grid_dot_count",
-                     window.viewport.productDrawMapMakerGridDotCount);
-  appendReceiptField(receipt, "product_draw_map_maker_major_grid_dot_count",
-                     window.viewport.productDrawMapMakerMajorGridDotCount);
-  appendReceiptField(receipt, "product_draw_map_maker_cube_preview_visible",
-                     window.viewport.productDrawMapMakerCubePreviewVisible);
-  appendReceiptField(receipt, "product_draw_map_maker_cube_preview_count",
-                     window.viewport.productDrawMapMakerCubePreviewCount);
-  appendReceiptField(receipt, "product_view_projection",
-                     window.viewport.productViewProjection);
-  appendReceiptField(receipt, "product_view_yaw_applied",
-                     window.viewport.productViewYawApplied);
-  appendReceiptField(receipt, "product_view_pitch_applied",
-                     window.viewport.productViewPitchApplied);
-  appendReceiptField(receipt, "product_view_player_anchor_found",
-                     window.viewport.productViewPlayerAnchorFound);
-  appendReceiptField(receipt, "product_render_bridge_ready",
-                     window.viewport.productRenderBridgeReady);
-  appendReceiptField(receipt, "product_view_frame_ready",
-                     window.viewport.productViewFrameReady);
-  appendReceiptField(receipt, "product_view_frame_item_count",
-                     window.viewport.productViewFrameItemCount);
-  appendReceiptField(receipt, "product_view_frame_on_screen_item_count",
-                     window.viewport.productViewFrameOnScreenItemCount);
-  appendReceiptField(receipt, "product_view_frame_target_item_count",
-                     window.viewport.productViewFrameTargetItemCount);
-  appendReceiptField(receipt, "product_render_bridge_room_editor_cursor_visible",
-                     window.viewport.productRenderBridgeRoomEditorCursorVisible);
-  appendReceiptField(receipt, "product_render_bridge_room_editor_cursor_count",
-                     window.viewport.productRenderBridgeRoomEditorCursorCount);
-  appendReceiptField(receipt, "product_render_bridge_room_editor_preview_visible",
-                     window.viewport.productRenderBridgeRoomEditorPreviewVisible);
-  appendReceiptField(receipt, "product_render_bridge_room_editor_preview_count",
-                     window.viewport.productRenderBridgeRoomEditorPreviewCount);
-  appendReceiptField(receipt, "product_render_bridge_prop_visible",
-                     window.viewport.productRenderBridgePropVisible);
-  appendReceiptField(receipt, "product_render_bridge_prop_tile_count",
-                     window.viewport.productRenderBridgePropTileCount);
-  appendReceiptField(receipt, "product_render_bridge_physics_debug_visible",
-                     window.viewport.productRenderBridgePhysicsDebugVisible);
-  appendReceiptField(receipt, "product_render_bridge_physics_debug_item_count",
-                     window.viewport.productRenderBridgePhysicsDebugItemCount);
-  appendReceiptField(receipt,
-                     "product_render_bridge_physics_aabb_debug_count",
-                     window.viewport.productRenderBridgePhysicsAabbDebugCount);
-  appendReceiptField(
-      receipt,
-      "product_render_bridge_physics_contact_normal_debug_count",
-      window.viewport.productRenderBridgePhysicsContactNormalDebugCount);
-  appendReceiptField(receipt, "product_render_bridge_map_maker_grid_visible",
-                     window.viewport.productRenderBridgeMapMakerGridVisible);
-  appendReceiptField(receipt, "product_render_bridge_map_maker_grid_dot_count",
-                     window.viewport.productRenderBridgeMapMakerGridDotCount);
-  appendReceiptField(receipt,
-                     "product_render_bridge_map_maker_major_grid_dot_count",
-                     window.viewport.productRenderBridgeMapMakerMajorGridDotCount);
-  appendReceiptField(
-      receipt,
-      "product_render_bridge_map_maker_cube_preview_visible",
-      window.viewport.productRenderBridgeMapMakerCubePreviewVisible);
-  appendReceiptField(
-      receipt,
-      "product_render_bridge_map_maker_cube_preview_count",
-      window.viewport.productRenderBridgeMapMakerCubePreviewCount);
-  appendReceiptField(receipt, "product_feedback_bridge_ready",
-                     window.viewport.productFeedbackBridgeReady);
-  appendReceiptField(receipt, "product_feedback_bridge_line_count",
-                     window.viewport.productFeedbackBridgeLineCount);
-  appendReceiptField(receipt, "product_vulkan_room_mesh_cpu_ready",
-                     window.viewport.productVulkanRoomMeshCpuReady);
-  appendReceiptField(receipt, "product_vulkan_room_mesh_backend_presented",
-                     window.viewport.productVulkanRoomMeshBackendPresented);
-  appendReceiptField(receipt, "product_vulkan_room_mesh_source",
-                     window.viewport.productVulkanRoomMeshSource);
-  appendReceiptField(receipt, "product_vulkan_room_asset_id",
-                     window.viewport.productVulkanRoomAssetId);
-  appendReceiptField(receipt, "product_vulkan_room_floor_visible",
-                     window.viewport.productVulkanRoomFloorVisible);
-  appendReceiptField(receipt, "product_vulkan_room_wall_visible",
-                     window.viewport.productVulkanRoomWallVisible);
-  appendReceiptField(receipt, "product_vulkan_room_grid_visible",
-                     window.viewport.productVulkanRoomGridVisible);
-  appendReceiptField(receipt, "product_vulkan_room_source_mesh_count",
-                     window.viewport.productVulkanRoomSourceMeshCount);
-  appendReceiptField(receipt, "product_vulkan_room_vertex_count",
-                     window.viewport.productVulkanRoomVertexCount);
-  appendReceiptField(receipt, "product_vulkan_room_index_count",
-                     window.viewport.productVulkanRoomIndexCount);
-  appendReceiptField(receipt, "product_vulkan_room_draw_count",
-                     window.viewport.productVulkanRoomDrawCount);
-  appendReceiptField(receipt, "product_vulkan_room_floor_draw_count",
-                     window.viewport.productVulkanRoomFloorDrawCount);
-  appendReceiptField(receipt, "product_vulkan_room_wall_draw_count",
-                     window.viewport.productVulkanRoomWallDrawCount);
-  appendReceiptField(receipt, "product_vulkan_room_grid_line_draw_count",
-                     window.viewport.productVulkanRoomGridLineDrawCount);
-  appendReceiptField(receipt, "product_vulkan_room_grid_truncated",
-                     window.viewport.productVulkanRoomGridTruncated);
-  appendReceiptField(receipt, "product_vulkan_room_geometry_signature",
-                     window.viewport.productVulkanRoomGeometrySignature);
+  for (const GameplaySceneStateReceiptFieldRow& row :
+       kGameplaySceneStateReceiptFields) {
+    row.append(receipt, window, row.key);
+  }
 }
 
 }  // namespace iggy3d
