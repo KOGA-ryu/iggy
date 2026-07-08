@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E266-iggy3d-creative-main-split-preflight.md`
+1. `ready/E267-iggy3d-creative-main-split-g1-wireframe-box-edges.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E266-iggy3d-creative-main-split-preflight.md`
+1. `ready/E267-iggy3d-creative-main-split-g1-wireframe-box-edges.md`
 
 ## Parking Lot
 
@@ -197,7 +197,9 @@ Held — do NOT promote to `ready/` on a guess:
   optional, top-level result policy, or aggregation-only, so a shared row helper
   is deferred and `ProductAppReceiptContext` remains unnecessary for target #1.
 - `docs/refactor_targets.md` target #3 `Extract iggy3d_creative main()` is
-  active next because target #2 `Controller.cpp` split is complete. E266 is
-  released as a read-only preflight to map the current `apps/iggy3d_creative/main.cpp`
-  frame-loop seams, verify the standalone/capture test surface, and choose the
-  safest first extraction slice before any source edit.
+  active next because target #2 `Controller.cpp` split is complete. E266
+  completed the read-only preflight and chose the safest G1 as moving only the
+  file-local `appendWireframeBoxEdges(...)` helper out of
+  `apps/iggy3d_creative/main.cpp`. E267 is released to perform that helper
+  extraction without introducing `CreativeEditorState`, `EditorFrame`, or any
+  frame-stage movement.
