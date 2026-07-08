@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E247-controller-split-g14a-reset-action-helper.md`
+1. `ready/E248-controller-split-g15a-input-intent-helper.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E247-controller-split-g14a-reset-action-helper.md`
+1. `ready/E248-controller-split-g15a-input-intent-helper.md`
 
 ## Parking Lot
 
@@ -185,6 +185,7 @@ Held — do NOT promote to `ready/` on a guess:
   G8a target/outcome proof helper. E242 extracted the G9a jump-actions helper.
   E243 extracted the G10a command-execution helper. E244 extracted the G11a
   dash-submit helper. E245 extracted the G12a move-submit helper. E246 extracted
-  the G13a target-submit helper. E247 is released as a G14a reset-action helper.
-  Keep later controller wall/jump/dash/traversal splits behind local slices
-  rather than attempting the whole file at once.
+  the G13a target-submit helper. E247 extracted the G14a reset-action helper.
+  E248 is released as a G15a input-intent helper. Keep later controller
+  wall/jump/dash/traversal splits behind local slices rather than attempting
+  the whole file at once.
