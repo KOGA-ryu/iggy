@@ -59,6 +59,7 @@
 #include "render/vulkan/VulkanBackend.hpp"
 
 #include "CreativeRendererBootstrap.hpp"
+#include "CreativeEditorState.hpp"
 #include "StandaloneCaptureScenario.hpp"
 #include "StandaloneCaptureScript.hpp"
 #include "StandaloneBrushPalette.hpp"
@@ -89,6 +90,7 @@ using iggy3d_creative_app::captureFrameToPng;
 using iggy3d_creative_app::clearToBlankScene;
 using iggy3d_creative_app::clearUndoStack;
 using iggy3d_creative_app::createCreativeRenderer;
+using iggy3d_creative_app::CreativeEditorState;
 using iggy3d_creative_app::firstBrushKind;
 using iggy3d_creative_app::dispatchMoveReleaseWithUndo;
 using iggy3d_creative_app::GizmoAxis;
@@ -247,16 +249,12 @@ int main(int argc, char** argv) {
     window.setRelativeMouseMode(true);
   }
 
+  CreativeEditorState editor;
   // Fly camera state. Start pulled back and up, looking at the origin.
-  ProductCreativeFlyConfig flyConfig;
-  flyConfig.enabled = true;
-  flyConfig.speedMetersPerSecond = 8.0F;
-  flyConfig.sprintMultiplier = 3.0F;
-  flyConfig.inputStepSeconds = 1.0F / 60.0F;
-
-  Vec3 flyPos{0.0F, 6.0F, 12.0F};
-  float yawDegrees = 0.0F;
-  float pitchDegrees = -25.0F;
+  editor.flyConfig.enabled = true;
+  editor.flyConfig.speedMetersPerSecond = 8.0F;
+  editor.flyConfig.sprintMultiplier = 3.0F;
+  editor.flyConfig.inputStepSeconds = 1.0F / 60.0F;
 
   // Build the ground grid ONCE: a single layer at Y=0 (extentYMeters=0 so it
   // does not stack ~9 layers), anchored at the origin.
@@ -365,20 +363,12 @@ int main(int argc, char** argv) {
   wireProjReq.clampToGrid = true;
   wireProjReq.includeAuthoringOnly = false;
 
-  // Selected-state logging: emit the selection + submit reason once.
-  bool loggedSelection = false;
-
   // ---- MOVE state --------------------------------------------------------
   // Interactive: edge-triggered key latches for '1' Select / '2' Move so a held
   // key switches the tool exactly once. Interactive drag latch tracks a left
   // button held while the Move tool is active.
-  bool prevKey1 = false;
-  bool prevKey2 = false;
-  bool moveDragButtonDown = false;
   // --capture: run the generic Move lifecycle across a few frames, and log the
   // crate placement BEFORE the commit and AFTER the release exactly once.
-  bool loggedMoveBefore = false;
-  bool loggedMoveAfter = false;
   // ---- GIZMO state -------------------------------------------------------
   // Axis shaft length (m) and wireframe thickness (m). Kept short so the shafts
   // read as handles, not room-scale rays; thickness ~5 cm per the plan.
@@ -390,23 +380,7 @@ int main(int argc, char** argv) {
   // Interactive: which axis is currently grabbed (None = not dragging a handle),
   // the object's start corner anchor S captured at grab time, and the pixel/world
   // frame captured at grab so a cursor drag maps to a world offset along the axis.
-  GizmoAxis interactiveGrabbedAxis = GizmoAxis::None;
-  Vec3 interactiveGrabAnchorS{0.0F, 0.0F, 0.0F};
-  float interactiveGrabCursorX = 0.0F;
-  float interactiveGrabCursorY = 0.0F;
-  ScreenPoint interactiveGrabCenterScreen;
-  ScreenPoint interactiveGrabTipScreen;
-  bool interactivePathMoveActive = false;
-  creative::CreativeObjectId interactivePathMoveObjectId =
-      creative::kInvalidObjectId;
-  creative::CreativeToolWorldPoint interactivePathMoveStartGround{};
-  bool interactivePathPointMoveActive = false;
-  creative::CreativeObjectId interactivePathPointMoveObjectId =
-      creative::kInvalidObjectId;
-  std::size_t interactivePathPointMoveIndex = 0U;
-  creative::CreativeToolWorldPoint interactivePathPointMoveStartGround{};
   // --capture: log the grabbed axis exactly once.
-  bool loggedGizmoGrab = false;
 
   // ---- PLACE state -------------------------------------------------------
   // placeMode is an APP-level mode (not a kernel Tool) toggled by '3'. When on,
@@ -414,45 +388,23 @@ int main(int argc, char** argv) {
   // select/move hit-test. '1'/'2' leave place mode and set the kernel tool.
   // placeBrush is the current descriptor-backed brush kind. The grid pitch
   // (1 m) is the placement cell size for snapping.
-  bool placeMode = false;
-  const std::vector<creative::CreativeObjectKind> brushPalette =
-      buildBrushPaletteFromDescriptors();
-  creative::CreativeObjectKind placeBrush = firstBrushKind(brushPalette);
+  editor.brushPalette = buildBrushPaletteFromDescriptors();
+  editor.placeBrush = firstBrushKind(editor.brushPalette);
   SDL_Log("iggy3d_creative: brush palette slots=%llu first='%s'",
-          static_cast<unsigned long long>(brushPalette.size()),
-          std::string(creative::toString(placeBrush)).c_str());
-  const double placeCellSize = static_cast<double>(gridConfig.pitchMeters);
-  bool prevKey3 = false;
-  bool prevKeyB = false;
-  bool placeButtonDown = false;  // Interactive left-button edge latch in Place.
-  std::uint64_t placedCount = 0;  // Objects dropped via Place (for the count log).
+          static_cast<unsigned long long>(editor.brushPalette.size()),
+          std::string(creative::toString(editor.placeBrush)).c_str());
+  editor.placeCellSize = static_cast<double>(gridConfig.pitchMeters);
   // --capture: in Place mode we start ON so the proof frames can drop objects.
   if (!capturePath.empty()) {
-    placeMode = true;
-    placeBrush = firstBrushKind(brushPalette);
+    editor.placeMode = true;
+    editor.placeBrush = firstBrushKind(editor.brushPalette);
   }
   // ---- SAVE / LOAD state ------------------------------------------------
   // Interactive: edge latches for F5 (save), F6 (new/clear), F9 (load).
-  bool prevKeyF5 = false;
-  bool prevKeyF6 = false;
-  bool prevKeyF9 = false;
-  bool prevKeyDelete = false;
-  bool prevKeyBackspace = false;
-  bool prevKeyZ = false;
-  StandaloneUndoStack undoStack;
   // --capture round-trip proof: prove create/delete/move undo, add Point and
   // Line + Path markers, undo their moves, then SAVE/CLEAR/LOAD the
   // eight-object scene. The schedule, flags, ids, and snapshots live in the
   // capture script helper; main only executes the current frame's authored step.
-  StandaloneCaptureScript captureScript;
-  bool captureWorldPickFloorLogged = false;
-  bool captureWorldPickPointLogged = false;
-  bool captureWorldPickLineLogged = false;
-  bool captureWorldPickPathLogged = false;
-
-  std::uint64_t frameIndex = 0;
-  std::uint32_t lastWidth = 0;
-  std::uint32_t lastHeight = 0;
 
   constexpr float kMouseSensitivity = 0.12F;
 
@@ -471,15 +423,15 @@ int main(int argc, char** argv) {
       std::this_thread::sleep_for(std::chrono::milliseconds(16));
       continue;
     }
-    if (extent.width != lastWidth || extent.height != lastHeight) {
+    if (extent.width != editor.lastWidth || extent.height != editor.lastHeight) {
       RenderViewport viewport;
       viewport.width = extent.width;
       viewport.height = extent.height;
       viewport.aspectRatio =
           static_cast<float>(extent.width) / static_cast<float>(extent.height);
       backend->resize(viewport);
-      lastWidth = extent.width;
-      lastHeight = extent.height;
+      editor.lastWidth = extent.width;
+      editor.lastHeight = extent.height;
     }
 
     // INPUT: keyboard (WASD move, Space/LCtrl up/down, LShift sprint) +
@@ -505,17 +457,17 @@ int main(int argc, char** argv) {
     float mouseDx = 0.0F;
     float mouseDy = 0.0F;
     SDL_GetRelativeMouseState(&mouseDx, &mouseDy);
-    yawDegrees += mouseDx * kMouseSensitivity;
-    pitchDegrees =
-        std::clamp(pitchDegrees - mouseDy * kMouseSensitivity, -80.0F, 80.0F);
-    flyInput.cameraYawDegrees = yawDegrees;
-    flyInput.cameraPitchDegrees = pitchDegrees;
+    editor.yawDegrees += mouseDx * kMouseSensitivity;
+    editor.pitchDegrees =
+        std::clamp(editor.pitchDegrees - mouseDy * kMouseSensitivity, -80.0F, 80.0F);
+    flyInput.cameraYawDegrees = editor.yawDegrees;
+    flyInput.cameraPitchDegrees = editor.pitchDegrees;
 
     // CAMERA: advance the fly position.
     const ProductCreativeFlyResult flyResult =
-        applyProductCreativeFlyInput(flyConfig, flyInput, flyPos);
+        applyProductCreativeFlyInput(editor.flyConfig, flyInput, editor.flyPos);
     if (flyResult.applied) {
-      flyPos = flyResult.finalPositionMeters;
+      editor.flyPos = flyResult.finalPositionMeters;
     }
 
     // ---- TOOL SWITCH: '1' -> Select, '2' -> Move ------------------
@@ -532,68 +484,69 @@ int main(int argc, char** argv) {
       const SDL_Keymod modState = SDL_GetModState();
       const bool undoModifier =
           (modState & (SDL_KMOD_GUI | SDL_KMOD_CTRL)) != 0U;
-      if (key1 && !prevKey1) {
-        placeMode = false;  // '1' Select leaves Place mode.
+      if (key1 && !editor.prevKey1) {
+        editor.placeMode = false;  // '1' Select leaves Place mode.
         const bool ok = appState.facade.setActiveTool(creative::Tool::Select);
         SDL_Log("iggy3d_creative: setActiveTool(Select) accepted=%d placeMode=0",
                 ok ? 1 : 0);
       }
-      if (key2 && !prevKey2) {
-        placeMode = false;  // '2' Move leaves Place mode.
+      if (key2 && !editor.prevKey2) {
+        editor.placeMode = false;  // '2' Move leaves Place mode.
         const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
         SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d placeMode=0",
                 ok ? 1 : 0);
       }
-      if (key3 && !prevKey3) {
-        placeMode = true;  // '3' Place: app-level mode, not a kernel Tool.
+      if (key3 && !editor.prevKey3) {
+        editor.placeMode = true;  // '3' Place: app-level mode, not a kernel Tool.
         SDL_Log("iggy3d_creative: placeMode=1 brush='%s'",
-                std::string(creative::toString(placeBrush)).c_str());
+                std::string(creative::toString(editor.placeBrush)).c_str());
       }
-      if (keyB && !prevKeyB) {
-        placeBrush = nextBrushKind(brushPalette, placeBrush);
+      if (keyB && !editor.prevKeyB) {
+        editor.placeBrush = nextBrushKind(editor.brushPalette, editor.placeBrush);
         SDL_Log("iggy3d_creative: brush cycled -> '%s'",
-                std::string(creative::toString(placeBrush)).c_str());
+                std::string(creative::toString(editor.placeBrush)).c_str());
       }
-      if ((keyDelete && !prevKeyDelete) ||
-          (keyBackspace && !prevKeyBackspace)) {
-        (void)deleteSelectedObject(
-            appState, keyDelete ? "delete_key" : "backspace_key", &undoStack);
+      if ((keyDelete && !editor.prevKeyDelete) ||
+          (keyBackspace && !editor.prevKeyBackspace)) {
+        (void)deleteSelectedObject(appState,
+                                   keyDelete ? "delete_key" : "backspace_key",
+                                   &editor.undoStack);
       }
-      if (keyZ && !prevKeyZ && undoModifier) {
-        (void)undoLastSnapshot(appState, undoStack, "keyboard_undo");
+      if (keyZ && !editor.prevKeyZ && undoModifier) {
+        (void)undoLastSnapshot(appState, editor.undoStack, "keyboard_undo");
       }
       // ---- SAVE / LOAD keys: F5 save, F6 new/clear, F9 load -------
       const bool keyF5 = keys[SDL_SCANCODE_F5] != 0;
       const bool keyF6 = keys[SDL_SCANCODE_F6] != 0;
       const bool keyF9 = keys[SDL_SCANCODE_F9] != 0;
-      if (keyF5 && !prevKeyF5) {
+      if (keyF5 && !editor.prevKeyF5) {
         const CreativeWorldSaveResult saveResult =
             saveStandaloneScene(appState.facade, saveRoot, saveId);
         if (saveResult.accepted && saveResult.saved) {
-          clearUndoStack(undoStack, "save_success");
+          clearUndoStack(editor.undoStack, "save_success");
         }
       }
-      if (keyF6 && !prevKeyF6) {
+      if (keyF6 && !editor.prevKeyF6) {
         clearToBlankScene(appState);  // Fresh blank document; facade resets
                                       // selection so no stale seed id dangles.
-        clearUndoStack(undoStack, "new_clear");
+        clearUndoStack(editor.undoStack, "new_clear");
       }
-      if (keyF9 && !prevKeyF9) {
+      if (keyF9 && !editor.prevKeyF9) {
         const bool loaded = loadStandaloneScene(appState, saveRoot, saveId);
         if (loaded) {
-          clearUndoStack(undoStack, "load_success");
+          clearUndoStack(editor.undoStack, "load_success");
         }
       }
-      prevKey1 = key1;
-      prevKey2 = key2;
-      prevKey3 = key3;
-      prevKeyB = keyB;
-      prevKeyDelete = keyDelete;
-      prevKeyBackspace = keyBackspace;
-      prevKeyZ = keyZ;
-      prevKeyF5 = keyF5;
-      prevKeyF6 = keyF6;
-      prevKeyF9 = keyF9;
+      editor.prevKey1 = key1;
+      editor.prevKey2 = key2;
+      editor.prevKey3 = key3;
+      editor.prevKeyB = keyB;
+      editor.prevKeyDelete = keyDelete;
+      editor.prevKeyBackspace = keyBackspace;
+      editor.prevKeyZ = keyZ;
+      editor.prevKeyF5 = keyF5;
+      editor.prevKeyF6 = keyF6;
+      editor.prevKeyF9 = keyF9;
     }
 
     // SCENE (local, must outlive submitFrame): bake supported room geometry
@@ -610,8 +563,9 @@ int main(int argc, char** argv) {
     // FRAME (non-const so we can attach UI + wireframe + label below). This
     // gives frame.camera.clipFromWorld (world -> NDC) for click + label maths.
     FrameInput frame = makeProductVulkanFrame(
-        scene, debug, frameIndex++, extent.width, extent.height, yawDegrees,
-        pitchDegrees, /*cameraAnchorOverrideAvailable=*/true, flyPos);
+        scene, debug, editor.frameIndex++, extent.width, extent.height,
+        editor.yawDegrees, editor.pitchDegrees,
+        /*cameraAnchorOverrideAvailable=*/true, editor.flyPos);
 
     // ---- AIM -> GROUND CELL (Place mode) --------------------------------
     // Cast the camera-forward ray to the Y=0 plane (eye + forward*t), giving a
@@ -631,7 +585,7 @@ int main(int argc, char** argv) {
       }
     }
     const Vec3 aimCellCenter =
-        snapGroundToCellCenter(aimGroundX, aimGroundZ, placeCellSize);
+        snapGroundToCellCenter(aimGroundX, aimGroundZ, editor.placeCellSize);
 
     // ---- CLICK-TO-SELECT (generic over ALL objects) ------------------------
     // Scan every visible object's visual bounds with one world-space ray. The
@@ -658,43 +612,44 @@ int main(int argc, char** argv) {
         floorBoxMin = boxMin;
         floorBoxMax = boxMax;
       }
-      if (!capturePath.empty() && !captureScript.pointHitProxyLogged &&
-          obj.id == captureScript.pointTargetId) {
+      if (!capturePath.empty() && !editor.captureScript.pointHitProxyLogged &&
+          obj.id == editor.captureScript.pointTargetId) {
         SDL_Log("iggy3d_creative: POINT hit proxy objectId=%llu "
                 "aabbValid=%d marker=[(%.3f, %.3f, %.3f).."
                 "(%.3f, %.3f, %.3f)] screen=[%.1f, %.1f..%.1f, %.1f]",
-                static_cast<unsigned long long>(captureScript.pointTargetId),
+                static_cast<unsigned long long>(
+                    editor.captureScript.pointTargetId),
                 hit.screenAabb.valid ? 1 : 0, boxMin.x, boxMin.y, boxMin.z,
                 boxMax.x, boxMax.y, boxMax.z, hit.screenAabb.minX,
                 hit.screenAabb.minY, hit.screenAabb.maxX,
                 hit.screenAabb.maxY);
-        captureScript.pointHitProxyLogged = true;
+        editor.captureScript.pointHitProxyLogged = true;
       }
-      if (!capturePath.empty() && !captureScript.lineHitProxyLogged &&
-          obj.id == captureScript.lineTargetId) {
+      if (!capturePath.empty() && !editor.captureScript.lineHitProxyLogged &&
+          obj.id == editor.captureScript.lineTargetId) {
         SDL_Log("iggy3d_creative: LINE hit proxy objectId=%llu "
                 "aabbValid=%d visual=[(%.3f, %.3f, %.3f).."
                 "(%.3f, %.3f, %.3f)] screen=[%.1f, %.1f..%.1f, %.1f]",
-                static_cast<unsigned long long>(captureScript.lineTargetId),
+                static_cast<unsigned long long>(editor.captureScript.lineTargetId),
                 hit.screenAabb.valid ? 1 : 0, boxMin.x, boxMin.y, boxMin.z,
                 boxMax.x, boxMax.y, boxMax.z, hit.screenAabb.minX,
                 hit.screenAabb.minY, hit.screenAabb.maxX,
                 hit.screenAabb.maxY);
-        captureScript.lineHitProxyLogged = true;
+        editor.captureScript.lineHitProxyLogged = true;
       }
-      if (!capturePath.empty() && !captureScript.pathHitProxyLogged &&
-          obj.id == captureScript.pathTargetId) {
+      if (!capturePath.empty() && !editor.captureScript.pathHitProxyLogged &&
+          obj.id == editor.captureScript.pathTargetId) {
         SDL_Log("iggy3d_creative: PATH hit proxy objectId=%llu "
                 "aabbValid=%d visual=[(%.3f, %.3f, %.3f).."
                 "(%.3f, %.3f, %.3f)] screen=[%.1f, %.1f..%.1f, %.1f] "
                 "pathPointCount=%zu pathPoints='%s'",
-                static_cast<unsigned long long>(captureScript.pathTargetId),
+                static_cast<unsigned long long>(editor.captureScript.pathTargetId),
                 hit.screenAabb.valid ? 1 : 0, boxMin.x, boxMin.y, boxMin.z,
                 boxMax.x, boxMax.y, boxMax.z, hit.screenAabb.minX,
                 hit.screenAabb.minY, hit.screenAabb.maxX,
                 hit.screenAabb.maxY, obj.pathPoints.size(),
                 pathPointsSummary(obj.pathPoints).c_str());
-        captureScript.pathHitProxyLogged = true;
+        editor.captureScript.pathHitProxyLogged = true;
       }
     }
 
@@ -730,13 +685,13 @@ int main(int argc, char** argv) {
             logged = true;
           };
 
-      if (!captureWorldPickFloorLogged && haveFloorBounds) {
+      if (!editor.captureWorldPickFloorLogged && haveFloorBounds) {
         const Vec3 floorTopCorner{
             floorBoxMin.x + (floorBoxMax.x - floorBoxMin.x) * 0.85F,
             floorBoxMax.y,
             floorBoxMin.z + (floorBoxMax.z - floorBoxMin.z) * 0.85F};
         logWorldPickProof("floor_overlap", floorObjectId, floorTopCorner,
-                          captureWorldPickFloorLogged);
+                          editor.captureWorldPickFloorLogged);
       }
       const auto logObjectCenterPick =
           [&](const char* label, creative::CreativeObjectId expectedId,
@@ -750,18 +705,18 @@ int main(int argc, char** argv) {
                               visualBoundsCenter(visualBoundsForObject(*object)),
                               logged);
           };
-      logObjectCenterPick("point_proxy", captureScript.pointTargetId,
-                          captureWorldPickPointLogged);
-      logObjectCenterPick("line_proxy", captureScript.lineTargetId,
-                          captureWorldPickLineLogged);
-      logObjectCenterPick("path_proxy", captureScript.pathTargetId,
-                          captureWorldPickPathLogged);
+      logObjectCenterPick("point_proxy", editor.captureScript.pointTargetId,
+                          editor.captureWorldPickPointLogged);
+      logObjectCenterPick("line_proxy", editor.captureScript.lineTargetId,
+                          editor.captureWorldPickLineLogged);
+      logObjectCenterPick("path_proxy", editor.captureScript.pathTargetId,
+                          editor.captureWorldPickPathLogged);
     }
 
     bool clickRequested = false;
     float clickX = 0.0F;
     float clickY = 0.0F;
-    if (!capturePath.empty() && placeMode) {
+    if (!capturePath.empty() && editor.placeMode) {
       // Place-mode capture: no select-click is synthesized; the placement script
       // below drops objects directly. Leave clickRequested false.
     } else if (!capturePath.empty()) {
@@ -770,7 +725,7 @@ int main(int argc, char** argv) {
       // crate does NOT cover — so the generic nearest-hit picker selects the FLOOR
       // and not the crate. We project that single world point through the SAME
       // clipFromWorld the hit-test uses.
-      if (frameIndex == 3U && haveFloorBounds) {
+      if (editor.frameIndex == 3U && haveFloorBounds) {
         // 80% out toward the +X/+Z corner of the floor top, well past the crate's
         // XZ footprint. This is only which pixel we click; the pick logic itself
         // is unchanged and object-agnostic.
@@ -787,7 +742,7 @@ int main(int argc, char** argv) {
           clickY = p.y;
         }
       }
-    } else if (!placeMode) {
+    } else if (!editor.placeMode) {
       // Interactive: hold Left-Alt to release fly-look and click to select.
       // Skipped in Place mode — the interactive Place block below owns the click.
       const bool* selKeys = SDL_GetKeyboardState(nullptr);
@@ -848,7 +803,7 @@ int main(int argc, char** argv) {
     // The new object joins the document immediately, so next frame it renders and
     // is Select/Move/Gizmo-able with ZERO extra code. There is NO per-kind place
     // branch; placeBrushObject() reads descriptor-derived footprint geometry.
-    if (placeMode && capturePath.empty()) {
+    if (editor.placeMode && capturePath.empty()) {
       // Interactive: hold Left-Alt (release fly-look) and left-click to drop at
       // the aimed cell. Edge-triggered so one click drops exactly one object.
       const bool* plKeys = SDL_GetKeyboardState(nullptr);
@@ -860,18 +815,18 @@ int main(int argc, char** argv) {
         float my = 0.0F;
         const SDL_MouseButtonFlags buttons = SDL_GetMouseState(&mx, &my);
         const bool lDown = (buttons & SDL_BUTTON_LMASK) != 0U;
-        if (lDown && !placeButtonDown) {
-          placeButtonDown = true;
-          (void)placeBrushObjectWithUndo(appState.facade, undoStack,
-                                         placeBrush, aimCellCenter,
-                                         ++placedCount,
+        if (lDown && !editor.placeButtonDown) {
+          editor.placeButtonDown = true;
+          (void)placeBrushObjectWithUndo(appState.facade, editor.undoStack,
+                                         editor.placeBrush, aimCellCenter,
+                                         ++editor.placedCount,
                                          "place_interactive");
         } else if (!lDown) {
-          placeButtonDown = false;
+          editor.placeButtonDown = false;
         }
       } else {
         window.setRelativeMouseMode(true);
-        placeButtonDown = false;
+        editor.placeButtonDown = false;
       }
     }
 
@@ -879,20 +834,20 @@ int main(int argc, char** argv) {
     if (!capturePath.empty()) {
       StandaloneCaptureScenarioStepRequest captureStep;
       captureStep.enabled = true;
-      captureStep.frameIndex = frameIndex;
+      captureStep.frameIndex = editor.frameIndex;
       captureStep.appState = &appState;
-      captureStep.undoStack = &undoStack;
-      captureStep.captureScript = &captureScript;
-      captureStep.placeBrush = &placeBrush;
-      captureStep.placeMode = &placeMode;
-      captureStep.placedCount = &placedCount;
-      captureStep.placeCellSize = placeCellSize;
+      captureStep.undoStack = &editor.undoStack;
+      captureStep.captureScript = &editor.captureScript;
+      captureStep.placeBrush = &editor.placeBrush;
+      captureStep.placeMode = &editor.placeMode;
+      captureStep.placedCount = &editor.placedCount;
+      captureStep.placeCellSize = editor.placeCellSize;
       captureStep.saveRoot = &saveRoot;
       captureStep.saveId = &saveId;
       captureStep.moveHeldAxisForX = heldAxisForGrabbedAxis(GizmoAxis::X);
       captureStep.moveHeldAxisForZ = heldAxisForGrabbedAxis(GizmoAxis::Z);
       captureStep.deleteSelected = [&](std::string_view source) {
-        return deleteSelectedObject(appState, source, &undoStack);
+        return deleteSelectedObject(appState, source, &editor.undoStack);
       };
       runStandaloneCaptureScenarioStep(captureStep);
     }
@@ -967,9 +922,9 @@ int main(int argc, char** argv) {
           *selected, frame.camera.clipFromWorld, extent.width, extent.height);
     }
 
-    if (!capturePath.empty() && !captureScript.pathPointHandleLogged &&
+    if (!capturePath.empty() && !editor.captureScript.pathPointHandleLogged &&
         selectedIsPathForHandles &&
-        selectedPathHandleObjectId == captureScript.pathTargetId) {
+        selectedPathHandleObjectId == editor.captureScript.pathTargetId) {
       for (const PathPointHandleHit& handle : pathPointHandleHits) {
         SDL_Log("iggy3d_creative: PATH_HANDLE hit proxy objectId=%llu "
                 "pointIndex=%zu aabbValid=%d position=(%.3f, %.3f, %.3f) "
@@ -980,7 +935,7 @@ int main(int argc, char** argv) {
                 handle.aabb.minX, handle.aabb.minY, handle.aabb.maxX,
                 handle.aabb.maxY);
       }
-      captureScript.pathPointHandleLogged = true;
+      editor.captureScript.pathPointHandleLogged = true;
     }
     // Start anchor S for an axis-constrained move = the object's corner anchor,
     // exactly as the facade captures it on BeginMove (objectCornerAnchor): for a
@@ -1003,7 +958,7 @@ int main(int argc, char** argv) {
     // the FLOOR, which rides the identical path the crate did in the earlier proof.
     const creative::CreativeObjectId selectedObjectId =
         static_cast<creative::CreativeObjectId>(selectedId);
-    if (!capturePath.empty() && !placeMode) {
+    if (!capturePath.empty() && !editor.placeMode) {
       // --capture: after the FLOOR is selected (frame 3), grab the X
       // gizmo handle and run an AXIS-CONSTRAINED Move along +X by 2 m.
       //   frame 5: hit-test the X shaft (grab X) + switch to Move + PRESS
@@ -1017,7 +972,7 @@ int main(int argc, char** argv) {
           static_cast<double>(gizmoAnchorS.x) + 2.0,
           static_cast<double>(gizmoAnchorS.y),
           static_cast<double>(gizmoAnchorS.z)};
-      if (frameIndex == 5U && hasSelection) {
+      if (editor.frameIndex == 5U && hasSelection) {
         // Synthesize a grab of the X handle: click the projected midpoint of the
         // X shaft [screen(C), screen(Xtip)] and confirm the hit-test picks X.
         GizmoAxis grabbed = GizmoAxis::None;
@@ -1032,19 +987,19 @@ int main(int argc, char** argv) {
               hy,
               kGizmoHandleThresholdPx);
         }
-        if (!loggedGizmoGrab) {
+        if (!editor.loggedGizmoGrab) {
           SDL_Log("iggy3d_creative: GIZMO grabbed axis=%s (expected X) on "
                   "selected id=%u kind='%s'",
                   gizmoAxisName(grabbed), selectedId,
                   std::string(creative::toString(selected->kind)).c_str());
-          loggedGizmoGrab = true;
+          editor.loggedGizmoGrab = true;
         }
         const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
         SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d", ok ? 1 : 0);
-        if (!loggedMoveBefore) {
+        if (!editor.loggedMoveBefore) {
           logObjectPlacement("BEFORE",
                              appState.facade.findObject(selectedObjectId));
-          loggedMoveBefore = true;
+          editor.loggedMoveBefore = true;
         }
         creative::CreativeToolInputPacket press;
         press.kind = creative::CreativeToolInputKind::PointerPress;
@@ -1054,7 +1009,7 @@ int main(int argc, char** argv) {
         const creative::CreativeFacadeToolDispatchReceipt r =
             appState.facade.dispatchToolInput(press);
         logMoveDispatch("PRESS", r);
-      } else if (frameIndex == 6U) {
+      } else if (editor.frameIndex == 6U) {
         creative::CreativeToolInputPacket move;
         move.kind = creative::CreativeToolInputKind::PointerMove;
         move.pointer.button = creative::CreativeToolPointerButton::Primary;
@@ -1064,7 +1019,7 @@ int main(int argc, char** argv) {
         const creative::CreativeFacadeToolDispatchReceipt r =
             appState.facade.dispatchToolInput(move);
         logMoveDispatch("MOVE", r);
-      } else if (frameIndex == 7U) {
+      } else if (editor.frameIndex == 7U) {
         creative::CreativeToolInputPacket release;
         release.kind = creative::CreativeToolInputKind::PointerRelease;
         release.pointer.button = creative::CreativeToolPointerButton::Primary;
@@ -1072,17 +1027,17 @@ int main(int argc, char** argv) {
         release.pointer.worldDestination = xAxisDestination;
         release.pointer.moveHeldAxis = heldAxisForGrabbedAxis(GizmoAxis::X);
         const creative::CreativeFacadeToolDispatchReceipt r =
-            dispatchMoveReleaseWithUndo(appState, undoStack, release,
+            dispatchMoveReleaseWithUndo(appState, editor.undoStack, release,
                                         selectedObjectId,
                                         "capture_move_release");
         logMoveDispatch("RELEASE", r);
-        if (!loggedMoveAfter) {
+        if (!editor.loggedMoveAfter) {
           logObjectPlacement("AFTER",
                              appState.facade.findObject(selectedObjectId));
-          loggedMoveAfter = true;
+          editor.loggedMoveAfter = true;
         }
       }
-    } else if (!placeMode &&
+    } else if (!editor.placeMode &&
                appState.facade.toolState().activeTool == creative::Tool::Move &&
                hasSelection) {
       // Interactive Move: while the Move tool is active and ANY object is
@@ -1129,17 +1084,17 @@ int main(int argc, char** argv) {
             creative::describeObject(selected->kind).shapeKind ==
                 creative::CreativeObjectShapeKind::Path;
         if (selectedIsPath) {
-          if (lDown && !interactivePathMoveActive &&
-              !interactivePathPointMoveActive) {
+          if (lDown && !editor.interactivePathMoveActive &&
+              !editor.interactivePathPointMoveActive) {
             PathPointHandleHit handle;
             if (pickPathPointHandle(pathPointHandleHits,
                                     cursorPx,
                                     cursorPy,
                                     handle)) {
-              interactivePathPointMoveActive = true;
-              interactivePathPointMoveObjectId = handle.objectId;
-              interactivePathPointMoveIndex = handle.pointIndex;
-              interactivePathPointMoveStartGround = ground;
+              editor.interactivePathPointMoveActive = true;
+              editor.interactivePathPointMoveObjectId = handle.objectId;
+              editor.interactivePathPointMoveIndex = handle.pointIndex;
+              editor.interactivePathPointMoveStartGround = ground;
               SDL_Log("iggy3d_creative: PATH_HANDLE interactive move begin "
                       "objectId=%llu pointIndex=%zu ground=(%.3f, %.3f, %.3f) "
                       "position=(%.3f, %.3f, %.3f) pathPoints='%s'",
@@ -1148,57 +1103,57 @@ int main(int argc, char** argv) {
                       handle.position.x, handle.position.y, handle.position.z,
                       pathPointsSummary(selected->pathPoints).c_str());
             } else {
-              interactivePathMoveActive = true;
-              interactivePathMoveObjectId = selectedObjectId;
-              interactivePathMoveStartGround = ground;
+              editor.interactivePathMoveActive = true;
+              editor.interactivePathMoveObjectId = selectedObjectId;
+              editor.interactivePathMoveStartGround = ground;
               SDL_Log("iggy3d_creative: PATH interactive move begin objectId=%llu "
                       "ground=(%.3f, %.3f, %.3f) pathPoints='%s'",
                       static_cast<unsigned long long>(selectedObjectId),
                       ground.x, ground.y, ground.z,
                       pathPointsSummary(selected->pathPoints).c_str());
             }
-          } else if (!lDown && interactivePathPointMoveActive) {
+          } else if (!lDown && editor.interactivePathPointMoveActive) {
             const creative::CreativeVec3 delta{
-                ground.x - interactivePathPointMoveStartGround.x,
+                ground.x - editor.interactivePathPointMoveStartGround.x,
                 0.0,
-                ground.z - interactivePathPointMoveStartGround.z};
+                ground.z - editor.interactivePathPointMoveStartGround.z};
             const creative::CreativeDocumentMutationReceipt receipt =
                 movePathPointWithUndo(appState,
-                                      undoStack,
-                                      interactivePathPointMoveObjectId,
-                                      interactivePathPointMoveIndex,
+                                      editor.undoStack,
+                                      editor.interactivePathPointMoveObjectId,
+                                      editor.interactivePathPointMoveIndex,
                                       delta,
                                       "path_point_move_interactive_release");
             SDL_Log("iggy3d_creative: PATH_HANDLE interactive move release "
                     "objectId=%llu pointIndex=%zu status='%s' changed=%d "
                     "delta=(%.3f, %.3f, %.3f)",
                     static_cast<unsigned long long>(
-                        interactivePathPointMoveObjectId),
-                    interactivePathPointMoveIndex,
+                        editor.interactivePathPointMoveObjectId),
+                    editor.interactivePathPointMoveIndex,
                     std::string(creative::toString(receipt.status)).c_str(),
                     receipt.changed ? 1 : 0, delta.x, delta.y, delta.z);
-            interactivePathPointMoveActive = false;
-            interactivePathPointMoveObjectId = creative::kInvalidObjectId;
-            interactivePathPointMoveIndex = 0U;
-          } else if (!lDown && interactivePathMoveActive) {
+            editor.interactivePathPointMoveActive = false;
+            editor.interactivePathPointMoveObjectId = creative::kInvalidObjectId;
+            editor.interactivePathPointMoveIndex = 0U;
+          } else if (!lDown && editor.interactivePathMoveActive) {
             const creative::CreativeVec3 delta{
-                ground.x - interactivePathMoveStartGround.x,
+                ground.x - editor.interactivePathMoveStartGround.x,
                 0.0,
-                ground.z - interactivePathMoveStartGround.z};
+                ground.z - editor.interactivePathMoveStartGround.z};
             const creative::CreativeDocumentMutationReceipt receipt =
                 movePathObjectWithUndo(appState,
-                                       undoStack,
-                                       interactivePathMoveObjectId,
+                                       editor.undoStack,
+                                       editor.interactivePathMoveObjectId,
                                        delta,
                                        "path_move_interactive_release");
             SDL_Log("iggy3d_creative: PATH interactive move release objectId=%llu "
                     "status='%s' changed=%d delta=(%.3f, %.3f, %.3f)",
                     static_cast<unsigned long long>(
-                        interactivePathMoveObjectId),
+                        editor.interactivePathMoveObjectId),
                     std::string(creative::toString(receipt.status)).c_str(),
                     receipt.changed ? 1 : 0, delta.x, delta.y, delta.z);
-            interactivePathMoveActive = false;
-            interactivePathMoveObjectId = creative::kInvalidObjectId;
+            editor.interactivePathMoveActive = false;
+            editor.interactivePathMoveObjectId = creative::kInvalidObjectId;
           }
         } else {
         // Build the pointer packet's worldDestination + moveHeldAxis. When an
@@ -1209,29 +1164,31 @@ int main(int argc, char** argv) {
         const auto buildConstrainedDestination =
             [&](creative::CreativeToolWorldPoint& dest,
                 creative::CreativeToolMoveHeldAxis& held) {
-              if (interactiveGrabbedAxis == GizmoAxis::None) {
+              if (editor.interactiveGrabbedAxis == GizmoAxis::None) {
                 dest = ground;  // Free ground-plane move.
                 held = creative::CreativeToolMoveHeldAxis::Y;
                 return;
               }
               // Screen-space shaft direction at grab time (center -> tip).
-              float sdx = interactiveGrabTipScreen.x - interactiveGrabCenterScreen.x;
-              float sdy = interactiveGrabTipScreen.y - interactiveGrabCenterScreen.y;
+              float sdx = editor.interactiveGrabTipScreen.x -
+                          editor.interactiveGrabCenterScreen.x;
+              float sdy = editor.interactiveGrabTipScreen.y -
+                          editor.interactiveGrabCenterScreen.y;
               const float slen = std::sqrt(sdx * sdx + sdy * sdy);
               float along = 0.0F;
               if (slen > 1.0e-3F) {
                 sdx /= slen;
                 sdy /= slen;
-                const float cdx = cursorPx - interactiveGrabCursorX;
-                const float cdy = cursorPy - interactiveGrabCursorY;
+                const float cdx = cursorPx - editor.interactiveGrabCursorX;
+                const float cdy = cursorPy - editor.interactiveGrabCursorY;
                 // pixels moved along the shaft / pixels per shaft * world length.
                 const float alongPx = cdx * sdx + cdy * sdy;
                 along = (alongPx / slen) * kGizmoAxisLength;
               }
-              dest.x = static_cast<double>(interactiveGrabAnchorS.x);
-              dest.y = static_cast<double>(interactiveGrabAnchorS.y);
-              dest.z = static_cast<double>(interactiveGrabAnchorS.z);
-              switch (interactiveGrabbedAxis) {
+              dest.x = static_cast<double>(editor.interactiveGrabAnchorS.x);
+              dest.y = static_cast<double>(editor.interactiveGrabAnchorS.y);
+              dest.z = static_cast<double>(editor.interactiveGrabAnchorS.z);
+              switch (editor.interactiveGrabbedAxis) {
                 case GizmoAxis::X:
                   dest.x += static_cast<double>(along);
                   break;
@@ -1245,39 +1202,39 @@ int main(int argc, char** argv) {
                 default:
                   break;
               }
-              held = heldAxisForGrabbedAxis(interactiveGrabbedAxis);
+              held = heldAxisForGrabbedAxis(editor.interactiveGrabbedAxis);
             };
 
-        if (lDown && !moveDragButtonDown) {
-          moveDragButtonDown = true;
+        if (lDown && !editor.moveDragButtonDown) {
+          editor.moveDragButtonDown = true;
           // Grab an axis handle if the press landed near one; else free move.
-          interactiveGrabbedAxis = pickGizmoAxisFromProjectedShafts(
+          editor.interactiveGrabbedAxis = pickGizmoAxisFromProjectedShafts(
               gizmoShafts,
               gizmoCenterScreen,
               gizmoTipScreen,
               cursorPx,
               cursorPy,
               kGizmoHandleThresholdPx);
-          interactiveGrabAnchorS = gizmoAnchorS;
-          interactiveGrabCursorX = cursorPx;
-          interactiveGrabCursorY = cursorPy;
-          interactiveGrabCenterScreen = gizmoCenterScreen;
-          if (interactiveGrabbedAxis == GizmoAxis::X) {
-            interactiveGrabTipScreen = gizmoTipScreen[0];
-          } else if (interactiveGrabbedAxis == GizmoAxis::Y) {
-            interactiveGrabTipScreen = gizmoTipScreen[1];
-          } else if (interactiveGrabbedAxis == GizmoAxis::Z) {
-            interactiveGrabTipScreen = gizmoTipScreen[2];
+          editor.interactiveGrabAnchorS = gizmoAnchorS;
+          editor.interactiveGrabCursorX = cursorPx;
+          editor.interactiveGrabCursorY = cursorPy;
+          editor.interactiveGrabCenterScreen = gizmoCenterScreen;
+          if (editor.interactiveGrabbedAxis == GizmoAxis::X) {
+            editor.interactiveGrabTipScreen = gizmoTipScreen[0];
+          } else if (editor.interactiveGrabbedAxis == GizmoAxis::Y) {
+            editor.interactiveGrabTipScreen = gizmoTipScreen[1];
+          } else if (editor.interactiveGrabbedAxis == GizmoAxis::Z) {
+            editor.interactiveGrabTipScreen = gizmoTipScreen[2];
           }
           SDL_Log("iggy3d_creative: GIZMO grabbed axis=%s",
-                  gizmoAxisName(interactiveGrabbedAxis));
+                  gizmoAxisName(editor.interactiveGrabbedAxis));
           creative::CreativeToolInputPacket press;
           press.kind = creative::CreativeToolInputKind::PointerPress;
           press.pointer.button = creative::CreativeToolPointerButton::Primary;
           press.pointer.target =
               creative::TargetRef{static_cast<creative::Id>(selectedObjectId)};
           (void)appState.facade.dispatchToolInput(press);
-        } else if (lDown && moveDragButtonDown) {
+        } else if (lDown && editor.moveDragButtonDown) {
           creative::CreativeToolInputPacket move;
           move.kind = creative::CreativeToolInputKind::PointerMove;
           move.pointer.button = creative::CreativeToolPointerButton::Primary;
@@ -1285,8 +1242,8 @@ int main(int argc, char** argv) {
           buildConstrainedDestination(move.pointer.worldDestination,
                                       move.pointer.moveHeldAxis);
           (void)appState.facade.dispatchToolInput(move);
-        } else if (!lDown && moveDragButtonDown) {
-          moveDragButtonDown = false;
+        } else if (!lDown && editor.moveDragButtonDown) {
+          editor.moveDragButtonDown = false;
           creative::CreativeToolInputPacket release;
           release.kind = creative::CreativeToolInputKind::PointerRelease;
           release.pointer.button = creative::CreativeToolPointerButton::Primary;
@@ -1294,30 +1251,31 @@ int main(int argc, char** argv) {
           buildConstrainedDestination(release.pointer.worldDestination,
                                       release.pointer.moveHeldAxis);
           const creative::CreativeFacadeToolDispatchReceipt r =
-              dispatchMoveReleaseWithUndo(appState, undoStack, release,
+              dispatchMoveReleaseWithUndo(appState, editor.undoStack, release,
                                           selectedObjectId,
                                           "move_interactive_release");
           logMoveDispatch("RELEASE", r);
-          interactiveGrabbedAxis = GizmoAxis::None;
+          editor.interactiveGrabbedAxis = GizmoAxis::None;
         }
         }
-      } else if (moveDragButtonDown) {
-        moveDragButtonDown = false;  // Alt released mid-drag: drop the latch.
-        interactiveGrabbedAxis = GizmoAxis::None;
-      } else if (interactivePathMoveActive) {
+      } else if (editor.moveDragButtonDown) {
+        editor.moveDragButtonDown = false;  // Alt released mid-drag: drop the latch.
+        editor.interactiveGrabbedAxis = GizmoAxis::None;
+      } else if (editor.interactivePathMoveActive) {
         SDL_Log("iggy3d_creative: PATH interactive move cancelled objectId=%llu",
-                static_cast<unsigned long long>(interactivePathMoveObjectId));
-        interactivePathMoveActive = false;
-        interactivePathMoveObjectId = creative::kInvalidObjectId;
-      } else if (interactivePathPointMoveActive) {
+                static_cast<unsigned long long>(
+                    editor.interactivePathMoveObjectId));
+        editor.interactivePathMoveActive = false;
+        editor.interactivePathMoveObjectId = creative::kInvalidObjectId;
+      } else if (editor.interactivePathPointMoveActive) {
         SDL_Log("iggy3d_creative: PATH_HANDLE interactive move cancelled "
                 "objectId=%llu pointIndex=%zu",
                 static_cast<unsigned long long>(
-                    interactivePathPointMoveObjectId),
-                interactivePathPointMoveIndex);
-        interactivePathPointMoveActive = false;
-        interactivePathPointMoveObjectId = creative::kInvalidObjectId;
-        interactivePathPointMoveIndex = 0U;
+                    editor.interactivePathPointMoveObjectId),
+                editor.interactivePathPointMoveIndex);
+        editor.interactivePathPointMoveActive = false;
+        editor.interactivePathPointMoveObjectId = creative::kInvalidObjectId;
+        editor.interactivePathPointMoveIndex = 0U;
       }
     }
 
@@ -1331,7 +1289,7 @@ int main(int argc, char** argv) {
 
     ProductVulkanMenuFrameRequest menuReq;
     menuReq.uiDrawList = &uiProj.drawList;
-    menuReq.frameIndex = frameIndex;
+    menuReq.frameIndex = editor.frameIndex;
     menuReq.drawableWidth = extent.width;
     menuReq.drawableHeight = extent.height;
     ProductVulkanMenuFrame menuFrame =
@@ -1456,9 +1414,9 @@ int main(int argc, char** argv) {
     // path. It is NOT a document object (objectId=0); it vanishes on the drop's
     // next frame if the aim moves.
     std::size_t ghostEdgeCount = 0;
-    if (placeMode) {
+    if (editor.placeMode) {
       const creative::CreativeObjectDescriptor& brushDescriptor =
-          creative::describeObject(placeBrush);
+          creative::describeObject(editor.placeBrush);
       Vec3 ghostMin{};
       Vec3 ghostMax{};
       if (brushDescriptor.shapeKind == creative::CreativeObjectShapeKind::Path) {
@@ -1551,15 +1509,15 @@ int main(int argc, char** argv) {
     frame.projections.scene = &frustumCull.scene;
 
     const RenderSubmitResult submit = backend->submitFrame(frame);
-    if (!loggedSelection) {
-      loggedSelection = true;
+    if (!editor.loggedSelection) {
+      editor.loggedSelection = true;
       SDL_Log("iggy3d_creative: frame %llu submit outcome=%d reason='%s' "
               "meshes=%zu frustumInputMeshes=%zu frustumKeptMeshes=%zu "
               "frustumCulledMeshes=%zu frustumConservativeMeshes=%zu "
               "selectedTarget=%u hasSelection=%d selBoxLines=%zu "
               "pointMarkerLines=%zu lineMarkerLines=%zu pathHandleLines=%zu "
               "gizmoLines=%zu combinedWireLines=%zu uiRects=%zu glyphs=%zu",
-              static_cast<unsigned long long>(frameIndex),
+              static_cast<unsigned long long>(editor.frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(),
               frustumCull.scene.room.meshes.size(),
@@ -1576,7 +1534,7 @@ int main(int argc, char** argv) {
               combinedWireLines.size(), menuFrame.rects.size(), glyphs.size());
     }
 
-    if (maxFrames != 0U && frameIndex >= maxFrames) {
+    if (maxFrames != 0U && editor.frameIndex >= maxFrames) {
       logStandaloneRoomBakeFinal(roomBakePreview);
       // Name the SELECTED object + kind so the capture is self-documenting; the
       // capture proof expects this target to be the FLOOR.
@@ -1591,7 +1549,7 @@ int main(int argc, char** argv) {
               "ghostEdges=%zu placed=%llu objectCount=%llu "
               "frustumInputMeshes=%zu frustumKeptMeshes=%zu "
               "frustumCulledMeshes=%zu frustumConservativeMeshes=%zu",
-              static_cast<unsigned long long>(frameIndex),
+              static_cast<unsigned long long>(editor.frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(), selectedId, selKind,
               hasSelection ? 1 : 0, documentWireLineCount,
@@ -1600,9 +1558,10 @@ int main(int argc, char** argv) {
               combinedWireLines.size() - documentWireLineCount -
                   pointMarkerEdgeCount - lineMarkerEdgeCount -
                   pathPointHandleEdgeCount,
-              combinedWireLines.size(), placeMode ? 1 : 0,
-              std::string(creative::toString(placeBrush)).c_str(),
-              ghostEdgeCount, static_cast<unsigned long long>(placedCount),
+              combinedWireLines.size(), editor.placeMode ? 1 : 0,
+              std::string(creative::toString(editor.placeBrush)).c_str(),
+              ghostEdgeCount,
+              static_cast<unsigned long long>(editor.placedCount),
               static_cast<unsigned long long>(
                   appState.facade.document().objectCount()),
               frustumCull.receipt.inputRoomMeshCount,

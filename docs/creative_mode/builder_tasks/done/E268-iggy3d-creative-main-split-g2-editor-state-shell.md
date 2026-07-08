@@ -301,3 +301,86 @@ Report:
 - confirmation that no `EditorFrame`, `runCreativeEditorFrame(...)`,
   frame-stage move, helper move, CMake/test/receipt/golden edits, broad CTest,
   interactive window launch, staging, commit, or push was performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/CreativeEditorState.hpp`
+- this task card, moved to `done/`
+
+State shell:
+
+- Added header-only `iggy3d_creative_app::CreativeEditorState`.
+- No `.cpp` file or CMake change was needed.
+- Field inventory:
+  - fly camera: `flyConfig`, `flyPos`, `yawDegrees`, `pitchDegrees`
+  - one-shot logging: `loggedSelection`
+  - select/move/capture latches: `prevKey1`, `prevKey2`,
+    `moveDragButtonDown`, `loggedMoveBefore`, `loggedMoveAfter`
+  - gizmo/path drag state: `interactiveGrabbedAxis`,
+    `interactiveGrabAnchorS`, `interactiveGrabCursorX`,
+    `interactiveGrabCursorY`, `interactiveGrabCenterScreen`,
+    `interactiveGrabTipScreen`, `interactivePathMoveActive`,
+    `interactivePathMoveObjectId`, `interactivePathMoveStartGround`,
+    `interactivePathPointMoveActive`, `interactivePathPointMoveObjectId`,
+    `interactivePathPointMoveIndex`,
+    `interactivePathPointMoveStartGround`, `loggedGizmoGrab`
+  - placement state: `placeMode`, `brushPalette`, `placeBrush`,
+    `placeCellSize`, `prevKey3`, `prevKeyB`, `placeButtonDown`,
+    `placedCount`
+  - save/load/undo/capture state: `prevKeyF5`, `prevKeyF6`, `prevKeyF9`,
+    `prevKeyDelete`, `prevKeyBackspace`, `prevKeyZ`, `undoStack`,
+    `captureScript`, `captureWorldPickFloorLogged`,
+    `captureWorldPickPointLogged`, `captureWorldPickLineLogged`,
+    `captureWorldPickPathLogged`
+  - counters: `frameIndex`, `lastWidth`, `lastHeight`
+
+`main.cpp` migration:
+
+- Replaced the covered free locals with one `CreativeEditorState editor;`.
+- Kept the existing fly config setup in `main.cpp`, now writing to
+  `editor.flyConfig`.
+- Kept brush palette, place brush, place cell size, capture place-mode setup,
+  and brush-palette log behavior in place, now writing to `editor`.
+- Updated in-scope references to `editor.<field>`.
+
+Intentionally outside `CreativeEditorState`:
+
+- Setup/dependency values such as `floorObjectId`, `crateObjectId`,
+  `saveRoot`, `saveId`, `wireProjReq`, `gridConfig`, and `gridSnapshot`.
+- Constants and per-frame transient render, UI, cull, selection, overlay, and
+  submit buffers.
+
+Required grep classifications:
+
+- `CreativeEditorState|editor\\.|...`: `CreativeEditorState` is declared in
+  `CreativeEditorState.hpp`; `main.cpp` includes it, creates a single
+  `CreativeEditorState editor;`, and accesses moved fields through
+  `editor.<field>`. The remaining `undoStack` hits before `main()` are the
+  existing helper parameter/pointer uses, not moved free locals.
+- `EditorFrame|runCreativeEditorFrame|appendStandaloneWireframeBoxEdges|appendWireframeBoxEdges`:
+  no `EditorFrame` or `runCreativeEditorFrame(...)` was introduced; E267's
+  `appendStandaloneWireframeBoxEdges(...)` helper remains unchanged; no old
+  `appendWireframeBoxEdges(...)` helper was reintroduced.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan passed for touched source files and this
+  card.
+
+Optional capture:
+
+- Skipped. No owner explicitly allowed a windowed/Vulkan capture check.
+
+Not performed:
+
+- No `EditorFrame`, `runCreativeEditorFrame(...)`, frame-stage move, helper
+  move, CMake/test/receipt/golden edits, broad CTest, interactive window
+  launch, staging, commit, or push.
