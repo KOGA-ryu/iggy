@@ -59,7 +59,7 @@ iggy3d::ProductAppOptions optionsForRoot(const std::filesystem::path& root) {
   return options;
 }
 
-// Local helper: saveSlotById in Operations.cpp is internal (anonymous
+// Local helper: saveSlotById in ProductSessionLaunch.cpp is internal (anonymous
 // namespace), so we scan the slots ourselves to check the deleted id is gone.
 bool catalogContainsId(const iggy3d::SaveSlotList& slots,
                        std::string_view id) {

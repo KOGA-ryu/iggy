@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <string>
 
-#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/ascii_room/Authoring.hpp"
 #include "app/iggy3d/ascii_room/Package.hpp"
@@ -15,6 +14,7 @@
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/iggy3d/world/Creation.hpp"
+#include "app/iggy3d/world/ProductLaunchState.hpp"
 #include "app/iggy3d/world/ProductSessionLaunch.hpp"
 #include "app/iggy3d/world/ProductWorldTemplateOperations.hpp"
 #include "content/PackageLoader.hpp"

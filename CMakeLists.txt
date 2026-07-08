@@ -54,6 +54,7 @@ target_sources(iggy3d
     src/app/iggy3d/world/ProductWorldTemplateOperations.cpp
     src/app/iggy3d/world/ProductSessionLaunch.cpp
     src/app/iggy3d/world/ProductNewWorldLaunch.cpp
+    src/app/iggy3d/world/ProductLaunchState.cpp
     src/app/iggy3d/room_editor/EditableRoomToAuthoredRoom.cpp
     src/app/iggy3d/creative/document/Object.cpp
     src/app/iggy3d/creative/document/Document.cpp
@@ -77,6 +78,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/RoomShell.cpp
     src/app/iggy3d/creative/BakedActiveRoomRefresh.cpp
     src/app/iggy3d/creative/CreativeWorldOperations.cpp
+    src/app/iggy3d/creative/CreativeBlankStageSession.cpp
     src/app/iggy3d/creative/ui/Ui.cpp
     src/app/iggy3d/creative/mutation/Metrics.cpp
     src/app/iggy3d/creative/Facade.cpp
@@ -119,7 +121,6 @@ target_sources(iggy3d
     src/app/iggy3d/debug/PhysicsDebugHud.cpp
     src/app/iggy3d/debug/PositionHud.cpp
     src/app/iggy3d/world/PackageSessionSeed.cpp
-    src/app/iggy3d/Operations.cpp
     src/app/iggy3d/CreativeReasoningActivation.cpp
     src/app/iggy3d/PatrolRouteWaypoints.cpp
     src/app/iggy3d/Options.cpp

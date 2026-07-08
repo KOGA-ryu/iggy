@@ -29,7 +29,6 @@
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
-#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/save/SaveSlotOperations.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/InputRouter.hpp"

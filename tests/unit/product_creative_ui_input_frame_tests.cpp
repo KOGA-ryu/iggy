@@ -9,7 +9,6 @@
 #include "app/iggy3d/creative/bridge/InputFrame.hpp"
 #include "app/iggy3d/creative/bridge/UiCommandFrame.hpp"
 #include "app/iggy3d/creative/bridge/UiWindowFrame.hpp"
-#include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/window/InputFrame.hpp"
 #include "app/frontend/WorldSetupModel.hpp"
 

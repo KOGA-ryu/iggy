@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -182,3 +182,55 @@ When done, report:
 - focused build/CTest results
 - diff/whitespace checks
 - confirmation that previously extracted operations were not moved again
+
+## Completion Brief
+
+- Files changed/deleted:
+  - `CMakeLists.txt`
+  - deleted `src/app/iggy3d/Operations.hpp`
+  - deleted `src/app/iggy3d/Operations.cpp`
+  - `src/app/iggy3d/creative/CreativeBlankStageSession.hpp`
+  - `src/app/iggy3d/creative/CreativeBlankStageSession.cpp`
+  - `src/app/iggy3d/world/ProductLaunchState.hpp`
+  - `src/app/iggy3d/world/ProductLaunchState.cpp`
+  - `src/app/iggy3d/creative/CreativeWorldOperations.cpp`
+  - `src/app/iggy3d/world/ProductSessionLaunch.cpp`
+  - `src/app/iggy3d/world/ProductNewWorldLaunch.cpp`
+  - `src/app/iggy3d/window/InputFrame.cpp`
+  - `src/app/iggy3d/window/Loop.cpp`
+  - `tests/unit/product_creative_no_window_bake_scenario_tests.cpp`
+  - `tests/unit/product_creative_ui_frame_tests.cpp`
+  - `tests/unit/product_creative_ui_input_frame_tests.cpp`
+  - `tests/unit/product_creative_viewport_pick_frame_tests.cpp`
+  - `tests/unit/product_frontend_router_tests.cpp`
+  - `tests/unit/product_save_delete_executor_tests.cpp`
+  - this task card
+- Exact APIs moved and new owners:
+  - `createCreativeBlankSession(...)` moved to `src/app/iggy3d/creative/CreativeBlankStageSession.cpp`, declared by `CreativeBlankStageSession.hpp`.
+  - `frameCreativeStageCameraOnOrigin(...)` moved to `src/app/iggy3d/creative/CreativeBlankStageSession.cpp`, declared by `CreativeBlankStageSession.hpp`.
+  - `clearProductGameplayLaunchState(...)` moved to `src/app/iggy3d/world/ProductLaunchState.cpp`, declared by `ProductLaunchState.hpp`.
+- `Operations.hpp/.cpp` deletion:
+  - Both files were deleted.
+  - `src/app/iggy3d/Operations.cpp` was removed from the `iggy3d` library source list.
+  - Added `src/app/iggy3d/creative/CreativeBlankStageSession.cpp` near the creative sources.
+  - Added `src/app/iggy3d/world/ProductLaunchState.cpp` near the world sources.
+- Include/caller repair:
+  - `CreativeWorldOperations.cpp` now includes `creative/CreativeBlankStageSession.hpp` and `world/ProductLaunchState.hpp`.
+  - `ProductSessionLaunch.cpp` and `ProductNewWorldLaunch.cpp` now include `world/ProductLaunchState.hpp`.
+  - Stale `Operations.hpp` includes were removed from `InputFrame.cpp` and the compiler-covered product tests.
+  - Two stale comments naming `Operations.cpp` were updated to current owner names.
+- Final grep result:
+  - Symbol owner grep shows only `CreativeBlankStageSession.hpp/.cpp` for `createCreativeBlankSession(...)` and `frameCreativeStageCameraOnOrigin(...)`, and only `ProductLaunchState.hpp/.cpp` for `clearProductGameplayLaunchState(...)`.
+  - Exact deleted-shell grep for `app/iggy3d/Operations.hpp`, `app/iggy3d/Operations.cpp`, and `#include "app/iggy3d/Operations.hpp"` across CMake, `src/app/iggy3d`, and `tests/unit` returned no hits.
+  - The card's broad `Operations\\.cpp|Operations\\.hpp` pattern still matches surviving owner filenames such as `CreativeWorldOperations.cpp`, `SaveSlotOperations.cpp`, and `ProductWorldTemplateOperations.cpp`; these are not references to the deleted `Operations.*` shell.
+- Receipt golden result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- Focused build/CTest results:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_creative_world_launch_tests product_creative_no_window_bake_scenario_tests product_starter_menu_action_tests product_window_input_frame_tests product_save_bridge_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_creative_world_launch_tests|product_creative_no_window_bake_scenario_tests|product_starter_menu_action_tests|product_window_input_frame_tests|product_save_bridge_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 6/6.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card found no hits.
+- Confirmations:
+  - Previously extracted operations were not moved again.
+  - Creative world launch/open/save operations, product new-world launch, product session launch/bootstrap operations, save/load session launch, current-session save/write, save-slot browser/delete/recover operations, product world-template operations, save/load durable format, package/session bootstrap behavior, receipt keys/order/values, CMake test definitions, staging, commit, push, and window launch were not changed.

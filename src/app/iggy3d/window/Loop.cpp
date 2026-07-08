@@ -127,7 +127,7 @@ ProductWindowLoopResult runProductWindowLoop(const ProductWindowLoopRequest& req
   ProductAppWindowState window = request.window;
   // Mutable in-loop catalog. `request.saves` is the snapshot the loop starts from; we copy it
   // (like `window` above) so in-window mutations re-scan into it: a live soft-delete
-  // (Operations.cpp) and a live new-world (menu/ActionHandlers.cpp) both refresh this copy. It
+  // (SaveSlotOperations.cpp) and a live new-world (menu/ActionHandlers.cpp) both refresh this copy. It
   // is RETURNED with the window so Continue / the Load list / the receipt all report the true
   // end-of-session catalog without an app restart. The request itself stays a read-only input.
   ProductSaveBridgeResult saves = request.saves;

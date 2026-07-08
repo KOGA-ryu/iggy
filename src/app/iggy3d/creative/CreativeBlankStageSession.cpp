@@ -1,23 +1,17 @@
-#include "app/iggy3d/Operations.hpp"
+#include "app/iggy3d/creative/CreativeBlankStageSession.hpp"
 
 #include <chrono>
-#include <filesystem>
-#include <string>
+#include <cstdint>
 #include <utility>
 
-#include "app/frontend/SaveBrowser.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
-#include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
-#include "app/iggy3d/creative/BakedActiveRoomRefresh.hpp"
-#include "app/iggy3d/creative/CreativeWorldOperations.hpp"
 #include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "core/math/Aabb3.hpp"
 #include "core/math/Transform3.hpp"
 
 namespace iggy3d {
-
 namespace {
 
 std::uint64_t elapsedMicroseconds(
@@ -28,6 +22,8 @@ std::uint64_t elapsedMicroseconds(
           .count());
 }
 
+}  // namespace
+
 // F0 (blank stage): a CREATIVE world must stand on its own empty canvas, not
 // the first_room demo ("Loop Keep") that createProductSession installs. Build a
 // minimal session that seeds ONLY a local player at the world origin and leaves
@@ -35,8 +31,8 @@ std::uint64_t elapsedMicroseconds(
 // (surfaced for the creative-document surface in ProjectionRefresh) draws the
 // visible ground grid around the origin. Product / LegacyMapMaker launches
 // keep calling createProductSession untouched.
-bool createCreativeBlankSessionImpl(std::optional<Session>& activeSession,
-                                    ProductAppWindowState& window) {
+bool createCreativeBlankSession(std::optional<Session>& activeSession,
+                                ProductAppWindowState& window) {
   const auto lookupStarted = std::chrono::steady_clock::now();
   window.frontendShell.startup.packagePath = "creative_blank_stage";
   window.frontendShell.startup.packageLookupMeasured = true;
@@ -104,37 +100,11 @@ bool createCreativeBlankSessionImpl(std::optional<Session>& activeSession,
 
 // F0: place the creative fly camera on the world origin and pitch it down so
 // the origin ground grid (where objects will be created) is framed on entry.
-void frameCreativeStageCameraOnOriginImpl(ProductAppWindowState& window) {
+void frameCreativeStageCameraOnOrigin(ProductAppWindowState& window) {
   bumpCreativeWorldEpoch(window);
   seedCreativeFlyAnchorFromOrigin(window);
   window.viewport.cameraYawDegrees = 0.0F;
   window.viewport.cameraPitchDegrees = -30.0F;
-}
-
-void clearProductGameplayLaunchStateImpl(std::optional<Session>& activeSession,
-                                         ProductAppWindowState& window) {
-  window.gameplay.gameplayActive = false;
-  window.gameplay.runtimeSessionCreated = false;
-  activeRoom(window) = {};
-  activeRoomCollision(window) = {};
-  bumpActiveRoomRevision(window);
-  activeSession.reset();
-}
-
-}  // namespace
-
-bool createCreativeBlankSession(std::optional<Session>& activeSession,
-                                ProductAppWindowState& window) {
-  return createCreativeBlankSessionImpl(activeSession, window);
-}
-
-void frameCreativeStageCameraOnOrigin(ProductAppWindowState& window) {
-  frameCreativeStageCameraOnOriginImpl(window);
-}
-
-void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
-                                     ProductAppWindowState& window) {
-  clearProductGameplayLaunchStateImpl(activeSession, window);
 }
 
 }  // namespace iggy3d
