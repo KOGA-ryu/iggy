@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E263-product-receipt-field-rows-g13-creative-ui-command-diagnostics.md`
+1. `ready/E264-product-receipt-field-rows-g14-creative-ui-baked-room-refresh.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E263-product-receipt-field-rows-g13-creative-ui-command-diagnostics.md`
+1. `ready/E264-product-receipt-field-rows-g14-creative-ui-baked-room-refresh.md`
 
 ## Parking Lot
 
@@ -211,6 +211,8 @@ Held — do NOT promote to `ready/` on a guess:
   `FrontendSettingsWindowFields.cpp` around the existing tuning descriptor loop.
   E262 completed G12 by table-driving the fixed rows in
   `CreativeUiFields.cpp`'s public appender while leaving command and baked-room
-  helper appenders procedural. E263 is released as G13 for the fixed creative
-  UI command diagnostic helper rows while still leaving baked-room refresh
-  diagnostics procedural.
+  helper appenders procedural. E263 completed G13 by table-driving the fixed
+  creative UI command diagnostic helper rows while still leaving baked-room
+  refresh diagnostics procedural. E264 is released as G14 for the remaining
+  baked-room refresh diagnostic fixed rows while preserving the optional
+  `clearedActiveRoom` branch as procedural.
