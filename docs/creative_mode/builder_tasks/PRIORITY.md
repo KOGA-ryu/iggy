@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E250-product-receipt-fields-table-drive-preflight.md`
+1. `ready/E251-product-receipt-field-rows-g1-gameplay-scene-state.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E250-product-receipt-fields-table-drive-preflight.md`
+1. `ready/E251-product-receipt-field-rows-g1-gameplay-scene-state.md`
 
 ## Parking Lot
 
@@ -190,5 +190,7 @@ Held — do NOT promote to `ready/` on a guess:
   action-phase orchestration helper, leaving `Controller.cpp` as a tiny public
   facade.
 - `docs/refactor_targets.md` target #1 receipt field boilerplate is active next.
-  E250 is released as a read-only preflight before any order-pinned receipt
-  table-driving implementation.
+  E250 completed the read-only preflight and chose
+  `GameplaySceneStateFields.cpp` as the safest one-file pilot. E251 is released
+  as G1 to table-drive only that section with no shared helper and no golden
+  change.
