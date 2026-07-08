@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -216,3 +216,75 @@ When done, report:
   gameplay panel orchestration, facade behavior, `OpeningMenuView.hpp`,
   `SdlDraw.*`, `ScenePrimitiveView.*`, `DebugHudView.*`, CMake test
   definitions, staging, commit, push, and window launch were not touched
+
+## Completion Brief
+
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/view/OpeningMenuView.cpp`
+  - `src/app/iggy3d/view/MenuPanelsView.hpp`
+  - `src/app/iggy3d/view/MenuPanelsView.cpp`
+  - this task card
+- Exact helper/API shape created:
+  - Added `MenuPanelsView.hpp/.cpp` under `src/app/iggy3d/view/`.
+  - `MenuPanelsView.hpp` is SDL3-gated and exposes only:
+    - `drawGameplayMovementTuningHud(SDL_Renderer&, const ProductGameplayMovementTuning&, ProductGameplayMovementTuningField, bool)`
+    - `drawMenuRow(SDL_Renderer&, std::string_view, bool, bool, float, float)`
+    - `drawStarterDetailPanel(SDL_Renderer&)`
+    - `drawNewWorldPanel(SDL_Renderer&, const ProductWorldTemplate&, const ProductSaveBridgeResult&, const WorldSetupDraft&, bool, bool, std::uint64_t, std::uint64_t, const std::string&, const std::string&)`
+    - `drawLoadSavePanel(SDL_Renderer&, FrontendSaveBrowserMode, const ProductSaveBridgeResult&)`
+    - `drawDeleteConfirmPanel(SDL_Renderer&, const ProductDeleteConfirmModel&)`
+    - `drawDevToolsPanel(SDL_Renderer&, FrontendDevToolsCategory)`
+    - `drawSettingsPanel(SDL_Renderer&, FrontendSettingsTab, const ProductGameplayMovementTuning&, ProductGameplayMovementTuningField)`
+  - `MenuPanelsView.cpp` owns the moved implementations.
+  - `selectedDraftGlyphLabel(...)`, `settingsTabLabel(...)`, `fixedFloat(...)`,
+    `sliderBar(...)`, `drawMovementTuningRows(...)`, `drawPanelRow(...)`, and
+    `drawAsciiPreviewLines(...)` are file-local in `MenuPanelsView.cpp`.
+- What stayed in `OpeningMenuView.cpp`:
+  - `usesPauseMenuRows(...)`
+  - `menuActionOrderForFrontend(...)`
+  - `menuTitleForFrontend(...)`
+  - `roundedDegrees(...)`
+  - `drawGameplayPanel(...)`
+  - `uiRectContains(...)`
+  - `hitRegionActionAt(...)`
+  - `pauseMenuActionAt(...)`
+  - `openingMenuDetailSurfaceFor(...)`
+  - `openingMenuActionAt(...)`
+  - `drawOpeningMenuView(...)`
+- CMake source-list placement:
+  - `OpeningMenuView.cpp` at line 87
+  - `MenuPanelsView.cpp` at line 88
+  - `DebugHudView.cpp` at line 89
+  - `ScenePrimitiveView.cpp` at line 90
+  - `SdlDraw.cpp` at line 91
+- Required grep classification:
+  - Definitions for the moved menu/panel helpers live in `MenuPanelsView.cpp`.
+  - `MenuPanelsView.hpp` exposes only the eight draw functions listed above.
+  - `selectedDraftGlyphLabel(...)`, `settingsTabLabel(...)`, `fixedFloat(...)`,
+    `sliderBar(...)`, `drawMovementTuningRows(...)`, `drawPanelRow(...)`, and
+    `drawAsciiPreviewLines(...)` are file-local in `MenuPanelsView.cpp`.
+  - `OpeningMenuView.cpp` retains call sites only for moved menu/panel helpers.
+  - `menuActionOrderForFrontend(...)`, `openingMenuActionAt(...)`, and
+    `drawOpeningMenuView(...)` remain in `OpeningMenuView.cpp`.
+  - `CMakeLists.txt` includes `MenuPanelsView.cpp` near the other view split
+    files.
+- Focused build result:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_window_input_frame_tests product_starter_menu_action_tests product_menu_transitions_tests product_primitive_draw_list_tests product_render_bridge_tests product_receipt_key_order_tests -j10`
+    passed.
+- Focused CTest result:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_window_input_frame_tests|product_starter_menu_action_tests|product_menu_transitions_tests|product_primitive_draw_list_tests|product_render_bridge_tests|product_receipt_key_order_tests)$' --output-on-failure`
+    passed, 6/6 tests.
+- Receipt golden diff result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+    was empty.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card was
+    clean.
+- Confirmation:
+  - Hit-test/action routing, menu action order selection, gameplay panel
+    orchestration, facade behavior, `OpeningMenuView.hpp`, `SdlDraw.*`,
+    `ScenePrimitiveView.*`, `DebugHudView.*`, CMake test definitions, receipt
+    golden, staging, commit, push, broad CTest, and window launch were not
+    touched/performed.

@@ -85,6 +85,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/tools/Palette.cpp
     src/app/iggy3d/creative/document/Block.cpp
     src/app/iggy3d/view/OpeningMenuView.cpp
+    src/app/iggy3d/view/MenuPanelsView.cpp
     src/app/iggy3d/view/DebugHudView.cpp
     src/app/iggy3d/view/ScenePrimitiveView.cpp
     src/app/iggy3d/view/SdlDraw.cpp
