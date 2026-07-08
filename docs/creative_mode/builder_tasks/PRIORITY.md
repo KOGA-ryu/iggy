@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E218-operations-split-g4e-remove-operations-shell.md`
+1. `ready/E219-snap-grid-math-dedupe-preflight.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E218-operations-split-g4e-remove-operations-shell.md`
+1. `ready/E219-snap-grid-math-dedupe-preflight.md`
 
 ## Parking Lot
 
@@ -157,7 +157,14 @@ Held — do NOT promote to `ready/` on a guess:
   G4c by extracting product new-world launch without moving current-session
   save/write or creative blank-stage wrappers. `E217` completed G4d by
   extracting current-session save/write without moving the creative blank-stage
-  wrappers. `E218` is released as G4e to move the final launch-state helpers and
-  delete the empty `Operations.*` shell if the compiler agrees.
-  `OpeningMenuView` split remains parked; see
+  wrappers. `E218` completed G4e by moving the final launch-state helpers and
+  deleting the empty `Operations.*` shell.
+- Snap/grid duplicate math (#7 in `docs/complexity_audit_v0_1.md`): `E219` is
+  released as a read-only preflight. Do not implement directly from the stale
+  audit wording until E219 classifies core `Snap`, creative 2D/3D snap wrappers,
+  `SpatialProjection`, and `GridFootprint`. Note: the audit's object-kind
+  switch cleanup item is stale in the current tree; `CreativeObjectKind`
+  `toString(...)` and `allowedMutations(...)` already route through descriptor
+  helpers.
+- `OpeningMenuView` split remains parked; see
   `docs/complexity_audit_v0_1.md` §3.
