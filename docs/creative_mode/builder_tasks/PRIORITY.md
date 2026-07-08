@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E223-openingmenuview-primitive-primary-metadata-handoff.md`
+1. `ready/E224-openingmenuview-split-preflight.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E223-openingmenuview-primitive-primary-metadata-handoff.md`
+1. `ready/E224-openingmenuview-split-preflight.md`
 
 ## Parking Lot
 
@@ -120,10 +120,10 @@ Held — do NOT promote to `ready/` on a guess:
   affordance/anchor and traversal payload emitters/consumers. E188 is the
   read-only remainder classification pass for parser/display/stable-id/save
   literals before any additional migration card is written.
-- Further draw-kind metadata cleanup after E127: `E222` completed the read-only
-  current-state audit. It found no broad metadata/bridge-count card; only the
-  two `OpeningMenuView` primitive primary colors remain as safe handoff work.
-  `E223` is released for that tiny renderer-primary slice.
+- Further draw-kind metadata cleanup after E127 is COMPLETE as E222-E223.
+  E222 found no broad metadata/bridge-count card, and E223 routed the only
+  remaining `OpeningMenuView` primitive primary colors through the metadata
+  backed draw-item path.
 - **ProductAppWindowState include-hygiene lane is CLOSED after E208.**
   E201-E207 removed all forward-declarable production/test-support header
   includes. The remaining header includes are complete-type required:
@@ -168,5 +168,5 @@ Held — do NOT promote to `ready/` on a guess:
   Note: the audit's object-kind switch cleanup item is stale in the current tree;
   `CreativeObjectKind` `toString(...)` and `allowedMutations(...)` already route
   through descriptor helpers.
-- `OpeningMenuView` split remains parked; see
-  `docs/complexity_audit_v0_1.md` §3.
+- `OpeningMenuView` split is released as E224 for a read-only split preflight;
+  see `docs/complexity_audit_v0_1.md` section 3.
