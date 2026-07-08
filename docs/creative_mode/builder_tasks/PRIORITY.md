@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E261-product-receipt-field-rows-g11-frontend-settings-window.md`
+1. `ready/E262-product-receipt-field-rows-g12-creative-ui-main.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E261-product-receipt-field-rows-g11-frontend-settings-window.md`
+1. `ready/E262-product-receipt-field-rows-g12-creative-ui-main.md`
 
 ## Parking Lot
 
@@ -207,6 +207,8 @@ Held — do NOT promote to `ready/` on a guess:
   and no golden change. E259 completed G9 by table-driving `TailFields.cpp`
   with a file-local context and no golden change. E260 completed G10 by
   table-driving `SaveStateFields.cpp` with a wider file-local context and no
-  golden change. E261 is released as G11 for
-  `FrontendSettingsWindowFields.cpp`, table-driving fixed rows around the
-  existing tuning descriptor loop.
+  golden change. E261 completed G11 by table-driving fixed rows in
+  `FrontendSettingsWindowFields.cpp` around the existing tuning descriptor loop.
+  E262 is released as G12 for the fixed rows in
+  `CreativeUiFields.cpp`'s public appender while leaving command and baked-room
+  helper appenders procedural.
