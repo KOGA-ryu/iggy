@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E233-controller-split-g2-movement-proof-writers.md`
+1. `ready/E234-controller-split-g3-ground-queries.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E233-controller-split-g2-movement-proof-writers.md`
+1. `ready/E234-controller-split-g3-ground-queries.md`
 
 ## Parking Lot
 
@@ -175,7 +175,7 @@ Held — do NOT promote to `ready/` on a guess:
   include cleanup.
 - `docs/refactor_targets.md` is the new current-HEAD effort-ranked refactor
   backlog. `Controller.cpp` split target #2 is active: E231 preflighted the
-  current file shape, E232 extracted the first G1 kinematics helper, and E233
-  is released as the G2 movement proof/debug writer extraction. Keep later
-  controller wall/jump/dash/traversal splits behind local slices rather than
-  attempting the whole file at once.
+  current file shape, E232 extracted the first G1 kinematics helper, E233
+  extracted the G2 movement proof/debug writer helpers, and E234 is released as
+  the G3 ground-query extraction. Keep later controller wall/jump/dash/traversal
+  splits behind local slices rather than attempting the whole file at once.
