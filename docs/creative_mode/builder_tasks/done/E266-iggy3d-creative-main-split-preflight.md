@@ -276,3 +276,205 @@ decides it is acceptable for the implementation lane:
 (cd /Users/kogaryu/iggy3d && ./build/iggy3d_creative --capture /tmp/iggy3d_creative_e267_final.png --frames 32 > /tmp/iggy3d_creative_e267_final.log 2>&1)
 rg "ROUNDTRIP|ROOM_BAKE final|FINAL frame|submit outcome" /tmp/iggy3d_creative_e267_final.log
 ```
+
+## Completion Brief - E266
+
+### Files inspected
+
+- `docs/refactor_targets.md`
+- `docs/creative_mode/builder_tasks/PRIORITY.md`
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/*.{hpp,cpp}`
+- `CMakeLists.txt`
+- `cmake/iggy3d_tests.cmake`
+- `tests/unit/standalone_picking_tests.cpp`
+- `tests/unit/standalone_placement_tests.cpp`
+- `tests/unit/standalone_frustum_cull_tests.cpp`
+- Prior done-card grep context for standalone helper ownership, especially E66,
+  E83, and E101.
+
+### Current entrypoint shape
+
+- `apps/iggy3d_creative/main.cpp`: 1651 lines.
+- `main(int, char**)`: starts at line 230.
+- Frame loop: starts at line 488 with `while (window.isOpen())`; loop body runs
+  through line 1641.
+- Shutdown/capture return tail: lines 1644-1650.
+- The file still contains one small pure-ish file-local geometry helper,
+  `appendWireframeBoxEdges(...)`, at lines 202-226.
+
+### Current CMake and standalone-test inventory
+
+- `iggy3d_creative` is an executable in `CMakeLists.txt:385` with these source
+  files:
+  - `apps/iggy3d_creative/main.cpp`
+  - `CreativeRendererBootstrap.cpp`
+  - `StandaloneBrushPalette.cpp`
+  - `StandaloneCaptureScenario.cpp`
+  - `StandaloneFrustumCull.cpp`
+  - `StandaloneGizmo.cpp`
+  - `StandalonePathEditing.cpp`
+  - `StandalonePersistenceProof.cpp`
+  - `StandalonePicking.cpp`
+  - `StandalonePlacement.cpp`
+  - `StandalonePreviewProxies.cpp`
+  - `StandaloneRoomBakePreview.cpp`
+- Focused standalone tests currently registered in `cmake/iggy3d_tests.cmake`:
+  - `standalone_picking_tests`: `StandalonePicking.cpp` plus
+    `StandalonePreviewProxies.cpp`
+  - `standalone_placement_tests`: `StandalonePlacement.cpp` plus
+    `StandaloneBrushPalette.cpp`
+  - `standalone_frustum_cull_tests`: `StandaloneFrustumCull.cpp`
+
+### Existing standalone helper ownership seams
+
+- `CreativeRendererBootstrap.*`: renderer/bootstrap and capture PNG helper.
+- `StandaloneCaptureScript.hpp`: fixed capture schedule and proof roles.
+- `StandaloneCaptureScenario.*`: deterministic capture scenario step dispatch.
+- `StandaloneBrushPalette.*`: descriptor-driven palette, footprints, and path
+  seed points.
+- `StandaloneFrustumCull.*`: room mesh frustum cull and receipt.
+- `StandaloneGizmo.*`: gizmo axes, shafts, names, placement/move logging.
+- `StandalonePathEditing.*`: path polyline and path/path-point move helpers.
+- `StandalonePersistenceProof.*`: save/load/clear and persistence proof data.
+- `StandalonePicking.*`: screen/world ray helpers, object picking, gizmo axis
+  picking, and path-handle picking.
+- `StandalonePlacement.*`: brush placement with undo.
+- `StandalonePreviewProxies.*`: point/line/path/object visual bounds.
+- `StandaloneRoomBakePreview.*`: document-to-room-bake preview scene.
+- `StandaloneUndo.hpp`: app-local undo stack facade.
+
+### Line-range classification
+
+| Lines | Bucket | Dominant state/deps | Extraction read |
+| --- | --- | --- | --- |
+| 230-248 | argument parsing and capture defaults | `maxFrames`, `capturePath` | Bootstrap seam; not a frame stage. |
+| 250-276 | SDL window and Vulkan renderer bootstrap | `SdlWindow`, `VulkanBackend`, renderer factory | Existing bootstrap helper owns part of this; changing first would touch launch behavior. |
+| 279-288 | initial camera setup | `ProductCreativeFlyCamera` | Simple setup, but tied to later frame input state. |
+| 290-308 | grid setup | map-maker grid constants | Setup seam, not first implementation value. |
+| 310-367 | document seed/setup | `CreativeAppState`, seeded Floor/Crate, object ids | Behavior-sensitive; keep in `main()` until state struct exists. |
+| 369-386 | save-root and persistence setup | save path, persistence proof helpers | Existing persistence helper owns operations; setup values stay local. |
+| 389-486 | editor locals and latches | camera, undo, selection, capture script, drag latches, proof latches | This is the future `CreativeEditorState` candidate, but too broad for G1. |
+| 488-511 | event polling, drawable/resize handling | `SdlWindow`, drawable extent, renderer resize | Genuine frame input/bootstrap stage; SDL/Vulkan dependent, higher risk. |
+| 514-548 | camera input | SDL keyboard/mouse, relative mouse, fly camera | Real frame input seam; touches SDL and camera mutation. |
+| 550-625 | tool-switch/save/load/delete/undo key handling | keyboard state, app state, undo, persistence | Interactive policy seam; mutates document and proof state. |
+| 628-642 | frame scene and RoomBake preview construction | RoomBake preview, scene projection, `RenderFrameInput` | Useful stage but owns render-frame lifetimes. |
+| 645-664 | aim-ground-cell resolution | camera ray, grid snapping | Small computation seam, but coupled to placement/capture paths. |
+| 665-789 | object pick candidates and capture pick-proof logging | visual bounds, world ray, capture proof latches | Existing picking helper covers core math; integration logging stays local. |
+| 791-872 | click selection | mouse state, selection id, screen/world picking | Mutates selection and proof logging; not first slice. |
+| 874-904 | placement behavior | place mode, brush, undo, app state | Existing placement helper owns core behavior; integration stays local. |
+| 907-926 | capture scenario dispatch | `StandaloneCaptureScenarioStepRequest`, capture script, app state | Existing helper owns scenario step; call assembly stays local. |
+| 929-1024 | selection/gizmo/path-handle geometry and hit-test | selected object, gizmo shafts, path handle hits | Real overlay/picking seam, but many transient frame locals. |
+| 1026-1351 | capture move script and interactive move/path/path-point drag | drag latches, undo, path/gizmo helpers, app state | Behavior-heavy movement policy; not first slice. |
+| 1353-1367 | inspector UI projection | creative UI projection, menu frame, glyphs | Extractable later, but tied to frame UI buffers. |
+| 1369-1391 | document wireframe construction | document wireframe, debug frame, overlay line buffers | Part of overlay build stage; buffer lifetime matters. |
+| 1393-1534 | document/point/line/path/ghost/gizmo overlay construction | `combinedWireLines`, visual bounds, path handles, ghost preview | Highest payoff overlay seam, but must be designed around buffers that outlive `submitFrame(...)`. |
+| 1536-1564 | dimension label/glyph merge | selected bounds, label layout, glyph buffer | Overlay/UI seam; buffer lifetime tied to submit. |
+| 1566-1641 | frustum cull, submit, frame logging, frame-limit exit | frame pointers, frustum result, submit result, final logs | Submit-stage seam; behavior/log string sensitive. |
+| 1644-1650 | capture PNG write, idle/shutdown, return code | capture output, renderer idle/shutdown | Shutdown seam; not a frame stage. |
+
+### Option assessment
+
+- Option A, a tiny app-local helper, is the safest E267 slice. Move only
+  `appendWireframeBoxEdges(...)` to a new standalone helper translation unit.
+  It has no SDL/window/Vulkan dependency, no document mutation, no capture
+  schedule ownership, and no frame-buffer lifetime ambiguity.
+- Option B, frame input, is valuable but touches event polling, drawable checks,
+  renderer resize, relative mouse mode, and camera mutation. It should wait
+  until a minimal state/deps shape is chosen.
+- Option C, overlay build, has the highest line-count payoff, but its transient
+  vectors and frame pointers must remain alive through `submitFrame(...)`.
+  Extracting it first would require a state/lifetime design.
+- Option D, `CreativeEditorState` first, matches the likely end state but is
+  broader than needed for G1 and would churn most current locals before proving
+  the source-list seam.
+
+### Recommended E267 slice
+
+Draft `E267: iggy3d_creative Main Split G1 - Wireframe Box Edges`.
+
+Recommended API:
+
+```cpp
+namespace iggy3d_creative_app {
+
+void appendStandaloneWireframeBoxEdges(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& out,
+    iggy3d::Vec3 boxMin,
+    iggy3d::Vec3 boxMax,
+    iggy3d::RenderLineColor color,
+    float thickness);
+
+}  // namespace iggy3d_creative_app
+```
+
+Recommended files to touch in E267:
+
+- `apps/iggy3d_creative/main.cpp`
+- new `apps/iggy3d_creative/StandaloneWireframeBoxEdges.hpp`
+- new `apps/iggy3d_creative/StandaloneWireframeBoxEdges.cpp`
+- `CMakeLists.txt`
+- the E267 task card
+
+Recommended CMake change:
+
+- Add `apps/iggy3d_creative/StandaloneWireframeBoxEdges.cpp` to the
+  `iggy3d_creative` executable source list near the other standalone helper
+  sources.
+
+Do not introduce `CreativeEditorState` or `EditorFrame.{hpp,cpp}` in E267.
+
+### E267 non-goals
+
+- Do not change `main(int, char**)`, return codes, `--frames`, or `--capture`
+  parsing/default behavior.
+- Do not move frame stages, event handling, camera input, resize behavior,
+  placement, selection, capture scenario dispatch, submit, shutdown, or logging.
+- Do not change capture script frame numbers, object ids, seeded Floor/Crate
+  setup, save root, final capture proof strings, or render-submit reason
+  strings.
+- Do not change line color, thickness, edge order, `objectId = 0`, vector
+  reserve behavior, or call-site order for selection/path/ghost overlays.
+- Do not add `CreativeEditorState`, `EditorFrame.{hpp,cpp}`, broad CTest,
+  staging, commit, push, or an interactive window launch.
+
+### E267 focused verification
+
+Required:
+
+```sh
+cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10
+ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure
+git -C /Users/kogaryu/iggy3d diff --check
+```
+
+Also run a focused trailing-whitespace scan over the touched source/header files
+and the E267 task card.
+
+`--capture` should be optional/manual for E267, not required, because it creates
+a Vulkan window. If explicitly allowed for implementation verification, use:
+
+```sh
+(cd /Users/kogaryu/iggy3d && ./build/iggy3d_creative --capture /tmp/iggy3d_creative_e267_final.png --frames 32 > /tmp/iggy3d_creative_e267_final.log 2>&1)
+rg "ROUNDTRIP|ROOM_BAKE final|FINAL frame|submit outcome" /tmp/iggy3d_creative_e267_final.log
+```
+
+### E267 self-blockers
+
+- Stop if moving the helper requires changing overlay edge order, object ids,
+  colors, thickness, or frame buffer lifetime.
+- Stop if compile fallout requires moving overlay construction, selection,
+  gizmo/path policy, renderer submit, or capture behavior.
+- Stop if CMake/source-list changes affect targets other than
+  `iggy3d_creative`.
+
+### Preflight command results
+
+- Current size and entrypoint inventory completed.
+- Focused source-list and standalone-test inventory completed.
+- Focused `main.cpp` line-range reads completed.
+- `git -C /Users/kogaryu/iggy3d diff --check`: passed.
+- Focused trailing-whitespace scan over this done card: passed.
+- No production source, CMake, tests, fixture data, receipt files, golden files,
+  staging, commit, push, broad CTest, window launch, or `--capture` run was
+  performed.
