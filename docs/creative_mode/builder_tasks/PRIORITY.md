@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E187-traversal-tag-movement-test-lab-routing.md`
+1. `ready/E188-traversal-tag-remainder-classification-audit.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E187-traversal-tag-movement-test-lab-routing.md`
+1. `ready/E188-traversal-tag-remainder-classification-audit.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -116,9 +116,10 @@ Held — do NOT promote to `ready/` on a guess:
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
   - Delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`)
     are complete.
-- **Traversal-tag emitter/consumer migration** across RoomBake, ASCII room,
-  movement, collision, and display/debug strings: after the catalog contract is
-  stable. Do not migrate false-positive receipt/render strings blindly.
+- **Traversal-tag emitter/consumer migration**: E180-E187 routed durable
+  affordance/anchor and traversal payload emitters/consumers. E188 is the
+  read-only remainder classification pass for parser/display/stable-id/save
+  literals before any additional migration card is written.
 - Further draw-kind metadata cleanup after E127, if render owners centralize
   secondary/decorative colors.
 - Further include-hygiene passes (the remaining ~11 headers) after E125.
