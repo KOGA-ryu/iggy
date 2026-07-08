@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E255-product-receipt-field-rows-g5-creative-pick-wireframe.md`
+1. `ready/E256-product-receipt-field-rows-g6-startup-probe.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E255-product-receipt-field-rows-g5-creative-pick-wireframe.md`
+1. `ready/E256-product-receipt-field-rows-g6-startup-probe.md`
 
 ## Parking Lot
 
@@ -198,5 +198,7 @@ Held — do NOT promote to `ready/` on a guess:
   change. E253 completed G3 by table-driving `WorldAuthoringFields.cpp` with
   no golden change. E254 completed G4 by table-driving
   `FeedbackSurfaceAutomationVulkanFields.cpp` with a file-local context and no
-  golden change. E255 is released as G5 for `CreativePickWireframeFields.cpp`,
-  the next direct receipt row candidate.
+  golden change. E255 completed G5 by table-driving
+  `CreativePickWireframeFields.cpp` with a file-local context and no golden
+  change. E256 is released as G6 for `StartupProbeFields.cpp`, the next direct
+  receipt row candidate.
