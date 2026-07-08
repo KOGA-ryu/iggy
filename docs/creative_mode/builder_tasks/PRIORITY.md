@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E269-iggy3d-creative-main-split-g3-frame-begin-input.md`
+1. `ready/E270-iggy3d-creative-main-split-g4-delete-selected-helper.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E269-iggy3d-creative-main-split-g3-frame-begin-input.md`
+1. `ready/E270-iggy3d-creative-main-split-g4-delete-selected-helper.md`
 
 ## Parking Lot
 
@@ -203,6 +203,9 @@ Held — do NOT promote to `ready/` on a guess:
   `apps/iggy3d_creative/main.cpp`. E267 completed that helper extraction. E268
   introduced the app-local `CreativeEditorState` shell and moved the current
   mutable editor/frame-loop locals behind it without moving any frame stages.
-  E269 is released as the first real frame-loop stage extraction: poll events,
+  E269 completed the first real frame-loop stage extraction: poll events,
   handle drawable/resize, apply fly-camera input, and return the current
   keyboard state/extent without changing downstream tool or render behavior.
+  E270 is released to move the shared standalone selected-object delete helper
+  out of `main.cpp` before extracting the interactive command-key block that
+  also depends on that helper.
