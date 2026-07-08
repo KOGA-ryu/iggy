@@ -58,6 +58,7 @@
 #include "render/debug/DebugHudText.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
+#include "CreativeEditorAim.hpp"
 #include "CreativeEditorCommandInput.hpp"
 #include "CreativeEditorFrameInput.hpp"
 #include "CreativeRendererBootstrap.hpp"
@@ -91,6 +92,7 @@ using iggy3d_creative_app::buildBrushPaletteFromDescriptors;
 using iggy3d_creative_app::buildStandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::captureFrameToPng;
 using iggy3d_creative_app::createCreativeRenderer;
+using iggy3d_creative_app::resolveCreativeEditorAimCell;
 using iggy3d_creative_app::applyCreativeEditorCommandInput;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::CreativeEditorState;
@@ -124,7 +126,6 @@ using iggy3d_creative_app::pathPointsSummary;
 using iggy3d_creative_app::projectBoxToScreen;
 using iggy3d_creative_app::projectPointToScreen;
 using iggy3d_creative_app::ScreenPoint;
-using iggy3d_creative_app::snapGroundToCellCenter;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::appendStandaloneWireframeBoxEdges;
 using iggy3d_creative_app::toVec3;
@@ -377,25 +378,8 @@ int main(int argc, char** argv) {
         editor.yawDegrees, editor.pitchDegrees,
         /*cameraAnchorOverrideAvailable=*/true, editor.flyPos);
 
-    // ---- AIM -> GROUND CELL (Place mode) --------------------------------
-    // Cast the camera-forward ray to the Y=0 plane (eye + forward*t), giving a
-    // world XZ ground point, then snap XZ to the nearest 1 m cell center. This
-    // is the SAME camera-ray -> Y=0 math the interactive ground-plane Move uses;
-    // it feeds both the green ghost preview and the drop position. When the ray
-    // is (near) parallel to the ground we fall back to the point under the eye.
-    const Vec3 aimEye = frame.camera.worldEye;
-    const Vec3 aimFwd = frame.camera.worldForward;
-    double aimGroundX = static_cast<double>(aimEye.x);
-    double aimGroundZ = static_cast<double>(aimEye.z);
-    if (std::fabs(aimFwd.y) > 1.0e-4F) {
-      const float t = -aimEye.y / aimFwd.y;  // eye.y + t*fwd.y == 0
-      if (t > 0.0F) {
-        aimGroundX = static_cast<double>(aimEye.x + aimFwd.x * t);
-        aimGroundZ = static_cast<double>(aimEye.z + aimFwd.z * t);
-      }
-    }
     const Vec3 aimCellCenter =
-        snapGroundToCellCenter(aimGroundX, aimGroundZ, editor.placeCellSize);
+        resolveCreativeEditorAimCell(frame.camera, editor.placeCellSize);
 
     // ---- CLICK-TO-SELECT (generic over ALL objects) ------------------------
     // Scan every visible object's visual bounds with one world-space ray. The
