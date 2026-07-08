@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E222-render-draw-kind-metadata-remainder-audit.md`
+1. `ready/E223-openingmenuview-primitive-primary-metadata-handoff.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E222-render-draw-kind-metadata-remainder-audit.md`
+1. `ready/E223-openingmenuview-primitive-primary-metadata-handoff.md`
 
 ## Parking Lot
 
@@ -120,10 +120,10 @@ Held — do NOT promote to `ready/` on a guess:
   affordance/anchor and traversal payload emitters/consumers. E188 is the
   read-only remainder classification pass for parser/display/stable-id/save
   literals before any additional migration card is written.
-- Further draw-kind metadata cleanup after E127: `E222` is released as a
-  read-only current-state audit because E127 already centralized base
-  color/marker-size metadata and the remaining literals may be render-local
-  secondary/decorative or bridge-dispatch policy.
+- Further draw-kind metadata cleanup after E127: `E222` completed the read-only
+  current-state audit. It found no broad metadata/bridge-count card; only the
+  two `OpeningMenuView` primitive primary colors remain as safe handoff work.
+  `E223` is released for that tiny renderer-primary slice.
 - **ProductAppWindowState include-hygiene lane is CLOSED after E208.**
   E201-E207 removed all forward-declarable production/test-support header
   includes. The remaining header includes are complete-type required:
