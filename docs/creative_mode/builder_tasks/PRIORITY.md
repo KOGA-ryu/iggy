@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E188-traversal-tag-remainder-classification-audit.md`
+1. `ready/E189-product-test-infrastructure-audit.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E188-traversal-tag-remainder-classification-audit.md`
+1. `ready/E189-product-test-infrastructure-audit.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -123,6 +123,10 @@ Held — do NOT promote to `ready/` on a guess:
 - Further draw-kind metadata cleanup after E127, if render owners centralize
   secondary/decorative colors.
 - Further include-hygiene passes (the remaining ~11 headers) after E125.
+- **Product test infrastructure**: E189 is a read-only audit for duplicated
+  product-test assertions, receipt helpers, temp-root/options builders,
+  active-surface helpers, and window fixture setup. Do not create a giant test
+  harness before E189 returns exact migration clusters.
 - `npc_vision_lab` stale training_room fixture + the "same room checked in 3×"
   duplication smell — needs a single-source-of-truth card.
 - Remaining complexity-audit roadmap items (`OpeningMenuView` split,
