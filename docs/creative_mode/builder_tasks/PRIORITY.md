@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E203-product-header-include-hygiene-pass-4-ascii-room.md`
+1. `ready/E204-product-header-include-hygiene-pass-5-flow-scripted.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E203-product-header-include-hygiene-pass-4-ascii-room.md`
+1. `ready/E204-product-header-include-hygiene-pass-5-flow-scripted.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -124,7 +124,8 @@ Held — do NOT promote to `ready/` on a guess:
   secondary/decorative colors.
 - Further include-hygiene passes after E125: E201 completed pass 2 for the
   menu transition/action headers. E202 completed pass 3 for input-routing
-  headers. E203 is released as pass 4 for ASCII room headers.
+  headers. E203 completed pass 4 for ASCII room headers. E204 is released as
+  pass 5 for save-flow and scripted-driver headers.
 - **Product test infrastructure**: E189 audited duplicated product-test helpers.
   E190 added a header-only assertion/numeric helper over five tests. E191 added
   receipt helpers for four creative UI receipt/frame tests. E192 added the
