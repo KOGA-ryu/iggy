@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 
 #include "app/iggy3d/gameplay/GameplayFeedback.hpp"
@@ -85,6 +86,7 @@ struct ProductGameplayProjectionFrame {
   bool hasGameplayProjection = false;
   bool viewVisible = false;
   std::size_t sceneItemCount = 0;
+  std::uint64_t runtimeStateHash = 0;
 
   const SceneProjectionResult* scenePtr() const;
   const DebugProjectionResult* debugPtr() const;

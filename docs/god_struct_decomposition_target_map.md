@@ -34,11 +34,11 @@ Adversarial critique returned **NEEDS_FIXES**; these were verified against disk 
 
 `ProductAppWindowState` is a ~176-member god-struct because it is the junk drawer where every subsystem parked state that had no owner. The fix is not to patch scatter site by site — it is to **name the destination first**, then let each slice land toward it.
 
-The destination: **`ProductAppWindowState` becomes a thin composition of owned domain Stores that `AppKernel` holds**, plus a ~4-field app-global remainder of genuine window/SDL lifecycle bits. Each Store owns exactly one domain's truth. **Three** Stores carry **derived** state and therefore a **freshness token** (the `activeRoomCollision` exemplar discipline — stamp `{revision, sessionHash}`, rebuild on demand iff drifted); the rest are plain owned state or write-once-per-frame telemetry that just needs a home.
+The destination: **`ProductAppWindowState` becomes a thin composition of owned domain Stores that `AppKernel` holds**, plus an app-global remainder of genuine window/SDL lifecycle bits and automation control. Each Store owns exactly one domain's truth. **Three** Stores carry **derived** state and therefore a **freshness token** (the `activeRoomCollision` exemplar discipline — stamp `{revision, sessionHash}`, rebuild on demand iff drifted); the rest are plain owned state or write-once-per-frame telemetry that just needs a home.
 
 Two forces shape the map:
 
-- **The ownership-deficit audit** (`docs/ownership_deficit_audit.md`, Gate-1 ratified 2026-07-07) already ranks the first three landings — `activeRoom`→RoomStore (score 9.0), `activeCreative`→delete (4.0), `creativeFly`→CreativeFlyAnchorStore (3.0) — plus two pure **DELETEs** (`inputOwner` + `gameplayInputSuppressed`; `runtimeStateHash`). Those are removed, not rehomed.
+- **The ownership-deficit audit** (`docs/ownership_deficit_audit.md`, Gate-1 ratified 2026-07-07) already ranks the first three landings — `activeRoom`→RoomStore (score 9.0), `activeCreative`→delete (4.0), `creativeFly`→CreativeFlyAnchorStore (3.0) — plus pure **DELETEs** (`inputOwner`, `gameplayInputSuppressed`, and `runtimeStateHash`). Those are removed, not rehomed.
 - **The 10 receipt appenders** (`src/app/iggy3d/receipt/*Fields.cpp`) mirror domain boundaries — a **hint, not a law**. At 6 seams the receipt-emission domain differs from the state-ownership domain. **Do not fork a Store along a receipt seam.**
 
 ---
@@ -94,11 +94,11 @@ SDL/window-existence **lifecycle bits** — not domain truth, not derived caches
 
 The god-struct is decomposed when **all four hold**:
 
-1. **`ProductAppWindowState` is a thin composition** — its body contains only the ~4 app-global lifecycle bits (§3). Every other member has moved into one of the 11 Stores.
+1. **`ProductAppWindowState` is a thin composition** — its body contains only the app-global lifecycle/automation remainder plus the Store members. Every other member has moved into a Store or was deleted.
 2. **`AppKernel` holds the 11 Stores** as members (alongside today's `activeSession`/`creativeApp`/`frontend`/`saves`/`settings`/`worldSetupDraft`) and is the sole composer.
 3. **The three derived Stores carry a freshness token + one `ensure*` verb** — RoomStore (`ensureActiveRoomCollisionFresh`, `{roomRevision, sessionHash}`), CreativeFlyAnchorStore (`ensureFreshAnchor(session)`), and the CreativeIdentity mirror is **deleted** (identity reads hit `creativeApp.identity` directly). No stored derived value survives without a provenance stamp.
 4. **The audit's DELETEs are gone** — `window.inputOwner`, `window.gameplayInputSuppressed`, `window.runtimeStateHash` are removed (not rehomed); their readers re-derive via `resolveProductActiveSurface` / `session.stateHash()`.
 
-**Coverage invariant:** every member (lines 193–425) lands in **exactly one** of: a Store (1–11), the app-global remainder (§3), or the audit DELETE set (`inputOwner`, `gameplayInputSuppressed`, `runtimeStateHash`). None unaccounted; none twice.
+**Coverage invariant:** every member lands in **exactly one** of: a Store, the app-global remainder (§3), or an approved delete/rederive slice. None unaccounted; none twice.
 
 *Full source at `/private/tmp/claude-501/-Users-kogaryu-iggy3d/b9aedc32-186b-4229-a203-ff1cc12b8f24/scratchpad/target_map.md`.*

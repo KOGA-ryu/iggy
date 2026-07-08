@@ -4173,7 +4173,6 @@ bool creativeFlyAnchorReseedsAcrossBlankWorldLaunchesByEpoch() {
                           window,
                           app);
   const std::uint64_t firstEpoch = window.viewport.creativeWorldEpoch;
-  const std::uint64_t firstRuntimeHash = window.runtimeStateHash;
   iggy3d::recordCreativeFlyAnchorIntegrated(window, {9.0F, 9.0F, 9.0F});
   const bool integratedA =
       window.viewport.creativeFlyAnchor.provenance ==
@@ -4194,8 +4193,6 @@ bool creativeFlyAnchorReseedsAcrossBlankWorldLaunchesByEpoch() {
          expect(integratedA, "fly epoch first anchor integrated") &&
          expect(window.viewport.creativeWorldEpoch == firstEpoch + 1U,
                 "fly epoch increments across launches") &&
-         expect(window.runtimeStateHash == firstRuntimeHash,
-                "fly epoch test does not depend on runtime hash drift") &&
          expect(window.viewport.creativeFlyAnchor.provenance ==
                     iggy3d::ProductCreativeFlyAnchorProvenance::OriginFramed,
                 "fly epoch second launch origin provenance") &&

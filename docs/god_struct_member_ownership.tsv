@@ -9,7 +9,6 @@ creativeAuthoring	CreativeAuthoringStore
 gameplay	GameplayStore
 room	RoomStore
 saveSession	SaveSessionStore
-runtimeStateHash	delete
 viewport	ViewportStore
 automationControl	app-global-remainder
 presentPath	PresentPathStore

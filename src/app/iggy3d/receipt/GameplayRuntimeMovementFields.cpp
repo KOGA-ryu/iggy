@@ -21,10 +21,10 @@
 
 namespace iggy3d {
 
-void appendProductGameplayRuntimeMovementFields(RenderReceipt& receipt, const ProductAppWindowState& window, const ProductMovementProofPacket& movementProof) {
+void appendProductGameplayRuntimeMovementFields(RenderReceipt& receipt, const ProductAppWindowState& window, const ProductMovementProofPacket& movementProof, std::uint64_t runtimeStateHash) {
   appendReceiptField(receipt, "runtime_session_created", window.gameplay.runtimeSessionCreated);
   appendReceiptField(receipt, "gameplay_active", window.gameplay.gameplayActive);
-  appendReceiptField(receipt, "runtime_state_hash", window.runtimeStateHash);
+  appendReceiptField(receipt, "runtime_state_hash", runtimeStateHash);
   appendReceiptField(receipt, "gameplay_view_visible",
                      window.viewport.gameplayViewVisible);
   appendReceiptField(receipt, "scene_item_count", window.gameplay.sceneItemCount);

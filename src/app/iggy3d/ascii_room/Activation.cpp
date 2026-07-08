@@ -130,7 +130,6 @@ ProductAsciiRoomActivationResult activateProductAsciiRoomPreview(
   window.frontendShell.launchAction = "ascii_room_activate";
   window.frontendShell.launchStatus = result.status;
   window.frontendShell.packageLoadStatus = "ascii_room_authoring";
-  window.runtimeStateHash = result.runtimeStateHash;
   recordActivationResult(result, window);
   return result;
 }

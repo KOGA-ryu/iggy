@@ -139,7 +139,10 @@ int AppKernel::run(const ProductAppOptions& options) {
                                settings,
                                window,
                                saves,
-                               creativeApp.identity));
+                               creativeApp.identity,
+                               activeSession.has_value()
+                                   ? activeSession->stateHash()
+                                   : 0U));
   }
 
   return window.requested && !window.created ? 77 : 0;

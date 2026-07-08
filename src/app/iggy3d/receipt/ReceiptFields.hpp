@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 
 #include "app/iggy3d/ProductAppWindowState.hpp"
@@ -29,7 +30,7 @@ void appendProductWorldAuthoringFields(RenderReceipt& receipt, const ProductAppW
 void appendProductActiveRoomFields(RenderReceipt& receipt, const ProductAppWindowState& window);
 void appendProductStartupWorldBuildoutFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window, const ProductSaveBridgeResult& saves);
 void appendProductSaveStateFields(RenderReceipt& receipt, const FrontendState& frontend, const ProductAppWindowState& window, const creative::CreativeActiveIdentity& creativeIdentity);
-void appendProductGameplayRuntimeMovementFields(RenderReceipt& receipt, const ProductAppWindowState& window, const ProductMovementProofPacket& movementProof);
+void appendProductGameplayRuntimeMovementFields(RenderReceipt& receipt, const ProductAppWindowState& window, const ProductMovementProofPacket& movementProof, std::uint64_t runtimeStateHash);
 void appendProductDebugHudFields(RenderReceipt& receipt, const ProductAppWindowState& window, const MovementDebugHud& movementHud, const NpcBehaviorDebugHud& npcBehaviorHud, const PhysicsDebugHud& physicsHud);
 void appendProductGameplaySceneStateFields(RenderReceipt& receipt, const ProductAppWindowState& window);
 void appendProductFeedbackSurfaceAutomationVulkanFields(RenderReceipt& receipt, const ProductAppWindowState& window, const GameplayFeedback& feedback, const ProductActiveSurfaceFrame& activeSurface, const ProductVulkanGameplayReadiness& vulkanGameplayReadiness);

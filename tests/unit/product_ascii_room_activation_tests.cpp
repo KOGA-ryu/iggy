@@ -86,7 +86,6 @@ bool activatesSessionFromAsciiRoom() {
          expect(session->state().world.size() == 5U, "world entity count") &&
          expect(window.gameplay.gameplayActive, "window gameplay active") &&
          expect(window.gameplay.runtimeSessionCreated, "window runtime session") &&
-         expect(window.runtimeStateHash == session->stateHash(), "window hash") &&
          expect(window.creativeAuthoring.asciiRoomActivation.runtimeHash == session->stateHash(),
                 "activation hash") &&
          expect(window.creativeAuthoring.asciiRoomActivation.npcCount == 1U,

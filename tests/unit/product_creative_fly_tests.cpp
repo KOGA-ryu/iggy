@@ -183,18 +183,14 @@ bool ensureFreshReseedsWhenEpochChanges() {
   using iggy3d::ProductCreativeFlyAnchorProvenance;
 
   iggy3d::ProductAppWindowState window;
-  window.runtimeStateHash = 42;
   window.viewport.creativeWorldEpoch = 1;
   iggy3d::recordCreativeFlyAnchorIntegrated(window, {9.0F, 8.0F, 7.0F});
 
-  const std::uint64_t sameRuntimeHash = window.runtimeStateHash;
   iggy3d::bumpCreativeWorldEpoch(window);
   const iggy3d::ProductCreativeFlyAnchorStore& store =
       iggy3d::ensureFreshCreativeFlyAnchor(window, nullptr);
 
-  return expect(window.runtimeStateHash == sameRuntimeHash,
-                "runtime hash unchanged") &&
-         expect(store.seededFromWorldEpoch == 2, "reseeded epoch") &&
+  return expect(store.seededFromWorldEpoch == 2, "reseeded epoch") &&
          expect(store.provenance ==
                     ProductCreativeFlyAnchorProvenance::PlayerSeeded,
                 "reseeded via session ensure path") &&

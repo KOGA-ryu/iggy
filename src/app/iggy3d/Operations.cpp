@@ -153,7 +153,6 @@ bool createProductSessionFromPackage(const PackageLoadResult& package,
   (void)ensureActiveRoomCollisionFresh(window, &*activeSession);
   window.gameplay.runtimeSessionCreated = true;
   window.gameplay.gameplayActive = true;
-  window.runtimeStateHash = activeSession->stateHash();
   window.frontendShell.launchStatus = "runtime_session_created";
   return true;
 }
@@ -248,7 +247,6 @@ bool createCreativeBlankSession(std::optional<Session>& activeSession,
   activeSession = std::move(session.value);
   window.gameplay.runtimeSessionCreated = true;
   window.gameplay.gameplayActive = true;
-  window.runtimeStateHash = activeSession->stateHash();
   window.frontendShell.launchStatus = "runtime_session_created";
   return true;
 }
@@ -411,7 +409,6 @@ void clearProductGameplayLaunchState(std::optional<Session>& activeSession,
                                      ProductAppWindowState& window) {
   window.gameplay.gameplayActive = false;
   window.gameplay.runtimeSessionCreated = false;
-  window.runtimeStateHash = 0;
   activeRoom(window) = {};
   activeRoomCollision(window) = {};
   bumpActiveRoomRevision(window);
@@ -1633,7 +1630,6 @@ void launchProductSaveSlot(const ProductAppOptions& options,
   }
   (void)ensureActiveRoomCollisionFresh(window, &*activeSession);
   window.frontendShell.launchStatus = loaded.status;
-  window.runtimeStateHash = activeSession->stateHash();
   window.inputDevice.interactionMode = ProductInteractionMode::Player;
   enterProductGameplayTransition(frontend, window, launchAction);
 }

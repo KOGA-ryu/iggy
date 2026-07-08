@@ -404,7 +404,6 @@ void recordProductGameplayTapeRun(const ProductGameplayTapeRunResult& run,
   window.gameplay.gameplayTape.aiBehavior = run.aiBehavior;
   window.gameplay.gameplayTape.aiIntent = run.aiIntent;
   window.gameplay.sessionOutcome = run.sessionOutcome;
-  window.runtimeStateHash = run.runtimeStateHash;
   // branch-gate: BG-1032
   if (!run.ok) {
     window.frontendShell.status = "gameplay_tape_failed";

@@ -10,10 +10,11 @@ mirror delete is COMPLETE (E136-E139). The `creativeFly` anchor store is
 COMPLETE (E142-E147). The structural `activeRoom` regroup into RoomStore is
 COMPLETE (E148-E152). The SaveSessionStore bulk move is COMPLETE (E153).
 
-**Also complete:** the 2 dead write-only fields `window.inputOwner` /
-`window.gameplayInputSuppressed` were deleted (`36ceeac3`). After E178, the
-god-struct remainder is 15 top-level members: 10 store members, 5 app-global
-scalars, and the pending `runtimeStateHash` delete. **GameplayStore is
+**Also complete:** the dead write-only fields `window.inputOwner` /
+`window.gameplayInputSuppressed` were deleted (`36ceeac3`), and
+`runtimeStateHash` was deleted/rederived in E179. After E179, the god-struct
+remainder is 14 top-level members: 9 store members and 5 app-global scalars.
+**GameplayStore is
 COMPLETE**: E154 was decomposed into E157-E160 and all four child slices are
 complete. Disjoint from completed RoomStore/SaveSessionStore work;
 `runtimeSessionCreated` now belongs to GameplayStore.
@@ -113,8 +114,8 @@ Held — do NOT promote to `ready/` on a guess:
     moved the final deferred `productVulkanMenu` field.
   - **#2 `activeCreative`→delete** (`CreativeIdentityStore`) — cheapest standalone, own Gate-0.
   - **#3 `creativeFly`→`CreativeFlyAnchorStore`** — own preflight.
-  - Two delete-cleanups (`inputOwner`/`gameplayInputSuppressed`,
-    `runtimeStateHash`). `runtimeStateHash` remains pending after E177.
+  - Delete-cleanups (`inputOwner`/`gameplayInputSuppressed`, `runtimeStateHash`)
+    are complete.
 - **Traversal-tag emitter/consumer migration** across RoomBake, ASCII room,
   movement, collision, and display/debug strings: after the catalog contract is
   stable. Do not migrate false-positive receipt/render strings blindly.

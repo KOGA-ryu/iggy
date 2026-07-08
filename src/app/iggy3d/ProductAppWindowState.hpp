@@ -44,7 +44,6 @@ struct ProductAppWindowState {
   GameplayStore gameplay;
   ProductRoomStore room;
   SaveSessionStore saveSession;
-  std::uint64_t runtimeStateHash = 0;
   ProductViewportState viewport;
   ProductAutomationControlState automationControl;
   PresentPathStore presentPath;

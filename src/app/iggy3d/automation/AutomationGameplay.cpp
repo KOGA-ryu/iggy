@@ -150,7 +150,6 @@ bool applyAutomationGameplayPlayerPosition(
   }
 
   state.currentStateHash = computeStateHash(state);
-  context.window.runtimeStateHash = context.activeSession->stateHash();
   context.window.gameplay.playerPositionChanged = true;
   return true;
 }

@@ -917,7 +917,7 @@ void presentProductSdlFrame(ProductWindowFramePresenterRequest request) {
                           request.window.creativeAuthoring.worldSetup.dungeonDraftSelectedGlyph,
                           request.window.creativeAuthoring.worldSetup.dungeonDraftLastGlyph,
                           request.window.gameplay.gameplayActive,
-                          request.window.runtimeStateHash,
+                          request.projectionFrame.runtimeStateHash,
                           request.projectionFrame.viewportFramePtr(),
                           &request.projectionFrame.feedback,
                           &request.projectionFrame.interactionModeHud,

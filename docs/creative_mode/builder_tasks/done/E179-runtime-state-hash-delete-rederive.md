@@ -136,3 +136,78 @@ Append:
 - Focused/full test results.
 - Confirmation that `creativeWorldEpoch` and `automationControl` were untouched.
 - Concerns/deferred work.
+
+## Completion Brief - E179
+
+- Files changed:
+  - `docs/creative_mode/builder_tasks/PRIORITY.md`
+  - `docs/god_struct_decomposition_target_map.md`
+  - `docs/god_struct_member_ownership.tsv`
+  - `src/app/iggy3d/AppKernel.cpp`
+  - `src/app/iggy3d/Operations.cpp`
+  - `src/app/iggy3d/ProductAppWindowState.hpp`
+  - `src/app/iggy3d/ReceiptBuilder.cpp`
+  - `src/app/iggy3d/ReceiptBuilder.hpp`
+  - `src/app/iggy3d/ascii_room/Activation.cpp`
+  - `src/app/iggy3d/automation/AutomationGameplay.cpp`
+  - `src/app/iggy3d/gameplay/Controller.cpp`
+  - `src/app/iggy3d/gameplay/ProjectionRefresh.cpp`
+  - `src/app/iggy3d/gameplay/ProjectionRefresh.hpp`
+  - `src/app/iggy3d/gameplay/TapeRunner.cpp`
+  - `src/app/iggy3d/receipt/GameplayRuntimeMovementFields.cpp`
+  - `src/app/iggy3d/receipt/ReceiptFields.hpp`
+  - `src/app/iggy3d/window/FramePresenter.cpp`
+  - `tests/unit/product_ascii_room_activation_tests.cpp`
+  - `tests/unit/product_creative_fly_tests.cpp`
+  - `tests/unit/product_creative_world_launch_tests.cpp`
+
+- Exact deletion/rederive shape:
+  - Deleted top-level `ProductAppWindowState::runtimeStateHash`.
+  - Removed the `runtimeStateHash	delete` row from `docs/god_struct_member_ownership.tsv`.
+  - Updated the target map and priority text to describe `runtimeStateHash` as deleted/rederived, not rehomed.
+  - Kept local operation/result payload fields that are not window storage.
+
+- Receipt runtime hash source:
+  - `buildProductAppReceipt(...)` now takes a final defaulted `std::uint64_t runtimeStateHash = 0` parameter.
+  - `AppKernel.cpp` passes `activeSession.has_value() ? activeSession->stateHash() : 0U` for production receipts.
+  - `appendProductGameplayRuntimeMovementFields(...)` receives that explicit value and writes the existing `runtime_state_hash` receipt key.
+  - Receipt key order and values stayed golden-compatible.
+
+- SDL gameplay panel runtime hash source:
+  - Added `ProductGameplayProjectionFrame::runtimeStateHash`.
+  - `buildProductGameplayProjectionFrame(...)` populates the frame value from the active session hash or `0U`.
+  - `FramePresenter.cpp` now passes `request.projectionFrame.runtimeStateHash` to `drawOpeningMenuView(...)`.
+
+- Removed writer sites:
+  - Removed writer-only `window.runtimeStateHash` assignments from `Operations.cpp`, `ascii_room/Activation.cpp`, `automation/AutomationGameplay.cpp`, `gameplay/Controller.cpp`, `gameplay/ProjectionRefresh.cpp`, and `gameplay/TapeRunner.cpp`.
+  - Tests no longer seed/assert the deleted window mirror; they continue asserting the owning local/result hashes where applicable.
+
+- Remaining `runtimeStateHash` hit classification:
+  - `ReceiptBuilder.*`, `receipt/ReceiptFields.hpp`, and `receipt/GameplayRuntimeMovementFields.cpp`: explicit receipt parameter plumbing.
+  - `gameplay/ProjectionRefresh.*`, `window/FramePresenter.cpp`, and `view/OpeningMenuView.*`: per-frame projection payload and SDL gameplay panel parameter.
+  - `ascii_room/Activation.*` and `gameplay/TapeRunner.*`: local operation/result payloads retained by scope.
+  - Historical docs and completed task cards still mention prior `runtimeStateHash` context; they are not active window storage.
+
+- Required grep results:
+  - `rg -n "window\\.runtimeStateHash\\b|request\\.window\\.runtimeStateHash\\b|context\\.window\\.runtimeStateHash\\b" ...` produced no output.
+  - `rg -n "\\bruntimeStateHash\\b" src/app/iggy3d/ProductAppWindowState.hpp docs/god_struct_member_ownership.tsv` produced no output.
+  - Broad `runtimeStateHash` scan was classified above.
+
+- Receipt golden and ownership coverage results:
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests`: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+  - `/Users/kogaryu/iggy3d/build/product_god_struct_ownership_coverage_tests`: `assigned=14 CreativeAuthoringStore=1 DebugHudStore=1 FrontendWindowShell=1 GameplayStore=1 InputDeviceStore=1 PresentPathStore=1 RoomStore=1 SaveSessionStore=1 ViewportStore=1 app-global-remainder=5`.
+  - `git diff -- tests/golden/product_receipt_key_order.golden` produced no output.
+
+- Focused/full test results:
+  - `cmake --build /Users/kogaryu/iggy3d/build -j10` passed.
+  - Focused CTest passed: `7/7` for `product_receipt_key_order_tests`, `product_god_struct_ownership_coverage_tests`, `product_creative_fly_tests`, `product_creative_world_launch_tests`, `product_ascii_room_activation_tests`, `product_vulkan_room_frame_tests`, and `product_gameplay_tape_runner_tests`.
+  - Full CTest passed: `260/260` (`/tmp/iggy3d_e179_ctest.log`).
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files produced no output.
+
+- Confirmation that `creativeWorldEpoch` and `automationControl` were untouched:
+  - No `creativeWorldEpoch` storage or code path was moved or reshaped by E179.
+  - No `automationControl` storage or code path was moved or reshaped by E179.
+
+- Concerns/deferred work:
+  - None for E179. `runtimeStateHash` is no longer `ProductAppWindowState` storage; current consumers rederive/pass the value at their consumption seams.

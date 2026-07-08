@@ -607,7 +607,6 @@ bool resetProductPlayerToSpawn(Session& session,
   window.gameplay.gameplayJump.status = "reset";
   window.gameplay.gameplayJump.reasonCode = std::string(reason);
   window.gameplay.playerPositionChanged = true;
-  window.runtimeStateHash = session.stateHash();
   return true;
 }
 
@@ -1284,7 +1283,6 @@ bool tryProductWallJump(Session& session, ProductAppWindowState& window) {
   window.gameplay.gameplayJump.status = "wall_jump";
   window.gameplay.gameplayJump.reasonCode = "gameplay_jump_wall_jump";
   window.gameplay.playerPositionChanged = true;
-  window.runtimeStateHash = session.stateHash();
   return true;
 }
 
@@ -1320,7 +1318,6 @@ bool tryProductTraversalJump(Session& session, ProductAppWindowState& window) {
   // branch-gate: BG-1156
   if (result.traversalAttempted) {
     state.currentStateHash = computeStateHash(state);
-    window.runtimeStateHash = session.stateHash();
   }
   // branch-gate: BG-1156
   if (result.accepted) {
@@ -1428,7 +1425,6 @@ void advanceProductJump(Session& session,
   // branch-gate: BG-1153
   window.gameplay.gameplayJump.reasonCode =
       landed ? "gameplay_jump_landed" : "gameplay_jump_airborne";
-  window.runtimeStateHash = session.stateHash();
   // branch-gate: BG-1153
   if (landed && productJumpBufferLive(window)) {
     const EntityState* landedEntity = productPlayerEntity(session);
@@ -1806,7 +1802,6 @@ void submitProductAirborneMove(Session& session,
   window.gameplay.gameplayMovement.status = "moved";
   window.gameplay.playerPositionChanged = true;
   recordProductAirborneMovementDebug(window, start, finalPosition);
-  window.runtimeStateHash = session.stateHash();
 }
 
 bool productMovementDebugChangedPosition(const ProductAppWindowState& window) {
@@ -2047,7 +2042,6 @@ bool applyProductLedgeFallMoveFallback(Session& session,
   window.gameplay.gameplayMovement.status = "moved";
   recordProductLedgeFallMovementDebug(window, before, finalPosition);
   beginProductFallIfUnsupported(session, window, collisionSurfaces);
-  window.runtimeStateHash = session.stateHash();
   return true;
 }
 
@@ -2135,7 +2129,6 @@ void submitProductGameplayCommand(Session& session,
       beginProductFallIfUnsupported(session, window, collisionSurfaces);
     }
   }
-  window.runtimeStateHash = session.stateHash();
 }
 
 void submitProductMove(Session& session,
@@ -2408,7 +2401,6 @@ void applyProductResetActionPhase(Session& session,
   window.gameplay.gameplayCommand.submitted = true;
   window.gameplay.gameplayCommand.accepted = reset.reset;
   window.gameplay.gameplayCommand.status = reset.reset ? "accepted" : "rejected";  // branch-gate: BG-1155
-  window.runtimeStateHash = session.stateHash();
 }
 
 }  // namespace

@@ -35,7 +35,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductAppWindowState& window,
                                      const ProductSaveBridgeResult& saves,
                                      const creative::CreativeActiveIdentity&
-                                         creativeIdentity) {
+                                         creativeIdentity,
+                                     std::uint64_t runtimeStateHash) {
   RenderReceipt receipt;
   const ProductActiveSurfaceFrame activeSurface = resolveProductActiveSurface(
       productActiveSurfaceContextForWindow(frontend, window));
@@ -81,7 +82,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
   appendProductFrontendSettingsWindowFields(receipt, options, frontend, settings, window, creativeSurface, mapMakerLive);
   appendProductStartupWorldBuildoutFields(receipt, frontend, window, saves);
   appendProductSaveStateFields(receipt, frontend, window, creativeIdentity);
-  appendProductGameplayRuntimeMovementFields(receipt, window, movementProof);
+  appendProductGameplayRuntimeMovementFields(receipt, window, movementProof,
+                                             runtimeStateHash);
   appendProductDebugHudFields(receipt, window, movementHud, npcBehaviorHud, physicsHud);
   appendProductGameplaySceneStateFields(receipt, window);
   appendProductFeedbackSurfaceAutomationVulkanFields(receipt, window, feedback, activeSurface, vulkanGameplayReadiness);

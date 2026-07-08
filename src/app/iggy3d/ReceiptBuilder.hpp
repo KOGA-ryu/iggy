@@ -33,7 +33,8 @@ RenderReceipt buildProductAppReceipt(const ProductAppOptions& options,
                                      const ProductSaveBridgeResult& saves,
                                      const creative::CreativeActiveIdentity&
                                          creativeIdentity =
-                                             defaultProductReceiptCreativeIdentity());
+                                             defaultProductReceiptCreativeIdentity(),
+                                     std::uint64_t runtimeStateHash = 0);
 
 void recordProductPhysicsMovementPlannerTickProof(
     ProductAppWindowState& window,
