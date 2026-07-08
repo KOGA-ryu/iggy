@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -222,3 +222,42 @@ When done, report:
 - focused build/CTest results
 - diff/whitespace checks
 - confirmation that product new-world and current-session save/write behavior were not moved
+
+## Completion Brief
+
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/Operations.hpp`
+  - `src/app/iggy3d/Operations.cpp`
+  - `src/app/iggy3d/menu/ActionHandlers.cpp`
+  - `src/app/iggy3d/world/ProductSessionLaunch.hpp`
+  - `src/app/iggy3d/world/ProductSessionLaunch.cpp`
+  - this task card
+- Exact APIs moved/added:
+  - Removed from `Operations.hpp` and declared in `world/ProductSessionLaunch.hpp`: `launchProductContinueSave(...)`, `launchProductLoadSaveSelection(...)`.
+  - Added narrow public bootstrap declarations in `world/ProductSessionLaunch.hpp`: `createProductSessionFromPackage(...)`, `createProductSession(...)`.
+  - Moved into `world/ProductSessionLaunch.cpp`: `packageLoadStatusName(...)`, session-launch copy of `elapsedMicroseconds(...)`, `createProductSessionFromPackage(...)`, `createProductSession(...)`, `recordProductSaveLoadSelection(...)`, `recordProductSaveLoadResult(...)`, `recordSavedRoomMarkerBindingResult(...)`, `saveSlotById(...)`, file-local `launchProductSaveSlot(...)`, `launchProductContinueSave(...)`, `launchProductLoadSaveSelection(...)`.
+- New location:
+  - `launchProductContinueSave(...)` and `launchProductLoadSaveSelection(...)` now live in `src/app/iggy3d/world/ProductSessionLaunch.cpp`, declared by `src/app/iggy3d/world/ProductSessionLaunch.hpp`.
+- Product new-world bootstrap:
+  - `createProductSession(...)` and `createProductSessionFromPackage(...)` moved to `ProductSessionLaunch`.
+  - `Operations.cpp::launchProductNewWorld(...)` still owns product new-world/ASCII authoring and calls the moved bootstrap through `app/iggy3d/world/ProductSessionLaunch.hpp`.
+- Remaining `Operations.hpp` include users:
+  - Direct Operations-owned API users remain: `AppKernel.cpp`, `ActionHandlers.cpp`, `product_creative_world_launch_tests.cpp`, `product_starter_menu_action_tests.cpp`, and `product_window_input_frame_tests.cpp` for `launchProductNewWorld(...)`; `save/Flow.cpp` for `writeProductCurrentSessionSave(...)`; `CreativeWorldOperations.cpp` and `ProductSessionLaunch.cpp` for creative blank-stage / gameplay-launch cleanup wrappers.
+  - Other existing product test/window includes were not chased because this card explicitly limited include cleanup to direct compile fallout.
+- Required grep classifications:
+  - `Operations.hpp`: no `launchProductContinueSave(...)` or `launchProductLoadSaveSelection(...)` declarations remain.
+  - `Operations.cpp`: no save/load launch helper definitions remain; it retains calls to `createProductSessionFromPackage(...)` / `createProductSession(...)` from `launchProductNewWorld(...)`; it also retains its file-local `elapsedMicroseconds(...)` for the creative blank-stage timing path.
+  - `ProductSessionLaunch.hpp/.cpp`: own the moved public declarations/definitions and save/load private helpers.
+- Receipt golden result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- Focused build/CTest results:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_starter_menu_action_tests product_window_input_frame_tests product_save_delete_executor_tests product_automation_dispatch_tests product_creative_world_launch_tests product_receipt_key_order_tests -j10` passed. Build emitted an existing unused-variable warning in `product_starter_menu_action_tests.cpp`.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_starter_menu_action_tests|product_window_input_frame_tests|product_save_delete_executor_tests|product_automation_dispatch_tests|product_creative_world_launch_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 6/6.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card found no hits.
+- Confirmations:
+  - Product new-world creation and ASCII authoring behavior were not moved.
+  - Current-session save/write behavior was not moved.
+  - Save-slot browser/delete/recover operations, product world-template operations, creative world operations, save format, receipt keys/order/values, CMake test definitions, staging, commit, push, and window launch were not changed.

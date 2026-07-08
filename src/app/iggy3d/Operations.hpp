@@ -34,17 +34,5 @@ void launchProductNewWorld(const ProductAppOptions& options,
                            FrontendState& frontend,
                            std::optional<Session>& activeSession,
                            ProductAppWindowState& window);
-void launchProductContinueSave(const ProductAppOptions& options,
-                               const ProductWorldTemplate& world,
-                               const ProductSaveBridgeResult& saves,
-                               FrontendState& frontend,
-                               std::optional<Session>& activeSession,
-                               ProductAppWindowState& window);
-void launchProductLoadSaveSelection(const ProductAppOptions& options,
-                                    const ProductWorldTemplate& world,
-                                    const ProductSaveBridgeResult& saves,
-                                    FrontendState& frontend,
-                                    std::optional<Session>& activeSession,
-                                    ProductAppWindowState& window);
 
 }  // namespace iggy3d
