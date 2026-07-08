@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E254-product-receipt-field-rows-g4-feedback-surface-vulkan.md`
+1. `ready/E255-product-receipt-field-rows-g5-creative-pick-wireframe.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E254-product-receipt-field-rows-g4-feedback-surface-vulkan.md`
+1. `ready/E255-product-receipt-field-rows-g5-creative-pick-wireframe.md`
 
 ## Parking Lot
 
@@ -196,6 +196,7 @@ Held — do NOT promote to `ready/` on a guess:
   change. E252 completed G2 by table-driving
   `GameplayRuntimeMovementFields.cpp` with a file-local context and no golden
   change. E253 completed G3 by table-driving `WorldAuthoringFields.cpp` with
-  no golden change. E254 is released as G4 for
-  `FeedbackSurfaceAutomationVulkanFields.cpp`, the next direct multi-context
-  receipt row candidate.
+  no golden change. E254 completed G4 by table-driving
+  `FeedbackSurfaceAutomationVulkanFields.cpp` with a file-local context and no
+  golden change. E255 is released as G5 for `CreativePickWireframeFields.cpp`,
+  the next direct receipt row candidate.
