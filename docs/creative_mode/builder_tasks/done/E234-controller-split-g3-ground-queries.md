@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Objective
 
@@ -115,3 +115,36 @@ Run a focused trailing-whitespace scan over touched files and this card.
   reset/fall behavior drift.
 
 No stage, commit, push, broad CTest, or window launch.
+
+## Completion Brief
+
+- Card moved to done: yes, after this brief was appended.
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/gameplay/Controller.cpp`
+  - `src/app/iggy3d/gameplay/ControllerGroundQueries.hpp`
+  - `src/app/iggy3d/gameplay/ControllerGroundQueries.cpp`
+  - `docs/creative_mode/builder_tasks/done/E234-controller-split-g3-ground-queries.md`
+- Helper/API shape added:
+  - `ControllerGroundQueries.hpp/.cpp` exports `findHighestWalkableGroundAtOrBelow(...)`, `playerHasNearbyGround(...)`, and `findLowestWalkableFloorY(...)`.
+  - `surfaceContainsXZ(...)` and `walkableSurfaceHeightAt(...)` are file-local in `ControllerGroundQueries.cpp`.
+  - `kProductGameplayGroundContactToleranceMeters` is the single shared controller-owned contact tolerance constant used by both `Controller.cpp` and `ControllerGroundQueries.cpp`.
+- Controller migration:
+  - `Controller.cpp` now includes `ControllerGroundQueries.hpp` and retains only call sites for the exported ground-query helpers.
+  - Reset, fall, ledge fallback, jump, dash, wall traversal, command submission, target/outcome, room anchors, and receipt behavior were not moved.
+- CMake:
+  - Added `src/app/iggy3d/gameplay/ControllerGroundQueries.cpp` beside the other controller split sources.
+- Required grep classification:
+  - Lower-level `surfaceContainsXZ(...)` and `walkableSurfaceHeightAt(...)` definitions live only in `ControllerGroundQueries.cpp`.
+  - Exported helper declarations/definitions live in `ControllerGroundQueries.*`.
+  - `Controller.cpp` retains call sites only for the exported helpers.
+- Receipt golden result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_gameplay_controller_tests product_active_room_collision_tests product_receipt_key_order_tests -j10` passed.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_gameplay_controller_tests|product_active_room_collision_tests|product_receipt_key_order_tests)$' --output-on-failure` passed.
+  - Required ground-query `rg` classification was run.
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card passed.
+- Concerns/deferred:
+  - None. No stage, commit, push, broad CTest, or window launch was performed.

@@ -10,6 +10,7 @@
 #include "app/input/ActionState.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ControllerGroundQueries.hpp"
 #include "app/iggy3d/gameplay/ControllerKinematics.hpp"
 #include "app/iggy3d/gameplay/ControllerMovementProof.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
@@ -30,8 +31,6 @@ namespace iggy3d {
 namespace {
 
 constexpr float kPi = 3.14159265358979323846F;
-constexpr float kGameplayGroundFootprintToleranceMeters = 0.35F;
-constexpr float kGameplayGroundContactToleranceMeters = 0.12F;
 constexpr float kGameplayResetBelowLowestFloorMeters = 6.0F;
 constexpr float kGameplayResetZoneRadiusMeters = 0.70F;
 constexpr float kGameplayResetZoneVerticalToleranceMeters = 1.20F;
@@ -297,80 +296,6 @@ bool setProductPlayerPosition(Session& session, EntityId actor, const Vec3& posi
   return true;
 }
 
-bool surfaceContainsXZ(const CollisionSurfaceView& surface,
-                       Vec3 position,
-                       float toleranceMeters) {
-  return position.x >= surface.bounds.min.x - toleranceMeters &&
-         position.x <= surface.bounds.max.x + toleranceMeters &&
-         position.z >= surface.bounds.min.z - toleranceMeters &&
-         position.z <= surface.bounds.max.z + toleranceMeters;
-}
-
-bool walkableSurfaceHeightAt(const CollisionSurfaceView& surface,
-                             Vec3 position,
-                             float& heightMeters) {
-  // branch-gate: BG-1169
-  if (surface.role != CollisionSurfaceRole::Walkable ||
-      std::fabs(surface.normal.y) <= 0.0001F ||
-      !surfaceContainsXZ(surface, position, kGameplayGroundFootprintToleranceMeters)) {
-    return false;
-  }
-
-  const float height =
-      surface.planePoint.y -
-      ((surface.normal.x * (position.x - surface.planePoint.x)) +
-       (surface.normal.z * (position.z - surface.planePoint.z))) /
-          surface.normal.y;
-  // branch-gate: BG-1170
-  if (!std::isfinite(height)) {
-    return false;
-  }
-  heightMeters = height;
-  return true;
-}
-
-bool findHighestWalkableGroundAtOrBelow(const SpatialSurfaceSet* surfaces,
-                                        Vec3 position,
-                                        float maxY,
-                                        float& groundY) {
-  // branch-gate: BG-1171
-  if (surfaces == nullptr) {
-    return false;
-  }
-
-  bool found = false;
-  float bestY = 0.0F;
-  for (const CollisionSurfaceView& surface : surfaces->surfaces()) {
-    float height = 0.0F;
-    // branch-gate: BG-1169
-    if (!walkableSurfaceHeightAt(surface, position, height) ||
-        height > maxY + kGameplayGroundContactToleranceMeters) {
-      continue;
-    }
-    // branch-gate: BG-1172
-    if (!found || height > bestY) {
-      found = true;
-      bestY = height;
-    }
-  }
-  // branch-gate: BG-1171
-  if (!found) {
-    return false;
-  }
-  groundY = bestY;
-  return true;
-}
-
-bool playerHasNearbyGround(const SpatialSurfaceSet* surfaces, Vec3 position) {
-  float groundY = 0.0F;
-  return findHighestWalkableGroundAtOrBelow(
-             surfaces,
-             position,
-             position.y + kGameplayGroundContactToleranceMeters,
-             groundY) &&
-         std::fabs(position.y - groundY) <= kGameplayGroundContactToleranceMeters;
-}
-
 float horizontalDistanceSquared(Vec3 lhs, Vec3 rhs) {
   const float dx = lhs.x - rhs.x;
   const float dz = lhs.z - rhs.z;
@@ -386,39 +311,6 @@ const RoomAnchorAsset* findRoomAnchorByKind(const ProductAppWindowState& window,
     }
   }
   return nullptr;
-}
-
-bool findLowestWalkableFloorY(const SpatialSurfaceSet* surfaces, float& floorY) {
-  // branch-gate: BG-1183
-  if (surfaces == nullptr) {
-    return false;
-  }
-
-  bool found = false;
-  float lowest = 0.0F;
-  for (const CollisionSurfaceView& surface : surfaces->surfaces()) {
-    // branch-gate: BG-1176
-    if (surface.role != CollisionSurfaceRole::Walkable ||
-        std::fabs(surface.normal.y) <= 0.0001F) {
-      continue;
-    }
-    const float candidate = surface.planePoint.y;
-    // branch-gate: BG-1177
-    if (!std::isfinite(candidate)) {
-      continue;
-    }
-    // branch-gate: BG-1178
-    if (!found || candidate < lowest) {
-      found = true;
-      lowest = candidate;
-    }
-  }
-  // branch-gate: BG-1184
-  if (!found) {
-    return false;
-  }
-  floorY = lowest;
-  return true;
 }
 
 const RoomAnchorAsset* findResetZoneAt(const ProductAppWindowState& window,
@@ -1258,7 +1150,7 @@ void advanceProductJump(Session& session,
           entity->transform.position,
           previousY,
           landingY) &&
-      nextY <= landingY + kGameplayGroundContactToleranceMeters;
+      nextY <= landingY + kProductGameplayGroundContactToleranceMeters;
   if ((collisionSurfaces == nullptr && nextY <= window.gameplay.gameplayJump.groundY &&
        nextVelocity <= 0.0F) ||
       collisionLanding) {
@@ -1717,7 +1609,7 @@ bool applyProductLedgeFallMoveFallback(Session& session,
           collisionSurfaces, finalPosition, before.y, destinationGroundY);
   // branch-gate: BG-1188
   if (hasDestinationGround &&
-      destinationGroundY >= before.y - kGameplayGroundContactToleranceMeters) {
+      destinationGroundY >= before.y - kProductGameplayGroundContactToleranceMeters) {
     return false;
   }
   // branch-gate: BG-1188
