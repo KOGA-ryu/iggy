@@ -259,6 +259,20 @@ bool authoredAffordanceRequiresMatchingMeshRole() {
          expect(registry.slots.empty(), "role rejected slots");
 }
 
+bool nonMovementCatalogTagsDoNotBuildAffordances() {
+  iggy3d::RoomAsset room;
+  room.id = "non_movement_tag_test";
+  room.staticMeshes.push_back(railMesh("candidate_rail"));
+  room.spatialSurfaces.push_back(traversalTagSurface(
+      "candidate_affordance", "candidate_rail", {"clamber_candidate"}));
+
+  const iggy3d::MovementTraversalSlotRegistry registry =
+      iggy3d::buildMovementTraversalSlotRegistry(room, {});
+
+  return expect(registry.affordances.empty(), "non movement tag no affordance") &&
+         expect(registry.slots.empty(), "non movement tag no slot");
+}
+
 bool selectorGatesByRangeFacingAndHeight() {
   const iggy3d::RoomAsset room = makeRoom();
   const iggy3d::MovementTraversalSlotRegistry registry =
@@ -338,6 +352,7 @@ int main() {
                   authoredAffordanceTagsBuildSlotsWithoutMagicNames() &&
                   authoredAffordanceSuppressesLegacyNameFallback() &&
                   authoredAffordanceRequiresMatchingMeshRole() &&
+                  nonMovementCatalogTagsDoNotBuildAffordances() &&
                   selectorGatesByRangeFacingAndHeight();
   return ok ? 0 : 1;
 }

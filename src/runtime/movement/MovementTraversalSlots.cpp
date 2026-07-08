@@ -2,9 +2,12 @@
 
 #include <algorithm>
 #include <cmath>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <utility>
+
+#include "content/assets/TraversalTag.hpp"
 
 namespace iggy3d {
 namespace {
@@ -25,17 +28,28 @@ bool containsString(const std::vector<std::string>& values, std::string_view exp
 }
 
 bool kindForTraversalTag(std::string_view tag, MovementTraversalSlotKind& out) {
-  if (tag == "vault") {
-    out = MovementTraversalSlotKind::Vault;
-    return true;
+  const std::optional<TraversalTag> parsed = parseTraversalTag(tag);
+  if (!parsed.has_value()) {
+    return false;
   }
-  if (tag == "clamber") {
-    out = MovementTraversalSlotKind::Clamber;
-    return true;
-  }
-  if (tag == "wire_walk") {
-    out = MovementTraversalSlotKind::WireWalk;
-    return true;
+  switch (*parsed) {
+    case TraversalTag::Vault:
+      out = MovementTraversalSlotKind::Vault;
+      return true;
+    case TraversalTag::Clamber:
+      out = MovementTraversalSlotKind::Clamber;
+      return true;
+    case TraversalTag::WireWalk:
+      out = MovementTraversalSlotKind::WireWalk;
+      return true;
+    case TraversalTag::Walkable:
+    case TraversalTag::Blocker:
+    case TraversalTag::ProjectileBlocker:
+    case TraversalTag::Opening:
+    case TraversalTag::ClamberCandidate:
+    case TraversalTag::NoPlayer:
+    case TraversalTag::DebugOnly:
+      return false;
   }
   return false;
 }
@@ -279,8 +293,9 @@ void appendClamberSlot(MovementTraversalSlotRegistry& registry,
                        const RoomStaticMeshAsset& mesh,
                        const MovementTraversalAffordance& affordance,
                        Vec3 offset) {
+  const std::string_view clamberTag = traversalTagId(TraversalTag::Clamber);
   const RoomSpatialSurface* top =
-      findSurfaceForMesh(room, mesh.id, RoomSpatialSurfaceRole::Walkable, "clamber");
+      findSurfaceForMesh(room, mesh.id, RoomSpatialSurfaceRole::Walkable, clamberTag);
   if (top == nullptr) {
     return;
   }
@@ -294,7 +309,7 @@ void appendClamberSlot(MovementTraversalSlotRegistry& registry,
     return;
   }
 
-  const RoomSpatialSurface* blocker = findActorBlockerForMesh(room, mesh.id, "clamber");
+  const RoomSpatialSurface* blocker = findActorBlockerForMesh(room, mesh.id, clamberTag);
   if (blocker == nullptr) {
     return;
   }

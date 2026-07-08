@@ -113,3 +113,43 @@ Completion brief must include:
 - confirmation that movement mechanic names, PlayerMotor phase names, debug
   strings, RoomAsset/ASCII serialization, collision role strings,
   ProductAppWindowState, and renderer/Vulkan were not changed
+
+## Completion Brief
+
+- Files changed:
+  - `src/runtime/movement/MovementTraversalSlots.cpp`
+  - `tests/unit/movement_traversal_slots_tests.cpp`
+  - `docs/creative_mode/builder_tasks/ready/E184-traversal-tag-movement-slot-routing.md` moved to `docs/creative_mode/builder_tasks/done/E184-traversal-tag-movement-slot-routing.md`
+- Movement slot tag parsing/lookups now using `TraversalTag`:
+  - `kindForTraversalTag(...)` now calls `parseTraversalTag(...)` and maps only `TraversalTag::Vault`, `TraversalTag::Clamber`, and `TraversalTag::WireWalk` to movement slot kinds
+  - non-movement catalog tags, including `TraversalTag::ClamberCandidate`, return no movement slot kind
+  - clamber top-surface preferred lookup now uses `traversalTagId(TraversalTag::Clamber)`
+  - clamber actor-blocker preferred lookup now uses `traversalTagId(TraversalTag::Clamber)`
+- Slot construction, legacy fallback, and display output:
+  - slot construction behavior is preserved
+  - legacy mesh-id fallback behavior is preserved
+  - `movementTraversalSlotKindName(...)` output is unchanged
+  - existing clamber preferred-tag lookup still preserves current fallback semantics; `movement_traversal_tests` pins blocker-tagged clamber with an untagged top surface
+- Proof added/kept:
+  - existing authored `wire_walk` and `vault` tests still prove authored tags build slots without mesh-id magic and suppress legacy fallback
+  - existing clamber tests still prove no authored clamber tag means no clamber affordance/slot
+  - added `movement_traversal_slots_tests` coverage proving `clamber_candidate` does not create a movement affordance or slot
+- Remaining raw traversal-like literals in `MovementTraversalSlots.cpp`:
+  - `hasText(mesh.id, "vault")` remains the legacy mesh-id fallback check
+  - `movementTraversalSlotKindName(...)` raw `"vault"`, `"clamber"`, and `"wire_walk"` remain display/output strings
+  - `movementTraversalSlotKindName(...)` fallback `"clamber"` remains existing display fallback
+  - height-band labels such as `vault_low`, `clamber_mid`, and `wire_balance` remain local movement labels
+  - mesh role strings such as `rail`, `ledge`, and `wall` remain local role checks
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d movement_traversal_slots_tests movement_traversal_tests player_motor_tests traversal_tag_catalog_tests -j10`
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(movement_traversal_slots_tests|movement_traversal_tests|player_motor_tests|traversal_tag_catalog_tests)$' --output-on-failure`
+  - `/Users/kogaryu/iggy3d/build/product_receipt_key_order_tests`
+  - `git -C /Users/kogaryu/iggy3d diff --check`
+  - focused trailing-whitespace scan over touched files
+- Receipt golden result:
+  - `receipt key-order oracle: 1032 fields match golden (order + values)`
+- Scope confirmation:
+  - movement mechanic names, `PlayerMotor` phase names, debug strings, `RoomAsset`/ASCII serialization, collision role strings, `ProductAppWindowState`, and renderer/Vulkan were not changed
+- Concerns/deferred:
+  - full CTest was not run; this stayed within the single movement slot file plus focused tests
+  - E184 requested proof wording says clamber requires the tag on both top and blocker surfaces, but the current accepted behavior is blocker-authored clamber with an untagged top fallback; I preserved that behavior because changing it failed `movement_traversal_tests`
