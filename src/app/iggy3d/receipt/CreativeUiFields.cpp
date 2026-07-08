@@ -1,5 +1,6 @@
 #include "app/iggy3d/receipt/ReceiptFields.hpp"
 
+#include <array>
 #include <charconv>
 #include <string>
 #include <string_view>
@@ -312,153 +313,629 @@ void appendProductCreativeUiCommandFields(
       receipt, fields.bakedRoomRefresh);
 }
 
+struct CreativeUiReceiptContext {
+  const ProductAppWindowState& window;
+  const decltype(std::declval<const ProductAppWindowState&>().creativeAuthoring)&
+      authoring;
+};
+
+struct CreativeUiReceiptFieldRow {
+  std::string_view key;
+  void (*append)(RenderReceipt& receipt,
+                 const CreativeUiReceiptContext& context,
+                 std::string_view key);
+};
+
+const std::array<CreativeUiReceiptFieldRow, 52>
+    kCreativeUiPreCommandReceiptFields{{
+    {"creative_ui_projection_requested",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.requested);
+     }},
+    {"creative_ui_projection_ready",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.ready);
+     }},
+    {"creative_ui_projection_partial",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.partial);
+     }},
+    {"creative_ui_projection_status",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.status);
+     }},
+    {"creative_ui_projection_reason_code",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.reasonCode);
+     }},
+    {"creative_ui_projection_used_model",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.usedModel);
+     }},
+    {"creative_ui_projection_used_facade",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.usedFacade);
+     }},
+    {"creative_ui_projection_virtual_width",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           static_cast<std::uint64_t>(
+                                    context.authoring.creativeUiProjection.virtualWidth));
+     }},
+    {"creative_ui_projection_virtual_height",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           static_cast<std::uint64_t>(
+                                    context.authoring.creativeUiProjection.virtualHeight));
+     }},
+    {"creative_ui_projection_theme",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.theme);
+     }},
+    {"creative_ui_projection_panel_count",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.panelCount);
+     }},
+    {"creative_ui_projection_model_row_count",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.modelRowCount);
+     }},
+    {"creative_ui_projection_primitive_count",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.primitiveCount);
+     }},
+    {"creative_ui_projection_text_count",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.textCount);
+     }},
+    {"creative_ui_projection_rect_count",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.rectCount);
+     }},
+    {"creative_ui_projection_row_count",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.rowCount);
+     }},
+    {"creative_ui_projection_disabled_row_count",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.disabledRowCount);
+     }},
+    {"creative_ui_projection_hit_region_count",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiProjection.hitRegionCount);
+     }},
+    {"creative_ui_input_requested",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.requested);
+     }},
+    {"creative_ui_input_click_present",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.clickPresent);
+     }},
+    {"creative_ui_input_draw_list_available",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.drawListAvailable);
+     }},
+    {"creative_ui_input_routed",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.routed);
+     }},
+    {"creative_ui_input_hit",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.hit);
+     }},
+    {"creative_ui_input_consumed",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.consumed);
+     }},
+    {"creative_ui_input_enabled",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.enabled);
+     }},
+    {"creative_ui_input_surface",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.surface);
+     }},
+    {"creative_ui_input_kind",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.kind);
+     }},
+    {"creative_ui_input_action",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.action);
+     }},
+    {"creative_ui_input_layer_index",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.layerIndex);
+     }},
+    {"creative_ui_input_region_index",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.regionIndex);
+     }},
+    {"creative_ui_input_semantic_id",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.semanticId);
+     }},
+    {"creative_ui_input_status",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.status);
+     }},
+    {"creative_ui_input_reason_code",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.reasonCode);
+     }},
+    {"creative_ui_last_click_seen",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.clickSeen);
+     }},
+    {"creative_ui_last_click_x",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.clickX);
+     }},
+    {"creative_ui_last_click_y",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.clickY);
+     }},
+    {"creative_ui_last_input_hit",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.inputHit);
+     }},
+    {"creative_ui_last_input_consumed",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.inputConsumed);
+     }},
+    {"creative_ui_last_input_status",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.inputStatus);
+     }},
+    {"creative_ui_last_input_semantic_id",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.inputSemanticId);
+     }},
+    {"creative_ui_last_command_kind",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.commandKind);
+     }},
+    {"creative_ui_last_command_status",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.commandStatus);
+     }},
+    {"creative_ui_last_command_create_requested",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.commandCreateRequested);
+     }},
+    {"creative_ui_last_command_create_accepted",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.commandCreateAccepted);
+     }},
+    {"creative_ui_last_command_create_changed",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.commandCreateChanged);
+     }},
+    {"creative_ui_last_command_create_object_id",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiLast.commandCreateObjectId);
+     }},
+    {"creative_ui_input_downstream_click_requested",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.downstreamClickRequested);
+     }},
+    {"creative_ui_input_downstream_click_present",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.downstreamClickPresent);
+     }},
+    {"creative_ui_input_downstream_click_higher_priority",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.downstreamClickHigherPriority);
+     }},
+    {"creative_ui_input_downstream_click_suppressed",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.downstreamClickSuppressed);
+     }},
+    {"creative_ui_input_downstream_click_status",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.downstreamClickStatus);
+     }},
+    {"creative_ui_input_downstream_click_reason_code",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUiInput.downstreamClickReasonCode);
+     }},
+}};
+
+const std::array<CreativeUiReceiptFieldRow, 12>
+    kCreativeUiPostRefreshReceiptFields{{
+    {"creative_document_revision_observed",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeDocumentRevision.observed);
+     }},
+    {"creative_document_changed_this_frame",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeDocumentChangedThisFrame);
+     }},
+    {"creative_document_revision_document_id",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeDocumentRevision.documentId);
+     }},
+    {"creative_document_revision_before_frame",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeDocumentRevision.beforeFrame);
+     }},
+    {"creative_document_revision_after_frame",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeDocumentRevision.afterFrame);
+     }},
+    {"creative_undo_available",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUndo.available);
+     }},
+    {"creative_undo_depth",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeUndo.depth);
+     }},
+    {"creative_baked_room_stale",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeBakedRoomStale);
+     }},
+    {"creative_baked_room_stale_document_id",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeBakedRoomStaleDocumentId);
+     }},
+    {"creative_baked_room_stale_revision",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeBakedRoomStaleRevision);
+     }},
+    {"creative_baked_room_stale_status",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeBakedRoomStaleStatus);
+     }},
+    {"creative_baked_room_stale_reason_code",
+     [](RenderReceipt& receipt,
+        const CreativeUiReceiptContext& context,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           context.authoring.creativeBakedRoomStaleReasonCode);
+     }},
+}};
+
 }  // namespace
 
-void appendProductCreativeUiFields(RenderReceipt& receipt, const ProductAppWindowState& window) {
+void appendProductCreativeUiFields(RenderReceipt& receipt,
+                                   const ProductAppWindowState& window) {
   const auto& authoring = window.creativeAuthoring;
-  appendReceiptField(receipt, "creative_ui_projection_requested",
-                     authoring.creativeUiProjection.requested);
-  appendReceiptField(receipt, "creative_ui_projection_ready",
-                     authoring.creativeUiProjection.ready);
-  appendReceiptField(receipt, "creative_ui_projection_partial",
-                     authoring.creativeUiProjection.partial);
-  appendReceiptField(receipt, "creative_ui_projection_status",
-                     authoring.creativeUiProjection.status);
-  appendReceiptField(receipt, "creative_ui_projection_reason_code",
-                     authoring.creativeUiProjection.reasonCode);
-  appendReceiptField(receipt, "creative_ui_projection_used_model",
-                     authoring.creativeUiProjection.usedModel);
-  appendReceiptField(receipt, "creative_ui_projection_used_facade",
-                     authoring.creativeUiProjection.usedFacade);
-  appendReceiptField(receipt, "creative_ui_projection_virtual_width",
-                     static_cast<std::uint64_t>(
-                         authoring.creativeUiProjection.virtualWidth));
-  appendReceiptField(receipt, "creative_ui_projection_virtual_height",
-                     static_cast<std::uint64_t>(
-                         authoring.creativeUiProjection.virtualHeight));
-  appendReceiptField(receipt, "creative_ui_projection_theme",
-                     authoring.creativeUiProjection.theme);
-  appendReceiptField(receipt, "creative_ui_projection_panel_count",
-                     authoring.creativeUiProjection.panelCount);
-  appendReceiptField(receipt, "creative_ui_projection_model_row_count",
-                     authoring.creativeUiProjection.modelRowCount);
-  appendReceiptField(receipt, "creative_ui_projection_primitive_count",
-                     authoring.creativeUiProjection.primitiveCount);
-  appendReceiptField(receipt, "creative_ui_projection_text_count",
-                     authoring.creativeUiProjection.textCount);
-  appendReceiptField(receipt, "creative_ui_projection_rect_count",
-                     authoring.creativeUiProjection.rectCount);
-  appendReceiptField(receipt, "creative_ui_projection_row_count",
-                     authoring.creativeUiProjection.rowCount);
-  appendReceiptField(receipt, "creative_ui_projection_disabled_row_count",
-                     authoring.creativeUiProjection.disabledRowCount);
-  appendReceiptField(receipt, "creative_ui_projection_hit_region_count",
-                     authoring.creativeUiProjection.hitRegionCount);
-  appendReceiptField(receipt, "creative_ui_input_requested",
-                     authoring.creativeUiInput.requested);
-  appendReceiptField(receipt, "creative_ui_input_click_present",
-                     authoring.creativeUiInput.clickPresent);
-  appendReceiptField(receipt, "creative_ui_input_draw_list_available",
-                     authoring.creativeUiInput.drawListAvailable);
-  appendReceiptField(receipt, "creative_ui_input_routed",
-                     authoring.creativeUiInput.routed);
-  appendReceiptField(receipt, "creative_ui_input_hit",
-                     authoring.creativeUiInput.hit);
-  appendReceiptField(receipt, "creative_ui_input_consumed",
-                     authoring.creativeUiInput.consumed);
-  appendReceiptField(receipt, "creative_ui_input_enabled",
-                     authoring.creativeUiInput.enabled);
-  appendReceiptField(receipt, "creative_ui_input_surface",
-                     authoring.creativeUiInput.surface);
-  appendReceiptField(receipt, "creative_ui_input_kind",
-                     authoring.creativeUiInput.kind);
-  appendReceiptField(receipt, "creative_ui_input_action",
-                     authoring.creativeUiInput.action);
-  appendReceiptField(receipt, "creative_ui_input_layer_index",
-                     authoring.creativeUiInput.layerIndex);
-  appendReceiptField(receipt, "creative_ui_input_region_index",
-                     authoring.creativeUiInput.regionIndex);
-  appendReceiptField(receipt, "creative_ui_input_semantic_id",
-                     authoring.creativeUiInput.semanticId);
-  appendReceiptField(receipt, "creative_ui_input_status",
-                     authoring.creativeUiInput.status);
-  appendReceiptField(receipt, "creative_ui_input_reason_code",
-                     authoring.creativeUiInput.reasonCode);
-  appendReceiptField(receipt, "creative_ui_last_click_seen",
-                     authoring.creativeUiLast.clickSeen);
-  appendReceiptField(receipt, "creative_ui_last_click_x",
-                     authoring.creativeUiLast.clickX);
-  appendReceiptField(receipt, "creative_ui_last_click_y",
-                     authoring.creativeUiLast.clickY);
-  appendReceiptField(receipt, "creative_ui_last_input_hit",
-                     authoring.creativeUiLast.inputHit);
-  appendReceiptField(receipt, "creative_ui_last_input_consumed",
-                     authoring.creativeUiLast.inputConsumed);
-  appendReceiptField(receipt, "creative_ui_last_input_status",
-                     authoring.creativeUiLast.inputStatus);
-  appendReceiptField(receipt, "creative_ui_last_input_semantic_id",
-                     authoring.creativeUiLast.inputSemanticId);
-  appendReceiptField(receipt, "creative_ui_last_command_kind",
-                     authoring.creativeUiLast.commandKind);
-  appendReceiptField(receipt, "creative_ui_last_command_status",
-                     authoring.creativeUiLast.commandStatus);
-  appendReceiptField(receipt,
-                     "creative_ui_last_command_create_requested",
-                     authoring.creativeUiLast.commandCreateRequested);
-  appendReceiptField(receipt,
-                     "creative_ui_last_command_create_accepted",
-                     authoring.creativeUiLast.commandCreateAccepted);
-  appendReceiptField(receipt,
-                     "creative_ui_last_command_create_changed",
-                     authoring.creativeUiLast.commandCreateChanged);
-  appendReceiptField(receipt,
-                     "creative_ui_last_command_create_object_id",
-                     authoring.creativeUiLast.commandCreateObjectId);
-  appendReceiptField(receipt,
-                     "creative_ui_input_downstream_click_requested",
-                     authoring.creativeUiInput.downstreamClickRequested);
-  appendReceiptField(receipt,
-                     "creative_ui_input_downstream_click_present",
-                     authoring.creativeUiInput.downstreamClickPresent);
-  appendReceiptField(receipt,
-                     "creative_ui_input_downstream_click_higher_priority",
-                     authoring.creativeUiInput.downstreamClickHigherPriority);
-  appendReceiptField(receipt,
-                     "creative_ui_input_downstream_click_suppressed",
-                     authoring.creativeUiInput.downstreamClickSuppressed);
-  appendReceiptField(receipt,
-                     "creative_ui_input_downstream_click_status",
-                     authoring.creativeUiInput.downstreamClickStatus);
-  appendReceiptField(receipt,
-                     "creative_ui_input_downstream_click_reason_code",
-                     authoring.creativeUiInput.downstreamClickReasonCode);
+  const CreativeUiReceiptContext context{
+      window,
+      authoring,
+  };
+
+  for (const CreativeUiReceiptFieldRow& row :
+       kCreativeUiPreCommandReceiptFields) {
+    row.append(receipt, context, row.key);
+  }
+
   appendProductCreativeUiCommandFields(receipt, authoring.creativeUiCommand);
   appendProductCreativeBakedRoomAutoRefreshFields(
       receipt, authoring.creativeBakedRoomAutoRefresh);
-  appendReceiptField(receipt, "creative_document_revision_observed",
-                     authoring.creativeDocumentRevision.observed);
-  appendReceiptField(receipt, "creative_document_changed_this_frame",
-                     authoring.creativeDocumentChangedThisFrame);
-  appendReceiptField(receipt, "creative_document_revision_document_id",
-                     authoring.creativeDocumentRevision.documentId);
-  appendReceiptField(receipt, "creative_document_revision_before_frame",
-                     authoring.creativeDocumentRevision.beforeFrame);
-  appendReceiptField(receipt, "creative_document_revision_after_frame",
-                     authoring.creativeDocumentRevision.afterFrame);
-  appendReceiptField(receipt, "creative_undo_available",
-                     authoring.creativeUndo.available);
-  appendReceiptField(receipt, "creative_undo_depth",
-                     authoring.creativeUndo.depth);
-  appendReceiptField(receipt, "creative_baked_room_stale",
-                     authoring.creativeBakedRoomStale);
-  appendReceiptField(receipt, "creative_baked_room_stale_document_id",
-                     authoring.creativeBakedRoomStaleDocumentId);
-  appendReceiptField(receipt, "creative_baked_room_stale_revision",
-                     authoring.creativeBakedRoomStaleRevision);
-  appendReceiptField(receipt, "creative_baked_room_stale_status",
-                     authoring.creativeBakedRoomStaleStatus);
-  appendReceiptField(receipt, "creative_baked_room_stale_reason_code",
-                     authoring.creativeBakedRoomStaleReasonCode);
+
+  for (const CreativeUiReceiptFieldRow& row :
+       kCreativeUiPostRefreshReceiptFields) {
+    row.append(receipt, context, row.key);
+  }
 }
+
 
 }  // namespace iggy3d
