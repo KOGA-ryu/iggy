@@ -1,4 +1,4 @@
-#include "app/iggy3d/ascii_room/Activation.hpp"
+#include "ProductAsciiRoomWindowTestSupport.hpp"
 #include "ProductTestSupport.hpp"
 #include "app/frontend/DevToolsMenu.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
@@ -102,20 +102,19 @@ iggy3d::PhysicsAabbCollider debugCollider(iggy3d::PhysicsBodyId bodyId,
 
 iggy3d::ProductAppWindowState makeGameplayWindow(
     std::optional<iggy3d::Session>& session) {
-  iggy3d::ProductAppWindowState window;
-  window.creativeAuthoring.asciiRoomDraft.text =
-      "#######\n"
-      "#P..$.#\n"
-      "#..E..#\n"
-      "#######\n";
-  window.creativeAuthoring.asciiRoomDraft.roomId = "vulkan_product_room_frame";
-  window.creativeAuthoring.asciiRoomDraft.sourceName = "unit/vulkan_product_room_frame.iggyroom.txt";
-  window.viewport.cameraYawDegrees = 18.0F;
-  window.viewport.cameraPitchDegrees = -3.0F;
-  const iggy3d::ProductAsciiRoomActivationResult activation =
-      iggy3d::activateProductAsciiRoomPreview(session, window);
-  expect(activation.ok, "ascii room activation ok");
-  return window;
+  return iggy3d::test::activateAsciiRoomWindowForTest(
+      session,
+      {
+          "#######\n"
+          "#P..$.#\n"
+          "#..E..#\n"
+          "#######\n",
+          "vulkan_product_room_frame",
+          "unit/vulkan_product_room_frame.iggyroom.txt",
+          "ascii room activation ok",
+          18.0F,
+          -3.0F,
+      });
 }
 
 iggy3d::PhysicsFrameStats makeReadyPlayerPhysicsStats() {

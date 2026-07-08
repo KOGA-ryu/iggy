@@ -1,5 +1,6 @@
 #include "app/iggy3d/gameplay/Controller.hpp"
 
+#include "ProductAsciiRoomWindowTestSupport.hpp"
 #include "ProductTestSupport.hpp"
 
 #include <cmath>
@@ -7,7 +8,6 @@
 #include <optional>
 #include <string_view>
 
-#include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
@@ -55,20 +55,19 @@ float horizontalDistance(iggy3d::Vec3 lhs, iggy3d::Vec3 rhs) {
 
 iggy3d::ProductAppWindowState makeGameplayWindow(
     std::optional<iggy3d::Session>& session) {
-  iggy3d::ProductAppWindowState window;
-  window.creativeAuthoring.asciiRoomDraft.text =
-      "#######\n"
-      "#.....#\n"
-      "#..P..#\n"
-      "#.....#\n"
-      "#..$.E#\n"
-      "#######\n";
-  window.creativeAuthoring.asciiRoomDraft.roomId = "gameplay_controller_step_room";
-  window.creativeAuthoring.asciiRoomDraft.sourceName = "unit/gameplay_controller_step_room.iggyroom.txt";
-  const iggy3d::ProductAsciiRoomActivationResult activation =
-      iggy3d::activateProductAsciiRoomPreview(session, window);
-  expect(activation.ok, "ascii room activation ok");
-  return window;
+  return iggy3d::test::activateAsciiRoomWindowForTest(
+      session,
+      {
+          "#######\n"
+          "#.....#\n"
+          "#..P..#\n"
+          "#.....#\n"
+          "#..$.E#\n"
+          "#######\n",
+          "gameplay_controller_step_room",
+          "unit/gameplay_controller_step_room.iggyroom.txt",
+          "ascii room activation ok",
+      });
 }
 
 const iggy3d::EntityState* playerEntity(const iggy3d::Session& session) {

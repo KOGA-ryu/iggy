@@ -1,7 +1,7 @@
 #include "ProductActiveSurfaceTestSupport.hpp"
+#include "ProductAsciiRoomWindowTestSupport.hpp"
 
 #include "app/frontend/FrontendState.hpp"
-#include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/menu/ActionHandlers.hpp"
@@ -255,22 +255,22 @@ void setInputFrameClamberActiveRoom(iggy3d::ProductAppWindowState& window,
 
 iggy3d::ProductAppWindowState gameplayWindow(
     std::optional<iggy3d::Session>& session) {
-  iggy3d::ProductAppWindowState window;
-  window.creativeAuthoring.asciiRoomDraft.text =
-      "#######\n"
-      "#.....#\n"
-      "#..P..#\n"
-      "#.....#\n"
-      "#..$.E#\n"
-      "#######\n";
-  window.creativeAuthoring.asciiRoomDraft.roomId = "input_frame_gameplay_room";
-  window.creativeAuthoring.asciiRoomDraft.sourceName =
-      "unit/input_frame_gameplay_room.iggyroom.txt";
-  const iggy3d::ProductAsciiRoomActivationResult activated =
-      iggy3d::activateProductAsciiRoomPreview(session, window);
-  expect(activated.ok, "input frame gameplay activation ok");
-  window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Player;
-  return window;
+  return iggy3d::test::activateAsciiRoomWindowForTest(
+      session,
+      {
+          "#######\n"
+          "#.....#\n"
+          "#..P..#\n"
+          "#.....#\n"
+          "#..$.E#\n"
+          "#######\n",
+          "input_frame_gameplay_room",
+          "unit/input_frame_gameplay_room.iggyroom.txt",
+          "input frame gameplay activation ok",
+          std::nullopt,
+          std::nullopt,
+          iggy3d::ProductInteractionMode::Player,
+      });
 }
 
 iggy3d::ProductWindowEditorMousePickPreviewContext pickContext(
