@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -182,3 +182,65 @@ When done, report:
 - confirmation that movement tuning, menu-panel, hit-test/facade policy,
   `OpeningMenuView.hpp`, `SdlDraw.*`, `ScenePrimitiveView.*`, CMake test
   definitions, staging, commit, push, and window launch were not touched
+
+## Completion Brief
+
+- Files changed:
+  - `CMakeLists.txt`
+  - `src/app/iggy3d/view/OpeningMenuView.cpp`
+  - `src/app/iggy3d/view/DebugHudView.hpp`
+  - `src/app/iggy3d/view/DebugHudView.cpp`
+  - this task card
+- Exact helper/API shape created:
+  - Added `DebugHudView.hpp/.cpp` under `src/app/iggy3d/view/`.
+  - `DebugHudView.hpp` is SDL3-gated, forward-declares `SDL_Renderer` and the
+    HUD payload structs, and exposes only:
+    - `drawCameraHeading(SDL_Renderer&, float)`
+    - `drawGameplayFeedback(SDL_Renderer&, const GameplayFeedback*)`
+    - `drawInteractionModeHud(SDL_Renderer&, const InteractionModeHud*)`
+    - `drawMovementDebugHud(SDL_Renderer&, const MovementDebugHud*)`
+    - `drawNpcBehaviorDebugHud(SDL_Renderer&, const NpcBehaviorDebugHud*)`
+    - `drawPhysicsDebugHud(SDL_Renderer&, const PhysicsDebugHud*)`
+    - `drawRoomEditorHud(SDL_Renderer&, const ProductRoomEditorHud*)`
+    - `drawPositionHud(SDL_Renderer&, const PositionHud*)`
+  - `DebugHudView.cpp` owns the moved implementations and keeps
+    `setFeedbackToneColor(...)` file-local.
+- What stayed in `OpeningMenuView.cpp`:
+  - `drawGameplayMovementTuningHud(...)`
+  - `roundedDegrees(...)`
+  - menu rows and panels
+  - `drawGameplayPanel(...)` orchestration and HUD call order
+  - hit-test/action routing
+  - `drawOpeningMenuView(...)`
+- CMake source-list placement:
+  - `OpeningMenuView.cpp` at line 87
+  - `DebugHudView.cpp` at line 88
+  - `ScenePrimitiveView.cpp` at line 89
+  - `SdlDraw.cpp` at line 90
+- Required grep classification:
+  - Definitions for the moved HUD helpers live in `DebugHudView.cpp`.
+  - `DebugHudView.hpp` exposes only the eight HUD draw functions listed above.
+  - `setFeedbackToneColor(...)` is file-local in `DebugHudView.cpp`.
+  - `OpeningMenuView.cpp` retains call sites only for moved helpers.
+  - `drawGameplayMovementTuningHud(...)` and `roundedDegrees(...)` remain in
+    `OpeningMenuView.cpp`.
+  - `CMakeLists.txt` includes `DebugHudView.cpp` near the other view split
+    files.
+- Focused build result:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_window_input_frame_tests product_primitive_draw_list_tests product_render_bridge_tests product_receipt_key_order_tests -j10`
+    passed.
+- Focused CTest result:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_window_input_frame_tests|product_primitive_draw_list_tests|product_render_bridge_tests|product_receipt_key_order_tests)$' --output-on-failure`
+    passed, 4/4 tests.
+- Receipt golden diff result:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden`
+    was empty.
+- Diff/whitespace checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card was
+    clean.
+- Confirmation:
+  - Movement tuning, menu-panel, hit-test/facade policy,
+    `OpeningMenuView.hpp`, `SdlDraw.*`, `ScenePrimitiveView.*`, CMake test
+    definitions, receipt golden, staging, commit, push, broad CTest, and window
+    launch were not touched/performed.
