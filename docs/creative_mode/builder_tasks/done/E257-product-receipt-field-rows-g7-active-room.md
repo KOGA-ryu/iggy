@@ -233,3 +233,45 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, CMake, tests, golden, staging, commit,
   push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Completed.
+
+Files changed:
+
+- `src/app/iggy3d/receipt/ActiveRoomFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E257-product-receipt-field-rows-g7-active-room.md`
+
+Implemented a file-local context and callback row table:
+
+- `ActiveRoomReceiptContext`
+- `ActiveRoomReceiptFieldRow`
+- `const std::array<ActiveRoomReceiptFieldRow, 34> kActiveRoomReceiptFields`
+- `appendProductActiveRoomFields(...)` now builds the context from `activeRoom(window)`, `activeRoomCollision(window)`, and `activeRoomCollisionFreshness(window)`, then iterates the ordered rows with `row.append(receipt, context, row.key)`.
+
+Row coverage:
+
+- Row count: 34
+- First key: `active_room_loaded`
+- Last key: `active_room_collision_freshness_reason_code`
+- Procedural rows left behind: none
+
+Required grep classifications:
+
+- `ActiveRoomReceiptContext`, `ActiveRoomReceiptFieldRow`, and `kActiveRoomReceiptFields` exist in `ActiveRoomFields.cpp`.
+- `appendProductActiveRoomFields(...)` remains the only public appender in the file.
+- `appendReceiptField(...)` count is 34, all inside row callbacks.
+- No `ProductAppReceiptContext` was introduced.
+- No shared `ReceiptFieldRow` helper was introduced.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_receipt_key_order_tests -j10` passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^product_receipt_key_order_tests$' --output-on-failure` passed.
+- Direct oracle passed: `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over `ActiveRoomFields.cpp` and this card passed.
+
+No shared helper, CMake edit, tests edit, golden edit, staging, commit, push, broad CTest, or window launch was performed.
