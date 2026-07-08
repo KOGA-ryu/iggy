@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E199-active-surface-sync-tail-audit.md`
+1. `ready/E200-remove-stale-active-surface-sync-wrapper.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E199-active-surface-sync-tail-audit.md`
+1. `ready/E200-remove-stale-active-surface-sync-wrapper.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -134,10 +134,11 @@ Held — do NOT promote to `ready/` on a guess:
   duplication smell — E197 read-only preflight chose generated package-local
   copy plus drift guard. E198 updated the stale `npc_vision_lab` copy from the
   shared generated asset and extended package parity/load coverage.
-- Active-surface sync tail: E199 audits whether
-  `syncProductWindowInputOwnerFromActiveSurface(...)` is now a misnamed no-op
-  wrapper after window input-owner cache deletion, before removing bare
-  production calls or renaming test/support helpers.
+- Active-surface sync tail: E199 proved
+  `syncProductWindowInputOwnerFromActiveSurface(...)` is a misnamed no-op
+  resolver wrapper after window input-owner cache deletion. E200 is released to
+  remove ignored production calls, repoint tests/support to the direct resolver,
+  and delete the stale helper.
 - Remaining complexity-audit roadmap items (`OpeningMenuView` split,
   `Operations.cpp` seam split after the identity-mirror removal, shared test
   infrastructure) — see `docs/complexity_audit_v0_1.md` §3.
