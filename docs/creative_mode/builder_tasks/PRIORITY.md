@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E220-core-double-snap-scalar-creative-guard-parity.md`
+1. `ready/E221-spatial-projection-3d-grid-guards.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E220-core-double-snap-scalar-creative-guard-parity.md`
+1. `ready/E221-spatial-projection-3d-grid-guards.md`
 
 ## Parking Lot
 
@@ -160,11 +160,13 @@ Held — do NOT promote to `ready/` on a guess:
   wrappers. `E218` completed G4e by moving the final launch-state helpers and
   deleting the empty `Operations.*` shell.
 - Snap/grid duplicate math (#7 in `docs/complexity_audit_v0_1.md`): `E219`
-  completed the read-only preflight and split the work. `E220` is released for
-  the first implementation slice: add a checked core `double` scalar snap
-  helper and route creative 2D/document scalar snap through it. Keep
-  `SpatialProjection`/`GridFootprint` for a later 3D grid guard card. Note: the
-  audit's object-kind switch cleanup item is stale in the current tree;
+  completed the read-only preflight and split the work. `E220` completed the
+  first implementation slice by adding a checked core `double` scalar snap
+  helper and routing creative 2D/document scalar snap through it. `E221` is
+  released for the follow-on `SpatialProjection` 3D grid guard slice; keep
+  `GridFootprint` untouched unless a later owner decision creates a 3D core
+  result/status API. Note: the audit's object-kind switch cleanup item is stale
+  in the current tree;
   `CreativeObjectKind` `toString(...)` and `allowedMutations(...)` already route
   through descriptor helpers.
 - `OpeningMenuView` split remains parked; see
