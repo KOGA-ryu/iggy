@@ -873,35 +873,110 @@ struct ProductCreativeBakedRoomRefreshReceiptKeySet {
   std::string_view collisionQuerySurfaceCount;
 };
 
+struct ProductCreativeBakedRoomRefreshReceiptFieldRow {
+  std::string_view ProductCreativeBakedRoomRefreshReceiptKeySet::* key;
+  void (*append)(RenderReceipt& receipt,
+                 const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+                 std::string_view key);
+};
+
+const std::array<ProductCreativeBakedRoomRefreshReceiptFieldRow, 2>
+    kProductCreativeBakedRoomRefreshPreOptionalReceiptFields{{
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::requested,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.requested);
+     }},
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::accepted,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.accepted);
+     }},
+}};
+
+const std::array<ProductCreativeBakedRoomRefreshReceiptFieldRow, 10>
+    kProductCreativeBakedRoomRefreshPostOptionalReceiptFields{{
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::status,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.status);
+     }},
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::reasonCode,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.reasonCode);
+     }},
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::bakeMeasured,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.bakeMeasured);
+     }},
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::bakeElapsedMicroseconds,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.bakeElapsedMicroseconds);
+     }},
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::bakedDocumentRevision,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.bakedDocumentRevision);
+     }},
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::staticMeshCount,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.staticMeshCount);
+     }},
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::anchorCount,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.anchorCount);
+     }},
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::spatialSurfaceCount,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.spatialSurfaceCount);
+     }},
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::collisionReady,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.collisionReady);
+     }},
+    {&ProductCreativeBakedRoomRefreshReceiptKeySet::collisionQuerySurfaceCount,
+     [](RenderReceipt& receipt,
+        const ProductCreativeBakedRoomRefreshDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(receipt, key, fields.collisionQuerySurfaceCount);
+     }},
+}};
+
 void appendProductCreativeBakedRoomRefreshDiagnosticFields(
     RenderReceipt& receipt,
     const ProductCreativeBakedRoomRefreshDiagnostics& fields,
     const ProductCreativeBakedRoomRefreshReceiptKeySet& keys) {
-  appendReceiptField(receipt, keys.requested, fields.requested);
-  appendReceiptField(receipt, keys.accepted, fields.accepted);
+  for (const ProductCreativeBakedRoomRefreshReceiptFieldRow& row :
+       kProductCreativeBakedRoomRefreshPreOptionalReceiptFields) {
+    row.append(receipt, fields, keys.*(row.key));
+  }
   if (!keys.clearedActiveRoom.empty()) {
     appendReceiptField(receipt,
                        keys.clearedActiveRoom,
                        fields.clearedActiveRoom);
   }
-  appendReceiptField(receipt, keys.status, fields.status);
-  appendReceiptField(receipt, keys.reasonCode, fields.reasonCode);
-  appendReceiptField(receipt, keys.bakeMeasured, fields.bakeMeasured);
-  appendReceiptField(receipt,
-                     keys.bakeElapsedMicroseconds,
-                     fields.bakeElapsedMicroseconds);
-  appendReceiptField(receipt,
-                     keys.bakedDocumentRevision,
-                     fields.bakedDocumentRevision);
-  appendReceiptField(receipt, keys.staticMeshCount, fields.staticMeshCount);
-  appendReceiptField(receipt, keys.anchorCount, fields.anchorCount);
-  appendReceiptField(receipt,
-                     keys.spatialSurfaceCount,
-                     fields.spatialSurfaceCount);
-  appendReceiptField(receipt, keys.collisionReady, fields.collisionReady);
-  appendReceiptField(receipt,
-                     keys.collisionQuerySurfaceCount,
-                     fields.collisionQuerySurfaceCount);
+  for (const ProductCreativeBakedRoomRefreshReceiptFieldRow& row :
+       kProductCreativeBakedRoomRefreshPostOptionalReceiptFields) {
+    row.append(receipt, fields, keys.*(row.key));
+  }
 }
 
 void appendProductCreativeUiCommandBakedRoomRefreshFields(

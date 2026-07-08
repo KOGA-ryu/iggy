@@ -302,3 +302,78 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, `ProductAppReceiptContext`, CMake, tests,
   golden, staging, commit, push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Status: Done.
+
+Files changed:
+
+- `src/app/iggy3d/receipt/CreativeUiFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E264-product-receipt-field-rows-g14-creative-ui-baked-room-refresh.md`
+
+Refactor shape:
+
+- Added file-local `ProductCreativeBakedRoomRefreshReceiptFieldRow` with:
+  - `std::string_view ProductCreativeBakedRoomRefreshReceiptKeySet::* key`
+  - append callback
+    `void (*append)(RenderReceipt&, const ProductCreativeBakedRoomRefreshDiagnostics&, std::string_view)`
+- Added ordered fixed-row tables:
+  - `kProductCreativeBakedRoomRefreshPreOptionalReceiptFields`
+  - `kProductCreativeBakedRoomRefreshPostOptionalReceiptFields`
+- The shared diagnostic helper now resolves each fixed key through
+  `keys.*(row.key)` and calls `row.append(receipt, fields, ...)`.
+
+Row coverage:
+
+- Pre-optional table: 2 rows,
+  `requested` through `accepted`.
+- Post-optional table: 10 rows,
+  `status` through `collisionQuerySurfaceCount`.
+- Fixed baked-room refresh rows left procedural: none.
+
+Preserved procedural paths:
+
+- The `clearedActiveRoom` branch stayed procedural and remains between the
+  pre-optional and post-optional table iterations.
+- Command baked-room refresh and auto-refresh wrapper key-sets stayed unchanged,
+  including the empty command `clearedActiveRoom` key and the auto-refresh
+  `creative_baked_room_auto_refresh_cleared_active_room` key.
+- E262 public appender row tables and E263 command diagnostic row tables were
+  not changed.
+
+Required grep classification:
+
+- File-local baked-room refresh row type exists in `CreativeUiFields.cpp`.
+- Pre-optional and post-optional row arrays exist.
+- Fixed baked-room refresh `appendReceiptField(...)` calls live inside row
+  callbacks.
+- `clearedActiveRoom` remains the only procedural append branch inside the
+  shared diagnostic helper and remains between the two row-table iterations.
+- Command and auto-refresh wrapper key-sets remain present.
+- `rg -c "appendReceiptField\\(" CreativeUiFields.cpp` returned `159`.
+- No `ProductAppReceiptContext` or shared `ReceiptFieldRow` was introduced in
+  `ReceiptBuilder.cpp` or `ReceiptFields.hpp/.cpp`.
+  The grep sees only file-local row types already present in
+  `CreativeUiFields.cpp`.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d
+  product_receipt_key_order_tests -j10`: passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R
+  '^product_receipt_key_order_tests$' --output-on-failure`: passed.
+- `(cd /Users/kogaryu/iggy3d &&
+  /Users/kogaryu/iggy3d/build/product_receipt_key_order_tests)`: passed with
+  `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff --
+  tests/golden/product_receipt_key_order.golden`: no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check`: passed.
+- Focused trailing-whitespace scan over `CreativeUiFields.cpp` and this task
+  card: passed.
+
+Scope confirmation:
+
+- No shared receipt helper, `ProductAppReceiptContext`, CMake, tests, fixtures,
+  receipt golden files, staging, commit, push, broad CTest, or window launch
+  were performed.
