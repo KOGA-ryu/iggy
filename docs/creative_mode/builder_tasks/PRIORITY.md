@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E221-spatial-projection-3d-grid-guards.md`
+1. `ready/E222-render-draw-kind-metadata-remainder-audit.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E221-spatial-projection-3d-grid-guards.md`
+1. `ready/E222-render-draw-kind-metadata-remainder-audit.md`
 
 ## Parking Lot
 
@@ -120,8 +120,10 @@ Held — do NOT promote to `ready/` on a guess:
   affordance/anchor and traversal payload emitters/consumers. E188 is the
   read-only remainder classification pass for parser/display/stable-id/save
   literals before any additional migration card is written.
-- Further draw-kind metadata cleanup after E127, if render owners centralize
-  secondary/decorative colors.
+- Further draw-kind metadata cleanup after E127: `E222` is released as a
+  read-only current-state audit because E127 already centralized base
+  color/marker-size metadata and the remaining literals may be render-local
+  secondary/decorative or bridge-dispatch policy.
 - **ProductAppWindowState include-hygiene lane is CLOSED after E208.**
   E201-E207 removed all forward-declarable production/test-support header
   includes. The remaining header includes are complete-type required:
@@ -159,14 +161,11 @@ Held — do NOT promote to `ready/` on a guess:
   extracting current-session save/write without moving the creative blank-stage
   wrappers. `E218` completed G4e by moving the final launch-state helpers and
   deleting the empty `Operations.*` shell.
-- Snap/grid duplicate math (#7 in `docs/complexity_audit_v0_1.md`): `E219`
-  completed the read-only preflight and split the work. `E220` completed the
-  first implementation slice by adding a checked core `double` scalar snap
-  helper and routing creative 2D/document scalar snap through it. `E221` is
-  released for the follow-on `SpatialProjection` 3D grid guard slice; keep
-  `GridFootprint` untouched unless a later owner decision creates a 3D core
-  result/status API. Note: the audit's object-kind switch cleanup item is stale
-  in the current tree;
+- Snap/grid duplicate math (#7 in `docs/complexity_audit_v0_1.md`) is
+  COMPLETE as E219-E221. E220 added checked core `double` scalar snap and
+  routed creative 2D/document scalar snap through it. E221 added the
+  `SpatialProjection` 3D grid guard slice without touching `GridFootprint`.
+  Note: the audit's object-kind switch cleanup item is stale in the current tree;
   `CreativeObjectKind` `toString(...)` and `allowedMutations(...)` already route
   through descriptor helpers.
 - `OpeningMenuView` split remains parked; see
