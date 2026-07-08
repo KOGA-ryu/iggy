@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E226-openingmenuview-g2-scene-primitive-view-extraction.md`
+1. `ready/E227-openingmenuview-g3-debug-hud-view-extraction.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E226-openingmenuview-g2-scene-primitive-view-extraction.md`
+1. `ready/E227-openingmenuview-g3-debug-hud-view-extraction.md`
 
 ## Parking Lot
 
@@ -169,6 +169,8 @@ Held — do NOT promote to `ready/` on a guess:
   `CreativeObjectKind` `toString(...)` and `allowedMutations(...)` already route
   through descriptor helpers.
 - `OpeningMenuView` split preflight is COMPLETE as E224. G1 `SdlDraw` helper
-  extraction is COMPLETE as E225. E226 is released as G2 and should extract only
-  scene/viewport primitive rendering into `ScenePrimitiveView`, leaving HUD,
-  menu-panel, hit-test, and facade behavior in place.
+  extraction is COMPLETE as E225. G2 `ScenePrimitiveView` extraction is
+  COMPLETE as E226. E227 is released as G3 and should extract the camera,
+  feedback, debug, room-editor, and position HUD draw helpers into
+  `DebugHudView`, leaving movement tuning, menu-panel, hit-test, and facade
+  behavior in place.
