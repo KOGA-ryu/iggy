@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E197-training-room-fixture-source-of-truth-preflight.md`
+1. `ready/E198-training-room-package-copy-drift-guard.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E197-training-room-fixture-source-of-truth-preflight.md`
+1. `ready/E198-training-room-package-copy-drift-guard.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -131,10 +131,9 @@ Held — do NOT promote to `ready/` on a guess:
   preflighted the three ASCII-activated gameplay window helpers and justified
   only a tiny explicit activation helper; E196 implemented that helper.
 - `npc_vision_lab` stale training_room fixture + the "same room checked in 3×"
-  duplication smell — E197 is the read-only source-of-truth preflight. Current
-  quick evidence: shared generated room asset and `ascii_training_room` package
-  copy match; `npc_vision_lab` copy has drifted by missing `clamber_candidate`
-  traversal tags on wall blocker surfaces.
+  duplication smell — E197 read-only preflight chose generated package-local
+  copy plus drift guard. E198 updates the stale `npc_vision_lab` copy from the
+  shared generated asset and extends package parity/load coverage.
 - Remaining complexity-audit roadmap items (`OpeningMenuView` split,
   `Operations.cpp` seam split after the identity-mirror removal, shared test
   infrastructure) — see `docs/complexity_audit_v0_1.md` §3.
