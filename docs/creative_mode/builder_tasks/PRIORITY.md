@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E235-controller-split-g4a-jump-dash-state-helpers.md`
+1. `ready/E236-controller-split-g5a-wall-surface-queries.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E235-controller-split-g4a-jump-dash-state-helpers.md`
+1. `ready/E236-controller-split-g5a-wall-surface-queries.md`
 
 ## Parking Lot
 
@@ -177,6 +177,7 @@ Held — do NOT promote to `ready/` on a guess:
   backlog. `Controller.cpp` split target #2 is active: E231 preflighted the
   current file shape, E232 extracted the first G1 kinematics helper, E233
   extracted the G2 movement proof/debug writer helpers, E234 extracted the G3
-  ground-query helpers, and E235 is released as a narrowed G4a jump/dash state
-  helper extraction. Keep later controller wall/jump/dash/traversal splits
-  behind local slices rather than attempting the whole file at once.
+  ground-query helpers, E235 extracted a narrowed G4a jump/dash state helper,
+  and E236 is released as a G5a wall-surface query/direction helper extraction.
+  Keep later controller wall/jump/dash/traversal splits behind local slices
+  rather than attempting the whole file at once.
