@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E251-product-receipt-field-rows-g1-gameplay-scene-state.md`
+1. `ready/E252-product-receipt-field-rows-g2-gameplay-runtime-movement.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E251-product-receipt-field-rows-g1-gameplay-scene-state.md`
+1. `ready/E252-product-receipt-field-rows-g2-gameplay-runtime-movement.md`
 
 ## Parking Lot
 
@@ -191,6 +191,7 @@ Held — do NOT promote to `ready/` on a guess:
   facade.
 - `docs/refactor_targets.md` target #1 receipt field boilerplate is active next.
   E250 completed the read-only preflight and chose
-  `GameplaySceneStateFields.cpp` as the safest one-file pilot. E251 is released
-  as G1 to table-drive only that section with no shared helper and no golden
-  change.
+  `GameplaySceneStateFields.cpp` as the safest one-file pilot. E251 completed
+  G1 by table-driving only that section with no shared helper and no golden
+  change. E252 is released as G2 for `GameplayRuntimeMovementFields.cpp`, the
+  next direct receipt row candidate.
