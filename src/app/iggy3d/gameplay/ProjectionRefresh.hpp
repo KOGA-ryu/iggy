@@ -17,13 +17,14 @@
 #include "app/iggy3d/debug/TopDownMapOverlay.hpp"
 #include "app/iggy3d/map_maker/Presentation.hpp"
 #include "app/iggy3d/view/ViewportFraming.hpp"
-#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "projection/debug/DebugProjection.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
 #include "runtime/session/Session.hpp"
 
 namespace iggy3d {
+
+struct ProductAppWindowState;
 
 namespace creative {
 struct CreativeAppState;

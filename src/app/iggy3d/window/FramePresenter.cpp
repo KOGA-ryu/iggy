@@ -9,6 +9,7 @@
 #include <string>
 
 #include "app/frontend/DevToolsMenu.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/menu/DrawList.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/PauseUi.hpp"

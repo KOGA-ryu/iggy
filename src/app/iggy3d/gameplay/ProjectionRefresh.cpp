@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/TapeRunner.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"

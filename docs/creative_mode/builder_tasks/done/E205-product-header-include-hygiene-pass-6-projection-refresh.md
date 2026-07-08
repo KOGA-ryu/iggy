@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -119,3 +119,40 @@ Report:
 - receipt golden diff result;
 - `git diff --check` and trailing-whitespace results;
 - confirmation that no signatures, behavior, CMake, or receipt fields changed.
+
+## Completion Brief
+
+- Card moved to done: `/Users/kogaryu/iggy3d/docs/creative_mode/builder_tasks/done/E205-product-header-include-hygiene-pass-6-projection-refresh.md`
+- Files changed:
+  - `src/app/iggy3d/gameplay/ProjectionRefresh.hpp`
+  - `src/app/iggy3d/gameplay/ProjectionRefresh.cpp`
+  - `src/app/iggy3d/window/FramePresenter.cpp`
+  - `tests/unit/product_creative_world_launch_tests.cpp`
+  - `docs/creative_mode/builder_tasks/done/E205-product-header-include-hygiene-pass-6-projection-refresh.md`
+- Target header forward-declared:
+  - `ProjectionRefresh.hpp` removed `#include "app/iggy3d/ProductAppWindowState.hpp"` and now forward-declares `struct ProductAppWindowState;`.
+- Incomplete-type confirmation:
+  - `ProjectionRefresh.hpp` uses `ProductAppWindowState` only as non-owning request members and function parameters by reference.
+- `.cpp` partner with direct full-type include:
+  - `ProjectionRefresh.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` directly.
+- Fallout files given direct includes:
+  - `FramePresenter.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` because it reads/writes `request.window`.
+  - `product_creative_world_launch_tests.cpp` now includes `app/iggy3d/ProductAppWindowState.hpp` because it instantiates and mutates `ProductAppWindowState`.
+- Direct includer count for `ProductAppWindowState.hpp`:
+  - Before: 68
+  - After: 70
+  - Count rose because one header include was removed and three concrete users now include the full type directly.
+- Focused build:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d product_vulkan_room_frame_tests product_movement_debug_hud_tests product_top_down_map_overlay_tests product_creative_world_launch_tests product_receipt_key_order_tests -j10` passed.
+- Focused CTest:
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_vulkan_room_frame_tests|product_movement_debug_hud_tests|product_top_down_map_overlay_tests|product_creative_world_launch_tests|product_receipt_key_order_tests)$' --output-on-failure` passed: 5/5.
+- Receipt golden diff:
+  - `git -C /Users/kogaryu/iggy3d diff -- tests/golden/product_receipt_key_order.golden` was empty.
+- Checks:
+  - `git -C /Users/kogaryu/iggy3d diff --check` passed.
+  - Focused trailing-whitespace scan over touched files and this card passed.
+- Confirmations:
+  - No function signatures changed.
+  - No function bodies, struct layouts, projection behavior, viewport/render behavior, receipt fields, CMake, or receipt golden changed.
+- Concerns/deferred:
+  - None for this slice.
