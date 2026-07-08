@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E196-product-test-support-g5-ascii-room-window-activation-helper.md`
+1. `ready/E197-training-room-fixture-source-of-truth-preflight.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E196-product-test-support-g5-ascii-room-window-activation-helper.md`
+1. `ready/E197-training-room-fixture-source-of-truth-preflight.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -129,9 +129,12 @@ Held — do NOT promote to `ready/` on a guess:
   duplicated active-surface wrapper helper. E193 added clean temp-root/options
   setup. E194 found no immediate neutral fixture-builder extraction. E195
   preflighted the three ASCII-activated gameplay window helpers and justified
-  only a tiny explicit activation helper; E196 implements that helper.
+  only a tiny explicit activation helper; E196 implemented that helper.
 - `npc_vision_lab` stale training_room fixture + the "same room checked in 3×"
-  duplication smell — needs a single-source-of-truth card.
+  duplication smell — E197 is the read-only source-of-truth preflight. Current
+  quick evidence: shared generated room asset and `ascii_training_room` package
+  copy match; `npc_vision_lab` copy has drifted by missing `clamber_candidate`
+  traversal tags on wall blocker surfaces.
 - Remaining complexity-audit roadmap items (`OpeningMenuView` split,
   `Operations.cpp` seam split after the identity-mirror removal, shared test
   infrastructure) — see `docs/complexity_audit_v0_1.md` §3.
