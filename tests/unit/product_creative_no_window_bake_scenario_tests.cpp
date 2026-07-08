@@ -1,3 +1,5 @@
+#include "ProductFilesystemTestSupport.hpp"
+
 #include "app/iggy3d/Operations.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
@@ -7,7 +9,6 @@
 #include "app/iggy3d/input/InteractionMode.hpp"
 
 #include <cstdlib>
-#include <filesystem>
 #include <iostream>
 #include <optional>
 #include <string>
@@ -23,21 +24,11 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
-std::filesystem::path testRoot(std::string_view name) {
-  const std::filesystem::path root =
-      std::filesystem::temp_directory_path() /
-      "iggy3d_creative_no_window_bake" / std::string{name};
-  std::error_code error;
-  std::filesystem::remove_all(root, error);
-  std::filesystem::create_directories(root, error);
-  return root;
-}
-
 iggy3d::ProductAppOptions testOptions(std::string_view name) {
-  iggy3d::ProductAppOptions options;
-  options.saveRoot = testRoot(name);
-  options.windowMode = iggy3d::ProductWindowMode::NoWindow;
-  return options;
+  return iggy3d::test::productTestOptions(
+      "iggy3d_creative_no_window_bake",
+      name,
+      iggy3d::ProductWindowMode::NoWindow);
 }
 
 iggy3d::ProductCreativeNewWorldLaunchRequest launchRequest(

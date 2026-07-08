@@ -1,4 +1,5 @@
 #include "ProductActiveSurfaceTestSupport.hpp"
+#include "ProductFilesystemTestSupport.hpp"
 
 #include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
@@ -58,13 +59,7 @@ struct StarterHarness {
 };
 
 std::filesystem::path testRoot(std::string_view name) {
-  const std::filesystem::path root =
-      std::filesystem::temp_directory_path() / "iggy3d_starter_action" /
-      std::string{name};
-  std::error_code error;
-  std::filesystem::remove_all(root, error);
-  std::filesystem::create_directories(root, error);
-  return root;
+  return iggy3d::test::cleanProductTestRoot("iggy3d_starter_action", name);
 }
 
 iggy3d::ProductMenuActionResult applyStarterAction(

@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -132,3 +132,36 @@ Move this card to `blocked/` with evidence if:
 - Helpers intentionally left local:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completion Brief
+
+- Card moved to done: yes
+- Files changed:
+  - `tests/unit/ProductFilesystemTestSupport.hpp`
+  - `tests/unit/product_creative_world_launch_tests.cpp`
+  - `tests/unit/product_creative_no_window_bake_scenario_tests.cpp`
+  - `tests/unit/product_starter_menu_action_tests.cpp`
+  - `tests/unit/product_automation_dispatch_tests.cpp`
+  - `docs/creative_mode/builder_tasks/done/E193-product-test-support-g4-temp-root-options.md`
+- Helper API added:
+  - `iggy3d::test::cleanProductTestRoot(std::string_view suite, std::string_view name)`
+  - `iggy3d::test::productTestOptions(std::string_view suite, std::string_view name)`
+  - `iggy3d::test::productTestOptions(std::string_view suite, std::string_view name, ProductWindowMode windowMode)`
+  - `cleanProductTestRoot(...)` preserves the existing target-file behavior: `temp_directory_path() / suite / name`, local `std::error_code`, `remove_all`, `create_directories`, and returns the root.
+- Files migrated:
+  - `product_creative_world_launch_tests.cpp`: local `testOptions(...)` now delegates to shared `productTestOptions(...)` with suite `iggy3d_creative_launch`.
+  - `product_creative_no_window_bake_scenario_tests.cpp`: local `testOptions(...)` now delegates to the shared window-mode overload with suite `iggy3d_creative_no_window_bake` and `ProductWindowMode::NoWindow`.
+  - `product_starter_menu_action_tests.cpp`: local `testRoot(...)` wrapper is retained for existing call-site readability and now delegates to shared `cleanProductTestRoot(...)` with suite `iggy3d_starter_action`.
+  - `product_automation_dispatch_tests.cpp`: removed the local `testRoot(...)` wrapper and uses shared `productTestOptions(...)` with suite `iggy3d_automation_dispatch`.
+- Helpers intentionally left local:
+  - `product_save_bridge_tests.cpp` stayed untouched because it owns save-path edge-case behavior and was explicitly out of scope.
+  - Large scenario/harness structs, assertion helpers, receipt helpers, active-surface helpers, and save-specific setup stayed local.
+  - Local `testOptions(...)` / `testRoot(...)` wrappers remain in large files where they preserve existing readability while delegating the duplicated filesystem work.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target product_creative_world_launch_tests product_creative_no_window_bake_scenario_tests product_starter_menu_action_tests product_automation_dispatch_tests -j10` - passed. Existing unrelated warning remains in `product_starter_menu_action_tests.cpp` for unused local variable `facade`.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_creative_world_launch_tests|product_creative_no_window_bake_scenario_tests|product_starter_menu_action_tests|product_automation_dispatch_tests)$' --output-on-failure` - passed, 4/4.
+  - `git -C /Users/kogaryu/iggy3d diff --check` - passed.
+  - `perl -ne 'print "$ARGV:$.:$_" if /[ \t]$/' tests/unit/ProductFilesystemTestSupport.hpp tests/unit/product_creative_world_launch_tests.cpp tests/unit/product_creative_no_window_bake_scenario_tests.cpp tests/unit/product_starter_menu_action_tests.cpp tests/unit/product_automation_dispatch_tests.cpp docs/creative_mode/builder_tasks/done/E193-product-test-support-g4-temp-root-options.md` - no output.
+  - Focused grep confirmed suite prefixes are unchanged and `product_save_bridge_tests.cpp` remains local.
+- Concerns/deferred:
+  - No production source, CMake, receipt golden, save bridge tests, assertion helpers, receipt helpers, active-surface helpers, staging, commit, push, broad CTest, or window launch were touched.

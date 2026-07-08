@@ -1,6 +1,7 @@
+#include "ProductFilesystemTestSupport.hpp"
+
 #include "app/iggy3d/automation/AutomationDispatch.hpp"
 
-#include <filesystem>
 #include <iostream>
 #include <optional>
 #include <string_view>
@@ -22,16 +23,6 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
-std::filesystem::path testRoot(std::string_view name) {
-  const std::filesystem::path root =
-      std::filesystem::temp_directory_path() / "iggy3d_automation_dispatch" /
-      std::string{name};
-  std::error_code error;
-  std::filesystem::remove_all(root, error);
-  std::filesystem::create_directories(root, error);
-  return root;
-}
-
 bool creativeNewWorldLaunchesThroughAutomationAppContext() {
   iggy3d::FrontendState frontend;
   frontend.screen = iggy3d::FrontendScreen::Starter;
@@ -39,8 +30,9 @@ bool creativeNewWorldLaunchesThroughAutomationAppContext() {
   frontend.selectedAction = iggy3d::FrontendAction::Continue;
   frontend.status = "starter_screen_ready";
 
-  iggy3d::ProductAppOptions options;
-  options.saveRoot = testRoot("creative_new_world");
+  iggy3d::ProductAppOptions options =
+      iggy3d::test::productTestOptions("iggy3d_automation_dispatch",
+                                       "creative_new_world");
 
   iggy3d::ProductSaveBridgeResult saves;
   iggy3d::FrontendSettings settings;
