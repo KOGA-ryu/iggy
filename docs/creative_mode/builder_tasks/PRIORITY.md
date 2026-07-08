@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E198-training-room-package-copy-drift-guard.md`
+1. `ready/E199-active-surface-sync-tail-audit.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E198-training-room-package-copy-drift-guard.md`
+1. `ready/E199-active-surface-sync-tail-audit.md`
 
 ## Tier 2: Feature-Add Seams
 
@@ -132,8 +132,12 @@ Held — do NOT promote to `ready/` on a guess:
   only a tiny explicit activation helper; E196 implemented that helper.
 - `npc_vision_lab` stale training_room fixture + the "same room checked in 3×"
   duplication smell — E197 read-only preflight chose generated package-local
-  copy plus drift guard. E198 updates the stale `npc_vision_lab` copy from the
-  shared generated asset and extends package parity/load coverage.
+  copy plus drift guard. E198 updated the stale `npc_vision_lab` copy from the
+  shared generated asset and extended package parity/load coverage.
+- Active-surface sync tail: E199 audits whether
+  `syncProductWindowInputOwnerFromActiveSurface(...)` is now a misnamed no-op
+  wrapper after window input-owner cache deletion, before removing bare
+  production calls or renaming test/support helpers.
 - Remaining complexity-audit roadmap items (`OpeningMenuView` split,
   `Operations.cpp` seam split after the identity-mirror removal, shared test
   infrastructure) — see `docs/complexity_audit_v0_1.md` §3.
