@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E267-iggy3d-creative-main-split-g1-wireframe-box-edges.md`
+1. `ready/E268-iggy3d-creative-main-split-g2-editor-state-shell.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E267-iggy3d-creative-main-split-g1-wireframe-box-edges.md`
+1. `ready/E268-iggy3d-creative-main-split-g2-editor-state-shell.md`
 
 ## Parking Lot
 
@@ -200,6 +200,7 @@ Held — do NOT promote to `ready/` on a guess:
   active next because target #2 `Controller.cpp` split is complete. E266
   completed the read-only preflight and chose the safest G1 as moving only the
   file-local `appendWireframeBoxEdges(...)` helper out of
-  `apps/iggy3d_creative/main.cpp`. E267 is released to perform that helper
-  extraction without introducing `CreativeEditorState`, `EditorFrame`, or any
-  frame-stage movement.
+  `apps/iggy3d_creative/main.cpp`. E267 completed that helper extraction. E268
+  is released to introduce the app-local `CreativeEditorState` shell and move
+  the current mutable editor/frame-loop locals behind it without moving any
+  frame stages yet.
