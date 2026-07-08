@@ -58,6 +58,7 @@
 #include "render/debug/DebugHudText.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
+#include "CreativeEditorCommandInput.hpp"
 #include "CreativeEditorFrameInput.hpp"
 #include "CreativeRendererBootstrap.hpp"
 #include "CreativeEditorState.hpp"
@@ -89,9 +90,8 @@ using iggy3d_creative_app::brushFootprintForDescriptor;
 using iggy3d_creative_app::buildBrushPaletteFromDescriptors;
 using iggy3d_creative_app::buildStandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::captureFrameToPng;
-using iggy3d_creative_app::clearToBlankScene;
-using iggy3d_creative_app::clearUndoStack;
 using iggy3d_creative_app::createCreativeRenderer;
+using iggy3d_creative_app::applyCreativeEditorCommandInput;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::CreativeEditorState;
 using iggy3d_creative_app::CreativeEditorFrameInputResult;
@@ -103,13 +103,11 @@ using iggy3d_creative_app::GizmoAxisShaft;
 using iggy3d_creative_app::gizmoAxisName;
 using iggy3d_creative_app::heldAxisForGrabbedAxis;
 using iggy3d_creative_app::initialPathPointsForAnchor;
-using iggy3d_creative_app::loadStandaloneScene;
 using iggy3d_creative_app::logMoveDispatch;
 using iggy3d_creative_app::logObjectPlacement;
 using iggy3d_creative_app::movePathObjectWithUndo;
 using iggy3d_creative_app::movePathPointWithUndo;
 using iggy3d_creative_app::pushUndoSnapshot;
-using iggy3d_creative_app::nextBrushKind;
 using iggy3d_creative_app::appendPathPolylineLines;
 using iggy3d_creative_app::buildPathPointHandleHits;
 using iggy3d_creative_app::lineProxyBounds;
@@ -127,11 +125,9 @@ using iggy3d_creative_app::projectBoxToScreen;
 using iggy3d_creative_app::projectPointToScreen;
 using iggy3d_creative_app::ScreenPoint;
 using iggy3d_creative_app::snapGroundToCellCenter;
-using iggy3d_creative_app::saveStandaloneScene;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::appendStandaloneWireframeBoxEdges;
 using iggy3d_creative_app::toVec3;
-using iggy3d_creative_app::undoLastSnapshot;
 using iggy3d_creative_app::validPathPoints;
 using iggy3d_creative_app::VisualBounds;
 using iggy3d_creative_app::visualBoundsCenter;
@@ -360,84 +356,8 @@ int main(int argc, char** argv) {
     const SdlDrawableExtent extent = frameInput.extent;
     const bool* keys = frameInput.keyboardState;
 
-    // ---- TOOL SWITCH: '1' -> Select, '2' -> Move ------------------
-    // Edge-triggered so a held key flips the active tool once. Driven ONLY
-    // through the facade's generic setActiveTool — no per-tool special-casing.
-    if (capturePath.empty() && keys != nullptr) {
-      const bool key1 = keys[SDL_SCANCODE_1] != 0;
-      const bool key2 = keys[SDL_SCANCODE_2] != 0;
-      const bool key3 = keys[SDL_SCANCODE_3] != 0;
-      const bool keyB = keys[SDL_SCANCODE_B] != 0;
-      const bool keyDelete = keys[SDL_SCANCODE_DELETE] != 0;
-      const bool keyBackspace = keys[SDL_SCANCODE_BACKSPACE] != 0;
-      const bool keyZ = keys[SDL_SCANCODE_Z] != 0;
-      const SDL_Keymod modState = SDL_GetModState();
-      const bool undoModifier =
-          (modState & (SDL_KMOD_GUI | SDL_KMOD_CTRL)) != 0U;
-      if (key1 && !editor.prevKey1) {
-        editor.placeMode = false;  // '1' Select leaves Place mode.
-        const bool ok = appState.facade.setActiveTool(creative::Tool::Select);
-        SDL_Log("iggy3d_creative: setActiveTool(Select) accepted=%d placeMode=0",
-                ok ? 1 : 0);
-      }
-      if (key2 && !editor.prevKey2) {
-        editor.placeMode = false;  // '2' Move leaves Place mode.
-        const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
-        SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d placeMode=0",
-                ok ? 1 : 0);
-      }
-      if (key3 && !editor.prevKey3) {
-        editor.placeMode = true;  // '3' Place: app-level mode, not a kernel Tool.
-        SDL_Log("iggy3d_creative: placeMode=1 brush='%s'",
-                std::string(creative::toString(editor.placeBrush)).c_str());
-      }
-      if (keyB && !editor.prevKeyB) {
-        editor.placeBrush = nextBrushKind(editor.brushPalette, editor.placeBrush);
-        SDL_Log("iggy3d_creative: brush cycled -> '%s'",
-                std::string(creative::toString(editor.placeBrush)).c_str());
-      }
-      if ((keyDelete && !editor.prevKeyDelete) ||
-          (keyBackspace && !editor.prevKeyBackspace)) {
-        (void)deleteSelectedObject(appState,
-                                   keyDelete ? "delete_key" : "backspace_key",
-                                   &editor.undoStack);
-      }
-      if (keyZ && !editor.prevKeyZ && undoModifier) {
-        (void)undoLastSnapshot(appState, editor.undoStack, "keyboard_undo");
-      }
-      // ---- SAVE / LOAD keys: F5 save, F6 new/clear, F9 load -------
-      const bool keyF5 = keys[SDL_SCANCODE_F5] != 0;
-      const bool keyF6 = keys[SDL_SCANCODE_F6] != 0;
-      const bool keyF9 = keys[SDL_SCANCODE_F9] != 0;
-      if (keyF5 && !editor.prevKeyF5) {
-        const CreativeWorldSaveResult saveResult =
-            saveStandaloneScene(appState.facade, saveRoot, saveId);
-        if (saveResult.accepted && saveResult.saved) {
-          clearUndoStack(editor.undoStack, "save_success");
-        }
-      }
-      if (keyF6 && !editor.prevKeyF6) {
-        clearToBlankScene(appState);  // Fresh blank document; facade resets
-                                      // selection so no stale seed id dangles.
-        clearUndoStack(editor.undoStack, "new_clear");
-      }
-      if (keyF9 && !editor.prevKeyF9) {
-        const bool loaded = loadStandaloneScene(appState, saveRoot, saveId);
-        if (loaded) {
-          clearUndoStack(editor.undoStack, "load_success");
-        }
-      }
-      editor.prevKey1 = key1;
-      editor.prevKey2 = key2;
-      editor.prevKey3 = key3;
-      editor.prevKeyB = keyB;
-      editor.prevKeyDelete = keyDelete;
-      editor.prevKeyBackspace = keyBackspace;
-      editor.prevKeyZ = keyZ;
-      editor.prevKeyF5 = keyF5;
-      editor.prevKeyF6 = keyF6;
-      editor.prevKeyF9 = keyF9;
-    }
+    applyCreativeEditorCommandInput(
+        keys, !capturePath.empty(), appState, editor, saveRoot, saveId);
 
     // SCENE (local, must outlive submitFrame): bake supported room geometry
     // through the same CreativeDocument -> RoomAsset adapter that gameplay will

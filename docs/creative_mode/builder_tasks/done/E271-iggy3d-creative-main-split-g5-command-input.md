@@ -280,3 +280,100 @@ Report:
   helper move, frame-begin input move, capture scenario move, later frame-stage
   move, tests, receipt/golden files, broad CTest, interactive window launch,
   staging, commit, or push was performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/CreativeEditorCommandInput.hpp`
+- `apps/iggy3d_creative/CreativeEditorCommandInput.cpp`
+- `CMakeLists.txt`
+- this task card, moved to `done/`
+
+Helper API:
+
+```cpp
+namespace iggy3d_creative_app {
+
+void applyCreativeEditorCommandInput(
+    const bool* keys,
+    bool captureMode,
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    const std::filesystem::path& saveRoot,
+    const std::string& saveId);
+
+}  // namespace iggy3d_creative_app
+```
+
+Extraction summary:
+
+- Moved the interactive command-key block into
+  `CreativeEditorCommandInput.cpp`.
+- Preserved the capture-mode/null-keyboard early return semantics.
+- Preserved scancode reads, latch reads/writes, modifier check, tool-switch
+  calls, place-mode/brush-cycle behavior, delete/undo behavior, save/new/load
+  behavior, and all moved log strings.
+- `main.cpp` now calls:
+
+```cpp
+applyCreativeEditorCommandInput(
+    keys, !capturePath.empty(), appState, editor, saveRoot, saveId);
+```
+
+What remains in `main.cpp`:
+
+- frame-begin input remains delegated to `CreativeEditorFrameInput.*`;
+- the capture scenario dispatch and capture callback remain in `main.cpp`;
+- the separate capture callback still calls `deleteSelectedObject(...)`;
+- later selection/place/move keyboard reads remain in `main.cpp`.
+
+CMake:
+
+- Added `apps/iggy3d_creative/CreativeEditorCommandInput.cpp` to the
+  `iggy3d_creative` executable source list, directly before
+  `apps/iggy3d_creative/CreativeEditorFrameInput.cpp`.
+- No other target source list was changed.
+
+Required grep classifications:
+
+- `CreativeEditorCommandInput.hpp` declares
+  `applyCreativeEditorCommandInput(...)`.
+- `CreativeEditorCommandInput.cpp` defines
+  `applyCreativeEditorCommandInput(...)`.
+- The moved command-key scancodes, latch assignments, modifier check, and log
+  strings live in `CreativeEditorCommandInput.cpp`.
+- `main.cpp` includes `CreativeEditorCommandInput.hpp`, has the `using`
+  declaration, and calls `applyCreativeEditorCommandInput(...)`.
+- `main.cpp` no longer owns the interactive `TOOL SWITCH` / `SAVE / LOAD keys`
+  block. The remaining `setActiveTool(Move)` hit in `main.cpp` belongs to the
+  later capture move script and remains there.
+- E270's `StandaloneDelete.*` remains the delete helper owner.
+- E269's `CreativeEditorFrameInput.*` remains the frame-begin input owner.
+- No `EditorFrame` or `runCreativeEditorFrame(...)` was introduced.
+- E267's `appendStandaloneWireframeBoxEdges(...)` helper remains unchanged; no
+  old `appendWireframeBoxEdges(...)` helper was reintroduced.
+- `CreativeEditorCommandInput.cpp` appears only in the `iggy3d_creative`
+  executable source list.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan passed for touched source files,
+  `CMakeLists.txt`, and this card.
+
+Optional capture:
+
+- Skipped. No owner explicitly allowed a windowed/Vulkan capture check.
+
+Not performed:
+
+- No `EditorFrame`, `runCreativeEditorFrame(...)`, delete helper move,
+  frame-begin input move, capture scenario move, later frame-stage move, tests,
+  receipt/golden edits, broad CTest, interactive window launch, staging,
+  commit, or push.

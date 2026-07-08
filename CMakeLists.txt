@@ -384,6 +384,7 @@ iggy3d_apply_warnings(iggy3d_app)
 
 add_executable(iggy3d_creative
   apps/iggy3d_creative/main.cpp
+  apps/iggy3d_creative/CreativeEditorCommandInput.cpp
   apps/iggy3d_creative/CreativeEditorFrameInput.cpp
   apps/iggy3d_creative/CreativeRendererBootstrap.cpp
   apps/iggy3d_creative/StandaloneBrushPalette.cpp
