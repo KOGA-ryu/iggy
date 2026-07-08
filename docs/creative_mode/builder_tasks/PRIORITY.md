@@ -59,11 +59,11 @@ None.
 
 ## Pull Next
 
-1. `ready/E182-traversal-tag-roomasset-validation-routing.md`
+1. `ready/E183-traversal-tag-ascii-asset-text-export-routing.md`
 
 ## Tier 1: Correctness And Compatibility
 
-1. `ready/E182-traversal-tag-roomasset-validation-routing.md`
+1. `ready/E183-traversal-tag-ascii-asset-text-export-routing.md`
 
 ## Tier 2: Feature-Add Seams
 
