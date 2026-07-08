@@ -25,168 +25,837 @@ namespace iggy3d {
 
 namespace {
 
+template <typename Fields>
+struct CreativeUiCommandReceiptFieldRow {
+  std::string_view key;
+  void (*append)(RenderReceipt& receipt,
+                 const Fields& fields,
+                 std::string_view key);
+};
+
+const std::array<
+    CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandMutationDiagnostics>,
+    16>
+    kCreativeUiCommandMutationReceiptFields{{
+    {"creative_ui_command_mutation_requested",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.requested);
+     }},
+    {"creative_ui_command_mutation_accepted",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.accepted);
+     }},
+    {"creative_ui_command_mutation_changed",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.changed);
+     }},
+    {"creative_ui_command_mutation_status",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.status);
+     }},
+    {"creative_ui_command_document_mutation_status",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.documentStatus);
+     }},
+    {"creative_ui_command_mutation_kind",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.kind);
+     }},
+    {"creative_ui_command_mutation_target",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.target);
+     }},
+    {"creative_ui_command_mutation_object_id",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.objectId);
+     }},
+    {"creative_ui_command_mutation_object_kind",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.objectKind);
+     }},
+    {"creative_ui_command_visible_before",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.visibleBefore);
+     }},
+    {"creative_ui_command_visible_after",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.visibleAfter);
+     }},
+    {"creative_ui_command_locked_before",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.lockedBefore);
+     }},
+    {"creative_ui_command_locked_after",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.lockedAfter);
+     }},
+    {"creative_ui_command_revision_before",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.revisionBefore);
+     }},
+    {"creative_ui_command_revision_after",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.revisionAfter);
+     }},
+    {"creative_ui_command_mutation_message",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandMutationDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.message);
+     }},
+}};
+
+const std::array<
+    CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandCreateDiagnostics>,
+    12>
+    kCreativeUiCommandCreateReceiptFields{{
+    {"creative_ui_command_create_requested",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.requested);
+     }},
+    {"creative_ui_command_create_accepted",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.accepted);
+     }},
+    {"creative_ui_command_create_changed",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.changed);
+     }},
+    {"creative_ui_command_create_status",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.status);
+     }},
+    {"creative_ui_command_create_object_id",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.objectId);
+     }},
+    {"creative_ui_command_create_object_kind",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.objectKind);
+     }},
+    {"creative_ui_command_create_object_name",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.objectName);
+     }},
+    {"creative_ui_command_create_revision_before",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.revisionBefore);
+     }},
+    {"creative_ui_command_create_revision_after",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.revisionAfter);
+     }},
+    {"creative_ui_command_create_dirty_flags",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.dirtyFlags);
+     }},
+    {"creative_ui_command_create_message",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.message);
+     }},
+    {"creative_ui_command_create_reason_code",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandCreateDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.reasonCode);
+     }},
+}};
+
+const std::array<
+    CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandDeleteDiagnostics>,
+    13>
+    kCreativeUiCommandDeleteReceiptFields{{
+    {"creative_ui_command_delete_requested",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.requested);
+     }},
+    {"creative_ui_command_delete_accepted",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.accepted);
+     }},
+    {"creative_ui_command_delete_changed",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.changed);
+     }},
+    {"creative_ui_command_delete_removed",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.removed);
+     }},
+    {"creative_ui_command_delete_object_id",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.objectId);
+     }},
+    {"creative_ui_command_delete_object_kind",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.objectKind);
+     }},
+    {"creative_ui_command_delete_object_name",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.objectName);
+     }},
+    {"creative_ui_command_delete_revision_before",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.revisionBefore);
+     }},
+    {"creative_ui_command_delete_revision_after",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.revisionAfter);
+     }},
+    {"creative_ui_command_delete_dirty_flags",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.dirtyFlags);
+     }},
+    {"creative_ui_command_delete_status",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.status);
+     }},
+    {"creative_ui_command_delete_message",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.message);
+     }},
+    {"creative_ui_command_delete_reason_code",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDeleteDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.reasonCode);
+     }},
+}};
+
+const std::array<
+    CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandUndoDiagnostics>,
+    14>
+    kCreativeUiCommandUndoReceiptFields{{
+    {"creative_ui_command_undo_requested",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.requested);
+     }},
+    {"creative_ui_command_undo_accepted",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.accepted);
+     }},
+    {"creative_ui_command_undo_changed",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.changed);
+     }},
+    {"creative_ui_command_undo_had_snapshot",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.hadSnapshot);
+     }},
+    {"creative_ui_command_undo_document_id",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.documentId);
+     }},
+    {"creative_ui_command_undo_revision_before",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.revisionBefore);
+     }},
+    {"creative_ui_command_undo_revision_after",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.revisionAfter);
+     }},
+    {"creative_ui_command_undo_object_count_before",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.objectCountBefore);
+     }},
+    {"creative_ui_command_undo_object_count_after",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.objectCountAfter);
+     }},
+    {"creative_ui_command_undo_depth_before",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.depthBefore);
+     }},
+    {"creative_ui_command_undo_depth_after",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.depthAfter);
+     }},
+    {"creative_ui_command_undo_status",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.status);
+     }},
+    {"creative_ui_command_undo_message",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.message);
+     }},
+    {"creative_ui_command_undo_reason_code",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandUndoDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.reasonCode);
+     }},
+}};
+
+const std::array<
+    CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandRoomShellDiagnostics>,
+    13>
+    kCreativeUiCommandRoomShellReceiptFields{{
+    {"creative_ui_command_shell_requested",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.requested);
+     }},
+    {"creative_ui_command_shell_accepted",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.accepted);
+     }},
+    {"creative_ui_command_shell_changed",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.changed);
+     }},
+    {"creative_ui_command_shell_room_object_id",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.roomObjectId);
+     }},
+    {"creative_ui_command_shell_generated_object_count",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.generatedObjectCount);
+     }},
+    {"creative_ui_command_shell_removed_object_count",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.removedObjectCount);
+     }},
+    {"creative_ui_command_shell_floor_count",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.floorCount);
+     }},
+    {"creative_ui_command_shell_wall_count",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.wallCount);
+     }},
+    {"creative_ui_command_shell_revision_before",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.revisionBefore);
+     }},
+    {"creative_ui_command_shell_revision_after",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.revisionAfter);
+     }},
+    {"creative_ui_command_shell_status",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.status);
+     }},
+    {"creative_ui_command_shell_reason_code",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.reasonCode);
+     }},
+    {"creative_ui_command_shell_message",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandRoomShellDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.message);
+     }},
+}};
+
+const std::array<
+    CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandDiagnostics>,
+    14>
+    kCreativeUiCommandReceiptFields{{
+    {"creative_ui_command_requested",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.requested);
+     }},
+    {"creative_ui_command_facade_available",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.facadeAvailable);
+     }},
+    {"creative_ui_command_input_consumed",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.inputConsumed);
+     }},
+    {"creative_ui_command_input_enabled",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.inputEnabled);
+     }},
+    {"creative_ui_command_accepted",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.accepted);
+     }},
+    {"creative_ui_command_changed",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.changed);
+     }},
+    {"creative_ui_command_kind",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.kind);
+     }},
+    {"creative_ui_command_tool",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.tool);
+     }},
+    {"creative_ui_command_object_kind",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.objectKind);
+     }},
+    {"creative_ui_command_tool_before",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.toolBefore);
+     }},
+    {"creative_ui_command_tool_after",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.toolAfter);
+     }},
+    {"creative_ui_command_semantic_id",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.semanticId);
+     }},
+    {"creative_ui_command_status",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.status);
+     }},
+    {"creative_ui_command_reason_code",
+     [](RenderReceipt& receipt,
+        const ProductCreativeUiCommandDiagnostics& fields,
+        std::string_view key) {
+       appendReceiptField(
+           receipt,
+           key,
+           fields.reasonCode);
+     }},
+}};
+
 void appendProductCreativeUiCommandMutationFields(
     RenderReceipt& receipt,
     const ProductCreativeUiCommandMutationDiagnostics& fields) {
-  appendReceiptField(receipt, "creative_ui_command_mutation_requested",
-                     fields.requested);
-  appendReceiptField(receipt, "creative_ui_command_mutation_accepted",
-                     fields.accepted);
-  appendReceiptField(receipt, "creative_ui_command_mutation_changed",
-                     fields.changed);
-  appendReceiptField(receipt, "creative_ui_command_mutation_status",
-                     fields.status);
-  appendReceiptField(receipt, "creative_ui_command_document_mutation_status",
-                     fields.documentStatus);
-  appendReceiptField(receipt, "creative_ui_command_mutation_kind",
-                     fields.kind);
-  appendReceiptField(receipt, "creative_ui_command_mutation_target",
-                     fields.target);
-  appendReceiptField(receipt, "creative_ui_command_mutation_object_id",
-                     fields.objectId);
-  appendReceiptField(receipt, "creative_ui_command_mutation_object_kind",
-                     fields.objectKind);
-  appendReceiptField(receipt, "creative_ui_command_visible_before",
-                     fields.visibleBefore);
-  appendReceiptField(receipt, "creative_ui_command_visible_after",
-                     fields.visibleAfter);
-  appendReceiptField(receipt, "creative_ui_command_locked_before",
-                     fields.lockedBefore);
-  appendReceiptField(receipt, "creative_ui_command_locked_after",
-                     fields.lockedAfter);
-  appendReceiptField(receipt, "creative_ui_command_revision_before",
-                     fields.revisionBefore);
-  appendReceiptField(receipt, "creative_ui_command_revision_after",
-                     fields.revisionAfter);
-  appendReceiptField(receipt, "creative_ui_command_mutation_message",
-                     fields.message);
+  for (const CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandMutationDiagnostics>& row :
+       kCreativeUiCommandMutationReceiptFields) {
+    row.append(receipt, fields, row.key);
+  }
 }
+
 
 void appendProductCreativeUiCommandCreateFields(
     RenderReceipt& receipt,
     const ProductCreativeUiCommandCreateDiagnostics& fields) {
-  appendReceiptField(receipt, "creative_ui_command_create_requested",
-                     fields.requested);
-  appendReceiptField(receipt, "creative_ui_command_create_accepted",
-                     fields.accepted);
-  appendReceiptField(receipt, "creative_ui_command_create_changed",
-                     fields.changed);
-  appendReceiptField(receipt, "creative_ui_command_create_status",
-                     fields.status);
-  appendReceiptField(receipt, "creative_ui_command_create_object_id",
-                     fields.objectId);
-  appendReceiptField(receipt, "creative_ui_command_create_object_kind",
-                     fields.objectKind);
-  appendReceiptField(receipt, "creative_ui_command_create_object_name",
-                     fields.objectName);
-  appendReceiptField(receipt, "creative_ui_command_create_revision_before",
-                     fields.revisionBefore);
-  appendReceiptField(receipt, "creative_ui_command_create_revision_after",
-                     fields.revisionAfter);
-  appendReceiptField(receipt, "creative_ui_command_create_dirty_flags",
-                     fields.dirtyFlags);
-  appendReceiptField(receipt, "creative_ui_command_create_message",
-                     fields.message);
-  appendReceiptField(receipt, "creative_ui_command_create_reason_code",
-                     fields.reasonCode);
+  for (const CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandCreateDiagnostics>& row :
+       kCreativeUiCommandCreateReceiptFields) {
+    row.append(receipt, fields, row.key);
+  }
 }
+
 
 void appendProductCreativeUiCommandDeleteFields(
     RenderReceipt& receipt,
     const ProductCreativeUiCommandDeleteDiagnostics& fields) {
-  appendReceiptField(receipt, "creative_ui_command_delete_requested",
-                     fields.requested);
-  appendReceiptField(receipt, "creative_ui_command_delete_accepted",
-                     fields.accepted);
-  appendReceiptField(receipt, "creative_ui_command_delete_changed",
-                     fields.changed);
-  appendReceiptField(receipt, "creative_ui_command_delete_removed",
-                     fields.removed);
-  appendReceiptField(receipt, "creative_ui_command_delete_object_id",
-                     fields.objectId);
-  appendReceiptField(receipt, "creative_ui_command_delete_object_kind",
-                     fields.objectKind);
-  appendReceiptField(receipt, "creative_ui_command_delete_object_name",
-                     fields.objectName);
-  appendReceiptField(receipt, "creative_ui_command_delete_revision_before",
-                     fields.revisionBefore);
-  appendReceiptField(receipt, "creative_ui_command_delete_revision_after",
-                     fields.revisionAfter);
-  appendReceiptField(receipt, "creative_ui_command_delete_dirty_flags",
-                     fields.dirtyFlags);
-  appendReceiptField(receipt, "creative_ui_command_delete_status",
-                     fields.status);
-  appendReceiptField(receipt, "creative_ui_command_delete_message",
-                     fields.message);
-  appendReceiptField(receipt, "creative_ui_command_delete_reason_code",
-                     fields.reasonCode);
+  for (const CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandDeleteDiagnostics>& row :
+       kCreativeUiCommandDeleteReceiptFields) {
+    row.append(receipt, fields, row.key);
+  }
 }
+
 
 void appendProductCreativeUiCommandUndoFields(
     RenderReceipt& receipt,
     const ProductCreativeUiCommandUndoDiagnostics& fields) {
-  appendReceiptField(receipt, "creative_ui_command_undo_requested",
-                     fields.requested);
-  appendReceiptField(receipt, "creative_ui_command_undo_accepted",
-                     fields.accepted);
-  appendReceiptField(receipt, "creative_ui_command_undo_changed",
-                     fields.changed);
-  appendReceiptField(receipt, "creative_ui_command_undo_had_snapshot",
-                     fields.hadSnapshot);
-  appendReceiptField(receipt, "creative_ui_command_undo_document_id",
-                     fields.documentId);
-  appendReceiptField(receipt, "creative_ui_command_undo_revision_before",
-                     fields.revisionBefore);
-  appendReceiptField(receipt, "creative_ui_command_undo_revision_after",
-                     fields.revisionAfter);
-  appendReceiptField(receipt, "creative_ui_command_undo_object_count_before",
-                     fields.objectCountBefore);
-  appendReceiptField(receipt, "creative_ui_command_undo_object_count_after",
-                     fields.objectCountAfter);
-  appendReceiptField(receipt, "creative_ui_command_undo_depth_before",
-                     fields.depthBefore);
-  appendReceiptField(receipt, "creative_ui_command_undo_depth_after",
-                     fields.depthAfter);
-  appendReceiptField(receipt, "creative_ui_command_undo_status",
-                     fields.status);
-  appendReceiptField(receipt, "creative_ui_command_undo_message",
-                     fields.message);
-  appendReceiptField(receipt, "creative_ui_command_undo_reason_code",
-                     fields.reasonCode);
+  for (const CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandUndoDiagnostics>& row :
+       kCreativeUiCommandUndoReceiptFields) {
+    row.append(receipt, fields, row.key);
+  }
 }
+
 
 void appendProductCreativeUiCommandRoomShellFields(
     RenderReceipt& receipt,
     const ProductCreativeUiCommandRoomShellDiagnostics& fields) {
-  appendReceiptField(receipt, "creative_ui_command_shell_requested",
-                     fields.requested);
-  appendReceiptField(receipt, "creative_ui_command_shell_accepted",
-                     fields.accepted);
-  appendReceiptField(receipt, "creative_ui_command_shell_changed",
-                     fields.changed);
-  appendReceiptField(receipt, "creative_ui_command_shell_room_object_id",
-                     fields.roomObjectId);
-  appendReceiptField(receipt,
-                     "creative_ui_command_shell_generated_object_count",
-                     fields.generatedObjectCount);
-  appendReceiptField(receipt,
-                     "creative_ui_command_shell_removed_object_count",
-                     fields.removedObjectCount);
-  appendReceiptField(receipt, "creative_ui_command_shell_floor_count",
-                     fields.floorCount);
-  appendReceiptField(receipt, "creative_ui_command_shell_wall_count",
-                     fields.wallCount);
-  appendReceiptField(receipt, "creative_ui_command_shell_revision_before",
-                     fields.revisionBefore);
-  appendReceiptField(receipt, "creative_ui_command_shell_revision_after",
-                     fields.revisionAfter);
-  appendReceiptField(receipt, "creative_ui_command_shell_status",
-                     fields.status);
-  appendReceiptField(receipt, "creative_ui_command_shell_reason_code",
-                     fields.reasonCode);
-  appendReceiptField(receipt, "creative_ui_command_shell_message",
-                     fields.message);
+  for (const CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandRoomShellDiagnostics>& row :
+       kCreativeUiCommandRoomShellReceiptFields) {
+    row.append(receipt, fields, row.key);
+  }
 }
+
 
 struct ProductCreativeBakedRoomRefreshReceiptKeySet {
   std::string_view requested;
@@ -280,30 +949,10 @@ void appendProductCreativeBakedRoomAutoRefreshFields(
 void appendProductCreativeUiCommandFields(
     RenderReceipt& receipt,
     const ProductCreativeUiCommandDiagnostics& fields) {
-  appendReceiptField(receipt, "creative_ui_command_requested",
-                     fields.requested);
-  appendReceiptField(receipt, "creative_ui_command_facade_available",
-                     fields.facadeAvailable);
-  appendReceiptField(receipt, "creative_ui_command_input_consumed",
-                     fields.inputConsumed);
-  appendReceiptField(receipt, "creative_ui_command_input_enabled",
-                     fields.inputEnabled);
-  appendReceiptField(receipt, "creative_ui_command_accepted",
-                     fields.accepted);
-  appendReceiptField(receipt, "creative_ui_command_changed", fields.changed);
-  appendReceiptField(receipt, "creative_ui_command_kind", fields.kind);
-  appendReceiptField(receipt, "creative_ui_command_tool", fields.tool);
-  appendReceiptField(receipt, "creative_ui_command_object_kind",
-                     fields.objectKind);
-  appendReceiptField(receipt, "creative_ui_command_tool_before",
-                     fields.toolBefore);
-  appendReceiptField(receipt, "creative_ui_command_tool_after",
-                     fields.toolAfter);
-  appendReceiptField(receipt, "creative_ui_command_semantic_id",
-                     fields.semanticId);
-  appendReceiptField(receipt, "creative_ui_command_status", fields.status);
-  appendReceiptField(receipt, "creative_ui_command_reason_code",
-                     fields.reasonCode);
+  for (const CreativeUiCommandReceiptFieldRow<ProductCreativeUiCommandDiagnostics>& row :
+       kCreativeUiCommandReceiptFields) {
+    row.append(receipt, fields, row.key);
+  }
   appendProductCreativeUiCommandMutationFields(receipt, fields.mutation);
   appendProductCreativeUiCommandCreateFields(receipt, fields.create);
   appendProductCreativeUiCommandDeleteFields(receipt, fields.deleteObject);
@@ -312,6 +961,7 @@ void appendProductCreativeUiCommandFields(
   appendProductCreativeUiCommandBakedRoomRefreshFields(
       receipt, fields.bakedRoomRefresh);
 }
+
 
 struct CreativeUiReceiptContext {
   const ProductAppWindowState& window;

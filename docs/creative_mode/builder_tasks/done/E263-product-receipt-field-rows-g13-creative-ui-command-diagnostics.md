@@ -311,3 +311,98 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, `ProductAppReceiptContext`, CMake, tests,
   golden, staging, commit, push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Status: Done.
+
+Files changed:
+
+- `src/app/iggy3d/receipt/CreativeUiFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E263-product-receipt-field-rows-g13-creative-ui-command-diagnostics.md`
+
+Refactor shape:
+
+- Added file-local templated `CreativeUiCommandReceiptFieldRow<Fields>` with
+  `std::string_view key` and an append callback:
+  `void (*append)(RenderReceipt&, const Fields&, std::string_view)`.
+- Added ordered command diagnostic row tables:
+  - `kCreativeUiCommandMutationReceiptFields`
+  - `kCreativeUiCommandCreateReceiptFields`
+  - `kCreativeUiCommandDeleteReceiptFields`
+  - `kCreativeUiCommandUndoReceiptFields`
+  - `kCreativeUiCommandRoomShellReceiptFields`
+  - `kCreativeUiCommandReceiptFields`
+- Each in-scope command helper now iterates its typed table and calls
+  `row.append(receipt, fields, row.key)`.
+
+Row coverage:
+
+- Mutation table: 16 rows,
+  `creative_ui_command_mutation_requested` through
+  `creative_ui_command_mutation_message`.
+- Create table: 12 rows,
+  `creative_ui_command_create_requested` through
+  `creative_ui_command_create_reason_code`.
+- Delete table: 13 rows,
+  `creative_ui_command_delete_requested` through
+  `creative_ui_command_delete_reason_code`.
+- Undo table: 14 rows,
+  `creative_ui_command_undo_requested` through
+  `creative_ui_command_undo_reason_code`.
+- Room-shell table: 13 rows,
+  `creative_ui_command_shell_requested` through
+  `creative_ui_command_shell_message`.
+- Command facade fixed table: 14 rows,
+  `creative_ui_command_requested` through
+  `creative_ui_command_reason_code`.
+- In-scope fixed rows left procedural: none.
+- Direct bool/string/count values and overload selection remain inside row
+  callbacks.
+
+Preserved procedural paths:
+
+- Command facade sub-helper call order stayed unchanged:
+  mutation, create, delete, undo, room shell, baked-room refresh.
+- Baked-room refresh diagnostics stayed procedural.
+- `ProductCreativeBakedRoomRefreshReceiptKeySet`,
+  `appendProductCreativeBakedRoomRefreshDiagnosticFields(...)`,
+  `appendProductCreativeUiCommandBakedRoomRefreshFields(...)`,
+  `appendProductCreativeBakedRoomAutoRefreshFields(...)`, and the
+  `clearedActiveRoom` optional-key branch were not table-driven.
+- E262 public `appendProductCreativeUiFields(...)` row tables were not changed
+  beyond sharing the same file.
+
+Required grep classification:
+
+- File-local command row type and ordered command row arrays exist in
+  `CreativeUiFields.cpp`.
+- In-scope command helper `appendReceiptField(...)` calls live inside row
+  callbacks.
+- Command facade helper still calls sub-helper appenders in order.
+- Baked-room refresh helper, auto-refresh helper, and `clearedActiveRoom`
+  optional-key branch remain procedural.
+- `rg -c "appendReceiptField\\(" CreativeUiFields.cpp` returned `159`.
+- No `ProductAppReceiptContext` or shared `ReceiptFieldRow` was introduced in
+  `ReceiptBuilder.cpp` or `ReceiptFields.hpp/.cpp`.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d
+  product_receipt_key_order_tests -j10`: passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R
+  '^product_receipt_key_order_tests$' --output-on-failure`: passed.
+- `(cd /Users/kogaryu/iggy3d &&
+  /Users/kogaryu/iggy3d/build/product_receipt_key_order_tests)`: passed with
+  `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff --
+  tests/golden/product_receipt_key_order.golden`: no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check`: passed.
+- Focused trailing-whitespace scan over `CreativeUiFields.cpp` and this task
+  card: passed.
+
+Scope confirmation:
+
+- No shared receipt helper, `ProductAppReceiptContext`, CMake, tests, fixtures,
+  receipt golden files, staging, commit, push, broad CTest, or window launch
+  were performed.
