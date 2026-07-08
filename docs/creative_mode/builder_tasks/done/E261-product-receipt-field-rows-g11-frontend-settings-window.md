@@ -302,3 +302,82 @@ Report:
 - diff/whitespace check results
 - confirmation that no shared helper, `ProductAppReceiptContext`, CMake, tests,
   golden, staging, commit, push, broad CTest, or window launch was performed
+
+## Completion Brief
+
+Status: Done.
+
+Files changed:
+
+- `src/app/iggy3d/receipt/FrontendSettingsWindowFields.cpp`
+- `docs/creative_mode/builder_tasks/done/E261-product-receipt-field-rows-g11-frontend-settings-window.md`
+
+Refactor shape:
+
+- Added file-local `FrontendSettingsWindowReceiptContext` with references to
+  `ProductAppOptions`, `FrontendState`, `FrontendSettings`, and
+  `ProductAppWindowState`, plus `ProductCreativeSurfaceKind creativeSurface`
+  and `bool mapMakerLive`.
+- Added file-local `FrontendSettingsWindowReceiptFieldRow` with
+  `std::string_view key` and an append callback:
+  `void (*append)(RenderReceipt&, const
+  FrontendSettingsWindowReceiptContext&, std::string_view)`.
+- Added ordered `const std::array<FrontendSettingsWindowReceiptFieldRow, 33>
+  kFrontendSettingsWindowPreludeReceiptFields`.
+- Added ordered `const std::array<FrontendSettingsWindowReceiptFieldRow, 57>
+  kFrontendSettingsWindowPostTuningReceiptFields`.
+- `appendProductFrontendSettingsWindowFields(...)` now builds the context,
+  iterates the pre-tuning rows, runs the existing tuning descriptor loop, then
+  iterates the post-tuning rows.
+
+Row coverage:
+
+- Pre-tuning fixed row count: 33.
+- Post-tuning fixed row count: 57.
+- Tuning descriptor loop stayed procedural.
+- First fixed key: `app`.
+- Last pre-tuning fixed key: `gameplay_movement_tuning_selected_field`.
+- First post-tuning fixed key: `window_requested`.
+- Last fixed key: `controller_action_input_action`.
+- Fixed rows left procedural: none.
+- The descriptor loop still uses
+  `kProductGameplayMovementTuningFields`, dynamic key construction with
+  `"gameplay_movement_tuning_" + std::string{descriptor.name}`, branch-gate
+  `BG-1208`, toggle threshold `>= 0.5F`, and `floatReceiptValue(...)` for
+  non-toggle values.
+
+Required grep classification:
+
+- `FrontendSettingsWindowReceiptContext`,
+  `FrontendSettingsWindowReceiptFieldRow`,
+  `kFrontendSettingsWindowPreludeReceiptFields`, and
+  `kFrontendSettingsWindowPostTuningReceiptFields` exist only in
+  `FrontendSettingsWindowFields.cpp`.
+- `appendProductFrontendSettingsWindowFields(...)` remains the only public
+  appender.
+- Fixed `appendReceiptField(...)` calls live inside row callbacks.
+- The tuning descriptor loop and `BG-1208` branch-gate remain procedural.
+- `rg -c "appendReceiptField\\(" FrontendSettingsWindowFields.cpp` returned
+  `92`.
+- No `ProductAppReceiptContext` or shared `ReceiptFieldRow` was introduced.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d
+  product_receipt_key_order_tests -j10`: passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R
+  '^product_receipt_key_order_tests$' --output-on-failure`: passed.
+- `(cd /Users/kogaryu/iggy3d &&
+  /Users/kogaryu/iggy3d/build/product_receipt_key_order_tests)`: passed with
+  `receipt key-order oracle: 1032 fields match golden (order + values)`.
+- `git -C /Users/kogaryu/iggy3d diff --
+  tests/golden/product_receipt_key_order.golden`: no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check`: passed.
+- Focused trailing-whitespace scan over `FrontendSettingsWindowFields.cpp` and
+  this task card: passed.
+
+Scope confirmation:
+
+- No shared receipt helper, `ProductAppReceiptContext`, CMake, tests, fixtures,
+  receipt golden files, staging, commit, push, broad CTest, or window launch
+  were performed.
