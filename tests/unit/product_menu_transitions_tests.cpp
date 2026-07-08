@@ -1,3 +1,5 @@
+#include "ProductActiveSurfaceTestSupport.hpp"
+
 #include "app/iggy3d/ReceiptBuilder.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
@@ -14,13 +16,7 @@ bool expect(bool condition, const char* message) {
   return true;
 }
 
-// window no longer mirrors input-owner/gameplay-suppression; live source is the
-// resolved active surface (pure function of frontend+window).
-iggy3d::ProductActiveSurfaceFrame liveSurface(
-    const iggy3d::FrontendState& frontend,
-    iggy3d::ProductAppWindowState& window) {
-  return iggy3d::syncProductWindowInputOwnerFromActiveSurface(frontend, window);
-}
+using iggy3d::test::liveSurface;
 
 void activateMapMaker(iggy3d::ProductAppWindowState& window) {
   window.inputDevice.interactionMode = iggy3d::ProductInteractionMode::Creative;

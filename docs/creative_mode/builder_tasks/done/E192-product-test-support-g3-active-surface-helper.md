@@ -2,7 +2,7 @@
 
 ## Status
 
-Ready.
+Done.
 
 ## Context
 
@@ -122,3 +122,32 @@ Move this card to `blocked/` with evidence if:
 - Helpers intentionally left local:
 - Tests/checks run:
 - Concerns/deferred:
+
+## Completion Brief
+
+- Card moved to done: yes
+- Files changed:
+  - `tests/unit/ProductActiveSurfaceTestSupport.hpp`
+  - `tests/unit/product_menu_transitions_tests.cpp`
+  - `tests/unit/product_starter_menu_action_tests.cpp`
+  - `tests/unit/product_window_input_frame_tests.cpp`
+  - `docs/creative_mode/builder_tasks/done/E192-product-test-support-g3-active-surface-helper.md`
+- Helper API added:
+  - `iggy3d::test::liveSurface(const FrontendState& frontend, ProductAppWindowState& window)`
+  - The helper directly returns `syncProductWindowInputOwnerFromActiveSurface(frontend, window)` and keeps the non-const `ProductAppWindowState&` test seam.
+- Files migrated:
+  - `product_menu_transitions_tests.cpp`
+  - `product_starter_menu_action_tests.cpp`
+  - `product_window_input_frame_tests.cpp`
+  - Each file now includes `ProductActiveSurfaceTestSupport.hpp`, removes its duplicate local `liveSurface(...)` wrapper, and uses `using iggy3d::test::liveSurface;`. Existing call sites and explicit `inputOwner` / `gameplayInputSuppressed` assertions were left in place.
+- Helpers intentionally left local:
+  - `product_frontend_router_tests.cpp` route-matrix and direct active-surface contract checks stayed explicit and were not migrated.
+  - Hit-test helpers, temp-root helpers, action harnesses, fixture builders, and receipt/assertion helpers stayed local or in their existing support headers.
+- Tests/checks run:
+  - `cmake --build /Users/kogaryu/iggy3d/build --target product_menu_transitions_tests product_starter_menu_action_tests product_window_input_frame_tests product_frontend_router_tests -j10` - passed. Existing unrelated warning remains in `product_starter_menu_action_tests.cpp` for unused local variable `facade`.
+  - `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(product_menu_transitions_tests|product_starter_menu_action_tests|product_window_input_frame_tests|product_frontend_router_tests)$' --output-on-failure` - passed, 4/4.
+  - `git -C /Users/kogaryu/iggy3d diff --check` - passed.
+  - `perl -ne 'print "$ARGV:$.:$_" if /[ \t]$/' tests/unit/ProductActiveSurfaceTestSupport.hpp tests/unit/product_menu_transitions_tests.cpp tests/unit/product_starter_menu_action_tests.cpp tests/unit/product_window_input_frame_tests.cpp docs/creative_mode/builder_tasks/done/E192-product-test-support-g3-active-surface-helper.md` - no output.
+- Concerns/deferred:
+  - No production source, CMake, receipt golden, or frontend-router route-matrix migration was touched.
+  - No staging, commit, push, broad CTest, or window launch was performed.

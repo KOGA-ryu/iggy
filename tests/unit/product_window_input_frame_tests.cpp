@@ -1,3 +1,5 @@
+#include "ProductActiveSurfaceTestSupport.hpp"
+
 #include "app/frontend/FrontendState.hpp"
 #include "app/iggy3d/ascii_room/Activation.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
@@ -41,13 +43,7 @@ bool expect(bool condition, std::string_view message) {
   return condition;
 }
 
-// The window no longer mirrors input-owner / gameplay-suppression; the live
-// source is the resolved active surface (a pure function of frontend+window).
-iggy3d::ProductActiveSurfaceFrame liveSurface(
-    const iggy3d::FrontendState& frontend,
-    iggy3d::ProductAppWindowState& window) {
-  return iggy3d::syncProductWindowInputOwnerFromActiveSurface(frontend, window);
-}
+using iggy3d::test::liveSurface;
 
 bool expectNear(float actual,
                 float expected,
