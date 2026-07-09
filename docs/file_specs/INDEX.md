@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `2b549d47`
+Verified at: `75e85fb5`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `284`.
-- Current mapped source files represented by those specs: about `555`.
+- Current file specs: `286`.
+- Current mapped source files represented by those specs: about `561`.
 
 ## Status Labels
 
@@ -97,6 +97,11 @@ Runtime save/load/persistence:
 Runtime diagnostics:
 
 - `mapped` [RuntimeDiagnostics.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/diagnostics/RuntimeDiagnostics.md)
+
+Runtime inventory/interaction:
+
+- `mapped` [InventorySystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/inventory/InventorySystem.md)
+- `mapped` [InteractionSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/interaction/InteractionSystem.md)
 
 Content assets/loading/authoring:
 
@@ -380,12 +385,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BN, runtime inventory/interaction support surfaces:
+Batch BO, runtime objective/camera support surfaces:
 
-- `next` `src/runtime/inventory/*`
-- `next` `src/runtime/interaction/*`
-- `queued` `src/runtime/objective/*`
-- `queued` `src/runtime/camera/*`
+- `next` `src/runtime/objective/*`
+- `next` `src/runtime/camera/*`
+- `queued` `src/runtime/clock/*`
+- `queued` `src/runtime/debug/*`
 
 ## Defer Leaf Policy
 
