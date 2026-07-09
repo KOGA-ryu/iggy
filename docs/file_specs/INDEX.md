@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `629833a0`
+Verified at: `a6f36636`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `115`.
-- Current mapped source files represented by those specs: about `223`.
+- Current file specs: `118`.
+- Current mapped source files represented by those specs: about `229`.
 
 ## Status Labels
 
@@ -90,6 +90,9 @@ App projection/view/window:
 
 - `mapped` [FrontendState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/FrontendState.md)
 - `mapped` [StarterScreen.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/StarterScreen.md)
+- `mapped` [MenuInput.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/MenuInput.md)
+- `mapped` [FrontendRoute.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/FrontendRoute.md)
+- `mapped` [SettingsMenu.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/frontend/SettingsMenu.md)
 - `mapped` [FrontendRouter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/FrontendRouter.md)
 - `mapped` [InputRouter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/InputRouter.md)
 - `mapped` [ActionHandlers.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/ActionHandlers.md)
@@ -183,12 +186,13 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch U, frontend menu model and routing helpers:
+Batch V, frontend menu screen models:
 
-- `next` `src/app/frontend/MenuInput.*`
-- `next` `src/app/frontend/FrontendRoute.*`
-- `next` `src/app/frontend/MenuState.*`
-- `next` `src/app/frontend/SettingsMenu.*`
+- `next` `src/app/frontend/PauseMenu.*`
+- `next` `src/app/frontend/DevToolsMenu.*`
+- `next` `src/app/frontend/SaveBrowser.*`
+- `next` `src/app/frontend/SaveSlotModel.*`
+- `next` `src/app/frontend/WorldSetupModel.*`
 
 ## Defer Leaf Policy
 
