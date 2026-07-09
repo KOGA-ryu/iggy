@@ -5,8 +5,8 @@
 //
 // This file remains the app integration surface. Keep authoring truth in the
 // creative kernel and keep deterministic proof state in the extracted helpers:
-// EditorCapture.hpp owns the fixed capture schedule, while the
-// Standalone* helpers own renderer bootstrap, picking, placement, gizmo/path
+// EditorBootstrap owns renderer/bootstrap data, EditorCapture owns the fixed
+// capture schedule, and the Editor* helpers own picking, placement, gizmo/path
 // editing, RoomBake preview, persistence proof, and app-local snapshot undo.
 //
 // Rendered room geometry for bake-supported objects comes from RoomBake and the
@@ -26,16 +26,6 @@
 
 #include <SDL3/SDL.h>
 
-#include "app/iggy3d/creative/CreativeAppState.hpp"
-#include "app/iggy3d/creative/Core.hpp"
-#include "app/iggy3d/creative/Facade.hpp"
-#include "app/iggy3d/creative/camera/Fly.hpp"
-#include "app/iggy3d/creative/document/Document.hpp"
-#include "app/iggy3d/creative/document/Object.hpp"
-#include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
-#include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
-#include "app/iggy3d/creative/tools/Tools.hpp"
-#include "app/iggy3d/map_maker/Grid.hpp"
 #include "app/iggy3d/window/FramePresenter.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "core/math/Vec3.hpp"
@@ -54,18 +44,18 @@
 namespace {
 
 using namespace iggy3d;
-using iggy3d_creative_app::buildBrushPaletteFromDescriptors;
 using iggy3d_creative_app::buildCreativeEditorGizmoFrame;
 using iggy3d_creative_app::buildCreativeEditorPickFrame;
 using iggy3d_creative_app::buildStandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::captureFrameToPng;
 using iggy3d_creative_app::createCreativeRenderer;
+using iggy3d_creative_app::CreativeEditorBootstrapData;
+using iggy3d_creative_app::CreativeEditorState;
 using iggy3d_creative_app::resolveCreativeEditorAimCell;
 using iggy3d_creative_app::applyCreativeEditorClickSelection;
 using iggy3d_creative_app::applyCreativeEditorCommandInput;
 using iggy3d_creative_app::applyCreativeEditorPlacementInput;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
-using iggy3d_creative_app::CreativeEditorState;
 using iggy3d_creative_app::CreativeEditorFrameInputResult;
 using iggy3d_creative_app::CreativeEditorGizmoFrame;
 using iggy3d_creative_app::CreativeEditorPickFrame;
@@ -79,6 +69,7 @@ using iggy3d_creative_app::logCreativeEditorWorldPickProofFrame;
 using iggy3d_creative_app::resolveCreativeEditorSelectionFrame;
 using iggy3d_creative_app::runCreativeEditorCaptureScenarioFrame;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
+using iggy3d_creative_app::initializeCreativeEditorBootstrapData;
 
 }  // namespace
 
@@ -131,162 +122,22 @@ int main(int argc, char** argv) {
     window.setRelativeMouseMode(true);
   }
 
-  CreativeEditorState editor;
-  // Fly camera state. Start pulled back and up, looking at the origin.
-  editor.flyConfig.enabled = true;
-  editor.flyConfig.speedMetersPerSecond = 8.0F;
-  editor.flyConfig.sprintMultiplier = 3.0F;
-  editor.flyConfig.inputStepSeconds = 1.0F / 60.0F;
-
-  // Build the ground grid ONCE: a single layer at Y=0 (extentYMeters=0 so it
-  // does not stack ~9 layers), anchored at the origin.
-  ProductMapMakerGridConfig gridConfig;
-  gridConfig.enabled = true;
-  gridConfig.pitchMeters = 1.0F;
-  gridConfig.majorStepMeters = 5.0F;
-  gridConfig.extentXMeters = 40.0F;
-  gridConfig.extentYMeters = 1.0F;  // Must be > 0 (config validity); the
-                                    // ground layer is filtered in
-                                    // standalone preview scene build.
-  gridConfig.extentZMeters = 40.0F;
-  gridConfig.planeY = 0.0F;
-  gridConfig.anchorWorld = Vec3{0.0F, 0.0F, 0.0F};
-  const ProductMapMakerGridSnapshot gridSnapshot =
-      buildProductMapMakerGridSnapshot(gridConfig);
-  SDL_Log("iggy3d_creative: grid visible=%d layers=%llu dots=%llu",
-          gridSnapshot.visible ? 1 : 0,
-          static_cast<unsigned long long>(gridSnapshot.layerCount),
-          static_cast<unsigned long long>(gridSnapshot.dotCount));
-
-  // ---- Seed initial CreativeDocument objects -----------------------------
-  // A Floor tile sitting on Y=0 and a Crate resting on top of it. Both are
-  // authored through the SAME generic createDocumentObject path; Floor needs no
-  // new kernel work because CreativeObjectKind::Floor already ships a descriptor.
-  creative::CreativeAppState appState;
-  {
-    creative::CreativeDocument doc =
-        creative::CreativeDocument::create("FloorAndCrateWorld");
-    (void)doc.assignId(1);
-    const creative::CreativeFacadeDocumentInstallReceipt installReceipt =
-        appState.facade.installDocument(std::move(doc));
-    SDL_Log("iggy3d_creative: install document accepted=%d",
-            installReceipt.accepted ? 1 : 0);
-  }
-
-  // FLOOR 1: a 4 x 0.25 x 4 walkable tile whose top sits at Y=0.25 with its slab
-  // straddling Y=0. Same authoring request struct as the crate — only kind and
-  // extents differ; no per-kind create path.
-  creative::CreativeDocumentCreateRequest floorRequest;
-  floorRequest.kind = creative::CreativeObjectKind::Floor;
-  floorRequest.name = "Floor 1";
-  floorRequest.transform.position = {0.0, 0.125, 0.0};
-  floorRequest.hasTransformOverride = true;
-  floorRequest.bounds = {{-2.0, 0.0, -2.0}, {2.0, 0.25, 2.0}};
-  floorRequest.hasBoundsOverride = true;
-  floorRequest.visible = true;
-  floorRequest.hasVisibleOverride = true;
-  floorRequest.locked = false;
-  floorRequest.hasLockedOverride = true;
-  const creative::CreativeDocumentCreateReceipt floorReceipt =
-      appState.facade.createDocumentObject(floorRequest);
-  const creative::CreativeObjectId floorObjectId = floorReceipt.objectId;
-  SDL_Log("iggy3d_creative: floor create accepted=%d objectId=%llu kind='%s'",
-          floorReceipt.accepted ? 1 : 0,
-          static_cast<unsigned long long>(floorObjectId),
-          std::string(creative::toString(floorReceipt.objectKind)).c_str());
-
-  // CRATE 1: a 1 m cube resting ON the floor (bottom at Y=0.25, top at Y=1.25),
-  // offset in Z so it does not eclipse the floor tile's center from the camera.
-  creative::CreativeDocumentCreateRequest crateRequest;
-  crateRequest.kind = creative::CreativeObjectKind::Crate;
-  crateRequest.name = "Crate 1";
-  crateRequest.transform.position = {0.0, 0.375, 0.0};
-  crateRequest.hasTransformOverride = true;
-  crateRequest.bounds = {{-0.5, 0.25, -0.5}, {0.5, 1.25, 0.5}};
-  crateRequest.hasBoundsOverride = true;
-  crateRequest.visible = true;
-  crateRequest.hasVisibleOverride = true;
-  crateRequest.locked = false;
-  crateRequest.hasLockedOverride = true;
-  const creative::CreativeDocumentCreateReceipt crateReceipt =
-      appState.facade.createDocumentObject(crateRequest);
-  const creative::CreativeObjectId crateObjectId = crateReceipt.objectId;
-  SDL_Log("iggy3d_creative: crate create accepted=%d objectId=%llu kind='%s'",
-          crateReceipt.accepted ? 1 : 0,
-          static_cast<unsigned long long>(crateObjectId),
-          std::string(creative::toString(crateReceipt.objectKind)).c_str());
-  (void)crateObjectId;  // Retained for the log; tooling keys off the SELECTION.
-
-  // ---- SAVE LOCATION ------------------------------------------------------
-  // A single fixed save slot for the standalone app: <HOME>/.iggy3d/
-  // creative_standalone with saveId "scene". Created up front so the kernel's
-  // creative-save always has a writable root. One slot is enough for the
-  // standalone proof.
-  std::filesystem::path saveRoot;
-  if (const char* home = std::getenv("HOME"); home != nullptr) {
-    saveRoot = std::filesystem::path{home} / ".iggy3d" / "creative_standalone";
-  } else {
-    saveRoot = std::filesystem::path{".iggy3d"} / "creative_standalone";
-  }
-  const std::string saveId = "scene";
-  {
-    std::error_code ec;
-    std::filesystem::create_directories(saveRoot, ec);
-    SDL_Log("iggy3d_creative: saveRoot='%s' saveId='%s' created=%d",
-            saveRoot.generic_string().c_str(), saveId.c_str(),
-            ec ? 0 : 1);
-  }
-
-  // The wireframe projection request: a grid big enough to hold the origin
-  // crate (world Y 0..1 fits in height=8; XZ clamp handles the negative corner).
-  creative::CreativeSpatialProjectionRequest wireProjReq;
-  wireProjReq.gridSize = {80, 8, 80};
-  wireProjReq.cellSize = 1.0;
-  wireProjReq.clampToGrid = true;
-  wireProjReq.includeAuthoringOnly = false;
-
-  // ---- MOVE state --------------------------------------------------------
-  // Interactive: edge-triggered key latches for '1' Select / '2' Move so a held
-  // key switches the tool exactly once. Interactive drag latch tracks a left
-  // button held while the Move tool is active.
-  // --capture: run the generic Move lifecycle across a few frames, and log the
-  // crate placement BEFORE the commit and AFTER the release exactly once.
-  // ---- GIZMO state -------------------------------------------------------
-  // Axis shaft length (m) and wireframe thickness (m). Kept short so the shafts
-  // read as handles, not room-scale rays; thickness ~5 cm per the plan.
-  constexpr float kGizmoAxisLength = 1.5F;
-  constexpr float kGizmoThickness = 0.05F;
-  // Handle hit-test threshold (px): a click within this pixel distance of a
-  // projected shaft grabs that axis; the nearest axis within range wins.
-  constexpr float kGizmoHandleThresholdPx = 35.0F;
-  // Interactive: which axis is currently grabbed (None = not dragging a handle),
-  // the object's start corner anchor S captured at grab time, and the pixel/world
-  // frame captured at grab so a cursor drag maps to a world offset along the axis.
-  // --capture: log the grabbed axis exactly once.
-
-  // ---- PLACE state -------------------------------------------------------
-  // placeMode is an APP-level mode (not a kernel Tool) toggled by '3'. When on,
-  // the click drops a NEW object at the aimed cell instead of running the
-  // select/move hit-test. '1'/'2' leave place mode and set the kernel tool.
-  // placeBrush is the current descriptor-backed brush kind. The grid pitch
-  // (1 m) is the placement cell size for snapping.
-  editor.brushPalette = buildBrushPaletteFromDescriptors();
-  editor.placeBrush = firstBrushKind(editor.brushPalette);
-  SDL_Log("iggy3d_creative: brush palette slots=%llu first='%s'",
-          static_cast<unsigned long long>(editor.brushPalette.size()),
-          std::string(creative::toString(editor.placeBrush)).c_str());
-  editor.placeCellSize = static_cast<double>(gridConfig.pitchMeters);
-  // --capture: in Place mode we start ON so the proof frames can drop objects.
-  if (!capturePath.empty()) {
-    editor.placeMode = true;
-    editor.placeBrush = firstBrushKind(editor.brushPalette);
-  }
-  // ---- SAVE / LOAD state ------------------------------------------------
-  // Interactive: edge latches for F5 (save), F6 (new/clear), F9 (load).
-  // --capture round-trip proof: prove create/delete/move undo, add Point and
-  // Line + Path markers, undo their moves, then SAVE/CLEAR/LOAD the
-  // eight-object scene. The schedule, flags, ids, and snapshots live in the
-  // capture script helper; main only executes the current frame's authored step.
+  CreativeEditorBootstrapData bootstrapData;
+  initializeCreativeEditorBootstrapData(bootstrapData, !capturePath.empty());
+  CreativeEditorState& editor = bootstrapData.editor;
+  const ProductMapMakerGridSnapshot& gridSnapshot =
+      bootstrapData.gridSnapshot;
+  creative::CreativeAppState& appState = bootstrapData.appState;
+  const creative::CreativeObjectId& floorObjectId =
+      bootstrapData.floorObjectId;
+  const std::filesystem::path& saveRoot = bootstrapData.saveRoot;
+  const std::string& saveId = bootstrapData.saveId;
+  const creative::CreativeSpatialProjectionRequest& wireProjReq =
+      bootstrapData.wireProjectionRequest;
+  const float kGizmoAxisLength = bootstrapData.gizmoAxisLengthMeters;
+  const float kGizmoThickness = bootstrapData.gizmoThicknessMeters;
+  const float kGizmoHandleThresholdPx =
+      bootstrapData.gizmoHandleThresholdPixels;
 
   while (window.isOpen()) {
     const CreativeEditorFrameInputResult frameInput =
