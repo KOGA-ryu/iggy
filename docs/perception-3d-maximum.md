@@ -1,4 +1,16 @@
-# Perception 3D — Build Maximum (v1.2)
+# Perception 3D — Build Maximum (v1.3)
+
+> **v1.3 corrections (P2 card-cut recon, E302):**
+> 4. **`horizontalDistanceMeters` is NOT deletable** (§16 said it dies) — the home-leash predicates
+>    (`NpcBehaviorSystem.cpp:97-146`) use it against `homePosition`. Perception stops using it; the fn stays.
+> 5. **TWO FSM consumption sites, not one:** `Session.cpp:715` and `:1157`, both `targetInVisionCone &&
+>    hasLineOfSight` — note **radius is NOT in the current confirmation truth table.** P2 therefore wires
+>    `old-conjunction ∧ inVerticalCone` (flat behavior byte-identical) and does NOT substitute `.perceived`.
+>    **OPEN RULING for Law 6:** should visual confirmation also require `targetInPerceptionRadius`? Decide
+>    before P3 wires `.perceived` as the sole FSM read.
+> 6. The request bool becomes `Los targetLos = Los::Clear` in P2 (documented assume-clear preserved, type
+>    upgraded); `Unknown` is produced only from P3's occlusion owner. `result.hasLineOfSight` survives as a
+>    derived alias (`los == Clear`) for the debug mirror (`Session.cpp:1226`) until P4.
 
 > **v1.2 (from E301's correctly-invoked STOP):** `NpcBehaviorConfig` is **never serialized** — saves persist
 > `behavior_profile_id` only; config is derived from the in-code `NpcBehaviorProfile` catalog via
