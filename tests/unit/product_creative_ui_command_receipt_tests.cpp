@@ -472,11 +472,11 @@ bool toggleCommandReceiptRecordsMutationFields() {
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
-  const std::string objectId = std::to_string(commandReceipt.mutationObjectId);
+  const std::string objectId = std::to_string(commandReceipt.mutation.objectId);
   const std::string revisionBefore =
-      std::to_string(commandReceipt.revisionBefore);
+      std::to_string(commandReceipt.mutation.revisionBefore);
   const std::string revisionAfter =
-      std::to_string(commandReceipt.revisionAfter);
+      std::to_string(commandReceipt.mutation.revisionAfter);
 
   return expectReceiptFields(
       receipt,
@@ -559,13 +559,13 @@ bool createRoomCommandReceiptRecordsCreateFields() {
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
-  const std::string objectId = std::to_string(commandReceipt.createObjectId);
+  const std::string objectId = std::to_string(commandReceipt.create.document.objectId);
   const std::string revisionBefore =
-      std::to_string(commandReceipt.createRevisionBefore);
+      std::to_string(commandReceipt.create.document.revisionBefore);
   const std::string revisionAfter =
-      std::to_string(commandReceipt.createRevisionAfter);
+      std::to_string(commandReceipt.create.document.revisionAfter);
   const std::string dirtyFlags =
-      std::to_string(commandReceipt.createDirtyFlags);
+      std::to_string(commandReceipt.create.document.creationDirtyFlags);
 
   return expectReceiptFields(
       receipt,
@@ -595,6 +595,70 @@ bool createRoomCommandReceiptRecordsCreateFields() {
       "create room command");
 }
 
+bool createRoomPlacementReceiptRecordsEnrichedFields() {
+  cr::CreativeAppState app;
+  cr::Facade& facade = app.facade;
+  facade.reset();
+
+  iggy3d::ProductCreativeUiCommandFrameRequest request;
+  request.creative = &app;
+  request.inputReceipt = commandInput("creative.row.create.create_room");
+  static_cast<void>(iggy3d::routeProductCreativeUiCommandFrame(request));
+  const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
+      iggy3d::routeProductCreativeUiCommandFrame(request);
+  iggy3d::ProductAppWindowState window;
+  iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  return expect(commandReceipt.create.placementOffsetApplied,
+                "placement receipt offset applied") &&
+         expect(commandReceipt.create.placementOffsetX == 1.0,
+                "placement receipt offset") &&
+         expectReceiptFields(
+             receipt,
+             {
+                 {"creative_ui_command_create_message",
+                  "object_created placement_offset_x=1.00",
+                  "placement message"},
+                 {"creative_ui_command_create_reason_code",
+                  "object_created_placement_offset", "placement reason"},
+             },
+             "create placement receipt");
+}
+
+bool deleteNoSelectionReceiptRecordsNoSelectionFields() {
+  cr::CreativeAppState app;
+  [[maybe_unused]] cr::Facade& facade = app.facade;
+  facade.reset();
+
+  iggy3d::ProductCreativeUiCommandFrameRequest request;
+  request.creative = &app;
+  request.inputReceipt = commandInput("creative.row.selection.delete_selected");
+  const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
+      iggy3d::routeProductCreativeUiCommandFrame(request);
+  iggy3d::ProductAppWindowState window;
+  iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
+  const iggy3d::RenderReceipt receipt = receiptFor(window);
+
+  return expect(commandReceipt.remove.noSelection,
+                "no selection remove outcome") &&
+         expect(commandReceipt.remove.document.requested,
+                "no selection remove requested") &&
+         expect(commandReceipt.remove.document.status ==
+                    cr::CreativeDocumentRemoveStatus::Unknown,
+                "no selection native remove status") &&
+         expectReceiptFields(
+             receipt,
+             {
+                 {"creative_ui_command_delete_requested", "true", "requested"},
+                 {"creative_ui_command_delete_accepted", "false", "accepted"},
+                 {"creative_ui_command_delete_status", "NoSelection", "status"},
+                 {"creative_ui_command_delete_message", "no_selection", "message"},
+                 {"creative_ui_command_delete_reason_code", "no_selection", "reason"},
+             },
+             "delete no selection receipt");
+}
+
 bool deleteCommandReceiptRecordsDeleteFields() {
   const iggy3d::ProductCreativeUiCommandFrameReceipt commandReceipt =
       appliedDeleteReceipt();
@@ -602,13 +666,13 @@ bool deleteCommandReceiptRecordsDeleteFields() {
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
 
-  const std::string objectId = std::to_string(commandReceipt.deleteObjectId);
+  const std::string objectId = std::to_string(commandReceipt.remove.document.objectId);
   const std::string revisionBefore =
-      std::to_string(commandReceipt.deleteRevisionBefore);
+      std::to_string(commandReceipt.remove.document.revisionBefore);
   const std::string revisionAfter =
-      std::to_string(commandReceipt.deleteRevisionAfter);
+      std::to_string(commandReceipt.remove.document.revisionAfter);
   const std::string dirtyFlags =
-      std::to_string(commandReceipt.deleteDirtyFlags);
+      std::to_string(commandReceipt.remove.document.removalDirtyFlags);
 
   return expectReceiptFields(
       receipt,
@@ -646,7 +710,7 @@ bool undoCommandReceiptRecordsUndoFields() {
   iggy3d::ProductAppWindowState window;
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
-  const std::string documentId = std::to_string(commandReceipt.undoDocumentId);
+  const std::string documentId = std::to_string(commandReceipt.undo.documentId);
 
   return expectReceiptFields(
       receipt,
@@ -798,6 +862,8 @@ int main() {
                   lockCommandReceiptRecordsLockedFields() &&
                   defaultWindowReceiptCarriesLockedFields() &&
                   createRoomCommandReceiptRecordsCreateFields() &&
+                  createRoomPlacementReceiptRecordsEnrichedFields() &&
+                  deleteNoSelectionReceiptRecordsNoSelectionFields() &&
                   deleteCommandReceiptRecordsDeleteFields() &&
                   undoCommandReceiptRecordsUndoFields() &&
                   roomShellCommandReceiptRecordsShellFields() &&

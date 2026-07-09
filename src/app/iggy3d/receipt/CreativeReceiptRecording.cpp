@@ -12,6 +12,7 @@
 #include "app/iggy3d/debug/NpcBehaviorDebugHud.hpp"
 #include "app/iggy3d/debug/PhysicsDebugHud.hpp"
 #include "app/iggy3d/creative/ui/UiProjection.hpp"
+#include "app/iggy3d/creative/CreativeUiCommandDiagnostics.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/creative/bridge/UiCommandFrame.hpp"
 #include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
@@ -24,8 +25,6 @@
 
 namespace iggy3d {
 namespace {
-
-std::string_view creativeToolReceiptName(creative::Tool tool) noexcept;
 
 ProductCreativeBakedRoomRefreshDiagnostics&
 uiCommandBakedRoomRefreshFields(ProductAppWindowState& window) noexcept {
@@ -58,139 +57,6 @@ void copyProductCreativeBakedRoomRefreshDiagnostics(
   fields.spatialSurfaceCount = refresh.spatialSurfaceCount;
   fields.collisionReady = refresh.collisionReady;
   fields.collisionQuerySurfaceCount = refresh.collisionQuerySurfaceCount;
-}
-
-void copyProductCreativeUiCommandMutationDiagnostics(
-    ProductCreativeUiCommandMutationDiagnostics& fields,
-    const ProductCreativeUiCommandFrameReceipt& receipt) {
-  fields.requested = receipt.mutationRequested;
-  fields.accepted = receipt.mutationAccepted;
-  fields.changed = receipt.mutationChanged;
-  fields.status = std::string(creative::toString(receipt.mutationStatus));
-  fields.documentStatus =
-      std::string(creative::toString(receipt.documentMutationStatus));
-  fields.kind = std::string(creative::toString(receipt.mutationKind));
-  fields.target = receipt.mutationTarget.value;
-  fields.objectId = receipt.mutationObjectId;
-  fields.objectKind = std::string(creative::toString(receipt.mutationObjectKind));
-  fields.visibleBefore = receipt.visibleBefore;
-  fields.visibleAfter = receipt.visibleAfter;
-  fields.lockedBefore = receipt.lockedBefore;
-  fields.lockedAfter = receipt.lockedAfter;
-  fields.revisionBefore = receipt.revisionBefore;
-  fields.revisionAfter = receipt.revisionAfter;
-  fields.message =
-      receipt.mutationMessage.empty() ? "none" : receipt.mutationMessage;
-}
-
-void copyProductCreativeUiCommandCreateDiagnostics(
-    ProductCreativeUiCommandCreateDiagnostics& fields,
-    const ProductCreativeUiCommandFrameReceipt& receipt) {
-  fields.requested = receipt.createRequested;
-  fields.accepted = receipt.createAccepted;
-  fields.changed = receipt.createChanged;
-  fields.status = std::string(creative::toString(receipt.createStatus));
-  fields.objectId = receipt.createObjectId;
-  fields.objectKind = std::string(creative::toString(receipt.createObjectKind));
-  fields.objectName =
-      receipt.createObjectName.empty() ? "none" : receipt.createObjectName;
-  fields.revisionBefore = receipt.createRevisionBefore;
-  fields.revisionAfter = receipt.createRevisionAfter;
-  fields.dirtyFlags = receipt.createDirtyFlags;
-  fields.message = receipt.createMessage.empty() ? "none" : receipt.createMessage;
-  fields.reasonCode =
-      receipt.createReasonCode.empty() ? "none" : receipt.createReasonCode;
-}
-
-void copyProductCreativeUiCommandDeleteDiagnostics(
-    ProductCreativeUiCommandDeleteDiagnostics& fields,
-    const ProductCreativeUiCommandFrameReceipt& receipt) {
-  fields.requested = receipt.deleteRequested;
-  fields.accepted = receipt.deleteAccepted;
-  fields.changed = receipt.deleteChanged;
-  fields.removed = receipt.deleteRemoved;
-  fields.objectId = receipt.deleteObjectId;
-  fields.objectKind = std::string(creative::toString(receipt.deleteObjectKind));
-  fields.objectName =
-      receipt.deleteObjectName.empty() ? "none" : receipt.deleteObjectName;
-  fields.revisionBefore = receipt.deleteRevisionBefore;
-  fields.revisionAfter = receipt.deleteRevisionAfter;
-  fields.dirtyFlags = receipt.deleteDirtyFlags;
-  fields.status = receipt.deleteStatus.empty() ? "Unknown" : receipt.deleteStatus;
-  fields.message = receipt.deleteMessage.empty() ? "none" : receipt.deleteMessage;
-  fields.reasonCode =
-      receipt.deleteReasonCode.empty() ? "none" : receipt.deleteReasonCode;
-}
-
-void copyProductCreativeUiCommandUndoDiagnostics(
-    ProductCreativeUiCommandUndoDiagnostics& fields,
-    const ProductCreativeUiCommandFrameReceipt& receipt) {
-  fields.requested = receipt.undoRequested;
-  fields.accepted = receipt.undoAccepted;
-  fields.changed = receipt.undoChanged;
-  fields.hadSnapshot = receipt.undoHadSnapshot;
-  fields.documentId = receipt.undoDocumentId;
-  fields.revisionBefore = receipt.undoRevisionBefore;
-  fields.revisionAfter = receipt.undoRevisionAfter;
-  fields.objectCountBefore = receipt.undoObjectCountBefore;
-  fields.objectCountAfter = receipt.undoObjectCountAfter;
-  fields.depthBefore = receipt.undoDepthBefore;
-  fields.depthAfter = receipt.undoDepthAfter;
-  fields.status =
-      receipt.undoStatus.empty() ? "creative_undo_not_requested"
-                                 : receipt.undoStatus;
-  fields.message = receipt.undoMessage.empty() ? "none" : receipt.undoMessage;
-  fields.reasonCode =
-      receipt.undoReasonCode.empty() ? "none" : receipt.undoReasonCode;
-}
-
-void copyProductCreativeUiCommandRoomShellDiagnostics(
-    ProductCreativeUiCommandRoomShellDiagnostics& fields,
-    const ProductCreativeUiCommandFrameReceipt& receipt) {
-  fields.requested = receipt.shellRequested;
-  fields.accepted = receipt.shellAccepted;
-  fields.changed = receipt.shellChanged;
-  fields.roomObjectId = receipt.shellRoomObjectId;
-  fields.generatedObjectCount = receipt.shellGeneratedObjectCount;
-  fields.removedObjectCount = receipt.shellRemovedObjectCount;
-  fields.floorCount = receipt.shellFloorCount;
-  fields.wallCount = receipt.shellWallCount;
-  fields.revisionBefore = receipt.shellRevisionBefore;
-  fields.revisionAfter = receipt.shellRevisionAfter;
-  fields.status =
-      receipt.shellStatus.empty() ? "creative_room_shell_not_requested"
-                                  : receipt.shellStatus;
-  fields.reasonCode =
-      receipt.shellReasonCode.empty() ? "none" : receipt.shellReasonCode;
-  fields.message = receipt.shellMessage.empty() ? "none" : receipt.shellMessage;
-}
-
-void copyProductCreativeUiCommandDiagnostics(
-    ProductCreativeUiCommandDiagnostics& fields,
-    const ProductCreativeUiCommandFrameReceipt& receipt) {
-  fields.requested = receipt.requested;
-  fields.facadeAvailable = receipt.facadeAvailable;
-  fields.inputConsumed = receipt.inputConsumed;
-  fields.inputEnabled = receipt.inputEnabled;
-  fields.accepted = receipt.accepted;
-  fields.changed = receipt.changed;
-  fields.kind =
-      std::string(productCreativeUiCommandKindReceiptName(receipt.commandKind));
-  fields.tool =
-      receipt.commandKind == ProductCreativeUiCommandKind::SetActiveTool
-          ? std::string(creativeToolReceiptName(receipt.commandTool))
-          : std::string("none");
-  fields.objectKind = std::string(creative::toString(receipt.commandObjectKind));
-  fields.toolBefore = std::string(creativeToolReceiptName(receipt.toolBefore));
-  fields.toolAfter = std::string(creativeToolReceiptName(receipt.toolAfter));
-  fields.semanticId = receipt.semanticId.empty() ? "none" : receipt.semanticId;
-  fields.status = receipt.status;
-  fields.reasonCode = receipt.reasonCode;
-  copyProductCreativeUiCommandMutationDiagnostics(fields.mutation, receipt);
-  copyProductCreativeUiCommandCreateDiagnostics(fields.create, receipt);
-  copyProductCreativeUiCommandDeleteDiagnostics(fields.deleteObject, receipt);
-  copyProductCreativeUiCommandUndoDiagnostics(fields.undo, receipt);
-  copyProductCreativeUiCommandRoomShellDiagnostics(fields.shell, receipt);
 }
 
 void resetProductCreativeUiCommandBakedRoomRefresh(
@@ -247,20 +113,6 @@ std::string_view uiHitKindReceiptName(UiHitKind kind) noexcept {
       return "viewport";
   }
   return "unknown";
-}
-
-std::string_view creativeToolReceiptName(creative::Tool tool) noexcept {
-  switch (tool) {
-    case creative::Tool::Select:
-      return "Select";
-    case creative::Tool::Move:
-      return "Move";
-    case creative::Tool::Measure:
-      return "Measure";
-    case creative::Tool::Navigate:
-      return "Navigate";
-  }
-  return "Unknown";
 }
 
 }  // namespace
@@ -343,23 +195,28 @@ void recordProductCreativeUiCommandFrame(
     ProductAppWindowState& window,
     const ProductCreativeUiCommandFrameReceipt& receipt) {
   CreativeAuthoringStore& authoring = window.creativeAuthoring;
-  copyProductCreativeUiCommandDiagnostics(authoring.creativeUiCommand, receipt);
+  authoring.creativeUiCommand =
+      toProductCreativeUiCommandDiagnostics(receipt);
   resetProductCreativeUiCommandBakedRoomRefresh(window);
 
   const bool commandTouchedCreativeState =
       receipt.inputClickPresent ||
       receipt.commandKind != ProductCreativeUiCommandKind::None ||
-      receipt.accepted || receipt.changed || receipt.createRequested ||
-      receipt.mutationRequested ||
+      receipt.accepted || receipt.changed || receipt.create.document.requested ||
+      receipt.mutation.requested ||
       (receipt.inputConsumed && !receipt.semanticId.empty());
   if (commandTouchedCreativeState) {
     authoring.creativeUiLast.commandKind =
         std::string(productCreativeUiCommandKindReceiptName(receipt.commandKind));
     authoring.creativeUiLast.commandStatus = receipt.status;
-    authoring.creativeUiLast.commandCreateRequested = receipt.createRequested;
-    authoring.creativeUiLast.commandCreateAccepted = receipt.createAccepted;
-    authoring.creativeUiLast.commandCreateChanged = receipt.createChanged;
-    authoring.creativeUiLast.commandCreateObjectId = receipt.createObjectId;
+    authoring.creativeUiLast.commandCreateRequested =
+        receipt.create.document.requested;
+    authoring.creativeUiLast.commandCreateAccepted =
+        receipt.create.document.accepted;
+    authoring.creativeUiLast.commandCreateChanged =
+        receipt.create.document.changed;
+    authoring.creativeUiLast.commandCreateObjectId =
+        receipt.create.document.objectId;
   }
 }
 

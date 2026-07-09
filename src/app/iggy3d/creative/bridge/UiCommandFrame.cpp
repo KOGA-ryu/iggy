@@ -5,8 +5,6 @@
 #include "app/iggy3d/creative/tools/RoomShell.hpp"
 
 #include <array>
-#include <iomanip>
-#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -30,101 +28,20 @@ struct ProductCreativeUiCommandHandlerEntry {
   ProductCreativeUiCommandHandler handler = nullptr;
 };
 
-[[nodiscard]] std::string formatPlacementOffset(double value) {
-  std::ostringstream stream;
-  stream << std::fixed << std::setprecision(2) << value;
-  return stream.str();
-}
-
 void setNoopStatus(ProductCreativeUiCommandFrameReceipt& receipt,
                   std::string_view status) {
   receipt.status = std::string(status);
   receipt.reasonCode = std::string(status);
 }
 
-void copyMutationReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
-                         const creative::CreativeFacadeMutationReceipt&
-                             mutationReceipt) {
-  receipt.mutationRequested = mutationReceipt.requested;
-  receipt.mutationAccepted = mutationReceipt.accepted;
-  receipt.mutationChanged = mutationReceipt.changed;
-  receipt.mutationStatus = mutationReceipt.status;
-  receipt.documentMutationStatus = mutationReceipt.documentStatus;
-  receipt.mutationKind = mutationReceipt.mutationKind;
-  receipt.mutationTarget = mutationReceipt.target;
-  receipt.mutationObjectId = mutationReceipt.objectId;
-  receipt.mutationObjectKind = mutationReceipt.objectKind;
-  receipt.visibleBefore = mutationReceipt.visibleBefore;
-  receipt.visibleAfter = mutationReceipt.visibleAfter;
-  receipt.lockedBefore = mutationReceipt.lockedBefore;
-  receipt.lockedAfter = mutationReceipt.lockedAfter;
-  receipt.revisionBefore = mutationReceipt.revisionBefore;
-  receipt.revisionAfter = mutationReceipt.revisionAfter;
-  receipt.mutationMessage = mutationReceipt.message;
-}
-
-void copyCreateReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
-                       const creative::CreativeDocumentCreateReceipt&
-                           createReceipt) {
-  receipt.createRequested = createReceipt.requested;
-  receipt.createAccepted = createReceipt.accepted;
-  receipt.createChanged = createReceipt.changed;
-  receipt.createStatus = createReceipt.status;
-  receipt.createObjectId = createReceipt.objectId;
-  receipt.createObjectKind = createReceipt.objectKind;
-  receipt.createObjectName = createReceipt.objectName;
-  receipt.createRevisionBefore = createReceipt.revisionBefore;
-  receipt.createRevisionAfter = createReceipt.revisionAfter;
-  receipt.createDirtyFlags = createReceipt.creationDirtyFlags;
-  receipt.createMessage = createReceipt.message;
-  receipt.createReasonCode = createReceipt.reasonCode;
-}
-
 void setDeleteNoSelection(ProductCreativeUiCommandFrameReceipt& receipt,
                           std::uint64_t revision) {
-  receipt.deleteRequested = true;
-  receipt.deleteRevisionBefore = revision;
-  receipt.deleteRevisionAfter = revision;
-  receipt.deleteStatus = "NoSelection";
-  receipt.deleteMessage = "no_selection";
-  receipt.deleteReasonCode = "no_selection";
-}
-
-void copyDeleteReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
-                       const creative::CreativeDocumentRemoveReceipt&
-                           deleteReceipt) {
-  receipt.deleteRequested = deleteReceipt.requested;
-  receipt.deleteAccepted = deleteReceipt.accepted;
-  receipt.deleteChanged = deleteReceipt.changed;
-  receipt.deleteRemoved = deleteReceipt.objectRemoved;
-  receipt.deleteObjectId = deleteReceipt.objectId;
-  receipt.deleteObjectKind = deleteReceipt.objectKind;
-  receipt.deleteObjectName = deleteReceipt.objectName;
-  receipt.deleteRevisionBefore = deleteReceipt.revisionBefore;
-  receipt.deleteRevisionAfter = deleteReceipt.revisionAfter;
-  receipt.deleteDirtyFlags = deleteReceipt.removalDirtyFlags;
-  receipt.deleteStatus = std::string(creative::toString(deleteReceipt.status));
-  receipt.deleteMessage = std::string(deleteReceipt.message);
-  receipt.deleteReasonCode = std::string(deleteReceipt.reasonCode);
-}
-
-void copyUndoReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
-                     const creative::CreativeDocumentUndoApplyReceipt&
-                         undoReceipt) {
-  receipt.undoRequested = undoReceipt.requested;
-  receipt.undoAccepted = undoReceipt.accepted;
-  receipt.undoChanged = undoReceipt.changed;
-  receipt.undoHadSnapshot = undoReceipt.hadSnapshot;
-  receipt.undoDocumentId = undoReceipt.documentId;
-  receipt.undoRevisionBefore = undoReceipt.revisionBefore;
-  receipt.undoRevisionAfter = undoReceipt.revisionAfter;
-  receipt.undoObjectCountBefore = undoReceipt.objectCountBefore;
-  receipt.undoObjectCountAfter = undoReceipt.objectCountAfter;
-  receipt.undoDepthBefore = undoReceipt.depthBefore;
-  receipt.undoDepthAfter = undoReceipt.depthAfter;
-  receipt.undoStatus = undoReceipt.status;
-  receipt.undoReasonCode = undoReceipt.reasonCode;
-  receipt.undoMessage = undoReceipt.message;
+  receipt.remove.noSelection = true;
+  receipt.remove.document.requested = true;
+  receipt.remove.document.revisionBefore = revision;
+  receipt.remove.document.revisionAfter = revision;
+  receipt.remove.document.message = "no_selection";
+  receipt.remove.document.reasonCode = "no_selection";
 }
 
 void copyRoomShellReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
@@ -192,12 +109,12 @@ void handleToggleSelectedObjectVisibility(
   ProductCreativeUiCommandFrameReceipt& receipt = context.receipt;
   const creative::CreativeFacadeMutationReceipt mutationReceipt =
       context.facade.toggleSelectedObjectVisibility();
-  copyMutationReceipt(receipt, mutationReceipt);
+  receipt.mutation = mutationReceipt;
   receipt.accepted = mutationReceipt.accepted;
   receipt.changed = mutationReceipt.changed;
   setCommandOutcomeStatus(receipt,
-                          mutationReceipt.accepted,
-                          mutationReceipt.changed);
+                          receipt.mutation.accepted,
+                          receipt.mutation.changed);
 }
 
 void handleToggleSelectedObjectLocked(
@@ -205,12 +122,12 @@ void handleToggleSelectedObjectLocked(
   ProductCreativeUiCommandFrameReceipt& receipt = context.receipt;
   const creative::CreativeFacadeMutationReceipt mutationReceipt =
       context.facade.toggleSelectedObjectLocked();
-  copyMutationReceipt(receipt, mutationReceipt);
+  receipt.mutation = mutationReceipt;
   receipt.accepted = mutationReceipt.accepted;
   receipt.changed = mutationReceipt.changed;
   setCommandOutcomeStatus(receipt,
-                          mutationReceipt.accepted,
-                          mutationReceipt.changed);
+                          receipt.mutation.accepted,
+                          receipt.mutation.changed);
 }
 
 void handleRebuildRoom(ProductCreativeUiCommandExecutionContext& context) {
@@ -226,7 +143,7 @@ void handleUndoLastDocumentChange(
   ProductCreativeUiCommandFrameReceipt& receipt = context.receipt;
   const creative::CreativeDocumentUndoApplyReceipt undoReceipt =
       creative::applyLastCreativeUndoSnapshot(context.creative);
-  copyUndoReceipt(receipt, undoReceipt);
+  receipt.undo = undoReceipt;
   receipt.accepted = undoReceipt.accepted;
   receipt.changed = undoReceipt.changed;
   receipt.toolAfter = context.facade.toolState().activeTool;
@@ -248,7 +165,7 @@ void handleDeleteSelectedObject(
   const creative::CreativeDocumentRemoveReceipt deleteReceipt =
       context.facade.removeDocumentObject(
           static_cast<creative::CreativeObjectId>(selectedTarget.value));
-  copyDeleteReceipt(receipt, deleteReceipt);
+  receipt.remove.document = deleteReceipt;
   receipt.accepted = deleteReceipt.accepted;
   receipt.changed = deleteReceipt.changed;
   receipt.toolAfter = context.facade.toolState().activeTool;
@@ -391,16 +308,12 @@ void handleCreateObject(ProductCreativeUiCommandExecutionContext& context) {
                                          context.row.objectKind);
   const creative::CreativeDocumentCreateReceipt createReceipt =
       context.facade.createDocumentObject(placed.createRequest);
-  copyCreateReceipt(receipt, createReceipt);
+  receipt.create.document = createReceipt;
+  receipt.create.placementOffsetApplied = placed.offsetApplied;
+  receipt.create.placementOffsetX = placed.offsetX;
   receipt.accepted = createReceipt.accepted;
   receipt.changed = createReceipt.changed;
   receipt.toolAfter = context.facade.toolState().activeTool;
-  if (createReceipt.accepted && createReceipt.changed &&
-      placed.offsetApplied) {
-    receipt.createMessage.append(" placement_offset_x=");
-    receipt.createMessage.append(formatPlacementOffset(placed.offsetX));
-    receipt.createReasonCode.append("_placement_offset");
-  }
   setCommandOutcomeStatus(receipt,
                           createReceipt.accepted,
                           createReceipt.changed);

@@ -704,7 +704,7 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
   const iggy3d::ProductCreativeUiCommandFrameReceipt createRoom =
       routeCreateRoomCommand(app);
   const iggy3d::creative::CreativeObject* createdRoom =
-      facade.findObject(createRoom.createObjectId);
+      facade.findObject(createRoom.create.document.objectId);
   const iggy3d::creative::CreativeObjectDirtyFlags dirtyBeforeSave =
       facade.document().dirtyFlags();
 
@@ -778,17 +778,17 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
                 "lifecycle create command kind") &&
          expect(createRoom.accepted && createRoom.changed,
                 "lifecycle create command applied") &&
-         expect(createRoom.createRequested &&
-                    createRoom.createAccepted &&
-                    createRoom.createChanged,
+         expect(createRoom.create.document.requested &&
+                    createRoom.create.document.accepted &&
+                    createRoom.create.document.changed,
                 "lifecycle create receipt applied") &&
-         expect(createRoom.createStatus ==
+         expect(createRoom.create.document.status ==
                     iggy3d::creative::CreativeDocumentCreateStatus::Created,
                 "lifecycle create status") &&
-         expect(createRoom.createObjectId !=
+         expect(createRoom.create.document.objectId !=
                     iggy3d::creative::kInvalidObjectId,
                 "lifecycle create object id") &&
-         expect(createRoom.createObjectKind ==
+         expect(createRoom.create.document.objectKind ==
                     iggy3d::creative::CreativeObjectKind::Room,
                 "lifecycle create object kind") &&
          expect(facade.document().objectCount() == 1U,
@@ -864,7 +864,7 @@ bool creativeWorldMinimumLifecycleLoopsThroughStarterCreateSaveExitAndOpen() {
                 "lifecycle reopened next id") &&
          expect(reopenedRoom != nullptr, "lifecycle reopened room exists") &&
          expect(reopenedRoom != nullptr &&
-                    reopenedRoom->id == createRoom.createObjectId,
+                    reopenedRoom->id == createRoom.create.document.objectId,
                 "lifecycle reopened room id") &&
          expect(reopenedRoom != nullptr &&
                     reopenedRoom->kind ==

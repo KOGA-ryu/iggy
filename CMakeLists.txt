@@ -79,6 +79,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/BakedActiveRoomRefresh.cpp
     src/app/iggy3d/creative/CreativeWorldOperations.cpp
     src/app/iggy3d/creative/CreativeBlankStageSession.cpp
+    src/app/iggy3d/creative/CreativeUiCommandDiagnostics.cpp
     src/app/iggy3d/creative/ui/Ui.cpp
     src/app/iggy3d/creative/mutation/Metrics.cpp
     src/app/iggy3d/creative/Facade.cpp

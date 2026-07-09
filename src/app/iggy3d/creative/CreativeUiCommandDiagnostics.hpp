@@ -5,6 +5,8 @@
 
 namespace iggy3d {
 
+struct ProductCreativeUiCommandFrameReceipt;
+
 struct ProductCreativeUiCommandMutationDiagnostics {
   bool requested = false;
   bool accepted = false;
@@ -126,5 +128,9 @@ struct ProductCreativeUiCommandDiagnostics {
   ProductCreativeUiCommandRoomShellDiagnostics shell;
   ProductCreativeBakedRoomRefreshDiagnostics bakedRoomRefresh;
 };
+
+[[nodiscard]] ProductCreativeUiCommandDiagnostics
+toProductCreativeUiCommandDiagnostics(
+    const ProductCreativeUiCommandFrameReceipt& receipt);
 
 }  // namespace iggy3d

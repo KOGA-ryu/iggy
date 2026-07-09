@@ -246,17 +246,17 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
                 "visibility flow hide command kind") &&
          expect(hideCommand.accepted && hideCommand.changed,
                 "visibility flow hide changed") &&
-         expect(hideCommand.mutationStatus ==
+         expect(hideCommand.mutation.status ==
                     cr::CreativeFacadeMutationStatus::Applied,
                 "visibility flow hide mutation status") &&
-         expect(hideCommand.mutationKind ==
+         expect(hideCommand.mutation.mutationKind ==
                     cr::CreativeMutationKind::SetVisible,
                 "visibility flow hide mutation kind") &&
-         expect(hideCommand.visibleBefore && !hideCommand.visibleAfter,
+         expect(hideCommand.mutation.visibleBefore && !hideCommand.mutation.visibleAfter,
                 "visibility flow hide visible fields") &&
-         expect(hideCommand.revisionBefore == revisionBeforeToggle,
+         expect(hideCommand.mutation.revisionBefore == revisionBeforeToggle,
                 "visibility flow hide revision before") &&
-         expect(hideCommand.revisionAfter == revisionBeforeToggle + 1U,
+         expect(hideCommand.mutation.revisionAfter == revisionBeforeToggle + 1U,
                 "visibility flow hide revision after") &&
          expect(roomHiddenAfterHide, "visibility flow room hidden") &&
          expect(facade.document().objectCount() == objectCountBefore,
@@ -292,11 +292,11 @@ bool selectedTargetCommandTogglesVisibilityAndRefreshesPick() {
                 "visibility flow show command kind") &&
          expect(showCommand.accepted && showCommand.changed,
                 "visibility flow show changed") &&
-         expect(!showCommand.visibleBefore && showCommand.visibleAfter,
+         expect(!showCommand.mutation.visibleBefore && showCommand.mutation.visibleAfter,
                 "visibility flow show visible fields") &&
-         expect(showCommand.revisionBefore == hideCommand.revisionAfter,
+         expect(showCommand.mutation.revisionBefore == hideCommand.mutation.revisionAfter,
                 "visibility flow show revision before") &&
-         expect(showCommand.revisionAfter == hideCommand.revisionAfter + 1U,
+         expect(showCommand.mutation.revisionAfter == hideCommand.mutation.revisionAfter + 1U,
                 "visibility flow show revision after") &&
          expect(visibleRoom != nullptr && visibleRoom->visible,
                 "visibility flow room visible again") &&
@@ -330,7 +330,7 @@ bool createRoomUiRowCommandCreatesRoomThroughFacade() {
       iggy3d::routeProductCreativeUiCommandFrame(
           iggy3d::ProductCreativeUiCommandFrameRequest{&app, createInput});
   const cr::CreativeObject* created =
-      facade.findObject(createCommand.createObjectId);
+      facade.findObject(createCommand.create.document.objectId);
   const cr::CreativeUiBuildReceipt rebuiltUi = facade.buildUiModel();
   const iggy3d::ProductUiDrawList rebuiltDrawList =
       drawCreativeUi(rebuiltUi.model);
@@ -349,22 +349,22 @@ bool createRoomUiRowCommandCreatesRoomThroughFacade() {
                 "create flow command kind") &&
          expect(createCommand.accepted && createCommand.changed,
                 "create flow command changed") &&
-         expect(createCommand.createRequested &&
-                    createCommand.createAccepted &&
-                    createCommand.createChanged,
+         expect(createCommand.create.document.requested &&
+                    createCommand.create.document.accepted &&
+                    createCommand.create.document.changed,
                 "create flow receipt changed") &&
-         expect(createCommand.createStatus ==
+         expect(createCommand.create.document.status ==
                     cr::CreativeDocumentCreateStatus::Created,
                 "create flow create status") &&
-         expect(createCommand.createObjectId != cr::kInvalidObjectId,
+         expect(createCommand.create.document.objectId != cr::kInvalidObjectId,
                 "create flow object id") &&
-         expect(createCommand.createObjectKind == cr::CreativeObjectKind::Room,
+         expect(createCommand.create.document.objectKind == cr::CreativeObjectKind::Room,
                 "create flow object kind") &&
-         expect(createCommand.createObjectName == "Room",
+         expect(createCommand.create.document.objectName == "Room",
                 "create flow object name") &&
-         expect(createCommand.createRevisionBefore == 0U,
+         expect(createCommand.create.document.revisionBefore == 0U,
                 "create flow revision before") &&
-         expect(createCommand.createRevisionAfter == 1U,
+         expect(createCommand.create.document.revisionAfter == 1U,
                 "create flow revision after") &&
          expect(created != nullptr, "create flow object exists") &&
          expect(created->bounds.min.x == 0.0 && created->bounds.min.y == 0.0 &&

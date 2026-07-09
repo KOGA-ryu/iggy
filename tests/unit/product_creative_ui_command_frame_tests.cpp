@@ -341,8 +341,8 @@ bool rebuildRoomCommandRequestsExternalRefreshWithoutDocumentMutation() {
          expect(receipt.reasonCode ==
                     "product_creative_ui_command_rebuild_room_requested",
                 "rebuild command reason") &&
-         expect(!receipt.createRequested, "rebuild does not create") &&
-         expect(!receipt.mutationRequested, "rebuild does not mutate") &&
+         expect(!receipt.create.document.requested, "rebuild does not create") &&
+         expect(!receipt.mutation.requested, "rebuild does not mutate") &&
          expect(receipt.toolBefore == cr::Tool::Move,
                 "rebuild tool before") &&
          expect(receipt.toolAfter == cr::Tool::Move,
@@ -375,23 +375,23 @@ bool undoCommandNoHistoryRejectsWithoutMutation() {
          expect(!receipt.changed, "undo empty unchanged") &&
          expect(receipt.status == "product_creative_ui_command_rejected",
                 "undo empty command status") &&
-         expect(receipt.undoRequested, "undo empty requested") &&
-         expect(!receipt.undoAccepted, "undo empty receipt not accepted") &&
-         expect(!receipt.undoChanged, "undo empty receipt unchanged") &&
-         expect(!receipt.undoHadSnapshot, "undo empty no snapshot") &&
-         expect(receipt.undoRevisionBefore == revisionBefore,
+         expect(receipt.undo.requested, "undo empty requested") &&
+         expect(!receipt.undo.accepted, "undo empty receipt not accepted") &&
+         expect(!receipt.undo.changed, "undo empty receipt unchanged") &&
+         expect(!receipt.undo.hadSnapshot, "undo empty no snapshot") &&
+         expect(receipt.undo.revisionBefore == revisionBefore,
                 "undo empty revision before") &&
-         expect(receipt.undoRevisionAfter == revisionBefore,
+         expect(receipt.undo.revisionAfter == revisionBefore,
                 "undo empty revision after") &&
-         expect(receipt.undoObjectCountBefore == objectCountBefore,
+         expect(receipt.undo.objectCountBefore == objectCountBefore,
                 "undo empty object count before") &&
-         expect(receipt.undoObjectCountAfter == objectCountBefore,
+         expect(receipt.undo.objectCountAfter == objectCountBefore,
                 "undo empty object count after") &&
-         expect(receipt.undoDepthBefore == 0U, "undo empty depth before") &&
-         expect(receipt.undoDepthAfter == 0U, "undo empty depth after") &&
-         expect(receipt.undoStatus == "creative_undo_empty",
+         expect(receipt.undo.depthBefore == 0U, "undo empty depth before") &&
+         expect(receipt.undo.depthAfter == 0U, "undo empty depth after") &&
+         expect(receipt.undo.status == "creative_undo_empty",
                 "undo empty status") &&
-         expect(receipt.undoReasonCode == "creative_undo_empty",
+         expect(receipt.undo.reasonCode == "creative_undo_empty",
                 "undo empty reason") &&
          expect(facade.document().revision() == revisionBefore,
                 "undo empty document revision unchanged") &&
@@ -424,24 +424,24 @@ bool undoCommandRestoresLatestSnapshotAndClearsTransientState() {
          expect(receipt.changed, "undo changed") &&
          expect(receipt.status == "product_creative_ui_command_applied",
                 "undo command status") &&
-         expect(receipt.undoRequested, "undo requested") &&
-         expect(receipt.undoAccepted, "undo receipt accepted") &&
-         expect(receipt.undoChanged, "undo receipt changed") &&
-         expect(receipt.undoHadSnapshot, "undo had snapshot") &&
-         expect(receipt.undoDocumentId == facade.document().id(),
+         expect(receipt.undo.requested, "undo requested") &&
+         expect(receipt.undo.accepted, "undo receipt accepted") &&
+         expect(receipt.undo.changed, "undo receipt changed") &&
+         expect(receipt.undo.hadSnapshot, "undo had snapshot") &&
+         expect(receipt.undo.documentId == facade.document().id(),
                 "undo document id") &&
-         expect(receipt.undoRevisionBefore == revisionBefore,
+         expect(receipt.undo.revisionBefore == revisionBefore,
                 "undo revision before") &&
-         expect(receipt.undoRevisionAfter == 0U, "undo revision after") &&
-         expect(receipt.undoObjectCountBefore == objectCountBefore,
+         expect(receipt.undo.revisionAfter == 0U, "undo revision after") &&
+         expect(receipt.undo.objectCountBefore == objectCountBefore,
                 "undo object count before") &&
-         expect(receipt.undoObjectCountAfter == 0U,
+         expect(receipt.undo.objectCountAfter == 0U,
                 "undo object count after") &&
-         expect(receipt.undoDepthBefore == 1U, "undo depth before") &&
-         expect(receipt.undoDepthAfter == 0U, "undo depth after") &&
-         expect(receipt.undoStatus == "creative_undo_applied",
+         expect(receipt.undo.depthBefore == 1U, "undo depth before") &&
+         expect(receipt.undo.depthAfter == 0U, "undo depth after") &&
+         expect(receipt.undo.status == "creative_undo_applied",
                 "undo status") &&
-         expect(receipt.undoReasonCode == "creative_undo_applied",
+         expect(receipt.undo.reasonCode == "creative_undo_applied",
                 "undo reason") &&
          expect(facade.findObject(crateId) == nullptr,
                 "undo restored object absence") &&
@@ -467,7 +467,7 @@ bool createRoomCommandCreatesGenericRoom() {
 
   const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
       routeCommand(app, "creative.row.create.create_room");
-  const cr::CreativeObject* room = facade.findObject(receipt.createObjectId);
+  const cr::CreativeObject* room = facade.findObject(receipt.create.document.objectId);
   const cr::CreativeObjectDescriptor& descriptor =
       cr::describeObject(cr::CreativeObjectKind::Room);
 
@@ -478,27 +478,27 @@ bool createRoomCommandCreatesGenericRoom() {
          expect(receipt.changed, "create changed") &&
          expect(receipt.status == "product_creative_ui_command_applied",
                 "create status") &&
-         expect(receipt.createRequested, "create receipt requested") &&
-         expect(receipt.createAccepted, "create receipt accepted") &&
-         expect(receipt.createChanged, "create receipt changed") &&
-         expect(receipt.createStatus ==
+         expect(receipt.create.document.requested, "create receipt requested") &&
+         expect(receipt.create.document.accepted, "create receipt accepted") &&
+         expect(receipt.create.document.changed, "create receipt changed") &&
+         expect(receipt.create.document.status ==
                     cr::CreativeDocumentCreateStatus::Created,
                 "create receipt status") &&
-         expect(receipt.createObjectId != cr::kInvalidObjectId,
+         expect(receipt.create.document.objectId != cr::kInvalidObjectId,
                 "create object id") &&
-         expect(receipt.createObjectKind == cr::CreativeObjectKind::Room,
+         expect(receipt.create.document.objectKind == cr::CreativeObjectKind::Room,
                 "create object kind") &&
-         expect(receipt.createObjectName == "Room",
+         expect(receipt.create.document.objectName == "Room",
                 "create object name") &&
-         expect(receipt.createRevisionBefore == revisionBefore,
+         expect(receipt.create.document.revisionBefore == revisionBefore,
                 "create revision before") &&
-         expect(receipt.createRevisionAfter == revisionBefore + 1U,
+         expect(receipt.create.document.revisionAfter == revisionBefore + 1U,
                 "create revision after") &&
-         expect(receipt.createDirtyFlags == descriptor.creationDirtyFlags,
+         expect(receipt.create.document.creationDirtyFlags == descriptor.creationDirtyFlags,
                 "create dirty flags") &&
-         expect(receipt.createMessage == "object_created",
+         expect(receipt.create.document.message == "object_created",
                 "create message") &&
-         expect(receipt.createReasonCode == "object_created",
+         expect(receipt.create.document.reasonCode == "object_created",
                 "create reason") &&
          expect(room != nullptr, "create room exists") &&
          expect(room->kind == cr::CreativeObjectKind::Room,
@@ -536,18 +536,22 @@ bool repeatedCreateRoomCommandCreatesNewIdsAndRevisions() {
 
   return expect(first.accepted && first.changed, "repeat create first") &&
          expect(second.accepted && second.changed, "repeat create second") &&
-         expect(first.createObjectId != cr::kInvalidObjectId,
+         expect(first.create.document.objectId != cr::kInvalidObjectId,
                 "repeat first id") &&
-         expect(second.createObjectId != cr::kInvalidObjectId,
+         expect(second.create.document.objectId != cr::kInvalidObjectId,
                 "repeat second id") &&
-         expect(second.createObjectId > first.createObjectId,
+         expect(second.create.document.objectId > first.create.document.objectId,
                 "repeat ids increase") &&
-         expect(first.createRevisionAfter == 1U,
+         expect(first.create.document.revisionAfter == 1U,
                 "repeat first revision") &&
-         expect(second.createRevisionBefore == 1U,
+         expect(second.create.document.revisionBefore == 1U,
                 "repeat second revision before") &&
-         expect(second.createRevisionAfter == 2U,
+         expect(second.create.document.revisionAfter == 2U,
                 "repeat second revision after") &&
+         expect(second.create.placementOffsetApplied,
+                "repeat second placement offset applied") &&
+         expect(near(second.create.placementOffsetX, 1.0),
+                "repeat second placement offset") &&
          expect(facade.document().objectCount() == 2U,
                 "repeat object count") &&
          expect(facade.document().revision() == 2U,
@@ -566,7 +570,7 @@ bool createPaletteRowsRouteToDescriptorKinds() {
 
     const iggy3d::ProductCreativeUiCommandFrameReceipt receipt =
         routeCommand(app, slot.semanticId);
-    const cr::CreativeObject* object = facade.findObject(receipt.createObjectId);
+    const cr::CreativeObject* object = facade.findObject(receipt.create.document.objectId);
 
     ok &= expect(iggy3d::productCreativeUiCreatePaletteEntryAllowed(slot),
                  "create palette slot descriptor-allowed") &&
@@ -575,9 +579,9 @@ bool createPaletteRowsRouteToDescriptorKinds() {
                  "create palette command kind") &&
           expect(receipt.commandObjectKind == descriptor.kind,
                  "create palette command object kind") &&
-          expect(receipt.createObjectKind == descriptor.kind,
+          expect(receipt.create.document.objectKind == descriptor.kind,
                  "create palette receipt object kind") &&
-          expect(receipt.createObjectName == descriptor.name,
+          expect(receipt.create.document.objectName == descriptor.name,
                  "create palette receipt object name") &&
           expect(receipt.accepted && receipt.changed,
                  "create palette command applied") &&
@@ -609,29 +613,29 @@ bool selectedTargetRowTogglesRoomVisibilityOff() {
          expect(receipt.changed, "toggle off changed") &&
          expect(receipt.status == "product_creative_ui_command_applied",
                 "toggle off status") &&
-         expect(receipt.mutationRequested, "toggle off mutation requested") &&
-         expect(receipt.mutationAccepted, "toggle off mutation accepted") &&
-         expect(receipt.mutationChanged, "toggle off mutation changed") &&
-         expect(receipt.mutationStatus ==
+         expect(receipt.mutation.requested, "toggle off mutation requested") &&
+         expect(receipt.mutation.accepted, "toggle off mutation accepted") &&
+         expect(receipt.mutation.changed, "toggle off mutation changed") &&
+         expect(receipt.mutation.status ==
                     cr::CreativeFacadeMutationStatus::Applied,
                 "toggle off mutation status") &&
-         expect(receipt.documentMutationStatus ==
+         expect(receipt.mutation.documentStatus ==
                     cr::CreativeDocumentMutationStatus::Applied,
                 "toggle off document status") &&
-         expect(receipt.mutationKind == cr::CreativeMutationKind::SetVisible,
+         expect(receipt.mutation.mutationKind == cr::CreativeMutationKind::SetVisible,
                 "toggle off mutation kind") &&
-         expect(receipt.mutationTarget.value == roomId,
+         expect(receipt.mutation.target.value == roomId,
                 "toggle off mutation target") &&
-         expect(receipt.mutationObjectId == roomId,
+         expect(receipt.mutation.objectId == roomId,
                 "toggle off mutation object") &&
-         expect(receipt.mutationObjectKind == cr::CreativeObjectKind::Room,
+         expect(receipt.mutation.objectKind == cr::CreativeObjectKind::Room,
                 "toggle off mutation object kind") &&
-         expect(receipt.visibleBefore, "toggle off visible before") &&
-         expect(!receipt.visibleAfter, "toggle off visible after") &&
+         expect(receipt.mutation.visibleBefore, "toggle off visible before") &&
+         expect(!receipt.mutation.visibleAfter, "toggle off visible after") &&
          expect(!room->visible, "toggle off room hidden") &&
-         expect(receipt.revisionBefore == revisionBefore,
+         expect(receipt.mutation.revisionBefore == revisionBefore,
                 "toggle off revision before") &&
-         expect(receipt.revisionAfter == revisionBefore + 1U,
+         expect(receipt.mutation.revisionAfter == revisionBefore + 1U,
                 "toggle off revision after") &&
          expect(facade.document().objectCount() == objectCountBefore,
                 "toggle off object count unchanged") &&
@@ -663,12 +667,12 @@ bool selectedTargetRowTogglesRoomVisibilityOnAgain() {
          expect(second.changed, "toggle on changed") &&
          expect(second.status == "product_creative_ui_command_applied",
                 "toggle on status") &&
-         expect(!second.visibleBefore, "toggle on visible before") &&
-         expect(second.visibleAfter, "toggle on visible after") &&
+         expect(!second.mutation.visibleBefore, "toggle on visible before") &&
+         expect(second.mutation.visibleAfter, "toggle on visible after") &&
          expect(room->visible, "toggle on room visible") &&
-         expect(second.revisionBefore == revisionBeforeSecond,
+         expect(second.mutation.revisionBefore == revisionBeforeSecond,
                 "toggle on revision before") &&
-         expect(second.revisionAfter == revisionBeforeSecond + 1U,
+         expect(second.mutation.revisionAfter == revisionBeforeSecond + 1U,
                 "toggle on revision after") &&
          expect(facade.selectionState().selectedTarget.value == roomId,
                 "toggle on selection preserved");
@@ -708,19 +712,19 @@ bool selectedTargetRowNoSelectionRejects() {
          expect(!receipt.changed, "no selection unchanged") &&
          expect(receipt.status == "product_creative_ui_command_rejected",
                 "no selection status") &&
-         expect(receipt.mutationRequested, "no selection mutation requested") &&
-         expect(!receipt.mutationAccepted,
+         expect(receipt.mutation.requested, "no selection mutation requested") &&
+         expect(!receipt.mutation.accepted,
                 "no selection mutation not accepted") &&
-         expect(!receipt.mutationChanged, "no selection mutation unchanged") &&
-         expect(receipt.mutationStatus ==
+         expect(!receipt.mutation.changed, "no selection mutation unchanged") &&
+         expect(receipt.mutation.status ==
                     cr::CreativeFacadeMutationStatus::NoSelection,
                 "no selection mutation status") &&
-         expect(receipt.documentMutationStatus ==
+         expect(receipt.mutation.documentStatus ==
                     cr::CreativeDocumentMutationStatus::Unknown,
                 "no selection document status") &&
-         expect(receipt.mutationKind == cr::CreativeMutationKind::Unknown,
+         expect(receipt.mutation.mutationKind == cr::CreativeMutationKind::Unknown,
                 "no selection mutation kind") &&
-         expect(receipt.mutationMessage == "no_selection",
+         expect(receipt.mutation.message == "no_selection",
                 "no selection mutation message") &&
          expect(facade.document().objectCount() == 0U,
                 "no selection document unchanged");
@@ -751,24 +755,25 @@ bool deleteSelectedObjectRemovesObjectAndClearsSelection() {
                 "delete status") &&
          expect(receipt.reasonCode == "product_creative_ui_command_applied",
                 "delete reason") &&
-         expect(receipt.deleteRequested, "delete requested") &&
-         expect(receipt.deleteAccepted, "delete receipt accepted") &&
-         expect(receipt.deleteChanged, "delete receipt changed") &&
-         expect(receipt.deleteRemoved, "delete receipt removed") &&
-         expect(receipt.deleteObjectId == crateId, "delete object id") &&
-         expect(receipt.deleteObjectKind == cr::CreativeObjectKind::Crate,
+         expect(receipt.remove.document.requested, "delete requested") &&
+         expect(receipt.remove.document.accepted, "delete receipt accepted") &&
+         expect(receipt.remove.document.changed, "delete receipt changed") &&
+         expect(receipt.remove.document.objectRemoved, "delete receipt removed") &&
+         expect(receipt.remove.document.objectId == crateId, "delete object id") &&
+         expect(receipt.remove.document.objectKind == cr::CreativeObjectKind::Crate,
                 "delete object kind") &&
-         expect(receipt.deleteObjectName == "Crate A",
+         expect(receipt.remove.document.objectName == "Crate A",
                 "delete object name") &&
-         expect(receipt.deleteRevisionBefore == revisionBefore,
+         expect(receipt.remove.document.revisionBefore == revisionBefore,
                 "delete revision before") &&
-         expect(receipt.deleteRevisionAfter == revisionBefore + 1U,
+         expect(receipt.remove.document.revisionAfter == revisionBefore + 1U,
                 "delete revision after") &&
-         expect(receipt.deleteDirtyFlags != 0U, "delete dirty flags") &&
-         expect(receipt.deleteStatus == "Removed", "delete receipt status") &&
-         expect(receipt.deleteMessage == "object_removed",
+         expect(receipt.remove.document.removalDirtyFlags != 0U, "delete dirty flags") &&
+         expect(receipt.remove.document.status == cr::CreativeDocumentRemoveStatus::Removed,
+                "delete receipt status") &&
+         expect(receipt.remove.document.message == "object_removed",
                 "delete receipt message") &&
-         expect(receipt.deleteReasonCode == "object_removed",
+         expect(receipt.remove.document.reasonCode == "object_removed",
                 "delete receipt reason") &&
          expect(facade.findObject(crateId) == nullptr, "delete object gone") &&
          expect(facade.document().objectCount() == objectCountBefore - 1U,
@@ -797,22 +802,24 @@ bool deleteSelectedObjectNoSelectionRejectsWithoutMutation() {
          expect(!receipt.changed, "delete no selection unchanged") &&
          expect(receipt.status == "product_creative_ui_command_rejected",
                 "delete no selection status") &&
-         expect(receipt.deleteRequested, "delete no selection requested") &&
-         expect(!receipt.deleteAccepted,
+         expect(receipt.remove.document.requested, "delete no selection requested") &&
+         expect(!receipt.remove.document.accepted,
                 "delete no selection receipt not accepted") &&
-         expect(!receipt.deleteChanged, "delete no selection not changed") &&
-         expect(!receipt.deleteRemoved, "delete no selection not removed") &&
-         expect(receipt.deleteObjectId == cr::kInvalidObjectId,
+         expect(!receipt.remove.document.changed, "delete no selection not changed") &&
+         expect(!receipt.remove.document.objectRemoved, "delete no selection not removed") &&
+         expect(receipt.remove.document.objectId == cr::kInvalidObjectId,
                 "delete no selection object id") &&
-         expect(receipt.deleteStatus == "NoSelection",
-                "delete no selection receipt status") &&
-         expect(receipt.deleteMessage == "no_selection",
+         expect(receipt.remove.document.status == cr::CreativeDocumentRemoveStatus::Unknown,
+                "delete no selection native status") &&
+         expect(receipt.remove.noSelection,
+                "delete no selection outcome") &&
+         expect(receipt.remove.document.message == "no_selection",
                 "delete no selection message") &&
-         expect(receipt.deleteReasonCode == "no_selection",
+         expect(receipt.remove.document.reasonCode == "no_selection",
                 "delete no selection reason") &&
-         expect(receipt.deleteRevisionBefore == revisionBefore,
+         expect(receipt.remove.document.revisionBefore == revisionBefore,
                 "delete no selection revision before") &&
-         expect(receipt.deleteRevisionAfter == revisionBefore,
+         expect(receipt.remove.document.revisionAfter == revisionBefore,
                 "delete no selection revision after") &&
          expect(facade.document().objectCount() == 0U,
                 "delete no selection object count") &&
@@ -1098,26 +1105,26 @@ bool selectedTargetRowMissingObjectRejectsAndPreservesSelection() {
          expect(!receipt.changed, "missing unchanged") &&
          expect(receipt.status == "product_creative_ui_command_rejected",
                 "missing status") &&
-         expect(receipt.mutationRequested, "missing mutation requested") &&
-         expect(!receipt.mutationAccepted, "missing mutation not accepted") &&
-         expect(!receipt.mutationChanged, "missing mutation unchanged") &&
-         expect(receipt.mutationStatus ==
+         expect(receipt.mutation.requested, "missing mutation requested") &&
+         expect(!receipt.mutation.accepted, "missing mutation not accepted") &&
+         expect(!receipt.mutation.changed, "missing mutation unchanged") &&
+         expect(receipt.mutation.status ==
                     cr::CreativeFacadeMutationStatus::MissingObject,
                 "missing mutation status") &&
-         expect(receipt.documentMutationStatus ==
+         expect(receipt.mutation.documentStatus ==
                     cr::CreativeDocumentMutationStatus::MissingObject,
                 "missing document status") &&
-         expect(receipt.mutationKind == cr::CreativeMutationKind::SetVisible,
+         expect(receipt.mutation.mutationKind == cr::CreativeMutationKind::SetVisible,
                 "missing mutation kind") &&
-         expect(receipt.mutationTarget.value == missingTarget,
+         expect(receipt.mutation.target.value == missingTarget,
                 "missing mutation target") &&
-         expect(receipt.mutationObjectId == missingTarget,
+         expect(receipt.mutation.objectId == missingTarget,
                 "missing mutation object id") &&
-         expect(receipt.revisionBefore == revisionBefore,
+         expect(receipt.mutation.revisionBefore == revisionBefore,
                 "missing revision before") &&
-         expect(receipt.revisionAfter == revisionBefore,
+         expect(receipt.mutation.revisionAfter == revisionBefore,
                 "missing revision after") &&
-         expect(receipt.mutationMessage == "missing_object",
+         expect(receipt.mutation.message == "missing_object",
                 "missing mutation message") &&
          expect(facade.selectionState().selectedTarget.value == missingTarget,
                 "missing selection preserved");
@@ -1176,20 +1183,20 @@ bool inspectorLockedRowTogglesRoomLockedOn() {
          expect(receipt.changed, "lock on changed") &&
          expect(receipt.status == "product_creative_ui_command_applied",
                 "lock on status") &&
-         expect(receipt.mutationRequested, "lock on mutation requested") &&
-         expect(receipt.mutationAccepted, "lock on mutation accepted") &&
-         expect(receipt.mutationChanged, "lock on mutation changed") &&
-         expect(receipt.mutationStatus ==
+         expect(receipt.mutation.requested, "lock on mutation requested") &&
+         expect(receipt.mutation.accepted, "lock on mutation accepted") &&
+         expect(receipt.mutation.changed, "lock on mutation changed") &&
+         expect(receipt.mutation.status ==
                     cr::CreativeFacadeMutationStatus::Applied,
                 "lock on mutation status") &&
-         expect(receipt.mutationKind == cr::CreativeMutationKind::SetLocked,
+         expect(receipt.mutation.mutationKind == cr::CreativeMutationKind::SetLocked,
                 "lock on mutation kind") &&
-         expect(!receipt.lockedBefore, "lock on locked before") &&
-         expect(receipt.lockedAfter, "lock on locked after") &&
+         expect(!receipt.mutation.lockedBefore, "lock on locked before") &&
+         expect(receipt.mutation.lockedAfter, "lock on locked after") &&
          expect(room->locked, "lock on room locked") &&
-         expect(receipt.revisionBefore == revisionBefore,
+         expect(receipt.mutation.revisionBefore == revisionBefore,
                 "lock on revision before") &&
-         expect(receipt.revisionAfter == revisionBefore + 1U,
+         expect(receipt.mutation.revisionAfter == revisionBefore + 1U,
                 "lock on revision after") &&
          expect(facade.selectionState().selectedTarget.value == roomId,
                 "lock on selection preserved");
@@ -1208,14 +1215,14 @@ bool inspectorLockedRowTogglesRoomLockedOffAgain() {
       routeCommand(app, "creative.row.selection.inspector_locked");
   const cr::CreativeObject* room = facade.findObject(roomId);
 
-  return expect(first.changed && first.lockedAfter, "lock off setup locked") &&
+  return expect(first.changed && first.mutation.lockedAfter, "lock off setup locked") &&
          expect(room != nullptr && !room->locked, "lock off room unlocked") &&
          expect(second.commandKind ==
                     iggy3d::ProductCreativeUiCommandKind::
                         ToggleSelectedObjectLocked,
                 "lock off command kind") &&
          expect(second.accepted && second.changed, "lock off changed") &&
-         expect(second.lockedBefore && !second.lockedAfter,
+         expect(second.mutation.lockedBefore && !second.mutation.lockedAfter,
                 "lock off locked fields");
 }
 
@@ -1235,12 +1242,12 @@ bool inspectorLockedRowNoSelectionRejects() {
          expect(!receipt.changed, "lock no selection unchanged") &&
          expect(receipt.status == "product_creative_ui_command_rejected",
                 "lock no selection status") &&
-         expect(receipt.mutationRequested,
+         expect(receipt.mutation.requested,
                 "lock no selection mutation requested") &&
-         expect(receipt.mutationStatus ==
+         expect(receipt.mutation.status ==
                     cr::CreativeFacadeMutationStatus::NoSelection,
                 "lock no selection mutation status") &&
-         expect(receipt.mutationMessage == "no_selection",
+         expect(receipt.mutation.message == "no_selection",
                 "lock no selection message");
 }
 
@@ -1260,7 +1267,7 @@ bool lockedObjectRefusesVisibilityMutationWithReceipt() {
       routeCommand(app, "creative.row.selection.inspector_visible");
   const cr::CreativeObject* room = facade.findObject(roomId);
 
-  return expect(lockReceipt.accepted && lockReceipt.lockedAfter,
+  return expect(lockReceipt.accepted && lockReceipt.mutation.lockedAfter,
                 "refuse setup locked") &&
          expect(visibilityReceipt.commandKind ==
                     iggy3d::ProductCreativeUiCommandKind::
@@ -1271,14 +1278,14 @@ bool lockedObjectRefusesVisibilityMutationWithReceipt() {
          expect(visibilityReceipt.status ==
                     "product_creative_ui_command_rejected",
                 "refuse status") &&
-         expect(visibilityReceipt.mutationStatus ==
+         expect(visibilityReceipt.mutation.status ==
                     cr::CreativeFacadeMutationStatus::Rejected,
                 "refuse mutation status") &&
          expect(room != nullptr && room->visible,
                 "refuse visibility untouched") &&
          expect(facade.document().revision() == revisionAfterLock,
                 "refuse revision untouched") &&
-         expect(!visibilityReceipt.mutationMessage.empty(),
+         expect(!visibilityReceipt.mutation.message.empty(),
                 "refuse names a reason");
 }
 
