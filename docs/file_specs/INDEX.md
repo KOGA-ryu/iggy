@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `9288e13b`
+Verified at: `3b2f3fcb`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `303`.
-- Current mapped source files represented by those specs: about `598`.
+- Current file specs: `305`.
+- Current mapped source files represented by those specs: about `602`.
 
 ## Status Labels
 
@@ -73,6 +73,11 @@ Runtime physics bake/motor/debug:
 - `mapped` [PhysicsKinematicMotor.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsKinematicMotor.md)
 - `mapped` [PhysicsFrameStats.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsFrameStats.md)
 - `mapped` [PhysicsDebugSnapshot.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsDebugSnapshot.md)
+
+Runtime physics benchmarks:
+
+- `mapped` [PhysicsKernelBenchmark.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsKernelBenchmark.md)
+- `mapped` [PhysicsKernelBenchmarkJson.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsKernelBenchmarkJson.md)
 
 Runtime collision/world/ability/combat:
 
