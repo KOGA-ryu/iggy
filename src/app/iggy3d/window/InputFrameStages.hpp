@@ -4,6 +4,7 @@
 
 #include "app/iggy3d/creative/Core.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
+#include "app/iggy3d/input/ControllerActionRouting.hpp"
 #include "app/iggy3d/menu/InputRouter.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/input/MouseInput.hpp"
@@ -68,5 +69,22 @@ void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
 
 ActionState gameplayActionsAfterMapMakerConsumesMovement(
     const ActionState& actions);
+
+InputAction movementTuningHeldAdjustmentAction(bool leftDown, bool rightDown);
+
+void recordProductWindowControllerActions(
+    const FrontendState& frontend,
+    ProductAppWindowState& window,
+    ProductControllerActionRoutingState& controllerAction,
+    const GamepadControllerActionSample& sample,
+    bool controllerModeChordRequested,
+    ActionState& actions,
+    const creative::CreativeAppState* creativeApp);
+
+void updateProductWindowMouseCapture(
+    const FrontendState& frontend,
+    ProductAppWindowState& window,
+    SdlWindow* sdlWindow,
+    const creative::CreativeAppState* creativeApp);
 
 }  // namespace iggy3d
