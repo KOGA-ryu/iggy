@@ -1,22 +1,24 @@
-#include "app/iggy3d/gameplay/ControllerJumpActions.hpp"
+#include "app/iggy3d/gameplay/ControllerJumpDash.hpp"
 
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomCollision.hpp"
+#include "app/iggy3d/gameplay/ControllerCommandExecution.hpp"
 #include "app/iggy3d/gameplay/ControllerGroundQueries.hpp"
-#include "app/iggy3d/gameplay/ControllerJumpDashState.hpp"
 #include "app/iggy3d/gameplay/ControllerKinematics.hpp"
 #include "app/iggy3d/gameplay/ControllerPlayerAccess.hpp"
 #include "app/iggy3d/gameplay/ControllerResetFall.hpp"
-#include "app/iggy3d/gameplay/ControllerTargetOutcomeProof.hpp"
-#include "app/iggy3d/gameplay/ControllerTraversalProof.hpp"
+#include "app/iggy3d/gameplay/ControllerProof.hpp"
+#include "app/iggy3d/gameplay/ControllerTargeting.hpp"
 #include "app/iggy3d/gameplay/ControllerWallRunEvaluation.hpp"
 #include "app/iggy3d/gameplay/ControllerWallQueries.hpp"
 #include "app/iggy3d/gameplay/MovementTuning.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "runtime/collision/SpatialSurfaceSet.hpp"
+#include "runtime/command/Command.hpp"
 #include "runtime/movement/MovementTraversal.hpp"
 #include "runtime/replay/StateHash.hpp"
 #include "runtime/session/Session.hpp"
+#include "runtime/world/EntityState.hpp"
 #include "runtime/world/WorldState.hpp"
 
 #include <algorithm>
@@ -320,6 +322,140 @@ void submitProductJump(Session& session,
                       *actor,
                       actor->transform.position.y,
                       "gameplay_jump_accepted");
+}
+
+}  // namespace iggy3d
+
+namespace iggy3d {
+
+void recordProductJumpPosition(ProductAppWindowState& window,
+                               float groundY,
+                               float startY,
+                               float finalY) {
+  window.gameplay.gameplayJump.groundY = groundY;
+  window.gameplay.gameplayJump.startY = startY;
+  window.gameplay.gameplayJump.finalY = finalY;
+  window.gameplay.gameplayJump.heightMeters = std::max(0.0F, finalY - groundY);
+}
+
+void clearProductJumpTiming(ProductAppWindowState& window) {
+  window.gameplay.gameplayJump.coyoteSecondsRemaining = 0.0F;
+  window.gameplay.gameplayJump.bufferSecondsRemaining = 0.0F;
+  window.gameplay.gameplayJump.held = false;
+  window.gameplay.gameplayJump.cutApplied = false;
+}
+
+void rejectProductJump(ProductAppWindowState& window,
+                       std::string_view status,
+                       std::string_view reason) {
+  window.gameplay.gameplayJump.requested = true;
+  window.gameplay.gameplayJump.accepted = false;
+  window.gameplay.gameplayJump.status = std::string{status};
+  window.gameplay.gameplayJump.reasonCode = std::string{reason};
+}
+
+bool productJumpBufferLive(const ProductAppWindowState& window) {
+  return window.gameplay.gameplayJump.bufferSecondsRemaining > 0.0F;
+}
+
+void bufferProductJump(ProductAppWindowState& window) {
+  window.gameplay.gameplayJump.bufferSecondsRemaining =
+      window.gameplay.gameplayMovement.tuning.jumpBufferSeconds;
+}
+
+void applyProductJumpReleaseCut(ProductAppWindowState& window) {
+  auto& tuning = window.gameplay.gameplayMovement.tuning;
+  window.gameplay.gameplayJump.held = false;
+  // branch-gate: BG-1153
+  if (!window.gameplay.gameplayJump.active || window.gameplay.gameplayJump.cutApplied ||
+      window.gameplay.gameplayJump.velocityMetersPerSecond <= 0.0F) {
+    return;
+  }
+  const float multiplier = std::clamp(tuning.jumpCutMultiplier, 0.1F, 1.0F);
+  window.gameplay.gameplayJump.velocityMetersPerSecond *= multiplier;
+  window.gameplay.gameplayJump.cutApplied = true;
+}
+
+void advanceProductDashCooldown(ProductAppWindowState& window) {
+  const auto& tuning = window.gameplay.gameplayMovement.tuning;
+  // branch-gate: BG-1155
+  if (window.gameplay.gameplayDash.cooldownRemainingSeconds <= 0.0F) {
+    window.gameplay.gameplayDash.cooldownRemainingSeconds = 0.0F;
+    return;
+  }
+  window.gameplay.gameplayDash.cooldownRemainingSeconds =
+      std::max(0.0F,
+               window.gameplay.gameplayDash.cooldownRemainingSeconds -
+                   tuning.inputStepSeconds);
+}
+
+void rejectProductDash(ProductAppWindowState& window,
+                       std::string_view status,
+                       std::string_view reason) {
+  window.gameplay.gameplayDash.requested = true;
+  window.gameplay.gameplayDash.accepted = false;
+  window.gameplay.gameplayDash.status = std::string{status};
+  window.gameplay.gameplayDash.reasonCode = std::string{reason};
+}
+
+}  // namespace iggy3d
+
+namespace iggy3d {
+
+void submitProductDash(Session& session,
+                       ProductAppWindowState& window,
+                       float moveX,
+                       float moveY,
+                       std::string_view source,
+                       const SpatialSurfaceSet* collisionSurfaces) {
+  const ProductGameplayMovementTuning& tuning = window.gameplay.gameplayMovement.tuning;
+  clearProductTargetProof(window);
+  clearProductOutcomeProof(window);
+  window.gameplay.gameplayInputUsed = true;
+  window.gameplay.gameplayInputSource = std::string{source};
+  window.gameplay.gameplayDash.requested = true;
+
+  // branch-gate: BG-1155
+  if (window.gameplay.gameplayDash.cooldownRemainingSeconds > 0.0F) {
+    rejectProductDash(window, "cooldown", "gameplay_dash_cooldown");
+    return;
+  }
+
+  const EntityState* actor = productPlayerEntity(session);
+  // branch-gate: BG-1155
+  if (actor == nullptr) {
+    rejectProductDash(window, "missing_player", "gameplay_dash_missing_player");
+    return;
+  }
+
+  const Vec3 direction = productManualFirstPersonDirection(
+      moveX, moveY, window.viewport.cameraYawDegrees);
+  const float dashDistance = tuning.dashSpeedMetersPerSecond *
+                             tuning.dashDurationSeconds;
+  Vec3 destination = actor->transform.position + direction * dashDistance;
+  destination.y = actor->transform.position.y;
+
+  window.gameplay.gameplayDash.accepted = true;
+  window.gameplay.gameplayDash.status = "accepted";
+  window.gameplay.gameplayDash.reasonCode = "gameplay_dash_accepted";
+  window.gameplay.gameplayDash.speedMetersPerSecond = tuning.dashSpeedMetersPerSecond;
+  window.gameplay.gameplayDash.distanceMeters = dashDistance;
+  window.gameplay.gameplayDash.cooldownRemainingSeconds =
+      tuning.dashCooldownSeconds;
+  window.gameplay.gameplayDash.directionX = direction.x;
+  window.gameplay.gameplayDash.directionZ = direction.z;
+  window.gameplay.gameplayMovement.profile = std::string{tuning.dashProfile};
+  window.gameplay.gameplayMovement.maxSpeedMetersPerSecond =
+      tuning.dashSpeedMetersPerSecond;
+
+  CommandRecord command;
+  command.playerSlot = 0;
+  command.actor = actor->id;
+  command.kind = CommandKind::Move;
+  command.source = CommandSource::LocalPlayer;
+  command.payload.target.hasPoint = true;
+  command.payload.target.point = destination;
+  submitProductGameplayCommand(session, window, command, collisionSurfaces);
 }
 
 }  // namespace iggy3d

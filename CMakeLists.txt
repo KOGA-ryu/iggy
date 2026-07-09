@@ -107,20 +107,16 @@ target_sources(iggy3d
     src/app/iggy3d/gameplay/Controller.cpp
     src/app/iggy3d/gameplay/ControllerActionPhases.cpp
     src/app/iggy3d/gameplay/ControllerCommandExecution.cpp
-    src/app/iggy3d/gameplay/ControllerDashActions.cpp
+    src/app/iggy3d/gameplay/ControllerJumpDash.cpp
     src/app/iggy3d/gameplay/ControllerGroundQueries.cpp
     src/app/iggy3d/gameplay/ControllerInputIntent.cpp
-    src/app/iggy3d/gameplay/ControllerJumpActions.cpp
-    src/app/iggy3d/gameplay/ControllerJumpDashState.cpp
+    src/app/iggy3d/gameplay/ControllerProof.cpp
     src/app/iggy3d/gameplay/ControllerKinematics.cpp
-    src/app/iggy3d/gameplay/ControllerMovementProof.cpp
     src/app/iggy3d/gameplay/ControllerMoveActions.cpp
     src/app/iggy3d/gameplay/ControllerPlayerAccess.cpp
     src/app/iggy3d/gameplay/ControllerResetActions.cpp
     src/app/iggy3d/gameplay/ControllerResetFall.cpp
-    src/app/iggy3d/gameplay/ControllerTargetActions.cpp
-    src/app/iggy3d/gameplay/ControllerTargetOutcomeProof.cpp
-    src/app/iggy3d/gameplay/ControllerTraversalProof.cpp
+    src/app/iggy3d/gameplay/ControllerTargeting.cpp
     src/app/iggy3d/gameplay/ControllerWallRunEvaluation.cpp
     src/app/iggy3d/gameplay/ControllerWallQueries.cpp
     src/app/iggy3d/gameplay/GameplayFeedback.cpp

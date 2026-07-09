@@ -5,7 +5,9 @@
 namespace iggy3d {
 
 class Session;
+struct CollisionSurfaceView;
 struct ProductAppWindowState;
+struct TraversalIntentResult;
 
 void clearProductMovementDebug(ProductAppWindowState& window);
 
@@ -29,5 +31,15 @@ void recordProductLedgeFallMovementDebug(ProductAppWindowState& window,
 
 void recordProductMovementDebug(const Session& session,
                                 ProductAppWindowState& window);
+
+void clearProductTraversalProof(ProductAppWindowState& window);
+
+void recordProductTraversalProof(ProductAppWindowState& window,
+                                 const TraversalIntentResult& result);
+
+void recordProductWallJumpTraversalProof(ProductAppWindowState& window,
+                                         const CollisionSurfaceView& surface,
+                                         Vec3 start,
+                                         Vec3 finalPosition);
 
 }  // namespace iggy3d

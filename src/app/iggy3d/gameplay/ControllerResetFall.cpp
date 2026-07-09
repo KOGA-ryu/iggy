@@ -2,7 +2,7 @@
 
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ControllerGroundQueries.hpp"
-#include "app/iggy3d/gameplay/ControllerJumpDashState.hpp"
+#include "app/iggy3d/gameplay/ControllerJumpDash.hpp"
 #include "app/iggy3d/gameplay/ControllerPlayerAccess.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
 #include "runtime/world/EntityState.hpp"

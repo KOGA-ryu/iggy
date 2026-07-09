@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "core/ids/EntityId.hpp"
 #include "runtime/command/Command.hpp"
@@ -12,6 +13,7 @@
 namespace iggy3d {
 
 class Session;
+class SpatialSurfaceSet;
 struct ProductAppWindowState;
 
 struct ProductInteractionOutcomeSnapshot {
@@ -48,5 +50,11 @@ void recordProductTargetProof(const Session& session,
                               ProductAppWindowState& window,
                               CommandKind kind,
                               const TargetQueryResult& target);
+
+void submitProductTargetCommand(Session& session,
+                                ProductAppWindowState& window,
+                                CommandKind kind,
+                                std::string_view source,
+                                const SpatialSurfaceSet* collisionSurfaces);
 
 }  // namespace iggy3d

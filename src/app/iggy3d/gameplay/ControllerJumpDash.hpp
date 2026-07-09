@@ -4,7 +4,17 @@
 
 namespace iggy3d {
 
+class Session;
+class SpatialSurfaceSet;
 struct ProductAppWindowState;
+
+void advanceProductJump(Session& session,
+                        ProductAppWindowState& window,
+                        const SpatialSurfaceSet* collisionSurfaces);
+
+void submitProductJump(Session& session,
+                       ProductAppWindowState& window,
+                       std::string_view source);
 
 void recordProductJumpPosition(ProductAppWindowState& window,
                                float groundY,
@@ -28,5 +38,12 @@ void advanceProductDashCooldown(ProductAppWindowState& window);
 void rejectProductDash(ProductAppWindowState& window,
                        std::string_view status,
                        std::string_view reason);
+
+void submitProductDash(Session& session,
+                       ProductAppWindowState& window,
+                       float moveX,
+                       float moveY,
+                       std::string_view source,
+                       const SpatialSurfaceSet* collisionSurfaces);
 
 }  // namespace iggy3d

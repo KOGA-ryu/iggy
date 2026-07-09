@@ -1,7 +1,7 @@
 #include "app/iggy3d/gameplay/ControllerResetActions.hpp"
 
 #include "app/iggy3d/ProductAppWindowState.hpp"
-#include "app/iggy3d/gameplay/ControllerTargetOutcomeProof.hpp"
+#include "app/iggy3d/gameplay/ControllerTargeting.hpp"
 #include "runtime/session/Session.hpp"
 
 #include <string>
