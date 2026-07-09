@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `3b2f3fcb`
+Verified at: `abe51abb`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `305`.
-- Current mapped source files represented by those specs: about `602`.
+- Current file specs: `309`.
+- Current mapped source files represented by those specs: about `609`.
 
 ## Status Labels
 
@@ -44,6 +44,10 @@ Runtime AI:
 - `mapped` [NpcInvestigateSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/NpcInvestigateSystem.md)
 - `mapped` [NpcPatrolSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/NpcPatrolSystem.md)
 - `mapped` [GuardRecon.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/GuardRecon.md)
+- `mapped` [NpcBehaviorProfile.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/NpcBehaviorProfile.md)
+- `mapped` [NpcPersonalityWeights.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/NpcPersonalityWeights.md)
+- `mapped` [NpcSoundPerception.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/NpcSoundPerception.md)
+- `mapped` [ReconIntel.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/ReconIntel.md)
 
 Runtime movement/player/session/physics:
 
