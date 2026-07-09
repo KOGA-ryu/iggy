@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -134,6 +135,11 @@ PhysicsAabbOverlapQueryResult queryPhysicsAabbOverlaps(
     const PhysicsAabbOverlapQueryRequest& request);
 PhysicsRaycastQueryResult raycastPhysicsAabbs(
     const PhysicsRaycastQueryRequest& request);
+bool segmentHitsAnyPhysicsAabb(std::span<const PhysicsAabbCollider> colliders,
+                               Vec3 from,
+                               Vec3 to,
+                               float marginMeters,
+                               bool* startInside);
 PhysicsSweptAabbQueryResult sweepPhysicsAabb(
     const PhysicsSweptAabbQueryRequest& request);
 PhysicsGroundCheckQueryResult checkPhysicsGround(

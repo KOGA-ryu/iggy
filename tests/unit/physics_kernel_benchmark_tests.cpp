@@ -66,6 +66,14 @@ bool stableNamesAreLowerSnake() {
                     iggy3d::PhysicsKernelBenchmarkKernel::PlayerMovePlanner) ==
                     "player_move_planner",
                 "player move planner name") &&
+         expect(iggy3d::physicsKernelBenchmarkKernelName(
+                    iggy3d::PhysicsKernelBenchmarkKernel::AabbRaycastFull) ==
+                    "aabb_raycast_full",
+                "aabb raycast full name") &&
+         expect(iggy3d::physicsKernelBenchmarkKernelName(
+                    iggy3d::PhysicsKernelBenchmarkKernel::AabbSegmentAnyHit) ==
+                    "aabb_segment_any_hit",
+                "aabb segment any hit name") &&
          expect(iggy3d::physicsKernelBenchmarkScenarioName(
                     iggy3d::PhysicsKernelBenchmarkScenario::TinySeparated) ==
                     "tiny_separated",
@@ -408,6 +416,40 @@ bool playerMovePlannerRoomDenseWallsReportsPressure() {
                 "player dense wall hit pressure");
 }
 
+bool aabbSegmentAnyHitBenchmarkComparesFullRaycastPath() {
+  iggy3d::PhysicsKernelBenchmarkConfig config;
+  config.collectTiming = false;
+
+  const iggy3d::PhysicsKernelBenchmarkCaseResult fullRaycast =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::AabbRaycastFull,
+          iggy3d::PhysicsKernelBenchmarkScenario::GridLineCorridor, config);
+  const iggy3d::PhysicsKernelBenchmarkCaseResult anyHit =
+      run(iggy3d::PhysicsKernelBenchmarkKernel::AabbSegmentAnyHit,
+          iggy3d::PhysicsKernelBenchmarkScenario::GridLineCorridor, config);
+
+  return expect(fullRaycast.ok, "full raycast benchmark ok") &&
+         expect(anyHit.ok, "segment any-hit benchmark ok") &&
+         expect(fullRaycast.colliderCount == 24U,
+                "full raycast benchmark collider count") &&
+         expect(anyHit.colliderCount == fullRaycast.colliderCount,
+                "segment any-hit same collider count") &&
+         expect(fullRaycast.kinematicIterationCount ==
+                    fullRaycast.colliderCount,
+                "full raycast tests every collider") &&
+         expect(anyHit.kinematicIterationCount == 0U,
+                "segment any-hit exposes no tested count") &&
+         expect(fullRaycast.kinematicHitCount == fullRaycast.colliderCount,
+                "full raycast reports every hit") &&
+         expect(anyHit.kinematicHitCount == 1U,
+                "segment any-hit reports one hit") &&
+         expect(fullRaycast.kinematicHitCount > anyHit.kinematicHitCount,
+                "segment any-hit avoids full hit collection") &&
+         expect(fullRaycast.elapsedNanoseconds == 0U,
+                "full raycast timing disabled") &&
+         expect(anyHit.elapsedNanoseconds == 0U,
+                "segment any-hit timing disabled");
+}
+
 bool iterationCountersAccumulateDeterministically() {
   iggy3d::PhysicsKernelBenchmarkConfig config;
   config.iterations = 2U;
@@ -548,6 +590,7 @@ int main() {
                   spatialSurfaceBakeRoomDenseWallsReportsMoreWallPressure() &&
                   playerMovePlannerRoomFloorWallReportsPlannerCounters() &&
                   playerMovePlannerRoomDenseWallsReportsPressure() &&
+                  aabbSegmentAnyHitBenchmarkComparesFullRaycastPath() &&
                   iterationCountersAccumulateDeterministically() &&
                   suiteRunsDefaultCasesInOrder() &&
                   invalidSuiteConfigRejects();

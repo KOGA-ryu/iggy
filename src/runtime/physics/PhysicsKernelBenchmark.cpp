@@ -13,6 +13,7 @@
 #include "runtime/physics/PhysicsAabbContact.hpp"
 #include "runtime/physics/PhysicsAabbContactSolver.hpp"
 #include "runtime/physics/PhysicsBroadphase.hpp"
+#include "runtime/physics/PhysicsCollisionQueries.hpp"
 #include "runtime/physics/PhysicsKinematicMotor.hpp"
 #include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 #include "runtime/player/PlayerPhysicsMovePlanner.hpp"
@@ -27,6 +28,7 @@ struct KernelScenarioHandler {
   PhysicsKernelBenchmarkKernel kernel;
   PhysicsKernelBenchmarkScenario scenario;
   KernelRun run;
+  bool includeInSuite = true;
 };
 
 template <std::size_t Count, typename Enum>
@@ -636,6 +638,54 @@ PhysicsKernelBenchmarkCaseResult kinematicMotorCornerSlide(
   return result;
 }
 
+PhysicsKernelBenchmarkCaseResult aabbRaycastFullGridLineCorridor(
+    const PhysicsKernelBenchmarkConfig& config) {
+  PhysicsKernelBenchmarkCaseResult result =
+      readyResult(PhysicsKernelBenchmarkKernel::AabbRaycastFull,
+                  PhysicsKernelBenchmarkScenario::GridLineCorridor, config);
+  const std::vector<PhysicsAabbCollider> colliders =
+      gridLineCorridorColliders();
+  PhysicsRaycastQueryRequest request;
+  request.colliders = &colliders;
+  request.originMeters = {-1.0F, 0.0F, 0.0F};
+  request.direction = {1.0F, 0.0F, 0.0F};
+  request.maxDistanceMeters = 48.0F;
+  const PhysicsRaycastQueryResult raycast = raycastPhysicsAabbs(request);
+  // branch-gate: BG-1116
+  if (!raycast.ok) {
+    result.ok = false;
+    result.status = PhysicsKernelBenchmarkStatus::KernelFailed;
+    result.reasonCode = physicsKernelBenchmarkStatusName(result.status);
+    result.upstreamReasonCode = raycast.reasonCode;
+    return result;
+  }
+
+  result.colliderCount = colliders.size();
+  result.kinematicIterationCount = raycast.testedColliderCount;
+  result.kinematicHitCount = raycast.hitCount;
+  return result;
+}
+
+PhysicsKernelBenchmarkCaseResult aabbSegmentAnyHitGridLineCorridor(
+    const PhysicsKernelBenchmarkConfig& config) {
+  PhysicsKernelBenchmarkCaseResult result =
+      readyResult(PhysicsKernelBenchmarkKernel::AabbSegmentAnyHit,
+                  PhysicsKernelBenchmarkScenario::GridLineCorridor, config);
+  const std::vector<PhysicsAabbCollider> colliders =
+      gridLineCorridorColliders();
+  bool startInside = false;
+  const bool hit =
+      segmentHitsAnyPhysicsAabb(colliders,
+                                {-1.0F, 0.0F, 0.0F},
+                                {48.0F, 0.0F, 0.0F},
+                                0.0F,
+                                &startInside);
+
+  result.colliderCount = colliders.size();
+  result.kinematicHitCount = hit ? 1U : 0U;
+  return result;
+}
+
 PhysicsKernelBenchmarkCaseResult spatialSurfaceBakeRoomFloorWall(
     const PhysicsKernelBenchmarkConfig& config) {
   PhysicsKernelBenchmarkCaseResult result =
@@ -746,7 +796,7 @@ PhysicsKernelBenchmarkCaseResult playerMovePlannerRoomDenseWalls(
       roomDenseWallsAsset(), {0.0F, 0.90F, 0.0F}, {1.50F, 0.0F, 1.50F});
 }
 
-constexpr std::array<KernelScenarioHandler, 15> kHandlers{{
+constexpr std::array<KernelScenarioHandler, 17> kHandlers{{
     {PhysicsKernelBenchmarkKernel::BroadphaseGrid,
      PhysicsKernelBenchmarkScenario::TinySeparated, broadphaseTinySeparated},
     {PhysicsKernelBenchmarkKernel::BroadphaseGrid,
@@ -785,6 +835,12 @@ constexpr std::array<KernelScenarioHandler, 15> kHandlers{{
     {PhysicsKernelBenchmarkKernel::PlayerMovePlanner,
      PhysicsKernelBenchmarkScenario::RoomDenseWalls,
      playerMovePlannerRoomDenseWalls},
+    {PhysicsKernelBenchmarkKernel::AabbRaycastFull,
+     PhysicsKernelBenchmarkScenario::GridLineCorridor,
+     aabbRaycastFullGridLineCorridor, false},
+    {PhysicsKernelBenchmarkKernel::AabbSegmentAnyHit,
+     PhysicsKernelBenchmarkScenario::GridLineCorridor,
+     aabbSegmentAnyHitGridLineCorridor, false},
 }};
 
 const KernelScenarioHandler* findHandler(
@@ -855,13 +911,15 @@ std::string_view physicsKernelBenchmarkStatusName(
 
 std::string_view physicsKernelBenchmarkKernelName(
     PhysicsKernelBenchmarkKernel kernel) {
-  static constexpr std::array<std::string_view, 6> kNames{
+  static constexpr std::array<std::string_view, 8> kNames{
       "broadphase_grid",
       "aabb_contact",
       "aabb_contact_solver",
       "kinematic_motor",
       "spatial_surface_bake",
       "player_move_planner",
+      "aabb_raycast_full",
+      "aabb_segment_any_hit",
   };
   return enumName(kernel, kNames, "unknown_kernel");
 }
@@ -950,6 +1008,10 @@ PhysicsKernelBenchmarkSuiteResult runPhysicsKernelBenchmarkSuite(
   suite.status = PhysicsKernelBenchmarkStatus::Ready;
   suite.reasonCode = physicsKernelBenchmarkStatusName(suite.status);
   for (const KernelScenarioHandler& handler : kHandlers) {
+    // branch-gate: BG-1116
+    if (!handler.includeInSuite) {
+      continue;
+    }
     PhysicsKernelBenchmarkCaseRequest request;
     request.kernel = handler.kernel;
     request.scenario = handler.scenario;

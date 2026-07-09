@@ -20,6 +20,8 @@ enum class PhysicsKernelBenchmarkKernel : std::uint8_t {
   KinematicMotor,
   SpatialSurfaceBake,
   PlayerMovePlanner,
+  AabbRaycastFull,
+  AabbSegmentAnyHit,
 };
 
 enum class PhysicsKernelBenchmarkScenario : std::uint8_t {

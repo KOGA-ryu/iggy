@@ -68,6 +68,10 @@ bool positiveFinite(float value) {
   return std::isfinite(value) && value > 0.0F;
 }
 
+bool nonNegativeFinite(float value) {
+  return std::isfinite(value) && value >= 0.0F;
+}
+
 bool nonZeroFiniteVector(Vec3 value) {
   return isFinite(value) && lengthSquared(value) > kDirectionEpsilonSquared;
 }
@@ -81,6 +85,12 @@ Aabb3 expandedBounds(const PhysicsAabbCollider& target,
                      Vec3 halfExtentsMeters) {
   return makeAabb3(target.bounds.min - halfExtentsMeters,
                    target.bounds.max + halfExtentsMeters);
+}
+
+Aabb3 boundsExpandedByMargin(const PhysicsAabbCollider& target,
+                             float marginMeters) {
+  const Vec3 margin{marginMeters, marginMeters, marginMeters};
+  return expandedBounds(target, margin);
 }
 
 PhysicsAabbOverlapQueryResult invalidColliderOverlapResult(
@@ -466,6 +476,44 @@ PhysicsRaycastQueryResult raycastPhysicsAabbs(
   std::sort(result.hits.begin(), result.hits.end(), raycastHitLess);
   result.hitCount = result.hits.size();
   return result;
+}
+
+bool segmentHitsAnyPhysicsAabb(std::span<const PhysicsAabbCollider> colliders,
+                               Vec3 from,
+                               Vec3 to,
+                               float marginMeters,
+                               bool* startInside) {
+  if (startInside != nullptr) {
+    *startInside = false;
+  }
+
+  const Vec3 displacement = to - from;
+  const float maxDistanceMeters = length(displacement);
+  // branch-gate: BG-1097
+  if (!isFinite(from) || !isFinite(to) || !nonNegativeFinite(marginMeters) ||
+      !std::isfinite(maxDistanceMeters) ||
+      maxDistanceMeters <= kDirectionEpsilonSquared) {
+    return false;
+  }
+
+  const Vec3 direction = displacement / maxDistanceMeters;
+  for (const PhysicsAabbCollider& collider : colliders) {
+    // branch-gate: BG-1097
+    if (collider.sensor || !isValidPhysicsAabbCollider(collider)) {
+      continue;
+    }
+    const PhysicsRayAabbHit rayHit = intersectPhysicsRayAabb(
+        from, direction, maxDistanceMeters,
+        boundsExpandedByMargin(collider, marginMeters));
+    // branch-gate: BG-1097
+    if (rayHit.hit) {
+      if (startInside != nullptr) {
+        *startInside = rayHit.startInside;
+      }
+      return true;
+    }
+  }
+  return false;
 }
 
 PhysicsSweptAabbQueryResult sweepPhysicsAabb(

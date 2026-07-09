@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -52,6 +53,11 @@ bool collidersUnchanged(
     }
   }
   return true;
+}
+
+std::span<const iggy3d::PhysicsAabbCollider> asSpan(
+    const std::vector<iggy3d::PhysicsAabbCollider>& colliders) {
+  return {colliders.data(), colliders.size()};
 }
 
 bool statusNamesAreStable() {
@@ -305,6 +311,118 @@ bool raycastNonUnitDirectionReportsMeterDistance() {
                 "non-unit raycast normal");
 }
 
+bool segmentAnyHitReportsMissHitAndStartInside() {
+  std::vector<iggy3d::PhysicsAabbCollider> colliders{
+      colliderAt({1U}, {2.0F, 0.0F, 0.0F}, {0.5F, 0.5F, 0.5F}),
+  };
+
+  bool startInside = true;
+  const bool miss = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(colliders), {0.0F, 1.0F, 0.0F}, {4.0F, 1.0F, 0.0F}, 0.0F,
+      &startInside);
+  const bool missStartInside = startInside;
+
+  startInside = true;
+  const bool hit = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(colliders), {0.0F, 0.0F, 0.0F}, {4.0F, 0.0F, 0.0F}, 0.0F,
+      &startInside);
+  const bool hitStartInside = startInside;
+
+  startInside = false;
+  const bool inside = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(colliders), {2.0F, 0.0F, 0.0F}, {4.0F, 0.0F, 0.0F}, 0.0F,
+      &startInside);
+
+  const bool nullPointerHit = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(colliders), {0.0F, 0.0F, 0.0F}, {4.0F, 0.0F, 0.0F}, 0.0F,
+      nullptr);
+
+  return expect(!miss, "segment miss returns false") &&
+         expect(!missStartInside, "segment miss clears start inside") &&
+         expect(hit, "segment hit returns true") &&
+         expect(!hitStartInside, "segment hit outside start") &&
+         expect(inside, "segment start-inside hit returns true") &&
+         expect(startInside, "segment start-inside flag set") &&
+         expect(nullPointerHit, "segment hit works without start-inside pointer");
+}
+
+bool segmentAnyHitIgnoresSensorsAndUsesMargin() {
+  std::vector<iggy3d::PhysicsAabbCollider> sensorOnly{
+      colliderAt({1U}, {2.0F, 0.0F, 0.0F}, {0.5F, 0.5F, 0.5F}, true),
+  };
+  std::vector<iggy3d::PhysicsAabbCollider> nearMiss{
+      colliderAt({2U}, {2.0F, 0.6F, 0.0F}, {0.5F, 0.5F, 0.5F}),
+  };
+
+  bool startInside = true;
+  const bool sensorHit = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(sensorOnly), {0.0F, 0.0F, 0.0F}, {4.0F, 0.0F, 0.0F}, 0.0F,
+      &startInside);
+  const bool sensorStartInside = startInside;
+
+  startInside = true;
+  const bool withoutMargin = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(nearMiss), {0.0F, 0.0F, 0.0F}, {4.0F, 0.0F, 0.0F}, 0.0F,
+      &startInside);
+  const bool withoutMarginStartInside = startInside;
+
+  startInside = true;
+  const bool withMargin = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(nearMiss), {0.0F, 0.0F, 0.0F}, {4.0F, 0.0F, 0.0F}, 0.11F,
+      &startInside);
+
+  return expect(!sensorHit, "segment ignores sensor collider") &&
+         expect(!sensorStartInside, "sensor miss clears start inside") &&
+         expect(!withoutMargin, "segment near miss without margin") &&
+         expect(!withoutMarginStartInside,
+                "segment near miss clears start inside") &&
+         expect(withMargin, "segment margin turns near miss into hit") &&
+         expect(!startInside, "segment margin hit starts outside");
+}
+
+bool segmentAnyHitRejectsInvalidInputs() {
+  std::vector<iggy3d::PhysicsAabbCollider> colliders{
+      colliderAt({1U}, {0.0F, 0.0F, 0.0F}, {0.5F, 0.5F, 0.5F}),
+  };
+  const float infinity = std::numeric_limits<float>::infinity();
+  const float quietNan = std::numeric_limits<float>::quiet_NaN();
+
+  bool startInside = true;
+  const bool negativeMargin = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(colliders), {-1.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F}, -0.01F,
+      &startInside);
+  const bool negativeMarginStartInside = startInside;
+
+  startInside = true;
+  const bool nanMargin = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(colliders), {-1.0F, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F}, quietNan,
+      &startInside);
+  const bool nanMarginStartInside = startInside;
+
+  startInside = true;
+  const bool nonfiniteFrom = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(colliders), {infinity, 0.0F, 0.0F}, {1.0F, 0.0F, 0.0F}, 0.0F,
+      &startInside);
+  const bool nonfiniteFromStartInside = startInside;
+
+  startInside = true;
+  const bool nonfiniteTo = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(colliders), {-1.0F, 0.0F, 0.0F}, {infinity, 0.0F, 0.0F}, 0.0F,
+      &startInside);
+  const bool nonfiniteToStartInside = startInside;
+
+  return expect(!negativeMargin, "segment rejects negative margin") &&
+         expect(!negativeMarginStartInside,
+                "negative margin clears start inside") &&
+         expect(!nanMargin, "segment rejects nan margin") &&
+         expect(!nanMarginStartInside, "nan margin clears start inside") &&
+         expect(!nonfiniteFrom, "segment rejects nonfinite from") &&
+         expect(!nonfiniteFromStartInside,
+                "nonfinite from clears start inside") &&
+         expect(!nonfiniteTo, "segment rejects nonfinite to") &&
+         expect(!nonfiniteToStartInside, "nonfinite to clears start inside");
+}
+
 bool sweptAabbHitsMissesSensorsAndZeroDisplacement() {
   std::vector<iggy3d::PhysicsAabbCollider> colliders{
       colliderAt({1U}, {3.0F, 0.0F, 0.0F}, {0.5F, 0.5F, 0.5F}),
@@ -445,6 +563,9 @@ int main() {
                   overlapFindsDeterministicHitsAndSensorPolicy() &&
                   raycastHitsSortMissAndStartInsidePolicy() &&
                   raycastNonUnitDirectionReportsMeterDistance() &&
+                  segmentAnyHitReportsMissHitAndStartInside() &&
+                  segmentAnyHitIgnoresSensorsAndUsesMargin() &&
+                  segmentAnyHitRejectsInvalidInputs() &&
                   sweptAabbHitsMissesSensorsAndZeroDisplacement() &&
                   groundCheckUsesSweptAabbAndSensorPolicy();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
