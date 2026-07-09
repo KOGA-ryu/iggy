@@ -9,6 +9,8 @@
 
 namespace iggy3d {
 
+struct PhysicsSpatialSurfaceColliderBakeResult;
+
 struct EffectiveCommandIntent {
   CommandRecord command;
   CommandKind effectiveKind = CommandKind::None;
@@ -30,6 +32,8 @@ struct SessionTickInput {
   const SpatialSurfaceSet* collisionSurfaces = nullptr;
   bool forceStepWhilePaused = false;
   bool usePhysicsMovePlanner = false;
+  const PhysicsSpatialSurfaceColliderBakeResult* precomputedSurfaceBake =
+      nullptr;
 };
 
 struct SessionTickResult {

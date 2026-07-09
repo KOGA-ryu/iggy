@@ -1,4 +1,5 @@
 #include "runtime/player/PlayerPhysicsMovePlanner.hpp"
+#include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -116,6 +117,14 @@ iggy3d::PlayerPhysicsMovePlannerRequest requestFor(
   return request;
 }
 
+iggy3d::PhysicsSpatialSurfaceColliderBakeResult bakeForPlanner(
+    const iggy3d::PlayerPhysicsMovePlannerRequest& request) {
+  iggy3d::PhysicsSpatialSurfaceColliderBakeRequest bakeRequest;
+  bakeRequest.surfaces = request.collisionSurfaces;
+  bakeRequest.config = request.config.surfaceBake;
+  return iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces(bakeRequest);
+}
+
 bool displacementFactsMatch(const iggy3d::PlayerPhysicsMovePlannerResult& result,
                             iggy3d::Vec3 desiredDisplacementMeters) {
   const iggy3d::Vec3 expectedApplied =
@@ -126,6 +135,30 @@ bool displacementFactsMatch(const iggy3d::PlayerPhysicsMovePlannerResult& result
                              expectedApplied) &&
          iggy3d::nearlyEqual(result.remainingDisplacementMeters,
                              expectedRemaining);
+}
+
+bool colliderFactsMatch(const iggy3d::PhysicsAabbCollider& lhs,
+                        const iggy3d::PhysicsAabbCollider& rhs) {
+  return lhs.bodyId.value == rhs.bodyId.value && lhs.sensor == rhs.sensor &&
+         iggy3d::nearlyEqual(lhs.worldCenterMeters, rhs.worldCenterMeters) &&
+         iggy3d::nearlyEqual(lhs.halfExtentsMeters, rhs.halfExtentsMeters) &&
+         iggy3d::nearlyEqual(lhs.bounds.min, rhs.bounds.min) &&
+         iggy3d::nearlyEqual(lhs.bounds.max, rhs.bounds.max);
+}
+
+bool debugColliderFactsMatch(
+    const iggy3d::PlayerPhysicsMovePlannerResult& lhs,
+    const iggy3d::PlayerPhysicsMovePlannerResult& rhs) {
+  if (lhs.debugAabbColliders.size() != rhs.debugAabbColliders.size()) {
+    return false;
+  }
+  for (std::size_t index = 0U; index < lhs.debugAabbColliders.size(); ++index) {
+    if (!colliderFactsMatch(lhs.debugAabbColliders[index],
+                            rhs.debugAabbColliders[index])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool statusNamesAndConfigValidation() {
@@ -344,6 +377,104 @@ bool wallBlocksAndReportsSurfaceId() {
          expect(surfaceIds(surfaces) == beforeIds, "wall inputs unchanged");
 }
 
+bool precomputedBakeMatchesInternalBakeFacts() {
+  const iggy3d::SpatialSurfaceSet surfaces =
+      makeSurfaceSet({floorSurface(), wallSurface("precomputed_wall")});
+  const iggy3d::Vec3 start = {0.0F, 0.9F, 0.0F};
+  const iggy3d::Vec3 desired = {3.0F, 0.0F, 0.0F};
+  const iggy3d::PlayerPhysicsMovePlannerRequest internalRequest =
+      requestFor(&surfaces, start, desired);
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult bake =
+      bakeForPlanner(internalRequest);
+  iggy3d::PlayerPhysicsMovePlannerRequest precomputedRequest =
+      internalRequest;
+  precomputedRequest.precomputedSurfaceBake = &bake;
+
+  const iggy3d::PlayerPhysicsMovePlannerResult internal =
+      iggy3d::planPlayerPhysicsMove(internalRequest);
+  const iggy3d::PlayerPhysicsMovePlannerResult precomputed =
+      iggy3d::planPlayerPhysicsMove(precomputedRequest);
+
+  return expect(bake.ok, "precomputed bake ok") &&
+         expect(precomputed.ok == internal.ok, "precomputed ok matches") &&
+         expect(precomputed.status == internal.status,
+                "precomputed status matches") &&
+         expect(iggy3d::nearlyEqual(precomputed.finalCenterMeters,
+                                    internal.finalCenterMeters),
+                "precomputed final matches") &&
+         expect(iggy3d::nearlyEqual(precomputed.appliedDisplacementMeters,
+                                    internal.appliedDisplacementMeters),
+                "precomputed applied matches") &&
+         expect(iggy3d::nearlyEqual(precomputed.remainingDisplacementMeters,
+                                    internal.remainingDisplacementMeters),
+                "precomputed remaining matches") &&
+         expect(precomputed.grounded == internal.grounded,
+                "precomputed grounded matches") &&
+         expect(precomputed.blocked == internal.blocked,
+                "precomputed blocked matches") &&
+         expect(precomputed.hitCount == internal.hitCount,
+                "precomputed hit count matches") &&
+         expect(precomputed.bakedSurfaceCount == internal.bakedSurfaceCount,
+                "precomputed baked surface count matches") &&
+         expect(precomputed.bakedColliderCount == internal.bakedColliderCount,
+                "precomputed baked collider count matches") &&
+         expect(precomputed.skippedSurfaceCount == internal.skippedSurfaceCount,
+                "precomputed skipped count matches") &&
+         expect(precomputed.firstHitBodyId.value ==
+                    internal.firstHitBodyId.value,
+                "precomputed first hit body matches") &&
+         expect(precomputed.firstHitSourceSurfaceId ==
+                    internal.firstHitSourceSurfaceId,
+                "precomputed first hit source matches") &&
+         expect(precomputed.hitSourceSurfaceIds ==
+                    internal.hitSourceSurfaceIds,
+                "precomputed hit source vector matches") &&
+         expect(precomputed.debugGeometryAvailable ==
+                    internal.debugGeometryAvailable,
+                "precomputed debug availability matches") &&
+         expect(precomputed.debugAabbSourceSurfaceIds ==
+                    internal.debugAabbSourceSurfaceIds,
+                "precomputed debug source ids match") &&
+         expect(debugColliderFactsMatch(precomputed, internal),
+                "precomputed debug colliders match");
+}
+
+bool failedPrecomputedBakeDoesNotFallBackToInternalBake() {
+  const iggy3d::SpatialSurfaceSet surfaces =
+      makeSurfaceSet({floorSurface(), wallSurface("fallback_wall")});
+  iggy3d::PlayerPhysicsMovePlannerRequest request =
+      requestFor(&surfaces, {0.0F, 0.9F, 0.0F}, {1.0F, 0.0F, 0.0F});
+  iggy3d::PhysicsSpatialSurfaceColliderBakeRequest failedBakeRequest;
+  const iggy3d::PhysicsSpatialSurfaceColliderBakeResult failedBake =
+      iggy3d::bakePhysicsAabbCollidersFromSpatialSurfaces(failedBakeRequest);
+  request.precomputedSurfaceBake = &failedBake;
+
+  const iggy3d::PlayerPhysicsMovePlannerResult result =
+      iggy3d::planPlayerPhysicsMove(request);
+
+  return expect(!failedBake.ok, "failed precomputed bake is failed") &&
+         expect(!result.ok, "failed precomputed result not ok") &&
+         expect(result.status ==
+                    iggy3d::PlayerPhysicsMovePlannerStatus::SurfaceBakeFailed,
+                "failed precomputed status") &&
+         expect(result.reasonCode ==
+                    "player_physics_move_planner_surface_bake_failed",
+                "failed precomputed reason") &&
+         expect(result.upstreamReasonCode == failedBake.reasonCode,
+                "failed precomputed upstream reason") &&
+         expect(result.bakedSurfaceCount == failedBake.surfaceCount,
+                "failed precomputed surface count") &&
+         expect(result.skippedSurfaceCount == failedBake.skippedSurfaceCount,
+                "failed precomputed skipped count") &&
+         expect(result.invalidSurfaceIndex == failedBake.invalidSurfaceIndex,
+                "failed precomputed invalid index") &&
+         expect(iggy3d::nearlyEqual(result.finalCenterMeters,
+                                    request.startCenterMeters),
+                "failed precomputed no movement") &&
+         expect(!result.debugGeometryAvailable,
+                "failed precomputed no debug geometry");
+}
+
 bool diagonalMoveSlidesAlongActorWall() {
   const iggy3d::SpatialSurfaceSet surfaces =
       makeSurfaceSet({floorSurface(), wallSurface("slide_wall")});
@@ -428,6 +559,8 @@ int main() {
                   emptySurfaceSetPlansClearMovement() &&
                   floorGroundsBodyThroughBakeAndMotor() &&
                   wallBlocksAndReportsSurfaceId() &&
+                  precomputedBakeMatchesInternalBakeFacts() &&
+                  failedPrecomputedBakeDoesNotFallBackToInternalBake() &&
                   diagonalMoveSlidesAlongActorWall() &&
                   groundSnapRefreshesDisplacementFacts() &&
                   projectileOnlySurfacePolicyIsExplicit();

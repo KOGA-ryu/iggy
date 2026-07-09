@@ -180,6 +180,21 @@ std::uint32_t physicsCollisionSweepCount(const PlayerPhysicsMovePlannerResult& p
   return static_cast<std::uint32_t>(std::max<std::size_t>(1U, planned.iterationCount));
 }
 
+bool defaultEquivalentSurfaceBakeConfig(
+    const PhysicsSpatialSurfaceColliderBakeConfig& config) {
+  const PhysicsSpatialSurfaceColliderBakeConfig defaults;
+  return config.planeThicknessMeters == defaults.planeThicknessMeters &&
+         config.minHalfExtentMeters == defaults.minHalfExtentMeters &&
+         config.firstGeneratedBodyId.value ==
+             defaults.firstGeneratedBodyId.value &&
+         config.includeWalkable == defaults.includeWalkable &&
+         config.includeActorBlockers == defaults.includeActorBlockers &&
+         config.includeProjectileBlockers ==
+             defaults.includeProjectileBlockers &&
+         config.includeOpenings == defaults.includeOpenings &&
+         config.includeSensors == defaults.includeSensors;
+}
+
 bool physicsMovementSlid(const PlayerPhysicsMovePlannerResult& planned) {
   // branch-gate: BG-1102
   if (!planned.blocked || planned.hits.empty()) {
@@ -260,6 +275,9 @@ MovementResult executePhysicsPlannedMovement(MovementSystemContext& context,
       params.radiusMeters, params.heightMeters * 0.5F, params.radiusMeters};
   plannerRequest.desiredDisplacementMeters = request.destination - start;
   plannerRequest.config = plannerConfig;
+  if (defaultEquivalentSurfaceBakeConfig(plannerRequest.config.surfaceBake)) {
+    plannerRequest.precomputedSurfaceBake = context.precomputedSurfaceBake;
+  }
 
   const PlayerPhysicsMovePlannerResult planned = planPlayerPhysicsMove(plannerRequest);
   // branch-gate: BG-1102

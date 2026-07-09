@@ -280,7 +280,8 @@ SessionTickResult runSessionTick(const SessionTickInput& input) {
     if (intent.effectiveKind == CommandKind::Move) {
       MovementSystemContext movementContext{&state.world, &state.config,
                                             input.collisionSurfaces,
-                                            input.usePhysicsMovePlanner};
+                                            input.usePhysicsMovePlanner,
+                                            input.precomputedSurfaceBake};
       const MovementMode mode = movementModeForClock(state.clock.mode == ClockMode::Slow);
       const MovementRequest request =
           movementRequestFromAcceptedCommand(intent.command, mode, state.config);

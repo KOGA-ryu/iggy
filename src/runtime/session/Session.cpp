@@ -47,11 +47,6 @@ StatusResult statusOk() {
   return {ResultStatus::Ok, {}};
 }
 
-struct SessionOcclusionBake {
-  std::vector<PhysicsAabbCollider> colliders;
-  bool ok = false;
-};
-
 SessionIdentity createIdentity(std::string packageId, const FixtureScenarioSeed& seed) {
   SessionIdentity identity;
   identity.packageId = std::move(packageId);
@@ -1002,23 +997,15 @@ void updateNpcFacing(AiActorState& actorState,
   }
 }
 
-SessionOcclusionBake bakeSessionOcclusionColliders(
+PhysicsSpatialSurfaceColliderBakeResult bakeSessionTickSurfaceColliders(
     const SpatialSurfaceSet* collisionSurfaces) {
-  SessionOcclusionBake result;
   if (collisionSurfaces == nullptr) {
-    return result;
+    return {};
   }
 
   PhysicsSpatialSurfaceColliderBakeRequest bakeRequest;
   bakeRequest.surfaces = collisionSurfaces;
-  PhysicsSpatialSurfaceColliderBakeResult bake =
-      bakePhysicsAabbCollidersFromSpatialSurfaces(bakeRequest);
-  if (!bake.ok) {
-    return result;
-  }
-  result.colliders = std::move(bake.colliders);
-  result.ok = true;
-  return result;
+  return bakePhysicsAabbCollidersFromSpatialSurfaces(bakeRequest);
 }
 
 NpcPerceptionResult::Los losFromSegmentOcclusion(SegmentOcclusionVerdict verdict) {
@@ -1035,7 +1022,7 @@ NpcPerceptionResult::Los losFromSegmentOcclusion(SegmentOcclusionVerdict verdict
 
 // Cast an eye-to-eye segment from actor to target against this tick's baked world colliders.
 NpcPerceptionResult::Los actorLineOfSightToTarget(
-    const SessionOcclusionBake& bake,
+    const PhysicsSpatialSurfaceColliderBakeResult& bake,
     const EntityState* actor,
     const EntityState* target,
     const NpcBehaviorConfig& config) {
@@ -1053,7 +1040,7 @@ NpcPerceptionResult::Los actorLineOfSightToTarget(
 
 // Point-to-point occlusion for the sound path (a1s2, L1): same lifted shape as before on raw
 // positions, returning APPLY-ONCE whether a wall or unknown bake sits between.
-bool soundHasBlockerBetween(const SessionOcclusionBake& bake,
+bool soundHasBlockerBetween(const PhysicsSpatialSurfaceColliderBakeResult& bake,
                             Vec3 from,
                             Vec3 to,
                             const NpcBehaviorConfig& config) {
@@ -1069,8 +1056,10 @@ bool soundHasBlockerBetween(const SessionOcclusionBake& bake,
   return verdict != SegmentOcclusionVerdict::Clear;
 }
 
-void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
-                                const SpatialSurfaceSet* collisionSurfaces) {
+void enqueueNpcBehaviorCommands(
+    Session& session,
+    SessionState& state,
+    const PhysicsSpatialSurfaceColliderBakeResult& occlusionBake) {
   if (state.lifecycle != SessionLifecycle::Playing || state.clock.mode == ClockMode::Paused) {
     return;
   }
@@ -1079,11 +1068,6 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
   const PlayerSlot* playerZero = state.players.findSlot(0);
   const EntityId target = playerZero == nullptr ? EntityId{} : playerZero->actor;
   const NpcBehaviorProfileCatalog profileCatalog = makeBuiltInNpcBehaviorProfileCatalog();
-
-  // Bake world collision geometry once for this tick's AI occlusion. A successful empty bake is
-  // clear; an absent/failed bake is Unknown under R3.1.
-  const SessionOcclusionBake occlusionBake =
-      bakeSessionOcclusionColliders(collisionSurfaces);
 
   std::vector<std::size_t> actorIndexes;
   actorIndexes.reserve(state.ai.actors.size());
@@ -1314,14 +1298,21 @@ StatusResult Session::tick(const SpatialSurfaceSet* collisionSurfaces) {
 }
 
 StatusResult Session::tickWithOptions(const SessionTickOptions& options) {
-  enqueueNpcBehaviorCommands(*this, state_, options.collisionSurfaces);
+  // Bake once for this tick. A successful empty bake is clear-capable open
+  // space; an absent/failed bake stays Unknown for sense callers.
+  const PhysicsSpatialSurfaceColliderBakeResult tickSurfaceBake =
+      bakeSessionTickSurfaceColliders(options.collisionSurfaces);
+  enqueueNpcBehaviorCommands(*this, state_, tickSurfaceBake);
   std::vector<CommandRecord> commands = pendingAcceptedCommands(state_);
   const SessionTickResult tick =
       runSessionTick(SessionTickInput{&state_,
                                       std::move(commands),
                                       options.collisionSurfaces,
                                       false,
-                                      options.usePhysicsMovePlanner});
+                                      options.usePhysicsMovePlanner,
+                                      options.collisionSurfaces == nullptr
+                                          ? nullptr
+                                          : &tickSurfaceBake});
   removeExecutedSequences(state_.transient.pendingExecutionSequences, tick.executedSequences);
 
   markDirtyAndHash(state_);
@@ -1362,12 +1353,17 @@ StatusResult Session::stepOneTickWithOptions(const SessionTickOptions& options) 
     return statusOk();
   }
 
+  const PhysicsSpatialSurfaceColliderBakeResult tickSurfaceBake =
+      bakeSessionTickSurfaceColliders(options.collisionSurfaces);
   const SessionTickResult tick =
       runSessionTick(SessionTickInput{&state_,
                                       std::move(commands),
                                       options.collisionSurfaces,
                                       true,
-                                      options.usePhysicsMovePlanner});
+                                      options.usePhysicsMovePlanner,
+                                      options.collisionSurfaces == nullptr
+                                          ? nullptr
+                                          : &tickSurfaceBake});
   removeExecutedSequences(state_.transient.pendingExecutionSequences, tick.executedSequences);
   markDirtyAndHash(state_);
 

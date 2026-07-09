@@ -38,6 +38,8 @@ struct PlayerPhysicsMovePlannerRequest {
   bool includeSensors = false;
   PhysicsBodyId physicsBodyId{1U};
   PlayerPhysicsMovePlannerConfig config;
+  const PhysicsSpatialSurfaceColliderBakeResult* precomputedSurfaceBake =
+      nullptr;
 };
 
 struct PlayerPhysicsMovePlannerResult {

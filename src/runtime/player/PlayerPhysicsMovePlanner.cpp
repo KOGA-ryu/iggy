@@ -239,29 +239,34 @@ PlayerPhysicsMovePlannerResult planPlayerPhysicsMove(
   result.startCenterMeters = request.startCenterMeters;
   result.finalCenterMeters = request.startCenterMeters;
 
-  PhysicsSpatialSurfaceColliderBakeRequest bakeRequest;
-  bakeRequest.surfaces = request.collisionSurfaces;
-  bakeRequest.config = request.config.surfaceBake;
-  const PhysicsSpatialSurfaceColliderBakeResult bake =
-      bakePhysicsAabbCollidersFromSpatialSurfaces(bakeRequest);
+  PhysicsSpatialSurfaceColliderBakeResult ownedBake;
+  const PhysicsSpatialSurfaceColliderBakeResult* bake =
+      request.precomputedSurfaceBake;
+  if (bake == nullptr) {
+    PhysicsSpatialSurfaceColliderBakeRequest bakeRequest;
+    bakeRequest.surfaces = request.collisionSurfaces;
+    bakeRequest.config = request.config.surfaceBake;
+    ownedBake = bakePhysicsAabbCollidersFromSpatialSurfaces(bakeRequest);
+    bake = &ownedBake;
+  }
   // branch-gate: BG-1100
-  if (!bake.ok) {
+  if (!bake->ok) {
     PlayerPhysicsMovePlannerResult failed = failedWithUpstream(
-        PlayerPhysicsMovePlannerStatus::SurfaceBakeFailed, bake.reasonCode);
+        PlayerPhysicsMovePlannerStatus::SurfaceBakeFailed, bake->reasonCode);
     failed.startCenterMeters = request.startCenterMeters;
     failed.finalCenterMeters = request.startCenterMeters;
-    failed.bakedSurfaceCount = bake.surfaceCount;
-    failed.skippedSurfaceCount = bake.skippedSurfaceCount;
-    failed.invalidSurfaceIndex = bake.invalidSurfaceIndex;
+    failed.bakedSurfaceCount = bake->surfaceCount;
+    failed.skippedSurfaceCount = bake->skippedSurfaceCount;
+    failed.invalidSurfaceIndex = bake->invalidSurfaceIndex;
     return failed;
   }
 
-  result.bakedSurfaceCount = bake.surfaceCount;
-  result.bakedColliderCount = bake.colliderCount;
-  result.skippedSurfaceCount = bake.skippedSurfaceCount;
-  attachDebugGeometry(&result, bake);
+  result.bakedSurfaceCount = bake->surfaceCount;
+  result.bakedColliderCount = bake->colliderCount;
+  result.skippedSurfaceCount = bake->skippedSurfaceCount;
+  attachDebugGeometry(&result, *bake);
 
-  const MovementColliderPacket movementPacket = makeMovementColliderPacket(bake);
+  const MovementColliderPacket movementPacket = makeMovementColliderPacket(*bake);
   PhysicsKinematicMotorConfig motorConfig = request.config.motor;
   motorConfig.groundProbeDistanceMeters = 0.0F;
   motorConfig.groundSnapDistanceMeters = 0.0F;
@@ -281,15 +286,15 @@ PlayerPhysicsMovePlannerResult planPlayerPhysicsMove(
         PlayerPhysicsMovePlannerStatus::MotorPlanFailed, motor.reasonCode);
     failed.startCenterMeters = request.startCenterMeters;
     failed.finalCenterMeters = request.startCenterMeters;
-    failed.bakedSurfaceCount = bake.surfaceCount;
-    failed.bakedColliderCount = bake.colliderCount;
-    failed.skippedSurfaceCount = bake.skippedSurfaceCount;
-    attachDebugGeometry(&failed, bake);
+    failed.bakedSurfaceCount = bake->surfaceCount;
+    failed.bakedColliderCount = bake->colliderCount;
+    failed.skippedSurfaceCount = bake->skippedSurfaceCount;
+    attachDebugGeometry(&failed, *bake);
     return failed;
   }
 
   copyMotorFacts(&result, motor, movementPacket.sourceSurfaceIds);
-  applyGroundFacts(&result, request, bake.colliders);
+  applyGroundFacts(&result, request, bake->colliders);
   return result;
 }
 

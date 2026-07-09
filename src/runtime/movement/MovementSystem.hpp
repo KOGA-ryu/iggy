@@ -9,11 +9,15 @@
 
 namespace iggy3d {
 
+struct PhysicsSpatialSurfaceColliderBakeResult;
+
 struct MovementSystemContext {
   WorldState* world = nullptr;
   const RuntimeConfig* config = nullptr;
   const SpatialSurfaceSet* collisionSurfaces = nullptr;
   bool usePhysicsMovePlanner = false;
+  const PhysicsSpatialSurfaceColliderBakeResult* precomputedSurfaceBake =
+      nullptr;
 };
 
 MovementResult executeMovement(MovementSystemContext& context, const MovementRequest& request);
