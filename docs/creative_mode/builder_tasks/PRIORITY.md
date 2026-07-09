@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E276-iggy3d-creative-main-split-g10-path-handle-capture-log.md`
+1. `ready/E277-iggy3d-creative-main-split-g11-pick-frame.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E276-iggy3d-creative-main-split-g10-path-handle-capture-log.md`
+1. `ready/E277-iggy3d-creative-main-split-g11-pick-frame.md`
 
 ## Parking Lot
 
@@ -216,7 +216,8 @@ Held — do NOT promote to `ready/` on a guess:
   interactive Move branch, without moving Move policy. E274 is released to
   extract only the current selection id/object/bounds resolution, leaving gizmo,
   move, overlay, and logging policy in `main.cpp`. E275 is complete as the
-  gizmo-frame geometry and path-handle hit-data helper, leaving path-handle
-  logging, Move policy, overlay, and submit in `main.cpp`. E276 is released to
-  move only the path-handle capture proof logging into the existing gizmo-frame
-  helper module.
+  gizmo-frame geometry and path-handle hit-data helper. E276 is complete as the
+  path-handle capture proof logging helper inside the existing gizmo-frame
+  module. E277 is released to extract only visible-object pick candidate
+  construction plus point/line/path proxy proof logs, leaving world-pick proof,
+  click selection, Move policy, overlay, and submit in `main.cpp`.
