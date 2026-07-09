@@ -312,6 +312,7 @@ target_sources(iggy3d
     src/runtime/save/SaveFileStore.cpp
     src/runtime/save/SaveLoad.cpp
     src/runtime/diagnostics/RuntimeSummary.cpp
+    src/projection/scene/SceneModel.cpp
     src/projection/scene/SceneProjection.cpp
     src/projection/debug/DebugProjection.cpp
     src/render/RendererApi.cpp

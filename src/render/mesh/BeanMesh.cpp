@@ -53,47 +53,19 @@ void appendCodexProbeCap(BeanMesh& mesh) {
 
 }  // namespace
 
-std::string_view beanModelId(BeanModelKind kind) {
+Vec3 defaultBeanModelSize(SceneModelKind kind) {
   switch (kind) {
-    case BeanModelKind::Player:
-      return "bean_player";
-    case BeanModelKind::Npc:
-      return "bean_npc";
-    case BeanModelKind::CodexProbe:
-      return "bean_codex_probe";
-  }
-  return "bean_player";
-}
-
-bool parseBeanModelId(std::string_view value, BeanModelKind& out) {
-  if (value == "bean_player") {
-    out = BeanModelKind::Player;
-    return true;
-  }
-  if (value == "bean_npc") {
-    out = BeanModelKind::Npc;
-    return true;
-  }
-  if (value == "bean_codex_probe") {
-    out = BeanModelKind::CodexProbe;
-    return true;
-  }
-  return false;
-}
-
-Vec3 defaultBeanModelSize(BeanModelKind kind) {
-  switch (kind) {
-    case BeanModelKind::Player:
+    case SceneModelKind::PlayerBean:
       return {0.58F, 1.55F, 0.46F};
-    case BeanModelKind::Npc:
+    case SceneModelKind::NpcBean:
       return {0.52F, 1.35F, 0.42F};
-    case BeanModelKind::CodexProbe:
+    case SceneModelKind::CodexProbeBean:
       return {0.44F, 1.10F, 0.44F};
   }
   return {0.50F, 1.25F, 0.42F};
 }
 
-BeanMesh buildBeanMesh(BeanModelKind kind) {
+BeanMesh buildBeanMesh(SceneModelKind kind) {
   BeanMesh mesh;
   mesh.kind = kind;
   constexpr std::array<BeanRing, 6U> kRings{{
@@ -148,7 +120,7 @@ BeanMesh buildBeanMesh(BeanModelKind kind) {
                               static_cast<std::uint16_t>(topRingStart + nextSegment));
   }
 
-  if (kind == BeanModelKind::CodexProbe) {
+  if (kind == SceneModelKind::CodexProbeBean) {
     appendCodexProbeCap(mesh);
   }
   return mesh;

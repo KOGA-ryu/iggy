@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "content/assets/RoomAsset.hpp"
-#include "render/mesh/BeanMesh.hpp"
+#include "projection/scene/SceneModel.hpp"
 
 namespace iggy3d {
 namespace {
@@ -65,10 +65,10 @@ bool shouldIncludeItem(SceneItemKind kind, const SceneProjectionConfig& config) 
 
 std::string modelRefFor(SceneItemKind kind) {
   if (kind == SceneItemKind::Player) {
-    return std::string(beanModelId(BeanModelKind::Player));
+    return std::string(sceneModelId(SceneModelKind::PlayerBean));
   }
   if (kind == SceneItemKind::Npc) {
-    return std::string(beanModelId(BeanModelKind::Npc));
+    return std::string(sceneModelId(SceneModelKind::NpcBean));
   }
   return {};
 }

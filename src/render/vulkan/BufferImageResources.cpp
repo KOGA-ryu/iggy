@@ -576,7 +576,7 @@ bool appendBean(std::vector<FirstRoomVertex>& vertices,
                 Vec3 center,
                 Vec3 size,
                 Vec3 color,
-                BeanModelKind kind) {
+                SceneModelKind kind) {
   const BeanMesh bean = buildBeanMesh(kind);
   if (bean.vertices.empty() || bean.indices.empty() ||
       vertices.size() + bean.vertices.size() >
@@ -1227,8 +1227,8 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
       continue;
     }
 
-    BeanModelKind beanKind = BeanModelKind::Player;
-    if (parseBeanModelId(mesh.role, beanKind)) {
+    SceneModelKind beanKind = SceneModelKind::PlayerBean;
+    if (parseSceneModelId(mesh.role, beanKind)) {
       if (!appendBean(result.vertices, result.indices, result.indexedDraws,
                       mesh.position, mesh.size, colorForRoomRole(mesh.role),
                       beanKind)) {

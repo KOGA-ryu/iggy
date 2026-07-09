@@ -22,23 +22,23 @@ bool indicesStayInRange(const iggy3d::BeanMesh& mesh) {
 }
 
 bool modelIdsRoundTrip() {
-  iggy3d::BeanModelKind parsed = iggy3d::BeanModelKind::Player;
-  return expect(iggy3d::parseBeanModelId("bean_player", parsed) &&
-                    parsed == iggy3d::BeanModelKind::Player,
+  iggy3d::SceneModelKind parsed = iggy3d::SceneModelKind::PlayerBean;
+  return expect(iggy3d::parseSceneModelId("bean_player", parsed) &&
+                    parsed == iggy3d::SceneModelKind::PlayerBean,
                 "player model id") &&
-         expect(iggy3d::parseBeanModelId("bean_npc", parsed) &&
-                    parsed == iggy3d::BeanModelKind::Npc,
+         expect(iggy3d::parseSceneModelId("bean_npc", parsed) &&
+                    parsed == iggy3d::SceneModelKind::NpcBean,
                 "npc model id") &&
-         expect(iggy3d::parseBeanModelId("bean_codex_probe", parsed) &&
-                    parsed == iggy3d::BeanModelKind::CodexProbe,
+         expect(iggy3d::parseSceneModelId("bean_codex_probe", parsed) &&
+                    parsed == iggy3d::SceneModelKind::CodexProbeBean,
                 "codex probe model id") &&
-         expect(!iggy3d::parseBeanModelId("bean_unknown", parsed), "unknown model id");
+         expect(!iggy3d::parseSceneModelId("bean_unknown", parsed), "unknown model id");
 }
 
 bool meshesAreDrawableAndBounded() {
-  const iggy3d::BeanMesh player = iggy3d::buildBeanMesh(iggy3d::BeanModelKind::Player);
-  const iggy3d::BeanMesh npc = iggy3d::buildBeanMesh(iggy3d::BeanModelKind::Npc);
-  const iggy3d::BeanMesh codex = iggy3d::buildBeanMesh(iggy3d::BeanModelKind::CodexProbe);
+  const iggy3d::BeanMesh player = iggy3d::buildBeanMesh(iggy3d::SceneModelKind::PlayerBean);
+  const iggy3d::BeanMesh npc = iggy3d::buildBeanMesh(iggy3d::SceneModelKind::NpcBean);
+  const iggy3d::BeanMesh codex = iggy3d::buildBeanMesh(iggy3d::SceneModelKind::CodexProbeBean);
   return expect(!player.vertices.empty() && !player.indices.empty(), "player mesh populated") &&
          expect(!npc.vertices.empty() && !npc.indices.empty(), "npc mesh populated") &&
          expect(!codex.vertices.empty() && !codex.indices.empty(), "codex mesh populated") &&
@@ -52,9 +52,9 @@ bool meshesAreDrawableAndBounded() {
 }
 
 bool defaultSizesAreDistinct() {
-  const iggy3d::Vec3 player = iggy3d::defaultBeanModelSize(iggy3d::BeanModelKind::Player);
-  const iggy3d::Vec3 npc = iggy3d::defaultBeanModelSize(iggy3d::BeanModelKind::Npc);
-  const iggy3d::Vec3 codex = iggy3d::defaultBeanModelSize(iggy3d::BeanModelKind::CodexProbe);
+  const iggy3d::Vec3 player = iggy3d::defaultBeanModelSize(iggy3d::SceneModelKind::PlayerBean);
+  const iggy3d::Vec3 npc = iggy3d::defaultBeanModelSize(iggy3d::SceneModelKind::NpcBean);
+  const iggy3d::Vec3 codex = iggy3d::defaultBeanModelSize(iggy3d::SceneModelKind::CodexProbeBean);
   return expect(player.y > npc.y, "player taller than npc") &&
          expect(npc.y > codex.y, "npc taller than codex") &&
          expect(player.x > codex.x, "player wider than codex");

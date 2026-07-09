@@ -1,32 +1,24 @@
 #pragma once
 
 #include <cstdint>
-#include <string_view>
 #include <vector>
 
 #include "core/math/Vec3.hpp"
+#include "projection/scene/SceneModel.hpp"
 
 namespace iggy3d {
-
-enum class BeanModelKind : std::uint8_t {
-  Player,
-  Npc,
-  CodexProbe,
-};
 
 struct BeanMeshVertex {
   Vec3 position;
 };
 
 struct BeanMesh {
-  BeanModelKind kind = BeanModelKind::Player;
+  SceneModelKind kind = SceneModelKind::PlayerBean;
   std::vector<BeanMeshVertex> vertices;
   std::vector<std::uint16_t> indices;
 };
 
-std::string_view beanModelId(BeanModelKind kind);
-bool parseBeanModelId(std::string_view value, BeanModelKind& out);
-Vec3 defaultBeanModelSize(BeanModelKind kind);
-BeanMesh buildBeanMesh(BeanModelKind kind);
+Vec3 defaultBeanModelSize(SceneModelKind kind);
+BeanMesh buildBeanMesh(SceneModelKind kind);
 
 }  // namespace iggy3d
