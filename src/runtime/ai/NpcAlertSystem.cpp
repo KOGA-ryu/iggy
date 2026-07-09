@@ -39,6 +39,60 @@ BandSpan bandSpanFor(float level, const AlertProfile& profile) {
   return {0.0F, profile.observantNorm, profile.drainTicks[0]};
 }
 
+bool raiseAlertAndReportAcceptedRise(AiActorState& actor,
+                                     const AlertProfile& profile,
+                                     float increment,
+                                     std::uint64_t tick,
+                                     bool hasValidTarget,
+                                     bool visualConfirmed) {
+  if (!(increment > 0.0F)) {
+    return false;
+  }
+  // Grace-window anti-spam: swallow small non-visual rises that don't push
+  // meaningfully past the level that opened the window, up to the count limit.
+  if (!visualConfirmed && tick < actor.graceUntilTick &&
+      actor.graceCount < profile.graceCountLimit &&
+      actor.alertLevel + increment < actor.graceThreshold * profile.graceFrac) {
+    ++actor.graceCount;
+    return false;
+  }
+
+  const float levelBefore = actor.alertLevel;
+  const std::uint8_t bandBefore = alertBandIndex(actor.alertLevel, profile);
+  actor.alertLevel += increment;
+  // No-target combat cap: can't cross into combat without a live target.
+  if (!hasValidTarget) {
+    const float cap = std::nextafter(profile.combatNorm, 0.0F);
+    if (actor.alertLevel > cap) {
+      actor.alertLevel = cap;
+    }
+  }
+  if (actor.alertLevel > profile.combatNorm) {
+    actor.alertLevel = profile.combatNorm;
+  }
+
+  const bool acceptedRise = actor.alertLevel > levelBefore;
+  if (!acceptedRise) {
+    if (visualConfirmed) {
+      actor.lastRiseTick = tick;
+    }
+    return false;
+  }
+
+  actor.lastRiseTick = tick;  // dead-time resets on every accepted rise
+  const std::uint8_t bandAfter = alertBandIndex(actor.alertLevel, profile);
+  if (bandAfter > bandBefore) {
+    // Crossed up a band: open a fresh grace window anchored at the new level.
+    actor.graceUntilTick = tick + profile.graceWindowTicks;
+    actor.graceThreshold = actor.alertLevel;
+    actor.graceCount = 0U;
+  }
+  if (bandAfter > actor.maxAlertIndexThisEngagement) {
+    actor.maxAlertIndexThisEngagement = bandAfter;
+  }
+  return true;
+}
+
 }  // namespace
 
 bool isValidAlertProfile(const AlertProfile& profile) {
@@ -117,42 +171,8 @@ void npcDecayAlert(AiActorState& actor, const AlertProfile& profile,
 void npcRaiseAlert(AiActorState& actor, const AlertProfile& profile,
                    float increment, std::uint64_t tick, bool hasValidTarget,
                    bool visualConfirmed) {
-  if (!(increment > 0.0F)) {
-    return;
-  }
-  // Grace-window anti-spam: swallow small non-visual rises that don't push
-  // meaningfully past the level that opened the window, up to the count limit.
-  if (!visualConfirmed && tick < actor.graceUntilTick &&
-      actor.graceCount < profile.graceCountLimit &&
-      actor.alertLevel + increment < actor.graceThreshold * profile.graceFrac) {
-    ++actor.graceCount;
-    return;
-  }
-
-  const std::uint8_t bandBefore = alertBandIndex(actor.alertLevel, profile);
-  actor.alertLevel += increment;
-  // No-target combat cap: can't cross into combat without a live target.
-  if (!hasValidTarget) {
-    const float cap = std::nextafter(profile.combatNorm, 0.0F);
-    if (actor.alertLevel > cap) {
-      actor.alertLevel = cap;
-    }
-  }
-  if (actor.alertLevel > profile.combatNorm) {
-    actor.alertLevel = profile.combatNorm;
-  }
-
-  actor.lastRiseTick = tick;  // dead-time resets on every rise
-  const std::uint8_t bandAfter = alertBandIndex(actor.alertLevel, profile);
-  if (bandAfter > bandBefore) {
-    // Crossed up a band: open a fresh grace window anchored at the new level.
-    actor.graceUntilTick = tick + profile.graceWindowTicks;
-    actor.graceThreshold = actor.alertLevel;
-    actor.graceCount = 0U;
-  }
-  if (bandAfter > actor.maxAlertIndexThisEngagement) {
-    actor.maxAlertIndexThisEngagement = bandAfter;
-  }
+  (void)raiseAlertAndReportAcceptedRise(actor, profile, increment, tick,
+                                        hasValidTarget, visualConfirmed);
 }
 
 void npcStepAlert(AiActorState& actor, const NpcAlertStimulus& stimulus,
@@ -168,8 +188,11 @@ void npcStepAlert(AiActorState& actor, const NpcAlertStimulus& stimulus,
     // on noise alone (the guard has no true target to run down through walls).
     const float ref = profile.soundAlertUnitsRef > 0.0F ? profile.soundAlertUnitsRef : 1.0F;
     const float increment = profile.soundRiseScale * clamp01(stimulus.alertUnits / ref);
-    npcRaiseAlert(actor, profile, increment, tick, /*hasValidTarget=*/false,
-                  /*visualConfirmed=*/false);
+    if (!raiseAlertAndReportAcceptedRise(actor, profile, increment, tick,
+                                         /*hasValidTarget=*/false,
+                                         /*visualConfirmed=*/false)) {
+      npcDecayAlert(actor, profile, tick);
+    }
   } else {
     npcDecayAlert(actor, profile, tick);
   }

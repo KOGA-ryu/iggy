@@ -211,6 +211,86 @@ bool alertFsmIsDeterministic() {
   return expect(first == second, "identical inputs yield a byte-identical alert trace");
 }
 
+bool ineffectiveHeardSoundFallsThroughToDecay() {
+  const iggy3d::AlertProfile p;
+  iggy3d::AiActorState a;
+  a.alertLevel = p.searchingNorm;
+  a.lastRiseTick = 0;
+  iggy3d::NpcAlertStimulus stim;
+  stim.heard = true;
+  stim.alertUnits = 0.0F;
+
+  const float before = a.alertLevel;
+  iggy3d::npcStepAlert(a, stim, p, p.deadTimeTicks);
+
+  return expect(a.alertLevel < before,
+                "zero heard alert units fall through to decay") &&
+         expect(a.lastRiseTick == 0U,
+                "zero heard alert units do not re-anchor dead-time");
+}
+
+bool graceSwallowedHeardSoundFallsThroughToDecay() {
+  const iggy3d::AlertProfile p;
+  iggy3d::AiActorState a;
+  a.alertLevel = p.observantNorm + 0.001F;
+  a.lastRiseTick = 0;
+  a.graceUntilTick = 100U;
+  a.graceThreshold = a.alertLevel;
+  iggy3d::NpcAlertStimulus stim;
+  stim.heard = true;
+  stim.alertUnits = p.soundAlertUnitsRef * 0.01F;
+
+  const float before = a.alertLevel;
+  iggy3d::npcStepAlert(a, stim, p, p.deadTimeTicks);
+
+  return expect(a.graceCount == 1U, "heard sound was grace-swallowed") &&
+         expect(a.alertLevel < before,
+                "grace-swallowed heard sound falls through to decay") &&
+         expect(a.lastRiseTick == 0U,
+                "grace-swallowed heard sound does not re-anchor dead-time");
+}
+
+bool cappedHeardSoundDoesNotReanchorDecayForever() {
+  const iggy3d::AlertProfile p;
+  const float noTargetCap = std::nextafter(p.combatNorm, 0.0F);
+  iggy3d::AiActorState a;
+  a.alertLevel = noTargetCap;
+  a.lastRiseTick = 10U;
+  iggy3d::NpcAlertStimulus stim;
+  stim.heard = true;
+  stim.alertUnits = p.soundAlertUnitsRef;
+
+  iggy3d::npcStepAlert(a, stim, p, 10U + p.deadTimeTicks);
+
+  return expect(a.lastRiseTick == 10U,
+                "capped heard sound does not move lastRiseTick") &&
+         expect(a.alertLevel < noTargetCap,
+                "capped heard sound falls through to decay") &&
+         expect(a.alertLevel < p.combatNorm,
+                "capped heard sound remains below combat");
+}
+
+bool visualAtCapKeepsDeadTimeFreshWithoutDecay() {
+  const iggy3d::AlertProfile p;
+  iggy3d::AiActorState a;
+  a.alertLevel = p.combatNorm;
+  a.lastRiseTick = 10U;
+  iggy3d::NpcAlertStimulus stim;
+  stim.targetPerceived = true;
+  stim.proximity01 = 1.0F;
+  stim.hasValidTarget = true;
+  stim.visualConfirmed = true;
+
+  iggy3d::npcStepAlert(a, stim, p, 100U);
+
+  return expect(near(a.alertLevel, p.combatNorm, 0.00001F),
+                "visual at cap does not decay") &&
+         expect(a.lastRiseTick == 100U,
+                "visual at cap keeps dead-time fresh") &&
+         expect(a.behavior == iggy3d::AiBehaviorKind::Chasing,
+                "visual at cap remains chasing");
+}
+
 // a1s2 (L1): sustained heard-but-unseen noise drives alert up but the no-target
 // combat cap (hasValidTarget=false, wired by the heard branch) holds it at band 4 --
 // pure noise NEVER reaches band 5 / Chasing. Feeds npcStepAlert directly (no session)
@@ -227,13 +307,19 @@ bool soundOnlyNoiseCapsBelowChasing() {
   stim.soundInvestigatePos = iggy3d::Vec3{3.0F, 0.0F, 3.0F};
 
   std::uint8_t maxBand = 0U;
+  float maxLevel = 0.0F;
   for (std::uint64_t t = 0; t < 600; ++t) {
     iggy3d::npcStepAlert(a, stim, p, t);
     maxBand = std::max(maxBand, iggy3d::alertBandIndex(a.alertLevel, p));
+    maxLevel = std::max(maxLevel, a.alertLevel);
   }
+  const float noTargetCap = std::nextafter(p.combatNorm, 0.0F);
   return expect(a.alertLevel > p.searchingNorm,
                 "sustained noise climbs into the search/alert bands") &&
          expect(a.alertLevel < p.combatNorm, "noise-only level capped below combat") &&
+         expect(maxLevel <= noTargetCap, "noise-only never exceeds no-target cap") &&
+         expect(near(maxLevel, noTargetCap, 0.0005F),
+                "sustained noise reaches the no-target cap") &&
          expect(iggy3d::alertBandIndex(a.alertLevel, p) == 4U,
                 "noise-only tops out at band 4 (agitated)") &&
          expect(maxBand < 5U, "noise-only never reaches band 5 / chasing");
@@ -249,6 +335,10 @@ int main() {
                   graceWindowSwallowsSmallRisesButVisualBypasses() &&
                   alertLadderWalksUpThenDownDeterministically() &&
                   alertFsmIsDeterministic() &&
+                  ineffectiveHeardSoundFallsThroughToDecay() &&
+                  graceSwallowedHeardSoundFallsThroughToDecay() &&
+                  cappedHeardSoundDoesNotReanchorDecayForever() &&
+                  visualAtCapKeepsDeadTimeFreshWithoutDecay() &&
                   soundOnlyNoiseCapsBelowChasing();
   return ok ? 0 : 1;
 }
