@@ -266,36 +266,36 @@ bool parseTargetActions(std::string_view value, std::vector<TargetAction>& out) 
   return true;
 }
 
-bool parseCamera(std::string_view value, CameraMode& out) {
+bool parseCamera(std::string_view value, ScenarioCameraMode& out) {
   std::string token;
   if (!parseString(value, token)) {
     return false;
   }
   if (token == "FirstPerson") {
-    out = CameraMode::FirstPerson;
+    out = ScenarioCameraMode::FirstPerson;
   } else if (token == "ThirdPerson") {
-    out = CameraMode::ThirdPerson;
+    out = ScenarioCameraMode::ThirdPerson;
   } else if (token == "TacticalOverhead") {
-    out = CameraMode::TacticalOverhead;
+    out = ScenarioCameraMode::TacticalOverhead;
   } else {
     return false;
   }
   return true;
 }
 
-bool parsePlayerKind(std::string_view value, PlayerSlotKind& out) {
+bool parsePlayerKind(std::string_view value, ScenarioPlayerSlotKind& out) {
   std::string token;
   if (!parseString(value, token)) {
     return false;
   }
   if (token == "Local") {
-    out = PlayerSlotKind::Local;
+    out = ScenarioPlayerSlotKind::Local;
   } else if (token == "Remote") {
-    out = PlayerSlotKind::Remote;
+    out = ScenarioPlayerSlotKind::Remote;
   } else if (token == "Ai") {
-    out = PlayerSlotKind::Ai;
+    out = ScenarioPlayerSlotKind::Ai;
   } else if (token == "Observer") {
-    out = PlayerSlotKind::Observer;
+    out = ScenarioPlayerSlotKind::Observer;
   } else {
     return false;
   }
@@ -536,7 +536,7 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
                       "invalid initial_clock " + token + ", expected Normal", lineNumber, column);
         }
         parser.initialClock = true;
-        parser.result.seed.initialClockMode = ClockMode::Normal;
+        parser.result.seed.initialClockMode = ScenarioClockMode::Normal;
       } else if (key == "default_realtime_camera") {
         parser.realtimeCamera = parseCamera(value, parser.result.seed.defaultRealtimeCamera);
         if (!parser.realtimeCamera) {
@@ -718,9 +718,9 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
                       "invalid ai actor patrol mode", lineNumber, column);
         }
         if (mode == "loop") {
-          aiActor.patrolMode = PatrolMode::Loop;
+          aiActor.patrolMode = ScenarioPatrolMode::Loop;
         } else if (mode == "ping_pong") {
-          aiActor.patrolMode = PatrolMode::PingPong;
+          aiActor.patrolMode = ScenarioPatrolMode::PingPong;
         } else {
           return fail(parser, ScenarioLoadStatus::InvalidEnum, "scenario.invalid_enum",
                       "invalid ai actor patrol mode", lineNumber, column);

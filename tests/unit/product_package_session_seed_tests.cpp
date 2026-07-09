@@ -181,7 +181,7 @@ bool asciiPackageSynthesizesSeedAndCreatesSession() {
                 "scenario id") &&
          expect(result.seed.players.size() == 1U &&
                     result.seed.players[0].slot == 0 &&
-                    result.seed.players[0].kind == iggy3d::PlayerSlotKind::Local &&
+                    result.seed.players[0].kind == iggy3d::ScenarioPlayerSlotKind::Local &&
                     result.seed.players[0].actorStableName == "player",
                 "player slot") &&
          expect(spawn != nullptr && player != nullptr, "spawn and player") &&
@@ -696,7 +696,7 @@ bool authoredPatrolAndProfileBothSurvive() {
   authored.actorStableName = "marker_npc_spawn_r1_c4";
   authored.behaviorProfileId = "default";
   authored.patrolWaypoints = {{1.0F, 0.0F, 1.0F}, {3.0F, 0.0F, 1.0F}};
-  authored.patrolMode = iggy3d::PatrolMode::PingPong;
+  authored.patrolMode = iggy3d::ScenarioPatrolMode::PingPong;
   synth.scenario.aiActors.push_back(authored);
   iggy3d::ProductNpcProfileAssignmentTable synthAssign;
   synthAssign.assignments.push_back({"marker_npc_spawn_r1_c4", "passive"});
@@ -708,7 +708,7 @@ bool authoredPatrolAndProfileBothSurvive() {
             expect(synthSeed != nullptr && synthSeed->behaviorProfileId == "passive",
                    "synthesized: the assignment profile overlays") &&
             expect(synthSeed != nullptr && synthSeed->patrolWaypoints.size() == 2U &&
-                       synthSeed->patrolMode == iggy3d::PatrolMode::PingPong,
+                       synthSeed->patrolMode == iggy3d::ScenarioPatrolMode::PingPong,
                    "synthesized: the authored patrol route survives the merge");
 
   // SCENARIO path: authored entities + an authored aiActor route + an assignment.
@@ -723,7 +723,7 @@ bool authoredPatrolAndProfileBothSurvive() {
   guardSeed.actorStableName = "guard_1";
   guardSeed.behaviorProfileId = "default";
   guardSeed.patrolWaypoints = {{1.0F, 0.0F, 1.0F}, {1.0F, 0.0F, 5.0F}};
-  guardSeed.patrolMode = iggy3d::PatrolMode::Loop;
+  guardSeed.patrolMode = iggy3d::ScenarioPatrolMode::Loop;
   scen.scenario.aiActors.push_back(guardSeed);
   iggy3d::ProductNpcProfileAssignmentTable scenAssign;
   scenAssign.assignments.push_back({"guard_1", "passive"});
@@ -734,7 +734,7 @@ bool authoredPatrolAndProfileBothSurvive() {
        expect(scenSeed != nullptr && scenSeed->behaviorProfileId == "passive",
               "scenario: the assignment profile overlays") &&
        expect(scenSeed != nullptr && scenSeed->patrolWaypoints.size() == 2U &&
-                  scenSeed->patrolMode == iggy3d::PatrolMode::Loop,
+                  scenSeed->patrolMode == iggy3d::ScenarioPatrolMode::Loop,
               "scenario: the authored patrol route survives the merge");
   return ok;
 }

@@ -198,7 +198,7 @@ PackageValidationResult validatePackage(const PackageValidationRequest& request)
   }
   bool foundSlot0 = false;
   for (const ScenarioPlayerSeed& player : request.scenario.players) {
-    if (player.slot == 0U && player.kind == PlayerSlotKind::Local &&
+    if (player.slot == 0U && player.kind == ScenarioPlayerSlotKind::Local &&
         player.actorStableName == "player") {
       foundSlot0 = true;
     }

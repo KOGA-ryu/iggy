@@ -176,9 +176,9 @@ bool scenarioSeedContainsDefaults() {
          expect(seed.config.interactionRangeMeters == 1.500F, "range") &&
          expect(seed.config.movementDistanceMeters == 3.000F, "movement") &&
          expect(seed.config.slowTimeScale == 0.250F, "slow scale") &&
-         expect(seed.initialClockMode == iggy3d::ClockMode::Normal, "initial clock") &&
-         expect(seed.defaultRealtimeCamera == iggy3d::CameraMode::ThirdPerson, "realtime camera") &&
-         expect(seed.defaultTacticalCamera == iggy3d::CameraMode::TacticalOverhead, "tactical camera");
+         expect(seed.initialClockMode == iggy3d::ScenarioClockMode::Normal, "initial clock") &&
+         expect(seed.defaultRealtimeCamera == iggy3d::ScenarioCameraMode::ThirdPerson, "realtime camera") &&
+         expect(seed.defaultTacticalCamera == iggy3d::ScenarioCameraMode::TacticalOverhead, "tactical camera");
 }
 
 bool scenarioSeedContainsEntities() {
@@ -302,7 +302,7 @@ bool scenarioAiActorParsesPatrolRoute() {
             expect(route.seed.aiActors[0].patrolWaypoints[1].x == 3.0F &&
                        route.seed.aiActors[0].patrolWaypoints[1].z == 4.0F,
                    "second waypoint ordered") &&
-            expect(route.seed.aiActors[0].patrolMode == iggy3d::PatrolMode::PingPong,
+            expect(route.seed.aiActors[0].patrolMode == iggy3d::ScenarioPatrolMode::PingPong,
                    "patrol mode ping_pong");
 
   // Bad patrol_mode value fails InvalidEnum.

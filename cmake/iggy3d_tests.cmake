@@ -908,6 +908,11 @@ set_tests_properties(bean_mesh_tests PROPERTIES LABELS "unit;render;mesh;bean;ig
 iggy3d_add_unit_test(session_state_tests tests/unit/session_state_tests.cpp)
 set_tests_properties(session_state_tests PROPERTIES LABELS "unit;runtime;session;iggy3d")
 
+iggy3d_add_unit_test(scenario_seed_conversion_tests
+  tests/unit/scenario_seed_conversion_tests.cpp)
+set_tests_properties(scenario_seed_conversion_tests PROPERTIES
+  LABELS "unit;runtime;session;content;seed;iggy3d")
+
 iggy3d_add_unit_test(movement_system_tests tests/unit/movement_system_tests.cpp)
 set_tests_properties(movement_system_tests PROPERTIES LABELS "unit;runtime;movement;iggy3d")
 

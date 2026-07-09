@@ -9,11 +9,8 @@
 #include "core/math/Aabb3.hpp"
 #include "core/math/Transform3.hpp"
 #include "core/math/Vec3.hpp"
-#include "runtime/ai/AiState.hpp"
-#include "runtime/camera/CameraState.hpp"
-#include "runtime/clock/ClockState.hpp"
+#include "content/ScenarioSeed.hpp"
 #include "runtime/combat/CombatState.hpp"
-#include "runtime/player/PlayerSlot.hpp"
 #include "runtime/world/EntityState.hpp"
 
 namespace iggy3d {
@@ -30,8 +27,8 @@ enum class ScenarioLoadStatus : std::uint8_t {
 };
 
 struct ScenarioPlayerSeed {
-  PlayerSlotId slot = kInvalidPlayerSlotId;
-  PlayerSlotKind kind = PlayerSlotKind::Unknown;
+  ScenarioPlayerSlotId slot = kInvalidScenarioPlayerSlotId;
+  ScenarioPlayerSlotKind kind = ScenarioPlayerSlotKind::Unknown;
   std::string actorStableName;
 };
 
@@ -58,7 +55,7 @@ struct ScenarioObjectiveSeed {
   std::string id;
   ObjectiveStatusSeed initialStatus = ObjectiveStatusSeed::Active;
   std::string condition = "InventoryContains";
-  PlayerSlotId playerSlot = kInvalidPlayerSlotId;
+  ScenarioPlayerSlotId playerSlot = kInvalidScenarioPlayerSlotId;
   std::string itemId;
   std::uint32_t itemCount = 0;
   ObjectiveStatusSeed completeStatus = ObjectiveStatusSeed::Complete;
@@ -75,7 +72,7 @@ struct ScenarioAiActorSeed {
   // an empty route means the NPC does not patrol (back-compat). Default member
   // initializers keep positional aggregate-init sites warning-free.
   std::vector<Vec3> patrolWaypoints{};
-  PatrolMode patrolMode = PatrolMode::Loop;
+  ScenarioPatrolMode patrolMode = ScenarioPatrolMode::Loop;
 };
 
 struct ScenarioAiGuardAnchorSeed {
@@ -89,9 +86,9 @@ struct ScenarioAiGuardAnchorSeed {
 struct FixtureScenarioSeed {
   std::string scenarioId;
   RuntimeConfig config;
-  ClockMode initialClockMode = ClockMode::Normal;
-  CameraMode defaultRealtimeCamera = CameraMode::ThirdPerson;
-  CameraMode defaultTacticalCamera = CameraMode::TacticalOverhead;
+  ScenarioClockMode initialClockMode = ScenarioClockMode::Normal;
+  ScenarioCameraMode defaultRealtimeCamera = ScenarioCameraMode::ThirdPerson;
+  ScenarioCameraMode defaultTacticalCamera = ScenarioCameraMode::TacticalOverhead;
   std::vector<ScenarioPlayerSeed> players;
   std::vector<ScenarioEntitySeed> entities;
   std::vector<ScenarioObjectiveSeed> objectives;

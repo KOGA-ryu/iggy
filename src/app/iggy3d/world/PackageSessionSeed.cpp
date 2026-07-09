@@ -11,7 +11,6 @@
 #include "core/math/Transform3.hpp"
 #include "runtime/combat/CombatState.hpp"
 #include "runtime/interaction/InteractionDefinition.hpp"
-#include "runtime/player/PlayerSlot.hpp"
 #include "runtime/world/EntityState.hpp"
 
 namespace iggy3d {
@@ -348,7 +347,7 @@ ProductPackageSessionSeedResult buildProductPackageSessionSeed(
   // A8a: populate the aiActors FROM the authored scenario seeds (WITH patrol routes) instead of
   // clearing, so assignNpcBehaviorProfiles' merge finds and preserves them in the synthesized path.
   result.seed.aiActors = package.scenario.aiActors;
-  result.seed.players.push_back({0, PlayerSlotKind::Local, "player"});
+  result.seed.players.push_back({0, ScenarioPlayerSlotKind::Local, "player"});
   result.seed.entities.push_back(playerFromAnchor(*spawn));
 
   std::string firstKeyItemId;

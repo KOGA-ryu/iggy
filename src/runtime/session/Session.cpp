@@ -22,6 +22,7 @@
 #include "runtime/clock/Clock.hpp"
 #include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 #include "runtime/session/SessionRunner.hpp"
+#include "runtime/session/ScenarioSeedConversion.hpp"
 #include "runtime/session/SessionTick.hpp"
 
 namespace iggy3d {
@@ -82,22 +83,34 @@ bool createWorld(const FixtureScenarioSeed& seed, WorldState& world) {
   return true;
 }
 
-bool createPlayers(const FixtureScenarioSeed& seed, const WorldState& world, PlayerRoster& players) {
+StatusResult createPlayers(const FixtureScenarioSeed& seed,
+                           const WorldState& world,
+                           PlayerRoster& players) {
   for (const ScenarioPlayerSeed& playerSeed : seed.players) {
     const EntityState* actor = world.findByStableName(playerSeed.actorStableName);
     if (actor == nullptr) {
-      return false;
+      return statusError("session.player_seed_missing_actor",
+                         "failed to resolve player actor stable name");
+    }
+    const Result<PlayerSlotKind> kind = playerSlotKindFromScenario(playerSeed.kind);
+    if (kind.status != ResultStatus::Ok) {
+      return {ResultStatus::Error, kind.error};
     }
     PlayerSlot slot;
     slot.id = playerSeed.slot;
-    slot.kind = playerSeed.kind;
+    slot.kind = kind.value;
     slot.actor = actor->id;
     slot.stableName = "player" + std::to_string(playerSeed.slot);
     if (players.addSlot(std::move(slot)).status != PlayerRosterStatus::Ok) {
-      return false;
+      return statusError("session.player_seed_add_failed",
+                         "failed to add player slot");
     }
   }
-  return players.slotControlsActor(0, EntityId{1});
+  if (!players.slotControlsActor(0, EntityId{1})) {
+    return statusError("session.player_seed_control_failed",
+                       "failed to assign player control slot");
+  }
+  return statusOk();
 }
 
 ObjectiveStatus objectiveStatusFromSeed(ObjectiveStatusSeed status) {
@@ -173,6 +186,10 @@ StatusResult createAiActors(const FixtureScenarioSeed& seed,
                             AiState& ai) {
   std::vector<EntityId> seededActors;
   for (const ScenarioAiActorSeed& aiSeed : seed.aiActors) {
+    const Result<PatrolMode> patrolMode = patrolModeFromScenario(aiSeed.patrolMode);
+    if (patrolMode.status != ResultStatus::Ok) {
+      return {ResultStatus::Error, patrolMode.error};
+    }
     const EntityState* actor = world.findByStableName(aiSeed.actorStableName);
     if (actor == nullptr) {
       return statusError("session.ai_seed_missing_actor",
@@ -202,7 +219,7 @@ StatusResult createAiActors(const FixtureScenarioSeed& seed,
                            "ai actor patrol route has a non-finite waypoint");
       }
       actorState.patrolWaypoints = aiSeed.patrolWaypoints;
-      actorState.patrolMode = aiSeed.patrolMode;
+      actorState.patrolMode = patrolMode.value;
     }
     ai.actors.push_back(std::move(actorState));
     seededActors.push_back(actor->id);
@@ -270,21 +287,42 @@ StatusResult createAiActors(const FixtureScenarioSeed& seed,
   return statusOk();
 }
 
-ClockState createClock(const SessionCreateRequest& request) {
+Result<ClockState> createClock(const SessionCreateRequest& request) {
+  Result<ClockState> result;
+  const Result<ClockMode> mode = clockModeFromScenario(request.seed.initialClockMode);
+  if (mode.status != ResultStatus::Ok) {
+    result.error = mode.error;
+    return result;
+  }
   ClockState clock;
-  clock.mode = request.seed.initialClockMode;
+  clock.mode = mode.value;
   clock.previousUnpausedMode = ClockMode::Normal;
   clock.previousUnpausedTimeScale = 1.0F;
   clock.fixedTickRateHz = request.config.fixedTickRateHz;
   clock.timeScale = 1.0F;
-  return clock;
+  result.status = ResultStatus::Ok;
+  result.value = clock;
+  return result;
 }
 
-CameraState createCamera(const FixtureScenarioSeed& seed) {
+Result<CameraState> createCamera(const FixtureScenarioSeed& seed) {
+  Result<CameraState> result;
+  const Result<CameraMode> realtime = cameraModeFromScenario(seed.defaultRealtimeCamera);
+  if (realtime.status != ResultStatus::Ok) {
+    result.error = realtime.error;
+    return result;
+  }
+  const Result<CameraMode> tactical = cameraModeFromScenario(seed.defaultTacticalCamera);
+  if (tactical.status != ResultStatus::Ok) {
+    result.error = tactical.error;
+    return result;
+  }
   CameraState camera;
-  camera.activeMode = seed.defaultRealtimeCamera;
-  camera.previousRealtimeMode = seed.defaultRealtimeCamera;
-  return camera;
+  camera.activeMode = realtime.value;
+  camera.previousRealtimeMode = realtime.value;
+  result.status = ResultStatus::Ok;
+  result.value = camera;
+  return result;
 }
 
 BaselineSnapshot buildBaseline(const SessionState& state) {
@@ -1247,8 +1285,16 @@ Result<Session> Session::create(const SessionCreateRequest& request) {
   state.config = request.config;
   state.lifecycle = SessionLifecycle::Playing;
   state.outcome = SessionOutcome::None;
-  state.clock = createClock(request);
-  state.camera = createCamera(request.seed);
+  const Result<ClockState> clock = createClock(request);
+  if (clock.status != ResultStatus::Ok) {
+    return createFailure(clock.error.code, clock.error.message);
+  }
+  const Result<CameraState> camera = createCamera(request.seed);
+  if (camera.status != ResultStatus::Ok) {
+    return createFailure(camera.error.code, camera.error.message);
+  }
+  state.clock = clock.value;
+  state.camera = camera.value;
   state.inventory = createInventory(request.seed);
   state.objectives = createObjectives(request.seed);
   state.outcomeTable = buildObjectiveOutcomeTable();  // A8a: objective->outcome rules as data
@@ -1257,8 +1303,9 @@ Result<Session> Session::create(const SessionCreateRequest& request) {
   if (!createWorld(request.seed, state.world)) {
     return createFailure("session.world_seed_failed", "failed to seed world");
   }
-  if (!createPlayers(request.seed, state.world, state.players)) {
-    return createFailure("session.player_seed_failed", "failed to seed players");
+  const StatusResult players = createPlayers(request.seed, state.world, state.players);
+  if (players.status != ResultStatus::Ok) {
+    return createFailure(players.error.code, players.error.message);
   }
   if (!createCombat(request.seed, state.world, state.combat)) {
     return createFailure("session.combat_seed_failed", "failed to seed combatants");

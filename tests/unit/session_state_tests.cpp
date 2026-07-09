@@ -71,10 +71,10 @@ iggy3d::FixtureScenarioSeed makeFirstRoomSeed() {
   iggy3d::FixtureScenarioSeed seed;
   seed.scenarioId = "first_room.runtime_loop";
   seed.config = iggy3d::makeDefaultRuntimeConfig();
-  seed.initialClockMode = iggy3d::ClockMode::Normal;
-  seed.defaultRealtimeCamera = iggy3d::CameraMode::ThirdPerson;
-  seed.defaultTacticalCamera = iggy3d::CameraMode::TacticalOverhead;
-  seed.players.push_back({0, iggy3d::PlayerSlotKind::Local, "player"});
+  seed.initialClockMode = iggy3d::ScenarioClockMode::Normal;
+  seed.defaultRealtimeCamera = iggy3d::ScenarioCameraMode::ThirdPerson;
+  seed.defaultTacticalCamera = iggy3d::ScenarioCameraMode::TacticalOverhead;
+  seed.players.push_back({0, iggy3d::ScenarioPlayerSlotKind::Local, "player"});
   seed.entities = {playerSeed(), goldKeySeed(), markerSeed()};
   iggy3d::ScenarioObjectiveSeed objective;
   objective.id = "collect_gold_key";

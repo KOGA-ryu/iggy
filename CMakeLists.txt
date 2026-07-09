@@ -304,6 +304,7 @@ target_sources(iggy3d
     src/runtime/physics/PhysicsSpatialSurfaceColliderBake.cpp
     src/runtime/physics/PhysicsTypes.cpp
     src/runtime/session/SessionTick.cpp
+    src/runtime/session/ScenarioSeedConversion.cpp
     src/runtime/session/SessionRunner.cpp
     src/runtime/replay/StateHash.cpp
     src/runtime/replay/CommandReplay.cpp

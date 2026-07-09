@@ -48,10 +48,10 @@ iggy3d::FixtureScenarioSeed basePlayerOnlySeed() {
   iggy3d::FixtureScenarioSeed seed;
   seed.scenarioId = "marker_binding_base";
   seed.config = iggy3d::makeDefaultRuntimeConfig();
-  seed.initialClockMode = iggy3d::ClockMode::Normal;
-  seed.defaultRealtimeCamera = iggy3d::CameraMode::ThirdPerson;
-  seed.defaultTacticalCamera = iggy3d::CameraMode::TacticalOverhead;
-  seed.players.push_back({0, iggy3d::PlayerSlotKind::Local, "player"});
+  seed.initialClockMode = iggy3d::ScenarioClockMode::Normal;
+  seed.defaultRealtimeCamera = iggy3d::ScenarioCameraMode::ThirdPerson;
+  seed.defaultTacticalCamera = iggy3d::ScenarioCameraMode::TacticalOverhead;
+  seed.players.push_back({0, iggy3d::ScenarioPlayerSlotKind::Local, "player"});
   seed.entities.push_back(playerSeed());
 
   iggy3d::ScenarioObjectiveSeed objective;

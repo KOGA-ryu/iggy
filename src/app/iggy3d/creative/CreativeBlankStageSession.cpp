@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <utility>
 
+#include "content/ScenarioSeed.hpp"
 #include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/gameplay/ActiveRoomState.hpp"
 #include "app/iggy3d/gameplay/ProductRoomStore.hpp"
@@ -55,7 +56,7 @@ bool createCreativeBlankSession(std::optional<Session>& activeSession,
   player.localBounds = makeAabb3({-0.25F, 0.0F, -0.25F}, {0.25F, 1.8F, 0.25F});
   player.active = true;
   player.persistent = true;
-  seed.players.push_back({0, PlayerSlotKind::Local, "player"});
+  seed.players.push_back({0, ScenarioPlayerSlotKind::Local, "player"});
   seed.entities.push_back(std::move(player));
   // Session::create requires at least one objective. A creative stage has no
   // gameplay goal, so seed a single inert objective: condition "None" +
