@@ -353,6 +353,9 @@ bool segmentAnyHitIgnoresSensorsAndUsesMargin() {
   std::vector<iggy3d::PhysicsAabbCollider> nearMiss{
       colliderAt({2U}, {2.0F, 0.6F, 0.0F}, {0.5F, 0.5F, 0.5F}),
   };
+  std::vector<iggy3d::PhysicsAabbCollider> marginShell{
+      colliderAt({3U}, {2.0F, 0.0F, 0.0F}, {0.5F, 0.5F, 0.5F}),
+  };
 
   bool startInside = true;
   const bool sensorHit = iggy3d::segmentHitsAnyPhysicsAabb(
@@ -370,6 +373,12 @@ bool segmentAnyHitIgnoresSensorsAndUsesMargin() {
   const bool withMargin = iggy3d::segmentHitsAnyPhysicsAabb(
       asSpan(nearMiss), {0.0F, 0.0F, 0.0F}, {4.0F, 0.0F, 0.0F}, 0.11F,
       &startInside);
+  const bool withMarginStartInside = startInside;
+
+  startInside = true;
+  const bool marginShellStart = iggy3d::segmentHitsAnyPhysicsAabb(
+      asSpan(marginShell), {1.45F, 0.0F, 0.0F}, {3.0F, 0.0F, 0.0F}, 0.10F,
+      &startInside);
 
   return expect(!sensorHit, "segment ignores sensor collider") &&
          expect(!sensorStartInside, "sensor miss clears start inside") &&
@@ -377,7 +386,10 @@ bool segmentAnyHitIgnoresSensorsAndUsesMargin() {
          expect(!withoutMarginStartInside,
                 "segment near miss clears start inside") &&
          expect(withMargin, "segment margin turns near miss into hit") &&
-         expect(!startInside, "segment margin hit starts outside");
+         expect(!withMarginStartInside, "segment margin hit starts outside") &&
+         expect(marginShellStart, "segment starts inside margin shell hit") &&
+         expect(!startInside,
+                "segment margin shell start outside actual collider");
 }
 
 bool segmentAnyHitRejectsInvalidInputs() {

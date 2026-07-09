@@ -508,7 +508,7 @@ bool segmentHitsAnyPhysicsAabb(std::span<const PhysicsAabbCollider> colliders,
     // branch-gate: BG-1097
     if (rayHit.hit) {
       if (startInside != nullptr) {
-        *startInside = rayHit.startInside;
+        *startInside = physicsAabbContainsPoint(collider, from);
       }
       return true;
     }
