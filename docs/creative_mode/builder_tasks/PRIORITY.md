@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E275-iggy3d-creative-main-split-g9-gizmo-frame.md`
+1. `ready/E276-iggy3d-creative-main-split-g10-path-handle-capture-log.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E275-iggy3d-creative-main-split-g9-gizmo-frame.md`
+1. `ready/E276-iggy3d-creative-main-split-g10-path-handle-capture-log.md`
 
 ## Parking Lot
 
@@ -215,6 +215,8 @@ Held — do NOT promote to `ready/` on a guess:
   complete as the shared raw camera-ray-to-ground-point helper for the remaining
   interactive Move branch, without moving Move policy. E274 is released to
   extract only the current selection id/object/bounds resolution, leaving gizmo,
-  move, overlay, and logging policy in `main.cpp`. E275 is released to extract
-  only gizmo-frame geometry and path-handle hit data, leaving path-handle
-  logging, Move policy, overlay, and submit in `main.cpp`.
+  move, overlay, and logging policy in `main.cpp`. E275 is complete as the
+  gizmo-frame geometry and path-handle hit-data helper, leaving path-handle
+  logging, Move policy, overlay, and submit in `main.cpp`. E276 is released to
+  move only the path-handle capture proof logging into the existing gizmo-frame
+  helper module.
