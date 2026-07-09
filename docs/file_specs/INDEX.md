@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `cd6c9663`
+Verified at: `0996a5ee`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `231`.
-- Current mapped source files represented by those specs: about `437`.
+- Current file specs: `234`.
+- Current mapped source files represented by those specs: about `444`.
 
 ## Status Labels
 
@@ -110,6 +110,9 @@ App projection/view/window:
 - `mapped` [ActionHandlers.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/ActionHandlers.md)
 - `mapped` [DrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/DrawList.md)
 - `mapped` [PauseUi.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/PauseUi.md)
+- `mapped` [Notebook.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/Notebook.md)
+- `mapped` [Transitions.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/Transitions.md)
+- `mapped` [UiHitRouter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/menu/UiHitRouter.md)
 - `mapped` [Catalog.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/Catalog.md)
 - `mapped` [SaveBridge.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/SaveBridge.md)
 - `mapped` [CatalogProjector.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/CatalogProjector.md)
@@ -312,12 +315,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BC, app creative mirror packets:
+Batch BD, creative UI remaining surfaces:
 
-- `next` `src/app/iggy3d/ProductCreativeDocumentRevisionState.hpp`
-- `next` `src/app/iggy3d/ProductCreativeUndoState.hpp`
-- `next` `src/app/iggy3d/ProductCreativeUiInputState.hpp`
-- `queued` `src/app/iggy3d/ProductCreativeUiProjectionState.hpp`
+- `next` `src/app/iggy3d/creative/ui/Ui.*`
+- `next` `src/app/iggy3d/creative/ui/UiDrawList.*`
+- `next` `src/app/iggy3d/creative/ui/UiProjection.*`
+- `queued` `src/app/iggy3d/creative/world/DocumentSection.*`
 
 ## Defer Leaf Policy
 

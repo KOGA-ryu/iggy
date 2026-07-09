@@ -2,7 +2,7 @@
 
 Files: `src/app/iggy3d/ProductCreativeDocumentRevisionState.hpp`, `src/app/iggy3d/ProductCreativeUiInputState.hpp`, `src/app/iggy3d/ProductCreativeUiLastState.hpp`, `src/app/iggy3d/ProductCreativeUiProjectionState.hpp`, `src/app/iggy3d/ProductCreativeUndoState.hpp`
 
-Verified at: `3b586769`
+Verified at: `0996a5ee`
 
 ## Owns
 
@@ -45,6 +45,7 @@ Verified at: `3b586769`
 - `ProductCreativeUiProjectionState`.
 - `ProductCreativeUndoState`.
 - Focused proof: `rg -n "creativeDocumentRevision|creativeUiInput|creativeUiLast|creativeUiProjection|creativeUndo" src/app tests`.
+- Coverage proof: `rg -n "ProductCreativeDocumentRevisionState|ProductCreativeUiInputState|ProductCreativeUiLastState|ProductCreativeUiProjectionState|ProductCreativeUndoState" src/app docs/file_specs`.
 
 ## Invariants
 
