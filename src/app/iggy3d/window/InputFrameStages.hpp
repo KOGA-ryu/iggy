@@ -12,6 +12,7 @@ namespace iggy3d {
 
 class SdlWindow;
 struct ProductWindowInputFrameContext;
+struct ProductWindowTopLevelToggleResult;
 
 struct ProductCreativeDocumentInputOrchestrationRequest {
   ProductWindowInputFrameContext& context;
@@ -45,5 +46,19 @@ ProductCreativeFlyResult applyProductWindowCreativeFlyActions(
 ProductCreativeDocumentInputOrchestrationResult
 processProductCreativeDocumentInputOrchestration(
     ProductCreativeDocumentInputOrchestrationRequest request);
+
+ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings* settings,
+    bool* closeRequested,
+    creative::CreativeAppState* creativeApp);
+
+void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
+                                         const ActionState& actions);
+
+ActionState gameplayActionsAfterMapMakerConsumesMovement(
+    const ActionState& actions);
 
 }  // namespace iggy3d

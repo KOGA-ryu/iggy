@@ -10,12 +10,20 @@
 #include "app/iggy3d/creative/bridge/ViewportPickFrame.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
+#include "app/iggy3d/automation/Automation.hpp"
+#include "app/iggy3d/automation/AutomationRoomEditing.hpp"
+#include "app/iggy3d/menu/ActionHandlers.hpp"
 #include "app/iggy3d/menu/FrontendRouter.hpp"
+#include "app/iggy3d/room_editor/ActionController.hpp"
+#include "app/iggy3d/room_editor/Preview.hpp"
 #include "app/iggy3d/view/CameraController.hpp"
 #include "app/iggy3d/view/CreativeFlyAnchorStore.hpp"
 #include "app/iggy3d/window/InputFrameStages.hpp"
 #include "app/input/ActionState.hpp"
 #include "app/platform/SdlWindow.hpp"
+
+#include <algorithm>
+#include <array>
 
 namespace iggy3d {
 namespace {
@@ -43,6 +51,19 @@ captureProductCreativeDocumentRevision(
   snapshot.documentId = document.id();
   snapshot.revision = document.revision();
   return snapshot;
+}
+
+bool mapMakerConsumesGameplayAction(InputAction action) {
+  constexpr std::array kConsumedActions{
+      InputAction::PlayerMoveX,
+      InputAction::PlayerMoveY,
+      InputAction::PlayerJump,
+      InputAction::PlayerCrouch,
+      InputAction::PlayerSprint,
+      InputAction::PlayerDash,
+  };
+  return std::find(kConsumedActions.begin(), kConsumedActions.end(), action) !=
+         kConsumedActions.end();
 }
 
 }  // namespace
@@ -80,6 +101,53 @@ ProductCreativeFlyResult applyProductWindowCreativeFlyActions(
   return fly;
 }
 
+ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings*,
+    bool*,
+    creative::CreativeAppState* creativeApp) {
+  const ProductMenuActionResult mapMakerResult =
+      applyProductGameplayMapMakerToggleAction(action,
+                                               {frontend, window, creativeApp});
+  return {mapMakerResult.handled, mapMakerResult.accepted, action};
+}
+
+void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
+                                         const ActionState& actions) {
+  for (const ActionStateEntry& entry : actions.entries) {
+    // branch-gate: BG-1055
+    if (isProductRoomEditorPreviewInputAction(entry.action)) {
+      (void)applyProductRoomEditorPreviewInputAction(window, entry.action);
+      continue;
+    }
+
+    ActionState singleAction;
+    recordAction(singleAction, entry.action, entry.down, entry.pressed,
+                 entry.released, entry.value);
+    const ProductRoomEditorActionResult result =
+        applyProductRoomEditorActions(window.creativeAuthoring.roomEditing,
+                                      window.creativeAuthoring.roomEditorCursor,
+                                      singleAction,
+                                      ProductRoomAuthoringInputSource::Hotkey);
+    recordProductRoomEditorActionResult(window, result);
+  }
+}
+
+ActionState gameplayActionsAfterMapMakerConsumesMovement(
+    const ActionState& actions) {
+  ActionState filtered;
+  for (const ActionStateEntry& entry : actions.entries) {
+    // branch-gate: BG-1205
+    if (!mapMakerConsumesGameplayAction(entry.action)) {
+      recordAction(filtered, entry.action, entry.down, entry.pressed,
+                   entry.released, entry.value);
+    }
+  }
+  return filtered;
+}
+
 namespace {
 
 struct ProductCreativeDocumentRevisionPhaseState {
@@ -97,6 +165,15 @@ struct ProductCreativeViewportInputPhaseResult {
   MouseClick downstreamClick;
   creative::TargetRef pointerTarget;
 };
+
+bool productWindowEditorMousePickSurfaceReady(
+    const FrontendState& frontend,
+    const ProductAppWindowState& window,
+    const creative::CreativeAppState* creativeApp) {
+  return frontend.screen == FrontendScreen::Gameplay && window.gameplay.gameplayActive &&
+         !frontendBlocksGameplayInput(frontend) &&
+         !productCreativeWorldActiveForSource(window, creativeApp);
+}
 
 [[nodiscard]] bool canDispatchProductCreativeDocumentInput(
     const ProductWindowInputFrameContext& context,
@@ -430,6 +507,84 @@ void finalizeProductCreativeDocumentInputPhase(
 }
 
 }  // namespace
+
+bool cancelProductRoomEditorPendingPreviewFromBack(
+    const FrontendState& frontend,
+    ProductAppWindowState& window) {
+  (void)frontend;
+  // branch-gate: BG-1055
+  if (!window.creativeAuthoring.roomEditing.ready || !window.creativeAuthoring.roomEditorPreview.active) {
+    return false;
+  }
+  const ProductRoomEditorPreviewInputResult cancelled =
+      applyProductRoomEditorPreviewInputAction(window,
+                                              InputAction::EditorCancelPreview);
+  window.inputDevice.lastInputAction = InputAction::EditorCancelPreview;
+  window.inputDevice.lastInputAccepted = cancelled.ok;
+  return cancelled.ok;
+}
+
+ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPreview(
+    ProductWindowEditorMousePickPreviewContext context) {
+  ProductWindowEditorMousePickPreviewResult result;
+  // branch-gate: BG-1063
+  if (!context.click.clicked) {
+    return result;
+  }
+  // branch-gate: BG-1063
+  if (!productWindowEditorMousePickSurfaceReady(context.frontend,
+                                                context.window,
+                                                context.creativeApp)) {
+    result.status = "room_editor_mouse_pick_preview_surface_blocked";
+    result.reasonCode = result.status;
+    return result;
+  }
+  // branch-gate: BG-1063
+  if (context.window.inputDevice.interactionMode !=
+      ProductInteractionMode::Creative) {
+    result.status = "room_editor_mouse_pick_preview_mode_blocked";
+    result.reasonCode = result.status;
+    return result;
+  }
+  // branch-gate: BG-1063
+  if (!context.window.creativeAuthoring.roomEditing.ready) {
+    result.status = "room_editor_not_ready";
+    result.reasonCode = result.status;
+    return result;
+  }
+
+  const ProductRoomEditorActionResult pickResult =
+      applyProductRoomEditorMousePickAutomation(
+          context.window.creativeAuthoring.roomEditing,
+          context.window.creativeAuthoring.roomEditorCursor,
+          context.click.x,
+          context.click.y,
+          context.viewportConfig,
+          context.anchorWorld);
+  result.handled = true;
+  result.picked = pickResult.ok;
+  result.status = pickResult.status;
+  result.reasonCode = pickResult.reasonCode;
+  context.window.inputDevice.lastInputAction = InputAction::EditorPreviewPlacement;
+  context.window.inputDevice.lastInputAccepted = pickResult.ok;
+  recordProductRoomEditorActionResult(context.window,
+                                      pickResult,
+                                      "room_editor.mouse_pick");
+  // branch-gate: BG-1063
+  if (!pickResult.ok) {
+    return result;
+  }
+
+  const ProductRoomEditorPlacementPreviewResult preview =
+      buildProductRoomEditorPreviewAutomation(context.window.creativeAuthoring.roomEditing,
+                                              context.window.creativeAuthoring.roomEditorCursor);
+  recordProductRoomEditorPreviewResult(context.window, preview);
+  result.previewBuilt = true;
+  result.accepted = preview.ok;
+  result.status = preview.status;
+  result.reasonCode = preview.reasonCode;
+  return result;
+}
 
 ProductCreativeDocumentInputOrchestrationResult
 processProductCreativeDocumentInputOrchestration(

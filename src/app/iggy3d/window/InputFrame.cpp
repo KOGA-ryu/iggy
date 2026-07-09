@@ -77,14 +77,6 @@ ProductWindowTopLevelToggleResult dispatchProductWindowMovementTuningToggleActio
     FrontendSettings* settings,
     bool* closeRequested,
     creative::CreativeAppState* creativeApp);
-ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
-    FrontendState& frontend,
-    ProductAppWindowState& window,
-    InputAction action,
-    FrontendSettings* settings,
-    bool* closeRequested,
-    creative::CreativeAppState* creativeApp);
-
 static constexpr std::array kProductWindowFunctionKeyBindings{
     ProductWindowFunctionKeyBinding{&SdlWindowEventState::f3Pressed,
                                     InputAction::DevDebugOverlay,
@@ -147,27 +139,6 @@ void resetMovementTuningRepeat(ProductMovementTuningRepeatState& repeat) {
   repeat.heldFrames = 0U;
 }
 
-void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
-                                         const ActionState& actions) {
-  for (const ActionStateEntry& entry : actions.entries) {
-    // branch-gate: BG-1055
-    if (isProductRoomEditorPreviewInputAction(entry.action)) {
-      (void)applyProductRoomEditorPreviewInputAction(window, entry.action);
-      continue;
-    }
-
-    ActionState singleAction;
-    recordAction(singleAction, entry.action, entry.down, entry.pressed,
-                 entry.released, entry.value);
-    const ProductRoomEditorActionResult result =
-        applyProductRoomEditorActions(window.creativeAuthoring.roomEditing,
-                                      window.creativeAuthoring.roomEditorCursor,
-                                      singleAction,
-                                      ProductRoomAuthoringInputSource::Hotkey);
-    recordProductRoomEditorActionResult(window, result);
-  }
-}
-
 void recordProductWindowControllerActions(
     const FrontendState& frontend,
     ProductAppWindowState& window,
@@ -200,15 +171,6 @@ void recordProductWindowControllerActions(
     });
   }
   recordProductControllerActionRoutingResult(window, result);
-}
-
-bool productWindowEditorMousePickSurfaceReady(
-    const FrontendState& frontend,
-    const ProductAppWindowState& window,
-    const creative::CreativeAppState* creativeApp) {
-  return frontend.screen == FrontendScreen::Gameplay && window.gameplay.gameplayActive &&
-         !frontendBlocksGameplayInput(frontend) &&
-         !productCreativeWorldActiveForSource(window, creativeApp);
 }
 
 bool productWindowFocused(const SdlWindow* sdlWindow) {
@@ -258,32 +220,6 @@ void updateProductWindowMouseCapture(const FrontendState& frontend,
   const SdlMouseCaptureResult platform =
       sdlWindow->setRelativeMouseMode(policy.requested);
   recordProductMouseCaptureResult(window, policy, &platform);
-}
-
-bool mapMakerConsumesGameplayAction(InputAction action) {
-  constexpr std::array kConsumedActions{
-      InputAction::PlayerMoveX,
-      InputAction::PlayerMoveY,
-      InputAction::PlayerJump,
-      InputAction::PlayerCrouch,
-      InputAction::PlayerSprint,
-      InputAction::PlayerDash,
-  };
-  return std::find(kConsumedActions.begin(), kConsumedActions.end(), action) !=
-         kConsumedActions.end();
-}
-
-ActionState gameplayActionsAfterMapMakerConsumesMovement(
-    const ActionState& actions) {
-  ActionState filtered;
-  for (const ActionStateEntry& entry : actions.entries) {
-    // branch-gate: BG-1205
-    if (!mapMakerConsumesGameplayAction(entry.action)) {
-      recordAction(filtered, entry.action, entry.down, entry.pressed,
-                   entry.released, entry.value);
-    }
-  }
-  return filtered;
 }
 
 ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
@@ -441,19 +377,6 @@ ProductWindowTopLevelToggleResult dispatchProductWindowMovementTuningToggleActio
   return {tuningResult.handled, tuningResult.accepted, action};
 }
 
-ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
-    FrontendState& frontend,
-    ProductAppWindowState& window,
-    InputAction action,
-    FrontendSettings*,
-    bool*,
-    creative::CreativeAppState* creativeApp) {
-  const ProductMenuActionResult mapMakerResult =
-      applyProductGameplayMapMakerToggleAction(action,
-                                               {frontend, window, creativeApp});
-  return {mapMakerResult.handled, mapMakerResult.accepted, action};
-}
-
 }  // namespace
 
 ProductControllerSampleInputResult applyProductWindowInputActions(
@@ -498,22 +421,6 @@ void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
     }
   }
   shutdownGamepadMenuState(state.gamepad);
-}
-
-bool cancelProductRoomEditorPendingPreviewFromBack(
-    const FrontendState& frontend,
-    ProductAppWindowState& window) {
-  (void)frontend;
-  // branch-gate: BG-1055
-  if (!window.creativeAuthoring.roomEditing.ready || !window.creativeAuthoring.roomEditorPreview.active) {
-    return false;
-  }
-  const ProductRoomEditorPreviewInputResult cancelled =
-      applyProductRoomEditorPreviewInputAction(window,
-                                              InputAction::EditorCancelPreview);
-  window.inputDevice.lastInputAction = InputAction::EditorCancelPreview;
-  window.inputDevice.lastInputAccepted = cancelled.ok;
-  return cancelled.ok;
 }
 
 ProductMovementTuningInputResult applyProductWindowMovementTuningInput(
@@ -712,68 +619,6 @@ ProductControllerSampleInputResult processProductControllerActionSample(
                                         controllerActions,
                                         context.inputSource,
                                         context.creativeApp);
-}
-
-ProductWindowEditorMousePickPreviewResult processProductWindowEditorMousePickPreview(
-    ProductWindowEditorMousePickPreviewContext context) {
-  ProductWindowEditorMousePickPreviewResult result;
-  // branch-gate: BG-1063
-  if (!context.click.clicked) {
-    return result;
-  }
-  // branch-gate: BG-1063
-  if (!productWindowEditorMousePickSurfaceReady(context.frontend,
-                                                context.window,
-                                                context.creativeApp)) {
-    result.status = "room_editor_mouse_pick_preview_surface_blocked";
-    result.reasonCode = result.status;
-    return result;
-  }
-  // branch-gate: BG-1063
-  if (context.window.inputDevice.interactionMode !=
-      ProductInteractionMode::Creative) {
-    result.status = "room_editor_mouse_pick_preview_mode_blocked";
-    result.reasonCode = result.status;
-    return result;
-  }
-  // branch-gate: BG-1063
-  if (!context.window.creativeAuthoring.roomEditing.ready) {
-    result.status = "room_editor_not_ready";
-    result.reasonCode = result.status;
-    return result;
-  }
-
-  const ProductRoomEditorActionResult pickResult =
-      applyProductRoomEditorMousePickAutomation(
-          context.window.creativeAuthoring.roomEditing,
-          context.window.creativeAuthoring.roomEditorCursor,
-          context.click.x,
-          context.click.y,
-          context.viewportConfig,
-          context.anchorWorld);
-  result.handled = true;
-  result.picked = pickResult.ok;
-  result.status = pickResult.status;
-  result.reasonCode = pickResult.reasonCode;
-  context.window.inputDevice.lastInputAction = InputAction::EditorPreviewPlacement;
-  context.window.inputDevice.lastInputAccepted = pickResult.ok;
-  recordProductRoomEditorActionResult(context.window,
-                                      pickResult,
-                                      "room_editor.mouse_pick");
-  // branch-gate: BG-1063
-  if (!pickResult.ok) {
-    return result;
-  }
-
-  const ProductRoomEditorPlacementPreviewResult preview =
-      buildProductRoomEditorPreviewAutomation(context.window.creativeAuthoring.roomEditing,
-                                              context.window.creativeAuthoring.roomEditorCursor);
-  recordProductRoomEditorPreviewResult(context.window, preview);
-  result.previewBuilt = true;
-  result.accepted = preview.ok;
-  result.status = preview.status;
-  result.reasonCode = preview.reasonCode;
-  return result;
 }
 
 void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
