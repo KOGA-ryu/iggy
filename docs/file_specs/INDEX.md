@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `f27cc3fc`
+Verified at: `0e08703f`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `246`.
-- Current mapped source files represented by those specs: about `466`.
+- Current file specs: `250`.
+- Current mapped source files represented by those specs: about `479`.
 
 ## Status Labels
 
@@ -304,6 +304,10 @@ App ASCII room / active room:
 - `mapped` [ControllerInputIntent.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerInputIntent.md)
 - `mapped` [MovementProof.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/MovementProof.md)
 - `mapped` [Tape.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/Tape.md)
+- `mapped` [GameplayStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/GameplayStore.md)
+- `mapped` [CommandState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/CommandState.md)
+- `mapped` [CollisionState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/CollisionState.md)
+- `mapped` [GameplayStatePackets.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/GameplayStatePackets.md)
 
 App debug HUD builders:
 
@@ -327,12 +331,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BG, app gameplay state packet surfaces:
+Batch BH, app ASCII room non-dirty surfaces:
 
-- `next` `src/app/iggy3d/gameplay/GameplayStore.hpp`
-- `next` `src/app/iggy3d/gameplay/CommandState.hpp`
-- `next` `src/app/iggy3d/gameplay/CollisionState.hpp`
-- `queued` `src/app/iggy3d/gameplay/*State.hpp` remaining data packets.
+- `next` `src/app/iggy3d/ascii_room/Activation.*`
+- `next` `src/app/iggy3d/ascii_room/AsciiRoomAssetText.*`
+- `queued` `src/app/iggy3d/ascii_room/AsciiRoomCanvas.*`
+- `queued` `src/app/iggy3d/ascii_room/AsciiRoomToEditableRoom.*`
 
 ## Defer Leaf Policy
 
