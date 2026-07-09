@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `c5537031`
+Verified at: `ff909047`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `219`.
-- Current mapped source files represented by those specs: about `417`.
+- Current file specs: `223`.
+- Current mapped source files represented by those specs: about `425`.
 
 ## Status Labels
 
@@ -221,6 +221,10 @@ App creative/world launch:
 - `mapped` [Ghost.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/spatial/Ghost.md)
 - `mapped` [SpatialProjection.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/spatial/SpatialProjection.md)
 - `mapped` [ViewportPick.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/spatial/ViewportPick.md)
+- `mapped` [Tools.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/tools/Tools.md)
+- `mapped` [Palette.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/tools/Palette.md)
+- `mapped` [Placement.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/tools/Placement.md)
+- `mapped` [Select.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/tools/Select.md)
 - `mapped` [UiFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/ui/UiFrame.md)
 - `mapped` [UiInputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiInputFrame.md)
 - `mapped` [InputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/InputFrame.md)
@@ -300,12 +304,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch AZ, creative tool support surfaces:
+Batch BA, remaining creative tool support surfaces:
 
-- `next` `src/app/iggy3d/creative/tools/Tools.*`
-- `next` `src/app/iggy3d/creative/tools/Palette.*`
-- `next` `src/app/iggy3d/creative/tools/Placement.*`
-- `queued` `src/app/iggy3d/creative/tools/Select.*`
+- `next` `src/app/iggy3d/creative/tools/Measure.*`
+- `next` `src/app/iggy3d/creative/tools/RoomShell.*`
+- `queued` `src/app/iggy3d/creative/document/Block.*`
+- `queued` `src/app/iggy3d/creative/document/DocumentWireframe.*`
 
 ## Defer Leaf Policy
 
