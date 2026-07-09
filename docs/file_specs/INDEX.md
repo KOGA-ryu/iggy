@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `176`.
-- Current mapped source files represented by those specs: about `333`.
+- Current file specs: `180`.
+- Current mapped source files represented by those specs: about `339`.
 
 ## Status Labels
 
@@ -148,12 +148,16 @@ App projection/view/window:
 - `mapped` [OpeningMenuHitTest.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/OpeningMenuHitTest.md)
 - `mapped` [ScenePrimitiveView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/ScenePrimitiveView.md)
 - `mapped` [SdlDraw.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/SdlDraw.md)
+- `mapped` [PrimitiveDrawMetadata.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawMetadata.md)
 - `mapped` [ViewportFraming.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/ViewportFraming.md)
 - `mapped` [RenderBridge.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/RenderBridge.md)
 - `mapped` [CreativeFlyAnchorStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/CreativeFlyAnchorStore.md)
 - `mapped` [ViewportState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/ViewportState.md)
 - `mapped` [DebugHudView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/DebugHudView.md)
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
+- `mapped` [SdlWindow.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/platform/SdlWindow.md)
+- `mapped` [SdlVulkanSurface.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/platform/SdlVulkanSurface.md)
+- `mapped` [ProductVulkanRendererState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/ProductVulkanRendererState.md)
 
 App automation:
 
@@ -247,12 +251,11 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AK, app platform/window support surfaces:
+Batch AL, app platform leaf and remaining window state:
 
-- `next` `src/app/iggy3d/view/PrimitiveDrawMetadata.hpp`
-- `next` `src/app/platform/SdlWindow.*`
-- `next` `src/app/platform/SdlVulkanSurface.*`
-- `queued` `src/app/iggy3d/window/ProductVulkanRendererState.hpp`
+- `next` `src/app/platform/ExecutablePath.*`
+- `next` `src/app/iggy3d/window/MouseCaptureState.hpp`
+- `next` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 - `queued` `src/app/iggy3d/view/PrimitiveDrawList.*` if primitive packet ownership changes.
 
 ## Defer Leaf Policy
