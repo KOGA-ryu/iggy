@@ -1017,6 +1017,18 @@ NpcPerceptionResult::Los losFromSegmentOcclusion(SegmentOcclusionVerdict verdict
   return NpcPerceptionResult::Los::Unknown;
 }
 
+AiPerceptionLos aiLosFromPerceptionLos(NpcPerceptionResult::Los los) {
+  switch (los) {
+    case NpcPerceptionResult::Los::Clear:
+      return AiPerceptionLos::Clear;
+    case NpcPerceptionResult::Los::Blocked:
+      return AiPerceptionLos::Blocked;
+    case NpcPerceptionResult::Los::Unknown:
+      return AiPerceptionLos::Unknown;
+  }
+  return AiPerceptionLos::Unknown;
+}
+
 // Cast an eye-to-eye segment from actor to target against this tick's baked world colliders.
 NpcPerceptionResult::Los actorLineOfSightToTarget(
     const PhysicsSpatialSurfaceColliderBakeResult& bake,
@@ -1186,6 +1198,13 @@ void enqueueNpcBehaviorCommands(
     actorState.lastTargetInVisionCone = perception.targetInVisionCone;
     actorState.lastTargetHasLineOfSight = perception.hasLineOfSight;
     actorState.lastSightRangeMeters = config.perceptionRadiusMeters;
+    actorState.lastHorizontalAngleDeg = perception.horizontalAngleDeg;
+    actorState.lastVerticalAngleDeg = perception.verticalAngleDeg;
+    actorState.lastInVerticalCone = perception.inVerticalCone;
+    actorState.lastPerceived = perception.perceived;
+    actorState.lastLos = aiLosFromPerceptionLos(perception.los);
+    actorState.lastGuardEyeHeightMeters = config.guardEyeHeightMeters;
+    actorState.lastVerticalHalfAngleDegrees = config.verticalHalfAngleDegrees;
 
     if (!shouldBuildCommandForDecision(decision)) {
       continue;

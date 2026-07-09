@@ -54,6 +54,13 @@ void applyAiState(NpcBehaviorDebugActorRow& row, const AiActorState& state) {
   row.targetInPerceptionRadius = state.lastTargetInRadius;
   row.targetInVisionCone = state.lastTargetInVisionCone;
   row.targetHasLineOfSight = state.lastTargetHasLineOfSight;
+  row.lastHorizontalAngleDeg = state.lastHorizontalAngleDeg;
+  row.lastVerticalAngleDeg = state.lastVerticalAngleDeg;
+  row.lastInVerticalCone = state.lastInVerticalCone;
+  row.lastPerceived = state.lastPerceived;
+  row.lastLos = state.lastLos;
+  row.lastGuardEyeHeightMeters = state.lastGuardEyeHeightMeters;
+  row.lastVerticalHalfAngleDegrees = state.lastVerticalHalfAngleDegrees;
   row.cooldownTicksRemaining = state.cooldownTicksRemaining;
   row.nextDecisionTick = state.nextDecisionTick;
 }

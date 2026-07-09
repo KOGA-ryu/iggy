@@ -164,6 +164,18 @@ std::string npcBehaviorValueCode(const NpcBehaviorDebugActorRow& row) {
          row.profileStatus;
 }
 
+std::string_view losCode(AiPerceptionLos los) {
+  switch (los) {
+    case AiPerceptionLos::Clear:
+      return "C";
+    case AiPerceptionLos::Blocked:
+      return "B";
+    case AiPerceptionLos::Unknown:
+      return "U";
+  }
+  return "U";
+}
+
 void appendNpcBehaviorHudLines(DebugProjectionResult& result,
                                const NpcBehaviorDebugSnapshot& snapshot) {
   result.npcBehaviorDebugHudLines.push_back(
@@ -186,7 +198,9 @@ void appendNpcBehaviorHudLines(DebugProjectionResult& result,
                        std::string(aiBehaviorKindName(row.behavior)) + "/" +
                        std::string(aiIntentKindName(row.lastIntent)) + " tgt=" +
                        row.targetStableName + " cd=" +
-                       std::to_string(row.cooldownTicksRemaining);
+                       std::to_string(row.cooldownTicksRemaining) + " v=" +
+                       fixed3(row.lastVerticalAngleDeg) + " los=" +
+                       std::string(losCode(row.lastLos));
     if (!row.profileResolved) {
       line += " unresolved=" + row.profileStatus;
     }

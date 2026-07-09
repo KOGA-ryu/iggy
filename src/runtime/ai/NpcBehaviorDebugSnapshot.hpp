@@ -51,6 +51,13 @@ struct NpcBehaviorDebugActorRow {
   bool targetInPerceptionRadius = false;
   bool targetInVisionCone = false;
   bool targetHasLineOfSight = false;
+  float lastHorizontalAngleDeg = 0.0F;
+  float lastVerticalAngleDeg = 0.0F;
+  bool lastInVerticalCone = false;
+  bool lastPerceived = false;
+  AiPerceptionLos lastLos = AiPerceptionLos::Unknown;
+  float lastGuardEyeHeightMeters = 0.0F;
+  float lastVerticalHalfAngleDegrees = 0.0F;
   std::uint32_t cooldownTicksRemaining = 0;
   CommandTick nextDecisionTick = 0;
 };

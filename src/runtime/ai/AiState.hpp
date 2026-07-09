@@ -41,6 +41,12 @@ enum class AiIntentKind : std::uint8_t {
   Investigate,
 };
 
+enum class AiPerceptionLos : std::uint8_t {
+  Clear,
+  Blocked,
+  Unknown,
+};
+
 // How an NPC continues its patrol route on reaching the last waypoint.
 enum class PatrolMode : std::uint8_t {
   Loop,      // wrap back to the first waypoint
@@ -129,6 +135,13 @@ struct AiActorState {
   bool lastTargetInVisionCone = false;
   bool lastTargetHasLineOfSight = false;
   float lastSightRangeMeters = 0.0F;
+  float lastHorizontalAngleDeg = 0.0F;
+  float lastVerticalAngleDeg = 0.0F;
+  bool lastInVerticalCone = false;
+  bool lastPerceived = false;
+  AiPerceptionLos lastLos = AiPerceptionLos::Unknown;
+  float lastGuardEyeHeightMeters = 0.0F;
+  float lastVerticalHalfAngleDegrees = 0.0F;
   // Graded alert FSM (slice 5). alertLevel is normalized 0..1 (combat = 1.0); behavior is always
   // re-derived from it, never set directly. DURABLE (a2 commit 2): the whole FSM (level + grace)
   // is saved (LOSSLESS floats) + hashed, so a mid-engagement reload keeps the guard's alarm.

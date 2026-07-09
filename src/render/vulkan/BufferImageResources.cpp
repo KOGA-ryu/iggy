@@ -192,11 +192,14 @@ Vec3 colorForRoomRole(const std::string& role) {
   if (role == "spell") {
     return {0.34F, 0.62F, 0.88F};
   }
-  if (role == "npc_gaze_alert") {
-    return {0.95F, 0.30F, 0.22F};
+  if (role == "npc_gaze_perceived") {
+    return {0.24F, 0.78F, 0.36F};
+  }
+  if (role == "npc_gaze_blocked") {
+    return {0.94F, 0.78F, 0.24F};
   }
   if (role == "npc_gaze_scan") {
-    return {0.28F, 0.80F, 0.85F};
+    return {0.48F, 0.54F, 0.58F};
   }
   if (role == "bean_player") {
     return {0.22F, 0.56F, 0.92F};
@@ -1215,7 +1218,8 @@ RoomMeshCpuGeometry buildRoomMeshCpuGeometry(
       continue;
     }
 
-    if (mesh.role == "npc_gaze_alert" || mesh.role == "npc_gaze_scan") {
+    if (mesh.role == "npc_gaze_perceived" || mesh.role == "npc_gaze_blocked" ||
+        mesh.role == "npc_gaze_scan") {
       // Debug aid: a failed blade is skipped, never nukes the frame.
       (void)appendGazeBlade(result.vertices, result.indices, result.indexedDraws,
                             mesh.wallStartMeters, mesh.wallEndMeters,

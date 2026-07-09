@@ -989,6 +989,18 @@ bool emptySuccessfulSurfacesPreserveOpenRoomVision() {
               "empty surfaces target in cone") &&
        expect(ai != nullptr && ai->lastTargetHasLineOfSight,
               "empty surfaces line of sight clear") &&
+       expect(ai != nullptr && ai->lastPerceived,
+              "empty surfaces perceived mirror") &&
+       expect(ai != nullptr && ai->lastLos == iggy3d::AiPerceptionLos::Clear,
+              "empty surfaces los mirror clear") &&
+       expect(ai != nullptr && ai->lastInVerticalCone,
+              "empty surfaces vertical cone mirror") &&
+       expect(ai != nullptr && ai->lastGuardEyeHeightMeters > 1.59F &&
+                  ai->lastGuardEyeHeightMeters < 1.61F,
+              "empty surfaces guard eye height mirror") &&
+       expect(ai != nullptr && ai->lastVerticalHalfAngleDegrees > 29.9F &&
+                  ai->lastVerticalHalfAngleDegrees < 30.1F,
+              "empty surfaces vertical half-angle mirror") &&
        expect(ai != nullptr && ai->behavior == iggy3d::AiBehaviorKind::Chasing,
               "empty surfaces chase is preserved");
   return ok;

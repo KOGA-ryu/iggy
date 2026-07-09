@@ -9,6 +9,7 @@
 #include "runtime/session/Session.hpp"
 #include "runtime/session/SessionRunner.hpp"
 
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -324,6 +325,8 @@ iggy3d::NpcBehaviorDebugSnapshot npcDebugSnapshot() {
   hostile.targetResolved = true;
   hostile.targetActive = true;
   hostile.targetDistanceMeters = 1.25F;
+  hostile.lastVerticalAngleDeg = 4.25F;
+  hostile.lastLos = iggy3d::AiPerceptionLos::Clear;
   hostile.cooldownTicksRemaining = 2;
   snapshot.actors.push_back(hostile);
 
@@ -341,6 +344,8 @@ iggy3d::NpcBehaviorDebugSnapshot npcDebugSnapshot() {
   passive.targetResolved = true;
   passive.targetActive = true;
   passive.targetDistanceMeters = 2.5F;
+  passive.lastVerticalAngleDeg = -2.5F;
+  passive.lastLos = iggy3d::AiPerceptionLos::Blocked;
   snapshot.actors.push_back(passive);
 
   iggy3d::NpcBehaviorDebugActorRow ghost =
@@ -649,14 +654,16 @@ bool npcDebugProjectionAppendsItemsAndHudLines() {
                     "NPCS world=3 ai=3 resolved=2 failed=1 hostile=1 passive=1",
                 "npc hud summary") &&
          expect(debug.npcBehaviorDebugHudLines[1] ==
-                    "NPC 2 training_dummy default attacking/attack_target tgt=player cd=2",
+                    "NPC 2 training_dummy default attacking/attack_target "
+                    "tgt=player cd=2 v=4.250 los=C",
                 "hostile hud row") &&
          expect(debug.npcBehaviorDebugHudLines[2] ==
-                    "NPC 3 observer passive alert/wait tgt=player cd=0",
+                    "NPC 3 observer passive alert/wait tgt=player cd=0 "
+                    "v=-2.500 los=B",
                 "passive hud row") &&
          expect(debug.npcBehaviorDebugHudLines[3] ==
                     "NPC 4 ghost ghost_profile idle/none tgt=none cd=0 "
-                    "unresolved=profile_missing",
+                    "v=0.000 los=U unresolved=profile_missing",
                 "ghost hud row");
 }
 
@@ -921,13 +928,37 @@ bool saveLoadProjectionIsEquivalent() {
                 "key inactive fact roundtrip");
 }
 
-bool hasGazeBladeMesh(const std::vector<iggy3d::SceneRoomMeshItem>& meshes,
-                      const iggy3d::SceneRoomMeshItem** out = nullptr) {
+bool isNpcGazeRole(std::string_view role) {
+  return role == "npc_gaze_perceived" || role == "npc_gaze_blocked" ||
+         role == "npc_gaze_scan";
+}
+
+const iggy3d::SceneRoomMeshItem* findRoomMesh(
+    const std::vector<iggy3d::SceneRoomMeshItem>& meshes,
+    std::string_view id) {
   for (const iggy3d::SceneRoomMeshItem& mesh : meshes) {
-    if (mesh.role == "npc_gaze_alert" || mesh.role == "npc_gaze_scan") {
-      if (out != nullptr) {
-        *out = &mesh;
-      }
+    if (mesh.id == std::string(id)) {
+      return &mesh;
+    }
+  }
+  return nullptr;
+}
+
+std::size_t countNpcGazeRole(
+    const std::vector<iggy3d::SceneRoomMeshItem>& meshes,
+    std::string_view role) {
+  std::size_t count = 0U;
+  for (const iggy3d::SceneRoomMeshItem& mesh : meshes) {
+    if (mesh.role == std::string(role)) {
+      ++count;
+    }
+  }
+  return count;
+}
+
+bool hasGazeBladeMesh(const std::vector<iggy3d::SceneRoomMeshItem>& meshes) {
+  for (const iggy3d::SceneRoomMeshItem& mesh : meshes) {
+    if (isNpcGazeRole(mesh.role)) {
       return true;
     }
   }
@@ -953,6 +984,11 @@ bool npcVisionDebugEmitsGazeBladeMesh() {
   actor.lastTargetInRadius = true;
   actor.lastTargetInVisionCone = true;
   actor.lastTargetHasLineOfSight = true;
+  actor.lastInVerticalCone = true;
+  actor.lastPerceived = true;
+  actor.lastLos = iggy3d::AiPerceptionLos::Clear;
+  actor.lastGuardEyeHeightMeters = 1.6F;
+  actor.lastVerticalHalfAngleDegrees = 30.0F;
   state.ai.actors.push_back(actor);
 
   // Gated off by default -> no gaze geometry on normal frames.
@@ -961,32 +997,54 @@ bool npcVisionDebugEmitsGazeBladeMesh() {
 
   iggy3d::SceneProjectionConfig config;
   config.includeNpcVisionDebug = true;
-  const iggy3d::SceneRoomMeshItem* gaze = nullptr;
   const iggy3d::SceneProjectionResult withDebug =
       iggy3d::buildSceneProjection(state, &room, config);
-  const bool found = hasGazeBladeMesh(withDebug.room.meshes, &gaze);
+  const iggy3d::SceneRoomMeshItem* center =
+      findRoomMesh(withDebug.room.meshes, "npc_gaze_training_npc_center");
+  const iggy3d::SceneRoomMeshItem* upper =
+      findRoomMesh(withDebug.room.meshes, "npc_gaze_training_npc_upper");
+  const iggy3d::SceneRoomMeshItem* lower =
+      findRoomMesh(withDebug.room.meshes, "npc_gaze_training_npc_lower");
+  const float verticalOffset = std::tan(30.0F * 0.0174532925199F) * 6.0F;
 
   bool ok =
       expect(!hasGazeBladeMesh(without.room.meshes), "gaze blade gated off by default") &&
-      expect(found && gaze != nullptr, "gaze blade emitted when enabled") &&
-      expect(gaze != nullptr && gaze->role == "npc_gaze_alert",
-             "gaze blade alert tint when perceiving player") &&
-      expect(gaze != nullptr && gaze->hasWallSegment, "gaze blade carries segment") &&
-      expect(gaze != nullptr &&
-                 iggy3d::nearlyEqual(gaze->wallStartMeters, {1.0F, 1.0F, 1.0F}),
-             "gaze apex at npc eye height") &&
-      expect(gaze != nullptr &&
-                 iggy3d::nearlyEqual(gaze->wallEndMeters, {7.0F, 1.0F, 1.0F}),
-             "gaze end at facing times range");
+      expect(center != nullptr && upper != nullptr && lower != nullptr,
+             "center upper lower gaze blades emitted") &&
+      expect(countNpcGazeRole(withDebug.room.meshes, "npc_gaze_perceived") == 3U,
+             "perceived gaze role on all blades") &&
+      expect(center != nullptr && center->hasWallSegment,
+             "center gaze carries segment") &&
+      expect(center != nullptr &&
+                 iggy3d::nearlyEqual(center->wallStartMeters, {1.0F, 1.6F, 1.0F}),
+             "gaze apex uses mirrored guard eye height") &&
+      expect(center != nullptr &&
+                 iggy3d::nearlyEqual(center->wallEndMeters, {7.0F, 1.6F, 1.0F}),
+             "center gaze end at facing times range") &&
+      expect(upper != nullptr &&
+                 iggy3d::nearlyEqual(upper->wallEndMeters,
+                                     {7.0F, 1.6F + verticalOffset, 1.0F}),
+             "upper gaze blade uses vertical half-angle") &&
+      expect(lower != nullptr &&
+                 iggy3d::nearlyEqual(lower->wallEndMeters,
+                                     {7.0F, 1.6F - verticalOffset, 1.0F}),
+             "lower gaze blade uses vertical half-angle");
 
-  // Not currently perceiving the player -> scan tint instead of alert.
+  // In range and inside both cones, but blocked LOS -> blocked tint.
+  state.ai.actors[0].lastPerceived = false;
+  state.ai.actors[0].lastLos = iggy3d::AiPerceptionLos::Blocked;
+  const iggy3d::SceneProjectionResult blocked =
+      iggy3d::buildSceneProjection(state, &room, config);
+  ok = ok && expect(countNpcGazeRole(blocked.room.meshes, "npc_gaze_blocked") == 3U,
+                    "blocked gaze role on all blades");
+
+  // Unknown, out of cone, or out of range -> scan tint.
+  state.ai.actors[0].lastLos = iggy3d::AiPerceptionLos::Unknown;
   state.ai.actors[0].lastTargetInVisionCone = false;
-  const iggy3d::SceneRoomMeshItem* scanGaze = nullptr;
   const iggy3d::SceneProjectionResult scan =
       iggy3d::buildSceneProjection(state, &room, config);
-  (void)hasGazeBladeMesh(scan.room.meshes, &scanGaze);
-  return ok && expect(scanGaze != nullptr && scanGaze->role == "npc_gaze_scan",
-                      "gaze blade scan tint when not perceiving");
+  return ok && expect(countNpcGazeRole(scan.room.meshes, "npc_gaze_scan") == 3U,
+                      "scan gaze role on all blades");
 }
 
 }  // namespace

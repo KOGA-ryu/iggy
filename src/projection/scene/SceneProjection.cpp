@@ -183,17 +183,46 @@ void attachRoomProjection(const RoomAsset* room, SceneProjectionResult& result) 
   result.room = std::move(projected);
 }
 
-// Append a per-NPC "gaze blade" debug mesh: a thin world-space triangle from
-// the NPC eye along its facing, length = sight range, tinted alert (currently
-// perceives the player) vs scan (does not). Piggybacks the room-mesh render
-// path, which is the one path that rasterizes world geometry.
+std::string npcGazeRole(const AiActorState& actor) {
+  if (actor.lastPerceived) {
+    return "npc_gaze_perceived";
+  }
+  if (actor.lastTargetInRadius && actor.lastTargetInVisionCone &&
+      actor.lastInVerticalCone && actor.lastLos == AiPerceptionLos::Blocked) {
+    return "npc_gaze_blocked";
+  }
+  return "npc_gaze_scan";
+}
+
+void appendNpcGazeBlade(SceneProjectionResult& result,
+                        const std::string& stableName,
+                        std::string_view suffix,
+                        std::string role,
+                        Vec3 apex,
+                        Vec3 end,
+                        float halfWidthMeters) {
+  SceneRoomMeshItem item;
+  item.id = "npc_gaze_" + stableName + "_" + std::string(suffix);
+  item.role = std::move(role);
+  item.position = apex;
+  item.size = {halfWidthMeters, 0.0F, 0.0F};
+  item.hasWallSegment = true;
+  item.wallStartMeters = apex;
+  item.wallEndMeters = end;
+  item.wallThicknessMeters = halfWidthMeters;
+  result.room.meshes.push_back(std::move(item));
+}
+
+// Append per-NPC "gaze blade" debug meshes: center plus upper/lower vertical
+// cone extents from the mirrored guard eye and profile half-angle. Piggybacks
+// the room-mesh render path, which rasterizes world geometry.
 void attachNpcVisionDebug(const SessionState& state,
                           const SceneProjectionConfig& config,
                           SceneProjectionResult& result) {
   if (!config.includeNpcVisionDebug || !result.room.loaded) {
     return;
   }
-  constexpr float kEyeHeightMeters = 1.0F;
+  constexpr float kDegreesToRadians = 0.0174532925199F;
   constexpr float kGazeBladeHalfWidthMeters = 0.12F;
   for (const AiActorState& actor : state.ai.actors) {
     const EntityState* entity = state.world.findById(actor.actor);
@@ -203,30 +232,36 @@ void attachNpcVisionDebug(const SessionState& state,
     }
     const float facingLengthSq = actor.facingDirection.x * actor.facingDirection.x +
                                  actor.facingDirection.z * actor.facingDirection.z;
-    if (!(facingLengthSq > 1.0e-8F) || !(actor.lastSightRangeMeters > 0.0F)) {
+    if (!(facingLengthSq > 1.0e-8F) || !(actor.lastSightRangeMeters > 0.0F) ||
+        !std::isfinite(actor.lastGuardEyeHeightMeters) ||
+        !std::isfinite(actor.lastVerticalHalfAngleDegrees)) {
       continue;
     }
     const float invLength = 1.0F / std::sqrt(facingLengthSq);
     const Vec3 apex{entity->transform.position.x,
-                    entity->transform.position.y + kEyeHeightMeters,
+                    entity->transform.position.y + actor.lastGuardEyeHeightMeters,
                     entity->transform.position.z};
-    const Vec3 end{
+    const Vec3 centerEnd{
         apex.x + actor.facingDirection.x * invLength * actor.lastSightRangeMeters,
         apex.y,
         apex.z + actor.facingDirection.z * invLength * actor.lastSightRangeMeters};
-    const bool alert = actor.lastTargetInRadius && actor.lastTargetInVisionCone &&
-                       actor.lastTargetHasLineOfSight;
+    const float verticalHalfAngleRadians =
+        actor.lastVerticalHalfAngleDegrees * kDegreesToRadians;
+    const float verticalOffset =
+        std::tan(verticalHalfAngleRadians) * actor.lastSightRangeMeters;
+    if (!std::isfinite(verticalOffset)) {
+      continue;
+    }
+    const Vec3 upperEnd{centerEnd.x, centerEnd.y + verticalOffset, centerEnd.z};
+    const Vec3 lowerEnd{centerEnd.x, centerEnd.y - verticalOffset, centerEnd.z};
+    const std::string role = npcGazeRole(actor);
 
-    SceneRoomMeshItem item;
-    item.id = "npc_gaze_" + entity->stableName;
-    item.role = alert ? "npc_gaze_alert" : "npc_gaze_scan";
-    item.position = apex;
-    item.size = {kGazeBladeHalfWidthMeters, 0.0F, 0.0F};
-    item.hasWallSegment = true;
-    item.wallStartMeters = apex;
-    item.wallEndMeters = end;
-    item.wallThicknessMeters = kGazeBladeHalfWidthMeters;
-    result.room.meshes.push_back(std::move(item));
+    appendNpcGazeBlade(result, entity->stableName, "center", role, apex, centerEnd,
+                       kGazeBladeHalfWidthMeters);
+    appendNpcGazeBlade(result, entity->stableName, "upper", role, apex, upperEnd,
+                       kGazeBladeHalfWidthMeters);
+    appendNpcGazeBlade(result, entity->stableName, "lower", role, apex, lowerEnd,
+                       kGazeBladeHalfWidthMeters);
   }
 }
 

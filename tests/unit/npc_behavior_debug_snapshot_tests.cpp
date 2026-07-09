@@ -144,6 +144,13 @@ bool hostileNpcRowShowsProfileTargetAndAiState() {
   dummy.lastIntent = iggy3d::AiIntentKind::AttackTarget;
   dummy.cooldownTicksRemaining = 2;
   dummy.nextDecisionTick = 9;
+  dummy.lastHorizontalAngleDeg = 12.5F;
+  dummy.lastVerticalAngleDeg = -4.25F;
+  dummy.lastInVerticalCone = true;
+  dummy.lastPerceived = true;
+  dummy.lastLos = iggy3d::AiPerceptionLos::Clear;
+  dummy.lastGuardEyeHeightMeters = 1.6F;
+  dummy.lastVerticalHalfAngleDegrees = 30.0F;
   ai.actors.push_back(dummy);
 
   iggy3d::CombatState combat;
@@ -188,6 +195,18 @@ bool hostileNpcRowShowsProfileTargetAndAiState() {
          expect(row.targetActive, "target active") &&
          expect(!row.targetCombatantDefeated, "target alive") &&
          expect(near(row.targetDistanceMeters, 5.0F), "target distance") &&
+         expect(near(row.lastHorizontalAngleDeg, 12.5F),
+                "horizontal angle copied") &&
+         expect(near(row.lastVerticalAngleDeg, -4.25F),
+                "vertical angle copied") &&
+         expect(row.lastInVerticalCone, "vertical cone copied") &&
+         expect(row.lastPerceived, "perceived copied") &&
+         expect(row.lastLos == iggy3d::AiPerceptionLos::Clear,
+                "los copied") &&
+         expect(near(row.lastGuardEyeHeightMeters, 1.6F),
+                "guard eye copied") &&
+         expect(near(row.lastVerticalHalfAngleDegrees, 30.0F),
+                "vertical half angle copied") &&
          expect(row.cooldownTicksRemaining == 2, "cooldown copied") &&
          expect(row.nextDecisionTick == 9, "next decision tick");
 }
