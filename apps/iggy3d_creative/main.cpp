@@ -59,6 +59,7 @@
 #include "render/vulkan/VulkanBackend.hpp"
 
 #include "CreativeEditorAim.hpp"
+#include "CreativeEditorCaptureScenario.hpp"
 #include "CreativeEditorClickSelection.hpp"
 #include "CreativeEditorCommandInput.hpp"
 #include "CreativeEditorFrameInput.hpp"
@@ -68,10 +69,8 @@
 #include "CreativeRendererBootstrap.hpp"
 #include "CreativeEditorSelection.hpp"
 #include "CreativeEditorState.hpp"
-#include "StandaloneCaptureScenario.hpp"
 #include "StandaloneCaptureScript.hpp"
 #include "StandaloneBrushPalette.hpp"
-#include "StandaloneDelete.hpp"
 #include "StandaloneFrustumCull.hpp"
 #include "StandaloneGizmo.hpp"
 #include "StandalonePathEditing.hpp"
@@ -86,8 +85,6 @@
 namespace {
 
 using namespace iggy3d;
-using iggy3d_creative_app::runStandaloneCaptureScenarioStep;
-using iggy3d_creative_app::StandaloneCaptureScenarioStepRequest;
 using iggy3d_creative_app::StandaloneCaptureScript;
 using iggy3d_creative_app::StandaloneUndoStack;
 using iggy3d_creative_app::BrushFootprint;
@@ -109,7 +106,6 @@ using iggy3d_creative_app::CreativeEditorFrameInputResult;
 using iggy3d_creative_app::CreativeEditorGizmoFrame;
 using iggy3d_creative_app::CreativeEditorPickFrame;
 using iggy3d_creative_app::CreativeEditorSelectionFrame;
-using iggy3d_creative_app::deleteSelectedObject;
 using iggy3d_creative_app::firstBrushKind;
 using iggy3d_creative_app::dispatchMoveReleaseWithUndo;
 using iggy3d_creative_app::GizmoAxis;
@@ -135,6 +131,7 @@ using iggy3d_creative_app::pointMarkerBounds;
 using iggy3d_creative_app::pathPointsSummary;
 using iggy3d_creative_app::projectBoxToScreen;
 using iggy3d_creative_app::resolveCreativeEditorSelectionFrame;
+using iggy3d_creative_app::runCreativeEditorCaptureScenarioFrame;
 using iggy3d_creative_app::ScreenPoint;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::appendStandaloneWireframeBoxEdges;
@@ -420,27 +417,8 @@ int main(int argc, char** argv) {
     applyCreativeEditorPlacementInput(
         window, appState, editor, aimCellCenter, !capturePath.empty());
 
-    // ---- CAPTURE SCENARIO (--capture) --------------------------------------
-    if (!capturePath.empty()) {
-      StandaloneCaptureScenarioStepRequest captureStep;
-      captureStep.enabled = true;
-      captureStep.frameIndex = editor.frameIndex;
-      captureStep.appState = &appState;
-      captureStep.undoStack = &editor.undoStack;
-      captureStep.captureScript = &editor.captureScript;
-      captureStep.placeBrush = &editor.placeBrush;
-      captureStep.placeMode = &editor.placeMode;
-      captureStep.placedCount = &editor.placedCount;
-      captureStep.placeCellSize = editor.placeCellSize;
-      captureStep.saveRoot = &saveRoot;
-      captureStep.saveId = &saveId;
-      captureStep.moveHeldAxisForX = heldAxisForGrabbedAxis(GizmoAxis::X);
-      captureStep.moveHeldAxisForZ = heldAxisForGrabbedAxis(GizmoAxis::Z);
-      captureStep.deleteSelected = [&](std::string_view source) {
-        return deleteSelectedObject(appState, source, &editor.undoStack);
-      };
-      runStandaloneCaptureScenarioStep(captureStep);
-    }
+    runCreativeEditorCaptureScenarioFrame(
+        appState, editor, saveRoot, saveId, !capturePath.empty());
 
     // ---- RESOLVE THE SELECTION (generic) -----------------------------------
     // Everything downstream — the yellow box, the gizmo, the dimension label, and

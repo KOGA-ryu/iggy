@@ -205,3 +205,93 @@ Report:
   Move policy move, interactive Move policy move, later frame-stage move,
   tests, receipt/golden files, broad CTest, interactive window launch, staging,
   commit, or push was performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/CreativeEditorCaptureScenario.hpp`
+- `apps/iggy3d_creative/CreativeEditorCaptureScenario.cpp`
+- `CMakeLists.txt`
+- moved this task card from `ready/` to `done/`
+
+Helper API shape:
+
+```cpp
+void runCreativeEditorCaptureScenarioFrame(
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    const std::filesystem::path& saveRoot,
+    const std::string& saveId,
+    bool captureMode);
+```
+
+What moved:
+
+- `!capturePath.empty()` capture gating, represented as `captureMode`
+- `StandaloneCaptureScenarioStepRequest captureStep` construction
+- all `captureStep` pointer/value assignments
+- `frameIndex = editor.frameIndex`
+- `moveHeldAxisForX` and `moveHeldAxisForZ` assignment through
+  `heldAxisForGrabbedAxis(...)`
+- delete callback setup using `deleteSelectedObject(appState, source,
+  &editor.undoStack)`
+- `runStandaloneCaptureScenarioStep(captureStep)`
+
+What remains in `main.cpp`:
+
+- selection resolution
+- gizmo frame construction
+- capture Move policy
+- interactive Move policy
+- overlay construction
+- submit, shutdown, and final logging
+
+CMake source-list placement:
+
+- added `apps/iggy3d_creative/CreativeEditorCaptureScenario.cpp` to the
+  `iggy3d_creative` executable source list next to the other
+  `CreativeEditor*.cpp` helpers.
+
+Required grep classifications:
+
+- `runCreativeEditorCaptureScenarioFrame(...)` is declared in
+  `CreativeEditorCaptureScenario.hpp`, defined in
+  `CreativeEditorCaptureScenario.cpp`, and called from `main.cpp`.
+- `StandaloneCaptureScenarioStepRequest`, all `captureStep` assignments,
+  delete callback setup, `moveHeldAxisForX`, `moveHeldAxisForZ`,
+  `deleteSelectedObject(...)`, and `runStandaloneCaptureScenarioStep(...)` live
+  in `CreativeEditorCaptureScenario.cpp`.
+- capture Move, interactive Move, overlay, and submit remain in `main.cpp`.
+- existing helper ownership remains unchanged; no `EditorFrame`,
+  `runCreativeEditorFrame(...)`, or old `appendWireframeBoxEdges(...)` helper
+  was introduced.
+- `CreativeEditorCaptureScenario.cpp` appears in `CMakeLists.txt` only in the
+  `iggy3d_creative` executable source list.
+
+Focused verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- focused trailing-whitespace scan over touched source/CMake files and this
+  card passed.
+
+Optional capture:
+
+- skipped; no owner explicitly allowed a windowed/Vulkan capture check.
+
+Confirmed not performed:
+
+- no `EditorFrame`
+- no `runCreativeEditorFrame(...)`
+- no capture Move policy move
+- no interactive Move policy move
+- no later frame-stage move
+- no tests, receipt files, or golden files edited
+- no broad CTest
+- no interactive window launch
+- no staging, commit, or push
