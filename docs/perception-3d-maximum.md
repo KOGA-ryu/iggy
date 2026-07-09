@@ -231,9 +231,10 @@ Unit (`npc_behavior_system_tests` + a new `npc_perception_3d_tests`), each a pin
 
 1. **P1 — Contract + config. ✅ DONE (E301, d4d807ea)** Add `NpcPerceptionResult`, the 5 new `NpcBehaviorConfig` fields + defaults +
    serialization/back-compat. No behavior change yet (result unused). Gate: builds, config round-trips.
-2. **P2 — The 3D function.** Implement `queryNpcPerception3D` (§4) + eye-height model (§5); wire `.perceived`
-   into the FSM at the old call site; delete the default-true LOS bool. Gate: full §10 unit matrix (cones,
-   radius, degenerate) green; garden re-pinned.
+2. **P2 — The 3D function. ✅ DONE (E302)** Implement 3D distance, horizontal/vertical cone math, stand-eye
+   geometry, and tri-state LOS input; wire the old FSM confirmation conjunction with the vertical gate
+   (not `.perceived`, pending the radius ruling). Gate: full §10 unit matrix (cones, radius, degenerate) green;
+   garden ledge pin added.
 3. **P3 — Single occlusion owner + A1/A2.** `segmentOcclusion` (§6); migrate LOS/sound/reasoning callers;
    startInside=Blocked; fail-closed tri-state; sound length-guard. Gate: occlusion tests + no through-wall.
 4. **P4 — Debug layer.** Frustum + colored LOS rays + readout + eye markers + toggles + receipt summary (§8/§9).

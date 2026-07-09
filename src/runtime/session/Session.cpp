@@ -712,7 +712,8 @@ NpcBehaviorDecision maybeApplyInvestigate(const NpcBehaviorDecision& decision,
   }
 
   const bool visualConfirmed =
-      perception.targetInVisionCone && perception.hasLineOfSight;
+      perception.targetInVisionCone && perception.inVerticalCone &&
+      perception.hasLineOfSight;
   const std::uint8_t band = alertBandIndex(actor.alertLevel, profile);
   const NpcInvestigateStep step =
       npcStepInvestigate(actor, perception.actorPosition, band, visualConfirmed,
@@ -1140,7 +1141,9 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
     perceptionRequest.target = target;
     perceptionRequest.config = config;
     perceptionRequest.actorFacingDirection = actorState.facingDirection;
-    perceptionRequest.targetHasLineOfSight = hasLineOfSight;
+    perceptionRequest.targetLos = hasLineOfSight
+                                      ? NpcPerceptionResult::Los::Clear
+                                      : NpcPerceptionResult::Los::Blocked;
     const NpcPerceptionResult perception = queryNpcPerception(perceptionRequest);
 
     // Step the graded-alert FSM from the perception already computed. It writes
@@ -1154,7 +1157,9 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
             ? clamp01(1.0F - perception.distanceMeters / config.perceptionRadiusMeters)
             : 0.0F;
     stimulus.hasValidTarget = perceptionHasLiveTarget(perception.status);
-    stimulus.visualConfirmed = perception.targetInVisionCone && perception.hasLineOfSight;
+    stimulus.visualConfirmed = perception.targetInVisionCone &&
+                               perception.inVerticalCone &&
+                               perception.hasLineOfSight;
 
     // PERCEIVE (a1s2, L1): resolve THIS tick's sound bus at the guard. Self-hearing
     // skip -- a guard never hears an event it emitted (v1 guards are silent, but the

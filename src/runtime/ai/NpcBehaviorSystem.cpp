@@ -15,30 +15,54 @@ float horizontalDistanceMeters(Vec3 lhs, Vec3 rhs) {
   return std::sqrt(dx * dx + dz * dz);
 }
 
-// Horizontal vision-cone test. Returns true when the target lies within
-// +/- config half-angle of the facing direction. A degenerate facing vector
-// (never configured) or a target sharing the actor's column disables the gate.
-bool targetWithinVisionCone(Vec3 facing,
-                            Vec3 actorPosition,
-                            Vec3 targetPosition,
-                            float halfAngleDegrees) {
+constexpr float kRadiansToDegrees = 57.2957795131F;
+constexpr float kBoundaryEpsilon = 1.0e-4F;
+
+float clampUnit(float value) {
+  if (value < -1.0F) {
+    return -1.0F;
+  }
+  if (value > 1.0F) {
+    return 1.0F;
+  }
+  return value;
+}
+
+struct HorizontalVisionCone {
+  float angleDegrees = 0.0F;
+  bool inCone = false;
+  bool omnidirectional = false;
+};
+
+HorizontalVisionCone computeHorizontalVisionCone(Vec3 facing,
+                                                 Vec3 delta,
+                                                 float halfAngleDegrees) {
+  HorizontalVisionCone cone;
   const Vec3 flatFacing{facing.x, 0.0F, facing.z};
   const float facingLenSq = lengthSquared(flatFacing);
   if (!std::isfinite(facingLenSq) || facingLenSq < 1.0e-8F) {
-    return true;  // no facing configured -> omnidirectional
+    cone.inCone = true;
+    cone.omnidirectional = true;
+    return cone;  // no facing configured -> omnidirectional
   }
-  const Vec3 toTarget{targetPosition.x - actorPosition.x, 0.0F,
-                      targetPosition.z - actorPosition.z};
+  const Vec3 toTarget{delta.x, 0.0F, delta.z};
   const float toTargetLenSq = lengthSquared(toTarget);
   if (!std::isfinite(toTargetLenSq) || toTargetLenSq < 1.0e-8F) {
-    return true;  // target on top of actor -> treat as visible
+    cone.inCone = true;
+    return cone;  // directly above/below -> not horizontally out
   }
   const float cosBetween =
       dot(flatFacing, toTarget) / std::sqrt(facingLenSq * toTargetLenSq);
-  constexpr float kDegreesToRadians = 0.01745329252F;
-  const float cosThreshold = std::cos(halfAngleDegrees * kDegreesToRadians);
-  constexpr float kBoundaryEpsilon = 1.0e-4F;
-  return cosBetween >= cosThreshold - kBoundaryEpsilon;
+  cone.angleDegrees = std::acos(clampUnit(cosBetween)) * kRadiansToDegrees;
+  cone.inCone = cone.angleDegrees <= halfAngleDegrees + kBoundaryEpsilon;
+  return cone;
+}
+
+float verticalAngleDegrees(Vec3 delta, float distanceMeters) {
+  if (!(distanceMeters > 0.0F)) {
+    return 0.0F;
+  }
+  return std::asin(clampUnit(delta.y / distanceMeters)) * kRadiansToDegrees;
 }
 
 const CombatantState* findCombatant(const CombatState& combat, EntityId entity) {
@@ -217,6 +241,17 @@ bool isValidNpcBehaviorConfig(const NpcBehaviorConfig& config) {
          std::isfinite(config.visionHalfAngleDegrees) &&
          config.visionHalfAngleDegrees > 0.0F &&
          config.visionHalfAngleDegrees <= 180.0F &&
+         std::isfinite(config.verticalHalfAngleDegrees) &&
+         config.verticalHalfAngleDegrees > 0.0F &&
+         config.verticalHalfAngleDegrees <= 90.0F &&
+         std::isfinite(config.guardEyeHeightMeters) &&
+         config.guardEyeHeightMeters > 0.0F &&
+         std::isfinite(config.targetStandEyeHeightMeters) &&
+         config.targetStandEyeHeightMeters > 0.0F &&
+         std::isfinite(config.targetSneakEyeHeightMeters) &&
+         config.targetSneakEyeHeightMeters > 0.0F &&
+         std::isfinite(config.occlusionMarginMeters) &&
+         config.occlusionMarginMeters >= 0.0F &&
          config.attackDamage > 0 &&
          config.decisionIntervalTicks > 0U;
 }
@@ -274,32 +309,60 @@ NpcPerceptionResult queryNpcPerception(const NpcPerceptionRequest& request) {
     return result;
   }
 
-  result.distanceMeters = horizontalDistanceMeters(result.actorPosition,
-                                                  result.targetPosition);
+  const Vec3 guardEye = result.actorPosition +
+                        Vec3{0.0F, request.config.guardEyeHeightMeters, 0.0F};
+  // TODO(P2 follow-up): switch to the sneak eye height when stance is exposed here.
+  const Vec3 targetEye =
+      result.targetPosition +
+      Vec3{0.0F, request.config.targetStandEyeHeightMeters, 0.0F};
+  const Vec3 delta = targetEye - guardEye;
+  result.distanceMeters = length(delta);
   if (!std::isfinite(result.distanceMeters)) {
     result.status = NpcPerceptionStatus::InvalidTarget;
     return result;
   }
+  if (result.distanceMeters < 1.0e-4F) {
+    result.targetInPerceptionRadius = true;
+    result.targetInAttackRange = true;
+    result.targetInVisionCone = true;
+    result.inVerticalCone = true;
+    result.los = NpcPerceptionResult::Los::Clear;
+    result.hasLineOfSight = true;
+    result.perceived = true;
+    result.status = NpcPerceptionStatus::Ready;
+    return result;
+  }
+
   result.targetInPerceptionRadius =
       result.distanceMeters <= request.config.perceptionRadiusMeters;
   result.targetInAttackRange = result.distanceMeters <= request.config.attackRangeMeters;
+  const HorizontalVisionCone horizontalCone =
+      computeHorizontalVisionCone(request.actorFacingDirection,
+                                  delta,
+                                  request.config.visionHalfAngleDegrees);
+  result.horizontalAngleDeg = horizontalCone.angleDegrees;
+  result.targetInVisionCone = horizontalCone.inCone;
+  result.verticalAngleDeg = verticalAngleDegrees(delta, result.distanceMeters);
+  result.inVerticalCone =
+      horizontalCone.omnidirectional ||
+      std::fabs(result.verticalAngleDeg) <=
+          request.config.verticalHalfAngleDegrees + kBoundaryEpsilon;
+  result.los = request.targetLos;
+  result.hasLineOfSight = result.los == NpcPerceptionResult::Los::Clear;
+  result.perceived = result.targetInPerceptionRadius &&
+                     result.targetInVisionCone &&
+                     result.inVerticalCone &&
+                     result.los == NpcPerceptionResult::Los::Clear;
+
   if (!result.targetInPerceptionRadius) {
     result.status = NpcPerceptionStatus::TargetOutOfRange;
     return result;
   }
-
-  result.targetInVisionCone =
-      targetWithinVisionCone(request.actorFacingDirection,
-                             result.actorPosition,
-                             result.targetPosition,
-                             request.config.visionHalfAngleDegrees);
-  if (!result.targetInVisionCone) {
+  if (!result.targetInVisionCone || !result.inVerticalCone) {
     result.status = NpcPerceptionStatus::TargetOutOfCone;
     return result;
   }
-
-  result.hasLineOfSight = request.targetHasLineOfSight;
-  if (!result.hasLineOfSight) {
+  if (result.los != NpcPerceptionResult::Los::Clear) {
     result.status = NpcPerceptionStatus::TargetOccluded;
     return result;
   }

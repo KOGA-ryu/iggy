@@ -126,6 +126,28 @@ iggy3d::NpcPerceptionResult perceptionFor(const iggy3d::WorldState& world,
   return iggy3d::queryNpcPerception({&world, &combat, {1}, {2}, config});
 }
 
+// P2 fixture: guard at origin facing +Z; target at (x, y, z), both default stand eye height.
+iggy3d::NpcPerceptionResult perceive3D(float tx, float ty, float tz,
+                                       iggy3d::Vec3 facing = {0.0F, 0.0F, 1.0F}) {
+  iggy3d::WorldState world;
+  auto guard = entity({1}, "npc", iggy3d::EntityKind::Npc, 0.0F, 0.0F);
+  auto player = entity({2}, "player", iggy3d::EntityKind::Player, tx, tz);
+  player.transform.position.y = ty;
+  (void)world.seedEntity(guard);
+  (void)world.seedEntity(player);
+  iggy3d::CombatState readyCombat = combat();
+  iggy3d::NpcBehaviorConfig config;  // radius 6, hCone 60, vCone 30, eyes 1.6/1.6
+  iggy3d::NpcPerceptionRequest request{&world, &readyCombat, {1}, {2}, config};
+  request.actorFacingDirection = facing;
+  return iggy3d::queryNpcPerception(request);
+}
+
+bool invariantHolds(const iggy3d::NpcPerceptionResult& r) {
+  return r.perceived == (r.targetInPerceptionRadius && r.targetInVisionCone &&
+                         r.inVerticalCone &&
+                         r.los == iggy3d::NpcPerceptionResult::Los::Clear);
+}
+
 bool configValidationRejectsBadValues() {
   iggy3d::NpcBehaviorConfig config;
   bool ok = expect(iggy3d::isValidNpcBehaviorConfig(config), "default config valid") &&
@@ -182,6 +204,88 @@ bool perceptionResult3DContractDefaultsArePinned() {
                 "perception los default unknown");
 }
 
+bool flatGroundPerceptionUnchanged() {  // the no-regression pin
+  const auto r = perceive3D(0.0F, 0.0F, 3.0F);
+  return expect(r.perceived, "flat dead-ahead perceived") &&
+         expect(r.targetInPerceptionRadius && r.targetInVisionCone && r.inVerticalCone,
+                "flat gates all pass") &&
+         expect(near(r.verticalAngleDeg, 0.0F), "flat vertical angle ~0") &&
+         expect(r.horizontalAngleDeg <= 0.01F, "flat horizontal angle ~0") &&
+         expect(invariantHolds(r), "flat invariant");
+}
+
+bool ledgeAboveEscapesVerticalCone() {  // THE 2D-cheat pin: dead-ahead but 45 deg up
+  const auto r = perceive3D(0.0F, 4.0F, 4.0F);  // atan(4/4)=45 > 30
+  return expect(r.targetInVisionCone, "ledge still in horizontal cone") &&
+         expect(r.targetInPerceptionRadius, "ledge within 3D radius (5.66m)") &&
+         expect(!r.inVerticalCone, "ledge outside vertical cone") &&
+         expect(!r.perceived, "ledge NOT perceived") &&
+         expect(r.verticalAngleDeg > 44.0F && r.verticalAngleDeg < 46.0F,
+                "ledge vertical angle ~45") && expect(invariantHolds(r), "ledge invariant");
+}
+
+bool verticalBoundaryIsInclusive() {
+  const auto in = perceive3D(0.0F, 2.28F, 4.0F);      // atan(2.28/4)=29.68 deg
+  const auto out = perceive3D(0.0F, 2.35F, 4.0F);     // atan(2.35/4)=30.44 deg
+  const auto below = perceive3D(0.0F, -2.28F, 4.0F);
+  return expect(in.inVerticalCone && in.perceived, "29.7 deg inside") &&
+         expect(!out.inVerticalCone && !out.perceived, "30.4 deg outside") &&
+         expect(below.inVerticalCone && below.perceived, "below is symmetric") &&
+         expect(invariantHolds(out), "boundary invariant");
+}
+
+bool radiusIsThreeDimensional() {  // the 3D-radius pin: horizontally near, far in 3D
+  const auto r = perceive3D(0.0F, 5.0F, 3.5F);  // dist = sqrt(25+12.25) = 6.10 > 6
+  return expect(!r.targetInPerceptionRadius, "3D distance exceeds radius") &&
+         expect(near(r.distanceMeters, 6.1033F) ||
+                    (r.distanceMeters > 6.09F && r.distanceMeters < 6.12F),
+                "distance is 3D") &&
+         expect(!r.perceived, "not perceived beyond 3D radius") &&
+         expect(invariantHolds(r), "radius invariant");
+}
+
+bool directlyOverheadHandlesDegenerateXZ() {
+  const auto r = perceive3D(0.0F, 3.0F, 0.0F);  // straight up, vert 90
+  return expect(r.targetInVisionCone, "pure-vertical target not horizontally out") &&
+         expect(near(r.horizontalAngleDeg, 0.0F), "overhead horizontal angle 0") &&
+         expect(!r.inVerticalCone, "overhead outside vertical cone") &&
+         expect(r.verticalAngleDeg > 89.0F, "overhead vertical angle ~90") &&
+         expect(!r.perceived, "overhead not perceived") &&
+         expect(invariantHolds(r), "overhead invariant");
+}
+
+bool zeroFacingStaysOmnidirectional() {  // documented contract (v1.1 §3): BOTH cones bypass
+  const auto r = perceive3D(0.0F, 2.0F, -3.0F, {0.0F, 0.0F, 0.0F});  // behind AND above
+  return expect(r.targetInVisionCone, "zero facing bypasses horizontal cone") &&
+         expect(r.inVerticalCone, "zero facing bypasses vertical cone") &&
+         expect(r.perceived, "zero facing perceives behind+above target in radius") &&
+         expect(invariantHolds(r), "omnidirectional invariant");
+}
+
+bool blockedLosSuppressesPerception() {  // tri-state input mapping
+  iggy3d::WorldState world;              // same fixture as perceive3D, inline with los override
+  auto guard = entity({1}, "npc", iggy3d::EntityKind::Npc, 0.0F, 0.0F);
+  auto player = entity({2}, "player", iggy3d::EntityKind::Player, 0.0F, 3.0F);
+  (void)world.seedEntity(guard);
+  (void)world.seedEntity(player);
+  iggy3d::CombatState readyCombat = combat();
+  iggy3d::NpcBehaviorConfig config;
+  iggy3d::NpcPerceptionRequest request{&world, &readyCombat, {1}, {2}, config};
+  request.actorFacingDirection = {0.0F, 0.0F, 1.0F};
+  request.targetLos = iggy3d::NpcPerceptionResult::Los::Blocked;
+  const auto r = iggy3d::queryNpcPerception(request);
+  return expect(!r.perceived, "blocked los suppresses") &&
+         expect(!r.hasLineOfSight, "alias mirrors tri-state") &&
+         expect(r.targetInVisionCone && r.inVerticalCone, "gates unaffected by los") &&
+         expect(invariantHolds(r), "blocked invariant");
+}
+
+bool requestDefaultsAssumeClear() {
+  const iggy3d::NpcPerceptionRequest request{};
+  return expect(request.targetLos == iggy3d::NpcPerceptionResult::Los::Clear,
+                "default los preserves documented assume-clear contract");
+}
+
 bool visionConeAndLineOfSightGatePerception() {
   const iggy3d::WorldState world = worldWithNpcAndPlayer(3.0F);  // npc@0, player@+3x
   const iggy3d::CombatState readyCombat = combat();
@@ -221,7 +325,7 @@ bool visionConeAndLineOfSightGatePerception() {
   // In cone but occluded -> perceived as blocked.
   iggy3d::NpcPerceptionRequest occluded{&world, &readyCombat, {1}, {2}, config};
   occluded.actorFacingDirection = {1.0F, 0.0F, 0.0F};
-  occluded.targetHasLineOfSight = false;
+  occluded.targetLos = iggy3d::NpcPerceptionResult::Los::Blocked;
   const iggy3d::NpcPerceptionResult blocked = iggy3d::queryNpcPerception(occluded);
   return ok &&
          expect(blocked.status == iggy3d::NpcPerceptionStatus::TargetOccluded,
@@ -672,6 +776,14 @@ bool stableStatusNamesAreLowerSnake() {
 int main() {
   const bool ok = configValidationRejectsBadValues() &&
                   perceptionResult3DContractDefaultsArePinned() &&
+                  flatGroundPerceptionUnchanged() &&
+                  ledgeAboveEscapesVerticalCone() &&
+                  verticalBoundaryIsInclusive() &&
+                  radiusIsThreeDimensional() &&
+                  directlyOverheadHandlesDegenerateXZ() &&
+                  zeroFacingStaysOmnidirectional() &&
+                  blockedLosSuppressesPerception() &&
+                  requestDefaultsAssumeClear() &&
                   perceptionReportsDeterministicFailures() &&
                   defeatedAndOutOfRangePerceptionStatuses() &&
                   visionConeAndLineOfSightGatePerception() &&

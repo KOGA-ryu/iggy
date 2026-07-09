@@ -59,22 +59,6 @@ enum class NpcPerceptionStatus : std::uint8_t {
 std::string_view npcPerceptionStatusName(NpcPerceptionStatus status);
 bool isValidNpcBehaviorConfig(const NpcBehaviorConfig& config);
 
-struct NpcPerceptionRequest {
-  const WorldState* world = nullptr;
-  const CombatState* combat = nullptr;
-  EntityId actor;
-  EntityId target;
-  NpcBehaviorConfig config;
-  // Actor's horizontal gaze direction. A zero/degenerate vector disables the
-  // vision-cone gate (omnidirectional perception) so low-level callers that
-  // don't model facing keep the pre-cone behavior.
-  Vec3 actorFacingDirection;
-  // Whether the actor has an unobstructed line of sight to the target. The
-  // caller resolves this (e.g. via a physics raycast against world colliders);
-  // the default true means "assume clear" when no occlusion test is available.
-  bool targetHasLineOfSight = true;
-};
-
 struct NpcPerceptionResult {
   NpcPerceptionStatus status = NpcPerceptionStatus::InvalidWorld;
   EntityId actor;
@@ -96,6 +80,21 @@ struct NpcPerceptionResult {
   bool perceived = false;
   enum class Los : std::uint8_t { Clear, Blocked, Unknown };
   Los los = Los::Unknown;
+};
+
+struct NpcPerceptionRequest {
+  const WorldState* world = nullptr;
+  const CombatState* combat = nullptr;
+  EntityId actor;
+  EntityId target;
+  NpcBehaviorConfig config;
+  // Actor's horizontal gaze direction. A zero/degenerate vector disables the
+  // vision-cone gates (omnidirectional perception) so low-level callers that
+  // don't model facing keep the pre-cone behavior.
+  Vec3 actorFacingDirection;
+  // Caller-supplied line-of-sight state. The default preserves the documented
+  // "assume clear" contract when no occlusion test is available.
+  NpcPerceptionResult::Los targetLos = NpcPerceptionResult::Los::Clear;
 };
 
 NpcPerceptionResult queryNpcPerception(const NpcPerceptionRequest& request);

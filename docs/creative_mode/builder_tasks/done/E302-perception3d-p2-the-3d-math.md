@@ -180,3 +180,68 @@ byte-identical · flat garden tests unchanged + the ledge case added · maximum 
 No occlusion computation inside the kernel, no `segmentOcclusion`, no startInside/fail-closed inversions
 (P3); no debug drawing (P4); no alert/investigate decay fixes (P5); no `.perceived` substitution at the FSM
 sites (pending the radius ruling); no stance wiring (socket).
+
+## Completion Brief
+
+Completed E302 as the first behavior-changing Perception 3D slice.
+
+Files changed:
+
+- `src/runtime/ai/NpcBehaviorSystem.hpp`
+- `src/runtime/ai/NpcBehaviorSystem.cpp`
+- `src/runtime/session/Session.cpp`
+- `tests/unit/npc_behavior_system_tests.cpp`
+- `tests/unit/stealth_garden_tests.cpp`
+- `docs/perception-3d-maximum.md`
+- this task card, moved to `done/`
+
+Implemented:
+
+- Replaced `NpcPerceptionRequest::targetHasLineOfSight` with
+  `NpcPerceptionResult::Los targetLos`, defaulting to `Clear`.
+- `queryNpcPerception(...)` now computes full 3D eye-to-eye distance using
+  stand-eye heights, horizontal angle, vertical angle, horizontal cone,
+  vertical cone, tri-state `los`, derived `hasLineOfSight`, and final
+  `perceived`.
+- Degenerate eye-to-eye distance below `1.0e-4F` returns clear perceived
+  sight with zero angles and all gates true.
+- Zero/degenerate facing remains omnidirectional and bypasses both cone gates.
+- `horizontalDistanceMeters(...)` intentionally remains for home/leash logic,
+  but perception no longer uses it for range.
+- Session LOS raycast bool now maps to `Los::Clear` or `Los::Blocked`.
+- Both FSM visual-confirmation conjunctions now require
+  `targetInVisionCone && inVerticalCone && hasLineOfSight`.
+- `.perceived` was not substituted at FSM sites, preserving the open radius
+  ruling from maximum v1.3.
+
+Tests added/updated:
+
+- Added the planner-authored P2 perception pins in
+  `npc_behavior_system_tests.cpp`: flat unchanged, ledge vertical miss,
+  vertical boundary, 3D radius, directly overhead, zero-facing
+  omnidirectional behavior, blocked LOS suppression, and default assume-clear
+  request LOS.
+- Updated the existing occluded perception test to use `Los::Blocked`.
+- Added the garden ledge integration pin: same clear XZ lane, ground-level
+  target visually confirms and raises alert, 3m ledge target does not.
+
+Verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target npc_behavior_system_tests stealth_garden_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(npc_behavior_system_tests|stealth_garden_tests)$' --output-on-failure`
+  passed.
+- `cmake --build /Users/kogaryu/iggy3d/build --target all -j10` passed,
+  including tools.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure` passed:
+  261/261 tests.
+- Receipt golden diff remained byte-identical.
+- `git diff --check` passed.
+- Focused trailing-whitespace scan over touched files and this card passed.
+
+Not performed:
+
+- No occlusion computation, `segmentOcclusion`, start-inside/fail-closed
+  inversion, debug drawing, alert/investigate decay fix, `.perceived`
+  substitution at FSM sites, stance wiring, fixture/golden edit, broad
+  behavior beyond P2, interactive window launch, staging, commit, or push.

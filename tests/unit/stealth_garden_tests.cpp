@@ -683,6 +683,57 @@ bool islandBreaksLineOfSight() {
   return ok;
 }
 
+// --- Vertical cone: same flat LOS, ledge height escapes sight -----------------------------
+// Freeze a guard looking down an open lane. A ground-level player is visually confirmed; the
+// same player 3 m higher at the same XZ range is inside radius and horizontal cone but outside
+// the vertical cone, so it must not raise alert or plant last-known memory.
+bool verticalLedgeEscapesVisualConfirmation() {
+  const auto prepareProbe = [](GardenSession& gs, float playerY) {
+    if (iggy3d::AiActorState* guard = mutableGuardAi(gs)) {
+      guard->patrolWaypoints.clear();
+      guard->facingDirection = {0.0F, 0.0F, 1.0F};
+      guard->alertLevel = 0.0F;
+      guard->hasLastKnownTarget = false;
+      guard->lastKnownTargetTick = 0;
+    }
+    teleportEntity(gs, gs.guard, cellToWorld(1, 1));
+    teleportEntity(gs, gs.player, {1.0F, playerY, 4.0F});
+    submitWait(gs);
+    return tick(gs);
+  };
+
+  GardenSession ledge = makeGardenSession();
+  if (!ledge.ok) {
+    return false;
+  }
+  bool ok = expect(prepareProbe(ledge, 3.0F), "ledge vertical probe tick ok");
+  const iggy3d::AiActorState* ledgeAi = guardAi(ledge);
+  ok = ok && expect(ledgeAi != nullptr, "ledge guard present");
+  if (ledgeAi != nullptr) {
+    ok = ok && expect(ledgeAi->lastTargetInRadius, "ledge player within radius") &&
+         expect(ledgeAi->lastTargetInVisionCone, "ledge player in horizontal cone") &&
+         expect(ledgeAi->lastTargetHasLineOfSight, "ledge lane has clear LOS") &&
+         expect(ledgeAi->alertLevel <= 0.0F, "ledge does not raise alert") &&
+         expect(!ledgeAi->hasLastKnownTarget, "ledge does not plant last-known memory");
+  }
+
+  GardenSession ground = makeGardenSession();
+  if (!ground.ok) {
+    return false;
+  }
+  ok = ok && expect(prepareProbe(ground, 0.0F), "ground vertical probe tick ok");
+  const iggy3d::AiActorState* groundAi = guardAi(ground);
+  ok = ok && expect(groundAi != nullptr, "ground guard present");
+  if (groundAi != nullptr) {
+    ok = ok && expect(groundAi->lastTargetInRadius, "ground player within radius") &&
+         expect(groundAi->lastTargetInVisionCone, "ground player in horizontal cone") &&
+         expect(groundAi->lastTargetHasLineOfSight, "ground lane has clear LOS") &&
+         expect(groundAi->alertLevel > 0.0F, "ground player raises alert") &&
+         expect(groundAi->hasLastKnownTarget, "ground player plants last-known memory");
+  }
+  return ok;
+}
+
 // --- a1s2: sound emission → hearing → investigation ----------------------------------------
 // SNEAK INVARIANT (mechanical margin). The sneak tape (sneakUnseenReachesExitWithoutAlarm)
 // stays green; here we assert WHY: across every emitting sneak tick the loudest footstep's
@@ -1269,6 +1320,7 @@ bool searchWaitsWhileMemoryHeld() {
 
 int main() {
   const bool ok = islandBreaksLineOfSight() && sneakUnseenReachesExitWithoutAlarm() &&
+                  verticalLedgeEscapesVisualConfirmation() &&
                   spottedGuardEscalatesToChasing() && gardenGuardLapsIslandRing() &&
                   breakContactInvestigatesThenGivesUp() &&
                   sneakFootstepsStayBelowHearingMargin() &&
