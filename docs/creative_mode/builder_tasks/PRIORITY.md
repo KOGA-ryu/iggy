@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E277-iggy3d-creative-main-split-g11-pick-frame.md`
+1. `ready/E278-iggy3d-creative-main-split-g12-world-pick-proof.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E277-iggy3d-creative-main-split-g11-pick-frame.md`
+1. `ready/E278-iggy3d-creative-main-split-g12-world-pick-proof.md`
 
 ## Parking Lot
 
@@ -218,6 +218,8 @@ Held — do NOT promote to `ready/` on a guess:
   move, overlay, and logging policy in `main.cpp`. E275 is complete as the
   gizmo-frame geometry and path-handle hit-data helper. E276 is complete as the
   path-handle capture proof logging helper inside the existing gizmo-frame
-  module. E277 is released to extract only visible-object pick candidate
-  construction plus point/line/path proxy proof logs, leaving world-pick proof,
-  click selection, Move policy, overlay, and submit in `main.cpp`.
+  module. E277 is complete as visible-object pick candidate construction plus
+  point/line/path proxy proof logs. E278 is released to move only the
+  capture-only world-pick proof logging into the existing pick-frame helper,
+  leaving click selection, placement, Move policy, overlay, and submit in
+  `main.cpp`.
