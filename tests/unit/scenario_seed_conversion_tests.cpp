@@ -58,8 +58,101 @@ bool invalidValuesFailClosed() {
                 "invalid patrol fails closed");
 }
 
+bool entityValuesConvertAndInvalidValuesFailClosed() {
+  iggy3d::ScenarioEntitySeed entity;
+  entity.stableName = "seed_entity";
+  entity.kind = iggy3d::ScenarioEntityKind::Npc;
+  entity.targeting.targetable = true;
+  entity.targeting.actions = {iggy3d::ScenarioTargetAction::Attack};
+  entity.interaction.kind = iggy3d::ScenarioInteractionKind::Inspect;
+  entity.interaction.primaryEffect = iggy3d::ScenarioInteractionEffectKind::EmitEventOnly;
+  const auto converted = iggy3d::entityFromScenario(entity, {42U});
+
+  iggy3d::ScenarioCombatantSeed combatSeed;
+  combatSeed.factionId = 2U;
+  combatSeed.hitPoints = 3;
+  combatSeed.maxHitPoints = 5;
+  const auto combatant = iggy3d::combatantFromScenario(&combatSeed, {42U});
+  const auto noCombatant = iggy3d::combatantFromScenario(nullptr, {42U});
+
+  iggy3d::ScenarioObjectiveSeed validObjective;
+  validObjective.id = "seed_objective";
+  validObjective.initialStatus = iggy3d::ObjectiveStatusSeed::Complete;
+  validObjective.condition = "InventoryContains";
+  validObjective.playerSlot = 7U;
+  validObjective.itemId = "seed_item";
+  validObjective.itemCount = 2U;
+  const auto convertedObjective = iggy3d::objectiveFromScenario(validObjective);
+
+  iggy3d::ScenarioEntitySeed invalidKind = entity;
+  invalidKind.kind = static_cast<iggy3d::ScenarioEntityKind>(99U);
+  iggy3d::ScenarioEntitySeed invalidAction = entity;
+  invalidAction.targeting.actions = {
+      static_cast<iggy3d::ScenarioTargetAction>(99U)};
+  iggy3d::ScenarioEntitySeed invalidInteraction = entity;
+  invalidInteraction.interaction.kind =
+      static_cast<iggy3d::ScenarioInteractionKind>(99U);
+  iggy3d::ScenarioEntitySeed invalidEffect = entity;
+  invalidEffect.interaction.primaryEffect =
+      static_cast<iggy3d::ScenarioInteractionEffectKind>(99U);
+  iggy3d::ScenarioObjectiveSeed invalidObjective;
+  invalidObjective.initialStatus = static_cast<iggy3d::ObjectiveStatusSeed>(99U);
+
+  const auto kind = iggy3d::entityFromScenario(invalidKind, {42U});
+  const auto action = iggy3d::entityFromScenario(invalidAction, {42U});
+  const auto interaction = iggy3d::entityFromScenario(invalidInteraction, {42U});
+  const auto effect = iggy3d::entityFromScenario(invalidEffect, {42U});
+  const auto objective = iggy3d::objectiveFromScenario(invalidObjective);
+  return expect(converted.status == iggy3d::ResultStatus::Ok &&
+                    converted.value.id.value == 42U &&
+                    converted.value.kind == iggy3d::EntityKind::Npc &&
+                    converted.value.targeting.actions.size() == 1U &&
+                    converted.value.targeting.actions.front() == iggy3d::TargetAction::Attack &&
+                    converted.value.interaction.kind == iggy3d::InteractionKind::Inspect &&
+                    converted.value.interaction.primaryEffect ==
+                        iggy3d::InteractionEffectKind::EmitEventOnly,
+                "entity conversion") &&
+         expect(combatant.status == iggy3d::ResultStatus::Ok &&
+                    combatant.value.has_value() &&
+                    combatant.value->entity.value == 42U &&
+                    combatant.value->factionId == 2U &&
+                    combatant.value->hitPoints == 3 &&
+                    combatant.value->maxHitPoints == 5 && !combatant.value->defeated,
+                "combatant conversion") &&
+         expect(noCombatant.status == iggy3d::ResultStatus::Ok &&
+                    !noCombatant.value.has_value(),
+                "absent combatant conversion") &&
+         expect(convertedObjective.status == iggy3d::ResultStatus::Ok &&
+                    convertedObjective.value.objectiveId == "seed_objective" &&
+                    convertedObjective.value.status == iggy3d::ObjectiveStatus::Complete &&
+                    convertedObjective.value.condition.kind ==
+                        iggy3d::ObjectiveConditionKind::PlayerHasItem &&
+                    convertedObjective.value.condition.playerSlot == 7U &&
+                    convertedObjective.value.condition.itemId == "seed_item" &&
+                    convertedObjective.value.condition.itemCount == 2U,
+                "objective conversion") &&
+         expect(kind.status == iggy3d::ResultStatus::Error &&
+                    kind.error.code == "scenario_seed.invalid_entity_kind",
+                "invalid entity kind fails closed") &&
+         expect(action.status == iggy3d::ResultStatus::Error &&
+                    action.error.code == "scenario_seed.invalid_target_action",
+                "invalid target action fails closed") &&
+         expect(interaction.status == iggy3d::ResultStatus::Error &&
+                    interaction.error.code == "scenario_seed.invalid_interaction_kind",
+                "invalid interaction kind fails closed") &&
+         expect(effect.status == iggy3d::ResultStatus::Error &&
+                    effect.error.code == "scenario_seed.invalid_interaction_effect",
+                "invalid interaction effect fails closed") &&
+         expect(objective.status == iggy3d::ResultStatus::Error &&
+                    objective.error.code == "scenario_seed.invalid_objective_status",
+                "invalid objective status fails closed");
+}
+
 }  // namespace
 
 int main() {
-  return validValuesConvert() && invalidValuesFailClosed() ? 0 : 1;
+  return validValuesConvert() && invalidValuesFailClosed() &&
+                 entityValuesConvertAndInvalidValuesFailClosed()
+             ? 0
+             : 1;
 }
