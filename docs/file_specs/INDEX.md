@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `eebd1820`
+Verified at: `266066cb`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `132`.
-- Current mapped source files represented by those specs: about `260`.
+- Current file specs: `136`.
+- Current mapped source files represented by those specs: about `268`.
 
 ## Status Labels
 
@@ -132,6 +132,10 @@ App creative/world launch:
 - `mapped` [ProductNewWorldLaunch.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/ProductNewWorldLaunch.md)
 - `mapped` [ProductLaunchState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/ProductLaunchState.md)
 - `mapped` [BuiltinDungeon.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/BuiltinDungeon.md)
+- `mapped` [Creation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/Creation.md)
+- `mapped` [ProductWorldTemplateOperations.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/ProductWorldTemplateOperations.md)
+- `mapped` [DefaultWorldTemplate.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/DefaultWorldTemplate.md)
+- `mapped` [PackageSessionSeed.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/PackageSessionSeed.md)
 - `mapped` [CreativeWorldOperations.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeWorldOperations.md)
 - `mapped` [WorldService.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/world/WorldService.md)
 - `mapped` [Facade.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/Facade.md)
@@ -200,12 +204,13 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch Z, product world/package creation surfaces:
+Batch AA, product world support surfaces:
 
-- `next` `src/app/iggy3d/world/Creation.*`
-- `next` `src/app/iggy3d/world/ProductWorldTemplateOperations.*`
-- `next` `src/app/iggy3d/world/DefaultWorldTemplate.*`
-- `next` `src/app/iggy3d/world/PackageSessionSeed.*`
+- `next` `src/app/iggy3d/world/NpcProfileAssignment.*`
+- `next` `src/app/iggy3d/world/MovementTestLab.*`
+- `next` `src/app/iggy3d/world/DungeonDraft.*`
+- `next` `src/app/iggy3d/world/WorldCreationState.hpp`
+- `next` `src/app/iggy3d/world/WorldSetupState.hpp`
 
 ## Defer Leaf Policy
 
