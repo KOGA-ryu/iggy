@@ -97,28 +97,17 @@ using iggy3d_creative_app::CreativeEditorGizmoFrame;
 using iggy3d_creative_app::CreativeEditorPickFrame;
 using iggy3d_creative_app::CreativeEditorSelectionFrame;
 using iggy3d_creative_app::firstBrushKind;
-using iggy3d_creative_app::dispatchMoveReleaseWithUndo;
-using iggy3d_creative_app::GizmoAxis;
 using iggy3d_creative_app::GizmoAxisShaft;
-using iggy3d_creative_app::gizmoAxisName;
-using iggy3d_creative_app::heldAxisForGrabbedAxis;
 using iggy3d_creative_app::initialPathPointsForAnchor;
 using iggy3d_creative_app::logCreativeEditorPathHandleCaptureFrame;
-using iggy3d_creative_app::logMoveDispatch;
-using iggy3d_creative_app::logObjectPlacement;
-using iggy3d_creative_app::movePathObjectWithUndo;
-using iggy3d_creative_app::movePathPointWithUndo;
-using iggy3d_creative_app::pushUndoSnapshot;
+using iggy3d_creative_app::processCreativeEditorMoveFrame;
 using iggy3d_creative_app::appendPathPolylineLines;
 using iggy3d_creative_app::lineProxyBounds;
 using iggy3d_creative_app::logCreativeEditorWorldPickProofFrame;
 using iggy3d_creative_app::ObjectVisualPickBounds;
 using iggy3d_creative_app::pathPointHandleBounds;
 using iggy3d_creative_app::PathPointHandleHit;
-using iggy3d_creative_app::pickPathPointHandle;
-using iggy3d_creative_app::pickGizmoAxisFromProjectedShafts;
 using iggy3d_creative_app::pointMarkerBounds;
-using iggy3d_creative_app::pathPointsSummary;
 using iggy3d_creative_app::projectBoxToScreen;
 using iggy3d_creative_app::resolveCreativeEditorSelectionFrame;
 using iggy3d_creative_app::runCreativeEditorCaptureScenarioFrame;
@@ -433,344 +422,23 @@ int main(int argc, char** argv) {
         selection, frame.camera, extent.width, extent.height, kGizmoAxisLength);
     const Vec3 gizmoCenter = gizmoFrame.center;
     const std::array<GizmoAxisShaft, 3>& gizmoShafts = gizmoFrame.shafts;
-    const ScreenPoint gizmoCenterScreen = gizmoFrame.centerScreen;
-    const std::array<ScreenPoint, 3>& gizmoTipScreen = gizmoFrame.tipScreens;
-    const std::vector<PathPointHandleHit>& pathPointHandleHits =
-        gizmoFrame.pathPointHandleHits;
     const bool selectedIsPathForHandles =
         gizmoFrame.selectedIsPathForHandles;
 
     logCreativeEditorPathHandleCaptureFrame(
         editor.captureScript, !capturePath.empty(), gizmoFrame);
-    // Start anchor S for an axis-constrained move = the object's corner anchor,
-    // exactly as the facade captures it on BeginMove (objectCornerAnchor): for a
-    // Crate (hasTransform=true) that is transform.position, NOT bounds.min. Using
-    // the SAME anchor the facade holds keeps the pinned axes grid-aligned so they
-    // snap to themselves; reading bounds.min instead would desync the pinned axes
-    // and let the snap drag a "held" axis off S. Constrained-move worldDestination
-    // is built FROM S: grabbed axis carries the dragged value, other two pinned.
-    const Vec3 gizmoAnchorS = gizmoFrame.anchorS;
-
-    // ---- MOVE --------------------------------------------------------------
-    // Everything below drives the kernel's GENERIC Move: setActiveTool(Move) +
-    // the PRESS/MOVE/RELEASE pointer lifecycle through dispatchToolInput. The
-    // facade picks the object, snaps the world destination to the grid, and
-    // commits ONE Move mutation. NO per-object position math lives here, and the
-    // target is ALWAYS the currently selected id — for the capture that is
-    // the FLOOR, which rides the identical path the crate did in the earlier proof.
-    const creative::CreativeObjectId selectedObjectId =
-        static_cast<creative::CreativeObjectId>(selectedId);
-    if (!capturePath.empty() && !editor.placeMode) {
-      // --capture: after the FLOOR is selected (frame 3), grab the X
-      // gizmo handle and run an AXIS-CONSTRAINED Move along +X by 2 m.
-      //   frame 5: hit-test the X shaft (grab X) + switch to Move + PRESS
-      //   frame 6: PointerMove carrying worldDestination = {S.x+2, S.y, S.z},
-      //            moveHeldAxis=Y (PreviewMove) — X follows, Y held, Z pinned
-      //   frame 7: RELEASE with the same worldDestination (CommitMove) -> snap
-      // The single-axis motion is entirely a product of the destination + held
-      // axis; there is NO per-object move math. worldDestination pins Y,Z to the
-      // start anchor S so only X (= S.x + 2) can change after the facade snaps.
-      const creative::CreativeToolWorldPoint xAxisDestination{
-          static_cast<double>(gizmoAnchorS.x) + 2.0,
-          static_cast<double>(gizmoAnchorS.y),
-          static_cast<double>(gizmoAnchorS.z)};
-      if (editor.frameIndex == 5U && hasSelection) {
-        // Synthesize a grab of the X handle: click the projected midpoint of the
-        // X shaft [screen(C), screen(Xtip)] and confirm the hit-test picks X.
-        GizmoAxis grabbed = GizmoAxis::None;
-        if (gizmoCenterScreen.valid && gizmoTipScreen[0].valid) {
-          const float hx = (gizmoCenterScreen.x + gizmoTipScreen[0].x) * 0.5F;
-          const float hy = (gizmoCenterScreen.y + gizmoTipScreen[0].y) * 0.5F;
-          grabbed = pickGizmoAxisFromProjectedShafts(
-              gizmoShafts,
-              gizmoCenterScreen,
-              gizmoTipScreen,
-              hx,
-              hy,
-              kGizmoHandleThresholdPx);
-        }
-        if (!editor.loggedGizmoGrab) {
-          SDL_Log("iggy3d_creative: GIZMO grabbed axis=%s (expected X) on "
-                  "selected id=%u kind='%s'",
-                  gizmoAxisName(grabbed), selectedId,
-                  std::string(creative::toString(selected->kind)).c_str());
-          editor.loggedGizmoGrab = true;
-        }
-        const bool ok = appState.facade.setActiveTool(creative::Tool::Move);
-        SDL_Log("iggy3d_creative: setActiveTool(Move) accepted=%d", ok ? 1 : 0);
-        if (!editor.loggedMoveBefore) {
-          logObjectPlacement("BEFORE",
-                             appState.facade.findObject(selectedObjectId));
-          editor.loggedMoveBefore = true;
-        }
-        creative::CreativeToolInputPacket press;
-        press.kind = creative::CreativeToolInputKind::PointerPress;
-        press.pointer.button = creative::CreativeToolPointerButton::Primary;
-        press.pointer.target =
-            creative::TargetRef{static_cast<creative::Id>(selectedObjectId)};
-        const creative::CreativeFacadeToolDispatchReceipt r =
-            appState.facade.dispatchToolInput(press);
-        logMoveDispatch("PRESS", r);
-      } else if (editor.frameIndex == 6U) {
-        creative::CreativeToolInputPacket move;
-        move.kind = creative::CreativeToolInputKind::PointerMove;
-        move.pointer.button = creative::CreativeToolPointerButton::Primary;
-        move.pointer.hasWorldDestination = true;
-        move.pointer.worldDestination = xAxisDestination;
-        move.pointer.moveHeldAxis = heldAxisForGrabbedAxis(GizmoAxis::X);
-        const creative::CreativeFacadeToolDispatchReceipt r =
-            appState.facade.dispatchToolInput(move);
-        logMoveDispatch("MOVE", r);
-      } else if (editor.frameIndex == 7U) {
-        creative::CreativeToolInputPacket release;
-        release.kind = creative::CreativeToolInputKind::PointerRelease;
-        release.pointer.button = creative::CreativeToolPointerButton::Primary;
-        release.pointer.hasWorldDestination = true;
-        release.pointer.worldDestination = xAxisDestination;
-        release.pointer.moveHeldAxis = heldAxisForGrabbedAxis(GizmoAxis::X);
-        const creative::CreativeFacadeToolDispatchReceipt r =
-            dispatchMoveReleaseWithUndo(appState, editor.undoStack, release,
-                                        selectedObjectId,
-                                        "capture_move_release");
-        logMoveDispatch("RELEASE", r);
-        if (!editor.loggedMoveAfter) {
-          logObjectPlacement("AFTER",
-                             appState.facade.findObject(selectedObjectId));
-          editor.loggedMoveAfter = true;
-        }
-      }
-    } else if (!editor.placeMode &&
-               appState.facade.toolState().activeTool == creative::Tool::Move &&
-               hasSelection) {
-      // Interactive Move: while the Move tool is active and ANY object is
-      // selected, hold Left-Alt (releases fly-look) and left-press. A press NEAR
-      // a gizmo handle grabs that axis and maps cursor motion ALONG THAT AXIS
-      // ONLY; a press away from every handle falls back to the ground-plane move
-      // (camera-forward ray -> Y=0 plane). Either way the facade still owns the
-      // pick + snap + commit — no per-object move math here.
-      const bool* mvKeys = SDL_GetKeyboardState(nullptr);
-      const bool altHeld = mvKeys != nullptr && (mvKeys[SDL_SCANCODE_LALT] != 0);
-      if (altHeld) {
-        float mx = 0.0F;
-        float my = 0.0F;
-        const SDL_MouseButtonFlags buttons = SDL_GetMouseState(&mx, &my);
-        const bool lDown = (buttons & SDL_BUTTON_LMASK) != 0U;
-        // High-DPI: scale logical cursor coords to drawable pixels (as select).
-        const std::uint32_t logicalW = window.eventState().windowWidth;
-        const std::uint32_t logicalH = window.eventState().windowHeight;
-        const float scaleX =
-            logicalW > 0 ? static_cast<float>(extent.width) /
-                               static_cast<float>(logicalW)
-                         : 1.0F;
-        const float scaleY =
-            logicalH > 0 ? static_cast<float>(extent.height) /
-                               static_cast<float>(logicalH)
-                         : 1.0F;
-        const float cursorPx = mx * scaleX;
-        const float cursorPy = my * scaleY;
-
-        const creative::CreativeToolWorldPoint ground =
-            resolveCreativeEditorGroundPoint(frame.camera);
-
-        const bool selectedIsPath =
-            selected != nullptr &&
-            creative::describeObject(selected->kind).shapeKind ==
-                creative::CreativeObjectShapeKind::Path;
-        if (selectedIsPath) {
-          if (lDown && !editor.interactivePathMoveActive &&
-              !editor.interactivePathPointMoveActive) {
-            PathPointHandleHit handle;
-            if (pickPathPointHandle(pathPointHandleHits,
-                                    cursorPx,
-                                    cursorPy,
-                                    handle)) {
-              editor.interactivePathPointMoveActive = true;
-              editor.interactivePathPointMoveObjectId = handle.objectId;
-              editor.interactivePathPointMoveIndex = handle.pointIndex;
-              editor.interactivePathPointMoveStartGround = ground;
-              SDL_Log("iggy3d_creative: PATH_HANDLE interactive move begin "
-                      "objectId=%llu pointIndex=%zu ground=(%.3f, %.3f, %.3f) "
-                      "position=(%.3f, %.3f, %.3f) pathPoints='%s'",
-                      static_cast<unsigned long long>(handle.objectId),
-                      handle.pointIndex, ground.x, ground.y, ground.z,
-                      handle.position.x, handle.position.y, handle.position.z,
-                      pathPointsSummary(selected->pathPoints).c_str());
-            } else {
-              editor.interactivePathMoveActive = true;
-              editor.interactivePathMoveObjectId = selectedObjectId;
-              editor.interactivePathMoveStartGround = ground;
-              SDL_Log("iggy3d_creative: PATH interactive move begin objectId=%llu "
-                      "ground=(%.3f, %.3f, %.3f) pathPoints='%s'",
-                      static_cast<unsigned long long>(selectedObjectId),
-                      ground.x, ground.y, ground.z,
-                      pathPointsSummary(selected->pathPoints).c_str());
-            }
-          } else if (!lDown && editor.interactivePathPointMoveActive) {
-            const creative::CreativeVec3 delta{
-                ground.x - editor.interactivePathPointMoveStartGround.x,
-                0.0,
-                ground.z - editor.interactivePathPointMoveStartGround.z};
-            const creative::CreativeDocumentMutationReceipt receipt =
-                movePathPointWithUndo(appState,
-                                      editor.undoStack,
-                                      editor.interactivePathPointMoveObjectId,
-                                      editor.interactivePathPointMoveIndex,
-                                      delta,
-                                      "path_point_move_interactive_release");
-            SDL_Log("iggy3d_creative: PATH_HANDLE interactive move release "
-                    "objectId=%llu pointIndex=%zu status='%s' changed=%d "
-                    "delta=(%.3f, %.3f, %.3f)",
-                    static_cast<unsigned long long>(
-                        editor.interactivePathPointMoveObjectId),
-                    editor.interactivePathPointMoveIndex,
-                    std::string(creative::toString(receipt.status)).c_str(),
-                    receipt.changed ? 1 : 0, delta.x, delta.y, delta.z);
-            editor.interactivePathPointMoveActive = false;
-            editor.interactivePathPointMoveObjectId = creative::kInvalidObjectId;
-            editor.interactivePathPointMoveIndex = 0U;
-          } else if (!lDown && editor.interactivePathMoveActive) {
-            const creative::CreativeVec3 delta{
-                ground.x - editor.interactivePathMoveStartGround.x,
-                0.0,
-                ground.z - editor.interactivePathMoveStartGround.z};
-            const creative::CreativeDocumentMutationReceipt receipt =
-                movePathObjectWithUndo(appState,
-                                       editor.undoStack,
-                                       editor.interactivePathMoveObjectId,
-                                       delta,
-                                       "path_move_interactive_release");
-            SDL_Log("iggy3d_creative: PATH interactive move release objectId=%llu "
-                    "status='%s' changed=%d delta=(%.3f, %.3f, %.3f)",
-                    static_cast<unsigned long long>(
-                        editor.interactivePathMoveObjectId),
-                    std::string(creative::toString(receipt.status)).c_str(),
-                    receipt.changed ? 1 : 0, delta.x, delta.y, delta.z);
-            editor.interactivePathMoveActive = false;
-            editor.interactivePathMoveObjectId = creative::kInvalidObjectId;
-          }
-        } else {
-        // Build the pointer packet's worldDestination + moveHeldAxis. When an
-        // axis handle is grabbed, project the cursor delta since grab onto the
-        // shaft's screen direction, scale it to world length along the axis, and
-        // set worldDestination = S with only the grabbed axis advanced (the other
-        // two pinned to S), moveHeldAxis = one of the two non-grabbed axes.
-        const auto buildConstrainedDestination =
-            [&](creative::CreativeToolWorldPoint& dest,
-                creative::CreativeToolMoveHeldAxis& held) {
-              if (editor.interactiveGrabbedAxis == GizmoAxis::None) {
-                dest = ground;  // Free ground-plane move.
-                held = creative::CreativeToolMoveHeldAxis::Y;
-                return;
-              }
-              // Screen-space shaft direction at grab time (center -> tip).
-              float sdx = editor.interactiveGrabTipScreen.x -
-                          editor.interactiveGrabCenterScreen.x;
-              float sdy = editor.interactiveGrabTipScreen.y -
-                          editor.interactiveGrabCenterScreen.y;
-              const float slen = std::sqrt(sdx * sdx + sdy * sdy);
-              float along = 0.0F;
-              if (slen > 1.0e-3F) {
-                sdx /= slen;
-                sdy /= slen;
-                const float cdx = cursorPx - editor.interactiveGrabCursorX;
-                const float cdy = cursorPy - editor.interactiveGrabCursorY;
-                // pixels moved along the shaft / pixels per shaft * world length.
-                const float alongPx = cdx * sdx + cdy * sdy;
-                along = (alongPx / slen) * kGizmoAxisLength;
-              }
-              dest.x = static_cast<double>(editor.interactiveGrabAnchorS.x);
-              dest.y = static_cast<double>(editor.interactiveGrabAnchorS.y);
-              dest.z = static_cast<double>(editor.interactiveGrabAnchorS.z);
-              switch (editor.interactiveGrabbedAxis) {
-                case GizmoAxis::X:
-                  dest.x += static_cast<double>(along);
-                  break;
-                case GizmoAxis::Y:
-                  dest.y += static_cast<double>(along);
-                  break;
-                case GizmoAxis::Z:
-                  dest.z += static_cast<double>(along);
-                  break;
-                case GizmoAxis::None:
-                default:
-                  break;
-              }
-              held = heldAxisForGrabbedAxis(editor.interactiveGrabbedAxis);
-            };
-
-        if (lDown && !editor.moveDragButtonDown) {
-          editor.moveDragButtonDown = true;
-          // Grab an axis handle if the press landed near one; else free move.
-          editor.interactiveGrabbedAxis = pickGizmoAxisFromProjectedShafts(
-              gizmoShafts,
-              gizmoCenterScreen,
-              gizmoTipScreen,
-              cursorPx,
-              cursorPy,
-              kGizmoHandleThresholdPx);
-          editor.interactiveGrabAnchorS = gizmoAnchorS;
-          editor.interactiveGrabCursorX = cursorPx;
-          editor.interactiveGrabCursorY = cursorPy;
-          editor.interactiveGrabCenterScreen = gizmoCenterScreen;
-          if (editor.interactiveGrabbedAxis == GizmoAxis::X) {
-            editor.interactiveGrabTipScreen = gizmoTipScreen[0];
-          } else if (editor.interactiveGrabbedAxis == GizmoAxis::Y) {
-            editor.interactiveGrabTipScreen = gizmoTipScreen[1];
-          } else if (editor.interactiveGrabbedAxis == GizmoAxis::Z) {
-            editor.interactiveGrabTipScreen = gizmoTipScreen[2];
-          }
-          SDL_Log("iggy3d_creative: GIZMO grabbed axis=%s",
-                  gizmoAxisName(editor.interactiveGrabbedAxis));
-          creative::CreativeToolInputPacket press;
-          press.kind = creative::CreativeToolInputKind::PointerPress;
-          press.pointer.button = creative::CreativeToolPointerButton::Primary;
-          press.pointer.target =
-              creative::TargetRef{static_cast<creative::Id>(selectedObjectId)};
-          (void)appState.facade.dispatchToolInput(press);
-        } else if (lDown && editor.moveDragButtonDown) {
-          creative::CreativeToolInputPacket move;
-          move.kind = creative::CreativeToolInputKind::PointerMove;
-          move.pointer.button = creative::CreativeToolPointerButton::Primary;
-          move.pointer.hasWorldDestination = true;
-          buildConstrainedDestination(move.pointer.worldDestination,
-                                      move.pointer.moveHeldAxis);
-          (void)appState.facade.dispatchToolInput(move);
-        } else if (!lDown && editor.moveDragButtonDown) {
-          editor.moveDragButtonDown = false;
-          creative::CreativeToolInputPacket release;
-          release.kind = creative::CreativeToolInputKind::PointerRelease;
-          release.pointer.button = creative::CreativeToolPointerButton::Primary;
-          release.pointer.hasWorldDestination = true;
-          buildConstrainedDestination(release.pointer.worldDestination,
-                                      release.pointer.moveHeldAxis);
-          const creative::CreativeFacadeToolDispatchReceipt r =
-              dispatchMoveReleaseWithUndo(appState, editor.undoStack, release,
-                                          selectedObjectId,
-                                          "move_interactive_release");
-          logMoveDispatch("RELEASE", r);
-          editor.interactiveGrabbedAxis = GizmoAxis::None;
-        }
-        }
-      } else if (editor.moveDragButtonDown) {
-        editor.moveDragButtonDown = false;  // Alt released mid-drag: drop the latch.
-        editor.interactiveGrabbedAxis = GizmoAxis::None;
-      } else if (editor.interactivePathMoveActive) {
-        SDL_Log("iggy3d_creative: PATH interactive move cancelled objectId=%llu",
-                static_cast<unsigned long long>(
-                    editor.interactivePathMoveObjectId));
-        editor.interactivePathMoveActive = false;
-        editor.interactivePathMoveObjectId = creative::kInvalidObjectId;
-      } else if (editor.interactivePathPointMoveActive) {
-        SDL_Log("iggy3d_creative: PATH_HANDLE interactive move cancelled "
-                "objectId=%llu pointIndex=%zu",
-                static_cast<unsigned long long>(
-                    editor.interactivePathPointMoveObjectId),
-                editor.interactivePathPointMoveIndex);
-        editor.interactivePathPointMoveActive = false;
-        editor.interactivePathPointMoveObjectId = creative::kInvalidObjectId;
-        editor.interactivePathPointMoveIndex = 0U;
-      }
-    }
+    processCreativeEditorMoveFrame({
+        window,
+        appState,
+        editor,
+        selection,
+        gizmoFrame,
+        frame.camera,
+        extent.width,
+        extent.height,
+        kGizmoAxisLength,
+        kGizmoHandleThresholdPx,
+        !capturePath.empty()});
 
     // ---- INSPECTOR UI (draw list -> menu frame rects + glyphs) -------------
     ProductCreativeUiProjectionRequest uiReq;

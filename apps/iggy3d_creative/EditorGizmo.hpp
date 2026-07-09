@@ -17,9 +17,16 @@
 #include "EditorPicking.hpp"
 #include "EditorEdits.hpp"
 
+namespace iggy3d {
+
+class SdlWindow;
+
+}  // namespace iggy3d
+
 namespace iggy3d_creative_app {
 namespace cr = iggy3d::creative;
 
+struct CreativeEditorState;
 struct CreativeEditorSelectionFrame;
 
 enum class GizmoAxis { None, X, Y, Z };
@@ -79,5 +86,22 @@ void logCreativeEditorPathHandleCaptureFrame(
     StandaloneCaptureScript& captureScript,
     bool captureMode,
     const CreativeEditorGizmoFrame& gizmoFrame);
+
+struct CreativeEditorMoveFrameRequest {
+  iggy3d::SdlWindow& window;
+  cr::CreativeAppState& appState;
+  CreativeEditorState& editor;
+  const CreativeEditorSelectionFrame& selection;
+  const CreativeEditorGizmoFrame& gizmoFrame;
+  const iggy3d::RenderCameraFrame& camera;
+  std::uint32_t drawableWidth = 0;
+  std::uint32_t drawableHeight = 0;
+  float axisLengthMeters = 0.0F;
+  float handleThresholdPx = 0.0F;
+  bool captureMode = false;
+};
+
+void processCreativeEditorMoveFrame(
+    const CreativeEditorMoveFrameRequest& request);
 
 }  // namespace iggy3d_creative_app
