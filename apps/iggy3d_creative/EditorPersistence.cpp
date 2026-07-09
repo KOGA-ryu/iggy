@@ -1,4 +1,4 @@
-#include "StandalonePersistenceProof.hpp"
+#include "EditorPersistence.hpp"
 
 #include <cmath>
 #include <string>

@@ -1,4 +1,4 @@
-#include "StandalonePicking.hpp"
+#include "EditorPicking.hpp"
 #include "EditorPreviewProxies.hpp"
 
 #include "app/iggy3d/creative/document/Object.hpp"

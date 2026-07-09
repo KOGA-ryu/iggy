@@ -3,13 +3,13 @@
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
 
-#include "CreativeEditorState.hpp"
-#include "StandalonePersistenceProof.hpp"
+#include "EditorState.hpp"
+#include "EditorPersistence.hpp"
 #include "EditorPlacement.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorGizmo.hpp"
 #include "EditorEdits.hpp"
-#include "StandalonePathEditing.hpp"
+#include "EditorPathEditing.hpp"
 
 #include <SDL3/SDL_log.h>
 

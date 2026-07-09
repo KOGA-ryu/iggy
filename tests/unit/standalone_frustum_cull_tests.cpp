@@ -1,4 +1,4 @@
-#include "StandaloneFrustumCull.hpp"
+#include "EditorFrustumCull.hpp"
 
 #include "core/math/Mat4.hpp"
 #include "core/math/Vec3.hpp"

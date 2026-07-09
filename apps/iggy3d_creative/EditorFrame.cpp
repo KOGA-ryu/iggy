@@ -14,8 +14,8 @@
 
 #include "EditorPlacement.hpp"
 #include "EditorEdits.hpp"
-#include "StandalonePersistenceProof.hpp"
-#include "StandalonePicking.hpp"
+#include "EditorPersistence.hpp"
+#include "EditorPicking.hpp"
 #include "EditorPreviewProxies.hpp"
 
 namespace iggy3d_creative_app {

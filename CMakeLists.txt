@@ -391,15 +391,15 @@ add_executable(iggy3d_creative
   apps/iggy3d_creative/EditorCapture.cpp
   apps/iggy3d_creative/EditorFrame.cpp
   apps/iggy3d_creative/EditorGizmo.cpp
-  apps/iggy3d_creative/CreativeRendererBootstrap.cpp
+  apps/iggy3d_creative/EditorBootstrap.cpp
   apps/iggy3d_creative/EditorPlacement.cpp
   apps/iggy3d_creative/EditorEdits.cpp
-  apps/iggy3d_creative/StandaloneFrustumCull.cpp
-  apps/iggy3d_creative/StandalonePathEditing.cpp
-  apps/iggy3d_creative/StandalonePersistenceProof.cpp
-  apps/iggy3d_creative/StandalonePicking.cpp
+  apps/iggy3d_creative/EditorFrustumCull.cpp
+  apps/iggy3d_creative/EditorPathEditing.cpp
+  apps/iggy3d_creative/EditorPersistence.cpp
+  apps/iggy3d_creative/EditorPicking.cpp
   apps/iggy3d_creative/EditorPreviewProxies.cpp
-  apps/iggy3d_creative/StandaloneRoomBakePreview.cpp)
+  apps/iggy3d_creative/EditorRoomBakePreview.cpp)
 target_link_libraries(iggy3d_creative PRIVATE iggy3d)
 iggy3d_apply_warnings(iggy3d_creative)
 

@@ -18,7 +18,7 @@
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "core/math/Vec3.hpp"
 
-#include "StandalonePersistenceProof.hpp"
+#include "EditorPersistence.hpp"
 #include "EditorEdits.hpp"
 
 namespace iggy3d_creative_app {

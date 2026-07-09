@@ -15,9 +15,9 @@
 #include "core/math/Vec3.hpp"
 #include "render/FrameInput.hpp"
 
-#include "CreativeEditorState.hpp"
+#include "EditorState.hpp"
 #include "EditorCapture.hpp"
-#include "StandalonePicking.hpp"
+#include "EditorPicking.hpp"
 
 namespace iggy3d {
 

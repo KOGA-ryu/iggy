@@ -487,7 +487,7 @@ set_tests_properties(creative_placement_tests PROPERTIES
 
 add_executable(standalone_picking_tests
   tests/unit/standalone_picking_tests.cpp
-  apps/iggy3d_creative/StandalonePicking.cpp
+  apps/iggy3d_creative/EditorPicking.cpp
   apps/iggy3d_creative/EditorPreviewProxies.cpp)
 target_include_directories(standalone_picking_tests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
@@ -515,7 +515,7 @@ set_tests_properties(standalone_placement_tests PROPERTIES
 
 add_executable(standalone_frustum_cull_tests
   tests/unit/standalone_frustum_cull_tests.cpp
-  apps/iggy3d_creative/StandaloneFrustumCull.cpp)
+  apps/iggy3d_creative/EditorFrustumCull.cpp)
 target_include_directories(standalone_frustum_cull_tests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
 target_link_libraries(standalone_frustum_cull_tests PRIVATE iggy3d)

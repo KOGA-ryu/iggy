@@ -1,4 +1,4 @@
-#include "StandaloneRoomBakePreview.hpp"
+#include "EditorRoomBakePreview.hpp"
 
 #include <algorithm>
 #include <cmath>

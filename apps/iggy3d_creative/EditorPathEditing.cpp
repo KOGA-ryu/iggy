@@ -1,4 +1,4 @@
-#include "StandalonePathEditing.hpp"
+#include "EditorPathEditing.hpp"
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/mutation/Mutation.hpp"
