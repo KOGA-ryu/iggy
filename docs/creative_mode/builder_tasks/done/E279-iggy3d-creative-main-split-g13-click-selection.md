@@ -265,3 +265,82 @@ Report:
   placement move, capture scenario move, capture Move policy move, interactive
   Move policy move, later frame-stage move, tests, receipt/golden files, broad
   CTest, interactive window launch, staging, commit, or push was performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/CreativeEditorClickSelection.hpp`
+- `apps/iggy3d_creative/CreativeEditorClickSelection.cpp`
+- `CMakeLists.txt`
+- `docs/creative_mode/builder_tasks/done/E279-iggy3d-creative-main-split-g13-click-selection.md`
+
+Exact helper API added:
+
+```cpp
+void applyCreativeEditorClickSelection(
+    iggy3d::SdlWindow& window,
+    iggy3d::creative::CreativeAppState& appState,
+    const iggy3d::RenderCameraFrame& camera,
+    std::uint32_t drawableWidth,
+    std::uint32_t drawableHeight,
+    const CreativeEditorPickFrame& pickFrame,
+    CreativeEditorState& editor,
+    bool captureMode);
+```
+
+Moved click-selection logic:
+
+- Synthetic capture floor-click behavior, capture place-mode skip behavior,
+  interactive Left-Alt click behavior, mouse-mode switching, high-DPI scaling,
+  `WORLD_PICK` logging, `worldRayFromPixel(...)`,
+  `pickNearestVisualBoundsObject(...)`, and primary pointer-press dispatch now
+  live in `CreativeEditorClickSelection.cpp`.
+- `main.cpp` now calls `applyCreativeEditorClickSelection(...)` after the
+  world-pick proof helper.
+- Placement, capture scenario dispatch, selection resolution, gizmo, Move,
+  overlay construction, submit, shutdown, and final logging remain in
+  `main.cpp`.
+
+CMake source-list placement:
+
+- `apps/iggy3d_creative/CreativeEditorClickSelection.cpp` was added only to the
+  `iggy3d_creative` executable source list, next to the other
+  `CreativeEditor*.cpp` helper sources.
+
+Required grep classifications:
+
+- `CreativeEditorClickSelection.hpp` declares
+  `applyCreativeEditorClickSelection(...)`.
+- `CreativeEditorClickSelection.cpp` defines
+  `applyCreativeEditorClickSelection(...)`.
+- Synthetic capture click, interactive Alt-click, mouse-mode handling,
+  high-DPI scaling, `WORLD_PICK` logging, and pointer-press dispatch live in
+  `CreativeEditorClickSelection.cpp`.
+- `main.cpp` calls `applyCreativeEditorClickSelection(...)`.
+- Remaining `SDL_GetKeyboardState`, `SDL_GetMouseState`,
+  `setRelativeMouseMode`, and `dispatchToolInput` hits in `main.cpp` belong to
+  placement, capture Move, and interactive Move paths that were intentionally
+  left in place.
+- Existing CreativeEditor and Standalone helper ownership remains unchanged.
+- No `EditorFrame` or `runCreativeEditorFrame(...)` was introduced.
+- No old `appendWireframeBoxEdges(...)` helper was reintroduced.
+
+Focused verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched source files, `CMakeLists.txt`,
+  and this card passed.
+
+Optional capture was skipped because no windowed/Vulkan capture check was
+explicitly allowed.
+
+No `EditorFrame`, `runCreativeEditorFrame(...)`, placement move, capture
+scenario move, capture Move policy move, interactive Move policy move, later
+frame-stage move, tests, receipt/golden files, broad CTest, interactive window
+launch, staging, commit, or push was performed.

@@ -59,6 +59,7 @@
 #include "render/vulkan/VulkanBackend.hpp"
 
 #include "CreativeEditorAim.hpp"
+#include "CreativeEditorClickSelection.hpp"
 #include "CreativeEditorCommandInput.hpp"
 #include "CreativeEditorFrameInput.hpp"
 #include "CreativeEditorGizmoFrame.hpp"
@@ -98,6 +99,7 @@ using iggy3d_creative_app::captureFrameToPng;
 using iggy3d_creative_app::createCreativeRenderer;
 using iggy3d_creative_app::resolveCreativeEditorAimCell;
 using iggy3d_creative_app::resolveCreativeEditorGroundPoint;
+using iggy3d_creative_app::applyCreativeEditorClickSelection;
 using iggy3d_creative_app::applyCreativeEditorCommandInput;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::CreativeEditorState;
@@ -123,17 +125,14 @@ using iggy3d_creative_app::appendPathPolylineLines;
 using iggy3d_creative_app::lineProxyBounds;
 using iggy3d_creative_app::logCreativeEditorWorldPickProofFrame;
 using iggy3d_creative_app::ObjectVisualPickBounds;
-using iggy3d_creative_app::ObjectVisualPickResult;
 using iggy3d_creative_app::pathPointHandleBounds;
 using iggy3d_creative_app::PathPointHandleHit;
-using iggy3d_creative_app::pickNearestVisualBoundsObject;
 using iggy3d_creative_app::pickPathPointHandle;
 using iggy3d_creative_app::pickGizmoAxisFromProjectedShafts;
 using iggy3d_creative_app::pointMarkerBounds;
 using iggy3d_creative_app::placeBrushObjectWithUndo;
 using iggy3d_creative_app::pathPointsSummary;
 using iggy3d_creative_app::projectBoxToScreen;
-using iggy3d_creative_app::projectPointToScreen;
 using iggy3d_creative_app::resolveCreativeEditorSelectionFrame;
 using iggy3d_creative_app::ScreenPoint;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
@@ -141,8 +140,6 @@ using iggy3d_creative_app::appendStandaloneWireframeBoxEdges;
 using iggy3d_creative_app::toVec3;
 using iggy3d_creative_app::VisualBounds;
 using iggy3d_creative_app::visualBoundsForObject;
-using iggy3d_creative_app::WorldRay;
-using iggy3d_creative_app::worldRayFromPixel;
 using iggy3d_creative_app::logStandaloneRoomBakeFinal;
 
 }  // namespace
@@ -401,12 +398,6 @@ int main(int argc, char** argv) {
         floorObjectId,
         editor.captureScript,
         !capturePath.empty());
-    const std::vector<ObjectVisualPickBounds>& objectPickCandidates =
-        pickFrame.objectPickCandidates;
-    const bool haveFloorBounds = pickFrame.haveFloorBounds;
-    const Vec3 floorBoxMin = pickFrame.floorBoxMin;
-    const Vec3 floorBoxMax = pickFrame.floorBoxMax;
-
     logCreativeEditorWorldPickProofFrame(appState.facade,
                                          frame.camera,
                                          extent.width,
@@ -416,89 +407,14 @@ int main(int argc, char** argv) {
                                          editor,
                                          !capturePath.empty());
 
-    bool clickRequested = false;
-    float clickX = 0.0F;
-    float clickY = 0.0F;
-    if (!capturePath.empty() && editor.placeMode) {
-      // Place-mode capture: no select-click is synthesized; the placement script
-      // below drops objects directly. Leave clickRequested false.
-    } else if (!capturePath.empty()) {
-      // Synthesize a click on the FLOOR once the swapchain has settled (frame ~2),
-      // aimed at a point on the floor's TOP surface near a corner — a point the
-      // crate does NOT cover — so the generic nearest-hit picker selects the FLOOR
-      // and not the crate. We project that single world point through the SAME
-      // clipFromWorld the hit-test uses.
-      if (editor.frameIndex == 3U && haveFloorBounds) {
-        // 80% out toward the +X/+Z corner of the floor top, well past the crate's
-        // XZ footprint. This is only which pixel we click; the pick logic itself
-        // is unchanged and object-agnostic.
-        const Vec3 floorTopCorner{
-            floorBoxMin.x + (floorBoxMax.x - floorBoxMin.x) * 0.85F,
-            floorBoxMax.y,
-            floorBoxMin.z + (floorBoxMax.z - floorBoxMin.z) * 0.85F};
-        const ScreenPoint p = projectPointToScreen(
-            frame.camera.clipFromWorld, floorTopCorner, extent.width,
-            extent.height);
-        if (p.valid) {
-          clickRequested = true;
-          clickX = p.x;
-          clickY = p.y;
-        }
-      }
-    } else if (!editor.placeMode) {
-      // Interactive: hold Left-Alt to release fly-look and click to select.
-      // Skipped in Place mode — the interactive Place block below owns the click.
-      const bool* selKeys = SDL_GetKeyboardState(nullptr);
-      const bool altHeld =
-          selKeys != nullptr && (selKeys[SDL_SCANCODE_LALT] != 0);
-      if (altHeld) {
-        window.setRelativeMouseMode(false);
-        float mx = 0.0F;
-        float my = 0.0F;
-        const SDL_MouseButtonFlags buttons = SDL_GetMouseState(&mx, &my);
-        if ((buttons & SDL_BUTTON_LMASK) != 0U) {
-          clickRequested = true;
-          // Window is high-DPI; scale logical mouse coords to drawable pixels.
-          const std::uint32_t logicalW = window.eventState().windowWidth;
-          const std::uint32_t logicalH = window.eventState().windowHeight;
-          const float scaleX =
-              logicalW > 0 ? static_cast<float>(extent.width) /
-                                 static_cast<float>(logicalW)
-                           : 1.0F;
-          const float scaleY =
-              logicalH > 0 ? static_cast<float>(extent.height) /
-                                 static_cast<float>(logicalH)
-                           : 1.0F;
-          clickX = mx * scaleX;
-          clickY = my * scaleY;
-        }
-      } else {
-        window.setRelativeMouseMode(true);
-      }
-    }
-
-    if (clickRequested) {
-      const WorldRay ray =
-          worldRayFromPixel(frame.camera, clickX, clickY, extent.width,
-                            extent.height);
-      const ObjectVisualPickResult pick =
-          pickNearestVisualBoundsObject(objectPickCandidates, ray);
-      const creative::CreativeObjectId pickedId = pick.objectId;
-      SDL_Log("iggy3d_creative: WORLD_PICK click=(%.1f, %.1f) rayValid=%d "
-              "tested=%llu hits=%llu pickedObjectId=%llu entryDistance=%.3f",
-              clickX, clickY, pick.rayValid ? 1 : 0,
-              static_cast<unsigned long long>(pick.testedCount),
-              static_cast<unsigned long long>(pick.hitCount),
-              static_cast<unsigned long long>(pickedId), pick.entryDistance);
-      creative::CreativeToolInputPacket packet;
-      packet.kind = creative::CreativeToolInputKind::PointerPress;
-      packet.pointer.button = creative::CreativeToolPointerButton::Primary;
-      if (pickedId != creative::kInvalidObjectId) {
-        packet.pointer.target =
-            creative::TargetRef{static_cast<creative::Id>(pickedId)};
-      }  // A miss leaves target invalid -> Select clears selection.
-      (void)appState.facade.dispatchToolInput(packet);
-    }
+    applyCreativeEditorClickSelection(window,
+                                      appState,
+                                      frame.camera,
+                                      extent.width,
+                                      extent.height,
+                                      pickFrame,
+                                      editor,
+                                      !capturePath.empty());
 
     // ---- PLACE -------------------------------------------------------------
     // In Place mode a click drops a NEW object of the current brush kind at the
