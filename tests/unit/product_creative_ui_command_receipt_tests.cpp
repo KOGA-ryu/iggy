@@ -751,7 +751,7 @@ bool roomShellCommandReceiptRecordsShellFields() {
   iggy3d::recordProductCreativeUiCommandFrame(window, commandReceipt);
   const iggy3d::RenderReceipt receipt = receiptFor(window);
   const std::string roomObjectId =
-      std::to_string(commandReceipt.shellRoomObjectId);
+      std::to_string(commandReceipt.shell.build.roomObjectId);
 
   return expectReceiptFields(
       receipt,

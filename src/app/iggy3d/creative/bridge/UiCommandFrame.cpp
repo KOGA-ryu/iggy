@@ -44,44 +44,6 @@ void setDeleteNoSelection(ProductCreativeUiCommandFrameReceipt& receipt,
   receipt.remove.document.reasonCode = "no_selection";
 }
 
-void copyRoomShellReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
-                          const creative::CreativeRoomShellBuildReceipt&
-                              shellReceipt) {
-  receipt.shellRequested = shellReceipt.requested;
-  receipt.shellAccepted = shellReceipt.accepted;
-  receipt.shellRoomObjectId = shellReceipt.roomObjectId;
-  receipt.shellGeneratedObjectCount = shellReceipt.generatedRequestCount;
-  receipt.shellFloorCount = shellReceipt.floorRequestCount;
-  receipt.shellWallCount = shellReceipt.wallRequestCount;
-  receipt.shellStatus = std::string(creative::toString(shellReceipt.status));
-  receipt.shellReasonCode = shellReceipt.reasonCode;
-  receipt.shellMessage = shellReceipt.message;
-}
-
-void copyRoomShellRemoveReceipt(ProductCreativeUiCommandFrameReceipt& receipt,
-                                const creative::CreativeRoomShellRemoveReceipt&
-                                    shellReceipt) {
-  receipt.shellRequested = shellReceipt.requested;
-  receipt.shellAccepted = shellReceipt.accepted;
-  receipt.shellRoomObjectId = shellReceipt.roomObjectId;
-  receipt.shellRemovedObjectCount = shellReceipt.removedObjectCount;
-  receipt.shellFloorCount = shellReceipt.floorObjectCount;
-  receipt.shellWallCount = shellReceipt.wallObjectCount;
-  receipt.shellStatus = std::string(creative::toString(shellReceipt.status));
-  receipt.shellReasonCode = shellReceipt.reasonCode;
-  receipt.shellMessage = shellReceipt.message;
-}
-
-void setRoomShellApplyStatus(ProductCreativeUiCommandFrameReceipt& receipt,
-                             creative::CreativeRoomShellStatus status,
-                             std::string_view reasonCode) {
-  receipt.shellAccepted = false;
-  receipt.shellChanged = false;
-  receipt.shellStatus = std::string(creative::toString(status));
-  receipt.shellReasonCode = std::string(reasonCode);
-  receipt.shellMessage = std::string(reasonCode);
-}
-
 void setCommandOutcomeStatus(ProductCreativeUiCommandFrameReceipt& receipt,
                              bool accepted,
                              bool changed) {
@@ -194,9 +156,9 @@ void handleGenerateSelectedRoomShell(
   const std::uint64_t revisionBefore = context.facade.document().revision();
   const creative::CreativeRoomShellBuildResult shell =
       creative::buildCreativeRoomShellCreateRequests(shellRequest);
-  copyRoomShellReceipt(receipt, shell.receipt);
-  receipt.shellRevisionBefore = revisionBefore;
-  receipt.shellRevisionAfter = revisionBefore;
+  receipt.shell.build = shell.receipt;
+  receipt.shell.revisionBefore = revisionBefore;
+  receipt.shell.revisionAfter = revisionBefore;
 
   if (!shell.receipt.accepted) {
     receipt.toolAfter = context.facade.toolState().activeTool;
@@ -206,26 +168,26 @@ void handleGenerateSelectedRoomShell(
 
   const creative::CreativeFacadeDocumentBatchCreateReceipt batch =
       context.facade.createDocumentObjectsAtomically(shell.createRequests);
-  receipt.shellRevisionAfter = batch.revisionAfter;
+  receipt.shell.revisionAfter = batch.revisionAfter;
   if (!batch.accepted || !batch.changed) {
     const bool installRejected =
         batch.status ==
         creative::CreativeFacadeDocumentBatchCreateStatus::InstallRejected;
-    setRoomShellApplyStatus(
-        receipt,
-        installRejected
-            ? creative::CreativeRoomShellStatus::InstallRejected
-            : creative::CreativeRoomShellStatus::CreateRejected,
+    receipt.shell.build.accepted = false;
+    receipt.shell.build.status =
+        installRejected ? creative::CreativeRoomShellStatus::InstallRejected
+                        : creative::CreativeRoomShellStatus::CreateRejected;
+    receipt.shell.build.reasonCode =
         installRejected ? "creative_room_shell_install_rejected"
-                        : "creative_room_shell_create_rejected");
+                        : "creative_room_shell_create_rejected";
+    receipt.shell.build.message = receipt.shell.build.reasonCode;
     receipt.toolAfter = context.facade.toolState().activeTool;
     setNoopStatus(receipt, "product_creative_ui_command_rejected");
     return;
   }
 
-  receipt.shellAccepted = true;
-  receipt.shellChanged = true;
-  receipt.shellRevisionAfter = context.facade.document().revision();
+  receipt.shell.changed = true;
+  receipt.shell.revisionAfter = context.facade.document().revision();
   receipt.accepted = true;
   receipt.changed = true;
   receipt.toolAfter = context.facade.toolState().activeTool;
@@ -247,9 +209,9 @@ void handleRemoveSelectedRoomShell(
   const std::uint64_t revisionBefore = context.facade.document().revision();
   const creative::CreativeRoomShellRemoveResult shell =
       creative::findCreativeRoomShellChildren(shellRequest);
-  copyRoomShellRemoveReceipt(receipt, shell.receipt);
-  receipt.shellRevisionBefore = revisionBefore;
-  receipt.shellRevisionAfter = revisionBefore;
+  receipt.shell.remove = shell.receipt;
+  receipt.shell.revisionBefore = revisionBefore;
+  receipt.shell.revisionAfter = revisionBefore;
 
   if (!shell.receipt.accepted) {
     receipt.toolAfter = context.facade.toolState().activeTool;
@@ -270,10 +232,10 @@ void handleRemoveSelectedRoomShell(
   }
 
   if (!removeSucceeded) {
-    setRoomShellApplyStatus(receipt,
-                            creative::CreativeRoomShellStatus::
-                                RemoveRejected,
-                            "creative_room_shell_remove_rejected");
+    receipt.shell.remove.accepted = false;
+    receipt.shell.remove.status = creative::CreativeRoomShellStatus::RemoveRejected;
+    receipt.shell.remove.reasonCode = "creative_room_shell_remove_rejected";
+    receipt.shell.remove.message = receipt.shell.remove.reasonCode;
     receipt.toolAfter = context.facade.toolState().activeTool;
     setNoopStatus(receipt, "product_creative_ui_command_rejected");
     return;
@@ -282,18 +244,18 @@ void handleRemoveSelectedRoomShell(
   const creative::CreativeFacadeDocumentInstallReceipt installReceipt =
       context.facade.installDocument(std::move(stagedDocument));
   if (!installReceipt.accepted || !installReceipt.changed) {
-    setRoomShellApplyStatus(receipt,
-                            creative::CreativeRoomShellStatus::
-                                InstallRejected,
-                            "creative_room_shell_remove_install_rejected");
+    receipt.shell.remove.accepted = false;
+    receipt.shell.remove.status = creative::CreativeRoomShellStatus::InstallRejected;
+    receipt.shell.remove.reasonCode =
+        "creative_room_shell_remove_install_rejected";
+    receipt.shell.remove.message = receipt.shell.remove.reasonCode;
     receipt.toolAfter = context.facade.toolState().activeTool;
     setNoopStatus(receipt, "product_creative_ui_command_rejected");
     return;
   }
 
-  receipt.shellAccepted = true;
-  receipt.shellChanged = true;
-  receipt.shellRevisionAfter = context.facade.document().revision();
+  receipt.shell.changed = true;
+  receipt.shell.revisionAfter = context.facade.document().revision();
   receipt.accepted = true;
   receipt.changed = true;
   receipt.toolAfter = context.facade.toolState().activeTool;

@@ -4,6 +4,7 @@
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/bridge/UiCommandCatalog.hpp"
 #include "app/iggy3d/creative/bridge/UiInputFrame.hpp"
+#include "app/iggy3d/creative/tools/RoomShell.hpp"
 
 #include <cstdint>
 #include <string>
@@ -26,6 +27,14 @@ struct ProductCreativeUiCommandRemoveOutcome {
   bool noSelection = false;
 };
 
+struct ProductCreativeUiCommandRoomShellOutcome {
+  creative::CreativeRoomShellBuildReceipt build;
+  creative::CreativeRoomShellRemoveReceipt remove;
+  bool changed = false;
+  std::uint64_t revisionBefore = 0;
+  std::uint64_t revisionAfter = 0;
+};
+
 struct ProductCreativeUiCommandFrameReceipt {
   bool requested = false;
   bool facadeAvailable = false;
@@ -45,19 +54,7 @@ struct ProductCreativeUiCommandFrameReceipt {
   ProductCreativeUiCommandCreateOutcome create;
   ProductCreativeUiCommandRemoveOutcome remove;
   creative::CreativeDocumentUndoApplyReceipt undo;
-  bool shellRequested = false;
-  bool shellAccepted = false;
-  bool shellChanged = false;
-  creative::CreativeObjectId shellRoomObjectId = creative::kInvalidObjectId;
-  std::uint64_t shellGeneratedObjectCount = 0;
-  std::uint64_t shellRemovedObjectCount = 0;
-  std::uint64_t shellFloorCount = 0;
-  std::uint64_t shellWallCount = 0;
-  std::uint64_t shellRevisionBefore = 0;
-  std::uint64_t shellRevisionAfter = 0;
-  std::string shellStatus = "creative_room_shell_not_requested";
-  std::string shellReasonCode = "creative_room_shell_not_requested";
-  std::string shellMessage = "creative_room_shell_not_requested";
+  ProductCreativeUiCommandRoomShellOutcome shell;
   std::string semanticId;
   std::string status = "product_creative_ui_command_not_requested";
   std::string reasonCode = "product_creative_ui_command_not_requested";

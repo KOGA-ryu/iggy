@@ -868,20 +868,22 @@ bool generateRoomShellInstallsGeneratedChildrenAtomically() {
          expect(receipt.changed, "shell changed") &&
          expect(receipt.status == "product_creative_ui_command_applied",
                 "shell status") &&
-         expect(receipt.shellRequested, "shell requested") &&
-         expect(receipt.shellAccepted, "shell receipt accepted") &&
-         expect(receipt.shellChanged, "shell receipt changed") &&
-         expect(receipt.shellRoomObjectId == roomId, "shell room id") &&
-         expect(receipt.shellGeneratedObjectCount == 5U,
+         expect(receipt.shell.build.requested, "shell build requested") &&
+         expect(!receipt.shell.remove.requested, "shell remove unrequested") &&
+         expect(receipt.shell.build.accepted, "shell receipt accepted") &&
+         expect(receipt.shell.changed, "shell receipt changed") &&
+         expect(receipt.shell.build.roomObjectId == roomId, "shell room id") &&
+         expect(receipt.shell.build.generatedRequestCount == 5U,
                 "shell generated count") &&
-         expect(receipt.shellFloorCount == 1U, "shell floor count") &&
-         expect(receipt.shellWallCount == 4U, "shell wall count") &&
-         expect(receipt.shellRevisionBefore == revisionBefore,
+         expect(receipt.shell.build.floorRequestCount == 1U, "shell floor count") &&
+         expect(receipt.shell.build.wallRequestCount == 4U, "shell wall count") &&
+         expect(receipt.shell.revisionBefore == revisionBefore,
                 "shell revision before") &&
-         expect(receipt.shellRevisionAfter == revisionBefore + 5U,
+         expect(receipt.shell.revisionAfter == revisionBefore + 5U,
                 "shell revision after") &&
-         expect(receipt.shellStatus == "Generated", "shell receipt status") &&
-         expect(receipt.shellReasonCode == "creative_room_shell_generated",
+         expect(receipt.shell.build.status == cr::CreativeRoomShellStatus::Generated,
+                "shell receipt status") &&
+         expect(receipt.shell.build.reasonCode == "creative_room_shell_generated",
                 "shell receipt reason") &&
          expect(facade.document().objectCount() == 6U,
                 "shell object count") &&
@@ -910,12 +912,13 @@ bool generateRoomShellNoSelectionRejectsWithoutMutation() {
                 "shell no selection command kind") &&
          expect(!receipt.accepted, "shell no selection rejected") &&
          expect(!receipt.changed, "shell no selection unchanged") &&
-         expect(receipt.shellRequested, "shell no selection requested") &&
-         expect(!receipt.shellAccepted,
+         expect(receipt.shell.build.requested, "shell no selection requested") &&
+         expect(!receipt.shell.remove.requested, "shell no selection remove unrequested") &&
+         expect(!receipt.shell.build.accepted,
                 "shell no selection receipt rejected") &&
-         expect(receipt.shellStatus == "NoRoomSelected",
+         expect(receipt.shell.build.status == cr::CreativeRoomShellStatus::NoRoomSelected,
                 "shell no selection status") &&
-         expect(receipt.shellReasonCode ==
+         expect(receipt.shell.build.reasonCode ==
                     "creative_room_shell_no_room_selected",
                 "shell no selection reason") &&
          expect(facade.document().revision() == revisionBefore,
@@ -938,10 +941,10 @@ bool generateRoomShellNonRoomRejectsWithoutMutation() {
 
   return expect(!receipt.accepted, "shell non-room rejected") &&
          expect(!receipt.changed, "shell non-room unchanged") &&
-         expect(receipt.shellRoomObjectId == crateId, "shell non-room id") &&
-         expect(receipt.shellStatus == "SelectedNotRoom",
+         expect(receipt.shell.build.roomObjectId == crateId, "shell non-room id") &&
+         expect(receipt.shell.build.status == cr::CreativeRoomShellStatus::SelectedNotRoom,
                 "shell non-room status") &&
-         expect(receipt.shellReasonCode ==
+         expect(receipt.shell.build.reasonCode ==
                     "creative_room_shell_selected_not_room",
                 "shell non-room reason") &&
          expect(facade.document().revision() == revisionBefore,
@@ -974,9 +977,9 @@ bool generateRoomShellDuplicateRejectsWithoutMutation() {
   return expect(existingReceipt.accepted, "shell duplicate setup") &&
          expect(!receipt.accepted, "shell duplicate rejected") &&
          expect(!receipt.changed, "shell duplicate unchanged") &&
-         expect(receipt.shellStatus == "AlreadyExists",
+         expect(receipt.shell.build.status == cr::CreativeRoomShellStatus::AlreadyExists,
                 "shell duplicate status") &&
-         expect(receipt.shellReasonCode ==
+         expect(receipt.shell.build.reasonCode ==
                     "creative_room_shell_already_exists",
                 "shell duplicate reason") &&
          expect(facade.document().revision() == revisionBefore,
@@ -1025,21 +1028,22 @@ bool removeRoomShellDeletesOnlyGeneratedChildrenAtomically() {
          expect(receipt.changed, "shell remove changed") &&
          expect(receipt.status == "product_creative_ui_command_applied",
                 "shell remove status") &&
-         expect(receipt.shellRequested, "shell remove requested") &&
-         expect(receipt.shellAccepted, "shell remove receipt accepted") &&
-         expect(receipt.shellChanged, "shell remove receipt changed") &&
-         expect(receipt.shellRoomObjectId == roomId, "shell remove room id") &&
-         expect(receipt.shellRemovedObjectCount == 5U,
+         expect(receipt.shell.remove.requested, "shell remove requested") &&
+         expect(!receipt.shell.build.requested, "shell build unrequested") &&
+         expect(receipt.shell.remove.accepted, "shell remove receipt accepted") &&
+         expect(receipt.shell.changed, "shell remove receipt changed") &&
+         expect(receipt.shell.remove.roomObjectId == roomId, "shell remove room id") &&
+         expect(receipt.shell.remove.removedObjectCount == 5U,
                 "shell remove count") &&
-         expect(receipt.shellFloorCount == 1U, "shell remove floor count") &&
-         expect(receipt.shellWallCount == 4U, "shell remove wall count") &&
-         expect(receipt.shellRevisionBefore == revisionBefore,
+         expect(receipt.shell.remove.floorObjectCount == 1U, "shell remove floor count") &&
+         expect(receipt.shell.remove.wallObjectCount == 4U, "shell remove wall count") &&
+         expect(receipt.shell.revisionBefore == revisionBefore,
                 "shell remove revision before") &&
-         expect(receipt.shellRevisionAfter == revisionBefore + 5U,
+         expect(receipt.shell.revisionAfter == revisionBefore + 5U,
                 "shell remove revision after") &&
-         expect(receipt.shellStatus == "Removed",
+         expect(receipt.shell.remove.status == cr::CreativeRoomShellStatus::Removed,
                 "shell remove receipt status") &&
-         expect(receipt.shellReasonCode == "creative_room_shell_removed",
+         expect(receipt.shell.remove.reasonCode == "creative_room_shell_removed",
                 "shell remove receipt reason") &&
          expect(facade.document().objectCount() == objectCountBefore - 5U,
                 "shell remove object count") &&
@@ -1070,15 +1074,16 @@ bool removeRoomShellWithoutGeneratedChildrenRejectsWithoutMutation() {
                 "shell remove empty command kind") &&
          expect(!receipt.accepted, "shell remove empty rejected") &&
          expect(!receipt.changed, "shell remove empty unchanged") &&
-         expect(receipt.shellRequested, "shell remove empty requested") &&
-         expect(!receipt.shellAccepted,
+         expect(receipt.shell.remove.requested, "shell remove empty requested") &&
+         expect(!receipt.shell.build.requested, "shell remove empty build unrequested") &&
+         expect(!receipt.shell.remove.accepted,
                 "shell remove empty receipt rejected") &&
-         expect(receipt.shellStatus == "NoGeneratedShell",
+         expect(receipt.shell.remove.status == cr::CreativeRoomShellStatus::NoGeneratedShell,
                 "shell remove empty status") &&
-         expect(receipt.shellReasonCode ==
+         expect(receipt.shell.remove.reasonCode ==
                     "creative_room_shell_remove_not_found",
                 "shell remove empty reason") &&
-         expect(receipt.shellRemovedObjectCount == 0U,
+         expect(receipt.shell.remove.removedObjectCount == 0U,
                 "shell remove empty removed count") &&
          expect(facade.document().revision() == revisionBefore,
                 "shell remove empty revision unchanged") &&

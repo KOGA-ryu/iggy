@@ -127,26 +127,33 @@ ProductCreativeUiCommandUndoDiagnostics toDiagnostics(
   return fields;
 }
 
-ProductCreativeUiCommandRoomShellDiagnostics toRoomShellDiagnostics(
-    const ProductCreativeUiCommandFrameReceipt& receipt) {
+ProductCreativeUiCommandRoomShellDiagnostics toDiagnostics(
+    const ProductCreativeUiCommandRoomShellOutcome& outcome) {
   ProductCreativeUiCommandRoomShellDiagnostics fields;
-  fields.requested = receipt.shellRequested;
-  fields.accepted = receipt.shellAccepted;
-  fields.changed = receipt.shellChanged;
-  fields.roomObjectId = receipt.shellRoomObjectId;
-  fields.generatedObjectCount = receipt.shellGeneratedObjectCount;
-  fields.removedObjectCount = receipt.shellRemovedObjectCount;
-  fields.floorCount = receipt.shellFloorCount;
-  fields.wallCount = receipt.shellWallCount;
-  fields.revisionBefore = receipt.shellRevisionBefore;
-  fields.revisionAfter = receipt.shellRevisionAfter;
-  fields.status = receipt.shellStatus.empty()
-                      ? "creative_room_shell_not_requested"
-                      : receipt.shellStatus;
-  fields.reasonCode = receipt.shellReasonCode.empty()
-                          ? "none"
-                          : receipt.shellReasonCode;
-  fields.message = receipt.shellMessage.empty() ? "none" : receipt.shellMessage;
+  fields.changed = outcome.changed;
+  fields.revisionBefore = outcome.revisionBefore;
+  fields.revisionAfter = outcome.revisionAfter;
+  if (outcome.build.requested) {
+    fields.requested = outcome.build.requested;
+    fields.accepted = outcome.build.accepted;
+    fields.roomObjectId = outcome.build.roomObjectId;
+    fields.generatedObjectCount = outcome.build.generatedRequestCount;
+    fields.floorCount = outcome.build.floorRequestCount;
+    fields.wallCount = outcome.build.wallRequestCount;
+    fields.status = std::string(creative::toString(outcome.build.status));
+    fields.reasonCode = outcome.build.reasonCode;
+    fields.message = outcome.build.message;
+  } else if (outcome.remove.requested) {
+    fields.requested = outcome.remove.requested;
+    fields.accepted = outcome.remove.accepted;
+    fields.roomObjectId = outcome.remove.roomObjectId;
+    fields.removedObjectCount = outcome.remove.removedObjectCount;
+    fields.floorCount = outcome.remove.floorObjectCount;
+    fields.wallCount = outcome.remove.wallObjectCount;
+    fields.status = std::string(creative::toString(outcome.remove.status));
+    fields.reasonCode = outcome.remove.reasonCode;
+    fields.message = outcome.remove.message;
+  }
   return fields;
 }
 
@@ -176,7 +183,7 @@ ProductCreativeUiCommandDiagnostics toProductCreativeUiCommandDiagnostics(
   fields.create = toDiagnostics(receipt.create);
   fields.deleteObject = toDiagnostics(receipt.remove);
   fields.undo = toDiagnostics(receipt.undo);
-  fields.shell = toRoomShellDiagnostics(receipt);
+  fields.shell = toDiagnostics(receipt.shell);
   return fields;
 }
 
