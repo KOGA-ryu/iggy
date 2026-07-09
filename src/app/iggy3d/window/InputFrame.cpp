@@ -12,6 +12,7 @@
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/input/InteractionModeState.hpp"
 #include "app/iggy3d/window/MouseCapturePolicy.hpp"
+#include "app/iggy3d/window/InputFrameStages.hpp"
 #include "app/iggy3d/creative/CreativeAppState.hpp"
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/bridge/InputFrame.hpp"
@@ -46,11 +47,6 @@ struct ProductWindowFunctionKeyBinding {
   bool SdlWindowEventState::* pressed = nullptr;
   InputAction action = InputAction::None;
   bool KeyboardInputState::* wasDown = nullptr;
-};
-
-struct OpeningMenuNavigationHitRow {
-  OpeningMenuHitArea area = OpeningMenuHitArea::None;
-  InputAction action = InputAction::None;
 };
 
 using ProductWindowTopLevelToggleHandler = ProductWindowTopLevelToggleResult (*)(
@@ -152,27 +148,6 @@ static constexpr std::array kProductWindowTopLevelToggleRows{
                                    "gameplay_owned"},
 };
 
-static constexpr std::array kOpeningMenuNavigationHitRows{
-    OpeningMenuNavigationHitRow{OpeningMenuHitArea::DevToolsBack,
-                                InputAction::MenuBack},
-    OpeningMenuNavigationHitRow{OpeningMenuHitArea::SettingsBack,
-                                InputAction::MenuBack},
-    OpeningMenuNavigationHitRow{OpeningMenuHitArea::NewWorldCreate,
-                                InputAction::MenuConfirm},
-    OpeningMenuNavigationHitRow{OpeningMenuHitArea::NewWorldBack,
-                                InputAction::MenuBack},
-    OpeningMenuNavigationHitRow{OpeningMenuHitArea::NewWorldPreviousDungeon,
-                                InputAction::MenuLeft},
-    OpeningMenuNavigationHitRow{OpeningMenuHitArea::NewWorldNextDungeon,
-                                InputAction::MenuRight},
-    OpeningMenuNavigationHitRow{OpeningMenuHitArea::LoadSaveBack,
-                                InputAction::MenuBack},
-    OpeningMenuNavigationHitRow{OpeningMenuHitArea::DeleteConfirmConfirm,
-                                InputAction::MenuConfirm},
-    OpeningMenuNavigationHitRow{OpeningMenuHitArea::DeleteConfirmBack,
-                                InputAction::MenuBack},
-};
-
 bool resolvedSurfaceAcceptsGameplayInput(const FrontendState& frontend,
                                          const ProductAppWindowState& window) {
   const ProductActiveSurfaceFrame surface = resolveProductActiveSurface(
@@ -181,16 +156,6 @@ bool resolvedSurfaceAcceptsGameplayInput(const FrontendState& frontend,
          surface.activeSurface == ProductFrontendSurface::Gameplay &&
          surface.inputOwner == MenuOwner::Gameplay &&
          !surface.gameplayInputSuppressed;
-}
-
-InputAction openingMenuNavigationActionFor(OpeningMenuHitArea area) {
-  for (const OpeningMenuNavigationHitRow& row : kOpeningMenuNavigationHitRows) {
-    // branch-gate: BG-1029
-    if (row.area == area) {
-      return row.action;
-    }
-  }
-  return InputAction::None;
 }
 
 InputAction movementTuningHeldAdjustmentAction(bool leftDown, bool rightDown) {
@@ -205,27 +170,6 @@ InputAction movementTuningHeldAdjustmentAction(bool leftDown, bool rightDown) {
 void resetMovementTuningRepeat(ProductMovementTuningRepeatState& repeat) {
   repeat.heldDirection = 0;
   repeat.heldFrames = 0U;
-}
-
-MouseClick productWindowClickForHitTest(MouseClick click,
-                                        const SdlWindow* sdlWindow,
-                                        std::uint32_t virtualWidth,
-                                        std::uint32_t virtualHeight) {
-  // branch-gate: BG-1123
-  if (sdlWindow == nullptr) {
-    return click;
-  }
-  const SdlWindowEventState& eventState = sdlWindow->eventState();
-  return normalizeProductWindowMenuClick(click,
-                                         eventState.windowWidth,
-                                         eventState.windowHeight,
-                                         virtualWidth,
-                                         virtualHeight);
-}
-
-MouseClick productWindowMenuClickForHitTest(MouseClick click,
-                                            const SdlWindow* sdlWindow) {
-  return productWindowClickForHitTest(click, sdlWindow, 1280U, 720U);
 }
 
 void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
@@ -528,24 +472,6 @@ ProductControllerSampleInputResult applyProductWindowInputActionsImpl(
   return result;
 }
 
-void routeProductWindowMenuInput(InputAction inputAction,
-                                 ActionState& actionState,
-                                 ProductOpeningMenuInputContext context) {
-  // branch-gate: BG-1029
-  if (inputAction == InputAction::MenuBack &&
-      cancelProductRoomEditorPendingPreviewFromBack(context.frontend,
-                                                    context.window)) {
-    recordAction(actionState,
-                 InputAction::EditorCancelPreview,
-                 true,
-                 true,
-                 false,
-                 1.0F);
-    return;
-  }
-  routeProductOpeningMenuInput(inputAction, actionState, context);
-}
-
 ProductWindowTopLevelToggleResult dispatchProductWindowSystemToggleAction(
     FrontendState& frontend,
     ProductAppWindowState& window,
@@ -605,69 +531,6 @@ ProductControllerSampleInputResult applyProductWindowInputActions(
                                             creativeApp);
 }
 
-void dispatchProductOpeningMenuMouseHit(
-    const OpeningMenuHitTestResult& hit,
-    const MouseClick& click,
-    ActionState& actionState,
-    ProductOpeningMenuInputContext context) {
-  const InputAction navigationAction = openingMenuNavigationActionFor(hit.area);
-  // branch-gate: BG-1029
-  if (navigationAction != InputAction::None) {
-    routeProductOpeningMenuInput(navigationAction, actionState, context);
-    return;
-  }
-
-  // branch-gate: BG-1029
-  switch (hit.area) {
-    case OpeningMenuHitArea::StarterAction:
-      context.frontend.selectedAction = hit.action;
-      recordAction(actionState,
-                   mouseClickAction(click),
-                   true,
-                   true,
-                   false,
-                   1.0F);
-      routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
-                                   context);
-      return;
-    case OpeningMenuHitArea::DevToolsCategory:
-      context.frontend.devToolsCategory = hit.devToolsCategory;
-      context.frontend.status = "dev_tools_category_selected";
-      return;
-    case OpeningMenuHitArea::SettingsTab:
-      context.settingsTab = hit.settingsTab;
-      context.frontend.status = "settings_tab_selected";
-      return;
-    case OpeningMenuHitArea::LoadSaveSlot:
-      // branch-gate: BG-1122
-      if (hit.saveSlotIndex < context.saves.slots.slots.size()) {
-        (void)selectProductSaveSlotById(
-            context.saves.slots,
-            context.saves.slots.slots[hit.saveSlotIndex].id,
-            context.window);
-        context.frontend.status = "load_save_selection_changed";
-      }
-      return;
-    case OpeningMenuHitArea::LoadSaveLoad:
-      context.frontend.saveBrowserMode = FrontendSaveBrowserMode::Load;
-      context.window.saveSession.saveSlotBrowserMode =
-          std::string(frontendSaveBrowserModeName(context.frontend.saveBrowserMode));
-      routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
-                                   context);
-      return;
-    case OpeningMenuHitArea::LoadSaveDelete:
-      context.frontend.saveBrowserMode = FrontendSaveBrowserMode::Delete;
-      context.window.saveSession.saveSlotBrowserMode =
-          std::string(frontendSaveBrowserModeName(context.frontend.saveBrowserMode));
-      routeProductOpeningMenuInput(InputAction::MenuConfirm, actionState,
-                                   context);
-      return;
-    default:
-      context.frontend.status = "opening_menu_hit_area_unhandled";
-      return;
-  }
-}
-
 void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
                                             ProductAppWindowState& window) {
   initializeGamepadMenuState(state.gamepad);
@@ -676,32 +539,6 @@ void initializeProductWindowInputFrameState(ProductWindowInputFrameState& state,
   // branch-gate: BG-1029
   window.inputDevice.gamepadMapping =
       state.gamepad.gamepadAvailable ? "sdl_gamepad" : "unavailable";
-}
-
-MouseClick normalizeProductWindowMenuClick(MouseClick click,
-                                           std::uint32_t windowWidth,
-                                           std::uint32_t windowHeight,
-                                           std::uint32_t virtualWidth,
-                                           std::uint32_t virtualHeight) {
-  // branch-gate: BG-1123
-  if (!click.clicked || windowWidth == 0U || windowHeight == 0U ||
-      virtualWidth == 0U || virtualHeight == 0U) {
-    return click;
-  }
-  click.x = click.x * static_cast<float>(virtualWidth) /
-            static_cast<float>(windowWidth);
-  click.y = click.y * static_cast<float>(virtualHeight) /
-            static_cast<float>(windowHeight);
-  return click;
-}
-
-MouseClick resolveProductWindowInputMouseClick(
-    ProductWindowInputClickOverride clickOverride,
-    MouseInputState& mouse) {
-  if (clickOverride.enabled) {
-    return clickOverride.click;
-  }
-  return pollMouseClick(mouse);
 }
 
 void shutdownProductWindowInputFrameState(ProductWindowInputFrameState& state,
@@ -1038,7 +875,7 @@ struct ProductCreativeViewportInputPhaseResult {
 [[nodiscard]] MouseClick productCreativeUiClickForFrame(
     ProductWindowInputFrameContext& context,
     const ProductCreativeDocumentInputOrchestrationRequest& request) {
-  MouseClick creativeUiClick = productWindowClickForHitTest(
+  MouseClick creativeUiClick = productWindowMenuClickForHitTest(
       request.click,
       context.sdlWindow,
       context.creativeUiDrawList == nullptr
@@ -1515,7 +1352,7 @@ void processProductWindowInputFrame(ProductWindowInputFrameContext context) {
                                                     context.creativeApp) ||
        frontendMouseOwnsInput)) {
     const MouseClick menuClick =
-        productWindowMenuClickForHitTest(click, context.sdlWindow);
+          productWindowMenuClickForHitTest(click, context.sdlWindow);
     // Build the hit-test request through the SAME factory the frame draw path
     // uses (buildProductStarterUiDrawListRequest), so hit-testing consumes the
     // identical request that produced what was drawn.
