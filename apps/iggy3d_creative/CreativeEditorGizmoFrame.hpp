@@ -8,7 +8,7 @@
 #include "core/math/Vec3.hpp"
 #include "render/FrameInput.hpp"
 
-#include "CreativeEditorSelection.hpp"
+#include "EditorFrame.hpp"
 #include "StandaloneCaptureScript.hpp"
 #include "StandaloneGizmo.hpp"
 #include "StandalonePicking.hpp"
