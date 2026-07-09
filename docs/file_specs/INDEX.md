@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `e3d742db`
+Verified at: `d5abfcf8`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `166`.
-- Current mapped source files represented by those specs: about `314`.
+- Current file specs: `168`.
+- Current mapped source files represented by those specs: about `318`.
 
 ## Status Labels
 
@@ -142,6 +142,8 @@ App projection/view/window:
 - `mapped` [CreativeReceiptRecording.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/CreativeReceiptRecording.md)
 - `mapped` [PhysicsReceiptRecording.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/PhysicsReceiptRecording.md)
 - `mapped` [DebugHudStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/DebugHudStore.md)
+- `mapped` [CameraController.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/CameraController.md)
+- `mapped` [OpeningMenuView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/OpeningMenuView.md)
 - `mapped` [DebugHudView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/DebugHudView.md)
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
 
@@ -237,12 +239,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AH, app view/menu draw surfaces:
+Batch AI, remaining app view support surfaces:
 
-- `next` `src/app/iggy3d/view/OpeningMenuView.*`
-- `next` `src/app/iggy3d/view/CameraController.*`
-- `next` `src/app/iggy3d/view/VulkanMenuView.*`
-- `next` `src/app/iggy3d/menu/CreativeUi*.{hpp,cpp}` if still present.
+- `next` `src/app/iggy3d/view/MenuPanelsView.*`
+- `next` `src/app/iggy3d/view/OpeningMenuHitTest.*`
+- `next` `src/app/iggy3d/view/ScenePrimitiveView.*`
+- `next` `src/app/iggy3d/view/SdlDraw.*`
 
 ## Defer Leaf Policy
 
