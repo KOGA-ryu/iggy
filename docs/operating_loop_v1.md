@@ -1,4 +1,4 @@
-# The Operating Loop v1.0 — how work flows from idea to landed
+# The Operating Loop v1.1 — how work flows from idea to landed
 
 Distilled from the E100–E230 era: what the decomposition proved, what the receipt-table failure exposed, what
 the perception review demanded. One loop, two modes, six stages, one scoreboard. Planner cuts cards, builder
@@ -101,6 +101,26 @@ it gets the same commit dignity: `codex: stopped <card> — premise broken: <why
 - **Blast-radius budget (mode C acceptance):** `new files = 1 · existing edits = 1 (as data) · test = 1 ·
   instrumentation edits = 0 · cross-lane = 0`. Every leak past budget **names a missing seam** and
   auto-appends to the debt backlog — the seam backlog generates itself from real feature demand.
+
+## 8. ROLES & THE FOLDER-SPEC LAYER (v1.1 addition)
+
+**The team:** PLANNER (Claude) — plans, rulings, cards, pin-tests, intent checks. **BUILDER** (Codex) —
+lands slices, invokes STOP conditions. **REVIEWER** (Codex) — verifies gates, runs the standing ~10-card
+audit, and **owns folder-spec freshness**. **RESEARCHER** (Codex) — works the queue in
+`docs/research_requests_v1.md`; findings feed rulings as evidence.
+
+**Folder specs (`AGENTS.md`, with `CLAUDE.md` symlinked beside it):** per major folder, auto-ingested by
+both harnesses — the repo's skeleton so agents verify instead of reconstruct. Rules:
+- **Shape only, never state:** purpose, data flow, laws, seams, hazards, pointers to the deep docs. NO line
+  numbers, NO file lists, NO status, NO field counts (those rot in days). Anchor by symbol. ≤ ~60 lines.
+- **Every spec carries `Verified at: <commit>`** — staleness must be visible, not discovered.
+- **Reviewer refresh at each plan MILESTONE** (a plan phase satisfied): re-verify the specs of every folder
+  the phase touched, update shape if wiring changed, re-stamp. Between milestones, builders trust specs for
+  shape and verify state at card-cut (the existing re-anchor rule) — the two layers cover each other.
+- A spec's checkable claims (include-direction, ownership) should graduate into tests where cheap (the TSV
+  pattern); the rest stay stamped prose.
+- Exemplar: `src/runtime/ai/AGENTS.md`. Roll-out to remaining lanes = reviewer's milestone work, one folder
+  at a time, each verified at HEAD when written — never batch-generated from memory.
 
 ## THE SCOREBOARD — per card, cheap, mechanical
 
