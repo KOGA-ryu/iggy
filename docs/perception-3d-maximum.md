@@ -217,7 +217,7 @@ Unit (`npc_behavior_system_tests` + a new `npc_perception_3d_tests`), each a pin
 
 ## 12. SLICE / BUILD ORDER (cut cards from here)
 
-1. **P1 — Contract + config.** Add `NpcPerceptionResult`, the 5 new `NpcBehaviorConfig` fields + defaults +
+1. **P1 — Contract + config. ✅ DONE (E301, d4d807ea)** Add `NpcPerceptionResult`, the 5 new `NpcBehaviorConfig` fields + defaults +
    serialization/back-compat. No behavior change yet (result unused). Gate: builds, config round-trips.
 2. **P2 — The 3D function.** Implement `queryNpcPerception3D` (§4) + eye-height model (§5); wire `.perceived`
    into the FSM at the old call site; delete the default-true LOS bool. Gate: full §10 unit matrix (cones,
