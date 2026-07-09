@@ -1,20 +1,62 @@
 #include "app/iggy3d/gameplay/ControllerActionPhases.hpp"
 
 #include "app/iggy3d/ProductAppWindowState.hpp"
+#include "app/input/ActionState.hpp"
 #include "app/iggy3d/gameplay/ControllerJumpDash.hpp"
-#include "app/iggy3d/gameplay/ControllerInputIntent.hpp"
 #include "app/iggy3d/gameplay/ControllerProof.hpp"
 #include "app/iggy3d/gameplay/ControllerMoveActions.hpp"
 #include "app/iggy3d/gameplay/ControllerPlayerAccess.hpp"
-#include "app/iggy3d/gameplay/ControllerResetActions.hpp"
 #include "app/iggy3d/gameplay/ControllerTargeting.hpp"
 #include "app/iggy3d/gameplay/ControllerWallRunEvaluation.hpp"
 #include "runtime/command/Command.hpp"
+#include "runtime/session/Session.hpp"
 #include "runtime/world/EntityState.hpp"
 
 #include <optional>
+#include <string>
 
 namespace iggy3d {
+namespace {
+
+void submitProductReset(Session& session,
+                        ProductAppWindowState& window,
+                        std::string_view source) {
+  const SessionResetResult reset = session.resetToBaseline();
+  clearProductTargetProof(window);
+  clearProductOutcomeProof(window);
+  window.gameplay.gameplayInputUsed = true;
+  window.gameplay.gameplayInputSource = std::string(source);
+  window.gameplay.gameplayCommand.kind = "reset";
+  window.gameplay.gameplayCommand.submitted = true;
+  window.gameplay.gameplayCommand.accepted = reset.reset;
+  window.gameplay.gameplayCommand.status = reset.reset ? "accepted" : "rejected";  // branch-gate: BG-1155
+}
+
+}  // namespace
+
+ProductGameplayInputIntent sampleProductGameplayInputIntent(
+    const ActionState& actions) {
+  ProductGameplayInputIntent intent;
+  intent.moveX = actionAxisValue(actions, InputAction::PlayerMoveX);
+  intent.moveY = actionAxisValue(actions, InputAction::PlayerMoveY);
+  intent.sprinting = actionIsDown(actions, InputAction::PlayerSprint);
+  intent.jumpPressed = actionWasPressed(actions, InputAction::PlayerJump);
+  intent.jumpReleased = actionWasReleased(actions, InputAction::PlayerJump);
+  intent.dashPressed = actionWasPressed(actions, InputAction::PlayerDash);
+  intent.interactPressed = actionWasPressed(actions, InputAction::PlayerInteract);
+  intent.attackPressed = actionWasPressed(actions, InputAction::PlayerAttack);
+  intent.resetPressed =
+      actionWasPressed(actions, InputAction::PlayerRetryOrReset);
+  return intent;
+}
+
+bool productGameplayIntentHasMovement(
+    const ProductGameplayInputIntent& intent,
+    const ProductAppWindowState& window) {
+  return intent.moveX != 0.0F || intent.moveY != 0.0F ||
+         productHorizontalVelocityActive(window);
+}
+
 namespace {
 
 void updateProductJumpTimingPhase(Session& session,

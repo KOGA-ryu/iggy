@@ -109,12 +109,10 @@ target_sources(iggy3d
     src/app/iggy3d/gameplay/ControllerCommandExecution.cpp
     src/app/iggy3d/gameplay/ControllerJumpDash.cpp
     src/app/iggy3d/gameplay/ControllerGroundQueries.cpp
-    src/app/iggy3d/gameplay/ControllerInputIntent.cpp
     src/app/iggy3d/gameplay/ControllerProof.cpp
     src/app/iggy3d/gameplay/ControllerKinematics.cpp
     src/app/iggy3d/gameplay/ControllerMoveActions.cpp
     src/app/iggy3d/gameplay/ControllerPlayerAccess.cpp
-    src/app/iggy3d/gameplay/ControllerResetActions.cpp
     src/app/iggy3d/gameplay/ControllerResetFall.cpp
     src/app/iggy3d/gameplay/ControllerTargeting.cpp
     src/app/iggy3d/gameplay/ControllerWallRunEvaluation.cpp

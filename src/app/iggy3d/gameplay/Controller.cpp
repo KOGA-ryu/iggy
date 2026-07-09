@@ -3,7 +3,6 @@
 #include <string_view>
 
 #include "app/iggy3d/gameplay/ControllerActionPhases.hpp"
-#include "app/iggy3d/gameplay/ControllerInputIntent.hpp"
 
 namespace iggy3d {
 
