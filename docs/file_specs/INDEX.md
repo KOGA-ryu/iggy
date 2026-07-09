@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `fd3abdec`
+Verified at: `b2151294`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `291`.
-- Current mapped source files represented by those specs: about `574`.
+- Current file specs: `295`.
+- Current mapped source files represented by those specs: about `582`.
 
 ## Status Labels
 
@@ -52,6 +52,13 @@ Runtime movement/player/session/physics:
 - `mapped` [Session.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/session/Session.md)
 - `mapped` [SessionTick.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/session/SessionTick.md)
 - `mapped` [PhysicsCollisionQueries.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsCollisionQueries.md)
+
+Runtime physics data/stores:
+
+- `mapped` [PhysicsTypes.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsTypes.md)
+- `mapped` [PhysicsBodyStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsBodyStore.md)
+- `mapped` [PhysicsShapeStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsShapeStore.md)
+- `mapped` [PhysicsAabbCollider.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsAabbCollider.md)
 
 Runtime collision/world/ability/combat:
 
