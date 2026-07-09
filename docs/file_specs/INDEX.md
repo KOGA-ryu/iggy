@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `f288fbd8`
+Verified at: `a65a2f58`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `65`.
-- Current mapped source files represented by those specs: about `130`.
+- Current file specs: `69`.
+- Current mapped source files represented by those specs: about `138`.
 
 ## Status Labels
 
@@ -114,6 +114,10 @@ App ASCII room / active room:
 - `mapped` [ProductRoomStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ProductRoomStore.md)
 - `mapped` [ControllerJumpActions.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerJumpActions.md)
 - `mapped` [TapeRunner.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/TapeRunner.md)
+- `mapped` [ActiveRoomCollisionFreshnessStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.md)
+- `mapped` [ControllerActionPhases.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerActionPhases.md)
+- `mapped` [ControllerDashActions.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerDashActions.md)
+- `mapped` [ScriptedDriver.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ScriptedDriver.md)
 
 App debug HUD builders:
 
@@ -130,12 +134,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch H remainder, active room gameplay/collision:
+Batch I, gameplay controller leaves:
 
-- `next` `src/app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.*`
-- `next` `src/app/iggy3d/gameplay/ControllerActionPhases.*`
-- `next` `src/app/iggy3d/gameplay/ControllerDashActions.*`
-- `next` `src/app/iggy3d/gameplay/ScriptedDriver.*`
+- `next` `src/app/iggy3d/gameplay/ControllerMoveActions.*`
+- `next` `src/app/iggy3d/gameplay/ControllerTargetActions.*`
+- `next` `src/app/iggy3d/gameplay/ControllerResetActions.*`
+- `next` `src/app/iggy3d/gameplay/ControllerCommandExecution.*`
 
 ## Defer Leaf Policy
 
