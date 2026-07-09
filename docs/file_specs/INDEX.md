@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `0fe74f9c`
+Verified at: `0ba40cb9`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `151`.
-- Current mapped source files represented by those specs: about `288`.
+- Current file specs: `156`.
+- Current mapped source files represented by those specs: about `293`.
 
 ## Status Labels
 
@@ -133,6 +133,11 @@ App projection/view/window:
 - `mapped` [StartupWorldBuildoutFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/StartupWorldBuildoutFields.md)
 - `mapped` [ActiveRoomFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/ActiveRoomFields.md)
 - `mapped` [TailFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/TailFields.md)
+- `mapped` [GameplayRuntimeMovementFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/GameplayRuntimeMovementFields.md)
+- `mapped` [GameplaySceneStateFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/GameplaySceneStateFields.md)
+- `mapped` [FeedbackSurfaceAutomationVulkanFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/FeedbackSurfaceAutomationVulkanFields.md)
+- `mapped` [CreativeReceiptRecording.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/CreativeReceiptRecording.md)
+- `mapped` [PhysicsReceiptRecording.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/PhysicsReceiptRecording.md)
 - `mapped` [DebugHudStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/DebugHudStore.md)
 - `mapped` [DebugHudView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/DebugHudView.md)
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
@@ -219,13 +224,13 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AD, gameplay/recording receipt surfaces:
+Batch AE, product automation surfaces:
 
-- `next` `src/app/iggy3d/receipt/GameplayRuntimeMovementFields.cpp`
-- `next` `src/app/iggy3d/receipt/GameplaySceneStateFields.cpp`
-- `next` `src/app/iggy3d/receipt/FeedbackSurfaceAutomationVulkanFields.cpp`
-- `next` `src/app/iggy3d/receipt/CreativeReceiptRecording.cpp`
-- `next` `src/app/iggy3d/receipt/PhysicsReceiptRecording.cpp`
+- `next` `src/app/iggy3d/automation/Automation.*`
+- `next` `src/app/iggy3d/automation/AutomationCommandRegistry.*`
+- `next` `src/app/iggy3d/automation/AutomationDispatch.*`
+- `next` `src/app/iggy3d/automation/AutomationGameplay.*`
+- `next` `src/app/iggy3d/automation/AutomationSmokeSupport.*`
 
 ## Defer Leaf Policy
 
