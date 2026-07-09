@@ -8,7 +8,7 @@
 
 #include <SDL3/SDL.h>
 
-#include "StandalonePreviewProxies.hpp"
+#include "EditorPreviewProxies.hpp"
 #include "projection/scene/SceneItem.hpp"
 #include "runtime/session/SessionState.hpp"
 

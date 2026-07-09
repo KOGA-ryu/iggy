@@ -6,7 +6,7 @@
 
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
-#include "StandalonePreviewProxies.hpp"
+#include "EditorPreviewProxies.hpp"
 
 namespace iggy3d_creative_app {
 

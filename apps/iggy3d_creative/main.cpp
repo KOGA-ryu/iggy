@@ -71,10 +71,9 @@
 #include "StandalonePicking.hpp"
 #include "StandalonePlacement.hpp"
 #include "StandalonePersistenceProof.hpp"
-#include "StandalonePreviewProxies.hpp"
+#include "EditorPreviewProxies.hpp"
 #include "StandaloneRoomBakePreview.hpp"
 #include "StandaloneUndo.hpp"
-#include "StandaloneWireframeBoxEdges.hpp"
 
 namespace {
 

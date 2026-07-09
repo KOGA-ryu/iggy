@@ -17,7 +17,7 @@
 #include "StandalonePersistenceProof.hpp"
 #include "StandalonePlacement.hpp"
 #include "StandalonePicking.hpp"
-#include "StandalonePreviewProxies.hpp"
+#include "EditorPreviewProxies.hpp"
 #include "StandaloneUndo.hpp"
 
 namespace iggy3d_creative_app {

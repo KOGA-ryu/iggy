@@ -79,4 +79,11 @@ void appendPathPolylineLines(
     float thickness,
     cr::CreativeObjectId objectId = cr::kInvalidObjectId);
 
+void appendStandaloneWireframeBoxEdges(
+    std::vector<iggy3d::RenderCreativeWireframeDebugLine>& out,
+    iggy3d::Vec3 boxMin,
+    iggy3d::Vec3 boxMax,
+    iggy3d::RenderLineColor color,
+    float thickness);
+
 }  // namespace iggy3d_creative_app

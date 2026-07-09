@@ -5,7 +5,7 @@
 
 #include "StandalonePersistenceProof.hpp"
 #include "StandalonePlacement.hpp"
-#include "StandalonePreviewProxies.hpp"
+#include "EditorPreviewProxies.hpp"
 #include "StandaloneGizmo.hpp"
 #include "StandalonePathEditing.hpp"
 

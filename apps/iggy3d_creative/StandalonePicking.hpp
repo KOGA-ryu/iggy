@@ -1,6 +1,6 @@
 #pragma once
 
-#include "StandalonePreviewProxies.hpp"
+#include "EditorPreviewProxies.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "core/math/Mat4.hpp"
 #include "core/math/OrientedBox.hpp"
