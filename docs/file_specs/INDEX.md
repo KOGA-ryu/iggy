@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `b2151294`
+Verified at: `f8ebbb1c`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `295`.
-- Current mapped source files represented by those specs: about `582`.
+- Current file specs: `299`.
+- Current mapped source files represented by those specs: about `590`.
 
 ## Status Labels
 
@@ -59,6 +59,13 @@ Runtime physics data/stores:
 - `mapped` [PhysicsBodyStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsBodyStore.md)
 - `mapped` [PhysicsShapeStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsShapeStore.md)
 - `mapped` [PhysicsAabbCollider.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsAabbCollider.md)
+
+Runtime physics contact/material kernels:
+
+- `mapped` [PhysicsMaterialTraits.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsMaterialTraits.md)
+- `mapped` [PhysicsBroadphase.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsBroadphase.md)
+- `mapped` [PhysicsAabbContact.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsAabbContact.md)
+- `mapped` [PhysicsAabbContactSolver.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsAabbContactSolver.md)
 
 Runtime collision/world/ability/combat:
 
