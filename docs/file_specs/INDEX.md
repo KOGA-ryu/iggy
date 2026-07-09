@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `0ba40cb9`
+Verified at: `67587af2`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `156`.
-- Current mapped source files represented by those specs: about `293`.
+- Current file specs: `161`.
+- Current mapped source files represented by those specs: about `304`.
 
 ## Status Labels
 
@@ -142,6 +142,14 @@ App projection/view/window:
 - `mapped` [DebugHudView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/DebugHudView.md)
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
 
+App automation:
+
+- `mapped` [Automation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/automation/Automation.md)
+- `mapped` [AutomationDispatch.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/automation/AutomationDispatch.md)
+- `mapped` [AutomationControl.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/automation/AutomationControl.md)
+- `mapped` [AutomationGameplay.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/automation/AutomationGameplay.md)
+- `mapped` [AutomationSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/automation/AutomationSystem.md)
+
 App creative/world launch:
 
 - `mapped` [ProductSessionLaunch.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/ProductSessionLaunch.md)
@@ -224,13 +232,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AE, product automation surfaces:
+Batch AF, remaining product automation surfaces:
 
-- `next` `src/app/iggy3d/automation/Automation.*`
-- `next` `src/app/iggy3d/automation/AutomationCommandRegistry.*`
-- `next` `src/app/iggy3d/automation/AutomationDispatch.*`
-- `next` `src/app/iggy3d/automation/AutomationGameplay.*`
-- `next` `src/app/iggy3d/automation/AutomationSmokeSupport.*`
+- `next` `src/app/iggy3d/automation/AutomationRoomEditing.*`
+- `next` `src/app/iggy3d/automation/AutomationSaveBrowser.*`
+- `queued` `src/app/iggy3d/automation/AutomationSystem.*` only if system callbacks change.
+- `queued` `src/app/iggy3d/automation/AutomationControl.*` only if control state fields change.
 
 ## Defer Leaf Policy
 
