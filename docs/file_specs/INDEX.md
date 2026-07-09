@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `b60dce77`
+Verified at: `f6abfbf4`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `81`.
-- Current mapped source files represented by those specs: about `161`.
+- Current file specs: `85`.
+- Current mapped source files represented by those specs: about `169`.
 
 ## Status Labels
 
@@ -130,6 +130,10 @@ App ASCII room / active room:
 - `mapped` [ControllerGroundQueries.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerGroundQueries.md)
 - `mapped` [ControllerWallQueries.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerWallQueries.md)
 - `mapped` [ControllerPlayerAccess.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerPlayerAccess.md)
+- `mapped` [ControllerJumpDashState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerJumpDashState.md)
+- `mapped` [ControllerResetFall.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerResetFall.md)
+- `mapped` [ControllerTraversalProof.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerTraversalProof.md)
+- `mapped` [ControllerWallRunEvaluation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerWallRunEvaluation.md)
 
 App debug HUD builders:
 
@@ -146,12 +150,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch L, gameplay traversal and wall-run surfaces:
+Batch M, gameplay top-level and packet surfaces:
 
-- `next` `src/app/iggy3d/gameplay/ControllerJumpDashState.*`
-- `next` `src/app/iggy3d/gameplay/ControllerResetFall.*`
-- `next` `src/app/iggy3d/gameplay/ControllerTraversalProof.*`
-- `next` `src/app/iggy3d/gameplay/ControllerWallRunEvaluation.*`
+- `next` `src/app/iggy3d/gameplay/Controller.*`
+- `next` `src/app/iggy3d/gameplay/ControllerInputIntent.*`
+- `next` `src/app/iggy3d/gameplay/MovementProof.*`
+- `next` `src/app/iggy3d/gameplay/Tape.*`
 
 ## Defer Leaf Policy
 
