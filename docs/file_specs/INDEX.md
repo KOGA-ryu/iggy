@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `f8ebbb1c`
+Verified at: `9288e13b`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `299`.
-- Current mapped source files represented by those specs: about `590`.
+- Current file specs: `303`.
+- Current mapped source files represented by those specs: about `598`.
 
 ## Status Labels
 
@@ -66,6 +66,13 @@ Runtime physics contact/material kernels:
 - `mapped` [PhysicsBroadphase.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsBroadphase.md)
 - `mapped` [PhysicsAabbContact.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsAabbContact.md)
 - `mapped` [PhysicsAabbContactSolver.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsAabbContactSolver.md)
+
+Runtime physics bake/motor/debug:
+
+- `mapped` [PhysicsSpatialSurfaceColliderBake.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsSpatialSurfaceColliderBake.md)
+- `mapped` [PhysicsKinematicMotor.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsKinematicMotor.md)
+- `mapped` [PhysicsFrameStats.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsFrameStats.md)
+- `mapped` [PhysicsDebugSnapshot.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsDebugSnapshot.md)
 
 Runtime collision/world/ability/combat:
 
