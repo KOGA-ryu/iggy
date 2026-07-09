@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `9a81866f`
+Verified at: `9efd172d`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `51`.
-- Current mapped source files represented by those specs: about `102`.
+- Current file specs: `57`.
+- Current mapped source files represented by those specs: about `114`.
 
 ## Status Labels
 
@@ -95,6 +95,15 @@ App creative/world launch:
 - `mapped` [UiCommandFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiCommandFrame.md)
 - `mapped` [UiWindowFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiWindowFrame.md)
 
+App room editor/map maker:
+
+- `mapped` [Presentation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/Presentation.md)
+- `mapped` [Preview.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/Preview.md)
+- `mapped` [ActionController.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/ActionController.md)
+- `mapped` [AuthoringController.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/AuthoringController.md)
+- `mapped` [Grid.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/map_maker/Grid.md)
+- `mapped` [Presentation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/map_maker/Presentation.md)
+
 App debug HUD builders:
 
 - `mapped` [PhysicsDebugHud.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/PhysicsDebugHud.md)
@@ -105,13 +114,13 @@ App debug HUD builders:
 
 ## Next Batch Queue
 
-Batch F, room editor/map maker:
+Batch G, ASCII room and active room authoring:
 
-- `next` `src/app/iggy3d/room_editor/Presentation.*`
-- `next` `src/app/iggy3d/room_editor/Preview.*`
-- `next` `src/app/iggy3d/room_editor/Controller.*`
-- `next` `src/app/iggy3d/map_maker/Presentation.*`
-- `next` `src/app/iggy3d/map_maker/Grid.*`
+- `next` `src/app/iggy3d/ascii_room/AsciiRoomSource.*`
+- `next` `src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.*`
+- `next` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
+- `next` `src/app/iggy3d/ascii_room/Editing.*`
+- `next` `src/app/iggy3d/gameplay/ActiveRoomState.*`
 
 ## Defer Leaf Policy
 
