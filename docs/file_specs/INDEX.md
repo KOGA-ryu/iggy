@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `187`.
-- Current mapped source files represented by those specs: about `354`.
+- Current file specs: `189`.
+- Current mapped source files represented by those specs: about `358`.
 
 ## Status Labels
 
@@ -127,6 +127,8 @@ App projection/view/window:
 - `mapped` [ProductStartupState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductStartupState.md)
 - `mapped` [ProductCreativeBakedRoomRefresh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductCreativeBakedRoomRefresh.md)
 - `mapped` [ProductCreativeAuthoringMirrorStates.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductCreativeAuthoringMirrorStates.md)
+- `mapped` [CreativeReasoningActivation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/CreativeReasoningActivation.md)
+- `mapped` [PatrolRouteWaypoints.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/PatrolRouteWaypoints.md)
 - `mapped` [PackageRuntimeLookup.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/PackageRuntimeLookup.md)
 - `mapped` [ProductVulkanMenuState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/ProductVulkanMenuState.md)
 - `mapped` [ReceiptBuilder.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ReceiptBuilder.md)
@@ -258,10 +260,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AP, product root gameplay/AI support leaves:
+Batch AQ, app debug leaf state and HUD surfaces:
 
-- `next` `src/app/iggy3d/CreativeReasoningActivation.*`
-- `next` `src/app/iggy3d/PatrolRouteWaypoints.*`
+- `next` `src/app/iggy3d/debug/InteractionModeHud.*`
+- `next` `src/app/iggy3d/debug/DevCollisionOverlayState.hpp`
+- `next` `src/app/iggy3d/debug/NpcBehaviorDebugHudState.hpp`
+- `queued` `src/app/iggy3d/debug/TopDownMapState.hpp`
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
 ## Defer Leaf Policy
