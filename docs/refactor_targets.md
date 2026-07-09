@@ -2,6 +2,13 @@
 
 ## ⚡ KNOT LANE (dispatched 2026-07-09 — the last structural knots, measured at HEAD)
 
+**TARGET LAYOUTS ARE PLANNER-OWNED: `docs/knot_target_layout.md`** — the post-state file/folder maps for
+K1/K2/K5 + THE FILE BAND LAW (cpp 150–700, folder 5–15; a file earns existence by concern/boundary/kernel/
+heavy-dep, loses it under ~100 lines with one includer and no tests). Builders land INTO the layout;
+deviation = STOP. **K5 added — the condensation direction:** apps/iggy3d_creative 48→~19 files (merge the
+micro-stage TUs; E266 follow-ons land INTO EditorFrame.cpp, not as new micro-files) + the Controller tail
+15→~9. Splitting and condensing are one band, not two lanes.
+
 God-struct: CONFIRMED GONE (ProductAppWindowState = 14 members: 4 lifecycle bools + 9 stores + viewport +
 automationControl — the planned end-state). Remaining knots, in pull order (Mode P unless noted; interleaves
 with the Guard Senses arc in disjoint-file gaps — senses arc keeps priority):
