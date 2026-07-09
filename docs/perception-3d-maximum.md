@@ -1,4 +1,11 @@
-# Perception 3D — Build Maximum (v1.1)
+# Perception 3D — Build Maximum (v1.2)
+
+> **v1.2 (from E301's correctly-invoked STOP):** `NpcBehaviorConfig` is **never serialized** — saves persist
+> `behavior_profile_id` only; config is derived from the in-code `NpcBehaviorProfile` catalog via
+> `configFromNpcBehaviorProfile`. §3's "serialized wherever NpcBehaviorConfig already is" and §15's "config TOML
+> plumbing" are WRONG for this repo: the data layer is the **profile struct + derivation fn** (mirror fields
+> there; built-ins inherit member defaults). Bonus finding: `visionHalfAngleDegrees` was never profile-carried —
+> P1 heals that. Config-as-derived-truth also means zero save-drift risk for the new fields.
 
 > **v1.1 re-anchor corrections (verified at HEAD before P1 card-cut):**
 > 1. **`NpcPerceptionResult` ALREADY EXISTS** (`NpcBehaviorSystem.hpp:72-87`) with `status`, entity/combat
