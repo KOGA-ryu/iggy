@@ -9,9 +9,6 @@
 
 #include "core/math/Aabb3.hpp"
 #include "core/math/Transform3.hpp"
-#include "runtime/combat/CombatState.hpp"
-#include "runtime/interaction/InteractionDefinition.hpp"
-#include "runtime/world/EntityState.hpp"
 
 namespace iggy3d {
 namespace {
@@ -34,7 +31,7 @@ Transform3 transformAt(Vec3 position) {
 }
 
 ScenarioEntitySeed baseEntity(std::string stableName,
-                              EntityKind kind,
+                              ScenarioEntityKind kind,
                               Vec3 position,
                               Aabb3 bounds) {
   ScenarioEntitySeed seed;
@@ -49,12 +46,12 @@ ScenarioEntitySeed baseEntity(std::string stableName,
 
 ScenarioEntitySeed playerFromAnchor(const RoomAnchorAsset& anchor) {
   ScenarioEntitySeed seed = baseEntity("player",
-                                       EntityKind::Player,
+                                       ScenarioEntityKind::Player,
                                        anchor.positionMeters,
                                        makeAabb3({-0.25F, 0.0F, -0.25F},
                                                  {0.25F, 1.8F, 0.25F}));
   seed.targeting.targetable = true;
-  seed.targeting.actions = {TargetAction::Attack, TargetAction::Inspect};
+  seed.targeting.actions = {ScenarioTargetAction::Attack, ScenarioTargetAction::Inspect};
   seed.combatantEnabled = true;
   seed.combatant.factionId = 1;
   seed.combatant.hitPoints = 10;
@@ -64,12 +61,12 @@ ScenarioEntitySeed playerFromAnchor(const RoomAnchorAsset& anchor) {
 
 ScenarioEntitySeed npcFromAnchor(const RoomAnchorAsset& anchor) {
   ScenarioEntitySeed seed = baseEntity(anchor.id,
-                                       EntityKind::Npc,
+                                       ScenarioEntityKind::Npc,
                                        anchor.positionMeters,
                                        makeAabb3({-0.25F, 0.0F, -0.25F},
                                                  {0.25F, 1.2F, 0.25F}));
   seed.targeting.targetable = true;
-  seed.targeting.actions = {TargetAction::Attack, TargetAction::Inspect};
+  seed.targeting.actions = {ScenarioTargetAction::Attack, ScenarioTargetAction::Inspect};
   seed.combatantEnabled = true;
   seed.combatant.factionId = 2;
   seed.combatant.hitPoints = 3;
@@ -83,14 +80,14 @@ std::string objectiveIdFor(std::string_view prefix, std::string_view stableName)
 
 ScenarioEntitySeed pickupFromAnchor(const RoomAnchorAsset& anchor) {
   ScenarioEntitySeed seed = baseEntity(anchor.id,
-                                       EntityKind::Pickup,
+                                       ScenarioEntityKind::Pickup,
                                        anchor.positionMeters,
                                        makeAabb3({-0.10F, 0.0F, -0.10F},
                                                  {0.10F, 0.10F, 0.10F}));
   seed.targeting.targetable = true;
-  seed.targeting.actions = {TargetAction::Interact, TargetAction::Inspect};
-  seed.interaction.kind = InteractionKind::Pickup;
-  seed.interaction.primaryEffect = InteractionEffectKind::AddItemToInventory;
+  seed.targeting.actions = {ScenarioTargetAction::Interact, ScenarioTargetAction::Inspect};
+  seed.interaction.kind = ScenarioInteractionKind::Pickup;
+  seed.interaction.primaryEffect = ScenarioInteractionEffectKind::AddItemToInventory;
   seed.interaction.itemId = anchor.id;
   seed.interaction.itemCount = 1;
   seed.interaction.deactivateTargetOnSuccess = true;
@@ -100,14 +97,14 @@ ScenarioEntitySeed pickupFromAnchor(const RoomAnchorAsset& anchor) {
 ScenarioEntitySeed doorFromAnchor(const RoomAnchorAsset& anchor,
                                   std::string_view requiredItemId) {
   ScenarioEntitySeed seed = baseEntity(anchor.id,
-                                       EntityKind::Door,
+                                       ScenarioEntityKind::Door,
                                        anchor.positionMeters,
                                        makeAabb3({-0.25F, 0.0F, -0.25F},
                                                  {0.25F, 1.8F, 0.25F}));
   seed.targeting.targetable = true;
-  seed.targeting.actions = {TargetAction::Interact, TargetAction::Inspect};
-  seed.interaction.kind = InteractionKind::OpenDoor;
-  seed.interaction.primaryEffect = InteractionEffectKind::EmitEventOnly;
+  seed.targeting.actions = {ScenarioTargetAction::Interact, ScenarioTargetAction::Inspect};
+  seed.interaction.kind = ScenarioInteractionKind::OpenDoor;
+  seed.interaction.primaryEffect = ScenarioInteractionEffectKind::EmitEventOnly;
   if (anchor.kind == "secret_door" && !requiredItemId.empty()) {
     seed.interaction.requiredItemId = std::string(requiredItemId);
     seed.interaction.requiredItemCount = 1;
@@ -119,15 +116,15 @@ ScenarioEntitySeed doorFromAnchor(const RoomAnchorAsset& anchor,
 ScenarioEntitySeed exitFromAnchor(const RoomAnchorAsset& anchor,
                                   std::string_view requiredItemId) {
   ScenarioEntitySeed seed = baseEntity(anchor.id,
-                                       EntityKind::Marker,
+                                       ScenarioEntityKind::Marker,
                                        anchor.positionMeters,
                                        makeAabb3({-0.10F, 0.0F, -0.10F},
                                                  {0.10F, 0.10F, 0.10F}));
   seed.targeting.targetable = true;
-  seed.targeting.actions = {TargetAction::Interact, TargetAction::Move,
-                            TargetAction::Inspect};
-  seed.interaction.kind = InteractionKind::ObjectiveTrigger;
-  seed.interaction.primaryEffect = InteractionEffectKind::CompleteObjective;
+  seed.targeting.actions = {ScenarioTargetAction::Interact, ScenarioTargetAction::Move,
+                            ScenarioTargetAction::Inspect};
+  seed.interaction.kind = ScenarioInteractionKind::ObjectiveTrigger;
+  seed.interaction.primaryEffect = ScenarioInteractionEffectKind::CompleteObjective;
   seed.interaction.objectiveId = objectiveIdFor("exit", anchor.id);
   if (!requiredItemId.empty()) {
     seed.interaction.requiredItemId = std::string(requiredItemId);
@@ -137,9 +134,9 @@ ScenarioEntitySeed exitFromAnchor(const RoomAnchorAsset& anchor,
 }
 
 ScenarioEntitySeed markerFromAnchor(const RoomAnchorAsset& anchor,
-                                    std::initializer_list<TargetAction> actions) {
+                                    std::initializer_list<ScenarioTargetAction> actions) {
   ScenarioEntitySeed seed = baseEntity(anchor.id,
-                                       EntityKind::Marker,
+                                       ScenarioEntityKind::Marker,
                                        anchor.positionMeters,
                                        makeAabb3({-0.10F, 0.0F, -0.10F},
                                                  {0.10F, 0.10F, 0.10F}));
@@ -170,7 +167,7 @@ ScenarioEntitySeed entityFromAnchor(const RoomAnchorAsset& anchor,
   if (anchor.kind == "exit") {
     return exitFromAnchor(anchor, firstTreasureItemId);
   }
-  return markerFromAnchor(anchor, {TargetAction::Inspect});
+  return markerFromAnchor(anchor, {ScenarioTargetAction::Inspect});
 }
 
 ScenarioObjectiveSeed inventoryObjective(std::string id, const ScenarioEntitySeed& pickup) {
@@ -209,16 +206,16 @@ void fillCounts(ProductPackageSessionSeedResult& result) {
   result.markerEntityCount = 0;
   for (const ScenarioEntitySeed& entity : result.seed.entities) {
     switch (entity.kind) {
-      case EntityKind::Npc:
+      case ScenarioEntityKind::Npc:
         ++result.npcCount;
         break;
-      case EntityKind::Pickup:
+      case ScenarioEntityKind::Pickup:
         ++result.pickupCount;
         break;
-      case EntityKind::Door:
+      case ScenarioEntityKind::Door:
         ++result.doorCount;
         break;
-      case EntityKind::Marker:
+      case ScenarioEntityKind::Marker:
         ++result.markerEntityCount;
         break;
       default:
@@ -263,7 +260,7 @@ bool assignNpcBehaviorProfiles(FixtureScenarioSeed& seed,
   }
 
   for (const ScenarioEntitySeed& entity : seed.entities) {
-    if (entity.kind != EntityKind::Npc) {
+    if (entity.kind != ScenarioEntityKind::Npc) {
       continue;
     }
     const ProductNpcProfileResolveResult resolved =
@@ -370,11 +367,11 @@ ProductPackageSessionSeedResult buildProductPackageSessionSeed(
   }
 
   for (ScenarioEntitySeed& entity : result.seed.entities) {
-    if (entity.kind == EntityKind::Pickup) {
+    if (entity.kind == ScenarioEntityKind::Pickup) {
       entity.interaction.objectiveId = objectiveIdFor("collect", entity.stableName);
       result.seed.objectives.push_back(objectiveForPickup(entity));
-    } else if (entity.kind == EntityKind::Marker &&
-               entity.interaction.kind == InteractionKind::ObjectiveTrigger) {
+    } else if (entity.kind == ScenarioEntityKind::Marker &&
+               entity.interaction.kind == ScenarioInteractionKind::ObjectiveTrigger) {
       result.seed.objectives.push_back(objectiveForExit(entity));
     }
   }

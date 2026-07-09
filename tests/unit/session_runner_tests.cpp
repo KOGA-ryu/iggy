@@ -24,7 +24,7 @@ iggy3d::Transform3 transformAt(float x, float y, float z) {
 iggy3d::ScenarioEntitySeed playerSeed() {
   iggy3d::ScenarioEntitySeed seed;
   seed.stableName = "player";
-  seed.kind = iggy3d::EntityKind::Player;
+  seed.kind = iggy3d::ScenarioEntityKind::Player;
   seed.transform = transformAt(0.0F, 0.0F, 0.0F);
   seed.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F}, {0.25F, 1.8F, 0.25F});
   seed.active = true;

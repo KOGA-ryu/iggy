@@ -26,7 +26,7 @@ iggy3d::Transform3 transformAt(float x, float y, float z) {
 iggy3d::ScenarioEntitySeed playerSeed() {
   iggy3d::ScenarioEntitySeed seed;
   seed.stableName = "player";
-  seed.kind = iggy3d::EntityKind::Player;
+  seed.kind = iggy3d::ScenarioEntityKind::Player;
   seed.transform = transformAt(0.0F, 0.0F, 0.0F);
   seed.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F}, {0.25F, 1.8F, 0.25F});
   seed.active = true;
@@ -38,15 +38,17 @@ iggy3d::ScenarioEntitySeed playerSeed() {
 iggy3d::ScenarioEntitySeed goldKeySeed() {
   iggy3d::ScenarioEntitySeed seed;
   seed.stableName = "gold_key";
-  seed.kind = iggy3d::EntityKind::Pickup;
+  seed.kind = iggy3d::ScenarioEntityKind::Pickup;
   seed.transform = transformAt(3.0F, 0.0F, 0.0F);
   seed.localBounds = iggy3d::makeAabb3({-0.1F, 0.0F, -0.1F}, {0.1F, 0.1F, 0.1F});
   seed.active = true;
   seed.persistent = true;
   seed.targeting.targetable = true;
-  seed.targeting.actions = {iggy3d::TargetAction::Interact, iggy3d::TargetAction::Inspect};
-  seed.interaction.kind = iggy3d::InteractionKind::Pickup;
-  seed.interaction.primaryEffect = iggy3d::InteractionEffectKind::AddItemToInventory;
+  seed.targeting.actions = {iggy3d::ScenarioTargetAction::Interact,
+                            iggy3d::ScenarioTargetAction::Inspect};
+  seed.interaction.kind = iggy3d::ScenarioInteractionKind::Pickup;
+  seed.interaction.primaryEffect =
+      iggy3d::ScenarioInteractionEffectKind::AddItemToInventory;
   seed.interaction.itemId = "gold_key";
   seed.interaction.itemCount = 1;
   seed.interaction.objectiveId = "collect_gold_key";
@@ -57,13 +59,14 @@ iggy3d::ScenarioEntitySeed goldKeySeed() {
 iggy3d::ScenarioEntitySeed markerSeed() {
   iggy3d::ScenarioEntitySeed seed;
   seed.stableName = "tactical_marker_alpha";
-  seed.kind = iggy3d::EntityKind::Marker;
+  seed.kind = iggy3d::ScenarioEntityKind::Marker;
   seed.transform = transformAt(2.0F, 0.0F, 1.0F);
   seed.localBounds = iggy3d::makeAabb3({-0.1F, 0.0F, -0.1F}, {0.1F, 0.1F, 0.1F});
   seed.active = true;
   seed.persistent = true;
   seed.targeting.targetable = true;
-  seed.targeting.actions = {iggy3d::TargetAction::Move, iggy3d::TargetAction::Inspect};
+  seed.targeting.actions = {iggy3d::ScenarioTargetAction::Move,
+                            iggy3d::ScenarioTargetAction::Inspect};
   return seed;
 }
 

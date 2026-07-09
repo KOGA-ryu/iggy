@@ -57,30 +57,21 @@ SessionIdentity createIdentity(std::string packageId, const FixtureScenarioSeed&
   return identity;
 }
 
-EntityState entityFromSeed(const ScenarioEntitySeed& seed, EntityId id) {
-  EntityState entity;
-  entity.id = id;
-  entity.stableName = seed.stableName;
-  entity.kind = seed.kind;
-  entity.transform = seed.transform;
-  entity.localBounds = seed.localBounds;
-  entity.active = seed.active;
-  entity.persistent = seed.persistent;
-  entity.targeting = seed.targeting;
-  entity.interaction = seed.interaction;
-  return entity;
-}
-
-bool createWorld(const FixtureScenarioSeed& seed, WorldState& world) {
+StatusResult createWorld(const FixtureScenarioSeed& seed, WorldState& world) {
   EntityId nextId{1};
   for (const ScenarioEntitySeed& entitySeed : seed.entities) {
-    const WorldEntityResult result = world.seedEntity(entityFromSeed(entitySeed, nextId));
+    const Result<EntityState> converted = entityFromScenario(entitySeed, nextId);
+    if (converted.status != ResultStatus::Ok) {
+      return {ResultStatus::Error, converted.error};
+    }
+    const WorldEntityResult result = world.seedEntity(converted.value);
     if (result.status != WorldStatus::Ok) {
-      return false;
+      return statusError("session.world_seed_insert_failed",
+                         "failed to insert seeded world entity");
     }
     nextId = nextEntityId(nextId);
   }
-  return true;
+  return statusOk();
 }
 
 StatusResult createPlayers(const FixtureScenarioSeed& seed,
@@ -113,33 +104,20 @@ StatusResult createPlayers(const FixtureScenarioSeed& seed,
   return statusOk();
 }
 
-ObjectiveStatus objectiveStatusFromSeed(ObjectiveStatusSeed status) {
-  switch (status) {
-    case ObjectiveStatusSeed::Active:
-      return ObjectiveStatus::Active;
-    case ObjectiveStatusSeed::Complete:
-      return ObjectiveStatus::Complete;
-    case ObjectiveStatusSeed::Failed:
-      return ObjectiveStatus::Failed;
-  }
-  return ObjectiveStatus::Inactive;
-}
-
-ObjectiveState createObjectives(const FixtureScenarioSeed& seed) {
+Result<ObjectiveState> createObjectives(const FixtureScenarioSeed& seed) {
+  Result<ObjectiveState> result;
   ObjectiveState objectives;
   for (const ScenarioObjectiveSeed& objectiveSeed : seed.objectives) {
-    ObjectiveRecord objective;
-    objective.objectiveId = objectiveSeed.id;
-    objective.status = objectiveStatusFromSeed(objectiveSeed.initialStatus);
-    objective.condition.kind = objectiveSeed.condition == "InventoryContains"
-                                   ? ObjectiveConditionKind::PlayerHasItem
-                                   : ObjectiveConditionKind::None;
-    objective.condition.playerSlot = objectiveSeed.playerSlot;
-    objective.condition.itemId = objectiveSeed.itemId;
-    objective.condition.itemCount = objectiveSeed.itemCount;
-    objectives.objectives.push_back(std::move(objective));
+    const Result<ObjectiveRecord> objective = objectiveFromScenario(objectiveSeed);
+    if (objective.status != ResultStatus::Ok) {
+      result.error = objective.error;
+      return result;
+    }
+    objectives.objectives.push_back(std::move(objective.value));
   }
-  return objectives;
+  result.status = ResultStatus::Ok;
+  result.value = std::move(objectives);
+  return result;
 }
 
 InventoryState createInventory(const FixtureScenarioSeed& seed) {
@@ -152,30 +130,38 @@ InventoryState createInventory(const FixtureScenarioSeed& seed) {
   return inventory;
 }
 
-bool createCombat(const FixtureScenarioSeed& seed, const WorldState& world, CombatState& combat) {
+StatusResult createCombat(const FixtureScenarioSeed& seed,
+                          const WorldState& world,
+                          CombatState& combat) {
   for (const ScenarioEntitySeed& entitySeed : seed.entities) {
     if (!entitySeed.combatantEnabled) {
       continue;
     }
     const EntityState* entity = world.findByStableName(entitySeed.stableName);
     if (entity == nullptr) {
-      return false;
+      return statusError("session.combat_seed_missing_entity",
+                         "failed to resolve combatant entity");
     }
     for (const CombatantState& existing : combat.combatants) {
       if (existing.entity == entity->id) {
-        return false;
+        return statusError("session.combat_seed_duplicate_entity",
+                           "duplicate combatant entity");
       }
     }
-    CombatantState combatant = entitySeed.combatant;
-    combatant.entity = entity->id;
-    combatant.defeated = combatant.hitPoints == 0;
+    const Result<std::optional<CombatantState>> converted =
+        combatantFromScenario(&entitySeed.combatant, entity->id);
+    if (converted.status != ResultStatus::Ok || !converted.value.has_value()) {
+      return {ResultStatus::Error, converted.error};
+    }
+    const CombatantState& combatant = *converted.value;
     if (combatant.maxHitPoints <= 0 || combatant.hitPoints <= 0 ||
         combatant.hitPoints > combatant.maxHitPoints || combatant.defeated) {
-      return false;
+      return statusError("session.combat_seed_invalid_entity",
+                         "invalid combatant seed");
     }
-    combat.combatants.push_back(combatant);
+    combat.combatants.push_back(*converted.value);
   }
-  return true;
+  return statusOk();
 }
 
 Vec3 initialNpcFacing(const WorldState& world, Vec3 actorPosition);
@@ -1296,19 +1282,25 @@ Result<Session> Session::create(const SessionCreateRequest& request) {
   state.clock = clock.value;
   state.camera = camera.value;
   state.inventory = createInventory(request.seed);
-  state.objectives = createObjectives(request.seed);
+  const Result<ObjectiveState> objectives = createObjectives(request.seed);
+  if (objectives.status != ResultStatus::Ok) {
+    return createFailure(objectives.error.code, objectives.error.message);
+  }
+  state.objectives = objectives.value;
   state.outcomeTable = buildObjectiveOutcomeTable();  // A8a: objective->outcome rules as data
   state.nextCommandId = 1;
 
-  if (!createWorld(request.seed, state.world)) {
-    return createFailure("session.world_seed_failed", "failed to seed world");
+  const StatusResult world = createWorld(request.seed, state.world);
+  if (world.status != ResultStatus::Ok) {
+    return createFailure(world.error.code, world.error.message);
   }
   const StatusResult players = createPlayers(request.seed, state.world, state.players);
   if (players.status != ResultStatus::Ok) {
     return createFailure(players.error.code, players.error.message);
   }
-  if (!createCombat(request.seed, state.world, state.combat)) {
-    return createFailure("session.combat_seed_failed", "failed to seed combatants");
+  const StatusResult combat = createCombat(request.seed, state.world, state.combat);
+  if (combat.status != ResultStatus::Ok) {
+    return createFailure(combat.error.code, combat.error.message);
   }
   const StatusResult aiSeed = createAiActors(request.seed, state.world, state.ai);
   if (aiSeed.status != ResultStatus::Ok) {

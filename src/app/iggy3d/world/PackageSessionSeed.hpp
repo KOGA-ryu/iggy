@@ -4,7 +4,7 @@
 #include <string>
 
 #include "app/iggy3d/world/NpcProfileAssignment.hpp"
-#include "content/FixtureScenarioLoader.hpp"
+#include "content/ScenarioSeed.hpp"
 #include "content/PackageLoader.hpp"
 
 namespace iggy3d {

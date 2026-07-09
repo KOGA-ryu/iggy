@@ -51,7 +51,7 @@ bool createCreativeBlankSession(std::optional<Session>& activeSession,
   seed.scenarioId = "creative_blank";
   ScenarioEntitySeed player;
   player.stableName = "player";
-  player.kind = EntityKind::Player;
+  player.kind = ScenarioEntityKind::Player;
   player.transform = identityTransform3();
   player.localBounds = makeAabb3({-0.25F, 0.0F, -0.25F}, {0.25F, 1.8F, 0.25F});
   player.active = true;

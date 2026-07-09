@@ -187,23 +187,26 @@ bool scenarioSeedContainsEntities() {
   const iggy3d::ScenarioEntitySeed& gold = seed.entities[1];
   const iggy3d::ScenarioEntitySeed& marker = seed.entities[2];
   const iggy3d::ScenarioEntitySeed& dummy = seed.entities[3];
-  return expect(player.stableName == "player" && player.kind == iggy3d::EntityKind::Player,
+  return expect(player.stableName == "player" && player.kind == iggy3d::ScenarioEntityKind::Player,
                 "player entity") &&
          expect(iggy3d::nearlyEqual(player.transform.position, iggy3d::Vec3{0.0F, 0.0F, 0.0F}),
                 "player position") &&
          expect(player.combatantEnabled && player.combatant.factionId == 1U &&
                     player.combatant.hitPoints == 10 && player.combatant.maxHitPoints == 10,
                 "player combatant") &&
-         expect(gold.stableName == "gold_key" && gold.kind == iggy3d::EntityKind::Pickup,
+         expect(gold.stableName == "gold_key" && gold.kind == iggy3d::ScenarioEntityKind::Pickup,
                 "gold entity") &&
          expect(iggy3d::nearlyEqual(gold.transform.position, iggy3d::Vec3{3.0F, 0.0F, 0.0F}),
                 "gold position") &&
-         expect(iggy3d::isTargetActionSupported(gold.targeting, iggy3d::TargetAction::Interact),
+         expect(iggy3d::isScenarioTargetActionSupported(
+                    gold.targeting, iggy3d::ScenarioTargetAction::Interact),
                 "gold interact") &&
-         expect(iggy3d::isTargetActionSupported(gold.targeting, iggy3d::TargetAction::Inspect),
+         expect(iggy3d::isScenarioTargetActionSupported(
+                    gold.targeting, iggy3d::ScenarioTargetAction::Inspect),
                 "gold inspect") &&
-         expect(gold.interaction.kind == iggy3d::InteractionKind::Pickup, "pickup kind") &&
-         expect(gold.interaction.primaryEffect == iggy3d::InteractionEffectKind::AddItemToInventory,
+         expect(gold.interaction.kind == iggy3d::ScenarioInteractionKind::Pickup, "pickup kind") &&
+         expect(gold.interaction.primaryEffect ==
+                    iggy3d::ScenarioInteractionEffectKind::AddItemToInventory,
                 "pickup effect") &&
          expect(gold.interaction.itemId == "gold_key" && gold.interaction.itemCount == 1U,
                 "pickup item") &&
@@ -211,13 +214,16 @@ bool scenarioSeedContainsEntities() {
          expect(!gold.interaction.repeatable && gold.interaction.deactivateTargetOnSuccess,
                 "pickup flags") &&
          expect(marker.stableName == "tactical_marker_alpha" &&
-                    iggy3d::isTargetActionSupported(marker.targeting, iggy3d::TargetAction::Move) &&
+                    iggy3d::isScenarioTargetActionSupported(
+                        marker.targeting, iggy3d::ScenarioTargetAction::Move) &&
                     marker.interaction.itemId.empty(),
                 "marker entity") &&
          expect(dummy.stableName == "training_dummy" &&
-                    dummy.kind == iggy3d::EntityKind::Npc &&
-                    iggy3d::isTargetActionSupported(dummy.targeting, iggy3d::TargetAction::Attack) &&
-                    iggy3d::isTargetActionSupported(dummy.targeting, iggy3d::TargetAction::Inspect),
+                    dummy.kind == iggy3d::ScenarioEntityKind::Npc &&
+                    iggy3d::isScenarioTargetActionSupported(
+                        dummy.targeting, iggy3d::ScenarioTargetAction::Attack) &&
+                    iggy3d::isScenarioTargetActionSupported(
+                        dummy.targeting, iggy3d::ScenarioTargetAction::Inspect),
                 "dummy attack target") &&
          expect(dummy.combatantEnabled && dummy.combatant.factionId == 2U &&
                     dummy.combatant.hitPoints == 3 && dummy.combatant.maxHitPoints == 3,

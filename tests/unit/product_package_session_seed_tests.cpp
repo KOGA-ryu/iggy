@@ -185,12 +185,12 @@ bool asciiPackageSynthesizesSeedAndCreatesSession() {
                     result.seed.players[0].actorStableName == "player",
                 "player slot") &&
          expect(spawn != nullptr && player != nullptr, "spawn and player") &&
-         expect(player->kind == iggy3d::EntityKind::Player, "player kind") &&
+         expect(player->kind == iggy3d::ScenarioEntityKind::Player, "player kind") &&
          expect(player->targeting.targetable &&
-                    iggy3d::isTargetActionSupported(player->targeting,
-                                                    iggy3d::TargetAction::Attack) &&
-                    iggy3d::isTargetActionSupported(player->targeting,
-                                                    iggy3d::TargetAction::Inspect) &&
+                    iggy3d::isScenarioTargetActionSupported(
+                        player->targeting, iggy3d::ScenarioTargetAction::Attack) &&
+                    iggy3d::isScenarioTargetActionSupported(
+                        player->targeting, iggy3d::ScenarioTargetAction::Inspect) &&
                     player->combatantEnabled &&
                     player->combatant.factionId == 1U &&
                     player->combatant.hitPoints == 10 &&
@@ -200,22 +200,22 @@ bool asciiPackageSynthesizesSeedAndCreatesSession() {
                     near(player->transform.position.y, spawn->positionMeters.y) &&
                     near(player->transform.position.z, spawn->positionMeters.z),
                 "player position from spawn") &&
-         expect(npc != nullptr && npc->kind == iggy3d::EntityKind::Npc,
+         expect(npc != nullptr && npc->kind == iggy3d::ScenarioEntityKind::Npc,
                 "npc entity") &&
          expect(npc->targeting.targetable &&
-                    iggy3d::isTargetActionSupported(npc->targeting,
-                                                    iggy3d::TargetAction::Attack) &&
+                    iggy3d::isScenarioTargetActionSupported(
+                        npc->targeting, iggy3d::ScenarioTargetAction::Attack) &&
                     npc->combatantEnabled && npc->combatant.factionId == 2U &&
                     npc->combatant.hitPoints == 3 && npc->combatant.maxHitPoints == 3,
                 "npc combat target") &&
-         expect(pickup != nullptr && pickup->kind == iggy3d::EntityKind::Pickup,
+         expect(pickup != nullptr && pickup->kind == iggy3d::ScenarioEntityKind::Pickup,
                 "pickup entity") &&
          expect(pickup->targeting.targetable &&
-                    iggy3d::isTargetActionSupported(pickup->targeting,
-                                                    iggy3d::TargetAction::Interact) &&
-                    pickup->interaction.kind == iggy3d::InteractionKind::Pickup &&
+                    iggy3d::isScenarioTargetActionSupported(
+                        pickup->targeting, iggy3d::ScenarioTargetAction::Interact) &&
+                    pickup->interaction.kind == iggy3d::ScenarioInteractionKind::Pickup &&
                     pickup->interaction.primaryEffect ==
-                        iggy3d::InteractionEffectKind::AddItemToInventory &&
+                        iggy3d::ScenarioInteractionEffectKind::AddItemToInventory &&
                     pickup->interaction.itemId == pickup->stableName &&
                     pickup->interaction.objectiveId == "collect_marker_treasure_r2_c4",
                 "pickup interaction") &&
@@ -224,20 +224,20 @@ bool asciiPackageSynthesizesSeedAndCreatesSession() {
                     result.seed.objectives[0].itemId == pickup->interaction.itemId &&
                     result.seed.objectives[0].itemCount == 1U,
                 "pickup objective") &&
-         expect(door != nullptr && door->kind == iggy3d::EntityKind::Door &&
-                    door->interaction.kind == iggy3d::InteractionKind::OpenDoor &&
+         expect(door != nullptr && door->kind == iggy3d::ScenarioEntityKind::Door &&
+                    door->interaction.kind == iggy3d::ScenarioInteractionKind::OpenDoor &&
                     door->interaction.primaryEffect ==
-                        iggy3d::InteractionEffectKind::EmitEventOnly &&
+                        iggy3d::ScenarioInteractionEffectKind::EmitEventOnly &&
                     door->interaction.deactivateTargetOnSuccess,
                 "door entity") &&
-         expect(exit != nullptr && exit->kind == iggy3d::EntityKind::Marker &&
-                    iggy3d::isTargetActionSupported(exit->targeting,
-                                                    iggy3d::TargetAction::Interact) &&
-                    iggy3d::isTargetActionSupported(exit->targeting,
-                                                    iggy3d::TargetAction::Move) &&
-                    exit->interaction.kind == iggy3d::InteractionKind::ObjectiveTrigger &&
+         expect(exit != nullptr && exit->kind == iggy3d::ScenarioEntityKind::Marker &&
+                    iggy3d::isScenarioTargetActionSupported(
+                        exit->targeting, iggy3d::ScenarioTargetAction::Interact) &&
+                    iggy3d::isScenarioTargetActionSupported(
+                        exit->targeting, iggy3d::ScenarioTargetAction::Move) &&
+                    exit->interaction.kind == iggy3d::ScenarioInteractionKind::ObjectiveTrigger &&
                     exit->interaction.primaryEffect ==
-                        iggy3d::InteractionEffectKind::CompleteObjective &&
+                        iggy3d::ScenarioInteractionEffectKind::CompleteObjective &&
                     exit->interaction.objectiveId == "exit_marker_exit_r3_c3" &&
                     exit->interaction.requiredItemId == pickup->interaction.itemId &&
                     exit->interaction.requiredItemCount == 1U &&
@@ -318,21 +318,21 @@ bool asciiSemanticAnchorsGateSecretDoorAndExit() {
          expect(result.doorCount == 1U, "secret door count") &&
          expect(result.markerEntityCount == 1U, "exit marker count") &&
          expect(result.objectiveCount == 3U, "key treasure exit objectives") &&
-         expect(key != nullptr && key->kind == iggy3d::EntityKind::Pickup &&
+         expect(key != nullptr && key->kind == iggy3d::ScenarioEntityKind::Pickup &&
                     key->interaction.itemId == "marker_key_r1_c2",
                 "key pickup item") &&
-         expect(treasure != nullptr && treasure->kind == iggy3d::EntityKind::Pickup &&
+         expect(treasure != nullptr && treasure->kind == iggy3d::ScenarioEntityKind::Pickup &&
                     treasure->interaction.itemId == "marker_treasure_r1_c4",
                 "treasure pickup item") &&
-         expect(secretDoor != nullptr && secretDoor->kind == iggy3d::EntityKind::Door &&
+         expect(secretDoor != nullptr && secretDoor->kind == iggy3d::ScenarioEntityKind::Door &&
                     secretDoor->interaction.requiredItemId ==
                         key->interaction.itemId &&
                     secretDoor->interaction.requiredItemCount == 1U,
                 "secret door requires key") &&
-         expect(exit != nullptr && exit->kind == iggy3d::EntityKind::Marker &&
-                    exit->interaction.kind == iggy3d::InteractionKind::ObjectiveTrigger &&
+         expect(exit != nullptr && exit->kind == iggy3d::ScenarioEntityKind::Marker &&
+                    exit->interaction.kind == iggy3d::ScenarioInteractionKind::ObjectiveTrigger &&
                     exit->interaction.primaryEffect ==
-                        iggy3d::InteractionEffectKind::CompleteObjective &&
+                        iggy3d::ScenarioInteractionEffectKind::CompleteObjective &&
                     exit->interaction.requiredItemId ==
                         treasure->interaction.itemId &&
                     exit->interaction.requiredItemCount == 1U &&
@@ -717,7 +717,7 @@ bool authoredPatrolAndProfileBothSurvive() {
   scen.scenario.scenarioId = "authored_route";
   iggy3d::ScenarioEntitySeed guard;
   guard.stableName = "guard_1";
-  guard.kind = iggy3d::EntityKind::Npc;
+  guard.kind = iggy3d::ScenarioEntityKind::Npc;
   scen.scenario.entities.push_back(guard);
   iggy3d::ScenarioAiActorSeed guardSeed;
   guardSeed.actorStableName = "guard_1";
@@ -774,7 +774,8 @@ bool monsterAnchorSeedsIdenticalToNpc() {
   if (guard == nullptr || beast == nullptr) {
     return false;
   }
-  ok = ok && expect(beast->kind == iggy3d::EntityKind::Npc, "monster anchor -> EntityKind::Npc") &&
+  ok = ok && expect(beast->kind == iggy3d::ScenarioEntityKind::Npc,
+                    "monster anchor -> ScenarioEntityKind::Npc") &&
        expect(beast->kind == guard->kind &&
                   beast->targeting.targetable == guard->targeting.targetable &&
                   beast->combatantEnabled == guard->combatantEnabled &&

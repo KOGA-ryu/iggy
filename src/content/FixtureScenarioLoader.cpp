@@ -236,7 +236,8 @@ bool parseVec3(std::string_view value, Vec3& out) {
   return parseFloat(parts[0], out.x) && parseFloat(parts[1], out.y) && parseFloat(parts[2], out.z);
 }
 
-bool parseTargetActions(std::string_view value, std::vector<TargetAction>& out) {
+bool parseTargetActions(std::string_view value,
+                        std::vector<ScenarioTargetAction>& out) {
   value = trim(value);
   if (value.size() < 2U || value.front() != '[' || value.back() != ']') {
     return false;
@@ -252,13 +253,13 @@ bool parseTargetActions(std::string_view value, std::vector<TargetAction>& out) 
       return false;
     }
     if (token == "Interact") {
-      out.push_back(TargetAction::Interact);
+      out.push_back(ScenarioTargetAction::Interact);
     } else if (token == "Inspect") {
-      out.push_back(TargetAction::Inspect);
+      out.push_back(ScenarioTargetAction::Inspect);
     } else if (token == "Move") {
-      out.push_back(TargetAction::Move);
+      out.push_back(ScenarioTargetAction::Move);
     } else if (token == "Attack") {
-      out.push_back(TargetAction::Attack);
+      out.push_back(ScenarioTargetAction::Attack);
     } else {
       return false;
     }
@@ -302,40 +303,40 @@ bool parsePlayerKind(std::string_view value, ScenarioPlayerSlotKind& out) {
   return true;
 }
 
-bool parseEntityKind(std::string_view value, EntityKind& out) {
+bool parseEntityKind(std::string_view value, ScenarioEntityKind& out) {
   std::string token;
   if (!parseString(value, token)) {
     return false;
   }
   if (token == "Player") {
-    out = EntityKind::Player;
+    out = ScenarioEntityKind::Player;
   } else if (token == "Pickup") {
-    out = EntityKind::Pickup;
+    out = ScenarioEntityKind::Pickup;
   } else if (token == "Door") {
-    out = EntityKind::Door;
+    out = ScenarioEntityKind::Door;
   } else if (token == "Marker") {
-    out = EntityKind::Marker;
+    out = ScenarioEntityKind::Marker;
   } else if (token == "Npc") {
-    out = EntityKind::Npc;
+    out = ScenarioEntityKind::Npc;
   } else {
     return false;
   }
   return true;
 }
 
-bool parseInteraction(std::string_view value, InteractionKind& out) {
+bool parseInteraction(std::string_view value, ScenarioInteractionKind& out) {
   std::string token;
   if (!parseString(value, token)) {
     return false;
   }
   if (token == "Pickup") {
-    out = InteractionKind::Pickup;
+    out = ScenarioInteractionKind::Pickup;
   } else if (token == "OpenDoor") {
-    out = InteractionKind::OpenDoor;
+    out = ScenarioInteractionKind::OpenDoor;
   } else if (token == "Inspect") {
-    out = InteractionKind::Inspect;
+    out = ScenarioInteractionKind::Inspect;
   } else if (token == "Activate") {
-    out = InteractionKind::Activate;
+    out = ScenarioInteractionKind::Activate;
   } else {
     return false;
   }
@@ -385,7 +386,7 @@ ScenarioLoadResult validateRequired(Parser& parser) {
       return fail(parser, ScenarioLoadStatus::MissingRequiredKey, "scenario.missing_required_key",
                   "missing entity key", flags.startLine, 1);
     }
-    if (entity.interaction.kind == InteractionKind::Pickup &&
+    if (entity.interaction.kind == ScenarioInteractionKind::Pickup &&
         (!flags.itemId || !flags.itemCount || !flags.objectiveRef || !flags.deactivate)) {
       return fail(parser, ScenarioLoadStatus::MissingRequiredKey, "scenario.missing_required_key",
                   "missing pickup key", flags.startLine, 1);
@@ -400,7 +401,6 @@ ScenarioLoadResult validateRequired(Parser& parser) {
         return fail(parser, ScenarioLoadStatus::InvalidNumber, "scenario.invalid_number",
                     "invalid combatant hit points", flags.startLine, 1);
       }
-      entity.combatant.defeated = false;
     } else if (flags.factionId || flags.hitPoints || flags.maxHitPoints) {
       return fail(parser, ScenarioLoadStatus::MissingRequiredKey, "scenario.missing_required_key",
                   "combat fields require combatant true", flags.startLine, 1);
@@ -610,8 +610,10 @@ ScenarioLoadResult parseScenarioText(const std::string& scenarioText) {
         flags.itemCount = parseU32(value, entity.interaction.itemCount);
       } else if (key == "interaction") {
         flags.interaction = parseInteraction(value, entity.interaction.kind);
-        if (flags.interaction && entity.interaction.kind == InteractionKind::Pickup) {
-          entity.interaction.primaryEffect = InteractionEffectKind::AddItemToInventory;
+        if (flags.interaction &&
+            entity.interaction.kind == ScenarioInteractionKind::Pickup) {
+          entity.interaction.primaryEffect =
+              ScenarioInteractionEffectKind::AddItemToInventory;
         }
       } else if (key == "deactivate_on_success") {
         flags.deactivate = parseBool(value, entity.interaction.deactivateTargetOnSuccess);

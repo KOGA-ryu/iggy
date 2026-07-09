@@ -53,8 +53,8 @@ const ScenarioObjectiveSeed* findObjective(const FixtureScenarioSeed& seed, std:
   return nullptr;
 }
 
-bool hasAction(const ScenarioEntitySeed& entity, TargetAction action) {
-  return isTargetActionSupported(entity.targeting, action);
+bool hasAction(const ScenarioEntitySeed& entity, ScenarioTargetAction action) {
+  return isScenarioTargetActionSupported(entity.targeting, action);
 }
 
 PackageValidationResult validateAiActors(const FixtureScenarioSeed& scenario) {
@@ -73,7 +73,7 @@ PackageValidationResult validateAiActors(const FixtureScenarioSeed& scenario) {
                   "scenario.missing_ai_actor_entity",
                   "missing ai actor entity " + aiActor.actorStableName, line, 1);
     }
-    if (entity->kind != EntityKind::Npc) {
+    if (entity->kind != ScenarioEntityKind::Npc) {
       return fail(PackageValidationStatus::NonNpcAiActor,
                   "scenario.non_npc_ai_actor", "ai actor must reference an npc", line, 1);
     }
@@ -108,7 +108,7 @@ PackageValidationResult validateAiGuardAnchors(const FixtureScenarioSeed& scenar
                   "scenario.guard_actor_not_found",
                   "guard actor not found " + guard.actorStableName, line, 1);
     }
-    if (actor->kind != EntityKind::Npc) {
+    if (actor->kind != ScenarioEntityKind::Npc) {
       return fail(PackageValidationStatus::NonNpcGuardActor,
                   "scenario.non_npc_guard_actor", "guard actor must reference an npc", line, 1);
     }
@@ -128,7 +128,7 @@ PackageValidationResult validateAiGuardAnchors(const FixtureScenarioSeed& scenar
                   "scenario.guard_anchor_not_found",
                   "guard anchor not found " + guard.anchorStableName, line, 1);
     }
-    if (anchor->kind != EntityKind::Marker) {
+    if (anchor->kind != ScenarioEntityKind::Marker) {
       return fail(PackageValidationStatus::NonMarkerGuardAnchor,
                   "scenario.non_marker_guard_anchor",
                   "guard anchor must reference a marker", line, 1);
@@ -230,11 +230,13 @@ PackageValidationResult validatePackage(const PackageValidationRequest& request)
     return guardAnchorValidation;
   }
   const ScenarioEntitySeed* goldKey = findEntity(request.scenario, "gold_key");
-  if (goldKey == nullptr || goldKey->kind != EntityKind::Pickup ||
+  if (goldKey == nullptr || goldKey->kind != ScenarioEntityKind::Pickup ||
       !nearlyEqual(goldKey->transform.position, Vec3{3.0F, 0.0F, 0.0F}) ||
-      !hasAction(*goldKey, TargetAction::Interact) || !hasAction(*goldKey, TargetAction::Inspect) ||
-      goldKey->interaction.kind != InteractionKind::Pickup ||
-      goldKey->interaction.primaryEffect != InteractionEffectKind::AddItemToInventory ||
+      !hasAction(*goldKey, ScenarioTargetAction::Interact) ||
+      !hasAction(*goldKey, ScenarioTargetAction::Inspect) ||
+      goldKey->interaction.kind != ScenarioInteractionKind::Pickup ||
+      goldKey->interaction.primaryEffect !=
+          ScenarioInteractionEffectKind::AddItemToInventory ||
       goldKey->interaction.itemId != "gold_key" || goldKey->interaction.itemCount != 1U ||
       goldKey->interaction.objectiveId != "collect_gold_key" || goldKey->interaction.repeatable ||
       !goldKey->interaction.deactivateTargetOnSuccess) {

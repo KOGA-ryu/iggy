@@ -4,7 +4,7 @@
 #include <string>
 
 #include "config/RuntimeConfig.hpp"
-#include "content/FixtureScenarioLoader.hpp"
+#include "content/ScenarioSeed.hpp"
 #include "core/result/Result.hpp"
 #include "runtime/command/Command.hpp"
 #include "runtime/command/CommandAdmission.hpp"

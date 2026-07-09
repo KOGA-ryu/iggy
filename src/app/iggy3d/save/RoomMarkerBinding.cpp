@@ -5,10 +5,11 @@
 
 #include "app/iggy3d/ascii_room/Package.hpp"
 #include "app/iggy3d/world/PackageSessionSeed.hpp"
-#include "content/FixtureScenarioLoader.hpp"
+#include "content/ScenarioSeed.hpp"
 #include "runtime/combat/CombatState.hpp"
 #include "runtime/objective/ObjectiveState.hpp"
 #include "runtime/replay/StateHash.hpp"
+#include "runtime/session/ScenarioSeedConversion.hpp"
 #include "runtime/world/EntityState.hpp"
 
 namespace iggy3d {
@@ -21,44 +22,6 @@ ProductSavedRoomMarkerBindingResult resultWithStatus(std::string status,
   result.reasonCode = result.status;
   result.roomId = roomId.empty() ? "none" : std::move(roomId);
   return result;
-}
-
-ObjectiveStatus objectiveStatusFromSeed(ObjectiveStatusSeed status) {
-  switch (status) {
-    case ObjectiveStatusSeed::Active:
-      return ObjectiveStatus::Active;
-    case ObjectiveStatusSeed::Complete:
-      return ObjectiveStatus::Complete;
-    case ObjectiveStatusSeed::Failed:
-      return ObjectiveStatus::Failed;
-  }
-  return ObjectiveStatus::Inactive;
-}
-
-ObjectiveRecord objectiveFromSeed(const ScenarioObjectiveSeed& seed) {
-  ObjectiveRecord objective;
-  objective.objectiveId = seed.id;
-  objective.status = objectiveStatusFromSeed(seed.initialStatus);
-  objective.condition.kind = seed.condition == "InventoryContains"
-                                 ? ObjectiveConditionKind::PlayerHasItem
-                                 : ObjectiveConditionKind::None;
-  objective.condition.playerSlot = seed.playerSlot;
-  objective.condition.itemId = seed.itemId;
-  objective.condition.itemCount = seed.itemCount;
-  return objective;
-}
-
-EntityState entityFromSeed(const ScenarioEntitySeed& seed) {
-  EntityState entity;
-  entity.stableName = seed.stableName;
-  entity.kind = seed.kind;
-  entity.transform = seed.transform;
-  entity.localBounds = seed.localBounds;
-  entity.active = seed.active;
-  entity.persistent = seed.persistent;
-  entity.targeting = seed.targeting;
-  entity.interaction = seed.interaction;
-  return entity;
 }
 
 bool objectiveExists(const ObjectiveState& objectives, std::string_view objectiveId) {
@@ -84,10 +47,10 @@ bool combatantSeedValid(const CombatantState& combatant) {
          combatant.hitPoints <= combatant.maxHitPoints;
 }
 
-bool addCombatantFromSeed(SessionState& state,
-                          const ScenarioEntitySeed& seed,
-                          EntityId entity,
-                          ProductSavedRoomMarkerBindingResult& result) {
+bool mergeCombatant(SessionState& state,
+                    const ScenarioEntitySeed& seed,
+                    EntityId entity,
+                    ProductSavedRoomMarkerBindingResult& result) {
   if (!seed.combatantEnabled) {
     return true;
   }
@@ -96,9 +59,14 @@ bool addCombatantFromSeed(SessionState& state,
     return true;
   }
 
-  CombatantState combatant = seed.combatant;
-  combatant.entity = entity;
-  combatant.defeated = combatant.hitPoints == 0;
+  const Result<std::optional<CombatantState>> converted =
+      combatantFromScenario(&seed.combatant, entity);
+  if (converted.status != ResultStatus::Ok || !converted.value.has_value()) {
+    result.status = "saved_marker_bind_invalid_combatant";
+    result.reasonCode = result.status;
+    return false;
+  }
+  const CombatantState& combatant = *converted.value;
   if (!combatantSeedValid(combatant) || combatant.defeated) {
     result.status = "saved_marker_bind_invalid_combatant";
     result.reasonCode = result.status;
@@ -120,13 +88,18 @@ bool mergeEntities(SessionState& state,
       entityId = existing->id;
       ++result.existingEntityCount;
     } else {
-      if (entitySeed.kind == EntityKind::Player) {
+      if (entitySeed.kind == ScenarioEntityKind::Player) {
         result.status = "saved_marker_bind_player_missing";
         result.reasonCode = result.status;
         return false;
       }
-      const WorldEntityResult added =
-          state.world.addEntity(entityFromSeed(entitySeed));
+      const Result<EntityState> converted = entityFromScenario(entitySeed, {});
+      if (converted.status != ResultStatus::Ok) {
+        result.status = "saved_marker_bind_invalid_entity";
+        result.reasonCode = result.status;
+        return false;
+      }
+      const WorldEntityResult added = state.world.addEntity(converted.value);
       if (added.status != WorldStatus::Ok) {
         result.status = "saved_marker_bind_world_insert_failed";
         result.reasonCode = result.status;
@@ -136,14 +109,14 @@ bool mergeEntities(SessionState& state,
       ++result.addedEntityCount;
     }
 
-    if (!addCombatantFromSeed(state, entitySeed, entityId, result)) {
+    if (!mergeCombatant(state, entitySeed, entityId, result)) {
       return false;
     }
   }
   return true;
 }
 
-void mergeObjectives(SessionState& state,
+bool mergeObjectives(SessionState& state,
                      const FixtureScenarioSeed& seed,
                      ProductSavedRoomMarkerBindingResult& result) {
   for (const ScenarioObjectiveSeed& objectiveSeed : seed.objectives) {
@@ -151,9 +124,16 @@ void mergeObjectives(SessionState& state,
       ++result.existingObjectiveCount;
       continue;
     }
-    state.objectives.objectives.push_back(objectiveFromSeed(objectiveSeed));
+    const Result<ObjectiveRecord> objective = objectiveFromScenario(objectiveSeed);
+    if (objective.status != ResultStatus::Ok) {
+      result.status = "saved_marker_bind_invalid_objective";
+      result.reasonCode = result.status;
+      return false;
+    }
+    state.objectives.objectives.push_back(objective.value);
     ++result.addedObjectiveCount;
   }
+  return true;
 }
 
 bool resultMutated(const ProductSavedRoomMarkerBindingResult& result) {
@@ -215,7 +195,9 @@ ProductSavedRoomMarkerBindingResult bindSavedRoomMarkersToSession(
   if (!mergeEntities(candidate, seed.seed, result)) {
     return result;
   }
-  mergeObjectives(candidate, seed.seed, result);
+  if (!mergeObjectives(candidate, seed.seed, result)) {
+    return result;
+  }
 
   if (!resultMutated(result)) {
     result.ok = true;

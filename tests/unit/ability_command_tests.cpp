@@ -28,7 +28,7 @@ iggy3d::Transform3 transformAt(float x, float y, float z) {
 iggy3d::ScenarioEntitySeed playerSeed() {
   iggy3d::ScenarioEntitySeed seed;
   seed.stableName = "player";
-  seed.kind = iggy3d::EntityKind::Player;
+  seed.kind = iggy3d::ScenarioEntityKind::Player;
   seed.transform = transformAt(0.0F, 0.0F, 0.0F);
   seed.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F}, {0.25F, 1.8F, 0.25F});
   seed.active = true;
@@ -43,13 +43,13 @@ iggy3d::ScenarioEntitySeed playerSeed() {
 iggy3d::ScenarioEntitySeed trainingDummySeed() {
   iggy3d::ScenarioEntitySeed seed;
   seed.stableName = "training_dummy";
-  seed.kind = iggy3d::EntityKind::Npc;
+  seed.kind = iggy3d::ScenarioEntityKind::Npc;
   seed.transform = transformAt(0.0F, 0.0F, -4.0F);
   seed.localBounds = iggy3d::makeAabb3({-0.25F, 0.0F, -0.25F}, {0.25F, 1.8F, 0.25F});
   seed.active = true;
   seed.persistent = true;
   seed.targeting.targetable = true;
-  seed.targeting.actions = {iggy3d::TargetAction::Attack};
+  seed.targeting.actions = {iggy3d::ScenarioTargetAction::Attack};
   seed.combatantEnabled = true;
   seed.combatant.factionId = 2;
   seed.combatant.hitPoints = 6;
