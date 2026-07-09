@@ -1,4 +1,4 @@
-# Guard Senses & Tactics — Master Build Plan v1.2
+# Guard Senses & Tactics — Master Build Plan v1.3
 
 **The governing detail for everything after perception P2.** Handoff target: the slicing loop — this doc is
 written so cards can be cut from it without asking the planner intent questions. Every claim verified at HEAD
@@ -109,9 +109,9 @@ The external sweep (TDM/OpenXCom/Godot/re3/DevilutionX/WZ2100/OpenTTD) pressure-
 ## 2. THE PHASES — detail for slicing
 
 Dependency DAG: `P3a → P3b → P3c` · `P3d` independent after P3b · `P4` after P3 (draws the unified truth) ·
-`P5` independent of P3/P4 (alert internals) · `P6a/6b` independent · `P6c` before `P6d` matters in non-creative
+`P5` independent of P3/P4 (alert internals) · `P6b` independent (P6a parked) · `P6c` before `P6d` matters in non-creative
 worlds · `P6d` after P3 (tactics must not build on cheating senses) · `P6e` last (cross-lane payoff).
-**Everything serializes per-file as usual; P5 and P6a/6b can interleave with P3/P4 (disjoint files).**
+**Everything serializes per-file as usual; P5 and P6b can interleave with P3/P4 (disjoint files).**
 
 ---
 
@@ -224,18 +224,18 @@ rates, caps, grace, band thresholds untouched). *Stop:* if `alertLevel` particip
 
 ### P6 — THE TACTICAL ARC (the payoff: guards that use the map) — Mode C
 
-**P6a — ascii affordance glyphs.** Ascii can author NO affordance strings today
-(`AsciiRoomToRoomAsset.cpp:351-384` maps everything else → `"marker"`). Add glyph rows (`AsciiRoomGrid` table)
-+ cell kinds + marker tags for at minimum `cover` and `patrol_post` (parity with creative), with the tag →
-anchor-kind pass-through. Glyph choice is the implementer's (table capacity + collision check) but the TAGS
-are the vocabulary strings verbatim. *Pin:* ascii room with the new glyphs → bake → `buildReasoningGraph`
-yields coverCluster/patrolPost (mirror of the creative pin at `creative_document_room_bake_tests.cpp:1169`).
+**P6a — ascii affordance glyphs: DEMOTED to demand-driven (v1.3, user-raised at SELECT).** It was parity-
+completionism, not value: the slice room is creative-authored (E180 covers it); P6d tests inject anchors
+programmatically (the garden harness pattern); P6c gives launched ascii worlds useful graphs from EXISTING
+glyphs (exit/treasure/npc/monster → exit/objective/reference nodes); and glyph namespace is scarce (26-row
+table) — spend it when the customer exists. **Trigger to un-park:** the AI map-generation lane goes active,
+OR a fixture genuinely needs hand-authored ascii affordances. Until then: parked, and P6b is creative-only.
 
-**P6b — the missing three: `chokepoint` / `high_ground` / `hiding_spot` authoring.** E180's declared
-follow-up. Creative: 3 descriptor rows (pattern: CoverPoint at `ObjectDescriptor.cpp:703-717`) + 3
-`CreativeRuntimeAnchorSemantic` values + `toString` cases + sentinel/coverage updates. Ascii: 3 more glyph
-rows (with P6a's machinery). Reader needs NOTHING (already live). *Pin:* both paths × three kinds → correct
-node kinds. *Note:* `InterestPoint` (`ObjectDescriptor.cpp:1584-1597`) stays reserved — new rows, no reuse.
+**P6b — the missing three: `chokepoint` / `high_ground` / `hiding_spot` authoring — CREATIVE PATH ONLY
+(v1.3).** E180's declared follow-up. 3 descriptor rows (pattern: CoverPoint at `ObjectDescriptor.cpp:703-717`)
++ 3 `CreativeRuntimeAnchorSemantic` values + `toString` cases + sentinel/coverage updates. Reader needs
+NOTHING (already live). The ascii half is parked with P6a (same trigger). *Pin:* creative path × three kinds →
+correct node kinds. *Note:* `InterestPoint` (`ObjectDescriptor.cpp:1584-1597`) stays reserved — new rows, no reuse.
 
 **P6c — reasoning graphs outside creative rooms.** Production builds a reasoning graph ONLY via the creative
 RebuildRoom activation (`CreativeReasoningActivation.cpp:13-14`); ascii/package-launched worlds run guards on
