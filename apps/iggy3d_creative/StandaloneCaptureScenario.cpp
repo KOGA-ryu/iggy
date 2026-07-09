@@ -6,7 +6,7 @@
 #include "StandalonePersistenceProof.hpp"
 #include "StandalonePlacement.hpp"
 #include "EditorPreviewProxies.hpp"
-#include "StandaloneGizmo.hpp"
+#include "EditorGizmo.hpp"
 #include "StandalonePathEditing.hpp"
 
 #include <SDL3/SDL_log.h>

@@ -2,7 +2,7 @@
 
 #include "StandaloneCaptureScenario.hpp"
 #include "StandaloneDelete.hpp"
-#include "StandaloneGizmo.hpp"
+#include "EditorGizmo.hpp"
 
 namespace iggy3d_creative_app {
 
