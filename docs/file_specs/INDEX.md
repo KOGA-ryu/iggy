@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `9f9c8b29`
+Verified at: `791c40db`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `200`.
-- Current mapped source files represented by those specs: about `379`.
+- Current file specs: `203`.
+- Current mapped source files represented by those specs: about `385`.
 
 ## Status Labels
 
@@ -196,6 +196,9 @@ App creative/world launch:
 - `mapped` [WorldAuthoringState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/WorldAuthoringState.md)
 - `mapped` [CreativeWorldOperations.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeWorldOperations.md)
 - `mapped` [CreativeBlankStageSession.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeBlankStageSession.md)
+- `mapped` [BakedActiveRoomRefresh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/BakedActiveRoomRefresh.md)
+- `mapped` [RoomBake.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/adapters/RoomBake.md)
+- `mapped` [RoomBakeGreedyFloors.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.md)
 - `mapped` [WorldService.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/world/WorldService.md)
 - `mapped` [Facade.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/Facade.md)
 - `mapped` [Document.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/Document.md)
@@ -271,11 +274,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AU, creative baked-room adapter surfaces:
+Batch AV, creative bake support adapters:
 
-- `next` `src/app/iggy3d/creative/BakedActiveRoomRefresh.*`
-- `next` `src/app/iggy3d/creative/adapters/RoomBake.*`
-- `next` `src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.*`
+- `next` `src/app/iggy3d/creative/adapters/RoomBakeReachability.*`
+- `next` `src/app/iggy3d/creative/adapters/RoomEd.*`
+- `next` `src/app/iggy3d/creative/adapters/ObjCat.*`
+- `queued` `src/app/iggy3d/creative/adapters/Draw.*`
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
 ## Defer Leaf Policy
