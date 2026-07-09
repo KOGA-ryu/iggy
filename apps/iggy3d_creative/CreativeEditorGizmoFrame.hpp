@@ -9,6 +9,7 @@
 #include "render/FrameInput.hpp"
 
 #include "CreativeEditorSelection.hpp"
+#include "StandaloneCaptureScript.hpp"
 #include "StandaloneGizmo.hpp"
 #include "StandalonePicking.hpp"
 
@@ -32,5 +33,10 @@ struct CreativeEditorGizmoFrame {
     std::uint32_t drawableWidth,
     std::uint32_t drawableHeight,
     float axisLengthMeters);
+
+void logCreativeEditorPathHandleCaptureFrame(
+    StandaloneCaptureScript& captureScript,
+    bool captureMode,
+    const CreativeEditorGizmoFrame& gizmoFrame);
 
 }  // namespace iggy3d_creative_app

@@ -2,6 +2,8 @@
 
 #include <cstddef>
 
+#include <SDL3/SDL.h>
+
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 
 #include "StandalonePreviewProxies.hpp"
@@ -58,6 +60,29 @@ CreativeEditorGizmoFrame buildCreativeEditorGizmoFrame(
     frame.anchorS = toVec3(selection.selected->transform.position);
   }
   return frame;
+}
+
+void logCreativeEditorPathHandleCaptureFrame(
+    StandaloneCaptureScript& captureScript,
+    bool captureMode,
+    const CreativeEditorGizmoFrame& gizmoFrame) {
+  if (!captureMode || captureScript.pathPointHandleLogged ||
+      !gizmoFrame.selectedIsPathForHandles ||
+      gizmoFrame.selectedPathHandleObjectId != captureScript.pathTargetId) {
+    return;
+  }
+
+  for (const PathPointHandleHit& handle : gizmoFrame.pathPointHandleHits) {
+    SDL_Log("iggy3d_creative: PATH_HANDLE hit proxy objectId=%llu "
+            "pointIndex=%zu aabbValid=%d position=(%.3f, %.3f, %.3f) "
+            "screen=[%.1f, %.1f..%.1f, %.1f]",
+            static_cast<unsigned long long>(handle.objectId),
+            handle.pointIndex, handle.aabb.valid ? 1 : 0,
+            handle.position.x, handle.position.y, handle.position.z,
+            handle.aabb.minX, handle.aabb.minY, handle.aabb.maxX,
+            handle.aabb.maxY);
+  }
+  captureScript.pathPointHandleLogged = true;
 }
 
 }  // namespace iggy3d_creative_app

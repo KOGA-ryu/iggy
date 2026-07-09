@@ -111,6 +111,7 @@ using iggy3d_creative_app::GizmoAxisShaft;
 using iggy3d_creative_app::gizmoAxisName;
 using iggy3d_creative_app::heldAxisForGrabbedAxis;
 using iggy3d_creative_app::initialPathPointsForAnchor;
+using iggy3d_creative_app::logCreativeEditorPathHandleCaptureFrame;
 using iggy3d_creative_app::logMoveDispatch;
 using iggy3d_creative_app::logObjectPlacement;
 using iggy3d_creative_app::movePathObjectWithUndo;
@@ -678,26 +679,11 @@ int main(int argc, char** argv) {
     const std::array<ScreenPoint, 3>& gizmoTipScreen = gizmoFrame.tipScreens;
     const std::vector<PathPointHandleHit>& pathPointHandleHits =
         gizmoFrame.pathPointHandleHits;
-    const creative::CreativeObjectId selectedPathHandleObjectId =
-        gizmoFrame.selectedPathHandleObjectId;
     const bool selectedIsPathForHandles =
         gizmoFrame.selectedIsPathForHandles;
 
-    if (!capturePath.empty() && !editor.captureScript.pathPointHandleLogged &&
-        selectedIsPathForHandles &&
-        selectedPathHandleObjectId == editor.captureScript.pathTargetId) {
-      for (const PathPointHandleHit& handle : pathPointHandleHits) {
-        SDL_Log("iggy3d_creative: PATH_HANDLE hit proxy objectId=%llu "
-                "pointIndex=%zu aabbValid=%d position=(%.3f, %.3f, %.3f) "
-                "screen=[%.1f, %.1f..%.1f, %.1f]",
-                static_cast<unsigned long long>(handle.objectId),
-                handle.pointIndex, handle.aabb.valid ? 1 : 0,
-                handle.position.x, handle.position.y, handle.position.z,
-                handle.aabb.minX, handle.aabb.minY, handle.aabb.maxX,
-                handle.aabb.maxY);
-      }
-      editor.captureScript.pathPointHandleLogged = true;
-    }
+    logCreativeEditorPathHandleCaptureFrame(
+        editor.captureScript, !capturePath.empty(), gizmoFrame);
     // Start anchor S for an axis-constrained move = the object's corner anchor,
     // exactly as the facade captures it on BeginMove (objectCornerAnchor): for a
     // Crate (hasTransform=true) that is transform.position, NOT bounds.min. Using

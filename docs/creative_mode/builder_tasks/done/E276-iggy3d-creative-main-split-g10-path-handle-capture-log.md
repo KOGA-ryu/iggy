@@ -276,3 +276,69 @@ Report:
   Move policy move, interactive Move policy move, placement move, capture
   scenario move, later frame-stage move, tests, receipt/golden files, broad
   CTest, interactive window launch, staging, commit, or push was performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/CreativeEditorGizmoFrame.hpp`
+- `apps/iggy3d_creative/CreativeEditorGizmoFrame.cpp`
+- `docs/creative_mode/builder_tasks/done/E276-iggy3d-creative-main-split-g10-path-handle-capture-log.md`
+
+Exact helper API added:
+
+```cpp
+void logCreativeEditorPathHandleCaptureFrame(
+    StandaloneCaptureScript& captureScript,
+    bool captureMode,
+    const CreativeEditorGizmoFrame& gizmoFrame);
+```
+
+Moved path-handle capture logging:
+
+- The capture-mode gate, `pathPointHandleLogged` latch gate, selected path
+  target gate, `PATH_HANDLE hit proxy` log loop, and latch assignment now live
+  in `CreativeEditorGizmoFrame.cpp`.
+- `main.cpp` now calls
+  `logCreativeEditorPathHandleCaptureFrame(editor.captureScript,
+  !capturePath.empty(), gizmoFrame)`.
+- Capture Move policy, interactive Move policy, placement, capture scenario
+  dispatch, overlay construction, submit, shutdown, and downstream
+  path/gizmo consumers remain in `main.cpp`.
+
+`CMakeLists.txt` was unchanged.
+
+Required grep classifications:
+
+- `logCreativeEditorPathHandleCaptureFrame(...)` is declared in
+  `CreativeEditorGizmoFrame.hpp`, defined in `CreativeEditorGizmoFrame.cpp`,
+  and called from `main.cpp`.
+- The `PATH_HANDLE hit proxy` log string, capture gating, and
+  `pathPointHandleLogged` assignment live in `CreativeEditorGizmoFrame.cpp`.
+- `main.cpp` still owns capture Move, interactive Move, and overlay consumers.
+- Existing ownership remains unchanged for `CreativeEditorSelection.*`,
+  `CreativeEditorAim.*`, `CreativeEditorCommandInput.*`,
+  `CreativeEditorFrameInput.*`, `StandaloneDelete.*`, and
+  `StandaloneWireframeBoxEdges.*`.
+- No `EditorFrame` or `runCreativeEditorFrame(...)` was introduced.
+- No old `appendWireframeBoxEdges(...)` helper was reintroduced.
+
+Focused verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff -- CMakeLists.txt` produced no diff.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- Focused trailing-whitespace scan over touched source files and this card
+  passed.
+
+Optional capture was skipped because no windowed/Vulkan capture check was
+explicitly allowed.
+
+No `EditorFrame`, `runCreativeEditorFrame(...)`, capture Move policy move,
+interactive Move policy move, placement move, capture scenario move, later
+frame-stage move, tests, receipt/golden files, broad CTest, interactive window
+launch, staging, commit, or push was performed.
