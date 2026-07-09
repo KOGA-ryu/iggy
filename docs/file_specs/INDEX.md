@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `7c9e712f`
+Verified at: `ac496769`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `238`.
-- Current mapped source files represented by those specs: about `452`.
+- Current file specs: `242`.
+- Current mapped source files represented by those specs: about `460`.
 
 ## Status Labels
 
@@ -120,6 +120,7 @@ App projection/view/window:
 - `mapped` [Flow.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/Flow.md)
 - `mapped` [CurrentSessionSave.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/CurrentSessionSave.md)
 - `mapped` [SaveSessionStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/SaveSessionStore.md)
+- `mapped` [RoomMarkerBinding.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/RoomMarkerBinding.md)
 - `mapped` [ProjectionRefresh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ProjectionRefresh.md)
 - `mapped` [FramePresenter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/FramePresenter.md)
 - `mapped` [InputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/InputFrame.md)
@@ -174,6 +175,7 @@ App projection/view/window:
 - `mapped` [ViewportState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/ViewportState.md)
 - `mapped` [DebugHudView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/DebugHudView.md)
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
+- `mapped` [Widget.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ui/Widget.md)
 - `mapped` [SdlWindow.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/platform/SdlWindow.md)
 - `mapped` [SdlVulkanSurface.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/platform/SdlVulkanSurface.md)
 - `mapped` [ExecutablePath.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/platform/ExecutablePath.md)
@@ -259,6 +261,8 @@ App room editor/map maker:
 - `mapped` [Preview.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/Preview.md)
 - `mapped` [ActionController.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/ActionController.md)
 - `mapped` [AuthoringController.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/AuthoringController.md)
+- `mapped` [Cursor.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room_editor/Cursor.md)
+- `mapped` [GeometryOptimization.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/room/GeometryOptimization.md)
 - `mapped` [Grid.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/map_maker/Grid.md)
 - `mapped` [Presentation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/map_maker/Presentation.md)
 
@@ -319,12 +323,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BE, app UI/save/room-editor choke surfaces:
+Batch BF, remaining room-editor state/conversion surfaces:
 
-- `next` `src/app/iggy3d/ui/Widget.*`
-- `next` `src/app/iggy3d/save/RoomMarkerBinding.*`
-- `queued` `src/app/iggy3d/room/GeometryOptimization.*`
-- `queued` `src/app/iggy3d/room_editor/Cursor.*`
+- `next` `src/app/iggy3d/room_editor/EditableRoomToAuthoredRoom.*`
+- `next` `src/app/iggy3d/room_editor/EditingState.*`
+- `queued` `src/app/iggy3d/room_editor/RoomEditorOverlayState.hpp`
+- `queued` `src/app/iggy3d/room_editor/RoomEditorPreviewState.hpp`
 
 ## Defer Leaf Policy
 
