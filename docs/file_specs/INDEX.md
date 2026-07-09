@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `9efd172d`
+Verified at: `93b82ea7`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `57`.
-- Current mapped source files represented by those specs: about `114`.
+- Current file specs: `61`.
+- Current mapped source files represented by those specs: about `122`.
 
 ## Status Labels
 
@@ -104,6 +104,13 @@ App room editor/map maker:
 - `mapped` [Grid.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/map_maker/Grid.md)
 - `mapped` [Presentation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/map_maker/Presentation.md)
 
+App ASCII room / active room:
+
+- `mapped` [AsciiRoomSource.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/AsciiRoomSource.md)
+- `mapped` [AsciiRoomToAuthoredRoom.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.md)
+- `mapped` [Editing.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/Editing.md)
+- `mapped` [ActiveRoomState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ActiveRoomState.md)
+
 App debug HUD builders:
 
 - `mapped` [PhysicsDebugHud.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/PhysicsDebugHud.md)
@@ -114,13 +121,17 @@ App debug HUD builders:
 
 ## Next Batch Queue
 
-Batch G, ASCII room and active room authoring:
+Batch G remainder, ASCII room dirty surfaces:
 
-- `next` `src/app/iggy3d/ascii_room/AsciiRoomSource.*`
-- `next` `src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.*`
-- `next` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
-- `next` `src/app/iggy3d/ascii_room/Editing.*`
-- `next` `src/app/iggy3d/gameplay/ActiveRoomState.*`
+- `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
+- `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
+
+Batch H, active room gameplay/collision:
+
+- `next` `src/app/iggy3d/gameplay/ActiveRoomCollision.*`
+- `next` `src/app/iggy3d/gameplay/ProductRoomStore.*`
+- `next` `src/app/iggy3d/gameplay/ControllerJumpActions.*`
+- `next` `src/app/iggy3d/gameplay/TapeRunner.*`
 
 ## Defer Leaf Policy
 
