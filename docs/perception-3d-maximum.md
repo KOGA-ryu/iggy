@@ -1,4 +1,20 @@
-# Perception 3D — Build Maximum (v1.0)
+# Perception 3D — Build Maximum (v1.1)
+
+> **v1.1 re-anchor corrections (verified at HEAD before P1 card-cut):**
+> 1. **`NpcPerceptionResult` ALREADY EXISTS** (`NpcBehaviorSystem.hpp:72-87`) with `status`, entity/combat
+>    fields, `distanceMeters`, `targetInPerceptionRadius`, `targetInVisionCone`, `hasLineOfSight`. §2 is an
+>    **extension** of that struct, not a new type: add `horizontalAngleDeg`, `verticalAngleDeg`,
+>    `inVerticalCone`, `perceived`, and the `los` tri-state; `targetInVisionCone` keeps its meaning as the
+>    *horizontal* cone gate. The request's default-true `targetHasLineOfSight` (`hpp:69`) is the fail-open
+>    bool to remove per §16.
+> 2. The existing horizontal cone config field is **`visionHalfAngleDegrees`** (`hpp:31`, default 60), not
+>    "horizontalHalfAngleDegrees" — keep its name; the new field `verticalHalfAngleDegrees` sits beside it.
+> 3. **Zero facing = omnidirectional is a DOCUMENTED contract** (`hpp:62-64`: degenerate facing disables the
+>    cone gate for low-level callers). §4's edge table said "zero facing → not in cone" — **wrong; preserve
+>    omnidirectional-on-zero-facing** for both cones (vertical gate likewise disabled on zero facing).
+> Part A sites re-verified: alert heard-branch `NpcAlertSystem.cpp:164`; dwell-reset
+> `NpcInvestigateSystem.cpp:30` ("a fresh sighting restarts any look-around"); occlusion sites exact
+> (`Session.cpp:1002/1008/1027/1032/1047/1075/1134`).
 
 The complete demand for the guard 3D-perception build. Every slice is cut from this; cite coordinates,
 version-bump on correction. Supersedes the 2D perception in `NpcBehaviorSystem`. Companion:
