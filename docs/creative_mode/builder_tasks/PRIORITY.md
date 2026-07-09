@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E279-iggy3d-creative-main-split-g13-click-selection.md`
+1. `ready/E280-iggy3d-creative-main-split-g14-placement-input.md`
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E279-iggy3d-creative-main-split-g13-click-selection.md`
+1. `ready/E280-iggy3d-creative-main-split-g14-placement-input.md`
 
 ## Parking Lot
 
@@ -221,5 +221,6 @@ Held — do NOT promote to `ready/` on a guess:
   module. E277 is complete as visible-object pick candidate construction plus
   point/line/path proxy proof logs. E278 is complete as the capture-only
   world-pick proof logging helper inside the existing pick-frame module. E279
-  is released to extract only synthetic/interactive click selection, leaving
-  placement, capture scenario, Move policy, overlay, and submit in `main.cpp`.
+  is complete as synthetic/interactive click selection. E280 is released to
+  extract only interactive placement input, leaving capture scenario, Move
+  policy, overlay, and submit in `main.cpp`.
