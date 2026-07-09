@@ -9,6 +9,11 @@ use this index only to decide which ready card to claim next.
 rulings R1–R9 are settled (R9: ascii lane INERT — any ascii card is off-plan).
 Research evidence folded (`docs/research_findings_v1.md`).
 
+**INTERLEAVE LANE:** the KNOT LANE (`docs/refactor_targets.md` top section, K1–K4: InputFrame split,
+main.cpp finish, SessionState audit-first, department-DAG enforcement) — Mode P, fills disjoint-file gaps;
+the senses arc keeps priority. K3 is read-only; any SessionState MOVE waits for the P3 chain to clear
+`Session.cpp` and runs under spine gates.
+
 **State:** perception P1+P2 LANDED · **P3a DONE** (accepted `f16f968f`) ·
 **P3b NEXT** — ruled + unblocked (R3.1: empty=Clear, Unknown=failure only;
 bake-validity threading in scope), **planner pin-tests pre-authored in the plan

@@ -1,5 +1,33 @@
 # Refactor Target Backlog
 
+## ⚡ KNOT LANE (dispatched 2026-07-09 — the last structural knots, measured at HEAD)
+
+God-struct: CONFIRMED GONE (ProductAppWindowState = 14 members: 4 lifecycle bools + 9 stores + viewport +
+automationControl — the planned end-state). Remaining knots, in pull order (Mode P unless noted; interleaves
+with the Guard Senses arc in disjoint-file gaps — senses arc keeps priority):
+
+1. **K1 — InputFrame.cpp split** (1,636 lines, 34 includes — the biggest file knot left). The Controller
+   playbook: split by concern into sibling TUs behind narrow headers, keep the orchestrator thin. Metric:
+   InputFrame.cpp LOC ≤ ~300 orchestrator; suite green; golden byte-identical. ~1 day.
+2. **K2 — finish iggy3d_creative main.cpp frame-stage extraction** (1,086 lines, down from 1,651; E266
+   preflight done). Continue to the 8 named stages / CreativeEditorState. Serializes with creative-lane
+   area-selection work — slot accordingly. ~0.5–1 day.
+3. **K3 — SessionState remainder AUDIT (read-only, S).** 46 members on the sim spine root. The E177-pattern
+   audit: classify every member (intrinsic-spine vs store-shaped domain vs mirror). SPINE RULES: any actual
+   member move has StateHash/SaveCodec implications and its own gated slice — decomposition only if the
+   audit finds mixed ownership. Do NOT presume a decomposition. Audit ~0.5 day.
+4. **K4 — department DAG enforcement.** Rule the two back-edges (content↔runtime: 3 files;
+   projection↔render: 1 each) — legalize-with-named-reason or fix; add tools/ dep-graph script (fan-out/
+   fan-in/closure/cycles, generated never hand-written) + an include-direction test asserting the department
+   DAG (the god-struct-coverage-test pattern). Ratchet: cross-department edge count + max direct fan-out
+   join the scoreboard. ~0.5–1 day.
+
+NOT knots (ruled, do not card): CreativeAuthoringStore's 80 members (large-but-OWNED — single domain, flat
+by ruling; revisit only if the area-selection preflight names it a friction); hub fan-in on
+ProductAppWindowState.hpp/FrontendState/FrontendRouter (composition-root fan-in, post-hygiene — the dep tool
+watches it, no action). Estimated lane total: **2–4 builder-days.**
+
+
 Swarm scan of HEAD (5 lenses: size, duplication, dead-code, architecture, perf), ranked by **effort
 descending** — biggest work first. Every target verified in code. Pick from the top; each needs its own
 local preflight + owner check + focused test before Codex starts. `S<0.5d · M<2d · L<1wk · XL>1wk`.
