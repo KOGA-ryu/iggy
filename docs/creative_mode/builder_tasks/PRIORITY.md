@@ -59,7 +59,7 @@ None.
 
 ## Pull Next
 
-1. `ready/E281-iggy3d-creative-main-split-g15-capture-scenario-frame.md`
+None currently ready.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -71,7 +71,7 @@ None currently ready.
 
 ## Tier 3: Organization, Receipt Shape, And Test Hygiene
 
-1. `ready/E281-iggy3d-creative-main-split-g15-capture-scenario-frame.md`
+None currently ready.
 
 ## Parking Lot
 
@@ -222,6 +222,6 @@ Held — do NOT promote to `ready/` on a guess:
   point/line/path proxy proof logs. E278 is complete as the capture-only
   world-pick proof logging helper inside the existing pick-frame module. E279
   is complete as synthetic/interactive click selection. E280 is complete as
-  interactive placement input. E281 is released to extract only
-  capture-scenario request assembly, leaving capture Move, interactive Move,
-  overlay, submit, and shutdown in `main.cpp`.
+  interactive placement input. E281 is complete as capture-scenario request
+  assembly. The remaining Move, overlay, submit, and shutdown seams should get
+  an explicit next card instead of being promoted on a guess.
