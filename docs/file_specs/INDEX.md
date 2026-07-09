@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `f6abfbf4`
+Verified at: `dd59395f`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `85`.
-- Current mapped source files represented by those specs: about `169`.
+- Current file specs: `89`.
+- Current mapped source files represented by those specs: about `177`.
 
 ## Status Labels
 
@@ -134,6 +134,10 @@ App ASCII room / active room:
 - `mapped` [ControllerResetFall.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerResetFall.md)
 - `mapped` [ControllerTraversalProof.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerTraversalProof.md)
 - `mapped` [ControllerWallRunEvaluation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerWallRunEvaluation.md)
+- `mapped` [Controller.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/Controller.md)
+- `mapped` [ControllerInputIntent.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerInputIntent.md)
+- `mapped` [MovementProof.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/MovementProof.md)
+- `mapped` [Tape.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/Tape.md)
 
 App debug HUD builders:
 
@@ -150,12 +154,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch M, gameplay top-level and packet surfaces:
+Batch N, window/input choke surfaces:
 
-- `next` `src/app/iggy3d/gameplay/Controller.*`
-- `next` `src/app/iggy3d/gameplay/ControllerInputIntent.*`
-- `next` `src/app/iggy3d/gameplay/MovementProof.*`
-- `next` `src/app/iggy3d/gameplay/Tape.*`
+- `next` `src/app/iggy3d/window/InputFrame.*`
+- `next` `src/app/iggy3d/window/Loop.*`
+- `next` `src/app/iggy3d/window/MouseCapturePolicy.*`
+- `next` `src/app/iggy3d/window/ActiveSurface.*`
 
 ## Defer Leaf Policy
 
