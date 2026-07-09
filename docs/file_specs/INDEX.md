@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `0e08703f`
+Verified at: `b49a78ae`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `250`.
-- Current mapped source files represented by those specs: about `479`.
+- Current file specs: `258`.
+- Current mapped source files represented by those specs: about `496`.
 
 ## Status Labels
 
@@ -275,6 +275,14 @@ App ASCII room / active room:
 - `mapped` [AsciiRoomSource.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/AsciiRoomSource.md)
 - `mapped` [AsciiRoomToAuthoredRoom.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.md)
 - `mapped` [Editing.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/Editing.md)
+- `mapped` [Activation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/Activation.md)
+- `mapped` [Authoring.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/Authoring.md)
+- `mapped` [Package.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/Package.md)
+- `mapped` [Preview.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/Preview.md)
+- `mapped` [AsciiRoomAssetText.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/AsciiRoomAssetText.md)
+- `mapped` [AsciiRoomCanvas.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/AsciiRoomCanvas.md)
+- `mapped` [AsciiRoomToEditableRoom.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/AsciiRoomToEditableRoom.md)
+- `mapped` [StatePackets.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/StatePackets.md)
 - `mapped` [ActiveRoomState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ActiveRoomState.md)
 - `mapped` [ActiveRoomCollision.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ActiveRoomCollision.md)
 - `mapped` [ProductRoomStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ProductRoomStore.md)
@@ -331,12 +339,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BH, app ASCII room non-dirty surfaces:
+Batch BI, content room/package surfaces:
 
-- `next` `src/app/iggy3d/ascii_room/Activation.*`
-- `next` `src/app/iggy3d/ascii_room/AsciiRoomAssetText.*`
-- `queued` `src/app/iggy3d/ascii_room/AsciiRoomCanvas.*`
-- `queued` `src/app/iggy3d/ascii_room/AsciiRoomToEditableRoom.*`
+- `next` `src/content/authoring/EditableRoomDocument.*`
+- `next` `src/content/assets/RoomAsset.hpp`
+- `queued` `src/content/PackageLoader.*`
+- `queued` `src/content/Scenario.*`
 
 ## Defer Leaf Policy
 
