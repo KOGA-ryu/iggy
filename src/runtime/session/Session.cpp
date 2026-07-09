@@ -711,12 +711,9 @@ NpcBehaviorDecision maybeApplyInvestigate(const NpcBehaviorDecision& decision,
     return decision;
   }
 
-  const bool visualConfirmed =
-      perception.targetInVisionCone && perception.inVerticalCone &&
-      perception.hasLineOfSight;
   const std::uint8_t band = alertBandIndex(actor.alertLevel, profile);
   const NpcInvestigateStep step =
-      npcStepInvestigate(actor, perception.actorPosition, band, visualConfirmed,
+      npcStepInvestigate(actor, perception.actorPosition, band, perception.perceived,
                          kPatrolArriveEpsilonMeters, kInvestigateDwellTicks);
   if (!step.active) {
     return decision;
@@ -1111,15 +1108,13 @@ void enqueueNpcBehaviorCommands(
     // authoritatively by applyNpcBehaviorDecision below, so the intermediate
     // behavior write here is harmless.
     NpcAlertStimulus stimulus;
-    stimulus.targetPerceived = perception.status == NpcPerceptionStatus::Ready;
+    stimulus.targetPerceived = perception.perceived;
     stimulus.proximity01 =
         config.perceptionRadiusMeters > 0.0F
             ? clamp01(1.0F - perception.distanceMeters / config.perceptionRadiusMeters)
             : 0.0F;
     stimulus.hasValidTarget = perceptionHasLiveTarget(perception.status);
-    stimulus.visualConfirmed = perception.targetInVisionCone &&
-                               perception.inVerticalCone &&
-                               perception.hasLineOfSight;
+    stimulus.visualConfirmed = perception.perceived;
 
     // PERCEIVE (a1s2, L1): resolve THIS tick's sound bus at the guard. Self-hearing
     // skip -- a guard never hears an event it emitted (v1 guards are silent, but the

@@ -1054,6 +1054,50 @@ bool shortWallBelowStandingEyeDoesNotBlockLineOfSight() {
   return ok;
 }
 
+bool beyondRadiusClearLosDoesNotConfirmVisualTarget() {
+  iggy3d::Session session = makeNpcCombatSession(7.0F);
+  seedNpcAiProfile(session, "default");
+  const iggy3d::AiActorState* initialAi = findAiActor(session.state().ai, {2});
+  const std::uint64_t initialLastKnownTick =
+      initialAi != nullptr ? initialAi->lastKnownTargetTick : 0U;
+  const iggy3d::SpatialSurfaceSet surfaces = openWalkableSurfaces();
+
+  bool ok = expect(session.tick(&surfaces).status == iggy3d::ResultStatus::Ok,
+                   "beyond radius tick ok");
+  const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+
+  ok = ok && expect(ai != nullptr && !ai->lastTargetInRadius,
+                    "beyond radius mirror out of radius") &&
+       expect(ai != nullptr && ai->lastTargetInVisionCone,
+              "beyond radius mirror in cone") &&
+       expect(ai != nullptr && ai->lastTargetHasLineOfSight,
+              "beyond radius mirror clear los") &&
+       expect(ai != nullptr && !ai->hasLastKnownTarget,
+              "beyond radius records no visual memory") &&
+       expect(ai != nullptr &&
+                  ai->lastKnownTargetTick == initialLastKnownTick,
+              "beyond radius leaves last-known tick unchanged") &&
+       expect(command == nullptr || command->kind != iggy3d::CommandKind::Move,
+              "beyond radius no visual chase command") &&
+       expect(command == nullptr || command->kind != iggy3d::CommandKind::Attack,
+              "beyond radius no visual attack command") &&
+       expect(ai != nullptr &&
+                  ai->lastIntent != iggy3d::AiIntentKind::MoveTowardTarget,
+              "beyond radius no chase intent") &&
+       expect(ai != nullptr &&
+                  ai->lastIntent != iggy3d::AiIntentKind::AttackTarget,
+              "beyond radius no attack intent") &&
+       expect(ai != nullptr &&
+                  ai->behavior != iggy3d::AiBehaviorKind::Chasing,
+              "beyond radius no chasing behavior") &&
+       expect(ai != nullptr &&
+                  ai->behavior != iggy3d::AiBehaviorKind::Attacking,
+              "beyond radius no attacking behavior");
+  return ok;
+}
+
 bool nullCollisionSurfacesApplySoundWallLoss() {
   const auto prepare = [](iggy3d::Session& session) {
     seedNpcAiProfile(session, "default");
@@ -1984,6 +2028,7 @@ int main() {
                   nullCollisionSurfacesProduceUnknownVision() &&
                   sessionWallBlocksLineOfSightThroughSegmentOwner() &&
                   shortWallBelowStandingEyeDoesNotBlockLineOfSight() &&
+                  beyondRadiusClearLosDoesNotConfirmVisualTarget() &&
                   nullCollisionSurfacesApplySoundWallLoss() &&
                   authoredNpcFacingOverridesDefaultAndGatesVision() &&
                   sessionCreateSeedsAiActorProfileIntoStateAndBaseline() &&
