@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `182`.
-- Current mapped source files represented by those specs: about `342`.
+- Current file specs: `183`.
+- Current mapped source files represented by those specs: about `344`.
 
 ## Status Labels
 
@@ -123,6 +123,7 @@ App projection/view/window:
 - `mapped` [Options.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/Options.md)
 - `mapped` [ProductAppWindowState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductAppWindowState.md)
 - `mapped` [ProductStartupState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductStartupState.md)
+- `mapped` [PackageRuntimeLookup.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/PackageRuntimeLookup.md)
 - `mapped` [ProductVulkanMenuState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/ProductVulkanMenuState.md)
 - `mapped` [ReceiptBuilder.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ReceiptBuilder.md)
 - `mapped` [ReceiptFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/ReceiptFields.md)
@@ -253,10 +254,10 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AM, app package/runtime lookup surfaces:
+Batch AN, app config and CLI entry surfaces:
 
-- `next` `src/app/PackageRuntimeLookup.*`
-- `next` `src/app/input/*` remaining input device/action mapping leaves.
+- `next` `src/app/AppConfig.*`
+- `next` `src/app/CliParser.*`
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 - `queued` `src/app/iggy3d/view/PrimitiveDrawList.*` if primitive packet ownership changes.
 
