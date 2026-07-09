@@ -5,7 +5,7 @@
 //
 // This file remains the app integration surface. Keep authoring truth in the
 // creative kernel and keep deterministic proof state in the extracted helpers:
-// StandaloneCaptureScript.hpp owns the fixed capture schedule, while the
+// EditorCapture.hpp owns the fixed capture schedule, while the
 // Standalone* helpers own renderer bootstrap, picking, placement, gizmo/path
 // editing, RoomBake preview, persistence proof, and app-local snapshot undo.
 //
@@ -58,12 +58,11 @@
 #include "render/debug/DebugHudText.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
-#include "CreativeEditorCaptureScenario.hpp"
+#include "EditorCapture.hpp"
 #include "EditorFrame.hpp"
 #include "EditorGizmo.hpp"
 #include "CreativeRendererBootstrap.hpp"
 #include "CreativeEditorState.hpp"
-#include "StandaloneCaptureScript.hpp"
 #include "StandaloneBrushPalette.hpp"
 #include "StandaloneFrustumCull.hpp"
 #include "StandalonePathEditing.hpp"

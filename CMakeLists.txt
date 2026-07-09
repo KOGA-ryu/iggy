@@ -388,12 +388,11 @@ iggy3d_apply_warnings(iggy3d_app)
 
 add_executable(iggy3d_creative
   apps/iggy3d_creative/main.cpp
-  apps/iggy3d_creative/CreativeEditorCaptureScenario.cpp
+  apps/iggy3d_creative/EditorCapture.cpp
   apps/iggy3d_creative/EditorFrame.cpp
   apps/iggy3d_creative/EditorGizmo.cpp
   apps/iggy3d_creative/CreativeRendererBootstrap.cpp
   apps/iggy3d_creative/StandaloneBrushPalette.cpp
-  apps/iggy3d_creative/StandaloneCaptureScenario.cpp
   apps/iggy3d_creative/StandaloneDelete.cpp
   apps/iggy3d_creative/StandaloneFrustumCull.cpp
   apps/iggy3d_creative/StandalonePathEditing.cpp

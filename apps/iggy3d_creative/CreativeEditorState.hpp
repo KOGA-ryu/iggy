@@ -9,7 +9,7 @@
 #include "app/iggy3d/creative/tools/Tools.hpp"
 #include "core/math/Vec3.hpp"
 
-#include "StandaloneCaptureScript.hpp"
+#include "EditorCapture.hpp"
 #include "EditorGizmo.hpp"
 #include "StandalonePicking.hpp"
 #include "StandaloneUndo.hpp"

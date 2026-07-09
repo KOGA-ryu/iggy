@@ -16,7 +16,7 @@
 #include "render/FrameInput.hpp"
 
 #include "CreativeEditorState.hpp"
-#include "StandaloneCaptureScript.hpp"
+#include "EditorCapture.hpp"
 #include "StandalonePicking.hpp"
 
 namespace iggy3d {

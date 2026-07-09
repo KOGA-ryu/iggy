@@ -13,7 +13,7 @@
 #include "core/math/Vec3.hpp"
 #include "render/FrameInput.hpp"
 
-#include "StandaloneCaptureScript.hpp"
+#include "EditorCapture.hpp"
 #include "StandalonePicking.hpp"
 #include "StandaloneUndo.hpp"
 
