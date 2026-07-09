@@ -195,6 +195,7 @@ target_sources(iggy3d
     src/app/iggy3d/creative/bridge/InputFrame.cpp
     src/app/iggy3d/window/InputFrame.cpp
     src/app/iggy3d/window/InputCreativeModes.cpp
+    src/app/iggy3d/window/InputGameplayActions.cpp
     src/app/iggy3d/window/InputMenuRouting.cpp
     src/app/iggy3d/window/Loop.cpp
     src/app/iggy3d/window/RendererLifecycle.cpp

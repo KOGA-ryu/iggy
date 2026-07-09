@@ -55,6 +55,14 @@ ProductWindowTopLevelToggleResult dispatchProductWindowMapMakerToggleAction(
     bool* closeRequested,
     creative::CreativeAppState* creativeApp);
 
+ProductWindowTopLevelToggleResult dispatchProductWindowMovementTuningToggleAction(
+    FrontendState& frontend,
+    ProductAppWindowState& window,
+    InputAction action,
+    FrontendSettings* settings,
+    bool* closeRequested,
+    creative::CreativeAppState* creativeApp);
+
 void applyProductWindowRoomEditorActions(ProductAppWindowState& window,
                                          const ActionState& actions);
 
