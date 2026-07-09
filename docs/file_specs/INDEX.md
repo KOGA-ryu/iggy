@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `67587af2`
+Verified at: `49d04797`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `161`.
-- Current mapped source files represented by those specs: about `304`.
+- Current file specs: `163`.
+- Current mapped source files represented by those specs: about `308`.
 
 ## Status Labels
 
@@ -149,6 +149,8 @@ App automation:
 - `mapped` [AutomationControl.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/automation/AutomationControl.md)
 - `mapped` [AutomationGameplay.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/automation/AutomationGameplay.md)
 - `mapped` [AutomationSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/automation/AutomationSystem.md)
+- `mapped` [AutomationRoomEditing.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/automation/AutomationRoomEditing.md)
+- `mapped` [AutomationSaveBrowser.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/automation/AutomationSaveBrowser.md)
 
 App creative/world launch:
 
@@ -232,12 +234,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AF, remaining product automation surfaces:
+Batch AG, product app kernel/lifecycle surfaces:
 
-- `next` `src/app/iggy3d/automation/AutomationRoomEditing.*`
-- `next` `src/app/iggy3d/automation/AutomationSaveBrowser.*`
-- `queued` `src/app/iggy3d/automation/AutomationSystem.*` only if system callbacks change.
-- `queued` `src/app/iggy3d/automation/AutomationControl.*` only if control state fields change.
+- `next` `src/app/iggy3d/AppKernel.*`
+- `next` `src/app/iggy3d/Operations.*`
+- `next` `src/app/iggy3d/Options.*`
+- `next` `src/app/iggy3d/AppPaths.*`
 
 ## Defer Leaf Policy
 
