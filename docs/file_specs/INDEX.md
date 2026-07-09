@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `a200d76e`
+Verified at: `eebd1820`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `128`.
-- Current mapped source files represented by those specs: about `252`.
+- Current file specs: `132`.
+- Current mapped source files represented by those specs: about `260`.
 
 ## Status Labels
 
@@ -128,6 +128,10 @@ App projection/view/window:
 
 App creative/world launch:
 
+- `mapped` [ProductSessionLaunch.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/ProductSessionLaunch.md)
+- `mapped` [ProductNewWorldLaunch.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/ProductNewWorldLaunch.md)
+- `mapped` [ProductLaunchState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/ProductLaunchState.md)
+- `mapped` [BuiltinDungeon.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/BuiltinDungeon.md)
 - `mapped` [CreativeWorldOperations.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeWorldOperations.md)
 - `mapped` [WorldService.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/world/WorldService.md)
 - `mapped` [Facade.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/Facade.md)
@@ -196,12 +200,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch Y, product world/session launch surfaces:
+Batch Z, product world/package creation surfaces:
 
-- `next` `src/app/iggy3d/world/ProductSessionLaunch.*`
-- `next` `src/app/iggy3d/world/ProductNewWorldLaunch.*`
-- `next` `src/app/iggy3d/world/ProductLaunchState.*`
-- `next` `src/app/iggy3d/world/BuiltinDungeon.*`
+- `next` `src/app/iggy3d/world/Creation.*`
+- `next` `src/app/iggy3d/world/ProductWorldTemplateOperations.*`
+- `next` `src/app/iggy3d/world/DefaultWorldTemplate.*`
+- `next` `src/app/iggy3d/world/PackageSessionSeed.*`
 
 ## Defer Leaf Policy
 
