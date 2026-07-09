@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `191`.
-- Current mapped source files represented by those specs: about `363`.
+- Current file specs: `194`.
+- Current mapped source files represented by those specs: about `369`.
 
 ## Status Labels
 
@@ -202,6 +202,9 @@ App creative/world launch:
 - `mapped` [UiInputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiInputFrame.md)
 - `mapped` [UiCommandFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiCommandFrame.md)
 - `mapped` [UiWindowFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiWindowFrame.md)
+- `mapped` [ViewportPickFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/ViewportPickFrame.md)
+- `mapped` [WindowCoordinateSpace.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/WindowCoordinateSpace.md)
+- `mapped` [WireframeFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/WireframeFrame.md)
 
 App room editor/map maker:
 
@@ -262,11 +265,11 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AR, creative bridge support surfaces:
+Batch AS, creative bridge/catalog leaves:
 
-- `next` `src/app/iggy3d/creative/bridge/ViewportPickFrame.*`
-- `next` `src/app/iggy3d/creative/bridge/WindowCoordinateSpace.*`
-- `next` `src/app/iggy3d/creative/bridge/WireframeFrame.*`
+- `next` `src/app/iggy3d/creative/bridge/InputFrame.*`
+- `next` `src/app/iggy3d/creative/bridge/UiCommandCatalog.hpp`
+- `next` `src/app/iggy3d/creative/CreativeUiCommandDiagnostics.hpp`
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
 ## Defer Leaf Policy
