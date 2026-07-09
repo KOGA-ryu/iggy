@@ -663,7 +663,7 @@ bool npcDebugProjectionAppendsItemsAndHudLines() {
                 "passive hud row") &&
          expect(debug.npcBehaviorDebugHudLines[3] ==
                     "NPC 4 ghost ghost_profile idle/none tgt=none cd=0 "
-                    "v=0.000 los=U unresolved=profile_missing",
+                    "unresolved=profile_missing v=0.000 los=U",
                 "ghost hud row");
 }
 

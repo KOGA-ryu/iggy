@@ -198,12 +198,12 @@ void appendNpcBehaviorHudLines(DebugProjectionResult& result,
                        std::string(aiBehaviorKindName(row.behavior)) + "/" +
                        std::string(aiIntentKindName(row.lastIntent)) + " tgt=" +
                        row.targetStableName + " cd=" +
-                       std::to_string(row.cooldownTicksRemaining) + " v=" +
-                       fixed3(row.lastVerticalAngleDeg) + " los=" +
-                       std::string(losCode(row.lastLos));
+                       std::to_string(row.cooldownTicksRemaining);
     if (!row.profileResolved) {
       line += " unresolved=" + row.profileStatus;
     }
+    line += " v=" + fixed3(row.lastVerticalAngleDeg) + " los=" +
+            std::string(losCode(row.lastLos));
     result.npcBehaviorDebugHudLines.push_back(std::move(line));
     ++emittedRows;
   }
