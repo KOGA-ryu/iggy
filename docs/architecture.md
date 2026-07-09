@@ -110,6 +110,17 @@ ctest --test-dir /Users/kogaryu/iggy3d/build --output-on-failure
 
 ## Module Dependency Direction
 
+The production include graph is enforced by the checked-in policy at
+`docs/architecture_dependency_policy.json` and the focused
+`dependency_direction_tests` CTest. The physical department order is:
+
+```text
+core <- config <- content <- runtime <- projection <- render <- app
+```
+
+The policy also permits app composition-root fan-out to core, config, content,
+runtime, projection, and render. Creative remains part of app for this graph.
+
 Allowed dependency direction:
 
 ```text
@@ -133,6 +144,11 @@ Meaning:
 - `projection` may depend on core and runtime read-only state.
 - apps/tools may depend on public library modules.
 - tests may depend on public library modules and fixtures.
+
+The runtime-to-content boundary is restricted to authored value headers:
+`RoomAsset.hpp`, `TraversalTag.hpp`, `ScenarioSeed.hpp`, and
+`NpcBehaviorProfileId.hpp`. Projection-to-content is restricted to
+`RoomAsset.hpp`. No cycle-preserving exceptions are allowed.
 
 Forbidden dependency direction:
 

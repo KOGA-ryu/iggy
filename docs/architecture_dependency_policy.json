@@ -1,0 +1,74 @@
+{
+  "schema": "iggy3d.architecture_dependency_policy.v1",
+  "source_root": "src",
+  "suffixes": [
+    ".c",
+    ".cc",
+    ".cpp",
+    ".cxx",
+    ".h",
+    ".hh",
+    ".hpp",
+    ".hxx"
+  ],
+  "departments": [
+    {"name": "core", "prefix": "src/core"},
+    {"name": "config", "prefix": "src/config"},
+    {"name": "content", "prefix": "src/content"},
+    {"name": "runtime", "prefix": "src/runtime"},
+    {"name": "projection", "prefix": "src/projection"},
+    {"name": "render", "prefix": "src/render"},
+    {"name": "app", "prefix": "src/app"}
+  ],
+  "allowed_pairs": [
+    {"source": "config", "target": "core"},
+    {"source": "content", "target": "core"},
+    {"source": "content", "target": "config"},
+    {"source": "runtime", "target": "core"},
+    {"source": "runtime", "target": "config"},
+    {"source": "runtime", "target": "content"},
+    {"source": "projection", "target": "core"},
+    {"source": "projection", "target": "content"},
+    {"source": "projection", "target": "runtime"},
+    {"source": "render", "target": "core"},
+    {"source": "render", "target": "projection"},
+    {"source": "app", "target": "core"},
+    {"source": "app", "target": "config"},
+    {"source": "app", "target": "content"},
+    {"source": "app", "target": "runtime"},
+    {"source": "app", "target": "projection"},
+    {"source": "app", "target": "render"}
+  ],
+  "restricted_targets": [
+    {
+      "source": "runtime",
+      "target": "content",
+      "targets": [
+        "src/content/assets/RoomAsset.hpp",
+        "src/content/assets/TraversalTag.hpp",
+        "src/content/ScenarioSeed.hpp",
+        "src/content/NpcBehaviorProfileId.hpp"
+      ]
+    },
+    {
+      "source": "projection",
+      "target": "content",
+      "targets": [
+        "src/content/assets/RoomAsset.hpp"
+      ]
+    }
+  ],
+  "ratchets": {
+    "max_direct_edges": 320,
+    "departments": {
+      "core": {"max_direct_edge_out": 0, "max_unique_department_out": 0},
+      "config": {"max_direct_edge_out": 0, "max_unique_department_out": 0},
+      "content": {"max_direct_edge_out": 13, "max_unique_department_out": 2},
+      "runtime": {"max_direct_edge_out": 83, "max_unique_department_out": 3},
+      "projection": {"max_direct_edge_out": 26, "max_unique_department_out": 3},
+      "render": {"max_direct_edge_out": 7, "max_unique_department_out": 2},
+      "app": {"max_direct_edge_out": 191, "max_unique_department_out": 6}
+    }
+  },
+  "allowed_exceptions": []
+}

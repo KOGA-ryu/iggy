@@ -19,6 +19,17 @@ set_tests_properties(dependency_graph_tool_tests PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   LABELS "architecture;dependency;oracle;iggy3d")
 
+add_test(NAME dependency_direction_tests
+  COMMAND "${Python3_EXECUTABLE}"
+          "${CMAKE_CURRENT_SOURCE_DIR}/tools/dependency_graph.py"
+          --repo-root "${CMAKE_CURRENT_SOURCE_DIR}"
+          --policy "${CMAKE_CURRENT_SOURCE_DIR}/docs/architecture_dependency_policy.json"
+          --check-policy
+          --format json)
+set_tests_properties(dependency_direction_tests PROPERTIES
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  LABELS "architecture;dependency;oracle;iggy3d")
+
 function(iggy3d_add_acceptance_test test_name source_file)
   set(full_source "${CMAKE_CURRENT_SOURCE_DIR}/${source_file}")
   if(NOT EXISTS "${full_source}")
