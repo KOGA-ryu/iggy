@@ -317,3 +317,105 @@ Report:
   policy move, placement move, capture scenario move, later frame-stage move,
   tests, receipt/golden files, broad CTest, interactive window launch, staging,
   commit, or push was performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/CreativeEditorGizmoFrame.hpp`
+- `apps/iggy3d_creative/CreativeEditorGizmoFrame.cpp`
+- `CMakeLists.txt`
+- this task card, moved from `ready/` to `claimed/` and then `done/`
+
+Exact helper API shape:
+
+```cpp
+namespace iggy3d_creative_app {
+
+struct CreativeEditorGizmoFrame {
+  iggy3d::Vec3 center{0.0F, 0.0F, 0.0F};
+  std::array<GizmoAxisShaft, 3> shafts{};
+  ScreenPoint centerScreen;
+  std::array<ScreenPoint, 3> tipScreens{};
+  std::vector<PathPointHandleHit> pathPointHandleHits;
+  iggy3d::creative::CreativeObjectId selectedPathHandleObjectId =
+      iggy3d::creative::kInvalidObjectId;
+  bool selectedIsPathForHandles = false;
+  iggy3d::Vec3 anchorS{0.0F, 0.0F, 0.0F};
+};
+
+[[nodiscard]] CreativeEditorGizmoFrame buildCreativeEditorGizmoFrame(
+    const CreativeEditorSelectionFrame& selection,
+    const iggy3d::RenderCameraFrame& camera,
+    std::uint32_t drawableWidth,
+    std::uint32_t drawableHeight,
+    float axisLengthMeters);
+
+}  // namespace iggy3d_creative_app
+```
+
+The moved gizmo frame logic is the selected bounds center, X/Y/Z shaft
+construction with existing colors and axis length, screen projection for center
+and tips, path-handle object id, path-shape/valid-points predicate,
+`buildPathPointHandleHits(...)`, and anchor fallback/selected transform
+position selection. `main.cpp` still owns path-handle capture logging, capture
+Move, interactive Move, placement, capture scenario dispatch, overlay
+construction, dimension labels, final logging, submit, and all downstream
+gizmo/path consumers.
+
+CMake source-list placement:
+
+- `apps/iggy3d_creative/CreativeEditorGizmoFrame.cpp` was added to the
+  `iggy3d_creative` executable source list next to the other
+  `CreativeEditor*.cpp` helper sources.
+
+Required grep classifications:
+
+- `CreativeEditorGizmoFrame.hpp` declares `CreativeEditorGizmoFrame` and
+  `buildCreativeEditorGizmoFrame(...)`.
+- `CreativeEditorGizmoFrame.cpp` defines
+  `buildCreativeEditorGizmoFrame(...)`.
+- gizmo center, shafts, projected center/tips, path-handle hits,
+  path-handle selection predicate, and anchor fallback/selection logic live in
+  `CreativeEditorGizmoFrame.cpp`.
+- `main.cpp` includes `CreativeEditorGizmoFrame.hpp`, has the `using`
+  declarations, calls `buildCreativeEditorGizmoFrame(...)`, and restores the
+  local names for downstream code.
+- path-handle capture logging remains in `main.cpp`.
+- capture Move, interactive Move, and overlay consumers remain in `main.cpp`.
+- `CreativeEditorSelection.*`, `CreativeEditorAim.*`,
+  `CreativeEditorCommandInput.*`, `CreativeEditorFrameInput.*`, and
+  `StandaloneDelete.*` remain the selection-frame, aim/ground, command-key,
+  frame-begin input, and delete helper owners.
+- no `EditorFrame` or `runCreativeEditorFrame(...)` was introduced.
+- E267's `appendStandaloneWireframeBoxEdges(...)` helper remains unchanged,
+  and no old `appendWireframeBoxEdges(...)` helper was reintroduced.
+- `CreativeEditorGizmoFrame.cpp` appears in the `iggy3d_creative` executable
+  source list.
+
+Focused verification:
+
+```sh
+cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10
+ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure
+git -C /Users/kogaryu/iggy3d diff --check
+```
+
+Results:
+
+- focused build passed
+- focused CTest passed, 3/3 tests
+- `git diff --check` passed
+- focused trailing-whitespace scan over touched source files, `CMakeLists.txt`,
+  and this task card passed
+
+Optional capture:
+
+- skipped; no owner explicitly allowed a windowed/Vulkan capture check for this
+  slice
+
+No `EditorFrame`, `runCreativeEditorFrame(...)`, path-handle capture logging
+move, capture Move policy move, interactive Move policy move, placement move,
+capture scenario move, later frame-stage move, tests, receipt/golden files,
+broad CTest, interactive window launch, staging, commit, or push was performed.

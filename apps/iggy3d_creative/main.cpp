@@ -61,6 +61,7 @@
 #include "CreativeEditorAim.hpp"
 #include "CreativeEditorCommandInput.hpp"
 #include "CreativeEditorFrameInput.hpp"
+#include "CreativeEditorGizmoFrame.hpp"
 #include "CreativeRendererBootstrap.hpp"
 #include "CreativeEditorSelection.hpp"
 #include "CreativeEditorState.hpp"
@@ -90,6 +91,7 @@ using iggy3d_creative_app::BrushFootprint;
 using iggy3d_creative_app::buildObjectVisualPickBounds;
 using iggy3d_creative_app::brushFootprintForDescriptor;
 using iggy3d_creative_app::buildBrushPaletteFromDescriptors;
+using iggy3d_creative_app::buildCreativeEditorGizmoFrame;
 using iggy3d_creative_app::buildStandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::captureFrameToPng;
 using iggy3d_creative_app::createCreativeRenderer;
@@ -99,6 +101,7 @@ using iggy3d_creative_app::applyCreativeEditorCommandInput;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::CreativeEditorState;
 using iggy3d_creative_app::CreativeEditorFrameInputResult;
+using iggy3d_creative_app::CreativeEditorGizmoFrame;
 using iggy3d_creative_app::CreativeEditorSelectionFrame;
 using iggy3d_creative_app::deleteSelectedObject;
 using iggy3d_creative_app::firstBrushKind;
@@ -114,7 +117,6 @@ using iggy3d_creative_app::movePathObjectWithUndo;
 using iggy3d_creative_app::movePathPointWithUndo;
 using iggy3d_creative_app::pushUndoSnapshot;
 using iggy3d_creative_app::appendPathPolylineLines;
-using iggy3d_creative_app::buildPathPointHandleHits;
 using iggy3d_creative_app::lineProxyBounds;
 using iggy3d_creative_app::ObjectVisualPickBounds;
 using iggy3d_creative_app::ObjectVisualPickResult;
@@ -133,7 +135,6 @@ using iggy3d_creative_app::ScreenPoint;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::appendStandaloneWireframeBoxEdges;
 using iggy3d_creative_app::toVec3;
-using iggy3d_creative_app::validPathPoints;
 using iggy3d_creative_app::VisualBounds;
 using iggy3d_creative_app::visualBoundsCenter;
 using iggy3d_creative_app::visualBoundsForObject;
@@ -669,47 +670,18 @@ int main(int argc, char** argv) {
     // which is the ONLY geometry the renderer's creativeDebugLineBox will draw
     // (it silently skips any segment moving along more than one world axis). The
     // gizmo wireframe lines are appended to the yellow selection-box lines below.
-    const Vec3 gizmoCenter{(selBoxMin.x + selBoxMax.x) * 0.5F,
-                           (selBoxMin.y + selBoxMax.y) * 0.5F,
-                           (selBoxMin.z + selBoxMax.z) * 0.5F};
-    std::array<GizmoAxisShaft, 3> gizmoShafts{};
-    gizmoShafts[0] = {GizmoAxis::X,
-                      {gizmoCenter.x + kGizmoAxisLength, gizmoCenter.y,
-                       gizmoCenter.z},
-                      {1.0F, 0.0F, 0.0F, 1.0F}};
-    gizmoShafts[1] = {GizmoAxis::Y,
-                      {gizmoCenter.x, gizmoCenter.y + kGizmoAxisLength,
-                       gizmoCenter.z},
-                      {0.0F, 1.0F, 0.0F, 1.0F}};
-    gizmoShafts[2] = {GizmoAxis::Z,
-                      {gizmoCenter.x, gizmoCenter.y,
-                       gizmoCenter.z + kGizmoAxisLength},
-                      {0.0F, 0.0F, 1.0F, 1.0F}};
-
-    // ---- HANDLE HIT-TEST ----------------------------------------------------
-    // Project C and each axis tip to pixels; a click's nearest shaft within the
-    // pixel threshold names the grabbed axis. Reused by both --capture (to grab
-    // the X handle) and the interactive left-press-near-a-handle path below.
-    const ScreenPoint gizmoCenterScreen = projectPointToScreen(
-        frame.camera.clipFromWorld, gizmoCenter, extent.width, extent.height);
-    std::array<ScreenPoint, 3> gizmoTipScreen{};
-    for (std::size_t i = 0; i < 3; ++i) {
-      gizmoTipScreen[i] = projectPointToScreen(frame.camera.clipFromWorld,
-                                               gizmoShafts[i].tip, extent.width,
-                                               extent.height);
-    }
-    std::vector<PathPointHandleHit> pathPointHandleHits;
+    const CreativeEditorGizmoFrame gizmoFrame = buildCreativeEditorGizmoFrame(
+        selection, frame.camera, extent.width, extent.height, kGizmoAxisLength);
+    const Vec3 gizmoCenter = gizmoFrame.center;
+    const std::array<GizmoAxisShaft, 3>& gizmoShafts = gizmoFrame.shafts;
+    const ScreenPoint gizmoCenterScreen = gizmoFrame.centerScreen;
+    const std::array<ScreenPoint, 3>& gizmoTipScreen = gizmoFrame.tipScreens;
+    const std::vector<PathPointHandleHit>& pathPointHandleHits =
+        gizmoFrame.pathPointHandleHits;
     const creative::CreativeObjectId selectedPathHandleObjectId =
-        static_cast<creative::CreativeObjectId>(selectedId);
+        gizmoFrame.selectedPathHandleObjectId;
     const bool selectedIsPathForHandles =
-        hasSelection &&
-        creative::describeObject(selected->kind).shapeKind ==
-            creative::CreativeObjectShapeKind::Path &&
-        validPathPoints(selected->pathPoints);
-    if (selectedIsPathForHandles) {
-      pathPointHandleHits = buildPathPointHandleHits(
-          *selected, frame.camera.clipFromWorld, extent.width, extent.height);
-    }
+        gizmoFrame.selectedIsPathForHandles;
 
     if (!capturePath.empty() && !editor.captureScript.pathPointHandleLogged &&
         selectedIsPathForHandles &&
@@ -733,10 +705,7 @@ int main(int argc, char** argv) {
     // snap to themselves; reading bounds.min instead would desync the pinned axes
     // and let the snap drag a "held" axis off S. Constrained-move worldDestination
     // is built FROM S: grabbed axis carries the dragged value, other two pinned.
-    Vec3 gizmoAnchorS{gizmoCenter.x, gizmoCenter.y, gizmoCenter.z};
-    if (hasSelection) {
-      gizmoAnchorS = toVec3(selected->transform.position);
-    }
+    const Vec3 gizmoAnchorS = gizmoFrame.anchorS;
 
     // ---- MOVE --------------------------------------------------------------
     // Everything below drives the kernel's GENERIC Move: setActiveTool(Move) +
