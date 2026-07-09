@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `33a36cc1`
+Verified at: `00e97746`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `266`.
-- Current mapped source files represented by those specs: about `513`.
+- Current file specs: `272`.
+- Current mapped source files represented by those specs: about `528`.
 
 ## Status Labels
 
@@ -52,6 +52,15 @@ Runtime movement/player/session/physics:
 - `mapped` [Session.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/session/Session.md)
 - `mapped` [SessionTick.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/session/SessionTick.md)
 - `mapped` [PhysicsCollisionQueries.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsCollisionQueries.md)
+
+Runtime collision/world/ability/combat:
+
+- `mapped` [CollisionQuery.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/collision/CollisionQuery.md)
+- `mapped` [EntityHitQuery.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/collision/EntityHitQuery.md)
+- `mapped` [SpatialSurfaceSet.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/collision/SpatialSurfaceSet.md)
+- `mapped` [WorldState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/world/WorldState.md)
+- `mapped` [AbilitySystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ability/AbilitySystem.md)
+- `mapped` [CombatSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/combat/CombatSystem.md)
 
 Core grid kernels:
 
@@ -350,12 +359,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BJ, runtime collision/core support surfaces:
+Batch BK, runtime command/projectile support surfaces:
 
-- `next` `src/runtime/collision/*`
-- `next` `src/runtime/world/*`
-- `queued` `src/runtime/combat/*`
-- `queued` `src/runtime/ability/*`
+- `next` `src/runtime/command/*`
+- `next` `src/runtime/projectile/*`
+- `queued` `src/runtime/player/*` remaining
+- `queued` `src/runtime/movement/*` remaining
 
 ## Defer Leaf Policy
 
