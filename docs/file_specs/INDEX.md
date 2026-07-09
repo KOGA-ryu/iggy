@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `3b482611`
+Verified at: `1ffca70b`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `207`.
-- Current mapped source files represented by those specs: about `393`.
+- Current file specs: `211`.
+- Current mapped source files represented by those specs: about `401`.
 
 ## Status Labels
 
@@ -209,6 +209,10 @@ App creative/world launch:
 - `mapped` [WorldService.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/world/WorldService.md)
 - `mapped` [Facade.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/Facade.md)
 - `mapped` [Document.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/Document.md)
+- `mapped` [Object.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/Object.md)
+- `mapped` [ObjectDescriptor.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/ObjectDescriptor.md)
+- `mapped` [DocumentMutation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/DocumentMutation.md)
+- `mapped` [DocumentSnap.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/DocumentSnap.md)
 - `mapped` [UiFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/ui/UiFrame.md)
 - `mapped` [UiInputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiInputFrame.md)
 - `mapped` [InputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/InputFrame.md)
@@ -288,12 +292,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch AW, creative document/mutation surfaces:
+Batch AX, creative mutation/spatial support surfaces:
 
-- `next` `src/app/iggy3d/creative/document/Object.*`
-- `next` `src/app/iggy3d/creative/document/ObjectDescriptor.*`
-- `next` `src/app/iggy3d/creative/document/DocumentMutation.*`
-- `queued` `src/app/iggy3d/creative/document/DocumentSnap.*`
+- `next` `src/app/iggy3d/creative/mutation/Mutation.*`
+- `next` `src/app/iggy3d/creative/mutation/MutationApply.*`
+- `next` `src/app/iggy3d/creative/spatial/Snap.*`
+- `queued` `src/app/iggy3d/creative/mutation/Metrics.*`
 
 ## Defer Leaf Policy
 
