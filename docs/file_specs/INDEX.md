@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `1ffca70b`
+Verified at: `3b59f65c`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `211`.
-- Current mapped source files represented by those specs: about `401`.
+- Current file specs: `215`.
+- Current mapped source files represented by those specs: about `409`.
 
 ## Status Labels
 
@@ -58,6 +58,7 @@ Core grid kernels:
 - `mapped` [GridFootprint.md](/Users/kogaryu/iggy3d/docs/file_specs/src/core/grid/GridFootprint.md)
 - `mapped` [Reachability.md](/Users/kogaryu/iggy3d/docs/file_specs/src/core/grid/Reachability.md)
 - `mapped` [GreedyMesh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/core/grid/GreedyMesh.md)
+- `mapped` [Snap.md](/Users/kogaryu/iggy3d/docs/file_specs/src/core/math/Snap.md)
 
 Runtime save/load/persistence:
 
@@ -213,6 +214,9 @@ App creative/world launch:
 - `mapped` [ObjectDescriptor.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/ObjectDescriptor.md)
 - `mapped` [DocumentMutation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/DocumentMutation.md)
 - `mapped` [DocumentSnap.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/DocumentSnap.md)
+- `mapped` [Mutation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/mutation/Mutation.md)
+- `mapped` [MutationApply.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/mutation/MutationApply.md)
+- `mapped` [Snap.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/spatial/Snap.md)
 - `mapped` [UiFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/ui/UiFrame.md)
 - `mapped` [UiInputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiInputFrame.md)
 - `mapped` [InputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/InputFrame.md)
@@ -292,12 +296,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch AX, creative mutation/spatial support surfaces:
+Batch AY, creative spatial/tool support surfaces:
 
-- `next` `src/app/iggy3d/creative/mutation/Mutation.*`
-- `next` `src/app/iggy3d/creative/mutation/MutationApply.*`
-- `next` `src/app/iggy3d/creative/spatial/Snap.*`
-- `queued` `src/app/iggy3d/creative/mutation/Metrics.*`
+- `next` `src/app/iggy3d/creative/mutation/Metrics.*`
+- `next` `src/app/iggy3d/creative/spatial/Ghost.*`
+- `next` `src/app/iggy3d/creative/spatial/SpatialProjection.*`
+- `queued` `src/app/iggy3d/creative/spatial/ViewportPick.*`
 
 ## Defer Leaf Policy
 
