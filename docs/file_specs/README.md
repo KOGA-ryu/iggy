@@ -2,6 +2,8 @@
 
 File-specific cartography lives here.
 
+Start with [INDEX.md](/Users/kogaryu/iggy3d/docs/file_specs/INDEX.md) for coverage status and the next batch queue.
+
 Each spec mirrors one source path and records operational ownership:
 
 - what the file or paired `.hpp`/`.cpp` surface owns
