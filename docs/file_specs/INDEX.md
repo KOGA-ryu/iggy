@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `158627a3`
+Verified at: `a200d76e`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `125`.
-- Current mapped source files represented by those specs: about `243`.
+- Current file specs: `128`.
+- Current mapped source files represented by those specs: about `252`.
 
 ## Status Labels
 
@@ -107,6 +107,9 @@ App projection/view/window:
 - `mapped` [SaveBridge.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/SaveBridge.md)
 - `mapped` [CatalogProjector.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/CatalogProjector.md)
 - `mapped` [SaveSlotOperations.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/SaveSlotOperations.md)
+- `mapped` [Flow.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/Flow.md)
+- `mapped` [CurrentSessionSave.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/CurrentSessionSave.md)
+- `mapped` [SaveSessionStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/SaveSessionStore.md)
 - `mapped` [ProjectionRefresh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ProjectionRefresh.md)
 - `mapped` [FramePresenter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/FramePresenter.md)
 - `mapped` [InputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/InputFrame.md)
@@ -193,12 +196,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch X, product save flow/executor surfaces:
+Batch Y, product world/session launch surfaces:
 
-- `next` `src/app/iggy3d/save/Flow.*`
-- `next` `src/app/iggy3d/save/DeleteExecutor.*`
-- `next` `src/app/iggy3d/save/RecoverExecutor.*`
-- `next` `src/app/iggy3d/save/SaveSessionStore.hpp`
+- `next` `src/app/iggy3d/world/ProductSessionLaunch.*`
+- `next` `src/app/iggy3d/world/ProductNewWorldLaunch.*`
+- `next` `src/app/iggy3d/world/ProductLaunchState.*`
+- `next` `src/app/iggy3d/world/BuiltinDungeon.*`
 
 ## Defer Leaf Policy
 
