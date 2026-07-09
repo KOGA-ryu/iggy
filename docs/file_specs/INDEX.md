@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `a48d779a`
+Verified at: `5da10b9d`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `99`.
-- Current mapped source files represented by those specs: about `194`.
+- Current file specs: `103`.
+- Current mapped source files represented by those specs: about `201`.
 
 ## Status Labels
 
@@ -60,6 +60,13 @@ Runtime save/load/persistence:
 - `mapped` [SaveLoad.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/save/SaveLoad.md)
 - `mapped` [StateHash.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/replay/StateHash.md)
 - `mapped` [SaveFileStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/save/SaveFileStore.md)
+
+App input:
+
+- `mapped` [InputDeviceStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/input/InputDeviceStore.md)
+- `mapped` [InteractionMode.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/input/InteractionMode.md)
+- `mapped` [InteractionModeState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/input/InteractionModeState.md)
+- `mapped` [ControllerActionRouting.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/input/ControllerActionRouting.md)
 
 Projection/render:
 
@@ -164,12 +171,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch Q, app input mode and routing packets:
+Batch R, app input action tables and generic input core:
 
-- `next` `src/app/iggy3d/input/InputDeviceStore.hpp`
-- `next` `src/app/iggy3d/input/InteractionMode.*`
-- `next` `src/app/iggy3d/input/InteractionModeState.*`
-- `next` `src/app/iggy3d/input/ControllerActionRouting.*`
+- `next` `src/app/iggy3d/input/ControllerActionMap.*`
+- `next` `src/app/iggy3d/input/ControllerActionState.hpp`
+- `next` `src/app/iggy3d/input/ControllerModeToggleState.hpp`
+- `next` `src/app/input/InputAction.*`
 
 ## Defer Leaf Policy
 
