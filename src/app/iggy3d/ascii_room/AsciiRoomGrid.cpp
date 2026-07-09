@@ -8,7 +8,7 @@ namespace {
 
 constexpr float kElevationStepMeters = 0.5F;
 
-constexpr std::array<AsciiRoomGlyphInfo, 26> kGlyphs{{
+constexpr std::array<AsciiRoomGlyphInfo, 28> kGlyphs{{
     {'#', AsciiRoomCellKind::Wall, false, true, true, "",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
     {'J', AsciiRoomCellKind::Wall, false, true, true, "",
@@ -66,6 +66,10 @@ constexpr std::array<AsciiRoomGlyphInfo, 26> kGlyphs{{
     {'E', AsciiRoomCellKind::Exit, true, false, false, "exit",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
     {'?', AsciiRoomCellKind::Inspect, true, false, false, "inspect",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'c', AsciiRoomCellKind::Cover, true, false, false, "cover",
+     AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+    {'p', AsciiRoomCellKind::PatrolPost, true, false, false, "patrol_post",
      AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
 }};
 

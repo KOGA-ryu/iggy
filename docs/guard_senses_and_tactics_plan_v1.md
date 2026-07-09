@@ -1,4 +1,4 @@
-# Guard Senses & Tactics — Master Build Plan v1.3
+# Guard Senses & Tactics — Master Build Plan v1.4
 
 **The governing detail for everything after perception P2.** Handoff target: the slicing loop — this doc is
 written so cards can be cut from it without asking the planner intent questions. Every claim verified at HEAD
@@ -84,6 +84,12 @@ debug-gated. The wireframe slot generalization is a reserved socket, not this ar
 **R7 — Sound alone still cannot reach Combat band.** The existing cap (`NpcAlertSystem.cpp:135-140,:164-172`)
 is intended design and survives P5 untouched.
 
+**R9 — THE ASCII LANE IS INERT AND OUT OF SCOPE (user ruling, 2026-07-09).** No new ascii work of any
+kind: no glyphs, no ascii-bake extensions, no ascii/package-world feature hooks. Existing ascii fixtures and
+their tests remain as **test scaffolding only** (the stealth garden is ascii-derived and stays green).
+Supersedes the master plan's "both bake paths" language. Revival requires an explicit user re-ruling — until
+then, any card proposing ascii work is off-plan by definition.
+
 **R8 — Dual patrolPost sources stay** (PatrolNode point anchors AND PatrolRoute waypoints both → patrolPost
 nodes): route = the beat, node = the post. Documented, not deduplicated.
 
@@ -109,8 +115,7 @@ The external sweep (TDM/OpenXCom/Godot/re3/DevilutionX/WZ2100/OpenTTD) pressure-
 ## 2. THE PHASES — detail for slicing
 
 Dependency DAG: `P3a → P3b → P3c` · `P3d` independent after P3b · `P4` after P3 (draws the unified truth) ·
-`P5` independent of P3/P4 (alert internals) · `P6b` independent (P6a parked) · `P6c` before `P6d` matters in non-creative
-worlds · `P6d` after P3 (tactics must not build on cheating senses) · `P6e` last (cross-lane payoff).
+`P5` independent of P3/P4 (alert internals) · `P6b` independent (P6a parked) · `P6c` (rescoped: verification pins) anytime after P3 · `P6d` after P3 (tactics must not build on cheating senses) · `P6e` last (cross-lane payoff).
 **Everything serializes per-file as usual; P5 and P6b can interleave with P3/P4 (disjoint files).**
 
 ---
@@ -224,12 +229,8 @@ rates, caps, grace, band thresholds untouched). *Stop:* if `alertLevel` particip
 
 ### P6 — THE TACTICAL ARC (the payoff: guards that use the map) — Mode C
 
-**P6a — ascii affordance glyphs: DEMOTED to demand-driven (v1.3, user-raised at SELECT).** It was parity-
-completionism, not value: the slice room is creative-authored (E180 covers it); P6d tests inject anchors
-programmatically (the garden harness pattern); P6c gives launched ascii worlds useful graphs from EXISTING
-glyphs (exit/treasure/npc/monster → exit/objective/reference nodes); and glyph namespace is scarce (26-row
-table) — spend it when the customer exists. **Trigger to un-park:** the AI map-generation lane goes active,
-OR a fixture genuinely needs hand-authored ascii affordances. Until then: parked, and P6b is creative-only.
+**P6a — REMOVED (v1.4): ascii is inert and out of scope by ruling R9.** No triggers, no parking — off-plan
+until an explicit user re-ruling revives the lane.
 
 **P6b — the missing three: `chokepoint` / `high_ground` / `hiding_spot` authoring — CREATIVE PATH ONLY
 (v1.3).** E180's declared follow-up. 3 descriptor rows (pattern: CoverPoint at `ObjectDescriptor.cpp:703-717`)
@@ -302,7 +303,8 @@ hashes/serializes — pin the round-trip in production wiring).
 ## 4. STALE-DOC CORRECTIONS (fold when next touched)
 
 - `game_master_plan_v0_1.md`: the "one live seam break" is half-closed (E180); "ReconIntel doesn't exist" is
-  false — the gap is production consumers (P6c/P6e).
+  false — the gap is production consumers (P6e); its "both bake paths" affordance language is superseded by
+  R9 (ascii inert).
 - `stealth_ai_hardening_plan.md` Part A: A1/A2/A5 land as P3b; A3/A4 land as P5; the sound length-guard
   claim was overstated (the read is bounds-guarded, lengths lockstep-constructed — an assert is optional
   hygiene, not a fix).

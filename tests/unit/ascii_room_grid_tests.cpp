@@ -105,6 +105,10 @@ bool glyphMappingsMatchContract() {
        iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
       {'?', iggy3d::AsciiRoomCellKind::Inspect, true, false, false, "inspect",
        iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'c', iggy3d::AsciiRoomCellKind::Cover, true, false, false, "cover",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
+      {'p', iggy3d::AsciiRoomCellKind::PatrolPost, true, false, false, "patrol_post",
+       iggy3d::AsciiRoomTerrainKind::Flat, 0.0F, 0.0F, ""},
   };
 
   bool ok = true;

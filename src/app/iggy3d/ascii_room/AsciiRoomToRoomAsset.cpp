@@ -380,6 +380,12 @@ std::string anchorKindForMarkerTag(std::string_view tag) {
   if (tag == "secret_door") {
     return "secret_door";
   }
+  if (tag == "cover") {
+    return "cover";
+  }
+  if (tag == "patrol_post") {
+    return "patrol_post";
+  }
   return "marker";
 }
 

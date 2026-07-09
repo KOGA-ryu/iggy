@@ -1,4 +1,5 @@
 #include "app/iggy3d/ascii_room/AsciiRoomToRoomAsset.hpp"
+#include "runtime/ai/ReasoningGraph.hpp"
 #include "runtime/movement/MovementTraversalSlots.hpp"
 
 #include <cmath>
@@ -9,6 +10,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace {
 
@@ -597,6 +599,46 @@ bool resetZoneGlyphBuildsResetAnchorAndWalkableFloor() {
                 "reset zone marker size y");
 }
 
+bool affordanceGlyphsBuildAnchorsAndReasoningNodes() {
+  const auto result = buildInlineRoomAsset("######\n#PcpE#\n######\n");
+  const auto* cover = findAnchor(result.room, "marker_cover_r1_c2");
+  const auto* patrol = findAnchor(result.room, "marker_patrol_post_r1_c3");
+  const auto* coverFloor = findSurface(result.room, "floor_r1_c2_walkable");
+  const auto* patrolFloor = findSurface(result.room, "floor_r1_c3_walkable");
+  const std::vector<iggy3d::Vec3> noWaypoints;
+  const iggy3d::ReasoningGraph graph =
+      iggy3d::buildReasoningGraph(result.room, noWaypoints);
+
+  std::size_t coverNodes = 0;
+  std::size_t patrolNodes = 0;
+  for (const iggy3d::ReasoningNode& node : graph.nodes) {
+    if (node.kind == iggy3d::ReasoningNodeKind::coverCluster &&
+        node.sourceLabel == "cover") {
+      ++coverNodes;
+    }
+    if (node.kind == iggy3d::ReasoningNodeKind::patrolPost &&
+        node.sourceLabel == "patrol_post") {
+      ++patrolNodes;
+    }
+  }
+
+  return expect(result.ok, "affordance glyph room asset ok") &&
+         expect(cover != nullptr, "cover anchor exists") &&
+         expect(cover != nullptr && cover->kind == "cover",
+                "cover glyph anchor kind") &&
+         expect(patrol != nullptr, "patrol_post anchor exists") &&
+         expect(patrol != nullptr && patrol->kind == "patrol_post",
+                "patrol glyph anchor kind") &&
+         expect(coverFloor != nullptr &&
+                    coverFloor->role == iggy3d::RoomSpatialSurfaceRole::Walkable,
+                "cover glyph keeps walkable floor") &&
+         expect(patrolFloor != nullptr &&
+                    patrolFloor->role == iggy3d::RoomSpatialSurfaceRole::Walkable,
+                "patrol glyph keeps walkable floor") &&
+         expect(coverNodes == 1U, "cover glyph becomes coverCluster node") &&
+         expect(patrolNodes == 1U, "patrol glyph becomes patrolPost node");
+}
+
 bool invalidAuthoredResultRejectsWithoutPartialRoom() {
   iggy3d::AsciiRoomAuthoredRoomResult invalid;
   invalid.ok = false;
@@ -643,6 +685,7 @@ int main() {
   ok = ledgeObjectBuildsClamberMeshAndSurfaces() && ok;
   ok = wallJumpGlyphBuildsTaggedActorBlockerSurface() && ok;
   ok = resetZoneGlyphBuildsResetAnchorAndWalkableFloor() && ok;
+  ok = affordanceGlyphsBuildAnchorsAndReasoningNodes() && ok;
   ok = invalidAuthoredResultRejectsWithoutPartialRoom() && ok;
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

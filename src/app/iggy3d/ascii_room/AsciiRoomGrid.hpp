@@ -26,6 +26,8 @@ enum class AsciiRoomCellKind {
   Exit,
   ResetZone,
   Inspect,
+  Cover,
+  PatrolPost,
 };
 
 enum class AsciiRoomTerrainKind : std::uint8_t {
