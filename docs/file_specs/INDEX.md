@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `e4855124`
+Verified at: `9cd3a6b5`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `39`.
-- Current mapped source files represented by those specs: about `78`.
+- Current file specs: `45`.
+- Current mapped source files represented by those specs: about `91`.
 
 ## Status Labels
 
@@ -38,6 +38,12 @@ Runtime AI:
 - `mapped` [ReasoningGraph.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/ReasoningGraph.md)
 - `mapped` [ReasoningRoute.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/ReasoningRoute.md)
 - `mapped` [SegmentOcclusion.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/SegmentOcclusion.md)
+- `mapped` [NpcBehaviorSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/NpcBehaviorSystem.md)
+- `mapped` [GuardDecision.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/GuardDecision.md)
+- `mapped` [NpcAlertSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/NpcAlertSystem.md)
+- `mapped` [NpcInvestigateSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/NpcInvestigateSystem.md)
+- `mapped` [NpcPatrolSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/NpcPatrolSystem.md)
+- `mapped` [GuardRecon.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ai/GuardRecon.md)
 
 Runtime movement/player/session/physics:
 
@@ -90,23 +96,14 @@ App debug HUD builders:
 
 ## Next Batch Queue
 
-Batch D, runtime AI kernels:
-
-- `next` `src/runtime/ai/NpcBehaviorSystem.*`
-- `next` `src/runtime/ai/GuardDecision.*`
-- `next` `src/runtime/ai/NpcAlertSystem.*`
-- `next` `src/runtime/ai/NpcInvestigateSystem.*`
-- `next` `src/runtime/ai/NpcPatrolSystem.*`
-- `next` `src/runtime/ai/GuardRecon.*`
-
 Batch E, save/load/runtime persistence:
 
-- `queued` `src/runtime/save/SaveLoad.*`
-- `queued` `src/runtime/save/SaveCodec.*`
-- `queued` `src/runtime/save/SaveEnvelope.hpp`
-- `queued` `src/runtime/replay/StateHash.*`
-- `queued` `src/app/iggy3d/save/Catalog.*`
-- `queued` `src/runtime/save/SaveFileStore.*`
+- `next` `src/runtime/save/SaveLoad.*`
+- `next` `src/runtime/save/SaveCodec.*`
+- `next` `src/runtime/save/SaveEnvelope.hpp`
+- `next` `src/runtime/replay/StateHash.*`
+- `next` `src/app/iggy3d/save/Catalog.*`
+- `next` `src/runtime/save/SaveFileStore.*`
 
 Batch F, room editor/map maker:
 
