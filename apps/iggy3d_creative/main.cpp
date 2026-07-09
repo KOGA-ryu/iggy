@@ -64,6 +64,7 @@
 #include "CreativeEditorFrameInput.hpp"
 #include "CreativeEditorGizmoFrame.hpp"
 #include "CreativeEditorPickFrame.hpp"
+#include "CreativeEditorPlacementInput.hpp"
 #include "CreativeRendererBootstrap.hpp"
 #include "CreativeEditorSelection.hpp"
 #include "CreativeEditorState.hpp"
@@ -101,6 +102,7 @@ using iggy3d_creative_app::resolveCreativeEditorAimCell;
 using iggy3d_creative_app::resolveCreativeEditorGroundPoint;
 using iggy3d_creative_app::applyCreativeEditorClickSelection;
 using iggy3d_creative_app::applyCreativeEditorCommandInput;
+using iggy3d_creative_app::applyCreativeEditorPlacementInput;
 using iggy3d_creative_app::beginCreativeEditorFrameInput;
 using iggy3d_creative_app::CreativeEditorState;
 using iggy3d_creative_app::CreativeEditorFrameInputResult;
@@ -130,7 +132,6 @@ using iggy3d_creative_app::PathPointHandleHit;
 using iggy3d_creative_app::pickPathPointHandle;
 using iggy3d_creative_app::pickGizmoAxisFromProjectedShafts;
 using iggy3d_creative_app::pointMarkerBounds;
-using iggy3d_creative_app::placeBrushObjectWithUndo;
 using iggy3d_creative_app::pathPointsSummary;
 using iggy3d_creative_app::projectBoxToScreen;
 using iggy3d_creative_app::resolveCreativeEditorSelectionFrame;
@@ -416,38 +417,8 @@ int main(int argc, char** argv) {
                                       editor,
                                       !capturePath.empty());
 
-    // ---- PLACE -------------------------------------------------------------
-    // In Place mode a click drops a NEW object of the current brush kind at the
-    // aimed cell, snapped to the grid, via the SAME generic createDocumentObject.
-    // The new object joins the document immediately, so next frame it renders and
-    // is Select/Move/Gizmo-able with ZERO extra code. There is NO per-kind place
-    // branch; placeBrushObject() reads descriptor-derived footprint geometry.
-    if (editor.placeMode && capturePath.empty()) {
-      // Interactive: hold Left-Alt (release fly-look) and left-click to drop at
-      // the aimed cell. Edge-triggered so one click drops exactly one object.
-      const bool* plKeys = SDL_GetKeyboardState(nullptr);
-      const bool altHeld =
-          plKeys != nullptr && (plKeys[SDL_SCANCODE_LALT] != 0);
-      if (altHeld) {
-        window.setRelativeMouseMode(false);
-        float mx = 0.0F;
-        float my = 0.0F;
-        const SDL_MouseButtonFlags buttons = SDL_GetMouseState(&mx, &my);
-        const bool lDown = (buttons & SDL_BUTTON_LMASK) != 0U;
-        if (lDown && !editor.placeButtonDown) {
-          editor.placeButtonDown = true;
-          (void)placeBrushObjectWithUndo(appState.facade, editor.undoStack,
-                                         editor.placeBrush, aimCellCenter,
-                                         ++editor.placedCount,
-                                         "place_interactive");
-        } else if (!lDown) {
-          editor.placeButtonDown = false;
-        }
-      } else {
-        window.setRelativeMouseMode(true);
-        editor.placeButtonDown = false;
-      }
-    }
+    applyCreativeEditorPlacementInput(
+        window, appState, editor, aimCellCenter, !capturePath.empty());
 
     // ---- CAPTURE SCENARIO (--capture) --------------------------------------
     if (!capturePath.empty()) {

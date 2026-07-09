@@ -390,6 +390,7 @@ add_executable(iggy3d_creative
   apps/iggy3d_creative/CreativeEditorFrameInput.cpp
   apps/iggy3d_creative/CreativeEditorGizmoFrame.cpp
   apps/iggy3d_creative/CreativeEditorPickFrame.cpp
+  apps/iggy3d_creative/CreativeEditorPlacementInput.cpp
   apps/iggy3d_creative/CreativeEditorSelection.cpp
   apps/iggy3d_creative/CreativeRendererBootstrap.cpp
   apps/iggy3d_creative/StandaloneBrushPalette.cpp

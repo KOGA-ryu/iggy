@@ -204,3 +204,89 @@ Report:
   scenario move, Move policy move, later frame-stage move, tests,
   receipt/golden files, broad CTest, interactive window launch, staging,
   commit, or push was performed.
+
+## Completion Brief
+
+Files changed:
+
+- `apps/iggy3d_creative/main.cpp`
+- `apps/iggy3d_creative/CreativeEditorPlacementInput.hpp`
+- `apps/iggy3d_creative/CreativeEditorPlacementInput.cpp`
+- `CMakeLists.txt`
+- moved this task card from `ready/` to `done/`
+
+Helper API shape:
+
+```cpp
+void applyCreativeEditorPlacementInput(
+    iggy3d::SdlWindow& window,
+    iggy3d::creative::CreativeAppState& appState,
+    CreativeEditorState& editor,
+    iggy3d::Vec3 aimCellCenter,
+    bool captureMode);
+```
+
+What moved:
+
+- interactive placement gating from `editor.placeMode && capturePath.empty()`,
+  represented as `editor.placeMode` plus `captureMode`
+- Left-Alt keyboard check and relative mouse mode toggling
+- mouse button read and `editor.placeButtonDown` edge-trigger latch behavior
+- `placeBrushObjectWithUndo(...)` call with `++editor.placedCount` and
+  `"place_interactive"`
+
+What remains in `main.cpp`:
+
+- `aimCellCenter` calculation and downstream use
+- capture scenario dispatch and capture placement
+- selection, gizmo, Move policy, overlay construction, submit, shutdown, and
+  final logging
+
+CMake source-list placement:
+
+- added `apps/iggy3d_creative/CreativeEditorPlacementInput.cpp` to the
+  `iggy3d_creative` executable source list next to the other
+  `CreativeEditor*.cpp` helpers.
+
+Required grep classifications:
+
+- `applyCreativeEditorPlacementInput(...)` is declared in
+  `CreativeEditorPlacementInput.hpp`, defined in
+  `CreativeEditorPlacementInput.cpp`, and called from `main.cpp`.
+- placement keyboard/mouse handling, `placeButtonDown`,
+  `placeBrushObjectWithUndo(...)`, and `"place_interactive"` now live in
+  `CreativeEditorPlacementInput.cpp`.
+- remaining `SDL_GetKeyboardState(...)`, `SDL_GetMouseState(...)`, and
+  `setRelativeMouseMode(...)` hits in `main.cpp` belong to setup or the
+  out-of-scope Move path.
+- existing helper ownership remains unchanged; no `EditorFrame`,
+  `runCreativeEditorFrame(...)`, or old `appendWireframeBoxEdges(...)` helper
+  was introduced.
+- `CreativeEditorPlacementInput.cpp` appears in `CMakeLists.txt` only in the
+  `iggy3d_creative` executable source list.
+
+Focused verification:
+
+- `cmake --build /Users/kogaryu/iggy3d/build --target iggy3d_creative standalone_picking_tests standalone_placement_tests standalone_frustum_cull_tests -j10`
+  passed.
+- `ctest --test-dir /Users/kogaryu/iggy3d/build -R '^(standalone_picking_tests|standalone_placement_tests|standalone_frustum_cull_tests)$' --output-on-failure`
+  passed: 3/3 tests.
+- `git -C /Users/kogaryu/iggy3d diff --check` passed.
+- focused trailing-whitespace scan over touched source/CMake files and this
+  card passed.
+
+Optional capture:
+
+- skipped; no owner explicitly allowed a windowed/Vulkan capture check.
+
+Confirmed not performed:
+
+- no `EditorFrame`
+- no `runCreativeEditorFrame(...)`
+- no capture scenario move
+- no Move policy move
+- no later frame-stage move
+- no tests, receipt files, or golden files edited
+- no broad CTest
+- no interactive window launch
+- no staging, commit, or push
