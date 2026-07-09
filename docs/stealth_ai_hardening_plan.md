@@ -70,8 +70,49 @@ A thief on a ledge directly above is "in cone, in radius, seen"; short cover und
   make eye-height data-driven so cover heights matter, keep 2D cone. The stealth verb "go vertical to vanish"
   becomes real and intentional.
 
-*(These are opposite games. Option 2 is cheaper and leans into the parkour fantasy; Option 1 is the "realistic
-guard." Your call — I turn the pick into the perception/LOS card.)*
+### RULING (2026-07-08): **3D perception** — the "realistic guard." Plan below.
+
+**The game function — `NpcPerceptionResult queryNpcPerception3D(guard, target, config)`.** Replace the `bool`
+return with a rich, *observable* result struct. This one change also fixes the review's "occlusion is a
+bare-bool defaulting `true`" (A2) and "no single occlusion owner" (A5): the struct IS the typed contract that
+the FSM, the debug layer, the tests, and (later) the notebook all read from.
+
+```cpp
+struct NpcPerceptionResult {
+  bool  perceived;              // the only thing the FSM reads
+  float distanceMeters;         // full 3D
+  float horizontalAngleDeg;     // yaw between facing(XZ) and delta(XZ)
+  float verticalAngleDeg;       // asin(delta.y / dist)
+  bool  inRadius, inHorizontalCone, inVerticalCone;
+  enum class Los { Clear, Blocked, Unknown } los;   // tri-state — no more fail-open
+};
+```
+
+- **Distance:** full 3D `length(target - guard)`, gated on `perceptionRadiusMeters` — far above/below now
+  drops out of radius (today it doesn't).
+- **Cone = TWO angles, not one solid angle** (a guard scans *wide* horizontally, *narrow* vertically — matches
+  a real head): keep the existing horizontal yaw half-angle; **add `verticalHalfAngleDegrees` to
+  `NpcBehaviorConfig`** (`NpcBehaviorSystem.hpp:23`) and gate on `verticalAngleDeg`. Verticality becomes the
+  escape verb: exceed the vertical half-angle — even dead-ahead horizontally — and you're out of cone.
+- **Per-entity eye height** (guard + target stance/capsule), not the shared `kEyeHeightMeters` constant, so
+  crouch and cover-height matter. Feeds the LOS ray (with A1 startInside + A2 fail-closed folded in).
+- FSM reads only `.perceived`; every other field exists to be *observed and tested*.
+
+**The debug layer — renders FROM the result, so it cannot lie about what the sim decided.** Extend
+`NpcBehaviorDebugHud` + the debug draw-list, behind a dev-tools toggle:
+- **Cone:** a wireframe frustum from the guard eye along facing, sized by the h/v half-angles + radius — you
+  literally *see* the vertical slice, so vertical blind-spots are visible, not guessed.
+- **LOS ray** per (guard, target): a line eye→eye, colored by the result — **green** `perceived`, **yellow**
+  in-cone but `los == Blocked`, **grey** out-of-cone/radius. See-through-walls (A1) and vertical-miss bugs
+  become literally visible.
+- **Readout:** small text — `dist / horiz° vs H / vert° vs V / los` — so you see *why* (e.g. `vert 42° > 30°
+  → out of cone`), not just the verdict.
+- The **same struct** powers the pin-tests (above / below / vertical-boundary — closes the risk-coverage gap)
+  and, later, the notebook packet.
+
+**Build slices:** (1) the `NpcPerceptionResult` struct + 3D check + `verticalHalfAngleDegrees` config + FSM
+reads `.perceived` + pin-tests; (2) the debug overlay driven off the struct; (3) fold in Part A's LOS fixes
+(startInside blocker, tri-state fail-closed) — they share the eye-height path, so land them here, not separately.
 
 ---
 
