@@ -4,7 +4,7 @@
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 
-#include "StandaloneUndo.hpp"
+#include "EditorEdits.hpp"
 
 #include <cstddef>
 #include <string_view>

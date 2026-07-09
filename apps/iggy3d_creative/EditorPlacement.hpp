@@ -10,7 +10,7 @@
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "core/math/Vec3.hpp"
-#include "StandaloneUndo.hpp"
+#include "EditorEdits.hpp"
 
 namespace iggy3d_creative_app {
 

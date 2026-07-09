@@ -501,7 +501,8 @@ set_tests_properties(standalone_picking_tests PROPERTIES
 
 add_executable(standalone_placement_tests
   tests/unit/standalone_placement_tests.cpp
-  apps/iggy3d_creative/EditorPlacement.cpp)
+  apps/iggy3d_creative/EditorPlacement.cpp
+  apps/iggy3d_creative/EditorEdits.cpp)
 target_include_directories(standalone_placement_tests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/apps/iggy3d_creative")
 target_link_libraries(standalone_placement_tests PRIVATE iggy3d)

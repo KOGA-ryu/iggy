@@ -8,7 +8,7 @@
 #include "EditorPlacement.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "EditorGizmo.hpp"
-#include "StandaloneDelete.hpp"
+#include "EditorEdits.hpp"
 #include "StandalonePathEditing.hpp"
 
 #include <SDL3/SDL_log.h>

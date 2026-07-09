@@ -393,7 +393,7 @@ add_executable(iggy3d_creative
   apps/iggy3d_creative/EditorGizmo.cpp
   apps/iggy3d_creative/CreativeRendererBootstrap.cpp
   apps/iggy3d_creative/EditorPlacement.cpp
-  apps/iggy3d_creative/StandaloneDelete.cpp
+  apps/iggy3d_creative/EditorEdits.cpp
   apps/iggy3d_creative/StandaloneFrustumCull.cpp
   apps/iggy3d_creative/StandalonePathEditing.cpp
   apps/iggy3d_creative/StandalonePersistenceProof.cpp

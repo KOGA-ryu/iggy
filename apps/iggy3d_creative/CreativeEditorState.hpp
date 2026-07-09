@@ -12,7 +12,7 @@
 #include "EditorCapture.hpp"
 #include "EditorGizmo.hpp"
 #include "StandalonePicking.hpp"
-#include "StandaloneUndo.hpp"
+#include "EditorEdits.hpp"
 
 namespace iggy3d_creative_app {
 

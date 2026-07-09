@@ -13,11 +13,10 @@
 #include "render/vulkan/VulkanBackend.hpp"
 
 #include "EditorPlacement.hpp"
-#include "StandaloneDelete.hpp"
+#include "EditorEdits.hpp"
 #include "StandalonePersistenceProof.hpp"
 #include "StandalonePicking.hpp"
 #include "EditorPreviewProxies.hpp"
-#include "StandaloneUndo.hpp"
 
 namespace iggy3d_creative_app {
 

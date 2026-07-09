@@ -70,7 +70,7 @@
 #include "StandalonePersistenceProof.hpp"
 #include "EditorPreviewProxies.hpp"
 #include "StandaloneRoomBakePreview.hpp"
-#include "StandaloneUndo.hpp"
+#include "EditorEdits.hpp"
 
 namespace {
 
