@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `dd59395f`
+Verified at: `b38ddff1`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `89`.
-- Current mapped source files represented by those specs: about `177`.
+- Current file specs: `92`.
+- Current mapped source files represented by those specs: about `184`.
 
 ## Status Labels
 
@@ -80,6 +80,9 @@ App projection/view/window:
 - `mapped` [SaveBridge.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/save/SaveBridge.md)
 - `mapped` [ProjectionRefresh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ProjectionRefresh.md)
 - `mapped` [FramePresenter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/FramePresenter.md)
+- `mapped` [InputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/InputFrame.md)
+- `mapped` [Loop.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/Loop.md)
+- `mapped` [MouseCapturePolicy.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/MouseCapturePolicy.md)
 - `mapped` [DebugHudStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/DebugHudStore.md)
 - `mapped` [DebugHudView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/DebugHudView.md)
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
@@ -154,12 +157,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch N, window/input choke surfaces:
+Batch O, remaining window lifecycle/state surfaces:
 
-- `next` `src/app/iggy3d/window/InputFrame.*`
-- `next` `src/app/iggy3d/window/Loop.*`
-- `next` `src/app/iggy3d/window/MouseCapturePolicy.*`
-- `next` `src/app/iggy3d/window/ActiveSurface.*`
+- `next` `src/app/iggy3d/window/RendererLifecycle.*`
+- `next` `src/app/iggy3d/window/FrontendWindowShell.hpp`
+- `next` `src/app/iggy3d/window/PresentPathStore.hpp`
+- `next` `src/app/iggy3d/window/ProductVulkanRendererState.hpp`
 
 ## Defer Leaf Policy
 
