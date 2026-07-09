@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `cd02b03e`
+Verified at: `0fe74f9c`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `146`.
-- Current mapped source files represented by those specs: about `283`.
+- Current file specs: `151`.
+- Current mapped source files represented by those specs: about `288`.
 
 ## Status Labels
 
@@ -128,6 +128,11 @@ App projection/view/window:
 - `mapped` [CreativeUiFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/CreativeUiFields.md)
 - `mapped` [CreativePickWireframeFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/CreativePickWireframeFields.md)
 - `mapped` [DebugHudFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/DebugHudFields.md)
+- `mapped` [FrontendSettingsWindowFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/FrontendSettingsWindowFields.md)
+- `mapped` [StartupProbeFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/StartupProbeFields.md)
+- `mapped` [StartupWorldBuildoutFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/StartupWorldBuildoutFields.md)
+- `mapped` [ActiveRoomFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/ActiveRoomFields.md)
+- `mapped` [TailFields.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/receipt/TailFields.md)
 - `mapped` [DebugHudStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/DebugHudStore.md)
 - `mapped` [DebugHudView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/DebugHudView.md)
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
@@ -214,13 +219,13 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AC, remaining receipt emitters:
+Batch AD, gameplay/recording receipt surfaces:
 
-- `next` `src/app/iggy3d/receipt/FrontendSettingsWindowFields.cpp`
-- `next` `src/app/iggy3d/receipt/StartupProbeFields.cpp`
-- `next` `src/app/iggy3d/receipt/StartupWorldBuildoutFields.cpp`
-- `next` `src/app/iggy3d/receipt/ActiveRoomFields.cpp`
-- `next` `src/app/iggy3d/receipt/TailFields.cpp`
+- `next` `src/app/iggy3d/receipt/GameplayRuntimeMovementFields.cpp`
+- `next` `src/app/iggy3d/receipt/GameplaySceneStateFields.cpp`
+- `next` `src/app/iggy3d/receipt/FeedbackSurfaceAutomationVulkanFields.cpp`
+- `next` `src/app/iggy3d/receipt/CreativeReceiptRecording.cpp`
+- `next` `src/app/iggy3d/receipt/PhysicsReceiptRecording.cpp`
 
 ## Defer Leaf Policy
 
