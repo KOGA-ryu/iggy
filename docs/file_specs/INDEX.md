@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `d40a476b`
+Verified at: `e4855124`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `34`.
-- Current mapped source files represented by those specs: about `66`.
+- Current file specs: `39`.
+- Current mapped source files represented by those specs: about `78`.
 
 ## Status Labels
 
@@ -80,24 +80,24 @@ App creative/world launch:
 - `mapped` [UiCommandFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiCommandFrame.md)
 - `mapped` [UiWindowFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiWindowFrame.md)
 
+App debug HUD builders:
+
+- `mapped` [PhysicsDebugHud.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/PhysicsDebugHud.md)
+- `mapped` [MovementDebugHud.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/MovementDebugHud.md)
+- `mapped` [NpcBehaviorDebugHud.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/NpcBehaviorDebugHud.md)
+- `mapped` [PositionHud.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/PositionHud.md)
+- `mapped` [TopDownMapOverlay.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/TopDownMapOverlay.md)
+
 ## Next Batch Queue
-
-Batch C, app debug HUD builders:
-
-- `next` `src/app/iggy3d/debug/PhysicsDebugHud.*`
-- `next` `src/app/iggy3d/debug/MovementDebugHud.*`
-- `next` `src/app/iggy3d/debug/NpcBehaviorDebugHud.*`
-- `next` `src/app/iggy3d/debug/PositionHud.*`
-- `next` `src/app/iggy3d/debug/TopDownMapOverlay.*`
 
 Batch D, runtime AI kernels:
 
-- `queued` `src/runtime/ai/NpcBehaviorSystem.*`
-- `queued` `src/runtime/ai/GuardDecision.*`
-- `queued` `src/runtime/ai/NpcAlertSystem.*`
-- `queued` `src/runtime/ai/NpcInvestigateSystem.*`
-- `queued` `src/runtime/ai/NpcPatrolSystem.*`
-- `queued` `src/runtime/ai/GuardRecon.*`
+- `next` `src/runtime/ai/NpcBehaviorSystem.*`
+- `next` `src/runtime/ai/GuardDecision.*`
+- `next` `src/runtime/ai/NpcAlertSystem.*`
+- `next` `src/runtime/ai/NpcInvestigateSystem.*`
+- `next` `src/runtime/ai/NpcPatrolSystem.*`
+- `next` `src/runtime/ai/GuardRecon.*`
 
 Batch E, save/load/runtime persistence:
 
