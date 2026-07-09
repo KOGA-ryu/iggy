@@ -1,4 +1,4 @@
-# Guard Senses & Tactics — Master Build Plan v1.0
+# Guard Senses & Tactics — Master Build Plan v1.1
 
 **The governing detail for everything after perception P2.** Handoff target: the slicing loop — this doc is
 written so cards can be cut from it without asking the planner intent questions. Every claim verified at HEAD
@@ -59,6 +59,14 @@ margins — wire it or the config field is decorative drift. **This is a real be
 query **applies** the wall loss (muffled), replacing "hears at full volume through unknown walls"
 (`:1071-1073`). Reasoning edges: a failed query means **no edge** (conservative graph). All three = the same
 law with per-sense mapping.
+**R3.1 amendment (builder-raised at P3b, ruled 2026-07-09): absence of blockers is knowledge; absence of
+knowledge is Unknown.** An EMPTY collider set from a *successful* bake means open space → `Clear` — an empty
+room grants sight; that is reality, not fabricated detection. The existing reasoning/route tests that treat
+`noColliders` as traversable / edge-restoring (`reasoning_graph_tests.cpp:125` et al.) encode the correct
+semantics and need **no re-pins**. `Unknown` is reserved for: degenerate segments, failed physics queries,
+and **failed/absent bakes**. The real hazard R3 kills: at HEAD a failed bake erases itself into an empty
+vector (`Session.cpp:1099-1108`) — indistinguishable from open space downstream. P3b therefore threads a
+**bake-validity signal** alongside the collider set so failure ≠ emptiness at every call site.
 
 **R4 — startInside = Blocked** for all occlusion (`Session.cpp:1033-1035`, `:1076-1078`, and the copy in
 `ReasoningGraph`): inside geometry means you cannot see/hear-clearly/path through it.
@@ -101,7 +109,13 @@ ordered hits). Include a micro-bench vs the old path (the benchmark harness exis
 **P3b — the owner: `SegmentOcclusion` (runtime/ai, new TU).**
 `enum class SegmentOcclusionVerdict { Clear, Blocked, Unknown }` +
 `SegmentOcclusionVerdict segmentOcclusion(std::span<const PhysicsAabbCollider>, Vec3 fromEye, Vec3 toEye,
-float marginMeters)` — implemented on P3a; `startInside → Blocked` (R4); degenerate/failed → `Unknown` (R3).
+float marginMeters)` — implemented on P3a; `startInside → Blocked` (R4); **empty span → `Clear`;**
+degenerate segment / failed query → `Unknown` (R3.1).
+**Bake-validity threading (R3.1):** the per-tick vision-collider bake (`Session.cpp:1099-1108`) and
+`buildReasoningGraph`'s own bake must report success distinctly from emptiness — carry `{colliders, ok}` (or
+equivalent) to the call sites; on `!ok`, the caller passes `Unknown` down (vision → no sight, sound → wall
+loss, reasoning → no edge); on `ok`+empty, normal `Clear` behavior. *Stop:* if the bake API cannot report
+failure distinctly, report before inventing a wrapper — the fix may belong in the bake fn's signature.
 Migrate all three duplicates onto it and DELETE their bodies: `actorHasLineOfSightToTarget`
 (`Session.cpp:1003-1041`), `hasBlockerBetween` (`:1048-1084`), `reasoningSegmentBlocked`
 (`ReasoningGraph.cpp:64-101` — its per-call vector copy dies with it). Eye lifting moves to the CALLERS
@@ -111,7 +125,8 @@ mapping at the call sites: vision `Unknown→no sight`; sound `Unknown→apply w
 *Metric promise:* 3 occlusion implementations → 1; hardcoded `1.0F` eye + `0.01F` margin count in
 runtime → 0 (grep-gated); net LOC down.
 *Pin-tests (planner-authored at card-cut — the P2 discipline):* wall-spans-eye blocks; guard-inside-wall →
-Blocked; empty colliders → Unknown → no sight; short wall under eye height does NOT block standing target;
+Blocked; successfully-baked EMPTY collider set → `Clear` → sight preserved (open room, R3.1); FAILED/absent bake →
+`Unknown` → no sight / wall-loss applied / no edge per sense; short wall under eye height does NOT block standing target;
 margin boundary (touching wall ≠ blocked); reasoning-edge failure → no edge; sound failure → wall loss
 applied. Garden suite re-pinned **deliberately** where the 1.0→1.6 eye shift moves an outcome (expected: 3m
 walls still occlude; document any test whose value changes and why).
