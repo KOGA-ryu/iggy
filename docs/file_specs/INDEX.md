@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `bdb9e108`
+Verified at: `a48d779a`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `95`.
-- Current mapped source files represented by those specs: about `189`.
+- Current file specs: `99`.
+- Current mapped source files represented by those specs: about `194`.
 
 ## Status Labels
 
@@ -86,6 +86,10 @@ App projection/view/window:
 - `mapped` [RendererLifecycle.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/RendererLifecycle.md)
 - `mapped` [FrontendWindowShell.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/FrontendWindowShell.md)
 - `mapped` [PresentPathStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/PresentPathStore.md)
+- `mapped` [ProductAppWindowState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductAppWindowState.md)
+- `mapped` [ProductStartupState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductStartupState.md)
+- `mapped` [ProductVulkanMenuState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/ProductVulkanMenuState.md)
+- `mapped` [ReceiptBuilder.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ReceiptBuilder.md)
 - `mapped` [DebugHudStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/DebugHudStore.md)
 - `mapped` [DebugHudView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/DebugHudView.md)
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
@@ -160,12 +164,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch P, app/window god-state packet seams:
+Batch Q, app input mode and routing packets:
 
-- `next` `src/app/iggy3d/ProductAppWindowState.hpp`
-- `next` `src/app/iggy3d/window/ProductVulkanMenuState.hpp`
-- `next` `src/app/iggy3d/ProductStartupState.hpp`
-- `next` `src/app/iggy3d/ReceiptBuilder.*`
+- `next` `src/app/iggy3d/input/InputDeviceStore.hpp`
+- `next` `src/app/iggy3d/input/InteractionMode.*`
+- `next` `src/app/iggy3d/input/InteractionModeState.*`
+- `next` `src/app/iggy3d/input/ControllerActionRouting.*`
 
 ## Defer Leaf Policy
 
