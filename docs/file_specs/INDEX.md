@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `791c40db`
+Verified at: `3b482611`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `203`.
-- Current mapped source files represented by those specs: about `385`.
+- Current file specs: `207`.
+- Current mapped source files represented by those specs: about `393`.
 
 ## Status Labels
 
@@ -52,6 +52,12 @@ Runtime movement/player/session/physics:
 - `mapped` [Session.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/session/Session.md)
 - `mapped` [SessionTick.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/session/SessionTick.md)
 - `mapped` [PhysicsCollisionQueries.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/physics/PhysicsCollisionQueries.md)
+
+Core grid kernels:
+
+- `mapped` [GridFootprint.md](/Users/kogaryu/iggy3d/docs/file_specs/src/core/grid/GridFootprint.md)
+- `mapped` [Reachability.md](/Users/kogaryu/iggy3d/docs/file_specs/src/core/grid/Reachability.md)
+- `mapped` [GreedyMesh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/core/grid/GreedyMesh.md)
 
 Runtime save/load/persistence:
 
@@ -199,6 +205,7 @@ App creative/world launch:
 - `mapped` [BakedActiveRoomRefresh.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/BakedActiveRoomRefresh.md)
 - `mapped` [RoomBake.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/adapters/RoomBake.md)
 - `mapped` [RoomBakeGreedyFloors.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/adapters/RoomBakeGreedyFloors.md)
+- `mapped` [RoomBakeReachability.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/adapters/RoomBakeReachability.md)
 - `mapped` [WorldService.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/world/WorldService.md)
 - `mapped` [Facade.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/Facade.md)
 - `mapped` [Document.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/Document.md)
@@ -276,11 +283,17 @@ Batch G remainder, ASCII room dirty surfaces:
 
 Batch AV, creative bake support adapters:
 
-- `next` `src/app/iggy3d/creative/adapters/RoomBakeReachability.*`
-- `next` `src/app/iggy3d/creative/adapters/RoomEd.*`
-- `next` `src/app/iggy3d/creative/adapters/ObjCat.*`
-- `queued` `src/app/iggy3d/creative/adapters/Draw.*`
+- `defer leaf` `src/app/iggy3d/creative/adapters/RoomEd.*` zero-byte placeholder.
+- `defer leaf` `src/app/iggy3d/creative/adapters/ObjCat.*` zero-byte placeholder.
+- `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
+
+Batch AW, creative document/mutation surfaces:
+
+- `next` `src/app/iggy3d/creative/document/Object.*`
+- `next` `src/app/iggy3d/creative/document/ObjectDescriptor.*`
+- `next` `src/app/iggy3d/creative/document/DocumentMutation.*`
+- `queued` `src/app/iggy3d/creative/document/DocumentSnap.*`
 
 ## Defer Leaf Policy
 
