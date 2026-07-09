@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `08cf3da7`
+Verified at: `69514d40`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `274`.
-- Current mapped source files represented by those specs: about `533`.
+- Current file specs: `281`.
+- Current mapped source files represented by those specs: about `547`.
 
 ## Status Labels
 
@@ -66,6 +66,16 @@ Runtime command/projectile:
 
 - `mapped` [CommandAdmission.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/command/CommandAdmission.md)
 - `mapped` [ProjectileSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/projectile/ProjectileSystem.md)
+
+Runtime player/movement support:
+
+- `mapped` [MovementContracts.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/movement/MovementContracts.md)
+- `mapped` [MovementKinematics.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/movement/MovementKinematics.md)
+- `mapped` [MovementPolicy.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/movement/MovementPolicy.md)
+- `mapped` [MovementTraversalSlots.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/movement/MovementTraversalSlots.md)
+- `mapped` [MovementTraversal.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/movement/MovementTraversal.md)
+- `mapped` [PlayerMotor.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/player/PlayerMotor.md)
+- `mapped` [PlayerRoster.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/player/PlayerRoster.md)
 
 Core grid kernels:
 
@@ -364,12 +374,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BL, runtime player/movement support surfaces:
+Batch BM, runtime replay/diagnostics support surfaces:
 
-- `next` `src/runtime/player/*` remaining
-- `next` `src/runtime/movement/*` remaining
-- `queued` `src/runtime/replay/*` remaining
-- `queued` `src/runtime/diagnostics/*`
+- `next` `src/runtime/replay/*` remaining
+- `next` `src/runtime/diagnostics/*`
+- `queued` `src/runtime/inventory/*`
+- `queued` `src/runtime/interaction/*`
 
 ## Defer Leaf Policy
 
