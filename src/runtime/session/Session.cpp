@@ -17,9 +17,9 @@
 #include "runtime/ai/NpcInvestigateSystem.hpp"
 #include "runtime/ai/NpcPatrolSystem.hpp"
 #include "runtime/ai/ReasoningRoute.hpp"
+#include "runtime/ai/SegmentOcclusion.hpp"
 #include "runtime/camera/CameraModePolicy.hpp"
 #include "runtime/clock/Clock.hpp"
-#include "runtime/physics/PhysicsCollisionQueries.hpp"
 #include "runtime/physics/PhysicsSpatialSurfaceColliderBake.hpp"
 #include "runtime/session/SessionRunner.hpp"
 #include "runtime/session/SessionTick.hpp"
@@ -46,6 +46,11 @@ StatusResult statusError(std::string code, std::string message) {
 StatusResult statusOk() {
   return {ResultStatus::Ok, {}};
 }
+
+struct SessionOcclusionBake {
+  std::vector<PhysicsAabbCollider> colliders;
+  bool ok = false;
+};
 
 SessionIdentity createIdentity(std::string packageId, const FixtureScenarioSeed& seed) {
   SessionIdentity identity;
@@ -883,8 +888,8 @@ NpcBehaviorDecision maybeFollowRoute(NpcBehaviorDecision decision, AiActorState&
     clearRoute();
   }
 
-  // (2) Plan ONLY when the final destination is straight-blocked (one ray on the already-baked
-  // per-tick visionColliders; NO new bake). A clear shot or an empty/no-path result => direct.
+  // (2) Plan ONLY when the final destination is straight-blocked (one query on the already-baked
+  // per-tick occlusion colliders; NO new bake). A clear shot or an empty/no-path result => direct.
   bool justPlanned = false;
   if (!actor.hasRoute) {
     if (!reasoningSegmentBlocked(colliders, guardPos, finalDestination)) {
@@ -997,90 +1002,71 @@ void updateNpcFacing(AiActorState& actorState,
   }
 }
 
-// Cast an eye-height ray from actor to target against baked world colliders.
-// Returns true (clear) when there are no colliders, on a bad query, or when no
-// occluder sits between them — never fabricates stealth from a failed query.
-bool actorHasLineOfSightToTarget(const std::vector<PhysicsAabbCollider>& colliders,
-                                 const EntityState* actor,
-                                 const EntityState* target) {
-  if (colliders.empty() || actor == nullptr || target == nullptr) {
-    return true;
+SessionOcclusionBake bakeSessionOcclusionColliders(
+    const SpatialSurfaceSet* collisionSurfaces) {
+  SessionOcclusionBake result;
+  if (collisionSurfaces == nullptr) {
+    return result;
   }
-  constexpr float kEyeHeightMeters = 1.0F;
-  Vec3 origin = actor->transform.position;
-  origin.y += kEyeHeightMeters;
-  Vec3 targetEye = target->transform.position;
-  targetEye.y += kEyeHeightMeters;
-  const Vec3 delta{targetEye.x - origin.x, targetEye.y - origin.y,
-                   targetEye.z - origin.z};
-  const float distanceSq = lengthSquared(delta);
-  if (!std::isfinite(distanceSq) || distanceSq < 1.0e-6F) {
-    return true;
+
+  PhysicsSpatialSurfaceColliderBakeRequest bakeRequest;
+  bakeRequest.surfaces = collisionSurfaces;
+  PhysicsSpatialSurfaceColliderBakeResult bake =
+      bakePhysicsAabbCollidersFromSpatialSurfaces(bakeRequest);
+  if (!bake.ok) {
+    return result;
   }
-  const float distance = std::sqrt(distanceSq);
-  PhysicsRaycastQueryRequest request;
-  request.colliders = &colliders;
-  request.originMeters = origin;
-  request.direction = delta;  // normalized inside the query
-  request.maxDistanceMeters = distance;
-  request.includeSensors = false;
-  const PhysicsRaycastQueryResult result = raycastPhysicsAabbs(request);
-  if (!result.ok) {
-    return true;
-  }
-  constexpr float kOcclusionMarginMeters = 0.01F;
-  for (const PhysicsRaycastHit& hit : result.hits) {
-    if (hit.startInside) {
-      continue;
-    }
-    if (hit.distanceMeters < distance - kOcclusionMarginMeters) {
-      return false;
-    }
-  }
-  return true;
+  result.colliders = std::move(bake.colliders);
+  result.ok = true;
+  return result;
 }
 
-// Point-to-point occlusion for the sound path (a1s2, L1): same eye-height ray as
-// actorHasLineOfSightToTarget but on raw positions, returning APPLY-ONCE whether a
-// wall sits between (true = at least one occluder). The sound kernel uses this as a
-// single boolean per event (flat perWallLossDb, never a wall count -- a1s1 ruling).
-// Degenerate/failed queries report "no blocker" (never fabricate attenuation).
-bool hasBlockerBetween(const std::vector<PhysicsAabbCollider>& colliders, Vec3 from,
-                       Vec3 to) {
-  if (colliders.empty()) {
-    return false;
+NpcPerceptionResult::Los losFromSegmentOcclusion(SegmentOcclusionVerdict verdict) {
+  switch (verdict) {
+    case SegmentOcclusionVerdict::Clear:
+      return NpcPerceptionResult::Los::Clear;
+    case SegmentOcclusionVerdict::Blocked:
+      return NpcPerceptionResult::Los::Blocked;
+    case SegmentOcclusionVerdict::Unknown:
+      return NpcPerceptionResult::Los::Unknown;
   }
-  constexpr float kEyeHeightMeters = 1.0F;
+  return NpcPerceptionResult::Los::Unknown;
+}
+
+// Cast an eye-to-eye segment from actor to target against this tick's baked world colliders.
+NpcPerceptionResult::Los actorLineOfSightToTarget(
+    const SessionOcclusionBake& bake,
+    const EntityState* actor,
+    const EntityState* target,
+    const NpcBehaviorConfig& config) {
+  if (!bake.ok || actor == nullptr || target == nullptr) {
+    return NpcPerceptionResult::Los::Unknown;
+  }
+  Vec3 origin = actor->transform.position;
+  origin.y += config.guardEyeHeightMeters;
+  Vec3 targetEye = target->transform.position;
+  // TODO(P2 follow-up): switch to the sneak eye height when stance is exposed here.
+  targetEye.y += config.targetStandEyeHeightMeters;
+  return losFromSegmentOcclusion(
+      segmentOcclusion(bake.colliders, origin, targetEye, config.occlusionMarginMeters));
+}
+
+// Point-to-point occlusion for the sound path (a1s2, L1): same lifted shape as before on raw
+// positions, returning APPLY-ONCE whether a wall or unknown bake sits between.
+bool soundHasBlockerBetween(const SessionOcclusionBake& bake,
+                            Vec3 from,
+                            Vec3 to,
+                            const NpcBehaviorConfig& config) {
+  if (!bake.ok) {
+    return true;
+  }
   Vec3 origin = from;
-  origin.y += kEyeHeightMeters;
+  origin.y += config.guardEyeHeightMeters;
   Vec3 destEye = to;
-  destEye.y += kEyeHeightMeters;
-  const Vec3 delta{destEye.x - origin.x, destEye.y - origin.y, destEye.z - origin.z};
-  const float distanceSq = lengthSquared(delta);
-  if (!std::isfinite(distanceSq) || distanceSq < 1.0e-6F) {
-    return false;
-  }
-  const float distance = std::sqrt(distanceSq);
-  PhysicsRaycastQueryRequest request;
-  request.colliders = &colliders;
-  request.originMeters = origin;
-  request.direction = delta;  // normalized inside the query
-  request.maxDistanceMeters = distance;
-  request.includeSensors = false;
-  const PhysicsRaycastQueryResult result = raycastPhysicsAabbs(request);
-  if (!result.ok) {
-    return false;
-  }
-  constexpr float kOcclusionMarginMeters = 0.01F;
-  for (const PhysicsRaycastHit& hit : result.hits) {
-    if (hit.startInside) {
-      continue;
-    }
-    if (hit.distanceMeters < distance - kOcclusionMarginMeters) {
-      return true;
-    }
-  }
-  return false;
+  destEye.y += config.guardEyeHeightMeters;
+  const SegmentOcclusionVerdict verdict =
+      segmentOcclusion(bake.colliders, origin, destEye, config.occlusionMarginMeters);
+  return verdict != SegmentOcclusionVerdict::Clear;
 }
 
 void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
@@ -1094,18 +1080,10 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
   const EntityId target = playerZero == nullptr ? EntityId{} : playerZero->actor;
   const NpcBehaviorProfileCatalog profileCatalog = makeBuiltInNpcBehaviorProfileCatalog();
 
-  // Bake world collision geometry once so NPC vision rays reuse the same
-  // colliders the player movement path uses. No surfaces -> LOS assumed clear.
-  std::vector<PhysicsAabbCollider> visionColliders;
-  if (collisionSurfaces != nullptr) {
-    PhysicsSpatialSurfaceColliderBakeRequest bakeRequest;
-    bakeRequest.surfaces = collisionSurfaces;
-    const PhysicsSpatialSurfaceColliderBakeResult bake =
-        bakePhysicsAabbCollidersFromSpatialSurfaces(bakeRequest);
-    if (bake.ok) {
-      visionColliders = std::move(bake.colliders);
-    }
-  }
+  // Bake world collision geometry once for this tick's AI occlusion. A successful empty bake is
+  // clear; an absent/failed bake is Unknown under R3.1.
+  const SessionOcclusionBake occlusionBake =
+      bakeSessionOcclusionColliders(collisionSurfaces);
 
   std::vector<std::size_t> actorIndexes;
   actorIndexes.reserve(state.ai.actors.size());
@@ -1131,8 +1109,8 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
 
     const EntityState* actorEntity = state.world.findById(actorState.actor);
     const EntityState* targetEntity = state.world.findById(target);
-    const bool hasLineOfSight =
-        actorHasLineOfSightToTarget(visionColliders, actorEntity, targetEntity);
+    const NpcPerceptionResult::Los targetLos =
+        actorLineOfSightToTarget(occlusionBake, actorEntity, targetEntity, config);
 
     NpcPerceptionRequest perceptionRequest;
     perceptionRequest.world = &state.world;
@@ -1141,9 +1119,7 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
     perceptionRequest.target = target;
     perceptionRequest.config = config;
     perceptionRequest.actorFacingDirection = actorState.facingDirection;
-    perceptionRequest.targetLos = hasLineOfSight
-                                      ? NpcPerceptionResult::Los::Clear
-                                      : NpcPerceptionResult::Los::Blocked;
+    perceptionRequest.targetLos = targetLos;
     const NpcPerceptionResult perception = queryNpcPerception(perceptionRequest);
 
     // Step the graded-alert FSM from the perception already computed. It writes
@@ -1164,7 +1140,7 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
     // PERCEIVE (a1s2, L1): resolve THIS tick's sound bus at the guard. Self-hearing
     // skip -- a guard never hears an event it emitted (v1 guards are silent, but the
     // guard is defensively excluded so patrol/idle can't self-alert). blockers[i] is
-    // the APPLY-ONCE wall test between guard and each origin, reusing visionColliders.
+    // the APPLY-ONCE wall/unknown test between guard and each origin, reusing the tick bake.
     // guardPos comes from actorEntity; if it's missing the guard simply hears nothing.
     if (actorEntity != nullptr && !state.transient.soundEvents.empty()) {
       const Vec3 guardPos = actorEntity->transform.position;
@@ -1178,7 +1154,8 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
         if (event.source == actorState.actor) {
           continue;  // never hear yourself
         }
-        blockers[heardCount] = hasBlockerBetween(visionColliders, guardPos, event.originMeters);
+        blockers[heardCount] =
+            soundHasBlockerBetween(occlusionBake, guardPos, event.originMeters, config);
         audibleEvents.push_back(event);
         ++heardCount;
       }
@@ -1212,17 +1189,17 @@ void enqueueNpcBehaviorCommands(Session& session, SessionState& state,
     decision =
         maybeApplyInvestigate(decision, actorState, perception, alertProfile, state.clock.tickIndex);
     // SEARCH rung (a5s2): a hot guard with SPENT memory checks scored nodes instead of Waiting.
-    if (actorEntity != nullptr) {
+    if (actorEntity != nullptr && occlusionBake.ok) {
       decision = maybeApplySearch(decision, actorState, actorEntity->transform.position,
-                                  visionColliders, state.reasoningGraph, alertProfile,
+                                  occlusionBake.colliders, state.reasoningGraph, alertProfile,
                                   resolvedProfile.profile.personalityWeights, state.clock.tickIndex);
     }
     decision = maybeApplyPatrol(decision, actorState, perception, alertProfile);
     // Route-follow POST-STEP (A4 s2): flank blocked destinations via the carried reasoning graph.
     // Rewrites only the interim destination inside the rung above; empty graph -> unchanged.
-    if (actorEntity != nullptr) {
+    if (actorEntity != nullptr && occlusionBake.ok) {
       decision = maybeFollowRoute(decision, actorState, actorEntity->transform.position,
-                                  visionColliders, state.reasoningGraph);
+                                  occlusionBake.colliders, state.reasoningGraph);
     }
     applyNpcBehaviorDecision(actorState, decision);
     updateNpcFacing(actorState, decision, perception);

@@ -394,10 +394,42 @@ iggy3d::RoomSpatialSurface tickWallSurface() {
   return surface;
 }
 
+iggy3d::RoomSpatialSurface losWallSurface(std::string_view id, float topY) {
+  iggy3d::RoomSpatialSurface surface;
+  surface.id = std::string(id);
+  surface.sourceStaticMeshId = std::string(id);
+  surface.shape = iggy3d::RoomSpatialSurfaceShape::Box;
+  surface.role = iggy3d::RoomSpatialSurfaceRole::Blocker;
+  surface.pointsMeters = {
+      {1.9F, 0.0F, -1.0F},
+      {2.1F, 0.0F, -1.0F},
+      {2.1F, topY, 1.0F},
+      {1.9F, topY, 1.0F},
+  };
+  surface.normal = {1.0F, 0.0F, 0.0F};
+  surface.collisionMask = {"actor"};
+  surface.blocksActor = true;
+  return surface;
+}
+
 iggy3d::SpatialSurfaceSet tickCollisionSurfaces() {
   iggy3d::RoomAsset room;
   room.id = "tick_collision_room";
   room.spatialSurfaces = {tickFloorSurface(), tickWallSurface()};
+  return iggy3d::buildSpatialSurfaceSet(room);
+}
+
+iggy3d::SpatialSurfaceSet openWalkableSurfaces() {
+  iggy3d::RoomAsset room;
+  room.id = "open_walkable_room";
+  room.spatialSurfaces = {tickFloorSurface()};
+  return iggy3d::buildSpatialSurfaceSet(room);
+}
+
+iggy3d::SpatialSurfaceSet losWallSurfaces(float topY) {
+  iggy3d::RoomAsset room;
+  room.id = "los_wall_room";
+  room.spatialSurfaces = {losWallSurface("los_wall", topY)};
   return iggy3d::buildSpatialSurfaceSet(room);
 }
 
@@ -783,11 +815,20 @@ bool physicsPlannerStepOneTickOptionCompilesAndRuns() {
   return ok;
 }
 
+iggy3d::SpatialSurfaceSet emptyCollisionSurfaces() {
+  return {};
+}
+
+iggy3d::StatusResult tickOpen(iggy3d::Session& session) {
+  const iggy3d::SpatialSurfaceSet surfaces = openWalkableSurfaces();
+  return session.tick(&surfaces);
+}
+
 bool npcAiTickEnqueuesAttackThroughAdmissionAndCombat() {
   iggy3d::Session session = makeNpcCombatSession();
   seedAlertedNpcAtCombat(session, "default");  // instant combat path (plumbing test)
 
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "npc attack tick ok");
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "npc attack tick ok");
   const iggy3d::CombatantState* playerCombatant =
       findCombatant(session.state().combat, {1});
   const iggy3d::CommandRecord* command =
@@ -823,8 +864,8 @@ bool npcAiTickEnqueuesAttackThroughAdmissionAndCombat() {
 bool npcAiCooldownTickWaitsWithoutSecondAttack() {
   iggy3d::Session session = makeNpcCombatSession();
   seedAlertedNpcAtCombat(session, "default");  // instant combat path (plumbing test)
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "first npc tick ok") &&
-            expect(session.tick().status == iggy3d::ResultStatus::Ok, "second npc tick ok");
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "first npc tick ok") &&
+            expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "second npc tick ok");
 
   const iggy3d::CombatantState* playerCombatant =
       findCombatant(session.state().combat, {1});
@@ -852,7 +893,7 @@ bool npcAiChaseMovesThroughNormalCommandExecution() {
   iggy3d::Session session = makeNpcCombatSession(4.0F);
   seedAlertedNpcAtCombat(session, "default");  // instant combat path (plumbing test)
 
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "npc chase tick ok");
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "npc chase tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
   const iggy3d::EntityState* npc = session.state().world.findById({2});
@@ -887,7 +928,7 @@ bool npcVisionConeGatesSessionPerception() {
   // the AI drives its gaze toward the target.
   iggy3d::Session seeing = makeNpcCombatSession(4.0F);
   seedAlertedNpcAtCombat(seeing, "default");  // instant combat path (plumbing test)
-  bool ok = expect(seeing.tick().status == iggy3d::ResultStatus::Ok,
+  bool ok = expect(tickOpen(seeing).status == iggy3d::ResultStatus::Ok,
                    "vision see tick ok");
   const iggy3d::AiActorState* seeingAi = findAiActor(seeing.state().ai, {2});
   ok = ok &&
@@ -918,7 +959,7 @@ bool npcVisionConeGatesSessionPerception() {
         actor.facingDirection = {1.0F, 0.0F, 0.0F};  // away from player at -x
       }
     }
-    ok = ok && expect(blind.tick().status == iggy3d::ResultStatus::Ok,
+    ok = ok && expect(tickOpen(blind).status == iggy3d::ResultStatus::Ok,
                       "vision blind tick ok");
     const iggy3d::AiActorState* blindAi = findAiActor(blind.state().ai, {2});
     const iggy3d::CommandRecord* aiCommand =
@@ -931,6 +972,120 @@ bool npcVisionConeGatesSessionPerception() {
          expect(aiCommand == nullptr || aiCommand->kind != iggy3d::CommandKind::Move,
                 "vision blind no chase command");
   }
+  return ok;
+}
+
+bool emptySuccessfulSurfacesPreserveOpenRoomVision() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);
+  seedAlertedNpcAtCombat(session, "default");
+  const iggy3d::SpatialSurfaceSet surfaces = emptyCollisionSurfaces();
+
+  bool ok = expect(session.tick(&surfaces).status == iggy3d::ResultStatus::Ok,
+                   "empty surfaces vision tick ok");
+  const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+  ok = ok && expect(ai != nullptr && ai->lastTargetInRadius,
+                    "empty surfaces target in radius") &&
+       expect(ai != nullptr && ai->lastTargetInVisionCone,
+              "empty surfaces target in cone") &&
+       expect(ai != nullptr && ai->lastTargetHasLineOfSight,
+              "empty surfaces line of sight clear") &&
+       expect(ai != nullptr && ai->behavior == iggy3d::AiBehaviorKind::Chasing,
+              "empty surfaces chase is preserved");
+  return ok;
+}
+
+bool nullCollisionSurfacesProduceUnknownVision() {
+  iggy3d::Session session = makeNpcCombatSession();
+  seedAlertedNpcAtCombat(session, "default");
+
+  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+                   "null surfaces vision tick ok");
+  const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+  const iggy3d::CommandRecord* command =
+      lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
+  ok = ok && expect(ai != nullptr && ai->lastTargetInRadius,
+                    "null surfaces target in radius") &&
+       expect(ai != nullptr && ai->lastTargetInVisionCone,
+              "null surfaces target in cone") &&
+       expect(ai != nullptr && !ai->lastTargetHasLineOfSight,
+              "null surfaces line of sight unknown is not clear") &&
+       expect(ai != nullptr && !ai->hasLastKnownTarget,
+              "null surfaces records no sighting") &&
+       expect(command == nullptr || command->kind != iggy3d::CommandKind::Attack,
+              "null surfaces no fabricated attack") &&
+       expect(command == nullptr || command->kind != iggy3d::CommandKind::Move,
+              "null surfaces no fabricated chase");
+  return ok;
+}
+
+bool sessionWallBlocksLineOfSightThroughSegmentOwner() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);
+  seedAlertedNpcAtCombat(session, "default");
+  const iggy3d::SpatialSurfaceSet surfaces = losWallSurfaces(3.0F);
+
+  bool ok = expect(session.tick(&surfaces).status == iggy3d::ResultStatus::Ok,
+                   "wall los tick ok");
+  const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+  ok = ok && expect(ai != nullptr && ai->lastTargetInRadius,
+                    "wall target in radius") &&
+       expect(ai != nullptr && ai->lastTargetInVisionCone,
+              "wall target in cone") &&
+       expect(ai != nullptr && !ai->lastTargetHasLineOfSight,
+              "wall blocks session line of sight");
+  return ok;
+}
+
+bool shortWallBelowStandingEyeDoesNotBlockLineOfSight() {
+  iggy3d::Session session = makeNpcCombatSession(4.0F);
+  seedAlertedNpcAtCombat(session, "default");
+  const iggy3d::SpatialSurfaceSet surfaces = losWallSurfaces(1.0F);
+
+  bool ok = expect(session.tick(&surfaces).status == iggy3d::ResultStatus::Ok,
+                   "short wall los tick ok");
+  const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
+  ok = ok && expect(ai != nullptr && ai->lastTargetInRadius,
+                    "short wall target in radius") &&
+       expect(ai != nullptr && ai->lastTargetInVisionCone,
+              "short wall target in cone") &&
+       expect(ai != nullptr && ai->lastTargetHasLineOfSight,
+              "short wall below eye height is clear") &&
+       expect(ai != nullptr && ai->behavior == iggy3d::AiBehaviorKind::Chasing,
+              "short wall chase is preserved");
+  return ok;
+}
+
+bool nullCollisionSurfacesApplySoundWallLoss() {
+  const auto prepare = [](iggy3d::Session& session) {
+    seedNpcAiProfile(session, "default");
+    if (iggy3d::AiActorState* ai = mutableAiActor(session, {2})) {
+      ai->facingDirection = {1.0F, 0.0F, 0.0F};  // face away so only sound can raise alert
+    }
+    iggy3d::SoundEvent event;
+    event.source = {1};
+    event.originMeters = {1.0F, 0.0F, 0.0F};
+    event.loudnessDb = 35.0F;
+    event.alertFactor = 1.0F;
+    event.alertMax = 30.0F;
+    session.mutableStateForOwnedSystems().transient.soundEvents = {event};
+    (void)session.submitCommand(submittedWait());
+  };
+
+  iggy3d::Session emptyBake = makeNpcCombatSession(4.0F);
+  prepare(emptyBake);
+  const iggy3d::SpatialSurfaceSet surfaces = emptyCollisionSurfaces();
+  bool ok = expect(emptyBake.tick(&surfaces).status == iggy3d::ResultStatus::Ok,
+                   "sound empty hear tick ok");
+  const iggy3d::AiActorState* heard = findAiActor(emptyBake.state().ai, {2});
+  ok = ok && expect(heard != nullptr && heard->alertLevel > 0.0F,
+                    "empty successful surfaces hear calibrated footstep");
+
+  iggy3d::Session absentBake = makeNpcCombatSession(4.0F);
+  prepare(absentBake);
+  ok = ok && expect(absentBake.tick().status == iggy3d::ResultStatus::Ok,
+                    "sound null hear tick ok");
+  const iggy3d::AiActorState* muted = findAiActor(absentBake.state().ai, {2});
+  ok = ok && expect(muted != nullptr && muted->alertLevel == 0.0F,
+                    "null surfaces wall loss silences calibrated footstep");
   return ok;
 }
 
@@ -956,7 +1111,7 @@ bool authoredNpcFacingOverridesDefaultAndGatesVision() {
                    "authored facing overrides player-facing default");
 
   // Player is directly behind the authored gaze -> stays unseen.
-  ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok,
+  ok = ok && expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                     "authored facing tick ok");
   const iggy3d::AiActorState* ticked = findAiActor(session.state().ai, {2});
   return ok &&
@@ -1176,7 +1331,7 @@ bool passiveProfileSeededBySessionCreateWaitsWithoutDamage() {
   }
   iggy3d::Session& session = created.value;
 
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                    "seeded passive tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
@@ -1209,7 +1364,7 @@ bool unknownProfileSeededBySessionCreateFailsClosed() {
   }
   iggy3d::Session& session = created.value;
 
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                    "seeded unknown tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
@@ -1233,7 +1388,7 @@ bool passiveNpcInAttackRangeWaitsWithoutDamage() {
   iggy3d::Session session = makeNpcCombatSession();
   seedNpcAiProfile(session, "passive");
 
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                    "passive attack range tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
@@ -1263,7 +1418,7 @@ bool passiveNpcOutsideAttackRangeWaitsWithoutChasing() {
   iggy3d::Session session = makeNpcCombatSession(4.0F);
   seedNpcAiProfile(session, "passive");
 
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                    "passive chase range tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
@@ -1295,7 +1450,7 @@ bool unknownProfileSkipsNpcCommandAndStateMutation() {
   iggy3d::Session session = makeNpcCombatSession();
   seedNpcAiProfile(session, "ghost_profile");
 
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                    "unknown profile tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
@@ -1325,7 +1480,7 @@ bool invalidProfileSkipsNpcCommandAndStateMutation() {
   iggy3d::Session session = makeNpcCombatSession(4.0F);
   seedNpcAiProfile(session, "Bad-Id");
 
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                    "invalid profile tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
@@ -1370,13 +1525,13 @@ bool autoRegisteredNpcUsesDefaultProfileAndAttacks() {
   // is still sub-combat so it only emits a Wait. Force alert to combat, then tick
   // 2 exercises the attack plumbing.
   bool ok = expect(session.state().ai.actors.empty(), "auto default starts without ai actor") &&
-            expect(session.tick().status == iggy3d::ResultStatus::Ok,
+            expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                    "auto default tick ok");
   const iggy3d::AiActorState* registered = findAiActor(session.state().ai, {2});
   ok = ok && expect(registered != nullptr && registered->behaviorProfileId == "default",
                     "auto default profile id") &&
        expect(forceActorAtCombat(session, {2}), "auto default force combat alert") &&
-       expect(session.tick().status == iggy3d::ResultStatus::Ok,
+       expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
               "auto default second tick ok");
 
   const iggy3d::CommandRecord* command =
@@ -1405,10 +1560,10 @@ bool rejectedAiAttackRemainsVisibleInCommandLog() {
 
   // Tick 1 registers the actor (sub-combat Wait); force alert to combat, then
   // tick 2 produces the attack that combat admission rejects (invalid target).
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                    "rejected ai attack register tick ok") &&
             expect(forceActorAtCombat(session, {2}), "rejected ai attack force combat") &&
-            expect(session.tick().status == iggy3d::ResultStatus::Ok,
+            expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                    "rejected ai attack tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
@@ -1440,7 +1595,7 @@ bool defeatedPlayerIsNotAttackedAgain() {
   playerCombatant->hitPoints = 0;
   playerCombatant->defeated = true;
 
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok,
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                    "defeated player tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
@@ -1468,7 +1623,7 @@ bool defeatedNpcDoesNotEnqueueAttackOrMove() {
   npcCombatant->hitPoints = 0;
   npcCombatant->defeated = true;
 
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "defeated npc tick ok");
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "defeated npc tick ok");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
   const iggy3d::AiActorState* aiActor = findAiActor(session.state().ai, {2});
@@ -1485,7 +1640,7 @@ bool pausedNormalTickDoesNotRunNpcAi() {
   iggy3d::Session session = makeNpcCombatSession();
   session.mutableStateForOwnedSystems().clock.mode = iggy3d::ClockMode::Paused;
 
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Error,
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Error,
                    "paused tick rejected");
   const iggy3d::CommandRecord* command =
       lastCommandWithSource(session.state().commandLog, iggy3d::CommandSource::Ai);
@@ -1515,7 +1670,7 @@ bool npcAlertLadderEscalatesThenDecaysInLoop() {
   constexpr int kTickCap = 200;
   int climbTicks = 0;
   for (; climbTicks < kTickCap; ++climbTicks) {
-    if (session.tick().status != iggy3d::ResultStatus::Ok) {
+    if (tickOpen(session).status != iggy3d::ResultStatus::Ok) {
       ok = expect(false, "escalation climb tick ok");
       break;
     }
@@ -1565,7 +1720,7 @@ bool npcAlertLadderEscalatesThenDecaysInLoop() {
   const int kDecayTicks = static_cast<int>(profile.deadTimeTicks) + 40;
   for (int i = 0; i < kDecayTicks; ++i) {
     (void)session.submitCommand(submittedWait());
-    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok,
+    ok = ok && expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
                       "escalation decay tick ok");
   }
   const iggy3d::AiActorState* decayed = findAiActor(session.state().ai, {2});
@@ -1674,7 +1829,7 @@ bool patrolYieldsToEscalationThenResumes() {
                 iggy3d::PatrolMode::Loop);
 
   // Patrolling while unaware.
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "compose patrol tick ok");
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "compose patrol tick ok");
   const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
   ok = ok && expect(ai != nullptr && ai->lastIntent == iggy3d::AiIntentKind::Patrol,
                     "compose starts patrolling");
@@ -1686,7 +1841,7 @@ bool patrolYieldsToEscalationThenResumes() {
   }
   mutableAi->facingDirection = {-1.0F, 0.0F, 0.0F};  // toward player at origin
   mutableAi->alertLevel = 0.30F;                     // Suspicious band (>0.26)
-  ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "compose escalate tick ok");
+  ok = ok && expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "compose escalate tick ok");
   ai = findAiActor(session.state().ai, {2});
   ok = ok && expect(ai != nullptr && ai->lastIntent != iggy3d::AiIntentKind::Patrol,
                     "escalation stops patrol") &&
@@ -1700,7 +1855,7 @@ bool patrolYieldsToEscalationThenResumes() {
   bool resumed = false;
   for (int tick = 0; tick < 300 && !resumed; ++tick) {
     (void)session.submitCommand(submittedWait());
-    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "compose decay tick ok");
+    ok = ok && expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "compose decay tick ok");
     const iggy3d::AiActorState* decayAi = findAiActor(session.state().ai, {2});
     if (decayAi != nullptr && decayAi->lastIntent == iggy3d::AiIntentKind::Patrol) {
       resumed = true;
@@ -1722,7 +1877,7 @@ bool idleNpcWithoutWaypointsDoesNotMove() {
   bool ok = true;
   for (int tick = 0; tick < 8; ++tick) {
     (void)session.submitCommand(submittedWait());
-    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "idle tick ok");
+    ok = ok && expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "idle tick ok");
   }
   const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
   const iggy3d::EntityState* after = session.state().world.findById({2});
@@ -1749,7 +1904,7 @@ bool guardInvestigatesLastKnownThenGivesUp() {
 
   // (a) See the player -> record last-known at the sighting (the player's position, origin).
   (void)session.submitCommand(submittedWait());
-  bool ok = expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate see tick ok");
+  bool ok = expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "investigate see tick ok");
   const iggy3d::AiActorState* ai = findAiActor(session.state().ai, {2});
   ok = ok && expect(ai != nullptr && ai->hasLastKnownTarget, "records last-known while seen") &&
        expect(ai != nullptr &&
@@ -1770,7 +1925,7 @@ bool guardInvestigatesLastKnownThenGivesUp() {
   float startX = 4.0F;
   for (int i = 0; i < 8; ++i) {
     (void)session.submitCommand(submittedWait());
-    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate move tick ok");
+    ok = ok && expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "investigate move tick ok");
     ai = findAiActor(session.state().ai, {2});
     if (ai != nullptr && ai->lastIntent == iggy3d::AiIntentKind::Investigate) {
       sawInvestigate = true;
@@ -1785,7 +1940,7 @@ bool guardInvestigatesLastKnownThenGivesUp() {
   bool sawDwell = false;
   for (int i = 0; i < 20 && !sawDwell; ++i) {
     (void)session.submitCommand(submittedWait());
-    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate dwell tick ok");
+    ok = ok && expect(tickOpen(session).status == iggy3d::ResultStatus::Ok, "investigate dwell tick ok");
     ai = findAiActor(session.state().ai, {2});
     if (ai != nullptr && ai->hasLastKnownTarget && ai->investigateDwellTicks > 0U &&
         ai->lastIntent == iggy3d::AiIntentKind::Wait) {
@@ -1798,7 +1953,8 @@ bool guardInvestigatesLastKnownThenGivesUp() {
   bool gaveUp = false;
   for (int i = 0; i < static_cast<int>(iggy3d::kInvestigateDwellTicks) + 10 && !gaveUp; ++i) {
     (void)session.submitCommand(submittedWait());
-    ok = ok && expect(session.tick().status == iggy3d::ResultStatus::Ok, "investigate giveup tick ok");
+    ok = ok && expect(tickOpen(session).status == iggy3d::ResultStatus::Ok,
+                      "investigate giveup tick ok");
     ai = findAiActor(session.state().ai, {2});
     if (ai != nullptr && !ai->hasLastKnownTarget) {
       gaveUp = true;
@@ -1824,6 +1980,11 @@ int main() {
                   npcAiCooldownTickWaitsWithoutSecondAttack() &&
                   npcAiChaseMovesThroughNormalCommandExecution() &&
                   npcVisionConeGatesSessionPerception() &&
+                  emptySuccessfulSurfacesPreserveOpenRoomVision() &&
+                  nullCollisionSurfacesProduceUnknownVision() &&
+                  sessionWallBlocksLineOfSightThroughSegmentOwner() &&
+                  shortWallBelowStandingEyeDoesNotBlockLineOfSight() &&
+                  nullCollisionSurfacesApplySoundWallLoss() &&
                   authoredNpcFacingOverridesDefaultAndGatesVision() &&
                   sessionCreateSeedsAiActorProfileIntoStateAndBaseline() &&
                   sessionCreateRejectsInvalidAiActorSeeds() &&
