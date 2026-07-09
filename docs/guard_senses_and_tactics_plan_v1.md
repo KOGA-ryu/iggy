@@ -1,4 +1,4 @@
-# Guard Senses & Tactics — Master Build Plan v1.1
+# Guard Senses & Tactics — Master Build Plan v1.2
 
 **The governing detail for everything after perception P2.** Handoff target: the slicing loop — this doc is
 written so cards can be cut from it without asking the planner intent questions. Every claim verified at HEAD
@@ -86,6 +86,25 @@ is intended design and survives P5 untouched.
 
 **R8 — Dual patrolPost sources stay** (PatrolNode point anchors AND PatrolRoute waypoints both → patrolPost
 nodes): route = the beat, node = the post. Documented, not deduplicated.
+
+## 1½. RESEARCH EVIDENCE (folded 2026-07-09 — `docs/research_findings_v1.md`, researcher Codex)
+
+The external sweep (TDM/OpenXCom/Godot/re3/DevilutionX/WZ2100/OpenTTD) pressure-tested the rulings:
+- **VALIDATED: the two-angle cone.** TDM gates sight on explicit horizontal AND vertical FOV (default H=150°,
+  V=reuse-H; ours 60/30 is deliberately narrower — tunable, not wrong). Verticality-as-first-class is the
+  genre-standard shape.
+- **VALIDATED: R7.** TDM sound alone cannot enter combat without an enemy — same cap, same reason.
+- **VALIDATED: R6/P4 lane.** Godot's runtime→server→render debug flow is our lane law; publish sensing facts
+  from runtime, build draw resources app-side.
+- **REFINED: P5.** TDM has NO generic sustained-sound habituation — its answer is **event-level suppression**:
+  band-dependent grace windows (times 2/2/3/2s, counts 5/5/4/4 — seed tuning) + **noisemaker dedupe memory**
+  (a source that already caused Searching+ is remembered and suppressed). See the P5 refinement below.
+- **NEW SOCKETS (do not build now):** multi-point target LOS (TDM samples eye/origin/head/feet — ANY visible
+  point = seen; our single eye-ray understates visibility of partially-covered targets); detection-time
+  integration (TDM accumulates visibility toward a threshold instead of instant booleans — our integration
+  lives in the alert layer instead; if instant-perceived feels binary in playtests, this is the alternative);
+  graduated occlusion (OpenXCom smoke accumulating along the ray vs our binary Blocked); darkness-ranked
+  hiding spots (needs a light model we don't have).
 
 ## 2. THE PHASES — detail for slicing
 
@@ -188,6 +207,12 @@ into the creative wireframe slot — R6).
 - Investigation dwell resets only on a **relocated** stimulus (new position > epsilon, e.g. 0.75m, config)
   or a strictly higher band; a sustained same-origin source lets dwell elapse → guard gives up → resumes
   patrol (R7 keeps sound below Combat regardless).
+**Research refinement (TDM shape):** keep the decay-falls-through fix (our alert-layer bug is real), and
+frame the dwell fix as **same-SOURCE suppression** (TDM's noisemaker-dedupe: a source that already drove the
+guard to Searching+ is remembered and does not re-ratchet — our same-origin epsilon is the v1 of exactly
+that). Optional P5 slice 2: the dedupe memory proper, seeded with TDM's grace constants. Also add the
+**decay-pause-reason** observability mirror (why is decay held: dead-time / grace / rising) — feeds the P4
+HUD line, costs one field.
 *Pin-tests (planner-authored at card-cut):* N-tick constant sound → plateau (level stops rising); noise stops
 → decay begins after dead time; sustained same-origin sound → investigate → give-up within
 `dwellLimitTicks + deadTime`; relocated sound → dwell resets once; visual behavior byte-unchanged.
@@ -232,6 +257,9 @@ with its own sim test:
    machinery, `maybeFollowRoute`).
 3. **High-ground overwatch:** in Agitated band without a target, prefer the nearest `highGround` node as the
    watch post (`watchedNodeKind` already flows into GuardRecon).
+**One next-point brain (TDM law):** search-point selection is ONE shared piece of logic all roles call —
+searcher/guard/observer must not each roll their own; rank by occlusion + reachability (darkness ranking =
+socket, no light model yet).
 Each tactic = its own slice with a sim pin ("guard with hiding spots checks them; without them, old behavior
 byte-identical"). The scalar table stays as the fallback scorer. *Stop per tactic:* if it needs state the
 `AiActorState` doesn't carry, add the field in ITS slice with save/hash implications stated (these ARE
@@ -267,7 +295,9 @@ hashes/serializes — pin the round-trip in production wiring).
   slices are strictly sequential; P5 and P6a/6b interleave freely).
 - **Reserved sockets — leave the seams, do NOT build:** sneak-stance eye height (movement lane owns stance;
   TODO stays at `NpcBehaviorSystem.cpp:314`); peripheral/second cone; 3D hearing; wireframe-slot
-  generalization; multi-guard shared alert; notebook polish beyond the P6e page.
+  generalization; multi-guard shared alert; notebook polish beyond the P6e page; **multi-point target LOS;
+  detection-time integration; graduated occlusion; darkness-ranked hiding spots; noisemaker dedupe memory
+  (P5 slice 2 if playtests demand it)** — all §1½, TDM/OpenXCom-shaped.
 
 ## 4. STALE-DOC CORRECTIONS (fold when next touched)
 
