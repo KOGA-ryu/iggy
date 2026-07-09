@@ -29,6 +29,12 @@ struct NpcBehaviorConfig {
   // Half-angle of the horizontal vision cone. The target is only perceived
   // when it lies within +/- this angle of the actor's facing direction.
   float visionHalfAngleDegrees = 60.0F;
+  // Half-angle of the vertical vision cone used by the 3D perception path.
+  float verticalHalfAngleDegrees = 30.0F;
+  float guardEyeHeightMeters = 1.6F;
+  float targetStandEyeHeightMeters = 1.6F;
+  float targetSneakEyeHeightMeters = 0.9F;
+  float occlusionMarginMeters = 0.05F;
   std::int32_t attackDamage = 1;
   std::uint32_t decisionIntervalTicks = 1;
   std::uint32_t attackCooldownTicks = 2;
@@ -84,6 +90,12 @@ struct NpcPerceptionResult {
   bool targetInAttackRange = false;
   bool targetInVisionCone = false;
   bool hasLineOfSight = false;
+  float horizontalAngleDeg = 0.0F;
+  float verticalAngleDeg = 0.0F;
+  bool inVerticalCone = false;
+  bool perceived = false;
+  enum class Los : std::uint8_t { Clear, Blocked, Unknown };
+  Los los = Los::Unknown;
 };
 
 NpcPerceptionResult queryNpcPerception(const NpcPerceptionRequest& request);

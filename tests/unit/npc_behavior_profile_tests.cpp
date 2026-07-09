@@ -28,6 +28,15 @@ bool expectDefaultConfig(const iggy3d::NpcBehaviorConfig& config,
          expect(near(config.chaseStopDistanceMeters, 1.25F), "stop default") &&
          expect(near(config.attackRangeMeters, 1.5F), "attack range default") &&
          expect(near(config.chaseStepMeters, 1.0F), "chase step default") &&
+         expect(near(config.visionHalfAngleDegrees, 60.0F), "vision default") &&
+         expect(near(config.verticalHalfAngleDegrees, 30.0F), "vertical default") &&
+         expect(near(config.guardEyeHeightMeters, 1.6F), "guard eye default") &&
+         expect(near(config.targetStandEyeHeightMeters, 1.6F),
+                "target stand eye default") &&
+         expect(near(config.targetSneakEyeHeightMeters, 0.9F),
+                "target sneak eye default") &&
+         expect(near(config.occlusionMarginMeters, 0.05F),
+                "occlusion margin default") &&
          expect(config.attackDamage == 1, "damage default") &&
          expect(config.decisionIntervalTicks == 1U, "decision interval default") &&
          expect(config.attackCooldownTicks == 2U, "cooldown default");
@@ -163,6 +172,38 @@ bool catalogOrderingAndNamesAreDeterministic() {
                 "passive policy name");
 }
 
+bool defaultConstructedProfileCarriesPerceptionConfigDefaults() {
+  const iggy3d::NpcBehaviorConfig config =
+      iggy3d::configFromNpcBehaviorProfile(iggy3d::NpcBehaviorProfile{});
+  return expectDefaultConfig(config, iggy3d::NpcEngagementPolicy::Hostile);
+}
+
+bool profilePerceptionConfigFieldsThreadThroughDerivation() {
+  iggy3d::NpcBehaviorProfile profile;
+  profile.visionHalfAngleDegrees = 30.0F;
+  profile.verticalHalfAngleDegrees = 45.0F;
+  profile.guardEyeHeightMeters = 1.75F;
+  profile.targetStandEyeHeightMeters = 1.65F;
+  profile.targetSneakEyeHeightMeters = 0.8F;
+  profile.occlusionMarginMeters = 0.125F;
+
+  const iggy3d::NpcBehaviorConfig config =
+      iggy3d::configFromNpcBehaviorProfile(profile);
+
+  return expect(near(config.visionHalfAngleDegrees, 30.0F),
+                "vision half-angle threaded") &&
+         expect(near(config.verticalHalfAngleDegrees, 45.0F),
+                "vertical half-angle threaded") &&
+         expect(near(config.guardEyeHeightMeters, 1.75F),
+                "guard eye threaded") &&
+         expect(near(config.targetStandEyeHeightMeters, 1.65F),
+                "target stand eye threaded") &&
+         expect(near(config.targetSneakEyeHeightMeters, 0.8F),
+                "target sneak eye threaded") &&
+         expect(near(config.occlusionMarginMeters, 0.125F),
+                "occlusion margin threaded");
+}
+
 }  // namespace
 
 int main() {
@@ -171,6 +212,8 @@ int main() {
                   passiveProfileResolvesToExplicitPassivePolicy() &&
                   missingInvalidIdAndEmptyCatalogRejectDeterministically() &&
                   invalidProfileNumbersRejectDeterministically() &&
-                  catalogOrderingAndNamesAreDeterministic();
+                  catalogOrderingAndNamesAreDeterministic() &&
+                  defaultConstructedProfileCarriesPerceptionConfigDefaults() &&
+                  profilePerceptionConfigFieldsThreadThroughDerivation();
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

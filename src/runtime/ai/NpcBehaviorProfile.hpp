@@ -23,6 +23,12 @@ struct NpcBehaviorProfile {
   float chaseStopDistanceMeters = 1.25F;
   float attackRangeMeters = 1.5F;
   float chaseStepMeters = 1.0F;
+  float visionHalfAngleDegrees = 60.0F;
+  float verticalHalfAngleDegrees = 30.0F;
+  float guardEyeHeightMeters = 1.6F;
+  float targetStandEyeHeightMeters = 1.6F;
+  float targetSneakEyeHeightMeters = 0.9F;
+  float occlusionMarginMeters = 0.05F;
   std::int32_t attackDamage = 1;
   std::uint32_t decisionIntervalTicks = 1;
   std::uint32_t attackCooldownTicks = 2;

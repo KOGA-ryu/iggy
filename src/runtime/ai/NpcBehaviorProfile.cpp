@@ -41,6 +41,12 @@ NpcBehaviorConfig configFromNpcBehaviorProfile(const NpcBehaviorProfile& profile
   config.chaseStopDistanceMeters = profile.chaseStopDistanceMeters;
   config.attackRangeMeters = profile.attackRangeMeters;
   config.chaseStepMeters = profile.chaseStepMeters;
+  config.visionHalfAngleDegrees = profile.visionHalfAngleDegrees;
+  config.verticalHalfAngleDegrees = profile.verticalHalfAngleDegrees;
+  config.guardEyeHeightMeters = profile.guardEyeHeightMeters;
+  config.targetStandEyeHeightMeters = profile.targetStandEyeHeightMeters;
+  config.targetSneakEyeHeightMeters = profile.targetSneakEyeHeightMeters;
+  config.occlusionMarginMeters = profile.occlusionMarginMeters;
   config.attackDamage = profile.attackDamage;
   config.decisionIntervalTicks = profile.decisionIntervalTicks;
   config.attackCooldownTicks = profile.attackCooldownTicks;

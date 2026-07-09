@@ -170,6 +170,18 @@ bool configValidationRejectsBadValues() {
                       "zero decision interval rejected");
 }
 
+bool perceptionResult3DContractDefaultsArePinned() {
+  const iggy3d::NpcPerceptionResult result;
+  return expect(near(result.horizontalAngleDeg, 0.0F),
+                "perception horizontal angle default") &&
+         expect(near(result.verticalAngleDeg, 0.0F),
+                "perception vertical angle default") &&
+         expect(!result.inVerticalCone, "perception vertical cone default") &&
+         expect(!result.perceived, "perception perceived default") &&
+         expect(result.los == iggy3d::NpcPerceptionResult::Los::Unknown,
+                "perception los default unknown");
+}
+
 bool visionConeAndLineOfSightGatePerception() {
   const iggy3d::WorldState world = worldWithNpcAndPlayer(3.0F);  // npc@0, player@+3x
   const iggy3d::CombatState readyCombat = combat();
@@ -659,6 +671,7 @@ bool stableStatusNamesAreLowerSnake() {
 
 int main() {
   const bool ok = configValidationRejectsBadValues() &&
+                  perceptionResult3DContractDefaultsArePinned() &&
                   perceptionReportsDeterministicFailures() &&
                   defeatedAndOutOfRangePerceptionStatuses() &&
                   visionConeAndLineOfSightGatePerception() &&
