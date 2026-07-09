@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `69514d40`
+Verified at: `2b549d47`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `281`.
-- Current mapped source files represented by those specs: about `547`.
+- Current file specs: `284`.
+- Current mapped source files represented by those specs: about `555`.
 
 ## Status Labels
 
@@ -90,7 +90,13 @@ Runtime save/load/persistence:
 - `mapped` [SaveCodec.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/save/SaveCodec.md)
 - `mapped` [SaveLoad.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/save/SaveLoad.md)
 - `mapped` [StateHash.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/replay/StateHash.md)
+- `mapped` [CommandLog.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/replay/CommandLog.md)
+- `mapped` [CommandReplay.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/replay/CommandReplay.md)
 - `mapped` [SaveFileStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/save/SaveFileStore.md)
+
+Runtime diagnostics:
+
+- `mapped` [RuntimeDiagnostics.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/diagnostics/RuntimeDiagnostics.md)
 
 Content assets/loading/authoring:
 
@@ -374,12 +380,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BM, runtime replay/diagnostics support surfaces:
+Batch BN, runtime inventory/interaction support surfaces:
 
-- `next` `src/runtime/replay/*` remaining
-- `next` `src/runtime/diagnostics/*`
-- `queued` `src/runtime/inventory/*`
-- `queued` `src/runtime/interaction/*`
+- `next` `src/runtime/inventory/*`
+- `next` `src/runtime/interaction/*`
+- `queued` `src/runtime/objective/*`
+- `queued` `src/runtime/camera/*`
 
 ## Defer Leaf Policy
 
