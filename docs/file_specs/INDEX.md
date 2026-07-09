@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `d5abfcf8`
+Verified at: `2b846f78`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `168`.
-- Current mapped source files represented by those specs: about `318`.
+- Current file specs: `172`.
+- Current mapped source files represented by those specs: about `326`.
 
 ## Status Labels
 
@@ -144,6 +144,10 @@ App projection/view/window:
 - `mapped` [DebugHudStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/debug/DebugHudStore.md)
 - `mapped` [CameraController.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/CameraController.md)
 - `mapped` [OpeningMenuView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/OpeningMenuView.md)
+- `mapped` [MenuPanelsView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/MenuPanelsView.md)
+- `mapped` [OpeningMenuHitTest.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/OpeningMenuHitTest.md)
+- `mapped` [ScenePrimitiveView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/ScenePrimitiveView.md)
+- `mapped` [SdlDraw.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/SdlDraw.md)
 - `mapped` [DebugHudView.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/DebugHudView.md)
 - `mapped` [PrimitiveDrawList.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/view/PrimitiveDrawList.md)
 
@@ -239,12 +243,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AI, remaining app view support surfaces:
+Batch AJ, remaining app view/projected bridge surfaces:
 
-- `next` `src/app/iggy3d/view/MenuPanelsView.*`
-- `next` `src/app/iggy3d/view/OpeningMenuHitTest.*`
-- `next` `src/app/iggy3d/view/ScenePrimitiveView.*`
-- `next` `src/app/iggy3d/view/SdlDraw.*`
+- `next` `src/app/iggy3d/view/ViewportFraming.*`
+- `next` `src/app/iggy3d/view/RenderBridge.*`
+- `next` `src/app/iggy3d/view/CreativeFlyAnchorStore.*`
+- `next` `src/app/iggy3d/view/ViewportState.hpp`
 
 ## Defer Leaf Policy
 
