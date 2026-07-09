@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `6b1418a6`
+Verified at: `629833a0`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `110`.
-- Current mapped source files represented by those specs: about `213`.
+- Current file specs: `115`.
+- Current mapped source files represented by those specs: about `223`.
 
 ## Status Labels
 
@@ -74,6 +74,11 @@ App input:
 - `mapped` [InputActionRegistry.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/input/InputActionRegistry.md)
 - `mapped` [InputBindings.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/input/InputBindings.md)
 - `mapped` [ActionState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/input/ActionState.md)
+- `mapped` [InputDeviceEvent.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/input/InputDeviceEvent.md)
+- `mapped` [InputRouter.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/input/InputRouter.md)
+- `mapped` [KeyboardInput.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/input/KeyboardInput.md)
+- `mapped` [MouseInput.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/input/MouseInput.md)
+- `mapped` [GamepadInput.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/input/GamepadInput.md)
 
 Projection/render:
 
@@ -178,13 +183,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch T, generic input pollers and router:
+Batch U, frontend menu model and routing helpers:
 
-- `next` `src/app/input/KeyboardInput.*`
-- `next` `src/app/input/MouseInput.*`
-- `next` `src/app/input/GamepadInput.*`
-- `next` `src/app/input/InputDeviceEvent.*`
-- `next` `src/app/input/InputRouter.*`
+- `next` `src/app/frontend/MenuInput.*`
+- `next` `src/app/frontend/FrontendRoute.*`
+- `next` `src/app/frontend/MenuState.*`
+- `next` `src/app/frontend/SettingsMenu.*`
 
 ## Defer Leaf Policy
 
