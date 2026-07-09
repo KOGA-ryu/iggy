@@ -16,18 +16,13 @@
 // The app may contain projection/hit-test glue, but object kind policy should
 // continue to come from descriptors and shared kernel systems.
 
-#include <array>
 #include <chrono>
-#include <cmath>
 #include <cstdint>
 #include <cstdlib>
-#include <cstdio>
 #include <filesystem>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <thread>
-#include <vector>
 
 #include <SDL3/SDL.h>
 
@@ -36,16 +31,13 @@
 #include "app/iggy3d/creative/Facade.hpp"
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
-#include "app/iggy3d/creative/document/DocumentMutation.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
-#include "app/iggy3d/creative/world/WorldService.hpp"
-#include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/map_maker/Grid.hpp"
+#include "app/iggy3d/window/FramePresenter.hpp"
 #include "app/platform/SdlWindow.hpp"
-#include "core/math/Mat4.hpp"
 #include "core/math/Vec3.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
@@ -57,21 +49,11 @@
 #include "EditorBootstrap.hpp"
 #include "EditorState.hpp"
 #include "EditorPlacement.hpp"
-#include "EditorFrustumCull.hpp"
-#include "EditorPathEditing.hpp"
-#include "EditorPicking.hpp"
-#include "EditorPersistence.hpp"
-#include "EditorPreviewProxies.hpp"
 #include "EditorPreviewFrame.hpp"
-#include "EditorEdits.hpp"
 
 namespace {
 
 using namespace iggy3d;
-using iggy3d_creative_app::StandaloneCaptureScript;
-using iggy3d_creative_app::StandaloneUndoStack;
-using iggy3d_creative_app::BrushFootprint;
-using iggy3d_creative_app::brushFootprintForDescriptor;
 using iggy3d_creative_app::buildBrushPaletteFromDescriptors;
 using iggy3d_creative_app::buildCreativeEditorGizmoFrame;
 using iggy3d_creative_app::buildCreativeEditorPickFrame;
@@ -79,7 +61,6 @@ using iggy3d_creative_app::buildStandaloneRoomBakePreviewScene;
 using iggy3d_creative_app::captureFrameToPng;
 using iggy3d_creative_app::createCreativeRenderer;
 using iggy3d_creative_app::resolveCreativeEditorAimCell;
-using iggy3d_creative_app::resolveCreativeEditorGroundPoint;
 using iggy3d_creative_app::applyCreativeEditorClickSelection;
 using iggy3d_creative_app::applyCreativeEditorCommandInput;
 using iggy3d_creative_app::applyCreativeEditorPlacementInput;
@@ -93,12 +74,11 @@ using iggy3d_creative_app::CreativeEditorOverlayFrame;
 using iggy3d_creative_app::firstBrushKind;
 using iggy3d_creative_app::logCreativeEditorPathHandleCaptureFrame;
 using iggy3d_creative_app::processCreativeEditorMoveFrame;
+using iggy3d_creative_app::submitCreativeEditorFrame;
 using iggy3d_creative_app::logCreativeEditorWorldPickProofFrame;
 using iggy3d_creative_app::resolveCreativeEditorSelectionFrame;
 using iggy3d_creative_app::runCreativeEditorCaptureScenarioFrame;
-using iggy3d_creative_app::ScreenPoint;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
-using iggy3d_creative_app::logStandaloneRoomBakeFinal;
 
 }  // namespace
 
@@ -387,9 +367,6 @@ int main(int argc, char** argv) {
     // nothing is selected we draw no gizmo/box and skip Move.
     const CreativeEditorSelectionFrame selection =
         resolveCreativeEditorSelectionFrame(appState.facade);
-    const creative::Id selectedId = selection.selectedId;
-    const creative::CreativeObject* selected = selection.selected;
-    const bool hasSelection = selection.hasSelection;
 
     // ---- GIZMO GEOMETRY -----------------------------------------------------
     // Build the 3 axis shafts at the selected object's center C = (min+max)/2.
@@ -429,79 +406,15 @@ int main(int argc, char** argv) {
          kGizmoThickness},
         overlayFrame);
 
-    const iggy3d_creative_app::StandaloneFrustumCullResult frustumCull =
-        iggy3d_creative_app::cullStandaloneSceneRoomMeshesByFrustum(
-            *frame.projections.scene, frame.camera.clipFromWorld);
-    frame.projections.scene = &frustumCull.scene;
-
-    const RenderSubmitResult submit = backend->submitFrame(frame);
-    if (!editor.loggedSelection) {
-      editor.loggedSelection = true;
-      SDL_Log("iggy3d_creative: frame %llu submit outcome=%d reason='%s' "
-              "meshes=%zu frustumInputMeshes=%zu frustumKeptMeshes=%zu "
-              "frustumCulledMeshes=%zu frustumConservativeMeshes=%zu "
-              "selectedTarget=%u hasSelection=%d selBoxLines=%zu "
-              "pointMarkerLines=%zu lineMarkerLines=%zu pathHandleLines=%zu "
-              "gizmoLines=%zu combinedWireLines=%zu uiRects=%zu glyphs=%zu",
-              static_cast<unsigned long long>(editor.frameIndex),
-              static_cast<int>(submit.outcome),
-              std::string(submit.reason.code).c_str(),
-              frustumCull.scene.room.meshes.size(),
-              frustumCull.receipt.inputRoomMeshCount,
-              frustumCull.receipt.keptRoomMeshCount,
-              frustumCull.receipt.culledRoomMeshCount,
-              frustumCull.receipt.conservativelyKeptMeshCount, selectedId,
-              hasSelection ? 1 : 0,
-              overlayFrame.documentWireLineCount,
-              overlayFrame.pointMarkerEdgeCount,
-              overlayFrame.lineMarkerEdgeCount,
-              overlayFrame.pathPointHandleEdgeCount,
-              overlayFrame.combinedWireLines.size() -
-                  overlayFrame.documentWireLineCount -
-                  overlayFrame.pointMarkerEdgeCount -
-                  overlayFrame.lineMarkerEdgeCount -
-                  overlayFrame.pathPointHandleEdgeCount,
-              overlayFrame.combinedWireLines.size(),
-              overlayFrame.uiRects.size(), overlayFrame.glyphs.size());
-    }
-
-    if (maxFrames != 0U && editor.frameIndex >= maxFrames) {
-      logStandaloneRoomBakeFinal(roomBakePreview);
-      // Name the SELECTED object + kind so the capture is self-documenting; the
-      // capture proof expects this target to be the FLOOR.
-      const char* selKind =
-          hasSelection
-              ? creative::toString(selected->kind).data()
-              : "<none>";
-      SDL_Log("iggy3d_creative: FINAL frame %llu submit outcome=%d reason='%s' "
-              "selectedTarget=%u selectedKind='%s' hasSelection=%d selBoxLines=%zu "
-              "pointMarkerLines=%zu lineMarkerLines=%zu pathHandleLines=%zu "
-              "gizmoLines=%zu combinedWireLines=%zu placeMode=%d brush='%s' "
-              "ghostEdges=%zu placed=%llu objectCount=%llu "
-              "frustumInputMeshes=%zu frustumKeptMeshes=%zu "
-              "frustumCulledMeshes=%zu frustumConservativeMeshes=%zu",
-              static_cast<unsigned long long>(editor.frameIndex),
-              static_cast<int>(submit.outcome),
-              std::string(submit.reason.code).c_str(), selectedId, selKind,
-              hasSelection ? 1 : 0, overlayFrame.documentWireLineCount,
-              overlayFrame.pointMarkerEdgeCount,
-              overlayFrame.lineMarkerEdgeCount,
-              overlayFrame.pathPointHandleEdgeCount,
-              overlayFrame.combinedWireLines.size() -
-                  overlayFrame.documentWireLineCount -
-                  overlayFrame.pointMarkerEdgeCount -
-                  overlayFrame.lineMarkerEdgeCount -
-                  overlayFrame.pathPointHandleEdgeCount,
-              overlayFrame.combinedWireLines.size(), editor.placeMode ? 1 : 0,
-              std::string(creative::toString(editor.placeBrush)).c_str(),
-              overlayFrame.ghostEdgeCount,
-              static_cast<unsigned long long>(editor.placedCount),
-              static_cast<unsigned long long>(
-                  appState.facade.document().objectCount()),
-              frustumCull.receipt.inputRoomMeshCount,
-              frustumCull.receipt.keptRoomMeshCount,
-              frustumCull.receipt.culledRoomMeshCount,
-              frustumCull.receipt.conservativelyKeptMeshCount);
+    if (submitCreativeEditorFrame({
+            *backend,
+            frame,
+            appState,
+            editor,
+            selection,
+            overlayFrame,
+            roomBakePreview,
+            maxFrames})) {
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(16));

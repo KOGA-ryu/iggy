@@ -27,6 +27,9 @@ class VulkanBackend;
 
 namespace iggy3d_creative_app {
 
+struct CreativeEditorOverlayFrame;
+struct StandaloneRoomBakePreviewScene;
+
 struct CreativeEditorFrameInputResult {
   bool keepRunning = true;
   bool skipFrame = false;
@@ -78,6 +81,20 @@ struct CreativeEditorSelectionFrame {
   iggy3d::Vec3 boxMin{-0.5F, 0.0F, -0.5F};
   iggy3d::Vec3 boxMax{0.5F, 1.0F, 0.5F};
 };
+
+struct CreativeEditorSubmitFrameRequest {
+  iggy3d::VulkanBackend& backend;
+  iggy3d::FrameInput& frame;
+  const iggy3d::creative::CreativeAppState& appState;
+  CreativeEditorState& editor;
+  const CreativeEditorSelectionFrame& selection;
+  const CreativeEditorOverlayFrame& overlayFrame;
+  const StandaloneRoomBakePreviewScene& roomBakePreview;
+  std::uint64_t maxFrames = 0;
+};
+
+[[nodiscard]] bool submitCreativeEditorFrame(
+    const CreativeEditorSubmitFrameRequest& request);
 
 [[nodiscard]] CreativeEditorSelectionFrame resolveCreativeEditorSelectionFrame(
     const iggy3d::creative::Facade& facade);
