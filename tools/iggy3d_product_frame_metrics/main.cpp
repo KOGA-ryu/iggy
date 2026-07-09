@@ -9,6 +9,7 @@
 #include "app/iggy3d/menu/FrontendRouter.hpp"
 #include "app/iggy3d/menu/Transitions.hpp"
 #include "app/iggy3d/Options.hpp"
+#include "app/iggy3d/ProductAppWindowState.hpp"
 #include "app/iggy3d/save/SaveBridge.hpp"
 #include "app/iggy3d/world/BuiltinDungeon.hpp"
 #include "app/input/ActionState.hpp"
@@ -454,8 +455,6 @@ ScenarioResult runScenario(const ScenarioSpec& spec,
     result.reasonCode = setupReason;
     return result;
   }
-  iggy3d::syncProductWindowInputOwnerFromActiveSurface(runtime.frontend,
-                                                       runtime.window);
   result.timings.setupNs = elapsedNs(setupBegin, Clock::now(), noTiming);
 
   for (std::uint32_t frame = 0; frame < frames; ++frame) {
