@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `266066cb`
+Verified at: `10135e4e`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `136`.
-- Current mapped source files represented by those specs: about `268`.
+- Current file specs: `140`.
+- Current mapped source files represented by those specs: about `276`.
 
 ## Status Labels
 
@@ -136,6 +136,10 @@ App creative/world launch:
 - `mapped` [ProductWorldTemplateOperations.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/ProductWorldTemplateOperations.md)
 - `mapped` [DefaultWorldTemplate.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/DefaultWorldTemplate.md)
 - `mapped` [PackageSessionSeed.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/PackageSessionSeed.md)
+- `mapped` [NpcProfileAssignment.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/NpcProfileAssignment.md)
+- `mapped` [MovementTestLab.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/MovementTestLab.md)
+- `mapped` [DungeonDraft.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/DungeonDraft.md)
+- `mapped` [WorldAuthoringState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/world/WorldAuthoringState.md)
 - `mapped` [CreativeWorldOperations.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/CreativeWorldOperations.md)
 - `mapped` [WorldService.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/world/WorldService.md)
 - `mapped` [Facade.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/Facade.md)
@@ -204,13 +208,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AA, product world support surfaces:
+Batch AB, receipt field emitters:
 
-- `next` `src/app/iggy3d/world/NpcProfileAssignment.*`
-- `next` `src/app/iggy3d/world/MovementTestLab.*`
-- `next` `src/app/iggy3d/world/DungeonDraft.*`
-- `next` `src/app/iggy3d/world/WorldCreationState.hpp`
-- `next` `src/app/iggy3d/world/WorldSetupState.hpp`
+- `next` `src/app/iggy3d/receipt/SaveStateFields.*`
+- `next` `src/app/iggy3d/receipt/WorldAuthoringFields.*`
+- `next` `src/app/iggy3d/receipt/CreativeFields.*`
+- `next` `src/app/iggy3d/receipt/DebugFields.*`
 
 ## Defer Leaf Policy
 
