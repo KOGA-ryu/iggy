@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `49d04797`
+Verified at: `e3d742db`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `163`.
-- Current mapped source files represented by those specs: about `308`.
+- Current file specs: `166`.
+- Current mapped source files represented by those specs: about `314`.
 
 ## Status Labels
 
@@ -118,6 +118,9 @@ App projection/view/window:
 - `mapped` [RendererLifecycle.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/RendererLifecycle.md)
 - `mapped` [FrontendWindowShell.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/FrontendWindowShell.md)
 - `mapped` [PresentPathStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/PresentPathStore.md)
+- `mapped` [AppShell.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/AppShell.md)
+- `mapped` [AppKernel.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/AppKernel.md)
+- `mapped` [Options.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/Options.md)
 - `mapped` [ProductAppWindowState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductAppWindowState.md)
 - `mapped` [ProductStartupState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ProductStartupState.md)
 - `mapped` [ProductVulkanMenuState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/window/ProductVulkanMenuState.md)
@@ -234,12 +237,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch AG, product app kernel/lifecycle surfaces:
+Batch AH, app view/menu draw surfaces:
 
-- `next` `src/app/iggy3d/AppKernel.*`
-- `next` `src/app/iggy3d/Operations.*`
-- `next` `src/app/iggy3d/Options.*`
-- `next` `src/app/iggy3d/AppPaths.*`
+- `next` `src/app/iggy3d/view/OpeningMenuView.*`
+- `next` `src/app/iggy3d/view/CameraController.*`
+- `next` `src/app/iggy3d/view/VulkanMenuView.*`
+- `next` `src/app/iggy3d/menu/CreativeUi*.{hpp,cpp}` if still present.
 
 ## Defer Leaf Policy
 
