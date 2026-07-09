@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `b49a78ae`
+Verified at: `33a36cc1`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `258`.
-- Current mapped source files represented by those specs: about `496`.
+- Current file specs: `266`.
+- Current mapped source files represented by those specs: about `513`.
 
 ## Status Labels
 
@@ -67,6 +67,17 @@ Runtime save/load/persistence:
 - `mapped` [SaveLoad.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/save/SaveLoad.md)
 - `mapped` [StateHash.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/replay/StateHash.md)
 - `mapped` [SaveFileStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/save/SaveFileStore.md)
+
+Content assets/loading/authoring:
+
+- `mapped` [EditableRoomDocument.md](/Users/kogaryu/iggy3d/docs/file_specs/src/content/authoring/EditableRoomDocument.md)
+- `mapped` [RoomAsset.md](/Users/kogaryu/iggy3d/docs/file_specs/src/content/assets/RoomAsset.md)
+- `mapped` [PackageManifest.md](/Users/kogaryu/iggy3d/docs/file_specs/src/content/PackageManifest.md)
+- `mapped` [PackageLoader.md](/Users/kogaryu/iggy3d/docs/file_specs/src/content/PackageLoader.md)
+- `mapped` [PackageValidator.md](/Users/kogaryu/iggy3d/docs/file_specs/src/content/PackageValidator.md)
+- `mapped` [FixtureScenarioLoader.md](/Users/kogaryu/iggy3d/docs/file_specs/src/content/FixtureScenarioLoader.md)
+- `mapped` [MaterialMeshAssets.md](/Users/kogaryu/iggy3d/docs/file_specs/src/content/assets/MaterialMeshAssets.md)
+- `mapped` [TraversalTag.md](/Users/kogaryu/iggy3d/docs/file_specs/src/content/assets/TraversalTag.md)
 
 App input:
 
@@ -339,12 +350,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BI, content room/package surfaces:
+Batch BJ, runtime collision/core support surfaces:
 
-- `next` `src/content/authoring/EditableRoomDocument.*`
-- `next` `src/content/assets/RoomAsset.hpp`
-- `queued` `src/content/PackageLoader.*`
-- `queued` `src/content/Scenario.*`
+- `next` `src/runtime/collision/*`
+- `next` `src/runtime/world/*`
+- `queued` `src/runtime/combat/*`
+- `queued` `src/runtime/ability/*`
 
 ## Defer Leaf Policy
 
