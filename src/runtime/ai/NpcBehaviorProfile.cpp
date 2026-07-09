@@ -1,7 +1,5 @@
 #include "runtime/ai/NpcBehaviorProfile.hpp"
 
-#include <cctype>
-
 namespace iggy3d {
 
 std::string_view npcBehaviorProfileResolveStatusName(
@@ -19,19 +17,6 @@ std::string_view npcBehaviorProfileResolveStatusName(
       return "profile_catalog_empty";
   }
   return "profile_invalid_id";
-}
-
-bool isValidNpcBehaviorProfileId(std::string_view profileId) {
-  if (profileId.empty()) {
-    return false;
-  }
-  for (const char c : profileId) {
-    const auto uc = static_cast<unsigned char>(c);
-    if (!(std::islower(uc) || std::isdigit(uc) || c == '_')) {
-      return false;
-    }
-  }
-  return true;
 }
 
 NpcBehaviorConfig configFromNpcBehaviorProfile(const NpcBehaviorProfile& profile) {

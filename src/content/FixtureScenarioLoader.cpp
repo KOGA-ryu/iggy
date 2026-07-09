@@ -1,6 +1,6 @@
 #include "content/FixtureScenarioLoader.hpp"
 
-#include "runtime/ai/NpcBehaviorProfile.hpp"
+#include "content/NpcBehaviorProfileId.hpp"
 #include <algorithm>
 #include <cerrno>
 #include <charconv>

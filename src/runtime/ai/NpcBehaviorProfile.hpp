@@ -5,16 +5,13 @@
 #include <string_view>
 #include <vector>
 
+#include "content/NpcBehaviorProfileId.hpp"
 #include "runtime/ai/NpcAlertSystem.hpp"
 #include "runtime/ai/NpcBehaviorSystem.hpp"
 #include "runtime/ai/NpcPersonalityWeights.hpp"
 #include "runtime/ai/NpcSoundPerception.hpp"
 
 namespace iggy3d {
-
-struct NpcBehaviorProfileId {
-  std::string value;
-};
 
 struct NpcBehaviorProfile {
   NpcBehaviorProfileId id;
@@ -71,7 +68,6 @@ struct NpcBehaviorProfileResolveResult {
   NpcBehaviorConfig config;
 };
 
-bool isValidNpcBehaviorProfileId(std::string_view profileId);
 NpcBehaviorConfig configFromNpcBehaviorProfile(const NpcBehaviorProfile& profile);
 NpcBehaviorProfileCatalog makeBuiltInNpcBehaviorProfileCatalog();
 NpcBehaviorProfileResolveResult resolveNpcBehaviorProfile(

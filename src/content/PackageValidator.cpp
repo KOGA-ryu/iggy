@@ -1,6 +1,6 @@
 #include "content/PackageValidator.hpp"
 
-#include "runtime/ai/NpcBehaviorProfile.hpp"
+#include "content/NpcBehaviorProfileId.hpp"
 #include <algorithm>
 #include <cmath>
 

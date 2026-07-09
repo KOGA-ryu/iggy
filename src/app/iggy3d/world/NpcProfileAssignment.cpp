@@ -2,7 +2,7 @@
 
 #include <unordered_set>
 
-#include "runtime/ai/NpcBehaviorProfile.hpp"
+#include "content/NpcBehaviorProfileId.hpp"
 
 namespace iggy3d {
 
