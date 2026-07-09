@@ -232,6 +232,51 @@ Unit (`npc_behavior_system_tests` + a new `npc_perception_3d_tests`), each a pin
 | receipt appender (perception summary) | append-only keys (§9); regen golden once |
 | `tests/unit/npc_perception_3d_tests.cpp` (new) + `npc_behavior_system_tests.cpp` + `stealth_garden_tests.cpp` | §10 matrix |
 
+## 15. WIRING & INTEGRATION (how it actually hooks in — the cross-lane path)
+
+**Lane law first (the constraint that shapes all wiring):** the perception math + `NpcPerceptionResult` live in
+`runtime/ai` and must NOT depend on app/render (runtime never includes app/render — verified 0 back-includes).
+The debug layer is app-side and *reads* the result. **Data flows UP (runtime → app), never down.** The runtime
+never learns about the draw-list.
+
+**Data path per tick (sim → debug):**
+1. **Produce (runtime).** In the Session NPC-update (the tick site that today feeds the old bool into the alert
+   stimulus, ~`Session.cpp:1133-1157`), compute each guard's `NpcPerceptionResult` and (a) feed `.perceived` to
+   the stimulus in-place, (b) collect `{guardId, targetId, result}` into a **plain buffer on `SessionState`**
+   (e.g. `std::vector<NpcPerceptionDebugSample> perceptionSamples`). Pure sim data — no draw dependency,
+   replay-safe, receipt-emittable. Cleared each tick.
+2. **Carry (app frame build).** The app-lane frame/HUD builder (`ProjectionRefresh` / the debug-HUD build path)
+   reads that buffer off the session (app→runtime include is legal) and copies the summary into
+   `DebugHudStore`/`NpcBehaviorDebugHudState` (the decomposed debug store). No perception recompute (Law 3).
+3. **Draw (render bridge).** The draw-list emitter (`PrimitiveDrawList` / render bridge) turns the debug state
+   into wireframe-frustum + line + text draw commands, gated by the viewport toggle. The **render lane only ever
+   sees geometry**, never the `ai` types — the frustum/rays are pre-baked to lines app-side.
+
+**New files + CMake:**
+- `runtime/ai/SegmentOcclusion.{hpp,cpp}` — recommended: the one occlusion owner (§6) is called by ai + session
+  + reasoning, so it wants its own TU. Add to `target_sources(iggy3d ...)` in `CMakeLists.txt`. (If kept inline
+  in an existing ai header instead, no CMake change — but a shared TU is cleaner.)
+- `tests/unit/npc_perception_3d_tests.cpp` — new; register in the CMake test list (mirror an existing
+  `npc_*_tests` entry: `add_executable` + `add_test` or the project's test-registration macro).
+- The perception fn itself stays in `NpcBehaviorSystem.cpp` — no new source file there.
+
+**Config plumbing (the 5 new `NpcBehaviorConfig` fields):** (a) defaults at the struct decl (§3); (b) add
+parse+emit wherever `NpcBehaviorConfig` is (de)serialized for scenarios (the scenario TOML codec); (c) confirm
+the construction site that builds the per-session config. **Back-compat:** a missing TOML key → the §3 default,
+never zero (a `verticalHalfAngleDegrees=0` blinds the guard).
+
+**Receipt wiring:** the perception-summary appender (§9) reads the SessionState buffer — same table-driven
+pattern the receipt lane now uses (rows, not hand-written calls); append-only keys at the section's existing
+order; regen the golden once (reviewed).
+
+**Toggle wiring:** a `productDrawPerceptionDebug` viewport flag + 3 sub-flags (cones/rays/readout), set from the
+dev-tools menu, read by the draw-list emitter — mirrors the existing `productDraw*Visible` viewport flags exactly.
+
+**Include-direction sanity (must hold):** `app/*` may include `runtime/ai/NpcBehaviorSystem.hpp` (for the
+result type) — legal. `runtime/*` must include nothing from `app/`/`render/` — so the sample buffer is a plain
+struct in `runtime`, and ALL rendering translation happens app-side. If any slice makes `runtime/ai` include a
+draw/HUD header, it's wrong — push the translation up.
+
 ---
 **DONE = build green · full suite green (incl. the §10 matrix + the vertical-garden case) · receipt golden a
 single reviewed append then byte-stable · debug shows a thief on a ledge above the guard as OUT of cone, live.**
