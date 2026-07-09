@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `5da10b9d`
+Verified at: `9da29fe8`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `103`.
-- Current mapped source files represented by those specs: about `201`.
+- Current file specs: `107`.
+- Current mapped source files represented by those specs: about `207`.
 
 ## Status Labels
 
@@ -67,6 +67,10 @@ App input:
 - `mapped` [InteractionMode.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/input/InteractionMode.md)
 - `mapped` [InteractionModeState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/input/InteractionModeState.md)
 - `mapped` [ControllerActionRouting.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/input/ControllerActionRouting.md)
+- `mapped` [ControllerActionMap.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/input/ControllerActionMap.md)
+- `mapped` [ControllerActionState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/input/ControllerActionState.md)
+- `mapped` [ControllerModeToggleState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/input/ControllerModeToggleState.md)
+- `mapped` [InputAction.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/input/InputAction.md)
 
 Projection/render:
 
@@ -171,12 +175,14 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch R, app input action tables and generic input core:
+Batch S, generic input core:
 
-- `next` `src/app/iggy3d/input/ControllerActionMap.*`
-- `next` `src/app/iggy3d/input/ControllerActionState.hpp`
-- `next` `src/app/iggy3d/input/ControllerModeToggleState.hpp`
-- `next` `src/app/input/InputAction.*`
+- `next` `src/app/input/InputActionRegistry.*`
+- `next` `src/app/input/InputBindings.*`
+- `next` `src/app/input/ActionState.*`
+- `next` `src/app/input/KeyboardInput.*`
+- `next` `src/app/input/MouseInput.*`
+- `next` `src/app/input/GamepadInput.*`
 
 ## Defer Leaf Policy
 
