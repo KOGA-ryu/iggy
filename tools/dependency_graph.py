@@ -165,6 +165,8 @@ def _project_candidate(
     candidate = candidate.resolve()
     if not _is_within(candidate, src_root):
         return None, None
+    if opener == '"':
+        project_named = True
     if not candidate.exists() or not candidate.is_file():
         if project_named:
             return None, "unresolved_project_include"

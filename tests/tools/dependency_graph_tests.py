@@ -150,6 +150,16 @@ def test_deterministic_json_and_output_path() -> None:
 def test_unreliable_scan_diagnostics() -> None:
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
+        write_file(root, "src/app/main.cpp", '#include "missing.hpp"\n')
+        result = run_tool(root, "--format", "json")
+        assert result.returncode == 3
+        assert any(
+            item["code"] == "unresolved_project_include"
+            for item in json.loads(result.stdout)["diagnostics"]
+        )
+
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
         write_file(root, "src/core/types.hpp", "")
         write_file(root, "src/app/bad.cpp", '#include <core/missing.hpp>\n')
         result = run_tool(root, "--format", "json")
