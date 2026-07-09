@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `93b82ea7`
+Verified at: `f288fbd8`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `61`.
-- Current mapped source files represented by those specs: about `122`.
+- Current file specs: `65`.
+- Current mapped source files represented by those specs: about `130`.
 
 ## Status Labels
 
@@ -110,6 +110,10 @@ App ASCII room / active room:
 - `mapped` [AsciiRoomToAuthoredRoom.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/AsciiRoomToAuthoredRoom.md)
 - `mapped` [Editing.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/ascii_room/Editing.md)
 - `mapped` [ActiveRoomState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ActiveRoomState.md)
+- `mapped` [ActiveRoomCollision.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ActiveRoomCollision.md)
+- `mapped` [ProductRoomStore.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ProductRoomStore.md)
+- `mapped` [ControllerJumpActions.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/ControllerJumpActions.md)
+- `mapped` [TapeRunner.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/gameplay/TapeRunner.md)
 
 App debug HUD builders:
 
@@ -126,12 +130,12 @@ Batch G remainder, ASCII room dirty surfaces:
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomGrid.*`
 - `blocked` `src/app/iggy3d/ascii_room/AsciiRoomToRoomAsset.*`
 
-Batch H, active room gameplay/collision:
+Batch H remainder, active room gameplay/collision:
 
-- `next` `src/app/iggy3d/gameplay/ActiveRoomCollision.*`
-- `next` `src/app/iggy3d/gameplay/ProductRoomStore.*`
-- `next` `src/app/iggy3d/gameplay/ControllerJumpActions.*`
-- `next` `src/app/iggy3d/gameplay/TapeRunner.*`
+- `next` `src/app/iggy3d/gameplay/ActiveRoomCollisionFreshnessStore.*`
+- `next` `src/app/iggy3d/gameplay/ControllerActionPhases.*`
+- `next` `src/app/iggy3d/gameplay/ControllerDashActions.*`
+- `next` `src/app/iggy3d/gameplay/ScriptedDriver.*`
 
 ## Defer Leaf Policy
 
