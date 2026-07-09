@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `3b59f65c`
+Verified at: `c5537031`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `215`.
-- Current mapped source files represented by those specs: about `409`.
+- Current file specs: `219`.
+- Current mapped source files represented by those specs: about `417`.
 
 ## Status Labels
 
@@ -216,7 +216,11 @@ App creative/world launch:
 - `mapped` [DocumentSnap.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/document/DocumentSnap.md)
 - `mapped` [Mutation.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/mutation/Mutation.md)
 - `mapped` [MutationApply.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/mutation/MutationApply.md)
+- `mapped` [Metrics.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/mutation/Metrics.md)
 - `mapped` [Snap.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/spatial/Snap.md)
+- `mapped` [Ghost.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/spatial/Ghost.md)
+- `mapped` [SpatialProjection.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/spatial/SpatialProjection.md)
+- `mapped` [ViewportPick.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/spatial/ViewportPick.md)
 - `mapped` [UiFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/ui/UiFrame.md)
 - `mapped` [UiInputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/UiInputFrame.md)
 - `mapped` [InputFrame.md](/Users/kogaryu/iggy3d/docs/file_specs/src/app/iggy3d/creative/bridge/InputFrame.md)
@@ -296,12 +300,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch AY, creative spatial/tool support surfaces:
+Batch AZ, creative tool support surfaces:
 
-- `next` `src/app/iggy3d/creative/mutation/Metrics.*`
-- `next` `src/app/iggy3d/creative/spatial/Ghost.*`
-- `next` `src/app/iggy3d/creative/spatial/SpatialProjection.*`
-- `queued` `src/app/iggy3d/creative/spatial/ViewportPick.*`
+- `next` `src/app/iggy3d/creative/tools/Tools.*`
+- `next` `src/app/iggy3d/creative/tools/Palette.*`
+- `next` `src/app/iggy3d/creative/tools/Placement.*`
+- `queued` `src/app/iggy3d/creative/tools/Select.*`
 
 ## Defer Leaf Policy
 
