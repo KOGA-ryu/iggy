@@ -399,7 +399,7 @@ add_executable(iggy3d_creative
   apps/iggy3d_creative/EditorPersistence.cpp
   apps/iggy3d_creative/EditorPicking.cpp
   apps/iggy3d_creative/EditorPreviewProxies.cpp
-  apps/iggy3d_creative/EditorRoomBakePreview.cpp)
+  apps/iggy3d_creative/EditorPreviewFrame.cpp)
 target_link_libraries(iggy3d_creative PRIVATE iggy3d)
 iggy3d_apply_warnings(iggy3d_creative)
 

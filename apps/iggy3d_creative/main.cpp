@@ -37,25 +37,18 @@
 #include "app/iggy3d/creative/camera/Fly.hpp"
 #include "app/iggy3d/creative/document/Document.hpp"
 #include "app/iggy3d/creative/document/DocumentMutation.hpp"
-#include "app/iggy3d/creative/document/DocumentWireframe.hpp"
 #include "app/iggy3d/creative/document/Object.hpp"
 #include "app/iggy3d/creative/document/ObjectDescriptor.hpp"
-#include "app/iggy3d/creative/render/WireframeDebugLines.hpp"
 #include "app/iggy3d/creative/spatial/SpatialProjection.hpp"
 #include "app/iggy3d/creative/tools/Tools.hpp"
-#include "app/iggy3d/creative/ui/UiProjection.hpp"
 #include "app/iggy3d/creative/world/WorldService.hpp"
 #include "app/iggy3d/gameplay/ProjectionRefresh.hpp"
 #include "app/iggy3d/map_maker/Grid.hpp"
-#include "app/iggy3d/window/FramePresenter.hpp"
 #include "app/platform/SdlWindow.hpp"
 #include "core/math/Mat4.hpp"
 #include "core/math/Vec3.hpp"
-#include "projection/debug/DebugProjection.hpp"
-#include "projection/scene/SceneItem.hpp"
 #include "projection/scene/SceneProjection.hpp"
 #include "render/FrameInput.hpp"
-#include "render/debug/DebugHudText.hpp"
 #include "render/vulkan/VulkanBackend.hpp"
 
 #include "EditorCapture.hpp"
@@ -69,7 +62,7 @@
 #include "EditorPicking.hpp"
 #include "EditorPersistence.hpp"
 #include "EditorPreviewProxies.hpp"
-#include "EditorRoomBakePreview.hpp"
+#include "EditorPreviewFrame.hpp"
 #include "EditorEdits.hpp"
 
 namespace {
@@ -96,27 +89,15 @@ using iggy3d_creative_app::CreativeEditorFrameInputResult;
 using iggy3d_creative_app::CreativeEditorGizmoFrame;
 using iggy3d_creative_app::CreativeEditorPickFrame;
 using iggy3d_creative_app::CreativeEditorSelectionFrame;
+using iggy3d_creative_app::CreativeEditorOverlayFrame;
 using iggy3d_creative_app::firstBrushKind;
-using iggy3d_creative_app::GizmoAxisShaft;
-using iggy3d_creative_app::initialPathPointsForAnchor;
 using iggy3d_creative_app::logCreativeEditorPathHandleCaptureFrame;
 using iggy3d_creative_app::processCreativeEditorMoveFrame;
-using iggy3d_creative_app::appendPathPolylineLines;
-using iggy3d_creative_app::lineProxyBounds;
 using iggy3d_creative_app::logCreativeEditorWorldPickProofFrame;
-using iggy3d_creative_app::ObjectVisualPickBounds;
-using iggy3d_creative_app::pathPointHandleBounds;
-using iggy3d_creative_app::PathPointHandleHit;
-using iggy3d_creative_app::pointMarkerBounds;
-using iggy3d_creative_app::projectBoxToScreen;
 using iggy3d_creative_app::resolveCreativeEditorSelectionFrame;
 using iggy3d_creative_app::runCreativeEditorCaptureScenarioFrame;
 using iggy3d_creative_app::ScreenPoint;
 using iggy3d_creative_app::StandaloneRoomBakePreviewScene;
-using iggy3d_creative_app::appendStandaloneWireframeBoxEdges;
-using iggy3d_creative_app::toVec3;
-using iggy3d_creative_app::VisualBounds;
-using iggy3d_creative_app::visualBoundsForObject;
 using iggy3d_creative_app::logStandaloneRoomBakeFinal;
 
 }  // namespace
@@ -409,8 +390,6 @@ int main(int argc, char** argv) {
     const creative::Id selectedId = selection.selectedId;
     const creative::CreativeObject* selected = selection.selected;
     const bool hasSelection = selection.hasSelection;
-    const Vec3 selBoxMin = selection.boxMin;
-    const Vec3 selBoxMax = selection.boxMax;
 
     // ---- GIZMO GEOMETRY -----------------------------------------------------
     // Build the 3 axis shafts at the selected object's center C = (min+max)/2.
@@ -420,10 +399,6 @@ int main(int argc, char** argv) {
     // gizmo wireframe lines are appended to the yellow selection-box lines below.
     const CreativeEditorGizmoFrame gizmoFrame = buildCreativeEditorGizmoFrame(
         selection, frame.camera, extent.width, extent.height, kGizmoAxisLength);
-    const Vec3 gizmoCenter = gizmoFrame.center;
-    const std::array<GizmoAxisShaft, 3>& gizmoShafts = gizmoFrame.shafts;
-    const bool selectedIsPathForHandles =
-        gizmoFrame.selectedIsPathForHandles;
 
     logCreativeEditorPathHandleCaptureFrame(
         editor.captureScript, !capturePath.empty(), gizmoFrame);
@@ -440,229 +415,19 @@ int main(int argc, char** argv) {
         kGizmoHandleThresholdPx,
         !capturePath.empty()});
 
-    // ---- INSPECTOR UI (draw list -> menu frame rects + glyphs) -------------
-    ProductCreativeUiProjectionRequest uiReq;
-    uiReq.creative = &appState;  // model=nullptr -> facade.buildUiModel().
-    uiReq.virtualWidth = 1280;
-    uiReq.virtualHeight = 720;
-    const ProductCreativeUiProjection uiProj =
-        buildProductCreativeUiProjection(uiReq);
-
-    ProductVulkanMenuFrameRequest menuReq;
-    menuReq.uiDrawList = &uiProj.drawList;
-    menuReq.frameIndex = editor.frameIndex;
-    menuReq.drawableWidth = extent.width;
-    menuReq.drawableHeight = extent.height;
-    ProductVulkanMenuFrame menuFrame =
-        buildProductVulkanStarterMenuFrame(menuReq);
-
-    // ---- BOUNDS BOX (wireframe) --------------------------------------------
-    const creative::CreativeDocumentWireframeSegmentBuildResult segs =
-        creative::buildCreativeDocumentWireframeSegments(
-            appState.facade.document(), wireProjReq);
-    ProductCreativeWireframeDebugLineBuildResult lines =
-        buildProductCreativeWireframeDebugLines(segs.segmentList);
-    // The renderer turns each line into a world-space tube of `thickness` METRES
-    // (creativeDebugLineBox: size = |edge| x thickness x thickness), so keep it
-    // thin (a few cm) or a 1 m box fills into a solid blob. Selected edges go
-    // bright yellow + a touch fatter for emphasis (the kernel colors by style,
-    // not by selection).
-    for (ProductCreativeWireframeDebugLine& line : lines.lineList.lines) {
-      // Recolor the SELECTED object's edges — matched by id, whatever the kind.
-      const bool sel = hasSelection &&
-                       line.objectId == static_cast<creative::CreativeObjectId>(
-                                            selectedId);
-      line.thickness = sel ? 0.06F : 0.03F;
-      if (sel) {
-        line.color = {1.0F, 1.0F, 0.0F, 1.0F};
-      }
-    }
-    ProductCreativeWireframeDebugRenderFrame dbg =
-        buildProductCreativeWireframeDebugRenderFrame(&lines.lineList);
-
-    // ---- GIZMO WIREFRAME ----------------------------------------------------
-    // Build ONE combined line vector: the document wireframe lines that draw the
-    // yellow selection box (dbg.lines, already converted to render lines) PLUS
-    // the 3 axis-aligned gizmo shafts. Point frame.creativeWireframeDebug at THIS
-    // vector so the renderer draws both. The vector must outlive submitFrame(),
-    // so it lives here in the frame-loop body. When nothing is selected we skip
-    // the gizmo and the selection box is empty, so this is just dbg.lines.
-    std::vector<RenderCreativeWireframeDebugLine> combinedWireLines;
-    combinedWireLines.reserve(dbg.lines.size() + 48);
-    std::size_t documentWireLineCount = 0;
-    for (const RenderCreativeWireframeDebugLine& line : dbg.lines) {
-      const creative::CreativeObject* object =
-          line.objectId != creative::kInvalidObjectId
-              ? appState.facade.findObject(line.objectId)
-              : nullptr;
-      if (object != nullptr &&
-          creative::describeObject(object->kind).shapeKind ==
-              creative::CreativeObjectShapeKind::Line) {
-        continue;
-      }
-      combinedWireLines.push_back(line);
-    }
-    documentWireLineCount = combinedWireLines.size();
-    std::size_t pointMarkerEdgeCount = 0;
-    std::size_t lineMarkerEdgeCount = 0;
-    std::size_t pathPointHandleEdgeCount = 0;
-    for (const creative::CreativeObject& obj :
-         appState.facade.document().objects()) {
-      const creative::CreativeObjectDescriptor& descriptor =
-          creative::describeObject(obj.kind);
-      if (!obj.visible) {
-        continue;
-      }
-      const bool sel =
-          hasSelection &&
-          obj.id == static_cast<creative::CreativeObjectId>(selectedId);
-      if (descriptor.shapeKind != creative::CreativeObjectShapeKind::Point &&
-          descriptor.shapeKind != creative::CreativeObjectShapeKind::Line) {
-        continue;
-      }
-      const VisualBounds markerBounds = visualBoundsForObject(obj);
-      const std::size_t before = combinedWireLines.size();
-      appendStandaloneWireframeBoxEdges(
-          combinedWireLines, markerBounds.min, markerBounds.max,
-          sel ? RenderLineColor{1.0F, 1.0F, 0.0F, 1.0F}
-              : descriptor.shapeKind == creative::CreativeObjectShapeKind::Line
-                    ? RenderLineColor{0.86F, 0.68F, 0.28F, 1.0F}
-                    : RenderLineColor{0.34F, 0.62F, 0.88F, 1.0F},
-          sel ? 0.06F : 0.035F);
-      for (std::size_t i = before; i < combinedWireLines.size(); ++i) {
-        combinedWireLines[i].objectId = obj.id;
-      }
-      if (descriptor.shapeKind == creative::CreativeObjectShapeKind::Line) {
-        lineMarkerEdgeCount += combinedWireLines.size() - before;
-      } else {
-        pointMarkerEdgeCount += combinedWireLines.size() - before;
-      }
-    }
-    if (selectedIsPathForHandles) {
-      for (const creative::CreativePathPoint& point : selected->pathPoints) {
-        const VisualBounds handleBounds = pathPointHandleBounds(point.position);
-        const std::size_t before = combinedWireLines.size();
-        appendStandaloneWireframeBoxEdges(
-            combinedWireLines,
-            handleBounds.min,
-            handleBounds.max,
-            RenderLineColor{0.20F, 0.88F, 1.0F, 1.0F},
-            0.035F);
-        for (std::size_t i = before; i < combinedWireLines.size(); ++i) {
-          combinedWireLines[i].objectId =
-              static_cast<creative::CreativeObjectId>(selectedId);
-        }
-        pathPointHandleEdgeCount += combinedWireLines.size() - before;
-      }
-    }
-    if (hasSelection) {
-      for (const GizmoAxisShaft& shaft : gizmoShafts) {
-        RenderCreativeWireframeDebugLine gizmoLine;
-        gizmoLine.start = gizmoCenter;
-        gizmoLine.end = shaft.tip;  // Axis-aligned: only one component differs.
-        gizmoLine.color = shaft.color;
-        gizmoLine.objectId =
-            static_cast<creative::CreativeObjectId>(selectedId);
-        gizmoLine.thickness = kGizmoThickness;
-        combinedWireLines.push_back(gizmoLine);
-      }
-    }
-    // ---- GHOST PREVIEW ------------------------------------------------------
-    // In Place mode, draw a GREEN (0,1,0,1) axis-aligned wireframe box at the
-    // aimed cell sized to the current brush footprint (min.y=0..height, XZ
-    // centered on the cell) — the placement preview. It rides the SAME combined
-    // wireframe vector as the selection box + gizmo, so it needs no new render
-    // path. It is NOT a document object (objectId=0); it vanishes on the drop's
-    // next frame if the aim moves.
-    std::size_t ghostEdgeCount = 0;
-    if (editor.placeMode) {
-      const creative::CreativeObjectDescriptor& brushDescriptor =
-          creative::describeObject(editor.placeBrush);
-      Vec3 ghostMin{};
-      Vec3 ghostMax{};
-      if (brushDescriptor.shapeKind == creative::CreativeObjectShapeKind::Path) {
-        const std::vector<creative::CreativePathPoint> ghostPath =
-            initialPathPointsForAnchor(aimCellCenter);
-        const std::size_t before = combinedWireLines.size();
-        appendPathPolylineLines(combinedWireLines,
-                                ghostPath,
-                                RenderLineColor{0.0F, 1.0F, 0.0F, 1.0F},
-                                kGizmoThickness);
-        ghostEdgeCount = combinedWireLines.size() - before;
-      } else if (brushDescriptor.shapeKind ==
-                 creative::CreativeObjectShapeKind::Point) {
-        const VisualBounds markerBounds = pointMarkerBounds(
-            creative::CreativeVec3{aimCellCenter.x, 0.0, aimCellCenter.z});
-        ghostMin = markerBounds.min;
-        ghostMax = markerBounds.max;
-      } else {
-        const BrushFootprint fp = brushFootprintForDescriptor(brushDescriptor);
-        const VisualBounds authoredGhost{
-            {aimCellCenter.x - fp.sizeX * 0.5F, 0.0F,
-             aimCellCenter.z - fp.sizeZ * 0.5F},
-            {aimCellCenter.x + fp.sizeX * 0.5F, fp.height,
-             aimCellCenter.z + fp.sizeZ * 0.5F}};
-        const VisualBounds ghostBounds =
-            brushDescriptor.shapeKind == creative::CreativeObjectShapeKind::Line
-                ? lineProxyBounds(authoredGhost)
-                : authoredGhost;
-        ghostMin = ghostBounds.min;
-        ghostMax = ghostBounds.max;
-      }
-      if (brushDescriptor.shapeKind != creative::CreativeObjectShapeKind::Path) {
-        const std::size_t before = combinedWireLines.size();
-        appendStandaloneWireframeBoxEdges(
-            combinedWireLines, ghostMin, ghostMax,
-            RenderLineColor{0.0F, 1.0F, 0.0F, 1.0F},
-            kGizmoThickness);
-        ghostEdgeCount = combinedWireLines.size() - before;
-      }
-    }
-    (void)ghostEdgeCount;
-    RenderCreativeWireframeDebugFrame combinedWireFrame;
-    combinedWireFrame.available = true;
-    combinedWireFrame.visible = !combinedWireLines.empty();
-    combinedWireFrame.lines = combinedWireLines.data();
-    combinedWireFrame.lineCount = combinedWireLines.size();
-
-    // ---- DIMENSION LABEL + glyph merge -------------------------------------
-    // Merge the inspector-panel glyphs with the dimension-label glyphs into ONE
-    // vector so a single .data() pointer stays valid for the whole frame.
-    std::vector<DebugHudGlyphQuad> glyphs = menuFrame.textGlyphQuads;
-    if (hasSelection) {
-      const Vec3 center{(selBoxMin.x + selBoxMax.x) * 0.5F,
-                        (selBoxMin.y + selBoxMax.y) * 0.5F,
-                        (selBoxMin.z + selBoxMax.z) * 0.5F};
-      const ProjectedPoint3 projected =
-          projectPoint(frame.camera.clipFromWorld, center);
-      if (std::isfinite(projected.w) && projected.w > 0.0F) {
-        const Vec3 ndc = projected.ndc;
-        const float px = (ndc.x * 0.5F + 0.5F) * static_cast<float>(extent.width);
-        const float py = (1.0F - (ndc.y * 0.5F + 0.5F)) *
-                         static_cast<float>(extent.height);
-        const float dimW = selBoxMax.x - selBoxMin.x;
-        const float dimH = selBoxMax.y - selBoxMin.y;
-        const float dimD = selBoxMax.z - selBoxMin.z;
-        char labelBuf[64];
-        std::snprintf(labelBuf, sizeof(labelBuf), "%.1f x %.1f x %.1f m",
-                      static_cast<double>(dimW), static_cast<double>(dimH),
-                      static_cast<double>(dimD));
-        const DebugHudLayoutResult labelLayout = layoutDebugHudTextAt(
-            labelBuf, static_cast<std::int32_t>(px),
-            static_cast<std::int32_t>(py), extent.width, extent.height);
-        glyphs.insert(glyphs.end(), labelLayout.quads.begin(),
-                      labelLayout.quads.end());
-      }
-    }
-
-    // ---- ATTACH overlays to the frame --------------------------------------
-    frame.ui.visible = true;
-    frame.ui.rects = menuFrame.rects.data();
-    frame.ui.rectCount = menuFrame.rects.size();
-    frame.ui.textGlyphQuads = glyphs.data();
-    frame.ui.textGlyphQuadCount = glyphs.size();
-    // The combined vector (selection box + gizmo shafts), NOT dbg.frame.
-    frame.creativeWireframeDebug = combinedWireFrame;
+    CreativeEditorOverlayFrame overlayFrame;
+    buildAndAttachCreativeEditorOverlayFrame(
+        {appState,
+         editor,
+         selection,
+         gizmoFrame,
+         frame,
+         wireProjReq,
+         aimCellCenter,
+         extent.width,
+         extent.height,
+         kGizmoThickness},
+        overlayFrame);
 
     const iggy3d_creative_app::StandaloneFrustumCullResult frustumCull =
         iggy3d_creative_app::cullStandaloneSceneRoomMeshesByFrustum(
@@ -687,12 +452,17 @@ int main(int argc, char** argv) {
               frustumCull.receipt.culledRoomMeshCount,
               frustumCull.receipt.conservativelyKeptMeshCount, selectedId,
               hasSelection ? 1 : 0,
-              documentWireLineCount, pointMarkerEdgeCount, lineMarkerEdgeCount,
-              pathPointHandleEdgeCount,
-              combinedWireLines.size() - documentWireLineCount -
-                  pointMarkerEdgeCount - lineMarkerEdgeCount -
-                  pathPointHandleEdgeCount,
-              combinedWireLines.size(), menuFrame.rects.size(), glyphs.size());
+              overlayFrame.documentWireLineCount,
+              overlayFrame.pointMarkerEdgeCount,
+              overlayFrame.lineMarkerEdgeCount,
+              overlayFrame.pathPointHandleEdgeCount,
+              overlayFrame.combinedWireLines.size() -
+                  overlayFrame.documentWireLineCount -
+                  overlayFrame.pointMarkerEdgeCount -
+                  overlayFrame.lineMarkerEdgeCount -
+                  overlayFrame.pathPointHandleEdgeCount,
+              overlayFrame.combinedWireLines.size(),
+              overlayFrame.uiRects.size(), overlayFrame.glyphs.size());
     }
 
     if (maxFrames != 0U && editor.frameIndex >= maxFrames) {
@@ -713,15 +483,18 @@ int main(int argc, char** argv) {
               static_cast<unsigned long long>(editor.frameIndex),
               static_cast<int>(submit.outcome),
               std::string(submit.reason.code).c_str(), selectedId, selKind,
-              hasSelection ? 1 : 0, documentWireLineCount,
-              pointMarkerEdgeCount, lineMarkerEdgeCount,
-              pathPointHandleEdgeCount,
-              combinedWireLines.size() - documentWireLineCount -
-                  pointMarkerEdgeCount - lineMarkerEdgeCount -
-                  pathPointHandleEdgeCount,
-              combinedWireLines.size(), editor.placeMode ? 1 : 0,
+              hasSelection ? 1 : 0, overlayFrame.documentWireLineCount,
+              overlayFrame.pointMarkerEdgeCount,
+              overlayFrame.lineMarkerEdgeCount,
+              overlayFrame.pathPointHandleEdgeCount,
+              overlayFrame.combinedWireLines.size() -
+                  overlayFrame.documentWireLineCount -
+                  overlayFrame.pointMarkerEdgeCount -
+                  overlayFrame.lineMarkerEdgeCount -
+                  overlayFrame.pathPointHandleEdgeCount,
+              overlayFrame.combinedWireLines.size(), editor.placeMode ? 1 : 0,
               std::string(creative::toString(editor.placeBrush)).c_str(),
-              ghostEdgeCount,
+              overlayFrame.ghostEdgeCount,
               static_cast<unsigned long long>(editor.placedCount),
               static_cast<unsigned long long>(
                   appState.facade.document().objectCount()),
