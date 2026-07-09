@@ -1,6 +1,6 @@
 # File Specs Index
 
-Verified at: `00e97746`
+Verified at: `08cf3da7`
 
 ## Purpose
 
@@ -18,8 +18,8 @@ Rules:
 
 - Source C++ files under `src`: `704`.
 - Primary product/runtime/content/projection/render files counted for this map: `641`.
-- Current file specs: `272`.
-- Current mapped source files represented by those specs: about `528`.
+- Current file specs: `274`.
+- Current mapped source files represented by those specs: about `533`.
 
 ## Status Labels
 
@@ -61,6 +61,11 @@ Runtime collision/world/ability/combat:
 - `mapped` [WorldState.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/world/WorldState.md)
 - `mapped` [AbilitySystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/ability/AbilitySystem.md)
 - `mapped` [CombatSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/combat/CombatSystem.md)
+
+Runtime command/projectile:
+
+- `mapped` [CommandAdmission.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/command/CommandAdmission.md)
+- `mapped` [ProjectileSystem.md](/Users/kogaryu/iggy3d/docs/file_specs/src/runtime/projectile/ProjectileSystem.md)
 
 Core grid kernels:
 
@@ -359,12 +364,12 @@ Batch AV, creative bake support adapters:
 - `defer leaf` `src/app/iggy3d/creative/adapters/Draw.*` zero-byte placeholder.
 - `queued` `src/app/iggy3d/window/ProductVulkanMenuState.hpp` only if menu state fields change.
 
-Batch BK, runtime command/projectile support surfaces:
+Batch BL, runtime player/movement support surfaces:
 
-- `next` `src/runtime/command/*`
-- `next` `src/runtime/projectile/*`
-- `queued` `src/runtime/player/*` remaining
-- `queued` `src/runtime/movement/*` remaining
+- `next` `src/runtime/player/*` remaining
+- `next` `src/runtime/movement/*` remaining
+- `queued` `src/runtime/replay/*` remaining
+- `queued` `src/runtime/diagnostics/*`
 
 ## Defer Leaf Policy
 
