@@ -59,7 +59,11 @@ None.
 
 ## Pull Next
 
-None currently ready.
+- `ready/E282-creative-area-selection-maximum-demand-preflight.md` - read-only
+  maximum-demand feature preflight. This must scope true Creative area
+  selection across selection state, delete, undo/redo policy, save/load,
+  render/Vulkan handoff, product parity, algorithms, and verification before
+  any implementation card is written.
 
 ## Tier 1: Correctness And Compatibility
 
@@ -223,5 +227,7 @@ Held — do NOT promote to `ready/` on a guess:
   world-pick proof logging helper inside the existing pick-frame module. E279
   is complete as synthetic/interactive click selection. E280 is complete as
   interactive placement input. E281 is complete as capture-scenario request
-  assembly. The remaining Move, overlay, submit, and shutdown seams should get
-  an explicit next card instead of being promoted on a guess.
+  assembly. E282 is released as a read-only maximum-demand preflight for true
+  Creative area selection before any feature implementation starts. The
+  remaining Move, overlay, submit, and shutdown seams should get an explicit
+  next card instead of being promoted on a guess.

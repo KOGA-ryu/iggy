@@ -277,6 +277,56 @@ result type) — legal. `runtime/*` must include nothing from `app/`/`render/` �
 struct in `runtime`, and ALL rendering translation happens app-side. If any slice makes `runtime/ai` include a
 draw/HUD header, it's wrong — push the translation up.
 
+## 16. EXISTING-CODE CHANGES (not new code — what must be ADAPTED / DELETED / INVERTED)
+
+The new types are additive; landing them is not. Enumerated so no caller / test / assumption is missed.
+
+**Deletions (remove + migrate every caller — grep before deleting):**
+- `horizontalDistanceMeters` (`NpcBehaviorSystem.cpp:12-16`) — dead once 3D distance lands; callers use `distanceMeters`.
+- `targetWithinVisionCone` (`:21-42`) — the 2D cone; replaced by the two-angle check.
+- `kEyeHeightMeters = 1.0F` constant (`Session.cpp:1008`) — replaced by per-entity config eye heights.
+- `hasBlockerBetween` (`Session.cpp:1047-1083`) — sound path calls the shared `segmentOcclusion` instead.
+- `NpcPerceptionRequest.targetHasLineOfSight = true` (`NpcBehaviorSystem.hpp:69`) — occlusion now enters via the
+  fn + tri-state, not a default-true bool.
+
+**Behavior inversions (SAME line, OPPOSITE outcome — the highest-risk edits; each needs its own pin-test):**
+- `Session.cpp:1032` `if (hit.startInside) continue;` → startInside now **blocks** (skip→block). Changes the
+  occlusion verdict for any guard inside/flush-with geometry — verify no scenario relied on the old cheat.
+- `Session.cpp:1027` `if (!result.ok) return true;` → fail **closed**. Inverts the failure default; audit callers
+  that currently lean on the "granted on failure" behavior (there shouldn't be any, but confirm).
+
+**Contract / caller migration (a signature change ripples — grep the constructors):**
+- `queryNpcPerception` return type + `NpcPerceptionRequest` shape change → **every** call site adapts (the Session
+  tick site ~`:1133-1157` and any test building the request). `grep NpcPerceptionRequest{`.
+- `actorHasLineOfSightToTarget` (`Session.cpp:1002-1040`) → thin wrapper over `segmentOcclusion`, or deleted;
+  callers read the result's `los`.
+- `reasoningSegmentBlocked` (`ReasoningGraph`) → body replaced with a `segmentOcclusion` call; delete its own
+  eye-height handling.
+
+**Modified existing logic (real behavior change, Part A — not a refactor):**
+- `NpcAlertSystem.cpp:163` heard-branch → add decay to the existing escalation.
+- `NpcInvestigateSystem.cpp:30` dwell reset → gate so the give-up timer can elapse under sustained noise.
+- `NpcSoundPerception.cpp:45` parallel `blockers[i]` read → length guard + fail-closed on missing.
+
+**Config codec:** the scenario (de)serializer for `NpcBehaviorConfig` gains 5 fields on BOTH parse and emit;
+existing parse must tolerate missing keys → §3 defaults (don't zero). Grep the TOML round-trip test — it will
+need the new fields asserted.
+
+**Existing debug draw — CHECK FIRST:** grep `NpcBehaviorDebugHud` / draw-list for any *current* cone/perception
+drawing. If a 2D cone is already drawn, that code is **replaced** (two cones = confusion), not added alongside.
+If none, it's a pure add.
+
+**Existing tests to REWRITE (not re-run):**
+- `npc_behavior_system_tests.cpp:173-218` (2D cone + raw-bool LOS) → the §10 struct/3D matrix.
+- `stealth_garden_tests.cpp` occlusion cases → re-pin under per-entity eye height (deliberate + reviewed; the
+  wall is y=3m so it still spans, but the ray endpoints move).
+- Any test asserting old perception receipt keys → the appended keys.
+- **`product_receipt_key_order.golden`** → one reviewed append (§9), then byte-stable.
+
+**Assumption audit (silent-break watch):** anything downstream that assumed *horizontal-only* perception or the
+*1.0m ray* (e.g. level layouts tuned so a 1.2m wall blocks) shifts under per-entity eye heights — flag for
+playtest, not just compile.
+
 ---
 **DONE = build green · full suite green (incl. the §10 matrix + the vertical-garden case) · receipt golden a
 single reviewed append then byte-stable · debug shows a thief on a ledge above the guard as OUT of cone, live.**
